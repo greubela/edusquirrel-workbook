@@ -1,0 +1,277 @@
+/* Import colors and base styles */
+@import url('colors.css');
+
+
+/* --- Container Elements --- */
+
+.card-editor {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--standard-gap);
+	
+	background-color: var(--color-background-dark);
+	
+	max-width: 600px;
+	max-height: 100vh;
+	overflow: auto;
+	
+	margin: 0 auto 0 auto;
+}
+
+.editor-element {
+	width: 100%;
+	justify-content: center;
+	border: 3px solid var(--color-background-dark-lighter);
+	
+	display: flex;
+	flex-wrap: wrap;
+}
+.editor-content-visible{
+	gap: var(--standard-gap);
+}
+
+.editor-element > .editor-label {
+	width: 100%;
+	display:block;
+	
+	font-size: var(--fontsize-headings-element);
+	
+	background-color: var(--color-background-dark-lighter);
+	color: var(--textcolor-background-dark);
+	
+	text-align:center;
+}
+
+.editor-element > .editor-content{
+	width: 100%;
+	background-color: var(--color-background-dark);
+	display:grid;
+	
+}
+
+.editor-content-visible > .editor-content {
+	opacity: 1;
+	transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+	
+	gap: var(--standard-gap);
+	margin-bottom: var(--standard-gap);	
+}
+.editor-content-invisible > .editor-content {
+	max-height: 0;
+	opacity: 0;
+	overflow: hidden;
+	transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+
+/* --- Individual Elements --- */
+
+
+
+/* --- Configuration and Stuff --- */
+
+.editor-button.hoverable-border:hover{
+	background-color: var(--bg-hover);
+	transform: scale(1.03);
+}
+
+.editor-button{
+	display:flex;
+	width: 100%;
+	height: 50px;	
+	
+	background-color: var(--color-background-dark-lighter);
+	
+	border: 2px solid var(--color-input-light);
+	border-radius: var(--standard-border-radius);
+	
+	color: var(--textcolor-background-dark);
+	
+	font-size: var(--fontsize-text);	
+	
+	text-align: center;	
+	align-items: center;
+	justify-content: center;
+}
+.hidden-input{
+	display:none;
+}
+
+
+/* --- Generated --- */
+
+
+.download-btn {
+  padding: var(--padding-small) var(--padding-medium);
+  background-color: var(--bg-card-dark);
+  color: var(--text-light);
+  text-decoration: none;
+  border-radius: var(--border-radius);
+  border: 2px solid var(--border-main);
+  transition: var(--transition);
+  width: 200px;
+  text-align: center;
+  cursor: pointer;
+}
+
+
+/* Container and Layout */
+.container {
+  display: flex;
+  height: 100vh;
+}
+
+/* Behavioral Classes */
+.hover-border {
+  border-color: var(--border-main);
+  transition: var(--transition);
+}
+
+.hover-border:hover {
+  border-color: var(--border-hover);
+}
+
+/* Left Section */
+.left-section {
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-background-dark-lighter);
+  border-right: 3px solid var(--border-main);
+  overflow: auto;
+}
+
+.card-preview {
+  height: 80%;
+  padding: var(--padding-medium);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: var(--bg-card);
+  overflow: auto;
+}
+
+.card-preview h2 {
+  margin-bottom: var(--padding-small);
+  color: var(--text-light);
+  font-weight: 600;
+  font-size: var(--font-size-header);
+  text-align: center;
+}
+
+.card-display {
+  display: flex;
+  gap: var(--padding-small);
+  flex-wrap: nowrap;
+}
+
+.card-vector,
+.card-pixel {
+  width: var(--card-width);
+  height: var(--card-height);
+  background-color: var(--bg-card-dark);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 3px solid var(--border-main);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-light);
+  flex-shrink: 0;
+}
+
+.download-links {
+  height: 20%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: var(--padding-small);
+  background-color: var(--bg-card);
+  border-top: 2px solid var(--border-main);
+}
+
+
+.download-btn:hover {
+  background-color: var(--bg-hover);
+  transform: scale(1.03);
+}
+
+.download-btn:focus {
+  border-color: var(--border-focus);
+  outline: 3px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.download-btn.hover-border:hover {
+  border-color: var(--border-hover);
+}
+
+/* Right Section */
+.right-section {
+  width: 50%;
+  padding: var(--padding-medium);
+  background-color: var(--color-background-dark);
+  display: flex;
+  align-items: center;
+  overflow: auto;
+}
+
+
+.editor h2 {
+  margin-bottom: var(--padding-small);
+  color: var(--text-light);
+  font-weight: 600;
+  font-size: var(--font-size-header);
+  text-align: center;
+}
+
+
+.selector-group {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-small);
+  flex-wrap: nowrap;
+}
+
+.properties {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+
+
+.input-component input,
+.input-component textarea,
+.input-component select {
+  padding: 8px;
+  border: 2px solid var(--border-main);
+  border-radius: var(--border-radius);
+  background-color: var(--bg-input);
+  color: var(--text-dark);
+  width: 100%;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.input-component textarea {
+  resize: vertical;
+}
+
+.input-component select[multiple] {
+  height: 100px;
+}
+
+.input-component input.hover-border:hover,
+.input-component textarea.hover-border:hover,
+.input-component select.hover-border:hover {
+  border-color: var(--border-hover);
+}
+
+.input-component input:focus,
+.input-component textarea:focus,
+.input-component select:focus {
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-focus);
+  outline: none;
+}
+

@@ -1,0 +1,131 @@
+
+
+/* EXERCISE + CONTENT-CONTAINER + NUMBERING + INTERACTION-HISTORY */
+
+.container-exercise.style-compact {
+  
+  display:grid;
+  grid-template-columns: 100%;
+  row-gap: 5px;
+  padding-bottom: 5px;
+  
+  border-radius: 20px;
+  background-color: var(--background-exercise);
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  
+  font-family: sans-serif;
+}
+
+.container-exercise.style-compact .container-exercise-instruction{
+	width: 90%;
+	margin: 0px auto 0px auto;
+}
+
+.container-exercise.style-compact .instruction-content{
+	background-color:green;
+}
+
+.container-exercise.style-compact .interaction-history{
+	background-color: black;
+	width: 90%;
+	min-height: 50px;
+	margin: 0px auto 0px auto;
+}
+
+.container-exercise.style-compact .svg-button{
+	width: 50px;
+	height: 50px;
+	
+	stroke: #323232;
+	stroke-width:2; 
+}
+
+.container-exercise.style-compact .container-interaction .container-instruction-arrows .button-arrow-down{
+	display: none;
+}
+
+.container-exercise.style-compact .container-interaction{
+	display: grid;
+	column-gap: 2%;
+	
+	justify-items: center;
+	align-items: center;
+	
+	width: 100%;
+	margin: 0px auto 0px auto;
+	padding-bottom: 5px;
+}
+
+.container-exercise.style-compact .container-interaction .container-label{
+	width: 100%;
+	min-height: 25px;
+	
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.container-exercise.style-compact .container-interaction-element{
+	width: 100%;
+	min-height: 25px;
+	background-color:yellow;
+}
+
+
+/* LAYOUT SCAFFOLDING */
+
+.container-exercise.style-compact .container-interaction.layout-scaffolding{
+	grid-template-columns: 3% 78% 8% 3%;
+}
+
+.container-exercise.style-compact .container-interaction-element.interaction-scaffolding{
+	grid-column-start: 2;
+}
+
+.container-exercise.style-compact .container-interaction.layout-scaffolding .button-editor{
+	grid-column-start: 3;
+}
+
+
+/* LAYOUT EDITOR */
+.container-exercise.style-compact .container-interaction.layout-editor{
+	grid-template-columns: 3% 8% 68% 8% 3%;
+}
+.container-exercise.style-compact .container-interaction.layout-editor .interaction-editor{
+	grid-column-start: 3;
+}
+
+.container-exercise.style-compact .container-interaction.layout-editor .button-scaffolding{
+	grid-column-start: 2;
+}
+.container-exercise.style-compact .container-interaction.layout-editor .button-grading{
+	grid-column-start: 4;
+}
+
+
+/* LAYOUT grading */
+.container-exercise.style-compact .container-interaction.layout-grading{
+	grid-template-columns: 3% 8% 33% 8% 33% 3%;
+}
+.container-exercise.style-compact .container-interaction.layout-grading .button-editor{
+	grid-column-start: 2;
+}
+.container-exercise.style-compact .container-interaction.layout-grading .interaction-editor{
+	grid-column-start: 3;
+}
+.container-exercise.style-compact .container-interaction .container-instruction-arrows .button-arrow-right{
+	grid-column-start: 4;
+}
+.container-exercise.style-compact .container-interaction.layout-grading .interaction-grading{
+	grid-column-start: 5;
+}
+
+
+
+
+
+
+
+
+
+

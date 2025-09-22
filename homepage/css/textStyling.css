@@ -1,0 +1,49 @@
+
+/* --- Text Role --- */
+
+
+
+.text-role-licence {
+	width: 100%;
+	font-size: var(--fontsize-text-small);
+
+	text-align: center;	
+	
+	align-items: center;
+	justify-content: center;
+	display: flex;
+}
+
+.text-role-info {
+	text-align: center;
+}
+
+
+/* --- Text Importance --- */
+.text-importance-structure{
+}
+
+.text-importance-regular{
+	font-size: var(--fontsize-text);
+}
+
+.text-importance-smallprint{
+	font-size: var(--fontsize-text-small);
+}
+
+/* --- Text Type --- */
+
+.text-type-info{
+	background-color: var(--background-info);	
+	color: var(--textcolor-info);
+}
+
+.text-type-warning{
+	background-color: var(--background-warning);	
+	color: var(--textcolor-warning);
+}
+
+.text-type-error{
+	background-color: var(--background-error);	
+	color: var(--textcolor-error);	
+}

@@ -1,0 +1,89 @@
+
+
+/* EXERCISE + CONTENT-CONTAINER + NUMBERING + INTERACTION-HISTORY */
+
+.container-exercise.style-vbox {
+  
+  display:grid;
+  grid-template-columns: 100%;
+  row-gap: 5px;
+  padding-bottom: 5px;
+  
+  border-radius: 20px;
+  background-color: var(--background-exercise);
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  
+  font-family: sans-serif;
+}
+
+.container-exercise.style-vbox .container-exercise-instruction{
+	width: 90%;
+	margin: 0px auto 0px auto;
+}
+
+.container-exercise.style-vbox .instruction-content{
+	background-color:green;
+}
+
+
+.container-exercise.style-vbox .interaction-history{
+	background-color: black;
+	width: 90%;
+	min-height: 50px;
+	margin: 0px auto 0px auto;
+}
+
+/* INTERACTION -> GENERAL VBOX LAYOUT: CONTAINER + BUTTON + ELEMENT 
+*/
+
+.container-exercise.style-vbox .container-interaction{
+	display: grid;
+	grid-template-columns: 5% 90% 5%;
+	row-gap: 5px;
+	justify-items: center;
+	align-items: center;
+	
+	width: 100%;
+	
+	margin: 0px auto 0px auto;
+	padding-bottom: 5px;
+}
+
+.container-exercise.style-vbox .svg-button{
+	grid-column-start: 2;
+	
+	width: 25px;
+	height: 25px;
+	
+	stroke: #323232;
+	stroke-width:2; 
+}
+
+.container-exercise.style-vbox .container-interaction-element{
+	width: 100%;
+	grid-column-start: 2;
+}
+
+.container-exercise.style-vbox .container-interaction .container-label{
+	width: 100%;
+	min-height: 25px;
+	
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.container-exercise.style-vbox .container-interaction .container-interaction-element-content{
+	width: 100%;
+	min-height: 25px;
+	background-color:yellow;
+}
+
+.container-exercise.style-vbox .container-instruction-arrows{
+	grid-column-start: 2;
+}
+
+
+.container-exercise.style-vbox .container-interaction .container-instruction-arrows .button-arrow-right{
+	display: none;
+}

@@ -1,0 +1,91 @@
+.mtg-type-supertype{
+	border-radius: 25px;
+	border: 2px solid darkgreen;
+}
+.mtg-type-supertype:focus{
+	outline-width: 2px;
+	outline: solid darkgreen;
+}
+
+.mtg-type-maintype{
+	border-radius: 25px;
+	border: 2px solid green;
+}
+.mtg-type-maintype:focus{
+	outline-width: 2px;
+	outline: solid green;
+}
+
+.mtg-type-subtype{
+	border-radius: 25px;
+	border: 2px solid blue;
+}
+.mtg-type-subtype:focus{
+	outline-width: 2px;
+	outline: solid blue;	
+}
+
+.mtg-type-custom{
+	border-radius: 25px;
+	border: 2px solid red;
+}
+.mtg-type-custom:focus{
+	outline-width: 2px;
+	outline: solid red;
+}
+
+.autocomplete_editor_bubble_interactible:hover {
+	color: var(--textcolor-input);
+	background-color: var(--color-input-light);
+	
+	cursor: text;
+}
+
+
+
+.autocomplete_editor_bubble_display{
+	padding: 0.4em 1em;
+	font-family: monospace;
+	
+	color: var(--textcolor-background-dark);
+	background-color: var(--color-background-dark-lighter);
+}
+
+.autocomplete_editor_bubble_editable{
+	padding: 0.4em 1em;
+	font-family: monospace;
+	
+	color: var(--textcolor-input);
+	background-color: var(--color-input-light);
+	
+}
+
+.autocomplete_editor_suggestion-dropdown{
+	padding: 0.3em;
+	position: absolute;
+	z-index: 1000;
+  
+}
+
+
+.mtg-bubble {
+  display: inline-block;
+  user-select: text;
+  transition: all 0.2s ease-in-out;
+}
+
+
+.suggestion-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.editor-container {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+#typeline-select .containered-element{
+	justify-content: center;
+}

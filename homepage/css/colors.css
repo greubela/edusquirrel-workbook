@@ -1,0 +1,94 @@
+/* Root variables for reusable styles */
+:root {
+	/* --- Basic Color Palette --- */
+	--color-background-dark: #222222;
+	--color-background-dark-lighter: #333333;
+	
+	
+	--color-main-contrast: #4a1c1c;
+	--color-main-contrast-lighter: #6b2d2d;
+	
+	--color-input-light: #e0e0e0;
+	
+	--textcolor-background-dark: #d1d1d1;
+	--textcolor-input: #212529;
+	
+	
+	/* --- Feedback Colors ---*/
+	--background-info: var(--color-background-dark-lighter);
+	--background-warning: #FFBF00;
+	--background-error: #4a1c1c;
+	
+	--textcolor-info: var(--textcolor-background-dark);
+	--textcolor-warning: black;
+	--textcolor-error: var(--color-background-dark-lighter);
+	
+	
+	
+	/*--- Font Information ---*/
+	--font-family: 'Arial', sans-serif;
+	
+	--fontsize-headings-element: 18px;
+	--fontsize-text: 14px;
+	--fontsize-text-small: 8px;
+	
+	/*--- Layout Sizes and Spacing ---*/
+	--standard-gap: 10px;
+	--mini-padding: 3px;
+	--standard-border-radius: 5px;
+	
+	
+  /* Sizes and Spacing */
+  --font-size-header: 2.5rem;
+	--padding-small: 10px;
+  --padding-medium: 20px;
+
+  --shadow-light: 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-focus: 0 0 0 3px rgba(163, 44, 44, 0.3);
+  --transition: all 0.3s;
+  --card-width: 500px;
+  --card-height: 750px;
+  --max-height-two-rows: 250px;
+
+	
+	/* generated */
+	
+	
+  /* Background Colors */
+  --bg-body: #1a1a1a; /* Dark charcoal background */
+  --bg-section: #222222; /* Slightly lighter dark tone */
+  --bg-card: #2a2a2a; /* Lighter dark tone for cards */
+  --bg-input: #e0e0e0; /* Light background for inputs */
+  --bg-hover: #4a1c1c; /* Dark red for hover */
+  --bg-info: #1c1c1c; /* Dark background for info */
+  --bg-card-dark: #333333; /* Darker tone for cards and buttons */
+
+
+  /* Licence Colors */
+  --bg-licence-wizard: #4a1c1c;
+  --bg-licence-unkown: #8B8000;
+
+
+  
+  /* Border Colors */
+  --border-main: #2c2c2c; /* Tone-on-tone dark border */
+  --border-focus: #a32c2c; /* Bright dark red for focus */
+  --border-hover: #6b2d2d; /* Darker red for hover */
+
+  /* Text Colors */
+  --text-light: #d1d1d1; /* Light gray text */
+  --text-dark: #212529; /* Dark text for readability */
+
+}
+
+/* Reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: var(--font-family);
+}
+
+body {
+  background-color: var(--bg-body);
+}

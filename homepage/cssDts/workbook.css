@@ -1,0 +1,156 @@
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--main-background)
+  margin: 0;
+  padding: 0;
+}
+
+/* VARIABLES */
+
+
+:root {
+	/* --- Basic Color Palette --- */
+	--background-numbering: #aaa;
+	--background-main: #f4f6f8;
+	--background-exercise: #eee;
+	
+	--background-interaction-active: #fff;
+	--background-interaction-inactive: #ccc;
+	
+	
+	--background-label-generic: #aaa;
+	--background-label-editor: #aaf;
+	
+	--background-label-grading-missing: #fa0;
+	--background-label-grading-correct: #0f0;
+	--background-label-grading-wrong: #f00;
+	
+	--background-label-scaffolding: #aa0;
+	
+	
+	
+	/*
+	Colors:
+		Beschriftung nicht aktiv
+		Beschriftung = Exercise und Aktiv (blau)
+		Beschriftung = Scaffolding und Aktiv (gelb)
+		Beschriftung = Richtiges grading und Aktiv (grün)
+		Beschrfitung = Falsches grading und Aktiv (rot)
+		Beschriftung = Fehlendes grading und Aktiv (orange)
+	*/
+	
+}
+
+.worksheetDts{
+	gap: 20px;
+	
+}
+
+.container-exercise {
+  max-width: 1000px;
+  margin: 0px auto 20px auto;
+
+}
+
+.exercise-title:first-of-type{
+	width: 100%;
+	margin: 0px auto 0px auto;
+	
+	background-color: var(--background-numbering);
+	
+	text-align: center;
+	
+	height: 20px;
+	border-radius: 20px 20px 0px 0px;
+}
+
+.exercise-title:not(:first-of-type) {
+	width: 100%;
+	margin: 0px auto 0px auto;
+	
+	text-align: center;
+	font-size:0px;
+	
+	border-top: 2px dashed var(--background-numbering);
+	border-radius: 20px 20px 0px 0px;
+}
+
+
+/* CONTAINER EXERCISE -> GENERAL LAYOUTS */
+
+/* INTERACTION -> LAYOUTS: SCAFFOLDING + EDITOR + grading */
+.container-exercise .container-interaction.layout-scaffolding .interaction-scaffolding,
+.container-exercise .container-interaction.layout-scaffolding .button-editor{
+	visibility: visible;
+}
+.container-exercise .container-interaction.layout-scaffolding .button-scaffolding,
+.container-exercise .container-interaction.layout-scaffolding .interaction-editor,
+.container-exercise .container-interaction.layout-scaffolding .container-instruction-arrows,
+.container-exercise .container-interaction.layout-scaffolding .button-grading,
+.container-exercise .container-interaction.layout-scaffolding .interaction-grading{
+	display: none;
+}
+
+.container-exercise .container-interaction.layout-editor .button-scaffolding,
+.container-exercise .container-interaction.layout-editor .interaction-editor,
+.container-exercise .container-interaction.layout-editor .button-grading{
+	visibility: visible;
+}
+.container-exercise .container-interaction.layout-editor .interaction-scaffolding,
+.container-exercise .container-interaction.layout-editor .interaction-grading,
+.container-exercise .container-interaction.layout-editor .button-editor,
+.container-exercise .container-interaction.layout-editor .container-instruction-arrows{
+	display: none;
+}
+
+.container-exercise .container-interaction.layout-grading .button-editor,
+.container-exercise .container-interaction.layout-grading .interaction-editor,
+.container-exercise .container-interaction.layout-grading .container-instruction-arrows,
+.container-exercise .container-interaction.layout-grading .interaction-grading{
+	visibility: visible;
+}
+.container-exercise .container-interaction.layout-grading .button-scaffolding,
+.container-exercise .container-interaction.layout-grading .interaction-scaffolding,
+.container-exercise .container-interaction.layout-grading .button-grading{
+	display: none;
+}
+
+
+
+/* CONTAINER-EXERCISE -> HIGHLIGHT ELEMENTS: SCAFFOLDING + EDITOR + grading */
+
+
+.container-exercise .container-interaction.highlight-scaffolding .label-editor,
+.container-exercise .container-interaction.highlight-editor .label-scaffolding,
+.container-exercise .container-interaction.highlight-grading .label-scaffolding,
+.container-exercise .container-interaction.highlight-grading .label-editor{
+	background-color: var(--background-label-generic);
+}
+	
+.container-exercise .container-interaction.highlight-scaffolding .button-scaffolding .button-borderpath{
+	fill: var(--background-label-scaffolding);
+}
+.container-exercise .container-interaction.highlight-scaffolding .label-scaffolding{
+	background-color: var(--background-label-scaffolding);
+}
+
+.container-exercise .container-interaction.highlight-editor .button-editor {
+	fill: var(--background-label-editor);
+}
+.container-exercise .container-interaction.highlight-editor .label-editor{
+	background-color: var(--background-label-editor);
+}
+
+.container-exercise .container-interaction.highlight-grading .button-grading .button-borderpath{
+	fill:url(#gradient-fill);
+}
+
+.container-exercise .container-interaction.highlight-scaffolding .label-grading.grading-missing{
+	background-color: var(--background-label-grading-missing);
+}
+.container-exercise .container-interaction.highlight-scaffolding .label-grading.grading-correct{
+	background-color: var(--background-label-grading-correct);
+}
+.container-exercise .container-interaction.highlight-scaffolding .label-grading.grading-wrong{
+	background-color: var(--background-label-grading-wrong);
+}
