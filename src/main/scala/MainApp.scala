@@ -1,10 +1,11 @@
 
 import com.raquo.laminar.api.L.{*, given}
 import contentmanagement.model.image.ImageDescription
-import contentmanagement.storage.FileIO
+import contentmanagement.model.language.AppLanguage
 import org.scalajs.dom
 import org.scalajs.dom.document
-import workbook.workbookHtmlElements.DummyWorkbookExercise
+import workbook.model.exercise.ExerciseContent
+import workbook.workbookHtmlElements.exercises.HtmlTextBasedGptExercise
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 import scala.language.postfixOps
@@ -19,16 +20,17 @@ def mainApp(): Unit = {
   insertWorkbook()
 }
 
-
 def insertWorkbook(): Unit = {
 
-  val testEx = DummyWorkbookExercise()
+  val testEx = ExerciseContent("id-007", Map(AppLanguage.English -> "this is title"), Map(AppLanguage.English -> "this is instruction"))
+  val htmlEx = HtmlTextBasedGptExercise(testEx)
+
   val worksheetDiv = document.getElementById("worksheetDts")
 
   if (dom.document.readyState == "loading") {
-    renderOnDomContentLoaded(worksheetDiv, testEx.createDomElement())
-  }else{
-    render(worksheetDiv, testEx.createDomElement())
+    renderOnDomContentLoaded(worksheetDiv, htmlEx.getDomElement())
+  } else {
+    render(worksheetDiv, htmlEx.getDomElement())
   }
 }
 

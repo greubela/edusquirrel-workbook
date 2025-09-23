@@ -1,4 +1,5 @@
-package contentmanagement.model
+package contentmanagement.model.language
+
 
 class AppLanguage(val name: String, val nameAbbr: String) {
 

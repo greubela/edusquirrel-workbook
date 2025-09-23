@@ -3,7 +3,6 @@
 /* EXERCISE + CONTENT-CONTAINER + NUMBERING + INTERACTION-HISTORY */
 
 .container-exercise.style-compact {
-  
   display:grid;
   grid-template-columns: 100%;
   row-gap: 5px;
@@ -78,10 +77,6 @@
 	grid-template-columns: 3% 78% 8% 3%;
 }
 
-.container-exercise.style-compact .container-interaction-element.interaction-scaffolding{
-	grid-column-start: 2;
-}
-
 .container-exercise.style-compact .container-interaction.layout-scaffolding .button-editor{
 	grid-column-start: 3;
 }
@@ -118,6 +113,9 @@
 }
 .container-exercise.style-compact .container-interaction.layout-grading .interaction-grading{
 	grid-column-start: 5;
+	width: 100%
+	display: grid;
+	grid-template-columns: 45% 10% 45%;
 }
 
 

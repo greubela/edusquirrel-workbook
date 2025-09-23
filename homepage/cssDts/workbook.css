@@ -154,3 +154,9 @@ body {
 .container-exercise .container-interaction.highlight-scaffolding .label-grading.grading-wrong{
 	background-color: var(--background-label-grading-wrong);
 }
+
+/* EDITORS */
+
+.simple-text-editor textarea{
+    width: 100%;
+}

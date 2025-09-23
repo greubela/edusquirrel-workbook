@@ -1,6 +1,8 @@
 package workbook.model.exercise
 
-case class ExerciseContent(id: String, instruction: String) {
-  
+import contentmanagement.model.language.AppLanguage
+
+case class ExerciseContent(id: String, titleMap: Map[AppLanguage, String], instructionMap: Map[AppLanguage, String]) {
+
 
 }

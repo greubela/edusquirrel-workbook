@@ -1,7 +1,7 @@
 package workbook.workbookHtmlElements.abstractions
 
 import com.raquo.laminar.api.L
-import contentmanagement.model.AppLanguage
+import contentmanagement.model.language.AppLanguage
 
 abstract class HtmlLanguageMapElement(languageMap: Map[AppLanguage, String]) extends HtmlWorkbookElement {
 

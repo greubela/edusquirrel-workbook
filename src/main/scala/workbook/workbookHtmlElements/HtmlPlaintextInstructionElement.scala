@@ -2,7 +2,7 @@ package workbook.workbookHtmlElements
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.AppLanguage
+import contentmanagement.model.language.AppLanguage
 import workbook.workbookHtmlElements.abstractions.HtmlLanguageMapElement
 
 case class HtmlPlaintextInstructionElement(languageMap: Map[AppLanguage, String]) extends HtmlLanguageMapElement(languageMap) {
