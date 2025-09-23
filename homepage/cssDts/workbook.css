@@ -1,162 +1,336 @@
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: var(--main-background)
-  margin: 0;
-  padding: 0;
-}
+@import url('../css/colors.css');
 
-/* VARIABLES */
-
-
-:root {
-	/* --- Basic Color Palette --- */
-	--background-numbering: #aaa;
-	--background-main: #f4f6f8;
-	--background-exercise: #eee;
-	
-	--background-interaction-active: #fff;
-	--background-interaction-inactive: #ccc;
-	
-	
-	--background-label-generic: #aaa;
-	--background-label-editor: #aaf;
-	
-	--background-label-grading-missing: #fa0;
-	--background-label-grading-correct: #0f0;
-	--background-label-grading-wrong: #f00;
-	
-	--background-label-scaffolding: #aa0;
-	
-	
-	
-	/*
-	Colors:
-		Beschriftung nicht aktiv
-		Beschriftung = Exercise und Aktiv (blau)
-		Beschriftung = Scaffolding und Aktiv (gelb)
-		Beschriftung = Richtiges grading und Aktiv (grün)
-		Beschrfitung = Falsches grading und Aktiv (rot)
-		Beschriftung = Fehlendes grading und Aktiv (orange)
-	*/
-	
-}
-
-.worksheetDts{
-	gap: 20px;
-	
+.worksheetDts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  padding: var(--space-xl) var(--space-lg);
 }
 
 .container-exercise {
-  max-width: 1000px;
-  margin: 0px auto 20px auto;
-
+  width: min(100%, 980px);
+  margin: 0 auto;
+  padding: var(--space-xl);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface-primary);
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  position: relative;
+  overflow: hidden;
 }
 
-.exercise-title:first-of-type{
-	width: 100%;
-	margin: 0px auto 0px auto;
-	
-	background-color: var(--background-numbering);
-	
-	text-align: center;
-	
-	height: 20px;
-	border-radius: 20px 20px 0px 0px;
+.container-exercise + .container-exercise {
+  margin-top: var(--space-xl);
+}
+
+.exercise-title {
+  margin: 0;
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-md);
+  background: var(--gradient-exercise-title);
+  color: var(--color-text-inverse);
+  font-weight: 600;
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-align: center;
 }
 
 .exercise-title:not(:first-of-type) {
-	width: 100%;
-	margin: 0px auto 0px auto;
-	
-	text-align: center;
-	font-size:0px;
-	
-	border-top: 2px dashed var(--background-numbering);
-	border-radius: 20px 20px 0px 0px;
+  background: var(--color-surface-subtle);
+  color: var(--color-text-secondary);
+  border: 1px dashed var(--color-border-strong);
 }
 
+.container-exercise-instruction {
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+}
 
-/* CONTAINER EXERCISE -> GENERAL LAYOUTS */
+.container-exercise-instruction .instruction-content {
+  margin: 0;
+}
 
-/* INTERACTION -> LAYOUTS: SCAFFOLDING + EDITOR + grading */
+.container-interaction {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  width: 100%;
+}
+
+.container-interaction-element {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-primary);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.container-interaction-element .container-label,
+.container-label {
+  padding: var(--space-xs) var(--space-md);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--color-surface-subtle);
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.container-interaction-element-content {
+  padding: var(--space-md) var(--space-lg);
+  background: var(--color-surface-soft);
+  color: var(--color-text-primary);
+}
+
+/* Label variants */
+.label-editor,
+.container-label.label-editor {
+  background: var(--color-label-editor-bg);
+  color: var(--color-label-editor-text);
+}
+
+.label-scaffolding,
+.container-label.label-scaffolding {
+  background: var(--color-label-scaffolding-bg);
+  color: var(--color-label-scaffolding-text);
+}
+
+.label-grading,
+.container-label.label-grading {
+  background: var(--color-label-grading-unknown-bg);
+  color: var(--color-label-grading-unknown-text);
+}
+
+.label-grading.grading-unknown,
+.label-grading.grading-missing,
+.container-label.label-grading.grading-unknown,
+.container-label.label-grading.grading-missing {
+  background: var(--color-label-grading-unknown-bg);
+  color: var(--color-label-grading-unknown-text);
+}
+
+.label-grading.grading-error,
+.label-grading.grading-incorrect,
+.container-label.label-grading.grading-error,
+.container-label.label-grading.grading-incorrect,
+.container-label.label-grading.grading-wrong {
+  background: var(--color-label-grading-error-bg);
+  color: var(--color-label-grading-error-text);
+}
+
+.label-grading.grading-partially-correct,
+.container-label.label-grading.grading-partially-correct {
+  background: var(--color-label-grading-partial-bg);
+  color: var(--color-label-grading-partial-text);
+}
+
+.label-grading.grading-correct,
+.container-label.label-grading.grading-correct {
+  background: var(--color-label-grading-correct-bg);
+  color: var(--color-label-grading-correct-text);
+}
+
+/* SVG button styling */
+.svg-button {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--shape-control-radius);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-subtle);
+  box-shadow: var(--shadow-button);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--transition-base), box-shadow var(--transition-base),
+    background-color var(--transition-base), border-color var(--transition-base);
+  cursor: pointer;
+  padding: var(--space-xs);
+}
+
+.svg-button:hover {
+  transform: translateY(-2px);
+  background: var(--color-surface-primary);
+}
+
+.svg-button:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  border-color: var(--color-focus-ring);
+  background: var(--color-surface-primary);
+}
+
+.svg-button svg {
+  width: 60%;
+  height: 60%;
+  stroke: var(--color-text-primary);
+  stroke-width: 1.8;
+}
+
+.svg-button path {
+  transition: stroke var(--transition-base), fill var(--transition-base);
+}
+
+/* Interaction arrows */
+.container-instruction-arrows {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+}
+
+.container-instruction-arrows .svg-button {
+  width: 36px;
+  height: 36px;
+  box-shadow: none;
+}
+
+/* Highlight states */
+.container-exercise .container-interaction.highlight-editor .container-interaction-element,
+.container-exercise .container-interaction.highlight-editor .svg-button {
+  border-color: var(--color-label-editor-bg);
+  box-shadow: var(--shadow-highlight-editor);
+}
+
+.container-exercise .container-interaction.highlight-editor .label-editor,
+.container-exercise .container-interaction.highlight-editor .container-label.label-editor {
+  background: var(--color-label-editor-bg);
+  color: var(--color-label-editor-text);
+}
+
+.container-exercise .container-interaction.highlight-scaffolding .container-interaction-element,
+.container-exercise .container-interaction.highlight-scaffolding .svg-button {
+  border-color: var(--color-label-scaffolding-bg);
+  box-shadow: var(--shadow-highlight-scaffolding);
+}
+
+.container-exercise .container-interaction.highlight-scaffolding .label-scaffolding,
+.container-exercise .container-interaction.highlight-scaffolding .container-label.label-scaffolding {
+  background: var(--color-label-scaffolding-bg);
+  color: var(--color-label-scaffolding-text);
+}
+
+.container-exercise .container-interaction.highlight-grading .container-interaction-element,
+.container-exercise .container-interaction.highlight-grading .svg-button {
+  border-color: var(--color-label-grading-correct-bg);
+  box-shadow: var(--shadow-highlight-grading);
+}
+
+.container-exercise .container-interaction.highlight-grading .label-grading,
+.container-exercise .container-interaction.highlight-grading .container-label.label-grading {
+  background: var(--color-label-grading-correct-bg);
+  color: var(--color-label-grading-correct-text);
+}
+
+/* Layout toggles left in place for ScalaJS logic */
 .container-exercise .container-interaction.layout-scaffolding .interaction-scaffolding,
-.container-exercise .container-interaction.layout-scaffolding .button-editor{
-	visibility: visible;
+.container-exercise .container-interaction.layout-scaffolding .button-editor {
+  visibility: visible;
 }
+
 .container-exercise .container-interaction.layout-scaffolding .button-scaffolding,
 .container-exercise .container-interaction.layout-scaffolding .interaction-editor,
 .container-exercise .container-interaction.layout-scaffolding .container-instruction-arrows,
 .container-exercise .container-interaction.layout-scaffolding .button-grading,
-.container-exercise .container-interaction.layout-scaffolding .interaction-grading{
-	display: none;
+.container-exercise .container-interaction.layout-scaffolding .interaction-grading {
+  display: none;
 }
 
 .container-exercise .container-interaction.layout-editor .button-scaffolding,
 .container-exercise .container-interaction.layout-editor .interaction-editor,
-.container-exercise .container-interaction.layout-editor .button-grading{
-	visibility: visible;
+.container-exercise .container-interaction.layout-editor .button-grading {
+  visibility: visible;
 }
+
 .container-exercise .container-interaction.layout-editor .interaction-scaffolding,
 .container-exercise .container-interaction.layout-editor .interaction-grading,
 .container-exercise .container-interaction.layout-editor .button-editor,
-.container-exercise .container-interaction.layout-editor .container-instruction-arrows{
-	display: none;
+.container-exercise .container-interaction.layout-editor .container-instruction-arrows {
+  display: none;
 }
 
 .container-exercise .container-interaction.layout-grading .button-editor,
 .container-exercise .container-interaction.layout-grading .interaction-editor,
 .container-exercise .container-interaction.layout-grading .container-instruction-arrows,
-.container-exercise .container-interaction.layout-grading .interaction-grading{
-	visibility: visible;
+.container-exercise .container-interaction.layout-grading .interaction-grading {
+  visibility: visible;
 }
+
 .container-exercise .container-interaction.layout-grading .button-scaffolding,
 .container-exercise .container-interaction.layout-grading .interaction-scaffolding,
-.container-exercise .container-interaction.layout-grading .button-grading{
-	display: none;
+.container-exercise .container-interaction.layout-grading .button-grading {
+  display: none;
 }
 
-
-
-/* CONTAINER-EXERCISE -> HIGHLIGHT ELEMENTS: SCAFFOLDING + EDITOR + grading */
-
-
-.container-exercise .container-interaction.highlight-scaffolding .label-editor,
-.container-exercise .container-interaction.highlight-editor .label-scaffolding,
-.container-exercise .container-interaction.highlight-grading .label-scaffolding,
-.container-exercise .container-interaction.highlight-grading .label-editor{
-	background-color: var(--background-label-generic);
-}
-	
-.container-exercise .container-interaction.highlight-scaffolding .button-scaffolding .button-borderpath{
-	fill: var(--background-label-scaffolding);
-}
-.container-exercise .container-interaction.highlight-scaffolding .label-scaffolding{
-	background-color: var(--background-label-scaffolding);
+/* Editors */
+.simple-text-editor textarea {
+  width: 100%;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-primary);
+  padding: var(--space-md);
+  font-family: var(--font-family-code);
+  font-size: 0.95rem;
+  resize: vertical;
+  min-height: 160px;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base),
+    background-color var(--transition-base);
+  box-sizing: border-box;
 }
 
-.container-exercise .container-interaction.highlight-editor .button-editor {
-	fill: var(--background-label-editor);
-}
-.container-exercise .container-interaction.highlight-editor .label-editor{
-	background-color: var(--background-label-editor);
-}
-
-.container-exercise .container-interaction.highlight-grading .button-grading .button-borderpath{
-	fill:url(#gradient-fill);
+.simple-text-editor textarea:focus {
+  outline: none;
+  border-color: var(--color-focus-ring);
+  box-shadow: var(--shadow-focus);
+  background: var(--color-surface-primary);
 }
 
-.container-exercise .container-interaction.highlight-scaffolding .label-grading.grading-missing{
-	background-color: var(--background-label-grading-missing);
-}
-.container-exercise .container-interaction.highlight-scaffolding .label-grading.grading-correct{
-	background-color: var(--background-label-grading-correct);
-}
-.container-exercise .container-interaction.highlight-scaffolding .label-grading.grading-wrong{
-	background-color: var(--background-label-grading-wrong);
+.simple-text-editor textarea[disabled] {
+  background: var(--color-surface-soft);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+  opacity: 0.85;
 }
 
-/* EDITORS */
+/* Misc utility containers */
+.container-interaction-element + .container-interaction-element {
+  margin-top: 0;
+}
 
-.simple-text-editor textarea{
-    width: 100%;
+.container-interaction-element .meta-information {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 768px) {
+  .worksheetDts {
+    padding: var(--space-lg) var(--space-sm);
+  }
+
+  .container-exercise {
+    padding: var(--space-lg);
+  }
+
+  .container-exercise.style-compact .container-interaction {
+    grid-template-columns: 1fr !important;
+  }
+
+  .svg-button {
+    width: 38px;
+    height: 38px;
+  }
 }

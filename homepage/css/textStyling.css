@@ -1,49 +1,45 @@
-
-/* --- Text Role --- */
-
-
+@import url('colors.css');
 
 .text-role-licence {
-	width: 100%;
-	font-size: var(--fontsize-text-small);
-
-	text-align: center;	
-	
-	align-items: center;
-	justify-content: center;
-	display: flex;
+  width: 100%;
+  font-size: var(--font-size-xs);
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
 }
 
 .text-role-info {
-	text-align: center;
+  text-align: center;
+  color: var(--color-text-secondary);
 }
 
-
-/* --- Text Importance --- */
-.text-importance-structure{
+.text-importance-regular {
+  font-size: var(--font-size-md);
 }
 
-.text-importance-regular{
-	font-size: var(--fontsize-text);
+.text-importance-smallprint {
+  font-size: var(--font-size-xs);
 }
 
-.text-importance-smallprint{
-	font-size: var(--fontsize-text-small);
+.text-type-info {
+  background-color: var(--color-status-info-bg);
+  color: var(--color-status-info-text);
+  border-radius: var(--radius-xs);
+  padding: var(--space-2xs) var(--space-xs);
 }
 
-/* --- Text Type --- */
-
-.text-type-info{
-	background-color: var(--background-info);	
-	color: var(--textcolor-info);
+.text-type-warning {
+  background-color: var(--color-status-warning-bg);
+  color: var(--color-status-warning-text);
+  border-radius: var(--radius-xs);
+  padding: var(--space-2xs) var(--space-xs);
 }
 
-.text-type-warning{
-	background-color: var(--background-warning);	
-	color: var(--textcolor-warning);
-}
-
-.text-type-error{
-	background-color: var(--background-error);	
-	color: var(--textcolor-error);	
+.text-type-error {
+  background-color: var(--color-status-error-bg);
+  color: var(--color-status-error-text);
+  border-radius: var(--radius-xs);
+  padding: var(--space-2xs) var(--space-xs);
 }

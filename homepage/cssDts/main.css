@@ -1,126 +1,140 @@
+@import url('../css/colors.css');
+
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f4f6f8;
+  font-family: var(--font-family-base);
+  background-color: var(--color-background-app);
+  color: var(--color-text-primary);
   margin: 0;
   padding: 0;
 }
-
 
 .exercise-container {
   max-width: 900px;
   margin: 2rem auto;
   padding: 2rem;
-  border-radius: 12px;
-  background-color: #fdfdfd;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
-  font-family: sans-serif;
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-primary);
+  box-shadow: var(--shadow-soft);
+  font-family: var(--font-family-base);
 }
 
 .section-with-label {
   display: flex;
   align-items: flex-start;
   margin-bottom: 1.5rem;
+  gap: var(--space-sm);
 }
 
 .label {
   writing-mode: vertical-rl;
   text-orientation: mixed;
-  font-weight: bold;
-  color: white;
+  font-weight: 600;
+  color: var(--color-text-inverse);
   padding: 0.5rem;
-  margin-right: 1rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
 }
 
-.aufgabe-label { background-color: #9c27b0; } /* Purple */
-.antwort-label { background-color: #3f51b5; }  /* Blue */
-.feedback-label { background-color: #fbc02d; color: #333; } /* Yellow */
+.aufgabe-label {
+  background-color: var(--color-label-editor-bg);
+  color: var(--color-label-editor-text);
+}
+
+.antwort-label {
+  background-color: var(--color-label-grading-correct-bg);
+  color: var(--color-label-grading-correct-text);
+}
+
+.feedback-label {
+  background-color: var(--color-label-scaffolding-bg);
+  color: var(--color-label-scaffolding-text);
+}
 
 .text-area {
   width: 100%;
   padding: 0.75rem;
-  font-family: monospace;
-  font-size: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 6px;
+  font-family: var(--font-family-code);
+  font-size: var(--font-size-md);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
   resize: vertical;
   box-sizing: border-box;
+  background-color: var(--color-surface-subtle);
+  color: var(--color-text-primary);
 }
 
 .output-area {
-  background-color: #f5f5f5;
+  background-color: var(--color-surface-soft);
 }
 
 .instruction-box {
-  background-color: #eef;
+  background-color: var(--color-surface-subtle);
   padding: 1rem;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   width: 100%;
-  font-size: 1rem;
+  font-size: var(--font-size-md);
+  color: var(--color-text-secondary);
 }
 
 .submit-button {
-  background-color: #007BFF;
-  color: white;
-  font-weight: bold;
+  background-color: var(--color-label-editor-bg);
+  color: var(--color-label-editor-text);
+  font-weight: 600;
   padding: 0.6rem 1.2rem;
-  font-size: 1rem;
+  font-size: var(--font-size-md);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   margin-bottom: 1.5rem;
+  transition: filter var(--transition-base), transform var(--transition-base);
 }
 
 .submit-button:hover {
-  background-color: #0056b3;
+  filter: brightness(0.95);
+  transform: translateY(-1px);
 }
-
-
-
-
-
-
-
-
-
-
 
 .visual-novel-container {
   max-width: 800px;
   margin: auto;
-  font-family: sans-serif;
+  font-family: var(--font-family-base);
 }
 
 .visual-novel-image {
   width: 100%;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .visual-novel-source {
-  font-size: 0.75em;
-  color: gray;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
   text-align: right;
   margin-top: 4px;
   margin-bottom: 10px;
 }
 
 .visual-novel-text {
-  background: #f9f9f9;
+  background: var(--color-surface-subtle);
   padding: 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   margin-bottom: 16px;
   white-space: pre-wrap;
   min-height: 100px;
+  color: var(--color-text-primary);
 }
 
 .visual-novel-navigation {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-sm);
 }
 
 .visual-novel-counter {
-  font-weight: bold;
+  font-weight: 600;
+  color: var(--color-text-secondary);
 }

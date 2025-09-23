@@ -1,75 +1,68 @@
-/* --- Special Elements --- */
-#frame-select .image-row{
-	grid-template-columns: repeat(7,auto);
-	max-height: 20vh;
-	overflow: auto;
+@import url('colors.css');
+
+#frame-select .image-row {
+  grid-template-columns: repeat(7, auto);
+  max-height: 20vh;
+  overflow: auto;
+  gap: var(--space-xs);
 }
 
-#art-select .image-row{
-	grid-template-columns: repeat(5, 20%);
-	max-height: 25vh;
-	overflow: auto;
+#art-select .image-row {
+  grid-template-columns: repeat(5, 20%);
+  max-height: 25vh;
+  overflow: auto;
+  gap: var(--space-sm);
 }
 
 #frame-select canvas {
-	min-width: 40px;
-	min-height: 40px;
-	max-width: 200px;
-	max-height: 100px;
+  min-width: 40px;
+  min-height: 40px;
+  max-width: 200px;
+  max-height: 100px;
 }
 
 #art-select canvas {
-	min-width: 50px;
-	min-height: 50px;
-	max-width: 95px;
-	max-height: 95px;
+  min-width: 50px;
+  min-height: 50px;
+  max-width: 95px;
+  max-height: 95px;
 }
 
-/* --- Config: Standard Selection (Frame, Art) --- */
-
-.standard-image-selection.image-row{
-	text-align: center;	
+.standard-image-selection.image-row {
+  text-align: center;
+  gap: var(--space-xs);
 }
 
 .standard-image-selection .container-selection-option {
-	display: inline-block;
-	z-index: 1;
-	
-	align-items: center;
-	justify-content: center;
-	position: relative; /* For checkmark positioning */
-	padding: 3px;
-	flex-wrap: wrap;
-  
-	border: 2px solid var(--color-background-dark-lighter); 
-	border-radius: var(--standard-border-radius);
+  display: inline-block;
+  position: relative;
+  padding: var(--space-2xs);
+  border: 2px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-primary);
+  transition: border-color var(--transition-base), transform var(--transition-base);
 }
 
-.standard-image-selection .container-selection-option.hoverable-border:hover{
-	border-color: var(--color-main-contrast-lighter);
+.standard-image-selection .container-selection-option.hoverable-border:hover {
+  border-color: var(--color-label-editor-bg);
+  transform: translateY(-2px);
 }
 
-.standard-image-selection .container-selection-option.selected  {
-	border-color: var(--color-main-contrast);
+.standard-image-selection .container-selection-option.selected {
+  border-color: var(--color-label-editor-bg);
 }
 
 .standard-image-selection .container-selection-option.selected::after {
-	content: "✓";
-
-	position: absolute;
-	bottom: 0px;
-	right: 0px;
-
-	color: var(--color-main-contrast);
-	font-size: 32px;
-	font-weight: bold;
-
-	z-index: 1; 
+  content: '✓';
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  color: var(--color-label-editor-bg);
+  font-size: 24px;
+  font-weight: 700;
 }
 
 .standard-image-selection canvas {
-	z-index: 0;
-	width: 100%;
+  width: 100%;
+  display: block;
 }
-
-

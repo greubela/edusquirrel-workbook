@@ -1,94 +1,95 @@
-/* Root variables for reusable styles */
+/* Central design tokens for the workbook experience. */
 :root {
-	/* --- Basic Color Palette --- */
-	--color-background-dark: #222222;
-	--color-background-dark-lighter: #333333;
-	
-	
-	--color-main-contrast: #4a1c1c;
-	--color-main-contrast-lighter: #6b2d2d;
-	
-	--color-input-light: #e0e0e0;
-	
-	--textcolor-background-dark: #d1d1d1;
-	--textcolor-input: #212529;
-	
-	
-	/* --- Feedback Colors ---*/
-	--background-info: var(--color-background-dark-lighter);
-	--background-warning: #FFBF00;
-	--background-error: #4a1c1c;
-	
-	--textcolor-info: var(--textcolor-background-dark);
-	--textcolor-warning: black;
-	--textcolor-error: var(--color-background-dark-lighter);
-	
-	
-	
-	/*--- Font Information ---*/
-	--font-family: 'Arial', sans-serif;
-	
-	--fontsize-headings-element: 18px;
-	--fontsize-text: 14px;
-	--fontsize-text-small: 8px;
-	
-	/*--- Layout Sizes and Spacing ---*/
-	--standard-gap: 10px;
-	--mini-padding: 3px;
-	--standard-border-radius: 5px;
-	
-	
-  /* Sizes and Spacing */
-  --font-size-header: 2.5rem;
-	--padding-small: 10px;
-  --padding-medium: 20px;
+  /* Typography */
+  --font-family-base: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-family-code: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Monaco, Consolas,
+    'Liberation Mono', 'Courier New', monospace;
 
-  --shadow-light: 0 2px 6px rgba(0, 0, 0, 0.3);
-  --shadow-focus: 0 0 0 3px rgba(163, 44, 44, 0.3);
-  --transition: all 0.3s;
-  --card-width: 500px;
-  --card-height: 750px;
-  --max-height-two-rows: 250px;
+  --font-size-lg: 1.125rem;
+  --font-size-md: 1rem;
+  --font-size-sm: 0.875rem;
+  --font-size-xs: 0.75rem;
 
-	
-	/* generated */
-	
-	
-  /* Background Colors */
-  --bg-body: #1a1a1a; /* Dark charcoal background */
-  --bg-section: #222222; /* Slightly lighter dark tone */
-  --bg-card: #2a2a2a; /* Lighter dark tone for cards */
-  --bg-input: #e0e0e0; /* Light background for inputs */
-  --bg-hover: #4a1c1c; /* Dark red for hover */
-  --bg-info: #1c1c1c; /* Dark background for info */
-  --bg-card-dark: #333333; /* Darker tone for cards and buttons */
+  /* Spacing scale */
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 18px;
+  --space-lg: 26px;
+  --space-xl: 36px;
 
+  /* Shape */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --shape-control-radius: 14px;
 
-  /* Licence Colors */
-  --bg-licence-wizard: #4a1c1c;
-  --bg-licence-unkown: #8B8000;
+  /* Depth & motion */
+  --shadow-soft: 0 22px 48px -28px rgba(15, 23, 42, 0.45);
+  --shadow-button: 0 10px 24px -18px rgba(15, 23, 42, 0.5);
+  --shadow-focus: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  --transition-base: 0.2s ease;
+  --shadow-highlight-editor: 0 18px 38px -24px rgba(48, 102, 229, 0.7);
+  --shadow-highlight-scaffolding: 0 18px 38px -24px rgba(245, 197, 66, 0.55);
+  --shadow-highlight-grading: 0 18px 38px -24px rgba(47, 155, 116, 0.55);
 
+  /* Neutral surfaces */
+  --color-background-app: #eef2f8;
+  --color-surface-primary: #ffffff;
+  --color-surface-subtle: #f6f8fc;
+  --color-surface-soft: #f3f5fb;
+  --color-surface-contrast: #1f273b;
+  --color-surface-contrast-soft: #27324a;
 
-  
-  /* Border Colors */
-  --border-main: #2c2c2c; /* Tone-on-tone dark border */
-  --border-focus: #a32c2c; /* Bright dark red for focus */
-  --border-hover: #6b2d2d; /* Darker red for hover */
+  /* Border treatments */
+  --color-border-soft: #d6deeb;
+  --color-border-strong: #c0cbe2;
+  --color-border-contrast: #3f4b68;
 
-  /* Text Colors */
-  --text-light: #d1d1d1; /* Light gray text */
-  --text-dark: #212529; /* Dark text for readability */
+  /* Type colors */
+  --color-text-primary: #182333;
+  --color-text-secondary: #4c566a;
+  --color-text-inverse: #ffffff;
+  --color-text-on-contrast: #f5f7fa;
 
+  /* Focus */
+  --color-focus-ring: #2563eb;
+
+  /* Label & status palettes */
+  --color-label-editor-bg: #3066e5;
+  --color-label-editor-text: var(--color-text-inverse);
+  --color-label-scaffolding-bg: #f5c542;
+  --color-label-scaffolding-text: #3b2a00;
+  --color-label-grading-unknown-bg: #d9dee8;
+  --color-label-grading-unknown-text: #2f3c4f;
+  --color-label-grading-error-bg: #e66a6a;
+  --color-label-grading-error-text: var(--color-text-inverse);
+  --color-label-grading-partial-bg: #f7a942;
+  --color-label-grading-partial-text: #3b2a00;
+  --color-label-grading-correct-bg: #2f9b74;
+  --color-label-grading-correct-text: var(--color-text-inverse);
+
+  --color-status-info-bg: var(--color-label-editor-bg);
+  --color-status-info-text: var(--color-label-editor-text);
+  --color-status-warning-bg: var(--color-label-scaffolding-bg);
+  --color-status-warning-text: var(--color-label-scaffolding-text);
+  --color-status-error-bg: var(--color-label-grading-error-bg);
+  --color-status-error-text: var(--color-label-grading-error-text);
+
+  /* Decorative treatments */
+  --gradient-exercise-title: linear-gradient(135deg, #1f3b8b, #3572ef);
 }
 
-/* Reset and base styles */
 * {
-  margin: 0;
-  padding: 0;
   box-sizing: border-box;
-  font-family: var(--font-family);
 }
 
 body {
-  background-color: var(--bg-body);
+  font-family: var(--font-family-base);
+  background-color: var(--color-background-app);
+  color: var(--color-text-primary);
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
 }

@@ -1,112 +1,106 @@
+@import url('colors.css');
 
-
-#cost-selector > .editor-content{
-	width: 100%;
+#cost-selector > .editor-content {
+  width: 100%;
 }
 
-#cost-selector .image-row{
-	display: grid;		
-	justify-content: center;
+#cost-selector .image-row {
+  display: grid;
+  justify-content: center;
+  gap: var(--space-sm);
 }
 
-/* --- SHOW RESULTS --- */
-
-
-#cost-builder-show-result{
-	display: flex;
-	overflow: auto;
-	
-	max-width: 100%;
-	width: 100%;
-	height: 50px;
-	
-	justify-content: center;
-	background-color: var(--color-input-light);
+#cost-builder-show-result {
+  display: flex;
+  overflow: auto;
+  max-width: 100%;
+  width: 100%;
+  height: 50px;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--color-surface-subtle);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-sm);
 }
 
 #cost-builder-show-result canvas {
-	min-width: 20px;
-	min-height: 20px;
-	max-width: 45px;
-	max-height: 45px;
-	
-	width: 100%;
-	
-}
-#cost-builder-show-result .image-row{
-	
-	align-items: center;
-	justify-content: center;
-	
-	display: flex;
-	overflow: auto;
-	flex-wrap: no-wrap;
+  min-width: 20px;
+  min-height: 20px;
+  max-width: 45px;
+  max-height: 45px;
+  width: 100%;
 }
 
-/* --- SELECT FROM--- */
+#cost-builder-show-result .image-row {
+  align-items: center;
+  justify-content: center;
+  display: flex;
+  overflow: auto;
+  flex-wrap: nowrap;
+  gap: var(--space-xs);
+}
 
-#cost-builder-select-from{
-	width: 100%;
-	height: 100%;
+#cost-builder-select-from {
+  width: 100%;
+  height: 100%;
 }
 
 #cost-builder-select-from canvas {
-	min-width: 5px;
-	min-height: 5px;
-	max-width: 100%;
-	width: 100%;
+  min-width: 5px;
+  min-height: 5px;
+  max-width: 100%;
+  width: 100%;
 }
 
-#cost-builder-select-from .image-row{
-
-	grid-template-columns: repeat(10, 4%);
-
-
+#cost-builder-select-from .image-row {
+  grid-template-columns: repeat(10, 4%);
+  gap: var(--space-xs);
 }
 
-/* --- CHECKBOX ROW --- */
-
-#cost-selector .checkbox-row{
-	display: flex;
-	
-	height: 25px;
-	width: 100%;
-	
-	justify-content: center;
-	align-items: center;
-	text-align: center;
-	
-	gap: 10px; 
+#cost-selector .checkbox-row {
+  display: flex;
+  height: 25px;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-sm);
 }
 
-
-#cost-selector .checkbox-row input[type="checkbox"] {
-	appearance: none; /* Remove default styling */
-	width: 20px;
-	height: 20px;
-
-	background-color: var(--textcolor-background-dark);
-	border: 2px solid var(--color-main-contrast);
-
-	cursor: pointer;
-	position: relative;
-
-	font-size: var(--fontsize-text);	
+#cost-selector .checkbox-row input[type='checkbox'] {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background-color: var(--color-surface-subtle);
+  border: 2px solid var(--color-label-editor-bg);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  position: relative;
+  font-size: var(--font-size-md);
+  transition: background-color var(--transition-base), border-color var(--transition-base),
+    transform var(--transition-base);
 }
 
-#cost-selector .checkbox-row  input[type="checkbox"]:checked {
-	background-color: var(--color-main-contrast); 
-	border: 2px solid var(--textcolor-background-dark);
+#cost-selector .checkbox-row input[type='checkbox']:hover {
+  transform: scale(1.05);
 }
 
-#cost-selector .checkbox-row  input[type="checkbox"]:checked::after {
-	content: "✓";
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	color: var(--textcolor-background-dark);
+#cost-selector .checkbox-row input[type='checkbox']:checked {
+  background-color: var(--color-label-editor-bg);
+  border-color: var(--color-label-editor-bg);
 }
+
+#cost-selector .checkbox-row input[type='checkbox']:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--color-label-editor-text);
+}
+
 #cost-selector .checkbox-row label {
-	color: var(--textcolor-background-dark);
+  color: var(--color-text-on-contrast);
+  font-size: var(--font-size-sm);
 }

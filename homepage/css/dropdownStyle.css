@@ -1,24 +1,23 @@
-.dropdown-element{
-	width: 100%;
-	height: 25px;
-	
-	background-color: var(--bg-input);
-	
-	border: 2px solid var(--border-main);
-	border-radius: var(--border-radius);
-	
-	color: var(--text-dark);
-	cursor: pointer;
-	transition: border-color 0.3s, box-shadow 0.3s;
+@import url('colors.css');
 
+.dropdown-element {
+  width: 100%;
+  height: 25px;
+  background-color: var(--color-surface-subtle);
+  border: 2px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+  padding: 0 var(--space-xs);
 }
 
 .dropdown-element:hover {
-  border-color: var(--color-main-contrast-lighter);
+  border-color: var(--color-label-editor-bg);
 }
 
 .dropdown-element:focus {
-  border-color: var(--border-focus);
+  border-color: var(--color-focus-ring);
   box-shadow: var(--shadow-focus);
   outline: none;
 }
