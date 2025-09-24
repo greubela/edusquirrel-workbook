@@ -7,7 +7,7 @@ object AutomatonStyles {
 
   val styles: L.Element = styleTag(
     s"""
-       |.automaton-exercise .automaton-toolbar {
+       |.automaton-exercise .automaton-toolbar { 
        |  display: flex;
        |  flex-wrap: wrap;
        |  gap: var(--space-sm);
@@ -24,6 +24,7 @@ object AutomatonStyles {
        |  font-size: 0.85rem;
        |  cursor: pointer;
        |  transition: background 0.2s ease, color 0.2s ease;
+       |  line-height: 1.2;
        |}
        |
        |.automaton-exercise .automaton-toolbar button.active,
@@ -36,6 +37,7 @@ object AutomatonStyles {
        |  display: inline-flex;
        |  align-items: center;
        |  gap: var(--space-xs);
+       |  flex-wrap: wrap;
        |}
        |
        |.automaton-exercise .automaton-toolbar select {
@@ -140,6 +142,10 @@ object AutomatonStyles {
        |  box-shadow: 0 6px 16px rgba(12, 51, 89, 0.2);
        |}
        |
+       |.automaton-node.selected {
+       |  box-shadow: 0 0 0 3px var(--color-primary) inset, 0 8px 20px rgba(12, 51, 89, 0.2);
+       |}
+       |
        |.automaton-transition-label {
        |  position: absolute;
        |  transform: translate(-50%, -50%);
@@ -176,6 +182,72 @@ object AutomatonStyles {
        |
        |.automaton-context-menu button:hover {
        |  background: var(--color-surface-muted);
+       |}
+       |
+       |.connection-preview {
+       |  fill: none;
+       |  stroke: var(--color-primary);
+       |  stroke-width: 2.5px;
+       |  stroke-dasharray: 6 6;
+       |  pointer-events: none;
+       |}
+       |
+       |.automaton-node-actions {
+       |  position: absolute;
+       |  left: var(--space-md);
+       |  bottom: var(--space-md);
+       |  display: flex;
+       |  flex-direction: column;
+       |  gap: var(--space-xs);
+       |  padding: var(--space-sm) var(--space-md);
+       |  background: var(--color-surface);
+       |  border: 1px solid var(--color-border);
+       |  border-radius: var(--radius-md);
+       |  box-shadow: var(--shadow-soft);
+       |  max-width: 240px;
+       |  pointer-events: auto;
+       |  z-index: 15;
+       |}
+       |
+       |.automaton-node-actions .title {
+       |  font-weight: 600;
+       |  color: var(--color-text-primary);
+       |}
+       |
+       |.automaton-node-actions .actions {
+       |  display: flex;
+       |  flex-direction: column;
+       |  gap: var(--space-xs);
+       |}
+       |
+       |.automaton-node-actions button {
+       |  border: none;
+       |  background: var(--color-surface-muted);
+       |  border-radius: var(--radius-sm);
+       |  padding: var(--space-xs) var(--space-sm);
+       |  color: var(--color-text-primary);
+       |  cursor: pointer;
+       |  transition: background 0.2s ease, color 0.2s ease;
+       |}
+       |
+       |.automaton-node-actions button:hover:not(:disabled) {
+       |  background: var(--color-primary);
+       |  color: var(--color-text-inverse);
+       |}
+       |
+       |.automaton-node-actions button:disabled {
+       |  cursor: default;
+       |  opacity: 0.6;
+       |}
+       |
+       |.automaton-node-actions button.danger {
+       |  background: var(--color-danger-muted);
+       |  color: var(--color-danger-strong);
+       |}
+       |
+       |.automaton-node-actions button.danger:hover {
+       |  background: var(--color-danger);
+       |  color: var(--color-text-inverse);
        |}
        |
        |.automaton-simulator {

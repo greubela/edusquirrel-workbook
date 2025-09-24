@@ -51,21 +51,91 @@ class AutomatonEditorStore(
 
   def setMode(mode: AutomatonMode): Unit = emit(currentState.copy(mode = mode))
 
-  def addState(preferredX: Double, preferredY: Double): AutomatonNode = {
+  private case class Bounds(width: Double, height: Double)
+
+  private def toBounds(bounds: Option[(Double, Double)]): Option[Bounds] =
+    bounds.map((w, h) => Bounds(w, h))
+
+  private def clampToBounds(x: Double, y: Double, bounds: Option[Bounds]): (Double, Double) =
+    bounds match {
+      case Some(Bounds(width, height)) =>
+        val clampedX = clamp(x, padding, math.max(padding, width - nodeSize - padding))
+        val clampedY = clamp(y, padding, math.max(padding, height - nodeSize - padding))
+        (clampedX, clampedY)
+      case None =>
+        (math.max(0.0, x), math.max(0.0, y))
+    }
+
+  private def hasCollision(x: Double, y: Double, excludeId: Option[String]): Boolean = {
+    val centerX = x + nodeSize / 2.0
+    val centerY = y + nodeSize / 2.0
+    val minDistance = nodeSize + padding
+    currentState.nodes.exists { node =>
+      if (excludeId.contains(node.id)) false
+      else {
+        val otherCenterX = node.x + nodeSize / 2.0
+        val otherCenterY = node.y + nodeSize / 2.0
+        val dx = centerX - otherCenterX
+        val dy = centerY - otherCenterY
+        math.hypot(dx, dy) < minDistance
+      }
+    }
+  }
+
+  private def findCollisionFreePosition(
+    preferredX: Double,
+    preferredY: Double,
+    excludeId: Option[String],
+    bounds: Option[(Double, Double)]
+  ): (Double, Double) = {
+    val boundsOpt = toBounds(bounds)
+    val (initialX, initialY) = clampToBounds(preferredX, preferredY, boundsOpt)
+    if (!hasCollision(initialX, initialY, excludeId)) return (initialX, initialY)
+
+    val step = nodeSize + padding
+    val angleSteps = 12
+    val maxRadius = 20
+    var radiusMultiplier = 1
+    while (radiusMultiplier <= maxRadius) {
+      val radius = step * radiusMultiplier.toDouble
+      var angleIndex = 0
+      while (angleIndex < angleSteps) {
+        val angle = 2 * math.Pi * angleIndex / angleSteps
+        val candidateX = initialX + radius * math.cos(angle)
+        val candidateY = initialY + radius * math.sin(angle)
+        val (clampedX, clampedY) = clampToBounds(candidateX, candidateY, boundsOpt)
+        if (!hasCollision(clampedX, clampedY, excludeId)) return (clampedX, clampedY)
+        angleIndex += 1
+      }
+      radiusMultiplier += 1
+    }
+
+    (initialX, initialY)
+  }
+
+  def addState(preferredX: Double, preferredY: Double, bounds: Option[(Double, Double)] = None): AutomatonNode = {
     val id = s"q$nextNodeIndex"
     nextNodeIndex += 1
     val hasStart = currentState.nodes.exists(_.isStart)
-    val node = AutomatonNode(id, id, preferredX, preferredY, isStart = !hasStart, isAccepting = false)
+    val (x, y) = findCollisionFreePosition(preferredX, preferredY, excludeId = None, bounds)
+    val node = AutomatonNode(id, id, x, y, isStart = !hasStart, isAccepting = false)
     val updated = currentState.nodes :+ node
     emit(currentState.copy(nodes = updated))
     node
   }
 
-  def moveState(nodeId: String, newX: Double, newY: Double): Unit = {
-    val clampedX = math.max(0, newX)
-    val clampedY = math.max(0, newY)
+  def moveState(
+    nodeId: String,
+    newX: Double,
+    newY: Double,
+    bounds: Option[(Double, Double)] = None,
+    enforceCollision: Boolean = true
+  ): Unit = {
+    val (candidateX, candidateY) =
+      if (enforceCollision) findCollisionFreePosition(newX, newY, Some(nodeId), bounds)
+      else clampToBounds(newX, newY, toBounds(bounds))
     val updatedNodes = currentState.nodes.map { node =>
-      if (node.id == nodeId) node.moveTo(clampedX, clampedY) else node
+      if (node.id == nodeId) node.moveTo(candidateX, candidateY) else node
     }
     emit(withUpdatedNodes(updatedNodes))
   }
