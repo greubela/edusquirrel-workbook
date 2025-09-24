@@ -1,4 +1,4 @@
-name: Scala CI
+name: Scala.js Build & Publish
 
 on:
   push:
@@ -6,11 +6,18 @@ on:
   pull_request:
     branches: [ "main" ]
 
+# Needed for committing built files and deploying Pages
 permissions:
-  contents: read
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
-  build:
+  build-and-publish:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,15 +27,44 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '11'
+          java-version: "11"
 
       - name: Set up sbt
         uses: sbt/setup-sbt@v1
 
-      - name: Set up Node.js
+      - name: Set up Node.js (for Scala.js tooling/bundling)
         uses: actions/setup-node@v4
         with:
-          node-version: 'lts/*'
+          node-version: "lts/*"
+          cache: "npm"   # safe to keep; ignored if no package-lock.json
 
-      - name: Compile with sbt
-        run: sbt -v fastOptJS
+      - name: Build Scala.js (fast & full)
+        run: |
+          sbt -v fastOptJS fullOptJS
+          mkdir -p dist
+          # Copy typical Scala.js outputs (*.fastopt.js and *.opt.js) into dist/
+          # This glob covers single- or multi-module projects.
+          find . \( -path "*/target/scala-*/**/*fastopt.js" -o -path "*/target/scala-*/**/*opt.js" \) \
+            -print -exec cp {} dist/ \;
+
+      # ------- Option A: Commit built files into the repo (docs/ on main) -------
+      - name: Commit built JS to docs/ (main only)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          rm -rf docs
+          mkdir -p docs
+          cp -R dist/* docs/ || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs || true
+          git commit -m "chore(ci): update built Scala.js assets [skip ci]" || echo "No changes to commit"
+          git push
+
+      # ------- Option B: Publish dist/ to GitHub Pages -------
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
