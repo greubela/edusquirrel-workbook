@@ -4,7 +4,6 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.htmlElements.genericElements.editor.SimpleTextEditor
 import interactionPlugins.gpt.HtmlTextBasedGptInteractionModel
-import plugins.gpt.{GptGrader, GptScaffolder}
 import workbook.model.display.FullInteractionLabelModel
 import workbook.model.exercise.ExerciseContent
 import workbook.model.feedback.grading.GptGradingResult

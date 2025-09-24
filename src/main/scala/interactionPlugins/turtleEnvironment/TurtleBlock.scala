@@ -1,10 +1,10 @@
-package scala.interactionPlugins.turtleEnvironment
+package interactionPlugins.turtleEnvironment
 
 import com.raquo.laminar.api.L
+import com.raquo.laminar.api.L.*
 import com.raquo.laminar.api.L.svg
 import com.raquo.laminar.api.L.svg.*
-
-import java.util.UUID
+import util.IdHelper
 
 /** SVG description of a single block shape. The properties are intentionally very small so they can be reused by
   * UI components that want to render thumbnails of blocks.
@@ -170,7 +170,7 @@ case class TurtleBlockDefinition(
   def createInstance(): TurtleBlock = {
     val sanitizedDefault = sanitizeValue(defaultValue)
     val effectiveValue = sanitizedDefault.orElse(defaultValue)
-    TurtleBlock(UUID.randomUUID().toString, buildCommand(effectiveValue), this, effectiveValue)
+    TurtleBlock(IdHelper.getNextId(), buildCommand(effectiveValue), this, effectiveValue)
   }
 }
 
@@ -195,7 +195,7 @@ case class TurtleBlock(
 }
 
 object TurtleBlock {
-  def newId(): String = UUID.randomUUID().toString
+  def newId(): String = IdHelper.getNextId()
 }
 
 object TurtleBlockLibrary {

@@ -1,4 +1,4 @@
-package scala.interactionPlugins.turtleEnvironment
+package interactionPlugins.turtleEnvironment
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
@@ -37,7 +37,7 @@ class TurtleEditorInteractionComponent(
           case Some(result) =>
             div(
               cls := "turtle-preview",
-              unsafeHtml := result.toSvg()
+              result.toSvg()
             )
           case None =>
             div(cls := "turtle-preview placeholder", "Run the program to see the turtle drawing.")

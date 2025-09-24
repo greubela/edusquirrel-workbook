@@ -1,4 +1,4 @@
-package scala.interactionPlugins.turtleEnvironment
+package interactionPlugins.turtleEnvironment
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.Signal

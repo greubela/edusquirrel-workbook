@@ -1,4 +1,4 @@
-package scala.interactionPlugins.turtleEnvironment
+package interactionPlugins.turtleEnvironment
 
 import contentmanagement.model.language.AppLanguage
 import workbook.model.exercise.ExerciseContent

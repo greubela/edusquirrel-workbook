@@ -1,4 +1,4 @@
-package scala.interactionPlugins.turtleEnvironment
+package interactionPlugins.turtleEnvironment
 
 import workbook.model.feedback.FeedbackStatus
 import workbook.model.feedback.FeedbackStatus.FINISHED

@@ -1,4 +1,4 @@
-package scala.interactionPlugins.turtleEnvironment
+package interactionPlugins.turtleEnvironment
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
@@ -21,15 +21,8 @@ class HtmlTurtleExercise(override val exerciseContent: TurtleExerciseContent) ex
 
   override val htmlInstructionElement = HtmlPlaintextInstructionElement(exerciseContent.instructionMap)
 
-  override val htmlInteractionContainer: HtmlTurtleInteractionContainer[
-    TurtleEditorState,
-    TurtleScaffoldingState,
-    TurtleGradingState,
-    TurtleScaffoldingFeedback,
-    TurtleGradingFeedback,
-    TurtleScaffolder,
-    TurtleGrader
-  ] = new HtmlTurtleInteractionContainer(this, htmlInteractionModel)
+  override val htmlInteractionContainer: HtmlTurtleInteractionContainer =
+    new HtmlTurtleInteractionContainer(this, htmlInteractionModel)
 
   private val domElement =
     div(

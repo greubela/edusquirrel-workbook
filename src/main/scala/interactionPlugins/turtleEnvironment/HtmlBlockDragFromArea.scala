@@ -1,4 +1,4 @@
-package scala.interactionPlugins.turtleEnvironment
+package interactionPlugins.turtleEnvironment
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
@@ -29,7 +29,7 @@ class HtmlBlockDragFromArea(
       draggable := true,
       onDragStart --> { event =>
         dragContext.startPaletteDrag(definition)
-        event.dataTransfer.foreach(_.setData("text/turtle-block", definition.key))
+        event.dataTransfer.setData("text/turtle-block", definition.key)
       },
       onDragEnd --> (_ => dragContext.consumePayload()),
       onDblClick --> (_ => onBlockRequested(definition)),

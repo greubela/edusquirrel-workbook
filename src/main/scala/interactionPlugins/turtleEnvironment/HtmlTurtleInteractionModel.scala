@@ -1,4 +1,4 @@
-package scala.interactionPlugins.turtleEnvironment
+package interactionPlugins.turtleEnvironment
 
 import com.raquo.airstream.state.Var
 import workbook.model.display.InteractionComponent
@@ -15,7 +15,7 @@ class HtmlTurtleInteractionModel(exerciseContent: TurtleExerciseContent) extends
   TurtleGradingFeedback,
   TurtleScaffolder,
   TurtleGrader
-] {
+]{
 
   private val sampleProgram = exerciseContent.sampleProgram
   private val expectedExecution = TurtleProgramExecutor.execute(sampleProgram)
@@ -26,7 +26,8 @@ class HtmlTurtleInteractionModel(exerciseContent: TurtleExerciseContent) extends
   private val initScaffoldingState = TurtleScaffoldingState(initEditorState.program, sampleProgram)
   private val initGradingState = TurtleGradingState(initEditorState.program, expectedExecution.lines)
 
-  val model = new FullInteractionExerciseModel[TurtleEditorState, TurtleScaffoldingState, TurtleGradingState, TurtleScaffoldingFeedback, TurtleGradingFeedback](
+  val model: FullInteractionExerciseModel[TurtleEditorState, TurtleScaffoldingState, TurtleGradingState, TurtleScaffoldingFeedback, TurtleGradingFeedback]
+  = new FullInteractionExerciseModel[TurtleEditorState, TurtleScaffoldingState, TurtleGradingState, TurtleScaffoldingFeedback, TurtleGradingFeedback](
     initEditorState,
     initScaffoldingState,
     initGradingState
@@ -50,7 +51,15 @@ class HtmlTurtleInteractionModel(exerciseContent: TurtleExerciseContent) extends
     executionResultVar.set(None)
   })
 
-  val controller = FullInteractionController(scaffolder, grader)
+  val controller: FullInteractionController[
+    TurtleEditorState,
+    TurtleScaffoldingState,
+    TurtleGradingState,
+    TurtleScaffoldingFeedback,
+    TurtleGradingFeedback,
+    TurtleScaffolder,
+    TurtleGrader
+  ] = FullInteractionController(scaffolder, grader)
   scaffolder.loadState(initScaffoldingState)
   grader.loadState(initGradingState)
 

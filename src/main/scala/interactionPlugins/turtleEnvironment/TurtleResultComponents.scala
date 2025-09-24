@@ -1,4 +1,4 @@
-package scala.interactionPlugins.turtleEnvironment
+package interactionPlugins.turtleEnvironment
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
@@ -33,8 +33,8 @@ class TurtleTargetPreviewComponent(targetSvg: String, description: Option[String
   private val domElement =
     div(
       cls := "turtle-target-preview",
-      descriptionNodes*,
-      div(cls := "turtle-target-image", unsafeHtml := targetSvg)
+      descriptionNodes,
+      div(cls := "turtle-target-image", targetSvg)
     )
 
   override def getDomElement(): L.Element = domElement
@@ -69,7 +69,7 @@ class TurtleGradingResultComponent(resultVar: Var[Option[TurtleGradingFeedback]]
         case Some(result) =>
           div(
             h3(s"Result: ${result.grade}"),
-            div(cls := "turtle-grading-svg", unsafeHtml := result.svg),
+            div(cls := "turtle-grading-svg",  result.svg),
             div(
               cls := "turtle-grading-summary",
               p(s"Missing lines: ${result.missingLines.size}"),

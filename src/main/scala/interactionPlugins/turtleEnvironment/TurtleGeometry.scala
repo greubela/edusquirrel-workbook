@@ -1,4 +1,4 @@
-package scala.interactionPlugins.turtleEnvironment
+package interactionPlugins.turtleEnvironment
 
 case class TurtlePoint(x: Double, y: Double) {
   def +(other: TurtlePoint): TurtlePoint = TurtlePoint(x + other.x, y + other.y)

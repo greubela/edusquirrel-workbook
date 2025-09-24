@@ -3,7 +3,6 @@ package interactionPlugins.gpt
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.htmlElements.genericElements.editor.{SimpleTextDisplay, SimpleTextEditor}
-import plugins.gpt.{GptGrader, GptScaffolder}
 import workbook.model.display.InteractionComponent
 import workbook.model.display.InteractionComponent.*
 import workbook.model.display.InteractionComponent.InteractionContentRole.*

@@ -1,4 +1,4 @@
-package plugins.gpt
+package interactionPlugins.gpt
 
 import workbook.model.feedback.FeedbackStatus.FINISHED
 import workbook.model.feedback.grading.GptGradingResult

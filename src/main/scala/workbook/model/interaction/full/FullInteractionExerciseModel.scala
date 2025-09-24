@@ -18,7 +18,7 @@ case class FullInteractionExerciseModel[EditorState <: InteractionState, Scaffol
 (initEditorState: EditorState, initScaffoldingState: ScaffoldingState, initGradingState: GradingState) {
   
 
-  private val editorStateVarWithHistory = VarWithHistory(Var(initEditorState))
+  private val editorStateVarWithHistory = VarWithHistory[EditorState](Var(initEditorState))
 
   def currentEditorStateVar: Var[EditorState] = editorStateVarWithHistory.variable
 

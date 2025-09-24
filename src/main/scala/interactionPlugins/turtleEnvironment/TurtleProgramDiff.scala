@@ -1,4 +1,4 @@
-package scala.interactionPlugins.turtleEnvironment
+package interactionPlugins.turtleEnvironment
 
 case class TurtleProgramDiff(missingCommands: List[String], additionalCommands: List[String]) {
   def isPerfectMatch: Boolean = missingCommands.isEmpty && additionalCommands.isEmpty

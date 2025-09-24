@@ -1,4 +1,4 @@
-package scala.interactionPlugins.turtleEnvironment
+package interactionPlugins.turtleEnvironment
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
@@ -63,7 +63,7 @@ class HtmlTurtleEditorArea(
       draggable := (!isRoot),
       onDragStart --> ((event: DragEvent) => {
         if (!isRoot) {
-          event.dataTransfer.foreach(_.setData("text/turtle-block", block.definition.key))
+          event.dataTransfer.setData("text/turtle-block", block.definition.key)
           val detached = program.detachFrom(index)
           dragContext.startEditorDrag(detached, index, () => program.insertBlocks(index, detached))
         } else {
