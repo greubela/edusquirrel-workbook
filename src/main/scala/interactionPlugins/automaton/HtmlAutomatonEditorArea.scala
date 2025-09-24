@@ -128,7 +128,7 @@ class HtmlAutomatonEditorArea(
   private def elementNodeId(element: Element): Option[String] = {
     if (element == null) None
     else if (element.hasAttribute("data-node-id")) Option(element.getAttribute("data-node-id"))
-    else Option(element.parentElement).flatMap(elementNodeId)
+    else Option(element.parentNode).flatMap(elementNodeId)
   }
 
   private def findNodeIdAt(clientX: Double, clientY: Double): Option[String] =

@@ -61,7 +61,7 @@ case class TurtleRectangleArea(x: Double, y: Double, width: Double, height: Doub
       svg.ry := "6",
       svg.fill := "rgba(255, 128, 0, 0.25)",
       svg.stroke := "#ff8000",
-      svg.strokeDasharray := "6 4"
+      svg.strokeDashArray := "6 4"
     )
 
   override def asSvg(): L.SvgElement =

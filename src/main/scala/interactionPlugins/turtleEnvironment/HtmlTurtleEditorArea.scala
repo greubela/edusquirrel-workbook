@@ -5,7 +5,7 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import org.scalajs.dom
-import org.scalajs.dom.PointerEvent
+import org.scalajs.dom.{Event, MouseEvent, PointerEvent}
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
 class HtmlTurtleEditorArea(
@@ -72,7 +72,7 @@ class HtmlTurtleEditorArea(
   private case class BlockLayoutResult(block: RenderedBlock, dropTargets: List[DropTarget])
 
   private case class PointerDragState(
-    pointerId: Int,
+    pointerId: Double,
     sourcePath: program.BlockPath,
     sourceIndex: Int,
     offsetX: Double,
@@ -86,7 +86,7 @@ class HtmlTurtleEditorArea(
   private val pointerDragStateVar: Var[Option[PointerDragState]] = Var(None)
   private val layoutVar: Var[Option[ProgramLayout]] = Var(None)
 
-  private val svgElementVar: Var[Option[dom.svg.SVGSVGElement]] = Var(None)
+  private val svgElementVar: Var[Option[dom.svg.SVG]] = Var(None)
 
   private val pointerMoveBus = EventBus[PointerEvent]()
   private val pointerUpBus = EventBus[PointerEvent]()
@@ -232,7 +232,7 @@ class HtmlTurtleEditorArea(
     )
   }
 
-  private def pointerCoordinates(event: PointerEvent): Option[(Double, Double)] =
+  private def pointerCoordinates(event: MouseEvent): Option[(Double, Double)] =
     svgElementVar.now().map { svgElem =>
       val rect = svgElem.getBoundingClientRect()
       (event.clientX - rect.left, event.clientY - rect.top)
@@ -344,7 +344,7 @@ class HtmlTurtleEditorArea(
       svg.g(
         svg.transform := s"translate(${inside.relativeArea.x}, ${inside.relativeArea.y})",
         background,
-        renderStack(inside.stack, inside.stack.originX, inside.stack.originY)*
+        renderStack(inside.stack, inside.stack.originX, inside.stack.originY)
       )
     }
 
@@ -387,8 +387,8 @@ class HtmlTurtleEditorArea(
         startPointerDrag(block, event)
       },
       block.shape.render(block.label, block.height),
-      insideElements*,
-      parameterElements*
+      insideElements,
+      parameterElements
     )
   }
 
@@ -403,7 +403,7 @@ class HtmlTurtleEditorArea(
       svg.ry := "10",
       svg.fill := "rgba(255, 204, 0, 0.35)",
       svg.stroke := "#ffcc00",
-      svg.strokeDasharray := "8 4"
+      svg.strokeDashArray := "8 4"
     )
   }
 
@@ -413,13 +413,13 @@ class HtmlTurtleEditorArea(
     svg.g(
       svg.opacity := "0.7",
       svg.transform := s"translate($offsetX, $offsetY)",
-      renderStack(dragState.preview, dragState.preview.originX, dragState.preview.originY)*
+      renderStack(dragState.preview, dragState.preview.originX, dragState.preview.originY)
     )
   }
 
   private val layoutSignal = program.blocksSignal.map(computeLayout)
 
-  layoutSignal.foreach(layoutVar.set)(unsafeWindowOwner)
+  layoutSignal.foreach(value => layoutVar.set(Some(value)))(unsafeWindowOwner)
   pointerMoveBus.events.foreach(updatePointerDrag)(unsafeWindowOwner)
   pointerUpBus.events.foreach(endPointerDrag)(unsafeWindowOwner)
 
