@@ -3,7 +3,7 @@ import com.raquo.laminar.api.L.{*, given}
 import contentmanagement.model.image.ImageDescription
 import contentmanagement.model.language.AppLanguage
 import interactionPlugins.gpt.HtmlTextBasedGptExercise
-import interactionPlugins.turtleEnvironment.{HtmlTurtleExercise, TurtleCommand, TurtleExerciseContent, TurtleProgramState}
+import interactionPlugins.turtleEnvironment.{HtmlTurtleExercise, TurtleCommand, TurtleExerciseContent, TurtleExpression, TurtleProgramState}
 import org.scalajs.dom
 import org.scalajs.dom.document
 import workbook.model.exercise.ExerciseContent
@@ -30,9 +30,9 @@ def insertWorkbook(): Unit = {
     List(
       TurtleCommand.WhenProgramStarted,
       TurtleCommand.PenDown,
-      TurtleCommand.Repeat(4),
-      TurtleCommand.Forward(100),
-      TurtleCommand.TurnRight(90),
+      TurtleCommand.Repeat(TurtleExpression.Literal(4)),
+      TurtleCommand.Forward(TurtleExpression.Literal(100)),
+      TurtleCommand.TurnRight(TurtleExpression.Literal(90)),
       TurtleCommand.EndRepeat,
       TurtleCommand.PenUp
     )

@@ -4,7 +4,7 @@ sealed trait TurtleDragPayload
 
 object TurtleDragPayload {
   case class PaletteBlock(definition: TurtleBlockDefinition) extends TurtleDragPayload
-  case class EditorBlockGroup(blocks: List[TurtleBlock], originalIndex: Int, onCancel: () => Unit) extends TurtleDragPayload
+  case class EditorBlockGroup(blocks: List[TurtleStructuredBlock], path: List[TurtlePathSegment], onCancel: () => Unit) extends TurtleDragPayload
 }
 
 class TurtleBlockDragContext {
@@ -14,8 +14,8 @@ class TurtleBlockDragContext {
     payload = Some(TurtleDragPayload.PaletteBlock(definition))
   }
 
-  def startEditorDrag(blocks: List[TurtleBlock], originalIndex: Int, onCancel: () => Unit): Unit = {
-    payload = Some(TurtleDragPayload.EditorBlockGroup(blocks, originalIndex, onCancel))
+  def startEditorDrag(blocks: List[TurtleStructuredBlock], path: List[TurtlePathSegment], onCancel: () => Unit): Unit = {
+    payload = Some(TurtleDragPayload.EditorBlockGroup(blocks, path, onCancel))
   }
 
   def consumePayload(): Option[TurtleDragPayload] = {

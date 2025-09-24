@@ -18,13 +18,14 @@ class HtmlTurtleInteractionModel(exerciseContent: TurtleExerciseContent) extends
 ]{
 
   private val sampleProgram = exerciseContent.sampleProgram
-  private val expectedExecution = TurtleProgramExecutor.execute(sampleProgram)
+  private val expectedSegments =
+    TurtleSegmentMatcher.canonicalize(TurtleProgramExecutor.execute(sampleProgram).lines)
 
-  private val initialBlock = TurtleBlockLibrary.whenProgramStarted.createInstance()
+  private val initialStructure = TurtleBlockLibrary.instantiateWithCompanion(TurtleBlockLibrary.whenProgramStarted)
 
-  private val initEditorState = TurtleEditorState(TurtleProgramState.fromBlocks(List(initialBlock)))
+  private val initEditorState = TurtleEditorState(TurtleProgramState.fromBlocks(initialStructure))
   private val initScaffoldingState = TurtleScaffoldingState(initEditorState.program, sampleProgram)
-  private val initGradingState = TurtleGradingState(initEditorState.program, expectedExecution.lines)
+  private val initGradingState = TurtleGradingState(initEditorState.program, expectedSegments)
 
   val model: FullInteractionExerciseModel[TurtleEditorState, TurtleScaffoldingState, TurtleGradingState, TurtleScaffoldingFeedback, TurtleGradingFeedback]
   = new FullInteractionExerciseModel[TurtleEditorState, TurtleScaffoldingState, TurtleGradingState, TurtleScaffoldingFeedback, TurtleGradingFeedback](
@@ -37,14 +38,14 @@ class HtmlTurtleInteractionModel(exerciseContent: TurtleExerciseContent) extends
   val dragContext = new TurtleBlockDragContext
 
   val scaffolder = new TurtleScaffolder(sampleProgram)
-  val grader = new TurtleGrader(expectedExecution.lines)
+  val grader = new TurtleGrader(expectedSegments)
 
-  val blockProgram = new TurtleBlockProgram(List(initialBlock), programState => {
+  val blockProgram = new TurtleBlockProgram(initialStructure, programState => {
     val editorState = TurtleEditorState(programState)
     model.currentEditorStateVar.set(editorState)
     val scaffoldingState = TurtleScaffoldingState(programState, sampleProgram)
     model.currentScaffoldingStateVar.set(scaffoldingState)
-    val gradingState = TurtleGradingState(programState, expectedExecution.lines)
+    val gradingState = TurtleGradingState(programState, expectedSegments)
     model.currentGradingStateVar.set(gradingState)
     scaffolder.loadState(scaffoldingState)
     grader.loadState(gradingState)

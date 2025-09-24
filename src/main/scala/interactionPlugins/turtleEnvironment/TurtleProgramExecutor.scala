@@ -50,9 +50,9 @@ object TurtleProgramExecutor {
       instructions.foreach {
         case ExecutableInstruction.Simple(command) =>
           command match {
-            case TurtleCommand.Forward(distance) => forward(distance)
-            case TurtleCommand.TurnRight(angle)  => heading -= angle
-            case TurtleCommand.TurnLeft(angle)   => heading += angle
+            case TurtleCommand.Forward(distance) => forward(distance.evaluate)
+            case TurtleCommand.TurnRight(angle)  => heading -= angle.evaluate
+            case TurtleCommand.TurnLeft(angle)   => heading += angle.evaluate
             case TurtleCommand.PenUp             => penDown = false
             case TurtleCommand.PenDown           => penDown = true
             case TurtleCommand.TurnAround        => heading += 180
@@ -114,9 +114,10 @@ object TurtleProgramExecutor {
           case command @ TurtleCommand.TurnAround =>
             buffer += Simple(command)
             index += 1
-          case TurtleCommand.Repeat(times) =>
+          case TurtleCommand.Repeat(timesExpr) =>
+            val evaluated = math.max(0, math.round(timesExpr.evaluate).toInt)
             val (body, nextIndex) = parse(index + 1, Some(ControlEnd.Repeat))
-            buffer += Repeat(times, body)
+            buffer += Repeat(evaluated, body)
             index = nextIndex
           case TurtleCommand.EndRepeat =>
             if (terminator.contains(ControlEnd.Repeat)) {
