@@ -6,8 +6,7 @@ import com.raquo.laminar.api.L.Signal
 sealed trait TurtlePathSegment
 
 object TurtlePathSegment {
-  case class IntoBlock(blockId: String) extends TurtlePathSegment
-  case class IntoSocket(blockId: String, socketId: String) extends TurtlePathSegment
+  case class IntoConnection(blockId: String, connectionId: String) extends TurtlePathSegment
 }
 
 class TurtleBlockProgram(
@@ -36,8 +35,9 @@ class TurtleBlockProgram(
   def insertBlocks(path: BlockPath, index: Int, newBlocks: List[TurtleStructuredBlock]): Unit = {
     val sanitized = sanitizeBlocksForPath(path, newBlocks)
     if (sanitized.nonEmpty) {
-      val updated = path.lastOption match {
-        case Some(_: IntoSocket) =>
+      val connectionKind = connectionForPath(path).map(_.kind)
+      val updated = connectionKind match {
+        case Some(TurtleConnectionKind.Parameter) =>
           transformStack(currentBlocks, path)(_ => sanitized)
         case _ =>
           transformStack(currentBlocks, path) { stack =>
@@ -67,13 +67,18 @@ class TurtleBlockProgram(
 
   def previewDetach(path: BlockPath, index: Int): List[TurtleStructuredBlock] = {
     var detached: List[TurtleStructuredBlock] = Nil
+    val connectionKind = connectionForPath(path).map(_.kind)
     transformStack(currentBlocks, path) { stack =>
       if (stack.isEmpty) stack
-      else {
-        val safeIndex = clampRemovalIndex(path, index, stack.length)
-        val (_, suffix) = stack.splitAt(safeIndex)
-        detached = suffix
-        stack
+      else connectionKind match {
+        case Some(TurtleConnectionKind.Parameter) =>
+          detached = stack
+          stack
+        case _ =>
+          val safeIndex = clampRemovalIndex(path, index, stack.length)
+          val (_, suffix) = stack.splitAt(safeIndex)
+          detached = suffix
+          stack
       }
     }
     detached
@@ -92,13 +97,18 @@ class TurtleBlockProgram(
 
   def detachFrom(path: BlockPath, index: Int): List[TurtleStructuredBlock] = {
     var detached: List[TurtleStructuredBlock] = Nil
+    val connectionKind = connectionForPath(path).map(_.kind)
     val updated = transformStack(currentBlocks, path) { stack =>
       if (stack.isEmpty) stack
-      else {
-        val safeIndex = clampRemovalIndex(path, index, stack.length)
-        val (prefix, suffix) = stack.splitAt(safeIndex)
-        detached = suffix
-        prefix
+      else connectionKind match {
+        case Some(TurtleConnectionKind.Parameter) =>
+          detached = stack
+          Nil
+        case _ =>
+          val safeIndex = clampRemovalIndex(path, index, stack.length)
+          val (prefix, suffix) = stack.splitAt(safeIndex)
+          detached = suffix
+          prefix
       }
     }
     updateState(updated)
@@ -106,21 +116,20 @@ class TurtleBlockProgram(
   }
 
   private def sanitizeBlocksForPath(path: BlockPath, blocks: List[TurtleStructuredBlock]): List[TurtleStructuredBlock] = {
-    path.lastOption match {
-      case Some(_: IntoSocket) =>
-        findSocketDefinition(path) match {
-          case Some(socket) =>
-            blocks.collect {
-              case node if node.block.definition.behaviour match {
-                    case TurtleBlockBehaviour.Reporter(valueType, _) => valueType == socket.valueType
-                    case _                                          => false
-                  } => node
-            }.take(socket.maxChildren)
-          case None => Nil
+    val connectionOpt = connectionForPath(path)
+    connectionOpt match {
+      case Some(connection) =>
+        val accepted = blocks.collect {
+          case node if connection.acceptTypes.contains(node.block.definition.evaluatesTo) &&
+              node.block.definition.key != TurtleBlockLibrary.whenProgramStarted.key => node
         }
-      case _ =>
+        connection.kind match {
+          case TurtleConnectionKind.Parameter => accepted.take(connection.maxChildren)
+          case _ => accepted
+        }
+      case None =>
         blocks.collect {
-          case node if node.block.definition.behaviour.isInstanceOf[TurtleBlockBehaviour.Command] &&
+          case node if node.block.definition.evaluatesTo == TurtleDataType.Unit &&
               node.block.definition.key != TurtleBlockLibrary.whenProgramStarted.key => node
         }
     }
@@ -132,20 +141,14 @@ class TurtleBlockProgram(
   )(modify: List[TurtleStructuredBlock] => List[TurtleStructuredBlock]): List[TurtleStructuredBlock] = {
     path match {
       case Nil => modify(blocks)
-      case IntoBlock(blockId) :: tail =>
-        blocks.map { node =>
-          if (node.block.id == blockId)
-            node.withInside(transformStack(node.inside, tail)(modify))
-          else node
-        }
-      case IntoSocket(blockId, socketId) :: tail =>
+      case IntoConnection(blockId, connectionId) :: tail =>
         blocks.map { node =>
           if (node.block.id == blockId) {
-            val children = node.socketContent(socketId)
+            val children = node.childrenFor(connectionId)
             val updatedChildren =
               if (tail.isEmpty) modify(children)
               else transformStack(children, tail)(modify)
-            node.withSocketChildren(socketId, updatedChildren)
+            node.withChildren(connectionId, updatedChildren)
           } else node
         }
     }
@@ -162,29 +165,24 @@ class TurtleBlockProgram(
         if (head.block.id == blockId) {
           (head.copy(block = update(head.block)) :: tail, true)
         } else {
-          val (updatedInside, insideChanged) = updateBlockRecursive(head.inside, blockId, update)
-          if (insideChanged) {
-            (head.withInside(updatedInside) :: tail, true)
+          val (updatedConnections, connectionChanged) = updateConnections(head.connectionChildren, blockId, update)
+          if (connectionChanged) {
+            (head.copy(connectionChildren = updatedConnections) :: tail, true)
           } else {
-            val (updatedSockets, socketChanged) = updateSockets(head.socketChildren, blockId, update)
-            if (socketChanged) {
-              (head.copy(socketChildren = updatedSockets) :: tail, true)
-            } else {
-              val (updatedTail, changedTail) = updateBlockRecursive(tail, blockId, update)
-              (head :: updatedTail, changedTail)
-            }
+            val (updatedTail, changedTail) = updateBlockRecursive(tail, blockId, update)
+            (head :: updatedTail, changedTail)
           }
         }
     }
   }
 
-  private def updateSockets(
-    sockets: Map[String, List[TurtleStructuredBlock]],
+  private def updateConnections(
+    connections: Map[String, List[TurtleStructuredBlock]],
     blockId: String,
     update: TurtleBlock => TurtleBlock
   ): (Map[String, List[TurtleStructuredBlock]], Boolean) = {
     var changed = false
-    val updated = sockets.map { case (key, nodes) =>
+    val updated = connections.map { case (key, nodes) =>
       val (updatedNodes, nodeChanged) = updateBlockRecursive(nodes, blockId, update)
       if (nodeChanged) changed = true
       key -> updatedNodes
@@ -202,28 +200,23 @@ class TurtleBlockProgram(
         if (head.block.id == blockId) {
           (tail, true)
         } else {
-          val (updatedInside, insideRemoved) = removeBlockRecursive(head.inside, blockId)
-          if (insideRemoved) {
-            (head.withInside(updatedInside) :: tail, true)
+          val (updatedConnections, removedFromConnections) = removeFromConnections(head.connectionChildren, blockId)
+          if (removedFromConnections) {
+            (head.copy(connectionChildren = updatedConnections) :: tail, true)
           } else {
-            val (updatedSockets, socketRemoved) = removeFromSockets(head.socketChildren, blockId)
-            if (socketRemoved) {
-              (head.copy(socketChildren = updatedSockets) :: tail, true)
-            } else {
-              val (updatedTail, removedInTail) = removeBlockRecursive(tail, blockId)
-              (head :: updatedTail, removedInTail)
-            }
+            val (updatedTail, removedInTail) = removeBlockRecursive(tail, blockId)
+            (head :: updatedTail, removedInTail)
           }
         }
     }
   }
 
-  private def removeFromSockets(
-    sockets: Map[String, List[TurtleStructuredBlock]],
+  private def removeFromConnections(
+    connections: Map[String, List[TurtleStructuredBlock]],
     blockId: String
   ): (Map[String, List[TurtleStructuredBlock]], Boolean) = {
     var changed = false
-    val updated = sockets.map { case (key, nodes) =>
+    val updated = connections.map { case (key, nodes) =>
       val (updatedNodes, removed) = removeBlockRecursive(nodes, blockId)
       if (removed) changed = true
       key -> updatedNodes
@@ -240,27 +233,33 @@ class TurtleBlockProgram(
       case head :: tail =>
         if (head.block.id == blockId) Some(head)
         else {
-          findBlockById(head.inside, blockId) match {
-            case some @ Some(_) => some
-            case None =>
-              head.socketChildren.values.iterator
-                .map(children => findBlockById(children, blockId))
-                .collectFirst { case Some(node) => node }
-                .orElse(findBlockById(tail, blockId))
-          }
+          val connectionSearch = head.connectionChildren.values.iterator
+            .map(children => findBlockById(children, blockId))
+            .collectFirst { case Some(node) => node }
+          connectionSearch.orElse(findBlockById(tail, blockId))
         }
     }
   }
 
   private def clampInsertionIndex(path: BlockPath, index: Int, size: Int): Int = {
+    val connectionKind = connectionForPath(path).map(_.kind)
     val base = math.max(0, math.min(index, size))
-    if (path.isEmpty) math.max(1, base) else base
+    if (path.isEmpty) math.max(1, base)
+    else connectionKind match {
+      case Some(TurtleConnectionKind.Parameter) => 0
+      case _ => base
+    }
   }
 
   private def clampRemovalIndex(path: BlockPath, index: Int, size: Int): Int = {
+    val connectionKind = connectionForPath(path).map(_.kind)
     val maxIndex = math.max(0, size - 1)
     val base = math.max(0, math.min(index, maxIndex))
-    if (path.isEmpty) math.max(1, base) else base
+    if (path.isEmpty) math.max(1, base)
+    else connectionKind match {
+      case Some(TurtleConnectionKind.Parameter) => 0
+      case _ => base
+    }
   }
 
   private def ensureRoot(blocks: List[TurtleStructuredBlock]): List[TurtleStructuredBlock] = {
@@ -282,19 +281,11 @@ class TurtleBlockProgram(
   private def notifyStateChanged(blocks: List[TurtleStructuredBlock]): Unit =
     onProgramStateChanged(TurtleProgramState.fromBlocks(blocks))
 
-  private def findSocketDefinition(path: BlockPath): Option[TurtleBlockSocketDefinition] = {
-    def loop(blocks: List[TurtleStructuredBlock], remaining: BlockPath): Option[TurtleBlockSocketDefinition] = {
-      remaining match {
-        case Nil => None
-        case IntoBlock(blockId) :: tail =>
-          blocks.find(_.block.id == blockId).flatMap(node => loop(node.inside, tail))
-        case IntoSocket(blockId, socketId) :: tail =>
-          blocks.find(_.block.id == blockId).flatMap { node =>
-            if (tail.isEmpty) node.block.definition.sockets.find(_.id == socketId)
-            else loop(node.socketContent(socketId), tail)
-          }
-      }
+  private def connectionForPath(path: BlockPath): Option[TurtleBlockConnection] = {
+    path.lastOption match {
+      case Some(IntoConnection(blockId, connectionId)) =>
+        findBlockById(currentBlocks, blockId).flatMap(_.block.definition.connection(connectionId))
+      case None => None
     }
-    loop(currentBlocks, path)
   }
 }
