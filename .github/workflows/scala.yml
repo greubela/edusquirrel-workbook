@@ -11,14 +11,16 @@ permissions:
   pages: write
   id-token: write
 
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
-  deploy:
+  build-and-deploy:
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
-      
-  build:
-    runs-on: ubuntu-latest
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - uses: actions/checkout@v4
@@ -37,18 +39,15 @@ jobs:
         with:
           node-version: 'lts/*'
 
-      - name: Compile with sbt (fast)
-        run: sbt -v fastOptJS
-
-      - name: Build Scala.js (full)
+      - name: Build Scala.js
         run: |
-          sbt -v fullOptJS
+          sbt -v fastOptJS fullOptJS
           mkdir -p dist
-          # Copy typical Scala.js outputs (*.fastopt.js and *.opt.js) into dist/
-          # This glob covers single- or multi-module projects.
           find . \( -path "*/target/scala-*/**/*fastopt.js" -o -path "*/target/scala-*/**/*opt.js" \) \
             -print -exec cp {} dist/ \;
 
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
@@ -56,4 +55,5 @@ jobs:
           path: ./dist
 
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
