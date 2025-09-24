@@ -55,7 +55,11 @@ private val palette = new HtmlBlockDragFromArea(
   TurtleBlockLibrary.blocksByCategory,
   definition => {
     val newBlocks = TurtleBlockLibrary.instantiateWithCompanion(definition)
-    turtleModel.blockProgram.insertBlocks(turtleModel.blockProgram.currentBlocks.length, newBlocks)
+    turtleModel.blockProgram.insertBlocks(
+      turtleModel.blockProgram.rootPath,
+      turtleModel.blockProgram.currentBlocks.length,
+      newBlocks
+    )
   }
 )
 

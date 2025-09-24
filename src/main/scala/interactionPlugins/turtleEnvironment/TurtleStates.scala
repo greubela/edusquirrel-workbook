@@ -9,8 +9,12 @@ case class TurtleProgramState(commands: List[TurtleCommand]) extends Interaction
 object TurtleProgramState {
   val empty: TurtleProgramState = TurtleProgramState(Nil)
 
-  def fromBlocks(blocks: List[TurtleBlock]): TurtleProgramState =
-    TurtleProgramState(blocks.map(_.withoutInstanceInformation).filterNot(_ == TurtleCommand.WhenProgramStarted))
+  def fromBlocks(blocks: List[TurtleStructuredBlock]): TurtleProgramState = {
+    val commands = TurtleStructuredBlock
+      .flattenCommands(blocks)
+      .filterNot(_ == TurtleCommand.WhenProgramStarted)
+    TurtleProgramState(commands)
+  }
 }
 
 case class TurtleEditorState(program: TurtleProgramState) extends InteractionState {
