@@ -3,7 +3,7 @@ package interactionPlugins.turtleEnvironment
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import org.scalajs.dom.{DragEvent, html}
+import org.scalajs.dom.{DataTransferDropEffectKind, DataTransferEffectAllowedKind, DragEvent, html}
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
 class HtmlTurtleEditorArea(
@@ -26,11 +26,11 @@ class HtmlTurtleEditorArea(
         dragContext.peek match {
           case Some(TurtleDragPayload.PaletteBlock(_)) =>
             event.preventDefault()
-            Option(event.dataTransfer).foreach(_.dropEffect = "copy")
+            Option(event.dataTransfer).foreach(_.dropEffect = DataTransferDropEffectKind.copy)
             isActive.set(true)
           case Some(TurtleDragPayload.EditorBlockGroup(_, _, _)) =>
             event.preventDefault()
-            Option(event.dataTransfer).foreach(_.dropEffect = "move")
+            Option(event.dataTransfer).foreach(_.dropEffect = DataTransferDropEffectKind.move)
             isActive.set(true)
           case None => ()
         }
@@ -89,7 +89,7 @@ class HtmlTurtleEditorArea(
       onDragStart --> ((event: DragEvent) => {
         if (!isRoot) {
           Option(event.dataTransfer).foreach { dataTransfer =>
-            dataTransfer.effectAllowed = "move"
+            dataTransfer.effectAllowed = DataTransferEffectAllowedKind.move
             dataTransfer.setData("text/turtle-block", block.definition.key)
           }
           val detached = program.detachFrom(index)

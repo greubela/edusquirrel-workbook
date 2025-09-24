@@ -3,6 +3,7 @@ package interactionPlugins.turtleEnvironment
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import org.scalajs.dom.DataTransferEffectAllowedKind
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
 class HtmlBlockDragFromArea(
@@ -33,7 +34,7 @@ class HtmlBlockDragFromArea(
       onDragStart --> { event =>
         dragContext.startPaletteDrag(definition)
         Option(event.dataTransfer).foreach { dataTransfer =>
-          dataTransfer.effectAllowed = "copy"
+          dataTransfer.effectAllowed = DataTransferEffectAllowedKind.copy //"copy"
           dataTransfer.setData("text/turtle-block", definition.key)
         }
       },

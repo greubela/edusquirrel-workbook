@@ -29,7 +29,7 @@ class TurtleEditorInteractionComponent(
           "Run program",
           onClick --> (_ => runProgram())
         )
-      ),
+      ), 
       editorArea.getDomElement(),
       div(
         cls := "turtle-preview-container",
