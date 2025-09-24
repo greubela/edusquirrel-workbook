@@ -28,6 +28,7 @@ class HtmlBlockDragFromArea(
 
   private def paletteBlock(definition: TurtleBlockDefinition): HtmlElement = {
     val preview = definition.createInstance()
+    val previewHeight = preview.definition.shape.computeHeight(0.0)
     div(
       cls := "turtle-palette-block",
       draggable := true,
@@ -40,7 +41,7 @@ class HtmlBlockDragFromArea(
       },
       onDragEnd --> (_ => dragContext.consumePayload()),
       onDblClick --> (_ => onBlockRequested(definition)),
-      preview.definition.shape.render(preview.label)
+      preview.definition.shape.render(preview.label, previewHeight)
     )
   }
 
