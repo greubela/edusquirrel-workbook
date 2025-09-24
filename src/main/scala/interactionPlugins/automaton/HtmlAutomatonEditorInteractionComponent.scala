@@ -17,7 +17,7 @@ class HtmlAutomatonEditorInteractionComponent(store: AutomatonEditorStore)
 
   private def addState(): Unit = {
     val (x, y) = editorArea.defaultNodePosition
-    store.addState(x, y)
+    store.addState(x, y, Some(editorArea.currentSize))
   }
 
   private def toggleTransitionMode(): Unit = {
