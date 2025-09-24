@@ -97,8 +97,8 @@ object AppCanvas {
    */
   def calcArcPoint(x: Double, y: Double, diameter: Double, angle: Double): (Double, Double) = {
     val radius = diameter / 2.0
-    val xPos = x + radius * Math.sin(angle / 360.0 * Math.TAU)
-    val yPos = y - radius * Math.cos(angle / 360.0 * Math.TAU)
+    val xPos = x + radius * Math.sin(angle / 360.0 * Math.PI * 2)
+    val yPos = y - radius * Math.cos(angle / 360.0 * Math.PI * 2)
     (xPos, yPos)
   }
 
