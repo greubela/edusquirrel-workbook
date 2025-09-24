@@ -1,9 +1,10 @@
-package workbook.workbookHtmlElements.exercises
+package interactionPlugins.gpt
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.htmlElements.genericElements.editor.SimpleTextEditor
-import feedback.gpt.{GptGrader, GptScaffolder}
+import interactionPlugins.gpt.HtmlTextBasedGptInteractionModel
+import plugins.gpt.{GptGrader, GptScaffolder}
 import workbook.model.display.FullInteractionLabelModel
 import workbook.model.exercise.ExerciseContent
 import workbook.model.feedback.grading.GptGradingResult
@@ -13,7 +14,6 @@ import workbook.model.states.BasicVariableBasedState.BasicStringState
 import workbook.model.states.Stateless
 import workbook.workbookHtmlElements.abstractions.HtmlFullInteractionExercise
 import workbook.workbookHtmlElements.container.HtmlFullInteractionContainerDefault
-import workbook.workbookHtmlElements.interactions.HtmlTextBasedGptInteractionModel
 import workbook.workbookHtmlElements.{HtmlExerciseTitleElement, HtmlPlaintextInstructionElement}
 
 case class HtmlTextBasedGptExercise(exerciseContent: ExerciseContent) extends HtmlFullInteractionExercise[

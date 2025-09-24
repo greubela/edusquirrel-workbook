@@ -2,10 +2,10 @@
 import com.raquo.laminar.api.L.{*, given}
 import contentmanagement.model.image.ImageDescription
 import contentmanagement.model.language.AppLanguage
+import interactionPlugins.gpt.HtmlTextBasedGptExercise
 import org.scalajs.dom
 import org.scalajs.dom.document
 import workbook.model.exercise.ExerciseContent
-import workbook.workbookHtmlElements.exercises.HtmlTextBasedGptExercise
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 import scala.language.postfixOps
