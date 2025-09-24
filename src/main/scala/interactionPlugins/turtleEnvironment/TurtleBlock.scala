@@ -2,8 +2,6 @@ package interactionPlugins.turtleEnvironment
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import com.raquo.laminar.api.L.svg
-import com.raquo.laminar.api.L.svg.*
 import util.IdHelper
 
 enum TurtleBlockArea {
@@ -15,14 +13,14 @@ enum TurtleValueType {
 }
 
 case class TurtleBlockSvgShape(
-  width: Double,
-  height: Double,
-  pathDefinition: String,
-  backgroundColor: String,
-  borderColor: String = "#0c3359",
-  textColor: String = "white",
-  areas: Set[TurtleBlockArea] = Set(TurtleBlockArea.Below)
-) {
+                                width: Double,
+                                height: Double,
+                                pathDefinition: String,
+                                backgroundColor: String,
+                                borderColor: String = "#0c3359",
+                                textColor: String = "white",
+                                areas: Set[TurtleBlockArea] = Set(TurtleBlockArea.Below)
+                              ) {
 
   def render(label: String): L.SvgElement = {
     val viewBox = s"0 0 $width $height"
@@ -98,24 +96,25 @@ enum TurtleBlockCategory {
 }
 
 case class TurtleBlockSocketDefinition(
-  id: String,
-  label: String,
-  valueType: TurtleValueType,
-  color: String,
-  maxChildren: Int = 1,
-  defaultNumeric: Double = 0.0,
-  defaultBoolean: Boolean = false
-)
+                                        id: String,
+                                        label: String,
+                                        valueType: TurtleValueType,
+                                        color: String,
+                                        maxChildren: Int = 1,
+                                        defaultNumeric: Double = 0.0,
+                                        defaultBoolean: Boolean = false
+                                      )
 
 case class TurtleBlockContext(
-  block: TurtleBlock,
-  socketExpressions: Map[String, TurtleExpression]
-)
+                               block: TurtleBlock,
+                               socketExpressions: Map[String, TurtleExpression]
+                             )
 
 sealed trait TurtleBlockBehaviour
 
 object TurtleBlockBehaviour {
   case class Command(build: TurtleBlockContext => TurtleCommand) extends TurtleBlockBehaviour
+
   case class Reporter(valueType: TurtleValueType, build: TurtleBlockContext => TurtleExpression) extends TurtleBlockBehaviour
 }
 
@@ -178,16 +177,16 @@ object TurtleCommand {
 }
 
 case class TurtleBlockDefinition(
-  key: String,
-  category: TurtleBlockCategory,
-  shape: TurtleBlockSvgShape,
-  labelForValue: Option[Double] => String,
-  defaultValue: Option[Double],
-  behaviour: TurtleBlockBehaviour,
-  sockets: List[TurtleBlockSocketDefinition] = Nil,
-  closingCommand: Option[TurtleCommand] = None,
-  sanitizeValueFn: Option[Double] => Option[Double] = identity
-) {
+                                  key: String,
+                                  category: TurtleBlockCategory,
+                                  shape: TurtleBlockSvgShape,
+                                  labelForValue: Option[Double] => String,
+                                  defaultValue: Option[Double],
+                                  behaviour: TurtleBlockBehaviour,
+                                  sockets: List[TurtleBlockSocketDefinition] = Nil,
+                                  closingCommand: Option[TurtleCommand] = None,
+                                  sanitizeValueFn: Option[Double] => Option[Double] = identity
+                                ) {
 
   lazy val areas: Set[TurtleBlockArea] =
     if (sockets.nonEmpty) shape.areas + TurtleBlockArea.Parameter else shape.areas
@@ -196,7 +195,7 @@ case class TurtleBlockDefinition(
 
   def valueType: Option[TurtleValueType] = behaviour match {
     case TurtleBlockBehaviour.Reporter(valueType, _) => Some(valueType)
-    case _                                           => None
+    case _ => None
   }
 
   def sanitizeValue(value: Option[Double]): Option[Double] = sanitizeValueFn(value)
@@ -208,10 +207,10 @@ case class TurtleBlockDefinition(
 }
 
 case class TurtleBlock(
-  id: String,
-  definition: TurtleBlockDefinition,
-  value: Option[Double]
-) {
+                        id: String,
+                        definition: TurtleBlockDefinition,
+                        value: Option[Double]
+                      ) {
   def label: String = definition.labelForValue(value)
 
   def updateValue(newValue: Double): TurtleBlock = {
@@ -223,7 +222,7 @@ case class TurtleBlock(
 
   def booleanValue(default: Boolean = false): Boolean = value match {
     case Some(num) => num >= 0.5
-    case None      => default
+    case None => default
   }
 }
 
@@ -384,11 +383,11 @@ object TurtleBlockLibrary {
   )
 
   private def binaryReporter(
-    key: String,
-    operator: TurtleBinaryOperator,
-    color: String,
-    label: String
-  ): TurtleBlockDefinition =
+                              key: String,
+                              operator: TurtleBinaryOperator,
+                              color: String,
+                              label: String
+                            ): TurtleBlockDefinition =
     TurtleBlockDefinition(
       key = key,
       category = TurtleBlockCategory.Operators,
@@ -407,11 +406,11 @@ object TurtleBlockLibrary {
     )
 
   private def unaryReporter(
-    key: String,
-    function: TurtleUnaryFunction,
-    color: String,
-    label: String
-  ): TurtleBlockDefinition =
+                             key: String,
+                             function: TurtleUnaryFunction,
+                             color: String,
+                             label: String
+                           ): TurtleBlockDefinition =
     TurtleBlockDefinition(
       key = key,
       category = TurtleBlockCategory.Math,
