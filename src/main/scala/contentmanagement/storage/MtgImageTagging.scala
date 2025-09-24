@@ -4,59 +4,38 @@ import contentmanagement.model.image.ImageTag.{LicenceType, UNKNOWN_LICENCE}
 import contentmanagement.model.image.{ImageDescription, ImageTag}
 
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 
 object MtgImageTagging {
 
+  private val imageTags: mutable.HashMap[ImageTag, mutable.Set[ImageDescription]] = mutable.HashMap.empty
 
-  private val imageTags: mutable.HashMap[ImageTag, mutable.Set[ImageDescription]] = new mutable.HashMap()
-
-  private def ensureTagSet(tag: ImageTag): Unit = if (!imageTags.contains(tag)) {
-    imageTags.put(tag, new mutable.HashSet())
-  }
+  private def ensureTagSet(tag: ImageTag): mutable.Set[ImageDescription] =
+    imageTags.getOrElseUpdate(tag, mutable.HashSet.empty)
 
   def removeImages(descriptions: Iterable[ImageDescription]): Unit = {
     descriptions.foreach(removeImage)
   }
 
-  private def removeImage(desc: ImageDescription): Unit = {
-    imageTags.keys.foreach(imgTag => {
-      if (imageTags(imgTag).contains(desc)) {
-        imageTags(imgTag).remove(desc)
-      }
-    })
-  }
-  def getAllTagsForImage(image: ImageDescription): List[ImageTag] = {
-    val keyList: mutable.ListBuffer[ImageTag] = new ListBuffer[ImageTag]()
-    imageTags.keys.foreach(key => {
-      if (imageTags(key).contains(image)) {
-        keyList += key
-      }
-    })
-    keyList.toList
-  }
+  private def removeImage(desc: ImageDescription): Unit =
+    imageTags.foreach { case (_, descriptions) => descriptions -= desc }
 
-  def addTagToImages(tag: ImageTag, images: Iterable[ImageDescription]): Unit = {
-    images.foreach(curImg => addTagToImage(tag, curImg))
-  }
+  def getAllTagsForImage(image: ImageDescription): List[ImageTag] =
+    imageTags.collect { case (key, descriptions) if descriptions.contains(image) => key }.toList
 
-  def addTagsToImages(tags: Iterable[ImageTag], images: Iterable[ImageDescription]): Unit = {
-    tags.foreach(curTag => addTagToImages(curTag, images))
-  }
+  def addTagToImages(tag: ImageTag, images: Iterable[ImageDescription]): Unit =
+    images.foreach(addTagToImage(tag, _))
 
-  def getLicenceInformation(image: ImageDescription): LicenceType = {
-    getAllTagsForImage(image).filter(tag => tag.isInstanceOf[LicenceType]).map(_.asInstanceOf[LicenceType]).headOption.getOrElse(UNKNOWN_LICENCE)
-  }
+  def addTagsToImages(tags: Iterable[ImageTag], images: Iterable[ImageDescription]): Unit =
+    tags.foreach(addTagToImages(_, images))
+
+  def getLicenceInformation(image: ImageDescription): LicenceType =
+    getAllTagsForImage(image).collectFirst { case tag: LicenceType => tag }.getOrElse(UNKNOWN_LICENCE)
 
   def addTagToImage(tag: ImageTag, image: ImageDescription): Unit = {
-    ensureTagSet(tag)
-    imageTags(tag) += image
+    ensureTagSet(tag) += image
   }
 
-  def getAllImagesWithTag(tag: ImageTag): Set[ImageDescription] = {
-    ensureTagSet(tag)
-    imageTags(tag).toSet
-  }
+  def getAllImagesWithTag(tag: ImageTag): Set[ImageDescription] = ensureTagSet(tag).toSet
 
 
 }
