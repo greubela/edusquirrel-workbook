@@ -1,9 +1,11 @@
 package interactionPlugins.turtleEnvironment
 
+import com.raquo.airstream.eventbus.EventBus
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import org.scalajs.dom.{DataTransferDropEffectKind, DataTransferEffectAllowedKind, DragEvent, html}
+import org.scalajs.dom
+import org.scalajs.dom.PointerEvent
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
 class HtmlTurtleEditorArea(
@@ -13,303 +15,438 @@ class HtmlTurtleEditorArea(
 
   import TurtlePathSegment.*
 
-  private enum TurtleDropZoneKind(val cssClass: String) {
-    case Below extends TurtleDropZoneKind("below")
-    case Inside extends TurtleDropZoneKind("inside")
-    case Parameter extends TurtleDropZoneKind("parameter")
-  }
+  private val stackSpacing = 18.0
+  private val canvasPadding = 32.0
 
-  private def isCommandBlock(node: TurtleStructuredBlock): Boolean =
-    node.block.definition.behaviour.isInstanceOf[TurtleBlockBehaviour.Command]
+  private case class DropTarget(
+    path: program.BlockPath,
+    index: Int,
+    area: TurtleRectangleArea,
+    acceptTypes: Set[TurtleDataType]
+  )
 
-  private def isReporterBlock(node: TurtleStructuredBlock, valueType: TurtleValueType): Boolean =
-    node.block.definition.behaviour match {
-      case TurtleBlockBehaviour.Reporter(vt, _) => vt == valueType
-      case _                                    => false
+  private case class RenderedParameterSlot(
+    connection: TurtleBlockConnection,
+    relativeArea: TurtleRectangleArea,
+    stack: StackLayout
+  )
+
+  private case class RenderedInside(
+    connection: TurtleBlockConnection,
+    relativeArea: TurtleRectangleArea,
+    stack: StackLayout
+  )
+
+  private case class RenderedBlock(
+    node: TurtleStructuredBlock,
+    stackPath: program.BlockPath,
+    indexInStack: Int,
+    x: Double,
+    y: Double,
+    width: Double,
+    height: Double,
+    label: String,
+    shape: TurtleBlockShape,
+    inside: Option[RenderedInside],
+    parameterSlots: List[RenderedParameterSlot]
+  )
+
+  private case class StackLayout(
+    path: program.BlockPath,
+    originX: Double,
+    originY: Double,
+    blocks: List[RenderedBlock],
+    dropTargets: List[DropTarget],
+    width: Double,
+    height: Double
+  )
+
+  private case class ProgramLayout(
+    rootStack: StackLayout,
+    stackIndex: Map[program.BlockPath, StackLayout],
+    dropTargets: List[DropTarget],
+    width: Double,
+    height: Double
+  )
+
+  private case class BlockLayoutResult(block: RenderedBlock, dropTargets: List[DropTarget])
+
+  private case class PointerDragState(
+    pointerId: Int,
+    sourcePath: program.BlockPath,
+    sourceIndex: Int,
+    offsetX: Double,
+    offsetY: Double,
+    preview: StackLayout,
+    pointerX: Double,
+    pointerY: Double
+  )
+
+  private val highlightedTargetVar: Var[Option[DropTarget]] = Var(None)
+  private val pointerDragStateVar: Var[Option[PointerDragState]] = Var(None)
+  private val layoutVar: Var[Option[ProgramLayout]] = Var(None)
+
+  private val svgElementVar: Var[Option[dom.svg.SVGSVGElement]] = Var(None)
+
+  private val pointerMoveBus = EventBus[PointerEvent]()
+  private val pointerUpBus = EventBus[PointerEvent]()
+
+  private def stackDropTypes: Set[TurtleDataType] = Set(TurtleDataType.Unit)
+
+  private def layoutStack(
+    blocks: List[TurtleStructuredBlock],
+    path: program.BlockPath,
+    originX: Double,
+    originY: Double,
+    widthHint: Double,
+    allowPrepend: Boolean
+  ): StackLayout = {
+    val dropTargets = scala.collection.mutable.ListBuffer.empty[DropTarget]
+    val renderedBlocks = scala.collection.mutable.ListBuffer.empty[RenderedBlock]
+    var currentY = 0.0
+    var maxWidth = widthHint
+
+    if (blocks.isEmpty && allowPrepend) {
+      val dropArea = TurtleRectangleArea(originX, originY, widthHint, 36.0)
+      dropTargets += DropTarget(path, 0, dropArea, stackDropTypes)
+      return StackLayout(path, originX, originY, Nil, dropTargets.toList, widthHint, 36.0)
     }
 
-  private def canAcceptStackDrop(payload: TurtleDragPayload): Boolean = payload match {
-    case TurtleDragPayload.PaletteBlock(definition) =>
-      definition.behaviour.isInstanceOf[TurtleBlockBehaviour.Command] && definition.key != TurtleBlockLibrary.whenProgramStarted.key
-    case TurtleDragPayload.EditorBlockGroup(blocks, _, _) => blocks.forall(isCommandBlock)
+    blocks.zipWithIndex.foreach { case (node, idx) =>
+      val layout = layoutBlock(node, path, idx, originX, originY, currentY)
+      renderedBlocks += layout.block
+      dropTargets ++= layout.dropTargets
+      val blockBottom = currentY + layout.block.height
+      val dropArea = TurtleRectangleArea(originX, originY + blockBottom + 4.0, math.max(widthHint, layout.block.width), 14.0)
+      dropTargets += DropTarget(path, idx + 1, dropArea, stackDropTypes)
+      currentY = blockBottom + stackSpacing
+      maxWidth = math.max(maxWidth, layout.block.width)
+    }
+
+    if (allowPrepend && renderedBlocks.nonEmpty) {
+      val firstBlock = renderedBlocks.head
+      val dropArea = TurtleRectangleArea(originX, originY + firstBlock.y - 14.0, math.max(widthHint, firstBlock.width), 14.0)
+      dropTargets += DropTarget(path, 0, dropArea, stackDropTypes)
+    }
+
+    val totalHeight =
+      if (renderedBlocks.isEmpty) 0.0 else renderedBlocks.last.y + renderedBlocks.last.height
+
+    StackLayout(
+      path = path,
+      originX = originX,
+      originY = originY,
+      blocks = renderedBlocks.toList,
+      dropTargets = dropTargets.toList,
+      width = math.max(widthHint, maxWidth),
+      height = math.max(totalHeight, if (renderedBlocks.isEmpty) 36.0 else totalHeight)
+    )
   }
 
-  private def canAcceptSocketDrop(socket: TurtleBlockSocketDefinition, payload: TurtleDragPayload): Boolean = payload match {
-    case TurtleDragPayload.PaletteBlock(definition) =>
-      definition.behaviour match {
-        case TurtleBlockBehaviour.Reporter(valueType, _) => valueType == socket.valueType
-        case _                                           => false
-      }
-    case TurtleDragPayload.EditorBlockGroup(blocks, _, _) =>
-      blocks.nonEmpty && blocks.forall(isReporterBlock(_, socket.valueType))
+  private def layoutBlock(
+    node: TurtleStructuredBlock,
+    stackPath: program.BlockPath,
+    indexInStack: Int,
+    stackOriginX: Double,
+    stackOriginY: Double,
+    relativeY: Double
+  ): BlockLayoutResult = {
+    val shape = node.block.definition.shape
+    val absoluteX = stackOriginX
+    val absoluteY = stackOriginY + relativeY
+
+    val insideOpt = node.block.definition.connections.find(_.kind == TurtleConnectionKind.Enclosed).map { connection =>
+      val area = connection.area
+      val childPath = stackPath :+ IntoConnection(node.block.id, connection.id)
+      val insideOriginX = absoluteX + area.x
+      val insideOriginY = absoluteY + area.y
+      val stackLayout = layoutStack(node.childrenFor(connection.id), childPath, insideOriginX, insideOriginY, widthHint = area.width, allowPrepend = true)
+      val minHeight = math.max(area.height, 36.0)
+      val effectiveHeight = math.max(minHeight, stackLayout.height)
+      val relativeArea = area.withHeight(effectiveHeight)
+      RenderedInside(connection, relativeArea, stackLayout)
+    }
+
+    val insideHeight = insideOpt.map(_.relativeArea.height).getOrElse(0.0)
+    val blockHeight = shape.computeHeight(insideHeight)
+    val blockWidth = shape.width
+
+    val parameterSlots = node.block.definition.connections.collect {
+      case connection if connection.kind == TurtleConnectionKind.Parameter =>
+        val area = connection.area
+        val childPath = stackPath :+ IntoConnection(node.block.id, connection.id)
+        val absoluteArea = area.translate(absoluteX, absoluteY)
+        val childLayoutOpt = node.childrenFor(connection.id).headOption.map { child =>
+          val layout = layoutBlock(child, childPath, 0, absoluteArea.x, absoluteArea.y, 0.0)
+          val offsetX = (area.width - layout.block.width) / 2.0
+          val offsetY = (area.height - layout.block.height) / 2.0
+          val adjustedBlock = layout.block.copy(x = offsetX, y = offsetY)
+          val adjustedDropTargets = layout.dropTargets.map { target =>
+            target.copy(area = target.area.translate(offsetX, offsetY))
+          }
+          (adjustedBlock, adjustedDropTargets)
+        }
+        val children = childLayoutOpt.map(_._1).toList
+        val childDropTargets = childLayoutOpt.map(_._2).getOrElse(Nil)
+        val slotDropTarget = DropTarget(childPath, 0, absoluteArea, connection.acceptTypes)
+        val stack = StackLayout(childPath, absoluteArea.x, absoluteArea.y, children, childDropTargets :+ slotDropTarget, area.width, area.height)
+        RenderedParameterSlot(connection, area, stack)
+    }
+
+    val block = RenderedBlock(
+      node = node,
+      stackPath = stackPath,
+      indexInStack = indexInStack,
+      x = 0.0,
+      y = relativeY,
+      width = blockWidth,
+      height = blockHeight,
+      label = node.block.label,
+      shape = shape,
+      inside = insideOpt,
+      parameterSlots = parameterSlots
+    )
+
+    val dropTargets = insideOpt.map(_.stack.dropTargets).getOrElse(Nil) ++ parameterSlots.flatMap(_.stack.dropTargets)
+
+    BlockLayoutResult(block, dropTargets)
   }
 
-  private def stackDropZone(path: List[TurtlePathSegment], insertIndex: Int, kind: TurtleDropZoneKind): HtmlElement = {
-    val isActive = Var(false)
-    div(
-      className := s"turtle-drop-zone turtle-drop-zone--${kind.cssClass}",
-      cls.toggle("active") <-- isActive.signal,
-      onDragEnter --> ((event: DragEvent) =>
-        dragContext.peek match {
-          case Some(payload) if canAcceptStackDrop(payload) =>
-            event.preventDefault()
-            isActive.set(true)
-          case _ => ()
-        }
-      ),
-      onDragOver --> ((event: DragEvent) =>
-        dragContext.peek match {
-          case Some(payload) if canAcceptStackDrop(payload) =>
-            event.preventDefault()
-            Option(event.dataTransfer).foreach { dataTransfer =>
-              dataTransfer.dropEffect = payload match {
-                case TurtleDragPayload.EditorBlockGroup(_, _, _) => DataTransferDropEffectKind.move
-                case _                                           => DataTransferDropEffectKind.copy
-              }
-            }
-            isActive.set(true)
-          case _ => ()
-        }
-      ),
-      onDragLeave --> (_ => isActive.set(false)),
-      onDrop --> ((event: DragEvent) => {
-        event.preventDefault()
+  private def collectStacks(stack: StackLayout): Map[program.BlockPath, StackLayout] = {
+    val insideStacks = stack.blocks.flatMap(_.inside.map(_.stack))
+    val parameterStacks = stack.blocks.flatMap(_.parameterSlots.map(_.stack))
+    val nested = (insideStacks ++ parameterStacks).flatMap(collectStacks)
+    nested.toMap + (stack.path -> stack)
+  }
+
+  private def computeLayout(blocks: List[TurtleStructuredBlock]): ProgramLayout = {
+    val rootStack = layoutStack(blocks, program.rootPath, canvasPadding, canvasPadding, widthHint = 240.0, allowPrepend = false)
+    val stackIndex = collectStacks(rootStack)
+    val dropTargets = stackIndex.values.toList.flatMap(_.dropTargets)
+    ProgramLayout(
+      rootStack = rootStack,
+      stackIndex = stackIndex,
+      dropTargets = dropTargets,
+      width = rootStack.width + canvasPadding * 2,
+      height = rootStack.height + canvasPadding * 2
+    )
+  }
+
+  private def pointerCoordinates(event: PointerEvent): Option[(Double, Double)] =
+    svgElementVar.now().map { svgElem =>
+      val rect = svgElem.getBoundingClientRect()
+      (event.clientX - rect.left, event.clientY - rect.top)
+    }
+
+  private def payloadDataType(payload: TurtleDragPayload): Option[TurtleDataType] = payload match {
+    case TurtleDragPayload.PaletteBlock(definition) => Some(definition.evaluatesTo)
+    case TurtleDragPayload.EditorBlockGroup(blocks, _, _) => blocks.headOption.map(_.block.definition.evaluatesTo)
+  }
+
+  private def findBestTarget(x: Double, y: Double, payloadType: Option[TurtleDataType]): Option[DropTarget] = {
+    val layoutOpt = layoutVar.now()
+    val targets = layoutOpt.map(_.dropTargets).getOrElse(Nil)
+    payloadType.flatMap { dataType =>
+      targets
+        .filter(_.acceptTypes.contains(dataType))
+        .sortBy(target => target.area.distanceToArea(x, y))
+        .headOption
+    }
+  }
+
+  private def updateDropCandidate(x: Double, y: Double): Unit = {
+    val candidate = dragContext.peek.flatMap(payload => findBestTarget(x, y, payloadDataType(payload)))
+    highlightedTargetVar.set(candidate)
+  }
+
+  private def finalizeDrop(x: Double, y: Double): Unit = {
+    highlightedTargetVar.now() match {
+      case Some(target) =>
         dragContext.consumePayload() match {
           case Some(TurtleDragPayload.PaletteBlock(definition)) =>
             val blocks = TurtleBlockLibrary.instantiateWithCompanion(definition)
-            program.insertBlocks(path, insertIndex, blocks)
-          case Some(TurtleDragPayload.EditorBlockGroup(blocks, sourcePath, sourceIndex)) =>
-            if (blocks.nonEmpty) program.moveBlocks(sourcePath, sourceIndex, path, insertIndex)
+            program.insertBlocks(target.path, target.index, blocks)
+          case Some(TurtleDragPayload.EditorBlockGroup(_, sourcePath, sourceIndex)) =>
+            program.moveBlocks(sourcePath, sourceIndex, target.path, target.index)
           case None => ()
         }
-        isActive.set(false)
-      })
+      case None => dragContext.cancelDragIfNecessary()
+    }
+    highlightedTargetVar.set(None)
+  }
+
+  private def startPointerDrag(block: RenderedBlock, event: PointerEvent): Unit = {
+    if (block.node.block.definition.key == TurtleBlockLibrary.whenProgramStarted.key) return
+    pointerCoordinates(event).foreach { case (px, py) =>
+      layoutVar.now().flatMap(_.stackIndex.get(block.stackPath)).foreach { stackLayout =>
+        val blockTopLeftX = stackLayout.originX + block.x
+        val blockTopLeftY = stackLayout.originY + block.y
+        val offsetX = px - blockTopLeftX
+        val offsetY = py - blockTopLeftY
+        val previewBlocks = program.previewDetach(block.stackPath, block.indexInStack)
+        dragContext.startEditorDrag(previewBlocks, block.stackPath, block.indexInStack)
+        val previewLayout = layoutStack(previewBlocks, block.stackPath, blockTopLeftX, blockTopLeftY, widthHint = block.width, allowPrepend = false)
+        pointerDragStateVar.set(Some(PointerDragState(event.pointerId, block.stackPath, block.indexInStack, offsetX, offsetY, previewLayout, px, py)))
+        updateDropCandidate(px, py)
+      }
+    }
+  }
+
+  private def updatePointerDrag(event: PointerEvent): Unit = {
+    pointerCoordinates(event).foreach { case (px, py) =>
+      pointerDragStateVar.update {
+        case Some(state) if state.pointerId == event.pointerId =>
+          updateDropCandidate(px, py)
+          Some(state.copy(pointerX = px, pointerY = py))
+        case other => other
+      }
+    }
+  }
+
+  private def endPointerDrag(event: PointerEvent): Unit = {
+    pointerCoordinates(event).foreach { case (px, py) =>
+      pointerDragStateVar.now() match {
+        case Some(state) if state.pointerId == event.pointerId =>
+          finalizeDrop(px, py)
+          pointerDragStateVar.set(None)
+        case _ => ()
+      }
+    }
+  }
+
+  private def renderProgram(layout: ProgramLayout): Seq[L.SvgElement] = {
+    val background = svg.rect(
+      svg.x := "0",
+      svg.y := "0",
+      svg.width := layout.width.toString,
+      svg.height := layout.height.toString,
+      svg.fill := "#f5f7fb"
+    )
+    background +: renderStack(layout.rootStack, layout.rootStack.originX, layout.rootStack.originY)
+  }
+
+  private def renderStack(stack: StackLayout, parentOriginX: Double, parentOriginY: Double): Seq[L.SvgElement] =
+    stack.blocks.map(block => renderBlock(stack, block, parentOriginX, parentOriginY))
+
+  private def renderBlock(stack: StackLayout, block: RenderedBlock, parentOriginX: Double, parentOriginY: Double): L.SvgElement = {
+    val absoluteX = stack.originX + block.x - parentOriginX
+    val absoluteY = stack.originY + block.y - parentOriginY
+    val insideElements = block.inside.toList.map { inside =>
+      val background = svg.rect(
+        svg.x := "0",
+        svg.y := "0",
+        svg.width := inside.relativeArea.width.toString,
+        svg.height := inside.relativeArea.height.toString,
+        svg.rx := "10",
+        svg.ry := "10",
+        svg.fill := "rgba(0, 0, 0, 0.08)"
+      )
+      svg.g(
+        svg.transform := s"translate(${inside.relativeArea.x}, ${inside.relativeArea.y})",
+        background,
+        renderStack(inside.stack, inside.stack.originX, inside.stack.originY)*
+      )
+    }
+
+    val parameterElements = block.parameterSlots.flatMap { slot =>
+      val base = svg.g(
+        svg.rect(
+          svg.x := slot.relativeArea.x.toString,
+          svg.y := slot.relativeArea.y.toString,
+          svg.width := slot.relativeArea.width.toString,
+          svg.height := slot.relativeArea.height.toString,
+          svg.rx := "12",
+          svg.ry := "12",
+          svg.fill := slot.connection.placeholderColor.getOrElse("rgba(0,0,0,0.15)"),
+          svg.opacity := (if (slot.stack.blocks.nonEmpty) "0.25" else "0.35")
+        ),
+        svg.text(
+          svg.x := (slot.relativeArea.x + slot.relativeArea.width / 2).toString,
+          svg.y := (slot.relativeArea.y + slot.relativeArea.height / 2).toString,
+          svg.fill := "#0c3359",
+          svg.fontSize := "12",
+          svg.textAnchor := "middle",
+          svg.alignmentBaseline := "middle",
+          slot.connection.placeholderLabel.getOrElse("")
+        )
+      )
+      val childElement = slot.stack.blocks.headOption.map { childBlock =>
+        svg.g(
+          svg.transform := s"translate(${slot.relativeArea.x}, ${slot.relativeArea.y})",
+          renderBlock(slot.stack, childBlock, slot.stack.originX, slot.stack.originY)
+        )
+      }
+      childElement.toList :+ base
+    }
+
+    svg.g(
+      svg.transform := s"translate($absoluteX, $absoluteY)",
+      svg.style := "cursor: grab",
+      onPointerDown --> { event =>
+        event.preventDefault()
+        startPointerDrag(block, event)
+      },
+      block.shape.render(block.label, block.height),
+      insideElements*,
+      parameterElements*
     )
   }
 
-  private def socketTarget(
-    path: List[TurtlePathSegment],
-    socket: TurtleBlockSocketDefinition,
-    childrenNodes: List[TurtleStructuredBlock],
-    inlineLayout: Boolean
-  ): HtmlElement = {
-    val isActive = Var(false)
-    val targetClasses = s"turtle-parameter-target turtle-parameter-target--${socket.valueType.toString.toLowerCase()}"
-    val renderedChildren =
-      if (childrenNodes.nonEmpty)
-        childrenNodes.zipWithIndex.map { case (child, idx) => renderReporter(path, child, idx) }
-      else
-        List(div(cls := "turtle-parameter-placeholder", s"drop ${socket.label}"))
+  private def renderHighlight(target: Option[DropTarget]): Option[L.SvgElement] = target.map { drop =>
+    val area = drop.area
+    svg.rect(
+      svg.x := area.x.toString,
+      svg.y := area.y.toString,
+      svg.width := area.width.toString,
+      svg.height := area.height.toString,
+      svg.rx := "10",
+      svg.ry := "10",
+      svg.fill := "rgba(255, 204, 0, 0.35)",
+      svg.stroke := "#ffcc00",
+      svg.strokeDasharray := "8 4"
+    )
+  }
 
-    val slotClasses =
-      if (inlineLayout) "turtle-parameter-slot turtle-parameter-slot--inline"
-      else "turtle-parameter-slot"
+  private def renderPreview(state: Option[PointerDragState]): Option[L.SvgElement] = state.map { dragState =>
+    val offsetX = dragState.pointerX - dragState.offsetX
+    val offsetY = dragState.pointerY - dragState.offsetY
+    svg.g(
+      svg.opacity := "0.7",
+      svg.transform := s"translate($offsetX, $offsetY)",
+      renderStack(dragState.preview, dragState.preview.originX, dragState.preview.originY)*
+    )
+  }
 
-    div(
-      cls := slotClasses,
-      span(cls := "turtle-parameter-label", socket.label),
-      div(
-        className := targetClasses,
-        cls.toggle("active") <-- isActive.signal,
-        styleAttr := s"--socket-color: ${socket.color}",
-        onDragEnter --> ((event: DragEvent) =>
-          dragContext.peek match {
-            case Some(payload) if canAcceptSocketDrop(socket, payload) =>
-              event.preventDefault()
-              isActive.set(true)
-            case _ => ()
-          }
-        ),
-        onDragOver --> ((event: DragEvent) =>
-          dragContext.peek match {
-            case Some(payload) if canAcceptSocketDrop(socket, payload) =>
-              event.preventDefault()
-              Option(event.dataTransfer).foreach { dataTransfer =>
-                dataTransfer.dropEffect = payload match {
-                  case TurtleDragPayload.EditorBlockGroup(_, _, _) => DataTransferDropEffectKind.move
-                  case _                                           => DataTransferDropEffectKind.copy
-                }
-              }
-              isActive.set(true)
-            case _ => ()
-          }
-        ),
-        onDragLeave --> (_ => isActive.set(false)),
-        onDrop --> ((event: DragEvent) => {
+  private val layoutSignal = program.blocksSignal.map(computeLayout)
+
+  layoutSignal.foreach(layoutVar.set)(unsafeWindowOwner)
+  pointerMoveBus.events.foreach(updatePointerDrag)(unsafeWindowOwner)
+  pointerUpBus.events.foreach(endPointerDrag)(unsafeWindowOwner)
+
+  private val svgElement: L.SvgElement = {
+    svg.svg(
+      svg.ref(svgRef => svgElementVar.set(Some(svgRef))),
+      svg.pointerEvents := "all",
+      svg.width <-- layoutSignal.map(_.width.toString),
+      svg.height <-- layoutSignal.map(_.height.toString),
+      svg.viewBox <-- layoutSignal.map(layout => s"0 0 ${layout.width} ${layout.height}"),
+      onPointerMove --> pointerMoveBus.writer,
+      onPointerUp --> pointerUpBus.writer,
+      onDragOver --> { event =>
+        dragContext.peek.foreach { _ =>
           event.preventDefault()
-          dragContext.consumePayload() match {
-            case Some(TurtleDragPayload.PaletteBlock(definition)) =>
-              val blocks = TurtleBlockLibrary.instantiateWithCompanion(definition)
-              program.insertBlocks(path, 0, blocks)
-            case Some(TurtleDragPayload.EditorBlockGroup(blocks, sourcePath, sourceIndex)) =>
-              if (blocks.nonEmpty) program.moveBlocks(sourcePath, sourceIndex, path, 0)
-            case None => ()
-          }
-          isActive.set(false)
-        }),
-        renderedChildren
-      )
+          pointerCoordinates(event).foreach { case (px, py) => updateDropCandidate(px, py) }
+        }
+      },
+      onDrop --> { event =>
+        event.preventDefault()
+        pointerCoordinates(event).foreach { case (px, py) => finalizeDrop(px, py) }
+      },
+      children <-- layoutSignal.map(renderProgram),
+      child.maybe <-- highlightedTargetVar.signal.map(renderHighlight),
+      child.maybe <-- pointerDragStateVar.signal.map(renderPreview)
     )
   }
 
-  private def literalEditor(block: TurtleBlock): Option[HtmlElement] = block.definition.key match {
-    case "numericLiteral" =>
-      val currentValue = block.value.getOrElse(0.0)
-      Some(
-        input(
-          cls := "turtle-reporter-input",
-          typ := "number",
-          value := currentValue.toString,
-          onInput.mapToValue --> (value => value.toDoubleOption.foreach(num => program.updateBlockValue(block.id, num)))
-        )
-      )
-    case "booleanLiteral" =>
-      val checkedValue = block.booleanValue(default = true)
-      Some(
-        label(
-          cls := "turtle-reporter-toggle",
-          input(
-            cls := "turtle-reporter-checkbox",
-            typ := "checkbox",
-            checked := checkedValue,
-            onInput.map { event =>
-              event.target match {
-                case inputElem: html.Input => if (inputElem.checked) 1.0 else 0.0
-                case _                     => if (checkedValue) 1.0 else 0.0
-              }
-            } --> (value => program.updateBlockValue(block.id, value))
-          ),
-          span(cls := "turtle-reporter-toggle-label", if (checkedValue) "true" else "false")
-        )
-      )
-    case _ => None
-  }
-
-  private def renderReporter(
-    path: List[TurtlePathSegment],
-    node: TurtleStructuredBlock,
-    index: Int
-  ): HtmlElement = {
-    val block = node.block
-    val sockets = block.definition.sockets
-    val socketElements = sockets.map { socket =>
-      val childPath = path :+ TurtlePathSegment.IntoSocket(block.id, socket.id)
-      socketTarget(childPath, socket, node.socketContent(socket.id), inlineLayout = true)
-    }
-    val valueEditor = literalEditor(block).toList
-    val parameterContent =
-      if (valueEditor.isEmpty && socketElements.isEmpty) emptyNode
-      else div(cls := "turtle-block-params", (valueEditor ++ socketElements))
-    val selection = program.previewDetach(path, index)
-    div(
-      cls := "turtle-reporter-wrapper",
-      div(
-        cls := "turtle-reporter-block",
-        draggable := true,
-        onDragStart --> ((event: DragEvent) => {
-          if (selection.nonEmpty) {
-            Option(event.dataTransfer).foreach { dataTransfer =>
-              dataTransfer.effectAllowed = DataTransferEffectAllowedKind.move
-              dataTransfer.setData("text/turtle-block", block.definition.key)
-            }
-            dragContext.startEditorDrag(selection, path, index)
-          } else {
-            event.preventDefault()
-          }
-        }),
-        onDragEnd --> (_ => dragContext.cancelDragIfNecessary()),
-        onContextMenu.preventDefault --> (_ => program.removeBlock(block.id)),
-        div(
-          cls := "turtle-reporter-inner",
-          div(cls := "turtle-block-shape", block.definition.shape.render(block.label)),
-          parameterContent
-        )
-      )
-    )
-  } 
-
-  private def renderBlock(path: List[TurtlePathSegment], node: TurtleStructuredBlock, index: Int): HtmlElement = {
-    val block = node.block
-    val isRoot = block.definition.key == TurtleBlockLibrary.whenProgramStarted.key
-    val insidePath = path :+ TurtlePathSegment.IntoBlock(block.id)
-    val hasInsideArea = block.definition.supportsArea(TurtleBlockArea.Inside)
-    val insideArea =
-      if (hasInsideArea) {
-        val childNodes = renderStack(insidePath, node.inside, skipFirstDrop = false, TurtleDropZoneKind.Inside)
-        Some(div(cls := "turtle-block-inside", childNodes))
-      } else None
-    val insideContent = insideArea.getOrElse(emptyNode)
-    val socketElements = block.definition.sockets.map { socket =>
-      val socketPath = path :+ TurtlePathSegment.IntoSocket(block.id, socket.id)
-      socketTarget(socketPath, socket, node.socketContent(socket.id), inlineLayout = true)
-    }
-    val blockClasses =
-      if (hasInsideArea) "turtle-editor-block turtle-editor-block--has-inside" else "turtle-editor-block"
-    val headerContent =
-      div(
-        cls := "turtle-block-header",
-        div(cls := "turtle-block-shape", block.definition.shape.render(block.label)),
-        if (socketElements.nonEmpty) div(cls := "turtle-block-params", socketElements)
-        else emptyNode
-      )
-    div(
-      cls := "turtle-editor-branch",
-      div(
-        cls := blockClasses,
-        draggable := (!isRoot),
-        onDragStart --> ((event: DragEvent) => {
-          if (!isRoot) {
-            val selection = program.previewDetach(path, index)
-            if (selection.nonEmpty) {
-              Option(event.dataTransfer).foreach { dataTransfer =>
-                dataTransfer.effectAllowed = DataTransferEffectAllowedKind.move
-                dataTransfer.setData("text/turtle-block", block.definition.key)
-              }
-              dragContext.startEditorDrag(selection, path, index)
-            } else {
-              event.preventDefault()
-            }
-          } else {
-            event.preventDefault()
-          }
-        }),
-        onDragEnd --> (_ => dragContext.cancelDragIfNecessary()),
-        onContextMenu.preventDefault --> (_ => if (!isRoot) program.removeBlock(block.id)),
-        headerContent,
-        insideContent
-      )
-    )
-  }
-
-  private def renderStack(
-    path: List[TurtlePathSegment],
-    blocks: List[TurtleStructuredBlock],
-    skipFirstDrop: Boolean,
-    kind: TurtleDropZoneKind
-  ): Seq[HtmlElement] = {
-    val elements = scala.collection.mutable.ListBuffer.empty[HtmlElement]
-    for (idx <- 0 to blocks.length) {
-      val allowDrop =
-        if (skipFirstDrop && idx == 0) false
-        else if (idx == 0) true
-        else blocks.lift(idx - 1).forall(_.block.definition.supportsArea(TurtleBlockArea.Below))
-      if (allowDrop) {
-        elements += stackDropZone(path, idx, kind)
-      }
-      if (idx < blocks.length) {
-        elements += renderBlock(path, blocks(idx), idx)
-      }
-    }
-    elements.toList
-  }
-
-  private val domElement =
-    div(
-      cls := "turtle-editor-area",
-      children <-- program.blocksSignal.map { blocks =>
-        renderStack(program.rootPath, blocks, skipFirstDrop = true, TurtleDropZoneKind.Below)
-      }
-    )
-
-  override def getDomElement(): L.Element = domElement
+  override def getDomElement(): L.Element = svgElement
 }

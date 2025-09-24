@@ -27,12 +27,6 @@ object TurtleExpression {
     override def render: String = s"(${left.render} ${function.symbol} ${right.render})"
   }
 
-  def defaultForSocket(socket: TurtleBlockSocketDefinition): TurtleExpression =
-    socket.valueType match {
-      case TurtleValueType.Numeric => Literal(socket.defaultNumeric)
-      case TurtleValueType.Boolean => BooleanLiteral(socket.defaultBoolean)
-    }
-
   private def sanitize(value: Double): Double =
     if (value.isNaN || value.isInfinity) 0.0 else value
 }

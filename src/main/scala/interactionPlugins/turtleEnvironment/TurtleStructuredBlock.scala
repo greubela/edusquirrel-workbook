@@ -2,63 +2,70 @@ package interactionPlugins.turtleEnvironment
 
 case class TurtleStructuredBlock(
   block: TurtleBlock,
-  inside: List[TurtleStructuredBlock] = Nil,
-  socketChildren: Map[String, List[TurtleStructuredBlock]] = Map.empty
+  connectionChildren: Map[String, List[TurtleStructuredBlock]] = Map.empty
 ) {
-  def withInside(newInside: List[TurtleStructuredBlock]): TurtleStructuredBlock = copy(inside = newInside)
 
-  def withSocketChildren(socketId: String, children: List[TurtleStructuredBlock]): TurtleStructuredBlock =
-    copy(socketChildren = socketChildren.updated(socketId, children))
+  def withChildren(connectionId: String, children: List[TurtleStructuredBlock]): TurtleStructuredBlock =
+    copy(connectionChildren = connectionChildren.updated(connectionId, children))
 
-  def socketContent(socketId: String): List[TurtleStructuredBlock] = socketChildren.getOrElse(socketId, Nil)
+  def childrenFor(connectionId: String): List[TurtleStructuredBlock] =
+    connectionChildren.getOrElse(connectionId, Nil)
 }
 
 object TurtleStructuredBlock {
 
-  def simple(block: TurtleBlock): TurtleStructuredBlock = TurtleStructuredBlock(block, Nil, Map.empty)
+  def simple(block: TurtleBlock): TurtleStructuredBlock = TurtleStructuredBlock(block, Map.empty)
 
   def fromFlatList(blocks: List[TurtleBlock]): List[TurtleStructuredBlock] =
-    blocks.map(block => TurtleStructuredBlock(block, Nil, Map.empty))
+    blocks.map(block => TurtleStructuredBlock(block, Map.empty))
 
   def flattenCommands(blocks: List[TurtleStructuredBlock]): List[TurtleCommand] = {
     blocks.flatMap { node =>
       node.block.definition.behaviour match {
         case TurtleBlockBehaviour.Command(build) =>
-          val socketExpressions = socketExpressionMap(node)
-          val context = TurtleBlockContext(node.block, socketExpressions)
-          val base = build(context)
-          val nested = flattenCommands(node.inside)
-          val closing = node.block.definition.closingCommand.toList
-          base :: (nested ++ closing)
+          val expressionMap = parameterExpressionMap(node)
+          val context = TurtleBlockContext(node.block, expressionMap)
+          val baseCommand = build(context)
+          val nestedCommands = flattenCommands(enclosedChildren(node))
+          val closingCommands = node.block.definition.closingCommand.toList
+          baseCommand :: (nestedCommands ++ closingCommands)
         case _ => Nil
       }
     }
   }
 
-  private def socketExpressionMap(node: TurtleStructuredBlock): Map[String, TurtleExpression] = {
-    node.block.definition.sockets.map { socket =>
-      val expression = buildExpressionForSocket(node, socket)
-      socket.id -> expression
+  private def enclosedChildren(node: TurtleStructuredBlock): List[TurtleStructuredBlock] = {
+    node.block.definition.connections
+      .find(_.kind == TurtleConnectionKind.Enclosed)
+      .map(connection => node.childrenFor(connection.id))
+      .getOrElse(Nil)
+  }
+
+  private def parameterExpressionMap(node: TurtleStructuredBlock): Map[String, TurtleExpression] = {
+    node.block.definition.connections.collect {
+      case connection if connection.kind == TurtleConnectionKind.Parameter =>
+        val expression = buildExpressionForConnection(node, connection)
+        connection.id -> expression
     }.toMap
   }
 
-  private def buildExpressionForSocket(
+  private def buildExpressionForConnection(
     node: TurtleStructuredBlock,
-    socket: TurtleBlockSocketDefinition
+    connection: TurtleBlockConnection
   ): TurtleExpression = {
-    val children = node.socketChildren.getOrElse(socket.id, Nil).take(socket.maxChildren)
+    val children = node.childrenFor(connection.id).take(connection.maxChildren)
     if (children.nonEmpty) {
       expressionFromNode(children.head)
     } else {
-      TurtleExpression.defaultForSocket(socket)
+      connection.defaultChildren().headOption.map(expressionFromNode).getOrElse(TurtleExpression.Literal(0.0))
     }
   }
 
   private def expressionFromNode(node: TurtleStructuredBlock): TurtleExpression = {
     node.block.definition.behaviour match {
       case TurtleBlockBehaviour.Reporter(_, build) =>
-        val socketExpressions = socketExpressionMap(node)
-        build(TurtleBlockContext(node.block, socketExpressions))
+        val childExpressions = parameterExpressionMap(node)
+        build(TurtleBlockContext(node.block, childExpressions))
       case _ => TurtleExpression.Literal(node.block.numericValue())
     }
   }
