@@ -78,8 +78,8 @@ class HtmlTurtleEditorArea(
           case Some(TurtleDragPayload.PaletteBlock(definition)) =>
             val blocks = TurtleBlockLibrary.instantiateWithCompanion(definition)
             program.insertBlocks(path, insertIndex, blocks)
-          case Some(TurtleDragPayload.EditorBlockGroup(blocks, _, _)) =>
-            program.insertBlocks(path, insertIndex, blocks)
+          case Some(TurtleDragPayload.EditorBlockGroup(blocks, sourcePath, sourceIndex)) =>
+            if (blocks.nonEmpty) program.moveBlocks(sourcePath, sourceIndex, path, insertIndex)
           case None => ()
         }
         isActive.set(false)
@@ -90,7 +90,8 @@ class HtmlTurtleEditorArea(
   private def socketTarget(
     path: List[TurtlePathSegment],
     socket: TurtleBlockSocketDefinition,
-    childrenNodes: List[TurtleStructuredBlock]
+    childrenNodes: List[TurtleStructuredBlock],
+    inlineLayout: Boolean
   ): HtmlElement = {
     val isActive = Var(false)
     val targetClasses = s"turtle-parameter-target turtle-parameter-target--${socket.valueType.toString.toLowerCase()}"
@@ -100,8 +101,12 @@ class HtmlTurtleEditorArea(
       else
         List(div(cls := "turtle-parameter-placeholder", s"drop ${socket.label}"))
 
+    val slotClasses =
+      if (inlineLayout) "turtle-parameter-slot turtle-parameter-slot--inline"
+      else "turtle-parameter-slot"
+
     div(
-      cls := "turtle-parameter-slot",
+      cls := slotClasses,
       span(cls := "turtle-parameter-label", socket.label),
       div(
         className := targetClasses,
@@ -136,8 +141,8 @@ class HtmlTurtleEditorArea(
             case Some(TurtleDragPayload.PaletteBlock(definition)) =>
               val blocks = TurtleBlockLibrary.instantiateWithCompanion(definition)
               program.insertBlocks(path, 0, blocks)
-            case Some(TurtleDragPayload.EditorBlockGroup(blocks, _, _)) =>
-              program.insertBlocks(path, 0, blocks)
+            case Some(TurtleDragPayload.EditorBlockGroup(blocks, sourcePath, sourceIndex)) =>
+              if (blocks.nonEmpty) program.moveBlocks(sourcePath, sourceIndex, path, 0)
             case None => ()
           }
           isActive.set(false)
@@ -189,27 +194,36 @@ class HtmlTurtleEditorArea(
     val sockets = block.definition.sockets
     val socketElements = sockets.map { socket =>
       val childPath = path :+ TurtlePathSegment.IntoSocket(block.id, socket.id)
-      socketTarget(childPath, socket, node.socketContent(socket.id))
+      socketTarget(childPath, socket, node.socketContent(socket.id), inlineLayout = true)
     }
     val valueEditor = literalEditor(block).toList
+    val parameterContent =
+      if (valueEditor.isEmpty && socketElements.isEmpty) emptyNode
+      else div(cls := "turtle-block-params", (valueEditor ++ socketElements)*)
+    val selection = program.previewDetach(path, index)
     div(
       cls := "turtle-reporter-wrapper",
       div(
         cls := "turtle-reporter-block",
         draggable := true,
         onDragStart --> ((event: DragEvent) => {
-          Option(event.dataTransfer).foreach { dataTransfer =>
-            dataTransfer.effectAllowed = DataTransferEffectAllowedKind.move
-            dataTransfer.setData("text/turtle-block", block.definition.key)
+          if (selection.nonEmpty) {
+            Option(event.dataTransfer).foreach { dataTransfer =>
+              dataTransfer.effectAllowed = DataTransferEffectAllowedKind.move
+              dataTransfer.setData("text/turtle-block", block.definition.key)
+            }
+            dragContext.startEditorDrag(selection, path, index)
+          } else {
+            event.preventDefault()
           }
-          val detached = program.detachFrom(path, index)
-          dragContext.startEditorDrag(detached, path, () => program.insertBlocks(path, index, detached))
         }),
         onDragEnd --> (_ => dragContext.cancelDragIfNecessary()),
-        onContextMenu.preventDefault --> (_ => program.detachFrom(path, index)),
-        div(cls := "turtle-block-shape", block.definition.shape.render(block.label)),
-        valueEditor,
-        socketElements
+        onContextMenu.preventDefault --> (_ => program.removeBlock(block.id)),
+        div(
+          cls := "turtle-reporter-inner",
+          div(cls := "turtle-block-shape", block.definition.shape.render(block.label)),
+          parameterContent
+        )
       )
     )
   }
@@ -218,38 +232,52 @@ class HtmlTurtleEditorArea(
     val block = node.block
     val isRoot = block.definition.key == TurtleBlockLibrary.whenProgramStarted.key
     val insidePath = path :+ TurtlePathSegment.IntoBlock(block.id)
+    val hasInsideArea = block.definition.supportsArea(TurtleBlockArea.Inside)
     val insideArea =
-      if (block.definition.supportsArea(TurtleBlockArea.Inside)) {
+      if (hasInsideArea) {
         val childNodes = renderStack(insidePath, node.inside, skipFirstDrop = false, TurtleDropZoneKind.Inside)
-        Some(div(cls := "turtle-block-children", childNodes))
+        Some(div(cls := "turtle-block-inside", childNodes))
       } else None
+    val insideContent = insideArea.getOrElse(emptyNode)
     val socketElements = block.definition.sockets.map { socket =>
       val socketPath = path :+ TurtlePathSegment.IntoSocket(block.id, socket.id)
-      socketTarget(socketPath, socket, node.socketContent(socket.id))
+      socketTarget(socketPath, socket, node.socketContent(socket.id), inlineLayout = true)
     }
+    val blockClasses =
+      if (hasInsideArea) "turtle-editor-block turtle-editor-block--has-inside" else "turtle-editor-block"
+    val headerContent =
+      div(
+        cls := "turtle-block-header",
+        div(cls := "turtle-block-shape", block.definition.shape.render(block.label)),
+        if (socketElements.nonEmpty) div(cls := "turtle-block-params", socketElements*)
+        else emptyNode
+      )
     div(
       cls := "turtle-editor-branch",
       div(
-        cls := "turtle-editor-block",
+        cls := blockClasses,
         draggable := (!isRoot),
         onDragStart --> ((event: DragEvent) => {
           if (!isRoot) {
-            Option(event.dataTransfer).foreach { dataTransfer =>
-              dataTransfer.effectAllowed = DataTransferEffectAllowedKind.move
-              dataTransfer.setData("text/turtle-block", block.definition.key)
+            val selection = program.previewDetach(path, index)
+            if (selection.nonEmpty) {
+              Option(event.dataTransfer).foreach { dataTransfer =>
+                dataTransfer.effectAllowed = DataTransferEffectAllowedKind.move
+                dataTransfer.setData("text/turtle-block", block.definition.key)
+              }
+              dragContext.startEditorDrag(selection, path, index)
+            } else {
+              event.preventDefault()
             }
-            val detached = program.detachFrom(path, index)
-            dragContext.startEditorDrag(detached, path, () => program.insertBlocks(path, index, detached))
           } else {
             event.preventDefault()
           }
         }),
         onDragEnd --> (_ => dragContext.cancelDragIfNecessary()),
         onContextMenu.preventDefault --> (_ => if (!isRoot) program.removeBlock(block.id)),
-        div(cls := "turtle-block-shape", block.definition.shape.render(block.label)),
-        socketElements
-      ),
-      insideArea.toList
+        headerContent,
+        insideContent
+      )
     )
   }
 
