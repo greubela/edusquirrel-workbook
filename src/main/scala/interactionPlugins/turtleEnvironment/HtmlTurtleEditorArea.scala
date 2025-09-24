@@ -199,7 +199,7 @@ class HtmlTurtleEditorArea(
     val valueEditor = literalEditor(block).toList
     val parameterContent =
       if (valueEditor.isEmpty && socketElements.isEmpty) emptyNode
-      else div(cls := "turtle-block-params", (valueEditor ++ socketElements)*)
+      else div(cls := "turtle-block-params", (valueEditor ++ socketElements))
     val selection = program.previewDetach(path, index)
     div(
       cls := "turtle-reporter-wrapper",
@@ -226,7 +226,7 @@ class HtmlTurtleEditorArea(
         )
       )
     )
-  }
+  } 
 
   private def renderBlock(path: List[TurtlePathSegment], node: TurtleStructuredBlock, index: Int): HtmlElement = {
     val block = node.block
@@ -249,7 +249,7 @@ class HtmlTurtleEditorArea(
       div(
         cls := "turtle-block-header",
         div(cls := "turtle-block-shape", block.definition.shape.render(block.label)),
-        if (socketElements.nonEmpty) div(cls := "turtle-block-params", socketElements*)
+        if (socketElements.nonEmpty) div(cls := "turtle-block-params", socketElements)
         else emptyNode
       )
     div(
