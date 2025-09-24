@@ -19,7 +19,10 @@ class HtmlBlockDragFromArea(
       cls := "turtle-tab-button",
       typ := "button",
       onClick.mapTo(category) --> activeCategoryVar.writer,
-      child.text <-- activeCategoryVar.signal.map(current => if (current == category) s"★ ${category.toString}" else category.toString)
+      cls.toggle("active") <-- activeCategoryVar.signal.map(_ == category),
+      child.text <-- activeCategoryVar.signal.map(current =>
+        if (current == category) s"★ ${category.toString}" else category.toString
+      )
     )
 
   private def paletteBlock(definition: TurtleBlockDefinition): HtmlElement = {
@@ -29,7 +32,10 @@ class HtmlBlockDragFromArea(
       draggable := true,
       onDragStart --> { event =>
         dragContext.startPaletteDrag(definition)
-        event.dataTransfer.setData("text/turtle-block", definition.key)
+        Option(event.dataTransfer).foreach { dataTransfer =>
+          dataTransfer.effectAllowed = "copy"
+          dataTransfer.setData("text/turtle-block", definition.key)
+        }
       },
       onDragEnd --> (_ => dragContext.consumePayload()),
       onDblClick --> (_ => onBlockRequested(definition)),
