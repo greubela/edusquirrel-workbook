@@ -383,9 +383,12 @@ class HtmlTurtleEditorArea(
       svg.transform := s"translate($absoluteX, $absoluteY)",
       svg.style := "cursor: grab",
       onPointerDown --> { event =>
-        event.preventDefault()
-        startPointerDrag(block, event)
+        if (event.button == 0) {
+          event.preventDefault()
+          startPointerDrag(block, event)
+        }
       },
+      onContextMenu.preventDefault --> (_ => program.removeBlock(block.node.block.id)),
       block.shape.render(block.label, block.height),
       insideElements,
       parameterElements
