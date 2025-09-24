@@ -32,7 +32,7 @@ class HtmlBlockDragFromArea(
       cls := "turtle-palette-block",
       draggable := true,
       onDragStart --> { event =>
-        dragContext.startPaletteDrag(definition)
+        dragContext.startPaletteDrag(definition) 
         Option(event.dataTransfer).foreach { dataTransfer =>
           dataTransfer.effectAllowed = DataTransferEffectAllowedKind.copy //"copy"
           dataTransfer.setData("text/turtle-block", definition.key)
@@ -40,7 +40,7 @@ class HtmlBlockDragFromArea(
       },
       onDragEnd --> (_ => dragContext.consumePayload()),
       onDblClick --> (_ => onBlockRequested(definition)),
-      preview.shape.render(preview.label)
+      preview.definition.shape.render(preview.label)
     )
   }
 

@@ -2,6 +2,7 @@
 import com.raquo.laminar.api.L.{*, given}
 import contentmanagement.model.image.ImageDescription
 import contentmanagement.model.language.AppLanguage
+import interactionPlugins.automaton.{AutomatonExerciseContent, HtmlAutomatonExercise}
 import interactionPlugins.gpt.HtmlTextBasedGptExercise
 import interactionPlugins.turtleEnvironment.{HtmlTurtleExercise, TurtleCommand, TurtleExerciseContent, TurtleExpression, TurtleProgramState}
 import org.scalajs.dom
@@ -23,9 +24,11 @@ def mainApp(): Unit = {
 
 def insertWorkbook(): Unit = {
 
+  // Generic GPT Exercise
   val testEx = ExerciseContent("id-007", Map(AppLanguage.English -> "this is title"), Map(AppLanguage.English -> "this is instruction"))
   val htmlEx = HtmlTextBasedGptExercise(testEx)
 
+  //  Turtle Exercise
   val turtleSampleProgram = TurtleProgramState(
     List(
       TurtleCommand.WhenProgramStarted,
@@ -37,14 +40,12 @@ def insertWorkbook(): Unit = {
       TurtleCommand.PenUp
     )
   )
-
   val turtleTargetSvg =
     """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
       |  <g stroke="#0c3359" stroke-width="6" fill="none" stroke-linecap="round">
       |    <path d="M60 60 L180 60 L180 180 L60 180 Z"/>
       |  </g>
       |</svg>""".stripMargin
-
   val turtleExContent = TurtleExerciseContent(
     id = "turtle-001",
     titleMap = Map(AppLanguage.English -> "Draw a square"),
@@ -55,12 +56,16 @@ def insertWorkbook(): Unit = {
   )
   val htmlTurtleEx = new HtmlTurtleExercise(turtleExContent)
 
-  val worksheetDiv = document.getElementById("worksheetDts")
-
+  // Automaton exercise
+  val automatonExercise = new HtmlAutomatonExercise(AutomatonExerciseContent.divisibleByThree)
+  
   val combinedElement = div(
     htmlEx.getDomElement(),
-    htmlTurtleEx.getDomElement()
+    htmlTurtleEx.getDomElement(),
+    automatonExercise.getDomElement()
   )
+
+  val worksheetDiv = document.getElementById("worksheetDts")
 
   if (dom.document.readyState == "loading") {
     renderOnDomContentLoaded(worksheetDiv, combinedElement)

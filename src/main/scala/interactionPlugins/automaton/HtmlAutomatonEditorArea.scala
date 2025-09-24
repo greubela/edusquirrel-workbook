@@ -4,7 +4,6 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
 import com.raquo.laminar.api.L.svg
-import com.raquo.laminar.api.L.svg.*
 import org.scalajs.dom
 import org.scalajs.dom.{MouseEvent, PointerEvent, html}
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
@@ -72,7 +71,7 @@ class HtmlAutomatonEditorArea(
   private def renderContextMenu(state: ContextMenuState): HtmlElement = {
     div(
       cls := "automaton-context-menu",
-      style := s"left: ${state.x}px; top: ${state.y}px;",
+      styleAttr := s"left: ${state.x}px; top: ${state.y}px;",
       button("Set as start", onClick --> (_ => { store.setAsStart(state.nodeId); contextMenuVar.set(None) })),
       button("Toggle accepting", onClick --> (_ => { store.toggleAccepting(state.nodeId); contextMenuVar.set(None) })),
       button("Delete state", onClick --> (_ => { store.removeState(state.nodeId); contextMenuVar.set(None) }))
@@ -90,10 +89,10 @@ class HtmlAutomatonEditorArea(
         val controlOffset = 60.0
         val pathData =
           s"M ${centerX} ${topY} C ${centerX - controlOffset} ${topY - controlOffset}, ${centerX + controlOffset} ${topY - controlOffset}, ${centerX} ${topY}"
-        path(d := pathData, cls := "self-loop")
+        svg.path(svg.d := pathData, svg.cls := "self-loop")
       } else {
         val (startX, startY, endX, endY) = edgeEndpoints(from, to)
-        path(d := s"M $startX $startY L $endX $endY")
+        svg.path(svg.d := s"M $startX $startY L $endX $endY")
       }
     }
   }
@@ -125,8 +124,8 @@ class HtmlAutomatonEditorArea(
           ((startX + endX) / 2.0, (startY + endY) / 2.0 - 12.0)
         }
       div(
-        cls := "automaton-transition-label",
-        style := s"left: ${x}px; top: ${y}px;",
+        L.cls := "automaton-transition-label",
+        L.styleAttr := s"left: ${x}px; top: ${y}px;",
         transition.label,
         onDblClick --> (_ => {
           val response = dom.window.prompt("Update transition symbols", transition.label)
@@ -140,16 +139,16 @@ class HtmlAutomatonEditorArea(
   }
 
   private val markerDefinition: SvgElement =
-    defs(
-      marker(
-        idAttr := "automaton-arrow",
-        viewBox := "0 0 10 10",
-        refX := "10",
-        refY := "5",
-        markerWidth := "8",
-        markerHeight := "8",
-        orient := "auto-start-reverse",
-        path(d := "M 0 0 L 10 5 L 0 10 z", fill := "var(--color-text-secondary)")
+    svg.defs(
+      svg.marker(
+        svg.idAttr := "automaton-arrow",
+        svg.viewBox := "0 0 10 10",
+        svg.refX := "10",
+        svg.refY := "5",
+        svg.markerWidth := "8",
+        svg.markerHeight := "8",
+        svg.orient := "auto-start-reverse",
+        svg.path(svg.d := "M 0 0 L 10 5 L 0 10 z", svg.fill := "var(--color-text-secondary)")
       )
     )
 
@@ -160,8 +159,8 @@ class HtmlAutomatonEditorArea(
         containerElement = Some(ctx.thisNode.ref.asInstanceOf[html.Div])
         updateSize()
       }),
-      windowEvents.onResize --> (_ => updateSize()),
-      documentEvents.onPointerMove --> (event =>
+      onResize --> (_ => updateSize()),
+      onPointerMove --> (event =>
         draggingVar.now() match {
           case Some((nodeId, offsetX, offsetY)) =>
             containerElement.foreach { container =>
@@ -173,13 +172,13 @@ class HtmlAutomatonEditorArea(
           case None =>
         }
       ),
-      documentEvents.onPointerUp --> (_ => draggingVar.set(None)),
-      documentEvents.onPointerDown --> (_ => contextMenuVar.set(None)),
+      onPointerUp --> (_ => draggingVar.set(None)),
+      onPointerDown --> (_ => contextMenuVar.set(None)),
       svg.svg(
-        cls := "automaton-transition-layer",
+        svg.cls := "automaton-transition-layer",
         markerDefinition,
-        viewBox <-- sizeVar.signal.map { case (w, h) => s"0 0 $w $h" },
-        preserveAspectRatio := "none",
+        svg.viewBox <-- sizeVar.signal.map { case (w, h) => s"0 0 $w $h" },
+        svg.preserveAspectRatio := "none",
         children <-- store.stateVar.signal.map { state =>
           val nodes = state.nodeMap
           state.transitions.flatMap(transition => transitionPath(transition, nodes))
@@ -204,7 +203,7 @@ class HtmlAutomatonEditorArea(
             ).filterNot(_.isEmpty)
             div(
               cls := baseClasses.mkString(" "),
-              style := s"left: ${node.x}px; top: ${node.y}px;",
+              styleAttr := s"left: ${node.x}px; top: ${node.y}px;",
               node.label,
               onPointerDown --> ((event: PointerEvent) => startDrag(node, event)),
               onClick --> (_ => handleTransitionClick(node.id)),

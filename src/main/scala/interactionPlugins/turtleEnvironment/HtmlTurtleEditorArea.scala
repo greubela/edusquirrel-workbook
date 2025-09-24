@@ -142,7 +142,7 @@ class HtmlTurtleEditorArea(
           }
           isActive.set(false)
         }),
-        children := renderedChildren
+        renderedChildren
       )
     )
   }
@@ -207,9 +207,9 @@ class HtmlTurtleEditorArea(
         }),
         onDragEnd --> (_ => dragContext.cancelDragIfNecessary()),
         onContextMenu.preventDefault --> (_ => program.detachFrom(path, index)),
-        div(cls := "turtle-block-shape", block.shape.render(block.label)),
-        valueEditor*,
-        socketElements*
+        div(cls := "turtle-block-shape", block.definition.shape.render(block.label)),
+        valueEditor,
+        socketElements
       )
     )
   }
@@ -221,7 +221,7 @@ class HtmlTurtleEditorArea(
     val insideArea =
       if (block.definition.supportsArea(TurtleBlockArea.Inside)) {
         val childNodes = renderStack(insidePath, node.inside, skipFirstDrop = false, TurtleDropZoneKind.Inside)
-        Some(div(cls := "turtle-block-children", children := childNodes))
+        Some(div(cls := "turtle-block-children", childNodes))
       } else None
     val socketElements = block.definition.sockets.map { socket =>
       val socketPath = path :+ TurtlePathSegment.IntoSocket(block.id, socket.id)
@@ -246,10 +246,10 @@ class HtmlTurtleEditorArea(
         }),
         onDragEnd --> (_ => dragContext.cancelDragIfNecessary()),
         onContextMenu.preventDefault --> (_ => if (!isRoot) program.removeBlock(block.id)),
-        div(cls := "turtle-block-shape", block.shape.render(block.label)),
-        socketElements*
+        div(cls := "turtle-block-shape", block.definition.shape.render(block.label)),
+        socketElements
       ),
-      insideArea.toList*
+      insideArea.toList
     )
   }
 

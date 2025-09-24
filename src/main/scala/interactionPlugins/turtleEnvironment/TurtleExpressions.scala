@@ -9,7 +9,7 @@ object TurtleExpression {
 
   case class Literal(value: Double) extends TurtleExpression {
     override def evaluate: Double = sanitize(value)
-    override def render: String = sanitize(value).formatted("%.2f").replaceAll("\.00$", "")
+    override def render: String = sanitize(value).formatted("%.2f").replaceAll("\\.00$", "")
   }
 
   case class BooleanLiteral(value: Boolean) extends TurtleExpression {

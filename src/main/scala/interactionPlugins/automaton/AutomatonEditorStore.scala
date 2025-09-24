@@ -1,6 +1,7 @@
 package interactionPlugins.automaton
 
 import com.raquo.airstream.state.Var
+import util.IdHelper
 
 import scala.collection.mutable
 
@@ -93,7 +94,7 @@ class AutomatonEditorStore(
   def addTransition(from: String, to: String, rawSymbols: String): Option[AutomatonTransition] = {
     val symbols = AutomatonTransition.parseSymbols(rawSymbols)
     if (symbols.isEmpty) return None
-    val id = java.util.UUID.randomUUID().toString
+    val id = IdHelper.getNextId()
     val transition = AutomatonTransition(id, from, to, symbols)
     emit(withUpdatedTransitions(currentState.transitions :+ transition))
     Some(transition)

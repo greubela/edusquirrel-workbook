@@ -3,6 +3,7 @@ package interactionPlugins.turtleEnvironment
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import com.raquo.laminar.api.L._
 import workbook.model.display.InteractionComponent.InteractionComponentWithReactiveVars
 
 class TurtleScaffoldingStateComponent(stateVar: Var[TurtleScaffoldingState]) extends InteractionComponentWithReactiveVars {
@@ -34,7 +35,10 @@ class TurtleTargetPreviewComponent(targetSvg: String, description: Option[String
     div(
       cls := "turtle-target-preview",
       descriptionNodes,
-      div(cls := "turtle-target-image", unsafeInnerHtml := targetSvg)
+      div(cls := "turtle-target-image",
+        onMountCallback { ctx =>
+          ctx.thisNode.ref.innerHTML = targetSvg
+        })
     )
 
   override def getDomElement(): L.Element = domElement
@@ -69,7 +73,9 @@ class TurtleGradingResultComponent(resultVar: Var[Option[TurtleGradingFeedback]]
         case Some(result) =>
           div(
             h3(s"Result: ${result.grade}"),
-            div(cls := "turtle-grading-svg", unsafeInnerHtml := result.svg),
+            div(cls := "turtle-grading-svg", onMountCallback { ctx =>
+              ctx.thisNode.ref.innerHTML = result.svg // direct, unsafe write
+            }),
             div(
               cls := "turtle-grading-summary",
               p(s"Missing lines: ${result.missingLines.size}"),

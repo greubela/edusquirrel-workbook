@@ -367,7 +367,7 @@ object TurtleBlockLibrary {
     key = "numericLiteral",
     category = TurtleBlockCategory.Reporter,
     shape = reporterShape.copy(backgroundColor = "#FFAB19"),
-    labelForValue = value => value.map(v => s"${v.formatted("%.1f").replaceAll("\.0$", "")}").getOrElse("number"),
+    labelForValue = value => value.map(v => s"${v.formatted("%.1f").replaceAll("\\.0$", "")}").getOrElse("number"),
     defaultValue = Some(0.0),
     behaviour = TurtleBlockBehaviour.Reporter(TurtleValueType.Numeric, ctx => TurtleExpression.Literal(ctx.block.numericValue())),
     sanitizeValueFn = value => value.map(v => if (v.isNaN || v.isInfinity) 0.0 else v)

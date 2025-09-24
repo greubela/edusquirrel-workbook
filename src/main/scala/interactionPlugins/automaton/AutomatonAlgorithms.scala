@@ -1,5 +1,7 @@
 package interactionPlugins.automaton
 
+import util.IdHelper
+
 import scala.collection.mutable
 
 object AutomatonAlgorithms {
@@ -94,7 +96,7 @@ object AutomatonAlgorithms {
 
     val nodes = subsetNodes.values.toVector
     val transitions = transitionLabels.toVector.map { case ((from, to), symbols) =>
-      AutomatonTransition(java.util.UUID.randomUUID().toString, from, to, symbols.toSet)
+      AutomatonTransition(IdHelper.getNextId(), from, to, symbols.toSet)
     }
 
     Some(AutomatonEditorState(AutomatonMode.Dfa, nodes, transitions))
@@ -214,7 +216,7 @@ object AutomatonAlgorithms {
     }
 
     val minimizedTransitions = transitionLabels.toVector.map { case ((from, to), symbols) =>
-      AutomatonTransition(java.util.UUID.randomUUID().toString, from, to, symbols.toSet)
+      AutomatonTransition(IdHelper.getNextId(), from, to, symbols.toSet)
     }
 
     AutomatonEditorState(AutomatonMode.Dfa, partitionNodes.toVector, minimizedTransitions)
