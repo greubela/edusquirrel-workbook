@@ -1,5 +1,6 @@
 package interactionPlugins.turtleEnvironment
 
+import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import org.scalajs.dom.{DragEvent, html}
@@ -10,21 +11,45 @@ class HtmlTurtleEditorArea(
   dragContext: TurtleBlockDragContext
 ) extends HtmlWorkbookElement {
 
-  private def dropZone(insertIndex: Int): HtmlElement =
+  private def dropZone(insertIndex: Int): HtmlElement = {
+    val isActive = Var(false)
     div(
       cls := "turtle-drop-zone",
-      onDragOver --> ((event: DragEvent) => event.preventDefault()),
+      cls.toggle("active") <-- isActive.signal,
+      onDragEnter --> ((event: DragEvent) =>
+        if (dragContext.peek.nonEmpty) {
+          event.preventDefault()
+          isActive.set(true)
+        }
+      ),
+      onDragOver --> ((event: DragEvent) =>
+        dragContext.peek match {
+          case Some(TurtleDragPayload.PaletteBlock(_)) =>
+            event.preventDefault()
+            Option(event.dataTransfer).foreach(_.dropEffect = "copy")
+            isActive.set(true)
+          case Some(TurtleDragPayload.EditorBlockGroup(_, _, _)) =>
+            event.preventDefault()
+            Option(event.dataTransfer).foreach(_.dropEffect = "move")
+            isActive.set(true)
+          case None => ()
+        }
+      ),
+      onDragLeave --> (_ => isActive.set(false)),
       onDrop --> ((event: DragEvent) => {
         event.preventDefault()
-        dragContext.consumePayload().foreach {
-          case TurtleDragPayload.PaletteBlock(definition) =>
+        dragContext.consumePayload() match {
+          case Some(TurtleDragPayload.PaletteBlock(definition)) =>
             val blocks = TurtleBlockLibrary.instantiateWithCompanion(definition)
             program.insertBlocks(insertIndex, blocks)
-          case TurtleDragPayload.EditorBlockGroup(blocks, _, _) =>
+          case Some(TurtleDragPayload.EditorBlockGroup(blocks, _, _)) =>
             program.insertBlocks(insertIndex, blocks)
+          case None => ()
         }
+        isActive.set(false)
       })
     )
+  }
 
   private def editorBlock(block: TurtleBlock, index: Int): HtmlElement = {
     val isRoot = block.command == TurtleCommand.WhenProgramStarted
@@ -63,7 +88,10 @@ class HtmlTurtleEditorArea(
       draggable := (!isRoot),
       onDragStart --> ((event: DragEvent) => {
         if (!isRoot) {
-          event.dataTransfer.setData("text/turtle-block", block.definition.key)
+          Option(event.dataTransfer).foreach { dataTransfer =>
+            dataTransfer.effectAllowed = "move"
+            dataTransfer.setData("text/turtle-block", block.definition.key)
+          }
           val detached = program.detachFrom(index)
           dragContext.startEditorDrag(detached, index, () => program.insertBlocks(index, detached))
         } else {
