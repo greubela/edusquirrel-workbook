@@ -42,15 +42,11 @@ jobs:
           find . \( -path "*/target/scala-*/**/*fastopt.js" -o -path "*/target/scala-*/**/*opt.js" \) \
             -print -exec cp {} dist/ \;
 
-      # ------- Option A: Commit built files into the repo (docs/ on main) -------
-      - name: Commit built JS to docs/ (main only)
-        if: github.ref == 'refs/heads/main'
-        run: |
-          rm -rf docs
-          mkdir -p docs
-          cp -R dist/* docs/ || true
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs || true
-          git commit -m "chore(ci): update built Scala.js assets [skip ci]" || echo "No changes to commit"
-          git push
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
