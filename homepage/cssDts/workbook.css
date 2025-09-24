@@ -378,16 +378,20 @@ body {
 
 .turtle-editor-block {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: stretch;
   gap: var(--space-sm);
-  padding: var(--space-xs);
+  padding: var(--space-sm);
   border-radius: var(--radius-sm);
   background: var(--color-interaction-background);
   border: 1px solid transparent;
   box-shadow: var(--shadow-light);
   cursor: grab;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.turtle-editor-block--has-inside {
+  padding-bottom: calc(var(--space-sm) + 0.25rem);
 }
 
 .turtle-editor-block:hover {
@@ -414,13 +418,32 @@ body {
   pointer-events: none;
 }
 
-.turtle-block-children {
+.turtle-block-header,
+.turtle-reporter-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.turtle-block-params {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.turtle-block-inside {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  margin-left: 2.25rem;
-  padding-left: var(--space-sm);
-  border-left: 2px dashed var(--color-border-subtle);
+  margin-left: 1.75rem;
+  padding: var(--space-sm);
+  padding-left: calc(var(--space-sm) + 0.75rem);
+  border-left: 4px solid color-mix(in srgb, var(--color-border-subtle) 70%, transparent);
+  border-bottom: 4px solid color-mix(in srgb, var(--color-border-subtle) 70%, transparent);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: color-mix(in srgb, var(--color-interaction-background-alt) 75%, white);
 }
 
 .turtle-parameter-slot {
@@ -434,12 +457,30 @@ body {
   min-width: 160px;
 }
 
+.turtle-parameter-slot--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 0;
+  border: none;
+  background: transparent;
+  min-width: 0;
+}
+
 .turtle-parameter-label {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 0.65rem;
   font-weight: 700;
   color: var(--color-text-secondary);
+}
+
+.turtle-parameter-slot--inline .turtle-parameter-label {
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
 }
 
 .turtle-parameter-target {
@@ -457,10 +498,21 @@ body {
   transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
+.turtle-parameter-slot--inline .turtle-parameter-target {
+  flex-direction: row;
+  align-items: center;
+  min-height: auto;
+  padding: 0.2rem 0.45rem;
+}
+
 .turtle-parameter-target.active {
   border-color: var(--socket-color);
   background: color-mix(in srgb, var(--socket-color) 18%, white);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--socket-color) 25%, transparent);
+}
+
+.turtle-parameter-slot--inline .turtle-parameter-placeholder {
+  padding: 0;
 }
 
 .turtle-parameter-placeholder {
@@ -480,8 +532,8 @@ body {
 .turtle-reporter-block {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xxs);
-  padding: var(--space-xs);
+  gap: var(--space-xs);
+  padding: var(--space-sm);
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   background: var(--color-surface);
@@ -496,7 +548,7 @@ body {
   box-shadow: var(--shadow-soft);
 }
 
-.turtle-reporter-block svg {
+.turtle-reporter-inner svg {
   pointer-events: none;
 }
 

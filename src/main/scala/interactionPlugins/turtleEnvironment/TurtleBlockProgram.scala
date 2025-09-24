@@ -65,6 +65,31 @@ class TurtleBlockProgram(
     }
   }
 
+  def previewDetach(path: BlockPath, index: Int): List[TurtleStructuredBlock] = {
+    var detached: List[TurtleStructuredBlock] = Nil
+    transformStack(currentBlocks, path) { stack =>
+      if (stack.isEmpty) stack
+      else {
+        val safeIndex = clampRemovalIndex(path, index, stack.length)
+        val (_, suffix) = stack.splitAt(safeIndex)
+        detached = suffix
+        stack
+      }
+    }
+    detached
+  }
+
+  def moveBlocks(sourcePath: BlockPath, sourceIndex: Int, targetPath: BlockPath, targetIndex: Int): Unit = {
+    val candidate = previewDetach(sourcePath, sourceIndex)
+    if (candidate.nonEmpty) {
+      val sanitizedForTarget = sanitizeBlocksForPath(targetPath, candidate)
+      if (sanitizedForTarget.nonEmpty) {
+        val detached = detachFrom(sourcePath, sourceIndex)
+        insertBlocks(targetPath, targetIndex, detached)
+      }
+    }
+  }
+
   def detachFrom(path: BlockPath, index: Int): List[TurtleStructuredBlock] = {
     var detached: List[TurtleStructuredBlock] = Nil
     val updated = transformStack(currentBlocks, path) { stack =>
