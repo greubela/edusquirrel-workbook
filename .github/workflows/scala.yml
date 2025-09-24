@@ -1,4 +1,4 @@
-name: Scala.js Build & Publish
+name: Scala CI
 
 on:
   push:
@@ -6,18 +6,11 @@ on:
   pull_request:
     branches: [ "main" ]
 
-# Needed for committing built files and deploying Pages
 permissions:
-  contents: write
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
+  contents: read
 
 jobs:
-  build-and-publish:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -27,20 +20,22 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "11"
+          java-version: '11'
 
       - name: Set up sbt
         uses: sbt/setup-sbt@v1
 
-      - name: Set up Node.js (for Scala.js tooling/bundling)
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "lts/*"
-          cache: "npm"   # safe to keep; ignored if no package-lock.json
+          node-version: 'lts/*'
 
-      - name: Build Scala.js (fast & full)
+      - name: Compile with sbt (fast)
+        run: sbt -v fastOptJS
+
+      - name: Build Scala.js (full)
         run: |
-          sbt -v fastOptJS fullOptJS
+          sbt -v fullOptJS
           mkdir -p dist
           # Copy typical Scala.js outputs (*.fastopt.js and *.opt.js) into dist/
           # This glob covers single- or multi-module projects.
@@ -59,12 +54,3 @@ jobs:
           git add docs || true
           git commit -m "chore(ci): update built Scala.js assets [skip ci]" || echo "No changes to commit"
           git push
-
-      # ------- Option B: Publish dist/ to GitHub Pages -------
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./dist
-
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
