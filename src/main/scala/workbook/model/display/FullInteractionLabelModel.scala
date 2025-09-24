@@ -11,15 +11,10 @@ case class FullInteractionLabelModel(labelMap: Map[AppLanguage, Map[InteractionC
   def getLabelFor(language: AppLanguage, role: InteractionContentRole): String = {
     val alternativeString =
       if (language == AppLanguage.English)
-        "[label not found for '" + role + "' in language '" + language + "']"
+        s"[label not found for '$role' in language '$language']"
       else getLabelFor(AppLanguage.English, role)
 
-    if (labelMap.contains(language)) {
-      if (labelMap(language).contains(role)) {
-        return labelMap(language)(role)
-      }
-    }
-    alternativeString
+    labelMap.get(language).flatMap(_.get(role)).getOrElse(alternativeString)
   }
 }
 

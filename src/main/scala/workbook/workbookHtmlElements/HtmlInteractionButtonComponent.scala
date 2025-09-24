@@ -40,6 +40,28 @@ object HtmlInteractionButtonComponent {
   val buttonFillColorScaffolderHighlight: RGBColor = RGBColor.blue
   val buttonFillColorGraderHighlight: RGBColor = RGBColor.green
 
+  private def createGradingGradient(id: String): ReactiveSvgElement[SVGLinearGradientElement] =
+    svg.linearGradient(
+      svg.idAttr := id,
+      svg.x1 := "4",
+      svg.x2 := "20",
+      svg.y1 := "0",
+      svg.y2 := "0",
+      svg.gradientUnits := "userSpaceOnUse",
+      svg.stop(
+        svg.offsetAttr := "0",
+        svg.stopColor := "#00ff00",
+      ),
+      svg.stop(
+        svg.offsetAttr := "0.5",
+        svg.stopColor := "#ffff00",
+      ),
+      svg.stop(
+        svg.offsetAttr := "1",
+        svg.stopColor := "#ff0000",
+      )
+    )
+
 
   case class ShowScaffoldingButton(onAction: MouseEvent => Any) extends HtmlInteractionButtonComponent {
 
@@ -47,7 +69,7 @@ object HtmlInteractionButtonComponent {
 
     val buttonSvg: Element =
       svg.svg(
-        onClick --> { event => if (!this.isDisabledVar.now()) onAction.apply(event) },
+        onClick --> { event => if (!this.isDisabledVar.now()) onAction(event) },
         onMouseEnter --> { event => if (!this.isDisabledVar.now()) this.setHighlight(true) },
         onMouseLeave --> { event => this.setHighlight(false) },
         svg.viewBox := "0 0 24 24",
@@ -70,13 +92,13 @@ object HtmlInteractionButtonComponent {
   }
 
 
-  case class ShowEditorButton(onAction: MouseEvent => Any) extends HtmlInteractionButtonComponent  {
+  case class ShowEditorButton(onAction: MouseEvent => Any) extends HtmlInteractionButtonComponent {
 
     val forContentRole: InteractionContentRole = ButtonShowEditor
 
     val buttonSvg: Element = svg.svg(
       svg.cls := "svg-button button-show-editor",
-      onClick --> { event => if (!this.isDisabledVar.now()) onAction.apply(event) },
+      onClick --> { event => if (!this.isDisabledVar.now()) onAction(event) },
       onMouseEnter --> { event => if (!this.isDisabledVar.now()) this.setHighlight(true) },
       onMouseLeave --> { event => this.setHighlight(false) },
       svg.viewBox := "0 0 24 24",
@@ -103,27 +125,8 @@ object HtmlInteractionButtonComponent {
 
     val forContentRole: InteractionContentRole = ButtonShowGrader
 
-    private val gradingGradient: ReactiveSvgElement[SVGLinearGradientElement] =
-      svg.linearGradient(
-        svg.idAttr := "gradient-fill",
-        svg.x1 := "4",
-        svg.x2 := "20",
-        svg.y1 := "0",
-        svg.y2 := "0",
-        svg.gradientUnits := "userSpaceOnUse",
-        svg.stop(
-          svg.offsetAttr := "0",
-          svg.stopColor := "#00ff00",
-        ),
-        svg.stop(
-          svg.offsetAttr := "0.5",
-          svg.stopColor := "#ffff00",
-        ),
-        svg.stop(
-          svg.offsetAttr := "1",
-          svg.stopColor := "#ff0000",
-        )
-      )
+    private val gradientId = "gradient-fill-show"
+    private val gradingGradient: ReactiveSvgElement[SVGLinearGradientElement] = createGradingGradient(gradientId)
 
 
     val buttonSvg: Element =
@@ -131,13 +134,13 @@ object HtmlInteractionButtonComponent {
         gradingGradient,
 
         svg.cls := "svg-button button-grading",
-        onClick --> { event => if (!this.isDisabledVar.now()) onAction.apply(event) },
+        onClick --> { event => if (!this.isDisabledVar.now()) onAction(event) },
         onMouseEnter --> { event => if (!this.isDisabledVar.now()) this.setHighlight(true) },
         onMouseLeave --> { event => this.setHighlight(false) },
         svg.viewBox := "0 0 24 24",
         svg.fill := "none",
         svg.path(
-          svg.fill <-- isHighlightedVar.signal.map(if (_) "url(#gradient-fill)" else buttonFillColorDefault.toHex()),
+          svg.fill <-- isHighlightedVar.signal.map(if (_) s"url(#$gradientId)" else buttonFillColorDefault.toHex()),
           svg.stroke <-- isHighlightedVar.signal.map(if (_) buttonFillColorEditorHighlight.toHex() else buttonLineColorDefault.toHex()),
 
           svg.cls := "button-borderpath",
@@ -162,27 +165,8 @@ object HtmlInteractionButtonComponent {
 
     val forContentRole: InteractionContentRole = ButtonStartGrading
 
-    private val gradingGradient: ReactiveSvgElement[SVGLinearGradientElement] =
-      svg.linearGradient(
-        svg.idAttr := "gradient-fill",
-        svg.x1 := "4",
-        svg.x2 := "20",
-        svg.y1 := "0",
-        svg.y2 := "0",
-        svg.gradientUnits := "userSpaceOnUse",
-        svg.stop(
-          svg.offsetAttr := "0",
-          svg.stopColor := "#00ff00",
-        ),
-        svg.stop(
-          svg.offsetAttr := "0.5",
-          svg.stopColor := "#ffff00",
-        ),
-        svg.stop(
-          svg.offsetAttr := "1",
-          svg.stopColor := "#ff0000",
-        )
-      )
+    private val gradientId = "gradient-fill-start"
+    private val gradingGradient: ReactiveSvgElement[SVGLinearGradientElement] = createGradingGradient(gradientId)
 
 
     val buttonSvg: Element =
@@ -190,13 +174,13 @@ object HtmlInteractionButtonComponent {
         gradingGradient,
 
         svg.cls := "svg-button button-grading",
-        onClick --> { event => if (!this.isDisabledVar.now()) onAction.apply(event) },
+        onClick --> { event => if (!this.isDisabledVar.now()) onAction(event) },
         onMouseEnter --> { event => if (!this.isDisabledVar.now()) this.setHighlight(true) },
         onMouseLeave --> { event => this.setHighlight(false) },
         svg.viewBox := "0 0 24 24",
         svg.fill := "none",
         svg.path(
-          svg.fill <-- isHighlightedVar.signal.map(if (_) "url(#gradient-fill)" else buttonFillColorDefault.toHex()),
+          svg.fill <-- isHighlightedVar.signal.map(if (_) s"url(#$gradientId)" else buttonFillColorDefault.toHex()),
           svg.stroke <-- isHighlightedVar.signal.map(if (_) buttonFillColorEditorHighlight.toHex() else buttonLineColorDefault.toHex()),
 
           svg.cls := "button-borderpath",
@@ -223,7 +207,7 @@ object HtmlInteractionButtonComponent {
 
     val buttonSvg: Element = svg.svg(
       svg.cls := "svg-button button-start-grading",
-      onClick --> { event => if (!this.isDisabledVar.now()) onAction.apply(event) },
+      onClick --> { event => if (!this.isDisabledVar.now()) onAction(event) },
       onMouseEnter --> { event => if (!this.isDisabledVar.now()) this.setHighlight(true) },
       onMouseLeave --> { event => this.setHighlight(false) },
       svg.viewBox := "0 0 24 24",

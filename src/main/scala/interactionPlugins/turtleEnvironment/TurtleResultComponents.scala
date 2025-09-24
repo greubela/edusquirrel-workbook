@@ -2,7 +2,6 @@ package interactionPlugins.turtleEnvironment
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.*
 import com.raquo.laminar.api.L._
 import workbook.model.display.InteractionComponent.InteractionComponentWithReactiveVars
 
