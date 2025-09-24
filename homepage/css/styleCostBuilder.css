@@ -1,7 +1,8 @@
 
+@import url('colors.css');
 
 #cost-selector > .editor-content{
-	width: 100%;
+        width: 100%;
 }
 
 #cost-selector .image-row{
@@ -21,7 +22,7 @@
 	height: 50px;
 	
 	justify-content: center;
-	background-color: var(--color-input-light);
+        background-color: var(--color-interaction-background-alt);
 }
 
 #cost-builder-show-result canvas {
@@ -85,28 +86,28 @@
 	width: 20px;
 	height: 20px;
 
-	background-color: var(--textcolor-background-dark);
-	border: 2px solid var(--color-main-contrast);
+        background-color: var(--color-input-background);
+        border: 2px solid var(--color-border);
 
-	cursor: pointer;
-	position: relative;
+        cursor: pointer;
+        position: relative;
 
-	font-size: var(--fontsize-text);	
+        font-size: var(--fontsize-text);
 }
 
 #cost-selector .checkbox-row  input[type="checkbox"]:checked {
-	background-color: var(--color-main-contrast); 
-	border: 2px solid var(--textcolor-background-dark);
+        background-color: var(--color-accent-primary);
+        border: 2px solid var(--color-border);
 }
 
 #cost-selector .checkbox-row  input[type="checkbox"]:checked::after {
-	content: "✓";
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	color: var(--textcolor-background-dark);
+        content: "✓";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: var(--color-on-accent-primary);
 }
 #cost-selector .checkbox-row label {
-	color: var(--textcolor-background-dark);
+        color: var(--color-text-secondary);
 }

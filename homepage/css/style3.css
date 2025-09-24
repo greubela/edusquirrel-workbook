@@ -9,7 +9,7 @@
 	flex-wrap: wrap;
 	gap: var(--standard-gap);
 	
-	background-color: var(--color-background-dark);
+        background-color: var(--color-surface-subtle);
 	
 	max-width: 600px;
 	max-height: 100vh;
@@ -21,7 +21,7 @@
 .editor-element {
 	width: 100%;
 	justify-content: center;
-	border: 3px solid var(--color-background-dark-lighter);
+        border: 3px solid var(--color-border-strong);
 	
 	display: flex;
 	flex-wrap: wrap;
@@ -36,15 +36,15 @@
 	
 	font-size: var(--fontsize-headings-element);
 	
-	background-color: var(--color-background-dark-lighter);
-	color: var(--textcolor-background-dark);
+        background-color: var(--color-surface);
+        color: var(--color-text-secondary);
 	
 	text-align:center;
 }
 
 .editor-element > .editor-content{
 	width: 100%;
-	background-color: var(--color-background-dark);
+        background-color: var(--color-surface-subtle);
 	display:grid;
 	
 }
@@ -71,21 +71,21 @@
 /* --- Configuration and Stuff --- */
 
 .editor-button.hoverable-border:hover{
-	background-color: var(--bg-hover);
-	transform: scale(1.03);
+        background-color: var(--color-accent-primary);
+        transform: scale(1.03);
 }
 
 .editor-button{
-	display:flex;
-	width: 100%;
-	height: 50px;	
-	
-	background-color: var(--color-background-dark-lighter);
-	
-	border: 2px solid var(--color-input-light);
-	border-radius: var(--standard-border-radius);
-	
-	color: var(--textcolor-background-dark);
+        display:flex;
+        width: 100%;
+        height: 50px;
+
+        background-color: var(--color-surface);
+
+        border: 2px solid var(--color-input-border);
+        border-radius: var(--standard-border-radius);
+
+        color: var(--color-text-secondary);
 	
 	font-size: var(--fontsize-text);	
 	
@@ -104,10 +104,10 @@
 .download-btn {
   padding: var(--padding-small) var(--padding-medium);
   background-color: var(--bg-card-dark);
-  color: var(--text-light);
+  color: var(--color-text-primary);
   text-decoration: none;
-  border-radius: var(--border-radius);
-  border: 2px solid var(--border-main);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-border);
   transition: var(--transition);
   width: 200px;
   text-align: center;
@@ -123,12 +123,12 @@
 
 /* Behavioral Classes */
 .hover-border {
-  border-color: var(--border-main);
+  border-color: var(--color-border);
   transition: var(--transition);
 }
 
 .hover-border:hover {
-  border-color: var(--border-hover);
+  border-color: var(--color-accent-primary);
 }
 
 /* Left Section */
@@ -136,8 +136,8 @@
   width: 50%;
   display: flex;
   flex-direction: column;
-  background-color: var(--color-background-dark-lighter);
-  border-right: 3px solid var(--border-main);
+  background-color: var(--color-surface);
+  border-right: 3px solid var(--color-border);
   overflow: auto;
 }
 
@@ -153,7 +153,7 @@
 
 .card-preview h2 {
   margin-bottom: var(--padding-small);
-  color: var(--text-light);
+  color: var(--color-text-primary);
   font-weight: 600;
   font-size: var(--font-size-header);
   text-align: center;
@@ -173,8 +173,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  border: 3px solid var(--border-main);
-  border-radius: var(--border-radius);
+  border: 3px solid var(--color-border);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-light);
   flex-shrink: 0;
 }
@@ -187,30 +187,30 @@
   align-items: center;
   gap: var(--padding-small);
   background-color: var(--bg-card);
-  border-top: 2px solid var(--border-main);
+  border-top: 2px solid var(--color-border);
 }
 
 
 .download-btn:hover {
-  background-color: var(--bg-hover);
+  background-color: var(--color-accent-primary);
   transform: scale(1.03);
 }
 
 .download-btn:focus {
-  border-color: var(--border-focus);
-  outline: 3px solid var(--border-focus);
+  border-color: var(--color-focus);
+  outline: 3px solid var(--color-focus);
   outline-offset: 2px;
 }
 
 .download-btn.hover-border:hover {
-  border-color: var(--border-hover);
+  border-color: var(--color-accent-primary);
 }
 
 /* Right Section */
 .right-section {
   width: 50%;
   padding: var(--padding-medium);
-  background-color: var(--color-background-dark);
+  background-color: var(--color-surface-subtle);
   display: flex;
   align-items: center;
   overflow: auto;
@@ -219,7 +219,7 @@
 
 .editor h2 {
   margin-bottom: var(--padding-small);
-  color: var(--text-light);
+  color: var(--color-text-primary);
   font-weight: 600;
   font-size: var(--font-size-header);
   text-align: center;
@@ -245,10 +245,10 @@
 .input-component textarea,
 .input-component select {
   padding: 8px;
-  border: 2px solid var(--border-main);
-  border-radius: var(--border-radius);
-  background-color: var(--bg-input);
-  color: var(--text-dark);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-input-background);
+  color: var(--color-text-primary);
   width: 100%;
   transition: border-color 0.3s, box-shadow 0.3s;
 }
@@ -264,13 +264,13 @@
 .input-component input.hover-border:hover,
 .input-component textarea.hover-border:hover,
 .input-component select.hover-border:hover {
-  border-color: var(--border-hover);
+  border-color: var(--color-accent-primary);
 }
 
 .input-component input:focus,
 .input-component textarea:focus,
 .input-component select:focus {
-  border-color: var(--border-focus);
+  border-color: var(--color-focus);
   box-shadow: var(--shadow-focus);
   outline: none;
 }
