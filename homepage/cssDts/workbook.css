@@ -1,57 +1,12 @@
+@import url("../css/colors.css");
+
 body {
-  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: var(--font-family);
   background-color: var(--color-app-background);
   color: var(--color-text-primary);
   margin: 0;
   padding: 0;
   line-height: 1.6;
-}
-
-:root {
-  /* --- Layout --- */
-  --space-xs: 8px;
-  --space-sm: 12px;
-  --space-md: 18px;
-  --space-lg: 26px;
-  --space-xl: 36px;
-
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 22px;
-
-  --shadow-soft: 0 22px 48px -28px rgba(15, 23, 42, 0.45);
-  --shadow-button: 0 10px 24px -18px rgba(15, 23, 42, 0.5);
-  --shadow-focus: 0 0 0 2px rgba(37, 99, 235, 0.2);
-
-  /* --- Palette --- */
-  --color-app-background: #eef2f8;
-  --color-surface: #ffffff;
-  --color-surface-muted: #f6f8fc;
-  --color-border: #d6deeb;
-  --color-border-strong: #c0cbe2;
-  --color-text-primary: #182333;
-  --color-text-secondary: #4c566a;
-  --color-text-inverse: #ffffff;
-  --color-focus: #2563eb;
-
-  /* --- Interaction Surfaces --- */
-  --color-interaction-background: #ffffff;
-  --color-interaction-background-alt: #f3f5fb;
-  --color-interaction-border: #c7d3e6;
-
-  /* --- Labels --- */
-  --color-label-editor-bg: #3066e5;
-  --color-label-editor-text: #ffffff;
-  --color-label-scaffolding-bg: #f5c542;
-  --color-label-scaffolding-text: #3b2a00;
-  --color-label-grading-unknown-bg: #d9dee8;
-  --color-label-grading-unknown-text: #2f3c4f;
-  --color-label-grading-error-bg: #e66a6a;
-  --color-label-grading-error-text: #ffffff;
-  --color-label-grading-partial-bg: #f7a942;
-  --color-label-grading-partial-text: #3b2a00;
-  --color-label-grading-correct-bg: #2f9b74;
-  --color-label-grading-correct-text: #ffffff;
 }
 
 .worksheetDts {
@@ -84,7 +39,7 @@ body {
   margin: 0;
   padding: var(--space-sm) var(--space-lg);
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #1f3b8b, #3572ef);
+  background: var(--gradient-primary);
   color: var(--color-text-inverse);
   font-weight: 600;
   font-size: 1.1rem;
@@ -200,11 +155,11 @@ body {
 
 /* --- SVG Button Styling --- */
 .svg-button {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  border: 1px solid var(--color-interaction-border);
-  background: var(--color-surface-muted);
+  width: 52px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-button-border);
+  background: var(--color-button-background);
   box-shadow: var(--shadow-button);
   display: inline-flex;
   align-items: center;
@@ -216,7 +171,7 @@ body {
 
 .svg-button:hover {
   transform: translateY(-2px);
-  background: var(--color-surface);
+  background: var(--color-button-hover);
 }
 
 .svg-button svg {
@@ -248,7 +203,7 @@ body {
 .container-exercise .container-interaction.highlight-editor .container-interaction-element,
 .container-exercise .container-interaction.highlight-editor .svg-button {
   border-color: var(--color-label-editor-bg);
-  box-shadow: 0 18px 38px -24px rgba(48, 102, 229, 0.7);
+  box-shadow: var(--shadow-highlight-editor);
 }
 
 .container-exercise .container-interaction.highlight-editor .label-editor,
@@ -260,7 +215,7 @@ body {
 .container-exercise .container-interaction.highlight-scaffolding .container-interaction-element,
 .container-exercise .container-interaction.highlight-scaffolding .svg-button {
   border-color: var(--color-label-scaffolding-bg);
-  box-shadow: 0 18px 38px -24px rgba(245, 197, 66, 0.55);
+  box-shadow: var(--shadow-highlight-scaffolding);
 }
 
 .container-exercise .container-interaction.highlight-scaffolding .label-scaffolding,
@@ -272,7 +227,7 @@ body {
 .container-exercise .container-interaction.highlight-grading .container-interaction-element,
 .container-exercise .container-interaction.highlight-grading .svg-button {
   border-color: var(--color-label-grading-correct-bg);
-  box-shadow: 0 18px 38px -24px rgba(47, 155, 116, 0.55);
+  box-shadow: var(--shadow-highlight-grading);
 }
 
 .container-exercise .container-interaction.highlight-grading .label-grading,

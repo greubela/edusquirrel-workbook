@@ -1,87 +1,130 @@
-/* Root variables for reusable styles */
+/* Shared design tokens for the workbook experience */
 :root {
-	/* --- Basic Color Palette --- */
-	--color-background-dark: #222222;
-	--color-background-dark-lighter: #333333;
-	
-	
-	--color-main-contrast: #4a1c1c;
-	--color-main-contrast-lighter: #6b2d2d;
-	
-	--color-input-light: #e0e0e0;
-	
-	--textcolor-background-dark: #d1d1d1;
-	--textcolor-input: #212529;
-	
-	
-	/* --- Feedback Colors ---*/
-	--background-info: var(--color-background-dark-lighter);
-	--background-warning: #FFBF00;
-	--background-error: #4a1c1c;
-	
-	--textcolor-info: var(--textcolor-background-dark);
-	--textcolor-warning: black;
-	--textcolor-error: var(--color-background-dark-lighter);
-	
-	
-	
-	/*--- Font Information ---*/
-	--font-family: 'Arial', sans-serif;
-	
-	--fontsize-headings-element: 18px;
-	--fontsize-text: 14px;
-	--fontsize-text-small: 8px;
-	
-	/*--- Layout Sizes and Spacing ---*/
-	--standard-gap: 10px;
-	--mini-padding: 3px;
-	--standard-border-radius: 5px;
-	
-	
-  /* Sizes and Spacing */
-  --font-size-header: 2.5rem;
-	--padding-small: 10px;
+  /* Typography */
+  --font-family-base: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-family: var(--font-family-base);
+  --fontsize-headings-element: 18px;
+  --fontsize-text: 14px;
+  --fontsize-text-small: 8px;
+
+  /* Layout sizes and spacing */
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 18px;
+  --space-lg: 26px;
+  --space-xl: 36px;
+
+  --standard-gap: 10px;
+  --standard-border-radius: var(--radius-sm);
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+
+  --padding-small: 10px;
   --padding-medium: 20px;
 
-  --shadow-light: 0 2px 6px rgba(0, 0, 0, 0.3);
-  --shadow-focus: 0 0 0 3px rgba(163, 44, 44, 0.3);
-  --transition: all 0.3s;
   --card-width: 500px;
   --card-height: 750px;
   --max-height-two-rows: 250px;
 
-	
-	/* generated */
-	
-	
-  /* Background Colors */
-  --bg-body: #1a1a1a; /* Dark charcoal background */
-  --bg-section: #222222; /* Slightly lighter dark tone */
-  --bg-card: #2a2a2a; /* Lighter dark tone for cards */
-  --bg-input: #e0e0e0; /* Light background for inputs */
-  --bg-hover: #4a1c1c; /* Dark red for hover */
-  --bg-info: #1c1c1c; /* Dark background for info */
-  --bg-card-dark: #333333; /* Darker tone for cards and buttons */
+  --transition: all 0.3s;
 
+  /* Shadows */
+  --shadow-light: 0 2px 6px rgba(15, 23, 42, 0.24);
+  --shadow-soft: 0 22px 48px -28px rgba(15, 23, 42, 0.45);
+  --shadow-button: 0 10px 24px -18px rgba(15, 23, 42, 0.5);
+  --shadow-focus: 0 0 0 2px rgba(37, 99, 235, 0.2);
+  --shadow-highlight-editor: 0 18px 38px -24px rgba(48, 102, 229, 0.55);
+  --shadow-highlight-scaffolding: 0 18px 38px -24px rgba(245, 197, 66, 0.55);
+  --shadow-highlight-grading: 0 18px 38px -24px rgba(47, 155, 116, 0.55);
 
-  /* Licence Colors */
-  --bg-licence-wizard: #4a1c1c;
-  --bg-licence-unkown: #8B8000;
+  /* Core palette */
+  --color-app-background: #eef2f8;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f6f8fc;
+  --color-surface-subtle: #e0e6f2;
 
+  --color-border-subtle: #d6deeb;
+  --color-border-strong: #c0cbe2;
+  --color-border: var(--color-border-subtle);
 
-  
-  /* Border Colors */
-  --border-main: #2c2c2c; /* Tone-on-tone dark border */
-  --border-focus: #a32c2c; /* Bright dark red for focus */
-  --border-hover: #6b2d2d; /* Darker red for hover */
+  --color-text-primary: #182333;
+  --color-text-secondary: #4c566a;
+  --color-text-muted: #d1d1d1;
+  --color-text-contrast: #2f3c4f;
+  --color-text-inverse: #ffffff;
 
-  /* Text Colors */
-  --text-light: #d1d1d1; /* Light gray text */
-  --text-dark: #212529; /* Dark text for readability */
+  --color-focus: #2563eb;
 
+  /* Accent colors */
+  --color-accent-primary: #3066e5;
+  --color-accent-warm: #f5c542;
+  --color-accent-neutral: #d9dee8;
+  --color-accent-success: #2f9b74;
+  --color-accent-error: #e66a6a;
+
+  --color-on-accent-primary: var(--color-text-inverse);
+  --color-on-accent-warm: #3b2a00;
+  --color-on-accent-neutral: var(--color-text-contrast);
+  --color-on-accent-success: var(--color-text-inverse);
+  --color-on-accent-error: var(--color-text-inverse);
+
+  /* Status colors */
+  --color-status-info-bg: var(--color-surface-subtle);
+  --color-status-info-text: var(--color-text-secondary);
+  --color-status-warning-bg: var(--color-accent-warm);
+  --color-status-warning-text: var(--color-on-accent-warm);
+  --color-status-error-bg: var(--color-accent-error);
+  --color-status-error-text: var(--color-on-accent-error);
+
+  /* Label palette */
+  --color-label-editor-bg: var(--color-accent-primary);
+  --color-label-editor-text: var(--color-on-accent-primary);
+  --color-label-scaffolding-bg: var(--color-accent-warm);
+  --color-label-scaffolding-text: var(--color-on-accent-warm);
+  --color-label-grading-unknown-bg: var(--color-accent-neutral);
+  --color-label-grading-unknown-text: var(--color-on-accent-neutral);
+  --color-label-grading-error-bg: var(--color-accent-error);
+  --color-label-grading-error-text: var(--color-on-accent-error);
+  --color-label-grading-partial-bg: var(--color-accent-warm);
+  --color-label-grading-partial-text: var(--color-on-accent-warm);
+  --color-label-grading-correct-bg: var(--color-accent-success);
+  --color-label-grading-correct-text: var(--color-on-accent-success);
+
+  /* Interaction surfaces */
+  --color-interaction-background: var(--color-surface);
+  --color-interaction-background-alt: var(--color-surface-muted);
+  --color-interaction-border: var(--color-border-subtle);
+
+  /* Inputs */
+  --color-input-background: var(--color-surface);
+  --color-input-background-alt: var(--color-surface-subtle);
+  --color-input-border: var(--color-border-subtle);
+  --color-input-text: var(--color-text-primary);
+
+  /* Buttons */
+  --color-button-background: var(--color-surface-muted);
+  --color-button-hover: var(--color-surface);
+  --color-button-border: var(--color-interaction-border);
+
+  /* Background helpers */
+  --bg-card: var(--color-surface);
+  --bg-card-dark: var(--color-surface-subtle);
+  --bg-hover: var(--color-accent-primary);
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #1f3b8b, #3572ef);
+
+  /* Legacy tokens mapped to the new palette */
+  --background-info: var(--color-status-info-bg);
+  --background-warning: var(--color-status-warning-bg);
+  --background-error: var(--color-status-error-bg);
+
+  --textcolor-info: var(--color-status-info-text);
+  --textcolor-warning: var(--color-status-warning-text);
+  --textcolor-error: var(--color-status-error-text);
 }
 
-/* Reset and base styles */
 * {
   margin: 0;
   padding: 0;
@@ -90,5 +133,6 @@
 }
 
 body {
-  background-color: var(--bg-body);
+  background-color: var(--color-app-background);
+  color: var(--color-text-primary);
 }
