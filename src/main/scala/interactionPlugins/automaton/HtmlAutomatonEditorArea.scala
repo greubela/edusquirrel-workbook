@@ -5,7 +5,8 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
 import com.raquo.laminar.api.L.svg
 import org.scalajs.dom
-import org.scalajs.dom.{Element, MouseEvent, PointerEvent, html}
+import org.scalajs.dom.{Element, MouseEvent, PointerEvent, Node, html}
+import scala.scalajs.js
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
 class HtmlAutomatonEditorArea(
@@ -82,7 +83,7 @@ class HtmlAutomatonEditorArea(
       )
       val handle = dom.window.setTimeout(() => activateConnection(node.id, event.pointerId, centerX, centerY), connectionActivationDelayMs)
       pointerInteraction = pending.copy(timeoutHandle = handle)
-      event.target.asInstanceOf[dom.Element].setPointerCapture(event.pointerId)
+      event.target.asInstanceOf[js.Dynamic].setPointerCapture(event.pointerId)
     }
   }
 
@@ -125,10 +126,14 @@ class HtmlAutomatonEditorArea(
     contextMenuVar.set(None)
   }
 
-  private def elementNodeId(element: Element): Option[String] = {
-    if (element == null) None
-    else if (element.hasAttribute("data-node-id")) Option(element.getAttribute("data-node-id"))
-    else Option(element.parentNode).flatMap(elementNodeId)
+  private def elementNodeId(node: Node): Option[String] = node match {
+    case null => None
+    case element: Element if element.hasAttribute("data-node-id") =>
+      Option(element.getAttribute("data-node-id"))
+    case element: Element =>
+      Option(element.parentNode).flatMap(elementNodeId)
+    case other =>
+      Option(other.parentNode).flatMap(elementNodeId)
   }
 
   private def findNodeIdAt(clientX: Double, clientY: Double): Option[String] =
@@ -406,7 +411,9 @@ class HtmlAutomatonEditorArea(
       div(
         cls := "automaton-nodes-layer",
         children <-- store.stateVar.signal
-          .combineWithFn(pendingTransitionVar.signal.combineWithFn(selectedNodeVar.signal)) { (state, combined) =>
+          .combineWithFn(
+            pendingTransitionVar.signal.combineWithFn(selectedNodeVar.signal)((pending, selected) => (pending, selected))
+          ) { (state, combined) =>
             val (pendingFrom, selectedId) = combined
             state.nodes.map { node =>
               val baseClasses = List(

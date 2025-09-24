@@ -383,9 +383,12 @@ class HtmlTurtleEditorArea(
       svg.transform := s"translate($absoluteX, $absoluteY)",
       svg.style := "cursor: grab",
       onPointerDown --> { event =>
-        event.preventDefault()
-        startPointerDrag(block, event)
+        if (event.button == 0) {
+          event.preventDefault()
+          startPointerDrag(block, event)
+        }
       },
+      onContextMenu.preventDefault --> (_ => program.removeBlock(block.node.block.id)),
       block.shape.render(block.label, block.height),
       insideElements,
       parameterElements
@@ -425,7 +428,7 @@ class HtmlTurtleEditorArea(
 
   private val svgElement: L.SvgElement = {
     svg.svg(
-      svg.ref(svgRef => svgElementVar.set(Some(svgRef))),
+      onMountCallback(ctx => svgElementVar.set(Some(ctx.thisNode.ref.asInstanceOf[dom.svg.SVG]))),
       svg.pointerEvents := "all",
       svg.width <-- layoutSignal.map(_.width.toString),
       svg.height <-- layoutSignal.map(_.height.toString),

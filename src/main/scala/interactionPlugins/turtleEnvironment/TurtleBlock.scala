@@ -93,6 +93,13 @@ case class TurtleBlockConnection(
   defaultChildren: () => List[TurtleStructuredBlock] = () => Nil
 )
 
+object TurtleBlockShape {
+
+  enum Outline {
+    case Rounded, Capsule, Hexagon
+  }
+}
+
 case class TurtleBlockShape(
   width: Double,
   minHeight: Double,
@@ -102,7 +109,8 @@ case class TurtleBlockShape(
   backgroundColor: String,
   borderColor: String = "#0c3359",
   textColor: String = "white",
-  cornerRadius: Double = 10.0
+  cornerRadius: Double = 10.0,
+  outline: TurtleBlockShape.Outline = TurtleBlockShape.Outline.Rounded
 ) {
   val bodyWidth: Double = math.max(0.0, width - insidePadding * 2)
 
@@ -113,18 +121,44 @@ case class TurtleBlockShape(
 
   def render(label: String, height: Double, labelYOffset: Double = 0.0): L.SvgElement = {
     val labelY = (headerHeight / 2.0) + labelYOffset
+    val outlineElement: L.SvgElement = outline match {
+      case TurtleBlockShape.Outline.Hexagon =>
+        val cut = math.min(cornerRadius, math.min(width / 4.0, height / 2.0))
+        val points = Seq(
+          (cut, 0.0),
+          (width - cut, 0.0),
+          (width, height / 2.0),
+          (width - cut, height),
+          (cut, height),
+          (0.0, height / 2.0)
+        ).map { case (x, y) => f"$x%.2f,$y%.2f" }.mkString(" ")
+        svg.polygon(
+          svg.points := points,
+          svg.fill := backgroundColor,
+          svg.stroke := borderColor,
+          svg.strokeWidth := "2"
+        )
+      case other =>
+        val radius = other match {
+          case TurtleBlockShape.Outline.Capsule =>
+            val maxRadius = math.min(width / 2.0, height / 2.0)
+            math.min(maxRadius, math.max(cornerRadius, 0.0))
+          case _ => cornerRadius
+        }
+        svg.rect(
+          svg.x := "0",
+          svg.y := "0",
+          svg.width := width.toString,
+          svg.height := height.toString,
+          svg.rx := radius.toString,
+          svg.ry := radius.toString,
+          svg.fill := backgroundColor,
+          svg.stroke := borderColor,
+          svg.strokeWidth := "2"
+        )
+    }
     svg.g(
-      svg.rect(
-        svg.x := "0",
-        svg.y := "0",
-        svg.width := width.toString,
-        svg.height := height.toString,
-        svg.rx := cornerRadius.toString,
-        svg.ry := cornerRadius.toString,
-        svg.fill := backgroundColor,
-        svg.stroke := borderColor,
-        svg.strokeWidth := "2"
-      ),
+      outlineElement,
       svg.text(
         svg.x := insidePadding.toString,
         svg.y := labelY.toString,
@@ -270,7 +304,15 @@ object TurtleBlock {
 object TurtleBlockLibrary {
 
   private val baseCommandWidth = 220.0
-  private val baseReporterWidth = 160.0
+  private val reporterSlotWidth = 96.0
+  private val reporterBaseMinHeight = 40.0
+  private val reporterHeaderHeight = 32.0
+  private val reporterFooterHeight = 8.0
+
+  private val numericReporterColor = "#FFAB19"
+  private val numericReporterBorder = "#C57F00"
+  private val booleanReporterColor = "#0E9D57"
+  private val booleanReporterBorder = "#0A6B3F"
 
   private val hatShape = TurtleBlockShape(
     width = baseCommandWidth,
@@ -302,14 +344,18 @@ object TurtleBlockLibrary {
   )
 
   private val reporterShape = TurtleBlockShape(
-    width = baseReporterWidth,
-    minHeight = 42,
-    headerHeight = 42,
-    footerHeight = 10,
+    width = reporterSlotWidth,
+    minHeight = reporterBaseMinHeight,
+    headerHeight = reporterHeaderHeight,
+    footerHeight = reporterFooterHeight,
     insidePadding = 16,
-    backgroundColor = "#FFAB19",
-    cornerRadius = 20
+    backgroundColor = numericReporterColor,
+    borderColor = numericReporterBorder,
+    cornerRadius = 18,
+    outline = TurtleBlockShape.Outline.Capsule
   )
+
+  private val reporterSlotHeight: Double = reporterShape.computeHeight(0.0)
 
   private val defaultStackConnection: TurtleBlockConnection =
     TurtleBlockConnection(
@@ -395,10 +441,10 @@ object TurtleBlockLibrary {
     label = "steps",
     shape = stackShape,
     xOffset = stackShape.insidePadding,
-    yOffset = 10,
-    width = 70,
-    height = 26,
-    placeholderColor = "#4C97FF",
+    yOffset = 8,
+    width = reporterSlotWidth,
+    height = reporterSlotHeight,
+    placeholderColor = numericReporterColor,
     defaultValue = 100
   )
 
@@ -420,10 +466,10 @@ object TurtleBlockLibrary {
     label = "degrees",
     shape = stackShape,
     xOffset = stackShape.insidePadding,
-    yOffset = 10,
-    width = 70,
-    height = 26,
-    placeholderColor = "#FF6680",
+    yOffset = 8,
+    width = reporterSlotWidth,
+    height = reporterSlotHeight,
+    placeholderColor = numericReporterColor,
     defaultValue = 90
   )
 
@@ -489,9 +535,9 @@ object TurtleBlockLibrary {
     shape = cShape,
     xOffset = cShape.insidePadding,
     yOffset = 12,
-    width = 70,
-    height = 26,
-    placeholderColor = "#00A99D",
+    width = reporterSlotWidth,
+    height = reporterSlotHeight,
+    placeholderColor = numericReporterColor,
     defaultValue = 4
   )
 
@@ -551,7 +597,11 @@ object TurtleBlockLibrary {
   val booleanLiteral: TurtleBlockDefinition = TurtleBlockDefinition(
     key = "booleanLiteral",
     category = TurtleBlockCategory.Reporter,
-    shape = reporterShape.copy(backgroundColor = "#0E9D57"),
+    shape = reporterShape.copy(
+      backgroundColor = booleanReporterColor,
+      borderColor = booleanReporterBorder,
+      outline = TurtleBlockShape.Outline.Hexagon
+    ),
     labelForValue = value => if (value.exists(_ >= 0.5)) "true" else "false",
     defaultValue = Some(1.0),
     behaviour = TurtleBlockBehaviour.Reporter(TurtleDataType.Boolean, ctx => TurtleExpression.BooleanLiteral(ctx.block.booleanValue(default = true))),
@@ -562,11 +612,16 @@ object TurtleBlockLibrary {
   private def binaryReporter(
     key: String,
     operator: TurtleBinaryOperator,
-    color: String,
     label: String
   ): TurtleBlockDefinition = {
-    val leftArea = TurtleRectangleArea(12, 10, 60, 24)
-    val rightArea = TurtleRectangleArea(reporterShape.width - 72, 10, 60, 24)
+    val shape = reporterShape.copy(
+      width = reporterSlotWidth * 2 + reporterShape.insidePadding * 2 + 24,
+      backgroundColor = numericReporterColor,
+      borderColor = numericReporterBorder
+    )
+    val slotY = (shape.minHeight - reporterSlotHeight) / 2
+    val leftArea = TurtleRectangleArea(shape.insidePadding, slotY, reporterSlotWidth, reporterSlotHeight)
+    val rightArea = TurtleRectangleArea(shape.width - shape.insidePadding - reporterSlotWidth, slotY, reporterSlotWidth, reporterSlotHeight)
     val leftConnection = TurtleBlockConnection(
       id = "left",
       acceptTypes = Set(TurtleDataType.Numeric),
@@ -575,7 +630,7 @@ object TurtleBlockLibrary {
       kind = TurtleConnectionKind.Parameter,
       maxChildren = 1,
       placeholderLabel = Some("left"),
-      placeholderColor = Some("#FFAB19"),
+      placeholderColor = Some(numericReporterColor),
       defaultChildren = () => List(instantiateLiteral(0.0))
     )
     val rightConnection = TurtleBlockConnection(
@@ -586,13 +641,13 @@ object TurtleBlockLibrary {
       kind = TurtleConnectionKind.Parameter,
       maxChildren = 1,
       placeholderLabel = Some("right"),
-      placeholderColor = Some("#FFAB19"),
+      placeholderColor = Some(numericReporterColor),
       defaultChildren = () => List(instantiateLiteral(0.0))
     )
     TurtleBlockDefinition(
       key = key,
       category = TurtleBlockCategory.Operators,
-      shape = reporterShape.copy(backgroundColor = color),
+      shape = shape,
       labelForValue = _ => label,
       defaultValue = None,
       behaviour = TurtleBlockBehaviour.Reporter(
@@ -610,24 +665,30 @@ object TurtleBlockLibrary {
   private def unaryReporter(
     key: String,
     function: TurtleUnaryFunction,
-    color: String,
     label: String
   ): TurtleBlockDefinition = {
+    val shape = reporterShape.copy(
+      width = reporterSlotWidth + reporterShape.insidePadding * 2 + 24,
+      backgroundColor = numericReporterColor,
+      borderColor = numericReporterBorder
+    )
+    val slotX = shape.width - shape.insidePadding - reporterSlotWidth
+    val slotY = (shape.minHeight - reporterSlotHeight) / 2
     val valueConnection = TurtleBlockConnection(
       id = "value",
       acceptTypes = Set(TurtleDataType.Numeric),
-      area = TurtleRectangleArea(reporterShape.width / 2 - 30, 10, 60, 24),
+      area = TurtleRectangleArea(slotX, slotY, reporterSlotWidth, reporterSlotHeight),
       layout = TurtleConnectionLayout.Inline(),
       kind = TurtleConnectionKind.Parameter,
       maxChildren = 1,
       placeholderLabel = Some("value"),
-      placeholderColor = Some("#FFAB19"),
+      placeholderColor = Some(numericReporterColor),
       defaultChildren = () => List(instantiateLiteral(0.0))
     )
     TurtleBlockDefinition(
       key = key,
       category = TurtleBlockCategory.Math,
-      shape = reporterShape.copy(backgroundColor = color),
+      shape = shape,
       labelForValue = _ => label,
       defaultValue = None,
       behaviour = TurtleBlockBehaviour.Reporter(
@@ -641,21 +702,21 @@ object TurtleBlockLibrary {
     )
   }
 
-  val add: TurtleBlockDefinition = binaryReporter("add", TurtleBinaryOperator.Add, "#FF8C1A", "add")
-  val subtract: TurtleBlockDefinition = binaryReporter("subtract", TurtleBinaryOperator.Subtract, "#FF8C1A", "subtract")
-  val multiply: TurtleBlockDefinition = binaryReporter("multiply", TurtleBinaryOperator.Multiply, "#FF8C1A", "multiply")
-  val divide: TurtleBlockDefinition = binaryReporter("divide", TurtleBinaryOperator.Divide, "#FF8C1A", "divide")
-  val modulo: TurtleBlockDefinition = binaryReporter("modulo", TurtleBinaryOperator.Modulo, "#FF8C1A", "modulo")
-  val power: TurtleBlockDefinition = binaryReporter("power", TurtleBinaryOperator.Power, "#FF8C1A", "power")
+  val add: TurtleBlockDefinition = binaryReporter("add", TurtleBinaryOperator.Add, "add")
+  val subtract: TurtleBlockDefinition = binaryReporter("subtract", TurtleBinaryOperator.Subtract, "subtract")
+  val multiply: TurtleBlockDefinition = binaryReporter("multiply", TurtleBinaryOperator.Multiply, "multiply")
+  val divide: TurtleBlockDefinition = binaryReporter("divide", TurtleBinaryOperator.Divide, "divide")
+  val modulo: TurtleBlockDefinition = binaryReporter("modulo", TurtleBinaryOperator.Modulo, "modulo")
+  val power: TurtleBlockDefinition = binaryReporter("power", TurtleBinaryOperator.Power, "power")
 
-  val sin: TurtleBlockDefinition = unaryReporter("sin", TurtleUnaryFunction.Sin, "#008F7A", "sin")
-  val cos: TurtleBlockDefinition = unaryReporter("cos", TurtleUnaryFunction.Cos, "#008F7A", "cos")
-  val tan: TurtleBlockDefinition = unaryReporter("tan", TurtleUnaryFunction.Tan, "#008F7A", "tan")
-  val sqrt: TurtleBlockDefinition = unaryReporter("sqrt", TurtleUnaryFunction.Sqrt, "#008F7A", "sqrt")
-  val abs: TurtleBlockDefinition = unaryReporter("abs", TurtleUnaryFunction.Abs, "#008F7A", "abs")
-  val round: TurtleBlockDefinition = unaryReporter("round", TurtleUnaryFunction.Round, "#008F7A", "round")
-  val floor: TurtleBlockDefinition = unaryReporter("floor", TurtleUnaryFunction.Floor, "#008F7A", "floor")
-  val ceil: TurtleBlockDefinition = unaryReporter("ceil", TurtleUnaryFunction.Ceil, "#008F7A", "ceil")
+  val sin: TurtleBlockDefinition = unaryReporter("sin", TurtleUnaryFunction.Sin, "sin")
+  val cos: TurtleBlockDefinition = unaryReporter("cos", TurtleUnaryFunction.Cos, "cos")
+  val tan: TurtleBlockDefinition = unaryReporter("tan", TurtleUnaryFunction.Tan, "tan")
+  val sqrt: TurtleBlockDefinition = unaryReporter("sqrt", TurtleUnaryFunction.Sqrt, "sqrt")
+  val abs: TurtleBlockDefinition = unaryReporter("abs", TurtleUnaryFunction.Abs, "abs")
+  val round: TurtleBlockDefinition = unaryReporter("round", TurtleUnaryFunction.Round, "round")
+  val floor: TurtleBlockDefinition = unaryReporter("floor", TurtleUnaryFunction.Floor, "floor")
+  val ceil: TurtleBlockDefinition = unaryReporter("ceil", TurtleUnaryFunction.Ceil, "ceil")
 
   def instantiateWithCompanion(definition: TurtleBlockDefinition): List[TurtleStructuredBlock] = {
     val block = definition.createInstance()

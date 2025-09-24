@@ -28,11 +28,16 @@ class HtmlBlockDragFromArea(
 
   private def paletteBlock(definition: TurtleBlockDefinition): HtmlElement = {
     val preview = definition.createInstance()
+    val insideHeight = definition.connections.collectFirst {
+      case connection if connection.kind == TurtleConnectionKind.Enclosed => math.max(36.0, connection.area.height)
+    }.getOrElse(0.0)
+    val previewHeight = preview.definition.shape.computeHeight(insideHeight)
+    val previewWidth = preview.definition.shape.width
     div(
       cls := "turtle-palette-block",
       draggable := true,
       onDragStart --> { event =>
-        dragContext.startPaletteDrag(definition) 
+        dragContext.startPaletteDrag(definition)
         Option(event.dataTransfer).foreach { dataTransfer =>
           dataTransfer.effectAllowed = DataTransferEffectAllowedKind.copy //"copy"
           dataTransfer.setData("text/turtle-block", definition.key)
@@ -40,7 +45,12 @@ class HtmlBlockDragFromArea(
       },
       onDragEnd --> (_ => dragContext.consumePayload()),
       onDblClick --> (_ => onBlockRequested(definition)),
-      preview.definition.shape.render(preview.label)
+      svg.svg(
+        svg.viewBox := s"0 0 $previewWidth $previewHeight",
+        svg.width := previewWidth.toString,
+        svg.height := previewHeight.toString,
+        preview.definition.shape.render(preview.label, previewHeight)
+      )
     )
   }
 
