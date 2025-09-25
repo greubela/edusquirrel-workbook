@@ -29,6 +29,9 @@ final class SectionNode(val section: ExerciseSection, val index: Int) {
   var bubbleLayouts: List[ExerciseBubbleLayout] = Nil
   var bubbleAreaTop: Double = 0
   var bubbleAreaHeight: Double = 0
+  var laneCenterOffset: Double = 0
+  var entryAnchorOffset: Double = 0
+  var exitAnchorOffset: Double = 0
 }
 
 final case class Edge(source: Int, target: Int, dependencyType: DependencyType)
