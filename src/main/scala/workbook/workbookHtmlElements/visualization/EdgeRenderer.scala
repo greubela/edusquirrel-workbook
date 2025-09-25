@@ -34,23 +34,22 @@ object EdgeRenderer {
     val offsets = computeOffsets(total, config.edgeVerticalSpacing)
     val offset = offsets(offsetIndex)
 
-    val startX = source.x + source.width + config.arrowStartOffset
-    val startY = source.y + source.height / 2 + offset
-    val endX = target.x - config.arrowEndOffset
-    val endY = target.y + target.height / 2 + offset
+    val startAnchorX = source.x + source.exitAnchorOffset
+    val endAnchorX = target.x + target.entryAnchorOffset
+    val startY = source.y + source.laneCenterOffset + offset
+    val endY = target.y + target.laneCenterOffset + offset
 
-    val distanceX = endX - startX
-    val maxControlOffset = math.max(0.0, distanceX / 2 - 1.0)
-    val desiredControlOffset = math.max(distanceX * config.edgeCurveControlFraction, config.edgeCurveMinControlOffset)
-    val controlOffset = math.min(desiredControlOffset, maxControlOffset)
+    val startX = startAnchorX + config.arrowStartOffset
+    val endX = endAnchorX - config.arrowEndOffset
 
-    val deltaY = endY - startY
-    val bend = deltaY * config.edgeCurveVerticalBendFactor
+    val spanX = math.max(endX - startX, 30.0)
+    val controlExtent = math.min(spanX * 0.5, math.max(config.arrowStartOffset, spanX * config.edgeCurveStrength))
+    val verticalBend = (endY - startY) * config.edgeCurveVerticalBendFactor
 
-    val control1X = startX + controlOffset
-    val control1Y = startY + bend
-    val control2X = endX - controlOffset
-    val control2Y = endY - bend
+    val control1X = startX + controlExtent
+    val control1Y = startY + verticalBend
+    val control2X = endX - controlExtent
+    val control2Y = endY - verticalBend
 
     val dashPattern = dependencyType match {
       case DependencyType.Required     => None

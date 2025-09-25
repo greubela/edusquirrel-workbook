@@ -46,30 +46,41 @@ object LayeredLayout {
 
     nodes.foreach { node =>
       val exercises = node.section.exercies
-      val bubbleLayouts = exercises.zipWithIndex.map { case (exercise, idx) =>
-        val relativeWidth = if (maxDuration <= 0) config.bubbleMinWidth
+      var currentX = config.sectionPaddingX
+
+      val bubbleLayouts = exercises.map { exercise =>
+        val rawWidth = if (maxDuration <= 0) config.bubbleMinWidth
         else {
           val normalized = exercise.estimatedTimeInMinutes / maxDuration
           val scaled = config.bubbleMinWidth + normalized * (config.bubbleMaxWidth - config.bubbleMinWidth)
           math.max(config.bubbleMinWidth, math.min(config.bubbleMaxWidth, scaled))
         }
-        val relativeX = config.sectionPaddingX
-        val relativeY = config.sectionPaddingY + config.titleHeight + config.titleSpacing + idx * (config.bubbleHeight + config.bubbleSpacing)
-        ExerciseBubbleLayout(exercise, relativeWidth, config.bubbleHeight, relativeX, relativeY)
+        val layout = ExerciseBubbleLayout(
+          exercise,
+          rawWidth,
+          config.bubbleHeight,
+          currentX,
+          config.sectionPaddingY + config.titleHeight + config.titleSpacing
+        )
+        currentX += rawWidth + config.bubbleSpacing
+        layout
       }
 
-      val contentWidth = bubbleLayouts.map(_.width).maxOption.getOrElse(config.bubbleMinWidth)
-      val bubbleAreaHeight = if (bubbleLayouts.isEmpty) config.emptySectionPlaceholderHeight
-      else bubbleLayouts.size * config.bubbleHeight + (bubbleLayouts.size - 1) * config.bubbleSpacing
-
-      val width = math.max(config.sectionMinWidth, contentWidth + config.sectionPaddingX * 2)
-      val height = config.sectionPaddingY * 2 + config.titleHeight + config.titleSpacing + bubbleAreaHeight
+      val rightmost = bubbleLayouts.lastOption.map(b => b.relativeX + b.width).getOrElse(config.sectionPaddingX)
+      val width = math.max(config.sectionMinWidth, rightmost + config.sectionPaddingX)
+      val height = config.sectionPaddingY * 2 + config.titleHeight + config.titleSpacing + config.bubbleHeight
 
       node.width = width
       node.height = height
       node.bubbleLayouts = bubbleLayouts
       node.bubbleAreaTop = config.sectionPaddingY + config.titleHeight + config.titleSpacing
-      node.bubbleAreaHeight = bubbleAreaHeight
+      node.bubbleAreaHeight = config.bubbleHeight
+      node.laneCenterOffset = node.bubbleAreaTop + config.bubbleHeight / 2
+
+      val entryCenter = bubbleLayouts.headOption.map(b => b.relativeX + b.width / 2).getOrElse(width / 2)
+      val exitCenter = bubbleLayouts.lastOption.map(b => b.relativeX + b.width / 2).getOrElse(width / 2)
+      node.entryAnchorOffset = math.max(config.sectionPaddingX, math.min(width - config.sectionPaddingX, entryCenter))
+      node.exitAnchorOffset = math.max(config.sectionPaddingX, math.min(width - config.sectionPaddingX, exitCenter))
     }
   }
 
@@ -161,18 +172,35 @@ object LayeredLayout {
   }
 
   private def assignCoordinates(nodes: List[SectionNode], config: VisualizationConfig): Unit = {
+    if (nodes.isEmpty) return
+
     val nodesByLayer = nodes.groupBy(_.layer).view.mapValues(_.sortBy(_.order)).toMap
     val sortedLayerIndices = nodesByLayer.keys.toList.sorted
+
+    val rowsByOrder = nodes.groupBy(_.order)
+    val sortedRowIndices = rowsByOrder.keys.toList.sorted
+
+    val rowHeights = sortedRowIndices.map { rowIndex =>
+      val height = rowsByOrder(rowIndex).map(_.height).maxOption.getOrElse(0.0)
+      rowIndex -> height
+    }.toMap
+
+    val rowTopOffsets = mutable.Map[Int, Double]()
+    var currentY = config.marginY
+    sortedRowIndices.foreach { rowIndex =>
+      rowTopOffsets.update(rowIndex, currentY)
+      val rowHeight = rowHeights.getOrElse(rowIndex, 0.0)
+      currentY += rowHeight + config.verticalNodeSpacing
+    }
 
     var currentX = config.marginX
     sortedLayerIndices.foreach { layerIndex =>
       val layerNodes = nodesByLayer(layerIndex)
       val layerWidth = layerNodes.map(_.width).maxOption.getOrElse(0.0)
-      var currentY = config.marginY
       layerNodes.foreach { node =>
         node.x = currentX + (layerWidth - node.width) / 2
-        node.y = currentY
-        currentY += node.height + config.verticalNodeSpacing
+        val rowTop = rowTopOffsets.getOrElse(node.order, config.marginY)
+        node.y = rowTop
       }
       currentX += layerWidth + config.horizontalLayerSpacing
     }
