@@ -2,7 +2,12 @@ package workbook.model.exercise
 
 import contentmanagement.model.language.AppLanguage
 
-case class ExerciseContent(id: String, titleMap: Map[AppLanguage, String], instructionMap: Map[AppLanguage, String]) {
+trait ExerciseContent() {
+  def id: String
 
+  def titleMap: Map[AppLanguage, String]
 
+  def estimatedTimeInMinutes: Double
+
+  def instructionMap: Map[AppLanguage, String]
 }

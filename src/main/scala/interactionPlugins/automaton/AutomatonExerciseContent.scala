@@ -3,23 +3,18 @@ package interactionPlugins.automaton
 import contentmanagement.model.language.AppLanguage
 import workbook.model.exercise.ExerciseContent
 
-class AutomatonExerciseContent(
+case class AutomatonExerciseContent(
   id: String,
   titleMap: Map[AppLanguage, String],
   instructionMap: Map[AppLanguage, String],
-  val shouldAccept: List[String],
-  val shouldReject: List[String],
-  val defaultMode: AutomatonMode = AutomatonMode.Dfa
-) extends ExerciseContent(id, titleMap, instructionMap) {
+  shouldAccept: List[String],
+  shouldReject: List[String],
+  defaultMode: AutomatonMode = AutomatonMode.Dfa
+) extends ExerciseContent {
+  
 
-  def this(
-    base: ExerciseContent,
-    shouldAccept: List[String],
-    shouldReject: List[String],
-    defaultMode: AutomatonMode
-  ) = this(base.id, base.titleMap, base.instructionMap, shouldAccept, shouldReject, defaultMode)
+  override def estimatedTimeInMinutes: Double = 7.5
 
-  def asExerciseContent: ExerciseContent = ExerciseContent(id, titleMap, instructionMap)
 }
 
 object AutomatonExerciseContent {
@@ -34,13 +29,6 @@ object AutomatonExerciseContent {
   ): AutomatonExerciseContent =
     new AutomatonExerciseContent(id, titleMap, instructionMap, shouldAccept, shouldReject, defaultMode)
 
-  def apply(
-    base: ExerciseContent,
-    shouldAccept: List[String],
-    shouldReject: List[String],
-    defaultMode: AutomatonMode
-  ): AutomatonExerciseContent =
-    new AutomatonExerciseContent(base, shouldAccept, shouldReject, defaultMode)
 
   val divisibleByThree: AutomatonExerciseContent = AutomatonExerciseContent(
     id = "automaton-001",

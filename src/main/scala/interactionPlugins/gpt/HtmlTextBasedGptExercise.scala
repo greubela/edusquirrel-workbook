@@ -4,6 +4,7 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.htmlElements.genericElements.editor.SimpleTextEditor
 import interactionPlugins.gpt.HtmlTextBasedGptInteractionModel
+import interactionPlugins.turtleEnvironment.TurtleExerciseContent
 import workbook.model.display.FullInteractionLabelModel
 import workbook.model.exercise.ExerciseContent
 import workbook.model.feedback.grading.GptGradingResult
@@ -15,7 +16,7 @@ import workbook.workbookHtmlElements.abstractions.HtmlFullInteractionExercise
 import workbook.workbookHtmlElements.container.HtmlFullInteractionContainerDefault
 import workbook.workbookHtmlElements.{HtmlExerciseTitleElement, HtmlPlaintextInstructionElement}
 
-case class HtmlTextBasedGptExercise(exerciseContent: ExerciseContent) extends HtmlFullInteractionExercise[
+case class HtmlTextBasedGptExercise(exerciseContent: TextBasedGptExercise) extends HtmlFullInteractionExercise[
   BasicStringState, BasicStringState, Stateless,
   GptScaffoldingResult, GptGradingResult,
   GptScaffolder, GptGrader

@@ -2,7 +2,7 @@
 import com.raquo.laminar.api.L.{*, given}
 import contentmanagement.model.language.AppLanguage
 import interactionPlugins.automaton.{AutomatonExerciseContent, HtmlAutomatonExercise}
-import interactionPlugins.gpt.HtmlTextBasedGptExercise
+import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
 import interactionPlugins.turtleEnvironment.{HtmlTurtleExercise, TurtleCommand, TurtleExerciseContent, TurtleExpression, TurtleProgramState}
 import org.scalajs.dom
 import org.scalajs.dom.document
@@ -19,7 +19,7 @@ def mainApp(): Unit = {
 def insertWorkbook(): Unit = {
 
   // Generic GPT Exercise
-  val testEx = ExerciseContent("id-007", Map(AppLanguage.English -> "this is title"), Map(AppLanguage.English -> "this is instruction"))
+  val testEx = TextBasedGptExercise("id-007", Map(AppLanguage.English -> "this is title"), Map(AppLanguage.English -> "this is instruction"))
   val htmlEx = HtmlTextBasedGptExercise(testEx)
 
   //  Turtle Exercise

@@ -7,30 +7,22 @@ import workbook.model.exercise.ExerciseContent
  * Turtle specific exercise meta information. Besides the textual instructions provided by [[ExerciseContent]]
  * it also stores the target SVG the learner should recreate and the sample program that produces this SVG.
  */
-class TurtleExerciseContent(
+case class TurtleExerciseContent(
   id: String,
   titleMap: Map[AppLanguage, String],
   instructionMap: Map[AppLanguage, String],
-  val targetSvg: String,
-  val sampleProgram: TurtleProgramState,
-  val targetDescription: Option[String] = None
-) extends ExerciseContent(id, titleMap, instructionMap) {
+   targetSvg: String,
+   sampleProgram: TurtleProgramState,
+   targetDescription: Option[String] = None
+) extends ExerciseContent {
 
-  /** Convenience accessor mirroring the default constructor semantics of [[ExerciseContent]]. */
-  def this(
-    base: ExerciseContent,
-    targetSvg: String,
-    sampleProgram: TurtleProgramState,
-    targetDescription: Option[String]
-  ) = this(base.id, base.titleMap, base.instructionMap, targetSvg, sampleProgram, targetDescription)
+  override def estimatedTimeInMinutes: Double = 5
 
   /** Creates a copy of this content with a different SVG while keeping the remaining information. */
   def withTargetSvg(svg: String): TurtleExerciseContent =
     new TurtleExerciseContent(id, titleMap, instructionMap, svg, sampleProgram, targetDescription)
 
-  /** Exposes the underlying [[ExerciseContent]] representation without the turtle specific additions. */
-  def asExerciseContent: ExerciseContent = ExerciseContent(id, titleMap, instructionMap)
-}
+ }
 
 object TurtleExerciseContent {
 
@@ -45,6 +37,6 @@ object TurtleExerciseContent {
   ): TurtleExerciseContent =
     new TurtleExerciseContent(id, titleMap, instructionMap, targetSvg, sampleProgram, targetDescription)
 
-  def apply(base: ExerciseContent, targetSvg: String, sampleProgram: TurtleProgramState): TurtleExerciseContent =
-    new TurtleExerciseContent(base, targetSvg, sampleProgram, None)
+ /* def apply(base: ExerciseContent, targetSvg: String, sampleProgram: TurtleProgramState): TurtleExerciseContent =
+    new TurtleExerciseContent(base, targetSvg, sampleProgram, None)*/
 }
