@@ -3,6 +3,7 @@ import com.raquo.laminar.api.L.{*, given}
 import contentmanagement.model.language.AppLanguage
 import interactionPlugins.automaton.{AutomatonExerciseContent, HtmlAutomatonExercise}
 import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
+import interactionPlugins.pythonExercises.{HtmlPythonExercise, PythonExerciseContent}
 import interactionPlugins.turtleEnvironment.{HtmlTurtleExercise, TurtleCommand, TurtleExerciseContent, TurtleExpression, TurtleProgramState}
 import org.scalajs.dom
 import org.scalajs.dom.document
@@ -55,6 +56,8 @@ def insertWorkbook(): Unit = {
   val automatonExercise = new HtmlAutomatonExercise(AutomatonExerciseContent.divisibleByThree)
   
   val overviewElement = new HtmlWorkbookOverview(sampleSections).getDomElement()
+  val helloWorldExercise = new HtmlPythonExercise(PythonExerciseContent.helloWorld)
+  val fizzBuzzExercise = new HtmlPythonExercise(PythonExerciseContent.fizzBuzz)
 
   val combinedElement = div(
     div(
@@ -66,7 +69,9 @@ def insertWorkbook(): Unit = {
     ),
     htmlEx.getDomElement(),
     htmlTurtleEx.getDomElement(),
-    automatonExercise.getDomElement()
+    automatonExercise.getDomElement(),
+    helloWorldExercise.getDomElement(),
+    fizzBuzzExercise.getDomElement()
   )
 
   val worksheetDiv = document.getElementById("worksheetDts")
