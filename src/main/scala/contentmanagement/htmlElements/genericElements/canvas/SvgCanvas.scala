@@ -56,7 +56,7 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
       svg.fillOpacity := "0"
     )
     dashPattern.filter(_.nonEmpty) match {
-      case Some(pattern) => base :+ svg.strokeDasharray := pattern.mkString(" ")
+      case Some(pattern) => base :+ (svg.strokeDashArray := pattern.mkString(" "))
       case None          => base
     }
   }
