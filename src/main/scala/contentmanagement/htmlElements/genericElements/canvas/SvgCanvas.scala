@@ -46,11 +46,20 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
     )
 
 
-  private def getStrokeConfig(strokeWidth: Double): Seq[SvgAttrSetter[String]] = List(
-    svg.stroke := strokeColor.toRGB.toHex(),
-    svg.strokeWidth := "" + strokeWidth,
-    svg.fillOpacity := "0"
-  )
+  private def getStrokeConfig(
+      strokeWidth: Double,
+      dashPattern: Option[Seq[Double]] = None
+  ): Seq[SvgAttrSetter[String]] = {
+    val base = List(
+      svg.stroke := strokeColor.toRGB.toHex(),
+      svg.strokeWidth := "" + strokeWidth,
+      svg.fillOpacity := "0"
+    )
+    dashPattern.filter(_.nonEmpty) match {
+      case Some(pattern) => base :+ svg.strokeDasharray := pattern.mkString(" ")
+      case None          => base
+    }
+  }
 
   def getFillConfig(): Seq[SvgAttrSetter[String]] = List(
     svg.strokeWidth := "0",
@@ -164,6 +173,25 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
       getStrokeConfig(width)
     )
     elements.update(_ :+ newLine)
+  }
+
+  override def drawCubicBezier(
+      startX: Double,
+      startY: Double,
+      control1X: Double,
+      control1Y: Double,
+      control2X: Double,
+      control2Y: Double,
+      endX: Double,
+      endY: Double,
+      strokeWidth: Double,
+      dashPattern: Option[Seq[Double]]
+  ): Unit = {
+    val newPath = svg.path(
+      svg.d := f"M $startX $startY C $control1X $control1Y $control2X $control2Y $endX $endY",
+      getStrokeConfig(strokeWidth, dashPattern)
+    )
+    elements.update(_ :+ newPath)
   }
 
   override def drawCircle(x: Double, y: Double, diameter: Double, strokeWidth: Double): Unit = {

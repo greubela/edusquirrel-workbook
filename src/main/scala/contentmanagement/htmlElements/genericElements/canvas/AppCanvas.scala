@@ -57,6 +57,19 @@ trait AppCanvas[C] extends HtmlAppElement {
 
   def drawLine(x1: Double, y1: Double, x2: Double, y2: Double, strokeWidth: Double = 1): Unit
 
+  def drawCubicBezier(
+      startX: Double,
+      startY: Double,
+      control1X: Double,
+      control1Y: Double,
+      control2X: Double,
+      control2Y: Double,
+      endX: Double,
+      endY: Double,
+      strokeWidth: Double = 1,
+      dashPattern: Option[Seq[Double]] = None
+  ): Unit
+
   def drawCircle(x: Double, y: Double, diameter: Double, strokeWidth: Double = 1): Unit
 
   def fillCircle(x: Double, y: Double, diameter: Double): Unit

@@ -8,6 +8,7 @@ import contentmanagement.model.image.FullImage
 import org.scalajs.dom
 import org.scalajs.dom.CanvasRenderingContext2D
 import org.scalajs.dom.html.Canvas
+import scala.scalajs.js.JSConverters.*
 
 class WebCanvas(canvas: ReactiveHtmlElement[Canvas], width: Int, height: Int) extends AppCanvas[ReactiveHtmlElement[Canvas]] {
 
@@ -68,6 +69,32 @@ class WebCanvas(canvas: ReactiveHtmlElement[Canvas], width: Int, height: Int) ex
     ctx.stroke()
 
     ctx.lineWidth = oldWidth
+  }
+
+  override def drawCubicBezier(
+      startX: Double,
+      startY: Double,
+      control1X: Double,
+      control1Y: Double,
+      control2X: Double,
+      control2Y: Double,
+      endX: Double,
+      endY: Double,
+      strokeWidth: Double,
+      dashPattern: Option[Seq[Double]]
+  ): Unit = {
+    val oldWidth = ctx.lineWidth
+    val oldDash = ctx.getLineDash()
+    ctx.lineWidth = strokeWidth
+    dashPattern.filter(_.nonEmpty).foreach(pattern => ctx.setLineDash(pattern.map(_.toDouble).toJSArray))
+
+    ctx.beginPath()
+    ctx.moveTo(startX, startY)
+    ctx.bezierCurveTo(control1X, control1Y, control2X, control2Y, endX, endY)
+    ctx.stroke()
+
+    ctx.lineWidth = oldWidth
+    ctx.setLineDash(oldDash)
   }
 
   def drawLoadedImage(img: Image, x: Double, y: Double, width: Double, height: Double, alpha: Double = 1.0): Unit = {
