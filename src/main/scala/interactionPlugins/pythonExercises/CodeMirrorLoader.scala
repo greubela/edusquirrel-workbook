@@ -41,9 +41,9 @@ private[pythonExercises] object CodeMirrorLoader {
   }
 
   private def existingFactory(): Option[CodeMirrorFactory] =
-    val global = js.Dynamic.global
-    if js.typeOf(global.selectDynamic("CodeMirror")) == "function" then
-      Some(global.selectDynamic("CodeMirror").asInstanceOf[CodeMirrorFactory])
+    val codeMirror = js.Dynamic.global.selectDynamic("CodeMirror")
+    if js.typeOf(codeMirror) == "function" then
+      Some(codeMirror.asInstanceOf[CodeMirrorFactory])
     else None
 
   private def appendStyles(): Unit =
