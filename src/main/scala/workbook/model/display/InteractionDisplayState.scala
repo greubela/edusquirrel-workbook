@@ -51,8 +51,7 @@ object InteractionDisplayState {
   case class CustomDisplayState(
       allKnownComponents: List[InteractionComponentForRole],
       visibleComponentRolesInOrder: List[InteractionContentRole],
-      layoutCssForExercise: Seq[String],
-      disabledComponentRoles: Seq[InteractionContentRole] = Seq.empty
+      layoutCssForExercise: Seq[String]
   ) extends InteractionDisplayState
 
 }

@@ -49,7 +49,7 @@ object PythonExerciseContent {
     estimatedTimeInMinutes = 2,
     starterCode =
       """|def say_hello():
-         |    """Return the classic greeting."""
+         |    #Return the classic greeting.
          |    message = "Hello, World!"
          |    print(message)
          |    return message
@@ -108,7 +108,7 @@ assert result.strip() == "Hello, World!", "Ensure no additional whitespace is re
     estimatedTimeInMinutes = 5,
     starterCode =
       """|def fizzbuzz_sequence(limit: int) -> list[str]:
-         |    """Return the FizzBuzz sequence from 1 to limit inclusive."""
+         |    #Return the FizzBuzz sequence from 1 to limit inclusive.
          |    if limit < 1:
          |        return []
          |    sequence: list[str] = []
@@ -160,7 +160,7 @@ assert result[10] == "Fizz", "11th element (value 11) should be 'Fizz'"
     estimatedTimeInMinutes = 8,
     starterCode =
       """|def verse(start: int) -> str:
-         |    """Return the verse for the provided bottle count."""
+         |    #Return the verse for the provided bottle count.
          |    raise NotImplementedError("Implement the song verse generation here.")
          |""".stripMargin,
     visibleTests = Seq(
@@ -215,7 +215,7 @@ assert verse(0) == expected
     estimatedTimeInMinutes = 6,
     starterCode =
       """|def fibonacci(n: int) -> list[int]:
-         |    """Return the first n Fibonacci numbers."""
+         |    #Return the first n Fibonacci numbers.
          |    if n <= 0:
          |        return []
          |    if n == 1:
@@ -267,7 +267,7 @@ assert fibonacci(10)[-1] == 34
     estimatedTimeInMinutes = 10,
     starterCode =
       """|def fetch_openlibrary() -> str:
-         |    """Fetch the Open Library JSON for OL37397230M and return the response text."""
+         |    #Fetch the Open Library JSON for OL37397230M and return the response text.
          |    raise NotImplementedError("Use the requests library to retrieve the JSON and return its text.")
          |""".stripMargin,
     visibleTests = Seq(
