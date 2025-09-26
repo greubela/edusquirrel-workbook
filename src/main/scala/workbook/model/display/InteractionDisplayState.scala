@@ -47,5 +47,12 @@ object InteractionDisplayState {
 
     override def disabledComponentRoles = Seq(Editor)
   }
-  
+
+  case class CustomDisplayState(
+      allKnownComponents: List[InteractionComponentForRole],
+      visibleComponentRolesInOrder: List[InteractionContentRole],
+      layoutCssForExercise: Seq[String],
+      disabledComponentRoles: Seq[InteractionContentRole] = Seq.empty
+  ) extends InteractionDisplayState
+
 }
