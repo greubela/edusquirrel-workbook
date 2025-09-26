@@ -4,6 +4,7 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import workbook.model.display.InteractionComponent.InteractionComponentForRole
+import workbook.model.display.InteractionComponent.InteractionContentRole
 import workbook.model.display.InteractionDisplayState
 import workbook.model.feedback.scaffolding.BasicVariableScaffoldingResult
 import workbook.model.states.Stateless
@@ -30,15 +31,6 @@ final class HtmlPythonInteractionContainer(
       PythonGrader
     ] {
 
-  private case class PythonDisplayState(components: List[InteractionComponentForRole]) extends InteractionDisplayState {
-    override def allKnownComponents: List[InteractionComponentForRole] = components
-
-    override def visibleComponentRolesInOrder: List[workbook.model.display.InteractionComponent.InteractionContentRole] =
-      components.map(_.forContentRole)
-
-    override def layoutCssForExercise: Seq[String] = Seq("style-vbox", "python-exercise-layout")
-  }
-
   private val pythonModel = interactionModel
 
   private val editorComponent = pythonModel.visualizer.visualizeEditor(pythonModel.model.currentEditorStateVar)
@@ -49,8 +41,17 @@ final class HtmlPythonInteractionContainer(
   private val gradingResultComponent =
     pythonModel.visualizer.visualizeGradingResult(pythonModel.model.currentGradingResultVar)
 
+  private val allComponents =
+    List(editorComponent, gradingConfigComponent, scaffoldingResultComponent, gradingResultComponent)
+
+  private val visibleRoles: List[InteractionContentRole] = allComponents.map(_.forContentRole)
+
   override val displayState: Var[InteractionDisplayState] = Var(
-    PythonDisplayState(List(editorComponent, gradingConfigComponent, scaffoldingResultComponent, gradingResultComponent))
+    InteractionDisplayState.CustomDisplayState(
+      allKnownComponents = allComponents,
+      visibleComponentRolesInOrder = visibleRoles,
+      layoutCssForExercise = Seq("style-vbox", "python-exercise-layout")
+    )
   )
 
   private val isRunning = Var(false)

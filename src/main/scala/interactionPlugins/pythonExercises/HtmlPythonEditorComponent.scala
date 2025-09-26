@@ -9,6 +9,7 @@ import workbook.model.display.InteractionComponent.InteractionComponentWithReact
 import workbook.model.feedback.scaffolding.BasicVariableScaffoldingResult
 import workbook.model.states.Stateless
 
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 
 final class PythonCodeEditorComponent(codeVar: Var[PythonEditorState])
@@ -121,7 +122,9 @@ final class PythonResultComponent(resultVar: Var[Option[PythonGradingResult]])
       span(cls := "python-test-duration", f"${test.durationMs}%.1f ms")
     ) ++ messageNode.toList ++ hintNode.toList
 
-    li(cls := s"python-test-result $statusClass", baseChildren*)
+    val modifiers = (cls := s"python-test-result $statusClass") :: baseChildren
+
+    li(modifiers*)
   }
 
   private def renderResult(result: PythonGradingResult): HtmlElement = {
