@@ -1,0 +1,39 @@
+/* Regular */
+@font-face {
+  font-family: 'Anonymous Pro';
+  src: url('/resources/fonts/AnonymousPro-Regular.ttf') format('truetype');
+  font-weight: 400;        /* or "normal" */
+  font-style: normal;
+}
+
+/* Italic */
+@font-face {
+  font-family: 'Anonymous Pro';
+  src: url('/resources/fonts/AnonymousPro-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+}
+
+/* Bold */
+@font-face {
+  font-family: 'Anonymous Pro';
+  src: url('/resources/fonts/AnonymousPro-Bold.ttf') format('truetype');
+  font-weight: 700;        /* or "bold" */
+  font-style: normal;
+}
+
+/* Bold Italic */
+@font-face {
+  font-family: 'Anonymous Pro';
+  src: url('/resources/fonts/AnonymousPro-BoldItalic.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+}
+
+
+@font-face {
+  font-family: 'Aptos';
+  src: url('/resources/fonts/Aptos.ttf') format('truetype');
+  font-weight: 400;   /* normal */
+  font-style: normal;
+}
