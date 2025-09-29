@@ -1,7 +1,7 @@
 package workbook.workbookHtmlElements.visualization
 
 import com.raquo.laminar.api.L.*
-import contentmanagement.htmlElements.genericElements.canvas.SvgCanvas
+import contentmanagement.webElements.genericHtmlElements.canvas.SvgCanvas
 import workbook.model.exercise.ExerciseSection
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 

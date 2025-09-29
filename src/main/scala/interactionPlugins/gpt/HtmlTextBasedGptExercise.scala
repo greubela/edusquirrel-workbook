@@ -2,9 +2,9 @@ package interactionPlugins.gpt
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.htmlElements.genericElements.editor.SimpleTextEditor
+import contentmanagement.webElements.genericHtmlElements.editor.SimpleTextEditor
 import interactionPlugins.gpt.HtmlTextBasedGptInteractionModel
-import interactionPlugins.turtleEnvironment.TurtleExerciseContent
+import interactionPlugins.blockProgramming.TurtleExerciseContent
 import workbook.model.display.FullInteractionLabelModel
 import workbook.model.exercise.ExerciseContent
 import workbook.model.feedback.grading.GptGradingResult

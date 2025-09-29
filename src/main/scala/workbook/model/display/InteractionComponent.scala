@@ -2,7 +2,7 @@ package workbook.model.display
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.htmlElements.HtmlAppElement
+import contentmanagement.webElements.HtmlAppElement
 
 trait InteractionComponent extends HtmlAppElement {
 

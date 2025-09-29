@@ -3,11 +3,11 @@ package workbook.workbookHtmlElements
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveSvgElement
-import contentmanagement.htmlElements.HtmlAppElement
+import contentmanagement.webElements.HtmlAppElement
 import contentmanagement.model.color.RGBColor
 import org.scalajs.dom.{MouseEvent, SVGLinearGradientElement}
 import workbook.model.display.InteractionComponent
-import workbook.model.display.InteractionComponent.{InteractionComponentWithReactiveVars, *}
+import workbook.model.display.InteractionComponent.*
 import workbook.model.display.InteractionComponent.InteractionContentRole.*
 import workbook.workbookHtmlElements.HtmlInteractionButtonComponent.*
 import workbook.workbookHtmlElements.SvgFactory

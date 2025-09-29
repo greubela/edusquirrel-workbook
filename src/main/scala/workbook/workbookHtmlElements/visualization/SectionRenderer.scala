@@ -1,6 +1,6 @@
 package workbook.workbookHtmlElements.visualization
 
-import contentmanagement.htmlElements.genericElements.canvas.AppCanvas
+import contentmanagement.webElements.genericHtmlElements.canvas.AppCanvas
 import contentmanagement.model.AppFont
 import contentmanagement.model.language.AppLanguage
 
@@ -26,7 +26,7 @@ object SectionRenderer {
     val titleCenterX = node.x + node.width / 2
     val titleCenterY = node.y + config.sectionPaddingY + config.titleHeight / 2
     canvas.setFillColor(config.titleColor)
-    canvas.setFont(AppFont.aptos.copy(size = config.titleFontSize))
+    canvas.setFont(AppFont.Aptos.copy(sizeInPx = config.titleFontSize))
     canvas.drawStringCentered(titleCenterX, titleCenterY, node.section.title)
   }
 
@@ -40,7 +40,7 @@ object SectionRenderer {
       canvas.setStrokeColor(config.sectionBorderColor)
       strokeRoundedRect(canvas, x, y, width, config.bubbleHeight, config.exerciseCornerRadius, config.exerciseBorderWidth)
       canvas.setFillColor(config.labelColor)
-      canvas.setFont(AppFont.aptos.copy(size = config.exerciseFontSize))
+      canvas.setFont(AppFont.Aptos.copy(sizeInPx = config.exerciseFontSize))
       canvas.drawStringCentered(x + width / 2, y + config.bubbleHeight / 2, "No exercises")
       return
     }
@@ -54,7 +54,7 @@ object SectionRenderer {
       strokeRoundedRect(canvas, x, y, bubble.width, bubble.height, config.exerciseCornerRadius, config.exerciseBorderWidth)
       val label = truncateLabel(bubble.exercise.titleMap(AppLanguage.English).trim, bubble.width, config)
       canvas.setFillColor(config.labelColor)
-      canvas.setFont(AppFont.aptos.copy(size = config.exerciseFontSize))
+      canvas.setFont(AppFont.Aptos.copy(sizeInPx = config.exerciseFontSize))
       canvas.drawStringCentered(x + bubble.width / 2, y + bubble.height / 2, label)
     }
   }

@@ -1,6 +1,6 @@
 package workbook.workbookHtmlElements.visualization
 
-import contentmanagement.htmlElements.genericElements.canvas.AppCanvas
+import contentmanagement.webElements.genericHtmlElements.canvas.AppCanvas
 
 object EdgeRenderer {
 

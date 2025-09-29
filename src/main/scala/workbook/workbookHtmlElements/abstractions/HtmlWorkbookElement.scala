@@ -1,6 +1,6 @@
 package workbook.workbookHtmlElements.abstractions
 
-import contentmanagement.htmlElements.HtmlAppElement
+import contentmanagement.webElements.HtmlAppElement
 
 
 trait HtmlWorkbookElement extends HtmlAppElement{

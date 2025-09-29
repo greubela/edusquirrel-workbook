@@ -1,10 +1,14 @@
 
 import com.raquo.laminar.api.L.{*, given}
+import contentmanagement.model.AppFont
+import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.model.language.AppLanguage
 import interactionPlugins.automaton.{AutomatonExerciseContent, HtmlAutomatonExercise}
+import interactionPlugins.blockEnvironment.programming.*
+import interactionPlugins.blockEnvironment.programming.visitor.CalculateSizeVisitor
+import interactionPlugins.blockProgramming.*
 import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
 import interactionPlugins.pythonExercises.{HtmlPythonExercise, PythonExerciseContent}
-import interactionPlugins.turtleEnvironment.{HtmlTurtleExercise, TurtleCommand, TurtleExerciseContent, TurtleExpression, TurtleProgramState}
 import org.scalajs.dom
 import org.scalajs.dom.document
 import workbook.model.exercise.{ExerciseContent, ExerciseSection}
@@ -15,7 +19,22 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 @main
 def mainApp(): Unit = {
 
+  doSomeCalculations()
   insertWorkbook()
+}
+
+def doSomeCalculations(): Unit = {
+
+  val sample = BeBlock.sampleProgram()
+
+  val visitorAnon = CalculateSizeVisitor(AppFont.AnonymousPro, new Dimension[Double](2, 2), new Dimension[Double](3, 3))
+  sample.visitBottomUp(visitorAnon)
+  println("Anonymous Pro Sizes:\n" + visitorAnon.currentState.map)
+
+  val visitorAptos = CalculateSizeVisitor(AppFont.Aptos, new Dimension[Double](2, 2), new Dimension[Double](3, 3))
+  sample.visitBottomUp(visitorAptos)
+  println("Aptos Sizes:\n" + visitorAptos.currentState.map)
+
 }
 
 def insertWorkbook(): Unit = {
@@ -54,7 +73,7 @@ def insertWorkbook(): Unit = {
 
   // Automaton exercise
   val automatonExercise = new HtmlAutomatonExercise(AutomatonExerciseContent.divisibleByThree)
-  
+
   val overviewElement = new HtmlWorkbookOverview(sampleSections).getDomElement()
   val helloWorldExercise = new HtmlPythonExercise(PythonExerciseContent.helloWorld)
   val fizzBuzzExercise = new HtmlPythonExercise(PythonExerciseContent.fizzBuzz)
@@ -67,10 +86,22 @@ def insertWorkbook(): Unit = {
         overviewElement
       )
     ),
-    htmlEx.getDomElement(),
-    htmlTurtleEx.getDomElement(),
-    automatonExercise.getDomElement(),
-    helloWorldExercise.getDomElement(),
+    div(
+      h2("Svg Test"),
+      div(
+        BeDataType.values.map(curType => curType.shapeFactory.apply(
+          Bounds.fromPoints(Point[Double](0, 0), Point[Double](1, 1))
+        ).asSimpleSvg())
+      ))
+    ,
+    htmlEx.getDomElement()
+    ,
+    htmlTurtleEx.getDomElement()
+    ,
+    automatonExercise.getDomElement()
+    ,
+    helloWorldExercise.getDomElement()
+    ,
     fizzBuzzExercise.getDomElement()
   )
 
@@ -90,11 +121,11 @@ object Main:
 end Main
 
 final case class SimpleExercise(
-    id: String,
-    englishTitle: String,
-    duration: Double,
-    instruction: String
-) extends ExerciseContent {
+                                 id: String,
+                                 englishTitle: String,
+                                 duration: Double,
+                                 instruction: String
+                               ) extends ExerciseContent {
   override def titleMap: Map[AppLanguage, String] = Map(AppLanguage.English -> englishTitle)
 
   override def estimatedTimeInMinutes: Double = duration
@@ -103,11 +134,11 @@ final case class SimpleExercise(
 }
 
 final case class SampleSection(
-    override val title: String,
-    override val exercies: List[ExerciseContent],
-    override val sectionsRequiredBefore: List[ExerciseSection] = Nil,
-    override val sectionsRecommendedBefore: List[ExerciseSection] = Nil
-) extends ExerciseSection
+                                override val title: String,
+                                override val exercies: List[ExerciseContent],
+                                override val sectionsRequiredBefore: List[ExerciseSection] = Nil,
+                                override val sectionsRecommendedBefore: List[ExerciseSection] = Nil
+                              ) extends ExerciseSection
 
 def sampleSections: List[ExerciseSection] = {
   val introExercises = List(
