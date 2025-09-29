@@ -1,0 +1,28 @@
+# EduSquirrel Workbook Overview
+
+## Project goals and current functionality
+EduSquirrel Workbook provides a Scala.js front end for building interactive, section-based learning experiences. The sample `mainApp` bootstraps Laminar components, demonstrates block-program sizing utilities, and mounts a combined workbook view into the DOM, illustrating how exercises are assembled at runtime.【F:src/main/scala/MainApp.scala†L19-L115】
+
+Exercises are organised around reusable `ExerciseContent` and `ExerciseSection` abstractions that capture titles, timing estimates, instructions, and dependency structure. The sample data shows how sections require or recommend other sections, mirroring dependency-aware curricula.【F:src/main/scala/workbook/model/exercise/ExerciseContent.scala†L5-L12】【F:src/main/scala/workbook/model/exercise/ExerciseSection.scala†L3-L12】【F:src/main/scala/MainApp.scala†L123-L175】
+
+The workbook overview component renders these sections as a layered SVG layout, giving learners a visual map of prerequisites and progression.【F:src/main/scala/workbook/workbookHtmlElements/visualization/HtmlWorkbookOverview.scala†L1-L20】 Supporting documentation in `docs/` records the design goals for the overview layout and future improvements to its geometry and rendering pipeline.【F:docs/workbook_overview_layout.md†L1-L90】
+
+## Interactive plugins
+The platform ships with several interaction plugins that pair editors, scaffolding, and graders:
+
+* **GPT text response exercises** embed prompt/response workflows backed by GPT-specific scaffolding and grading, wrapping the generic full-interaction container with text editors for solution and help content.【F:src/main/scala/interactionPlugins/gpt/HtmlTextBasedGptExercise.scala†L1-L41】【F:src/main/scala/interactionPlugins/gpt/TextBasedGptExercise.scala†L1-L16】
+* **Turtle block programming exercises** expose a block-based editor, scaffolding, and grader for turtle graphics, bundling SVG targets and sample programs as part of the exercise content.【F:src/main/scala/interactionPlugins/blockEnvironment/HtmlTurtleExercise.scala†L1-L35】【F:src/main/scala/interactionPlugins/blockEnvironment/TurtleExerciseContent.scala†L1-L42】
+* **Finite automaton builder** lets learners construct state machines, run simulations, and receive automated scaffolding and grading through a multi-pane interaction model.【F:src/main/scala/interactionPlugins/automaton/HtmlAutomatonExercise.scala†L1-L35】【F:src/main/scala/interactionPlugins/automaton/HtmlAutomatonInteractionModel.scala†L9-L96】
+* **Python coding exercises** provide a CodeMirror-based editor, runtime service integration, and unit-test grading pipelines with predefined starter code and fixtures.【F:src/main/scala/interactionPlugins/pythonExercises/HtmlPythonExercise.scala†L1-L38】【F:src/main/scala/interactionPlugins/pythonExercises/PythonExerciseContent.scala†L1-L152】
+
+Each plugin extends the shared `HtmlFullInteractionExercise` framework, ensuring consistent headers, instructions, and interaction controls across exercise types.【F:src/main/scala/workbook/workbookHtmlElements/abstractions/HtmlFullInteractionExercise.scala†L14-L50】
+
+## Technical structure
+The codebase centres on a set of core abstractions inside `workbook/model` that describe interaction state, scaffolding, and grading contracts. `InteractionState` and helpers such as `Stateless` standardise how plugins represent learner progress, while `Grader` and `Scaffolder` define the lifecycle of automated feedback engines.【F:src/main/scala/workbook/model/states/InteractionState.scala†L1-L9】【F:src/main/scala/workbook/model/states/Stateless.scala†L1-L9】【F:src/main/scala/workbook/model/interaction/Grader.scala†L1-L11】【F:src/main/scala/workbook/model/interaction/Scaffolder.scala†L1-L11】
+
+Full-interaction exercises rely on `HtmlFullInteractionModel`, `FullInteractionExerciseModel`, and `FullInteractionController` to coordinate editor state, scaffolding, and grading signals. These models feed into `HtmlFullInteractionContainerDefault`, which renders labelled panels and action buttons using Laminar signals and observers.【F:src/main/scala/workbook/model/interaction/full/HtmlFullInteractionModel.scala†L1-L19】【F:src/main/scala/workbook/model/interaction/full/FullInteractionExerciseModel.scala†L1-L39】【F:src/main/scala/workbook/model/interaction/full/FullInteractionController.scala†L1-L14】【F:src/main/scala/workbook/workbookHtmlElements/container/HtmlFullInteractionContainerDefault.scala†L1-L163】 Interaction components expose a role-based API for toggling visibility and state, enabling the container to orchestrate editors, simulations, and feedback panels uniformly.【F:src/main/scala/workbook/model/display/InteractionComponent.scala†L1-L63】
+
+Outside the workbook module, the `contentmanagement` package covers shared assets such as supported languages and font metadata used across exercises.【F:src/main/scala/contentmanagement/model/language/AppLanguage.scala†L1-L18】 The `MainApp` entry point demonstrates how these pieces compose into a runnable worksheet, from constructing sample plugin instances to rendering the final DOM subtree.【F:src/main/scala/MainApp.scala†L40-L115】
+
+## Further ideas and extensions
+Future exploration can build on multiple fronts—new interaction types, richer platform capabilities, usability polish, and technical hardening. A curated backlog in `planning/ideas.txt` outlines at least a dozen candidate projects in each category, ranging from geometry, circuit, and chemistry plugins to full-screen modes, collaborative tooling, improved theming, and refactoring initiatives like plugin modularisation and CI automation.【F:planning/ideas.txt†L1-L60】
