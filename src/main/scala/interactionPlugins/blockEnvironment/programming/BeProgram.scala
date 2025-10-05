@@ -16,7 +16,6 @@ type BeBoundsTree = Tree[Bounds[Double], NodeBasedTreePosition]
 
 case class BeProgram(tree: BeProgramTree) {
 
-
   def applyMapFunc[O](function: (BeBlock, BeProgramTreeContext[O]) => O): Tree[O, NodeBasedTreePosition] = {
     tree.mapWithContext((block, context) => function(block, enrichContext[O](context)))
   }
