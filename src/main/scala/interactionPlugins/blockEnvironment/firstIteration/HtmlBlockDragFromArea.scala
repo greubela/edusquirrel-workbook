@@ -1,4 +1,4 @@
-package interactionPlugins.blockProgramming
+package interactionPlugins.blockEnvironment.firstIteration
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L

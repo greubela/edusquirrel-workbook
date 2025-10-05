@@ -1,4 +1,4 @@
-package interactionPlugins.blockProgramming
+package interactionPlugins.blockEnvironment.firstIteration
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*

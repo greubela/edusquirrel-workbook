@@ -1,8 +1,8 @@
-package interactionPlugins.blockProgramming
+package interactionPlugins.blockEnvironment.firstIteration
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L._
+import com.raquo.laminar.api.L.*
 import workbook.model.display.InteractionComponent.InteractionComponentWithReactiveVars
 
 class TurtleScaffoldingStateComponent(stateVar: Var[TurtleScaffoldingState]) extends InteractionComponentWithReactiveVars {

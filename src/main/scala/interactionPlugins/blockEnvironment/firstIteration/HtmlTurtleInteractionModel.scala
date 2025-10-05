@@ -1,10 +1,9 @@
-package interactionPlugins.blockProgramming
+package interactionPlugins.blockEnvironment.firstIteration
 
 import com.raquo.airstream.state.Var
 import workbook.model.display.InteractionComponent
-import workbook.model.display.InteractionComponent.InteractionContentRole
 import workbook.model.display.InteractionComponent.InteractionContentRole.*
-import workbook.model.display.InteractionComponent.InteractionWithRole
+import workbook.model.display.InteractionComponent.{InteractionContentRole, InteractionWithRole}
 import workbook.model.interaction.full.{FullInteractionController, FullInteractionExerciseModel, FullInteractionVisualizer, HtmlFullInteractionModel}
 
 class HtmlTurtleInteractionModel(exerciseContent: TurtleExerciseContent) extends HtmlFullInteractionModel[

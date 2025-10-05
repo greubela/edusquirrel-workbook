@@ -1,4 +1,4 @@
-package interactionPlugins.blockProgramming
+package interactionPlugins.blockEnvironment.firstIteration
 
 import com.raquo.airstream.eventbus.EventBus
 import com.raquo.airstream.state.Var

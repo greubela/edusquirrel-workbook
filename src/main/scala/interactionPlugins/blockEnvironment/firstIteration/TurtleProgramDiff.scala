@@ -1,4 +1,4 @@
-package interactionPlugins.blockProgramming
+package interactionPlugins.blockEnvironment.firstIteration
 
 case class TurtleProgramDiff(missingCommands: List[String], additionalCommands: List[String]) {
   def isPerfectMatch: Boolean = missingCommands.isEmpty && additionalCommands.isEmpty

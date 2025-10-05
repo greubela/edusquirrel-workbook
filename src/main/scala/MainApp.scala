@@ -4,9 +4,9 @@ import contentmanagement.model.AppFont
 import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.model.language.AppLanguage
 import interactionPlugins.automaton.{AutomatonExerciseContent, HtmlAutomatonExercise}
+import interactionPlugins.blockEnvironment.firstIteration.*
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.rendering.{BeProgramRenderer, BeRendererConfig, ShapeFactory}
-import interactionPlugins.blockProgramming.*
 import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
 import interactionPlugins.pythonExercises.{HtmlPythonExercise, PythonExerciseContent}
 import org.scalajs.dom

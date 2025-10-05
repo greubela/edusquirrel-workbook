@@ -1,4 +1,4 @@
-package interactionPlugins.blockProgramming
+package interactionPlugins.blockEnvironment.firstIteration
 
 import contentmanagement.model.language.AppLanguage
 import workbook.model.exercise.ExerciseContent
