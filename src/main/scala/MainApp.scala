@@ -7,6 +7,7 @@ import interactionPlugins.automaton.{AutomatonExerciseContent, HtmlAutomatonExer
 import interactionPlugins.blockEnvironment.firstIteration.*
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.rendering.{BeProgramRenderer, BeRendererConfig, ShapeFactory}
+import interactionPlugins.blockEnvironment.secondInteration.*
 import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
 import interactionPlugins.pythonExercises.{HtmlPythonExercise, PythonExerciseContent}
 import org.scalajs.dom
@@ -33,7 +34,8 @@ def insertWorkbook(): Unit = {
   val sample = BeProgram.sampleProgram()
   println("python:\n" + sample.toPythonString)
   println("tree: " + sample.tree.toString)
-  val renderer = BeProgramRenderer(sample, BeRendererConfig(AppFont.AnonymousPro, Dimension[Double](2,2), Dimension[Double](20,10)))
+  val rendererConfig = BeRendererConfig(AppFont.AnonymousPro, Dimension[Double](2,2), Dimension[Double](20,10))
+  val renderer = BeProgramRenderer(sample, rendererConfig)
   val svgCanvas = renderer.render()
 
 
@@ -68,6 +70,8 @@ def insertWorkbook(): Unit = {
     targetDescription = Some("The figure is a square stitched with four equal sides.")
   )
   val htmlTurtleEx = new HtmlTurtleExercise(turtleExContent)
+  val beExerciseContent = BeExerciseContent.sampleExercise(rendererConfig)
+  val htmlBeEnvironment = new HtmlBeBlockEnvironment(beExerciseContent)
 
   // Automaton exercise
   val automatonExercise = new HtmlAutomatonExercise(AutomatonExerciseContent.divisibleByThree)
@@ -102,6 +106,8 @@ def insertWorkbook(): Unit = {
       ))
     ,
     htmlEx.getDomElement()
+    ,
+    htmlBeEnvironment.getDomElement()
     ,
     htmlTurtleEx.getDomElement()
     ,
