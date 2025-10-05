@@ -9,8 +9,6 @@ import contentmanagement.model.image.FullImage
 import org.scalajs.dom
 import org.scalajs.dom.SVGSVGElement
 
-import scala.collection.mutable
-
 class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
 
   override def getDomElement(): Element = canvasElement
@@ -31,6 +29,7 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
   var fillColor: AppColor = setFillColor(RGBColor(0, 0, 0, 255))
   var strokeColor: AppColor = setStrokeColor(RGBColor(0, 0, 0, 255))
 
+
   private def createSvg(elements: List[Element]): Element =
     svg.svg(
       svg.width := "" + width,
@@ -45,11 +44,12 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
       elements.toList,
     )
 
+  def addSvgElement(element: L.SvgElement): Unit = elements.update(_ :+ element)
 
   private def getStrokeConfig(
-      strokeWidth: Double,
-      dashPattern: Option[Seq[Double]] = None
-  ): Seq[SvgAttrSetter[String]] = {
+                               strokeWidth: Double,
+                               dashPattern: Option[Seq[Double]] = None
+                             ): Seq[SvgAttrSetter[String]] = {
     val base = List(
       svg.stroke := strokeColor.toRGB.toHex(),
       svg.strokeWidth := "" + strokeWidth,
@@ -57,7 +57,7 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
     )
     dashPattern.filter(_.nonEmpty) match {
       case Some(pattern) => base :+ (svg.strokeDashArray := pattern.mkString(" "))
-      case None          => base
+      case None => base
     }
   }
 
@@ -176,17 +176,17 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
   }
 
   override def drawCubicBezier(
-      startX: Double,
-      startY: Double,
-      control1X: Double,
-      control1Y: Double,
-      control2X: Double,
-      control2Y: Double,
-      endX: Double,
-      endY: Double,
-      strokeWidth: Double,
-      dashPattern: Option[Seq[Double]]
-  ): Unit = {
+                                startX: Double,
+                                startY: Double,
+                                control1X: Double,
+                                control1Y: Double,
+                                control2X: Double,
+                                control2Y: Double,
+                                endX: Double,
+                                endY: Double,
+                                strokeWidth: Double,
+                                dashPattern: Option[Seq[Double]]
+                              ): Unit = {
     val newPath = svg.path(
       svg.d := f"M $startX $startY C $control1X $control1Y $control2X $control2Y $endX $endY",
       getStrokeConfig(strokeWidth, dashPattern)

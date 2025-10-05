@@ -2,6 +2,7 @@ package contentmanagement.webElements.svg.elements
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import contentmanagement.model.color.{AppColor, RGBColor}
 import contentmanagement.model.geometry.{Bounds, Point}
 import contentmanagement.webElements.svg.{AppSvgElement, AppSvgElementRenderingAdditions}
 
@@ -21,11 +22,16 @@ case class AppPathSvgElement[T: Fractional]
     Bounds.thatContainsAll(pointList)
   }
 
-  override def asLaminar: L.SvgElement = svg.path(
-    svg.d := pathD
+
+  def asLaminar(pStroke: AppColor , pFill: AppColor ): L.SvgElement = svg.path(
+    svg.d := pathD,
+    svg.fill := pFill.toWebStyleString,
+    svg.stroke := pStroke.toWebStyleString,
   )
 
-  override def renderAsLaminar(shapeMods: Seq[L.Modifier[L.SvgElement]]): L.SvgElement = ???
+  override def renderAsLaminar(shapeMods: Seq[L.Modifier[L.SvgElement]]): L.SvgElement = svg.path(
+    svg.d := pathD
+  ).amend(shapeMods)
 
   override def renderAsGroupWithAdditions(additions: List[AppSvgElementRenderingAdditions], shapeMods: Seq[L.Modifier[L.SvgElement]]): L.SvgElement = ???
 }

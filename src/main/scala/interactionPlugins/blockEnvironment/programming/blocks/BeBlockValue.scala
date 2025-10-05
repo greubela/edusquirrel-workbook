@@ -2,22 +2,24 @@ package interactionPlugins.blockEnvironment.programming.blocks
 
 import contentmanagement.model.AppFont
 import contentmanagement.model.geometry.Dimension
-import interactionPlugins.blockEnvironment.programming.visitor.{BeBlockVisitor, CalculateSizeVisitor, ToPythonStringVisitor}
-import interactionPlugins.blockEnvironment.programming.{BeBlock, BeDataType}
+import contentmanagement.model.language.AppLanguage.{Java, Python}
+import contentmanagement.model.language.ProgrammingLanguage
+import interactionPlugins.blockEnvironment.programming.*
+import interactionPlugins.blockEnvironment.programming.BeProgram.BeProgramTreeContext
+import interactionPlugins.blockEnvironment.programming.connection.*
+import interactionPlugins.blockEnvironment.programming.rendering.*
 
-case class BeBlockValue(evaluatesTo: BeDataType, associatedValue: Option[String] = None, hasSideEffects: Boolean = false) extends BeBlock {
-  override val isFinished: Boolean = associatedValue.nonEmpty
+case class BeBlockValue(evaluatesTo: BeDataType, roleInParent: BeConnectionRole, associatedValue: Option[String] = None) extends BeBlock {
 
-  override def children: List[BeBlock] = List()
+  override def getConnections: List[BeConnection] = List()
 
-  def onVisiting[S](visitor: BeBlockVisitor[S]): S => S = {
-    visitor match {
-      case ToPythonStringVisitor(importString: String)  => (s => s) // done by parent
-      case CalculateSizeVisitor(font: AppFont, paddingSmall: Dimension[Double], paddingBig: Dimension[Double]) => state => {
-        state.add(this, font.measureText(associatedValue.getOrElse("[  ]")).increaseSize(paddingSmall))
-      }
-      case _ => ???
-    }
+  def toCode(language: ProgrammingLanguage, context: BeProgramTreeContext[String]): String = language match {
+    case Python => associatedValue.getOrElse("None")
+    case Java => ???
+    case _ => ???
   }
+
+  override val layoutManager: BeBlockLayoutManager = BeBlockLayoutManager.simpleStringNodeLayoutManager(associatedValue.getOrElse("[   ]"))
+
 
 }

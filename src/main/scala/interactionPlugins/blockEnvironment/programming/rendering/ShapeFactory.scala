@@ -1,4 +1,4 @@
-package interactionPlugins.blockEnvironment.programming
+package interactionPlugins.blockEnvironment.programming.rendering
 
 import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.{AppSvgElement, SvgPathBuilder}
@@ -7,10 +7,10 @@ import contentmanagement.webElements.svg.{AppSvgElement, SvgPathBuilder}
 object ShapeFactory {
 
 
-  private def ensureDim[T: Fractional](pBounds: Bounds[T], minWidth: Int, minHeight: Int): Bounds[T] =
+  /*private def ensureDim[T: Fractional](pBounds: Bounds[T], minWidth: Int, minHeight: Int): Bounds[T] =
     pBounds.ensureAtLeastAsBigAs(getDim(minWidth, minHeight))
 
-  private def getDim[T: Fractional](width: Int, height: Int): Dimension[T] = Dimension[T](intToT(width), intToT(height))
+  private def getDim[T: Fractional](width: Int, height: Int): Dimension[T] = Dimension[T](intToT(width), intToT(height))*/
 
   private def intToT[T: Fractional](number: Int): T = {
     val N = summon[Fractional[T]]
@@ -21,7 +21,7 @@ object ShapeFactory {
   def buildDateShape[T: Fractional](pBounds: Bounds[T]): AppSvgElement = {
     val N = summon[Fractional[T]]
     import N.*
-    val bounds = ensureDim(pBounds, 30, 15)
+    val bounds = pBounds
 
     SvgPathBuilder(bounds.startPoint)
       .quadraticBezierWithRel(
@@ -40,7 +40,7 @@ object ShapeFactory {
   def buildStringShape[T: Fractional](pBounds: Bounds[T]): AppSvgElement = {
     val N = summon[Fractional[T]]
     import N.*
-    val bounds = ensureDim(pBounds, 30, 15)
+    val bounds = pBounds
 
     SvgPathBuilder(bounds.startPoint + Point[T](fromInt(5), fromInt(0)))
       .verticalLineWithHeight(bounds.height / fromInt(4))
@@ -66,7 +66,7 @@ object ShapeFactory {
   def buildBooleanShape[T: Fractional](pBounds: Bounds[T]): AppSvgElement = {
     val N = summon[Fractional[T]]
     import N.*
-    val bounds = ensureDim(pBounds, 30, 15)
+    val bounds = pBounds
 
     SvgPathBuilder(bounds.startPoint + Point[T](fromInt(5), fromInt(0)))
       .lineToRel(new Dimension[T](fromInt(-5), bounds.height / fromInt(2)))
@@ -81,7 +81,7 @@ object ShapeFactory {
   def buildNumericShape[T: Fractional](pBounds: Bounds[T]): AppSvgElement = {
     val N = summon[Fractional[T]]
     import N.*
-    val bounds = ensureDim(pBounds, 30, 15)
+    val bounds = pBounds
 
     SvgPathBuilder(bounds.startPoint + Point[T](fromInt(5), fromInt(0)))
       .quadraticBezierWithRel(
@@ -100,9 +100,9 @@ object ShapeFactory {
   def buildStarterShape[T: Fractional](pBounds: Bounds[T]): AppSvgElement = {
     val N = summon[Fractional[T]]
     import N.*
-    val bounds = ensureDim(pBounds, 50, 30)
+    val bounds = pBounds
 
-    val offsetDist = fromInt(7) + fromInt(1) / fromInt(2)
+    val offsetDist = fromInt(10) // fromInt(7) + fromInt(1) / fromInt(2)
 
     SvgPathBuilder(bounds.startPoint + Point[T](fromInt(0), offsetDist))
       .cubicBezierToRel(
@@ -112,13 +112,13 @@ object ShapeFactory {
       )
       .cubicBezierToRel(
         new Dimension[T](offsetDist, fromInt(0)),
-        new Dimension[T](fromInt(0), -offsetDist),
-        new Dimension[T](fromInt(40), offsetDist)
+        new Dimension[T](fromInt(20), fromInt(0)),
+        new Dimension[T](fromInt(20), offsetDist)
       )
       .horizontalLineWithWidth(bounds.width - fromInt(40))
       .verticalLineWithHeight(bounds.height - offsetDist)
 
-      .horizontalLineWithWidth(bounds.width - fromInt(30))
+      .horizontalLineWithWidth(-bounds.width + fromInt(30))
       .addInstructionConnector(fromInt(-20))
       .horizontalLineWithWidth(fromInt(-10))
       .closePath()
@@ -130,7 +130,7 @@ object ShapeFactory {
   def buildRectangle[T: Fractional](pBounds: Bounds[T]): AppSvgElement = {
     val N = summon[Fractional[T]]
     import N.*
-    val bounds = ensureDim(pBounds, 5, 5)
+    val bounds = pBounds
 
     SvgPathBuilder(bounds.startPoint)
       .horizontalLineWithWidth(bounds.width)
@@ -143,7 +143,7 @@ object ShapeFactory {
   def buildUnitShape[T: Fractional](pBounds: Bounds[T]): AppSvgElement = {
     val N = summon[Fractional[T]]
     import N.*
-    val bounds = ensureDim(pBounds, 50, 20)
+    val bounds = pBounds
 
     val offsetDist = fromInt(7) + fromInt(1) / fromInt(2)
 

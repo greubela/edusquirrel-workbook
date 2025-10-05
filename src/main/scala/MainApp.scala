@@ -5,7 +5,7 @@ import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.model.language.AppLanguage
 import interactionPlugins.automaton.{AutomatonExerciseContent, HtmlAutomatonExercise}
 import interactionPlugins.blockEnvironment.programming.*
-import interactionPlugins.blockEnvironment.programming.visitor.CalculateSizeVisitor
+import interactionPlugins.blockEnvironment.programming.rendering.{BeProgramRenderer, BeRendererConfig, ShapeFactory}
 import interactionPlugins.blockProgramming.*
 import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
 import interactionPlugins.pythonExercises.{HtmlPythonExercise, PythonExerciseContent}
@@ -18,26 +18,24 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 
 @main
 def mainApp(): Unit = {
-
   doSomeCalculations()
   insertWorkbook()
 }
 
 def doSomeCalculations(): Unit = {
 
-  val sample = BeBlock.sampleProgram()
-
-  val visitorAnon = CalculateSizeVisitor(AppFont.AnonymousPro, new Dimension[Double](2, 2), new Dimension[Double](3, 3))
-  sample.visitBottomUp(visitorAnon)
-  println("Anonymous Pro Sizes:\n" + visitorAnon.currentState.map)
-
-  val visitorAptos = CalculateSizeVisitor(AppFont.Aptos, new Dimension[Double](2, 2), new Dimension[Double](3, 3))
-  sample.visitBottomUp(visitorAptos)
-  println("Aptos Sizes:\n" + visitorAptos.currentState.map)
 
 }
 
 def insertWorkbook(): Unit = {
+
+  // Svg
+  val sample = BeProgram.sampleProgram()
+  println("python:\n" + sample.toPythonString)
+  println("tree: " + sample.tree.toString)
+  val renderer = BeProgramRenderer(sample, BeRendererConfig(AppFont.AnonymousPro, Dimension[Double](2,2), Dimension[Double](20,10)))
+  val svgCanvas = renderer.render()
+
 
   // Generic GPT Exercise
   val testEx = TextBasedGptExercise("id-007", Map(AppLanguage.English -> "this is title"), Map(AppLanguage.English -> "this is instruction"))
@@ -78,7 +76,15 @@ def insertWorkbook(): Unit = {
   val helloWorldExercise = new HtmlPythonExercise(PythonExerciseContent.helloWorld)
   val fizzBuzzExercise = new HtmlPythonExercise(PythonExerciseContent.fizzBuzz)
 
+
   val combinedElement = div(
+    div(
+      h2("Example Canvas"),
+      div(
+        cls := "example-canvas",
+        svgCanvas.getDomElement()
+      )
+    ),
     div(
       h2("Workbook Overview"),
       div(
@@ -90,8 +96,9 @@ def insertWorkbook(): Unit = {
       h2("Svg Test"),
       div(
         BeDataType.values.map(curType => curType.shapeFactory.apply(
-          Bounds.fromPoints(Point[Double](0, 0), Point[Double](1, 1))
-        ).asSimpleSvg())
+          Bounds.fromPoints(Point[Double](0, 0), Point[Double](200, 100))
+        ).asSimpleSvg()),
+        ShapeFactory.buildStarterShape(Bounds.fromPoints(Point[Double](0, 0), Point[Double](200, 100))).asSimpleSvg()
       ))
     ,
     htmlEx.getDomElement()

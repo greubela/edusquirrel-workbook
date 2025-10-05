@@ -5,6 +5,7 @@ import com.raquo.laminar.api.L.*
 import contentmanagement.model.color.{AppColor, RGBColor}
 import contentmanagement.model.geometry.Bounds
 import contentmanagement.webElements.svg.AppSvgElement
+import interactionPlugins.blockEnvironment.programming.rendering.ShapeFactory
 
 
 enum BeDataType(val color: AppColor, val shapeFactory: Bounds[Double] => AppSvgElement) {
@@ -12,7 +13,7 @@ enum BeDataType(val color: AppColor, val shapeFactory: Bounds[Double] => AppSvgE
   case Boolean extends BeDataType(RGBColor.green, ShapeFactory.buildBooleanShape)
   case String extends BeDataType(RGBColor.yellow, ShapeFactory.buildStringShape)
   case Date extends BeDataType(RGBColor.red, ShapeFactory.buildDateShape)
-  case Unit extends BeDataType(RGBColor.white, ShapeFactory.buildUnitShape)
+  case Unit extends BeDataType(RGBColor.yellow, ShapeFactory.buildUnitShape)
   case BlockDescription extends BeDataType(RGBColor.transparent, ShapeFactory.buildRectangle)
 }
 

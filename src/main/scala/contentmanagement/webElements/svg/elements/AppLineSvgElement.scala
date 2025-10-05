@@ -1,6 +1,7 @@
 package contentmanagement.webElements.svg.elements
 
 import com.raquo.laminar.api.L
+import contentmanagement.model.color.{AppColor, RGBColor}
 import contentmanagement.model.geometry.{Bounds, Point}
 import contentmanagement.webElements.svg.{AppSvgElement, AppSvgElementRenderingAdditions}
 
@@ -12,7 +13,7 @@ case class AppLineSvgElement[T: Fractional](startPoint: Point[T], endPoint: Poin
   
   override def staticBoundingBox: Bounds[Double] = Bounds.fromPoints(startPointDouble, endPointDouble)
 
-  override def asLaminar: L.SvgElement = ???
+  def asLaminar(pStroke: AppColor , pFill: AppColor): L.SvgElement = ???
 
   override def renderAsLaminar(shapeMods: Seq[L.Modifier[L.SvgElement]]): L.SvgElement = ???
 

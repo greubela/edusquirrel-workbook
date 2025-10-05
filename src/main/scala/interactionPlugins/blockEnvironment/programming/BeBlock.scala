@@ -1,52 +1,29 @@
 package interactionPlugins.blockEnvironment.programming
 
 
-import interactionPlugins.blockEnvironment.programming.blocks.BeMotionBlocks.{BeBlockForward, MotionBlock}
-import interactionPlugins.blockEnvironment.programming.blocks.{BeBlockStarter, BeBlockValue}
-import interactionPlugins.blockEnvironment.programming.visitor.BeBlockVisitor
+import contentmanagement.model.AppFont
+import contentmanagement.model.geometry.{Dimension, Point}
+import contentmanagement.model.language.*
+import interactionPlugins.blockEnvironment.programming.BeProgram.*
+import interactionPlugins.blockEnvironment.programming.connection.*
+import interactionPlugins.blockEnvironment.programming.rendering.*
 
 trait BeBlock {
 
-  def isFinished: Boolean
-
-  def hasSideEffects: Boolean
-
   def evaluatesTo: BeDataType
 
-  def children: List[BeBlock]
+  def toCode(language: ProgrammingLanguage, context: BeProgramTreeContext[String]): String
 
-  def onVisiting[S](visitor: BeBlockVisitor[S]): S => S
+  def getConnections: List[BeConnection]
 
-  def visitBottomUp[S](visitor: BeBlockVisitor[S]): Unit = recursiveVisiting(visitor, false)
+  def roleInParent: BeConnectionRole
 
-  def visitTopDown[S](visitor: BeBlockVisitor[S]): Unit = recursiveVisiting(visitor, true)
+  def layoutManager: BeBlockLayoutManager
 
-  private def recursiveVisiting[S](visitor: BeBlockVisitor[S], ownFirst: Boolean): Unit = {
-    val handleOnVisiting = onVisiting(visitor)
-    if (ownFirst) {
-      visitor.updateState(handleOnVisiting(visitor.currentState))
-      children.foreach(_.recursiveVisiting(visitor, ownFirst))
-    } else {
-      children.foreach(_.recursiveVisiting(visitor, ownFirst))
-      visitor.updateState(handleOnVisiting(visitor.currentState))
-    }
-  }
-
-
-}
-
-
-abstract class BeBlockExtendable(val evaluatesTo: BeDataType) extends BeBlock {
-  override def isFinished: Boolean = children.forall(_.isFinished)
 }
 
 
 object BeBlock {
 
-  def sampleProgram(): BeBlockStarter = {
-    val parBlock = BeBlockValue(BeDataType.Numeric, Some("123"))
-    val moveBlock = BeBlockForward(parBlock)
-    BeBlockStarter(moveBlock)
-  }
 
 }

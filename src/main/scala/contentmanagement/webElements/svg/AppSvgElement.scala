@@ -2,6 +2,7 @@ package contentmanagement.webElements.svg
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import contentmanagement.model.color.{AppColor, RGBColor}
 import contentmanagement.model.geometry.Bounds
 
 sealed trait AppSvgElementRenderingAdditions {
@@ -50,7 +51,7 @@ trait AppSvgElement {
 
   def staticBoundingBox: Bounds[Double]
 
-  def asLaminar: L.SvgElement
+  def asLaminar(stroke: AppColor , fill: AppColor): L.SvgElement
 
   def renderAsLaminar(shapeMods: Seq[L.Modifier[L.SvgElement]]): L.SvgElement
 
@@ -62,7 +63,7 @@ trait AppSvgElement {
       svg.viewBox := s"${boundingBox.startPoint.x.toInt} ${boundingBox.startPoint.y.toInt} ${boundingBox.dimension.width.toInt} ${boundingBox.dimension.height.toInt}",
       svg.width := boundingBox.dimension.width.toInt + "",
       svg.height := boundingBox.dimension.height.toInt + "",
-      asLaminar
+      asLaminar(RGBColor.black, RGBColor.red)
     )
   }
 

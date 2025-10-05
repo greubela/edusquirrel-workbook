@@ -1,6 +1,5 @@
 package contentmanagement.webElements.svg
 
-import com.raquo.laminar.api.L
 import contentmanagement.model.geometry.{Dimension, Point}
 import contentmanagement.webElements.svg.elements.{AppLineSvgElement, AppPathSvgElement}
 

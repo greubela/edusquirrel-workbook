@@ -1,19 +1,30 @@
 package contentmanagement.model.language
 
 
-class AppLanguage(val name: String, val nameAbbr: String) {
-
+sealed trait AppLanguage() {
+  val name: String
 }
+
+sealed class HumanLanguage(val name: String, val nameAbbr: String) extends AppLanguage
+
+sealed class ProgrammingLanguage(val name: String, val fileEnding: String) extends AppLanguage
+
 
 object AppLanguage {
 
-  val allLanguages: List[AppLanguage] = List(English, German)
+  //def allLanguages: List[AppLanguage] = humanLanguages ++ programmingLanguages
 
-  // still in printing
+  /*val humanLanguages: List[HumanLanguage] = List(English, German)
+  val programmingLanguages: List[ProgramingLanguage] = List(Python, Java, BeLanguage)*/
 
-  case object English extends AppLanguage("English", "EN")
 
-  case object German extends AppLanguage("German", "DE")
+  case object English extends HumanLanguage("English", "EN")
 
+  case object German extends HumanLanguage("German", "DE")
+
+
+  case object Python extends ProgrammingLanguage("Python", "py")
+  case object Java extends ProgrammingLanguage("Java", "java")
+  case object BeStorageLanguage extends ProgrammingLanguage("BeLanguage", "be")
 
 }
