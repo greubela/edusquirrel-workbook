@@ -8,15 +8,18 @@ import contentmanagement.webElements.svg.AppSvgElement
 import interactionPlugins.blockEnvironment.programming.rendering.ShapeFactory
 
 
-enum BeDataType(val color: AppColor, val shapeFactory: Bounds[Double] => AppSvgElement) {
-  case Numeric extends BeDataType(RGBColor.darkGreen, ShapeFactory.buildNumericShape)
-  case Boolean extends BeDataType(RGBColor.green, ShapeFactory.buildBooleanShape)
-  case String extends BeDataType(RGBColor.yellow, ShapeFactory.buildStringShape)
-  case Date extends BeDataType(RGBColor.red, ShapeFactory.buildDateShape)
-  case Unit extends BeDataType(RGBColor.yellow, ShapeFactory.buildUnitShape)
-  case BlockDescription extends BeDataType(RGBColor.transparent, ShapeFactory.buildRectangle)
+enum BeDataType(val color: AppColor, val shapeFactory: Bounds[Double] => AppSvgElement, formatStringForDisplay: String => String) {
+  case Numeric extends BeDataType(RGBColor.darkGreen, ShapeFactory.buildNumericShape, _.toString)
+  case Boolean extends BeDataType(RGBColor.green, ShapeFactory.buildBooleanShape, _.toString)
+  case String extends BeDataType(RGBColor.yellow, ShapeFactory.buildStringShape, str => '"' + str + '"')
+  case Date extends BeDataType(RGBColor.red, ShapeFactory.buildDateShape, _.toString)
+  case Unit extends BeDataType(RGBColor.yellow, ShapeFactory.buildUnitShape, _.toString)
+  //case BlockDescription extends BeDataType(RGBColor.transparent, ShapeFactory.buildRectangle, )
 }
 
+object BeDataType {
+  def AnyType: Set[BeDataType] = Set(Numeric, Boolean, String, Date, Unit)
+}
 /*
 sealed trait BeBlockType {
   def color: AppColor

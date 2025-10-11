@@ -1,11 +1,11 @@
 package contentmanagement.datastructures.tree
 
-import util.CodeStringBuilder
+import util.{CodeStringBuilder, FunctionalUtility}
 
 import scala.collection.mutable
 
 
-trait Tree[D, P <: TreePosition] {
+trait Tree[P <: TreePosition, D] {
 
   def rootPosition: P
 
@@ -15,19 +15,12 @@ trait Tree[D, P <: TreePosition] {
 
   def getChildren(position: P): List[P]
 
-  def addChild(position: P, newData: D): Tree[D, P]
+  def addChild(position: P, newData: D): Tree[P, D]
 
-  def removePosition(position: P): Tree[D, P]
+  def removePosition(position: P): Tree[P, D]
 
   def searchForValue(value: D): Set[P] = entries.filter(_._2 == value).map(_._1)
 
-  def map[O](function: D => O): Tree[O, P]
-
-  def mapWithContext[O](function: (D, ExecutionContextInfo[P, D, O]) => O): Tree[O, P]
-  
-  def foreach(consumer: D => Any, bottomUp: Boolean): Unit = foreach((pos, value) => consumer(value), bottomUp)
-
-  def foreach(consumer: (P, D) => Any, bottomUp: Boolean = true): Unit
 
   def values: Set[D] = entries.map(_._2)
 
@@ -39,14 +32,42 @@ trait Tree[D, P <: TreePosition] {
     result.toSet
   }
 
-  def size: Int = if(isEmpty) 0 else entries.size
+  def size: Int = if (isEmpty) 0 else entries.size
 
   private def levelString: String = {
-      val builder = CodeStringBuilder()
-      foreach( (pos, data) => builder.setIntLevel(pos.level).appendNextLine(data.toString) , false)
-      builder.toString
+    val builder = CodeStringBuilder()
+    foreach((pos, data) => builder.setIntLevel(pos.level).appendNextLine(data.toString), false)
+    builder.toString
   }
 
   override def toString: String = "Tree with " + size + " entries:" + levelString
+
+
+  def mapWithStructure[O](transformData: TSC => O): Tree[P, O]
+
+  def foreachWithStructure(consumer: TSC => Any, bottomUp: Boolean = true): Unit = mapWithStructure(consumer)
+
+  def foreach(consumer: (P, D) => Any, bottomUp: Boolean = true): Unit = foreachWithStructure(func => consumer(func.curPosition, func.curValue), bottomUp)
+
+  def map[O](function: D => O): Tree[P, O] = mapWithStructure(info => function(info.curValue))
+
+  type TSC = TreeStructureContext[P, D]
+  type TEC[O] = TreeFunctorExecutionContext[P, D, O]
+  type TSEC[O] = TreeStructureAndExecutionContext[P, D, O]
+
+  def mapWithEnrichedContext[O, C <: TSEC[O]](function: C => O, enrichContext: TSEC[O] => C): Tree[P, O] = mapWithContext(context=> function(enrichContext(context)))
+
+  def mapWithContext[O](function: TSEC[O] => O): Tree[P, O] = {
+
+    def getExecutionContextInfo(curInfo: TSC, curCache: TSC => O): TSEC[O] = new TreeStructureAndExecutionContextImpl[P, D, O](curInfo, new TEC[O]() {
+      override def accessOtherResult(otherPosition: TSC): O = curCache(otherPosition)
+    })
+
+    val func: ((TSC, TSC => O) => O) = (curInfo, curCache) => function(getExecutionContextInfo(curInfo, curCache))
+
+    val funcCached: (TSC => O) = FunctionalUtility.withCacheAndResolvedDependencies(func)
+    mapWithStructure(funcCached)
+  }
+
 }
 

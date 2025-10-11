@@ -42,7 +42,7 @@ object AppFont {
 
   def defaultFont: AppFont = AnonymousPro
 
-  def AnonymousPro: AppFont = AppFont("Anonymous Pro", 16)
+  def AnonymousPro: AppFont = AppFont("Anonymous Pro", 32)
 
   val Aptos: AppFont = AppFont("Aptos", 12)
   /*

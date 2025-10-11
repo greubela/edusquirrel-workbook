@@ -4,6 +4,7 @@ import com.raquo.laminar.api.L
 import contentmanagement.model.color.{AppColor, RGBColor}
 import contentmanagement.model.geometry.{Bounds, Point}
 import contentmanagement.webElements.svg.{AppSvgElement, AppSvgElementRenderingAdditions}
+import org.scalajs.dom.MouseEvent
 
 case class AppLineSvgElement[T: Fractional](startPoint: Point[T], endPoint: Point[T]) extends AppSvgElement {
 
@@ -17,5 +18,7 @@ case class AppLineSvgElement[T: Fractional](startPoint: Point[T], endPoint: Poin
 
   override def renderAsLaminar(shapeMods: Seq[L.Modifier[L.SvgElement]]): L.SvgElement = ???
 
+  def renderWithController(shapeMods: Seq[L.Modifier[L.SvgElement]], onClick: MouseEvent => Any, onDragStart: MouseEvent => Any, onDropped: MouseEvent => Any): L.SvgElement = ???
+  
   override def renderAsGroupWithAdditions(additions: List[AppSvgElementRenderingAdditions], shapeMods: Seq[L.Modifier[L.SvgElement]]): L.SvgElement = ???
 }

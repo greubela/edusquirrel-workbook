@@ -3,6 +3,9 @@ package contentmanagement.datastructures.tree.nodeImpl
 import contentmanagement.datastructures.tree.*
 
 case class NodeBasedTreePosition(childIndices: List[Integer]) extends TreePosition {
+
+  def forParent(): Option[NodeBasedTreePosition] = if (childIndices.isEmpty) None else Some(NodeBasedTreePosition(childIndices.init))
+
   def forChild(nr: Integer): NodeBasedTreePosition = NodeBasedTreePosition(childIndices ++ List(nr))
 
   def isRoot: Boolean = childIndices.isEmpty

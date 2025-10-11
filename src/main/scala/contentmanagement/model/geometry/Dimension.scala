@@ -1,7 +1,7 @@
 package contentmanagement.model.geometry
 
-final case class Dimension[T: Numeric](width: T, height: T) {
-  private val N = summon[Numeric[T]]
+final case class Dimension[T: Fractional](width: T, height: T) {
+  private val N = summon[Fractional[T]]
 
   import N.*
 
@@ -25,5 +25,7 @@ final case class Dimension[T: Numeric](width: T, height: T) {
   def increaseSize(addWidth: T, addHeight: T): Dimension[T] = Dimension[T](width + addWidth, height + addHeight)
 
   def increaseSize(other: Dimension[T]): Dimension[T] = Dimension[T](width + other.width, height + other.height)
+
+  def asPoint: Point[T] = new Point[T](width, height)
 
 }

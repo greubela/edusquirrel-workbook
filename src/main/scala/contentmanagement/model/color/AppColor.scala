@@ -15,6 +15,15 @@ trait AppColor {
 
 object AppColor {
 
+  def fromWebStyleString(webString: String): RGBColor = {
+    assert(webString.length == 7, "hex color '" + webString + "' should have exactly one '#' and six hex characters!")
+    val pureHex = webString.substring(1, 7) // remove "#" at start 
+    val r = Integer.parseInt(pureHex.substring(0, 2), 16)
+    val g = Integer.parseInt(pureHex.substring(2, 4), 16)
+    val b = Integer.parseInt(pureHex.substring(4, 6), 16)
+    RGBColor(r, g, b)
+  } 
+  
   /*
     def getStyle(): CSSStyleDeclaration = {
     val appDiv = document.getElementById("app")
@@ -22,16 +31,7 @@ object AppColor {
     style
   }
   
-  def readColorFromCSS(cssName: String): RGBColor = {
-    val style = ViewElements.getStyle()
-    val hexCol = style.getPropertyValue(cssName)
-    assert(hexCol.length == 7, "hex color '" + hexCol + "' should have exactly one '#' and six hex characters!")
-    val pureHex = hexCol.substring(1, 7) // remove "#" at start and other things
-    val r = Integer.parseInt(pureHex.substring(0, 2), 16)
-    val g = Integer.parseInt(pureHex.substring(2, 4), 16)
-    val b = Integer.parseInt(pureHex.substring(4, 6), 16)
-    RGBColor(r, g, b)
-  }*/
+*/
   /*
   lazy val cssBackgroundDark: RGBColor = readColorFromCSS("--color-background-dark")
   lazy val cssBackgroundDarkLighter: RGBColor = readColorFromCSS("--color-background-dark-lighter")

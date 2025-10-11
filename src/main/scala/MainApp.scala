@@ -1,13 +1,12 @@
 
 import com.raquo.laminar.api.L.{*, given}
 import contentmanagement.model.AppFont
+import contentmanagement.model.color.AppColorPalette
 import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.model.language.AppLanguage
 import interactionPlugins.automaton.{AutomatonExerciseContent, HtmlAutomatonExercise}
-import interactionPlugins.blockEnvironment.firstIteration.*
 import interactionPlugins.blockEnvironment.programming.*
-import interactionPlugins.blockEnvironment.programming.rendering.{BeProgramRenderer, BeRendererConfig, ShapeFactory}
-import interactionPlugins.blockEnvironment.secondInteration.*
+import interactionPlugins.blockEnvironment.programming.rendering.{BeRendererConfig, HtmlBeProgramEditor, ShapeFactory}
 import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
 import interactionPlugins.pythonExercises.{HtmlPythonExercise, PythonExerciseContent}
 import org.scalajs.dom
@@ -25,53 +24,23 @@ def mainApp(): Unit = {
 
 def doSomeCalculations(): Unit = {
 
-
 }
 
 def insertWorkbook(): Unit = {
 
   // Svg
-  val sample = BeProgram.sampleProgram()
-  println("python:\n" + sample.toPythonString)
-  println("tree: " + sample.tree.toString)
-  val rendererConfig = BeRendererConfig(AppFont.AnonymousPro, Dimension[Double](2,2), Dimension[Double](20,10))
-  val renderer = BeProgramRenderer(sample, rendererConfig)
-  val svgCanvas = renderer.render()
+  val programVar = Var(BeProgram.sampleProgram())
+  println("python:\n" + programVar.now().toPythonString)
+  println("logic tree: " + programVar.now().logicTree.toString)
+  println("display tree: " + programVar.now().displayTree.toString)
 
+  val rendererConfig = BeRendererConfig(AppFont.AnonymousPro, Dimension[Double](7,7), Dimension[Double](37,37), AppColorPalette.defaultRGBYPalette25)
+  val renderer = HtmlBeProgramEditor(programVar.signal, rendererConfig)
+  val svgDomElement = renderer.svgCanvasSignal.map(_.getDomElement())
 
   // Generic GPT Exercise
   val testEx = TextBasedGptExercise("id-007", Map(AppLanguage.English -> "this is title"), Map(AppLanguage.English -> "this is instruction"))
   val htmlEx = HtmlTextBasedGptExercise(testEx)
-
-  //  Turtle Exercise
-  val turtleSampleProgram = TurtleProgramState(
-    List(
-      TurtleCommand.WhenProgramStarted,
-      TurtleCommand.PenDown,
-      TurtleCommand.Repeat(TurtleExpression.Literal(4)),
-      TurtleCommand.Forward(TurtleExpression.Literal(100)),
-      TurtleCommand.TurnRight(TurtleExpression.Literal(90)),
-      TurtleCommand.EndRepeat,
-      TurtleCommand.PenUp
-    )
-  )
-  val turtleTargetSvg =
-    """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
-      |  <g stroke="#0c3359" stroke-width="6" fill="none" stroke-linecap="round">
-      |    <path d="M60 60 L180 60 L180 180 L60 180 Z"/>
-      |  </g>
-      |</svg>""".stripMargin
-  val turtleExContent = TurtleExerciseContent(
-    id = "turtle-001",
-    titleMap = Map(AppLanguage.English -> "Draw a square"),
-    instructionMap = Map(AppLanguage.English -> "Use the turtle blocks to draw a square with side length 100."),
-    targetSvg = turtleTargetSvg,
-    sampleProgram = turtleSampleProgram,
-    targetDescription = Some("The figure is a square stitched with four equal sides.")
-  )
-  val htmlTurtleEx = new HtmlTurtleExercise(turtleExContent)
-  val beExerciseContent = BeExerciseContent.sampleExercise(rendererConfig)
-  val htmlBeEnvironment = new HtmlBeBlockEnvironment(beExerciseContent)
 
   // Automaton exercise
   val automatonExercise = new HtmlAutomatonExercise(AutomatonExerciseContent.divisibleByThree)
@@ -86,7 +55,7 @@ def insertWorkbook(): Unit = {
       h2("Example Canvas"),
       div(
         cls := "example-canvas",
-        svgCanvas.getDomElement()
+        child <-- svgDomElement
       )
     ),
     div(
@@ -106,10 +75,6 @@ def insertWorkbook(): Unit = {
       ))
     ,
     htmlEx.getDomElement()
-    ,
-    htmlBeEnvironment.getDomElement()
-    ,
-    htmlTurtleEx.getDomElement()
     ,
     automatonExercise.getDomElement()
     ,

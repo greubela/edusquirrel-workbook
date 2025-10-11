@@ -4,6 +4,7 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.color.{AppColor, RGBColor}
 import contentmanagement.model.geometry.Bounds
+import org.scalajs.dom.MouseEvent
 
 sealed trait AppSvgElementRenderingAdditions {
   case object showCoordinateSystem
@@ -54,6 +55,8 @@ trait AppSvgElement {
   def asLaminar(stroke: AppColor , fill: AppColor): L.SvgElement
 
   def renderAsLaminar(shapeMods: Seq[L.Modifier[L.SvgElement]]): L.SvgElement
+  
+  def renderWithController(shapeMods: Seq[L.Modifier[L.SvgElement]], onClick: MouseEvent => Any, onDragStart: MouseEvent => Any, onDropped: MouseEvent => Any): L.SvgElement
 
   def renderAsGroupWithAdditions(additions: List[AppSvgElementRenderingAdditions], shapeMods: Seq[L.Modifier[L.SvgElement]]): L.SvgElement
 

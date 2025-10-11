@@ -7,7 +7,7 @@ import util.FunctionalUtility
 
 import scala.collection.mutable
 
-case class NodeBasedTreeImpl[D](private val firstLayerNodes: List[NodeBasedTreeNode[D]]) extends Tree[D, NodeBasedTreePosition] {
+case class NodeBasedTreeImpl[D](private val firstLayerNodes: List[NodeBasedTreeNode[D]]) extends Tree[NodeBasedTreePosition, D] {
 
   private val firstLayerTravelInfo: List[NodeBasedTraversalInformation[D]] = firstLayerNodes.zipWithIndex.map((curRootChild, curIndex) => NodeBasedTraversalInformation(curRootChild, rootPosition.forChild(curIndex), None, this))
 
@@ -35,28 +35,23 @@ case class NodeBasedTreeImpl[D](private val firstLayerNodes: List[NodeBasedTreeN
   override def getChildren(position: NodeBasedTreePosition): List[NodeBasedTreePosition] = if (position.isRoot) firstLayerTravelInfo.map(_.curPosition) else
     structureCache.get(position).map(_.traversalInfoForChildren.map(_.curPosition)).getOrElse(List())
 
-  def foreachInfo(consumer: NodeBasedTraversalInformation[D] => Any, bottomUp: Boolean = true): Unit = {
-    def recTraverse(curNode: NodeBasedTraversalInformation[D]): Unit = if (bottomUp) {
-      curNode.traversalInfoForChildren.foreach(recTraverse)
-      consumer(curNode)
-    } else {
-      consumer(curNode)
-      curNode.traversalInfoForChildren.foreach(recTraverse)
-    }
 
+  override def foreachWithStructure(consumer: TreeStructureContext[NodeBasedTreePosition, D] => Any, bottomUp: Boolean = true): Unit = {
+    def recTraverse(curNode: NodeBasedTraversalInformation[D]): Unit =
+      if (bottomUp) {
+        curNode.traversalInfoForChildren.foreach(recTraverse)
+        consumer(curNode)
+      } else {
+        consumer(curNode)
+        curNode.traversalInfoForChildren.foreach(recTraverse)
+      }
     firstLayerTravelInfo.foreach(recTraverse)
   }
 
-  def mapInfo[O](transformData: TraversalInformation[D, NodeBasedTreePosition] => O): NodeBasedTreeImpl[O] = {
-
-    def recreateNode(curNode: TraversalInformation[D, NodeBasedTreePosition]): NodeBasedTreeNode[O] =
-      NodeBasedTreeNode[O](transformData.apply(curNode), curNode.traversalInfoForChildren.map(recreateNode))
-
-    NodeBasedTreeImpl[O](firstLayerTravelInfo.map(curRootNodeTravelInfo => recreateNode(curRootNodeTravelInfo)))
-  }
 
 
-  override def addChild(positionToAdd: NodeBasedTreePosition, newData: D): Tree[D, NodeBasedTreePosition] = if (positionToAdd.isRoot) {
+
+  override def addChild(positionToAdd: NodeBasedTreePosition, newData: D): Tree[NodeBasedTreePosition, D] = if (positionToAdd.isRoot) {
     NodeBasedTreeImpl[D](firstLayerNodes :+ NodeBasedTreeNode[D](newData, List()))
   } else {
     def updateNode(curNode: NodeBasedTraversalInformation[D]): NodeBasedTreeNode[D] = {
@@ -65,10 +60,11 @@ case class NodeBasedTreeImpl[D](private val firstLayerNodes: List[NodeBasedTreeN
 
       NodeBasedTreeNode[D](curNode.curValue, newChildren)
     }
+
     NodeBasedTreeImpl[D](firstLayerTravelInfo.map(updateNode))
   }
 
-  override def removePosition(position: NodeBasedTreePosition): Tree[D, NodeBasedTreePosition] = if (position.isRoot) NodeBasedTreeImpl[D](List()) else {
+  override def removePosition(position: NodeBasedTreePosition): Tree[NodeBasedTreePosition, D] = if (position.isRoot) NodeBasedTreeImpl[D](List()) else {
     def updateNode(curNode: NodeBasedTraversalInformation[D]): Option[NodeBasedTreeNode[D]] = if (curNode.curPosition == position) None else {
       Some(NodeBasedTreeNode[D](curNode.curValue, curNode.traversalInfoForChildren.flatMap(updateNode)))
     }
@@ -76,24 +72,17 @@ case class NodeBasedTreeImpl[D](private val firstLayerNodes: List[NodeBasedTreeN
     NodeBasedTreeImpl[D](firstLayerTravelInfo.flatMap(updateNode))
 
   }
+  
 
-  override def map[O](function: D => O): Tree[O, NodeBasedTreePosition] = mapInfo(info => function(info.curValue))
+  def mapWithStructure[O](transformData: TreeStructureContext[NodeBasedTreePosition, D] => O): NodeBasedTreeImpl[O] = {
 
-  override def foreach(consumer: (NodeBasedTreePosition, D) => Any, bottomUp: Boolean = true): Unit = foreachInfo(info => consumer(info.curPosition, info.curValue), bottomUp)
+    def recreateNode(curNode: TreeStructureContext[NodeBasedTreePosition, D]): NodeBasedTreeNode[O] =
+      NodeBasedTreeNode[O](transformData.apply(curNode), curNode.traversalInfoForChildren.map(recreateNode))
 
-  override def mapWithContext[O](function: (D, ExecutionContextInfo[NodeBasedTreePosition, D, O]) => O): Tree[O, NodeBasedTreePosition] = {
-
-    def getExecutionContextInfo(curInfo: TraversalInformation[D, NodeBasedTreePosition], curCache: TraversalInformation[D, NodeBasedTreePosition] => O): ExecutionContextInfo[NodeBasedTreePosition, D, O] = new ExecutionContextInfo[NodeBasedTreePosition, D, O]() {
-
-      override def curTraversalInformation: TraversalInformation[D, NodeBasedTreePosition] = curInfo
-
-      override def accessOtherResult(otherPosition: TraversalInformation[D, NodeBasedTreePosition]): O = curCache(otherPosition)
-    }
-
-    val func: ((TraversalInformation[D, NodeBasedTreePosition], TraversalInformation[D, NodeBasedTreePosition] => O) => O) = (curInfo, curCache) => function(curInfo.curValue, getExecutionContextInfo(curInfo, curCache))
-    val funcCached: (TraversalInformation[D, NodeBasedTreePosition] => O) = FunctionalUtility.withCacheAndResolvedDependencies(func)
-    mapInfo(funcCached)
+    NodeBasedTreeImpl[O](firstLayerTravelInfo.map(curRootNodeTravelInfo => recreateNode(curRootNodeTravelInfo)))
   }
+
+  
 
 
 }

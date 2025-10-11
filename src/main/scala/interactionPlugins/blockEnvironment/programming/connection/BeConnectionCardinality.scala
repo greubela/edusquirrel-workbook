@@ -23,6 +23,8 @@ object BeConnectionCardinality {
 
   def exactlyN(exact: Int): BeConnectionCardinality = BeConnectionCardinality(true, true, Some(exact), Some(exact))
 
+  def anyAmount(): BeConnectionCardinality = BeConnectionCardinality(false, false, None, None)
+  
   //  def none: BeConnectionCardinality = BeConnectionCardinality(false, false, None, None)
 
 

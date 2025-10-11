@@ -1,18 +1,16 @@
 package interactionPlugins.blockEnvironment.programming.connection
 
-import contentmanagement.model.language.LanguageMap
 import interactionPlugins.blockEnvironment.programming.*
-
-
-
+import interactionPlugins.blockEnvironment.programming.blocks.display.BeBlockDisplay
 
 
 trait BeConnection {
   def connectionRole: BeConnectionRole
 
-  def connectionType: BeDataType
+  def connectionMayEvaluateTo: Set[BeDataType]
 
   def connectionCardinality: BeConnectionCardinality
+
 }
 
 
