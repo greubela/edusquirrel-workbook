@@ -1,4 +1,4 @@
-package interactionPlugins.blockEnvironment.programming.blocks.logic.parent
+package interactionPlugins.blockEnvironment.programming.blocks.call.parent
 
 import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.model.language.*
@@ -7,7 +7,7 @@ import contentmanagement.webElements.svg.AppSvgElement
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.BeProgram.*
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-import interactionPlugins.blockEnvironment.programming.blocks.logic.BeBlockLogic
+import interactionPlugins.blockEnvironment.programming.blocks.call.BeBlockLogic
 import interactionPlugins.blockEnvironment.programming.connection.*
 import interactionPlugins.blockEnvironment.programming.rendering.*
 import util.CodeStringBuilder
@@ -22,7 +22,7 @@ object BeMotionBlocks {
       override def shapeFactory: Bounds[Double] => AppSvgElement = BeDataType.Unit.shapeFactory
 
       override def calcMinSize(config: BeRendererConfig, context: BeBlockContext[Dimension[Double]]): Dimension[Double] =
-        BeBlockParentDisplayManager.calculateMinSizeForHBox(config, context, Dimension[Double](50, 20), new Dimension[Double](20,5), true)
+        BeBlockParentDisplayManager.calculateMinSizeForHBox(config, context, new Dimension[Double](20,5), true)
 
       override def stroke(config: BeRendererConfig): String = config.colorPalette.blues(2).toWebStyleString
 

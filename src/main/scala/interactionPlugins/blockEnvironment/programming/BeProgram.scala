@@ -7,13 +7,10 @@ import contentmanagement.model.language.*
 import contentmanagement.model.language.AppLanguage.Python
 import interactionPlugins.blockEnvironment.programming.BeProgram.*
 import interactionPlugins.blockEnvironment.programming.blocks.*
-import interactionPlugins.blockEnvironment.programming.blocks.display.{BeBlockDisplay, BeBlockDummyMultipleTypes}
-import interactionPlugins.blockEnvironment.programming.blocks.logic.*
-import interactionPlugins.blockEnvironment.programming.blocks.logic.parent.{BeBlockFunctionDefinition, BeBlockParent, BeMotionBlocks}
+import interactionPlugins.blockEnvironment.programming.blocks.call.*
+import interactionPlugins.blockEnvironment.programming.blocks.call.parent.{BeBlockFunctionDefinition, BeBlockParent, BeMotionBlocks}
 import interactionPlugins.blockEnvironment.programming.connection.*
 import interactionPlugins.blockEnvironment.programming.rendering.*
-
-import scala.collection.mutable
 
 type BeProgramLogicTree = Tree[NodeBasedTreePosition, BeBlockLogic]
 type BeProgramDisplayTree = Tree[NodeBasedTreePosition, BeBlock]
@@ -83,6 +80,18 @@ object BeProgram {
     def childrenBlocks: List[BeBlock]
   }
 
+  /*def testProgramAdding(): Unit = {
+    val sample = miniProgram()
+    val big = sampleProgram()
+
+    val addPos = NodeBasedTreePosition(List(0,0,0))
+    val res = sample.logicTree.addSubtree(addPos, big.logicTree)
+
+    println("mini: " + sample)
+    println("big: " + big)
+    println("combined: " + res)
+  }*/
+
   trait BeTreeContext[B <: BeBlock, O] extends TreeStructureAndExecutionContext[NodeBasedTreePosition, BeBlock, O] {
     def block: B
 
@@ -93,17 +102,16 @@ object BeProgram {
 
   def miniProgram(): BeProgram = {
 
-
     val starter = BeBlockFunctionDefinition.starterBlock()
     val forward = BeMotionBlocks.BeBlockForward(FunctionBody)
 
     var tree: Tree[NodeBasedTreePosition, BeBlockLogic] = NodeBasedTreeImpl.empty[BeBlockLogic]()
-    tree = tree.addChild(tree.rootPosition, starter)
+    tree = tree.addAsLastChild(tree.rootPosition, starter)
 
-    0.until(1).foreach(curIter => {
-      tree = tree.addChild(tree.rootPosition.forChild(0), forward)
-      tree = tree.addChild(tree.rootPosition.forChild(0).forChild(curIter), BeBlockValue(BeDataType.Numeric, FunctionParameter(BeDataType.Numeric), "This contains the value: " + curIter + ""))
-    })
+    tree = tree.addAsLastChild(tree.rootPosition.forChild(0), forward)
+    tree = tree.addAsLastChild(tree.rootPosition.forChild(0), forward)
+    tree = tree.addAsLastChild(tree.rootPosition.forChild(0).forChild(0), BeBlockValue(BeDataType.Numeric, FunctionParameter(BeDataType.Numeric), "This contains the value: " + 128 + ""))
+
     BeProgram(tree)
   }
 
@@ -113,17 +121,17 @@ object BeProgram {
     val forward = BeMotionBlocks.BeBlockForward(FunctionBody)
 
     var tree: Tree[NodeBasedTreePosition, BeBlockLogic] = NodeBasedTreeImpl.empty[BeBlockLogic]()
-    tree = tree.addChild(tree.rootPosition, starter)
+    tree = tree.addAsLastChild(tree.rootPosition, starter)
 
 
     0.until(10).foreach(curIter => {
-      tree = tree.addChild(tree.rootPosition.forChild(0), forward)
-      tree = tree.addChild(tree.rootPosition.forChild(0).forChild(curIter), BeBlockValue(BeDataType.Numeric, FunctionParameter(BeDataType.Numeric), "This contains the value: " + curIter + ""))
+      tree = tree.addAsLastChild(tree.rootPosition.forChild(0), forward)
+      tree = tree.addAsLastChild(tree.rootPosition.forChild(0).forChild(curIter), BeBlockValue(BeDataType.Numeric, FunctionParameter(BeDataType.Numeric), "This contains the value: " + curIter + ""))
       if (curIter % 2 == 0) {
-        tree = tree.addChild(tree.rootPosition.forChild(0).forChild(curIter), BeBlockValue(BeDataType.Numeric, FunctionParameter(BeDataType.Numeric), "Another one for 2"))
+        tree = tree.addAsLastChild(tree.rootPosition.forChild(0).forChild(curIter), BeBlockValue(BeDataType.Numeric, FunctionParameter(BeDataType.Numeric), "Another one for 2"))
       }
       if (curIter % 3 == 0) {
-        tree = tree.addChild(tree.rootPosition.forChild(0).forChild(curIter), BeBlockValue(BeDataType.Numeric, FunctionParameter(BeDataType.Numeric), "Another one with 3 "))
+        tree = tree.addAsLastChild(tree.rootPosition.forChild(0).forChild(curIter), BeBlockValue(BeDataType.Numeric, FunctionParameter(BeDataType.Numeric), "Another one with 3 "))
       }
     })
 

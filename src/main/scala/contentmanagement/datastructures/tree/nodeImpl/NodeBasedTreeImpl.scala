@@ -3,7 +3,6 @@ package contentmanagement.datastructures.tree.nodeImpl
 
 import contentmanagement.datastructures.tree.*
 import contentmanagement.datastructures.tree.nodeImpl.*
-import util.FunctionalUtility
 
 import scala.collection.mutable
 
@@ -45,23 +44,61 @@ case class NodeBasedTreeImpl[D](private val firstLayerNodes: List[NodeBasedTreeN
         consumer(curNode)
         curNode.traversalInfoForChildren.foreach(recTraverse)
       }
+
     firstLayerTravelInfo.foreach(recTraverse)
   }
 
 
-
-
-  override def addChild(positionToAdd: NodeBasedTreePosition, newData: D): Tree[NodeBasedTreePosition, D] = if (positionToAdd.isRoot) {
+  override def addAsLastChild(positionToAdd: NodeBasedTreePosition, newData: D): Tree[NodeBasedTreePosition, D] = if (positionToAdd.isRoot) {
     NodeBasedTreeImpl[D](firstLayerNodes :+ NodeBasedTreeNode[D](newData, List()))
   } else {
-    def updateNode(curNode: NodeBasedTraversalInformation[D]): NodeBasedTreeNode[D] = {
-      val updatedChildren = curNode.traversalInfoForChildren.map(updateNode)
-      val newChildren: List[NodeBasedTreeNode[D]] = if (curNode.curPosition == positionToAdd) updatedChildren :+ NodeBasedTreeNode[D](newData, List()) else updatedChildren
+    addAsChildNr(positionToAdd, getChildren(positionToAdd).size, newData)
+  }
 
-      NodeBasedTreeNode[D](curNode.curValue, newChildren)
+  override def addSubtreeAsChildNr(insertAtPosition: NodeBasedTreePosition, childNr: Int, subtree: Tree[NodeBasedTreePosition, D]): Tree[NodeBasedTreePosition, D] = {
+
+    var res: Tree[NodeBasedTreePosition, D] = this
+    // roots at correct position (in reverse to keep order)
+    val subtreeRootPositions = subtree.getChildren(subtree.rootPosition)
+    subtreeRootPositions.reverse.foreach(curRootPosition => {
+      res = res.addAsChildNr(insertAtPosition, childNr, subtree.getData(curRootPosition).get)
+    })
+    // remainder step by step at last elements
+    subtree.foreachWithStructure(structure =>
+      if (structure.curPosition.level > 1) {
+        val newPosition = structure.curPosition.relativeTo(insertAtPosition, childNr)
+        res = res.addAsLastChild(newPosition.forParent().get, structure.curValue)
+      }
+      , false)
+    res
+  }
+
+  private def addNodeAsChildNr(positionToAdd: NodeBasedTreePosition, childNr: Int, newNode: NodeBasedTreeNode[D]): Tree[NodeBasedTreePosition, D] = {
+    if (positionToAdd.isRoot) {
+      val newRoots = firstLayerNodes.slice(0, childNr) ++ List(newNode) ++ firstLayerNodes.slice(childNr, firstLayerNodes.size)
+      NodeBasedTreeImpl(newRoots)
+    } else {
+      def updateNode(curNode: NodeBasedTraversalInformation[D]): NodeBasedTreeNode[D] = {
+        val updatedChildren = curNode.traversalInfoForChildren.map(updateNode)
+        val newChildren: List[NodeBasedTreeNode[D]] = if (curNode.curPosition == positionToAdd) {
+          updatedChildren.slice(0, childNr) ++ List(newNode) ++ updatedChildren.slice(childNr, updatedChildren.size)
+        } else {
+          updatedChildren
+        }
+        NodeBasedTreeNode[D](curNode.curValue, newChildren)
+      }
+
+      NodeBasedTreeImpl[D](firstLayerTravelInfo.map(updateNode))
     }
+  }
 
-    NodeBasedTreeImpl[D](firstLayerTravelInfo.map(updateNode))
+  override def addAsChildNr(positionToAdd: NodeBasedTreePosition, childNr: Int, newData: D): Tree[NodeBasedTreePosition, D] = {
+    addNodeAsChildNr(positionToAdd, childNr, NodeBasedTreeNode(newData, List()))
+  }
+
+  override def addSubtreeAsLastChild(insertAtPosition: NodeBasedTreePosition, subtree: Tree[NodeBasedTreePosition, D]): Tree[NodeBasedTreePosition, D] = {
+    val existingChildren = getChildren(insertAtPosition).size
+    addSubtreeAsChildNr(insertAtPosition, existingChildren, subtree)
   }
 
   override def removePosition(position: NodeBasedTreePosition): Tree[NodeBasedTreePosition, D] = if (position.isRoot) NodeBasedTreeImpl[D](List()) else {
@@ -72,7 +109,7 @@ case class NodeBasedTreeImpl[D](private val firstLayerNodes: List[NodeBasedTreeN
     NodeBasedTreeImpl[D](firstLayerTravelInfo.flatMap(updateNode))
 
   }
-  
+
 
   def mapWithStructure[O](transformData: TreeStructureContext[NodeBasedTreePosition, D] => O): NodeBasedTreeImpl[O] = {
 
@@ -81,8 +118,6 @@ case class NodeBasedTreeImpl[D](private val firstLayerNodes: List[NodeBasedTreeN
 
     NodeBasedTreeImpl[O](firstLayerTravelInfo.map(curRootNodeTravelInfo => recreateNode(curRootNodeTravelInfo)))
   }
-
-  
 
 
 }

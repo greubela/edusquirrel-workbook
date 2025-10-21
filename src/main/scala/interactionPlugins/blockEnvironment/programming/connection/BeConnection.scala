@@ -2,6 +2,7 @@ package interactionPlugins.blockEnvironment.programming.connection
 
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.blocks.display.BeBlockDisplay
+import interactionPlugins.blockEnvironment.programming.blocks.call.BeBlockLogic
 
 
 trait BeConnection {
@@ -10,6 +11,19 @@ trait BeConnection {
   def connectionMayEvaluateTo: Set[BeDataType]
 
   def connectionCardinality: BeConnectionCardinality
+}
+
+case class BeConnectionForBlocks() {
+  
+}
+
+case class BeConnectionForText() {
+  
+}
+
+
+object BeConnection {
+
 
 }
 

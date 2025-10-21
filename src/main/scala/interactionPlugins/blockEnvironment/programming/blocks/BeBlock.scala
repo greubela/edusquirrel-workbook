@@ -1,6 +1,6 @@
 package interactionPlugins.blockEnvironment.programming.blocks
 
-import interactionPlugins.blockEnvironment.programming.blocks.logic.*
+import interactionPlugins.blockEnvironment.programming.blocks.call.*
 import contentmanagement.model.AppFont
 import contentmanagement.model.geometry.{Dimension, Point}
 import contentmanagement.model.language.*

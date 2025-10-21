@@ -6,7 +6,7 @@ import contentmanagement.model.geometry.{Dimension, Point}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 import interactionPlugins.blockEnvironment.programming.blocks.display.*
-import interactionPlugins.blockEnvironment.programming.blocks.logic.parent.BeBlockParent
+import interactionPlugins.blockEnvironment.programming.blocks.call.parent.BeBlockParent
 
 import scala.collection.mutable
 
@@ -128,7 +128,7 @@ object BeProgramRendererHelper {
     var displayTree = logicTree.map(_.asInstanceOf[BeBlock])
     addToTree.foreach(curTuple => {
       curTuple._2.foreach(curChildToAdd => {
-        displayTree = displayTree.addChild(curTuple._1, curChildToAdd)
+        displayTree = displayTree.addAsLastChild(curTuple._1, curChildToAdd)
       })
     })
 

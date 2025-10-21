@@ -8,6 +8,7 @@ sealed trait BeConnectionRole {
 
 }
 
+
 case object FunctionDefinition extends BeConnectionRole
 
 
@@ -28,3 +29,9 @@ case object ControlStructureBooleanExpression extends ControlStructureBooleanExp
 
 case object ControlStructureBody extends ControlStructureBooleanExpressionRole
 
+
+sealed trait NoneRole extends BeConnectionRole
+
+case object TextElement extends NoneRole
+
+case object RootElement extends NoneRole

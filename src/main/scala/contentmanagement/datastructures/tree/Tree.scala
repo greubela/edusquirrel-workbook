@@ -15,9 +15,16 @@ trait Tree[P <: TreePosition, D] {
 
   def getChildren(position: P): List[P]
 
-  def addChild(position: P, newData: D): Tree[P, D]
+  def addAsChildNr(Position: P, childNr: Int, newData: D): Tree[P, D]
+  
+  def addAsLastChild(position: P, newData: D): Tree[P, D]
 
-  def removePosition(position: P): Tree[P, D]
+  def addSubtreeAsLastChild(position: P, subtree: Tree[P, D]): Tree[P, D]
+
+  def addSubtreeAsChildNr(insertAtPosition: P, childNr: Int, subtree: Tree[P, D]): Tree[P, D] 
+
+
+    def removePosition(position: P): Tree[P, D]
 
   def searchForValue(value: D): Set[P] = entries.filter(_._2 == value).map(_._1)
 

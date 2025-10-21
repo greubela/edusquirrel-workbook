@@ -1,4 +1,4 @@
-package interactionPlugins.blockEnvironment.programming.blocks.logic
+package interactionPlugins.blockEnvironment.programming.blocks.call
 
 import contentmanagement.model.geometry.{Bounds, Dimension}
 import contentmanagement.model.language.AppLanguage.{Java, Python}

@@ -1,4 +1,4 @@
-package interactionPlugins.blockEnvironment.programming.rendering
+package interactionPlugins.blockEnvironment.programming.editor
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
@@ -9,13 +9,14 @@ import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.genericHtmlElements.canvas.SvgCanvas
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-import interactionPlugins.blockEnvironment.programming.blocks.logic.*
-import interactionPlugins.blockEnvironment.programming.blocks.logic.parent.BeBlockParent
+import interactionPlugins.blockEnvironment.programming.blocks.call.*
+import interactionPlugins.blockEnvironment.programming.blocks.call.parent.BeBlockParent
 import interactionPlugins.blockEnvironment.programming.rendering.*
 
 import scala.collection.mutable
 
 case class HtmlBeProgramEditor(programVar: Signal[BeProgram], config: BeRendererConfig) {
+
 
   // Observable Variables: Tree + Current Position that receives input (if any -> option)
   // Automatically derive Tree with NON Finished Elements?
@@ -40,6 +41,23 @@ case class HtmlBeProgramEditor(programVar: Signal[BeProgram], config: BeRenderer
     val svgHeight = boundsTree.values.map(_.endY).max + config.paddingBig.height * 2
 
     val svgCanvas: SvgCanvas = new SvgCanvas(svgWidth.toInt, svgHeight.toInt)
+
+    val hatchedPattern = svg.pattern(
+      svg.idAttr := "hatched",
+      svg.x := "0",
+      svg.y := "0",
+      svg.width := "20",
+      svg.height := "20",
+      svg.rect(
+        svg.x := "0",
+        svg.y := "0",
+        svg.width := "10",
+        svg.height := "20",
+        svg.patternUnits := "userSpaceOnUse",
+      )
+    )
+
+    svgCanvas.addSvgElement(hatchedPattern)
 
     tree.foreach((curPos, curBlock) => {
       val bounds = boundsTree.getData(curPos).get

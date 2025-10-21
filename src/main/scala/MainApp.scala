@@ -6,7 +6,8 @@ import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.model.language.AppLanguage
 import interactionPlugins.automaton.{AutomatonExerciseContent, HtmlAutomatonExercise}
 import interactionPlugins.blockEnvironment.programming.*
-import interactionPlugins.blockEnvironment.programming.rendering.{BeRendererConfig, HtmlBeProgramEditor, ShapeFactory}
+import interactionPlugins.blockEnvironment.programming.editor.HtmlBeProgramEditor
+import interactionPlugins.blockEnvironment.programming.rendering.{BeRendererConfig, ShapeFactory}
 import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
 import interactionPlugins.pythonExercises.{HtmlPythonExercise, PythonExerciseContent}
 import org.scalajs.dom
@@ -26,6 +27,10 @@ def doSomeCalculations(): Unit = {
 
 }
 
+def setElementFullscreen(domElement: Element): Unit = ???
+def clearFullscreen(): Unit = ???
+
+
 def insertWorkbook(): Unit = {
 
   // Svg
@@ -34,7 +39,7 @@ def insertWorkbook(): Unit = {
   println("logic tree: " + programVar.now().logicTree.toString)
   println("display tree: " + programVar.now().displayTree.toString)
 
-  val rendererConfig = BeRendererConfig(AppFont.AnonymousPro, Dimension[Double](7,7), Dimension[Double](37,37), AppColorPalette.defaultRGBYPalette25)
+  val rendererConfig = BeRendererConfig(AppFont.AnonymousPro, Dimension[Double](7, 7), Dimension[Double](37, 37), AppColorPalette.defaultRGBYPalette25)
   val renderer = HtmlBeProgramEditor(programVar.signal, rendererConfig)
   val svgDomElement = renderer.svgCanvasSignal.map(_.getDomElement())
 
@@ -72,14 +77,10 @@ def insertWorkbook(): Unit = {
           Bounds.fromPoints(Point[Double](0, 0), Point[Double](200, 100))
         ).asSimpleSvg()),
         ShapeFactory.buildStarterShape(Bounds.fromPoints(Point[Double](0, 0), Point[Double](200, 100))).asSimpleSvg()
-      ))
-    ,
-    htmlEx.getDomElement()
-    ,
-    automatonExercise.getDomElement()
-    ,
-    helloWorldExercise.getDomElement()
-    ,
+      )),
+    htmlEx.getDomElement(),
+    automatonExercise.getDomElement(),
+    helloWorldExercise.getDomElement(),
     fizzBuzzExercise.getDomElement()
   )
 

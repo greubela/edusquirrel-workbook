@@ -1,4 +1,4 @@
-package interactionPlugins.blockEnvironment.programming.blocks.logic.parent
+package interactionPlugins.blockEnvironment.programming.blocks.call.parent
 
 import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.model.language.*
@@ -6,8 +6,8 @@ import contentmanagement.model.language.AppLanguage.*
 import contentmanagement.webElements.svg.AppSvgElement
 import interactionPlugins.blockEnvironment.programming.BeProgram.*
 import interactionPlugins.blockEnvironment.programming.blocks.*
-import interactionPlugins.blockEnvironment.programming.blocks.logic.*
-import interactionPlugins.blockEnvironment.programming.blocks.logic.parent.BeBlockParent
+import interactionPlugins.blockEnvironment.programming.blocks.call.*
+import interactionPlugins.blockEnvironment.programming.blocks.call.parent.BeBlockParent
 import interactionPlugins.blockEnvironment.programming.connection.*
 import interactionPlugins.blockEnvironment.programming.rendering.*
 import interactionPlugins.blockEnvironment.programming.*
@@ -33,7 +33,7 @@ case class BeBlockFunctionDefinition(name: LanguageMap[ProgrammingLanguage], par
 
 
   override def getConnections: List[BeConnection] = List(new BeConnection {
-    override def connectionRole: BeConnectionRole = FunctionBody
+    override def connectionRole: BeConnectionRole = RootElement
 
     override def connectionMayEvaluateTo: Set[BeDataType] = Set(BeDataType.Unit)
 

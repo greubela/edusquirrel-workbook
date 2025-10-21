@@ -11,7 +11,9 @@ case class BeBlockDummyMultipleTypes(mayEvaluateTo: Set[BeDataType], roleInParen
   override def layoutManager: BeBlockDisplayManager = new BeBlockDisplayManager {
     override def stroke(config: BeRendererConfig): String = config.colorPalette.reds(2).toWebStyleString
 
-    override def fill(config: BeRendererConfig): String = config.colorPalette.reds(4).toWebStyleString
+    override def fill(config: BeRendererConfig): String = config.colorPalette.reds(4).toWebStyleString //"url(#hatched)"
+
+    //config.colorPalette.reds(4).toWebStyleString
 
     override def shapeFactory: Bounds[Double] => AppSvgElement = BeDataType.Unit.shapeFactory
 
