@@ -13,6 +13,7 @@ import interactionPlugins.pythonExercises.{HtmlPythonExercise, PythonExerciseCon
 import org.scalajs.dom
 import org.scalajs.dom.document
 import workbook.model.exercise.{ExerciseContent, ExerciseSection}
+import workbook.workbookHtmlElements.container.HtmlFullScreenElement
 import workbook.workbookHtmlElements.visualization.HtmlWorkbookOverview
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
@@ -27,9 +28,7 @@ def doSomeCalculations(): Unit = {
 
 }
 
-def setElementFullscreen(domElement: Element): Unit = ???
-def clearFullscreen(): Unit = ???
-
+val fullscreenElement: HtmlFullScreenElement = HtmlFullScreenElement()
 
 def insertWorkbook(): Unit = {
 
@@ -56,6 +55,7 @@ def insertWorkbook(): Unit = {
 
 
   val combinedElement = div(
+    fullscreenElement.getDomElement(),
     div(
       h2("Example Canvas"),
       div(
