@@ -2,24 +2,23 @@ package interactionPlugins.blockEnvironment.programming
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.color.{AppColor, RGBColor}
-import contentmanagement.model.geometry.Bounds
-import contentmanagement.webElements.svg.AppSvgElement
-import interactionPlugins.blockEnvironment.programming.rendering.ShapeFactory
+import interactionPlugins.blockEnvironment.programming.rendering.*
+import interactionPlugins.blockEnvironment.programming.rendering.BeShape.*
 
-
-enum BeDataType(val color: AppColor, val shapeFactory: Bounds[Double] => AppSvgElement, formatStringForDisplay: String => String) {
-  case Numeric extends BeDataType(RGBColor.darkGreen, ShapeFactory.buildNumericShape, _.toString)
-  case Boolean extends BeDataType(RGBColor.green, ShapeFactory.buildBooleanShape, _.toString)
-  case String extends BeDataType(RGBColor.yellow, ShapeFactory.buildStringShape, str => '"' + str + '"')
-  case Date extends BeDataType(RGBColor.red, ShapeFactory.buildDateShape, _.toString)
-  case Unit extends BeDataType(RGBColor.yellow, ShapeFactory.buildUnitShape, _.toString)
-  //case BlockDescription extends BeDataType(RGBColor.transparent, ShapeFactory.buildRectangle, )
+enum BeDataType(val associatedShape: BeShape, val formatStringForDisplay: String => String) {
+  case Numeric extends BeDataType(BeShape.NumericShape, _.toString)
+  case Boolean extends BeDataType(BeShape.BooleanShape, _.toString)
+  case String extends BeDataType(BeShape.StringShape, str => '"' + str + '"')
+  case Date extends BeDataType(BeShape.DateShape, _.toString)
+  case Unit extends BeDataType(BeShape.FunctionCallShape, _.toString)
+  case Any extends BeDataType(BeShape.DuckShape,  _.toString) // 🦆
 }
 
 object BeDataType {
   def AnyType: Set[BeDataType] = Set(Numeric, Boolean, String, Date, Unit)
+
 }
+
 /*
 sealed trait BeBlockType {
   def color: AppColor

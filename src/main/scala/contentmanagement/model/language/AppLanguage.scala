@@ -12,6 +12,8 @@ sealed class ProgrammingLanguage(val name: String, val fileEnding: String) exten
 
 object AppLanguage {
 
+  def default(): HumanLanguage = English
+
   //def allLanguages: List[AppLanguage] = humanLanguages ++ programmingLanguages
 
   /*val humanLanguages: List[HumanLanguage] = List(English, German)

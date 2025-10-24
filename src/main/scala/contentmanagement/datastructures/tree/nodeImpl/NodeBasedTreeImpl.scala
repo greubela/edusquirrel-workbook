@@ -6,7 +6,7 @@ import contentmanagement.datastructures.tree.nodeImpl.*
 
 import scala.collection.mutable
 
-case class NodeBasedTreeImpl[D](private val firstLayerNodes: List[NodeBasedTreeNode[D]]) extends Tree[NodeBasedTreePosition, D] {
+class NodeBasedTreeImpl[D](protected val firstLayerNodes: List[NodeBasedTreeNode[D]]) extends Tree[NodeBasedTreePosition, D] {
 
   private val firstLayerTravelInfo: List[NodeBasedTraversalInformation[D]] = firstLayerNodes.zipWithIndex.map((curRootChild, curIndex) => NodeBasedTraversalInformation(curRootChild, rootPosition.forChild(curIndex), None, this))
 
@@ -55,6 +55,13 @@ case class NodeBasedTreeImpl[D](private val firstLayerNodes: List[NodeBasedTreeN
     addAsChildNr(positionToAdd, getChildren(positionToAdd).size, newData)
   }
 
+  override def subtreeInclPosition(position: NodeBasedTreePosition): Tree[NodeBasedTreePosition, D] = {
+    structureCache.get(position) match {
+      case None => NodeBasedTreeImpl[D](List())
+      case Some(travelInfo) => NodeBasedTreeImpl(List(travelInfo.curNode))
+    }
+  }
+
   override def addSubtreeAsChildNr(insertAtPosition: NodeBasedTreePosition, childNr: Int, subtree: Tree[NodeBasedTreePosition, D]): Tree[NodeBasedTreePosition, D] = {
 
     var res: Tree[NodeBasedTreePosition, D] = this
@@ -72,6 +79,7 @@ case class NodeBasedTreeImpl[D](private val firstLayerNodes: List[NodeBasedTreeN
       , false)
     res
   }
+
 
   private def addNodeAsChildNr(positionToAdd: NodeBasedTreePosition, childNr: Int, newNode: NodeBasedTreeNode[D]): Tree[NodeBasedTreePosition, D] = {
     if (positionToAdd.isRoot) {
@@ -107,6 +115,29 @@ case class NodeBasedTreeImpl[D](private val firstLayerNodes: List[NodeBasedTreeN
     }
 
     NodeBasedTreeImpl[D](firstLayerTravelInfo.flatMap(updateNode))
+  }
+
+  override def traverseStructureAndAddChildren(calcChildrenToAdd: TSC => List[(Int, D)], childrenToAddToRoot: List[(Int, D)] = List()): Tree[NodeBasedTreePosition, D] = {
+
+    def insertNodes(oldNodes: List[NodeBasedTreeNode[D]], newNodes: List[(Int, D)]): List[NodeBasedTreeNode[D]] = {
+      var transformedChildren = oldNodes
+      newNodes.reverse.foreach((index, data) => {
+        transformedChildren = oldNodes.slice(0, index) ++ List(NodeBasedTreeNode(data, List())) ++ transformedChildren.slice(index, transformedChildren.size)
+      })
+      transformedChildren
+    }
+
+    def updateNode(curNode: NodeBasedTraversalInformation[D]): NodeBasedTreeNode[D] = {
+      val updatedChildren: List[NodeBasedTreeNode[D]] = curNode.traversalInfoForChildren.map(updateNode)
+      val childrenToAdd = calcChildrenToAdd(curNode)
+      val transformedChildren = insertNodes(updatedChildren, childrenToAdd)
+      NodeBasedTreeNode[D](curNode.curValue, transformedChildren)
+    }
+
+    val transformedRoots = firstLayerTravelInfo.map(updateNode)
+    val transformedRoot = insertNodes(transformedRoots, childrenToAddToRoot)
+
+    NodeBasedTreeImpl(transformedRoot)
 
   }
 

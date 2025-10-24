@@ -1,7 +1,7 @@
 package contentmanagement.webElements.svg
 
 import contentmanagement.model.geometry.{Dimension, Point}
-import contentmanagement.webElements.svg.elements.{AppLineSvgElement, AppPathSvgElement}
+import contentmanagement.webElements.svg.atomarElements.{AppLineSvgElement, AppPathSvgElement}
 
 import scala.collection.mutable
 
@@ -110,8 +110,18 @@ case class SvgPathBuilder[T: Fractional](startPointAbs: Point[T]) {
     quadraticBezierToAbs(current.withDimension(controlDimension).endPoint, current.withDimension(endPointDimension).endPoint)
   }
 
-  def toAppSvgElement(): AppPathSvgElement[T] =
-    AppPathSvgElement[T](pathD.toString(), cornerPoints.toList, controlLines.toList)
+  // arcs
+
+
+  // helper
+  def addCircle(radius: T): this.type = {
+    val N = summon[Fractional[T]]
+    import N.*
+
+    val dia = radius * fromInt(2)
+    controlLines += AppLineSvgElement[T](current, new Point[T](current.x + radius, current.y))
+    append(s" a ${radius},${radius} 0 1,0 ${dia},0 a ${radius},${radius} 0 1,0 -${dia},0 Z")
+  }
 
   def addInstructionConnector(totalWidth: T, invertHeight: Boolean = false): this.type = {
     val N = summon[Fractional[T]]
@@ -125,4 +135,12 @@ case class SvgPathBuilder[T: Fractional](startPointAbs: Point[T]) {
       .lineToRel(new Dimension[T](totalWidth / fromInt(4), -down))
 
   }
+
+
+  // Conversion
+  def toAppSvgElement(): AppPathSvgElement[T] =
+    AppPathSvgElement[T](pathD.toString(), cornerPoints.toList, controlLines.toList)
+
+
+
 }

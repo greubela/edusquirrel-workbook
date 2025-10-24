@@ -4,11 +4,13 @@ import contentmanagement.datastructures.tree.Tree
 import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreePosition
 import contentmanagement.webElements.svg.AppSvgElement
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-import interactionPlugins.blockEnvironment.programming.blocks.call.BeBlockLogic
+import interactionPlugins.blockEnvironment.programming.blocks.traits.BeBlockLogic
 import org.scalajs.dom.MouseEvent
 
 trait HtmlBeProgramController {
 
+  
+  
   def notifyOnMouseEnter(mouseEvent: MouseEvent, appSvgElement: AppSvgElement, block: BeBlock): Unit
 
   // todo all others

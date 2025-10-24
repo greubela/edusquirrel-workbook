@@ -1,13 +1,11 @@
 
+import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
-import contentmanagement.model.AppFont
-import contentmanagement.model.color.AppColorPalette
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.model.language.AppLanguage
 import interactionPlugins.automaton.{AutomatonExerciseContent, HtmlAutomatonExercise}
 import interactionPlugins.blockEnvironment.programming.*
-import interactionPlugins.blockEnvironment.programming.editor.HtmlBeProgramEditor
-import interactionPlugins.blockEnvironment.programming.rendering.{BeRendererConfig, ShapeFactory}
+import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
+import interactionPlugins.blockEnvironment.programming.rendering.*
 import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
 import interactionPlugins.pythonExercises.{HtmlPythonExercise, PythonExerciseContent}
 import org.scalajs.dom
@@ -21,7 +19,8 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 @main
 def mainApp(): Unit = {
   doSomeCalculations()
-  insertWorkbook()
+  // insertWorkbook()
+  insertTurtleEditor()
 }
 
 def doSomeCalculations(): Unit = {
@@ -30,17 +29,32 @@ def doSomeCalculations(): Unit = {
 
 val fullscreenElement: HtmlFullScreenElement = HtmlFullScreenElement()
 
-def insertWorkbook(): Unit = {
-
+def insertTurtleEditor(): Unit = {
   // Svg
-  val programVar = Var(BeProgram.sampleProgram())
+  val programVar = Var(BeProgram.miniProgram())
+  /*
   println("python:\n" + programVar.now().toPythonString)
   println("logic tree: " + programVar.now().logicTree.toString)
   println("display tree: " + programVar.now().displayTree.toString)
+  */
 
-  val rendererConfig = BeRendererConfig(AppFont.AnonymousPro, Dimension[Double](7, 7), Dimension[Double](37, 37), AppColorPalette.defaultRGBYPalette25)
-  val renderer = HtmlBeProgramEditor(programVar.signal, rendererConfig)
-  val svgDomElement = renderer.svgCanvasSignal.map(_.getDomElement())
+  val rendererConfig = BeRendererConfig.default()
+
+  val editorDom = new HtmlFullscreenTurtleEditorElement(programVar).getDomElement()
+
+  val worksheetDiv = document.getElementById("worksheetDts")
+
+  if (dom.document.readyState == "loading") {
+    renderOnDomContentLoaded(worksheetDiv, editorDom)
+  } else {
+    render(worksheetDiv, editorDom)
+  }
+
+}
+
+
+def insertWorkbook(): Unit = {
+
 
   // Generic GPT Exercise
   val testEx = TextBasedGptExercise("id-007", Map(AppLanguage.English -> "this is title"), Map(AppLanguage.English -> "this is instruction"))
@@ -53,16 +67,11 @@ def insertWorkbook(): Unit = {
   val helloWorldExercise = new HtmlPythonExercise(PythonExerciseContent.helloWorld)
   val fizzBuzzExercise = new HtmlPythonExercise(PythonExerciseContent.fizzBuzz)
 
+  // val combinedElement = new HtmlFullscreenTurtleEditorElement().getDomElement()
+
 
   val combinedElement = div(
     fullscreenElement.getDomElement(),
-    div(
-      h2("Example Canvas"),
-      div(
-        cls := "example-canvas",
-        child <-- svgDomElement
-      )
-    ),
     div(
       h2("Workbook Overview"),
       div(
@@ -70,14 +79,6 @@ def insertWorkbook(): Unit = {
         overviewElement
       )
     ),
-    div(
-      h2("Svg Test"),
-      div(
-        BeDataType.values.map(curType => curType.shapeFactory.apply(
-          Bounds.fromPoints(Point[Double](0, 0), Point[Double](200, 100))
-        ).asSimpleSvg()),
-        ShapeFactory.buildStarterShape(Bounds.fromPoints(Point[Double](0, 0), Point[Double](200, 100))).asSimpleSvg()
-      )),
     htmlEx.getDomElement(),
     automatonExercise.getDomElement(),
     helloWorldExercise.getDomElement(),

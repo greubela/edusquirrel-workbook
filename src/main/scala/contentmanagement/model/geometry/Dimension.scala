@@ -7,6 +7,8 @@ final case class Dimension[T: Fractional](width: T, height: T) {
 
   lazy val area: T = width * height
 
+  lazy val toDouble: Dimension[Double] = Dimension(width.toDouble, height.toDouble)
+  
   def ensureAtLeastAsBigAs(minDimension: Dimension[T]): Dimension[T] = {
     val useWidth = if (width < minDimension.width) minDimension.width else width
     val useHeight = if (height < minDimension.height) minDimension.height else height
@@ -25,6 +27,8 @@ final case class Dimension[T: Fractional](width: T, height: T) {
   def increaseSize(addWidth: T, addHeight: T): Dimension[T] = Dimension[T](width + addWidth, height + addHeight)
 
   def increaseSize(other: Dimension[T]): Dimension[T] = Dimension[T](width + other.width, height + other.height)
+
+  def decreaseSize(other: Dimension[T]): Dimension[T] = Dimension[T](width - other.width, height - other.height)
 
   def asPoint: Point[T] = new Point[T](width, height)
 

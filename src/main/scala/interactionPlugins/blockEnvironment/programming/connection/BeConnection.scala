@@ -1,10 +1,7 @@
 package interactionPlugins.blockEnvironment.programming.connection
 
-import interactionPlugins.blockEnvironment.programming.*
-import interactionPlugins.blockEnvironment.programming.blocks.display.BeBlockDisplay
-import interactionPlugins.blockEnvironment.programming.blocks.call.BeBlockLogic
 
-
+/*
 trait BeConnection {
   def connectionRole: BeConnectionRole
 
@@ -27,7 +24,7 @@ object BeConnection {
 
 }
 
-
+*/
 
 
 

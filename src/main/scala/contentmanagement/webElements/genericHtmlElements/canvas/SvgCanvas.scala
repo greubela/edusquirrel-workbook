@@ -34,14 +34,14 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
     svg.svg(
       svg.width := "" + width,
       svg.height := "" + height,
-      svg.rect(
+      /*svg.rect(
         svg.x := "0",
         svg.y := "0",
         svg.width := "" + width,
         svg.height := "" + height,
         svg.fill := "white"
-      ),
-      elements.toList,
+      )*/
+      elements.toList
     )
 
   def addSvgElement(element: L.SvgElement): Unit = elements.update(_ :+ element)

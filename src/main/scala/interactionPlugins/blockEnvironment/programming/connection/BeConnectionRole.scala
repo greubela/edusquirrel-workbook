@@ -1,21 +1,23 @@
 package interactionPlugins.blockEnvironment.programming.connection
 
-import contentmanagement.model.language.{HumanLanguage, LanguageMap}
 import interactionPlugins.blockEnvironment.programming.BeDataType
+import interactionPlugins.blockEnvironment.programming.blocks.defineStructure.BeBlockDefineVariable
 
 
-sealed trait BeConnectionRole {
-
+sealed trait BeValueRole {
 }
 
+case class FunctionParameter(nr: Int, evaluatesTo: BeDataType) extends BeValueRole
 
+case class FunctionReturnValue(nr: Int, evaluatesTo: BeDataType) extends BeValueRole
+
+/*
 case object FunctionDefinition extends BeConnectionRole
 
 
 trait FunctionDefinitionRole extends BeConnectionRole {
 }
 
-case class FunctionParameter(dataType: BeDataType) extends FunctionDefinitionRole
 
 case object FunctionReturnValue extends FunctionDefinitionRole
 
@@ -35,3 +37,4 @@ sealed trait NoneRole extends BeConnectionRole
 case object TextElement extends NoneRole
 
 case object RootElement extends NoneRole
+*/

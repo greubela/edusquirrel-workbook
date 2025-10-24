@@ -1,5 +1,6 @@
 package contentmanagement.datastructures.tree
 
+import contentmanagement.datastructures.tree.nodeImpl.{NodeBasedTraversalInformation, NodeBasedTreeImpl}
 import util.{CodeStringBuilder, FunctionalUtility}
 
 import scala.collection.mutable
@@ -16,15 +17,18 @@ trait Tree[P <: TreePosition, D] {
   def getChildren(position: P): List[P]
 
   def addAsChildNr(Position: P, childNr: Int, newData: D): Tree[P, D]
-  
+
   def addAsLastChild(position: P, newData: D): Tree[P, D]
 
   def addSubtreeAsLastChild(position: P, subtree: Tree[P, D]): Tree[P, D]
 
-  def addSubtreeAsChildNr(insertAtPosition: P, childNr: Int, subtree: Tree[P, D]): Tree[P, D] 
+  def addSubtreeAsChildNr(insertAtPosition: P, childNr: Int, subtree: Tree[P, D]): Tree[P, D]
 
+  def traverseStructureAndAddChildren(calcChildrenToAdd: TSC => List[(Int, D)], childrenToAddToRoot: List[(Int, D)] = List()): Tree[P, D]
 
-    def removePosition(position: P): Tree[P, D]
+  def subtreeInclPosition(position: P): Tree[P, D]
+
+  def removePosition(position: P): Tree[P, D]
 
   def searchForValue(value: D): Set[P] = entries.filter(_._2 == value).map(_._1)
 
@@ -62,7 +66,7 @@ trait Tree[P <: TreePosition, D] {
   type TEC[O] = TreeFunctorExecutionContext[P, D, O]
   type TSEC[O] = TreeStructureAndExecutionContext[P, D, O]
 
-  def mapWithEnrichedContext[O, C <: TSEC[O]](function: C => O, enrichContext: TSEC[O] => C): Tree[P, O] = mapWithContext(context=> function(enrichContext(context)))
+  def mapWithEnrichedContext[O, C <: TSEC[O]](function: C => O, enrichContext: TSEC[O] => C): Tree[P, O] = mapWithContext(context => function(enrichContext(context)))
 
   def mapWithContext[O](function: TSEC[O] => O): Tree[P, O] = {
 

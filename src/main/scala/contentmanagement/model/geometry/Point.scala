@@ -5,6 +5,9 @@ final case class Point[T: Fractional](x: T, y: T) {
 
   import N.* // brings +, -, *, etc. as extension ops
 
+  lazy val toDouble = Point[Double](x.toDouble, y.toDouble)
+  lazy val asDimension: Dimension[T] = new Dimension[T](x, y)
+
   def +(that: Point[T]): Point[T] = Point(x + that.x, y + that.y)
 
   def -(that: Point[T]): Point[T] = Point(x - that.x, y - that.y)

@@ -7,10 +7,12 @@ import contentmanagement.model.language.*
 import contentmanagement.model.language.AppLanguage.Python
 import interactionPlugins.blockEnvironment.programming.BeProgram.*
 import interactionPlugins.blockEnvironment.programming.blocks.*
-import interactionPlugins.blockEnvironment.programming.blocks.call.*
-import interactionPlugins.blockEnvironment.programming.blocks.call.parent.{BeBlockFunctionDefinition, BeBlockParent, BeMotionBlocks}
+import interactionPlugins.blockEnvironment.programming.blocks.function.BeFunction
+import interactionPlugins.blockEnvironment.programming.blocks.traits.*
+import interactionPlugins.blockEnvironment.programming.blocks.variable.BeBlockUseLiteral
 import interactionPlugins.blockEnvironment.programming.connection.*
-import interactionPlugins.blockEnvironment.programming.rendering.*
+
+type BeBlockTree = Tree[NodeBasedTreePosition, BeBlock]
 
 type BeProgramLogicTree = Tree[NodeBasedTreePosition, BeBlockLogic]
 type BeProgramDisplayTree = Tree[NodeBasedTreePosition, BeBlock]
@@ -23,11 +25,34 @@ type BeBlockContext[O] = TreeStructureAndExecutionContext[NodeBasedTreePosition,
 
 case class BeProgram(logicTree: BeProgramLogicTree) {
 
-  val displayTree: BeProgramDisplayTree = BeProgramRendererHelper.calcDisplayTree(logicTree)
-
   def toPythonString: String = {
     val res = logicTree.mapWithContext[String](context => context.curValue.toCode(Python, context))
     res.getData(res.rootPosition.forChild(0)).get
+  }
+
+  private def structureToRoleMap(structure: TreeStructureContext[NodeBasedTreePosition, BeBlock]): Map[BeValueRole, (BeBlockValue, Int)] = {
+    val childrenWithIndex = structure.childrenValues.zipWithIndex
+    val valueChildrenWithIndex = childrenWithIndex.
+      filter(curPair => curPair._1.isInstanceOf[BeBlockValue]).
+      map(curPair => (curPair._1.asInstanceOf[BeBlockValue], curPair._2))
+
+    val valueMap = valueChildrenWithIndex.map(curPair => curPair._1.roleInParent -> curPair).toMap
+    valueMap
+  }
+
+  lazy val displayTree: BeBlockTree = {
+    logicTree.map(_.asInstanceOf[BeBlock]).traverseStructureAndAddChildren(structure => {
+      if (!structure.curValue.isInstanceOf[BeBlockParent]) {
+        List()
+      } else {
+        val parent = structure.curValue.asInstanceOf[BeBlockParent]
+        val valueMap = structureToRoleMap(structure)
+        val insertions = parent.nodeInsertionsForDisplay(structure.childrenValues, valueMap)
+ 
+        insertions
+      }
+    })
+  
   }
 
 
@@ -79,64 +104,44 @@ object BeProgram {
 
     def childrenBlocks: List[BeBlock]
   }
-
-  /*def testProgramAdding(): Unit = {
-    val sample = miniProgram()
-    val big = sampleProgram()
-
-    val addPos = NodeBasedTreePosition(List(0,0,0))
-    val res = sample.logicTree.addSubtree(addPos, big.logicTree)
-
-    println("mini: " + sample)
-    println("big: " + big)
-    println("combined: " + res)
-  }*/
+  
 
   trait BeTreeContext[B <: BeBlock, O] extends TreeStructureAndExecutionContext[NodeBasedTreePosition, BeBlock, O] {
     def block: B
 
-    def getChildrenWithRole(role: BeConnectionRole): List[TreeStructureContext[NodeBasedTreePosition, BeBlock]] = traversalInfoForChildren.filter(_.curValue.roleInParent == role)
+    def getValueChildren(): List[BeBlockValue] =
+      traversalInfoForChildren.filter(_.curValue.isInstanceOf[BeBlockValue]).map(_.curValue.asInstanceOf[BeBlockValue]).map(_.asInstanceOf[BeBlockValue]).toList
 
-    def getResultsOfRole(role: BeConnectionRole): List[O] = getChildrenWithRole(role).map(accessOtherResult)
+    def getChildrenForRole(role: BeValueRole): List[TreeStructureContext[NodeBasedTreePosition, BeBlock]] =
+      traversalInfoForChildren.filter(_.curValue.isInstanceOf[BeBlockValue]).flatMap(curTravInfo => {
+        val asValueBlock: BeBlockValue = curTravInfo.curValue.asInstanceOf[BeBlockValue]
+        if (asValueBlock.roleInParent == role) Some(curTravInfo)
+        else None
+      })
+
+    //def getResultsOfRole(role: BeValueRole): List[O] = getChildrenWithRole(role).map(accessOtherResult)
+
   }
 
   def miniProgram(): BeProgram = {
 
-    val starter = BeBlockFunctionDefinition.starterBlock()
-    val forward = BeMotionBlocks.BeBlockForward(FunctionBody)
+    val starter = BeFunction(LanguageMap.universalMap("start"), List(), List())
+
+    val numParameter = FunctionParameter(0, BeDataType.Numeric)
+    val forward = BeFunction(LanguageMap.universalMap("forward"), List(numParameter), List())
+
+    val hundred = BeBlockUseLiteral(numParameter, "100", BeDataType.Numeric)
+
 
     var tree: Tree[NodeBasedTreePosition, BeBlockLogic] = NodeBasedTreeImpl.empty[BeBlockLogic]()
-    tree = tree.addAsLastChild(tree.rootPosition, starter)
+    tree = tree.addAsLastChild(tree.rootPosition, starter.toDefineBlockWithBody())
+    tree = tree.addAsLastChild(tree.rootPosition.forChild(0), forward.toCallBlock())
+    tree = tree.addAsLastChild(tree.rootPosition.forChild(0), forward.toCallBlock())
+    tree = tree.addAsLastChild(tree.rootPosition.forChild(0), forward.toCallBlock())
 
-    tree = tree.addAsLastChild(tree.rootPosition.forChild(0), forward)
-    tree = tree.addAsLastChild(tree.rootPosition.forChild(0), forward)
-    tree = tree.addAsLastChild(tree.rootPosition.forChild(0).forChild(0), BeBlockValue(BeDataType.Numeric, FunctionParameter(BeDataType.Numeric), "This contains the value: " + 128 + ""))
+    tree = tree.addAsLastChild(tree.rootPosition.forChild(0).forChild(1), hundred)
 
     BeProgram(tree)
-  }
-
-  def sampleProgram(): BeProgram = {
-
-    val starter = BeBlockFunctionDefinition.starterBlock()
-    val forward = BeMotionBlocks.BeBlockForward(FunctionBody)
-
-    var tree: Tree[NodeBasedTreePosition, BeBlockLogic] = NodeBasedTreeImpl.empty[BeBlockLogic]()
-    tree = tree.addAsLastChild(tree.rootPosition, starter)
-
-
-    0.until(10).foreach(curIter => {
-      tree = tree.addAsLastChild(tree.rootPosition.forChild(0), forward)
-      tree = tree.addAsLastChild(tree.rootPosition.forChild(0).forChild(curIter), BeBlockValue(BeDataType.Numeric, FunctionParameter(BeDataType.Numeric), "This contains the value: " + curIter + ""))
-      if (curIter % 2 == 0) {
-        tree = tree.addAsLastChild(tree.rootPosition.forChild(0).forChild(curIter), BeBlockValue(BeDataType.Numeric, FunctionParameter(BeDataType.Numeric), "Another one for 2"))
-      }
-      if (curIter % 3 == 0) {
-        tree = tree.addAsLastChild(tree.rootPosition.forChild(0).forChild(curIter), BeBlockValue(BeDataType.Numeric, FunctionParameter(BeDataType.Numeric), "Another one with 3 "))
-      }
-    })
-
-    val res = BeProgram(tree)
-    res
   }
 
 

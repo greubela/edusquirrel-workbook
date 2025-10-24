@@ -3,6 +3,8 @@ package contentmanagement.model.geometry
 import contentmanagement.model.geometry.*
 
 import scala.math.Fractional.Implicits.infixFractionalOps
+import scala.math.Integral.Implicits.infixIntegralOps
+import scala.math.Numeric.Implicits.infixNumericOps
 
 case class Bounds[T: Fractional](startPoint: Point[T], dimension: Dimension[T]) {
 
@@ -10,12 +12,17 @@ case class Bounds[T: Fractional](startPoint: Point[T], dimension: Dimension[T]) 
 
   import N.*
 
+  lazy val toDouble: Bounds[Double] = {
+     Bounds(startPoint.toDouble, dimension.toDouble)
+  }
+  
   def cornerPoints: Seq[Point[T]] = List(
     Point[T](startX, startY),
     Point[T](startX, endY),
     Point[T](endX, startY),
     Point[T](endX, endY)
   )
+
 
   def endPoint = Point[T](startX + width, startY + height)
 
@@ -60,7 +67,7 @@ object Bounds {
     Bounds[T](startPoint, startPoint.dimensionBetweenThisAnd(endPoint))
   }
 
-  def thatContainsAll[T: Fractional](points: List[Point[T]]): Bounds[T] = {
+  def thatContainsAll[T: Fractional](points: Seq[Point[T]]): Bounds[T] = {
     val minX: T = points.minBy(_.x).x
     val minY: T = points.minBy(_.y).y
     val maxX: T = points.maxBy(_.x).x

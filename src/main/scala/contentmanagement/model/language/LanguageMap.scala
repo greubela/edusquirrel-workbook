@@ -9,6 +9,8 @@ object LanguageMap {
 
   def universalMap[T <: AppLanguage](string: String): LanguageMap[T] = new LanguageMap[T]() {
     def getInLanguage(language: T): String = string
+
+    override def toString: String = "UniversalLanguageMap('" + string + "')"
   }
 
   def mapBasedLanguageMap[T <: AppLanguage](map: Map[T, String]): LanguageMap[T] = new LanguageMap[T]() {
