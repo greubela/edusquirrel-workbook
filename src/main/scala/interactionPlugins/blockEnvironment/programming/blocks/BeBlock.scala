@@ -1,6 +1,5 @@
 package interactionPlugins.blockEnvironment.programming.blocks
 
-import com.raquo.laminar.api.L
 import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.model.language.{HumanLanguage, LanguageMap}
 import contentmanagement.webElements.svg.AppSvgElement
@@ -8,6 +7,8 @@ import contentmanagement.webElements.svg.atomarElements.AppTextSvgElement
 import interactionPlugins.blockEnvironment.programming.blocks.traits.BeBlockValue
 import interactionPlugins.blockEnvironment.programming.connection.BeValueRole
 import interactionPlugins.blockEnvironment.programming.rendering.*
+import interactionPlugins.blockEnvironment.programming.rendering.shapes.*
+import interactionPlugins.blockEnvironment.programming.rendering.shapes.BeShape.BeShapeContainerable
 import interactionPlugins.blockEnvironment.programming.{BeBlockContext, BeDimensionTree}
 
 sealed trait BeBlock {
@@ -23,7 +24,7 @@ abstract class BeBlockParent extends BeBlock {
   def displayShape: BeShape
 
   override def getColorlessDisplayElement(config: BeRendererConfig, bounds: Bounds[Double]): AppSvgElement = {
-    displayShape.getAssociatedSvgElement(bounds)
+    displayShape.renderColorless(config, bounds)
   }
 
   def parentDisplay: BeParentDisplay
@@ -42,23 +43,17 @@ abstract class BeBlockAtomar extends BeBlock {
 
   def displayShape: BeShape
 
-  def displayedText: Option[LanguageMap[HumanLanguage]]
-
   override def getColorlessDisplayElement(config: BeRendererConfig, bounds: Bounds[Double]): AppSvgElement = {
-    if (displayedText.nonEmpty) displayShape.getAssociatedSvgWithTextChild(config, bounds, displayedText.get)
-    else displayShape.getAssociatedSvgElement(bounds)
+    displayShape.renderDefaultColoring(config, bounds)
   }
 
   override def calcDisplaySize(config: BeRendererConfig, minSizeTree: BeDimensionTree, context: BeBlockContext[Dimension[Double]]): Dimension[Double] = {
-    val maxHeight = context.traversalInfoForSiblingsInParent.map(curSibling => minSizeTree.getData(curSibling.curPosition).get).maxBy(_.height)
-    minSizeTree.getData(context.curPosition).get.copy(height = maxHeight.height)
+    displayShape.displaySize(config)
   }
 
   def calcMinSize(config: BeRendererConfig, context: BeBlockContext[Dimension[Double]]): Dimension[Double] = {
     //val curStr = displayedText.map(_.getInLanguage(config.language)).getOrElse("[...]")
-    val curMap = displayedText.getOrElse(LanguageMap.universalMap("[...]"))
-    val strDim = config.appFont.measureText(curMap.getInLanguage(config.language))
-    displayShape.minSizeToContainChild(config, strDim)
+    displayShape.displaySize(config)
   }
 }
 

@@ -10,7 +10,9 @@ import interactionPlugins.blockEnvironment.programming.connection.{BeValueRole, 
 import interactionPlugins.blockEnvironment.programming.rendering.*
 import interactionPlugins.blockEnvironment.programming.{BeBlockContext, BeDataType}
 import interactionPlugins.blockEnvironment.programming.blocks.*
-import interactionPlugins.blockEnvironment.programming.rendering.BeShape.FunctionCallShape
+import interactionPlugins.blockEnvironment.programming.rendering.shapes.*
+import interactionPlugins.blockEnvironment.programming.rendering.shapes.atomic.*
+import interactionPlugins.blockEnvironment.programming.rendering.shapes.BeShape.BeShapeContainerable
 
 import scala.collection.mutable
 
@@ -37,6 +39,7 @@ case class BeBlockCallUnitFunction(
   }
 
   def displayShape: BeShape = FunctionCallShape
+  //def displayShape: BeShape = BeShapeStructureCreation
   def parentDisplay: BeParentDisplay = HBoxParent(true, new Dimension[Double](20, 5))
 
 

@@ -3,20 +3,25 @@ package interactionPlugins.blockEnvironment.programming
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import interactionPlugins.blockEnvironment.programming.rendering.*
-import interactionPlugins.blockEnvironment.programming.rendering.BeShape.*
+import interactionPlugins.blockEnvironment.programming.rendering.*
+import interactionPlugins.blockEnvironment.programming.rendering.shapes.BeShape.BeShapeContainerable
+import interactionPlugins.blockEnvironment.programming.rendering.shapes.atomic.*
 
-enum BeDataType(val associatedShape: BeShape, val formatStringForDisplay: String => String) {
-  case Numeric extends BeDataType(BeShape.NumericShape, _.toString)
-  case Boolean extends BeDataType(BeShape.BooleanShape, _.toString)
-  case String extends BeDataType(BeShape.StringShape, str => '"' + str + '"')
-  case Date extends BeDataType(BeShape.DateShape, _.toString)
-  case Unit extends BeDataType(BeShape.FunctionCallShape, _.toString)
-  case Any extends BeDataType(BeShape.DuckShape,  _.toString) // 🦆
+enum BeDataType(val associatedShape: BeShapeContainerable, val formatStringForDisplay: String => String) {
+  case Numeric extends BeDataType(NumericShape, _.toString)
+  case Boolean extends BeDataType(BooleanShape, _.toString)
+  case String extends BeDataType(StringShape, str => '"' + str + '"')
+  case Date extends BeDataType(DateShape, _.toString)
+  case Unit extends BeDataType(FunctionCallShape, _.toString)
 }
 
 object BeDataType {
   def AnyType: Set[BeDataType] = Set(Numeric, Boolean, String, Date, Unit)
 
+  def getShape(possibleTypes: Set[BeDataType]): BeShapeContainerable = {
+    if(possibleTypes.size == 1)      possibleTypes.head.associatedShape
+    else      DuckShape
+  }
 }
 
 /*

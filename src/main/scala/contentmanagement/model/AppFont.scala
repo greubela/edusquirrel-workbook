@@ -34,13 +34,11 @@ case class AppFont(
 
     new Dimension[Double](ctx.measureText(text).width, h)
   }
-
 }
-
 
 object AppFont {
 
-  def defaultFont: AppFont = AppFont("Arial", 20)
+  def defaultFont: AppFont = AppFont("Arial", 10)
 
   def AnonymousPro: AppFont = AppFont("Anonymous Pro", 32)
 

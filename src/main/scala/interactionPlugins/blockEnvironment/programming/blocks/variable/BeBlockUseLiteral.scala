@@ -8,6 +8,10 @@ import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 import interactionPlugins.blockEnvironment.programming.blocks.traits.*
 import interactionPlugins.blockEnvironment.programming.connection.BeValueRole
 import interactionPlugins.blockEnvironment.programming.rendering.*
+import interactionPlugins.blockEnvironment.programming.rendering.shapes.BeShape
+import interactionPlugins.blockEnvironment.programming.rendering.shapes.BeShape.BeShapeContainerable
+import interactionPlugins.blockEnvironment.programming.rendering.shapes.composite.*
+import interactionPlugins.blockEnvironment.programming.rendering.shapes.atomic.*
 import interactionPlugins.blockEnvironment.programming.{BeBlockContext, BeDataType}
 
 case class BeBlockUseLiteral(
@@ -16,8 +20,10 @@ case class BeBlockUseLiteral(
                             ) extends BeBlockValue with BeBlockLogic {
 
 
-  override val displayedText: Option[LanguageMap[HumanLanguage]] = Some(LanguageMap.universalMap(dataType.formatStringForDisplay(valueStr )))
-
-  override val displayShape: BeShape = dataType.associatedShape
+  override val displayShape: BeShape = {
+    val outerShape = dataType.associatedShape
+    val textShape = TextShape(LanguageMap.universalMap(dataType.formatStringForDisplay(valueStr)))
+    ShapeAroundShape(outerShape, ShapeAroundShape(LiteralShape, textShape))
+  }
 
 }

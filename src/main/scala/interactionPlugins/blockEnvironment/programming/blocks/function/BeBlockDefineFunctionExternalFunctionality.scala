@@ -9,7 +9,9 @@ import interactionPlugins.blockEnvironment.programming.blocks.traits.*
 import interactionPlugins.blockEnvironment.programming.connection.BeValueRole
 import interactionPlugins.blockEnvironment.programming.rendering.*
 import interactionPlugins.blockEnvironment.programming.blocks.*
-import interactionPlugins.blockEnvironment.programming.rendering.BeShape.FunctionDefineShape
+import interactionPlugins.blockEnvironment.programming.rendering.shapes.BeShape
+import interactionPlugins.blockEnvironment.programming.rendering.shapes.atomic.*
+import interactionPlugins.blockEnvironment.programming.rendering.shapes.BeShape.BeShapeContainerable
 
 case class BeBlockDefineFunctionExternalFunctionality(
                                                        function: BeFunction

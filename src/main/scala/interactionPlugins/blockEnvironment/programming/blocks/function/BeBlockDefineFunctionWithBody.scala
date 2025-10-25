@@ -4,7 +4,8 @@ import contentmanagement.model.geometry.Dimension
 import interactionPlugins.blockEnvironment.programming.blocks.*
 import interactionPlugins.blockEnvironment.programming.blocks.traits.*
 import interactionPlugins.blockEnvironment.programming.rendering.*
-import interactionPlugins.blockEnvironment.programming.rendering.BeShape.FunctionDefineShape
+import interactionPlugins.blockEnvironment.programming.rendering.shapes.*
+import interactionPlugins.blockEnvironment.programming.rendering.shapes.atomic.*
 
 case class BeBlockDefineFunctionWithBody(
                                           function: BeFunction
