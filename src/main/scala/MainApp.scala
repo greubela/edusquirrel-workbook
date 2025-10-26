@@ -3,9 +3,9 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
 import contentmanagement.model.language.AppLanguage
 import interactionPlugins.automaton.{AutomatonExerciseContent, HtmlAutomatonExercise}
+import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
-import interactionPlugins.blockEnvironment.programming.rendering.*
 import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
 import interactionPlugins.pythonExercises.{HtmlPythonExercise, PythonExerciseContent}
 import org.scalajs.dom
@@ -38,7 +38,7 @@ def insertTurtleEditor(): Unit = {
   println("display tree: " + programVar.now().displayTree.toString)
   */
 
-  val rendererConfig = BeRendererConfig.default()
+  val rendererConfig = BeRenderingConfig.default()
 
   val editorDom = new HtmlFullscreenTurtleEditorElement(programVar).getDomElement()
 

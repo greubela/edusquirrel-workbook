@@ -2,35 +2,47 @@ package interactionPlugins.blockEnvironment.programming
 
 import contentmanagement.datastructures.tree.*
 import contentmanagement.datastructures.tree.nodeImpl.*
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.model.language.*
-import contentmanagement.model.language.AppLanguage.Python
-import interactionPlugins.blockEnvironment.programming.BeProgram.*
+import contentmanagement.model.vm.expressions.*
+import contentmanagement.model.vm.expressions.defining.{BeDefineFunction, BeDefineVariable}
+import contentmanagement.model.vm.types.*
+import contentmanagement.model.vm.types.BeChildRole.*
+import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.*
-import interactionPlugins.blockEnvironment.programming.blocks.function.BeFunction
-import interactionPlugins.blockEnvironment.programming.blocks.traits.*
-import interactionPlugins.blockEnvironment.programming.blocks.variable.BeBlockUseLiteral
-import interactionPlugins.blockEnvironment.programming.connection.*
+import interactionPlugins.blockEnvironment.programming.blocks.parents.BeBlockStarter
+import contentmanagement.model.vm.types.*
+import contentmanagement.model.vm.types.BeChildRole.*
+
+import scala.collection.mutable
 
 type BeBlockTree = Tree[NodeBasedTreePosition, BeBlock]
+type BeBlockContext = TreeStructureContext[NodeBasedTreePosition, BeBlock]
 
-type BeProgramLogicTree = Tree[NodeBasedTreePosition, BeBlockLogic]
-type BeProgramDisplayTree = Tree[NodeBasedTreePosition, BeBlock]
-type BeDimensionTree = Tree[NodeBasedTreePosition, Dimension[Double]]
-type BePositionTree = Tree[NodeBasedTreePosition, Point[Double]]
-type BeBoundsTree = Tree[NodeBasedTreePosition, Bounds[Double]]
+case class BeProgram(logicTree: BeBlockTree) {
 
-type BeLogicContext[O] = TreeStructureAndExecutionContext[NodeBasedTreePosition, BeBlockLogic, O]
-type BeBlockContext[O] = TreeStructureAndExecutionContext[NodeBasedTreePosition, BeBlock, O]
-
-case class BeProgram(logicTree: BeProgramLogicTree) {
-
-  def toPythonString: String = {
-    val res = logicTree.mapWithContext[String](context => context.curValue.toCode(Python, context))
-    res.getData(res.rootPosition.forChild(0)).get
+  def treeWithChangedRootRoles(newRole: BeChildRole): BeBlockTree = {
+    val res: BeBlockTree = logicTree.mapWithContext[BeBlock](context => {
+      if (context.curPosition.level == 1) context.curValue.changeRole(newRole)
+      else context.curValue
+    })
+    res
   }
 
-  private def structureToRoleMap(structure: TreeStructureContext[NodeBasedTreePosition, BeBlock]): Map[BeValueRole, (BeBlockValue, Int)] = {
+
+
+  def getExpressions(): Tree[NodeBasedTreePosition, BeExpression] = {
+    logicTree.mapWithStructure(structure => structure.curValue.calcAssociatedExpression(structure))
+  }
+
+
+
+  /*def toPythonString: String = {
+    val res = logicTree.mapWithContext[String](context => context.curValue.toCode(Python, context))
+    res.getData(res.rootPosition.forChild(0)).get
+  }*/
+
+  /*
+  private def structureToRoleMap(structure: TreeStructureContext[NodeBasedTreePosition, BeBlock]): Map[BeBlockRole, (BeBlockValue, Int)] = {
     val childrenWithIndex = structure.childrenValues.zipWithIndex
     val valueChildrenWithIndex = childrenWithIndex.
       filter(curPair => curPair._1.isInstanceOf[BeBlockValue]).
@@ -38,22 +50,7 @@ case class BeProgram(logicTree: BeProgramLogicTree) {
 
     val valueMap = valueChildrenWithIndex.map(curPair => curPair._1.roleInParent -> curPair).toMap
     valueMap
-  }
-
-  lazy val displayTree: BeBlockTree = {
-    logicTree.map(_.asInstanceOf[BeBlock]).traverseStructureAndAddChildren(structure => {
-      if (!structure.curValue.isInstanceOf[BeBlockParent]) {
-        List()
-      } else {
-        val parent = structure.curValue.asInstanceOf[BeBlockParent]
-        val valueMap = structureToRoleMap(structure)
-        val insertions = parent.nodeInsertionsForDisplay(structure.childrenValues, valueMap)
- 
-        insertions
-      }
-    })
-  
-  }
+  }*/
 
 
 }
@@ -61,85 +58,60 @@ case class BeProgram(logicTree: BeProgramLogicTree) {
 
 object BeProgram {
 
-  /*
-  private def enrichToParentContext[B <: BeBlock](structureContext: TreeStructureContext[NodeBasedTreePosition, B]): BeProgramParentContext = new BeProgramParentContext {
+  def createSimpleFunc(displayConfig: BeDisplayConfig, functionName: String, parNames: List[String], parTypes: List[BeDataType], parValues: List[String]): BeProgram = {
 
-    override def block: BeBlockParent = structureContext.curValue.asInstanceOf[BeBlockParent]
+    val variables: List[BeDefineVariable] = parNames.zip(parTypes).zipWithIndex.map((tup, curIndex) => {
+      val (curName, curType) = tup
+      BeDefineVariable(LanguageMap.universalMap(curName), Set(curType))
+    })
 
-    override def childrenBlocks: List[BeBlock] = structureContext.childrenValues.map(_.asInstanceOf[BeBlock])
+    val signature = BeFunctionSignature(LanguageMap.universalMap(functionName), variables, None)
+    val funcDef = BeDefineFunction(signature, BeExpression.pass)
 
-    override def curPosition: NodeBasedTreePosition = structureContext.curPosition
+    val literals = variables.zip(parValues).map((curVar, curVal) => BeUseValueLiteral(curVal))
+
+    val function = BeFunctionCall(funcDef, literals)
+    val funcBlock = function.createBlock(displayConfig, NoRole)
+
+    var tree: BeBlockTree = NodeBasedTreeImpl.empty[BeBlock]()
+    tree = tree.addAsLastChild(tree.rootPosition, funcBlock)
+
+    variables.zip(parValues).zipWithIndex.foreach((tup, curIndex) => {
+      val (curVar, curVal) = tup
+      val role = FunctionParameter(curIndex)
+      val curLiteralBlock = curVar.toUseLiteralBlock(curVal)
+      tree = tree.addAsLastChild(tree.rootPosition.forChild(0), curLiteralBlock)
+    })
+
+    BeProgram(tree)
   }
 
-  def enrichToBeContext[B <: BeBlock, O](context: TreeStructureAndExecutionContext[NodeBasedTreePosition, B, O]): BeTreeContext[B, O] = new BeTreeContext[B, O] {
 
-    override def block: B = context.curValue
-
-    override def accessChildrenResults: List[O] = context.accessChildrenResults
-
-    override def accessParentResult: Option[O] = context.accessParentResult
-
-    override def accessOtherResult(otherPosition: TreeStructureContext[NodeBasedTreePosition, B]): O = context.accessOtherResult(otherPosition)
-
-    override def curPosition: NodeBasedTreePosition = context.curPosition
-
-    override def tree: Tree[NodeBasedTreePosition, B] = context.tree
-
-    override def parentValue: Option[B] = context.parentValue
-
-    override def curValue: B = context.curValue
-
-    override def childrenValues: List[B] = context.childrenValues
-
-    override def traversalInfoForParent: Option[TreeStructureContext[NodeBasedTreePosition, B]] = context.traversalInfoForParent
-
-    override def traversalInfoForChildren: List[TreeStructureContext[NodeBasedTreePosition, B]] = context.traversalInfoForChildren
-  }
-*/
-
-  trait BeProgramParentContext {
-    def curPosition: NodeBasedTreePosition
-
-    def block: BeBlockParent
-
-    def childrenBlocks: List[BeBlock]
-  }
-  
-
-  trait BeTreeContext[B <: BeBlock, O] extends TreeStructureAndExecutionContext[NodeBasedTreePosition, BeBlock, O] {
-    def block: B
-
-    def getValueChildren(): List[BeBlockValue] =
-      traversalInfoForChildren.filter(_.curValue.isInstanceOf[BeBlockValue]).map(_.curValue.asInstanceOf[BeBlockValue]).map(_.asInstanceOf[BeBlockValue]).toList
-
-    def getChildrenForRole(role: BeValueRole): List[TreeStructureContext[NodeBasedTreePosition, BeBlock]] =
-      traversalInfoForChildren.filter(_.curValue.isInstanceOf[BeBlockValue]).flatMap(curTravInfo => {
-        val asValueBlock: BeBlockValue = curTravInfo.curValue.asInstanceOf[BeBlockValue]
-        if (asValueBlock.roleInParent == role) Some(curTravInfo)
-        else None
-      })
-
-    //def getResultsOfRole(role: BeValueRole): List[O] = getChildrenWithRole(role).map(accessOtherResult)
+  def createOneParFunc(displayConfig: BeDisplayConfig, functionName: String, parName: String, parType: BeDataType, valueString: String): BeProgram = {
+    createSimpleFunc(displayConfig, functionName, List(parName), List(parType), List(valueString))
 
   }
+
+  // todo: To functions, BeBlockTree -> vm representation // vm representation -> BeBlockTree
+
 
   def miniProgram(): BeProgram = {
+    val displayConfig = BeDisplayConfig.default()
+    val forwardH = createOneParFunc(displayConfig, "forward", "distance", BeDataType.Numeric, "100")
+    val forwardT = createOneParFunc(displayConfig, "forward", "distance", BeDataType.Numeric, "10x00")
+    val forwardM = createOneParFunc(displayConfig, "forward", "distance", BeDataType.Numeric, "1000")
 
-    val starter = BeFunction(LanguageMap.universalMap("start"), List(), List())
+    val forwardExtra = forwardT.logicTree.getData(forwardT.logicTree.rootPosition.forChild(0)).get.changeRole(ExpressionInBody(2))
 
-    val numParameter = FunctionParameter(0, BeDataType.Numeric)
-    val forward = BeFunction(LanguageMap.universalMap("forward"), List(numParameter), List())
-
-    val hundred = BeBlockUseLiteral(numParameter, "100", BeDataType.Numeric)
-
-
-    var tree: Tree[NodeBasedTreePosition, BeBlockLogic] = NodeBasedTreeImpl.empty[BeBlockLogic]()
-    tree = tree.addAsLastChild(tree.rootPosition, starter.toDefineBlockWithBody())
-    tree = tree.addAsLastChild(tree.rootPosition.forChild(0), forward.toCallBlock())
-    tree = tree.addAsLastChild(tree.rootPosition.forChild(0), forward.toCallBlock())
-    tree = tree.addAsLastChild(tree.rootPosition.forChild(0), forward.toCallBlock())
-
-    tree = tree.addAsLastChild(tree.rootPosition.forChild(0).forChild(1), hundred)
+    var tree: BeBlockTree = NodeBasedTreeImpl.empty[BeBlock]()
+    tree = tree.addAsLastChild(tree.rootPosition, BeBlockStarter())
+    tree = tree.addAsLastChild(
+      tree.rootPosition.forChild(0), BeSequence(List(),
+        true,
+        Some(Set(BeDataType.Unit))).createBlock(displayConfig, BodySequence()))
+    tree = tree.addSubtreeAsLastChild(tree.rootPosition.forChild(0).forChild(0), forwardH.treeWithChangedRootRoles(ExpressionInBody(0)))
+    tree = tree.addSubtreeAsLastChild(tree.rootPosition.forChild(0).forChild(0), forwardT.treeWithChangedRootRoles(ExpressionInBody(1)))
+    tree = tree.addAsLastChild(tree.rootPosition.forChild(0).forChild(0), forwardExtra)
 
     BeProgram(tree)
   }

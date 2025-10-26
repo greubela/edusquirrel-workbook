@@ -117,6 +117,15 @@ class NodeBasedTreeImpl[D](protected val firstLayerNodes: List[NodeBasedTreeNode
     NodeBasedTreeImpl[D](firstLayerTravelInfo.flatMap(updateNode))
   }
 
+
+  override def getSubtreeInclLevel(keepInclLevel: Int): Tree[NodeBasedTreePosition, D] = {
+    def updateNode(curNode: NodeBasedTraversalInformation[D]): Option[NodeBasedTreeNode[D]] = if (curNode.curPosition.level > keepInclLevel) None else {
+      Some(NodeBasedTreeNode[D](curNode.curValue, curNode.traversalInfoForChildren.flatMap(updateNode)))
+    }
+
+    NodeBasedTreeImpl[D](firstLayerTravelInfo.flatMap(updateNode))
+  }
+
   override def traverseStructureAndAddChildren(calcChildrenToAdd: TSC => List[(Int, D)], childrenToAddToRoot: List[(Int, D)] = List()): Tree[NodeBasedTreePosition, D] = {
 
     def insertNodes(oldNodes: List[NodeBasedTreeNode[D]], newNodes: List[(Int, D)]): List[NodeBasedTreeNode[D]] = {

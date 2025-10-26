@@ -3,27 +3,20 @@ package interactionPlugins.blockEnvironment.programming.editor.elements
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.datastructures.tree.Tree
-import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreePosition
-import contentmanagement.model.color.{AppColor, RGBColor}
+import contentmanagement.model.geometry.Point
 import contentmanagement.webElements.genericHtmlElements.canvas.SvgCanvas
-import contentmanagement.webElements.svg.atomarElements.AppTextSvgElement
+import contentmanagement.webElements.svg.AppSvgElement
+import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.*
-import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-import interactionPlugins.blockEnvironment.programming.rendering.*
+import interactionPlugins.blockEnvironment.programming.shapes.BeShape
 
-enum BeBlockDisplayStatus {
-  case Normal, mouseOver, mouseOverDragging,
-}
+import scala.collection.mutable
 
-enum BeTreeDisplayStatus {
-  case Normal, Dragged,
-}
 
 // def finishElement(el: AppSvgElement,
 //      treeDraggedOver: Signal[Option[BeBlockTree]],
 //      mouseOver: Signal[Boolean]
-
+/*
 case class BeTreeDisplayConfig(
                                 nodeSpecialStrokeWidth: Map[NodeBasedTreePosition, Double],
                                 treeSpecialFill: Option[AppColor],
@@ -39,38 +32,56 @@ case class BeTreeDisplayConfig(
 
   def resetFill(): BeTreeDisplayConfig = BeTreeDisplayConfig(nodeSpecialStrokeWidth, None)
 }
-
-object BeTreeDisplayConfig {
-
-  lazy val default: BeTreeDisplayConfig = BeTreeDisplayConfig(Map(), None)
-
-}
+*/
 
 // todo
 // Display Styles: TreeAsStored // TreeExpandable // TreeWithSimulatedAddition (three different methods / classes?)
 case class HtmlBeTreeDisplay(
                               treeSignal: Signal[BeBlockTree],
-                              configSignal: Signal[BeRendererConfig],
+                              controllerStateVar: Var[BeControllerState],
+                              displayConfigSignal: Signal[BeDisplayConfig],
+                              renderingConfigSignal: Signal[BeRenderingConfig],
                               listener: HtmlBeTreeListener
                             ) {
 
-  val displayConfigVar: Var[BeTreeDisplayConfig] = Var(BeTreeDisplayConfig.default)
-
   def domSignal: Signal[L.HtmlElement] = {
-    treeSignal.combineWith(configSignal).combineWith(displayConfigVar.signal).map(curTriple => {
-      render(curTriple._1, curTriple._2, curTriple._3)
+    treeSignal.combineWith(displayConfigSignal).combineWith(renderingConfigSignal).map(tup => {
+      render(tup._1, tup._2, tup._3)
     })
   }
 
-  def render(tree: Tree[NodeBasedTreePosition, BeBlock], config: BeRendererConfig, curDisplayConfig: BeTreeDisplayConfig): L.HtmlElement = {
+  def render(tree: BeBlockTree, displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig): L.HtmlElement = {
 
-    val boundsTree = BeProgramRendererHelper(config).toBoundsTree(tree, config.paddingBig)
+    val posToDraw = tree.getChildren(tree.rootPosition)
 
+    val finishedRenderings: mutable.ListBuffer[AppSvgElement] = mutable.ListBuffer[AppSvgElement]()
+    tree.foreachWithStructure((structure: BeBlockContext) => {
+      if (posToDraw.contains(structure.curPosition)) {
+        val finishedShape: BeShape = structure.curValue.render(controllerStateVar, displayConfig, rendererConfig, structure)
+        val svg: AppSvgElement = finishedShape.render(rendererConfig, Point[Double](0, 0).withDimension(finishedShape.displaySize(rendererConfig)))
+        finishedRenderings += svg
+      }
+    })
 
-    val svgWidth = boundsTree.values.map(_.endX).max + config.paddingBig.width * 2
-    val svgHeight = boundsTree.values.map(_.endY).max + config.paddingBig.height * 2
+    val svgDomElement = finishedRenderings.map(treeSvgElement => {
+      val svgDim = treeSvgElement.staticBoundingBox.dimension.increaseSize(rendererConfig.paddingBig)
+      val svgCanvas: SvgCanvas = new SvgCanvas(svgDim.width.toInt, svgDim.height.toInt)
+      svgCanvas.addSvgElement(treeSvgElement.renderWithMods)
+      div(
+        draggable := true,
+        onDragStart --> { mouseEvent => listener.onTreeDragged(mouseEvent, tree) },
+        onDragEnd --> { mouseEvent => listener.onDragEnded(mouseEvent, tree) },
+        svgCanvas.getDomElement()
+      )
+    })
 
-    val svgCanvas: SvgCanvas = new SvgCanvas(svgWidth.toInt, svgHeight.toInt)
+    val alt = div(
+      cls := "altTreeDisplay",
+      "no positions to draw: " + posToDraw
+    )
+
+    svgDomElement.headOption.getOrElse(alt)
+
 
     /*
     val hatchedPattern = svg.pattern(
@@ -89,44 +100,44 @@ case class HtmlBeTreeDisplay(
     )
 
     svgCanvas.addSvgElement(hatchedPattern)*/
-
-    tree.foreachWithStructure(structure => {
-      val childNr = structure.curPosition.childIndices.last
-      val bounds = boundsTree.getData(structure.curPosition).get
-      val strokeWidth = curDisplayConfig.nodeSpecialStrokeWidth.getOrElse(structure.curPosition, 1)
-      val svgElement = structure.curValue
-        .getColorlessDisplayElement(config, bounds)
-        .addModsToAll(List(
-          svg.strokeWidth := strokeWidth.toString,
-          svg.z := "" + structure.curPosition.level,
-        ))
-        .map(element => if(!element.isInstanceOf[AppTextSvgElement[_]]){
-          element.addMods(List(
-            svg.stroke := RGBColor.black.toWebStyleString,
-            svg.fill := "transparent"
-          )
-          )}else{
-          element.addMods(List(
-            svg.stroke := RGBColor.black.toWebStyleString,
-          ))
-        })
-        .makeClickable(mouseEvent => {
-          listener.onClicked(mouseEvent, structure, displayConfigVar)
-        }).makeDroppable(mouseEvent => {
-          listener.onDropping(mouseEvent, structure, displayConfigVar)
-        })
-      val color = if(childNr % 2 == 0) "red" else "yellow"
-     // svgCanvas.addSvgElement(BeShape.RectangleShape.getAssociatedSvgElement(bounds).addMods(List(svg.stroke := color, svg.fill := "transparent")).renderAsLaminar)
-      svgCanvas.addSvgElement(svgElement.renderAsLaminar)
-
-    }, false)
-
-    div(
-      draggable := true,
-      onDragStart --> { mouseEvent => listener.onTreeDragged(mouseEvent, tree, displayConfigVar) },
-      onDragEnd --> { mouseEvent => listener.onDragEnded(mouseEvent, tree, displayConfigVar) },
-      svgCanvas.getDomElement()
-    )
+    /*
+        tree.foreachWithStructure(structure => {
+          val childNr = structure.curPosition.childIndices.last
+          val bounds = boundsTree.getData(structure.curPosition).get
+          val strokeWidth = curDisplayConfig.nodeSpecialStrokeWidth.getOrElse(structure.curPosition, 1)
+          val svgElement = structure.curValue
+            .getColorlessDisplayElement(config, bounds)
+            .addModsToAll(List(
+              svg.strokeWidth := strokeWidth.toString,
+              svg.z := "" + structure.curPosition.level,
+            ))
+            .map(element => if(!element.isInstanceOf[AppTextSvgElement[_]]){
+              element.addMods(List(
+                svg.stroke := RGBColor.black.toWebStyleString,
+                svg.fill := "transparent"
+              )
+              )}else{
+              element.addMods(List(
+                svg.stroke := RGBColor.black.toWebStyleString,
+              ))
+            })
+            .makeClickable(mouseEvent => {
+              listener.onClicked(mouseEvent, structure, displayConfigVar)
+            }).makeDroppable(mouseEvent => {
+              listener.onDropping(mouseEvent, structure, displayConfigVar)
+            })
+          val color = if(childNr % 2 == 0) "red" else "yellow"
+         // svgCanvas.addSvgElement(BeShape.RectangleShape.getAssociatedSvgElement(bounds).addMods(List(svg.stroke := color, svg.fill := "transparent")).renderAsLaminar)
+          svgCanvas.addSvgElement(svgElement.renderAsLaminar)
+    
+        }, false)
+    
+        div(
+          draggable := true,
+          onDragStart --> { mouseEvent => listener.onTreeDragged(mouseEvent, tree, displayConfigVar) },
+          onDragEnd --> { mouseEvent => listener.onDragEnded(mouseEvent, tree, displayConfigVar) },
+          svgCanvas.getDomElement()
+        )*/
 
   }
 

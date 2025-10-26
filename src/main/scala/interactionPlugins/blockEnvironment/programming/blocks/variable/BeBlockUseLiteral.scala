@@ -1,29 +1,43 @@
 package interactionPlugins.blockEnvironment.programming.blocks.variable
 
-import contentmanagement.model.geometry.{Bounds, Dimension}
-import contentmanagement.model.language.{HumanLanguage, LanguageMap}
+import com.raquo.laminar.api.L.Var
+import contentmanagement.model.vm.expressions.BeUseValueLiteral
+import contentmanagement.model.vm.types.{BeChildRole, BeDataType}
+import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
+import interactionPlugins.blockEnvironment.programming.blocks.BeBlockAtomar
+import interactionPlugins.blockEnvironment.programming.shapes.{BeShape, BeShapeAmendFactory}
+import com.raquo.laminar.api.L
+import com.raquo.laminar.api.L.Var
+import com.raquo.laminar.api.L.svg
+import contentmanagement.model.vm.expressions.defining.BeDefineVariable
+import contentmanagement.model.vm.types.*
 import contentmanagement.webElements.svg.AppSvgElement
-import contentmanagement.webElements.svg.atomarElements.AppTextSvgElement
-import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-import interactionPlugins.blockEnvironment.programming.blocks.traits.*
-import interactionPlugins.blockEnvironment.programming.connection.BeValueRole
-import interactionPlugins.blockEnvironment.programming.rendering.*
-import interactionPlugins.blockEnvironment.programming.rendering.shapes.BeShape
-import interactionPlugins.blockEnvironment.programming.rendering.shapes.BeShape.BeShapeContainerable
-import interactionPlugins.blockEnvironment.programming.rendering.shapes.composite.*
-import interactionPlugins.blockEnvironment.programming.rendering.shapes.atomic.*
-import interactionPlugins.blockEnvironment.programming.{BeBlockContext, BeDataType}
+import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
+import interactionPlugins.blockEnvironment.programming.blocks.{BeBlock, BeBlockAtomar}
+import interactionPlugins.blockEnvironment.programming.shapes.BeShape
+import interactionPlugins.blockEnvironment.programming.shapes.atomic.TextShape
+import interactionPlugins.blockEnvironment.programming.shapes.composite.ShapeAroundShape
+import com.raquo.laminar.api.L
+import com.raquo.laminar.api.L.{Var, svg}
+import contentmanagement.model.language.LanguageMap
+import contentmanagement.model.vm.expressions.*
+import contentmanagement.model.vm.types.*
+import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
+import interactionPlugins.blockEnvironment.programming.blocks.{BeBlock, BeBlockAtomar}
+import interactionPlugins.blockEnvironment.programming.shapes.BeShape
+import interactionPlugins.blockEnvironment.programming.shapes.BeShape.*
+import interactionPlugins.blockEnvironment.programming.shapes.atomic.{LiteralShape, TextShape}
+import interactionPlugins.blockEnvironment.programming.shapes.composite.ShapeAroundShape
+case class BeBlockUseLiteral(valueUsage: BeUseValueLiteral, roleInParent: BeChildRole) extends BeBlockAtomar{
+  
+  def associatedExpression: BeExpression = valueUsage
 
-case class BeBlockUseLiteral(
-                              override val roleInParent: BeValueRole,
-                              valueStr: String, dataType: BeDataType
-                            ) extends BeBlockValue with BeBlockLogic {
-
-
-  override val displayShape: BeShape = {
-    val outerShape = dataType.associatedShape
-    val textShape = TextShape(LanguageMap.universalMap(dataType.formatStringForDisplay(valueStr)))
-    ShapeAroundShape(outerShape, ShapeAroundShape(LiteralShape, textShape))
+  override def render(controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig): BeShape = {
+    val textShape = TextShape(LanguageMap.universalMap(valueUsage.value))
+    val resShape = ShapeAroundShape(LiteralShape, textShape)
+    resShape.addAmends(BeShapeAmendFactory(rendererConfig).literalColorsAmend)
+    
   }
 
+  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(roleInParent = newRole)
 }

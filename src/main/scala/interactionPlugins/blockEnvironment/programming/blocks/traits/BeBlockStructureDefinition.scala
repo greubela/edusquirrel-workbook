@@ -1,6 +1,6 @@
 package interactionPlugins.blockEnvironment.programming.blocks.traits
 
-import interactionPlugins.blockEnvironment.programming.BeDataType
+import contentmanagement.model.vm.types.BeDataType
 
 trait BeBlockStructureDefinition {
 

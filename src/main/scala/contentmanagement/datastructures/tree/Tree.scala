@@ -1,6 +1,5 @@
 package contentmanagement.datastructures.tree
 
-import contentmanagement.datastructures.tree.nodeImpl.{NodeBasedTraversalInformation, NodeBasedTreeImpl}
 import util.{CodeStringBuilder, FunctionalUtility}
 
 import scala.collection.mutable
@@ -32,6 +31,7 @@ trait Tree[P <: TreePosition, D] {
 
   def searchForValue(value: D): Set[P] = entries.filter(_._2 == value).map(_._1)
 
+  def getSubtreeInclLevel(keepInclLevel: Int): Tree[P, D]
 
   def values: Set[D] = entries.map(_._2)
 
@@ -56,7 +56,7 @@ trait Tree[P <: TreePosition, D] {
 
   def mapWithStructure[O](transformData: TSC => O): Tree[P, O]
 
-  def foreachWithStructure(consumer: TSC => Any, bottomUp: Boolean = true): Unit = mapWithStructure(consumer)
+  def foreachWithStructure(consumer: TreeStructureContext[P, D] => Any, bottomUp: Boolean = true): Unit = mapWithStructure(consumer)
 
   def foreach(consumer: (P, D) => Any, bottomUp: Boolean = true): Unit = foreachWithStructure(func => consumer(func.curPosition, func.curValue), bottomUp)
 

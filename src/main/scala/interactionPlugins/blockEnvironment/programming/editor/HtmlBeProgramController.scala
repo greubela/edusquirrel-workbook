@@ -4,20 +4,20 @@ import contentmanagement.datastructures.tree.Tree
 import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreePosition
 import contentmanagement.webElements.svg.AppSvgElement
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-import interactionPlugins.blockEnvironment.programming.blocks.traits.BeBlockLogic
+import interactionPlugins.blockEnvironment.programming.blocks.traits.*
 import org.scalajs.dom.MouseEvent
-
+import interactionPlugins.blockEnvironment.programming.*
+import interactionPlugins.blockEnvironment.programming.BeBlockTree
 trait HtmlBeProgramController {
-
   
   
   def notifyOnMouseEnter(mouseEvent: MouseEvent, appSvgElement: AppSvgElement, block: BeBlock): Unit
 
   // todo all others
 
-  def canAcceptDrop(onPosition: NodeBasedTreePosition, draggedTree: Tree[NodeBasedTreePosition, BeBlockLogic]): Boolean
+  def canAcceptDrop(onPosition: NodeBasedTreePosition, draggedTree: BeBlockTree): Boolean
 
-  def insertBelow(onPosition: NodeBasedTreePosition, treeToInsert: Tree[NodeBasedTreePosition, BeBlockLogic]): Unit
+  def insertBelow(onPosition: NodeBasedTreePosition, treeToInsert: BeBlockTree): Unit
 
 }
 

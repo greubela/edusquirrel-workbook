@@ -1,80 +1,85 @@
 package interactionPlugins.blockEnvironment.programming.blocks
 
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
-import contentmanagement.model.language.{HumanLanguage, LanguageMap}
-import contentmanagement.webElements.svg.AppSvgElement
-import contentmanagement.webElements.svg.atomarElements.AppTextSvgElement
-import interactionPlugins.blockEnvironment.programming.blocks.traits.BeBlockValue
-import interactionPlugins.blockEnvironment.programming.connection.BeValueRole
-import interactionPlugins.blockEnvironment.programming.rendering.*
-import interactionPlugins.blockEnvironment.programming.rendering.shapes.*
-import interactionPlugins.blockEnvironment.programming.rendering.shapes.BeShape.BeShapeContainerable
-import interactionPlugins.blockEnvironment.programming.{BeBlockContext, BeDimensionTree}
+import com.raquo.laminar.api.L
+import com.raquo.laminar.api.L.Var
+import contentmanagement.model.vm.expressions.BeExpression
+import contentmanagement.model.vm.types.BeChildRole
+import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
+import interactionPlugins.blockEnvironment.programming.*
+import interactionPlugins.blockEnvironment.programming.blocks.BeBlockReference.{NewBlock, ReferenceExistingBlock}
+import interactionPlugins.blockEnvironment.programming.shapes.BeShape
 
 sealed trait BeBlock {
-  def getColorlessDisplayElement(config: BeRendererConfig, bounds: Bounds[Double]): AppSvgElement
 
-  def calcDisplaySize(config: BeRendererConfig, minSizeTree: BeDimensionTree, context: BeBlockContext[Dimension[Double]]): Dimension[Double]
+  def render(controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig, structure: BeBlockContext): BeShape
 
-  def calcMinSize(config: BeRendererConfig, context: BeBlockContext[Dimension[Double]]): Dimension[Double]
+  def roleInParent: BeChildRole
+
+  def changeRole(newRole: BeChildRole): BeBlock
+
+  def calcAssociatedExpression(structure: BeBlockContext): BeExpression = {
+    val childrenWithExpression: List[(BeChildRole, BeExpression)] = structure
+      .traversalInfoForChildren
+      .map(curChildTrav => {
+        (curChildTrav.curValue.roleInParent, curChildTrav.curValue.calcAssociatedExpression(curChildTrav))
+      })
+      .filter(curChildExp => curChildExp._2 != BeExpression.NoOp)
+    calcAssociatedExpression(childrenWithExpression)
+  }
+
+  def calcAssociatedExpression(childrenWithExpression: List[(BeChildRole, BeExpression)]): BeExpression
+
+  /*
+
+  def calcAssociatedExpression(structure: BeBlockContext): BeExpression = {
+
+    v
+   */
 }
+
 
 abstract class BeBlockParent extends BeBlock {
 
-  def displayShape: BeShape
+  override def render(controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig, structure: BeBlockContext): BeShape = {
+    val childrenRefs: List[ReferenceExistingBlock] = structure.traversalInfoForChildren.zipWithIndex.map((curChildInfo, curChildIndex) => {
+      ReferenceExistingBlock(curChildInfo, curChildIndex, curChildInfo.curValue)
+    })
 
-  override def getColorlessDisplayElement(config: BeRendererConfig, bounds: Bounds[Double]): AppSvgElement = {
-    displayShape.renderColorless(config, bounds)
+    val displayChildren: List[BeBlockReference] = getDisplayChildren(displayConfig, childrenRefs)
+
+    val renderedDisplayChildren: List[(BeBlockReference, BeShape)] = displayChildren.map(curChild => {
+      val svgElement = curChild match {
+        case ReferenceExistingBlock(childStructure, nrInChildList, block) => block.render(controllerStateVar, displayConfig, rendererConfig, childStructure)
+        case NewBlock(valueChild) => valueChild.render(controllerStateVar, displayConfig, rendererConfig)
+        //        protected def render(controllerState: BeControllerState, displayConfig: BeDisplayConfig, config: BeRenderingConfig): AppSvgElement
+
+      }
+      (curChild, svgElement)
+    })
+    val res: BeShape = render(controllerStateVar, rendererConfig, renderedDisplayChildren)
+    res
   }
 
-  def parentDisplay: BeParentDisplay
+  def getDisplayChildren(displayConfig: BeDisplayConfig, existingChildren: List[ReferenceExistingBlock]): List[BeBlockReference]
 
-  def calcMinSize(config: BeRendererConfig, context: BeBlockContext[Dimension[Double]]): Dimension[Double] = parentDisplay.calcMinSize(config, context)
-
-  override def calcDisplaySize(config: BeRendererConfig, minSizeTree: BeDimensionTree, context: BeBlockContext[Dimension[Double]]): Dimension[Double] = parentDisplay.calcDisplaySize(config, minSizeTree, context)
-
-  def calcRelativeChildOffsets(config: BeRendererConfig, childrenBefore: List[(BeBlock, Point[Double], Dimension[Double])], curChild: BeBlock): Point[Double] = parentDisplay.calcRelativeChildOffsets(config, childrenBefore, curChild)
-
-  def nodeInsertionsForDisplay(existingChildren: List[BeBlock], existingValueChildrenWithPosition: Map[BeValueRole, (BeBlockValue, Int)]): List[(Int, BeBlock)] = List()
+  protected def render(controllerStateVar: Var[BeControllerState], config: BeRenderingConfig, renderedDisplayChildren: List[(BeBlockReference, BeShape)]): BeShape
 
 }
 
 abstract class BeBlockAtomar extends BeBlock {
 
-  def displayShape: BeShape
 
-  override def getColorlessDisplayElement(config: BeRendererConfig, bounds: Bounds[Double]): AppSvgElement = {
-    displayShape.renderDefaultColoring(config, bounds)
+  override def render(controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig, structure: BeBlockContext): BeShape = {
+    render(controllerStateVar, displayConfig, rendererConfig)
   }
 
-  override def calcDisplaySize(config: BeRendererConfig, minSizeTree: BeDimensionTree, context: BeBlockContext[Dimension[Double]]): Dimension[Double] = {
-    displayShape.displaySize(config)
-  }
+  def render(controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig): BeShape
+  
+  def associatedExpression: BeExpression
 
-  def calcMinSize(config: BeRendererConfig, context: BeBlockContext[Dimension[Double]]): Dimension[Double] = {
-    //val curStr = displayedText.map(_.getInLanguage(config.language)).getOrElse("[...]")
-    displayShape.displaySize(config)
-  }
+  override def calcAssociatedExpression(childrenWithExpression: List[(BeChildRole, BeExpression)]): BeExpression = associatedExpression
+
 }
 
-case class BeBlockDisplayText(displayedText: LanguageMap[HumanLanguage]) extends BeBlock {
-
-  override def getColorlessDisplayElement(config: BeRendererConfig, bounds: Bounds[Double]): AppSvgElement = {
-    val str = displayedText.getInLanguage(config.language)
-    AppTextSvgElement(str, bounds, config.appFont)
-  }
-
-  override def calcDisplaySize(config: BeRendererConfig, minSizeTree: BeDimensionTree, context: BeBlockContext[Dimension[Double]]): Dimension[Double] = {
-    val maxHeight = context.traversalInfoForSiblingsInParent.map(curSibling => minSizeTree.getData(curSibling.curPosition).get).maxBy(_.height)
-    minSizeTree.getData(context.curPosition).get.copy(height = maxHeight.height)
-  }
-
-  override def calcMinSize(config: BeRendererConfig, context: BeBlockContext[Dimension[Double]]): Dimension[Double] = {
-
-    val curStr = displayedText.getInLanguage(config.language)
-    config.appFont.measureText(curStr).increaseSize(config.paddingSmall)
-
-  }
-}
 
 

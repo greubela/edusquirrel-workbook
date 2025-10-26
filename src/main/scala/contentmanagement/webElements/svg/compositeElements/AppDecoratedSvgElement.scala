@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L
 import contentmanagement.model.geometry.Bounds
 import contentmanagement.webElements.svg.AppSvgElement
 import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.{nodeSeqToModifier, seqToModifier, svg}
+import com.raquo.laminar.api.L.{Signal, nodeSeqToModifier, seqToModifier, svg}
 import contentmanagement.model.geometry.Bounds
 import contentmanagement.webElements.svg.AppSvgElement
 
@@ -13,13 +13,16 @@ case class AppDecoratedSvgElement(mainElement: AppSvgElement, overlays: List[App
   override def staticBoundingBox: Bounds[Double] = Bounds.thatContainsAll(mainElement.staticBoundingBox.cornerPoints ++ overlays.flatMap(_.staticBoundingBox.cornerPoints) ++ underlays.flatMap(_.staticBoundingBox.cornerPoints))
 
   override def mods: Seq[L.Modifier[L.SvgElement]] = mainElement.mods
-
-  override def addMods(newMods: Seq[L.Modifier[L.SvgElement]]): AppSvgElement = AppDecoratedSvgElement(mainElement.addMods(newMods), overlays, underlays)
-
-  override def renderAsLaminar: L.SvgElement = svg.g(
-    underlays.map(_.renderAsLaminar),
-    mainElement.renderAsLaminar,
-    overlays.map(_.renderAsLaminar),
+  override def signalMods: Seq[Signal[L.Modifier[L.SvgElement]]] = mainElement.signalMods
+  
+  override def addMods(newMods: Seq[L.Modifier[L.SvgElement]]): AppSvgElement = this.copy(mainElement = mainElement.addMods(newMods))
+  override def addSignalMods(newMods: Seq[Signal[L.Modifier[L.SvgElement]]]): AppSvgElement = this.copy(mainElement = mainElement.addSignalMods(newMods))
+  
+  
+  override def renderBeforeMods: L.SvgElement = svg.g(
+    underlays.map(_.renderWithMods),
+    mainElement.renderWithMods,
+    overlays.map(_.renderWithMods),
   )
 
   override def addModsToAll(newMods: Seq[L.Modifier[L.SvgElement]]): AppSvgElement =
@@ -29,4 +32,10 @@ case class AppDecoratedSvgElement(mainElement: AppSvgElement, overlays: List[App
 
 
   override def map(func: AppSvgElement => AppSvgElement): AppSvgElement = AppDecoratedSvgElement(func(mainElement), overlays.map(func), underlays.map(func))
+
+
+  def removeAllMods(): AppSvgElement = {
+    AppDecoratedSvgElement(mainElement.removeAllMods(), overlays.map(_.removeAllMods()), underlays.map(_.removeAllMods()))
+  }
+
 }

@@ -2,11 +2,7 @@ package interactionPlugins.gpt
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.webElements.genericHtmlElements.editor.SimpleTextEditor
-import interactionPlugins.blockEnvironment.firstIteration.TurtleExerciseContent
-import interactionPlugins.gpt.HtmlTextBasedGptInteractionModel
 import workbook.model.display.FullInteractionLabelModel
-import workbook.model.exercise.ExerciseContent
 import workbook.model.feedback.grading.GptGradingResult
 import workbook.model.feedback.scaffolding.GptScaffoldingResult
 import workbook.model.interaction.full.HtmlFullInteractionModel

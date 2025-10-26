@@ -1,7 +1,6 @@
 package interactionPlugins.gpt
 
 import contentmanagement.model.language.AppLanguage
-import interactionPlugins.blockEnvironment.firstIteration.TurtleProgramState
 import workbook.model.exercise.ExerciseContent
 
 case class TextBasedGptExercise(

@@ -10,7 +10,7 @@ import workbook.model.feedback.grading.GptGradingResult
 import workbook.model.feedback.scaffolding.GptScaffoldingResult
 import workbook.model.interaction.full.*
 import workbook.model.states.BasicVariableBasedState.BasicStringState
-import workbook.model.states.{BasicVariableBasedState, FullInteractionState, Stateless}
+import workbook.model.states.{BasicVariableBasedState, Stateless}
 
 case class HtmlTextBasedGptInteractionModel(initEditorText: String, initScaffolderText: String) extends HtmlFullInteractionModel[
   BasicStringState, BasicStringState, Stateless,
@@ -22,7 +22,7 @@ case class HtmlTextBasedGptInteractionModel(initEditorText: String, initScaffold
   private val initStateScaffolder = BasicVariableBasedState.createStringState(initScaffolderText)
 
   val model = new FullInteractionExerciseModel[BasicStringState, BasicStringState, Stateless, GptScaffoldingResult, GptGradingResult](initStateEditor, initStateScaffolder, Stateless.StatelessInstance)
-  
+
   val controller = FullInteractionController(GptScaffolder(), GptGrader())
 
   val visualizer: FullInteractionVisualizer[BasicStringState, BasicStringState, Stateless, GptScaffoldingResult, GptGradingResult, GptScaffolder, GptGrader]

@@ -68,11 +68,18 @@ object Bounds {
   }
 
   def thatContainsAll[T: Fractional](points: Seq[Point[T]]): Bounds[T] = {
-    val minX: T = points.minBy(_.x).x
-    val minY: T = points.minBy(_.y).y
-    val maxX: T = points.maxBy(_.x).x
-    val maxY: T = points.maxBy(_.y).y
-    fromPoints(Point[T](minX, minY), Point[T](maxX, maxY))
+    if(points.nonEmpty) {
+      val minX: T = points.minBy(_.x).x
+      val minY: T = points.minBy(_.y).y
+      val maxX: T = points.maxBy(_.x).x
+      val maxY: T = points.maxBy(_.y).y
+      fromPoints(Point[T](minX, minY), Point[T](maxX, maxY))
+    }else{
+      val N = summon[Fractional[T]]
+      import N.*
+      println("Warn: Bounds::thatContainsAll with empty points list!?!")
+      fromPoints(Point(fromInt(0), fromInt(0)), Point(fromInt(0), fromInt(0)))
+    }
   }
 
 }

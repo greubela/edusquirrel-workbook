@@ -38,7 +38,7 @@ case class AppFont(
 
 object AppFont {
 
-  def defaultFont: AppFont = AppFont("Arial", 10)
+  def defaultFont: AppFont = AppFont("Arial", 16)
 
   def AnonymousPro: AppFont = AppFont("Anonymous Pro", 32)
 
