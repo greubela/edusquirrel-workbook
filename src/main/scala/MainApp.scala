@@ -30,17 +30,8 @@ def doSomeCalculations(): Unit = {
 val fullscreenElement: HtmlFullScreenElement = HtmlFullScreenElement()
 
 def insertTurtleEditor(): Unit = {
-  // Svg
-  val programVar = Var(BeProgram.miniProgram())
-  /*
-  println("python:\n" + programVar.now().toPythonString)
-  println("logic tree: " + programVar.now().logicTree.toString)
-  println("display tree: " + programVar.now().displayTree.toString)
-  */
 
-  val rendererConfig = BeRenderingConfig.default()
-
-  val editorDom = new HtmlFullscreenTurtleEditorElement(programVar).getDomElement()
+  val editorDom = new HtmlFullscreenTurtleEditorElement(BeProgram.miniProgramExpression()).getDomElement()
 
   val worksheetDiv = document.getElementById("worksheetDts")
 

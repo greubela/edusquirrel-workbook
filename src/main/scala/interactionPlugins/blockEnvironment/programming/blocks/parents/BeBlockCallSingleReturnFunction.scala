@@ -6,6 +6,7 @@ import contentmanagement.model.vm.expressions.*
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.FunctionParameter
 import interactionPlugins.blockEnvironment.config.*
+import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.blocks.*
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlockReference.*
 import interactionPlugins.blockEnvironment.programming.blocks.traits.*
@@ -31,7 +32,8 @@ case class BeBlockCallSingleReturnFunction(
     functionNameDisplay :: parameterValue
   }
 
-  override protected def render(controllerStateVar: Var[BeControllerState], rendererConfig: BeRenderingConfig, renderedDisplayChildren: List[(BeBlockReference, BeShape)]): BeShape = {
+  protected def render(inProgram: BeProgram, controllerStateVar: Var[BeControllerState], rendererConfig: BeRenderingConfig, renderedDisplayChildren: List[(BeBlockReference, BeShape)]): BeShape
+  = {
     val childBox = HBoxSameHeight(renderedDisplayChildren.map(_._2))
     val shape = ShapeAroundShape(BeDataType.getShape(function.canEvaluateTo), childBox)
     val factory = BeShapeAmendFactory(rendererConfig)

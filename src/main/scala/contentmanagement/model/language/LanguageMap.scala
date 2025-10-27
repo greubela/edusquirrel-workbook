@@ -15,6 +15,7 @@ object LanguageMap {
 
   def mapBasedLanguageMap[T <: AppLanguage](map: Map[T, String]): LanguageMap[T] = new LanguageMap[T]() {
     def getInLanguage(language: T): String = map.getOrElse(language, "[no " + language.name + "]")
+    override def toString: String = "MapBasedLanguageMap(" + map + ")"
   }
 
 }

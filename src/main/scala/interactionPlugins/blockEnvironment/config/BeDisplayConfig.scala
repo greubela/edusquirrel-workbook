@@ -1,7 +1,6 @@
 package interactionPlugins.blockEnvironment.config
 
-case class BeDisplayConfig(compactDefinitions: Boolean) {
-
+case class BeDisplayConfig(useCompactBlocks: Boolean) {
 
 }
 

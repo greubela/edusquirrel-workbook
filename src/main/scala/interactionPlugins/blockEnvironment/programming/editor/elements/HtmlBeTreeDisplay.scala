@@ -8,56 +8,34 @@ import contentmanagement.webElements.genericHtmlElements.canvas.SvgCanvas
 import contentmanagement.webElements.svg.AppSvgElement
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.*
+import interactionPlugins.blockEnvironment.programming.editor.*
 import interactionPlugins.blockEnvironment.programming.shapes.BeShape
 
 import scala.collection.mutable
 
-
-// def finishElement(el: AppSvgElement,
-//      treeDraggedOver: Signal[Option[BeBlockTree]],
-//      mouseOver: Signal[Boolean]
-/*
-case class BeTreeDisplayConfig(
-                                nodeSpecialStrokeWidth: Map[NodeBasedTreePosition, Double],
-                                treeSpecialFill: Option[AppColor],
-                              ) {
-
-  def addHighlight(pos: NodeBasedTreePosition): BeTreeDisplayConfig = BeTreeDisplayConfig(nodeSpecialStrokeWidth + (pos -> 10.0), treeSpecialFill)
-
-  def removeHighlight(pos: NodeBasedTreePosition): BeTreeDisplayConfig = BeTreeDisplayConfig(nodeSpecialStrokeWidth.removed(pos), treeSpecialFill)
-
-  def resetStroke(): BeTreeDisplayConfig = BeTreeDisplayConfig(Map(), treeSpecialFill)
-
-  def withFill(color: AppColor): BeTreeDisplayConfig = BeTreeDisplayConfig(nodeSpecialStrokeWidth, Some(color))
-
-  def resetFill(): BeTreeDisplayConfig = BeTreeDisplayConfig(nodeSpecialStrokeWidth, None)
-}
-*/
-
-// todo
-// Display Styles: TreeAsStored // TreeExpandable // TreeWithSimulatedAddition (three different methods / classes?)
 case class HtmlBeTreeDisplay(
-                              treeSignal: Signal[BeBlockTree],
-                              controllerStateVar: Var[BeControllerState],
-                              displayConfigSignal: Signal[BeDisplayConfig],
-                              renderingConfigSignal: Signal[BeRenderingConfig],
-                              listener: HtmlBeTreeListener
+                              treeToDisplaySignal: Signal[BeProgram],
+                              pEditorState: TreeEditorState,
+                              pListenerVar: Var[HtmlBeTreeListener]
                             ) {
 
-  def domSignal: Signal[L.HtmlElement] = {
-    treeSignal.combineWith(displayConfigSignal).combineWith(renderingConfigSignal).map(tup => {
-      render(tup._1, tup._2, tup._3)
-    })
+  def toDomSignal: Signal[L.HtmlElement] = {
+    pEditorState.controllerStateVar.signal
+      .combineWith(pEditorState.displayConfigVar.signal)
+      .combineWith(pEditorState.rendererConfigVar.signal)
+      .combineWith(pListenerVar.signal)
+      .combineWith(treeToDisplaySignal)
+      .map(tup => render(tup._5, tup._2, tup._3, tup._4))
   }
 
-  def render(tree: BeBlockTree, displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig): L.HtmlElement = {
-
+  def render(programToDisplay: BeProgram, displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig, listener: HtmlBeTreeListener): L.HtmlElement = {
+    val tree: BeBlockTree = programToDisplay.blockTree
     val posToDraw = tree.getChildren(tree.rootPosition)
 
     val finishedRenderings: mutable.ListBuffer[AppSvgElement] = mutable.ListBuffer[AppSvgElement]()
     tree.foreachWithStructure((structure: BeBlockContext) => {
       if (posToDraw.contains(structure.curPosition)) {
-        val finishedShape: BeShape = structure.curValue.render(controllerStateVar, displayConfig, rendererConfig, structure)
+        val finishedShape: BeShape = structure.curValue.render(programToDisplay, pEditorState.controllerStateVar, displayConfig, rendererConfig, structure)
         val svg: AppSvgElement = finishedShape.render(rendererConfig, Point[Double](0, 0).withDimension(finishedShape.displaySize(rendererConfig)))
         finishedRenderings += svg
       }
@@ -69,8 +47,8 @@ case class HtmlBeTreeDisplay(
       svgCanvas.addSvgElement(treeSvgElement.renderWithMods)
       div(
         draggable := true,
-        onDragStart --> { mouseEvent => listener.onTreeDragged(mouseEvent, tree) },
-        onDragEnd --> { mouseEvent => listener.onDragEnded(mouseEvent, tree) },
+        onDragStart --> { mouseEvent => listener.onTreeDragged(mouseEvent, programToDisplay) },
+        onDragEnd --> { mouseEvent => listener.onDragEnded(mouseEvent) },
         svgCanvas.getDomElement()
       )
     })

@@ -23,6 +23,7 @@ import contentmanagement.model.language.LanguageMap
 import contentmanagement.model.vm.expressions.*
 import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
+import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.blocks.{BeBlock, BeBlockAtomar}
 import interactionPlugins.blockEnvironment.programming.shapes.BeShape
 import interactionPlugins.blockEnvironment.programming.shapes.BeShape.*
@@ -32,7 +33,7 @@ case class BeBlockUseLiteral(valueUsage: BeUseValueLiteral, roleInParent: BeChil
   
   def associatedExpression: BeExpression = valueUsage
 
-  override def render(controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig): BeShape = {
+  def render(inProgram: BeProgram, controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig): BeShape = {
     val textShape = TextShape(LanguageMap.universalMap(valueUsage.value))
     val resShape = ShapeAroundShape(LiteralShape, textShape)
     resShape.addAmends(BeShapeAmendFactory(rendererConfig).literalColorsAmend)

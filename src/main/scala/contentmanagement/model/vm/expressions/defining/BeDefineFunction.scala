@@ -8,17 +8,16 @@ import contentmanagement.model.vm.expressions.BeExpression
 import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorState}
 import contentmanagement.model.vm.types.BeInfo.*
 import interactionPlugins.blockEnvironment.programming.blocks.parents.BeBlockDefineSingleReturnFunction
-
 import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
 import contentmanagement.model.vm.*
 import contentmanagement.model.vm.expressions.BeExpression
 import contentmanagement.model.vm.expressions.defining.BeDefineFunction
 import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorState}
 import contentmanagement.model.vm.types.*
+import contentmanagement.model.vm.types.BeChildRole.BodySequence
 import contentmanagement.model.vm.types.BeInfo.*
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-
 import interactionPlugins.blockEnvironment.programming.blocks.parents.BeBlockCallSingleReturnFunction
 
 case class BeDefineFunction(signature: BeFunctionSignature, body: BeExpression) extends BeExpression {
@@ -41,5 +40,18 @@ case class BeDefineFunction(signature: BeFunctionSignature, body: BeExpression) 
   def canEvaluateTo: Set[BeDataType] = signature.returnValue.map(_.canEvaluateTo).getOrElse(Set(BeDataType.Unit))
 
   def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock = BeBlockDefineSingleReturnFunction(this, roleInParent)
+
+
+  override def getChildren: List[(BeChildRole, BeExpression)] = {
+    List( (BodySequence(), body))
+  }
+
+  override val toString: String = {
+
+    s"""BeDefineFunction(
+       |  ${signature.parameter.map(_.canEvaluateTo.toString).mkString("(", ", ", ")")} => ${signature.returnValue.map(_.toString).getOrElse("()")},
+       |  $body
+       |)""".stripMargin
+  }
 
 }

@@ -1,13 +1,12 @@
 package contentmanagement.model.vm.expressions
 
-import contentmanagement.datastructures.tree.TreeStructureContext
-import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreePosition
 import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
 import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorState}
 import contentmanagement.model.vm.types.{BeChildRole, BeDataType, BeInfo}
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 import interactionPlugins.blockEnvironment.programming.blocks.parents.BeBlockSequence
+import util.CodeStringBuilder
 
 case class BeSequence(body: List[BeExpression], mayBeEmpty: Boolean, evaluateNotToLastElementButTo: Option[Set[BeDataType]]) extends BeExpression {
 
@@ -31,4 +30,27 @@ case class BeSequence(body: List[BeExpression], mayBeEmpty: Boolean, evaluateNot
   def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock = BeBlockSequence(this, roleInParent)
 
   def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = body.map(_.getInLanguage(programmingLanguage, humanLanguage)).mkString("\n")
+
+  override def getChildren: List[(BeChildRole, BeExpression)] =
+    body.zipWithIndex.map((curExpr, curIndex) => (BeChildRole.ExpressionInBody(curIndex), curExpr))
+
+  override val toString: String = {
+    var res = CodeStringBuilder(s"BeSequence(")
+      .changeIntLevel(2)
+      .appendNextLine(s"//mayBeEmpty=$mayBeEmpty, lastEval=$evaluateNotToLastElementButTo")
+      .changeIntLevel(-1)
+    if (body.nonEmpty)       res = res.changeForEach(body, (old, curExpr) => old.appendAsLines(curExpr.toString))
+    else       res = res.appendNextLine("[no body]")
+    res.changeIntLevel(-1)
+      .appendNextLine(")").toString
+  }
+
+
+}
+
+object BeSequence {
+
+  def optionalUnitBody(body: List[BeExpression]) = BeSequence(body, true, Some(Set(BeDataType.Unit)))
+
+
 }

@@ -1,11 +1,13 @@
 package interactionPlugins.blockEnvironment.programming.blocks.parents
 
 import com.raquo.laminar.api.L
+import com.raquo.laminar.api.L.Var
 import contentmanagement.model.vm.expressions.{BeExpression, BeSequence}
 import contentmanagement.model.vm.types.BeChildRole.{ExpressionInBody, RecentlyInsertedInto}
 import contentmanagement.model.vm.types.BeDataType.Unit
 import contentmanagement.model.vm.types.{BeChildRole, BeDataType}
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
+import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlockReference.NewBlock
 import interactionPlugins.blockEnvironment.programming.blocks.variable.BeBlockPlaceholerOptionalValue
 import interactionPlugins.blockEnvironment.programming.blocks.{BeBlock, BeBlockParent, BeBlockReference}
@@ -24,7 +26,7 @@ case class BeBlockSequence(expression: BeSequence, roleInParent: BeChildRole) ex
     })
   }
 
-  override protected def render(controllerStateVar: L.Var[BeControllerState], config: BeRenderingConfig, renderedDisplayChildren: List[(BeBlockReference, BeShape)]): BeShape = {
+  protected def render(inProgram: BeProgram, controllerStateVar: Var[BeControllerState], rendererConfig: BeRenderingConfig, renderedDisplayChildren: List[(BeBlockReference, BeShape)]): BeShape = {
     VBoxSameWidth(renderedDisplayChildren.map(_._2))
   }
 

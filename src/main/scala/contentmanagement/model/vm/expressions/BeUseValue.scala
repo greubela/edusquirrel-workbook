@@ -15,6 +15,11 @@ trait BeUseValue extends BeExpression {
   override def hasSideEffects: Boolean = false
 
   def execute(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState = simulatorState
+
+
+  override def getChildren: List[(BeChildRole, BeExpression)] = List()
+
+
 }
 
 
@@ -48,7 +53,7 @@ case class BeUseValueReferencing(referencedVariable: BeDefineVariable) extends B
   def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock = BeBlockUseReference(this, roleInParent)
 }
 
-case class BeUseValueLiteral(value: String) extends BeUseValue {
+case class BeUseValueLiteral(value: String, optionalContext: Option[BeDefineVariable] = None) extends BeUseValue {
 
   def getCurrentValue(simulatorState: BeSimulatorState): Option[String] = Some(value)
 
@@ -58,7 +63,18 @@ case class BeUseValueLiteral(value: String) extends BeUseValue {
 
   lazy val canEvaluateTo: Set[BeDataType] = BeDataType.allPossibleTypesForLiteral(value)
 
-  def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock = BeBlockUseLiteral(this, roleInParent)
+  def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock =
+    if (optionalContext.nonEmpty) {
+    BeBlockUseLiteralForVariable(this, optionalContext.get, roleInParent)
+  } else {
+    BeBlockUseLiteral(this, roleInParent)
+  }
+
+
+  override def toString: String =
+    if(optionalContext.nonEmpty)    "BeUseValueLiteral(" + optionalContext.get.name.toString + " <- " + value + ")"
+    else "BeUseValueLiteral(" + value + ")"
+
 }
 
 /*

@@ -1,21 +1,22 @@
 package interactionPlugins.blockEnvironment.config
 
-import contentmanagement.datastructures.tree.TreeStructureContext
 import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreePosition
 import interactionPlugins.blockEnvironment.programming.{BeBlockTree, BeProgram}
 
 
-case class BeDraggingEvent(draggedTree: BeProgram)
+case class BeDraggingEvent(draggedProgram: BeProgram) {
+  
 
-case class BeMouseOverNode(positionContext: BeBlockTree)
+}
 
+case class BeMouseOverNode(position: NodeBasedTreePosition, program: BeBlockTree)
 
-case class BeControllerState(treeToEdit: BeBlockTree, draggingEvent: Option[BeDraggingEvent], mouseOverNode: Option[BeMouseOverNode]) {
+case class BeControllerState(programToEdit: BeProgram, draggingEvent: Option[BeDraggingEvent], mouseOverNode: Option[BeMouseOverNode]) {
 
 }
 
 object BeControllerState {
 
-  def defaultForTree(treeToEdit: BeBlockTree): BeControllerState = BeControllerState(treeToEdit, None, None)
+  def defaultForProgram(program: BeProgram): BeControllerState = BeControllerState(program, None, None)
 
 }

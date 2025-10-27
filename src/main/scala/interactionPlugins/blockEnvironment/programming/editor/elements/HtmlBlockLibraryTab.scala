@@ -3,22 +3,16 @@ package interactionPlugins.blockEnvironment.programming.editor.elements
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.AppFont
-import contentmanagement.model.color.AppColorPalette
-import contentmanagement.model.geometry.Dimension
-import contentmanagement.model.language.AppLanguage
+import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
-import contentmanagement.model.vm.types.*
 
 case class HtmlBlockLibraryTab(
-                                libraryPrograms: List[BeProgram],
-                                controllerStateVar: Var[BeControllerState],
-                                renderingConfigSignal: Signal[BeRenderingConfig],
-                                treeListener: HtmlBeTreeListener
-                              ) extends HtmlWorkbookElement {
+                                editorState: TreeEditorState,
+                                programFactory: BeDisplayConfig => List[BeProgram],
+                                mainControllerTreeListener: Var[HtmlBeTreeListener]
+                              ) {
 
   //case class HtmlBeTreeDisplay(
   //                              treeSignal: Signal[BeBlockTree],
@@ -28,40 +22,34 @@ case class HtmlBlockLibraryTab(
   //                              listener: HtmlBeTreeListener
   //                            ) {
 
-  lazy val domElement: L.Element = {
-    val config = Var(BeRenderingConfig.default())
-    val displays = libraryPrograms.zipWithIndex.map((curProgram, index) => {
-      val treeSignal = Var(curProgram.logicTree).signal
-      val displayConfigSignal = Var(BeDisplayConfig.default()).signal
+  def getDisplays(displayConfig: BeDisplayConfig): List[BeProgram] = programFactory(displayConfig)
 
-      HtmlBeTreeDisplay(treeSignal, controllerStateVar, displayConfigSignal, renderingConfigSignal, treeListener)
+  lazy val toDomSignal: Signal[L.Element] = {
+    editorState.displayConfigVar.signal.map(curDisplayConfig => {
+      val programs = programFactory(curDisplayConfig)
+      val treeDisplays = programs.map(curProg => HtmlBeTreeDisplay(Var(curProg).signal, editorState, mainControllerTreeListener ))
+
+      val domSignals = treeDisplays.map(_.toDomSignal)
+
+      div(
+        cls := "block-library-tab",
+        children <-- Signal.sequence(domSignals)
+      )
     })
-    div(
-      cls := "block-library-tab",
-      children <-- Signal.sequence(displays.map(_.domSignal))
-    )
   }
 
-  override def getDomElement(): L.Element = domElement
 
 }
 
 object HtmlBlockLibraryTab {
 
-  
-  def turtleLibraryTab(displayConfig: BeDisplayConfig, controllerStateVar: Var[BeControllerState], libraryTreeListener: HtmlBeTreeListener): HtmlBlockLibraryTab = {
 
-    val rendererConfig = BeRenderingConfig.default()
-    val configVar = Var[BeRenderingConfig](rendererConfig)
-    
-    val programs: List[BeProgram] = List(
-      BeProgram.createOneParFunc(displayConfig,"move 100", "distance", BeDataType.Numeric, "100"),
-      BeProgram.createOneParFunc(displayConfig,"rotate ↺", "degree", BeDataType.Numeric, "90"),
-      BeProgram.createOneParFunc(displayConfig,"stringFunc", "someString", BeDataType.String, "This is a text :)"),
-      BeProgram.createSimpleFunc(displayConfig,"add days", List("startDate", "daysToAdd"), List(BeDataType.Date, BeDataType.Numeric), List("11.10.1999", "3")),
-    )
+  def getDefaultLibraryPrograms(displayConfig: BeDisplayConfig): List[BeProgram] = List(
+    BeProgram.createOneParFunc(displayConfig, "move 100", "distance", BeDataType.Numeric, "100"),
+    BeProgram.createOneParFunc(displayConfig, "rotate ↺", "degree", BeDataType.Numeric, "90"),
+    BeProgram.createOneParFunc(displayConfig, "stringFunc", "someString", BeDataType.String, "This is a text :)"),
+    BeProgram.createSimpleFunc(displayConfig, "add days", List("startDate", "daysToAdd"), List(BeDataType.Date, BeDataType.Numeric), List("11.10.1999", "3")),
+  )
 
-    HtmlBlockLibraryTab(programs, controllerStateVar, configVar.signal, libraryTreeListener)
-  }
 
 }

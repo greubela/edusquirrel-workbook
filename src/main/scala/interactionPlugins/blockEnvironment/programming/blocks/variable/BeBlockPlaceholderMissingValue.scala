@@ -5,6 +5,7 @@ import com.raquo.laminar.api.L.Var
 import contentmanagement.model.vm.expressions.{BeExpression, BeUseValue}
 import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
+import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.blocks.{BeBlock, BeBlockAtomar}
 import interactionPlugins.blockEnvironment.programming.shapes.{BeShape, BeShapeAmendFactory}
 
@@ -12,7 +13,7 @@ case class BeBlockPlaceholderMissingValue(variable: BeUseValue, roleInParent: Be
 
   def associatedExpression: BeExpression = variable
 
-  override def render(controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig): BeShape = {
+  def render(inProgram: BeProgram, controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig): BeShape = {
     val res = BeDataType.getShape(variable.canEvaluateTo)
 
     res.addAmends(BeShapeAmendFactory(rendererConfig).errorColorsAmend)

@@ -11,7 +11,7 @@ import interactionPlugins.blockEnvironment.programming.shapes.BeShape
 
 sealed trait BeBlock {
 
-  def render(controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig, structure: BeBlockContext): BeShape
+  def render(inProgram: BeProgram, controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig, structure: BeBlockContext): BeShape
 
   def roleInParent: BeChildRole
 
@@ -29,18 +29,12 @@ sealed trait BeBlock {
 
   def calcAssociatedExpression(childrenWithExpression: List[(BeChildRole, BeExpression)]): BeExpression
 
-  /*
-
-  def calcAssociatedExpression(structure: BeBlockContext): BeExpression = {
-
-    v
-   */
 }
 
 
 abstract class BeBlockParent extends BeBlock {
 
-  override def render(controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig, structure: BeBlockContext): BeShape = {
+  override def render(inProgram: BeProgram, controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig, structure: BeBlockContext): BeShape = {
     val childrenRefs: List[ReferenceExistingBlock] = structure.traversalInfoForChildren.zipWithIndex.map((curChildInfo, curChildIndex) => {
       ReferenceExistingBlock(curChildInfo, curChildIndex, curChildInfo.curValue)
     })
@@ -49,31 +43,31 @@ abstract class BeBlockParent extends BeBlock {
 
     val renderedDisplayChildren: List[(BeBlockReference, BeShape)] = displayChildren.map(curChild => {
       val svgElement = curChild match {
-        case ReferenceExistingBlock(childStructure, nrInChildList, block) => block.render(controllerStateVar, displayConfig, rendererConfig, childStructure)
-        case NewBlock(valueChild) => valueChild.render(controllerStateVar, displayConfig, rendererConfig)
+        case ReferenceExistingBlock(childStructure, nrInChildList, block) => block.render(inProgram, controllerStateVar, displayConfig, rendererConfig, childStructure)
+        case NewBlock(valueChild) => valueChild.render(inProgram, controllerStateVar, displayConfig, rendererConfig)
         //        protected def render(controllerState: BeControllerState, displayConfig: BeDisplayConfig, config: BeRenderingConfig): AppSvgElement
 
       }
       (curChild, svgElement)
     })
-    val res: BeShape = render(controllerStateVar, rendererConfig, renderedDisplayChildren)
+    val res: BeShape = render(inProgram, controllerStateVar, rendererConfig, renderedDisplayChildren)
     res
   }
 
   def getDisplayChildren(displayConfig: BeDisplayConfig, existingChildren: List[ReferenceExistingBlock]): List[BeBlockReference]
 
-  protected def render(controllerStateVar: Var[BeControllerState], config: BeRenderingConfig, renderedDisplayChildren: List[(BeBlockReference, BeShape)]): BeShape
+  protected def render(inProgram: BeProgram, controllerStateVar: Var[BeControllerState], rendererConfig: BeRenderingConfig, renderedDisplayChildren: List[(BeBlockReference, BeShape)]): BeShape
 
 }
 
 abstract class BeBlockAtomar extends BeBlock {
 
 
-  override def render(controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig, structure: BeBlockContext): BeShape = {
-    render(controllerStateVar, displayConfig, rendererConfig)
+  override def render(inProgram: BeProgram, controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig, structure: BeBlockContext): BeShape = {
+    render(inProgram, controllerStateVar, displayConfig, rendererConfig)
   }
 
-  def render(controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig): BeShape
+  def render(inProgram: BeProgram, controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig): BeShape
   
   def associatedExpression: BeExpression
 

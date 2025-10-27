@@ -7,7 +7,7 @@ import contentmanagement.model.vm.expressions.BeExpression
 import contentmanagement.model.vm.types.BeChildRole
 import contentmanagement.model.vm.types.BeChildRole.NoRole
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
-import interactionPlugins.blockEnvironment.programming.BeBlockContext
+import interactionPlugins.blockEnvironment.programming.{BeBlockContext, BeProgram}
 import interactionPlugins.blockEnvironment.programming.shapes.BeShape
 import interactionPlugins.blockEnvironment.programming.shapes.atomic.TextShape
 
@@ -15,7 +15,7 @@ case class BeBlockTextDisplay(text: LanguageMap[HumanLanguage]) extends BeBlockA
 
   override def roleInParent: BeChildRole = NoRole
 
-  override def render(controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig): BeShape =
+  def render(inProgram: BeProgram, controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig): BeShape =
     TextShape(text).addAmends(List(
       svg.fill := rendererConfig.colorPalette.grayscale(0).toWebStyleString
     ))

@@ -21,7 +21,7 @@ case class BeBlockDefineSingleReturnFunction(
 
   override def getDisplayChildren(displayConfig: BeDisplayConfig, existingChildren: List[ReferenceExistingBlock]): List[BeBlockReference] = ???
 
-  override protected def render(controllerStateVar: Var[BeControllerState], config: BeRenderingConfig, renderedDisplayChildren: List[(BeBlockReference, BeShape)]): BeShape = ???
+  protected def render(inProgram: BeProgram, controllerStateVar: Var[BeControllerState], rendererConfig: BeRenderingConfig, renderedDisplayChildren: List[(BeBlockReference, BeShape)]): BeShape = ???
 
   override def changeRole(newRole: BeChildRole): BeBlock = this.copy(roleInParent = newRole)
   /*

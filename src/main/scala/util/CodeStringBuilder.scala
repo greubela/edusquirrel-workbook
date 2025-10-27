@@ -2,7 +2,6 @@ package util
 
 case class CodeStringBuilder(initStr: String = "") {
 
-
   private var curIntLevel = 0
   private val curString = new StringBuilder(initStr)
 
@@ -16,6 +15,10 @@ case class CodeStringBuilder(initStr: String = "") {
     this
   }
 
+  def appendAsLines(multipleLineString: String) = {
+    val lines = multipleLineString.split("\n")
+    changeForEach(lines, (sb, str) => sb.appendNextLine(str))
+  }
 
   def appendNextLine(str: String): CodeStringBuilder = {
     curString.append("\n" + ("    " * curIntLevel) + str)
@@ -32,6 +35,12 @@ case class CodeStringBuilder(initStr: String = "") {
   def setIntLevel(newLevel: Int): CodeStringBuilder = {
     curIntLevel = newLevel
     this
+  }
+
+  def changeForEach[O](seq: Seq[O], func: (CodeStringBuilder, O) => CodeStringBuilder): CodeStringBuilder = {
+    var res = this
+    seq.foreach(elem => res = func(res, elem))
+    res
   }
 
 }

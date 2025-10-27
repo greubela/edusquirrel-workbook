@@ -6,3 +6,4 @@ protected enum BeBlockReference {
   case ReferenceExistingBlock(structure: BeBlockContext, nrInChildList: Int, block: BeBlock)
   case NewBlock(valueChild: BeBlockAtomar)
 }
+

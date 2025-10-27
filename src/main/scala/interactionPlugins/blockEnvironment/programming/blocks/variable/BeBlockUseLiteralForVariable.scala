@@ -4,8 +4,10 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{Var, svg}
 import contentmanagement.model.language.LanguageMap
 import contentmanagement.model.vm.expressions.*
+import contentmanagement.model.vm.expressions.defining.BeDefineVariable
 import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
+import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.blocks.{BeBlock, BeBlockAtomar}
 import interactionPlugins.blockEnvironment.programming.shapes.{BeShape, BeShapeAmendFactory}
 import interactionPlugins.blockEnvironment.programming.shapes.BeShape.*
@@ -14,13 +16,14 @@ import interactionPlugins.blockEnvironment.programming.shapes.composite.ShapeAro
 
 case class BeBlockUseLiteralForVariable(
                                          valueUsage: BeUseValueLiteral,
-                                         useForVariableRole: BeChildRole.ValueForVariable
+                                         forVariable: BeDefineVariable,
+                                         roleInParent: BeChildRole
                                        ) extends BeBlockAtomar {
 
-  override val roleInParent: BeChildRole = useForVariableRole
   def associatedExpression: BeExpression = valueUsage
 
-  override def render(controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig): BeShape = {
+
+  def render(inProgram: BeProgram, controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig): BeShape = {
 
     val textShape = TextShape(LanguageMap.universalMap(valueUsage.value)).addAmends(List(
       svg.fill := rendererConfig.colorPalette.grayscale(0).toWebStyleString,
@@ -32,15 +35,16 @@ case class BeBlockUseLiteralForVariable(
     val literalShape = ShapeAroundShape(LiteralShape, textShape)
 
     val literalAmend =
-      if (useForVariableRole.associatedVariable.canAcceptValue(valueUsage)) factory.literalColorsAmend
+      if (forVariable.canAcceptValue(valueUsage)) factory.literalColorsAmend
       else factory.errorColorsAmend
 
-    val outerShape = BeDataType.getShape(useForVariableRole.associatedVariable.canEvaluateTo.intersect(valueUsage.canEvaluateTo))
+    val outerShape = BeDataType.getShape(forVariable.canEvaluateTo.intersect(valueUsage.canEvaluateTo))
     val res = ShapeAroundShape(outerShape, literalShape.addAmends(literalAmend))
 
     res.addAmends(factory.lightVariableColorsAmend)    
     
   }
+  
 
 
   override def changeRole(newRole: BeChildRole): BeBlock = BeBlockUseLiteral(valueUsage, newRole)

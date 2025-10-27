@@ -25,7 +25,11 @@ case class BeDefineVariable(name: LanguageMap[HumanLanguage], override val canEv
 
   def canAcceptValue(value: BeUseValue): Boolean = value.canEvaluateTo.intersect(canEvaluateTo).nonEmpty
 
-  def toUseLiteralBlock(value: String): BeBlock = BeBlockUseLiteralForVariable(BeUseValueLiteral(value), BeChildRole.ValueForVariable(this))
+  def toUseLiteralWithContext(value: String): BeUseValueLiteral = BeUseValueLiteral(value, Some(this))
+
+  override def getChildren: List[(BeChildRole, BeExpression)] = List()
+
+  override val toString: String = "BeDefineVariable(" + name.toString + ": " + canEvaluateTo.mkString("[", ", ", "]") + ")"
 
 }
 
