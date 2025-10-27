@@ -30,15 +30,12 @@ object PythonParser {
     P(ifStatement | simpleStatement)
 
   private def ifStatement[$: P]: P[BeExpression] =
-    P("if" ~ ws1 ~ condition ~ ":" ~ lineSep ~ blockBody ~ elseClause.?).map {
-      case (cond, ifBodyText, elseBodyText) => {
-        println("parse if:\n~~~\ncond\n~~~\nifBodyText\n~~~\nelseBodyText")
-        val thenBodyExpr = parseBlockExpressions(ifBodyText) 
-        // val elseExpressions = elseBodyText.map(str => parseBlockExpressions(str)).getOrElse(BeSequence(List(), false))
-        //BeExpressionIfElse(cond, ifExpressions, elseExpressions)
-        // todo parse cond
-        BeExpressionIfElse(BeExpression.NoOp, thenBodyExpr, thenBodyExpr)
-      }
+    P(ws.? ~ "if" ~ ws.? ~ condition ~ ":" ~ lineSep ~ blockBody ~ elseClause).map {
+      case (cond, ifBodyText, elseBodyText) =>
+        val conditionExpr = BeExpressionUnkown(cond)
+        val thenBodyExpr = parseBlockExpressions(ifBodyText)
+        val elseBodyExpr = elseBodyText.map(parseBlockExpressions).getOrElse(BeSequence(List(), false))
+        BeExpressionIfElse(conditionExpr, thenBodyExpr, elseBodyExpr)
     }
 
   private def simpleStatement[$: P]: P[BeExpression] =
@@ -50,7 +47,7 @@ object PythonParser {
     P(CharsWhile(c => c != ':' && c != '\n' && c != '\r', 1).!).map(_.trim)
 
   private def blockBody[$: P]: P[String] =
-    P(blockLine.rep(1, sep = lineSep) ~ lineSep.?).map { lines =>
+    P(blockLine.rep(1, sep = lineSep)).map { lines =>
       val builder = new StringBuilder
       lines.foreach { line =>
         if (builder.nonEmpty) builder.append('\n')
@@ -60,7 +57,7 @@ object PythonParser {
     }
 
   private def elseClause[$: P]: P[Option[String]] =
-    P(stmtSep.rep ~ "else" ~ ws.? ~ ":" ~ lineSep ~ blockBody).map(body => Some(body))
+    P((stmtSep.rep(1) ~ "else" ~ ws.? ~ ":" ~ lineSep ~ blockBody).map(body => Some(body)) | Pass.map(_ => None))
 
   private def blockLine[$: P]: P[String] =
     P("    " ~ CharsWhile(isLineChar).!).map(_.trim)
@@ -71,8 +68,6 @@ object PythonParser {
   private def lineSep[$: P]: P[Unit] = P("\r\n" | "\n")
 
   private def ws[$: P]: P[Unit] = P(CharIn(" \t").rep)
-
-  private def ws1[$: P]: P[Unit] = P(CharIn(" \t").rep(1))
 
   private def isLineChar(c: Char): Boolean = c != '\n' && c != '\r'
 
