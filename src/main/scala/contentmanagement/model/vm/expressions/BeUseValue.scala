@@ -3,7 +3,7 @@ package contentmanagement.model.vm.expressions
 import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
 import contentmanagement.model.vm.expressions.defining.BeDefineVariable
 import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorState}
-import contentmanagement.model.vm.types.{BeChildRole, BeDataType, BeInfo}
+import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo}
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 import interactionPlugins.blockEnvironment.programming.blocks.variable.{BeBlockPlaceholderMissingValue, BeBlockUseLiteral, BeBlockUseLiteralForVariable, BeBlockUseReference}
@@ -31,7 +31,7 @@ object BeUseUnitValue extends BeUseValue{
 
   def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Unit)
 
-  def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock = BeBlockUseLiteral(BeUseValueLiteral("", None), roleInParent)
+  override  def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock= BeBlockUseLiteral(BeUseValueLiteral("", None), parentPos)
 }
 
 object BeUseNonExistingValue extends BeUseValue {
@@ -44,7 +44,7 @@ object BeUseNonExistingValue extends BeUseValue {
 
   def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Error)
 
-  def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock = BeBlockPlaceholderMissingValue(this, roleInParent)
+  override  def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock = BeBlockPlaceholderMissingValue(this, parentPos)
 }
 
 case class BeUseValueReferencing(referencedVariable: BeDefineVariable) extends BeUseValue {
@@ -60,7 +60,7 @@ case class BeUseValueReferencing(referencedVariable: BeDefineVariable) extends B
 
   def canEvaluateTo: Set[BeDataType] = referencedVariable.canEvaluateTo
 
-  def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock = BeBlockUseReference(this, roleInParent)
+  override  def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock = BeBlockUseReference(this, parentPos)
 }
 
 case class BeUseValueLiteral(value: String, optionalContext: Option[BeDefineVariable] = None) extends BeUseValue {
@@ -73,11 +73,11 @@ case class BeUseValueLiteral(value: String, optionalContext: Option[BeDefineVari
 
   lazy val canEvaluateTo: Set[BeDataType] = BeDataType.allPossibleTypesForLiteral(value)
 
-  def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock =
+  override  def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock =
     if (optionalContext.nonEmpty) {
-    BeBlockUseLiteralForVariable(this, optionalContext.get, roleInParent)
+    BeBlockUseLiteralForVariable(this, optionalContext.get, parentPos)
   } else {
-    BeBlockUseLiteral(this, roleInParent)
+    BeBlockUseLiteral(this, parentPos)
   }
 
 

@@ -2,23 +2,15 @@ package interactionPlugins.blockEnvironment.programming.editor
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.{h2, *, given}
-import contentmanagement.datastructures.tree.TreeStructureContext
-import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreePosition
 import contentmanagement.model.vm.expressions.BeExpression
-import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeDraggingEvent, BeRenderingConfig}
-import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-import interactionPlugins.blockEnvironment.programming.editor.elements.*
 import interactionPlugins.blockEnvironment.programming.*
-import org.scalajs.dom.MouseEvent
+import interactionPlugins.blockEnvironment.programming.editor.elements.*
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
 
 case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends HtmlWorkbookElement {
 
   private val editorState: TreeEditorState = TreeEditorState.withInitExpression(initExpr)
-
-  private val treeListener: HtmlBeTreeListener = HtmlTreeEditController(editorState)
-
 
   private def placeholderPanel(areaClass: String, label: String, content: Element): Element =
     div(
@@ -47,7 +39,6 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
     )
 
 
-
   private lazy val blockLibraryDom: Element = div(
     cls := "be-fullscreen-panel block-library",
     h2(
@@ -56,10 +47,7 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
     ),
     div(
       cls := "be-fullscreen-panel-content",
-      child <-- HtmlBlockLibraryTab(editorState, HtmlBlockLibraryTab.getDefaultLibraryPrograms, Var(treeListener)).toDomSignal
-    ),
-    div(
-      child <-- editorState.controllerStateVar.signal.map(_.draggingEvent.map(_.toString).getOrElse("[No Tree Dragged]"))
+      child <-- HtmlBlockLibraryTab(editorState, HtmlBlockLibraryTab.getDefaultLibraryPrograms, Var(BeTreeControllerConfig.libraryTreeConfig(editorState))).toDomSignal
     )
   )
 
@@ -71,9 +59,28 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
     ),
     div(
       cls := "be-fullscreen-panel-content",
-      child <-- HtmlBeTreeDisplay(editorState.controllerStateVar.signal.map(_.programToEdit), editorState, Var(treeListener)).toDomSignal
+      child <-- HtmlBeTreeDisplay(editorState.treeToEdit.signal, editorState, Var(BeTreeControllerConfig.editTreeConfig(editorState))).toDomSignal
     )
   )
+
+  private lazy val drawingArea: Element =
+    div(
+      cls := s"be-fullscreen-panel output",
+      h2(
+        cls := "be-fullscreen-panel-label",
+        "Info and Svg goes here"
+      ),
+      div(
+        child <-- editorState.controllerStateVar.signal.map(_.draggingEvent.map(_.toString).getOrElse("[No Tree Dragged]"))
+      ),
+      div(
+        child <-- editorState.controllerStateVar.signal.map(_.mouseOverNode.map(_.toString).getOrElse("[No Mouse Over]"))
+      )
+    )
+    /*
+
+
+     */
 
   private val rootElement: Element =
     div(
@@ -86,7 +93,7 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
       centralWorkspaceDom,
       placeholderPanel("program-inspector", "Warnings and Errors", "  "),
       //  right
-      placeholderPanel("output", "Nice SVG Drawing here :)", "content goes here"),
+      drawingArea,
       placeholderPanel("control", "Download maybe?", "  "),
 
       // bottom line

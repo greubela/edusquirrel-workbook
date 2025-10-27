@@ -9,15 +9,15 @@ import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.blocks.{BeBlock, BeBlockAtomar}
-import interactionPlugins.blockEnvironment.programming.shapes.{BeShape, BeShapeAmendFactory}
 import interactionPlugins.blockEnvironment.programming.shapes.BeShape.*
 import interactionPlugins.blockEnvironment.programming.shapes.atomic.{LiteralShape, TextShape}
 import interactionPlugins.blockEnvironment.programming.shapes.composite.ShapeAroundShape
+import interactionPlugins.blockEnvironment.programming.shapes.{BeShape, BeShapeAmendFactory}
 
 case class BeBlockUseLiteralForVariable(
                                          valueUsage: BeUseValueLiteral,
                                          forVariable: BeDefineVariable,
-                                         roleInParent: BeChildRole
+                                         override val positionAsChild: BeChildPosition
                                        ) extends BeBlockAtomar {
 
   def associatedExpression: BeExpression = valueUsage
@@ -31,35 +31,19 @@ case class BeBlockUseLiteralForVariable(
     ))
 
     val factory = BeShapeAmendFactory(rendererConfig)
-    
+
     val literalShape = ShapeAroundShape(LiteralShape, textShape)
 
-    val literalAmend =
-      if (forVariable.canAcceptValue(valueUsage)) factory.literalColorsAmend
-      else factory.errorColorsAmend
+    val literalAmend = if (forVariable.canAcceptValue(valueUsage)) factory.literalColorsAmend
+    else factory.errorColorsAmend
 
     val outerShape = BeDataType.getShape(forVariable.canEvaluateTo.intersect(valueUsage.canEvaluateTo))
     val res = ShapeAroundShape(outerShape, literalShape.addAmends(literalAmend))
 
-    res.addAmends(factory.lightVariableColorsAmend)    
-    
+    res.addAmends(factory.lightVariableColorsAmend)
+
   }
-  
 
+  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = BeChildPosition(positionAsChild.parentPosition, newRole))
 
-  override def changeRole(newRole: BeChildRole): BeBlock = BeBlockUseLiteral(valueUsage, newRole)
-
-
-  /*
-    protected def getDefaultColorAmends(config: BeRenderingConfig): Seq[L.Modifier[L.SvgElement]] =
-        List(
-        )
-
-    override protected def getDefaultColorAmends(config: BeRenderingConfig): Seq[L.Modifier[L.SvgElement]] =
-      List(
-        svg.fill := RGBColor.white.toWebStyleString,
-        svg.stroke := config.colorPalette.grayscale(1).toWebStyleString
-      )
-
-   */
 }

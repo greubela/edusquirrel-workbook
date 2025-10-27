@@ -11,16 +11,8 @@ import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 case class HtmlBlockLibraryTab(
                                 editorState: TreeEditorState,
                                 programFactory: BeDisplayConfig => List[BeProgram],
-                                mainControllerTreeListener: Var[HtmlBeTreeListener]
+                                mainControllerTreeListener: Var[BeTreeControllerConfig]
                               ) {
-
-  //case class HtmlBeTreeDisplay(
-  //                              treeSignal: Signal[BeBlockTree],
-  //                              controllerStateSignal: Signal[BeControllerState],
-  //                              displayConfigSignal: Signal[BeDisplayConfig],
-  //                              renderingConfigSignal: Signal[BeRenderingConfig],
-  //                              listener: HtmlBeTreeListener
-  //                            ) {
 
   def getDisplays(displayConfig: BeDisplayConfig): List[BeProgram] = programFactory(displayConfig)
 

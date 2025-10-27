@@ -2,6 +2,7 @@ package contentmanagement.webElements.svg
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import com.raquo.laminar.nodes.ReactiveHtmlElement
 import contentmanagement.model.geometry.Bounds
 
 trait AppSvgElement {
@@ -26,8 +27,9 @@ trait AppSvgElement {
     val element: L.SvgElement = renderBeforeMods.amend(mods)
 
     def signalMod(sig: Signal[L.Modifier[L.SvgElement]]): L.Modifier[L.SvgElement] = {
-        sig --> L.Observer[L.Modifier[SvgElement]](m => element.amend(m))
+      sig --> L.Observer[L.Modifier[L.SvgElement]](m => element.amend(m))
     }
+
     element.amend(signalMods.map(signalMod))
   }
 

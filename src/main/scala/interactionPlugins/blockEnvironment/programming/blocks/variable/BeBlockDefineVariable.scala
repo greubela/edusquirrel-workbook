@@ -16,7 +16,7 @@ import interactionPlugins.blockEnvironment.programming.shapes.composite.ShapeAro
 
 case class BeBlockDefineVariable(
                                   varDef: BeDefineVariable,
-                                  roleInParent: BeChildRole
+                                  override val positionAsChild: BeChildPosition
                                 ) extends BeBlockAtomar {
 
   def associatedExpression: BeExpression = varDef
@@ -31,7 +31,7 @@ case class BeBlockDefineVariable(
     ))
   }
 
-  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(roleInParent = newRole)
+  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = BeChildPosition(positionAsChild.parentPosition, newRole))
 
 
 

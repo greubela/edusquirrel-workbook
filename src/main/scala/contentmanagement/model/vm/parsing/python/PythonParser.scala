@@ -12,13 +12,13 @@ object PythonParser {
 
   def parsePython(source: String): BeExpression = {
     if (source.trim.isEmpty) {
-      BeSequence(List(), false)
+      BeSequence(false, List())
     } else {
       parse(source, statements(_)) match {
         case Parsed.Success(stmts, _) =>
-          BeSequence(stmts.toList, false)
+          BeSequence(false, stmts.toList)
         case failure: Parsed.Failure =>
-          BeExpressionSyntaxError(source, failure.trace().longAggregateMsg)
+          BeExpressionUnparsable(source, failure.trace().longAggregateMsg)
       }
     }
   }
@@ -32,15 +32,15 @@ object PythonParser {
   private def ifStatement[$: P]: P[BeExpression] =
     P(ws.? ~ "if" ~ ws.? ~ condition ~ ":" ~ lineSep ~ blockBody ~ elseClause).map {
       case (cond, ifBodyText, elseBodyText) =>
-        val conditionExpr = BeExpressionUnkown(cond)
+        val conditionExpr = BeExpressionUnsupported(cond)
         val thenBodyExpr = parseBlockExpressions(ifBodyText)
-        val elseBodyExpr = elseBodyText.map(parseBlockExpressions).getOrElse(BeSequence(List(), false))
+        val elseBodyExpr = elseBodyText.map(parseBlockExpressions).getOrElse(BeSequence(false, List()))
         BeExpressionIfElse(conditionExpr, thenBodyExpr, elseBodyExpr)
     }
 
   private def simpleStatement[$: P]: P[BeExpression] =
     P(ws.? ~ CharsWhile(isLineChar, 1).!).map { rawLine =>
-      BeExpressionUnkown(rawLine.trim)
+      BeExpressionUnsupported(rawLine.trim)
     }
 
   private def condition[$: P]: P[String] =
@@ -73,11 +73,11 @@ object PythonParser {
 
   private def parseBlockExpressions(body: String): BeSequence = {
     if (body.trim.isEmpty) {
-      BeSequence(List(), false)
+      BeSequence(false, List())
     } else {
       parse(body, statements(_)) match {
-        case Parsed.Success(stmts, _) => BeSequence(stmts.toList, false)
-        case failure: Parsed.Failure => BeSequence(List(BeExpressionSyntaxError(body, failure.trace().longAggregateMsg)), true)
+        case Parsed.Success(stmts, _) => BeSequence(false, stmts.toList)
+        case failure: Parsed.Failure => BeSequence(true, List(BeExpressionUnparsable(body, failure.trace().longAggregateMsg)))
       }
     }
   }

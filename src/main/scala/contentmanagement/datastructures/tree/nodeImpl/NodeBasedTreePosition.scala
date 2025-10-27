@@ -22,3 +22,9 @@ case class NodeBasedTreePosition(childIndices: List[Int]) extends TreePosition {
     }
 
 }
+
+object NodeBasedTreePosition {
+  
+  val root = NodeBasedTreePosition(List())
+  
+}

@@ -9,7 +9,7 @@ import interactionPlugins.blockEnvironment.programming.shapes.BeShape
 
 import scala.collection.mutable
 
-case class VBoxSameWidth(override val children: List[BeShape]) extends BeShapeBox {
+case class VBoxSameWidth(override val children: List[BeShape], usePadding: Boolean = true) extends BeShapeBox {
 
   def displaySize(config: BeRenderingConfig): Dimension[Double] = {
     val minSizes: List[Dimension[Double]] = children.map(_.displaySize(config))
@@ -17,7 +17,7 @@ case class VBoxSameWidth(override val children: List[BeShape]) extends BeShapeBo
     val widthMax = minSizes.map(_.width).maxOption.getOrElse(0.0)
     val heightSum = minSizes.map(_.height).sum
 
-    val paddingHeight = if (children.size > 1) config.paddingSmall.height * (children.size - 1) else 0
+    val paddingHeight = if (children.size > 1 && usePadding) config.paddingSmall.height * (children.size - 1) else 0
 
     Dimension[Double](widthMax, heightSum + paddingHeight)
   }.ensureAtLeastAsBigAs(config.paddingSmall)
@@ -35,7 +35,10 @@ case class VBoxSameWidth(override val children: List[BeShape]) extends BeShapeBo
     for ((curChild, index) <- children.zipWithIndex) {
       val childDim = minSizes(index).ensureWidth(widthMax)
       val childBounds = curPoint.withDimension(childDim)
-      curPoint = curPoint.moveWithDimension(Dimension[Double](0, config.paddingSmall.height)).moveWithDimension(Dimension[Double](0, childDim.height))
+      if(usePadding){
+        curPoint = curPoint.moveWithDimension(Dimension[Double](0, config.paddingSmall.height))
+      }
+      curPoint = curPoint.moveWithDimension(Dimension[Double](0, childDim.height))
       res.put(curChild, childBounds)
     }
 

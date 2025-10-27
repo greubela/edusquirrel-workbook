@@ -3,7 +3,7 @@ package contentmanagement.model.vm.expressions
 import contentmanagement.datastructures.tree.nodeImpl.{NodeBasedTreeImpl, NodeBasedTreePosition}
 import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
 import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorState}
-import contentmanagement.model.vm.types.{BeChildRole, BeDataType, BeInfo}
+import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo}
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.BeExpressionTree
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
@@ -22,7 +22,7 @@ trait BeExpression {
 
   def canEvaluateTo: Set[BeDataType]
 
-  def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock
+  def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock
 
   def recToTree(config: BeDisplayConfig, roleInParent: BeChildRole): BeExpressionTree = {
     val root: (BeChildRole, BeExpression) = (roleInParent, this)
@@ -42,7 +42,7 @@ trait BeExpression {
 
 object BeExpression {
 
-  lazy val pass: BeExpression = new BeSequence(List(), true)
+  lazy val pass: BeExpression = new BeSequence(true, List())
 
   lazy val NoOp: BeExpression = new BeExpression {
 
@@ -58,7 +58,7 @@ object BeExpression {
 
     override def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Unit)
 
-    override def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock = ???
+    override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock = ???
 
     override def recToTree(config: BeDisplayConfig, roleInParent: BeChildRole): BeExpressionTree = {
       NodeBasedTreeImpl.empty[(BeChildRole, BeExpression)]()

@@ -29,7 +29,7 @@ import interactionPlugins.blockEnvironment.programming.shapes.BeShape
 import interactionPlugins.blockEnvironment.programming.shapes.BeShape.*
 import interactionPlugins.blockEnvironment.programming.shapes.atomic.{LiteralShape, TextShape}
 import interactionPlugins.blockEnvironment.programming.shapes.composite.ShapeAroundShape
-case class BeBlockUseLiteral(valueUsage: BeUseValueLiteral, roleInParent: BeChildRole) extends BeBlockAtomar{
+case class BeBlockUseLiteral(valueUsage: BeUseValueLiteral, override val positionAsChild: BeChildPosition) extends BeBlockAtomar{
   
   def associatedExpression: BeExpression = valueUsage
 
@@ -40,5 +40,5 @@ case class BeBlockUseLiteral(valueUsage: BeUseValueLiteral, roleInParent: BeChil
     
   }
 
-  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(roleInParent = newRole)
+  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = BeChildPosition(positionAsChild.parentPosition, newRole))
 }

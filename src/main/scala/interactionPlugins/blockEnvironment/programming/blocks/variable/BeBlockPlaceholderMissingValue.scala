@@ -9,7 +9,7 @@ import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.blocks.{BeBlock, BeBlockAtomar}
 import interactionPlugins.blockEnvironment.programming.shapes.{BeShape, BeShapeAmendFactory}
 
-case class BeBlockPlaceholderMissingValue(variable: BeUseValue, roleInParent: BeChildRole) extends BeBlockAtomar {
+case class BeBlockPlaceholderMissingValue(variable: BeUseValue, override val positionAsChild: BeChildPosition) extends BeBlockAtomar {
 
   def associatedExpression: BeExpression = variable
 
@@ -19,7 +19,7 @@ case class BeBlockPlaceholderMissingValue(variable: BeUseValue, roleInParent: Be
     res.addAmends(BeShapeAmendFactory(rendererConfig).errorColorsAmend)
   }
 
-  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(roleInParent = newRole)
 
+  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = BeChildPosition(positionAsChild.parentPosition, newRole))
 
 }

@@ -11,9 +11,13 @@ import interactionPlugins.blockEnvironment.programming.shapes.BeShape.BeShapeAto
 
 case class TextShape(languageMap: LanguageMap[HumanLanguage]) extends BeShapeAtomic {
 
-  override def displaySize(config: BeRenderingConfig): Dimension[Double] = config.appFont.measureText(languageMap.getInLanguage(config.language))
+  override def displaySize(config: BeRenderingConfig): Dimension[Double] =
+    config.appFont.measureText(languageMap.getInLanguage(config.language)).increaseSize(config.paddingSmall)
 
-  override def render(config: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement =
-    AppTextSvgElement(languageMap.getInLanguage(config.language), bounds, config.appFont)
+  override def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement =
+    AppTextSvgElement(languageMap.getInLanguage(rendererConfig.language), bounds, rendererConfig.appFont).addMods(List(
+      svg.fill := rendererConfig.colorPalette.grayscale(0).toWebStyleString,
+      svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebStyleString
+    ))
 
 }

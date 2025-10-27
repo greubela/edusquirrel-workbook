@@ -35,7 +35,7 @@ case class BeDefineFunction(signature: BeFunctionSignature, body: BeExpression) 
 
   def canEvaluateTo: Set[BeDataType] = signature.returnValue.map(_.canEvaluateTo).getOrElse(Set(BeDataType.Unit))
 
-  def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock = BeBlockDefineSingleReturnFunction(this, roleInParent)
+  override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock = BeBlockDefineSingleReturnFunction(this, parentPos)
 
   override def evaluateBlock(simulatorState: BeSimulatorState): BeUseValue = BeUseUnitValue
 

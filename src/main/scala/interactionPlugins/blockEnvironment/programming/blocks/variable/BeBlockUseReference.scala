@@ -14,12 +14,11 @@ import interactionPlugins.blockEnvironment.programming.shapes.composite.ShapeAro
 
 case class BeBlockUseReference(
                                 forValue: BeUseValueReferencing,
-                                roleInParent: BeChildRole
+                                override val positionAsChild: BeChildPosition
                              ) extends BeBlockAtomar {
 
   def associatedExpression: BeExpression = forValue
 
-  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(roleInParent = newRole)
 
   def render(inProgram: BeProgram, controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig): BeShape = {
     val outerShape = BeDataType.getShape(forValue.canEvaluateTo)
@@ -29,7 +28,8 @@ case class BeBlockUseReference(
       svg.fill := rendererConfig.colorPalette.grayscale(4).toWebStyleString,
     ))
   }
-  
 
+
+  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = BeChildPosition(positionAsChild.parentPosition, newRole))
 
 }

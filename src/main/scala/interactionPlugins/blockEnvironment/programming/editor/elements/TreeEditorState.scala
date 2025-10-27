@@ -6,7 +6,7 @@ import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayC
 import interactionPlugins.blockEnvironment.programming.BeProgram
 
 
-case class TreeEditorState(controllerStateVar: Var[BeControllerState], displayConfigVar: Var[BeDisplayConfig], rendererConfigVar: Var[BeRenderingConfig])
+case class TreeEditorState(treeToEdit: Var[BeProgram], controllerStateVar: Var[BeControllerState], displayConfigVar: Var[BeDisplayConfig], rendererConfigVar: Var[BeRenderingConfig])
 
 object TreeEditorState {
 
@@ -20,9 +20,9 @@ object TreeEditorState {
 
   def withInitValues(initExpr: BeExpression, initDisplayConfig: BeDisplayConfig, rendererInit: BeRenderingConfig): TreeEditorState = {
     val initProgram = BeProgram.fromExpression(initDisplayConfig, initExpr)
-    val initControllerState: BeControllerState = BeControllerState.defaultForProgram(initProgram)
+    val initControllerState: BeControllerState = BeControllerState.default()
 
-    TreeEditorState(Var(initControllerState), Var(initDisplayConfig), Var(rendererInit))
+    TreeEditorState(Var(initProgram), Var(initControllerState), Var(initDisplayConfig), Var(rendererInit))
   }
 
   def default(): TreeEditorState = {

@@ -2,13 +2,13 @@ package contentmanagement.model.vm.expressions
 
 import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
 import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorState}
-import contentmanagement.model.vm.types.{BeChildRole, BeDataType, BeInfo}
+import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo}
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 import interactionPlugins.blockEnvironment.programming.blocks.parents.BeBlockSequence
 import util.CodeStringBuilder
 
-case class BeSequence(body: List[BeExpression], shouldEvaluateToUnit: Boolean) extends BeExpression {
+case class BeSequence(shouldEvaluateToUnit: Boolean, body: List[BeExpression]) extends BeExpression {
 
   def hasSideEffects: Boolean = body.exists(_.hasSideEffects)
 
@@ -24,7 +24,7 @@ case class BeSequence(body: List[BeExpression], shouldEvaluateToUnit: Boolean) e
 
   def canEvaluateTo: Set[BeDataType] = if (shouldEvaluateToUnit || body.isEmpty) Set(BeDataType.Unit) else body.last.canEvaluateTo
 
-  def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock = BeBlockSequence(this, roleInParent)
+  override  def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock = BeBlockSequence(this, parentPos)
 
   def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = body.map(_.getInLanguage(programmingLanguage, humanLanguage)).mkString("\n")
 
@@ -48,7 +48,7 @@ case class BeSequence(body: List[BeExpression], shouldEvaluateToUnit: Boolean) e
 
 object BeSequence {
 
-  def optionalUnitBody(body: List[BeExpression]) = BeSequence(body, true)
+  def optionalUnitBody(body: List[BeExpression]) = BeSequence(true, body)
 
 
 }

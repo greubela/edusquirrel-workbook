@@ -3,7 +3,7 @@ package contentmanagement.model.vm.expressions.controlStructures
 import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
 import contentmanagement.model.vm.expressions.{BeExpression, BeSequence, BeUseUnitValue, BeUseValue}
 import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorState}
-import contentmanagement.model.vm.types.{BeChildRole, BeDataType, BeInfo}
+import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo}
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 
@@ -27,7 +27,7 @@ case class BeExpressionIfElse(
 
   override def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Unit)
 
-  override def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock = ???
+  override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock = ???
 
 
   override def evaluateBlock(simulatorState: BeSimulatorState): BeUseValue = BeUseUnitValue

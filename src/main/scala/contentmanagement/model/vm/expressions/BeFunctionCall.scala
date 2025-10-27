@@ -14,7 +14,7 @@ import util.CodeStringBuilder
 
 case class BeFunctionCall(funcDef: BeDefineFunction, withParameter: List[BeUseValue]) extends BeExpression {
 
-  def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock = BeBlockCallSingleReturnFunction(this, roleInParent)
+  override  def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock = BeBlockCallSingleReturnFunction(this, parentPos)
 
   override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = ???
 

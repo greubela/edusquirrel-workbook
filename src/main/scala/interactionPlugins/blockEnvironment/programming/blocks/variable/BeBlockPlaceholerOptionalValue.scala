@@ -9,7 +9,7 @@ import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.blocks.{BeBlock, BeBlockAtomar}
 import interactionPlugins.blockEnvironment.programming.shapes.{BeShape, BeShapeAmendFactory}
 
-case class BeBlockPlaceholerOptionalValue(acceptsType: Set[BeDataType], roleInParent: BeChildRole) extends BeBlockAtomar {
+case class BeBlockPlaceholerOptionalValue(acceptsType: Set[BeDataType], override val positionAsChild: BeChildPosition) extends BeBlockAtomar {
 
   def associatedExpression: BeExpression = BeExpression.NoOp
 
@@ -27,14 +27,13 @@ case class BeBlockPlaceholerOptionalValue(acceptsType: Set[BeDataType], roleInPa
       factory.signalBasedAmendChooser(
         acceptColors,
         factory.acceptingColorsAmend,
-        factory.mutedColorsAmend
+        factory.mutedColorsFunctionAmend
       )
 
     res.addSignalAmends(signalAmends)
   }
 
-
-  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(roleInParent = newRole)
+  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = BeChildPosition(positionAsChild.parentPosition, newRole))
 
 
 }

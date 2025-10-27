@@ -1,9 +1,9 @@
 package interactionPlugins.blockEnvironment.programming.shapes.atomic
 
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
-import contentmanagement.webElements.svg.{AppSvgElement, SvgPathBuilder}
+import contentmanagement.model.geometry.{Bounds, Dimension}
+import contentmanagement.webElements.svg.SvgPathBuilder
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import interactionPlugins.blockEnvironment.programming.shapes.BeShape.{BeShapeAtomic, BeShapeContainerable, BeShapePathBased}
+import interactionPlugins.blockEnvironment.programming.shapes.BeShape.BeShapePathBased
 import interactionPlugins.blockEnvironment.programming.shapes.ShapeFactory
 
 object FunctionDefineShape extends BeShapePathBased {
@@ -19,6 +19,7 @@ object FunctionDefineShape extends BeShapePathBased {
 
   override def displaySize(config: BeRenderingConfig): Dimension[Double] = Dimension[Double](40, 25)
 }
+
 /*
   override def getAssociatedSvgElement(bounds: Bounds[Double]): AppSvgElement = {
     
