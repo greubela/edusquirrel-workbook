@@ -16,6 +16,7 @@ lazy val customCardApp = project.in(file("."))
       "org.scala-js" %%% "scalajs-dom" % "2.8.0",
       "com.raquo" %%% "laminar" % "17.2.0",
       "com.lihaoyi" %%% "upickle" % "3.1.3",
+      "com.lihaoyi" %%% "fastparse" % "3.0.2",
       "org.scalameta" %%% "munit" % "1.0.0" % Test
     ),
 
