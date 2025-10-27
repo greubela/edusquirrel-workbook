@@ -1,11 +1,7 @@
 package contentmanagement.model.vm.expressions.defining
 
-import contentmanagement.model.vm.expressions.BeExpression
-import contentmanagement.model.vm.types.{BeDataType, BeFunctionSignature, BeInfo}
-import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
+import contentmanagement.model.vm.expressions.{BeExpression, BeUseUnitValue, BeUseValue}
 import contentmanagement.model.vm.*
-import contentmanagement.model.vm.expressions.BeExpression
-import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorState}
 import contentmanagement.model.vm.types.BeInfo.*
 import interactionPlugins.blockEnvironment.programming.blocks.parents.BeBlockDefineSingleReturnFunction
 import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
@@ -35,15 +31,16 @@ case class BeDefineFunction(signature: BeFunctionSignature, body: BeExpression) 
   def hasSideEffects: Boolean = true
 
 
-  def execute(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState = simulatorState
+  def applySideEffects(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState = simulatorState
 
   def canEvaluateTo: Set[BeDataType] = signature.returnValue.map(_.canEvaluateTo).getOrElse(Set(BeDataType.Unit))
 
   def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock = BeBlockDefineSingleReturnFunction(this, roleInParent)
 
+  override def evaluateBlock(simulatorState: BeSimulatorState): BeUseValue = BeUseUnitValue
 
   override def getChildren: List[(BeChildRole, BeExpression)] = {
-    List( (BodySequence(), body))
+    List( (BodySequence(0), body))
   }
 
   override val toString: String = {

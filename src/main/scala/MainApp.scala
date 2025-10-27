@@ -2,6 +2,7 @@
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
 import contentmanagement.model.language.AppLanguage
+import contentmanagement.model.vm.parsing.python.PythonParser
 import interactionPlugins.automaton.{AutomatonExerciseContent, HtmlAutomatonExercise}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.*
@@ -25,6 +26,18 @@ def mainApp(): Unit = {
 
 def doSomeCalculations(): Unit = {
 
+  val somePython = """
+    |x = 3
+    |def main(par: Int): Int
+    |    if(x > 5):
+    |        print(par)
+    |def main2(otherPar):
+    |    main(otherPar)
+    |main(x)
+    |""".stripMargin
+
+  val expression = PythonParser.parsePython(somePython)
+  println("expression: " + expression)
 }
 
 val fullscreenElement: HtmlFullScreenElement = HtmlFullScreenElement()

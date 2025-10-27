@@ -16,7 +16,8 @@ case class BeExpressionUnkown(originalSource: String) extends BeExpression {
   override def getSyntaxErrors: Seq[BeInfo] =
     List(BeInfo(LanguageMap.universalMap(s"Unknown Python structure: $originalSource"), BeInfo.SyntaxError.UnparsableBlock))
 
-  override def execute(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState = simulatorState
+  override def applySideEffects(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState = simulatorState
+  override def evaluateBlock(simulatorState: BeSimulatorState): BeUseValue = BeUseUnitValue
 
   override def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Error)
 

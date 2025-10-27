@@ -45,7 +45,7 @@ case class BeBlockSequence(expression: BeSequence, roleInParent: BeChildRole) ex
       val atIndex = role.intoRole.asInstanceOf[ExpressionInBody].nr
       resExpressions = resExpressions.slice(0, atIndex) ++ List(expr) ++ resExpressions.slice(atIndex, resExpressions.size)
     }
-    BeSequence(resExpressions, expression.mayBeEmpty, expression.evaluateNotToLastElementButTo)
+    BeSequence(resExpressions, expression.shouldEvaluateToUnit)
 
   }
 }

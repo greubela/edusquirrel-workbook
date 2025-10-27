@@ -22,16 +22,16 @@ case class BeFunctionCall(funcDef: BeDefineFunction, withParameter: List[BeUseVa
 
   def getSyntaxErrors: Seq[BeInfo] = List()
 
-  def execute(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState = funcDef.body.execute(config, simulatorState)
+  def applySideEffects(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState = funcDef.body.applySideEffects(config, simulatorState)
 
   def canEvaluateTo: Set[BeDataType] = funcDef.canEvaluateTo
-
 
   override def getChildren: List[(BeChildRole, BeExpression)] =
     withParameter.zipWithIndex.map((curPar, curIndex) => {
       (FunctionParameter(curIndex), curPar)
     })
 
+  override def evaluateBlock(simulatorState: BeSimulatorState): BeUseValue = BeUseUnitValue
 
   override val toString: String = {
 

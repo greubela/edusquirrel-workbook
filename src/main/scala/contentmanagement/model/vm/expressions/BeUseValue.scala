@@ -10,22 +10,33 @@ import interactionPlugins.blockEnvironment.programming.blocks.variable.{BeBlockP
 
 trait BeUseValue extends BeExpression {
 
-  def getCurrentValue(simulatorState: BeSimulatorState): Option[String]
+  def getCurrentValueAsString(simulatorState: BeSimulatorState): Option[String]
 
   override def hasSideEffects: Boolean = false
 
-  def execute(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState = simulatorState
-
-
+  def applySideEffects(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState = simulatorState
+  
   override def getChildren: List[(BeChildRole, BeExpression)] = List()
 
-
+  override def evaluateBlock(simulatorState: BeSimulatorState): BeUseValue = this
 }
 
+object BeUseUnitValue extends BeUseValue{
+  def getCurrentValueAsString(simulatorState: BeSimulatorState): Option[String] = Some("")
+
+  def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = ""
+  
+  def getSyntaxErrors: Seq[BeInfo] = List()
+
+
+  def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Unit)
+
+  def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock = BeBlockUseLiteral(BeUseValueLiteral("", None), roleInParent)
+}
 
 object BeUseNonExistingValue extends BeUseValue {
 
-  def getCurrentValue(simulatorState: BeSimulatorState): Option[String] = None
+  def getCurrentValueAsString(simulatorState: BeSimulatorState): Option[String] = None
 
   def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = "[missing value]"
 
@@ -34,14 +45,13 @@ object BeUseNonExistingValue extends BeUseValue {
   def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Error)
 
   def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock = BeBlockPlaceholderMissingValue(this, roleInParent)
-
 }
 
 case class BeUseValueReferencing(referencedVariable: BeDefineVariable) extends BeUseValue {
 
-  def getCurrentValue(simulatorState: BeSimulatorState): Option[String] = {
+  def getCurrentValueAsString(simulatorState: BeSimulatorState): Option[String] = {
     val curValueInMachine = simulatorState.machineState.variableValues.get(referencedVariable)
-    if (curValueInMachine.nonEmpty) curValueInMachine.get.getCurrentValue(simulatorState) else None
+    if (curValueInMachine.nonEmpty) curValueInMachine.get.getCurrentValueAsString(simulatorState) else None
   }
 
   def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = referencedVariable.name.getInLanguage(humanLanguage)
@@ -55,7 +65,7 @@ case class BeUseValueReferencing(referencedVariable: BeDefineVariable) extends B
 
 case class BeUseValueLiteral(value: String, optionalContext: Option[BeDefineVariable] = None) extends BeUseValue {
 
-  def getCurrentValue(simulatorState: BeSimulatorState): Option[String] = Some(value)
+  def getCurrentValueAsString(simulatorState: BeSimulatorState): Option[String] = Some(value)
 
   def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = canEvaluateTo.headOption.map(_.formatStringForDisplay(value)).getOrElse(value)
 

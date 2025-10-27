@@ -8,24 +8,21 @@ import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 import interactionPlugins.blockEnvironment.programming.blocks.parents.BeBlockSequence
 import util.CodeStringBuilder
 
-case class BeSequence(body: List[BeExpression], mayBeEmpty: Boolean, evaluateNotToLastElementButTo: Option[Set[BeDataType]]) extends BeExpression {
+case class BeSequence(body: List[BeExpression], shouldEvaluateToUnit: Boolean) extends BeExpression {
 
   def hasSideEffects: Boolean = body.exists(_.hasSideEffects)
 
-  def getSyntaxErrors: Seq[BeInfo] = {
-    if (mayBeEmpty && body.isEmpty) List(BeInfo(LanguageMap.universalMap("Sequence must not be empty but is empty!"), BeInfo.SyntaxError.MissingValue))
-    else List()
-  }
+  def getSyntaxErrors: Seq[BeInfo] = List() // whether it may be empty must be checked by the parent
 
-  def execute(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState = {
+  def applySideEffects(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState = {
     var currentState = simulatorState
     for (curExpression <- body) {
-      currentState = curExpression.execute(config, currentState)
+      currentState = curExpression.applySideEffects(config, currentState)
     }
     currentState
   }
 
-  def canEvaluateTo: Set[BeDataType] = if (evaluateNotToLastElementButTo.nonEmpty) evaluateNotToLastElementButTo.get else if (body.nonEmpty) body.last.canEvaluateTo else Set(BeDataType.Error)
+  def canEvaluateTo: Set[BeDataType] = if (shouldEvaluateToUnit || body.isEmpty) Set(BeDataType.Unit) else body.last.canEvaluateTo
 
   def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock = BeBlockSequence(this, roleInParent)
 
@@ -37,7 +34,7 @@ case class BeSequence(body: List[BeExpression], mayBeEmpty: Boolean, evaluateNot
   override val toString: String = {
     var res = CodeStringBuilder(s"BeSequence(")
       .changeIntLevel(2)
-      .appendNextLine(s"//mayBeEmpty=$mayBeEmpty, lastEval=$evaluateNotToLastElementButTo")
+      .appendNextLine(s"//always unit=$shouldEvaluateToUnit")
       .changeIntLevel(-1)
     if (body.nonEmpty)       res = res.changeForEach(body, (old, curExpr) => old.appendAsLines(curExpr.toString))
     else       res = res.appendNextLine("[no body]")
@@ -45,12 +42,13 @@ case class BeSequence(body: List[BeExpression], mayBeEmpty: Boolean, evaluateNot
       .appendNextLine(")").toString
   }
 
+  override def evaluateBlock(simulatorState: BeSimulatorState): BeUseValue = BeUseUnitValue
 
 }
 
 object BeSequence {
 
-  def optionalUnitBody(body: List[BeExpression]) = BeSequence(body, true, Some(Set(BeDataType.Unit)))
+  def optionalUnitBody(body: List[BeExpression]) = BeSequence(body, true)
 
 
 }

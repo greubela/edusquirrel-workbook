@@ -3,7 +3,7 @@ import org.scalajs.linker.interface.ModuleKind
 
 enablePlugins(ScalaJSPlugin, ScalaJSBundlerPlugin)
 
-lazy val customCardApp = project.in(file("."))
+lazy val workbookApp = project.in(file("."))
   .enablePlugins(ScalaJSPlugin, ScalaJSBundlerPlugin)
   .settings(
     scalaVersion := "3.3.3",

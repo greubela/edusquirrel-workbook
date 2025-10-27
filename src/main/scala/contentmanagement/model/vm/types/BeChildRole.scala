@@ -12,7 +12,7 @@ object BeChildRole {
 
   case class FunctionReturnValue(nr: Int) extends BeChildRole
 
-  case class BodySequence() extends BeChildRole
+  case class BodySequence(bodyNr: Int) extends BeChildRole
   
   case class ExpressionInBody(nr: Int) extends BeChildRole
 
@@ -22,4 +22,5 @@ object BeChildRole {
 
   case class RecentlyInsertedInto(intoRole: BeChildRole)
 
+  case object ConditionInControlStructure extends BeChildRole
 }

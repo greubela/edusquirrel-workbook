@@ -19,7 +19,7 @@ case class BeDefineVariable(name: LanguageMap[HumanLanguage], override val canEv
 
   override def getSyntaxErrors: Seq[BeInfo] = List()
 
-  override def execute(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState = ???
+  override def applySideEffects(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState = ???
 
   override def createBlock(config: BeDisplayConfig, roleInParent: BeChildRole): BeBlock = BeBlockDefineVariable(this, roleInParent)
 
@@ -31,6 +31,7 @@ case class BeDefineVariable(name: LanguageMap[HumanLanguage], override val canEv
 
   override val toString: String = "BeDefineVariable(" + name.toString + ": " + canEvaluateTo.mkString("[", ", ", "]") + ")"
 
+  override def evaluateBlock(simulatorState: BeSimulatorState): BeUseValue = BeUseUnitValue
 }
 
 

@@ -1,19 +1,22 @@
 package contentmanagement.model.vm.parsing.python
 
 import contentmanagement.model.vm.expressions.*
-import contentmanagement.model.vm.types.BeDataType
+import contentmanagement.model.vm.expressions.controlStructures.BeExpressionIfElse
+
 import fastparse.*
 import fastparse.NoWhitespace.*
+import scala.scalajs.js.internal.UnitOps.unitOrOps
 
 object PythonParser {
 
+
   def parsePython(source: String): BeExpression = {
     if (source.trim.isEmpty) {
-      BeSequence(Nil, mayBeEmpty = true, Some(Set(BeDataType.Unit)))
+      BeSequence(List(), false)
     } else {
       parse(source, statements(_)) match {
         case Parsed.Success(stmts, _) =>
-          BeSequence(stmts.toList, mayBeEmpty = true, Some(Set(BeDataType.Unit)))
+          BeSequence(stmts.toList, false)
         case failure: Parsed.Failure =>
           BeExpressionSyntaxError(source, failure.trace().longAggregateMsg)
       }
@@ -28,10 +31,14 @@ object PythonParser {
 
   private def ifStatement[$: P]: P[BeExpression] =
     P("if" ~ ws1 ~ condition ~ ":" ~ lineSep ~ blockBody ~ elseClause.?).map {
-      case (cond, ifBodyText, elseBodyText) =>
-        val ifExpressions = parseBlockExpressions(ifBodyText)
-        val elseExpressions = elseBodyText.map(parseBlockExpressions).getOrElse(Nil)
-        BeExpressionIfElse(cond, ifExpressions, elseExpressions)
+      case (cond, ifBodyText, elseBodyText) => {
+        println("parse if:\n~~~\ncond\n~~~\nifBodyText\n~~~\nelseBodyText")
+        val thenBodyExpr = parseBlockExpressions(ifBodyText) 
+        // val elseExpressions = elseBodyText.map(str => parseBlockExpressions(str)).getOrElse(BeSequence(List(), false))
+        //BeExpressionIfElse(cond, ifExpressions, elseExpressions)
+        // todo parse cond
+        BeExpressionIfElse(BeExpression.NoOp, thenBodyExpr, thenBodyExpr)
+      }
     }
 
   private def simpleStatement[$: P]: P[BeExpression] =
@@ -43,13 +50,12 @@ object PythonParser {
     P(CharsWhile(c => c != ':' && c != '\n' && c != '\r', 1).!).map(_.trim)
 
   private def blockBody[$: P]: P[String] =
-    P(blockLine.rep(1, sep = lineSep) ~ lineSep.?).map { case (lines, trailing) =>
+    P(blockLine.rep(1, sep = lineSep) ~ lineSep.?).map { lines =>
       val builder = new StringBuilder
       lines.foreach { line =>
         if (builder.nonEmpty) builder.append('\n')
         builder.append(line)
       }
-      trailing.foreach(_ => ())
       builder.toString()
     }
 
@@ -70,15 +76,16 @@ object PythonParser {
 
   private def isLineChar(c: Char): Boolean = c != '\n' && c != '\r'
 
-  private def parseBlockExpressions(body: String): List[BeExpression] = {
+  private def parseBlockExpressions(body: String): BeSequence = {
     if (body.trim.isEmpty) {
-      Nil
+      BeSequence(List(), false)
     } else {
       parse(body, statements(_)) match {
-        case Parsed.Success(stmts, _) => stmts.toList
-        case failure: Parsed.Failure =>
-          List(BeExpressionSyntaxError(body, failure.trace().longAggregateMsg))
+        case Parsed.Success(stmts, _) => BeSequence(stmts.toList, false)
+        case failure: Parsed.Failure => BeSequence(List(BeExpressionSyntaxError(body, failure.trace().longAggregateMsg)), true)
       }
     }
   }
+
+
 }

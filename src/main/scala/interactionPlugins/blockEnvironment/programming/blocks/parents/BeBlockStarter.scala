@@ -38,7 +38,7 @@ case class BeBlockStarter(
   override def calcAssociatedExpression(childrenWithExpression: List[(BeChildRole, BeExpression)]): BeExpression = {
     val seqChilds = childrenWithExpression.filter(_._1.isInstanceOf[BeChildRole.BodySequence])
     val seq: Seq[BeSequence] = seqChilds.map(_._2).collect{case seq: BeSequence => seq}
-    BeStartProgram(seq.headOption.getOrElse(BeSequence(List(), true, Some(Set(BeDataType.Unit)))))
+    BeStartProgram(seq.headOption.getOrElse(BeSequence(List(), true)))
   }
 }
 
