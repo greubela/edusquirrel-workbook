@@ -21,7 +21,8 @@ case class BeExpressionUnparsable(originalSource: String, message: String) exten
 
   override def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Error)
 
-  override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock = ???
+  override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock =
+    throw new NotImplementedError("Block rendering is not available for unparsable expressions")
 
   override def getChildren: List[(BeChildRole, BeExpression)] = List()
   

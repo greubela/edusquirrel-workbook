@@ -25,5 +25,8 @@ object AppLanguage {
 
   case object Python extends ProgrammingLanguage("Python", "py")
   case object Java extends ProgrammingLanguage("Java", "java")
+  case object JavaScript extends ProgrammingLanguage("JavaScript", "js")
+  case object Rust extends ProgrammingLanguage("Rust", "rs")
+  case object Lisp extends ProgrammingLanguage("LISP", "lisp")
 
 }

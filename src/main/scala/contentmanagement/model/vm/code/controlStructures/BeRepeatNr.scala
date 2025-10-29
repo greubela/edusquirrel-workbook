@@ -1,10 +1,8 @@
 package contentmanagement.model.vm.code.controlStructures
 
-import contentmanagement.model.language.AppLanguage.{Java, Python}
-import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
-import contentmanagement.model.vm.code.usage.BeUseValue
+import contentmanagement.model.language.AppLanguage.{Java, JavaScript, Lisp, Python, Rust}
+import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
 import contentmanagement.model.vm.code.{BeControlStructure, BeExpression}
-import contentmanagement.model.vm.simulation.BeSimulatorState
 import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeInfo}
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
@@ -33,6 +31,30 @@ case class BeRepeatNr(amount: Int, body: BeExpression) extends BeControlStructur
           .appendNextLine("}")
           .toString
       }
+      case JavaScript => {
+        CodeStringBuilder().appendNextLine(s"for (let be_index = 0; be_index < $amount; be_index++) {")
+          .changeIntLevel(1)
+          .appendAsLines(bodyString)
+          .changeIntLevel(-1)
+          .appendNextLine("}")
+          .toString
+      }
+      case Rust => {
+        CodeStringBuilder().appendNextLine(s"for _ in 0..$amount {")
+          .changeIntLevel(1)
+          .appendAsLines(bodyString)
+          .changeIntLevel(-1)
+          .appendNextLine("}")
+          .toString
+      }
+      case Lisp => {
+        CodeStringBuilder().appendNextLine(s"(dotimes (be-index $amount)")
+          .changeIntLevel(1)
+          .appendAsLines(bodyString)
+          .changeIntLevel(-1)
+          .appendNextLine(")")
+          .toString
+      }
       case _ => {
         CodeStringBuilder().appendNextLine(s"REPEAT/NR(")
           .changeIntLevel(1)
@@ -53,9 +75,16 @@ case class BeRepeatNr(amount: Int, body: BeExpression) extends BeControlStructur
     res
   }*/
 
-  override def getSyntaxErrors: Seq[BeInfo] = ???
+  override def getSyntaxErrors: Seq[BeInfo] = {
+    val amountError =
+      if (amount < 0)
+        List(BeInfo(LanguageMap.universalMap("repeat count must be zero or positive"), BeInfo.SyntaxError.InvalidLiteralValue))
+      else List()
+    amountError ++ body.getSyntaxErrors
+  }
 
-  override def createBlock(config: BeDisplayConfig, childPos: BeChildPosition): BeBlock = ???
+  override def createBlock(config: BeDisplayConfig, childPos: BeChildPosition): BeBlock =
+    throw new NotImplementedError("Block rendering is not implemented for BeRepeatNr")
 
-  override def getChildren: List[(BeChildRole, BeExpression)] = ???
+  override def getChildren: List[(BeChildRole, BeExpression)] = List((BeChildRole.BodySequence(0), body))
 }

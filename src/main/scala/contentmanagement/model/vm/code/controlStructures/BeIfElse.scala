@@ -1,6 +1,6 @@
 package contentmanagement.model.vm.code.controlStructures
 
-import contentmanagement.model.language.AppLanguage.{Java, Python}
+import contentmanagement.model.language.AppLanguage.{Java, JavaScript, Lisp, Python, Rust}
 import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
 import contentmanagement.model.vm.code.usage.BeUseValue
 import contentmanagement.model.vm.code.{BeControlStructure, BeExpression}
@@ -47,6 +47,47 @@ case class BeIfElse(
           .appendNextLine("}")
           .toString
       }
+      case JavaScript => {
+        CodeStringBuilder().appendNextLine(s"if ($conditionString) {")
+          .changeIntLevel(1)
+          .appendAsLines(thenBodyString)
+          .changeIntLevel(-1)
+          .appendNextLine("} else {")
+          .changeIntLevel(1)
+          .appendAsLines(elseBodyString)
+          .changeIntLevel(-1)
+          .appendNextLine("}")
+          .toString
+      }
+      case Rust => {
+        CodeStringBuilder().appendNextLine(s"if $conditionString {")
+          .changeIntLevel(1)
+          .appendAsLines(thenBodyString)
+          .changeIntLevel(-1)
+          .appendNextLine("} else {")
+          .changeIntLevel(1)
+          .appendAsLines(elseBodyString)
+          .changeIntLevel(-1)
+          .appendNextLine("}")
+          .toString
+      }
+      case Lisp => {
+        val builder = CodeStringBuilder("(if " + conditionString)
+          .changeIntLevel(1)
+          .appendNextLine("(progn")
+          .changeIntLevel(1)
+          .appendAsLines(thenBodyString)
+          .changeIntLevel(-1)
+          .appendNextLine(")")
+          .appendNextLine("(progn")
+          .changeIntLevel(1)
+          .appendAsLines(elseBodyString)
+          .changeIntLevel(-1)
+          .appendNextLine(")")
+          .changeIntLevel(-1)
+          .appendNextLine(")")
+        builder.toString
+      }
       case _ => {
         CodeStringBuilder().appendNextLine(s"IF/ELSE(")
           .changeIntLevel(1)
@@ -65,7 +106,8 @@ case class BeIfElse(
     case false => List(BeInfo(LanguageMap.universalMap("if/else condition must be able to evaluate to a boolean!"), BeInfo.SyntaxError.TypeMismatch))
   }
 
-  override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock = ???
+  override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock =
+    throw new NotImplementedError("Block rendering is not implemented for BeIfElse")
 
   override def getChildren: List[(BeChildRole, BeExpression)] = {
     List(
