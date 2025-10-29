@@ -21,7 +21,8 @@ trait BeExpression {
 
   def canEvaluateTo: Set[BeDataType]
 
-  def getExecutor(simulatorConfig: BeSimulatorConfig, stateBeforeExecution: BeSimulatorState): BeExpressionExecutor = ???
+  def getExecutor(simulatorConfig: BeSimulatorConfig, stateBeforeExecution: BeSimulatorState): BeExpressionExecutor =
+    throw new NotImplementedError("Execution support is not implemented in the static VM model")
 
   protected def changedScopeForChildren(parentScope: BeScope): BeScope = parentScope
 
@@ -60,7 +61,8 @@ object BeExpression {
 
     override def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Unit)
 
-    override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock = ???
+    override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock =
+      throw new NotImplementedError("Block rendering is not implemented for the NoOp expression")
 
     override def recToTree(config: BeDisplayConfig, roleInParent: BeChildRole, myScope: BeScope): BeExpressionTree = {
       NodeBasedTreeImpl.empty[(BeChildRole, BeExpression, BeScope)]()

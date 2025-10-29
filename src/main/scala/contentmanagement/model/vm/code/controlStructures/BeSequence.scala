@@ -1,6 +1,6 @@
 package contentmanagement.model.vm.code.controlStructures
 
-import contentmanagement.model.language.AppLanguage.Python
+import contentmanagement.model.language.AppLanguage.{Java, JavaScript, Lisp, Python, Rust}
 import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
 import contentmanagement.model.vm.code.{BeControlStructure, BeExpression}
 import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo}
@@ -23,6 +23,20 @@ case class BeSequence(shouldEvaluateToUnit: Boolean, body: List[BeExpression]) e
   def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
     programmingLanguage match {
       case Python => body.map(_.getInLanguage(programmingLanguage, humanLanguage)).mkString("\n")
+      case Java | JavaScript | Rust =>
+        body.map(_.getInLanguage(programmingLanguage, humanLanguage)).mkString("\n")
+      case Lisp =>
+        if (body.isEmpty) "(progn)"
+        else {
+          val builder = CodeStringBuilder("(progn")
+            .changeIntLevel(1)
+          val withBody = body.foldLeft(builder) { (acc, expr) =>
+            acc.appendAsLines(expr.getInLanguage(programmingLanguage, humanLanguage))
+          }
+          withBody.changeIntLevel(-1)
+            .appendNextLine(")")
+            .toString
+        }
       case _ => {
         var res = CodeStringBuilder(s"BeSequence(")
           .changeIntLevel(2)

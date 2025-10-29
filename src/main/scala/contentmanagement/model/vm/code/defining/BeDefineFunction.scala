@@ -1,6 +1,6 @@
 package contentmanagement.model.vm.code.defining
 
-import contentmanagement.model.language.AppLanguage.Python
+import contentmanagement.model.language.AppLanguage.{Java, JavaScript, Lisp, Python, Rust}
 import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
 import contentmanagement.model.vm.code.defining.BeDefineFunction.*
 import contentmanagement.model.vm.code.{BeDefineStructure, BeExpression}
@@ -24,20 +24,97 @@ case class BeDefineFunction(inputs: List[BeDefineVariable], outputs: Option[BeDe
   }*/
 
   def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
-    val inputsStr = inputs.map(_.getInLanguage(programmingLanguage, humanLanguage).replaceAll("\n",""))
-    val outputsStr = outputs.map(_.getInLanguage(programmingLanguage, humanLanguage)).getOrElse("").replaceAll("\n","")
+    val inputsStr = inputs.map(_.getInLanguage(programmingLanguage, humanLanguage).replaceAll("\n", ""))
     val bodyStr = body.getInLanguage(programmingLanguage, humanLanguage)
+    val functionName = functionTypeInfo.displayName.getInLanguage(humanLanguage)
+    val returnType = outputs.map(output => languageSpecificType(programmingLanguage, output.canEvaluateTo)).getOrElse(languageSpecificDefaultReturn(programmingLanguage))
     programmingLanguage match {
-      case Python => {
+      case Python =>
         CodeStringBuilder()
-          .appendNextLine(s"def ${functionTypeInfo.displayName.getInLanguage(humanLanguage)}${inputsStr.mkString("(", ", ", ")")}:")
+          .appendNextLine(s"def $functionName${inputsStr.mkString("(", ", ", ")")}:")
           .changeIntLevel(1)
           .appendAsLines(bodyStr)
           .toString
-      }
+      case Java =>
+        val parameters = inputs.map { param =>
+          val parameterType = languageSpecificType(programmingLanguage, param.canEvaluateTo)
+          s"$parameterType ${param.name.getInLanguage(humanLanguage)}"
+        }
+        val signature = s"${if (returnType.isEmpty) "void" else returnType} $functionName(${parameters.mkString(", ")})"
+        CodeStringBuilder()
+          .appendNextLine(signature + " {")
+          .changeIntLevel(1)
+          .appendAsLines(bodyStr)
+          .changeIntLevel(-1)
+          .appendNextLine("}")
+          .toString
+      case JavaScript =>
+        val parameters = inputs.map(_.name.getInLanguage(humanLanguage)).mkString(", ")
+        CodeStringBuilder()
+          .appendNextLine(s"function $functionName($parameters) {")
+          .changeIntLevel(1)
+          .appendAsLines(bodyStr)
+          .changeIntLevel(-1)
+          .appendNextLine("}")
+          .toString
+      case Rust =>
+        val parameters = inputs.map { param =>
+          val paramType = languageSpecificType(programmingLanguage, param.canEvaluateTo)
+          s"${param.name.getInLanguage(humanLanguage)}: $paramType"
+        }
+        val returnClause = if (returnType.isEmpty || returnType == "()") "" else s" -> $returnType"
+        CodeStringBuilder()
+          .appendNextLine(s"fn ${sanitizeRustName(functionName)}(${parameters.mkString(", ")})$returnClause {")
+          .changeIntLevel(1)
+          .appendAsLines(bodyStr)
+          .changeIntLevel(-1)
+          .appendNextLine("}")
+          .toString
+      case Lisp =>
+        val parameters = inputs.map(_.name.getInLanguage(humanLanguage)).mkString(" ")
+        CodeStringBuilder(s"(defun ${functionName.toLowerCase} ($parameters)")
+          .changeIntLevel(1)
+          .appendAsLines(bodyStr)
+          .changeIntLevel(-1)
+          .appendNextLine(")")
+          .toString
       case _ => ""
     }
   }
+
+  private def languageSpecificType(language: ProgrammingLanguage, possibleTypes: Set[BeDataType]): String = {
+    val resolvedType = possibleTypes.find(_ != BeDataType.Unit).orElse(possibleTypes.headOption).getOrElse(BeDataType.Unit)
+    language match {
+      case Java =>
+        resolvedType match {
+          case BeDataType.Numeric => "double"
+          case BeDataType.Boolean => "boolean"
+          case BeDataType.String => "String"
+          case BeDataType.Date => "java.time.LocalDate"
+          case BeDataType.Unit => "void"
+          case _ => "Object"
+        }
+      case Rust =>
+        resolvedType match {
+          case BeDataType.Numeric => "f64"
+          case BeDataType.Boolean => "bool"
+          case BeDataType.String => "String"
+          case BeDataType.Date => "chrono::NaiveDate"
+          case BeDataType.Unit => "()"
+          case _ => "()"
+        }
+      case _ => resolvedType.toString
+    }
+  }
+
+  private def languageSpecificDefaultReturn(language: ProgrammingLanguage): String = language match {
+    case Java => "void"
+    case Rust => "()"
+    case _ => ""
+  }
+
+  private def sanitizeRustName(name: String): String =
+    if (name.nonEmpty && name.head.isUpper) name.head.toLower + name.tail else name
 
   override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock = BeBlockDefineSingleReturnFunction(this, parentPos)
 

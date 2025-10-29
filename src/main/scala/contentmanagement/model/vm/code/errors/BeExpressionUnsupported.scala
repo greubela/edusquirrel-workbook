@@ -21,7 +21,8 @@ case class BeExpressionUnsupported(originalSource: String) extends BeExpression 
 
   override def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Error)
 
-  override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock = ???
+  override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock =
+    throw new NotImplementedError("Block rendering is not available for unsupported expressions")
 
   override def getChildren: List[(BeChildRole, BeExpression)] = List()
 }

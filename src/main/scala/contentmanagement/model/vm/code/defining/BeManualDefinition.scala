@@ -15,7 +15,8 @@ case class BeManualDefinition(
 
   override def getSyntaxErrors: Seq[BeInfo] = allDefinedStructures.flatMap(_.getSyntaxErrors)
 
-  override def createBlock(config: BeDisplayConfig, childPos: BeChildPosition): BeBlock = ???
+  override def createBlock(config: BeDisplayConfig, childPos: BeChildPosition): BeBlock =
+    throw new NotImplementedError("Block rendering is not implemented for BeManualDefinition")
 
   override def getChildren: List[(BeChildRole, BeExpression)] = allDefinedStructures.flatMap(_.getChildren)
 }
