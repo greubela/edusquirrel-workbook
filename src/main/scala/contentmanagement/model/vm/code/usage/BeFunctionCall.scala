@@ -1,9 +1,11 @@
 package contentmanagement.model.vm.code.usage
 
+import contentmanagement.model.language.AppLanguage.Python
 import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
 import contentmanagement.model.vm.*
 import contentmanagement.model.vm.code.defining.BeDefineFunction
 import contentmanagement.model.vm.code.BeExpression
+import contentmanagement.model.vm.code.defining.BeDefineFunction.Operator
 import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorState}
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.FunctionParameter
@@ -13,42 +15,34 @@ import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 import interactionPlugins.blockEnvironment.programming.blocks.parents.BeBlockCallSingleReturnFunction
 import util.CodeStringBuilder
 
-case class BeFunctionCall(funcDef: BeDefineFunction, withParameter: List[BeUseValue]) extends BeExpression {
+case class BeFunctionCall(funcDef: BeDefineFunction, withParameterValues: List[BeUseValue]) extends BeExpression {
 
-  override  def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock = BeBlockCallSingleReturnFunction(this, parentPos)
+  override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock = BeBlockCallSingleReturnFunction(this, parentPos)
 
-  override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = ???
+  def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
+    val withParameterValuesStr = withParameterValues.map(_.getInLanguage(programmingLanguage, humanLanguage).replaceAll("\n", ""))
+    val nameStr = funcDef.functionTypeInfo.displayName.getInLanguage(humanLanguage)
+
+    programmingLanguage match {
+      case Python => {
+        funcDef.functionTypeInfo.funcType match {
+          case Operator(pos) => "(" + withParameterValues.slice(0, pos).mkString(", ") + nameStr + withParameterValues.slice(pos, withParameterValues.length).mkString(", ") + ")"
+          case _ => withParameterValuesStr.mkString(s"$nameStr(", ",", ")")
+        }
+      }
+      case _ => ""
+    }
+  }
 
   def hasThisExpressionSideEffects: Boolean = false
 
   def getSyntaxErrors: Seq[BeInfo] = List()
 
-  def applySideEffects(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState = funcDef.body.applySideEffects(config, simulatorState)
+  def canEvaluateTo: Set[BeDataType] = funcDef.outputs.map(_.canEvaluateTo).getOrElse(Set(BeDataType.Unit))
 
-  def canEvaluateTo: Set[BeDataType] = funcDef.canEvaluateTo
-
-  override def getChildren: List[(BeChildRole, BeExpression)] = List(  )
-    withParameter.zipWithIndex.map((curPar, curIndex) => {
-      (FunctionParameter(curIndex), curPar)
-    })
-
-  override def evaluateBlock(simulatorState: BeSimulatorState): BeUseValue = BeUseUnitValue
-
-
-  
-  override val toString: String = {
-
-    CodeStringBuilder(s"BeFunctionCall(")
-      .changeIntLevel(2)
-      .appendNextLine(s"//${funcDef.signature.parameter.map(_.canEvaluateTo.toString).mkString("(", ", ", ")")} <- ${withParameter.mkString("= (", ", ", ")")}")
-      .changeIntLevel(-1)
-      .appendAsLines(funcDef.toString)
-      .changeIntLevel(-1)
-      .toString
-
-
-
-  }
+  override def getChildren: List[(BeChildRole, BeExpression)] =   withParameterValues.zipWithIndex.map((curPar, curIndex) => {
+    (FunctionParameter(curIndex), curPar)
+  })
 
 
 }

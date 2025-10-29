@@ -15,15 +15,11 @@ trait BeDefineStructure extends BeExpression{
   def definedFunctions: List[BeDefineFunction] = List()
 
   def definedVariables: List[BeDefineVariable] = List()
+
+  def allDefinedStructures: List[BeDefineStructure] = definedClasses ++ definedFunctions ++ definedVariables
   
   override def hasThisExpressionSideEffects: Boolean = true
 
-  override def applySideEffects(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState = ???
-
-  override def evaluateBlock(simulatorState: BeSimulatorState): BeUseValue = BeUseUnitValue
-
   override def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Unit)
-
-  
 
 }

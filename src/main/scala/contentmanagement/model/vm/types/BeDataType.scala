@@ -4,14 +4,14 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import interactionPlugins.blockEnvironment.programming.shapes.BeShape
 import interactionPlugins.blockEnvironment.programming.shapes.BeShape.BeShapeContainerable
-import interactionPlugins.blockEnvironment.programming.shapes.atomic.*
+import interactionPlugins.blockEnvironment.programming.shapes.datatypes.*
 
 enum BeDataType(val associatedShape: BeShapeContainerable, val formatStringForDisplay: String => String, val isValidLiteral: String => Boolean) {
   case Numeric extends BeDataType(NumericShape, _.toString, BeDataType.canParseAsNumeric)
   case Boolean extends BeDataType(BooleanShape, _.toString, str => true)
   case String extends BeDataType(StringShape, str => '"' + str + '"', str => true)
   case Date extends BeDataType(DateShape, _.toString, str => true)
-  case Unit extends BeDataType(FunctionCallShape, _.toString, str => false)
+  case Unit extends BeDataType(UnitShape, _.toString, str => false)
   case Error extends BeDataType(NumericShape, _.toString, str => false) // todo
 }
 

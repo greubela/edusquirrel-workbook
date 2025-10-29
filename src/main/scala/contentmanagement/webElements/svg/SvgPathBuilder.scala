@@ -113,6 +113,17 @@ case class SvgPathBuilder[T: Fractional](startPointAbs: Point[T]) {
   // arcs
 
 
+  def addArcToTheTopMoveRight(radius: T): this.type = {
+    val dia = radius * fromInt(2)
+    this
+      .append(s" a ${radius},${radius} 0 1,1 ${dia},0 ")
+  }
+
+  def addArcToTheRightMoveBottom(radius: T): this.type = {
+    val dia = radius * fromInt(2)
+    this
+      .append(s" a ${radius},${radius} 0 1,1 0,${dia} ")
+  }
 
   def addCenteredCircle(radius: T): this.type = {
     controlLines += AppLineSvgElement[T](current, new Point[T](current.x + radius, current.y))
@@ -127,19 +138,21 @@ case class SvgPathBuilder[T: Fractional](startPointAbs: Point[T]) {
     this.horizontalLineWithWidth(bounds.width).verticalLineWithHeight(bounds.height).horizontalLineWithWidth(-bounds.width).verticalLineWithHeight(-bounds.height).closePath()
   }
 
-  def addInstructionConnector(totalWidth: T, invertHeight: Boolean = false): this.type = {
+  def addControlFlowConnector(segmentWidth: T, invertHeight: Boolean = false): this.type = {
     val N = summon[Fractional[T]]
     import N.*
 
-    val down: T = if (invertHeight) totalWidth / fromInt(4) else totalWidth / fromInt(-4)
+    val segmentHeight = if(invertHeight) -segmentWidth else segmentWidth
 
     this
-      .lineToRel(new Dimension[T](totalWidth / fromInt(4), down))
-      .horizontalLineWithWidth(totalWidth / fromInt(2))
-      .lineToRel(new Dimension[T](totalWidth / fromInt(4), -down))
+      .lineToRel(Dimension(segmentWidth, fromInt(0)))
+      .lineToRel(Dimension(segmentWidth, segmentHeight))
+      .lineToRel(Dimension(segmentWidth, fromInt(0)))
+      .lineToRel(Dimension(segmentWidth, fromInt(0)))
+      .lineToRel(Dimension(segmentWidth, -segmentHeight))
+      .lineToRel(Dimension(segmentWidth, fromInt(0)))
 
   }
-
 
   // Conversion
   def toAppSvgElement(): AppPathSvgElement[T] =

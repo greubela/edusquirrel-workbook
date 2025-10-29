@@ -24,26 +24,27 @@ case class BeBlockCallSingleReturnFunction(
 
   def getDisplayChildren(myPosition: NodeBasedTreePosition, treeControllerConfig: BeTreeControllerConfig, displayConfig: BeDisplayConfig, existingChildren: List[ReferenceExistingBlock]): List[BeBlockReference] = {
 
-    val functionNameDisplay = NewBlock(BeBlockTextDisplay(function.funcDef.signature.name, myPosition))
+    val functionNameDisplay = NewBlock(BeBlockTextDisplay(function.funcDef.functionTypeInfo.displayName, myPosition))
 
-    val parameterValue = function.funcDef.signature.parameter.zipWithIndex.map((curPar, parNr) => {
+    val parameterValue = function.funcDef.inputs.zipWithIndex.map((curPar, parNr) => {
       val parChildOp = existingChildren.find(_.nrInChildList == parNr)
       val alt = NewBlock(BeBlockPlaceholderMissingValue(BeUseNonExistingValue, BeChildPosition(myPosition, FunctionParameter(parNr), positionAsChild.curScope)))
       parChildOp.getOrElse(alt)
     })
 
-    functionNameDisplay :: parameterValue
+    val namePos = function.funcDef.functionTypeInfo.displayNamePosition
+    parameterValue.slice(0, namePos) ++ List(functionNameDisplay) ++ parameterValue.slice(namePos, parameterValue.size)
+
   }
 
-  protected def render(inProgram: BeProgram, controllerStateVar: Var[BeControllerState], rendererConfig: BeRenderingConfig, renderedDisplayChildren: List[(BeBlockReference, BeShape)]): BeShape
-  = {
+  protected def render(inProgram: BeProgram, controllerStateVar: Var[BeControllerState], rendererConfig: BeRenderingConfig, renderedDisplayChildren: List[(BeBlockReference, BeShape)]): BeShape = {
     val childBox = HBoxSameHeight(renderedDisplayChildren.map(_._2))
+    println("function: " + function.canEvaluateTo + ", outputs: " + function.funcDef.outputs.map(_.canEvaluateTo) )
     val shape = ShapeAroundShape(BeDataType.getShape(function.canEvaluateTo), childBox)
     val factory = BeShapeAmendFactory(rendererConfig)
 
     val signalAmends = factory.muteOnTreeDragged(inProgram, controllerStateVar.signal, factory.defaultFunctionColorsAmend)
     shape.addSignalAmends(signalAmends)
-
   }
 
   override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = positionAsChild.copy(roleInParent = newRole))
@@ -55,7 +56,7 @@ case class BeBlockCallSingleReturnFunction(
       .filter(_._2.isInstanceOf[BeUseValue])
       .map(tup => (tup._1.asInstanceOf[FunctionParameter], tup._2.asInstanceOf[BeUseValue]))
 
-    val missingParameter: List[(FunctionParameter, BeUseValue)] = function.funcDef.signature.parameter.zipWithIndex
+    val missingParameter: List[(FunctionParameter, BeUseValue)] = function.funcDef.inputs.zipWithIndex
       .filterNot((curPar, curIndex) => existingParameter.exists(_._1.nr == curIndex))
       .map((curPar, curIndex) => (FunctionParameter(curIndex), BeUseNonExistingValue))
 

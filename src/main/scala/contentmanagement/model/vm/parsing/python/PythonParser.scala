@@ -6,10 +6,13 @@ import contentmanagement.model.vm.code.errors.{BeExpressionUnparsable, BeExpress
 import fastparse.*
 import fastparse.NoWhitespace.*
 
+import scala.collection.mutable
 import scala.scalajs.js.internal.UnitOps.unitOrOps
 
 object PythonParser {
 
+
+  private val definedStructures: mutable.ListBuffer[BeDefineStructure] = mutable.ListBuffer()
 
   def parsePython(source: String): BeExpression = {
     if (source.trim.isEmpty) {

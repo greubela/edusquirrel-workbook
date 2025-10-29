@@ -1,17 +1,16 @@
 package interactionPlugins.blockEnvironment.programming.blocks
 
 import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.{Signal, Var}
+import com.raquo.laminar.api.L.Var
 import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreePosition
 import contentmanagement.model.vm.code.BeExpression
-import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeScope}
+import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole}
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.blocks.other.BeBlockReference
 import interactionPlugins.blockEnvironment.programming.blocks.other.BeBlockReference.{NewBlock, ReferenceExistingBlock}
 import interactionPlugins.blockEnvironment.programming.editor.elements.BeTreeControllerConfig
 import interactionPlugins.blockEnvironment.programming.shapes.BeShape
-import sourcecode.Text.generate
 
 abstract class BeBlock {
 
@@ -19,7 +18,7 @@ abstract class BeBlock {
 
   def positionAsChild: BeChildPosition
 
-  def changeRole(newRole: BeChildRole): BeBlock 
+  def changeRole(newRole: BeChildRole): BeBlock
 
   def calcAssociatedExpression(structure: BeBlockContext): BeExpression = {
     val childrenWithExpression: List[(BeChildRole, BeExpression)] = structure
@@ -33,13 +32,14 @@ abstract class BeBlock {
 
   def calcAssociatedExpression(childrenWithExpression: List[(BeChildRole, BeExpression)]): BeExpression
 
-  
 }
 
 
 abstract class BeBlockParent extends BeBlock {
 
   override def render(inProgram: BeProgram, treeControllerConfig: BeTreeControllerConfig, controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig, structure: BeBlockContext): BeShape = {
+    val childTravInfo = structure.traversalInfoForChildren
+
     val childrenRefs: List[ReferenceExistingBlock] = structure.traversalInfoForChildren.zipWithIndex.map((curChildInfo, curChildIndex) => {
       ReferenceExistingBlock(curChildInfo, curChildIndex, curChildInfo.curValue)
     })
@@ -68,7 +68,7 @@ abstract class BeBlockParent extends BeBlock {
 }
 
 abstract class BeBlockAtomar extends BeBlock {
-  
+
   override def render(inProgram: BeProgram, listener: BeTreeControllerConfig, controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig, structure: BeBlockContext): BeShape = {
     render(inProgram, controllerStateVar, displayConfig, rendererConfig).addAmends(listener.getMouseAmendsForPosition(inProgram, positionAsChild))
   }

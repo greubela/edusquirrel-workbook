@@ -1,4 +1,4 @@
-package interactionPlugins.blockEnvironment.programming.shapes.atomic
+package interactionPlugins.blockEnvironment.programming.shapes
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.svg

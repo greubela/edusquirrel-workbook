@@ -8,8 +8,6 @@ import contentmanagement.webElements.svg.compositeElements.AppGroupSvgElement
 import contentmanagement.webElements.svg.{AppSvgElement, SvgPathBuilder}
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.BeProgram
-import interactionPlugins.blockEnvironment.programming.shapes.atomic.TextShape
-
 import com.raquo.laminar.api.L.seqToModifier
 import com.raquo.laminar.api.seqToModifier
 import com.raquo.laminar.api.L.componentSeqToInserter
@@ -20,6 +18,8 @@ import com.raquo.laminar.api.L.componentToNode
 import com.raquo.laminar.api.textToTextNode
 import com.raquo.laminar.api.L.componentToInserter
 import com.raquo.laminar.api.L.textToInserter
+import interactionPlugins.blockEnvironment.programming.shapes.controlflow.ControlFlowDown
+import interactionPlugins.blockEnvironment.programming.shapes.datatypes.{DuckShape, RectangleShape, UnitShape}
 
 sealed trait BeShape {
   def displaySize(rendererConfig: BeRenderingConfig): Dimension[Double]
@@ -38,67 +38,7 @@ sealed trait BeShape {
 
 }
 
-case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
 
-  def muteOnTreeDragged(programOfBlock: BeProgram, signal: Signal[BeControllerState], regularColors: Seq[L.Modifier[L.SvgElement]]): Seq[Signal[L.Modifier[L.SvgElement]]] = {
-    signalBasedAmendChooser(signal.map(ev => ev.draggingEvent.nonEmpty && ev.draggingEvent.get.draggedProgram != programOfBlock), mutedColorsAmend, regularColors)
-  }
-
-  def signalBasedAmendChooser(firstOne: Signal[Boolean], firstAmends: Seq[L.Modifier[L.SvgElement]], secondAmends: Seq[L.Modifier[L.SvgElement]]): Seq[Signal[L.Modifier[L.SvgElement]]] = {
-    firstAmends.zip(secondAmends).map { (first, second) => firstOne.signal.map(if (_) first else second) }
-  }
-  
-  def defaultTextAmends: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.fill := rendererConfig.colorPalette.grayscale(0).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebStyleString
-  )
-
-  def defaultFunctionColorsAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.fill := rendererConfig.colorPalette.yellows(3).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.yellows(0).toWebStyleString,
-  )
-
-  def darkVariableColorsAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.stroke := rendererConfig.colorPalette.grayscale(3).toWebStyleString,
-    svg.fill := rendererConfig.colorPalette.grayscale(4).toWebStyleString,
-  )
-
-  def lightVariableColorsAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.stroke := rendererConfig.colorPalette.grayscale(1).toWebStyleString,
-    svg.fill := rendererConfig.colorPalette.grayscale(4).toWebStyleString,
-  )
-
-  def mutedColorsAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.fill := rendererConfig.colorPalette.grayscale(4).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.grayscale(4).toWebStyleString
-  )
-
-  def mutedColorsFunctionAmend:Seq[L.Modifier[L.SvgElement]] = List(
-    svg.fill := rendererConfig.colorPalette.yellows(4).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.yellows(4).toWebStyleString
-  )
-
-  def errorColorsAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.fill := rendererConfig.colorPalette.reds(3).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.reds(1).toWebStyleString
-  )
-
-  def acceptingColorsAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.fill := rendererConfig.colorPalette.greens(3).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.greens(1).toWebStyleString
-  )
-
-  def literalColorsAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.fill := "white",
-    svg.stroke := rendererConfig.colorPalette.grayscale(1).toWebStyleString
-  )
-
-  def defaultStartBlockAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.fill := rendererConfig.colorPalette.yellows(1).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.yellows(0).toWebStyleString,
-  )
-
-}
 
 case class AmendedShape(baseShape: BeShape, amends: Seq[L.Modifier[L.SvgElement]], amendsSignal: Seq[Signal[L.Modifier[L.SvgElement]]]) extends BeShape {
 
@@ -117,7 +57,9 @@ object BeShape {
 
   }
 
-  abstract class BeShapePathBased extends BeShape with BeShapeContainerable {
+  val allAtomicShapes: List[BeShapeAtomic] = List(ControlFlowDown, DuckShape, RectangleShape, UnitShape)
+    
+  abstract class BeShapePathBased extends BeShapeAtomic with BeShapeContainerable {
 
     protected def getPathBuilder(config: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double]
 
@@ -137,7 +79,7 @@ object BeShape {
       val spaceBefore = spaceBeforeChild(config, childDimension)
       val spaceAfter = spaceAfterChild(config, childDimension)
       val availableSpace = myDimension.decreaseSize(spaceBefore).decreaseSize(spaceAfter).decreaseSize(childDimension)
-      spaceBefore.increaseSize(new Dimension(availableSpace.width / 2, availableSpace.height / 2)).asPoint
+      spaceBefore.asPoint//.increaseSize(Dimension(availableSpace.width / 2, availableSpace.height / 2)).asPoint
     }
 
     def render(config: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {

@@ -1,27 +1,26 @@
-package interactionPlugins.blockEnvironment.programming.shapes.atomic
+package interactionPlugins.blockEnvironment.programming.shapes.datatypes
 
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
-import contentmanagement.webElements.svg.{AppSvgElement, SvgPathBuilder}
+import contentmanagement.model.geometry.{Bounds, Dimension}
+import contentmanagement.webElements.svg.SvgPathBuilder
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import interactionPlugins.blockEnvironment.programming.shapes.BeShape.{BeShapeAtomic, BeShapeContainerable, BeShapePathBased}
+import interactionPlugins.blockEnvironment.programming.shapes.BeShape.BeShapePathBased
 import interactionPlugins.blockEnvironment.programming.shapes.ShapeFactory
 
-
-object FunctionCallShape extends BeShapePathBased {
+object FunctionDefineShape extends BeShapePathBased {
 
   override protected def getPathBuilder(config: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] =
-    ShapeFactory.buildUnitShape(bounds)
+    ShapeFactory.buildStarterShape(bounds)
 
   override protected def spaceBeforeChild(config: BeRenderingConfig, childDim: Dimension[Double]): Dimension[Double] =
-    config.paddingSmall.increaseSize(10, 10)
+    config.paddingSmall.increaseSize(10, 20)
 
   override protected def spaceAfterChild(config: BeRenderingConfig, childDim: Dimension[Double]): Dimension[Double] =
     config.paddingSmall.increaseSize(10, 10)
 
-  override def displaySize(config: BeRenderingConfig): Dimension[Double] = Dimension[Double](40, 2)
+  override def displaySize(config: BeRenderingConfig): Dimension[Double] = Dimension[Double](40, 25)
 }
-/*
 
+/*
   override def getAssociatedSvgElement(bounds: Bounds[Double]): AppSvgElement = {
     
   }
@@ -31,8 +30,10 @@ object FunctionCallShape extends BeShapePathBased {
   }
 
   override def getRelativeChildOffset(config: BeRendererConfig, childDimension: Dimension[Double], myDimension: Dimension[Double]): Point[Double] = {
-    val extraWidth = myDimension.width - 40 - childDimension.width
-    val extraHeight = myDimension.height - 20 - childDimension.height
+    val extraWidth = myDimension.width - childDimension.width
+    val extraHeight = myDimension.height - childDimension.height
     new Point[Double](extraWidth / 2, extraHeight / 2)
   }
-}*/
+
+}
+*/

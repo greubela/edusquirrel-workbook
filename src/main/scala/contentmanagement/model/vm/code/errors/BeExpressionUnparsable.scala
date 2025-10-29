@@ -18,7 +18,6 @@ case class BeExpressionUnparsable(originalSource: String, message: String) exten
   override def getSyntaxErrors: Seq[BeInfo] =
     List(BeInfo(LanguageMap.universalMap(message), BeInfo.SyntaxError.UnparsableBlock))
 
-  override def applySideEffects(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState = simulatorState
 
   override def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Error)
 
@@ -26,5 +25,4 @@ case class BeExpressionUnparsable(originalSource: String, message: String) exten
 
   override def getChildren: List[(BeChildRole, BeExpression)] = List()
   
-  override def evaluateBlock(simulatorState: BeSimulatorState): BeUseValue = BeUseUnitValue
 }

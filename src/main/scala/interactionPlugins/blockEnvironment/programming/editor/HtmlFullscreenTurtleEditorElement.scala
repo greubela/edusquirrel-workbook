@@ -2,9 +2,13 @@ package interactionPlugins.blockEnvironment.programming.editor
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.{h2, *, given}
+import contentmanagement.model.geometry.{Bounds, Point}
+import contentmanagement.model.language.AppLanguage.{English, Python}
 import contentmanagement.model.vm.code.BeExpression
+import contentmanagement.webElements.genericHtmlElements.editor.{SimpleTextDisplay, SimpleTextEditor}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.elements.*
+import interactionPlugins.blockEnvironment.programming.shapes.BeShape
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
 
@@ -70,12 +74,10 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
         cls := "be-fullscreen-panel-label",
         "Info and Svg goes here"
       ),
-      div(
-        child <-- editorState.controllerStateVar.signal.map(_.draggingEvent.map(_.toString).getOrElse("[No Tree Dragged]"))
-      ),
-      div(
-        child <-- editorState.controllerStateVar.signal.map(_.mouseOverNode.map(_.toString).getOrElse("[No Mouse Over]"))
-      )
+      BeShape.allAtomicShapes.map(_.render(editorState.rendererConfigVar.now(), Bounds.fromPoints(Point[Double](0, 0), Point[Double](30, 30))).toPlainDisplayDiv),
+      SimpleTextDisplay(editorState.treeToEdit.signal.map(curTree => Some("# Display Tree Python:\n" + curTree.asExpression.getInLanguage(Python, English)))).getDomElement(),
+      SimpleTextDisplay(editorState.controllerStateVar.signal.map(curState => Some("Cur Mouse Over:\n" + curState.mouseOverNode.toString))).getDomElement(),
+      SimpleTextDisplay(editorState.controllerStateVar.signal.map(curState => Some("Cur Drag Event:\n" + curState.draggingEvent.toString))).getDomElement(),
     )
     /*
 

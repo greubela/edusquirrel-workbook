@@ -11,9 +11,9 @@ import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayC
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.blocks.{BeBlock, BeBlockAtomar}
 import interactionPlugins.blockEnvironment.programming.shapes.BeShape.*
-import interactionPlugins.blockEnvironment.programming.shapes.atomic.{LiteralShape, TextShape}
+import interactionPlugins.blockEnvironment.programming.shapes.datatypes.LiteralShape
 import interactionPlugins.blockEnvironment.programming.shapes.composite.ShapeAroundShape
-import interactionPlugins.blockEnvironment.programming.shapes.{BeShape, BeShapeAmendFactory}
+import interactionPlugins.blockEnvironment.programming.shapes.{BeShape, BeShapeAmendFactory, TextShape}
 
 case class BeBlockUseLiteralForVariable(
                                          valueUsage: BeUseValueLiteral,

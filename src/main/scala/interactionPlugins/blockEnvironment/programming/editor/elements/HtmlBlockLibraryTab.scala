@@ -4,9 +4,8 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.vm.types.*
-import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
+import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.BeProgram
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
 case class HtmlBlockLibraryTab(
                                 editorState: TreeEditorState,
@@ -40,7 +39,7 @@ object HtmlBlockLibraryTab {
     BeProgram.createOneParFunc(displayConfig, "move 100", "distance", BeDataType.Numeric, "100"),
     BeProgram.createOneParFunc(displayConfig, "rotate ↺", "degree", BeDataType.Numeric, "90"),
     BeProgram.createOneParFunc(displayConfig, "stringFunc", "someString", BeDataType.String, "This is a text :)"),
-    BeProgram.createSimpleFunc(displayConfig, "add days", List("startDate", "daysToAdd"), List(BeDataType.Date, BeDataType.Numeric), List("11.10.1999", "3")),
+    BeProgram.createSimpleFunc(displayConfig, "add days", List("startDate", "daysToAdd"), List(BeDataType.Date, BeDataType.Numeric), List("11.10.1999", "3"), Some(Set(BeDataType.Date))),
   )
 
 

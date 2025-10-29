@@ -36,27 +36,37 @@ trait AppSvgElement {
 
   def renderBeforeMods: L.SvgElement
 
+  def toPlainDisplayDiv: L.HtmlElement = L.div(
+    svg.svg(
+      svg.width := "" + staticBoundingBox.width,
+      svg.height := "" + staticBoundingBox.height,
+      svg.x := "0",
+      svg.y := "0",
+      renderBeforeMods
+    )
+  )
+
   /*
   def makeClickable(onClick: MouseEvent => Any): AppSvgElement =
-    addMods(List(
-      L.onClick --> { event => onClick(event) },
-      onContextMenu.preventDefault --> { event => {} }
-    ))
+  addMods(List(
+  L.onClick --> { event => onClick(event) },
+  onContextMenu.preventDefault --> { event => {} }
+  ))
 
   def makeDroppable(onElementDropped: MouseEvent => Any): AppSvgElement =
-    addMods(List(
-      L.onDragOver.preventDefault --> (_ => ()), // allow dropping on this element
-      L.onDrop.preventDefault --> (e => onElementDropped(e))
-    ))
+  addMods(List(
+  L.onDragOver.preventDefault --> (_ => ()), // allow dropping on this element
+  L.onDrop.preventDefault --> (e => onElementDropped(e))
+  ))
 
   def makeMouseAware(onEnter: MouseEvent => Any, onLeave: MouseEvent => Any): AppSvgElement =
-    addMods(List(
-      L.onPointerEnter --> (e => onEnter(e)),
-      L.onPointerLeave --> (e => {
-        println("!?!?!?!?!? -> " + onLeave)
-        onLeave(e)
-      })
-    ))
-*/
+  addMods(List(
+  L.onPointerEnter --> (e => onEnter(e)),
+  L.onPointerLeave --> (e => {
+    println("!?!?!?!?!? -> " + onLeave)
+    onLeave(e)
+  })
+  ))
+  */
   def flatten: List[AppSvgElement]
 }

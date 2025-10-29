@@ -1,4 +1,4 @@
-package interactionPlugins.blockEnvironment.programming.shapes.atomic
+package interactionPlugins.blockEnvironment.programming.shapes.datatypes
 
 import contentmanagement.model.color.RGBColor
 import contentmanagement.model.geometry.{Bounds, Dimension, Point}

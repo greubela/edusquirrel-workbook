@@ -15,11 +15,8 @@ trait BeUseValue extends BeExpression {
 
   override def hasThisExpressionSideEffects: Boolean = false
 
-  def applySideEffects(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState = simulatorState
-
   override def getChildren: List[(BeChildRole, BeExpression)] = List(  )
 
-  override def evaluateBlock(simulatorState: BeSimulatorState): BeUseValue = this
 }
 
 object BeUseUnitValue extends BeUseValue{

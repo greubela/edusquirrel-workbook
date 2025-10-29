@@ -2,7 +2,6 @@ package interactionPlugins.blockEnvironment.programming.shapes
 
 import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.SvgPathBuilder
-import contentmanagement.webElements.svg.atomarElements.{AppPathSvgElement, AppRectangleSvgElement}
 
 
 private[shapes] object ShapeFactory {
@@ -117,6 +116,41 @@ private[shapes] object ShapeFactory {
       .horizontalLineWithWidth(-bounds.width)
   }
 
+
+  def buildUnitShape[T: Fractional](pBounds: Bounds[T], pRadius: Int): SvgPathBuilder[T] = {
+    val N = summon[Fractional[T]]
+    import N.*
+    val bounds = pBounds
+
+    val circleR = fromInt(pRadius)
+    val circleD = fromInt(2 * pRadius)
+
+    val circleNrWidth = (pBounds.width / circleD).toInt
+    val circleNrHeight = (pBounds.height / circleD).toInt
+
+    var res = SvgPathBuilder(bounds.startPoint)
+      //.moveToRel(Dimension(circleR + widthEmpty / fromInt(2), circleR + heightEmpty / fromInt(2)))
+      .moveToRel(Dimension(circleR, circleR))
+
+    for (curNr <- 0.until(circleNrWidth - 1)) {
+      res = res.addArcToTheTopMoveRight(circleR)
+    }
+    for (curNr <- 0.until(circleNrHeight - 1)) {
+      res = res.addArcToTheRightMoveBottom(circleR)
+    }
+    // and back
+    for (curNr <- 0.until(circleNrWidth - 1)) {
+      res = res.addArcToTheTopMoveRight(-circleR)
+    }
+    for (curNr <- 0.until(circleNrHeight - 1)) {
+      res = res.addArcToTheRightMoveBottom(-circleR)
+    }
+
+    res
+      .closePath()
+
+  }
+
   def buildStringShape[T: Fractional](pBounds: Bounds[T]): SvgPathBuilder[T] = {
     val N = summon[Fractional[T]]
     import N.*
@@ -196,7 +230,8 @@ private[shapes] object ShapeFactory {
       .verticalLineWithHeight(bounds.height - offsetDist)
 
       .horizontalLineWithWidth(-bounds.width + fromInt(30))
-      .addInstructionConnector(fromInt(-20))
+      //.addInstructionConnector(fromInt(-20))
+      .horizontalLineWithWidth(fromInt(-20))
       .horizontalLineWithWidth(fromInt(-10))
       .closePath()
 
@@ -209,49 +244,45 @@ private[shapes] object ShapeFactory {
     SvgPathBuilder(bounds.startPoint).drawBoundRectangle(bounds)
   }
 
-  def buildUnitShape[T: Fractional](pBounds: Bounds[T]): SvgPathBuilder[T] = {
+  def buildControlFlowShapeDown[T: Fractional](pBounds: Bounds[T], segmentWidth: T): SvgPathBuilder[T] = {
+
+
     val N = summon[Fractional[T]]
     import N.*
     val bounds = pBounds
 
-    val offsetDist = fromInt(7) + fromInt(1) / fromInt(2)
+    val missingWidth = bounds.width - segmentWidth * fromInt(6)
+    println("buildControlFlowShapeDown: " + pBounds + " segmentWidth: " + segmentWidth + " missingWidth: " + missingWidth)
 
     SvgPathBuilder(bounds.startPoint)
-      .horizontalLineWithWidth(fromInt(10))
-      .addInstructionConnector(fromInt(20), true)
-      .horizontalLineWithWidth(bounds.width - fromInt(30))
+      .addControlFlowConnector(segmentWidth)
+      .horizontalLineWithWidth(missingWidth)
       .verticalLineWithHeight(bounds.height)
-      .horizontalLineWithWidth(-bounds.width + fromInt(30))
-      .addInstructionConnector(fromInt(-20))
-      .horizontalLineWithWidth(fromInt(-10))
+      .horizontalLineWithWidth(-missingWidth)
+      .addControlFlowConnector(-segmentWidth, true)
+      .verticalLineWithHeight(-bounds.height)
       .closePath()
   }
 
-  def buildCreateStructureShape[T: Fractional](pBounds: Bounds[T]): SvgPathBuilder[T] = {
+  def buildCreateStructureShape[T: Fractional](pBounds: Bounds[T], segmentWidth: T): SvgPathBuilder[T] = {
     val N = summon[Fractional[T]]
     import N.*
     val bounds = pBounds
 
-    val structureLeftWidth = fromInt(20)
-    val centerCircleRadius = structureLeftWidth / fromInt(2)
+    val centerCircleRadius = pBounds.width / fromInt(4)
 
-    SvgPathBuilder(bounds.startPoint)
-      // test rect
-      .drawBoundRectangle(bounds)
-      // Shape left
-      .addInstructionConnector(structureLeftWidth, true)
-      .verticalLineWithHeight(bounds.height)
-      .addInstructionConnector(-structureLeftWidth, false)
-      .verticalLineWithHeight(-bounds.height)
-      .closePath()
+    val circleCenter = pBounds.startPoint.moveWithDimension(Dimension(bounds.width - centerCircleRadius / fromInt(2), bounds.height - centerCircleRadius / fromInt(2)))
+
+    val missingWidth = bounds.width - segmentWidth * fromInt(6)
+
+    buildControlFlowShapeDown(pBounds, segmentWidth)
       // add shape center
-      .moveToAbs(pBounds.startPoint)
-      .moveToRel(Dimension(structureLeftWidth / fromInt(2), bounds.height / fromInt(2)))
-      // .addCenteredCircle(centerCircleRadius)
+      .moveToAbs(circleCenter)
+      .addCenteredCircle(centerCircleRadius)
       // extension right
-      .moveToAbs(pBounds.startPoint)
-      .moveToRel(Dimension(structureLeftWidth, bounds.height / fromInt(2)))
-      .horizontalLineWithWidth(pBounds.width - structureLeftWidth)
+      .moveToAbs(circleCenter)
+      .moveToRel(Dimension(centerCircleRadius, fromInt(0)))
+      .horizontalLineWithWidth(pBounds.width / fromInt(2) - centerCircleRadius)
 
   }
 

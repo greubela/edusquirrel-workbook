@@ -6,9 +6,10 @@ import contentmanagement.model.language.*
 import contentmanagement.model.vm.code.*
 import contentmanagement.model.vm.code.controlStructures.BeSequence
 import contentmanagement.model.vm.code.defining.{BeDefineFunction, BeDefineVariable}
+import contentmanagement.model.vm.code.others.BeStartProgram
 import contentmanagement.model.vm.code.usage.{BeFunctionCall, BeUseValueLiteral}
-import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.*
+import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.*
 
@@ -102,40 +103,32 @@ object BeProgram {
   }
 
 
-  def createSimpleFunc(displayConfig: BeDisplayConfig, functionName: String, parNames: List[String], parTypes: List[BeDataType], parValues: List[String]): BeProgram = {
+  def createSimpleFunc(displayConfig: BeDisplayConfig, functionName: String, parNames: List[String], parTypes: List[BeDataType], parValues: List[String], output: Option[Set[BeDataType]]): BeProgram = {
 
+    val funcNameMap: LanguageMap[HumanLanguage] = LanguageMap.universalMap(functionName)
 
     val variables: List[BeDefineVariable] = parNames.zip(parTypes).zipWithIndex.map((tup, curIndex) => {
       val (curName, curType) = tup
       BeDefineVariable(LanguageMap.universalMap(curName), Set(curType))
     })
 
+    val outputVar = output.map(typeSet => BeDefineVariable(LanguageMap.universalMap("output"), typeSet))
     val literals = variables.zip(parValues).map((curVar, curVal) => BeUseValueLiteral(curVal))
     val expression: BeExpression =
-      BeStartProgram(
-        BeSequence(
-          false,
-          List(BeFunctionCall(
-            BeDefineFunction(
-              BeFunctionSignature(
-                LanguageMap.universalMap(functionName),
-                variables,
-                None
-              ),
-              BeExpression.pass
-            ),
-            literals
-          )
-          )
-        )
+      BeFunctionCall(
+        BeDefineFunction(
+          variables, outputVar, BeExpression.pass, BeDefineFunction.functionInfo(funcNameMap)
+        ),
+        literals
       )
+
 
     fromExpression(displayConfig, expression)
   }
 
 
   def createOneParFunc(displayConfig: BeDisplayConfig, functionName: String, parName: String, parType: BeDataType, valueString: String): BeProgram = {
-    createSimpleFunc(displayConfig, functionName, List(parName), List(parType), List(valueString))
+    createSimpleFunc(displayConfig, functionName, List(parName), List(parType), List(valueString), None)
   }
 
   // todo: To functions, BeBlockTree -> vm representation // vm representation -> BeBlockTree
@@ -156,8 +149,7 @@ object BeProgram {
       Set(BeDataType.Numeric))
 
     val forwardFunc = BeDefineFunction(
-      BeFunctionSignature(forwardName, List(parameter), None),
-      BeExpression.pass
+      List(parameter), None, BeExpression.pass, BeDefineFunction.functionInfo(forwardName)
     )
 
     BeStartProgram(

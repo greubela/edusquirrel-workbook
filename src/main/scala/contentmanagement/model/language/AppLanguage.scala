@@ -9,7 +9,6 @@ sealed class HumanLanguage(val name: String, val nameAbbr: String) extends AppLa
 
 sealed class ProgrammingLanguage(val name: String, val fileEnding: String) extends AppLanguage
 
-
 object AppLanguage {
 
   def default(): HumanLanguage = English
@@ -24,9 +23,7 @@ object AppLanguage {
 
   case object German extends HumanLanguage("German", "DE")
 
-
   case object Python extends ProgrammingLanguage("Python", "py")
   case object Java extends ProgrammingLanguage("Java", "java")
-  case object BeStorageLanguage extends ProgrammingLanguage("BeLanguage", "be")
 
 }

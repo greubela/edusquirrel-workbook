@@ -6,8 +6,7 @@ import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.compositeElements.AppDecoratedSvgElement
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.shapes.BeShape.{BeShapeComposite, BeShapeContainerable}
-import interactionPlugins.blockEnvironment.programming.shapes.BeShape
-import interactionPlugins.blockEnvironment.programming.shapes.atomic.TextShape
+import interactionPlugins.blockEnvironment.programming.shapes.{BeShape, TextShape}
 
 case class ShapeAroundShape(outerShape: BeShapeContainerable, innerShape: BeShape) extends BeShapeComposite{
   

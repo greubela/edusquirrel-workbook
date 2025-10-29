@@ -1,30 +1,27 @@
 package contentmanagement.model.vm.code
 
-import contentmanagement.datastructures.tree.nodeImpl.{NodeBasedTreeImpl, NodeBasedTreePosition}
+import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreeImpl
 import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
 import contentmanagement.model.vm.code.controlStructures.BeSequence
-import contentmanagement.model.vm.code.usage.{BeUseUnitValue, BeUseValue}
-import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorState}
-import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo, BeScope}
+import contentmanagement.model.vm.simulation.{BeExpressionExecutor, BeSimulatorConfig, BeSimulatorState}
+import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.BeExpressionTree
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 
 trait BeExpression {
+
   def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String
 
-  
   def hasThisExpressionOrChildrenSideEffects: Boolean = hasThisExpressionSideEffects || getChildren.exists(_._2.hasThisExpressionOrChildrenSideEffects)
+
   def hasThisExpressionSideEffects: Boolean
-  def applySideEffects(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState
-
-  def evaluateBlock(simulatorState: BeSimulatorState): BeUseValue
-
 
   def getSyntaxErrors: Seq[BeInfo]
 
-
   def canEvaluateTo: Set[BeDataType]
+
+  def getExecutor(simulatorConfig: BeSimulatorConfig, stateBeforeExecution: BeSimulatorState): BeExpressionExecutor = ???
 
   protected def changedScopeForChildren(parentScope: BeScope): BeScope = parentScope
 
@@ -43,8 +40,9 @@ trait BeExpression {
 
   def createBlock(config: BeDisplayConfig, childPos: BeChildPosition): BeBlock
 
-
   def getChildren: List[(BeChildRole, BeExpression)]
+
+  def stopExecutionBeforeThisBlock: Boolean = false
 
 }
 
@@ -54,15 +52,11 @@ object BeExpression {
 
   lazy val NoOp: BeExpression = new BeExpression {
 
-    override def evaluateBlock(simulatorState: BeSimulatorState): BeUseValue = BeUseUnitValue
-
     override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = ""
 
     override def hasThisExpressionSideEffects: Boolean = false
 
     override def getSyntaxErrors: Seq[BeInfo] = List()
-
-    override def applySideEffects(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState = simulatorState
 
     override def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Unit)
 
@@ -71,7 +65,7 @@ object BeExpression {
     override def recToTree(config: BeDisplayConfig, roleInParent: BeChildRole, myScope: BeScope): BeExpressionTree = {
       NodeBasedTreeImpl.empty[(BeChildRole, BeExpression, BeScope)]()
     }
-    
+
     override def getChildren: List[(BeChildRole, BeExpression)] = List()
 
   }

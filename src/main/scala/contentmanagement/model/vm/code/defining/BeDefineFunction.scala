@@ -1,16 +1,18 @@
 package contentmanagement.model.vm.code.defining
 
-import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
+import contentmanagement.model.language.AppLanguage.Python
+import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
+import contentmanagement.model.vm.code.defining.BeDefineFunction.*
 import contentmanagement.model.vm.code.{BeDefineStructure, BeExpression}
-import contentmanagement.model.vm.code.usage.{BeUseUnitValue, BeUseValue}
-import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorState}
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.BodySequence
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 import interactionPlugins.blockEnvironment.programming.blocks.parents.BeBlockDefineSingleReturnFunction
+import util.CodeStringBuilder
 
-case class BeDefineFunction(signature: BeFunctionSignature, body: BeExpression) extends BeDefineStructure {
+
+case class BeDefineFunction(inputs: List[BeDefineVariable], outputs: Option[BeDefineVariable], body: BeExpression, functionTypeInfo: BeFunctionTypeInfo) extends BeDefineStructure {
 
   override def getSyntaxErrors: Seq[BeInfo] = List()
   /*
@@ -21,24 +23,80 @@ case class BeDefineFunction(signature: BeFunctionSignature, body: BeExpression) 
     }
   }*/
 
+  def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
+    val inputsStr = inputs.map(_.getInLanguage(programmingLanguage, humanLanguage).replaceAll("\n",""))
+    val outputsStr = outputs.map(_.getInLanguage(programmingLanguage, humanLanguage)).getOrElse("").replaceAll("\n","")
+    val bodyStr = body.getInLanguage(programmingLanguage, humanLanguage)
+    programmingLanguage match {
+      case Python => {
+        CodeStringBuilder()
+          .appendNextLine(s"def ${functionTypeInfo.displayName.getInLanguage(humanLanguage)}${inputsStr.mkString("(", ", ", ")")}:")
+          .changeIntLevel(1)
+          .appendAsLines(bodyStr)
+          .toString
+      }
+      case _ => ""
+    }
+  }
 
-  def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = ???
-  
   override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock = BeBlockDefineSingleReturnFunction(this, parentPos)
 
-  override protected def changedScopeForChildren(parentScope: BeScope): BeScope = BeScope.InFunctionScope(this)
+  override protected def changedScopeForChildren(parentScope: BeScope): BeScope = BeScope.InFunctionScope(this, parentScope)
 
   override def getChildren: List[(BeChildRole, BeExpression)] = {
     List((BodySequence(0), body))
   }
 
+  /*
   override val toString: String = {
+
     s"""BeDefineStaticFunction(
-       |  ${signature.parameter.map(_.canEvaluateTo.toString).mkString("(", ", ", ")")} => ${signature.returnValue.map(_.toString).getOrElse("()")},
+       |  ${inputs.map(_.canEvaluateTo.toString).mkString("(", ", ", ")")} => ${outputs.map(_.toString).getOrElse("()")},
        |  $body
        |)""".stripMargin
+  }*/
+
+
+}
+
+object BeDefineFunction {
+
+  case class BeFunctionTypeInfo(isMethodInClass: Option[BeDefineClass], isNamed: Option[LanguageMap[HumanLanguage]], funcType: BeFunctionType) {
+
+    def displayName: LanguageMap[HumanLanguage] = isNamed.getOrElse(LanguageMap.universalMap("λ"))
+
+    def displayNamePosition: Int = funcType match {
+      case Operator(pos) => pos
+      case _ => 0
+    }
+
   }
 
-  
+  sealed trait BeFunctionType
+
+  case class Lambda() extends BeFunctionType
+
+  case class Method() extends BeFunctionType
+
+  case class Function() extends BeFunctionType
+
+  case class Operator(nameBeforeChildNr: Int) extends BeFunctionType
+
+  def methodFunctionInfo(methodInClass: BeDefineClass, name: LanguageMap[HumanLanguage]): BeFunctionTypeInfo = {
+    BeFunctionTypeInfo(Some(methodInClass), Some(name), Method())
+  }
+
+  def lambdaFunctionInfo(): BeFunctionTypeInfo = {
+    BeFunctionTypeInfo(None, None, Lambda())
+  }
+
+  def functionInfo(name: LanguageMap[HumanLanguage]): BeFunctionTypeInfo = {
+    BeFunctionTypeInfo(None, Some(name), Function())
+  }
+
+  def operatorInfo(symbol: String, position: Int): BeFunctionTypeInfo = {
+    BeFunctionTypeInfo(None, Some(LanguageMap.universalMap(symbol)), Operator(position))
+  }
+
 }
 

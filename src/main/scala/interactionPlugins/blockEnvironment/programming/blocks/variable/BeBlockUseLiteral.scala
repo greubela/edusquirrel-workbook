@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L.Var
 import contentmanagement.model.vm.types.{BeChildRole, BeDataType}
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlockAtomar
-import interactionPlugins.blockEnvironment.programming.shapes.{BeShape, BeShapeAmendFactory}
+import interactionPlugins.blockEnvironment.programming.shapes.{BeShape, BeShapeAmendFactory, TextShape}
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Var
 import com.raquo.laminar.api.L.svg
@@ -14,7 +14,6 @@ import contentmanagement.webElements.svg.AppSvgElement
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.blocks.{BeBlock, BeBlockAtomar}
 import interactionPlugins.blockEnvironment.programming.shapes.BeShape
-import interactionPlugins.blockEnvironment.programming.shapes.atomic.TextShape
 import interactionPlugins.blockEnvironment.programming.shapes.composite.ShapeAroundShape
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{Var, svg}
@@ -27,7 +26,7 @@ import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.blocks.{BeBlock, BeBlockAtomar}
 import interactionPlugins.blockEnvironment.programming.shapes.BeShape
 import interactionPlugins.blockEnvironment.programming.shapes.BeShape.*
-import interactionPlugins.blockEnvironment.programming.shapes.atomic.{LiteralShape, TextShape}
+import interactionPlugins.blockEnvironment.programming.shapes.datatypes.LiteralShape
 import interactionPlugins.blockEnvironment.programming.shapes.composite.ShapeAroundShape
 case class BeBlockUseLiteral(valueUsage: BeUseValueLiteral, override val positionAsChild: BeChildPosition) extends BeBlockAtomar{
   
