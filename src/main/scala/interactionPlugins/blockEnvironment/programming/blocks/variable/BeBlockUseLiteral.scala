@@ -1,7 +1,6 @@
 package interactionPlugins.blockEnvironment.programming.blocks.variable
 
 import com.raquo.laminar.api.L.Var
-import contentmanagement.model.vm.expressions.BeUseValueLiteral
 import contentmanagement.model.vm.types.{BeChildRole, BeDataType}
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlockAtomar
@@ -9,7 +8,7 @@ import interactionPlugins.blockEnvironment.programming.shapes.{BeShape, BeShapeA
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Var
 import com.raquo.laminar.api.L.svg
-import contentmanagement.model.vm.expressions.defining.BeDefineVariable
+import contentmanagement.model.vm.code.defining.BeDefineVariable
 import contentmanagement.model.vm.types.*
 import contentmanagement.webElements.svg.AppSvgElement
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
@@ -20,7 +19,8 @@ import interactionPlugins.blockEnvironment.programming.shapes.composite.ShapeAro
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{Var, svg}
 import contentmanagement.model.language.LanguageMap
-import contentmanagement.model.vm.expressions.*
+import contentmanagement.model.vm.code.*
+import contentmanagement.model.vm.code.usage.BeUseValueLiteral
 import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.BeProgram
@@ -40,5 +40,5 @@ case class BeBlockUseLiteral(valueUsage: BeUseValueLiteral, override val positio
     
   }
 
-  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = BeChildPosition(positionAsChild.parentPosition, newRole))
+  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = positionAsChild.copy(roleInParent = newRole))
 }

@@ -1,7 +1,7 @@
 package contentmanagement.model.vm.parsing.python
 
-import contentmanagement.model.vm.expressions.{BeExpressionUnsupported, BeSequence}
-import contentmanagement.model.vm.expressions.controlStructures.BeExpressionIfElse
+import contentmanagement.model.vm.code.controlStructures.{BeIfElse, BeSequence}
+import contentmanagement.model.vm.code.errors.BeExpressionUnsupported
 import munit.FunSuite
 
 class PythonParserSpec extends FunSuite {
@@ -42,7 +42,7 @@ class PythonParserSpec extends FunSuite {
 
     val expected = BeSequence(
       List(
-        BeExpressionIfElse(
+        BeIfElse(
           BeExpressionUnsupported("(x > 5)"),
           BeSequence(List(BeExpressionUnsupported("print(par)")), shouldEvaluateToUnit = false),
           BeSequence(List(BeExpressionUnsupported("print(\"too small\")")), shouldEvaluateToUnit = false)

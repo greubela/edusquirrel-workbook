@@ -3,8 +3,8 @@ package interactionPlugins.blockEnvironment.programming.blocks.parents
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Var
 import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreePosition
-import contentmanagement.model.vm.expressions.defining.BeStartProgram
-import contentmanagement.model.vm.expressions.{BeExpression, BeSequence}
+import contentmanagement.model.vm.code.{BeExpression, BeStartProgram}
+import contentmanagement.model.vm.code.controlStructures.BeSequence
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.BodySequence
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
@@ -38,7 +38,7 @@ case class BeBlockStarter(
     VBoxSameWidth(List(starter) ++ renderedDisplayChildren.map(_._2), false)
   }
 
-  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = BeChildPosition(positionAsChild.parentPosition, newRole))
+  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = positionAsChild.copy(roleInParent = newRole))
 
   override def calcAssociatedExpression(childrenWithExpression: List[(BeChildRole, BeExpression)]): BeExpression = {
     val seqChilds = childrenWithExpression.filter(_._1.isInstanceOf[BeChildRole.BodySequence])
@@ -46,4 +46,3 @@ case class BeBlockStarter(
     BeStartProgram(seq.headOption.getOrElse(BeSequence(true, List())))
   }
 }
-

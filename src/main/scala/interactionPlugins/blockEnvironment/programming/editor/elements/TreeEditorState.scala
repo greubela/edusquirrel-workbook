@@ -1,7 +1,7 @@
 package interactionPlugins.blockEnvironment.programming.editor.elements
 
 import com.raquo.airstream.state.Var
-import contentmanagement.model.vm.expressions.BeExpression
+import contentmanagement.model.vm.code.BeExpression
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 

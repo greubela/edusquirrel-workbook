@@ -1,8 +1,9 @@
-package contentmanagement.model.vm.expressions
+package contentmanagement.model.vm.code.usage
 
 import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
 import contentmanagement.model.vm.*
-import contentmanagement.model.vm.expressions.defining.BeDefineFunction
+import contentmanagement.model.vm.code.defining.BeDefineFunction
+import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorState}
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.FunctionParameter
@@ -18,7 +19,7 @@ case class BeFunctionCall(funcDef: BeDefineFunction, withParameter: List[BeUseVa
 
   override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = ???
 
-  def hasSideEffects: Boolean = funcDef.body.hasSideEffects
+  def hasThisExpressionSideEffects: Boolean = false
 
   def getSyntaxErrors: Seq[BeInfo] = List()
 
@@ -26,13 +27,15 @@ case class BeFunctionCall(funcDef: BeDefineFunction, withParameter: List[BeUseVa
 
   def canEvaluateTo: Set[BeDataType] = funcDef.canEvaluateTo
 
-  override def getChildren: List[(BeChildRole, BeExpression)] =
+  override def getChildren: List[(BeChildRole, BeExpression)] = List(  )
     withParameter.zipWithIndex.map((curPar, curIndex) => {
       (FunctionParameter(curIndex), curPar)
     })
 
   override def evaluateBlock(simulatorState: BeSimulatorState): BeUseValue = BeUseUnitValue
 
+
+  
   override val toString: String = {
 
     CodeStringBuilder(s"BeFunctionCall(")

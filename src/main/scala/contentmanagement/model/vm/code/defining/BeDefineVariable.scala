@@ -1,20 +1,21 @@
-package contentmanagement.model.vm.expressions.defining
+package contentmanagement.model.vm.code.defining
 
 import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
-import contentmanagement.model.vm.expressions.{BeExpression, BeUseValue}
+import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorState}
 import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo}
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 import interactionPlugins.blockEnvironment.programming.blocks.variable.*
-import contentmanagement.model.vm.expressions.*
-import contentmanagement.model.vm.expressions.BeUseValue
+import contentmanagement.model.vm.code.*
+import contentmanagement.model.vm.code.usage.{BeUseUnitValue, BeUseValue, BeUseValueLiteral}
 
-case class BeDefineVariable(name: LanguageMap[HumanLanguage], override val canEvaluateTo: Set[BeDataType]) extends BeExpression {
+case class BeDefineVariable(name: LanguageMap[HumanLanguage], override val canEvaluateTo: Set[BeDataType]) extends BeDefineStructure {
+
 
   override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = name.getInLanguage(humanLanguage)
 
-  override def hasSideEffects: Boolean = true
+  override def hasThisExpressionSideEffects: Boolean = true
 
   override def getSyntaxErrors: Seq[BeInfo] = List()
 

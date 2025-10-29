@@ -3,20 +3,20 @@ package interactionPlugins.blockEnvironment.programming
 import contentmanagement.datastructures.tree.*
 import contentmanagement.datastructures.tree.nodeImpl.*
 import contentmanagement.model.language.*
-import contentmanagement.model.vm.expressions.*
-import contentmanagement.model.vm.expressions.defining.{BeDefineFunction, BeDefineVariable, BeStartProgram}
+import contentmanagement.model.vm.code.*
+import contentmanagement.model.vm.code.controlStructures.BeSequence
+import contentmanagement.model.vm.code.defining.{BeDefineFunction, BeDefineVariable}
+import contentmanagement.model.vm.code.usage.{BeFunctionCall, BeUseValueLiteral}
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.*
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.*
-import interactionPlugins.blockEnvironment.programming.blocks.parents.BeBlockStarter
-import sourcecode.Text.generate
 
 type BeBlockTree = Tree[NodeBasedTreePosition, BeBlock]
-type BeExpressionTree = Tree[NodeBasedTreePosition, (BeChildRole, BeExpression)]
+type BeExpressionTree = Tree[NodeBasedTreePosition, (BeChildRole, BeExpression, BeScope)]
 
 type BeBlockContext = TreeStructureContext[NodeBasedTreePosition, BeBlock]
-type BeExpressionContext = TreeStructureContext[NodeBasedTreePosition, (BeChildRole, BeExpression)]
+type BeExpressionContext = TreeStructureContext[NodeBasedTreePosition, (BeChildRole, BeExpression, BeScope)]
 
 case class BeProgram(displayConfig: BeDisplayConfig, blockTree: BeBlockTree, expressionTree: BeExpressionTree) {
 
@@ -45,7 +45,7 @@ case class BeProgram(displayConfig: BeDisplayConfig, blockTree: BeBlockTree, exp
 object BeProgram {
 
   def starterTree(config: BeDisplayConfig): BeProgram = {
-    val starter = BeBlockStarter(BeChildPosition(NodeBasedTreePosition.root, BeChildRole.NoRole))
+    val starter = BeStartProgram(None).createBlock(config)
     val tree = NodeBasedTreeImpl.empty[BeBlock]()
     val starterTree = tree.addAsLastChild(tree.rootPosition, starter)
     fromBlockTree(config, starterTree)
@@ -56,7 +56,7 @@ object BeProgram {
   }
 
   def fromExpression(config: BeDisplayConfig, expression: BeExpression): BeProgram = {
-    val expressionTree: BeExpressionTree = expression.recToTree(config, NoRole)
+    val expressionTree: BeExpressionTree = expression.recToTree(config, NoRole, BeScope.GlobalScope())
     fromExpressionTree(config, expressionTree)
   }
 
@@ -69,7 +69,8 @@ object BeProgram {
       val curPos = structure.curPosition
       val curRole = structure.curValue._1
       val curExpression = structure.curValue._2
-      curExpression.createBlock(config, BeChildPosition(curPos, curRole))
+      val curScope = structure.curValue._3
+      curExpression.createBlock(config, BeChildPosition(curPos, curRole, curScope))
     })
     BeProgram(config, blockTree, expressionTree)
   }
@@ -86,7 +87,8 @@ object BeProgram {
     val expressionTree: BeExpressionTree = {
       blockTree.mapWithStructure(structure => (
         structure.curValue.positionAsChild.roleInParent,
-        structure.curValue.calcAssociatedExpression(structure)))
+        structure.curValue.calcAssociatedExpression(structure),
+        structure.curValue.positionAsChild.curScope))
     }
     expressionTree.getData(expressionTree.rootPosition.forChild(0)).get._2
   }

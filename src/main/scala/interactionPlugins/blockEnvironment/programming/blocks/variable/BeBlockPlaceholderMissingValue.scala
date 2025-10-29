@@ -2,7 +2,8 @@ package interactionPlugins.blockEnvironment.programming.blocks.variable
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Var
-import contentmanagement.model.vm.expressions.{BeExpression, BeUseValue}
+import contentmanagement.model.vm.code.BeExpression
+import contentmanagement.model.vm.code.usage.BeUseValue
 import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.BeProgram
@@ -20,6 +21,6 @@ case class BeBlockPlaceholderMissingValue(variable: BeUseValue, override val pos
   }
 
 
-  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = BeChildPosition(positionAsChild.parentPosition, newRole))
+  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = positionAsChild.copy(roleInParent = newRole))
 
 }

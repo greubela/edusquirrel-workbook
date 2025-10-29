@@ -16,7 +16,7 @@ object BeInfo {
   }
 
   enum SyntaxError extends ErrorType {
-    case UnparsableBlock, MissingValue, InvalidLiteralValue, TypeMismatch
+    case UnparsableBlock, MissingValue, InvalidLiteralValue, TypeMismatch, StructureMismatch
   }
 
   enum RuntimeError extends ErrorType {

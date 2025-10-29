@@ -1,6 +1,6 @@
 package contentmanagement.model.vm.types
 
-import contentmanagement.model.vm.expressions.defining.BeDefineVariable
+import contentmanagement.model.vm.code.defining.BeDefineVariable
 
 
 sealed trait BeChildRole {

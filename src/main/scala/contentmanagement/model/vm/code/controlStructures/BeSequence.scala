@@ -1,6 +1,8 @@
-package contentmanagement.model.vm.expressions
+package contentmanagement.model.vm.code.controlStructures
 
 import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
+import contentmanagement.model.vm.code.BeExpression
+import contentmanagement.model.vm.code.usage.{BeUseUnitValue, BeUseValue}
 import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorState}
 import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo}
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
@@ -10,7 +12,7 @@ import util.CodeStringBuilder
 
 case class BeSequence(shouldEvaluateToUnit: Boolean, body: List[BeExpression]) extends BeExpression {
 
-  def hasSideEffects: Boolean = body.exists(_.hasSideEffects)
+  def hasThisExpressionSideEffects: Boolean = false
 
   def getSyntaxErrors: Seq[BeInfo] = List() // whether it may be empty must be checked by the parent
 

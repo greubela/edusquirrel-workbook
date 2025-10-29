@@ -2,7 +2,7 @@ package interactionPlugins.blockEnvironment.programming.editor
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.{h2, *, given}
-import contentmanagement.model.vm.expressions.BeExpression
+import contentmanagement.model.vm.code.BeExpression
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.elements.*
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement

@@ -1,9 +1,10 @@
-package contentmanagement.model.vm.expressions
+package contentmanagement.model.vm.code.usage
 
 import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
-import contentmanagement.model.vm.expressions.defining.BeDefineVariable
+import contentmanagement.model.vm.code.defining.BeDefineVariable
+import contentmanagement.model.vm.code.*
 import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorState}
-import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo}
+import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo, BeScope}
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 import interactionPlugins.blockEnvironment.programming.blocks.variable.{BeBlockPlaceholderMissingValue, BeBlockUseLiteral, BeBlockUseLiteralForVariable, BeBlockUseReference}
@@ -12,11 +13,11 @@ trait BeUseValue extends BeExpression {
 
   def getCurrentValueAsString(simulatorState: BeSimulatorState): Option[String]
 
-  override def hasSideEffects: Boolean = false
+  override def hasThisExpressionSideEffects: Boolean = false
 
   def applySideEffects(config: BeSimulatorConfig, simulatorState: BeSimulatorState): BeSimulatorState = simulatorState
-  
-  override def getChildren: List[(BeChildRole, BeExpression)] = List()
+
+  override def getChildren: List[(BeChildRole, BeExpression)] = List(  )
 
   override def evaluateBlock(simulatorState: BeSimulatorState): BeUseValue = this
 }

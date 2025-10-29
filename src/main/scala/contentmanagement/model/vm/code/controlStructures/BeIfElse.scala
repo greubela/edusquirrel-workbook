@@ -1,7 +1,8 @@
-package contentmanagement.model.vm.expressions.controlStructures
+package contentmanagement.model.vm.code.controlStructures
 
 import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
-import contentmanagement.model.vm.expressions.{BeExpression, BeSequence, BeUseUnitValue, BeUseValue}
+import contentmanagement.model.vm.code.usage.{BeUseUnitValue, BeUseValue}
+import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorState}
 import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo}
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
@@ -9,7 +10,7 @@ import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 
 import scala.collection.mutable.ListBuffer
 
-case class BeExpressionIfElse(
+case class BeIfElse(
                                conditionSource: BeExpression,
                                ifBody: BeSequence,
                                elseBody: BeSequence
@@ -17,7 +18,7 @@ case class BeExpressionIfElse(
 
   override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = ???
 
-  override def hasSideEffects: Boolean = false
+  override def hasThisExpressionSideEffects: Boolean = false
 
   override def getSyntaxErrors: Seq[BeInfo] =
     if (!conditionSource.canEvaluateTo.contains(BeDataType.Boolean)) List(BeInfo(LanguageMap.universalMap("if/else condition must evaluate to a boolean!"), BeInfo.SyntaxError.TypeMismatch))
@@ -28,7 +29,6 @@ case class BeExpressionIfElse(
   override def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Unit)
 
   override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock = ???
-
 
   override def evaluateBlock(simulatorState: BeSimulatorState): BeUseValue = BeUseUnitValue
   

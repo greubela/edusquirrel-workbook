@@ -3,14 +3,15 @@ package interactionPlugins.blockEnvironment.programming.blocks.parents
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Var
 import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreePosition
-import contentmanagement.model.vm.expressions.*
+import contentmanagement.model.vm.code.*
+import contentmanagement.model.vm.code.usage.{BeFunctionCall, BeUseNonExistingValue, BeUseValue}
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.{FunctionParameter, NoRole}
 import interactionPlugins.blockEnvironment.config.*
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.blocks.*
-import interactionPlugins.blockEnvironment.programming.blocks.other.BeBlockReference.*
 import interactionPlugins.blockEnvironment.programming.blocks.other.*
+import interactionPlugins.blockEnvironment.programming.blocks.other.BeBlockReference.*
 import interactionPlugins.blockEnvironment.programming.blocks.variable.BeBlockPlaceholderMissingValue
 import interactionPlugins.blockEnvironment.programming.editor.elements.BeTreeControllerConfig
 import interactionPlugins.blockEnvironment.programming.shapes.*
@@ -19,15 +20,15 @@ import interactionPlugins.blockEnvironment.programming.shapes.composite.{HBoxSam
 case class BeBlockCallSingleReturnFunction(
                                             function: BeFunctionCall,
                                             override val positionAsChild: BeChildPosition
-                                          ) extends BeBlockParent  {
+                                          ) extends BeBlockParent {
 
   def getDisplayChildren(myPosition: NodeBasedTreePosition, treeControllerConfig: BeTreeControllerConfig, displayConfig: BeDisplayConfig, existingChildren: List[ReferenceExistingBlock]): List[BeBlockReference] = {
 
-    val functionNameDisplay = NewBlock(BeBlockTextDisplay(function.funcDef.signature.name, BeChildPosition(myPosition, NoRole)))
+    val functionNameDisplay = NewBlock(BeBlockTextDisplay(function.funcDef.signature.name, myPosition))
 
     val parameterValue = function.funcDef.signature.parameter.zipWithIndex.map((curPar, parNr) => {
       val parChildOp = existingChildren.find(_.nrInChildList == parNr)
-      val alt = NewBlock(BeBlockPlaceholderMissingValue(BeUseNonExistingValue, BeChildPosition(myPosition, FunctionParameter(parNr))))
+      val alt = NewBlock(BeBlockPlaceholderMissingValue(BeUseNonExistingValue, BeChildPosition(myPosition, FunctionParameter(parNr), positionAsChild.curScope)))
       parChildOp.getOrElse(alt)
     })
 
@@ -45,7 +46,7 @@ case class BeBlockCallSingleReturnFunction(
 
   }
 
-  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = BeChildPosition(positionAsChild.parentPosition, newRole))
+  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = positionAsChild.copy(roleInParent = newRole))
 
   override def calcAssociatedExpression(childrenWithExpression: List[(BeChildRole, BeExpression)]): BeExpression = {
 

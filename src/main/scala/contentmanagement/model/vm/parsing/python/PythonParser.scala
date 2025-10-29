@@ -1,10 +1,11 @@
 package contentmanagement.model.vm.parsing.python
 
-import contentmanagement.model.vm.expressions.*
-import contentmanagement.model.vm.expressions.controlStructures.BeExpressionIfElse
-
+import contentmanagement.model.vm.code.*
+import contentmanagement.model.vm.code.controlStructures.{BeIfElse, BeSequence}
+import contentmanagement.model.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import fastparse.*
 import fastparse.NoWhitespace.*
+
 import scala.scalajs.js.internal.UnitOps.unitOrOps
 
 object PythonParser {
@@ -35,7 +36,7 @@ object PythonParser {
         val conditionExpr = BeExpressionUnsupported(cond)
         val thenBodyExpr = parseBlockExpressions(ifBodyText)
         val elseBodyExpr = elseBodyText.map(parseBlockExpressions).getOrElse(BeSequence(false, List()))
-        BeExpressionIfElse(conditionExpr, thenBodyExpr, elseBodyExpr)
+        BeIfElse(conditionExpr, thenBodyExpr, elseBodyExpr)
     }
 
   private def simpleStatement[$: P]: P[BeExpression] =

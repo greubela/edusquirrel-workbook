@@ -3,8 +3,8 @@ package interactionPlugins.blockEnvironment.programming.blocks.variable
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Var
 import com.raquo.laminar.api.L.svg
-import contentmanagement.model.vm.expressions.BeExpression
-import contentmanagement.model.vm.expressions.defining.BeDefineVariable
+import contentmanagement.model.vm.code.BeExpression
+import contentmanagement.model.vm.code.defining.BeDefineVariable
 import contentmanagement.model.vm.types.*
 import contentmanagement.webElements.svg.AppSvgElement
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
@@ -31,7 +31,7 @@ case class BeBlockDefineVariable(
     ))
   }
 
-  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = BeChildPosition(positionAsChild.parentPosition, newRole))
+  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = positionAsChild.copy(roleInParent = newRole))
 
 
 

@@ -1,0 +1,203 @@
+/* Import colors and base styles */
+@import url('colors.css');
+
+
+/* --- Fullscreen Overlay --- */
+
+.fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 0;
+}
+
+.fullscreen-overlay.is-visible {
+  display: flex;
+}
+
+.fullscreen-content {
+  position: relative;
+  width: 90vw;
+  height: 90vh;
+  max-width: 90vw;
+  max-height: 90vh;
+  background-color: var(--color-surface, #ffffff);
+  border-radius: var(--standard-border-radius, 12px);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  display: flex;
+}
+
+.fullscreen-element-slot {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.fullscreen-element-slot > * {
+  flex: 1 1 auto;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.fullscreen-close-button {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  width: 3rem;
+  height: 3rem;
+  border: none;
+  border-radius: 999px;
+  background-color: rgba(0, 0, 0, 0.65);
+  color: #ffffff;
+  font-size: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.fullscreen-close-button:hover,
+.fullscreen-close-button:focus-visible {
+  background-color: rgba(0, 0, 0, 0.8);
+  transform: scale(1.05);
+  outline: none;
+}
+
+.fullscreen-placeholder {
+  display: none !important;
+}
+
+body.fullscreen-active {
+  overflow: hidden;
+}
+
+.card-display {
+  display: flex;
+  gap: var(--padding-small);
+  flex-wrap: nowrap;
+}
+
+.card-vector,
+.card-pixel {
+  width: var(--card-width);
+  height: var(--card-height);
+  background-color: var(--bg-card-dark);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 3px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-light);
+  flex-shrink: 0;
+}
+
+.download-links {
+  height: 20%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: var(--padding-small);
+  background-color: var(--bg-card);
+  border-top: 2px solid var(--color-border);
+}
+
+
+.download-btn:hover {
+  background-color: var(--color-accent-primary);
+  transform: scale(1.03);
+}
+
+.download-btn:focus {
+  border-color: var(--color-focus);
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.download-btn.hover-border:hover {
+  border-color: var(--color-accent-primary);
+}
+
+/* Right Section */
+.right-section {
+  width: 50%;
+  padding: var(--padding-medium);
+  background-color: var(--color-surface-subtle);
+  display: flex;
+  align-items: center;
+  overflow: auto;
+}
+
+
+.editor h2 {
+  margin-bottom: var(--padding-small);
+  color: var(--color-text-primary);
+  font-weight: 600;
+  font-size: var(--font-size-header);
+  text-align: center;
+}
+
+
+.selector-group {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-small);
+  flex-wrap: nowrap;
+}
+
+.properties {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+
+
+.input-component input,
+.input-component textarea,
+.input-component select {
+  padding: 8px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-input-background);
+  color: var(--color-text-primary);
+  width: 100%;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.input-component textarea {
+  resize: vertical;
+}
+
+.input-component select[multiple] {
+  height: 100px;
+}
+
+.input-component input.hover-border:hover,
+.input-component textarea.hover-border:hover,
+.input-component select.hover-border:hover {
+  border-color: var(--color-accent-primary);
+}
+
+.input-component input:focus,
+.input-component textarea:focus,
+.input-component select:focus {
+  border-color: var(--color-focus);
+  box-shadow: var(--shadow-focus);
+  outline: none;
+}
+

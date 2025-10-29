@@ -2,8 +2,9 @@ package interactionPlugins.blockEnvironment.programming.blocks.variable
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{Var, svg}
-import contentmanagement.model.vm.expressions.defining.BeDefineVariable
-import contentmanagement.model.vm.expressions.{BeExpression, BeUseValue, BeUseValueReferencing}
+import contentmanagement.model.vm.code.defining.BeDefineVariable
+import contentmanagement.model.vm.code.usage.{BeUseValue, BeUseValueReferencing}
+import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.{BeBlockContext, BeProgram}
@@ -30,6 +31,6 @@ case class BeBlockUseReference(
   }
 
 
-  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = BeChildPosition(positionAsChild.parentPosition, newRole))
+  override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = positionAsChild.copy(roleInParent = newRole))
 
 }
