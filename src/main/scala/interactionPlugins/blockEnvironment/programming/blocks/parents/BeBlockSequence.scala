@@ -15,8 +15,8 @@ import interactionPlugins.blockEnvironment.programming.blocks.other.BeBlockRefer
 import interactionPlugins.blockEnvironment.programming.blocks.variable.BeBlockPlaceholerOptionalValue
 import interactionPlugins.blockEnvironment.programming.blocks.{BeBlock, BeBlockParent}
 import interactionPlugins.blockEnvironment.programming.editor.elements.BeTreeControllerConfig
-import interactionPlugins.blockEnvironment.programming.shapes.composite.{HBoxSameHeight, VBoxSameWidth}
-import interactionPlugins.blockEnvironment.programming.shapes.controlflow.ControlFlowDown
+import interactionPlugins.blockEnvironment.programming.shapes.composite.{HBoxSameHeight, HorizontalAlignment, TableShape, VBoxSameWidth}
+import interactionPlugins.blockEnvironment.programming.shapes.controlflow.ControlFlowConnectorBackground
 import interactionPlugins.blockEnvironment.programming.shapes.{BeShape, BeShapeAmendFactory}
 
 case class BeBlockSequence(expression: BeSequence, override val positionAsChild: BeChildPosition) extends BeBlockParent {
@@ -37,7 +37,12 @@ case class BeBlockSequence(expression: BeSequence, override val positionAsChild:
     val factory = BeShapeAmendFactory(rendererConfig)
     val signalAmends = factory.muteOnTreeDragged(inProgram, controllerStateVar.signal, factory.defaultControlFlowBackgroundAmend)
 
-    val controlFlowShape = ControlFlowDown.addSignalAmends(signalAmends)
+    val controlFlowShape = ControlFlowConnectorBackground.addSignalAmends(signalAmends)
+    val controlFlows = renderedDisplayChildren.map(_ => controlFlowShape)
+
+    val allChildren = renderedDisplayChildren.zip(controlFlows).flatMap( tup => List(tup._2, tup._1._2))
+
+    TableShape(allChildren, List(HorizontalAlignment.Left, HorizontalAlignment.Left), List(), false)
 
     val childrenWithControlFlow = renderedDisplayChildren.map(tup => {
       HBoxSameHeight(List(controlFlowShape, tup._2), false)

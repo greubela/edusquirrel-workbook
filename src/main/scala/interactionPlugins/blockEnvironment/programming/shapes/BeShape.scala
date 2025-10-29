@@ -18,7 +18,7 @@ import com.raquo.laminar.api.L.componentToNode
 import com.raquo.laminar.api.textToTextNode
 import com.raquo.laminar.api.L.componentToInserter
 import com.raquo.laminar.api.L.textToInserter
-import interactionPlugins.blockEnvironment.programming.shapes.controlflow.ControlFlowDown
+import interactionPlugins.blockEnvironment.programming.shapes.controlflow.ControlFlowConnectorBackground
 import interactionPlugins.blockEnvironment.programming.shapes.datatypes.{DuckShape, RectangleShape, UnitShape}
 
 sealed trait BeShape {
@@ -57,7 +57,7 @@ object BeShape {
 
   }
 
-  val allAtomicShapes: List[BeShapeAtomic] = List(ControlFlowDown, DuckShape, RectangleShape, UnitShape)
+  val allAtomicShapes: List[BeShapeAtomic] = List(ControlFlowConnectorBackground, DuckShape, RectangleShape, UnitShape)
     
   abstract class BeShapePathBased extends BeShapeAtomic with BeShapeContainerable {
 

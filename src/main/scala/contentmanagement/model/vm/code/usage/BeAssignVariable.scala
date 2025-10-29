@@ -1,10 +1,10 @@
 package contentmanagement.model.vm.code.usage
 
 import contentmanagement.model.language.AppLanguage.{Java, JavaScript, Lisp, Python, Rust}
-import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
+import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
 import contentmanagement.model.vm.code.defining.BeDefineVariable
 import contentmanagement.model.vm.code.BeExpression
-import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType}
+import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo}
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 
@@ -25,7 +25,9 @@ case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) exten
 
   override def hasThisExpressionSideEffects: Boolean = true
 
-  override def getSyntaxErrors: Seq[BeInfo] = value.getSyntaxErrors
+  override def getSyntaxErrors: Seq[BeInfo] = if(target.canEvaluateTo.intersect(value.canEvaluateTo).nonEmpty) List() else {
+    List(BeInfo(LanguageMap.universalMap("Variable " + target + " cannot take value " + value), BeInfo.SyntaxError.TypeMismatch))
+  }
 
   override def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Unit)
 

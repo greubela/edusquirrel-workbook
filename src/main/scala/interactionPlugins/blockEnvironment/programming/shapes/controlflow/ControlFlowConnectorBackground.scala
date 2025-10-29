@@ -6,7 +6,7 @@ import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.shapes.BeShape.BeShapePathBased
 import interactionPlugins.blockEnvironment.programming.shapes.ShapeFactory
 
-case object ControlFlowDown extends BeShapePathBased {
+case object ControlFlowConnectorBackground extends BeShapePathBased {
 
   private val connectorSegmentSize: Double = 5
 

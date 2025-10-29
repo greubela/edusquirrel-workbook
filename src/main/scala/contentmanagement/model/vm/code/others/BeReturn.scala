@@ -1,6 +1,6 @@
 package contentmanagement.model.vm.code.others
 
-import contentmanagement.model.language.AppLanguage.{Java, JavaScript, Lisp, Python, Rust}
+import contentmanagement.model.language.AppLanguage.*
 import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
 import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo}

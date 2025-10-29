@@ -1,18 +1,20 @@
 package contentmanagement.model.vm.parsing.python
 
 import contentmanagement.model.language.AppLanguage.English
-import contentmanagement.model.language.LanguageMap
+import contentmanagement.model.language.{HumanLanguage, LanguageMap}
 import contentmanagement.model.vm.code.*
-import contentmanagement.model.vm.code.controlStructures.{BeForEach, BeIfElse, BeRepeatNr, BeSequence, BeTryExcept, BeWhile}
-import contentmanagement.model.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineStructure, BeDefineVariable}
-import contentmanagement.model.vm.code.errors.{BeExpressionThrowError, BeExpressionUnparsable, BeExpressionUnsupported}
-import contentmanagement.model.vm.code.others.BeReturn
-import contentmanagement.model.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseUnitValue, BeUseValue, BeUseValueLiteral, BeUseValueReferencing}
+import contentmanagement.model.vm.code.controlStructures.*
+import contentmanagement.model.vm.code.defining.*
+import contentmanagement.model.vm.code.errors.*
+import contentmanagement.model.vm.code.others.*
+import contentmanagement.model.vm.code.usage.*
 import contentmanagement.model.vm.types.BeDataType
 import fastparse.*
 import fastparse.NoWhitespace.*
+import sourcecode.Text.generate
 
 import scala.collection.mutable
+import scala.scalajs.js.internal.UnitOps.unitOrOps
 
 object PythonParser {
 
@@ -87,13 +89,13 @@ object PythonParser {
     }
 
   private def returnStatement[$: P]: P[BeExpression] =
-    P(ws.? ~ "return" ~ ws.? ~ CharsWhile(isLineChar).?).map { exprOpt =>
+    P(ws.? ~ "return" ~ ws.? ~ CharsWhile(isLineChar).!.?).map { exprOpt =>
       val trimmed = exprOpt.map(_.trim).filter(_.nonEmpty)
       BeReturn(trimmed.map(parseInlineExpression))
     }
 
   private def raiseStatement[$: P]: P[BeExpression] =
-    P(ws.? ~ "raise" ~ ws.? ~ CharsWhile(isLineChar).?).map { exprOpt =>
+    P(ws.? ~ "raise" ~ ws.? ~ CharsWhile(isLineChar).!.?).map { exprOpt =>
       val trimmed = exprOpt.map(_.trim).filter(_.nonEmpty)
       BeExpressionThrowError(trimmed.map(parseInlineExpression))
     }
@@ -124,7 +126,7 @@ object PythonParser {
       val members = bodySequence.body
       val attributes = members.collect { case variable: BeDefineVariable => variable }
       val methods = members.collect { case func: BeDefineFunction => func }
-      val nameMap = LanguageMap.universalMap(name)
+      val nameMap: LanguageMap[HumanLanguage] = LanguageMap.universalMap(name)
       val placeholderClass = BeDefineClass(nameMap, attributes, List())
       val methodsWithClass = methods.map(method => method.copy(functionTypeInfo = method.functionTypeInfo.copy(isMethodInClass = Some(placeholderClass))))
       val finalClass = placeholderClass.copy(methods = methodsWithClass)
@@ -196,8 +198,10 @@ object PythonParser {
     P(integerLiteral.!).map(num => BeUseValueLiteral(num))
 
   private def stringLiteral[$: P]: P[BeUseValue] =
-    P(('"' ~ CharsWhile(_ != '"').! ~ '"').map(content => BeUseValueLiteral(s"\"$content\"")) |
-      ('\'' ~ CharsWhile(_ != '\'').! ~ '\'').map(content => BeUseValueLiteral(s"'$content'")))
+    P(
+      ("\"" ~ CharsWhile(_ != '"').! ~ "\"").map(content => BeUseValueLiteral(s"\"$content\"")) |
+        ("'"  ~ CharsWhile(_ != '\'').! ~ "'").map(content  => BeUseValueLiteral(s"'$content'"))
+    )
 
   private def integerLiteral[$: P]: P[String] =
     P(CharIn("0-9").rep(1).!)

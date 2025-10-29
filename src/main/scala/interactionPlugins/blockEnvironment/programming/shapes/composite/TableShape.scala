@@ -4,16 +4,20 @@ import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.shapes.BeShape
 
+import interactionPlugins.blockEnvironment.programming.shapes.BeShape.*
+import interactionPlugins.blockEnvironment.programming.shapes.BeShape
+
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
+// todo fix as not working... :(
 case class TableShape(
     override val children: List[BeShape],
-    columnCount: Int,
-    columnAlignments: List[HorizontalAlignment] = Nil,
-    rowAlignments: List[VerticalAlignment] = Nil,
+    columnAlignments: List[HorizontalAlignment],
+    rowAlignments: List[VerticalAlignment] = List(),
     usePadding: Boolean = true
 ) extends BeShapeBox {
+  val columnCount: Int = columnAlignments.length
 
   require(columnCount > 0, "columnCount must be positive")
 

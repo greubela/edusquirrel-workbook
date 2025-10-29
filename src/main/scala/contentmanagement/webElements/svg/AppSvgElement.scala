@@ -3,13 +3,16 @@ package contentmanagement.webElements.svg
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import com.raquo.laminar.codecs.StringAsIsCodec
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.atomarElements.{AppCircleSvgElement, AppPathSvgElement, AppRectangleSvgElement, AppTextSvgElement}
 import contentmanagement.webElements.svg.compositeElements.{AppDecoratedSvgElement, AppGroupSvgElement}
 import contentmanagement.model.AppFont
-import scala.math.BigDecimal.RoundingMode
 
+import scala.math.BigDecimal.RoundingMode
+import com.raquo.laminar.keys.{StyleProp, SvgAttr}
+// todo: verify overlays and finish for other elements... move to subclasses?
 trait AppSvgElement {
 
   def staticBoundingBox: Bounds[Double]
@@ -36,13 +39,6 @@ trait AppSvgElement {
         withOverlayInformation(_ => List(), _ => List())
     }
 
-  def withOverlayInformation(
-      overlays: List[AppSvgElement],
-      underlays: List[AppSvgElement] = List(),
-      overlayMods: Seq[L.Modifier[L.SvgElement]] = AppSvgElement.DefaultOverlayMods,
-      underlayMods: Seq[L.Modifier[L.SvgElement]] = AppSvgElement.DefaultUnderlayMods
-  ): AppDecoratedSvgElement =
-    withOverlayInformation(_ => overlays, _ => underlays, overlayMods, underlayMods)
 
   def withOverlayInformation(
       overlays: Var[Boolean] => List[AppSvgElement],
@@ -134,11 +130,17 @@ trait AppSvgElement {
   */
   def flatten: List[AppSvgElement]
 }
-
 object AppSvgElement {
+  // ---- custom SVG attributes (note the third param = None) ----
+  private val pointerEventsAttr   = SvgAttr("pointer-events",   StringAsIsCodec, None)
+  private val strokeDasharrayAttr = SvgAttr("stroke-dasharray", StringAsIsCodec, None)
+  private val cursorAttr          = SvgAttr("cursor",           StringAsIsCodec, None)
 
-  private val pointerEventsNone: L.Modifier[L.SvgElement] = svg.attr("pointer-events") := "none"
-  private val pointerEventsVisiblePainted: L.Modifier[L.SvgElement] = svg.attr("pointer-events") := "visiblePainted"
+  // ---- convenience modifiers using those attrs ----
+  private val pointerEventsNone: L.Modifier[L.SvgElement] =
+    pointerEventsAttr := "none"
+  private val pointerEventsVisiblePainted: L.Modifier[L.SvgElement] =
+    pointerEventsAttr := "visiblePainted"
 
   val DefaultOverlayContainerMods: Seq[L.Modifier[L.SvgElement]] =
     List(svg.visibility := "hidden")
@@ -149,8 +151,9 @@ object AppSvgElement {
   val DefaultOverlayMods: Seq[L.Modifier[L.SvgElement]] =
     List(svg.fill := "#e53935", svg.stroke := "#e53935", svg.strokeWidth := "2")
 
+  // Replace L.style("stroke-dasharray") with our custom attr
   val DefaultUnderlayMods: Seq[L.Modifier[L.SvgElement]] =
-    List(svg.stroke := "#e53935", svg.fill := "none", svg.strokeDasharray := "4 2")
+    List(svg.stroke := "#e53935", svg.fill := "none", strokeDasharrayAttr := "4 2")
 
   private[svg] def overlayVisibilityModifier(isVisible: Boolean): L.Modifier[L.SvgElement] =
     if (isVisible) svg.visibility := "visible" else svg.visibility := "hidden"
@@ -158,14 +161,14 @@ object AppSvgElement {
   private[svg] def overlayContainerHoverMods(isHovered: Var[Boolean]): Seq[L.Modifier[L.SvgElement]] =
     Seq(
       pointerEventsVisiblePainted,
-      onPointerEnter.mapTo(true) --> isHovered.writer,
+      onPointerEnter.mapTo(true)  --> isHovered.writer,
       onPointerLeave.mapTo(false) --> isHovered.writer
     )
 
   private[svg] def hoverPersistenceMods(isHovered: Var[Boolean]): Seq[L.Modifier[L.SvgElement]] =
     Seq(
       pointerEventsVisiblePainted,
-      onPointerEnter.mapTo(true) --> isHovered.writer,
+      onPointerEnter.mapTo(true)  --> isHovered.writer,
       onPointerLeave.mapTo(false) --> isHovered.writer
     )
 
@@ -178,10 +181,13 @@ object AppSvgElement {
   private val coordinateTextMods: Seq[L.Modifier[L.SvgElement]] =
     List(svg.fill := "#212121")
   private val cornerPointRadius: Double = 4.5
+
   private val cornerPointMods: Seq[L.Modifier[L.SvgElement]] =
-    List(svg.fill := "#e53935", svg.stroke := "#b71c1c", svg.strokeWidth := "1.5", svg.cursor := "pointer")
+    List(svg.fill := "#e53935", svg.stroke := "#b71c1c", svg.strokeWidth := "1.5", cursorAttr := "pointer")
+
   private val controlLineMods: Seq[L.Modifier[L.SvgElement]] =
-    List(svg.stroke := "#d32f2f", svg.strokeDasharray := "6 4", svg.strokeWidth := "1.5", svg.opacity := "0.75", pointerEventsNone)
+    List(svg.stroke := "#d32f2f", strokeDasharrayAttr := "6 4", svg.strokeWidth := "1.5", svg.opacity := "0.75", pointerEventsNone)
+
   private val highlightPathMods: Seq[L.Modifier[L.SvgElement]] =
     List(svg.stroke := "#ff7043", svg.strokeWidth := "6", svg.fill := "none", svg.opacity := "0.5", pointerEventsNone)
 
@@ -232,3 +238,4 @@ object AppSvgElement {
     decimal.toPlainString
   }
 }
+

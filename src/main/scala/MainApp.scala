@@ -37,7 +37,7 @@ def doSomeCalculations(): Unit = {
     |""".stripMargin
 
   val expression = PythonParser.parsePython(somePython)
-  //println("expression: " + expression)
+  println("expression: " + expression)
 }
 
 val fullscreenElement: HtmlFullScreenElement = HtmlFullScreenElement()

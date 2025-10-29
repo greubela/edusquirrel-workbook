@@ -10,7 +10,8 @@ import scala.collection.mutable
 case class VBoxSameWidth(
     override val children: List[BeShape],
     usePadding: Boolean = true,
-    horizontalAlignment: HorizontalAlignment = HorizontalAlignment.Left
+    horizontalAlignment: HorizontalAlignment = HorizontalAlignment.Center,
+    verticalAlignment: VerticalAlignment = VerticalAlignment.Center
 ) extends BeShapeBox {
 
   def displaySize(config: BeRenderingConfig): Dimension[Double] = {
@@ -29,29 +30,47 @@ case class VBoxSameWidth(
     val minSizes: List[Dimension[Double]] = children.map(_.displaySize(config))
 
     val widthMax = minSizes.map(_.width).maxOption.getOrElse(0.0)
+    val heightSum = minSizes.map(_.height).sum
 
-    val res = mutable.HashMap[BeShape, Bounds[Double]]()
-    val availableWidth = bounds.dimension.width - widthMax
-    val baseOffset = horizontalAlignment match
-      case HorizontalAlignment.Left   => 0.0
+    val paddingWidth = if (usePadding) config.paddingSmall.width * 2 else 0.0
+    val paddingHeight = if(usePadding) config.paddingSmall.height * (children.size+1) else 0.0
+
+    val availableWidth = bounds.dimension.width - widthMax - paddingWidth
+    val horizontalOffset = horizontalAlignment match
+      case HorizontalAlignment.Left => 0.0
       case HorizontalAlignment.Center => availableWidth / 2
-      case HorizontalAlignment.Right  => availableWidth
-    val safeOffset = math.max(0.0, baseOffset)
+      case HorizontalAlignment.Right => availableWidth
+    val safeHorizontalOffset = math.max(0.0, horizontalOffset)
 
-    var curPoint = bounds.startPoint
+    val availableHeight = bounds.dimension.height - heightSum - paddingHeight
+    val verticalOffset = verticalAlignment match
+      case VerticalAlignment.Top => 0.0
+      case VerticalAlignment.Center => availableHeight / 2
+      case VerticalAlignment.Bottom => availableHeight
+    val safeVerticalOffset = math.max(0.0, verticalOffset)
+
+
+    val startPoint = bounds.startPoint.moveWithDimension(
+      Dimension[Double](safeHorizontalOffset, safeVerticalOffset)
+    )
+
+    var curPoint = startPoint
+    val res = mutable.HashMap[BeShape, Bounds[Double]]()
 
     for ((curChild, index) <- children.zipWithIndex) {
-      val childDim = minSizes(index).ensureWidth(widthMax)
-      val childStart = Point[Double](bounds.startPoint.x + safeOffset, curPoint.y)
-      val childBounds = childStart.withDimension(childDim)
       if (usePadding) {
         curPoint = curPoint.moveWithDimension(Dimension[Double](0, config.paddingSmall.height))
       }
+      val childDim = minSizes(index).ensureWidth(widthMax)
+      val childBounds = curPoint.withDimension(childDim)
+
       curPoint = curPoint.moveWithDimension(Dimension[Double](0, childDim.height))
       res.put(curChild, childBounds)
     }
 
     res.toMap
+
+
   }
 
 }
