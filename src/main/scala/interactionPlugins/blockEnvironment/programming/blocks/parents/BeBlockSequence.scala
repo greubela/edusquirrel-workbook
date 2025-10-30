@@ -42,12 +42,9 @@ case class BeBlockSequence(expression: BeSequence, override val positionAsChild:
 
     val allChildren = renderedDisplayChildren.zip(controlFlows).flatMap( tup => List(tup._2, tup._1._2))
 
+    println("BeBlockSequence::render -> allChildren:" + allChildren.mkString("\n", "\n  ", ""))
     TableShape(allChildren, List(HorizontalAlignment.Left, HorizontalAlignment.Left), List(), false)
 
-    val childrenWithControlFlow = renderedDisplayChildren.map(tup => {
-      HBoxSameHeight(List(controlFlowShape, tup._2), false)
-    })
-    VBoxSameWidth(childrenWithControlFlow, false)
   }
 
   override def changeRole(newRole: BeChildRole): BeBlock = this.copy(positionAsChild = positionAsChild.copy(roleInParent = newRole))

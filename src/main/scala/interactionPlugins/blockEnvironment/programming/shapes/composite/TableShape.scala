@@ -11,6 +11,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 // todo fix as not working... :(
+// todo add method children -> getRow(nr) and getColumn(nr)
 case class TableShape(
     override val children: List[BeShape],
     columnAlignments: List[HorizontalAlignment],
