@@ -21,7 +21,11 @@ case class CodeStringBuilder(initStr: String = "") {
   }
 
   def appendNextLine(str: String): CodeStringBuilder = {
-    curString.append("\n" + ("    " * curIntLevel) + str)
+    if (curString.nonEmpty) {
+      curString.append("\n")
+    }
+    curString.append("    " * curIntLevel)
+    curString.append(str)
     this
   }
 

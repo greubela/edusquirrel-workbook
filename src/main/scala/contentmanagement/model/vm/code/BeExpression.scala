@@ -1,8 +1,8 @@
 package contentmanagement.model.vm.code
 
 import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreeImpl
+import contentmanagement.model.language.AppLanguage
 import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
-import contentmanagement.model.vm.code.controlStructures.BeSequence
 import contentmanagement.model.vm.simulation.{BeExpressionExecutor, BeSimulatorConfig, BeSimulatorState}
 import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
@@ -49,7 +49,28 @@ trait BeExpression {
 
 object BeExpression {
 
-  lazy val pass: BeExpression = new BeSequence(true, List())
+  private case object BePassExpression extends BeExpression {
+
+    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
+      programmingLanguage match {
+        case AppLanguage.Python => "pass"
+        case _ => ""
+      }
+    }
+
+    override def hasThisExpressionSideEffects: Boolean = false
+
+    override def getSyntaxErrors: Seq[BeInfo] = List()
+
+    override def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Unit)
+
+    override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock =
+      throw new NotImplementedError("Block rendering is not implemented for the pass expression")
+
+    override def getChildren: List[(BeChildRole, BeExpression)] = List()
+  }
+
+  lazy val pass: BeExpression = BePassExpression
 
   lazy val NoOp: BeExpression = new BeExpression {
 

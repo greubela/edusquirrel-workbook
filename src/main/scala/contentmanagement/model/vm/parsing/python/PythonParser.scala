@@ -21,6 +21,45 @@ object PythonParser {
   private val definedStructures: mutable.ListBuffer[BeDefineStructure] = mutable.ListBuffer()
   private val knownFunctions: mutable.Map[String, BeDefineFunction] = mutable.Map()
   private val knownVariables: mutable.Map[String, BeDefineVariable] = mutable.Map()
+  private val reservedKeywords: Set[String] = Set(
+    "False",
+    "None",
+    "True",
+    "and",
+    "as",
+    "assert",
+    "async",
+    "await",
+    "break",
+    "case",
+    "class",
+    "continue",
+    "def",
+    "del",
+    "elif",
+    "else",
+    "except",
+    "finally",
+    "for",
+    "from",
+    "global",
+    "if",
+    "import",
+    "in",
+    "is",
+    "lambda",
+    "match",
+    "nonlocal",
+    "not",
+    "or",
+    "pass",
+    "raise",
+    "return",
+    "try",
+    "while",
+    "with",
+    "yield"
+  )
 
   def parsePython(source: String): BeExpression = {
     definedStructures.clear()
@@ -75,7 +114,7 @@ object PythonParser {
     }
 
   private def forStatement[$: P]: P[BeExpression] =
-    P(ws.? ~ "for" ~ ws.? ~ identifier.! ~ ws.? ~ "in" ~ ws.? ~ CharsWhile(c => c != ':' && c != '\n' && c != '\r', 1).! ~ ws.? ~ ":" ~ lineSep ~ blockBody).map {
+    P(ws.? ~ "for" ~ ws.? ~ identifier ~ ws.? ~ "in" ~ ws.? ~ CharsWhile(c => c != ':' && c != '\n' && c != '\r', 1).! ~ ws.? ~ ":" ~ lineSep ~ blockBody).map {
       case (name, iterableText, bodyText) =>
         val loopVariable = resolveVariable(name)
         val iterableExpr = parseInlineExpression(iterableText)
@@ -101,7 +140,7 @@ object PythonParser {
     }
 
   private def assignmentStatement[$: P]: P[BeExpression] =
-    P(ws.? ~ identifier.! ~ ws.? ~ "=" ~ !"=" ~ ws.? ~ CharsWhile(isLineChar, 1).!).map {
+    P(ws.? ~ identifier ~ ws.? ~ "=" ~ !"=" ~ ws.? ~ CharsWhile(isLineChar, 1).!).map {
       case (name, valueText) =>
         val variable = resolveVariable(name)
         val valueExpr = parseInlineExpression(valueText.trim)
@@ -121,7 +160,7 @@ object PythonParser {
     }
 
   private def classStatement[$: P]: P[BeExpression] =
-    P(ws.? ~ "class" ~ ws.? ~ identifier.! ~ ws.? ~ ":" ~ lineSep ~ blockBody).map { case (name, bodyText) =>
+    P(ws.? ~ "class" ~ ws.? ~ identifier ~ ws.? ~ ":" ~ lineSep ~ blockBody).map { case (name, bodyText) =>
       val bodySequence = parseBlockExpressions(bodyText)
       val members = bodySequence.body
       val attributes = members.collect { case variable: BeDefineVariable => variable }
@@ -135,7 +174,7 @@ object PythonParser {
     }
 
   private def functionDefinition[$: P]: P[BeExpression] =
-    P(ws.? ~ "def" ~ ws.? ~ identifier.! ~ ws.? ~ "(" ~ parameterList ~ ")" ~ returnAnnotation.? ~ ws.? ~ ":" ~ lineSep ~ blockBody).map {
+    P(ws.? ~ "def" ~ ws.? ~ identifier ~ ws.? ~ "(" ~ parameterList ~ ")" ~ returnAnnotation.? ~ ws.? ~ ":" ~ lineSep ~ blockBody).map {
       case (name, params, returnTypeOpt, bodyText) =>
         val paramDefinitions = params.map { case (paramName, typeHint) =>
           BeDefineVariable(LanguageMap.universalMap(paramName), mapType(typeHint))
@@ -157,7 +196,7 @@ object PythonParser {
     P(parameter.rep(sep = ws.? ~ "," ~ ws.?)).map(_.toList)
 
   private def parameter[$: P]: P[(String, Option[String])] =
-    P(identifier.! ~ (ws.? ~ ":" ~ ws.? ~ CharsWhile(c => c != ',' && c != ')' && c != '\n' && c != '\r').!).?).map {
+    P(identifier ~ (ws.? ~ ":" ~ ws.? ~ CharsWhile(c => c != ',' && c != ')' && c != '\n' && c != '\r').!).?).map {
       case (name, typeHint) => (name, typeHint.map(_.trim).filter(_.nonEmpty))
     }
 
@@ -165,10 +204,21 @@ object PythonParser {
     P(ws.? ~ "->" ~ ws.? ~ CharsWhile(c => c != ':' && c != '\n' && c != '\r', 1).!).map(_.trim)
 
   private def expressionStatement[$: P]: P[BeExpression] =
-    P(ws.? ~ (functionCall | valueLiteralExpression | unsupportedExpression) ~ ws.?)
+    P(ws.!.? ~ (functionCall | valueLiteralExpression | unsupportedExpression) ~ ws.?).map {
+      case (indentOpt, expr) =>
+        indentOpt.filter(_.nonEmpty) match {
+          case Some(indent) =>
+            expr match {
+              case unsupported: BeExpressionUnsupported if !unsupported.originalSource.startsWith(indent) =>
+                unsupported.copy(originalSource = indent + unsupported.originalSource)
+              case _ => expr
+            }
+          case None => expr
+        }
+    }
 
   private def functionCall[$: P]: P[BeExpression] =
-    P(identifier.! ~ ws.? ~ "(" ~ ws.? ~ argumentList ~ ws.? ~ ")").map { case (name, args) =>
+    P(identifier ~ ws.? ~ "(" ~ ws.? ~ argumentList ~ ws.? ~ ")").map { case (name, args) =>
       val function = resolveFunction(name, args.length)
       BeFunctionCall(function, args)
     }
@@ -186,7 +236,7 @@ object PythonParser {
     P(unitLiteral | booleanLiteral | numberLiteral | stringLiteral | identifierValue)
 
   private def identifierValue[$: P]: P[BeUseValue] =
-    P(identifier.!).map(name => BeUseValueReferencing(resolveVariable(name)))
+    P(identifier).map(name => BeUseValueReferencing(resolveVariable(name)))
 
   private def unitLiteral[$: P]: P[BeUseValue] =
     P("None").map(_ => BeUseUnitValue)
@@ -206,8 +256,11 @@ object PythonParser {
   private def integerLiteral[$: P]: P[String] =
     P(CharIn("0-9").rep(1).!)
 
-  private def identifier[$: P]: P[Unit] =
-    P(CharIn("a-zA-Z_") ~ CharIn("a-zA-Z0-9_").rep)
+  private def identifier[$: P]: P[String] =
+    P(CharIn("a-zA-Z_") ~ CharIn("a-zA-Z0-9_").rep).!.filter(name => !reservedKeywords.contains(name))
+
+  private def stripTrailingWhitespace(value: String): String =
+    value.reverse.dropWhile(_.isWhitespace).reverse
 
   private def conditionExpr[$: P]: P[BeExpression] =
     P(CharsWhile(c => c != ':' && c != '\n' && c != '\r', 1).!).map(parseInlineExpression)
@@ -237,7 +290,7 @@ object PythonParser {
     }
 
   private def blockLine[$: P]: P[String] =
-    P("    " ~ CharsWhile(isLineChar).!).map(_.trim)
+    P("    " ~ CharsWhile(isLineChar, 0).!).map(stripTrailingWhitespace)
 
   private def stmtSep[$: P]: P[Unit] =
     P((ws.? ~ lineSep).rep(1))
