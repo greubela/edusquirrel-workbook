@@ -1,11 +1,11 @@
 package interactionPlugins.blockEnvironment.config
 
-case class BeDisplayConfig(useCompactBlocks: Boolean) {
+case class BeDisplayConfig(displayNavigation: Boolean, displayControlFlow: Boolean, compactDefinitions: Boolean) {
 
 }
 
 object BeDisplayConfig {
 
-  def default(): BeDisplayConfig = BeDisplayConfig(true)
+  def default(): BeDisplayConfig = BeDisplayConfig(true, true, true)
 
 }

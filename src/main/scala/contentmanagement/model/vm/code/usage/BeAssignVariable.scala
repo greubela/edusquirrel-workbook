@@ -1,14 +1,18 @@
 package contentmanagement.model.vm.code.usage
 
-import contentmanagement.model.language.AppLanguage.{Java, JavaScript, Lisp, Python, Rust}
+import contentmanagement.model.language.AppLanguage.*
 import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
-import contentmanagement.model.vm.code.defining.BeDefineVariable
 import contentmanagement.model.vm.code.BeExpression
-import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo}
+import contentmanagement.model.vm.code.defining.BeDefineVariable
+import contentmanagement.model.vm.code.tree.BeExpressionNode
+import contentmanagement.model.vm.types.BeInfo.WarningType
+import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 
 case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) extends BeExpression {
+
+  private val assignPossible: BeDataTypeAssigningPossible = target.variableType.canTakeValuesFrom(value.canEvaluateTo)
 
   override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
     val targetName = target.name.getInLanguage(humanLanguage)
@@ -25,17 +29,19 @@ case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) exten
 
   override def hasThisExpressionSideEffects: Boolean = true
 
-  override def getSyntaxErrors: Seq[BeInfo] = if(target.canEvaluateTo.intersect(value.canEvaluateTo).nonEmpty) List() else {
-    List(BeInfo(LanguageMap.universalMap("Variable " + target + " cannot take value " + value), BeInfo.SyntaxError.TypeMismatch))
-  }
 
-  override def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Unit)
 
-  override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock =
+  override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] =
+    BeInfo.typeMismatchInfo("value " + value + " for assigning", target.canEvaluateTo, value.canEvaluateTo).toList
+
+
+  override def canEvaluateTo: BeDataType = BeDataType.Unit
+
+  override def createBlock(): BeBlock =
     throw new NotImplementedError("Block rendering is not implemented for assignments")
 
-  override def getChildren: List[(BeChildRole, BeExpression)] =
-    List((BeChildRole.ValueForVariable(target), value))
+  override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = List()
+  
 
   private def sanitizeRustName(name: String): String =
     if (name.nonEmpty && name.head.isUpper) name.head.toLower + name.tail else name

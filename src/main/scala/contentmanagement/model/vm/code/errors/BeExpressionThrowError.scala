@@ -1,5 +1,5 @@
 package contentmanagement.model.vm.code.errors
-
+/*
 import contentmanagement.model.language.AppLanguage.{Java, JavaScript, Lisp, Python, Rust}
 import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
 import contentmanagement.model.vm.code.BeExpression
@@ -23,13 +23,14 @@ case class BeExpressionThrowError(errorExpression: Option[BeExpression]) extends
 
   override def hasThisExpressionSideEffects: Boolean = true
 
-  override def getSyntaxErrors: Seq[BeInfo] = errorExpression.map(_.getSyntaxErrors).getOrElse(Seq.empty)
+  override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] = errorExpression.map(_.getSyntaxErrorsOfThisStructure).getOrElse(Seq.empty)
 
-  override def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Unit)
+  override def canEvaluateTo: BeDataType = BeDataType.Unit
 
   override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock =
     throw new NotImplementedError("Block rendering is not implemented for throw expressions")
 
   override def getChildren: List[(BeChildRole, BeExpression)] =
-    errorExpression.map(expr => (BeChildRole.ExpressionInBody(0), expr)).toList
+    errorExpression.map(expr => (BeChildRole.ExpressionInSequence(0), expr)).toList
 }
+*/

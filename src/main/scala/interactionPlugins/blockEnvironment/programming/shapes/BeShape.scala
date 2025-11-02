@@ -18,6 +18,7 @@ import com.raquo.laminar.api.L.componentToNode
 import com.raquo.laminar.api.textToTextNode
 import com.raquo.laminar.api.L.componentToInserter
 import com.raquo.laminar.api.L.textToInserter
+import interactionPlugins.blockEnvironment.programming.shapes.BeShape.BeShapeContainerable
 import interactionPlugins.blockEnvironment.programming.shapes.controlflow.ControlFlowConnectorBackground
 import interactionPlugins.blockEnvironment.programming.shapes.datatypes.{DuckShape, RectangleShape, UnitShape}
 
@@ -35,10 +36,12 @@ sealed trait BeShape {
     case AmendedShape(base, amends, signalAmends) => AmendedShape(base, amends ++ newAmends, signalAmends)
     case _ => AmendedShape(this, newAmends, List())
   }
-
 }
 
-
+trait ControlFlowShape extends BeShape{
+  def background: BeShapeContainerable
+  def controlFlowShape: BeShape
+}
 
 case class AmendedShape(baseShape: BeShape, amends: Seq[L.Modifier[L.SvgElement]], amendsSignal: Seq[Signal[L.Modifier[L.SvgElement]]]) extends BeShape {
 
@@ -57,8 +60,8 @@ object BeShape {
 
   }
 
-  val allAtomicShapes: List[BeShapeAtomic] = List(ControlFlowConnectorBackground, DuckShape, RectangleShape, UnitShape)
-    
+  val allAtomicShapes: List[BeShapeAtomic] = List( DuckShape, RectangleShape, UnitShape)
+
   abstract class BeShapePathBased extends BeShapeAtomic with BeShapeContainerable {
 
     protected def getPathBuilder(config: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double]
@@ -79,7 +82,7 @@ object BeShape {
       val spaceBefore = spaceBeforeChild(config, childDimension)
       val spaceAfter = spaceAfterChild(config, childDimension)
       val availableSpace = myDimension.decreaseSize(spaceBefore).decreaseSize(spaceAfter).decreaseSize(childDimension)
-      spaceBefore.asPoint//.increaseSize(Dimension(availableSpace.width / 2, availableSpace.height / 2)).asPoint
+      spaceBefore.asPoint //.increaseSize(Dimension(availableSpace.width / 2, availableSpace.height / 2)).asPoint
     }
 
     def render(config: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {

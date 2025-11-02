@@ -39,7 +39,7 @@ object HtmlBlockLibraryTab {
     BeProgram.createOneParFunc(displayConfig, "move 100", "distance", BeDataType.Numeric, "100"),
     BeProgram.createOneParFunc(displayConfig, "rotate ↺", "degree", BeDataType.Numeric, "90"),
     BeProgram.createOneParFunc(displayConfig, "stringFunc", "someString", BeDataType.String, "This is a text :)"),
-    BeProgram.createSimpleFunc(displayConfig, "add days", List("startDate", "daysToAdd"), List(BeDataType.Date, BeDataType.Numeric), List("11.10.1999", "3"), Some(Set(BeDataType.Date))),
+    BeProgram.createSimpleFunc(displayConfig, "add days", List("startDate", "daysToAdd"), List(BeDataType.Date, BeDataType.Numeric), List("11.10.1999", "3"), Some(BeDataType.Date)),
   )
 
 

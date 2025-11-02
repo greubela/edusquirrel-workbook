@@ -4,11 +4,13 @@ import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreePosition
 import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
 import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.code.controlStructures.BeSequence
+import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import contentmanagement.model.vm.types.*
-import contentmanagement.model.vm.types.BeChildRole.NoRole
+import contentmanagement.model.vm.types.BeChildRole.{BodySequence, NoRole}
+import contentmanagement.model.vm.types.BeScope.InSequenceScope
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-import interactionPlugins.blockEnvironment.programming.blocks.parents.BeBlockStarter
+import interactionPlugins.blockEnvironment.programming.blocks.using.BeBlockStarter
 
 case class BeStartProgram(startSequence: Option[BeSequence]) extends BeExpression {
 
@@ -16,18 +18,17 @@ case class BeStartProgram(startSequence: Option[BeSequence]) extends BeExpressio
 
   override def hasThisExpressionSideEffects: Boolean = false
 
-  override def getSyntaxErrors: Seq[BeInfo] = List()
+  override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] = List()
 
-  override def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Unit)
+  override def canEvaluateTo: BeDataType = BeDataType.Unit
 
-  override def createBlock(config: BeDisplayConfig, childPos: BeChildPosition): BeBlock = {
-    BeBlockStarter(childPos)
-  }
+  override def createBlock(): BeBlock =
 
-  def createBlock(config: BeDisplayConfig): BeBlock
-  = createBlock(config, BeChildPosition(NodeBasedTreePosition.root, BeChildRole.NoRole, BeScope.GlobalScope()))
+    BeBlockStarter()
 
-  override def getChildren: List[(BeChildRole, BeExpression)] = startSequence.map(seq => (BeChildRole.BodySequence(0), seq)).toList
+  override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = startSequence.map(seq =>
+    BeExpressionReference(BeChildPosition(BodySequence(0), InSequenceScope(seq, parentScope)), seq)
+  ).toList
 
 }
 

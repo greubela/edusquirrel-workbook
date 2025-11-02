@@ -2,9 +2,8 @@ package contentmanagement.model.vm.code
 
 import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
 import contentmanagement.model.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
-import contentmanagement.model.vm.code.usage.{BeUseUnitValue, BeUseValue}
 import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorState}
-import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo}
+import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 
@@ -20,6 +19,6 @@ trait BeDefineStructure extends BeExpression{
   
   override def hasThisExpressionSideEffects: Boolean = true
 
-  override def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Unit)
+  override def canEvaluateTo: BeDataType = BeDataType.Unit
 
 }

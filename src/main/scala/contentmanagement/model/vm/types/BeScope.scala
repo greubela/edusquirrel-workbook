@@ -14,7 +14,6 @@ sealed trait BeScope {
 object BeScope {
 
   case class GlobalScope() extends BeScope{
-
     def parentScopes: List[BeScope] = List()
   }
 
@@ -27,7 +26,6 @@ object BeScope {
   }
 
   case class InSequenceScope(seq: BeSequence, parentScope: BeScope) extends BeScope {
-
     def parentScopes: List[BeScope] = parentScope :: parentScope.parentScopes
   }
 

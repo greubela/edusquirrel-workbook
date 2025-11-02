@@ -1,24 +1,28 @@
 package contentmanagement.model.vm.code.controlStructures
 
-import contentmanagement.model.language.AppLanguage.{Java, JavaScript, Lisp, Python, Rust}
+import contentmanagement.model.language.AppLanguage.*
 import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
+import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionReference, BeExtensionPoint}
 import contentmanagement.model.vm.code.{BeControlStructure, BeExpression}
-import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo}
+import contentmanagement.model.vm.types.*
+import contentmanagement.model.vm.types.BeDataType.AnyType
+import contentmanagement.model.vm.types.BeScope.InSequenceScope
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-import interactionPlugins.blockEnvironment.programming.blocks.parents.BeBlockSequence
+import interactionPlugins.blockEnvironment.programming.blocks.using.BeBlockSequence
 import util.CodeStringBuilder
 
-case class BeSequence(shouldEvaluateToUnit: Boolean, body: List[BeExpression]) extends BeControlStructure {
+case class BeSequenceInfo(mustEvaluateTo: Option[BeDataType], maxBodyElements: Option[Int] = None)
 
+case class BeSequence(body: List[BeExpression], sequenceInfo: BeSequenceInfo) extends BeControlStructure {
 
   def allPossibleBodies: List[BeExpression] = body
 
-  def getSyntaxErrors: Seq[BeInfo] = List() // whether it may be empty must be checked by the parent
+  def getSyntaxErrorsOfThisStructure: Seq[BeInfo] = List() // todo
 
-  override def canEvaluateTo: Set[BeDataType] = if (shouldEvaluateToUnit || body.isEmpty) Set(BeDataType.Unit) else body.last.canEvaluateTo
+  override def canEvaluateTo: BeDataType = sequenceInfo.mustEvaluateTo.getOrElse(body.last.canEvaluateTo)
 
-  override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock = BeBlockSequence(this, parentPos)
+  override def createBlock(): BeBlock = BeBlockSequence(this)
 
   def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
     programmingLanguage match {
@@ -40,7 +44,7 @@ case class BeSequence(shouldEvaluateToUnit: Boolean, body: List[BeExpression]) e
       case _ => {
         var res = CodeStringBuilder(s"BeSequence(")
           .changeIntLevel(2)
-          .appendNextLine(s"//always unit=$shouldEvaluateToUnit")
+          .appendNextLine(s"//info:=$sequenceInfo")
           .changeIntLevel(-1)
         if (body.nonEmpty) res = res.changeForEach(body, (old, curExpr) => old.appendAsLines(curExpr.toString))
         else res = res.appendNextLine("[no body]")
@@ -50,15 +54,43 @@ case class BeSequence(shouldEvaluateToUnit: Boolean, body: List[BeExpression]) e
     }
   }
 
-  override def getChildren: List[(BeChildRole, BeExpression)] =
-    body.zipWithIndex.map((curExpr, curIndex) => (BeChildRole.ExpressionInBody(curIndex), curExpr))
+  override def getChildren(withExtensions: Boolean, myScope: BeScope): List[BeExpressionNode] = {
+
+    def getChildPosFor(nr: Int): BeChildPosition = BeChildPosition(BeChildRole.ExpressionInSequence(nr), InSequenceScope(this, myScope))
+
+    if (!withExtensions) body.zipWithIndex.map((curExpr, curNr) =>
+      BeExpressionReference(getChildPosFor(curNr), curExpr)
+    )
+    else {
+      val bodyWithExtensions: List[BeExpressionNode] = body.zipWithIndex.flatMap((curExpr, curNr) => List(
+        BeExtensionPoint(false, getChildPosFor(2 * curNr), AnyType),
+        BeExpressionReference(getChildPosFor(2 * curNr + 1), curExpr)
+      ))
+
+      def lastExtendAnyOption: Option[BeExtensionPoint] = {
+        if (sequenceInfo.maxBodyElements.isEmpty || sequenceInfo.maxBodyElements.get > body.size)
+          Some(BeExtensionPoint(false, getChildPosFor(bodyWithExtensions.size), AnyType))
+        else None
+      }
+
+      def lastExtendCorrectOption: Option[BeExtensionPoint] = {
+        if (sequenceInfo.mustEvaluateTo.nonEmpty && !sequenceInfo.mustEvaluateTo.get.canTakeValuesFrom(body.last.canEvaluateTo).possibleWithoutSyntaxErrors)
+          Some(BeExtensionPoint(false, getChildPosFor(bodyWithExtensions.size), AnyType))
+        else None
+      }
+
+      bodyWithExtensions ++ lastExtendAnyOption ++ lastExtendCorrectOption
+
+    }
+  }
 
 
 }
 
 object BeSequence {
 
-  def optionalUnitBody(body: List[BeExpression]) = BeSequence(true, body)
+  def optionalBody(body: List[BeExpression]) = BeSequence(body, BeSequenceInfo(None, None))
 
+  def conditionalBody(body: List[BeExpression]) = BeSequence(body, BeSequenceInfo(Some(BeDataType.Boolean), Some(1)))
 
 }

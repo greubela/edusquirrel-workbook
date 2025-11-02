@@ -1,5 +1,6 @@
 package contentmanagement.model.vm.code.others
 
+/*
 import contentmanagement.model.language.AppLanguage.*
 import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
 import contentmanagement.model.vm.code.BeExpression
@@ -23,13 +24,14 @@ case class BeReturn(value: Option[BeExpression]) extends BeExpression {
 
   override def hasThisExpressionSideEffects: Boolean = true
 
-  override def getSyntaxErrors: Seq[BeInfo] = value.map(_.getSyntaxErrors).getOrElse(Seq.empty)
+  override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] = value.map(_.getSyntaxErrorsOfThisStructure).getOrElse(Seq.empty)
 
-  override def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Unit)
+  override def canEvaluateTo: BeDataType = BeDataType.Unit
 
   override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock =
     throw new NotImplementedError("Block rendering is not implemented for return expressions")
 
   override def getChildren: List[(BeChildRole, BeExpression)] =
-    value.map(expr => (BeChildRole.ExpressionInBody(0), expr)).toList
+    value.map(expr => (BeChildRole.ExpressionInSequence(0), expr)).toList
 }
+*/

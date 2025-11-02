@@ -1,8 +1,9 @@
 package contentmanagement.model.vm.code.defining
 
 import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
+import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.code.{BeDefineStructure, BeExpression}
-import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeInfo}
+import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeInfo, BeScope}
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 
@@ -13,10 +14,10 @@ case class BeManualDefinition(
 
   override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = allDefinedStructures.map(_.getInLanguage(programmingLanguage, humanLanguage)).mkString("\n")
 
-  override def getSyntaxErrors: Seq[BeInfo] = allDefinedStructures.flatMap(_.getSyntaxErrors)
+  override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] = allDefinedStructures.flatMap(_.getSyntaxErrorsOfThisStructure)
 
-  override def createBlock(config: BeDisplayConfig, childPos: BeChildPosition): BeBlock =
+  override def createBlock(): BeBlock =
     throw new NotImplementedError("Block rendering is not implemented for BeManualDefinition")
 
-  override def getChildren: List[(BeChildRole, BeExpression)] = allDefinedStructures.flatMap(_.getChildren)
+  def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = allDefinedStructures.flatMap(curStruc => curStruc.getChildren(withExtensions, parentScope))
 }

@@ -3,32 +3,27 @@ package contentmanagement.model.vm.code.defining
 import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
 import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorState}
-import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo}
+import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 import interactionPlugins.blockEnvironment.programming.blocks.variable.*
 import contentmanagement.model.vm.code.*
-import contentmanagement.model.vm.code.usage.{BeUseUnitValue, BeUseValue, BeUseValueLiteral}
+import contentmanagement.model.vm.code.tree.BeExpressionNode
 
-case class BeDefineVariable(name: LanguageMap[HumanLanguage], override val canEvaluateTo: Set[BeDataType]) extends BeDefineStructure {
-
+case class BeDefineVariable(name: LanguageMap[HumanLanguage], val variableType: BeDataType) extends BeDefineStructure {
 
   override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = name.getInLanguage(humanLanguage)
 
   override def hasThisExpressionSideEffects: Boolean = true
 
-  override def getSyntaxErrors: Seq[BeInfo] = List()
+  override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] = List()
 
+  override def createBlock(): BeBlock =
+    BeBlockDefineVariable(this)
 
-  override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock = BeBlockDefineVariable(this, parentPos)
+  override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = List()
 
-  def canAcceptValue(value: BeUseValue): Boolean = value.canEvaluateTo.intersect(canEvaluateTo).nonEmpty
-
-  def toUseLiteralWithContext(value: String): BeUseValueLiteral = BeUseValueLiteral(value, Some(this))
-
-  override def getChildren: List[(BeChildRole, BeExpression)] = List()
-
-  override val toString: String = "BeDefineVariable(" + name.toString + ": " + canEvaluateTo.mkString("[", ", ", "]") + ")"
+  override val toString: String = "BeDefineVariable(" + name.toString + ": " + canEvaluateTo + ")"
 
 }
 

@@ -12,18 +12,30 @@ object BeInfo {
 
   sealed trait InfoType
 
-  sealed trait ErrorType extends InfoType {
-  }
-
-  enum SyntaxError extends ErrorType {
+  enum SyntaxError extends InfoType {
     case UnparsableBlock, MissingValue, InvalidLiteralValue, TypeMismatch, StructureMismatch
   }
 
-  enum RuntimeError extends ErrorType {
+  enum RuntimeError extends InfoType {
     case DivideByZero, InvalidReference
   }
 
-  sealed trait WarningType extends ErrorType
+  enum WarningType extends InfoType{
+    case ImplicitTypeCast
+  }
 
+  def typeMismatchInfo(contextStrBegin: String, expectedType: BeDataType, actualType: BeDataType): Option[BeInfo] = {
+    expectedType.canTakeValuesFrom(actualType) match{
+      case AssigningNotPossible() => Some(
+        BeInfo(LanguageMap.universalMap(contextStrBegin.trim + " must be able to evaluate to " + expectedType + "!"), BeInfo.SyntaxError.TypeMismatch)
+      )
+      case AssigningPossibleWithImplicitCast(resultingType) => Some(
+        BeInfo(LanguageMap.universalMap("Implicit Cast: " + actualType + " -> " + expectedType), BeInfo.WarningType.ImplicitTypeCast)
+      )
+      case AssigningPossibleWithSameType(resultingType) => None
+    }
+  }
 
-}
+        
+    
+  }

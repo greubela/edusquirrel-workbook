@@ -7,8 +7,9 @@ trait BeControlStructure extends BeExpression {
 
   override def hasThisExpressionSideEffects: Boolean = false
 
-  override def canEvaluateTo: Set[BeDataType] = allPossibleBodies.flatMap(_.canEvaluateTo).toSet
+  override def canEvaluateTo: BeDataType = BeDataType.Unit
 
   def allPossibleBodies: List[BeExpression]
-
+    
+  
 }

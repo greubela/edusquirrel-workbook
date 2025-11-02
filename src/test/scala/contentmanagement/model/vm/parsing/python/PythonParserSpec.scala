@@ -7,6 +7,7 @@ import contentmanagement.model.vm.code.defining.*
 import contentmanagement.model.vm.code.errors.*
 import contentmanagement.model.vm.code.others.*
 import contentmanagement.model.vm.code.usage.*
+import contentmanagement.model.vm.types.BeUseValueReferencing
 import munit.FunSuite
 
 class PythonParserSpec extends FunSuite {

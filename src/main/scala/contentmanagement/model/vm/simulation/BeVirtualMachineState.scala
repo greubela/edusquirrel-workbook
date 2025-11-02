@@ -2,7 +2,6 @@ package contentmanagement.model.vm.simulation
 
 import contentmanagement.model.vm.code.BeDefineStructure
 import contentmanagement.model.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
-import contentmanagement.model.vm.code.usage.BeUseValue
 import contentmanagement.model.vm.types.*
 
 
@@ -10,7 +9,7 @@ case class BeVirtualMachineState(
                                   knownClasses: Map[BeDefineClass, List[BeScope]],
                                   knownFunctions: Map[BeDefineFunction, List[BeScope]],
                                   knownVariables: Map[BeDefineVariable, List[BeScope]],
-                                  variableValues: Map[BeDefineVariable, BeUseValue]
+                                  variableValues: Map[BeDefineVariable, BeDataValue]
                                 ) {
 
 

@@ -75,7 +75,7 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
         "Info and Svg goes here"
       ),
       BeShape.allAtomicShapes.map(_.render(editorState.rendererConfigVar.now(), Bounds.fromPoints(Point[Double](0, 0), Point[Double](30, 30))).withOverlayInformation.toPlainDisplayDiv),
-      SimpleTextDisplay(editorState.treeToEdit.signal.map(curTree => Some("# Display Tree Python:\n" + curTree.asExpression.getInLanguage(Python, English)))).getDomElement(),
+      SimpleTextDisplay(editorState.treeToEdit.signal.map(curTree => Some("# Display Tree Python:\n" + curTree.fullProgram.getInLanguage(Python, English)))).getDomElement(),
       SimpleTextDisplay(editorState.controllerStateVar.signal.map(curState => Some("Cur Mouse Over:\n" + curState.mouseOverNode.toString))).getDomElement(),
       SimpleTextDisplay(editorState.controllerStateVar.signal.map(curState => Some("Cur Drag Event:\n" + curState.draggingEvent.toString))).getDomElement(),
     )

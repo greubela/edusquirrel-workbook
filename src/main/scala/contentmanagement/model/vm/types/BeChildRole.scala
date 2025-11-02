@@ -14,7 +14,7 @@ object BeChildRole {
 
   case class BodySequence(bodyNr: Int) extends BeChildRole
   
-  case class ExpressionInBody(nr: Int) extends BeChildRole
+  case class ExpressionInSequence(nr: Int) extends BeChildRole
 
   case object NoRole extends BeChildRole
 

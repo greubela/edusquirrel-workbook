@@ -1,17 +1,18 @@
 package contentmanagement.model.vm.code.controlStructures
 
-import contentmanagement.model.language.AppLanguage.{Java, JavaScript, Lisp, Python, Rust}
-import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
-import contentmanagement.model.vm.code.usage.BeUseValue
+import contentmanagement.model.language.AppLanguage.*
+import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
+import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import contentmanagement.model.vm.code.{BeControlStructure, BeExpression}
-import contentmanagement.model.vm.simulation.BeSimulatorState
-import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo}
+import contentmanagement.model.vm.types.BeChildRole.ConditionInControlStructure
+import contentmanagement.model.vm.types.BeScope.InSequenceScope
+import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo, BeScope}
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 import util.CodeStringBuilder
 
 case class BeIfElse(
-                     condition: BeExpression,
+                     condition: BeSequence,
                      thenBody: BeSequence,
                      elseBody: BeSequence
                    ) extends BeControlStructure {
@@ -100,20 +101,18 @@ case class BeIfElse(
       }
     }
   }
-  
-  override def getSyntaxErrors: Seq[BeInfo] = condition.canEvaluateTo.contains(BeDataType.Boolean) match {
-    case true => List()
-    case false => List(BeInfo(LanguageMap.universalMap("if/else condition must be able to evaluate to a boolean!"), BeInfo.SyntaxError.TypeMismatch))
-  }
 
-  override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock =
+  override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] = BeInfo.typeMismatchInfo("if/else condition", BeDataType.Boolean, condition.canEvaluateTo).toList
+
+
+  override def createBlock(): BeBlock =
     throw new NotImplementedError("Block rendering is not implemented for BeIfElse")
 
-  override def getChildren: List[(BeChildRole, BeExpression)] = {
+  override def getChildren(withExtensions: Boolean, myScope: BeScope): List[BeExpressionNode] = {
     List(
-      (BeChildRole.ConditionInControlStructure, condition),
-      (BeChildRole.BodySequence(0), thenBody),
-      (BeChildRole.BodySequence(1), elseBody)
+      BeExpressionReference(BeChildPosition(ConditionInControlStructure, InSequenceScope(condition, myScope)), condition),
+      BeExpressionReference(BeChildPosition(BeChildRole.BodySequence(0), InSequenceScope(thenBody, myScope)), thenBody),
+      BeExpressionReference(BeChildPosition(BeChildRole.BodySequence(1), InSequenceScope(elseBody, myScope)), elseBody),
     )
   }
 

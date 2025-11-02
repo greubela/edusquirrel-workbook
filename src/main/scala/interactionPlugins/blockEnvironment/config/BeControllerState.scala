@@ -13,7 +13,7 @@ case class BeDraggingEvent(draggedProgram: BeProgram) {
 
 case class BeMouseOverNode(program: BeProgram, childPosition: BeChildPosition) {
 
-  override val toString: String = "MouseOverNode(" + childPosition + ": " + program.expressionTree.getData(childPosition.parentPosition) + ")"
+  override val toString: String = "MouseOverNode(" + childPosition + ")"
 }
 
 case class BeControllerState(draggingEvent: Option[BeDraggingEvent], mouseOverNode: Option[BeMouseOverNode]) {

@@ -8,16 +8,19 @@ import contentmanagement.model.vm.code.defining.*
 import contentmanagement.model.vm.code.errors.*
 import contentmanagement.model.vm.code.others.*
 import contentmanagement.model.vm.code.usage.*
-import contentmanagement.model.vm.types.BeDataType
+import contentmanagement.model.vm.types.*
 import fastparse.*
 import fastparse.NoWhitespace.*
-import sourcecode.Text.generate
 
 import scala.collection.mutable
 import scala.scalajs.js.internal.UnitOps.unitOrOps
 
 object PythonParser {
 
+
+  def parsePython(source: String): BeExpression = BeExpression.pass
+  
+  /*
   private val definedStructures: mutable.ListBuffer[BeDefineStructure] = mutable.ListBuffer()
   private val knownFunctions: mutable.Map[String, BeDefineFunction] = mutable.Map()
   private val knownVariables: mutable.Map[String, BeDefineVariable] = mutable.Map()
@@ -180,8 +183,8 @@ object PythonParser {
           BeDefineVariable(LanguageMap.universalMap(paramName), mapType(typeHint))
         }
         val returnVariable = returnTypeOpt.flatMap { returnStr =>
-          val mapped = mapType(Some(returnStr))
-          if (mapped.contains(BeDataType.Unit) && mapped.size == 1) None
+          val mapped: BeDataType = mapType(Some(returnStr))
+          if (mapped == BeDataType.Unit) None
           else Some(BeDefineVariable(LanguageMap.universalMap("return"), mapped))
         }
         val bodyExpr = parseBlockExpressions(bodyText)
@@ -217,13 +220,16 @@ object PythonParser {
         }
     }
 
-  private def functionCall[$: P]: P[BeExpression] =
+  private def functionCall[$: P]: P[BeExpression] = 
+    ??? 
+    {
     P(identifier ~ ws.? ~ "(" ~ ws.? ~ argumentList ~ ws.? ~ ")").map { case (name, args) =>
       val function = resolveFunction(name, args.length)
       BeFunctionCall(function, args)
     }
+  }
 
-  private def argumentList[$: P]: P[List[BeUseValue]] =
+  private def argumentList[$: P]: P[List[BeExpression]] =
     P(valueExpression.rep(sep = ws.? ~ "," ~ ws.?)).map(_.toList)
 
   private def valueLiteralExpression[$: P]: P[BeExpression] =
@@ -232,22 +238,22 @@ object PythonParser {
   private def unsupportedExpression[$: P]: P[BeExpression] =
     P(CharsWhile(isLineChar, 1).!).map(str => BeExpressionUnsupported(str.trim))
 
-  private def valueExpression[$: P]: P[BeUseValue] =
+  private def valueExpression[$: P]: P[BeDataValue] =
     P(unitLiteral | booleanLiteral | numberLiteral | stringLiteral | identifierValue)
 
-  private def identifierValue[$: P]: P[BeUseValue] =
+  private def identifierValue[$: P]: P[BeDataValue] =
     P(identifier).map(name => BeUseValueReferencing(resolveVariable(name)))
 
-  private def unitLiteral[$: P]: P[BeUseValue] =
+  private def unitLiteral[$: P]: P[BeDataValue] =
     P("None").map(_ => BeUseUnitValue)
 
-  private def booleanLiteral[$: P]: P[BeUseValue] =
+  private def booleanLiteral[$: P]: P[BeDataValue] =
     P("True".map(_ => BeUseValueLiteral("True")) | "False".map(_ => BeUseValueLiteral("False")))
 
-  private def numberLiteral[$: P]: P[BeUseValue] =
+  private def numberLiteral[$: P]: P[BeDataValue] =
     P(integerLiteral.!).map(num => BeUseValueLiteral(num))
 
-  private def stringLiteral[$: P]: P[BeUseValue] =
+  private def stringLiteral[$: P]: P[BeDataValue] =
     P(
       ("\"" ~ CharsWhile(_ != '"').! ~ "\"").map(content => BeUseValueLiteral(s"\"$content\"")) |
         ("'"  ~ CharsWhile(_ != '\'').! ~ "'").map(content  => BeUseValueLiteral(s"'$content'"))
@@ -326,15 +332,15 @@ object PythonParser {
   private def inlineExpression[$: P]: P[BeExpression] =
     P(functionCall | valueLiteralExpression | unsupportedExpression)
 
-  private def mapType(typeHint: Option[String]): Set[BeDataType] = {
+  private def mapType(typeHint: Option[String]): BeDataType = {
     typeHint.map(_.trim.toLowerCase) match {
-      case Some("int") | Some("float") | Some("number") | Some("double") => Set(BeDataType.Numeric)
-      case Some("bool") | Some("boolean") => Set(BeDataType.Boolean)
-      case Some("str") | Some("string") => Set(BeDataType.String)
-      case Some("date") | Some("datetime") => Set(BeDataType.Date)
-      case Some("none") | Some("void") | Some("unit") => Set(BeDataType.Unit)
-      case Some(_) => BeDataType.AnyType
-      case None => BeDataType.AnyType
+      case Some("int") | Some("float") | Some("number") | Some("double") => BeDataType.Numeric
+      case Some("bool") | Some("boolean") =>BeDataType.Boolean
+      case Some("str") | Some("string") => BeDataType.String
+      case Some("date") | Some("datetime") => BeDataType.Date
+      case Some("none") | Some("void") | Some("unit") => BeDataType.Unit
+      case Some(_) => BeDataType.AnyAtomic // todo fix with all known classes
+      case None => BeDataType.AnyAtomic // todo fix with all known classes
     }
   }
 
@@ -363,5 +369,5 @@ object PythonParser {
   private def resolveVariable(name: String): BeDefineVariable = {
     knownVariables.getOrElseUpdate(name, BeDefineVariable(LanguageMap.universalMap(name), BeDataType.AnyType))
   }
-
+*/
 }

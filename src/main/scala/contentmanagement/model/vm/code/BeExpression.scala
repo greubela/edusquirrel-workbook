@@ -1,54 +1,70 @@
 package contentmanagement.model.vm.code
 
 import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreeImpl
-import contentmanagement.model.language.AppLanguage
-import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
+import contentmanagement.model.language.{AppLanguage, HumanLanguage, ProgrammingLanguage}
+import contentmanagement.model.vm.code.controlStructures.BeSequence
+import contentmanagement.model.vm.code.errors.*
+import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionReference, BeExtensionPoint}
 import contentmanagement.model.vm.simulation.{BeExpressionExecutor, BeSimulatorConfig, BeSimulatorState}
 import contentmanagement.model.vm.types.*
+import contentmanagement.model.vm.types.BeScope.GlobalScope
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.BeExpressionTree
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
+
 
 trait BeExpression {
 
   def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String
 
-  def hasThisExpressionOrChildrenSideEffects: Boolean = hasThisExpressionSideEffects || getChildren.exists(_._2.hasThisExpressionOrChildrenSideEffects)
+  def hasThisExpressionOrChildrenSideEffects: Boolean = hasThisExpressionSideEffects || hasChildrenSideEffects
+
+  def hasChildrenSideEffects: Boolean = getChildren(false, GlobalScope()).flatMap {
+    case BeExpressionReference(childPosition: BeChildPosition, expr: BeExpression) => Some(expr)
+    case _ => None
+  }.exists(_.hasThisExpressionOrChildrenSideEffects)
 
   def hasThisExpressionSideEffects: Boolean
 
-  def getSyntaxErrors: Seq[BeInfo]
+  def getSyntaxErrorsOfThisStructure: Seq[BeInfo]
 
-  def canEvaluateTo: Set[BeDataType]
+  def canEvaluateTo: BeDataType
 
   def getExecutor(simulatorConfig: BeSimulatorConfig, stateBeforeExecution: BeSimulatorState): BeExpressionExecutor =
     throw new NotImplementedError("Execution support is not implemented in the static VM model")
 
-  protected def changedScopeForChildren(parentScope: BeScope): BeScope = parentScope
+  def recToTree(withExtensions: Boolean, myPosition: BeChildPosition): BeExpressionTree = {
+    val root: BeExpressionNode = BeExpressionReference(myPosition, this)
 
-  def recToTree(config: BeDisplayConfig, roleInParent: BeChildRole, myScope: BeScope): BeExpressionTree = {
-    val root: (BeChildRole, BeExpression, BeScope) = (roleInParent, this, myScope)
-    val newScope = changedScopeForChildren(myScope)
-    val childTree = getChildren.map(child => child._2.recToTree(config, child._1, newScope))
-
-    var tree: BeExpressionTree = NodeBasedTreeImpl.empty[(BeChildRole, BeExpression, BeScope)]()
-    tree = tree.addAsLastChild(tree.rootPosition, root)
-    childTree.reverse.zipWithIndex.foreach((curTree, curIndex) => if (curTree.size > 0) {
-      tree = tree.addSubtreeAsLastChild(tree.rootPosition.forChild(0), curTree)
+    val children: List[(BeExpressionNode, Option[BeExpressionTree])] = getChildren(withExtensions, myPosition.curScope).map(exprNode => exprNode match {
+      case BeExpressionReference(childPosition: BeChildPosition, childExpr: BeExpression) => (exprNode, Some(childExpr.recToTree(withExtensions, childPosition)))
+      case BeExtensionPoint(isRequired, childPosition, dataTypes) => (exprNode, None)
     })
+
+    var tree: BeExpressionTree = NodeBasedTreeImpl.empty[BeExpressionNode]()
+    tree = tree.addAsLastChild(tree.rootPosition, root)
+    children.foreach((expr, opTree) => opTree match {
+      case Some(expressionTree: BeExpressionTree) => tree = tree.addSubtreeAsLastChild(tree.rootPosition.forChild(0), expressionTree)
+      case _ => tree = tree.addAsLastChild(tree.rootPosition.forChild(0), expr)
+    })
+
     tree
   }
 
-  def createBlock(config: BeDisplayConfig, childPos: BeChildPosition): BeBlock
+  def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = ???
 
-  def getChildren: List[(BeChildRole, BeExpression)]
+  def createBlock(): BeBlock
+
+  def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode]
 
   def stopExecutionBeforeThisBlock: Boolean = false
-
 }
 
 object BeExpression {
 
+  val pass: BeExpression = BeSequence.optionalBody(List())
+
+  /*
   private case object BePassExpression extends BeExpression {
 
     override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
@@ -60,9 +76,9 @@ object BeExpression {
 
     override def hasThisExpressionSideEffects: Boolean = false
 
-    override def getSyntaxErrors: Seq[BeInfo] = List()
+    override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] = List()
 
-    override def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Unit)
+    override def canEvaluateTo: BeDataType = BeDataType.Unit
 
     override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock =
       throw new NotImplementedError("Block rendering is not implemented for the pass expression")
@@ -78,19 +94,20 @@ object BeExpression {
 
     override def hasThisExpressionSideEffects: Boolean = false
 
-    override def getSyntaxErrors: Seq[BeInfo] = List()
+    override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] = List()
 
-    override def canEvaluateTo: Set[BeDataType] = Set(BeDataType.Unit)
+    override def canEvaluateTo: BeDataType = BeDataType.Unit
 
     override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock =
       throw new NotImplementedError("Block rendering is not implemented for the NoOp expression")
 
     override def recToTree(config: BeDisplayConfig, roleInParent: BeChildRole, myScope: BeScope): BeExpressionTree = {
-      NodeBasedTreeImpl.empty[(BeChildRole, BeExpression, BeScope)]()
+      NodeBasedTreeImpl.empty[BeExpressionNode]()
     }
 
-    override def getChildren: List[(BeChildRole, BeExpression)] = List()
+    def getChildren(withExtensions: Boolean): List[BeExpressionNode] = List()
 
-  }
+    override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = this
+  }*/
 
 }

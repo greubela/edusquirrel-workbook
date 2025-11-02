@@ -1,14 +1,15 @@
 package contentmanagement.model.vm.code.controlStructures
 
-import contentmanagement.model.language.AppLanguage.{Java, JavaScript, Lisp, Python, Rust}
+import contentmanagement.model.language.AppLanguage.*
 import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
+import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import contentmanagement.model.vm.code.{BeControlStructure, BeExpression}
-import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeInfo}
-import interactionPlugins.blockEnvironment.config.BeDisplayConfig
+import contentmanagement.model.vm.types.BeScope.InSequenceScope
+import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeInfo, BeScope}
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 import util.CodeStringBuilder
 
-case class BeRepeatNr(amount: Int, body: BeExpression) extends BeControlStructure {
+case class BeRepeatNr(amount: Int, body: BeSequence) extends BeControlStructure {
 
   override def allPossibleBodies: List[BeExpression] = List(body)
 
@@ -75,16 +76,18 @@ case class BeRepeatNr(amount: Int, body: BeExpression) extends BeControlStructur
     res
   }*/
 
-  override def getSyntaxErrors: Seq[BeInfo] = {
+  override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] = {
     val amountError =
       if (amount < 0)
         List(BeInfo(LanguageMap.universalMap("repeat count must be zero or positive"), BeInfo.SyntaxError.InvalidLiteralValue))
       else List()
-    amountError ++ body.getSyntaxErrors
+    amountError ++ body.getSyntaxErrorsOfThisStructure
   }
 
-  override def createBlock(config: BeDisplayConfig, childPos: BeChildPosition): BeBlock =
+  override def createBlock(): BeBlock =
     throw new NotImplementedError("Block rendering is not implemented for BeRepeatNr")
 
-  override def getChildren: List[(BeChildRole, BeExpression)] = List((BeChildRole.BodySequence(0), body))
+  override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = List(
+    BeExpressionReference(BeChildPosition(BeChildRole.BodySequence(0), InSequenceScope(body, parentScope)), body)    
+  )
 }

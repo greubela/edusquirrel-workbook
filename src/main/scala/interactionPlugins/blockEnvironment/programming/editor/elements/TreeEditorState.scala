@@ -12,14 +12,14 @@ object TreeEditorState {
 
   def withInitExpression(initExpr: BeExpression): TreeEditorState = {
     val initDisplayConfig = BeDisplayConfig.default()
-    val initProgram = BeProgram.fromExpression(initDisplayConfig, initExpr)
+    val initProgram = BeProgram(initExpr)
     val initRenderer = BeRenderingConfig.default()
 
     withInitValues(initExpr, initDisplayConfig, initRenderer)
   }
 
   def withInitValues(initExpr: BeExpression, initDisplayConfig: BeDisplayConfig, rendererInit: BeRenderingConfig): TreeEditorState = {
-    val initProgram = BeProgram.fromExpression(initDisplayConfig, initExpr)
+    val initProgram = BeProgram(initExpr)
     val initControllerState: BeControllerState = BeControllerState.default()
 
     TreeEditorState(Var(initProgram), Var(initControllerState), Var(initDisplayConfig), Var(rendererInit))

@@ -8,15 +8,15 @@ import contentmanagement.webElements.genericHtmlElements.canvas.SvgCanvas
 import contentmanagement.webElements.svg.AppSvgElement
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.*
+import interactionPlugins.blockEnvironment.programming.blocks.{NestedBlockRenderer, RenderingInformation}
 import interactionPlugins.blockEnvironment.programming.editor.*
 import interactionPlugins.blockEnvironment.programming.shapes.BeShape
 
 import scala.collection.mutable
 
 
-
 case class HtmlBeTreeDisplay(
-                              treeToDisplaySignal: Signal[BeProgram],
+                              programToDisplaySignal: Signal[BeProgram],
                               pEditorState: TreeEditorState,
                               pListenerVar: Var[BeTreeControllerConfig]
                             ) {
@@ -26,14 +26,21 @@ case class HtmlBeTreeDisplay(
     pEditorState.displayConfigVar.signal
       .combineWith(pEditorState.rendererConfigVar.signal)
       .combineWith(pListenerVar.signal)
-      .combineWith(treeToDisplaySignal)
+      .combineWith(programToDisplaySignal)
       .map(tup => render(tup._4, tup._1, tup._2, tup._3))
   }
 
   def render(programToDisplay: BeProgram, displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig, listener: BeTreeControllerConfig): L.HtmlElement = {
-    val tree: BeBlockTree = programToDisplay.blockTree
+    val tree: BeBlockRenderingTree = programToDisplay.blockRenderingTree
     val posToDraw = tree.getChildren(tree.rootPosition)
 
+    val renderingInfo = RenderingInformation(programToDisplay, displayConfig, rendererConfig, listener, pEditorState.controllerStateVar)
+
+    val renderedTree = tree.mapWithContext[NestedBlockRenderer](curStructure => curStructure.curValue._2.render(curStructure, renderingInfo))
+
+    val resShape = renderedTree.getData(renderedTree.rootPosition.forChild(0)).get.finishedShape()
+
+    /*
     val finishedRenderings: mutable.ListBuffer[AppSvgElement] = mutable.ListBuffer[AppSvgElement]()
     tree.foreachWithStructure((structure: BeBlockContext) => {
       if (posToDraw.contains(structure.curPosition)) {
@@ -41,23 +48,19 @@ case class HtmlBeTreeDisplay(
         val svg: AppSvgElement = finishedShape.render(rendererConfig, Point[Double](0, 0).withDimension(finishedShape.displaySize(rendererConfig)))
         finishedRenderings += svg
       }
-    })
+    })*/
 
-    val svgDomElement = finishedRenderings.map(treeSvgElement => {
-      val svgDim = treeSvgElement.staticBoundingBox.dimension.increaseSize(rendererConfig.paddingBig)
+    val svgDomElement = {
+      val rendered = resShape.render(rendererConfig, Point[Double](0,0).withDimension(resShape.displaySize(rendererConfig)))
+      val svgDim = rendered.staticBoundingBox.dimension
       val svgCanvas: SvgCanvas = new SvgCanvas(svgDim.width.toInt, svgDim.height.toInt)
-      svgCanvas.addSvgElement(treeSvgElement.renderWithMods)
+      svgCanvas.addSvgElement(rendered.renderWithMods)
       div(
         svgCanvas.getDomElement()
       ).amend(listener.getHtmlDragAmends(programToDisplay))
-    })
+    }
 
-    val alt = div(
-      cls := "altTreeDisplay",
-      "no positions to draw: " + posToDraw
-    )
-
-    svgDomElement.headOption.getOrElse(alt)
+    svgDomElement
 
 
   }
