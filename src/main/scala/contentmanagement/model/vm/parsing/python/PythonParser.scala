@@ -16,6 +16,23 @@ import scala.collection.mutable
 
 object PythonParser {
 
+  def parsePython(source: String): BeExpression = BeExpression.pass 
+  
+  /*
+  {
+    definedStructures.clear()
+    knownFunctions.clear()
+    knownVariables.clear()
+
+    if (source.trim.isEmpty) {
+      BeSequence.optionalBody(List.empty)
+    } else {
+      parse(source, statements(_)) match {
+        case Parsed.Success(stmts, _) => BeSequence.optionalBody(stmts.toList)
+        case failure: Parsed.Failure   => BeExpressionUnparsable(source, failure.trace().longAggregateMsg)
+      }
+    }
+  }
   private val definedStructures: mutable.ListBuffer[BeDefineStructure] = mutable.ListBuffer()
   private val knownFunctions: mutable.Map[String, BeDefineFunction] = mutable.Map()
   private val knownVariables: mutable.Map[String, BeDefineVariable] = mutable.Map()
@@ -59,20 +76,6 @@ object PythonParser {
     "yield"
   )
 
-  def parsePython(source: String): BeExpression = {
-    definedStructures.clear()
-    knownFunctions.clear()
-    knownVariables.clear()
-
-    if (source.trim.isEmpty) {
-      BeSequence.optionalBody(List.empty)
-    } else {
-      parse(source, statements(_)) match {
-        case Parsed.Success(stmts, _) => BeSequence.optionalBody(stmts.toList)
-        case failure: Parsed.Failure   => BeExpressionUnparsable(source, failure.trace().longAggregateMsg)
-      }
-    }
-  }
 
   private def statements[$: P]: P[Seq[BeExpression]] =
     P(stmtSep.rep ~ statement.rep(sep = stmtSep) ~ stmtSep.rep)
@@ -415,4 +418,6 @@ object PythonParser {
 
   private def emptyOptionalSequence: BeSequence =
     BeSequence.optionalBody(List.empty)
+    
+   */
 }
