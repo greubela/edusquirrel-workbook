@@ -23,54 +23,74 @@ case class BeIfElse(
     val conditionString = condition.getInLanguage(programmingLanguage, humanLanguage).replaceAll("\n", "")
     val thenBodyString = thenBody.getInLanguage(programmingLanguage, humanLanguage)
     val elseBodyString = elseBody.getInLanguage(programmingLanguage, humanLanguage)
+    val hasElseBody = elseBody.body.nonEmpty
     programmingLanguage match {
       case Python => {
-        CodeStringBuilder().appendNextLine(s"if $conditionString:")
+        val builder = CodeStringBuilder().appendNextLine(s"if $conditionString:")
           .changeIntLevel(1)
           .appendAsLines(thenBodyString)
           .changeIntLevel(-1)
-          .appendNextLine(s"else:")
-          .changeIntLevel(1)
-          .appendAsLines(elseBodyString)
-          .changeIntLevel(-1)
+        if (hasElseBody) {
+          builder
+            .appendNextLine(s"else:")
+            .changeIntLevel(1)
+            .appendAsLines(elseBodyString)
+            .changeIntLevel(-1)
+        }
+        builder
           .appendNextLine(s"")
           .toString
       }
       case Java => {
-        CodeStringBuilder().appendNextLine(s"if($conditionString){")
+        val builder = CodeStringBuilder().appendNextLine(s"if($conditionString){")
           .changeIntLevel(1)
           .appendAsLines(thenBodyString)
           .changeIntLevel(-1)
-          .appendNextLine("} else {")
-          .changeIntLevel(1)
-          .appendAsLines(elseBodyString)
-          .changeIntLevel(-1)
-          .appendNextLine("}")
-          .toString
+        if (hasElseBody) {
+          builder
+            .appendNextLine("} else {")
+            .changeIntLevel(1)
+            .appendAsLines(elseBodyString)
+            .changeIntLevel(-1)
+            .appendNextLine("}")
+        } else {
+          builder.appendNextLine("}")
+        }
+        builder.toString
       }
       case JavaScript => {
-        CodeStringBuilder().appendNextLine(s"if ($conditionString) {")
+        val builder = CodeStringBuilder().appendNextLine(s"if ($conditionString) {")
           .changeIntLevel(1)
           .appendAsLines(thenBodyString)
           .changeIntLevel(-1)
-          .appendNextLine("} else {")
-          .changeIntLevel(1)
-          .appendAsLines(elseBodyString)
-          .changeIntLevel(-1)
-          .appendNextLine("}")
-          .toString
+        if (hasElseBody) {
+          builder
+            .appendNextLine("} else {")
+            .changeIntLevel(1)
+            .appendAsLines(elseBodyString)
+            .changeIntLevel(-1)
+            .appendNextLine("}")
+        } else {
+          builder.appendNextLine("}")
+        }
+        builder.toString
       }
       case Rust => {
-        CodeStringBuilder().appendNextLine(s"if $conditionString {")
+        val builder = CodeStringBuilder().appendNextLine(s"if $conditionString {")
           .changeIntLevel(1)
           .appendAsLines(thenBodyString)
           .changeIntLevel(-1)
-          .appendNextLine("} else {")
-          .changeIntLevel(1)
-          .appendAsLines(elseBodyString)
-          .changeIntLevel(-1)
-          .appendNextLine("}")
-          .toString
+        if (hasElseBody) {
+          builder
+            .appendNextLine("} else {")
+            .changeIntLevel(1)
+            .appendAsLines(elseBodyString)
+            .changeIntLevel(-1)
+            .appendNextLine("}")
+        } else {
+          builder.appendNextLine("}")
+        }
+        builder.toString
       }
       case Lisp => {
         val builder = CodeStringBuilder("(if " + conditionString)
@@ -80,21 +100,26 @@ case class BeIfElse(
           .appendAsLines(thenBodyString)
           .changeIntLevel(-1)
           .appendNextLine(")")
-          .appendNextLine("(progn")
-          .changeIntLevel(1)
-          .appendAsLines(elseBodyString)
+        if (hasElseBody) {
+          builder
+            .appendNextLine("(progn")
+            .changeIntLevel(1)
+            .appendAsLines(elseBodyString)
+            .changeIntLevel(-1)
+            .appendNextLine(")")
+        }
+        builder
           .changeIntLevel(-1)
           .appendNextLine(")")
-          .changeIntLevel(-1)
-          .appendNextLine(")")
-        builder.toString
+          .toString
       }
       case _ => {
-        CodeStringBuilder().appendNextLine(s"IF/ELSE(")
+        val builder = CodeStringBuilder().appendNextLine(s"IF/ELSE(")
           .changeIntLevel(1)
           .appendNextLine(s"$conditionString,")
           .appendAsLines(thenBodyString)
-          .appendAsLines(elseBodyString)
+        if (hasElseBody) builder.appendAsLines(elseBodyString)
+        builder
           .changeIntLevel(-1)
           .appendNextLine(")")
           .toString

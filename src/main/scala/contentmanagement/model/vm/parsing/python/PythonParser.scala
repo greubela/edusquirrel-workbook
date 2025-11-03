@@ -19,6 +19,8 @@ import scala.collection.mutable
 
 object PythonParser {
 
+  private val normalizer = new PythonNormalizer()
+
   final case class CodeParsingResult(
       definedClasses: List[BeDefineClass],
       definedFunctions: List[BeDefineFunction],
@@ -32,7 +34,7 @@ object PythonParser {
 
 
   def parsePythonWithDetails(source: String): CodeParsingResult = {
-    val normalized = normalizeSource(source)
+    val normalized = normalizer.normalizePython(source)
     if (normalized.trim.isEmpty) {
       CodeParsingResult(Nil, Nil, Nil, BeSequence.optionalBody(Nil))
     } else {
@@ -49,7 +51,68 @@ object PythonParser {
 
   private val AssignmentPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)\s*(.+)$""".r
   private val FunctionPattern = """^def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*)\)\s*(?:->\s*([^:]+))?:$""".r
+  private val WhilePattern = """^while\s+(.+):$""".r
+  private val IfPattern = """^if\s+(.+):$""".r
+  private val ElsePattern = """^else:$""".r
   private val IdentifierPattern = """^[A-Za-z_][A-Za-z0-9_]*$""".r
+
+  private def splitInlineComment(line: String): (String, Option[String]) = {
+    var index = 0
+    var commentIndex = -1
+    var stringDelimiter: Option[String] = None
+    val length = line.length
+    while (index < length && commentIndex == -1) {
+      stringDelimiter match {
+        case Some(delimiter) if delimiter.length == 1 =>
+          val current = line.charAt(index)
+          if (current == '\\') {
+            index += 2
+          } else if (current == delimiter.head) {
+            stringDelimiter = None
+            index += 1
+          } else {
+            index += 1
+          }
+        case Some(delimiter) =>
+          if (line.startsWith(delimiter, index)) {
+            stringDelimiter = None
+            index += delimiter.length
+          } else {
+            index += 1
+          }
+        case None =>
+          if (line.startsWith("\"\"\"", index)) {
+            stringDelimiter = Some("\"\"\"")
+            index += 3
+          } else if (line.startsWith("'''", index)) {
+            stringDelimiter = Some("'''")
+            index += 3
+          } else {
+            val current = line.charAt(index)
+            current match {
+              case '\\' => index += 2
+              case '\"' =>
+                stringDelimiter = Some("\"")
+                index += 1
+              case '\'' =>
+                stringDelimiter = Some("'")
+                index += 1
+              case '#' =>
+                commentIndex = index
+              case _ =>
+                index += 1
+            }
+          }
+      }
+    }
+    if (commentIndex >= 0) {
+      val codePart = line.substring(0, commentIndex)
+      val commentText = line.substring(commentIndex + 1).trim
+      (codePart, if (commentText.nonEmpty) Some(commentText) else Some(""))
+    } else {
+      (line, None)
+    }
+  }
 
   private def parseBlock(
       lines: Vector[ParsedLine],
@@ -65,9 +128,15 @@ object PythonParser {
         return (expressions.toList, index)
       }
 
-      val trimmed = line.content.trim
+      val (codePortion, inlineComment) = splitInlineComment(line.content)
+      val trimmed = codePortion.trim
       if (trimmed.isEmpty) {
-        expressions += BeExpression.pass
+        inlineComment match {
+          case Some(commentText) =>
+            expressions += BeSingleLineComment(LanguageMap.universalMap(commentText))
+          case None =>
+            expressions += BeExpression.pass
+        }
         index += 1
       } else if (line.indent > indent) {
         val (nested, nextIndex) = parseBlock(lines, index, line.indent, context)
@@ -78,6 +147,14 @@ object PythonParser {
           case FunctionPattern(name, params, returnType) =>
             val (functionExpr, nextIndex) = parseFunction(lines, index, indent, name, params, Option(returnType), context)
             expressions += functionExpr
+            index = nextIndex
+          case WhilePattern(conditionSource) =>
+            val (whileExpr, nextIndex) = parseWhile(lines, index, indent, conditionSource, context)
+            expressions += whileExpr
+            index = nextIndex
+          case IfPattern(conditionSource) =>
+            val (ifExpr, nextIndex) = parseIf(lines, index, indent, conditionSource, context)
+            expressions += ifExpr
             index = nextIndex
           case _ if trimmed.startsWith("return") =>
             expressions += parseReturn(trimmed, context)
@@ -90,9 +167,18 @@ object PythonParser {
             val variable = context.assignVariable(name, inferType(valueExpr))
             expressions += BeAssignVariable(variable, valueExpr)
             index += 1
+          case _ if trimmed.startsWith("while") =>
+            expressions += BeExpressionUnparsable(trimmed, "While statements must end with ':'")
+            index += 1
+          case _ if trimmed.startsWith("if") =>
+            expressions += BeExpressionUnparsable(trimmed, "If statements must end with ':'")
+            index += 1
           case _ =>
             expressions += parseExpression(trimmed, context)
             index += 1
+        }
+        inlineComment.foreach { commentText =>
+          expressions += BeSingleLineComment(LanguageMap.universalMap(commentText))
         }
       }
     }
@@ -139,6 +225,69 @@ object PythonParser {
     (functionDef, nextIndex)
   }
 
+  private def parseWhile(
+      lines: Vector[ParsedLine],
+      headerIndex: Int,
+      indent: Int,
+      conditionSource: String,
+      context: ParseContext
+  ): (BeExpression, Int) = {
+    val conditionExpr = parseExpression(conditionSource.trim, context)
+    val computedIndent = determineBodyIndent(lines, headerIndex + 1, indent)
+    if (computedIndent <= indent) {
+      (BeExpressionUnparsable(lines(headerIndex).content.trim, "Missing body for while loop"), headerIndex + 1)
+    } else {
+      val (bodyExpressions, nextIndex) = parseBlock(lines, headerIndex + 1, computedIndent, context)
+      val conditionSequence = BeSequence.conditionalBody(List(conditionExpr))
+      val bodySequence = BeSequence.optionalBody(bodyExpressions)
+      (BeWhile(conditionSequence, bodySequence), nextIndex)
+    }
+  }
+
+  private def parseIf(
+      lines: Vector[ParsedLine],
+      headerIndex: Int,
+      indent: Int,
+      conditionSource: String,
+      context: ParseContext
+  ): (BeExpression, Int) = {
+    val conditionExpr = parseExpression(conditionSource.trim, context)
+    val computedIndent = determineBodyIndent(lines, headerIndex + 1, indent)
+    if (computedIndent <= indent) {
+      (BeExpressionUnparsable(lines(headerIndex).content.trim, "Missing body for if clause"), headerIndex + 1)
+    } else {
+      val (thenBodyExpressions, afterThen) = parseBlock(lines, headerIndex + 1, computedIndent, context)
+      val nextIndex = skipEmptyLines(lines, afterThen)
+      if (nextIndex < lines.length && lines(nextIndex).indent == indent) {
+        lines(nextIndex).content.trim match {
+          case ElsePattern() =>
+            val elseIndent = determineBodyIndent(lines, nextIndex + 1, indent)
+            if (elseIndent <= indent) {
+              (BeExpressionUnparsable(lines(nextIndex).content.trim, "Missing body for else clause"), nextIndex + 1)
+            } else {
+              val (elseExpressions, afterElse) = parseBlock(lines, nextIndex + 1, elseIndent, context)
+              val conditionSequence = BeSequence.conditionalBody(List(conditionExpr))
+              val thenSequence = BeSequence.optionalBody(thenBodyExpressions)
+              val elseSequence = BeSequence.optionalBody(elseExpressions)
+              (BeIfElse(conditionSequence, thenSequence, elseSequence), afterElse)
+            }
+          case other if other.startsWith("else") =>
+            (BeExpressionUnparsable(lines(nextIndex).content.trim, "Else statements must end with ':'"), nextIndex + 1)
+          case _ =>
+            val conditionSequence = BeSequence.conditionalBody(List(conditionExpr))
+            val thenSequence = BeSequence.optionalBody(thenBodyExpressions)
+            val elseSequence = BeSequence.optionalBody(Nil)
+            (BeIfElse(conditionSequence, thenSequence, elseSequence), nextIndex)
+        }
+      } else {
+        val conditionSequence = BeSequence.conditionalBody(List(conditionExpr))
+        val thenSequence = BeSequence.optionalBody(thenBodyExpressions)
+        val elseSequence = BeSequence.optionalBody(Nil)
+        (BeIfElse(conditionSequence, thenSequence, elseSequence), nextIndex)
+      }
+    }
+  }
+
   private def parseReturn(source: String, context: ParseContext): BeExpression = {
     val payload = source.stripPrefix("return").trim
     if (payload.isEmpty) BeReturn(None)
@@ -150,6 +299,23 @@ object PythonParser {
     List("+", "-"),
     List("*", "/", "//", "%")
   )
+
+  private val operatorPrecedence: Map[String, Int] = Map(
+    "==" -> 1,
+    "!=" -> 1,
+    "<=" -> 1,
+    ">=" -> 1,
+    "<" -> 1,
+    ">" -> 1,
+    "+" -> 2,
+    "-" -> 2,
+    "*" -> 3,
+    "/" -> 3,
+    "//" -> 3,
+    "%" -> 3
+  )
+
+  private val DefaultOperatorPrecedence = 0
 
   private def parseExpression(source: String, context: ParseContext): BeExpression = {
     val trimmed = source.trim
@@ -199,8 +365,8 @@ object PythonParser {
       case _ if isStringLiteral(source) => Some(BeUseValue(BeDataValueLiteral(source), None))
       case _ if isNumericLiteral(source) => Some(BeUseValue(BeDataValueLiteral(source), None))
       case IdentifierPattern() =>
-        context.lookupVariable(source).getOrElse(context.assignVariable(source, AnyType))
-        Some(BeUseValue(BeDataValueLiteral(source), None))
+        val variable = context.lookupVariable(source).getOrElse(context.assignVariable(source, AnyType))
+        Some(BeUseValue(BeUseValueReference(variable), Some(variable)))
       case _ => None
     }
   }
@@ -248,6 +414,14 @@ object PythonParser {
     parentIndent + 4
   }
 
+  private def skipEmptyLines(lines: Vector[ParsedLine], startIndex: Int): Int = {
+    var index = startIndex
+    while (index < lines.length && lines(index).content.trim.isEmpty) {
+      index += 1
+    }
+    index
+  }
+
   private def inferType(expr: BeExpression): BeDataType = expr.canEvaluateTo
 
   private def mapType(typeHint: Option[String]): BeDataType = {
@@ -270,9 +444,6 @@ object PythonParser {
     case "none" | "void" | "unit" => Some(BeDataType.Unit)
     case _ => None
   }
-
-  private def normalizeSource(source: String): String =
-    source.replace("\r\n", "\n").replace('\r', '\n')
 
   private def toParsedLines(source: String): Vector[ParsedLine] = {
     val lines = source.split("\n", -1)
@@ -381,11 +552,35 @@ object PythonParser {
 
   private case class OperatorFunctionCall(call: BeFunctionCall, symbol: String) extends BeExpression {
     override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
-      val argumentStrings = call.funcDef.inputs.flatMap(call.parameterValueMap.get).map(_.getInLanguage(programmingLanguage, humanLanguage).trim)
-      argumentStrings match {
+      val arguments = call.funcDef.inputs.flatMap(call.parameterValueMap.get)
+      arguments match {
         case Nil => symbol
-        case head :: tail => tail.foldLeft(head) { (acc, cur) => s"$acc $symbol $cur" }
+        case head :: tail =>
+          val renderedHead = formatOperand(head, isLeftOperand = true, programmingLanguage, humanLanguage)
+          tail.foldLeft(renderedHead) { (acc, expr) =>
+            val rendered = formatOperand(expr, isLeftOperand = false, programmingLanguage, humanLanguage)
+            s"$acc $symbol $rendered"
+          }
       }
+    }
+
+    private def formatOperand(
+        expression: BeExpression,
+        isLeftOperand: Boolean,
+        programmingLanguage: ProgrammingLanguage,
+        humanLanguage: HumanLanguage
+    ): String = {
+      val rendered = expression.getInLanguage(programmingLanguage, humanLanguage).trim
+      val requiresParentheses = expression match {
+        case nested: OperatorFunctionCall =>
+          val parentPrecedence = operatorPrecedence.getOrElse(symbol, DefaultOperatorPrecedence)
+          val childPrecedence = operatorPrecedence.getOrElse(nested.symbol, DefaultOperatorPrecedence)
+          if (childPrecedence < parentPrecedence) true
+          else if (childPrecedence > parentPrecedence) false
+          else !isLeftOperand && (symbol == "-" || symbol == "/" || symbol == "//")
+        case _ => false
+      }
+      if (requiresParentheses && !(rendered.startsWith("(") && rendered.endsWith(")"))) s"($rendered)" else rendered
     }
 
     override def hasThisExpressionSideEffects: Boolean = call.hasThisExpressionSideEffects

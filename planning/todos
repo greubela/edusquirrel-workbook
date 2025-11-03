@@ -1,0 +1,10 @@
+# Python parser unsupported structures
+
+- Conditional branching variations (ternary expressions, pattern matching) – would require control flow structures beyond the current `BeIfElse` representation.
+- `for` loops and iteration helpers – no representation exists in the VM model for loop variables and iteration sources.
+- Exception handling blocks (`try`/`except`/`finally`) – needs dedicated expressions for exception scopes and handlers.
+- Context managers (`with` statements) – would require block semantics with deterministic enter/exit hooks.
+- Multi-line and triple-quoted string literals – literal detection only covers single-line single or double quotes.
+- Import statements and module-level decorators – there is no representation for module imports or decorators in the VM.
+- `break`/`continue` statements inside loops – loop control flow operations are not modelled yet.
+- Data literals beyond scalars (lists, dicts, tuples, sets) – no composite literal support in the VM value layer.
