@@ -2,11 +2,10 @@ package interactionPlugins.blockEnvironment.programming.editor.elements
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.eventPropToProcessor
-import com.raquo.laminar.nodes.ReactiveHtmlElement
-import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole}
-import interactionPlugins.blockEnvironment.config.{BeDraggingEvent, BeMouseOverNode}
+import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
+import contentmanagement.model.vm.types.BeChildPosition
+import interactionPlugins.blockEnvironment.config.*
 import interactionPlugins.blockEnvironment.programming.BeProgram
-import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 import interactionPlugins.blockEnvironment.programming.editor.*
 import org.scalajs.dom.{DragEvent, MouseEvent}
 
@@ -15,34 +14,28 @@ trait BeTreeControllerConfig {
 
   def isEditable: Boolean = false
 
-  def onClicked: Option[(MouseEvent, BeProgram, BeChildPosition) => Any] = None
+  def onClicked: Option[(MouseEvent, BeProgram, BeExpressionNode) => Any] = None
 
-  def onMouseEnter: Option[(MouseEvent, BeProgram, BeChildPosition) => Any] = None
+  def onMouseEnter: Option[(MouseEvent, BeProgram, BeExpressionNode) => Any] = None
 
-  def onMouseLeave: Option[(MouseEvent, BeProgram, BeChildPosition) => Any] = None
+  def onMouseLeave: Option[(MouseEvent, BeProgram, BeExpressionNode) => Any] = None
 
   def onDragStart: Option[(DragEvent, BeProgram) => Any] = None
 
   def onDragEnd: Option[(DragEvent, BeProgram) => Any] = None
 
-  def onDraggedOver: Option[(MouseEvent, BeProgram, BeChildPosition) => Any] = None
+  def onDraggedOver: Option[(MouseEvent, BeProgram, BeExpressionNode) => Any] = None
 
-  def onDropped: Option[(MouseEvent, BeProgram, BeChildPosition) => Any] = None
+  def onDropped: Option[(MouseEvent, BeProgram) => Any] = None
 
-  def getMouseAmendsForPosition(beProgram: BeProgram, positionAsChild: BeChildPosition): Seq[L.Modifier[L.SvgElement]] = {
+  def getMouseAmendsForShape(beProgram: BeProgram, exprNode: BeExpressionNode): Seq[L.Modifier[L.SvgElement]] = {
     List(
-      onMouseEnter.map(f => L.onMouseEnter --> { e => f(e, beProgram, positionAsChild) }),
-      onMouseLeave.map(f => L.onMouseLeave --> { e => f(e, beProgram, positionAsChild) }),
-      onClicked.map(f => L.onClick.stopPropagation --> { e => f(e, beProgram, positionAsChild) })
+      onMouseEnter.map(f => L.onMouseEnter --> { e => f(e, beProgram, exprNode) }),
+      onMouseLeave.map(f => L.onMouseLeave --> { e => f(e, beProgram, exprNode) }),
+      onClicked.map(f => L.onClick.stopPropagation --> { e => f(e, beProgram, exprNode) })
     ).flatten
   }
 
-  def getSvgDropAmends(beProgram: BeProgram, positionAsChild: BeChildPosition): Seq[L.Modifier[L.SvgElement]] = {
-    onDropped.map(f => Seq(
-      L.onDragOver.preventDefault --> (_ => ()),
-      L.onDrop.stopPropagation.preventDefault --> { e => f(e, beProgram, positionAsChild) }
-    )).toList.flatten
-  }
 
   def getHtmlDragAmends(beProgram: BeProgram): Seq[L.Modifier[L.HtmlElement]] = {
 
@@ -53,6 +46,10 @@ trait BeTreeControllerConfig {
     val dragEndMods = onDragEnd.map(f => Seq(
       L.onDragEnd --> { e => f(e, beProgram) }
     ))
+    val onDroppedMods = onDropped.map(f => Seq(
+      L.onDragOver.preventDefault --> (_ => ()),
+      L.onDrop.stopPropagation.preventDefault --> { e => f(e, beProgram) }
+    )).toList.flatten
     
     val list: Seq[L.Modifier[L.HtmlElement]] = (dragStartMod ++ dragEndMods).flatten.toList
     list
@@ -70,35 +67,42 @@ object BeTreeControllerConfig {
 
     override def onDragEnd: Option[(DragEvent, BeProgram) => Any] = Some((dragEvent, program) => editorState.controllerStateVar.update(oldState => oldState.copy(draggingEvent = None)))
 
-    override def onClicked: Option[(MouseEvent, BeProgram, BeChildPosition) => Any] = Some((mouseEvent, program, childPos) => println("clicking: " + childPos))
+    override def onClicked: Option[(MouseEvent, BeProgram, BeExpressionNode) => Any] = Some((mouseEvent, program, childPos) => println("clicking: " + childPos))
 
-    override def onMouseEnter: Option[(MouseEvent, BeProgram, BeChildPosition) => Any] = Some((mouseEvent, program, childPos) => defaultOnMouseEnter(editorState))
-
-    override def onMouseLeave: Option[(MouseEvent, BeProgram, BeChildPosition) => Any] = Some((mouseEvent, program, childPos) => defaultOnMouseLeave(editorState))
   }
 
   def editTreeConfig(editorState: TreeEditorState): BeTreeControllerConfig = new BeTreeControllerConfig {
-
     override val isEditable: Boolean = true
 
-    override def onClicked: Option[(MouseEvent, BeProgram, BeChildPosition) => Any] = Some((mouseEvent, program, childPos) => println("clicking: " + childPos))
+    override def onClicked: Option[(MouseEvent, BeProgram, BeExpressionNode) => Any] = Some((mouseEvent, program, childPos) => println("clicking: " + childPos))
 
-    override def onMouseEnter: Option[(MouseEvent, BeProgram, BeChildPosition) => Any] = defaultOnMouseEnter(editorState)
+    override def onMouseEnter: Option[(MouseEvent, BeProgram, BeExpressionNode) => Any] = defaultOnMouseEnter(editorState)
 
-    override def onMouseLeave: Option[(MouseEvent, BeProgram, BeChildPosition) => Any] = defaultOnMouseLeave(editorState)
-
+    override def onMouseLeave: Option[(MouseEvent, BeProgram, BeExpressionNode) => Any] = defaultOnMouseLeave(editorState)
   }
 
-  def defaultOnMouseEnter(editorState: TreeEditorState): Option[(MouseEvent, BeProgram, BeChildPosition) => Any] =
+  def defaultOnMouseEnter(editorState: TreeEditorState): Option[(MouseEvent, BeProgram, BeExpressionNode) => Any] =
     Some(
-      (mouseEvent: MouseEvent, program: BeProgram, childPos: BeChildPosition)
-      => editorState.controllerStateVar.update(oldVal => oldVal.copy(mouseOverNode = Some(BeMouseOverNode(program, childPos))))
+      (mouseEvent: MouseEvent, program: BeProgram, exprNode: BeExpressionNode) => exprNode match {
+        case BeExtensionPoint(isRequired, childPosition, extensionType) => {
+          editorState.controllerStateVar.update(oldVal => oldVal.copy(mouseOverNode = Some(BeMouseOverExtensionPoint(program, exprNode.asInstanceOf[BeExtensionPoint]))))
+        }
+        case _ => {
+
+        }
+      }
     )
 
-  def defaultOnMouseLeave(editorState: TreeEditorState): Option[(MouseEvent, BeProgram, BeChildPosition) => Any] =
+  def defaultOnMouseLeave(editorState: TreeEditorState): Option[(MouseEvent, BeProgram, BeExpressionNode) => Any] =
     Some(
-      (mouseEvent: MouseEvent, program: BeProgram, childPos: BeChildPosition)
-      => editorState.controllerStateVar.update(oldVal => oldVal.copy(mouseOverNode = None))
+      (mouseEvent: MouseEvent, program: BeProgram, exprNode: BeExpressionNode) => exprNode match {
+        case BeExtensionPoint(isRequired, childPosition, extensionType) => {
+          editorState.controllerStateVar.update(oldVal => oldVal.copy(mouseOverNode = None))
+        }
+        case _ => {
+
+        }
+      }
     )
 
 

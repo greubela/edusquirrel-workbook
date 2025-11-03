@@ -1,9 +1,10 @@
 package interactionPlugins.blockEnvironment.programming.shapes
 
 import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.{Signal, svg}
+import com.raquo.laminar.api.L.{Signal, eventPropToProcessor, svg}
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.BeProgram
+import org.scalajs.dom.MouseEvent
 
 case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
 
@@ -60,7 +61,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
     svg.stroke := rendererConfig.colorPalette.yellows(3).toWebStyleString,
   )
 
-  def defaultStartBlockAmend: Seq[L.Modifier[L.SvgElement]] = List(
+  def defaultControlColors: Seq[L.Modifier[L.SvgElement]] = List(
     svg.fill := rendererConfig.colorPalette.yellows(2).toWebStyleString,
     svg.stroke := rendererConfig.colorPalette.yellows(2).toWebStyleString,
   )
@@ -68,7 +69,15 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
   def defaultControlFlowBackgroundAmend: Seq[L.Modifier[L.SvgElement]] = List(
     svg.fill := rendererConfig.colorPalette.yellows(1).toWebStyleString,
     svg.stroke := rendererConfig.colorPalette.yellows(0).toWebStyleString,
-
   )
+
+  def onMouseEnterAmend(handler: MouseEvent => Any): Seq[L.Modifier[L.SvgElement]] = List(
+    L.onMouseEnter --> { e => handler(e) }
+  )
+
+  def onMouseLeaveAmend(handler: MouseEvent => Any): Seq[L.Modifier[L.SvgElement]] = List(
+    L.onMouseEnter --> { e => handler(e) }
+  )
+
 
 }

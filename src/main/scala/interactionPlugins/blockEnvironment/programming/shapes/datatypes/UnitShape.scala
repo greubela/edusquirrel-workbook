@@ -26,7 +26,7 @@ object UnitShape extends BeShapePathBased {
 
   override protected def spaceAfterChild(config: BeRenderingConfig, childDim: Dimension[Double]): Dimension[Double] = spaceBeforeChild(config, childDim)
 
-  override def displaySize(config: BeRenderingConfig): Dimension[Double] = Dimension[Double](radius*4, radius*4)
+  override def displaySize(config: BeRenderingConfig): Dimension[Double] = Dimension[Double](20, 8)
 }
 /*
 

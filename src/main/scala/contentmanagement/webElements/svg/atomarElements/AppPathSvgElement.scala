@@ -23,6 +23,7 @@ case class AppPathSvgElement[T: Fractional]
   override val staticBoundingBox: Bounds[Double] = {
     val pointList: List[Point[Double]] = cornerPointsDouble
     Bounds.thatContainsAll(pointList)
+    boundingBoxWithControlPoints
   }
 
   def renderBeforeMods: L.SvgElement  = svg.path(svg.d := pathD)

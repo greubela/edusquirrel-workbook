@@ -2,19 +2,16 @@ package interactionPlugins.blockEnvironment.programming.blocks
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Var
-import contentmanagement.model.language.{HumanLanguage, LanguageMap}
-import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.code.tree.BeExpressionNode
-import contentmanagement.model.vm.types.{BeDataType, BeInfo}
+import contentmanagement.model.vm.types.BeDataType
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.elements.BeTreeControllerConfig
-import interactionPlugins.blockEnvironment.programming.shapes.BeShape
-import interactionPlugins.blockEnvironment.programming.shapes.BeShape.BeShapeContainerable
+import interactionPlugins.blockEnvironment.programming.shapes.{BeShape, BeShapeAmendFactory}
 
-import scala.collection.mutable
-
-case class RenderingInformation(inProgram: BeProgram, displayConfig: BeDisplayConfig, renderingConfig: BeRenderingConfig, treeListener: BeTreeControllerConfig, controllerStateVar: Var[BeControllerState])
+case class RenderingInformation(inProgram: BeProgram, displayConfig: BeDisplayConfig, renderingConfig: BeRenderingConfig, treeListener: BeTreeControllerConfig, controllerStateVar: Var[BeControllerState]) {
+  lazy val factory = BeShapeAmendFactory(renderingConfig)
+}
 
 
 trait BeBlock {
@@ -41,13 +38,6 @@ trait BeBlock {
 }
 
 
-sealed case class BeBlockPlaceholder(isRequired: Boolean, canAcceptTypes: BeDataType) extends BeBlock {
-
-  def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
-    NestedBlockRenderer.fromShape(canAcceptTypes.createShape)
-  }
-
-}
 
 
 /*sealed case class BeBlockTextDisplay(text: LanguageMap[HumanLanguage]) extends BeBlock {

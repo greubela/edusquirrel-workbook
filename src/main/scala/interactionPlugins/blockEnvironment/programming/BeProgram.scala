@@ -28,18 +28,18 @@ type BeBlockRenderingContext = TreeStructureAndExecutionContext[NodeBasedTreePos
 case class BeProgram(fullProgram: BeExpression) {
 
   lazy val expressionTree: BeExpressionTree = fullProgram.recToTree(true, BeChildPosition(NoRole, BeScope.GlobalScope()))
-  
+
   lazy val blockRenderingTree: BeBlockRenderingTree = expressionTree.mapWithStructure(structure => {
     structure.curValue match {
       case BeExtensionPoint(isRequired, childPos, dataType) => {
-        (structure.curValue, BeBlockPlaceholder(isRequired, dataType))
+        (structure.curValue, BeBlockPlaceholder(structure.curValue.asInstanceOf[BeExtensionPoint]))
       }
       case BeExpressionReference(childPos, expression) => {
         (structure.curValue, expression.createBlock())
       }
     }
   })
-  
+
 
   def withInsertions(additionMap: Map[BeExtensionPoint, BeExpression]): BeProgram = {
     val reparsedExpression = expressionTree.mapWithContext[Option[(BeChildPosition, BeExpression)]](context => {
@@ -63,7 +63,7 @@ case class BeProgram(fullProgram: BeExpression) {
 
   /*
       .flatMap(curChild => curChild match {
-      case 
+      case
         if (!additionMap.contains(curChild.asInstanceOf[BeExtensionPoint])) {
           None
         } else {

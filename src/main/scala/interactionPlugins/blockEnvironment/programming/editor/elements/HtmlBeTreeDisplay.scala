@@ -40,20 +40,12 @@ case class HtmlBeTreeDisplay(
 
     val resShape = renderedTree.getData(renderedTree.rootPosition.forChild(0)).get.finishedShape()
 
-    /*
-    val finishedRenderings: mutable.ListBuffer[AppSvgElement] = mutable.ListBuffer[AppSvgElement]()
-    tree.foreachWithStructure((structure: BeBlockContext) => {
-      if (posToDraw.contains(structure.curPosition)) {
-        val finishedShape: BeShape = structure.curValue.render(programToDisplay, listener, pEditorState.controllerStateVar, displayConfig, rendererConfig, structure)
-        val svg: AppSvgElement = finishedShape.render(rendererConfig, Point[Double](0, 0).withDimension(finishedShape.displaySize(rendererConfig)))
-        finishedRenderings += svg
-      }
-    })*/
-
     val svgDomElement = {
-      val rendered = resShape.render(rendererConfig, Point[Double](0,0).withDimension(resShape.displaySize(rendererConfig)))
-      val svgDim = rendered.staticBoundingBox.dimension
-      val svgCanvas: SvgCanvas = new SvgCanvas(svgDim.width.toInt, svgDim.height.toInt)
+
+      val displaySize = resShape.displaySize(rendererConfig)
+      val rendered = resShape.render(rendererConfig, Point[Double](0,0).withDimension(displaySize))
+
+      val svgCanvas: SvgCanvas = new SvgCanvas(displaySize.width.toInt, displaySize.height.toInt)
       svgCanvas.addSvgElement(rendered.renderWithMods)
       div(
         svgCanvas.getDomElement()

@@ -10,7 +10,8 @@ import contentmanagement.webElements.svg.AppSvgElement
 
 case class AppDecoratedSvgElement(mainElement: AppSvgElement, overlays: List[AppSvgElement], underlays: List[AppSvgElement]) extends AppSvgElement {
 
-  override def staticBoundingBox: Bounds[Double] = Bounds.thatContainsAll(mainElement.staticBoundingBox.cornerPoints ++ overlays.flatMap(_.staticBoundingBox.cornerPoints) ++ underlays.flatMap(_.staticBoundingBox.cornerPoints))
+  override def staticBoundingBox: Bounds[Double] = 
+    Bounds.thatContainsAll(mainElement.staticBoundingBox.cornerPoints ++ overlays.flatMap(_.staticBoundingBox.cornerPoints) ++ underlays.flatMap(_.staticBoundingBox.cornerPoints))
 
   override def mods: Seq[L.Modifier[L.SvgElement]] = mainElement.mods
   override def signalMods: Seq[Signal[L.Modifier[L.SvgElement]]] = mainElement.signalMods

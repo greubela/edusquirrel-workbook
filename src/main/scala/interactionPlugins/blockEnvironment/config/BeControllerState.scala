@@ -1,8 +1,7 @@
 package interactionPlugins.blockEnvironment.config
 
-import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreePosition
-import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole}
-import interactionPlugins.blockEnvironment.programming.{BeBlockTree, BeProgram}
+import contentmanagement.model.vm.code.tree.BeExtensionPoint
+import interactionPlugins.blockEnvironment.programming.BeProgram
 
 
 case class BeDraggingEvent(draggedProgram: BeProgram) {
@@ -11,12 +10,11 @@ case class BeDraggingEvent(draggedProgram: BeProgram) {
   override val toString: String = "BeDraggingEvent(" + draggedProgram.toString + ")"
 }
 
-case class BeMouseOverNode(program: BeProgram, childPosition: BeChildPosition) {
-
-  override val toString: String = "MouseOverNode(" + childPosition + ")"
+case class BeMouseOverExtensionPoint(program: BeProgram, extensionPoint: BeExtensionPoint) {
+  override val toString: String = "MouseOverNode(" + extensionPoint + ")"
 }
 
-case class BeControllerState(draggingEvent: Option[BeDraggingEvent], mouseOverNode: Option[BeMouseOverNode]) {
+case class BeControllerState(draggingEvent: Option[BeDraggingEvent], mouseOverNode: Option[BeMouseOverExtensionPoint]) {
 
 }
 

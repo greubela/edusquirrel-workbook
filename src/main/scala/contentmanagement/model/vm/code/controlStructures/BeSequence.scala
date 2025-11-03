@@ -7,7 +7,6 @@ import contentmanagement.model.vm.code.{BeControlStructure, BeExpression}
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeDataType.AnyType
 import contentmanagement.model.vm.types.BeScope.InSequenceScope
-import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 import interactionPlugins.blockEnvironment.programming.blocks.using.BeBlockSequence
 import util.CodeStringBuilder
@@ -78,8 +77,8 @@ case class BeSequence(body: List[BeExpression], sequenceInfo: BeSequenceInfo) ex
           Some(BeExtensionPoint(false, getChildPosFor(bodyWithExtensions.size), AnyType))
         else None
       }
-
       bodyWithExtensions ++ lastExtendAnyOption ++ lastExtendCorrectOption
+     
 
     }
   }

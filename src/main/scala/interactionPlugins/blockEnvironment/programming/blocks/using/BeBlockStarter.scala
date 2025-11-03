@@ -22,17 +22,17 @@ case class BeBlockStarter(
 
 
   def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
-    
+
     val factory = BeShapeAmendFactory(renderingInfo.renderingConfig)
-    val signalAmends = factory.muteOnTreeDragged(renderingInfo.inProgram, renderingInfo.controllerStateVar.signal, factory.defaultStartBlockAmend)
+    val signalAmends = factory.muteOnTreeDragged(renderingInfo.inProgram, renderingInfo.controllerStateVar.signal, factory.defaultControlColors)
 
     val starterShape = BeStarterShape.addSignalAmends(signalAmends)
 
-    var res = NestedBlockRenderer.fromShape(starterShape)
+    var res =  NestedBlockRenderer.fromShape(starterShape)
     for (curChild <- renderedChildren){
       res = res.addAllLines(curChild._3)
     }
-    res 
+    res
   }
 
 }

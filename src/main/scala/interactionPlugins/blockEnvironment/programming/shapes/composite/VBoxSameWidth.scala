@@ -21,7 +21,7 @@ case class VBoxSameWidth(
     val heightSum = minSizes.map(_.height).sum
 
     val paddingHeight = if (children.size > 1 && usePadding) config.paddingSmall.height * (children.size - 1) else 0.0
-
+    println("heightSum: " + heightSum + " paddingHeight: " + paddingHeight + " (heights: " +  minSizes.map(_.height).mkString(", ") + ")" )
     Dimension[Double](widthMax, heightSum + paddingHeight)
   }.ensureAtLeastAsBigAs(config.paddingSmall)
 

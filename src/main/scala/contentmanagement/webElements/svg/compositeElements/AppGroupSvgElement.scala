@@ -7,14 +7,13 @@ import contentmanagement.webElements.svg.AppSvgElement
 
 case class AppGroupSvgElement(childElements: List[AppSvgElement], mods: Seq[L.Modifier[L.SvgElement]] = List(), override val signalMods: Seq[Signal[L.Modifier[L.SvgElement]]] = List()) extends AppSvgElement {
 
-
   override def addMods(newMods: Seq[L.Modifier[L.SvgElement]]): AppSvgElement = this.copy(mods = newMods ++ mods)
 
   override def addSignalMods(newMods: Seq[Signal[L.Modifier[L.SvgElement]]]): AppSvgElement = this.copy(signalMods = newMods ++ signalMods)
 
-
-  override def staticBoundingBox: Bounds[Double] =
+  override def staticBoundingBox: Bounds[Double] = {
     Bounds.thatContainsAll(childElements.flatMap(_.staticBoundingBox.cornerPoints))
+  }
 
   override def renderBeforeMods: L.SvgElement = {
     svg.g(

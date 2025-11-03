@@ -1,25 +1,12 @@
 package interactionPlugins.blockEnvironment.programming.blocks.using
 
 import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.Var
-import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreePosition
-import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.code.controlStructures.*
-import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionReference}
+import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.types.*
-import contentmanagement.model.vm.types.BeChildRole.*
-import contentmanagement.model.vm.types.BeScope.*
-import interactionPlugins.blockEnvironment.config.*
 import interactionPlugins.blockEnvironment.programming.blocks.*
-import interactionPlugins.blockEnvironment.programming.blocks.variable.*
-import interactionPlugins.blockEnvironment.programming.editor.elements.BeTreeControllerConfig
-import interactionPlugins.blockEnvironment.programming.shapes.composite.{HBoxSameHeight, HorizontalAlignment, TableShape, VBoxSameWidth}
-import interactionPlugins.blockEnvironment.programming.shapes.controlflow.ControlFlowConnectorBackground
-import interactionPlugins.blockEnvironment.programming.shapes.{BeShape, BeShapeAmendFactory}
-import interactionPlugins.blockEnvironment.programming.{BeBlockContext, BeBlockRenderingContext, BeProgram}
 
 case class BeBlockSequence(sequence: BeSequence) extends BeBlock {
-
 
   def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
 
@@ -37,7 +24,7 @@ case class BeBlockSequence(sequence: BeSequence) extends BeBlock {
       .sortBy(_._1.childPosition.roleInParent.asInstanceOf[ExpressionInSequence].nr)
 
     TableShape(bodySeq.map(_._2), List(HorizontalAlignment.Left, HorizontalAlignment.Left), List(), false)
-   
+
     //override def render(inProgram: BeProgram, controllerStateVar: Var[BeControllerState], rendererConfig: BeRenderingConfig, renderedDisplayChildren: List[(BeBlockReference, BeShape)]): BeShape = {
     val factory = BeShapeAmendFactory(renderingInfo.rendererConfig)
     val signalAmends = factory.muteOnTreeDragged(inProgram, controllerStateVar.signal, factory.defaultControlFlowBackgroundAmend)

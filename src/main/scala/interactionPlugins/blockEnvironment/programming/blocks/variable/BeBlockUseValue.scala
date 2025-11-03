@@ -32,7 +32,9 @@ case class BeBlockUseValue(valueUsage: BeUseValue) extends BeBlock {
   
   def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
     val textShape = TextShape(LanguageMap.universalMap(valueUsage.getInLanguage(BlockDisplay, English)))
-    val resShape = ShapeAroundShape(LiteralShape, textShape).addAmends(BeShapeAmendFactory(renderingInfo.renderingConfig).literalColorsAmend)
+    val resShape = ShapeAroundShape(LiteralShape, textShape)
+      .addAmends(BeShapeAmendFactory(renderingInfo.renderingConfig).literalColorsAmend)
+    
     NestedBlockRenderer.fromShape(resShape)
   }
 
