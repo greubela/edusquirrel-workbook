@@ -10,10 +10,13 @@ import contentmanagement.model.vm.types.BeChildRole.BodySequence
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 import interactionPlugins.blockEnvironment.programming.blocks.defineStructure.BeBlockDefineSingleReturnFunction
-import util.CodeStringBuilder
-
-
-case class BeDefineFunction(inputs: List[BeDefineVariable], outputs: Option[BeDefineVariable], body: BeExpression, functionTypeInfo: BeFunctionTypeInfo) extends BeDefineStructure {
+case class BeDefineFunction(
+    inputs: List[BeDefineVariable],
+    outputs: Option[BeDefineVariable],
+    body: BeExpression,
+    functionTypeInfo: BeFunctionTypeInfo,
+    indentWidth: Int = 4
+) extends BeDefineStructure {
 
   override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] = List()
   /*
@@ -25,17 +28,35 @@ case class BeDefineFunction(inputs: List[BeDefineVariable], outputs: Option[BeDe
   }*/
 
   def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
-    val inputsStr = inputs.map(_.getInLanguage(programmingLanguage, humanLanguage).replaceAll("\n", ""))
+    def formatTypeHint(dataType: BeDataType): Option[String] = dataType match {
+      case BeDataType.AnyType => None
+      case other => Some(other.formatTypeForDisplay.getInLanguage(programmingLanguage))
+    }
+
+    def formatParameter(parameter: BeDefineVariable): String = {
+      val base = parameter.name.getInLanguage(humanLanguage)
+      programmingLanguage match {
+        case Python => formatTypeHint(parameter.variableType).map(hint => s"$base: $hint").getOrElse(base)
+        case _ => base
+      }
+    }
+
+    val inputsStr = inputs.map(formatParameter)
     val bodyStr = body.getInLanguage(programmingLanguage, humanLanguage)
     val functionName = functionTypeInfo.displayName.getInLanguage(humanLanguage)
-    //val returnType = outputs.map(output => languageSpecificType(programmingLanguage, output.canEvaluateTo)).getOrElse(languageSpecificDefaultReturn(programmingLanguage))
+
     programmingLanguage match {
       case Python =>
-        CodeStringBuilder()
-          .appendNextLine(s"def $functionName${inputsStr.mkString("(", ", ", ")")}:")
-          .changeIntLevel(1)
-          .appendAsLines(bodyStr)
-          .toString
+        val parameters = inputsStr.mkString("(", ", ", ")")
+        val returnAnnotation = outputs.flatMap(output => formatTypeHint(output.variableType)).map(hint => s" -> $hint").getOrElse("")
+        val indentation = " " * indentWidth
+        val bodyLines = if (bodyStr.isEmpty) List(indentation + "pass")
+        else {
+          bodyStr.split("\n", -1).toList.map { line =>
+            if (line.trim.isEmpty) "" else indentation + line
+          }
+        }
+        (s"def $functionName$parameters$returnAnnotation:" :: bodyLines).mkString("\n")
       case _ => ""
     }
   }
