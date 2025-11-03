@@ -32,5 +32,7 @@ case class BeDefineClass(name: LanguageMap[HumanLanguage], attributes: List[BeDe
 
   override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = List()
 
+  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = this
+
 
 }

@@ -28,5 +28,7 @@ case class BeExpressionUnparsable(originalSource: String, message: String) exten
 
   override def getChildren(withExtensions: Boolean, myScope: BeScope): List[BeExpressionNode] = List()
 
-  
+  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = this
+
+
 }

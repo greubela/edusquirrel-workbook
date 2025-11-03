@@ -25,4 +25,6 @@ case class BeExpressionUnsupported(originalSource: String) extends BeExpression 
     throw new NotImplementedError("Block rendering is not available for unsupported expressions")
 
   override def getChildren(withExtensions: Boolean, myScope: BeScope): List[BeExpressionNode] = List()
+
+  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = this
 }

@@ -82,4 +82,16 @@ case class BeWhile(
       BeExpressionReference(BeChildPosition(BeChildRole.BodySequence(0), InSequenceScope(body, myScope)), body),
     )
   }
+
+  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
+    val newCondition = newChildren.collectFirst {
+      case (ConditionInControlStructure, seq: BeSequence) => seq
+    }.getOrElse(condition)
+
+    val newBody = newChildren.collectFirst {
+      case (BeChildRole.BodySequence(0), seq: BeSequence) => seq
+    }.getOrElse(body)
+
+    copy(condition = newCondition, body = newBody)
+  }
 }

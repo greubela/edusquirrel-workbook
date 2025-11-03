@@ -41,7 +41,16 @@ case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) exten
     throw new NotImplementedError("Block rendering is not implemented for assignments")
 
   override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = List()
-  
+
+  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
+    val replacement = newChildren.collectFirst {
+      case (BeChildRole.ValueForVariable(variable), expr) if variable == target => expr
+      case (BeChildRole.ExpressionInSequence(_), expr) => expr
+    }
+
+    replacement.map(expr => copy(value = expr)).getOrElse(this)
+  }
+
 
   private def sanitizeRustName(name: String): String =
     if (name.nonEmpty && name.head.isUpper) name.head.toLower + name.tail else name
