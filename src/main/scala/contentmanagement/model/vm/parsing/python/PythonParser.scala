@@ -1,6 +1,5 @@
 package contentmanagement.model.vm.parsing.python
 
-import contentmanagement.model.language.AppLanguage.English
 import contentmanagement.model.language.{HumanLanguage, LanguageMap}
 import contentmanagement.model.vm.code.*
 import contentmanagement.model.vm.code.controlStructures.*
@@ -9,18 +8,14 @@ import contentmanagement.model.vm.code.errors.*
 import contentmanagement.model.vm.code.others.*
 import contentmanagement.model.vm.code.usage.*
 import contentmanagement.model.vm.types.*
+import contentmanagement.model.vm.types.BeDataType.{AnyType, BeUnionAllowedTypes}
 import fastparse.*
 import fastparse.NoWhitespace.*
 
 import scala.collection.mutable
-import scala.scalajs.js.internal.UnitOps.unitOrOps
 
 object PythonParser {
 
-
-  def parsePython(source: String): BeExpression = BeExpression.pass
-  
-  /*
   private val definedStructures: mutable.ListBuffer[BeDefineStructure] = mutable.ListBuffer()
   private val knownFunctions: mutable.Map[String, BeDefineFunction] = mutable.Map()
   private val knownVariables: mutable.Map[String, BeDefineVariable] = mutable.Map()
@@ -68,14 +63,13 @@ object PythonParser {
     definedStructures.clear()
     knownFunctions.clear()
     knownVariables.clear()
+
     if (source.trim.isEmpty) {
-      BeSequence(false, List())
+      BeSequence.optionalBody(List.empty)
     } else {
       parse(source, statements(_)) match {
-        case Parsed.Success(stmts, _) =>
-          BeSequence(false, stmts.toList)
-        case failure: Parsed.Failure =>
-          BeExpressionUnparsable(source, failure.trace().longAggregateMsg)
+        case Parsed.Success(stmts, _) => BeSequence.optionalBody(stmts.toList)
+        case failure: Parsed.Failure   => BeExpressionUnparsable(source, failure.trace().longAggregateMsg)
       }
     }
   }
@@ -84,17 +78,19 @@ object PythonParser {
     P(stmtSep.rep ~ statement.rep(sep = stmtSep) ~ stmtSep.rep)
 
   private def statement[$: P]: P[BeExpression] =
-    P(classStatement |
-      functionDefinition |
-      ifStatement |
-      whileStatement |
-      forStatement |
-      tryStatement |
-      returnStatement |
-      raiseStatement |
-      passStatement |
-      assignmentStatement |
-      expressionStatement)
+    P(
+      classStatement |
+        functionDefinition |
+        ifStatement |
+        whileStatement |
+        forStatement |
+        tryStatement |
+        returnStatement |
+        raiseStatement |
+        passStatement |
+        assignmentStatement |
+        expressionStatement
+    )
 
   private def passStatement[$: P]: P[BeExpression] =
     P(ws.? ~ "pass" ~ ws.?).map(_ => BeExpression.pass)
@@ -102,12 +98,12 @@ object PythonParser {
   private def ifStatement[$: P]: P[BeExpression] =
     P(ws.? ~ "if" ~ ws.? ~ conditionExpr ~ ":" ~ lineSep ~ blockBody ~ elifClause.rep ~ elseClause.?).map {
       case (condExpr, thenBodyText, elifParts, elsePart) =>
-        val baseElse = elsePart.map(parseBlockExpressions).getOrElse(BeSequence.optionalUnitBody(List()))
-        val base = BeIfElse(condExpr, parseBlockExpressions(thenBodyText), baseElse)
-        elifParts.foldRight(base) { case ((elifCondText, elifBodyText), acc) =>
-          val elifCondition = parseInlineExpression(elifCondText)
+        val elseSequence = elsePart.map(parseBlockExpressions).getOrElse(emptyOptionalSequence)
+        val initial = BeIfElse(condExpr, parseBlockExpressions(thenBodyText), elseSequence)
+        elifParts.foldRight(initial) { case ((elifCondText, elifBodyText), acc) =>
+          val elifCondition = parseConditionSequence(elifCondText)
           val elifBody = parseBlockExpressions(elifBodyText)
-          BeIfElse(elifCondition, elifBody, BeSequence(false, List(acc)))
+          BeIfElse(elifCondition, elifBody, wrapExpression(acc))
         }
     }
 
@@ -117,15 +113,17 @@ object PythonParser {
     }
 
   private def forStatement[$: P]: P[BeExpression] =
-    P(ws.? ~ "for" ~ ws.? ~ identifier ~ ws.? ~ "in" ~ ws.? ~ CharsWhile(c => c != ':' && c != '\n' && c != '\r', 1).! ~ ws.? ~ ":" ~ lineSep ~ blockBody).map {
+    P(
+      ws.? ~ "for" ~ ws.? ~ identifier ~ ws.? ~ "in" ~ ws.? ~
+        CharsWhile(c => c != ':' && c != '\n' && c != '\r', 1).! ~ ws.? ~ ":" ~ lineSep ~ blockBody
+    ).map {
       case (name, iterableText, bodyText) =>
         val loopVariable = resolveVariable(name)
-        val iterableExpr = parseInlineExpression(iterableText)
         val bodySequence = parseBlockExpressions(bodyText)
-        iterableExpr match {
-          case call: BeFunctionCall if name == "_" && isSimpleRangeCall(call) =>
-            BeRepeatNr(extractRangeCount(call), bodySequence)
+        parseRangeInvocation(iterableText.trim) match {
+          case Some(count) if name == "_" => BeRepeatNr(count, bodySequence)
           case _ =>
+            val iterableExpr = parseInlineExpression(iterableText)
             BeForEach(loopVariable, iterableExpr, bodySequence)
         }
     }
@@ -170,24 +168,43 @@ object PythonParser {
       val methods = members.collect { case func: BeDefineFunction => func }
       val nameMap: LanguageMap[HumanLanguage] = LanguageMap.universalMap(name)
       val placeholderClass = BeDefineClass(nameMap, attributes, List())
-      val methodsWithClass = methods.map(method => method.copy(functionTypeInfo = method.functionTypeInfo.copy(isMethodInClass = Some(placeholderClass))))
+      val methodsWithClass = methods.map(method =>
+        method.copy(functionTypeInfo = method.functionTypeInfo.copy(isMethodInClass = Some(placeholderClass)))
+      )
       val finalClass = placeholderClass.copy(methods = methodsWithClass)
       definedStructures += finalClass
       finalClass
     }
 
   private def functionDefinition[$: P]: P[BeExpression] =
-    P(ws.? ~ "def" ~ ws.? ~ identifier ~ ws.? ~ "(" ~ parameterList ~ ")" ~ returnAnnotation.? ~ ws.? ~ ":" ~ lineSep ~ blockBody).map {
+    P(
+      ws.? ~ "def" ~ ws.? ~ identifier ~ ws.? ~ "(" ~ parameterList ~ ")" ~ returnAnnotation.? ~ ws.? ~ ":" ~ lineSep ~ blockBody
+    ).map {
       case (name, params, returnTypeOpt, bodyText) =>
-        val paramDefinitions = params.map { case (paramName, typeHint) =>
-          BeDefineVariable(LanguageMap.universalMap(paramName), mapType(typeHint))
+        val parametersWithNames = params.map { case (paramName, typeHint) =>
+          paramName -> BeDefineVariable(LanguageMap.universalMap(paramName), mapType(typeHint))
+        }
+        val paramDefinitions = parametersWithNames.map(_._2)
+        val previousVariables = parametersWithNames.map { case (paramName, definition) =>
+          val previous = knownVariables.get(paramName)
+          knownVariables.update(paramName, definition)
+          paramName -> previous
         }
         val returnVariable = returnTypeOpt.flatMap { returnStr =>
           val mapped: BeDataType = mapType(Some(returnStr))
           if (mapped == BeDataType.Unit) None
           else Some(BeDefineVariable(LanguageMap.universalMap("return"), mapped))
         }
-        val bodyExpr = parseBlockExpressions(bodyText)
+        val bodyExpr =
+          try parseBlockExpressions(bodyText)
+          finally {
+            previousVariables.foreach { case (paramName, previousOpt) =>
+              previousOpt match {
+                case Some(previous) => knownVariables.update(paramName, previous)
+                case None => knownVariables.remove(paramName)
+              }
+            }
+          }
         val functionInfo = BeDefineFunction.functionInfo(LanguageMap.universalMap(name))
         val functionDef = BeDefineFunction(paramDefinitions, returnVariable, bodyExpr, functionInfo)
         knownFunctions.update(name, functionDef)
@@ -220,17 +237,15 @@ object PythonParser {
         }
     }
 
-  private def functionCall[$: P]: P[BeExpression] = 
-    ??? 
-    {
+  private def functionCall[$: P]: P[BeExpression] =
     P(identifier ~ ws.? ~ "(" ~ ws.? ~ argumentList ~ ws.? ~ ")").map { case (name, args) =>
       val function = resolveFunction(name, args.length)
-      BeFunctionCall(function, args)
+      val parameterMap = function.inputs.zip(args).toMap
+      BeFunctionCall(function, parameterMap)
     }
-  }
 
   private def argumentList[$: P]: P[List[BeExpression]] =
-    P(valueExpression.rep(sep = ws.? ~ "," ~ ws.?)).map(_.toList)
+    P(inlineExpression.rep(sep = ws.? ~ "," ~ ws.?)).map(_.toList)
 
   private def valueLiteralExpression[$: P]: P[BeExpression] =
     P(valueExpression)
@@ -238,25 +253,29 @@ object PythonParser {
   private def unsupportedExpression[$: P]: P[BeExpression] =
     P(CharsWhile(isLineChar, 1).!).map(str => BeExpressionUnsupported(str.trim))
 
-  private def valueExpression[$: P]: P[BeDataValue] =
+  private def valueExpression[$: P]: P[BeExpression] =
     P(unitLiteral | booleanLiteral | numberLiteral | stringLiteral | identifierValue)
 
-  private def identifierValue[$: P]: P[BeDataValue] =
-    P(identifier).map(name => BeUseValueReferencing(resolveVariable(name)))
+  private def identifierValue[$: P]: P[BeExpression] =
+    P(identifier).map { name =>
+      val variable = resolveVariable(name)
+      BeUseValue(BeUseValueReferencing(variable), Some(variable))
+    }
 
-  private def unitLiteral[$: P]: P[BeDataValue] =
-    P("None").map(_ => BeUseUnitValue)
+  private def unitLiteral[$: P]: P[BeExpression] =
+    P("None").map(_ => BeUseValue(BeDataValueUnit(), None))
 
-  private def booleanLiteral[$: P]: P[BeDataValue] =
-    P("True".map(_ => BeUseValueLiteral("True")) | "False".map(_ => BeUseValueLiteral("False")))
+  private def booleanLiteral[$: P]: P[BeExpression] =
+    P("True".!.map(literal => BeUseValue(BeDataValueLiteral(literal), None)) |
+      "False".!.map(literal => BeUseValue(BeDataValueLiteral(literal), None)))
 
-  private def numberLiteral[$: P]: P[BeDataValue] =
-    P(integerLiteral.!).map(num => BeUseValueLiteral(num))
+  private def numberLiteral[$: P]: P[BeExpression] =
+    P(integerLiteral.!).map(num => BeUseValue(BeDataValueLiteral(num), None))
 
-  private def stringLiteral[$: P]: P[BeDataValue] =
+  private def stringLiteral[$: P]: P[BeExpression] =
     P(
-      ("\"" ~ CharsWhile(_ != '"').! ~ "\"").map(content => BeUseValueLiteral(s"\"$content\"")) |
-        ("'"  ~ CharsWhile(_ != '\'').! ~ "'").map(content  => BeUseValueLiteral(s"'$content'"))
+      ("\"" ~ CharsWhile(_ != '"').! ~ "\"").map(content => BeUseValue(BeDataValueLiteral(s"\"$content\""), None)) |
+        ("'" ~ CharsWhile(_ != '\'').! ~ "'").map(content => BeUseValue(BeDataValueLiteral(s"'$content'"), None))
     )
 
   private def integerLiteral[$: P]: P[String] =
@@ -268,8 +287,8 @@ object PythonParser {
   private def stripTrailingWhitespace(value: String): String =
     value.reverse.dropWhile(_.isWhitespace).reverse
 
-  private def conditionExpr[$: P]: P[BeExpression] =
-    P(CharsWhile(c => c != ':' && c != '\n' && c != '\r', 1).!).map(parseInlineExpression)
+  private def conditionExpr[$: P]: P[BeSequence] =
+    P(CharsWhile(c => c != ':' && c != '\n' && c != '\r', 1).!).map(parseConditionSequence)
 
   private def elifClause[$: P]: P[(String, String)] =
     P(stmtSep.rep(1) ~ "elif" ~ ws.? ~ CharsWhile(c => c != ':' && c != '\n' && c != '\r', 1).! ~ ":" ~ lineSep ~ blockBody)
@@ -309,22 +328,24 @@ object PythonParser {
 
   private def parseBlockExpressions(body: String): BeSequence = {
     if (body.trim.isEmpty) {
-      BeSequence(false, List())
+      emptyOptionalSequence
     } else {
       parse(body, statements(_)) match {
-        case Parsed.Success(stmts, _) => BeSequence(false, stmts.toList)
-        case failure: Parsed.Failure => BeSequence(true, List(BeExpressionUnparsable(body, failure.trace().longAggregateMsg)))
+        case Parsed.Success(stmts, _) => BeSequence.optionalBody(stmts.toList)
+        case failure: Parsed.Failure =>
+          BeSequence.optionalBody(List(BeExpressionUnparsable(body, failure.trace().longAggregateMsg)))
       }
     }
   }
 
   private def parseInlineExpression(expr: String): BeExpression = {
     val trimmed = expr.trim
-    if (trimmed.isEmpty) BeUseUnitValue
-    else {
+    if (trimmed.isEmpty) {
+      BeExpressionUnsupported("")
+    } else {
       parse(trimmed, inlineExpression(_)) match {
         case Parsed.Success(result, _) => result
-        case _ => BeExpressionUnsupported(trimmed)
+        case _                         => BeExpressionUnsupported(trimmed)
       }
     }
   }
@@ -333,41 +354,65 @@ object PythonParser {
     P(functionCall | valueLiteralExpression | unsupportedExpression)
 
   private def mapType(typeHint: Option[String]): BeDataType = {
-    typeHint.map(_.trim.toLowerCase) match {
-      case Some("int") | Some("float") | Some("number") | Some("double") => BeDataType.Numeric
-      case Some("bool") | Some("boolean") =>BeDataType.Boolean
-      case Some("str") | Some("string") => BeDataType.String
-      case Some("date") | Some("datetime") => BeDataType.Date
-      case Some("none") | Some("void") | Some("unit") => BeDataType.Unit
-      case Some(_) => BeDataType.AnyAtomic // todo fix with all known classes
-      case None => BeDataType.AnyAtomic // todo fix with all known classes
+    typeHint match {
+      case Some(rawHint) if rawHint.nonEmpty =>
+        val normalizedParts = rawHint.split("\\|").map(_.trim).filter(_.nonEmpty)
+        val mappedParts = normalizedParts.flatMap(mapAtomicType)
+        if (mappedParts.isEmpty) AnyType
+        else if (mappedParts.length == 1) mappedParts.head
+        else BeUnionAllowedTypes(mappedParts.toSet)
+      case _ => AnyType
     }
   }
 
-  private def isSimpleRangeCall(call: BeFunctionCall): Boolean = {
-    val functionName = call.funcDef.functionTypeInfo.displayName.getInLanguage(English)
-    functionName == "range" && call.withParameterValues.length == 1 && call.withParameterValues.headOption.exists {
-      case literal: BeUseValueLiteral => literal.value.trim.toIntOption.nonEmpty
-      case _ => false
+  private def mapAtomicType(typeHint: String): Option[BeDataType] =
+    typeHint.toLowerCase match {
+      case "int" | "float" | "number" | "double" => Some(BeDataType.Numeric)
+      case "bool" | "boolean"                     => Some(BeDataType.Boolean)
+      case "str" | "string"                        => Some(BeDataType.String)
+      case "date" | "datetime"                    => Some(BeDataType.Date)
+      case "none" | "void" | "unit"              => Some(BeDataType.Unit)
+      case _                                       => None
+    }
+
+  private def parseRangeInvocation(source: String): Option[Int] = {
+    val trimmed = source.trim
+    if (trimmed.startsWith("range(") && trimmed.endsWith(")")) {
+      val inner = trimmed.substring(6, trimmed.length - 1).trim
+      if (inner.nonEmpty) inner.toIntOption else None
+    } else {
+      None
     }
   }
-
-  private def extractRangeCount(call: BeFunctionCall): Int =
-    call.withParameterValues.headOption.collect {
-      case literal: BeUseValueLiteral => literal.value.trim.toIntOption.getOrElse(0)
-    }.getOrElse(0)
 
   private def resolveFunction(name: String, arity: Int): BeDefineFunction = {
     knownFunctions.getOrElse(name, {
-      val parameters = (0 until arity).map(index => BeDefineVariable(LanguageMap.universalMap(s"arg$index"), BeDataType.AnyType)).toList
-      val placeholder = BeDefineFunction(parameters, None, BeSequence.optionalUnitBody(List()), BeDefineFunction.functionInfo(LanguageMap.universalMap(name)))
+      val parameters = (0 until arity).map { index =>
+        BeDefineVariable(LanguageMap.universalMap(s"arg$index"), AnyType)
+      }.toList
+      val placeholder = BeDefineFunction(
+        parameters,
+        None,
+        BeSequence.optionalBody(List.empty),
+        BeDefineFunction.functionInfo(LanguageMap.universalMap(name))
+      )
       knownFunctions.update(name, placeholder)
       placeholder
     })
   }
 
   private def resolveVariable(name: String): BeDefineVariable = {
-    knownVariables.getOrElseUpdate(name, BeDefineVariable(LanguageMap.universalMap(name), BeDataType.AnyType))
+    knownVariables.getOrElseUpdate(name, BeDefineVariable(LanguageMap.universalMap(name), AnyType))
   }
-*/
+
+  private def parseConditionSequence(conditionSource: String): BeSequence = {
+    val expression = parseInlineExpression(conditionSource)
+    BeSequence(List(expression), BeSequenceInfo(Some(BeDataType.Boolean), Some(1)))
+  }
+
+  private def wrapExpression(expr: BeExpression): BeSequence =
+    BeSequence.optionalBody(List(expr))
+
+  private def emptyOptionalSequence: BeSequence =
+    BeSequence.optionalBody(List.empty)
 }
