@@ -1,0 +1,77 @@
+package contentmanagement.webElements.svg.shapes.composite
+
+import contentmanagement.model.geometry.{Bounds, Dimension, Point}
+import contentmanagement.webElements.svg.shapes.BeShape
+import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import BeShape.*
+
+import scala.collection.mutable
+
+case class VBoxSameWidth(
+    override val children: List[BeShape],
+    usePadding: Boolean = true,
+    horizontalAlignment: HorizontalAlignment = HorizontalAlignment.Center,
+    verticalAlignment: VerticalAlignment = VerticalAlignment.Center
+) extends BeShapeBox {
+
+  def displaySize(config: BeRenderingConfig): Dimension[Double] = {
+    val minSizes: List[Dimension[Double]] = children.map(_.displaySize(config))
+
+    val widthMax = minSizes.map(_.width).maxOption.getOrElse(0.0)
+    val heightSum = minSizes.map(_.height).sum
+
+    val paddingHeight = if (children.size > 1 && usePadding) config.paddingSmall.height * (children.size - 1) else 0.0
+    println("heightSum: " + heightSum + " paddingHeight: " + paddingHeight + " (heights: " +  minSizes.map(_.height).mkString(", ") + ")" )
+    Dimension[Double](widthMax, heightSum + paddingHeight)
+  }.ensureAtLeastAsBigAs(config.paddingSmall)
+
+
+  override def calcChildrenBounds(config: BeRenderingConfig, bounds: Bounds[Double]): Map[BeShape, Bounds[Double]] = {
+    val minSizes: List[Dimension[Double]] = children.map(_.displaySize(config))
+
+    val widthMax = minSizes.map(_.width).maxOption.getOrElse(0.0)
+    val heightSum = minSizes.map(_.height).sum
+
+    val paddingWidth = if (usePadding) config.paddingSmall.width * 2 else 0.0
+    val paddingHeight = if(usePadding) config.paddingSmall.height * (children.size+1) else 0.0
+
+    val availableWidth = bounds.dimension.width - widthMax - paddingWidth
+    val horizontalOffset = horizontalAlignment match
+      case HorizontalAlignment.Left => 0.0
+      case HorizontalAlignment.Center => availableWidth / 2
+      case HorizontalAlignment.Right => availableWidth
+    val safeHorizontalOffset = math.max(0.0, horizontalOffset)
+
+    val availableHeight = bounds.dimension.height - heightSum - paddingHeight
+    val verticalOffset = verticalAlignment match
+      case VerticalAlignment.Top => 0.0
+      case VerticalAlignment.Center => availableHeight / 2
+      case VerticalAlignment.Bottom => availableHeight
+    val safeVerticalOffset = math.max(0.0, verticalOffset)
+
+
+    val startPoint = bounds.startPoint.moveWithDimension(
+      Dimension[Double](safeHorizontalOffset, safeVerticalOffset)
+    )
+
+    var curPoint = startPoint
+    val res = mutable.HashMap[BeShape, Bounds[Double]]()
+
+    for ((curChild, index) <- children.zipWithIndex) {
+      if (usePadding) {
+        curPoint = curPoint.moveWithDimension(Dimension[Double](0, config.paddingSmall.height))
+      }
+      val childDim = minSizes(index).ensureWidth(widthMax)
+      val childBounds = curPoint.withDimension(childDim)
+
+      curPoint = curPoint.moveWithDimension(Dimension[Double](0, childDim.height))
+      res.put(curChild, childBounds)
+    }
+
+    res.toMap
+
+
+  }
+
+}
+

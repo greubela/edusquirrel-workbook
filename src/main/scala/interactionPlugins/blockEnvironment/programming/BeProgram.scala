@@ -9,12 +9,12 @@ import contentmanagement.model.vm.code.defining.{BeDefineFunction, BeDefineVaria
 import contentmanagement.model.vm.code.others.BeStartProgram
 import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionReference, BeExtensionPoint}
 import contentmanagement.model.vm.code.usage.*
+import contentmanagement.model.vm.parsing.python.PythonParser
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.*
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.*
-import interactionPlugins.blockEnvironment.programming.shapes.BeShape
-import sourcecode.Text.generate
+import interactionPlugins.blockEnvironment.programming.blocks.other.BeBlockPlaceholder
 
 type BeBlockTree = Tree[NodeBasedTreePosition, BeBlock]
 type BeExpressionTree = Tree[NodeBasedTreePosition, BeExpressionNode]
@@ -39,7 +39,6 @@ case class BeProgram(fullProgram: BeExpression) {
       }
     }
   })
-
 
   def withInsertions(additionMap: Map[BeExtensionPoint, BeExpression]): BeProgram = {
     val reparsedExpression = expressionTree.mapWithContext[Option[(BeChildPosition, BeExpression)]](context => {
@@ -93,46 +92,6 @@ case class BeProgram(fullProgram: BeExpression) {
 
 object BeProgram {
 
-  /*
-  def starterTree(config: BeDisplayConfig): BeProgram = {
-    BeProgram(config, BeStartProgram(None))
-  }
-
-  def apply(config: BeDisplayConfig, blockTree: BeBlockTree): BeProgram = {
-    fromBlockTree(config, blockTree)
-  }
-
-  def fromExpression(config: BeDisplayConfig, expression: BeExpression): BeProgram = {
-    val expressionTree: BeExpressionTree = expression.recToTree(true, BeChildPosition(NoRole, BeScope.GlobalScope()))
-    fromExpressionTree(config, expressionTree)
-  }
-
-  def expressionTreeToExpression(expressionTree: BeExpressionTree): BeExpression = {
-    if (expressionTree.isEmpty) BeExpression.NoOp
-    else expressionTree.getData(expressionTree.rootPosition.forChild(0)).get._2
-  }
-
-  def blockTreeToExpression(blockTree: BeBlockTree): BeExpression = {
-    if (blockTree.isEmpty) {
-      BeExpression.NoOp
-    }
-    val expressionTree: BeExpressionTree = {
-      blockTree.mapWithStructure(structure => (
-        structure.curValue.positionAsChild.roleInParent,
-        structure.curValue.calcAssociatedExpression(structure),
-        structure.curValue.positionAsChild.curScope))
-    }
-    expressionTree.getData(expressionTree.rootPosition.forChild(0)).get._2
-  }
-
-  def fromBlockTree(displayConfig: BeDisplayConfig, blockTree: BeBlockTree): BeProgram = {
-    if (blockTree.isEmpty) {
-      starterTree(displayConfig)
-    }
-    val expression = blockTreeToExpression(blockTree)
-    fromExpression(displayConfig, expression)
-  }*/
-
   def createSimpleFunc(displayConfig: BeDisplayConfig, functionName: String, parNames: List[String], parTypes: List[BeDataType], parValues: List[String], output: Option[BeDataType]): BeProgram = {
 
     val funcNameMap: LanguageMap[HumanLanguage] = LanguageMap.universalMap(functionName)
@@ -159,13 +118,9 @@ object BeProgram {
     BeProgram(expression)
   }
 
-
   def createOneParFunc(displayConfig: BeDisplayConfig, functionName: String, parName: String, parType: BeDataType, valueString: String): BeProgram = {
     createSimpleFunc(displayConfig, functionName, List(parName), List(parType), List(valueString), None)
   }
-
-  // todo: To functions, BeBlockTree -> vm representation // vm representation -> BeBlockTree
-
 
   def miniProgramExpression(): BeExpression = {
 
@@ -205,7 +160,35 @@ object BeProgram {
   }
 
   def miniProgram(): BeProgram = {
-    BeProgram( miniProgramExpression())
+    BeProgram(miniProgramExpression())
+  }
+
+  def sampleParsedProgram(): BeProgram = {
+    val somePython =
+      """
+        |# this is comment
+        |
+        |def greeting(name: str) -> str:
+        |    return 'Hello ' + Name
+        |
+        |def increase(nr):
+        |   nr = nr + 3
+        |   x = 5
+        |
+        |greeting("hi")
+        |increase(x5)
+        |""".stripMargin
+    val parsingResult = PythonParser.parsePythonWithDetails(somePython)
+    val expression = parsingResult.codeExpression
+    println(expression)
+    BeProgram(expression)
+
+    /*
+    BeSequence(List(BeSequence(List(),BeSequenceInfo(None,None)), BeDefineFunction(List(BeDefineVariable(UniversalLanguageMap('name'): BeDataTypeAtomic(interactionPlugins.blockEnvironment.programming.shapes.datatypes.UnitShape$@11,UniversalLanguageMap('None'),<function1>,<function1>,Set(BeDataTypeAtomic(interactionPlugins.blockEnvironment.programming.shapes.datatypes.StringShape$@5,UniversalLanguageMap('str'),<function1>,<function1>,Set()))))),Some(BeDefineVariable(UniversalLanguageMap('return'): BeDataTypeAtomic(interactionPlugins.blockEnvironment.programming.shapes.datatypes.UnitShape$@11,UniversalLanguageMap('None'),<function1>,<function1>,Set(BeDataTypeAtomic(interactionPlugins.blockEnvironment.programming.shapes.datatypes.StringShape$@5,UniversalLanguageMap('str'),<function1>,<function1>,Set()))))),BeSequence(List(BeReturn(Some(OperatorFunctionCall(BeFunctionCall(BeDefineFunction(List(BeDefineVariable(UniversalLanguageMap('left'): BeDataTypeAtomic(interactionPlugins.blockEnvironment.p…
+
+
+     */
+
   }
 
 

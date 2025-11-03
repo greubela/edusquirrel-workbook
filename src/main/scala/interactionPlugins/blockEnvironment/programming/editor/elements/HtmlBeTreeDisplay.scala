@@ -6,11 +6,11 @@ import com.raquo.laminar.api.L.*
 import contentmanagement.model.geometry.Point
 import contentmanagement.webElements.genericHtmlElements.canvas.SvgCanvas
 import contentmanagement.webElements.svg.AppSvgElement
+import contentmanagement.webElements.svg.shapes.BeShape
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.blocks.{NestedBlockRenderer, RenderingInformation}
 import interactionPlugins.blockEnvironment.programming.editor.*
-import interactionPlugins.blockEnvironment.programming.shapes.BeShape
 
 import scala.collection.mutable
 

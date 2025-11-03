@@ -4,9 +4,12 @@ import contentmanagement.model.AppFont
 import contentmanagement.model.color.{AppColorPalette, RGBYColorPalette}
 import contentmanagement.model.geometry.Dimension
 import contentmanagement.model.language.{AppLanguage, HumanLanguage}
+import contentmanagement.webElements.svg.shapes.BeShapeAmendFactory
 
 
-case class BeRenderingConfig(appFont: AppFont, paddingSmall: Dimension[Double], paddingBig: Dimension[Double], colorPalette: RGBYColorPalette, language: HumanLanguage)
+case class BeRenderingConfig(appFont: AppFont, paddingSmall: Dimension[Double], paddingBig: Dimension[Double], colorPalette: RGBYColorPalette, language: HumanLanguage, controlSegmentSize: Int = 5) {
+  val amendFactory: BeShapeAmendFactory = BeShapeAmendFactory(this)
+}
 
 object BeRenderingConfig {
 

@@ -4,9 +4,9 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.language.AppLanguage.BlockDisplay
 import contentmanagement.model.language.{LanguageMap, ProgrammingLanguage}
-import interactionPlugins.blockEnvironment.programming.shapes.BeShape
-import interactionPlugins.blockEnvironment.programming.shapes.BeShape.BeShapeContainerable
-import interactionPlugins.blockEnvironment.programming.shapes.datatypes.*
+import contentmanagement.webElements.svg.shapes.BeShape
+import BeShape.BeShapeContainerable
+import contentmanagement.webElements.svg.shapes.datatypes.{BooleanShape, DateShape, DuckShape, NumericShape, StringShape, UnitShape}
 import util.AlgebriteNumber
 
 sealed trait BeDataType {

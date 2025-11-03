@@ -9,13 +9,13 @@ import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.code.usage.BeFunctionCall
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.{FunctionParameter, NoRole}
+import contentmanagement.webElements.svg.shapes.{BeShapeAmendFactory, TextShape}
+import contentmanagement.webElements.svg.shapes.composite.{HBoxSameHeight, ShapeAroundShape}
 import interactionPlugins.blockEnvironment.config.*
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.blocks.*
 import interactionPlugins.blockEnvironment.programming.blocks.variable.*
 import interactionPlugins.blockEnvironment.programming.editor.elements.BeTreeControllerConfig
-import interactionPlugins.blockEnvironment.programming.shapes.*
-import interactionPlugins.blockEnvironment.programming.shapes.composite.{HBoxSameHeight, ShapeAroundShape}
 
 import scala.collection.mutable
 

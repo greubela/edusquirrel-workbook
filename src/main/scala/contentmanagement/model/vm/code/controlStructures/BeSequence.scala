@@ -57,6 +57,8 @@ case class BeSequence(body: List[BeExpression], sequenceInfo: BeSequenceInfo) ex
 
     def getChildPosFor(nr: Int): BeChildPosition = BeChildPosition(BeChildRole.ExpressionInSequence(nr), InSequenceScope(this, myScope))
 
+    println("BeSequence::getChildren -> " + body.map(_.getClass.getSimpleName).mkString("["," -> ", "]"))
+
     if (!withExtensions) body.zipWithIndex.map((curExpr, curNr) =>
       BeExpressionReference(getChildPosFor(curNr), curExpr)
     )

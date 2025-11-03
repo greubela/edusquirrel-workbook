@@ -102,7 +102,7 @@ trait AppSvgElement {
       svg.height := "" + staticBoundingBox.height,
       svg.x := "0",
       svg.y := "0",
-      renderBeforeMods
+      renderWithMods
     )
   )
 

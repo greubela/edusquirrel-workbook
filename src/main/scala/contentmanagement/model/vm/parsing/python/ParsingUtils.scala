@@ -1,11 +1,22 @@
 package contentmanagement.model.vm.parsing.python
 
+import contentmanagement.model.vm.code.BeExpression
+import contentmanagement.model.vm.code.controlStructures.BeSequence
+
 import scala.collection.mutable.ListBuffer
 
 object ParsingUtils {
 
   def stripTrailingWhitespace(value: String): String =
     value.reverse.dropWhile(_.isWhitespace).reverse
+
+  def keepExpression(expr: BeExpression): Boolean = {
+    expr match {
+      case BeSequence(body, seqInfo) => body.nonEmpty || seqInfo.mustEvaluateTo.nonEmpty
+      case _ => true
+    }
+  }
+  
 
   def isParenthesized(value: String): Boolean = {
     val trimmed = value.trim

@@ -27,32 +27,13 @@ def mainApp(): Unit = {
 
 def doSomeCalculations(): Unit = {
 
-  val somePython = """
-    |x = 3
-    |def greeting(name: str) -> str:
-    |    return 'Hello ' + Name
-    |
-    |def increase(nr):
-    |   nr = nr + 3
-    |   x = 5
-    |
-    |
-    |greeting("hi")
-    |increase(5)
-    |
-    |""".stripMargin
-
-  val expression = PythonParser.parsePython(somePython)
-  println("expression: " + expression)
-  
-  println("in python again:\n" + expression.getInLanguage(Python, English))
 }
 
 val fullscreenElement: HtmlFullScreenElement = HtmlFullScreenElement()
 
 def insertTurtleEditor(): Unit = {
 
-  val editorDom = new HtmlFullscreenTurtleEditorElement(BeProgram.miniProgramExpression()).getDomElement()
+  val editorDom = new HtmlFullscreenTurtleEditorElement(BeProgram.sampleParsedProgram().fullProgram).getDomElement()
 
   val worksheetDiv = document.getElementById("worksheetDts")
 

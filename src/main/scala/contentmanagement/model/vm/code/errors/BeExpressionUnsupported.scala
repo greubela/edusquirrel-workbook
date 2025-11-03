@@ -7,6 +7,7 @@ import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorStat
 import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.config.BeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
+import interactionPlugins.blockEnvironment.programming.blocks.other.BeBlockUnsupported
 
 case class BeExpressionUnsupported(originalSource: String) extends BeExpression {
 
@@ -21,8 +22,7 @@ case class BeExpressionUnsupported(originalSource: String) extends BeExpression 
 
   override def canEvaluateTo: BeDataType = BeDataType.Error
 
-  override def createBlock(): BeBlock =
-    throw new NotImplementedError("Block rendering is not available for unsupported expressions")
+  override def createBlock(): BeBlock = BeBlockUnsupported(this)
 
   override def getChildren(withExtensions: Boolean, myScope: BeScope): List[BeExpressionNode] = List()
 

@@ -1,6 +1,6 @@
 package interactionPlugins.blockEnvironment.programming.blocks
 
-import interactionPlugins.blockEnvironment.programming.shapes.BeShape
+import contentmanagement.webElements.svg.shapes.BeShape
 
 case class NestedBlockRendererLine(
                                     mainShape: BeShape,

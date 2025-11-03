@@ -9,13 +9,13 @@ import contentmanagement.model.vm.code.others.BeStartProgram
 import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.BodySequence
+import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeAmendFactory}
+import contentmanagement.webElements.svg.shapes.composite.{ShapeAroundShape, VBoxSameWidth}
+import contentmanagement.webElements.svg.shapes.datatypes.BeStarterShape
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.blocks.*
 import interactionPlugins.blockEnvironment.programming.editor.elements.BeTreeControllerConfig
-import interactionPlugins.blockEnvironment.programming.shapes.composite.{ShapeAroundShape, VBoxSameWidth}
-import interactionPlugins.blockEnvironment.programming.shapes.datatypes.BeStarterShape
-import interactionPlugins.blockEnvironment.programming.shapes.{BeShape, BeShapeAmendFactory}
 
 case class BeBlockStarter(
                          ) extends BeBlock {

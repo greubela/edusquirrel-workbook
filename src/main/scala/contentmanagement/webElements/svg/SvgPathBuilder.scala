@@ -159,4 +159,6 @@ case class SvgPathBuilder[T: Fractional](startPointAbs: Point[T]) {
     AppPathSvgElement[T](pathD.toString(), cornerPoints.toList, controlLines.toList)
 
 
+  
+
 }

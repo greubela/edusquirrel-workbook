@@ -8,6 +8,7 @@ import contentmanagement.model.vm.code.errors.*
 import contentmanagement.model.vm.code.others.BeReturn
 import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.code.usage.*
+import contentmanagement.model.vm.parsing.python.ParsingUtils.keepExpression
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole
 import contentmanagement.model.vm.types.BeDataType.{AnyType, BeUnionAllowedTypes}
@@ -27,6 +28,9 @@ object PythonParser {
 
   def parsePython(source: String): BeExpression = parsePythonWithDetails(source).codeExpression
 
+
+
+
   def parsePythonWithDetails(source: String): CodeParsingResult = {
     val normalized = normalizeSource(source)
     if (normalized.trim.isEmpty) {
@@ -35,7 +39,8 @@ object PythonParser {
       val context = new ParseContext
       val lines = toParsedLines(normalized)
       val (expressions, _) = parseBlock(lines, 0, 0, context)
-      val expression = BeSequence.optionalBody(expressions)
+      val expressionsCleaned = expressions.filter(keepExpression)
+      val expression = BeSequence.optionalBody(expressionsCleaned)
       CodeParsingResult(context.definedClasses, context.definedFunctions, context.definedVariables, expression)
     }
   }

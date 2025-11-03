@@ -4,7 +4,6 @@ import com.raquo.laminar.api.L.Var
 import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.blocks.*
-import interactionPlugins.blockEnvironment.programming.shapes.{BeShape, BeShapeAmendFactory, TextShape}
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Var
 import com.raquo.laminar.api.L.svg
@@ -12,7 +11,6 @@ import contentmanagement.model.vm.code.defining.BeDefineVariable
 import contentmanagement.model.vm.types.*
 import contentmanagement.webElements.svg.AppSvgElement
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
-import interactionPlugins.blockEnvironment.programming.shapes.composite.ShapeAroundShape
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{Var, svg}
 import contentmanagement.model.language.AppLanguage.{BlockDisplay, English}
@@ -22,11 +20,10 @@ import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.BeProgram
-import interactionPlugins.blockEnvironment.programming.shapes.BeShape
-import interactionPlugins.blockEnvironment.programming.shapes.BeShape.*
-import interactionPlugins.blockEnvironment.programming.shapes.datatypes.LiteralShape
-import interactionPlugins.blockEnvironment.programming.shapes.composite.ShapeAroundShape
 import contentmanagement.model.vm.code.usage.*
+import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeAmendFactory, TextShape}
+import contentmanagement.webElements.svg.shapes.composite.ShapeAroundShape
+import contentmanagement.webElements.svg.shapes.datatypes.LiteralShape
 
 case class BeBlockUseValue(valueUsage: BeUseValue) extends BeBlock {
   

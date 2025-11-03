@@ -7,10 +7,10 @@ import contentmanagement.model.vm.code.defining.BeDefineVariable
 import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.types.*
 import contentmanagement.webElements.svg.AppSvgElement
+import contentmanagement.webElements.svg.shapes.{BeShape, TextShape}
+import contentmanagement.webElements.svg.shapes.composite.ShapeAroundShape
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.blocks.*
-import interactionPlugins.blockEnvironment.programming.shapes.composite.ShapeAroundShape
-import interactionPlugins.blockEnvironment.programming.shapes.{BeShape, TextShape}
 import interactionPlugins.blockEnvironment.programming.{BeBlockContext, BeProgram}
 
 case class BeBlockDefineVariable(

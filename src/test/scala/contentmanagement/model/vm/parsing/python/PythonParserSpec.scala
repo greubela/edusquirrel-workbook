@@ -10,17 +10,20 @@ import munit.FunSuite
 class PythonParserSpec extends FunSuite {
 
   test("round trip matches main app example") {
-    val somePython = """x = 3
-                     |def greeting(name: str) -> str:
-                     |    return 'Hello ' + Name
-                     |
-                     |def increase(nr):
-                     |   nr = nr + 3
-                     |   x = 5
-                     |
-                     |greeting(\"hi\")
-                     |increase(5)
-                     |""".stripMargin
+    val somePython =
+      """x = 3
+        |def greeting(name: str) -> str:
+        |    return 'Hello ' + name
+        |
+        |def increase(nr):
+        |   nr = nr + 3
+        |   x = 5
+        |
+        |greeting('hi')
+        |increase(5)
+        |""".stripMargin
+
+    //println("python before:\n" + somePython)
 
     val parsingResult = PythonParser.parsePythonWithDetails(somePython)
     val expression = parsingResult.codeExpression
@@ -28,6 +31,9 @@ class PythonParserSpec extends FunSuite {
     assert(!expression.isInstanceOf[BeExpressionUnparsable], "parsing produced an unparsable expression")
 
     val generated = expression.getInLanguage(Python, English)
+
+
+    //println("python after:\n" + generated)
     assertEquals(normalize(generated), normalize(somePython))
 
     val reparsed = PythonParser.parsePythonWithDetails(generated)
@@ -57,7 +63,8 @@ class PythonParserSpec extends FunSuite {
   private def normalize(code: String): String = {
     val unifiedNewlines = code.replace("\r\n", "\n").replace('\r', '\n')
     val lines = unifiedNewlines.split("\n", -1).toList
-    val withoutLeading = lines.dropWhile(_.trim.isEmpty)
+    val withoutEmpty = lines.filterNot(_.trim.isEmpty)
+    val withoutLeading = withoutEmpty.dropWhile(_.trim.isEmpty)
     val withoutTrailing = withoutLeading.reverse.dropWhile(_.trim.isEmpty).reverse
     val cleaned = withoutTrailing.map(_.replaceAll("\\s+$", ""))
     cleaned.mkString("\n")
