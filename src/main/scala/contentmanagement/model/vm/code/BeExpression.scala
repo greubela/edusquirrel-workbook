@@ -51,7 +51,7 @@ trait BeExpression {
     tree
   }
 
-  def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = ???
+  def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression
 
   def createBlock(): BeBlock
 

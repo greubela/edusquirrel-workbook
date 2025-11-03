@@ -46,6 +46,12 @@ case class BeDefineFunction(inputs: List[BeDefineVariable], outputs: Option[BeDe
 
   override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = List()
 
+  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
+    newChildren.collectFirst {
+      case (BodySequence(0), expr) => expr
+    }.map(replacement => copy(body = replacement)).getOrElse(this)
+  }
+
   /*
   override val toString: String = {
 

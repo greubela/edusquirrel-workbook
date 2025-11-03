@@ -20,4 +20,6 @@ case class BeManualDefinition(
     throw new NotImplementedError("Block rendering is not implemented for BeManualDefinition")
 
   def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = allDefinedStructures.flatMap(curStruc => curStruc.getChildren(withExtensions, parentScope))
+
+  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = this
 }

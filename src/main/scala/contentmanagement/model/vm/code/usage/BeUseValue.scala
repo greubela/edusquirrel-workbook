@@ -36,6 +36,6 @@ case class BeUseValue(value: BeDataValue, contextIfKnown: Option[BeDefineVariabl
 
   override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode]  = List()
 
-
+  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = this
 
 }

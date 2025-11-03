@@ -68,4 +68,15 @@ case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDe
     }
   }
 
+  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
+    val replacements = newChildren.collect { case (FunctionParameter(nr), expr) => nr -> expr }
+    if (replacements.isEmpty) this
+    else {
+      val updatedMap = replacements.foldLeft(parameterValueMap) { case (acc, (nr, expr)) =>
+        funcDef.inputs.lift(nr).map(parameter => acc.updated(parameter, expr)).getOrElse(acc)
+      }
+      copy(parameterValueMap = updatedMap)
+    }
+  }
+
 }

@@ -78,11 +78,17 @@ case class BeSequence(body: List[BeExpression], sequenceInfo: BeSequenceInfo) ex
         else None
       }
       bodyWithExtensions ++ lastExtendAnyOption ++ lastExtendCorrectOption
-     
-
     }
   }
 
+  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
+    val orderedChildren = newChildren.collect {
+      case (BeChildRole.ExpressionInSequence(nr), expr) => nr -> expr
+    }.sortBy(_._1)
+
+    if (orderedChildren.isEmpty) this
+    else copy(body = orderedChildren.map(_._2))
+  }
 
 }
 

@@ -88,6 +88,14 @@ case class BeRepeatNr(amount: Int, body: BeSequence) extends BeControlStructure 
     throw new NotImplementedError("Block rendering is not implemented for BeRepeatNr")
 
   override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = List(
-    BeExpressionReference(BeChildPosition(BeChildRole.BodySequence(0), InSequenceScope(body, parentScope)), body)    
+    BeExpressionReference(BeChildPosition(BeChildRole.BodySequence(0), InSequenceScope(body, parentScope)), body)
   )
+
+  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
+    val newBody = newChildren.collectFirst {
+      case (BeChildRole.BodySequence(0), seq: BeSequence) => seq
+    }.getOrElse(body)
+
+    copy(body = newBody)
+  }
 }

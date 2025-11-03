@@ -116,5 +116,20 @@ case class BeIfElse(
     )
   }
 
+  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
+    val newCondition = newChildren.collectFirst {
+      case (ConditionInControlStructure, seq: BeSequence) => seq
+    }.getOrElse(condition)
+
+    val newThenBody = newChildren.collectFirst {
+      case (BeChildRole.BodySequence(0), seq: BeSequence) => seq
+    }.getOrElse(thenBody)
+
+    val newElseBody = newChildren.collectFirst {
+      case (BeChildRole.BodySequence(1), seq: BeSequence) => seq
+    }.getOrElse(elseBody)
+
+    copy(condition = newCondition, thenBody = newThenBody, elseBody = newElseBody)
+  }
 
 }
