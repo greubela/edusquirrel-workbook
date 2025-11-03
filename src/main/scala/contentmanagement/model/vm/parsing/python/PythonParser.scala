@@ -1,423 +1,403 @@
 package contentmanagement.model.vm.parsing.python
 
-import contentmanagement.model.language.{HumanLanguage, LanguageMap}
+import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
 import contentmanagement.model.vm.code.*
 import contentmanagement.model.vm.code.controlStructures.*
 import contentmanagement.model.vm.code.defining.*
 import contentmanagement.model.vm.code.errors.*
-import contentmanagement.model.vm.code.others.*
+import contentmanagement.model.vm.code.others.BeReturn
+import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.code.usage.*
 import contentmanagement.model.vm.types.*
+import contentmanagement.model.vm.types.BeChildRole
 import contentmanagement.model.vm.types.BeDataType.{AnyType, BeUnionAllowedTypes}
-import fastparse.*
-import fastparse.NoWhitespace.*
+import contentmanagement.model.vm.types.BeScope
+import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 
 import scala.collection.mutable
 
 object PythonParser {
 
-  def parsePython(source: String): BeExpression = BeExpression.pass 
-  
-  /*
-  {
-    definedStructures.clear()
-    knownFunctions.clear()
-    knownVariables.clear()
-
-    if (source.trim.isEmpty) {
-      BeSequence.optionalBody(List.empty)
-    } else {
-      parse(source, statements(_)) match {
-        case Parsed.Success(stmts, _) => BeSequence.optionalBody(stmts.toList)
-        case failure: Parsed.Failure   => BeExpressionUnparsable(source, failure.trace().longAggregateMsg)
-      }
-    }
-  }
-  private val definedStructures: mutable.ListBuffer[BeDefineStructure] = mutable.ListBuffer()
-  private val knownFunctions: mutable.Map[String, BeDefineFunction] = mutable.Map()
-  private val knownVariables: mutable.Map[String, BeDefineVariable] = mutable.Map()
-  private val reservedKeywords: Set[String] = Set(
-    "False",
-    "None",
-    "True",
-    "and",
-    "as",
-    "assert",
-    "async",
-    "await",
-    "break",
-    "case",
-    "class",
-    "continue",
-    "def",
-    "del",
-    "elif",
-    "else",
-    "except",
-    "finally",
-    "for",
-    "from",
-    "global",
-    "if",
-    "import",
-    "in",
-    "is",
-    "lambda",
-    "match",
-    "nonlocal",
-    "not",
-    "or",
-    "pass",
-    "raise",
-    "return",
-    "try",
-    "while",
-    "with",
-    "yield"
+  final case class CodeParsingResult(
+      definedClasses: List[BeDefineClass],
+      definedFunctions: List[BeDefineFunction],
+      definedVariables: List[BeDefineVariable],
+      codeExpression: BeExpression
   )
 
+  def parsePython(source: String): BeExpression = parsePythonWithDetails(source).codeExpression
 
-  private def statements[$: P]: P[Seq[BeExpression]] =
-    P(stmtSep.rep ~ statement.rep(sep = stmtSep) ~ stmtSep.rep)
-
-  private def statement[$: P]: P[BeExpression] =
-    P(
-      classStatement |
-        functionDefinition |
-        ifStatement |
-        whileStatement |
-        forStatement |
-        tryStatement |
-        returnStatement |
-        raiseStatement |
-        passStatement |
-        assignmentStatement |
-        expressionStatement
-    )
-
-  private def passStatement[$: P]: P[BeExpression] =
-    P(ws.? ~ "pass" ~ ws.?).map(_ => BeExpression.pass)
-
-  private def ifStatement[$: P]: P[BeExpression] =
-    P(ws.? ~ "if" ~ ws.? ~ conditionExpr ~ ":" ~ lineSep ~ blockBody ~ elifClause.rep ~ elseClause.?).map {
-      case (condExpr, thenBodyText, elifParts, elsePart) =>
-        val elseSequence = elsePart.map(parseBlockExpressions).getOrElse(emptyOptionalSequence)
-        val initial = BeIfElse(condExpr, parseBlockExpressions(thenBodyText), elseSequence)
-        elifParts.foldRight(initial) { case ((elifCondText, elifBodyText), acc) =>
-          val elifCondition = parseConditionSequence(elifCondText)
-          val elifBody = parseBlockExpressions(elifBodyText)
-          BeIfElse(elifCondition, elifBody, wrapExpression(acc))
-        }
+  def parsePythonWithDetails(source: String): CodeParsingResult = {
+    val normalized = normalizeSource(source)
+    if (normalized.trim.isEmpty) {
+      CodeParsingResult(Nil, Nil, Nil, BeSequence.optionalBody(Nil))
+    } else {
+      val context = new ParseContext
+      val lines = toParsedLines(normalized)
+      val (expressions, _) = parseBlock(lines, 0, 0, context)
+      val expression = BeSequence.optionalBody(expressions)
+      CodeParsingResult(context.definedClasses, context.definedFunctions, context.definedVariables, expression)
     }
+  }
 
-  private def whileStatement[$: P]: P[BeExpression] =
-    P(ws.? ~ "while" ~ ws.? ~ conditionExpr ~ ":" ~ lineSep ~ blockBody).map { case (condExpr, bodyText) =>
-      BeWhile(condExpr, parseBlockExpressions(bodyText))
-    }
+  private case class ParsedLine(indent: Int, content: String)
 
-  private def forStatement[$: P]: P[BeExpression] =
-    P(
-      ws.? ~ "for" ~ ws.? ~ identifier ~ ws.? ~ "in" ~ ws.? ~
-        CharsWhile(c => c != ':' && c != '\n' && c != '\r', 1).! ~ ws.? ~ ":" ~ lineSep ~ blockBody
-    ).map {
-      case (name, iterableText, bodyText) =>
-        val loopVariable = resolveVariable(name)
-        val bodySequence = parseBlockExpressions(bodyText)
-        parseRangeInvocation(iterableText.trim) match {
-          case Some(count) if name == "_" => BeRepeatNr(count, bodySequence)
+  private val AssignmentPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)\s*(.+)$""".r
+  private val FunctionPattern = """^def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*)\)\s*(?:->\s*([^:]+))?:$""".r
+  private val IdentifierPattern = """^[A-Za-z_][A-Za-z0-9_]*$""".r
+
+  private def parseBlock(
+      lines: Vector[ParsedLine],
+      startIndex: Int,
+      indent: Int,
+      context: ParseContext
+  ): (List[BeExpression], Int) = {
+    val expressions = mutable.ListBuffer[BeExpression]()
+    var index = startIndex
+    while (index < lines.length) {
+      val line = lines(index)
+      if (line.indent < indent) {
+        return (expressions.toList, index)
+      }
+
+      val trimmed = line.content.trim
+      if (trimmed.isEmpty) {
+        expressions += BeExpression.pass
+        index += 1
+      } else if (line.indent > indent) {
+        val (nested, nextIndex) = parseBlock(lines, index, line.indent, context)
+        expressions ++= nested
+        index = nextIndex
+      } else {
+        trimmed match {
+          case FunctionPattern(name, params, returnType) =>
+            val (functionExpr, nextIndex) = parseFunction(lines, index, indent, name, params, Option(returnType), context)
+            expressions += functionExpr
+            index = nextIndex
+          case _ if trimmed.startsWith("return") =>
+            expressions += parseReturn(trimmed, context)
+            index += 1
+          case _ if trimmed == "pass" =>
+            expressions += BeExpression.pass
+            index += 1
+          case AssignmentPattern(name, valueStr) =>
+            val valueExpr = parseExpression(valueStr, context)
+            val variable = context.assignVariable(name, inferType(valueExpr))
+            expressions += BeAssignVariable(variable, valueExpr)
+            index += 1
           case _ =>
-            val iterableExpr = parseInlineExpression(iterableText)
-            BeForEach(loopVariable, iterableExpr, bodySequence)
+            expressions += parseExpression(trimmed, context)
+            index += 1
         }
-    }
-
-  private def returnStatement[$: P]: P[BeExpression] =
-    P(ws.? ~ "return" ~ ws.? ~ CharsWhile(isLineChar).!.?).map { exprOpt =>
-      val trimmed = exprOpt.map(_.trim).filter(_.nonEmpty)
-      BeReturn(trimmed.map(parseInlineExpression))
-    }
-
-  private def raiseStatement[$: P]: P[BeExpression] =
-    P(ws.? ~ "raise" ~ ws.? ~ CharsWhile(isLineChar).!.?).map { exprOpt =>
-      val trimmed = exprOpt.map(_.trim).filter(_.nonEmpty)
-      BeExpressionThrowError(trimmed.map(parseInlineExpression))
-    }
-
-  private def assignmentStatement[$: P]: P[BeExpression] =
-    P(ws.? ~ identifier ~ ws.? ~ "=" ~ !"=" ~ ws.? ~ CharsWhile(isLineChar, 1).!).map {
-      case (name, valueText) =>
-        val variable = resolveVariable(name)
-        val valueExpr = parseInlineExpression(valueText.trim)
-        BeAssignVariable(variable, valueExpr)
-    }
-
-  private def tryStatement[$: P]: P[BeExpression] =
-    P(ws.? ~ "try" ~ ws.? ~ ":" ~ lineSep ~ blockBody ~ exceptClause.rep(1) ~ finallyClause.?).map {
-      case (tryBodyText, excepts, finallyText) =>
-        val tryBody = parseBlockExpressions(tryBodyText)
-        val exceptBlocks = excepts.toList.map { case (condOpt, bodyText) =>
-          val condExpr = condOpt.map(parseInlineExpression)
-          BeTryExcept.ExceptBlock(condExpr, parseBlockExpressions(bodyText))
-        }
-        val finallyBody = finallyText.map(parseBlockExpressions)
-        BeTryExcept(tryBody, exceptBlocks, finallyBody)
-    }
-
-  private def classStatement[$: P]: P[BeExpression] =
-    P(ws.? ~ "class" ~ ws.? ~ identifier ~ ws.? ~ ":" ~ lineSep ~ blockBody).map { case (name, bodyText) =>
-      val bodySequence = parseBlockExpressions(bodyText)
-      val members = bodySequence.body
-      val attributes = members.collect { case variable: BeDefineVariable => variable }
-      val methods = members.collect { case func: BeDefineFunction => func }
-      val nameMap: LanguageMap[HumanLanguage] = LanguageMap.universalMap(name)
-      val placeholderClass = BeDefineClass(nameMap, attributes, List())
-      val methodsWithClass = methods.map(method =>
-        method.copy(functionTypeInfo = method.functionTypeInfo.copy(isMethodInClass = Some(placeholderClass)))
-      )
-      val finalClass = placeholderClass.copy(methods = methodsWithClass)
-      definedStructures += finalClass
-      finalClass
-    }
-
-  private def functionDefinition[$: P]: P[BeExpression] =
-    P(
-      ws.? ~ "def" ~ ws.? ~ identifier ~ ws.? ~ "(" ~ parameterList ~ ")" ~ returnAnnotation.? ~ ws.? ~ ":" ~ lineSep ~ blockBody
-    ).map {
-      case (name, params, returnTypeOpt, bodyText) =>
-        val parametersWithNames = params.map { case (paramName, typeHint) =>
-          paramName -> BeDefineVariable(LanguageMap.universalMap(paramName), mapType(typeHint))
-        }
-        val paramDefinitions = parametersWithNames.map(_._2)
-        val previousVariables = parametersWithNames.map { case (paramName, definition) =>
-          val previous = knownVariables.get(paramName)
-          knownVariables.update(paramName, definition)
-          paramName -> previous
-        }
-        val returnVariable = returnTypeOpt.flatMap { returnStr =>
-          val mapped: BeDataType = mapType(Some(returnStr))
-          if (mapped == BeDataType.Unit) None
-          else Some(BeDefineVariable(LanguageMap.universalMap("return"), mapped))
-        }
-        val bodyExpr =
-          try parseBlockExpressions(bodyText)
-          finally {
-            previousVariables.foreach { case (paramName, previousOpt) =>
-              previousOpt match {
-                case Some(previous) => knownVariables.update(paramName, previous)
-                case None => knownVariables.remove(paramName)
-              }
-            }
-          }
-        val functionInfo = BeDefineFunction.functionInfo(LanguageMap.universalMap(name))
-        val functionDef = BeDefineFunction(paramDefinitions, returnVariable, bodyExpr, functionInfo)
-        knownFunctions.update(name, functionDef)
-        definedStructures += functionDef
-        functionDef
-    }
-
-  private def parameterList[$: P]: P[List[(String, Option[String])]] =
-    P(parameter.rep(sep = ws.? ~ "," ~ ws.?)).map(_.toList)
-
-  private def parameter[$: P]: P[(String, Option[String])] =
-    P(identifier ~ (ws.? ~ ":" ~ ws.? ~ CharsWhile(c => c != ',' && c != ')' && c != '\n' && c != '\r').!).?).map {
-      case (name, typeHint) => (name, typeHint.map(_.trim).filter(_.nonEmpty))
-    }
-
-  private def returnAnnotation[$: P]: P[String] =
-    P(ws.? ~ "->" ~ ws.? ~ CharsWhile(c => c != ':' && c != '\n' && c != '\r', 1).!).map(_.trim)
-
-  private def expressionStatement[$: P]: P[BeExpression] =
-    P(ws.!.? ~ (functionCall | valueLiteralExpression | unsupportedExpression) ~ ws.?).map {
-      case (indentOpt, expr) =>
-        indentOpt.filter(_.nonEmpty) match {
-          case Some(indent) =>
-            expr match {
-              case unsupported: BeExpressionUnsupported if !unsupported.originalSource.startsWith(indent) =>
-                unsupported.copy(originalSource = indent + unsupported.originalSource)
-              case _ => expr
-            }
-          case None => expr
-        }
-    }
-
-  private def functionCall[$: P]: P[BeExpression] =
-    P(identifier ~ ws.? ~ "(" ~ ws.? ~ argumentList ~ ws.? ~ ")").map { case (name, args) =>
-      val function = resolveFunction(name, args.length)
-      val parameterMap = function.inputs.zip(args).toMap
-      BeFunctionCall(function, parameterMap)
-    }
-
-  private def argumentList[$: P]: P[List[BeExpression]] =
-    P(inlineExpression.rep(sep = ws.? ~ "," ~ ws.?)).map(_.toList)
-
-  private def valueLiteralExpression[$: P]: P[BeExpression] =
-    P(valueExpression)
-
-  private def unsupportedExpression[$: P]: P[BeExpression] =
-    P(CharsWhile(isLineChar, 1).!).map(str => BeExpressionUnsupported(str.trim))
-
-  private def valueExpression[$: P]: P[BeExpression] =
-    P(unitLiteral | booleanLiteral | numberLiteral | stringLiteral | identifierValue)
-
-  private def identifierValue[$: P]: P[BeExpression] =
-    P(identifier).map { name =>
-      val variable = resolveVariable(name)
-      BeUseValue(BeUseValueReferencing(variable), Some(variable))
-    }
-
-  private def unitLiteral[$: P]: P[BeExpression] =
-    P("None").map(_ => BeUseValue(BeDataValueUnit(), None))
-
-  private def booleanLiteral[$: P]: P[BeExpression] =
-    P("True".!.map(literal => BeUseValue(BeDataValueLiteral(literal), None)) |
-      "False".!.map(literal => BeUseValue(BeDataValueLiteral(literal), None)))
-
-  private def numberLiteral[$: P]: P[BeExpression] =
-    P(integerLiteral.!).map(num => BeUseValue(BeDataValueLiteral(num), None))
-
-  private def stringLiteral[$: P]: P[BeExpression] =
-    P(
-      ("\"" ~ CharsWhile(_ != '"').! ~ "\"").map(content => BeUseValue(BeDataValueLiteral(s"\"$content\""), None)) |
-        ("'" ~ CharsWhile(_ != '\'').! ~ "'").map(content => BeUseValue(BeDataValueLiteral(s"'$content'"), None))
-    )
-
-  private def integerLiteral[$: P]: P[String] =
-    P(CharIn("0-9").rep(1).!)
-
-  private def identifier[$: P]: P[String] =
-    P(CharIn("a-zA-Z_") ~ CharIn("a-zA-Z0-9_").rep).!.filter(name => !reservedKeywords.contains(name))
-
-  private def stripTrailingWhitespace(value: String): String =
-    value.reverse.dropWhile(_.isWhitespace).reverse
-
-  private def conditionExpr[$: P]: P[BeSequence] =
-    P(CharsWhile(c => c != ':' && c != '\n' && c != '\r', 1).!).map(parseConditionSequence)
-
-  private def elifClause[$: P]: P[(String, String)] =
-    P(stmtSep.rep(1) ~ "elif" ~ ws.? ~ CharsWhile(c => c != ':' && c != '\n' && c != '\r', 1).! ~ ":" ~ lineSep ~ blockBody)
-
-  private def elseClause[$: P]: P[String] =
-    P(stmtSep.rep(1) ~ "else" ~ ws.? ~ ":" ~ lineSep ~ blockBody)
-
-  private def exceptClause[$: P]: P[(Option[String], String)] =
-    P(stmtSep.rep(1) ~ "except" ~ ws.? ~ CharsWhile(c => c != ':' && c != '\n' && c != '\r').?.! ~ ":" ~ lineSep ~ blockBody).map {
-      case (cond, body) => (Option(cond).map(_.trim).filter(_.nonEmpty), body)
-    }
-
-  private def finallyClause[$: P]: P[String] =
-    P(stmtSep.rep(1) ~ "finally" ~ ws.? ~ ":" ~ lineSep ~ blockBody)
-
-  private def blockBody[$: P]: P[String] =
-    P(blockLine.rep(1, sep = lineSep)).map { lines =>
-      val builder = new StringBuilder
-      lines.foreach { line =>
-        if (builder.nonEmpty) builder.append('\n')
-        builder.append(line)
-      }
-      builder.toString()
-    }
-
-  private def blockLine[$: P]: P[String] =
-    P("    " ~ CharsWhile(isLineChar, 0).!).map(stripTrailingWhitespace)
-
-  private def stmtSep[$: P]: P[Unit] =
-    P((ws.? ~ lineSep).rep(1))
-
-  private def lineSep[$: P]: P[Unit] = P("\r\n" | "\n")
-
-  private def ws[$: P]: P[Unit] = P(CharIn(" \t").rep)
-
-  private def isLineChar(c: Char): Boolean = c != '\n' && c != '\r'
-
-  private def parseBlockExpressions(body: String): BeSequence = {
-    if (body.trim.isEmpty) {
-      emptyOptionalSequence
-    } else {
-      parse(body, statements(_)) match {
-        case Parsed.Success(stmts, _) => BeSequence.optionalBody(stmts.toList)
-        case failure: Parsed.Failure =>
-          BeSequence.optionalBody(List(BeExpressionUnparsable(body, failure.trace().longAggregateMsg)))
       }
     }
+    (expressions.toList, index)
   }
 
-  private def parseInlineExpression(expr: String): BeExpression = {
-    val trimmed = expr.trim
+  private def parseFunction(
+      lines: Vector[ParsedLine],
+      headerIndex: Int,
+      indent: Int,
+      name: String,
+      paramsSource: String,
+      returnSource: Option[String],
+      context: ParseContext
+  ): (BeExpression, Int) = {
+    context.pushScope()
+    val parameterInfos = parseParameters(paramsSource)
+    val parameterDefinitions = parameterInfos.map { case (paramName, typeHint) =>
+      context.defineVariable(paramName, mapType(typeHint))
+    }
+
+    val returnVariable = returnSource.map(_.trim).filter(_.nonEmpty).map { returnHint =>
+      BeDefineVariable(LanguageMap.universalMap("return"), mapType(Some(returnHint)))
+    }
+
+    val computedIndent = determineBodyIndent(lines, headerIndex + 1, indent)
+
+    val (bodyExpressions, nextIndex) = try {
+      if (computedIndent <= indent) {
+        (List(BeExpressionUnparsable(lines(headerIndex).content.trim, s"Missing body for function $name")), headerIndex + 1)
+      } else {
+        val (blockExprs, afterBlock) = parseBlock(lines, headerIndex + 1, computedIndent, context)
+        (blockExprs, afterBlock)
+      }
+    } finally {
+      context.popScope()
+    }
+
+    val body = BeSequence.optionalBody(bodyExpressions)
+    val functionInfo = BeDefineFunction.functionInfo(LanguageMap.universalMap(name))
+    val indentWidth = if (bodyExpressions.nonEmpty && computedIndent > indent) computedIndent else 4
+    val functionDef = BeDefineFunction(parameterDefinitions, returnVariable, body, functionInfo, indentWidth)
+    context.registerFunction(name, functionDef)
+    (functionDef, nextIndex)
+  }
+
+  private def parseReturn(source: String, context: ParseContext): BeExpression = {
+    val payload = source.stripPrefix("return").trim
+    if (payload.isEmpty) BeReturn(None)
+    else BeReturn(Some(parseExpression(payload, context)))
+  }
+
+  private val binaryPrecedence: List[List[String]] = List(
+    List("==", "!=", "<=", ">=", "<", ">"),
+    List("+", "-"),
+    List("*", "/", "//", "%")
+  )
+
+  private def parseExpression(source: String, context: ParseContext): BeExpression = {
+    val trimmed = source.trim
     if (trimmed.isEmpty) {
-      BeExpressionUnsupported("")
+      BeExpression.pass
     } else {
-      parse(trimmed, inlineExpression(_)) match {
-        case Parsed.Success(result, _) => result
-        case _                         => BeExpressionUnsupported(trimmed)
-      }
+      val unwrapped = if (ParsingUtils.isParenthesized(trimmed)) trimmed.substring(1, trimmed.length - 1).trim else trimmed
+      val target = if (unwrapped.isEmpty) trimmed else unwrapped
+      parseBinaryExpression(target, context)
+        .orElse(parseFunctionCall(target, context))
+        .orElse(parseLiteralExpression(target, context))
+        .getOrElse(BeExpressionUnsupported(trimmed))
     }
   }
 
-  private def inlineExpression[$: P]: P[BeExpression] =
-    P(functionCall | valueLiteralExpression | unsupportedExpression)
+  private def parseBinaryExpression(source: String, context: ParseContext): Option[BeExpression] = {
+    binaryPrecedence.view.flatMap { operators =>
+      ParsingUtils.splitTopLevelBinary(source, operators).map { case (left, operator, right) =>
+        val leftExpr = parseExpression(left, context)
+        val rightExpr = parseExpression(right, context)
+        val function = context.resolveOperator(operator.trim, 2)
+        val parameterMap = Map(
+          function.inputs.head -> leftExpr,
+          function.inputs(1) -> rightExpr
+        )
+        OperatorFunctionCall(BeFunctionCall(function, parameterMap), operator.trim)
+      }
+    }.headOption
+  }
+
+  private def parseFunctionCall(source: String, context: ParseContext): Option[BeExpression] = {
+    ParsingUtils.findTopLevelCall(source).map { case (rawName, argsSource) =>
+      val name = rawName.trim
+      val argumentStrings = ParsingUtils.splitTopLevelArguments(argsSource).map(_.trim).filter(_.nonEmpty)
+      val arguments = argumentStrings.map(arg => parseExpression(arg, context))
+      val function = context.resolveFunction(name, arguments.length)
+      val alignedFunction = context.ensureFunctionArity(name, function, arguments.length)
+      val parameterMap = alignedFunction.inputs.zip(arguments).toMap
+      BeFunctionCall(alignedFunction, parameterMap)
+    }
+  }
+
+  private def parseLiteralExpression(source: String, context: ParseContext): Option[BeExpression] = {
+    source match {
+      case "None" => Some(BeUseValue(BeDataValueUnit(), None))
+      case "True" | "False" => Some(BeUseValue(BeDataValueLiteral(source), None))
+      case _ if isStringLiteral(source) => Some(BeUseValue(BeDataValueLiteral(source), None))
+      case _ if isNumericLiteral(source) => Some(BeUseValue(BeDataValueLiteral(source), None))
+      case IdentifierPattern() =>
+        context.lookupVariable(source).getOrElse(context.assignVariable(source, AnyType))
+        Some(BeUseValue(BeDataValueLiteral(source), None))
+      case _ => None
+    }
+  }
+
+  private def isStringLiteral(value: String): Boolean = {
+    (value.startsWith("\"") && value.endsWith("\"") && value.length >= 2) ||
+    (value.startsWith("'") && value.endsWith("'") && value.length >= 2)
+  }
+
+  private def isNumericLiteral(value: String): Boolean = {
+    val cleaned = value.replace("_", "")
+    cleaned.toDoubleOption.nonEmpty
+  }
+
+  private def parseParameters(source: String): List[(String, Option[String])] = {
+    if (source.trim.isEmpty) Nil
+    else {
+      ParsingUtils.splitTopLevelArguments(source).map { rawParam =>
+        val cleaned = rawParam.trim
+        if (cleaned.isEmpty) ("", None)
+        else {
+          val parts = cleaned.split(":", 2).map(_.trim)
+          val name = parts.headOption.getOrElse("")
+          val typeHint = if (parts.length > 1) Some(parts(1)).map(stripDefaultValue) else None
+          (name, typeHint.filter(_.nonEmpty))
+        }
+      }.filter(_._1.nonEmpty)
+    }
+  }
+
+  private def stripDefaultValue(typeHint: String): String = {
+    val equalIndex = typeHint.indexOf('=')
+    if (equalIndex >= 0) typeHint.substring(0, equalIndex).trim else typeHint.trim
+  }
+
+  private def determineBodyIndent(lines: Vector[ParsedLine], startIndex: Int, parentIndent: Int): Int = {
+    var index = startIndex
+    while (index < lines.length) {
+      val line = lines(index)
+      if (line.content.trim.nonEmpty) {
+        return line.indent
+      }
+      index += 1
+    }
+    parentIndent + 4
+  }
+
+  private def inferType(expr: BeExpression): BeDataType = expr.canEvaluateTo
 
   private def mapType(typeHint: Option[String]): BeDataType = {
     typeHint match {
-      case Some(rawHint) if rawHint.nonEmpty =>
-        val normalizedParts = rawHint.split("\\|").map(_.trim).filter(_.nonEmpty)
-        val mappedParts = normalizedParts.flatMap(mapAtomicType)
-        if (mappedParts.isEmpty) AnyType
-        else if (mappedParts.length == 1) mappedParts.head
-        else BeUnionAllowedTypes(mappedParts.toSet)
+      case Some(raw) if raw.nonEmpty =>
+        val normalized = raw.split("\\|").map(_.trim).filter(_.nonEmpty)
+        val mapped = normalized.flatMap(mapAtomicType)
+        if (mapped.isEmpty) AnyType
+        else if (mapped.length == 1) mapped.head
+        else BeUnionAllowedTypes(mapped.toSet)
       case _ => AnyType
     }
   }
 
-  private def mapAtomicType(typeHint: String): Option[BeDataType] =
-    typeHint.toLowerCase match {
-      case "int" | "float" | "number" | "double" => Some(BeDataType.Numeric)
-      case "bool" | "boolean"                     => Some(BeDataType.Boolean)
-      case "str" | "string"                        => Some(BeDataType.String)
-      case "date" | "datetime"                    => Some(BeDataType.Date)
-      case "none" | "void" | "unit"              => Some(BeDataType.Unit)
-      case _                                       => None
+  private def mapAtomicType(typeHint: String): Option[BeDataType] = typeHint.toLowerCase match {
+    case "int" | "float" | "number" | "double" => Some(BeDataType.Numeric)
+    case "bool" | "boolean" => Some(BeDataType.Boolean)
+    case "str" | "string" => Some(BeDataType.String)
+    case "date" | "datetime" => Some(BeDataType.Date)
+    case "none" | "void" | "unit" => Some(BeDataType.Unit)
+    case _ => None
+  }
+
+  private def normalizeSource(source: String): String =
+    source.replace("\r\n", "\n").replace('\r', '\n')
+
+  private def toParsedLines(source: String): Vector[ParsedLine] = {
+    val lines = source.split("\n", -1)
+    lines.toVector.map { rawLine =>
+      val indent = rawLine.takeWhile(_ == ' ').length
+      val content = rawLine.drop(indent)
+      ParsedLine(indent, content)
+    }
+  }
+
+  private class ParseContext {
+    private var scopes: List[mutable.LinkedHashMap[String, BeDefineVariable]] = List(mutable.LinkedHashMap[String, BeDefineVariable]())
+    private val variablesBuffer = mutable.ListBuffer[BeDefineVariable]()
+    private val functionsBuffer = mutable.ListBuffer[BeDefineFunction]()
+    private val classesBuffer = mutable.ListBuffer[BeDefineClass]()
+    private val functionsByName = mutable.LinkedHashMap[String, BeDefineFunction]()
+    private val operatorFunctions = mutable.LinkedHashMap[String, BeDefineFunction]()
+
+    def pushScope(): Unit = {
+      scopes = mutable.LinkedHashMap[String, BeDefineVariable]() :: scopes
     }
 
-  private def parseRangeInvocation(source: String): Option[Int] = {
-    val trimmed = source.trim
-    if (trimmed.startsWith("range(") && trimmed.endsWith(")")) {
-      val inner = trimmed.substring(6, trimmed.length - 1).trim
-      if (inner.nonEmpty) inner.toIntOption else None
-    } else {
-      None
+    def popScope(): Unit = {
+      scopes = scopes.tail
     }
+
+    def assignVariable(name: String, dataType: BeDataType): BeDefineVariable = {
+      lookupVariable(name).getOrElse {
+        val variable = BeDefineVariable(LanguageMap.universalMap(name), dataType)
+        currentScope.update(name, variable)
+        registerVariable(variable)
+        variable
+      }
+    }
+
+    def defineVariable(name: String, dataType: BeDataType): BeDefineVariable = {
+      val variable = BeDefineVariable(LanguageMap.universalMap(name), dataType)
+      currentScope.update(name, variable)
+      registerVariable(variable)
+      variable
+    }
+
+    def lookupVariable(name: String): Option[BeDefineVariable] = scopes.collectFirst { case scope if scope.contains(name) => scope(name) }
+
+    private def currentScope: mutable.LinkedHashMap[String, BeDefineVariable] = scopes.head
+
+    def registerVariable(variable: BeDefineVariable): Unit = {
+      if (!variablesBuffer.exists(_ eq variable)) {
+        variablesBuffer += variable
+      }
+    }
+
+    def registerFunction(name: String, function: BeDefineFunction): Unit = {
+      functionsByName.update(name, function)
+      if (!functionsBuffer.exists(_ eq function)) {
+        functionsBuffer += function
+      }
+    }
+
+    def resolveFunction(name: String, arity: Int): BeDefineFunction =
+      functionsByName.getOrElse(name, {
+        val params = (0 until arity).map(index => BeDefineVariable(LanguageMap.universalMap(s"arg$index"), AnyType)).toList
+        val placeholder = BeDefineFunction(params, None, BeSequence.optionalBody(Nil), BeDefineFunction.functionInfo(LanguageMap.universalMap(name)))
+        functionsByName.update(name, placeholder)
+        placeholder
+      })
+
+    def ensureFunctionArity(name: String, function: BeDefineFunction, arity: Int): BeDefineFunction = {
+      if (arity <= function.inputs.length) function
+      else {
+        val additional = (function.inputs.length until arity).map { index =>
+          BeDefineVariable(LanguageMap.universalMap(s"arg$index"), AnyType)
+        }.toList
+        val updated = function.copy(inputs = function.inputs ++ additional)
+        functionsByName.update(name, updated)
+        val idx = functionsBuffer.indexWhere(_ eq function)
+        if (idx >= 0) functionsBuffer.update(idx, updated)
+        updated
+      }
+    }
+
+    def resolveOperator(symbol: String, arity: Int): BeDefineFunction = {
+      operatorFunctions.getOrElse(symbol, {
+        val params = (0 until arity).map { index =>
+          val paramName = index match {
+            case 0 => "left"
+            case 1 => "right"
+            case other => s"arg$other"
+          }
+          BeDefineVariable(LanguageMap.universalMap(paramName), AnyType)
+        }.toList
+        val outputVar = Some(BeDefineVariable(LanguageMap.universalMap("result"), AnyType))
+        val function = BeDefineFunction(params, outputVar, BeExpression.pass, BeDefineFunction.operatorInfo(symbol, 1))
+        operatorFunctions.update(symbol, function)
+        registerFunction(symbol, function)
+        function
+      })
+    }
+
+    def definedClasses: List[BeDefineClass] = classesBuffer.toList
+
+    def definedFunctions: List[BeDefineFunction] = functionsBuffer.toList
+
+    def definedVariables: List[BeDefineVariable] = variablesBuffer.toList
   }
 
-  private def resolveFunction(name: String, arity: Int): BeDefineFunction = {
-    knownFunctions.getOrElse(name, {
-      val parameters = (0 until arity).map { index =>
-        BeDefineVariable(LanguageMap.universalMap(s"arg$index"), AnyType)
-      }.toList
-      val placeholder = BeDefineFunction(
-        parameters,
-        None,
-        BeSequence.optionalBody(List.empty),
-        BeDefineFunction.functionInfo(LanguageMap.universalMap(name))
-      )
-      knownFunctions.update(name, placeholder)
-      placeholder
-    })
+  private case class OperatorFunctionCall(call: BeFunctionCall, symbol: String) extends BeExpression {
+    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
+      val argumentStrings = call.funcDef.inputs.flatMap(call.parameterValueMap.get).map(_.getInLanguage(programmingLanguage, humanLanguage).trim)
+      argumentStrings match {
+        case Nil => symbol
+        case head :: tail => tail.foldLeft(head) { (acc, cur) => s"$acc $symbol $cur" }
+      }
+    }
+
+    override def hasThisExpressionSideEffects: Boolean = call.hasThisExpressionSideEffects
+
+    override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] = call.getSyntaxErrorsOfThisStructure
+
+    override def canEvaluateTo: BeDataType = call.canEvaluateTo
+
+    override def createBlock(): BeBlock = call.createBlock()
+
+    override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] =
+      call.getChildren(withExtensions, parentScope)
+
+    override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression =
+      call.withReplacedChildren(newChildren) match {
+        case updated: BeFunctionCall => copy(call = updated)
+        case other => other
+      }
   }
-
-  private def resolveVariable(name: String): BeDefineVariable = {
-    knownVariables.getOrElseUpdate(name, BeDefineVariable(LanguageMap.universalMap(name), AnyType))
-  }
-
-  private def parseConditionSequence(conditionSource: String): BeSequence = {
-    val expression = parseInlineExpression(conditionSource)
-    BeSequence(List(expression), BeSequenceInfo(Some(BeDataType.Boolean), Some(1)))
-  }
-
-  private def wrapExpression(expr: BeExpression): BeSequence =
-    BeSequence.optionalBody(List(expr))
-
-  private def emptyOptionalSequence: BeSequence =
-    BeSequence.optionalBody(List.empty)
-    
-   */
 }
