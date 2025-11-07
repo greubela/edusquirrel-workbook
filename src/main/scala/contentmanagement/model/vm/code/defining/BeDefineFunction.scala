@@ -10,6 +10,7 @@ import contentmanagement.model.vm.types.BeChildRole.BodySequence
 import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 import interactionPlugins.blockEnvironment.programming.blocks.define.BeBlockDefineSingleReturnFunction
+import util.CodeStringBuilder
 case class BeDefineFunction(
     inputs: List[BeDefineVariable],
     outputs: Option[BeDefineVariable],
@@ -57,6 +58,17 @@ case class BeDefineFunction(
           }
         }
         (s"def $functionName$parameters$returnAnnotation:" :: bodyLines).mkString("\n")
+      case JavaScript =>
+        val parameters = inputsStr.mkString("(", ", ", ")")
+        val builder = CodeStringBuilder()
+          .appendNextLine(s"function $functionName$parameters {")
+          .changeIntLevel(1)
+        if (bodyStr.trim.isEmpty) builder.appendNextLine("// pass")
+        else builder.appendAsLines(bodyStr)
+        builder
+          .changeIntLevel(-1)
+          .appendNextLine("}")
+          .toString
       case _ => ""
     }
   }

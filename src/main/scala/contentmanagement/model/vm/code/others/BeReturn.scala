@@ -1,5 +1,6 @@
 package contentmanagement.model.vm.code.others
 
+import contentmanagement.model.language.AppLanguage.{Java, JavaScript, Python, Rust}
 import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
 import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionReference}
@@ -12,9 +13,14 @@ case class BeReturn(value: Option[BeExpression]) extends BeExpression {
 
   override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
     val valueString = value.map(_.getInLanguage(programmingLanguage, humanLanguage).replaceAll("\n", " "))
-    valueString match {
+    val base = valueString match {
       case Some(text) if text.nonEmpty => s"return $text"
       case _ => "return"
+    }
+    programmingLanguage match {
+      case Python => base
+      case Java | JavaScript | Rust => if (base.endsWith(";")) base else base + ";"
+      case _ => base
     }
   }
 
