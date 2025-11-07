@@ -1,9 +1,10 @@
 package contentmanagement.model.vm.parsing.python
 
-import contentmanagement.model.language.AppLanguage.{English, Python}
+import contentmanagement.model.language.AppLanguage.{English, JavaScript, Python}
 import contentmanagement.model.vm.code.controlStructures.{BeIfElse, BeSequence, BeWhile}
 import contentmanagement.model.vm.code.defining.BeDefineFunction
 import contentmanagement.model.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
+import contentmanagement.model.vm.code.others.BeReturn
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import munit.FunSuite
 
@@ -270,6 +271,55 @@ class PythonParserSpec extends FunSuite {
     val unparsableResult = PythonParser.parsePythonWithDetails(unparsableSource)
     val unparsableExpressions = unparsableResult.codeExpression.asInstanceOf[BeSequence].body
     assert(unparsableExpressions.exists(_.isInstanceOf[BeExpressionUnparsable]))
+  }
+
+  test("parse python segment with while expression and convert to javascript") {
+    val segment =
+      """    while remaining > 0:
+        |        remaining = remaining - 1
+        |    return remaining
+        |""".stripMargin
+    val parsingResult = PythonParser.parsePythonWithDetails(segment)
+    val sequence = parsingResult.codeExpression.asInstanceOf[BeSequence]
+    val body = sequence.body
+    val whileExpressions = body.collect { case loop: BeWhile => loop }
+    assertEquals(whileExpressions.length, 1)
+    val whileRendered = whileExpressions.head.getInLanguage(JavaScript, English)
+    val expectedWhile =
+      """while (remaining > 0) {
+        |    remaining = remaining - 1;
+        |}""".stripMargin
+    assertEquals(whileRendered, expectedWhile)
+    val returnExpressions = body.collect { case ret: BeReturn => ret }
+    assertEquals(returnExpressions.length, 1)
+    assertEquals(returnExpressions.head.getInLanguage(JavaScript, English), "return remaining;")
+  }
+
+  test("render parsed function with while loop to javascript") {
+    val pythonSource =
+      """def sum_until(limit: int) -> int:
+        |    total = 0
+        |    while limit > 0:
+        |        total = total + limit
+        |        limit = limit - 1
+        |    return total
+        |""".stripMargin
+    val parsingResult = PythonParser.parsePythonWithDetails(pythonSource)
+    val maybeFunction = parsingResult.definedFunctions.find { function =>
+      function.functionTypeInfo.displayName.getInLanguage(English) == "sum_until"
+    }
+    assert(maybeFunction.nonEmpty, "expected to find sum_until function definition")
+    val renderedJavaScript = maybeFunction.get.getInLanguage(JavaScript, English)
+    val expectedJavaScript =
+      """function sum_until(limit) {
+        |    total = 0;
+        |    while (limit > 0) {
+        |        total = total + limit;
+        |        limit = limit - 1;
+        |    }
+        |    return total;
+        |}""".stripMargin
+    assertEquals(renderedJavaScript, expectedJavaScript)
   }
 
 }
