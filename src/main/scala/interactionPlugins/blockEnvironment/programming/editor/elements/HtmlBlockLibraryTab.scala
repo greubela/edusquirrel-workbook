@@ -4,21 +4,22 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.vm.types.*
-import interactionPlugins.blockEnvironment.config.BeDisplayConfig
+import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.BeProgram
 
 case class HtmlBlockLibraryTab(
                                 editorState: TreeEditorState,
-                                programFactory: BeDisplayConfig => List[BeProgram],
+                                programFactory: BeTreeDisplayConfig => List[BeProgram],
                                 mainControllerTreeListener: Var[BeTreeControllerConfig]
                               ) {
 
-  def getDisplays(displayConfig: BeDisplayConfig): List[BeProgram] = programFactory(displayConfig)
+  def getDisplays(displayConfig: BeTreeDisplayConfig): List[BeProgram] = programFactory(displayConfig)
 
   lazy val toDomSignal: Signal[L.Element] = {
-    editorState.displayConfigVar.signal.map(curDisplayConfig => {
+    val useSignal = editorState.libraryTreeDisplayConfig.signal
+    useSignal.map(curDisplayConfig => {
       val programs = programFactory(curDisplayConfig)
-      val treeDisplays = programs.map(curProg => HtmlBeTreeDisplay(Var(curProg).signal, editorState, mainControllerTreeListener ))
+      val treeDisplays = programs.map(curProg => HtmlBeTreeDisplay(Var(curProg).signal, editorState, mainControllerTreeListener, _.libraryTreeDisplayConfig ))
 
       val domSignals = treeDisplays.map(_.toDomSignal)
 
@@ -35,7 +36,7 @@ case class HtmlBlockLibraryTab(
 object HtmlBlockLibraryTab {
 
 
-  def getDefaultLibraryPrograms(displayConfig: BeDisplayConfig): List[BeProgram] = List(
+  def getDefaultLibraryPrograms(displayConfig: BeTreeDisplayConfig): List[BeProgram] = List(
     BeProgram.createOneParFunc(displayConfig, "move 100", "distance", BeDataType.Numeric, "100"),
     BeProgram.createOneParFunc(displayConfig, "rotate ↺", "degree", BeDataType.Numeric, "90"),
     BeProgram.createOneParFunc(displayConfig, "stringFunc", "someString", BeDataType.String, "This is a text :)"),

@@ -1,41 +1,27 @@
-package interactionPlugins.blockEnvironment.programming.blocks.variable
+package interactionPlugins.blockEnvironment.programming.blocks.data
 
-import com.raquo.laminar.api.L.Var
-import contentmanagement.model.vm.types.*
-import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
-import interactionPlugins.blockEnvironment.programming.blocks.*
-import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.Var
-import com.raquo.laminar.api.L.svg
-import contentmanagement.model.vm.code.defining.BeDefineVariable
-import contentmanagement.model.vm.types.*
-import contentmanagement.webElements.svg.AppSvgElement
-import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
-import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.{Var, svg}
 import contentmanagement.model.language.AppLanguage.{BlockDisplay, English}
 import contentmanagement.model.language.LanguageMap
 import contentmanagement.model.vm.code.*
 import contentmanagement.model.vm.code.tree.BeExpressionNode
-import contentmanagement.model.vm.types.*
-import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
-import interactionPlugins.blockEnvironment.programming.BeProgram
 import contentmanagement.model.vm.code.usage.*
-import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeAmendFactory, TextShape}
 import contentmanagement.webElements.svg.shapes.composite.ShapeAroundShape
+import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.*
 import contentmanagement.webElements.svg.shapes.datatypes.LiteralShape
+import contentmanagement.webElements.svg.shapes.{BeShapeAmendFactory, TextShape}
+import interactionPlugins.blockEnvironment.programming.blocks.*
 
 case class BeBlockUseValue(valueUsage: BeUseValue) extends BeBlock {
-  
+
   def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
     val textShape = TextShape(LanguageMap.universalMap(valueUsage.getInLanguage(BlockDisplay, English)))
     val resShape = ShapeAroundShape(LiteralShape, textShape)
       .addAmends(BeShapeAmendFactory(renderingInfo.renderingConfig).literalColorsAmend)
-    
-    NestedBlockRenderer.fromShape(resShape)
+
+    NestedBlockRenderer.singleExpressionLineShapeWithInfo(List(), ControlFlowEmpty(), resShape)
   }
 
-  
+
   /*
   literal for variable: 
     def render(inProgram: BeProgram, controllerStateVar: Var[BeControllerState], displayConfig: BeDisplayConfig, rendererConfig: BeRenderingConfig): BeShape = {

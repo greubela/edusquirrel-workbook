@@ -1,6 +1,7 @@
 package interactionPlugins.blockEnvironment.programming.blocks.other
 
 import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
+import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.*
 import interactionPlugins.blockEnvironment.programming.blocks.{BeBlock, NestedBlockRenderer, RenderingInformation}
 
 case class BeBlockPlaceholder(extensionPoint: BeExtensionPoint) extends BeBlock {
@@ -10,12 +11,12 @@ case class BeBlockPlaceholder(extensionPoint: BeExtensionPoint) extends BeBlock 
 
     val baseColorAmends = if (extensionPoint.isRequired) renderingInfo.factory.errorColorsAmend else renderingInfo.factory.defaultControlColors
 
-    val shape = extensionPoint.extensionMustConformToType
+    val res = extensionPoint.extensionMustConformToType
       .createShape
       .addAmends(renderingInfo.factory.acceptingColorsAmend)
       .addAmends(renderingInfo.treeListener.getMouseAmendsForShape(renderingInfo.inProgram, extensionPoint))
       // mouse over does not trigger while dragging???
-    NestedBlockRenderer.fromShape(shape)
+    NestedBlockRenderer.singleExpressionLineShapeWithInfo(List(), ControlFlowDirected(true, true), res)
   }
 
 }

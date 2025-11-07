@@ -1,23 +1,24 @@
-package contentmanagement.webElements.svg.shapes.controlflow
+package contentmanagement.webElements.svg.shapes.controlflow.doubleWidth
 
 import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.compositeElements.AppDecoratedSvgElement
 import contentmanagement.webElements.svg.shapes.*
 import contentmanagement.webElements.svg.shapes.composite.VerticalAlignment.Top
 import contentmanagement.webElements.svg.shapes.composite.{HorizontalAlignment, ShapeStack, VerticalAlignment}
-import contentmanagement.webElements.svg.shapes.controlflow.IfElseSplit.{IfElseConditionOverlay, LeftPathFalseOverlay, MoveControlFlowToCenter, RightPathTrueOverlay}
-import contentmanagement.webElements.svg.shapes.controlflow.overlays.BeDataArrowLeft
+import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
+import IfElseSplit.{IfElseConditionOverlay, LeftPathFalseOverlay, MoveControlFlowToCenter, RightPathTrueOverlay}
+import contentmanagement.webElements.svg.shapes.controlflow.overlays.BeDataArrow
+import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.ControlFlowShapeDoubleWidth
 import contentmanagement.webElements.svg.{AppSvgElement, SvgPathBuilder}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
-case class IfElseSplit() extends ControlFlowShapeDouble {
+case class IfElseSplit() extends ControlFlowShapeDoubleWidth {
 
   override def continuesWithoutInterruption: Boolean = false
 
   override def minHeightInSegments: Int = 8
 
-  override def background: BeShape.BeShapeContainerable = ControlFlowConnectorBackground(List((true, false), (false, true)))
-
+  override def background: BeShape.BeShapeContainerable = ControlFlowConnectorBackground(List((true, true), (false, true)))
 
   override def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
 
@@ -27,7 +28,7 @@ case class IfElseSplit() extends ControlFlowShapeDouble {
     val lwa = LeftPathFalseOverlay().addAmends(rendererConfig.amendFactory.falseConditionControlFlowAmends)
     val twa = IfElseConditionOverlay().addAmends(rendererConfig.amendFactory.splitSymbolControlFlowAmends)
 
-    val awa = BeDataArrowLeft().addAmends(rendererConfig.amendFactory.decorationElements)
+    val awa = BeDataArrow().addAmends(rendererConfig.amendFactory.activeDecorationElements)
 
     val noOffset: Point[Double] = Point[Double](0, 0)
     val overlays: List[BeShape] = List(bwa, mwa, rwa, lwa, awa)

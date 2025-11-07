@@ -8,9 +8,9 @@ import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionRefer
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.{BodySequence, NoRole}
 import contentmanagement.model.vm.types.BeScope.InSequenceScope
-import interactionPlugins.blockEnvironment.config.BeDisplayConfig
+import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-import interactionPlugins.blockEnvironment.programming.blocks.using.BeBlockStarter
+import interactionPlugins.blockEnvironment.programming.blocks.use.BeBlockStarter
 
 case class BeStartProgram(startSequence: Option[BeSequence]) extends BeExpression {
 

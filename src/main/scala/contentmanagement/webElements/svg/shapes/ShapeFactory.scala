@@ -208,35 +208,6 @@ private[shapes] object ShapeFactory {
       .closePath()
   }
 
-  def buildStarterShape[T: Fractional](pBounds: Bounds[T]): SvgPathBuilder[T] = {
-    val N = summon[Fractional[T]]
-    import N.*
-    val bounds = pBounds
-
-    val offsetDist = fromInt(10) // fromInt(7) + fromInt(1) / fromInt(2)
-
-    SvgPathBuilder(bounds.startPoint + Point[T](fromInt(0), offsetDist))
-      .cubicBezierToRel(
-        new Dimension[T](fromInt(0), -offsetDist),
-        new Dimension[T](offsetDist, -offsetDist),
-        new Dimension[T](fromInt(20), -offsetDist)
-      )
-      .cubicBezierToRel(
-        new Dimension[T](offsetDist, fromInt(0)),
-        new Dimension[T](fromInt(20), fromInt(0)),
-        new Dimension[T](fromInt(20), offsetDist)
-      )
-      .horizontalLineWithWidth(bounds.width - fromInt(40))
-      .verticalLineWithHeight(bounds.height - offsetDist)
-
-      .horizontalLineWithWidth(-bounds.width + fromInt(30))
-      //.addInstructionConnector(fromInt(-20))
-      .horizontalLineWithWidth(fromInt(-20))
-      .horizontalLineWithWidth(fromInt(-10))
-      .closePath()
-
-      .closePath()
-  }
 
   def buildRectangle[T: Fractional](pBounds: Bounds[T]): SvgPathBuilder[T] = {
     // AppRectangleSvgElement[T](pBounds)

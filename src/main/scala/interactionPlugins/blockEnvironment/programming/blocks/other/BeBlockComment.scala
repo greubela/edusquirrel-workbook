@@ -4,6 +4,7 @@ import contentmanagement.model.vm.code.errors.BeSingleLineComment
 import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.webElements.svg.shapes.TextShape
 import contentmanagement.webElements.svg.shapes.composite.ShapeAroundShape
+import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.*
 import contentmanagement.webElements.svg.shapes.datatypes.{BeErrorShape, RectangleShape}
 import interactionPlugins.blockEnvironment.programming.blocks.{BeBlock, NestedBlockRenderer, RenderingInformation}
 
@@ -15,6 +16,6 @@ case class BeBlockComment(comment: BeSingleLineComment) extends BeBlock {
 
     val res = ShapeAroundShape(container, text).addSignalAmends(renderingInfo.factory.muteOnTreeDragged(renderingInfo.inProgram, renderingInfo.controllerStateVar.signal, renderingInfo.factory.defaultControlColors))
 
-    NestedBlockRenderer.fromShape(res)
+    NestedBlockRenderer.singleExpressionLineShapeWithInfo(List(), ControlFlowEmpty(), res)
   }
 }

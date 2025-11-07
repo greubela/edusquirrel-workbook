@@ -1,4 +1,4 @@
-package interactionPlugins.blockEnvironment.programming.blocks.using
+package interactionPlugins.blockEnvironment.programming.blocks.use
 
 import com.raquo.laminar.api.L
 import contentmanagement.model.vm.code.controlStructures.*
@@ -12,7 +12,7 @@ case class BeBlockSequence(sequence: BeSequence) extends BeBlock {
 
     var res = NestedBlockRenderer.empty()
     for (child <- renderedChildren) {
-      res = res.addAllLines(child._3)
+      res = res.withAppendedRenderer(child._3)
     }
     res
   }

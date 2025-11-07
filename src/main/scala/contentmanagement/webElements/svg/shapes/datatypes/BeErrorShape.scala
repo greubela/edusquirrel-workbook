@@ -8,7 +8,7 @@ import contentmanagement.webElements.svg.shapes.{AmendedShape, BeShape, ShapeFac
 
 case object BeErrorShape extends BeShapePathBased {
 
-  override protected def getPathBuilder(config: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] = ShapeFactory.buildStarterShape(bounds)
+  override protected def getPathBuilder(config: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] = ???
 
   override protected def spaceBeforeChild(config: BeRenderingConfig, childDim: Dimension[Double]): Dimension[Double] = Dimension(0, 20)
 

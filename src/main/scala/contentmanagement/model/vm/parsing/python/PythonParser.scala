@@ -25,10 +25,10 @@ object PythonParser {
       definedClasses: List[BeDefineClass],
       definedFunctions: List[BeDefineFunction],
       definedVariables: List[BeDefineVariable],
-      codeExpression: BeExpression
+      codeExpression: BeSequence
   )
 
-  def parsePython(source: String): BeExpression = parsePythonWithDetails(source).codeExpression
+  def parsePython(source: String): BeSequence = parsePythonWithDetails(source).codeExpression
 
 
 

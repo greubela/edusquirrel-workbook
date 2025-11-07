@@ -42,6 +42,20 @@ case class ControlFlowShapeFactory[T: Fractional](renderingConfig: BeRenderingCo
       .lineToRel(segDim(one + half, one + half))
   }
 
+  def controlArrowUp(bounds: Bounds[T]): SvgPathBuilder[T] = {
+    SvgPathBuilder(bounds.centerPoint)
+      .moveToRel(segDim(0, 3))
+      .lineToRel(segDim(one + half, one + half))
+      .verticalLineWithHeight(intToSeg(-6))
+      .horizontalLineWithWidth(tToSeg(one + half))
+      .lineToRel(segDim(-3, -3))
+      .lineToRel(segDim(-3, 3))
+      .horizontalLineWithWidth(tToSeg(one +half))
+      .verticalLineWithHeight(intToSeg(6))
+      .lineToRel(segDim(one + half, -one - half))
+  }
+
+
   def dataArrowLeft(bounds: Bounds[T]): SvgPathBuilder[T] = {
     SvgPathBuilder(bounds.centerPoint)
       .moveToRel(segDim(0, -1))
@@ -123,6 +137,81 @@ case class ControlFlowShapeFactory[T: Fractional](renderingConfig: BeRenderingCo
     res
       .verticalLineWithHeight(-bounds.height)
       .closePath()
+  }
+
+  def buildControlFlowStop(bounds: Bounds[T]): SvgPathBuilder[T] = {
+
+    val connectorW = fromInt(6) * segmentSize
+    val freeWidth = if (bounds.width > connectorW) bounds.width - connectorW else fromInt(0)
+
+    SvgPathBuilder(bounds.startPoint)
+      .addControlFlowConnector(segmentSize)
+      .horizontalLineWithWidth(freeWidth)
+      .verticalLineWithHeight(bounds.height)
+      .horizontalLineWithWidth(-bounds.width)
+      .closePath()
+  }
+
+  def buildControlFlowStart(bounds: Bounds[T]): SvgPathBuilder[T] = {
+
+    val arcL = fromInt(2) * segmentSize
+    val starterW = two * arcL + two * segmentSize
+
+    println("control flow start with dimension: " + bounds.dimension)
+    val freeWidth = if (bounds.width > starterW) bounds.width - starterW else fromInt(0)
+    val freeHeight = if (bounds.height > arcL) bounds.height - arcL else fromInt(0)
+
+    println("free: width = " + freeWidth + ", height = " + freeHeight)
+    SvgPathBuilder(bounds.startPoint)
+      .moveToRel(Dimension(fromInt(0), arcL))
+      .cubicBezierToRel(
+        Dimension(-zero, -arcL),
+        Dimension(arcL, -arcL),
+        Dimension(arcL, -arcL)
+      )
+      .horizontalLineWithWidth(two * segmentSize)
+      .cubicBezierToRel(
+        Dimension(arcL, zero),
+        Dimension(arcL, arcL),
+        Dimension(arcL, arcL)
+      )
+      .horizontalLineWithWidth(freeWidth)
+      .verticalLineWithHeight(freeHeight)
+      .horizontalLineWithWidth(-freeWidth)
+      .addControlFlowConnector(-segmentSize, true)
+      .closePath()
+
+    /*
+      def buildStarterShape[T: Fractional](pBounds: Bounds[T]): SvgPathBuilder[T] = {
+        val N = summon[Fractional[T]]
+        import N.*
+        val bounds = pBounds
+
+        val offsetDist = fromInt(10) // fromInt(7) + fromInt(1) / fromInt(2)
+
+        SvgPathBuilder(bounds.startPoint + Point[T](fromInt(0), offsetDist))
+          .cubicBezierToRel(
+            new Dimension[T](fromInt(0), -offsetDist),
+            new Dimension[T](offsetDist, -offsetDist),
+            new Dimension[T](fromInt(20), -offsetDist)
+          )
+          .cubicBezierToRel(
+            new Dimension[T](offsetDist, fromInt(0)),
+            new Dimension[T](fromInt(20), fromInt(0)),
+            new Dimension[T](fromInt(20), offsetDist)
+          )
+          .horizontalLineWithWidth(bounds.width - fromInt(40))
+          .verticalLineWithHeight(bounds.height - offsetDist)
+
+          .horizontalLineWithWidth(-bounds.width + fromInt(30))
+          //.addInstructionConnector(fromInt(-20))
+          .horizontalLineWithWidth(fromInt(-20))
+          .horizontalLineWithWidth(fromInt(-10))
+          .closePath()
+
+          .closePath()
+      }*/
+
   }
 
 

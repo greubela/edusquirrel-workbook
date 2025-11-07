@@ -7,8 +7,9 @@ import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorStat
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.ConditionInControlStructure
 import contentmanagement.model.vm.types.BeScope.InSequenceScope
-import interactionPlugins.blockEnvironment.config.BeDisplayConfig
+import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
+import interactionPlugins.blockEnvironment.programming.blocks.other.{BeBlockUnparsable, BeBlockUnsupported}
 
 case class BeExpressionUnparsable(originalSource: String, message: String) extends BeExpression {
 
@@ -23,8 +24,7 @@ case class BeExpressionUnparsable(originalSource: String, message: String) exten
 
   override def canEvaluateTo: BeDataType = BeDataType.Error
 
-  override def createBlock(): BeBlock =
-    throw new NotImplementedError("Block rendering is not available for unparsable expressions")
+  override def createBlock(): BeBlock = BeBlockUnparsable(this)
 
   override def getChildren(withExtensions: Boolean, myScope: BeScope): List[BeExpressionNode] = List()
 

@@ -9,7 +9,7 @@ import contentmanagement.webElements.svg.shapes.BeShape.BeShapePathBased
 object FunctionDefineShape extends BeShapePathBased {
 
   override protected def getPathBuilder(config: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] =
-    ShapeFactory.buildStarterShape(bounds)
+    ???
 
   override protected def spaceBeforeChild(config: BeRenderingConfig, childDim: Dimension[Double]): Dimension[Double] =
     config.paddingSmall.increaseSize(10, 20)

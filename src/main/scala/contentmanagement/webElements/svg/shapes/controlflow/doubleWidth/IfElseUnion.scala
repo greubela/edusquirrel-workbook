@@ -1,17 +1,19 @@
-package contentmanagement.webElements.svg.shapes.controlflow
+package contentmanagement.webElements.svg.shapes.controlflow.doubleWidth
 
 import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.compositeElements.AppDecoratedSvgElement
 import contentmanagement.webElements.svg.shapes.composite.{HorizontalAlignment, ShapeStack, VerticalAlignment}
-import contentmanagement.webElements.svg.shapes.controlflow.IfElseUnion.{LeftPathToCenter, MoveControlFlowToLeft, PathUnionOverlay, RightPathToCenter}
+import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
+import IfElseUnion.{LeftPathToCenter, MoveControlFlowToLeft, PathUnionOverlay, RightPathToCenter}
+import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.ControlFlowShapeDoubleWidth
 import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeDecoration}
 import contentmanagement.webElements.svg.{AppSvgElement, SvgPathBuilder}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
-case class IfElseUnion() extends ControlFlowShapeDouble {
+case class IfElseUnion() extends ControlFlowShapeDoubleWidth {
 
 
-  override def background: BeShape.BeShapeContainerable = ControlFlowConnectorBackground(List((false, true), (true, false)))
+  override def background: BeShape.BeShapeContainerable = ControlFlowConnectorBackground(List((true, true), (true, false)))
 
   override def continuesWithoutInterruption: Boolean = false
 

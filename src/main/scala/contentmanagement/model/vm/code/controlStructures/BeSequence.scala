@@ -8,7 +8,7 @@ import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeDataType.AnyType
 import contentmanagement.model.vm.types.BeScope.InSequenceScope
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-import interactionPlugins.blockEnvironment.programming.blocks.using.BeBlockSequence
+import interactionPlugins.blockEnvironment.programming.blocks.use.BeBlockSequence
 import util.CodeStringBuilder
 
 case class BeSequenceInfo(mustEvaluateTo: Option[BeDataType], maxBodyElements: Option[Int] = None)
@@ -56,8 +56,6 @@ case class BeSequence(body: List[BeExpression], sequenceInfo: BeSequenceInfo) ex
   override def getChildren(withExtensions: Boolean, myScope: BeScope): List[BeExpressionNode] = {
 
     def getChildPosFor(nr: Int): BeChildPosition = BeChildPosition(BeChildRole.ExpressionInSequence(nr), InSequenceScope(this, myScope))
-
-    println("BeSequence::getChildren -> " + body.map(_.getClass.getSimpleName).mkString("["," -> ", "]"))
 
     if (!withExtensions) body.zipWithIndex.map((curExpr, curNr) =>
       BeExpressionReference(getChildPosFor(curNr), curExpr)

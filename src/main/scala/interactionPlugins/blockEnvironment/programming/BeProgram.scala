@@ -12,7 +12,7 @@ import contentmanagement.model.vm.code.usage.*
 import contentmanagement.model.vm.parsing.python.PythonParser
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.*
-import interactionPlugins.blockEnvironment.config.BeDisplayConfig
+import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.*
 import interactionPlugins.blockEnvironment.programming.blocks.other.BeBlockPlaceholder
 
@@ -27,9 +27,9 @@ type BeBlockRenderingContext = TreeStructureAndExecutionContext[NodeBasedTreePos
 
 case class BeProgram(fullProgram: BeExpression) {
 
-  lazy val expressionTree: BeExpressionTree = fullProgram.recToTree(true, BeChildPosition(NoRole, BeScope.GlobalScope()))
+  def expressionTree(displayConfig: BeTreeDisplayConfig) = fullProgram.recToTree(displayConfig.displayPlaceholders, BeChildPosition(NoRole, BeScope.GlobalScope()))
 
-  lazy val blockRenderingTree: BeBlockRenderingTree = expressionTree.mapWithStructure(structure => {
+  def blockRenderingTree(displayConfig: BeTreeDisplayConfig): BeBlockRenderingTree = expressionTree(displayConfig).mapWithStructure(structure => {
     structure.curValue match {
       case BeExtensionPoint(isRequired, childPos, dataType) => {
         (structure.curValue, BeBlockPlaceholder(structure.curValue.asInstanceOf[BeExtensionPoint]))
@@ -40,6 +40,7 @@ case class BeProgram(fullProgram: BeExpression) {
     }
   })
 
+  /*
   def withInsertions(additionMap: Map[BeExtensionPoint, BeExpression]): BeProgram = {
     val reparsedExpression = expressionTree.mapWithContext[Option[(BeChildPosition, BeExpression)]](context => {
       context.curValue match {
@@ -58,7 +59,7 @@ case class BeProgram(fullProgram: BeExpression) {
     val rootOp = reparsedExpression.getData(reparsedExpression.rootPosition.forChild(0)).get
     val newExpr = rootOp.map(_._2).getOrElse(BeExpression.pass)
     BeProgram(newExpr)
-  }
+  }*/
 
   /*
       .flatMap(curChild => curChild match {
@@ -92,7 +93,7 @@ case class BeProgram(fullProgram: BeExpression) {
 
 object BeProgram {
 
-  def createSimpleFunc(displayConfig: BeDisplayConfig, functionName: String, parNames: List[String], parTypes: List[BeDataType], parValues: List[String], output: Option[BeDataType]): BeProgram = {
+  def createSimpleFunc(displayConfig: BeTreeDisplayConfig, functionName: String, parNames: List[String], parTypes: List[BeDataType], parValues: List[String], output: Option[BeDataType]): BeProgram = {
 
     val funcNameMap: LanguageMap[HumanLanguage] = LanguageMap.universalMap(functionName)
 
@@ -118,7 +119,7 @@ object BeProgram {
     BeProgram(expression)
   }
 
-  def createOneParFunc(displayConfig: BeDisplayConfig, functionName: String, parName: String, parType: BeDataType, valueString: String): BeProgram = {
+  def createOneParFunc(displayConfig: BeTreeDisplayConfig, functionName: String, parName: String, parType: BeDataType, valueString: String): BeProgram = {
     createSimpleFunc(displayConfig, functionName, List(parName), List(parType), List(valueString), None)
   }
 
@@ -163,32 +164,36 @@ object BeProgram {
     BeProgram(miniProgramExpression())
   }
 
-  def sampleParsedProgram(): BeProgram = {
+  def sampleParsedProgram2(): BeProgram = {
     val somePython =
       """
-        |# this is comment
-        |
-        |def greeting(name: str) -> str:
-        |    return 'Hello ' + Name
-        |
-        |def increase(nr):
-        |   nr = nr + 3
-        |   x = 5
-        |
-        |greeting("hi")
-        |increase(x5)
+        |if score > 10:
+        |    func(A)
+        |else:
+        |    forward(1000)
         |""".stripMargin
     val parsingResult = PythonParser.parsePythonWithDetails(somePython)
     val expression = parsingResult.codeExpression
-    println(expression)
     BeProgram(expression)
+  }
 
-    /*
-    BeSequence(List(BeSequence(List(),BeSequenceInfo(None,None)), BeDefineFunction(List(BeDefineVariable(UniversalLanguageMap('name'): BeDataTypeAtomic(interactionPlugins.blockEnvironment.programming.shapes.datatypes.UnitShape$@11,UniversalLanguageMap('None'),<function1>,<function1>,Set(BeDataTypeAtomic(interactionPlugins.blockEnvironment.programming.shapes.datatypes.StringShape$@5,UniversalLanguageMap('str'),<function1>,<function1>,Set()))))),Some(BeDefineVariable(UniversalLanguageMap('return'): BeDataTypeAtomic(interactionPlugins.blockEnvironment.programming.shapes.datatypes.UnitShape$@11,UniversalLanguageMap('None'),<function1>,<function1>,Set(BeDataTypeAtomic(interactionPlugins.blockEnvironment.programming.shapes.datatypes.StringShape$@5,UniversalLanguageMap('str'),<function1>,<function1>,Set()))))),BeSequence(List(BeReturn(Some(OperatorFunctionCall(BeFunctionCall(BeDefineFunction(List(BeDefineVariable(UniversalLanguageMap('left'): BeDataTypeAtomic(interactionPlugins.blockEnvironment.p…
-
-
-     */
-
+  def sampleParsedProgram(): BeProgram = {
+    val somePython =
+      """
+        |import os #import parsable but not supported yet
+        |print("hello world")
+        |if you´re happy and you know it syntax error #unparsable
+        |# comment are supported
+        |if score > 10:
+        |    func(A)
+        |elif score == 10:
+        |    func("B")
+        |else:
+        |    forward(1000)
+        |""".stripMargin
+    val parsingResult = PythonParser.parsePythonWithDetails(somePython)
+    val expression = BeStartProgram(parsingResult.codeExpression)
+    BeProgram(expression)
   }
 
 

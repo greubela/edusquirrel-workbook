@@ -63,7 +63,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
 
   def defaultControlColors: Seq[L.Modifier[L.SvgElement]] = List(
     svg.fill := rendererConfig.colorPalette.yellows(2).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.yellows(2).toWebStyleString,
+    svg.stroke := rendererConfig.colorPalette.yellows(0).toWebStyleString,
   )
 
   def defaultControlFlowBackgroundAmend: Seq[L.Modifier[L.SvgElement]] = List(
@@ -107,7 +107,14 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
     )
   }
 
-  def decorationElements: Seq[L.Modifier[L.SvgElement]] = {
+  def inActiveDecorationElements: Seq[L.Modifier[L.SvgElement]] = {
+    List(
+      svg.stroke := "transparent",
+      svg.fill := rendererConfig.colorPalette.grayscale(3).toWebStyleString,
+    )
+  }
+
+  def activeDecorationElements: Seq[L.Modifier[L.SvgElement]] = {
     List(
       svg.stroke := "transparent",
       svg.fill := rendererConfig.colorPalette.grayscale(0).toWebStyleString,

@@ -7,9 +7,9 @@ import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.code.{BeDefineStructure, BeExpression}
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.BodySequence
-import interactionPlugins.blockEnvironment.config.BeDisplayConfig
+import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-import interactionPlugins.blockEnvironment.programming.blocks.defineStructure.BeBlockDefineSingleReturnFunction
+import interactionPlugins.blockEnvironment.programming.blocks.define.BeBlockDefineSingleReturnFunction
 case class BeDefineFunction(
     inputs: List[BeDefineVariable],
     outputs: Option[BeDefineVariable],

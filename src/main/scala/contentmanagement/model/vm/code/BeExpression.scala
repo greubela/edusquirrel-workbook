@@ -8,7 +8,7 @@ import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionRefer
 import contentmanagement.model.vm.simulation.{BeExpressionExecutor, BeSimulatorConfig, BeSimulatorState}
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeScope.GlobalScope
-import interactionPlugins.blockEnvironment.config.BeDisplayConfig
+import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.BeExpressionTree
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 

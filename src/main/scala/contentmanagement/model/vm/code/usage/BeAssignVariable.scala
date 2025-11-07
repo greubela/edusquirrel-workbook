@@ -7,7 +7,7 @@ import contentmanagement.model.vm.code.defining.BeDefineVariable
 import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.types.BeInfo.WarningType
 import contentmanagement.model.vm.types.*
-import interactionPlugins.blockEnvironment.config.BeDisplayConfig
+import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
 
 case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) extends BeExpression {

@@ -2,28 +2,31 @@ package interactionPlugins.blockEnvironment.programming.editor.elements
 
 import com.raquo.airstream.state.Var
 import contentmanagement.model.vm.code.BeExpression
-import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
+import interactionPlugins.blockEnvironment.config.*
 import interactionPlugins.blockEnvironment.programming.BeProgram
 
-
-case class TreeEditorState(treeToEdit: Var[BeProgram], controllerStateVar: Var[BeControllerState], displayConfigVar: Var[BeDisplayConfig], rendererConfigVar: Var[BeRenderingConfig])
+case class TreeEditorState(
+                            treeToEdit: Var[BeProgram],
+                            controllerStateVar: Var[BeControllerState],
+                            editorTreeDisplayConfig: Var[BeTreeDisplayConfig],
+                            libraryTreeDisplayConfig: Var[BeTreeDisplayConfig],
+                            rendererConfigVar: Var[BeRenderingConfig]
+                          )
 
 object TreeEditorState {
 
   def withInitExpression(initExpr: BeExpression): TreeEditorState = {
-    val initDisplayConfig = BeDisplayConfig.default()
+    val initEditorTreeDisplayConfig = BeTreeDisplayConfig(false, true, true, true)
+    val initLibraryTreeDisplayConfig = BeTreeDisplayConfig(false, false, false, true)
+
     val initProgram = BeProgram(initExpr)
     val initRenderer = BeRenderingConfig.default()
 
-    withInitValues(initExpr, initDisplayConfig, initRenderer)
-  }
-
-  def withInitValues(initExpr: BeExpression, initDisplayConfig: BeDisplayConfig, rendererInit: BeRenderingConfig): TreeEditorState = {
-    val initProgram = BeProgram(initExpr)
     val initControllerState: BeControllerState = BeControllerState.default()
 
-    TreeEditorState(Var(initProgram), Var(initControllerState), Var(initDisplayConfig), Var(rendererInit))
+    TreeEditorState(Var(initProgram), Var(initControllerState), Var(initEditorTreeDisplayConfig), Var(initLibraryTreeDisplayConfig), Var(initRenderer))
   }
+
 
   def default(): TreeEditorState = {
     withInitExpression(BeProgram.miniProgramExpression())

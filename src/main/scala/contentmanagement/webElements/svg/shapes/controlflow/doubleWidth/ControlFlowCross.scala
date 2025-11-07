@@ -1,17 +1,19 @@
-package contentmanagement.webElements.svg.shapes.controlflow
+package contentmanagement.webElements.svg.shapes.controlflow.doubleWidth
 
 import contentmanagement.model.geometry.{Bounds, Dimension}
 import contentmanagement.webElements.svg.compositeElements.AppDecoratedSvgElement
 import contentmanagement.webElements.svg.shapes.composite.{HorizontalAlignment, ShapeStack, VerticalAlignment}
-import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowCross.{LeftToRight, PathCrossOverlay, RightToLeft}
-import contentmanagement.webElements.svg.shapes.controlflow.IfElseUnion.{LeftPathToCenter, MoveControlFlowToLeft, PathUnionOverlay, RightPathToCenter}
-import contentmanagement.webElements.svg.{AppSvgElement, SvgPathBuilder}
+import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
+import ControlFlowCross.{LeftToRight, PathCrossOverlay, RightToLeft}
+import IfElseUnion.{LeftPathToCenter, MoveControlFlowToLeft, PathUnionOverlay, RightPathToCenter}
+import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.ControlFlowShapeDoubleWidth
 import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeDecoration}
+import contentmanagement.webElements.svg.{AppSvgElement, SvgPathBuilder}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
-case class ControlFlowCross() extends ControlFlowShapeDouble {
+case class ControlFlowCross() extends ControlFlowShapeDoubleWidth {
 
-  override def background: BeShape.BeShapeContainerable = ControlFlowConnectorBackground(List((false, false), (true, true)))
+  override def background: BeShape.BeShapeContainerable = ControlFlowConnectorBackground(List((true, true), (true, true)))
 
   override def continuesWithoutInterruption: Boolean = false
 

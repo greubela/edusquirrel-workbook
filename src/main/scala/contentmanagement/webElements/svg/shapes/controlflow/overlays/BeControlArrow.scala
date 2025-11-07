@@ -6,11 +6,13 @@ import contentmanagement.webElements.svg.SvgPathBuilder
 import contentmanagement.webElements.svg.shapes.*
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
-case class BeControlArrow() extends BeShapeDecoration {
+case class BeControlArrow(pointsDown: Boolean = true) extends BeShapeDecoration {
 
   override def displaySize(rendererConfig: BeRenderingConfig): Dimension[Double] = Dimension(rendererConfig.controlSegmentSize / 5.0 * 6.0, rendererConfig.controlSegmentSize / 5.0 * 8.0)
   
-  def getOverlayPath(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] =
-    ControlFlowShapeFactory[Double](rendererConfig).controlArrowDown(bounds)
+  def getOverlayPath(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] = {
+    if(pointsDown)    ControlFlowShapeFactory[Double](rendererConfig).controlArrowDown(bounds)
+    else ControlFlowShapeFactory[Double](rendererConfig).controlArrowUp(bounds)
+  }
 
 }

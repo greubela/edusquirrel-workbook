@@ -1,4 +1,4 @@
-package interactionPlugins.blockEnvironment.programming.blocks.variable
+package interactionPlugins.blockEnvironment.programming.blocks.data
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{Var, svg}
@@ -9,7 +9,8 @@ import contentmanagement.model.vm.types.*
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.shapes.{BeShape, TextShape}
 import contentmanagement.webElements.svg.shapes.composite.ShapeAroundShape
-import interactionPlugins.blockEnvironment.config.{BeControllerState, BeDisplayConfig, BeRenderingConfig}
+import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.*
+import interactionPlugins.blockEnvironment.config.{BeControllerState, BeRenderingConfig, BeTreeDisplayConfig}
 import interactionPlugins.blockEnvironment.programming.blocks.*
 import interactionPlugins.blockEnvironment.programming.{BeBlockContext, BeProgram}
 
@@ -26,7 +27,7 @@ case class BeBlockDefineVariable(
         svg.fill := renderingInfo.renderingConfig.colorPalette.greens(4).toWebStyleString,
         svg.stroke := renderingInfo.renderingConfig.colorPalette.greens(1).toWebStyleString
       ))
-    NestedBlockRenderer.fromShape(res)
+    NestedBlockRenderer.singleExpressionLineShapeWithInfo(List(), ControlFlowEmpty(), res)
   }
   
 

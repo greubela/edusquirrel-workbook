@@ -8,7 +8,9 @@ import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.webElements.genericHtmlElements.editor.SimpleTextDisplay
 import contentmanagement.webElements.svg.shapes.BeShape
 import contentmanagement.webElements.svg.shapes.controlflow.*
-import contentmanagement.webElements.svg.shapes.controlflow.overlays.{BeControlArrow, BeDataArrowLeft}
+import contentmanagement.webElements.svg.shapes.controlflow.overlays.{BeControlArrow, BeDataArrow}
+import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.{ControlFlowCross, IfElseSplit, IfElseUnion}
+import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.{ControlFlowProgramStarter, ControlFlowProgramStopper}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.elements.*
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
@@ -64,11 +66,11 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
     ),
     div(
       cls := "be-fullscreen-panel-content",
-      child <-- HtmlBeTreeDisplay(editorState.treeToEdit.signal, editorState, Var(BeTreeControllerConfig.editTreeConfig(editorState))).toDomSignal
+      child <-- HtmlBeTreeDisplay(editorState.treeToEdit.signal, editorState, Var(BeTreeControllerConfig.editTreeConfig(editorState)), _.editorTreeDisplayConfig).toDomSignal
     )
   )
 
-  private val testShapes: List[BeShape] = List(BeDataArrowLeft(), BeControlArrow(), IfElseSplit(), ControlFlowCross(), IfElseUnion(), ControlFlowConnectorBackground(List((true, true)))) ++ BeShape.allAtomicShapes
+  private val testShapes: List[BeShape] = List(ControlFlowProgramStarter(), ControlFlowProgramStopper(), BeDataArrow(), BeControlArrow(), IfElseSplit(), ControlFlowCross(), IfElseUnion(), ControlFlowConnectorBackground(List((true, true)))) ++ BeShape.allAtomicShapes
   private val testDims = testShapes.map(_.displaySize(editorState.rendererConfigVar.now()))
 
   private lazy val drawingArea: Element =

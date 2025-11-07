@@ -7,8 +7,9 @@ import contentmanagement.model.vm.code.{BeControlStructure, BeExpression}
 import contentmanagement.model.vm.types.BeChildRole.ConditionInControlStructure
 import contentmanagement.model.vm.types.BeScope.InSequenceScope
 import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo, BeScope}
-import interactionPlugins.blockEnvironment.config.BeDisplayConfig
+import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
+import interactionPlugins.blockEnvironment.programming.blocks.control.BeBlockIfElse
 import util.CodeStringBuilder
 
 case class BeIfElse(
@@ -130,8 +131,7 @@ case class BeIfElse(
   override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] = BeInfo.typeMismatchInfo("if/else condition", BeDataType.Boolean, condition.canEvaluateTo).toList
 
 
-  override def createBlock(): BeBlock =
-    throw new NotImplementedError("Block rendering is not implemented for BeIfElse")
+  override def createBlock(): BeBlock = new BeBlockIfElse(this)
 
   override def getChildren(withExtensions: Boolean, myScope: BeScope): List[BeExpressionNode] = {
     List(

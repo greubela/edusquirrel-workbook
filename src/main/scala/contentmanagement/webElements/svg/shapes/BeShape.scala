@@ -45,7 +45,7 @@ trait ControlFlowShape extends BeShape {
   def minHeightInSegments: Int
 
   override def displaySize(rendererConfig: BeRenderingConfig): Dimension[Double] =
-    Dimension[Double](rendererConfig.controlSegmentSize * widthInIntendations * 6, rendererConfig.controlSegmentSize * minHeightInSegments)
+    Dimension[Double](rendererConfig.controlSegmentSize * widthInIntendations * 6 , rendererConfig.controlSegmentSize * minHeightInSegments)
 
   override def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement
 
