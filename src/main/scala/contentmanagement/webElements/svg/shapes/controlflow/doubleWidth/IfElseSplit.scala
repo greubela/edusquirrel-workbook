@@ -1,16 +1,13 @@
 package contentmanagement.webElements.svg.shapes.controlflow.doubleWidth
 
 import com.raquo.laminar.api.L
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
-import contentmanagement.webElements.svg.compositeElements.AppDecoratedSvgElement
-import contentmanagement.webElements.svg.shapes.*
-import contentmanagement.webElements.svg.shapes.composite.VerticalAlignment.Top
-import contentmanagement.webElements.svg.shapes.composite.{HorizontalAlignment, ShapeStack, VerticalAlignment}
-import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
-import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.IfElseSplit.*
-import contentmanagement.webElements.svg.shapes.controlflow.decorations.{BeDataArrow, PathCrossOverlay, PathSplitOverlay}
-import contentmanagement.webElements.svg.AppSvgElement
+import contentmanagement.model.geometry.{Dimension, Point}
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
+import contentmanagement.webElements.svg.shapes.*
+import contentmanagement.webElements.svg.shapes.composite.VerticalAlignment
+import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
+import contentmanagement.webElements.svg.shapes.controlflow.decorations.{BeDataArrow, PathSplitOverlay}
+import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.IfElseSplit.*
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
@@ -22,11 +19,13 @@ case class IfElseSplit() extends ControlFlowShapeDoubleWidth {
   override def minHeightInSegments: Int = 8
 
   override def background: BeShape.BeShapeContainerable = ControlFlowConnectorBackground(List((true, true), (false, true)))
-  
+
   private def handleParentPath(path: ControlFlowPath, renderingConfig: BeRenderingConfig, curLineHeight: Double): (ControlFlowPath, Point[Double]) = {
+    println("IfElseSplit::handleParentPath: " + path.curStatus)
     val seg = renderingConfig.controlSegmentSize
     val extraHeight = (curLineHeight - seg * 7).max(0)
 
+    println("seg: " + seg + " curLineHeight: " + curLineHeight + " extraHeight: " + extraHeight)
     val res = path.changeLastPathBuilder(_
       .verticalLineWithHeight(extraHeight / 2)
       .lineToRel(Dimension[Double](0, seg))
@@ -58,6 +57,7 @@ case class IfElseSplit() extends ControlFlowShapeDoubleWidth {
       .startNewPath(startNewPath(parentEndPos, curLineHeight, seg, false, renderingInfo.renderingConfig.amendFactory.inactiveControlFlowAmends))
       .startNewPath(startNewPath(parentEndPos, curLineHeight, seg, true, renderingInfo.renderingConfig.amendFactory.trueConditionControlFlowAmends))
       .addDecoration(PathSplitOverlay(), centerPoint)
+      .addDecoration(BeDataArrow(), centerPoint.moveWithDimension(Dimension[Double](3.0 * seg, 0)))
   }
 
 
@@ -69,7 +69,7 @@ case class IfElseSplit() extends ControlFlowShapeDoubleWidth {
     val lwa = LeftPathFalseOverlay().addAmends(rendererConfig.amendFactory.falseConditionControlFlowAmends)
     val twa = IfElseConditionOverlay().addAmends(rendererConfig.amendFactory.splitSymbolControlFlowAmends)
 
-    val awa = BeDataArrow().addAmends(rendererConfig.amendFactory.activeDecorationElements)
+    val awa =
 
     val noOffset: Point[Double] = Point[Double](0, 0)
     val overlays: List[BeShape] = List(bwa, mwa, rwa, lwa, awa)

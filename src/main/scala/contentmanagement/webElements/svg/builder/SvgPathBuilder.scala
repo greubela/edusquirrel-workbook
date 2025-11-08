@@ -8,10 +8,12 @@ import contentmanagement.webElements.svg.shapes.BeShape.BeShapeAtomic
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 trait SvgPathBuilder[T: Fractional] {
+  val N = summon[Fractional[T]];
+
+  import N.*
 
   def fromDouble(nr: Double): T = {
-    val N = summon[Fractional[T]];
-    import N.*
+
     lazy val thousand = fromInt(1000)
     lazy val convertedFromInt: T = fromInt((nr * 1000).toInt) / fromInt(1000)
     N.parseString(nr.toString).getOrElse(convertedFromInt)
@@ -45,6 +47,18 @@ trait SvgPathBuilder[T: Fractional] {
   def horizontalLineWithWidth(width: T): SvgPathBuilder[T]
 
   def verticalLineWithHeight(height: T): SvgPathBuilder[T]
+
+  def markSpot(size: T): SvgPathBuilder[T] = {
+    this
+      .lineToRel(Dimension(size, size))
+      .moveToRel(Dimension(fromInt(-2) * size, fromInt(-2) * size))
+      .lineToRel(Dimension(size, size))
+
+      .lineToRel(Dimension(size, -size))
+      .moveToRel(Dimension(fromInt(-2) * size, fromInt(2) * size))
+      .lineToRel(Dimension(size, -size))
+      .addCenteredCircle(size)
+  }
 
   // C / c
   def cubicBezierToAbs(

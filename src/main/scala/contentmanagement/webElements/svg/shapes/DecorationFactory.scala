@@ -156,11 +156,9 @@ case class DecorationFactory[T: Fractional](renderingConfig: BeRenderingConfig) 
     val arcL = fromInt(2) * segmentSize
     val starterW = two * arcL + two * segmentSize
 
-    println("control flow start with dimension: " + bounds.dimension)
     val freeWidth = if (bounds.width > starterW) bounds.width - starterW else fromInt(0)
     val freeHeight = if (bounds.height > arcL) bounds.height - arcL else fromInt(0)
 
-    println("free: width = " + freeWidth + ", height = " + freeHeight)
     SvgPathBuilder(bounds.startPoint)
       .moveToRel(Dimension(fromInt(0), arcL))
       .cubicBezierToRel(

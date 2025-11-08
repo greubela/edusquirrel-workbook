@@ -23,7 +23,7 @@ case class BeBlockDefineVariable(
   def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
     val outerShape = varDef.canEvaluateTo.createContainerShape.get
     val textShape = TextShape(varDef.name)
-    val res = ShapeAroundShape(outerShape, ShapeAroundShape(outerShape, textShape))
+    val res = ShapeAroundShape(outerShape, textShape)
       .addAmends(List(
         svg.fill := renderingInfo.renderingConfig.colorPalette.greens(4).toWebStyleString,
         svg.stroke := renderingInfo.renderingConfig.colorPalette.greens(1).toWebStyleString

@@ -29,6 +29,7 @@ case class ControlFlowDirected(goesDown: Boolean, isActive: Boolean = false) ext
   }
 
   private def handleParentPath(path: ControlFlowPath, renderingConfig: BeRenderingConfig, centerPoint: Point[Double], curLineHeight: Double): (ControlFlowPath, List[Point[Double]]) = {
+    println("ControlFlowDirected.handleParentPath: " + path.curStatus + " , cur center: " + centerPoint + " , cur line height: " + curLineHeight)
     val seg = renderingConfig.controlSegmentSize
 
     val fullArrowHeight: Int = (seg * 4).toInt
@@ -37,7 +38,7 @@ case class ControlFlowDirected(goesDown: Boolean, isActive: Boolean = false) ext
     val resArrowPositions = mutable.ListBuffer[Point[Double]]()
 
     var res = path
-   /*  // Markierung Anfang
+     /*// Markierung Anfang
     res = res.changeLastPathBuilder(_
       .moveToRel(Dimension(-5.0, 0.0))
       .horizontalLineWithWidth(10.0)
@@ -57,7 +58,6 @@ case class ControlFlowDirected(goesDown: Boolean, isActive: Boolean = false) ext
         .verticalLineWithHeight(heightForLines / 2)
       )
       val curArrowY = shapeStartY + movedY + heightForLines / 2 + distToArrow + arrowShapeHeight / 2
-      println("curArrowY: " + curArrowY + " " + shapeStartY)
       resArrowPositions += Point(centerPoint.x, curArrowY)
       movedY += heightForLines + arrowShapeHeight + 2 * distToArrow
 
@@ -66,7 +66,7 @@ case class ControlFlowDirected(goesDown: Boolean, isActive: Boolean = false) ext
     val yToGo: Double = curLineHeight - movedY
     res = res.changeLastPathBuilder(_.verticalLineWithHeight(yToGo))
 
-    /* // Markierung Ende
+     /*// Markierung Ende
     res = res.changeLastPathBuilder(_
       .moveToRel(Dimension(-5.0, 0.0))
       .horizontalLineWithWidth(10.0)

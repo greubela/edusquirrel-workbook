@@ -4,11 +4,13 @@ import contentmanagement.model.language.AppLanguage.*
 import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
 import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.code.defining.BeDefineVariable
-import contentmanagement.model.vm.code.tree.BeExpressionNode
+import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import contentmanagement.model.vm.types.BeInfo.WarningType
 import contentmanagement.model.vm.types.*
+import contentmanagement.model.vm.types.BeChildRole.ValueInAssignment
 import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
+import interactionPlugins.blockEnvironment.programming.blockdisplay.use.BeBlockAssignValue
 
 case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) extends BeExpression {
 
@@ -30,7 +32,6 @@ case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) exten
   override def hasThisExpressionSideEffects: Boolean = true
 
 
-
   override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] =
     BeInfo.typeMismatchInfo("value " + value + " for assigning", target.canEvaluateTo, value.canEvaluateTo).toList
 
@@ -38,9 +39,18 @@ case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) exten
   override def canEvaluateTo: BeDataType = BeDataType.Unit
 
   override def createBlock(): BeBlock =
-    throw new NotImplementedError("Block rendering is not implemented for assignments")
+    BeBlockAssignValue(target, value)
 
-  override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = List()
+  override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = List(
+    BeExpressionReference(BeChildPosition(ValueInAssignment, parentScope), value)
+  ) 
+
+  /*
+  
+    parameterWithValues.zipWithIndex.filter(_._1._2.nonEmpty).map( (tup, index) => (tup._1, tup._2.get, index) ).map( (parVar, parVal, parNr) => {
+      BeExpressionReference(BeChildPosition(FunctionParameter(parNr), parentScope), parVal)
+    })
+   */
 
   override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
     val replacement = newChildren.collectFirst {

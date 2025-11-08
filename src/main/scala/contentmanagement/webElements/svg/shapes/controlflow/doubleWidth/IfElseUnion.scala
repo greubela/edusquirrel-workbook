@@ -49,10 +49,10 @@ case class IfElseUnion() extends ControlFlowShapeDoubleWidth {
 
     var res = cf
 
-    val (changedFirst, parentEndPos1): (ControlFlowPath, Point[Double]) = finishParentPath(res.firstOpenPath, curLineHeight, seg, false)
+    val (changedFirst, parentEndPos1): (ControlFlowPath, Point[Double]) = finishParentPath(res.firstOpenPath, curLineHeight, seg, true)
     res = res.changeFirstOpenPath(_ => changedFirst)
 
-    val (changedSecond, parentEndPos2): (ControlFlowPath, Point[Double]) = finishParentPath(res.firstOpenPath, curLineHeight, seg, true)
+    val (changedSecond, parentEndPos2): (ControlFlowPath, Point[Double]) = finishParentPath(res.firstOpenPath, curLineHeight, seg, false)
     res = res.changeFirstOpenPath(_ => changedSecond)
 
     if (parentEndPos1 != parentEndPos2) {
@@ -60,7 +60,6 @@ case class IfElseUnion() extends ControlFlowShapeDoubleWidth {
     }
 
     res = res.changeLastPaused(resumeLastPausedPath(_, parentEndPos1, curLineHeight, seg))
-    println("last paused resumed in union!")
     res = res.addDecoration(PathUnionOverlay(), centerPoint)
 
     res

@@ -12,13 +12,16 @@ import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.*
 import scala.collection.mutable
 
 case class ControlFlowOverlayBuilder(paths: List[ControlFlowPath], overlaysWithCenter: List[(BeShapeDecoration, Point[Double])], relativeOffsetInParent: Point[Double] = Point(0, 0)) {
-  private lazy val firstOpen: (ControlFlowPath, Int) = paths.zipWithIndex.find(_._1.curStatus == PathStatus.OPEN).get
-
+  
   def firstOpenPath: ControlFlowPath = firstOpen._1
+  def secondOpenPath: ControlFlowPath = secondOpen._1
+
+  lazy val allOpenPaths: List[(ControlFlowPath, Int)] = paths.zipWithIndex.filter(_._1.curStatus == PathStatus.OPEN)
+  private lazy val firstOpen: (ControlFlowPath, Int) = allOpenPaths(0)
+  private lazy val secondOpen: (ControlFlowPath, Int) = allOpenPaths(1)
 
   private lazy val beforeFirst: List[ControlFlowPath] = paths.slice(0, firstOpen._2)
   private lazy val afterFirst: List[ControlFlowPath] = paths.slice(firstOpen._2 + 1, paths.size)
-  private lazy val secondOpen: (ControlFlowPath, Int) = paths.zipWithIndex.find((curPath, curNr) => (curPath.curStatus == PathStatus.OPEN && curNr > firstOpen._2)).get
   private lazy val betweenFirstAndSecond: List[ControlFlowPath] = paths.slice(firstOpen._2 + 1, secondOpen._2)
   private lazy val afterSecond: List[ControlFlowPath] = paths.slice(secondOpen._2 + 1, paths.size)
 
@@ -80,7 +83,7 @@ case class ControlFlowOverlayBuilder(paths: List[ControlFlowPath], overlaysWithC
   }
 
   private def calcOffsetAndDimensionsForOverlays(config: BeRenderingConfig): List[(BeShape, Point[Double], Dimension[Double])] = {
-    println("overlays: " + overlaysWithCenter)
+
     overlaysWithCenter.map((curOverlay, curCenter) => {
       val shapeDim = curOverlay.displaySize(config)
       val topLeft: Point[Double] = curCenter.moveWithDimension(Dimension(shapeDim.width / -2.0, shapeDim.height / -2.0))
@@ -132,9 +135,6 @@ object ControlFlowOverlayBuilder {
       appendNewSegmentFromScratch(func(lastSegment.curPath.current))
     }
 
-    def toBeShape(renderingInfo: RenderingInformation): BeShape = {
-      ???
-    }
 
   }
 

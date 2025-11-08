@@ -165,6 +165,24 @@ object BeProgram {
     BeProgram(miniProgramExpression())
   }
 
+
+  def debugGraphicsProgram(): BeProgram = {
+    val somePython =
+      """
+        |x = addTogether(3, 5)
+        |if score > 10:
+        |    testSuccess()
+        |else:
+        |    if another > 3:
+        |        forward(1000)
+        |    else:
+        |        backward("never!")
+        |""".stripMargin
+    val parsingResult = PythonParser.parsePythonWithDetails(somePython)
+    val expression = BeStartProgram(parsingResult.codeExpression)
+    BeProgram(expression)
+  }
+
   def sampleParsedProgram(): BeProgram = {
     val somePython =
       """
@@ -173,7 +191,11 @@ object BeProgram {
         |if score > 10:
         |    func(A)
         |else:
-        |    forward(1000)
+        |    doSomething()
+        |    if another > 3:
+        |        forward(1000)
+        |    else:
+        |        backward("never!")
         |""".stripMargin
     val parsingResult = PythonParser.parsePythonWithDetails(somePython)
     val expression = BeStartProgram(parsingResult.codeExpression)
@@ -183,9 +205,9 @@ object BeProgram {
   def sampleParsedProgram2(): BeProgram = {
     val somePython =
       """
-        |import os #import parsable but not supported yet
-        |print("hello world")
-        |if you´re happy and you know it syntax error #unparsable
+        |import os
+        |x=3
+        |if you´re happy and you know it syntax error
         |# comment are supported
         |if score > 10:
         |    func(A)

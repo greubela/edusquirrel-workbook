@@ -65,9 +65,15 @@ case class ControlFlowCross() extends ControlFlowShapeDoubleWidth {
 
   override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: RenderingInformation, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
     val seg = renderingInfo.renderingConfig.controlSegmentSize
+
+    // change order of paths so children fetch the right parent path
+
+    val leftToRightPath = handleFirstParentPath(cf.firstOpenPath, renderingInfo.renderingConfig, curLineHeight)
+    val rightToLeftPath = handleSecondParentPath(cf.secondOpenPath, renderingInfo.renderingConfig, curLineHeight)
+
     cf
-      .changeFirstOpenPath(handleFirstParentPath(_, renderingInfo.renderingConfig, curLineHeight))
-      .changeFirstOpenPath(handleSecondParentPath(_, renderingInfo.renderingConfig, curLineHeight))
+      .changeFirstOpenPath(_ => rightToLeftPath)
+      .changeFirstOpenPath(_ => leftToRightPath)
       .addDecoration(PathCrossOverlay(), centerPoint)
   }
 

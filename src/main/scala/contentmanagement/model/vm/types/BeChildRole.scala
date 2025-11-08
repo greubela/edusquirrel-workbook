@@ -23,4 +23,6 @@ object BeChildRole {
   case class RecentlyInsertedInto(intoRole: BeChildRole)
 
   case object ConditionInControlStructure extends BeChildRole
+  
+  case object ValueInAssignment extends BeChildRole
 }

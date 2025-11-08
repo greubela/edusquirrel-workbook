@@ -104,8 +104,8 @@ object BeShape {
     def getRelativeChildOffset(config: BeRenderingConfig, childDimension: Dimension[Double], myDimension: Dimension[Double]): Point[Double] = {
       val spaceBefore = spaceBeforeChild(config, childDimension)
       val spaceAfter = spaceAfterChild(config, childDimension)
-      val availableSpace = myDimension.decreaseSize(spaceBefore).decreaseSize(spaceAfter).decreaseSize(childDimension)
-      spaceBefore.asPoint //.increaseSize(Dimension(availableSpace.width / 2, availableSpace.height / 2)).asPoint
+      val availableSpace: Dimension[Double] = myDimension.decreaseSize(spaceBefore).decreaseSize(spaceAfter).decreaseSize(childDimension)
+      spaceBefore.increaseSize(Dimension(availableSpace.width / 2, availableSpace.height / 2)).asPoint
     }
 
     def render(config: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
@@ -141,6 +141,7 @@ object BeShape {
     def getChildBounds(config: BeRenderingConfig, myBounds: Bounds[Double], childDimension: Dimension[Double]): Bounds[Double] = {
       val childRelOffset = getRelativeChildOffset(config, childDimension, myBounds.dimension)
       myBounds.startPoint.moveWithDimension(childRelOffset.asDimension).withDimension(childDimension)
+
     }
 
   }

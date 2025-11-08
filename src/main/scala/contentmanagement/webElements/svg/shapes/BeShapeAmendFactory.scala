@@ -58,7 +58,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
 
   def defaultFunctionColorsAmend: Seq[L.Modifier[L.SvgElement]] = List(
     svg.fill := rendererConfig.colorPalette.yellows(3).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.yellows(3).toWebStyleString,
+    svg.stroke := rendererConfig.colorPalette.yellows(2).toWebStyleString,
   )
 
   def defaultControlColors: Seq[L.Modifier[L.SvgElement]] = List(

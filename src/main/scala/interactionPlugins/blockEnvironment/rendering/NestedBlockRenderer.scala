@@ -3,7 +3,7 @@ package interactionPlugins.blockEnvironment.rendering
 import contentmanagement.model.geometry.{Dimension, Point}
 import contentmanagement.webElements.svg.shapes.composite.HorizontalAlignment.Left
 import contentmanagement.webElements.svg.shapes.composite.VerticalAlignment.Center
-import contentmanagement.webElements.svg.shapes.composite.{BoxManualPositioning, HorizontalAlignment, VBoxSameWidth, VerticalAlignment}
+import contentmanagement.webElements.svg.shapes.composite.{BoxManualPositioning, HBoxSameHeight, HorizontalAlignment, VBoxSameWidth, VerticalAlignment}
 import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowShape}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
@@ -49,6 +49,12 @@ case class NestedBlockRenderer(
   lazy val lastLine: Option[NestedBlockLine] = lastSegment.flatMap(_.lines.lastOption)
 
   lazy val allLines: List[NestedBlockLine] = segments.flatMap(_.lines)
+
+  lazy val allExpressionShapes: List[BeShape] = allLines.flatMap(_.expressionShape)
+
+  def firstExpressionShapeOrHBox(usePadding: Boolean = false): BeShape =
+    if (allExpressionShapes.size == 1) allExpressionShapes.head
+    else HBoxSameHeight(allExpressionShapes, usePadding, HorizontalAlignment.Left, VerticalAlignment.Center)
 
   def withAppendedSegment(segment: NestedBlockSegment): NestedBlockRenderer = {
     NestedBlockRenderer(segments ++ List(segment))
@@ -98,7 +104,7 @@ case class NestedBlockRenderer(
   }
 
   def expressionShapeWithoutIntendation: BeShape = {
-    VBoxSameWidth(linesToRender.flatMap(_.line.expressionShape), false, HorizontalAlignment.Left, VerticalAlignment.Center)
+    VBoxSameWidth(allExpressionShapes, false, HorizontalAlignment.Left, VerticalAlignment.Center)
   }
 
 
@@ -174,7 +180,6 @@ case class NestedBlockRenderer(
         res.addOne(offset + curWidth / 2)
         offset += curWidth
       }
-      println("res: " + res.toList)
       (res.toList, offset)
     }
 
@@ -194,7 +199,6 @@ case class NestedBlockRenderer(
       curOffsetY += curLineToRender.lineHeight(renderingInfo.renderingConfig)
 
       for ((curControlFlowShape, curCenterX) <- curLineToRender.controlFlowStack.zip(stackColumnCenter)) {
-        println("center: " + curCenterX + "|" + curCenterY)
         res = curControlFlowShape.renderControlFlow(res, renderingInfo, Point[Double](curCenterX, curCenterY), curLineToRender.lineHeight(renderingInfo.renderingConfig))
         printStatus("Handled Stack Shape: " + curControlFlowShape.getClass.getSimpleName)
       }
@@ -205,7 +209,7 @@ case class NestedBlockRenderer(
       }
 
       res = res.resetHandledToOpen()
-      printStatus("Handled Line: " + curLineToRender.lineNr)
+      printStatus("+++ Handled Line: " + curLineToRender.lineNr)
     }
     res
   }

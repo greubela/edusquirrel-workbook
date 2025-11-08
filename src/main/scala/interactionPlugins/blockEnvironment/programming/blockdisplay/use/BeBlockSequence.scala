@@ -10,7 +10,6 @@ import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
 case class BeBlockSequence(sequence: BeSequence) extends BeBlock {
 
   def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
-
     var res = NestedBlockRenderer.empty()
     for (child <- renderedChildren) {
       res = res.withAppendedRenderer(child._3)
