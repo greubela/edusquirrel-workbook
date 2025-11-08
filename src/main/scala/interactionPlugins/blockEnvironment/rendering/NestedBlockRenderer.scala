@@ -23,11 +23,20 @@ case class LineForRendering(lineNr: Int, segment: NestedBlockSegment, line: Nest
 
   def lineHeight(renderingConfig: BeRenderingConfig) = lineAllShapes.map(_.displaySize(renderingConfig).height).max
 
+  def lastControlFlowShapeCenterX(renderingConfig: BeRenderingConfig, controlFlowColumnWidths: List[Double]): Double = {
+    val curStackSize = controlFlowStack.size
+    val curStackWidth = controlFlowColumnWidths.slice(0, curStackSize).sum
+
+    curStackWidth + line.controlFlowShape.displaySize(renderingConfig).width / 2
+  }
+
   def expressionShapeRelativeOffsetX(renderingConfig: BeRenderingConfig, controlFlowColumnWidths: List[Double]): Double = {
-    val stackWidth: Double = controlFlowColumnWidths.sum
+    val curStackSize = controlFlowStack.size
+    val curStackWidth = controlFlowColumnWidths.slice(0, curStackSize).sum
+
     val controlFlowWidth: Double = line.controlFlowShape.displaySize(renderingConfig).width
     val paddingWidth: Double = renderingConfig.paddingSmall.width
-    stackWidth + controlFlowWidth + paddingWidth
+    curStackWidth + controlFlowWidth + paddingWidth
   }
 }
 
@@ -92,28 +101,29 @@ case class NestedBlockRenderer(
     VBoxSameWidth(linesToRender.flatMap(_.line.expressionShape), false, HorizontalAlignment.Left, VerticalAlignment.Center)
   }
 
-  def expressionShapeWithIntendation: BeShape = {
 
-    //val columnWidths = getControlFlowStackColumnWidths(config)
+  def expressionShapeWithIntendation: BeShape = new BoxManualPositioning {
 
-    /*
-        // todo curControlFlow && associatedExpression with box layout (same width in segment, calc beforehand!!)
-    val resList = mutable.ListBuffer[(BeShape, Point[Double], Dimension[Double])]()
-    var offsetY: Double = 0
-    for (curLineToRender <- linesForRendering) {
-      if (curLineToRender.line.expressionShape.isDefined) {
-        val shape = curLineToRender.line.expressionShape.get
-        val offsetX = curLineToRender.relativeExpressionXOffset(renderingConfig)
-        val dim = shape.displaySize(renderingConfig)
-        resList.addOne((shape, Point(offsetX, offsetY), dim))
+    override def calcOffsetsAndDimensions(config: BeRenderingConfig): List[(BeShape, Point[Double], Dimension[Double])] = {
+
+      val controlFlowColumnWidth: List[Double] = getControlFlowStackColumnWidths(config)
+      var offsetY: Double = 0
+
+      val res = mutable.ListBuffer[(BeShape, Point[Double], Dimension[Double])]()
+
+      for (curLineToRender <- linesToRender) {
+        if (curLineToRender.line.expressionShape.nonEmpty) {
+          val offsetX = curLineToRender.expressionShapeRelativeOffsetX(config, controlFlowColumnWidth)
+          val width = curLineToRender.segment.getSegmentWidth(config)
+          res.addOne((curLineToRender.line.expressionShape.get, Point[Double](offsetX, offsetY), Dimension[Double](width, curLineToRender.lineHeight(config))))
+        }
+        offsetY += curLineToRender.lineHeight(config)
       }
-      offsetY = offsetY + curLineToRender.lineHeight(renderingConfig)
-    }
-    resList.toList
-     */
 
-    ???
+      res.toList
+    }
   }
+
 
   def controlFlowBackgroundShape: BeShape = new BoxManualPositioning {
 
@@ -189,9 +199,7 @@ case class NestedBlockRenderer(
         printStatus("Handled Stack Shape: " + curControlFlowShape.getClass.getSimpleName)
       }
       for (curControlFlowShape <- Some(curLineToRender.line.controlFlowShape)) {
-        val curStackSize = curLineToRender.controlFlowStack.size
-        val curStackWidth = stackColumnWidths.slice(0, curStackSize).sum
-        val curCenterX = curStackWidth + curControlFlowShape.displaySize(renderingInfo.renderingConfig).width / 2
+        val curCenterX = curLineToRender.lastControlFlowShapeCenterX(renderingInfo.renderingConfig, stackColumnWidths)
         res = curControlFlowShape.renderControlFlow(res, renderingInfo, Point[Double](curCenterX, curCenterY), curLineToRender.lineHeight(renderingInfo.renderingConfig))
         printStatus("Handled Flow Shape: " + curControlFlowShape.getClass.getSimpleName)
       }
@@ -313,6 +321,10 @@ object NestedBlockRenderer {
   case class NestedBlockSegment(
                                  lines: List[NestedBlockLine]
                                ) {
+
+    def getSegmentWidth(renderingConfig: BeRenderingConfig): Double = {
+      if (lines.nonEmpty) lines.flatMap(_.expressionShape).map(_.displaySize(renderingConfig).width).max else 0
+    }
 
   }
 

@@ -5,6 +5,8 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.geometry.Point
 import contentmanagement.webElements.genericHtmlElements.canvas.SvgCanvas
+import contentmanagement.webElements.svg.shapes.composite.VerticalAlignment.*
+import contentmanagement.webElements.svg.shapes.composite.HorizontalAlignment.*
 import contentmanagement.webElements.svg.shapes.composite.{HorizontalAlignment, ShapeStack, VerticalAlignment}
 import interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeDisplayConfig}
 import interactionPlugins.blockEnvironment.programming.*
@@ -45,8 +47,10 @@ case class HtmlBeTreeDisplay(
       if (displayConfig.displayControlFlow) {
         val controlFlowBackground = nestedBlockRenderer.controlFlowBackgroundShape
         val controlFlowOverlay = nestedBlockRenderer.controlFlowOverlayShape(renderingInfo)
-        val shapes = List(controlFlowBackground, controlFlowOverlay)
-        ShapeStack(shapes, fixedRelativeOffset = Map(controlFlowBackground -> Point[Double](0, 0), controlFlowOverlay -> Point[Double](0, 0)))
+        val exprShapes = nestedBlockRenderer.expressionShapeWithIntendation
+        val shapes = List(controlFlowBackground, controlFlowOverlay, exprShapes)
+        //fixedRelativeOffset = Map(controlFlowBackground -> Point[Double](0, 0), controlFlowOverlay -> Point[Double](0, 0))
+        ShapeStack(shapes, Left, Top)
       } else {
         nestedBlockRenderer.expressionShapeWithoutIntendation
       }
