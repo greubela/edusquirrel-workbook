@@ -5,7 +5,7 @@ import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.code.{BeDefineStructure, BeExpression}
 import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeInfo, BeScope}
 import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
-import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
+import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 
 case class BeManualDefinition(
                                override val definedClasses: List[BeDefineClass],

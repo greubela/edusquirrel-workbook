@@ -1,15 +1,15 @@
 package contentmanagement.webElements.svg.shapes.controlflow
 
 import contentmanagement.model.geometry.{Bounds, Dimension}
-import contentmanagement.webElements.svg.SvgPathBuilder
+import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapePathBased
-import contentmanagement.webElements.svg.shapes.ControlFlowShapeFactory
+import contentmanagement.webElements.svg.shapes.DecorationFactory
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 case class ControlFlowStarterBackground() extends BeShapePathBased {
 
   override protected def getPathBuilder(config: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] =
-    ControlFlowShapeFactory[Double](config).buildControlFlowStart(bounds)
+    DecorationFactory[Double](config).buildControlFlowStart(bounds)
 
   override protected def spaceBeforeChild(config: BeRenderingConfig, childDim: Dimension[Double]): Dimension[Double] = Dimension(0, 0)
 

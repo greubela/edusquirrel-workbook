@@ -7,8 +7,8 @@ import contentmanagement.model.vm.code.{BeControlStructure, BeExpression}
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeDataType.AnyType
 import contentmanagement.model.vm.types.BeScope.InSequenceScope
-import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-import interactionPlugins.blockEnvironment.programming.blocks.use.BeBlockSequence
+import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
+import interactionPlugins.blockEnvironment.programming.blockdisplay.use.BeBlockSequence
 import util.CodeStringBuilder
 
 case class BeSequenceInfo(mustEvaluateTo: Option[BeDataType], maxBodyElements: Option[Int] = None)

@@ -61,7 +61,7 @@ trait BeTreeControllerConfig {
 
 object BeTreeControllerConfig {
 
-  def libraryTreeConfig(editorState: TreeEditorState): BeTreeControllerConfig = new BeTreeControllerConfig {
+  def libraryTreeConfig(editorState: EditorState): BeTreeControllerConfig = new BeTreeControllerConfig {
 
     override def onDragStart: Option[(DragEvent, BeProgram) => Any] = Some((dragEvent, program) => editorState.controllerStateVar.update(oldState => oldState.copy(draggingEvent = Some(BeDraggingEvent(program)))))
 
@@ -71,7 +71,7 @@ object BeTreeControllerConfig {
 
   }
 
-  def editTreeConfig(editorState: TreeEditorState): BeTreeControllerConfig = new BeTreeControllerConfig {
+  def editTreeConfig(editorState: EditorState): BeTreeControllerConfig = new BeTreeControllerConfig {
     override val isEditable: Boolean = true
 
     override def onClicked: Option[(MouseEvent, BeProgram, BeExpressionNode) => Any] = Some((mouseEvent, program, childPos) => println("clicking: " + childPos))
@@ -81,7 +81,7 @@ object BeTreeControllerConfig {
     override def onMouseLeave: Option[(MouseEvent, BeProgram, BeExpressionNode) => Any] = defaultOnMouseLeave(editorState)
   }
 
-  def defaultOnMouseEnter(editorState: TreeEditorState): Option[(MouseEvent, BeProgram, BeExpressionNode) => Any] =
+  def defaultOnMouseEnter(editorState: EditorState): Option[(MouseEvent, BeProgram, BeExpressionNode) => Any] =
     Some(
       (mouseEvent: MouseEvent, program: BeProgram, exprNode: BeExpressionNode) => exprNode match {
         case BeExtensionPoint(isRequired, childPosition, extensionType) => {
@@ -93,7 +93,7 @@ object BeTreeControllerConfig {
       }
     )
 
-  def defaultOnMouseLeave(editorState: TreeEditorState): Option[(MouseEvent, BeProgram, BeExpressionNode) => Any] =
+  def defaultOnMouseLeave(editorState: EditorState): Option[(MouseEvent, BeProgram, BeExpressionNode) => Any] =
     Some(
       (mouseEvent: MouseEvent, program: BeProgram, exprNode: BeExpressionNode) => exprNode match {
         case BeExtensionPoint(isRequired, childPosition, extensionType) => {

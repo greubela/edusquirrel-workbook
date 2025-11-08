@@ -8,7 +8,7 @@ import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.BeProgram
 
 case class HtmlBlockLibraryTab(
-                                editorState: TreeEditorState,
+                                editorState: EditorState,
                                 programFactory: BeTreeDisplayConfig => List[BeProgram],
                                 mainControllerTreeListener: Var[BeTreeControllerConfig]
                               ) {

@@ -10,7 +10,7 @@ import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeScope.GlobalScope
 import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.BeExpressionTree
-import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
+import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 
 
 trait BeExpression {

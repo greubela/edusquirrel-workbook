@@ -15,8 +15,8 @@ import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.FunctionParameter
 import contentmanagement.model.vm.types.BeInfo.*
 import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
-import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-import interactionPlugins.blockEnvironment.programming.blocks.use.BeBlockCallSingleReturnFunction
+import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
+import interactionPlugins.blockEnvironment.programming.blockdisplay.use.BeBlockCallSingleReturnFunction
 
 case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDefineVariable, BeExpression]) extends BeExpression {
 

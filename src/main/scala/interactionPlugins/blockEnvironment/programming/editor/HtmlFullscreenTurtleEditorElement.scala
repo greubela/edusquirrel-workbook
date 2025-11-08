@@ -8,7 +8,7 @@ import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.webElements.genericHtmlElements.editor.SimpleTextDisplay
 import contentmanagement.webElements.svg.shapes.BeShape
 import contentmanagement.webElements.svg.shapes.controlflow.*
-import contentmanagement.webElements.svg.shapes.controlflow.overlays.{BeControlArrow, BeDataArrow}
+import contentmanagement.webElements.svg.shapes.controlflow.decorations.{BeControlArrow, BeDataArrow}
 import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.{ControlFlowCross, IfElseSplit, IfElseUnion}
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.{ControlFlowProgramStarter, ControlFlowProgramStopper}
 import interactionPlugins.blockEnvironment.programming.*
@@ -17,7 +17,7 @@ import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
 case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends HtmlWorkbookElement {
 
-  private val editorState: TreeEditorState = TreeEditorState.withInitExpression(initExpr)
+  private val editorState: EditorState = EditorState.withInitExpression(initExpr)
 
   private def placeholderPanel(areaClass: String, label: String, content: Element): Element =
     div(

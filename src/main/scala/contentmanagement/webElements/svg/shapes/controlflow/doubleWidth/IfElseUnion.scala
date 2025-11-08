@@ -4,22 +4,70 @@ import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.compositeElements.AppDecoratedSvgElement
 import contentmanagement.webElements.svg.shapes.composite.{HorizontalAlignment, ShapeStack, VerticalAlignment}
 import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
-import IfElseUnion.{LeftPathToCenter, MoveControlFlowToLeft, PathUnionOverlay, RightPathToCenter}
-import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.ControlFlowShapeDoubleWidth
+import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.IfElseUnion.*
 import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeDecoration}
-import contentmanagement.webElements.svg.{AppSvgElement, SvgPathBuilder}
+import contentmanagement.webElements.svg.AppSvgElement
+import contentmanagement.webElements.svg.builder.SvgPathBuilder
+import contentmanagement.webElements.svg.shapes.controlflow.decorations.{PathCrossOverlay, PathUnionOverlay}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
+import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
+import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.ControlFlowPath
+import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.PathStatus.{FINISHED, OPEN}
 
 case class IfElseUnion() extends ControlFlowShapeDoubleWidth {
 
 
   override def background: BeShape.BeShapeContainerable = ControlFlowConnectorBackground(List((true, true), (true, false)))
 
-  override def continuesWithoutInterruption: Boolean = false
 
   override def minHeightInSegments: Int = 7
 
-  override def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
+  def finishParentPath(path: ControlFlowPath, curLineHeight: Double, seg: Double, toTheRight: Boolean): (ControlFlowPath, Point[Double]) = {
+    val xDirection = if (toTheRight) 3 * seg else -3 * seg
+    val res = path.changeLastPathBuilder(
+      _.lineToRel(Dimension(xDirection, 3 * seg))
+    )
+    (res.copy(curStatus = FINISHED), res.lastSegment.curPath.current)
+  }
+
+  def resumeLastPausedPath(path: ControlFlowPath, newStartPos: Point[Double], curLineHeight: Double, seg: Double): ControlFlowPath = {
+    val extraHeight = (curLineHeight - seg * 7).max(0)
+
+    path.changeLastPathBuilder(_
+      .moveToAbs(newStartPos)
+      .lineToRel(Dimension(0, 2 * seg))
+      .horizontalLineWithWidth(-3 * seg)
+      .verticalLineWithHeight(2 * seg)
+      .verticalLineWithHeight(extraHeight)
+    ).copy(curStatus = OPEN)
+
+  }
+
+  override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: RenderingInformation, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
+    val seg = renderingInfo.renderingConfig.controlSegmentSize
+
+    var res = cf
+
+    val (changedFirst, parentEndPos1): (ControlFlowPath, Point[Double]) = finishParentPath(res.firstOpenPath, curLineHeight, seg, false)
+    res = res.changeFirstOpenPath(_ => changedFirst)
+
+    val (changedSecond, parentEndPos2): (ControlFlowPath, Point[Double]) = finishParentPath(res.firstOpenPath, curLineHeight, seg, true)
+    res = res.changeFirstOpenPath(_ => changedSecond)
+
+    if (parentEndPos1 != parentEndPos2) {
+      println("[WARN] IfElseUnion::renderControlFlow: parentEndPos don´t match for some reason: " + parentEndPos1 + " != " + parentEndPos2)
+    }
+
+    res = res.changeLastPaused(resumeLastPausedPath(_, parentEndPos1, curLineHeight, seg))
+    println("last paused resumed in union!")
+    res = res.addDecoration(PathUnionOverlay(), centerPoint)
+
+    res
+  }
+
+
+  /*override def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
 
     val bwa = background.addAmends(rendererConfig.amendFactory.defaultControlColors)
     val rwa = RightPathToCenter().addAmends(rendererConfig.amendFactory.activeControlFlowAmends)
@@ -32,52 +80,44 @@ case class IfElseUnion() extends ControlFlowShapeDoubleWidth {
     val bR = bwa.render(rendererConfig, bounds)
     val sR = stack.render(rendererConfig, bounds)
     AppDecoratedSvgElement(bR, List(sR), List())
-  }
+  }*/
 
 
 }
 
 object IfElseUnion {
-
-  case class RightPathToCenter() extends BeShapeDecoration {
-    override def getOverlayPath(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] = {
-      val seg = rendererConfig.controlSegmentSize
-      SvgPathBuilder(bounds.startPoint)
-        .moveToRel(Dimension(9 * seg, 0))
-        .lineToRel(Dimension(0, seg))
-        .lineToRel(Dimension(-3 * seg, 3 * seg))
+  /*
+    case class RightPathToCenter() extends BeShapeDecoration {
+      override def getOverlayPath(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] = {
+        val seg = rendererConfig.controlSegmentSize
+        SvgPathBuilder(bounds.startPoint)
+          .moveToRel(Dimension(9 * seg, 0))
+          .lineToRel(Dimension(0, seg))
+          .lineToRel(Dimension(-3 * seg, 3 * seg))
+      }
     }
-  }
 
-  case class LeftPathToCenter() extends BeShapeDecoration {
-    override def getOverlayPath(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] = {
-      val seg = rendererConfig.controlSegmentSize
-      SvgPathBuilder(bounds.startPoint)
-        .moveToRel(Dimension(3 * seg, 0))
-        .lineToRel(Dimension(0, seg))
-        .lineToRel(Dimension(3 * seg, 3 * seg))
+    case class LeftPathToCenter() extends BeShapeDecoration {
+      override def getOverlayPath(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] = {
+        val seg = rendererConfig.controlSegmentSize
+        SvgPathBuilder(bounds.startPoint)
+          .moveToRel(Dimension(3 * seg, 0))
+          .lineToRel(Dimension(0, seg))
+          .lineToRel(Dimension(3 * seg, 3 * seg))
+      }
     }
-  }
 
-  case class MoveControlFlowToLeft() extends BeShapeDecoration {
-    override def getOverlayPath(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] = {
-      val seg = rendererConfig.controlSegmentSize
-      SvgPathBuilder(bounds.startPoint)
-        .moveToRel(Dimension(6 * seg, 5 * seg))
-        .lineToRel(Dimension(0, seg))
-        .lineToRel(Dimension(-3 * seg, 0))
-        .lineToRel(Dimension(0, seg))
+    case class MoveControlFlowToLeft() extends BeShapeDecoration {
+      override def getOverlayPath(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] = {
+        val seg = rendererConfig.controlSegmentSize
+        SvgPathBuilder(bounds.startPoint)
+          .moveToRel(Dimension(6 * seg, 5 * seg))
+          .lineToRel(Dimension(0, seg))
+          .lineToRel(Dimension(-3 * seg, 0))
+          .lineToRel(Dimension(0, seg))
+      }
     }
-  }
 
-  case class PathUnionOverlay() extends BeShapeDecoration {
-    override def getOverlayPath(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] = {
-      val seg = rendererConfig.controlSegmentSize
-      SvgPathBuilder(bounds.startPoint)
-        .moveToRel(Dimension(6 * seg, 4 * seg))
-        .addCenteredCircle(seg)
-        .closePath()
-    }
-  }
 
+  */
 }

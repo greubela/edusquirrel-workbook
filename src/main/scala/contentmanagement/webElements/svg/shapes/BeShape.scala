@@ -1,14 +1,17 @@
 package contentmanagement.webElements.svg.shapes
 
 import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.{Signal, svg}
+import com.raquo.laminar.api.L.Signal
 import contentmanagement.model.geometry.{Bounds, Dimension, Point}
+import contentmanagement.webElements.svg.AppSvgElement
+import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.compositeElements.AppGroupSvgElement
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapeContainerable
-import contentmanagement.webElements.svg.shapes.controlflow.overlays.*
 import contentmanagement.webElements.svg.shapes.datatypes.{DuckShape, RectangleShape, UnitShape}
-import contentmanagement.webElements.svg.{AppSvgElement, SvgPathBuilder}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
+import interactionPlugins.blockEnvironment.rendering.*
+import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer.*
 
 sealed trait BeShape {
   def displaySize(rendererConfig: BeRenderingConfig): Dimension[Double]
@@ -26,29 +29,42 @@ sealed trait BeShape {
   }
 }
 
-trait BeShapeDecoration extends BeShape with ControlLineOverlay {
-  override def displaySize(rendererConfig: BeRenderingConfig): Dimension[Double] = Dimension[Double](rendererConfig.controlSegmentSize / 5.0 * 8.0, rendererConfig.controlSegmentSize / 5.0 * 8.0)
+trait BeShapeDecoration extends BeShape {
+
+  def getAmends(renderingConfig: BeRenderingConfig): Seq[L.Modifier[L.SvgElement]]
+
+  def getOverlayPath(rendererConfig: BeRenderingConfig, centeredAt: Point[Double]): SvgPathBuilder[Double]
+
+  def render(rendererConfig: BeRenderingConfig, centerPoint: Point[Double]): AppSvgElement = {
+    getOverlayPath(rendererConfig, centerPoint).toFixedDimensionShape.addAmends(getAmends(rendererConfig)).render(rendererConfig, Bounds(centerPoint, displaySize(rendererConfig)))
+  }
 
   override def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
-    getOverlayPath(rendererConfig, bounds).toAppSvgElement()
+    render(rendererConfig, bounds.centerPoint)
   }
+
 }
 
 trait ControlFlowShape extends BeShape {
 
   def widthInIntendations: Int
 
-  def background: BeShapeContainerable
-
-  def continuesWithoutInterruption: Boolean
-
   def minHeightInSegments: Int
 
-  override def displaySize(rendererConfig: BeRenderingConfig): Dimension[Double] =
-    Dimension[Double](rendererConfig.controlSegmentSize * widthInIntendations * 6 , rendererConfig.controlSegmentSize * minHeightInSegments)
+  def background: BeShapeContainerable
 
-  override def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement
+  def shapeRenderBackground(renderingConfig: BeRenderingConfig): BeShape = {
+    background.addAmends(renderingConfig.amendFactory.defaultControlColors)
+  }
 
+  //def getDecorationsWithRelativeCenterOffset(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): List[(BeShapeDecoration, Point[Double])] = List()
+
+  override def displaySize(renderingConfig: BeRenderingConfig): Dimension[Double] =
+    Dimension[Double](renderingConfig.controlSegmentSize * widthInIntendations * 6, renderingConfig.controlSegmentSize * minHeightInSegments)
+
+  override def render(renderingConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = shapeRenderBackground(renderingConfig).render(renderingConfig, bounds)
+
+  def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: RenderingInformation, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder
 }
 
 case class AmendedShape(baseShape: BeShape, amends: Seq[L.Modifier[L.SvgElement]], amendsSignal: Seq[Signal[L.Modifier[L.SvgElement]]]) extends BeShape {
@@ -58,15 +74,14 @@ case class AmendedShape(baseShape: BeShape, amends: Seq[L.Modifier[L.SvgElement]
   override def render(config: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
     baseShape.render(config, bounds).addMods(amends).addSignalMods(amendsSignal)
   }
-
 }
 
 object BeShape {
 
-
   trait BeShapeAtomic extends BeShape {
 
   }
+
 
   val allAtomicShapes: List[BeShapeAtomic] = List(DuckShape, RectangleShape, UnitShape)
 
@@ -94,20 +109,14 @@ object BeShape {
     }
 
     def render(config: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
-      getPathBuilder(config, bounds).toAppSvgElement()
+      getPathBuilder(config, bounds).toFixedDimensionShape.render(config, bounds)
     }
 
 
   }
 
-
   trait BeShapeComposite extends BeShape {
 
-    def atomicShapes: List[BeShapeAtomic] = children.filter(_.isInstanceOf[BeShapeAtomic]).map(_.asInstanceOf[BeShapeAtomic])
-
-    def textShapes: List[TextShape] = children.filter(_.isInstanceOf[TextShape]).map(_.asInstanceOf[TextShape])
-
-    def children: List[BeShape]
   }
 
   abstract class BeShapeBox extends BeShapeComposite {
@@ -116,6 +125,8 @@ object BeShape {
       val childrenWithBounds = children.map(curChild => curChild.render(config, childrenBounds(curChild)))
       AppGroupSvgElement(childrenWithBounds)
     }
+
+    def children: List[BeShape]
 
     def calcChildrenBounds(config: BeRenderingConfig, bounds: Bounds[Double]): Map[BeShape, Bounds[Double]]
 

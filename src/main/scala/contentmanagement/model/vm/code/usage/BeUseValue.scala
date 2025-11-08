@@ -8,8 +8,8 @@ import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.simulation.{BeExpressionExecutor, BeSimulatorConfig, BeSimulatorState}
 import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.BeExpressionTree
-import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-import interactionPlugins.blockEnvironment.programming.blocks.data.BeBlockUseValue
+import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
+import interactionPlugins.blockEnvironment.programming.blockdisplay.data.BeBlockUseValue
 
 case class BeUseValue(value: BeDataValue, contextIfKnown: Option[BeDefineVariable]) extends BeExpression {
 

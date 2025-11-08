@@ -1,7 +1,7 @@
 package contentmanagement.webElements.svg.shapes
 
 import contentmanagement.model.geometry.{Bounds, Dimension, Point}
-import contentmanagement.webElements.svg.SvgPathBuilder
+import contentmanagement.webElements.svg.builder.SvgPathBuilder
 
 
 private[shapes] object ShapeFactory {

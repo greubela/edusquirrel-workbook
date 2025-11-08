@@ -5,7 +5,7 @@ import contentmanagement.model.vm.code.BeExpression
 import interactionPlugins.blockEnvironment.config.*
 import interactionPlugins.blockEnvironment.programming.BeProgram
 
-case class TreeEditorState(
+case class EditorState(
                             treeToEdit: Var[BeProgram],
                             controllerStateVar: Var[BeControllerState],
                             editorTreeDisplayConfig: Var[BeTreeDisplayConfig],
@@ -13,9 +13,9 @@ case class TreeEditorState(
                             rendererConfigVar: Var[BeRenderingConfig]
                           )
 
-object TreeEditorState {
+object EditorState {
 
-  def withInitExpression(initExpr: BeExpression): TreeEditorState = {
+  def withInitExpression(initExpr: BeExpression): EditorState = {
     val initEditorTreeDisplayConfig = BeTreeDisplayConfig(false, true, true, true)
     val initLibraryTreeDisplayConfig = BeTreeDisplayConfig(false, false, false, true)
 
@@ -24,11 +24,11 @@ object TreeEditorState {
 
     val initControllerState: BeControllerState = BeControllerState.default()
 
-    TreeEditorState(Var(initProgram), Var(initControllerState), Var(initEditorTreeDisplayConfig), Var(initLibraryTreeDisplayConfig), Var(initRenderer))
+    EditorState(Var(initProgram), Var(initControllerState), Var(initEditorTreeDisplayConfig), Var(initLibraryTreeDisplayConfig), Var(initRenderer))
   }
 
 
-  def default(): TreeEditorState = {
+  def default(): EditorState = {
     withInitExpression(BeProgram.miniProgramExpression())
   }
 

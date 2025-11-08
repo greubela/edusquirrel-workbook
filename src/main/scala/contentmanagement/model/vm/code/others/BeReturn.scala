@@ -7,7 +7,7 @@ import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionRefer
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.ExpressionInSequence
 import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
-import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
+import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 
 case class BeReturn(value: Option[BeExpression]) extends BeExpression {
 

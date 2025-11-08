@@ -89,7 +89,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
     )
   }
 
-  def combineSymbolControlFlowAmends: Seq[L.Modifier[L.SvgElement]] = {
+  def unionSymbolControlFlowAmends: Seq[L.Modifier[L.SvgElement]] = {
     val strokeW = rendererConfig.controlSegmentSize / 5.0
     List(
       svg.strokeWidth := strokeW + "px",

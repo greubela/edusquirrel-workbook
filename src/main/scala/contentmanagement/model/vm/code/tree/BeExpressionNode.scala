@@ -2,7 +2,7 @@ package contentmanagement.model.vm.code.tree
 
 import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.types.{BeChildPosition, BeDataType}
-import interactionPlugins.blockEnvironment.programming.blocks.other.BeBlockPlaceholder
+import interactionPlugins.blockEnvironment.programming.blockdisplay.other.BeBlockPlaceholder
 
 sealed trait BeExpressionNode {
 

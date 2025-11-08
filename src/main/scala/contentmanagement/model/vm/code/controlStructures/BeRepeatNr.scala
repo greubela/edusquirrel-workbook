@@ -6,7 +6,7 @@ import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionRefer
 import contentmanagement.model.vm.code.{BeControlStructure, BeExpression}
 import contentmanagement.model.vm.types.BeScope.InSequenceScope
 import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeInfo, BeScope}
-import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
+import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import util.CodeStringBuilder
 
 case class BeRepeatNr(amount: Int, body: BeSequence) extends BeControlStructure {

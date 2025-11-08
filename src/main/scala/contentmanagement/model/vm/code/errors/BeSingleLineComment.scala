@@ -5,8 +5,8 @@ import contentmanagement.model.language.{HumanLanguage, LanguageMap, Programming
 import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.types.{BeChildRole, BeDataType, BeInfo, BeScope}
-import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-import interactionPlugins.blockEnvironment.programming.blocks.other.BeBlockComment
+import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
+import interactionPlugins.blockEnvironment.programming.blockdisplay.other.BeBlockComment
 
 case class BeSingleLineComment(commentStr: LanguageMap[HumanLanguage]) extends BeExpression {
 

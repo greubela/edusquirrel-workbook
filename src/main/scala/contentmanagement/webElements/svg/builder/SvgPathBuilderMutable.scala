@@ -1,27 +1,36 @@
-package contentmanagement.webElements.svg
+package contentmanagement.webElements.svg.builder
 
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
-import contentmanagement.webElements.svg.atomarElements.{AppLineSvgElement, AppPathSvgElement}
+import contentmanagement.model.geometry.*
+import contentmanagement.webElements.svg.atomarElements.*
 
 import scala.collection.mutable
 
-case class SvgPathBuilder[T: Fractional](startPointAbs: Point[T]) {
+import contentmanagement.model.geometry.{Bounds, Dimension, Point}
+import contentmanagement.webElements.svg.atomarElements.AppPathSvgElement
+import contentmanagement.webElements.svg.builder.*
+import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand.*
 
-  //private case class ControlPointWithStart(startPoint: Point[T], controlPoint: Point[T])
+import scala.collection.mutable
+
+case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Point[T]) extends SvgPathBuilder[T] {
 
   private val N = summon[Fractional[T]]
 
   import N.*
 
+  def toSvgPathD: String = pathD.toString()
+
   private val pathD: StringBuilder = new StringBuilder()
-    .append(s"M ${num(startPointAbs.x.toDouble)} ${num(startPointAbs.y.toDouble)}")
+    .append(s"M ${num(absStartPoint.x.toDouble)} ${num(absStartPoint.y.toDouble)}")
 
-  private def current: Point[T] = cornerPoints.last
+  def current: Point[T] = cornerPoints.last
 
-  private val cornerPoints = mutable.ListBuffer[Point[T]](startPointAbs)
+  def pathPoints: List[Point[T]] = cornerPoints.toList
+  private val cornerPoints = mutable.ListBuffer[Point[T]](absStartPoint)
   private val controlLines = mutable.ListBuffer[AppLineSvgElement[T]]()
 
   // --- Helpers ---------------------------------------------------------------
+
 
   private def pointStr(p: Point[T]): String =
     num(p.x.toDouble) + " " + num(p.y.toDouble)
@@ -33,7 +42,7 @@ case class SvgPathBuilder[T: Fractional](startPointAbs: Point[T]) {
 
   // --- M / m (moveto) --------------------------------------------------------
 
-  def append(str: String): this.type = {
+  private def append(str: String): this.type = {
     pathD.append(str)
     this
   }
@@ -130,7 +139,7 @@ case class SvgPathBuilder[T: Fractional](startPointAbs: Point[T]) {
     val dia = radius * fromInt(2)
     this
       .moveToRel(new Dimension[T](-radius, fromInt(0)))
-    .append(s" a ${radius},${radius} 0 1,0 ${dia},0 a ${radius},${radius} 0 1,0 -${dia},0 Z")
+      .append(s" a ${radius},${radius} 0 1,0 ${dia},0 a ${radius},${radius} 0 1,0 -${dia},0 Z")
       .moveToRel(new Dimension[T](radius, fromInt(0)))
   }
 
@@ -142,7 +151,7 @@ case class SvgPathBuilder[T: Fractional](startPointAbs: Point[T]) {
     val N = summon[Fractional[T]]
     import N.*
 
-    val segmentHeight = if(invertHeight) -segmentWidth else segmentWidth
+    val segmentHeight = if (invertHeight) -segmentWidth else segmentWidth
 
     this
       .lineToRel(Dimension(segmentWidth, fromInt(0)))
@@ -154,11 +163,10 @@ case class SvgPathBuilder[T: Fractional](startPointAbs: Point[T]) {
 
   }
 
-  // Conversion
   def toAppSvgElement(): AppPathSvgElement[T] =
     AppPathSvgElement[T](pathD.toString(), cornerPoints.toList, controlLines.toList)
 
 
-  
+  def moveWholePath(dimension: contentmanagement.model.geometry.Dimension[T]): SvgPathBuilder[T] = ???
 
 }

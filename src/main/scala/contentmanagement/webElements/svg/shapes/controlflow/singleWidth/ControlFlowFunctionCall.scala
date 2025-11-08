@@ -1,17 +1,23 @@
 package contentmanagement.webElements.svg.shapes.controlflow.singleWidth
 
-import contentmanagement.model.geometry.Bounds
+import contentmanagement.model.geometry.{Bounds, Point}
 import contentmanagement.webElements.svg.AppSvgElement
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
+import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 
 case class ControlFlowFunctionCall() extends ControlFlowShapeSingleWidth {
 
   val ref = ControlFlowDirected(true, true)
 
-  override def continuesWithoutInterruption: Boolean = ref.continuesWithoutInterruption
-
   override def minHeightInSegments: Int = ref.minHeightInSegments
 
-  override def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement =
+  override def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
     ref.render(rendererConfig, bounds)
+  }
+
+  override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: RenderingInformation, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
+    ref.renderControlFlow(cf, renderingInfo, centerPoint, curLineHeight)
+  }
+  
 }

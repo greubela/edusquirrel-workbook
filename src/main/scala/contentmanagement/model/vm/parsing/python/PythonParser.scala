@@ -13,7 +13,7 @@ import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole
 import contentmanagement.model.vm.types.BeDataType.{AnyType, BeUnionAllowedTypes}
 import contentmanagement.model.vm.types.BeScope
-import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
+import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 
 import scala.collection.mutable
 

@@ -1,17 +1,16 @@
 package contentmanagement.webElements.svg.shapes
 
 import contentmanagement.model.geometry.{Bounds, Dimension, Point}
-import contentmanagement.webElements.svg.SvgPathBuilder
+import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 
-case class ControlFlowShapeFactory[T: Fractional](renderingConfig: BeRenderingConfig) {
+case class DecorationFactory[T: Fractional](renderingConfig: BeRenderingConfig) {
   val N = summon[Fractional[T]]
 
   import N.*
 
   val segmentSize: T = fromInt(renderingConfig.controlSegmentSize)
-
 
   private def intDim(width: Int, height: Int): Dimension[T] = Dimension[T](fromInt(width), fromInt(height))
 
@@ -29,8 +28,8 @@ case class ControlFlowShapeFactory[T: Fractional](renderingConfig: BeRenderingCo
   val two: T = fromInt(2)
   val half: T = one / two
 
-  def controlArrowDown(bounds: Bounds[T]): SvgPathBuilder[T] = {
-    SvgPathBuilder(bounds.centerPoint)
+  def controlArrowDown(centeredAround: Point[T]): SvgPathBuilder[T] = {
+    SvgPathBuilder(centeredAround)
       .moveToRel(segDim(0, -3))
       .lineToRel(segDim(one + half, -one - half))
       .verticalLineWithHeight(intToSeg(6))
@@ -42,22 +41,22 @@ case class ControlFlowShapeFactory[T: Fractional](renderingConfig: BeRenderingCo
       .lineToRel(segDim(one + half, one + half))
   }
 
-  def controlArrowUp(bounds: Bounds[T]): SvgPathBuilder[T] = {
-    SvgPathBuilder(bounds.centerPoint)
+  def controlArrowUp(centeredAround: Point[T]): SvgPathBuilder[T] = {
+    SvgPathBuilder(centeredAround)
       .moveToRel(segDim(0, 3))
       .lineToRel(segDim(one + half, one + half))
       .verticalLineWithHeight(intToSeg(-6))
       .horizontalLineWithWidth(tToSeg(one + half))
       .lineToRel(segDim(-3, -3))
       .lineToRel(segDim(-3, 3))
-      .horizontalLineWithWidth(tToSeg(one +half))
+      .horizontalLineWithWidth(tToSeg(one + half))
       .verticalLineWithHeight(intToSeg(6))
       .lineToRel(segDim(one + half, -one - half))
   }
 
 
-  def dataArrowLeft(bounds: Bounds[T]): SvgPathBuilder[T] = {
-    SvgPathBuilder(bounds.centerPoint)
+  def dataArrowLeft(centeredAround: Point[T]): SvgPathBuilder[T] = {
+    SvgPathBuilder(centeredAround)
       .moveToRel(segDim(0, -1))
       .verticalLineWithHeight(intToSeg(-2))
       .lineToRel(segDim(-3, 3))
@@ -72,8 +71,8 @@ case class ControlFlowShapeFactory[T: Fractional](renderingConfig: BeRenderingCo
       .closePath()
   }
 
-  def dataArrowRight(bounds: Bounds[T]): SvgPathBuilder[T] = {
-    SvgPathBuilder(bounds.centerPoint)
+  def dataArrowRight(centeredAround: Point[T]): SvgPathBuilder[T] = {
+    SvgPathBuilder(centeredAround)
       .moveToRel(segDim(-0, -1))
       .verticalLineWithHeight(intToSeg(-2))
       .lineToRel(segDim(3, 3))

@@ -1,7 +1,8 @@
 package contentmanagement.webElements.svg.shapes.datatypes
 
 import contentmanagement.model.geometry.{Bounds, Dimension}
-import contentmanagement.webElements.svg.{AppSvgElement, SvgPathBuilder}
+import contentmanagement.webElements.svg.AppSvgElement
+import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import contentmanagement.webElements.svg.shapes.BeShape.{BeShapeAtomic, BeShapeContainerable, BeShapePathBased}
 import contentmanagement.webElements.svg.shapes.{AmendedShape, BeShape, ShapeFactory}

@@ -8,8 +8,8 @@ import contentmanagement.model.vm.types.BeChildRole.ConditionInControlStructure
 import contentmanagement.model.vm.types.BeScope.InSequenceScope
 import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo, BeScope}
 import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
-import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-import interactionPlugins.blockEnvironment.programming.blocks.control.BeBlockIfElse
+import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
+import interactionPlugins.blockEnvironment.programming.blockdisplay.control.BeBlockIfElse
 import util.CodeStringBuilder
 
 case class BeIfElse(

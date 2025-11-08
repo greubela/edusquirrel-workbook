@@ -5,8 +5,8 @@ import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.simulation.{BeSimulatorConfig, BeSimulatorState}
 import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
-import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-import interactionPlugins.blockEnvironment.programming.blocks.data.*
+import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
+import interactionPlugins.blockEnvironment.programming.blockdisplay.data.*
 import contentmanagement.model.vm.code.*
 import contentmanagement.model.vm.code.tree.BeExpressionNode
 

@@ -1,26 +1,67 @@
 package contentmanagement.webElements.svg.shapes.controlflow.doubleWidth
 
+import com.raquo.laminar.api.L
 import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.compositeElements.AppDecoratedSvgElement
 import contentmanagement.webElements.svg.shapes.*
 import contentmanagement.webElements.svg.shapes.composite.VerticalAlignment.Top
 import contentmanagement.webElements.svg.shapes.composite.{HorizontalAlignment, ShapeStack, VerticalAlignment}
 import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
-import IfElseSplit.{IfElseConditionOverlay, LeftPathFalseOverlay, MoveControlFlowToCenter, RightPathTrueOverlay}
-import contentmanagement.webElements.svg.shapes.controlflow.overlays.BeDataArrow
-import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.ControlFlowShapeDoubleWidth
-import contentmanagement.webElements.svg.{AppSvgElement, SvgPathBuilder}
+import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.IfElseSplit.*
+import contentmanagement.webElements.svg.shapes.controlflow.decorations.{BeDataArrow, PathCrossOverlay, PathSplitOverlay}
+import contentmanagement.webElements.svg.AppSvgElement
+import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
+import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
+import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.PathStatus.{OPEN, PAUSED}
+import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.{ControlFlowPath, PathSegment}
 
 case class IfElseSplit() extends ControlFlowShapeDoubleWidth {
-
-  override def continuesWithoutInterruption: Boolean = false
 
   override def minHeightInSegments: Int = 8
 
   override def background: BeShape.BeShapeContainerable = ControlFlowConnectorBackground(List((true, true), (false, true)))
+  
+  private def handleParentPath(path: ControlFlowPath, renderingConfig: BeRenderingConfig, curLineHeight: Double): (ControlFlowPath, Point[Double]) = {
+    val seg = renderingConfig.controlSegmentSize
+    val extraHeight = (curLineHeight - seg * 7).max(0)
 
-  override def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
+    val res = path.changeLastPathBuilder(_
+      .verticalLineWithHeight(extraHeight / 2)
+      .lineToRel(Dimension[Double](0, seg))
+      .lineToRel(Dimension(3 * seg, 0))
+      .lineToRel(Dimension(0, 2 * seg))
+    )
+
+    (res.copy(curStatus = PAUSED), res.lastSegment.curPath.current)
+  }
+
+  private def startNewPath(startPos: Point[Double], curLineHeight: Double, seg: Double, toTheRight: Boolean, newPathAmends: Seq[L.Modifier[L.SvgElement]]): ControlFlowPath = {
+    val extraHeight = (curLineHeight - seg * 7).max(0)
+    val xDirection = if (toTheRight) 3 * seg else -3 * seg
+
+    val curPath = SvgPathBuilder[Double](startPos)
+      .lineToRel(Dimension[Double](xDirection, 3 * seg))
+      .lineToRel(Dimension[Double](0, seg))
+      .verticalLineWithHeight(extraHeight / 2)
+    val segment = PathSegment(curPath, List(), false, newPathAmends)
+    ControlFlowPath(OPEN, List(segment))
+  }
+
+  override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: RenderingInformation, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
+    val seg = renderingInfo.renderingConfig.controlSegmentSize
+
+    val (changedFirst, parentEndPos): (ControlFlowPath, Point[Double]) = handleParentPath(cf.firstOpenPath, renderingInfo.renderingConfig, curLineHeight)
+    cf
+      .changeFirstOpenPath(_ => changedFirst)
+      .startNewPath(startNewPath(parentEndPos, curLineHeight, seg, false, renderingInfo.renderingConfig.amendFactory.inactiveControlFlowAmends))
+      .startNewPath(startNewPath(parentEndPos, curLineHeight, seg, true, renderingInfo.renderingConfig.amendFactory.trueConditionControlFlowAmends))
+      .addDecoration(PathSplitOverlay(), centerPoint)
+  }
+
+
+  /*override def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
 
     val bwa = background.addAmends(rendererConfig.amendFactory.defaultControlColors)
     val mwa = MoveControlFlowToCenter().addAmends(rendererConfig.amendFactory.activeControlFlowAmends)
@@ -42,55 +83,7 @@ case class IfElseSplit() extends ControlFlowShapeDoubleWidth {
     val sR = stack.render(rendererConfig, bounds)
     AppDecoratedSvgElement(bR, List(sR), List())
 
-  }
-  
-}
-
-object IfElseSplit {
-
-  case class MoveControlFlowToCenter() extends BeShapeDecoration {
-    override def getOverlayPath(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] = {
-      val seg = rendererConfig.controlSegmentSize
-      SvgPathBuilder(bounds.startPoint)
-        .moveToRel(Dimension(3 * seg, 0))
-        .lineToRel(Dimension(0, 2 * seg))
-        .lineToRel(Dimension(3 * seg, 0))
-        .lineToRel(Dimension(0, seg))
-    }
-  }
-
-  case class IfElseConditionOverlay() extends BeShapeDecoration {
-    override def getOverlayPath(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] = {
-      val seg = rendererConfig.controlSegmentSize
-      SvgPathBuilder(bounds.startPoint)
-        .moveToRel(Dimension(6 * seg, 3 * seg))
-        .lineToRel(Dimension(seg, seg))
-        .lineToRel(Dimension(-seg, seg))
-        .lineToRel(Dimension(-seg, -seg))
-        .lineToRel(Dimension(seg, -seg))
-        .closePath()
-    }
-  }
-
-  case class RightPathTrueOverlay() extends BeShapeDecoration {
-    override def getOverlayPath(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] = {
-      val seg = rendererConfig.controlSegmentSize
-      SvgPathBuilder(bounds.startPoint)
-        .moveToRel(Dimension(6 * seg, 4 * seg))
-        .lineToRel(Dimension(3 * seg, 3 * seg))
-         .lineToRel(Dimension(0, seg))
-    }
-  }
-
-  case class LeftPathFalseOverlay() extends BeShapeDecoration {
-    override def getOverlayPath(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] = {
-      val seg = rendererConfig.controlSegmentSize
-      SvgPathBuilder(bounds.startPoint)
-        .moveToRel(Dimension(6 * seg, 4 * seg))
-        .lineToRel(Dimension(-3 * seg, 3 * seg))
-         .lineToRel(Dimension(0, seg))
-    }
-  }
-
+  }*/
 
 }
+

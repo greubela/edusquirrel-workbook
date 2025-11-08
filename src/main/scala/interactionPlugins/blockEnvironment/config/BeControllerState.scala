@@ -6,7 +6,6 @@ import interactionPlugins.blockEnvironment.programming.BeProgram
 
 case class BeDraggingEvent(draggedProgram: BeProgram) {
 
-
   override val toString: String = "BeDraggingEvent(" + draggedProgram.toString + ")"
 }
 
@@ -14,12 +13,12 @@ case class BeMouseOverExtensionPoint(program: BeProgram, extensionPoint: BeExten
   override val toString: String = "MouseOverNode(" + extensionPoint + ")"
 }
 
-case class BeControllerState(draggingEvent: Option[BeDraggingEvent], mouseOverNode: Option[BeMouseOverExtensionPoint]) {
+case class BeControllerState(draggingEvent: Option[BeDraggingEvent], mouseOverNode: Option[BeMouseOverExtensionPoint], mouseOverControlFlowClass: Option[String]) {
 
 }
 
 object BeControllerState {
 
-  def default(): BeControllerState = BeControllerState(None, None)
+  def default(): BeControllerState = BeControllerState(None, None, None)
 
 }

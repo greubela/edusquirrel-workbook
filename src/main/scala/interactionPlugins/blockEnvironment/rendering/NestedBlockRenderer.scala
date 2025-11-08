@@ -1,0 +1,320 @@
+package interactionPlugins.blockEnvironment.rendering
+
+import contentmanagement.model.geometry.{Dimension, Point}
+import contentmanagement.webElements.svg.shapes.composite.HorizontalAlignment.Left
+import contentmanagement.webElements.svg.shapes.composite.VerticalAlignment.Center
+import contentmanagement.webElements.svg.shapes.composite.{BoxManualPositioning, HorizontalAlignment, VBoxSameWidth, VerticalAlignment}
+import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowShape}
+import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
+import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.PathStatus
+import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer.*
+
+import scala.collection.mutable
+
+
+case class LineForRendering(lineNr: Int, segment: NestedBlockSegment, line: NestedBlockLine, controlFlowStack: List[ControlFlowShape]) {
+  /*lazy val lineExprBox: BeShape = {
+    val boxContent = line.expressionShape.map(List(_)).getOrElse(List())
+    VBoxSameWidth(boxContent, false, Left, Center)
+  }*/
+
+  lazy val lineAllShapes: List[BeShape] = controlFlowStack ++ List(line.controlFlowShape) ++ line.expressionShape
+
+  def lineHeight(renderingConfig: BeRenderingConfig) = lineAllShapes.map(_.displaySize(renderingConfig).height).max
+
+  def expressionShapeRelativeOffsetX(renderingConfig: BeRenderingConfig, controlFlowColumnWidths: List[Double]): Double = {
+    val stackWidth: Double = controlFlowColumnWidths.sum
+    val controlFlowWidth: Double = line.controlFlowShape.displaySize(renderingConfig).width
+    val paddingWidth: Double = renderingConfig.paddingSmall.width
+    stackWidth + controlFlowWidth + paddingWidth
+  }
+}
+
+case class NestedBlockRenderer(
+                                segments: List[NestedBlockSegment]
+                              ) {
+
+  lazy val lastSegment: Option[NestedBlockSegment] = segments.lastOption
+
+  lazy val lastLine: Option[NestedBlockLine] = lastSegment.flatMap(_.lines.lastOption)
+
+  lazy val allLines: List[NestedBlockLine] = segments.flatMap(_.lines)
+
+  def withAppendedSegment(segment: NestedBlockSegment): NestedBlockRenderer = {
+    NestedBlockRenderer(segments ++ List(segment))
+  }
+
+  def withReplacedLastSegment(segment: NestedBlockSegment): NestedBlockRenderer = {
+    NestedBlockRenderer(segments.init ++ List(segment))
+  }
+
+  def withAppendedLine(line: NestedBlockLine): NestedBlockRenderer = {
+    if (lastSegment.isEmpty || lastLine.isEmpty || (lastLine.nonEmpty && lastLine.get.isStackChanging) || line.isStackChanging) {
+      withAppendedSegment(NestedBlockSegment(List(line)))
+    } else {
+      withReplacedLastSegment(NestedBlockSegment(lastSegment.get.lines ++ List(line)))
+    }
+  }
+
+  lazy val linesToRender: List[LineForRendering] = {
+
+    val res = mutable.ListBuffer[LineForRendering]()
+    val curStack: mutable.Stack[ControlFlowShape] = mutable.Stack()
+
+    var globalLineNr: Int = 0
+    for (curSegment <- segments) {
+      for (curLine <- curSegment.lines) {
+        if (curLine.popStackBefore) {
+          curStack.pop()
+        }
+        val lineStack = curStack.toList
+
+        res += LineForRendering(globalLineNr, curSegment, curLine, curStack.toList)
+        globalLineNr += 1
+        curLine.addToStackAfterwards.foreach(curStack.push)
+      }
+    }
+
+    // println("calced lines to render (" + res.size + " lines)!")
+    res.toList
+  }
+
+  private def getControlFlowStackColumnWidths(config: BeRenderingConfig): List[Double] = {
+    val maxStackSize = linesToRender.map(_.controlFlowStack.size).max
+
+    0.until(maxStackSize).map(curColumnNr => {
+      linesToRender.flatMap(_.controlFlowStack.lift(curColumnNr)).map(_.displaySize(config).width).max
+    }).toList
+  }
+
+  def expressionShapeWithoutIntendation: BeShape = {
+    VBoxSameWidth(linesToRender.flatMap(_.line.expressionShape), false, HorizontalAlignment.Left, VerticalAlignment.Center)
+  }
+
+  def expressionShapeWithIntendation: BeShape = {
+
+    //val columnWidths = getControlFlowStackColumnWidths(config)
+
+    /*
+        // todo curControlFlow && associatedExpression with box layout (same width in segment, calc beforehand!!)
+    val resList = mutable.ListBuffer[(BeShape, Point[Double], Dimension[Double])]()
+    var offsetY: Double = 0
+    for (curLineToRender <- linesForRendering) {
+      if (curLineToRender.line.expressionShape.isDefined) {
+        val shape = curLineToRender.line.expressionShape.get
+        val offsetX = curLineToRender.relativeExpressionXOffset(renderingConfig)
+        val dim = shape.displaySize(renderingConfig)
+        resList.addOne((shape, Point(offsetX, offsetY), dim))
+      }
+      offsetY = offsetY + curLineToRender.lineHeight(renderingConfig)
+    }
+    resList.toList
+     */
+
+    ???
+  }
+
+  def controlFlowBackgroundShape: BeShape = new BoxManualPositioning {
+
+    override def calcOffsetsAndDimensions(config: BeRenderingConfig): List[(BeShape, Point[Double], Dimension[Double])] = {
+      val controlFlowColumnWidths = getControlFlowStackColumnWidths(config)
+      val res = mutable.ListBuffer[(BeShape, Point[Double], Dimension[Double])]()
+
+      var curStartY: Double = 0
+      var curStartX: Double = 0
+      var index = 0
+
+      for (curLineToRender <- linesToRender) {
+        index += 1
+
+        curStartX = 0
+        // stack
+        val allControlShapesWithIndex = (curLineToRender.controlFlowStack :+ curLineToRender.line.controlFlowShape).zipWithIndex
+        for ((curControlShape, curColumn) <- allControlShapesWithIndex) {
+          val curCfRelOffset = new Point[Double](curStartX, curStartY)
+          val curCfShapeDim = if (curColumn < controlFlowColumnWidths.size) {
+            new Dimension[Double](controlFlowColumnWidths(curColumn), curLineToRender.lineHeight(config))
+          } else {
+            new Dimension[Double](curControlShape.displaySize(config).width, curLineToRender.lineHeight(config))
+          }
+          res.addOne((curControlShape.shapeRenderBackground(config), curCfRelOffset, curCfShapeDim))
+          curStartX += curCfShapeDim.width
+        }
+        curStartY += curLineToRender.lineHeight(config)
+      }
+      res.toList
+    }
+  }
+
+  def controlFlowOverlayShape(renderingInfo: RenderingInformation): BeShape = {
+    val controlFlowBuilder = getControlFlowBuilder(renderingInfo)
+    val controlFlowOverlay = controlFlowBuilder.renderControlFlow()
+    controlFlowOverlay
+  }
+
+  private def getControlFlowBuilder(renderingInfo: RenderingInformation): ControlFlowOverlayBuilder = {
+    var res = ControlFlowOverlayBuilder(List(), List())
+
+    val stackColumnWidths = getControlFlowStackColumnWidths(renderingInfo.renderingConfig)
+    val (stackColumnCenter, stackWidth): (List[Double], Double) = {
+      var offset: Double = 0
+      val res = mutable.ListBuffer[Double]()
+      for (curWidth <- stackColumnWidths) {
+        res.addOne(offset + curWidth / 2)
+        offset += curWidth
+      }
+      println("res: " + res.toList)
+      (res.toList, offset)
+    }
+
+
+    def printStatus(startStr: String): Unit = {
+      println("    [INFO] NestedBlockRenderer::getControlFlowBuilder, " + startStr
+        + ", lists: open=" + res.paths.count(_.curStatus == PathStatus.OPEN)
+        + ", handled=" + res.paths.count(_.curStatus == PathStatus.HANDLED)
+        + ", paused=" + res.paths.count(_.curStatus == PathStatus.PAUSED)
+        + ", finished=" + res.paths.count(_.curStatus == PathStatus.FINISHED)
+      )
+    }
+
+    var curOffsetY: Double = renderingInfo.renderingConfig.controlSegmentSize
+    for (curLineToRender <- linesToRender) {
+      val curCenterY = curOffsetY + curLineToRender.lineHeight(renderingInfo.renderingConfig) / 2
+      curOffsetY += curLineToRender.lineHeight(renderingInfo.renderingConfig)
+
+      for ((curControlFlowShape, curCenterX) <- curLineToRender.controlFlowStack.zip(stackColumnCenter)) {
+        println("center: " + curCenterX + "|" + curCenterY)
+        res = curControlFlowShape.renderControlFlow(res, renderingInfo, Point[Double](curCenterX, curCenterY), curLineToRender.lineHeight(renderingInfo.renderingConfig))
+        printStatus("Handled Stack Shape: " + curControlFlowShape.getClass.getSimpleName)
+      }
+      for (curControlFlowShape <- Some(curLineToRender.line.controlFlowShape)) {
+        val curStackSize = curLineToRender.controlFlowStack.size
+        val curStackWidth = stackColumnWidths.slice(0, curStackSize).sum
+        val curCenterX = curStackWidth + curControlFlowShape.displaySize(renderingInfo.renderingConfig).width / 2
+        res = curControlFlowShape.renderControlFlow(res, renderingInfo, Point[Double](curCenterX, curCenterY), curLineToRender.lineHeight(renderingInfo.renderingConfig))
+        printStatus("Handled Flow Shape: " + curControlFlowShape.getClass.getSimpleName)
+      }
+
+      res = res.resetHandledToOpen()
+      printStatus("Handled Line: " + curLineToRender.lineNr)
+    }
+    res
+  }
+
+  def withAppendedRenderer(other: NestedBlockRenderer): NestedBlockRenderer = {
+    var res = this
+    for (segment <- other.segments) {
+      for (line <- segment.lines) {
+        res = res.withAppendedLine(line)
+      }
+    }
+    res
+  }
+}
+
+object NestedBlockRenderer {
+
+  def singleExpressionLineShapeWithInfo(allLines: List[NestedBlockLine], newControlFlowShape: ControlFlowShape, newExprShape: BeShape): NestedBlockRenderer = {
+    val navShapes = allLines.flatMap(_.navShapes)
+    val infoShapes = allLines.flatMap(_.infoShapes)
+    val sideEffectShapes = allLines.flatMap(_.sideEffectShapes)
+    val newLine = ExpressionLine(newControlFlowShape, newExprShape, infoShapes, navShapes, sideEffectShapes)
+
+    NestedBlockRenderer(List(NestedBlockSegment(List(newLine))))
+  }
+
+  def empty(): NestedBlockRenderer = NestedBlockRenderer(List())
+
+  sealed trait NestedBlockLine {
+
+    def popStackBefore: Boolean
+
+    def addToStackAfterwards: Option[ControlFlowShape]
+
+    def isStackChanging: Boolean = popStackBefore || addToStackAfterwards.nonEmpty
+
+    def controlFlowShape: ControlFlowShape
+
+    def expressionShape: Option[BeShape]
+
+    def infoShapes: List[BeShape]
+
+    def navShapes: List[BeShape]
+
+    def sideEffectShapes: List[BeShape]
+  }
+
+  case class ControlFlowLine(controlFlowShape: ControlFlowShape, expressionShape: Option[BeShape] = None) extends NestedBlockLine {
+
+    override def popStackBefore: Boolean = false
+
+    override def addToStackAfterwards: Option[ControlFlowShape] = None
+
+    override def infoShapes: List[BeShape] = List()
+
+    override def navShapes: List[BeShape] = List()
+
+    override def sideEffectShapes: List[BeShape] = List()
+  }
+
+  case class ControlFlowReplaceLine(controlFlowShape: ControlFlowShape, expressionShape: Option[BeShape], addToStack: ControlFlowShape) extends NestedBlockLine {
+
+    override def popStackBefore: Boolean = true
+
+    override def addToStackAfterwards: Option[ControlFlowShape] = Some(addToStack)
+
+    override def infoShapes: List[BeShape] = List()
+
+    override def navShapes: List[BeShape] = List()
+
+    override def sideEffectShapes: List[BeShape] = List()
+  }
+
+  case class ControlFlowIncreaseLine(controlFlowShape: ControlFlowShape, expressionShape: Option[BeShape] = None, addToStack: ControlFlowShape) extends NestedBlockLine {
+
+    val addToStackAfterwards: Option[ControlFlowShape] = Some(addToStack)
+    val popStackBefore: Boolean = false
+
+    def infoShapes: List[BeShape] = List()
+
+    def navShapes: List[BeShape] = List()
+
+    def sideEffectShapes: List[BeShape] = List()
+  }
+
+  case class ControlFlowDecreaseLine(controlFlowShape: ControlFlowShape, expressionShape: Option[BeShape] = None) extends NestedBlockLine {
+
+    val addToStackAfterwards: Option[ControlFlowShape] = None
+    val popStackBefore: Boolean = true
+
+    def infoShapes: List[BeShape] = List()
+
+    def navShapes: List[BeShape] = List()
+
+    def sideEffectShapes: List[BeShape] = List()
+  }
+
+  case class ExpressionLine(
+                             controlFlowShape: ControlFlowShape,
+                             exprShape: BeShape,
+                             infoShapes: List[BeShape],
+                             navShapes: List[BeShape],
+                             sideEffectShapes: List[BeShape]
+                           ) extends NestedBlockLine {
+
+    val addToStackAfterwards: Option[ControlFlowShape] = None
+    val popStackBefore: Boolean = false
+
+    def expressionShape: Option[BeShape] = Some(exprShape)
+
+  }
+
+  case class NestedBlockSegment(
+                                 lines: List[NestedBlockLine]
+                               ) {
+
+  }
+
+
+}

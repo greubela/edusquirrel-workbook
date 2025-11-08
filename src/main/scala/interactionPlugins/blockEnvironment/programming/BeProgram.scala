@@ -13,8 +13,9 @@ import contentmanagement.model.vm.parsing.python.PythonParser
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.*
 import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
-import interactionPlugins.blockEnvironment.programming.blocks.*
-import interactionPlugins.blockEnvironment.programming.blocks.other.BeBlockPlaceholder
+import interactionPlugins.blockEnvironment.programming.blockdisplay.*
+import interactionPlugins.blockEnvironment.programming.blockdisplay.other.BeBlockPlaceholder
+import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
 
 type BeBlockTree = Tree[NodeBasedTreePosition, BeBlock]
 type BeExpressionTree = Tree[NodeBasedTreePosition, BeExpressionNode]
@@ -164,20 +165,22 @@ object BeProgram {
     BeProgram(miniProgramExpression())
   }
 
-  def sampleParsedProgram2(): BeProgram = {
+  def sampleParsedProgram(): BeProgram = {
     val somePython =
       """
+        |import turtle
+        |callFunc("duck")
         |if score > 10:
         |    func(A)
         |else:
         |    forward(1000)
         |""".stripMargin
     val parsingResult = PythonParser.parsePythonWithDetails(somePython)
-    val expression = parsingResult.codeExpression
+    val expression = BeStartProgram(parsingResult.codeExpression)
     BeProgram(expression)
   }
 
-  def sampleParsedProgram(): BeProgram = {
+  def sampleParsedProgram2(): BeProgram = {
     val somePython =
       """
         |import os #import parsable but not supported yet

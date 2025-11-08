@@ -6,7 +6,7 @@ import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.code.{BeDefineStructure, BeExpression}
 import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo, BeScope}
 import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
-import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
+import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import util.CodeStringBuilder
 
 case class BeDefineClass(name: LanguageMap[HumanLanguage], attributes: List[BeDefineVariable], methods: List[BeDefineFunction]) extends BeDefineStructure {

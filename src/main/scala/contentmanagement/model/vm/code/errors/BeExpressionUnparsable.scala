@@ -8,8 +8,8 @@ import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.ConditionInControlStructure
 import contentmanagement.model.vm.types.BeScope.InSequenceScope
 import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
-import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
-import interactionPlugins.blockEnvironment.programming.blocks.other.{BeBlockUnparsable, BeBlockUnsupported}
+import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
+import interactionPlugins.blockEnvironment.programming.blockdisplay.other.{BeBlockUnparsable, BeBlockUnsupported}
 
 case class BeExpressionUnparsable(originalSource: String, message: String) extends BeExpression {
 

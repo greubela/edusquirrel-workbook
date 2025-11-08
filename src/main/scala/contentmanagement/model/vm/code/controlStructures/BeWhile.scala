@@ -6,7 +6,7 @@ import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.code.{BeControlStructure, BeExpression}
 import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo, BeScope}
 import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
-import interactionPlugins.blockEnvironment.programming.blocks.BeBlock
+import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import util.CodeStringBuilder
 import contentmanagement.model.vm.code.tree.*
 import contentmanagement.model.vm.types.BeChildRole.ConditionInControlStructure
