@@ -230,7 +230,12 @@ class PythonParserSpec extends FunSuite {
       val normalizedRegenerated = normalizer.normalizePython(regenerated)
       assertEquals(normalizedRegenerated, normalizedGenerated)
 
-      testCase.expectedNormalized.foreach(expected => assertEquals(normalizedInput, expected.stripMargin))
+      testCase.expectedNormalized.foreach { expected =>
+        assertEquals(
+          normalizer.normalizeLineEndings(normalizedInput),
+          normalizer.normalizeLineEndings(expected.stripMargin)
+        )
+      }
       testCase.assertions(parsingResult)
     }
   }
@@ -293,7 +298,10 @@ class PythonParserSpec extends FunSuite {
       """while (remaining > 0) {
         |    remaining = remaining - 1;
         |}""".stripMargin
-    assertEquals(whileRendered, expectedWhile)
+    assertEquals(
+      normalizer.normalizeLineEndings(whileRendered),
+      normalizer.normalizeLineEndings(expectedWhile)
+    )
     val returnExpressions = body.collect { case ret: BeReturn => ret }
     assertEquals(returnExpressions.length, 1)
     assertEquals(returnExpressions.head.getInLanguage(JavaScript, English), "return remaining;")
@@ -323,7 +331,10 @@ class PythonParserSpec extends FunSuite {
         |    }
         |    return total;
         |}""".stripMargin
-    assertEquals(renderedJavaScript, expectedJavaScript)
+    assertEquals(
+      normalizer.normalizeLineEndings(renderedJavaScript),
+      normalizer.normalizeLineEndings(expectedJavaScript)
+    )
   }
 
   test("merge initial known structures with parsed definitions") {

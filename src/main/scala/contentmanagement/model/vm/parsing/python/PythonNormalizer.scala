@@ -4,11 +4,14 @@ import scala.collection.mutable
 
 class PythonNormalizer {
 
+  def normalizeLineEndings(source: String): String =
+    source.replace("\r\n", "\n").replace('\r', '\n')
+
   private val AugmentedAssignmentPattern =
     """^(.+?)\s*(\+=|-=|\*=|/=|//=|%=|\*\*=|<<=|>>=|&=|\|=|\^=)\s*(.+)$""".r
 
   def normalizePython(source: String): String = {
-    val unifiedNewlines = source.replace("\r\n", "\n").replace('\r', '\n')
+    val unifiedNewlines = normalizeLineEndings(source)
     val detabbed = unifiedNewlines.replace("\t", "    ")
     val rawLines = detabbed.split("\n", -1).toList
     val trimmed = rawLines.map(_.replaceAll("\\s+$", ""))
