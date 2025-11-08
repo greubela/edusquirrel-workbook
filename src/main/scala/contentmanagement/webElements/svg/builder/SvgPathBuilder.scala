@@ -85,6 +85,24 @@ trait SvgPathBuilder[T: Fractional] {
                             ): SvgPathBuilder[T]
 
   // a (your convenience helpers)
+  def arcToAbs(
+                radiusX: T,
+                radiusY: T,
+                xAxisRotationDeg: T,
+                largeArc: Boolean,
+                sweep: Boolean,
+                endPoint: Point[T]
+              ): SvgPathBuilder[T]
+
+  def arcToRel(
+                radiusX: T,
+                radiusY: T,
+                xAxisRotationDeg: T,
+                largeArc: Boolean,
+                sweep: Boolean,
+                dimension: Dimension[T]
+              ): SvgPathBuilder[T]
+
   def addArcToTheTopMoveRight(radius: T): SvgPathBuilder[T]
 
   def addArcToTheRightMoveBottom(radius: T): SvgPathBuilder[T]

@@ -5,7 +5,7 @@ import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand.*
 // SvgPathParser.scala
 object SvgPathParser {
 
-  import scala.annotation.tailrec
+  import scala.collection.mutable
 
   def parseString(pathDString: String): Option[SvgPathBuilder[Double]] = {
     // === Types ===
@@ -45,70 +45,63 @@ object SvgPathParser {
       case _   => -1
     }
 
-    @tailrec
-    def parseTokens(rest: List[String],
-                    currentCmd: Char,
-                    acc: List[Tok]): Either[String, List[Tok]] = {
-      rest match {
-        // New explicit command
-        case h :: t if h.length == 1 && cmdLetters.indexOf(h.head) >= 0 =>
-          val c = h.head
-          val n = arity(c)
-          if (n == 0) parseTokens(t, c, Tok(c, Nil) :: acc)
-          else takeGroups(t, c, n, firstOfMove = true, acc)
+    val tokensOpt = {
+      val buf = mutable.ListBuffer[Tok]()
+      var idx = 0
+      var currentCmd: Char = 0
+      var pendingArgs = false
+      var valid = true
 
-        // Implicit repeating of last command
-        case _ if currentCmd != 0 =>
+      def isCommandToken(s: String): Boolean = s.length == 1 && cmdLetters.indexOf(s.head) >= 0
+
+      def readArgs(n: Int): Option[List[Double]] = {
+        if (idx + n > parts.length) None
+        else {
+          val slice = parts.slice(idx, idx + n).map(_.toDoubleOption)
+          if (slice.forall(_.isDefined)) Some(slice.flatten) else None
+        }
+      }
+
+      while (valid && idx < parts.length) {
+        val part = parts(idx)
+        if (isCommandToken(part)) {
+          currentCmd = part.head
+          idx += 1
           val n = arity(currentCmd)
-          if (n == 0) Left("Unexpected arguments after a zero-arity command")
-          else takeGroups(rest, currentCmd, n, firstOfMove = false, acc)
-
-        case Nil =>
-          Right(acc.reverse)
-
-        case h :: _ =>
-          Left(s"Path must start with a moveto; found: $h")
-      }
-    }
-
-    @tailrec
-    def takeGroups(rest: List[String],
-                   cmd: Char,
-                   nPer: Int,
-                   firstOfMove: Boolean,
-                   acc: List[Tok]): Either[String, List[Tok]] = {
-      def takeN(xs: List[String], n: Int): Option[(List[Double], List[String])] =
-        if (xs.lengthCompare(n) >= 0) {
-          val head = xs.take(n).map(_.toDoubleOption)
-          if (head.forall(_.isDefined)) Some(head.flatten -> xs.drop(n)) else None
-        } else None
-
-      rest match {
-        case Nil =>
-          if (firstOfMove && (cmd == 'M' || cmd == 'm')) Left("moveto requires coordinates")
-          else Right(acc.reverse)
-
-        case _ =>
-          takeN(rest, nPer) match {
-            case Some((nums, tail)) =>
-              val (tok, nextCmd) =
-                if (cmd == 'M' && !firstOfMove) Tok('L', nums) -> 'L'
-                else if (cmd == 'm' && !firstOfMove) Tok('l', nums) -> 'l'
-                else Tok(cmd, nums) -> cmd
-              // After first group of M/m, subsequent numbers are implicit L/l
-              val stillFirst = firstOfMove && (cmd == 'M' || cmd == 'm') && acc.nonEmpty && acc.head.cmd != cmd
-              takeGroups(tail, nextCmd, nPer, firstOfMove = false, tok :: acc)
-
-            case None =>
-              if (firstOfMove && (cmd == 'M' || cmd == 'm')) Left("moveto requires coordinates")
-              else Right(acc.reverse)
+          if (n == 0) {
+            buf += Tok(currentCmd, Nil)
+            pendingArgs = false
+            currentCmd = 0
+          } else {
+            pendingArgs = true
           }
+        } else if (currentCmd != 0) {
+          val n = arity(currentCmd)
+          readArgs(n) match {
+            case Some(nums) =>
+              buf += Tok(currentCmd, nums)
+              idx += n
+              pendingArgs = false
+              currentCmd =
+                if (currentCmd == 'M') 'L'
+                else if (currentCmd == 'm') 'l'
+                else currentCmd
+            case None =>
+              valid = false
+          }
+        } else {
+          valid = false
+        }
       }
+
+      if (!valid || pendingArgs || buf.isEmpty) None
+      else if (buf.head.cmd != 'M' && buf.head.cmd != 'm') None
+      else Some(buf.toList)
     }
 
-    val tokens = parseTokens(parts, 0.toChar, Nil) match {
-      case Left(_)      => return None
-      case Right(value) => value
+    val tokens = tokensOpt match {
+      case Some(value) => value
+      case None        => return None
     }
 
     // === Build using only the SvgPathBuilder interface ===
@@ -211,37 +204,20 @@ object SvgPathParser {
         ))
         current = Point(current.x + dx, current.y + dy)
 
-      // a: relative arc — support only the two convenience macros
+      // a: relative arc
       case Tok('a', List(rx, ry, rot, largeFlag, sweepFlag, dx, dy)) =>
-        val isMacroTopRight   = (rot == 0.0) && (largeFlag == 1.0) && (sweepFlag == 1.0) && (ry == rx) && (dx == 2.0 * rx) && (dy == 0.0)
-        val isMacroRightDown  = (rot == 0.0) && (largeFlag == 1.0) && (sweepFlag == 1.0) && (ry == rx) && (dx == 0.0)        && (dy == 2.0 * rx)
+        val largeArc = largeFlag != 0.0
+        val sweep = sweepFlag != 0.0
+        builderOpt = builderOpt.map(_.arcToRel(rx, ry, rot, largeArc, sweep, Dimension(dx, dy)))
+        current = Point(current.x + dx, current.y + dy)
 
-        if (isMacroTopRight) {
-          builderOpt = builderOpt.map(_.addArcToTheTopMoveRight(rx))
-          current = Point(current.x + dx, current.y + dy)
-        } else if (isMacroRightDown) {
-          builderOpt = builderOpt.map(_.addArcToTheRightMoveBottom(rx))
-          current = Point(current.x + dx, current.y + dy)
-        } else {
-          return None // unsupported arc form for this interface
-        }
-
-      // A: absolute arc — try to map to the same macros
+      // A: absolute arc
       case Tok('A', List(rx, ry, rot, largeFlag, sweepFlag, x, y)) =>
-        val dx = x - current.x
-        val dy = y - current.y
-        val isMacroTopRight   = (rot == 0.0) && (largeFlag == 1.0) && (sweepFlag == 1.0) && (ry == rx) && (dx == 2.0 * rx) && (dy == 0.0)
-        val isMacroRightDown  = (rot == 0.0) && (largeFlag == 1.0) && (sweepFlag == 1.0) && (ry == rx) && (dx == 0.0)        && (dy == 2.0 * rx)
-
-        if (isMacroTopRight) {
-          builderOpt = builderOpt.map(_.addArcToTheTopMoveRight(rx))
-          current = Point(x, y)
-        } else if (isMacroRightDown) {
-          builderOpt = builderOpt.map(_.addArcToTheRightMoveBottom(rx))
-          current = Point(x, y)
-        } else {
-          return None
-        }
+        val largeArc = largeFlag != 0.0
+        val sweep = sweepFlag != 0.0
+        val end = Point(x, y)
+        builderOpt = builderOpt.map(_.arcToAbs(rx, ry, rot, largeArc, sweep, end))
+        current = end
 
       // Z / z
       case Tok('Z', Nil) | Tok('z', Nil) =>
