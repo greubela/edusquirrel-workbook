@@ -74,14 +74,30 @@ case class SvgPathBuilderImmutable[T: Fractional](
   def quadraticBezierWithRel(controlDimension: Dimension[T], endPointDimension: Dimension[T]): SvgPathBuilder[T] =
     copy(furtherCommands = furtherCommands :+ QuadRel(controlDimension, endPointDimension))
 
+  def arcToAbs(radiusX: T,
+               radiusY: T,
+               xAxisRotationDeg: T,
+               largeArc: Boolean,
+               sweep: Boolean,
+               endPoint: Point[T]): SvgPathBuilder[T] =
+    copy(furtherCommands = furtherCommands :+ ArcAbs(radiusX, radiusY, xAxisRotationDeg, largeArc, sweep, endPoint))
+
+  def arcToRel(radiusX: T,
+               radiusY: T,
+               xAxisRotationDeg: T,
+               largeArc: Boolean,
+               sweep: Boolean,
+               dimension: Dimension[T]): SvgPathBuilder[T] =
+    copy(furtherCommands = furtherCommands :+ ArcRel(radiusX, radiusY, xAxisRotationDeg, largeArc, sweep, dimension))
+
   def addArcToTheTopMoveRight(radius: T): SvgPathBuilder[T] = {
     val dia = radius * fromInt(2)
-    copy(furtherCommands = furtherCommands :+ ArcRel(radius, radius, fromInt(0), largeArc = true, sweep = true, Dimension(dia, fromInt(0))))
+    arcToRel(radius, radius, fromInt(0), largeArc = true, sweep = true, Dimension(dia, fromInt(0)))
   }
 
   def addArcToTheRightMoveBottom(radius: T): SvgPathBuilder[T] = {
     val dia = radius * fromInt(2)
-    copy(furtherCommands = furtherCommands :+ ArcRel(radius, radius, fromInt(0), largeArc = true, sweep = true, Dimension(fromInt(0), dia)))
+    arcToRel(radius, radius, fromInt(0), largeArc = true, sweep = true, Dimension(fromInt(0), dia))
   }
 
   def addCenteredCircle(radius: T): SvgPathBuilder[T] = {
@@ -135,6 +151,7 @@ case class SvgPathBuilderImmutable[T: Fractional](
       case LineAbs(p) => LineAbs(shift(p))
       case CubicAbs(c1, c2, e) => CubicAbs(shift(c1), shift(c2), shift(e))
       case QuadAbs(cp, e) => QuadAbs(shift(cp), shift(e))
+      case ArcAbs(rx, ry, rot, large, sweep, end) => ArcAbs(rx, ry, rot, large, sweep, shift(end))
       case AddControlLinesCommand(pred, cps) => AddControlLinesCommand(shift(pred), cps.map(shift))
       case other => other
     }

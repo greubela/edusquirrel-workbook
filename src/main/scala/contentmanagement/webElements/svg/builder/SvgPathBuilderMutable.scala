@@ -121,17 +121,36 @@ case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Poin
 
   // arcs
 
+  def arcToAbs(radiusX: T,
+               radiusY: T,
+               xAxisRotationDeg: T,
+               largeArc: Boolean,
+               sweep: Boolean,
+               endPoint: Point[T]): this.type = {
+    cornerPoints += endPoint
+    append(
+      s" A ${num(N.toDouble(radiusX))},${num(N.toDouble(radiusY))} ${num(N.toDouble(xAxisRotationDeg))} ${flag(largeArc)},${flag(sweep)} ${pointStr(endPoint)}"
+    )
+  }
+
+  def arcToRel(radiusX: T,
+               radiusY: T,
+               xAxisRotationDeg: T,
+               largeArc: Boolean,
+               sweep: Boolean,
+               dimension: Dimension[T]): this.type = {
+    val endPoint = calcNextPoint(dimension)
+    arcToAbs(radiusX, radiusY, xAxisRotationDeg, largeArc, sweep, endPoint)
+  }
 
   def addArcToTheTopMoveRight(radius: T): this.type = {
     val dia = radius * fromInt(2)
-    this
-      .append(s" a ${radius},${radius} 0 1,1 ${dia},0 ")
+    arcToRel(radius, radius, fromInt(0), largeArc = true, sweep = true, Dimension(dia, fromInt(0)))
   }
 
   def addArcToTheRightMoveBottom(radius: T): this.type = {
     val dia = radius * fromInt(2)
-    this
-      .append(s" a ${radius},${radius} 0 1,1 0,${dia} ")
+    arcToRel(radius, radius, fromInt(0), largeArc = true, sweep = true, Dimension(fromInt(0), dia))
   }
 
   def addCenteredCircle(radius: T): this.type = {
@@ -139,7 +158,9 @@ case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Poin
     val dia = radius * fromInt(2)
     this
       .moveToRel(new Dimension[T](-radius, fromInt(0)))
-      .append(s" a ${radius},${radius} 0 1,0 ${dia},0 a ${radius},${radius} 0 1,0 -${dia},0 Z")
+      .arcToRel(radius, radius, fromInt(0), largeArc = true, sweep = false, Dimension(dia, fromInt(0)))
+      .arcToRel(radius, radius, fromInt(0), largeArc = true, sweep = false, Dimension(-dia, fromInt(0)))
+      .closePath()
       .moveToRel(new Dimension[T](radius, fromInt(0)))
   }
 

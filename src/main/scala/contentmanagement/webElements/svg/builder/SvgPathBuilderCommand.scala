@@ -196,7 +196,37 @@ object SvgPathBuilderCommand {
     }
   }
 
-  // Arc (relative)
+  // Arc
+  case class ArcAbs[T: Fractional](
+                                   rx: T,
+                                   ry: T,
+                                   xAxisRotationDeg: T,
+                                   largeArc: Boolean,
+                                   sweep: Boolean,
+                                   end: Point[T]
+                                 ) extends AbsoluteCommand[T] {
+    def getPathDString(): String = {
+      val N = summon[Fractional[T]]
+      import N.*
+      s" A ${num(N.toDouble(rx))},${num(N.toDouble(ry))} ${num(N.toDouble(xAxisRotationDeg))} ${flag(largeArc)},${flag(sweep)} ${pt(end)}"
+    }
+
+    def positionAfterCommand: Point[T] = end
+
+    override def toRelativeCommand(start: Point[T]): RelativeCommand[T] = {
+      val N = summon[Fractional[T]]
+      import N.*
+      ArcRel(
+        rx,
+        ry,
+        xAxisRotationDeg,
+        largeArc,
+        sweep,
+        Dimension(end.x - start.x, end.y - start.y)
+      )
+    }
+  }
+
   case class ArcRel[T: Fractional](
                                     rx: T, ry: T, xAxisRotationDeg: T, largeArc: Boolean, sweep: Boolean, d: Dimension[T]
                                   ) extends RelativeCommand[T] {
@@ -209,7 +239,7 @@ object SvgPathBuilderCommand {
     def relativeMovement: Dimension[T] = d
 
     override def toAbsoluteCommand(start: Point[T]): AbsoluteCommand[T] =
-      LineAbs(start.moveWithDimension(d)) // absolute endpoint for geometry; arc remains in path string
+      ArcAbs(rx, ry, xAxisRotationDeg, largeArc, sweep, start.moveWithDimension(d))
   }
 
   // Centered circle helper’s synthetic control line, parameterized by radius
