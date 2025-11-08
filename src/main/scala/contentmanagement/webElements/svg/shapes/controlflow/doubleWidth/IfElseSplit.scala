@@ -21,11 +21,10 @@ case class IfElseSplit() extends ControlFlowShapeDoubleWidth {
   override def background: BeShape.BeShapeContainerable = ControlFlowConnectorBackground(List((true, true), (false, true)))
 
   private def handleParentPath(path: ControlFlowPath, renderingConfig: BeRenderingConfig, curLineHeight: Double): (ControlFlowPath, Point[Double]) = {
-    println("IfElseSplit::handleParentPath: " + path.curStatus)
+
     val seg = renderingConfig.controlSegmentSize
     val extraHeight = (curLineHeight - seg * 7).max(0)
 
-    println("seg: " + seg + " curLineHeight: " + curLineHeight + " extraHeight: " + extraHeight)
     val res = path.changeLastPathBuilder(_
       .verticalLineWithHeight(extraHeight / 2)
       .lineToRel(Dimension[Double](0, seg))

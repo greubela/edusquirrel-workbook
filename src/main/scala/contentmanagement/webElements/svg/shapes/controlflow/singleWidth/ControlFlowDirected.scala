@@ -29,7 +29,6 @@ case class ControlFlowDirected(goesDown: Boolean, isActive: Boolean = false) ext
   }
 
   private def handleParentPath(path: ControlFlowPath, renderingConfig: BeRenderingConfig, centerPoint: Point[Double], curLineHeight: Double): (ControlFlowPath, List[Point[Double]]) = {
-    println("ControlFlowDirected.handleParentPath: " + path.curStatus + " , cur center: " + centerPoint + " , cur line height: " + curLineHeight)
     val seg = renderingConfig.controlSegmentSize
 
     val fullArrowHeight: Int = (seg * 4).toInt

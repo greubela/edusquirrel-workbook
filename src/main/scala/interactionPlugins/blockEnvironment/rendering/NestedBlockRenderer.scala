@@ -200,16 +200,16 @@ case class NestedBlockRenderer(
 
       for ((curControlFlowShape, curCenterX) <- curLineToRender.controlFlowStack.zip(stackColumnCenter)) {
         res = curControlFlowShape.renderControlFlow(res, renderingInfo, Point[Double](curCenterX, curCenterY), curLineToRender.lineHeight(renderingInfo.renderingConfig))
-        printStatus("Handled Stack Shape: " + curControlFlowShape.getClass.getSimpleName)
+        //printStatus("Handled Stack Shape: " + curControlFlowShape.getClass.getSimpleName)
       }
       for (curControlFlowShape <- Some(curLineToRender.line.controlFlowShape)) {
         val curCenterX = curLineToRender.lastControlFlowShapeCenterX(renderingInfo.renderingConfig, stackColumnWidths)
         res = curControlFlowShape.renderControlFlow(res, renderingInfo, Point[Double](curCenterX, curCenterY), curLineToRender.lineHeight(renderingInfo.renderingConfig))
-        printStatus("Handled Flow Shape: " + curControlFlowShape.getClass.getSimpleName)
+        //printStatus("Handled Flow Shape: " + curControlFlowShape.getClass.getSimpleName)
       }
 
       res = res.resetHandledToOpen()
-      printStatus("+++ Handled Line: " + curLineToRender.lineNr)
+      //printStatus("+++ Handled Line: " + curLineToRender.lineNr)
     }
     res
   }
