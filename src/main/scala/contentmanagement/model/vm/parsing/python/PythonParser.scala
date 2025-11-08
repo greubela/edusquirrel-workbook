@@ -21,29 +21,85 @@ object PythonParser {
 
   private val normalizer = new PythonNormalizer()
 
+  sealed trait KnownStructure {
+    def name: String
+  }
+
+  object KnownStructure {
+    final case class Variable(name: String, variable: BeDefineVariable) extends KnownStructure
+    final case class Function(name: String, function: BeDefineFunction) extends KnownStructure
+    final case class Operator(name: String, function: BeDefineFunction) extends KnownStructure
+    final case class Class(name: String, clazz: BeDefineClass) extends KnownStructure
+  }
+
+  final case class CurrentlyKnownStructures(
+      variables: Map[String, BeDefineVariable],
+      functions: Map[String, BeDefineFunction],
+      operators: Map[String, BeDefineFunction],
+      classes: Map[String, BeDefineClass]
+  ) {
+    def addVariable(name: String, variable: BeDefineVariable): CurrentlyKnownStructures =
+      copy(variables = variables.updated(name, variable))
+
+    def addFunction(name: String, function: BeDefineFunction): CurrentlyKnownStructures =
+      copy(functions = functions.updated(name, function))
+
+    def addOperator(name: String, function: BeDefineFunction): CurrentlyKnownStructures =
+      copy(
+        functions = functions.updated(name, function),
+        operators = operators.updated(name, function)
+      )
+
+    def addClass(name: String, clazz: BeDefineClass): CurrentlyKnownStructures =
+      copy(classes = classes.updated(name, clazz))
+
+    def +(structure: KnownStructure): CurrentlyKnownStructures = structure match {
+      case KnownStructure.Variable(name, variable) => addVariable(name, variable)
+      case KnownStructure.Function(name, function) => addFunction(name, function)
+      case KnownStructure.Operator(name, function) => addOperator(name, function)
+      case KnownStructure.Class(name, clazz) => addClass(name, clazz)
+    }
+  }
+
+  object CurrentlyKnownStructures {
+    val empty: CurrentlyKnownStructures =
+      CurrentlyKnownStructures(Map.empty, Map.empty, Map.empty, Map.empty)
+
+    def fromKnown(structures: Seq[KnownStructure]): CurrentlyKnownStructures =
+      structures.foldLeft(empty)(_ + _)
+  }
+
   final case class CodeParsingResult(
       definedClasses: List[BeDefineClass],
       definedFunctions: List[BeDefineFunction],
       definedVariables: List[BeDefineVariable],
+      currentlyKnownStructures: CurrentlyKnownStructures,
       codeExpression: BeSequence
   )
 
   def parsePython(source: String): BeSequence = parsePythonWithDetails(source).codeExpression
 
-
-
-
-  def parsePythonWithDetails(source: String): CodeParsingResult = {
+  def parsePythonWithDetails(
+      source: String,
+      initialKnownStructures: Seq[KnownStructure] = Nil
+  ): CodeParsingResult = {
     val normalized = normalizer.normalizePython(source)
+    val initialStructures = CurrentlyKnownStructures.fromKnown(initialKnownStructures)
     if (normalized.trim.isEmpty) {
-      CodeParsingResult(Nil, Nil, Nil, BeSequence.optionalBody(Nil))
+      CodeParsingResult(Nil, Nil, Nil, initialStructures, BeSequence.optionalBody(Nil))
     } else {
-      val context = new ParseContext
+      val context = new ParseContext(initialStructures)
       val lines = toParsedLines(normalized)
       val (expressions, _) = parseBlock(lines, 0, 0, context)
       val expressionsCleaned = expressions.filter(keepExpression)
       val expression = BeSequence.optionalBody(expressionsCleaned)
-      CodeParsingResult(context.definedClasses, context.definedFunctions, context.definedVariables, expression)
+      CodeParsingResult(
+        context.definedClasses,
+        context.definedFunctions,
+        context.definedVariables,
+        context.currentStructures,
+        expression
+      )
     }
   }
 
@@ -454,13 +510,36 @@ object PythonParser {
     }
   }
 
-  private class ParseContext {
-    private var scopes: List[mutable.LinkedHashMap[String, BeDefineVariable]] = List(mutable.LinkedHashMap[String, BeDefineVariable]())
+  private class ParseContext(initialKnownStructures: CurrentlyKnownStructures) {
+    private var currentlyKnownStructures: CurrentlyKnownStructures = initialKnownStructures
+    private var scopes: List[mutable.LinkedHashMap[String, BeDefineVariable]] = {
+      val baseScope = mutable.LinkedHashMap[String, BeDefineVariable]()
+      baseScope ++= initialKnownStructures.variables
+      List(baseScope)
+    }
     private val variablesBuffer = mutable.ListBuffer[BeDefineVariable]()
+    variablesBuffer ++= initialKnownStructures.variables.values
     private val functionsBuffer = mutable.ListBuffer[BeDefineFunction]()
     private val classesBuffer = mutable.ListBuffer[BeDefineClass]()
+    classesBuffer ++= initialKnownStructures.classes.values
     private val functionsByName = mutable.LinkedHashMap[String, BeDefineFunction]()
+    functionsByName ++= initialKnownStructures.functions
     private val operatorFunctions = mutable.LinkedHashMap[String, BeDefineFunction]()
+    operatorFunctions ++= initialKnownStructures.operators
+
+    initialKnownStructures.operators.foreach { case (symbol, function) =>
+      if (!functionsByName.contains(symbol)) {
+        functionsByName.update(symbol, function)
+      }
+      if (!functionsBuffer.exists(_ eq function)) {
+        functionsBuffer += function
+      }
+    }
+    initialKnownStructures.functions.foreach { case (_, function) =>
+      if (!functionsBuffer.exists(_ eq function)) {
+        functionsBuffer += function
+      }
+    }
 
     def pushScope(): Unit = {
       scopes = mutable.LinkedHashMap[String, BeDefineVariable]() :: scopes
@@ -474,7 +553,7 @@ object PythonParser {
       lookupVariable(name).getOrElse {
         val variable = BeDefineVariable(LanguageMap.universalMap(name), dataType)
         currentScope.update(name, variable)
-        registerVariable(variable)
+        registerVariable(name, variable)
         variable
       }
     }
@@ -482,7 +561,7 @@ object PythonParser {
     def defineVariable(name: String, dataType: BeDataType): BeDefineVariable = {
       val variable = BeDefineVariable(LanguageMap.universalMap(name), dataType)
       currentScope.update(name, variable)
-      registerVariable(variable)
+      registerVariable(name, variable)
       variable
     }
 
@@ -490,17 +569,21 @@ object PythonParser {
 
     private def currentScope: mutable.LinkedHashMap[String, BeDefineVariable] = scopes.head
 
-    def registerVariable(variable: BeDefineVariable): Unit = {
+    def registerVariable(name: String, variable: BeDefineVariable): Unit = {
       if (!variablesBuffer.exists(_ eq variable)) {
         variablesBuffer += variable
       }
+      currentlyKnownStructures = currentlyKnownStructures.addVariable(name, variable)
     }
 
-    def registerFunction(name: String, function: BeDefineFunction): Unit = {
+    def registerFunction(name: String, function: BeDefineFunction, isOperator: Boolean = false): Unit = {
       functionsByName.update(name, function)
       if (!functionsBuffer.exists(_ eq function)) {
         functionsBuffer += function
       }
+      currentlyKnownStructures =
+        if (isOperator) currentlyKnownStructures.addOperator(name, function)
+        else currentlyKnownStructures.addFunction(name, function)
     }
 
     def resolveFunction(name: String, arity: Int): BeDefineFunction =
@@ -521,6 +604,12 @@ object PythonParser {
         functionsByName.update(name, updated)
         val idx = functionsBuffer.indexWhere(_ eq function)
         if (idx >= 0) functionsBuffer.update(idx, updated)
+        if (operatorFunctions.contains(name)) {
+          operatorFunctions.update(name, updated)
+          currentlyKnownStructures = currentlyKnownStructures.addOperator(name, updated)
+        } else {
+          currentlyKnownStructures = currentlyKnownStructures.addFunction(name, updated)
+        }
         updated
       }
     }
@@ -537,10 +626,14 @@ object PythonParser {
         }.toList
         val outputVar = Some(BeDefineVariable(LanguageMap.universalMap("result"), AnyType))
         val function = BeDefineFunction(params, outputVar, BeExpression.pass, BeDefineFunction.operatorInfo(symbol, 1))
-        operatorFunctions.update(symbol, function)
-        registerFunction(symbol, function)
+        registerOperator(symbol, function)
         function
       })
+    }
+
+    private def registerOperator(symbol: String, function: BeDefineFunction): Unit = {
+      operatorFunctions.update(symbol, function)
+      registerFunction(symbol, function, isOperator = true)
     }
 
     def definedClasses: List[BeDefineClass] = classesBuffer.toList
@@ -548,6 +641,8 @@ object PythonParser {
     def definedFunctions: List[BeDefineFunction] = functionsBuffer.toList
 
     def definedVariables: List[BeDefineVariable] = variablesBuffer.toList
+
+    def currentStructures: CurrentlyKnownStructures = currentlyKnownStructures
   }
 
   private case class OperatorFunctionCall(call: BeFunctionCall, symbol: String) extends BeExpression {

@@ -1,10 +1,14 @@
 package contentmanagement.model.vm.parsing.python
 
 import contentmanagement.model.language.AppLanguage.{English, JavaScript, Python}
+import contentmanagement.model.language.LanguageMap
+import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.code.controlStructures.{BeIfElse, BeSequence, BeWhile}
-import contentmanagement.model.vm.code.defining.BeDefineFunction
+import contentmanagement.model.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import contentmanagement.model.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
 import contentmanagement.model.vm.code.others.BeReturn
+import contentmanagement.model.vm.parsing.python.PythonParser.KnownStructure
+import contentmanagement.model.vm.types.BeDataType
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import munit.FunSuite
 
@@ -320,6 +324,30 @@ class PythonParserSpec extends FunSuite {
         |    return total;
         |}""".stripMargin
     assertEquals(renderedJavaScript, expectedJavaScript)
+  }
+
+  test("merge initial known structures with parsed definitions") {
+    val leftParam = BeDefineVariable(LanguageMap.universalMap("left"), BeDataType.AnyType)
+    val rightParam = BeDefineVariable(LanguageMap.universalMap("right"), BeDataType.AnyType)
+    val resultParam = BeDefineVariable(LanguageMap.universalMap("result"), BeDataType.AnyType)
+    val greaterOperator =
+      BeDefineFunction(
+        inputs = List(leftParam, rightParam),
+        outputs = Some(resultParam),
+        body = BeExpression.pass,
+        functionTypeInfo = BeDefineFunction.operatorInfo(">", 1)
+      )
+
+    val parsingResult = PythonParser.parsePythonWithDetails(
+      """value = left > right""".stripMargin,
+      initialKnownStructures = Seq(KnownStructure.Operator(">", greaterOperator))
+    )
+
+    val known = parsingResult.currentlyKnownStructures
+    assertEquals(known.operators.get(">"), Some(greaterOperator))
+    assertEquals(known.functions.get(">"), Some(greaterOperator))
+    assert(known.variables.contains("value"))
+    assert(parsingResult.definedFunctions.contains(greaterOperator))
   }
 
 }
