@@ -8,14 +8,17 @@ import contentmanagement.model.vm.types.BeDataType.{AnyType, Boolean => BooleanT
 
 object DefaultDefinitions {
 
+  type NamedFunction = (String, BeDefineFunction)
+
   private def unaryOperatorDefinition(
       symbol: String,
       operandType: BeDataType,
       resultType: BeDataType
-  ): BeDefineFunction = {
+  ): NamedFunction = {
     val parameters = List(BeDefineVariable(LanguageMap.universalMap("value"), operandType))
     val output = Some(BeDefineVariable(LanguageMap.universalMap("result"), resultType))
-    BeDefineFunction(parameters, output, BeExpression.pass, BeDefineFunction.operatorInfo(symbol, 0))
+    val function = BeDefineFunction(parameters, output, BeExpression.pass, BeDefineFunction.operatorInfo(symbol, 0))
+    symbol -> function
   }
 
   private def binaryOperatorDefinition(
@@ -23,16 +26,31 @@ object DefaultDefinitions {
       leftType: BeDataType,
       rightType: BeDataType,
       resultType: BeDataType
-  ): BeDefineFunction = {
+  ): NamedFunction = {
     val parameters = List(
       BeDefineVariable(LanguageMap.universalMap("left"), leftType),
       BeDefineVariable(LanguageMap.universalMap("right"), rightType)
     )
     val output = Some(BeDefineVariable(LanguageMap.universalMap("result"), resultType))
-    BeDefineFunction(parameters, output, BeExpression.pass, BeDefineFunction.operatorInfo(symbol, 1))
+    val function = BeDefineFunction(parameters, output, BeExpression.pass, BeDefineFunction.operatorInfo(symbol, 1))
+    symbol -> function
   }
 
-  val operatorDefinitions: List[BeDefineFunction] = {
+  private def builtinFunctionDefinition(
+      name: String,
+      parameters: List[(String, BeDataType)],
+      returnType: Option[BeDataType]
+  ): NamedFunction = {
+    val inputs = parameters.map { case (paramName, dataType) =>
+      BeDefineVariable(LanguageMap.universalMap(paramName), dataType)
+    }
+    val output = returnType.map(dataType => BeDefineVariable(LanguageMap.universalMap("result"), dataType))
+    val functionInfo = BeDefineFunction.functionInfo(LanguageMap.universalMap(name))
+    val function = BeDefineFunction(inputs, output, BeExpression.pass, functionInfo)
+    name -> function
+  }
+
+  val operatorDefinitionsWithSymbols: List[NamedFunction] = {
     val arithmeticOperators = List(
       binaryOperatorDefinition("+", NumericType, NumericType, NumericType),
       binaryOperatorDefinition("+", StringType, StringType, StringType),
@@ -53,14 +71,14 @@ object DefaultDefinitions {
     // TODO: Add matrix multiplication (@) when a matrix/list data type is available.
 
     val comparisonOperators = List(
-      binaryOperatorDefinition("<", NumericType, NumericType, BooleanType),
-      binaryOperatorDefinition("<=", NumericType, NumericType, BooleanType),
-      binaryOperatorDefinition(">", NumericType, NumericType, BooleanType),
-      binaryOperatorDefinition(">=", NumericType, NumericType, BooleanType),
       binaryOperatorDefinition("<", StringType, StringType, BooleanType),
       binaryOperatorDefinition("<=", StringType, StringType, BooleanType),
       binaryOperatorDefinition(">", StringType, StringType, BooleanType),
       binaryOperatorDefinition(">=", StringType, StringType, BooleanType),
+      binaryOperatorDefinition("<", NumericType, NumericType, BooleanType),
+      binaryOperatorDefinition("<=", NumericType, NumericType, BooleanType),
+      binaryOperatorDefinition(">", NumericType, NumericType, BooleanType),
+      binaryOperatorDefinition(">=", NumericType, NumericType, BooleanType),
       binaryOperatorDefinition("==", AnyType, AnyType, BooleanType),
       binaryOperatorDefinition("!=", AnyType, AnyType, BooleanType)
     )
@@ -89,4 +107,25 @@ object DefaultDefinitions {
 
     arithmeticOperators ++ comparisonOperators ++ bitwiseOperators ++ booleanOperators ++ identityOperators
   }
+
+  val builtinFunctionDefinitions: List[NamedFunction] = List(
+    builtinFunctionDefinition("str", List("value" -> AnyType), Some(StringType)),
+    builtinFunctionDefinition("int", List("value" -> AnyType), Some(NumericType)),
+    builtinFunctionDefinition("float", List("value" -> AnyType), Some(NumericType)),
+    builtinFunctionDefinition("bool", List("value" -> AnyType), Some(BooleanType)),
+    builtinFunctionDefinition("abs", List("value" -> NumericType), Some(NumericType)),
+    builtinFunctionDefinition("print", List("value" -> AnyType), Some(BeDataType.Unit))
+  )
+
+  val operatorDefinitions: List[BeDefineFunction] = operatorDefinitionsWithSymbols.map(_._2)
+
+  lazy val operatorDefinitionsBySymbolAndArity: Map[(String, Int), BeDefineFunction] =
+    operatorDefinitionsWithSymbols.foldLeft(Map.empty[(String, Int), BeDefineFunction]) { case (acc, (symbol, function)) =>
+      acc.updated(symbol -> function.inputs.length, function)
+    }
+
+  lazy val builtinFunctionsByName: Map[String, BeDefineFunction] =
+    builtinFunctionDefinitions.foldLeft(Map.empty[String, BeDefineFunction]) { case (acc, (name, function)) =>
+      acc.updated(name, function)
+    }
 }
