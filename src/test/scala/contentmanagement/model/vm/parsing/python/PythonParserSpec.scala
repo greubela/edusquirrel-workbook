@@ -344,10 +344,35 @@ class PythonParserSpec extends FunSuite {
     )
 
     val known = parsingResult.currentlyKnownStructures
-    assertEquals(known.operators.get(">"), Some(greaterOperator))
+    assertEquals(known.operators.get(">" -> 2), Some(greaterOperator))
     assertEquals(known.functions.get(">"), Some(greaterOperator))
     assert(known.variables.contains("value"))
     assert(parsingResult.definedFunctions.contains(greaterOperator))
+  }
+
+  test("parser initializes with default builtin function definitions") {
+    val result = PythonParser.parsePythonWithDetails("")
+    val maybeStr = result.currentlyKnownStructures.functions.get("str")
+    val defaultStr = DefaultDefinitions.builtinFunctionsByName("str")
+    assert(maybeStr.isDefined, "expected str builtin to be available")
+    assert(maybeStr.get eq defaultStr, "expected str builtin to reuse default definition")
+  }
+
+  test("> operator reuses default definition for repeated comparisons") {
+    val source =
+      """first = 5 > 3
+        |second = 10 > 2
+        |""".stripMargin
+    val result = PythonParser.parsePythonWithDetails(source)
+    val defaultGreater = DefaultDefinitions.operatorDefinitionsBySymbolAndArity(">" -> 2)
+    val currentGreater = result.currentlyKnownStructures.operators.get(">" -> 2)
+    assert(currentGreater.contains(defaultGreater), "expected parser to reuse default > operator definition")
+
+    val greaterFunctions = result.definedFunctions.filter { func =>
+      func.functionTypeInfo.displayName.getInLanguage(English) == ">"
+    }
+    assertEquals(greaterFunctions.length, 1, "expected only the default > operator to be present")
+    assert(greaterFunctions.head eq defaultGreater, "expected greater operator definition to match default instance")
   }
 
 }

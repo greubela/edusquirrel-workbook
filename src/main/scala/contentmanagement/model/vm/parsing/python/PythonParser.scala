@@ -32,10 +32,17 @@ object PythonParser {
     final case class Class(name: String, clazz: BeDefineClass) extends KnownStructure
   }
 
+  private val DefaultKnownStructures: Seq[KnownStructure] =
+    DefaultDefinitions.operatorDefinitionsWithSymbols.map { case (symbol, function) =>
+      KnownStructure.Operator(symbol, function)
+    } ++ DefaultDefinitions.builtinFunctionDefinitions.map { case (name, function) =>
+      KnownStructure.Function(name, function)
+    }
+
   final case class CurrentlyKnownStructures(
       variables: Map[String, BeDefineVariable],
       functions: Map[String, BeDefineFunction],
-      operators: Map[String, BeDefineFunction],
+      operators: Map[(String, Int), BeDefineFunction],
       classes: Map[String, BeDefineClass]
   ) {
     def addVariable(name: String, variable: BeDefineVariable): CurrentlyKnownStructures =
@@ -47,7 +54,7 @@ object PythonParser {
     def addOperator(name: String, function: BeDefineFunction): CurrentlyKnownStructures =
       copy(
         functions = functions.updated(name, function),
-        operators = operators.updated(name, function)
+        operators = operators.updated(name -> function.inputs.length, function)
       )
 
     def addClass(name: String, clazz: BeDefineClass): CurrentlyKnownStructures =
@@ -81,7 +88,7 @@ object PythonParser {
 
   def parsePythonWithDetails(
       source: String,
-      initialKnownStructures: Seq[KnownStructure] = Nil
+      initialKnownStructures: Seq[KnownStructure] = DefaultKnownStructures
   ): CodeParsingResult = {
     val normalized = normalizer.normalizePython(source)
     val initialStructures = CurrentlyKnownStructures.fromKnown(initialKnownStructures)
@@ -524,10 +531,10 @@ object PythonParser {
     classesBuffer ++= initialKnownStructures.classes.values
     private val functionsByName = mutable.LinkedHashMap[String, BeDefineFunction]()
     functionsByName ++= initialKnownStructures.functions
-    private val operatorFunctions = mutable.LinkedHashMap[String, BeDefineFunction]()
+    private val operatorFunctions = mutable.LinkedHashMap[(String, Int), BeDefineFunction]()
     operatorFunctions ++= initialKnownStructures.operators
 
-    initialKnownStructures.operators.foreach { case (symbol, function) =>
+    initialKnownStructures.operators.foreach { case ((symbol, _), function) =>
       if (!functionsByName.contains(symbol)) {
         functionsByName.update(symbol, function)
       }
@@ -604,8 +611,9 @@ object PythonParser {
         functionsByName.update(name, updated)
         val idx = functionsBuffer.indexWhere(_ eq function)
         if (idx >= 0) functionsBuffer.update(idx, updated)
-        if (operatorFunctions.contains(name)) {
-          operatorFunctions.update(name, updated)
+        val operatorKey = name -> updated.inputs.length
+        if (operatorFunctions.contains(operatorKey)) {
+          operatorFunctions.update(operatorKey, updated)
           currentlyKnownStructures = currentlyKnownStructures.addOperator(name, updated)
         } else {
           currentlyKnownStructures = currentlyKnownStructures.addFunction(name, updated)
@@ -615,7 +623,8 @@ object PythonParser {
     }
 
     def resolveOperator(symbol: String, arity: Int): BeDefineFunction = {
-      operatorFunctions.getOrElse(symbol, {
+      val key = symbol -> arity
+      operatorFunctions.getOrElse(key, {
         val params = (0 until arity).map { index =>
           val paramName = index match {
             case 0 => "left"
@@ -632,7 +641,7 @@ object PythonParser {
     }
 
     private def registerOperator(symbol: String, function: BeDefineFunction): Unit = {
-      operatorFunctions.update(symbol, function)
+      operatorFunctions.update(symbol -> function.inputs.length, function)
       registerFunction(symbol, function, isOperator = true)
     }
 
