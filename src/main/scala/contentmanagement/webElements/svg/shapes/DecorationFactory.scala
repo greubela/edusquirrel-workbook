@@ -41,6 +41,14 @@ case class DecorationFactory[T: Fractional](renderingConfig: BeRenderingConfig) 
       .lineToRel(segDim(one + half, one + half))
   }
 
+  def controlArrowCrossDown(centeredAround: Point[T]): SvgPathBuilder[T] = {
+    /*
+    M28.6,132.5l-1.1,1.1l1.4,1.4l-0.8,0.8l-0.6,-0.5v2.2h2.2l-0.6,-0.6l0.8,-0.8l0.8,0.8l-0.4,0.6h2.2v-2.2l-0.6,0.6l-0.8,-0.8l1.4,-1.5l-1.1,-1.1l-1.4,1.4z
+     */
+    // todo write this correctly
+    ???
+  }
+
   def controlArrowUp(centeredAround: Point[T]): SvgPathBuilder[T] = {
     SvgPathBuilder(centeredAround)
       .moveToRel(segDim(0, 3))

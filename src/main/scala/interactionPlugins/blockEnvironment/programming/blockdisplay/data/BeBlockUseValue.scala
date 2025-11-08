@@ -1,10 +1,13 @@
 package interactionPlugins.blockEnvironment.programming.blockdisplay.data
 
+import com.raquo.laminar.api.L
 import contentmanagement.model.language.AppLanguage.{BlockDisplay, English}
 import contentmanagement.model.language.LanguageMap
 import contentmanagement.model.vm.code.*
 import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.code.usage.*
+import contentmanagement.model.vm.types.{BeDataValueLiteral, BeUseValueReference}
+import contentmanagement.webElements.svg.shapes.BeShape.BeShapeContainerable
 import contentmanagement.webElements.svg.shapes.composite.ShapeAroundShape
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.*
 import contentmanagement.webElements.svg.shapes.datatypes.LiteralShape
@@ -16,8 +19,19 @@ case class BeBlockUseValue(valueUsage: BeUseValue) extends BeBlock {
 
   def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
     val textShape = TextShape(LanguageMap.universalMap(valueUsage.getInLanguage(BlockDisplay, English)))
-    val resShape = ShapeAroundShape(LiteralShape, textShape)
-      .addAmends(BeShapeAmendFactory(renderingInfo.renderingConfig).literalColorsAmend)
+
+    val (outerShape, amends): (BeShapeContainerable, Seq[L.Modifier[L.SvgElement]]) = valueUsage.value match {
+      case BeDataValueLiteral(literalStr) => {
+        (LiteralShape, BeShapeAmendFactory(renderingInfo.renderingConfig).literalColorsAmend)
+      }
+      case BeUseValueReference(reference) => {
+        (reference.variableType.createContainerShape.get, BeShapeAmendFactory(renderingInfo.renderingConfig).variableColorsUsedAmend)
+      }
+    }
+
+
+    val resShape = ShapeAroundShape(outerShape, textShape)
+      .addAmends(amends)
 
     NestedBlockRenderer.singleExpressionLineShapeWithInfo(List(), ControlFlowEmpty(), resShape)
   }

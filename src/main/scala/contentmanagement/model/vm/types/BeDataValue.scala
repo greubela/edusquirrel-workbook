@@ -11,17 +11,6 @@ trait BeDataValue {
   def displayAsString: String
 }
 
-case class BeDataValueLiteral(literalString: String) extends BeDataValue {
-
-  override val possibleTypes: BeDataType = {
-    val possibleTypes = BeDataType.allKnownTypesThatHaveLiterals.filter(_.isValidLiteral(literalString))
-    if (possibleTypes.size == 1) possibleTypes.head
-    else if (possibleTypes.nonEmpty) BeUnionAllowedTypes(possibleTypes)
-    else BeDataType.Error
-  }
-
-  val displayAsString: String = literalString
-}
 
 case class BeDataValueUnit() extends BeDataValue {
 
@@ -37,9 +26,13 @@ case class BeUseValueReference(variable: BeDefineVariable) extends BeDataValue {
   override def displayAsString: String = variable.name.getInLanguage(AppLanguage.default())
 }
 
-case class BeUseValueLiteral(value: String, optionalContext: Option[BeDefineVariable] = None) extends BeDataValue {
+case class BeDataValueLiteral(literalString: String) extends BeDataValue {
+  def displayAsString: String = literalString
 
-  def displayAsString: String = value
-
-  lazy val possibleTypes: BeDataType = BeDataValueLiteral(value).possibleTypes
+  override val possibleTypes: BeDataType = {
+    val possibleTypes = BeDataType.allKnownTypesThatHaveLiterals.filter(_.isValidLiteral(literalString))
+    if (possibleTypes.size == 1) possibleTypes.head
+    else if (possibleTypes.nonEmpty) BeUnionAllowedTypes(possibleTypes)
+    else BeDataType.Error
+  }
 }

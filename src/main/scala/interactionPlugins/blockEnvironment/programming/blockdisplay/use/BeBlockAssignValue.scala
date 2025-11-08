@@ -8,7 +8,8 @@ import contentmanagement.model.vm.types.BeChildRole.ValueInAssignment
 import contentmanagement.webElements.svg.shapes.BeShape
 import contentmanagement.webElements.svg.shapes.composite.{HBoxSameHeight, ShapeAroundShape}
 import contentmanagement.webElements.svg.shapes.controlflow.decorations.BeDataArrow
-import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.ControlFlowFunctionCall
+import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.{ControlFlowDirected, ControlFlowFunctionCall}
+import contentmanagement.webElements.svg.shapes.datatypes.UnitShape
 import interactionPlugins.blockEnvironment.programming.blockdisplay.data.{BeBlockDefineVariable, BeBlockUseValue}
 import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, RenderingInformation}
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
@@ -29,8 +30,11 @@ object BeBlockAssignValue {
     override def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
       val valueShape: BeShape = renderedChildren.find(_._1.childPosition.roleInParent == ValueInAssignment).get._3.firstExpressionShapeOrHBox()
       val assignShape = BeBlockAssignValue.BeBlockAssignValueFromShape(variable, valueShape).render(renderedChildren, renderingInfo)
-      val shapeRes = ShapeAroundShape(variable.variableType.createContainerShape.get, assignShape.firstExpressionShapeOrHBox()).addSignalAmends(renderingInfo.factory.muteOnTreeDragged(renderingInfo.inProgram, renderingInfo.controllerStateVar.signal, renderingInfo.factory.defaultFunctionColorsAmend))
-      NestedBlockRenderer.singleExpressionLineShapeWithInfo(List(), ControlFlowFunctionCall(), shapeRes)
+
+      val shapeRes = ShapeAroundShape(UnitShape, assignShape.firstExpressionShapeOrHBox())
+        .addSignalAmends(renderingInfo.factory.muteOnTreeDragged(renderingInfo.inProgram, renderingInfo.controllerStateVar.signal, renderingInfo.factory.defaultFunctionColorsAmend))
+
+      NestedBlockRenderer.singleExpressionLineShapeWithInfo(List(), ControlFlowDirected(true, true), shapeRes)
     }
 
   }

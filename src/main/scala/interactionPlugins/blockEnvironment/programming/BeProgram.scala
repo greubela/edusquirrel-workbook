@@ -165,18 +165,15 @@ object BeProgram {
     BeProgram(miniProgramExpression())
   }
 
-
   def debugGraphicsProgram(): BeProgram = {
     val somePython =
       """
-        |x = addTogether(3, 5)
-        |if score > 10:
+        |x = 3
+        |x = x + 1
+        |if x > 10:
         |    testSuccess()
         |else:
-        |    if another > 3:
-        |        forward(1000)
-        |    else:
-        |        backward("never!")
+        |    backward("never!")
         |""".stripMargin
     val parsingResult = PythonParser.parsePythonWithDetails(somePython)
     val expression = BeStartProgram(parsingResult.codeExpression)

@@ -24,7 +24,6 @@ case class BeBlockCallSingleReturnFunction(
 
     def transformValueShape(nbr: NestedBlockRenderer, shape: BeShape, parameter: FunctionParameter): BeShape = {
       if (function.funcDef.functionTypeInfo.funcType == Operator || renderingInfo.displayConfig.compactFunctionCalls) {
-
         shape
       } else {
         val variableShape = BeBlockDefineVariable(function.funcDef.inputs(parameter.nr)).render(renderedChildren, renderingInfo).firstExpressionShapeOrHBox()

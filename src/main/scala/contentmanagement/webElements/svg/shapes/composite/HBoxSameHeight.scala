@@ -35,7 +35,6 @@ case class HBoxSameHeight(
     val paddingWidth = if (children.size > 1 && usePadding) config.paddingSmall.width * (children.size + 1) else 0.0
     val paddingHeight = if(usePadding) config.paddingSmall.height * 2 else 0.0
     
-
     val availableWidth = bounds.dimension.width - widthSum - paddingWidth
     val horizontalOffset = horizontalAlignment match
       case HorizontalAlignment.Left   => 0.0
@@ -63,7 +62,7 @@ case class HBoxSameHeight(
       }
       val childDim = minSizes(index).ensureHeight(heightMax)
       val childBounds = curPoint.withDimension(childDim)
-    
+    // todo do NOT automatically increasy except for the background shape
       curPoint = curPoint.moveWithDimension(Dimension[Double](childDim.width, 0))
       res.put(curChild, childBounds)
     }

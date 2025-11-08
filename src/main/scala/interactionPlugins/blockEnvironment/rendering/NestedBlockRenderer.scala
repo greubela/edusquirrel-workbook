@@ -54,7 +54,7 @@ case class NestedBlockRenderer(
 
   def firstExpressionShapeOrHBox(usePadding: Boolean = false): BeShape =
     if (allExpressionShapes.size == 1) allExpressionShapes.head
-    else HBoxSameHeight(allExpressionShapes, usePadding, HorizontalAlignment.Left, VerticalAlignment.Center)
+    else HBoxSameHeight(allExpressionShapes, usePadding)
 
   def withAppendedSegment(segment: NestedBlockSegment): NestedBlockRenderer = {
     NestedBlockRenderer(segments ++ List(segment))
@@ -120,8 +120,11 @@ case class NestedBlockRenderer(
       for (curLineToRender <- linesToRender) {
         if (curLineToRender.line.expressionShape.nonEmpty) {
           val offsetX = curLineToRender.expressionShapeRelativeOffsetX(config, controlFlowColumnWidth)
-          val width = curLineToRender.segment.getSegmentWidth(config)
-          res.addOne((curLineToRender.line.expressionShape.get, Point[Double](offsetX, offsetY), Dimension[Double](width, curLineToRender.lineHeight(config))))
+          //val width = curLineToRender.segment.getSegmentWidth(config) // todo block look?
+          // val height = curLineToRender.lineHeight(config)
+          val width = curLineToRender.line.expressionShape.get.displaySize(config).width
+          val height = curLineToRender.line.expressionShape.get.displaySize(config).height
+          res.addOne((curLineToRender.line.expressionShape.get, Point[Double](offsetX, offsetY), Dimension[Double](width, height)))
         }
         offsetY += curLineToRender.lineHeight(config)
       }

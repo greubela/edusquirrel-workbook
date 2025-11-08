@@ -42,7 +42,7 @@ object BeDataType {
 
     def isValidLiteral(valueStr: String): Boolean = false
 
-    def createShape: BeShape = UnitShape
+    def createShape: BeShape = DuckShape
 
     def canTakeValuesFrom(other: BeDataType): BeDataTypeAssigningPossible = AssigningPossibleWithSameType(this)
   }

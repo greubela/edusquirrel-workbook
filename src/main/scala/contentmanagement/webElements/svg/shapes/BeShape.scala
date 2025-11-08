@@ -93,7 +93,7 @@ object BeShape {
 
     protected def spaceAfterChild(config: BeRenderingConfig, childDim: Dimension[Double]): Dimension[Double]
 
-    override def displaySize(config: BeRenderingConfig): Dimension[Double] = Dimension[Double](15, 15)
+    override def displaySize(config: BeRenderingConfig): Dimension[Double] = Dimension[Double](8, 8)
 
     def minSizeToContainChild(config: BeRenderingConfig, childDimension: Dimension[Double]): Dimension[Double] = {
       val spaceBefore = spaceBeforeChild(config, childDimension)
@@ -129,7 +129,6 @@ object BeShape {
     def children: List[BeShape]
 
     def calcChildrenBounds(config: BeRenderingConfig, bounds: Bounds[Double]): Map[BeShape, Bounds[Double]]
-
   }
 
 

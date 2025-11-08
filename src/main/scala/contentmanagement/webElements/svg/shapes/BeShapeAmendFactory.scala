@@ -17,17 +17,22 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
   }
 
   def defaultTextAmends: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.fill := rendererConfig.colorPalette.grayscale(0).toWebStyleString,
+    //svg.fill := rendererConfig.colorPalette.grayscale(0).toWebStyleString,
     svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebStyleString
   )
 
-  def darkVariableColorsAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.stroke := rendererConfig.colorPalette.grayscale(3).toWebStyleString,
-    svg.fill := rendererConfig.colorPalette.grayscale(4).toWebStyleString,
+  def invertedTextAmends: Seq[L.Modifier[L.SvgElement]] = List(
+    //svg.fill := rendererConfig.colorPalette.grayscale(4).toWebStyleString,
+    svg.stroke := rendererConfig.colorPalette.grayscale(4).toWebStyleString
   )
 
-  def lightVariableColorsAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.stroke := rendererConfig.colorPalette.grayscale(1).toWebStyleString,
+  def variableColorsDefAmend: Seq[L.Modifier[L.SvgElement]] = List(
+    svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebStyleString,
+    svg.fill := rendererConfig.colorPalette.grayscale(1).toWebStyleString,
+  )
+
+  def variableColorsUsedAmend: Seq[L.Modifier[L.SvgElement]] = List(
+    svg.stroke := rendererConfig.colorPalette.grayscale(3).toWebStyleString,
     svg.fill := rendererConfig.colorPalette.grayscale(4).toWebStyleString,
   )
 
