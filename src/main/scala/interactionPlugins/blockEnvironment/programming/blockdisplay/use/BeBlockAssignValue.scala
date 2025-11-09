@@ -7,9 +7,9 @@ import contentmanagement.model.vm.code.usage.BeUseValue
 import contentmanagement.model.vm.types.BeChildRole.ValueInAssignment
 import contentmanagement.webElements.svg.shapes.BeShape
 import contentmanagement.webElements.svg.shapes.composite.{HBoxSameHeight, ShapeAroundShape}
-import contentmanagement.webElements.svg.shapes.controlflow.decorations.BeDataArrow
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.{ControlFlowDirected, ControlFlowFunctionCall}
 import contentmanagement.webElements.svg.shapes.datatypes.UnitShape
+import contentmanagement.webElements.svg.shapes.decorations.BeDataArrow
 import interactionPlugins.blockEnvironment.programming.blockdisplay.data.{BeBlockDefineVariable, BeBlockUseValue}
 import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, RenderingInformation}
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer

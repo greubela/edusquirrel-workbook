@@ -1,4 +1,4 @@
-package contentmanagement.webElements.svg.shapes.controlflow.decorations
+package contentmanagement.webElements.svg.shapes.decorations
 
 import com.raquo.laminar.api.L
 import contentmanagement.model.geometry.{Dimension, Point}

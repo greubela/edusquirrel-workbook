@@ -9,7 +9,7 @@ import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.ControlF
 import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeDecoration}
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
-import contentmanagement.webElements.svg.shapes.controlflow.decorations.PathCrossOverlay
+import contentmanagement.webElements.svg.shapes.decorations.{ControlArrowCross, PathCrossOverlay}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
@@ -75,6 +75,7 @@ case class ControlFlowCross() extends ControlFlowShapeDoubleWidth {
       .changeFirstOpenPath(_ => rightToLeftPath)
       .changeFirstOpenPath(_ => leftToRightPath)
       .addDecoration(PathCrossOverlay(), centerPoint)
+      .addDecoration(ControlArrowCross(true, true, true), centerPoint)
   }
 
 

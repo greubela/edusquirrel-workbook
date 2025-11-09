@@ -6,9 +6,9 @@ import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.code.usage.{BeFunctionCall, BeUseValue}
 import contentmanagement.model.vm.types.BeChildRole.FunctionParameter
 import contentmanagement.webElements.svg.shapes.composite.{HBoxSameHeight, ShapeAroundShape}
-import contentmanagement.webElements.svg.shapes.controlflow.decorations.BeDataArrow
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.*
 import contentmanagement.webElements.svg.shapes.datatypes.UnitShape
+import contentmanagement.webElements.svg.shapes.decorations.BeDataArrow
 import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeAmendFactory, TextShape}
 import interactionPlugins.blockEnvironment.programming.blockdisplay.*
 import interactionPlugins.blockEnvironment.programming.blockdisplay.data.{BeBlockDefineVariable, BeBlockUseValue}

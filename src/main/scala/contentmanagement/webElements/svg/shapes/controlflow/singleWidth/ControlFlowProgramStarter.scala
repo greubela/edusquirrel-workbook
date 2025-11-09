@@ -13,9 +13,9 @@ import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowConnector
 import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeDecoration, ShapeFactory}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowStarterBackground
-import contentmanagement.webElements.svg.shapes.controlflow.decorations.{PathSplitOverlay, TriangleOverlay}
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.ControlFlowDirected.*
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.ControlFlowProgramStarter.*
+import contentmanagement.webElements.svg.shapes.decorations.{PathSplitOverlay, TriangleOverlay}
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.{ControlFlowPath, PathSegment, PathStatus}

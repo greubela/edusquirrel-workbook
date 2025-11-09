@@ -8,7 +8,7 @@ import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.IfElseUn
 import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeDecoration}
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
-import contentmanagement.webElements.svg.shapes.controlflow.decorations.{PathCrossOverlay, PathUnionOverlay}
+import contentmanagement.webElements.svg.shapes.decorations.{PathCrossOverlay, PathUnionOverlay}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder

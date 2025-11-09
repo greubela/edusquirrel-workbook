@@ -10,8 +10,8 @@ import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeDecoration}
 import contentmanagement.webElements.svg.shapes.composite.{HorizontalAlignment, ShapeStack, VerticalAlignment}
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.ControlFlowDirected.*
 import contentmanagement.webElements.svg.shapes.controlflow.*
-import contentmanagement.webElements.svg.shapes.controlflow.decorations.TriangleOverlay
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.ControlFlowProgramStopper.*
+import contentmanagement.webElements.svg.shapes.decorations.TriangleOverlay
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder

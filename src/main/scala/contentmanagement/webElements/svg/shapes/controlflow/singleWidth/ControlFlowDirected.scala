@@ -6,10 +6,10 @@ import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.compositeElements.AppDecoratedSvgElement
 import contentmanagement.webElements.svg.shapes.BeShapeDecoration
 import contentmanagement.webElements.svg.shapes.composite.{HorizontalAlignment, ShapeStack, VerticalAlignment}
-import contentmanagement.webElements.svg.shapes.controlflow.decorations.BeControlArrow
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.ControlFlowDirected.*
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
+import contentmanagement.webElements.svg.shapes.decorations.BeControlArrow
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
