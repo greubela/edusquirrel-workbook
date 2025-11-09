@@ -290,7 +290,8 @@ object PythonParser {
 
     val body = BeSequence.optionalBody(bodyExpressions)
     val functionInfo = BeDefineFunction.functionInfo(LanguageMap.universalMap(name))
-    val indentWidth = if (bodyExpressions.nonEmpty && computedIndent > indent) computedIndent else 4
+    val indentWidth =
+      if (bodyExpressions.nonEmpty && computedIndent > indent) computedIndent - indent else 4
     val functionDef = BeDefineFunction(parameterDefinitions, returnVariable, body, functionInfo, indentWidth)
     context.registerFunction(name, functionDef)
     (functionDef, nextIndex)

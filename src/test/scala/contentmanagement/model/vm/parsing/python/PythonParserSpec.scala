@@ -384,6 +384,36 @@ class PythonParserSpec extends FunSuite {
     )
   }
 
+  test("nested function renders body with relative indentation") {
+    val pythonSource =
+      """def outer():
+        |    def inner():
+        |        value = 1
+        |        return value
+        |    return inner()
+        |""".stripMargin
+
+    val parsingResult = PythonParser.parsePythonWithDetails(pythonSource)
+    val outerFunction = parsingResult.definedFunctions.find { function =>
+      function.functionTypeInfo.displayName.getInLanguage(English) == "outer"
+    }.getOrElse(fail("expected to find outer function definition"))
+
+    val innerFunction = outerFunction.body match {
+      case seq: BeSequence =>
+        seq.body.collectFirst { case function: BeDefineFunction => function }
+          .getOrElse(fail("expected nested inner function definition"))
+      case other => fail(s"Expected sequence body, found ${other.getClass.getSimpleName}")
+    }
+
+    val renderedInner = innerFunction.getInLanguage(Python, English)
+    val expectedInner =
+      """def inner():
+        |    value = 1
+        |    return value""".stripMargin
+
+    assertEquals(renderedInner, expectedInner)
+  }
+
   test("merge initial known structures with parsed definitions") {
     val leftParam = BeDefineVariable(LanguageMap.universalMap("left"), BeDataType.AnyType)
     val rightParam = BeDefineVariable(LanguageMap.universalMap("right"), BeDataType.AnyType)
