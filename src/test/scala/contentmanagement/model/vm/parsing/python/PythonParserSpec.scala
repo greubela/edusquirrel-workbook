@@ -4,7 +4,7 @@ import contentmanagement.model.language.AppLanguage.{English, JavaScript, Python
 import contentmanagement.model.language.LanguageMap
 import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.code.controlStructures.{BeIfElse, BeSequence, BeWhile}
-import contentmanagement.model.vm.code.defining.{BeDefineFunction, BeDefineVariable}
+import contentmanagement.model.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
 import contentmanagement.model.vm.code.usage.BeAssignVariable
 import contentmanagement.model.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
 import contentmanagement.model.vm.code.others.BeReturn
@@ -463,4 +463,70 @@ class PythonParserSpec extends FunSuite {
     assert(greaterFunctions.head eq defaultGreater, "expected greater operator definition to match default instance")
   }
 
+
+  test("parse class with body attributes and constructor assignments") {
+    val python =
+      """class Player:
+        |    level: int = 1
+        |    role = 'mage'
+        |
+        |    def __init__(self, name: str, age):
+        |        self.name: str = name
+        |        self.age = age
+        |
+        |    def greet(self) -> str:
+        |        return "Welcome " + self.name
+        |""".stripMargin
+
+    val result = PythonParser.parsePythonWithDetails(python)
+    val maybeClass = result.definedClasses.collectFirst { case clazz if clazz.name.getInLanguage(English) == "Player" => clazz }
+    assert(maybeClass.nonEmpty, "expected Player class to be parsed")
+    val clazz = maybeClass.get
+
+    val attributeNames = clazz.attributes.map(_.name.getInLanguage(English)).toSet
+    assertEquals(attributeNames, Set("level", "role", "name", "age"))
+
+    val attributeTypes = clazz.attributes.map(attr => attr.name.getInLanguage(English) -> attr.variableType).toMap
+    assertEquals(attributeTypes("level"), BeDataType.Numeric)
+    assert(attributeTypes("role").formatTypeForDisplay.getInLanguage(Python).contains("str"))
+    assert(attributeTypes("name").formatTypeForDisplay.getInLanguage(Python).contains("str"))
+    assertEquals(attributeTypes("age"), BeDataType.AnyType)
+
+    val methodNames = clazz.methods.map(_.functionTypeInfo.displayName.getInLanguage(English))
+    assertEquals(methodNames, List("__init__", "greet"))
+    assert(clazz.methods.forall(_.functionTypeInfo.funcType == BeDefineFunction.Method()))
+    assert(clazz.methods.forall(_.functionTypeInfo.isMethodInClass.nonEmpty))
+
+    assert(!result.definedFunctions.exists(_.functionTypeInfo.displayName.getInLanguage(English) == "greet"))
+    assert(!result.definedVariables.exists(v => attributeNames.contains(v.name.getInLanguage(English))))
+  }
+
+  test("ignore attribute assignments outside init while keeping constructor attributes") {
+    val python =
+      """class Helper:
+        |    value: float
+        |
+        |    def __init__(self):
+        |        self.ready = True
+        |
+        |    def prepare(self):
+        |        temp = 5
+        |        self.hidden = 10
+        |""".stripMargin
+
+    val result = PythonParser.parsePythonWithDetails(python)
+    val clazz = result.definedClasses match {
+      case List(single: BeDefineClass) => single
+      case other => fail(s"expected a single class definition, found ${other.length}")
+    }
+
+    val attributeMap = clazz.attributes.map(attr => attr.name.getInLanguage(English) -> attr.variableType).toMap
+    assertEquals(attributeMap.keySet, Set("value", "ready"))
+    assertEquals(attributeMap("value"), BeDataType.Numeric)
+    assert(attributeMap("ready").formatTypeForDisplay.getInLanguage(Python).contains("bool"))
+    assert(!attributeMap.contains("hidden"))
+
+    assert(!result.definedVariables.exists(_.name.getInLanguage(English) == "temp"))
+    assert(clazz.methods.forall(_.functionTypeInfo.isMethodInClass.nonEmpty))
+  }
 }
