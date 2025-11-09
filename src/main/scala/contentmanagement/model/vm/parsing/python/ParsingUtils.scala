@@ -83,10 +83,30 @@ object ParsingUtils {
         if (parenDepth == 0 && bracketDepth == 0 && braceDepth == 0 && !inSingleQuote && !inDoubleQuote) {
           sortedOperators.find(op => expression.startsWith(op, index)) match {
             case Some(op) =>
-              val left = expression.substring(0, index)
-              val right = expression.substring(index + op.length)
-              if (left.trim.nonEmpty && right.trim.nonEmpty) {
-                return Some((left, op, right))
+              val beforeIndex = index - 1
+              val afterIndex = index + op.length
+              val beforeChar = if (beforeIndex >= 0) Some(expression.charAt(beforeIndex)) else None
+              val afterChar = if (afterIndex < length) Some(expression.charAt(afterIndex)) else None
+
+              val startsWithLetter = op.headOption.exists(_.isLetter)
+              val endsWithLetter = op.lastOption.exists(_.isLetter)
+
+              val isIdentifierChar: Char => Boolean = ch => ch.isLetterOrDigit || ch == '_'
+
+              val beforeOk =
+                if (startsWithLetter) beforeChar.forall(ch => !isIdentifierChar(ch))
+                else true
+
+              val afterOk =
+                if (endsWithLetter) afterChar.forall(ch => !isIdentifierChar(ch))
+                else true
+
+              if (beforeOk && afterOk) {
+                val left = expression.substring(0, index)
+                val right = expression.substring(index + op.length)
+                if (left.trim.nonEmpty && right.trim.nonEmpty) {
+                  return Some((left, op, right))
+                }
               }
             case None =>
           }
