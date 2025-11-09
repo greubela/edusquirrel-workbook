@@ -52,18 +52,30 @@ case class HBoxSameHeight(
     val startPoint = bounds.startPoint.moveWithDimension(
       Dimension[Double](safeHorizontalOffset, safeVerticalOffset)
     )
-    
-    var curPoint = startPoint
+
+    var curX = startPoint.x
+    val baseY = startPoint.y + (if (usePadding) config.paddingSmall.height else 0.0)
+    if (usePadding) {
+      curX += config.paddingSmall.width
+    }
     val res = mutable.HashMap[BeShape, Bounds[Double]]()
 
     for ((curChild, index) <- children.zipWithIndex) {
+      val childDim = minSizes(index)
+      val extraHeight = math.max(0.0, heightMax - childDim.height)
+      val verticalInset = verticalAlignment match
+        case VerticalAlignment.Top    => 0.0
+        case VerticalAlignment.Center => extraHeight / 2
+        case VerticalAlignment.Bottom => extraHeight
+      val childStart = Point[Double](
+        curX,
+        baseY + verticalInset
+      )
+      val childBounds = childStart.withDimension(childDim)
+      curX += childDim.width
       if (usePadding) {
-        curPoint = curPoint.moveWithDimension(Dimension[Double](config.paddingSmall.width, 0))
+        curX += config.paddingSmall.width
       }
-      val childDim = minSizes(index).ensureHeight(heightMax)
-      val childBounds = curPoint.withDimension(childDim)
-    // todo do NOT automatically increasy except for the background shape
-      curPoint = curPoint.moveWithDimension(Dimension[Double](childDim.width, 0))
       res.put(curChild, childBounds)
     }
     

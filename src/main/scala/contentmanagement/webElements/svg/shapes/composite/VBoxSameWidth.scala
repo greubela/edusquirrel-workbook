@@ -54,17 +54,30 @@ case class VBoxSameWidth(
       Dimension[Double](safeHorizontalOffset, safeVerticalOffset)
     )
 
-    var curPoint = startPoint
+    var curY = startPoint.y
+    val baseX = startPoint.x + (if (usePadding) config.paddingSmall.width else 0.0)
+    if (usePadding) {
+      curY += config.paddingSmall.height
+    }
     val res = mutable.HashMap[BeShape, Bounds[Double]]()
 
     for ((curChild, index) <- children.zipWithIndex) {
-      if (usePadding) {
-        curPoint = curPoint.moveWithDimension(Dimension[Double](0, config.paddingSmall.height))
-      }
-      val childDim = minSizes(index).ensureWidth(widthMax)
-      val childBounds = curPoint.withDimension(childDim)
+      val childDim = minSizes(index)
+      val extraWidth = math.max(0.0, widthMax - childDim.width)
+      val horizontalInset = horizontalAlignment match
+        case HorizontalAlignment.Left   => 0.0
+        case HorizontalAlignment.Center => extraWidth / 2
+        case HorizontalAlignment.Right  => extraWidth
+      val childStart = Point[Double](
+        baseX + horizontalInset,
+        curY
+      )
+      val childBounds = childStart.withDimension(childDim)
 
-      curPoint = curPoint.moveWithDimension(Dimension[Double](0, childDim.height))
+      curY += childDim.height
+      if (usePadding) {
+        curY += config.paddingSmall.height
+      }
       res.put(curChild, childBounds)
     }
 
