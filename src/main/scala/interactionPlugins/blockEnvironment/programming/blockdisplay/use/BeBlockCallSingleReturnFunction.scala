@@ -8,6 +8,7 @@ import contentmanagement.model.vm.types.BeChildRole.FunctionParameter
 import contentmanagement.webElements.svg.shapes.composite.{HBoxSameHeight, ShapeAroundShape}
 import contentmanagement.webElements.svg.shapes.controlflow.decorations.BeDataArrow
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.*
+import contentmanagement.webElements.svg.shapes.datatypes.UnitShape
 import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeAmendFactory, TextShape}
 import interactionPlugins.blockEnvironment.programming.blockdisplay.*
 import interactionPlugins.blockEnvironment.programming.blockdisplay.data.{BeBlockDefineVariable, BeBlockUseValue}
@@ -48,7 +49,9 @@ case class BeBlockCallSingleReturnFunction(
     val factory = BeShapeAmendFactory(renderingInfo.renderingConfig)
     val signalAmends = factory.muteOnTreeDragged(renderingInfo.inProgram, renderingInfo.controllerStateVar.signal, factory.defaultFunctionColorsAmend)
 
-    val shape = ShapeAroundShape(function.canEvaluateTo.createContainerShape.get, childBox).addSignalAmends(signalAmends)
+    val outputShape = function.funcDef.outputs.map(_.variableType.createContainerShape.get).getOrElse(UnitShape)
+
+    val shape = ShapeAroundShape(outputShape, childBox).addSignalAmends(signalAmends)
 
     NestedBlockRenderer.singleExpressionLineShapeWithInfo(allLines, ControlFlowFunctionCall(), shape)
 

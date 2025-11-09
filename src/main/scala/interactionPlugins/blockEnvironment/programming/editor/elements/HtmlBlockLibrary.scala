@@ -10,8 +10,7 @@ case class HtmlBlockLibrary() {
 }
 
 object HtmlBlockLibrary {
-
-
+  
   /*protected[elements] def functionWithOnePar(functionName: String, parType: BeDataType, numVal: String): BeProgram = {
     val numPar = FunctionParameter(0, parType)
     val numBlock = BeBlockDefineVariable(numPar, numVal, parType)
@@ -24,7 +23,5 @@ object HtmlBlockLibrary {
     tree = tree.addAsLastChild(tree.rootPosition.forChild(0), numBlock)
     BeProgram(tree)
   }*/
-
-
-
+  
 }

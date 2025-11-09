@@ -36,7 +36,6 @@ trait BeTreeControllerConfig {
     ).flatten
   }
 
-
   def getHtmlDragAmends(beProgram: BeProgram): Seq[L.Modifier[L.HtmlElement]] = {
 
     val dragStartMod = onDragStart.map(f => Seq(
