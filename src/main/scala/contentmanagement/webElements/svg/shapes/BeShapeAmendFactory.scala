@@ -81,7 +81,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
   )
 
   def onMouseLeaveAmend(handler: MouseEvent => Any): Seq[L.Modifier[L.SvgElement]] = List(
-    L.onMouseEnter --> { e => handler(e) }
+    L.onMouseLeave --> { e => handler(e) }
   )
 
 
