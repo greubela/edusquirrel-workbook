@@ -1,6 +1,8 @@
 package contentmanagement.webElements.svg.builder
 
-import contentmanagement.model.geometry.{Dimension, Point}
+import contentmanagement.model.geometry.{Bounds, Dimension, Point}
+import contentmanagement.webElements.svg.shapes.{DecorationFactory, TestShapeFactoryAccess}
+import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand.MoveAbs
 import munit.FunSuite
 
@@ -31,6 +33,18 @@ class SvgPathRoundTripSuite extends FunSuite {
         cmd :: Nil
     }
     abs.copy(furtherCommands = filtered).toSvgPathD
+  }
+
+  private def assertBuilderRoundTrip(builder: SvgPathBuilder[Double]): Unit = {
+    val immutableBuilder = builder match {
+      case imm: SvgPathBuilderImmutable[Double] => imm
+      case other => fail(s"Unexpected builder implementation: ${other.getClass}")
+    }
+
+    val canonical = canonicalAbsoluteString(immutableBuilder)
+    val reparsed = parsePath(immutableBuilder.toSvgPathD)
+    val reparsedCanonical = canonicalAbsoluteString(reparsed)
+    assertEquals(reparsedCanonical, canonical)
   }
 
   private val sampleAbsolutePath =
@@ -70,5 +84,31 @@ class SvgPathRoundTripSuite extends FunSuite {
     val reparsed = parsePath(originalPath)
     val reparsedCanonical = canonicalAbsoluteString(reparsed)
     assertEquals(reparsedCanonical, canonical)
+  }
+
+  test("duck shape from shape factory keeps canonical representation after round trip") {
+    val bounds = Bounds(Point(0.0, 0.0), Dimension(125.0, 50.0))
+    val builder = TestShapeFactoryAccess.duck(bounds)
+    assertBuilderRoundTrip(builder)
+  }
+
+  test("literal shape from shape factory keeps canonical representation after round trip") {
+    val bounds = Bounds(Point(10.0, 5.0), Dimension(120.0, 80.0))
+    val builder = TestShapeFactoryAccess.literal(bounds)
+    assertBuilderRoundTrip(builder)
+  }
+
+  test("data arrow left from decoration factory keeps canonical representation after round trip") {
+    val config = BeRenderingConfig.default()
+    val decorationFactory = DecorationFactory[Double](config)
+    val builder = decorationFactory.dataArrowLeft(Point(32.0, 24.0))
+    assertBuilderRoundTrip(builder)
+  }
+
+  test("data arrow right from decoration factory keeps canonical representation after round trip") {
+    val config = BeRenderingConfig.default()
+    val decorationFactory = DecorationFactory[Double](config)
+    val builder = decorationFactory.dataArrowRight(Point(12.0, 18.0))
+    assertBuilderRoundTrip(builder)
   }
 }
