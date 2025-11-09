@@ -17,6 +17,14 @@ import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 
 import scala.collection.mutable
 
+/**
+  * Parses Python source code that has been normalized by [[PythonNormalizer]].
+  *
+  * The normalizer rewrites `elif` chains into nested `if`/`else` blocks and expands
+  * augmented assignments into plain assignments before the parser runs. As a result,
+  * this parser only needs to handle base `if`/`else` constructs and simple `=`
+  * assignments while still covering the semantics of the original student code.
+  */
 object PythonParser {
 
   private val normalizer = new PythonNormalizer()
@@ -358,27 +366,47 @@ object PythonParser {
   }
 
   private val binaryPrecedence: List[List[String]] = List(
+    List("or"),
+    List("and"),
+    List("is not", "is"),
     List("==", "!=", "<=", ">=", "<", ">"),
+    List("|"),
+    List("^"),
+    List("&"),
+    List("<<", ">>"),
     List("+", "-"),
     List("*", "/", "//", "%")
   )
 
   private val operatorPrecedence: Map[String, Int] = Map(
-    "==" -> 1,
-    "!=" -> 1,
-    "<=" -> 1,
-    ">=" -> 1,
-    "<" -> 1,
-    ">" -> 1,
-    "+" -> 2,
-    "-" -> 2,
-    "*" -> 3,
-    "/" -> 3,
-    "//" -> 3,
-    "%" -> 3
+    "or" -> 1,
+    "and" -> 2,
+    "is" -> 3,
+    "is not" -> 3,
+    "==" -> 4,
+    "!=" -> 4,
+    "<=" -> 5,
+    ">=" -> 5,
+    "<" -> 5,
+    ">" -> 5,
+    "|" -> 6,
+    "^" -> 7,
+    "&" -> 8,
+    "<<" -> 9,
+    ">>" -> 9,
+    "+" -> 10,
+    "-" -> 10,
+    "*" -> 11,
+    "/" -> 11,
+    "//" -> 11,
+    "%" -> 11,
+    "not" -> 12,
+    "~" -> 12
   )
 
-  private val DefaultOperatorPrecedence = 0
+  private val DefaultOperatorPrecedence = -1
+
+  private val unaryOperators: List[String] = List("not", "+", "-", "~")
 
   private def parseExpression(source: String, context: ParseContext): BeExpression = {
     val trimmed = source.trim
@@ -388,9 +416,41 @@ object PythonParser {
       val unwrapped = if (ParsingUtils.isParenthesized(trimmed)) trimmed.substring(1, trimmed.length - 1).trim else trimmed
       val target = if (unwrapped.isEmpty) trimmed else unwrapped
       parseBinaryExpression(target, context)
+        .orElse(parseUnaryExpression(target, context))
         .orElse(parseFunctionCall(target, context))
         .orElse(parseLiteralExpression(target, context))
         .getOrElse(BeExpressionUnsupported(trimmed))
+    }
+  }
+
+  private def parseUnaryExpression(source: String, context: ParseContext): Option[BeExpression] = {
+    val trimmed = source.trim
+    unaryOperators
+      .collectFirst {
+        case operator if startsWithUnaryOperator(trimmed, operator) =>
+          val operandSource = trimmed.substring(operator.length).trim
+          Option.when(operandSource.nonEmpty) {
+            val operandExpr = parseExpression(operandSource, context)
+            val function = context.resolveOperator(operator, 1)
+            val parameterMap = Map(function.inputs.head -> operandExpr)
+            OperatorFunctionCall(BeFunctionCall(function, parameterMap), operator)
+          }
+      }
+      .flatten
+  }
+
+  private def startsWithUnaryOperator(source: String, operator: String): Boolean = {
+    if (!source.startsWith(operator)) false
+    else {
+      val boundaryIndex = operator.length
+      val requiresWordBoundary = operator.lastOption.exists(_.isLetterOrDigit)
+      val isIdentifierChar: Char => Boolean = ch => ch.isLetterOrDigit || ch == '_'
+      if (!requiresWordBoundary) true
+      else if (boundaryIndex >= source.length) false
+      else {
+        val nextChar = source.charAt(boundaryIndex)
+        !isIdentifierChar(nextChar)
+      }
     }
   }
 
@@ -659,6 +719,9 @@ object PythonParser {
       val arguments = call.funcDef.inputs.flatMap(call.parameterValueMap.get)
       arguments match {
         case Nil => symbol
+        case head :: tail if tail.isEmpty =>
+          val renderedHead = formatOperand(head, isLeftOperand = false, programmingLanguage, humanLanguage)
+          if (isAlphabeticOperator(symbol)) s"$symbol $renderedHead" else s"$symbol$renderedHead"
         case head :: tail =>
           val renderedHead = formatOperand(head, isLeftOperand = true, programmingLanguage, humanLanguage)
           tail.foldLeft(renderedHead) { (acc, expr) =>
@@ -667,6 +730,9 @@ object PythonParser {
           }
       }
     }
+
+    private def isAlphabeticOperator(value: String): Boolean =
+      value.forall(ch => ch.isLetter || ch.isWhitespace)
 
     private def formatOperand(
         expression: BeExpression,

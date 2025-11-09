@@ -24,6 +24,8 @@ case class BeDefineVariable(name: LanguageMap[HumanLanguage], val variableType: 
 
   override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = this
 
+  override def canEvaluateTo: BeDataType = variableType
+
 }
 
 

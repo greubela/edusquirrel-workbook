@@ -5,6 +5,7 @@ import contentmanagement.model.language.LanguageMap
 import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.code.controlStructures.{BeIfElse, BeSequence, BeWhile}
 import contentmanagement.model.vm.code.defining.{BeDefineFunction, BeDefineVariable}
+import contentmanagement.model.vm.code.usage.BeAssignVariable
 import contentmanagement.model.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
 import contentmanagement.model.vm.code.others.BeReturn
 import contentmanagement.model.vm.parsing.python.PythonParser.KnownStructure
@@ -240,6 +241,52 @@ class PythonParserSpec extends FunSuite {
     }
   }
 
+  test("boolean operators are parsed into expressions") {
+    val python =
+      """flag1 = True
+        |flag2 = False
+        |flag3 = True
+        |result = flag1 and not flag2 or flag3
+        |""".stripMargin
+
+    val result = PythonParser.parsePythonWithDetails(python)
+    val sequence = result.codeExpression.asInstanceOf[BeSequence]
+    val assignments = sequence.body.collect { case assign: BeAssignVariable => assign }
+    assertEquals(assignments.length, 4)
+
+    val unsupported = sequence.body.collect { case unsupported: BeExpressionUnsupported => unsupported }
+    assertEquals(unsupported.length, 0)
+
+    val booleanExpression = assignments.last.value
+    val normalizedProgram = normalizer.normalizePython(result.codeExpression.getInLanguage(Python, English))
+    assertEquals(normalizedProgram, normalizer.normalizePython(python))
+    assertEquals(booleanExpression.canEvaluateTo, BeDataType.Boolean)
+  }
+
+  test("unary operators are parsed as functions") {
+    val python =
+      """count = 5
+        |negative = -count
+        |positive = +count
+        |bitwise = ~count
+        |flag = not False
+        |""".stripMargin
+
+    val result = PythonParser.parsePythonWithDetails(python)
+    val sequence = result.codeExpression.asInstanceOf[BeSequence]
+    val assignments = sequence.body.collect { case assign: BeAssignVariable => assign }
+    assertEquals(assignments.length, 5)
+
+    val unsupported = sequence.body.collect { case unsupported: BeExpressionUnsupported => unsupported }
+    assertEquals(unsupported.length, 0)
+
+    val normalizedProgram = normalizer.normalizePython(result.codeExpression.getInLanguage(Python, English))
+    assertEquals(normalizedProgram, normalizer.normalizePython(python))
+    assertEquals(assignments(1).value.canEvaluateTo, BeDataType.Numeric)
+    assertEquals(assignments(2).value.canEvaluateTo, BeDataType.Numeric)
+    assertEquals(assignments(3).value.canEvaluateTo, BeDataType.Numeric)
+    assertEquals(assignments(4).value.canEvaluateTo, BeDataType.Boolean)
+  }
   test("round trip from mini program expression") {
     val sourceExpression = BeProgram.miniProgramExpression()
     val generated = sourceExpression.getInLanguage(Python, English)
