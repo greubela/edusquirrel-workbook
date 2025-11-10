@@ -8,6 +8,7 @@ import interactionPlugins.automaton.{AutomatonExerciseContent, HtmlAutomatonExer
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
+import interactionPlugins.blockEnvironment.programming.editor.elements.{BeTreeControllerConfig, EditorState, HtmlBeTreeDisplay}
 import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
 import interactionPlugins.pythonExercises.{HtmlPythonExercise, PythonExerciseContent}
 import org.scalajs.dom
@@ -26,7 +27,16 @@ def mainApp(): Unit = {
 }
 
 def doSomeCalculations(): Unit = {
-
+  /*
+  val expr = BeProgram.debugGraphicsProgram()
+  val ed = EditorState.withInitExpression(expr.fullProgram)
+  val lis = BeTreeControllerConfig.editTreeConfig(ed)
+  HtmlBeTreeDisplay.render(expr,
+    ed.editorTreeDisplayConfig.now(),
+    ed.rendererConfigVar.now(),
+    lis,
+    ed.controllerStateVar)
+*/
 }
 
 val fullscreenElement: HtmlFullScreenElement = HtmlFullScreenElement()

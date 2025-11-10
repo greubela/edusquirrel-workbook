@@ -178,6 +178,8 @@ object BeProgram {
     BeProgram(expression)
   }
 
+
+
   def debugGraphicsProgram(): BeProgram = {
     val somePython =
       """

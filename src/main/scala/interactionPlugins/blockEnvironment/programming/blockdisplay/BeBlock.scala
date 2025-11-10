@@ -2,9 +2,10 @@ package interactionPlugins.blockEnvironment.programming.blockdisplay
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Var
+import contentmanagement.datastructures.tree.TreeStructureContext
+import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreePosition
 import contentmanagement.model.vm.code.tree.BeExpressionNode
-import contentmanagement.model.vm.types.BeDataType
-import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeAmendFactory}
+import contentmanagement.webElements.svg.shapes.BeShapeAmendFactory
 import interactionPlugins.blockEnvironment.config.{BeControllerState, BeRenderingConfig, BeTreeDisplayConfig}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.elements.BeTreeControllerConfig
@@ -20,8 +21,8 @@ trait BeBlock {
   // todo Methods for toProgramCode (?) Like toPython(): LanguageMap[HumanLanguage] (?) here instead of BeExpression. Block := everything with output AND input (?)
 
   // todo rename to renderNested and get list of lines instead of the whole renderer Also add other renderer like Struktugramm (?)
-  def render(structure: BeBlockRenderingContext, renderingInfo: RenderingInformation): NestedBlockRenderer = {
 
+  def render(structure: BeBlockRenderingContext, renderingInfo: RenderingInformation): NestedBlockRenderer = {
     val renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)] = {
       structure
         .traversalInfoForChildren
@@ -33,6 +34,18 @@ trait BeBlock {
         )
         )
     }
+
+    render(renderedChildren, renderingInfo)
+  }
+
+
+  def render(structure: TreeStructureContext[NodeBasedTreePosition, (BeExpressionNode, BeBlock)], childResults: Map[(BeExpressionNode, BeBlock), NestedBlockRenderer], renderingInfo: RenderingInformation): NestedBlockRenderer = {
+
+    val renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)] = childResults.keys.map(tup => (tup._1, tup._2, childResults(tup))).toList
+
+    /*val 
+
+    }*/
 
     render(renderedChildren, renderingInfo)
   }

@@ -9,7 +9,9 @@ lazy val workbookApp = project.in(file("."))
     scalaVersion := "3.3.3",
     scalaJSUseMainModuleInitializer := true,
 
-    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) },
+    scalaJSLinkerConfig ~= {
+      _.withModuleKind(ModuleKind.CommonJSModule)
+    },
 
     // Libraries
     libraryDependencies ++= Seq(

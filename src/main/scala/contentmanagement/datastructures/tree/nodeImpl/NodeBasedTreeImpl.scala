@@ -159,6 +159,28 @@ class NodeBasedTreeImpl[D](protected val firstLayerNodes: List[NodeBasedTreeNode
     NodeBasedTreeImpl[O](firstLayerTravelInfo.map(curRootNodeTravelInfo => recreateNode(curRootNodeTravelInfo)))
   }
 
+  def applyWithChildResults[O](callFunc: (TreeStructureContext[NodeBasedTreePosition, D], Map[D, O]) => O): Map[NodeBasedTreePosition, O] = {
+
+    val resMap: mutable.Map[NodeBasedTreePosition, O] = mutable.Map[NodeBasedTreePosition, O]()
+
+    def recApply(curNode: NodeBasedTraversalInformation[D]): O = {
+      val childResMap = curNode.traversalInfoForChildren.map(curTravInfo => {
+        val res = curTravInfo.curValue -> recApply(curTravInfo)
+        resMap.put(curTravInfo.curPosition, res._2)
+        res
+      }).toMap
+
+      callFunc(curNode, childResMap)
+    }
+
+    firstLayerTravelInfo.foreach(curRootNodeTravelInfo => {
+      val res = recApply(curRootNodeTravelInfo)
+      resMap += curRootNodeTravelInfo.curPosition -> res
+    })
+    resMap.toMap
+
+
+  }
 
 }
 

@@ -1,5 +1,6 @@
 package contentmanagement.datastructures.tree
 
+import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreePosition
 import util.{CodeStringBuilder, FunctionalUtility}
 
 import scala.collection.mutable
@@ -79,6 +80,8 @@ trait Tree[P <: TreePosition, D] {
     val funcCached: (TSC => O) = FunctionalUtility.withCacheAndResolvedDependencies(func)
     mapWithStructure(funcCached)
   }
+
+  def applyWithChildResults[O](callFunc: (TreeStructureContext[P, D], Map[D, O]) => O): Map[NodeBasedTreePosition, O]
 
 }
 

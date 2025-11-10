@@ -22,8 +22,7 @@ case class BeBlockDefineVariable(
 
   def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
     val outerShape = varDef.variableType.createContainerShape.get
-    println("varDef: " + varDef)
-    println("outerShape: " + outerShape + " var: " + varDef.name)
+
     val textShape = TextShape(varDef.name, renderingInfo.factory.invertedTextAmends)
     val res = ShapeAroundShape(outerShape, textShape)
       .addAmends(renderingInfo.factory.variableColorsDefAmend)
