@@ -7,7 +7,9 @@ import contentmanagement.model.language.{AppLanguage, HumanLanguage}
 import contentmanagement.webElements.svg.shapes.BeShapeAmendFactory
 
 
-case class BeRenderingConfig(appFont: AppFont, paddingSmall: Dimension[Double], paddingBig: Dimension[Double], colorPalette: RGBYColorPalette, language: HumanLanguage, controlSegmentSize: Int = 5) {
+case class BeRenderingConfig(appFont: AppFont, paddingSmall: Dimension[Double], paddingBig: Dimension[Double], colorPalette: RGBYColorPalette, language: HumanLanguage, private val pControlSegmentSize: Int = 5) {
+  val controlSegmentSizeInt: Int = pControlSegmentSize
+  val controlSegmentSize: Double = pControlSegmentSize
   val amendFactory: BeShapeAmendFactory = BeShapeAmendFactory(this)
 }
 

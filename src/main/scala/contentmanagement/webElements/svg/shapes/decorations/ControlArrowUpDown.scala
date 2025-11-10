@@ -6,7 +6,7 @@ import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.shapes.*
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
-case class BeControlArrow(pointsDown: Boolean = true, isActive: Boolean = true) extends BeShapeDecoration {
+case class ControlArrowUpDown(pointsDown: Boolean = true, isActive: Boolean = true) extends BeShapeDecoration {
 
 
   override def displaySize(rendererConfig: BeRenderingConfig): Dimension[Double] = Dimension(rendererConfig.controlSegmentSize / 5.0 * 6.0, rendererConfig.controlSegmentSize / 5.0 * 8.0)

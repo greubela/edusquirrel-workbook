@@ -9,7 +9,7 @@ import contentmanagement.webElements.svg.shapes.composite.{HorizontalAlignment, 
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.ControlFlowDirected.*
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
-import contentmanagement.webElements.svg.shapes.decorations.BeControlArrow
+import contentmanagement.webElements.svg.shapes.decorations.ControlArrowUpDown
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
@@ -28,7 +28,7 @@ case class ControlFlowDirected(goesDown: Boolean, isActive: Boolean = false) ext
     ControlFlowPath(HANDLED, List(segment))
   }
 
-  private def handleParentPath(path: ControlFlowPath, renderingConfig: BeRenderingConfig, centerPoint: Point[Double], curLineHeight: Double): (ControlFlowPath, List[Point[Double]]) = {
+  def handleParentPath(path: ControlFlowPath, renderingConfig: BeRenderingConfig, centerPoint: Point[Double], curLineHeight: Double): (ControlFlowPath, List[Point[Double]]) = {
     val seg = renderingConfig.controlSegmentSize
 
     val fullArrowHeight: Int = (seg * 4).toInt
@@ -37,8 +37,8 @@ case class ControlFlowDirected(goesDown: Boolean, isActive: Boolean = false) ext
     val resArrowPositions = mutable.ListBuffer[Point[Double]]()
 
     var res = path
-     /*// Markierung Anfang
-    res = res.changeLastPathBuilder(_
+     // Markierung Anfang
+    /*res = res.changeLastPathBuilder(_
       .moveToRel(Dimension(-5.0, 0.0))
       .horizontalLineWithWidth(10.0)
       .moveToRel(Dimension(-5.0, 0.0))
@@ -65,7 +65,7 @@ case class ControlFlowDirected(goesDown: Boolean, isActive: Boolean = false) ext
     val yToGo: Double = curLineHeight - movedY
     res = res.changeLastPathBuilder(_.verticalLineWithHeight(yToGo))
 
-     /*// Markierung Ende
+    /* // Markierung Ende
     res = res.changeLastPathBuilder(_
       .moveToRel(Dimension(-5.0, 0.0))
       .horizontalLineWithWidth(10.0)
@@ -81,14 +81,14 @@ case class ControlFlowDirected(goesDown: Boolean, isActive: Boolean = false) ext
     var pathRes: ControlFlowPath = cf.firstOpenPath
     if (cf.firstOpenPath.lastSegment.isActive != isActive) {
       val amends = if (isActive) pathRes.firstSegment.pathAmends else renderingInfo.renderingConfig.amendFactory.inactiveControlFlowAmends
-      pathRes = pathRes.continueWithNewSegment(isActive, amends)
+     // pathRes = pathRes.continueWithNewSegment(isActive, amends)
     }
     val (handledPath, arrowCenters) = handleParentPath(pathRes, renderingInfo.renderingConfig, centerPoint, curLineHeight)
     pathRes = handledPath
 
     var builderRes = cf.changeFirstOpenPath(_ => pathRes)
     for(curArrowCenter <- arrowCenters) {
-      builderRes = builderRes.addDecoration(BeControlArrow(goesDown, isActive), curArrowCenter)
+      builderRes = builderRes.addDecoration(ControlArrowUpDown(goesDown, isActive), curArrowCenter)
     }
     builderRes
 

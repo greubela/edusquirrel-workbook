@@ -4,14 +4,13 @@ import com.raquo.laminar.api.L
 import contentmanagement.model.geometry.{Dimension, Point}
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.shapes.*
-import contentmanagement.webElements.svg.shapes.composite.VerticalAlignment
 import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
 import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.IfElseSplit.*
 import contentmanagement.webElements.svg.shapes.decorations.{BeDataArrow, PathSplitOverlay}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
-import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.PathStatus.{OPEN, PAUSED}
+import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.PathStatus.{HANDLED, OPEN, PAUSED}
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.{ControlFlowPath, PathSegment}
 
 case class IfElseSplit() extends ControlFlowShapeDoubleWidth {
@@ -22,29 +21,60 @@ case class IfElseSplit() extends ControlFlowShapeDoubleWidth {
 
   private def handleParentPath(path: ControlFlowPath, renderingConfig: BeRenderingConfig, curLineHeight: Double): (ControlFlowPath, Point[Double]) = {
 
+    /* todo : sanftere kanten?
     val seg = renderingConfig.controlSegmentSize
     val extraHeight = (curLineHeight - seg * 7).max(0)
 
     val res = path.changeLastPathBuilder(_
       .verticalLineWithHeight(extraHeight / 2)
-      .lineToRel(Dimension[Double](0, seg))
-      .lineToRel(Dimension(3 * seg, 0))
-      .lineToRel(Dimension(0, 2 * seg))
+      //
+      .verticalLineWithHeight(seg)
+      .lineToRel(Dimension[Double](seg/2, seg/2))
+      .horizontalLineWithWidth(2*seg)
+      .lineToRel(Dimension(seg/2, seg/2))
+      .verticalLineWithHeight(seg)
+
     )
 
+    (res.copy(curStatus = PAUSED), res.lastSegment.curPath.current)*/
+
+    val seg = renderingConfig.controlSegmentSize
+    val extraHeight = (curLineHeight - seg * minHeightInSegments).max(0)
+    val res = path.changeLastPathBuilder(_
+      .verticalLineWithHeight(extraHeight / 2)
+      .lineToRel(Dimension[Double](0, seg))
+      .lineToRel(Dimension(3 * seg, 0))
+      .lineToRel(Dimension(0, 3 * seg))
+    )
     (res.copy(curStatus = PAUSED), res.lastSegment.curPath.current)
   }
 
-  private def startNewPath(startPos: Point[Double], curLineHeight: Double, seg: Double, toTheRight: Boolean, newPathAmends: Seq[L.Modifier[L.SvgElement]]): ControlFlowPath = {
-    val extraHeight = (curLineHeight - seg * 7).max(0)
-    val xDirection = if (toTheRight) 3 * seg else -3 * seg
+  private def startIfPath(startPos: Point[Double], curLineHeight: Double, renderingInfo: RenderingInformation): ControlFlowPath = {
+    val seg = renderingInfo.renderingConfig.controlSegmentSize
+    val extraHeight = (curLineHeight - seg * minHeightInSegments).max(0)
 
     val curPath = SvgPathBuilder[Double](startPos)
-      .lineToRel(Dimension[Double](xDirection, 3 * seg))
+      .lineToRel(Dimension[Double](3 * seg, 3 * seg))
       .lineToRel(Dimension[Double](0, seg))
       .verticalLineWithHeight(extraHeight / 2)
-    val segment = PathSegment(curPath, List(), false, newPathAmends)
+    val segment = PathSegment(curPath, List(), false, renderingInfo.renderingConfig.amendFactory.activeTrueConditionControlFlowAmends)
     ControlFlowPath(OPEN, List(segment))
+  }
+
+  private def startElsePath(startPos: Point[Double], curLineHeight: Double, renderingInfo: RenderingInformation): ControlFlowPath = {
+    val seg = renderingInfo.renderingConfig.controlSegmentSize
+    val extraHeight = (curLineHeight - seg * minHeightInSegments).max(0)
+
+    val curPathRed = SvgPathBuilder[Double](startPos)
+      .lineToRel(Dimension[Double](-3 * seg, 3 * seg))
+      .lineToRel(Dimension[Double](0, seg))
+      .verticalLineWithHeight(extraHeight / 2)
+
+    val curPathInactive = SvgPathBuilder[Double](curPathRed.current)
+
+    val segment1 = PathSegment(curPathRed, List(), false, renderingInfo.renderingConfig.amendFactory.activeFalseConditionControlFlowAmends)
+    val segment2 = PathSegment(curPathInactive, List(), false, renderingInfo.renderingConfig.amendFactory.inactiveFalseConditionControlFlowAmends)
+    ControlFlowPath(HANDLED, List(segment1, segment2))
   }
 
   override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: RenderingInformation, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
@@ -53,8 +83,8 @@ case class IfElseSplit() extends ControlFlowShapeDoubleWidth {
     val (changedFirst, parentEndPos): (ControlFlowPath, Point[Double]) = handleParentPath(cf.firstOpenPath, renderingInfo.renderingConfig, curLineHeight)
     cf
       .changeFirstOpenPath(_ => changedFirst)
-      .startNewPath(startNewPath(parentEndPos, curLineHeight, seg, false, renderingInfo.renderingConfig.amendFactory.inactiveControlFlowAmends))
-      .startNewPath(startNewPath(parentEndPos, curLineHeight, seg, true, renderingInfo.renderingConfig.amendFactory.trueConditionControlFlowAmends))
+      .startNewPath(startElsePath(parentEndPos, curLineHeight, renderingInfo))
+      .startNewPath(startIfPath(parentEndPos, curLineHeight, renderingInfo))
       .addDecoration(PathSplitOverlay(), centerPoint)
       .addDecoration(BeDataArrow(), centerPoint.moveWithDimension(Dimension[Double](3.0 * seg, 0)))
   }

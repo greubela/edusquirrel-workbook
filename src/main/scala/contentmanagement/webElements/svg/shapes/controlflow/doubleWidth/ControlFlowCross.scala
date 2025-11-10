@@ -1,7 +1,7 @@
 package contentmanagement.webElements.svg.shapes.controlflow.doubleWidth
 
 import com.raquo.laminar.api.L
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
+import contentmanagement.model.geometry.*
 import contentmanagement.webElements.svg.compositeElements.AppDecoratedSvgElement
 import contentmanagement.webElements.svg.shapes.composite.{HorizontalAlignment, ShapeStack, VerticalAlignment}
 import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
@@ -19,7 +19,7 @@ case class ControlFlowCross() extends ControlFlowShapeDoubleWidth {
 
   override def background: BeShape.BeShapeContainerable = ControlFlowConnectorBackground(List((true, true), (true, true)))
 
-  override def minHeightInSegments: Int = 8
+  override def minHeightInSegments: Int = 5
 
   /*
   override def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
@@ -37,30 +37,48 @@ case class ControlFlowCross() extends ControlFlowShapeDoubleWidth {
   }
 */
 
-  private def extendAndAppendParentPath(path: ControlFlowPath, curLineHeight: Double, seg: Double, toTheRight: Boolean, newPathAmends: Seq[L.Modifier[L.SvgElement]]): ControlFlowPath = {
-    val extraHeight = (curLineHeight - seg * 6).max(0)
-    val xDirection = if (toTheRight) 3 * seg else -3 * seg
+  private def extendAndAppendParentPath(path: ControlFlowPath, curLineHeight: Double, seg: Double, toTheRight: Boolean,  newPathAmends: Seq[L.Modifier[L.SvgElement]]): ControlFlowPath = {
+    val extraHeight = (curLineHeight - seg * minHeightInSegments).max(0)
+
+    def xDir(dist: Double): Double = if (toTheRight) dist else -dist
+
+    def addMiddleSection(path: SvgPathBuilder[Double]): SvgPathBuilder[Double] = {
+      path
+        .horizontalLineWithWidth(xDir(2 * seg))
+        .lineToRel(Dimension[Double](xDir(seg), seg))
+        .horizontalLineWithWidth(xDir(2 * seg))
+    }
+    var continuedPath = path.lastSegment.curPath
+      .verticalLineWithHeight(extraHeight / 2)
+      .verticalLineWithHeight(1.0 * seg)
+      .lineToRel(Dimension[Double](xDir(seg / 2.0), seg / 2.0))
+
+    if (toTheRight) {
+      continuedPath = addMiddleSection(continuedPath)
+    }
+
+    val endPos = continuedPath.current
+
+    var secondPath = SvgPathBuilder[Double](endPos)
+    if (!toTheRight) {
+      secondPath = addMiddleSection(secondPath)
+    }
+    secondPath = secondPath
+      .lineToRel(Dimension[Double](xDir(seg / 2.0), seg / 2.0))
+      .verticalLineWithHeight(2 * seg)
+      .verticalLineWithHeight(extraHeight / 2)
 
     path
-      .changeLastPathBuilder(curPathBuilder => {
-        curPathBuilder
-          .verticalLineWithHeight(extraHeight / 2)
-          .lineToRel(Dimension[Double](xDirection, 3.0 * seg))
-      })
-      .appendNewSegmentWithLastSegmentPosition(position => {
-        val path = SvgPathBuilder[Double](position)
-          .lineToRel(Dimension[Double](xDirection, 3.0 * seg))
-          .verticalLineWithHeight(extraHeight / 2)
-        PathSegment(path, List(), true, newPathAmends)
-      })
+      .changeLastPathBuilder(curPathBuilder => continuedPath)
+      .appendNewSegmentFromScratch(PathSegment(secondPath, List(), true, newPathAmends))
   }
 
   private def handleFirstParentPath(path: ControlFlowPath, renderingConfig: BeRenderingConfig, curLineHeight: Double): ControlFlowPath = {
-    extendAndAppendParentPath(path, curLineHeight, renderingConfig.controlSegmentSize, true, renderingConfig.amendFactory.falseConditionControlFlowAmends)
+    extendAndAppendParentPath(path, curLineHeight, renderingConfig.controlSegmentSize, true, renderingConfig.amendFactory.activeFalseConditionControlFlowAmends)
   }
 
   private def handleSecondParentPath(path: ControlFlowPath, renderingConfig: BeRenderingConfig, curLineHeight: Double): ControlFlowPath = {
-    extendAndAppendParentPath(path, curLineHeight, renderingConfig.controlSegmentSize, false, renderingConfig.amendFactory.inactiveControlFlowAmends)
+    extendAndAppendParentPath(path, curLineHeight, renderingConfig.controlSegmentSize, false,  renderingConfig.amendFactory.inactiveTrueConditionControlFlowAmends)
   }
 
   override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: RenderingInformation, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
@@ -74,14 +92,11 @@ case class ControlFlowCross() extends ControlFlowShapeDoubleWidth {
     cf
       .changeFirstOpenPath(_ => rightToLeftPath)
       .changeFirstOpenPath(_ => leftToRightPath)
-      .addDecoration(PathCrossOverlay(), centerPoint)
-      .addDecoration(ControlArrowCross(true, true, true), centerPoint)
+    // .addDecoration(PathCrossOverlay(), centerPoint)
+    // .addDecoration(ControlArrowCross(true, true, true), centerPoint)
+
+
   }
-
-
-}
-
-object ControlFlowCross {
 
 
 }

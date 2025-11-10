@@ -8,12 +8,12 @@ import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.IfElseUn
 import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeDecoration}
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
-import contentmanagement.webElements.svg.shapes.decorations.{PathCrossOverlay, PathUnionOverlay}
+import contentmanagement.webElements.svg.shapes.decorations.{ControlArrowUpDown, PathCrossOverlay, PathUnionOverlay}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.ControlFlowPath
-import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.PathStatus.{FINISHED, OPEN}
+import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.PathStatus.{FINISHED, HANDLED, OPEN}
 
 case class IfElseUnion() extends ControlFlowShapeDoubleWidth {
 
@@ -40,7 +40,7 @@ case class IfElseUnion() extends ControlFlowShapeDoubleWidth {
       .horizontalLineWithWidth(-3 * seg)
       .verticalLineWithHeight(2 * seg)
       .verticalLineWithHeight(extraHeight)
-    ).copy(curStatus = OPEN)
+    ).copy(curStatus = HANDLED)
 
   }
 
@@ -60,7 +60,8 @@ case class IfElseUnion() extends ControlFlowShapeDoubleWidth {
     }
 
     res = res.changeLastPaused(resumeLastPausedPath(_, parentEndPos1, curLineHeight, seg))
-    res = res.addDecoration(PathUnionOverlay(), centerPoint)
+    res = res.addDecoration(PathUnionOverlay(), centerPoint.moveWithDimension(Dimension(0, -seg)))
+    res = res.addDecoration(ControlArrowUpDown(true), centerPoint.moveWithDimension(Dimension(0, -seg)))
 
     res
   }

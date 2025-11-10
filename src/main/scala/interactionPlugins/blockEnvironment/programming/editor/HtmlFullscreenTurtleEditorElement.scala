@@ -10,7 +10,7 @@ import contentmanagement.webElements.svg.shapes.BeShape
 import contentmanagement.webElements.svg.shapes.controlflow.*
 import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.{ControlFlowCross, IfElseSplit, IfElseUnion}
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.{ControlFlowProgramStarter, ControlFlowProgramStopper}
-import contentmanagement.webElements.svg.shapes.decorations.{BeControlArrow, BeDataArrow}
+import contentmanagement.webElements.svg.shapes.decorations.{ControlArrowUpDown, BeDataArrow}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.elements.*
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
@@ -70,7 +70,7 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
     )
   )
 
-  private val testShapes: List[BeShape] = List(ControlFlowProgramStarter(), ControlFlowProgramStopper(), BeDataArrow(), BeControlArrow(), IfElseSplit(), ControlFlowCross(), IfElseUnion(), ControlFlowConnectorBackground(List((true, true)))) ++ BeShape.allAtomicShapes
+  private val testShapes: List[BeShape] = List(ControlFlowProgramStarter(), ControlFlowProgramStopper(), BeDataArrow(), ControlArrowUpDown(), IfElseSplit(), ControlFlowCross(), IfElseUnion(), ControlFlowConnectorBackground(List((true, true)))) ++ BeShape.allAtomicShapes
   private val testDims = testShapes.map(_.displaySize(editorState.rendererConfigVar.now()))
 
   private lazy val drawingArea: Element =

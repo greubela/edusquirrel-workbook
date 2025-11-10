@@ -54,7 +54,7 @@ trait ControlFlowShape extends BeShape {
   def background: BeShapeContainerable
 
   def shapeRenderBackground(renderingConfig: BeRenderingConfig): BeShape = {
-    background.addAmends(renderingConfig.amendFactory.defaultControlColors)
+    background.addAmends(renderingConfig.amendFactory.defaultControlFlowBackgroundAmend)
   }
 
   //def getDecorationsWithRelativeCenterOffset(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): List[(BeShapeDecoration, Point[Double])] = List()

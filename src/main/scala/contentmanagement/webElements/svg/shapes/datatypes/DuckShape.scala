@@ -23,6 +23,13 @@ object DuckShape extends BeShapePathBased {
     new Dimension[Double](rightOfText, 0).increaseSize(config.paddingSmall)
   }
 
+  override def minSizeToContainChild(config: BeRenderingConfig, childDimension: Dimension[Double]): Dimension[Double] = {
+    val spaceBefore = spaceBeforeChild(config, childDimension)
+    val spaceAfter = spaceAfterChild(config, childDimension)
+    val res = childDimension.increaseSize(spaceBefore).increaseSize(spaceAfter)
+    res.ensureWidth(childDimension.height * 3)
+  }
+
 }
 /*
 

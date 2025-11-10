@@ -201,7 +201,7 @@ case class NestedBlockRenderer(
       val curCenterY = curOffsetY + curLineToRender.lineHeight(renderingInfo.renderingConfig) / 2
       curOffsetY += curLineToRender.lineHeight(renderingInfo.renderingConfig)
 
-      for ((curControlFlowShape, curCenterX) <- curLineToRender.controlFlowStack.zip(stackColumnCenter)) {
+      for ((curControlFlowShape, curCenterX) <- curLineToRender.controlFlowStack.reverse.zip(stackColumnCenter)) {
         res = curControlFlowShape.renderControlFlow(res, renderingInfo, Point[Double](curCenterX, curCenterY), curLineToRender.lineHeight(renderingInfo.renderingConfig))
         //printStatus("Handled Stack Shape: " + curControlFlowShape.getClass.getSimpleName)
       }

@@ -38,7 +38,7 @@ case class ControlFlowOverlayBuilder(paths: List[ControlFlowPath], overlaysWithC
 
   def startNewPath(newPath: ControlFlowPath): ControlFlowOverlayBuilder = this.copy(paths = paths :+ newPath)
 
-  def unionFirstTwoOpen(amount: Int, func: (ControlFlowPath, ControlFlowPath) => ControlFlowPath): ControlFlowOverlayBuilder = {
+  def unionFirstTwoOpen(func: (ControlFlowPath, ControlFlowPath) => ControlFlowPath): ControlFlowOverlayBuilder = {
     val changed: ControlFlowPath = func(firstOpen._1, secondOpen._1)
     this.copy(paths = beforeFirst ++ List(changed) ++ betweenFirstAndSecond ++ afterSecond)
   }

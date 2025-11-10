@@ -72,7 +72,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
   )
 
   def defaultControlFlowBackgroundAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.fill := rendererConfig.colorPalette.yellows(1).toWebStyleString,
+    svg.fill := rendererConfig.colorPalette.yellows(2).toWebStyleString,
     svg.stroke := rendererConfig.colorPalette.yellows(0).toWebStyleString,
   )
 
@@ -115,7 +115,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
   def inActiveDecorationElements: Seq[L.Modifier[L.SvgElement]] = {
     List(
       svg.stroke := "transparent",
-      svg.fill := rendererConfig.colorPalette.grayscale(3).toWebStyleString,
+      svg.fill := rendererConfig.colorPalette.yellows(3).toWebStyleString,
     )
   }
 
@@ -141,11 +141,10 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
       svg.strokeDashArray := "1,1",
       svg.strokeWidth := strokeW + "px",
       svg.fill := "transparent",
-      svg.stroke := rendererConfig.colorPalette.grayscale(3).toWebStyleString,
+      svg.stroke := rendererConfig.colorPalette.yellows(4).toWebStyleString,
     )
   }
-
-  def trueConditionControlFlowAmends: Seq[L.Modifier[L.SvgElement]] = {
+  def activeTrueConditionControlFlowAmends: Seq[L.Modifier[L.SvgElement]] = {
     val strokeW = rendererConfig.controlSegmentSize / 5.0
     List(
       svg.strokeWidth := strokeW + "px",
@@ -154,7 +153,17 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
     )
   }
 
-  def falseConditionControlFlowAmends: Seq[L.Modifier[L.SvgElement]] = {
+  def inactiveTrueConditionControlFlowAmends: Seq[L.Modifier[L.SvgElement]] = {
+    val strokeW = rendererConfig.controlSegmentSize / 5.0
+    List(
+      svg.strokeDashArray := "1,1",
+      svg.strokeWidth := strokeW + "px",
+      svg.fill := "transparent",
+      svg.stroke := rendererConfig.colorPalette.greens(2).toWebStyleString,
+    )
+  }
+
+  def activeFalseConditionControlFlowAmends: Seq[L.Modifier[L.SvgElement]] = {
     val strokeW = rendererConfig.controlSegmentSize / 5.0
     List(
       svg.strokeWidth := strokeW + "px",
@@ -162,6 +171,17 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
       svg.stroke := rendererConfig.colorPalette.reds(0).toWebStyleString,
     )
   }
+
+  def inactiveFalseConditionControlFlowAmends: Seq[L.Modifier[L.SvgElement]] = {
+    val strokeW = rendererConfig.controlSegmentSize / 5.0
+    List(
+      svg.strokeDashArray := "1,1",
+      svg.strokeWidth := strokeW + "px",
+      svg.fill := "transparent",
+      svg.stroke := rendererConfig.colorPalette.reds(2).toWebStyleString,
+    )
+  }
+
 
 
 }

@@ -10,7 +10,7 @@ case class DecorationFactory[T: Fractional](renderingConfig: BeRenderingConfig) 
 
   import N.*
 
-  val segmentSize: T = fromInt(renderingConfig.controlSegmentSize)
+  val segmentSize: T = fromInt(renderingConfig.controlSegmentSizeInt)
 
   private def intDim(width: Int, height: Int): Dimension[T] = Dimension[T](fromInt(width), fromInt(height))
 
@@ -29,6 +29,32 @@ case class DecorationFactory[T: Fractional](renderingConfig: BeRenderingConfig) 
   val one: T = fromInt(1)
   val two: T = fromInt(2)
   val half: T = one / two
+
+  def controlArrowRight(centeredAround: Point[T]): SvgPathBuilder[T] = {
+    SvgPathBuilder(centeredAround)
+      .moveToRel(segDim(-3, 0))
+      .lineToRel(segDim(-one - half, one + half))
+      .horizontalLineWithWidth(intToSeg(6))
+      .verticalLineWithHeight(tToSeg(one + half))
+      .lineToRel(segDim(3, -3))
+      .lineToRel(segDim(-3, -3))
+      .verticalLineWithHeight(tToSeg(one + half))
+      .horizontalLineWithWidth(intToSeg(-6))
+      .lineToRel(segDim(one + half, one + half))
+  }
+
+  def controlArrowLeft(centeredAround: Point[T]): SvgPathBuilder[T] = {
+    SvgPathBuilder(centeredAround)
+      .moveToRel(segDim(3, 0))
+      .lineToRel(segDim(one + half, one + half))
+      .horizontalLineWithWidth(intToSeg(-6))
+      .verticalLineWithHeight(tToSeg(one + half))
+      .lineToRel(segDim(-3, -3))
+      .lineToRel(segDim(3, -3))
+      .verticalLineWithHeight(tToSeg(one + half))
+      .horizontalLineWithWidth(intToSeg(6))
+      .lineToRel(segDim(-one - half, one + half))
+  }
 
   def controlArrowDown(centeredAround: Point[T]): SvgPathBuilder[T] = {
     SvgPathBuilder(centeredAround)

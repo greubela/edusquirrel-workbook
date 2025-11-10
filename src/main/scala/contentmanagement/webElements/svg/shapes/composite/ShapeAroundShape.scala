@@ -23,7 +23,7 @@ case class ShapeAroundShape(outerShape: BeShapeContainerable, innerShape: BeShap
 
     val outerBounds = bounds.startPoint.withDimension(outerDim)
 
-    println("offset: " + outerShape.getRelativeChildOffset(config, innerDim, outerDim))
+    //println("offset: " + outerShape.getRelativeChildOffset(config, innerDim, outerDim))
     val offset = outerShape.getRelativeChildOffset(config, innerDim, outerDim)
     val innerBounds = outerBounds.startPoint.moveWithDimension(offset.asDimension).withDimension(innerDim)
 

@@ -11,6 +11,7 @@ import util.CodeStringBuilder
 import contentmanagement.model.vm.code.tree.*
 import contentmanagement.model.vm.types.BeChildRole.ConditionInControlStructure
 import contentmanagement.model.vm.types.BeScope.InSequenceScope
+import interactionPlugins.blockEnvironment.programming.blockdisplay.control.BeBlockWhile
 
 case class BeWhile(
                     condition: BeSequence,
@@ -73,8 +74,7 @@ case class BeWhile(
   
   override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] = BeInfo.typeMismatchInfo("while condition", BeDataType.Boolean, condition.canEvaluateTo).toList
 
-  override def createBlock(): BeBlock =
-    throw new NotImplementedError("Block rendering is not implemented for BeWhile")
+  override def createBlock(): BeBlock = BeBlockWhile(this)
 
   override def getChildren(withExtensions: Boolean, myScope: BeScope): List[BeExpressionNode] = {
     List(
