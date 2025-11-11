@@ -4,14 +4,20 @@ import com.raquo.laminar.api.L
 import contentmanagement.model.vm.code.controlStructures.*
 import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.types.*
+import contentmanagement.model.vm.types.BeChildRole.ExpressionInSequence
 import interactionPlugins.blockEnvironment.programming.blockdisplay.*
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
 
 case class BeBlockSequence(sequence: BeSequence) extends BeBlock {
 
   def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
+
+    val bodyChildrenInOrder = renderedChildren
+      .filter(_._1.childPosition.roleInParent.isInstanceOf[ExpressionInSequence])
+      .sortBy(_._1.childPosition.roleInParent.asInstanceOf[ExpressionInSequence].nr)
+
     var res = NestedBlockRenderer.empty()
-    for (child <- renderedChildren) {
+    for (child <- bodyChildrenInOrder) {
       res = res.withAppendedRenderer(child._3)
     }
     res

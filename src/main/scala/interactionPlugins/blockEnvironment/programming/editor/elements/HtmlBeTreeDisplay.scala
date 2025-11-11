@@ -72,7 +72,6 @@ object HtmlBeTreeDisplay {
     }, "time to build shape")
 
     val svgDomElement = {
-
       val displaySize = shapeToDraw.displaySize(rendererConfig)
       val rendered = shapeToDraw.render(rendererConfig, Point[Double](0, 0).withDimension(displaySize))
 
@@ -82,6 +81,8 @@ object HtmlBeTreeDisplay {
         svgCanvas.getDomElement()
       ).amend(listener.getHtmlDragAmends(programToDisplay))
     }
+
+    // todo: collect extension points and store them somewhere where they can be re-used (also enable pre-view of the tree)
 
     svgDomElement
 

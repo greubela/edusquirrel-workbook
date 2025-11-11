@@ -43,7 +43,7 @@ val fullscreenElement: HtmlFullScreenElement = HtmlFullScreenElement()
 
 def insertTurtleEditor(): Unit = {
 
-  val editorDom = new HtmlFullscreenTurtleEditorElement(BeProgram.debugGraphicsProgram().fullProgram).getDomElement()
+  val editorDom = new HtmlFullscreenTurtleEditorElement(BeProgram.miniProgramExpression()).getDomElement()
 
   val worksheetDiv = document.getElementById("worksheetDts")
 

@@ -57,7 +57,7 @@ case class BeSequence(body: List[BeExpression], sequenceInfo: BeSequenceInfo) ex
 
     def getChildPosFor(nr: Int): BeChildPosition = BeChildPosition(BeChildRole.ExpressionInSequence(nr), InSequenceScope(this, myScope))
 
-    if (!withExtensions) body.zipWithIndex.map((curExpr, curNr) =>
+    val res = if (!withExtensions || sequenceInfo.maxBodyElements.nonEmpty && body.size >= sequenceInfo.maxBodyElements.get) body.zipWithIndex.map((curExpr, curNr) =>
       BeExpressionReference(getChildPosFor(curNr), curExpr)
     )
     else {
@@ -79,6 +79,10 @@ case class BeSequence(body: List[BeExpression], sequenceInfo: BeSequenceInfo) ex
       }
       bodyWithExtensions ++ lastExtendAnyOption ++ lastExtendCorrectOption
     }
+
+    println("BeSequence::getChildren " + body.size + " -> " + res.size)
+
+    res
   }
 
   override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {

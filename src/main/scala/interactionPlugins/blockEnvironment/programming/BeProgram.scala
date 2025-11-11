@@ -177,12 +177,13 @@ object BeProgram {
     val expression = BeStartProgram(parsingResult.codeExpression)
     BeProgram(expression)
   }
-
-
-
+  
   def debugGraphicsProgram(): BeProgram = {
     val somePython =
       """
+        |import turtle
+        |# comments are supported
+        |syntax error!!
         |i = 3
         |while i < 10:
         |    j = 2

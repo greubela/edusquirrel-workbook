@@ -17,6 +17,6 @@ case class BeBlockComment(comment: BeSingleLineComment) extends BeBlock {
 
     val res = ShapeAroundShape(container, text).addSignalAmends(renderingInfo.factory.muteOnTreeDragged(renderingInfo.inProgram, renderingInfo.controllerStateVar.signal, renderingInfo.factory.defaultControlColors))
 
-    NestedBlockRenderer.singleExpressionLineShapeWithInfo(List(), ControlFlowEmpty(), res)
+    NestedBlockRenderer.singleExpressionLineShapeWithInfo(List(), ControlFlowDirected(true, false), res)
   }
 }
