@@ -16,7 +16,7 @@ case class EditorState(
 object EditorState {
 
   def withInitExpression(initExpr: BeExpression): EditorState = {
-    val initEditorTreeDisplayConfig = BeTreeDisplayConfig(false, true, true, true, true)
+    val initEditorTreeDisplayConfig = BeTreeDisplayConfig(true, true, true, true, true)
     val initLibraryTreeDisplayConfig = BeTreeDisplayConfig(false, false, false, true, true)
 
     val initProgram = BeProgram(initExpr)

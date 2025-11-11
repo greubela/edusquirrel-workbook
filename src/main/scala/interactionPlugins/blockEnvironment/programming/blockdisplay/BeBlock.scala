@@ -22,7 +22,7 @@ trait BeBlock {
 
   // todo rename to renderNested and get list of lines instead of the whole renderer Also add other renderer like Struktugramm (?)
 
-  def render(structure: BeBlockRenderingContext, renderingInfo: RenderingInformation): NestedBlockRenderer = {
+  def renderOld(structure: BeBlockRenderingContext, renderingInfo: RenderingInformation): NestedBlockRenderer = {
     val renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)] = {
       structure
         .traversalInfoForChildren
@@ -34,7 +34,6 @@ trait BeBlock {
         )
         )
     }
-
     render(renderedChildren, renderingInfo)
   }
 

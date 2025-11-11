@@ -3,7 +3,7 @@ package interactionPlugins.blockEnvironment.rendering
 import contentmanagement.model.geometry.{Dimension, Point}
 import contentmanagement.webElements.svg.shapes.composite.HorizontalAlignment.Left
 import contentmanagement.webElements.svg.shapes.composite.VerticalAlignment.Center
-import contentmanagement.webElements.svg.shapes.composite.{BoxManualPositioning, HBoxSameHeight, HorizontalAlignment, VBoxSameWidth, VerticalAlignment}
+import contentmanagement.webElements.svg.shapes.composite.*
 import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowShape}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
@@ -91,7 +91,6 @@ case class NestedBlockRenderer(
       }
     }
 
-    // println("calced lines to render (" + res.size + " lines)!")
     res.toList
   }
 

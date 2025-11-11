@@ -19,14 +19,21 @@ sealed trait BeShape {
   def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement
 
   def addSignalAmends(newAmends: Seq[Signal[L.Modifier[L.SvgElement]]]): BeShape = this match {
-    case AmendedShape(base, amends, signalAmends) => AmendedShape(base, amends, signalAmends ++ newAmends)
-    case _ => AmendedShape(this, List(), newAmends)
+    case AmendedShape(base, amends, signalAmends, handle) => AmendedShape(base, amends, signalAmends ++ newAmends, handle)
+    case _ => AmendedShape(this, List(), newAmends, _ => {})
   }
 
   def addAmends(newAmends: Seq[L.Modifier[L.SvgElement]]): BeShape = this match {
-    case AmendedShape(base, amends, signalAmends) => AmendedShape(base, amends ++ newAmends, signalAmends)
-    case _ => AmendedShape(this, newAmends, List())
+    case AmendedShape(base, amends, signalAmends, handle) => AmendedShape(base, amends ++ newAmends, signalAmends, handle)
+    case _ => AmendedShape(this, newAmends, List(), _ => {})
   }
+
+  def addOnRendering(newHandle: Bounds[Double] => Any): BeShape = this match {
+    case AmendedShape(base, amends, signalAmends, handle) => AmendedShape(base, amends, signalAmends, newHandle)
+    case _ => AmendedShape(this, List(), List(), newHandle)
+
+  }
+
 }
 
 trait BeShapeDecoration extends BeShape {
@@ -67,13 +74,15 @@ trait ControlFlowShape extends BeShape {
   def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: RenderingInformation, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder
 }
 
-case class AmendedShape(baseShape: BeShape, amends: Seq[L.Modifier[L.SvgElement]], amendsSignal: Seq[Signal[L.Modifier[L.SvgElement]]]) extends BeShape {
+case class AmendedShape(baseShape: BeShape, amends: Seq[L.Modifier[L.SvgElement]], amendsSignal: Seq[Signal[L.Modifier[L.SvgElement]]], doOnRendering: Bounds[Double] => Any = _ => {}) extends BeShape {
 
   override def displaySize(config: BeRenderingConfig): Dimension[Double] = baseShape.displaySize(config)
 
   override def render(config: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
+    doOnRendering(bounds)
     baseShape.render(config, bounds).addMods(amends).addSignalMods(amendsSignal)
   }
+
 }
 
 object BeShape {

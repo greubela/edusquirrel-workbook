@@ -37,13 +37,11 @@ case class HtmlBeTreeDisplay(
 
 object HtmlBeTreeDisplay {
 
-
   def render(programToDisplay: BeProgram, displayConfig: BeTreeDisplayConfig, rendererConfig: BeRenderingConfig, listener: BeTreeControllerConfig, controllerStateVar: Var[BeControllerState]): L.HtmlElement = {
     val tree: BeBlockRenderingTree = programToDisplay.blockRenderingTree(displayConfig)
     val posToDraw = tree.getChildren(tree.rootPosition)
 
     val renderingInfo = RenderingInformation(programToDisplay, displayConfig, rendererConfig, listener, controllerStateVar)
-
 
     /*val nestedBlockRendererOld: NestedBlockRenderer = {
       val renderedTree = Timing.executeAndTime(

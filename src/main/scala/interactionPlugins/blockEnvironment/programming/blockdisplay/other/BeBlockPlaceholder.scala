@@ -12,10 +12,12 @@ case class BeBlockPlaceholder(extensionPoint: BeExtensionPoint) extends BeBlock 
 
     val baseColorAmends = if (extensionPoint.isRequired) renderingInfo.factory.errorColorsAmend else renderingInfo.factory.defaultControlColors
 
-    val res = extensionPoint.extensionMustConformToType
+    //todo: why so many children?
+    val res = extensionPoint.extensionMustConformToType // todo: extension will be interpreted as (and then reverse whether possible)
       .createShape
       .addAmends(renderingInfo.factory.acceptingColorsAmend)
       .addAmends(renderingInfo.treeListener.getMouseAmendsForShape(renderingInfo.inProgram, extensionPoint))
+      .addOnRendering(bounds => println("BeBlockPlaceholder(" + extensionPoint + "): " + bounds))
       // mouse over does not trigger while dragging???
     NestedBlockRenderer.singleExpressionLineShapeWithInfo(List(), ControlFlowDirected(true, true), res)
   }
