@@ -18,8 +18,8 @@ case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) exten
 
   override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
     val targetName =
-      if (target.hasExplicitTypeHint) target.getInLanguage(programmingLanguage, humanLanguage)
-      else target.name.getInLanguage(humanLanguage)
+       target.getInLanguage(programmingLanguage, humanLanguage)
+  
     val valueString = value.getInLanguage(programmingLanguage, humanLanguage).replaceAll("\n", " ")
     programmingLanguage match {
       case Python => s"$targetName = $valueString"

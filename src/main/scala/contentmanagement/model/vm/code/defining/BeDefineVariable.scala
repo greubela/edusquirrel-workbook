@@ -10,14 +10,13 @@ import interactionPlugins.blockEnvironment.programming.blockdisplay.data.*
 
 case class BeDefineVariable(
     name: LanguageMap[HumanLanguage],
-    val variableType: BeDataType,
-    hasExplicitTypeHint: Boolean = false
+    val variableType: BeDataType
 ) extends BeDefineStructure {
 
   override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
     val baseName = name.getInLanguage(humanLanguage)
     val typeHint = variableType.formatTypeForDisplay.getInLanguage(programmingLanguage).trim
-    val shouldInclude = hasExplicitTypeHint && typeHint.nonEmpty
+    val shouldInclude = typeHint.nonEmpty
     programmingLanguage match {
       case Python =>
         if (shouldInclude) s"$baseName: $typeHint" else baseName

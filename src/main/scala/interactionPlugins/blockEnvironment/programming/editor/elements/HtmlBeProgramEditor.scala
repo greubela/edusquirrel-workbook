@@ -8,11 +8,11 @@ import contentmanagement.model.language.HumanLanguage
 import contentmanagement.model.language.AppLanguage
 import contentmanagement.model.language.AppLanguage.*
 import contentmanagement.model.vm.code.others.BeStartProgram
+import contentmanagement.model.vm.parsing.python.PythonParser
 import contentmanagement.webElements.HtmlAppElement
 import contentmanagement.webElements.genericHtmlElements.editor.{CodeMirrorEditor, SimpleStringTextEditor}
 import contentmanagement.webElements.genericHtmlElements.other.{HtmlTab, HtmlTabElement}
 import interactionPlugins.blockEnvironment.programming.BeProgram
-import interactionPlugins.blockEnvironment.programming.editor.elements.HtmlBeProgramEditor.PythonParse
 
 case class HtmlBeProgramEditor(editorState: EditorState) extends HtmlAppElement {
 
@@ -49,7 +49,7 @@ case class HtmlBeProgramEditor(editorState: EditorState) extends HtmlAppElement 
         val pythonSource = editorState.treeToEdit.now().fullProgram.getInLanguage(Python, language)
         strVar.set(pythonSource)
       } else if (next.tabNr == BlockViewTabNr && previous.tabNr == PythonViewTabNr) {
-        val parsedProgram = PythonParse.parsePython(strVar.now())
+        val parsedProgram = PythonParser.parsePython(strVar.now())
         editorState.treeToEdit.set(BeProgram(BeStartProgram(parsedProgram)))
       }
     }
@@ -69,12 +69,3 @@ case class HtmlBeProgramEditor(editorState: EditorState) extends HtmlAppElement 
 
 }
 
-object HtmlBeProgramEditor {
-
-  object PythonParse {
-    import contentmanagement.model.vm.parsing.python.PythonParser
-
-    def parsePython(source: String) = PythonParser.parsePython(source)
-  }
-
-}
