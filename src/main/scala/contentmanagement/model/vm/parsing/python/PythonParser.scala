@@ -239,7 +239,8 @@ object PythonParser {
       } else {
         trimmed match {
           case AnnotationAssignmentPattern(name, typeHint, valueStr) =>
-            val variable = context.defineVariable(name, mapType(Some(typeHint.trim)))
+            val variable =
+              context.defineVariable(name, mapType(Some(typeHint.trim)))
             val valueExpr = parseExpression(valueStr, context)
             expressions += BeAssignVariable(variable, valueExpr)
             index += 1
@@ -410,12 +411,14 @@ object PythonParser {
     context.pushScope()
     val parameterInfos = parseParameters(paramsSource)
     val parameterDefinitions = parameterInfos.map { case (paramName, typeHint) =>
-      val hasExplicitType = typeHint.exists(_.nonEmpty)
       context.defineVariable(paramName, mapType(typeHint))
     }
 
     val returnVariable = returnSource.map(_.trim).filter(_.nonEmpty).map { returnHint =>
-      BeDefineVariable(LanguageMap.universalMap("return"), mapType(Some(returnHint)))
+      BeDefineVariable(
+        LanguageMap.universalMap("return"),
+        mapType(Some(returnHint))
+      )
     }
 
     val computedIndent = determineBodyIndent(lines, headerIndex + 1, indent)
@@ -453,12 +456,14 @@ object PythonParser {
     methodContext.pushScope()
     val parameterInfos = parseParameters(paramsSource)
     val parameterDefinitions = parameterInfos.map { case (paramName, typeHint) =>
-      val hasExplicitType = typeHint.exists(_.nonEmpty)
       methodContext.defineVariable(paramName, mapType(typeHint))
     }
 
     val returnVariable = returnSource.map(_.trim).filter(_.nonEmpty).map { returnHint =>
-      BeDefineVariable(LanguageMap.universalMap("return"), mapType(Some(returnHint)))
+      BeDefineVariable(
+        LanguageMap.universalMap("return"),
+        mapType(Some(returnHint))
+      )
     }
 
     val computedIndent = determineBodyIndent(lines, headerIndex + 1, indent)
@@ -532,13 +537,17 @@ object PythonParser {
       valueSource: Option[String],
       context: ParseContext
   ): BeDefineVariable = {
-    val dataType = explicitType.map(typeHint => mapType(Some(typeHint.trim))).getOrElse {
+    val normalizedExplicit = explicitType.map(_.trim).filter(_.nonEmpty)
+    val dataType = normalizedExplicit.map(typeHint => mapType(Some(typeHint))).getOrElse {
       valueSource.map(_.trim).filter(_.nonEmpty).map { valueText =>
         val isolated = new ParseContext(context.snapshotStructures)
         inferType(parseExpression(valueText, isolated))
       }.getOrElse(AnyType)
     }
-    BeDefineVariable(LanguageMap.universalMap(attributeName), dataType)
+    BeDefineVariable(
+      LanguageMap.universalMap(attributeName),
+      dataType
+    )
   }
 
   private def parseWhile(
@@ -790,7 +799,10 @@ object PythonParser {
     index
   }
 
-  private def inferType(expr: BeExpression): BeDataType = expr.canEvaluateTo
+  private def inferType(expr: BeExpression): BeDataType = expr.canEvaluateTo match {
+    case BeDataType.Error => AnyType
+    case other => other
+  }
 
   private def mapType(typeHint: Option[String]): BeDataType = {
     typeHint match {
@@ -863,7 +875,10 @@ object PythonParser {
       scopes = scopes.tail
     }
 
-    def assignVariable(name: String, dataType: BeDataType): BeDefineVariable = {
+    def assignVariable(
+        name: String,
+        dataType: BeDataType
+    ): BeDefineVariable = {
       lookupVariable(name).getOrElse {
         val variable = BeDefineVariable(LanguageMap.universalMap(name), dataType)
         currentScope.update(name, variable)
@@ -874,7 +889,7 @@ object PythonParser {
 
     def defineVariable(
         name: String,
-        dataType: BeDataType,
+        dataType: BeDataType
     ): BeDefineVariable = {
       val variable = BeDefineVariable(LanguageMap.universalMap(name), dataType)
       currentScope.update(name, variable)

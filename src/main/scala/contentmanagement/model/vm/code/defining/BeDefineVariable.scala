@@ -16,13 +16,12 @@ case class BeDefineVariable(
   override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
     val baseName = name.getInLanguage(humanLanguage)
     val typeHint = variableType.formatTypeForDisplay.getInLanguage(programmingLanguage).trim
-    val shouldInclude = typeHint.nonEmpty
     programmingLanguage match {
       case Python =>
-        if (shouldInclude) s"$baseName: $typeHint" else baseName
+        if (typeHint.nonEmpty) s"$baseName: $typeHint" else baseName
       case Java =>
         val javaType = if (typeHint.nonEmpty) typeHint else "Object"
-        if (shouldInclude) s"$javaType $baseName" else baseName
+        if (typeHint.nonEmpty) s"$javaType $baseName" else baseName
       case _ => baseName
     }
   }

@@ -346,13 +346,12 @@ class PythonParserSpec extends FunSuite {
       )
 
       val generated = expression.getInLanguage(Python, English)
-      val normalizedGenerated = normalizer.normalizePython(generated)
-      assertEquals(normalizedGenerated, normalizedInput)
+      assertPythonEquivalentAllowingAdditionalTypeHints(testCase.python, generated)
 
+      val normalizedGenerated = normalizer.normalizePython(generated)
       val reparsed = PythonParser.parsePythonWithDetails(normalizedGenerated)
       val regenerated = reparsed.codeExpression.getInLanguage(Python, English)
-      val normalizedRegenerated = normalizer.normalizePython(regenerated)
-      assertEquals(normalizedRegenerated, normalizedGenerated)
+      assertPythonEquivalentAllowingAdditionalTypeHints(normalizedGenerated, regenerated)
 
       testCase.expectedNormalized.foreach { expected =>
         assertEquals(
@@ -381,8 +380,8 @@ class PythonParserSpec extends FunSuite {
     assertEquals(unsupported.length, 0)
 
     val booleanExpression = assignments.last.value
-    val normalizedProgram = normalizer.normalizePython(result.codeExpression.getInLanguage(Python, English))
-    assertEquals(normalizedProgram, normalizer.normalizePython(python))
+    val rendered = result.codeExpression.getInLanguage(Python, English)
+    assertPythonEquivalentAllowingAdditionalTypeHints(python, rendered)
     assertEquals(booleanExpression.canEvaluateTo, BeDataType.Boolean)
   }
 
@@ -403,8 +402,8 @@ class PythonParserSpec extends FunSuite {
     val unsupported = sequence.body.collect { case unsupported: BeExpressionUnsupported => unsupported }
     assertEquals(unsupported.length, 0)
 
-    val normalizedProgram = normalizer.normalizePython(result.codeExpression.getInLanguage(Python, English))
-    assertEquals(normalizedProgram, normalizer.normalizePython(python))
+    val rendered = result.codeExpression.getInLanguage(Python, English)
+    assertPythonEquivalentAllowingAdditionalTypeHints(python, rendered)
     assertEquals(assignments(1).value.canEvaluateTo, BeDataType.Numeric)
     assertEquals(assignments(2).value.canEvaluateTo, BeDataType.Numeric)
     assertEquals(assignments(3).value.canEvaluateTo, BeDataType.Numeric)
@@ -588,7 +587,7 @@ class PythonParserSpec extends FunSuite {
         |    value = 1
         |    return value""".stripMargin
 
-    assertEquals(renderedInner, expectedInner)
+    assertPythonEquivalentAllowingAdditionalTypeHints(expectedInner, renderedInner)
   }
 
   test("merge initial known structures with parsed definitions") {

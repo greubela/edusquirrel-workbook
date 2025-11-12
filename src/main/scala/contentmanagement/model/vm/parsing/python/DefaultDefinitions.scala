@@ -15,8 +15,11 @@ object DefaultDefinitions {
       operandType: BeDataType,
       resultType: BeDataType
   ): NamedFunction = {
-    val parameters = List(BeDefineVariable(LanguageMap.universalMap("value"), operandType))
-    val output = Some(BeDefineVariable(LanguageMap.universalMap("result"), resultType))
+    val parameters =
+      List(BeDefineVariable(LanguageMap.universalMap("value"), operandType))
+    val output = Some(
+      BeDefineVariable(LanguageMap.universalMap("result"), resultType)
+    )
     val function = BeDefineFunction(parameters, output, BeExpression.pass, BeDefineFunction.operatorInfo(symbol, 0))
     symbol -> function
   }
@@ -31,7 +34,9 @@ object DefaultDefinitions {
       BeDefineVariable(LanguageMap.universalMap("left"), leftType),
       BeDefineVariable(LanguageMap.universalMap("right"), rightType)
     )
-    val output = Some(BeDefineVariable(LanguageMap.universalMap("result"), resultType))
+    val output = Some(
+      BeDefineVariable(LanguageMap.universalMap("result"), resultType)
+    )
     val function = BeDefineFunction(parameters, output, BeExpression.pass, BeDefineFunction.operatorInfo(symbol, 1))
     symbol -> function
   }
@@ -44,7 +49,9 @@ object DefaultDefinitions {
     val inputs = parameters.map { case (paramName, dataType) =>
       BeDefineVariable(LanguageMap.universalMap(paramName), dataType)
     }
-    val output = returnType.map(dataType => BeDefineVariable(LanguageMap.universalMap("result"), dataType))
+    val output = returnType.map(dataType =>
+      BeDefineVariable(LanguageMap.universalMap("result"), dataType)
+    )
     val functionInfo = BeDefineFunction.functionInfo(LanguageMap.universalMap(name))
     val function = BeDefineFunction(inputs, output, BeExpression.pass, functionInfo)
     name -> function
