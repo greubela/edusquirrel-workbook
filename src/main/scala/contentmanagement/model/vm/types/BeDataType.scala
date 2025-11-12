@@ -36,9 +36,9 @@ object BeDataType {
   }
 
   object AnyType extends BeUnionType {
-    def formatTypeForDisplay: LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap("valueStr")
+    def formatTypeForDisplay: LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap("Any")
 
-    def formatValueForDisplay(valueStr: String): LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap("valueStr")
+    def formatValueForDisplay(valueStr: String): LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap(valueStr)
 
     def isValidLiteral(valueStr: String): Boolean = false
 
@@ -49,7 +49,7 @@ object BeDataType {
 
   case class BeUnionAllowedTypes(dataTypes: Set[BeDataType]) extends BeUnionType {
 
-    def formatTypeForDisplay: LanguageMap[ProgrammingLanguage] = LanguageMap.mkLanguageMap("[", ", ", "]", dataTypes.toList.map(_.formatTypeForDisplay))
+    def formatTypeForDisplay: LanguageMap[ProgrammingLanguage] = LanguageMap.mkLanguageMap("", "|", "", dataTypes.toList.map(_.formatTypeForDisplay))
 
     def formatValueForDisplay(valueStr: String): LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap(valueStr)
 
