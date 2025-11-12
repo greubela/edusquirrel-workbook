@@ -1,13 +1,12 @@
 package interactionPlugins.blockEnvironment.programming.blockdisplay
 
-import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.Var
 import contentmanagement.datastructures.tree.TreeStructureContext
 import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreePosition
 import contentmanagement.model.geometry.Bounds
 import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
-import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeAmendFactory}
-import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig}
+import contentmanagement.webElements.svg.shapes.nested.ShapeWithControlFlow
+import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeAmendFactory, ControlFlowAndExpressionShape, ControlFlowShape}
+import interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
@@ -31,6 +30,13 @@ trait BeBlock {
   // todo Methods for toProgramCode (?) Like toPython(): LanguageMap[HumanLanguage] (?) here instead of BeExpression. Block := everything with output AND input (?)
 
   // todo rename to renderNested and get list of lines instead of the whole renderer Also add other renderer like Struktugramm (?)
+
+  def renderNested(
+                    structure: TreeStructureContext[NodeBasedTreePosition, (BeExpressionNode, BeBlock)],
+                    childResults: Map[(BeExpressionNode, BeBlock), ControlFlowAndExpressionShape],
+                    renderingInfo: RenderingInformation
+                  ): ControlFlowAndExpressionShape
+
 
   def renderOld(structure: BeBlockRenderingContext, renderingInfo: RenderingInformation): NestedBlockRenderer = {
     val renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)] = {
@@ -60,5 +66,29 @@ trait BeBlock {
   }
 
   def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer
+
+}
+
+abstract class BeBlockSingleShape() extends BeBlock {
+
+  override def renderNested(
+                             structure: TreeStructureContext[NodeBasedTreePosition, (BeExpressionNode, BeBlock)],
+                             childResults: Map[(BeExpressionNode, BeBlock), ControlFlowAndExpressionShape],
+                             renderingInfo: RenderingInformation
+                           ): ControlFlowAndExpressionShape = {
+    
+    val childrenShapes: List[(BeExpressionNode, BeShape)] = childResults.toList.map(tup => (tup._1._1, tup._2.expressionShapeOrEverything))
+    val (cfShape, exprShape) = renderShape(childrenShapes, renderingInfo)
+    ShapeWithControlFlow(cfShape, exprShape)
+  }
+
+  override def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
+
+    val childrenShapes: List[(BeExpressionNode, BeShape)] = renderedChildren.toList.map(tup => (tup._1, tup._3.expressionShapeWithoutIntendation))
+    val (cfShape, exprShape) = renderShape(childrenShapes, renderingInfo)
+    NestedBlockRenderer.singleExpressionLineShapeWithInfo(renderedChildren.map(_._3).flatMap(_.allLines), cfShape, exprShape)
+  }
+
+  def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape)
 
 }

@@ -2,22 +2,22 @@ package interactionPlugins.blockEnvironment.programming.blockdisplay.other
 
 import contentmanagement.model.vm.code.errors.BeSingleLineComment
 import contentmanagement.model.vm.code.tree.BeExpressionNode
-import contentmanagement.webElements.svg.shapes.TextShape
+import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowShape, TextShape}
 import contentmanagement.webElements.svg.shapes.composite.ShapeAroundShape
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.*
 import contentmanagement.webElements.svg.shapes.datatypes.{BeErrorShape, RectangleShape}
-import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, RenderingInformation}
+import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, BeBlockSingleShape, RenderingInformation}
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
 
-case class BeBlockComment(comment: BeSingleLineComment) extends BeBlock {
+case class BeBlockComment(comment: BeSingleLineComment) extends BeBlockSingleShape {
 
-  override def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
+  override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
     val container = RectangleShape
-    val text = TextShape(comment.commentStr).addAmends(renderingInfo.factory.defaultTextAmends)
+    val text = TextShape(comment.commentStr).addAmends(renderingInformation.factory.defaultTextAmends)
 
     val res = ShapeAroundShape(container, text)
-      .addSignalAmends(renderingInfo.factory.muteOnTreeDragged(renderingInfo.inProgram, renderingInfo.editorState.controllerStateVar.signal, renderingInfo.factory.defaultControlColors))
+      .addSignalAmends(renderingInformation.factory.muteOnTreeDragged(renderingInformation.inProgram, renderingInformation.editorState.controllerStateVar.signal, renderingInformation.factory.defaultControlColors))
 
-    NestedBlockRenderer.singleExpressionLineShapeWithInfo(List(), ControlFlowDirected(true, false), res)
+    (ControlFlowDirected(true, false), res)
   }
 }

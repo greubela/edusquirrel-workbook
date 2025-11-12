@@ -3,7 +3,7 @@ package interactionPlugins.blockEnvironment.rendering
 import com.raquo.laminar.api.L
 import contentmanagement.model.geometry.{Dimension, Point}
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
-import contentmanagement.webElements.svg.shapes.composite.BoxManualPositioning
+import contentmanagement.webElements.svg.shapes.composite.{BoxManualPositioning, ManualPositionElement}
 import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeDecoration}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
@@ -72,28 +72,28 @@ case class ControlFlowOverlayBuilder(paths: List[ControlFlowPath], overlaysWithC
     this.copy(overlaysWithCenter = overlaysWithCenter :+ (decoration, centeredAt))
   }
 
-  private def calcOffsetAndDimensionsForLines(config: BeRenderingConfig): List[(BeShape, Point[Double], Dimension[Double])] = {
+  private def calcOffsetAndDimensionsForLines(config: BeRenderingConfig): List[ManualPositionElement] = {
     val allPathShapes = mutable.ListBuffer[BeShape]()
     for (curPath <- paths) {
       for (curSegment <- curPath.segments) {
         allPathShapes += curSegment.curPath.toFixedDimensionShape.addAmends(curSegment.pathAmends)
       }
     }
-    allPathShapes.toList.map(curPath => (curPath, Point[Double](0, 0), curPath.displaySize(config)))
+    allPathShapes.toList.map(curPath => ManualPositionElement(curPath, Point[Double](0, 0), curPath.displaySize(config)))
   }
 
-  private def calcOffsetAndDimensionsForOverlays(config: BeRenderingConfig): List[(BeShape, Point[Double], Dimension[Double])] = {
+  private def calcOffsetAndDimensionsForOverlays(config: BeRenderingConfig): List[ManualPositionElement] = {
 
     overlaysWithCenter.map((curOverlay, curCenter) => {
       val shapeDim = curOverlay.displaySize(config)
       val topLeft: Point[Double] = curCenter.moveWithDimension(Dimension(shapeDim.width / -2.0, shapeDim.height / -2.0))
-      (curOverlay, topLeft, shapeDim)
+      ManualPositionElement(curOverlay, topLeft, shapeDim)
     })
   }
 
 
   def renderControlFlow(): BeShape = new BoxManualPositioning() {
-    override def calcOffsetsAndDimensions(config: BeRenderingConfig): List[(BeShape, Point[Double], Dimension[Double])] = {
+    override def calcOffsetsAndDimensions(config: BeRenderingConfig): List[ManualPositionElement] = {
       calcOffsetAndDimensionsForLines(config) ++ calcOffsetAndDimensionsForOverlays(config)
     }
   }

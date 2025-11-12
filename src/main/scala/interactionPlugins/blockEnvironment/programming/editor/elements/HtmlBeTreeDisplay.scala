@@ -5,6 +5,7 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.geometry.Point
 import contentmanagement.webElements.genericHtmlElements.canvas.SvgCanvas
+import contentmanagement.webElements.svg.shapes.ControlFlowAndExpressionShape
 import contentmanagement.webElements.svg.shapes.composite.HorizontalAlignment.*
 import contentmanagement.webElements.svg.shapes.composite.VerticalAlignment.*
 import contentmanagement.webElements.svg.shapes.composite.{HorizontalAlignment, ShapeStack, VerticalAlignment}
@@ -96,10 +97,18 @@ object HtmlBeTreeDisplay {
 
     val shapeToDraw = Timing.executeAndTime(() => {
       if (displayConfig.displayControlFlow) {
+
+
         val controlFlowBackground = nestedBlockRenderer.controlFlowBackgroundShape
         val controlFlowOverlay = nestedBlockRenderer.controlFlowOverlayShape(renderingInfo)
         val exprShapes = nestedBlockRenderer.expressionShapeWithIntendation
-        val shapes = List(controlFlowBackground, exprShapes, controlFlowOverlay)
+
+        val exprShapeNested = tree.applyWithChildResults[ControlFlowAndExpressionShape]((structure, childRes) => {
+          structure.curValue._2.renderNested(structure, childRes, renderingInfo)
+        })(tree.rootPosition.forChild(0))
+
+        //val shapes = List(controlFlowBackground, exprShapes, controlFlowOverlay)
+        val shapes = List(exprShapeNested, controlFlowOverlay)
         //fixedRelativeOffset = Map(controlFlowBackground -> Point[Double](0, 0), controlFlowOverlay -> Point[Double](0, 0))
         ShapeStack(shapes, Left, Top)
       } else {

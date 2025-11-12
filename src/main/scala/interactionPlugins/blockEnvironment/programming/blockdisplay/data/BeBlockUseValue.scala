@@ -11,31 +11,29 @@ import contentmanagement.webElements.svg.shapes.BeShape.BeShapeContainerable
 import contentmanagement.webElements.svg.shapes.composite.ShapeAroundShape
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.*
 import contentmanagement.webElements.svg.shapes.datatypes.LiteralShape
-import contentmanagement.webElements.svg.shapes.{BeShapeAmendFactory, TextShape}
+import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeAmendFactory, ControlFlowShape, TextShape}
 import interactionPlugins.blockEnvironment.programming.blockdisplay.*
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
 
-case class BeBlockUseValue(valueUsage: BeUseValue) extends BeBlock {
-
-  def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
+case class BeBlockUseValue(valueUsage: BeUseValue) extends BeBlockSingleShape {
+  
+  override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
     val textShape = TextShape(LanguageMap.universalMap(valueUsage.getInLanguage(BlockDisplay, English)))
 
     val (outerShape, amends): (BeShapeContainerable, Seq[L.Modifier[L.SvgElement]]) = valueUsage.value match {
       case BeDataValueLiteral(literalStr) => {
-        (LiteralShape, BeShapeAmendFactory(renderingInfo.renderingConfig).literalColorsAmend)
+        (LiteralShape, BeShapeAmendFactory(renderingInformation.renderingConfig).literalColorsAmend)
       }
       case BeUseValueReference(reference) => {
-        (reference.variableType.createContainerShape.get, BeShapeAmendFactory(renderingInfo.renderingConfig).variableColorsUsedAmend)
+        (reference.variableType.createContainerShape.get, BeShapeAmendFactory(renderingInformation.renderingConfig).variableColorsUsedAmend)
       }
     }
-
-
+    
     val resShape = ShapeAroundShape(outerShape, textShape)
       .addAmends(amends)
 
-    NestedBlockRenderer.singleExpressionLineShapeWithInfo(List(), ControlFlowEmpty(), resShape)
+    (ControlFlowEmpty(), resShape)
   }
-
 
   /*
   literal for variable: 

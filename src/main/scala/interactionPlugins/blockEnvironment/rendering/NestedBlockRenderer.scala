@@ -1,9 +1,9 @@
 package interactionPlugins.blockEnvironment.rendering
 
 import contentmanagement.model.geometry.{Dimension, Point}
+import contentmanagement.webElements.svg.shapes.composite.*
 import contentmanagement.webElements.svg.shapes.composite.HorizontalAlignment.Left
 import contentmanagement.webElements.svg.shapes.composite.VerticalAlignment.Center
-import contentmanagement.webElements.svg.shapes.composite.*
 import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowShape}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
@@ -109,12 +109,12 @@ case class NestedBlockRenderer(
 
   def expressionShapeWithIntendation: BeShape = new BoxManualPositioning {
 
-    override def calcOffsetsAndDimensions(config: BeRenderingConfig): List[(BeShape, Point[Double], Dimension[Double])] = {
+    override def calcOffsetsAndDimensions(config: BeRenderingConfig): List[ManualPositionElement] = {
 
       val controlFlowColumnWidth: List[Double] = getControlFlowStackColumnWidths(config)
       var offsetY: Double = 0
 
-      val res = mutable.ListBuffer[(BeShape, Point[Double], Dimension[Double])]()
+      val res = mutable.ListBuffer[ManualPositionElement]()
 
       for (curLineToRender <- linesToRender) {
         if (curLineToRender.line.expressionShape.nonEmpty) {
@@ -123,7 +123,7 @@ case class NestedBlockRenderer(
           // val height = curLineToRender.lineHeight(config)
           val width = curLineToRender.line.expressionShape.get.displaySize(config).width
           val height = curLineToRender.line.expressionShape.get.displaySize(config).height
-          res.addOne((curLineToRender.line.expressionShape.get, Point[Double](offsetX, offsetY), Dimension[Double](width, height)))
+          res.addOne(ManualPositionElement(curLineToRender.line.expressionShape.get, Point[Double](offsetX, offsetY), Dimension[Double](width, height)))
         }
         offsetY += curLineToRender.lineHeight(config)
       }
@@ -132,12 +132,14 @@ case class NestedBlockRenderer(
     }
   }
 
+  def controlFlowBackgroundShape: BeShape = controlFlowBasicBackgroundShape
 
-  def controlFlowBackgroundShape: BeShape = new BoxManualPositioning {
 
-    override def calcOffsetsAndDimensions(config: BeRenderingConfig): List[(BeShape, Point[Double], Dimension[Double])] = {
+  def controlFlowBasicBackgroundShape: BeShape = new BoxManualPositioning {
+
+    override def calcOffsetsAndDimensions(config: BeRenderingConfig): List[ManualPositionElement] = {
       val controlFlowColumnWidths = getControlFlowStackColumnWidths(config)
-      val res = mutable.ListBuffer[(BeShape, Point[Double], Dimension[Double])]()
+      val res = mutable.ListBuffer[ManualPositionElement]()
 
       var curStartY: Double = 0
       var curStartX: Double = 0
@@ -156,7 +158,7 @@ case class NestedBlockRenderer(
           } else {
             new Dimension[Double](curControlShape.displaySize(config).width, curLineToRender.lineHeight(config))
           }
-          res.addOne((curControlShape.shapeRenderBackground(config), curCfRelOffset, curCfShapeDim))
+          res.addOne(ManualPositionElement(curControlShape.shapeRenderBackground(config), curCfRelOffset, curCfShapeDim))
           curStartX += curCfShapeDim.width
         }
         curStartY += curLineToRender.lineHeight(config)

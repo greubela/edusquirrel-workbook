@@ -10,7 +10,7 @@ import contentmanagement.model.vm.types.BeChildRole.{BodySequence, NoRole}
 import contentmanagement.model.vm.types.BeScope.InSequenceScope
 import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
-import interactionPlugins.blockEnvironment.programming.blockdisplay.use.BeBlockStarter
+import interactionPlugins.blockEnvironment.programming.blockdisplay.control.BeBlockStarter
 
 case class BeStartProgram(startSequence: Option[BeSequence]) extends BeExpression {
 

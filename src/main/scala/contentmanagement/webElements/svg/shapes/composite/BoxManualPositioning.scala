@@ -9,13 +9,15 @@ import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 import scala.collection.mutable
 
+case class ManualPositionElement(resultShape: BeShape, relativeOffset: Point[Double], shapeDimension: Dimension[Double])
+
 abstract class BoxManualPositioning() extends BeShapeComposite {
 
-  private val cache: mutable.HashMap[BeRenderingConfig, List[(BeShape, Point[Double], Dimension[Double])]] = mutable.HashMap()
+  private val cache: mutable.HashMap[BeRenderingConfig, List[ManualPositionElement]] = mutable.HashMap()
 
-  def calcOffsetsAndDimensions(config: BeRenderingConfig): List[(BeShape, Point[Double], Dimension[Double])]
+  def calcOffsetsAndDimensions(config: BeRenderingConfig): List[ManualPositionElement]
 
-  def getOffsetAndDimension(config: BeRenderingConfig): List[(BeShape, Point[Double], Dimension[Double])] = {
+  def getOffsetAndDimension(config: BeRenderingConfig): List[ManualPositionElement] = {
     if (cache.contains(config)) {
       cache(config)
     } else {
@@ -26,16 +28,16 @@ abstract class BoxManualPositioning() extends BeShapeComposite {
   }
 
   override def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
-    val renderedChildren = getOffsetAndDimension(rendererConfig).map((curShape, curRelOffset, curDim) => {
-      val curShapeBounds = bounds.startPoint.moveWithDimension(curRelOffset.asDimension).withDimension(curDim)
-      curShape.render(rendererConfig, curShapeBounds)
+    val renderedChildren = getOffsetAndDimension(rendererConfig).map(element => {
+      val curShapeBounds = bounds.startPoint.moveWithDimension(element.relativeOffset.asDimension).withDimension(element.shapeDimension)
+      element.resultShape.render(rendererConfig, curShapeBounds)
     })
     AppGroupSvgElement(renderedChildren)
   }
 
   override def displaySize(rendererConfig: BeRenderingConfig): Dimension[Double] = {
-    val bounds = getOffsetAndDimension(rendererConfig).map((curShape, curRelOffset, curDim) => curRelOffset.withDimension(curDim))
-    Dimension(bounds.map(_.endX).max, bounds.map(_.endY).max + rendererConfig.controlSegmentSize)
+    val bounds = getOffsetAndDimension(rendererConfig).map(element => element.relativeOffset.withDimension(element.shapeDimension))
+    Dimension(bounds.map(_.endX).max, bounds.map(_.endY).max)
   }
 
 

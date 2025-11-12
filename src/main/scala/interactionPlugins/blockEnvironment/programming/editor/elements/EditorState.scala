@@ -16,7 +16,7 @@ case class EditorState(
                         rendererConfigVar: Var[BeRenderingConfig]
                       ) {
 
-  val editorTreeDisplayConfig: Var[BeTreeDisplayConfig] = Var(BeTreeDisplayConfig(true, true, true, true, false))
+  val editorTreeDisplayConfig: Var[BeTreeDisplayConfig] = Var(BeTreeDisplayConfig(true, true, true, true, true))
   val libraryTreeDisplayConfig: Var[BeTreeDisplayConfig] = Var(BeTreeDisplayConfig(false, false, false, true, true))
 
   val libaryTreeControllerConfig: Var[BeTreeControllerConfig] = Var(BeTreeControllerConfig.libraryTreeConfig(this))
@@ -55,7 +55,7 @@ case class EditorState(
     mainTree
   })*/
 
-  val treeToDisplaySignal: Signal[L.HtmlElement] =    mainTreeSignal.map(_._1)
+  val treeToDisplaySignal: Signal[L.HtmlElement] = mainTreeSignal.map(_._1)
 
   legalDropTargetsInDistanceOrder.combineWith(controllerStateVar.signal).foreach((legalDropTargetsInOrder, controller) => {
 

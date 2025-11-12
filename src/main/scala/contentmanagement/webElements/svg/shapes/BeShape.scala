@@ -36,6 +36,17 @@ sealed trait BeShape {
 
 }
 
+trait ControlFlowAndExpressionShape extends BeShape {
+
+  def onlyControlFlowShape: Option[BeShape]
+  def onlyExpressionShape: Option[BeShape]
+
+  def expressionShapeOrEverything: BeShape = onlyExpressionShape.getOrElse(this)
+  def controlFlowShapeOrEverything: BeShape = onlyControlFlowShape.getOrElse(this)
+
+}
+
+
 trait BeShapeDecoration extends BeShape {
 
   def getAmends(renderingConfig: BeRenderingConfig): Seq[L.Modifier[L.SvgElement]]
