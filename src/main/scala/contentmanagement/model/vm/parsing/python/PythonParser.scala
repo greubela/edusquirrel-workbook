@@ -50,7 +50,7 @@ object PythonParser {
   final case class CurrentlyKnownStructures(
       variables: Map[String, BeDefineVariable],
       functions: Map[String, BeDefineFunction],
-      operators: Map[(String, Int), BeDefineFunction],
+      operators: Map[(String, Int), List[BeDefineFunction]],
       classes: Map[String, BeDefineClass]
   ) {
     def addVariable(name: String, variable: BeDefineVariable): CurrentlyKnownStructures =
@@ -59,11 +59,17 @@ object PythonParser {
     def addFunction(name: String, function: BeDefineFunction): CurrentlyKnownStructures =
       copy(functions = functions.updated(name, function))
 
-    def addOperator(name: String, function: BeDefineFunction): CurrentlyKnownStructures =
+    def addOperator(name: String, function: BeDefineFunction): CurrentlyKnownStructures = {
+      val key = name -> function.inputs.length
+      val existing = operators.getOrElse(key, List.empty)
+      val updatedList =
+        if (existing.exists(_ eq function)) existing.map(cur => if (cur eq function) function else cur)
+        else existing :+ function
       copy(
         functions = functions.updated(name, function),
-        operators = operators.updated(name -> function.inputs.length, function)
+        operators = operators.updated(key, updatedList)
       )
+    }
 
     def addClass(name: String, clazz: BeDefineClass): CurrentlyKnownStructures =
       copy(classes = classes.updated(name, clazz))
@@ -78,7 +84,12 @@ object PythonParser {
 
   object CurrentlyKnownStructures {
     val empty: CurrentlyKnownStructures =
-      CurrentlyKnownStructures(Map.empty, Map.empty, Map.empty, Map.empty)
+      CurrentlyKnownStructures(
+        Map.empty,
+        Map.empty,
+        Map.empty[(String, Int), List[BeDefineFunction]],
+        Map.empty
+      )
 
     def fromKnown(structures: Seq[KnownStructure]): CurrentlyKnownStructures =
       structures.foldLeft(empty)(_ + _)
@@ -121,6 +132,8 @@ object PythonParser {
   private case class ParsedLine(indent: Int, content: String)
 
   private val AssignmentPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)\s*(.+)$""".r
+  private val AnnotationAssignmentPattern =
+    """^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([^=]+?)\s*=\s*(.+)$""".r
   private val ClassPattern = """^class\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s*\(([^)]*)\))?:$""".r
   private val FunctionPattern = """^def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*)\)\s*(?:->\s*([^:]+))?:$""".r
   private val WhilePattern = """^while\s+(.+):$""".r
@@ -225,6 +238,11 @@ object PythonParser {
         index = nextIndex
       } else {
         trimmed match {
+          case AnnotationAssignmentPattern(name, typeHint, valueStr) =>
+            val variable = context.defineVariable(name, mapType(Some(typeHint.trim)), hasExplicitTypeHint = true)
+            val valueExpr = parseExpression(valueStr, context)
+            expressions += BeAssignVariable(variable, valueExpr)
+            index += 1
           case ClassPattern(name, bases) =>
             val (classExpr, nextIndex) = parseClass(lines, index, indent, name, Option(bases), context)
             expressions += classExpr
@@ -392,11 +410,12 @@ object PythonParser {
     context.pushScope()
     val parameterInfos = parseParameters(paramsSource)
     val parameterDefinitions = parameterInfos.map { case (paramName, typeHint) =>
-      context.defineVariable(paramName, mapType(typeHint))
+      val hasExplicitType = typeHint.exists(_.nonEmpty)
+      context.defineVariable(paramName, mapType(typeHint), hasExplicitType)
     }
 
     val returnVariable = returnSource.map(_.trim).filter(_.nonEmpty).map { returnHint =>
-      BeDefineVariable(LanguageMap.universalMap("return"), mapType(Some(returnHint)))
+      BeDefineVariable(LanguageMap.universalMap("return"), mapType(Some(returnHint)), hasExplicitTypeHint = true)
     }
 
     val computedIndent = determineBodyIndent(lines, headerIndex + 1, indent)
@@ -434,11 +453,12 @@ object PythonParser {
     methodContext.pushScope()
     val parameterInfos = parseParameters(paramsSource)
     val parameterDefinitions = parameterInfos.map { case (paramName, typeHint) =>
-      methodContext.defineVariable(paramName, mapType(typeHint))
+      val hasExplicitType = typeHint.exists(_.nonEmpty)
+      methodContext.defineVariable(paramName, mapType(typeHint), hasExplicitType)
     }
 
     val returnVariable = returnSource.map(_.trim).filter(_.nonEmpty).map { returnHint =>
-      BeDefineVariable(LanguageMap.universalMap("return"), mapType(Some(returnHint)))
+      BeDefineVariable(LanguageMap.universalMap("return"), mapType(Some(returnHint)), hasExplicitTypeHint = true)
     }
 
     val computedIndent = determineBodyIndent(lines, headerIndex + 1, indent)
@@ -518,7 +538,8 @@ object PythonParser {
         inferType(parseExpression(valueText, isolated))
       }.getOrElse(AnyType)
     }
-    BeDefineVariable(LanguageMap.universalMap(attributeName), dataType)
+    val hasExplicitType = explicitType.exists(_.trim.nonEmpty)
+    BeDefineVariable(LanguageMap.universalMap(attributeName), dataType, hasExplicitType)
   }
 
   private def parseWhile(
@@ -655,8 +676,8 @@ object PythonParser {
         case operator if startsWithUnaryOperator(trimmed, operator) =>
           val operandSource = trimmed.substring(operator.length).trim
           Option.when(operandSource.nonEmpty) {
-            val operandExpr = parseExpression(operandSource, context)
-            val function = context.resolveOperator(operator, 1)
+          val operandExpr = parseExpression(operandSource, context)
+          val function = context.resolveOperator(operator, 1, List(operandExpr))
             val parameterMap = Map(function.inputs.head -> operandExpr)
             OperatorFunctionCall(BeFunctionCall(function, parameterMap), operator)
           }
@@ -684,7 +705,7 @@ object PythonParser {
       ParsingUtils.splitTopLevelBinary(source, operators).map { case (left, operator, right) =>
         val leftExpr = parseExpression(left, context)
         val rightExpr = parseExpression(right, context)
-        val function = context.resolveOperator(operator.trim, 2)
+        val function = context.resolveOperator(operator.trim, 2, List(leftExpr, rightExpr))
         val parameterMap = Map(
           function.inputs.head -> leftExpr,
           function.inputs(1) -> rightExpr
@@ -816,15 +837,17 @@ object PythonParser {
     classesBuffer ++= initialKnownStructures.classes.values
     private val functionsByName = mutable.LinkedHashMap[String, BeDefineFunction]()
     functionsByName ++= initialKnownStructures.functions
-    private val operatorFunctions = mutable.LinkedHashMap[(String, Int), BeDefineFunction]()
+    private val operatorFunctions = mutable.LinkedHashMap[(String, Int), List[BeDefineFunction]]()
     operatorFunctions ++= initialKnownStructures.operators
 
-    initialKnownStructures.operators.foreach { case ((symbol, _), function) =>
-      if (!functionsByName.contains(symbol)) {
-        functionsByName.update(symbol, function)
-      }
-      if (!functionsBuffer.exists(_ eq function)) {
-        functionsBuffer += function
+    initialKnownStructures.operators.foreach { case ((symbol, _), functions) =>
+      functions.foreach { function =>
+        if (!functionsByName.contains(symbol)) {
+          functionsByName.update(symbol, function)
+        }
+        if (!functionsBuffer.exists(_ eq function)) {
+          functionsBuffer += function
+        }
       }
     }
     initialKnownStructures.functions.foreach { case (_, function) =>
@@ -850,8 +873,12 @@ object PythonParser {
       }
     }
 
-    def defineVariable(name: String, dataType: BeDataType): BeDefineVariable = {
-      val variable = BeDefineVariable(LanguageMap.universalMap(name), dataType)
+    def defineVariable(
+        name: String,
+        dataType: BeDataType,
+        hasExplicitTypeHint: Boolean = false
+    ): BeDefineVariable = {
+      val variable = BeDefineVariable(LanguageMap.universalMap(name), dataType, hasExplicitTypeHint)
       currentScope.update(name, variable)
       registerVariable(name, variable)
       variable
@@ -907,7 +934,11 @@ object PythonParser {
         if (idx >= 0) functionsBuffer.update(idx, updated)
         val operatorKey = name -> updated.inputs.length
         if (operatorFunctions.contains(operatorKey)) {
-          operatorFunctions.update(operatorKey, updated)
+          val existing = operatorFunctions(operatorKey)
+          val replaced =
+            if (existing.exists(_ eq function)) existing.map(cur => if (cur eq function) updated else cur)
+            else existing :+ updated
+          operatorFunctions.update(operatorKey, replaced)
           currentlyKnownStructures = currentlyKnownStructures.addOperator(name, updated)
         } else {
           currentlyKnownStructures = currentlyKnownStructures.addFunction(name, updated)
@@ -916,26 +947,50 @@ object PythonParser {
       }
     }
 
-    def resolveOperator(symbol: String, arity: Int): BeDefineFunction = {
+    def resolveOperator(symbol: String, arity: Int, arguments: List[BeExpression]): BeDefineFunction = {
       val key = symbol -> arity
-      operatorFunctions.getOrElse(key, {
-        val params = (0 until arity).map { index =>
-          val paramName = index match {
-            case 0 => "left"
-            case 1 => "right"
-            case other => s"arg$other"
+      operatorFunctions.get(key) match {
+        case Some(candidates) if candidates.nonEmpty =>
+          val scored = candidates.zipWithIndex.flatMap { case (candidate, index) =>
+            val assignmentResults = candidate.inputs.zip(arguments).map { case (param, argument) =>
+              param.variableType.canTakeValuesFrom(argument.canEvaluateTo)
+            }
+
+            if (assignmentResults.exists(_.isInstanceOf[AssigningNotPossible])) None
+            else {
+              val score = assignmentResults.map {
+                case _: AssigningPossibleWithSameType => 0
+                case _: AssigningPossibleWithImplicitCast => 1
+                case _ => 2
+              }.sum
+              Some((candidate, score, index))
+            }
           }
-          BeDefineVariable(LanguageMap.universalMap(paramName), AnyType)
-        }.toList
-        val outputVar = Some(BeDefineVariable(LanguageMap.universalMap("result"), AnyType))
-        val function = BeDefineFunction(params, outputVar, BeExpression.pass, BeDefineFunction.operatorInfo(symbol, 1))
-        registerOperator(symbol, function)
-        function
-      })
+
+          scored.sortBy { case (_, score, index) => (score, index) }.headOption.map(_._1).getOrElse(candidates.head)
+        case _ =>
+          val params = (0 until arity).map { index =>
+            val paramName = index match {
+              case 0 => "left"
+              case 1 => "right"
+              case other => s"arg$other"
+            }
+            BeDefineVariable(LanguageMap.universalMap(paramName), AnyType)
+          }.toList
+          val outputVar = Some(BeDefineVariable(LanguageMap.universalMap("result"), AnyType))
+          val function = BeDefineFunction(params, outputVar, BeExpression.pass, BeDefineFunction.operatorInfo(symbol, 1))
+          registerOperator(symbol, function)
+          function
+      }
     }
 
     private def registerOperator(symbol: String, function: BeDefineFunction): Unit = {
-      operatorFunctions.update(symbol -> function.inputs.length, function)
+      val key = symbol -> function.inputs.length
+      val existing = operatorFunctions.getOrElse(key, List.empty)
+      val updatedList =
+        if (existing.exists(_ eq function)) existing.map(cur => if (cur eq function) function else cur)
+        else existing :+ function
+      operatorFunctions.update(key, updatedList)
       registerFunction(symbol, function, isOperator = true)
     }
 
