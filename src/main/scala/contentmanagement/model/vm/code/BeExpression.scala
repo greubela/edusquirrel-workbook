@@ -38,7 +38,7 @@ trait BeExpression {
 
     val children: List[(BeExpressionNode, Option[BeExpressionTree])] = getChildren(withExtensions, myPosition.curScope).map(exprNode => exprNode match {
       case BeExpressionReference(childPosition: BeChildPosition, childExpr: BeExpression) => (exprNode, Some(childExpr.recToTree(withExtensions, childPosition)))
-      case BeExtensionPoint(isRequired, childPosition, dataTypes) => (exprNode, None)
+      case BeExtensionPoint(isRequired, childPosition,  willBeUsedAsType) => (exprNode, None)
     })
 
     var tree: BeExpressionTree = NodeBasedTreeImpl.empty[BeExpressionNode]()

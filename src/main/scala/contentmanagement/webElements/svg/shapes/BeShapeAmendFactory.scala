@@ -2,13 +2,13 @@ package contentmanagement.webElements.svg.shapes
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{Signal, eventPropToProcessor, svg}
-import interactionPlugins.blockEnvironment.config.{BeControllerState, BeRenderingConfig}
+import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import org.scalajs.dom.MouseEvent
 
 case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
 
-  def muteOnTreeDragged(programOfBlock: BeProgram, signal: Signal[BeControllerState], regularColors: Seq[L.Modifier[L.SvgElement]]): Seq[Signal[L.Modifier[L.SvgElement]]] = {
+  def muteOnTreeDragged(programOfBlock: BeProgram, signal: Signal[BeEditorControllerState], regularColors: Seq[L.Modifier[L.SvgElement]]): Seq[Signal[L.Modifier[L.SvgElement]]] = {
     signalBasedAmendChooser(signal.map(ev => ev.draggingEvent.nonEmpty && ev.draggingEvent.get.draggedProgram != programOfBlock), mutedColorsAmend, regularColors)
   }
 
@@ -51,9 +51,14 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
     svg.stroke := rendererConfig.colorPalette.reds(1).toWebStyleString
   )
 
+  def acceptedDestinationAmends: Seq[L.Modifier[L.SvgElement]] = List(
+    svg.fill := rendererConfig.colorPalette.greens(0).toWebStyleString,
+    svg.stroke := rendererConfig.colorPalette.greens(0).toWebStyleString
+  )
+
   def acceptingColorsAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.fill := rendererConfig.colorPalette.greens(1).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.greens(1).toWebStyleString
+    svg.fill := rendererConfig.colorPalette.greens(4).toWebStyleString,
+    svg.stroke := rendererConfig.colorPalette.greens(4).toWebStyleString
   )
 
   def literalColorsAmend: Seq[L.Modifier[L.SvgElement]] = List(

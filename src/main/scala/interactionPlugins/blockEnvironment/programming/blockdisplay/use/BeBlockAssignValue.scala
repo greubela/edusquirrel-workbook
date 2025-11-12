@@ -32,7 +32,7 @@ object BeBlockAssignValue {
       val assignShape = BeBlockAssignValue.BeBlockAssignValueFromShape(variable, valueShape).render(renderedChildren, renderingInfo)
 
       val shapeRes = ShapeAroundShape(UnitShape, assignShape.firstExpressionShapeOrHBox())
-        .addSignalAmends(renderingInfo.factory.muteOnTreeDragged(renderingInfo.inProgram, renderingInfo.controllerStateVar.signal, renderingInfo.factory.defaultFunctionColorsAmend))
+        .addSignalAmends(renderingInfo.factory.muteOnTreeDragged(renderingInfo.inProgram, renderingInfo.editorState.controllerStateVar.signal, renderingInfo.factory.defaultFunctionColorsAmend))
 
       NestedBlockRenderer.singleExpressionLineShapeWithInfo(List(), ControlFlowDirected(true, true), shapeRes)
     }

@@ -47,7 +47,7 @@ case class BeBlockCallSingleReturnFunction(
     val childBox = HBoxSameHeight(childrenWithName, true)
 
     val factory = BeShapeAmendFactory(renderingInfo.renderingConfig)
-    val signalAmends = factory.muteOnTreeDragged(renderingInfo.inProgram, renderingInfo.controllerStateVar.signal, factory.defaultFunctionColorsAmend)
+    val signalAmends = factory.muteOnTreeDragged(renderingInfo.inProgram, renderingInfo.editorState.controllerStateVar.signal, factory.defaultFunctionColorsAmend)
 
     val outputShape = function.funcDef.outputs.map(_.variableType.createContainerShape.get).getOrElse(UnitShape)
 

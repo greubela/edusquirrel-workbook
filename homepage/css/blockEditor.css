@@ -22,7 +22,7 @@
 
 .be-fullscreen-editor {
   display: grid;
-  grid-template-columns: 20% 50% 20%;
+  grid-template-columns: 20% 40% 30%;
   grid-template-rows: 5vh 85vh 5vh 5vh;
   gap: var(--space-md);
   width: 100%;
@@ -76,7 +76,6 @@
   box-shadow: var(--shadow-light);
   padding: var(--padding-medium);
   display: grid;
-  grid-template-columns: 100%;
  
   align-items: center;
   justify-content: center;

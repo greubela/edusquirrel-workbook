@@ -62,25 +62,25 @@ case class BeSequence(body: List[BeExpression], sequenceInfo: BeSequenceInfo) ex
     )
     else {
       val bodyWithExtensions: List[BeExpressionNode] = body.zipWithIndex.flatMap((curExpr, curNr) => List(
-        BeExtensionPoint(false, getChildPosFor(2 * curNr), AnyType),
+        BeExtensionPoint(false, getChildPosFor(2 * curNr), BeDataType.Unit),
         BeExpressionReference(getChildPosFor(2 * curNr + 1), curExpr)
       ))
 
       def lastExtendAnyOption: Option[BeExtensionPoint] = {
         if (sequenceInfo.maxBodyElements.isEmpty || sequenceInfo.maxBodyElements.get > body.size)
-          Some(BeExtensionPoint(false, getChildPosFor(bodyWithExtensions.size), AnyType))
+          Some(BeExtensionPoint(false, getChildPosFor(bodyWithExtensions.size), BeDataType.Unit))
         else None
       }
 
       def lastExtendCorrectOption: Option[BeExtensionPoint] = {
         if (sequenceInfo.mustEvaluateTo.nonEmpty && !sequenceInfo.mustEvaluateTo.get.canTakeValuesFrom(body.last.canEvaluateTo).possibleWithoutSyntaxErrors)
-          Some(BeExtensionPoint(false, getChildPosFor(bodyWithExtensions.size), AnyType))
+          Some(BeExtensionPoint(false, getChildPosFor(bodyWithExtensions.size), BeDataType.Unit))
         else None
       }
       bodyWithExtensions ++ lastExtendAnyOption ++ lastExtendCorrectOption
     }
 
-    println("BeSequence::getChildren " + body.size + " -> " + res.size)
+   // println("BeSequence::getChildren " + body.size + " -> " + res.size)
 
     res
   }

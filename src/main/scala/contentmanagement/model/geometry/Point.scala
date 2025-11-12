@@ -20,6 +20,11 @@ final case class Point[T: Fractional](x: T, y: T) {
 
   def moveWithDimension(dimension: Dimension[T]): Point[T] = Point[T](x + dimension.width, y + dimension.height)
 
+  def distanceToSquared(other: Point[T]): T = {
+    val dx = x - other.x
+    val dy = y - other.y
+    dx * dx + dy * dy
+  }
 
 }
 

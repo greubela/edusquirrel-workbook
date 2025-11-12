@@ -20,15 +20,15 @@ sealed trait BeShape {
 
   def addSignalAmends(newAmends: Seq[Signal[L.Modifier[L.SvgElement]]]): BeShape = this match {
     case AmendedShape(base, amends, signalAmends, handle) => AmendedShape(base, amends, signalAmends ++ newAmends, handle)
-    case _ => AmendedShape(this, List(), newAmends, _ => {})
+    case _ => AmendedShape(this, List(), newAmends, (_, _) => {})
   }
 
   def addAmends(newAmends: Seq[L.Modifier[L.SvgElement]]): BeShape = this match {
     case AmendedShape(base, amends, signalAmends, handle) => AmendedShape(base, amends ++ newAmends, signalAmends, handle)
-    case _ => AmendedShape(this, newAmends, List(), _ => {})
+    case _ => AmendedShape(this, newAmends, List(), (_, _) => {})
   }
 
-  def addOnRendering(newHandle: Bounds[Double] => Any): BeShape = this match {
+  def addOnRendering(newHandle: (Bounds[Double], BeShape) => Any): BeShape = this match {
     case AmendedShape(base, amends, signalAmends, handle) => AmendedShape(base, amends, signalAmends, newHandle)
     case _ => AmendedShape(this, List(), List(), newHandle)
 
@@ -74,12 +74,12 @@ trait ControlFlowShape extends BeShape {
   def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: RenderingInformation, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder
 }
 
-case class AmendedShape(baseShape: BeShape, amends: Seq[L.Modifier[L.SvgElement]], amendsSignal: Seq[Signal[L.Modifier[L.SvgElement]]], doOnRendering: Bounds[Double] => Any = _ => {}) extends BeShape {
+case class AmendedShape(baseShape: BeShape, amends: Seq[L.Modifier[L.SvgElement]], amendsSignal: Seq[Signal[L.Modifier[L.SvgElement]]], doOnRendering: (Bounds[Double], BeShape) => Any = (_, _) => {}) extends BeShape {
 
   override def displaySize(config: BeRenderingConfig): Dimension[Double] = baseShape.displaySize(config)
 
   override def render(config: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
-    doOnRendering(bounds)
+    doOnRendering(bounds, this)
     baseShape.render(config, bounds).addMods(amends).addSignalMods(amendsSignal)
   }
 

@@ -2,7 +2,7 @@ package interactionPlugins.gpt
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.webElements.genericHtmlElements.editor.{SimpleTextDisplay, SimpleTextEditor}
+import contentmanagement.webElements.genericHtmlElements.editor.{SimpleStringTextEditor, SimpleTextDisplay, SimpleTextEditor}
 import workbook.model.display.InteractionComponent
 import workbook.model.display.InteractionComponent.*
 import workbook.model.display.InteractionComponent.InteractionContentRole.*

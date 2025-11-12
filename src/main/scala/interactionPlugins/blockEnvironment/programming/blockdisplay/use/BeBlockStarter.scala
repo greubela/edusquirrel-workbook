@@ -15,7 +15,7 @@ case class BeBlockStarter(
 
   def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
     val factory = BeShapeAmendFactory(renderingInfo.renderingConfig)
-    val signalAmends = factory.muteOnTreeDragged(renderingInfo.inProgram, renderingInfo.controllerStateVar.signal, factory.defaultControlColors)
+    val signalAmends = factory.muteOnTreeDragged(renderingInfo.inProgram, renderingInfo.editorState.controllerStateVar.signal, factory.defaultControlColors)
 
     val lineStart = NestedBlockRenderer.ControlFlowLine(ControlFlowProgramStarter())
     val lineStop = NestedBlockRenderer.ControlFlowLine(ControlFlowProgramStopper())

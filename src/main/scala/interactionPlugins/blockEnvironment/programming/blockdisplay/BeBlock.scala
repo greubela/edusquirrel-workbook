@@ -4,14 +4,24 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Var
 import contentmanagement.datastructures.tree.TreeStructureContext
 import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreePosition
-import contentmanagement.model.vm.code.tree.BeExpressionNode
-import contentmanagement.webElements.svg.shapes.BeShapeAmendFactory
-import interactionPlugins.blockEnvironment.config.{BeControllerState, BeRenderingConfig, BeTreeDisplayConfig}
+import contentmanagement.model.geometry.Bounds
+import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
+import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeAmendFactory}
+import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig}
 import interactionPlugins.blockEnvironment.programming.*
-import interactionPlugins.blockEnvironment.programming.editor.elements.BeTreeControllerConfig
+import interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
 
-case class RenderingInformation(inProgram: BeProgram, displayConfig: BeTreeDisplayConfig, renderingConfig: BeRenderingConfig, treeListener: BeTreeControllerConfig, controllerStateVar: Var[BeControllerState]) {
+case class BeTreeDropTarget(extensionPoint: BeExtensionPoint, placeholderForPosition: NodeBasedTreePosition, placeholderBounds: Bounds[Double], placeholderShape: BeShape)
+
+case class RenderingInformation(
+                                 inProgram: BeProgram,
+                                 displayConfig: BeTreeDisplayConfig,
+                                 renderingConfig: BeRenderingConfig,
+                                 treeListener: BeTreeControllerConfig,
+                                 editorState: EditorState,
+                                 registerDropTarget: BeTreeDropTarget => Any
+                               ) {
   lazy val factory = BeShapeAmendFactory(renderingConfig)
 }
 

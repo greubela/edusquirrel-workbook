@@ -5,10 +5,10 @@ import contentmanagement.model.language.AppLanguage
 import contentmanagement.model.language.AppLanguage.{English, Python}
 import contentmanagement.model.vm.parsing.python.PythonParser
 import interactionPlugins.automaton.{AutomatonExerciseContent, HtmlAutomatonExercise}
-import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeControllerConfig}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
-import interactionPlugins.blockEnvironment.programming.editor.elements.{BeTreeControllerConfig, EditorState, HtmlBeTreeDisplay}
+import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
 import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
 import interactionPlugins.pythonExercises.{HtmlPythonExercise, PythonExerciseContent}
 import org.scalajs.dom

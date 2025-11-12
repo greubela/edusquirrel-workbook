@@ -8,53 +8,89 @@ import contentmanagement.webElements.genericHtmlElements.canvas.SvgCanvas
 import contentmanagement.webElements.svg.shapes.composite.HorizontalAlignment.*
 import contentmanagement.webElements.svg.shapes.composite.VerticalAlignment.*
 import contentmanagement.webElements.svg.shapes.composite.{HorizontalAlignment, ShapeStack, VerticalAlignment}
-import interactionPlugins.blockEnvironment.config.{BeControllerState, BeRenderingConfig, BeTreeDisplayConfig}
+import interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig}
 import interactionPlugins.blockEnvironment.programming.*
-import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
+import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeTreeDropTarget, RenderingInformation}
 import interactionPlugins.blockEnvironment.programming.editor.*
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
 import util.Timing
 
+import scala.collection.mutable
 
 case class HtmlBeTreeDisplay(
-                              programToDisplaySignal: Signal[BeProgram],
-                              pEditorState: EditorState,
-                              pListenerVar: Var[BeTreeControllerConfig],
-                              getTreeDisplayConfig: EditorState => Var[BeTreeDisplayConfig]
+                              editorState: EditorState,
+                              treeToDisplay: Signal[BeProgram],
+                              treeDisplayConfig: Signal[BeTreeDisplayConfig],
+                              renderingConfig: Signal[BeRenderingConfig],
+                              controllerConfig: Signal[BeTreeControllerConfig],
                             ) {
 
-
-  def toDomSignal: Signal[L.HtmlElement] = {
-    getTreeDisplayConfig(pEditorState).signal
-      .combineWith(pEditorState.rendererConfigVar.signal)
-      .combineWith(pListenerVar.signal)
-      .combineWith(programToDisplaySignal)
-      .map(tup => HtmlBeTreeDisplay.render(tup._4, tup._1, tup._2, tup._3, pEditorState.controllerStateVar))
+  def treeRenderingSignal: Signal[(L.HtmlElement, List[BeTreeDropTarget])] = {
+    treeToDisplay
+      .combineWith(renderingConfig)
+      .combineWith(controllerConfig)
+      .combineWith(treeDisplayConfig)
+      .map(tup => HtmlBeTreeDisplay.render(tup._1, tup._4, tup._2, tup._3, editorState))
   }
 
 
 }
 
+/*val nestedBlockRendererOld: NestedBlockRenderer = {
+  val renderedTree = Timing.executeAndTime(
+    () => tree.mapWithContext[NestedBlockRenderer](curStructure => curStructure.curValue._2.render(curStructure, renderingInfo)),
+    "time to render tree old")
+  renderedTree.getData(renderedTree.rootPosition.forChild(0)).get
+}*/
+
 object HtmlBeTreeDisplay {
 
-  def render(programToDisplay: BeProgram, displayConfig: BeTreeDisplayConfig, rendererConfig: BeRenderingConfig, listener: BeTreeControllerConfig, controllerStateVar: Var[BeControllerState]): L.HtmlElement = {
+  def forLibraryTab(program: BeProgram, editorState: EditorState): HtmlBeTreeDisplay =
+    HtmlBeTreeDisplay(
+      editorState,
+      Var(program).signal,
+      editorState.libraryTreeDisplayConfig.signal,
+      editorState.rendererConfigVar.signal,
+      editorState.libaryTreeControllerConfig.signal
+    )
+
+  def forSimulatedTree(treeToEdit: BeProgram, editorState: EditorState): HtmlBeTreeDisplay =
+    HtmlBeTreeDisplay(
+      editorState,
+      Var(treeToEdit).signal,
+      editorState.editorTreeDisplayConfig.signal,
+      editorState.rendererConfigVar.signal,
+      editorState.editTreeControllerConfig.signal
+    )
+
+  def forMainTree(editorState: EditorState): HtmlBeTreeDisplay =
+    HtmlBeTreeDisplay(
+      editorState,
+      editorState.treeToEdit.signal,
+      editorState.editorTreeDisplayConfig.signal,
+      editorState.rendererConfigVar.signal,
+      editorState.editTreeControllerConfig.signal
+    )
+
+
+  def render(programToDisplay: BeProgram, displayConfig: BeTreeDisplayConfig, rendererConfig: BeRenderingConfig, controllerConfig: BeTreeControllerConfig, editorState: EditorState): (L.HtmlElement, List[BeTreeDropTarget]) = {
     val tree: BeBlockRenderingTree = programToDisplay.blockRenderingTree(displayConfig)
-    val posToDraw = tree.getChildren(tree.rootPosition)
+    val posToDraw = tree.rootPosition.forChild(0)
 
-    val renderingInfo = RenderingInformation(programToDisplay, displayConfig, rendererConfig, listener, controllerStateVar)
+    val dropTargets = mutable.ListBuffer[BeTreeDropTarget]()
 
-    /*val nestedBlockRendererOld: NestedBlockRenderer = {
-      val renderedTree = Timing.executeAndTime(
-        () => tree.mapWithContext[NestedBlockRenderer](curStructure => curStructure.curValue._2.render(curStructure, renderingInfo)),
-        "time to render tree old")
-      renderedTree.getData(renderedTree.rootPosition.forChild(0)).get
-    }*/
+    def registerDropTarget(dropTarget: BeTreeDropTarget): Any = {
+      dropTargets.addOne(dropTarget)
+      println("registration: " + dropTarget)
+    }
+
+    val renderingInfo = RenderingInformation(programToDisplay, displayConfig, rendererConfig, controllerConfig, editorState, registerDropTarget)
 
     val nestedBlockRenderer: NestedBlockRenderer = {
       val renderedTree = Timing.executeAndTime(
         () => tree.applyWithChildResults[NestedBlockRenderer]((curStructure, childResMap) => curStructure.curValue._2.render(curStructure, childResMap, renderingInfo)),
         "time to render tree new")
-      val res = renderedTree(tree.rootPosition.forChild(0))
+      val res = renderedTree(posToDraw)
       res
     }
 
@@ -77,14 +113,18 @@ object HtmlBeTreeDisplay {
 
       val svgCanvas: SvgCanvas = new SvgCanvas(displaySize.width.toInt, displaySize.height.toInt)
       svgCanvas.addSvgElement(rendered.renderWithMods)
-      div(
+      val resDiv = div(
         svgCanvas.getDomElement()
-      ).amend(listener.getHtmlDragAmends(programToDisplay))
+      )
+
+      resDiv
+        .amend(controllerConfig.getHtmlDragDropAmends(programToDisplay, resDiv))
+        .amend(controllerConfig.getMouseAmendsForDiv(programToDisplay, resDiv))
     }
 
     // todo: collect extension points and store them somewhere where they can be re-used (also enable pre-view of the tree)
 
-    svgDomElement
+    (svgDomElement, dropTargets.toList)
 
 
   }

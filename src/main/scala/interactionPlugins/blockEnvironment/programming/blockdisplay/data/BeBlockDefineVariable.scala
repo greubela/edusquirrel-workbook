@@ -10,7 +10,7 @@ import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.shapes.{BeShape, TextShape}
 import contentmanagement.webElements.svg.shapes.composite.ShapeAroundShape
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.*
-import interactionPlugins.blockEnvironment.config.{BeControllerState, BeRenderingConfig, BeTreeDisplayConfig}
+import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeDisplayConfig}
 import interactionPlugins.blockEnvironment.programming.blockdisplay.*
 import interactionPlugins.blockEnvironment.programming.{BeBlockContext, BeProgram}
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer

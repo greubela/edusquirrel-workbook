@@ -28,12 +28,12 @@ type BeBlockRenderingContext = TreeStructureAndExecutionContext[NodeBasedTreePos
 
 case class BeProgram(fullProgram: BeExpression) {
 
-  def expressionTree(displayConfig: BeTreeDisplayConfig) = fullProgram.recToTree(displayConfig.displayPlaceholders, BeChildPosition(NoRole, BeScope.GlobalScope()))
+  def expressionTree(displayConfig: BeTreeDisplayConfig): BeExpressionTree = fullProgram.recToTree(displayConfig.displayPlaceholders, BeChildPosition(NoRole, BeScope.GlobalScope()))
 
   def blockRenderingTree(displayConfig: BeTreeDisplayConfig): BeBlockRenderingTree = expressionTree(displayConfig).mapWithStructure(structure => {
     structure.curValue match {
       case BeExtensionPoint(isRequired, childPos, dataType) => {
-        (structure.curValue, BeBlockPlaceholder(structure.curValue.asInstanceOf[BeExtensionPoint]))
+        (structure.curValue, BeBlockPlaceholder(structure.curValue.asInstanceOf[BeExtensionPoint], structure.curPosition))
       }
       case BeExpressionReference(childPos, expression) => {
         (structure.curValue, expression.createBlock())
@@ -41,8 +41,47 @@ case class BeProgram(fullProgram: BeExpression) {
     }
   })
 
+  def withInsertions(displayConfig: BeTreeDisplayConfig, additionMap: Map[BeExtensionPoint, BeExpression]): BeProgram = {
+    val exprTree = expressionTree(displayConfig)
+    val res: Map[NodeBasedTreePosition, Option[BeExpression]] = {
+      exprTree.applyWithChildResults[Option[BeExpression]]((structureContext, childrenResultMap) => {
+        structureContext.curValue match {
+          case name@BeExtensionPoint(isRequired, childPos, dataType) => {
+            if (additionMap.contains(name)) Some(additionMap(name))
+            else None
+          }
+          case BeExpressionReference(childPos, expression) => {
+            val childrenResultList: List[(BeChildRole, BeExpression)] =
+              childrenResultMap.toList.filter(_._2.nonEmpty).map(tup => (tup._1.childPosition.roleInParent, tup._2.get))
+            Some(expression.withReplacedChildren(childrenResultList))
+          }
+        }
+      })
+    }
+    BeProgram(res(exprTree.rootPosition.forChild(0)).get)
+  }
+
+
+
   /*
-  def withInsertions(additionMap: Map[BeExtensionPoint, BeExpression]): BeProgram = {
+    val res: Option[(BeChildPosition, BeExpression)] = structureContext.curValue match {
+      case BeExtensionPoint(isRequired, childPos, dataType) => {
+        val replaceWith = additionMap.get(structureContext.curValue.asInstanceOf[BeExtensionPoint])
+        if (replaceWith.nonEmpty && dataType.canTakeValuesFrom(replaceWith.get.canEvaluateTo).possibleWithoutSyntaxErrors) Some((childPos, replaceWith.get))
+        else None
+      }
+      case BeExpressionReference(childPos, expression) => {
+       // childrenResults.toList().map(tup => tup)
+        ???
+      }
+        val childrenResults2: List[(BeChildRole, BeExpression)] = structureContext.accessChildrenResults.flatten.map(tup => (tup._1.roleInParent, tup._2))
+        Some((childPos, expression.withReplacedChildren(childrenResults)))
+      }
+
+        ???
+    }
+    )
+
     val reparsedExpression = expressionTree.mapWithContext[Option[(BeChildPosition, BeExpression)]](context => {
       context.curValue match {
         case BeExtensionPoint(isRequired, childPos, dataType) => {
@@ -55,8 +94,8 @@ case class BeProgram(fullProgram: BeExpression) {
           Some((childPos, expression.withReplacedChildren(childrenResults)))
         }
       }
-    })
-
+    })*/
+  /*
     val rootOp = reparsedExpression.getData(reparsedExpression.rootPosition.forChild(0)).get
     val newExpr = rootOp.map(_._2).getOrElse(BeExpression.pass)
     BeProgram(newExpr)
@@ -177,7 +216,7 @@ object BeProgram {
     val expression = BeStartProgram(parsingResult.codeExpression)
     BeProgram(expression)
   }
-  
+
   def debugGraphicsProgram(): BeProgram = {
     val somePython =
       """
