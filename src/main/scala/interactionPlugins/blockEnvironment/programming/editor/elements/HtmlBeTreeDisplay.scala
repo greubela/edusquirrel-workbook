@@ -82,7 +82,6 @@ object HtmlBeTreeDisplay {
 
     def registerDropTarget(dropTarget: BeTreeDropTarget): Any = {
       dropTargets.addOne(dropTarget)
-      println("registration: " + dropTarget)
     }
 
     val renderingInfo = RenderingInformation(programToDisplay, displayConfig, rendererConfig, controllerConfig, editorState, registerDropTarget)

@@ -104,12 +104,10 @@ object BeTreeControllerConfig {
     override def onDivDragLeave: Option[(MouseEvent, BeProgram,L.HtmlElement) => Any] = defaultOnDragLeaveDiv(editorState)
 
     override def onDivDropped: Option[(DragEvent, BeProgram, L.HtmlElement) => Any] = Some((dragEvent, program, htmlElement) => {
-      println("dropped!!")
+   
       val rect = htmlElement.ref.getBoundingClientRect()
       val divPos = Point[Double](dragEvent.clientX - rect.left, dragEvent.clientY - rect.top)
-      println("editor state: " + editorState.controllerStateVar.now())
       editorState.controllerStateVar.update(oldState => oldState.copy(unhandledDropEvents = Some(TreeDroppedEvent(program, divPos))))
-      println("editor state: " + editorState.controllerStateVar.now())
     })
 
   }

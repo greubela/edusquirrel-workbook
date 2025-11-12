@@ -32,8 +32,6 @@ case class BeBlockSequence(sequence: BeSequence) extends BeBlock {
 
     val onlyControlFlow = bodyChildrenInOrder.map(_._2).flatMap(curShape => curShape.onlyControlFlowShape)
     val onlyExpressions = bodyChildrenInOrder.map(_._2).flatMap(curShape => curShape.onlyExpressionShape)
-    println("controlflows: " + onlyControlFlow.map(_.getClass.getSimpleName).mkString("", ",  ", ""))
-    println("expressions: " + onlyExpressions.map(_.getClass.getSimpleName).mkString("", ",  ", ""))
     val fullTable = TableShape(List(onlyControlFlow, onlyExpressions))
 
     val nested: BoxManualPositioning = new BoxManualPositioning() {

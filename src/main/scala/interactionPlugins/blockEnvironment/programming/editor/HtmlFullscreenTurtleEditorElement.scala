@@ -23,13 +23,6 @@ import contentmanagement.webElements.genericHtmlElements.editor.*
 case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends HtmlWorkbookElement {
 
   private val editorState: EditorState = EditorState.withInitExpression(initExpr)
-  val strVar: Var[String] = Var(editorState.treeToEdit.now().fullProgram.getInLanguage(Python, English))
-  editorState.treeToEdit.signal.foreach(tree => strVar.update(_ => tree.fullProgram.getInLanguage(Python, English) ))(new Owner(){})
-  var language: AppLanguage = AppLanguage.English
-
-
-  //HtmlBeTreeDisplay(editorState.treeToEdit.signal, editorState, Var(BeTreeControllerConfig.editTreeConfig(editorState)), _.editorTreeDisplayConfig).toDomSignal
-  //private val centralTreeSignal: Signal[()]
 
 
   private def placeholderPanel(areaClass: String, label: String, content: Element): Element =
@@ -71,17 +64,7 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
     )
   )
 
-  private lazy val centralWorkspaceDom: Element = div(
-    cls := s"be-fullscreen-panel block-workspace",
-    h2(
-      cls := "be-fullscreen-panel-label",
-      "Edit Program"
-    ),
-    div(
-      cls := "be-fullscreen-panel-content",
-      child <-- editorState.treeToDisplaySignal
-    )
-  )
+ 
 
   private val testShapes: List[BeShape] = List(ControlFlowProgramStarter(), ControlFlowProgramStopper(), BeDataArrow(), ControlArrowUpDown(), IfElseSplit(), ControlFlowCross(), IfElseUnion(), ControlFlowConnectorBackground(List((true, true)))) ++ BeShape.allAtomicShapes
   private val testDims = testShapes.map(_.displaySize(editorState.rendererConfigVar.now()))
@@ -93,43 +76,14 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
         cls := "be-fullscreen-panel-label",
         "Python is here (for debugging purposes instead of turtle graphics)"
       ),
-      SimpleStringTextEditor(strVar).getDomElement(),
+     
       /*testShapes.zip(testDims).map((curShape, curDim) => curShape.render(editorState.rendererConfigVar.now(), Bounds(Point[Double](0, 0), curDim)).toPlainDisplayDiv),
       SimpleTextDisplay(editorState.treeToEdit.signal.map(curTree => Some("# Display Tree Python:\n" + curTree.fullProgram.getInLanguage(Python, English)))).getDomElement(),
       SimpleTextDisplay(editorState.controllerStateVar.signal.map(curState => Some("Cur Drop Targets:\n" + curState.mouseDragOverProgram.toString))).getDomElement(),
       SimpleTextDisplay(editorState.controllerStateVar.signal.map(curState => Some("Cur Drag Event:\n" + curState.draggingEvent.toString))).getDomElement(),
       SimpleTextDisplay(editorState.controllerStateVar.signal.map(curState => Some("Cur Mouse Over Expr:\n" + curState.mouseOverExpression.toString))).getDomElement(),*/
-      button(
-        "Sync: Python -> Blöcke!",
-        onClick --> { _ =>
-          editorState.treeToEdit.update(oldTree => {
-            BeProgram(BeStartProgram(PythonParser.parsePython(strVar.now())))
-          })
-        } // event handler
-      ),
-      button(
-        "Language: EN",
-        onClick --> { _ =>
-          strVar.update(oldStr => {
-            editorState.treeToEdit.now().fullProgram.getInLanguage(Python, English)
-          })
-        } // event handler
-      ),
-      button(
-        "Language: DE",
-        onClick --> { _ =>
-          strVar.update(oldStr => {
-            editorState.treeToEdit.now().fullProgram.getInLanguage(Python, German)
-          })
-        } // event handler
-      ),
-
-
-    )
-  /*
-
-
-   */
+      )
+    
 
   private val rootElement: Element =
     div(
@@ -139,7 +93,7 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
       blockLibraryDom,
       //  center
       placeholderPanel("select-function", "Select Function Area", "  "),
-      centralWorkspaceDom,
+      HtmlBeProgramEditor(editorState).getDomElement(),
       placeholderPanel("program-inspector", "Warnings and Errors", "  "),
       //  right
       drawingArea,

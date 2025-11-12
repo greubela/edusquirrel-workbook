@@ -108,7 +108,6 @@ trait NestedControlStructureShape extends BeShapeComposite with ControlFlowAndEx
         .addControlFlowConnector(-seg, true)
         .closePath()
     }
-    println("draw background in bounds: " + bounds)
     res
   }
 
@@ -130,7 +129,6 @@ trait NestedControlStructureShape extends BeShapeComposite with ControlFlowAndEx
   }
 
   def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
-    println("rendered nested control structure shape in bounds: " + bounds + " with rendererConfig: " + rendererConfig )
     val childrenBox = createChildrenBox(rendererConfig).render(rendererConfig, bounds)
     val background = drawBackground(rendererConfig, bounds).toFixedDimensionShape.addAmends(rendererConfig.amendFactory.defaultControlFlowBackgroundAmend).render(rendererConfig, bounds)
 
