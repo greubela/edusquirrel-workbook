@@ -66,7 +66,7 @@ def insertWorkbook(): Unit = {
 
   // Programming Exercise
   val testProgEx = ProgrammingExercise("id-003", Map(AppLanguage.English -> "Exercise 2"), Map(AppLanguage.English -> "Use Turtle Commands to program the Shape on the right :-)"))
-  val htmlProgEx = HtmlProgrammingExercise(testProgEx)
+  val htmlProgEx = HtmlProgrammingExercise(testProgEx, fullscreenElement)
 
   val combinedElement = div(
     fullscreenElement.getDomElement(),
