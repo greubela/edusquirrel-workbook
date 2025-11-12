@@ -2,7 +2,7 @@ package contentmanagement.model.vm.types
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.language.AppLanguage.BlockDisplay
+import contentmanagement.model.language.AppLanguage.{BlockDisplay, Java, Python}
 import contentmanagement.model.language.{LanguageMap, ProgrammingLanguage}
 import contentmanagement.webElements.svg.shapes.BeShape
 import BeShape.BeShapeContainerable
@@ -31,12 +31,32 @@ sealed trait BeDataType {
 
 object BeDataType {
 
+  private def mapWithOverrides(
+      default: String,
+      overrides: (ProgrammingLanguage, String)*
+  ): LanguageMap[ProgrammingLanguage] = {
+    if (overrides.isEmpty) LanguageMap.universalMap(default)
+    else {
+      val overrideMap = LanguageMap.mapBasedLanguageMap(overrides.toMap)
+      LanguageMap.combinedMap(List(overrideMap, LanguageMap.universalMap(default)))
+    }
+  }
+
   sealed trait BeUnionType extends BeDataType {
 
   }
 
   object AnyType extends BeUnionType {
-    def formatTypeForDisplay: LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap("Any")
+    private val displayMap = LanguageMap.combinedMap[
+      ProgrammingLanguage
+    ](
+      List(
+        LanguageMap.mapBasedLanguageMap(Map(Python -> "Any", Java -> "Object")),
+        LanguageMap.universalMap("Any")
+      )
+    )
+
+    def formatTypeForDisplay: LanguageMap[ProgrammingLanguage] = displayMap
 
     def formatValueForDisplay(valueStr: String): LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap(valueStr)
 
@@ -135,14 +155,26 @@ object BeDataType {
 
   val String = BeDataTypeAtomic(
     StringShape,
-    LanguageMap.universalMap("str"),
-    str => LanguageMap.universalMap('"' + str + '"'),
-    str => true,
+    mapWithOverrides("str", Python -> "str", Java -> "String"),
+    str => {
+      val trimmed = str.trim
+      val alreadyQuoted =
+        (trimmed.length >= 2 && ((trimmed.head == '"' && trimmed.last == '"') || (trimmed.head == '\'' && trimmed.last == '\''))) ||
+          (trimmed.length >= 6 && ((trimmed.startsWith("\"\"\"") && trimmed.endsWith("\"\"\"")) || (trimmed.startsWith("'''") && trimmed.endsWith("'''") )))
+      val value = if (alreadyQuoted) trimmed else s"\"$str\""
+      LanguageMap.universalMap(value)
+    },
+    str => {
+      val trimmed = str.trim
+      def isQuoted(delimiter: String): Boolean =
+        trimmed.length >= delimiter.length * 2 && trimmed.startsWith(delimiter) && trimmed.endsWith(delimiter)
+      isQuoted("\"\"\"") || isQuoted("'''") || isQuoted("\"") || isQuoted("'")
+    },
     Set())
 
   val Numeric = BeDataTypeAtomic(
     NumericShape,
-    LanguageMap.universalMap("float"),
+    mapWithOverrides("float", Python -> "float", Java -> "double"),
     str => {
       LanguageMap.combinedMap(List(
         LanguageMap.mapBasedLanguageMap(
@@ -158,19 +190,30 @@ object BeDataType {
 
   val Boolean = BeDataTypeAtomic(
     BooleanShape,
-    LanguageMap.universalMap("bool"),
+    mapWithOverrides("bool", Python -> "bool", Java -> "boolean"),
     str => LanguageMap.universalMap(str),
-    str => true, Set(String))
-
-  val Date = BeDataTypeAtomic(DateShape,
-    LanguageMap.universalMap("date"),
-    str => LanguageMap.universalMap(str.toString),
-    str => true,
+    str => {
+      val trimmed = str.trim
+      trimmed.equalsIgnoreCase("true") || trimmed.equalsIgnoreCase("false")
+    },
     Set(String)
   )
 
-  val Unit = BeDataTypeAtomic(UnitShape,
-    LanguageMap.universalMap("None"),
+  val Date = BeDataTypeAtomic(
+    DateShape,
+    mapWithOverrides("date", Python -> "date", Java -> "Date"),
+    str => LanguageMap.universalMap(str.toString),
+    str => {
+      val trimmed = str.trim
+      val isoDatePattern = """\d{4}-\d{2}-\d{2}""".r
+      isoDatePattern.matches(trimmed)
+    },
+    Set(String)
+  )
+
+  val Unit = BeDataTypeAtomic(
+    UnitShape,
+    mapWithOverrides("None", Python -> "None", Java -> "void"),
     str => LanguageMap.universalMap(str.toString),
     str => false,
     Set(String))

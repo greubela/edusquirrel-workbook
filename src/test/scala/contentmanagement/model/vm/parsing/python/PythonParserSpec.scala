@@ -12,10 +12,133 @@ import contentmanagement.model.vm.parsing.python.PythonParser.KnownStructure
 import contentmanagement.model.vm.types.BeDataType
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import munit.FunSuite
+import scala.collection.mutable
 
 class PythonParserSpec extends FunSuite {
 
   private val normalizer = new PythonNormalizer()
+
+  private case class TypeHintKey(kind: String, identifier: String)
+
+  private val FunctionHeaderPattern =
+    """^(\s*)def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*)\)\s*(?:->\s*([^:]+))?:$""".r
+  private val AssignmentWithTypePattern =
+    """^(\s*)([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([A-Za-z0-9_\.]+)\s*=(?!=)\s*(.+)$""".r
+  private val NumericTypeNames = Set("int", "float", "double", "number")
+
+  private def normalizeTypeName(raw: String): String = {
+    val lowered = raw.trim.toLowerCase
+    if (NumericTypeNames.contains(lowered)) "numeric" else raw.trim
+  }
+
+  private def canonicalizeNumericTypeHints(code: String): String = {
+    val numericPattern = """(?i)(:\s*)(int|float|double|number)\b""".r
+    val returnPattern = """(?i)(->\s*)(int|float|double|number)\b""".r
+    val step1 = numericPattern.replaceAllIn(code, m => s"${m.group(1)}numeric")
+    returnPattern.replaceAllIn(step1, m => s"${m.group(1)}numeric")
+  }
+
+  private def stripDefaultValue(typeHint: String): String = {
+    val eqIndex = typeHint.indexOf('=')
+    if (eqIndex >= 0) typeHint.substring(0, eqIndex).trim else typeHint.trim
+  }
+
+  private def collectTypeHints(code: String): Map[TypeHintKey, String] = {
+    val hints = mutable.LinkedHashMap.empty[TypeHintKey, String]
+    val lines = code.split("\n", -1)
+    lines.foreach { line =>
+      line match {
+        case FunctionHeaderPattern(_, name, params, returnType) =>
+          Option(returnType).map(_.trim).filter(_.nonEmpty).foreach { raw =>
+            hints.update(TypeHintKey("return", name), stripDefaultValue(raw))
+          }
+          val paramEntries =
+            if (params.trim.isEmpty) Nil else params.split(",").toList
+          paramEntries.foreach { entry =>
+            val cleaned = entry.trim
+            if (cleaned.nonEmpty && cleaned.contains(":")) {
+              val parts = cleaned.split(":", 2)
+              if (parts.length == 2) {
+                val paramName = parts.head.trim
+                val typePart = stripDefaultValue(parts(1))
+                if (paramName.nonEmpty && typePart.nonEmpty) {
+                  hints.update(TypeHintKey(s"param:$name", paramName), typePart)
+                }
+              }
+            }
+          }
+        case AssignmentWithTypePattern(_, identifier, typeHint, _) =>
+          hints.update(TypeHintKey("assign", identifier), typeHint.trim)
+        case _ =>
+      }
+    }
+    hints.toMap
+  }
+
+  private def stripTypeHints(code: String): String = {
+    val lines = code.split("\n", -1).toVector
+    val processed = lines.map {
+      case FunctionHeaderPattern(indent, name, params, _) =>
+        val strippedParams = params
+          .split(",")
+          .toList
+          .map(_.trim)
+          .filter(_.nonEmpty)
+          .map { param =>
+            val colonIndex = param.indexOf(':')
+            if (colonIndex >= 0) {
+              val before = param.substring(0, colonIndex).trim
+              val after = param.substring(colonIndex + 1).trim
+              val defaultIdx = after.indexOf('=')
+              if (defaultIdx >= 0) {
+                val defaultPart = after.substring(defaultIdx).trim
+                if (defaultPart.nonEmpty) s"$before $defaultPart" else before
+              } else {
+                val eqIdx = before.indexOf('=')
+                if (eqIdx >= 0) {
+                  val nameOnly = before.substring(0, eqIdx).trim
+                  val defaultPart = before.substring(eqIdx).trim
+                  if (defaultPart.nonEmpty) s"$nameOnly $defaultPart" else nameOnly
+                } else before
+              }
+            } else param
+          }
+        val paramsJoined = strippedParams.filter(_.nonEmpty).mkString(", ")
+        s"${indent}def $name($paramsJoined):"
+      case AssignmentWithTypePattern(indent, identifier, _, value) =>
+        s"$indent$identifier = $value"
+      case other => other
+    }
+    processed.mkString("\n")
+  }
+
+  private def assertPythonEquivalentAllowingAdditionalTypeHints(
+      original: String,
+      regenerated: String
+  ): Unit = {
+    val normalizedOriginal = normalizer.normalizePython(original)
+    val normalizedRegenerated = normalizer.normalizePython(regenerated)
+
+    val canonicalOriginal = canonicalizeNumericTypeHints(normalizedOriginal)
+    val canonicalRegenerated = canonicalizeNumericTypeHints(normalizedRegenerated)
+
+    val originalHints = collectTypeHints(canonicalOriginal)
+    val regeneratedHints = collectTypeHints(canonicalRegenerated)
+
+    originalHints.foreach { case (key, hint) =>
+      val regeneratedHint = regeneratedHints.getOrElse(
+        key,
+        fail(s"Missing type hint for ${key.kind} ${key.identifier}")
+      )
+      assertEquals(normalizeTypeName(regeneratedHint), normalizeTypeName(hint))
+    }
+
+    if (canonicalOriginal != canonicalRegenerated) {
+      val strippedOriginal = stripTypeHints(canonicalOriginal)
+      val strippedRegenerated = stripTypeHints(canonicalRegenerated)
+      assertEquals(strippedRegenerated, strippedOriginal)
+    }
+  }
 
   private case class RoundTripCase(
       name: String,
@@ -287,6 +410,60 @@ class PythonParserSpec extends FunSuite {
     assertEquals(assignments(3).value.canEvaluateTo, BeDataType.Numeric)
     assertEquals(assignments(4).value.canEvaluateTo, BeDataType.Boolean)
   }
+
+  test("typed circle_area function preserves annotations and types") {
+    val python =
+      """def circle_area(radius: double) -> double:
+        |    area: double = 3.14 * radius * radius
+        |testWithNr: double = 3.0
+        |result = circle_area(testWithNr)
+        |""".stripMargin
+
+    val parsingResult = PythonParser.parsePythonWithDetails(python)
+    val regenerated = parsingResult.codeExpression.getInLanguage(Python, English)
+    assertPythonEquivalentAllowingAdditionalTypeHints(python, regenerated)
+
+    val circleFunction = parsingResult.definedFunctions
+      .find(_.functionTypeInfo.displayName.getInLanguage(English) == "circle_area")
+      .getOrElse(fail("expected to find circle_area function"))
+
+    assertEquals(circleFunction.inputs.length, 1)
+    val radiusParam = circleFunction.inputs.head
+    assertEquals(radiusParam.name.getInLanguage(English), "radius")
+    assertEquals(radiusParam.variableType, BeDataType.Numeric)
+
+    val returnVariable = circleFunction.outputs.getOrElse(fail("expected return variable"))
+    assertEquals(returnVariable.variableType, BeDataType.Numeric)
+
+    val bodySequence = circleFunction.body match {
+      case seq: BeSequence => seq
+      case other => fail(s"expected function body to be a sequence but was ${other.getClass.getSimpleName}")
+    }
+    val areaAssignment = bodySequence.body.collectFirst {
+      case assign: BeAssignVariable if assign.target.name.getInLanguage(English) == "area" => assign
+    }.getOrElse(fail("expected assignment to area"))
+    assertEquals(areaAssignment.target.variableType, BeDataType.Numeric)
+    assertEquals(areaAssignment.value.canEvaluateTo, BeDataType.Numeric)
+
+    val variablesByName = parsingResult.definedVariables.map { variable =>
+      variable.name.getInLanguage(English) -> variable
+    }.toMap
+    val testWithNrVar = variablesByName.getOrElse("testWithNr", fail("expected testWithNr variable"))
+    assertEquals(testWithNrVar.variableType, BeDataType.Numeric)
+    val resultVar = variablesByName.getOrElse("result", fail("expected result variable"))
+    assertEquals(resultVar.variableType, BeDataType.Numeric)
+
+    val topAssignments = parsingResult.codeExpression.body.collect { case assign: BeAssignVariable => assign }
+    val testAssignment = topAssignments
+      .find(_.target.name.getInLanguage(English) == "testWithNr")
+      .getOrElse(fail("expected assignment to testWithNr"))
+    assertEquals(testAssignment.value.canEvaluateTo, BeDataType.Numeric)
+
+    val resultAssignment = topAssignments
+      .find(_.target.name.getInLanguage(English) == "result")
+      .getOrElse(fail("expected assignment to result"))
+    assertEquals(resultAssignment.value.canEvaluateTo, BeDataType.Numeric)
+  }
   test("round trip from mini program expression") {
     val sourceExpression = BeProgram.miniProgramExpression()
     val generated = sourceExpression.getInLanguage(Python, English)
@@ -432,7 +609,7 @@ class PythonParserSpec extends FunSuite {
     )
 
     val known = parsingResult.currentlyKnownStructures
-    assertEquals(known.operators.get(">" -> 2), Some(greaterOperator))
+    assertEquals(known.operators.get(">" -> 2), Some(List(greaterOperator)))
     assertEquals(known.functions.get(">"), Some(greaterOperator))
     assert(known.variables.contains("value"))
     assert(parsingResult.definedFunctions.contains(greaterOperator))
@@ -452,15 +629,26 @@ class PythonParserSpec extends FunSuite {
         |second = 10 > 2
         |""".stripMargin
     val result = PythonParser.parsePythonWithDetails(source)
-    val defaultGreater = DefaultDefinitions.operatorDefinitionsBySymbolAndArity(">" -> 2)
+    val defaultGreaterOverloads =
+      DefaultDefinitions.operatorDefinitionsWithSymbols.collect {
+        case (symbol, function) if symbol == ">" && function.inputs.length == 2 => function
+      }.toSet
+
     val currentGreater = result.currentlyKnownStructures.operators.get(">" -> 2)
-    assert(currentGreater.contains(defaultGreater), "expected parser to reuse default > operator definition")
+    assertEquals(
+      currentGreater.map(_.toSet),
+      Some(defaultGreaterOverloads),
+      "expected parser to reuse default > operator overloads"
+    )
 
     val greaterFunctions = result.definedFunctions.filter { func =>
       func.functionTypeInfo.displayName.getInLanguage(English) == ">"
-    }
-    assertEquals(greaterFunctions.length, 1, "expected only the default > operator to be present")
-    assert(greaterFunctions.head eq defaultGreater, "expected greater operator definition to match default instance")
+    }.toSet
+    assertEquals(
+      greaterFunctions,
+      defaultGreaterOverloads,
+      "expected only the default > operator overloads to be present"
+    )
   }
 
 

@@ -2,7 +2,7 @@ package contentmanagement.model.vm.types
 
 import contentmanagement.model.language.AppLanguage
 import contentmanagement.model.vm.code.defining.BeDefineVariable
-import contentmanagement.model.vm.types.BeDataType.BeUnionAllowedTypes
+import scala.util.Try
 
 trait BeDataValue {
 
@@ -30,9 +30,14 @@ case class BeDataValueLiteral(literalString: String) extends BeDataValue {
   def displayAsString: String = literalString
 
   override val possibleTypes: BeDataType = {
-    val possibleTypes = BeDataType.allKnownTypesThatHaveLiterals.filter(_.isValidLiteral(literalString))
-    if (possibleTypes.size == 1) possibleTypes.head
-    else if (possibleTypes.nonEmpty) BeUnionAllowedTypes(possibleTypes)
+    val trimmed = literalString.trim
+    def isNumericLiteral(str: String): Boolean =
+      BeDataType.Numeric.isValidLiteral(str) || Try(BigDecimal(str)).isSuccess
+
+    if (isNumericLiteral(trimmed)) BeDataType.Numeric
+    else if (BeDataType.Boolean.isValidLiteral(trimmed)) BeDataType.Boolean
+    else if (BeDataType.Date.isValidLiteral(trimmed)) BeDataType.Date
+    else if (BeDataType.String.isValidLiteral(literalString)) BeDataType.String
     else BeDataType.Error
   }
 }
