@@ -4,8 +4,7 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
 import com.raquo.laminar.api.L.svg
-import contentmanagement.model.geometry.{Bounds, Point}
-import contentmanagement.webElements.svg.builder.SvgPathBuilder
+import contentmanagement.model.geometry.Bounds
 import interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
@@ -29,44 +28,6 @@ case class HtmlProgrammingExercise(
   private val previewRendererConfig: BeRenderingConfig = BeRenderingConfig.default()
   private val previewControllerConfig: BeTreeControllerConfig = BeTreeControllerConfig.noOpConfig()
 
-  private val expectedPentagonViewBoxStart: Point[Double] = Point[Double](0, 0)
-
-  private val expectedPentagonShape = {
-    val startPoint = Point[Double](96.0, 10.0)
-    val builder = SvgPathBuilder[Double](startPoint)
-      .lineToAbs(Point[Double](168.0, 66.0))
-      .lineToAbs(Point[Double](138.0, 166.0))
-      .lineToAbs(Point[Double](54.0, 166.0))
-      .lineToAbs(Point[Double](24.0, 66.0))
-      .closePath()
-    builder.toFixedDimensionShape
-  }
-
-  private val expectedPentagonElement = {
-    val pentagonSize = expectedPentagonShape.displaySize(previewRendererConfig)
-    val pentagonBounds = Bounds(expectedPentagonViewBoxStart, pentagonSize)
-    val pentagonSvg = expectedPentagonShape
-      .render(previewRendererConfig, pentagonBounds)
-      .addMods(
-        List(
-          svg.fill := "#ffe0b2",
-          svg.stroke := "#fb8c00",
-          svg.strokeWidth := "4"
-        )
-      )
-
-    div(
-      cls := "programming-preview-canvas programming-preview-canvas-svg",
-      svg.svg(
-        svg.viewBox := s"0 0 ${pentagonSize.width} ${pentagonSize.height}",
-        svg.preserveAspectRatio := "xMidYMid meet",
-        svg.width := "100%",
-        svg.height := "100%",
-        pentagonSvg.renderWithMods
-      )
-    )
-  }
-
   private def renderProgramPreview(program: BeProgram): L.HtmlElement = {
     val editorState = EditorState.withInitExpression(program.fullProgram)
     val (treeDom, _) = HtmlBeTreeDisplay.render(program, previewDisplayConfig, previewRendererConfig, previewControllerConfig, editorState)
@@ -82,7 +43,28 @@ case class HtmlProgrammingExercise(
 
   private def openFullEditor(): Unit = {
     val fullscreenEditor = HtmlFullscreenTurtleEditorElement(currentProgram.now().fullProgram)
+    fullscreenEditor.bindToProgram(currentProgram)
     fullscreenElement.setElementFullscreen(fullscreenEditor.getDomElement())
+  }
+
+  private val expectedPreviewElement = {
+    val expectedElement = exerciseContent.expectedResult
+    val boundingBox: Bounds[Double] = expectedElement.staticBoundingBox
+    val width = if (boundingBox.width <= 0) 1.0 else boundingBox.width
+    val height = if (boundingBox.height <= 0) 1.0 else boundingBox.height
+    val viewBoxStartX = boundingBox.startX
+    val viewBoxStartY = boundingBox.startY
+
+    div(
+      cls := "programming-preview-canvas programming-preview-canvas-svg",
+      svg.svg(
+        svg.viewBox := s"$viewBoxStartX $viewBoxStartY $width $height",
+        svg.preserveAspectRatio := "xMidYMid meet",
+        svg.width := "100%",
+        svg.height := "100%",
+        expectedElement.renderWithMods
+      )
+    )
   }
 
   private def previewCard(title: String, contentMods: L.Modifier[L.HtmlElement]*): L.HtmlElement =
@@ -108,7 +90,7 @@ case class HtmlProgrammingExercise(
 
   private val expectedPreviewCard = previewCard(
     title = "Expected turtle output",
-    expectedPentagonElement
+    expectedPreviewElement
   )
 
   private val domElement: Element = div(
