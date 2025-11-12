@@ -3,13 +3,12 @@ package contentmanagement.webElements.genericHtmlElements.editor
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement
+import contentmanagement.webElements.genericHtmlElements.editor.CodeMirrorEditor.{CodeMirrorHandle, EditorConfig, facade}
 import org.scalajs.dom
 
 import scala.scalajs.js
 
 case class CodeMirrorEditor(content: Var[String]) extends HtmlAppElement {
-
-  import CodeMirrorEditor.*
 
   private var handle: Option[CodeMirrorHandle] = None
   private var updatingFromEditor: Boolean = false
@@ -98,8 +97,7 @@ object CodeMirrorEditor {
   }
 
   private def facade: Option[CodeMirrorFacade] = {
-    val global = js.Dynamic.global
-    val maybeFacade = global.selectDynamic("EduSquirrelCodeMirror")
+    val maybeFacade = js.Dynamic.global.selectDynamic("EduSquirrelCodeMirror")
     if (js.isUndefined(maybeFacade) || maybeFacade == null) None
     else Some(maybeFacade.asInstanceOf[CodeMirrorFacade])
   }

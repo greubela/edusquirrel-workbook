@@ -4,11 +4,12 @@ import com.raquo.airstream.ownership.Owner
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.api.L.Var
+import contentmanagement.model.language.HumanLanguage
 import contentmanagement.model.language.AppLanguage
 import contentmanagement.model.language.AppLanguage.*
 import contentmanagement.model.vm.code.others.BeStartProgram
 import contentmanagement.webElements.HtmlAppElement
-import contentmanagement.webElements.genericHtmlElements.editor.CodeMirrorEditor
+import contentmanagement.webElements.genericHtmlElements.editor.{CodeMirrorEditor, SimpleStringTextEditor}
 import contentmanagement.webElements.genericHtmlElements.other.{HtmlTab, HtmlTabElement}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.elements.HtmlBeProgramEditor.PythonParse
@@ -20,7 +21,7 @@ case class HtmlBeProgramEditor(editorState: EditorState) extends HtmlAppElement 
 
   val strVar: Var[String] = Var(editorState.treeToEdit.now().fullProgram.getInLanguage(Python, English))
   editorState.treeToEdit.signal.foreach(tree => strVar.update(_ => tree.fullProgram.getInLanguage(Python, English)))(new Owner() {})
-  var language: AppLanguage = AppLanguage.English
+  var language: HumanLanguage = AppLanguage.English
 
   private val blockViewTab = HtmlTab(
     BlockViewTabNr,
@@ -31,7 +32,7 @@ case class HtmlBeProgramEditor(editorState: EditorState) extends HtmlAppElement 
     "Block View"
   )
 
-  private val pythonEditor = CodeMirrorEditor(strVar)
+  private val pythonEditor: HtmlAppElement = SimpleStringTextEditor(strVar)//CodeMirrorEditor(strVar)
   private val pythonViewTab = HtmlTab(
     PythonViewTabNr,
     div(

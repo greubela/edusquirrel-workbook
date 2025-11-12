@@ -1,11 +1,11 @@
-import {EditorView, keymap, highlightActiveLine, drawSelection} from "https://esm.sh/@codemirror/view@6.23.0";
-import {EditorState} from "https://esm.sh/@codemirror/state@6.3.1";
-import {history, historyKeymap, defaultKeymap, indentWithTab} from "https://esm.sh/@codemirror/commands@6.2.3";
-import {lineNumbers, highlightActiveLineGutter} from "https://esm.sh/@codemirror/gutter@6.2.0";
-import {defaultHighlightStyle} from "https://esm.sh/@codemirror/highlight@6.5.2";
-import {syntaxHighlighting, indentOnInput} from "https://esm.sh/@codemirror/language@6.10.1";
-import {highlightSelectionMatches} from "https://esm.sh/@codemirror/search@6.5.5";
-import {python} from "https://esm.sh/@codemirror/lang-python@6.1.3";
+import {EditorView, keymap, highlightActiveLine, drawSelection} from "https://cdn.jsdelivr.net/npm/@codemirror/view@6.23.0/+esm";
+import {EditorState} from "https://cdn.jsdelivr.net/npm/@codemirror/state@6.3.1/+esm";
+import {history, historyKeymap, defaultKeymap, indentWithTab} from "https://cdn.jsdelivr.net/npm/@codemirror/commands@6.2.3/+esm";
+import {lineNumbers, highlightActiveLineGutter} from "https://cdn.jsdelivr.net/npm/@codemirror/gutter@6.2.0/+esm";
+import {defaultHighlightStyle} from "https://cdn.jsdelivr.net/npm/@codemirror/highlight@6.5.2/+esm";
+import {syntaxHighlighting, indentOnInput} from "https://cdn.jsdelivr.net/npm/@codemirror/language@6.10.1/+esm";
+import {highlightSelectionMatches} from "https://cdn.jsdelivr.net/npm/@codemirror/search@6.5.5/+esm";
+import {python} from "https://cdn.jsdelivr.net/npm/@codemirror/lang-python@6.1.3/+esm";
 
 const editorTheme = EditorView.theme({
     "&": {
@@ -42,7 +42,7 @@ const basicExtensions = [
     editorTheme
 ];
 
-window.EduSquirrelCodeMirror = {
+globalThis.EduSquirrelCodeMirror = {
     createEditor: ({parent, doc, onDocChange}) => {
         let isProgrammaticUpdate = false;
 
