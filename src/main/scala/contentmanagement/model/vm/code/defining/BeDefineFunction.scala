@@ -29,15 +29,18 @@ case class BeDefineFunction(
   }*/
 
   def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
-    def formatTypeHint(dataType: BeDataType): Option[String] = dataType match {
-      case BeDataType.AnyType => None
-      case other => Some(other.formatTypeForDisplay.getInLanguage(programmingLanguage))
+    def formatTypeHint(variable: BeDefineVariable): Option[String] = {
+      variable.variableType match {
+        case BeDataType.AnyType => None
+        case other => Some(other.formatTypeForDisplay.getInLanguage(programmingLanguage))
+      }
     }
 
     def formatParameter(parameter: BeDefineVariable): String = {
       val base = parameter.name.getInLanguage(humanLanguage)
       programmingLanguage match {
-        case Python => formatTypeHint(parameter.variableType).map(hint => s"$base: $hint").getOrElse(base)
+        case Python =>
+          formatTypeHint(parameter).map(hint => s"$base: $hint").getOrElse(base)
         case _ => base
       }
     }
@@ -49,7 +52,7 @@ case class BeDefineFunction(
     programmingLanguage match {
       case Python =>
         val parameters = inputsStr.mkString("(", ", ", ")")
-        val returnAnnotation = outputs.flatMap(output => formatTypeHint(output.variableType)).map(hint => s" -> $hint").getOrElse("")
+        val returnAnnotation = outputs.flatMap(output => formatTypeHint(output)).map(hint => s" -> $hint").getOrElse("")
         val indentation = " " * indentWidth
         val bodyLines = if (bodyStr.isEmpty) List(indentation + "pass")
         else {
