@@ -2,6 +2,7 @@ package interactionPlugins.blockEnvironment.programming.editor
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.{h2, *, given}
+import com.raquo.laminar.api.L.unsafeWindowOwner
 import contentmanagement.model.geometry.{Bounds, Point}
 import contentmanagement.model.language.AppLanguage
 import contentmanagement.model.language.AppLanguage.{English, German, Python}
@@ -22,7 +23,26 @@ import contentmanagement.webElements.genericHtmlElements.editor.*
 
 case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends HtmlWorkbookElement {
 
-  private val editorState: EditorState = EditorState.withInitExpression(initExpr)
+  val editorState: EditorState = EditorState.withInitExpression(initExpr)
+  private var programBound: Boolean = false
+
+  def bindToProgram(programVar: Var[BeProgram]): Unit = {
+    if (!programBound) {
+      programVar.signal.foreach { program =>
+        if (editorState.treeToEdit.now() != program) {
+          editorState.treeToEdit.set(program)
+        }
+      }(unsafeWindowOwner)
+
+      editorState.treeToEdit.signal.foreach { program =>
+        if (programVar.now() != program) {
+          programVar.set(program)
+        }
+      }(unsafeWindowOwner)
+
+      programBound = true
+    }
+  }
 
 
   private def placeholderPanel(areaClass: String, label: String, content: Element): Element =

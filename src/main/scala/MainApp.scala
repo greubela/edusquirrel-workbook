@@ -65,7 +65,12 @@ def insertWorkbook(): Unit = {
   val htmlEx = HtmlTextBasedGptExercise(testEx)
 
   // Programming Exercise
-  val testProgEx = ProgrammingExercise("id-003", Map(AppLanguage.English -> "Exercise 2"), Map(AppLanguage.English -> "Use Turtle Commands to program the Shape on the right :-)"))
+  val testProgEx = ProgrammingExercise(
+    "id-003",
+    Map(AppLanguage.English -> "Exercise 2"),
+    Map(AppLanguage.English -> "Use Turtle Commands to program the Shape on the right :-)"),
+    ProgrammingExercise.DefaultPentagonExpectedResult
+  )
   val htmlProgEx = HtmlProgrammingExercise(testProgEx, fullscreenElement)
 
   val combinedElement = div(
