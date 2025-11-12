@@ -6,6 +6,7 @@ import contentmanagement.model.language.AppLanguage.{English, Python}
 import contentmanagement.model.vm.parsing.python.PythonParser
 import interactionPlugins.automaton.{AutomatonExerciseContent, HtmlAutomatonExercise}
 import interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeControllerConfig}
+import interactionPlugins.blockEnvironment.exercise.{HtmlProgrammingExercise, ProgrammingExercise}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
@@ -22,8 +23,8 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 @main
 def mainApp(): Unit = {
   doSomeCalculations()
-  // insertWorkbook()
-  insertTurtleEditor()
+  insertWorkbook()
+  //insertTurtleEditor()
 }
 
 def doSomeCalculations(): Unit = {
@@ -63,29 +64,24 @@ def insertWorkbook(): Unit = {
   val testEx = TextBasedGptExercise("id-007", Map(AppLanguage.English -> "this is title"), Map(AppLanguage.English -> "this is instruction"))
   val htmlEx = HtmlTextBasedGptExercise(testEx)
 
-  // Automaton exercise
-  val automatonExercise = new HtmlAutomatonExercise(AutomatonExerciseContent.divisibleByThree)
-
-  val overviewElement = new HtmlWorkbookOverview(sampleSections).getDomElement()
-  val helloWorldExercise = new HtmlPythonExercise(PythonExerciseContent.helloWorld)
-  val fizzBuzzExercise = new HtmlPythonExercise(PythonExerciseContent.fizzBuzz)
-
-  // val combinedElement = new HtmlFullscreenTurtleEditorElement().getDomElement()
-
+  // Programming Exercise
+  val testProgEx = ProgrammingExercise("id-003", Map(AppLanguage.English -> "Exercise 2"), Map(AppLanguage.English -> "Use Turtle Commands to program the Shape on the right :-)"))
+  val htmlProgEx = HtmlProgrammingExercise(testProgEx)
 
   val combinedElement = div(
     fullscreenElement.getDomElement(),
-    div(
-      h2("Workbook Overview"),
-      div(
-        cls := "workbook-overview-sample",
-        overviewElement
-      )
-    ),
+    /* div(
+       h2("Workbook Overview"),
+       div(
+         cls := "workbook-overview-sample",
+        // overviewElement
+       )
+     ),*/
     htmlEx.getDomElement(),
-    automatonExercise.getDomElement(),
-    helloWorldExercise.getDomElement(),
-    fizzBuzzExercise.getDomElement()
+    htmlProgEx.getDomElement(),
+    // automatonExercise.getDomElement(),
+    // helloWorldExercise.getDomElement(),
+    // fizzBuzzExercise.getDomElement()
   )
 
   val worksheetDiv = document.getElementById("worksheetDts")

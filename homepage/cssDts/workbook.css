@@ -175,8 +175,8 @@ body {
 }
 
 .svg-button svg {
-  width: 60%;
-  height: 60%;
+  width: 30px;
+  height: 30px;
   stroke: var(--color-text-primary);
   stroke-width: 1.8;
 }
