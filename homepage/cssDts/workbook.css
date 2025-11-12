@@ -105,6 +105,75 @@ body {
   color: var(--color-text-primary);
 }
 
+/* --- Programming exercise preview layout --- */
+.container-interaction .programming-exercise-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-lg);
+}
+
+.container-interaction-element.programming-preview-card {
+  gap: 0;
+}
+
+.programming-preview-label {
+  background: var(--color-surface-muted);
+  color: var(--color-text-secondary);
+}
+
+.programming-preview-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.programming-preview-canvas {
+  background: var(--color-interaction-background);
+  border: 1px dashed var(--color-interaction-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.programming-preview-canvas.programming-preview-canvas-tree {
+  overflow: auto;
+}
+
+.programming-preview-tree {
+  width: 100%;
+}
+
+.programming-preview-canvas.programming-preview-canvas-svg svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.programming-exercise-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-sm);
+}
+
+.programming-exercise-action-button {
+  padding: var(--space-sm) var(--space-xl);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-button-border);
+  background: var(--color-button-background);
+  box-shadow: var(--shadow-button);
+  color: var(--color-text-primary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.programming-exercise-action-button:hover {
+  background: var(--color-button-hover);
+  transform: translateY(-1px);
+}
+
 /* --- Label Variants --- */
 .label-editor,
 .container-label.label-editor {
