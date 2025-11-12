@@ -91,6 +91,70 @@
   letter-spacing: 0.02em;
 }
 
+.be-tab-element {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  height: 100%;
+}
+
+.be-tab-element__labels {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.be-tab-element__label {
+  background-color: var(--color-button-background);
+  border: 1px solid var(--color-button-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: var(--fontsize-text);
+  padding: 0.4rem 0.8rem;
+  transition: var(--transition);
+}
+
+.be-tab-element__label:hover {
+  background-color: var(--color-button-hover);
+}
+
+.be-tab-element__label--active {
+  background-color: var(--color-label-editor-bg);
+  border-color: var(--color-label-editor-bg);
+  box-shadow: var(--shadow-button);
+  color: var(--color-label-editor-text);
+}
+
+.be-tab-element__content {
+  background-color: var(--color-interaction-background);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--padding-medium);
+}
+
+.be-program-editor__python-view,
+.be-program-editor__block-view {
+  height: 100%;
+}
+
+.be-program-editor__python-view .code-mirror-editor {
+  height: 100%;
+  display: flex;
+}
+
+.be-program-editor__python-view .code-mirror-editor .cm-editor {
+  flex: 1;
+  height: 100%;
+}
+
+.be-program-editor__python-view .code-mirror-editor .cm-scroller {
+  overflow: auto;
+}
+
 
 
 
