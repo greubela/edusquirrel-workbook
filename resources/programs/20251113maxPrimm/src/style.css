@@ -1,0 +1,85 @@
+.hljs-ln-numbers {
+  color: #6c757d !important;
+  text-align: right;
+}
+.hljs-ln-n {
+  padding-right: 2em;
+}
+
+#move-code-button {
+  cursor: move;
+}
+#move-code-button:hover {
+  background: none;
+  color: unset;
+}
+.code-pinned {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  box-shadow: 0px 0px 10px #ccc;
+}
+#pin-code-button {
+  margin-left: 0.5em;
+}
+.text-sm {
+  font-size: 0.875rem;
+}
+
+.card-body-code pre code {
+  padding: 0;
+}
+.textarea-lg {
+  min-height: 250px !important;
+}
+.textarea-code {
+  font-family: var(--bs-font-monospace);
+}
+
+.hide-element {
+  display: none;
+}
+
+li code {
+  white-space: nowrap !important;
+}
+.li-code-wrap code {
+  white-space: unset !important;
+}
+.code-dark {
+  color: #000;
+}
+
+#sidebar-buttons {
+  position: fixed;
+  top: 20%;
+  left: 0;
+  z-index: 999;
+}
+.btn-sidebar {
+  display: block;
+  margin-bottom: 0.5em;
+  left: 0;
+  z-index: 999;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.current-subtask::before {
+  content: "";
+  left: 0px;
+  position: absolute;
+  width: 100%;
+  height: 100px;
+  background: linear-gradient(#eee, #fff);
+  z-index: -100;
+  margin-top: -5px;
+}
+
+.alert-hint {
+  margin-bottom: 0px;
+}
+.badge-hint-wait {
+  margin-left: 1em;
+}
