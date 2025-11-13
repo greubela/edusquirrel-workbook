@@ -104,9 +104,12 @@ body {
 
 .workbook-card img {
   display: block;
-  max-width: 100%;
-  height: auto;
-  object-fit: contain;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-height: 25vh;
+  max-width: 25vh;
+  object-fit: cover;
+  margin: 0 auto;
 }
 
 .workbook-card figcaption {
