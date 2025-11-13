@@ -1137,6 +1137,38 @@ body {
   opacity: 0.85;
 }
 
+.simple-selector-editor {
+  width: 100%;
+}
+
+.simple-selector-editor__select {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  color: var(--color-text-primary);
+  padding: calc(var(--space-sm) + 2px) var(--space-md);
+  font-size: 0.95rem;
+  line-height: 1.4;
+  appearance: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  cursor: pointer;
+}
+
+.simple-selector-editor__select:focus {
+  outline: none;
+  border-color: var(--color-focus);
+  box-shadow: var(--shadow-focus);
+  background: var(--color-interaction-background);
+}
+
+.simple-selector-editor__select[disabled] {
+  background: var(--color-interaction-background-alt);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
 .simple-boolean-editor {
   display: inline-flex;
   align-items: center;
