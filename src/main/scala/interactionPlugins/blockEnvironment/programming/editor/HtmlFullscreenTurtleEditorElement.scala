@@ -2,9 +2,9 @@ package interactionPlugins.blockEnvironment.programming.editor
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.{h2, *, given}
-import com.raquo.laminar.api.L.unsafeWindowOwner
+import com.raquo.laminar.api.L.{render, unsafeWindowOwner}
 import contentmanagement.model.geometry.{Bounds, Point}
-import contentmanagement.model.language.AppLanguage
+import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import contentmanagement.model.language.AppLanguage.{English, German, Python}
 import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.code.others.BeStartProgram
@@ -45,18 +45,8 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
   }
 
 
-  private def placeholderPanel(areaClass: String, label: String, content: Element): Element =
-    div(
-      cls := s"be-fullscreen-panel $areaClass",
-      h2(
-        cls := "be-fullscreen-panel-label",
-        label
-      ),
-      div(
-        cls := "be-fullscreen-panel-content",
-        content
-      )
-    )
+  private lazy val controlPanel: Element =
+    HtmlEditorConfigPanel(editorState).getDomElement()
 
   private def placeholderPanel(areaClass: String, label: String, content: String): Element =
     div(
@@ -117,7 +107,7 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
       placeholderPanel("program-inspector", "Warnings and Errors", "  "),
       //  right
       drawingArea,
-      placeholderPanel("control", "Download maybe?", "  "),
+      controlPanel,
 
       // bottom line
       placeholderPanel("config", "Allgemeine Config (Editor, Sprache, ...)", "content goes here"),
