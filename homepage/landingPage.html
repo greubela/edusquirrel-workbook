@@ -16,7 +16,7 @@
       </section>
 
       <section class="section-heading">
-        <h1>Workbooks (Finished)</h1>
+        <h1>Digitale Schülerhefte (Nutzungsfertig)</h1>
       </section>
 
       <section class="workbook-grid">
@@ -31,18 +31,18 @@
               alt="Hoang Tang: Scratch-Einführung"
             />
           </a>
-          <figcaption>Hoang Tang: Scratch-Einführung (Flappy Bird).</figcaption>
+          <figcaption>Hoang Tang Griep: Scratch-Einführung (Flappy Bird).</figcaption>
         </figure>
         <figure class="workbook-card">
           <a href="../resources/programs/20251113MaxDrostePrimm/index.htm" target="_blank" rel="noopener noreferrer">
             <img src="../resources/programs/20251113MaxDrostePrimm/img/caesar-chatgpt.jpg" alt="Finished workbook option 2" />
           </a>
-          <figcaption>Max Droste: Programmieren mit Cäsarverschlüsselung.</figcaption>
+          <figcaption>Maximilian Droste: Programmieren mit Cäsarverschlüsselung.</figcaption>
         </figure>
       </section>
 
       <section class="section-heading">
-        <h1>Workbooks (Prototypes)</h1>
+        <h1>Digitale Schülerhefte (Technische Demos)</h1>
       </section>
 
       <section class="workbook-grid">
@@ -61,52 +61,86 @@
       </section>
 
       <section class="section-heading">
-        <h1>Workbooks (PDF)</h1>
+        <h1>Analoge Schülerhefte (Download als PDF)</h1>
       </section>
 
       <section class="workbook-grid">
         <figure class="workbook-card">
           <a
-            href="./resources/workbookpdfs/20250402StickmaschineArbeitsheft.pdf"
+            href="../resources/workbookpdfs/20250402StickmaschineArbeitsheft.filepdf"
           >
-            <img src="./resources/img/art/mockup/Stickmaschine.png" alt="Placeholder PDF workbook 1" />
+            <img src="../resources/img/art/mockup/Stickmaschine.png" alt="Placeholder PDF workbook 1" />
           </a>
           <figcaption>André Greubel: Programmieren mit der Stickmaschine</figcaption>
         </figure>
+
+
         <figure class="workbook-card">
           <a
-            href="./resources/workbookpdfs/20211110EvakuierungGitterautomat.pdf"
+            href="../resources/workbookpdfs/20211110EvakuierungGitterautomat.pdf"
             download="workbook-pdf-2.pdf"
           >
-            <img src="./resources/workbookpdfs/20250402StickmaschineArbeitsheft.pdf" alt="Placeholder PDF workbook 2" />
+            <img src="../resources/img/art/mockup/Evakuierung.jpg" alt="Placeholder PDF workbook 2" />
           </a>
           <figcaption>André Greubel: Evakuierungen mit Eva</figcaption>
         </figure>
-        <figure class="workbook-card">
-          <a
-            href="www.google.de"
-            download="workbook-pdf-3.pdf"
-          >
-            <img src="https://via.placeholder.com/240x150?text=PDF+Workbook+3" alt="Placeholder PDF workbook 3" />
-          </a>
-          <figcaption>[Placeholder for additional workbooks].</figcaption>
-        </figure>
-		
-      </section>
-    </main>
 
-    <script>
-      const sponsorRow = document.getElementById('sponsorRow');
-      const sponsorText = document.getElementById('sponsorText');
-      const sponsorToggle = document.getElementById('sponsorToggle');
+          <!--
+                  <figure class="workbook-card">
+                    <a
+                      href="www.google.de"
+                      download="workbook-pdf-3.pdf"
+                    >
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png" alt="Placeholder PDF workbook 3" />
+                    </a>
+                    <figcaption>[Placeholder for additional workbooks].</figcaption>
+                  </figure>
 
-      sponsorToggle.addEventListener('click', () => {
-        const toggled = sponsorRow.classList.toggle('toggled');
-        sponsorText.textContent = toggled
-          ? '... until now :-)'
-          : 'sponsored by nobody :-(';
-        sponsorToggle.setAttribute('aria-pressed', toggled.toString());
-      });
-    </script>
-  </body>
-</html>
+
+                    <figure class="workbook-card">
+                        <a
+                                href="www.google.de"
+                                download="workbook-pdf-3.pdf"
+                        >
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png" alt="Placeholder PDF workbook 3" />
+                        </a>
+                        <figcaption>[Placeholder for additional workbooks].</figcaption>
+                    </figure>
+
+                    <figure class="workbook-card">
+                        <a
+                                href="www.google.de"
+                                download="workbook-pdf-3.pdf"
+                        >
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png" alt="Placeholder PDF workbook 3" />
+                        </a>
+                        <figcaption>[Placeholder for additional workbooks].</figcaption>
+                    </figure>
+                    <figure class="workbook-card">
+                        <a
+                                href="www.google.de"
+                                download="workbook-pdf-3.pdf"
+                        >
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png" alt="Placeholder PDF workbook 3" />
+                        </a>
+                        <figcaption>[Placeholder for additional workbooks].</figcaption>
+                    </figure>
+                    -->
+                </section>
+              </main>
+
+              <script>
+                const sponsorRow = document.getElementById('sponsorRow');
+                const sponsorText = document.getElementById('sponsorText');
+                const sponsorToggle = document.getElementById('sponsorToggle');
+
+                sponsorToggle.addEventListener('click', () => {
+                  const toggled = sponsorRow.classList.toggle('toggled');
+                  sponsorText.textContent = toggled
+                    ? '... until now :-)'
+                    : 'sponsored by nobody :-(';
+                  sponsorToggle.setAttribute('aria-pressed', toggled.toString());
+                });
+              </script>
+            </body>
+          </html>
