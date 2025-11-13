@@ -308,6 +308,25 @@ class PythonParserSpec extends FunSuite {
       )
     ),
     RoundTripCase(
+      name = "typed expression with optional else generation",
+      python =
+        """a:float    = (((3)))
+          |z=(1+2)*(3+4/2)
+          |if(z<3):
+          |    print(z)
+          |""".stripMargin,
+      assertions = result => {
+        val sequence = result.codeExpression.asInstanceOf[BeSequence]
+        val ifExpressions = sequence.body.collect { case branch: BeIfElse => branch }
+        assertEquals(ifExpressions.length, 1)
+        val elseBody = ifExpressions.head.elseBody.body
+        assert(
+          elseBody.isEmpty || elseBody.forall(_ == BeExpression.pass),
+          "if an else branch is introduced it must contain only a pass expression"
+        )
+      }
+    ),
+    RoundTripCase(
       name = "combined control structures",
       python =
         """total = 0

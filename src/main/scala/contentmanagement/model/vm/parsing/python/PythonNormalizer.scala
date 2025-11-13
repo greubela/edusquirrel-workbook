@@ -9,6 +9,7 @@ class PythonNormalizer {
 
   private val AugmentedAssignmentPattern =
     """^(.+?)\s*(\+=|-=|\*=|/=|//=|%=|\*\*=|<<=|>>=|&=|\|=|\^=)\s*(.+)$""".r
+  private val ComparisonOperatorPattern = """(<=|>=|==|!=|<|>)""".r
 
   def normalizePython(source: String): String = {
     val unifiedNewlines = normalizeLineEndings(source)
@@ -181,11 +182,17 @@ class PythonNormalizer {
     (statements.toList, index)
   }
 
-  private def isIfHeader(text: String): Boolean = text.startsWith("if ") && text.endsWith(":")
+  private def isIfHeader(text: String): Boolean = {
+    text.startsWith("if") &&
+    text.endsWith(":") && {
+      val afterIf = text.drop(2)
+      afterIf.nonEmpty && (afterIf.head.isWhitespace || afterIf.head == '(')
+    }
+  }
 
   private def parseIfChain(lines: Vector[Line], startIndex: Int, indentLevel: Int): (IfStatement, Int) = {
     val header = lines(startIndex)
-    val condition = header.text.stripPrefix("if").stripSuffix(":").trim
+    val condition = normalizeIfCondition(header.text.stripPrefix("if").stripSuffix(":").trim)
     val (thenBranch, afterThen) = parseBody(lines, startIndex + 1, indentLevel)
     var index = afterThen
     val elifBranches = mutable.ListBuffer.empty[(String, List[Statement])]
@@ -198,7 +205,7 @@ class PythonNormalizer {
       } else {
         line.text match {
           case text if text.startsWith("elif ") && text.endsWith(":") =>
-            val conditionText = text.stripPrefix("elif").stripSuffix(":").trim
+            val conditionText = normalizeIfCondition(text.stripPrefix("elif").stripSuffix(":").trim)
             val (branchBody, nextIndex) = parseBody(lines, index + 1, indentLevel)
             elifBranches += conditionText -> branchBody
             index = nextIndex
@@ -214,6 +221,47 @@ class PythonNormalizer {
     }
     val nestedElse = buildNestedElseBranches(elifBranches.toList, elseBranch)
     (IfStatement(condition, thenBranch, nestedElse), index)
+  }
+
+  private def normalizeIfCondition(raw: String): String = {
+    val stripped = stripOuterParentheses(raw.trim)
+    normalizeComparisonSpacing(stripped)
+  }
+
+  private def stripOuterParentheses(text: String): String = {
+    var current = text
+    var continue = true
+    while (
+      continue &&
+      current.length >= 2 &&
+      current.head == '(' &&
+      current.last == ')' &&
+      parenthesesBalanced(current.substring(1, current.length - 1))
+    ) {
+      current = current.substring(1, current.length - 1).trim
+    }
+    current
+  }
+
+  private def parenthesesBalanced(text: String): Boolean = {
+    var depth = 0
+    var index = 0
+    var balanced = true
+    while (index < text.length && balanced) {
+      text.charAt(index) match {
+        case '(' => depth += 1
+        case ')' =>
+          if (depth == 0) balanced = false else depth -= 1
+        case _ =>
+      }
+      index += 1
+    }
+    balanced && depth == 0
+  }
+
+  private def normalizeComparisonSpacing(text: String): String = {
+    val spaced = ComparisonOperatorPattern.replaceAllIn(text, matcher => s" ${matcher.group(1)} ")
+    spaced.replaceAll("\\s+", " ").trim
   }
 
   private def buildNestedElseBranches(
