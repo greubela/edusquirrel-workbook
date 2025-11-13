@@ -16,8 +16,8 @@ case class EditorState(
                         rendererConfigVar: Var[BeRenderingConfig]
                       ) {
 
-  val editorTreeDisplayConfig: Var[BeTreeDisplayConfig] = Var(BeTreeDisplayConfig(true, true, true, true, true))
-  val libraryTreeDisplayConfig: Var[BeTreeDisplayConfig] = Var(BeTreeDisplayConfig(false, false, false, true, true))
+  val editorTreeDisplayConfig: Var[BeTreeDisplayConfig] = Var(BeTreeDisplayConfig.editorDefaults)
+  val libraryTreeDisplayConfig: Var[BeTreeDisplayConfig] = Var(BeTreeDisplayConfig.libraryDefaults)
 
   val libaryTreeControllerConfig: Var[BeTreeControllerConfig] = Var(BeTreeControllerConfig.libraryTreeConfig(this))
   val editTreeControllerConfig: Var[BeTreeControllerConfig] = Var(BeTreeControllerConfig.editTreeConfig(this))

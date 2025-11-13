@@ -9,7 +9,7 @@ import contentmanagement.webElements.svg.shapes.ControlFlowAndExpressionShape
 import contentmanagement.webElements.svg.shapes.composite.HorizontalAlignment.*
 import contentmanagement.webElements.svg.shapes.composite.VerticalAlignment.*
 import contentmanagement.webElements.svg.shapes.composite.{HorizontalAlignment, ShapeStack, VerticalAlignment}
-import interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig}
+import interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig, ControlFlowDisplay}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeTreeDropTarget, RenderingInformation}
 import interactionPlugins.blockEnvironment.programming.editor.*
@@ -95,23 +95,21 @@ object HtmlBeTreeDisplay {
     }
 
     val shapeToDraw = Timing.executeAndTime(() => {
-      if (displayConfig.displayControlFlow) {
-
-
-        val controlFlowBackground = nestedBlockRenderer.controlFlowBackgroundShape
-        val controlFlowOverlay = nestedBlockRenderer.controlFlowOverlayShape(renderingInfo)
-        val exprShapes = nestedBlockRenderer.expressionShapeWithIntendation
-
-        val exprShapeNested = tree.applyWithChildResults[ControlFlowAndExpressionShape]((structure, childRes) => {
-          structure.curValue._2.renderNested(structure, childRes, renderingInfo)
-        })(tree.rootPosition.forChild(0))
-
-        //val shapes = List(controlFlowBackground, exprShapes, controlFlowOverlay)
-        val shapes = List(exprShapeNested, controlFlowOverlay)
-        //fixedRelativeOffset = Map(controlFlowBackground -> Point[Double](0, 0), controlFlowOverlay -> Point[Double](0, 0))
-        ShapeStack(shapes, Left, Top)
-      } else {
-        nestedBlockRenderer.expressionShapeWithoutIntendation
+      displayConfig.controlFlowDisplay match {
+        case ControlFlowDisplay.ControlFlowHidden =>
+          nestedBlockRenderer.expressionShapeWithoutIntendation
+        case ControlFlowDisplay.ControlFlowBackgrounds | ControlFlowDisplay.ControlFlowShownFull =>
+          val exprShapeNested = tree.applyWithChildResults[ControlFlowAndExpressionShape]((structure, childRes) => {
+            structure.curValue._2.renderNested(structure, childRes, renderingInfo)
+          })(tree.rootPosition.forChild(0))
+          val shapes = displayConfig.controlFlowDisplay match {
+            case ControlFlowDisplay.ControlFlowShownFull =>
+              val controlFlowOverlay = nestedBlockRenderer.controlFlowOverlayShape(renderingInfo)
+              List(exprShapeNested, controlFlowOverlay)
+            case _ =>
+              List(exprShapeNested)
+          }
+          ShapeStack(shapes, Left, Top)
       }
     }, "time to build shape")
 
