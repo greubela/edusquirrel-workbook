@@ -9,7 +9,7 @@
   <body>
     <main class="landing-container">
       <section class="sponsor-row" id="sponsorRow">
-        <span id="sponsorText">sponsored by nobody :-(</span>
+        <span id="sponsorText">Now exclusively in your orange box!</span>
         <button id="sponsorToggle" aria-pressed="false" aria-label="Toggle sponsor message">
           Toggle
         </button>
@@ -137,8 +137,8 @@
                 sponsorToggle.addEventListener('click', () => {
                   const toggled = sponsorRow.classList.toggle('toggled');
                   sponsorText.textContent = toggled
-                    ? '... until now :-)'
-                    : 'sponsored by nobody :-(';
+                    ? '... maybe also available in magenta :-)'
+                    : 'Now exclusively in your orange box!';
                   sponsorToggle.setAttribute('aria-pressed', toggled.toString());
                 });
               </script>
