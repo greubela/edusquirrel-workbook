@@ -1137,6 +1137,79 @@ body {
   opacity: 0.85;
 }
 
+.simple-boolean-editor {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  width: fit-content;
+  user-select: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.simple-boolean-editor:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-interaction-background);
+  box-shadow: var(--shadow-soft);
+}
+
+.simple-boolean-editor__body {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+}
+
+.simple-boolean-editor__checkbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  appearance: none;
+  display: grid;
+  place-items: center;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.simple-boolean-editor__checkbox::after {
+  content: '';
+  width: 0.35rem;
+  height: 0.7rem;
+  border: 2px solid var(--color-text-inverse);
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.simple-boolean-editor__checkbox:focus-visible {
+  outline: none;
+  border-color: var(--color-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+.simple-boolean-editor__checkbox:checked {
+  background: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+}
+
+.simple-boolean-editor__checkbox:checked::after {
+  opacity: 1;
+}
+
+.simple-boolean-editor__label-text {
+  color: var(--color-text-primary);
+  letter-spacing: 0.01em;
+}
+
 /* --- Misc. utility containers --- */
 .container-interaction-element + .container-interaction-element {
   margin-top: 0;
