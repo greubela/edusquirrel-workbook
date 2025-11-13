@@ -24,7 +24,7 @@ case class HtmlProgrammingExercise(
 
   private val currentProgram: Var[BeProgram] = Var(BeProgram(BeProgram.miniProgramExpression()))
 
-  private val previewDisplayConfig: BeTreeDisplayConfig = BeTreeDisplayConfig(true, true, true, true, true)
+  private val previewDisplayConfig: BeTreeDisplayConfig = BeTreeDisplayConfig.previewDefaults
   private val previewRendererConfig: BeRenderingConfig = BeRenderingConfig.default()
   private val previewControllerConfig: BeTreeControllerConfig = BeTreeControllerConfig.noOpConfig()
 
