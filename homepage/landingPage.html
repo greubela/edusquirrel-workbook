@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Workbook Landing Page</title>
+    <link rel="stylesheet" href="cssDts/landingpage.css" />
+  </head>
+  <body>
+    <main class="landing-container">
+      <section class="sponsor-row" id="sponsorRow">
+        <span id="sponsorText">sponsored by nobody :-(</span>
+        <button id="sponsorToggle" aria-pressed="false" aria-label="Toggle sponsor message">
+          Toggle
+        </button>
+      </section>
+
+      <section class="section-heading">
+        <h1>Workbooks (Finished)</h1>
+      </section>
+
+      <section class="workbook-grid">
+        <a href="https://example.com/finished-one" target="_blank" rel="noopener noreferrer">
+          <img src="https://via.placeholder.com/280x180?text=Finished+Workbook+1" alt="Finished workbook option 1" />
+        </a>
+        <a href="https://example.com/finished-two" target="_blank" rel="noopener noreferrer">
+          <img src="https://via.placeholder.com/280x180?text=Finished+Workbook+2" alt="Finished workbook option 2" />
+        </a>
+      </section>
+
+      <section class="section-heading">
+        <h1>Workbooks (Prototypes)</h1>
+      </section>
+
+      <section class="workbook-grid">
+        <a href="https://example.com/prototype-one" target="_blank" rel="noopener noreferrer">
+          <img src="https://via.placeholder.com/280x180?text=Prototype+Workbook+1" alt="Prototype workbook option 1" />
+        </a>
+        <a href="https://example.com/prototype-two" target="_blank" rel="noopener noreferrer">
+          <img src="https://via.placeholder.com/280x180?text=Prototype+Workbook+2" alt="Prototype workbook option 2" />
+        </a>
+      </section>
+    </main>
+
+    <script>
+      const sponsorRow = document.getElementById('sponsorRow');
+      const sponsorText = document.getElementById('sponsorText');
+      const sponsorToggle = document.getElementById('sponsorToggle');
+
+      sponsorToggle.addEventListener('click', () => {
+        const toggled = sponsorRow.classList.toggle('toggled');
+        sponsorText.textContent = toggled
+          ? '... until now :-)'
+          : 'sponsored by nobody :-(';
+        sponsorToggle.setAttribute('aria-pressed', toggled.toString());
+      });
+    </script>
+  </body>
+</html>
