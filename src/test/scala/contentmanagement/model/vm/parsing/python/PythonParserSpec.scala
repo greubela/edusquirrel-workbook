@@ -332,6 +332,52 @@ class PythonParserSpec extends FunSuite {
         val whileBodyComments = whileExpressions.head.body.body.collect { case comment: BeSingleLineComment => comment }
         assertEquals(whileBodyComments.length, 1)
       }
+    ),
+    RoundTripCase(
+      name = "lambda assignment round trip respects typing rules",
+      python =
+        """halfed = lambda x: (x / 2)
+          |nr = 4
+          |res = halfed(nr)
+          |""".stripMargin,
+      assertions = result => {
+        val generated = result.codeExpression.getInLanguage(Python, English)
+        val normalizedGenerated = normalizer.normalizePython(generated)
+        val lines = normalizedGenerated.split("\n").toList
+        val maybeLambdaLine = lines.find(_.contains("lambda"))
+        maybeLambdaLine match {
+          case Some(lambdaLine) =>
+            val equalsIndex = lambdaLine.indexOf('=')
+            assert(equalsIndex >= 0, "expected lambda line to be an assignment")
+            val leftHandSide = lambdaLine.substring(0, equalsIndex)
+            assert(
+              !leftHandSide.contains(':'),
+              s"lambda assignments must not introduce type hints, found: '$lambdaLine'"
+            )
+          case None =>
+            assert(
+              normalizedGenerated.contains("def halfed"),
+              "expected halfed definition to remain either a lambda or become a def"
+            )
+        }
+      }
+    ),
+    RoundTripCase(
+      name = "typed addition uses operator definition",
+      python =
+        """def doSomething(par1: int, par2: str) -> str:
+          |    res = par1 + par2
+          |""".stripMargin,
+      assertions = result => {
+        val additionFunctions = result.definedFunctions.filter { function =>
+          function.functionTypeInfo.displayName.getInLanguage(English) == "+"
+        }
+        assert(additionFunctions.nonEmpty, "expected '+' operator definition to be present")
+        assert(
+          additionFunctions.forall(_.functionTypeInfo.funcType.isInstanceOf[BeDefineFunction.Operator]),
+          "expected '+' operator functions to use the operator function type"
+        )
+      }
     )
   )
 
