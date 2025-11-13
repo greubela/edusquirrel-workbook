@@ -7,6 +7,8 @@ import scala.collection.mutable.ListBuffer
 
 object ParsingUtils {
 
+  private val CallNamePattern = """^[A-Za-z_][A-Za-z0-9_\.]*$""".r
+
   def stripTrailingWhitespace(value: String): String =
     value.reverse.dropWhile(_.isWhitespace).reverse
 
@@ -192,8 +194,12 @@ object ParsingUtils {
                 val after = trimmed.substring(index + 1).trim
                 if (after.isEmpty) {
                   val name = trimmed.substring(0, openIndex).trim
-                  val inner = trimmed.substring(openIndex + 1, index)
-                  return Some((name, inner))
+                  if (name.nonEmpty && CallNamePattern.matches(name)) {
+                    val inner = trimmed.substring(openIndex + 1, index)
+                    return Some((name, inner))
+                  } else {
+                    return None
+                  }
                 } else {
                   return None
                 }

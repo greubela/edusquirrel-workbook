@@ -17,17 +17,21 @@ case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) exten
   private val assignPossible: BeDataTypeAssigningPossible = target.variableType.canTakeValuesFrom(value.canEvaluateTo)
 
   override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
-    val targetName =
-       target.getInLanguage(programmingLanguage, humanLanguage)
-  
-    val valueString = value.getInLanguage(programmingLanguage, humanLanguage).replaceAll("\n", " ")
+    val renderedValue = value.getInLanguage(programmingLanguage, humanLanguage).replaceAll("\n", " ")
+    val targetName = programmingLanguage match {
+      case Python if renderedValue.trim.startsWith("lambda") =>
+        target.name.getInLanguage(humanLanguage)
+      case _ =>
+        target.getInLanguage(programmingLanguage, humanLanguage)
+    }
+
     programmingLanguage match {
-      case Python => s"$targetName = $valueString"
-      case Java => s"$targetName = $valueString;"
-      case JavaScript => s"$targetName = $valueString;"
-      case Rust => s"${sanitizeRustName(targetName)} = $valueString;"
-      case Lisp => s"(setf ${targetName.toLowerCase} $valueString)"
-      case _ => s"$targetName := $valueString"
+      case Python => s"$targetName = $renderedValue"
+      case Java => s"$targetName = $renderedValue;"
+      case JavaScript => s"$targetName = $renderedValue;"
+      case Rust => s"${sanitizeRustName(targetName)} = $renderedValue;"
+      case Lisp => s"(setf ${targetName.toLowerCase} $renderedValue)"
+      case _ => s"$targetName := $renderedValue"
     }
   }
 
