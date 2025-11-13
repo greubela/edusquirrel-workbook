@@ -260,6 +260,10 @@ object PythonParser {
             val (ifExpr, nextIndex) = parseIf(lines, index, indent, conditionSource, context)
             expressions += ifExpr
             index = nextIndex
+          case _ if isTryHeader(trimmed) =>
+            val (rawBlock, nextIndex) = collectTryExceptBlock(lines, index, indent)
+            expressions += BeExpressionUnparsable(rawBlock, "try/except statements are currently unsupported")
+            index = nextIndex
           case _ if trimmed.startsWith("return") =>
             expressions += parseReturn(trimmed, context)
             index += 1
@@ -287,6 +291,38 @@ object PythonParser {
       }
     }
     (expressions.toList, index)
+  }
+
+  private def isTryHeader(text: String): Boolean = text == "try:"
+
+  private def isTryCompanionHeader(text: String): Boolean = {
+    val normalized = text.trim
+    (normalized.startsWith("except") && normalized.endsWith(":")) ||
+    normalized == "finally:" ||
+    normalized == "else:"
+  }
+
+  private def collectTryExceptBlock(
+      lines: Vector[ParsedLine],
+      headerIndex: Int,
+      indent: Int
+  ): (String, Int) = {
+    val builder = new StringBuilder
+    var index = headerIndex
+    var continue = true
+    while (index < lines.length && continue) {
+      val line = lines(index)
+      val trimmed = line.content.trim
+      if (line.indent < indent) continue = false
+      else if (line.indent == indent && index > headerIndex && !isTryCompanionHeader(trimmed)) continue = false
+      else {
+        if (builder.nonEmpty) builder.append('\n')
+        builder.append(" " * line.indent)
+        builder.append(line.content)
+        index += 1
+      }
+    }
+    (builder.toString(), index)
   }
 
   private case class AttributeRecord(name: String, variable: BeDefineVariable)

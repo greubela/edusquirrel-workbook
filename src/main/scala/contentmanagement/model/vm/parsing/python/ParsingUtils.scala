@@ -103,7 +103,11 @@ object ParsingUtils {
                 if (endsWithLetter) afterChar.forall(ch => !isIdentifierChar(ch))
                 else true
 
-              if (beforeOk && afterOk) {
+              val overlapsWithBitshift =
+                (op == "<" && (beforeChar.contains('<') || afterChar.contains('<'))) ||
+                (op == ">" && (beforeChar.contains('>') || afterChar.contains('>')))
+
+              if (beforeOk && afterOk && !overlapsWithBitshift) {
                 val left = expression.substring(0, index)
                 val right = expression.substring(index + op.length)
                 if (left.trim.nonEmpty && right.trim.nonEmpty) {

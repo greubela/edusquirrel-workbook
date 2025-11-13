@@ -397,6 +397,37 @@ class PythonParserSpec extends FunSuite {
           "expected '+' operator functions to use the operator function type"
         )
       }
+    ),
+    RoundTripCase(
+      name = "try except block survives round trip",
+      python =
+        """def find_element(list, element):
+          |    try:
+          |        index(element)
+          |        return True
+          |    except ValueError:
+          |        return False
+          |""".stripMargin
+    ),
+    RoundTripCase(
+      name = "bitshift comparisons keep tight spacing",
+      python =
+        """if((i<<2 ==   0)):
+          |    i = i < 3
+          |""".stripMargin,
+      expectedNormalized = Some(
+        """if i << 2 == 0:
+          |    i = i < 3""".stripMargin.trim
+      ),
+      assertions = result => {
+        val generated = result.codeExpression.getInLanguage(Python, English)
+        val normalizedGenerated = normalizer.normalizePython(generated)
+        assert(
+          normalizedGenerated.contains("<<"),
+          s"expected bitshift comparison to stay compact, but was: $normalizedGenerated"
+        )
+        assert(!normalizedGenerated.contains("i < <"), "bitshift operator must not be split")
+      }
     )
   )
 

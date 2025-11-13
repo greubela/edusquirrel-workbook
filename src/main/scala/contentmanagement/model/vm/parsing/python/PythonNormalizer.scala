@@ -9,7 +9,6 @@ class PythonNormalizer {
 
   private val AugmentedAssignmentPattern =
     """^(.+?)\s*(\+=|-=|\*=|/=|//=|%=|\*\*=|<<=|>>=|&=|\|=|\^=)\s*(.+)$""".r
-  private val ComparisonOperatorPattern = """(<=|>=|==|!=|<|>)""".r
 
   def normalizePython(source: String): String = {
     val unifiedNewlines = normalizeLineEndings(source)
@@ -260,8 +259,62 @@ class PythonNormalizer {
   }
 
   private def normalizeComparisonSpacing(text: String): String = {
-    val spaced = ComparisonOperatorPattern.replaceAllIn(text, matcher => s" ${matcher.group(1)} ")
-    spaced.replaceAll("\\s+", " ").trim
+    val builder = new StringBuilder
+    var index = 0
+    var lastWasSpace = false
+
+    while (index < text.length) {
+      detectBitshiftToken(text, index) match {
+        case Some((token, consumed)) =>
+          if (builder.nonEmpty && !lastWasSpace) builder.append(' ')
+          builder.append(token)
+          builder.append(' ')
+          lastWasSpace = true
+          index += consumed
+        case None =>
+          matchComparisonOperator(text, index) match {
+            case Some((operator, consumed)) =>
+              if (builder.nonEmpty && !lastWasSpace) builder.append(' ')
+              builder.append(operator)
+              builder.append(' ')
+              lastWasSpace = true
+              index += consumed
+            case None =>
+              val ch = text.charAt(index)
+              if (ch.isWhitespace) {
+                if (builder.nonEmpty && !lastWasSpace) {
+                  builder.append(' ')
+                  lastWasSpace = true
+                }
+                index += 1
+              } else {
+                builder.append(ch)
+                lastWasSpace = false
+                index += 1
+              }
+          }
+      }
+    }
+
+    builder.toString().trim
+  }
+
+  private def matchComparisonOperator(text: String, index: Int): Option[(String, Int)] = {
+    if (text.startsWith("<=", index)) Some("<=" -> 2)
+    else if (text.startsWith(">=", index)) Some(">=" -> 2)
+    else if (text.startsWith("==", index)) Some("==" -> 2)
+    else if (text.startsWith("!=", index)) Some("!=" -> 2)
+    else if (text.charAt(index) == '<' && !text.startsWith("<<", index)) Some("<" -> 1)
+    else if (text.charAt(index) == '>' && !text.startsWith(">>", index)) Some(">" -> 1)
+    else None
+  }
+
+  private def detectBitshiftToken(text: String, index: Int): Option[(String, Int)] = {
+    if (text.startsWith("<<=", index)) Some("<<=" -> 3)
+    else if (text.startsWith(">>=", index)) Some(">>=" -> 3)
+    else if (text.startsWith("<<", index)) Some("<<" -> 2)
+    else if (text.startsWith(">>", index)) Some(">>" -> 2)
+    else None
   }
 
   private def buildNestedElseBranches(
