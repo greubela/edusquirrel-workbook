@@ -1,8 +1,6 @@
 target/
 !.mvn/wrapper/maven-wrapper.jar
-!**/src/main/target/
 !**/src/main/**/target/
-!**/src/test/target/
 !**/src/test/**/target/
 
 ### IntelliJ IDEA ###
@@ -47,6 +45,3 @@ build/
 
 ### Scala ###
 .bsp/
-**.class
-**.cache
-**/target/**
