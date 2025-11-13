@@ -1,0 +1,32 @@
+@media print {
+  /* Create a new page for each task */
+  .task-row {
+    page-break-before: always;
+  }
+
+  /* Reduce font size for better fit */
+  body,
+  h4,
+  h5,
+  h6,
+  #worksheet-description {
+    font-size: 0.875rem;
+  }
+
+  /* Open all accordion sections */
+  .collapse {
+    display: block !important;
+    height: auto !important;
+  }
+
+  /* Hide specific elements */
+  .hide-on-print,
+  #code-tools-wrapper,
+  .btn-subtask-multiple-choice,
+  .helpers,
+  .task-feedback-wrapper,
+  .check-user-answer,
+  footer {
+    display: none !important;
+  }
+}
