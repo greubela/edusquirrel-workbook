@@ -74,24 +74,45 @@ body {
   gap: 1.5rem;
 }
 
-.workbook-grid a {
-  display: block;
+.workbook-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  text-align: center;
+  align-items: center;
+}
+
+.workbook-card a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 220px;
+  padding: 1rem;
   border-radius: 16px;
+  background-color: #fff;
   overflow: hidden;
   box-shadow: 0 15px 35px rgba(15, 23, 42, 0.15);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.workbook-grid a:hover,
-.workbook-grid a:focus-visible {
+.workbook-card a:hover,
+.workbook-card a:focus-visible {
   transform: translateY(-6px);
   box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
 }
 
-.workbook-grid img {
+.workbook-card img {
   display: block;
-  width: 100%;
+  max-width: 100%;
   height: auto;
+  object-fit: contain;
+}
+
+.workbook-card figcaption {
+  font-size: 0.95rem;
+  color: #475467;
+  line-height: 1.4;
 }
 
 @media (max-width: 640px) {
