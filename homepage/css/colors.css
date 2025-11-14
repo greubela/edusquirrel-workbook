@@ -41,7 +41,7 @@
   /* Core palette */
   --color-app-background: #eef2f8;
   --color-surface: #ffffff;
-  --color-surface-muted: #f6f8fc;
+  --color-surface-muted: #f2f2f2;
   --color-surface-subtle: #e0e6f2;
 
   --color-border-subtle: #d6deeb;
@@ -62,6 +62,11 @@
   --color-accent-neutral: #d9dee8;
   --color-accent-success: #2f9b74;
   --color-accent-error: #e66a6a;
+  
+  /* Theme colors */
+  --color-theme: #3066e5;
+  --color-accent: #f5c542;
+  --color-dark: #003200;
 
   --color-on-accent-primary: var(--color-text-inverse);
   --color-on-accent-warm: #3b2a00;

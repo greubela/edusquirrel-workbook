@@ -26,7 +26,7 @@ object InteractionDisplayState {
   case class DefaultScaffoldingStatusState(allKnownComponents: List[InteractionComponentForRole]) extends InteractionDisplayState {
     val layoutCssForExercise = List("style-vbox", "display-default-scaffolding-status")
 
-    val visibleComponentRolesInOrder = List(ButtonStartScaffolding, ScaffoldingStateEditor, ButtonShowEditor, Editor)
+    val visibleComponentRolesInOrder = List(ScaffoldingStateEditor, ButtonStartScaffolding, ButtonShowEditor, Editor)
 
     override def disabledComponentRoles = Seq(Editor)
   }
@@ -34,9 +34,9 @@ object InteractionDisplayState {
   case class DefaultScaffoldingResultState(allKnownComponents: List[InteractionComponentForRole]) extends InteractionDisplayState {
     val layoutCssForExercise = List("style-vbox", "display-default-scaffolding-result")
 
-    val visibleComponentRolesInOrder = List(ScaffoldingResult, ButtonShowScaffolder, ScaffoldingStateEditor, ButtonShowEditor, Editor)
+    val visibleComponentRolesInOrder = List(ScaffoldingResult, ButtonShowScaffolder, ButtonShowEditor, Editor)
 
-    override def disabledComponentRoles = Seq(ScaffoldingResult, ScaffoldingStateEditor, Editor)
+    override def disabledComponentRoles = Seq(ScaffoldingResult, Editor)
 
   }
 
