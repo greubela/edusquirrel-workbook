@@ -12,10 +12,6 @@ case class SimpleTextEditor(stateToBind: Var[BasicStringState]) extends Interact
   private val editorTextArea = textArea(
     rows := 8,
     cols := 80,
-    disabled <-- isDisabledVar.signal.map(signal => {
-      println("set disabled (editor)?: " + signal + " (currentText: " + stateToBind.now().getStateAsString() + ")")
-      signal
-    }),
     controlled(
       value <-- stateToBind.signal.map({
         println("bind state to textbox")

@@ -4,7 +4,6 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import contentmanagement.webElements.HtmlAppElement
-import contentmanagement.model.color.RGBColor
 import org.scalajs.dom.{MouseEvent, SVGLinearGradientElement}
 import workbook.model.display.InteractionComponent
 import workbook.model.display.InteractionComponent.*
@@ -18,7 +17,7 @@ abstract class HtmlInteractionButtonComponent extends InteractionComponentWithRe
 
   private lazy val domElement: Element = {
     div(
-      cls := "svg-button",
+      cls <-- isHighlightedVar.signal.map(if (_) "svg-button highlighted" else "svg-button"),
       hidden <-- isHiddenVar.signal,
       buttonSvg
     )
@@ -32,13 +31,6 @@ abstract class HtmlInteractionButtonComponent extends InteractionComponentWithRe
 
 
 object HtmlInteractionButtonComponent {
-  val buttonLineColorDefault: RGBColor = RGBColor.darkGreen
-  val buttonLineColorHighlight: RGBColor = RGBColor.black
-
-  val buttonFillColorDefault: RGBColor = RGBColor.white
-  val buttonFillColorEditorHighlight: RGBColor = RGBColor.red
-  val buttonFillColorScaffolderHighlight: RGBColor = RGBColor.blue
-  val buttonFillColorGraderHighlight: RGBColor = RGBColor.green
 
   private def createGradingGradient(id: String): ReactiveSvgElement[SVGLinearGradientElement] =
     svg.linearGradient(
@@ -69,23 +61,21 @@ object HtmlInteractionButtonComponent {
 
     val buttonSvg: Element =
       svg.svg(
+        svg.cls := "button-show-scaffolder",
         onClick --> { event => if (!this.isDisabledVar.now()) onAction(event) },
         onMouseEnter --> { event => if (!this.isDisabledVar.now()) this.setHighlight(true) },
         onMouseLeave --> { event => this.setHighlight(false) },
         svg.viewBox := "0 0 24 24",
         svg.path(
-          svg.fill <-- isHighlightedVar.signal.map(if (_) buttonLineColorHighlight.toHex() else buttonFillColorDefault.toHex()),
-          svg.stroke <-- isHighlightedVar.signal.map(if (_) buttonFillColorScaffolderHighlight.toHex() else buttonLineColorDefault.toHex()),
+          svg.cls := "button-fill",
           svg.d := "M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
           //svg.d := "M17 9A5 5 0 0 0 7 9a1 1 0 0 0 2 0 3 3 0 1 1 3 3 1 1 0 0 0-1 1v2a1 1 0 0 0 2 0v-1.1A5 5 0 0 0 17 9z"
         ),
         svg.path(
-          svg.fill := "transparent",
           svg.d := "M10.5 8.67709C10.8665 8.26188 11.4027 8 12 8C13.1046 8 14 8.89543 14 10C14 10.9337 13.3601 11.718 12.4949 11.9383C12.2273 12.0064 12 12.2239 12 12.5V12.5V13",
           svg.strokeLineCap := "round",
           svg.strokeLineJoin := "round"),
         svg.path(
-          svg.fill := "transparent",
           svg.d := "M12 16H12.01",
           svg.strokeLineCap := "round",
           svg.strokeLineJoin := "round")
@@ -100,15 +90,14 @@ object HtmlInteractionButtonComponent {
     val forContentRole: InteractionContentRole = ButtonShowEditor
 
     val buttonSvg: Element = svg.svg(
-      svg.cls := "svg-button button-show-editor",
+      svg.cls := "button-show-editor",
       onClick --> { event => if (!this.isDisabledVar.now()) onAction(event) },
       onMouseEnter --> { event => if (!this.isDisabledVar.now()) this.setHighlight(true) },
       onMouseLeave --> { event => this.setHighlight(false) },
       svg.viewBox := "0 0 24 24",
       svg.fill := "none",
       svg.path(
-        svg.fill <-- isHighlightedVar.signal.map(if (_) buttonLineColorHighlight.toHex() else buttonFillColorDefault.toHex()),
-        svg.stroke <-- isHighlightedVar.signal.map(if (_) buttonFillColorEditorHighlight.toHex() else buttonLineColorDefault.toHex()),
+        svg.cls := "button-borderpath",
         svg.d := "M13 21H21",
         svg.strokeLineCap := "round",
         svg.strokeLineJoin := "round"
@@ -136,16 +125,13 @@ object HtmlInteractionButtonComponent {
       svg.svg(
         gradingGradient,
 
-        svg.cls := "svg-button button-grading",
+        svg.cls := "button-grading button-grading-show",
         onClick --> { event => if (!this.isDisabledVar.now()) onAction(event) },
         onMouseEnter --> { event => if (!this.isDisabledVar.now()) this.setHighlight(true) },
         onMouseLeave --> { event => this.setHighlight(false) },
         svg.viewBox := "0 0 24 24",
         svg.fill := "none",
         svg.path(
-          svg.fill <-- isHighlightedVar.signal.map(if (_) s"url(#$gradientId)" else buttonFillColorDefault.toHex()),
-          svg.stroke <-- isHighlightedVar.signal.map(if (_) buttonFillColorEditorHighlight.toHex() else buttonLineColorDefault.toHex()),
-
           svg.cls := "button-borderpath",
           svg.d := "M3 12C3 4.5885 4.5885 3 12 3C19.4115 3 21 4.5885 21 12C21 19.4115 19.4115 21 12 21C4.5885 21 3 19.4115 3 12Z"
         ),
@@ -176,16 +162,13 @@ object HtmlInteractionButtonComponent {
       svg.svg(
         gradingGradient,
 
-        svg.cls := "svg-button button-grading",
+        svg.cls := "button-grading button-grading-start",
         onClick --> { event => if (!this.isDisabledVar.now()) onAction(event) },
         onMouseEnter --> { event => if (!this.isDisabledVar.now()) this.setHighlight(true) },
         onMouseLeave --> { event => this.setHighlight(false) },
         svg.viewBox := "0 0 24 24",
         svg.fill := "none",
         svg.path(
-          svg.fill <-- isHighlightedVar.signal.map(if (_) s"url(#$gradientId)" else buttonFillColorDefault.toHex()),
-          svg.stroke <-- isHighlightedVar.signal.map(if (_) buttonFillColorEditorHighlight.toHex() else buttonLineColorDefault.toHex()),
-
           svg.cls := "button-borderpath",
           svg.d := "M3 12C3 4.5885 4.5885 3 12 3C19.4115 3 21 4.5885 21 12C21 19.4115 19.4115 21 12 21C4.5885 21 3 19.4115 3 12Z"
         ),
@@ -209,7 +192,7 @@ object HtmlInteractionButtonComponent {
     val forContentRole: InteractionContentRole = ButtonStartScaffolding
 
     val buttonSvg: Element = svg.svg(
-      svg.cls := "svg-button button-start-grading",
+      svg.cls := "button-start-grading",
       onClick --> { event => if (!this.isDisabledVar.now()) onAction(event) },
       onMouseEnter --> { event => if (!this.isDisabledVar.now()) this.setHighlight(true) },
       onMouseLeave --> { event => this.setHighlight(false) },
@@ -217,14 +200,14 @@ object HtmlInteractionButtonComponent {
       svg.fill := "none",
       svg.path(
         svg.d := "M20 12L4 12",
-        svg.stroke := "#323232",
+        svg.cls := "button-stroke",
         svg.strokeWidth := "2",
         svg.strokeLineCap := "round",
         svg.strokeLineJoin := "round"
       ),
       svg.path(
         svg.d := "M14 18L19.9375 12.0625V12.0625C19.972 12.028 19.972 11.972 19.9375 11.9375V11.9375L14 6",
-        svg.stroke := "#323232",
+        svg.cls := "button-stroke",
         svg.strokeWidth := "2",
         svg.strokeLineCap := "round",
         svg.strokeLineJoin := "round"
