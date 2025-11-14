@@ -3,6 +3,7 @@ package interactionPlugins.blockEnvironment.programming.editor.elements
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.config.{BeTreeControllerConfig, BeTreeDisplayConfig}
 import interactionPlugins.blockEnvironment.programming.BeProgram
@@ -36,12 +37,27 @@ case class HtmlBlockLibraryTab(
 object HtmlBlockLibraryTab {
 
 
-  def getDefaultLibraryPrograms(displayConfig: BeTreeDisplayConfig): List[BeProgram] = List(
-    BeProgram.createOneParFunc(displayConfig, "forward", "distance", BeDataType.Numeric, "100"),
-    BeProgram.createOneParFunc(displayConfig, "rotate ↺", "degree", BeDataType.Numeric, "90"),
-    BeProgram.createOneParFunc(displayConfig, "stringFunc", "someString", BeDataType.String, "This is a text :)"),
-    BeProgram.createSimpleFunc(displayConfig, "add days", List("startDate", "daysToAdd"), List(BeDataType.Date, BeDataType.Numeric), List("11.10.1999", "3"), Some(BeDataType.Date)),
-  )
+  def getDefaultLibraryPrograms(displayConfig: BeTreeDisplayConfig): List[BeProgram] = {
+
+
+    val forwardName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> "forward", AppLanguage.German -> "vorwärts"))
+    val rotateName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> "rotateClockwise", AppLanguage.German -> "dreheImUhrzeigersinn"))
+    val distName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> "distance", AppLanguage.German -> "distanz"))
+    val degName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> "degree", AppLanguage.German -> "grad"))
+
+    val dayName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> "addDays", AppLanguage.German -> "addiereTage"))
+    val dateName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> "date", AppLanguage.German -> "datum"))
+    val dayNrName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> "dayNr", AppLanguage.German -> "tageAnzahl"))
+
+    List(
+
+      BeProgram.createSimpleFunc(displayConfig, forwardName, List(distName), List(BeDataType.Numeric), List("100"), None),
+      BeProgram.createSimpleFunc(displayConfig, rotateName, List(degName), List(BeDataType.Numeric), List("100"), None),
+      BeProgram.createSimpleFunc(displayConfig, dayName, List(dateName, dayNrName), List(BeDataType.Date, BeDataType.Numeric), List("11.10.1999", "3"), None),
+      //BeProgram.miniProgram()
+
+    )
+  }
 
 
 }

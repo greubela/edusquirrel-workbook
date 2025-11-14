@@ -133,6 +133,30 @@ case class BeProgram(fullProgram: BeExpression) {
 
 object BeProgram {
 
+  def createSimpleFunc(displayConfig: BeTreeDisplayConfig, functionName: LanguageMap[HumanLanguage], parNames: List[LanguageMap[HumanLanguage]], parTypes: List[BeDataType], parValues: List[String], output: Option[BeDataType]): BeProgram = {
+
+  val parVariables: List[BeDefineVariable] = parNames.zip(parTypes).zipWithIndex.map((tup, curIndex) => {
+    val (curName, curType) = tup
+    BeDefineVariable(curName, curType)
+  })
+
+  val outputVar = output.map(typeSet => BeDefineVariable(LanguageMap.universalMap("output"), typeSet))
+
+  val parValueMap = parVariables.zip(parValues).map((parVar, parVal) => {
+    parVar -> BeUseValue(BeDataValueLiteral(parVal), Some(parVar))
+  }).toMap
+
+  val expression: BeExpression =
+    BeFunctionCall(
+      BeDefineFunction(
+        parVariables, outputVar, BeExpression.pass, BeDefineFunction.functionInfo(functionName)
+      ),
+      parValueMap
+    )
+
+  BeProgram(expression)
+}
+
   def createSimpleFunc(displayConfig: BeTreeDisplayConfig, functionName: String, parNames: List[String], parTypes: List[BeDataType], parValues: List[String], output: Option[BeDataType]): BeProgram = {
 
     val funcNameMap: LanguageMap[HumanLanguage] = LanguageMap.universalMap(functionName)
@@ -158,6 +182,7 @@ object BeProgram {
 
     BeProgram(expression)
   }
+
 
   def createOneParFunc(displayConfig: BeTreeDisplayConfig, functionName: String, parName: String, parType: BeDataType, valueString: String): BeProgram = {
     createSimpleFunc(displayConfig, functionName, List(parName), List(parType), List(valueString), None)
