@@ -147,6 +147,20 @@ class PythonParserSpec extends FunSuite {
       assertions: PythonParser.CodeParsingResult => Unit = _ => ()
   )
 
+  private val nestedIfWithCommentsSource =
+    """def classify_score(value):
+      |    if value > 10:
+      |        tier = \"high\"
+      |        
+      |        # evaluate extreme tier
+      |        if value > 20:
+      |            return \"extreme\"
+      |        
+      |        return tier
+      |    else:
+      |        return \"low\"
+      |""".stripMargin
+
   private val roundTripCases = List(
     RoundTripCase(
       name = "main app example",
@@ -396,6 +410,47 @@ class PythonParserSpec extends FunSuite {
           additionFunctions.forall(_.functionTypeInfo.funcType.isInstanceOf[BeDefineFunction.Operator]),
           "expected '+' operator functions to use the operator function type"
         )
+      }
+    ),
+    RoundTripCase(
+      name = "nested if keeps blank lines and comments",
+      python = nestedIfWithCommentsSource,
+      assertions = result => {
+        val regenerated = result.codeExpression.getInLanguage(Python, English)
+        val normalizedRegenerated = normalizer.normalizePython(regenerated)
+
+        def indentationProfile(text: String): List[String] =
+          normalizer
+            .normalizePython(text)
+            .split("\n")
+            .toList
+            .filter(_.trim.nonEmpty)
+            .map(_.takeWhile(_ == ' '))
+
+        assertEquals(
+          indentationProfile(nestedIfWithCommentsSource),
+          indentationProfile(regenerated)
+        )
+
+        assert(
+          !normalizedRegenerated.linesIterator.exists(_.trim == "pass"),
+          s"no additional pass statements expected, but got: $normalizedRegenerated"
+        )
+
+        val classifyFunction = result.definedFunctions.find { function =>
+          function.functionTypeInfo.displayName.getInLanguage(English) == "classify_score"
+        }.getOrElse(fail("expected classify_score function to be defined"))
+
+        val functionBody = classifyFunction.body match {
+          case seq: BeSequence => seq.body
+          case other => fail(s"Expected sequence body, found ${other.getClass.getSimpleName}")
+        }
+
+        val topLevelIfs = functionBody.collect { case branch: BeIfElse => branch }
+        assertEquals(topLevelIfs.length, 1)
+
+        val nestedIfs = topLevelIfs.head.thenBody.body.collect { case nested: BeIfElse => nested }
+        assertEquals(nestedIfs.length, 1, "expected nested if inside classify_score")
       }
     ),
     RoundTripCase(
