@@ -100,8 +100,9 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
           cls := "turtle-graphics-section",
           h3("Turtle Output"),
           img(
-            src := "/resources/img/turtle_output.png",
-            alt := "Actual turtle output"
+            src := "../resources/img/turtle_output.png",
+            alt := "Actual turtle output",
+            styleAttr := "width: 100%;"
           ),
           button(
             cls := "turtle-toggle-button",
@@ -115,7 +116,8 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
               cls := "turtle-graphics-section",
               h3("Expected Turtle Output"),
               img(
-                src := "/resources/img/expected_turtle_output.png",
+                src := "../resources/img/expected_turtle_output.png",
+                styleAttr := "width: 100%;"
                 /*alt := "Expected turtle output"*/
               )
             )

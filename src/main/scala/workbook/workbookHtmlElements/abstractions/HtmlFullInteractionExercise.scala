@@ -48,17 +48,6 @@ object HtmlFullInteractionExercise {
     case Style_Fullscreen extends ExerciseStyle("style-maximized")
     case Style_Compact extends ExerciseStyle("style-compact")
   }
-
-
-  /*
-  def apply[
-    EditorState <: InteractionState, ScaffoldingState <: InteractionState, GradingState <: InteractionState, SR <: ScaffoldingResult[ScaffoldingState], GR <: GradingResult[GradingState], E <: Editor[EditorState], S <: Scaffolder[ScaffoldingState, SR], G <: Grader[EditorState, GradingState, GR]
-  ](exercise: ExerciseContent, fullInteraction: FullInteraction[EditorState, ScaffoldingState, GradingState, SR, GR, E, S, G]):
-  HtmlFullInteractionContainerDefault[EditorState, ScaffoldingState, GradingState, SR, GR, E, S, G] = {
-
-
-
-    HtmlFullInteractionContainerDefault(exercise, fullInteraction.model, fullInteraction.controller, fullInteraction.visualizer)
-  }*/
+  
 
 }

@@ -216,7 +216,7 @@ object BeProgram {
           ,
           BeFunctionCall(
             forwardFunc,
-            Map(parameter -> BeUseValue(BeDataValueLiteral("10x0"), Some(parameter)))
+            Map(parameter -> BeUseValue(BeDataValueLiteral("100"), Some(parameter)))
           )
         )
       )
