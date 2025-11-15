@@ -242,6 +242,32 @@ object BeProgram {
     BeProgram(expression)
   }
 
+  def parseSimpleWhile(): BeProgram = {
+    val somePython =
+      """
+        |i: int = 3
+        |while i < 5:
+        |    i = i + 1
+        |""".stripMargin
+    val parsingResult = PythonParser.parsePythonWithDetails(somePython)
+    val expression = parsingResult.codeExpression
+    BeProgram(expression)
+  }
+
+  def parseSimpleIf(): BeProgram = {
+    val somePython =
+      """
+        |c: bool = true
+        |if c:
+        |    x = "hi"
+        |else:
+        |    x = "bye"
+        |""".stripMargin
+    val parsingResult = PythonParser.parsePythonWithDetails(somePython)
+    val expression = parsingResult.codeExpression
+    BeProgram(expression)
+  }
+
   def debugGraphicsProgram(): BeProgram = {
     val somePython =
       """

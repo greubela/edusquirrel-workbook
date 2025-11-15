@@ -54,8 +54,8 @@ object HtmlBlockLibraryTab {
       BeProgram.createSimpleFunc(displayConfig, forwardName, List(distName), List(BeDataType.Numeric), List("100"), None),
       BeProgram.createSimpleFunc(displayConfig, rotateName, List(degName), List(BeDataType.Numeric), List("100"), None),
       BeProgram.createSimpleFunc(displayConfig, dayName, List(dateName, dayNrName), List(BeDataType.Date, BeDataType.Numeric), List("11.10.1999", "3"), None),
-      //BeProgram.miniProgram()
-
+      //BeProgram.parseSimpleIf(),
+      //BeProgram.parseSimpleWhile()
     )
   }
 
