@@ -118,19 +118,19 @@ case class HtmlEditorConfigPanel(editorState: EditorState) extends HtmlAppElemen
 
     div(
       cls := "be-fullscreen-control-content",
+      div(
+        cls := "be-fullscreen-control-config",
+        displayPlaceholdersEditor,
+        displayNavigationEditor,
+        compactDefinitionsEditor,
+        compactFunctionCallsEditor,
+        controlFlowSelector
+      ),
       button(
         cls := "be-fullscreen-control-download-button",
         typ := "button",
         "download with Control flow",
         onClick --> (_ => downloadCurrentTreeAsSvg())
-      ),
-      div(
-        cls := "be-fullscreen-control-config",
-        displayPlaceholdersEditor,
-        displayNavigationEditor,
-        controlFlowSelector,
-        compactDefinitionsEditor,
-        compactFunctionCallsEditor
       )
     )
   }
