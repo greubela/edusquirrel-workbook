@@ -79,20 +79,51 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
   private val testShapes: List[BeShape] = List(ControlFlowProgramStarter(), ControlFlowProgramStopper(), BeDataArrow(), ControlArrowUpDown(), IfElseSplit(), ControlFlowCross(), IfElseUnion(), ControlFlowConnectorBackground(List((true, true)))) ++ BeShape.allAtomicShapes
   private val testDims = testShapes.map(_.displaySize(editorState.rendererConfigVar.now()))
 
+  private val showExpectedOutputVar: Var[Boolean] = Var(false)
+
   private lazy val drawingArea: Element =
     div(
       cls := s"be-fullscreen-panel output",
       h2(
         cls := "be-fullscreen-panel-label",
-        "Python is here (for debugging purposes instead of turtle graphics)"
+        //"Python is here (for debugging purposes instead of turtle graphics)"
+        "Turtle Graphics"
       ),
-     
-      /*testShapes.zip(testDims).map((curShape, curDim) => curShape.render(editorState.rendererConfigVar.now(), Bounds(Point[Double](0, 0), curDim)).toPlainDisplayDiv),
+       /*testShapes.zip(testDims).map((curShape, curDim) => curShape.render(editorState.rendererConfigVar.now(), Bounds(Point[Double](0, 0), curDim)).toPlainDisplayDiv),
       SimpleTextDisplay(editorState.treeToEdit.signal.map(curTree => Some("# Display Tree Python:\n" + curTree.fullProgram.getInLanguage(Python, English)))).getDomElement(),
       SimpleTextDisplay(editorState.controllerStateVar.signal.map(curState => Some("Cur Drop Targets:\n" + curState.mouseDragOverProgram.toString))).getDomElement(),
       SimpleTextDisplay(editorState.controllerStateVar.signal.map(curState => Some("Cur Drag Event:\n" + curState.draggingEvent.toString))).getDomElement(),
       SimpleTextDisplay(editorState.controllerStateVar.signal.map(curState => Some("Cur Mouse Over Expr:\n" + curState.mouseOverExpression.toString))).getDomElement(),*/
+      div(
+        cls := "be-fullscreen-panel-content turtle-graphics-container",
+        div(
+          cls := "turtle-graphics-section",
+          h3("Turtle Output"),
+          img(
+            src := "/resources/img/turtle_output.png",
+            alt := "Actual turtle output"
+          ),
+          button(
+            cls := "turtle-toggle-button",
+            onClick --> { _ => showExpectedOutputVar.update(!_) },
+            child <-- showExpectedOutputVar.signal.map(if (_) "Hide Expected Output" else "Show Expected Output")
+          )
+        ),
+        child <-- showExpectedOutputVar.signal.map(showExpected =>
+          if (showExpected)
+            div(
+              cls := "turtle-graphics-section",
+              h3("Expected Turtle Output"),
+              img(
+                src := "/resources/img/expected_turtle_output.png",
+                /*alt := "Expected turtle output"*/
+              )
+            )
+          else
+            emptyNode
+        )
       )
+    )
     
 
   private val rootElement: Element =
@@ -104,7 +135,7 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
       //  center
       placeholderPanel("select-function", "Select Function Area", "  "),
       HtmlBeProgramEditor(editorState).getDomElement(),
-      placeholderPanel("program-inspector", "Warnings and Errors", "  "),
+      // placeholderPanel("program-inspector", "Warnings and Errors", "  "),
       //  right
       drawingArea,
       controlPanel,
