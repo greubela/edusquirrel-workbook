@@ -183,6 +183,31 @@ class PythonParserSpec extends FunSuite {
         )
     ),
     RoundTripCase(
+      name = "function docstring retains hash characters",
+      python =
+        """def describe():
+          |    '''Explains # usage and return handling.'''
+          |    return "done"
+          |""".stripMargin,
+      assertions = result => {
+        val generated = normalizer.normalizePython(result.codeExpression.getInLanguage(Python, English))
+        val expectedDocstring = "'''Explains # usage and return handling.'''"
+        val docstringLines = generated
+          .split("\n")
+          .toList
+          .filter(_.contains(expectedDocstring))
+        assertEquals(
+          docstringLines.length,
+          1,
+          s"expected docstring line containing '$expectedDocstring' to be preserved exactly, but was: $generated"
+        )
+        val commentLines = generated
+          .split("\n")
+          .count(line => line.trim.startsWith("#"))
+        assertEquals(commentLines, 0, s"hash characters must remain only inside docstrings: $generated")
+      }
+    ),
+    RoundTripCase(
       name = "string literals with different quotes",
       python =
         """message = \"Hello\"
