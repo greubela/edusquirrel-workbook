@@ -14,6 +14,7 @@ import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
 import interactionPlugins.pythonExercises.{HtmlPythonExercise, PythonExerciseContent}
 import org.scalajs.dom
 import org.scalajs.dom.document
+import util.JSXGraph.*
 import workbook.model.exercise.{ExerciseContent, ExerciseSection}
 import workbook.workbookHtmlElements.container.HtmlFullScreenElement
 import workbook.workbookHtmlElements.visualization.HtmlWorkbookOverview
@@ -56,6 +57,75 @@ def insertTurtleEditor(): Unit = {
 
 }
 
+def jsxGraphPreview: HtmlElement =
+  given Fraction[Double] = summon[Fractional[Double]]
+  given JsValueConverter[Double] = JsValueConverter.defaultConverter[Double]
+
+  val boardId = "jsxgraph-demo-board"
+  val jsxFacade = JsxGraphFacade[Double]()
+  val radiusVar = Var(2.5)
+
+  case class DemoState(board: JsxBoard[Double], center: JsxPoint[Double], through: JsxPoint[Double])
+
+  val demoState = Var(Option.empty[DemoState])
+
+  def buildBoard(radius: Double): Unit =
+    demoState.now().foreach(_.board.free())
+    Option(document.getElementById(boardId)).foreach(_.innerHTML = "")
+
+    val board = jsxFacade.initBoard(boardId, BoardOptions[Double](boundingBox = Some(BoundingBox(-6.0, 6.0, 6.0, -6.0)), grid = true))
+    val center = board.createPoint(Coordinate(0.0, 0.0), PointAttributes(CommonAttributes(name = Some("C"), fillColor = Some("#0ea5e9"), size = Some(4.0))))
+    val through = board.createPoint(Coordinate(radius, 0.0), PointAttributes(CommonAttributes(name = Some("R"), fillColor = Some("#38bdf8"), size = Some(3.5))))
+    board.createCircle(center, through, CircleAttributes(CommonAttributes(name = Some("Demo"), strokeColor = Some("#2563eb"))))
+
+    demoState.set(Some(DemoState(board, center, through)))
+
+  def clearBoard(): Unit =
+    demoState.now().foreach(_.board.free())
+    demoState.set(None)
+    Option(document.getElementById(boardId)).foreach(_.innerHTML = "")
+
+  div(
+    h2("JSXGraph Preview"),
+    p("Add a center point with a surrounding circle and adjust its radius interactively."),
+    div(
+      cls := "jsxgraph-demo-controls",
+      button(
+        "Create circle demo",
+        onClick --> (_ => buildBoard(radiusVar.now()))
+      ),
+      button(
+        "Reset demo",
+        onClick --> (_ => clearBoard())
+      )
+    ),
+    div(
+      cls := "jsxgraph-slider-row",
+      label("Radius: "),
+      input(
+        typ := "range",
+        minAttr := "0.5",
+        maxAttr := "8",
+        stepAttr := "0.1",
+        value <-- radiusVar.signal.map(_.toString),
+        disabled <-- demoState.signal.map(_.isEmpty),
+        onInput.mapToValue.map(value => value.toDoubleOption.getOrElse(radiusVar.now())) --> { value =>
+          radiusVar.set(value)
+          demoState.now().foreach { state =>
+            state.through.moveTo(Coordinate(value, 0.0))
+            state.board.fullUpdate()
+          }
+        }
+      ),
+      span(child.text <-- radiusVar.signal.map(r => f"${r}%.1f"))
+    ),
+    div(
+      idAttr := boardId,
+      cls := "jsxgraph-demo-board",
+      styleAttr := "width: 520px; height: 360px; border: 1px solid #d1d5db; border-radius: 8px; margin-top: 0.5rem;"
+    )
+  )
+
 
 def insertWorkbook(): Unit = {
 
@@ -74,6 +144,7 @@ def insertWorkbook(): Unit = {
   val htmlProgEx = HtmlProgrammingExercise(testProgEx, fullscreenElement)
 
   val combinedElement = div(
+    jsxGraphPreview,
     fullscreenElement.getDomElement(),
     /* div(
        h2("Workbook Overview"),
