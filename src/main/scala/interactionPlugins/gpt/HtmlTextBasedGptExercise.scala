@@ -10,9 +10,15 @@ import workbook.model.states.BasicVariableBasedState.BasicStringState
 import workbook.model.states.Stateless
 import workbook.workbookHtmlElements.abstractions.HtmlFullInteractionExercise
 import workbook.workbookHtmlElements.container.HtmlFullInteractionContainerDefault
+import workbook.workbookHtmlElements.container.HtmlFullInteractionContainerDefault.FullscreenInteractionConfig
+import workbook.workbookHtmlElements.container.HtmlFullScreenElement
 import workbook.workbookHtmlElements.{HtmlExerciseTitleElement, HtmlPlaintextInstructionElement}
 
-case class HtmlTextBasedGptExercise(exerciseContent: TextBasedGptExercise) extends HtmlFullInteractionExercise[
+case class HtmlTextBasedGptExercise(
+  exerciseContent: TextBasedGptExercise,
+  useFullscreenInteraction: Boolean = false,
+  fullscreenElement: Option[HtmlFullScreenElement] = None
+) extends HtmlFullInteractionExercise[
   BasicStringState, BasicStringState, Stateless,
   GptScaffoldingResult, GptGradingResult,
   GptScaffolder, GptGrader
@@ -23,7 +29,13 @@ case class HtmlTextBasedGptExercise(exerciseContent: TextBasedGptExercise) exten
 
   override val htmlTitleElement = HtmlExerciseTitleElement(exerciseContent.titleMap)
   override val htmlInstructionElement = HtmlPlaintextInstructionElement(exerciseContent.instructionMap)
-  override val htmlInteractionContainer = HtmlFullInteractionContainerDefault(this, htmlInteractionModel, FullInteractionLabelModel.defaultInteractionLabeling)
+  override val htmlInteractionContainer = HtmlFullInteractionContainerDefault(
+    this,
+    htmlInteractionModel,
+    FullInteractionLabelModel.defaultInteractionLabeling,
+    useFullScreen = useFullscreenInteraction,
+    fullscreenConfig = fullscreenElement.map(FullscreenInteractionConfig.apply)
+  )
 
   private val domElement: Element = div(cls := "container-exercise style-vbox",
     List(
