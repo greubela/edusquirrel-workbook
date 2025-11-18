@@ -62,7 +62,7 @@ def insertWorkbook(): Unit = {
 
   // Generic GPT Exercise
   val testEx = TextBasedGptExercise("id-007", Map(AppLanguage.English -> "this is title"), Map(AppLanguage.English -> "this is instruction"))
-  val htmlEx = HtmlTextBasedGptExercise(testEx)
+  val htmlEx = HtmlTextBasedGptExercise(testEx, useFullscreenInteraction = true, fullscreenElement = Some(fullscreenElement))
 
   // Programming Exercise
   val testProgEx = ProgrammingExercise(
