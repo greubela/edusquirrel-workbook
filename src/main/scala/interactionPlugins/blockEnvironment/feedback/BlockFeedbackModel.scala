@@ -23,6 +23,7 @@ final case class BlockFeedbackRequest(
     submissionNr: Int,
     config: BlockFeedbackConfig,
     meta: BlockFeedbackMeta = BlockFeedbackMeta()
+    origin: BlockStudentCodeOrigin = BlockStudentCodeOrigin.Blocks
 ) {
 
     /** Preferred output language for human-readable texts. */
