@@ -44,6 +44,7 @@ object BlockPythonFeedback {
       submissionNr = submissionNr,
       config = BlockFeedbackConfig.default,
       meta = BlockFeedbackMeta()
+      origin = BlockStudentCode.originOf(studentCode)
     )
 
     BlockFeedbackService.generateFeedback(request)
