@@ -22,20 +22,25 @@ object BlockPythonFeedback {
    * Interface suggested by the professor:
    *
    *  - exerciseText: task description in multiple languages
-   *  - studentCode: block program (VM model)
+   *  - studentCode: either a block program (BeExpression) or raw Python source
    *  - submissionNr: sequential submission number
    *
-   * The Python code is derived internally from the BeExpression.
+   * When a block program is given, the Python source is derived internally.
    */
   def getFeedback(
     exerciseText: LanguageMap[HumanLanguage],
     studentCode: BeExpression,
     submissionNr: Int
   ): UltrichsNewCoolFeedback = {
+    val (studentCodePythonOpt, vmExpressionOpt) =
+      studentCode match
+        case BlockStudentCode.FromBlocks(expr)   => (None, Some(expr))
+        case BlockStudentCode.FromPython(source) => (Some(source), None)
+
     val request = BlockFeedbackRequest(
       exerciseText = exerciseText,
-      studentCodePython = None,
-      vmExpression = Some(studentCode),
+      studentCodePython = studentCodePythonOpt,
+      vmExpression = vmExpressionOpt,
       submissionNr = submissionNr,
       config = BlockFeedbackConfig.default,
       meta = BlockFeedbackMeta()
@@ -44,24 +49,4 @@ object BlockPythonFeedback {
     BlockFeedbackService.generateFeedback(request)
   }
 
-  /**
-   * Alternative facade when the Python code is already pre-generated.
-   * This is especially interesting for your backend pipeline.
-   */
-  def getFeedbackFromPython(
-    exerciseText: LanguageMap[HumanLanguage],
-    studentCodePython: String,
-    submissionNr: Int
-  ): UltrichsNewCoolFeedback = {
-    val request = BlockFeedbackRequest(
-      exerciseText = exerciseText,
-      studentCodePython = Some(studentCodePython),
-      vmExpression = None,
-      submissionNr = submissionNr,
-      config = BlockFeedbackConfig.default,
-      meta = BlockFeedbackMeta()
-    )
-
-    BlockFeedbackService.generateFeedback(request)
-  }
 }
