@@ -29,7 +29,7 @@ object BlockPythonFeedback {
    */
   def getFeedback(
     exerciseText: LanguageMap[HumanLanguage],
-    studentCode: BeExpression,
+    studentCode: BlockStudentCode,
     submissionNr: Int
   ): UltrichsNewCoolFeedback = {
     val (studentCodePythonOpt, vmExpressionOpt) =
