@@ -43,7 +43,7 @@ object BlockPythonFeedback {
       vmExpression = vmExpressionOpt,
       submissionNr = submissionNr,
       config = BlockFeedbackConfig.default,
-      meta = BlockFeedbackMeta()
+      meta = BlockFeedbackMeta(),
       origin = BlockStudentCode.originOf(studentCode)
     )
 
