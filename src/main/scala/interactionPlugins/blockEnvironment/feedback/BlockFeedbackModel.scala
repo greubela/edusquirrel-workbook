@@ -2,6 +2,7 @@ package interactionPlugins.blockEnvironment.feedback
 
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import contentmanagement.model.vm.code.BeExpression
+import interactionPlugins.blockEnvironment.programming.BlockStudentCodeOrigin
 
 /**
  * Metadata for a feedback invocation (exercise ID, user ID, etc.).
@@ -22,7 +23,7 @@ final case class BlockFeedbackRequest(
     vmExpression: Option[BeExpression],
     submissionNr: Int,
     config: BlockFeedbackConfig,
-    meta: BlockFeedbackMeta = BlockFeedbackMeta()
+    meta: BlockFeedbackMeta = BlockFeedbackMeta(),
     origin: BlockStudentCodeOrigin = BlockStudentCodeOrigin.Blocks
 ) {
 
