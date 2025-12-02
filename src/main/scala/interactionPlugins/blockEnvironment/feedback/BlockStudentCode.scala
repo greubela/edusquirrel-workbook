@@ -1,4 +1,4 @@
-package interactionPlugins.blockEnvironment.programming
+package interactionPlugins.blockEnvironment.feedback
 
 import contentmanagement.model.vm.code.BeExpression
 

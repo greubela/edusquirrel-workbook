@@ -1,14 +1,8 @@
-package interactionPlugins.blockEnvironment.programming
+package interactionPlugins.blockEnvironment.feedback
 
 import contentmanagement.model.language.{HumanLanguage, LanguageMap}
 import contentmanagement.model.vm.code.BeExpression
-import interactionPlugins.blockEnvironment.feedback.{
-  BlockFeedbackConfig,
-  BlockFeedbackMeta,
-  BlockFeedbackRequest,
-  BlockFeedbackService,
-  UltrichsNewCoolFeedback
-}
+import interactionPlugins.blockEnvironment.feedback.{BlockFeedbackConfig, BlockFeedbackMeta, BlockFeedbackRequest, BlockFeedbackService, UltrichsNewCoolFeedback}
 
 /**
  * Public entry point for the block-Python feedback pipeline.

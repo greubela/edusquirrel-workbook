@@ -2,7 +2,6 @@ package interactionPlugins.blockEnvironment.feedback
 
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import contentmanagement.model.vm.code.BeExpression
-import interactionPlugins.blockEnvironment.programming.BlockStudentCodeOrigin
 
 /**
  * Metadata for a feedback invocation (exercise ID, user ID, etc.).

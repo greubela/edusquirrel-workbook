@@ -248,6 +248,6 @@ enum BeFunctionTypes(val color: AppColor, val shapeFactory: (Double, Double, Seq
   extends BeBlockType {
   case ExistingFunction extends BeFunctionTypes(RGBColor.yellow, ShapeFactory.buildTurtleUnitShape)
   case StartBlock extends BeFunctionTypes(RGBColor.black, ShapeFactory.buildStarterShape)
-  case CustomFunction extends BeFunctionTypes(RGBColor.black, ShapeFactory.buildStarterShape)
+  case Cus tomFunction extends BeFunctionTypes(RGBColor.black, ShapeFactory.buildStarterShape)
 }
 */

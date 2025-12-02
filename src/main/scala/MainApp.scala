@@ -58,8 +58,8 @@ def insertTurtleEditor(): Unit = {
 }
 
 def jsxGraphPreview: HtmlElement =
-  given Fraction[Double] = summon[Fractional[Double]]
-  given JsValueConverter[Double] = JsValueConverter.defaultConverter[Double]
+//  given Fraction[Double] = summon[Fractional[Double]]
+//  given JsValueConverter[Double] = JsValueConverter.defaultConverter[Double]
 
   val boardId = "jsxgraph-demo-board"
   val jsxFacade = JsxGraphFacade[Double]()

@@ -9,7 +9,6 @@ import interactionPlugins.blockEnvironment.feedback.rules.{
   RuleSeverity,
   VmStaticRules
 }
-import interactionPlugins.blockEnvironment.programming.BlockStudentCodeOrigin
 import workbook.model.feedback.FeedbackStatus
 
 import scala.util.Try
