@@ -144,7 +144,7 @@ def insertWorkbook(): Unit = {
   val htmlProgEx = HtmlProgrammingExercise(testProgEx, fullscreenElement)
 
   val combinedElement = div(
-    jsxGraphPreview,
+   // jsxGraphPreview,
     fullscreenElement.getDomElement(),
     /* div(
        h2("Workbook Overview"),

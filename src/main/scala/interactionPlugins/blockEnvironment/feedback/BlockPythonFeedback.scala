@@ -23,6 +23,7 @@ object BlockPythonFeedback {
    */
   def getFeedback(
     exerciseText: LanguageMap[HumanLanguage],
+    currentLanguage: HumanLanguage,
     studentCode: BlockStudentCode,
     submissionNr: Int
   ): UltrichsNewCoolFeedback = {
