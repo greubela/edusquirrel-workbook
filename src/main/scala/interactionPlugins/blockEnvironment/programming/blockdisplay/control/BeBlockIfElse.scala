@@ -36,7 +36,7 @@ case class BeBlockIfElse(expr: BeIfElse) extends BeBlock {
 
       override def totalControlFlowWidth(config: BeRenderingConfig): Double = config.controlSegmentSize * 12
 
-      override def getControlFlowChangeElements: List[ControlFlowShape] = List(IfElseSplit(), IfElseUnion(), ControlFlowCross())
+      override def getControlFlowChangeElements: List[ControlFlowShape] = List(IfElseSplit(), ControlFlowCross(), IfElseUnion())
 
       override def getControlFlowExpressionElements: List[Option[BeShape]] = List(Some(condition), None, None)
 
