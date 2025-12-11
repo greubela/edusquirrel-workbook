@@ -19,16 +19,21 @@ case class HtmlFullScreenElement() extends HtmlWorkbookElement {
   private var activeElement: Option[Element] = None
 
   private def onKeyDown(event: KeyboardEvent): Unit =
-    if (event.key == "Escape" && overlayActiveVar.now()) {
-      println("event key: " + event.key + " (should be Escape)")
+    if event.key == "Escape" && overlayActiveVar.now() then
       event.preventDefault()
       closeFullscreen()
-      event.preventDefault()
-      closeFullscreen()
-    }
-    else {
+    else
       println("event key: " + event.key)
-    }
+
+  private def lockBackground(): Unit =
+    withDocumentBody(_.classList.add(bodyActiveClass))
+
+  private def unlockBackground(): Unit =
+    withDocumentBody(_.classList.remove(bodyActiveClass))
+
+  private def activateOverlay(): Unit =
+    overlayActiveVar.set(true)
+    lockBackground()
 
 
   private val overlayElement: Element =
@@ -55,17 +60,17 @@ case class HtmlFullScreenElement() extends HtmlWorkbookElement {
 
   def setElementFullscreen(domElement: Element): Unit =
     if activeElement.contains(domElement) then
-      overlayActiveVar.set(true)
-      withDocumentBody(_.classList.add(bodyActiveClass))
+      activateOverlay()
     else {
       contentContainer.ref.childNodes.foreach(curNode => contentContainer.ref.removeChild(curNode))
       render(contentContainer.ref, domElement)
-      overlayActiveVar.set(true)
       activeElement = Some(domElement)
+      activateOverlay()
     }
 
   def closeFullscreen(): Unit = {
     overlayActiveVar.set(false)
+    unlockBackground()
   }
 
   override def getDomElement(): Element = overlayElement
