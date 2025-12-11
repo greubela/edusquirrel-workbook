@@ -1,4 +1,4 @@
-package contentmanagement.webElements.svg.shapes.nested
+package contentmanagement.webElements.svg.shapes.special.nested
 
 import contentmanagement.model.geometry.{Bounds, Dimension}
 import contentmanagement.webElements.svg.AppSvgElement

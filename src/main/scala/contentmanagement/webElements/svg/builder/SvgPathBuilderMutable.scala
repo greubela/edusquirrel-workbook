@@ -160,7 +160,7 @@ case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Poin
       .moveToRel(new Dimension[T](-radius, fromInt(0)))
       .arcToRel(radius, radius, fromInt(0), largeArc = true, sweep = false, Dimension(dia, fromInt(0)))
       .arcToRel(radius, radius, fromInt(0), largeArc = true, sweep = false, Dimension(-dia, fromInt(0)))
-      .closePath()
+     // .closePath()
       .moveToRel(new Dimension[T](radius, fromInt(0)))
   }
 
@@ -181,7 +181,6 @@ case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Poin
       .lineToRel(Dimension(segmentWidth, fromInt(0)))
       .lineToRel(Dimension(segmentWidth, -segmentHeight))
       .lineToRel(Dimension(segmentWidth, fromInt(0)))
-
   }
 
   def toAppSvgElement(): AppPathSvgElement[T] =

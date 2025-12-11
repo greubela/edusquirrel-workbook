@@ -50,13 +50,13 @@ trait SvgPathBuilder[T: Fractional] {
 
   def markSpot(size: T): SvgPathBuilder[T] = {
     this
-      .lineToRel(Dimension(size, size))
+     /* .lineToRel(Dimension(size, size))
       .moveToRel(Dimension(fromInt(-2) * size, fromInt(-2) * size))
       .lineToRel(Dimension(size, size))
 
       .lineToRel(Dimension(size, -size))
       .moveToRel(Dimension(fromInt(-2) * size, fromInt(2) * size))
-      .lineToRel(Dimension(size, -size))
+      .lineToRel(Dimension(size, -size))*/
       .addCenteredCircle(size)
   }
 
@@ -111,6 +111,36 @@ trait SvgPathBuilder[T: Fractional] {
   def addCenteredCircle(radius: T): SvgPathBuilder[T]
 
   def drawBoundRectangle(bounds: Bounds[T]): SvgPathBuilder[T]
+
+
+
+
+  def addCommandBracketDown(segmentWidth: T, destHeight: T): SvgPathBuilder[T] = {
+    // width: 4/5*segmentWidth
+    val N = summon[Fractional[T]]
+    import N.*
+
+    val zero: T = fromInt(0)
+    val one: T = segmentWidth / fromInt(5)
+    val two: T = one + one
+    val three: T = two + one
+    val minHeight: T = fromInt(2) * segmentWidth
+    val extendLine: T = if (minHeight >= destHeight) fromInt(0) else (destHeight - minHeight) / fromInt(2)
+
+    this
+      .cubicBezierToRel(Dimension(-one, zero), Dimension(-two, one), Dimension(-two, two))
+      .verticalLineWithHeight(extendLine)
+      .cubicBezierToRel(Dimension(zero, two), Dimension(-one, two), Dimension(-two, three))
+      .cubicBezierToRel(Dimension(one, one), Dimension(two, one), Dimension(two, three))
+      .verticalLineWithHeight(extendLine)
+      .cubicBezierToRel(Dimension(zero, one), Dimension(one, two), Dimension(two, two))
+
+
+
+  }
+
+
+
 
   def addControlFlowConnector(segmentWidth: T, invertHeight: Boolean = false): SvgPathBuilder[T]
 

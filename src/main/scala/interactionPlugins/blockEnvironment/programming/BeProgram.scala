@@ -250,21 +250,36 @@ object BeProgram {
         |    i = i + 1
         |""".stripMargin
     val parsingResult = PythonParser.parsePythonWithDetails(somePython)
-    val expression = parsingResult.codeExpression
+    val expression = BeStartProgram(parsingResult.codeExpression)
     BeProgram(expression)
   }
 
   def parseSimpleIf(): BeProgram = {
     val somePython =
       """
-        |c: bool = true
         |if c:
         |    x = "hi"
         |else:
         |    x = "bye"
         |""".stripMargin
     val parsingResult = PythonParser.parsePythonWithDetails(somePython)
-    val expression = parsingResult.codeExpression
+    val expression = BeStartProgram(parsingResult.codeExpression)
+    BeProgram(expression)
+  }
+
+  def debugGraphicsProgram3(): BeProgram = {
+    val somePython =
+      """
+        |import turtle
+        |# comments are supported
+        |        if i == 2:
+        |            turnLeft(90)
+        |        else:
+        |            backward("never!")
+        |    i = i + 1
+        |""".stripMargin
+    val parsingResult = PythonParser.parsePythonWithDetails(somePython)
+    val expression = BeStartProgram(parsingResult.codeExpression)
     BeProgram(expression)
   }
 

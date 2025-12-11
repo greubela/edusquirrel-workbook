@@ -106,7 +106,7 @@ case class SvgPathBuilderImmutable[T: Fractional](
       MoveRel(Dimension(-radius, fromInt(0))),
       ArcRel(radius, radius, fromInt(0), largeArc = true, sweep = false, Dimension(dia, fromInt(0))),
       ArcRel(radius, radius, fromInt(0), largeArc = true, sweep = false, Dimension(-dia, fromInt(0))),
-      ClosePath[T](),
+    //  ClosePath[T](),
       MoveRel(Dimension(radius, fromInt(0))),
       CenteredCircleControl(radius)
     ))

@@ -1,4 +1,4 @@
-package contentmanagement.webElements.svg.shapes.nested
+package contentmanagement.webElements.svg.shapes.special.nested
 
 import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.AppSvgElement
@@ -32,8 +32,10 @@ trait NestedControlStructureShape extends BeShapeComposite with ControlFlowAndEx
 
   private def controlFlowHeights(rendererConfig: BeRenderingConfig): List[Double] = {
     getControlFlowChangeElements.zip(getControlFlowExpressionElements).map((controlFlow, expression) => {
+
       val cf: Double = controlFlow.displaySize(rendererConfig).height
       val ex: Option[Double] = expression.map(_.displaySize(rendererConfig).height)
+      println("heights - cf: " + cf + ", expr: " + ex + ", element: " + controlFlow.getClass.getSimpleName + " / " + expression.getClass.getSimpleName)
       (ex.toList ++ List(cf)).max
     })
   }
@@ -85,6 +87,9 @@ trait NestedControlStructureShape extends BeShapeComposite with ControlFlowAndEx
 
     val seg: Double = rendererConfig.controlSegmentSize
     val extraWidth = bounds.width - totalControlFlowWidth(rendererConfig)
+
+    println("cfHeights for rendering background: " + cfHeights.mkString(", ") + " / bodyHeights: " + bodyHeights.mkString(", "))
+    //top
     var res = SvgPathBuilder.mutableBuilder(bounds.startPoint)
       .addControlFlowConnector(seg)
       .horizontalLineWithWidth(rightControlFlowWith(rendererConfig))
@@ -98,6 +103,7 @@ trait NestedControlStructureShape extends BeShapeComposite with ControlFlowAndEx
         .verticalLineWithHeight(curBodyHeight)
         .addControlFlowConnector(seg)
         .horizontalLineWithWidth(extraWidth)
+      println("drawing background line 1 for: " + curControlFlowHeight + " / " + curBodyHeight)
     }
 
     for (curControlFlowHeight <- cfHeights.lastOption.toList) {
@@ -107,6 +113,7 @@ trait NestedControlStructureShape extends BeShapeComposite with ControlFlowAndEx
         .horizontalLineWithWidth(-rightControlFlowWith(rendererConfig))
         .addControlFlowConnector(-seg, true)
         .closePath()
+      println("drawing background line 2 for: " + curControlFlowHeight )
     }
     res
   }

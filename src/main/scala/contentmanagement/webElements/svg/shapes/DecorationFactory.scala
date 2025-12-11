@@ -357,21 +357,36 @@ case class DecorationFactory[T: Fractional](renderingConfig: BeRenderingConfig) 
   }
 
 
-  def buildControlFlowBackgroundMultipleSize(bounds: Bounds[T], drawConnectors: List[(Boolean, Boolean)]): SvgPathBuilder[T] = {
+  def buildControlFlowBackgroundMultipleSize(bounds: Bounds[T], drawConnectors: List[(Boolean, Boolean)], commandBracket: Boolean): SvgPathBuilder[T] = {
     val missingWidth = bounds.width - segmentSize * fromInt(6) * fromInt(drawConnectors.size)
 
     var res = SvgPathBuilder(bounds.startPoint)
+
 
     for (curConnector <- drawConnectors.map(_._1)) {
       res =
         if (curConnector) res.addControlFlowConnector(segmentSize)
         else res.horizontalLineWithWidth(segmentSize * fromInt(6))
     }
-    if (missingWidth > fromInt(0)) res = res.horizontalLineWithWidth(missingWidth)
 
-    res = res.verticalLineWithHeight(bounds.height)
+    //res = res.markSpot(fromInt(2))
 
-    if (missingWidth > fromInt(0)) res = res.horizontalLineWithWidth(-missingWidth)
+    if (missingWidth > fromInt(0)){
+      res = res.horizontalLineWithWidth(missingWidth)
+    }
+
+
+    if(commandBracket){
+      res = res.addCommandBracketDown(segmentSize, bounds.height)
+    }else{
+      res = res.verticalLineWithHeight(bounds.height)
+
+    }
+
+
+    if (missingWidth > fromInt(0)) {
+      res = res.horizontalLineWithWidth(-missingWidth)
+    }
 
     for (curConnector <- drawConnectors.map(_._2).reverse) {
       res =

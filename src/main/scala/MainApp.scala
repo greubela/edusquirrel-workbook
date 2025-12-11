@@ -24,8 +24,8 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 @main
 def mainApp(): Unit = {
   doSomeCalculations()
-  insertWorkbook()
-  //insertTurtleEditor()
+  //insertWorkbook()
+  insertTurtleEditor()
 }
 
 def doSomeCalculations(): Unit = {
@@ -45,7 +45,7 @@ val fullscreenElement: HtmlFullScreenElement = HtmlFullScreenElement()
 
 def insertTurtleEditor(): Unit = {
 
-  val editorDom = new HtmlFullscreenTurtleEditorElement(BeProgram.miniProgramExpression()).getDomElement()
+  val editorDom = new HtmlFullscreenTurtleEditorElement(BeProgram.debugGraphicsProgram().fullProgram).getDomElement()
 
   val worksheetDiv = document.getElementById("worksheetDts")
 

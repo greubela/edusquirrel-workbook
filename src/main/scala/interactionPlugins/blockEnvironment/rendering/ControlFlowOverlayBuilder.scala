@@ -120,10 +120,12 @@ object ControlFlowOverlayBuilder {
     }
 
     def changeLastPathBuilder(func: SvgPathBuilder[Double] => SvgPathBuilder[Double]): ControlFlowPath = {
+      if(segments.isEmpty) throw new RuntimeException(s"ControlFlowPath::changeLastPathBuilder, tried to change last segment of empty path: $this")
       ControlFlowPath(PathStatus.HANDLED, segments.init :+ lastSegment.copy(curPath = func(lastSegment.curPath)))
     }
 
     def changeLastPathSegment(func: PathSegment => PathSegment): ControlFlowPath = {
+      if(segments.isEmpty) throw new RuntimeException(s"ControlFlowPath::changeLastPathSegment, tried to change last segment of empty path: $this")
       ControlFlowPath(PathStatus.HANDLED, segments.init ++ List(func(lastSegment)))
     }
 

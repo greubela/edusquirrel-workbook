@@ -16,6 +16,29 @@ private[shapes] object ShapeFactory {
 
   private def intPoint[T: Fractional](x: Int, y: Int): Point[T] = Point[T](intToT(x), intToT(y))
 
+  def buildCommandShape[T: Fractional](pBounds: Bounds[T], segmentWidth: T): SvgPathBuilder[T] = {
+    val N = summon[Fractional[T]]
+    import N.*
+
+    val height = if(pBounds.height < fromInt(2) * segmentWidth) fromInt(2) * segmentWidth else pBounds.height
+    val bracketWidth = segmentWidth * fromInt(4) / fromInt(5)
+    val rightSideCornerHeight =  segmentWidth * fromInt(2) / fromInt(5)
+    val zero: T = fromInt(0)
+    val one: T = segmentWidth / fromInt(5)
+    val two: T = one + one
+
+    SvgPathBuilder(pBounds.startPoint)
+      //.moveToRel(Dimension(bracketWidth, fromInt(0)))
+      .addCommandBracketDown(segmentWidth, height)
+      .horizontalLineWithWidth(pBounds.width - bracketWidth - bracketWidth)
+      .cubicBezierToRel(Dimension(one, zero), Dimension(two, -one), Dimension(two, -two))
+      .verticalLineWithHeight(- height + rightSideCornerHeight + rightSideCornerHeight)
+     .cubicBezierToRel(Dimension(zero, -one), Dimension(-one, -two), Dimension(-two, -two))
+      //.verticalLineWithHeight(-height)
+      .closePath()
+  }
+
+
   def buildLiteralShape[T: Fractional](fitIntoBounds: Bounds[T]): SvgPathBuilder[T] = {
     val N = summon[Fractional[T]]
     import N.*
