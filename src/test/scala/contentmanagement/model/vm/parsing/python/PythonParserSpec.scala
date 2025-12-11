@@ -558,7 +558,7 @@ class PythonParserSpec extends FunSuite {
     val booleanExpression = assignments.last.value
     val rendered = result.codeExpression.getInLanguage(Python, English)
     assertPythonEquivalentAllowingAdditionalTypeHints(python, rendered)
-    assertEquals(booleanExpression.canEvaluateTo, BeDataType.Boolean)
+    assertEquals(booleanExpression.possibleStaticTypes, BeDataType.Boolean)
   }
 
   test("unary operators are parsed as functions") {
@@ -580,10 +580,10 @@ class PythonParserSpec extends FunSuite {
 
     val rendered = result.codeExpression.getInLanguage(Python, English)
     assertPythonEquivalentAllowingAdditionalTypeHints(python, rendered)
-    assertEquals(assignments(1).value.canEvaluateTo, BeDataType.Numeric)
-    assertEquals(assignments(2).value.canEvaluateTo, BeDataType.Numeric)
-    assertEquals(assignments(3).value.canEvaluateTo, BeDataType.Numeric)
-    assertEquals(assignments(4).value.canEvaluateTo, BeDataType.Boolean)
+    assertEquals(assignments(1).value.possibleStaticTypes, BeDataType.Numeric)
+    assertEquals(assignments(2).value.possibleStaticTypes, BeDataType.Numeric)
+    assertEquals(assignments(3).value.possibleStaticTypes, BeDataType.Numeric)
+    assertEquals(assignments(4).value.possibleStaticTypes, BeDataType.Boolean)
   }
 
   test("typed circle_area function preserves annotations and types") {
@@ -618,7 +618,7 @@ class PythonParserSpec extends FunSuite {
       case assign: BeAssignVariable if assign.target.name.getInLanguage(English) == "area" => assign
     }.getOrElse(fail("expected assignment to area"))
     assertEquals(areaAssignment.target.variableType, BeDataType.Numeric)
-    assertEquals(areaAssignment.value.canEvaluateTo, BeDataType.Numeric)
+    assertEquals(areaAssignment.value.possibleStaticTypes, BeDataType.Numeric)
 
     val variablesByName = parsingResult.definedVariables.map { variable =>
       variable.name.getInLanguage(English) -> variable
@@ -632,12 +632,12 @@ class PythonParserSpec extends FunSuite {
     val testAssignment = topAssignments
       .find(_.target.name.getInLanguage(English) == "testWithNr")
       .getOrElse(fail("expected assignment to testWithNr"))
-    assertEquals(testAssignment.value.canEvaluateTo, BeDataType.Numeric)
+    assertEquals(testAssignment.value.possibleStaticTypes, BeDataType.Numeric)
 
     val resultAssignment = topAssignments
       .find(_.target.name.getInLanguage(English) == "result")
       .getOrElse(fail("expected assignment to result"))
-    assertEquals(resultAssignment.value.canEvaluateTo, BeDataType.Numeric)
+    assertEquals(resultAssignment.value.possibleStaticTypes, BeDataType.Numeric)
   }
   test("round trip from mini program expression") {
     val sourceExpression = BeProgram.miniProgramExpression()

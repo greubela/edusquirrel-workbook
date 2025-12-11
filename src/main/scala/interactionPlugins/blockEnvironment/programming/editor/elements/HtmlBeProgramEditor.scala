@@ -19,8 +19,8 @@ case class HtmlBeProgramEditor(editorState: EditorState) extends HtmlAppElement 
   private val BlockViewTabNr = 0
   private val PythonViewTabNr = 1
 
-  val strVar: Var[String] = Var(editorState.treeToEdit.now().fullProgram.getInLanguage(Python, English))
-  editorState.treeToEdit.signal.foreach(tree => strVar.update(_ => tree.fullProgram.getInLanguage(Python, English)))(new Owner() {})
+  val strVar: Var[String] = Var(editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(Python, English))
+  editorState.treeToEdit.signal.foreach(tree => strVar.update(_ => tree.fullProgram.expressionIO.getInLanguage(Python, English)))(new Owner() {})
   var language: HumanLanguage = AppLanguage.English
 
   private val blockViewTab = HtmlTab(
@@ -46,7 +46,7 @@ case class HtmlBeProgramEditor(editorState: EditorState) extends HtmlAppElement 
     List(blockViewTab, pythonViewTab),
     onTabSwitched = (previous, next) => {
       if (next.tabNr == PythonViewTabNr && previous.tabNr != PythonViewTabNr) {
-        val pythonSource = editorState.treeToEdit.now().fullProgram.getInLanguage(Python, language)
+        val pythonSource = editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(Python, language)
         strVar.set(pythonSource)
       } else if (next.tabNr == BlockViewTabNr && previous.tabNr == PythonViewTabNr) {
         val parsedProgram = PythonParser.parsePython(strVar.now())

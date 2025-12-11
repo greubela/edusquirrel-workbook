@@ -36,7 +36,7 @@ case class BeProgram(fullProgram: BeExpression) {
         (structure.curValue, BeBlockPlaceholder(structure.curValue.asInstanceOf[BeExtensionPoint], structure.curPosition))
       }
       case BeExpressionReference(childPos, expression) => {
-        (structure.curValue, expression.createBlock())
+        (structure.curValue, expression.expressionIO.createBlock())
       }
     }
   })
@@ -53,7 +53,7 @@ case class BeProgram(fullProgram: BeExpression) {
           case BeExpressionReference(childPos, expression) => {
             val childrenResultList: List[(BeChildRole, BeExpression)] =
               childrenResultMap.toList.filter(_._2.nonEmpty).map(tup => (tup._1.childPosition.roleInParent, tup._2.get))
-            Some(expression.withReplacedChildren(childrenResultList))
+            Some(expression.expressionIO.withReplacedChildren(childrenResultList))
           }
         }
       })

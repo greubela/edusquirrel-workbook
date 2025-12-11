@@ -6,9 +6,10 @@ import scala.util.Try
 
 trait BeDataValue {
 
-  def possibleTypes: BeDataType
+  def currentType: BeDataType
 
   def displayAsString: String
+  
 }
 
 
@@ -16,12 +17,12 @@ case class BeDataValueUnit() extends BeDataValue {
 
   val displayAsString: String = ""
 
-  val possibleTypes: BeDataType = BeDataType.Unit
+  val currentType: BeDataType = BeDataType.Unit
 }
 
 case class BeUseValueReference(variable: BeDefineVariable) extends BeDataValue {
 
-  override def possibleTypes: BeDataType = variable.variableType
+  override def currentType: BeDataType = variable.variableType
 
   override def displayAsString: String = variable.name.getInLanguage(AppLanguage.default())
 }
@@ -29,7 +30,7 @@ case class BeUseValueReference(variable: BeDefineVariable) extends BeDataValue {
 case class BeDataValueLiteral(literalString: String) extends BeDataValue {
   def displayAsString: String = literalString
 
-  override val possibleTypes: BeDataType = {
+  override val currentType: BeDataType = {
     val trimmed = literalString.trim
     def isNumericLiteral(str: String): Boolean =
       BeDataType.Numeric.isValidLiteral(str) || Try(BigDecimal(str)).isSuccess

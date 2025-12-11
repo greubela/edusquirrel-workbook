@@ -88,7 +88,7 @@ object BlockFeedbackService:
         val pythonFromVm =
           vmOpt
             .map(expr =>
-              expr.getInLanguage(AppLanguage.Python, request.preferredHumanLanguage)
+              expr.expressionIO.getInLanguage(AppLanguage.Python, request.preferredHumanLanguage)
             )
             .getOrElse("")
         (pythonFromVm, vmOpt)

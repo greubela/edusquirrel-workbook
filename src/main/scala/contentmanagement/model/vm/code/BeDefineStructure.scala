@@ -17,8 +17,5 @@ trait BeDefineStructure extends BeExpression{
 
   def allDefinedStructures: List[BeDefineStructure] = definedClasses ++ definedFunctions ++ definedVariables
   
-  override def hasThisExpressionSideEffects: Boolean = true
-
-  override def canEvaluateTo: BeDataType = BeDataType.Unit
 
 }

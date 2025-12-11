@@ -8,16 +8,7 @@ import contentmanagement.webElements.svg.shapes.BeShape.BeShapeAtomic
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 trait SvgPathBuilder[T: Fractional] {
-  val N = summon[Fractional[T]];
 
-  import N.*
-
-  def fromDouble(nr: Double): T = {
-
-    lazy val thousand = fromInt(1000)
-    lazy val convertedFromInt: T = fromInt((nr * 1000).toInt) / fromInt(1000)
-    N.parseString(nr.toString).getOrElse(convertedFromInt)
-  }
 
   // ---- Introspection / results ----
   def absStartPoint: Point[T]
@@ -50,13 +41,13 @@ trait SvgPathBuilder[T: Fractional] {
 
   def markSpot(size: T): SvgPathBuilder[T] = {
     this
-     /* .lineToRel(Dimension(size, size))
-      .moveToRel(Dimension(fromInt(-2) * size, fromInt(-2) * size))
-      .lineToRel(Dimension(size, size))
-
-      .lineToRel(Dimension(size, -size))
-      .moveToRel(Dimension(fromInt(-2) * size, fromInt(2) * size))
-      .lineToRel(Dimension(size, -size))*/
+      /* .lineToRel(Dimension(size, size))
+       .moveToRel(Dimension(fromInt(-2) * size, fromInt(-2) * size))
+       .lineToRel(Dimension(size, size))
+ 
+       .lineToRel(Dimension(size, -size))
+       .moveToRel(Dimension(fromInt(-2) * size, fromInt(2) * size))
+       .lineToRel(Dimension(size, -size))*/
       .addCenteredCircle(size)
   }
 
@@ -113,8 +104,6 @@ trait SvgPathBuilder[T: Fractional] {
   def drawBoundRectangle(bounds: Bounds[T]): SvgPathBuilder[T]
 
 
-
-
   def addCommandBracketDown(segmentWidth: T, destHeight: T): SvgPathBuilder[T] = {
     // width: 4/5*segmentWidth
     val N = summon[Fractional[T]]
@@ -136,10 +125,7 @@ trait SvgPathBuilder[T: Fractional] {
       .cubicBezierToRel(Dimension(zero, one), Dimension(one, two), Dimension(two, two))
 
 
-
   }
-
-
 
 
   def addControlFlowConnector(segmentWidth: T, invertHeight: Boolean = false): SvgPathBuilder[T]
@@ -173,70 +159,74 @@ object SvgPathBuilder {
 
   def immutableBuilder[T: Fractional](startPoint: Point[T]): SvgPathBuilderImmutable[T] = SvgPathBuilderImmutable[T](StartPathCommand(startPoint), List())
 
+  def fromDouble[T: Fractional](nr: Double): T = {
+    val N = summon[Fractional[T]];
+    import N.*
+    lazy val thousand = fromInt(1000)
+    lazy val convertedFromInt: T = fromInt((nr * 1000).toInt) / fromInt(1000)
+    N.parseString(nr.toString).getOrElse(convertedFromInt)
+  }
+}
+
+/*
+trait SvgPathbuilderCommand[T: Fractional]() {
+  def controlPointsAbsolute: List[Point[T]] = List()
+  def getPathDString(): String
+
+  def toRelativeCommand(startPosition: Point[T]): RelativeCommand[T]
+  def toAbsoluteCommand(startPosition: Point[T]): AbsoluteCommand[T]
+
+}
+
+trait AbsoluteCommand[T: Fractional]() extends SvgPathbuilderCommand[T] {
+  def positionAfterCommand: Point[T]
+}
+
+trait RelativeCommand[T: Fractional]() extends SvgPathbuilderCommand[T] {
+    def relativeMovement: Dimension[T]
+}
+
+case class AddControlLinesCommand[T: Fractional](predecessorPos: Point[T], override val controlPointsAbsolute: List[Point[T]]) extends RelativeCommand[T], AbsoluteCommand[T] {
+  def getPathDString(): String = ""
+
+  def toRelativeCommand(startPosition: Point[T]): RelativeCommand[T] = this
+  def toAbsoluteCommand(startPosition: Point[T]): AbsoluteCommand[T] = this
+
+  def positionAfterCommand: Point[T] = predecessorPos
+  def relativeMovement: Dimension[T] = Dimension[T](0,0)
 }
 
 
-/*
-object SvgPathBuilder {
-
-  trait SvgPathbuilderCommand[T: Fractional]() {
-    def controlPointsAbsolute: List[Point[T]] = List()
-    def getPathDString(): String
-
-    def toRelativeCommand(startPosition: Point[T]): RelativeCommand[T]
-    def toAbsoluteCommand(startPosition: Point[T]): AbsoluteCommand[T]
-
+case class StartPathCommand[T: Fractional](absoluteStartPos: Point[T]) {
+  def startCommand(): String = {
+    s"M ${absoluteStartPos.toDouble.x} ${absoluteStartPos.toDouble.y}"
   }
+}
 
-  trait AbsoluteCommand[T: Fractional]() extends SvgPathbuilderCommand[T] {
-    def positionAfterCommand: Point[T]
+case class MoveCommand[T: Fractional](override val relativeMovement: Dimension[T]) extends SvgPathbuilderCommand[T] {
+  def toRelativeCommandString(): String = s"m ${relativeMovement.toDouble.width} ${relativeMovement.toDouble.height}"
+
+  def toAbsoluteCommandString(lastAbsPos: Point[T]): String = {
+    val curDestPos = newAbsolutePos(lastAbsPos)
+    s"M ${curDestPos.toDouble.x} ${curDestPos.toDouble.y}"
   }
-
-  trait RelativeCommand[T: Fractional]() extends SvgPathbuilderCommand[T] {
-      def relativeMovement: Dimension[T]
-  }
-
-  case class AddControlLinesCommand[T: Fractional](predecessorPos: Point[T], override val controlPointsAbsolute: List[Point[T]]) extends RelativeCommand[T], AbsoluteCommand[T] {
-    def getPathDString(): String = ""
-
-    def toRelativeCommand(startPosition: Point[T]): RelativeCommand[T] = this
-    def toAbsoluteCommand(startPosition: Point[T]): AbsoluteCommand[T] = this
-
-    def positionAfterCommand: Point[T] = predecessorPos
-    def relativeMovement: Dimension[T] = Dimension[T](0,0)
-  }
-
-
-  case class StartPathCommand[T: Fractional](absoluteStartPos: Point[T]) {
-    def startCommand(): String = {
-      s"M ${absoluteStartPos.toDouble.x} ${absoluteStartPos.toDouble.y}"
-    }
-  }
-
-  case class MoveCommand[T: Fractional](override val relativeMovement: Dimension[T]) extends SvgPathbuilderCommand[T] {
-    def toRelativeCommandString(): String = s"m ${relativeMovement.toDouble.width} ${relativeMovement.toDouble.height}"
-
-    def toAbsoluteCommandString(lastAbsPos: Point[T]): String = {
-      val curDestPos = newAbsolutePos(lastAbsPos)
-      s"M ${curDestPos.toDouble.x} ${curDestPos.toDouble.y}"
-    }
-  }
+}
 
 }
 
 case class SvgPathBuilder[T: Fractional](startCommand: StartPathCommand[T], furtherCommands: List[SvgPathbuilderCommand[T]]) {
 
-  def pathD: String = ???
+def pathD: String = ???
 
-  def moveToRel(dimension: Dimension[T]): SvgPathBuilder[T] = {
-    SvgPathBuilder[T](startCommand, furtherCommands :+ MoveCommand(dimension))
-  }
+def moveToRel(dimension: Dimension[T]): SvgPathBuilder[T] = {
+  SvgPathBuilder[T](startCommand, furtherCommands :+ MoveCommand(dimension))
+}
 
-  def moveToAbs(endPoint: Point[T]): SvgPathBuilder[T] = ???
+def moveToAbs(endPoint: Point[T]): SvgPathBuilder[T] = ???
 
-  def moveWholePath(dimension: Dimension[T]): SvgPathBuilder[T] = {
-    SvgPathBuilder[T](StartPathCommand[T](startCommand.absoluteStartPos.moveWithDimension(dimension)), furtherCommands)
-  }
+def moveWholePath(dimension: Dimension[T]): SvgPathBuilder[T] = {
+  SvgPathBuilder[T](StartPathCommand[T](startCommand.absoluteStartPos.moveWithDimension(dimension)), furtherCommands)
+}
 }
 
 

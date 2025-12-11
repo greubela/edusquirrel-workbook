@@ -12,14 +12,15 @@ case class BeManualDefinition(
                                override val definedFunctions: List[BeDefineFunction],
                                override val definedVariables: List[BeDefineVariable]) extends BeDefineStructure {
 
-  override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = allDefinedStructures.map(_.getInLanguage(programmingLanguage, humanLanguage)).mkString("\n")
+  /*override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String =
+    allDefinedStructures.map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage)).mkString("\n")
 
-  override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] = allDefinedStructures.flatMap(_.getSyntaxErrorsOfThisStructure)
 
   override def createBlock(): BeBlock =
     throw new NotImplementedError("Block rendering is not implemented for BeManualDefinition")
 
+  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = this*/
+
   def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = allDefinedStructures.flatMap(curStruc => curStruc.getChildren(withExtensions, parentScope))
 
-  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = this
 }

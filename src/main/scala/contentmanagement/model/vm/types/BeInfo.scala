@@ -13,7 +13,7 @@ object BeInfo {
   sealed trait InfoType
 
   enum SyntaxError extends InfoType {
-    case UnparsableBlock, MissingValue, InvalidLiteralValue, TypeMismatch, StructureMismatch
+    case UnparsableBlock, UnsupportedBlock, MissingValue, InvalidLiteralValue, TypeMismatch, StructureMismatch
   }
 
   enum RuntimeError extends InfoType {

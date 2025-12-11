@@ -18,7 +18,7 @@ import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
 case class BeBlockUseValue(valueUsage: BeUseValue) extends BeBlockSingleShape {
   
   override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
-    val textShape = TextShape(LanguageMap.universalMap(valueUsage.getInLanguage(BlockDisplay, English)))
+    val textShape = TextShape(LanguageMap.universalMap(valueUsage.expressionIO.getInLanguage(BlockDisplay, English)))
 
     val (outerShape, amends): (BeShapeContainerable, Seq[L.Modifier[L.SvgElement]]) = valueUsage.value match {
       case BeDataValueLiteral(literalStr) => {
