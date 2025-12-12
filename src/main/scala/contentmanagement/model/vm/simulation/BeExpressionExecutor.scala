@@ -14,7 +14,7 @@ abstract class BeExpressionExecutor(simulatorConfig: BeSimulatorConfig, initSimu
     var curSimState = initSimulatorState
     for (curChild <- childrenResults) if (curChild._1 != curSimState) curSimState = curChild._1
 
-    if (expressionToExecute.expressionStaticInformation.hasSideEffects)
+    if (expressionToExecute.staticInformationExpression.hasSideEffects)
       curSimState = applySideEffectsOfThisBlock(curSimState, childrenResults)
     
     executeThisBlockInSimulatorAndGetValue(curSimState, childrenResults)
@@ -31,7 +31,7 @@ abstract class BeExpressionExecutor(simulatorConfig: BeSimulatorConfig, initSimu
     childrenResultBuffer.toList
   }
   
-  protected def childExpressionsToExecute(stateBeforeExecution: BeSimulatorState): List[BeExpression]
+  protected def childExpressionsToExecute(stateBeforeExecution: BeSimulatorState): List[BeExpression] 
 
   protected def applySideEffectsOfThisBlock(stateBeforeExecution: BeSimulatorState, childrenResults: List[(BeSimulatorState, BeDataValue)]): BeSimulatorState
 

@@ -843,7 +843,7 @@ object PythonParser {
     index
   }
 
-  private def inferType(expr: BeExpression): BeDataType = expr.expressionStaticInformation.staticType match {
+  private def inferType(expr: BeExpression): BeDataType = expr.staticInformationExpression.staticType match {
     case BeDataType.Error => AnyType
     case other => other
   }
@@ -1010,7 +1010,7 @@ object PythonParser {
         case Some(candidates) if candidates.nonEmpty =>
           val scored = candidates.zipWithIndex.flatMap { case (candidate, index) =>
             val assignmentResults = candidate.inputs.zip(arguments).map { case (param, argument) =>
-              param.variableType.canTakeValuesFrom(argument.expressionStaticInformation.staticType)
+              param.variableType.canTakeValuesFrom(argument.staticInformationExpression.staticType)
             }
 
             if (assignmentResults.exists(_.isInstanceOf[AssigningNotPossible])) None

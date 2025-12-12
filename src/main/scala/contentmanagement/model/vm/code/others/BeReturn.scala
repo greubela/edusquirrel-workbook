@@ -37,9 +37,9 @@ case class BeReturn(value: Option[BeExpression]) extends BeExpression {
   override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] =
     value.map(expr => BeExpressionReference(BeChildPosition(ExpressionInSequence(0), parentScope), expr)).toList
 
-  /*
+
   override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
     val replacement = newChildren.collectFirst { case (ExpressionInSequence(_), expr) => expr }
     replacement.map(expr => copy(value = Some(expr))).getOrElse(this)
-  }*/
+  }
 }

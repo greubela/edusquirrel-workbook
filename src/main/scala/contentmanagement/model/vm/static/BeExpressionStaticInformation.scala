@@ -1,15 +1,18 @@
 package contentmanagement.model.vm.static
 
-import contentmanagement.model.vm.types.{BeDataType, BeDataValue, BeInfo}
+import contentmanagement.model.vm.code.BeDefineStructure
+import contentmanagement.model.vm.code.tree.BeExpressionNode
+import contentmanagement.model.vm.types.{BeDataType, BeDataValue, BeInfo, BeScope}
 
 trait BeExpressionStaticInformation {
+
+  def staticType: BeDataType = BeDataType.Unit
+
+  def staticValue: Option[BeDataValue] = None
   
-  def staticType: BeDataType
+  def syntaxErrors: Seq[BeInfo] = List()
 
-  def staticValue: Option[BeDataValue]
-  
-  def syntaxErrors: Seq[BeInfo]
+  def hasSideEffects: Boolean = false
 
-  def hasSideEffects: Boolean
-
+  def getDefinitions: BeDefineStructure = new BeDefineStructure(){}
 }

@@ -1,20 +1,18 @@
 package contentmanagement.model.vm.code.controlStructures
 
-import contentmanagement.model.language.AppLanguage.{Java, JavaScript, Lisp, Python, Rust}
-import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
-import contentmanagement.model.vm.code.tree.BeExpressionNode
-import contentmanagement.model.vm.code.{BeControlStructure, BeExpression}
-import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeDataValue, BeDataValueUnit, BeInfo, BeScope}
-import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
-import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
-import util.CodeStringBuilder
+import contentmanagement.model.language.AppLanguage.*
+import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
 import contentmanagement.model.vm.code.tree.*
+import contentmanagement.model.vm.code.{BeControlStructure, BeExpression}
 import contentmanagement.model.vm.io.BeExpressionIO
 import contentmanagement.model.vm.simulation.{BeExpressionExecutor, BeSimulatorConfig, BeSimulatorState}
 import contentmanagement.model.vm.static.BeExpressionStaticInformation
 import contentmanagement.model.vm.types.BeChildRole.ConditionInControlStructure
 import contentmanagement.model.vm.types.BeScope.InSequenceScope
+import contentmanagement.model.vm.types.*
+import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import interactionPlugins.blockEnvironment.programming.blockdisplay.control.BeBlockWhile
+import util.CodeStringBuilder
 
 case class BeWhile(
                     condition: BeSequence,
@@ -23,25 +21,9 @@ case class BeWhile(
 
   override def allPossibleBodies: List[BeExpression] = List(body)
 
-  
+  override def staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation {
 
-  override def getChildren(withExtensions: Boolean, myScope: BeScope): List[BeExpressionNode] = {
-    List(
-      BeExpressionReference(BeChildPosition(ConditionInControlStructure, InSequenceScope(condition, myScope)), condition),
-      BeExpressionReference(BeChildPosition(BeChildRole.BodySequence(0), InSequenceScope(body, myScope)), body),
-    )
-  }
-
-
-
-  override def expressionStaticInformation: BeExpressionStaticInformation = new BeExpressionStaticInformation {
-    override def staticType: BeDataType = BeDataType.Unit
-
-    override def staticValue: Option[BeDataValue] = Some(BeDataValueUnit())
-
-    override def syntaxErrors: Seq[BeInfo] = BeInfo.typeMismatchInfo("while condition", BeDataType.Boolean, condition.expressionStaticInformation.staticType).toList
-
-    override def hasSideEffects: Boolean = false
+    override def syntaxErrors: Seq[BeInfo] = BeInfo.typeMismatchInfo("while condition", BeDataType.Boolean, condition.staticInformationExpression.staticType).toList
 
   }
 
@@ -98,17 +80,6 @@ case class BeWhile(
       }
     }
 
-    override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
-      val newCondition = newChildren.collectFirst {
-        case (ConditionInControlStructure, seq: BeSequence) => seq
-      }.getOrElse(condition)
-
-      val newBody = newChildren.collectFirst {
-        case (BeChildRole.BodySequence(0), seq: BeSequence) => seq
-      }.getOrElse(body)
-
-      copy(condition = newCondition, body = newBody)
-    }
 
     override def createBlock(): BeBlock = BeBlockWhile(BeWhile.this)
   }
@@ -122,7 +93,22 @@ case class BeWhile(
   }
 
 
+  override def getChildren(withExtensions: Boolean, myScope: BeScope): List[BeExpressionNode] = {
+    List(
+      BeExpressionReference(BeChildPosition(ConditionInControlStructure, InSequenceScope(condition, myScope)), condition),
+      BeExpressionReference(BeChildPosition(BeChildRole.BodySequence(0), InSequenceScope(body, myScope)), body),
+    )
+  }
 
+  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
+    val newCondition = newChildren.collectFirst {
+      case (ConditionInControlStructure, seq: BeSequence) => seq
+    }.getOrElse(condition)
 
+    val newBody = newChildren.collectFirst {
+      case (BeChildRole.BodySequence(0), seq: BeSequence) => seq
+    }.getOrElse(body)
 
+    copy(condition = newCondition, body = newBody)
+  }
 }

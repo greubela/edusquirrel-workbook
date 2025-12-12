@@ -147,16 +147,11 @@ case class BeDefineClass(name: LanguageMap[HumanLanguage], attributes: List[BeDe
     override def createBlock(): BeBlock =
       throw new NotImplementedError("Block rendering is not implemented for BeDefineClass")
 
-    override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = BeDefineClass.this
   }
 
-  override def expressionStaticInformation: BeExpressionStaticInformation = new BeExpressionStaticInformation() {
+  override def staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation() {
 
-    def staticType: BeDataType = BeDataType.Unit
-
-    def staticValue: Option[BeDataValue] = Some(BeDataValueUnit())
-
-    def syntaxErrors: Seq[BeInfo] = methods.flatMap(curMethod => {
+    override def syntaxErrors: Seq[BeInfo] = methods.flatMap(curMethod => {
       val inClass = curMethod.functionTypeInfo.isMethodInClass
       if (inClass.isEmpty)
         Some(BeInfo(LanguageMap.universalMap("Method must have an object it´s called on!"), BeInfo.SyntaxError.StructureMismatch))
@@ -165,12 +160,10 @@ case class BeDefineClass(name: LanguageMap[HumanLanguage], attributes: List[BeDe
       else None
     })
 
-    def hasSideEffects: Boolean = true
+    override def hasSideEffects: Boolean = true
 
   }
 
-
-  override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = List()
 
 
 }

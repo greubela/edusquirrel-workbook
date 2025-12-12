@@ -26,21 +26,23 @@ case class BeBlockPlaceholder(extensionPoint: BeExtensionPoint, myPositionInTree
         isDraggedSignal.combineWith(isAllowedSignal).combineWith(isFirstSignal).map { case (dragged, allowed, first) => {
           if (!dragged) muted
           else if (first) destination
-          else if(allowed) accepting
+          else if (allowed) accepting
           else error
         }
         }
       }
     }
 
-    val res = extensionPoint.extensionWillBeUsedAsType //
+    val exprRes = extensionPoint.extensionWillBeUsedAsType //
       .createShape
       .addSignalAmends(colorSignalAmend)
       .addAmends(renderingInformation.treeListener.getMouseAmendsForShape(renderingInformation.inProgram, extensionPoint))
       .addOnRendering((bounds, shape) => renderingInformation.registerDropTarget(BeTreeDropTarget(extensionPoint, myPositionInTree, bounds, shape)))
     // mouse over does not trigger while dragging???
 
-    (ControlFlowDirected(true, true), res)
+    val cfRes = ControlFlowDirected(true, true)
+
+    (cfRes, exprRes)
   }
 
 }

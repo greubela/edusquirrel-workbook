@@ -53,7 +53,7 @@ case class BeProgram(fullProgram: BeExpression) {
           case BeExpressionReference(childPos, expression) => {
             val childrenResultList: List[(BeChildRole, BeExpression)] =
               childrenResultMap.toList.filter(_._2.nonEmpty).map(tup => (tup._1.childPosition.roleInParent, tup._2.get))
-            Some(expression.expressionIO.withReplacedChildren(childrenResultList))
+            Some(expression.withReplacedChildren(childrenResultList))
           }
         }
       })

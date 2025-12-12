@@ -3,7 +3,6 @@ package contentmanagement.model.vm.code.usage
 import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
 import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.code.defining.*
-import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.io.BeExpressionIO
 import contentmanagement.model.vm.static.BeExpressionStaticInformation
 import contentmanagement.model.vm.types.*
@@ -17,32 +16,22 @@ enables to not implement everything in the value (which would be problematic for
 */
 
 case class BeUseValue(value: BeDataValue, contextIfKnown: Option[BeDefineVariable]) extends BeExpression {
-
-
-  override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = List()
-
-
-  override def expressionStaticInformation: BeExpressionStaticInformation = new BeExpressionStaticInformation {
+  
+  override def staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation {
     override def staticType: BeDataType = value.currentType
 
     override def staticValue: Option[BeDataValue] = Some(value)
 
-    override def syntaxErrors: Seq[BeInfo] = List()
-
-    override def hasSideEffects: Boolean = false
-
   }
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
-    override  def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = value match {
+    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = value match {
       case BeDataValueLiteral(literalStr) if contextIfKnown.nonEmpty =>
         contextIfKnown.get.variableType.formatValueForDisplay(literalStr).getInLanguage(programmingLanguage)
       case BeDataValueLiteral(literalStr) => literalStr
       case reference: BeUseValueReference => reference.variable.name.getInLanguage(humanLanguage)
       case _ => value.displayAsString
     }
-
-    override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = BeUseValue.this
 
     override def createBlock(): BeBlock = BeBlockUseValue(BeUseValue.this)
   }

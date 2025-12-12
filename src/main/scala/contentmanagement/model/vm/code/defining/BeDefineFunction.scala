@@ -2,13 +2,15 @@ package contentmanagement.model.vm.code.defining
 
 import contentmanagement.model.language.AppLanguage.{JavaScript, Python}
 import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
+import contentmanagement.model.vm.code.controlStructures.BeSequence
 import contentmanagement.model.vm.code.defining.BeDefineFunction.*
-import contentmanagement.model.vm.code.tree.BeExpressionNode
+import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import contentmanagement.model.vm.code.{BeDefineStructure, BeExpression}
 import contentmanagement.model.vm.io.BeExpressionIO
 import contentmanagement.model.vm.static.BeExpressionStaticInformation
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.BodySequence
+import contentmanagement.model.vm.types.BeScope.InSequenceScope
 import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import interactionPlugins.blockEnvironment.programming.blockdisplay.define.BeBlockDefineSingleReturnFunction
 import util.CodeStringBuilder
@@ -16,18 +18,13 @@ import util.CodeStringBuilder
 case class BeDefineFunction(
                              inputs: List[BeDefineVariable],
                              outputs: Option[BeDefineVariable],
-                             body: BeExpression,
+                             body: BeSequence,
                              functionTypeInfo: BeFunctionTypeInfo,
                              indentWidth: Int = 4
                            ) extends BeDefineStructure {
 
 
-  override def expressionStaticInformation: BeExpressionStaticInformation = new BeExpressionStaticInformation() {
-    def staticType: BeDataType = BeDataType.Unit
-
-    def staticValue: Option[BeDataValue] = Some(BeDataValueUnit())
-
-    def syntaxErrors: Seq[BeInfo] = List()
+  override def staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation() {
     /*
         if (!body.canEvaluateTo.exists(curPossibleReturnValue => BeDataType.validForType(body.canEvaluateTo, curPossibleReturnValue))) {
           List(BeInfo(LanguageMap.universalMap("Function Signature Requires [" + canEvaluateTo.mkString(", ") + "] but body returns one of [" + body.canEvaluateTo + "]"), BeInfo.SyntaxError.TypeMismatch))
@@ -36,12 +33,12 @@ case class BeDefineFunction(
         }
       }*/
 
-    def hasSideEffects: Boolean = true
+    override def hasSideEffects: Boolean = true
   }
 
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO() {
-    def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
+    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
       def formatTypeHint(variable: BeDefineVariable): Option[String] = {
         variable.variableType match {
           case BeDataType.AnyType => None
@@ -92,15 +89,8 @@ case class BeDefineFunction(
     override def createBlock(): BeBlock =
       BeBlockDefineSingleReturnFunction(BeDefineFunction.this)
 
-    override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
-      newChildren.collectFirst {
-        case (BodySequence(0), expr) => expr
-      }.map(replacement => copy(body = replacement)).getOrElse(BeDefineFunction.this)
-    }
+
   }
-
-  override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = List()
-
 
   /*
   override val toString: String = {
@@ -111,7 +101,19 @@ case class BeDefineFunction(
        |)""".stripMargin
   }*/
 
-
+  override def getChildren(withExtensions: Boolean, myScope: BeScope): List[BeExpressionNode] = {
+    List(
+      BeExpressionReference(BeChildPosition(BeChildRole.BodySequence(0), InSequenceScope(body, myScope)), body),
+    )
+  }
+  
+  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
+    newChildren.collectFirst {
+      case (BodySequence(0), expr) => expr
+    }.map(replacement => copy(body = replacement.asInstanceOf[BeSequence])).getOrElse(BeDefineFunction.this)
+  }
+  
+  
 }
 
 object BeDefineFunction {

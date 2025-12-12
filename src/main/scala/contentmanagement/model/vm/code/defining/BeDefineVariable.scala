@@ -17,8 +17,7 @@ case class BeDefineVariable(
 
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO() {
-
-
+    
     override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
       val baseName = name.getInLanguage(humanLanguage)
       val typeHint = variableType.formatTypeForDisplay.getInLanguage(programmingLanguage).trim
@@ -33,27 +32,18 @@ case class BeDefineVariable(
     }
 
     override def createBlock(): BeBlock =      BeBlockDefineVariable(BeDefineVariable.this)
-
-
-    override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = BeDefineVariable.this
+    
   }
 
-  override def expressionStaticInformation: BeExpressionStaticInformation = new BeExpressionStaticInformation(){
-    def staticType: BeDataType = variableType
+  override def staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation(){
 
-    def staticValue: Option[BeDataValue] = None
 
-    def syntaxErrors: Seq[BeInfo] = List() 
-
-    def hasSideEffects: Boolean = true 
+    override def hasSideEffects: Boolean = true 
   }
     
-    
+  
 
-
-  override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = List()
-
-  override val toString: String = "BeDefineVariable(" + name.toString + ": " + expressionStaticInformation.staticType.toString + ")"
+  override val toString: String = "BeDefineVariable(" + name.toString + ": " + staticInformationExpression.staticType.toString + ")"
   
 
 }

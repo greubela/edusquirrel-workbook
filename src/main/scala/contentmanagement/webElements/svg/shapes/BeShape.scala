@@ -31,7 +31,6 @@ sealed trait BeShape {
   def addOnRendering(newHandle: (Bounds[Double], BeShape) => Any): BeShape = this match {
     case AmendedShape(base, amends, signalAmends, handle) => AmendedShape(base, amends, signalAmends, newHandle)
     case _ => AmendedShape(this, List(), List(), newHandle)
-
   }
 
 }
@@ -75,8 +74,6 @@ trait ControlFlowShape extends BeShape {
     background.addAmends(renderingConfig.amendFactory.defaultControlFlowBackgroundAmend)
   }
 
-  //def getDecorationsWithRelativeCenterOffset(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): List[(BeShapeDecoration, Point[Double])] = List()
-
   override def displaySize(renderingConfig: BeRenderingConfig): Dimension[Double] =
     Dimension[Double](renderingConfig.controlSegmentSize * widthInIntendations * 6, renderingConfig.controlSegmentSize * minHeightInSegments)
 
@@ -85,7 +82,8 @@ trait ControlFlowShape extends BeShape {
   def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: RenderingInformation, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder
 }
 
-case class AmendedShape(baseShape: BeShape, amends: Seq[L.Modifier[L.SvgElement]], amendsSignal: Seq[Signal[L.Modifier[L.SvgElement]]], doOnRendering: (Bounds[Double], BeShape) => Any = (_, _) => {}) extends BeShape {
+
+case class AmendedShape[T <: BeShape](baseShape: T, amends: Seq[L.Modifier[L.SvgElement]], amendsSignal: Seq[Signal[L.Modifier[L.SvgElement]]], doOnRendering: (Bounds[Double], BeShape) => Any = (_, _) => {}) extends BeShape {
 
   override def displaySize(config: BeRenderingConfig): Dimension[Double] = baseShape.displaySize(config)
 

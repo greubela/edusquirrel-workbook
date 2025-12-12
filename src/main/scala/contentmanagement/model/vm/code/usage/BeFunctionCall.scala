@@ -8,12 +8,10 @@ import contentmanagement.model.vm.code.defining.*
 import contentmanagement.model.vm.code.defining.BeDefineFunction.{Operator, *}
 import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import contentmanagement.model.vm.io.BeExpressionIO
-import contentmanagement.model.vm.simulation.{BeExpressionExecutor, BeSimulatorConfig, BeSimulatorState}
 import contentmanagement.model.vm.static.BeExpressionStaticInformation
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.FunctionParameter
 import contentmanagement.model.vm.types.BeInfo.*
-import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import interactionPlugins.blockEnvironment.programming.blockdisplay.use.BeBlockCallSingleReturnFunction
 
@@ -21,15 +19,7 @@ case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDe
 
   private lazy val parameterWithValues: List[(BeDefineVariable, Option[BeExpression])] = funcDef.inputs.map(curInput => (curInput, parameterValueMap.get(curInput)))
 
-  override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = {
-    parameterWithValues.zipWithIndex.filter(_._1._2.nonEmpty).map((tup, index) => (tup._1, tup._2.get, index)).map((parVar, parVal, parNr) => {
-      BeExpressionReference(BeChildPosition(FunctionParameter(parNr), parentScope), parVal)
-    })
-  }
-
-
-
-  override def expressionStaticInformation: BeExpressionStaticInformation = new BeExpressionStaticInformation {
+  override def staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation {
     override def staticType: BeDataType = funcDef.outputs.map(_.variableType).getOrElse(BeDataType.Unit)
 
     override def staticValue: Option[BeDataValue] = None
@@ -43,7 +33,6 @@ case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDe
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
     override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
-
 
       def formatCallForInfix(funcType: BeDefineFunction.BeFunctionType, displayName: String, parameterStrings: List[String]): String = {
         funcType match {
@@ -69,19 +58,25 @@ case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDe
       }
     }
 
-    override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
-      val replacements = newChildren.collect { case (FunctionParameter(nr), expr) => nr -> expr }
-      if (replacements.isEmpty) BeFunctionCall.this
-      else {
-        val updatedMap = replacements.foldLeft(parameterValueMap) { case (acc, (nr, expr)) =>
-          funcDef.inputs.lift(nr).map(parameter => acc.updated(parameter, expr)).getOrElse(acc)
-        }
-        copy(parameterValueMap = updatedMap)
-      }
-    }
 
     override def createBlock(): BeBlock = BeBlockCallSingleReturnFunction(BeFunctionCall.this)
   }
 
+  override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = {
+    parameterWithValues.zipWithIndex.filter(_._1._2.nonEmpty).map((tup, index) => (tup._1, tup._2.get, index)).map((parVar, parVal, parNr) => {
+      BeExpressionReference(BeChildPosition(FunctionParameter(parNr), parentScope), parVal)
+    })
+  }
+
+  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
+    val replacements = newChildren.collect { case (FunctionParameter(nr), expr) => nr -> expr }
+    if (replacements.isEmpty) BeFunctionCall.this
+    else {
+      val updatedMap = replacements.foldLeft(parameterValueMap) { case (acc, (nr, expr)) =>
+        funcDef.inputs.lift(nr).map(parameter => acc.updated(parameter, expr)).getOrElse(acc)
+      }
+      copy(parameterValueMap = updatedMap)
+    }
+  }
 
 }

@@ -6,8 +6,8 @@ import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionRefer
 import contentmanagement.model.vm.code.{BeControlStructure, BeExpression}
 import contentmanagement.model.vm.io.BeExpressionIO
 import contentmanagement.model.vm.static.BeExpressionStaticInformation
-import contentmanagement.model.vm.types.BeScope.InSequenceScope
 import contentmanagement.model.vm.types.*
+import contentmanagement.model.vm.types.BeScope.InSequenceScope
 import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import util.CodeStringBuilder
 
@@ -15,23 +15,19 @@ case class BeRepeatNr(amount: Int, body: BeSequence) extends BeControlStructure 
 
   override def allPossibleBodies: List[BeExpression] = List(body)
 
-  override def expressionStaticInformation: BeExpressionStaticInformation = new BeExpressionStaticInformation() {
-    def staticType: BeDataType = BeDataType.Unit
+  override def staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation() {
 
-    def staticValue: Option[BeDataValue] = Some(BeDataValueUnit())
-
-    def syntaxErrors: Seq[BeInfo] = {
-        if (amount < 0)          List(BeInfo(LanguageMap.universalMap("repeat count must be zero or positive"), BeInfo.SyntaxError.InvalidLiteralValue))
-        else List()
+    override def syntaxErrors: Seq[BeInfo] = {
+      if (amount < 0) List(BeInfo(LanguageMap.universalMap("repeat count must be zero or positive"), BeInfo.SyntaxError.InvalidLiteralValue))
+      else List()
     }
 
 
-    def hasSideEffects: Boolean = false
   }
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO() {
 
-    def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
+    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
 
       val bodyString = body.expressionIO.getInLanguage(programmingLanguage, humanLanguage)
 
@@ -86,21 +82,22 @@ case class BeRepeatNr(amount: Int, body: BeSequence) extends BeControlStructure 
       }
     }
 
-    def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
-      val newBody = newChildren.collectFirst {
-        case (BeChildRole.BodySequence(0), seq: BeSequence) => seq
-      }.getOrElse(body)
-
-      copy(body = newBody)
-    }
 
     override def createBlock(): BeBlock =
       throw new NotImplementedError("Block rendering is not implemented for BeRepeatNr")
 
   }
-  
+
+
   override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = List(
     BeExpressionReference(BeChildPosition(BeChildRole.BodySequence(0), InSequenceScope(body, parentScope)), body)
   )
 
+  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
+    val newBody = newChildren.collectFirst {
+      case (BeChildRole.BodySequence(0), seq: BeSequence) => seq
+    }.getOrElse(body)
+
+    copy(body = newBody)
+  }
 }

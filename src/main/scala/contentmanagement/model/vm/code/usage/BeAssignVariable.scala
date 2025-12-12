@@ -1,17 +1,14 @@
 package contentmanagement.model.vm.code.usage
 
 import contentmanagement.model.language.AppLanguage.*
-import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
+import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
 import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.code.defining.BeDefineVariable
 import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import contentmanagement.model.vm.io.BeExpressionIO
-import contentmanagement.model.vm.simulation.{BeExpressionExecutor, BeSimulatorConfig, BeSimulatorState}
 import contentmanagement.model.vm.static.BeExpressionStaticInformation
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.ValueInAssignment
-import contentmanagement.model.vm.types.BeInfo.WarningType
-import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import interactionPlugins.blockEnvironment.programming.blockdisplay.use.BeBlockAssignValue
 
@@ -19,12 +16,9 @@ case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) exten
 
   //private val assignPossible: BeDataTypeAssigningPossible = target.variableType.canTakeValuesFrom(value.possibleStaticTypes)
 
-  override def expressionStaticInformation: BeExpressionStaticInformation = new BeExpressionStaticInformation {
-    override def staticType: BeDataType = BeDataType.Unit
+  override def staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation {
 
-    override def staticValue: Option[BeDataValue] = Some(BeDataValueUnit())
-
-    override def syntaxErrors: Seq[BeInfo] = BeInfo.typeMismatchInfo("value " + value + " for assigning", target.expressionStaticInformation.staticType, value.expressionStaticInformation.staticType).toList
+    override def syntaxErrors: Seq[BeInfo] = BeInfo.typeMismatchInfo("value " + value + " for assigning", target.staticInformationExpression.staticType, value.staticInformationExpression.staticType).toList
 
     override def hasSideEffects: Boolean = true
   }
@@ -55,23 +49,20 @@ case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) exten
     }
 
 
-    override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
-      val replacement = newChildren.collectFirst {
-        case (BeChildRole.ValueForVariable(variable), expr) if variable == target => expr
-        case (BeChildRole.ExpressionInSequence(_), expr) => expr
-      }
-
-      replacement.map(expr => copy(value = expr)).getOrElse(BeAssignVariable.this)
-    }
-
     override def createBlock(): BeBlock = BeBlockAssignValue(target, value)
   }
-
-
 
   override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = List(
     BeExpressionReference(BeChildPosition(ValueInAssignment, parentScope), value)
   )
 
+  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
+    val replacement = newChildren.collectFirst {
+      case (BeChildRole.ValueForVariable(variable), expr) if variable == target => expr
+      case (BeChildRole.ExpressionInSequence(_), expr) => expr
+    }
+
+    replacement.map(expr => copy(value = expr)).getOrElse(BeAssignVariable.this)
+  }
 
 }
