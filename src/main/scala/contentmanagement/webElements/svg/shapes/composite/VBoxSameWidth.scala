@@ -20,9 +20,10 @@ case class VBoxSameWidth(
     val widthMax = minSizes.map(_.width).maxOption.getOrElse(0.0)
     val heightSum = minSizes.map(_.height).sum
 
-    val paddingHeight = if (children.size > 1 && usePadding) config.paddingSmall.height * (children.size - 1) else 0.0
+    val paddingWidth = if (usePadding) config.paddingSmall.width * 2 else 0.0
+    val paddingHeight = if (usePadding) config.paddingSmall.height * (children.size + 1) else 0.0
    // println("heightSum: " + heightSum + " paddingHeight: " + paddingHeight + " (heights: " +  minSizes.map(_.height).mkString(", ") + ")" )
-    Dimension[Double](widthMax, heightSum + paddingHeight)
+    Dimension[Double](widthMax + paddingWidth, heightSum + paddingHeight)
   }.ensureAtLeastAsBigAs(config.paddingSmall)
 
 
@@ -33,7 +34,7 @@ case class VBoxSameWidth(
     val heightSum = minSizes.map(_.height).sum
 
     val paddingWidth = if (usePadding) config.paddingSmall.width * 2 else 0.0
-    val paddingHeight = if(usePadding) config.paddingSmall.height * (children.size+1) else 0.0
+    val paddingHeight = if (usePadding) config.paddingSmall.height * (children.size + 1) else 0.0
 
     val availableWidth = bounds.dimension.width - widthMax - paddingWidth
     val horizontalOffset = horizontalAlignment match

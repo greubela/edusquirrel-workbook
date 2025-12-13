@@ -20,9 +20,10 @@ case class HBoxSameHeight(
     val widthSum = minSizes.map(_.width).sum
     val heightMax = minSizes.map(_.height).maxOption.getOrElse(0.0)
 
-    val paddingWidth = if (children.size > 1 && usePadding) config.paddingSmall.width * (children.size - 1) else 0.0
+    val paddingWidth = if (usePadding) config.paddingSmall.width * (children.size + 1) else 0.0
+    val paddingHeight = if (usePadding) config.paddingSmall.height * 2 else 0.0
 
-    Dimension[Double](widthSum + paddingWidth, heightMax)
+    Dimension[Double](widthSum + paddingWidth, heightMax + paddingHeight)
   }.ensureAtLeastAsBigAs(config.paddingSmall)
 
 
@@ -32,8 +33,8 @@ case class HBoxSameHeight(
     val widthSum = minSizes.map(_.width).sum
     val heightMax = minSizes.map(_.height).maxOption.getOrElse(0.0)
     
-    val paddingWidth = if (children.size > 1 && usePadding) config.paddingSmall.width * (children.size + 1) else 0.0
-    val paddingHeight = if(usePadding) config.paddingSmall.height * 2 else 0.0
+    val paddingWidth = if (usePadding) config.paddingSmall.width * (children.size + 1) else 0.0
+    val paddingHeight = if (usePadding) config.paddingSmall.height * 2 else 0.0
     
     val availableWidth = bounds.dimension.width - widthSum - paddingWidth
     val horizontalOffset = horizontalAlignment match
