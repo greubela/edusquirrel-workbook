@@ -706,7 +706,7 @@ object PythonParser {
     if (trimmed.isEmpty) {
       BeExpression.pass
     } else {
-      val unwrapped = if (ParsingUtils.isParenthesized(trimmed)) trimmed.substring(1, trimmed.length - 1).trim else trimmed
+      val unwrapped = ParsingUtils.unwrapRedundantParentheses(trimmed)
       val target = if (unwrapped.isEmpty) trimmed else unwrapped
       parseBinaryExpression(target, context)
         .orElse(parseUnaryExpression(target, context))

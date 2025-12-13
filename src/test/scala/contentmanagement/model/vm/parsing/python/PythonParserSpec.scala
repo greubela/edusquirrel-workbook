@@ -514,6 +514,14 @@ class PythonParserSpec extends FunSuite {
           |""".stripMargin
     ),
     RoundTripCase(
+      name = "arithmetic expressions ignore redundant parentheses",
+      python =
+        """i: float = 10 + ((((4+3))) * 10)
+          |j: float = (10 + 4 + 3) * 10
+          |k: float = (10 + 4) + (3 * 10)
+          |""".stripMargin
+    ),
+    RoundTripCase(
       name = "bitshift comparisons keep tight spacing",
       python =
         """if((i<<2 ==   0)):
