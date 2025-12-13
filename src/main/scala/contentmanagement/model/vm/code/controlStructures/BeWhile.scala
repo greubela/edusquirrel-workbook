@@ -29,7 +29,8 @@ case class BeWhile(
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
     override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
-      val conditionString = condition.expressionIO.getInLanguage(programmingLanguage, humanLanguage).replaceAll("\n", "")
+      val conditionString =
+        stripOuterParentheses(condition.expressionIO.getInLanguage(programmingLanguage, humanLanguage).replaceAll("\n", ""))
       val bodyString = body.expressionIO.getInLanguage(programmingLanguage, humanLanguage)
       programmingLanguage match {
         case Python =>
@@ -82,6 +83,25 @@ case class BeWhile(
 
 
     override def createBlock(): BeBlock = BeBlockWhile(BeWhile.this)
+  }
+
+
+  private def stripOuterParentheses(text: String): String = {
+    var current = text.trim
+    var continue = true
+    while (continue && current.startsWith("(") && current.endsWith(")") && parenthesesBalanced(current.substring(1, current.length - 1))) {
+      current = current.substring(1, current.length - 1).trim
+    }
+    current
+  }
+
+  private def parenthesesBalanced(text: String): Boolean = {
+    var depth = 0
+    text.foreach { ch =>
+      if (ch == '(') depth += 1
+      else if (ch == ')') depth -= 1
+    }
+    depth == 0
   }
 
   override def expressionExecutor(simulatorConfig: BeSimulatorConfig, stateBeforeExecution: BeSimulatorState): BeExpressionExecutor = new BeExpressionExecutor(simulatorConfig, stateBeforeExecution, this) {

@@ -9,7 +9,12 @@ import contentmanagement.model.vm.static.BeExpressionStaticInformation
 import contentmanagement.model.vm.types.*
 import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 
-case class BeDefineClass(name: LanguageMap[HumanLanguage], attributes: List[BeDefineVariable], methods: List[BeDefineFunction])
+case class BeDefineClass(
+    name: LanguageMap[HumanLanguage],
+    attributes: List[BeDefineVariable],
+    methods: List[BeDefineFunction],
+    bodyExtras: List[BeExpression] = Nil
+)
   extends BeDefineStructure {
 
   override def definedClasses: List[BeDefineClass] = List(this)
@@ -45,13 +50,21 @@ case class BeDefineClass(name: LanguageMap[HumanLanguage], attributes: List[BeDe
             Option.when(rendered.trim.nonEmpty)(indent + rendered)
           }
 
+          val extraBlocks = bodyExtras
+            .flatMap(extra => indentLines(splitLines(extra.expressionIO.getInLanguage(Python, humanLanguage)), indent))
+            .filter(_.nonEmpty)
+
           val methodBlocks = methods
             .map(method => indentLines(splitLines(method.expressionIO.getInLanguage(Python, humanLanguage)), indent))
             .filter(_.nonEmpty)
 
           val bodyLines = scala.collection.mutable.ListBuffer[String]()
           bodyLines ++= attributeLines
-          if (attributeLines.nonEmpty && methodBlocks.nonEmpty) {
+          if (attributeLines.nonEmpty && (extraBlocks.nonEmpty || methodBlocks.nonEmpty)) {
+            bodyLines += ""
+          }
+          bodyLines ++= extraBlocks
+          if (bodyLines.nonEmpty && bodyLines.lastOption.exists(_.nonEmpty) && methodBlocks.nonEmpty) {
             bodyLines += ""
           }
           methodBlocks.foreach { block =>
