@@ -422,7 +422,7 @@ object PythonParser {
       val parsedMethods = methodsBuffer.toList
 
       val classNameMap = LanguageMap.universalMap[HumanLanguage](name)
-      val classPlaceholder = BeDefineClass(classNameMap, attributes, Nil)
+      val classPlaceholder = BeDefineClass(classNameMap, attributes, Nil, ignoredBodyExpressions.toList)
       val methodInstances = parsedMethods.map { methodResult =>
         methodResult.template.copy(
           functionTypeInfo = BeDefineFunction.BeFunctionTypeInfo(
