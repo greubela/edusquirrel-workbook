@@ -16,6 +16,29 @@ private[shapes] object ShapeFactory {
 
   private def intPoint[T: Fractional](x: Int, y: Int): Point[T] = Point[T](intToT(x), intToT(y))
 
+  def buildCommandShape[T: Fractional](pBounds: Bounds[T], segmentWidth: T): SvgPathBuilder[T] = {
+    val N = summon[Fractional[T]]
+    import N.*
+
+    val height = if (pBounds.height < fromInt(2) * segmentWidth) fromInt(2) * segmentWidth else pBounds.height
+    val bracketWidth = segmentWidth * fromInt(4) / fromInt(5)
+    val rightSideCornerHeight = segmentWidth * fromInt(2) / fromInt(5)
+    val zero: T = fromInt(0)
+    val one: T = segmentWidth / fromInt(5)
+    val two: T = one + one
+
+    SvgPathBuilder(pBounds.startPoint)
+      //.moveToRel(Dimension(bracketWidth, fromInt(0)))
+      .addCommandBracketDown(segmentWidth, height)
+      .horizontalLineWithWidth(pBounds.width - bracketWidth - bracketWidth)
+      .cubicBezierToRel(Dimension(one, zero), Dimension(two, -one), Dimension(two, -two))
+      .verticalLineWithHeight(-height + rightSideCornerHeight + rightSideCornerHeight)
+      .cubicBezierToRel(Dimension(zero, -one), Dimension(-one, -two), Dimension(-two, -two))
+      //.verticalLineWithHeight(-height)
+      .closePath()
+  }
+
+
   def buildLiteralShape[T: Fractional](fitIntoBounds: Bounds[T]): SvgPathBuilder[T] = {
     val N = summon[Fractional[T]]
     import N.*
@@ -253,6 +276,46 @@ private[shapes] object ShapeFactory {
       .moveToRel(Dimension(centerCircleRadius, fromInt(0)))
       .horizontalLineWithWidth(pBounds.width / fromInt(2) - centerCircleRadius)
 
+  }
+
+  def buildSpeechBubbleShape[T: Fractional](pBounds: Bounds[T], segmentSize: T): SvgPathBuilder[T] = {
+    val N = summon[Fractional[T]]
+    import N.*
+    val minLength: T = fromInt(2) * segmentSize
+    val bounds = pBounds.ensureAtLeastAsBigAs(Dimension(minLength, minLength))
+
+    def segScaledDim(width: Double, height: Double): Dimension[T] = {
+      Dimension(SvgPathBuilder.fromDouble(width), SvgPathBuilder.fromDouble(height))
+      //Dimension[T](segmentSize  * fromInt(width) / fromInt(5), segmentSize / fromInt(5) * fromInt(height))
+    }
+
+    val one = segmentSize / fromInt(5)
+    val tenth = one / fromInt(10)
+    val two = one + one
+
+    SvgPathBuilder(bounds.startPoint)
+      .moveToRel(segScaledDim(10, 0))
+      .cubicBezierToRel(segScaledDim(-5.5, 0), segScaledDim(-10, 4.5), segScaledDim(-10, 10))
+      .cubicBezierToRel(segScaledDim(0, 2.2), segScaledDim(0.8, 4.4), segScaledDim(2.2, 6.1))
+      .cubicBezierToRel(segScaledDim(0, 1.4), segScaledDim(-0.9, 2.1), segScaledDim(-1.8, 2.9))
+      .cubicBezierToRel(segScaledDim(1.8, 0.8), segScaledDim(3.1, 0.5), segScaledDim(4.5, -0.5))
+      .cubicBezierToRel(segScaledDim(1.5, 1), segScaledDim(3.3, 1.5), segScaledDim(5.1, 1.5))
+      .horizontalLineWithWidth(bounds.width - minLength - minLength)
+      .cubicBezierToRel(segScaledDim(5.5, 0), segScaledDim(10, -4.5), segScaledDim(10, -10))
+      .cubicBezierToRel(segScaledDim(0, -5.5), segScaledDim(-4.5, -10), segScaledDim(-10, -10))
+      .closePath()
+
+    // M10,0
+    //
+    // c-5.5,0,-10,4.5,-10,10
+    // c0,2.2,0.8,4.4,2.2,6.1
+    // c0,1.4,-0.9,2.1,-1.8,2.9
+    // c1.8,0.8,3.1,0.5,4.5,-0.5
+    // c1.5,1,3.3,1.5,5.1,1.5
+
+    // c5.5,0,10,-4.5,10,-10
+    // c0,-5.5,-4.5,-10,-10,-10
+    // z
   }
 
 }

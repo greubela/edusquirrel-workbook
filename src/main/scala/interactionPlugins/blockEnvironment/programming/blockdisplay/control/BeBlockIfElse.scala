@@ -7,7 +7,7 @@ import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.types.BeChildRole.{BodySequence, ConditionInControlStructure}
 import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.{ControlFlowCross, ControlFlowShapeDoubleWidth, IfElseSplit, IfElseUnion}
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.ControlFlowDirected
-import contentmanagement.webElements.svg.shapes.nested.NestedControlStructureShape
+import contentmanagement.webElements.svg.shapes.special.nested.NestedControlStructureShape
 import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowAndExpressionShape, ControlFlowShape}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, RenderingInformation}
@@ -36,7 +36,7 @@ case class BeBlockIfElse(expr: BeIfElse) extends BeBlock {
 
       override def totalControlFlowWidth(config: BeRenderingConfig): Double = config.controlSegmentSize * 12
 
-      override def getControlFlowChangeElements: List[ControlFlowShape] = List(IfElseSplit(), IfElseUnion(), ControlFlowCross())
+      override def getControlFlowChangeElements: List[ControlFlowShape] = List(IfElseSplit(), ControlFlowCross(), IfElseUnion())
 
       override def getControlFlowExpressionElements: List[Option[BeShape]] = List(Some(condition), None, None)
 

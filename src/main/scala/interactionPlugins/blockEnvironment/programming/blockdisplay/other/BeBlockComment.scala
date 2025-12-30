@@ -6,13 +6,14 @@ import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowShape, Text
 import contentmanagement.webElements.svg.shapes.composite.ShapeAroundShape
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.*
 import contentmanagement.webElements.svg.shapes.datatypes.{BeErrorShape, RectangleShape}
+import contentmanagement.webElements.svg.shapes.special.{CommandShape, CommentShape}
 import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, BeBlockSingleShape, RenderingInformation}
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
 
 case class BeBlockComment(comment: BeSingleLineComment) extends BeBlockSingleShape {
 
   override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
-    val container = RectangleShape
+    val container = CommentShape()
     val text = TextShape(comment.commentStr).addAmends(renderingInformation.factory.defaultTextAmends)
 
     val res = ShapeAroundShape(container, text)

@@ -9,6 +9,7 @@ import contentmanagement.model.vm.code.others.BeReturn
 import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.code.usage.*
 import contentmanagement.model.vm.parsing.python.ParsingUtils.keepExpression
+import contentmanagement.model.vm.parsing.python.PythonParser.ParseContext
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole
 import contentmanagement.model.vm.types.BeDataType.{AnyType, BeUnionAllowedTypes}
@@ -18,13 +19,13 @@ import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import scala.collection.mutable
 
 /**
-  * Parses Python source code that has been normalized by [[PythonNormalizer]].
-  *
-  * The normalizer rewrites `elif` chains into nested `if`/`else` blocks and expands
-  * augmented assignments into plain assignments before the parser runs. As a result,
-  * this parser only needs to handle base `if`/`else` constructs and simple `=`
-  * assignments while still covering the semantics of the original student code.
-  */
+ * Parses Python source code that has been normalized by [[PythonNormalizer]].
+ *
+ * The normalizer rewrites `elif` chains into nested `if`/`else` blocks and expands
+ * augmented assignments into plain assignments before the parser runs. As a result,
+ * this parser only needs to handle base `if`/`else` constructs and simple `=`
+ * assignments while still covering the semantics of the original student code.
+ */
 object PythonParser {
 
   private val normalizer = new PythonNormalizer()
@@ -35,8 +36,11 @@ object PythonParser {
 
   object KnownStructure {
     final case class Variable(name: String, variable: BeDefineVariable) extends KnownStructure
+
     final case class Function(name: String, function: BeDefineFunction) extends KnownStructure
+
     final case class Operator(name: String, function: BeDefineFunction) extends KnownStructure
+
     final case class Class(name: String, clazz: BeDefineClass) extends KnownStructure
   }
 
@@ -48,11 +52,11 @@ object PythonParser {
     }
 
   final case class CurrentlyKnownStructures(
-      variables: Map[String, BeDefineVariable],
-      functions: Map[String, BeDefineFunction],
-      operators: Map[(String, Int), List[BeDefineFunction]],
-      classes: Map[String, BeDefineClass]
-  ) {
+                                             variables: Map[String, BeDefineVariable],
+                                             functions: Map[String, BeDefineFunction],
+                                             operators: Map[(String, Int), List[BeDefineFunction]],
+                                             classes: Map[String, BeDefineClass]
+                                           ) {
     def addVariable(name: String, variable: BeDefineVariable): CurrentlyKnownStructures =
       copy(variables = variables.updated(name, variable))
 
@@ -96,19 +100,19 @@ object PythonParser {
   }
 
   final case class CodeParsingResult(
-      definedClasses: List[BeDefineClass],
-      definedFunctions: List[BeDefineFunction],
-      definedVariables: List[BeDefineVariable],
-      currentlyKnownStructures: CurrentlyKnownStructures,
-      codeExpression: BeSequence
-  )
+                                      definedClasses: List[BeDefineClass],
+                                      definedFunctions: List[BeDefineFunction],
+                                      definedVariables: List[BeDefineVariable],
+                                      currentlyKnownStructures: CurrentlyKnownStructures,
+                                      codeExpression: BeSequence
+                                    )
 
   def parsePython(source: String): BeSequence = parsePythonWithDetails(source).codeExpression
 
   def parsePythonWithDetails(
-      source: String,
-      initialKnownStructures: Seq[KnownStructure] = DefaultKnownStructures
-  ): CodeParsingResult = {
+                              source: String,
+                              initialKnownStructures: Seq[KnownStructure] = DefaultKnownStructures
+                            ): CodeParsingResult = {
     val normalized = normalizer.normalizePython(source)
     val initialStructures = CurrentlyKnownStructures.fromKnown(initialKnownStructures)
     if (normalized.trim.isEmpty) {
@@ -209,11 +213,11 @@ object PythonParser {
   }
 
   private def parseBlock(
-      lines: Vector[ParsedLine],
-      startIndex: Int,
-      indent: Int,
-      context: ParseContext
-  ): (List[BeExpression], Int) = {
+                          lines: Vector[ParsedLine],
+                          startIndex: Int,
+                          indent: Int,
+                          context: ParseContext
+                        ): (List[BeExpression], Int) = {
     val expressions = mutable.ListBuffer[BeExpression]()
     var index = startIndex
     while (index < lines.length) {
@@ -298,15 +302,15 @@ object PythonParser {
   private def isTryCompanionHeader(text: String): Boolean = {
     val normalized = text.trim
     (normalized.startsWith("except") && normalized.endsWith(":")) ||
-    normalized == "finally:" ||
-    normalized == "else:"
+      normalized == "finally:" ||
+      normalized == "else:"
   }
 
   private def collectTryExceptBlock(
-      lines: Vector[ParsedLine],
-      headerIndex: Int,
-      indent: Int
-  ): (String, Int) = {
+                                     lines: Vector[ParsedLine],
+                                     headerIndex: Int,
+                                     indent: Int
+                                   ): (String, Int) = {
     val builder = new StringBuilder
     var index = headerIndex
     var continue = true
@@ -330,13 +334,13 @@ object PythonParser {
   private case class ParsedMethod(name: String, template: BeDefineFunction, attributes: List[AttributeRecord], nextIndex: Int)
 
   private def parseClass(
-      lines: Vector[ParsedLine],
-      headerIndex: Int,
-      indent: Int,
-      name: String,
-      basesSource: Option[String],
-      context: ParseContext
-  ): (BeExpression, Int) = {
+                          lines: Vector[ParsedLine],
+                          headerIndex: Int,
+                          indent: Int,
+                          name: String,
+                          basesSource: Option[String],
+                          context: ParseContext
+                        ): (BeExpression, Int) = {
     val bodyIndent = determineBodyIndent(lines, headerIndex + 1, indent)
     basesSource.foreach(_ => ())
     if (bodyIndent <= indent) {
@@ -418,7 +422,7 @@ object PythonParser {
       val parsedMethods = methodsBuffer.toList
 
       val classNameMap = LanguageMap.universalMap[HumanLanguage](name)
-      val classPlaceholder = BeDefineClass(classNameMap, attributes, Nil)
+      val classPlaceholder = BeDefineClass(classNameMap, attributes, Nil, ignoredBodyExpressions.toList)
       val methodInstances = parsedMethods.map { methodResult =>
         methodResult.template.copy(
           functionTypeInfo = BeDefineFunction.BeFunctionTypeInfo(
@@ -436,14 +440,14 @@ object PythonParser {
   }
 
   private def parseFunction(
-      lines: Vector[ParsedLine],
-      headerIndex: Int,
-      indent: Int,
-      name: String,
-      paramsSource: String,
-      returnSource: Option[String],
-      context: ParseContext
-  ): (BeExpression, Int) = {
+                             lines: Vector[ParsedLine],
+                             headerIndex: Int,
+                             indent: Int,
+                             name: String,
+                             paramsSource: String,
+                             returnSource: Option[String],
+                             context: ParseContext
+                           ): (BeExpression, Int) = {
     context.pushScope()
     val parameterInfos = parseParameters(paramsSource)
     val parameterDefinitions = parameterInfos.map { case (paramName, typeHint) =>
@@ -480,14 +484,14 @@ object PythonParser {
   }
 
   private def parseMethod(
-      lines: Vector[ParsedLine],
-      headerIndex: Int,
-      indent: Int,
-      name: String,
-      paramsSource: String,
-      returnSource: Option[String],
-      context: ParseContext
-  ): ParsedMethod = {
+                           lines: Vector[ParsedLine],
+                           headerIndex: Int,
+                           indent: Int,
+                           name: String,
+                           paramsSource: String,
+                           returnSource: Option[String],
+                           context: ParseContext
+                         ): ParsedMethod = {
     val methodContext = new ParseContext(context.snapshotStructures)
     methodContext.pushScope()
     val parameterInfos = parseParameters(paramsSource)
@@ -528,12 +532,12 @@ object PythonParser {
   }
 
   private def collectMethodAttributes(
-      lines: Vector[ParsedLine],
-      startIndex: Int,
-      endIndex: Int,
-      bodyIndent: Int,
-      context: ParseContext
-  ): List[AttributeRecord] = {
+                                       lines: Vector[ParsedLine],
+                                       startIndex: Int,
+                                       endIndex: Int,
+                                       bodyIndent: Int,
+                                       context: ParseContext
+                                     ): List[AttributeRecord] = {
     val attributes = mutable.LinkedHashMap[String, BeDefineVariable]()
     var index = startIndex
     while (index < endIndex) {
@@ -557,22 +561,22 @@ object PythonParser {
   }
 
   private def recordAttribute(
-      buffer: mutable.LinkedHashMap[String, BeDefineVariable],
-      attributeName: String,
-      explicitType: Option[String],
-      valueSource: Option[String],
-      context: ParseContext
-  ): Unit = {
+                               buffer: mutable.LinkedHashMap[String, BeDefineVariable],
+                               attributeName: String,
+                               explicitType: Option[String],
+                               valueSource: Option[String],
+                               context: ParseContext
+                             ): Unit = {
     val attribute = createAttributeDefinition(attributeName, explicitType, valueSource, context)
     buffer.update(attributeName, attribute)
   }
 
   private def createAttributeDefinition(
-      attributeName: String,
-      explicitType: Option[String],
-      valueSource: Option[String],
-      context: ParseContext
-  ): BeDefineVariable = {
+                                         attributeName: String,
+                                         explicitType: Option[String],
+                                         valueSource: Option[String],
+                                         context: ParseContext
+                                       ): BeDefineVariable = {
     val normalizedExplicit = explicitType.map(_.trim).filter(_.nonEmpty)
     val dataType = normalizedExplicit.map(typeHint => mapType(Some(typeHint))).getOrElse {
       valueSource.map(_.trim).filter(_.nonEmpty).map { valueText =>
@@ -587,12 +591,12 @@ object PythonParser {
   }
 
   private def parseWhile(
-      lines: Vector[ParsedLine],
-      headerIndex: Int,
-      indent: Int,
-      conditionSource: String,
-      context: ParseContext
-  ): (BeExpression, Int) = {
+                          lines: Vector[ParsedLine],
+                          headerIndex: Int,
+                          indent: Int,
+                          conditionSource: String,
+                          context: ParseContext
+                        ): (BeExpression, Int) = {
     val conditionExpr = parseExpression(conditionSource.trim, context)
     val computedIndent = determineBodyIndent(lines, headerIndex + 1, indent)
     if (computedIndent <= indent) {
@@ -606,12 +610,12 @@ object PythonParser {
   }
 
   private def parseIf(
-      lines: Vector[ParsedLine],
-      headerIndex: Int,
-      indent: Int,
-      conditionSource: String,
-      context: ParseContext
-  ): (BeExpression, Int) = {
+                       lines: Vector[ParsedLine],
+                       headerIndex: Int,
+                       indent: Int,
+                       conditionSource: String,
+                       context: ParseContext
+                     ): (BeExpression, Int) = {
     val conditionExpr = parseExpression(conditionSource.trim, context)
     val computedIndent = determineBodyIndent(lines, headerIndex + 1, indent)
     if (computedIndent <= indent) {
@@ -696,14 +700,13 @@ object PythonParser {
 
   private val DefaultOperatorPrecedence = -1
 
-  private val unaryOperators: List[String] = List("not", "+", "-", "~")
 
   private def parseExpression(source: String, context: ParseContext): BeExpression = {
     val trimmed = source.trim
     if (trimmed.isEmpty) {
       BeExpression.pass
     } else {
-      val unwrapped = if (ParsingUtils.isParenthesized(trimmed)) trimmed.substring(1, trimmed.length - 1).trim else trimmed
+      val unwrapped = ParsingUtils.unwrapRedundantParentheses(trimmed)
       val target = if (unwrapped.isEmpty) trimmed else unwrapped
       parseBinaryExpression(target, context)
         .orElse(parseUnaryExpression(target, context))
@@ -713,17 +716,20 @@ object PythonParser {
     }
   }
 
+
   private def parseUnaryExpression(source: String, context: ParseContext): Option[BeExpression] = {
     val trimmed = source.trim
-    unaryOperators
-      .collectFirst {
+    val unaryOperators: List[String] = List("not", "+", "-", "~")
+
+    unaryOperators.collectFirst {
         case operator if startsWithUnaryOperator(trimmed, operator) =>
           val operandSource = trimmed.substring(operator.length).trim
           Option.when(operandSource.nonEmpty) {
-          val operandExpr = parseExpression(operandSource, context)
-          val function = context.resolveOperator(operator, 1, List(operandExpr))
+            val operandExpr = parseExpression(operandSource, context)
+            val function = context.resolveOperator(operator, 1, List(operandExpr))
             val parameterMap = Map(function.inputs.head -> operandExpr)
-            OperatorFunctionCall(BeFunctionCall(function, parameterMap), operator)
+
+            BeFunctionCall(function, parameterMap)
           }
       }
       .flatten
@@ -754,7 +760,9 @@ object PythonParser {
           function.inputs.head -> leftExpr,
           function.inputs(1) -> rightExpr
         )
-        OperatorFunctionCall(BeFunctionCall(function, parameterMap), operator.trim)
+        val rightName = DefaultDefinitions.operatorDefinitionsWithSymbols.filter(_._1 == operator.trim)
+        BeFunctionCall(function, parameterMap)
+        //OperatorFunctionCall(BeFunctionCall(function, parameterMap), operator.trim)
       }
     }.headOption
   }
@@ -786,7 +794,7 @@ object PythonParser {
 
   private def isStringLiteral(value: String): Boolean = {
     (value.startsWith("\"") && value.endsWith("\"") && value.length >= 2) ||
-    (value.startsWith("'") && value.endsWith("'") && value.length >= 2)
+      (value.startsWith("'") && value.endsWith("'") && value.length >= 2)
   }
 
   private def isNumericLiteral(value: String): Boolean = {
@@ -835,7 +843,7 @@ object PythonParser {
     index
   }
 
-  private def inferType(expr: BeExpression): BeDataType = expr.canEvaluateTo match {
+  private def inferType(expr: BeExpression): BeDataType = expr.staticInformationExpression.staticType match {
     case BeDataType.Error => AnyType
     case other => other
   }
@@ -912,9 +920,9 @@ object PythonParser {
     }
 
     def assignVariable(
-        name: String,
-        dataType: BeDataType
-    ): BeDefineVariable = {
+                        name: String,
+                        dataType: BeDataType
+                      ): BeDefineVariable = {
       lookupVariable(name).getOrElse {
         val variable = BeDefineVariable(LanguageMap.universalMap(name), dataType)
         currentScope.update(name, variable)
@@ -924,9 +932,9 @@ object PythonParser {
     }
 
     def defineVariable(
-        name: String,
-        dataType: BeDataType
-    ): BeDefineVariable = {
+                        name: String,
+                        dataType: BeDataType
+                      ): BeDefineVariable = {
       val variable = BeDefineVariable(LanguageMap.universalMap(name), dataType)
       currentScope.update(name, variable)
       registerVariable(name, variable)
@@ -1002,7 +1010,7 @@ object PythonParser {
         case Some(candidates) if candidates.nonEmpty =>
           val scored = candidates.zipWithIndex.flatMap { case (candidate, index) =>
             val assignmentResults = candidate.inputs.zip(arguments).map { case (param, argument) =>
-              param.variableType.canTakeValuesFrom(argument.canEvaluateTo)
+              param.variableType.canTakeValuesFrom(argument.staticInformationExpression.staticType)
             }
 
             if (assignmentResults.exists(_.isInstanceOf[AssigningNotPossible])) None
@@ -1052,60 +1060,4 @@ object PythonParser {
     def currentStructures: CurrentlyKnownStructures = currentlyKnownStructures
   }
 
-  private case class OperatorFunctionCall(call: BeFunctionCall, symbol: String) extends BeExpression {
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
-      val arguments = call.funcDef.inputs.flatMap(call.parameterValueMap.get)
-      arguments match {
-        case Nil => symbol
-        case head :: tail if tail.isEmpty =>
-          val renderedHead = formatOperand(head, isLeftOperand = false, programmingLanguage, humanLanguage)
-          if (isAlphabeticOperator(symbol)) s"$symbol $renderedHead" else s"$symbol$renderedHead"
-        case head :: tail =>
-          val renderedHead = formatOperand(head, isLeftOperand = true, programmingLanguage, humanLanguage)
-          tail.foldLeft(renderedHead) { (acc, expr) =>
-            val rendered = formatOperand(expr, isLeftOperand = false, programmingLanguage, humanLanguage)
-            s"$acc $symbol $rendered"
-          }
-      }
-    }
-
-    private def isAlphabeticOperator(value: String): Boolean =
-      value.forall(ch => ch.isLetter || ch.isWhitespace)
-
-    private def formatOperand(
-        expression: BeExpression,
-        isLeftOperand: Boolean,
-        programmingLanguage: ProgrammingLanguage,
-        humanLanguage: HumanLanguage
-    ): String = {
-      val rendered = expression.getInLanguage(programmingLanguage, humanLanguage).trim
-      val requiresParentheses = expression match {
-        case nested: OperatorFunctionCall =>
-          val parentPrecedence = operatorPrecedence.getOrElse(symbol, DefaultOperatorPrecedence)
-          val childPrecedence = operatorPrecedence.getOrElse(nested.symbol, DefaultOperatorPrecedence)
-          if (childPrecedence < parentPrecedence) true
-          else if (childPrecedence > parentPrecedence) false
-          else !isLeftOperand && (symbol == "-" || symbol == "/" || symbol == "//")
-        case _ => false
-      }
-      if (requiresParentheses && !(rendered.startsWith("(") && rendered.endsWith(")"))) s"($rendered)" else rendered
-    }
-
-    override def hasThisExpressionSideEffects: Boolean = call.hasThisExpressionSideEffects
-
-    override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] = call.getSyntaxErrorsOfThisStructure
-
-    override def canEvaluateTo: BeDataType = call.canEvaluateTo
-
-    override def createBlock(): BeBlock = call.createBlock()
-
-    override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] =
-      call.getChildren(withExtensions, parentScope)
-
-    override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression =
-      call.withReplacedChildren(newChildren) match {
-        case updated: BeFunctionCall => copy(call = updated)
-        case other => other
-      }
-  }
 }

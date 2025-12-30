@@ -18,7 +18,21 @@ object ParsingUtils {
       case _ => true
     }
   }
-  
+
+
+  def unwrapRedundantParentheses(value: String): String = {
+    var current = value.trim
+    var continue = true
+
+    while (continue && isParenthesized(current)) {
+      val inner = current.substring(1, current.length - 1).trim
+      if (inner.isEmpty) continue = false
+      else current = inner
+    }
+
+    current
+  }
+
 
   def isParenthesized(value: String): Boolean = {
     val trimmed = value.trim

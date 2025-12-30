@@ -1,44 +1,50 @@
 package contentmanagement.model.vm.code
 
 import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreeImpl
-import contentmanagement.model.language.{AppLanguage, HumanLanguage, ProgrammingLanguage}
 import contentmanagement.model.vm.code.controlStructures.BeSequence
-import contentmanagement.model.vm.code.errors.*
+import contentmanagement.model.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
 import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionReference, BeExtensionPoint}
+import contentmanagement.model.vm.io.BeExpressionIO
 import contentmanagement.model.vm.simulation.{BeExpressionExecutor, BeSimulatorConfig, BeSimulatorState}
+import contentmanagement.model.vm.static.BeExpressionStaticInformation
 import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeScope.GlobalScope
-import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.BeExpressionTree
 import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
+
+import scala.collection.mutable
 
 
 trait BeExpression {
 
-  def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String
+  def staticInformationExpression: BeExpressionStaticInformation = {
+    println("[WARN] No static information implemented for " + getClass.getSimpleName)
+    new BeExpressionStaticInformation() {}
+  }
 
-  def hasThisExpressionOrChildrenSideEffects: Boolean = hasThisExpressionSideEffects || hasChildrenSideEffects
+  def expressionIO: BeExpressionIO = {
+    println("[WARN] No expression io implemented for " + getClass.getSimpleName)
+    new BeExpressionIO() {}
+  }
 
-  def hasChildrenSideEffects: Boolean = getChildren(false, GlobalScope()).flatMap {
-    case BeExpressionReference(childPosition: BeChildPosition, expr: BeExpression) => Some(expr)
-    case _ => None
-  }.exists(_.hasThisExpressionOrChildrenSideEffects)
+  def expressionExecutor(simulatorConfig: BeSimulatorConfig, stateBeforeExecution: BeSimulatorState): BeExpressionExecutor = {
+    println("[WARN] Execution support is not implemented for " + getClass.getSimpleName + " (defaulting to NoOp)")
+    new BeExpressionExecutor(simulatorConfig, stateBeforeExecution, this) {
+      protected def childExpressionsToExecute(stateBeforeExecution: BeSimulatorState): List[BeExpression] = List()
 
-  def hasThisExpressionSideEffects: Boolean
+      protected def applySideEffectsOfThisBlock(stateBeforeExecution: BeSimulatorState, childrenResults: List[(BeSimulatorState, BeDataValue)]): BeSimulatorState = stateBeforeExecution
 
-  def getSyntaxErrorsOfThisStructure: Seq[BeInfo]
+      protected def executeThisBlockInSimulatorAndGetValue(stateBeforeExecution: BeSimulatorState, childrenResults: List[(BeSimulatorState, BeDataValue)]): (BeSimulatorState, BeDataValue) = (stateBeforeExecution, BeDataValueUnit())
+    }
+  }
 
-  def canEvaluateTo: BeDataType
-
-  def getExecutor(simulatorConfig: BeSimulatorConfig, stateBeforeExecution: BeSimulatorState): BeExpressionExecutor =
-    throw new NotImplementedError("Execution support is not implemented in the static VM model")
 
   def recToTree(withExtensions: Boolean, myPosition: BeChildPosition): BeExpressionTree = {
     val root: BeExpressionNode = BeExpressionReference(myPosition, this)
 
     val children: List[(BeExpressionNode, Option[BeExpressionTree])] = getChildren(withExtensions, myPosition.curScope).map(exprNode => exprNode match {
       case BeExpressionReference(childPosition: BeChildPosition, childExpr: BeExpression) => (exprNode, Some(childExpr.recToTree(withExtensions, childPosition)))
-      case BeExtensionPoint(isRequired, childPosition,  willBeUsedAsType) => (exprNode, None)
+      case BeExtensionPoint(isRequired, childPosition, willBeUsedAsType) => (exprNode, None)
     })
 
     var tree: BeExpressionTree = NodeBasedTreeImpl.empty[BeExpressionNode]()
@@ -51,63 +57,48 @@ trait BeExpression {
     tree
   }
 
-  def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression
-
-  def createBlock(): BeBlock
-
-  def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode]
 
   def stopExecutionBeforeThisBlock: Boolean = false
+
+  def staticInformationSubtree: BeExpressionStaticInformation = new BeExpressionStaticInformation() {
+
+    private lazy val allExprChildren: List[BeExpression] = {
+      recToTree(false, BeChildPosition(BeChildRole.NoRole, GlobalScope())).values.toList.collect { case BeExpressionReference(_, expr) => expr }
+    }
+
+    override def staticType: BeDataType = staticInformationExpression.staticType
+
+    override def staticValue: Option[BeDataValue] = staticInformationExpression.staticValue
+
+    override def syntaxErrors: Seq[BeInfo] = staticInformationExpression.syntaxErrors ++ allExprChildren.flatMap(_.staticInformationExpression.syntaxErrors)
+
+    override def hasSideEffects: Boolean = staticInformationExpression.hasSideEffects || allExprChildren.exists(_.staticInformationExpression.hasSideEffects)
+
+    override def getDefinitions: BeDefineStructure = new BeDefineStructure() {
+
+      private lazy val myDefs: BeDefineStructure = staticInformationExpression.getDefinitions
+
+      override lazy val definedClasses: List[BeDefineClass] = myDefs.definedClasses ++ allExprChildren.flatMap(_.staticInformationExpression.getDefinitions.definedClasses)
+
+      override lazy val definedFunctions: List[BeDefineFunction] = myDefs.definedFunctions ++ allExprChildren.flatMap(_.staticInformationExpression.getDefinitions.definedFunctions)
+
+      override lazy val definedVariables: List[BeDefineVariable] = myDefs.definedVariables ++ allExprChildren.flatMap(_.staticInformationExpression.getDefinitions.definedVariables)
+
+      override lazy val allDefinedStructures: List[BeDefineStructure] = myDefs.allDefinedStructures ++ allExprChildren.flatMap(_.staticInformationExpression.getDefinitions.allDefinedStructures)
+    }
+
+  }
+
+  def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = List()
+
+  def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = this
+
 }
 
 object BeExpression {
 
-  val pass: BeExpression = BeSequence.optionalBody(List())
+  val pass: BeSequence = BeSequence.optionalBody(List())
 
-  /*
-  private case object BePassExpression extends BeExpression {
-
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
-      programmingLanguage match {
-        case AppLanguage.Python => "pass"
-        case _ => ""
-      }
-    }
-
-    override def hasThisExpressionSideEffects: Boolean = false
-
-    override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] = List()
-
-    override def canEvaluateTo: BeDataType = BeDataType.Unit
-
-    override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock =
-      throw new NotImplementedError("Block rendering is not implemented for the pass expression")
-
-    override def getChildren: List[(BeChildRole, BeExpression)] = List()
-  }
-
-  lazy val pass: BeExpression = BePassExpression
-
-  lazy val NoOp: BeExpression = new BeExpression {
-
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = ""
-
-    override def hasThisExpressionSideEffects: Boolean = false
-
-    override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] = List()
-
-    override def canEvaluateTo: BeDataType = BeDataType.Unit
-
-    override def createBlock(config: BeDisplayConfig, parentPos: BeChildPosition): BeBlock =
-      throw new NotImplementedError("Block rendering is not implemented for the NoOp expression")
-
-    override def recToTree(config: BeDisplayConfig, roleInParent: BeChildRole, myScope: BeScope): BeExpressionTree = {
-      NodeBasedTreeImpl.empty[BeExpressionNode]()
-    }
-
-    def getChildren(withExtensions: Boolean): List[BeExpressionNode] = List()
-
-    override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = this
-  }*/
+  //val noOp: BeSequence = BeSequence.optionalBody(List())
 
 }

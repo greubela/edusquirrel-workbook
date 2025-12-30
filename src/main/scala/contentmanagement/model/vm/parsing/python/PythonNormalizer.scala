@@ -364,8 +364,27 @@ class PythonNormalizer {
 
   private def normalizeStatementText(text: String): String = {
     val withoutAugmentation = transformAugmentedAssignment(text)
-    normalizeAssignmentExpression(withoutAugmentation)
+    val normalized = normalizeAssignmentExpression(withoutAugmentation)
+    val cleaned = normalized match {
+      case ReturnPattern(body) => s"return ${stripOuterParentheses(body)}".trim
+      case WhilePattern(condition, suffix) => s"while ${stripOuterParentheses(condition)}$suffix"
+      case IfPattern(condition, suffix) => s"if ${stripOuterParentheses(condition)}$suffix"
+      case other =>
+        val assignmentSplit = splitSimpleAssignment(other).map { case (target, expr) =>
+          s"${target.trim} = ${stripOuterParentheses(expr)}"
+        }
+        assignmentSplit.getOrElse(other)
+    }
+
+    tightenUnaryOperators(cleaned)
   }
+
+  private val ReturnPattern = """return\s+(.+)""".r
+  private val WhilePattern = """while\s+(.+)(:)""".r
+  private val IfPattern = """if\s+(.+)(:)""".r
+
+  private def tightenUnaryOperators(text: String): String =
+    text.replaceAll("""(^|[=\(])([+\-~])\s+([A-Za-z0-9_])""", "$1$2$3")
 
   private def transformAugmentedAssignment(text: String): String = {
     if (text.startsWith("#")) text

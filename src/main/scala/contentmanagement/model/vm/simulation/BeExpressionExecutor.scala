@@ -14,7 +14,7 @@ abstract class BeExpressionExecutor(simulatorConfig: BeSimulatorConfig, initSimu
     var curSimState = initSimulatorState
     for (curChild <- childrenResults) if (curChild._1 != curSimState) curSimState = curChild._1
 
-    if (expressionToExecute.hasThisExpressionSideEffects)
+    if (expressionToExecute.staticInformationExpression.hasSideEffects)
       curSimState = applySideEffectsOfThisBlock(curSimState, childrenResults)
     
     executeThisBlockInSimulatorAndGetValue(curSimState, childrenResults)
@@ -25,13 +25,13 @@ abstract class BeExpressionExecutor(simulatorConfig: BeSimulatorConfig, initSimu
 
     for (curChild <- childExpressionsToExecute(simulatorState)) {
       val useSimState = childrenResultBuffer.lastOption.map(_._1).getOrElse(simulatorState)
-      val res = curChild.getExecutor( simulatorConfig, useSimState).executeRecursivelyInSimulator()
+      val res = curChild.expressionExecutor( simulatorConfig, useSimState).executeRecursivelyInSimulator()
       childrenResultBuffer += res
     }
     childrenResultBuffer.toList
   }
   
-  protected def childExpressionsToExecute(stateBeforeExecution: BeSimulatorState): List[BeExpression]
+  protected def childExpressionsToExecute(stateBeforeExecution: BeSimulatorState): List[BeExpression] 
 
   protected def applySideEffectsOfThisBlock(stateBeforeExecution: BeSimulatorState, childrenResults: List[(BeSimulatorState, BeDataValue)]): BeSimulatorState
 

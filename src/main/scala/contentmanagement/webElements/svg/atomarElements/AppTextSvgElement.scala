@@ -17,12 +17,13 @@ case class AppTextSvgElement[T: Fractional](displayText: String, pBounds: Bounds
   override val staticBoundingBox: Bounds[Double] = pBounds.toDouble
 
   def renderBeforeMods: L.SvgElement = {
-    val textDim = font.measureText(displayText).toDouble
-    val freeSpaceX = staticBoundingBox.width - textDim.width
-    val freeSpaceY = staticBoundingBox.height - textDim.height
+    val centerX = staticBoundingBox.startX + staticBoundingBox.width / 2
+    val centerY = staticBoundingBox.startY + staticBoundingBox.height / 2
     svg.text(
-      svg.x := (staticBoundingBox.startX + freeSpaceX / 2).toString,
-      svg.y := (staticBoundingBox.endY - freeSpaceY / 2).toString,
+      svg.x := centerX.toString,
+      svg.y := centerY.toString,
+      svg.textAnchor := "middle",
+      svg.dominantBaseline := "middle",
       svg.fontSize := font.sizeInPx.toString,
       svg.fontFamily := font.name,
       svg.tspan(displayText)

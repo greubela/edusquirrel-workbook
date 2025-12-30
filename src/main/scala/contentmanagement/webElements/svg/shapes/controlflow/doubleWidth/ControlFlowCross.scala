@@ -21,22 +21,6 @@ case class ControlFlowCross() extends ControlFlowShapeDoubleWidth {
 
   override def minHeightInSegments: Int = 5
 
-  /*
-  override def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
-
-    val bwa = background.addAmends(rendererConfig.amendFactory.defaultControlColors)
-    val rwa = RightToLeft().addAmends(rendererConfig.amendFactory.activeControlFlowAmends)
-    val lwa = LeftToRight().addAmends(rendererConfig.amendFactory.inactiveControlFlowAmends)
-    val pwa = PathCrossOverlay().addAmends(rendererConfig.amendFactory.crossSymbolControlFlowAmends)
-
-    val stack = ShapeStack(List(lwa, rwa, pwa), HorizontalAlignment.Left, VerticalAlignment.Top)
-
-    val bR = bwa.render(rendererConfig, bounds)
-    val sR = stack.render(rendererConfig, bounds)
-    AppDecoratedSvgElement(bR, List(sR), List())
-  }
-*/
-
   private def extendAndAppendParentPath(path: ControlFlowPath, curLineHeight: Double, seg: Double, toTheRight: Boolean,  newPathAmends: Seq[L.Modifier[L.SvgElement]]): ControlFlowPath = {
     val extraHeight = (curLineHeight - seg * minHeightInSegments).max(0)
 

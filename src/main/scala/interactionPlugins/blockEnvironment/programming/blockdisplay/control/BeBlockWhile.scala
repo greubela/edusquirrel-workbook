@@ -7,7 +7,7 @@ import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.model.vm.types.BeChildRole.{BodySequence, ConditionInControlStructure}
 import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.*
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.ControlFlowDownUp
-import contentmanagement.webElements.svg.shapes.nested.NestedControlStructureShape
+import contentmanagement.webElements.svg.shapes.special.nested.NestedControlStructureShape
 import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowAndExpressionShape, ControlFlowShape}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, RenderingInformation}

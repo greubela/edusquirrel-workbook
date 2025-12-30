@@ -1,4 +1,4 @@
-package contentmanagement.webElements.svg.shapes.nested
+package contentmanagement.webElements.svg.shapes.special.nested
 
 import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.AppSvgElement
@@ -32,6 +32,7 @@ trait NestedControlStructureShape extends BeShapeComposite with ControlFlowAndEx
 
   private def controlFlowHeights(rendererConfig: BeRenderingConfig): List[Double] = {
     getControlFlowChangeElements.zip(getControlFlowExpressionElements).map((controlFlow, expression) => {
+
       val cf: Double = controlFlow.displaySize(rendererConfig).height
       val ex: Option[Double] = expression.map(_.displaySize(rendererConfig).height)
       (ex.toList ++ List(cf)).max
@@ -85,6 +86,8 @@ trait NestedControlStructureShape extends BeShapeComposite with ControlFlowAndEx
 
     val seg: Double = rendererConfig.controlSegmentSize
     val extraWidth = bounds.width - totalControlFlowWidth(rendererConfig)
+
+    //top
     var res = SvgPathBuilder.mutableBuilder(bounds.startPoint)
       .addControlFlowConnector(seg)
       .horizontalLineWithWidth(rightControlFlowWith(rendererConfig))

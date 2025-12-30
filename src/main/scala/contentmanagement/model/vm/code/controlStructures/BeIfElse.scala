@@ -4,10 +4,11 @@ import contentmanagement.model.language.AppLanguage.*
 import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
 import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import contentmanagement.model.vm.code.{BeControlStructure, BeExpression}
+import contentmanagement.model.vm.io.BeExpressionIO
+import contentmanagement.model.vm.static.BeExpressionStaticInformation
+import contentmanagement.model.vm.types.*
 import contentmanagement.model.vm.types.BeChildRole.ConditionInControlStructure
 import contentmanagement.model.vm.types.BeScope.InSequenceScope
-import contentmanagement.model.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo, BeScope}
-import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import interactionPlugins.blockEnvironment.programming.blockdisplay.control.BeBlockIfElse
 import util.CodeStringBuilder
@@ -18,120 +19,140 @@ case class BeIfElse(
                      elseBody: BeSequence
                    ) extends BeControlStructure {
 
+  private val myRef: BeIfElse = this
+
   def allPossibleBodies: List[BeExpression] = List(thenBody, elseBody)
 
-  override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
-    val conditionString = condition.getInLanguage(programmingLanguage, humanLanguage).replaceAll("\n", "")
-    val thenBodyString = thenBody.getInLanguage(programmingLanguage, humanLanguage)
-    val elseBodyString = elseBody.getInLanguage(programmingLanguage, humanLanguage)
-    val hasElseBody = elseBody.body.nonEmpty
-    programmingLanguage match {
-      case Python => {
-        val builder = CodeStringBuilder().appendNextLine(s"if $conditionString:")
-          .changeIntLevel(1)
-          .appendAsLines(thenBodyString)
-          .changeIntLevel(-1)
-        if (hasElseBody) {
-          builder
-            .appendNextLine(s"else:")
-            .changeIntLevel(1)
-            .appendAsLines(elseBodyString)
-            .changeIntLevel(-1)
-        }
-        builder
-          .appendNextLine(s"")
-          .toString
-      }
-      case Java => {
-        val builder = CodeStringBuilder().appendNextLine(s"if($conditionString){")
-          .changeIntLevel(1)
-          .appendAsLines(thenBodyString)
-          .changeIntLevel(-1)
-        if (hasElseBody) {
-          builder
-            .appendNextLine("} else {")
-            .changeIntLevel(1)
-            .appendAsLines(elseBodyString)
-            .changeIntLevel(-1)
-            .appendNextLine("}")
-        } else {
-          builder.appendNextLine("}")
-        }
-        builder.toString
-      }
-      case JavaScript => {
-        val builder = CodeStringBuilder().appendNextLine(s"if ($conditionString) {")
-          .changeIntLevel(1)
-          .appendAsLines(thenBodyString)
-          .changeIntLevel(-1)
-        if (hasElseBody) {
-          builder
-            .appendNextLine("} else {")
-            .changeIntLevel(1)
-            .appendAsLines(elseBodyString)
-            .changeIntLevel(-1)
-            .appendNextLine("}")
-        } else {
-          builder.appendNextLine("}")
-        }
-        builder.toString
-      }
-      case Rust => {
-        val builder = CodeStringBuilder().appendNextLine(s"if $conditionString {")
-          .changeIntLevel(1)
-          .appendAsLines(thenBodyString)
-          .changeIntLevel(-1)
-        if (hasElseBody) {
-          builder
-            .appendNextLine("} else {")
-            .changeIntLevel(1)
-            .appendAsLines(elseBodyString)
-            .changeIntLevel(-1)
-            .appendNextLine("}")
-        } else {
-          builder.appendNextLine("}")
-        }
-        builder.toString
-      }
-      case Lisp => {
-        val builder = CodeStringBuilder("(if " + conditionString)
-          .changeIntLevel(1)
-          .appendNextLine("(progn")
-          .changeIntLevel(1)
-          .appendAsLines(thenBodyString)
-          .changeIntLevel(-1)
-          .appendNextLine(")")
-        if (hasElseBody) {
-          builder
-            .appendNextLine("(progn")
-            .changeIntLevel(1)
-            .appendAsLines(elseBodyString)
-            .changeIntLevel(-1)
-            .appendNextLine(")")
-        }
-        builder
-          .changeIntLevel(-1)
-          .appendNextLine(")")
-          .toString
-      }
-      case _ => {
-        val builder = CodeStringBuilder().appendNextLine(s"IF/ELSE(")
-          .changeIntLevel(1)
-          .appendNextLine(s"$conditionString,")
-          .appendAsLines(thenBodyString)
-        if (hasElseBody) builder.appendAsLines(elseBodyString)
-        builder
-          .changeIntLevel(-1)
-          .appendNextLine(")")
-          .toString
-      }
-    }
+  override def staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation {
+    /*override def staticType: BeDataType = if(staticValue.nonEmpty) staticValue.get.currentType else thenBody.expressionStaticInformation.staticType.
+
+    override def staticValue: Option[BeDataValue] = {
+      val condVal = condition.staticInformationIncludingChildren.staticValue
+      val thenVal = thenBody.staticInformationIncludingChildren.staticValue
+      val elseVal = elseBody.staticInformationIncludingChildren.staticValue
+      if (condVal.isEmpty) None
+      else if (condVal.get.displayAsString == "true" && thenVal.nonEmpty) thenVal
+      else if (condVal.get.displayAsString == "false" && elseVal.nonEmpty) elseVal
+      else None
+    }*/
+
+    override def syntaxErrors: Seq[BeInfo] = BeInfo.typeMismatchInfo("if/else condition", BeDataType.Boolean, condition.staticInformationExpression.staticType).toList
+
   }
 
-  override def getSyntaxErrorsOfThisStructure: Seq[BeInfo] = BeInfo.typeMismatchInfo("if/else condition", BeDataType.Boolean, condition.canEvaluateTo).toList
+  override def expressionIO: BeExpressionIO = new BeExpressionIO {
+    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
+      val conditionString = condition.expressionIO.getInLanguage(programmingLanguage, humanLanguage).replaceAll("\n", "")
+      val thenBodyString = thenBody.expressionIO.getInLanguage(programmingLanguage, humanLanguage)
+      val elseBodyString = elseBody.expressionIO.getInLanguage(programmingLanguage, humanLanguage)
+      val hasElseBody = elseBody.body.nonEmpty
+      programmingLanguage match {
+        case Python => {
+          val builder = CodeStringBuilder().appendNextLine(s"if $conditionString:")
+            .changeIntLevel(1)
+            .appendAsLines(thenBodyString)
+            .changeIntLevel(-1)
+          if (hasElseBody) {
+            builder
+              .appendNextLine(s"else:")
+              .changeIntLevel(1)
+              .appendAsLines(elseBodyString)
+              .changeIntLevel(-1)
+          }
+          builder
+            .appendNextLine(s"")
+            .toString
+        }
+        case Java => {
+          val builder = CodeStringBuilder().appendNextLine(s"if($conditionString){")
+            .changeIntLevel(1)
+            .appendAsLines(thenBodyString)
+            .changeIntLevel(-1)
+          if (hasElseBody) {
+            builder
+              .appendNextLine("} else {")
+              .changeIntLevel(1)
+              .appendAsLines(elseBodyString)
+              .changeIntLevel(-1)
+              .appendNextLine("}")
+          } else {
+            builder.appendNextLine("}")
+          }
+          builder.toString
+        }
+        case JavaScript => {
+          val builder = CodeStringBuilder().appendNextLine(s"if ($conditionString) {")
+            .changeIntLevel(1)
+            .appendAsLines(thenBodyString)
+            .changeIntLevel(-1)
+          if (hasElseBody) {
+            builder
+              .appendNextLine("} else {")
+              .changeIntLevel(1)
+              .appendAsLines(elseBodyString)
+              .changeIntLevel(-1)
+              .appendNextLine("}")
+          } else {
+            builder.appendNextLine("}")
+          }
+          builder.toString
+        }
+        case Rust => {
+          val builder = CodeStringBuilder().appendNextLine(s"if $conditionString {")
+            .changeIntLevel(1)
+            .appendAsLines(thenBodyString)
+            .changeIntLevel(-1)
+          if (hasElseBody) {
+            builder
+              .appendNextLine("} else {")
+              .changeIntLevel(1)
+              .appendAsLines(elseBodyString)
+              .changeIntLevel(-1)
+              .appendNextLine("}")
+          } else {
+            builder.appendNextLine("}")
+          }
+          builder.toString
+        }
+        case Lisp => {
+          val builder = CodeStringBuilder("(if " + conditionString)
+            .changeIntLevel(1)
+            .appendNextLine("(progn")
+            .changeIntLevel(1)
+            .appendAsLines(thenBodyString)
+            .changeIntLevel(-1)
+            .appendNextLine(")")
+          if (hasElseBody) {
+            builder
+              .appendNextLine("(progn")
+              .changeIntLevel(1)
+              .appendAsLines(elseBodyString)
+              .changeIntLevel(-1)
+              .appendNextLine(")")
+          }
+          builder
+            .changeIntLevel(-1)
+            .appendNextLine(")")
+            .toString
+        }
+        case _ => {
+          val builder = CodeStringBuilder().appendNextLine(s"IF/ELSE(")
+            .changeIntLevel(1)
+            .appendNextLine(s"$conditionString,")
+            .appendAsLines(thenBodyString)
+          if (hasElseBody) builder.appendAsLines(elseBodyString)
+          builder
+            .changeIntLevel(-1)
+            .appendNextLine(")")
+            .toString
+        }
+      }
+    }
 
 
-  override def createBlock(): BeBlock = new BeBlockIfElse(this)
+    override def createBlock(): BeBlock = new BeBlockIfElse(myRef)
+  }
+
 
   override def getChildren(withExtensions: Boolean, myScope: BeScope): List[BeExpressionNode] = {
     List(

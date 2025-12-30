@@ -4,7 +4,7 @@ import contentmanagement.datastructures.tree.TreeStructureContext
 import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreePosition
 import contentmanagement.model.geometry.Bounds
 import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
-import contentmanagement.webElements.svg.shapes.nested.ShapeWithControlFlow
+import contentmanagement.webElements.svg.shapes.special.nested.ShapeWithControlFlow
 import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeAmendFactory, ControlFlowAndExpressionShape, ControlFlowShape}
 import interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig}
 import interactionPlugins.blockEnvironment.programming.*

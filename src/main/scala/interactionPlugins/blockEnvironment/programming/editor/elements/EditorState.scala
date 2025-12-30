@@ -31,7 +31,8 @@ case class EditorState(
       } else {
         val mousePos = controllerState.mouseDragOverProgram.get.position
         val draggedProgram = controllerState.draggingEvent.get.draggedProgram
-        val legalTargets = existingDropTargets.filter(_.extensionPoint.extensionWillBeUsedAsType.canTakeValuesFrom(draggedProgram.fullProgram.canEvaluateTo).possibleWithoutSyntaxErrors)
+        val legalTargets = existingDropTargets//existingDropTargets.filter(_.extensionPoint.extensionWillBeUsedAsType.canTakeValuesFrom(draggedProgram.fullProgram.possibleStaticTypes).possibleWithoutSyntaxErrors)
+        // todo: re-introduce legality check
         val legalTargetsInOrder = legalTargets.sortBy(_.placeholderBounds.centerPoint.distanceToSquared(mousePos))
         //println("legal targets (#" + legalTargetsInOrder.size + "): " + legalTargetsInOrder)
         legalTargetsInOrder
