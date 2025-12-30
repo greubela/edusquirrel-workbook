@@ -18,17 +18,20 @@ final case class BlockFeedbackMeta(
  */
 final case class BlockFeedbackRequest(
     exerciseText: LanguageMap[HumanLanguage],
-    studentCodePython: Option[String],
-    vmExpression: Option[BeExpression],
+    studentCodePython: BeExpression,
     submissionNr: Int,
     config: BlockFeedbackConfig,
     meta: BlockFeedbackMeta = BlockFeedbackMeta(),
-    origin: BlockStudentCodeOrigin = BlockStudentCodeOrigin.Blocks
+    humanLanguage: HumanLanguage = AppLanguage.default()
 ) {
 
     /** Preferred output language for human-readable texts. */
     def preferredHumanLanguage: HumanLanguage =
-        AppLanguage.default()
+        humanLanguage
+
+    /** Derives Python source from the VM expression tree. */
+    def pythonSource: String =
+        studentCodePython.getInLanguage(AppLanguage.Python, preferredHumanLanguage)
 }
 
 /** Alias: internally we use the same type as the UI direction. */
