@@ -1,6 +1,7 @@
 package contentmanagement.model.vm.code
 
 import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreeImpl
+import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
 import contentmanagement.model.vm.code.controlStructures.BeSequence
 import contentmanagement.model.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
 import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionReference, BeExtensionPoint}
@@ -26,6 +27,9 @@ trait BeExpression {
     println("[WARN] No expression io implemented for " + getClass.getSimpleName)
     new BeExpressionIO() {}
   }
+
+  def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String =
+    expressionIO.getInLanguage(programmingLanguage, humanLanguage)
 
   def expressionExecutor(simulatorConfig: BeSimulatorConfig, stateBeforeExecution: BeSimulatorState): BeExpressionExecutor = {
     println("[WARN] Execution support is not implemented for " + getClass.getSimpleName + " (defaulting to NoOp)")
