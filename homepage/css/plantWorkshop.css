@@ -1,0 +1,170 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f4f4f9;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+h1 { color: #2c3e50; margin-top: 0; }
+h3 { margin-top: 0; color: #1565c0; }
+h4 { color: #555; margin-bottom: 10px; }
+h5 { margin-top: 0; color: #777; text-transform: uppercase; font-size: 0.85em; letter-spacing: 1px; }
+
+/* --- AUFGABEN BOX --- */
+.task-box {
+    background: #e3f2fd; /* Hellblau */
+    padding: 20px;
+    border-left: 6px solid #2196f3;
+    border-radius: 4px;
+    margin-bottom: 25px;
+}
+
+.info-box {
+    margin-top: 15px;
+    background: rgba(255,255,255,0.6);
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #444;
+    font-style: italic;
+    border: 1px solid #bbdefb;
+}
+
+/* --- CONTROLS / SWITCH --- */
+.controls {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.switch { position: relative; display: inline-block; width: 50px; height: 26px; margin-right: 15px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+    position: absolute; cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #ccc; transition: .4s; border-radius: 34px;
+}
+.slider:before {
+    position: absolute; content: "";
+    height: 20px; width: 20px; left: 3px; bottom: 3px;
+    background-color: white; transition: .4s; border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+input:checked + .slider { background-color: #2196f3; }
+input:checked + .slider:before { transform: translateX(24px); }
+.mode-text { font-weight: 600; color: #444; }
+
+/* --- DRAG & DROP BEREICH --- */
+.dnd-area {
+    display: flex;
+    flex-direction: row;
+    gap: 30px; /* Mehr Platz zwischen den Boxen */
+    align-items: flex-start;
+}
+
+.snippet-container {
+    flex: 1;
+    min-height: 350px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 2px dashed #e0e0e0;
+    transition: all 0.2s ease;
+    
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-bottom: 60px; /* Puffer unten */
+}
+
+/* Styling für die Lösungs-Box */
+.snippet-container.target { background: #fafafa; border-color: #bbb; }
+.snippet-container.target.drag-over {
+    background-color: #e8f5e9;
+    border-color: #4caf50;
+    box-shadow: inset 0 0 20px rgba(76, 175, 80, 0.1);
+}
+
+/* --- CODE BLÖCKE --- */
+.code-block {
+    background: #282c34; /* Dark Theme */
+    color: #61afef;       /* Code Blau */
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 14px;
+    padding: 14px 18px;
+    border-radius: 6px;
+    cursor: grab;
+    user-select: none;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+    border-left: 4px solid #c678dd; /* Kleiner Lila Akzent */
+    transition: transform 0.1s;
+}
+
+.code-block:hover { transform: translateY(-2px); box-shadow: 0 5px 12px rgba(0,0,0,0.2); }
+.code-block:active { cursor: grabbing; transform: scale(0.98); }
+
+/* --- PLACEHOLDER (GHOST) --- */
+.drop-placeholder {
+    height: 48px;
+    border: 2px dashed #2196f3;
+    background: rgba(33, 150, 243, 0.08);
+    border-radius: 6px;
+    flex-shrink: 0;
+    margin-bottom: 10px;
+    pointer-events: none; /* WICHTIG */
+}
+
+/* --- EDITOR (Advanced) --- */
+.code-editor {
+    width: 100%; height: 250px;
+    background: #282c34; color: #abb2bf;
+    font-family: 'Consolas', monospace;
+    padding: 20px; border-radius: 6px; border: none;
+    line-height: 1.5; font-size: 14px;
+    resize: vertical;
+}
+.btn-check {
+    margin-top: 15px; padding: 12px 24px;
+    background: #2196f3; color: white;
+    border: none; border-radius: 6px;
+    font-weight: bold; cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-check:hover { background: #1976d2; }
+
+/* --- EDITOR STYLING --- */
+.editor-container {
+    width: 95%;
+    min-height: 300px;
+    background: #2d2d2d; /* Dunkler Hintergrund passend zum Theme */
+    color: #f8f8f2;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 20px;
+    border-radius: 6px;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+    
+    /* Wichtig für CodeJar */
+    white-space: pre; 
+    overflow: auto;
+    outline: none; /* Kein blauer Rahmen beim Klicken */
+    tab-size: 2;
+}
+
+/* Syntax Highlighting Korrekturen (Optional, falls Prism etwas komisch macht) */
+.editor-container span {
+    font-family: inherit;
+}
