@@ -1,6 +1,6 @@
 package contentmanagement.model.vm.code.others
 
-import contentmanagement.model.language.AppLanguage.{Java, JavaScript, Python, Rust}
+import contentmanagement.model.language.AppLanguage.{Cpp, Java, JavaScript, Python, Rust}
 import contentmanagement.model.language.{HumanLanguage, ProgrammingLanguage}
 import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionReference}
@@ -20,7 +20,7 @@ case class BeReturn(value: Option[BeExpression]) extends BeExpression {
 
       programmingLanguage match {
         case Python                   => base
-        case Java | JavaScript | Rust => if (base.endsWith(";")) base else base + ";"
+        case Java | JavaScript | Rust | Cpp => if (base.endsWith(";")) base else base + ";"
         case _                        => base
       }
     }

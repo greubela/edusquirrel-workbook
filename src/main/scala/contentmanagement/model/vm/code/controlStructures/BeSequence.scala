@@ -34,6 +34,24 @@ case class BeSequence(body: List[BeExpression], sequenceInfo: BeSequenceInfo) ex
         case Python => body.map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage)).mkString("\n")
         case Java | JavaScript | Rust =>
           body.map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage)).mkString("\n")
+        case Cpp =>
+          // In C++, semicolons belong to statements, not expression contexts.
+          // This sequence type is also used for conditions / expressions (e.g. if/while condition),
+          // so we only auto-append semicolons for statement-like sequences.
+          if (sequenceInfo.mustEvaluateTo.nonEmpty) {
+            body.map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage)).mkString("\n")
+          } else {
+            body
+              .map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage))
+              .map { rendered =>
+                val trimmed = rendered.trim
+                if (trimmed.isEmpty) rendered
+                else if (trimmed.contains("\n")) rendered
+                else if (trimmed.endsWith(";") || trimmed.endsWith("}")) rendered
+                else rendered + ";"
+              }
+              .mkString("\n")
+          }
         case Lisp =>
           if (body.isEmpty) "(progn)"
           else {

@@ -2,7 +2,7 @@ package contentmanagement.model.vm.types
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.language.AppLanguage.{BlockDisplay, Java, Python}
+import contentmanagement.model.language.AppLanguage.{BlockDisplay, Cpp, Java, Python}
 import contentmanagement.model.language.{LanguageMap, ProgrammingLanguage}
 import contentmanagement.webElements.svg.shapes.BeShape
 import BeShape.BeShapeContainerable
@@ -155,7 +155,7 @@ object BeDataType {
 
   val String = BeDataTypeAtomic(
     StringShape,
-    mapWithOverrides("str", Python -> "str", Java -> "String"),
+    mapWithOverrides("str", Python -> "str", Java -> "String", Cpp -> "String"),
     str => {
       val trimmed = str.trim
       val alreadyQuoted =
@@ -187,6 +187,16 @@ object BeDataType {
     },
     AlgebriteNumber.given_Fractional_AlgebriteNumber.parseString(_).nonEmpty,
     Set(String))
+
+  // Separate integer type, useful for languages like C++ where int/float matters.
+  // Can be implicitly cast to Numeric (float) and String.
+  val Int = BeDataTypeAtomic(
+    NumericShape,
+    mapWithOverrides("int", Python -> "int", Java -> "int", Cpp -> "int"),
+    str => LanguageMap.universalMap(str.trim),
+    str => scala.util.Try(BigInt(str.trim)).isSuccess,
+    Set(Numeric, String)
+  )
 
   val Boolean = BeDataTypeAtomic(
     BooleanShape,
@@ -222,7 +232,7 @@ object BeDataType {
     LanguageMap.universalMap("Error"),
     str => LanguageMap.universalMap(str.toString), str => false, Set()) // todo
 
-  val allKnownTypesThatHaveLiterals: Set[BeDataType] = Set(Numeric, Boolean, String, Date, Unit)
+    val allKnownTypesThatHaveLiterals: Set[BeDataType] = Set(Int, Numeric, Boolean, String, Date, Unit)
 
 
   /*

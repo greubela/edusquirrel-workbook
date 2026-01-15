@@ -80,6 +80,23 @@ case class BeIfElse(
           }
           builder.toString
         }
+        case Cpp => {
+          val builder = CodeStringBuilder().appendNextLine(s"if($conditionString){")
+            .changeIntLevel(1)
+            .appendAsLines(thenBodyString)
+            .changeIntLevel(-1)
+          if (hasElseBody) {
+            builder
+              .appendNextLine("} else {")
+              .changeIntLevel(1)
+              .appendAsLines(elseBodyString)
+              .changeIntLevel(-1)
+              .appendNextLine("}")
+          } else {
+            builder.appendNextLine("}")
+          }
+          builder.toString
+        }
         case JavaScript => {
           val builder = CodeStringBuilder().appendNextLine(s"if ($conditionString) {")
             .changeIntLevel(1)

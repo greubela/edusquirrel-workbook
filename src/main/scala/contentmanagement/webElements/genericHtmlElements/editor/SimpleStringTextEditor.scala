@@ -8,14 +8,20 @@ import workbook.model.display.InteractionComponent.*
 import workbook.model.states.BasicVariableBasedState
 import workbook.model.states.BasicVariableBasedState.*
 
-case class SimpleStringTextEditor(stateToBind: Var[String]) extends HtmlAppElement{
+case class SimpleStringTextEditor(
+  stateToBind: Var[String],
+  onUserInput: String => Unit = _ => ()
+) extends HtmlAppElement{
 
   private val editorTextArea = textArea(
     rows := 8,
     cols := 80,
     controlled(
       value <-- stateToBind.signal,
-      onInput.mapToValue        --> stateToBind.writer
+      onInput.mapToValue --> { value =>
+        onUserInput(value)
+        stateToBind.set(value)
+      }
     )
   )
 
