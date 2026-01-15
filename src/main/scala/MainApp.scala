@@ -14,6 +14,7 @@ import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
 import interactionPlugins.pythonExercises.{HtmlPythonExercise, PythonExerciseContent}
 import org.scalajs.dom
 import org.scalajs.dom.document
+import plantworkshop.PlantWorkshopApp
 import util.JSXGraph.*
 import workbook.model.exercise.{ExerciseContent, ExerciseSection}
 import workbook.workbookHtmlElements.container.HtmlFullScreenElement
@@ -26,6 +27,19 @@ def mainApp(): Unit = {
   doSomeCalculations()
   //insertWorkbook()
   insertTurtleEditor()
+  insertPlantWorkshop()
+}
+
+def insertPlantWorkshop(): Unit = {
+  val container = document.getElementById("plantWorkshopApp")
+  if (container != null) {
+    val appElement = plantworkshop.PlantWorkshopApp.appElement
+    if (dom.document.readyState == "loading") {
+      renderOnDomContentLoaded(container, appElement)
+    } else {
+      render(container, appElement)
+    }
+  }
 }
 
 def doSomeCalculations(): Unit = {
@@ -44,17 +58,16 @@ def doSomeCalculations(): Unit = {
 val fullscreenElement: HtmlFullScreenElement = HtmlFullScreenElement()
 
 def insertTurtleEditor(): Unit = {
-
-  val editorDom = new HtmlFullscreenTurtleEditorElement(BeProgram.debugGraphicsProgram().fullProgram).getDomElement()
-
   val worksheetDiv = document.getElementById("worksheetDts")
+  if (worksheetDiv != null) { // TODO Ohne das gibt es Probleme, nochmal anschauen, aber es funkltioniert erstmal genauso wie vorher, aber programme die danach inserted werden haben keine probleme mehr
+    val editorDom = new HtmlFullscreenTurtleEditorElement(BeProgram.debugGraphicsProgram().fullProgram).getDomElement()
 
-  if (dom.document.readyState == "loading") {
-    renderOnDomContentLoaded(worksheetDiv, editorDom)
-  } else {
-    render(worksheetDiv, editorDom)
+    if (dom.document.readyState == "loading") {
+      renderOnDomContentLoaded(worksheetDiv, editorDom)
+    } else {
+      render(worksheetDiv, editorDom)
+    }
   }
-
 }
 
 def jsxGraphPreview: HtmlElement =
