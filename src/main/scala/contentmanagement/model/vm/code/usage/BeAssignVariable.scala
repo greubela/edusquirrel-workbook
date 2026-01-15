@@ -42,6 +42,7 @@ case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) exten
         case Python => s"$targetName = $renderedValue"
         case Java => s"$targetName = $renderedValue;"
         case JavaScript => s"$targetName = $renderedValue;"
+        case Cpp => s"$targetName = $renderedValue;"
         case Rust => s"${sanitizeRustName(targetName)} = $renderedValue;"
         case Lisp => s"(setf ${targetName.toLowerCase} $renderedValue)"
         case _ => s"$targetName := $renderedValue"

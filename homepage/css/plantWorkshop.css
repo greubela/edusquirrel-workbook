@@ -456,3 +456,100 @@ code {
         width: 100%;
     }
 }
+
+/* --- PLANT WORKSHOP BLOCK EDITOR --- */
+.plant-workshop-editor {
+    margin-top: 25px;
+}
+
+.be-tab-element {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: var(--space-md);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.be-tab-element__labels {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 0;
+}
+
+.be-tab-element__label {
+    padding: 10px 16px;
+    border: 1px solid #d0d0d0;
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    background: #f5f5f5;
+    color: #666;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9em;
+    transition: all 0.2s ease;
+}
+
+.be-tab-element__label:hover {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.be-tab-element__label--active {
+    background: #1976d2;
+    color: white;
+    border-color: #1976d2;
+}
+
+.be-tab-element__content {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 20px;
+    min-height: 300px;
+}
+
+.plant-workshop-block-view,
+.plant-workshop-code-view {
+    width: 100%;
+}
+
+/* Block editor content styling */
+.block-editor-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.block-editor-content p {
+    margin: 0 0 10px 0;
+    color: #555;
+    font-weight: 500;
+}
+
+.validation-feedback {
+    padding: 12px 15px;
+    border-radius: 4px;
+    border-left: 4px solid #4CAF50;
+    background: #f0f8f5;
+    color: #2d5016;
+    font-size: 0.9em;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.validation-feedback:empty::after {
+    content: "Keine Validierungsmeldung";
+    color: #999;
+    font-style: italic;
+}
+
+/* Task editor wrapper */
+.task-editor {
+    margin-top: 20px;
+}

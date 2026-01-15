@@ -135,7 +135,7 @@ case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDe
       val nameStr = funcDef.functionTypeInfo.displayName.getInLanguage(humanLanguage)
 
       programmingLanguage match {
-        case Python | Java | JavaScript | Rust =>
+        case Python | Java | JavaScript | Rust | Cpp =>
           formatCallForInfix(funcDef.functionTypeInfo.funcType, nameStr, parameterValuesFormatted)
         case _ => ""
       }

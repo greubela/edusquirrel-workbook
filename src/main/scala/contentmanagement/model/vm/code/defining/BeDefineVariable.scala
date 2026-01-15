@@ -1,6 +1,6 @@
 package contentmanagement.model.vm.code.defining
 
-import contentmanagement.model.language.AppLanguage.{Java, Python}
+import contentmanagement.model.language.AppLanguage.{Cpp, Java, Python}
 import contentmanagement.model.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
 import contentmanagement.model.vm.code.*
 import contentmanagement.model.vm.code.tree.BeExpressionNode
@@ -27,6 +27,9 @@ case class BeDefineVariable(
         case Java =>
           val javaType = if (typeHint.nonEmpty) typeHint else "Object"
           if (typeHint.nonEmpty) s"$javaType $baseName" else baseName
+        case Cpp =>
+          val cppType = if (typeHint.nonEmpty) typeHint else "auto"
+          if (typeHint.nonEmpty) s"$cppType $baseName" else baseName
         case _ => baseName
       }
     }

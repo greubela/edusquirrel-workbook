@@ -100,7 +100,7 @@ bool isWaterTankEmpty() {
 // Im loop() vor dem Pumpen:
 if (sensorValue == HIGH) {
   if (isWaterTankEmpty()) {
-    Serial.println("⚠️ WARNUNG: Wassertank ist leer!");
+    Serial.println("WARNUNG: Wassertank ist leer!");
   } else {
     // Pumpen...
   }

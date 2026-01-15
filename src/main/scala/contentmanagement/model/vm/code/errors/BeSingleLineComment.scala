@@ -22,6 +22,7 @@ case class BeSingleLineComment(commentStr: LanguageMap[HumanLanguage]) extends B
       programmingLanguage match {
         case Python => s"# $comment"
         case Java => s"// $comment"
+        case Cpp => s"// $comment"
         case Lisp => s"; $comment"
         case JavaScript => s"// $comment"
         case BlockDisplay => s"// $comment"

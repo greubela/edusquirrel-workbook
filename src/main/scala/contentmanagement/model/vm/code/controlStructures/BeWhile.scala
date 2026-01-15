@@ -45,6 +45,13 @@ case class BeWhile(
             .changeIntLevel(-1)
             .appendNextLine("}")
             .toString
+        case Cpp =>
+          CodeStringBuilder().appendNextLine(s"while($conditionString){")
+            .changeIntLevel(1)
+            .appendAsLines(bodyString)
+            .changeIntLevel(-1)
+            .appendNextLine("}")
+            .toString
         case JavaScript =>
           CodeStringBuilder().appendNextLine(s"while ($conditionString) {")
             .changeIntLevel(1)
