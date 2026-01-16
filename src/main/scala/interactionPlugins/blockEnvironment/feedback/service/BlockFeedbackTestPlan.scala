@@ -1,15 +1,13 @@
 package interactionPlugins.blockEnvironment.feedback
 
-import interactionPlugins.pythonExercises.{PythonFixture, PythonUnitTest}
-
 /**
  * Encapsulates the collection of tests, fixtures, packages and hints that
  * should run for a specific submission.
  */
 final case class BlockFeedbackTestPlan(
-  visibleTests: Seq[PythonUnitTest],
-  hiddenTests: Seq[PythonUnitTest],
-  fixtures: Seq[PythonFixture],
+  visibleTests: Seq[BlockFeedbackPythonTest],
+  hiddenTests: Seq[BlockFeedbackPythonTest],
+  fixtures: Seq[BlockFeedbackPythonFixture],
   packages: Seq[String],
   timeoutMs: Int,
   derivedHints: Seq[String]
