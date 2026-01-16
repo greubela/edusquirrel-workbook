@@ -8,7 +8,7 @@ import scala.scalajs.js.Thenable.Implicits.*
 import scala.scalajs.js.annotation.JSGlobal
 import scala.scalajs.js.JSConverters.*
 
-private[pythonExercises] final case class PythonRunRequest(
+final case class PythonRunRequest(
     code: String,
     visibleTests: Seq[PythonUnitTest],
     hiddenTests: Seq[PythonUnitTest],
@@ -17,7 +17,7 @@ private[pythonExercises] final case class PythonRunRequest(
     timeoutMs: Int
 )
 
-private[pythonExercises] object PythonRuntimeService {
+object PythonRuntimeService {
 
   @js.native
   trait Pyodide extends js.Object {
@@ -103,9 +103,9 @@ import traceback
 import time
 from io import StringIO
 
-_tests = json.loads(${JSON.stringify(testsLiteral)})
-_code_source = json.loads($codeLiteral)
-_fixtures = json.loads(${JSON.stringify(fixturesLiteral)})
+_tests = json.loads(r'''$testsLiteral''')
+_fixtures = json.loads(r'''$fixturesLiteral''')
+_code_source = $codeLiteral
 
 result = {
   "status": "success",
