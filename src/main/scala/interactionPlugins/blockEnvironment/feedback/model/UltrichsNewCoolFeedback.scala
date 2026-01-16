@@ -21,7 +21,8 @@ final case class UltrichsNewCoolFeedback(
   generalHints: Seq[String],
   rawPython: String,
   status: FeedbackStatus,
-  normalizedScore: Double
+  normalizedScore: Double,
+  debugAi: Option[String] = None
 ) extends FeedbackResult
 
 object UltrichsNewCoolFeedback {
@@ -34,6 +35,7 @@ object UltrichsNewCoolFeedback {
       generalHints = Seq.empty,
       rawPython = rawPython,
       status = FeedbackStatus.NOT_STARTET,
-      normalizedScore = 0.0
+      normalizedScore = 0.0,
+      debugAi = None
     )
 }
