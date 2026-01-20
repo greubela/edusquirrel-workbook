@@ -5,7 +5,7 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.geometry.Point
 import contentmanagement.webElements.genericHtmlElements.canvas.SvgCanvas
-import contentmanagement.webElements.svg.shapes.ControlFlowAndExpressionShape
+import contentmanagement.webElements.svg.shapes.*
 import contentmanagement.webElements.svg.shapes.composite.HorizontalAlignment.*
 import contentmanagement.webElements.svg.shapes.composite.VerticalAlignment.*
 import contentmanagement.webElements.svg.shapes.composite.{HorizontalAlignment, ShapeStack, VerticalAlignment}

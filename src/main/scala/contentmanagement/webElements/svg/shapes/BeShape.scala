@@ -13,26 +13,29 @@ import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInf
 import interactionPlugins.blockEnvironment.rendering.*
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer.*
 
+case class ShapeAmends(baseAmends: Seq[L.Modifier[L.SvgElement]], signalAmends: Seq[Signal[L.Modifier[L.SvgElement]]], doOnRendering: Seq[(Bounds[Double], BeShape) => Any])
+
 sealed trait BeShape {
   def displaySize(rendererConfig: BeRenderingConfig): Dimension[Double]
 
   def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement
 
-  def addSignalAmends(newAmends: Seq[Signal[L.Modifier[L.SvgElement]]]): BeShape = this match {
-    case AmendedShape(base, amends, signalAmends, handle) => AmendedShape(base, amends, signalAmends ++ newAmends, handle)
-    case _ => AmendedShape(this, List(), newAmends, (_, _) => {})
+  def addAmends(newAmends: ShapeAmends): AmendedShape = this match {
+    case AmendedShape(base: BeShape, existingAmends: ShapeAmends) => {
+      AmendedShape(base, ShapeAmends(existingAmends.baseAmends ++ newAmends.baseAmends, existingAmends.signalAmends ++ newAmends.signalAmends, existingAmends.doOnRendering ++ newAmends.doOnRendering))
+    }
+    case _ => AmendedShape(this, newAmends)
   }
 
-  def addAmends(newAmends: Seq[L.Modifier[L.SvgElement]]): BeShape = this match {
-    case AmendedShape(base, amends, signalAmends, handle) => AmendedShape(base, amends ++ newAmends, signalAmends, handle)
-    case _ => AmendedShape(this, newAmends, List(), (_, _) => {})
-  }
+  def addSignalAmend(newAmend: Signal[L.Modifier[L.SvgElement]]): BeShape = addAmends(ShapeAmends(List(), newAmend :: Nil, List()))
 
-  def addOnRendering(newHandle: (Bounds[Double], BeShape) => Any): BeShape = this match {
-    case AmendedShape(base, amends, signalAmends, handle) => AmendedShape(base, amends, signalAmends, newHandle)
-    case _ => AmendedShape(this, List(), List(), newHandle)
-  }
+  def addSignalAmends(newAmends: Seq[Signal[L.Modifier[L.SvgElement]]]): BeShape = addAmends(ShapeAmends(List(), newAmends, List()))
 
+  def addAmend(newAmend: L.Modifier[L.SvgElement]): BeShape = addAmends(ShapeAmends(newAmend :: Nil, List(), List()))
+
+  def addAmends(newAmends: Seq[L.Modifier[L.SvgElement]]): BeShape = addAmends(ShapeAmends(newAmends, List(), List()))
+
+  def addOnRendering(newHandle: (Bounds[Double], BeShape) => Any): BeShape = addAmends(ShapeAmends(List(), List(), newHandle :: Nil))
 }
 
 trait ControlFlowAndExpressionShape extends BeShape {
@@ -44,24 +47,6 @@ trait ControlFlowAndExpressionShape extends BeShape {
   def controlFlowShapeOrEverything: BeShape = onlyControlFlowShape.getOrElse(this)
 
 }
-
-
-trait BeShapeDecoration extends BeShape {
-
-  def getAmends(renderingConfig: BeRenderingConfig): Seq[L.Modifier[L.SvgElement]]
-
-  def getOverlayPath(rendererConfig: BeRenderingConfig, centeredAt: Point[Double]): SvgPathBuilder[Double]
-
-  def render(rendererConfig: BeRenderingConfig, centerPoint: Point[Double]): AppSvgElement = {
-    getOverlayPath(rendererConfig, centerPoint).toFixedDimensionShape.addAmends(getAmends(rendererConfig)).render(rendererConfig, Bounds(centerPoint, displaySize(rendererConfig)))
-  }
-
-  override def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
-    render(rendererConfig, bounds.centerPoint)
-  }
-
-}
-
 trait ControlFlowShape extends BeShape {
 
   def widthInIntendations: Int
@@ -83,13 +68,29 @@ trait ControlFlowShape extends BeShape {
 }
 
 
-case class AmendedShape[T <: BeShape](baseShape: T, amends: Seq[L.Modifier[L.SvgElement]], amendsSignal: Seq[Signal[L.Modifier[L.SvgElement]]], doOnRendering: (Bounds[Double], BeShape) => Any = (_, _) => {}) extends BeShape {
+trait BeShapeDecoration extends BeShape {
 
-  override def displaySize(config: BeRenderingConfig): Dimension[Double] = baseShape.displaySize(config)
+  def getAmends(renderingConfig: BeRenderingConfig): Seq[L.Modifier[L.SvgElement]]
+
+  def getOverlayPath(rendererConfig: BeRenderingConfig, centeredAt: Point[Double]): SvgPathBuilder[Double]
+
+  def render(rendererConfig: BeRenderingConfig, centerPoint: Point[Double]): AppSvgElement = {
+    getOverlayPath(rendererConfig, centerPoint).toFixedDimensionShape.addAmends(getAmends(rendererConfig)).render(rendererConfig, Bounds(centerPoint, displaySize(rendererConfig)))
+  }
+
+  override def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
+    render(rendererConfig, bounds.centerPoint)
+  }
+
+}
+
+case class AmendedShape(amendedShape: BeShape, amends: ShapeAmends) extends BeShape {
+
+  override def displaySize(config: BeRenderingConfig): Dimension[Double] = amendedShape.displaySize(config)
 
   override def render(config: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
-    doOnRendering(bounds, this)
-    baseShape.render(config, bounds).addMods(amends).addSignalMods(amendsSignal)
+    amends.doOnRendering.foreach(_.apply(bounds, this))
+    amendedShape.render(config, bounds).addMods(amends.baseAmends).addSignalMods(amends.signalAmends)
   }
 
 }

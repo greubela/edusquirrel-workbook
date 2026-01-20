@@ -4,10 +4,18 @@ import contentmanagement.model.AppFont
 import contentmanagement.model.color.{AppColorPalette, RGBYColorPalette}
 import contentmanagement.model.geometry.Dimension
 import contentmanagement.model.language.{AppLanguage, HumanLanguage}
-import contentmanagement.webElements.svg.shapes.BeShapeAmendFactory
+import contentmanagement.webElements.svg.builder.controlFlow.path.SegmentType
+import contentmanagement.webElements.svg.shapes.{BeShapeAmendFactory, ShapeAmends}
 
 
-case class BeRenderingConfig(appFont: AppFont, paddingSmall: Dimension[Double], paddingBig: Dimension[Double], colorPalette: RGBYColorPalette, language: HumanLanguage, private val pControlSegmentSize: Int = 10) {
+case class BeRenderingConfig(
+                              appFont: AppFont,
+                              paddingSmall: Dimension[Double],
+                              paddingBig: Dimension[Double],
+                              colorPalette: RGBYColorPalette,
+                              language: HumanLanguage,
+                              private val pControlSegmentSize: Int = 10,
+                              controlFlowAmendMap: Map[SegmentType, ShapeAmends] = Map()) {
   val controlSegmentSizeInt: Int = pControlSegmentSize
   val controlSegmentSize: Double = pControlSegmentSize
   val amendFactory: BeShapeAmendFactory = BeShapeAmendFactory(this)
