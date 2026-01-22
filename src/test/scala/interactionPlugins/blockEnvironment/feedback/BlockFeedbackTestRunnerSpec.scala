@@ -9,8 +9,7 @@ import interactionPlugins.pythonExercises.{
   PythonRunResult,
   PythonRunStatus,
   PythonTestResult => RuntimeTestResult,
-  PythonTestStatus,
-  PythonUnitTest
+  PythonTestStatus
 }
 import munit.FunSuite
 
@@ -39,8 +38,8 @@ final class BlockFeedbackTestRunnerSpec extends FunSuite:
       humanLanguage = AppLanguage.English
     )
 
-    val t1 = PythonUnitTest(name = "t1", code = "assert True")
-    val t2 = PythonUnitTest(name = "t2", code = "assert True", hint = Some("hint-2"))
+    val t1 = BlockFeedbackPythonTest(name = "t1", code = "assert True")
+    val t2 = BlockFeedbackPythonTest(name = "t2", code = "assert True", hint = Some("hint-2"))
 
     val plan = BlockFeedbackTestPlan(
       visibleTests = Seq(t1),
@@ -87,7 +86,7 @@ final class BlockFeedbackTestRunnerSpec extends FunSuite:
     )
 
     val plan = BlockFeedbackTestPlan(
-      visibleTests = Seq(PythonUnitTest("vis", "assert True", hint = Some("H"))),
+      visibleTests = Seq(BlockFeedbackPythonTest("vis", "assert True", hint = Some("H"))),
       hiddenTests = Nil,
       fixtures = Nil,
       packages = Nil,
@@ -170,7 +169,7 @@ final class BlockFeedbackTestRunnerSpec extends FunSuite:
     )
 
     val plan = BlockFeedbackTestPlan(
-      visibleTests = Seq(PythonUnitTest("t", "assert True")),
+      visibleTests = Seq(BlockFeedbackPythonTest("t", "assert True")),
       hiddenTests = Nil,
       fixtures = Nil,
       packages = Nil,
