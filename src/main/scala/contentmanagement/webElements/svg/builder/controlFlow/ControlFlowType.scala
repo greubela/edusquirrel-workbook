@@ -19,6 +19,11 @@ trait ControlFlowType {
   def backgroundShape: BeShapeContainerable
 
   def renderPaths(renderingConfig: BeRenderingConfig, oldOverlay: ControlFlowPathOverlay): ControlFlowPathOverlay
+
+  def buildParts(renderingConfig: BeRenderingConfig, oldOverlay: ControlFlowPathOverlay): List[ControlFlowPart] = {
+    val overlay = renderPaths(renderingConfig, oldOverlay)
+    List(ControlFlowBackgroundPart(backgroundShape), overlay)
+  }
   
   /*
   def buildBackgroundShape(renderingConfig: BeRenderingConfig, shapeAmends: ShapeAmends): BeShape = {
