@@ -19,6 +19,7 @@ final case class BlockFeedbackMeta(
 final case class BlockFeedbackRequest(
     exerciseText: LanguageMap[HumanLanguage],
     studentCodePython: BeExpression,
+    pythonSourceOverride: Option[String] = None,
     submissionNr: Int,
     config: BlockFeedbackConfig,
     meta: BlockFeedbackMeta = BlockFeedbackMeta(),
@@ -31,7 +32,9 @@ final case class BlockFeedbackRequest(
 
     /** Derives Python source from the VM expression tree. */
     def pythonSource: String =
-        studentCodePython.getInLanguage(AppLanguage.Python, preferredHumanLanguage)
+        pythonSourceOverride
+          .map(_.replace("\r\n", "\n"))
+          .getOrElse(studentCodePython.getInLanguage(AppLanguage.Python, preferredHumanLanguage))
 }
 
 /** Alias: internally we use the same type as the UI direction. */

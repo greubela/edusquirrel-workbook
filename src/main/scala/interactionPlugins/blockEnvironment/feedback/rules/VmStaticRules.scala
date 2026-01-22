@@ -15,7 +15,6 @@ import contentmanagement.model.vm.types.BeScope.GlobalScope
 import scala.collection.mutable
 
 /**
- * TODO translate (logik) the message / override via AI if necessary
  * Static rules executed on the VM model (BeExpression).
  *
  * Goals:
@@ -25,19 +24,22 @@ import scala.collection.mutable
  */
 object VmStaticRules {
 
+  private def t(lang: HumanLanguage)(de: String, en: String): String =
+    if lang == AppLanguage.German then de else en
+
   /** Executes all VM-based rules and returns a list of RuleResult. */
-  def runAll(root: BeExpression): Seq[RuleResult] = {
+  def runAll(root: BeExpression, humanLanguage: HumanLanguage = AppLanguage.default()): Seq[RuleResult] = {
     val allExprs: Seq[BeExpression] = collectAllExpressions(root)
 
     val results = mutable.ListBuffer.empty[RuleResult]
 
-    results ++= checkEmptyProgram(root)
+    results ++= checkEmptyProgram(root, humanLanguage)
 
-    results += checkMaxNesting(root, maxDepthAllowed = 8)
+    results += checkMaxNesting(root, humanLanguage, maxDepthAllowed = 8)
 
-    results ++= checkUnusedVariables(allExprs)
+    results ++= checkUnusedVariables(allExprs, humanLanguage)
 
-    results ++= checkUnreachableAfterReturn(allExprs)
+    results ++= checkUnreachableAfterReturn(allExprs, humanLanguage)
 
     results.toList
   }
@@ -61,7 +63,7 @@ object VmStaticRules {
       .collect { case BeExpressionReference(_, childExpr) => childExpr }
 
   /** Checks whether the program is empty or missing a start sequence. */
-  private def checkEmptyProgram(root: BeExpression): Seq[RuleResult] = root match {
+  private def checkEmptyProgram(root: BeExpression, humanLanguage: HumanLanguage): Seq[RuleResult] = root match {
     case BeStartProgram(None) =>
       Seq(
         RuleResult(
@@ -69,7 +71,10 @@ object VmStaticRules {
           category = "VM_STRUCTURE",
           severity = RuleSeverity.Error,
           passed = false,
-          message = "Das Programm besitzt keinen Start-Block oder keine auszuführenden Anweisungen.",
+          message = t(humanLanguage)(
+            "Das Programm besitzt keinen Start-Block oder keine auszuführenden Anweisungen.",
+            "The program has no start block or no executable statements."
+          ),
           details = Some("BeStartProgram ohne Start-Sequenz.")
         )
       )
@@ -81,7 +86,10 @@ object VmStaticRules {
           category = "VM_STRUCTURE",
           severity = RuleSeverity.Error,
           passed = false,
-          message = "Die Start-Sequenz des Programms ist leer.",
+          message = t(humanLanguage)(
+            "Die Start-Sequenz des Programms ist leer.",
+            "The program start sequence is empty."
+          ),
           details = Some("BeStartProgram mit leerer Start-Sequenz.")
         )
       )
@@ -93,7 +101,10 @@ object VmStaticRules {
           category = "VM_STRUCTURE",
           severity = RuleSeverity.Info,
           passed = true,
-          message = "Es wurden ausführbare Blöcke im Programm gefunden.",
+          message = t(humanLanguage)(
+            "Es wurden ausführbare Blöcke im Programm gefunden.",
+            "Executable blocks were found in the program."
+          ),
           details = None
         )
       )
@@ -110,7 +121,7 @@ object VmStaticRules {
     loop(root, depth = 1)
   }
 
-  private def checkMaxNesting(root: BeExpression, maxDepthAllowed: Int): RuleResult = {
+  private def checkMaxNesting(root: BeExpression, humanLanguage: HumanLanguage, maxDepthAllowed: Int): RuleResult = {
     val maxDepth = computeMaxNesting(root)
     if maxDepth <= maxDepthAllowed then
       RuleResult(
@@ -118,7 +129,10 @@ object VmStaticRules {
         category = "VM_STRUCTURE",
         severity = RuleSeverity.Info,
         passed = true,
-        message = s"Die Verschachtelungstiefe ($maxDepth) liegt im empfohlenen Bereich (≤ $maxDepthAllowed).",
+        message = t(humanLanguage)(
+          s"Die Verschachtelungstiefe ($maxDepth) liegt im empfohlenen Bereich (≤ $maxDepthAllowed).",
+          s"The nesting depth ($maxDepth) is within the recommended range (≤ $maxDepthAllowed)."
+        ),
         details = Some(maxDepth.toString)
       )
     else
@@ -127,13 +141,16 @@ object VmStaticRules {
         category = "VM_STRUCTURE",
         severity = RuleSeverity.Warning,
         passed = false,
-        message = s"Die Verschachtelungstiefe ($maxDepth) überschreitet den empfohlenen Wert von $maxDepthAllowed Ebenen.",
+        message = t(humanLanguage)(
+          s"Die Verschachtelungstiefe ($maxDepth) überschreitet den empfohlenen Wert von $maxDepthAllowed Ebenen.",
+          s"The nesting depth ($maxDepth) exceeds the recommended limit of $maxDepthAllowed levels."
+        ),
         details = Some(maxDepth.toString)
       )
   }
 
   /** Finds defined variables and checks whether they are used at least once. */
-  private def checkUnusedVariables(allExprs: Seq[BeExpression]): Seq[RuleResult] = {
+  private def checkUnusedVariables(allExprs: Seq[BeExpression], humanLanguage: HumanLanguage): Seq[RuleResult] = {
     val defined = mutable.LinkedHashSet.empty[BeDefineVariable]
     val used    = mutable.LinkedHashSet.empty[BeDefineVariable]
 
@@ -167,14 +184,16 @@ object VmStaticRules {
             category = "VM_VARIABLES",
             severity = RuleSeverity.Info,
             passed = true,
-            message = "Alle definierten Variablen werden im Programmverlauf verwendet.",
+            message = t(humanLanguage)(
+              "Alle definierten Variablen werden im Programmverlauf verwendet.",
+              "All defined variables are used in the program."
+            ),
             details = None
           )
         )
       else {
-        val english: HumanLanguage = AppLanguage.English
         val names = unused.toList
-          .map(_.name.getInLanguage(english))
+          .map(_.name.getInLanguage(humanLanguage))
           .mkString(", ")
 
         Seq(
@@ -183,7 +202,10 @@ object VmStaticRules {
             category = "VM_VARIABLES",
             severity = RuleSeverity.Warning,
             passed = false,
-            message = s"Die folgenden Variablen werden nie verwendet: $names.",
+            message = t(humanLanguage)(
+              s"Die folgenden Variablen werden nie verwendet: $names.",
+              s"The following variables are never used: $names."
+            ),
             details = Some(names)
           )
         )
@@ -192,7 +214,7 @@ object VmStaticRules {
   }
 
   /** Checks whether sequences contain unreachable code after a 'return'. */
-  private def checkUnreachableAfterReturn(allExprs: Seq[BeExpression]): Seq[RuleResult] = {
+  private def checkUnreachableAfterReturn(allExprs: Seq[BeExpression], humanLanguage: HumanLanguage): Seq[RuleResult] = {
     val sequences = allExprs.collect { case s: BeSequence => s }
 
     val unreachablePerSeq: Seq[Int] = sequences.map { seq =>
@@ -211,7 +233,10 @@ object VmStaticRules {
           category = "VM_CONTROL",
           severity = RuleSeverity.Info,
           passed = true,
-          message = "Es wurde kein offensichtlich unerreichbarer Code nach einem 'return'-Block gefunden.",
+          message = t(humanLanguage)(
+            "Es wurde kein offensichtlich unerreichbarer Code nach einem 'return'-Block gefunden.",
+            "No obviously unreachable code after a 'return' block was found."
+          ),
           details = None
         )
       )
@@ -222,7 +247,10 @@ object VmStaticRules {
           category = "VM_CONTROL",
           severity = RuleSeverity.Warning,
           passed = false,
-          message = s"Es wurden $totalUnreachable Anweisung(en) nach einem 'return'-Block gefunden, die niemals ausgeführt werden.",
+          message = t(humanLanguage)(
+            s"Es wurden $totalUnreachable Anweisung(en) nach einem 'return'-Block gefunden, die niemals ausgeführt werden.",
+            s"Found $totalUnreachable statement(s) after a 'return' block that will never execute."
+          ),
           details = Some(s"$totalUnreachable Anweisungen nach return.")
         )
       )

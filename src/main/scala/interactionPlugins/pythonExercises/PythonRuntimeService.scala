@@ -103,9 +103,9 @@ import traceback
 import time
 from io import StringIO
 
-_tests = json.loads(${JSON.stringify(testsLiteral)})
-_code_source = json.loads($codeLiteral)
-_fixtures = json.loads(${JSON.stringify(fixturesLiteral)})
+_tests = json.loads(r'''$testsLiteral''')
+_fixtures = json.loads(r'''$fixturesLiteral''')
+_code_source = $codeLiteral
 
 result = {
   "status": "success",

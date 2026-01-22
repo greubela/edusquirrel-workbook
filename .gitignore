@@ -40,6 +40,11 @@ build/
 ### VS Code ###
 .vscode/
 
+### Local dev secrets / venvs ###
+tools/openai-proxy/.env
+tools/openai-proxy/.venv/
+tools/openai-proxy/chatlogs/
+
 ### Mac OS ###
 .DS_Store
 
