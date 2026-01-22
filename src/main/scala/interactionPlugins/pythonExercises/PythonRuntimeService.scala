@@ -8,7 +8,7 @@ import scala.scalajs.js.Thenable.Implicits.*
 import scala.scalajs.js.annotation.JSGlobal
 import scala.scalajs.js.JSConverters.*
 
-final case class PythonRunRequest(
+private[interactionPlugins] final case class PythonRunRequest(
     code: String,
     visibleTests: Seq[PythonUnitTest],
     hiddenTests: Seq[PythonUnitTest],
@@ -17,7 +17,7 @@ final case class PythonRunRequest(
     timeoutMs: Int
 )
 
-object PythonRuntimeService {
+private[interactionPlugins] object PythonRuntimeService {
 
   @js.native
   trait Pyodide extends js.Object {

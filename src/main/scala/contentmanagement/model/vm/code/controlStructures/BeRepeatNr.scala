@@ -46,6 +46,14 @@ case class BeRepeatNr(amount: Int, body: BeSequence) extends BeControlStructure 
             .appendNextLine("}")
             .toString
         }
+        case Cpp => {
+          CodeStringBuilder().appendNextLine(s"for(int be_index = 0; be_index < $amount; be_index++){")
+            .changeIntLevel(1)
+            .appendAsLines(bodyString)
+            .changeIntLevel(-1)
+            .appendNextLine("}")
+            .toString
+        }
         case JavaScript => {
           CodeStringBuilder().appendNextLine(s"for (let be_index = 0; be_index < $amount; be_index++) {")
             .changeIntLevel(1)

@@ -8,20 +8,32 @@ import contentmanagement.model.language.HumanLanguage
 import contentmanagement.model.language.AppLanguage
 import contentmanagement.model.language.AppLanguage.*
 import contentmanagement.model.vm.code.others.BeStartProgram
+import contentmanagement.model.language.ProgrammingLanguage
+import contentmanagement.model.vm.parsing.cpp.CppParser
 import contentmanagement.model.vm.parsing.python.PythonParser
 import contentmanagement.webElements.HtmlAppElement
 import contentmanagement.webElements.genericHtmlElements.editor.{CodeMirrorEditor, SimpleStringTextEditor}
 import contentmanagement.webElements.genericHtmlElements.other.{HtmlTab, HtmlTabElement}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 
-case class HtmlBeProgramEditor(editorState: EditorState) extends HtmlAppElement {
+case class HtmlBeProgramEditor(
+  editorState: EditorState,
+  textLanguage: ProgrammingLanguage = Python
+) extends HtmlAppElement {
 
   private val BlockViewTabNr = 0
-  private val PythonViewTabNr = 1
+  private val TextViewTabNr = 1
 
-  val strVar: Var[String] = Var(editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(Python, English))
-  editorState.treeToEdit.signal.foreach(tree => strVar.update(_ => tree.fullProgram.expressionIO.getInLanguage(Python, English)))(new Owner() {})
+  val strVar: Var[String] = Var(editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(textLanguage, English))
+  editorState.treeToEdit.signal.foreach { tree =>
+    if (!textDirtyVar.now()) {
+      strVar.set(tree.fullProgram.expressionIO.getInLanguage(textLanguage, English))
+    }
+  }(new Owner() {})
   var language: HumanLanguage = AppLanguage.English
+
+  private val parseWarningVar: Var[Option[String]] = Var(None)
+  private val textDirtyVar: Var[Boolean] = Var(false)
 
   private val blockViewTab = HtmlTab(
     BlockViewTabNr,
@@ -32,25 +44,79 @@ case class HtmlBeProgramEditor(editorState: EditorState) extends HtmlAppElement 
     "Block View"
   )
 
-  private val pythonEditor: HtmlAppElement = SimpleStringTextEditor(strVar)//CodeMirrorEditor(strVar)
+  private val pythonEditor: HtmlAppElement = SimpleStringTextEditor(//CodeMirrorEditor(strVar)
+    strVar,
+    onUserInput = _ => textDirtyVar.set(true)
+  )
+
   private val pythonViewTab = HtmlTab(
-    PythonViewTabNr,
+    TextViewTabNr,
     div(
       cls := "be-program-editor__python-view",
+      child <-- parseWarningVar.signal.map {
+        case Some(msg) if msg.nonEmpty =>
+          div(cls := "be-program-editor__parse-warning", msg)
+        case _ =>
+          emptyNode
+      },
       pythonEditor.getDomElement()
     ),
-    "Python View"
+    s"${textLanguage.name} View"
   )
 
   private val tabbedContent = HtmlTabElement(
     List(blockViewTab, pythonViewTab),
     onTabSwitched = (previous, next) => {
-      if (next.tabNr == PythonViewTabNr && previous.tabNr != PythonViewTabNr) {
-        val pythonSource = editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(Python, language)
-        strVar.set(pythonSource)
-      } else if (next.tabNr == BlockViewTabNr && previous.tabNr == PythonViewTabNr) {
-        val parsedProgram = PythonParser.parsePython(strVar.now())
-        editorState.treeToEdit.set(BeProgram(BeStartProgram(parsedProgram)))
+      if (next.tabNr == TextViewTabNr && previous.tabNr != TextViewTabNr) {
+        // Only overwrite the text view if the user doesn't have unsynced edits.
+        // avoids silently deleting unsupported C++ statements
+        if (!textDirtyVar.now()) {
+          val source = editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(textLanguage, language)
+          parseWarningVar.set(None)
+          strVar.set(source)
+        }
+      } else if (next.tabNr == BlockViewTabNr && previous.tabNr == TextViewTabNr) {
+        val raw = strVar.now()
+        val trimmed = raw.trim
+
+        try {
+          textLanguage match {
+            case Python =>
+              val parsedProgram = PythonParser.parsePython(raw)
+              editorState.treeToEdit.set(BeProgram(BeStartProgram(parsedProgram)))
+              textDirtyVar.set(false)
+              parseWarningVar.set(None)
+
+            case Cpp =>
+              val result = CppParser.parseCppWithDiagnostics(raw)
+              val unsupported = result.unsupportedStatements.filter(_.trim.nonEmpty)
+              if (unsupported.nonEmpty) {
+                val preview = unsupported.take(3).mkString(" | ")
+                parseWarningVar.set(Some(s"C++ parser: unsupported statement(s) shown as red blocks. Example: $preview"))
+              } else {
+                parseWarningVar.set(None)
+              }
+
+              // Always update the blocks from the parsed program. Unsupported statements are preserved as red blocks.
+              editorState.treeToEdit.set(BeProgram(BeStartProgram(result.sequence)))
+              textDirtyVar.set(false)
+
+            // probably not optimal to parse python again here, but ok for now
+            case _ =>
+              val parsedProgram = PythonParser.parsePython(raw)
+              if (trimmed.isEmpty || parsedProgram.body.nonEmpty) {
+                editorState.treeToEdit.set(BeProgram(BeStartProgram(parsedProgram)))
+                textDirtyVar.set(false)
+                parseWarningVar.set(None)
+              } else {
+                parseWarningVar.set(Some("Parser: no recognized statements; keeping existing blocks."))
+              }
+          }
+        } catch {
+          case _: Throwable =>
+            // Never overwrite the current program on parse errors.
+            parseWarningVar.set(Some("Parse error; keeping existing blocks."))
+        }
       }
     }
   )
