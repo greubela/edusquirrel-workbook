@@ -32,7 +32,13 @@ object PlantWorkshopTaskBlockLibraries {
       functionTypeInfo = BeDefineFunction.functionInfo(LanguageMap.universalMap[HumanLanguage](name))
     )
 
-    val valueMap: Map[BeDefineVariable, BeExpression] = inputDefs.zip(params.map(_._3)).toMap
+    val valueMap: Map[BeDefineVariable, BeExpression] = inputDefs.zip(params.map(_._3)).map { case (inputDef, expr) =>
+      val withContext = expr match {
+        case use: BeUseValue if use.contextIfKnown.isEmpty => use.copy(contextIfKnown = Some(inputDef))
+        case other => other
+      }
+      inputDef -> withContext
+    }.toMap
     BeFunctionCall(funcDef, valueMap)
   }
 
@@ -54,7 +60,13 @@ object PlantWorkshopTaskBlockLibraries {
       functionTypeInfo = BeDefineFunction.functionInfo(LanguageMap.universalMap[HumanLanguage](name))
     )
 
-    val valueMap: Map[BeDefineVariable, BeExpression] = inputDefs.zip(params.map(_._3)).toMap
+    val valueMap: Map[BeDefineVariable, BeExpression] = inputDefs.zip(params.map(_._3)).map { case (inputDef, expr) =>
+      val withContext = expr match {
+        case use: BeUseValue if use.contextIfKnown.isEmpty => use.copy(contextIfKnown = Some(inputDef))
+        case other => other
+      }
+      inputDef -> withContext
+    }.toMap
     BeFunctionCall(funcDef, valueMap)
   }
 
@@ -76,10 +88,37 @@ object PlantWorkshopTaskBlockLibraries {
     }
   }
 
+  private def ltCondition(left: BeExpression, right: BeExpression): BeSequence = {
+    val funcOpt = DefaultDefinitions.operatorDefinitionsBySymbolAndArity.get("<" -> 2)
+    funcOpt match {
+      case Some(funcDef) =>
+        val leftVar = funcDef.inputs.head
+        val rightVar = funcDef.inputs(1)
+        val call = BeFunctionCall(funcDef, Map(leftVar -> left, rightVar -> right))
+        BeSequence.conditionalBody(List(call))
+      case None =>
+        BeSequence.conditionalBody(List(BeUseValue(BeDataValueLiteral("true"), None)))
+    }
+  }
+
   private def serialPrintln(text: String): BeExpression = {
     arduinoFuncCall(
       "Serial.println",
       List(("text", BeDataType.String, stringLiteral(text)))
+    )
+  }
+
+  private def serialPrint(text: String): BeExpression = {
+    arduinoFuncCall(
+      "Serial.print",
+      List(("text", BeDataType.String, stringLiteral(text)))
+    )
+  }
+
+  private def serialPrintExpr(expr: BeExpression): BeExpression = {
+    arduinoFuncCall(
+      "Serial.print",
+      List(("value", BeDataType.AnyType, expr))
     )
   }
 
@@ -94,6 +133,15 @@ object PlantWorkshopTaskBlockLibraries {
     val pinVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage](pinName), BeDataType.Int)
     arduinoFuncCallWithReturn(
       "digitalRead",
+      BeDataType.Int,
+      List(("pin", BeDataType.Int, BeUseValue(BeUseValueReference(pinVar), None)))
+    )
+  }
+
+  private def analogRead(pinName: String): BeExpression = {
+    val pinVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage](pinName), BeDataType.Int)
+    arduinoFuncCallWithReturn(
+      "analogRead",
       BeDataType.Int,
       List(("pin", BeDataType.Int, BeUseValue(BeUseValueReference(pinVar), None)))
     )
@@ -151,37 +199,42 @@ object PlantWorkshopTaskBlockLibraries {
   }
 
   def task4LibraryPrograms(displayConfig: BeTreeDisplayConfig): List[BeProgram] = {
-    val sensorValueVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("sensorValue"), BeDataType.Int)
-    val highVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("HIGH"), BeDataType.Int)
+    val messwertVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("messwert"), BeDataType.Int)
+    val grenzeVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("feuchtigkeitsGrenze"), BeDataType.Int)
 
-    val readAssign = BeAssignVariable(sensorValueVar, digitalRead("MOISTURE_PIN"))
-    val condition = eqCondition(
-      BeUseValue(BeUseValueReference(sensorValueVar), None),
-      BeUseValue(BeUseValueReference(highVar), None)
+    val readAssign = BeAssignVariable(messwertVar, analogRead("SENSOR_PIN"))
+    val condition = ltCondition(
+      BeUseValue(BeUseValueReference(messwertVar), None),
+      BeUseValue(BeUseValueReference(grenzeVar), None)
     )
 
     val thenBody = BeSequence.optionalBody(
       List(
-        digitalWrite("PUMP_PIN", "HIGH"),
+        serialPrintln(" -> trocken, Relais an!\n"),
+        serialPrintln(" Pumpe an.\n"),
+        digitalWrite("PUMP_PIN", "LOW"),
         delayMs("2000"),
-        digitalWrite("PUMP_PIN", "LOW")
+        serialPrintln(" Fertig gegossen.\n"),
+        digitalWrite("PUMP_PIN", "HIGH")
       )
     )
 
-    // If soil is NOT dry, do nothing.
-    val elseBody = BeSequence.optionalBody(Nil)
-    val ifElse = BeIfElse(condition, thenBody, elseBody)
+    val ifElse = BeIfElse(condition, thenBody, BeSequence.optionalBody(Nil))
 
     List(
-      valueRefProgram("MOISTURE_PIN", BeDataType.Int),
+      valueRefProgram("SENSOR_PIN", BeDataType.Int),
+      valueRefProgram("SENSOR_POWER_PIN", BeDataType.Int),
       valueRefProgram("PUMP_PIN", BeDataType.Int),
+      valueRefProgram("feuchtigkeitsGrenze", BeDataType.Int),
       valueRefProgram("HIGH", BeDataType.Int),
       valueRefProgram("LOW", BeDataType.Int),
+      BeProgram(digitalWrite("SENSOR_POWER_PIN", "HIGH")),
+      BeProgram(delayMs("10")),
       BeProgram(readAssign),
+      BeProgram(digitalWrite("SENSOR_POWER_PIN", "LOW")),
+      BeProgram(serialPrint("Analoger Wert: ")),
+      BeProgram(serialPrintExpr(BeUseValue(BeUseValueReference(messwertVar), None))),
       BeProgram(ifElse),
-      BeProgram(digitalWrite("PUMP_PIN", "HIGH")),
-      BeProgram(digitalWrite("PUMP_PIN", "LOW")),
-      BeProgram(delayMs("2000")),
       BeProgram(delayMs("10000"))
     )
   }
@@ -219,18 +272,41 @@ object PlantWorkshopTaskBlockLibraries {
 
   // Optional: a small starter program skeleton that roughly matches the old advanced snippet.
   def task4SuggestedStartProgram(): BeProgram = {
-    val code =
-      """int sensorValue = digitalRead(MOISTURE_PIN);
-        |if (sensorValue == HIGH) {
-        |  digitalWrite(PUMP_PIN, HIGH);
-        |  delay(2000);
-        |  digitalWrite(PUMP_PIN, LOW);
-        |} else {
-        |}
-        |delay(10000);
-        |""".stripMargin
+    val messwertVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("messwert"), BeDataType.Int)
+    val grenzeVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("feuchtigkeitsGrenze"), BeDataType.Int)
 
-    val seq = contentmanagement.model.vm.parsing.cpp.CppParser.parseCpp(code)
+    val readAssign = BeAssignVariable(messwertVar, analogRead("SENSOR_PIN"))
+    val condition = ltCondition(
+      BeUseValue(BeUseValueReference(messwertVar), None),
+      BeUseValue(BeUseValueReference(grenzeVar), None)
+    )
+
+    val thenBody = BeSequence.optionalBody(
+      List(
+        serialPrintln(" -> trocken, Relais an!\n"),
+        serialPrintln(" Pumpe an.\n"),
+        digitalWrite("PUMP_PIN", "LOW"),
+        delayMs("2000"),
+        serialPrintln(" Fertig gegossen.\n"),
+        digitalWrite("PUMP_PIN", "HIGH")
+      )
+    )
+
+    val ifElse = BeIfElse(condition, thenBody, BeSequence.optionalBody(Nil))
+
+    val seq = BeSequence.optionalBody(
+      List(
+        digitalWrite("SENSOR_POWER_PIN", "HIGH"),
+        delayMs("10"),
+        readAssign,
+        digitalWrite("SENSOR_POWER_PIN", "LOW"),
+        serialPrint("Analoger Wert: "),
+        serialPrintExpr(BeUseValue(BeUseValueReference(messwertVar), None)),
+        ifElse,
+        delayMs("10000")
+      )
+    )
+
     BeProgram(BeStartProgram(seq))
   }
 }
