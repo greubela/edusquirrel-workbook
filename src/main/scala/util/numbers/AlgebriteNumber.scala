@@ -1,4 +1,6 @@
-package util
+package util.numbers
+
+import util.numbers.{AlgebriteFacade, AlgebriteNumber}
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSGlobal
