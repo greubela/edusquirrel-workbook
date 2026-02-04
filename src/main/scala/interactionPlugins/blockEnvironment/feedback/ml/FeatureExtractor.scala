@@ -29,7 +29,19 @@ object FeatureExtractor {
     "py_rules_failed_warning",
     "py_rules_failed_error",
     "vm_rules_failed_warning",
-    "vm_rules_failed_error"
+    "vm_rules_failed_error",
+    // error-type lexical flags (helps reduce feature collisions)
+    "err_has_traceback",
+    "err_syntaxerror",
+    "err_indentationerror",
+    "err_nameerror",
+    "err_typeerror",
+    "err_valueerror",
+    "err_attributeerror",
+    "err_indexerror",
+    "err_keyerror",
+    "err_zerodivisionerror",
+    "err_timeout"
   )
 
   def toMap(signals: BlockFeedbackSignals): Map[String, Double] = {
@@ -37,7 +49,13 @@ object FeatureExtractor {
     val testsPassed = signals.runtimeOutcome.tests.count(_.passed)
     val testsFailed = testsTotal - testsPassed
 
-    val hasRuntimeError = if signals.runtimeOutcome.runtimeError.exists(_.nonEmpty) then 1.0 else 0.0
+    val runtimeErr = signals.runtimeOutcome.runtimeError.getOrElse("")
+    val stderr = signals.runtimeOutcome.stderr.getOrElse("")
+    val combinedError = (runtimeErr + "\n" + stderr).toLowerCase
+
+    def errFlag(substr: String): Double = if combinedError.contains(substr) then 1.0 else 0.0
+
+    val hasRuntimeError = if runtimeErr.nonEmpty || combinedError.contains("traceback") then 1.0 else 0.0
 
     val pyFailedWarn = signals.pythonRules.count(r => !r.passed && r.severity == RuleSeverity.Warning)
     val pyFailedErr  = signals.pythonRules.count(r => !r.passed && r.severity == RuleSeverity.Error)
@@ -63,7 +81,18 @@ object FeatureExtractor {
       "py_rules_failed_warning" -> pyFailedWarn.toDouble,
       "py_rules_failed_error" -> pyFailedErr.toDouble,
       "vm_rules_failed_warning" -> vmFailedWarn.toDouble,
-      "vm_rules_failed_error" -> vmFailedErr.toDouble
+      "vm_rules_failed_error" -> vmFailedErr.toDouble,
+      "err_has_traceback" -> errFlag("traceback"),
+      "err_syntaxerror" -> errFlag("syntaxerror"),
+      "err_indentationerror" -> errFlag("indentationerror"),
+      "err_nameerror" -> errFlag("nameerror"),
+      "err_typeerror" -> errFlag("typeerror"),
+      "err_valueerror" -> errFlag("valueerror"),
+      "err_attributeerror" -> errFlag("attributeerror"),
+      "err_indexerror" -> errFlag("indexerror"),
+      "err_keyerror" -> errFlag("keyerror"),
+      "err_zerodivisionerror" -> errFlag("zerodivisionerror"),
+      "err_timeout" -> (if combinedError.contains("timed out") || combinedError.contains("timeout") then 1.0 else 0.0)
     )
   }
 
