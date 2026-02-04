@@ -10,6 +10,24 @@ import workbook.model.feedback.FeedbackStatus
  */
 object BlockFeedbackFeedbackBuilder:
 
+  private def looksSmallBounded(exerciseText: String): Boolean =
+    val text = Option(exerciseText).getOrElse("").trim
+    if text.isEmpty then false
+    else
+      // Heuristic: if the statement mentions an explicit numeric range with a small upper bound,
+      // performance warnings are usually confusing.
+      val rangeRe = "(?s).*?(\\d{1,6})\\s*\\.\\.\\s*(\\d{1,6}).*".r
+      val leRe = "(?s).*?(<=|≤)\\s*(\\d{1,6}).*".r
+      val maxRe = "(?is).*?\\b(max|maximum|at most|höchstens|maximal)\\b[^\\d]{0,20}(\\d{1,6}).*".r
+
+      def smallUpperBound(n: Int): Boolean = n > 0 && n <= 10000
+
+      text match
+        case rangeRe(_, hi) => hi.toIntOption.exists(smallUpperBound)
+        case leRe(_, hi)    => hi.toIntOption.exists(smallUpperBound)
+        case maxRe(_, hi)   => hi.toIntOption.exists(smallUpperBound)
+        case _              => false
+
   private def isRedundantTestMessage(msg: String): Boolean =
     val lower = msg.trim.toLowerCase
     lower == "assertion failed" || lower.startsWith("assertion failed")
@@ -55,12 +73,12 @@ object BlockFeedbackFeedbackBuilder:
     plan: BlockFeedbackTestPlan,
     outcome: PythonRuntimeOutcome,
     pythonRules: Seq[RuleResult],
-    vmRules: Seq[RuleResult],
-    debugAi: Option[String] = None
+    vmRules: Seq[RuleResult]
   ): UltrichsNewCoolFeedback =
     val rawPython = request.pythonSource
     val hints0 =
       collectGeneralHints(
+        rawPython = rawPython,
         tests = outcome.tests,
         runtimeError = outcome.runtimeError,
         planHints = plan.derivedHints,
@@ -82,10 +100,12 @@ object BlockFeedbackFeedbackBuilder:
     val hints =
       if hints0.nonEmpty then hints0
       else if allTestsPassed then
+        val exerciseTextForLangRaw = request.exerciseText.getInLanguage(request.humanLanguage)
+        val exerciseTextForLang = if exerciseTextForLangRaw.startsWith("[no ") then "" else exerciseTextForLangRaw
         val printCount = countPrintStatements(rawPython)
         val inefficient = looksInefficient(rawPython)
         val polished = printCount == 0 && !inefficient && !containsObviousPlaceholders(rawPython)
-        Seq(successTutorMessage(request.humanLanguage, printCount, inefficient, polished))
+        Seq(successTutorMessage(request.humanLanguage, exerciseTextForLang, printCount, inefficient, polished))
       else hints0
 
     UltrichsNewCoolFeedback(
@@ -94,35 +114,39 @@ object BlockFeedbackFeedbackBuilder:
       generalHints = hints,
       rawPython = rawPython,
       status = status,
-      normalizedScore = normalizedScore,
-      debugAi = debugAi
+      normalizedScore = normalizedScore
     )
 
   private def successTutorMessage(
     humanLanguage: HumanLanguage,
+    exerciseText: String,
     printCount: Int,
     inefficient: Boolean,
     polished: Boolean
   ): String = {
     val isGerman = humanLanguage == AppLanguage.German
+    val mentionPerf = inefficient && !looksSmallBounded(exerciseText)
     if isGerman then {
       val base =
         if polished then "Alle Tests sind gr\u00FCn. Richtig stark: Deine L\u00F6sung ist sauber und effizient."
         else "Sehr gut. Alle Tests sind gr\u00FCn."
       val prints = if printCount > 0 then " Entferne noch deine Debug-Prints, damit die Ausgabe sauber bleibt." else ""
-      val perf = if inefficient then " Für große Eingaben: prüfe, ob du unnötig verschachtelte Schleifen hast." else ""
+      val perf =
+        if mentionPerf then " Falls du das später auf größere Eingaben erweiterst: prüfe, ob du unnötig verschachtelte Schleifen hast." else ""
       (base + prints + perf).trim
     } else {
       val base =
         if polished then "All tests are green. Great job: your solution looks clean and efficient."
         else "Very good. All tests are green."
       val prints = if printCount > 0 then " Remove debug prints to keep the output clean." else ""
-      val perf = if inefficient then " For large inputs, check for unnecessary nested loops." else ""
+      val perf =
+        if mentionPerf then " If you later scale this to larger inputs, check for unnecessary nested loops." else ""
       (base + prints + perf).trim
     }
   }
 
   private def collectGeneralHints(
+    rawPython: String,
     tests: Seq[PythonTestResult],
     runtimeError: Option[String],
     planHints: Seq[String],
@@ -142,7 +166,9 @@ object BlockFeedbackFeedbackBuilder:
     val distinctRuleHints = ruleHints.map(_.trim).filter(_.nonEmpty).distinct
     val distinctRuntimeHints = runtimeHints.map(_.trim).filter(_.nonEmpty).distinct
 
-    if distinctPlanHints.nonEmpty then
+    if rawPython.trim.isEmpty then
+      distinctPlanHints
+    else if distinctPlanHints.nonEmpty then
       Seq(buildTutorMessage(distinctPlanHints, distinctRuleHints, distinctRuntimeHints, humanLanguage))
     else
       (distinctRuleHints ++ distinctRuntimeHints).distinct
@@ -194,7 +220,7 @@ object BlockFeedbackFeedbackBuilder:
       (1.0, FeedbackStatus.IN_PROGRESS)
     else
       val score = runtimeScore.getOrElse(
-        if tests.isEmpty then 1.0
+        if tests.isEmpty then 0.0
         else math.max(0.0, math.min(1.0, tests.count(_.passed).toDouble / tests.size))
       )
       val status = runtimeStatus match
@@ -204,7 +230,7 @@ object BlockFeedbackFeedbackBuilder:
         case Some(PythonRunStatus.Failed)                  => FeedbackStatus.IN_PROGRESS
         case None if tests.isEmpty                         => FeedbackStatus.IN_PROGRESS
         case None if tests.exists(!_.passed)               => FeedbackStatus.IN_PROGRESS
-        case None                                          => FeedbackStatus.FINISHED
+        case None                                          => FeedbackStatus.IN_PROGRESS
       (score, status)
 
   private def buildSummary(
