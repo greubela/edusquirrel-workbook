@@ -3,13 +3,14 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import traceback
 from datetime import datetime
 from typing import Any, AsyncIterator, Dict, Optional
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 try:
     from dotenv import load_dotenv
@@ -40,8 +41,28 @@ def _safe_client_ip(request: Request) -> str:
         return "unknown"
 
 
+def _safe_log_tag(tag: Optional[str]) -> Optional[str]:
+    if not tag:
+        return None
+    t = str(tag).strip().lower()
+    if not t:
+        return None
+    # Replace non-filename chars with underscore and cap length.
+    t = re.sub(r"[^a-z0-9._-]+", "_", t)
+    t = t.strip("_-")
+    if not t:
+        return None
+    return t[:64]
+
+
 def _ensure_logs_dir() -> str:
     path = os.path.join(os.path.dirname(__file__), "chatlogs")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def _ensure_ml_logs_dir() -> str:
+    path = os.path.join(os.path.dirname(__file__), "ml-logs")
     os.makedirs(path, exist_ok=True)
     return path
 
@@ -152,6 +173,39 @@ def _messages(system_prompt: str, user_prompt: str) -> list[dict[str, str]]:
     return msgs
 
 
+def _safe_extract_json(text: str) -> Any:
+    """Best-effort extraction of a JSON value from model text."""
+
+    t = (text or "").strip()
+    if not t:
+        raise ValueError("Empty response")
+
+    # Fast path: full JSON
+    try:
+        return json.loads(t)
+    except Exception:
+        pass
+
+    # Heuristic: find first JSON array/object span
+    start = None
+    for i, ch in enumerate(t):
+        if ch in "[{":
+            start = i
+            break
+    if start is None:
+        raise ValueError("No JSON found in response")
+
+    end = None
+    for j in range(len(t) - 1, start, -1):
+        if t[j] in "]}":
+            end = j + 1
+            break
+    if end is None:
+        raise ValueError("No JSON end found in response")
+
+    return json.loads(t[start:end])
+
+
 @app.get("/health")
 async def health() -> Dict[str, Any]:
     return {
@@ -180,11 +234,19 @@ async def complete(request: Request):
 
         messages = _messages(system_prompt, user_prompt)
 
+        raw_tag = data.get("logTag") or data.get("exerciseId")
+        if raw_tag is None and isinstance(data.get("llmPrompt"), dict):
+            raw_tag = data.get("llmPrompt", {}).get("exerciseId")
+
+        log_tag = _safe_log_tag(raw_tag) or "chat"
+
         logs_dir = _ensure_logs_dir()
-        log_path = os.path.join(logs_dir, f"chat-{ip}-{timestamp}.json")
+        log_path = os.path.join(logs_dir, f"{log_tag}-{ip}-{timestamp}.json")
         _safe_write_json(log_path, {"model": model, "messages": messages})
 
-        response_log_path = os.path.join(logs_dir, f"chat-{ip}-{timestamp}-response.json")
+        response_log_path = os.path.join(
+            logs_dir, f"{log_tag}-{ip}-{timestamp}-response.json"
+        )
 
         async def generate() -> AsyncIterator[str]:
             parts: list[str] = []
@@ -221,6 +283,50 @@ async def complete(request: Request):
             yield f"[ERROR]: {str(e)}"
 
         return StreamingResponse(err(), media_type="text/plain")
+
+
+@app.post("/api/ml/log-example")
+async def ml_log_example(request: Request) -> Dict[str, Any]:
+    """Append one JSON object as a single JSONL line.
+
+    Intended for collecting offline-training examples from the Scala.js app.
+    """
+
+    ip = _safe_client_ip(request)
+
+    try:
+        data = await request.json()
+        if not isinstance(data, dict):
+            raise ValueError("Expected JSON object")
+
+        # Enrich minimally for debugging / provenance.
+        data.setdefault("clientIp", ip)
+        data.setdefault("receivedAtUtc", datetime.utcnow().isoformat() + "Z")
+
+        logs_dir = _ensure_ml_logs_dir()
+        path = os.path.join(logs_dir, "training.jsonl")
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(data, ensure_ascii=False) + "\n")
+
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.get("/api/ml/model")
+async def ml_model() -> JSONResponse:
+    """Serve the exported model JSON for Scala.js to fetch."""
+
+    path = os.path.join(os.path.dirname(__file__), "ml-model.json")
+    if not os.path.exists(path):
+        return JSONResponse({"ok": False, "error": "ml-model.json not found"}, status_code=404)
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            obj = json.load(f)
+        return JSONResponse(obj)
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
 
