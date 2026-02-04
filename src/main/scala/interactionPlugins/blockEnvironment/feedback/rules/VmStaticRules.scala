@@ -4,13 +4,14 @@ import contentmanagement.model.language.AppLanguage
 import contentmanagement.model.language.HumanLanguage
 import contentmanagement.model.language.LanguageMap
 import contentmanagement.model.vm.code.BeExpression
-import contentmanagement.model.vm.code.controlStructures.BeSequence
+import contentmanagement.model.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
 import contentmanagement.model.vm.code.defining.BeDefineVariable
 import contentmanagement.model.vm.code.others.{BeReturn, BeStartProgram}
 import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import contentmanagement.model.vm.code.usage.{BeAssignVariable, BeUseValue}
-import contentmanagement.model.vm.types.{BeScope, BeUseValueReference}
+import contentmanagement.model.vm.types.{BeChildPosition, BeScope, BeUseValueReference}
 import contentmanagement.model.vm.types.BeScope.GlobalScope
+import contentmanagement.model.vm.types.BeChildRole.ConditionInControlStructure
 
 import scala.collection.mutable
 
@@ -62,6 +63,11 @@ object VmStaticRules {
       .getChildren(withExtensions = false, GlobalScope())
       .collect { case BeExpressionReference(_, childExpr) => childExpr }
 
+  private def directChildrenWithPos(expr: BeExpression): List[(BeChildPosition, BeExpression)] =
+    expr
+      .getChildren(withExtensions = false, GlobalScope())
+      .collect { case BeExpressionReference(pos, childExpr) => (pos, childExpr) }
+
   /** Checks whether the program is empty or missing a start sequence. */
   private def checkEmptyProgram(root: BeExpression, humanLanguage: HumanLanguage): Seq[RuleResult] = root match {
     case BeStartProgram(None) =>
@@ -110,15 +116,36 @@ object VmStaticRules {
       )
   }
 
-  /** Computes the maximum nesting depth in the expression tree. */
+  /**
+   * Computes an approximation of the maximum nesting depth of the student's logic.
+   *
+   * The VM expression tree contains many structural wrapper nodes and (especially for parsed Python)
+   * many nested [[BeSequence]] blocks. Counting raw tree depth or sequence depth produces noisy
+   * false positives.
+   *
+   * Instead we count only true control structures ([[BeIfElse]], [[BeWhile]], [[BeRepeatNr]]), which
+   * better matches the intuition of “nested blocks”.
+   */
   private def computeMaxNesting(root: BeExpression): Int = {
-    def loop(expr: BeExpression, depth: Int): Int = {
-      val children = directChildren(expr)
-      if children.isEmpty then depth
-      else children.map(ch => loop(ch, depth + 1)).max
+    def loop(expr: BeExpression, controlDepth: Int, inCondition: Boolean): Int = {
+      val depth1 = expr match
+        case _: BeIfElse if !inCondition   => controlDepth + 1
+        case _: BeWhile if !inCondition    => controlDepth + 1
+        case _: BeRepeatNr if !inCondition => controlDepth + 1
+        case _                             => controlDepth
+
+      val children = directChildrenWithPos(expr)
+      if children.isEmpty then depth1
+      else
+        children
+          .map { case (pos, childExpr) =>
+            val childInCondition = inCondition || (pos.roleInParent == ConditionInControlStructure)
+            loop(childExpr, depth1, childInCondition)
+          }
+          .max
     }
 
-    loop(root, depth = 1)
+    loop(root, controlDepth = 0, inCondition = false)
   }
 
   private def checkMaxNesting(root: BeExpression, humanLanguage: HumanLanguage, maxDepthAllowed: Int): RuleResult = {
