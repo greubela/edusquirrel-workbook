@@ -53,7 +53,7 @@ object DecisionLayer {
       evidence = evidence
     )
 
-  def route(signals: BlockFeedbackSignals): Decision = {
+  def heuristicRoute(signals: BlockFeedbackSignals): Decision = {
     val runtimeError = signals.runtimeOutcome.runtimeError.getOrElse("")
     val stderr = signals.runtimeOutcome.stderr.getOrElse("")
     val combinedError = s"$runtimeError\n$stderr".toLowerCase
@@ -125,12 +125,14 @@ object DecisionLayer {
       )
     }
 
-    // 3.5) I/O contract issues (input()/prints) when tests fail
+    // 3.5) I/O contract issues (input()) when tests fail
     val testsTotal = signals.runtimeOutcome.tests.size
     val testsFailed = signals.runtimeOutcome.tests.count(!_.passed)
     val hasFailingTests = testsTotal > 0 && testsFailed > 0
 
-    if hasFailingTests && signals.inputCallCount > 0 then {
+    val ioSignal = signals.inputCallCount >= 1
+
+    if hasFailingTests && ioSignal then {
       return mkDecision(
         primaryIssue = IssueType.IO_CONTRACT,
         confidence = 0.85,
@@ -143,7 +145,10 @@ object DecisionLayer {
     // 4) Output formatting issues
     val manyFails = testsTotal >= 3 && testsFailed.toDouble / testsTotal.toDouble >= 0.6
 
-    val stdoutSuspicious = signals.stdoutLineCount >= 1 && signals.printCount >= 3
+    val minPrintsForFormat = 2
+    val stdoutSignal = signals.stdoutLineCount >= 1
+    val printSignal = signals.printCount >= minPrintsForFormat
+    val stdoutSuspicious = stdoutSignal && printSignal
 
     if manyFails && stdoutSuspicious then {
       val causes = Seq(
@@ -176,7 +181,8 @@ object DecisionLayer {
     }
 
     // 4.6) Boundary/edge-case clustering heuristics
-    if hasFailingTests && signals.boundaryHintScore >= 2 then {
+    val boundarySignal = signals.boundaryHintScore >= 2 && testsTotal >= 2
+    if hasFailingTests && boundarySignal then {
       return mkDecision(
         primaryIssue = IssueType.BOUNDARY_CONDITION,
         confidence = 0.78,
@@ -206,6 +212,19 @@ object DecisionLayer {
       severity = if hasFailingTests then Severity.MEDIUM else Severity.LOW
     )
   }
+
+  /**
+   * Swappable router entry point.
+   *
+   * - `RouterMode.Heuristic`: deterministic heuristics
+   * - `RouterMode.Ml`: uses an offline-trained model (falls back to heuristics if unavailable)
+   */
+  def route(signals: BlockFeedbackSignals, mode: RouterMode = RouterMode.Heuristic): Decision =
+    mode match
+      case RouterMode.Heuristic => heuristicRoute(signals)
+      case RouterMode.Ml =>
+        val weak = heuristicRoute(signals)
+        MlRouter.routeOrFallback(signals, weak)
 
   def templateIdFor(issueType: IssueType): String = issueType match {
     case IssueType.COMPILE_ERROR   => "T_COMPILE_ERROR"
