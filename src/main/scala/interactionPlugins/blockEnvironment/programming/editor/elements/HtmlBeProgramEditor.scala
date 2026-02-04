@@ -35,6 +35,52 @@ case class HtmlBeProgramEditor(
   private val parseWarningVar: Var[Option[String]] = Var(None)
   private val textDirtyVar: Var[Boolean] = Var(false)
 
+  private def syncTextToBlocks(): Unit = {
+    if (!textDirtyVar.now()) return
+
+    val raw = strVar.now()
+    val trimmed = raw.trim
+
+    try {
+      textLanguage match {
+        case Python =>
+          val parsedProgram = PythonParser.parsePython(raw)
+          editorState.treeToEdit.set(BeProgram(BeStartProgram(parsedProgram)))
+          textDirtyVar.set(false)
+          parseWarningVar.set(None)
+
+        case Cpp =>
+          val result = CppParser.parseCppWithDiagnostics(raw)
+          val unsupported = result.unsupportedStatements.filter(_.trim.nonEmpty)
+          if (unsupported.nonEmpty) {
+            val preview = unsupported.take(3).mkString(" | ")
+            parseWarningVar.set(Some(s"C++ parser: unsupported statement(s) shown as red blocks. Example: $preview"))
+          } else {
+            parseWarningVar.set(None)
+          }
+
+          // Always update the blocks from the parsed program. Unsupported statements are preserved as red blocks.
+          editorState.treeToEdit.set(BeProgram(BeStartProgram(result.sequence)))
+          textDirtyVar.set(false)
+
+        // probably not optimal to parse python again here, but ok for now
+        case _ =>
+          val parsedProgram = PythonParser.parsePython(raw)
+          if (trimmed.isEmpty || parsedProgram.body.nonEmpty) {
+            editorState.treeToEdit.set(BeProgram(BeStartProgram(parsedProgram)))
+            textDirtyVar.set(false)
+            parseWarningVar.set(None)
+          } else {
+            parseWarningVar.set(Some("Parser: no recognized statements; keeping existing blocks."))
+          }
+      }
+    } catch {
+      case _: Throwable =>
+        // Never overwrite the current program on parse errors.
+        parseWarningVar.set(Some("Parse error; keeping existing blocks."))
+    }
+  }
+
   private val blockViewTab = HtmlTab(
     BlockViewTabNr,
     div(
@@ -76,53 +122,16 @@ case class HtmlBeProgramEditor(
           strVar.set(source)
         }
       } else if (next.tabNr == BlockViewTabNr && previous.tabNr == TextViewTabNr) {
-        val raw = strVar.now()
-        val trimmed = raw.trim
-
-        try {
-          textLanguage match {
-            case Python =>
-              val parsedProgram = PythonParser.parsePython(raw)
-              editorState.treeToEdit.set(BeProgram(BeStartProgram(parsedProgram)))
-              textDirtyVar.set(false)
-              parseWarningVar.set(None)
-
-            case Cpp =>
-              val result = CppParser.parseCppWithDiagnostics(raw)
-              val unsupported = result.unsupportedStatements.filter(_.trim.nonEmpty)
-              if (unsupported.nonEmpty) {
-                val preview = unsupported.take(3).mkString(" | ")
-                parseWarningVar.set(Some(s"C++ parser: unsupported statement(s) shown as red blocks. Example: $preview"))
-              } else {
-                parseWarningVar.set(None)
-              }
-
-              // Always update the blocks from the parsed program. Unsupported statements are preserved as red blocks.
-              editorState.treeToEdit.set(BeProgram(BeStartProgram(result.sequence)))
-              textDirtyVar.set(false)
-
-            // probably not optimal to parse python again here, but ok for now
-            case _ =>
-              val parsedProgram = PythonParser.parsePython(raw)
-              if (trimmed.isEmpty || parsedProgram.body.nonEmpty) {
-                editorState.treeToEdit.set(BeProgram(BeStartProgram(parsedProgram)))
-                textDirtyVar.set(false)
-                parseWarningVar.set(None)
-              } else {
-                parseWarningVar.set(Some("Parser: no recognized statements; keeping existing blocks."))
-              }
-          }
-        } catch {
-          case _: Throwable =>
-            // Never overwrite the current program on parse errors.
-            parseWarningVar.set(Some("Parse error; keeping existing blocks."))
-        }
+        syncTextToBlocks()
       }
     }
   )
 
   override def getDomElement(): L.Element = div(
     cls := s"be-fullscreen-panel block-workspace",
+    // If the user navigates away while in text view (without switching back to block view),
+    // persist changes by syncing dirty text into the shared EditorState.
+    onUnmountCallback(_ => syncTextToBlocks()),
     h2(
       cls := "be-fullscreen-panel-label",
       "Edit Program"

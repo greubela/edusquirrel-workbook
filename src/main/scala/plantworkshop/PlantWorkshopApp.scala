@@ -2,16 +2,33 @@ package plantworkshop
 
 import com.raquo.laminar.api.L._
 import org.scalajs.dom
+import scala.scalajs.js
 
 object PlantWorkshopApp {
 
   // --- GLOBAL STATE ---
   val currentTask: Var[Int] = Var(0) // 0-5: Motivation, Checklist, Moisture, Pumpe, Combined, Test
   val isAdvancedMode: Var[Boolean] = Var(false)
-  val completedTasks: Var[Set[Int]] = Var(Set.empty)
+
+  private var beforeUnloadInstalled: Boolean = false
+
+  private def installReloadConfirmation(): Unit = {
+    if (beforeUnloadInstalled) return
+    beforeUnloadInstalled = true
+
+    // Standard pattern: cancel the event and set returnValue to trigger confirmation dialog.
+    dom.window.addEventListener(
+      "beforeunload",
+      (e: dom.BeforeUnloadEvent) => {
+        e.preventDefault()
+        e.returnValue = ""
+      }
+    )
+  }
 
   /** Entry point to render the workshop into a given container */
   def render(container: dom.Element): Unit = {
+    installReloadConfirmation()
     com.raquo.laminar.api.L.render(container, appElement)
   }
 
@@ -60,11 +77,10 @@ object PlantWorkshopApp {
         className := "progress-steps",
         taskTitles.zipWithIndex.map { case (title, idx) =>
           div(
-            className <-- currentTask.signal.combineWith(completedTasks.signal).map { case (current, completed) =>
+            className <-- currentTask.signal.map { current =>
               val base = "progress-step"
               val active = if (current == idx) " active" else ""
-              val done = if (completed.contains(idx)) " completed" else ""
-              base + active + done
+              base + active
             },
             onClick --> { _ => currentTask.set(idx) },
             title
@@ -89,7 +105,6 @@ object PlantWorkshopApp {
         className := "btn-nav btn-primary",
         disabled <-- currentTask.signal.map(_ == 5),
         onClick --> { _ =>
-          completedTasks.update(_ + currentTask.now())
           currentTask.update(t => Math.min(5, t + 1))
           dom.window.scrollTo(0, 0)
         }
@@ -143,6 +158,8 @@ object Task0_Motivation {
 // TASK 1: COMPONENT CHECKLIST
 // ========================================
 object Task1_ComponentChecklist {
+  private val checkedItems: Var[Set[String]] = Var(Set.empty)
+
   def render(): HtmlElement = {
     div(
       h1("Bauteile & Aufbau"),
@@ -157,6 +174,7 @@ object Task1_ComponentChecklist {
           checklistItem("Wasserpumpe", "Pumpt Wasser zur Pflanze"),
           checklistItem("Relais-Modul", "Schaltet die Pumpe an/aus"),
           checklistItem("Netzteil", "Stromversorgung für die Pumpe"),
+          checklistItem("Drähte", "Für die Verbindung zwischen Relais, Netzteil und Pumpe"),
           checklistItem("Schläuche & Wasserbehälter", "Zum Anschließen an die Pumpe"),
           checklistItem("Verbindungskabel", "Jumperkabel für die Verbindungen zwischen Arduino, Sensor und Relais"),
           checklistItem("USB-Kabel", "Zum Übertragen des Codes auf den Arduino und zur Stromversorgung")
@@ -171,21 +189,21 @@ object Task1_ComponentChecklist {
           className := "wiring-diagram",
           h4("Feuchtigkeitssensor:"),
           ul(
-            li("VCC → Arduino 3.5V"),
-            li("GND → Arduino GND"),
-            li("DO → Arduino Pin (digitaler Eingang)")
+            li("+ → Arduino D2"),
+            li("- → Arduino GND"),
+            li("S (Signal) → Arduino A0 (analoger Eingang)")
           ),
           div(
             className := "info-box small-info",
             strong("Hinweis: "),
-            "DO steht für Digital Output. Der Sensor gibt ein digitales Signal (HIGH/LOW) aus, ",
-            "wenn die Feuchtigkeit unter einen Schwellwert fällt."
+            "Wir schließen den Sensor an einen digitalen Pin (D2) für die Stromversorgung an, ",
+            "damit wir ihn nur bei Bedarf einschalten können und so die Lebensdauer verlängern."
           ),
           h4("Relais-Modul:"),
           ul(
-            li("VCC → Arduino 5V"),
-            li("GND → Arduino GND"),
-            li("IN → Arduino Pin (digitaler Eingang)")
+            li("DC+ → Arduino 5V"),
+            li("DC- → Arduino GND"),
+            li("IN → Arduino D8 (digitaler Eingang)")
           ),
           h4("Pumpe:"),
           ul(
@@ -197,7 +215,8 @@ object Task1_ComponentChecklist {
             className := "info-box small-info",
             strong("Wichtig: "),
             "Das Relais trennt die Pumpe vom Arduino-Stromkreis. ",
-            "Niemals die Pumpe direkt am Arduino anschließen!"
+            "Niemals die Pumpe direkt am Arduino anschließen! " ,
+            "Zwischen Pumpe, Relais und Netzteil keine Jumperkabel verwenden!"
           )
         ),
         div(
@@ -211,9 +230,19 @@ object Task1_ComponentChecklist {
   }
 
   def checklistItem(name: String, description: String): HtmlElement = {
-    div(
+    label(
       className := "checklist-item",
-      input(typ := "checkbox"),
+      input(
+        typ := "checkbox",
+        controlled(
+          checked <-- checkedItems.signal.map(_.contains(name)),
+          onInput.mapToChecked --> { isChecked =>
+            checkedItems.update { existing =>
+              if (isChecked) existing + name else existing - name
+            }
+          }
+        )
+      ),
       div(
         className := "checklist-content",
         strong(name),
@@ -232,25 +261,31 @@ object Task2_MoistureSensor {
     plantworkshop.PlantWorkshopTaskBlockLibraries.task2SuggestedStartProgram().fullProgram
   )
 
+  def programAsCpp: String =
+    editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(
+      contentmanagement.model.language.AppLanguage.Cpp,
+      contentmanagement.model.language.AppLanguage.English
+    )
+
   def render(modeSignal: Signal[Boolean]): HtmlElement = {
     div(
       h1("Feuchtigkeit im Boden messen"),
       div(
         className := "task-box",
         h3("Lernziel"),
-        p("Verstehen, wie digitale Sensoren im Arduino ausgelesen werden."),
+        p("Verstehen, wie analoge Sensoren mit Arduino ausgelesen werden und wie man daraus eine Trockenheits-Logik ableitet."),
         h3("Aufgabe"),
-        p("Der Feuchtigkeitssensor hat einen digitalen Ausgang (DO):"),
+        p("Der Feuchtigkeitssensor liefert einen analogen Messwert:"),
         ul(
-          li(strong("HIGH:"), " Boden ist trocken (Sensor erkennt keine Feuchtigkeit)"),
-          li(strong("LOW:"), " Boden ist feucht (Sensor erkennt Feuchtigkeit)")
+          li(strong("kleiner Messwert:"), " Boden ist trocken"),
+          li(strong("großer Messwert:"), " Boden ist feucht")
         ),
-        p("Lest den Sensor aus und gebt auf dem Serial Monitor aus, ob der Boden trocken oder feucht ist."),
+        p("Lest den Sensor aus und gebt den Messwert auf dem Serial Monitor aus."),
         div(
           className := "info-box",
           strong("Hinweis: "),
-          "Mit ", code("digitalRead(PIN)"), " liest man digitale Werte (HIGH oder LOW). ",
-          "Mit einer ", code("if-else"), " Bedingung kann man darauf reagieren."
+          "Mit ", code("analogRead(SENSOR_PIN)"), " liest man analoge Werte. ",
+          "Um den Sensor zu schonen, wird er kurz über ", code("SENSOR_POWER_PIN"), " eingeschaltet."
         )
       ),
 
@@ -304,21 +339,26 @@ object Task3_PumpControl {
     plantworkshop.PlantWorkshopTaskBlockLibraries.task3SuggestedStartProgram().fullProgram
   )
 
+  def programAsCpp: String =
+    editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(
+      contentmanagement.model.language.AppLanguage.Cpp,
+      contentmanagement.model.language.AppLanguage.English
+    )
+
   def render(modeSignal: Signal[Boolean]): HtmlElement = {
     div(
       h1("Pumpe steuern"),
       div(
         className := "task-box",
         h3("Lernziel"),
-        p("Digitale Ausgänge schalten (HIGH/LOW) und verstehen, warum ein Relais nötig ist."),
+        p("Digitale Ausgänge schalten (HIGH/LOW) und das Relais korrekt ansteuern."),
         h3("Aufgabe"),
-        p("Schreibt ein Programm, das die Pumpe für genau 1 Sekunde einschaltet."),
-        p("Danach soll die Pumpe wieder ausgehen und das Programm soll 60 Sekunden warten."),
+        p("Schreibt ein Programm, das die Pumpe für genau 2 Sekunden einschaltet."),
+        p("Danach soll die Pumpe wieder ausgehen."),
         div(
           className := "info-box",
           strong("Hinweis: "),
-          "Die Arduino ", code("loop()"), " wiederholt sich unendlich oft. ",
-          "Ziel ist also, nur einmal den richtigen Ablauf zu programmieren."
+          "In dieser Schaltung wird das Relais mit ", code("digitalWrite(PUMP_PIN, LOW)"), " eingeschaltet und mit ", code("HIGH"), " ausgeschaltet."
         )
       ),
 
@@ -372,20 +412,27 @@ object Task4_Combined {
     plantworkshop.PlantWorkshopTaskBlockLibraries.task4SuggestedStartProgram().fullProgram
   )
 
+  def programAsCpp: String =
+    editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(
+      contentmanagement.model.language.AppLanguage.Cpp,
+      contentmanagement.model.language.AppLanguage.English
+    )
+
   def render(modeSignal: Signal[Boolean]): HtmlElement = {
     div(
       h1("Messwerte mit Pumpensteuerung verbinden"),
       div(
         className := "task-box",
         h3("Lernziel"),
-        p("Die vorherigen Aufgaben verbinden und die Funktionsweise des Systems verstehen!"),
+        p("Die vorherigen Aufgaben verbinden und den kompletten Ablauf umsetzen."),
         h3("Aufgabe"),
-        p("Jetzt verbinden wir die Ergebnisse der letzten Aufgaben. Schreibt ein Programm, das:"),
+        p("Jetzt setzt ihr den kompletten Ablauf um. Das Programm soll:"),
         ol(
-          li("Den Feuchtigkeitssensor ausliest (digitalRead)"),
-          li("Prüft, ob der Boden trocken ist (sensorValue == HIGH)"),
-          li("Wenn ja: Pumpe für 2 Sekunden einschalten"),
-          li("Wartet und dann wieder misst (z.B. alle 10 Sekunden)")
+          li("Den Sensor kurz mit \"SENSOR_POWER_PIN\" einschalten und den Messwert per \"analogRead(SENSOR_PIN)\" auslesen"),
+          li("Den Messwert auf dem Serial Monitor ausgeben (\"Analoger Wert: ...\")"),
+          li("Prüfen, ob \"messwert < feuchtigkeitsGrenze\""),
+          li("Wenn ja: Pumpe einschalten, 2 Sekunden gießen, wieder ausschalten"),
+          li("Danach 10 Sekunden warten")
         ),
         div(
           className := "info-box",
@@ -441,6 +488,60 @@ object Task4_Combined {
 // TASK 5: TEST
 // ========================================
 object Task5_Test {
+  private val checkedItems: Var[Set[String]] = Var(Set.empty)
+
+  private def indentBlock(code: String, spaces: Int = 2): String = {
+    val pad = " " * spaces
+    code.linesIterator.map { line =>
+      if (line.trim.isEmpty) line else pad + line
+    }.mkString("\n")
+  }
+
+  private def buildFinalArduinoSketch(): String = {
+    val task4 = Task4_Combined.programAsCpp.trim
+    val loopBody = if (task4.nonEmpty) indentBlock(task4) else "  // (Kein Code aus Modul 4 vorhanden)"
+
+    s"""/*
+       | * Girls Day - Automatische Pflanzen-Bewässerung
+       | * Kompletter Arduino Sketch (aus dem Workbook generiert)
+       | */
+       |
+       |const int SENSOR_PIN = A0;  // Analog Pin 0 zu DO
+       |const int SENSOR_POWER_PIN = 2; // Pin, damit der Sensor nicht so schnell rostet
+       |const int PUMP_PIN = 8; // Pin fürs relais für die pumpe
+       |
+       |int feuchtigkeitsGrenze = 100;
+       |
+       |void setup() {
+       |  Serial.begin(9600);
+       |
+       |  pinMode(PUMP_PIN, OUTPUT);
+       |  pinMode(SENSOR_POWER_PIN, OUTPUT);
+       |
+       |  digitalWrite(PUMP_PIN, HIGH);
+       |  digitalWrite(SENSOR_POWER_PIN, LOW);
+       |}
+       |
+       |void loop() {
+       |$loopBody
+       |}
+       |""".stripMargin
+  }
+
+  private def downloadArduinoSketch(): Unit = {
+    val code = buildFinalArduinoSketch()
+    val blob = new dom.Blob(
+      js.Array(code),
+      dom.BlobPropertyBag(`type` = "text/plain;charset=utf-8")
+    )
+    val url = dom.URL.createObjectURL(blob)
+    val anchor = dom.document.createElement("a").asInstanceOf[dom.html.Anchor]
+    anchor.href = url
+    anchor.download = "plantworkshop.ino"
+    anchor.click()
+    dom.URL.revokeObjectURL(url)
+  }
+
   def render(): HtmlElement = {
     div(
       h1("Test & Fertigstellung"),
@@ -448,6 +549,12 @@ object Task5_Test {
         className := "task-box success-box",
         h3("Geschafft!"),
         p("Jetzt ist es Zeit, euer System zu testen!"),
+        button(
+          "Arduino-Code herunterladen (.ino)",
+          className := "btn-nav btn-primary",
+          marginBottom := "18px",
+          onClick --> (_ => downloadArduinoSketch())
+        ),
         h3("Test-Checkliste:"),
         div(
           className := "test-checklist",
@@ -505,7 +612,17 @@ object Task5_Test {
   def checklistItem(text: String): HtmlElement = {
     div(
       className := "checklist-item",
-      input(typ := "checkbox"),
+      input(
+        typ := "checkbox",
+        controlled(
+          checked <-- checkedItems.signal.map(_.contains(text)),
+          onInput.mapToChecked --> { isChecked =>
+            checkedItems.update { existing =>
+              if (isChecked) existing + text else existing - text
+            }
+          }
+        )
+      ),
       span(text)
     )
   }

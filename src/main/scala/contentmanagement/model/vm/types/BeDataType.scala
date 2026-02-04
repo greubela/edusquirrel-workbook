@@ -7,7 +7,7 @@ import contentmanagement.model.language.{LanguageMap, ProgrammingLanguage}
 import contentmanagement.webElements.svg.shapes.BeShape
 import BeShape.BeShapeContainerable
 import contentmanagement.webElements.svg.shapes.datatypes.{BooleanShape, DateShape, DuckShape, NumericShape, StringShape, UnitShape}
-import util.AlgebriteNumber
+import util.numbers.AlgebriteNumber
 
 sealed trait BeDataType {
 
@@ -165,10 +165,10 @@ object BeDataType {
       LanguageMap.universalMap(value)
     },
     str => {
-      val trimmed = str.trim
-      def isQuoted(delimiter: String): Boolean =
-        trimmed.length >= delimiter.length * 2 && trimmed.startsWith(delimiter) && trimmed.endsWith(delimiter)
-      isQuoted("\"\"\"") || isQuoted("'''") || isQuoted("\"") || isQuoted("'")
+      // In the block editor we treat the content of a string literal as valid even if it is not quoted,
+      // because the formatter is responsible for adding quotes in text-based languages.
+      // (Otherwise Serial.print/println would emit unquoted strings.)
+      true
     },
     Set())
 
