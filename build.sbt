@@ -9,6 +9,10 @@ lazy val workbookApp = project.in(file("."))
     scalaVersion := "3.3.3",
     scalaJSUseMainModuleInitializer := true,
 
+    // For the simulation-style specs (e.g. PRINT_SIMULATION=1), we want to see
+    // stdout/stderr even when tests pass.
+    Test / logBuffered := !sys.env.get("PRINT_SIMULATION").contains("1"),
+
     scalaJSLinkerConfig ~= {
       _.withModuleKind(ModuleKind.CommonJSModule)
     },

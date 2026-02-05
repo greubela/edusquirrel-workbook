@@ -10,6 +10,7 @@ import interactionPlugins.blockEnvironment.exercise.{HtmlProgrammingExercise, Pr
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
+import interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
 import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
 import interactionPlugins.pythonExercises.{HtmlPythonExercise, PythonExerciseContent}
 import org.scalajs.dom
@@ -25,7 +26,7 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 @main
 def mainApp(): Unit = {
   doSomeCalculations()
-  //insertWorkbook()
+  insertWorkbook()
   insertTurtleEditor()
   insertPlantWorkshop()
 }
@@ -158,6 +159,7 @@ def insertWorkbook(): Unit = {
 
   val combinedElement = div(
    // jsxGraphPreview,
+    FeedbackDemoElement.element(),
     fullscreenElement.getDomElement(),
     /* div(
        h2("Workbook Overview"),
