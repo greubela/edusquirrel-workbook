@@ -41,11 +41,11 @@ object LayeredLayout {
   }
 
   private def computeBubbleGeometry(nodes: List[SectionNode], config: VisualizationConfig): Unit = {
-    val allDurations = nodes.flatMap(_.section.exercies.map(_.estimatedTimeInMinutes)).filter(_ > 0)
+    val allDurations = nodes.flatMap(_.section.exercises.map(_.estimatedTimeInMinutes)).filter(_ > 0)
     val maxDuration = if (allDurations.isEmpty) 1.0 else allDurations.max
 
     nodes.foreach { node =>
-      val exercises = node.section.exercies
+      val exercises = node.section.exercises
       var currentX = config.sectionPaddingX
 
       val bubbleLayouts = exercises.map { exercise =>

@@ -1,6 +1,7 @@
 package interactionPlugins.blockEnvironment.programming.editor.elements
 
 import com.raquo.airstream.ownership.Owner
+
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Signal

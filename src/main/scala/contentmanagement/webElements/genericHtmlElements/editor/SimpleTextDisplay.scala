@@ -3,9 +3,6 @@ package contentmanagement.webElements.genericHtmlElements.editor
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import workbook.model.display.InteractionComponent
-import workbook.model.states.BasicVariableBasedState
-import workbook.model.states.BasicVariableBasedState.*
-
 
 case class SimpleTextDisplay(displaySignal: Signal[Option[String]]) extends InteractionComponent {
 
@@ -17,7 +14,7 @@ case class SimpleTextDisplay(displaySignal: Signal[Option[String]]) extends Inte
   def setVisible(visible: Boolean): Unit = isHiddenVar.set(!visible)
 
   def setDisabled(disabled: Boolean): Unit = {}
-  
+
   private val editorTextArea = textArea(
     rows := 8,
     cols := 80,

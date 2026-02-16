@@ -10,7 +10,7 @@ import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-import workbook.workbookHtmlElements.{HtmlExerciseTitleElement, HtmlPlaintextInstructionElement}
+import workbook.workbookHtmlElements.basic.{HtmlExerciseTitleElement, HtmlPlaintextInstructionElement}
 import workbook.workbookHtmlElements.container.HtmlFullScreenElement
 
 case class HtmlProgrammingExercise(

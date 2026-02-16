@@ -1,11 +1,11 @@
 package workbook.workbookHtmlElements.abstractions
-
+/*
 import com.raquo.laminar.api.L.Element
 import workbook.model.exercise.ExerciseContent
 import workbook.model.feedback.grading.GradingResult
 import workbook.model.feedback.scaffolding.ScaffoldingResult
-import workbook.model.interaction.full.HtmlFullInteractionModel
-import workbook.model.interaction.{Grader, Scaffolder}
+import workbook.model.interactionOld.full.HtmlFullInteractionModel
+import workbook.model.interactionOld.{Grader, Scaffolder}
 import workbook.model.states.InteractionState
 import workbook.workbookHtmlElements.abstractions.HtmlFullInteractionExercise.ExerciseStyle.*
 import workbook.workbookHtmlElements.abstractions.HtmlFullInteractionExercise.{ExerciseStyle, knownCssExerciseClasses}
@@ -50,4 +50,4 @@ object HtmlFullInteractionExercise {
   }
   
 
-}
+}*/

@@ -5,13 +5,11 @@ import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement
 import workbook.model.display.InteractionComponent
 import workbook.model.display.InteractionComponent.*
-import workbook.model.states.BasicVariableBasedState
-import workbook.model.states.BasicVariableBasedState.*
 
 case class SimpleStringTextEditor(
-  stateToBind: Var[String],
-  onUserInput: String => Unit = _ => ()
-) extends HtmlAppElement{
+                                   stateToBind: Var[String],
+                                   onUserInput: String => Unit = _ => ()
+                                 ) extends HtmlAppElement{
 
   private val editorTextArea = textArea(
     rows := 8,

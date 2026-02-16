@@ -4,8 +4,8 @@ import com.raquo.laminar.api.L.*
 import contentmanagement.model.language.AppLanguage
 import interactionPlugins.gpt.HtmlTextBasedGptExercise
 import workbook.model.exercise.ExerciseContent
-import workbook.workbookHtmlElements.HtmlPlaintextInstructionElement
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
+import workbook.workbookHtmlElements.basic.HtmlPlaintextInstructionElement
 
 case class HtmlSingleExerciseDisplay(exerciseHtmlElement: HtmlWorkbookElement) extends HtmlWorkbookElement {
 

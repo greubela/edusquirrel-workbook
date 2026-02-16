@@ -1,6 +1,10 @@
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
+import content.TestWorkbook.TestWorkbook
+import content.monks.MonksWorkbook
+import content.plantworkshop
+import content.plantworkshop.PlantWorkshopApp
 import contentmanagement.model.language.AppLanguage
 import contentmanagement.model.language.AppLanguage.English
 import interactionPlugins.blockEnvironment.exercise.{HtmlProgrammingExercise, ProgrammingExercise}
@@ -9,59 +13,49 @@ import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurt
 import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
 import org.scalajs.dom
 import org.scalajs.dom.document
-import plantworkshop.PlantWorkshopApp
 import util.JSXGraph.*
 import workbook.model.exercise.{ExerciseContent, ExerciseSection}
 import workbook.workbookHtmlElements.container.HtmlFullScreenElement
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 
+private val fullscreenElement: HtmlFullScreenElement = HtmlFullScreenElement()
+
+private val idAndContentList: List[(String, Element)] = List(
+  ("plantWorkshopApp", plantworkshop.PlantWorkshopApp.appElement),
+  ("testEditor", HtmlFullscreenTurtleEditorElement(BeProgram.debugGraphicsProgram().fullProgram).getDomElement()),
+  ("testWorksheet", TestWorkbook(fullscreenElement).getDomElement()),
+  ("worksheetMonks", MonksWorkbook().getDomElement())
+)
+
+def insertWorkbookContent(): Unit = {
+
+  def tryToLoad(containerId: String, contentElement: Element): Unit = {
+    println("try to load: " + containerId)
+    val container = document.getElementById(containerId)
+    if (container != null) {
+      println("Loading Content: " + containerId)
+      val combinedElement = div(
+        fullscreenElement.getDomElement(),
+        contentElement
+      )
+      if (dom.document.readyState == "loading") {
+        renderOnDomContentLoaded(container, combinedElement)
+      } else {
+        render(container, combinedElement)
+      }
+    }
+  }
+
+  idAndContentList.foreach { case (id, contentElement) => tryToLoad(id, contentElement) }
+
+}
+
 @main
 def mainApp(): Unit = {
-  //doSomeCalculations()
-  insertWorkbook()
-  //insertTurtleEditor()
-  insertPlantWorkshop()
-}
+  dom.window.localStorage.clear()
 
-def insertPlantWorkshop(): Unit = {
-  val container = document.getElementById("plantWorkshopApp")
-  if (container != null) {
-    val appElement = plantworkshop.PlantWorkshopApp.appElement
-    if (dom.document.readyState == "loading") {
-      renderOnDomContentLoaded(container, appElement)
-    } else {
-      render(container, appElement)
-    }
-  }
-}
-
-def doSomeCalculations(): Unit = {
-  /*
-  val expr = BeProgram.debugGraphicsProgram()
-  val ed = EditorState.withInitExpression(expr.fullProgram)
-  val lis = BeTreeControllerConfig.editTreeConfig(ed)
-  HtmlBeTreeDisplay.render(expr,
-    ed.editorTreeDisplayConfig.now(),
-    ed.rendererConfigVar.now(),
-    lis,
-    ed.controllerStateVar)
-*/
-}
-
-val fullscreenElement: HtmlFullScreenElement = HtmlFullScreenElement()
-
-def insertTurtleEditor(): Unit = {
-  val worksheetDiv = document.getElementById("worksheetDts")
-  if (worksheetDiv != null) { // TODO Ohne das gibt es Probleme, nochmal anschauen, aber es funkltioniert erstmal genauso wie vorher, aber programme die danach inserted werden haben keine probleme mehr
-    val editorDom = new HtmlFullscreenTurtleEditorElement(BeProgram.debugGraphicsProgram().fullProgram).getDomElement()
-
-    if (dom.document.readyState == "loading") {
-      renderOnDomContentLoaded(worksheetDiv, editorDom)
-    } else {
-      render(worksheetDiv, editorDom)
-    }
-  }
+  insertWorkbookContent()
 }
 
 def jsxGraphPreview: HtmlElement =
@@ -135,40 +129,7 @@ def jsxGraphPreview: HtmlElement =
 
 
 def insertWorkbook(): Unit = {
-  // Generic GPT Exercise
-  val testEx = TextBasedGptExercise("id-007", Map(AppLanguage.English -> "this is title"), Map(AppLanguage.English -> "this is instruction"))
-  val htmlEx = HtmlTextBasedGptExercise(testEx, useFullscreenInteraction = true, fullscreenElement = Some(fullscreenElement))
 
-  // Programming Exercise
-  val testProgEx = ProgrammingExercise(
-    "id-003",
-    Map(AppLanguage.English -> "Exercise 2"),
-    Map(AppLanguage.English -> "Use Turtle Commands to program the Shape on the right :-)"),
-    ProgrammingExercise.DefaultPentagonExpectedResult
-  )
-  val htmlProgEx = HtmlProgrammingExercise(testProgEx, fullscreenElement)
-
-  val combinedElement = div(
-    // jsxGraphPreview,
-    fullscreenElement.getDomElement(),
-    /* div(
-       h2("Workbook Overview"),
-       div(
-         cls := "workbook-overview-sample",
-        // overviewElement
-       )
-     ),*/
-    htmlEx.getDomElement(),
-    htmlProgEx.getDomElement(),
-  )
-
-  val worksheetDiv = document.getElementById("worksheetDts")
-
-  if (dom.document.readyState == "loading") {
-    renderOnDomContentLoaded(worksheetDiv, combinedElement)
-  } else {
-    render(worksheetDiv, combinedElement)
-  }
 }
 
 object Main:
@@ -192,7 +153,7 @@ final case class SimpleExercise(
 
 final case class SampleSection(
                                 override val title: String,
-                                override val exercies: List[ExerciseContent],
+                                override val exercises: List[ExerciseContent],
                                 override val sectionsRequiredBefore: List[ExerciseSection] = Nil,
                                 override val sectionsRecommendedBefore: List[ExerciseSection] = Nil
                               ) extends ExerciseSection

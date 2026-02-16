@@ -1,12 +1,12 @@
 package workbook.workbookHtmlElements.abstractions
-
+/*
 import com.raquo.airstream.state.Var
 import contentmanagement.model.language.{AppLanguage, LanguageMap}
 import workbook.model.display.InteractionDisplayState
 import workbook.model.feedback.grading.GradingResult
 import workbook.model.feedback.scaffolding.ScaffoldingResult
-import workbook.model.interaction.full.HtmlFullInteractionModel
-import workbook.model.interaction.{Grader, Scaffolder}
+import workbook.model.interactionOld.full.HtmlFullInteractionModel
+import workbook.model.interactionOld.{Grader, Scaffolder}
 import workbook.model.states.InteractionState
 import workbook.workbookHtmlElements.abstractions.HtmlFullInteractionContainer.*
 import workbook.workbookHtmlElements.abstractions.HtmlFullInteractionExercise.ExerciseStyle
@@ -33,3 +33,4 @@ object HtmlFullInteractionContainer {
 
 }
 
+*/

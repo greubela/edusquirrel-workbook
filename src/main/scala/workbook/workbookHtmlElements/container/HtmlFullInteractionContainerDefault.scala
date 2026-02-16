@@ -1,5 +1,5 @@
 package workbook.workbookHtmlElements.container
-
+/*
 import com.raquo.airstream.core.Observer
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
@@ -9,8 +9,8 @@ import workbook.model.display.InteractionDisplayState.{DefaultEditorDisplayState
 import workbook.model.display.{FullInteractionLabelModel, InteractionComponent, InteractionDisplayState}
 import workbook.model.feedback.grading.GradingResult
 import workbook.model.feedback.scaffolding.ScaffoldingResult
-import workbook.model.interaction.full.HtmlFullInteractionModel
-import workbook.model.interaction.{Grader, Scaffolder}
+import workbook.model.interactionOld.full.HtmlFullInteractionModel
+import workbook.model.interactionOld.{Grader, Scaffolder}
 import workbook.model.states.InteractionState
 import workbook.workbookHtmlElements.HtmlInteractionButtonComponent
 import workbook.workbookHtmlElements.abstractions.{HtmlFullInteractionContainer, HtmlFullInteractionExercise}
@@ -247,3 +247,4 @@ object HtmlFullInteractionContainerDefault {
 
 }
 
+*/

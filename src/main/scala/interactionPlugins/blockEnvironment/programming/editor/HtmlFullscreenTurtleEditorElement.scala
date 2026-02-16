@@ -9,7 +9,7 @@ import contentmanagement.model.language.AppLanguage.{English, German, Python}
 import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.code.others.BeStartProgram
 import contentmanagement.model.vm.parsing.python.PythonParser
-import contentmanagement.webElements.genericHtmlElements.editor.{SimpleStringTextEditor, SimpleTextDisplay}
+import contentmanagement.webElements.genericHtmlElements.editor.SimpleTextDisplay
 import contentmanagement.webElements.svg.shapes.BeShape
 import contentmanagement.webElements.svg.shapes.controlflow.*
 import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.{ControlFlowCross, IfElseSplit, IfElseUnion}

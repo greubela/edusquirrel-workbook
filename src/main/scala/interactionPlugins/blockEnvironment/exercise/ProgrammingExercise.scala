@@ -1,23 +1,19 @@
 package interactionPlugins.blockEnvironment.exercise
 
 import com.raquo.laminar.api.L.*
-import com.raquo.laminar.api.L.svg
-import contentmanagement.model.language.AppLanguage
 import contentmanagement.model.geometry.{Bounds, Point}
+import contentmanagement.model.language.AppLanguage
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
-import interactionPlugins.gpt.HtmlTextBasedGptInteractionModel
-import workbook.model.exercise.ExerciseContent
-import workbook.workbookHtmlElements.container.HtmlFullInteractionContainerDefault
-import workbook.workbookHtmlElements.{HtmlExerciseTitleElement, HtmlPlaintextInstructionElement}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import workbook.model.exercise.ExerciseContent
 
 case class ProgrammingExercise(
-                                    id: String,
-                                    titleMap: Map[AppLanguage, String],
-                                    instructionMap: Map[AppLanguage, String],
-                                    expectedResult: AppSvgElement
-                                  ) extends ExerciseContent {
+                                id: String,
+                                titleMap: Map[AppLanguage, String],
+                                instructionMap: Map[AppLanguage, String],
+                                expectedResult: AppSvgElement
+                              ) extends ExerciseContent {
 
 
   override def estimatedTimeInMinutes: Double = 3
@@ -28,11 +24,11 @@ object ProgrammingExercise {
   private val expectedResultRendererConfig: BeRenderingConfig = BeRenderingConfig.default()
 
   private def polygonExpectedResult(
-      points: List[Point[Double]],
-      fillColor: String,
-      strokeColor: String,
-      strokeWidth: String
-  ): AppSvgElement = {
+                                     points: List[Point[Double]],
+                                     fillColor: String,
+                                     strokeColor: String,
+                                     strokeWidth: String
+                                   ): AppSvgElement = {
     val builder = points.tail.foldLeft(SvgPathBuilder[Double](points.head)) { (acc, point) =>
       acc.lineToAbs(point)
     }
