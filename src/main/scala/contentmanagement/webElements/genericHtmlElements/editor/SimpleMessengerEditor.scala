@@ -15,35 +15,39 @@ case class SimpleMessengerEditor(chatExercise: InteractionVariable[MessengerMode
 
   private val messageInput = Var("")
 
-  private val domElement: Element =
+  private val domElement: Element = {
     div(
-      cls := "messenger-editor",
+      cls := "messanger-container",
       div(
-        cls := "messenger-history",
-        children <-- chatExercise.asVar.signal.map(_.orderedMessages.map(renderMessage))
-      ),
-      div(
-        cls := "messenger-composer",
-        textArea(
-          cls := "messenger-input",
-          rows := 2,
-          placeholder := "Type your message...",
-          controlled(
-            value <-- messageInput.signal,
-            onInput.mapToValue --> messageInput
-          ),
-          onKeyDown.filter(ev => ev.key == "Enter" && !ev.shiftKey) --> { ev =>
-            ev.preventDefault()
-            sendCurrentMessage()
-          }
+        cls := "messenger-editor",
+        div(
+          cls := "messenger-history",
+          children <-- chatExercise.asVar.signal.map(_.orderedMessages.map(renderMessage))
         ),
-        button(
-          cls := "messenger-send-button",
-          "Send",
-          onClick --> { _ => sendCurrentMessage() }
+        div(
+          cls := "messenger-composer",
+          textArea(
+            cls := "messenger-input",
+            rows := 2,
+            placeholder := "Type your message...",
+            controlled(
+              value <-- messageInput.signal,
+              onInput.mapToValue --> messageInput
+            ),
+            onKeyDown.filter(ev => ev.key == "Enter" && !ev.shiftKey) --> { ev =>
+              ev.preventDefault()
+              sendCurrentMessage()
+            }
+          ),
+          button(
+            cls := "messenger-send-button",
+            "Send",
+            onClick --> { _ => sendCurrentMessage() }
+          )
         )
       )
     )
+  }
 
   override def getDomElement(): Element = domElement
 
@@ -113,5 +117,6 @@ case class SimpleMessengerEditor(chatExercise: InteractionVariable[MessengerMode
     timestampEpochMillis.toLongOption
       .map(epoch => Instant.ofEpochMilli(epoch).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm")))
       .getOrElse(timestampEpochMillis)
+    //timestampEpochMillis + " (<- formatted!)"
   }
 }

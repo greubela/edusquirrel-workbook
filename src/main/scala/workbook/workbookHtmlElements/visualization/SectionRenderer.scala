@@ -52,7 +52,7 @@ object SectionRenderer {
       fillRoundedRect(canvas, x, y, bubble.width, bubble.height, config.exerciseCornerRadius)
       canvas.setStrokeColor(config.bubbleBorderColor)
       strokeRoundedRect(canvas, x, y, bubble.width, bubble.height, config.exerciseCornerRadius, config.exerciseBorderWidth)
-      val label = truncateLabel(bubble.exercise.titleMap(AppLanguage.English).trim, bubble.width, config)
+      val label = truncateLabel(bubble.exercise.titleMap.getInLanguage(AppLanguage.English).trim, bubble.width, config)
       canvas.setFillColor(config.labelColor)
       canvas.setFont(AppFont.Aptos.copy(sizeInPx = config.exerciseFontSize))
       canvas.drawStringCentered(x + bubble.width / 2, y + bubble.height / 2, label)

@@ -1,5 +1,6 @@
 package contentmanagement.storage
 
+import com.raquo.airstream.state.Var
 import contentmanagement.model.FileInformation
 import contentmanagement.model.image.{FullImage, ImageDescription}
 import contentmanagement.model.image.ImageDescription.{ServerImageDescription, SvgImageDescription, UploadImageDescription}
@@ -29,7 +30,7 @@ object ImageStorage {
   private var cache_hits: Long = 0
   private var cache_misses: Long = 0
 
-  def log(str: String): Unit = if (debug) {
+  private def log(str: String): Unit = if (debug) {
     println("[IMAGES] " + str
       + "\n    cache: " + cache_hits + " hits, " + cache_misses + " misses"
       + "\n    cache size: " + fullImageMap.size + ", currently loading: " + currentlyLoading.size
@@ -65,8 +66,9 @@ object ImageStorage {
     img.onabort = (e: dom.Event) => p.failure(new Exception("cannot create dom image: " + e.toString))
     img.onload = (e: dom.Event) => p.success(FullImage(imageDescription, imgSrc, img))
     p.future
-
   }
+  
+  
 
   private def executeLoading(imageDescription: ImageDescription)(implicit ec: ExecutionContext): Future[FullImage] = {
 
@@ -95,7 +97,6 @@ object ImageStorage {
 
     fullImageFuture
   }
-
 
   def loadFullImage(imageDescription: ImageDescription)(implicit ec: ExecutionContext): Future[FullImage] =
     if (fullImageMap.contains(imageDescription)) {

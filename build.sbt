@@ -23,7 +23,10 @@ lazy val workbookApp = project.in(file("."))
       "com.raquo" %%% "laminar" % "17.2.1",
       "com.lihaoyi" %%% "upickle" % "4.3.1",
       "com.lihaoyi" %%% "fastparse" % "3.1.1",
-      "org.scalameta" %%% "munit" % "1.2.1" % Test
+      "org.scalameta" %%% "munit" % "1.2.1" % Test,
+
+      "io.github.cquiroz" %%% "scala-java-time" % "2.6.0",
+      "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.6.0" // needed for ZoneId / TZ database
     ),
 
     // NPM dependencies

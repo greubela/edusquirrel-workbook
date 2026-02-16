@@ -17,9 +17,9 @@ import contentmanagement.webElements.genericHtmlElements.other.{HtmlTab, HtmlTab
 import interactionPlugins.blockEnvironment.programming.BeProgram
 
 case class HtmlBeProgramEditor(
-  editorState: EditorState,
-  textLanguage: ProgrammingLanguage = Python
-) extends HtmlAppElement {
+                                editorState: EditorState,
+                                textLanguage: ProgrammingLanguage = Python
+                              ) extends HtmlAppElement {
 
   private val parseWarningVar: Var[Option[String]] = Var(None)
   private val textDirtyVar: Var[Boolean] = Var(false)
@@ -92,10 +92,9 @@ case class HtmlBeProgramEditor(
     "Block View"
   )
 
-  private val pythonEditor: HtmlAppElement = SimpleStringTextEditor(//CodeMirrorEditor(strVar)
-    strVar,
-    onUserInput = _ => textDirtyVar.set(true)
-  )
+  private val pythonEditor: HtmlAppElement =
+    //CodeMirrorEditor(strVar)
+    SimpleStringTextEditor(strVar, onUserInput = _ => textDirtyVar.set(true))
 
   private val pythonViewTab = HtmlTab(
     TextViewTabNr,

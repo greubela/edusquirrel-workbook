@@ -1,6 +1,7 @@
 package workbook.model.exercise
 
 import com.raquo.airstream.state.Var
+import contentmanagement.model.chat.MessengerModel
 import util.Serializer
 import workbook.model.exercise.InteractionVariable.{ExerciseVariableState, UpdateImportance, deserializeHistory}
 import workbook.model.history.sync.{LocalStorageSync, SyncInformation, SyncStrategy}
@@ -24,10 +25,10 @@ case class InteractionVariable[T](underlyingExercise: ExerciseContent, initHisto
 
   private def updateVarFromHistory(): Unit = {
     val setValue = history.maxBy(_.epochTimestampMillis).value
-    if(asVar.now() != setValue){
+    if (asVar.now() != setValue) {
       asVar.update(_ => setValue)
       //println("[INFO] Set current var state to: " + setValue)
-    }else{
+    } else {
       //println("val not changed (" + asVar.now() + ") from history (" + setValue + ")")
     }
   }
@@ -57,7 +58,7 @@ case class InteractionVariable[T](underlyingExercise: ExerciseContent, initHisto
     })
 
     val withoutDefault = history.filter(_.updateImportance != UpdateImportance.DEFAULT)
-    if(withoutDefault.nonEmpty){
+    if (withoutDefault.nonEmpty) {
       history = withoutDefault
     }
     //println("[INFO] synced from all sources, added " + (history.size - eventCount) + " events")
@@ -68,6 +69,19 @@ case class InteractionVariable[T](underlyingExercise: ExerciseContent, initHisto
 }
 
 object InteractionVariable {
+
+  def messengerVariable(exerciseContent: ExerciseContent, initMessages: MessengerModel): InteractionVariable[MessengerModel] = {
+    val io: Serializer[MessengerModel] = new Serializer[MessengerModel] {
+      override def serialize(obj: MessengerModel): String = ""
+
+      override def deserialize(str: String): MessengerModel = MessengerModel(List())
+    }
+    InteractionVariable[MessengerModel](exerciseContent,
+      List(ExerciseVariableState(initMessages, System.currentTimeMillis(), UpdateImportance.DEFAULT)),
+      List(SyncInformation(LocalStorageSync, SyncStrategy.SYNC_EVERYTHING)),
+      io)
+  }
+
 
   def stringVariable(exerciseContent: ExerciseContent, defaultValue: String): InteractionVariable[String] = {
     val io = new Serializer[String] {
@@ -99,12 +113,12 @@ object InteractionVariable {
     val res = serializedHistory.split(";;;;;").flatMap(curEvent => {
       //println("try to parse event: " + curEvent)
       val parts = curEvent.split(";;;")
-      if(parts.size == 3) {
+      if (parts.size == 3) {
         val timestamp = parts(0).toLong
         val value = serializer.deserialize(parts(1))
         val importance = UpdateImportance.valueOf(parts(2))
         Option(ExerciseVariableState[T](value, timestamp, importance))
-      }else{
+      } else {
         None
       }
     })

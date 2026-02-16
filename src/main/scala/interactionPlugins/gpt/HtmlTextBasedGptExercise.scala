@@ -3,7 +3,8 @@ package interactionPlugins.gpt
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveSvgElement
-import contentmanagement.webElements.genericHtmlElements.editor.SimpleStringExerciseVariableTextEditor
+import contentmanagement.model.chat.MessengerModel
+import contentmanagement.webElements.genericHtmlElements.editor.{SimpleMessengerEditor, SimpleStringExerciseVariableTextEditor}
 import interactionPlugins.gpt.HtmlTextBasedGptExercise.{gradingButtonSvg, scaffoldingButtonSvg}
 import org.scalajs.dom.SVGLinearGradientElement
 import workbook.model.exercise.{ExerciseContent, InteractionVariable}
@@ -18,16 +19,32 @@ case class HtmlTextBasedGptExercise(
                                    ) extends
   HtmlWorkbookElement {
 
+  // textfield editor
   val solutionHistory: ExerciseInteractionHistory[String] = new ExerciseInteractionHistory[String] {
     override def underlyingExercise: ExerciseContent = exerciseContent
+
     override def editorStateVariable: InteractionVariable[String] = InteractionVariable.stringVariable(underlyingExercise, "")
   }
   private val solutionEditor = SimpleStringExerciseVariableTextEditor(solutionHistory.editorStateVariable)
 
+  // scaffolding
+  private val sampleMessages = MessengerModel.testSample()
+  private val messengerHistory: ExerciseInteractionHistory[MessengerModel] = new ExerciseInteractionHistory[MessengerModel] {
+    override def underlyingExercise: ExerciseContent = exerciseContent
+
+    override def editorStateVariable: InteractionVariable[MessengerModel] = InteractionVariable.messengerVariable(underlyingExercise, sampleMessages)
+  }
+  private val scaffoldingEditor = SimpleMessengerEditor(messengerHistory.editorStateVariable)
+
+  // exercise information
   private val htmlTitleElement = HtmlExerciseTitleElement(exerciseContent.titleMap)
   private val htmlInstructionElement = HtmlPlaintextInstructionElement(exerciseContent.instructionMap)
 
-  private val scaffoldingButton = HtmlButtonElement(scaffoldingButtonSvg, event => println("scaffolding not implemented yet :( "))
+  // buttons
+  private val scaffoldingButton = HtmlButtonElement(scaffoldingButtonSvg, event => {
+    println("scaffolding not implemented yet :( ")
+    fullscreenElement.setElementFullscreen(scaffoldingEditor.getDomElement())
+  })
   private val submitButton = HtmlButtonElement(gradingButtonSvg, event => println("grading not implemented yet :( "))
 
 

@@ -1,9 +1,13 @@
 package workbook.model.exercise
 
-import contentmanagement.model.language.AppLanguage
+import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 
 trait ExerciseContent() extends SubExerciseContent {
-  def titleMap: Map[AppLanguage, String]
+  def titleMap: LanguageMap[HumanLanguage]
+}
+
+trait ExerciseWithText extends SubExerciseContent {
+  def instructionMap: LanguageMap[HumanLanguage]
 }
 
 trait SubExerciseContent() {
@@ -11,5 +15,4 @@ trait SubExerciseContent() {
 
   def estimatedTimeInMinutes: Double
 
-  def instructionMap: Map[AppLanguage, String]
 }

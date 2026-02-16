@@ -2,7 +2,7 @@ package interactionPlugins.blockEnvironment.exercise
 
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.geometry.{Bounds, Point}
-import contentmanagement.model.language.AppLanguage
+import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
@@ -10,11 +10,10 @@ import workbook.model.exercise.ExerciseContent
 
 case class ProgrammingExercise(
                                 id: String,
-                                titleMap: Map[AppLanguage, String],
-                                instructionMap: Map[AppLanguage, String],
+                                titleMap: LanguageMap[HumanLanguage],
+                                instructionMap: LanguageMap[HumanLanguage],
                                 expectedResult: AppSvgElement
                               ) extends ExerciseContent {
-
 
   override def estimatedTimeInMinutes: Double = 3
 }

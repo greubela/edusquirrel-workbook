@@ -2,19 +2,16 @@
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
 import content.TestWorkbook.TestWorkbook
-import content.monks.MonksWorkbook
 import content.plantworkshop
 import content.plantworkshop.PlantWorkshopApp
-import contentmanagement.model.language.AppLanguage
 import contentmanagement.model.language.AppLanguage.English
-import interactionPlugins.blockEnvironment.exercise.{HtmlProgrammingExercise, ProgrammingExercise}
+import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
-import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
 import org.scalajs.dom
 import org.scalajs.dom.document
 import util.JSXGraph.*
-import workbook.model.exercise.{ExerciseContent, ExerciseSection}
+import workbook.model.exercise.{ExerciseContent, ExerciseSection, ExerciseWithText}
 import workbook.workbookHtmlElements.container.HtmlFullScreenElement
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
@@ -25,7 +22,8 @@ private val idAndContentList: List[(String, Element)] = List(
   ("plantWorkshopApp", plantworkshop.PlantWorkshopApp.appElement),
   ("testEditor", HtmlFullscreenTurtleEditorElement(BeProgram.debugGraphicsProgram().fullProgram).getDomElement()),
   ("testWorksheet", TestWorkbook(fullscreenElement).getDomElement()),
-  ("worksheetMonks", MonksWorkbook().getDomElement())
+  ("worksheetMonks", TestWorkbook(fullscreenElement).getDomElement()),
+  //("worksheetMonks", MonksWorkbook().getDomElement())
 )
 
 def insertWorkbookContent(): Unit = {
@@ -143,12 +141,12 @@ final case class SimpleExercise(
                                  englishTitle: String,
                                  duration: Double,
                                  instruction: String
-                               ) extends ExerciseContent {
-  override def titleMap: Map[AppLanguage, String] = Map(AppLanguage.English -> englishTitle)
+                               ) extends ExerciseContent with ExerciseWithText {
+  override def titleMap: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> englishTitle))
 
   override def estimatedTimeInMinutes: Double = duration
 
-  override def instructionMap: Map[AppLanguage, String] = Map(AppLanguage.English -> instruction)
+  def instructionMap: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> instruction))
 }
 
 final case class SampleSection(

@@ -1,12 +1,12 @@
 package interactionPlugins.pythonExercises
 
-import contentmanagement.model.language.AppLanguage
+import contentmanagement.model.language.{AppLanguage, HumanLanguage, *}
 import workbook.model.exercise.ExerciseContent
 
 final case class PythonExerciseContent(
     id: String,
-    titleTranslations: Map[AppLanguage, String],
-    instructionTranslations: Map[AppLanguage, String],
+    titleTranslations: LanguageMap[HumanLanguage],
+    instructionTranslations: LanguageMap[HumanLanguage],
     estimatedTimeInMinutes: Double,
     starterCode: String,
     visibleTests: Seq[PythonUnitTest],
@@ -17,9 +17,9 @@ final case class PythonExerciseContent(
     memoryLimitMb: Int = 128
 ) extends ExerciseContent {
 
-  override def titleMap: Map[AppLanguage, String] = titleTranslations
+  override def titleMap: LanguageMap[HumanLanguage] = titleTranslations
 
-  override def instructionMap: Map[AppLanguage, String] = instructionTranslations
+  def instructionMap: LanguageMap[HumanLanguage] = instructionTranslations
 
 }
 
@@ -42,10 +42,10 @@ object PythonExerciseContent {
 
   val helloWorld: PythonExerciseContent = PythonExerciseContent(
     id = "python-hello-world",
-    titleTranslations = Map(english -> "Hello World"),
-    instructionTranslations = Map(
+    titleTranslations = LanguageMap.mapBasedLanguageMap(Map(english -> "Hello World")),
+    instructionTranslations = LanguageMap.mapBasedLanguageMap(Map(
       english -> "Write a function named `say_hello` that returns the string `Hello, World!` and prints it when executed."
-    ),
+    )),
     estimatedTimeInMinutes = 2,
     starterCode =
       """|def say_hello():
@@ -101,10 +101,10 @@ assert result.strip() == "Hello, World!", "Ensure no additional whitespace is re
 
   val fizzBuzz: PythonExerciseContent = PythonExerciseContent(
     id = "python-fizzbuzz",
-    titleTranslations = Map(english -> "FizzBuzz"),
-    instructionTranslations = Map(
+    titleTranslations = LanguageMap.mapBasedLanguageMap(Map(english -> "FizzBuzz")),
+    instructionTranslations = LanguageMap.mapBasedLanguageMap(Map(
       english -> "Implement `fizzbuzz_sequence(limit)` returning a list from 1..limit with FizzBuzz substitutions."
-    ),
+    )),
     estimatedTimeInMinutes = 5,
     starterCode =
       """|def fizzbuzz_sequence(limit: int) -> list[str]:
@@ -153,10 +153,10 @@ assert result[10] == "Fizz", "11th element (value 11) should be 'Fizz'"
 
   val ninetyNineBottles: PythonExerciseContent = PythonExerciseContent(
     id = "python-99-bottles",
-    titleTranslations = Map(english -> "99 Bottles of Beer"),
-    instructionTranslations = Map(
+    titleTranslations = LanguageMap.mapBasedLanguageMap(Map(english -> "99 Bottles of Beer")),
+    instructionTranslations = LanguageMap.mapBasedLanguageMap(Map(
       english -> "Create `verse(start)` that returns the lyrics for a single verse of '99 Bottles of Beer'."
-    ),
+    )),
     estimatedTimeInMinutes = 8,
     starterCode =
       """|def verse(start: int) -> str:
@@ -206,111 +206,10 @@ assert verse(0) == expected
     )
   )
 
-  val fibonacci: PythonExerciseContent = PythonExerciseContent(
-    id = "python-fibonacci",
-    titleTranslations = Map(english -> "Fibonacci Sequence"),
-    instructionTranslations = Map(
-      english -> "Implement `fibonacci(n)` returning a list with the first n Fibonacci numbers starting at 0."
-    ),
-    estimatedTimeInMinutes = 6,
-    starterCode =
-      """|def fibonacci(n: int) -> list[int]:
-         |    #Return the first n Fibonacci numbers.
-         |    if n <= 0:
-         |        return []
-         |    if n == 1:
-         |        return [0]
-         |    sequence = [0, 1]
-         |    while len(sequence) < n:
-         |        sequence.append(0)
-         |    return sequence
-         |""".stripMargin,
-    visibleTests = Seq(
-      PythonUnitTest(
-        name = "First numbers",
-        code =
-          """from student_solution import fibonacci
-
-assert fibonacci(1) == [0]
-assert fibonacci(2) == [0, 1]
-"""",
-        hint = Some("Each number after the first two is the sum of the previous two numbers.")
-      ),
-      PythonUnitTest(
-        name = "Longer prefix",
-        code =
-          """from student_solution import fibonacci
-
-assert fibonacci(7) == [0, 1, 1, 2, 3, 5, 8]
-""""
-      )
-    ),
-    hiddenTests = Seq(
-      PythonUnitTest(
-        name = "Handles zero",
-        code =
-          """from student_solution import fibonacci
-
-assert fibonacci(0) == []
-assert fibonacci(10)[-1] == 34
-""""
-      )
-    )
-  )
-
-  val openLibraryRequest: PythonExerciseContent = PythonExerciseContent(
-    id = "python-openlibrary-request",
-    titleTranslations = Map(english -> "Open Library Lookup"),
-    instructionTranslations = Map(
-      english -> "Implement `fetch_openlibrary()` that uses requests to fetch the book JSON and returns the response text."
-    ),
-    estimatedTimeInMinutes = 10,
-    starterCode =
-      """|def fetch_openlibrary() -> str:
-         |    #Fetch the Open Library JSON for OL37397230M and return the response text.
-         |    raise NotImplementedError("Use the requests library to retrieve the JSON and return its text.")
-         |""".stripMargin,
-    visibleTests = Seq(
-      PythonUnitTest(
-        name = "Response contains key",
-        code =
-          """import pyodide_http
-pyodide_http.patch_all()
-
-from student_solution import fetch_openlibrary
-
-data = fetch_openlibrary()
-assert "OL37397230M" in data, "The response should mention the requested book identifier."
-"""",
-        hint = Some("Call requests.get with the provided URL and return the `.text` of the response.")
-      )
-    ),
-    hiddenTests = Seq(
-      PythonUnitTest(
-        name = "Response parses as JSON",
-        code =
-          """import json
-import pyodide_http
-pyodide_http.patch_all()
-
-from student_solution import fetch_openlibrary
-
-payload = fetch_openlibrary()
-parsed = json.loads(payload)
-assert parsed["key"] == "/books/OL37397230M", "The JSON should contain the book key."
-assert "title" in parsed, "The book metadata should include a title."
-""""
-      )
-    ),
-    packages = Seq("pyodide-http", "requests"),
-    timeoutMs = 10000
-  )
 
   val defaults: Seq[PythonExerciseContent] = Seq(
     helloWorld,
     fizzBuzz,
-    fibonacci,
     ninetyNineBottles,
-    openLibraryRequest
   )
 }

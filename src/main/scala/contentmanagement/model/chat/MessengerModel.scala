@@ -30,12 +30,12 @@ object MessengerModel {
 
   case class Message(text: String, timestampEpochMillis: String, author: Person, senderRole: SenderRole = SenderRole.USER)
 
-  def sampleConversationWithStudentAndAgent(): MessengerModel = {
+  def testSample(): MessengerModel = {
     val student = BasicPerson(LanguageMap.universalMap("Student"))
     val agent = BasicPerson(LanguageMap.universalMap("Agent"))
 
-    val startTime = System.currentTimeMillis() - 20.minutes.toMillis
-    val minute = 1.minute.toMillis
+    val startTime = System.currentTimeMillis() - (1000 * 60 * 60 * 3)
+    val minute = 60 * 1000
 
     val messages = List(
       Message("Hi! Can you help me with this task?", (startTime + minute * 0).toString, student, SenderRole.USER),
