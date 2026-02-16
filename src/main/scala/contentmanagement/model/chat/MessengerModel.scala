@@ -3,8 +3,6 @@ package contentmanagement.model.chat
 import contentmanagement.model.chat.MessengerModel.{Message, SenderRole}
 import contentmanagement.model.language.{HumanLanguage, LanguageMap}
 
-import scala.concurrent.duration.*
-
 case class MessengerModel(messages: List[Message]) {
 
   def orderedMessages: List[Message] =
