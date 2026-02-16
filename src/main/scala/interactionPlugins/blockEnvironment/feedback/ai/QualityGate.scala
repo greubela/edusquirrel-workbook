@@ -20,25 +20,32 @@ object QualityGate {
     requiredTestNames: Seq[String]
   ): GateResult = {
     val trimmed = Option(rawText).getOrElse("").trim
-    val repaired = repair(trimmed, constraints, requiredTestNames)
+    val repaired = repairBestEffort(trimmed, constraints, requiredTestNames)
     val reasons = validate(repaired, constraints, requiredTestNames)
-    GateResult(passed = reasons.isEmpty, reasons = reasons, finalText = repaired)
+    val finalText =
+      if repaired.nonEmpty then repaired
+      else minimalSafeFallback(constraints, requiredTestNames)
+    val finalReasons = validate(finalText, constraints, requiredTestNames)
+    GateResult(passed = finalReasons.isEmpty, reasons = finalReasons, finalText = finalText)
   }
 
   /**
    * Attempts to make the text pass constraints by applying safe, rule-based repairs.
    * This is intentionally conservative: we only rewrite structure, never add solution code.
    */
-  private def repair(
+  private def repairBestEffort(
     text: String,
     constraints: PromptTemplates.OutputConstraints,
     requiredTestNames: Seq[String]
   ): String = {
-    val normalized = normalize(text, constraints)
-    val withoutCodeBlocks =
-      if constraints.forbidCodeBlocks then stripCodeBlocks(normalized) else normalized
+    val normalized0 = normalize(text, constraints)
 
-    val shortened = shortenPreservingSteps(withoutCodeBlocks, constraints)
+    // If code blocks are forbidden, redact them rather than hard-failing the whole answer.
+    // This keeps the response useful while preventing solution leakage.
+    val normalized =
+      if constraints.forbidCodeBlocks then redactCodeBlocks(normalized0) else normalized0
+
+    val shortened = shortenPreservingSteps(normalized, constraints)
     val ensuredTest =
       if constraints.requireMentionedTestName then ensureMentionedTestName(shortened, requiredTestNames)
       else shortened
@@ -48,7 +55,46 @@ object QualityGate {
     truncated.trim
   }
 
+  private def redactCodeBlocks(text: String): String = {
+    if text == null || text.isEmpty then ""
+    else {
+      // Remove fenced blocks (``` ... ```), preserving surrounding text.
+      val fence = "```"
+      val sb = new StringBuilder
+      var i = 0
+      var inFence = false
+      while i < text.length do
+        if text.startsWith(fence, i) then
+          inFence = !inFence
+          i += fence.length
+        else if inFence then i += 1
+        else {
+          sb.append(text.charAt(i))
+          i += 1
+        }
+      sb.toString
+        .replaceAll("\n{3,}", "\n\n")
+        .trim
+    }
+  }
+
+  private def minimalSafeFallback(
+    constraints: PromptTemplates.OutputConstraints,
+    requiredTestNames: Seq[String]
+  ): String = {
+    val tn = requiredTestNames.find(_.nonEmpty).getOrElse("the failing case")
+    val intro = "Try this:"
+    val steps =
+      Seq(
+        s"1. Re-run $tn and note expected vs observed behavior.",
+        "2. Trace your variables step-by-step until the first divergence.",
+        "3. Adjust only the condition/update causing that divergence and re-test."
+      ).take(math.max(constraints.minSteps, math.min(constraints.maxSteps, 3)))
+    truncateToMaxWords((intro + "\n" + steps.mkString("\n")).trim, constraints.maxWords)
+  }
+
   private def shortenPreservingSteps(text: String, constraints: PromptTemplates.OutputConstraints): String = {
+    {
     // Prefer a clean student-facing structure:
     // - one short intro sentence (if present), otherwise insert a neutral intro
     // - 2–4 numbered/bullet steps
@@ -57,6 +103,13 @@ object QualityGate {
 
     def isStepLine(line: String): Boolean =
       (line.length >= 2 && line.charAt(0).isDigit && line.contains(".")) || line.startsWith("-")
+
+    def normalizeStepLine(line: String, stepNr: Int): String = {
+      val t = line.trim
+      if t.startsWith("-") then s"$stepNr. " + t.drop(1).trim
+      else if t.length >= 2 && t.charAt(0).isDigit && t.contains(".") then t
+      else s"$stepNr. $t"
+    }
 
     def isMetaLine(line: String): Boolean = {
       val t = line.trim.toLowerCase
@@ -83,25 +136,19 @@ object QualityGate {
       else "Try this:"
 
     // Keep steps; remove pure meta lines from non-step content.
-    val stepLines = rawLines.filter(isStepLine).take(constraints.maxSteps)
-    if stepLines.isEmpty then text
+    val stepLines0 = rawLines.filter(isStepLine).take(constraints.maxSteps)
+    if stepLines0.isEmpty then text
     else {
       val introCandidates = rawLines.filterNot(isStepLine).filterNot(isMetaLine)
-      val intro = introCandidates.headOption.getOrElse(defaultIntro(stepLines))
+      val intro0 = introCandidates.headOption.getOrElse(defaultIntro(stepLines0))
+
+      // Keep the intro short so truncation does not delete the actual steps.
+      val introBudget = math.max(6, math.min(12, constraints.maxWords / 3))
+      val intro = truncateToMaxWords(intro0.replace("\n", " ").trim, introBudget)
+      val stepLines = stepLines0.zipWithIndex.map { case (l, idx) => normalizeStepLine(l, idx + 1) }
       (Seq(intro) ++ stepLines).mkString("\n")
     }
-  }
-
-  private def stripCodeBlocks(text: String): String = {
-    val lines = text.replace("\r\n", "\n").split("\n", -1).toSeq
-    val out = scala.collection.mutable.ArrayBuffer.empty[String]
-    var inBlock = false
-    lines.foreach { line =>
-      val trimmed = line.trim
-      if trimmed.startsWith("```") then inBlock = !inBlock
-      else if !inBlock then out += line
     }
-    out.mkString("\n").trim
   }
 
   private def ensureMentionedTestName(text: String, requiredTestNames: Seq[String]): String = {
@@ -146,12 +193,14 @@ object QualityGate {
       if missing == 0 then afterShorten
       else {
         val testNameOpt = requiredTestNames.find(_.nonEmpty)
+        val existing = countStepLines(afterShorten)
         val genericSteps = (1 to missing).map { i =>
+          val stepNr = existing + i
           val tn = testNameOpt.getOrElse("the failing case")
           i match
-            case 1 => s"- Re-run $tn and confirm the observed vs expected behavior."
-            case 2 => s"- Identify the exact condition where your update logic should change the running result."
-            case _ => s"- Try a tiny counterexample that should change the outcome and trace the variable updates."
+            case 1 => s"$stepNr. Re-run $tn and confirm observed vs expected behavior."
+            case 2 => s"$stepNr. Identify the exact condition where your update logic should change the running result."
+            case _ => s"$stepNr. Try a tiny counterexample and trace the variable updates."
         }
         (afterShorten.trim + "\n" + genericSteps.mkString("\n")).trim
       }
@@ -161,9 +210,7 @@ object QualityGate {
   private def normalize(text: String, constraints: PromptTemplates.OutputConstraints): String = {
     val normalizedNewlines = text.replace("\r\n", "\n")
 
-    // Never try to "clean" real code blocks; those should fail the gate.
-    if constraints.forbidCodeBlocks && normalizedNewlines.contains("```") then normalizedNewlines
-    else {
+    {
       val withoutBackticks =
         if constraints.forbidBackticks then normalizedNewlines.replace("`", "") else normalizedNewlines
 
@@ -305,9 +352,16 @@ object QualityGate {
   private def truncateToMaxWords(text: String, maxWords: Int): String = {
     if maxWords <= 0 then ""
     else {
-      val words = text.split("\\s+").filter(_.nonEmpty)
-      if words.length <= maxWords then text
-      else words.take(maxWords).mkString(" ")
+      // Important: preserve newlines and step formatting.
+      // Joining words with spaces would collapse numbered/bulleted lists into one line,
+      // which then fails the step-count validation.
+      val Word = "\\S+".r
+      val matches = Word.findAllMatchIn(text).toIndexedSeq
+      if matches.length <= maxWords then text
+      else {
+        val cut = matches(maxWords - 1).end
+        text.substring(0, cut).trim
+      }
     }
   }
 

@@ -1,5 +1,7 @@
 package interactionPlugins.blockEnvironment.feedback
 
+import contentmanagement.model.language.AppLanguage
+
 /**
  * Encapsulates the collection of tests, fixtures, packages and hints that
  * should run for a specific submission.
@@ -39,10 +41,12 @@ object BlockFeedbackTestFactory:
     val code = request.pythonSource.trim
     val builder = Seq.newBuilder[String]
     if code.isEmpty then
-      builder += "Noch kein Code vorhanden. Bitte starte mit einer Lösungsskizze."
+      if request.humanLanguage == AppLanguage.German then
+        builder += "Noch kein Code vorhanden. Bitte starte mit einer Lösungsskizze."
+      else
+        builder += "No code yet. Please start with a solution sketch."
     if code.contains("TODO") then
       builder += "TODO-Marker sind noch vorhanden. Überarbeite den Code vor dem Einreichen."
-      //not sure
     if request.submissionNr > 3 then
       builder += "Du hast mehrfach eingereicht. Schau dir die letzten Änderungen kritisch an."
     builder.result()

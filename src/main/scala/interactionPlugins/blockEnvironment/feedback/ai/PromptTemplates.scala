@@ -1,6 +1,7 @@
 package interactionPlugins.blockEnvironment.feedback.ai
 
 import contentmanagement.model.language.{AppLanguage, HumanLanguage}
+import interactionPlugins.blockEnvironment.feedback.diagnosis.{Diagnosis, DiagnosisJson}
 import interactionPlugins.blockEnvironment.feedback.ml.{BlockFeedbackSignals, DecisionLayer}
 
 /**
@@ -137,6 +138,7 @@ object PromptTemplates {
    */
   def buildPrompt(
     signals: BlockFeedbackSignals,
+    diagnosis: Diagnosis,
     decision: DecisionLayer.Decision,
     humanLanguage: HumanLanguage,
     visibleTestNames: Seq[String],
@@ -152,10 +154,8 @@ object PromptTemplates {
     val primaryTestName = testNames.headOption
 
     val functionNameHint = extractFunctionNameHint(signals, testNames)
-    val maxWords = 70
-
-    val constraints = OutputConstraints(
-      maxWords = maxWords,
+    val baseConstraints = OutputConstraints(
+      maxWords = 80,
       requireMentionedTestName = false,
       forbidCodeBlocks = true,
       forbidMarkdown = true,
@@ -171,6 +171,28 @@ object PromptTemplates {
         },
       issueTypeHint = Some(decision.primaryIssue)
     )
+
+    def adaptiveConstraints(
+      base: OutputConstraints,
+      lang: HumanLanguage,
+      issue: DecisionLayer.IssueType
+    ): OutputConstraints =
+      val langBoost = if lang == AppLanguage.German then 10 else 0
+      val issueBoost = issue match
+        case DecisionLayer.IssueType.COMPILE_ERROR => 10
+        case DecisionLayer.IssueType.EXCEPTION_TYPE => 10
+        case DecisionLayer.IssueType.FORMAT_OUTPUT => 6
+        case DecisionLayer.IssueType.IO_CONTRACT => 6
+        case _ => 0
+
+      val allowBackticks = lang == AppLanguage.German || issue == DecisionLayer.IssueType.EXCEPTION_TYPE || issue == DecisionLayer.IssueType.COMPILE_ERROR
+
+      base.copy(
+        maxWords = base.maxWords + langBoost + issueBoost,
+        forbidBackticks = base.forbidBackticks && !allowBackticks
+      )
+
+    val constraints = adaptiveConstraints(baseConstraints, humanLanguage, decision.primaryIssue)
 
     val testsSection =
       if testNames.isEmpty then "<no failing tests available>"
@@ -220,6 +242,14 @@ object PromptTemplates {
         (if codeShort.isEmpty then "<empty>" else codeShort)
     }
 
+    val diagnosisJson =
+      try DiagnosisJson.toJsonString(diagnosis)
+      catch case _: Throwable => "{}"
+
+    val recommendedChecks =
+      if diagnosis.recommendedNextChecks.isEmpty then "<none>"
+      else diagnosis.recommendedNextChecks.take(6).map(s => s"- $s").mkString("\n")
+
     val instruction =
       val focus = IssueModule.forIssue(decision.primaryIssue).focusLines(humanLanguage, signals).mkString("\n")
       if isGerman(humanLanguage) then
@@ -249,11 +279,17 @@ object PromptTemplates {
            |$focus
            |
            |Routing:
-           |- primaryIssue: ${decision.primaryIssue}
-           |- secondaryIssues: ${decision.secondaryIssues.mkString(", ")}
-           |- severity: ${decision.severity}
-           |- causes: ${decision.topCauses.mkString("; ")}
-           |- evidence: ${decision.evidence.map(e => s"${e.key}=${e.value}").mkString("; ")}
+           |- primaryIssue: ${diagnosis.primaryIssue}
+           |- secondaryIssues: ${diagnosis.secondaryIssues.mkString(", ")}
+           |- severity: ${diagnosis.severity}
+           |- confidence: ${diagnosis.confidence}
+           |- taskProfile.tags: ${diagnosis.taskProfile.tags.mkString(", ")}
+           |
+           |Diagnosis JSON (authoritative; do NOT copy verbatim to student):
+           |$diagnosisJson
+           |
+           |Recommended checks (use as ideas; do not list all):
+           |$recommendedChecks
            |
             |Fehlschlagende Fälle (nur Kontext, nicht zitieren):
             |$behaviorExamples
@@ -291,11 +327,17 @@ object PromptTemplates {
            |$focus
            |
            |Routing:
-           |- primaryIssue: ${decision.primaryIssue}
-           |- secondaryIssues: ${decision.secondaryIssues.mkString(", ")}
-           |- severity: ${decision.severity}
-           |- causes: ${decision.topCauses.mkString("; ")}
-           |- evidence: ${decision.evidence.map(e => s"${e.key}=${e.value}").mkString("; ")}
+           |- primaryIssue: ${diagnosis.primaryIssue}
+           |- secondaryIssues: ${diagnosis.secondaryIssues.mkString(", ")}
+           |- severity: ${diagnosis.severity}
+           |- confidence: ${diagnosis.confidence}
+           |- taskProfile.tags: ${diagnosis.taskProfile.tags.mkString(", ")}
+           |
+           |Diagnosis JSON (authoritative; do NOT copy verbatim to student):
+           |$diagnosisJson
+           |
+           |Recommended checks (use as ideas; do not list all):
+           |$recommendedChecks
            |
            |Failing cases (context only, do not quote):
            |$behaviorExamples
@@ -320,7 +362,7 @@ object PromptTemplates {
     humanLanguage: HumanLanguage
   ): String = {
     val failing = signals.runtimeOutcome.tests.filterNot(_.passed)
-    val firstTestName = failing.headOption.map(_.name).getOrElse("<test>")
+    val firstTestName = failing.headOption.map(_.name).getOrElse(if isGerman(humanLanguage) then "deine Abgabe" else "your submission")
     val functionNameHint = extractFunctionNameHint(signals, failing.map(_.name).distinct.take(5))
 
     if isGerman(humanLanguage) then

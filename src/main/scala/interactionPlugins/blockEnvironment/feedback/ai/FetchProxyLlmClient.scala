@@ -15,13 +15,46 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
  */
 final class FetchProxyLlmClient(
   endpointUrl: String,
-  requestTimeoutMs: Int = 20_000
+  // Must be >= tools/openai-proxy/app.py UPSTREAM_TIMEOUT_S (defaults to 25s),
+  // otherwise the browser will time out and we'll silently fall back even if
+  // the proxy eventually returns a valid response.
+  requestTimeoutMs: Int = 35_000
 ) extends LlmClient {
 
   override def complete(prompt: String, systemPrompt: Option[String] = None): Future[String] = {
     val payload = js.Dynamic.literal(
       "prompt" -> prompt,
       "systemPrompt" -> systemPrompt.getOrElse("")
+    )
+
+    val init = new dom.RequestInit {
+      method = HttpMethod.POST
+      headers = js.Dictionary("Content-Type" -> "application/json")
+      body = JSON.stringify(payload)
+    }
+
+    val fetchF: Future[dom.Response] = jsPromiseToFuture(dom.fetch(endpointUrl, init))
+
+    withTimeout(fetchF.flatMap { resp =>
+      if (!resp.ok) {
+        jsPromiseToFuture(resp.text()).flatMap { txt =>
+          Future.failed(new Exception(s"LLM proxy HTTP ${resp.status}: ${Option(txt).getOrElse("")}"))
+        }
+      } else {
+        readText(resp)
+      }
+    }, requestTimeoutMs)
+  }
+
+  override def completeWithMeta(
+    prompt: String,
+    systemPrompt: Option[String] = None,
+    logTag: Option[String] = None
+  ): Future[String] = {
+    val payload = js.Dynamic.literal(
+      "prompt" -> prompt,
+      "systemPrompt" -> systemPrompt.getOrElse(""),
+      "logTag" -> logTag.getOrElse("")
     )
 
     val init = new dom.RequestInit {
@@ -91,6 +124,36 @@ object FetchProxyLlmClient {
    * - Else use the default localhost URL.
    */
   def default(): FetchProxyLlmClient = {
+    def loadDotenvIfAvailable(): Unit =
+      try {
+        val process = js.Dynamic.global.selectDynamic("process")
+        if (js.isUndefined(process) || process == null) ()
+        else {
+          val require = js.Dynamic.global.selectDynamic("require")
+          if (js.isUndefined(require) || require == null) ()
+          else {
+            val dotenv = require.call(null, "dotenv")
+            if (!js.isUndefined(dotenv) && dotenv != null) {
+              try {
+                dotenv.selectDynamic("config").call(
+                  dotenv,
+                  js.Dynamic.literal("path" -> "tools/openai-proxy/.env")
+                )
+              } catch {
+                case _: Throwable => ()
+              }
+              try {
+                dotenv.selectDynamic("config").call(dotenv)
+              } catch {
+                case _: Throwable => ()
+              }
+            }
+          }
+        }
+      } catch {
+        case _: Throwable => ()
+      }
+
     def readGlobalLlmProxyUrl: Option[String] =
       try {
         // Scala.js restriction: global scope selections must use a static name.
@@ -115,6 +178,8 @@ object FetchProxyLlmClient {
       } catch {
         case _: Throwable => None
       }
+
+    loadDotenvIfAvailable()
 
     val url =
       readGlobalLlmProxyUrl
