@@ -1,6 +1,6 @@
 package workbook.model.history
 
-import workbook.model.exercise.{ExerciseContent, ExerciseVariable}
+import workbook.model.exercise.{ExerciseContent, InteractionVariable}
 
 import scala.collection.mutable
 
@@ -13,6 +13,6 @@ trait ExerciseInteractionHistory[T]() {
 
   def underlyingExercise: ExerciseContent
 
-  def editorStateVariable: ExerciseVariable[T]
+  def editorStateVariable: InteractionVariable[T]
 
 }

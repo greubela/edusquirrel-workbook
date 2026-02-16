@@ -1,6 +1,6 @@
 package workbook.model.history.sync
 
-import workbook.model.exercise.ExerciseVariable.ExerciseVariableState
+import workbook.model.exercise.InteractionVariable.ExerciseVariableState
 
 
 sealed trait SyncStrategy {

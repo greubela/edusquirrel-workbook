@@ -6,7 +6,7 @@ import com.raquo.laminar.nodes.ReactiveSvgElement
 import contentmanagement.webElements.genericHtmlElements.editor.SimpleStringExerciseVariableTextEditor
 import interactionPlugins.gpt.HtmlTextBasedGptExercise.{gradingButtonSvg, scaffoldingButtonSvg}
 import org.scalajs.dom.SVGLinearGradientElement
-import workbook.model.exercise.{ExerciseContent, ExerciseVariable}
+import workbook.model.exercise.{ExerciseContent, InteractionVariable}
 import workbook.model.history.ExerciseInteractionHistory
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 import workbook.workbookHtmlElements.basic.{HtmlButtonElement, HtmlExerciseTitleElement, HtmlPlaintextInstructionElement}
@@ -20,7 +20,7 @@ case class HtmlTextBasedGptExercise(
 
   val solutionHistory: ExerciseInteractionHistory[String] = new ExerciseInteractionHistory[String] {
     override def underlyingExercise: ExerciseContent = exerciseContent
-    override def editorStateVariable: ExerciseVariable[String] = ExerciseVariable.stringVariable(underlyingExercise, "")
+    override def editorStateVariable: InteractionVariable[String] = InteractionVariable.stringVariable(underlyingExercise, "")
   }
   private val solutionEditor = SimpleStringExerciseVariableTextEditor(solutionHistory.editorStateVariable)
 

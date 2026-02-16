@@ -3,11 +3,11 @@ package contentmanagement.webElements.genericHtmlElements.editor
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement
-import workbook.model.exercise.ExerciseVariable
-import workbook.model.exercise.ExerciseVariable.UpdateImportance
+import workbook.model.exercise.InteractionVariable
+import workbook.model.exercise.InteractionVariable.UpdateImportance
 
 case class SimpleStringExerciseVariableTextEditor(
-                                                   exerciseVariable: ExerciseVariable[String],
+                                                   exerciseVariable: InteractionVariable[String],
                                                  ) extends HtmlAppElement {
 
   def onUserInputChanged(newDisplayedText: String): Unit = {

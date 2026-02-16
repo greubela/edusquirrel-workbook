@@ -2,10 +2,10 @@ package workbook.model.exercise
 
 import com.raquo.airstream.state.Var
 import util.Serializer
-import workbook.model.exercise.ExerciseVariable.{ExerciseVariableState, UpdateImportance, deserializeHistory}
+import workbook.model.exercise.InteractionVariable.{ExerciseVariableState, UpdateImportance, deserializeHistory}
 import workbook.model.history.sync.{LocalStorageSync, SyncInformation, SyncStrategy}
 
-case class ExerciseVariable[T](underlyingExercise: ExerciseContent, initHistory: List[ExerciseVariableState[T]], initSyncInformation: List[SyncInformation], io: Serializer[T]) {
+case class InteractionVariable[T](underlyingExercise: ExerciseContent, initHistory: List[ExerciseVariableState[T]], initSyncInformation: List[SyncInformation], io: Serializer[T]) {
 
   assert(initHistory.nonEmpty, "ExerciseVariable: initHistory must not be empty (must provide history with default state!)")
 
@@ -38,7 +38,7 @@ case class ExerciseVariable[T](underlyingExercise: ExerciseContent, initHistory:
   def syncToAll(): Unit = {
     syncSources.foreach(syncInfo => {
       val eventsToSync = syncInfo.syncStrategy.selectEventsToSync(history)
-      syncInfo.syncSource.syncTo(keyForSerialization, ExerciseVariable.serializeHistory(eventsToSync, io))
+      syncInfo.syncSource.syncTo(keyForSerialization, InteractionVariable.serializeHistory(eventsToSync, io))
     })
 
     //println("[INFO] synced to " + syncSources.size + " sources")
@@ -50,7 +50,7 @@ case class ExerciseVariable[T](underlyingExercise: ExerciseContent, initHistory:
     syncSources.foreach(syncInfo => {
       val eventStr = syncInfo.syncSource.syncKeyFrom(keyForSerialization)
       if (eventStr.nonEmpty) {
-        val addToHistory = ExerciseVariable.deserializeHistory(eventStr.get, io)
+        val addToHistory = InteractionVariable.deserializeHistory(eventStr.get, io)
         val newHistory = (addToHistory.toSet ++ history.toSet).toList.sortBy(_.epochTimestampMillis)
         history = newHistory
       }
@@ -67,22 +67,22 @@ case class ExerciseVariable[T](underlyingExercise: ExerciseContent, initHistory:
 
 }
 
-object ExerciseVariable {
+object InteractionVariable {
 
-  def stringVariable(exerciseContent: ExerciseContent, defaultValue: String): ExerciseVariable[String] = {
+  def stringVariable(exerciseContent: ExerciseContent, defaultValue: String): InteractionVariable[String] = {
     val io = new Serializer[String] {
       override def serialize(obj: String): String = obj
 
       override def deserialize(serialized: String): String = serialized
     }
-    ExerciseVariable(exerciseContent,
+    InteractionVariable(exerciseContent,
       List(ExerciseVariableState(defaultValue, System.currentTimeMillis(), UpdateImportance.DEFAULT)),
       List(SyncInformation(LocalStorageSync, SyncStrategy.SYNC_EVERYTHING)),
       io)
   }
 
-  def apply[T](exerciseContent: ExerciseContent, defaultValue: T, io: Serializer[T]): ExerciseVariable[T] =
-    ExerciseVariable(exerciseContent, List(ExerciseVariableState(defaultValue, System.currentTimeMillis(), UpdateImportance.DEFAULT)), List(), io)
+  def apply[T](exerciseContent: ExerciseContent, defaultValue: T, io: Serializer[T]): InteractionVariable[T] =
+    InteractionVariable(exerciseContent, List(ExerciseVariableState(defaultValue, System.currentTimeMillis(), UpdateImportance.DEFAULT)), List(), io)
 
 
   private def serializeHistory[T](history: List[ExerciseVariableState[T]], serializer: Serializer[T]): String = {
