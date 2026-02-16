@@ -2,24 +2,17 @@
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
 import contentmanagement.model.language.AppLanguage
-import contentmanagement.model.language.AppLanguage.{English, Python}
-import contentmanagement.model.vm.parsing.python.PythonParser
-import interactionPlugins.automaton.{AutomatonExerciseContent, HtmlAutomatonExercise}
-import interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeControllerConfig}
+import contentmanagement.model.language.AppLanguage.English
 import interactionPlugins.blockEnvironment.exercise.{HtmlProgrammingExercise, ProgrammingExercise}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
-import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
-import interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
 import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
-import interactionPlugins.pythonExercises.{HtmlPythonExercise, PythonExerciseContent}
 import org.scalajs.dom
 import org.scalajs.dom.document
 import plantworkshop.PlantWorkshopApp
 import util.JSXGraph.*
 import workbook.model.exercise.{ExerciseContent, ExerciseSection}
 import workbook.workbookHtmlElements.container.HtmlFullScreenElement
-import workbook.workbookHtmlElements.visualization.HtmlWorkbookOverview
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 
@@ -72,8 +65,8 @@ def insertTurtleEditor(): Unit = {
 }
 
 def jsxGraphPreview: HtmlElement =
-//  given Fraction[Double] = summon[Fractional[Double]]
-//  given JsValueConverter[Double] = JsValueConverter.defaultConverter[Double]
+  //  given Fraction[Double] = summon[Fractional[Double]]
+  //  given JsValueConverter[Double] = JsValueConverter.defaultConverter[Double]
 
   val boardId = "jsxgraph-demo-board"
   val jsxFacade = JsxGraphFacade[Double]()
@@ -158,8 +151,7 @@ def insertWorkbook(): Unit = {
   val htmlProgEx = HtmlProgrammingExercise(testProgEx, fullscreenElement)
 
   val combinedElement = div(
-   // jsxGraphPreview,
-    FeedbackDemoElement.element(),
+    // jsxGraphPreview,
     fullscreenElement.getDomElement(),
     /* div(
        h2("Workbook Overview"),
@@ -170,9 +162,6 @@ def insertWorkbook(): Unit = {
      ),*/
     htmlEx.getDomElement(),
     htmlProgEx.getDomElement(),
-    // automatonExercise.getDomElement(),
-    // helloWorldExercise.getDomElement(),
-    // fizzBuzzExercise.getDomElement()
   )
 
   val worksheetDiv = document.getElementById("worksheetDts")
