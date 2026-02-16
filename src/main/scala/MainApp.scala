@@ -18,9 +18,9 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 
 @main
 def mainApp(): Unit = {
-  doSomeCalculations()
+  //doSomeCalculations()
   insertWorkbook()
-  insertTurtleEditor()
+  //insertTurtleEditor()
   insertPlantWorkshop()
 }
 
@@ -135,8 +135,6 @@ def jsxGraphPreview: HtmlElement =
 
 
 def insertWorkbook(): Unit = {
-
-
   // Generic GPT Exercise
   val testEx = TextBasedGptExercise("id-007", Map(AppLanguage.English -> "this is title"), Map(AppLanguage.English -> "this is instruction"))
   val htmlEx = HtmlTextBasedGptExercise(testEx, useFullscreenInteraction = true, fullscreenElement = Some(fullscreenElement))

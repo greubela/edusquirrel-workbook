@@ -23,7 +23,7 @@ import contentmanagement.webElements.genericHtmlElements.editor.*
 
 case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends HtmlWorkbookElement {
 
-  val editorState: EditorState = EditorState.withInitExpression(initExpr)
+  private val editorState: EditorState = EditorState.withInitExpression(initExpr)
   private var programBound: Boolean = false
 
   def bindToProgram(programVar: Var[BeProgram]): Unit = {
@@ -76,8 +76,8 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
 
  
 
-  private val testShapes: List[BeShape] = List(ControlFlowProgramStarter(), ControlFlowProgramStopper(), BeDataArrow(), ControlArrowUpDown(), IfElseSplit(), ControlFlowCross(), IfElseUnion(), ControlFlowConnectorBackground(List((true, true)))) ++ BeShape.allAtomicShapes
-  private val testDims = testShapes.map(_.displaySize(editorState.rendererConfigVar.now()))
+//  private val testShapes: List[BeShape] = List(ControlFlowProgramStarter(), ControlFlowProgramStopper(), BeDataArrow(), ControlArrowUpDown(), IfElseSplit(), ControlFlowCross(), IfElseUnion(), ControlFlowConnectorBackground(List((true, true)))) ++ BeShape.allAtomicShapes
+//  private val testDims = testShapes.map(_.displaySize(editorState.rendererConfigVar.now()))
 
   private val showExpectedOutputVar: Var[Boolean] = Var(false)
 
@@ -128,7 +128,7 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
     )
     
 
-  private val rootElement: Element =
+  private val rootElement: Element = {
     div(
       cls := "be-fullscreen-editor",
 
@@ -145,6 +145,7 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
       // bottom line
       placeholderPanel("config", "Allgemeine Config (Editor, Sprache, ...)", "content goes here"),
     )
+  }
 
   override def getDomElement(): Element = rootElement
 

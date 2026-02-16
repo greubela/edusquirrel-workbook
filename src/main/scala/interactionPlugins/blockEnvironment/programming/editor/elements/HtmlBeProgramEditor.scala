@@ -21,19 +21,21 @@ case class HtmlBeProgramEditor(
   textLanguage: ProgrammingLanguage = Python
 ) extends HtmlAppElement {
 
+  private val parseWarningVar: Var[Option[String]] = Var(None)
+  private val textDirtyVar: Var[Boolean] = Var(false)
+
+
   private val BlockViewTabNr = 0
   private val TextViewTabNr = 1
 
-  val strVar: Var[String] = Var(editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(textLanguage, English))
+  private val strVar: Var[String] = Var(editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(textLanguage, English))
   editorState.treeToEdit.signal.foreach { tree =>
     if (!textDirtyVar.now()) {
       strVar.set(tree.fullProgram.expressionIO.getInLanguage(textLanguage, English))
     }
   }(new Owner() {})
-  var language: HumanLanguage = AppLanguage.English
+  private var language: HumanLanguage = AppLanguage.English
 
-  private val parseWarningVar: Var[Option[String]] = Var(None)
-  private val textDirtyVar: Var[Boolean] = Var(false)
 
   private def syncTextToBlocks(): Unit = {
     if (!textDirtyVar.now()) return
