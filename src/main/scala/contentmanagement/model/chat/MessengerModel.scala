@@ -1,7 +1,9 @@
 package contentmanagement.model.chat
 
 import contentmanagement.model.chat.MessengerModel.{Message, SenderRole}
+import contentmanagement.model.language.AppLanguage
 import contentmanagement.model.language.{HumanLanguage, LanguageMap}
+import upickle.default.*
 
 case class MessengerModel(messages: List[Message]) {
 
@@ -13,6 +15,8 @@ case class MessengerModel(messages: List[Message]) {
 
   def addMessage(text: String, author: MessengerModel.Person, senderRole: SenderRole, timestampEpochMillis: Long = System.currentTimeMillis()): MessengerModel =
     addMessage(Message(text, timestampEpochMillis.toString, author, senderRole))
+
+  def toJson: String = write(this)
 }
 
 object MessengerModel {
@@ -29,6 +33,26 @@ object MessengerModel {
   }
 
   case class Message(text: String, timestampEpochMillis: String, author: Person, senderRole: SenderRole = SenderRole.USER)
+
+  given ReadWriter[LanguageMap[HumanLanguage]] =
+    readwriter[String].bimap[LanguageMap[HumanLanguage]](
+      _.getInLanguage(AppLanguage.default()),
+      value => LanguageMap.universalMap(value)
+    )
+
+  given ReadWriter[SenderRole] = readwriter[String].bimap[SenderRole](_.toString, SenderRole.valueOf)
+
+  given ReadWriter[BasicPerson] = macroRW
+  given ReadWriter[Person] = readwriter[BasicPerson].bimap[Person](
+    {
+      case person: BasicPerson => person
+    },
+    basicPerson => basicPerson
+  )
+  given ReadWriter[Message] = macroRW
+  given ReadWriter[MessengerModel] = macroRW
+
+  def fromJson(json: String): MessengerModel = read[MessengerModel](json)
 
   def testSample(): MessengerModel = {
     val student = BasicPerson(LanguageMap.universalMap("Student"))

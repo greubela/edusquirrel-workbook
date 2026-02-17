@@ -5,9 +5,10 @@ import openai
 import os
 import dotenv
 import json
-import asyncio
 from datetime import datetime
 import traceback
+
+from MessengerModel import SenderRole, messenger_model_from_dict
 
 # Load .env API key
 dotenv.load_dotenv()
@@ -25,6 +26,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.post("/chat")
 async def chat(request: Request):
     data = await request.json()
@@ -32,20 +34,25 @@ async def chat(request: Request):
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
     try:
-        prompt_data = data.get("llmPrompt")
-        if not prompt_data:
-            raise ValueError("Missing 'llmPrompt' in request.")
+        system_prompt = data.get("systemPrompt")
+        if not system_prompt:
+            raise ValueError("Missing 'systemPrompt' in request.")
 
-        system_prompt = prompt_data["systemPrompt"]
-        workbook_prompt = prompt_data["workbookPrompt"]
-        exercise_prompt = prompt_data["exercisePrompt"]
-        student_answer = prompt_data["studentAnswer"]
+        messenger_model_data = data.get("messengerModel")
+        if messenger_model_data is None:
+            raise ValueError("Missing 'messengerModel' in request.")
 
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"[Teacher]:\n{workbook_prompt}\n\n{exercise_prompt}"},
-            {"role": "user", "content": f"[Student]:\n{student_answer}"}
-        ]
+        messenger_model = messenger_model_from_dict(messenger_model_data)
+
+        role_map = {
+            SenderRole.USER: "user",
+            SenderRole.TEACHER: "assistant",
+        }
+
+        messages = [{"role": "system", "content": system_prompt}]
+        for message in messenger_model.messages:
+            role = role_map.get(message.senderRole, "user")
+            messages.append({"role": role, "content": message.text})
 
         # Log input
         os.makedirs("chatlogs", exist_ok=True)
@@ -58,19 +65,19 @@ async def chat(request: Request):
                 stream = await client.chat.completions.create(
                     model="gpt-4",
                     messages=messages,
-                    stream=True
+                    stream=True,
                 )
                 async for chunk in stream:
                     delta = chunk.choices[0].delta
                     if delta and delta.content:
                         yield delta.content
-            except Exception as e:
-                yield f"[ERROR]: {str(e)}\n{traceback.format_exc()}"
+            except Exception as exc:
+                yield f"[ERROR]: {str(exc)}\n{traceback.format_exc()}"
 
         return StreamingResponse(generate(), media_type="text/plain")
 
-    except Exception as e:
+    except Exception as exc:
         return StreamingResponse(
-            content=(line for line in [f"[ERROR]: {str(e)}"]),
-            media_type="text/plain"
+            content=(line for line in [f"[ERROR]: {str(exc)}"]),
+            media_type="text/plain",
         )
