@@ -1,3 +1,4 @@
+/* UNUSED (no references found in HTML/Scala/JS). Temporarily commented out for validation before deletion.
 
 @import url('colors.css');
 
@@ -10,7 +11,7 @@
 	justify-content: center;
 }
 
-/* --- SHOW RESULTS --- */
+/* --- SHOW RESULTS --- * /
 
 
 #cost-builder-show-result{
@@ -44,7 +45,7 @@
 	flex-wrap: no-wrap;
 }
 
-/* --- SELECT FROM--- */
+/* --- SELECT FROM--- * /
 
 #cost-builder-select-from{
 	width: 100%;
@@ -65,7 +66,7 @@
 
 }
 
-/* --- CHECKBOX ROW --- */
+/* --- CHECKBOX ROW --- * /
 
 #cost-selector .checkbox-row{
 	display: flex;
@@ -82,7 +83,7 @@
 
 
 #cost-selector .checkbox-row input[type="checkbox"] {
-	appearance: none; /* Remove default styling */
+	appearance: none; /* Remove default styling * /
 	width: 20px;
 	height: 20px;
 
@@ -111,3 +112,4 @@
 #cost-selector .checkbox-row label {
         color: var(--color-text-secondary);
 }
+*/

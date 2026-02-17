@@ -1,6 +1,7 @@
+/* UNUSED (no references found in HTML/Scala/JS). Temporarily commented out for validation before deletion.
 @import url('colors.css');
 
-/* --- Text Role --- */
+/* --- Text Role --- * /
 
 
 
@@ -20,7 +21,7 @@
 }
 
 
-/* --- Text Importance --- */
+/* --- Text Importance --- * /
 .text-importance-structure{
 }
 
@@ -32,7 +33,7 @@
 	font-size: var(--fontsize-text-small);
 }
 
-/* --- Text Type --- */
+/* --- Text Type --- * /
 
 .text-type-info{
         background-color: var(--color-status-info-bg);
@@ -48,3 +49,5 @@
         background-color: var(--color-status-error-bg);
         color: var(--color-status-error-text);
 }
+
+*/

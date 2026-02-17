@@ -1,6 +1,7 @@
+/* UNUSED (no references found in HTML/Scala/JS). Temporarily commented out for validation before deletion.
 @import url('colors.css');
 
-/* --- Special Elements --- */
+/* --- Special Elements --- * /
 #frame-select .image-row{
 	grid-template-columns: repeat(7,auto);
 	max-height: 20vh;
@@ -27,7 +28,7 @@
 	max-height: 95px;
 }
 
-/* --- Config: Standard Selection (Frame, Art) --- */
+/* --- Config: Standard Selection (Frame, Art) --- * /
 
 .standard-image-selection.image-row{
 	text-align: center;	
@@ -39,7 +40,7 @@
 
         align-items: center;
         justify-content: center;
-        position: relative; /* For checkmark positioning */
+        position: relative; /* For checkmark positioning * /
         padding: 3px;
         flex-wrap: wrap;
 
@@ -75,3 +76,5 @@
 }
 
 
+
+*/
