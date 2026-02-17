@@ -2,20 +2,32 @@ package interactionPlugins.visualNovel
 
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.image.ImageDescription.ServerImageDescription
-import contentmanagement.model.image.{FullImage, ImageDescription}
-import contentmanagement.model.language.{HumanLanguage, LanguageMap}
-import contentmanagement.storage.ImageStorage
-import workbook.model.exercise.ExerciseContent
+import workbook.model.exercise.InteractionVariable.UpdateImportance
+import workbook.model.exercise.{ExerciseContent, InteractionVariable}
+import workbook.model.history.ExerciseInteractionHistory
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-import workbook.workbookHtmlElements.basic.{HtmlExerciseTitleElement, HtmlPlaintextInstructionElement}
-
-import scala.collection.mutable
+import workbook.workbookHtmlElements.basic.HtmlExerciseTitleElement
 
 case class VisualNovelExercise(
                                 exerciseContent: ExerciseContent,
                                 panels: List[VisualNovelPanel]
                                 // ,imageMap: Map[ImageDescription, FullImage]
                               ) extends HtmlWorkbookElement {
+
+  private val pageHistorySerializer = new util.Serializer[List[Int]] {
+    override def serialize(obj: List[Int]): String = obj.mkString(",")
+
+    override def deserialize(str: String): List[Int] =
+      if (str.isBlank) List() else str.split(",").map(_.toInt).toList
+  }
+  private val initialPageHistory = if (panels.nonEmpty) List(1) else List()
+  private val pageHistoryVariable = InteractionVariable(exerciseContent, initialPageHistory, pageHistorySerializer)
+
+  val pageHistory: ExerciseInteractionHistory[List[Int]] = new ExerciseInteractionHistory[List[Int]] {
+    override def underlyingExercise: ExerciseContent = exerciseContent
+
+    override def editorStateVariable: InteractionVariable[List[Int]] = pageHistoryVariable
+  }
 
   private val currentIndex = Var(0)
   val currentPanelSignal: Signal[VisualNovelPanel] = currentIndex.signal.map(panels)
@@ -38,7 +50,7 @@ case class VisualNovelExercise(
     button(
       "←",
       disabled <-- currentIndex.signal.map(_ == 0),
-      onClick --> { _ => currentIndex.update(i => if (i > 0) i - 1 else i) }
+      onClick --> { _ => navigateBy(-1) }
     ),
     span(
       cls := "visual-novel-counter",
@@ -47,9 +59,21 @@ case class VisualNovelExercise(
     button(
       "→",
       disabled <-- currentIndex.signal.map(_ >= totalPanels - 1),
-      onClick --> { _ => currentIndex.update(i => if (i < totalPanels - 1) i + 1 else i) }
+      onClick --> { _ => navigateBy(1) }
     )
   )
+
+  private def navigateBy(offset: Int): Unit = {
+    val oldIndex = currentIndex.now()
+    val newIndex = (oldIndex + offset).max(0).min(totalPanels - 1)
+    if (newIndex != oldIndex) {
+      currentIndex.update(_ => newIndex)
+
+      val currentHistory = pageHistory.editorStateVariable.asVar.now()
+      val updatedHistory = currentHistory :+ (newIndex + 1)
+      pageHistory.editorStateVariable.updateStateFromUserInteraction(updatedHistory, System.currentTimeMillis(), UpdateImportance.MAJOR)
+    }
+  }
 
   private lazy val interactionDomElement = {
 
@@ -89,7 +113,5 @@ case class VisualNovelExercise(
 
   }
 }
-
-
 
 
