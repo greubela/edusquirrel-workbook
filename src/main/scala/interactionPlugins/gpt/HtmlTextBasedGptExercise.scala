@@ -6,7 +6,7 @@ import com.raquo.laminar.nodes.ReactiveSvgElement
 import contentmanagement.model.chat.MessengerModel
 import contentmanagement.webElements.genericHtmlElements.editor.{SimpleMessengerEditor, SimpleStringExerciseVariableTextEditor}
 import interactionPlugins.gpt.HtmlTextBasedGptExercise.{gradingButtonSvg, scaffoldingButtonSvg}
-import org.scalajs.dom.SVGLinearGradientElement
+import org.scalajs.dom.{SVGLinearGradientElement, SVGSVGElement}
 import workbook.model.exercise.{ExerciseContent, InteractionVariable}
 import workbook.model.history.ExerciseInteractionHistory
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
@@ -40,12 +40,18 @@ case class HtmlTextBasedGptExercise(
   private val htmlTitleElement = HtmlExerciseTitleElement(exerciseContent.titleMap)
   private val htmlInstructionElement = HtmlPlaintextInstructionElement(exerciseContent.instructionMap)
 
+
   // buttons
   private val scaffoldingButton = HtmlButtonElement(scaffoldingButtonSvg, event => {
     println("scaffolding not implemented yet :( ")
     fullscreenElement.setElementFullscreen(scaffoldingEditor.getDomElement())
   })
-  private val submitButton = HtmlButtonElement(gradingButtonSvg, event => println("grading not implemented yet :( "))
+  private val submitButton = HtmlButtonElement(gradingButtonSvg, event => {
+    println("grading not implemented yet :( ")
+
+    AccessLLM.callStreamed("write a short poem about a raven", update => println("Update: >>>" + update + "<<<"), error => println("Error: >>>" + error + "<<<"))
+
+  })
 
 
   private val domElement: Element = div(cls := "container-exercise style-vbox",
@@ -63,13 +69,12 @@ case class HtmlTextBasedGptExercise(
 
   override def getDomElement(): L.Element = domElement
 
-
 }
 
 
 object HtmlTextBasedGptExercise {
 
-  val scaffoldingButtonSvg: Element = {
+  def scaffoldingButtonSvg: ReactiveSvgElement[SVGSVGElement] = {
     svg.svg(
       svg.cls := "button-show-scaffolder",
       svg.viewBox := "0 0 24 24",
@@ -88,7 +93,6 @@ object HtmlTextBasedGptExercise {
         svg.strokeLineJoin := "round")
     )
   }
-
 
   private def createGradingGradient(id: String): ReactiveSvgElement[SVGLinearGradientElement] =
     svg.linearGradient(
@@ -112,7 +116,7 @@ object HtmlTextBasedGptExercise {
       )
     )
 
-  val gradingButtonSvg: Element = {
+  def gradingButtonSvg: ReactiveSvgElement[SVGSVGElement] = {
     svg.svg(
       createGradingGradient("gradient-fill-show"),
       svg.cls := "button-grading button-grading-start",
@@ -126,8 +130,7 @@ object HtmlTextBasedGptExercise {
         svg.d := "M12 8L12 16",
         svg.strokeLineCap := "round",
         svg.strokeLineJoin := "round"
-      )
-      ,
+      ),
       svg.path(
         svg.d := "M15 11L12.087 8.08704V8.08704C12.039 8.03897 11.961 8.03897 11.913 8.08704V8.08704L9 11",
         svg.strokeLineCap := "round",

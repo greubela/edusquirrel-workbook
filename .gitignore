@@ -52,3 +52,6 @@ tools/openai-proxy/ml-logs/
 ### Scala ###
 .bsp/
 **/target/**
+
+### Secrets ###
+.env
