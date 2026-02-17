@@ -5,6 +5,7 @@ import contentmanagement.model.chat.MessengerModel
 import util.Serializer
 import workbook.model.exercise.InteractionVariable.{ExerciseVariableState, UpdateImportance, deserializeHistory}
 import workbook.model.history.sync.{LocalStorageSync, SyncInformation, SyncStrategy}
+import upickle.default.*
 
 case class InteractionVariable[T](underlyingExercise: ExerciseContent, initHistory: List[ExerciseVariableState[T]], initSyncInformation: List[SyncInformation], io: Serializer[T]) {
 
@@ -99,30 +100,31 @@ object InteractionVariable {
     InteractionVariable(exerciseContent, List(ExerciseVariableState(defaultValue, System.currentTimeMillis(), UpdateImportance.DEFAULT)), List(), io)
 
 
+  private case class SerializedExerciseVariableState(
+    epochTimestampMillis: Long,
+    serializedValue: String,
+    updateImportance: UpdateImportance
+  )
+
+  private given ReadWriter[UpdateImportance] = readwriter[String].bimap[UpdateImportance](_.toString, UpdateImportance.valueOf)
+  private given ReadWriter[SerializedExerciseVariableState] = macroRW
+
   private def serializeHistory[T](history: List[ExerciseVariableState[T]], serializer: Serializer[T]): String = {
-    val res = new StringBuilder("")
-    for (curState <- history) {
-      res.append(curState.epochTimestampMillis.toString + ";;;")
-      res.append(serializer.serialize(curState.value) + ";;;")
-      res.append(curState.updateImportance.toString + ";;;;;")
-    }
-    res.toString()
+    val serializedHistory = history.map(curState =>
+      SerializedExerciseVariableState(curState.epochTimestampMillis, serializer.serialize(curState.value), curState.updateImportance)
+    )
+    write(serializedHistory)
   }
 
   private def deserializeHistory[T](serializedHistory: String, serializer: Serializer[T]): Set[ExerciseVariableState[T]] = {
-    val res = serializedHistory.split(";;;;;").flatMap(curEvent => {
-      //println("try to parse event: " + curEvent)
-      val parts = curEvent.split(";;;")
-      if (parts.size == 3) {
-        val timestamp = parts(0).toLong
-        val value = serializer.deserialize(parts(1))
-        val importance = UpdateImportance.valueOf(parts(2))
-        Option(ExerciseVariableState[T](value, timestamp, importance))
-      } else {
-        None
-      }
-    })
-    res.toSet
+    val deserialized = read[List[SerializedExerciseVariableState]](serializedHistory)
+    deserialized.map(curState =>
+      ExerciseVariableState(
+        serializer.deserialize(curState.serializedValue),
+        curState.epochTimestampMillis,
+        curState.updateImportance
+      )
+    ).toSet
   }
 
 
