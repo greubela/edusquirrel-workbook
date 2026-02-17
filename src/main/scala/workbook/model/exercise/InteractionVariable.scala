@@ -72,9 +72,9 @@ object InteractionVariable {
 
   def messengerVariable(exerciseContent: ExerciseContent, initMessages: MessengerModel): InteractionVariable[MessengerModel] = {
     val io: Serializer[MessengerModel] = new Serializer[MessengerModel] {
-      override def serialize(obj: MessengerModel): String = ""
+      override def serialize(obj: MessengerModel): String = obj.toJson
 
-      override def deserialize(str: String): MessengerModel = MessengerModel(List())
+      override def deserialize(str: String): MessengerModel = MessengerModel.fromJson(str)
     }
     InteractionVariable[MessengerModel](exerciseContent,
       List(ExerciseVariableState(initMessages, System.currentTimeMillis(), UpdateImportance.DEFAULT)),
