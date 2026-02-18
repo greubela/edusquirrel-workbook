@@ -2,6 +2,7 @@ package content.plantworkshop
 
 import com.raquo.laminar.api.L.*
 import content.plantworkshop
+import interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
 import org.scalajs.dom
 
 import scala.scalajs.js
@@ -259,7 +260,7 @@ object Task1_ComponentChecklist {
 // TASK 2: MOISTURE SENSOR
 // ========================================
 object Task2_MoistureSensor {
-  private val editorState = interactionPlugins.blockEnvironment.programming.editor.elements.EditorState.withInitExpression(
+  private val editorState: EditorState = interactionPlugins.blockEnvironment.programming.editor.elements.EditorState.withInitExpression(
     PlantWorkshopTaskBlockLibraries.task2SuggestedStartProgram().fullProgram
   )
 

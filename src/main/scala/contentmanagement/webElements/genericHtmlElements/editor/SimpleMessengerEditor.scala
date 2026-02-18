@@ -4,14 +4,16 @@ import com.raquo.laminar.api.L.*
 import contentmanagement.model.chat.MessengerModel
 import contentmanagement.model.chat.MessengerModel.{Message, SenderRole}
 import contentmanagement.model.language.AppLanguage
-import workbook.model.exercise.InteractionVariable
-import workbook.model.exercise.InteractionVariable.UpdateImportance
+import contentmanagement.webElements.HtmlAppElement
+import workbook.model.interaction.InteractionVariable.*
+import workbook.model.interaction.*
+import workbook.model.interaction.history.UpdateImportance
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
 
-case class SimpleMessengerEditor(chatExercise: InteractionVariable[MessengerModel]) extends HtmlWorkbookElement {
+case class SimpleMessengerEditor(chatExercise: InteractionVariable[MessengerModel]) extends HtmlAppElement {
 
   private val messageInput = Var("")
 
@@ -22,7 +24,7 @@ case class SimpleMessengerEditor(chatExercise: InteractionVariable[MessengerMode
         cls := "messenger-editor",
         div(
           cls := "messenger-history",
-          children <-- chatExercise.asVar.signal.map(_.orderedMessages.map(renderMessage))
+          children <-- chatExercise.interactionSignal.map(_.orderedMessages.map(renderMessage))
         ),
         div(
           cls := "messenger-composer",
@@ -59,7 +61,7 @@ case class SimpleMessengerEditor(chatExercise: InteractionVariable[MessengerMode
     val trimmed = messageInput.now().trim
     if (trimmed.nonEmpty) {
       onUserAddedMessage(trimmed)
-      val currentState = chatExercise.asVar.now()
+      val currentState = chatExercise.currentValue
       val nextState = currentState.addMessage(
         text = trimmed,
         author = MessengerModel.BasicPerson(name = contentmanagement.model.language.LanguageMap.universalMap("Me")),

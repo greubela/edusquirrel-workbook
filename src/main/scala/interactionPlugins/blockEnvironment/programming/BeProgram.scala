@@ -133,6 +133,12 @@ case class BeProgram(fullProgram: BeExpression) {
 
 object BeProgram {
 
+  def fromPythonString(pythonString: String): BeProgram = {
+    val parsingResult = PythonParser.parsePythonWithDetails(pythonString)
+    val expression = BeStartProgram(parsingResult.codeExpression)
+    BeProgram(expression)
+  }
+  
   def createSimpleFunc(displayConfig: BeTreeDisplayConfig, functionName: LanguageMap[HumanLanguage], parNames: List[LanguageMap[HumanLanguage]], parTypes: List[BeDataType], parValues: List[String], output: Option[BeDataType]): BeProgram = {
 
   val parVariables: List[BeDefineVariable] = parNames.zip(parTypes).zipWithIndex.map((tup, curIndex) => {

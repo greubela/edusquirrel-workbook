@@ -4,11 +4,11 @@ import contentmanagement.model.image.ImageDescription
 import contentmanagement.model.image.ImageDescription.ServerImageDescription
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import contentmanagement.storage.ImageStorage
-import workbook.model.exercise.ExerciseContent
+
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-
+/*
 object VisualNovelContent {
 
   def monkContent: VisualNovelExercise = {
@@ -95,7 +95,7 @@ object VisualNovelContent {
       VisualNovelPanel(tup._1, "Created with Dall-E 3 by André Greubel", "[Todo: Add Alt Text for blind learners]", tup._2)
     })
 
-    val cont = new ExerciseContent {
+    val cont = new ExerciseWithTitleDescription {
       override def titleMap: LanguageMap[HumanLanguage] = LanguageMap.universalMap[HumanLanguage]("The monks of mons computarius")
 
       override def id: String = "visual-novel-monks"
@@ -109,4 +109,4 @@ object VisualNovelContent {
   }
 }
 
-
+*/

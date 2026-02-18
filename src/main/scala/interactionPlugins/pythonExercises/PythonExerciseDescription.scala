@@ -1,9 +1,8 @@
 package interactionPlugins.pythonExercises
 
-import contentmanagement.model.language.{AppLanguage, HumanLanguage, *}
-import workbook.model.exercise.ExerciseContent
+import contentmanagement.model.language.*
 
-final case class PythonExerciseContent(
+final case class PythonExerciseDescription(
     id: String,
     titleTranslations: LanguageMap[HumanLanguage],
     instructionTranslations: LanguageMap[HumanLanguage],
@@ -15,9 +14,9 @@ final case class PythonExerciseContent(
     fixtures: Seq[PythonFixture] = Nil,
     timeoutMs: Int = 5000,
     memoryLimitMb: Int = 128
-) extends ExerciseContent {
+)  {
 
-  override def titleMap: LanguageMap[HumanLanguage] = titleTranslations
+  def titleMap: LanguageMap[HumanLanguage] = titleTranslations
 
   def instructionMap: LanguageMap[HumanLanguage] = instructionTranslations
 
@@ -36,11 +35,11 @@ final case class PythonFixture(
     isBinary: Boolean = false
 )
 
-object PythonExerciseContent {
+object PythonExerciseDescription {
 
   private val english = AppLanguage.English
 
-  val helloWorld: PythonExerciseContent = PythonExerciseContent(
+  val helloWorld: PythonExerciseDescription = PythonExerciseDescription(
     id = "python-hello-world",
     titleTranslations = LanguageMap.mapBasedLanguageMap(Map(english -> "Hello World")),
     instructionTranslations = LanguageMap.mapBasedLanguageMap(Map(
@@ -99,7 +98,7 @@ assert result.strip() == "Hello, World!", "Ensure no additional whitespace is re
     )
   )
 
-  val fizzBuzz: PythonExerciseContent = PythonExerciseContent(
+  val fizzBuzz: PythonExerciseDescription = PythonExerciseDescription(
     id = "python-fizzbuzz",
     titleTranslations = LanguageMap.mapBasedLanguageMap(Map(english -> "FizzBuzz")),
     instructionTranslations = LanguageMap.mapBasedLanguageMap(Map(
@@ -151,7 +150,7 @@ assert result[10] == "Fizz", "11th element (value 11) should be 'Fizz'"
     )
   )
 
-  val ninetyNineBottles: PythonExerciseContent = PythonExerciseContent(
+  val ninetyNineBottles: PythonExerciseDescription = PythonExerciseDescription(
     id = "python-99-bottles",
     titleTranslations = LanguageMap.mapBasedLanguageMap(Map(english -> "99 Bottles of Beer")),
     instructionTranslations = LanguageMap.mapBasedLanguageMap(Map(
@@ -207,7 +206,7 @@ assert verse(0) == expected
   )
 
 
-  val defaults: Seq[PythonExerciseContent] = Seq(
+  val defaults: Seq[PythonExerciseDescription] = Seq(
     helloWorld,
     fizzBuzz,
     ninetyNineBottles,

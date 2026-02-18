@@ -2,17 +2,14 @@ package interactionPlugins.visualNovel
 
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.image.ImageDescription.ServerImageDescription
-import workbook.model.exercise.InteractionVariable.UpdateImportance
-import workbook.model.exercise.{ExerciseContent, InteractionVariable}
-import workbook.model.history.ExerciseInteractionHistory
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-import workbook.workbookHtmlElements.basic.HtmlExerciseTitleElement
 
+import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
+/*
 case class VisualNovelExercise(
-                                exerciseContent: ExerciseContent,
+                                exerciseContent: ExerciseWithTitleDescription,
                                 panels: List[VisualNovelPanel]
                                 // ,imageMap: Map[ImageDescription, FullImage]
-                              ) extends HtmlWorkbookElement {
+                              ) {
 
   private val pageHistorySerializer = new util.Serializer[List[Int]] {
     override def serialize(obj: List[Int]): String = obj.mkString(",")
@@ -24,7 +21,7 @@ case class VisualNovelExercise(
   private val pageHistoryVariable = InteractionVariable(exerciseContent, initialPageHistory, pageHistorySerializer)
 
   val pageHistory: ExerciseInteractionHistory[List[Int]] = new ExerciseInteractionHistory[List[Int]] {
-    override def underlyingExercise: ExerciseContent = exerciseContent
+    override def underlyingExercise: ExerciseWithTitleDescription = exerciseContent
 
     override def editorStateVariable: InteractionVariable[List[Int]] = pageHistoryVariable
   }
@@ -34,7 +31,7 @@ case class VisualNovelExercise(
 
   private def totalPanels: Int = panels.length
 
-  override def getDomElement(): Element = domElement
+  def getDomElement(): Element = domElement
 
   // exercise information
   private val htmlTitleElement = HtmlExerciseTitleElement(exerciseContent.titleMap)
@@ -113,5 +110,5 @@ case class VisualNovelExercise(
 
   }
 }
-
+*/
 

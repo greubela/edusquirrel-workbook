@@ -1,4 +1,4 @@
-package workbook.model.history.sync
+package workbook.model.interaction.sync
 
 trait ExerciseVariableSyncSource {
 

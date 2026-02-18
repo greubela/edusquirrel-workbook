@@ -94,6 +94,15 @@ case class EditorState(
 
 object EditorState {
 
+  def withGivenVariable(progVar: Var[BeProgram]): EditorState = {
+
+    val initRenderer = BeRenderingConfig.default()
+
+    val initControllerState: BeEditorControllerState = BeEditorControllerState.default()
+
+    EditorState(progVar, Var(initControllerState), Var(initRenderer))
+  }
+
   def withInitExpression(initExpr: BeExpression): EditorState = {
 
     val initProgram = BeProgram(initExpr)

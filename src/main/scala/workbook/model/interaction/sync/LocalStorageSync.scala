@@ -1,8 +1,7 @@
-package workbook.model.history.sync
+package workbook.model.interaction.sync
 
 import org.scalajs.dom
 import org.scalajs.dom.Storage
-import workbook.model.history.sync.ExerciseVariableSyncSource
 
 
 object LocalStorageSync extends ExerciseVariableSyncSource {

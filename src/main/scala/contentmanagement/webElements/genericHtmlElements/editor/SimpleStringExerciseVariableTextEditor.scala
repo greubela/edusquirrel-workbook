@@ -3,8 +3,8 @@ package contentmanagement.webElements.genericHtmlElements.editor
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement
-import workbook.model.exercise.InteractionVariable
-import workbook.model.exercise.InteractionVariable.UpdateImportance
+import workbook.model.interaction.*
+import workbook.model.interaction.history.UpdateImportance
 
 case class SimpleStringExerciseVariableTextEditor(
                                                    exerciseVariable: InteractionVariable[String],
@@ -24,7 +24,7 @@ case class SimpleStringExerciseVariableTextEditor(
     rows := 8,
     cols := 80,
     controlled(
-      value <-- exerciseVariable.asVar.signal,
+      value <-- exerciseVariable.interactionSignal,
       onInput.mapToValue --> { value => onUserInputChanged(value)
       }
     )

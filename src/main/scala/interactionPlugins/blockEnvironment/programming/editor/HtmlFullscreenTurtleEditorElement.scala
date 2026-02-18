@@ -9,23 +9,34 @@ import contentmanagement.model.language.AppLanguage.{English, German, Python}
 import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.code.others.BeStartProgram
 import contentmanagement.model.vm.parsing.python.PythonParser
+import contentmanagement.webElements.HtmlAppElement
 import contentmanagement.webElements.genericHtmlElements.editor.SimpleTextDisplay
 import contentmanagement.webElements.svg.shapes.BeShape
 import contentmanagement.webElements.svg.shapes.controlflow.*
 import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.{ControlFlowCross, IfElseSplit, IfElseUnion}
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.{ControlFlowProgramStarter, ControlFlowProgramStopper}
 import contentmanagement.webElements.svg.shapes.decorations.{BeDataArrow, ControlArrowUpDown}
-import interactionPlugins.blockEnvironment.config.BeTreeControllerConfig
+import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.elements.*
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 import contentmanagement.webElements.genericHtmlElements.editor.*
 
-case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends HtmlWorkbookElement {
+object HtmlFullscreenTurtleEditorElement {
 
-  private val editorState: EditorState = EditorState.withInitExpression(initExpr)
+  def apply(initExpr: BeExpression): HtmlFullscreenTurtleEditorElement = {
+    new Exception("[WARN] created Turtle Editor without useful variable to be bound to!").printStackTrace()
+    HtmlFullscreenTurtleEditorElement(Var(BeProgram(initExpr)))
+  }
+
+}
+
+case class HtmlFullscreenTurtleEditorElement(forVar: Var[BeProgram]) extends HtmlAppElement {
+
+  private val editorState: EditorState = EditorState.withGivenVariable(forVar)
   private var programBound: Boolean = false
 
+  /*
   def bindToProgram(programVar: Var[BeProgram]): Unit = {
     if (!programBound) {
       programVar.signal.foreach { program =>
@@ -42,7 +53,7 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
 
       programBound = true
     }
-  }
+  }*/
 
 
   private lazy val controlPanel: Element =

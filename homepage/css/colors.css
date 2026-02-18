@@ -8,11 +8,11 @@
   --fontsize-text-small: 8px;
 
   /* Layout sizes and spacing */
-  --space-xs: 8px;
-  --space-sm: 12px;
-  --space-md: 18px;
-  --space-lg: 26px;
-  --space-xl: 36px;
+  --space-xs: 2px;
+  --space-sm: 4px;
+  --space-md: 8px;
+  --space-lg: 12px;
+  --space-xl: 24px;
 
   --standard-gap: 10px;
   --standard-border-radius: var(--radius-sm);

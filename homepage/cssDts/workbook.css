@@ -9,24 +9,17 @@ body {
   line-height: 1.6;
 }
 
-.worksheetDts {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xl);
-  padding: var(--space-xl) var(--space-lg);
-}
-
 .container-exercise {
   width: min(100%, 980px);
   margin: 0 auto;
-  padding: var(--space-xl);
-  border-radius: var(--radius-lg);
+
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   box-shadow: var(--shadow-soft);
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  gap: var(--space-md);
   position: relative;
   overflow: hidden;
 }
@@ -36,22 +29,27 @@ body {
 }
 
 .exercise-title {
-  margin: 0;
-  padding: var(--space-sm) var(--space-lg);
-  border-radius: var(--radius-md);
   background: var(--gradient-primary);
   color: var(--color-text-inverse);
-  font-weight: 600;
-  font-size: 1.1rem;
-  letter-spacing: 0.02em;
+
   text-transform: uppercase;
   text-align: center;
+  font-weight: 600;
+  font-size: 1.1rem;
+
+  padding: var(--space-sm) 0 var(--space-sm) 0;
+}
+
+.button-line{
+  margin: 0 auto;
 }
 
 .exercise-title:not(:first-of-type) {
   background: var(--color-surface-muted);
   color: var(--color-text-secondary);
   border: 1px dashed var(--color-border-strong);
+
+  padding: var(--space-xs) 0 var(--space-xs) 0;
 }
 
 .container-exercise-instruction {

@@ -2,10 +2,11 @@ package workbook.workbookHtmlElements.basic
 
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveSvgElement
+import contentmanagement.webElements.HtmlAppElement
 import org.scalajs.dom.{MouseEvent, SVGSVGElement}
 import workbook.workbookHtmlElements.abstractions.{HtmlWorkbookElement, InteractionComponentTemplate}
 
-case class HtmlButtonElement(val buttonSvg: ReactiveSvgElement[SVGSVGElement], onAction: MouseEvent => Any) extends InteractionComponentTemplate with HtmlWorkbookElement {
+case class HtmlButtonElement(val buttonSvg: ReactiveSvgElement[SVGSVGElement], onAction: MouseEvent => Any) extends InteractionComponentTemplate with HtmlAppElement {
 
   private val domElement: Element = {
 

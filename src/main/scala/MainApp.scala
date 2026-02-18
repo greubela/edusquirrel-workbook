@@ -4,14 +4,12 @@ import com.raquo.laminar.api.L.{*, given}
 import content.TestWorkbook.TestWorkbook
 import content.plantworkshop
 import content.plantworkshop.PlantWorkshopApp
-import contentmanagement.model.language.AppLanguage.English
-import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
+import contentmanagement.model.language.AppLanguage
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import org.scalajs.dom
 import org.scalajs.dom.document
 import util.JSXGraph.*
-import workbook.model.exercise.{ExerciseContent, ExerciseSection, ExerciseWithText}
 import workbook.workbookHtmlElements.container.HtmlFullScreenElement
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
@@ -20,9 +18,9 @@ private val fullscreenElement: HtmlFullScreenElement = HtmlFullScreenElement()
 
 private val idAndContentList: List[(String, Element)] = List(
   ("plantWorkshopApp", plantworkshop.PlantWorkshopApp.appElement),
-  ("testEditor", HtmlFullscreenTurtleEditorElement(BeProgram.debugGraphicsProgram().fullProgram).getDomElement()),
-  ("testWorksheet", TestWorkbook(fullscreenElement).getDomElement()),
-  ("worksheetMonks", TestWorkbook(fullscreenElement).getDomElement()),
+  //("testEditor", HtmlFullscreenTurtleEditorElement(BeProgram.debugGraphicsProgram().fullProgram).getDomElement()),
+  ("testWorksheet", TestWorkbook.createTestWorkbook(fullscreenElement).getDomElement()),
+  //("worksheetMonks", TestWorkbook(fullscreenElement).getDomElement()),
   //("worksheetMonks", MonksWorkbook().getDomElement())
 )
 
@@ -51,9 +49,29 @@ def insertWorkbookContent(): Unit = {
 
 @main
 def mainApp(): Unit = {
-  dom.window.localStorage.clear()
+
+  //resetLocalStorage()
 
   insertWorkbookContent()
+}
+
+def resetLocalStorage(): Unit = {
+  val map = (0 until dom.window.localStorage.length)
+    .flatMap { i =>
+      Option(dom.window.localStorage.key(i)).flatMap { key =>
+        Option(dom.window.localStorage.getItem(key)).map(value => key -> value)
+      }
+    }
+    .toMap
+
+  println("[WARN] resetting local storage in MainApp!")
+
+  map.keys.foreach(curKey => {
+    println(curKey.toString + " -> " + map(curKey))
+  })
+
+
+  dom.window.localStorage.clear()
 }
 
 def jsxGraphPreview: HtmlElement =
@@ -135,13 +153,13 @@ object Main:
   implicit val executionContext: ExecutionContextExecutor = ExecutionContext.global
 
 end Main
-
+/*
 final case class SimpleExercise(
                                  id: String,
                                  englishTitle: String,
                                  duration: Double,
                                  instruction: String
-                               ) extends ExerciseContent with ExerciseWithText {
+                               ) extends ExerciseWithTitleDescription with ExerciseInstructionDescription {
   override def titleMap: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> englishTitle))
 
   override def estimatedTimeInMinutes: Double = duration
@@ -151,7 +169,7 @@ final case class SimpleExercise(
 
 final case class SampleSection(
                                 override val title: String,
-                                override val exercises: List[ExerciseContent],
+                                override val exercises: List[ExerciseWithTitleDescription],
                                 override val sectionsRequiredBefore: List[ExerciseSection] = Nil,
                                 override val sectionsRecommendedBefore: List[ExerciseSection] = Nil
                               ) extends ExerciseSection
@@ -188,4 +206,7 @@ def sampleSections: List[ExerciseSection] = {
   )
 
   List(sectionA, sectionB, sectionC, sectionD)
+
+
 }
+*/
