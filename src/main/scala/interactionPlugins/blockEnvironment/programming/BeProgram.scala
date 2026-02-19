@@ -138,32 +138,32 @@ object BeProgram {
     val expression = BeStartProgram(parsingResult.codeExpression)
     BeProgram(expression)
   }
-  
-  def createSimpleFunc(displayConfig: BeTreeDisplayConfig, functionName: LanguageMap[HumanLanguage], parNames: List[LanguageMap[HumanLanguage]], parTypes: List[BeDataType], parValues: List[String], output: Option[BeDataType]): BeProgram = {
 
-  val parVariables: List[BeDefineVariable] = parNames.zip(parTypes).zipWithIndex.map((tup, curIndex) => {
-    val (curName, curType) = tup
-    BeDefineVariable(curName, curType)
-  })
+  def createSimpleFunc(functionName: LanguageMap[HumanLanguage], parNames: List[LanguageMap[HumanLanguage]], parTypes: List[BeDataType], parValues: List[String], output: Option[BeDataType]): BeProgram = {
 
-  val outputVar = output.map(typeSet => BeDefineVariable(LanguageMap.universalMap("output"), typeSet))
+    val parVariables: List[BeDefineVariable] = parNames.zip(parTypes).zipWithIndex.map((tup, curIndex) => {
+      val (curName, curType) = tup
+      BeDefineVariable(curName, curType)
+    })
 
-  val parValueMap = parVariables.zip(parValues).map((parVar, parVal) => {
-    parVar -> BeUseValue(BeDataValueLiteral(parVal), Some(parVar))
-  }).toMap
+    val outputVar = output.map(typeSet => BeDefineVariable(LanguageMap.universalMap("output"), typeSet))
 
-  val expression: BeExpression =
-    BeFunctionCall(
-      BeDefineFunction(
-        parVariables, outputVar, BeExpression.pass, BeDefineFunction.functionInfo(functionName)
-      ),
-      parValueMap
-    )
+    val parValueMap = parVariables.zip(parValues).map((parVar, parVal) => {
+      parVar -> BeUseValue(BeDataValueLiteral(parVal), Some(parVar))
+    }).toMap
 
-  BeProgram(expression)
-}
+    val expression: BeExpression =
+      BeFunctionCall(
+        BeDefineFunction(
+          parVariables, outputVar, BeExpression.pass, BeDefineFunction.functionInfo(functionName)
+        ),
+        parValueMap
+      )
 
-  def createSimpleFunc(displayConfig: BeTreeDisplayConfig, functionName: String, parNames: List[String], parTypes: List[BeDataType], parValues: List[String], output: Option[BeDataType]): BeProgram = {
+    BeProgram(expression)
+  }
+
+  def createSimpleFunc(functionName: String, parNames: List[String], parTypes: List[BeDataType], parValues: List[String], output: Option[BeDataType]): BeProgram = {
 
     val funcNameMap: LanguageMap[HumanLanguage] = LanguageMap.universalMap(functionName)
 
@@ -190,8 +190,8 @@ object BeProgram {
   }
 
 
-  def createOneParFunc(displayConfig: BeTreeDisplayConfig, functionName: String, parName: String, parType: BeDataType, valueString: String): BeProgram = {
-    createSimpleFunc(displayConfig, functionName, List(parName), List(parType), List(valueString), None)
+  def createOneParFunc(functionName: String, parName: String, parType: BeDataType, valueString: String): BeProgram = {
+    createSimpleFunc(functionName, List(parName), List(parType), List(valueString), None)
   }
 
   def miniProgramExpression(): BeExpression = {

@@ -34,6 +34,11 @@ case class HtmlBeTreeDisplay(
       .map(tup => HtmlBeTreeDisplay.render(tup._1, tup._4, tup._2, tup._3, editorState))
   }
 
+  def treeInContainerDiv: Element = div(
+    cls := "block-tree-container",
+    child <-- treeRenderingSignal.map(_._1)
+  )
+
 
 }
 
@@ -45,6 +50,24 @@ case class HtmlBeTreeDisplay(
 }*/
 
 object HtmlBeTreeDisplay {
+
+  def forControlStructureInLibraryTab(program: BeProgram, editorState: EditorState): HtmlBeTreeDisplay = {
+    val config = BeTreeDisplayConfig(
+      displayPlaceholders = false,
+      displayNavigation = false,
+      controlFlowDisplay = ControlFlowDisplay.ControlFlowShownFull,
+      compactDefinitions = true,
+      compactFunctionCalls = true
+    )
+    HtmlBeTreeDisplay(
+      editorState,
+      Var(program).signal,
+      Var(config).signal,
+      editorState.rendererConfigVar.signal,
+      editorState.libaryTreeControllerConfig.signal
+    )
+
+  }
 
   def forLibraryTab(program: BeProgram, editorState: EditorState): HtmlBeTreeDisplay =
     HtmlBeTreeDisplay(

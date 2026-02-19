@@ -15,6 +15,7 @@ import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer.*
 
 case class ShapeAmends(baseAmends: Seq[L.Modifier[L.SvgElement]], signalAmends: Seq[Signal[L.Modifier[L.SvgElement]]], doOnRendering: Seq[(Bounds[Double], BeShape) => Any])
 
+
 sealed trait BeShape {
   def displaySize(rendererConfig: BeRenderingConfig): Dimension[Double]
 

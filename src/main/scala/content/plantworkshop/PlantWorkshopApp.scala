@@ -2,7 +2,7 @@ package content.plantworkshop
 
 import com.raquo.laminar.api.L.*
 import content.plantworkshop
-import interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
+import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBlockLibraryTab}
 import org.scalajs.dom
 
 import scala.scalajs.js
@@ -309,11 +309,10 @@ object Task2_MoistureSensor {
       ),
       div(
         cls := "be-fullscreen-panel-content",
-        child <-- interactionPlugins.blockEnvironment.programming.editor.elements.HtmlBlockLibraryTab(
+        HtmlBlockLibraryTab(
           editorState,
-          plantworkshop.PlantWorkshopTaskBlockLibraries.task2LibraryPrograms,
-          Var(interactionPlugins.blockEnvironment.config.BeTreeControllerConfig.libraryTreeConfig(editorState))
-        ).toDomSignal
+          PlantWorkshopTaskBlockLibraries.task2LibraryPrograms()
+        ).getDomElement()
       )
     )
 
@@ -382,11 +381,10 @@ object Task3_PumpControl {
       ),
       div(
         cls := "be-fullscreen-panel-content",
-        child <-- interactionPlugins.blockEnvironment.programming.editor.elements.HtmlBlockLibraryTab(
+        HtmlBlockLibraryTab(
           editorState,
-          plantworkshop.PlantWorkshopTaskBlockLibraries.task3LibraryPrograms,
-          Var(interactionPlugins.blockEnvironment.config.BeTreeControllerConfig.libraryTreeConfig(editorState))
-        ).toDomSignal
+          PlantWorkshopTaskBlockLibraries.task3LibraryPrograms(),
+        ).getDomElement()
       )
     )
 
@@ -452,7 +450,6 @@ object Task4_Combined {
       )
     )
   }
-
   private def renderWorkbookEditor(): Element = {
     val blockLibraryDom: Element = div(
       cls := "be-fullscreen-panel block-library",
@@ -462,11 +459,10 @@ object Task4_Combined {
       ),
       div(
         cls := "be-fullscreen-panel-content",
-        child <-- interactionPlugins.blockEnvironment.programming.editor.elements.HtmlBlockLibraryTab(
+        HtmlBlockLibraryTab(
           editorState,
-          plantworkshop.PlantWorkshopTaskBlockLibraries.task4LibraryPrograms,
-          Var(interactionPlugins.blockEnvironment.config.BeTreeControllerConfig.libraryTreeConfig(editorState))
-        ).toDomSignal
+          PlantWorkshopTaskBlockLibraries.task4LibraryPrograms(),
+        ).getDomElement()
       )
     )
 

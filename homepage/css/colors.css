@@ -57,6 +57,16 @@
   --color-focus: #2563eb;
 
   /* Accent colors */
+
+    --color-accent-foreground-textcolor: #ffffff;
+
+  --color-accent-blue-textcolor: #000000;
+  --color-accent-blue-foreground: #2196f3;
+  --color-accent-blue-background: #e3f2fd;
+
+  --color-accent-red-foreground: #f44336;
+  --color-accent-red-background: #ffebee;
+
   --color-accent-primary: #3066e5;
   --color-accent-warm: #f5c542;
   --color-accent-neutral: #d9dee8;

@@ -9,7 +9,7 @@ import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 case class HtmlPlaintextInstructionElement(workbookInfoVar: Var[WorkbookInfo], languageMap: LanguageMap[HumanLanguage]) extends HtmlWorkbookElement {
 
   override def getDomElement(): L.Element = div(
-    cls := "container-exercise-instruction",
+    cls := "workbook-element exercise-instruction",
     div(cls := "instruction-content",
       languageMap.getInLanguage(AppLanguage.English)
     )

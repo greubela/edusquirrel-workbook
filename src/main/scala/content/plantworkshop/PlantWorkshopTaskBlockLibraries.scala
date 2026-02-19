@@ -159,7 +159,7 @@ object PlantWorkshopTaskBlockLibraries {
     )
   }
 
-  def task2LibraryPrograms(displayConfig: BeTreeDisplayConfig): List[BeProgram] = {
+  def task2LibraryPrograms(): List[BeProgram] = {
     val sensorValueVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("sensorValue"), BeDataType.Int)
     val highVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("HIGH"), BeDataType.Int)
 
@@ -186,7 +186,7 @@ object PlantWorkshopTaskBlockLibraries {
     )
   }
 
-  def task3LibraryPrograms(displayConfig: BeTreeDisplayConfig): List[BeProgram] = {
+  def task3LibraryPrograms(): List[BeProgram] = {
     List(
       valueRefProgram("PUMP_PIN", BeDataType.Int),
       valueRefProgram("HIGH", BeDataType.Int),
@@ -198,7 +198,7 @@ object PlantWorkshopTaskBlockLibraries {
     )
   }
 
-  def task4LibraryPrograms(displayConfig: BeTreeDisplayConfig): List[BeProgram] = {
+  def task4LibraryPrograms(): List[BeProgram] = {
     val messwertVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("messwert"), BeDataType.Int)
     val grenzeVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("feuchtigkeitsGrenze"), BeDataType.Int)
 

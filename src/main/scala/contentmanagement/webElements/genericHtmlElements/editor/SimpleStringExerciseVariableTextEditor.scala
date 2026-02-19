@@ -8,6 +8,7 @@ import workbook.model.interaction.history.UpdateImportance
 
 case class SimpleStringExerciseVariableTextEditor(
                                                    exerciseVariable: InteractionVariable[String],
+                                                   monoSpace: Boolean = false
                                                  ) extends HtmlAppElement {
 
   def onUserInputChanged(newDisplayedText: String): Unit = {
@@ -23,6 +24,7 @@ case class SimpleStringExerciseVariableTextEditor(
   private val editorTextArea = textArea(
     rows := 8,
     cols := 80,
+    if (monoSpace) cls := "mono" else cls := "",
     controlled(
       value <-- exerciseVariable.interactionSignal,
       onInput.mapToValue --> { value => onUserInputChanged(value)

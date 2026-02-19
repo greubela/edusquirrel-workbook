@@ -9,7 +9,7 @@ import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import workbook.model.info.WorkbookInfo
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-import workbook.workbookHtmlElements.basic.{HtmlBasicExerciseTitle, HtmlPlaintextInstructionElement}
+import workbook.workbookHtmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement}
 
 object ProgrammingExerciseFactory {
 
@@ -56,8 +56,8 @@ object ProgrammingExerciseFactory {
 
   def createTurtleProgrammingExercise(workbookInfoVar: Var[WorkbookInfo], id: String, titleMap: LanguageMap[HumanLanguage], expectedSvgResult: AppSvgElement): List[HtmlWorkbookElement] = {
 
-    val titleElement = HtmlBasicExerciseTitle(workbookInfoVar, titleMap)
-    
+    val titleElement = HtmlContainerTitle(workbookInfoVar, titleMap)
+
     val instruction = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
       AppLanguage.English -> "Use Turtle Commands to program the Shape on the right!",
       AppLanguage.German -> "Programmiere die Form auf der rechten Seite nach!"
@@ -68,5 +68,7 @@ object ProgrammingExerciseFactory {
 
     List(titleElement, instructionElement, interactionElement)
   }
+  
+
 
 }

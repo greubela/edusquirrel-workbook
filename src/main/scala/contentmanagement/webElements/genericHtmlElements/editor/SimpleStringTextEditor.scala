@@ -8,12 +8,14 @@ import workbook.model.display.InteractionComponent.*
 
 case class SimpleStringTextEditor(
                                    stateToBind: Var[String],
+                                   monoSpace: Boolean = false,
                                    onUserInput: String => Unit = _ => ()
                                  ) extends HtmlAppElement{
 
   private val editorTextArea = textArea(
     rows := 8,
     cols := 80,
+    if (monoSpace) cls := "mono" else cls := "",
     controlled(
       value <-- stateToBind.signal,
       onInput.mapToValue --> { value =>

@@ -79,10 +79,7 @@ case class HtmlFullscreenTurtleEditorElement(forVar: Var[BeProgram]) extends Htm
       cls := "be-fullscreen-panel-label",
       "Block Library (Movement)"
     ),
-    div(
-      cls := "be-fullscreen-panel-content",
-      child <-- HtmlBlockLibraryTab(editorState, HtmlBlockLibraryTab.getDefaultLibraryPrograms, Var(BeTreeControllerConfig.libraryTreeConfig(editorState))).toDomSignal
-    )
+    HtmlBlockLibraryTab.getDefaultTurtleLibraryTab(editorState).getDomElement()
   )
 
  

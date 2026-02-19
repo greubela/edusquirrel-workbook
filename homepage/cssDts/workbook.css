@@ -12,25 +12,26 @@ body {
 .container-exercise {
   width: min(100%, 980px);
   margin: 0 auto;
+  padding-bottom: var(--space-md);
 
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
-  border: 1px solid var(--color-border);
+  border-radius: var(--space-md);
   background: var(--color-surface);
   box-shadow: var(--shadow-soft);
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-  position: relative;
-  overflow: hidden;
 }
 
 .container-exercise + .container-exercise {
   margin-top: var(--space-xl);
 }
 
-.exercise-title {
-  background: var(--gradient-primary);
-  color: var(--color-text-inverse);
+.workbook-element{
+}
+
+.container-title {
+  background: var(--color-accent-blue-foreground);
+  color: var(--color-accent-foreground-textcolor);
 
   text-transform: uppercase;
   text-align: center;
@@ -40,29 +41,27 @@ body {
   padding: var(--space-sm) 0 var(--space-sm) 0;
 }
 
-.button-line{
-  margin: 0 auto;
-}
+.exercise-instruction {
+  background: var(--color-accent-blue-background);
+  color: var(--color-accent-blue-textcolor);
 
-.exercise-title:not(:first-of-type) {
-  background: var(--color-surface-muted);
-  color: var(--color-text-secondary);
-  border: 1px dashed var(--color-border-strong);
-
-  padding: var(--space-xs) 0 var(--space-xs) 0;
-}
-
-.container-exercise-instruction {
-  background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-left: var(--space-md) solid var(--color-accent-blue-foreground);
   padding: var(--space-md);
-  color: var(--color-text-secondary);
   font-size: 0.95rem;
 }
 
-.container-exercise-instruction .instruction-content {
-  margin: 0;
+
+.button-line{
+  margin: 0 auto;
+  gap: var(--space-md);
+  display: flex;
+}
+
+.exercise-spacer {
+  background: var(--color-surface-muted);
+  color: var(--color-text-secondary);
+  border: 1px dashed var(--color-border-strong);
+  padding: var(--space-xs) 0 var(--space-xs) 0;
 }
 
 .container-interaction {
@@ -72,41 +71,10 @@ body {
   width: 100%;
 }
 
-.container-interaction-element {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-interaction-border);
-  background: var(--color-interaction-background);
-  box-shadow: var(--shadow-soft);
-  overflow: hidden;
-}
-
-.container-interaction-element .container-label,
-.container-label {
-  padding: var(--space-xs) var(--space-md);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  background: var(--color-surface-muted);
-  color: var(--color-text-secondary);
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-}
-
-.container-interaction-element-content {
-  padding: var(--space-md) var(--space-lg);
-  background: var(--color-interaction-background-alt);
-  color: var(--color-text-primary);
-}
-
 /* --- Programming exercise preview layout --- */
-.container-interaction .programming-exercise-layout {
+.program-preview-card {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: 50% 50%;
   gap: var(--space-lg);
 }
 
@@ -1180,17 +1148,25 @@ body {
 /* --- Editors --- */
 .simple-text-editor textarea {
   width: 100%;
-  border: 3px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border: var(--space-xs) solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-primary);
   padding: var(--space-md);
-  font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   font-size: 0.95rem;
   resize: vertical;
   min-height: 160px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   box-sizing: border-box;
+
+
+  font-family: var(--font-family);
+
+}
+
+.simple-text-editor textarea.mono {
+  font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  resize: vertical;
+  min-height: 50px;
 }
 
 .simple-text-editor textarea:focus {
