@@ -7,6 +7,7 @@ import content.plantworkshop.PlantWorkshopApp
 import contentmanagement.model.language.AppLanguage
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
+import interactionPlugins.fileSubmission.{ImageUploadContainerFactory, TurtleFileSubmission}
 import org.scalajs.dom
 import org.scalajs.dom.document
 import util.JSXGraph.*
@@ -33,6 +34,7 @@ def insertWorkbookContent(): Unit = {
       println("Loading Content: " + containerId)
       val combinedElement = div(
         fullscreenElement.getDomElement(),
+        TurtleFileSubmission().getDomElement(),
         contentElement
       )
       if (dom.document.readyState == "loading") {
