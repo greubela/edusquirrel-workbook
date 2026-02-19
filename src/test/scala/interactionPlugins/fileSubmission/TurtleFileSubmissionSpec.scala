@@ -107,4 +107,94 @@ class TurtleFileSubmissionSpec extends FunSuite {
     )
   }
 
+
+  test("loadProject parses scene/stage/sprite/script model from Turtle XML") {
+    val project = TurtleFileSubmission.loadProject(xmlWithRepeatNoPentrails)
+
+    assertEquals(project.name, "test2")
+    assertEquals(project.scenes.length, 1)
+    assertEquals(project.scenes.head.stage.sprites.length, 1)
+    assert(project.scenes.head.stage.sprites.head.scripts.nonEmpty)
+  }
+
+  test("renderProgramAsSvg creates an SVG data URL for script view") {
+    val svgDataUrl = TurtleFileSubmission.renderProgramAsSvg(xmlWithRepeatNoPentrails)
+    assert(svgDataUrl.exists(_.startsWith("data:image/svg+xml;utf8,")))
+  }
+
+  test("malformed xml does not crash and returns safe defaults") {
+    val malformedXml = "<project><scenes><scene><stage><sprites><sprite><scripts><script><block s=\"forward\"><l>10</l>"
+    val (existing, simulated) = TurtleFileSubmission.renderXmlAsTuple(malformedXml)
+    val project = TurtleFileSubmission.loadProject(malformedXml)
+
+    assertEquals(existing, "")
+    assert(simulated.startsWith("data:image/png;base64,"))
+    assertEquals(project.name, "Untitled")
+  }
+
+  test("invalid numeric script args do not crash renderer") {
+    val xml =
+      """<project name="x"><scenes select="1"><scene name="s"><stage><sprites select="1"><sprite name="sp" idx="1" x="foo" y="bar" heading="baz" scale="1" volume="100" pan="0" rotation="1"><scripts><script><block s="receiveGo"></block><block s="forward"><l>abc</l></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
+    val (existing, simulated) = TurtleFileSubmission.renderXmlAsTuple(xml)
+    val svg = TurtleFileSubmission.renderProgramAsSvg(xml)
+
+    assertEquals(existing, "")
+    assert(simulated.startsWith("data:image/png;base64,"))
+    assert(svg.exists(_.startsWith("data:image/svg+xml;utf8,")))
+  }
+
+  test("green flag script survives xml -> model -> xml round trip") {
+    val project = TurtleFileSubmission.loadProject(xmlWithRepeatNoPentrails)
+    val expression = interactionPlugins.fileSubmission.turtleStitch.TurtleStitchToBeExpressionParser.parseProject(project)
+    val xmlRoundTripped = TurtleFileSubmission.serializeFromBeExpression(expression, "roundTrip1")
+
+    val originalSelectors = greenFlagSelectors(xmlWithRepeatNoPentrails)
+    val newSelectors = greenFlagSelectors(xmlRoundTripped)
+
+    assert(originalSelectors.nonEmpty)
+    assert(newSelectors.nonEmpty)
+    assertEquals(newSelectors.headOption, Some("receiveGo"))
+  }
+
+  test("green flag script survives turtle -> BeExpression -> turtle round trip for both sample XML files") {
+    val xmls = List(xmlWithRepeatNoPentrails, xmlWithMixedCommandsNoPentrails)
+
+    xmls.foreach { xml =>
+      val expression = TurtleFileSubmission.parseToBeExpression(xml)
+      val xmlRoundTripped = TurtleFileSubmission.serializeFromBeExpression(expression, "roundTrip2")
+
+      val originalSelectors = greenFlagSelectors(xml)
+      val newSelectors = greenFlagSelectors(xmlRoundTripped)
+
+      assert(originalSelectors.headOption.contains("receiveGo"))
+      assert(newSelectors.headOption.contains("receiveGo"))
+      assert(newSelectors.contains("receiveGo"))
+    }
+  }
+
+  test("self-closing receiveGo blocks are preserved through parse and round trip") {
+    val xml =
+      """<project name="x" app="TurtleStitch 2.11, http://www.turtlestitch.org" version="2"><scenes select="1"><scene name="x"><stage name="Stage"><sprites select="1"><sprite name="Sprite" idx="1" x="0" y="0" heading="90" scale="1" volume="100" pan="0" rotation="1"><scripts><script x="10" y="10"><block s="receiveGo"/><block s="forward"><l>12</l></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
+
+    val expression = TurtleFileSubmission.parseToBeExpression(xml)
+    val roundTripped = TurtleFileSubmission.serializeFromBeExpression(expression)
+    val selectors = greenFlagSelectors(roundTripped)
+
+    assert(selectors.headOption.contains("receiveGo"))
+    assert(selectors.contains("forward"))
+  }
+
+  private def greenFlagSelectors(xml: String): List[String] = {
+    val scriptPattern = """(?s)<script[^>]*>(.*?)</script>""".r
+    val blockPattern = """(?s)<block\s+[^>]*s=\"([^\"]+)\"[^>]*>.*?</block>|<block\s+[^>]*s=\"([^\"]+)\"\s*/>""".r
+
+    scriptPattern.findAllMatchIn(xml).toList
+      .map(_.group(1))
+      .map { scriptBody =>
+        blockPattern.findAllMatchIn(scriptBody).toList.map { m => Option(m.group(1)).getOrElse(m.group(2)) }
+      }
+      .find(_.headOption.contains("receiveGo"))
+      .getOrElse(Nil)
+  }
+
 }
