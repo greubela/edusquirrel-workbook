@@ -1,13 +1,16 @@
 package interactionPlugins.fileSubmission
 
+import com.raquo.laminar.api.L.Element
+import contentmanagement.webElements.HtmlAppElement
 import interactionPlugins.fileSubmission.turtleLogic.{TurtleRenderer, TurtleXmlParser}
 import org.scalajs.dom.File
 import org.scalajs.dom
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.scalajs.js.typedarray.Uint8Array
 import scala.scalajs.js.Thenable.Implicits.*
 
-object TurtleFileSubmission {
+case class TurtleFileSubmission() extends HtmlAppElement {
 
   private given ExecutionContext = scala.concurrent.ExecutionContext.global
 
@@ -55,5 +58,9 @@ object TurtleFileSubmission {
 
     if (value.startsWith("data:image/png;base64,")) Some(value) else None
   }
+  
+  private val domElement: Element = ???
+  
+  override def getDomElement(): Element = domElement
 
 }

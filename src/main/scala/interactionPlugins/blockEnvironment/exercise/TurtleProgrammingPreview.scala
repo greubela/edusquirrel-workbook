@@ -57,7 +57,7 @@ case class TurtleProgrammingPreview(workbookInfoVar: Var[WorkbookInfo], currentP
       cls := "workbook-element program-preview-card",
       //
       previewCard("program", BlockEnvironmentLanguageMap.languageMapYourProgram, currentProgram.signal.map(renderProgramPreview)),
-      previewCard("output", BlockEnvironmentLanguageMap.languageMapProgramOutcome, currentProgram.signal.map(renderProgramPreview)),
+      previewCard("output", BlockEnvironmentLanguageMap.languageMapProgramOutcome, Var(div(renderedSvg)).signal),
     )
 
   override def getDomElement(): Element = domElement
