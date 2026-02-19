@@ -102,14 +102,10 @@ object TurtleRenderer {
   }
 
   private def renderSegments(segments: List[Segment]): String = {
-    val maybeDocument = scala.util.Try(js.Dynamic.global.selectDynamic("document")).toOption
-    val hasDocument = maybeDocument
-      .exists(d => !(js.isUndefined(d) || d == null))
-    if (!hasDocument) return TransparentPngDataUrl
+    val maybeDocument = scala.util.Try(dom.document).toOption
+    if (maybeDocument.isEmpty || maybeDocument.get == null) return TransparentPngDataUrl
 
-    val canvas = maybeDocument.get
-      .selectDynamic("createElement")("canvas")
-      .asInstanceOf[html.Canvas]
+    val canvas = maybeDocument.get.createElement("canvas").asInstanceOf[html.Canvas]
     canvas.width = 512
     canvas.height = 512
 
