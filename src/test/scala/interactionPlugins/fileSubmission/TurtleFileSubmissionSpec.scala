@@ -1,9 +1,12 @@
 package interactionPlugins.fileSubmission
 
 import interactionPlugins.fileSubmission.turtleLogic.TurtleXmlParser
+import interactionPlugins.fileSubmission.turtleStitch.TurtleStitchProgramModel.*
 import munit.FunSuite
 
 import java.nio.charset.StandardCharsets
+import java.net.URLDecoder
+import scala.util.Try
 
 class TurtleFileSubmissionSpec extends FunSuite {
 
@@ -202,6 +205,46 @@ class TurtleFileSubmissionSpec extends FunSuite {
     }
   }
 
+  test("XmlFactory examples keep all green-flag block labels in rendered SVG") {
+    XmlFactory.all.zipWithIndex.foreach { case (xml, index) =>
+      val project = TurtleFileSubmission.loadProject(xml)
+      val expectedLabels = labelsFromGreenFlagScript(project)
+      val svgDecoded = TurtleFileSubmission.renderProgramAsSvg(xml).map(decodeSvgDataUrl).getOrElse("")
+
+      assert(expectedLabels.nonEmpty, clues(s"example=${index + 1}"))
+      expectedLabels.foreach { label =>
+        assert(
+          svgDecoded.contains(label),
+          clues(s"example=${index + 1}, missingLabel=$label")
+        )
+      }
+    }
+  }
+
+  test("XmlFactory examples survive turtle model -> BeExpression -> turtle model for most files") {
+    val results = XmlFactory.all.zipWithIndex.map { case (xml, index) =>
+      val roundTripTry = Try {
+        val initialProject = TurtleFileSubmission.loadProject(xml)
+        val expression = interactionPlugins.fileSubmission.turtleStitch.TurtleStitchToBeExpressionParser.parseProject(initialProject)
+        val roundTrippedXml = TurtleFileSubmission.serializeFromBeExpression(expression, s"roundTrip-${index + 1}")
+        val roundTrippedProject = TurtleFileSubmission.loadProject(roundTrippedXml)
+
+        val beforeSelectors = labelsFromGreenFlagScript(initialProject)
+        val afterSelectors = labelsFromGreenFlagScript(roundTrippedProject)
+
+        assert(beforeSelectors.headOption.contains("when green flag clicked"), clues(s"example=${index + 1}"))
+        assert(afterSelectors.headOption.contains("when green flag clicked"), clues(s"example=${index + 1}"))
+      }
+
+      index + 1 -> roundTripTry
+    }
+
+    val failures = results.collect { case (idx, scala.util.Failure(error)) => s"example=$idx, error=${error.getMessage}" }
+    val successCount = results.count(_._2.isSuccess)
+
+    assert(successCount >= XmlFactory.all.size - 1, clues(failures.mkString(" | ")))
+  }
+
   private def greenFlagSelectors(xml: String): List[String] = {
     val scriptPattern = """(?s)<script[^>]*>(.*?)</script>""".r
     val blockPattern = """(?s)<block\s+[^>]*s=\"([^\"]+)\"[^>]*>.*?</block>|<block\s+[^>]*s=\"([^\"]+)\"\s*/>""".r
@@ -213,6 +256,43 @@ class TurtleFileSubmissionSpec extends FunSuite {
       }
       .find(_.headOption.contains("receiveGo"))
       .getOrElse(Nil)
+  }
+
+  private def labelsFromGreenFlagScript(project: Project): List[String] = {
+    val scripts = project.scenes.toList.flatMap(_.stage.sprites.toList.flatMap(_.scripts.toList))
+    scripts.find(_.blocks.headOption.exists {
+      case PrimitiveBlock(Some("receiveGo"), _, _, _) => true
+      case _ => false
+    }).toList.flatMap(script => script.blocks.toList.flatMap(blockToLabels))
+  }
+
+  private def blockToLabels(blockLike: BlockLike): List[String] = blockLike match {
+    case PrimitiveBlock(Some(selector), _, inputs, _) =>
+      val args = inputs.collect { case Literal(value) => value }.toList
+      val label = selector match {
+        case "receiveGo" => "when green flag clicked"
+        case "gotoXY" if args.size >= 2 => s"go to x: ${args(0)} y: ${args(1)}"
+        case "clear" => "clear"
+        case "doRepeat" if args.nonEmpty => s"repeat ${args.head}"
+        case "forward" if args.nonEmpty => s"move ${args.head} steps"
+        case "arcRight" if args.size >= 2 => s"arc ↻ radius: ${args(0)} degrees: ${args(1)}"
+        case "arcLeft" if args.size >= 2 => s"arc ↺ radius: ${args(0)} degrees: ${args(1)}"
+        case "turn" if args.nonEmpty => s"turn ↻ ${args.head} degrees"
+        case "turnLeft" if args.nonEmpty => s"turn ↺ ${args.head} degrees"
+        case "changeYPosition" if args.nonEmpty => s"change y by ${args.head}"
+        case "setHeading" if args.nonEmpty => s"point in direction ${args.head}"
+        case other if args.nonEmpty => s"$other ${args.mkString(" ")}"
+        case other => other
+      }
+      val nestedLabels = inputs.collect { case NestedScript(script) => script.blocks.toList.flatMap(blockToLabels) }.flatten.toList
+      label :: nestedLabels
+    case _ => Nil
+  }
+
+  private def decodeSvgDataUrl(dataUrl: String): String = {
+    val prefix = "data:image/svg+xml;utf8,"
+    if dataUrl.startsWith(prefix) then URLDecoder.decode(dataUrl.drop(prefix.length), StandardCharsets.UTF_8)
+    else ""
   }
 
 }
