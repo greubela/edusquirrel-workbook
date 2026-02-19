@@ -214,7 +214,7 @@ class TurtleFileSubmissionSpec extends FunSuite {
       assert(expectedLabels.nonEmpty, clues(s"example=${index + 1}"))
       expectedLabels.foreach { label =>
         assert(
-          svgDecoded.contains(label),
+          svgDecoded.contains(xmlEscaped(label)),
           clues(s"example=${index + 1}, missingLabel=$label")
         )
       }
@@ -294,5 +294,13 @@ class TurtleFileSubmissionSpec extends FunSuite {
     if dataUrl.startsWith(prefix) then URLDecoder.decode(dataUrl.drop(prefix.length), StandardCharsets.UTF_8)
     else ""
   }
+
+  private def xmlEscaped(value: String): String =
+    value
+      .replace("&", "&amp;")
+      .replace("<", "&lt;")
+      .replace(">", "&gt;")
+      .replace("\"", "&quot;")
+      .replace("'", "&apos;")
 
 }
