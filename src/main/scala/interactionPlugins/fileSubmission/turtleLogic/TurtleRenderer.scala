@@ -18,7 +18,8 @@ object TurtleRenderer {
       y: Double,
       headingDegrees: Double,
       penDown: Boolean,
-      segments: List[Segment]
+      segments: List[Segment],
+      clearFrom: Int
   )
 
   def renderToPngDataUrl(commands: List[TurtleXmlParser.Command]): String = {
@@ -27,25 +28,50 @@ object TurtleRenderer {
   }
 
   private def execute(commands: List[TurtleXmlParser.Command]): List[Segment] = {
-    val initial = TurtleState(0.0, 0.0, headingDegrees = 0.0, penDown = true, segments = Nil)
+    val initial = TurtleState(0.0, 0.0, headingDegrees = 90.0, penDown = true, segments = Nil, clearFrom = 0)
     val endState = runCommands(commands, initial)
-    endState.segments.reverse
+    endState.segments.reverse.drop(endState.clearFrom)
   }
 
   private def runCommands(commands: List[TurtleXmlParser.Command], state: TurtleState): TurtleState = {
     commands.foldLeft(state) {
       case (s, TurtleXmlParser.Forward(distance)) =>
-        val radians = s.headingDegrees * Pi / 180.0
+        val radians = (90.0 - s.headingDegrees) * Pi / 180.0
         val newX = s.x + cos(radians) * distance
         val newY = s.y + sin(radians) * distance
         val newSegment = Segment(s.x, s.y, newX, newY)
         s.copy(x = newX, y = newY, segments = if (s.penDown) newSegment :: s.segments else s.segments)
 
       case (s, TurtleXmlParser.TurnLeft(degrees)) =>
-        s.copy(headingDegrees = s.headingDegrees + degrees)
+        s.copy(headingDegrees = s.headingDegrees - degrees)
 
       case (s, TurtleXmlParser.TurnRight(degrees)) =>
-        s.copy(headingDegrees = s.headingDegrees - degrees)
+        s.copy(headingDegrees = s.headingDegrees + degrees)
+
+      case (s, TurtleXmlParser.SetHeading(degrees)) =>
+        val normalized = ((degrees % 360.0) + 360.0) % 360.0
+        s.copy(headingDegrees = normalized)
+
+      case (s, TurtleXmlParser.GotoXY(x, y)) =>
+        val newSegment = Segment(s.x, s.y, x, y)
+        s.copy(x = x, y = y, segments = if (s.penDown) newSegment :: s.segments else s.segments)
+
+      case (s, TurtleXmlParser.ChangeYPosition(delta)) =>
+        val newY = s.y + delta
+        val newSegment = Segment(s.x, s.y, s.x, newY)
+        s.copy(y = newY, segments = if (s.penDown) newSegment :: s.segments else s.segments)
+
+      case (s, TurtleXmlParser.ArcRight(radius, degrees)) =>
+        runArc(s, radius, degrees, clockwise = true)
+
+      case (s, TurtleXmlParser.ArcLeft(radius, degrees)) =>
+        runArc(s, radius, degrees, clockwise = false)
+
+      case (s, TurtleXmlParser.Clear) =>
+        s.copy(clearFrom = s.segments.length)
+
+      case (s, TurtleXmlParser.ReceiveGo) =>
+        s
 
       case (s, TurtleXmlParser.PenUp) =>
         s.copy(penDown = false)
@@ -58,12 +84,32 @@ object TurtleRenderer {
     }
   }
 
+  private def runArc(state: TurtleState, radius: Double, degrees: Double, clockwise: Boolean): TurtleState = {
+    if (!radius.isFinite || !degrees.isFinite || radius == 0.0 || degrees == 0.0) return state
+    if (degrees < 0) return runArc(state, radius, -degrees, clockwise = !clockwise)
+
+    val stitchLen = 10.0
+    val turns = math.ceil(radius * (degrees / 360.0) * (6.283 / stitchLen)).toInt.max(1)
+    val perTurnAngle = degrees / turns.toDouble
+
+    (0 until turns).foldLeft(state) { (acc, _) =>
+      val halfTurn = if (clockwise) perTurnAngle / 2.0 else -perTurnAngle / 2.0
+      val stepLength = 2.0 * radius * sin((perTurnAngle * (Pi / 180.0)) / 2.0)
+      val turned = runCommands(List(TurtleXmlParser.TurnRight(halfTurn)), acc)
+      val moved = runCommands(List(TurtleXmlParser.Forward(stepLength)), turned)
+      runCommands(List(TurtleXmlParser.TurnRight(halfTurn)), moved)
+    }
+  }
+
   private def renderSegments(segments: List[Segment]): String = {
-    val hasDocument = scala.util.Try(js.Dynamic.global.selectDynamic("document")).toOption
+    val maybeDocument = scala.util.Try(js.Dynamic.global.selectDynamic("document")).toOption
+    val hasDocument = maybeDocument
       .exists(d => !(js.isUndefined(d) || d == null))
     if (!hasDocument) return TransparentPngDataUrl
 
-    val canvas = dom.document.createElement("canvas").asInstanceOf[html.Canvas]
+    val canvas = maybeDocument.get
+      .selectDynamic("createElement")("canvas")
+      .asInstanceOf[html.Canvas]
     canvas.width = 512
     canvas.height = 512
 

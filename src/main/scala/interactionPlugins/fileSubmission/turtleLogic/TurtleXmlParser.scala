@@ -9,6 +9,13 @@ object TurtleXmlParser {
   case class Forward(distance: Double) extends Command
   case class TurnLeft(degrees: Double) extends Command
   case class TurnRight(degrees: Double) extends Command
+  case class ArcRight(radius: Double, degrees: Double) extends Command
+  case class ArcLeft(radius: Double, degrees: Double) extends Command
+  case class GotoXY(x: Double, y: Double) extends Command
+  case class SetHeading(degrees: Double) extends Command
+  case class ChangeYPosition(delta: Double) extends Command
+  case object Clear extends Command
+  case object ReceiveGo extends Command
   case object PenUp extends Command
   case object PenDown extends Command
   case class Repeat(times: Int, body: List[Command]) extends Command
@@ -28,8 +35,11 @@ object TurtleXmlParser {
     val document = parser.parseFromString(xml, "text/xml".asInstanceOf[dom.MIMEType])
 
     val scripts = document.getElementsByTagName("script")
-    val allScriptCommands = (0 until scripts.length).toList
-      .flatMap(i => parseScript(scripts.item(i)))
+    val topLevelScripts = (0 until scripts.length).toList
+      .map(i => scripts.item(i))
+      .filter(node => Option(node.parentNode).exists(_.nodeName == "scripts"))
+
+    val allScriptCommands = topLevelScripts.flatMap(parseScript)
 
     if (allScriptCommands.nonEmpty) allScriptCommands
     else {
@@ -58,14 +68,24 @@ object TurtleXmlParser {
     blockPattern.findAllMatchIn(xml).toList.flatMap { m =>
       val selector = m.group(1)
       val body = m.group(2)
-      val number = """(?s)<l>\s*([-0-9.]+)\s*</l>""".r.findFirstMatchIn(body)
+      val numbers = """(?s)<l>\s*([-0-9.]+)\s*</l>""".r.findAllMatchIn(body).toList
         .flatMap(mm => scala.util.Try(mm.group(1).toDouble).toOption)
-        .getOrElse(0.0)
+
+      val number = numbers.headOption.getOrElse(0.0)
+      val number2 = numbers.drop(1).headOption.getOrElse(0.0)
 
       selector match {
         case "forward" | "forward:" => Some(Forward(number))
-        case "turn" | "turn:" | "turnLeft" | "turnLeft:" => Some(TurnLeft(number))
+        case "turn" | "turn:" => Some(TurnRight(number))
+        case "turnLeft" | "turnLeft:" => Some(TurnLeft(number))
         case "turnLeftAndRight" | "turnRight" | "turnRight:" => Some(TurnRight(number))
+        case "arcRight" => Some(ArcRight(number, number2))
+        case "arcLeft" => Some(ArcLeft(number, number2))
+        case "gotoXY" | "gotoX:y:" => Some(GotoXY(number, number2))
+        case "setHeading" | "heading:" => Some(SetHeading(number))
+        case "changeYPosition" | "changeYposBy:" => Some(ChangeYPosition(number))
+        case "clear" | "clearPenTrails" => Some(Clear)
+        case "receiveGo" => Some(ReceiveGo)
         case "up" | "penup" => Some(PenUp)
         case "down" | "pendown" => Some(PenDown)
         case _ => None
@@ -91,15 +111,40 @@ object TurtleXmlParser {
   private def parseSingleBlock(selector: String, blockElement: dom.Element): Option[Command] = {
     selector match {
       case "forward" | "forward:" =>
-        Some(Forward(readNumberArg(blockElement, default = 0.0)))
-      case "turn" | "turn:" | "turnLeft" | "turnLeft:" =>
-        Some(TurnLeft(readNumberArg(blockElement, default = 0.0)))
+        Some(Forward(readNumberArg(blockElement, index = 0, default = 0.0)))
+      case "turn" | "turn:" =>
+        Some(TurnRight(readNumberArg(blockElement, index = 0, default = 0.0)))
+      case "turnLeft" | "turnLeft:" =>
+        Some(TurnLeft(readNumberArg(blockElement, index = 0, default = 0.0)))
       case "turnLeftAndRight" | "turnRight" | "turnRight:" =>
-        Some(TurnRight(readNumberArg(blockElement, default = 0.0)))
+        Some(TurnRight(readNumberArg(blockElement, index = 0, default = 0.0)))
+      case "arcRight" =>
+        Some(ArcRight(
+          readNumberArg(blockElement, index = 0, default = 0.0),
+          readNumberArg(blockElement, index = 1, default = 0.0)
+        ))
+      case "arcLeft" =>
+        Some(ArcLeft(
+          readNumberArg(blockElement, index = 0, default = 0.0),
+          readNumberArg(blockElement, index = 1, default = 0.0)
+        ))
+      case "gotoXY" | "gotoX:y:" =>
+        Some(GotoXY(
+          readNumberArg(blockElement, index = 0, default = 0.0),
+          readNumberArg(blockElement, index = 1, default = 0.0)
+        ))
+      case "setHeading" | "heading:" =>
+        Some(SetHeading(readNumberArg(blockElement, index = 0, default = 0.0)))
+      case "changeYPosition" | "changeYposBy:" =>
+        Some(ChangeYPosition(readNumberArg(blockElement, index = 0, default = 0.0)))
+      case "clear" | "clearPenTrails" =>
+        Some(Clear)
+      case "receiveGo" =>
+        Some(ReceiveGo)
       case "up" | "penup" => Some(PenUp)
       case "down" | "pendown" => Some(PenDown)
       case "doRepeat" | "doRepeat:" =>
-        val times = readNumberArg(blockElement, default = 0.0).round.toInt.max(0)
+        val times = readNumberArg(blockElement, index = 0, default = 0.0).round.toInt.max(0)
         val body = blockElement.childNodesAsList
           .find(_.nodeName == "script")
           .map(parseScript)
@@ -109,9 +154,10 @@ object TurtleXmlParser {
     }
   }
 
-  private def readNumberArg(blockElement: dom.Element, default: Double): Double = {
+  private def readNumberArg(blockElement: dom.Element, index: Int, default: Double): Double = {
     val literal = blockElement.childNodesAsList
-      .find(_.nodeName == "l")
+      .filter(_.nodeName == "l")
+      .lift(index)
       .map(_.textContent.trim)
       .filter(_.nonEmpty)
 
