@@ -1,10 +1,21 @@
 package interactionPlugins.fileSubmission.turtleStitch
 
+import interactionPlugins.fileSubmission.{TurtleFileSubmission, XmlFactory}
 import interactionPlugins.fileSubmission.turtleLogic.TurtleXmlParser
 import interactionPlugins.fileSubmission.turtleStitch.TurtleStitchProgramModel.*
 import munit.FunSuite
 
 class TurtleStitchProgramRendererSpec extends FunSuite {
+
+  test("read establishedXMLFiles"){
+
+    XmlFactory.all.foreach{xmlFile => {
+      val res = TurtleFileSubmission().renderXmlAsTuple(xmlFile)
+      assert(res._1.nonEmpty && res._2.nonEmpty)
+    }}
+
+  }
+
 
   test("commandsFrom uses receiveGo script when present") {
     val scriptA = Script(blocks = Vector(

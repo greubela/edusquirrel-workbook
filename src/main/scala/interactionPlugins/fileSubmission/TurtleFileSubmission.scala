@@ -118,21 +118,6 @@ class TurtleFileSubmission() extends HtmlAppElement {
         }
       )
       ,
-      button(
-        "Analyze bundled TurtleStitch files",
-        onClick --> { _ =>
-          batchAnalysisMessage.set("Analyzing bundled files...")
-          TurtleFileSubmission.analyzeBundledFiles(readTextFile).onComplete {
-            case Success(results) =>
-              val failed = results.filterNot(_._2)
-              if (failed.isEmpty) batchAnalysisMessage.set(s"Analyzed ${results.size} bundled files successfully.")
-              else batchAnalysisMessage.set(s"Analyzed ${results.size} bundled files. Failed: ${failed.map(_._1).mkString(", ")}")
-            case Failure(error) =>
-              TurtleFileSubmission.logError("Unexpected error during bundled-file analysis", error)
-              batchAnalysisMessage.set("Bundled-file analysis failed unexpectedly. Check console logs.")
-          }
-        }
-      ),
       child.text <-- batchAnalysisMessage.signal
     ),
     div(
