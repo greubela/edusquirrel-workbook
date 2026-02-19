@@ -8,6 +8,7 @@ import org.scalajs.dom
 import org.scalajs.dom.File
 import scala.scalajs.js.typedarray.Uint8Array
 import scala.scalajs.js.Thenable.Implicits.*
+import scala.scalajs.js.URIUtils
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -34,6 +35,7 @@ class TurtleFileSubmission() extends HtmlAppElement {
   private val originalImageMessage = Var("Please upload a turtle XML file.")
   private val simulatedImageMessage = Var("Please upload a turtle XML file.")
   private val programImageMessage = Var("Please upload a turtle XML file.")
+  private val batchAnalysisMessage = Var("Run analysis for bundled files in resources/turtlestitchxml.")
 
   private val domElement: Element = div(
     styleAttr := "display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem; align-items: start;",
@@ -115,6 +117,23 @@ class TurtleFileSubmission() extends HtmlAppElement {
           }
         }
       )
+      ,
+      button(
+        "Analyze bundled TurtleStitch files",
+        onClick --> { _ =>
+          batchAnalysisMessage.set("Analyzing bundled files...")
+          TurtleFileSubmission.analyzeBundledFiles(readTextFile).onComplete {
+            case Success(results) =>
+              val failed = results.filterNot(_._2)
+              if (failed.isEmpty) batchAnalysisMessage.set(s"Analyzed ${results.size} bundled files successfully.")
+              else batchAnalysisMessage.set(s"Analyzed ${results.size} bundled files. Failed: ${failed.map(_._1).mkString(", ")}")
+            case Failure(error) =>
+              TurtleFileSubmission.logError("Unexpected error during bundled-file analysis", error)
+              batchAnalysisMessage.set("Bundled-file analysis failed unexpectedly. Check console logs.")
+          }
+        }
+      ),
+      child.text <-- batchAnalysisMessage.signal
     ),
     div(
       h4("Preview (from XML pen trail)"),
@@ -147,9 +166,23 @@ class TurtleFileSubmission() extends HtmlAppElement {
 
   override def getDomElement(): Element = domElement
 
+  private def readTextFile(path: String): Future[String] =
+    dom.fetch(path).toFuture.flatMap { response =>
+      if (response.ok) response.text().toFuture
+      else Future.failed(new RuntimeException(s"Fetch failed for '$path' with status ${response.status}"))
+    }
+
 }
 
 object TurtleFileSubmission {
+  private val bundledResourceFiles = List(
+    "resources/turtlestitchxml/asdf%20(1).xml",
+    "resources/turtlestitchxml/test.html",
+    "resources/turtlestitchxml/test2%20(1).xml",
+    "resources/turtlestitchxml/test2.xml",
+    "resources/turtlestitchxml/test3%20(1).xml",
+    "resources/turtlestitchxml/test3.xml"
+  )
   /*
    * Known limitations / follow-up ideas (non-trivial to fix correctly right now):
    * 1) XML model coverage is intentionally partial for advanced Snap/TurtleStitch features
@@ -181,16 +214,30 @@ object TurtleFileSubmission {
   }
 
   def renderXmlAsTuple(xml: String): (String, String) = {
-    val project = TurtleStitchXmlLoader.load(xml)
-    val existingPenTrailDataUrl = project.scenes
-      .lift(project.selectedScene - 1)
-      .orElse(project.scenes.headOption)
-      .flatMap(_.stage.pentrails)
-      .filter(_.startsWith("data:image/png;base64,"))
-      .getOrElse("")
+    val projectTry = Try(TurtleStitchXmlLoader.load(xml)).recoverWith { case error =>
+      logError("Parsing Turtle XML failed", error)
+      Success(TurtleStitchXmlLoader.load("<project name=\"Untitled\" />"))
+    }
+    val project = projectTry.get
+    val existingPenTrailDataUrl = Try {
+      project.scenes
+        .lift(project.selectedScene - 1)
+        .orElse(project.scenes.headOption)
+        .flatMap(_.stage.pentrails)
+        .filter(_.startsWith("data:image/png;base64,"))
+        .getOrElse("")
+    }.recover { case error =>
+      logError("Extracting pen trail image failed", error)
+      ""
+    }.get
 
-    val commands = TurtleStitchProgramRenderer.commandsFrom(project)
-    val simulatedDataUrl = TurtleRenderer.renderToPngDataUrl(commands)
+    val simulatedDataUrl = Try {
+      val commands = TurtleStitchProgramRenderer.commandsFrom(project)
+      TurtleRenderer.renderToPngDataUrl(commands)
+    }.recover { case error =>
+      logError("Simulating Turtle program failed", error)
+      TurtleRenderer.renderToPngDataUrl(Nil)
+    }.get
     (existingPenTrailDataUrl, simulatedDataUrl)
   }
 
@@ -203,5 +250,36 @@ object TurtleFileSubmission {
     TurtleStitchFromBeExpressionSerializer.toXml(expression, projectName)
 
   def renderProgramAsSvg(xml: String): Option[String] =
-    TurtleStitchProgramRenderer.renderScriptsAsSvgDataUrl(TurtleStitchXmlLoader.load(xml))
+    Try {
+      val project = TurtleStitchXmlLoader.load(xml)
+      TurtleStitchProgramRenderer.renderScriptsAsSvgDataUrl(project)
+    }.recover { case error =>
+      logError("Rendering Turtle program as SVG failed", error)
+      None
+    }.get
+
+  def analyzeBundledFiles(readTextFile: String => Future[String])(using ExecutionContext): Future[List[(String, Boolean)]] =
+    Future.sequence {
+      bundledResourceFiles.map { encodedPath =>
+        val decodedPath = URIUtils.decodeURIComponent(encodedPath)
+        readTextFile(encodedPath)
+          .map { xml =>
+            val (_, simulated) = renderXmlAsTuple(xml)
+            renderProgramAsSvg(xml)
+            val isAnalyzed = simulated.startsWith("data:image/png;base64,")
+            if (!isAnalyzed) logError(s"Simulated image has unexpected format for '$decodedPath'")
+            decodedPath -> isAnalyzed
+          }
+          .recover { case error =>
+            logError(s"Analyzing bundled file '$decodedPath' failed", error)
+            decodedPath -> false
+          }
+      }
+    }
+
+  def logError(message: String, error: Throwable): Unit =
+    dom.console.error(s"[Error] $message", error)
+
+  def logError(message: String): Unit =
+    dom.console.error(s"[Error] $message")
 }
