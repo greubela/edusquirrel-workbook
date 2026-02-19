@@ -144,16 +144,18 @@ class TurtleFileSubmissionSpec extends FunSuite {
   }
 
   test("green flag script survives xml -> model -> xml round trip") {
-    val project = TurtleFileSubmission.loadProject(xmlWithRepeatNoPentrails)
-    val expression = interactionPlugins.fileSubmission.turtleStitch.TurtleStitchToBeExpressionParser.parseProject(project)
-    val xmlRoundTripped = TurtleFileSubmission.serializeFromBeExpression(expression, "roundTrip1")
+    XmlFactory.all.foreach { xml =>
+      val project = TurtleFileSubmission.loadProject(xml)
+      val expression = interactionPlugins.fileSubmission.turtleStitch.TurtleStitchToBeExpressionParser.parseProject(project)
+      val xmlRoundTripped = TurtleFileSubmission.serializeFromBeExpression(expression, "roundTrip1")
 
-    val originalSelectors = greenFlagSelectors(xmlWithRepeatNoPentrails)
-    val newSelectors = greenFlagSelectors(xmlRoundTripped)
+      val originalSelectors = greenFlagSelectors(xml)
+      val newSelectors = greenFlagSelectors(xmlRoundTripped)
 
-    assert(originalSelectors.nonEmpty)
-    assert(newSelectors.nonEmpty)
-    assertEquals(newSelectors.headOption, Some("receiveGo"))
+      assert(originalSelectors.nonEmpty)
+      assert(newSelectors.nonEmpty)
+      assertEquals(newSelectors.headOption, Some("receiveGo"))
+    }
   }
 
   test("green flag script survives turtle -> BeExpression -> turtle round trip for both sample XML files") {

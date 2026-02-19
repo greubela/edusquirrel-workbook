@@ -70,6 +70,9 @@ class TurtleFileSubmission() extends HtmlAppElement {
                     val (existingPenTrailDataUrl, simulatedDataUrl) = renderXmlAsTuple(xmlText)
                     println("existingPenTrailDataUrl: " + existingPenTrailDataUrl)
                     println("simulatedDataUrl: " + simulatedDataUrl)
+
+                    println("asBeExpr: " + TurtleFileSubmission.parseToBeExpression(xmlText))
+
                     (existingPenTrailDataUrl, simulatedDataUrl, programDataUrl)
                   } match {
                     case Success((existingPenTrailDataUrl, simulatedDataUrl, programDataUrl)) =>
