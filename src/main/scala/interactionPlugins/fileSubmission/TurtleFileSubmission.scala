@@ -64,8 +64,12 @@ class TurtleFileSubmission() extends HtmlAppElement {
                 case Success(bytes) =>
                   Try {
                     val xmlText = new String(bytes.map(_.toByte), "UTF-8")
-                    val (existingPenTrailDataUrl, simulatedDataUrl) = renderXmlAsTuple(xmlText)
+                    println("xmlText: " + xmlText)
                     val programDataUrl = TurtleFileSubmission.renderProgramAsSvg(xmlText)
+                    println("programDataUrl: " + programDataUrl)
+                    val (existingPenTrailDataUrl, simulatedDataUrl) = renderXmlAsTuple(xmlText)
+                    println("existingPenTrailDataUrl: " + existingPenTrailDataUrl)
+                    println("simulatedDataUrl: " + simulatedDataUrl)
                     (existingPenTrailDataUrl, simulatedDataUrl, programDataUrl)
                   } match {
                     case Success((existingPenTrailDataUrl, simulatedDataUrl, programDataUrl)) =>
