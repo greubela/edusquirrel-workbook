@@ -65,8 +65,9 @@ class TurtleFileSubmissionSpec extends FunSuite {
       List(
         TurtleXmlParser.Repeat(
           10,
-          List(TurtleXmlParser.Forward(10.0), TurtleXmlParser.TurnLeft(15.0))
-        )
+          List(TurtleXmlParser.Forward(10.0), TurtleXmlParser.TurnRight(15.0))
+        ),
+        TurtleXmlParser.ReceiveGo
       )
     )
   }
@@ -91,11 +92,17 @@ class TurtleFileSubmissionSpec extends FunSuite {
           10,
           List(
             TurtleXmlParser.Forward(10.0),
-            TurtleXmlParser.TurnLeft(15.0),
+            TurtleXmlParser.ArcRight(50.0, 30.0),
+            TurtleXmlParser.ArcLeft(50.0, 90.0),
+            TurtleXmlParser.TurnRight(15.0),
             TurtleXmlParser.Forward(50.0),
-            TurtleXmlParser.Forward(10.0)
+            TurtleXmlParser.ChangeYPosition(10.0),
+            TurtleXmlParser.Forward(10.0),
+            TurtleXmlParser.SetHeading(90.0),
+            TurtleXmlParser.SetHeading(30.0)
           )
-        )
+        ),
+        TurtleXmlParser.ReceiveGo
       )
     )
   }
