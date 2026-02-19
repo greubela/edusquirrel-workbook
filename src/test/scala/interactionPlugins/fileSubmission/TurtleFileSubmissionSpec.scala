@@ -184,6 +184,22 @@ class TurtleFileSubmissionSpec extends FunSuite {
     assert(selectors.contains("forward"))
   }
 
+  test("XmlFactory examples can all be parsed and rendered as simulated output") {
+    XmlFactory.all.zipWithIndex.foreach { case (xml, index) =>
+      val (existing, simulated) = TurtleFileSubmission.renderXmlAsTuple(xml)
+      val programSvg = TurtleFileSubmission.renderProgramAsSvg(xml)
+      val commands = TurtleXmlParser.parse(xml)
+
+      assert(simulated.startsWith("data:image/png;base64,"), clues(s"example=${index + 1}"))
+      assert(simulated.length > "data:image/png;base64,".length, clues(s"example=${index + 1}"))
+      assert(programSvg.exists(_.startsWith("data:image/svg+xml;utf8,")), clues(s"example=${index + 1}"))
+      assert(commands.nonEmpty, clues(s"example=${index + 1}"))
+
+      if index == 0 then assert(existing.startsWith("data:image/png;base64,"), clues(s"example=${index + 1}"))
+      else assertEquals(existing, "", clues(s"example=${index + 1}"))
+    }
+  }
+
   private def greenFlagSelectors(xml: String): List[String] = {
     val scriptPattern = """(?s)<script[^>]*>(.*?)</script>""".r
     val blockPattern = """(?s)<block\s+[^>]*s=\"([^\"]+)\"[^>]*>.*?</block>|<block\s+[^>]*s=\"([^\"]+)\"\s*/>""".r
