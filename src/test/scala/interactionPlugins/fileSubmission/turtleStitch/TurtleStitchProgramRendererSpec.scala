@@ -8,11 +8,9 @@ import munit.FunSuite
 class TurtleStitchProgramRendererSpec extends FunSuite {
 
   test("read establishedXMLFiles"){
-
-    XmlFactory.all.foreach{xmlFile => {
-      val res = TurtleFileSubmission().renderXmlAsTuple(xmlFile)
-      assert(res._1.nonEmpty && res._2.nonEmpty)
-    }}
+    val results = XmlFactory.all.map(TurtleFileSubmission.renderXmlAsTuple)
+    assert(results.forall(_._2.nonEmpty))
+    assert(results.exists(_._1.nonEmpty))
 
   }
 

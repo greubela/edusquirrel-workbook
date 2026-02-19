@@ -18,9 +18,13 @@ object TurtleStitchXmlLoader {
     scala.util.Try {
       val hasDomParser = scala.util.Try(js.Dynamic.global.selectDynamic("DOMParser")).toOption
         .exists(parser => !(js.isUndefined(parser) || parser == null))
+      val hasDocument = scala.util.Try(js.Dynamic.global.selectDynamic("document")).toOption
+        .exists(document => !(js.isUndefined(document) || document == null))
 
-      if (!hasDomParser) loadWithStringFallback(xml)
-      else {
+      if (!hasDomParser || !hasDocument) {
+        warnFallback("DOM parser is unavailable in this runtime")
+        loadWithStringFallback(xml)
+      } else {
         val parser = new dom.DOMParser()
         val document = parser.parseFromString(xml, "text/xml".asInstanceOf[dom.MIMEType])
         val projectNode = Option(document.getElementsByTagName("project").item(0)).getOrElse(document.documentElement)
@@ -42,7 +46,20 @@ object TurtleStitchXmlLoader {
           origName = textChild(projectNode, "origName").filter(_.nonEmpty)
         )
       }
-    }.recover(_ => loadWithStringFallback(xml)).getOrElse(EmptyProject)
+    }.recover { case error =>
+      warnFallback(s"DOM parsing failed (${error.getClass.getSimpleName}); using string parser")
+      loadWithStringFallback(xml)
+    }.getOrElse(EmptyProject)
+  }
+
+  private def warnFallback(reason: String): Unit = {
+    scala.util.Try {
+      val globalConsole = js.Dynamic.global.selectDynamic("console")
+      if (!(js.isUndefined(globalConsole) || globalConsole == null)) {
+        globalConsole.selectDynamic("warn")(s"[WARN] TurtleStitchXmlLoader fallback: $reason")
+      }
+    }
+    ()
   }
 
 
