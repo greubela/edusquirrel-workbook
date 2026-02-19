@@ -2,8 +2,7 @@ package interactionPlugins.fileSubmission.turtleStitch
 
 import interactionPlugins.fileSubmission.turtleLogic.TurtleXmlParser
 import interactionPlugins.fileSubmission.turtleStitch.TurtleStitchProgramModel.*
-
-import scala.scalajs.js.URIUtils
+import interactionPlugins.fileSubmission.turtleStitchRendering.TurtleStitchSnapBlockSvgRenderer
 
 object TurtleStitchProgramRenderer {
 
@@ -27,40 +26,8 @@ object TurtleStitchProgramRenderer {
     }.getOrElse(Nil)
   }
 
-  def renderScriptsAsSvgDataUrl(project: Project): Option[String] = {
-    scala.util.Try {
-      val scripts = selectedScene(project).toList.flatMap(scene => selectedSprite(scene.stage).map(_.scripts).getOrElse(scene.stage.scripts))
-      if (scripts.isEmpty) None
-      else {
-        val lines = scripts.flatMap(scriptToLines)
-        if (lines.isEmpty) None
-        else {
-          val fontSize = 14
-          val lineHeight = 28
-          val padding = 12
-          val blockWidth = lines.map(_._2.length).maxOption.getOrElse(10) * 8 + 28
-          val width = blockWidth + padding * 2
-          val height = lines.length * lineHeight + padding * 2
-
-          val body = lines.zipWithIndex.map { case ((indent, label), idx) =>
-            val y = padding + idx * lineHeight
-            val x = padding + indent * 16
-            val w = (label.length * 8 + 20).max(120)
-            s"<rect x=\"$x\" y=\"$y\" rx=\"6\" ry=\"6\" width=\"$w\" height=\"22\" fill=\"#4f67c9\"/>" +
-              s"<text x=\"${x + 10}\" y=\"${y + 15}\" font-family=\"sans-serif\" font-size=\"$fontSize\" fill=\"white\">${escape(label)}</text>"
-          }.mkString
-
-          val svg =
-            s"""<svg xmlns="http://www.w3.org/2000/svg" width="$width" height="$height" viewBox="0 0 $width $height">
-               |<rect width="$width" height="$height" fill="white"/>
-               |$body
-               |</svg>""".stripMargin
-
-          Some(s"data:image/svg+xml;utf8,${URIUtils.encodeURIComponent(svg)}")
-        }
-      }
-    }.getOrElse(None)
-  }
+  def renderScriptsAsSvgDataUrl(project: Project): Option[String] =
+    TurtleStitchSnapBlockSvgRenderer.renderScriptsAsSvgDataUrl(project)
 
   private def commandsFromScripts(scripts: Vector[Script]): List[TurtleXmlParser.Command] =
     scriptsToExecute(scripts).flatMap(script => script.blocks.toList.flatMap(blockToCommand))
