@@ -38,12 +38,32 @@ final case class PythonFixture(
 object PythonExerciseDescription {
 
   private val english = AppLanguage.English
+  private val german = AppLanguage.German
+  private val french = AppLanguage.French
+  private val ukrainian = AppLanguage.Ukrainian
+  private val russian = AppLanguage.Russian
+  private val turkish = AppLanguage.Turkish
+  private val danish = AppLanguage.Danish
 
   val helloWorld: PythonExerciseDescription = PythonExerciseDescription(
     id = "python-hello-world",
-    titleTranslations = LanguageMap.mapBasedLanguageMap(Map(english -> "Hello World")),
+    titleTranslations = LanguageMap.mapBasedLanguageMap(Map(
+      english -> "Hello World",
+      german -> "Hallo Welt",
+      french -> "Bonjour le monde",
+      ukrainian -> "Привіт, світе",
+      russian -> "Привет, мир",
+      turkish -> "Merhaba Dünya",
+      danish -> "Hej verden"
+    )),
     instructionTranslations = LanguageMap.mapBasedLanguageMap(Map(
-      english -> "Write a function named `say_hello` that returns the string `Hello, World!` and prints it when executed."
+      english -> "Write a function named `say_hello` that returns the string `Hello, World!` and prints it when executed.",
+      german -> "Schreibe eine Funktion mit dem Namen `say_hello`, die den String `Hello, World!` zurückgibt und ihn bei der Ausführung ausgibt.",
+      french -> "Écris une fonction nommée `say_hello` qui renvoie la chaîne `Hello, World!` et l'affiche lors de l'exécution.",
+      ukrainian -> "Напиши функцію з назвою `say_hello`, яка повертає рядок `Hello, World!` і виводить його під час виконання.",
+      russian -> "Напиши функцию с именем `say_hello`, которая возвращает строку `Hello, World!` и выводит её при выполнении.",
+      turkish -> "Çalıştırıldığında `Hello, World!` dizesini döndüren ve yazdıran `say_hello` adlı bir fonksiyon yaz.",
+      danish -> "Skriv en funktion ved navn `say_hello`, der returnerer strengen `Hello, World!` og udskriver den ved kørsel."
     )),
     estimatedTimeInMinutes = 2,
     starterCode =
@@ -100,9 +120,23 @@ assert result.strip() == "Hello, World!", "Ensure no additional whitespace is re
 
   val fizzBuzz: PythonExerciseDescription = PythonExerciseDescription(
     id = "python-fizzbuzz",
-    titleTranslations = LanguageMap.mapBasedLanguageMap(Map(english -> "FizzBuzz")),
+    titleTranslations = LanguageMap.mapBasedLanguageMap(Map(
+      english -> "FizzBuzz",
+      german -> "FizzBuzz",
+      french -> "FizzBuzz",
+      ukrainian -> "FizzBuzz",
+      russian -> "FizzBuzz",
+      turkish -> "FizzBuzz",
+      danish -> "FizzBuzz"
+    )),
     instructionTranslations = LanguageMap.mapBasedLanguageMap(Map(
-      english -> "Implement `fizzbuzz_sequence(limit)` returning a list from 1..limit with FizzBuzz substitutions."
+      english -> "Implement `fizzbuzz_sequence(limit)` returning a list from 1..limit with FizzBuzz substitutions.",
+      german -> "Implementiere `fizzbuzz_sequence(limit)`, das eine Liste von 1..limit mit FizzBuzz-Ersetzungen zurückgibt.",
+      french -> "Implémente `fizzbuzz_sequence(limit)` qui renvoie une liste de 1..limit avec les remplacements FizzBuzz.",
+      ukrainian -> "Реалізуй `fizzbuzz_sequence(limit)`, що повертає список від 1..limit із підстановками FizzBuzz.",
+      russian -> "Реализуй `fizzbuzz_sequence(limit)`, которая возвращает список от 1..limit с подстановками FizzBuzz.",
+      turkish -> "1..limit aralığını FizzBuzz dönüşümleriyle liste olarak döndüren `fizzbuzz_sequence(limit)` fonksiyonunu uygula.",
+      danish -> "Implementér `fizzbuzz_sequence(limit)`, som returnerer en liste fra 1..limit med FizzBuzz-erstatninger."
     )),
     estimatedTimeInMinutes = 5,
     starterCode =
@@ -152,9 +186,23 @@ assert result[10] == "Fizz", "11th element (value 11) should be 'Fizz'"
 
   val ninetyNineBottles: PythonExerciseDescription = PythonExerciseDescription(
     id = "python-99-bottles",
-    titleTranslations = LanguageMap.mapBasedLanguageMap(Map(english -> "99 Bottles of Beer")),
+    titleTranslations = LanguageMap.mapBasedLanguageMap(Map(
+      english -> "99 Bottles of Beer",
+      german -> "99 Bottles of Beer",
+      french -> "99 bouteilles de bière",
+      ukrainian -> "99 пляшок пива",
+      russian -> "99 бутылок пива",
+      turkish -> "99 Şişe Bira",
+      danish -> "99 flasker øl"
+    )),
     instructionTranslations = LanguageMap.mapBasedLanguageMap(Map(
-      english -> "Create `verse(start)` that returns the lyrics for a single verse of '99 Bottles of Beer'."
+      english -> "Create `verse(start)` that returns the lyrics for a single verse of '99 Bottles of Beer'.",
+      german -> "Erstelle `verse(start)`, das den Liedtext für eine einzelne Strophe von '99 Bottles of Beer' zurückgibt.",
+      french -> "Crée `verse(start)` qui renvoie les paroles d'un seul couplet de '99 Bottles of Beer'.",
+      ukrainian -> "Створи `verse(start)`, що повертає текст одного куплету пісні '99 Bottles of Beer'.",
+      russian -> "Создай `verse(start)`, которая возвращает текст одного куплета песни '99 Bottles of Beer'.",
+      turkish -> "'99 Bottles of Beer' şarkısının tek bir kıtasının sözlerini döndüren `verse(start)` fonksiyonunu oluştur.",
+      danish -> "Lav `verse(start)`, der returnerer sangteksten for ét vers af '99 Bottles of Beer'."
     )),
     estimatedTimeInMinutes = 8,
     starterCode =

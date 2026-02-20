@@ -60,7 +60,12 @@ object ProgrammingExerciseFactory {
 
     val instruction = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
       AppLanguage.English -> "Use Turtle Commands to program the Shape on the right!",
-      AppLanguage.German -> "Programmiere die Form auf der rechten Seite nach!"
+      AppLanguage.German -> "Programmiere die Form auf der rechten Seite nach!",
+      AppLanguage.French -> "Utilise les commandes Turtle pour programmer la forme à droite !",
+      AppLanguage.Ukrainian -> "Використай команди Turtle, щоб запрограмувати фігуру праворуч!",
+      AppLanguage.Russian -> "Используй команды Turtle, чтобы запрограммировать фигуру справа!",
+      AppLanguage.Turkish -> "Sağdaki şekli programlamak için Turtle komutlarını kullan!",
+      AppLanguage.Danish -> "Brug Turtle-kommandoer til at programmere formen til højre!"
     ))
     val instructionElement = HtmlPlaintextInstructionElement(workbookInfoVar, instruction)
 

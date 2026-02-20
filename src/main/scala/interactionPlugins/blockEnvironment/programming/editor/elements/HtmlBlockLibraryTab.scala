@@ -95,8 +95,24 @@ object HtmlBlockLibraryTab {
     val whileProg = BeProgram(BeWhile(condSequence, passSequence))
     val ifProg = BeProgram(BeIfElse(condSequence, passSequence, passSequence))
 
-    val whileMap = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(AppLanguage.English -> "REPEAT-WHILE", AppLanguage.German -> "WIEDERHOLE-SOLANGE"))
-    val ifMap = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(AppLanguage.English -> "IF/THEN/ELSE", AppLanguage.German -> "FALLS/DANN/SONST"))
+    val whileMap = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
+      AppLanguage.English -> "REPEAT-WHILE",
+      AppLanguage.German -> "WIEDERHOLE-SOLANGE",
+      AppLanguage.French -> "RÉPÉTER-TANT-QUE",
+      AppLanguage.Ukrainian -> "ПОВТОРЮВАТИ-ПОКИ",
+      AppLanguage.Russian -> "ПОВТОРЯТЬ-ПОКА",
+      AppLanguage.Turkish -> "TEKRARLA-SÜRECE",
+      AppLanguage.Danish -> "GENTAG-MENS"
+    ))
+    val ifMap = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
+      AppLanguage.English -> "IF/THEN/ELSE",
+      AppLanguage.German -> "FALLS/DANN/SONST",
+      AppLanguage.French -> "SI/ALORS/SINON",
+      AppLanguage.Ukrainian -> "ЯКЩО/ТОДІ/ІНАКШЕ",
+      AppLanguage.Russian -> "ЕСЛИ/ТОГДА/ИНАЧЕ",
+      AppLanguage.Turkish -> "EĞER/O HALDE/AKSİ",
+      AppLanguage.Danish -> "HVIS/SÅ/ELLERS"
+    ))
 
     fakeLibraryTabElements(editorState, List((whileMap, whileProg), (ifMap, ifProg)))
 
@@ -104,14 +120,70 @@ object HtmlBlockLibraryTab {
 
   def getDefaultLibraryPrograms(): List[BeProgram] = {
 
-    val forwardName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> "forward", AppLanguage.German -> "vorwärts"))
-    val rotateName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> "rotateClockwise", AppLanguage.German -> "dreheImUhrzeigersinn"))
-    val distName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> "distance", AppLanguage.German -> "distanz"))
-    val degName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> "degree", AppLanguage.German -> "grad"))
+    val forwardName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
+      AppLanguage.English -> "forward",
+      AppLanguage.German -> "vorwärts",
+      AppLanguage.French -> "forward",
+      AppLanguage.Ukrainian -> "forward",
+      AppLanguage.Russian -> "forward",
+      AppLanguage.Turkish -> "forward",
+      AppLanguage.Danish -> "forward"
+    ))
+    val rotateName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
+      AppLanguage.English -> "rotateClockwise",
+      AppLanguage.German -> "dreheImUhrzeigersinn",
+      AppLanguage.French -> "rotateClockwise",
+      AppLanguage.Ukrainian -> "rotateClockwise",
+      AppLanguage.Russian -> "rotateClockwise",
+      AppLanguage.Turkish -> "rotateClockwise",
+      AppLanguage.Danish -> "rotateClockwise"
+    ))
+    val distName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
+      AppLanguage.English -> "distance",
+      AppLanguage.German -> "distanz",
+      AppLanguage.French -> "distance",
+      AppLanguage.Ukrainian -> "distance",
+      AppLanguage.Russian -> "distance",
+      AppLanguage.Turkish -> "distance",
+      AppLanguage.Danish -> "distance"
+    ))
+    val degName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
+      AppLanguage.English -> "degree",
+      AppLanguage.German -> "grad",
+      AppLanguage.French -> "degree",
+      AppLanguage.Ukrainian -> "degree",
+      AppLanguage.Russian -> "degree",
+      AppLanguage.Turkish -> "degree",
+      AppLanguage.Danish -> "degree"
+    ))
 
-    val dayName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> "addDays", AppLanguage.German -> "addiereTage"))
-    val dateName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> "date", AppLanguage.German -> "datum"))
-    val dayNrName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> "dayNr", AppLanguage.German -> "tageAnzahl"))
+    val dayName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
+      AppLanguage.English -> "addDays",
+      AppLanguage.German -> "addiereTage",
+      AppLanguage.French -> "addDays",
+      AppLanguage.Ukrainian -> "addDays",
+      AppLanguage.Russian -> "addDays",
+      AppLanguage.Turkish -> "addDays",
+      AppLanguage.Danish -> "addDays"
+    ))
+    val dateName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
+      AppLanguage.English -> "date",
+      AppLanguage.German -> "datum",
+      AppLanguage.French -> "date",
+      AppLanguage.Ukrainian -> "date",
+      AppLanguage.Russian -> "date",
+      AppLanguage.Turkish -> "date",
+      AppLanguage.Danish -> "date"
+    ))
+    val dayNrName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
+      AppLanguage.English -> "dayNr",
+      AppLanguage.German -> "tageAnzahl",
+      AppLanguage.French -> "dayNr",
+      AppLanguage.Ukrainian -> "dayNr",
+      AppLanguage.Russian -> "dayNr",
+      AppLanguage.Turkish -> "dayNr",
+      AppLanguage.Danish -> "dayNr"
+    ))
 
     List(
       BeProgram.createSimpleFunc(forwardName, List(distName), List(BeDataType.Numeric), List("100"), None),
