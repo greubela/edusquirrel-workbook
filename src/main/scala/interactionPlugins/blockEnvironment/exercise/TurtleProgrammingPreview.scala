@@ -6,17 +6,14 @@ import com.raquo.laminar.api.L.svg
 import contentmanagement.model.geometry.Bounds
 import contentmanagement.model.language.*
 import contentmanagement.webElements.svg.AppSvgElement
-import interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig, BlockEnvironmentLanguageMap}
+import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig, BlockEnvironmentLanguageMap}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
 import workbook.model.info.WorkbookInfo
+import workbook.model.interaction.InteractionVariable
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
-case class TurtleProgrammingPreview(workbookInfoVar: Var[WorkbookInfo], currentProgram: Var[BeProgram], expectedSvgResult: AppSvgElement) extends HtmlWorkbookElement {
-
-  private val previewDisplayConfig: BeTreeDisplayConfig = BeTreeDisplayConfig.previewDefaults
-  private val previewRendererConfig: BeRenderingConfig = BeRenderingConfig.default()
-  private val previewControllerConfig: BeTreeControllerConfig = BeTreeControllerConfig.noOpConfig()
+case class TurtleProgrammingPreview(workbookInfoVar: Var[WorkbookInfo], editorState: EditorState, expectedSvgResult: AppSvgElement) extends HtmlWorkbookElement {
 
   private val renderedSvg: SvgElement = {
     val expectedElement = expectedSvgResult
@@ -34,10 +31,16 @@ case class TurtleProgrammingPreview(workbookInfoVar: Var[WorkbookInfo], currentP
     )
   }
 
-  private def renderProgramPreview(program: BeProgram): HtmlElement = {
-    val editorState = EditorState.withGivenVariable(currentProgram)
-    val (treeDom, _) = HtmlBeTreeDisplay.render(program, previewDisplayConfig, previewRendererConfig, previewControllerConfig, editorState)
-    treeDom.amend(cls := "programming-preview-tree")
+  private def renderProgramPreview(program: BeProgram): Element = {
+    HtmlBeTreeDisplay(
+      editorState,
+      Var(program).signal,
+      Var(BeTreeDisplayConfig.previewDefaults).signal,
+      editorState.rendererConfigVar.signal,
+      Var(BeTreeControllerConfig.noOpConfig()).signal
+    ).treeInContainerDiv
+   // val (treeDom, _) = HtmlBeTreeDisplay.render(program, previewDisplayConfig, editorState.rendererConfigVar., previewControllerConfig, editorState)
+    //treeDom.amend(cls := "programming-preview-tree")
   }
 
   private def previewCard(cardType: String, cardLabel: LanguageMap[HumanLanguage], cardContent: Signal[Element]): Element = div(
@@ -55,7 +58,7 @@ case class TurtleProgrammingPreview(workbookInfoVar: Var[WorkbookInfo], currentP
     div(
       cls := "workbook-interaction preview-line",
       //
-      previewCard("program", BlockEnvironmentLanguageMap.languageMapYourProgram, currentProgram.signal.map(renderProgramPreview)),
+      previewCard("program", BlockEnvironmentLanguageMap.languageMapYourProgram, editorState.treeToEdit.signal.map(renderProgramPreview)),
       previewCard("output", BlockEnvironmentLanguageMap.languageMapProgramOutcome, Var(div(renderedSvg)).signal),
     )
 

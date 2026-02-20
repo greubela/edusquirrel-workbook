@@ -1,7 +1,6 @@
 package interactionPlugins.blockEnvironment.programming.editor.elements
 
 import com.raquo.airstream.ownership.Owner
-
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Signal
@@ -10,6 +9,8 @@ import interactionPlugins.blockEnvironment.config
 import interactionPlugins.blockEnvironment.config.*
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.blockdisplay.BeTreeDropTarget
+import workbook.model.info.WorkbookInfo
+import workbook.model.interaction.InteractionVariable
 
 case class EditorState(
                         treeToEdit: Var[BeProgram],
@@ -94,14 +95,6 @@ case class EditorState(
 
 object EditorState {
 
-  def withGivenVariable(progVar: Var[BeProgram]): EditorState = {
-
-    val initRenderer = BeRenderingConfig.default()
-
-    val initControllerState: BeEditorControllerState = BeEditorControllerState.default()
-
-    EditorState(progVar, Var(initControllerState), Var(initRenderer))
-  }
 
   def withInitExpression(initExpr: BeExpression): EditorState = {
 

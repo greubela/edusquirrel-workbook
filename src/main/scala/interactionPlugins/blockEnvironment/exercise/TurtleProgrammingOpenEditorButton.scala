@@ -5,14 +5,15 @@ import com.raquo.laminar.api.L.*
 import interactionPlugins.blockEnvironment.config.BlockEnvironmentLanguageMap
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
+import interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
 import interactionPlugins.fileSubmission.TurtleStitchFileUploadFactory
 import workbook.model.info.WorkbookInfo
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
-case class TurtleProgrammingOpenEditorButton(workbookInfoVar: Var[WorkbookInfo], currentProgram: Var[BeProgram]) extends HtmlWorkbookElement {
+case class TurtleProgrammingOpenEditorButton(workbookInfoVar: Var[WorkbookInfo], editorState: EditorState) extends HtmlWorkbookElement {
 
 
-  private val fullscreenEditor = HtmlFullscreenTurtleEditorElement(currentProgram)
+  private val fullscreenEditor = HtmlFullscreenTurtleEditorElement(editorState)
 
   private def openFullEditor(): Unit = {
     //fullscreenEditor.bindToProgram(currentProgram)

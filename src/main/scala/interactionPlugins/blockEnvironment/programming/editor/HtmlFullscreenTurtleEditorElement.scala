@@ -26,14 +26,14 @@ object HtmlFullscreenTurtleEditorElement {
 
   def apply(initExpr: BeExpression): HtmlFullscreenTurtleEditorElement = {
     new Exception("[WARN] created Turtle Editor without useful variable to be bound to!").printStackTrace()
-    HtmlFullscreenTurtleEditorElement(Var(BeProgram(initExpr)))
+    HtmlFullscreenTurtleEditorElement(EditorState.withInitExpression(initExpr))
   }
 
 }
 
-case class HtmlFullscreenTurtleEditorElement(forVar: Var[BeProgram]) extends HtmlAppElement {
+case class HtmlFullscreenTurtleEditorElement(editorState: EditorState) extends HtmlAppElement {
 
-  private val editorState: EditorState = EditorState.withGivenVariable(forVar)
+  //private val editorState: EditorState = EditorState.forWorkbookAndInteractionVariable(forVar)
   private var programBound: Boolean = false
 
   /*

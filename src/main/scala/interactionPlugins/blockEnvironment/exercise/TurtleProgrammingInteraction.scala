@@ -5,7 +5,7 @@ import com.raquo.laminar.api.L.*
 import contentmanagement.model.geometry.Bounds
 import contentmanagement.model.language.AppLanguage
 import contentmanagement.webElements.svg.AppSvgElement
-import interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig, BlockEnvironmentLanguageMap}
+import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig, BlockEnvironmentLanguageMap}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
@@ -31,10 +31,22 @@ case class TurtleProgrammingInteraction(workbookInfoVar: Var[WorkbookInfo], id: 
     defaultProgram,
     io)
 
-  private val currentProgram: Var[BeProgram] = interactionVariable.createBoundVarWithUpdateImportance(MAJOR)
+  private val editorState: EditorState = {
+    val initRenderer = BeRenderingConfig.defaultWithLanguage(workbookInfoVar.now().config.currentWorkbookLanguage)
+    val rendererVar = Var(initRenderer)
+    
+    workbookInfoVar.signal.foreach(onNext => rendererVar.update(_.copy(language = onNext.config.currentWorkbookLanguage)))(unsafeWindowOwner)
 
-  private val openEditorButton = TurtleProgrammingOpenEditorButton(workbookInfoVar, currentProgram)
-  private val programmingView = TurtleProgrammingPreview(workbookInfoVar, currentProgram, expectedSvgResult)
+    val initControllerState: BeEditorControllerState = BeEditorControllerState.default()
+    EditorState(
+      interactionVariable.createBoundVarWithUpdateImportance(MAJOR),
+      Var(initControllerState),
+      rendererVar
+    )
+  }
+
+  private val openEditorButton = TurtleProgrammingOpenEditorButton(workbookInfoVar, editorState)
+  private val programmingView = TurtleProgrammingPreview(workbookInfoVar, editorState, expectedSvgResult)
 
   private val domElement: Element =
     div(
