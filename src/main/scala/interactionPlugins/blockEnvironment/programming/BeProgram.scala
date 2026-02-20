@@ -198,23 +198,13 @@ object BeProgram {
 
     val forwardName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
       AppLanguage.German -> "vorwärts",
-      AppLanguage.English -> "forward",
-      AppLanguage.French -> "forward",
-      AppLanguage.Ukrainian -> "forward",
-      AppLanguage.Russian -> "forward",
-      AppLanguage.Turkish -> "forward",
-      AppLanguage.Danish -> "forward"
+      AppLanguage.English -> "forward"
     ))
 
     val parameter: BeDefineVariable = BeDefineVariable(
       LanguageMap.mapBasedLanguageMap(Map(
         AppLanguage.German -> "distanz",
-        AppLanguage.English -> "distance",
-        AppLanguage.French -> "distance",
-        AppLanguage.Ukrainian -> "distance",
-        AppLanguage.Russian -> "distance",
-        AppLanguage.Turkish -> "distance",
-        AppLanguage.Danish -> "distance")
+        AppLanguage.English -> "distance")
       ),
       BeDataType.Numeric)
 

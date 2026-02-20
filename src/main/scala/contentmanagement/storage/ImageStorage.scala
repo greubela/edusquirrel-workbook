@@ -98,6 +98,18 @@ object ImageStorage {
     fullImageFuture
   }
 
+  def loadFullImageIntoVar(imageDescription: ImageDescription)(implicit ec: ExecutionContext): Var[Option[FullImage]] = {
+
+    val loadedImage: Var[Option[FullImage]] = Var(None)
+    
+    loadFullImage(imageDescription).onComplete {
+      case Success(fullImg) => loadedImage.update(_ => Some(fullImg))
+      case Failure(error) => println("ERROR at loading img :-(")
+    }(ec)
+    
+    loadedImage
+  }
+  
   def loadFullImage(imageDescription: ImageDescription)(implicit ec: ExecutionContext): Future[FullImage] =
     if (fullImageMap.contains(imageDescription)) {
       cache_hits = cache_hits + 1

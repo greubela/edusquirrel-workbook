@@ -6,7 +6,7 @@ import contentmanagement.model.image.ImageDescription.ServerImageDescription
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import contentmanagement.webElements.HtmlAppElement
 import interactionPlugins.blockEnvironment.exercise.{ProgrammingExerciseFactory, TurtleProgrammingInteraction}
-import interactionPlugins.fileSubmission.TurtleStitchFileUploadFactory
+import interactionPlugins.fileSubmission.TurtleStitchFileFactory
 import interactionPlugins.gpt.GptExerciseFactory
 import workbook.model.*
 import workbook.model.info.{WorkbookConfig, WorkbookInfo}
@@ -108,10 +108,10 @@ object TestWorkbook {
 
   private def turtleProgCont(workbookInfoVar: Var[WorkbookInfo]): HtmlExerciseContainer = {
 
-    val elements = TurtleStitchFileUploadFactory.createReprogramShapeExercise(
+    val elements = TurtleStitchFileFactory.createReprogramShapeExercise(
       workbookInfoVar,
       "ts-upload-007",
-      TurtleStitchFileUploadFactory.languageMapDefaultExerciseTitle,
+      TurtleStitchFileFactory.languageMapDefaultExerciseTitle,
       ServerImageDescription("/resources/workbookresources/monks/Image01.jpg")
     )
     HtmlExerciseContainer(workbookInfoVar, elements)
@@ -119,8 +119,7 @@ object TestWorkbook {
 
 
   def createTestSection(workbookInfoVar: Var[WorkbookInfo]): WorkbookSection = {
-
-
+    
     val contList = List(
       gptCont(workbookInfoVar),
       turtleProgCont(workbookInfoVar),

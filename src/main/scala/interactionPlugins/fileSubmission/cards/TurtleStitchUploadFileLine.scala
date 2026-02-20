@@ -1,10 +1,9 @@
-package interactionPlugins.fileSubmission
+package interactionPlugins.fileSubmission.cards
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.image.ImageDescription
-import contentmanagement.model.image.ImageDescription.ServerImageDescription
-import interactionPlugins.fileSubmission.TurtleFileButtonCard.StorageFormat
+import interactionPlugins.fileSubmission.cards.TurtleFileButtonCard.StorageFormat
 import workbook.model.info.WorkbookInfo
 import workbook.model.interaction.InteractionVariable
 import workbook.workbookHtmlElements.abstractions.WorkbookInteraction
@@ -17,7 +16,7 @@ case class TurtleStitchUploadFileLine(workbookInfoVar: Var[WorkbookInfo], id: St
 
   private val fileImagePreview = TurtleFilePreviewCard(workbookInfoVar, interactionVariable)
 
-  private val expectedOutcomePreview = TurtleFileExpectedCard(expectedOutcome)
+  private val expectedOutcomePreview = TurtleFileExpectedCard(workbookInfoVar, expectedOutcome)
 
   private val domElement: Element = div(
     cls := "workbook-interaction preview-line",

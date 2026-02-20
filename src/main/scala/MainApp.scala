@@ -1,6 +1,7 @@
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
+import content.EmbroideryWorkbook.CreateEmbroideryWorkbook
 import content.TestWorkbook.TestWorkbook
 import content.plantworkshop
 import content.plantworkshop.PlantWorkshopApp
@@ -19,7 +20,7 @@ private val idAndContentList: List[(String, Element)] = List(
   //("testEditor", HtmlFullscreenTurtleEditorElement(BeProgram.debugGraphicsProgram().fullProgram).getDomElement()),
   ("testWorksheet", TestWorkbook.createTestWorkbook(fullscreenElement).getDomElement()),
   //("worksheetMonks", TestWorkbook(fullscreenElement).getDomElement()),
-  //("worksheetMonks", MonksWorkbook().getDomElement())
+  ("workbookEmbroidery", CreateEmbroideryWorkbook(fullscreenElement).createWorkbook().getDomElement())
 )
 
 def insertWorkbookContent(): Unit = {

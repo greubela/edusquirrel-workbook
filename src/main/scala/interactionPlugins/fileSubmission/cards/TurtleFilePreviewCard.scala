@@ -1,8 +1,9 @@
-package interactionPlugins.fileSubmission
+package interactionPlugins.fileSubmission.cards
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement
+import interactionPlugins.fileSubmission.TurtleStitchFileFactory
 import interactionPlugins.fileSubmission.turtleStitch.TurtleStitchXmlLoader
 import org.scalajs.dom
 import util.HtmlHelper
@@ -17,17 +18,17 @@ case class TurtleFilePreviewCard(workbookInfoVar: L.Var[WorkbookInfo],
 
   private def emptyPreview(): List[Element] = List(
     h3(
-      child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(TurtleStitchFileUploadFactory.languageMapShowEmptyPreview.getInLanguage)
+      child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(TurtleStitchFileFactory.languageMapShowEmptyPreview.getInLanguage)
     ),
     div(
       cls := "preview-content",
-      child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(TurtleStitchFileUploadFactory.languageMapShowEmptyDescription.getInLanguage)
+      child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(TurtleStitchFileFactory.languageMapShowEmptyDescription.getInLanguage)
     )
   )
 
   private def pentrailPreview(pentrailData: String): List[Element] = List(
     h3(
-      child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(TurtleStitchFileUploadFactory.languageMapShowPentrailPreview.getInLanguage)
+      child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(TurtleStitchFileFactory.languageMapShowPentrailPreview.getInLanguage)
     ),
     div(
       cls := "preview-content",
@@ -37,7 +38,7 @@ case class TurtleFilePreviewCard(workbookInfoVar: L.Var[WorkbookInfo],
 
   private def thumbnailPreview(thumbnailData: String): List[Element] = List(
     h3(
-      child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(TurtleStitchFileUploadFactory.languageMapShowThumbnailPreview.getInLanguage)
+      child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(TurtleStitchFileFactory.languageMapShowThumbnailPreview.getInLanguage)
     ),
     div(
       cls := "preview-content",
@@ -47,7 +48,7 @@ case class TurtleFilePreviewCard(workbookInfoVar: L.Var[WorkbookInfo],
 
   private def errorPreview(messages: List[String]): List[Element] = List(
     h3(
-      child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(TurtleStitchFileUploadFactory.languageMapShowErrorPreview.getInLanguage)
+      child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(TurtleStitchFileFactory.languageMapShowErrorPreview.getInLanguage)
     ),
     div(
       cls := "preview-content",
@@ -56,7 +57,7 @@ case class TurtleFilePreviewCard(workbookInfoVar: L.Var[WorkbookInfo],
   )
 
   private lazy val downloadButton: Element = button(
-    child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(TurtleStitchFileUploadFactory.languageMapDownloadButton.getInLanguage),
+    child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(TurtleStitchFileFactory.languageMapDownloadButton.getInLanguage),
     onClick --> { _ =>
       val curEvent = xmlFileInteractionVar.lastUpdate
       HtmlHelper.downloadFile("TurtleStitch_" + xmlFileInteractionVar.underlyingInteraction.id + "_" + curEvent.epochTimestampMillis + ".xml", curEvent.value)

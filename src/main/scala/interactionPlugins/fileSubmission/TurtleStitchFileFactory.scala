@@ -1,15 +1,18 @@
 package interactionPlugins.fileSubmission
 
+import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.image.ImageDescription
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
+import interactionPlugins.fileSubmission.cards.{TurtleFileExistingProjectCard, TurtleStitchUploadFileLine}
+import org.scalajs.dom
+import org.scalajs.dom.URL
 import workbook.model.info.WorkbookInfo
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 import workbook.workbookHtmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement}
+import workbook.workbookHtmlElements.interactions.HtmlBasicTextInteraction
 
-import scala.::
-
-object TurtleStitchFileUploadFactory {
+object TurtleStitchFileFactory {
 
   def createReprogramShapeExercise(
                                     workbookInfo: Var[WorkbookInfo],
@@ -27,6 +30,37 @@ object TurtleStitchFileUploadFactory {
     List(htmlTitleElement, instr, uploadLine)
   }
 
+  def createExecuteProgramExercise(
+                                    workbookInfo: Var[WorkbookInfo],
+                                    baseId: String,
+                                    title: LanguageMap[HumanLanguage],
+                                    imageShowCommands: ImageDescription,
+                                    projectToDownload: URL
+                                  ): List[HtmlWorkbookElement] = {
+
+    val htmlTitleElement = HtmlContainerTitle(workbookInfo, title)
+    val instr = HtmlPlaintextInstructionElement(workbookInfo, languageMapDefaultReadExerciseInstruction)
+    val down = TurtleFileExistingProjectCard(workbookInfo, baseId, imageShowCommands, projectToDownload)
+    val downElement = new HtmlWorkbookElement() {
+      override def workbookInfoVar: L.Var[WorkbookInfo] = workbookInfo
+
+      override def getDomElement(): L.Element = div(
+        cls := "workbook-interaction preview-line",
+        down.getDomElement()
+      )
+    }
+
+    val instr2 = HtmlPlaintextInstructionElement(workbookInfo, languageMapDefaultAnalyzeExerciseInstruction)
+
+    val text = HtmlBasicTextInteraction(workbookInfo, baseId)
+
+    val instr3 = HtmlPlaintextInstructionElement(workbookInfo, languageMapDefaultExecuteExerciseInstruction)
+
+    List(htmlTitleElement, instr, downElement, instr2, text, instr3)
+
+  }
+
+
   val languageMapDefaultExerciseTitle: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
     AppLanguage.English -> "Re-Create the Shape!",
     AppLanguage.German -> "Programmiere die Figur!",
@@ -36,6 +70,28 @@ object TurtleStitchFileUploadFactory {
     AppLanguage.Turkish -> "Şekli yeniden oluştur!",
     AppLanguage.Danish -> "Genskab formen!"
   ))
+
+  val languageMapProvidedProjectLabel: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
+    AppLanguage.English -> "Prepared Project",
+    AppLanguage.German -> "Vorgegebenes Projekt",
+  ))
+
+  val languageMapDefaultReadExerciseInstruction: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
+    AppLanguage.English -> "Read the commands within the following Program",
+    AppLanguage.German -> "Lies die Befehle im folgendem Programm durch",
+  ))
+
+  val languageMapDefaultExecuteExerciseInstruction: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
+    AppLanguage.English -> "Verify your expectation! ",
+    AppLanguage.German -> "Überprüfe deine Vermutung!"
+  ))
+
+
+  val languageMapDefaultAnalyzeExerciseInstruction: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
+    AppLanguage.English -> "Describe the shape you expect to be created",
+    AppLanguage.German -> "Beschreibe die Figur, die vermutlich entsteht",
+  ))
+
 
   val languageMapDefaultReprogramInstruction: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
     AppLanguage.English -> "Open TurtleStitch (https://www.turtlestitch.org/run) and program the shape shown on the right. Then, click on the file symbol (\uD83D\uDCDD) and save the file on your computer. Lastly, upload your file via the button on the left.",
@@ -76,7 +132,7 @@ object TurtleStitchFileUploadFactory {
     AppLanguage.Danish -> "Uploadet projekt (Pentrail)"
   ))
 
-  val languageMapShowErrorPreview: LanguageMap[HumanLanguage]= LanguageMap.mapBasedLanguageMap(Map(
+  val languageMapShowErrorPreview: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
     AppLanguage.English -> "Uploaded Project (with errors)",
     AppLanguage.German -> "Hochgeladenes Projekt (fehlerhaft)",
     AppLanguage.French -> "Projet téléversé (avec des erreurs)",
@@ -86,7 +142,7 @@ object TurtleStitchFileUploadFactory {
     AppLanguage.Danish -> "Uploadet projekt (med fejl)"
   ))
 
-  val languageMapShowEmptyPreview: LanguageMap[HumanLanguage]= LanguageMap.mapBasedLanguageMap(Map(
+  val languageMapShowEmptyPreview: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
     AppLanguage.English -> "Uploaded Project (missing)",
     AppLanguage.German -> "Hochgeladenes Projekt (fehlt)",
     AppLanguage.French -> "Projet téléversé (manquant)",
