@@ -1,18 +1,9 @@
 package interactionPlugins.fileSubmission
 
-import com.raquo.laminar.api.L.*
-import contentmanagement.webElements.HtmlAppElement
-import interactionPlugins.fileSubmission.turtleLogic.TurtleRenderer
-import interactionPlugins.fileSubmission.turtleStitch.{TurtleStitchFromBeExpressionSerializer, TurtleStitchProgramRenderer, TurtleStitchToBeExpressionParser, TurtleStitchXmlLoader}
 import org.scalajs.dom
-import org.scalajs.dom.File
-import scala.scalajs.js.typedarray.Uint8Array
-import scala.scalajs.js.Thenable.Implicits.*
-import scala.scalajs.js.URIUtils
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
-
+// ai generated, does not really work
+/*
 class TurtleFileSubmission() extends HtmlAppElement {
 
   private given ExecutionContext = scala.concurrent.ExecutionContext.global
@@ -275,3 +266,4 @@ object TurtleFileSubmission {
   def logError(message: String): Unit =
     dom.console.error(s"[Error] $message")
 }
+*/

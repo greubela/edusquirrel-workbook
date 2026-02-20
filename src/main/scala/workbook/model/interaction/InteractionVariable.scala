@@ -21,6 +21,8 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
 
   def interactionSignal: Signal[T] = underlyingVar.signal
 
+  def lastUpdate: InteractionVariableState[T] = history.maxBy(_.epochTimestampMillis) 
+  
   def currentValue: T = underlyingVar.now()
 
   def createBoundVarWithUpdateImportance(importance: UpdateImportance): Var[T] = {

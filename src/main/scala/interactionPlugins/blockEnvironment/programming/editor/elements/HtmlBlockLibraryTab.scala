@@ -39,8 +39,8 @@ object HtmlBlockLibraryTab {
   }
 
   def apply(editorState: EditorState, allPrograms: List[BeProgram], existingRenderings: Map[BeProgram, Element]): HtmlBlockLibraryTab = {
-    println("allPrograms: " + allPrograms.map(_.fullProgram.expressionIO.getInLanguage(Python, English)).mkString("\n"))
-    println("fakedsize: " + existingRenderings.size + " / " + allPrograms.size + " = " + existingRenderings.size.toDouble / allPrograms.size.toDouble * 100 + "%")
+   // println("allPrograms: " + allPrograms.map(_.fullProgram.expressionIO.getInLanguage(Python, English)).mkString("\n"))
+   // println("fakedsize: " + existingRenderings.size + " / " + allPrograms.size + " = " + existingRenderings.size.toDouble / allPrograms.size.toDouble * 100 + "%")
     HtmlBlockLibraryTab(allPrograms.map(curProgram => (curProgram, existingRenderings.getOrElse(curProgram, progToElement(curProgram, editorState)))))
   }
 

@@ -34,7 +34,7 @@ case class SimpleStringExerciseVariableTextEditor(
 
   private val domElement = {
     div(
-      cls := "simple-text-editor",
+      cls := "simple-text-editor workbook-interaction",
       editorTextArea
     )
   }

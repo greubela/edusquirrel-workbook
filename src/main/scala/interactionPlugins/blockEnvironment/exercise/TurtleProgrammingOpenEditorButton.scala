@@ -2,8 +2,10 @@ package interactionPlugins.blockEnvironment.exercise
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import interactionPlugins.blockEnvironment.config.BlockEnvironmentLanguageMap
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
+import interactionPlugins.fileSubmission.TurtleStitchFileUploadFactory
 import workbook.model.info.WorkbookInfo
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
@@ -21,7 +23,7 @@ case class TurtleProgrammingOpenEditorButton(workbookInfoVar: Var[WorkbookInfo],
     button(
       typ := "button",
       cls := "programming-exercise-action-button",
-      "Open full editor",
+      child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(BlockEnvironmentLanguageMap.languageMapOpenEditor.getInLanguage),
       onClick --> (_ => openFullEditor())
     )
   

@@ -10,7 +10,9 @@ case class HtmlContainerTitle(workbookInfoVar: Var[WorkbookInfo], titleMap: Lang
   override def getDomElement(): Element = {
     div(
       cls := "container-title",
-      child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(titleMap.getInLanguage)
+      h2(
+        child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(titleMap.getInLanguage)
+      )
     )
   }
 

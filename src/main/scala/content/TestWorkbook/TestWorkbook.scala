@@ -2,9 +2,11 @@ package content.TestWorkbook
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
+import contentmanagement.model.image.ImageDescription.ServerImageDescription
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import contentmanagement.webElements.HtmlAppElement
 import interactionPlugins.blockEnvironment.exercise.{ProgrammingExerciseFactory, TurtleProgrammingInteraction}
+import interactionPlugins.fileSubmission.TurtleStitchFileUploadFactory
 import interactionPlugins.gpt.GptExerciseFactory
 import workbook.model.*
 import workbook.model.info.{WorkbookConfig, WorkbookInfo}
@@ -59,46 +61,67 @@ class TestWorkbook(fullscreenElement: HtmlFullScreenElement) extends HtmlAppElem
 
 object TestWorkbook {
 
+  private val defaultTitle: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
+    AppLanguage.English -> "this is the title.",
+    AppLanguage.German -> "Das ist der Titel."
+  ))
 
-  def createTestSection(workbookInfoVar: Var[WorkbookInfo]): WorkbookSection = {
+  private val textInstruction1: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
+    AppLanguage.English -> "Write a text!",
+    AppLanguage.German -> "Schreibe einen Text!"
+  ))
 
-    val defaultTitle: LanguageMap[HumanLanguage] =   LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
-      AppLanguage.English -> "this is the title.",
-      AppLanguage.German -> "Das ist der Titel."
-    ))
+  private val textInstruction2: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
+    AppLanguage.English -> "Write another text!",
+    AppLanguage.German -> "Schreibe noch einen Text!"
+  ))
 
-    // Text
+  private def gptCont(workbookInfoVar: Var[WorkbookInfo]): HtmlExerciseContainer = {
     val gptElements = GptExerciseFactory.createGptExercise(
       workbookInfoVar,
       "text-007",
       defaultTitle,
-      List(
-        LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
-          AppLanguage.English -> "Write a text!",
-          AppLanguage.German -> "Schreibe einen Text!"
-        ))
-        ,
-        LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
-          AppLanguage.English -> "Write another text!",
-          AppLanguage.German -> "Schreibe noch einen Text!"
-        ))
-      )
+      List(textInstruction1, textInstruction2)
     )
-    val cont1 = HtmlExerciseContainer(workbookInfoVar, gptElements)
+    HtmlExerciseContainer(workbookInfoVar, gptElements)
+  }
 
-    // Prog
+  private def blockProgCont(workbookInfoVar: Var[WorkbookInfo]): HtmlExerciseContainer = {
     val progElements = ProgrammingExerciseFactory.createTurtleProgrammingExercise(workbookInfoVar, "prog-007", defaultTitle, ProgrammingExerciseFactory.DefaultPentagonExpectedResult)
-    val cont2 = HtmlExerciseContainer(workbookInfoVar, progElements)
+    HtmlExerciseContainer(workbookInfoVar, progElements)
+  }
+
+  private def turtleProgCont(workbookInfoVar: Var[WorkbookInfo]): HtmlExerciseContainer = {
+
+    val elements = TurtleStitchFileUploadFactory.createReprogramShapeExercise(
+      workbookInfoVar,
+      "ts-upload-007",
+      TurtleStitchFileUploadFactory.languageMapDefaultExerciseTitle,
+      ServerImageDescription("/resources/workbookresources/monks/Image01.jpg")
+    )
+    HtmlExerciseContainer(workbookInfoVar, elements)
+  }
+
+
+  def createTestSection(workbookInfoVar: Var[WorkbookInfo]): WorkbookSection = {
+
+
+    val contList = List(
+      gptCont(workbookInfoVar),
+      turtleProgCont(workbookInfoVar),
+      blockProgCont(workbookInfoVar)
+    )
+
 
     val secTitle = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
       AppLanguage.English -> "This is section 1.",
       AppLanguage.German -> "Das ist Abschnitt 1."
     ))
-    WorkbookSection(workbookInfoVar, secTitle, List(cont1, cont2))
+    WorkbookSection(workbookInfoVar, secTitle, contList)
   }
 
   def createTestWorkbook(fullscreenElement: HtmlFullScreenElement): Workbook = {
-    val defaultInfo = WorkbookInfo(fullscreenElement, WorkbookConfig(AppLanguage.English, User("TestUser", "dummy@test.de")), Map())
+    val defaultInfo = WorkbookInfo(fullscreenElement, WorkbookConfig(AppLanguage.German, User("TestUser", "dummy@test.de")), Map())
     val workbookInfoVar = Var(defaultInfo)
 
     val sec = createTestSection(workbookInfoVar)

@@ -44,7 +44,7 @@ object ImageStorage {
   private def calcDataSourceString(imageDescription: ImageDescription): Future[String] = {
 
     def fileInfoToString(imgData: FileInformation): String = {
-      val b64str = TypeConversion.base64ByteArrayToString(imgData.fileData)
+      val b64str = TypeConversion.byteArrayToBase64String(imgData.fileData)
       "data:image/" + imgData.fileType + ";base64, " + b64str
     }
 

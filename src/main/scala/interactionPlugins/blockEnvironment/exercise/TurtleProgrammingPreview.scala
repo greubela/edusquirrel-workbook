@@ -41,20 +41,19 @@ case class TurtleProgrammingPreview(workbookInfoVar: Var[WorkbookInfo], currentP
   }
 
   private def previewCard(cardType: String, cardLabel: LanguageMap[HumanLanguage], cardContent: Signal[Element]): Element = div(
-    cls := "programming-preview-" + cardType,
-    div(
-      cls := "programming-preview-label",
+    cls := "preview-card",
+    h3(
       child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(cardLabel.getInLanguage)
     ),
     div(
-      cls := "programming-preview-canvas",
+      cls := "preview-content",
       child <-- cardContent
     )
   )
 
   private val domElement: Element =
     div(
-      cls := "workbook-element program-preview-card",
+      cls := "workbook-interaction preview-line",
       //
       previewCard("program", BlockEnvironmentLanguageMap.languageMapYourProgram, currentProgram.signal.map(renderProgramPreview)),
       previewCard("output", BlockEnvironmentLanguageMap.languageMapProgramOutcome, Var(div(renderedSvg)).signal),

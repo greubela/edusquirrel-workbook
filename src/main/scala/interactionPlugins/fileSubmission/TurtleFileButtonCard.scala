@@ -1,0 +1,101 @@
+package interactionPlugins.fileSubmission
+
+import com.raquo.laminar.api.L
+import com.raquo.laminar.api.L.*
+import com.raquo.laminar.nodes.ReactiveHtmlElement
+import interactionPlugins.fileSubmission.TurtleFileButtonCard.*
+import interactionPlugins.fileSubmission.TurtleFileButtonCard.StorageFormat.{BYTES_AS_BASE64_STRING, BYTES_AS_RAW_STRING}
+import org.scalajs.dom
+import org.scalajs.dom.{Blob, BlobPropertyBag, File, HTMLInputElement, URL, document}
+import util.TypeConversion
+import workbook.model.info.WorkbookInfo
+import workbook.model.interaction.InteractionVariable
+import workbook.model.interaction.history.UpdateImportance
+import workbook.workbookHtmlElements.abstractions.WorkbookInteraction
+import org.scalajs.dom
+
+import scala.scalajs.js
+import scala.scalajs.js.typedarray.*
+import scala.concurrent.{ExecutionContext, Future}
+import scala.scalajs.js.typedarray.Uint8Array
+import scala.util.{Failure, Success}
+
+case class TurtleFileButtonCard(
+                                 workbookInfoVar: L.Var[WorkbookInfo],
+                                 id: String, acceptedTypes: List[String],
+                                 storageFormat: StorageFormat = BYTES_AS_BASE64_STRING
+                               ) extends WorkbookInteraction[String] {
+
+  override val interactionVariable: InteractionVariable[String] = InteractionVariable.stringVariable(this, "")
+
+  private lazy val uploadInput: ReactiveHtmlElement[HTMLInputElement] = input(
+    styleAttr := "display:none;",
+    typ := "file",
+    accept := acceptedTypes.mkString(","),
+    onChange --> { event =>
+      val inputElement = event.target.asInstanceOf[dom.html.Input]
+      if (inputElement.files.length > 0) onNewFileSelected(inputElement.files.item(0))
+    }
+  )
+
+  private lazy val uploadButton: Element = button(
+    child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(TurtleStitchFileUploadFactory.languageMapUploaddButton.getInLanguage),
+    uploadInput,
+    onClick --> { _ =>
+      uploadInput.ref.click()
+    }
+  )
+
+  private lazy val fileDom: Element = div(
+    cls := "preview-card",
+    h3(
+      child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(TurtleStitchFileUploadFactory.languageMapUploaddButton.getInLanguage),
+    ),
+    div(
+      cls := "preview-content",
+      uploadButton
+    )
+  )
+
+
+  private def onFileReadSuccessfully(bytes: Array[Byte]): Unit = {
+    val contentAsString: String = storageFormat match {
+      case BYTES_AS_RAW_STRING => new String(bytes.map(_.toByte), "UTF-8")
+      case BYTES_AS_BASE64_STRING => TypeConversion.byteArrayToBase64String(bytes)
+    }
+
+    interactionVariable.updateStateFromUserInteraction(contentAsString, System.currentTimeMillis(), UpdateImportance.MAJOR)
+
+  }
+
+  private def onNewFileSelected(file: File): Unit = {
+    val fileFut: Future[Array[Byte]] = readBytes(file)
+
+    fileFut.onComplete {
+      case Success(data) => onFileReadSuccessfully(data)
+      case Failure(error) => println("[WARN] could not load file, ignoring content: " + error.getMessage)
+    }(ExecutionContext.global)
+
+  }
+
+  def readBytes(file: File): Future[Array[Byte]] = {
+    file.arrayBuffer().toFuture.map { buffer =>
+      val array = new Uint8Array(buffer)
+      Array.tabulate(array.length)(i => array(i).toByte)
+    }(scala.concurrent.ExecutionContext.global)
+  }
+
+
+
+
+  def getDomElement(): Element = fileDom
+
+}
+
+object TurtleFileButtonCard {
+
+  enum StorageFormat {
+    case BYTES_AS_RAW_STRING, BYTES_AS_BASE64_STRING
+  }
+
+}

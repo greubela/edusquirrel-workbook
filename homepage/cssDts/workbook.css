@@ -29,16 +29,30 @@ body {
 .workbook-element{
 }
 
-.container-title {
-  background: var(--color-accent-blue-foreground);
-  color: var(--color-accent-foreground-textcolor);
+h2 {
+  color: var(--color-accent-blue-foreground);
 
-  text-transform: uppercase;
-  text-align: center;
+  text-align: left;
   font-weight: 600;
-  font-size: 1.1rem;
+  font-size: 32px;
+}
 
-  padding: var(--space-sm) 0 var(--space-sm) 0;
+h3 {
+  color: var(--color-accent-blue-foreground);
+  text-align: left;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.container-title {
+  //background: var(--color-accent-blue-foreground);
+  //color: var(--color-accent-foreground-textcolor);
+  padding: var(--space-md);
+
+  border-radius: var(--space-md)var(--space-md) 0 0 ;
+  border-top: var(--space-md) solid var(--color-accent-blue-foreground);
+  border-left: var(--space-md) solid var(--color-accent-blue-foreground);
+
 }
 
 .exercise-instruction {
@@ -49,7 +63,6 @@ body {
   padding: var(--space-md);
   font-size: 0.95rem;
 }
-
 
 .button-line{
   margin: 0 auto;
@@ -64,22 +77,36 @@ body {
   padding: var(--space-xs) 0 var(--space-xs) 0;
 }
 
-.container-interaction {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  width: 100%;
+/* Horizontal Preview Cards */
+.preview-line{
+    display: flex;
+    flex-direction: row;
+    gap: var(--space-md);
+    background: var(--color-border);
+
+
+  border: var(--space-md) solid var(--color-border);
+
 }
+.preview-line .preview-card {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+
+    background-color: white;
+
+    flex: 1;   // Each item grows equally
+}
+
+.preview-line .preview-content{
+}
+
 
 /* --- Programming exercise preview layout --- */
 .program-preview-card {
   display: grid;
   grid-template-columns: 50% 50%;
   gap: var(--space-lg);
-}
-
-.container-interaction-element.programming-preview-card {
-  gap: 0;
 }
 
 .programming-preview-label {
@@ -141,53 +168,6 @@ body {
   transform: translateY(-1px);
 }
 
-/* --- Label Variants --- */
-.label-editor,
-.container-label.label-editor {
-  background: var(--color-label-editor-bg);
-  color: var(--color-label-editor-text);
-}
-
-.label-scaffolding,
-.container-label.label-scaffolding {
-  background: var(--color-label-scaffolding-bg);
-  color: var(--color-label-scaffolding-text);
-}
-
-.label-grading,
-.container-label.label-grading {
-  background: var(--color-label-grading-unknown-bg);
-  color: var(--color-label-grading-unknown-text);
-}
-
-.label-grading.grading-unknown,
-.label-grading.grading-missing,
-.container-label.label-grading.grading-unknown,
-.container-label.label-grading.grading-missing {
-  background: var(--color-label-grading-unknown-bg);
-  color: var(--color-label-grading-unknown-text);
-}
-
-.label-grading.grading-error,
-.label-grading.grading-incorrect,
-.container-label.label-grading.grading-error,
-.container-label.label-grading.grading-incorrect,
-.container-label.label-grading.grading-wrong {
-  background: var(--color-label-grading-error-bg);
-  color: var(--color-label-grading-error-text);
-}
-
-.label-grading.grading-partially-correct,
-.container-label.label-grading.grading-partially-correct {
-  background: var(--color-label-grading-partial-bg);
-  color: var(--color-label-grading-partial-text);
-}
-
-.label-grading.grading-correct,
-.container-label.label-grading.grading-correct {
-  background: var(--color-label-grading-correct-bg);
-  color: var(--color-label-grading-correct-text);
-}
 
 /* --- SVG Button Styling --- */
 .svg-button {
@@ -1146,21 +1126,24 @@ body {
 }
 
 /* --- Editors --- */
-.simple-text-editor textarea {
+
+.workbook-interaction{}
+
+.workbook-interaction textarea {
   width: 100%;
-  border: var(--space-xs) solid var(--color-border);
+
+  border: var(--space-md) solid var(--color-border);
+
   background: var(--color-surface);
   color: var(--color-text-primary);
   padding: var(--space-md);
   font-size: 0.95rem;
   resize: vertical;
-  min-height: 160px;
+  min-height: 100px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   box-sizing: border-box;
 
-
   font-family: var(--font-family);
-
 }
 
 .simple-text-editor textarea.mono {
@@ -1171,8 +1154,7 @@ body {
 
 .simple-text-editor textarea:focus {
   outline: none;
-  border-color: var(--color-focus);
-  box-shadow: var(--shadow-focus);
+  border-color: var(--color-accent-blue-foreground);
   background: var(--color-interaction-background);
 }
 
