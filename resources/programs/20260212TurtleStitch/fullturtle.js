@@ -1,0 +1,295 @@
+// fullturtle.js (hardened)
+// Guarantees: window.TurtleStitchPoC exists immediately.
+// Adds: window.TurtleStitchPoCReady (Promise<void>) and window.TurtleStitchPoCError (Error|null)
+
+(() => {
+  "use strict";
+
+  const LOG_PREFIX = "[TurtleStitchPoC]";
+  const log = (...a) => console.log(LOG_PREFIX, ...a);
+  const warn = (...a) => console.warn(LOG_PREFIX, ...a);
+  const err = (...a) => console.error(LOG_PREFIX, ...a);
+
+  // Public readiness / error signals
+  window.TurtleStitchPoCError = null;
+  let resolveReady, rejectReady;
+  window.TurtleStitchPoCReady = new Promise((res, rej) => { resolveReady = res; rejectReady = rej; });
+
+  // Internal ready flag
+  let isReady = false;
+
+  // Stub API exposed immediately (never undefined)
+  // Calls will wait for TurtleStitchPoCReady and then dispatch to real implementations.
+  const api = {
+    calcProgramPng: async (xml_content, language) => {
+      await window.TurtleStitchPoCReady;
+      return api._impl.calcProgramPng(xml_content, language);
+    },
+    simulateGreenFlag: async (xml_content) => {
+      await window.TurtleStitchPoCReady;
+      return api._impl.simulateGreenFlag(xml_content);
+    },
+    downloadDst: async (xml_content) => {
+      await window.TurtleStitchPoCReady;
+      return api._impl.downloadDst(xml_content);
+    },
+    _impl: null
+  };
+
+  window.TurtleStitchPoC = api;
+
+  // ---- Script loader ----
+  const SNAP_SCRIPT_ORDER = [
+    "src/morphic.js",
+    "src/symbols.js",
+    "src/widgets.js",
+    "src/blocks.js",
+    "src/threads.js",
+    "src/objects.js",
+    "src/scenes.js",
+    "src/gui.js",
+    "src/paint.js",
+    "src/lists.js",
+    "src/byob.js",
+    "src/tables.js",
+    "src/sketch.js",
+    "src/video.js",
+    "src/maps.js",
+    "src/extensions.js",
+    "src/xml.js",
+    "src/store.js",
+    "src/locale.js",
+    "src/cloud.js",
+    "src/api.js",
+    "src/embroider.js"
+  ];
+
+  let scriptsLoaded = false;
+  let booted = false;
+  let bootPromise = null;
+
+  let world = null;
+  let ide = null;
+
+  function injectScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.async = false;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error("Failed to load " + src));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function ensureScriptsLoaded() {
+    if (scriptsLoaded) return;
+    log("Loading TurtleStitch scripts…");
+    for (const p of SNAP_SCRIPT_ORDER) await injectScript(p);
+    scriptsLoaded = true;
+    log("Scripts loaded.");
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+  function stepWorld(n = 2) { for (let i = 0; i < n; i++) { try { world.doOneCycle(); } catch (_) {} } }
+
+  function forceLayout() {
+    if (!world || !ide) return;
+    try {
+      const c = world.worldCanvas;
+      const w = new Point(c.width, c.height);
+      world.setExtent(w);
+      if (ide.setExtent) ide.setExtent(w);
+      if (ide.fixLayout) ide.fixLayout();
+    } catch (e) { warn("forceLayout exception:", e); }
+    stepWorld(3);
+  }
+
+  function setLanguageAsync(lang) {
+    return new Promise((resolve) => {
+      if (!ide || typeof ide.setLanguage !== "function") return resolve(false);
+      ide.setLanguage(lang, () => resolve(true), true);
+    });
+  }
+
+  async function boot() {
+    await ensureScriptsLoaded();
+    if (booted) return;
+    if (bootPromise) return bootPromise;
+
+    bootPromise = (async () => {
+      if (!window.WorldMorph || !window.IDE_Morph) throw new Error("WorldMorph/IDE_Morph missing after load.");
+
+      const wrap = document.createElement("div");
+      wrap.style.position = "fixed";
+      wrap.style.left = "-20000px";
+      wrap.style.top = "0";
+
+      const canvas = document.createElement("canvas");
+      canvas.width = 1400;
+      canvas.height = 1000;
+      canvas.tabIndex = 1;
+      wrap.appendChild(canvas);
+      document.body.appendChild(wrap);
+
+      world = new WorldMorph(canvas);
+      world.worldCanvas = canvas;
+
+      ide = new IDE_Morph({ noAutoFill: true, noCloud: true });
+      ide.openIn(world);
+
+      window.world = world;
+      window.ide = ide;
+
+      forceLayout();
+
+      (function loop() {
+        try { world.doOneCycle(); } catch (_) {}
+        requestAnimationFrame(loop);
+      })();
+
+      booted = true;
+      log("IDE booted.");
+    })();
+
+    return bootPromise;
+  }
+
+  async function loadProjectXmlCanonical(xml) {
+    await boot();
+    await setLanguageAsync("en");
+    ide.loadProjectXML(xml);
+    await sleep(350);
+    try { ide.selectSprite?.(ide.currentSprite); } catch (_) {}
+    forceLayout();
+    stepWorld(3);
+  }
+
+  function ctorName(o) { try { return o?.constructor?.name || typeof o; } catch (_) { return "?"; } }
+  function isBlockish(m) {
+    try {
+      if (!m) return false;
+      if (m.selector || m.blockSpec || m.isBlock) return true;
+      return ctorName(m).includes("Block");
+    } catch (_) { return false; }
+  }
+  function scoreMorph(m) {
+    try {
+      if (!m || !m.children) return 0;
+      let blocks = 0;
+      for (const ch of m.children) if (isBlockish(ch)) blocks++;
+      return blocks * 1000 + m.children.length;
+    } catch (_) { return 0; }
+  }
+  function walkMorphTree(root, maxNodes = 8000) {
+    const out = [];
+    const stack = [root];
+    const seen = new Set();
+    let n = 0;
+
+    while (stack.length && n < maxNodes) {
+      const m = stack.pop();
+      if (!m || typeof m !== "object" || seen.has(m)) continue;
+      seen.add(m); n++;
+
+      const kids = (m.children && Array.isArray(m.children)) ? m.children.length : 0;
+      if (typeof m.fullImage === "function" && kids > 0) {
+        out.push({ m, ctor: ctorName(m), kids, score: scoreMorph(m) });
+      }
+      try {
+        if (m.children && Array.isArray(m.children)) {
+          for (let i = m.children.length - 1; i >= 0; i--) stack.push(m.children[i]);
+        }
+      } catch (_) {}
+    }
+    out.sort((a,b) => b.score - a.score);
+    return out;
+  }
+
+  function findBestProgramMorph() {
+    const roots = [];
+    if (ide?.spriteEditor) roots.push(ide.spriteEditor);
+    if (ide?.spriteEditor?.contents) roots.push(ide.spriteEditor.contents);
+    if (ide?.currentSprite?.scripts) roots.push(ide.currentSprite.scripts);
+
+    const all = [];
+    for (const r of roots) all.push(...walkMorphTree(r));
+    return all.length ? all[0].m : null;
+  }
+
+  function snapshotMorphToPngDataUrl(morph) {
+    forceLayout();
+    try { morph.fixLayout?.(); } catch (_) {}
+    try { morph.changed?.(); } catch (_) {}
+    stepWorld(2);
+    return morph.fullImage().toDataURL("image/png");
+  }
+
+  function snapshotStagePngDataUrl() {
+    forceLayout();
+    const stage = ide?.stage;
+    if (!stage || typeof stage.fullImage !== "function") throw new Error("Stage fullImage() not available.");
+    return stage.fullImage().toDataURL("image/png");
+  }
+
+  async function runGreenFlagOnce() {
+    forceLayout();
+    try { ide.stage.clearPenTrails?.(); } catch (_) {}
+    ide.runScripts();
+    await sleep(700);
+    try { ide.stop?.(); } catch (_) {}
+    stepWorld(3);
+  }
+
+  // Real implementations (wired into api._impl once boot finishes)
+  const impl = {
+    calcProgramPng: async (xml_content, language) => {
+	  console.log("calling calcProgramPng for (" + language + "): " + xml_content)
+      if (typeof xml_content !== "string") throw new Error("xml_content must be a string");
+      await loadProjectXmlCanonical(xml_content);
+      if (language && language !== "en") {
+        await setLanguageAsync(language);
+        forceLayout(); stepWorld(2);
+      }
+      const m = findBestProgramMorph();
+      if (!m) throw new Error("Could not locate program morph for snapshot.");
+      return snapshotMorphToPngDataUrl(m);
+    },
+
+    simulateGreenFlag: async (xml_content) => {
+      if (typeof xml_content !== "string") throw new Error("xml_content must be a string");
+      await loadProjectXmlCanonical(xml_content);
+      await runGreenFlagOnce();
+      return snapshotStagePngDataUrl();
+    },
+
+    downloadDst: async (xml_content) => {
+      if (typeof xml_content !== "string") throw new Error("xml_content must be a string");
+      await loadProjectXmlCanonical(xml_content);
+      await runGreenFlagOnce();
+
+      if (typeof window.exportEmbroidery !== "function") {
+        throw new Error("exportEmbroidery not found (src/embroider.js missing?)");
+      }
+      const stage = ide?.stage;
+      const trailsLog = stage?.trailsLog || stage?.turtle?.trailsLog || null;
+      if (!trailsLog) throw new Error("No trailsLog after running; cannot export DST.");
+      window.exportEmbroidery(trailsLog, "turtlestitch-export", "dst");
+    }
+  };
+
+  // Boot and mark ready
+  (async () => {
+    try {
+      await boot();
+      api._impl = impl;
+      isReady = true;
+      resolveReady();
+      log("API ready.");
+    } catch (e) {
+      window.TurtleStitchPoCError = e;
+      rejectReady(e);
+      err("API boot failed:", e);
+    }
+  })();
+})();
