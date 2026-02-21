@@ -3,6 +3,25 @@ package plantworkshop
 import com.raquo.laminar.api.L._
 import org.scalajs.dom
 import scala.scalajs.js
+import scala.scalajs.js.annotation._
+import scala.scalajs.js.timers._
+
+// JAVASCRIPT ZEUG
+@js.native
+@JSGlobal("CodeJar")
+class CodeJar(element: dom.Element, highlight: js.Function1[dom.Element, Unit]) extends js.Object {
+  def updateCode(code: String): Unit = js.native
+  def onUpdate(callback: js.Function1[String, Unit]): Unit = js.native
+  def destroy(): Unit = js.native
+}
+
+@js.native
+@JSGlobal("Prism")
+object Prism extends js.Object {
+  def highlightElement(element: dom.Element): Unit = js.native
+}
+
+case class CodeSnippet(id: Int, text: String)
 
 object PlantWorkshopApp {
 
@@ -16,7 +35,6 @@ object PlantWorkshopApp {
     if (beforeUnloadInstalled) return
     beforeUnloadInstalled = true
 
-    // Standard pattern: cancel the event and set returnValue to trigger confirmation dialog.
     dom.window.addEventListener(
       "beforeunload",
       (e: dom.BeforeUnloadEvent) => {
@@ -215,7 +233,7 @@ object Task1_ComponentChecklist {
             className := "info-box small-info",
             strong("Wichtig: "),
             "Das Relais trennt die Pumpe vom Arduino-Stromkreis. ",
-            "Niemals die Pumpe direkt am Arduino anschließen! " ,
+            "Niemals die Pumpe direkt am Arduino anschließen! ",
             "Zwischen Pumpe, Relais und Netzteil keine Jumperkabel verwenden!"
           )
         ),
@@ -224,6 +242,16 @@ object Task1_ComponentChecklist {
           strong("Warum ein Relais? "),
           "Das Arduino kann nur kleine Ströme direkt schalten, aber die Pumpe braucht mehr Strom. ",
           "Der Arduino steuert das Relais und das Relais schaltet die Pumpe an/aus."
+        )
+      ),
+
+      div(
+        className := "task-box",
+        h3("Aufbauskizze / Schaltplan"),
+        p("Hier kommt die Aufbauskizze bzw. der Schaltplan hin."),
+        div(
+          className := "wiring-diagram",
+          p(strong("[Platzhalter für Bild: Aufbauskizze/Schaltplan]"))
         )
       )
     )
@@ -257,15 +285,50 @@ object Task1_ComponentChecklist {
 // TASK 2: MOISTURE SENSOR
 // ========================================
 object Task2_MoistureSensor {
-  private val editorState = interactionPlugins.blockEnvironment.programming.editor.elements.EditorState.withInitExpression(
-    plantworkshop.PlantWorkshopTaskBlockLibraries.task2SuggestedStartProgram().fullProgram
+  // State für diese Aufgabe
+  val advancedCodeState: Var[String] = Var(
+    """// Sensor kurz einschalten und Messwert lesen
+      |digitalWrite(SENSOR_POWER_PIN, HIGH);
+      |delay(10);
+      |int messwert = analogRead(SENSOR_PIN);
+      |digitalWrite(SENSOR_POWER_PIN, LOW);
+      |
+      |Serial.print("Analoger Wert: ");
+      |Serial.println(messwert);
+      |
+      |if (messwert < feuchtigkeitsGrenze) {
+      |  Serial.println("Boden ist TROCKEN!");
+      |} else {
+      |  Serial.println("Boden ist FEUCHT");
+        |}""".stripMargin
   )
 
-  def programAsCpp: String =
-    editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(
-      contentmanagement.model.language.AppLanguage.Cpp,
-      contentmanagement.model.language.AppLanguage.English
+  val snippets = List(
+    CodeSnippet(1, "digitalWrite(SENSOR_POWER_PIN, HIGH);"),
+    CodeSnippet(2, "int messwert = analogRead(SENSOR_PIN);"),
+    CodeSnippet(3, "digitalWrite(SENSOR_POWER_PIN, LOW);"),
+    CodeSnippet(4, "if (messwert < feuchtigkeitsGrenze) {"),
+    CodeSnippet(5, "  Serial.println(\"Boden ist TROCKEN!\");"),
+    CodeSnippet(6, "} else {"),
+    CodeSnippet(7, "  Serial.println(\"Boden ist FEUCHT\");"),
+    CodeSnippet(8, "}")
+  )
+
+  val sourceSnippets: Var[List[CodeSnippet]] = Var(
+    List(
+      snippets(3),
+      snippets(1),
+      snippets(6),
+      snippets(0),
+      snippets(4),
+      snippets(5),
+      snippets(7),
+      snippets(2)
     )
+  )
+  val targetSnippets: Var[List[CodeSnippet]] = Var(List.empty)
+  val draggingSnippet: Var[Option[CodeSnippet]] = Var(None)
+  val targetHoverIndex: Var[Option[Int]] = Var(None)
 
   def render(modeSignal: Signal[Boolean]): HtmlElement = {
     div(
@@ -280,7 +343,7 @@ object Task2_MoistureSensor {
           li(strong("kleiner Messwert:"), " Boden ist trocken"),
           li(strong("großer Messwert:"), " Boden ist feucht")
         ),
-        p("Lest den Sensor aus und gebt den Messwert auf dem Serial Monitor aus."),
+        p("Lest den Sensor aus und gebt das Ergebnis der Messung auf dem Serial Monitor aus."),
         div(
           className := "info-box",
           strong("Hinweis: "),
@@ -289,44 +352,74 @@ object Task2_MoistureSensor {
         )
       ),
 
-      // Workbook Block-Editor (Block View <-> C++ View)
+      // Mode Toggle
       div(
-        className := "task-editor",
-        renderWorkbookEditor()
+        className := "controls",
+        label(
+          className := "switch",
+          input(
+            typ := "checkbox",
+            controlled(
+              checked <-- modeSignal,
+              onInput.mapToChecked --> PlantWorkshopApp.isAdvancedMode
+            )
+          ),
+          span(className := "slider")
+        ),
+        span(
+          className := "mode-text",
+          child.text <-- modeSignal.map(if (_) "Modus: Fortgeschritten (Code)" else "Modus: Anfänger (Puzzle)")
+        )
+      ),
+
+      // Workspace
+      div(
+        className := "workspace",
+        child <-- modeSignal.map {
+          case true => advancedView()
+          case false => beginnerView()
+        }
       )
     )
   }
 
-  private def renderWorkbookEditor(): Element = {
-    val blockLibraryDom: Element = div(
-      cls := "be-fullscreen-panel block-library",
-      h2(
-        cls := "be-fullscreen-panel-label",
-        "Block Library"
-      ),
-      div(
-        cls := "be-fullscreen-panel-content",
-        child <-- interactionPlugins.blockEnvironment.programming.editor.elements.HtmlBlockLibraryTab(
-          editorState,
-          plantworkshop.PlantWorkshopTaskBlockLibraries.task2LibraryPrograms,
-          Var(interactionPlugins.blockEnvironment.config.BeTreeControllerConfig.libraryTreeConfig(editorState))
-        ).toDomSignal
+  def beginnerView(): HtmlElement = {
+    DragAndDropHelper.createDndArea(
+      snippets, sourceSnippets, targetSnippets,
+      draggingSnippet, targetHoverIndex,
+      "Setze die Code-Bausteine in die richtige Reihenfolge:",
+      orderConstraints = List(
+        1 -> 2,
+        2 -> 3,
+        3 -> 4,
+        4 -> 5,
+        5 -> 6,
+        6 -> 7,
+        7 -> 8
       )
     )
+  }
 
-    div(
-      cls := "be-fullscreen-editor",
-      div(
-        cls := "info-box",
-        strong("Hinweis: "),
-        "Workbook-Editor (Block View + C++ View) mit einer Arduino-Block-Library für diese Aufgabe."
-      ),
-      blockLibraryDom,
-      interactionPlugins.blockEnvironment.programming.editor.elements.HtmlBeProgramEditor(
-        editorState,
-        textLanguage = contentmanagement.model.language.AppLanguage.Cpp
-      ).getDomElement(),
-      interactionPlugins.blockEnvironment.programming.editor.elements.HtmlEditorConfigPanel(editorState).getDomElement()
+  def advancedView(): HtmlElement = {
+    CodeEditorHelper.createCodeEditor(
+      advancedCodeState,
+      "Vervollständige den Code:",
+      code => {
+        val hasAnalogRead = code.contains("analogRead")
+        val hasSensorPower = code.contains("digitalWrite(SENSOR_POWER_PIN, HIGH)") && code.contains("digitalWrite(SENSOR_POWER_PIN, LOW)")
+        val hasIfStatement = code.contains("if")
+        val hasSerial = code.contains("Serial.println")
+
+        if (hasAnalogRead && hasSensorPower && hasIfStatement && hasSerial) {
+          "✅ Sehr gut! Du hast alle wichtigen Teile:\n- Sensor einschalten und analog auslesen\n- Bedingung prüfen (if-else)\n- Ausgabe auf Serial Monitor"
+        } else {
+          "⚠️ Noch nicht ganz:\n" +
+          (if (!hasAnalogRead) "- analogRead() fehlt\n" else "") +
+          (if (!hasSensorPower) "- Sensor ein-/ausschalten über SENSOR_POWER_PIN fehlt\n" else "") +
+          (if (!hasIfStatement) "- if-else Bedingung fehlt\n" else "") +
+          (if (!hasSerial) "- Serial.println() fehlt\n" else "")
+        }
+      }
     )
   }
 }
@@ -335,15 +428,31 @@ object Task2_MoistureSensor {
 // TASK 3: PUMP CONTROL
 // ========================================
 object Task3_PumpControl {
-  private val editorState = interactionPlugins.blockEnvironment.programming.editor.elements.EditorState.withInitExpression(
-    plantworkshop.PlantWorkshopTaskBlockLibraries.task3SuggestedStartProgram().fullProgram
+  val advancedCodeState: Var[String] = Var(
+    """void loop() {
+      |  // 1. Pumpe einschalten (Relais ist aktiv bei LOW)
+      |  digitalWrite(PUMP_PIN, LOW);
+      |
+      |  // 2. 2 Sekunden warten
+      |  delay(2000);
+      |
+      |  // 3. Pumpe ausschalten
+      |  digitalWrite(PUMP_PIN, HIGH);
+      |}""".stripMargin
   )
 
-  def programAsCpp: String =
-    editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(
-      contentmanagement.model.language.AppLanguage.Cpp,
-      contentmanagement.model.language.AppLanguage.English
-    )
+  val snippets = List(
+    CodeSnippet(1, "digitalWrite(PUMP_PIN, LOW);"),
+    CodeSnippet(2, "delay(2000);"),
+    CodeSnippet(3, "digitalWrite(PUMP_PIN, HIGH);")
+  )
+
+  val sourceSnippets: Var[List[CodeSnippet]] = Var(
+    List(snippets(1), snippets(2), snippets(0))
+  )
+  val targetSnippets: Var[List[CodeSnippet]] = Var(List.empty)
+  val draggingSnippet: Var[Option[CodeSnippet]] = Var(None)
+  val targetHoverIndex: Var[Option[Int]] = Var(None)
 
   def render(modeSignal: Signal[Boolean]): HtmlElement = {
     div(
@@ -362,44 +471,62 @@ object Task3_PumpControl {
         )
       ),
 
-      // Workbook Block-Editor (Block View <-> C++ View)
+      // Mode Toggle
       div(
-        className := "task-editor",
-        renderWorkbookEditor()
+        className := "controls",
+        label(
+          className := "switch",
+          input(
+            typ := "checkbox",
+            controlled(
+              checked <-- modeSignal,
+              onInput.mapToChecked --> PlantWorkshopApp.isAdvancedMode
+            )
+          ),
+          span(className := "slider")
+        ),
+        span(
+          className := "mode-text",
+          child.text <-- modeSignal.map(if (_) "Modus: Fortgeschritten (Code)" else "Modus: Anfänger (Puzzle)")
+        )
+      ),
+
+      div(
+        className := "workspace",
+        child <-- modeSignal.map {
+          case true => advancedView()
+          case false => beginnerView()
+        }
       )
     )
   }
 
-  private def renderWorkbookEditor(): Element = {
-    val blockLibraryDom: Element = div(
-      cls := "be-fullscreen-panel block-library",
-      h2(
-        cls := "be-fullscreen-panel-label",
-        "Block Library"
-      ),
-      div(
-        cls := "be-fullscreen-panel-content",
-        child <-- interactionPlugins.blockEnvironment.programming.editor.elements.HtmlBlockLibraryTab(
-          editorState,
-          plantworkshop.PlantWorkshopTaskBlockLibraries.task3LibraryPrograms,
-          Var(interactionPlugins.blockEnvironment.config.BeTreeControllerConfig.libraryTreeConfig(editorState))
-        ).toDomSignal
-      )
+  def beginnerView(): HtmlElement = {
+    DragAndDropHelper.createDndArea(
+      snippets, sourceSnippets, targetSnippets,
+      draggingSnippet, targetHoverIndex,
+      "Setze die Bausteine in die richtige Reihenfolge:"
     )
+  }
 
-    div(
-      cls := "be-fullscreen-editor",
-      div(
-        cls := "info-box",
-        strong("Hinweis: "),
-        "Workbook-Editor (Block View + C++ View) mit einer Arduino-Block-Library für diese Aufgabe."
-      ),
-      blockLibraryDom,
-      interactionPlugins.blockEnvironment.programming.editor.elements.HtmlBeProgramEditor(
-        editorState,
-        textLanguage = contentmanagement.model.language.AppLanguage.Cpp
-      ).getDomElement(),
-      interactionPlugins.blockEnvironment.programming.editor.elements.HtmlEditorConfigPanel(editorState).getDomElement()
+  def advancedView(): HtmlElement = {
+    CodeEditorHelper.createCodeEditor(
+      advancedCodeState,
+      "Schreibt den Code für die Pumpensteuerung:",
+      code => {
+        val hasOn = code.contains("digitalWrite(PUMP_PIN, LOW)")
+        val hasOff = code.contains("digitalWrite(PUMP_PIN, HIGH)")
+        val hasShortDelay = code.contains("delay(2000)")
+
+        if (hasOn && hasOff && hasShortDelay) {
+          "✅ Perfekt! Die Pumpe wird richtig gesteuert!"
+        } else {
+          "⚠️ Code sieht noch nicht vollständig aus. Prüfe:\n" +
+          (if (!hasOn) "- Pumpe einschalten (LOW)\n" else "") +
+          (if (!hasShortDelay) "- 2 Sekunden warten\n" else "") +
+          (if (!hasOff) "- Pumpe ausschalten (HIGH)\n" else "")
+        }
+      }
     )
   }
 }
@@ -408,15 +535,76 @@ object Task3_PumpControl {
 // TASK 4: COMBINED SYSTEM
 // ========================================
 object Task4_Combined {
-  private val editorState = interactionPlugins.blockEnvironment.programming.editor.elements.EditorState.withInitExpression(
-    plantworkshop.PlantWorkshopTaskBlockLibraries.task4SuggestedStartProgram().fullProgram
+  val advancedCodeState: Var[String] = Var(
+    """void loop() {
+      |  // 1. Sensor kurz einschalten und analog auslesen
+      |  digitalWrite(SENSOR_POWER_PIN, HIGH);
+      |  int messwert = analogRead(SENSOR_PIN);
+      |  digitalWrite(SENSOR_POWER_PIN, LOW);
+      |  Serial.print("Analoger Wert: ");
+      |  Serial.println(messwert);
+      |
+      |  // 2. Entscheiden: Gießen oder nicht?
+      |  if (messwert < feuchtigkeitsGrenze) {
+      |    // Zu trocken! Gießen!
+      |    Serial.println("Boden trocken - Bewässerung startet...");
+      |    
+      |    digitalWrite(PUMP_PIN, LOW);
+      |    delay(2000);
+      |    digitalWrite(PUMP_PIN, HIGH);
+      |    
+      |    Serial.println("Bewässerung abgeschlossen!");
+      |  } else {
+      |    Serial.println("Boden feucht - keine Bewässerung nötig");
+      |  }
+      |
+      |  // 3. Warten bis zur nächsten Messung
+      |  delay(10000);  // 10 Sekunden (zum Testen)
+      |}""".stripMargin
   )
 
-  def programAsCpp: String =
-    editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(
-      contentmanagement.model.language.AppLanguage.Cpp,
-      contentmanagement.model.language.AppLanguage.English
+  val snippets = List(
+    CodeSnippet(1, "digitalWrite(SENSOR_POWER_PIN, HIGH);"),
+    CodeSnippet(2, "int messwert = analogRead(SENSOR_PIN);"),
+    CodeSnippet(3, "digitalWrite(SENSOR_POWER_PIN, LOW);"),
+    CodeSnippet(4, "Serial.print(\"Analoger Wert: \" );"),
+    CodeSnippet(5, "Serial.println(messwert);"),
+    CodeSnippet(6, "if (messwert < feuchtigkeitsGrenze) {"),
+    CodeSnippet(7, "  digitalWrite(PUMP_PIN, LOW);"),
+    CodeSnippet(8, "  delay(2000);"),
+    CodeSnippet(9, "  digitalWrite(PUMP_PIN, HIGH);"),
+    CodeSnippet(10, "} else {"),
+    CodeSnippet(11, "  Serial.println(\"Boden feucht - keine Bewässerung nötig\");"),
+    CodeSnippet(12, "}"),
+    CodeSnippet(13, "delay(10000);")
+  )
+
+  val sourceSnippets: Var[List[CodeSnippet]] = Var(
+    List(
+      snippets(5),
+      snippets(0),
+      snippets(10),
+      snippets(2),
+      snippets(7),
+      snippets(12),
+      snippets(9),
+      snippets(3),
+      snippets(1),
+      snippets(11),
+      snippets(8),
+      snippets(4),
+      snippets(6)
     )
+  )
+  val targetSnippets: Var[List[CodeSnippet]] = Var(List.empty)
+  val draggingSnippet: Var[Option[CodeSnippet]] = Var(None)
+  val targetHoverIndex: Var[Option[Int]] = Var(None)
+
+  def programAsCpp: String = {
+    val dndProgram = targetSnippets.now().map(_.text).mkString("\n").trim
+    val advancedProgram = advancedCodeState.now().trim
+    if (dndProgram.nonEmpty) dndProgram else advancedProgram
+  }
 
   def render(modeSignal: Signal[Boolean]): HtmlElement = {
     div(
@@ -434,6 +622,7 @@ object Task4_Combined {
           li("Wenn ja: Pumpe einschalten, 2 Sekunden gießen, wieder ausschalten"),
           li("Danach 10 Sekunden warten")
         ),
+        p(strong("Wichtig: "), "Das gesamte Programm läuft in einer Endlosschleife."),
         div(
           className := "info-box",
           strong("Hinweis: "),
@@ -442,44 +631,82 @@ object Task4_Combined {
         )
       ),
 
-      // Workbook Block-Editor (Block View <-> C++ View)
       div(
-        className := "task-editor",
-        renderWorkbookEditor()
+        className := "controls",
+        label(
+          className := "switch",
+          input(
+            typ := "checkbox",
+            controlled(
+              checked <-- modeSignal,
+              onInput.mapToChecked --> PlantWorkshopApp.isAdvancedMode
+            )
+          ),
+          span(className := "slider")
+        ),
+        span(
+          className := "mode-text",
+          child.text <-- modeSignal.map(if (_) "Modus: Fortgeschritten (Code)" else "Modus: Anfänger (Puzzle)")
+        )
+      ),
+
+      div(
+        className := "workspace",
+        child <-- modeSignal.map {
+          case true => advancedView()
+          case false => beginnerView()
+        }
       )
     )
   }
 
-  private def renderWorkbookEditor(): Element = {
-    val blockLibraryDom: Element = div(
-      cls := "be-fullscreen-panel block-library",
-      h2(
-        cls := "be-fullscreen-panel-label",
-        "Block Library"
-      ),
-      div(
-        cls := "be-fullscreen-panel-content",
-        child <-- interactionPlugins.blockEnvironment.programming.editor.elements.HtmlBlockLibraryTab(
-          editorState,
-          plantworkshop.PlantWorkshopTaskBlockLibraries.task4LibraryPrograms,
-          Var(interactionPlugins.blockEnvironment.config.BeTreeControllerConfig.libraryTreeConfig(editorState))
-        ).toDomSignal
+  def beginnerView(): HtmlElement = {
+    DragAndDropHelper.createDndArea(
+      snippets, sourceSnippets, targetSnippets,
+      draggingSnippet, targetHoverIndex,
+      "Setze die Bausteine zur automatischen Bewässerung zusammen:",
+      orderConstraints = List(
+        1 -> 2,
+        2 -> 3,
+        3 -> 4,
+        3 -> 5,
+        4 -> 6,
+        5 -> 6,
+        6 -> 7,
+        7 -> 8,
+        8 -> 9,
+        9 -> 10,
+        10 -> 11,
+        11 -> 12,
+        12 -> 13
       )
     )
+  }
 
-    div(
-      cls := "be-fullscreen-editor",
-      div(
-        cls := "info-box",
-        strong("Hinweis: "),
-        "Workbook-Editor (Block View + C++ View) mit einer Arduino-Block-Library für diese Aufgabe."
-      ),
-      blockLibraryDom,
-      interactionPlugins.blockEnvironment.programming.editor.elements.HtmlBeProgramEditor(
-        editorState,
-        textLanguage = contentmanagement.model.language.AppLanguage.Cpp
-      ).getDomElement(),
-      interactionPlugins.blockEnvironment.programming.editor.elements.HtmlEditorConfigPanel(editorState).getDomElement()
+  def advancedView(): HtmlElement = {
+    CodeEditorHelper.createCodeEditor(
+      advancedCodeState,
+      "Vervollständige das Gesamtsystem:",
+      code => {
+        val hasMeasurement = code.contains("analogRead")
+        val hasSensorPower = code.contains("digitalWrite(SENSOR_POWER_PIN, HIGH)") && code.contains("digitalWrite(SENSOR_POWER_PIN, LOW)")
+        val hasCondition = code.contains("if") && code.contains("messwert < feuchtigkeitsGrenze")
+        val hasPumpControl = code.contains("digitalWrite(PUMP_PIN, LOW)") && code.contains("digitalWrite(PUMP_PIN, HIGH)")
+        val hasSerial = code.contains("Serial.print") || code.contains("Serial.println")
+        val hasLoopDelay = code.contains("delay(10000)")
+
+        if (hasMeasurement && hasSensorPower && hasCondition && hasPumpControl && hasSerial && hasLoopDelay) {
+          "🎉 Hervorragend! Das System ist komplett:\n✅ Sensor einschalten und analog auslesen\n✅ Bedingung mit Grenzwert prüfen\n✅ Pumpe korrekt steuern\n✅ Messwert ausgeben und erneut messen"
+        } else {
+          "⚠️ Noch ein paar Kleinigkeiten:\n" +
+          (if (!hasMeasurement) "- Sensor-Messung mit analogRead fehlt\n" else "") +
+          (if (!hasSensorPower) "- Sensor über SENSOR_POWER_PIN ein-/ausschalten\n" else "") +
+          (if (!hasCondition) "- if-Bedingung mit messwert < feuchtigkeitsGrenze fehlt\n" else "") +
+          (if (!hasPumpControl) "- Pumpensteuerung (LOW/HIGH) unvollständig\n" else "") +
+          (if (!hasSerial) "- Ausgabe des Messwerts fehlt\n" else "") +
+          (if (!hasLoopDelay) "- Wartezeit delay(10000) fehlt\n" else "")
+        }
+      }
     )
   }
 }
@@ -545,6 +772,21 @@ object Task5_Test {
   def render(): HtmlElement = {
     div(
       h1("Test & Fertigstellung"),
+
+      div(
+        className := "task-box",
+        h3("Schritt-für-Schritt: .ino auf den Arduino Nano laden"),
+        ol(
+          li("Klickt auf den Button ", strong("Arduino-Code herunterladen (.ino)"), " und speichert die Datei ", code("plantworkshop.ino"), "."),
+          li("Öffnet die Datei in der Arduino IDE (Doppelklick oder über ", code("Datei > Öffnen"), ")."),
+          li("Verbindet den Arduino Nano per USB mit dem Computer."),
+          li("Wählt in der Arduino IDE unter ", code("Werkzeuge > Board"), " den Eintrag ", strong("Arduino Nano"), "."),
+          li("Wählt unter ", code("Werkzeuge > Port"), " den passenden COM/USB-Port eures Nano aus."),
+          li("Klickt auf ", strong("Hochladen"), " (Pfeil-Symbol) und wartet bis ", code("Hochladen abgeschlossen"), " angezeigt wird."),
+          li("Öffnet danach den Serial Monitor (", code("Werkzeuge > Serieller Monitor"), "), um die Messwerte zu sehen und den Aufbau zu testen.")
+        )
+      ),
+
       div(
         className := "task-box success-box",
         h3("Geschafft!"),
@@ -559,7 +801,7 @@ object Task5_Test {
         div(
           className := "test-checklist",
           checklistItem("Sensor in trockene Erde halten - zeigt er niedrige Werte?"),
-          checklistItem("Sensor in Wasser halten - zeigt er hohe Werte?"),
+          checklistItem("Feuchten Finger auf Sensor halten - zeigt er hohe Werte?"),
           checklistItem("Pumpt die Pumpe Wasser, wenn die Erde trocken ist?"),
           checklistItem("Hört die Pumpe nach kurzer Zeit wieder auf?"),
           checklistItem("Passiert nichts, wenn die Erde feucht genug ist?")
@@ -575,12 +817,11 @@ object Task5_Test {
           ul(
             li("Sind Relais, Netzteil und Pumpe richtig verbunden?"),
             li("Ist das Netzteil eingesteckt?"),
-            li("Leuchtet das Relais, wenn es schalten soll?")
+            li("Klickt das Relais, wenn es schalten soll?")
           ),
           h4("Problem: Werte ändern sich nicht"),
           ul(
             li("Sind die Kabel am Sensor richtig? (Analoge und Digitale Pins nicht vertauschen)"),
-            li("Ist der Sensor mit 5V und GND verbunden?")
           ),
           h4("Problem: Pumpe läuft ständig / gar nicht"),
           ul(
@@ -610,7 +851,7 @@ object Task5_Test {
   }
 
   def checklistItem(text: String): HtmlElement = {
-    div(
+    label(
       className := "checklist-item",
       input(
         typ := "checkbox",
@@ -624,6 +865,229 @@ object Task5_Test {
         )
       ),
       span(text)
+    )
+  }
+}
+
+// ========================================
+// HELPER: DRAG AND DROP
+// ========================================
+object DragAndDropHelper {
+  private def snippetExplanation(snippetText: String): String = {
+    val normalized = snippetText.trim
+
+    if (normalized.contains("digitalWrite(SENSOR_POWER_PIN, HIGH)")) "Setze SENSOR_POWER_PIN auf HIGH (Sensor an)."
+    else if (normalized.contains("digitalWrite(SENSOR_POWER_PIN, LOW)")) "Setze SENSOR_POWER_PIN auf LOW (Sensor aus)."
+    else if (normalized.contains("analogRead(SENSOR_PIN)")) "Lies den analogen Wert von SENSOR_PIN."
+    else if (normalized.contains("messwert < feuchtigkeitsGrenze")) "Prüfe: Ist messwert kleiner als feuchtigkeitsGrenze?"
+    else if (normalized.contains("digitalWrite(PUMP_PIN, LOW)")) "Setze PUMP_PIN auf LOW (Pumpe an)."
+    else if (normalized.contains("digitalWrite(PUMP_PIN, HIGH)")) "Setze PUMP_PIN auf HIGH (Pumpe aus)."
+    else if (normalized.contains("Serial.print")) "Gib Text im Serial Monitor ohne Zeilenumbruch aus."
+    else if (normalized.contains("Serial.println")) "Gib Text oder Wert im Serial Monitor mit Zeilenumbruch aus."
+    else if (normalized.contains("delay(2000)")) "Warte 2000 ms."
+    else if (normalized.contains("delay(10000)")) "Warte 10000 ms."
+    else if (normalized.startsWith("if")) "Starte einen if-Block."
+    else if (normalized.startsWith("} else {")) "Starte den else-Zweig."
+    else if (normalized == "}") "Schließe den Block."
+    else "Erklärung für diese Zeile ist nicht hinterlegt."
+  }
+
+  def createDndArea(
+    allSnippets: List[CodeSnippet],
+    sourceSnippets: Var[List[CodeSnippet]],
+    targetSnippets: Var[List[CodeSnippet]],
+    draggingSnippet: Var[Option[CodeSnippet]],
+    targetHoverIndex: Var[Option[Int]],
+    title: String,
+    orderConstraints: List[(Int, Int)] = Nil
+  ): HtmlElement = {
+    div(
+      h4(title),
+      div(
+        className := "dnd-area",
+
+        // SOURCE CONTAINER
+        div(
+          className := "snippet-container source",
+          h5("Verfügbare Bausteine"),
+
+          onDragOver.preventDefault --> { _ => targetHoverIndex.set(None) },
+
+          onDrop.preventDefault --> { _ =>
+            draggingSnippet.now().foreach { snippet =>
+              targetSnippets.update(_.filterNot(_.id == snippet.id))
+              sourceSnippets.update { list =>
+                val clean = list.filterNot(_.id == snippet.id)
+                (clean :+ snippet).sortBy(_.id)
+              }
+            }
+            draggingSnippet.set(None)
+            targetHoverIndex.set(None)
+          },
+
+          children <-- sourceSnippets.signal.combineWith(draggingSnippet.signal).map {
+            case (list, dragging) =>
+              list.filterNot(s => dragging.exists(_.id == s.id))
+                .map(s => renderDraggableItem(s, draggingSnippet))
+          }
+        ),
+
+        // TARGET CONTAINER
+        div(
+          className <-- targetHoverIndex.signal.map(opt =>
+            if (opt.isDefined) "snippet-container target drag-over"
+            else "snippet-container target"
+          ),
+          h5("Dein Programmablauf"),
+
+          onDragOver.preventDefault --> { e =>
+            val container = e.currentTarget.asInstanceOf[dom.html.Div]
+            val items = container.querySelectorAll(".sortable-item")
+            val mouseY = e.clientY
+
+            var newIndex = items.length
+            var found = false
+            var i = 0
+            while (i < items.length && !found) {
+              val rect = items.item(i).asInstanceOf[dom.html.Div].getBoundingClientRect()
+              val middleY = rect.top + (rect.height / 2)
+              if (mouseY < middleY) { newIndex = i; found = true }
+              i += 1
+            }
+            targetHoverIndex.set(Some(newIndex))
+          },
+
+          onDrop.preventDefault --> { _ =>
+            val snippetOpt = draggingSnippet.now()
+            val indexOpt = targetHoverIndex.now()
+
+            (snippetOpt, indexOpt) match {
+              case (Some(snippet), Some(idx)) =>
+                sourceSnippets.update(_.filterNot(_.id == snippet.id))
+                targetSnippets.update { list =>
+                  val clean = list.filterNot(_.id == snippet.id)
+                  val safeIdx = Math.min(idx, clean.length)
+                  val (front, back) = clean.splitAt(safeIdx)
+                  front ++ List(snippet) ++ back
+                }
+              case _ =>
+            }
+            draggingSnippet.set(None)
+            targetHoverIndex.set(None)
+          },
+
+          children <-- targetSnippets.signal
+            .combineWith(draggingSnippet.signal, targetHoverIndex.signal)
+            .map { case (snippets, dragging, hoverIdx) =>
+              val visible = snippets.filterNot(s => dragging.exists(_.id == s.id))
+              val elements = visible.map(s => renderDraggableItem(s, draggingSnippet))
+              hoverIdx match {
+                case Some(idx) =>
+                  val safe = Math.min(idx, elements.length)
+                  val (f, b) = elements.splitAt(safe)
+                  f ++ List(div(className := "drop-placeholder")) ++ b
+                case None => elements
+              }
+            }
+        )
+      ),
+
+      // Check button
+      button(
+        "Lösung prüfen",
+        className := "btn-check",
+        onClick --> { _ =>
+          val current = targetSnippets.now().map(_.id)
+          val required = allSnippets.map(_.id)
+
+          val allBlocksUsed = current.length == required.length && current.toSet == required.toSet
+          val constraints =
+            if (orderConstraints.nonEmpty) orderConstraints
+            else required.sliding(2).collect { case List(a, b) => (a, b) }.toList
+
+          val positions = current.zipWithIndex.toMap
+          val orderIsValid = constraints.forall { case (first, second) =>
+            positions.get(first).exists(firstIdx => positions.get(second).exists(secondIdx => firstIdx < secondIdx))
+          }
+
+          if (!allBlocksUsed) {
+            dom.window.alert("⚠️ Es fehlen noch Bausteine oder ein Baustein wurde doppelt verwendet.")
+          } else if (orderIsValid) {
+            dom.window.alert("✅ Sehr gut! Dein Ablauf funktioniert.")
+          } else {
+            dom.window.alert("⚠️ Fast! Die Logik passt noch nicht ganz. Prüfe, welche Schritte zwingend vor anderen kommen müssen.")
+          }
+        }
+      )
+    )
+  }
+
+  def renderDraggableItem(snippet: CodeSnippet, draggingSnippet: Var[Option[CodeSnippet]]): HtmlElement = {
+    div(
+      className := "code-block sortable-item",
+      draggable := true,
+      snippet.text,
+      span(
+        className := "code-tooltip",
+        snippetExplanation(snippet.text)
+      ),
+
+      onDragStart --> { _ => setTimeout(0) { draggingSnippet.set(Some(snippet)) } },
+
+      onDragEnd --> { _ =>
+        draggingSnippet.set(None)
+      }
+    )
+  }
+}
+
+// ========================================
+// HELPER: CODE EDITOR
+// ========================================
+object CodeEditorHelper {
+  def createCodeEditor(
+    codeState: Var[String],
+    title: String,
+    validator: String => String
+  ): HtmlElement = {
+    var editorInstance: Option[CodeJar] = None
+
+    div(
+      h4(title),
+
+      div(
+        className := "editor-container language-cpp",
+
+        onMountUnmountCallback(
+          mount = { nodeCtx =>
+            val element = nodeCtx.thisNode.ref.asInstanceOf[dom.Element]
+
+            val highlightFn: js.Function1[dom.Element, Unit] = { el =>
+              Prism.highlightElement(el)
+            }
+
+            val jar = new CodeJar(element, highlightFn)
+            jar.updateCode(codeState.now())
+            jar.onUpdate((code: String) => codeState.set(code))
+
+            editorInstance = Some(jar)
+          },
+          unmount = { _ =>
+            editorInstance.foreach(_.destroy())
+            editorInstance = None
+          }
+        )
+      ),
+
+      button(
+        "Code prüfen",
+        className := "btn-check",
+        onClick --> { _ =>
+          val code = codeState.now()
+          val result = validator(code)
+          dom.window.alert(result)
+        }
+      )
     )
   }
 }
