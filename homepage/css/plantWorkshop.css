@@ -96,6 +96,8 @@ input:checked + .slider:before { transform: translateX(24px); }
     flex-direction: column;
     gap: 10px;
     padding-bottom: 60px; /* Puffer unten */
+    position: relative;
+    overflow: visible;
 }
 
 /* Styling für die Lösungs-Box */
@@ -126,6 +128,11 @@ input:checked + .slider:before { transform: translateX(24px); }
 .code-block:hover { transform: translateY(-2px); box-shadow: 0 5px 12px rgba(0,0,0,0.2); }
 .code-block:active { cursor: grabbing; transform: scale(0.98); }
 
+.code-block:hover,
+.code-block:focus-within {
+    z-index: 2000;
+}
+
 .code-tooltip {
     position: absolute;
     left: calc(100% + 12px);
@@ -145,7 +152,7 @@ input:checked + .slider:before { transform: translateX(24px); }
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.15s ease, visibility 0.15s ease;
-    z-index: 40;
+    z-index: 2100;
     pointer-events: none;
 }
 
