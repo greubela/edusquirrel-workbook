@@ -1,15 +1,15 @@
 package interactionPlugins.fileSubmission
 
-import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
-import util.FunctionalUtility
+import com.raquo.laminar.api.L.*
+import contentmanagement.model.language.{AppLanguage, HumanLanguage}
+import contentmanagement.storage.DataStorage
 
-import scala.collection.mutable
+import scala.Predef.->
 import scala.concurrent.{ExecutionContext, Future}
 import scala.scalajs.js
 import scala.scalajs.js.Promise
 import scala.scalajs.js.annotation.*
-import scala.util.{Failure, Success}
 
 object TurtleStitchFacade {
 
@@ -28,22 +28,51 @@ object TurtleStitchFacade {
   }
 
 
-  val cachedFunc: ((String, String)) => L.Var[Option[String]] =  FunctionalUtility.withCacheToVar[(String, String), String](calcProgramPngDataSrc)
+  //val cachedFunc: ((String, String)) => L.Var[Option[String]] = FunctionalUtility.withCacheToVar[(String, String), String](calcProgramPngDataSrc)
 
-  def getProgramPngDataSrc(xml: String, language: String): L.Var[Option[String]] = cachedFunc((xml, language))
+  /*private val turtleStitchLanguageCode[HumanLanguage, String] = Map(
+    AppLanguage.ENGLISH -> "en",
+    AppLanguage.German -> "de",
+    AppLanguage.French
+  )*/
 
+  private val programPngDataSrcStorage: DataStorage[(String, HumanLanguage), String] = new DataStorage[(String, HumanLanguage), String]("ProgramPngDataSrc", true) {
+    protected def executeLoading(in: (String, HumanLanguage))(ec: scala.concurrent.ExecutionContext): scala.concurrent.Future[String] = {
+      val (xml, language) = in
+      TurtleStitchFacadeNative.calcProgramPng(xml, language.nameAbbr.toLowerCase).toFuture
+    }
 
-  def calcProgramPngDataSrc(
-                             xml: String,
-                             language: String
-                           ): Future[String] = {
-    println("called calc(" + xml.length + ", " + language + ")")
-    val res = TurtleStitchFacadeNative
-      .calcProgramPng(xml, language)
-      .toFuture
-    res.foreach(res => println("finished calc(" + xml.length + ", " + language + "): " + res.length))(ExecutionContext.global)
-    res
+    protected def initialValueWhileLoading(in: (String, HumanLanguage)): String = {
+      "Loading DataSrc for Language " + in._2.nameAbbr
+    }
   }
+
+  def getProgramPngDataSrc(xml: String, language: HumanLanguage): L.Var[Option[String]] = programPngDataSrcStorage.loadIntoVariable((xml, language))(ExecutionContext.global)
+
+  def getProgramPngDataSrc(xml: String, language: Signal[HumanLanguage]): L.Signal[Option[String]] = {
+    programPngDataSrcStorage.createSignalDependendVar(language.map(lang => (xml, lang)))(ExecutionContext.global).signal
+  }
+
+  /*
+    def getProgramPngSignal(id: String, xml: String, languageSignal: Signal[HumanLanguage]): L.Signal[Option[String]] = {
+      val res = Var[Option[String]](None)
+      languageSignal.foreach(nextVal => {
+        TurtleStitchFacade.calcProgramPngDataSrc(xml, nextVal.nameAbbr).onComplete {
+          case Success(data) => {
+            println("SUCCESS (" + id + "), data: " + data.length)
+            res.set(Some(data))
+          }
+          case Failure(err) => println("[ERROR]]: " + err)
+        }(ExecutionContext.global)
+      })(unsafeWindowOwner)
+
+      res.signal.foreach(newValue => {
+        println("signal received in var underlying signal for id " + id + ": " + newValue.map(_.length) + " bytes")
+      })(unsafeWindowOwner)
+
+      res.signal
+    }*/
+
 
   def simulateGreenFlag(
                          xml: String

@@ -14,7 +14,7 @@ case class TurtleStitchDownloadFileLine(workbookInfoVar: Var[WorkbookInfo], id: 
   private val fileInteraction = TurtleFileButtonCard(workbookInfoVar, id, List(".xml,text/xml"), StorageFormat.BYTES_AS_RAW_STRING)
   override val interactionVariable: InteractionVariable[String] = fileInteraction.interactionVariable
   private val fileImagePreview = TurtleFilePreviewCard(workbookInfoVar, interactionVariable)
-  private val existingProjectView = TurtleFileExistingProjectCard(workbookInfoVar, fileInteraction.interactionVariable.underlyingInteraction.id, existingProjectImg, existingProject)
+  private val existingProjectView = TurtleFileExistingProjectCard(workbookInfoVar, fileInteraction.interactionVariable.underlyingInteraction.id, "filename", existingProjectImg, existingProject)
 
   private val domElement: Element = div(
     cls := "workbook-interaction preview-line",

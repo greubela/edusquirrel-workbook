@@ -40,7 +40,7 @@ object TurtleStitchFileFactory {
 
     val htmlTitleElement = HtmlContainerTitle(workbookInfo, title)
     val instr = HtmlPlaintextInstructionElement(workbookInfo, languageMapDefaultReadExerciseInstruction)
-    val down = TurtleFileExistingProjectCard(workbookInfo, baseId, imageShowCommands, projectToDownload)
+    val down = TurtleFileExistingProjectCard(workbookInfo, baseId, "filename", imageShowCommands, projectToDownload)
     val downElement = new HtmlWorkbookElement() {
       override def workbookInfoVar: L.Var[WorkbookInfo] = workbookInfo
 

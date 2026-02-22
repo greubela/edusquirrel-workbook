@@ -17,7 +17,7 @@ import workbook.workbookHtmlElements.basic.{HtmlContainerTitle, HtmlPlaintextIns
 import workbook.workbookHtmlElements.container.*
 import workbook.workbookHtmlElements.interactions.HtmlBasicTextInteraction
 
-case class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
+class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
 
   private var id = 0
 
@@ -40,7 +40,7 @@ case class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
 
   private def createProjectCard(names: String): HtmlWorkbookElement = {
     val tup = createImageAndUrl(names)
-    TurtleFileExistingProjectCard(workbookInfoVar, nextId(), tup._1, tup._2).getAsPreviewLine
+    TurtleFileExistingProjectCard(workbookInfoVar, nextId(), "fileName", tup._1, tup._2).getAsPreviewLine()
   }
 
   private def createInstructions(maps: List[LanguageMap[HumanLanguage]]): List[HtmlWorkbookElement] =
@@ -184,7 +184,7 @@ case class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
     )),
     List(
       createFirstSection(),
-      createFirstSection()
+     // createFirstSection()
     ))
 
   private def createFirstSection(): WorkbookSection = {
@@ -193,14 +193,14 @@ case class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
       firstExercise,
       secondExercise,
       thirdExercise,
-      createExecuteProgramExercise(
+     /* createExecuteProgramExercise(
         LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
           AppLanguage.English -> "The second program",
           AppLanguage.German -> "Das zweite Programm"
         )
         ),
         "simple_forward"
-      )
+      )*/
     )
 
     WorkbookSection(

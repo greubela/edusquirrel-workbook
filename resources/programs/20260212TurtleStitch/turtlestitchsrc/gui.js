@@ -7847,7 +7847,7 @@ IDE_Morph.prototype.setLanguage = function (lang, callback, noSave) {
         return this.reflectLanguage('en', callback, noSave);
     }
 
-    src = this.resourceURL('locale', 'lang-' + lang + '.js');
+    src = this.resourceURL('/resources/programs/20260212TurtleStitch/turtlestitchsrc/locale/', 'lang-' + lang + '.js');
     translation = document.createElement('script');
     translation.id = 'language';
     translation.onload = () =>
