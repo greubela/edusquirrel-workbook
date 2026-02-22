@@ -2,18 +2,13 @@ package interactionPlugins.fileSubmission.cards
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.image.{FullImage, ImageDescription}
-import contentmanagement.model.language.AppLanguage
-import contentmanagement.storage.ImageStorage
+import contentmanagement.model.image.ImageDescription
 import interactionPlugins.fileSubmission.{TurtleStitchFacade, TurtleStitchFileFactory}
 import org.scalajs.dom.URL
 import util.HtmlHelper
 import workbook.model.info.WorkbookInfo
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
-import scala.concurrent.*
-import scala.util.*
-import scala.util.control.NonFatal
 
 case class TurtleFileExistingProjectCard(workbookInfoVar: Var[WorkbookInfo], filename: String, existingProjectImg: ImageDescription, existingProject: URL) extends HtmlWorkbookElement {
 
@@ -41,31 +36,24 @@ case class TurtleFileExistingProjectCard(workbookInfoVar: Var[WorkbookInfo], fil
     }
   )
 
-  val ec: ExecutionContext = ExecutionContext.global
-  val languageSignal: Signal[String] =
+  private val languageSignal: Signal[String] =
     workbookInfoVar.signal.map(_.config.currentWorkbookLanguage.nameAbbr).distinct
 
-  // emits current language once initially, then again on every change
-  val langStream: EventStream[String] =
-    EventStream
-      .merge(EventStream.fromValue(()), languageSignal.changes.mapTo(()))
-      .sample(languageSignal).distinct
-
-  languageSignal.changes.foreach(l => println(s"languageSignal changed to: $l"))(unsafeWindowOwner)
+  private val imageDataSrcSignal: Signal[String] = languageSignal.flatMapSwitch { lang =>
+    TurtleStitchFacade
+      .getProgramPngDataSrc(testXML, lang)
+      .signal
+      .map(_.getOrElse("Loading…"))
+  }
 
   private val domElement: Element = div(
     cls := "preview-card",
     headline,
     div(
       cls := "preview-content",
-      child.text <-- langStream.flatMapSwitch { lang =>
-        EventStream
-          .fromFuture(
-            TurtleStitchFacade
-              .calcProgramPngDataSrc(testXML, lang)   // adjust if your signature differs
-              .recover { case NonFatal(e) => s"Error: ${e.getMessage}" }(ec)
-          )(ec)
-          .startWith("Loading…")
+      child <-- imageDataSrcSignal.map {
+        case value if value.startsWith("data:image") => img(src := value)
+        case value => span(value)
       }
     ),
     /*div(
