@@ -24,6 +24,8 @@ case class TurtleFileExpectedCard(workbookInfoVar: L.Var[WorkbookInfo], expected
     HtmlHelper.imagePreview("preview-content", expectedOutcome).map(preview => List(headline, preview))
   }
 
+  Map("a" -> "b")
+  
   private val domElement: Element = div(
     cls := "preview-card",
     children <-- domElementSignal,

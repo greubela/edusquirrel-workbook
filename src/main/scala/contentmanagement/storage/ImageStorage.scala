@@ -18,7 +18,7 @@ import scala.util.{Failure, Success}
 
 object ImageStorage {
 
-  private val debug: Boolean = true
+  private val debug: Boolean = false
 
   private val fullImageMap: mutable.HashMap[ImageDescription, FullImage] = new mutable.HashMap(50, 0.25)
   private val currentlyLoading: mutable.HashMap[ImageDescription, (Long, Future[FullImage])] = new mutable.HashMap()

@@ -1,5 +1,6 @@
 package workbook.workbookHtmlElements.basic
 
+import com.raquo.laminar.DomApi
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import workbook.model.info.WorkbookInfo
@@ -11,6 +12,16 @@ case class HtmlWorkbookTitleLine(workbookInfoVar: Var[WorkbookInfo], workbookTit
     workbookInfoVar.update(curInfo => curInfo.copy(config = curInfo.config.copy(currentWorkbookLanguage = language)))
   }
 
+  private val flagElements: Map[HumanLanguage, Element] = Map(
+    AppLanguage.English -> div(
+      onClick --> { _ => selectLanguage(AppLanguage.English) },
+      HtmlWorkbookTitleLine.enFlag(30)
+    ),
+
+  )
+
+
+
   private val domElement: Element = div(
     cls := "workbook-title-line",
     h1(
@@ -18,34 +29,16 @@ case class HtmlWorkbookTitleLine(workbookInfoVar: Var[WorkbookInfo], workbookTit
     ),
     div(
       cls := "select-language-line",
-      div(
-        onClick --> { _ => selectLanguage(AppLanguage.German) },
-        HtmlWorkbookTitleLine.deFlag(30)
-      ),
-      div(
-        onClick --> { _ => selectLanguage(AppLanguage.English) },
-        HtmlWorkbookTitleLine.enFlag(30)
-      ),
-      div(
-        onClick --> { _ => selectLanguage(AppLanguage.French) },
-        HtmlWorkbookTitleLine.frFlag(30)
-      ),
-      div(
-        onClick --> { _ => selectLanguage(AppLanguage.Ukrainian) },
-        HtmlWorkbookTitleLine.ukFlag(30)
-      ),
-      div(
-        onClick --> { _ => selectLanguage(AppLanguage.Russian) },
-        HtmlWorkbookTitleLine.ruFlag(30)
-      ),
-      div(
-        onClick --> { _ => selectLanguage(AppLanguage.Turkish) },
-        HtmlWorkbookTitleLine.trFlag(30)
-      ),
-      div(
-        onClick --> { _ => selectLanguage(AppLanguage.Danish) },
-        HtmlWorkbookTitleLine.dkFlag(30)
-      )
+      children <-- {
+        workbookInfoVar.signal.map(_.availableLanguages.map(curLang => {
+          val childElement: Element = HtmlWorkbookTitleLine.flagImgMap(30)(curLang)
+          div(
+            onClick --> { _ => selectLanguage(curLang) },
+            child <-- Var(childElement).signal
+          )
+        }))
+      }
+
     )
   )
 
@@ -55,6 +48,27 @@ case class HtmlWorkbookTitleLine(workbookInfoVar: Var[WorkbookInfo], workbookTit
 }
 
 object HtmlWorkbookTitleLine {
+
+
+  private def flagImgMap(width: Double): Map[HumanLanguage, Element] = Map(
+    AppLanguage.German -> deFlag(width),
+    AppLanguage.English -> enFlag(width),
+    AppLanguage.Spanish -> esFlag(width),
+    AppLanguage.Danish -> dkFlag(width),
+    AppLanguage.Russian -> ruFlag(width),
+    AppLanguage.Ukrainian -> ukFlag(width),
+    AppLanguage.Turkish -> trFlag(width),
+    AppLanguage.French -> frFlag(width)
+  )
+
+  private def esFlag(width: Double): Element = {
+    img(
+      src := "../resources/img/flags/esFlag.svg",
+      styleAttr := "width:" + width + "px; height:" + (width/3*2) + "px;",
+    )
+  }
+
+
 
   private def dkFlag(width: Double): Element =
     svg.svg(

@@ -1,28 +1,24 @@
 package contentmanagement.storage
 
+import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-
-import com.raquo.airstream.state.Var
-import com.raquo.laminar.api.L.Signal
-import contentmanagement.model.FileInformation
-import contentmanagement.model.image.ImageDescription.{ServerImageDescription, SvgImageDescription, UploadImageDescription}
-import contentmanagement.model.image.{FullImage, ImageDescription}
+import contentmanagement.model.image.ImageDescription
 import org.scalajs.dom
-import org.scalajs.dom.document
-import org.scalajs.dom.html.Image
-import util.TypeConversion
+import org.scalajs.dom.URL
 
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.scalajs.js
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 abstract class DataStorage[I, O](storageName: String, debug: Boolean) {
 
   protected def executeLoading(in: I)(ec: ExecutionContext): Future[O]
 
-  protected def initialValueWhileLoading(in: I): O
+  protected def initialValueWhileLoading(in: I): Option[O]
+
+  protected def formatInputForLogging(in: I): String
+  protected def formatOutputForLogging(out: O): String
 
   private val cachedOutputVars: mutable.HashMap[I, Var[Option[O]]] = new mutable.HashMap(50, 0.25)
 
@@ -32,13 +28,17 @@ abstract class DataStorage[I, O](storageName: String, debug: Boolean) {
   private var execution_requested: Long = 0
   private var execution_succeeded: Long = 0
 
+
   private def logInfo(str: String): Unit = if (debug) {
     println(s"[INFO] for data storage '$storageName': " + str
       + s"\n    cache performance (${cachedOutputVars.size} elements): $cache_hits  hits + $cache_misses +  misses"
-      + s"\n    calculation history: $execution_succeeded/$execution_requested succeeded so far (${execution_succeeded * 1.0 / execution_requested}%")
+      + s"\n    calculation history: $execution_succeeded/$execution_requested succeeded so far (${execution_succeeded * 1.0 / execution_requested}%)"
+      + s"\n    cache:\n    -" + cachedOutputVars.toMap.toList.map(tup => formatInputForLogging(tup._1) + " -> " + tup._2.now().map(formatOutputForLogging).getOrElse("None")).mkString("\n    -")
+    )
   }
 
   private def logError(str: String, throwable: Throwable): Unit = {
+    throwable.printStackTrace()
     println(s"[Error] for data storage '$storageName': " + str
       + "\n    thrown error: " + throwable.getMessage
       + "\n    cache: " + cache_hits + " hits, " + cache_misses + " misses"
@@ -66,13 +66,13 @@ abstract class DataStorage[I, O](storageName: String, debug: Boolean) {
     if (cachedOutputVars.contains(input)) {
       cache_hits = cache_hits + 1
       val resultVar = cachedOutputVars(input)
-      logInfo(s"cache hit for input '${input.toString}''")
+      logInfo(s"cache hit for input '${formatInputForLogging(input)}''")
       if (forceReloading) requestExecution(input, resultVar)(ec)
       cachedOutputVars(input)
     }
     else {
       cache_misses = cache_misses + 1
-      logInfo(s"cache miss for input '${input.toString}''")
+      logInfo(s"cache miss for input '${formatInputForLogging(input)}''")
       val resultVariable: Var[Option[O]] = Var(None)
       cachedOutputVars.put(input, resultVariable)
       requestExecution(input, resultVariable)(ec)
@@ -85,14 +85,40 @@ abstract class DataStorage[I, O](storageName: String, debug: Boolean) {
     executeLoading(input)(ec).onComplete {
       case Success(outputData) => {
         execution_succeeded = execution_succeeded + 1
-        logInfo(s"Successfully calculated output for input '${input.toString}''")
         updateVar.set(Some(outputData))
+        logInfo(s"Successfully calculated output: '${formatInputForLogging(input)}' -> '${formatOutputForLogging(outputData)}'")
       }
-      case Failure(error) => logError(s"Failed to load output for input '${input.toString}", error)
+      case Failure(error) => logError(s"Failed to load output for input '${formatInputForLogging(input)}", error)
     }(ec)
   }
 
   def startLoading(input: I)(implicit ec: ExecutionContext): Unit = loadIntoVariable(input)(ec)
+
+
+}
+
+object DataStorage {
+
+  val urlDataStore: DataStorage[URL, String] = new DataStorage[URL, String]("UrlDataStore", true) {
+    override protected def executeLoading(url: URL)(ec: ExecutionContext): Future[String] = {
+      dom.fetch(url.toString)
+        .toFuture
+        .flatMap { response =>
+          if (!response.ok)
+            Future.failed(new RuntimeException(
+              s"HTTP ${response.status} ${response.statusText}"
+            ))
+          else
+            response.text().toFuture
+        }(ec)
+    }
+
+    override protected def initialValueWhileLoading(in: URL): Option[String] = None
+
+    override protected def formatInputForLogging(in: URL): String = in.toString
+
+    override protected def formatOutputForLogging(out: String): String = out.toString
+  }
 
 
 }

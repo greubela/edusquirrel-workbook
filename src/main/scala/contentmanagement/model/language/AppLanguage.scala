@@ -25,6 +25,7 @@ object AppLanguage {
   case object Russian extends HumanLanguage("Russian", "UK")
   case object Turkish extends HumanLanguage("Turkish", "TR")
   case object Danish extends HumanLanguage("Danish", "DK")
+  case object Spanish extends HumanLanguage("Spanish", "ES")
 
   case object Python extends ProgrammingLanguage("Python", "py")
   case object Java extends ProgrammingLanguage("Java", "java")
@@ -33,4 +34,15 @@ object AppLanguage {
   case object Lisp extends ProgrammingLanguage("LISP", "lisp")
   case object Cpp extends ProgrammingLanguage("C++", "cpp")
   case object BlockDisplay extends ProgrammingLanguage("Block Display", "bd")
+
+  val turtleStitchLangMap: Map[HumanLanguage, String] = Map(
+    English -> "en",
+    German -> "de",
+    French -> "fr",
+    Ukrainian -> "ua",
+    Russian -> "ru",
+    Turkish -> "tr",
+    Danish -> "dk",
+    Spanish -> "es"
+  )
 }

@@ -49,7 +49,8 @@
     "/resources/programs/20260212TurtleStitch/turtlestitchsrc//widgets.js",
     "/resources/programs/20260212TurtleStitch/turtlestitchsrc//blocks.js",
     "/resources/programs/20260212TurtleStitch/turtlestitchsrc//threads.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//objects.js",
+    //"/resources/programs/20260212TurtleStitch/turtlestitchsrc//objects.js",
+    "/resources/programs/20260212TurtleStitch/adjusted/adjustedObjects.js", // adjusted
     "/resources/programs/20260212TurtleStitch/turtlestitchsrc//scenes.js",
     "/resources/programs/20260212TurtleStitch/turtlestitchsrc//gui.js",
     "/resources/programs/20260212TurtleStitch/turtlestitchsrc//paint.js",
@@ -65,8 +66,10 @@
     "/resources/programs/20260212TurtleStitch/turtlestitchsrc//locale.js",
     "/resources/programs/20260212TurtleStitch/turtlestitchsrc//cloud.js",
     "/resources/programs/20260212TurtleStitch/turtlestitchsrc//api.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//embroider.js"
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//embroider.js",
+
   ];
+
 
   let scriptsLoaded = false;
   let booted = false;
@@ -137,7 +140,8 @@
       script.onload = () => resolve();
       script.onerror = () => resolve();
       script.src = ide.resourceURL(
-        "/resources/programs/20260212TurtleStitch/turtlestitchsrc/locale/",
+        "/resource/programs",
+        //"/resources/programs/20260212TurtleStitch/turtlestitchsrc/stitchcode/locales/",
         "lang-" + lang + ".js"
       );
       document.head.appendChild(script);
@@ -355,13 +359,6 @@
     return svgDataUrlFromString(svg);
   }
 
-  function snapshotStagePngDataUrl() {
-    forceLayout();
-    const stage = ide?.stage;
-    if (!stage || typeof stage.fullImage !== "function") throw new Error("Stage fullImage() not available.");
-    return stage.fullImage().toDataURL("image/png");
-  }
-
   async function runGreenFlagOnce() {
     forceLayout();
     try { ide.stage.clearPenTrails?.(); } catch (_) {}
@@ -373,18 +370,6 @@
 
   // Real implementations (wired into api._impl once boot finishes)
   const impl = {
-    calcProgramPng: async (xml_content, language) => {
-	  //console.log("calling calcProgramPng for (" + language + "): " + xml_content)
-      if (typeof xml_content !== "string") throw new Error("xml_content must be a string");
-      await loadProjectXmlCanonical(xml_content);
-      if (language && language !== "en") {
-        await setLanguageWithoutProjectReloadAsync(language);
-        forceLayout(); stepWorld(2);
-      }
-      const m = findBestProgramMorph();
-      if (!m) throw new Error("Could not locate program morph for snapshot.");
-      return snapshotMorphToPngDataUrl(m);
-    },
 
     calcProgramSvg: async (xml_content, language) => {
       if (typeof xml_content !== "string") throw new Error("xml_content must be a string");

@@ -6,7 +6,7 @@ import contentmanagement.model.image.ImageDescription
 import contentmanagement.model.image.ImageDescription.ServerImageDescription
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import interactionPlugins.fileSubmission.TurtleStitchFileFactory
-import interactionPlugins.fileSubmission.cards.TurtleFileExistingProjectCard
+import interactionPlugins.fileSubmission.cards.TurtleFileProgramPreviewCard
 import org.scalajs.dom
 import org.scalajs.dom.URL
 import workbook.model.*
@@ -26,7 +26,7 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
     s"turtlestitch-exercise-$id"
   }
 
-  val defaultInfo = WorkbookInfo(fullScreenElement, WorkbookConfig(AppLanguage.German, User("TestUser", "dummy@test.de")), Map())
+  val defaultInfo = WorkbookInfo(List[HumanLanguage](AppLanguage.English, AppLanguage.German, AppLanguage.Danish), fullScreenElement, WorkbookConfig(AppLanguage.German, User("TestUser", "dummy@test.de")), Map())
   val workbookInfoVar = Var(defaultInfo)
 
   private def createImageAndUrl(filename: String): (ServerImageDescription, URL) = {
@@ -40,7 +40,7 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
 
   private def createProjectCard(names: String): HtmlWorkbookElement = {
     val tup = createImageAndUrl(names)
-    TurtleFileExistingProjectCard(workbookInfoVar, nextId(), "fileName", tup._1, tup._2).getAsPreviewLine()
+    TurtleFileProgramPreviewCard(workbookInfoVar, nextId(), tup._2).getAsPreviewLine()
   }
 
   private def createInstructions(maps: List[LanguageMap[HumanLanguage]]): List[HtmlWorkbookElement] =

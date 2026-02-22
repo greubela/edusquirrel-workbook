@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.image.ImageDescription
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
-import interactionPlugins.fileSubmission.cards.{TurtleFileExistingProjectCard, TurtleStitchUploadFileLine}
+import interactionPlugins.fileSubmission.cards.{TurtleFileProgramPreviewCard, TurtleStitchUploadFileLine}
 import org.scalajs.dom
 import org.scalajs.dom.URL
 import workbook.model.info.WorkbookInfo
@@ -40,7 +40,7 @@ object TurtleStitchFileFactory {
 
     val htmlTitleElement = HtmlContainerTitle(workbookInfo, title)
     val instr = HtmlPlaintextInstructionElement(workbookInfo, languageMapDefaultReadExerciseInstruction)
-    val down = TurtleFileExistingProjectCard(workbookInfo, baseId, "filename", imageShowCommands, projectToDownload)
+    val down = TurtleFileProgramPreviewCard(workbookInfo, baseId, projectToDownload)
     val downElement = new HtmlWorkbookElement() {
       override def workbookInfoVar: L.Var[WorkbookInfo] = workbookInfo
 
