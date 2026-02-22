@@ -20,6 +20,9 @@ object TurtleStitchFacade {
     /** returns PNG data URL for the blocks/program rendering */
     def calcProgramPng(xml_content: String, language: String): Promise[String] = js.native
 
+    /** returns SVG data URL containing all script/program renderings */
+    def calcProgramSvg(xml_content: String, language: String): Promise[String] = js.native
+
     /** runs green flag once, returns stage screenshot PNG data URL */
     def simulateGreenFlag(xml_content: String): Promise[String] = js.native
 
@@ -47,10 +50,28 @@ object TurtleStitchFacade {
     }
   }
 
+
+  private val programSvgDataSrcStorage: DataStorage[(String, HumanLanguage), String] = new DataStorage[(String, HumanLanguage), String]("ProgramSvgDataSrc", true) {
+    protected def executeLoading(in: (String, HumanLanguage))(ec: scala.concurrent.ExecutionContext): scala.concurrent.Future[String] = {
+      val (xml, language) = in
+      TurtleStitchFacadeNative.calcProgramSvg(xml, language.nameAbbr.toLowerCase).toFuture
+    }
+
+    protected def initialValueWhileLoading(in: (String, HumanLanguage)): String = {
+      "Loading SVG DataSrc for Language " + in._2.nameAbbr
+    }
+  }
+
   def getProgramPngDataSrc(xml: String, language: HumanLanguage): L.Var[Option[String]] = programPngDataSrcStorage.loadIntoVariable((xml, language))(ExecutionContext.global)
 
   def getProgramPngDataSrc(xml: String, language: Signal[HumanLanguage]): L.Signal[Option[String]] = {
     programPngDataSrcStorage.createSignalDependendVar(language.map(lang => (xml, lang)))(ExecutionContext.global).signal
+  }
+
+  def getProgramSvgDataSrc(xml: String, language: HumanLanguage): L.Var[Option[String]] = programSvgDataSrcStorage.loadIntoVariable((xml, language))(ExecutionContext.global)
+
+  def getProgramSvgDataSrc(xml: String, language: Signal[HumanLanguage]): L.Signal[Option[String]] = {
+    programSvgDataSrcStorage.createSignalDependendVar(language.map(lang => (xml, lang)))(ExecutionContext.global).signal
   }
 
   /*
