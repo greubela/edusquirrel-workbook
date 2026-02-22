@@ -146,19 +146,25 @@
   async function setLanguageWithoutProjectReloadAsync(lang) {
     if (!ide) return false;
     const safeLang = normalizeSnapLanguage(lang);
-    await loadLanguageScriptAsync(safeLang);
 
+    // keep Snap's language dictionary state in sync with what setLanguage() expects,
+    // but avoid reflectLanguage() because it reloads the whole project.
+    try { window.SnapTranslator?.unload?.(); } catch (_) {}
+    await loadLanguageScriptAsync(safeLang);
     if (window.SnapTranslator) {
-      try { window.SnapTranslator.unload?.(); } catch (_) {}
       window.SnapTranslator.language = safeLang;
     }
 
+    try { ide.flushBlocksCache?.(); } catch (_) {}
     try { window.SpriteMorph?.prototype?.initBlocks?.(); } catch (_) {}
+    try { ide.spriteBar?.tabBar?.tabTo?.("scripts"); } catch (_) {}
     try { ide.createCategories?.(); } catch (_) {}
     try { ide.categories?.refreshEmpty?.(); } catch (_) {}
+    try { ide.createCorralBar?.(); } catch (_) {}
     try { ide.refreshCustomizedPalette?.(); } catch (_) {}
+    try { ide.fixLayout?.(); } catch (_) {}
     forceLayout();
-    stepWorld(2);
+    stepWorld(4);
     return true;
   }
 
