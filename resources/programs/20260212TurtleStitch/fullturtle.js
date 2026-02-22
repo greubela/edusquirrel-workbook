@@ -112,6 +112,62 @@
     });
   }
 
+  function normalizeSnapLanguage(lang) {
+    if (!lang || typeof lang !== "string") return "en";
+    if (window.SnapTranslator?.dict && (lang in window.SnapTranslator.dict)) return lang;
+    if (lang.includes("_")) {
+      const base = lang.split("_")[0];
+      if (window.SnapTranslator?.dict && (base in window.SnapTranslator.dict)) return base;
+    }
+    return "en";
+  }
+
+  function loadLanguageScriptAsync(lang) {
+    return new Promise((resolve) => {
+      const translation = document.getElementById("language");
+      if (translation?.parentNode) translation.parentNode.removeChild(translation);
+      if (lang === "en") return resolve();
+
+      const script = document.createElement("script");
+      script.id = "language";
+      script.onload = () => resolve();
+      script.onerror = () => resolve();
+      script.src = ide.resourceURL(
+        "/resources/programs/20260212TurtleStitch/turtlestitchsrc/locale/",
+        "lang-" + lang + ".js"
+      );
+      document.head.appendChild(script);
+    });
+  }
+
+  // TurtleStitch/Snap language switching normally serializes + reloads the current project.
+  // That reload path is locale-sensitive and can drop blocks for some locales (e.g. tr).
+  // Here we only switch UI language state, never re-opening the loaded XML project.
+  async function setLanguageWithoutProjectReloadAsync(lang) {
+    if (!ide) return false;
+    const safeLang = normalizeSnapLanguage(lang);
+
+    // keep Snap's language dictionary state in sync with what setLanguage() expects,
+    // but avoid reflectLanguage() because it reloads the whole project.
+    try { window.SnapTranslator?.unload?.(); } catch (_) {}
+    await loadLanguageScriptAsync(safeLang);
+    if (window.SnapTranslator) {
+      window.SnapTranslator.language = safeLang;
+    }
+
+    try { ide.flushBlocksCache?.(); } catch (_) {}
+    try { window.SpriteMorph?.prototype?.initBlocks?.(); } catch (_) {}
+    try { ide.spriteBar?.tabBar?.tabTo?.("scripts"); } catch (_) {}
+    try { ide.createCategories?.(); } catch (_) {}
+    try { ide.categories?.refreshEmpty?.(); } catch (_) {}
+    try { ide.createCorralBar?.(); } catch (_) {}
+    try { ide.refreshCustomizedPalette?.(); } catch (_) {}
+    try { ide.fixLayout?.(); } catch (_) {}
+    forceLayout();
+    stepWorld(4);
+    return true;
+  }
+
   async function boot() {
     await ensureScriptsLoaded();
     if (booted) return;
@@ -157,7 +213,7 @@
 
   async function loadProjectXmlCanonical(xml) {
     await boot();
-    await setLanguageAsync("en");
+    await setLanguageWithoutProjectReloadAsync("en");
     ide.loadProjectXML(xml);
     await sleep(350);
     try { ide.selectSprite?.(ide.currentSprite); } catch (_) {}
@@ -248,7 +304,7 @@
       if (typeof xml_content !== "string") throw new Error("xml_content must be a string");
       await loadProjectXmlCanonical(xml_content);
       if (language && language !== "en") {
-        await setLanguageAsync(language);
+        await setLanguageWithoutProjectReloadAsync(language);
         forceLayout(); stepWorld(2);
       }
       const m = findBestProgramMorph();
