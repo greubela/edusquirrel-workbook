@@ -6,9 +6,9 @@ import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap
 import contentmanagement.storage.DataStorage
 
 import scala.Predef.->
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise as ScalaPromise}
 import scala.scalajs.js
-import scala.scalajs.js.Promise
+import scala.scalajs.js.Promise as JsPromise
 import scala.scalajs.js.annotation.*
 
 object TurtleStitchFacade {
@@ -18,13 +18,26 @@ object TurtleStitchFacade {
   object TurtleStitchFacadeNative extends js.Object {
 
     /** returns SVG data URL containing all script/program renderings */
-    def calcProgramSvg(xml_content: String, language: String): Promise[String] = js.native
+    def calcProgramSvg(xml_content: String, language: String): JsPromise[String] = js.native
 
     /** runs green flag once, returns stage screenshot PNG data URL */
-    def simulateGreenFlag(xml_content: String): Promise[String] = js.native
+    def simulateGreenFlag(xml_content: String): JsPromise[String] = js.native
 
     /** downloads DST for the given program XML */
-    def downloadDst(xml_content: String): Promise[Unit] = js.native
+    def downloadDst(xml_content: String): JsPromise[Unit] = js.native
+  }
+
+  private val executionLock = new AnyRef
+  private var previousExecution: Future[Unit] = Future.successful(())
+
+  private def runSerially[T](task: => Future[T])(using ec: ExecutionContext): Future[T] = {
+    val taskResult = ScalaPromise[T]()
+    executionLock.synchronized {
+      val queued = previousExecution.recover { case _ => () }.flatMap(_ => task)
+      queued.onComplete(taskResult.complete)(ec)
+      previousExecution = queued.map(_ => ()).recover { case _ => () }
+    }
+    taskResult.future
   }
 
   val programSvgDataSrcStorage: DataStorage[(String, HumanLanguage), String] = new DataStorage[(String, HumanLanguage), String]("ProgramSvgDataSrc", true) {
@@ -32,7 +45,7 @@ object TurtleStitchFacade {
     protected def executeLoading(in: (String, HumanLanguage))(ec: scala.concurrent.ExecutionContext): scala.concurrent.Future[String] = {
 
       val (xml, language) = in
-      TurtleStitchFacadeNative.calcProgramSvg(xml, turtleLang(language)).toFuture
+      runSerially(TurtleStitchFacadeNative.calcProgramSvg(xml, turtleLang(language)).toFuture)(using ec)
     }
 
     protected def initialValueWhileLoading(in: (String, HumanLanguage)): Option[String] = {
@@ -48,13 +61,17 @@ object TurtleStitchFacade {
 
   def simulateGreenFlag(
                          xml: String
-                       ): Future[String] =
-    TurtleStitchFacadeNative
+                       )(using ec: ExecutionContext): Future[String] =
+    runSerially(
+      TurtleStitchFacadeNative
       .simulateGreenFlag(xml)
       .toFuture
+    )
 
-  def downloadDst(xml: String): Future[Unit] =
-    TurtleStitchFacadeNative
+  def downloadDst(xml: String)(using ec: ExecutionContext): Future[Unit] =
+    runSerially(
+      TurtleStitchFacadeNative
       .downloadDst(xml)
       .toFuture
+    )
 }
