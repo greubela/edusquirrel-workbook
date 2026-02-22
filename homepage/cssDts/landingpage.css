@@ -13,9 +13,11 @@ body {
   background: linear-gradient(135deg, #fdf0d5, #f9f5ff);
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 2rem;
+  gap: 1.5rem;
 }
 
 .landing-container {
