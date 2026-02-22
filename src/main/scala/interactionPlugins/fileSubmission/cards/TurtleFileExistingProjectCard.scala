@@ -64,7 +64,7 @@ case class TurtleFileExistingProjectCard(workbookInfoVar: Var[WorkbookInfo], fil
           img(src := value, styleAttr := "max-width: 100%; border: 1px solid #ccc;")
         }*/
         case Some(value) => {
-          println("new span with value!")
+          println("new span with value: " + value)
           span(value)
         }
         case None => {
