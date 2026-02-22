@@ -33,8 +33,6 @@ case class TurtleFileExistingProjectCard(workbookInfoVar: Var[WorkbookInfo], fil
 
   private val imageDataSrcVar: Var[Option[String]] = Var(None)
 
-  imageDataSrcVar.signal.foreach(newSignal => println("received to var: " + newSignal.toString))(unsafeWindowOwner)
-
   // Mount-owned binding: prevents updates from targeting detached nodes when the card is remounted
   private val loadImageOnLanguageChangeBinder: Modifier[HtmlElement] = onMountBind { _ =>
     EventStream
@@ -49,8 +47,8 @@ case class TurtleFileExistingProjectCard(workbookInfoVar: Var[WorkbookInfo], fil
             case scala.util.Success(value) => value
             case scala.util.Failure(error) => Some(s"Error: ${error.getMessage}")
           }
-          .startWith(None)
-      } --> imageDataSrcVar.writer
+      }
+      .startWith(None) --> imageDataSrcVar.writer
   }
 
   private val domElement: Element = div(
@@ -59,18 +57,10 @@ case class TurtleFileExistingProjectCard(workbookInfoVar: Var[WorkbookInfo], fil
     div(
       cls := "preview-content",
       child <-- imageDataSrcVar.signal.map {
-       /* case Some(value) if value.startsWith("data:image") => {
-          println("new img with value!")
-          img(src := value, styleAttr := "max-width: 100%; border: 1px solid #ccc;")
-        }*/
-        case Some(value) => {
-          println("new span with value: " + value)
+        case Some(value) =>
           span(value)
-        }
-        case None => {
-          println("new span!")
+        case None =>
           span("Loading…")
-        }
       }
     ),
     loadImageOnLanguageChangeBinder,
