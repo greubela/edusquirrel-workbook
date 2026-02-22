@@ -40,28 +40,28 @@
 
   // ---- Script loader ----
   const SNAP_SCRIPT_ORDER = [
-    "src/morphic.js",
-    "src/symbols.js",
-    "src/widgets.js",
-    "src/blocks.js",
-    "src/threads.js",
-    "src/objects.js",
-    "src/scenes.js",
-    "src/gui.js",
-    "src/paint.js",
-    "src/lists.js",
-    "src/byob.js",
-    "src/tables.js",
-    "src/sketch.js",
-    "src/video.js",
-    "src/maps.js",
-    "src/extensions.js",
-    "src/xml.js",
-    "src/store.js",
-    "src/locale.js",
-    "src/cloud.js",
-    "src/api.js",
-    "src/embroider.js"
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc/morphic.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//symbols.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//widgets.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//blocks.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//threads.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//objects.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//scenes.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//gui.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//paint.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//lists.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//byob.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//tables.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//sketch.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//video.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//maps.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//extensions.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//xml.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//store.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//locale.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//cloud.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//api.js",
+    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//embroider.js"
   ];
 
   let scriptsLoaded = false;
@@ -244,7 +244,7 @@
   // Real implementations (wired into api._impl once boot finishes)
   const impl = {
     calcProgramPng: async (xml_content, language) => {
-	  console.log("calling calcProgramPng for (" + language + "): " + xml_content)
+	  //console.log("calling calcProgramPng for (" + language + "): " + xml_content)
       if (typeof xml_content !== "string") throw new Error("xml_content must be a string");
       await loadProjectXmlCanonical(xml_content);
       if (language && language !== "en") {

@@ -1,51 +1,91 @@
 package util
 
+import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.image.{FullImage, ImageDescription}
 import contentmanagement.storage.ImageStorage
 import org.scalajs.dom
 import org.scalajs.dom.{Blob, URL}
 
-import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.*
-import contentmanagement.model.image.{FullImage, ImageDescription}
-import contentmanagement.storage.ImageStorage
-import contentmanagement.webElements.HtmlAppElement
-import interactionPlugins.fileSubmission.TurtleStitchFileFactory
-import util.HtmlHelper
-import workbook.model.info.WorkbookInfo
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-
-import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.*
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.scalajs.js
+import scala.util.*
 
 object HtmlHelper {
+    
+  def toImgFromDataSrc(classStr: String, v: Signal[Option[String]]): Element =
+    div(
+      cls := classStr,
+      child <-- v.map {
 
-  def imagePreview(imgDesc: ImageDescription): Signal[Element] = {
+        case None =>
+          println("nope")
+          div("Image has not loaded yet")
 
-    val fullImageVar = ImageStorage.loadFullImageIntoVar(imgDesc)(ExecutionContext.global)
+        case Some(rawSrc) =>
+          println("calculating in child, curr val: " + rawSrc.take(30) + ", len=" + rawSrc.length)
+          // sanitize hard (cheap + removes line breaks)
+          val srcClean = rawSrc.replaceAll("\\s", "")
 
-    def imageLoadingElement(): Element = 
-      div(
-      cls := "preview-content",
+          img(
+            src := srcClean,
+            styleAttr := "max-width: 100%; border: 1px solid #ccc;",
+            onLoad --> (_ => println("IMG LOADED, prefix=" + srcClean.take(30) + ", len=" + srcClean.length)),
+            onError --> (_ => println("IMG ERROR, prefix=" + srcClean.take(30) + ", len=" + srcClean.length))
+          )
+      }
+    )
+
+  def toElementSignalDataSrc(classStr: String, varOpStr: Var[Option[String]]): Signal[Element] =
+    varOpStr
+      .signal
+      .map(_
+        .map(dataStr => HtmlHelper.imageLoadedElement(classStr, dataStr))
+        .getOrElse(HtmlHelper.imageLoadingElement(classStr))
+      )
+
+  def toElementSignalFullImg(classStr: String, varFullImg: Var[Option[FullImage]]): Signal[Element] =
+    varFullImg
+      .signal
+      .map(_
+        .map(fullImg => HtmlHelper.imageLoadedElement(classStr, fullImg.imgSourceString))
+        .getOrElse(HtmlHelper.imageLoadingElement(classStr))
+      )
+
+  private def imageLoadingElement(divCls: String): Element = {
+    div(
+      cls := divCls,
       "Image has not loaded yet"
-      )
-    
+    )
+  }
 
-    def imageLoadedElement(img: FullImage): Element =
+    private def imageLoadedElement(divCls: String, img: FullImage): Element = {
       div(
-        cls := "preview-content",
-        L.img(src <-- fullImageVar.signal.map(_.get.imgSourceString), styleAttr := "max-width: 100%; border: 1px solid #ccc;")
+        cls := divCls,
+        L.img(
+          src := img.imgSourceString,
+          styleAttr := "max-width: 100%; border: 1px solid #ccc;",
+            L.onLoad  --> (_ => println("CALCED IMG LOADED (fullImg)")),
+          onError --> (err => println("CALCED IMG ERROR, error:" + err.message))
+        )
       )
+    }
 
-    fullImageVar.signal.map {
-      case None => imageLoadingElement()
-      case Some(img) => imageLoadedElement(img)
-    }   
-    
+    private def imageLoadedElement(divCls: String, imgData: String): Element = {
+      div(
+        cls := divCls,
+        L.img(
+          src := imgData,
+          styleAttr := "max-width: 100%; border: 1px solid #ccc;",
+          onLoad  --> (_ => println("CALCED IMG LOADED (imgData)")),
+          onError --> (err => println("CALCED IMG ERROR, prefix=" + imgData.take(60) + ", error: " + err.message))
+        )
+      )
+    }
+
+  def imagePreview(divCls: String, imgDesc: ImageDescription): Signal[Element] = {
+    val fullImageVar = ImageStorage.loadFullImageIntoVar(imgDesc)(ExecutionContext.global)
+    toElementSignalFullImg(divCls, fullImageVar)
   }
 
   def downloadFromUrl(desiredName: String, url: URL): Unit = {

@@ -47,10 +47,10 @@ function Cloud() {
 }
 
 Cloud.prototype.init = function () {
-    this.apiBasePath = '/api/v1';
-    this.url = this.determineCloudDomain() + this.apiBasePath;
+    //this.apiBasePath = '/api/v1';
+    //this.url = this.determineCloudDomain() + this.apiBasePath;
     this.username = null;
-    this.disabled = false;
+    this.disabled = true;
 };
 
 Cloud.prototype.disable = function () {

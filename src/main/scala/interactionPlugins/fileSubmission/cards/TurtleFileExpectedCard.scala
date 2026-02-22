@@ -21,7 +21,7 @@ case class TurtleFileExpectedCard(workbookInfoVar: L.Var[WorkbookInfo], expected
   )
 
   private val domElementSignal: Signal[List[Element]] = {
-    HtmlHelper.imagePreview(expectedOutcome).map(preview => List(headline, preview))
+    HtmlHelper.imagePreview("preview-content", expectedOutcome).map(preview => List(headline, preview))
   }
 
   private val domElement: Element = div(
