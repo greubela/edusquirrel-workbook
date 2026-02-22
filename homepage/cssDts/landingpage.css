@@ -29,14 +29,27 @@ body {
 }
 
 .sponsor-row {
-  background-color: #ff8a00;
-  color: #1f2933;
+  background-color: #8b0000;
+  color: #fff;
   border-radius: 12px;
   padding: 1rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   font-weight: 600;
+  transition: background-color 0.3s ease;
+}
+
+.owner-row {
+  background-color: #eee;
+  color: #400;
+  font-size: 0.85rem;
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   transition: background-color 0.3s ease;
 }
 

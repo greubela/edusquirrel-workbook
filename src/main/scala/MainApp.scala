@@ -18,7 +18,7 @@ private val fullscreenElement: HtmlFullScreenElement = HtmlFullScreenElement()
 private val idAndContentList: List[(String, Element)] = List(
   ("plantWorkshopApp", plantworkshop.PlantWorkshopApp.appElement),
   //("testEditor", HtmlFullscreenTurtleEditorElement(BeProgram.debugGraphicsProgram().fullProgram).getDomElement()),
-  ("testWorksheet", TestWorkbook.createTestWorkbook(fullscreenElement).getDomElement()),
+  ("workbookTest", TestWorkbook.createTestWorkbook(fullscreenElement).getDomElement()),
   //("worksheetMonks", TestWorkbook(fullscreenElement).getDomElement()),
   ("workbookEmbroidery", CreateEmbroideryWorkbook(fullscreenElement).createWorkbook().getDomElement())
 )
@@ -49,7 +49,7 @@ def insertWorkbookContent(): Unit = {
 @main
 def mainApp(): Unit = {
 
-  resetLocalStorage()
+  //resetLocalStorage()
 
   insertWorkbookContent()
 }

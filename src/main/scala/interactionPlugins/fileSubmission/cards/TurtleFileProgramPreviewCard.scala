@@ -2,19 +2,15 @@ package interactionPlugins.fileSubmission.cards
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.image.ImageDescription
-import contentmanagement.model.language.AppLanguage.German
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, TranslationMaps}
-import contentmanagement.storage.{DataStorage, ImageStorage}
+import contentmanagement.storage.DataStorage
 import interactionPlugins.fileSubmission.{TurtleStitchFacade, TurtleStitchFileFactory}
 import org.scalajs.dom.URL
 import util.HtmlHelper
 import workbook.model.info.WorkbookInfo
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
-import scala.collection.mutable
 import scala.concurrent.ExecutionContext
-import scala.util.{Failure, Success}
 
 case class TurtleFileProgramPreviewCard(workbookInfoVar: Var[WorkbookInfo], id: String, existingProject: URL) extends HtmlWorkbookElement {
 
@@ -37,10 +33,20 @@ case class TurtleFileProgramPreviewCard(workbookInfoVar: Var[WorkbookInfo], id: 
     )
   }
 
-  private def getDisplayElement(humanLanguage: HumanLanguage, xml: Option[String]): Element = {
-    if(xml.isEmpty) mapDataSrcStringToElement(None)
+  private def getSvgProgramDisplayElement(humanLanguage: HumanLanguage, xml: Option[String]): Element = {
+    if (xml.isEmpty) mapDataSrcStringToElement(None)
     else {
-      val elVar = TurtleStitchFacade.programSvgDataSrcStorage.loadIntoVariable( (xml.get, humanLanguage) )(ExecutionContext.global)
+      val elVar = TurtleStitchFacade.programSvgDataSrcStorage.loadIntoVariable((xml.get, humanLanguage))(ExecutionContext.global)
+      div(
+        child <-- elVar.signal.map(mapDataSrcStringToElement)
+      )
+    }
+  }
+
+  private def getPngOutputDisplayElement(xml: Option[String]): Element = {
+    if (xml.isEmpty) mapDataSrcStringToElement(None)
+    else {
+      val elVar = TurtleStitchFacade.programOutputDataSrcStorage.loadIntoVariable(xml.get)(ExecutionContext.global)
       div(
         child <-- elVar.signal.map(mapDataSrcStringToElement)
       )
@@ -54,12 +60,18 @@ case class TurtleFileProgramPreviewCard(workbookInfoVar: Var[WorkbookInfo], id: 
       cls := "preview-content",
       //child.text <-- TurtleStitchFacade.getProgramPngDataSrc(testXML, German).signal.map(_.getOrElse("loading")),
       child <-- {
-        val languageSignal: Signal[HumanLanguage] = workbookInfoVar.signal.map(_.config.currentWorkbookLanguage)
         val xmlSignal: StrictSignal[Option[String]] = DataStorage.urlDataStore.loadIntoVariable(existingProject)(ExecutionContext.global).signal
+        val languageSignal: Signal[HumanLanguage] = workbookInfoVar.signal.map(_.config.currentWorkbookLanguage)
         val combinedSignal: Signal[(HumanLanguage, Option[String])] = languageSignal.combineWith(xmlSignal)
-        combinedSignal.map(tup => getDisplayElement(tup._1, tup._2))
-      })
-    ,
+        combinedSignal.map(tup => getSvgProgramDisplayElement(tup._1, tup._2))
+      }),
+    /*div(
+      cls := "preview-content",
+      child <-- {
+        val xmlSignal: StrictSignal[Option[String]] = DataStorage.urlDataStore.loadIntoVariable(existingProject)(ExecutionContext.global).signal
+        xmlSignal.map(getPngOutputDisplayElement)
+      }
+    ),*/
     downloadButton
   )
 

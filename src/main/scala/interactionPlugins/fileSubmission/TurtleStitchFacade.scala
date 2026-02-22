@@ -40,8 +40,9 @@ object TurtleStitchFacade {
     taskResult.future
   }
 
-  val programSvgDataSrcStorage: DataStorage[(String, HumanLanguage), String] = new DataStorage[(String, HumanLanguage), String]("ProgramSvgDataSrc", true) {
+  val programSvgDataSrcStorage: DataStorage[(String, HumanLanguage), String] = new DataStorage[(String, HumanLanguage), String]("ProgramSvgDataSrc", false) {
     private def turtleLang(language: HumanLanguage) = AppLanguage.turtleStitchLangMap.getOrElse(language, "en")
+
     protected def executeLoading(in: (String, HumanLanguage))(ec: scala.concurrent.ExecutionContext): scala.concurrent.Future[String] = {
 
       val (xml, language) = in
@@ -52,26 +53,31 @@ object TurtleStitchFacade {
       Some(TranslationMaps.languageMapImageLoading.getInLanguage(in._2))
     }
 
-    protected def formatInputForLogging(in: (String, HumanLanguage)): String = "XmlInput(" + in._1.length + ", " + in._1.substring(0, 60) + ", "+ turtleLang(in._2) + ")"
+    protected def formatInputForLogging(in: (String, HumanLanguage)): String = "XmlInput(" + in._1.length + ", " + in._1.substring(0, 60) + ", " + turtleLang(in._2) + ")"
 
     protected def formatOutputForLogging(out: String): String = "SvgOutput(" + out.length + ", " + out.substring(0, 60) + " ...)"
   }
 
+  val programOutputDataSrcStorage: DataStorage[String, String] = new DataStorage[String, String]("ProgramSvgDataSrc", false) {
 
+    protected def executeLoading(xml: String)(ec: scala.concurrent.ExecutionContext): scala.concurrent.Future[String] = {
+      runSerially(TurtleStitchFacadeNative.simulateGreenFlag(xml).toFuture)(using ec)
+    }
 
-  def simulateGreenFlag(
-                         xml: String
-                       )(using ec: ExecutionContext): Future[String] =
-    runSerially(
-      TurtleStitchFacadeNative
-      .simulateGreenFlag(xml)
-      .toFuture
-    )
+    protected def initialValueWhileLoading(in: String): Option[String] = {
+      None
+    }
+
+    protected def formatInputForLogging(in: String): String = "XmlInput(" + in.length + ", " + in.substring(0, 60) + ")"
+
+    protected def formatOutputForLogging(out: String): String = "PngOutput(" + out.length + ", " + out.substring(0, 60) + " ...)"
+  }
+
 
   def downloadDst(xml: String)(using ec: ExecutionContext): Future[Unit] =
     runSerially(
       TurtleStitchFacadeNative
-      .downloadDst(xml)
-      .toFuture
+        .downloadDst(xml)
+        .toFuture
     )
 }

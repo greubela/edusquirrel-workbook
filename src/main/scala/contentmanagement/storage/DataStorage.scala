@@ -99,7 +99,7 @@ abstract class DataStorage[I, O](storageName: String, debug: Boolean) {
 
 object DataStorage {
 
-  val urlDataStore: DataStorage[URL, String] = new DataStorage[URL, String]("UrlDataStore", true) {
+  val urlDataStore: DataStorage[URL, String] = new DataStorage[URL, String]("UrlDataStore", false) {
     override protected def executeLoading(url: URL)(ec: ExecutionContext): Future[String] = {
       dom.fetch(url.toString)
         .toFuture

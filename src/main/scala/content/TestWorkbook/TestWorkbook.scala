@@ -8,6 +8,7 @@ import contentmanagement.webElements.HtmlAppElement
 import interactionPlugins.blockEnvironment.exercise.{ProgrammingExerciseFactory, TurtleProgrammingInteraction}
 import interactionPlugins.fileSubmission.TurtleStitchFileFactory
 import interactionPlugins.gpt.GptExerciseFactory
+import interactionPlugins.visualNovel.VisualNovelPanel
 import workbook.model.*
 import workbook.model.info.{WorkbookConfig, WorkbookInfo}
 import workbook.user.User
@@ -18,43 +19,6 @@ class TestWorkbook(fullscreenElement: HtmlFullScreenElement) extends HtmlAppElem
 
 
   private val domElement: Element = div()
-  /*{
-
-
-    // VisualNovel:
-
-
-    // Programming Exercise
-    val testProgEx = ProgrammingExercise(
-      "id-003",
-      LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> "Exercise 2")),
-      LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> "Use Turtle Commands to program the Shape on the right :-)")),
-      ProgrammingExercise.DefaultPentagonExpectedResult
-    )
-    val htmlProgEx = HtmlProgrammingExercise(testProgEx, fullscreenElement)
-
-
-
-    val combinedElement = div(
-      // jsxGraphPreview,
-      fullscreenElement.getDomElement(),
-      /* div(
-         h2("Workbook Overview"),
-         div(
-           cls := "workbook-overview-sample",
-          // overviewElement
-         )
-       ),*/
-      htmlEx.getDomElement(),
-      htmlProgEx.getDomElement(),
-    )
-
-    div(
-      htmlEx.getDomElement(),
-      VisualNovelContent.monkContent.getDomElement(),
-      htmlProgEx.getDomElement(),
-    )
-  }*/
 
   override def getDomElement(): L.Element = domElement
 }
@@ -106,6 +70,10 @@ object TestWorkbook {
     HtmlExerciseContainer(workbookInfoVar, progElements)
   }
 
+  private def visualNovelCont(workbookInfoVar: Var[WorkbookInfo]): HtmlExerciseContainer = {
+    ??? // todo
+  }
+  
   private def turtleProgCont(workbookInfoVar: Var[WorkbookInfo]): HtmlExerciseContainer = {
 
     val elements = TurtleStitchFileFactory.createReprogramShapeExercise(
@@ -119,7 +87,6 @@ object TestWorkbook {
 
 
   def createTestSection(workbookInfoVar: Var[WorkbookInfo]): WorkbookSection = {
-    
     val contList = List(
       gptCont(workbookInfoVar),
       turtleProgCont(workbookInfoVar),
@@ -140,7 +107,7 @@ object TestWorkbook {
   }
 
   def createTestWorkbook(fullscreenElement: HtmlFullScreenElement): Workbook = {
-    val defaultInfo = WorkbookInfo(List[HumanLanguage](AppLanguage.English, AppLanguage.German),fullscreenElement, WorkbookConfig(AppLanguage.German, User("TestUser", "dummy@test.de")), Map())
+    val defaultInfo = WorkbookInfo(List[HumanLanguage](AppLanguage.English, AppLanguage.German, AppLanguage.Ukrainian, AppLanguage.Danish, AppLanguage.Turkish),fullscreenElement, WorkbookConfig(AppLanguage.German, User("TestUser", "dummy@test.de")), Map())
     val workbookInfoVar = Var(defaultInfo)
 
     val sec = createTestSection(workbookInfoVar)

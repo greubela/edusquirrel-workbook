@@ -4,6 +4,7 @@ import com.raquo.laminar.api.L.*
 import contentmanagement.model.image.ImageDescription.ServerImageDescription
 
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
+
 /*
 case class VisualNovelExercise(
                                 exerciseContent: ExerciseWithTitleDescription,

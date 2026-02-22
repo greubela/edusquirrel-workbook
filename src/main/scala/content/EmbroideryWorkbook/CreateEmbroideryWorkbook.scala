@@ -13,7 +13,7 @@ import workbook.model.*
 import workbook.model.info.{WorkbookConfig, WorkbookInfo}
 import workbook.user.User
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-import workbook.workbookHtmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement}
+import workbook.workbookHtmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement, HtmlUnsafeHtmlInstructionElement}
 import workbook.workbookHtmlElements.container.*
 import workbook.workbookHtmlElements.interactions.HtmlBasicTextInteraction
 
@@ -26,7 +26,7 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
     s"turtlestitch-exercise-$id"
   }
 
-  val defaultInfo = WorkbookInfo(List[HumanLanguage](AppLanguage.English, AppLanguage.German, AppLanguage.Danish), fullScreenElement, WorkbookConfig(AppLanguage.German, User("TestUser", "dummy@test.de")), Map())
+  val defaultInfo = WorkbookInfo(List[HumanLanguage](AppLanguage.English, AppLanguage.German), fullScreenElement, WorkbookConfig(AppLanguage.German, User("TestUser", "dummy@test.de")), Map())
   val workbookInfoVar = Var(defaultInfo)
 
   private def createImageAndUrl(filename: String): (ServerImageDescription, URL) = {
@@ -44,7 +44,7 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
   }
 
   private def createInstructions(maps: List[LanguageMap[HumanLanguage]]): List[HtmlWorkbookElement] =
-    maps.map(HtmlPlaintextInstructionElement(workbookInfoVar, _))
+    maps.map(HtmlUnsafeHtmlInstructionElement(workbookInfoVar, _))
 
   private def thirdExercise: HtmlExerciseContainer = {
     val title = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
@@ -59,7 +59,7 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
 
     val instr1: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
       AppLanguage.English -> "Describe what the commands pen up and pen down do.",
-      AppLanguage.German -> "Beschreibe was die Befehle Stift hoch und Stift runter tun.."
+      AppLanguage.German -> "Beschreibe was die Befehle Stift hoch und Stift runter tun."
     ))
 
     val instr2: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
@@ -101,13 +101,13 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
     ))
 
     val instr2: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-      AppLanguage.English -> "Change the number in the green command running stitch to different values and describe, how the result changes because of that",
-      AppLanguage.German -> "Ändere die Zahl im grünen Befehl Laufstich auf verschiedene Werte und beschreibe, wie sich das Ergebnis hierdurch verändert"
+      AppLanguage.English -> "Change the number in the green command running stitch to different values and describe, how the result changes because of that.",
+      AppLanguage.German -> "Ändere die Zahl im grünen Befehl Laufstich auf verschiedene Werte und beschreibe, wie sich das Ergebnis hierdurch verändert."
     ))
 
     val instr3: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-      AppLanguage.English -> "Remove the running stitch command and replace it with a cross stitch command. Also change the numbers in this commmand and describe, how the result changes because of that",
-      AppLanguage.German -> "Entferne den Befehl Laufstich und ersetze ihn mit einem Kreuzstich-Befehl. Ändere auch in diesem Befehl die Zahlen und beschreibe, wie sich das Ergebnis hierdurch verändert"
+      AppLanguage.English -> "Remove the running stitch command and replace it with a cross stitch command. Also change the numbers in this commmand and describe, how the result changes because of that.",
+      AppLanguage.German -> "Entferne den Befehl Laufstich und ersetze ihn mit einem Kreuzstich-Befehl. Ändere auch in diesem Befehl die Zahlen und beschreibe, wie sich das Ergebnis hierdurch verändert."
     ))
 
     val instructionElements = createInstructions(List(instr0, instr1, instr2, instr3))
@@ -139,13 +139,13 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
     ))
 
     val instr2: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-      AppLanguage.English -> "Describe, how the shape created by the program will probably look like",
-      AppLanguage.German -> "Beschreibe, wie die durch das Programm erstellte Figur vermutlich aussieht",
+      AppLanguage.English -> "Describe, how the shape created by the program will probably look like.",
+      AppLanguage.German -> "Beschreibe, wie die durch das Programm erstellte Figur vermutlich aussieht.",
     ))
 
     val instr3: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-      AppLanguage.English -> "Verify your expectation. To do so, downlaod the program with the button above and open it in TurtleStitch (https: //www.turtlestitch.org/run) by clicking on the file symbol \uD83D\uDCDD and then 'open...'. Execute the program afterwards by clicking on the green flag.",
-      AppLanguage.German -> "Überprüfe deine Vermutung. Lade hierfür zunächst das Programm mit dem obigen Knopf herunter und öffne es in TurtleStitch (https: //www.turtlestitch.org/run) indem du auf das Dateisymbol \uD83D\uDCDD klickst und 'Öffnen...' auswählst. Führe das Programm dann aus, indem du die grüne Fahne drückst.",
+      AppLanguage.English -> "Verify your expectation. <br> <br> To do so, downlaod the program with the button above and open it in <a target=\"_blank\" href=\"https://www.turtlestitch.org/run\"> TurtleStitch </a> by clicking on the file symbol (\uD83D\uDCDD) and then 'open...'. Execute the program afterwards by clicking on the green flag.",
+      AppLanguage.German -> "Überprüfe deine Vermutung. <br> <br> Lade hierfür zunächst das Programm mit dem obigen Knopf herunter und öffne es in <a target=\"_blank\" href=\"https://www.turtlestitch.org/run\"> TurtleStitch </a> indem du auf das Dateisymbol (\uD83D\uDCDD) klickst und 'Öffnen...' auswählst. Führe das Programm dann aus, indem du die grüne Fahne drückst.",
     ))
 
     val instr4: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
@@ -154,8 +154,8 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
     ))
 
     val instr5: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-      AppLanguage.English -> "Execute the program again and then once more. Describe what happens",
-      AppLanguage.German -> "Führe das Programm erneut und dann noch mal aus. Beschreibe, was passiert"
+      AppLanguage.English -> "Execute the program again and then once more. Describe what happens.",
+      AppLanguage.German -> "Führe das Programm erneut und dann noch mal aus. Beschreibe, was passiert."
     ))
 
     val instructionElements = createInstructions(List(instr1, instr2, instr3, instr4, instr5))
