@@ -25,6 +25,10 @@
       await window.TurtleStitchPoCReady;
       return api._impl.calcProgramPng(xml_content, language);
     },
+    calcProgramSvg: async (xml_content, language) => {
+      await window.TurtleStitchPoCReady;
+      return api._impl.calcProgramSvg(xml_content, language);
+    },
     simulateGreenFlag: async (xml_content) => {
       await window.TurtleStitchPoCReady;
       return api._impl.simulateGreenFlag(xml_content);
@@ -225,6 +229,76 @@
     return morph.fullImage().toDataURL("image/png");
   }
 
+  function svgDataUrlFromString(svgMarkup) {
+    const encoded = btoa(unescape(encodeURIComponent(svgMarkup)));
+    return `data:image/svg+xml;base64,${encoded}`;
+  }
+
+  function allProgramPictures() {
+    const pics = [];
+
+    if (!ide) return pics;
+
+    ide.sprites?.asArray?.().forEach((sprite) => {
+      if (sprite?.scripts?.scriptsPicture) {
+        const pic = sprite.scripts.scriptsPicture();
+        if (pic) pics.push(pic);
+      }
+      sprite?.customBlocks?.forEach((def) => {
+        const pic = def?.scriptsPicture?.();
+        if (pic) pics.push(pic);
+      });
+    });
+
+    if (ide.stage?.scripts?.scriptsPicture) {
+      const stagePic = ide.stage.scripts.scriptsPicture();
+      if (stagePic) pics.push(stagePic);
+    }
+    ide.stage?.customBlocks?.forEach((def) => {
+      const pic = def?.scriptsPicture?.();
+      if (pic) pics.push(pic);
+    });
+    ide.stage?.globalBlocks?.forEach((def) => {
+      const pic = def?.scriptsPicture?.();
+      if (pic) pics.push(pic);
+    });
+
+    return pics;
+  }
+
+  function snapshotAllProgramsSvgDataUrl() {
+    forceLayout();
+    stepWorld(2);
+
+    const padding = 20;
+    const pics = allProgramPictures();
+    if (!pics.length) throw new Error("No scripts picture could be generated.");
+
+    let width = 0;
+    let height = 0;
+    pics.forEach((p, i) => {
+      width = Math.max(width, p.width);
+      height += p.height;
+      if (i < pics.length - 1) height += padding;
+    });
+
+    let y = 0;
+    const images = pics.map((canvas) => {
+      const href = canvas.toDataURL("image/png");
+      const node = `<image x="0" y="${y}" width="${canvas.width}" height="${canvas.height}" href="${href}" />`;
+      y += canvas.height + padding;
+      return node;
+    }).join("\n");
+
+    const svg = [
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+      images,
+      "</svg>"
+    ].join("\n");
+
+    return svgDataUrlFromString(svg);
+  }
+
   function snapshotStagePngDataUrl() {
     forceLayout();
     const stage = ide?.stage;
@@ -254,6 +328,16 @@
       const m = findBestProgramMorph();
       if (!m) throw new Error("Could not locate program morph for snapshot.");
       return snapshotMorphToPngDataUrl(m);
+    },
+
+    calcProgramSvg: async (xml_content, language) => {
+      if (typeof xml_content !== "string") throw new Error("xml_content must be a string");
+      await loadProjectXmlCanonical(xml_content);
+      if (language && language !== "en") {
+        await setLanguageAsync(language);
+        forceLayout(); stepWorld(2);
+      }
+      return snapshotAllProgramsSvgDataUrl();
     },
 
     simulateGreenFlag: async (xml_content) => {
