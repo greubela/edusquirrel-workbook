@@ -67,7 +67,12 @@ lines="$(wc -l < "$IN_PATH" | tr -d ' ')"
 echo "training.jsonl lines=$lines"
 echo "ml-model.json before: $before"
 
-"$ROOT_DIR/tools/openai-proxy/.venv/bin/python" "$ROOT_DIR/tools/dev/train_mini_ml.py" \
+TRAIN_PY="$ROOT_DIR/tools/openai-proxy/.venv/bin/python"
+if [[ ! -x "$TRAIN_PY" ]]; then
+  TRAIN_PY="${PYTHON_BIN:-python3}"
+fi
+
+"$TRAIN_PY" "$ROOT_DIR/tools/dev/train_mini_ml.py" \
   --input "$IN_PATH" \
   --output "$OUT_PATH" \
   --epochs "${AUTO_TRAIN_EPOCHS:-200}" \
