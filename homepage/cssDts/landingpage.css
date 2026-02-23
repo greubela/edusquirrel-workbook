@@ -30,7 +30,7 @@ body {
   padding: 2.5rem;
 }
 
-.sponsor-row {
+.headline-row {
   background-color: #8b0000;
   color: #fff;
   border-radius: 12px;
@@ -53,27 +53,6 @@ body {
   align-items: center;
   justify-content: space-between;
   transition: background-color 0.3s ease;
-}
-
-.sponsor-row button {
-  border: none;
-  background: #1f2933;
-  color: #ffffff;
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-}
-
-.sponsor-row button:hover {
-  transform: translateY(-1px);
-  opacity: 0.85;
-}
-
-.sponsor-row.toggled {
-  background-color: #E20074;
-  color: #fff;
 }
 
 .section-heading h1 {

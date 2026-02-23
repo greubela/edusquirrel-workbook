@@ -80,7 +80,7 @@ object TestWorkbook {
       workbookInfoVar,
       "ts-upload-007",
       TurtleStitchFileFactory.languageMapDefaultExerciseTitle,
-      ServerImageDescription("/resources/workbookresources/monks/Image01.jpg")
+      ServerImageDescription("../resources/workbookresources/monks/Image01.jpg")
     )
     HtmlExerciseContainer(workbookInfoVar, elements)
   }

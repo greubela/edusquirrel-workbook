@@ -30,8 +30,8 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
   val workbookInfoVar = Var(defaultInfo)
 
   private def createImageAndUrl(filename: String): (ServerImageDescription, URL) = {
-    (ServerImageDescription("/resources/workbookresources/embroidery/existingProjects/" + filename + "_pic.png"),
-      new URL("/resources/workbookresources/embroidery/existingProjects/" + filename + ".xml", dom.window.location.href))
+    (ServerImageDescription("../resources/workbookresources/embroidery/existingProjects/" + filename + "_pic.png"),
+      new URL("../resources/workbookresources/embroidery/existingProjects/" + filename + ".xml", dom.window.location.href))
   }
 
   private def createTextInput(): HtmlWorkbookElement = {

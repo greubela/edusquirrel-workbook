@@ -42,31 +42,33 @@
 
   window.TurtleStitchPoC = api;
 
+  window.base_prog_dir = "../resources/programs/20260212TurtleStitch/";
+
   // ---- Script loader ----
   const SNAP_SCRIPT_ORDER = [
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc/morphic.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//symbols.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//widgets.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//blocks.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//threads.js",
-    //"/resources/programs/20260212TurtleStitch/turtlestitchsrc//objects.js",
-    "/resources/programs/20260212TurtleStitch/adjusted/adjustedObjects.js", // adjusted
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//scenes.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//gui.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//paint.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//lists.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//byob.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//tables.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//sketch.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//video.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//maps.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//extensions.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//xml.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//store.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//locale.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//cloud.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//api.js",
-    "/resources/programs/20260212TurtleStitch/turtlestitchsrc//embroider.js",
+    "turtlestitchsrc/morphic.js",
+    "turtlestitchsrc/symbols.js",
+    "turtlestitchsrc/widgets.js",
+    "turtlestitchsrc/blocks.js",
+    "turtlestitchsrc/threads.js",
+    //"turtlestitchsrc/objects.js",
+    "adjusted/adjustedObjects.js", // adjusted
+    "turtlestitchsrc/scenes.js",
+    "turtlestitchsrc/gui.js",
+    "turtlestitchsrc/paint.js",
+    "turtlestitchsrc/lists.js",
+    "turtlestitchsrc/byob.js",
+    "turtlestitchsrc/tables.js",
+    "turtlestitchsrc/sketch.js",
+    "turtlestitchsrc/video.js",
+    "turtlestitchsrc/maps.js",
+    "turtlestitchsrc/extensions.js",
+    "turtlestitchsrc/xml.js",
+    "turtlestitchsrc/store.js",
+    "turtlestitchsrc/locale.js",
+    "turtlestitchsrc/cloud.js",
+    "turtlestitchsrc/api.js",
+    "turtlestitchsrc/embroider.js",
 
   ];
 
@@ -77,11 +79,12 @@
 
   let world = null;
   let ide = null;
-
   function injectScript(src) {
+
+    //log("injectScript", base_prog_dir + src);
     return new Promise((resolve, reject) => {
       const s = document.createElement("script");
-      s.src = src;
+      s.src = base_prog_dir + src;
       s.async = false;
       s.onload = () => resolve();
       s.onerror = () => reject(new Error("Failed to load " + src));
@@ -91,10 +94,10 @@
 
   async function ensureScriptsLoaded() {
     if (scriptsLoaded) return;
-    log("Loading TurtleStitch scripts…");
+    //log("Loading TurtleStitch scripts…");
     for (const p of SNAP_SCRIPT_ORDER) await injectScript(p);
     scriptsLoaded = true;
-    log("Scripts loaded.");
+    //log("Scripts loaded.");
   }
 
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -139,11 +142,8 @@
       script.id = "language";
       script.onload = () => resolve();
       script.onerror = () => resolve();
-      script.src = ide.resourceURL(
-        "/resource/programs",
-        //"/resources/programs/20260212TurtleStitch/turtlestitchsrc/stitchcode/locales/",
-        "lang-" + lang + ".js"
-      );
+      //console.log("script: " + base_prog_dir + "adjusted/lang-" + lang + ".js");
+      script.src = base_prog_dir + "adjusted/lang-" + lang + ".js";
       document.head.appendChild(script);
     });
   }
@@ -213,7 +213,7 @@
       })();
 
       booted = true;
-      log("IDE booted.");
+      log("[INFO] TurtleStitch IDE successfully booted.");
     })();
 
     return bootPromise;
@@ -410,11 +410,11 @@
       api._impl = impl;
       isReady = true;
       resolveReady();
-      log("API ready.");
+      log("[INFO] API ready.");
     } catch (e) {
       window.TurtleStitchPoCError = e;
       rejectReady(e);
-      err("API boot failed:", e);
+      err("[ERROR] API boot failed:", e);
     }
   })();
 })();

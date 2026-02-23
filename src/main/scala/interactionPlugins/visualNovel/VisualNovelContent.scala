@@ -13,7 +13,7 @@ object VisualNovelContent {
 
   def monkContent: VisualNovelExercise = {
 
-    val defaultImages = 1.to(5).map(curNr => ServerImageDescription("/resources/workbookresources/monks/Image0" + curNr + ".jpg"))
+    val defaultImages = 1.to(5).map(curNr => ServerImageDescription("../resources/workbookresources/monks/Image0" + curNr + ".jpg"))
     val missImg = ServerImageDescription("./workbook/workbooks/monks/MissImg.png")
     val contentQuick: List[(ImageDescription, String)] = List(
 
