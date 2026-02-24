@@ -10,6 +10,7 @@ import interactionPlugins.blockEnvironment.exercise.{HtmlProgrammingExercise, Pr
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
+import interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
 import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
 import interactionPlugins.pythonExercises.{HtmlPythonExercise, PythonExerciseContent}
 import org.scalajs.dom
@@ -26,8 +27,21 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 def mainApp(): Unit = {
   doSomeCalculations()
   //insertWorkbook()
+  insertFeedbackDemo()
   insertTurtleEditor()
   insertPlantWorkshop()
+}
+
+def insertFeedbackDemo(): Unit = {
+  val feedbackRoot = document.getElementById("feedbackDemoRoot")
+  if (feedbackRoot != null) {
+    val demoElement = FeedbackDemoElement.element()
+    if (dom.document.readyState == "loading") {
+      renderOnDomContentLoaded(feedbackRoot, demoElement)
+    } else {
+      render(feedbackRoot, demoElement)
+    }
+  }
 }
 
 def insertPlantWorkshop(): Unit = {
@@ -143,6 +157,7 @@ def jsxGraphPreview: HtmlElement =
 def insertWorkbook(): Unit = {
 
 
+
   // Generic GPT Exercise
   val testEx = TextBasedGptExercise("id-007", Map(AppLanguage.English -> "this is title"), Map(AppLanguage.English -> "this is instruction"))
   val htmlEx = HtmlTextBasedGptExercise(testEx, useFullscreenInteraction = true, fullscreenElement = Some(fullscreenElement))
@@ -175,10 +190,12 @@ def insertWorkbook(): Unit = {
 
   val worksheetDiv = document.getElementById("worksheetDts")
 
-  if (dom.document.readyState == "loading") {
-    renderOnDomContentLoaded(worksheetDiv, combinedElement)
-  } else {
-    render(worksheetDiv, combinedElement)
+  if (worksheetDiv != null) {
+    if (dom.document.readyState == "loading") {
+      renderOnDomContentLoaded(worksheetDiv, combinedElement)
+    } else {
+      render(worksheetDiv, combinedElement)
+    }
   }
 }
 
