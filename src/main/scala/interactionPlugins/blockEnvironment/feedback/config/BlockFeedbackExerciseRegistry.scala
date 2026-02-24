@@ -10,6 +10,9 @@ import contentmanagement.model.language.AppLanguage
  */
 object BlockFeedbackExerciseRegistry {
 
+  // @ids ──────────────────────────────────────────────────────────────────
+  // Stable string keys – used in persistence and routing. Never rename these.
+  // ────────────────────────────────────────────────────────────────────────
   val addTwoNumbersExerciseId: String = "block:add-two-numbers"
   val maxInListExerciseId: String = "block:max-in-list"
   val balancedBracketsExerciseId: String = "block:balanced-brackets"
@@ -29,6 +32,10 @@ object BlockFeedbackExerciseRegistry {
   private val english = AppLanguage.English
   private val german = AppLanguage.German
 
+  // @exercise val=addTwoNumbers id=block:add-two-numbers
+  // ──────────────────────────────────────────────────────────────────────
+  // Add two numbers  ·  block:add-two-numbers
+  // ──────────────────────────────────────────────────────────────────────
   val addTwoNumbers: FeedbackExerciseDefinition =
     FeedbackExerciseDefinition(
       id = addTwoNumbersExerciseId,
@@ -70,7 +77,12 @@ object BlockFeedbackExerciseRegistry {
           timeoutMs = 4000
         )
     )
+  // @end addTwoNumbers
 
+  // @exercise val=maxInList id=block:max-in-list
+  // ──────────────────────────────────────────────────────────────────────
+  // Maximum in a list  ·  block:max-in-list
+  // ──────────────────────────────────────────────────────────────────────
   val maxInList: FeedbackExerciseDefinition =
     FeedbackExerciseDefinition(
       id = maxInListExerciseId,
@@ -110,7 +122,12 @@ object BlockFeedbackExerciseRegistry {
           timeoutMs = 4000
         )
     )
+  // @end maxInList
 
+  // @exercise val=balancedBrackets id=block:balanced-brackets
+  // ──────────────────────────────────────────────────────────────────────
+  // Balanced brackets  ·  block:balanced-brackets
+  // ──────────────────────────────────────────────────────────────────────
   val balancedBrackets: FeedbackExerciseDefinition =
     FeedbackExerciseDefinition(
       id = balancedBracketsExerciseId,
@@ -173,7 +190,12 @@ object BlockFeedbackExerciseRegistry {
           timeoutMs = 4000
         )
     )
+  // @end balancedBrackets
 
+  // @exercise val=twoSumIndices id=block:two-sum-indices
+  // ──────────────────────────────────────────────────────────────────────
+  // Two-sum indices  ·  block:two-sum-indices
+  // ──────────────────────────────────────────────────────────────────────
   val twoSumIndices: FeedbackExerciseDefinition =
     FeedbackExerciseDefinition(
       id = twoSumIndicesExerciseId,
@@ -223,7 +245,12 @@ object BlockFeedbackExerciseRegistry {
           timeoutMs = 4000
         )
     )
+  // @end twoSumIndices
 
+  // @exercise val=palindrome id=block:is-palindrome
+  // ──────────────────────────────────────────────────────────────────────
+  // Palindrome check  ·  block:is-palindrome
+  // ──────────────────────────────────────────────────────────────────────
   val palindrome: FeedbackExerciseDefinition =
     FeedbackExerciseDefinition(
       id = palindromeExerciseId,
@@ -274,7 +301,12 @@ object BlockFeedbackExerciseRegistry {
           timeoutMs = 4000
         )
     )
+  // @end palindrome
 
+  // @exercise val=gcd id=block:gcd
+  // ──────────────────────────────────────────────────────────────────────
+  // Greatest common divisor  ·  block:gcd
+  // ──────────────────────────────────────────────────────────────────────
   val gcd: FeedbackExerciseDefinition =
     FeedbackExerciseDefinition(
       id = gcdExerciseId,
@@ -325,7 +357,12 @@ object BlockFeedbackExerciseRegistry {
           timeoutMs = 4000
         )
     )
+  // @end gcd
 
+  // @exercise val=countVowels id=block:count-vowels
+  // ──────────────────────────────────────────────────────────────────────
+  // Count vowels  ·  block:count-vowels
+  // ──────────────────────────────────────────────────────────────────────
   val countVowels: FeedbackExerciseDefinition =
     FeedbackExerciseDefinition(
       id = countVowelsExerciseId,
@@ -375,7 +412,12 @@ object BlockFeedbackExerciseRegistry {
           timeoutMs = 4000
         )
     )
+  // @end countVowels
 
+  // @exercise val=runLengthEncode id=block:run-length-encode
+  // ──────────────────────────────────────────────────────────────────────
+  // Run-length encoding  ·  block:run-length-encode
+  // ──────────────────────────────────────────────────────────────────────
   val runLengthEncode: FeedbackExerciseDefinition =
     FeedbackExerciseDefinition(
       id = runLengthEncodeExerciseId,
@@ -425,7 +467,12 @@ object BlockFeedbackExerciseRegistry {
           timeoutMs = 5000
         )
     )
+  // @end runLengthEncode
 
+  // @exercise val=mergeSorted id=block:merge-sorted
+  // ──────────────────────────────────────────────────────────────────────
+  // Merge two sorted lists  ·  block:merge-sorted
+  // ──────────────────────────────────────────────────────────────────────
   val mergeSorted: FeedbackExerciseDefinition =
     FeedbackExerciseDefinition(
       id = mergeSortedExerciseId,
@@ -475,7 +522,12 @@ object BlockFeedbackExerciseRegistry {
           timeoutMs = 5000
         )
     )
+  // @end mergeSorted
 
+  // @exercise val=uniquePreserveOrder id=block:unique-preserve-order
+  // ──────────────────────────────────────────────────────────────────────
+  // Unique (preserve order)  ·  block:unique-preserve-order
+  // ──────────────────────────────────────────────────────────────────────
   val uniquePreserveOrder: FeedbackExerciseDefinition =
     FeedbackExerciseDefinition(
       id = uniquePreserveOrderExerciseId,
@@ -525,7 +577,12 @@ object BlockFeedbackExerciseRegistry {
           timeoutMs = 5000
         )
     )
+  // @end uniquePreserveOrder
 
+  // @exercise val=romanToInt id=block:roman-to-int
+  // ──────────────────────────────────────────────────────────────────────
+  // Roman to integer  ·  block:roman-to-int
+  // ──────────────────────────────────────────────────────────────────────
   val romanToInt: FeedbackExerciseDefinition =
     FeedbackExerciseDefinition(
       id = romanToIntExerciseId,
@@ -575,7 +632,12 @@ object BlockFeedbackExerciseRegistry {
           timeoutMs = 5000
         )
     )
+  // @end romanToInt
 
+  // @exercise val=intToRoman id=block:int-to-roman
+  // ──────────────────────────────────────────────────────────────────────
+  // Integer to Roman  ·  block:int-to-roman
+  // ──────────────────────────────────────────────────────────────────────
   val intToRoman: FeedbackExerciseDefinition =
     FeedbackExerciseDefinition(
       id = intToRomanExerciseId,
@@ -625,7 +687,12 @@ object BlockFeedbackExerciseRegistry {
           timeoutMs = 5000
         )
     )
+  // @end intToRoman
 
+  // @exercise val=normalizeWhitespace id=block:normalize-whitespace
+  // ──────────────────────────────────────────────────────────────────────
+  // Normalize whitespace  ·  block:normalize-whitespace
+  // ──────────────────────────────────────────────────────────────────────
   val normalizeWhitespace: FeedbackExerciseDefinition =
     FeedbackExerciseDefinition(
       id = normalizeWhitespaceExerciseId,
@@ -654,7 +721,7 @@ object BlockFeedbackExerciseRegistry {
             ),
             BlockFeedbackPythonTest(
               name = "collapse",
-              code = "assert normalize_whitespace('a\t\t b\n  c') == 'a b c'",
+              code = "assert normalize_whitespace('a\\t\\t b\\n  c') == 'a b c'",
               hint = Some("Alle Whitespace-Arten zählen (Tab, Newline, ...).")
             )
           ),
@@ -666,7 +733,7 @@ object BlockFeedbackExerciseRegistry {
             ),
             BlockFeedbackPythonTest(
               name = "mixed_unicode_space",
-              code = "assert normalize_whitespace('x\n\n\ty') == 'x y'",
+              code = "assert normalize_whitespace('x\\n\\n\\ty') == 'x y'",
               weight = 2.0
             )
           ),
@@ -675,7 +742,12 @@ object BlockFeedbackExerciseRegistry {
           timeoutMs = 4000
         )
     )
+  // @end normalizeWhitespace
 
+  // @exercise val=rotateList id=block:rotate-list
+  // ──────────────────────────────────────────────────────────────────────
+  // Rotate list  ·  block:rotate-list
+  // ──────────────────────────────────────────────────────────────────────
   val rotateList: FeedbackExerciseDefinition =
     FeedbackExerciseDefinition(
       id = rotateListExerciseId,
@@ -726,7 +798,11 @@ object BlockFeedbackExerciseRegistry {
           timeoutMs = 5000
         )
     )
+  // @end rotateList
 
+  // @byExerciseId ────────────────────────────────────────────────────────
+  // Lookup map and public API – add new exercises here after defining them.
+  // ──────────────────────────────────────────────────────────────────────
   val byExerciseId: Map[String, FeedbackExerciseDefinition] =
     Map(
       addTwoNumbersExerciseId -> addTwoNumbers,
