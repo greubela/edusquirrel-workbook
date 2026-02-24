@@ -1,4 +1,4 @@
-package plantworkshop
+package content.plantworkshop
 
 import com.raquo.laminar.api.L._
 import org.scalajs.dom
@@ -26,7 +26,7 @@ case class CodeSnippet(id: Int, text: String)
 object PlantWorkshopApp {
 
   // --- GLOBAL STATE ---
-  val currentTask: Var[Int] = Var(0) // 0-5: Motivation, Checklist, Moisture, Pumpe, Combined, Test
+  val currentTask: Var[Int] = Var(0) // 0-5: Motivation, Checklist, Pumpe, Moisture, Combined, Test
   val isAdvancedMode: Var[Boolean] = Var(false)
 
   private var beforeUnloadInstalled: Boolean = false
@@ -64,8 +64,8 @@ object PlantWorkshopApp {
         child <-- currentTask.signal.map {
           case 0 => Task0_Motivation.render()
           case 1 => Task1_ComponentChecklist.render()
-          case 2 => Task2_MoistureSensor.render(isAdvancedMode.signal)
-          case 3 => Task3_PumpControl.render(isAdvancedMode.signal)
+          case 2 => Task3_PumpControl.render(isAdvancedMode.signal)
+          case 3 => Task2_MoistureSensor.render(isAdvancedMode.signal)
           case 4 => Task4_Combined.render(isAdvancedMode.signal)
           case 5 => Task5_Test.render()
           case _ => div("Unbekannte Aufgabe")
@@ -82,8 +82,8 @@ object PlantWorkshopApp {
     val taskTitles = List(
       "0. Motivation",
       "1. Bauteile & Aufbau",
-      "2. Feuchtigkeit messen",
-      "3. Pumpe steuern",
+      "2. Pumpe steuern",
+      "3. Feuchtigkeit messen",
       "4. Messwerte & Pumpe",
       "5. Test & Fertig"
     )
@@ -156,7 +156,8 @@ object Task0_Motivation {
           className := "info-box",
           strong("Hinweis: "),
           "Wir arbeiten mit Arduino, einer Plattform, welche es einfach macht, Hardware mit Code zu steuern. ",
-          "Keine Sorge, wenn ihr noch nie programmiert habt, wir fangen ganz von vorne an!"
+          "Keine Sorge, wenn ihr noch nie programmiert habt, wir fangen ganz von vorne an!",
+          "Ihr habt die Wahl zwischen einem Anfängermodus mit Drag-and-Drop Codebausteinen und einem Fortgeschrittenenmodus, in dem ihr Codelückentext selbst ausfüllen könnt. ",
         )
       ),
       div(
@@ -202,6 +203,18 @@ object Task1_ComponentChecklist {
       div(
         className := "task-box",
         h3("🔧 Aufbau & Verkabelung"),
+        div(
+          className := "safety-warning",
+          backgroundColor := "#ffe5e5",
+          border := "3px solid #c62828",
+          padding := "14px",
+          marginBottom := "14px",
+          h3("⚠️ WICHTIGE SICHERHEITSREGEL"),
+          p(
+            strong("Niemals Strom ohne Aufseher einschalten! "),
+            "Die Stromversorgung darf nur zusammen mit einer betreuenden Person aktiviert werden."
+          )
+        ),
         p("So werden die Komponenten verbunden:"),
         div(
           className := "wiring-diagram",
@@ -282,53 +295,68 @@ object Task1_ComponentChecklist {
 }
 
 // ========================================
-// TASK 2: MOISTURE SENSOR
+// TASK 3: MOISTURE SENSOR
 // ========================================
 object Task2_MoistureSensor {
   // State für diese Aufgabe
   val advancedCodeState: Var[String] = Var(
-    """// Sensor kurz einschalten und Messwert lesen
-      |digitalWrite(SENSOR_POWER_PIN, HIGH);
-      |delay(10);
-      |int messwert = analogRead(SENSOR_PIN);
-      |digitalWrite(SENSOR_POWER_PIN, LOW);
+    """// Lege den Grenzwert fest, ab dem der Boden als trocken gilt
+      |int feuchtigkeitsGrenze = TODO_WERT;       
       |
-      |Serial.print("Analoger Wert: ");
-      |Serial.println(messwert);
+      |// Sensor nur kurz aktivieren, messen, wieder ausschalten
+      |digitalWrite(SENSOR_POWER_PIN, TODO_HIGH_LOW);     
+      |delay(TODO_DELAY_MS);                        
+      |int messwert = analogRead(TODO_SENSOR_PIN);  
+      |digitalWrite(SENSOR_POWER_PIN, TODO_HIGH_LOW);    
       |
-      |if (messwert < feuchtigkeitsGrenze) {
-      |  Serial.println("Boden ist TROCKEN!");
+      |// Gib erst eine Beschriftung, dann den Messwert aus
+      |Serial.print(TODO_TEXT);                    
+      |Serial.println(TODO_WERT_AUSGABE);           
+      |
+      |// Entscheide anhand des Grenzwerts zwischen trocken und feucht
+      |if (TODO_BEDINGUNG) {                        
+      |  Serial.println(TODO_TEXT_TROCKEN);         
       |} else {
-      |  Serial.println("Boden ist FEUCHT");
+      |  Serial.println(TODO_TEXT_FEUCHT);          
         |}""".stripMargin
   )
 
   val snippets = List(
-    CodeSnippet(1, "digitalWrite(SENSOR_POWER_PIN, HIGH);"),
-    CodeSnippet(2, "int messwert = analogRead(SENSOR_PIN);"),
-    CodeSnippet(3, "digitalWrite(SENSOR_POWER_PIN, LOW);"),
-    CodeSnippet(4, "if (messwert < feuchtigkeitsGrenze) {"),
-    CodeSnippet(5, "  Serial.println(\"Boden ist TROCKEN!\");"),
-    CodeSnippet(6, "} else {"),
-    CodeSnippet(7, "  Serial.println(\"Boden ist FEUCHT\");"),
-    CodeSnippet(8, "}")
+    CodeSnippet(1, "int feuchtigkeitsGrenze = 100;"),
+    CodeSnippet(2, "digitalWrite(SENSOR_POWER_PIN, HIGH);"),
+    CodeSnippet(3, "delay(10);"),
+    CodeSnippet(4, "int messwert = analogRead(SENSOR_PIN);"),
+    CodeSnippet(5, "digitalWrite(SENSOR_POWER_PIN, LOW);"),
+    CodeSnippet(6, "if (messwert < feuchtigkeitsGrenze) {"),
+    CodeSnippet(7, "  Serial.println(\"Boden ist TROCKEN!\");"),
+    CodeSnippet(8, "} else {"),
+    CodeSnippet(9, "  Serial.println(\"Boden ist FEUCHT\");"),
+    CodeSnippet(10, "}")
   )
 
   val sourceSnippets: Var[List[CodeSnippet]] = Var(
     List(
-      snippets(3),
-      snippets(1),
-      snippets(6),
-      snippets(0),
-      snippets(4),
       snippets(5),
+      snippets(1),
       snippets(7),
-      snippets(2)
+      snippets(0),
+      snippets(8),
+      snippets(9),
+      snippets(4),
+      snippets(3),
+      snippets(2),
+      snippets(6)
     )
   )
   val targetSnippets: Var[List[CodeSnippet]] = Var(List.empty)
   val draggingSnippet: Var[Option[CodeSnippet]] = Var(None)
   val targetHoverIndex: Var[Option[Int]] = Var(None)
+
+  def blockProgramIfComplete: Option[String] = {
+    val current = targetSnippets.now()
+    if (current.length == snippets.length) Some(current.map(_.text).mkString("\n").trim)
+    else None
+  }
 
   def render(modeSignal: Signal[Boolean]): HtmlElement = {
     div(
@@ -336,7 +364,7 @@ object Task2_MoistureSensor {
       div(
         className := "task-box",
         h3("Lernziel"),
-        p("Verstehen, wie analoge Sensoren mit Arduino ausgelesen werden und wie man daraus eine Trockenheits-Logik ableitet."),
+        p("Ihr könnt einen analogen Sensor mit Arduino auslesen und selbst entscheiden, ab wann der Boden als trocken gilt."),
         h3("Aufgabe"),
         p("Der Feuchtigkeitssensor liefert einen analogen Messwert:"),
         ul(
@@ -348,7 +376,9 @@ object Task2_MoistureSensor {
           className := "info-box",
           strong("Hinweis: "),
           "Mit ", code("analogRead(SENSOR_PIN)"), " liest man analoge Werte. ",
-          "Um den Sensor zu schonen, wird er kurz über ", code("SENSOR_POWER_PIN"), " eingeschaltet."
+          "Um den Sensor zu schonen, wird er kurz über ", code("SENSOR_POWER_PIN"), " ein- und anschließend wieder ausgeschaltet. Der Sensor wird mit HIGH aktiviert und mit LOW deaktiviert. ",
+          "Mit ", code("delay(10);"), " wartet ihr kurz, bis der Sensor stabil misst. ",
+          "Setzt außerdem einen Grenzwert, z. B. ", code("int feuchtigkeitsGrenze = 100;"), "."
         )
       ),
 
@@ -389,13 +419,15 @@ object Task2_MoistureSensor {
       draggingSnippet, targetHoverIndex,
       "Setze die Code-Bausteine in die richtige Reihenfolge:",
       orderConstraints = List(
-        1 -> 2,
         2 -> 3,
         3 -> 4,
         4 -> 5,
+        1 -> 6,
         5 -> 6,
         6 -> 7,
-        7 -> 8
+        7 -> 8,
+        8 -> 9,
+        9 -> 10
       )
     )
   }
@@ -405,15 +437,19 @@ object Task2_MoistureSensor {
       advancedCodeState,
       "Vervollständige den Code:",
       code => {
+        val hasThreshold = code.contains("feuchtigkeitsGrenze")
+        val hasDelay = code.contains("delay(")
         val hasAnalogRead = code.contains("analogRead")
         val hasSensorPower = code.contains("digitalWrite(SENSOR_POWER_PIN, HIGH)") && code.contains("digitalWrite(SENSOR_POWER_PIN, LOW)")
         val hasIfStatement = code.contains("if")
         val hasSerial = code.contains("Serial.println")
 
-        if (hasAnalogRead && hasSensorPower && hasIfStatement && hasSerial) {
-          "✅ Sehr gut! Du hast alle wichtigen Teile:\n- Sensor einschalten und analog auslesen\n- Bedingung prüfen (if-else)\n- Ausgabe auf Serial Monitor"
+        if (hasThreshold && hasDelay && hasAnalogRead && hasSensorPower && hasIfStatement && hasSerial) {
+          "✅ Sehr gut! Du hast alle wichtigen Teile:\n- Grenzwert als Variable gesetzt\n- Sensor einschalten, kurz warten und analog auslesen\n- Bedingung prüfen (if-else)\n- Ausgabe auf Serial Monitor"
         } else {
           "⚠️ Noch nicht ganz:\n" +
+          (if (!hasThreshold) "- feuchtigkeitsGrenze als Variable setzen\n" else "") +
+          (if (!hasDelay) "- delay nach dem Einschalten fehlt\n" else "") +
           (if (!hasAnalogRead) "- analogRead() fehlt\n" else "") +
           (if (!hasSensorPower) "- Sensor ein-/ausschalten über SENSOR_POWER_PIN fehlt\n" else "") +
           (if (!hasIfStatement) "- if-else Bedingung fehlt\n" else "") +
@@ -425,19 +461,18 @@ object Task2_MoistureSensor {
 }
 
 // ========================================
-// TASK 3: PUMP CONTROL
+// TASK 2: PUMP CONTROL
 // ========================================
 object Task3_PumpControl {
   val advancedCodeState: Var[String] = Var(
     """void loop() {
-      |  // 1. Pumpe einschalten (Relais ist aktiv bei LOW)
-      |  digitalWrite(PUMP_PIN, LOW);
+      |  // Schalte die Pumpe ein (Relais-Logik beachten)
+      |  digitalWrite(TODO_PIN, TODO_HIGH_LOW);     
       |
-      |  // 2. 2 Sekunden warten
-      |  delay(2000);
+      |  // Lass sie für die gewünschte Zeit laufen
+      |  delay(TODO_GIESS_DAUER_MS);                
       |
-      |  // 3. Pumpe ausschalten
-      |  digitalWrite(PUMP_PIN, HIGH);
+      |  // Schalte die Pumpe wieder aus
       |}""".stripMargin
   )
 
@@ -454,13 +489,19 @@ object Task3_PumpControl {
   val draggingSnippet: Var[Option[CodeSnippet]] = Var(None)
   val targetHoverIndex: Var[Option[Int]] = Var(None)
 
+  def blockProgramIfComplete: Option[String] = {
+    val current = targetSnippets.now()
+    if (current.length == snippets.length) Some(current.map(_.text).mkString("\n").trim)
+    else None
+  }
+
   def render(modeSignal: Signal[Boolean]): HtmlElement = {
     div(
       h1("Pumpe steuern"),
       div(
         className := "task-box",
         h3("Lernziel"),
-        p("Digitale Ausgänge schalten (HIGH/LOW) und das Relais korrekt ansteuern."),
+        p("Ihr könnt digitale Ausgänge mit HIGH/LOW schalten und das Relais so steuern, dass die Pumpe sicher ein- und ausgeschaltet wird."),
         h3("Aufgabe"),
         p("Schreibt ein Programm, das die Pumpe für genau 2 Sekunden einschaltet."),
         p("Danach soll die Pumpe wieder ausgehen."),
@@ -536,72 +577,84 @@ object Task3_PumpControl {
 // ========================================
 object Task4_Combined {
   val advancedCodeState: Var[String] = Var(
-    """void loop() {
-      |  // 1. Sensor kurz einschalten und analog auslesen
-      |  digitalWrite(SENSOR_POWER_PIN, HIGH);
-      |  int messwert = analogRead(SENSOR_PIN);
-      |  digitalWrite(SENSOR_POWER_PIN, LOW);
-      |  Serial.print("Analoger Wert: ");
-      |  Serial.println(messwert);
+    """// Definiere den Grenzwert einmal außerhalb von loop()
+      |int feuchtigkeitsGrenze = TODO_WERT;        
       |
-      |  // 2. Entscheiden: Gießen oder nicht?
-      |  if (messwert < feuchtigkeitsGrenze) {
-      |    // Zu trocken! Gießen!
-      |    Serial.println("Boden trocken - Bewässerung startet...");
-      |    
-      |    digitalWrite(PUMP_PIN, LOW);
-      |    delay(2000);
-      |    digitalWrite(PUMP_PIN, HIGH);
-      |    
-      |    Serial.println("Bewässerung abgeschlossen!");
+      |void loop() {
+      |  // 1) Messen
+      |  digitalWrite(SENSOR_POWER_PIN, TODO_HIGH_LOW);       
+      |  delay(TODO_STABILISIERUNG_MS);                 
+      |  int messwert = analogRead(TODO_SENSOR_PIN);    
+      |  digitalWrite(SENSOR_POWER_PIN, TODO_HIGH_LOW);      
+      |  Serial.print(TODO_LABEL);                      
+      |  Serial.println(TODO_AUSGABE_WERT);             
+      |
+      |  // 2) Entscheiden und handeln
+      |  if (TODO_BEDINGUNG) {                          
+      |    Serial.println(TODO_STARTTEXT);              
+      |
+      |    digitalWrite(TODO_PUMP_PIN, TODO_HIGH_LOW);  
+      |    delay(TODO_GIESS_DAUER_MS);                  
+      |    digitalWrite(TODO_PUMP_PIN, TODO_HIGH_LOW); 
+      |
+      |    Serial.println(TODO_ENDTEXT);                
       |  } else {
-      |    Serial.println("Boden feucht - keine Bewässerung nötig");
+      |    Serial.println(TODO_FEUCHT_TEXT);            
       |  }
       |
-      |  // 3. Warten bis zur nächsten Messung
-      |  delay(10000);  // 10 Sekunden (zum Testen)
+      |  // 3) Wartezeit bis zur nächsten Messung
+      |  delay(TODO_WARTEZEIT_MS);                      
       |}""".stripMargin
   )
 
   val snippets = List(
-    CodeSnippet(1, "digitalWrite(SENSOR_POWER_PIN, HIGH);"),
-    CodeSnippet(2, "int messwert = analogRead(SENSOR_PIN);"),
-    CodeSnippet(3, "digitalWrite(SENSOR_POWER_PIN, LOW);"),
-    CodeSnippet(4, "Serial.print(\"Analoger Wert: \" );"),
-    CodeSnippet(5, "Serial.println(messwert);"),
-    CodeSnippet(6, "if (messwert < feuchtigkeitsGrenze) {"),
-    CodeSnippet(7, "  digitalWrite(PUMP_PIN, LOW);"),
-    CodeSnippet(8, "  delay(2000);"),
-    CodeSnippet(9, "  digitalWrite(PUMP_PIN, HIGH);"),
-    CodeSnippet(10, "} else {"),
-    CodeSnippet(11, "  Serial.println(\"Boden feucht - keine Bewässerung nötig\");"),
-    CodeSnippet(12, "}"),
-    CodeSnippet(13, "delay(10000);")
+    CodeSnippet(1, "int feuchtigkeitsGrenze = 100;"),
+    CodeSnippet(2, "digitalWrite(SENSOR_POWER_PIN, HIGH);"),
+    CodeSnippet(3, "delay(10);"),
+    CodeSnippet(4, "int messwert = analogRead(SENSOR_PIN);"),
+    CodeSnippet(5, "digitalWrite(SENSOR_POWER_PIN, LOW);"),
+    CodeSnippet(6, "Serial.print(\"Analoger Wert: \" );"),
+    CodeSnippet(7, "Serial.println(messwert);"),
+    CodeSnippet(8, "if (messwert < feuchtigkeitsGrenze) {"),
+    CodeSnippet(9, "  digitalWrite(PUMP_PIN, LOW);"),
+    CodeSnippet(10, "  delay(2000);"),
+    CodeSnippet(11, "  digitalWrite(PUMP_PIN, HIGH);"),
+    CodeSnippet(12, "} else {"),
+    CodeSnippet(13, "  Serial.println(\"Boden feucht - keine Bewässerung nötig\");"),
+    CodeSnippet(14, "}"),
+    CodeSnippet(15, "delay(10000);")
   )
 
   val sourceSnippets: Var[List[CodeSnippet]] = Var(
     List(
-      snippets(5),
-      snippets(0),
-      snippets(10),
-      snippets(2),
       snippets(7),
+      snippets(2),
       snippets(12),
-      snippets(9),
-      snippets(3),
-      snippets(1),
-      snippets(11),
-      snippets(8),
       snippets(4),
-      snippets(6)
+      snippets(9),
+      snippets(14),
+      snippets(11),
+      snippets(5),
+      snippets(3),
+      snippets(13),
+      snippets(10),
+      snippets(6),
+      snippets(1),
+      snippets(0)
     )
   )
   val targetSnippets: Var[List[CodeSnippet]] = Var(List.empty)
   val draggingSnippet: Var[Option[CodeSnippet]] = Var(None)
   val targetHoverIndex: Var[Option[Int]] = Var(None)
 
+  def blockProgramIfComplete: Option[String] = {
+    val current = targetSnippets.now()
+    if (current.length == snippets.length) Some(current.map(_.text).mkString("\n").trim)
+    else None
+  }
+
   def programAsCpp: String = {
-    val dndProgram = targetSnippets.now().map(_.text).mkString("\n").trim
+    val dndProgram = blockProgramIfComplete.getOrElse("")
     val advancedProgram = advancedCodeState.now().trim
     if (dndProgram.nonEmpty) dndProgram else advancedProgram
   }
@@ -612,7 +665,7 @@ object Task4_Combined {
       div(
         className := "task-box",
         h3("Lernziel"),
-        p("Die vorherigen Aufgaben verbinden und den kompletten Ablauf umsetzen."),
+        p("Ihr könnt alle Schritte zu einem vollständigen Bewässerungsprogramm verbinden: messen, entscheiden und gezielt gießen."),
         h3("Aufgabe"),
         p("Jetzt setzt ihr den kompletten Ablauf um. Das Programm soll:"),
         ol(
@@ -666,19 +719,21 @@ object Task4_Combined {
       draggingSnippet, targetHoverIndex,
       "Setze die Bausteine zur automatischen Bewässerung zusammen:",
       orderConstraints = List(
-        1 -> 2,
         2 -> 3,
         3 -> 4,
-        3 -> 5,
-        4 -> 6,
+        4 -> 5,
+        1 -> 8,
         5 -> 6,
-        6 -> 7,
+        5 -> 7,
+        6 -> 8,
         7 -> 8,
         8 -> 9,
         9 -> 10,
         10 -> 11,
         11 -> 12,
-        12 -> 13
+        12 -> 13,
+        13 -> 14,
+        14 -> 15
       )
     )
   }
@@ -688,20 +743,25 @@ object Task4_Combined {
       advancedCodeState,
       "Vervollständige das Gesamtsystem:",
       code => {
+        val hasThresholdVar = code.contains("feuchtigkeitsGrenze")
         val hasMeasurement = code.contains("analogRead")
         val hasSensorPower = code.contains("digitalWrite(SENSOR_POWER_PIN, HIGH)") && code.contains("digitalWrite(SENSOR_POWER_PIN, LOW)")
-        val hasCondition = code.contains("if") && code.contains("messwert < feuchtigkeitsGrenze")
+        val hasCondition = code.contains("if") && (
+          code.contains("messwert < feuchtigkeitsGrenze") ||
+          code.contains("messwert > feuchtigkeitsGrenze")
+        )
         val hasPumpControl = code.contains("digitalWrite(PUMP_PIN, LOW)") && code.contains("digitalWrite(PUMP_PIN, HIGH)")
         val hasSerial = code.contains("Serial.print") || code.contains("Serial.println")
         val hasLoopDelay = code.contains("delay(10000)")
 
-        if (hasMeasurement && hasSensorPower && hasCondition && hasPumpControl && hasSerial && hasLoopDelay) {
-          "🎉 Hervorragend! Das System ist komplett:\n✅ Sensor einschalten und analog auslesen\n✅ Bedingung mit Grenzwert prüfen\n✅ Pumpe korrekt steuern\n✅ Messwert ausgeben und erneut messen"
+        if (hasThresholdVar && hasMeasurement && hasSensorPower && hasCondition && hasPumpControl && hasSerial && hasLoopDelay) {
+          "🎉 Hervorragend! Das System ist komplett:\n✅ Grenzwert als Variable gesetzt\n✅ Sensor einschalten und analog auslesen\n✅ Bedingung mit Grenzwert prüfen\n✅ Pumpe korrekt steuern\n✅ Messwert ausgeben und erneut messen"
         } else {
           "⚠️ Noch ein paar Kleinigkeiten:\n" +
+          (if (!hasThresholdVar) "- feuchtigkeitsGrenze als Variable setzen\n" else "") +
           (if (!hasMeasurement) "- Sensor-Messung mit analogRead fehlt\n" else "") +
           (if (!hasSensorPower) "- Sensor über SENSOR_POWER_PIN ein-/ausschalten\n" else "") +
-          (if (!hasCondition) "- if-Bedingung mit messwert < feuchtigkeitsGrenze fehlt\n" else "") +
+          (if (!hasCondition) "- if-Bedingung mit messwert < feuchtigkeitsGrenze oder messwert > feuchtigkeitsGrenze fehlt\n" else "") +
           (if (!hasPumpControl) "- Pumpensteuerung (LOW/HIGH) unvollständig\n" else "") +
           (if (!hasSerial) "- Ausgabe des Messwerts fehlt\n" else "") +
           (if (!hasLoopDelay) "- Wartezeit delay(10000) fehlt\n" else "")
@@ -724,9 +784,44 @@ object Task5_Test {
     }.mkString("\n")
   }
 
+  private def buildLoopBodyFromTask2AndTask3Blocks(): Option[String] = {
+    val task2Complete = Task2_MoistureSensor.targetSnippets.now().length == Task2_MoistureSensor.snippets.length
+    val task3Complete = Task3_PumpControl.targetSnippets.now().length == Task3_PumpControl.snippets.length
+
+    if (!task2Complete || !task3Complete) None
+    else {
+      val pumpBlock = Task3_PumpControl.targetSnippets.now().map(_.text).mkString("\n").trim
+      val pumpBlockIndented = indentBlock(pumpBlock, 2)
+
+      Some(
+        s"""digitalWrite(SENSOR_POWER_PIN, HIGH);
+           |delay(10);
+           |int messwert = analogRead(SENSOR_PIN);
+           |digitalWrite(SENSOR_POWER_PIN, LOW);
+           |
+           |Serial.print(\"Analoger Wert: \" );
+           |Serial.println(messwert);
+           |
+           |if (messwert < feuchtigkeitsGrenze) {
+           |  Serial.println(\"Boden ist TROCKEN!\");
+           |$pumpBlockIndented
+           |} else {
+           |  Serial.println(\"Boden ist FEUCHT\");
+           |}
+           |
+           |delay(10000);""".stripMargin
+      )
+    }
+  }
+
   private def buildFinalArduinoSketch(): String = {
-    val task4 = Task4_Combined.programAsCpp.trim
-    val loopBody = if (task4.nonEmpty) indentBlock(task4) else "  // (Kein Code aus Modul 4 vorhanden)"
+    val loopBodyRaw = Task4_Combined.blockProgramIfComplete
+      .orElse(buildLoopBodyFromTask2AndTask3Blocks())
+      .getOrElse(Task4_Combined.programAsCpp.trim)
+
+    val loopBody =
+      if (loopBodyRaw.nonEmpty) indentBlock(loopBodyRaw)
+      else "  // (Kein Code aus Modul 4 oder den Block-Aufgaben vorhanden)"
 
     s"""/*
        | * Girls Day - Automatische Pflanzen-Bewässerung
@@ -776,6 +871,18 @@ object Task5_Test {
       div(
         className := "task-box",
         h3("Schritt-für-Schritt: .ino auf den Arduino Nano laden"),
+        div(
+          className := "safety-warning",
+          backgroundColor := "#ffe5e5",
+          border := "3px solid #c62828",
+          padding := "14px",
+          marginBottom := "14px",
+          h3("⚠️ STOPP VOR DEM HOCHLADEN"),
+          p(
+            strong("Niemals Strom ohne Aufseher einschalten! "),
+            "Bevor ihr hochladet, testet oder die Pumpe startet, muss eine Aufsichtsperson dabei sein."
+          )
+        ),
         ol(
           li("Klickt auf den Button ", strong("Arduino-Code herunterladen (.ino)"), " und speichert die Datei ", code("plantworkshop.ino"), "."),
           li("Öffnet die Datei in der Arduino IDE (Doppelklick oder über ", code("Datei > Öffnen"), ")."),
@@ -878,7 +985,7 @@ object DragAndDropHelper {
 
     if (normalized.contains("digitalWrite(SENSOR_POWER_PIN, HIGH)")) "Setze SENSOR_POWER_PIN auf HIGH (Sensor an)."
     else if (normalized.contains("digitalWrite(SENSOR_POWER_PIN, LOW)")) "Setze SENSOR_POWER_PIN auf LOW (Sensor aus)."
-    else if (normalized.contains("analogRead(SENSOR_PIN)")) "Lies den analogen Wert von SENSOR_PIN."
+    else if (normalized.contains("analogRead(SENSOR_PIN)")) "Lies den analogen Wert von SENSOR_PIN und speichere ihn als messwert."
     else if (normalized.contains("messwert < feuchtigkeitsGrenze")) "Prüfe: Ist messwert kleiner als feuchtigkeitsGrenze?"
     else if (normalized.contains("digitalWrite(PUMP_PIN, LOW)")) "Setze PUMP_PIN auf LOW (Pumpe an)."
     else if (normalized.contains("digitalWrite(PUMP_PIN, HIGH)")) "Setze PUMP_PIN auf HIGH (Pumpe aus)."
@@ -887,7 +994,8 @@ object DragAndDropHelper {
     else if (normalized.contains("delay(2000)")) "Warte 2000 ms."
     else if (normalized.contains("delay(10000)")) "Warte 10000 ms."
     else if (normalized.startsWith("if")) "Starte einen if-Block."
-    else if (normalized.startsWith("} else {")) "Starte den else-Zweig."
+    else if (normalized.startsWith("} else {")) "Beende den if-Block und starte den else-Zweig."
+    else if (normalized.contains("delay(10)")) "Warte 10 ms."
     else if (normalized == "}") "Schließe den Block."
     else "Erklärung für diese Zeile ist nicht hinterlegt."
   }
@@ -1045,6 +1153,67 @@ object DragAndDropHelper {
 // HELPER: CODE EDITOR
 // ========================================
 object CodeEditorHelper {
+  private var todoHighlightInstalled: Boolean = false
+  private val todoPattern = "([A-Za-z_]*TODO[A-Za-z0-9_]*)".r
+
+  private def markTodoTextNodes(root: dom.Element): Unit = {
+    val walker = dom.document.createTreeWalker(
+      root,
+      dom.NodeFilter.SHOW_TEXT,
+      null.asInstanceOf[dom.NodeFilter],
+      false
+    )
+    var node = walker.nextNode()
+    var textNodes = List.empty[dom.Text]
+
+    while (node != null) {
+      textNodes = node.asInstanceOf[dom.Text] :: textNodes
+      node = walker.nextNode()
+    }
+
+    textNodes.reverse.foreach { txtNode =>
+      val value = Option(txtNode.data).getOrElse("")
+      if (value.contains("TODO")) {
+        val parent = txtNode.parentNode
+        if (parent != null) {
+          val frag = dom.document.createDocumentFragment()
+          var lastIdx = 0
+
+          todoPattern.findAllMatchIn(value).foreach { m =>
+            if (m.start > lastIdx) {
+              frag.appendChild(dom.document.createTextNode(value.substring(lastIdx, m.start)))
+            }
+
+            val span = dom.document.createElement("span")
+            span.setAttribute("class", "todo-token-inline")
+            span.textContent = m.matched
+            frag.appendChild(span)
+            lastIdx = m.end
+          }
+
+          if (lastIdx < value.length) {
+            frag.appendChild(dom.document.createTextNode(value.substring(lastIdx)))
+          }
+
+          parent.replaceChild(frag, txtNode)
+        }
+      }
+    }
+  }
+
+  private def installTodoHighlighting(): Unit = {
+    if (todoHighlightInstalled) return
+
+    if (dom.document.getElementById("todo-token-style") == null) {
+      val styleEl = dom.document.createElement("style")
+      styleEl.id = "todo-token-style"
+      styleEl.textContent = ".editor-container .token.todo-token, .editor-container .todo-token-inline { color: #c62828 !important; font-weight: 700; }"
+      dom.document.head.appendChild(styleEl)
+    }
+
+    todoHighlightInstalled = true
+  }
+
   def createCodeEditor(
     codeState: Var[String],
     title: String,
@@ -1056,14 +1225,34 @@ object CodeEditorHelper {
       h4(title),
 
       div(
+        className := "info-box small-info",
+        span(color := "#c62828", fontWeight := "700", "🟥 TODO"),
+        span(" = diese Stellen müsst ihr selbst ausfüllen.")
+      ),
+
+      div(
         className := "editor-container language-cpp",
 
         onMountUnmountCallback(
           mount = { nodeCtx =>
             val element = nodeCtx.thisNode.ref.asInstanceOf[dom.Element]
 
+            installTodoHighlighting()
+
             val highlightFn: js.Function1[dom.Element, Unit] = { el =>
               Prism.highlightElement(el)
+
+              val tokens = el.querySelectorAll("span.token")
+              var i = 0
+              while (i < tokens.length) {
+                val token = tokens.item(i).asInstanceOf[dom.Element]
+                if (token.textContent != null && token.textContent.contains("TODO")) {
+                  token.classList.add("todo-token")
+                }
+                i += 1
+              }
+
+              markTodoTextNodes(el)
             }
 
             val jar = new CodeJar(element, highlightFn)
