@@ -56,7 +56,12 @@ object DecisionLayer {
   def heuristicRoute(signals: BlockFeedbackSignals): Decision = {
     val runtimeError = signals.runtimeOutcome.runtimeError.getOrElse("")
     val stderr = signals.runtimeOutcome.stderr.getOrElse("")
-    val combinedError = s"$runtimeError\n$stderr".toLowerCase
+    // Also scan test-level messages: per-test exceptions (IndexError, etc.) are caught by
+    // the test harness and stored only in test.actual / test.message, not in runtimeError.
+    val testErrorText = signals.runtimeOutcome.tests
+      .flatMap(t => Seq(t.actual, t.expected) ++ t.message.toSeq)
+      .mkString("\n")
+    val combinedError = s"$runtimeError\n$stderr\n$testErrorText".toLowerCase
 
     // 1) Compile errors
     if combinedError.contains("syntaxerror") || combinedError.contains("indentationerror") then {

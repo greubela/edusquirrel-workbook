@@ -58,14 +58,47 @@ object PromptTemplates {
       else Seq("Focus: understand the exception type and make the failing access robust.")
 
     private val Incomplete: IssueModule = (humanLanguage, signals) =>
+      val identityParam = detectIdentityReturn(signals.rawPython)
       if humanLanguage == AppLanguage.German then
-        Seq(s"Fokus: unvollständige Implementierung (pass=${signals.hasPassStatement}).")
+        identityParam match
+          case Some(param) =>
+            Seq(
+              s"KRITISCH: Die Funktion gibt den Parameter '$param' unverändert zurück — die gesamte Kernlogik fehlt.",
+              "Fokus: Erkläre, was die Funktion konkret tun soll (Transformation, nicht Rückgabe).",
+              "Gehe NICHT auf Randfälle (leere Liste, k > Länge usw.) ein, bevor die Grundfunktion existiert."
+            )
+          case None =>
+            Seq(s"Fokus: unvollständige Implementierung (pass=${signals.hasPassStatement}).")
       else
-        Seq(s"Focus: incomplete implementation (pass=${signals.hasPassStatement}).")
+        identityParam match
+          case Some(param) =>
+            Seq(
+              s"CRITICAL: the function returns parameter '$param' unchanged — the entire core logic is absent.",
+              "Focus: explain concretely what the function is supposed to do (the transformation), not a return.",
+              "Do NOT mention edge cases (empty list, k > length, etc.) until the fundamental logic exists."
+            )
+          case None =>
+            Seq(s"Focus: incomplete implementation (pass=${signals.hasPassStatement}).")
 
     private val Performance: IssueModule = (humanLanguage, _) =>
       if humanLanguage == AppLanguage.German then Seq("Fokus: unnötige Wiederholungen/verschachtelte Schleifen reduzieren.")
       else Seq("Focus: reduce unnecessary repeats / nested loops.")
+
+    private val CompileError: IssueModule = (humanLanguage, signals) =>
+      val runtimeErr = signals.runtimeOutcome.runtimeError.getOrElse("")
+      val errShort = if runtimeErr.length <= 300 then runtimeErr else runtimeErr.take(300) + "\u2026"
+      if humanLanguage == AppLanguage.German then
+        Seq(
+          "Fokus: Syntaxfehler oder Einrückungsfehler. Sei präzise darüber, welche Zeile oder welches Konstrukt den Fehler verursacht.",
+          s"Fehlertext vom System: ${if errShort.nonEmpty then errShort else "<nicht verfügbar>"}",
+          "WICHTIG: Das System hat den Code bereits ausgeführt – fordere den Studierenden NICHT auf, den Code selbst auszuführen, zu starten oder den Fehler durch Ausführen zu finden."
+        )
+      else
+        Seq(
+          "Focus: syntax or indentation error. Be precise: name the specific line or construct that causes the error.",
+          s"Error text from the system: ${if errShort.nonEmpty then errShort else "<none>"}",
+          "IMPORTANT: the system has already run the code. Do NOT tell the student to run the code, execute it, or check where the error is by running it."
+        )
 
     def forIssue(issueType: DecisionLayer.IssueType): IssueModule = issueType match {
       case DecisionLayer.IssueType.FORMAT_OUTPUT => FormatOutput
@@ -74,6 +107,7 @@ object PromptTemplates {
       case DecisionLayer.IssueType.EXCEPTION_TYPE => ExceptionType
       case DecisionLayer.IssueType.INCOMPLETE_IMPLEMENTATION => Incomplete
       case DecisionLayer.IssueType.PERFORMANCE => Performance
+      case DecisionLayer.IssueType.COMPILE_ERROR => CompileError
       case _ => Default
     }
   }
@@ -112,6 +146,33 @@ object PromptTemplates {
       .headOption
   }
 
+  /**
+   * Detects an "identity return": the function returns one of its own parameters
+   * with no transformation. Returns the parameter name if found.
+   */
+  private def detectIdentityReturn(rawPython: String): Option[String] = {
+    val code = Option(rawPython).getOrElse("").replace("\r\n", "\n")
+    val lines = code.split("\n", -1).toSeq.map(_.trim).filter(_.nonEmpty)
+    // Extract parameter names from the first function definition.
+    val funcDefRe = "(?i)def\\s+\\w+\\s*\\((\\w+)(?:\\s*,\\s*\\w+)*\\)\\s*:".r
+    val paramsOpt = lines
+      .flatMap { l =>
+        funcDefRe.findFirstMatchIn(l).map { m =>
+          // Pull all param names from the raw match: "def f(xs, k):" -> ["xs", "k"]
+          val raw = m.group(0)
+          val inner = raw.dropWhile(_ != '(').drop(1).takeWhile(_ != ')')
+          inner.split(",").toSeq.map(_.trim).filter(_.nonEmpty)
+        }
+      }
+      .headOption
+    paramsOpt.flatMap { params =>
+      params.find { param =>
+        val returnRe = s"(?i)^return\\s+${scala.util.matching.Regex.quote(param)}\\s*$$".r
+        lines.exists(l => returnRe.findFirstIn(l).nonEmpty)
+      }
+    }
+  }
+
   private def extractCodeObservations(rawPython: String): Seq[String] = {
     val code = Option(rawPython).getOrElse("").replace("\r\n", "\n")
     val lines = code.split("\n", -1).toSeq.map(_.trim).filter(_.nonEmpty)
@@ -121,11 +182,19 @@ object PromptTemplates {
 
     val obs = scala.collection.mutable.ArrayBuffer.empty[String]
 
-    // Common operator-level mismatches (kept generic, no exercise assumptions).
-    firstMatch("(?i)^return\\s+.*\\s-\\s.*$".r).foreach(_ => obs += "I see a return expression using '-' (subtraction).")
-    firstMatch("(?i)^return\\s+.*\\s\\+\\s.*$".r).foreach(_ => obs += "I see a return expression using '+' (addition).")
-    firstMatch("(?i)\\bif\\s+\\w+\\s<\\s\\w+\\s*:$".r).foreach(_ => obs += "I see a '<' comparison in an update condition inside a block.")
-    firstMatch("(?i)\\bif\\s+\\w+\\s>\\s\\w+\\s*:$".r).foreach(_ => obs += "I see a '>' comparison in an update condition inside a block.")
+    // Highest-priority: identity return — the student returns a parameter with NO transformation.
+    // This means the core logic is entirely absent. Signal this prominently.
+    detectIdentityReturn(rawPython).foreach { param =>
+      obs += s"CRITICAL: the function contains 'return $param' — it returns the input parameter unchanged with zero transformation. The core algorithm is completely missing. Do NOT discuss edge cases; focus entirely on the missing logic."
+    }
+
+    // Only add operator observations if no identity return was already flagged.
+    if obs.isEmpty then {
+      firstMatch("(?i)^return\\s+.*\\s-\\s.*$".r).foreach(_ => obs += "I see a return expression using '-' (subtraction).")
+      firstMatch("(?i)^return\\s+.*\\s\\+\\s.*$".r).foreach(_ => obs += "I see a return expression using '+' (addition).")
+      firstMatch("(?i)\\bif\\s+\\w+\\s<\\s\\w+\\s*:$".r).foreach(_ => obs += "I see a '<' comparison in an update condition inside a block.")
+      firstMatch("(?i)\\bif\\s+\\w+\\s>\\s\\w+\\s*:$".r).foreach(_ => obs += "I see a '>' comparison in an update condition inside a block.")
+    }
 
     obs.toSeq.distinct.take(4)
   }
@@ -265,10 +334,15 @@ object PromptTemplates {
            |Zwingende Regeln:
            |- Maximal ${constraints.maxWords} Wörter.
           |- Nenne keine Testnamen. Beschreibe stattdessen in Alltagssprache den fehlschlagenden Fall.
-          |- Verwende keine Formulierungen wie „Der Test erwartet …“. Sag direkt, was erwartet ist und was dein Code aktuell macht.
+          |- Verwende NIEMALS Formulierungen wie „Der Test erwartet …", „die Tests erwarten …" oder ähnliche testzentrierte Sprache. Formuliere stattdessen direkt aus Sicht der Funktion: was sie aktuell tut und was sie stattdessen tun soll (z.B. „Deine Funktion gibt aktuell X zurück, soll aber Y zurückgeben.").
+          |- Erwähne AUSSCHLIESSLICH Probleme, die im bereitgestellten Code-Ausschnitt direkt sichtbar ODER durch die Fehlermeldung/Testergebnisse eindeutig belegt sind. Nenne KEINE allgemeinen Hygiene-Hinweise zu Einrückung, Klammern, Anführungszeichen oder Syntaxdetails, wenn der konkrete Fehler das nicht zeigt.
            |- Gib 2–4 konkrete Schritte (als nummerierte Liste).
            |- Keine Lösung ausformulieren, kein vollständiger Code, keine Codeblöcke.
           |- Schritte müssen zum konkreten Verhalten passen (keine generischen Tipps).
+           |- Weise den Studierenden NICHT an, den Code auszuführen oder zu starten, um den Fehler zu finden – das System führt alle Tests bereits aus.
+           |- Füge KEINEN Schritt hinzu, der den Studierenden auffordert, die Funktion zu testen, zu überprüfen oder zu bestätigen (z.B. kein „Teste deine Funktion mit ...", „Überprüfe, ob deine Funktion ... zurückgibt", „Stelle sicher, dass die Funktion korrekt funktioniert"). Das System testet vollautomatisch – solche Schritte sind inhaltsleer.
+           |- Wenn die Kernlogik fehlt (z.B. Identity-Return), sprich NUR über die fehlende Grundimplementierung. Keine Randfälle, keine Fehlerbehandlung.
+           |- Nenne KEINE konkreten Operatoren, Methodenaufrufe oder Ausdrücke, die der Kern der Lösung sind (z.B. keinen Modulo-Operator nennen).
            |- Du musst NICHT immer expected/actual zitieren. Wenn es hilft, formuliere es natürlich: „Der Test erwartet X, aber dein Code liefert Y.“
           |- Du darfst genau ein sehr kurzes Code-Fragment zitieren (max. 1 Zeile), um die Ursache zu benennen. Keine korrigierte Version zeigen.
            |
@@ -313,10 +387,15 @@ object PromptTemplates {
            |Hard rules:
            |- At most ${constraints.maxWords} words.
             |- Do not mention test names. Describe the failing case in plain language.
-            |- Do not write “the test expects …”. State directly what is expected vs what your code currently does.
+            |- NEVER write "the test expects", "the tests expect", or any test-centric phrasing. Describe directly from the function's perspective: what it currently does and what it should do instead (e.g., "Your function currently returns X but should return Y.").
+            |- ONLY mention issues that are directly visible in the code snippet OR directly evidenced by the runtime error / failing cases. Do NOT list generic hygiene tips (indentation consistency, bracket matching, parentheses, quote matching) unless the error message or code explicitly shows that specific issue.
            |- Provide 2–4 concrete steps (numbered list).
            |- Do not provide the full solution, no full code, no code blocks.
             |- Steps must match the observed behavior (avoid generic advice).
+           |- Do NOT tell the student to "run the code", "execute it", or "see where the error is by running" — the system already runs all tests.
+           |- Do NOT add a step that tells the student to test, verify, or confirm their function (e.g., no "Test your function with ...", "Verify that your function returns ...", "Make sure to test boundary cases", "Try different inputs", "Confirm it behaves as expected"). The system tests automatically — such steps are empty filler.
+           |- If the core logic is absent (e.g., identity return), address ONLY the missing transformation. No edge cases, no error handling.
+           |- Do NOT name specific operators, method calls, or expressions that are the heart of the solution (e.g., do not say "use %" or "use len()").
            |- You do NOT have to quote expected/actual. If helpful, phrase it naturally: “The test expects X, but your code produces Y.”
             |- You may quote exactly one short code fragment (max 1 line) to point to the cause. Do not show a corrected version.
            |

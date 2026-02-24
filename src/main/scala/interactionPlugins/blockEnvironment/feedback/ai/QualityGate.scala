@@ -14,6 +14,137 @@ object QualityGate {
     finalText: String
   )
 
+  /**
+   * Maximum number of times the LLM is asked to rewrite its own response when
+   * QualityGate finds violations. Each retry uses a targeted correction prompt.
+   */
+  val maxRewriteAttempts: Int = 3
+
+  /**
+   * If true (default), the last attempt's best-effort-repaired text is passed through
+   * to the student even when QualityGate still finds violations after all retries.
+   *
+   * This is strongly preferred over the deterministic fallback because an imperfect
+   * LLM hint is almost always more contextually helpful than a generic template.
+   *
+   * Set to false only for strict enforcement where you accept the deterministic fallback.
+   */
+  val allowImperfectPassthrough: Boolean = true
+
+  /**
+   * Builds a precise correction prompt to send back to the LLM after a QualityGate
+   * rejection.  The prompt:
+   *   - Numbers each violated rule and explains exactly what was wrong and how to fix it
+   *   - Includes the rejected response so the LLM can pinpoint the problems
+   *   - Repeats the full original prompt so the LLM retains all exercise/student context
+   *   - Gives an unambiguous rewrite instruction
+   *
+   * @param reasons        The reason codes returned by QualityGate.validate()
+   * @param originalPrompt The complete original prompt that produced the bad response
+   * @param rejectedResponse The raw LLM text that was rejected
+   * @param constraints    The active OutputConstraints (used for step limits in messages)
+   * @param attemptNr      1-based index of this rewrite attempt (used for framing only)
+   */
+  def buildCorrectionPrompt(
+    reasons: Seq[String],
+    originalPrompt: String,
+    rejectedResponse: String,
+    constraints: PromptTemplates.OutputConstraints,
+    attemptNr: Int
+  ): String = {
+
+    def humanReadable(reason: String): String = reason match {
+      case "empty" =>
+        "Your response was empty. You must produce a non-empty, student-facing hint."
+
+      case "missing_test_name" =>
+        "You did not mention the failing test name anywhere in your response. " +
+        "The test name must appear verbatim so the student knows which case is broken."
+
+      case "contains_code_block" =>
+        "You included a fenced code block (``` … ```). REMOVE it entirely. " +
+        "NEVER show runnable Python — not even a partial snippet. " +
+        "Describe every fix in plain words only."
+
+      case "contains_backticks" =>
+        "You used backtick characters (`). Remove ALL backticks. " +
+        "Use plain prose — no inline code formatting whatsoever."
+
+      case "looks_like_markdown" =>
+        "You used Markdown markup (**bold**, ##heading, __underline__). " +
+        "This is plain-text feedback — strip every Markdown marker."
+
+      case "looks_like_solution_code" =>
+        "Your response contains lines that look like Python solution code " +
+        "(e.g. lines beginning with 'def', 'return', 'class', 'import', 'from'). " +
+        "NEVER write runnable code. Describe what to change in natural language only."
+
+      case "contains_chitchat" =>
+        "Your response contains filler or off-topic phrases such as: " +
+        "'good luck', 'let me know', 'follow these steps', 'here are some steps', " +
+        "'test your function', 'verify that your function returns', " +
+        "'make sure to test', 'test boundary cases', or similar encouragements / " +
+        "meta-instructions. Remove ALL such phrases. Every sentence must directly " +
+        "move the student toward fixing the concrete bug — nothing else."
+
+      case "missing_io_contract_hint" =>
+        "The student's issue involves the I/O contract (wrong use of input()/print()/return). " +
+        "Your hint MUST explicitly address the relevant I/O concept " +
+        "(e.g. 'return' vs 'print', or avoiding 'input()')."
+
+      case r if r.startsWith("too_few_steps(") =>
+        val inner = r.stripPrefix("too_few_steps(").stripSuffix(")")
+        val parts = inner.split("<")
+        val (have, need) =
+          if parts.length == 2 then (parts(0).trim, parts(1).trim)
+          else ("?", constraints.minSteps.toString)
+        s"Your response has only $have numbered step(s) but needs at least $need. " +
+        s"Add more concrete, actionable steps until you reach $need."
+
+      case r if r.startsWith("too_many_steps(") =>
+        val inner = r.stripPrefix("too_many_steps(").stripSuffix(")")
+        val parts = inner.split(">")
+        val (have, need) =
+          if parts.length == 2 then (parts(0).trim, parts(1).trim)
+          else ("?", constraints.maxSteps.toString)
+        s"Your response has $have numbered steps but must have at most $need. " +
+        s"Merge or remove the least important steps until you have exactly $need or fewer."
+
+      case other =>
+        s"Rule violated: '$other'. Review all constraints and fix your response accordingly."
+    }
+
+    val ordinal = attemptNr match
+      case 1 => "1st"
+      case 2 => "2nd"
+      case 3 => "3rd"
+      case n => s"${n}th"
+
+    val problemList = reasons.zipWithIndex
+      .map { case (r, i) => s"  ${i + 1}. ${humanReadable(r)}" }
+      .mkString("\n")
+
+    s"""=== REWRITE REQUEST ($ordinal attempt, ${reasons.size} violation(s)) ===
+
+Your previous response was REJECTED because it violated the following rule(s):
+
+$problemList
+
+--- YOUR REJECTED RESPONSE (do NOT repeat these mistakes) ---
+$rejectedResponse
+--- END OF REJECTED RESPONSE ---
+
+Rewrite your response from scratch, fixing ALL of the violations listed above.
+Every rule from the original task below remains fully in force.
+Output ONLY the corrected feedback text — no preamble and no explanation of changes.
+
+=== ORIGINAL TASK (unchanged — exercise context, student code, and all constraints) ===
+
+$originalPrompt
+
+=== END OF ORIGINAL TASK ==="""
+  }
+
   def enforce(
     rawText: String,
     constraints: PromptTemplates.OutputConstraints,
@@ -51,8 +182,7 @@ object QualityGate {
       else shortened
 
     val ensuredSteps = ensureStepCount(ensuredTest, constraints, requiredTestNames)
-    val truncated = truncateToMaxWords(ensuredSteps.trim, constraints.maxWords)
-    truncated.trim
+    ensuredSteps.trim
   }
 
   private def redactCodeBlocks(text: String): String = {
@@ -90,7 +220,7 @@ object QualityGate {
         "2. Trace your variables step-by-step until the first divergence.",
         "3. Adjust only the condition/update causing that divergence and re-test."
       ).take(math.max(constraints.minSteps, math.min(constraints.maxSteps, 3)))
-    truncateToMaxWords((intro + "\n" + steps.mkString("\n")).trim, constraints.maxWords)
+    (intro + "\n" + steps.mkString("\n")).trim
   }
 
   private def shortenPreservingSteps(text: String, constraints: PromptTemplates.OutputConstraints): String = {
@@ -223,14 +353,38 @@ object QualityGate {
             .replace("##", "")
         else withoutBackticks
 
-      val lines = withoutMarkdownMarkers.split("\n", -1).toSeq
+      // Replace em dash and en dash with a plain space so words don't run together.
+      val withoutDashes = withoutMarkdownMarkers
+        .replace("\u2014", " ") // em dash —
+        .replace("\u2013", " ") // en dash –
+        .replaceAll(" {2,}", " ")
+
+      // Rewrite "Der Test erwartet …" → describe function behavior directly.
+      // Tests are an implementation detail; feedback must read as human observation.
+      val withoutTestPhrases = withoutDashes
+        // German – capital (sentence start)
+        .replaceAll("\\bDer [Tt]ests? erwartet,? dass ", "Deine Funktion soll ")
+        .replaceAll("\\bDie [Tt]ests? erwarten,? dass ", "Deine Funktion soll ")
+        .replaceAll("\\bDer [Tt]ests? erwartet,? ", "Deine Funktion soll ")
+        .replaceAll("\\bDie [Tt]ests? erwarten,? ", "Deine Funktion soll ")
+        // German – lowercase (mid sentence)
+        .replaceAll("\\bder [Tt]ests? erwartet,? dass ", "die Funktion soll ")
+        .replaceAll("\\bdie [Tt]ests? erwarten,? dass ", "die Funktion soll ")
+        .replaceAll("\\bder [Tt]ests? erwartet,? ", "die Funktion soll ")
+        .replaceAll("\\bdie [Tt]ests? erwarten,? ", "die Funktion soll ")
+        // English
+        .replaceAll("(?i)\\bthe tests? expects? that ", "Your function should ")
+        .replaceAll("(?i)\\bthe tests? expects?,? ", "Your function should ")
+        .replaceAll(" {2,}", " ")
+
+      val lines = withoutTestPhrases.split("\n", -1).toSeq
 
       val strippedGreeting =
         lines match
           case head +: tail =>
             val h = head.trim
             val h2 = h.replaceFirst("(?i)^(hey|hi|hello)[!,.]?\\s+", "")
-            val h3 = h2.replaceFirst("(?i)^(hey|hi|hello)[!,.]?$", "").trim
+            val h3 = h2.replaceFirst("(?i)^(hey|hi|hello|hallo|servus|guten\\s+tag)[!,.]?$", "").trim
             val rebuiltHead = if h3.isEmpty then None else Some(h3)
             (rebuiltHead.toSeq ++ tail)
           case _ => lines
@@ -240,7 +394,48 @@ object QualityGate {
           strippedGreeting.filterNot { line =>
             val t = line.trim.toLowerCase
             val isStepLine = (t.length >= 2 && t.charAt(0).isDigit && t.contains(".")) || t.startsWith("-")
+            // These phrases are banned even inside numbered step lines, because telling
+            // the student to manually test/verify/confirm their function is always useless:
+            // the system already runs all tests for them.
+            val manualTestInstruction =
+              // English
+              t.contains("test your function") ||
+                t.contains("test the function") ||
+                t.contains("test your code") ||
+                t.contains("test the code") ||
+                t.contains("verify that your function") ||
+                t.contains("verify your function") ||
+                t.contains("confirm it behaves") ||
+                t.contains("confirm that it") ||
+                t.contains("confirm the behavior") ||
+                t.contains("test boundary cases") ||
+                t.contains("test with a variety") ||
+                t.contains("test with different") ||
+                t.contains("try different inputs") ||
+                t.contains("try various") ||
+                t.contains("try your function") ||
+                t.contains("make sure to test") ||
+                (t.contains("make sure your function") && t.contains("test")) ||
+                (t.contains("verify that") && t.contains("expected")) ||
+                (t.contains("verify the expected")) ||
+                (t.contains("verify the result") && t.contains("input")) ||
+                (t.contains("check that your function") && t.contains("expected")) ||
+                // German
+                t.contains("teste deine funktion") ||
+                t.contains("teste die funktion") ||
+                t.contains("teste deinen code") ||
+                t.contains("überprüfe deine funktion") ||
+                t.contains("überprüfe die funktion") ||
+                t.contains("prüfe deine funktion") ||
+                t.contains("bestätige das verhalten") ||
+                t.contains("teste mit verschiedenen") ||
+                t.contains("teste mit unterschiedlichen") ||
+                t.contains("teste mit einer vielzahl") ||
+                (t.contains("stelle sicher") && t.contains("funktion") && t.contains("test")) ||
+                (t.contains("überprüfe das ergebnis") && t.contains("eingabe"))
+
             val chitchat =
+              // --- English ---
               t.contains("good luck") ||
                 t.contains("let me know") ||
                 t.contains("if you need more help") ||
@@ -250,8 +445,50 @@ object QualityGate {
                 t.contains("here are a few steps") ||
                 t.contains("here are some steps") ||
                 t.contains("dont worry") ||
-                t.contains("don't worry")
-            chitchat && !isStepLine
+                t.contains("don't worry") ||
+                // --- German ---
+                t.contains("viel erfolg") ||
+                t.contains("viel glück") ||
+                t.contains("du schaffst das") ||
+                t.contains("du kannst das") ||
+                t.contains("keine sorge") ||
+                t.contains("mach dir keine sorgen") ||
+                t.contains("melde dich") ||
+                t.contains("sag mir bescheid") ||
+                t.contains("lass es mich wissen") ||
+                t.contains("wenn du weitere hilfe") ||
+                t.contains("bei weiteren fragen") ||
+                t.contains("gerne helfe ich") ||
+                t.contains("ich helfe gerne") ||
+                t.contains("folge diesen schritten") ||
+                t.contains("befolge diese schritte") ||
+                t.contains("hier sind einige schritte") ||
+                t.contains("hier sind die schritte") ||
+                // --- Edge cases (EN + DE) ---
+                (t.contains("test") && t.contains("edge case")) ||
+                (t.contains("try") && t.contains("edge case")) ||
+                (t.contains("check") && t.contains("edge case")) ||
+                (t.contains("teste") && t.contains("randfall")) ||
+                (t.contains("prüfe") && t.contains("randfall")) ||
+                (t.contains("schau") && t.contains("randfall")) ||
+                (t.contains("teste") && t.contains("grenzfall")) ||
+                (t.contains("prüfe") && t.contains("grenzfall")) ||
+                // --- Run-code hints (EN + DE) ---
+                t.contains("run the code to see") ||
+                t.contains("run your code to see") ||
+                t.contains("run it to see") ||
+                t.contains("run the code and") ||
+                t.contains("running the code will") ||
+                t.contains("try running the code") ||
+                (t.contains("run") && t.contains("to see the") && t.contains("error")) ||
+                (t.contains("execute") && t.contains("to see") && t.contains("error")) ||
+                t.contains("führe den code aus um") ||
+                t.contains("starte den code um") ||
+                t.contains("probiere den code aus um") ||
+                t.contains("führe ihn aus um") ||
+                (t.contains("aus") && t.contains("den fehler zu sehen")) ||
+                (t.contains("ausführen") && t.contains("zu sehen") && t.contains("fehler"))
+            manualTestInstruction || (chitchat && !isStepLine)
           }
         else strippedGreeting
 
@@ -271,8 +508,7 @@ object QualityGate {
 
     if text.isEmpty then reasons += "empty"
 
-    val words = wordCount(text)
-    if words > constraints.maxWords then reasons += s"too_long($words>${constraints.maxWords})"
+
 
     if constraints.requireMentionedTestName then {
       val mentioned = requiredTestNames.exists(name => name.nonEmpty && text.contains(name))
@@ -300,6 +536,7 @@ object QualityGate {
     if constraints.forbidChitchat then {
       val lower = text.toLowerCase
       val chitchatMarkers = Seq(
+        // English
         "good luck",
         "let me know",
         "if you need more help",
@@ -312,7 +549,54 @@ object QualityGate {
         "here are a few steps",
         "here are some steps",
         "thanks for",
-        "don't worry"
+        "don't worry",
+        "run the code to see",
+        "run your code to see",
+        "run it to see",
+        "try running the code",
+        "running the code will",
+        "the test expects",
+        "the tests expect",
+        // German
+        "viel erfolg",
+        "viel glück",
+        "du schaffst das",
+        "du kannst das",
+        "keine sorge",
+        "mach dir keine sorgen",
+        "melde dich",
+        "sag mir bescheid",
+        "lass es mich wissen",
+        "wenn du weitere hilfe",
+        "bei weiteren fragen",
+        "gerne helfe ich",
+        "ich helfe gerne",
+        "folge diesen schritten",
+        "befolge diese schritte",
+        "hier sind einige schritte",
+        "hier sind die schritte",
+        "hallo!",
+        "danke für",
+        "führe den code aus um",
+        "starte den code um",
+        "probiere den code aus um",
+        "der test erwartet",
+        "die tests erwarten",
+        // Manual test instructions (always useless — system tests automatically)
+        "test your function",
+        "test the function",
+        "verify that your function",
+        "verify your function",
+        "confirm it behaves",
+        "make sure to test",
+        "test boundary cases",
+        "test with a variety",
+        "test with different",
+        "teste deine funktion",
+        "teste die funktion",
+        "überprüfe deine funktion",
+        "prüfe deine funktion",
+        "teste mit verschiedenen"
       )
       if chitchatMarkers.exists(lower.contains) then reasons += "contains_chitchat"
     }
@@ -349,21 +633,7 @@ object QualityGate {
   private def wordCount(text: String): Int =
     text.split("\\s+").count(_.nonEmpty)
 
-  private def truncateToMaxWords(text: String, maxWords: Int): String = {
-    if maxWords <= 0 then ""
-    else {
-      // Important: preserve newlines and step formatting.
-      // Joining words with spaces would collapse numbered/bulleted lists into one line,
-      // which then fails the step-count validation.
-      val Word = "\\S+".r
-      val matches = Word.findAllMatchIn(text).toIndexedSeq
-      if matches.length <= maxWords then text
-      else {
-        val cut = matches(maxWords - 1).end
-        text.substring(0, cut).trim
-      }
-    }
-  }
+  private def truncateToMaxWords(text: String, maxWords: Int): String = text
 
   private def countStepLines(text: String): Int = {
     val lines = text.replace("\r\n", "\n").split("\n", -1).toSeq.map(_.trim).filter(_.nonEmpty)
