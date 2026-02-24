@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback Demo</title>
+
+        <meta http-equiv="Content-Security-Policy"
+            content="default-src 'self'; connect-src 'self' http://localhost:8787 http://localhost:8000 http://127.0.0.1:8000 https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; script-src 'self' https://esm.sh https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://unpkg.com https://cdnjs.cloudflare.com;">
+
+    <link rel="stylesheet" href="./css/feedback-demo.css">
+    <script type="module" src="./js/feedback-demo-codemirror.js"></script>
+
+    <!-- Pyodide (provides global loadPyodide used by PythonRuntimeService) -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+
+    <script defer src="./js/feedback-demo-loader.js"></script>
+</head>
+<body>
+<div id="app">
+    <a href="./landingPage.html"
+       style="position:fixed;top:1rem;left:1rem;z-index:9999;
+              display:inline-flex;align-items:center;gap:0.4rem;
+              padding:0.4em 0.9em;border-radius:8px;
+              background:rgba(10,20,40,0.75);backdrop-filter:blur(8px);
+              border:1px solid rgba(122,215,255,0.25);
+              color:#7ad7ff;font-size:0.82rem;font-weight:600;
+              text-decoration:none;letter-spacing:0.03em;
+              box-shadow:0 0 12px rgba(122,215,255,0.15);
+              transition:box-shadow 0.2s,border-color 0.2s;"
+       onmouseover="this.style.boxShadow='0 0 20px rgba(122,215,255,0.4)';this.style.borderColor='rgba(122,215,255,0.55)'"
+       onmouseout="this.style.boxShadow='0 0 12px rgba(122,215,255,0.15)';this.style.borderColor='rgba(122,215,255,0.25)'"
+       id="fdBackBtn"
+    >&#8592; Zurück</a>
+    <div id="feedbackDemoRoot"></div>
+</div>
+</body>
+</html>

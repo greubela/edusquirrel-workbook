@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Workbook Landing Page</title>
     <link rel="stylesheet" href="cssDts/landingpage.css" />
+    <link rel="stylesheet" href="css/feedback-studio-card.css" />
   </head>
   <body>
     <main class="landing-container">
@@ -69,7 +70,7 @@
         </a>
         <figcaption>André Greubel: Evakuierungen mit Eva</figcaption>
       </figure>
-	  
+
 	  <figure class="workbook-card">
         <a
           href="../resources/workbookpdfs/20251117ArbeitsheftGesichtserkennung.zip""
@@ -143,6 +144,16 @@
                 </a>
                 <figcaption>André Greubel: Dual Block/Python Editor</figcaption>
             </figure>
+            <figure class="workbook-card feedback-studio-card" id="fsc">
+                <a href="./feedback-demo.html" id="fscLink">
+                    <div class="feedback-studio-preview" id="fscPreview">
+                        <span class="feedback-studio-badge">Feedback Studio</span>
+                        <span class="feedback-studio-title">Python Exercise Feedback</span>
+                        <span class="feedback-studio-cta">Open Demo &rarr;</span>
+                    </div>
+                </a>
+                <figcaption>Ultrich Edima Edima: Automatische Korrektur von Python-Übungen (Entwicklerdemo, BA)</figcaption>
+            </figure>
         </section>
 
 
@@ -161,5 +172,6 @@
                   sponsorToggle.setAttribute('aria-pressed', toggled.toString());
                 });
               </script>
+              <script src="js/feedback-studio-card.js" defer></script>
             </body>
           </html>
