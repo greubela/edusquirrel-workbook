@@ -1,7 +1,6 @@
 package content.plantworkshop
 
 import com.raquo.laminar.api.L.*
-import content.plantworkshop
 import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBlockLibraryTab}
 import org.scalajs.dom
 
@@ -181,6 +180,12 @@ object Task0_Motivation {
 // ========================================
 object Task1_ComponentChecklist {
   private val checkedItems: Var[Set[String]] = Var(Set.empty)
+  private val buildSteps = List(
+    "../resources/img/plantworkshop/step0.png",
+    "../resources/img/plantworkshop/step1.png",
+    "../resources/img/plantworkshop/step2.png"
+  )
+  private val currentBuildStep: Var[Int] = Var(0)
 
   def render(): HtmlElement = {
     div(
@@ -264,10 +269,78 @@ object Task1_ComponentChecklist {
       div(
         className := "task-box",
         h3("Aufbauskizze / Schaltplan"),
-        p("Hier kommt die Aufbauskizze bzw. der Schaltplan hin."),
+        p("Schaut euch die Aufbauschritte an und klickt durch die Bilder:"),
         div(
           className := "wiring-diagram",
-          p(strong("[Platzhalter für Bild: Aufbauskizze/Schaltplan]"))
+          div(
+            display := "flex",
+            flexDirection := "column",
+            gap := "10px",
+            alignItems := "center",
+            div(
+              display := "flex",
+              gap := "10px",
+              button(
+                "← Zurück",
+                className := "btn-nav",
+                onClick --> (_ => currentBuildStep.update(i => (i - 1 + buildSteps.length) % buildSteps.length))
+              ),
+              span(
+                fontWeight := "600",
+                child.text <-- currentBuildStep.signal.map(i => s"Schritt ${i + 1} / ${buildSteps.length}")
+              ),
+              button(
+                "Weiter →",
+                className := "btn-nav",
+                onClick --> (_ => currentBuildStep.update(i => (i + 1) % buildSteps.length))
+              )
+            ),
+            img(
+              src <-- currentBuildStep.signal.map(i => buildSteps(i)),
+              alt <-- currentBuildStep.signal.map(i => s"Aufbau Schritt ${i + 1}"),
+              maxWidth := "100%",
+              width := "820px",
+              border := "2px solid #d5dbe3",
+              borderRadius := "8px"
+            ),
+            child <-- currentBuildStep.signal.map {
+              case 1 =>
+                div(
+                  display := "flex",
+                  gap := "12px",
+                  width := "820px",
+                  div(
+                    className := "info-box",
+                    flex := "1",
+                    strong("Verkabelung:"),
+                    ul(
+                      li(" Sensor + __ Arduino D2"),
+                      li(" Sensor - __ Arduino GND"),
+                      li(" Sensor S __ Arduino A0")
+                    )
+                  ),
+                  div(
+                    className := "info-box",
+                    flex := "2",
+                    strong("Was macht diese Verkabelung?"),
+                    p(
+                      "Der Pin D2 versorgt den Sensor mit Strom, wenn wir Werte messen wollen. ",
+                      "Er wird nicht permanent mit Strom versorgt, damit der Sensor länger hält. ",
+                    ),
+                    p(
+                      "GND ist der Minuspol (Masse) der Schaltung. ",
+                      "Ohne die Verbindung zu GND ist der Stromkreis nicht geschlossen und der Sensor kann keine stabilen Werte liefern."
+                    ),
+                    p(
+                      "Über A0 liest der Arduino den analogen Messwert ein. ",
+                      "Aus diesem Wert entscheidet euer Programm später, ob die Pumpe laufen soll oder nicht."
+                    )
+                  )
+                )
+              case _ =>
+                emptyNode
+            }
+          )
         )
       )
     )
