@@ -52,8 +52,8 @@ object BlockFeedbackTestRunner:
     ): PythonRunRequest =
       PythonRunRequest(
         code = rawPython,
-        visibleTests = visible.map(toRuntimeTest),
-        hiddenTests = hidden.map(toRuntimeTest),
+        visibleTests = visible.map(t => toRuntimeTest(t, request.humanLanguage)),
+        hiddenTests = hidden.map(t => toRuntimeTest(t, request.humanLanguage)),
         fixtures = runtimeFixtures,
         packages = plan.packages,
         timeoutMs = plan.timeoutMs
@@ -169,27 +169,89 @@ object BlockFeedbackTestRunner:
 
   private def mapRuntimeTestResult(entry: RuntimeTestResult): PythonTestResult =
     val passed = entry.status == PythonTestStatus.Passed
-    val actual = entry.status match
-      case PythonTestStatus.Passed  => "OK"
-      case PythonTestStatus.Failed  => entry.message.getOrElse("Assertion failed")
-      case PythonTestStatus.Errored => entry.message.getOrElse("Runtime error")
+
+    def parseExpectedActual(msg: String): Option[(String, String)] = {
+      val Pattern = "(?s)expected=\\s*(.+?)\\s+actual=\\s*(.+)".r
+      msg match
+        case Pattern(exp, act) => Some(exp.trim -> act.trim)
+        case _ => None
+    }
+
+    val parsed = entry.message.flatMap(parseExpectedActual)
+    val expected = parsed.map(_._1).getOrElse("Test should pass")
+    val actual = parsed.map(_._2).getOrElse(
+      entry.status match
+        case PythonTestStatus.Passed  => "OK"
+        case PythonTestStatus.Failed  => entry.message.getOrElse("Assertion failed")
+        case PythonTestStatus.Errored => entry.message.getOrElse("Runtime error")
+    )
+
+    val message =
+      if parsed.isDefined then entry.hint
+      else entry.hint.orElse(entry.message)
+
     PythonTestResult(
       name = entry.name,
       passed = passed,
-      expected = entry.hint.getOrElse("Test should pass"),
+      expected = expected,
       actual = actual,
-      message = entry.hint.orElse(entry.message)
+      message = message
     )
 
   private def toRuntimeTest(
-      test: BlockFeedbackPythonTest
+      test: BlockFeedbackPythonTest,
+      humanLanguage: contentmanagement.model.language.HumanLanguage
   ): interactionPlugins.pythonExercises.PythonUnitTest =
     interactionPlugins.pythonExercises.PythonUnitTest(
       name = test.name,
       code = test.code,
       weight = test.weight,
-      hint = test.hint
+      hint = Some(buildHint(test, humanLanguage))
     )
+
+  private def buildHint(
+      test: BlockFeedbackPythonTest,
+      humanLanguage: contentmanagement.model.language.HumanLanguage
+  ): String =
+    val code = Option(test.code).getOrElse("").trim
+    val hintOpt = test.hint.map(_.trim).filter(_.nonEmpty)
+
+    val isGerman = humanLanguage == contentmanagement.model.language.AppLanguage.German
+
+    def looksGerman(text: String): Boolean =
+      val lower = text.toLowerCase
+      lower.contains("achte") ||
+      lower.contains("teste") ||
+      lower.contains("prüf") ||
+      lower.contains("du ") ||
+      lower.contains("deine") ||
+      lower.contains("zurück")
+
+    val AssertEq = "(?i)^assert\\s+(.+?)\\s*==\\s*(.+)$".r
+    val AssertIn = "(?i)^assert\\s+(.+?)\\s+in\\s+(.+)$".r
+    val AssertRaw = "(?i)^assert\\s+(.+)$".r
+
+    val base =
+      code match
+        case AssertEq(left, right) =>
+          if isGerman then s"Prüft, dass $left gleich $right ist."
+          else s"Checks that $left equals $right."
+        case AssertIn(left, right) =>
+          if isGerman then s"Prüft, dass $left in $right liegt."
+          else s"Checks that $left is in $right."
+        case AssertRaw(expr) =>
+          if isGerman then s"Prüft, dass $expr wahr ist."
+          else s"Checks that $expr is true."
+        case _ =>
+          if isGerman then "Prüft das erwartete Ergebnis für diesen Fall."
+          else "Checks the expected result for this case."
+
+    hintOpt match
+      case Some(h) if isGerman || !looksGerman(h) =>
+        if h == base then base
+        else if isGerman then s"$base Hinweis: $h"
+        else s"$base Hint: $h"
+      case _ => base
 
   private def toRuntimeFixture(
       fixture: BlockFeedbackPythonFixture

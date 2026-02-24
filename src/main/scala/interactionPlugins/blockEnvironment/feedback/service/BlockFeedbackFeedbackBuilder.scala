@@ -108,10 +108,30 @@ object BlockFeedbackFeedbackBuilder:
         Seq(successTutorMessage(request.humanLanguage, exerciseTextForLang, printCount, inefficient, polished))
       else hints0
 
+    val displayHints = if hints.nonEmpty then hints else Seq(summary)
+    val displayTests = outcome.tests.map { test =>
+      val msg = test.message.filter(_.trim.nonEmpty).getOrElse("")
+      val expectedActual =
+        BlockFeedbackTestResultFormatter.expectedActual(
+          test = test,
+          humanLanguage = request.humanLanguage,
+          onlyWhenFailed = true
+        )
+      FeedbackTestDisplay(
+        name = test.name,
+        passed = test.passed,
+        message = msg,
+        expectedActual = expectedActual
+      )
+    }
+
     UltrichsNewCoolFeedback(
       summary = summary,
       tests = outcome.tests,
       generalHints = hints,
+      displayHints = displayHints,
+      displayTests = displayTests,
+      allTestsPassed = allTestsPassed,
       rawPython = rawPython,
       status = status,
       normalizedScore = normalizedScore
@@ -188,10 +208,7 @@ object BlockFeedbackFeedbackBuilder:
           val intro = if isGerman then "Zus\u00E4tzlich (kurze Checks):" else "Also (quick checks):"
           Some(intro + "\n" + ruleHints.map(h => s"- $h").mkString("\n"))
         else None,
-        if runtimeHints.nonEmpty then
-          val intro = if isGerman then "Und hier ist, was schiefgelaufen ist:" else "And here's what went wrong:"
-          Some(intro + "\n" + runtimeHints.map(h => s"- $h").mkString("\n"))
-        else None
+        None
       ).flatten
 
     if extras.nonEmpty then (base + "\n\n" + extras.mkString("\n\n")).trim

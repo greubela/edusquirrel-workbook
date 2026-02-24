@@ -207,7 +207,15 @@ object BlockFeedbackService:
 
       val llmEligible = effectiveRequest.config.enableAiSummary && hasRuntimeOrTestIssue
 
-      val visibleTestNames = testPlan.visibleTests.map(_.name)
+      val nameCheck = FunctionNameChecker.check(rawPython, testPlan, outcome.tests)
+      val testPlanEffective = nameCheck.hintOption(effectiveRequest.humanLanguage) match
+        case Some(hint) => testPlan.copy(derivedHints = Seq(hint) ++ testPlan.derivedHints)
+        case None       => testPlan
+      // Suppress LLM when a rename mismatch is confirmed: the LLM would give misleading
+      // advice about a NameError that is entirely explained by the wrong function name.
+      val llmEligibleEffective = llmEligible && !nameCheck.hasMismatch
+
+      val visibleTestNames = testPlanEffective.visibleTests.map(_.name)
 
       def normalizeStudentFacingText(text: String): String =
         if text == null || text.isEmpty then ""
@@ -237,7 +245,7 @@ object BlockFeedbackService:
         if exerciseTextForLangRaw.startsWith("[no ") then "" else exerciseTextForLangRaw
 
       val promptOpt =
-        if llmEligible then
+        if llmEligibleEffective then
           Some(
             PromptTemplates.buildPrompt(
               signals,
@@ -251,46 +259,54 @@ object BlockFeedbackService:
           )
         else None
 
-      def planWithCandidate(candidate: String): BlockFeedbackTestPlan =
-        promptOpt match
-          case Some(prompt) =>
-            val gated = QualityGate.enforce(candidate, prompt.constraints, prompt.testNames)
-            if gated.passed then
-              testPlan.copy(derivedHints = testPlan.derivedHints ++ Seq(gated.finalText))
-            else testPlan
-          case None => testPlan
-
       val fallbackCandidate = PromptTemplates.deterministicDraft(signals, decision, effectiveRequest.humanLanguage)
 
+      // Converts a final LLM candidate (after all rewrite retries) into a plan.
+      // If the gate passes → use LLM text directly.
+      // If gate still fails + passthrough ON → use repaired LLM text (carries exercise context).
+      // If gate still fails + passthrough OFF → fall back to deterministic draft.
       def planWithCandidateOrFallback(candidate: String): BlockFeedbackTestPlan =
         promptOpt match
           case Some(prompt) =>
             val gated = QualityGate.enforce(candidate, prompt.constraints, prompt.testNames)
+
+            def truncateWords(text: String, maxWords: Int): String =
+              if maxWords <= 0 then ""
+              else
+                val words = text.split("\\s+").toSeq.filter(_.nonEmpty)
+                if words.size <= maxWords then text.trim
+                else words.take(maxWords).mkString(" ").trim
+
             if gated.passed then
-              testPlan.copy(derivedHints = testPlan.derivedHints ++ Seq(normalizeStudentFacingText(gated.finalText)))
+              testPlanEffective.copy(derivedHints = testPlanEffective.derivedHints ++ Seq(normalizeStudentFacingText(gated.finalText)))
+            else if QualityGate.allowImperfectPassthrough then
+              val passthroughText = truncateWords(
+                normalizeStudentFacingText(gated.finalText),
+                prompt.constraints.maxWords
+              )
+              if passthroughText.nonEmpty then
+                testPlanEffective.copy(derivedHints = testPlanEffective.derivedHints ++ Seq(passthroughText))
+              else testPlanEffective
             else
-              def truncateWords(text: String, maxWords: Int): String =
-                if maxWords <= 0 then ""
-                else
-                  val words = text.split("\\s+").toSeq.filter(_.nonEmpty)
-                  if words.size <= maxWords then text.trim
-                  else words.take(maxWords).mkString(" ").trim
-
               val fallbackGated = QualityGate.enforce(fallbackCandidate, prompt.constraints, prompt.testNames)
-              val fallbackText = truncateWords(normalizeStudentFacingText(fallbackGated.finalText), prompt.constraints.maxWords)
-              val plan2 =
-                if fallbackText.nonEmpty then
-                  testPlan.copy(derivedHints = testPlan.derivedHints ++ Seq(fallbackText))
-                else testPlan
-
-              plan2
+              val fallbackText = truncateWords(
+                normalizeStudentFacingText(fallbackGated.finalText),
+                prompt.constraints.maxWords
+              )
+              if fallbackText.nonEmpty then
+                testPlanEffective.copy(derivedHints = testPlanEffective.derivedHints ++ Seq(fallbackText))
+              else testPlanEffective
           case None =>
-            testPlan
+            testPlanEffective
 
-      val basePlanHintsCount = testPlan.derivedHints.size
+      val basePlanHintsCount = testPlanEffective.derivedHints.size
+
+      // Rewrite telemetry — set inside the retry loop, read when building FeedbackDebug.
+      var llmRewriteCount: Int = 0
+      var llmLastGateReasons: Seq[String] = Seq.empty
 
       val planWithAiFuture: Future[BlockFeedbackTestPlan] =
-        if llmEligible && shouldUseProxyLlm then
+        if llmEligibleEffective && shouldUseProxyLlm then
           val prompt = promptOpt.get
           val logTag =
             effectiveRequest.meta.exerciseId.flatMap { id =>
@@ -301,14 +317,39 @@ object BlockFeedbackService:
                 .orElse(Some(id))
             }
 
-          proxyLlmClient
-            .completeWithMeta(prompt.prompt, logTag = logTag)
-            .recover { case _ => fallbackCandidate }
+          // LLM call with automatic rewrite retries:
+          // first call uses original prompt; on rejection, a targeted correction prompt is sent
+          // (up to maxRewriteAttempts total); the final candidate goes to planWithCandidateOrFallback.
+          def llmWithRetries(currentPrompt: String, attempt: Int): Future[String] =
+            proxyLlmClient
+              .completeWithMeta(currentPrompt, logTag = logTag)
+              .recover { case _ => fallbackCandidate }
+              .flatMap { candidate =>
+                val gated = QualityGate.enforce(candidate, prompt.constraints, prompt.testNames)
+                // Record the state of this attempt so FeedbackDebug always reflects the last call.
+                // corrections sent = attempt - 1  (first call = attempt 1 → 0 corrections)
+                llmRewriteCount    = attempt - 1
+                llmLastGateReasons = gated.reasons
+                if gated.passed || attempt >= QualityGate.maxRewriteAttempts then
+                  Future.successful(candidate)
+                else
+                  val correctionPrompt = QualityGate.buildCorrectionPrompt(
+                    reasons          = gated.reasons,
+                    originalPrompt   = prompt.prompt,
+                    rejectedResponse = candidate,
+                    constraints      = prompt.constraints,
+                    attemptNr        = attempt + 1
+                  )
+                  llmWithRetries(correctionPrompt, attempt + 1)
+              }
+
+          llmWithRetries(prompt.prompt, attempt = 1)
             .map(planWithCandidateOrFallback)
-        else if llmEligible then
+
+        else if llmEligibleEffective then
           Future.successful(planWithCandidateOrFallback(fallbackCandidate))
         else
-          Future.successful(testPlan)
+          Future.successful(testPlanEffective)
 
       planWithAiFuture.map { planWithAi =>
         val feedback = BlockFeedbackFeedbackBuilder.buildFeedback(
@@ -325,7 +366,7 @@ object BlockFeedbackService:
 
         val debug = FeedbackDebug(
           llmEligible = llmEligible,
-          llmProxyAttempted = llmEligible && shouldUseProxyLlm,
+          llmProxyAttempted = llmEligibleEffective && shouldUseProxyLlm,
           aiHintAdded = planWithAi.derivedHints.size > basePlanHintsCount,
           planHintsCount = planWithAi.derivedHints.size,
           ruleHintsCount = ruleHintsCount,
@@ -335,7 +376,10 @@ object BlockFeedbackService:
           hasRuntimeError = outcome.runtimeError.exists(_.trim.nonEmpty),
           hasEmptySource = rawPython.trim.isEmpty,
           primaryIssue = decision.primaryIssue.toString,
-          templateId = Some(templateId)
+          templateId = Some(templateId),
+          llmRewriteCount = llmRewriteCount,
+          llmLastGateReasons = llmLastGateReasons,
+          functionNameMismatch = nameCheck.suggestions.toSeq.sorted.map { case (ex, ac) => s"$ex→$ac" }
         )
 
         feedback.copy(debug = Some(debug))

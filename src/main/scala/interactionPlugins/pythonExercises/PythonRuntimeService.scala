@@ -97,6 +97,7 @@ private[interactionPlugins] object PythonRuntimeService {
     val codeLiteral = JSON.stringify(request.code)
 
     s"""
+import ast
 import json
 import sys
 import traceback
@@ -147,6 +148,23 @@ try:
   total_weight = sum(test.get("weight", 1.0) for test in _tests) or 1.0
   earned = 0.0
 
+  def _eval_simple_assert(code, ns):
+    try:
+      tree = ast.parse(code)
+      if len(tree.body) != 1 or not isinstance(tree.body[0], ast.Assert):
+        return None
+      test_node = tree.body[0].test
+      if isinstance(test_node, ast.Compare) and len(test_node.ops) == 1 and len(test_node.comparators) == 1:
+        op = test_node.ops[0]
+        left_expr = ast.Expression(test_node.left)
+        right_expr = ast.Expression(test_node.comparators[0])
+        left_val = eval(compile(left_expr, "<assert>", "eval"), ns, ns)
+        right_val = eval(compile(right_expr, "<assert>", "eval"), ns, ns)
+        return (op, left_val, right_val)
+      return None
+    except Exception:
+      return None
+
   for test in _tests:
     start = time.perf_counter()
     entry = {
@@ -159,8 +177,22 @@ try:
       "weight": test.get("weight", 1.0)
     }
     try:
-      exec(test.get("code", ""), namespace, namespace)
-      earned += entry["weight"]
+      test_code = test.get("code", "")
+      maybe_eval = _eval_simple_assert(test_code, namespace)
+      if maybe_eval is not None:
+        op, left_val, right_val = maybe_eval
+        if isinstance(op, ast.In):
+          ok = left_val in right_val
+        else:
+          ok = left_val == right_val
+        if ok:
+          earned += entry["weight"]
+        else:
+          entry["status"] = "failed"
+          entry["message"] = f"expected={right_val} actual={left_val}"
+      else:
+        exec(test_code, namespace, namespace)
+        earned += entry["weight"]
     except AssertionError as assertion_error:
       entry["status"] = "failed"
       entry["message"] = str(assertion_error)

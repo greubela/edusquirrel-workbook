@@ -18,7 +18,7 @@ object BlockFeedbackConfigProvider:
         .map(_.config)
         .getOrElse(fallback)
 
-    // Global override hook (Option B): allow passing ML-related settings via the fallback config
+    // allow passing ML-related settings via the fallback config
     // without having to edit every exercise config.
     val routerModeOverride =
       if fallback.routerMode != interactionPlugins.blockEnvironment.feedback.ml.RouterMode.Heuristic then fallback.routerMode
