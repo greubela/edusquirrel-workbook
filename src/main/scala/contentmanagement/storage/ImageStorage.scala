@@ -1,5 +1,6 @@
 package contentmanagement.storage
 
+import com.raquo.airstream.state.Var
 import contentmanagement.model.FileInformation
 import contentmanagement.model.image.{FullImage, ImageDescription}
 import contentmanagement.model.image.ImageDescription.{ServerImageDescription, SvgImageDescription, UploadImageDescription}
@@ -17,7 +18,7 @@ import scala.util.{Failure, Success}
 
 object ImageStorage {
 
-  private val debug: Boolean = true
+  private val debug: Boolean = false
 
   private val fullImageMap: mutable.HashMap[ImageDescription, FullImage] = new mutable.HashMap(50, 0.25)
   private val currentlyLoading: mutable.HashMap[ImageDescription, (Long, Future[FullImage])] = new mutable.HashMap()
@@ -29,7 +30,7 @@ object ImageStorage {
   private var cache_hits: Long = 0
   private var cache_misses: Long = 0
 
-  def log(str: String): Unit = if (debug) {
+  private def log(str: String): Unit = if (debug) {
     println("[IMAGES] " + str
       + "\n    cache: " + cache_hits + " hits, " + cache_misses + " misses"
       + "\n    cache size: " + fullImageMap.size + ", currently loading: " + currentlyLoading.size
@@ -43,7 +44,7 @@ object ImageStorage {
   private def calcDataSourceString(imageDescription: ImageDescription): Future[String] = {
 
     def fileInfoToString(imgData: FileInformation): String = {
-      val b64str = TypeConversion.base64ByteArrayToString(imgData.fileData)
+      val b64str = TypeConversion.byteArrayToBase64String(imgData.fileData)
       "data:image/" + imgData.fileType + ";base64, " + b64str
     }
 
@@ -65,8 +66,9 @@ object ImageStorage {
     img.onabort = (e: dom.Event) => p.failure(new Exception("cannot create dom image: " + e.toString))
     img.onload = (e: dom.Event) => p.success(FullImage(imageDescription, imgSrc, img))
     p.future
-
   }
+  
+  
 
   private def executeLoading(imageDescription: ImageDescription)(implicit ec: ExecutionContext): Future[FullImage] = {
 
@@ -96,7 +98,18 @@ object ImageStorage {
     fullImageFuture
   }
 
+  def loadFullImageIntoVar(imageDescription: ImageDescription)(implicit ec: ExecutionContext): Var[Option[FullImage]] = {
 
+    val loadedImage: Var[Option[FullImage]] = Var(None)
+    
+    loadFullImage(imageDescription).onComplete {
+      case Success(fullImg) => loadedImage.update(_ => Some(fullImg))
+      case Failure(error) => println("ERROR at loading img :-(")
+    }(ec)
+    
+    loadedImage
+  }
+  
   def loadFullImage(imageDescription: ImageDescription)(implicit ec: ExecutionContext): Future[FullImage] =
     if (fullImageMap.contains(imageDescription)) {
       cache_hits = cache_hits + 1

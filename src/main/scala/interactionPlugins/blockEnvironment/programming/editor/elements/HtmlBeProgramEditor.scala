@@ -17,23 +17,25 @@ import contentmanagement.webElements.genericHtmlElements.other.{HtmlTab, HtmlTab
 import interactionPlugins.blockEnvironment.programming.BeProgram
 
 case class HtmlBeProgramEditor(
-  editorState: EditorState,
-  textLanguage: ProgrammingLanguage = Python
-) extends HtmlAppElement {
+                                editorState: EditorState,
+                                textLanguage: ProgrammingLanguage = Python
+                              ) extends HtmlAppElement {
+
+  private val parseWarningVar: Var[Option[String]] = Var(None)
+  private val textDirtyVar: Var[Boolean] = Var(false)
+
 
   private val BlockViewTabNr = 0
   private val TextViewTabNr = 1
 
-  val strVar: Var[String] = Var(editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(textLanguage, English))
+  private val strVar: Var[String] = Var(editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(textLanguage, English))
   editorState.treeToEdit.signal.foreach { tree =>
     if (!textDirtyVar.now()) {
       strVar.set(tree.fullProgram.expressionIO.getInLanguage(textLanguage, English))
     }
   }(new Owner() {})
-  var language: HumanLanguage = AppLanguage.English
+  private var language: HumanLanguage = AppLanguage.English
 
-  private val parseWarningVar: Var[Option[String]] = Var(None)
-  private val textDirtyVar: Var[Boolean] = Var(false)
 
   private def syncTextToBlocks(): Unit = {
     if (!textDirtyVar.now()) return
@@ -90,10 +92,9 @@ case class HtmlBeProgramEditor(
     "Block View"
   )
 
-  private val pythonEditor: HtmlAppElement = SimpleStringTextEditor(//CodeMirrorEditor(strVar)
-    strVar,
-    onUserInput = _ => textDirtyVar.set(true)
-  )
+  private val pythonEditor: HtmlAppElement =
+    //CodeMirrorEditor(strVar)
+    SimpleStringTextEditor(strVar, onUserInput = _ => textDirtyVar.set(true))
 
   private val pythonViewTab = HtmlTab(
     TextViewTabNr,

@@ -9,8 +9,8 @@ object TypeConversion {
     Array.tabulate[Byte](data.byteLength)(index => data.getInt8(index))
   }
 
-  def stringToBase64ByteArray(in: String): Array[Byte] = java.util.Base64.getDecoder.decode(in)
+  def base64StringToByteArray(in: String): Array[Byte] = java.util.Base64.getDecoder.decode(in)
   
-  def base64ByteArrayToString(in: Array[Byte]): String = java.util.Base64.getEncoder.encodeToString(in)
+  def byteArrayToBase64String(in: Array[Byte]): String = java.util.Base64.getEncoder.encodeToString(in)
   
 }

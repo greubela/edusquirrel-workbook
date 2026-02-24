@@ -33,5 +33,11 @@ object BeTreeDisplayConfig {
     compactFunctionCalls = true
   )
 
-  val previewDefaults: BeTreeDisplayConfig = editorDefaults
+  val previewDefaults: BeTreeDisplayConfig = BeTreeDisplayConfig(
+    displayPlaceholders = false,
+    displayNavigation = false,
+    controlFlowDisplay = ControlFlowDisplay.ControlFlowShownFull,
+    compactDefinitions = true,
+    compactFunctionCalls = true
+  )
 }

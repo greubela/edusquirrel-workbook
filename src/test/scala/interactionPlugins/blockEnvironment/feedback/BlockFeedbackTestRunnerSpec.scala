@@ -9,8 +9,7 @@ import interactionPlugins.pythonExercises.{
   PythonRunResult,
   PythonRunStatus,
   PythonTestResult => RuntimeTestResult,
-  PythonTestStatus,
-  PythonUnitTest
+  PythonTestStatus
 }
 import munit.FunSuite
 
@@ -35,12 +34,12 @@ final class BlockFeedbackTestRunnerSpec extends FunSuite:
       exerciseText = dummyExerciseText,
       studentCodePython = exprFromPython("x = 1\nprint(x)"),
       submissionNr = 1,
-      config = BlockFeedbackConfig.default.copy(enableUnitTests = true),
+      config = BlockFeedbackConfig.default.copy(enableUnitTests = true, runHiddenOnlyIfVisiblePass = false),
       humanLanguage = AppLanguage.English
     )
 
-    val t1 = PythonUnitTest(name = "t1", code = "assert True")
-    val t2 = PythonUnitTest(name = "t2", code = "assert True", hint = Some("hint-2"))
+    val t1 = BlockFeedbackPythonTest(name = "t1", code = "assert True")
+    val t2 = BlockFeedbackPythonTest(name = "t2", code = "assert True", hint = Some("hint-2"))
 
     val plan = BlockFeedbackTestPlan(
       visibleTests = Seq(t1),
@@ -51,10 +50,10 @@ final class BlockFeedbackTestRunnerSpec extends FunSuite:
       derivedHints = Nil
     )
 
-    var captured: Option[PythonRunRequest] = None
+    var captured: Vector[PythonRunRequest] = Vector.empty
 
     val runner: PythonRunRequest => Future[PythonRunResult] = (req: PythonRunRequest) =>
-      captured = Some(req)
+      captured = captured :+ req
       Future.successful(
         PythonRunResult(
           status = PythonRunStatus.Success,
@@ -69,12 +68,21 @@ final class BlockFeedbackTestRunnerSpec extends FunSuite:
     BlockFeedbackTestRunner
       .executeWithRunner(request, plan, runner)
       .map { _ =>
-        val req = captured.getOrElse(fail("Expected PythonRunRequest to be passed to runner"))
-        assertEquals(req.code.trim, request.pythonSource.trim)
-        assertEquals(req.visibleTests.map(_.name), Seq("t1"))
-        assertEquals(req.hiddenTests.map(_.name), Seq("t2"))
-        assertEquals(req.packages, Seq("micropip"))
-        assertEquals(req.timeoutMs, 1234)
+        assertEquals(captured.size, 2)
+
+        val visibleReq = captured.head
+        assertEquals(visibleReq.code.trim, request.pythonSource.trim)
+        assertEquals(visibleReq.visibleTests.map(_.name), Seq("t1"))
+        assertEquals(visibleReq.hiddenTests, Nil)
+        assertEquals(visibleReq.packages, Seq("micropip"))
+        assertEquals(visibleReq.timeoutMs, 1234)
+
+        val hiddenReq = captured(1)
+        assertEquals(hiddenReq.code.trim, request.pythonSource.trim)
+        assertEquals(hiddenReq.visibleTests, Nil)
+        assertEquals(hiddenReq.hiddenTests.map(_.name), Seq("t2"))
+        assertEquals(hiddenReq.packages, Seq("micropip"))
+        assertEquals(hiddenReq.timeoutMs, 1234)
       }
   }
 
@@ -87,7 +95,7 @@ final class BlockFeedbackTestRunnerSpec extends FunSuite:
     )
 
     val plan = BlockFeedbackTestPlan(
-      visibleTests = Seq(PythonUnitTest("vis", "assert True", hint = Some("H"))),
+      visibleTests = Seq(BlockFeedbackPythonTest("vis", "assert True", hint = Some("H"))),
       hiddenTests = Nil,
       fixtures = Nil,
       packages = Nil,
@@ -170,7 +178,7 @@ final class BlockFeedbackTestRunnerSpec extends FunSuite:
     )
 
     val plan = BlockFeedbackTestPlan(
-      visibleTests = Seq(PythonUnitTest("t", "assert True")),
+      visibleTests = Seq(BlockFeedbackPythonTest("t", "assert True")),
       hiddenTests = Nil,
       fixtures = Nil,
       packages = Nil,

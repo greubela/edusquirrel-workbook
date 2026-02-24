@@ -21,8 +21,24 @@ final case class UltrichsNewCoolFeedback(
   generalHints: Seq[String],
   rawPython: String,
   status: FeedbackStatus,
-  normalizedScore: Double
+  normalizedScore: Double,
+  debug: Option[FeedbackDebug] = None
 ) extends FeedbackResult
+
+final case class FeedbackDebug(
+  llmEligible: Boolean,
+  llmProxyAttempted: Boolean,
+  aiHintAdded: Boolean,
+  planHintsCount: Int,
+  ruleHintsCount: Int,
+  runtimeHintsCount: Int,
+  testsTotal: Int,
+  testsFailed: Int,
+  hasRuntimeError: Boolean,
+  hasEmptySource: Boolean,
+  primaryIssue: String,
+  templateId: Option[String]
+)
 
 object UltrichsNewCoolFeedback {
 
@@ -34,6 +50,7 @@ object UltrichsNewCoolFeedback {
       generalHints = Seq.empty,
       rawPython = rawPython,
       status = FeedbackStatus.NOT_STARTET,
-      normalizedScore = 0.0
+      normalizedScore = 0.0,
+      debug = None
     )
 }

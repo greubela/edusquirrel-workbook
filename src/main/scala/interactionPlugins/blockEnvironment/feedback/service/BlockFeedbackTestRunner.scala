@@ -19,7 +19,11 @@ object BlockFeedbackTestRunner:
     request: BlockFeedbackRequest,
     plan: BlockFeedbackTestPlan
   )(using ExecutionContext): Future[PythonRuntimeOutcome] =
-    executeWithRunner(request, plan, req => PythonFeedbackRuntime.run(req))
+    executeWithRuntime(
+      request,
+      plan,
+      (req, isolatePerTest) => PythonFeedbackRuntime.run(req, isolatePerTest = isolatePerTest)
+    )
 
   /** Test hook: execute with an injected runtime function (no real Python runtime needed). */
   private[feedback] def executeWithRunner(
@@ -27,24 +31,119 @@ object BlockFeedbackTestRunner:
     plan: BlockFeedbackTestPlan,
     runPython: PythonRunRequest => Future[interactionPlugins.pythonExercises.PythonRunResult]
   )(using ExecutionContext): Future[PythonRuntimeOutcome] =
-    val rawPython = request.pythonSource
-    val pythonRequest = PythonRunRequest(
-      code = rawPython,
-      visibleTests = plan.visibleTests,
-      hiddenTests = plan.hiddenTests,
-      fixtures = plan.fixtures,
-      packages = plan.packages,
-      timeoutMs = plan.timeoutMs
-    )
+    executeWithRuntime(request, plan, (req, _) => runPython(req))
 
-    runPython(pythonRequest).map { runResult =>
-      val tests = runResult.tests.map(mapRuntimeTestResult)
-      PythonRuntimeOutcome(
-        tests = tests,
-        runStatus = Some(runResult.status),
-        normalizedScore = Some(runResult.score),
-        runtimeError = runResult.error
+  /**
+   * Test hook: same behavior as [[execute]], but with an injected runtime function.
+   * This makes it possible to assert whether hidden tests are skipped and whether
+   * the isolatePerTest flag is forwarded.
+   */
+  private[feedback] def executeWithRuntime(
+    request: BlockFeedbackRequest,
+    plan: BlockFeedbackTestPlan,
+    runPython: (PythonRunRequest, Boolean) => Future[interactionPlugins.pythonExercises.PythonRunResult]
+  )(using ExecutionContext): Future[PythonRuntimeOutcome] =
+    val rawPython = request.pythonSource
+    val runtimeFixtures = plan.fixtures.map(toRuntimeFixture)
+
+    def mkRequest(
+      visible: Seq[BlockFeedbackPythonTest],
+      hidden: Seq[BlockFeedbackPythonTest]
+    ): PythonRunRequest =
+      PythonRunRequest(
+        code = rawPython,
+        visibleTests = visible.map(toRuntimeTest),
+        hiddenTests = hidden.map(toRuntimeTest),
+        fixtures = runtimeFixtures,
+        packages = plan.packages,
+        timeoutMs = plan.timeoutMs
       )
+
+    def allPassed(expected: Seq[BlockFeedbackPythonTest], results: Seq[RuntimeTestResult], hidden: Boolean): Boolean =
+      expected.forall { t =>
+        results
+          .find(r => r.name == t.name && r.isHidden == hidden)
+          .exists(_.status == PythonTestStatus.Passed)
+      }
+
+    def combineScore(
+      visibleResults: Seq[RuntimeTestResult],
+      hiddenResults: Seq[RuntimeTestResult],
+      hiddenExecuted: Boolean
+    ): Double =
+      val weights: Map[(String, Boolean), Double] =
+        (plan.visibleTests.map(t => (t.name, false) -> t.weight) ++
+          (if hiddenExecuted then plan.hiddenTests.map(t => (t.name, true) -> t.weight) else Nil)).toMap
+
+      val allResults =
+        visibleResults ++ (if hiddenExecuted then hiddenResults else Nil)
+
+      val total = weights.values.sum match
+        case w if w <= 0 => 1.0
+        case w           => w
+
+      val passedKeys = allResults.collect { case r if r.status == PythonTestStatus.Passed => (r.name, r.isHidden) }.toSet
+      val earned = weights.collect { case (k, w) if passedKeys.contains(k) => w }.sum
+      math.max(0.0, math.min(1.0, earned / total))
+
+    val isolatePerTest = request.config.isolatePerTest
+    val visibleReq = mkRequest(visible = plan.visibleTests, hidden = Nil)
+    val hiddenReq = mkRequest(visible = Nil, hidden = plan.hiddenTests)
+
+    val visibleRunF = runPython(visibleReq, isolatePerTest)
+
+    visibleRunF.flatMap { visibleRun =>
+      val visibleAllPassed = allPassed(plan.visibleTests, visibleRun.tests, hidden = false)
+      val shouldRunHidden =
+        request.config.runHiddenTests &&
+          (!request.config.runHiddenOnlyIfVisiblePass || visibleAllPassed)
+
+      val runHidden = shouldRunHidden && plan.hiddenTests.nonEmpty
+      val hiddenRunF: Future[Option[interactionPlugins.pythonExercises.PythonRunResult]] =
+        if runHidden then runPython(hiddenReq, isolatePerTest).map(Some(_))
+        else Future.successful(None)
+
+      hiddenRunF.map {
+        case Some(hiddenRun) =>
+          val combinedTests = visibleRun.tests ++ hiddenRun.tests
+          val combinedStatus =
+            if visibleRun.status == PythonRunStatus.RuntimeError || hiddenRun.status == PythonRunStatus.RuntimeError then
+              PythonRunStatus.RuntimeError
+            else if combinedTests.exists(_.status != PythonTestStatus.Passed) then
+              PythonRunStatus.Failed
+            else
+              PythonRunStatus.Success
+
+          val combinedScore = combineScore(visibleRun.tests, hiddenRun.tests, hiddenExecuted = true)
+          val combinedError = visibleRun.error.orElse(hiddenRun.error)
+          val mapped = combinedTests.map(mapRuntimeTestResult)
+
+          PythonRuntimeOutcome(
+            tests = mapped,
+            runStatus = Some(combinedStatus),
+            normalizedScore = Some(combinedScore),
+            runtimeError = combinedError,
+            stdout = Some((visibleRun.stdout +: Seq(hiddenRun.stdout)).filter(_.nonEmpty).mkString("\n")).filter(_.nonEmpty),
+            stderr = Some((visibleRun.stderr +: Seq(hiddenRun.stderr)).filter(_.nonEmpty).mkString("\n")).filter(_.nonEmpty)
+          )
+
+        case None =>
+          val status =
+            if visibleRun.status == PythonRunStatus.RuntimeError then PythonRunStatus.RuntimeError
+            else if visibleRun.tests.exists(_.status != PythonTestStatus.Passed) then PythonRunStatus.Failed
+            else PythonRunStatus.Success
+          val score = combineScore(visibleRun.tests, Nil, hiddenExecuted = false)
+          val mapped = visibleRun.tests.map(mapRuntimeTestResult)
+
+          PythonRuntimeOutcome(
+            tests = mapped,
+            runStatus = Some(status),
+            normalizedScore = Some(score),
+            runtimeError = visibleRun.error,
+            stdout = Option(visibleRun.stdout).filter(_.nonEmpty),
+            stderr = Option(visibleRun.stderr).filter(_.nonEmpty)
+          )
+      }
     }.recover { case NonFatal(error) =>
       runtimeFailureOutcome(error)
     }
@@ -63,7 +162,9 @@ object BlockFeedbackTestRunner:
       ),
       runStatus = Some(PythonRunStatus.RuntimeError),
       normalizedScore = Some(0.0),
-      runtimeError = Some(fallbackMessage)
+      runtimeError = Some(fallbackMessage),
+      stdout = None,
+      stderr = None
     )
 
   private def mapRuntimeTestResult(entry: RuntimeTestResult): PythonTestResult =
@@ -78,4 +179,23 @@ object BlockFeedbackTestRunner:
       expected = entry.hint.getOrElse("Test should pass"),
       actual = actual,
       message = entry.hint.orElse(entry.message)
+    )
+
+  private def toRuntimeTest(
+      test: BlockFeedbackPythonTest
+  ): interactionPlugins.pythonExercises.PythonUnitTest =
+    interactionPlugins.pythonExercises.PythonUnitTest(
+      name = test.name,
+      code = test.code,
+      weight = test.weight,
+      hint = test.hint
+    )
+
+  private def toRuntimeFixture(
+      fixture: BlockFeedbackPythonFixture
+  ): interactionPlugins.pythonExercises.PythonFixture =
+    interactionPlugins.pythonExercises.PythonFixture(
+      path = fixture.path,
+      content = fixture.content,
+      isBinary = fixture.isBinary
     )

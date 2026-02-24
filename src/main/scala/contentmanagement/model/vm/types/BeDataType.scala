@@ -7,7 +7,7 @@ import contentmanagement.model.language.{LanguageMap, ProgrammingLanguage}
 import contentmanagement.webElements.svg.shapes.BeShape
 import BeShape.BeShapeContainerable
 import contentmanagement.webElements.svg.shapes.datatypes.{BooleanShape, DateShape, DuckShape, NumericShape, StringShape, UnitShape}
-import util.AlgebriteNumber
+import util.numbers.AlgebriteNumber
 
 sealed trait BeDataType {
 

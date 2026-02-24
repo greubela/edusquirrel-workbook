@@ -3,16 +3,12 @@ package workbook.workbookHtmlElements
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveSvgElement
-import contentmanagement.webElements.HtmlAppElement
 import org.scalajs.dom.{MouseEvent, SVGLinearGradientElement}
 import workbook.model.display.InteractionComponent
 import workbook.model.display.InteractionComponent.*
 import workbook.model.display.InteractionComponent.InteractionContentRole.*
-import workbook.workbookHtmlElements.HtmlInteractionButtonComponent.*
-import workbook.workbookHtmlElements.SvgFactory
-import workbook.workbookHtmlElements.abstractions.HtmlFullInteractionExercise.ExerciseStyle.Style_Default
 
-abstract class HtmlInteractionButtonComponent extends InteractionComponentWithReactiveVars with InteractionComponentForRole { 
+abstract class HtmlInteractionButtonComponent extends InteractionComponentWithReactiveVars with InteractionComponentForRole {
   def onAction: MouseEvent => Any
 
   private lazy val domElement: Element = {
@@ -27,7 +23,6 @@ abstract class HtmlInteractionButtonComponent extends InteractionComponentWithRe
 
   override def getDomElement(): Element = domElement
 }
-
 
 
 object HtmlInteractionButtonComponent {

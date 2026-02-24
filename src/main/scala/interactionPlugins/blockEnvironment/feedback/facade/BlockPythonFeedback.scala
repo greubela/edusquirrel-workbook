@@ -1,6 +1,6 @@
 package interactionPlugins.blockEnvironment.feedback
 
-import contentmanagement.model.language.{HumanLanguage, LanguageMap}
+import contentmanagement.model.language.HumanLanguage
 import contentmanagement.model.vm.code.BeExpression
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -10,25 +10,21 @@ import scala.concurrent.{ExecutionContext, Future}
 object BlockPythonFeedback:
 
   /**
-   * Run the configured feedback pipeline for a Python submission.
+   * Public entry point for the feedback pipeline.
    *
-   * @param exerciseText localized versions of the exercise description
-   * @param studentProgram the student's program as VM expression tree
-   * @param submissionNr submission counter (for logging/analytics)
+   * Exercises (title/statement/config/tests) are defined in
+   * [[BlockFeedbackExerciseRegistry]] and selected by id.
    */
   def getFeedback(
-    exerciseText: LanguageMap[HumanLanguage],
+    exerciseId: String,
     currentLanguage: HumanLanguage,
     studentProgram: BeExpression,
     submissionNr: Int
   )(using ExecutionContext): Future[UltrichsNewCoolFeedback] =
-    val request = BlockFeedbackRequest(
-      exerciseText = exerciseText,
-      studentCodePython = studentProgram,
+    BlockFeedbackService.generateFeedbackForExerciseId(
+      exerciseId = exerciseId,
+      studentProgram = studentProgram,
       submissionNr = submissionNr,
-      config = BlockFeedbackConfig.default,
-      meta = BlockFeedbackMeta(),
       humanLanguage = currentLanguage
     )
 
-    BlockFeedbackService.generateFeedback(request)

@@ -2,5 +2,8 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/resources/programs/20260223MaxDrostePrimm" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/resources/programs/20260223MaxDrostePrimm/lib/bootstrap" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/resources/programs/20260223MaxDrostePrimm/lib/bootstrap-icons" vcs="Git" />
   </component>
 </project>

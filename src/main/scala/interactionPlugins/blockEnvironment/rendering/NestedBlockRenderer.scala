@@ -133,8 +133,7 @@ case class NestedBlockRenderer(
   }
 
   def controlFlowBackgroundShape: BeShape = controlFlowBasicBackgroundShape
-
-
+  
   def controlFlowBasicBackgroundShape: BeShape = new BoxManualPositioning {
 
     override def calcOffsetsAndDimensions(config: BeRenderingConfig): List[ManualPositionElement] = {

@@ -9,23 +9,34 @@ import contentmanagement.model.language.AppLanguage.{English, German, Python}
 import contentmanagement.model.vm.code.BeExpression
 import contentmanagement.model.vm.code.others.BeStartProgram
 import contentmanagement.model.vm.parsing.python.PythonParser
-import contentmanagement.webElements.genericHtmlElements.editor.{SimpleStringTextEditor, SimpleTextDisplay}
+import contentmanagement.webElements.HtmlAppElement
+import contentmanagement.webElements.genericHtmlElements.editor.SimpleTextDisplay
 import contentmanagement.webElements.svg.shapes.BeShape
 import contentmanagement.webElements.svg.shapes.controlflow.*
 import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.{ControlFlowCross, IfElseSplit, IfElseUnion}
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.{ControlFlowProgramStarter, ControlFlowProgramStopper}
 import contentmanagement.webElements.svg.shapes.decorations.{BeDataArrow, ControlArrowUpDown}
-import interactionPlugins.blockEnvironment.config.BeTreeControllerConfig
+import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.elements.*
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 import contentmanagement.webElements.genericHtmlElements.editor.*
 
-case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends HtmlWorkbookElement {
+object HtmlFullscreenTurtleEditorElement {
 
-  val editorState: EditorState = EditorState.withInitExpression(initExpr)
+  def apply(initExpr: BeExpression): HtmlFullscreenTurtleEditorElement = {
+    new Exception("[WARN] created Turtle Editor without useful variable to be bound to!").printStackTrace()
+    HtmlFullscreenTurtleEditorElement(EditorState.withInitExpression(initExpr))
+  }
+
+}
+
+case class HtmlFullscreenTurtleEditorElement(editorState: EditorState) extends HtmlAppElement {
+
+  //private val editorState: EditorState = EditorState.forWorkbookAndInteractionVariable(forVar)
   private var programBound: Boolean = false
 
+  /*
   def bindToProgram(programVar: Var[BeProgram]): Unit = {
     if (!programBound) {
       programVar.signal.foreach { program =>
@@ -42,7 +53,7 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
 
       programBound = true
     }
-  }
+  }*/
 
 
   private lazy val controlPanel: Element =
@@ -68,16 +79,13 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
       cls := "be-fullscreen-panel-label",
       "Block Library (Movement)"
     ),
-    div(
-      cls := "be-fullscreen-panel-content",
-      child <-- HtmlBlockLibraryTab(editorState, HtmlBlockLibraryTab.getDefaultLibraryPrograms, Var(BeTreeControllerConfig.libraryTreeConfig(editorState))).toDomSignal
-    )
+    HtmlBlockLibraryTab.getDefaultTurtleLibraryTab(editorState).getDomElement()
   )
 
  
 
-  private val testShapes: List[BeShape] = List(ControlFlowProgramStarter(), ControlFlowProgramStopper(), BeDataArrow(), ControlArrowUpDown(), IfElseSplit(), ControlFlowCross(), IfElseUnion(), ControlFlowConnectorBackground(List((true, true)))) ++ BeShape.allAtomicShapes
-  private val testDims = testShapes.map(_.displaySize(editorState.rendererConfigVar.now()))
+//  private val testShapes: List[BeShape] = List(ControlFlowProgramStarter(), ControlFlowProgramStopper(), BeDataArrow(), ControlArrowUpDown(), IfElseSplit(), ControlFlowCross(), IfElseUnion(), ControlFlowConnectorBackground(List((true, true)))) ++ BeShape.allAtomicShapes
+//  private val testDims = testShapes.map(_.displaySize(editorState.rendererConfigVar.now()))
 
   private val showExpectedOutputVar: Var[Boolean] = Var(false)
 
@@ -128,7 +136,7 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
     )
     
 
-  private val rootElement: Element =
+  private val rootElement: Element = {
     div(
       cls := "be-fullscreen-editor",
 
@@ -145,6 +153,7 @@ case class HtmlFullscreenTurtleEditorElement(initExpr: BeExpression) extends Htm
       // bottom line
       placeholderPanel("config", "Allgemeine Config (Editor, Sprache, ...)", "content goes here"),
     )
+  }
 
   override def getDomElement(): Element = rootElement
 

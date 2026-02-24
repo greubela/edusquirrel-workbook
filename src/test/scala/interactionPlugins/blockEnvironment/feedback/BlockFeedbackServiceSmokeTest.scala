@@ -63,10 +63,18 @@ final class BlockFeedbackServiceSmokeTest extends FunSuite:
       ),
       runStatus = Some(PythonRunStatus.Success),
       normalizedScore = Some(0.5),
-      runtimeError = None
+      runtimeError = None,
+      stdout = None,
+      stderr = None
     )
 
-    val feedback = BlockFeedbackFeedbackBuilder.buildFeedback(request, plan, outcome)
+    val feedback = BlockFeedbackFeedbackBuilder.buildFeedback(
+      request,
+      plan,
+      outcome,
+      pythonRules = Nil,
+      vmRules = Nil
+    )
 
     assertEquals(feedback.tests.size, 2)
     assert(feedback.generalHints.exists(_.contains("hint-from-plan")))

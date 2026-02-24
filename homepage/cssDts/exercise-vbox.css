@@ -1,9 +1,5 @@
 /* Vertical exercise layout */
-
-.container-exercise.style-vbox {
-  gap: var(--space-lg);
-}
-
+/*
 .container-exercise.style-vbox .exercise-title,
 .container-exercise.style-vbox .container-exercise-instruction,
 .container-exercise.style-vbox .container-interaction,
@@ -50,3 +46,4 @@
     gap: var(--space-md);
   }
 }
+*/

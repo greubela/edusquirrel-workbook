@@ -1,78 +1,81 @@
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
-import contentmanagement.model.language.AppLanguage
-import contentmanagement.model.language.AppLanguage.{English, Python}
-import contentmanagement.model.vm.parsing.python.PythonParser
-import interactionPlugins.automaton.{AutomatonExerciseContent, HtmlAutomatonExercise}
-import interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeControllerConfig}
-import interactionPlugins.blockEnvironment.exercise.{HtmlProgrammingExercise, ProgrammingExercise}
+import content.EmbroideryWorkbook.CreateEmbroideryWorkbook
+import content.TestWorkbook.TestWorkbook
+import content.plantworkshop
+import content.plantworkshop.PlantWorkshopApp
 import interactionPlugins.blockEnvironment.programming.*
-import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
-import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
-import interactionPlugins.gpt.{HtmlTextBasedGptExercise, TextBasedGptExercise}
-import interactionPlugins.pythonExercises.{HtmlPythonExercise, PythonExerciseContent}
 import org.scalajs.dom
 import org.scalajs.dom.document
-import plantworkshop.PlantWorkshopApp
 import util.JSXGraph.*
-import workbook.model.exercise.{ExerciseContent, ExerciseSection}
 import workbook.workbookHtmlElements.container.HtmlFullScreenElement
-import workbook.workbookHtmlElements.visualization.HtmlWorkbookOverview
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 
+private val fullscreenElement: HtmlFullScreenElement = HtmlFullScreenElement()
+
+private val idAndContentList: List[(String, Element)] = List(
+  ("plantWorkshopApp", plantworkshop.PlantWorkshopApp.appElement),
+  //("testEditor", HtmlFullscreenTurtleEditorElement(BeProgram.debugGraphicsProgram().fullProgram).getDomElement()),
+  ("workbookTest", TestWorkbook.createTestWorkbook(fullscreenElement).getDomElement()),
+  //("worksheetMonks", TestWorkbook(fullscreenElement).getDomElement()),
+  ("workbookEmbroidery", CreateEmbroideryWorkbook(fullscreenElement).createWorkbook().getDomElement())
+)
+
+def insertWorkbookContent(): Unit = {
+
+  def tryToLoad(containerId: String, contentElement: Element): Unit = {
+    println("try to load: " + containerId)
+    val container = document.getElementById(containerId)
+    if (container != null) {
+      println("Loading Content: " + containerId)
+      val combinedElement = div(
+        fullscreenElement.getDomElement(),
+        contentElement
+      )
+      if (dom.document.readyState == "loading") {
+        renderOnDomContentLoaded(container, combinedElement)
+      } else {
+        render(container, combinedElement)
+      }
+    }
+  }
+
+  idAndContentList.foreach { case (id, contentElement) => tryToLoad(id, contentElement) }
+
+}
+
 @main
 def mainApp(): Unit = {
-  doSomeCalculations()
-  //insertWorkbook()
-  insertTurtleEditor()
-  insertPlantWorkshop()
+
+  //resetLocalStorage()
+
+  insertWorkbookContent()
 }
 
-def insertPlantWorkshop(): Unit = {
-  val container = document.getElementById("plantWorkshopApp")
-  if (container != null) {
-    val appElement = plantworkshop.PlantWorkshopApp.appElement
-    if (dom.document.readyState == "loading") {
-      renderOnDomContentLoaded(container, appElement)
-    } else {
-      render(container, appElement)
+def resetLocalStorage(): Unit = {
+  val map = (0 until dom.window.localStorage.length)
+    .flatMap { i =>
+      Option(dom.window.localStorage.key(i)).flatMap { key =>
+        Option(dom.window.localStorage.getItem(key)).map(value => key -> value)
+      }
     }
-  }
-}
+    .toMap
 
-def doSomeCalculations(): Unit = {
-  /*
-  val expr = BeProgram.debugGraphicsProgram()
-  val ed = EditorState.withInitExpression(expr.fullProgram)
-  val lis = BeTreeControllerConfig.editTreeConfig(ed)
-  HtmlBeTreeDisplay.render(expr,
-    ed.editorTreeDisplayConfig.now(),
-    ed.rendererConfigVar.now(),
-    lis,
-    ed.controllerStateVar)
-*/
-}
+  println("[WARN] resetting local storage in MainApp!")
 
-val fullscreenElement: HtmlFullScreenElement = HtmlFullScreenElement()
+  map.keys.foreach(curKey => {
+    println(curKey.toString + " -> " + map(curKey))
+  })
 
-def insertTurtleEditor(): Unit = {
-  val worksheetDiv = document.getElementById("worksheetDts")
-  if (worksheetDiv != null) { // TODO Ohne das gibt es Probleme, nochmal anschauen, aber es funkltioniert erstmal genauso wie vorher, aber programme die danach inserted werden haben keine probleme mehr
-    val editorDom = new HtmlFullscreenTurtleEditorElement(BeProgram.debugGraphicsProgram().fullProgram).getDomElement()
 
-    if (dom.document.readyState == "loading") {
-      renderOnDomContentLoaded(worksheetDiv, editorDom)
-    } else {
-      render(worksheetDiv, editorDom)
-    }
-  }
+  dom.window.localStorage.clear()
 }
 
 def jsxGraphPreview: HtmlElement =
-//  given Fraction[Double] = summon[Fractional[Double]]
-//  given JsValueConverter[Double] = JsValueConverter.defaultConverter[Double]
+  //  given Fraction[Double] = summon[Fractional[Double]]
+  //  given JsValueConverter[Double] = JsValueConverter.defaultConverter[Double]
 
   val boardId = "jsxgraph-demo-board"
   val jsxFacade = JsxGraphFacade[Double]()
@@ -142,44 +145,6 @@ def jsxGraphPreview: HtmlElement =
 
 def insertWorkbook(): Unit = {
 
-
-  // Generic GPT Exercise
-  val testEx = TextBasedGptExercise("id-007", Map(AppLanguage.English -> "this is title"), Map(AppLanguage.English -> "this is instruction"))
-  val htmlEx = HtmlTextBasedGptExercise(testEx, useFullscreenInteraction = true, fullscreenElement = Some(fullscreenElement))
-
-  // Programming Exercise
-  val testProgEx = ProgrammingExercise(
-    "id-003",
-    Map(AppLanguage.English -> "Exercise 2"),
-    Map(AppLanguage.English -> "Use Turtle Commands to program the Shape on the right :-)"),
-    ProgrammingExercise.DefaultPentagonExpectedResult
-  )
-  val htmlProgEx = HtmlProgrammingExercise(testProgEx, fullscreenElement)
-
-  val combinedElement = div(
-   // jsxGraphPreview,
-    fullscreenElement.getDomElement(),
-    /* div(
-       h2("Workbook Overview"),
-       div(
-         cls := "workbook-overview-sample",
-        // overviewElement
-       )
-     ),*/
-    htmlEx.getDomElement(),
-    htmlProgEx.getDomElement(),
-    // automatonExercise.getDomElement(),
-    // helloWorldExercise.getDomElement(),
-    // fizzBuzzExercise.getDomElement()
-  )
-
-  val worksheetDiv = document.getElementById("worksheetDts")
-
-  if (dom.document.readyState == "loading") {
-    renderOnDomContentLoaded(worksheetDiv, combinedElement)
-  } else {
-    render(worksheetDiv, combinedElement)
-  }
 }
 
 object Main:
@@ -187,23 +152,23 @@ object Main:
   implicit val executionContext: ExecutionContextExecutor = ExecutionContext.global
 
 end Main
-
+/*
 final case class SimpleExercise(
                                  id: String,
                                  englishTitle: String,
                                  duration: Double,
                                  instruction: String
-                               ) extends ExerciseContent {
-  override def titleMap: Map[AppLanguage, String] = Map(AppLanguage.English -> englishTitle)
+                               ) extends ExerciseWithTitleDescription with ExerciseInstructionDescription {
+  override def titleMap: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> englishTitle))
 
   override def estimatedTimeInMinutes: Double = duration
 
-  override def instructionMap: Map[AppLanguage, String] = Map(AppLanguage.English -> instruction)
+  def instructionMap: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> instruction))
 }
 
 final case class SampleSection(
                                 override val title: String,
-                                override val exercies: List[ExerciseContent],
+                                override val exercises: List[ExerciseWithTitleDescription],
                                 override val sectionsRequiredBefore: List[ExerciseSection] = Nil,
                                 override val sectionsRecommendedBefore: List[ExerciseSection] = Nil
                               ) extends ExerciseSection
@@ -240,4 +205,7 @@ def sampleSections: List[ExerciseSection] = {
   )
 
   List(sectionA, sectionB, sectionC, sectionD)
+
+
 }
+*/

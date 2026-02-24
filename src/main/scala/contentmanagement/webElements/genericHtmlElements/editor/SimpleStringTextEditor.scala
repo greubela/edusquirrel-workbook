@@ -5,17 +5,17 @@ import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement
 import workbook.model.display.InteractionComponent
 import workbook.model.display.InteractionComponent.*
-import workbook.model.states.BasicVariableBasedState
-import workbook.model.states.BasicVariableBasedState.*
 
 case class SimpleStringTextEditor(
-  stateToBind: Var[String],
-  onUserInput: String => Unit = _ => ()
-) extends HtmlAppElement{
+                                   stateToBind: Var[String],
+                                   monoSpace: Boolean = false,
+                                   onUserInput: String => Unit = _ => ()
+                                 ) extends HtmlAppElement{
 
   private val editorTextArea = textArea(
     rows := 8,
     cols := 80,
+    if (monoSpace) cls := "mono" else cls := "",
     controlled(
       value <-- stateToBind.signal,
       onInput.mapToValue --> { value =>

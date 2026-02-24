@@ -13,9 +13,11 @@ body {
   background: linear-gradient(135deg, #fdf0d5, #f9f5ff);
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 2rem;
+  gap: 1.5rem;
 }
 
 .landing-container {
@@ -28,9 +30,9 @@ body {
   padding: 2.5rem;
 }
 
-.sponsor-row {
-  background-color: #ff8a00;
-  color: #1f2933;
+.headline-row {
+  background-color: #8b0000;
+  color: #fff;
   border-radius: 12px;
   padding: 1rem 1.5rem;
   display: flex;
@@ -40,25 +42,17 @@ body {
   transition: background-color 0.3s ease;
 }
 
-.sponsor-row button {
-  border: none;
-  background: #1f2933;
-  color: #ffffff;
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  cursor: pointer;
+.owner-row {
+  background-color: #eee;
+  color: #400;
+  font-size: 0.85rem;
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
   font-weight: 600;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-}
-
-.sponsor-row button:hover {
-  transform: translateY(-1px);
-  opacity: 0.85;
-}
-
-.sponsor-row.toggled {
-  background-color: #E20074;
-  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background-color 0.3s ease;
 }
 
 .section-heading h1 {

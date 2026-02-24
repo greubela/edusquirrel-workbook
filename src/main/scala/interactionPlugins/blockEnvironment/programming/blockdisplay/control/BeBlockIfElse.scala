@@ -8,7 +8,7 @@ import contentmanagement.model.vm.types.BeChildRole.{BodySequence, ConditionInCo
 import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.{ControlFlowCross, ControlFlowShapeDoubleWidth, IfElseSplit, IfElseUnion}
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.ControlFlowDirected
 import contentmanagement.webElements.svg.shapes.special.nested.NestedControlStructureShape
-import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowAndExpressionShape, ControlFlowShape}
+import contentmanagement.webElements.svg.shapes.*
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, RenderingInformation}
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer

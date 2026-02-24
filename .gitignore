@@ -40,9 +40,18 @@ build/
 ### VS Code ###
 .vscode/
 
+### Local dev secrets / venvs ###
+tools/openai-proxy/.env
+tools/openai-proxy/.venv/
+tools/openai-proxy/chatlogs/
+tools/openai-proxy/ml-logs/
+
 ### Mac OS ###
 .DS_Store
 
 ### Scala ###
 .bsp/
 **/target/**
+
+### Secrets ###
+.env

@@ -9,6 +9,8 @@ import interactionPlugins.blockEnvironment.config
 import interactionPlugins.blockEnvironment.config.*
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.blockdisplay.BeTreeDropTarget
+import workbook.model.info.WorkbookInfo
+import workbook.model.interaction.InteractionVariable
 
 case class EditorState(
                         treeToEdit: Var[BeProgram],
@@ -92,6 +94,7 @@ case class EditorState(
 }
 
 object EditorState {
+
 
   def withInitExpression(initExpr: BeExpression): EditorState = {
 

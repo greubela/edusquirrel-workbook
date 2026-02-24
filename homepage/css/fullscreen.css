@@ -7,7 +7,7 @@
 .fullscreen-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 10000;
   display: none;
   align-items: center;
   justify-content: center;
@@ -85,6 +85,7 @@ body.fullscreen-active {
   overflow: hidden;
 }
 
+/* UNUSED legacy fullscreen/card-builder section (no references found in homepage/*.html or src/main/scala Laminar classes). Kept commented for validation before deletion.
 .card-display {
   display: flex;
   gap: var(--padding-small);
@@ -132,7 +133,7 @@ body.fullscreen-active {
   border-color: var(--color-accent-primary);
 }
 
-/* Right Section */
+/* Right Section * /
 .right-section {
   width: 50%;
   padding: var(--padding-medium);
@@ -201,3 +202,4 @@ body.fullscreen-active {
   outline: none;
 }
 
+*/

@@ -8,11 +8,11 @@
   --fontsize-text-small: 8px;
 
   /* Layout sizes and spacing */
-  --space-xs: 8px;
-  --space-sm: 12px;
-  --space-md: 18px;
-  --space-lg: 26px;
-  --space-xl: 36px;
+  --space-xs: 2px;
+  --space-sm: 4px;
+  --space-md: 8px;
+  --space-lg: 12px;
+  --space-xl: 24px;
 
   --standard-gap: 10px;
   --standard-border-radius: var(--radius-sm);
@@ -57,6 +57,16 @@
   --color-focus: #2563eb;
 
   /* Accent colors */
+
+  --color-accent-foreground-textcolor: #ffffff;
+
+  --color-accent-blue-textcolor: #1565c0;
+  --color-accent-blue-foreground: #2196f3;
+  --color-accent-blue-background: #e3f2fd;
+
+  --color-accent-red-foreground: #f44336;
+  --color-accent-red-background: #ffebee;
+
   --color-accent-primary: #3066e5;
   --color-accent-warm: #f5c542;
   --color-accent-neutral: #d9dee8;

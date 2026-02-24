@@ -9,6 +9,10 @@ lazy val workbookApp = project.in(file("."))
     scalaVersion := "3.3.3",
     scalaJSUseMainModuleInitializer := true,
 
+    // For the simulation-style specs (e.g. PRINT_SIMULATION=1), we want to see
+    // stdout/stderr even when tests pass.
+    Test / logBuffered := !sys.env.get("PRINT_SIMULATION").contains("1"),
+
     scalaJSLinkerConfig ~= {
       _.withModuleKind(ModuleKind.CommonJSModule)
     },
@@ -19,7 +23,10 @@ lazy val workbookApp = project.in(file("."))
       "com.raquo" %%% "laminar" % "17.2.1",
       "com.lihaoyi" %%% "upickle" % "4.3.1",
       "com.lihaoyi" %%% "fastparse" % "3.1.1",
-      "org.scalameta" %%% "munit" % "1.2.1" % Test
+      "org.scalameta" %%% "munit" % "1.2.1" % Test,
+
+      "io.github.cquiroz" %%% "scala-java-time" % "2.6.0",
+      "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.6.0" // needed for ZoneId / TZ database
     ),
 
     // NPM dependencies
