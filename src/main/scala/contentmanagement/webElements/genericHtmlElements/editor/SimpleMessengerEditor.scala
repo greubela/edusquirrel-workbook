@@ -9,9 +9,7 @@ import workbook.model.interaction.InteractionVariable.*
 import workbook.model.interaction.*
 import workbook.model.interaction.history.UpdateImportance
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-
-import java.time.format.DateTimeFormatter
-import java.time.{Instant, ZoneId}
+import scala.scalajs.js
 
 case class SimpleMessengerEditor(chatExercise: InteractionVariable[MessengerModel]) extends HtmlAppElement {
 
@@ -117,7 +115,10 @@ case class SimpleMessengerEditor(chatExercise: InteractionVariable[MessengerMode
 
   private def formatTimestamp(timestampEpochMillis: String): String = {
     timestampEpochMillis.toLongOption
-      .map(epoch => Instant.ofEpochMilli(epoch).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm")))
+      .map { epoch =>
+        val date = new js.Date(epoch.toDouble)
+        f"${date.getHours().toInt}%02d:${date.getMinutes().toInt}%02d"
+      }
       .getOrElse(timestampEpochMillis)
     //timestampEpochMillis + " (<- formatted!)"
   }
