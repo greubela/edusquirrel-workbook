@@ -359,6 +359,26 @@
     return svgDataUrlFromString(svg);
   }
 
+  function snapshotStagePngDataUrl() {
+    forceLayout();
+    stepWorld(2);
+
+    // Prefer the stage-only morph image when available.
+    try {
+      const stageImage = ide?.stage?.fullImage?.();
+      if (stageImage && typeof stageImage.toDataURL === "function") {
+        return stageImage.toDataURL("image/png");
+      }
+    } catch (_) {}
+
+    // Fallback: use the world canvas if stage image cannot be produced.
+    if (world?.worldCanvas && typeof world.worldCanvas.toDataURL === "function") {
+      return world.worldCanvas.toDataURL("image/png");
+    }
+
+    throw new Error("Could not generate stage PNG snapshot.");
+  }
+
   async function runGreenFlagOnce() {
     forceLayout();
     try { ide.stage.clearPenTrails?.(); } catch (_) {}
