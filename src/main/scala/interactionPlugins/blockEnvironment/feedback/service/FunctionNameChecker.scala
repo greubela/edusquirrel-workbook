@@ -37,10 +37,12 @@ object FunctionNameChecker:
       .flatMap(line => defLineRe.findFirstMatchIn(line).map(_.group(1)))
       .toSet
 
-  /** Function names called inside the test suite (minus Python builtins). */
+  /** Function names called inside the test suite (minus Python builtins).
+   *  Single-character names are excluded: they are almost always characters
+   */
   def expectedFromTestCode(testPlan: BlockFeedbackTestPlan): Set[String] =
     val allCode = (testPlan.visibleTests ++ testPlan.hiddenTests).map(_.code).mkString("\n")
-    callRe.findAllMatchIn(allCode).map(_.group(1)).toSet -- builtins
+    callRe.findAllMatchIn(allCode).map(_.group(1)).filter(_.length >= 2).toSet -- builtins
 
   /** Function names that appear in `NameError: name 'X' is not defined` messages. */
   private def confirmedNameErrors(tests: Seq[PythonTestResult]): Set[String] =
