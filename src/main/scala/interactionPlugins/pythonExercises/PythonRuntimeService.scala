@@ -125,6 +125,7 @@ try:
   sys.stdout = stdout_capture
   sys.stderr = stderr_capture
   namespace = {}
+  namespace['_student_source'] = _code_source
 
   import pathlib
   import base64
@@ -156,6 +157,10 @@ try:
       test_node = tree.body[0].test
       if isinstance(test_node, ast.Compare) and len(test_node.ops) == 1 and len(test_node.comparators) == 1:
         op = test_node.ops[0]
+        # Only handle == and 'in' in the fast path; other operators (>, >=, !=, …)
+        # fall through to exec() so Python itself evaluates them correctly.
+        if not isinstance(op, (ast.Eq, ast.In)):
+          return None
         left_expr = ast.Expression(test_node.left)
         right_expr = ast.Expression(test_node.comparators[0])
         left_val = eval(compile(left_expr, "<assert>", "eval"), ns, ns)
