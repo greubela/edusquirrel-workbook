@@ -615,3 +615,10 @@ body {
   color: var(--fd-muted);
   font-size: 13px;
 }
+
+.CodeMirror .CodeMirror-selected {
+  background: rgba(122, 215, 255, 0.28) !important;
+}
+.CodeMirror-focused .CodeMirror-selected {
+  background: rgba(122, 215, 255, 0.40) !important;
+}
