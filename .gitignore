@@ -39,6 +39,7 @@ build/
 
 ### VS Code ###
 .vscode/
+.metals/
 
 ### Local dev secrets / venvs ###
 tools/openai-proxy/.env
