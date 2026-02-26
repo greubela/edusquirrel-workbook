@@ -148,6 +148,56 @@ object FeedbackDemoElement:
           |    return xs
           |""".stripMargin
 
+      case BlockFeedbackExerciseRegistry.fizzBuzzScriptExerciseId =>
+        """# Intentionally wrong: prints instead of collecting in a list,
+          |# and the "FizzBuzz" case is missing entirely.
+          |for n in range(1, 21):
+          |    if n % 3 == 0:
+          |        print("Fizz")
+          |    elif n % 5 == 0:
+          |        print("Buzz")
+          |    else:
+          |        print(n)
+          |""".stripMargin
+
+      case BlockFeedbackExerciseRegistry.evenSquaresScriptExerciseId =>
+        """# Intentionally wrong: squares ALL numbers instead of only the even ones.
+          |zahlen = list(range(1, 11))
+          |ergebnisse = []
+          |for n in zahlen:
+          |    ergebnisse.append(n ** 2)
+          |""".stripMargin
+
+      case BlockFeedbackExerciseRegistry.fibonacciScriptExerciseId =>
+        """# Intentionally wrong: adds the loop index i instead of the previous
+          |# two Fibonacci numbers.
+          |fibonacci = [1, 1]
+          |for i in range(2, 10):
+          |    fibonacci.append(fibonacci[-1] + i)
+          |""".stripMargin
+
+      case BlockFeedbackExerciseRegistry.primesScriptExerciseId =>
+        """# Intentionally wrong: includes 1 because range(2, 1) is empty,
+          |# so is_composite stays False and 1 passes the check.
+          |primzahlen = []
+          |for n in range(1, 51):
+          |    is_composite = False
+          |    for i in range(2, n):
+          |        if n % i == 0:
+          |            is_composite = True
+          |    if not is_composite:
+          |        primzahlen.append(n)
+          |""".stripMargin
+
+      case BlockFeedbackExerciseRegistry.wordCountScriptExerciseId =>
+        """# Intentionally wrong: always sets count to 1 instead of incrementing,
+          |# so repeated words are not counted correctly.
+          |text = "die Katze saß auf der Matte die Katze saß"
+          |wortanzahl = {}
+          |for wort in text.split():
+          |    wortanzahl[wort] = 1
+          |""".stripMargin
+
       case _ => genericSampleFromStatement(exerciseId)
 
   private val pythonKeywords: Set[String] = Set(
