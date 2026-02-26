@@ -211,9 +211,12 @@ object BlockFeedbackService:
       val testPlanEffective = nameCheck.hintOption(effectiveRequest.humanLanguage) match
         case Some(hint) => testPlan.copy(derivedHints = Seq(hint) ++ testPlan.derivedHints)
         case None       => testPlan
-      // Suppress LLM when a rename mismatch is confirmed: the LLM would give misleading
-      // advice about a NameError that is entirely explained by the wrong function name.
-      val llmEligibleEffective = llmEligible && !nameCheck.hasMismatch
+      val studentHasNoFunction =
+        !effectiveRequest.config.isScriptExercise &&
+        !rawPython.linesIterator.exists(l => l.trim.startsWith("def "))
+      val meaningfulLineCount = rawPython.linesIterator.count(l => l.trim.nonEmpty && !l.trim.startsWith("#"))
+      val isTrivialScriptSubmission = effectiveRequest.config.isScriptExercise && meaningfulLineCount < 2
+      val llmEligibleEffective = llmEligible && !nameCheck.hasMismatch && !studentHasNoFunction && !isTrivialScriptSubmission
 
       val visibleTestNames = testPlanEffective.visibleTests.map(_.name)
 
@@ -254,12 +257,13 @@ object BlockFeedbackService:
               effectiveRequest.humanLanguage,
               visibleTestNames,
               exerciseTextForLang,
-              rawPython
+              rawPython,
+              effectiveRequest.config.isScriptExercise
             )
           )
         else None
 
-      val fallbackCandidate = PromptTemplates.deterministicDraft(signals, decision, effectiveRequest.humanLanguage)
+      val fallbackCandidate = PromptTemplates.deterministicDraft(signals, decision, effectiveRequest.humanLanguage, effectiveRequest.config.isScriptExercise, visibleTestNames)
 
       // Converts a final LLM candidate (after all rewrite retries) into a plan.
       // If the gate passes → use LLM text directly.
@@ -348,6 +352,10 @@ object BlockFeedbackService:
 
         else if llmEligibleEffective then
           Future.successful(planWithCandidateOrFallback(fallbackCandidate))
+        else if hasRuntimeOrTestIssue then
+          Future.successful(testPlanEffective.copy(
+            derivedHints = testPlanEffective.derivedHints ++ Seq(fallbackCandidate)
+          ))
         else
           Future.successful(testPlanEffective)
 

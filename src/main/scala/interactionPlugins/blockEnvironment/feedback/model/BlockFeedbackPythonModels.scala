@@ -11,7 +11,8 @@ final case class BlockFeedbackPythonTest(
     name: String,
     code: String,
     weight: Double = 1.0,
-    hint: Option[String] = None
+    hint: Option[String] = None,
+    hintDE: Option[String] = None
 )
 
 /** Feedback-owned representation of a Python fixture file. */
