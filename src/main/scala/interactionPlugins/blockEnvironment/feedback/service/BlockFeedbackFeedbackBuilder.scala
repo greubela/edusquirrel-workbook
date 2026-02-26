@@ -104,8 +104,9 @@ object BlockFeedbackFeedbackBuilder:
         val exerciseTextForLang = if exerciseTextForLangRaw.startsWith("[no ") then "" else exerciseTextForLangRaw
         val printCount = countPrintStatements(rawPython)
         val inefficient = looksInefficient(rawPython)
-        val polished = printCount == 0 && !inefficient && !containsObviousPlaceholders(rawPython)
-        Seq(successTutorMessage(request.humanLanguage, exerciseTextForLang, printCount, inefficient, polished))
+        val isScriptExercise = request.config.isScriptExercise
+        val polished = (isScriptExercise || printCount == 0) && !inefficient && !containsObviousPlaceholders(rawPython)
+        Seq(successTutorMessage(request.humanLanguage, exerciseTextForLang, printCount, inefficient, polished, isScriptExercise))
       else hints0
 
     val displayHints = if hints.nonEmpty then hints else Seq(summary)
@@ -142,15 +143,17 @@ object BlockFeedbackFeedbackBuilder:
     exerciseText: String,
     printCount: Int,
     inefficient: Boolean,
-    polished: Boolean
+    polished: Boolean,
+    isScript: Boolean
   ): String = {
     val isGerman = humanLanguage == AppLanguage.German
     val mentionPerf = inefficient && !looksSmallBounded(exerciseText)
+    val hasSuspiciousPrints = !isScript && printCount > 0
     if isGerman then {
       val base =
-        if polished then "Alle Tests sind gr\u00FCn. Richtig stark: Deine L\u00F6sung ist sauber und effizient."
-        else "Sehr gut. Alle Tests sind gr\u00FCn."
-      val prints = if printCount > 0 then " Entferne noch deine Debug-Prints, damit die Ausgabe sauber bleibt." else ""
+        if polished then "Alle Tests sind grün. Richtig stark: Deine Lösung ist sauber und effizient."
+        else "Sehr gut. Alle Tests sind grün."
+      val prints = if hasSuspiciousPrints then " Entferne noch deine Debug-Prints, damit die Ausgabe sauber bleibt." else ""
       val perf =
         if mentionPerf then " Falls du das später auf größere Eingaben erweiterst: prüfe, ob du unnötig verschachtelte Schleifen hast." else ""
       (base + prints + perf).trim
@@ -158,7 +161,7 @@ object BlockFeedbackFeedbackBuilder:
       val base =
         if polished then "All tests are green. Great job: your solution looks clean and efficient."
         else "Very good. All tests are green."
-      val prints = if printCount > 0 then " Remove debug prints to keep the output clean." else ""
+      val prints = if hasSuspiciousPrints then " Remove debug prints to keep the output clean." else ""
       val perf =
         if mentionPerf then " If you later scale this to larger inputs, check for unnecessary nested loops." else ""
       (base + prints + perf).trim

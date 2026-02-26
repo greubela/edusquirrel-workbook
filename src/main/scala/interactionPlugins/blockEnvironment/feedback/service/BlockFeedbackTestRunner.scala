@@ -214,18 +214,10 @@ object BlockFeedbackTestRunner:
       humanLanguage: contentmanagement.model.language.HumanLanguage
   ): String =
     val code = Option(test.code).getOrElse("").trim
-    val hintOpt = test.hint.map(_.trim).filter(_.nonEmpty)
-
     val isGerman = humanLanguage == contentmanagement.model.language.AppLanguage.German
 
-    def looksGerman(text: String): Boolean =
-      val lower = text.toLowerCase
-      lower.contains("achte") ||
-      lower.contains("teste") ||
-      lower.contains("prüf") ||
-      lower.contains("du ") ||
-      lower.contains("deine") ||
-      lower.contains("zurück")
+    val hintOpt = (if isGerman then test.hintDE.orElse(test.hint) else test.hint)
+      .map(_.trim).filter(_.nonEmpty)
 
     val AssertEq = "(?i)^assert\\s+(.+?)\\s*==\\s*(.+)$".r
     val AssertIn = "(?i)^assert\\s+(.+?)\\s+in\\s+(.+)$".r
@@ -247,7 +239,7 @@ object BlockFeedbackTestRunner:
           else "Checks the expected result for this case."
 
     hintOpt match
-      case Some(h) if isGerman || !looksGerman(h) =>
+      case Some(h) =>
         if h == base then base
         else if isGerman then s"$base Hinweis: $h"
         else s"$base Hint: $h"
