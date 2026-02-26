@@ -213,14 +213,13 @@ $originalPrompt
     requiredTestNames: Seq[String]
   ): String = {
     val tn = requiredTestNames.find(_.nonEmpty).getOrElse("the failing case")
-    val intro = "Try this:"
     val steps =
       Seq(
         s"1. Re-run $tn and note expected vs observed behavior.",
         "2. Trace your variables step-by-step until the first divergence.",
         "3. Adjust only the condition/update causing that divergence and re-test."
       ).take(math.max(constraints.minSteps, math.min(constraints.maxSteps, 3)))
-    (intro + "\n" + steps.mkString("\n")).trim
+    steps.mkString("\n").trim
   }
 
   private def shortenPreservingSteps(text: String, constraints: PromptTemplates.OutputConstraints): String = {
@@ -263,20 +262,33 @@ $originalPrompt
 
     def defaultIntro(steps: Seq[String]): String =
       if looksGerman(rawLines) then "So kannst du es eingrenzen:"
-      else "Try this:"
+      else ""
 
     // Keep steps; remove pure meta lines from non-step content.
     val stepLines0 = rawLines.filter(isStepLine).take(constraints.maxSteps)
     if stepLines0.isEmpty then text
     else {
       val introCandidates = rawLines.filterNot(isStepLine).filterNot(isMetaLine)
-      val intro0 = introCandidates.headOption.getOrElse(defaultIntro(stepLines0))
+      val intro0raw = introCandidates.headOption.getOrElse(defaultIntro(stepLines0))
+      // Strip trailing "Hier sind die Schritte / Follow these steps" suffix that LLMs
+      // append to an otherwise useful intro sentence – the numbered steps follow, so
+      // the preamble is redundant and would look odd after the normalization.
+      val intro0 = intro0raw
+        .replaceFirst("(?i)[:\\s]*hier sind (die|einige) schritte[^.]*$", "")
+        .replaceFirst("(?i)[:\\s]*folge diesen schritten[^.]*$", "")
+        .replaceFirst("(?i)[:\\s]*befolge diese schritte[^.]*$", "")
+        .replaceFirst("(?i)[:\\s]*follow these steps[^.]*$", "")
+        .replaceFirst("(?i)[:\\s]*here are (a few|some|the) steps[^.]*$", "")
+        .trim
+        .stripSuffix(":")
+        .stripSuffix(".")
+        .trim
 
       // Keep the intro short so truncation does not delete the actual steps.
       val introBudget = math.max(6, math.min(12, constraints.maxWords / 3))
       val intro = truncateToMaxWords(intro0.replace("\n", " ").trim, introBudget)
       val stepLines = stepLines0.zipWithIndex.map { case (l, idx) => normalizeStepLine(l, idx + 1) }
-      (Seq(intro) ++ stepLines).mkString("\n")
+      (if intro.nonEmpty then Seq(intro) ++ stepLines else stepLines).mkString("\n")
     }
     }
   }
@@ -362,12 +374,16 @@ $originalPrompt
       // Rewrite "Der Test erwartet …" → describe function behavior directly.
       // Tests are an implementation detail; feedback must read as human observation.
       val withoutTestPhrases = withoutDashes
-        // German – capital (sentence start)
+        // German – capital (sentence start); "dass du" is student-directed → "Du sollst"
+        .replaceAll("\\bDer [Tt]ests? erwartet,? dass du ", "Du sollst ")
+        .replaceAll("\\bDie [Tt]ests? erwarten,? dass du ", "Du sollst ")
         .replaceAll("\\bDer [Tt]ests? erwartet,? dass ", "Deine Funktion soll ")
         .replaceAll("\\bDie [Tt]ests? erwarten,? dass ", "Deine Funktion soll ")
         .replaceAll("\\bDer [Tt]ests? erwartet,? ", "Deine Funktion soll ")
         .replaceAll("\\bDie [Tt]ests? erwarten,? ", "Deine Funktion soll ")
         // German – lowercase (mid sentence)
+        .replaceAll("\\bder [Tt]ests? erwartet,? dass du ", "du sollst ")
+        .replaceAll("\\bdie [Tt]ests? erwarten,? dass du ", "du sollst ")
         .replaceAll("\\bder [Tt]ests? erwartet,? dass ", "die Funktion soll ")
         .replaceAll("\\bdie [Tt]ests? erwarten,? dass ", "die Funktion soll ")
         .replaceAll("\\bder [Tt]ests? erwartet,? ", "die Funktion soll ")
@@ -441,9 +457,9 @@ $originalPrompt
                 t.contains("if you need more help") ||
                 t.contains("happy to help") ||
                 t.contains("you've got this") ||
-                t.contains("follow these steps") ||
-                t.contains("here are a few steps") ||
-                t.contains("here are some steps") ||
+                t.startsWith("follow these steps") ||
+                t.startsWith("here are a few steps") ||
+                t.startsWith("here are some steps") ||
                 t.contains("dont worry") ||
                 t.contains("don't worry") ||
                 // --- German ---
@@ -460,10 +476,10 @@ $originalPrompt
                 t.contains("bei weiteren fragen") ||
                 t.contains("gerne helfe ich") ||
                 t.contains("ich helfe gerne") ||
-                t.contains("folge diesen schritten") ||
-                t.contains("befolge diese schritte") ||
-                t.contains("hier sind einige schritte") ||
-                t.contains("hier sind die schritte") ||
+                t.startsWith("folge diesen schritten") ||
+                t.startsWith("befolge diese schritte") ||
+                t.startsWith("hier sind einige schritte") ||
+                t.startsWith("hier sind die schritte") ||
                 // --- Edge cases (EN + DE) ---
                 (t.contains("test") && t.contains("edge case")) ||
                 (t.contains("try") && t.contains("edge case")) ||

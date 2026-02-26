@@ -212,7 +212,8 @@ object PromptTemplates {
     humanLanguage: HumanLanguage,
     visibleTestNames: Seq[String],
     exerciseText: String,
-    rawPython: String
+    rawPython: String,
+    isScriptExercise: Boolean = false
   ): Prompt = {
     val failedTests =
       signals.runtimeOutcome.tests
@@ -319,10 +320,43 @@ object PromptTemplates {
       if diagnosis.recommendedNextChecks.isEmpty then "<none>"
       else diagnosis.recommendedNextChecks.take(6).map(s => s"- $s").mkString("\n")
 
+    val studentUsesFunction = rawPython.linesIterator.exists(l => l.trim.startsWith("def "))
+    val isScript = isScriptExercise && !studentUsesFunction
+    val scriptNoteDE =
+      if isScript then
+        "\nWICHTIG: Der eingereichte Code enthält keine Funktion (kein def) — es ist ein Skript. " +
+        "Verwende NIEMALS das Wort \u201eFunktion\u201c oder \u201edeine Funktion\u201c. " +
+        "Sprich stattdessen vom \u201eCode\u201c oder \u201eSkript\u201c.\n"
+      else ""
+    val scriptNoteEN =
+      if isScript then
+        "\nIMPORTANT: The submitted code contains no function definition (no def) — it is a script. " +
+        "NEVER use the word 'function' or 'your function'. " +
+        "Refer to 'the code' or 'the script' instead.\n"
+      else ""
+    val perspectiveExampleDE =
+      if isScript then "\u201eDein Code liefert aktuell X, soll aber Y ergeben.\u201c"
+      else "\u201eDeine Funktion gibt aktuell X zur\u00fcck, soll aber Y zur\u00fcckgeben.\u201c"
+    val perspectiveExampleEN =
+      if isScript then "\"Your code currently produces X but should produce Y.\""
+      else "\"Your function currently returns X but should return Y.\""
+    val noTestStepDE =
+      if isScript then "kein \u201eTestedeinen Code mit ...\u201c, \u201e\u00dcberpr\u00fcfe, ob dein Code ... liefert\u201c"
+      else "kein \u201eTeste deine Funktion mit ...\u201c, \u201e\u00dcberpr\u00fcfe, ob deine Funktion ... zur\u00fcckgibt\u201c"
+    val noTestStepEN =
+      if isScript then "no \"Test your code with ...\", \"Verify that your code produces ...\""
+      else "no \"Test your function with ...\", \"Verify that your function returns ...\""
+    val functionHintDE =
+      if isScript then "Hinweis zum Code:\n- Skript-Aufgabe (kein Funktionsname)"
+      else s"Hinweis zur Funktion:\n- functionName: ${functionNameHint.getOrElse("<unknown>")}"
+    val functionHintEN =
+      if isScript then "Code hint:\n- Script exercise (no function name)"
+      else s"Function hint:\n- functionName: ${functionNameHint.getOrElse("<unknown>")}"
+
     val instruction =
       val focus = IssueModule.forIssue(decision.primaryIssue).focusLines(humanLanguage, signals).mkString("\n")
       if isGerman(humanLanguage) then
-        s"""Du bist ein Tutor. Gib eine kurze, konkrete Hilfestellung.
+        s"""Du bist ein Tutor. Gib eine kurze, konkrete Hilfestellung.$scriptNoteDE
            |
            |Ton & Stil:
            |- Schreibe wie eine echte Chat-Antwort (direkt, ruhig, hilfreich).
@@ -334,20 +368,19 @@ object PromptTemplates {
            |Zwingende Regeln:
            |- Maximal ${constraints.maxWords} Wörter.
           |- Nenne keine Testnamen. Beschreibe stattdessen in Alltagssprache den fehlschlagenden Fall.
-          |- Verwende NIEMALS Formulierungen wie „Der Test erwartet …", „die Tests erwarten …" oder ähnliche testzentrierte Sprache. Formuliere stattdessen direkt aus Sicht der Funktion: was sie aktuell tut und was sie stattdessen tun soll (z.B. „Deine Funktion gibt aktuell X zurück, soll aber Y zurückgeben.").
+          |- Verwende NIEMALS Formulierungen wie „Der Test erwartet …", „die Tests erwarten …" oder ähnliche testzentrierte Sprache. Formuliere stattdessen direkt aus Sicht des Verhaltens: was der Code aktuell tut und was er stattdessen tun soll (z.B. $perspectiveExampleDE).
           |- Erwähne AUSSCHLIESSLICH Probleme, die im bereitgestellten Code-Ausschnitt direkt sichtbar ODER durch die Fehlermeldung/Testergebnisse eindeutig belegt sind. Nenne KEINE allgemeinen Hygiene-Hinweise zu Einrückung, Klammern, Anführungszeichen oder Syntaxdetails, wenn der konkrete Fehler das nicht zeigt.
            |- Gib 2–4 konkrete Schritte (als nummerierte Liste).
            |- Keine Lösung ausformulieren, kein vollständiger Code, keine Codeblöcke.
           |- Schritte müssen zum konkreten Verhalten passen (keine generischen Tipps).
            |- Weise den Studierenden NICHT an, den Code auszuführen oder zu starten, um den Fehler zu finden – das System führt alle Tests bereits aus.
-           |- Füge KEINEN Schritt hinzu, der den Studierenden auffordert, die Funktion zu testen, zu überprüfen oder zu bestätigen (z.B. kein „Teste deine Funktion mit ...", „Überprüfe, ob deine Funktion ... zurückgibt", „Stelle sicher, dass die Funktion korrekt funktioniert"). Das System testet vollautomatisch – solche Schritte sind inhaltsleer.
+           |- Füge KEINEN Schritt hinzu, der den Studierenden auffordert, den Code zu testen, zu überprüfen oder zu bestätigen (z.B. $noTestStepDE, „Stelle sicher, dass der Code korrekt funktioniert"). Das System testet vollautomatisch – solche Schritte sind inhaltsleer.
            |- Wenn die Kernlogik fehlt (z.B. Identity-Return), sprich NUR über die fehlende Grundimplementierung. Keine Randfälle, keine Fehlerbehandlung.
            |- Nenne KEINE konkreten Operatoren, Methodenaufrufe oder Ausdrücke, die der Kern der Lösung sind (z.B. keinen Modulo-Operator nennen).
            |- Du musst NICHT immer expected/actual zitieren. Wenn es hilft, formuliere es natürlich: „Der Test erwartet X, aber dein Code liefert Y.“
           |- Du darfst genau ein sehr kurzes Code-Fragment zitieren (max. 1 Zeile), um die Ursache zu benennen. Keine korrigierte Version zeigen.
            |
-           |Hinweis zur Funktion:
-           |- functionName: ${functionNameHint.getOrElse("<unknown>")}
+           |$functionHintDE
            |
            |Issue-Fokus:
            |$focus
@@ -375,7 +408,7 @@ object PromptTemplates {
            |$contextHints
            |""".stripMargin
       else
-          s"""You are a tutor. Provide a short, concrete hint.
+          s"""You are a tutor. Provide a short, concrete hint.$scriptNoteEN
            |
            |Tone & style:
            |- Write like a real chat reply (direct, calm, helpful).
@@ -387,20 +420,19 @@ object PromptTemplates {
            |Hard rules:
            |- At most ${constraints.maxWords} words.
             |- Do not mention test names. Describe the failing case in plain language.
-            |- NEVER write "the test expects", "the tests expect", or any test-centric phrasing. Describe directly from the function's perspective: what it currently does and what it should do instead (e.g., "Your function currently returns X but should return Y.").
+            |- NEVER write "the test expects", "the tests expect", or any test-centric phrasing. Describe directly from the behavior's perspective: what the code currently does and what it should do instead (e.g., $perspectiveExampleEN).
             |- ONLY mention issues that are directly visible in the code snippet OR directly evidenced by the runtime error / failing cases. Do NOT list generic hygiene tips (indentation consistency, bracket matching, parentheses, quote matching) unless the error message or code explicitly shows that specific issue.
            |- Provide 2–4 concrete steps (numbered list).
            |- Do not provide the full solution, no full code, no code blocks.
             |- Steps must match the observed behavior (avoid generic advice).
            |- Do NOT tell the student to "run the code", "execute it", or "see where the error is by running" — the system already runs all tests.
-           |- Do NOT add a step that tells the student to test, verify, or confirm their function (e.g., no "Test your function with ...", "Verify that your function returns ...", "Make sure to test boundary cases", "Try different inputs", "Confirm it behaves as expected"). The system tests automatically — such steps are empty filler.
+           |- Do NOT add a step that tells the student to test, verify, or confirm their code (e.g., $noTestStepEN, "Make sure the code behaves as expected"). The system tests automatically — such steps are empty filler.
            |- If the core logic is absent (e.g., identity return), address ONLY the missing transformation. No edge cases, no error handling.
            |- Do NOT name specific operators, method calls, or expressions that are the heart of the solution (e.g., do not say "use %" or "use len()").
            |- You do NOT have to quote expected/actual. If helpful, phrase it naturally: “The test expects X, but your code produces Y.”
             |- You may quote exactly one short code fragment (max 1 line) to point to the cause. Do not show a corrected version.
            |
-           |Function hint:
-           |- functionName: ${functionNameHint.getOrElse("<unknown>")}
+           |$functionHintEN
            |
            |Issue focus:
            |$focus
@@ -438,13 +470,60 @@ object PromptTemplates {
   def deterministicDraft(
     signals: BlockFeedbackSignals,
     decision: DecisionLayer.Decision,
-    humanLanguage: HumanLanguage
+    humanLanguage: HumanLanguage,
+    isScriptExercise: Boolean = false,
+    configuredTestNames: Seq[String] = Seq.empty
   ): String = {
     val failing = signals.runtimeOutcome.tests.filterNot(_.passed)
     val firstTestName = failing.headOption.map(_.name).getOrElse(if isGerman(humanLanguage) then "deine Abgabe" else "your submission")
     val functionNameHint = extractFunctionNameHint(signals, failing.map(_.name).distinct.take(5))
+    val hasDef = signals.rawPython.linesIterator.exists(l => l.trim.startsWith("def "))
+    val isScript = isScriptExercise && !hasDef
+    val noFunctionYet = !isScriptExercise && !hasDef
+    val meaningfulLineCount = signals.rawPython.linesIterator.count(l => l.trim.nonEmpty && !l.trim.startsWith("#"))
+    val trivialScriptSubmission = isScriptExercise && meaningfulLineCount < 2
 
-    if isGerman(humanLanguage) then
+    if trivialScriptSubmission then
+      if isGerman(humanLanguage) then
+        s"""Deine Abgabe ist noch zu kurz, um die Aufgabe zu lösen.
+           |1. Lies die Aufgabenstellung noch einmal durch.
+           |2. Beginne mit der eigentlichen Logik, z.B. einer Variablenzuweisung oder einer Schleife.
+           |3. Baue das Skript schrittweise auf und prüfe zwischendurch, ob es das Richtige tut.
+           |""".stripMargin
+      else
+        s"""Your submission is too short to solve the task yet.
+           |1. Re-read the exercise statement.
+           |2. Start with the actual logic, e.g. a variable assignment or a loop.
+           |3. Build the script step by step and check that it does the right thing.
+           |""".stripMargin
+    else if noFunctionYet then
+      val nameErrorRe = """NameError: name '([a-zA-Z_]\w*)' is not defined""".r
+      val allTests = signals.runtimeOutcome.tests
+      val candidateNames = allTests.map(_.name) ++ configuredTestNames
+      val fnFromTestName = candidateNames.headOption
+        .map(_.takeWhile(c => c != '_' && c != '-'))
+        .filter(n => n.length >= 2 && n.forall(c => c.isLetterOrDigit || c == '_'))
+      val fnFromError = failing
+        .flatMap(t => t.actual.split("\n").toSeq)
+        .flatMap(line => nameErrorRe.findFirstMatchIn(line).map(_.group(1)))
+        .find(n => fnFromTestName.forall(prefix => n.startsWith(prefix) || prefix.startsWith(n.take(3))))
+      val fnName = functionNameHint
+        .orElse(fnFromTestName)
+        .orElse(fnFromError)
+        .getOrElse(if isGerman(humanLanguage) then "deine_funktion" else "your_function")
+      if isGerman(humanLanguage) then
+        s"""Deine Abgabe enthält noch keine Funktion.
+           |1. Definiere die Funktion mit def $fnName(...): am Anfang.
+           |2. Schreibe die Logik eingerückt in den Funktionskörper.
+           |3. Gib das Ergebnis mit return am Ende der Funktion zurück.
+           |""".stripMargin
+      else
+        s"""Your submission doesn't define any function yet.
+           |1. Start with def $fnName(...): at the top.
+           |2. Write your logic indented inside the function body.
+           |3. Return the result with return at the end of the function.
+           |""".stripMargin
+    else if isGerman(humanLanguage) then
       decision.primaryIssue match {
         case DecisionLayer.IssueType.FORMAT_OUTPUT =>
           s"""Okay, das wirkt wie ein Ausgabe/Format-Thema bei "$firstTestName".
@@ -453,15 +532,18 @@ object PromptTemplates {
              |3. Prüfe, dass du wirklich nur das ausgibst, was der Test erwartet.
              |""".stripMargin
         case DecisionLayer.IssueType.IO_CONTRACT =>
+          val pureHintDE = if isScript then "Tests erwarten oft reinen Code ohne input()-Aufruf." else "Tests erwarten oft eine pure Funktion ohne Eingabe."
+          val returnHintDE = if isScript then "Wenn du etwas ausgibst: stelle sicher, dass der Code stattdessen den Wert liefert (oder dass die Ausgabe exakt passt)." else "Wenn du etwas ausgibst: stelle sicher, dass die Funktion stattdessen den Wert zurückgibt (oder dass die Ausgabe exakt passt)."
           s"""Der Test "$firstTestName" sieht nach einem I/O-Vertragsthema aus.
-             |1. Prüfe, ob du irgendwo input() verwendest (inputCallCount=${signals.inputCallCount}) — Tests erwarten oft eine pure Funktion ohne Eingabe.
-             |2. Wenn du etwas ausgibst: stelle sicher, dass die Funktion stattdessen den Wert zurückgibt (oder dass die Ausgabe exakt passt).
+             |1. Prüfe, ob du irgendwo input() verwendest (inputCallCount=${signals.inputCallCount}) — $pureHintDE
+             |2. $returnHintDE
              |3. Vergleiche expected vs actual und entferne alles, was nicht gefordert ist.
              |""".stripMargin
         case DecisionLayer.IssueType.INCOMPLETE_IMPLEMENTATION =>
+          val returnsHintDE = if isScript then "Stelle sicher, dass dein Code für alle Fälle wirklich ein Ergebnis liefert." else "Stelle sicher, dass deine Funktion für alle Fälle wirklich ein Ergebnis zurückgibt."
           s"""Bei "$firstTestName" wirkt es so, als ob die Implementierung noch nicht vollständig ist.
              |1. Suche nach pass/TODO-Platzhaltern und ersetze sie durch echte Logik.
-             |2. Stelle sicher, dass deine Funktion für alle Fälle wirklich ein Ergebnis zurückgibt.
+             |2. $returnsHintDE
              |3. Teste mit einem kleinen Beispiel und vergleiche dann mit expected.
              |""".stripMargin
         case DecisionLayer.IssueType.BOUNDARY_CONDITION =>
@@ -498,15 +580,18 @@ object PromptTemplates {
              |3. Make sure you don't print anything beyond what the test expects.
              |""".stripMargin
         case DecisionLayer.IssueType.IO_CONTRACT =>
+          val pureHintEN = if isScript then "many tests expect no input() calls — keep the code self-contained." else "many tests expect a pure function without reading input."
+          val returnHintEN = if isScript then "If you print anything, confirm the task expects printing; otherwise make the code produce the value directly." else "If you print anything, confirm the task expects printing; otherwise return the value."
           s"""The test "$firstTestName" looks like an I/O contract issue.
-             |1. Check whether you call input() (inputCallCount=${signals.inputCallCount}) — many tests expect a pure function without reading input.
-             |2. If you print anything, confirm the task expects printing; otherwise return the value.
+             |1. Check whether you call input() (inputCallCount=${signals.inputCallCount}) — $pureHintEN
+             |2. $returnHintEN
              |3. Compare expected vs actual and remove anything not required.
              |""".stripMargin
         case DecisionLayer.IssueType.INCOMPLETE_IMPLEMENTATION =>
+          val returnsHintEN = if isScript then "Make sure the code produces a value in all cases." else "Make sure the function returns a value in all cases."
           s"""For "$firstTestName" it looks like the implementation is incomplete.
              |1. Look for pass/TODO placeholders and replace them with real logic.
-             |2. Make sure the function returns a value in all cases.
+             |2. $returnsHintEN
              |3. Try one tiny example and compare it to the expected behavior.
              |""".stripMargin
         case DecisionLayer.IssueType.BOUNDARY_CONDITION =>
