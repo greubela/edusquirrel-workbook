@@ -2,10 +2,10 @@
   var cacheBust = "v=" + Date.now();
   var origin = window.location.origin || "";
   var paths = [
-    origin + "/target/scala-3.3.3/scalajs-bundler/main/workbookapp-fastopt-bundle.js",
-    "../target/scala-3.3.3/scalajs-bundler/main/workbookapp-fastopt-bundle.js",
-    "/target/scala-3.3.3/scalajs-bundler/main/workbookapp-fastopt-bundle.js",
-    "./../target/scala-3.3.3/scalajs-bundler/main/workbookapp-fastopt-bundle.js"
+    origin + "/target/scala-3.3.3/workbookapp-fastopt/main.js",
+    "../target/scala-3.3.3/workbookapp-fastopt/main.js",
+    "/target/scala-3.3.3/workbookapp-fastopt/main.js",
+    "./../target/scala-3.3.3/workbookapp-fastopt/main.js"
   ];
 
   function loadAt(index) {
