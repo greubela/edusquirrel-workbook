@@ -52,6 +52,7 @@ object DiagnosisEngine:
 
   private def categoryFor(issue: DecisionLayer.IssueType): DiagnosisCategory =
     issue match
+      case DecisionLayer.IssueType.CORRECT       => DiagnosisCategory.Logic
       case DecisionLayer.IssueType.COMPILE_ERROR => DiagnosisCategory.Syntax
       case DecisionLayer.IssueType.EXCEPTION_TYPE => DiagnosisCategory.Runtime
       case DecisionLayer.IssueType.API_SIGNATURE => DiagnosisCategory.Spec

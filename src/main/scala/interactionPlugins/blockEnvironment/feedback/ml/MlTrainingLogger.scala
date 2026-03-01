@@ -55,6 +55,11 @@ object MlTrainingLogger:
 
   /**
    * If `logUrl` is provided, POSTs to it. Otherwise prints a JSON line to console.
+   *
+   * `weakLabelOverride`  when set, replaces the label derived from `weakDecision`.
+   * Use this when the caller has ground-truth knowledge that overrides the heuristic
+   * (e.g. a confirmed-correct solution that should be labelled "CORRECT", not
+   * whatever the heuristic falls back to).
    */
   def logIfEnabled(
     enabled: Boolean,
@@ -62,16 +67,20 @@ object MlTrainingLogger:
     request: BlockFeedbackRequest,
     weakDecision: DecisionLayer.Decision,
     features: Map[String, Double],
-    meta: Map[String, String] = Map.empty
+    meta: Map[String, String] = Map.empty,
+    weakLabelOverride: Option[String] = None
   ): Unit =
     if !enabled then return
+
+    val effectiveLabel      = weakLabelOverride.getOrElse(weakDecision.primaryIssue.toString)
+    val effectiveConfidence = if weakLabelOverride.isDefined then 1.0 else weakDecision.confidence
 
     val ex = Example(
       timestampEpochMillis = nowMillis(),
       exerciseId = request.meta.exerciseId,
       submissionNr = request.submissionNr,
-      weakLabel = weakDecision.primaryIssue.toString,
-      weakConfidence = weakDecision.confidence,
+      weakLabel = effectiveLabel,
+      weakConfidence = effectiveConfidence,
       features = features,
       meta = meta
     )
