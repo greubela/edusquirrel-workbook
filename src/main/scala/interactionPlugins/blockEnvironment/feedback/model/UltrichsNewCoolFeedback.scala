@@ -58,8 +58,10 @@ final case class FeedbackDebug(
   llmRewriteCount: Int = 0,
   /** QualityGate reason codes from the final LLM attempt (empty when gate passed). */
   llmLastGateReasons: Seq[String] = Seq.empty,
-  /** Detected function-name renames, e.g. Seq("rotate→rotate_list"). Empty = no mismatch. */
-  functionNameMismatch: Seq[String] = Seq.empty
+  /** Detected function-name renames */
+  functionNameMismatch: Seq[String] = Seq.empty,
+  /** Raw runtime error text before LLM rephrasing (empty when no runtime error). */
+  rawRuntimeError: Option[String] = None
 )
 
 object UltrichsNewCoolFeedback {
