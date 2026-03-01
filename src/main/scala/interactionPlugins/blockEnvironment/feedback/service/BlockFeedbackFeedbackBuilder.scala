@@ -10,6 +10,33 @@ import workbook.model.feedback.FeedbackStatus
  */
 object BlockFeedbackFeedbackBuilder:
 
+  private def sanitizeStudentMessage(text: String): String =
+    val normalized =
+      Option(text)
+      .getOrElse("")
+      .replace("–", " ")
+      .replace("—", " ")
+      .replace("--", " ")
+      .replace("-", " ")
+    val numbered =
+      normalized
+        .split("\n", -1)
+        .toSeq
+        .foldLeft((Vector.empty[String], 1)) { case ((acc, idx), line) =>
+          val t = line.trim
+          if t.startsWith("• ") || t.startsWith("- ") || t.startsWith("* ") then
+            (acc :+ s"$idx. ${t.drop(2).trim}", idx + 1)
+          else
+            (acc :+ t, idx)
+        }
+        ._1
+        .mkString("\n")
+
+    numbered
+      .replaceAll("\\s{2,}", " ")
+      .replaceAll("\\n\\s+", "\n")
+      .trim
+
   private def looksSmallBounded(exerciseText: String): Boolean =
     val text = Option(exerciseText).getOrElse("").trim
     if text.isEmpty then false
@@ -50,7 +77,44 @@ object BlockFeedbackFeedbackBuilder:
       t == "pass" || t == "..." || t == "???"
     )
 
-  private def looksInefficient(rawPython: String): Boolean =
+  private def findUnusedImports(rawPython: String, humanLanguage: HumanLanguage): Seq[String] =
+    val lines = Option(rawPython).getOrElse("").replace("\r\n", "\n").split("\n", -1).toSeq
+    val isGerman = humanLanguage == AppLanguage.German
+    val importLines = lines.zipWithIndex.filter { case (line, _) =>
+      val t = line.trim
+      (t.startsWith("import ") || t.startsWith("from ")) && !t.startsWith("#")
+    }
+    importLines.flatMap { case (line, lineNum) =>
+      val trimmed = line.trim
+      val moduleName =
+        if trimmed.startsWith("import ") then trimmed.drop(7).takeWhile(c => c.isLetterOrDigit || c == '_' || c == '.').split("\\.").head
+        else if trimmed.startsWith("from ") then trimmed.drop(5).takeWhile(c => c.isLetterOrDigit || c == '_' || c == '.').split("\\.").head
+        else ""
+      if moduleName.nonEmpty && !rawPython.contains(s"$moduleName.") then
+        if isGerman then
+          Seq(s"Nicht verwendeter Import in Zeile ${lineNum + 1}: '$moduleName'")
+        else
+          Seq(s"Unused import on line ${lineNum + 1}: '$moduleName'")
+      else Seq.empty
+    }
+
+  private def findUnusedVariables(rawPython: String, humanLanguage: HumanLanguage): Seq[String] =
+    val lines = Option(rawPython).getOrElse("").replace("\r\n", "\n").split("\n", -1)
+    val isGerman = humanLanguage == AppLanguage.German
+    lines.zipWithIndex.flatMap { case (line, idx) =>
+      val trimmed = line.trim
+      if trimmed.matches("^_[a-zA-Z0-9_]+ *=.*") then
+        if isGerman then
+          Seq(s"Nicht verwendete Variable in Zeile ${idx + 1} (beginnt mit _)")
+        else
+          Seq(s"Unused variable on line ${idx + 1} (starts with _)")
+      else Seq.empty
+    }
+
+  private def detectDeadCodeIssues(rawPython: String, humanLanguage: HumanLanguage): Seq[String] =
+    findUnusedImports(rawPython, humanLanguage) ++ findUnusedVariables(rawPython, humanLanguage)
+
+  private def countNestedLoops(rawPython: String): Int =
     val lines =
       Option(rawPython)
         .getOrElse("")
@@ -65,8 +129,61 @@ object BlockFeedbackFeedbackBuilder:
         if trimmed.startsWith("for ") || trimmed.startsWith("while ") then Some(indent) else None
       }
 
-    // Conservative: only flag when we see nested loops by indentation.
-    loopIndents.size >= 2 && loopIndents.max > loopIndents.min
+    if loopIndents.size >= 2 then loopIndents.size - 1 else 0
+
+  private def hasListComprehension(rawPython: String): Boolean =
+    val text = Option(rawPython).getOrElse("")
+    text.contains("[") && text.contains("for") && text.contains("in") &&
+    text.linesIterator.exists(line =>
+      line.trim.matches(".*\\[.*for .* in .*\\].*")
+    )
+
+  private def analyzePerfOptimizations(rawPython: String, humanLanguage: HumanLanguage): Seq[String] =
+    val nestedLoops = countNestedLoops(rawPython)
+    val hasComprehension = hasListComprehension(rawPython)
+    val isGerman = humanLanguage == AppLanguage.German
+
+    val suggestions = scala.collection.mutable.ListBuffer[String]()
+    if nestedLoops > 0 && !hasComprehension then
+      val lines = Option(rawPython).getOrElse("").replace("\r\n", "\n").split("\n", -1).toIndexedSeq
+      val loopLines = lines.zipWithIndex.flatMap { case (line, i) =>
+        val indent = line.takeWhile(_ == ' ').length
+        val t = line.dropWhile(_ == ' ')
+        if t.startsWith("for ") || t.startsWith("while ") then Some((i, indent)) else None
+      }
+      val appendInsideInnerLoop = if loopLines.size >= 2 then
+        val (innerIdx, innerIndent) = loopLines(1)
+        lines.drop(innerIdx + 1).takeWhile { l =>
+          l.trim.isEmpty || l.takeWhile(_ == ' ').length > innerIndent
+        }.exists(_.contains(".append("))
+      else false
+
+      if appendInsideInnerLoop then
+        if isGerman then
+          suggestions += "Du könntest verschachtelte Schleifen mit List Comprehensions vereinfachen"
+        else
+          suggestions += "You could simplify nested loops with list comprehensions"
+
+    suggestions.toSeq
+
+  private def analyzeCodeStyle(rawPython: String, humanLanguage: HumanLanguage): Seq[String] =
+    val printCount = countPrintStatements(rawPython)
+    val isGerman = humanLanguage == AppLanguage.German
+
+    val suggestions = scala.collection.mutable.ListBuffer[String]()
+
+    if printCount > 5 then
+      if isGerman then
+        suggestions += "Du hast viele Debug Print Anweisungen. Überlege, welche wirklich nötig sind"
+      else
+        suggestions += "You have many debug print statements. Consider which ones are really necessary"
+    else if printCount > 2 then
+      if isGerman then
+        suggestions += "Du hast noch Debug Print Anweisungen, die du vor dem Einreichen entfernen könntest"
+      else
+        suggestions += "You still have debug print statements that you could remove before submitting"
+
+    suggestions.toSeq
 
   def buildFeedback(
     request: BlockFeedbackRequest,
@@ -94,20 +211,27 @@ object BlockFeedbackFeedbackBuilder:
         outcome.runStatus,
         request.config.enableUnitTests
       )
-    val summary = buildSummary(outcome.tests, normalizedScore, request.humanLanguage)
+    val summary = sanitizeStudentMessage(buildSummary(outcome.tests, normalizedScore, request.humanLanguage))
 
     val allTestsPassed = request.config.enableUnitTests && outcome.tests.nonEmpty && outcome.tests.forall(_.passed)
-    val hints =
+    val hintsRaw =
       if hints0.nonEmpty then hints0
       else if allTestsPassed then
-        val exerciseTextForLangRaw = request.exerciseText.getInLanguage(request.humanLanguage)
-        val exerciseTextForLang = if exerciseTextForLangRaw.startsWith("[no ") then "" else exerciseTextForLangRaw
-        val printCount = countPrintStatements(rawPython)
-        val inefficient = looksInefficient(rawPython)
-        val isScriptExercise = request.config.isScriptExercise
-        val polished = (isScriptExercise || printCount == 0) && !inefficient && !containsObviousPlaceholders(rawPython)
-        Seq(successTutorMessage(request.humanLanguage, exerciseTextForLang, printCount, inefficient, polished, isScriptExercise))
+        val deadCodeIssues = detectDeadCodeIssues(rawPython, request.humanLanguage)
+        val perfSuggestions = analyzePerfOptimizations(rawPython, request.humanLanguage)
+        val styleSuggestions = analyzeCodeStyle(rawPython, request.humanLanguage)
+
+        Seq(buildIntelligentPassFeedback(
+          humanLanguage = request.humanLanguage,
+          rawPython = rawPython,
+          isScriptExercise = request.config.isScriptExercise,
+          deadCodeIssues = deadCodeIssues,
+          perfSuggestions = perfSuggestions,
+          styleSuggestions = styleSuggestions
+        ))
       else hints0
+
+    val hints = hintsRaw.map(sanitizeStudentMessage).filter(_.nonEmpty)
 
     val displayHints = if hints.nonEmpty then hints else Seq(summary)
     val displayTests = outcome.tests.map { test =>
@@ -138,35 +262,41 @@ object BlockFeedbackFeedbackBuilder:
       normalizedScore = normalizedScore
     )
 
-  private def successTutorMessage(
+  private def buildIntelligentPassFeedback(
     humanLanguage: HumanLanguage,
-    exerciseText: String,
-    printCount: Int,
-    inefficient: Boolean,
-    polished: Boolean,
-    isScript: Boolean
-  ): String = {
+    rawPython: String,
+    isScriptExercise: Boolean,
+    deadCodeIssues: Seq[String],
+    perfSuggestions: Seq[String],
+    styleSuggestions: Seq[String]
+  ): String =
     val isGerman = humanLanguage == AppLanguage.German
-    val mentionPerf = inefficient && !looksSmallBounded(exerciseText)
-    val hasSuspiciousPrints = !isScript && printCount > 0
-    if isGerman then {
-      val base =
-        if polished then "Alle Tests sind grün. Richtig stark: Deine Lösung ist sauber und effizient."
-        else "Sehr gut. Alle Tests sind grün."
-      val prints = if hasSuspiciousPrints then " Entferne noch deine Debug-Prints, damit die Ausgabe sauber bleibt." else ""
-      val perf =
-        if mentionPerf then " Falls du das später auf größere Eingaben erweiterst: prüfe, ob du unnötig verschachtelte Schleifen hast." else ""
-      (base + prints + perf).trim
-    } else {
-      val base =
-        if polished then "All tests are green. Great job: your solution looks clean and efficient."
-        else "Very good. All tests are green."
-      val prints = if hasSuspiciousPrints then " Remove debug prints to keep the output clean." else ""
-      val perf =
-        if mentionPerf then " If you later scale this to larger inputs, check for unnecessary nested loops." else ""
-      (base + prints + perf).trim
-    }
-  }
+    val baseline =
+      if isGerman then "Dein Code funktioniert korrekt. Alle Tests sind grün."
+      else "Your code works correctly. All tests pass."
+    val allIssues = deadCodeIssues ++ perfSuggestions ++ styleSuggestions
+    if allIssues.isEmpty then
+      if isGerman then baseline + " Saubere, gut lesbare Lösung."
+      else baseline + " Clean, well-written solution."
+    else
+      val improvements = scala.collection.mutable.ListBuffer[String]()
+      deadCodeIssues.headOption.foreach { issue =>
+        if isGerman then improvements += s"Eine kleine Aufräumaktion: $issue"
+        else improvements += s"A small cleanup: $issue"
+      }
+      styleSuggestions.headOption.foreach { suggestion =>
+        improvements += suggestion
+      }
+      perfSuggestions.headOption.foreach { suggestion =>
+        improvements += suggestion
+      }
+      val improvementText =
+        if improvements.nonEmpty then
+          val numbered = improvements.take(2).zipWithIndex.map { case (msg, idx) => s"${idx + 1}. $msg" }.mkString("\n")
+          if isGerman then "\n\nKleine Verbesserungen:\n" + numbered
+          else "\n\nSmall improvements:\n" + numbered
+        else ""
+      baseline + improvementText
 
   private def collectGeneralHints(
     rawPython: String,
@@ -218,13 +348,21 @@ object BlockFeedbackFeedbackBuilder:
     else base
 
   private def formatRuleHints(results: Seq[RuleResult]): Seq[String] =
+    def sanitizeRuleMessage(msg: String): String =
+      Option(msg)
+        .getOrElse("")
+        .replaceAll("(^|\\n)\\s*(?:PY|VM)_[A-Z0-9_]+\\s*:\\s*", "$1")
+        .replaceAll("\\b(?:PY|VM)_[A-Z0-9_]+\\s*:\\s*", "")
+        .trim
+
     results
       .filterNot(_.passed)
       .filter(r => r.severity match
         case RuleSeverity.Warning | RuleSeverity.Error => true
         case RuleSeverity.Info                         => false
       )
-      .map(r => s"${r.id}: ${r.message}")
+      .map(r => sanitizeRuleMessage(r.message))
+      .filter(_.nonEmpty)
 
   private def computeScoreAndStatus(
     rawPython: String,

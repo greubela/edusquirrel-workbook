@@ -92,6 +92,11 @@ object QualityGate {
         "Your hint MUST explicitly address the relevant I/O concept " +
         "(e.g. 'return' vs 'print', or avoiding 'input()')."
 
+      case "unsupported_structure_hint" =>
+        "Your response gives structural advice (e.g. nested loops, dict/set/hash map) " +
+        "that is not clearly evidenced in the provided student code. Remove that claim and " +
+        "focus only on code-visible facts or runtime/test evidence."
+
       case r if r.startsWith("too_few_steps(") =>
         val inner = r.stripPrefix("too_few_steps(").stripSuffix(")")
         val parts = inner.split("<")
@@ -148,15 +153,15 @@ $originalPrompt
   def enforce(
     rawText: String,
     constraints: PromptTemplates.OutputConstraints,
-    requiredTestNames: Seq[String]
+    requiredTestNames: Seq[String],
+    sourceCode: String = ""
   ): GateResult = {
     val trimmed = Option(rawText).getOrElse("").trim
     val repaired = repairBestEffort(trimmed, constraints, requiredTestNames)
-    val reasons = validate(repaired, constraints, requiredTestNames)
     val finalText =
       if repaired.nonEmpty then repaired
       else minimalSafeFallback(constraints, requiredTestNames)
-    val finalReasons = validate(finalText, constraints, requiredTestNames)
+    val finalReasons = validate(finalText, constraints, requiredTestNames, sourceCode)
     GateResult(passed = finalReasons.isEmpty, reasons = finalReasons, finalText = finalText)
   }
 
@@ -352,9 +357,13 @@ $originalPrompt
   private def normalize(text: String, constraints: PromptTemplates.OutputConstraints): String = {
     val normalizedNewlines = text.replace("\r\n", "\n")
 
+    // Remove internal rule identifiers that are not student-friendly, e.g. "PY_RANDOM_USAGE:".
+    val withoutInternalRuleKeys =
+      normalizedNewlines.replaceAll("\\b(?:PY|VM)_[A-Z0-9_]+\\s*:\\s*", "")
+
     {
       val withoutBackticks =
-        if constraints.forbidBackticks then normalizedNewlines.replace("`", "") else normalizedNewlines
+        if constraints.forbidBackticks then withoutInternalRuleKeys.replace("`", "") else withoutInternalRuleKeys
 
       val withoutMarkdownMarkers =
         if constraints.forbidMarkdown then
@@ -371,7 +380,7 @@ $originalPrompt
         .replace("\u2013", " ") // en dash –
         .replaceAll(" {2,}", " ")
 
-      // Rewrite "Der Test erwartet …" → describe function behavior directly.
+      // Rewrite "Der Test erwartet …"
       // Tests are an implementation detail; feedback must read as human observation.
       val withoutTestPhrases = withoutDashes
         // German – capital (sentence start); "dass du" is student-directed → "Du sollst"
@@ -414,7 +423,6 @@ $originalPrompt
             // the student to manually test/verify/confirm their function is always useless:
             // the system already runs all tests for them.
             val manualTestInstruction =
-              // English
               t.contains("test your function") ||
                 t.contains("test the function") ||
                 t.contains("test your code") ||
@@ -436,7 +444,6 @@ $originalPrompt
                 (t.contains("verify the expected")) ||
                 (t.contains("verify the result") && t.contains("input")) ||
                 (t.contains("check that your function") && t.contains("expected")) ||
-                // German
                 t.contains("teste deine funktion") ||
                 t.contains("teste die funktion") ||
                 t.contains("teste deinen code") ||
@@ -451,7 +458,6 @@ $originalPrompt
                 (t.contains("überprüfe das ergebnis") && t.contains("eingabe"))
 
             val chitchat =
-              // --- English ---
               t.contains("good luck") ||
                 t.contains("let me know") ||
                 t.contains("if you need more help") ||
@@ -462,7 +468,6 @@ $originalPrompt
                 t.startsWith("here are some steps") ||
                 t.contains("dont worry") ||
                 t.contains("don't worry") ||
-                // --- German ---
                 t.contains("viel erfolg") ||
                 t.contains("viel glück") ||
                 t.contains("du schaffst das") ||
@@ -480,7 +485,6 @@ $originalPrompt
                 t.startsWith("befolge diese schritte") ||
                 t.startsWith("hier sind einige schritte") ||
                 t.startsWith("hier sind die schritte") ||
-                // --- Edge cases (EN + DE) ---
                 (t.contains("test") && t.contains("edge case")) ||
                 (t.contains("try") && t.contains("edge case")) ||
                 (t.contains("check") && t.contains("edge case")) ||
@@ -489,7 +493,6 @@ $originalPrompt
                 (t.contains("schau") && t.contains("randfall")) ||
                 (t.contains("teste") && t.contains("grenzfall")) ||
                 (t.contains("prüfe") && t.contains("grenzfall")) ||
-                // --- Run-code hints (EN + DE) ---
                 t.contains("run the code to see") ||
                 t.contains("run your code to see") ||
                 t.contains("run it to see") ||
@@ -518,7 +521,8 @@ $originalPrompt
   private def validate(
     text: String,
     constraints: PromptTemplates.OutputConstraints,
-    requiredTestNames: Seq[String]
+    requiredTestNames: Seq[String],
+    sourceCode: String
   ): Seq[String] = {
     val reasons = scala.collection.mutable.ListBuffer.empty[String]
 
@@ -552,7 +556,6 @@ $originalPrompt
     if constraints.forbidChitchat then {
       val lower = text.toLowerCase
       val chitchatMarkers = Seq(
-        // English
         "good luck",
         "let me know",
         "if you need more help",
@@ -573,7 +576,6 @@ $originalPrompt
         "running the code will",
         "the test expects",
         "the tests expect",
-        // German
         "viel erfolg",
         "viel glück",
         "du schaffst das",
@@ -598,7 +600,6 @@ $originalPrompt
         "probiere den code aus um",
         "der test erwartet",
         "die tests erwarten",
-        // Manual test instructions (always useless — system tests automatically)
         "test your function",
         "test the function",
         "verify that your function",
@@ -616,6 +617,40 @@ $originalPrompt
       )
       if chitchatMarkers.exists(lower.contains) then reasons += "contains_chitchat"
     }
+
+    val textLower = text.toLowerCase
+    val sourceLower = Option(sourceCode).getOrElse("").toLowerCase
+
+    def sourceMentionsAny(markers: Seq[String]): Boolean =
+      markers.exists(m => sourceLower.contains(m))
+
+    def hasNestedLoopsInSource(code: String): Boolean = {
+      val lines = Option(code).getOrElse("").replace("\r\n", "\n").split("\n", -1).toIndexedSeq
+      val loopIndents = lines.flatMap { line =>
+        val indent = line.takeWhile(_ == ' ').length
+        val trimmed = line.dropWhile(_ == ' ')
+        if trimmed.startsWith("for ") || trimmed.startsWith("while ") then Some(indent) else None
+      }
+      loopIndents.size >= 2 && loopIndents.max > loopIndents.min
+    }
+
+    val mentionsDictSetAdvice =
+      textLower.contains("dictionary") || textLower.contains("dict") ||
+        textLower.contains("set") || textLower.contains("hashmap")
+    val sourceHasDictSet =
+      sourceMentionsAny(Seq("dict(", "set(", "{}", "{", "}", "defaultdict", "counter("))
+
+    if mentionsDictSetAdvice && !sourceHasDictSet then
+      reasons += "unsupported_structure_hint"
+
+    val mentionsNestedLoopAdvice =
+      textLower.contains("nested loop") ||
+        textLower.contains("nested loops") ||
+        textLower.contains("verschachtelte schleife") ||
+        textLower.contains("verschachtelte schleifen")
+
+    if mentionsNestedLoopAdvice && !hasNestedLoopsInSource(sourceCode) then
+      reasons += "unsupported_structure_hint"
 
     if constraints.forbidProvidingFullSolution then {
       val lines = text.replace("\r\n", "\n").split("\n", -1).toSeq
