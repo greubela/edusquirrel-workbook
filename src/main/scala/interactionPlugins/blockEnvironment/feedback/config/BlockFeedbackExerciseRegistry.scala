@@ -7,6 +7,7 @@ import contentmanagement.model.language.AppLanguage
  *
  * This keeps per-exercise feedback configuration close to the exercise id and
  * optionally includes the task statement translations.
+ * not all import are supported in pyodide
  */
 object BlockFeedbackExerciseRegistry {
 
@@ -1218,13 +1219,13 @@ object BlockFeedbackExerciseRegistry {
         visibleTests = Seq(
           BlockFeedbackPythonTest(
             name = "die_count",
-            code = """assert wortanzahl[\"die\"] == 2""",
+            code = """assert wortanzahl["die"] == 2""",
             hint = Some("\"die\" appears twice in the text."),
             hintDE = Some("\"die\" kommt zweimal im Text vor.")
           ),
           BlockFeedbackPythonTest(
             name = "katze_count",
-            code = """assert wortanzahl[\"Katze\"] == 2""",
+            code = """assert wortanzahl["Katze"] == 2""",
             hint = Some("\"Katze\" appears twice; keep the original casing."),
             hintDE = Some("\"Katze\" kommt zweimal vor; die Gro\u00df-/Kleinschreibung bleibt erhalten.")
           )
@@ -1246,14 +1247,14 @@ object BlockFeedbackExerciseRegistry {
           ),
           BlockFeedbackPythonTest(
             name = "all_words_present",
-            code = """assert all(w in wortanzahl for w in [\"die\", \"Katze\", \"sa\u00df\", \"auf\", \"der\", \"Matte\"])""",
+            code = """assert all(w in wortanzahl for w in ["die", "Katze", "sa\u00df", "auf", "der", "Matte"])""",
             weight = 2.0,
             hint = Some("All words from the text must appear as keys in wortanzahl."),
             hintDE = Some("Alle W\u00f6rter aus dem Text m\u00fcssen als Schl\u00fcssel in wortanzahl vorkommen.")
           ),
           BlockFeedbackPythonTest(
             name = "single_counts",
-            code = """assert wortanzahl[\"auf\"] == 1 and wortanzahl[\"der\"] == 1 and wortanzahl[\"Matte\"] == 1""",
+            code = """assert wortanzahl["auf"] == 1 and wortanzahl["der"] == 1 and wortanzahl["Matte"] == 1""",
             weight = 1.0,
             hint = Some("\"auf\", \"der\", and \"Matte\" each appear exactly once."),
             hintDE = Some("\"auf\", \"der\" und \"Matte\" kommen jeweils genau einmal vor.")
