@@ -38,8 +38,18 @@ object PythonFeedbackRuntime:
     isolatePerTest: Boolean,
     runner: Runner
   )(using ExecutionContext): Future[PythonRunResult] =
+    // When Pyodide hasn't loaded yet (cold start) we must allow far more time
+    // than the user-configured execution timeout.  Once Pyodide is warm the
+    // short timeout is used both to bound execution and to kill infinite loops.
+    // The cold-start timeout (120 s) is only active until the first successful
+    // "ready" signal, so it is not a user-visible regression for repeat submits.
+    val effectiveTimeoutMs: Int =
+      if (runner eq defaultRunner) && !PythonRuntimeService.isReady then
+        math.max(request.timeoutMs, 120000)
+      else
+        request.timeoutMs
     val base = if isolatePerTest then runIsolatedPerTest(request, runner) else runner(request)
-    withTimeout(base, request.timeoutMs)
+    withTimeout(base, effectiveTimeoutMs)
 
   private def runIsolatedPerTest(request: PythonRunRequest, runner: Runner)(using ExecutionContext): Future[PythonRunResult] =
     val allTests =
@@ -119,6 +129,9 @@ object PythonFeedbackRuntime:
     else
       val p = Promise[A]()
       val handle: SetTimeoutHandle = setTimeout(timeoutMs.toDouble) {
+        // Terminate the worker so an infinite-loop Python script is actually
+        // killed (not just ignored).  The next run() call creates a fresh worker.
+        PythonRuntimeService.terminateWorker()
         p.tryFailure(new TimeoutException(s"Python runtime timed out after ${timeoutMs}ms"))
       }
       future.onComplete { result =>

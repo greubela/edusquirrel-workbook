@@ -14,6 +14,7 @@ import interactionPlugins.blockEnvironment.feedback.{
   UltrichsNewCoolFeedback
 }
 import interactionPlugins.blockEnvironment.feedback.ml.MlRouter
+import interactionPlugins.pythonExercises.PythonRuntimeService
 import workbook.model.feedback.FeedbackStatus
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -263,6 +264,10 @@ object FeedbackDemoElement:
       if result.isEmpty then Seq(span(text)) else result.toSeq
 
   def element(): HtmlElement =
+    // Start loading Pyodide in the background immediately so it is ready
+    // by the time the user submits their first code (execution timeout is ~4s).
+    PythonRuntimeService.warmup()
+
     val exercises = BlockFeedbackExerciseRegistry.listExercises
     val defaultExerciseId = exercises.headOption.map(_.id).getOrElse("")
 
@@ -642,6 +647,7 @@ object FeedbackDemoElement:
             s"testsFailed=${d.testsFailed}",
             s"hasRuntimeError=${d.hasRuntimeError}",
             s"hasEmptySource=${d.hasEmptySource}",
+            d.rawRuntimeError.map(e => s"rawRuntimeError=${e.take(200).replace("\n", " ↵ ")}").getOrElse("rawRuntimeError=none"),
             s"primaryIssue=${d.primaryIssue}",
             s"templateId=${d.templateId.getOrElse("")}",
             testsBlock
