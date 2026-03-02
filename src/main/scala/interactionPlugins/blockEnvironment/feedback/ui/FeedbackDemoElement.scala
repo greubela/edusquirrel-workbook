@@ -794,7 +794,21 @@ object FeedbackDemoElement:
                     .map { (fb, err) => feedbackGlowClass(fb, err) },
                   div(
                     cls := "fd-card-header",
-                    h3(cls := "fd-card-title", child.text <-- tSig("Feedback", "Feedback"))
+                    h3(
+                      cls := "fd-card-title",
+                      child.text <-- tSig("Feedback", "Feedback"),
+                      child.maybe <-- feedbackVar.signal.combineWith(selectedLanguageVar.signal).map { (fb, lang) =>
+                        val usedLlm = fb.flatMap(_.debug).exists(_.aiHintAdded)
+                        if usedLlm then
+                          val label = if lang == AppLanguage.German then "KI" else "AI"
+                          Some(span(cls := "fd-ai-badge",
+                            span(cls := "fd-ai-badge__star fd-ai-badge__star--left", "✦"),
+                            span(cls := "fd-ai-badge__label", label),
+                            span(cls := "fd-ai-badge__star fd-ai-badge__star--right", "✦")
+                          ))
+                        else None
+                      }
+                    )
                   ),
                   child.maybe <-- errorVar.signal.map {
                     case Some(err) => Some(div(cls := "fd-list-item fd-list-item--fail", s"Error: $err"))
