@@ -49,12 +49,17 @@ final class FetchProxyLlmClient(
   override def completeWithMeta(
     prompt: String,
     systemPrompt: Option[String] = None,
-    logTag: Option[String] = None
+    logTag: Option[String] = None,
+    studentCode: Option[String] = None,
+    debugMeta: Map[String, String] = Map.empty
   ): Future[String] = {
+    val debugMetaJs = js.Dictionary(debugMeta.map((k, v) => k -> (v: js.Any)).toSeq*)
     val payload = js.Dynamic.literal(
       "prompt" -> prompt,
       "systemPrompt" -> systemPrompt.getOrElse(""),
-      "logTag" -> logTag.getOrElse("")
+      "logTag" -> logTag.getOrElse(""),
+      "studentCode" -> studentCode.getOrElse(""),
+      "debugMeta" -> debugMetaJs
     )
 
     val init = new dom.RequestInit {

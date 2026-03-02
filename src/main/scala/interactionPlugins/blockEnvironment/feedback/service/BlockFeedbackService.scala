@@ -309,9 +309,25 @@ object BlockFeedbackService:
                 .orElse(Some(id))
             }
 
+          val failedTestNames = outcome.tests.filterNot(_.passed).map(_.name).filter(_.nonEmpty).mkString(", ")
+          val llmDebugMeta = Map(
+            "exerciseId"      -> effectiveRequest.meta.exerciseId.getOrElse(""),
+            "primaryIssue"    -> decision.primaryIssue.toString,
+            "templateId"      -> templateId,
+            "testsTotal"      -> outcome.tests.size.toString,
+            "testsFailed"     -> outcome.tests.count(!_.passed).toString,
+            "failedTests"     -> failedTestNames,
+            "hasRuntimeError" -> outcome.runtimeError.exists(_.trim.nonEmpty).toString
+          )
+
           def llmWithRetries(currentPrompt: String, attempt: Int): Future[String] =
             proxyLlmClient
-              .completeWithMeta(currentPrompt, logTag = logTag)
+              .completeWithMeta(
+                currentPrompt,
+                logTag      = logTag,
+                studentCode = Some(rawPython),
+                debugMeta   = llmDebugMeta
+              )
               .recover { case _ => fallbackCandidate }
               .flatMap { candidate =>
                 val gated = QualityGate.enforce(candidate, prompt.constraints, prompt.testNames, rawPython)
