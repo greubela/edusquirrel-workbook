@@ -135,7 +135,8 @@ object PromptTemplates {
     forbidChitchat: Boolean,
     minSteps: Int,
     maxSteps: Int,
-    issueTypeHint: Option[DecisionLayer.IssueType] = None
+    issueTypeHint: Option[DecisionLayer.IssueType] = None,
+    isGerman: Boolean = false
   )
 
   final case class Prompt(
@@ -198,8 +199,6 @@ object PromptTemplates {
       params.find { param =>
         val returnRe = s"(?i)^return\\s+${scala.util.matching.Regex.quote(param)}\\s*$$".r
         val isReturned = lines.exists(l => returnRe.findFirstIn(l).nonEmpty)
-        // Only flag as identity return if the param is never reassigned in the body.
-        // e.g. "s = s.strip()" is a reassignment, not a pass-through.
         val isReassigned = lines.exists { l =>
           val assignRe = s"^${scala.util.matching.Regex.quote(param)}\\s*[+\\-*/|&^]?=".r
           assignRe.findFirstIn(l).nonEmpty
@@ -209,9 +208,10 @@ object PromptTemplates {
     }
   }
 
-  private def extractCodeObservations(rawPython: String): Seq[String] = {
+  private def extractCodeObservations(rawPython: String, isScriptExercise: Boolean = false): Seq[String] = {
     val code = Option(rawPython).getOrElse("").replace("\r\n", "\n")
     val lines = code.split("\n", -1).toSeq.map(_.trim).filter(_.nonEmpty)
+    val rawLines = code.split("\n", -1).toSeq
 
     def firstMatch(re: scala.util.matching.Regex): Option[String] =
       lines.collectFirst { case l if re.findFirstIn(l).nonEmpty => l }
@@ -224,7 +224,46 @@ object PromptTemplates {
       obs += s"CRITICAL: the function contains 'return $param' — it returns the input parameter unchanged with zero transformation. The core algorithm is completely missing. Do NOT discuss edge cases; focus entirely on the missing logic."
     }
 
-    // Only add operator observations if no identity return was already flagged.
+    if isScriptExercise && obs.isEmpty then {
+      val AssignCallPat = """^([a-zA-Z_]\w*)\s*=\s*([a-zA-Z_]\w*)\s*\(\s*(\d+)\s*\)""".r
+      rawLines.foreach { line =>
+        if !line.startsWith(" ") && !line.startsWith("\t") then
+          AssignCallPat.findFirstMatchIn(line).foreach { m =>
+            val varName  = m.group(1)
+            val funcName = m.group(2)
+            val arg      = m.group(3).toInt
+            if arg <= 1 then
+              obs += s"CRITICAL: `$varName = $funcName($arg)` — the argument $arg is almost certainly wrong (too small). The function will produce an empty or single-element result. The student probably forgot to use the intended (larger) argument."
+          }
+      }
+    }
+
+
+    if isScriptExercise && obs.isEmpty then {
+      val AssignListPat = """^([a-zA-Z_]\w*)\s*=\s*\[.+\]""".r
+      val hasDefInCode = rawLines.exists(l => l.trim.startsWith("def "))
+      if hasDefInCode then
+        rawLines.foreach { line =>
+          if !line.startsWith(" ") && !line.startsWith("\t") then
+            AssignListPat.findFirstMatchIn(line).foreach { m =>
+              val varName = m.group(1)
+              obs += s"CRITICAL: `$varName` is assigned a hardcoded list literal directly, but the code already contains a function definition. The student has a working function but is not calling it — they hard-coded the result instead of computing it."
+            }
+        }
+    }
+
+    if isScriptExercise && obs.isEmpty then {
+      val hasDefInCode = rawLines.exists(l => l.trim.startsWith("def "))
+      if !hasDefInCode then {
+        val topLevelListAssignCount = rawLines.count { line =>
+          !line.startsWith(" ") && !line.startsWith("\t") &&
+          """\w+\s*=\s*\[""".r.findFirstIn(line).isDefined
+        }
+        if topLevelListAssignCount >= 2 then
+          obs += "CRITICAL: The code consists entirely of hardcoded list literals combined together — there is no loop or computation at all. The numeric values may happen to be correct, but the student must compute them dynamically instead of writing them out by hand."
+      }
+    }
+
     if obs.isEmpty then {
       firstMatch("(?i)^return\\s+.*\\s-\\s.*$".r).foreach(_ => obs += "I see a return expression using '-' (subtraction).")
       firstMatch("(?i)^return\\s+.*\\s\\+\\s.*$".r).foreach(_ => obs += "I see a return expression using '+' (addition).")
@@ -249,7 +288,8 @@ object PromptTemplates {
     visibleTestNames: Seq[String],
     exerciseText: String,
     rawPython: String,
-    isScriptExercise: Boolean = false
+    isScriptExercise: Boolean = false,
+    hiddenTestHints: Map[String, String] = Map.empty
   ): Prompt = {
     val failedTests =
       signals.runtimeOutcome.tests
@@ -273,6 +313,7 @@ object PromptTemplates {
       forbidBackticks = true,
       forbidChitchat = true,
       forbidProvidingFullSolution = true,
+      isGerman = isGerman(humanLanguage),
       minSteps =
         if allTestsPassed then 0
         else if singleClearIssue then 1
@@ -283,8 +324,8 @@ object PromptTemplates {
         else
           decision.primaryIssue match {
             case DecisionLayer.IssueType.COMPILE_ERROR => 3
-            case DecisionLayer.IssueType.PERFORMANCE   => 4
-            case _                                     => 4
+            case DecisionLayer.IssueType.PERFORMANCE   => 3
+            case _                                     => 2
           },
       issueTypeHint = Some(decision.primaryIssue)
     )
@@ -306,7 +347,8 @@ object PromptTemplates {
 
       base.copy(
         maxWords = base.maxWords + langBoost + issueBoost,
-        forbidBackticks = base.forbidBackticks && !allowBackticks
+        forbidBackticks = base.forbidBackticks && !allowBackticks,
+        isGerman = base.isGerman
       )
 
     val constraints = adaptiveConstraints(baseConstraints, humanLanguage, decision.primaryIssue)
@@ -340,7 +382,7 @@ object PromptTemplates {
           .mkString("\n")
 
     val codeObservations =
-      val obs = extractCodeObservations(rawPython)
+      val obs = extractCodeObservations(rawPython, isScriptExercise)
       if obs.isEmpty then "<none>" else obs.map(o => s"- $o").mkString("\n")
 
     val contextHints = {
@@ -352,11 +394,63 @@ object PromptTemplates {
       val exTextShort = if exText.length <= 700 then exText else exText.take(700) + "…"
       val code = Option(rawPython).getOrElse("").replace("\r\n", "\n").trim
       val codeShort = if code.length <= 700 then code else code.take(700) + "…"
+
+      val orphanedDefs: Seq[String] =
+        if !isScriptExercise then Seq.empty
+        else {
+          val codeLines = code.split("\n", -1).toIndexedSeq
+          val DefPat = """^def\s+([a-zA-Z_]\w*)\s*\(""".r
+          val topLevelDefs: Seq[(String, Int)] = codeLines.zipWithIndex.collect {
+            case (line, idx) if DefPat.findFirstMatchIn(line).isDefined =>
+              (DefPat.findFirstMatchIn(line).get.group(1), idx)
+          }
+          topLevelDefs.flatMap { case (name, defIdx) =>
+            val bodyEndRel = codeLines.drop(defIdx + 1).indexWhere { l =>
+              l.trim.nonEmpty && !l.headOption.exists(c => c == ' ' || c == '\t')
+            }
+            val bodyEndIdx = if bodyEndRel < 0 then codeLines.length else defIdx + 1 + bodyEndRel
+            val bodyRange = defIdx until bodyEndIdx
+            val callPat = s"""\\b${java.util.regex.Pattern.quote(name)}\\s*\\(""".r
+            val calledOutside = codeLines.zipWithIndex.exists { case (l, i) =>
+              !bodyRange.contains(i) && callPat.findFirstIn(l).isDefined
+            }
+            if calledOutside then None else Some(name)
+          }
+        }
+      val orphanedDefsNote =
+        if orphanedDefs.nonEmpty then
+          val names = orphanedDefs.mkString(", ")
+          s"\n\nCRITICAL — IRRELEVANT CODE IN SUBMISSION: The following function(s) are defined but NEVER called anywhere in the student's code. They have NOTHING to do with this exercise and were left in by mistake. You MUST completely ignore them — do NOT analyze, explain, mention, or reference them in your response: [${names}]"
+        else ""
+
+      val failedHiddenNote =
+        if hiddenTestHints.nonEmpty then
+          val lines = hiddenTestHints.map { case (n, h) => s"- [$n] $h" }.mkString("\n")
+          s"\n\nFAILED HIDDEN CHECKS (use to understand what else is wrong — do NOT tell the student about 'hidden tests' or quote test names):\n$lines"
+        else ""
+
+      val wrongFunctionNameNote: String =
+        if isScriptExercise then ""
+        else
+          functionNameHint match
+            case Some(expected) =>
+              val DefPat = """^def\s+([a-zA-Z_]\w*)\s*\(""".r
+              val studentDefs = code.split("\n", -1).toSeq
+                .flatMap(l => DefPat.findFirstMatchIn(l.trim).map(_.group(1)))
+              if studentDefs.nonEmpty && !studentDefs.contains(expected) then
+                val definedStr = studentDefs.mkString(", ")
+                s"\n\nCRITICAL — WRONG FUNCTION NAME: The test harness (code the student cannot see or change) calls `$expected`. The student defined `$definedStr` instead. The ONLY fix is: rename the function from `$definedStr` to `$expected`. Do NOT tell the student to change any test calls, references, or imports — those are fixed. Do NOT say the tests need updating."
+              else ""
+            case None => ""
+
       Seq(stdoutInfo, printInfo, s"runtimeError: ${if runtimeErrShort.isEmpty then "<none>" else runtimeErrShort}")
         .mkString("\n") +
         "\n\nExercise statement (for requirements):\n" + (if exTextShort.isEmpty then "<empty>" else exTextShort) +
         "\n\nStudent code excerpt (do NOT quote or rewrite code; use it only to reason about behavior):\n" +
-        (if codeShort.isEmpty then "<empty>" else codeShort)
+        (if codeShort.isEmpty then "<empty>" else codeShort) +
+        orphanedDefsNote +
+        wrongFunctionNameNote +
+        failedHiddenNote
     }
 
     val diagnosisJson =
@@ -440,9 +534,13 @@ object PromptTemplates {
            |$stepRuleDE
            |- Keine Lösung ausformulieren, kein vollständiger Code, keine Codeblöcke.
           |- Schritte müssen zum konkreten Verhalten passen (keine generischen Tipps).
-           |- Nenne Begriffe wie „Dictionary“, „Set“, „verschachtelte Schleifen“ oder ähnliche Strukturhinweise NUR, wenn diese Strukturen im sichtbaren Code wirklich vorhanden sind.
+           |- Nenne Begriffe wie „Dictionary", „Set", „verschachtelte Schleifen" oder ähnliche Strukturhinweise NUR, wenn diese Strukturen im sichtbaren Code wirklich vorhanden sind.
+           |- Wenn im Kontext ein Hinweis „CRITICAL IRRELEVANT CODE IN SUBMISSION" vorkommt: Ignoriere die dort genannten Funktionen VOLLSTÄNDIG. Analysiere sie nicht, erkläre sie nicht, erwähne sie nicht — auch nicht beiläufig. Dein Feedback beschreibt ausschließlich den relevanten Teil des Codes.
+           |- Wenn im Kontext FAILED HIDDEN CHECKS erscheinen: Nutze diese Information, um zu erklären, was der Code noch nicht korrekt tut aber nenne KEINEN Testnamen und verrate NICHT, dass es „versteckte Tests" gibt.
+           |- Wenn im Kontext CRITICAL — WRONG FUNCTION NAME steht: weise den Studierenden an, die Funktion in den erwarteten Namen umzubenennen. Schlage NICHT vor, Testaufrufe oder Referenzen zu ändern — die Tests sind fest und für den Studierenden unsichtbar.
            |- Weise den Studierenden NICHT an, den Code auszuführen oder zu starten, um den Fehler zu finden – das System führt alle Tests bereits aus.
            |- Füge KEINEN Schritt hinzu, der den Studierenden auffordert, den Code zu testen, zu überprüfen oder zu bestätigen (z.B. $noTestStepDE, „Stelle sicher, dass der Code korrekt funktioniert"). Das System testet vollautomatisch – solche Schritte sind inhaltsleer.
+           |- Füge KEINEN Schritt hinzu über das Testen von Randfällen, Sonderfällen oder „edge cases" (z.B. „Teste mit null", „Stelle sicher, dass du auch den Fall X behandelst") sofern ein solcher Randfalltest nicht explizit in den fehlschlagenden Testergebnissen sichtbar ist. Erfinde keine Randfälle, die nicht im Fehlerkontext auftauchen.
            |- Wenn die Kernlogik fehlt (z.B. Identity-Return), sprich NUR über die fehlende Grundimplementierung. Keine Randfälle, keine Fehlerbehandlung.
            |- Nenne KEINE konkreten Operatoren, Methodenaufrufe oder Ausdrücke, die der Kern der Lösung sind (z.B. keinen Modulo-Operator nennen).
            |- Du musst NICHT immer expected/actual zitieren. Wenn es hilft, formuliere es natürlich: „Der Test erwartet X, aber dein Code liefert Y.“
@@ -495,8 +593,12 @@ object PromptTemplates {
            |- Do not provide the full solution, no full code, no code blocks.
             |- Steps must match the observed behavior (avoid generic advice).
            |- Mention terms like "dictionary", "set", "nested loops", or similar structural advice ONLY if those structures are actually visible in the provided code.
-           |- Do NOT tell the student to "run the code", "execute it", or "see where the error is by running" — the system already runs all tests.
-           |- Do NOT add a step that tells the student to test, verify, or confirm their code (e.g., $noTestStepEN, "Make sure the code behaves as expected"). The system tests automatically — such steps are empty filler.
+           |- If the context contains a note "CRITICAL IRRELEVANT CODE IN SUBMISSION": ignore the listed functions COMPLETELY. Do not analyze, explain, or mention them not even in passing. Your feedback describes only the relevant part of the code.
+           |- If the context contains FAILED HIDDEN CHECKS: use this information to explain what else the code doesn't do correctly but do NOT name any test, and do NOT reveal that there are "hidden tests".
+           |- If the context contains CRITICAL — WRONG FUNCTION NAME: tell the student to rename their function to the expected name. Do NOT suggest changing any test calls or references — the tests are fixed and invisible to the student.
+           |- Do NOT tell the student to "run the code", "execute it", or "see where the error is by running" the system already runs all tests.
+           |- Do NOT add a step that tells the student to test, verify, or confirm their code (e.g., $noTestStepEN, "Make sure the code behaves as expected"). The system tests automatically such steps are empty filler.
+           |- Do NOT add a step about testing edge cases, special cases, or boundary values (e.g., "Test with zero", "Ensure you handle the case where...") unless that specific edge case is directly visible in the failing test results. Do not invent edge cases that are not evidenced by the actual failures.
            |- If the core logic is absent (e.g., identity return), address ONLY the missing transformation. No edge cases, no error handling.
            |- Do NOT name specific operators, method calls, or expressions that are the heart of the solution (e.g., do not say "use %" or "use len()").
            |- You do NOT have to quote expected/actual. If helpful, phrase it naturally: “The test expects X, but your code produces Y.”
@@ -553,6 +655,18 @@ object PromptTemplates {
     val noFunctionYet = !isScriptExercise && !hasDef
     val meaningfulLineCount = signals.rawPython.linesIterator.count(l => l.trim.nonEmpty && !l.trim.startsWith("#"))
     val trivialScriptSubmission = isScriptExercise && meaningfulLineCount < 2
+    // Wrong function name: student has a function but it doesn't match the expected name.
+    val wrongFunctionName: Option[(String, String)] =
+      if isScriptExercise || !hasDef then None
+      else
+        functionNameHint.flatMap { expected =>
+          val DefPat = """^def\s+([a-zA-Z_]\w*)\s*\(""".r
+          val defined = signals.rawPython.linesIterator
+            .flatMap(l => DefPat.findFirstMatchIn(l.trim).map(_.group(1)))
+            .toSeq
+          if defined.nonEmpty && !defined.contains(expected) then Some((defined.head, expected))
+          else None
+        }
 
     if trivialScriptSubmission then
       if isGerman(humanLanguage) then
@@ -566,6 +680,18 @@ object PromptTemplates {
            |1. Re-read the exercise statement.
            |2. Start with the actual logic, e.g. a variable assignment or a loop.
            |3. Build the script step by step and check that it does the right thing.
+           |""".stripMargin
+    else if wrongFunctionName.isDefined then
+      val (defined, expected) = wrongFunctionName.get
+      if isGerman(humanLanguage) then
+        s"""Deine Funktion heißt `$defined`, aber der Test erwartet den Namen `$expected`.
+           |1. Ändere den Funktionskopf zu: def $expected(...):
+           |2. Der Rest deiner Logik kann so bleiben.
+           |""".stripMargin
+      else
+        s"""Your function is named `$defined`, but the test expects the name `$expected`.
+           |1. Rename the function header to: def $expected(...):
+           |2. The rest of your logic can stay as-is.
            |""".stripMargin
     else if noFunctionYet then
       val nameErrorRe = """NameError: name '([a-zA-Z_]\w*)' is not defined""".r

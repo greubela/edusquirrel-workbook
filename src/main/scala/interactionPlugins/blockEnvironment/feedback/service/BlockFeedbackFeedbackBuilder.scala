@@ -17,7 +17,6 @@ object BlockFeedbackFeedbackBuilder:
       .replace("–", " ")
       .replace("—", " ")
       .replace("--", " ")
-      .replace("-", " ")
     val numbered =
       normalized
         .split("\n", -1)
@@ -114,6 +113,64 @@ object BlockFeedbackFeedbackBuilder:
   private def detectDeadCodeIssues(rawPython: String, humanLanguage: HumanLanguage): Seq[String] =
     findUnusedImports(rawPython, humanLanguage) ++ findUnusedVariables(rawPython, humanLanguage)
 
+  /**
+   * Detects top-level `def` blocks (indent=0) that are never called anywhere
+   * outside their own body in the rest of the script.
+   * These are "orphaned" definitions — irrelevant to the exercise.
+   *
+   * Example: a student pastes in `def merge_sorted(...)` when working on a
+   * Fibonacci exercise — merge_sorted is never called, so it is irrelevant.
+   */
+  def detectOrphanedDefs(rawPython: String): Seq[String] =
+    val lines = Option(rawPython).getOrElse("").replace("\r\n", "\n").split("\n", -1).toIndexedSeq
+    val DefPat = """^def\s+([a-zA-Z_]\w*)\s*\(""".r
+
+    val topLevelDefs: Seq[(String, Int)] = lines.zipWithIndex.collect {
+      case (line, idx) if DefPat.findFirstMatchIn(line).isDefined =>
+        (DefPat.findFirstMatchIn(line).get.group(1), idx)
+    }
+
+    if topLevelDefs.isEmpty then return Seq.empty
+
+    topLevelDefs.flatMap { case (name, defIdx) =>
+      val bodyEndRelative = lines.drop(defIdx + 1).indexWhere { l =>
+        l.trim.nonEmpty && !l.headOption.exists(c => c == ' ' || c == '\t')
+      }
+      val bodyEndIdx = if bodyEndRelative < 0 then lines.length else defIdx + 1 + bodyEndRelative
+      val bodyRange = defIdx until bodyEndIdx
+
+      val callPattern = s"""\\b${java.util.regex.Pattern.quote(name)}\\s*\\(""".r
+      val calledOutside = lines.zipWithIndex.exists { case (line, idx) =>
+        !bodyRange.contains(idx) && callPattern.findFirstIn(line).isDefined
+      }
+
+      if calledOutside then None else Some(name)
+    }
+
+  /** Returns rawPython with the bodies of all orphaned top-level functions blanked out.
+   *  Used so that perf/style analysis does not fire on irrelevant code.
+   */
+  private def stripOrphanedFunctionBodies(rawPython: String, orphanedNames: Seq[String]): String =
+    if orphanedNames.isEmpty then return rawPython
+    val lines = Option(rawPython).getOrElse("").replace("\r\n", "\n").split("\n", -1).toIndexedSeq
+    val DefPat = """^def\s+([a-zA-Z_]\w*)\s*\(""".r
+
+    val blankRanges = orphanedNames.flatMap { name =>
+      lines.zipWithIndex.collectFirst {
+        case (line, idx) if DefPat.findFirstMatchIn(line).exists(_.group(1) == name) =>
+          val bodyEndRelative = lines.drop(idx + 1).indexWhere { l =>
+            l.trim.nonEmpty && !l.headOption.exists(c => c == ' ' || c == '\t')
+          }
+          val bodyEndIdx = if bodyEndRelative < 0 then lines.length else idx + 1 + bodyEndRelative
+          idx until bodyEndIdx
+      }
+    }
+
+    val blankSet = blankRanges.flatMap(_.toSeq).toSet
+    lines.zipWithIndex.map { case (line, idx) =>
+      if blankSet.contains(idx) then "" else line
+    }.mkString("\n")
+
   private def countNestedLoops(rawPython: String): Int =
     val lines =
       Option(rawPython)
@@ -129,7 +186,10 @@ object BlockFeedbackFeedbackBuilder:
         if trimmed.startsWith("for ") || trimmed.startsWith("while ") then Some(indent) else None
       }
 
-    if loopIndents.size >= 2 then loopIndents.size - 1 else 0
+    loopIndents.sliding(2).count {
+      case Seq(outer, inner) => inner > outer
+      case _                 => false
+    }
 
   private def hasListComprehension(rawPython: String): Boolean =
     val text = Option(rawPython).getOrElse("")
@@ -137,6 +197,21 @@ object BlockFeedbackFeedbackBuilder:
     text.linesIterator.exists(line =>
       line.trim.matches(".*\\[.*for .* in .*\\].*")
     )
+
+  /** Returns the maximum loop nesting depth */
+  private def maxLoopNestingDepth(rawPython: String): Int =
+    val lines = Option(rawPython).getOrElse("").replace("\r\n", "\n").split("\n", -1).toIndexedSeq
+    var stack = List.empty[Int]
+    var maxDepth = 0
+    lines.foreach { line =>
+      val indent = line.takeWhile(_ == ' ').length
+      val trimmed = line.dropWhile(_ == ' ')
+      stack = stack.dropWhile(_ >= indent)
+      if trimmed.startsWith("for ") || trimmed.startsWith("while ") then
+        stack = indent :: stack
+        if stack.size > maxDepth then maxDepth = stack.size
+    }
+    maxDepth
 
   private def analyzePerfOptimizations(rawPython: String, humanLanguage: HumanLanguage): Seq[String] =
     val nestedLoops = countNestedLoops(rawPython)
@@ -151,18 +226,32 @@ object BlockFeedbackFeedbackBuilder:
         val t = line.dropWhile(_ == ' ')
         if t.startsWith("for ") || t.startsWith("while ") then Some((i, indent)) else None
       }
-      val appendInsideInnerLoop = if loopLines.size >= 2 then
+      val isSimpleForFor = if loopLines.size >= 2 then
+        val (outerIdx, outerIndent) = loopLines(0)
         val (innerIdx, innerIndent) = loopLines(1)
-        lines.drop(innerIdx + 1).takeWhile { l =>
+        val outerIsFor = lines(outerIdx).dropWhile(_ == ' ').startsWith("for ")
+        val innerIsFor = lines(innerIdx).dropWhile(_ == ' ').startsWith("for ")
+        val innerBody = lines.drop(innerIdx + 1).takeWhile { l =>
           l.trim.isEmpty || l.takeWhile(_ == ' ').length > innerIndent
-        }.exists(_.contains(".append("))
+        }
+        val hasBreak       = innerBody.exists(l => l.trim == "break" || l.trim.startsWith("break "))
+        val appendCount    = innerBody.count(_.contains(".append("))
+        val hasOnlyAppend  = appendCount == 1
+        outerIsFor && innerIsFor && !hasBreak && hasOnlyAppend
       else false
 
-      if appendInsideInnerLoop then
+      if isSimpleForFor then
         if isGerman then
           suggestions += "Du könntest verschachtelte Schleifen mit List Comprehensions vereinfachen"
         else
           suggestions += "You could simplify nested loops with list comprehensions"
+
+    val depth = maxLoopNestingDepth(rawPython)
+    if depth >= 3 then
+      if isGerman then
+        suggestions += s"Dein Code hat $depth verschachtelte Schleifen-Ebenen. Tiefe Schachtelung kann schwer lesbar und ineffizient sein überlege, ob du die Logik vereinfachen kannst."
+      else
+        suggestions += s"Your code has $depth levels of nested loops. Deep nesting can be hard to read and inefficient consider whether the logic can be simplified."
 
     suggestions.toSeq
 
@@ -214,18 +303,31 @@ object BlockFeedbackFeedbackBuilder:
     val summary = sanitizeStudentMessage(buildSummary(outcome.tests, normalizedScore, request.humanLanguage))
 
     val allTestsPassed = request.config.enableUnitTests && outcome.tests.nonEmpty && outcome.tests.forall(_.passed)
+    val orphanedDefs = if request.config.isScriptExercise then detectOrphanedDefs(rawPython) else Seq.empty
     val hintsRaw =
       if hints0.nonEmpty then hints0
       else if allTestsPassed then
-        val deadCodeIssues = detectDeadCodeIssues(rawPython, request.humanLanguage)
-        val perfSuggestions = analyzePerfOptimizations(rawPython, request.humanLanguage)
-        val styleSuggestions = analyzeCodeStyle(rawPython, request.humanLanguage)
+        val relevantPython = stripOrphanedFunctionBodies(rawPython, orphanedDefs)
+        val deadCodeIssues = detectDeadCodeIssues(relevantPython, request.humanLanguage)
+        val perfSuggestions = analyzePerfOptimizations(relevantPython, request.humanLanguage)
+        val styleSuggestions = analyzeCodeStyle(relevantPython, request.humanLanguage)
+        val isGerman = request.humanLanguage == AppLanguage.German
+        val orphanHints: Seq[String] = if orphanedDefs.nonEmpty then
+          val names = orphanedDefs.mkString(", ")
+          val single = orphanedDefs.size == 1
+          if isGerman then
+            if single then Seq(s"Folgende Funktion ist definiert, wird aber nirgends aufgerufen und hat nichts mit dieser Aufgabe zu tun: $names. Du kannst sie entfernen.")
+            else Seq(s"Folgende Funktionen sind definiert, werden aber nirgends aufgerufen und haben nichts mit dieser Aufgabe zu tun: $names. Du kannst sie entfernen.")
+          else
+            if single then Seq(s"The following function is defined but never called and is unrelated to this exercise: $names. You can remove it.")
+            else Seq(s"The following functions are defined but never called and are unrelated to this exercise: $names. You can remove them.")
+        else Seq.empty
 
         Seq(buildIntelligentPassFeedback(
           humanLanguage = request.humanLanguage,
           rawPython = rawPython,
           isScriptExercise = request.config.isScriptExercise,
-          deadCodeIssues = deadCodeIssues,
+          deadCodeIssues = deadCodeIssues ++ orphanHints,
           perfSuggestions = perfSuggestions,
           styleSuggestions = styleSuggestions
         ))
@@ -234,14 +336,27 @@ object BlockFeedbackFeedbackBuilder:
     val hints = hintsRaw.map(sanitizeStudentMessage).filter(_.nonEmpty)
 
     val displayHints = if hints.nonEmpty then hints else Seq(summary)
+    val testDefMap = (plan.visibleTests ++ plan.hiddenTests).map(t => t.name -> t).toMap
+    val visibleTestNames = plan.visibleTests.map(_.name).toSet
+    val isGermanForDisplay = request.humanLanguage == AppLanguage.German
     val displayTests = outcome.tests.map { test =>
-      val msg = test.message.filter(_.trim.nonEmpty).getOrElse("")
+      val runtimeMsg = test.message.filter(_.trim.nonEmpty).getOrElse("")
+      val isHidden = !visibleTestNames.contains(test.name)
+      val msg =
+        if runtimeMsg.nonEmpty then runtimeMsg
+        else if !test.passed || isHidden then
+          testDefMap.get(test.name)
+            .flatMap(td => if isGermanForDisplay then td.hintDE else td.hint)
+            .getOrElse("")
+        else ""
       val expectedActual =
-        BlockFeedbackTestResultFormatter.expectedActual(
-          test = test,
-          humanLanguage = request.humanLanguage,
-          onlyWhenFailed = true
-        )
+        if isHidden then None
+        else
+          BlockFeedbackTestResultFormatter.expectedActual(
+            test = test,
+            humanLanguage = request.humanLanguage,
+            onlyWhenFailed = true
+          )
       FeedbackTestDisplay(
         name = test.name,
         passed = test.passed,
@@ -291,7 +406,10 @@ object BlockFeedbackFeedbackBuilder:
         improvements += suggestion
       }
       val improvementText =
-        if improvements.nonEmpty then
+        if improvements.size == 1 then
+          if isGerman then "\n\nEine kleine Anmerkung: " + improvements.head
+          else "\n\nOne small note: " + improvements.head
+        else if improvements.size >= 2 then
           val numbered = improvements.take(2).zipWithIndex.map { case (msg, idx) => s"${idx + 1}. $msg" }.mkString("\n")
           if isGerman then "\n\nKleine Verbesserungen:\n" + numbered
           else "\n\nSmall improvements:\n" + numbered

@@ -68,16 +68,22 @@ object QualityGate {
 
       case "contains_backticks" =>
         "You used backtick characters (`). Remove ALL backticks. " +
-        "Use plain prose — no inline code formatting whatsoever."
+        "Do not format any part of your response as code — not even a single character, " +
+        "expression, or function name. Whenever you want to reference something specific " +
+        "from the code, write it in plain prose without any formatting whatsoever."
 
       case "looks_like_markdown" =>
         "You used Markdown markup (**bold**, ##heading, __underline__). " +
         "This is plain-text feedback — strip every Markdown marker."
 
       case "looks_like_solution_code" =>
-        "Your response contains lines that look like Python solution code " +
-        "(e.g. lines beginning with 'def', 'return', 'class', 'import', 'from'). " +
-        "NEVER write runnable code. Describe what to change in natural language only."
+        "Your response contains a bare code line — a line beginning with 'def', 'return', " +
+        "'class', 'import', or 'from'. Completely remove such lines. " +
+        "NEVER quote or display runnable code, not even a single line. " +
+        "Describe what is wrong and what to change entirely in plain prose. " +
+        "For example, instead of writing the function signature, say: " +
+        "'The first line of your function definition is missing a colon at the end.' " +
+        "Keep every concrete detail — just express it in words, not as code."
 
       case "contains_chitchat" =>
         "Your response contains filler or off-topic phrases such as: " +
@@ -157,12 +163,54 @@ $originalPrompt
     sourceCode: String = ""
   ): GateResult = {
     val trimmed = Option(rawText).getOrElse("").trim
+
+    val preRepairReasons = validateBeforeRepair(trimmed, constraints)
+
     val repaired = repairBestEffort(trimmed, constraints, requiredTestNames)
     val finalText =
       if repaired.nonEmpty then repaired
       else minimalSafeFallback(constraints, requiredTestNames)
-    val finalReasons = validate(finalText, constraints, requiredTestNames, sourceCode)
-    GateResult(passed = finalReasons.isEmpty, reasons = finalReasons, finalText = finalText)
+
+    if preRepairReasons.nonEmpty then
+      val postRepairReasons = validate(finalText, constraints, requiredTestNames, sourceCode)
+      val allReasons = (preRepairReasons ++ postRepairReasons.filterNot(preRepairReasons.contains)).distinct
+      GateResult(passed = false, reasons = allReasons, finalText = finalText)
+    else
+      val finalReasons = validate(finalText, constraints, requiredTestNames, sourceCode)
+      GateResult(passed = finalReasons.isEmpty, reasons = finalReasons, finalText = finalText)
+  }
+
+  /**
+   * Quick pre-repair check for violations that should trigger an LLM rewrite rather
+   * than silent structural stripping. Only checks for things that repairBestEffort /
+   * shortenPreservingSteps would destructively remove, leaving surrounding text
+   * semantically broken (e.g. an intro sentence ending with ":" whose referenced code
+   * was on the next line that gets dropped).
+   */
+  private def validateBeforeRepair(
+    text: String,
+    constraints: PromptTemplates.OutputConstraints
+  ): Seq[String] = {
+    val reasons = scala.collection.mutable.ListBuffer.empty[String]
+
+    if constraints.forbidProvidingFullSolution then {
+      val lines = text.replace("\r\n", "\n").split("\n", -1).toSeq
+      val hasRawCodeLine = lines.exists { line =>
+        val t = line.trim.toLowerCase
+        t.startsWith("def ") ||
+        t.startsWith("class ") ||
+        t.startsWith("import ") ||
+        t.startsWith("from ") ||
+        t.startsWith("return ")
+      }
+      if hasRawCodeLine then reasons += "looks_like_solution_code"
+    }
+
+    if constraints.forbidBackticks then {
+      if text.contains("`") then reasons += "contains_backticks"
+    }
+
+    reasons.toList
   }
 
   /**
@@ -217,13 +265,20 @@ $originalPrompt
     constraints: PromptTemplates.OutputConstraints,
     requiredTestNames: Seq[String]
   ): String = {
-    val tn = requiredTestNames.find(_.nonEmpty).getOrElse("the failing case")
+    val tn = requiredTestNames.find(_.nonEmpty).getOrElse(if constraints.isGerman then "den fehlschlagenden Fall" else "the failing case")
     val steps =
-      Seq(
-        s"1. Re-run $tn and note expected vs observed behavior.",
-        "2. Trace your variables step-by-step until the first divergence.",
-        "3. Adjust only the condition/update causing that divergence and re-test."
-      ).take(math.max(constraints.minSteps, math.min(constraints.maxSteps, 3)))
+      if constraints.isGerman then
+        Seq(
+          s"1. Schau dir an, was dein Code für $tn aktuell zurückgibt, und vergleiche es mit dem erwarteten Ergebnis.",
+          "2. Gehe deine Variablen Schritt für Schritt durch, bis du die erste Abweichung findest.",
+          "3. Passe nur die Bedingung oder Aktualisierung an, die die Abweichung verursacht."
+        ).take(math.max(constraints.minSteps, math.min(constraints.maxSteps, 3)))
+      else
+        Seq(
+          s"1. Re-run $tn and note expected vs observed behavior.",
+          "2. Trace your variables step-by-step until the first divergence.",
+          "3. Adjust only the condition/update causing that divergence and re-test."
+        ).take(math.max(constraints.minSteps, math.min(constraints.maxSteps, 3)))
     steps.mkString("\n").trim
   }
 
@@ -343,11 +398,17 @@ $originalPrompt
         val existing = countStepLines(afterShorten)
         val genericSteps = (1 to missing).map { i =>
           val stepNr = existing + i
-          val tn = testNameOpt.getOrElse("the failing case")
-          i match
-            case 1 => s"$stepNr. Re-run $tn and confirm observed vs expected behavior."
-            case 2 => s"$stepNr. Identify the exact condition where your update logic should change the running result."
-            case _ => s"$stepNr. Try a tiny counterexample and trace the variable updates."
+          val tn = testNameOpt.getOrElse(if constraints.isGerman then "den fehlschlagenden Fall" else "the failing case")
+          if constraints.isGerman then
+            i match
+              case 1 => s"$stepNr. Schau dir an, was dein Code für $tn zurückgibt, und vergleiche es mit dem erwarteten Ergebnis."
+              case 2 => s"$stepNr. Identifiziere die genaue Bedingung, bei der deine Aktualisierungslogik das Zwischenergebnis ändern sollte."
+              case _ => s"$stepNr. Probiere ein kleines Gegenbeispiel und verfolge die Variablenwerte Schritt für Schritt."
+          else
+            i match
+              case 1 => s"$stepNr. Re-run $tn and confirm observed vs expected behavior."
+              case 2 => s"$stepNr. Identify the exact condition where your update logic should change the running result."
+              case _ => s"$stepNr. Try a tiny counterexample and trace the variable updates."
         }
         (afterShorten.trim + "\n" + genericSteps.mkString("\n")).trim
       }
