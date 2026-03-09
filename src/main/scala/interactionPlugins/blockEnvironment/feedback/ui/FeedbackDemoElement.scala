@@ -564,7 +564,7 @@ object FeedbackDemoElement:
           else p(segs*)
 
     def statusLabel: String =
-      if isRunningVar.now() then "running" else "ready"
+      if isRunningVar.now() then "Evaluating\u2026" else "ready"
 
     def statusClass: String =
       if isRunningVar.now() then "fd-status fd-status--running" else "fd-status fd-status--done"
@@ -675,7 +675,7 @@ object FeedbackDemoElement:
               h3(cls := "fd-card-title", child.text <-- tSig("Session", "Sitzung")),
               span(cls := statusClass, child.text <-- isRunningVar.signal
                 .combineWith(selectedLanguageVar.signal)
-                .map((r, lang) => if r then tx(lang, "running", "l\u00e4uft") else tx(lang, "ready", "bereit")))
+                .map((r, lang) => if r then tx(lang, "Evaluating\u2026", "Bewertung l\u00e4uft\u2026") else tx(lang, "ready", "bereit")))
             ),
             div(
               cls := "fd-field",

@@ -242,6 +242,18 @@ object BlockFeedbackService:
 
       val promptOpt =
         if llmEligibleEffective then
+          val isGerman = effectiveRequest.humanLanguage == AppLanguage.German
+          val hiddenTestDefMap = testPlanEffective.hiddenTests.map(t => t.name -> t).toMap
+          val hiddenTestHintMap: Map[String, String] =
+            outcome.tests
+              .filterNot(_.passed)
+              .filterNot(t => visibleTestNames.contains(t.name))
+              .flatMap { t =>
+                hiddenTestDefMap.get(t.name)
+                  .flatMap(td => if isGerman then td.hintDE else td.hint)
+                  .map(hint => t.name -> hint)
+              }
+              .toMap
           Some(
             PromptTemplates.buildPrompt(
               signals,
@@ -251,7 +263,8 @@ object BlockFeedbackService:
               visibleTestNames,
               exerciseTextForLang,
               rawPython,
-              effectiveRequest.config.isScriptExercise
+              effectiveRequest.config.isScriptExercise,
+              hiddenTestHintMap
             )
           )
         else None

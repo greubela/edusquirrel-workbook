@@ -124,7 +124,9 @@ object BlockFeedbackExerciseRegistry {
             BlockFeedbackPythonTest(
               name = "with_negative",
               code = "assert max_in_list([-5, -1, -9]) == -1",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("Your function must also work when all values are negative."),
+              hintDE = Some("Deine Funktion muss auch funktionieren, wenn alle Werte negativ sind.")
             )
           ),
           fixtures = Nil,
@@ -183,17 +185,23 @@ object BlockFeedbackExerciseRegistry {
             BlockFeedbackPythonTest(
               name = "text_ignored",
               code = "assert balanced_brackets(\"a(b[c]{d}e)f\") == True",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("Non-bracket characters must be completely ignored."),
+              hintDE = Some("Nicht-Klammer-Zeichen müssen vollständig ignoriert werden.")
             ),
             BlockFeedbackPythonTest(
               name = "closing_first",
               code = "assert balanced_brackets(\")(\") == False",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("A closing bracket that appears before any matching opener is unbalanced."),
+              hintDE = Some("Eine schließende Klammer ohne vorherige passende öffnende Klammer ist nicht ausgeglichen.")
             ),
             BlockFeedbackPythonTest(
               name = "deep_nesting",
               code = "assert balanced_brackets(\"(((())))[]{}\") == True",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("Deeply nested and consecutive balanced groups must all be handled correctly."),
+              hintDE = Some("Tief verschachtelte und aufeinanderfolgende Klammergruppen müssen alle korrekt behandelt werden.")
             )
           ),
           fixtures = Nil,
@@ -244,12 +252,16 @@ object BlockFeedbackExerciseRegistry {
             BlockFeedbackPythonTest(
               name = "unordered_solution",
               code = "assert two_sum_indices([1, 2, 4, 8], 6) == (1, 2)",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("The solution pair is not always at the start of the list."),
+              hintDE = Some("Das gesuchte Paar steht nicht immer am Anfang der Liste.")
             ),
             BlockFeedbackPythonTest(
               name = "larger",
               code = "res = two_sum_indices([10, 22, 5, 7, 19, 3], 29)\nassert res in [(0, 4), (1, 3)]",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("Your function must correctly search through a longer list to find the matching pair."),
+              hintDE = Some("Deine Funktion muss auch in einer längeren Liste das passende Paar finden.")
             )
           ),
           fixtures = Nil,
@@ -307,7 +319,9 @@ object BlockFeedbackExerciseRegistry {
             BlockFeedbackPythonTest(
               name = "digits_mix",
               code = "assert is_palindrome('12-21') == True",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("Digits count as alphanumeric; non-alphanumeric characters like hyphens must be stripped."),
+              hintDE = Some("Ziffern zählen als alphanumerisch; Nicht-Buchstaben/Ziffern wie Bindestriche müssen entfernt werden.")
             )
           ),
           fixtures = Nil,
@@ -365,7 +379,9 @@ object BlockFeedbackExerciseRegistry {
             BlockFeedbackPythonTest(
               name = "both_zero",
               code = "assert gcd(0, 0) == 0",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("gcd(0, 0) should return 0 by convention."),
+              hintDE = Some("gcd(0, 0) soll per Konvention 0 zurückgeben.")
             )
           ),
           fixtures = Nil,
@@ -416,12 +432,16 @@ object BlockFeedbackExerciseRegistry {
             BlockFeedbackPythonTest(
               name = "spaces_and_punct",
               code = "assert count_vowels('A, E! I? O. U') == 5",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("Punctuation and spaces are not vowels and must not be counted."),
+              hintDE = Some("Satzzeichen und Leerzeichen sind keine Vokale und dürfen nicht gezählt werden.")
             ),
             BlockFeedbackPythonTest(
               name = "no_vowels",
               code = "assert count_vowels('rhythms') == 0",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("A string with no vowels at all should return 0."),
+              hintDE = Some("Ein String ohne Vokale muss 0 zurückgeben.")
             )
           ),
           fixtures = Nil,
@@ -472,12 +492,16 @@ object BlockFeedbackExerciseRegistry {
             BlockFeedbackPythonTest(
               name = "with_spaces",
               code = "assert rle_encode('  !!') == [(' ', 2), ('!', 2)]",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("Spaces and special characters must be encoded just like letters."),
+              hintDE = Some("Leerzeichen und Sonderzeichen müssen genauso kodiert werden wie Buchstaben.")
             ),
             BlockFeedbackPythonTest(
               name = "long_run",
               code = "assert rle_encode('zzzzzzzzzz') == [('z', 10)]",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("A run of the same character must be counted correctly regardless of its length."),
+              hintDE = Some("Eine Folge gleicher Zeichen muss unabhängig von ihrer Länge korrekt gezählt werden.")
             )
           ),
           fixtures = Nil,
@@ -528,12 +552,16 @@ object BlockFeedbackExerciseRegistry {
             BlockFeedbackPythonTest(
               name = "one_empty",
               code = "assert merge_sorted([], [1, 2, 3]) == [1, 2, 3]",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("When one list is empty the result should equal the other list."),
+              hintDE = Some("Wenn eine Liste leer ist, soll das Ergebnis gleich der anderen Liste sein.")
             ),
             BlockFeedbackPythonTest(
               name = "negatives",
               code = "assert merge_sorted([-5, -1, 0], [-6, -2, 3]) == [-6, -5, -2, -1, 0, 3]",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("Your merge must preserve correct order even when negative numbers are involved."),
+              hintDE = Some("Dein Merge muss die korrekte Reihenfolge auch bei negativen Zahlen erhalten.")
             )
           ),
           fixtures = Nil,
@@ -584,12 +612,16 @@ object BlockFeedbackExerciseRegistry {
             BlockFeedbackPythonTest(
               name = "already_unique",
               code = "assert unique([5, 4, 3]) == [5, 4, 3]",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("A list that is already duplicate-free must be returned unchanged."),
+              hintDE = Some("Eine Liste ohne Duplikate muss unverändert zurückgegeben werden.")
             ),
             BlockFeedbackPythonTest(
               name = "with_zero",
               code = "assert unique([0, 0, 0, 1, 0]) == [0, 1]",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("Zero counts as a value and duplicates of it must be removed too."),
+              hintDE = Some("Null ist ein gültiger Wert und Duplikate davon müssen ebenfalls entfernt werden.")
             )
           ),
           fixtures = Nil,
@@ -640,12 +672,16 @@ object BlockFeedbackExerciseRegistry {
             BlockFeedbackPythonTest(
               name = "max",
               code = "assert roman_to_int('MMMCMXCIX') == 3999",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("Your function must handle the maximum valid Roman numeral (MMMCMXCIX = 3999) correctly."),
+              hintDE = Some("Deine Funktion muss auch die größte gültige römische Zahl (MMMCMXCIX = 3999) korrekt umwandeln.")
             ),
             BlockFeedbackPythonTest(
               name = "many",
               code = "assert roman_to_int('CDXLIV') == 444",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("Multiple subtractive pairs in one number (CD, XL, IV) must all be handled."),
+              hintDE = Some("Mehrere Subtraktionspaare in einer Zahl (CD, XL, IV) müssen alle korrekt behandelt werden.")
             )
           ),
           fixtures = Nil,
@@ -696,12 +732,16 @@ object BlockFeedbackExerciseRegistry {
             BlockFeedbackPythonTest(
               name = "max",
               code = "assert int_to_roman(3999) == 'MMMCMXCIX'",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("Your function must produce the correct Roman numeral for the maximum value 3999."),
+              hintDE = Some("Deine Funktion muss für den Maximalwert 3999 die korrekte römische Zahl erzeugen.")
             ),
             BlockFeedbackPythonTest(
               name = "444",
               code = "assert int_to_roman(444) == 'CDXLIV'",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("Numbers with multiple subtractive steps (CD=400, XL=40, IV=4) must all be converted correctly."),
+              hintDE = Some("Zahlen mit mehreren Subtraktionsschritten (CD=400, XL=40, IV=4) müssen alle korrekt umgewandelt werden.")
             )
           ),
           fixtures = Nil,
@@ -752,12 +792,16 @@ object BlockFeedbackExerciseRegistry {
             BlockFeedbackPythonTest(
               name = "only_space",
               code = "assert normalize_whitespace('    ') == ''",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("A string containing only whitespace should become an empty string."),
+              hintDE = Some("Ein String, der nur aus Whitespace besteht, soll zu einem leeren String werden.")
             ),
             BlockFeedbackPythonTest(
               name = "mixed_unicode_space",
               code = "assert normalize_whitespace('x\\n\\n\\ty') == 'x y'",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("Multiple consecutive whitespace characters of any kind (spaces, tabs, newlines) must collapse to a single space."),
+              hintDE = Some("Mehrere aufeinanderfolgende Whitespace-Zeichen jeder Art (Leerzeichen, Tabs, Zeilenumbrüche) müssen zu einem einzigen Leerzeichen zusammengefasst werden.")
             )
           ),
           fixtures = Nil,
@@ -815,7 +859,9 @@ object BlockFeedbackExerciseRegistry {
             BlockFeedbackPythonTest(
               name = "single",
               code = "assert rotate([42], 999) == [42]",
-              weight = 2.0
+              weight = 2.0,
+              hint = Some("Rotating a single-element list by any amount must return that same list."),
+              hintDE = Some("Eine Liste mit einem einzigen Element muss bei jeder Rotation unverändert bleiben.")
             )
           ),
           fixtures = Nil,
@@ -1053,10 +1099,9 @@ object BlockFeedbackExerciseRegistry {
                 |_tree = _ast.parse(_student_source)
                 |_hardcoded = [
                 |    n for n in _ast.walk(_tree)
-                |    if isinstance(n, _ast.Assign)
-                |    and any(isinstance(t, _ast.Name) and t.id == 'fibonacci' for t in n.targets)
-                |    and isinstance(n.value, _ast.List)
-                |    and len(n.value.elts) >= 5
+                |    if isinstance(n, _ast.List)
+                |    and len(n.elts) >= 5
+                |    and all(isinstance(e, _ast.Constant) and isinstance(e.value, (int, float)) for e in n.elts)
                 |]
                 |assert not _hardcoded
                 |""".stripMargin,
