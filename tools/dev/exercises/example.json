@@ -1,0 +1,108 @@
+{
+  "_doc": [
+    "TEMPLATE for exercise_codegen.py copy this file to define a new exercise.",
+    "Usage:  python3 tools/dev/exercise_codegen.py tools/dev/exercises/my_exercise.json",
+    "Add --dry-run to preview the generated Scala without writing to the registry.",
+    "",
+    "FIELD REFERENCE",
+    "  scalaName    – Scala val identifier, lowerCamelCase, e.g. 'myExercise'",
+    "                 The codegen derives 'myExerciseExerciseId' from this automatically.",
+    "  exerciseId   – Stable string key used in persistence and routing.",
+    "                 Prefix convention:  block:  for function exercises,",
+    "                                     script: for top-level script exercises.",
+    "                 NEVER rename an existing id once it is in production.",
+    "",
+    "  title        – Short display name shown in the UI.  Required: en, de.",
+    "  statement    – Full exercise description shown to the student.",
+    "                 Backticks for inline code are supported: `my_func(x)`.",
+    "                 Newlines can be encoded as \\n for multi-paragraph statements.",
+    "                 Required: en, de.",
+    "",
+    "  config flags (all boolean, default true if omitted):",
+    "    enableVmStaticChecks      – run the VM-level static analysis pass",
+    "    enablePythonStaticChecks  – run pyodide-level static analysis",
+    "    enableUnitTests           – run the visible + hidden test suite",
+    "    enableAiSummary           – include an LLM-generated summary in feedback",
+    "",
+    "  timeoutMs    – Python execution timeout in milliseconds (default 4000).",
+    "                 Increase for exercises that need sorting / heavy computation.",
+    "",
+    "  visibleTests / hiddenTests – arrays of test objects (see below).",
+    "  fixtures     – list of setup code strings prepended before every test.",
+    "                 Use for helper functions or shared state.  Usually [].",
+    "  packages     – list of pip package names to install before running (pyodide).",
+    "                 Usually [].  Example: [\"numpy\"].",
+    "",
+    "TEST OBJECT FIELDS",
+    "  name    (required) – snake_case identifier, unique within the exercise.",
+    "  code    (required) – one-line assert statement executed as a Python test.",
+    "  weight  (optional) – scoring multiplier for this test, default 1.0.",
+    "                       Use 2.0 for edge-case / harder tests.",
+    "  hint    (optional) – English hint shown when this specific test fails.",
+    "  hintDE  (optional) – German translation of the hint.",
+    "",
+    "NAMING CONVENTIONS",
+    "  visible tests  – cover the happy path the student sees in the problem statement.",
+    "  hidden tests   – cover edge cases, corner values, large inputs, negative numbers.",
+    "",
+    "ESCAPE SEQUENCES IN test.code",
+    "  Store them as JSON escape sequences, NOT as actual characters.",
+    "  Example: a literal backslash-t in the Python string → write \\\\t in JSON.",
+    "  The codegen re-escapes correctly for the Scala string literal layer."
+  ],
+
+  "scalaName": "myExercise",
+  "exerciseId": "block:my-exercise",
+
+  "title": {
+    "en": "My exercise title",
+    "de": "Mein Aufgabentitel"
+  },
+
+  "statement": {
+    "en": "Implement `my_func(x)` that … .\n\nExample: `my_func(3)` → `9`",
+    "de": "Implementiere `my_func(x)`, das … .\n\nBeispiel: `my_func(3)` → `9`"
+  },
+
+  "config": {
+    "enableVmStaticChecks": true,
+    "enablePythonStaticChecks": true,
+    "enableUnitTests": true,
+    "enableAiSummary": true,
+    "timeoutMs": 4000,
+
+    "visibleTests": [
+      {
+        "_note": "Happy-path test — no hint needed when the case is obvious.",
+        "name": "basic_case",
+        "code": "assert my_func(3) == 9"
+      },
+      {
+        "_note": "Second visible test with bilingual hints.",
+        "name": "another_case",
+        "code": "assert my_func(0) == 0",
+        "hint": "Consider what happens when the input is zero.",
+        "hintDE": "Überlege, was passiert, wenn die Eingabe null ist."
+      }
+    ],
+
+    "hiddenTests": [
+      {
+        "_note": "Edge case — default weight 1.0, no hint required.",
+        "name": "negative_input",
+        "code": "assert my_func(-4) == 16"
+      },
+      {
+        "_note": "Harder edge case — higher weight and bilingual hints.",
+        "name": "large_value",
+        "code": "assert my_func(1000) == 1000000",
+        "weight": 2.0,
+        "hint": "Make sure your solution handles large inputs efficiently.",
+        "hintDE": "Stelle sicher, dass deine Lösung große Eingaben effizient verarbeitet."
+      }
+    ],
+
+    "fixtures": [],
+    "packages": []
+  }
+}
