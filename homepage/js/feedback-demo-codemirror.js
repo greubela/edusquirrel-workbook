@@ -67,7 +67,14 @@ globalThis.EduSquirrelCodeMirror = {
         lineWrapping: true
       });
 
-      const indentGuideColor = "rgba(255, 255, 255, 0.55)";
+      function getIndentGuideColor() {
+        return document.documentElement.getAttribute("data-theme") === "light"
+          ? "rgba(70, 100, 180, 0.45)"
+          : "rgba(255, 255, 255, 0.40)";
+      }
+
+      new MutationObserver(() => cmInstance.refresh())
+        .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
       function countIndentColumns(text, tabSize) {
         let count = 0;
@@ -109,10 +116,11 @@ globalThis.EduSquirrelCodeMirror = {
             element.appendChild(overlay);
           }
           overlay.style.width = widthCh + "ch";
+          const guideColor = getIndentGuideColor();
           overlay.style.backgroundImage =
             "repeating-linear-gradient(to right, " +
-            indentGuideColor + " 0, " +
-            indentGuideColor + " 1px, transparent 1px, transparent " +
+            guideColor + " 0, " +
+            guideColor + " 1px, transparent 1px, transparent " +
             stepCh + "ch)";
           overlay.style.backgroundSize = stepCh + "ch 100%";
           overlay.style.backgroundRepeat = "repeat";
