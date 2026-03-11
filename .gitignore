@@ -39,12 +39,14 @@ build/
 
 ### VS Code ###
 .vscode/
+.metals/
 
 ### Local dev secrets / venvs ###
 tools/openai-proxy/.env
 tools/openai-proxy/.venv/
 tools/openai-proxy/chatlogs/
 tools/openai-proxy/ml-logs/
+**/__pycache__/
 
 ### Mac OS ###
 .DS_Store

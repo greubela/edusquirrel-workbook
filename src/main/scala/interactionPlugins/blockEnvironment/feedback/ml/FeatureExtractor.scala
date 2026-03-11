@@ -5,7 +5,7 @@ import interactionPlugins.blockEnvironment.feedback.rules.{RuleSeverity}
 /**
  * Converts [[BlockFeedbackSignals]] into a numeric feature vector.
  *
- * Output is designed for simple linear models (e.g., logistic regression) later.
+ * Output is designed for simple linear models such as logistic regression.
  */
 object FeatureExtractor {
 
@@ -51,7 +51,10 @@ object FeatureExtractor {
 
     val runtimeErr = signals.runtimeOutcome.runtimeError.getOrElse("")
     val stderr = signals.runtimeOutcome.stderr.getOrElse("")
-    val combinedError = (runtimeErr + "\n" + stderr).toLowerCase
+    val testErrorText = signals.runtimeOutcome.tests
+      .flatMap(t => Seq(t.actual, t.expected) ++ t.message.toSeq)
+      .mkString("\n")
+    val combinedError = s"$runtimeErr\n$stderr\n$testErrorText".toLowerCase
 
     def errFlag(substr: String): Double = if combinedError.contains(substr) then 1.0 else 0.0
 

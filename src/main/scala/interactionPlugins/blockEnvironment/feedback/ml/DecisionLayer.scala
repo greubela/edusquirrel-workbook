@@ -1,12 +1,13 @@
 package interactionPlugins.blockEnvironment.feedback.ml
 
 /**
- * MVP Mini-ML v0: deterministic routing layer with the same output API
+ * MVP Mini-ML v1.1: deterministic routing layer with the same output API
  * that a future ML model will expose.
  */
 object DecisionLayer {
 
   enum IssueType {
+    case CORRECT
     case COMPILE_ERROR
     case API_SIGNATURE
     case PERFORMANCE
@@ -33,7 +34,16 @@ object DecisionLayer {
     severity: Severity,
     confidence: Double,
     topCauses: Seq[String],
-    evidence: Seq[Evidence]
+    evidence: Seq[Evidence],
+    /**
+     * True when the ML router predicted "CORRECT" with sufficient confidence AND
+     * the heuristic fallback was only a soft catch-all (LOGIC_EDGE_CASE).
+     *
+     * Consumers (e.g. BlockFeedbackService) should use this to suppress LLM
+     * calls and other non-essential processing when the code is likely correct.
+     * It is never set by the heuristic router itself only by MlRouter.
+     */
+    mlCorrectSignal: Boolean = false
   )
 
   private def mkDecision(
@@ -56,9 +66,25 @@ object DecisionLayer {
   def heuristicRoute(signals: BlockFeedbackSignals): Decision = {
     val runtimeError = signals.runtimeOutcome.runtimeError.getOrElse("")
     val stderr = signals.runtimeOutcome.stderr.getOrElse("")
-    val combinedError = s"$runtimeError\n$stderr".toLowerCase
+    val testErrorText = signals.runtimeOutcome.tests
+      .flatMap(t => Seq(t.actual, t.expected) ++ t.message.toSeq)
+      .mkString("\n")
+    val combinedError = s"$runtimeError\n$stderr\n$testErrorText".toLowerCase
 
-    // 1) Compile errors
+    val hasRuntimeError = signals.runtimeOutcome.runtimeError.exists(_.trim.nonEmpty)
+    val allTestsPassed = signals.runtimeOutcome.tests.nonEmpty &&
+      signals.runtimeOutcome.tests.forall(_.passed)
+
+    if allTestsPassed && !hasRuntimeError then {
+      return mkDecision(
+        primaryIssue = IssueType.CORRECT,
+        confidence = 1.0,
+        topCauses = Seq("all tests passed"),
+        severity = Severity.LOW
+      )
+    }
+
+    // compile errors
     if combinedError.contains("syntaxerror") || combinedError.contains("indentationerror") then {
       val causes = Seq("runtimeError contains SyntaxError/IndentationError").filter(_.nonEmpty)
       return mkDecision(
@@ -70,7 +96,18 @@ object DecisionLayer {
       )
     }
 
-    // 1.5) Runtime exceptions (TypeError, IndexError, ...)
+    // NameError + "did you mean" = function name typo; check before the generic exception block
+    if combinedError.contains("nameerror") && combinedError.contains("did you mean") then {
+      return mkDecision(
+        primaryIssue = IssueType.API_SIGNATURE,
+        confidence = 0.92,
+        topCauses = Seq("NameError with 'did you mean' suggests function name typo"),
+        severity = Severity.MEDIUM,
+        evidence = Seq(Evidence("exception", "nameerror"), Evidence("hint", "did you mean"))
+      )
+    }
+
+    // runtime exceptions
     val exceptionTypes = Seq(
       "typeerror",
       "indexerror",
@@ -78,7 +115,9 @@ object DecisionLayer {
       "valueerror",
       "zerodivisionerror",
       "attributeerror",
-      "nameerror"
+      "nameerror",
+      "modulenotfounderror",
+      "importerror"
     )
     exceptionTypes.find(combinedError.contains) match {
       case Some(exc) =>
@@ -93,7 +132,7 @@ object DecisionLayer {
       case None =>
     }
 
-    // 2) Performance/timeouts
+    // timeout
     if combinedError.contains("timed out") || combinedError.contains("timeout") then {
       return mkDecision(
         primaryIssue = IssueType.PERFORMANCE,
@@ -104,7 +143,6 @@ object DecisionLayer {
       )
     }
 
-    // Helpers for test-driven signals
     val testTextsLower: Seq[String] =
       signals.runtimeOutcome.tests.flatMap(t => Seq(t.name, t.expected, t.actual) ++ t.message.toSeq).map(_.toLowerCase)
 
@@ -113,7 +151,7 @@ object DecisionLayer {
 
     val mentionsNameOrAttrError = combinedError.contains("nameerror") || combinedError.contains("attributeerror")
 
-    // 3) API signature issues
+    // API signature: NameError + test mentions missing function
     if mentionsNameOrAttrError && mentionsFunctionMissing then {
       val causes = Seq("NameError/AttributeError", "tests indicate function missing")
       return mkDecision(
@@ -125,13 +163,13 @@ object DecisionLayer {
       )
     }
 
-    // 3.5) I/O contract issues (input()) when tests fail
     val testsTotal = signals.runtimeOutcome.tests.size
     val testsFailed = signals.runtimeOutcome.tests.count(!_.passed)
     val hasFailingTests = testsTotal > 0 && testsFailed > 0
 
     val ioSignal = signals.inputCallCount >= 1
 
+    // input() usage with failing tests = I/O contract issue
     if hasFailingTests && ioSignal then {
       return mkDecision(
         primaryIssue = IssueType.IO_CONTRACT,
@@ -142,7 +180,6 @@ object DecisionLayer {
       )
     }
 
-    // 4) Output formatting issues
     val manyFails = testsTotal >= 3 && testsFailed.toDouble / testsTotal.toDouble >= 0.6
 
     val minPrintsForFormat = 2
@@ -169,8 +206,8 @@ object DecisionLayer {
       )
     }
 
-    // 4.5) Incomplete implementation heuristics
-    if hasFailingTests && signals.hasPassStatement then {
+    // pass statement with failing tests = incomplete implementation (skip if there's a runtime error)
+    if hasFailingTests && signals.hasPassStatement && !hasRuntimeError then {
       return mkDecision(
         primaryIssue = IssueType.INCOMPLETE_IMPLEMENTATION,
         confidence = 0.82,
@@ -180,7 +217,18 @@ object DecisionLayer {
       )
     }
 
-    // 4.6) Boundary/edge-case clustering heuristics
+    // random() usage is a more specific, identifiable signal than a generic boundary hint —
+    // check it before BOUNDARY_CONDITION so it is not silently subsumed.
+    if hasFailingTests && signals.randomCallCount > 0 then {
+      return mkDecision(
+        primaryIssue = IssueType.NONDETERMINISM,
+        confidence = 0.76,
+        topCauses = Seq("randomness usage detected"),
+        severity = Severity.MEDIUM,
+        evidence = Seq(Evidence("randomCallCount", signals.randomCallCount.toString))
+      )
+    }
+
     val boundarySignal = signals.boundaryHintScore >= 2 && testsTotal >= 2
     if hasFailingTests && boundarySignal then {
       return mkDecision(
@@ -192,18 +240,6 @@ object DecisionLayer {
       )
     }
 
-    // 4.7) Non-determinism hints
-    if hasFailingTests && signals.randomCallCount > 0 then {
-      return mkDecision(
-        primaryIssue = IssueType.NONDETERMINISM,
-        confidence = 0.76,
-        topCauses = Seq("randomness usage detected"),
-        severity = Severity.MEDIUM,
-        evidence = Seq(Evidence("randomCallCount", signals.randomCallCount.toString))
-      )
-    }
-
-    // Default
     val baseConfidence = if hasFailingTests then 0.75 else 0.6
     mkDecision(
       primaryIssue = IssueType.LOGIC_EDGE_CASE,
@@ -213,12 +249,6 @@ object DecisionLayer {
     )
   }
 
-  /**
-   * Swappable router entry point.
-   *
-   * - `RouterMode.Heuristic`: deterministic heuristics
-   * - `RouterMode.Ml`: uses an offline-trained model (falls back to heuristics if unavailable)
-   */
   def route(signals: BlockFeedbackSignals, mode: RouterMode = RouterMode.Heuristic): Decision =
     mode match
       case RouterMode.Heuristic => heuristicRoute(signals)
@@ -227,6 +257,7 @@ object DecisionLayer {
         MlRouter.routeOrFallback(signals, weak)
 
   def templateIdFor(issueType: IssueType): String = issueType match {
+    case IssueType.CORRECT         => "T_CORRECT"
     case IssueType.COMPILE_ERROR   => "T_COMPILE_ERROR"
     case IssueType.API_SIGNATURE   => "T_API_SIGNATURE"
     case IssueType.PERFORMANCE     => "T_PERFORMANCE"

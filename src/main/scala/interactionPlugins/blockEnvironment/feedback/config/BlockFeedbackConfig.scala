@@ -36,7 +36,9 @@ final case class BlockFeedbackConfig(
   mlModelUrl: Option[String] = None,
 
   /** Optional HTTP endpoint that receives training examples as JSON. */
-  mlLogUrl: Option[String] = None
+  mlLogUrl: Option[String] = None,
+
+  isScriptExercise: Boolean = false
 )
 
 object BlockFeedbackConfig {

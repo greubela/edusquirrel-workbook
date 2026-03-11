@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback Demo</title>
+
+        <meta http-equiv="Content-Security-Policy"
+            content="default-src 'self'; connect-src 'self' http://localhost:8787 http://localhost:8000 http://127.0.0.1:8000 https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; script-src 'self' https://esm.sh https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://unpkg.com https://cdnjs.cloudflare.com;">
+
+    <script src="./js/feedback-demo-theme.js"></script>
+    <link rel="stylesheet" href="./css/feedback-demo.css">
+    <script type="module" src="./js/feedback-demo-codemirror.js"></script>
+
+    <script defer src="./js/feedback-demo-loader.js"></script>
+</head>
+<body>
+<div id="app">
+    <a href="./landingPage.html" id="fdBackBtn">&#8592; Zurück</a>
+    <button class="fd-theme-toggle" id="fdThemeToggle" aria-label="Thema wechseln">
+      <span class="fd-tt-track">
+        <span class="fd-tt-thumb"></span>
+        <span class="fd-tt-icon fd-tt-icon--dark"  aria-hidden="true"></span>
+        <span class="fd-tt-icon fd-tt-icon--light" aria-hidden="true"></span>
+      </span>
+    </button>
+    <div id="feedbackDemoRoot"></div>
+</div>
+</body>
+</html>

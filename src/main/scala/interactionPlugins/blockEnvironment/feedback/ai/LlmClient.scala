@@ -13,7 +13,9 @@ trait LlmClient {
   def completeWithMeta(
     prompt: String,
     systemPrompt: Option[String] = None,
-    logTag: Option[String] = None
+    logTag: Option[String] = None,
+    studentCode: Option[String] = None,
+    debugMeta: Map[String, String] = Map.empty
   ): Future[String] =
     complete(prompt, systemPrompt)
 }

@@ -89,6 +89,9 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 UPSTREAM_TIMEOUT_S = float(os.getenv("UPSTREAM_TIMEOUT_S", "25"))
 
+# Set DETAILED_LOGGING=true to include studentCode, debugMeta and the full prompt in chat logs.
+DETAILED_LOGGING: bool = os.getenv("DETAILED_LOGGING", "false").strip().lower() in ("1", "true", "yes")
+
 client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
 app = FastAPI()
@@ -240,13 +243,12 @@ async def complete(request: Request):
 
         log_tag = _safe_log_tag(raw_tag) or "chat"
 
+        student_code_raw = data.get("studentCode") or ""
+        student_code = student_code_raw.splitlines()
+        debug_meta = data.get("debugMeta") or {}
+
         logs_dir = _ensure_logs_dir()
         log_path = os.path.join(logs_dir, f"{log_tag}-{ip}-{timestamp}.json")
-        _safe_write_json(log_path, {"model": model, "messages": messages})
-
-        response_log_path = os.path.join(
-            logs_dir, f"{log_tag}-{ip}-{timestamp}-response.json"
-        )
 
         async def generate() -> AsyncIterator[str]:
             parts: list[str] = []
@@ -255,25 +257,33 @@ async def complete(request: Request):
                     parts.append(chunk)
                     yield chunk
                 text = "".join(parts)
-                _safe_write_json(
-                    response_log_path,
-                    {
-                        "model": model,
-                        "response": text,
-                        "wordCount": len([w for w in text.split() if w]),
-                        "maxWordsRequested": max_words,
-                    },
-                )
+                entry: Dict[str, Any] = {
+                    "timestamp": timestamp,
+                    "model": model,
+                    "logTag": raw_tag,
+                    "response": text.splitlines(),
+                    "wordCount": len([w for w in text.split() if w]),
+                    "maxWordsRequested": max_words,
+                }
+                if DETAILED_LOGGING:
+                    entry["studentCode"] = student_code
+                    entry["debugMeta"] = debug_meta
+                    entry["prompt"] = {"system": system_prompt.splitlines(), "user": user_prompt.splitlines()}
+                _safe_write_json(log_path, entry)
             except Exception as e:
                 err_text = f"[ERROR]: {str(e)}\n{traceback.format_exc()}"
-                _safe_write_json(
-                    response_log_path,
-                    {
-                        "model": model,
-                        "error": str(e),
-                        "trace": traceback.format_exc(),
-                    },
-                )
+                entry = {
+                    "timestamp": timestamp,
+                    "model": model,
+                    "logTag": raw_tag,
+                    "error": str(e),
+                    "trace": traceback.format_exc(),
+                }
+                if DETAILED_LOGGING:
+                    entry["studentCode"] = student_code
+                    entry["debugMeta"] = debug_meta
+                    entry["prompt"] = {"system": system_prompt, "user": user_prompt}
+                _safe_write_json(log_path, entry)
                 yield err_text
 
         return StreamingResponse(generate(), media_type="text/plain")

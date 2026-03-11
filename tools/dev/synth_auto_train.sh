@@ -25,9 +25,12 @@ export ML_LOG_URL
 # export SYNTH_TRAIN_EPOCHS=250
 
 # sdkman-init.sh is not always nounset-safe.
-set +u
-source "$HOME/.sdkman/bin/sdkman-init.sh"
-set -u
+if [[ -f "$HOME/.sdkman/bin/sdkman-init.sh" ]]; then
+	set +u
+	# shellcheck disable=SC1090
+	source "$HOME/.sdkman/bin/sdkman-init.sh"
+	set -u
+fi
 
 sbt -batch -Dsbt.supershell=false -no-colors "testOnly interactionPlugins.blockEnvironment.feedback.ml.SyntheticMlDatasetGeneratorSpec"
 

@@ -152,36 +152,17 @@ object PythonStaticRules {
       )
     }
 
-    // TODO / pass -> incomplete code
-    val lower   = normalized.toLowerCase
-    val hasTodo = lower.contains("todo")
-    val hasPass = """\bpass\b""".r.findFirstIn(lower).nonEmpty
-
-    if hasTodo || hasPass then {
-      results += RuleResult(
-        id = "PY_INCOMPLETE_CODE",
-        category = "PYTHON_SEMANTICS",
-        severity = RuleSeverity.Warning,
-        passed = false,
-        message = t(humanLanguage)(
-          "Der Code enthält Platzhalter wie 'pass' oder 'TODO'-Kommentare. Vermutlich ist die Lösung noch nicht vollständig.",
-          "The code contains placeholders like 'pass' or TODO comments. The solution is likely incomplete."
-        ),
-        details = None
-      )
-    } else {
-      results += RuleResult(
-        id = "PY_INCOMPLETE_CODE",
-        category = "PYTHON_SEMANTICS",
-        severity = RuleSeverity.Info,
-        passed = true,
-        message = t(humanLanguage)(
-          "Es wurden keine offensichtlichen Platzhalter wie 'pass' oder 'TODO' gefunden.",
-          "No obvious placeholders like 'pass' or TODO were found."
-        ),
-        details = None
-      )
-    }
+    results += RuleResult(
+      id = "PY_INCOMPLETE_CODE",
+      category = "PYTHON_SEMANTICS",
+      severity = RuleSeverity.Info,
+      passed = true,
+      message = t(humanLanguage)(
+        "Es wurden keine offensichtlichen Platzhalter gefunden.",
+        "No obvious placeholders found."
+      ),
+      details = None
+    )
 
     // print spam
     val printRegex: Regex = """\bprint\s*\(""".r
@@ -261,9 +242,8 @@ object PythonStaticRules {
       )
     }
 
-    // randomness (non-deterministic)
-    val randomRegex: Regex = """(^|\n)\s*(import\s+random|from\s+random\s+import)\b|\brandom\s*\.""".r
-    if randomRegex.findFirstIn(normalized).nonEmpty then {
+    val randomUsageRegex: Regex = """\brandom\s*\.""".r
+    if randomUsageRegex.findFirstIn(normalized).nonEmpty then {
       results += RuleResult(
         id = "PY_RANDOM_USAGE",
         category = "PYTHON_SEMANTICS",

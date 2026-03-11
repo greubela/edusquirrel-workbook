@@ -1,12 +1,11 @@
 package interactionPlugins.pythonExercises
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import scala.scalajs.js.JSON
-import scala.scalajs.js.Thenable.Implicits.*
-import scala.scalajs.js.annotation.JSGlobal
 import scala.scalajs.js.JSConverters.*
+import org.scalajs.dom
 
 private[interactionPlugins] final case class PythonRunRequest(
     code: String,
@@ -19,41 +18,128 @@ private[interactionPlugins] final case class PythonRunRequest(
 
 private[interactionPlugins] object PythonRuntimeService {
 
-  @js.native
-  trait Pyodide extends js.Object {
-    def runPythonAsync(code: String): js.Promise[js.Any] = js.native
-    def loadPackage(pkg: String | js.Array[String]): js.Promise[Unit] = js.native
-  }
-
-  @js.native
-  @JSGlobal("loadPyodide")
-  object LoadPyodide extends js.Object {
-    def apply(options: js.UndefOr[js.Object] = js.undefined): js.Promise[Pyodide] = js.native
-  }
-
   private given ExecutionContext = queue
 
-  private var cachedPyodide: Option[Future[Pyodide]] = None
-  private var installedPackages: Set[String] = Set.empty
+  // **Web Worker management**
+  //
+  // Pyodide runs inside a dedicated Web Worker so that long-running / hung
+  // Python code cannot block the main JS event loop.
+  // When a timeout fires we call worker.terminate(), which immediately kills
+  // the worker thread regardless of what Python is doing.  The next call to
+  // run() lazily creates a fresh worker (which will reload Pyodide).
+  //
+  // Worker script URL: configurable via the global JS variable
+  //   window.PYTHON_WORKER_URL
+  // falling back to the default relative path "js/pythonWorker.js".
 
-  private def ensurePyodideLoaded(): Future[Pyodide] = cachedPyodide match {
-    case Some(value) => value
-    case None =>
-      val future =
-        if js.typeOf(js.Dynamic.global.selectDynamic("loadPyodide")) == "function" then LoadPyodide().toFuture
-        else Future.failed(new IllegalStateException("Pyodide runtime is not available on the global scope."))
-      cachedPyodide = Some(future)
-      future
+  private var currentWorker: Option[dom.Worker] = None
+  private var msgIdCounter: Int = 0
+
+  // Promise that resolves when the worker's Pyodide runtime is fully loaded.
+  // Reset whenever the worker is terminated so a fresh worker gets a fresh promise.
+  private var pyodideReadyPromise: Promise[Unit] = Promise()
+
+  // Pending run promises keyed by message id (stored as Double; JS Numbers are
+  // doubles, and using Double avoids any Int/Double boxing mismatch in the Map).
+  private val pendingRuns = scala.collection.mutable.Map.empty[Double, Promise[PythonRunResult]]
+
+  /** URL of the worker script; can be overridden via a page-level JS global. */
+  private def workerUrl: String =
+    // selectDynamic throws a ReferenceError in strict mode when the variable
+    // was never declared at all, so we wrap the lookup in a try/catch.
+    try
+      val g = js.Dynamic.global.selectDynamic("PYTHON_WORKER_URL")
+      if !js.isUndefined(g) && g != null then g.asInstanceOf[String]
+      else "js/pythonWorker.js"
+    catch case _: Throwable => "js/pythonWorker.js"
+
+  private def getOrCreateWorker(): dom.Worker =
+    currentWorker match {
+      case Some(w) => w
+      case None =>
+        val w = new dom.Worker(workerUrl)
+        currentWorker = Some(w)
+
+        // Single dispatching handler: handles the "ready" signal from warmup
+        // AND routes run results to the matching pending-run promise.
+        w.onmessage = { (event: dom.MessageEvent) =>
+          val data = event.data.asInstanceOf[js.Dynamic]
+          val msgType = data.selectDynamic("type")
+          if !js.isUndefined(msgType) && msgType != null && msgType.asInstanceOf[String] == "ready" then
+            pyodideReadyPromise.trySuccess(())
+          else
+            // JS numbers are doubles; use Double key to avoid Int-boxing mismatch.
+            val id = data.selectDynamic("id").asInstanceOf[Double]
+            pendingRuns.remove(id).foreach { p =>
+              val errorVal = data.selectDynamic("error")
+              val result =
+                if !js.isUndefined(errorVal) && errorVal != null then
+                  PythonRunResult(
+                    PythonRunStatus.RuntimeError, Seq.empty,
+                    stdout = "", stderr = "",
+                    error = Some(errorVal.asInstanceOf[String]).filter(_.nonEmpty),
+                    score = 0.0
+                  )
+                else
+                  parseResult(data.selectDynamic("result"))
+              p.trySuccess(result)
+            }
+        }
+
+        w.onerror = { (e: dom.ErrorEvent) =>
+          val msg = Option(e.message).filter(_.nonEmpty).getOrElse("Web Worker error")
+          // Reject the ready promise so waitUntilReady() doesn't hang forever.
+          pyodideReadyPromise.tryFailure(new RuntimeException(s"Worker failed: $msg"))
+          pendingRuns.values.foreach(_.trySuccess(PythonRunResult(
+            PythonRunStatus.RuntimeError, Seq.empty,
+            stdout = "", stderr = "",
+            error = Some(s"Web Worker error: $msg"),
+            score = 0.0
+          )))
+          pendingRuns.clear()
+        }
+
+        // Kick off Pyodide loading; worker replies with {type:"ready"} when done.
+        w.postMessage(js.Dynamic.literal("type" -> "warmup"))
+        w
+    }
+
+  /** Create the worker and start loading Pyodide in the background.
+   *  Call this as early as possible (when the UI element is mounted)
+   *  so Pyodide is ready before the user submits their first code.
+   */
+  private[interactionPlugins] def warmup(): Unit =
+    try getOrCreateWorker()
+    catch case _: Throwable => ()
+
+  /** True once the worker has signalled that Pyodide is fully loaded.
+   *  Used by PythonFeedbackRuntime to choose the right timeout for each run:
+   *  short (user-configured ms) on warm runs, long on the first cold-start run.
+   */
+  private[interactionPlugins] def isReady: Boolean =
+    pyodideReadyPromise.isCompleted &&
+      pyodideReadyPromise.future.value.exists(_.isSuccess)
+
+  /** Terminate the current worker (if any) and reset state.
+   *  Called by PythonFeedbackRuntime when a timeout fires so that infinite
+   *  loops are killed immediately.
+   */
+  private[interactionPlugins] def terminateWorker(): Unit = {
+    js.Dynamic.global.console.warn("[PythonWorker] terminateWorker() called — worker killed (timeout or explicit)")
+    currentWorker.foreach(_.terminate())
+    currentWorker = None
+    // Fail any run that was waiting for a response from the killed worker.
+    pendingRuns.values.foreach(_.tryFailure(
+      new java.util.concurrent.TimeoutException("Worker terminated")
+    ))
+    pendingRuns.clear()
+    // Fresh promise so the next worker's ready signal will be picked up.
+    pyodideReadyPromise = Promise()
   }
 
-  private def ensurePackages(pyodide: Pyodide, packages: Seq[String]): Future[Unit] = {
-    val missing = packages.filterNot(installedPackages.contains)
-    if missing.isEmpty then Future.successful(())
-    else
-      pyodide
-        .loadPackage(missing.toJSArray)
-        .toFuture
-        .map(_ => installedPackages = installedPackages ++ missing)
+  private def nextMsgId(): Int = {
+    msgIdCounter += 1
+    msgIdCounter
   }
 
   private def buildExecutionScript(request: PythonRunRequest): String = {
@@ -97,6 +183,7 @@ private[interactionPlugins] object PythonRuntimeService {
     val codeLiteral = JSON.stringify(request.code)
 
     s"""
+import ast
 import json
 import sys
 import traceback
@@ -124,6 +211,7 @@ try:
   sys.stdout = stdout_capture
   sys.stderr = stderr_capture
   namespace = {}
+  namespace['_student_source'] = _code_source
 
   import pathlib
   import base64
@@ -147,6 +235,27 @@ try:
   total_weight = sum(test.get("weight", 1.0) for test in _tests) or 1.0
   earned = 0.0
 
+  def _eval_simple_assert(code, ns):
+    try:
+      tree = ast.parse(code)
+      if len(tree.body) != 1 or not isinstance(tree.body[0], ast.Assert):
+        return None
+      test_node = tree.body[0].test
+      if isinstance(test_node, ast.Compare) and len(test_node.ops) == 1 and len(test_node.comparators) == 1:
+        op = test_node.ops[0]
+        # Only handle == and 'in' in the fast path; other operators (>, >=, !=, …)
+        # fall through to exec() so Python itself evaluates them correctly.
+        if not isinstance(op, (ast.Eq, ast.In)):
+          return None
+        left_expr = ast.Expression(test_node.left)
+        right_expr = ast.Expression(test_node.comparators[0])
+        left_val = eval(compile(left_expr, "<assert>", "eval"), ns, ns)
+        right_val = eval(compile(right_expr, "<assert>", "eval"), ns, ns)
+        return (op, left_val, right_val)
+      return None
+    except Exception:
+      return None
+
   for test in _tests:
     start = time.perf_counter()
     entry = {
@@ -159,8 +268,22 @@ try:
       "weight": test.get("weight", 1.0)
     }
     try:
-      exec(test.get("code", ""), namespace, namespace)
-      earned += entry["weight"]
+      test_code = test.get("code", "")
+      maybe_eval = _eval_simple_assert(test_code, namespace)
+      if maybe_eval is not None:
+        op, left_val, right_val = maybe_eval
+        if isinstance(op, ast.In):
+          ok = left_val in right_val
+        else:
+          ok = left_val == right_val
+        if ok:
+          earned += entry["weight"]
+        else:
+          entry["status"] = "failed"
+          entry["message"] = f"expected={right_val} actual={left_val}"
+      else:
+        exec(test_code, namespace, namespace)
+        earned += entry["weight"]
     except AssertionError as assertion_error:
       entry["status"] = "failed"
       entry["message"] = str(assertion_error)
@@ -231,26 +354,32 @@ json.dumps(result)
   }
 
   def run(request: PythonRunRequest): Future[PythonRunResult] = {
-    ensurePyodideLoaded().flatMap { pyodide =>
-      ensurePackages(pyodide, request.packages).flatMap { _ =>
-        val script = buildExecutionScript(request)
-        pyodide
-          .runPythonAsync(script)
-          .toFuture
-          .map(parseResult)
-          .recover { case error =>
-            PythonRunResult(
-              PythonRunStatus.RuntimeError,
-              Seq.empty,
-              stdout = "",
-              stderr = "",
-              error = Option(error.getMessage()).filter(_.nonEmpty),
-              score = 0.0
-            )
-          }
+    val p = Promise[PythonRunResult]()
+    val msgId = nextMsgId()
+
+    val worker =
+      try getOrCreateWorker()
+      catch {
+        case ex: Throwable =>
+          return Future.successful(PythonRunResult(
+            PythonRunStatus.RuntimeError,
+            Seq.empty,
+            stdout = "",
+            stderr = "",
+            error = Some(s"Python worker unavailable: ${Option(ex.getMessage).getOrElse(ex.toString)}"),
+            score = 0.0
+          ))
       }
-    }.recover { case error =>
-      PythonRunResult(PythonRunStatus.RuntimeError, Seq.empty, "", "", Option(error.getMessage()).filter(_.nonEmpty), 0.0)
-    }
+
+    // Register this run (keyed as Double to match JS Number type from response).
+    pendingRuns(msgId.toDouble) = p
+
+    worker.postMessage(js.Dynamic.literal(
+      "id"       -> msgId,
+      "script"   -> buildExecutionScript(request),
+      "packages" -> request.packages.toJSArray
+    ))
+
+    p.future
   }
 }
