@@ -20,7 +20,8 @@ private val idAndContentList: List[(String, Element)] = List(
   //("testEditor", HtmlFullscreenTurtleEditorElement(BeProgram.debugGraphicsProgram().fullProgram).getDomElement()),
   ("workbookTest", TestWorkbook.createTestWorkbook(fullscreenElement).getDomElement()),
   //("worksheetMonks", TestWorkbook(fullscreenElement).getDomElement()),
-  ("workbookEmbroidery", CreateEmbroideryWorkbook(fullscreenElement).createWorkbook().getDomElement())
+  ("workbookEmbroidery", CreateEmbroideryWorkbook(fullscreenElement).createWorkbook().getDomElement()),
+  //("feedbackDemoRoot", FeedbackDemoElement.element()),
 )
 
 def insertWorkbookContent(): Unit = {
