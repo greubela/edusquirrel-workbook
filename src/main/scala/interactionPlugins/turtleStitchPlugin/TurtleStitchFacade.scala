@@ -40,11 +40,22 @@ object TurtleStitchFacade {
     taskResult.future
   }
 
+  val programXmlRunOutputStorage: DataStorage[String, String] = new DataStorage[String, String]("ProgramXmlRunOutput", true) {
+    protected def executeLoading(xml: String)(ec: scala.concurrent.ExecutionContext): scala.concurrent.Future[String] = {
+      runSerially(TurtleStitchFacadeNative.simulateGreenFlag(xml).toFuture)(using ec)
+    }
+
+    override protected def initialValueWhileLoading(in: String): Option[String] = None
+
+    protected def formatInputForLogging(in: String): String = "XmlInput(" + in.length + ", " + in.substring(0, 20) + ")"
+
+    override protected def formatOutputForLogging(out: String): String = out
+  }
+
   val programSvgDataSrcStorage: DataStorage[(String, HumanLanguage), String] = new DataStorage[(String, HumanLanguage), String]("ProgramSvgDataSrc", false) {
     private def turtleLang(language: HumanLanguage) = AppLanguage.turtleStitchLangMap.getOrElse(language, "en")
 
     protected def executeLoading(in: (String, HumanLanguage))(ec: scala.concurrent.ExecutionContext): scala.concurrent.Future[String] = {
-
       val (xml, language) = in
       runSerially(TurtleStitchFacadeNative.calcProgramSvg(xml, turtleLang(language)).toFuture)(using ec)
     }

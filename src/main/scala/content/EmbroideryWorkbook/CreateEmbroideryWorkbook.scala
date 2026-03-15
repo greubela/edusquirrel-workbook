@@ -160,6 +160,8 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
       HtmlContainerTitle(workbookInfoVar, title),
       instructionElements(0),
       createExploreExerciseDownloadInteraction("simple_forward"),
+     // createExploreExerciseDownloadInteraction("complex_example"),
+     // createExploreExerciseDownloadInteraction("more_complex"),
       instructionElements(1),
       createTextInput(),
       instructionElements(2),

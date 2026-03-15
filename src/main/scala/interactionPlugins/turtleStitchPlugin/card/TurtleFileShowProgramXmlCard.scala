@@ -11,6 +11,9 @@ import util.web.DownloadHelper
 import workbook.model.info.WorkbookInfo
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 import contentmanagement.model.file.*
+import contentmanagement.model.language.AppLanguage.{English, Python}
+import interactionPlugins.fileSubmission.turtleLogic.{TurtleRenderer, TurtleXmlParser}
+import interactionPlugins.fileSubmission.turtleStitch.TurtleStitchBeExpressionAdapter
 
 import scala.concurrent.ExecutionContext
 
@@ -29,8 +32,19 @@ case class TurtleFileShowProgramXmlCard(
   private val downloadButton: Element = button(
     child <-- workbookInfoVar.signal.map(_.languageStringFromMap(TurtleStitchLanguageMaps.languageMapDownloadButton)),
     onClick --> { _ =>
-      projectXmlVar.now().foreach(currentXml => {
+      projectXmlVar.now().foreach(f = currentXml => {
         DownloadHelper.downloadFile(desiredFilename, currentXml)
+        /*val res = TurtleStitchFacade.programXmlRunOutputStorage.loadIntoVariable(currentXml)(ExecutionContext.global)
+        println("res: " + res)
+        
+        val res2 = TurtleXmlParser.parse(currentXml)
+        println("res2: " + res2)
+        val res3 = TurtleRenderer.renderToPngDataUrl(res2)
+        println("res3: " + res3)
+        println("xml: " + currentXml)
+        val res = TurtleStitchBeExpressionAdapter.fromXml(currentXml)
+        println("python: " + res.getInLanguage(Python, English))
+        println("res: " + res)*/
       })
     }
   )
