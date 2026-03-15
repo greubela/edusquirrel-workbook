@@ -1,12 +1,12 @@
-package interactionPlugins.fileSubmission.cards
+package interactionPlugins.turtleStitchPlugin.card
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
-import TurtleFileButtonCard.*
-import TurtleFileButtonCard.StorageFormat.{BYTES_AS_BASE64_STRING, BYTES_AS_RAW_STRING}
 import interactionPlugins.fileSubmission.*
-import interactionPlugins.fileSubmission.TurtleStitchFileFactory.*
+import interactionPlugins.turtleStitchPlugin.TurtleStitchLanguageMaps
+import interactionPlugins.turtleStitchPlugin.card.TurtleStitchFileUploadButtonCard.*
+import interactionPlugins.turtleStitchPlugin.card.TurtleStitchFileUploadButtonCard.StorageFormat.{BYTES_AS_BASE64_STRING, BYTES_AS_RAW_STRING}
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLButtonElement, HTMLDivElement, HTMLInputElement}
 import util.TypeConversion
@@ -20,9 +20,10 @@ import scala.scalajs.js
 import scala.scalajs.js.typedarray.*
 import scala.util.{Failure, Success}
 
-case class TurtleFileButtonCard(
+case class TurtleStitchFileUploadButtonCard(
                                  workbookInfoVar: L.Var[WorkbookInfo],
-                                 id: String, acceptedTypes: List[String],
+                                 id: String,
+                                 acceptedTypes: List[String],
                                  storageFormat: StorageFormat = BYTES_AS_BASE64_STRING
                                ) extends WorkbookInteraction[String] {
 
@@ -39,7 +40,7 @@ case class TurtleFileButtonCard(
   )
 
   private lazy val uploadButton: ReactiveHtmlElement[HTMLButtonElement] = button(
-    child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(languageMapUploaddButton.getInLanguage),
+    child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(TurtleStitchLanguageMaps.languageMapUploadButton.getInLanguage),
     uploadInput,
     onClick --> { _ =>
       uploadInput.ref.click()
@@ -49,7 +50,7 @@ case class TurtleFileButtonCard(
   private lazy val fileDom: ReactiveHtmlElement[HTMLDivElement] = div(
     cls := "preview-card",
     h3(
-      child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(languageMapUploaddButton.getInLanguage),
+      child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(TurtleStitchLanguageMaps.languageMapUploadButton.getInLanguage),
     ),
     div(
       cls := "preview-content",
@@ -89,7 +90,7 @@ case class TurtleFileButtonCard(
 
 }
 
-object TurtleFileButtonCard {
+object TurtleStitchFileUploadButtonCard {
 
   enum StorageFormat {
     case BYTES_AS_RAW_STRING, BYTES_AS_BASE64_STRING

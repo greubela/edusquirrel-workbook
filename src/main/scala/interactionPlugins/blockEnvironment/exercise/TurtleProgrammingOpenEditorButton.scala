@@ -6,7 +6,6 @@ import interactionPlugins.blockEnvironment.config.BlockEnvironmentLanguageMap
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
-import interactionPlugins.fileSubmission.TurtleStitchFileFactory
 import workbook.model.info.WorkbookInfo
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 

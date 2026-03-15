@@ -263,6 +263,16 @@ object FeedbackDemoElement:
       if last < text.length then result += span(text.substring(last))
       if result.isEmpty then Seq(span(text)) else result.toSeq
 
+  val eventLogVar = Var(Vector.empty[String])
+
+  def nowLabel: String =
+    try new js.Date().toLocaleTimeString()
+    catch case _: Throwable => "time"
+
+  def logEvent(message: String): Unit =
+    val line = s"[$nowLabel] $message"
+    eventLogVar.update(lines => (lines :+ line).takeRight(80))
+
   def element(): HtmlElement =
     // Start loading Pyodide in the background immediately so it is ready
     // by the time the user submits their first code (execution timeout is ~4s).
@@ -296,7 +306,6 @@ object FeedbackDemoElement:
     val isRunningVar = Var(false)
     val errorVar = Var(Option.empty[String])
     val feedbackVar = Var(Option.empty[UltrichsNewCoolFeedback])
-    val eventLogVar = Var(Vector.empty[String])
 
     val typedTextVar  = Var("")
     val typingDoneVar = Var(true)
@@ -318,13 +327,7 @@ object FeedbackDemoElement:
           typingDoneVar.set(true)
       })
 
-    def nowLabel: String =
-      try new js.Date().toLocaleTimeString()
-      catch case _: Throwable => "time"
 
-    def logEvent(message: String): Unit =
-      val line = s"[$nowLabel] $message"
-      eventLogVar.update(lines => (lines :+ line).takeRight(80))
 
     // Session persistence (sessionStorage)
     val SS_KEY = "fdSession"
@@ -660,8 +663,8 @@ object FeedbackDemoElement:
         cls := "fd-hero",
         h2(cls := "fd-hero-title", "Feedback Demo"),
         p(cls := "fd-hero-subtitle", child.text <-- tSig(
-          "Select an exercise, edit the code, and run feedback to review results.",
-          "W\u00e4hle eine Aufgabe, bearbeite den Code und f\u00fchre das Feedback aus."
+          "Select an exercise, edit the code, and run feedback to review results. Warning: no AI model currently connected!",
+          "W\u00e4hle eine Aufgabe, bearbeite den Code und f\u00fchre das Feedback aus. Achtung: Aktuell keine Verbindung mit KI-Modell!"
         ))
       ),
       div(

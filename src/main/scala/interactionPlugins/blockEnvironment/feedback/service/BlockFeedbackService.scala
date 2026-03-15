@@ -6,7 +6,9 @@ import interactionPlugins.blockEnvironment.feedback.ai.{FetchProxyLlmClient, Llm
 import interactionPlugins.blockEnvironment.feedback.diagnosis.{DiagnosisAdapters, DiagnosisEngine}
 import interactionPlugins.blockEnvironment.feedback.rules.{PythonStaticRules, VmStaticRules}
 import interactionPlugins.blockEnvironment.feedback.ml.{BlockFeedbackSignals, DecisionLayer, FeatureExtractor, MlRouter, MlTrainingLogger}
+import interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
 import interactionPlugins.pythonExercises.PythonRunStatus
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.scalajs.js
 
@@ -294,6 +296,8 @@ object BlockFeedbackService:
                 testPlanEffective.copy(derivedHints = testPlanEffective.derivedHints ++ Seq(passthroughText))
               else testPlanEffective
             else
+              // log
+              FeedbackDemoElement.logEvent("AI currently not available, fallback text!")
               val fallbackGated = QualityGate.enforce(fallbackCandidate, prompt.constraints, prompt.testNames, rawPython)
               val fallbackText = truncateWords(
                 normalizeStudentFacingText(fallbackGated.finalText),
@@ -303,6 +307,7 @@ object BlockFeedbackService:
                 testPlanEffective.copy(derivedHints = testPlanEffective.derivedHints ++ Seq(fallbackText))
               else testPlanEffective
           case None =>
+            FeedbackDemoElement.logEvent("AI currently not available, another fallback!")
             testPlanEffective
 
       val basePlanHintsCount = testPlanEffective.derivedHints.size

@@ -1,6 +1,7 @@
 package interactionPlugins.fileSubmission.turtleLogic
 
 import org.scalajs.dom
+
 import scala.scalajs.js
 
 object TurtleXmlParser {

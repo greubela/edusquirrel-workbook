@@ -1,7 +1,7 @@
 package interactionPlugins.fileSubmission.turtleStitch
 
-import interactionPlugins.fileSubmission.{TurtleFileSubmission, XmlFactory}
 import interactionPlugins.fileSubmission.turtleLogic.TurtleXmlParser
+import interactionPlugins.fileSubmission.{TurtleFileSubmission, XmlFactory}
 import interactionPlugins.fileSubmission.turtleStitch.TurtleStitchProgramModel.*
 import munit.FunSuite
 

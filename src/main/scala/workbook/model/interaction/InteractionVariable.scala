@@ -4,7 +4,7 @@ import com.raquo.airstream.ownership.Owner
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
 import upickle.default.*
-import util.Serializer
+import util.{ReadOnlyVar, Serializer}
 import workbook.model.interaction.history.*
 import workbook.model.interaction.history.UpdateImportance.DEFAULT
 import workbook.model.interaction.sync.*
@@ -19,12 +19,14 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
 
   private val underlyingVar: Var[T] = Var[T](initHistory.maxBy(_.epochTimestampMillis).value)
 
-  def interactionSignal: Signal[T] = underlyingVar.signal
+  def interactionSignal: StrictSignal[T] = underlyingVar.signal
 
   def lastUpdate: InteractionVariableState[T] = history.maxBy(_.epochTimestampMillis) 
   
   def currentValue: T = underlyingVar.now()
 
+  def createReadonlyVar(): ReadOnlyVar[T] = ReadOnlyVar(underlyingVar)
+    
   def createBoundVarWithUpdateImportance(importance: UpdateImportance): Var[T] = {
     val outerVar = Var[T](underlyingVar.now())
     outerVar.signal.foreach(newValue => updateStateFromUserInteraction(newValue, System.currentTimeMillis(), importance))

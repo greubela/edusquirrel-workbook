@@ -2,9 +2,9 @@ package interactionPlugins.fileSubmission.turtleLogic
 
 import org.scalajs.dom
 import org.scalajs.dom.html
-import scala.scalajs.js
 
-import scala.math.{Pi, cos, max, min, sin}
+import scala.math.*
+import scala.scalajs.js
 
 object TurtleRenderer {
 

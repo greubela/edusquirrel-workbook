@@ -1,64 +1,14 @@
-package interactionPlugins.fileSubmission
+package interactionPlugins.turtleStitchPlugin
 
-import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.*
-import contentmanagement.model.image.ImageDescription
-import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
-import interactionPlugins.fileSubmission.cards.{TurtleFileProgramPreviewCard, TurtleStitchUploadFileLine}
-import org.scalajs.dom
-import org.scalajs.dom.URL
-import workbook.model.info.WorkbookInfo
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-import workbook.workbookHtmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement}
-import workbook.workbookHtmlElements.interactions.HtmlBasicTextInteraction
+import contentmanagement.model.language.*
 
-object TurtleStitchFileFactory {
+object TurtleStitchLanguageMaps {
 
-  def createReprogramShapeExercise(
-                                    workbookInfo: Var[WorkbookInfo],
-                                    baseId: String,
-                                    title: LanguageMap[HumanLanguage],
-                                    expectedOutcome: ImageDescription
-                                  ): List[HtmlWorkbookElement] = {
 
-    val htmlTitleElement = HtmlContainerTitle(workbookInfo, title)
-
-    val instr = HtmlPlaintextInstructionElement(workbookInfo, languageMapDefaultReprogramInstruction)
-
-    val uploadLine = TurtleStitchUploadFileLine(workbookInfo, baseId, expectedOutcome)
-
-    List(htmlTitleElement, instr, uploadLine)
-  }
-
-  def createExecuteProgramExercise(
-                                    workbookInfo: Var[WorkbookInfo],
-                                    baseId: String,
-                                    title: LanguageMap[HumanLanguage],
-                                    imageShowCommands: ImageDescription,
-                                    projectToDownload: URL
-                                  ): List[HtmlWorkbookElement] = {
-
-    val htmlTitleElement = HtmlContainerTitle(workbookInfo, title)
-    val instr = HtmlPlaintextInstructionElement(workbookInfo, languageMapDefaultReadExerciseInstruction)
-    val down = TurtleFileProgramPreviewCard(workbookInfo, baseId, projectToDownload)
-    val downElement = new HtmlWorkbookElement() {
-      override def workbookInfoVar: L.Var[WorkbookInfo] = workbookInfo
-
-      override def getDomElement(): L.Element = div(
-        cls := "workbook-interaction preview-line",
-        down.getDomElement()
-      )
-    }
-
-    val instr2 = HtmlPlaintextInstructionElement(workbookInfo, languageMapDefaultAnalyzeExerciseInstruction)
-
-    val text = HtmlBasicTextInteraction(workbookInfo, baseId)
-
-    val instr3 = HtmlPlaintextInstructionElement(workbookInfo, languageMapDefaultExecuteExerciseInstruction)
-
-    List(htmlTitleElement, instr, downElement, instr2, text, instr3)
-
-  }
+  val languageMapDefaultReadExerciseInstruction: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
+    AppLanguage.English -> "Read the commands within the following Program",
+    AppLanguage.German -> "Lies die Befehle im folgendem Programm durch",
+  ))
 
 
   val languageMapDefaultExerciseTitle: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
@@ -74,11 +24,6 @@ object TurtleStitchFileFactory {
   val languageMapProvidedProjectLabel: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
     AppLanguage.English -> "Prepared Project",
     AppLanguage.German -> "Vorgegebenes Projekt",
-  ))
-
-  val languageMapDefaultReadExerciseInstruction: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-    AppLanguage.English -> "Read the commands within the following Program",
-    AppLanguage.German -> "Lies die Befehle im folgendem Programm durch",
   ))
 
   val languageMapDefaultExecuteExerciseInstruction: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
@@ -103,43 +48,9 @@ object TurtleStitchFileFactory {
     AppLanguage.Danish -> "Åbn TurtleStitch (https://www.turtlestitch.org/run), og programmér formen, der vises til højre. Klik derefter på filsymbolet (\uD83D\uDCDD), og gem filen på din computer. Til sidst uploader du filen via knappen til venstre."
   ))
 
-  val languageMapUploadButtonCard: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-    AppLanguage.English -> "Upload TurtleStitch XML-Project!",
-    AppLanguage.German -> "TurtleStitch XML-Projekt hochladen!",
-    AppLanguage.French -> "Téléverser le projet XML TurtleStitch !",
-    AppLanguage.Ukrainian -> "Завантажити XML-проєкт TurtleStitch!",
-    AppLanguage.Russian -> "Загрузить XML-проект TurtleStitch!",
-    AppLanguage.Turkish -> "TurtleStitch XML projesini yükle!",
-    AppLanguage.Danish -> "Upload TurtleStitch XML-projekt!"
-  ))
-  val languageMapShowThumbnailPreview: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-    AppLanguage.English -> "Uploaded Project (Thumbnail Preview)",
-    AppLanguage.German -> "Hochgeladenes Projekt (Thumbnail)",
-    AppLanguage.French -> "Projet téléversé (aperçu miniature)",
-    AppLanguage.Ukrainian -> "Завантажений проєкт (мініатюра)",
-    AppLanguage.Russian -> "Загруженный проект (миниатюра)",
-    AppLanguage.Turkish -> "Yüklenen proje (küçük önizleme)",
-    AppLanguage.Danish -> "Uploadet projekt (miniaturevisning)"
-  ))
-
-  val languageMapShowPentrailPreview: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-    AppLanguage.English -> "Uploaded Project (Pentrail)",
-    AppLanguage.German -> "Hochgeladenes Projekt (Pentrail)",
-    AppLanguage.French -> "Projet téléversé (Pentrail)",
-    AppLanguage.Ukrainian -> "Завантажений проєкт (Pentrail)",
-    AppLanguage.Russian -> "Загруженный проект (Pentrail)",
-    AppLanguage.Turkish -> "Yüklenen proje (Pentrail)",
-    AppLanguage.Danish -> "Uploadet projekt (Pentrail)"
-  ))
-
-  val languageMapShowErrorPreview: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-    AppLanguage.English -> "Uploaded Project (with errors)",
-    AppLanguage.German -> "Hochgeladenes Projekt (fehlerhaft)",
-    AppLanguage.French -> "Projet téléversé (avec des erreurs)",
-    AppLanguage.Ukrainian -> "Завантажений проєкт (із помилками)",
-    AppLanguage.Russian -> "Загруженный проект (с ошибками)",
-    AppLanguage.Turkish -> "Yüklenen proje (hatalı)",
-    AppLanguage.Danish -> "Uploadet projekt (med fejl)"
+  val languageMapShowUploadedProgramText: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
+    AppLanguage.English -> "Uploaded Project (Code Preview)",
+    AppLanguage.German -> "Hochgeladenes Projekt (Programm)",
   ))
 
   val languageMapShowEmptyPreview: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
@@ -152,6 +63,7 @@ object TurtleStitchFileFactory {
     AppLanguage.Danish -> "Uploadet projekt (mangler)"
   ))
 
+  /*
   val languageMapShowEmptyDescription: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
     AppLanguage.English -> "Once you upload your project, a preview of something you saw will be displayed here to let you verify that you uploaded the correct project.",
     AppLanguage.German -> "Sobald du dein Projekt hochgeladen hast, erscheint hier eine Vorschau mit der du dich vergewissern kannst, dass du auch das richtige Projekt hochgeladen hast",
@@ -161,7 +73,7 @@ object TurtleStitchFileFactory {
     AppLanguage.Turkish -> "Projeni yüklediğinde, doğru projeyi yüklediğini doğrulaman için burada gördüğün şeyin bir önizlemesi gösterilir.",
     AppLanguage.Danish -> "Når du har uploadet dit projekt, vises en forhåndsvisning af noget, du har set, så du kan bekræfte, at du har uploadet det rigtige projekt."
   ))
-
+*/
   val languageMapShowExpected: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
     AppLanguage.English -> "Desired Output",
     AppLanguage.German -> "Erwünschtes Ergebnis",
@@ -172,14 +84,13 @@ object TurtleStitchFileFactory {
     AppLanguage.Danish -> "Ønsket resultat"
   ))
 
-  val languageMapUploaddButton: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-    AppLanguage.English -> "Upload TurtleStitch Project",
-    AppLanguage.German -> "TurtleStitch Projekt Hochladen",
-    AppLanguage.French -> "Téléverser le projet TurtleStitch",
-    AppLanguage.Ukrainian -> "Завантажити проєкт TurtleStitch",
-    AppLanguage.Russian -> "Загрузить проект TurtleStitch",
-    AppLanguage.Turkish -> "TurtleStitch projesini yükle",
-    AppLanguage.Danish -> "Upload TurtleStitch-projekt"
+  val languageMapUploadButton: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
+    AppLanguage.English -> "Upload TurtleStitch Project (XML)",
+    AppLanguage.German -> "TurtleStitch Projekt Hochladen (XML)",
+    AppLanguage.French -> "Téléverser le projet TurtleStitch (XML)",
+    AppLanguage.Ukrainian -> "Завантажити проєкт TurtleStitch (XML)",
+    AppLanguage.Russian -> "Загрузить проект TurtleStitch (XML)",
+    AppLanguage.Turkish -> "TurtleStitch projesini yükle (XML)",
   ))
 
   val languageMapDownloadButton: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
@@ -191,5 +102,4 @@ object TurtleStitchFileFactory {
     AppLanguage.Turkish -> "Gösterilen projeyi indir",
     AppLanguage.Danish -> "Download det viste projekt"
   ))
-
 }

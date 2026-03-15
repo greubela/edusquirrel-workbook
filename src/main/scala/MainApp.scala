@@ -5,6 +5,7 @@ import content.EmbroideryWorkbook.CreateEmbroideryWorkbook
 import content.TestWorkbook.TestWorkbook
 import content.plantworkshop
 import content.plantworkshop.PlantWorkshopApp
+import interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
 import interactionPlugins.blockEnvironment.programming.*
 import org.scalajs.dom
 import org.scalajs.dom.document
@@ -21,7 +22,7 @@ private val idAndContentList: List[(String, Element)] = List(
   ("workbookTest", TestWorkbook.createTestWorkbook(fullscreenElement).getDomElement()),
   //("worksheetMonks", TestWorkbook(fullscreenElement).getDomElement()),
   ("workbookEmbroidery", CreateEmbroideryWorkbook(fullscreenElement).createWorkbook().getDomElement()),
-  //("feedbackDemoRoot", FeedbackDemoElement.element()),
+  ("feedbackDemoRoot", FeedbackDemoElement.element()),
 )
 
 def insertWorkbookContent(): Unit = {

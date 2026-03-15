@@ -1,4 +1,4 @@
-package interactionPlugins.fileSubmission
+package interactionPlugins.turtleStitchPlugin
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*

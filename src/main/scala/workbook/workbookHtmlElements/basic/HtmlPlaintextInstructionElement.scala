@@ -2,8 +2,7 @@ package workbook.workbookHtmlElements.basic
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
-import interactionPlugins.fileSubmission.TurtleStitchFileFactory
+import contentmanagement.model.language.{HumanLanguage, LanguageMap}
 import workbook.model.info.WorkbookInfo
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 

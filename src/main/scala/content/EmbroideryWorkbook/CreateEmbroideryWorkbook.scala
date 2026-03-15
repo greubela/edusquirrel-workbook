@@ -5,8 +5,8 @@ import com.raquo.laminar.api.L.{*, given}
 import contentmanagement.model.image.ImageDescription
 import contentmanagement.model.image.ImageDescription.ServerImageDescription
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
-import interactionPlugins.fileSubmission.TurtleStitchFileFactory
-import interactionPlugins.fileSubmission.cards.TurtleFileProgramPreviewCard
+import interactionPlugins.turtleStitchPlugin.TurtleStitchExploreProjectExercise
+import interactionPlugins.turtleStitchPlugin.card.*
 import org.scalajs.dom
 import org.scalajs.dom.URL
 import workbook.model.*
@@ -38,9 +38,9 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
     HtmlBasicTextInteraction(workbookInfoVar, nextId())
   }
 
-  private def createProjectCard(names: String): HtmlWorkbookElement = {
-    val tup = createImageAndUrl(names)
-    TurtleFileProgramPreviewCard(workbookInfoVar, nextId(), tup._2).getAsPreviewLine()
+  private def createExploreExerciseDownloadInteraction(filename: String): HtmlWorkbookElement = {
+    val tup = createImageAndUrl(filename)
+    TurtleStitchExploreProjectExercise.createElementLine(workbookInfoVar, tup._2)
   }
 
   private def createInstructions(maps: List[LanguageMap[HumanLanguage]]): List[HtmlWorkbookElement] =
@@ -72,7 +72,7 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
     val elements: List[HtmlWorkbookElement] = List(
       HtmlContainerTitle(workbookInfoVar, title),
       instructionElements(0),
-      createProjectCard("updown_forward"),
+      createExploreExerciseDownloadInteraction("updown_forward"),
       instructionElements(1),
       createTextInput(),
       instructionElements(2),
@@ -115,7 +115,7 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
     val elements: List[HtmlWorkbookElement] = List(
       HtmlContainerTitle(workbookInfoVar, title),
       instructionElements(0),
-      createProjectCard("reset_forward"),
+      createExploreExerciseDownloadInteraction("reset_forward"),
       instructionElements(1),
       createTextInput(),
       instructionElements(2),
@@ -163,7 +163,7 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
     val elements: List[HtmlWorkbookElement] = List(
       HtmlContainerTitle(workbookInfoVar, title),
       instructionElements(0),
-      createProjectCard("simple_forward"),
+      createExploreExerciseDownloadInteraction("simple_forward"),
       instructionElements(1),
       createTextInput(),
       instructionElements(2),
@@ -214,7 +214,7 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
 
   }
 
-  private def createExecuteProgramExercise(titleMap: LanguageMap[HumanLanguage], filename: String): HtmlExerciseContainer = {
+  /*private def createExecuteProgramExercise(titleMap: LanguageMap[HumanLanguage], filename: String): HtmlExerciseContainer = {
     val tup = createImageAndUrl(filename)
     val res = TurtleStitchFileFactory.createExecuteProgramExercise(
       workbookInfoVar,
@@ -234,7 +234,7 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
       destImg
     )
     HtmlExerciseContainer(workbookInfoVar, res.toList)
-  }
+  }*/
 
 }
 
