@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L.{*, given}
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import contentmanagement.model.AppFont
 import contentmanagement.model.color.{AppColor, RGBColor}
-import contentmanagement.model.image.FullImage
+import contentmanagement.model.file.*
 import org.scalajs.dom
 import org.scalajs.dom.CanvasRenderingContext2D
 import org.scalajs.dom.html.Canvas
@@ -133,7 +133,7 @@ class WebCanvas(canvas: ReactiveHtmlElement[Canvas], width: Int, height: Int) ex
     if (alphaUpTp255 >= 0 && alphaUpTp255 <= 255) ctx.globalAlpha = alphaUpTp255 / 255.0
     else ctx.globalAlpha = 1.0
     //if (width > 0 && height > 0) {
-    ctx.drawImage(img.domImage, x, y, width, height)
+    ctx.drawImage(img.newDomImage.ref, x, y, width, height)
     //} else {
     //ctx.drawImage(img.domImage, x, y)
     //}

@@ -1,9 +1,8 @@
 package interactionPlugins.visualNovel
 
-import contentmanagement.model.image.ImageDescription
-import contentmanagement.model.image.ImageDescription.ServerImageDescription
+import contentmanagement.model.file.*
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
-import contentmanagement.storage.ImageStorage
+import contentmanagement.storage.*
 
 
 import scala.concurrent.ExecutionContext.Implicits.global

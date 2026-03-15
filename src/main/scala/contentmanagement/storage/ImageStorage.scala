@@ -1,13 +1,14 @@
 package contentmanagement.storage
 
+/*
 import com.raquo.airstream.state.Var
-import contentmanagement.model.FileInformation
-import contentmanagement.model.image.{FullImage, ImageDescription}
-import contentmanagement.model.image.ImageDescription.{ServerImageDescription, SvgImageDescription, UploadImageDescription}
+import contentmanagement.model.file.{FullImage, ImageDescription, LoadedFile, OldFullImage}
+import contentmanagement.model.file.ImageDescription.{UrlImageDescription, SvgImageDescription, UploadImageDescription}
 import org.scalajs.dom
 import org.scalajs.dom.document
 import org.scalajs.dom.html.Image
 import util.TypeConversion
+import util.web.FileIO
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -16,6 +17,17 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js
 import scala.util.{Failure, Success}
 
+case class ImageStorage() extends DataStorage[ImageDescription, FullImage]("image storage", false) {
+  
+  
+  
+  
+  
+}
+*/
+
+/*
+// todo: refactore to use DataStorage (and not automatically load dom images)
 object ImageStorage {
 
   private val debug: Boolean = false
@@ -50,7 +62,7 @@ object ImageStorage {
 
     imageDescription match {
       case ServerImageDescription(path) => FileIO.fetchUrl(path).map(fileInfoToString)
-      case UploadImageDescription(file) => FileIO.loadFile(file).map(fileInfoToString)
+      case UploadImageDescription(file) => FileIO.fetchFile(file).map(fileInfoToString)
       case SvgImageDescription(name, svgString) => Future("data:image/svg+xml;charset=utf-8," + js.URIUtils.encodeURIComponent(svgString))
       //case _ => Future.failed(new IllegalArgumentException("Unknown type of imageDescription: " + imageDescription))
     }
@@ -177,7 +189,7 @@ object ImageStorage {
 
 
 
-}
+}*/
 
 
 

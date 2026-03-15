@@ -3,10 +3,12 @@ package contentmanagement.storage
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.image.ImageDescription
+import contentmanagement.model.file.*
 import org.scalajs.dom
 import org.scalajs.dom.URL
+import workbook.model.info.WorkbookInfo
 
+import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -18,6 +20,7 @@ abstract class DataStorage[I, O](storageName: String, debug: Boolean) {
   protected def initialValueWhileLoading(in: I): Option[O]
 
   protected def formatInputForLogging(in: I): String
+
   protected def formatOutputForLogging(out: O): String
 
   private val cachedOutputVars: mutable.HashMap[I, Var[Option[O]]] = new mutable.HashMap(50, 0.25)
@@ -99,27 +102,21 @@ abstract class DataStorage[I, O](storageName: String, debug: Boolean) {
 
 object DataStorage {
 
-  val urlDataStore: DataStorage[URL, String] = new DataStorage[URL, String]("UrlDataStore", false) {
-    override protected def executeLoading(url: URL)(ec: ExecutionContext): Future[String] = {
-      dom.fetch(url.toString)
-        .toFuture
-        .flatMap { response =>
-          if (!response.ok)
-            Future.failed(new RuntimeException(
-              s"HTTP ${response.status} ${response.statusText}"
-            ))
-          else
-            response.text().toFuture
-        }(ec)
-    }
+  val fileDataStore: FileDataStorage = FileDataStorage()
 
-    override protected def initialValueWhileLoading(in: URL): Option[String] = None
 
-    override protected def formatInputForLogging(in: URL): String = in.toString
+  private val languageMapStorage: LabelLanguageMapStorage = LabelLanguageMapStorage()
 
-    override protected def formatOutputForLogging(out: String): String = out.toString
+  def labelSignalFromLanguageMapName(languageMapName: String, workbookInfoVar: Var[WorkbookInfo]): Signal[String] = {
+    val languageMapVar = languageMapStorage.loadIntoVariable(languageMapName)(ExecutionContext.Implicits.global)
+    languageMapVar.signal.combineWith(workbookInfoVar.signal).map(tup => {
+      tup._1 match {
+        case Some(value: LanguageMap[HumanLanguage]) => tup._2.languageStringFromMap(value)
+        case None => tup._2.languageStringFromMap(LabelLanguageMapStorage.languageMapLoadingMap)
+      }
+    })
+    
+    
   }
 
-
 }
-

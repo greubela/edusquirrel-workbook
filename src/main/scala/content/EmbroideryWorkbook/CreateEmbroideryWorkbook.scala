@@ -2,8 +2,7 @@ package content.EmbroideryWorkbook
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
-import contentmanagement.model.image.ImageDescription
-import contentmanagement.model.image.ImageDescription.ServerImageDescription
+import contentmanagement.model.file.*
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import interactionPlugins.turtleStitchPlugin.TurtleStitchExploreProjectExercise
 import interactionPlugins.turtleStitchPlugin.card.*
@@ -28,10 +27,9 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
 
   val defaultInfo = WorkbookInfo(List[HumanLanguage](AppLanguage.English, AppLanguage.German), fullScreenElement, WorkbookConfig(AppLanguage.German, User("TestUser", "dummy@test.de")), Map())
   val workbookInfoVar = Var(defaultInfo)
-
-  private def createImageAndUrl(filename: String): (ServerImageDescription, URL) = {
-    (ServerImageDescription("../resources/workbookresources/embroidery/existingProjects/" + filename + "_pic.png"),
-      new URL("../resources/workbookresources/embroidery/existingProjects/" + filename + ".xml", dom.window.location.href))
+  
+  private def createFileDescription(filename: String): FileDescription = {
+    FileDescription.relativeToResourceFolder("workbookresources/embroidery/existingProjects/" + filename + ".xml")
   }
 
   private def createTextInput(): HtmlWorkbookElement = {
@@ -39,8 +37,7 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
   }
 
   private def createExploreExerciseDownloadInteraction(filename: String): HtmlWorkbookElement = {
-    val tup = createImageAndUrl(filename)
-    TurtleStitchExploreProjectExercise.createElementLine(workbookInfoVar, tup._2)
+    TurtleStitchExploreProjectExercise.createElementLine(workbookInfoVar, createFileDescription(filename))
   }
 
   private def createInstructions(maps: List[LanguageMap[HumanLanguage]]): List[HtmlWorkbookElement] =

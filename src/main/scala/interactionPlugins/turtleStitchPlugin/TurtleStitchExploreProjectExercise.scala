@@ -2,33 +2,33 @@ package interactionPlugins.turtleStitchPlugin
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.image.ImageDescription
+import contentmanagement.model.file.*
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap, TranslationMaps}
 import contentmanagement.storage.DataStorage
 import interactionPlugins.fileSubmission.*
 import interactionPlugins.turtleStitchPlugin.TurtleStitchFacade
 import interactionPlugins.turtleStitchPlugin.card.*
 import org.scalajs.dom.URL
-import util.{HtmlHelper, ReadOnlyVar}
+import util.ReadOnlyVar
+import util.web.DownloadHelper
 import workbook.model.info.WorkbookInfo
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 import workbook.workbookHtmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement}
 import workbook.workbookHtmlElements.interactions.HtmlBasicTextInteraction
-
+import contentmanagement.model.file.*
 import scala.concurrent.ExecutionContext
 
 object TurtleStitchExploreProjectExercise {
 
-
-  def createElementLine(workbookInfoVar: Var[WorkbookInfo], projectToDownload: URL): HtmlWorkbookElement = 
+  def createElementLine(workbookInfoVar: Var[WorkbookInfo], projectToDownload: FileDescription): HtmlWorkbookElement =
     TurtleFileShowProgramXmlCard(workbookInfoVar, projectToDownload).asWorkbookElement
 
   def createElements(
                       workbookInfo: Var[WorkbookInfo],
                       baseId: String,
                       title: LanguageMap[HumanLanguage],
-                      imageShowCommands: ImageDescription,
-                      projectToDownload: URL
+                      imageShowCommands: FileDescription,
+                      projectToDownload: FileDescription
                     ): List[HtmlWorkbookElement] = {
 
     val htmlTitleElement = HtmlContainerTitle(workbookInfo, title)

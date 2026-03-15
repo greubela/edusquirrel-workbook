@@ -5,7 +5,7 @@ import com.raquo.laminar.api.L.{*, given}
 import com.raquo.laminar.modifiers.KeySetter.SvgAttrSetter
 import contentmanagement.model.AppFont
 import contentmanagement.model.color.{AppColor, RGBColor}
-import contentmanagement.model.image.FullImage
+import contentmanagement.model.file.*
 import org.scalajs.dom
 import org.scalajs.dom.SVGSVGElement
 
@@ -221,7 +221,7 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
       svg.width := "" + width,
       svg.height := "" + height,
       //svg.href := "data:image/" + img.fileInfo.fileType + ";base64," + img.base64String,
-      svg.href := img.imgSourceString,
+      svg.href := img.imageSourceString,
       svg.opacity := (alphaUpTo255 / 255.0) + "",
       svg.preserveAspectRatio := "none"
     )

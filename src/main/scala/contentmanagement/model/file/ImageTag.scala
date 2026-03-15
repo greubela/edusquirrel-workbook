@@ -1,4 +1,6 @@
-package contentmanagement.model.image
+package contentmanagement.model.file
+
+import contentmanagement.model.language.*
 
 trait ImageTag {
 
@@ -6,9 +8,12 @@ trait ImageTag {
 
 object ImageTag {
 
+  /*
   /* --- LICENCE TYPE --- */
-  sealed trait LicenceType(val desc: String, val cssClass: String) extends ImageTag
+  case class CopyrightInfo extends ImageTag
 
+  case object UNKNOWN_INFO extends CopyrightInfo("No Licence", LanguageMap.uni, "Unknown")
+  
   case object CC_LICENCE extends LicenceType("CC Licence", "text-type-info")
 
   case object WIZARDS_IP extends LicenceType("> WotC IP <", "text-type-warning")
@@ -16,7 +21,7 @@ object ImageTag {
   case object USER_CONTENT extends LicenceType("User Content", "text-type-warning")
 
   case object UNKNOWN_LICENCE extends LicenceType("Unknown Licence", "text-type-warning")
-
+*/
 
 
 }

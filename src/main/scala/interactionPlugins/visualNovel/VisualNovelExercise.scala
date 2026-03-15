@@ -1,7 +1,7 @@
 package interactionPlugins.visualNovel
 
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.image.ImageDescription.ServerImageDescription
+import contentmanagement.model.file.*
 
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 

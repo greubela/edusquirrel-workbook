@@ -4,7 +4,7 @@ import contentmanagement.webElements.HtmlAppElement
 import contentmanagement.model.color.AppColor
 import contentmanagement.model.AppFont
 import contentmanagement.model.geometry.Bounds
-import contentmanagement.model.image.FullImage
+import contentmanagement.model.file.*
 
 trait AppCanvas[C] extends HtmlAppElement {
   

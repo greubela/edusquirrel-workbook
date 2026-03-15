@@ -6,9 +6,11 @@ import contentmanagement.model.language.*
 import contentmanagement.storage.DataStorage
 import interactionPlugins.turtleStitchPlugin.*
 import org.scalajs.dom.URL
-import util.{HtmlHelper, ReadOnlyVar}
+import util.ReadOnlyVar
+import util.web.DownloadHelper
 import workbook.model.info.WorkbookInfo
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
+import contentmanagement.model.file.*
 
 import scala.concurrent.ExecutionContext
 
@@ -28,7 +30,7 @@ case class TurtleFileShowProgramXmlCard(
     child <-- workbookInfoVar.signal.map(_.languageStringFromMap(TurtleStitchLanguageMaps.languageMapDownloadButton)),
     onClick --> { _ =>
       projectXmlVar.now().foreach(currentXml => {
-        HtmlHelper.downloadFile("TurtleStitch_" + desiredFilename + "_" + System.currentTimeMillis() + ".xml", currentXml)
+        DownloadHelper.downloadFile(desiredFilename, currentXml)
       })
     }
   )
@@ -37,7 +39,7 @@ case class TurtleFileShowProgramXmlCard(
     case Some(value) if value.startsWith("data:image") => img(src := value, styleAttr := "max-width: 100%")
     case Some(value) => span(value)
     case None => span(
-        child <-- workbookInfoVar.signal.map(_.languageStringFromMap(nonexistingImageLanguageMap))
+      child <-- workbookInfoVar.signal.map(_.languageStringFromMap(nonexistingImageLanguageMap))
       //.signal.map(info => nonexistingImageLanguageMap.getInLanguage(info.config.currentWorkbookLanguage))
       //
     )
@@ -98,14 +100,14 @@ object TurtleFileShowProgramXmlCard {
 
   def apply(
              workbookInfoVar: Var[WorkbookInfo],
-             url: URL,
+             fileDescription: FileDescription,
            ): TurtleFileShowProgramXmlCard = {
     TurtleFileShowProgramXmlCard(
       workbookInfoVar,
-      "TurtleStitch_" + url.pathname.split("/").last + ".xml",
+      "TurtleStitch_" + fileDescription.filename + ".xml",
       TurtleStitchLanguageMaps.languageMapProvidedProjectLabel,
       TranslationMaps.languageMapImageLoading,
-      DataStorage.urlDataStore.loadIntoVariable(url)(ExecutionContext.global).signal
+      DataStorage.fileDataStore.loadIntoVariable(fileDescription)(ExecutionContext.global).signal.mapLazy(_.map(_.fileDataAsUtf8String))
     )
   }
 

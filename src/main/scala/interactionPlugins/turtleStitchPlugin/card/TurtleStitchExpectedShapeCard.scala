@@ -2,34 +2,28 @@ package interactionPlugins.turtleStitchPlugin.card
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.image.{FullImage, ImageDescription}
-import contentmanagement.storage.ImageStorage
-import contentmanagement.webElements.HtmlAppElement
-import interactionPlugins.fileSubmission.*
+import contentmanagement.model.file.*
 import interactionPlugins.turtleStitchPlugin.TurtleStitchLanguageMaps
-import util.HtmlHelper
 import workbook.model.info.WorkbookInfo
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
+import workbook.workbookHtmlElements.basic.HtmlImageElement
 
 import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.*
 
-case class TurtleStitchExpectedShapeCard(workbookInfoVar: L.Var[WorkbookInfo], expectedOutcome: ImageDescription) extends HtmlWorkbookElement {
+case class TurtleStitchExpectedShapeCard(workbookInfoVar: L.Var[WorkbookInfo], expectedOutcome: FullImage) extends HtmlWorkbookElement {
 
   private val headline: Element = h3(
     child <-- workbookInfoVar.signal.map(_.languageStringFromMap(TurtleStitchLanguageMaps.languageMapShowExpected))
   )
 
-  private val domElementSignal: Signal[List[Element]] = {
-    HtmlHelper.imagePreview("preview-content", expectedOutcome).map(preview => List(headline, preview))
+  private val imgElementSignal: Signal[Element] = {
+    HtmlImageElement(expectedOutcome, workbookInfoVar).getDomSignal()
   }
 
-  Map("a" -> "b")
-  
+
   private val domElement: Element = div(
     cls := "preview-card",
-    children <-- domElementSignal,
+    children <-- imgElementSignal.map(preview => List(headline, preview)),
   )
 
   override def getDomElement(): Element = domElement

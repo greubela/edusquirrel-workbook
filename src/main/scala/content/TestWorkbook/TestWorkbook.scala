@@ -2,7 +2,7 @@ package content.TestWorkbook
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
-import contentmanagement.model.image.ImageDescription.ServerImageDescription
+import contentmanagement.model.file.*
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import contentmanagement.webElements.HtmlAppElement
 import interactionPlugins.blockEnvironment.exercise.{ProgrammingExerciseFactory, TurtleProgrammingInteraction}

@@ -1,9 +1,9 @@
 package interactionPlugins.visualNovel
 
-import contentmanagement.model.image.ImageDescription
+import contentmanagement.model.file.*
 
 case class VisualNovelPanel(
-                             image: ImageDescription,
+                             image: FileDescription,
                              source: String,
                              description: String,
                              textContent: String
