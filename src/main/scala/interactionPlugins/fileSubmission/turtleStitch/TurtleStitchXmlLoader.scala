@@ -73,12 +73,15 @@ object TurtleStitchXmlLoader {
         app = attrFromString(xml, "project", "app").getOrElse(""),
         version = attrFromString(xml, "project", "version").getOrElse("2"),
         notes = textTag(xml, "notes").getOrElse(""),
+        selectedScene = attrFromString(xml, "scenes", "select").flatMap(v => scala.util.Try(v.toInt).toOption).getOrElse(1),
         scenes = Vector(
           Scene(
             name = attrFromString(xml, "scene", "name").getOrElse("Untitled"),
             stage = Stage(
+              name = attrFromString(xml, "stage", "name").getOrElse("Stage"),
               pentrails = pentrails,
               scripts = scripts,
+              selectedSprite = attrFromString(xml, "sprites", "select").flatMap(v => scala.util.Try(v.toInt).toOption).getOrElse(1),
               sprites = Vector(Sprite(
                 name = attrFromString(xml, "sprite", "name").getOrElse("Sprite"),
                 idx = attrFromString(xml, "sprite", "idx").flatMap(v => scala.util.Try(v.toInt).toOption).getOrElse(1),
@@ -401,6 +404,8 @@ object TurtleStitchXmlLoader {
       .flatMap(index => Option(parent.childNodes.item(index)))
       .filter(isElementNode)
 
+  private val ElementNodeType = 1
+
   private def isElementNode(node: dom.Node): Boolean = {
     val nodeTypeValue = scala.util.Try {
       node.asInstanceOf[js.Dynamic].selectDynamic("nodeType")
@@ -409,8 +414,8 @@ object TurtleStitchXmlLoader {
     nodeTypeValue.exists { rawValue =>
       if (js.isUndefined(rawValue) || rawValue == null) false
       else {
-        scala.util.Try(rawValue.asInstanceOf[Double].toInt).toOption
-          .contains(dom.Node.ELEMENT_NODE)
+        scala.util.Try(rawValue.toString.toDouble.toInt).toOption
+          .contains(ElementNodeType)
       }
     }
   }
