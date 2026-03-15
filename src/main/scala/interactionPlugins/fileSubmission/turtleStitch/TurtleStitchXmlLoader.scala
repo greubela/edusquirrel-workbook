@@ -398,8 +398,22 @@ object TurtleStitchXmlLoader {
 
   private def children(parent: dom.Node): List[dom.Node] =
     (0 until parent.childNodes.length).toList
-      .map(parent.childNodes.item)
-      .filter(_.nodeType == dom.Node.ELEMENT_NODE)
+      .flatMap(index => Option(parent.childNodes.item(index)))
+      .filter(isElementNode)
+
+  private def isElementNode(node: dom.Node): Boolean = {
+    val nodeTypeValue = scala.util.Try {
+      node.asInstanceOf[js.Dynamic].selectDynamic("nodeType")
+    }.toOption
+
+    nodeTypeValue.exists { rawValue =>
+      if (js.isUndefined(rawValue) || rawValue == null) false
+      else {
+        scala.util.Try(rawValue.asInstanceOf[Double].toInt).toOption
+          .contains(dom.Node.ELEMENT_NODE)
+      }
+    }
+  }
 
   private def isBlockNode(node: dom.Node): Boolean = node.nodeName == "block" || node.nodeName == "custom-block"
 }
