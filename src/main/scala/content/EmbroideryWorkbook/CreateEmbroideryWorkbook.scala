@@ -2,6 +2,7 @@ package content.EmbroideryWorkbook
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
+import content.TestWorkbook.TestWorkbook
 import contentmanagement.model.file.*
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import interactionPlugins.turtleStitchPlugin.TurtleStitchExploreProjectExercise
@@ -25,9 +26,9 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
     s"turtlestitch-exercise-$id"
   }
 
-  val defaultInfo = WorkbookInfo(List[HumanLanguage](AppLanguage.English, AppLanguage.German), fullScreenElement, WorkbookConfig(AppLanguage.German, User("TestUser", "dummy@test.de")), Map())
-  val workbookInfoVar = Var(defaultInfo)
-  
+  val defaultInfo = WorkbookInfo(List[HumanLanguage](AppLanguage.English, AppLanguage.German), fullScreenElement, WorkbookConfig(AppLanguage.German, None, User("TestUser", "dummy@test.de")), Map())
+  val workbookInfoVar: Var[WorkbookInfo] = Var(defaultInfo)
+
   private def createFileDescription(filename: String): FileDescription = {
     FileDescription.relativeToResourceFolder("workbookresources/embroidery/existingProjects/" + filename + ".xml")
   }
@@ -77,8 +78,6 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
     )
     HtmlExerciseContainer(workbookInfoVar, elements.toList)
   }
-
-
 
 
   private def secondExercise: HtmlExerciseContainer = {
@@ -174,15 +173,23 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
   }
 
 
-  def createWorkbook(): Workbook = new Workbook(workbookInfoVar,
-    LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
-      AppLanguage.English -> "Learn to Program with Embroidery Patterns",
-      AppLanguage.German -> "Programmieren lernen mit der Stickmaschine"
-    )),
-    List(
-      createFirstSection(),
-     // createFirstSection()
-    ))
+  def createWorkbook(): Workbook = {
+    val firstSection = createFirstSection()
+    val secondSection = TestWorkbook.createTestSection(workbookInfoVar)
+    val res: Workbook = {
+      new Workbook(workbookInfoVar,
+        LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
+          AppLanguage.English -> "Learn to Program with Embroidery Patterns",
+          AppLanguage.German -> "Programmieren lernen mit der Stickmaschine"
+        )),
+        List(
+          firstSection,
+          secondSection
+        ))
+    }
+    workbookInfoVar.update(oldVal => oldVal.copy(config = oldVal.config.copy(activeSection = Some(firstSection))))
+    res
+  }
 
   private def createFirstSection(): WorkbookSection = {
 
@@ -190,14 +197,14 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
       firstExercise,
       secondExercise,
       thirdExercise,
-     /* createExecuteProgramExercise(
-        LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
-          AppLanguage.English -> "The second program",
-          AppLanguage.German -> "Das zweite Programm"
-        )
-        ),
-        "simple_forward"
-      )*/
+      /* createExecuteProgramExercise(
+         LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
+           AppLanguage.English -> "The second program",
+           AppLanguage.German -> "Das zweite Programm"
+         )
+         ),
+         "simple_forward"
+       )*/
     )
 
     WorkbookSection(

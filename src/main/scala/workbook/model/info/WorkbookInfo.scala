@@ -15,12 +15,7 @@ case class WorkbookInfo(
 
 
   def languageStringFromMap(languageMap: LanguageMap[HumanLanguage]): String = languageMap.getInLanguage(config.currentWorkbookLanguage)
-
-  /*
-  def languageStringFromMapName(languageMapName: String): Signal[String] = {
-    DataStorage.languageMapStorage.loadIntoVariable(languageMapName).signal.combineWith(config.)
-    
-  }*/
-
+  
+  
 
 }

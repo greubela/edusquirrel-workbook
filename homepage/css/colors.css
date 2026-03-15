@@ -1,5 +1,26 @@
 /* Shared design tokens for the workbook experience */
 :root {
+
+
+
+    // blue-ish color palette:
+
+    --color-container-background: #eef2f8;
+    --color-container-border-passive: #d6deeb;
+    --color-container-border-inactive: #1565c0;
+    --color-container-border-active: #2196f3;
+    --color-container-accent: #1565c0;
+
+
+
+
+
+
+
+
+
+
+
   /* Typography */
   --font-family-base: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   --font-family: var(--font-family-base);
@@ -39,7 +60,6 @@
   --shadow-highlight-grading: 0 18px 38px -24px rgba(47, 155, 116, 0.55);
 
   /* Core palette */
-  --color-app-background: #eef2f8;
   --color-surface: #ffffff;
   --color-surface-muted: #f2f2f2;
   --color-surface-subtle: #e0e6f2;
@@ -58,11 +78,15 @@
 
   /* Accent colors */
 
+
+
   --color-accent-foreground-textcolor: #ffffff;
 
   --color-accent-blue-textcolor: #1565c0;
   --color-accent-blue-foreground: #2196f3;
+  --color-accent-blue-foreground2: #d6deeb;
   --color-accent-blue-background: #e3f2fd;
+  --color-container-background: #eef2f8;
 
   --color-accent-red-foreground: #f44336;
   --color-accent-red-background: #ffebee;

@@ -104,7 +104,7 @@ object TurtleFileShowProgramXmlCard {
            ): TurtleFileShowProgramXmlCard = {
     TurtleFileShowProgramXmlCard(
       workbookInfoVar,
-      "TurtleStitch_" + fileDescription.filename + ".xml",
+      "TurtleStitch_" + fileDescription.filename ,
       TurtleStitchLanguageMaps.languageMapProvidedProjectLabel,
       TranslationMaps.languageMapImageLoading,
       DataStorage.fileDataStore.loadIntoVariable(fileDescription)(ExecutionContext.global).signal.mapLazy(_.map(_.fileDataAsUtf8String))

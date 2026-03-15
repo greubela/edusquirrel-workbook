@@ -15,6 +15,7 @@ case class SimpleStringTextEditor(
   private val editorTextArea = textArea(
     rows := 8,
     cols := 80,
+    cls := "simple-text-editor workbook-interaction",
     if (monoSpace) cls := "mono" else cls := "",
     controlled(
       value <-- stateToBind.signal,
@@ -32,6 +33,6 @@ case class SimpleStringTextEditor(
     )
   }
 
-  def getDomElement(): L.Element = domElement
+  def getDomElement(): L.Element = editorTextArea
 
 }

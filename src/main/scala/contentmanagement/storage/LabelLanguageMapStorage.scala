@@ -18,14 +18,22 @@ case class LabelLanguageMapStorage() extends DataStorage[String, LanguageMap[Hum
 }
 
 object LabelLanguageMapStorage {
-  
+
   def getLanguageMapByName(name: String): LanguageMap[HumanLanguage] = {
     name match {
       case "dataLoadingMap" => dataLoadingMap
       case "imageLoadingMap" => imageLoadingMap
       case "languageMapLoadingMap" => languageMapLoadingMap
+      case "noSectionSelected" => noSectionSelectedMap
     }
   }
+
+  val noSectionSelectedMap: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(
+    Map(
+      AppLanguage.German -> "[Kein Abschnitt des Arbeitsheftes ausgewählt]",
+      AppLanguage.English -> "[No workbook section selected]",
+    )
+  )
 
   val languageMapLoadingMap: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(
     Map(
@@ -33,7 +41,7 @@ object LabelLanguageMapStorage {
       AppLanguage.English -> "[language data is loading]",
     )
   )
-  
+
   val dataLoadingMap: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(
     Map(
       AppLanguage.German -> "[Daten werden geladen]",

@@ -1,55 +1,40 @@
-package workbook.workbookHtmlElements.basic
+package workbook.workbookHtmlElements.head
 
-import com.raquo.laminar.DomApi
+import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
+import contentmanagement.model.language.{AppLanguage, HumanLanguage}
 import workbook.model.info.WorkbookInfo
 import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
-case class HtmlWorkbookTitleLine(workbookInfoVar: Var[WorkbookInfo], workbookTitle: LanguageMap[HumanLanguage]) extends HtmlWorkbookElement {
+
+case class LanguageSelectionLine(workbookInfoVar: Var[WorkbookInfo]) extends HtmlWorkbookElement{
 
   private def selectLanguage(language: HumanLanguage): Unit = {
     workbookInfoVar.update(curInfo => curInfo.copy(config = curInfo.config.copy(currentWorkbookLanguage = language)))
   }
 
-  private val flagElements: Map[HumanLanguage, Element] = Map(
-    AppLanguage.English -> div(
-      onClick --> { _ => selectLanguage(AppLanguage.English) },
-      HtmlWorkbookTitleLine.enFlag(30)
-    ),
 
+  private val domElement = div(
+    cls := "select-language-line",
+    children <-- {
+      workbookInfoVar.signal.map(_.availableLanguages.map(curLang => {
+        val childElement: Element = LanguageSelectionLine.flagImgMap(30)(curLang)
+        div(
+          onClick --> { _ => selectLanguage(curLang) },
+          child <-- Var(childElement).signal
+        )
+      }))
+    }
   )
 
+  override def getDomElement(): L.Element = domElement
 
-
-  private val domElement: Element = div(
-    cls := "workbook-title-line",
-    h1(
-      child <-- workbookInfoVar.signal.map(_.languageStringFromMap(workbookTitle)),
-    ),
-    div(
-      cls := "select-language-line",
-      children <-- {
-        workbookInfoVar.signal.map(_.availableLanguages.map(curLang => {
-          val childElement: Element = HtmlWorkbookTitleLine.flagImgMap(30)(curLang)
-          div(
-            onClick --> { _ => selectLanguage(curLang) },
-            child <-- Var(childElement).signal
-          )
-        }))
-      }
-
-    )
-  )
-
-  override def getDomElement(): Element = domElement
 
 
 }
 
-object HtmlWorkbookTitleLine {
-
-
+object LanguageSelectionLine {
+  
   private def flagImgMap(width: Double): Map[HumanLanguage, Element] = Map(
     AppLanguage.German -> deFlag(width),
     AppLanguage.English -> enFlag(width),
@@ -243,5 +228,6 @@ object HtmlWorkbookTitleLine {
       svg.fill := "#FFCE00"
     )
   )
+
 
 }

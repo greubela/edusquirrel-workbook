@@ -94,7 +94,7 @@ object TestWorkbook {
   }
 
   def createTestWorkbook(fullscreenElement: HtmlFullScreenElement): Workbook = {
-    val defaultInfo = WorkbookInfo(List[HumanLanguage](AppLanguage.English, AppLanguage.German, AppLanguage.Ukrainian, AppLanguage.Danish, AppLanguage.Turkish),fullscreenElement, WorkbookConfig(AppLanguage.German, User("TestUser", "dummy@test.de")), Map())
+    val defaultInfo = WorkbookInfo(List[HumanLanguage](AppLanguage.English, AppLanguage.German, AppLanguage.Ukrainian, AppLanguage.Danish, AppLanguage.Turkish),fullscreenElement, WorkbookConfig(AppLanguage.German, None, User("TestUser", "dummy@test.de")), Map())
     val workbookInfoVar = Var(defaultInfo)
 
     val sec = createTestSection(workbookInfoVar)

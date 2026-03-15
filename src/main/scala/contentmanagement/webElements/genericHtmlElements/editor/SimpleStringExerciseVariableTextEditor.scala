@@ -24,6 +24,7 @@ case class SimpleStringExerciseVariableTextEditor(
   private val editorTextArea = textArea(
     rows := 8,
     cols := 80,
+    cls := "simple-text-editor workbook-interaction",
     if (monoSpace) cls := "mono" else cls := "",
     controlled(
       value <-- exerciseVariable.interactionSignal,
@@ -41,7 +42,7 @@ case class SimpleStringExerciseVariableTextEditor(
 
   def getDomElement(): L.Element = {
     exerciseVariable.syncFromAll()
-    domElement
+    editorTextArea
   }
 
 }
