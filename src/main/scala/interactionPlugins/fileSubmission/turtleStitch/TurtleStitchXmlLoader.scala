@@ -401,26 +401,16 @@ object TurtleStitchXmlLoader {
       .flatMap(index => Option(parent.childNodes.item(index)))
       .filter(isElementNode)
 
-  private val ElementNodeType = 1
-
   private def isElementNode(node: dom.Node): Boolean = {
     val nodeTypeValue = scala.util.Try {
       node.asInstanceOf[js.Dynamic].selectDynamic("nodeType")
     }.toOption
 
-    nodeTypeValue.flatMap(rawValue => toIntValue(rawValue.asInstanceOf[js.Any])).contains(ElementNodeType)
-  }
-
-  private def toIntValue(rawValue: js.Any): Option[Int] = {
-    if (js.isUndefined(rawValue) || rawValue == null) None
-    else {
-      val numeric = scala.util.Try(js.Dynamic.global.Number(rawValue)).toOption
-      numeric.flatMap { n =>
-        if (js.isUndefined(n) || n == null) None
-        else {
-          val asDouble = n.asInstanceOf[Double]
-          if (asDouble.isNaN || asDouble.isInfinity) None else Some(asDouble.toInt)
-        }
+    nodeTypeValue.exists { rawValue =>
+      if (js.isUndefined(rawValue) || rawValue == null) false
+      else {
+        scala.util.Try(rawValue.asInstanceOf[Double].toInt).toOption
+          .contains(dom.Node.ELEMENT_NODE)
       }
     }
   }
