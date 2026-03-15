@@ -63,7 +63,7 @@ object TurtleXmlParser {
 
     val withoutRepeats = repeatPattern.replaceAllIn(xml, "")
     val (controls, linearCandidateXml) = parseControlStructures(withoutRepeats)
-    repeats ++ controls ++ parseLinearBlocks(linearCandidateXml)
+    parseLinearBlocks(linearCandidateXml) ++ controls ++ repeats
   }
 
   private def parseControlStructures(xml: String): (List[Command], String) = {
@@ -79,33 +79,42 @@ object TurtleXmlParser {
   }
 
   private def parseLinearBlocks(xml: String): List[Command] = {
-    val blockPattern = """(?s)<block\s+s=\"([^\"]+)\"[^>]*>(.*?)</block>""".r
+    val blockPattern = """(?s)<block\s+s="([^"]+)"[^>]*>(.*?)</block>""".r
+    val selfClosingBlockPattern = """(?s)<block\s+s="([^"]+)"[^>]*/>""".r
 
-    blockPattern.findAllMatchIn(xml).toList.flatMap { m =>
-      val selector = m.group(1)
-      val body = m.group(2)
-      val numbers = """(?s)<l>\s*([-0-9.]+)\s*</l>""".r.findAllMatchIn(body).toList
-        .flatMap(mm => scala.util.Try(mm.group(1).toDouble).toOption)
+    val standardCommands = blockPattern.findAllMatchIn(xml).toList.flatMap { m =>
+      parseLinearBlock(m.group(1), m.group(2))
+    }
 
-      val number = numbers.headOption.getOrElse(0.0)
-      val number2 = numbers.drop(1).headOption.getOrElse(0.0)
+    val selfClosingCommands = selfClosingBlockPattern.findAllMatchIn(xml).toList.flatMap { m =>
+      parseLinearBlock(m.group(1), "")
+    }
 
-      selector match {
-        case "forward" | "forward:" => Some(Forward(number))
-        case "turn" | "turn:" => Some(TurnRight(number))
-        case "turnLeft" | "turnLeft:" => Some(TurnLeft(number))
-        case "turnLeftAndRight" | "turnRight" | "turnRight:" => Some(TurnRight(number))
-        case "arcRight" => Some(ArcRight(number, number2))
-        case "arcLeft" => Some(ArcLeft(number, number2))
-        case "gotoXY" | "gotoX:y:" => Some(GotoXY(number, number2))
-        case "setHeading" | "heading:" => Some(SetHeading(number))
-        case "changeYPosition" | "changeYposBy:" => Some(ChangeYPosition(number))
-        case "clear" | "clearPenTrails" => Some(Clear)
-        case "receiveGo" => Some(ReceiveGo)
-        case "up" | "penup" => Some(PenUp)
-        case "down" | "pendown" => Some(PenDown)
-        case _ => None
-      }
+    standardCommands ++ selfClosingCommands
+  }
+
+  private def parseLinearBlock(selector: String, body: String): Option[Command] = {
+    val numbers = """(?s)<l>\s*([-0-9.]+)\s*</l>""".r.findAllMatchIn(body).toList
+      .flatMap(mm => scala.util.Try(mm.group(1).toDouble).toOption)
+
+    val number = numbers.headOption.getOrElse(0.0)
+    val number2 = numbers.drop(1).headOption.getOrElse(0.0)
+
+    selector match {
+      case "forward" | "forward:" => Some(Forward(number))
+      case "turn" | "turn:" => Some(TurnRight(number))
+      case "turnLeft" | "turnLeft:" => Some(TurnLeft(number))
+      case "turnLeftAndRight" | "turnRight" | "turnRight:" => Some(TurnRight(number))
+      case "arcRight" => Some(ArcRight(number, number2))
+      case "arcLeft" => Some(ArcLeft(number, number2))
+      case "gotoXY" | "gotoX:y:" => Some(GotoXY(number, number2))
+      case "setHeading" | "heading:" => Some(SetHeading(number))
+      case "changeYPosition" | "changeYposBy:" => Some(ChangeYPosition(number))
+      case "clear" | "clearPenTrails" => Some(Clear)
+      case "receiveGo" => Some(ReceiveGo)
+      case "up" | "penup" => Some(PenUp)
+      case "down" | "pendown" => Some(PenDown)
+      case _ => None
     }
   }
 
