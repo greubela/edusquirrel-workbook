@@ -379,11 +379,33 @@
     throw new Error("Could not generate stage PNG snapshot.");
   }
 
+  function activeProcessCount() {
+    const processBuckets = [
+      ide?.stage?.threads?.processes,
+      ide?.threads?.processes,
+      ide?.currentSprite?.threads?.processes,
+      world?.hand?.threads?.processes
+    ];
+
+    return processBuckets.reduce((acc, bucket) => {
+      if (Array.isArray(bucket)) return acc + bucket.length;
+      return acc;
+    }, 0);
+  }
+
+  function runGreenFlag() {
+    if (typeof ide?.pressStart === "function") {
+      ide.pressStart();
+      return;
+    }
+    ide.runScripts();
+  }
+
   async function runGreenFlagOnce() {
     forceLayout();
     try { ide.stopAllScripts?.(); } catch (_) {}
     try { ide.stage.clearPenTrails?.(); } catch (_) {}
-    ide.runScripts();
+    runGreenFlag();
 
     // Wait until execution has either finished or pen trails stabilized.
     // Some projects may draw later (e.g. after waits/async blocks), so
@@ -398,7 +420,7 @@
       stepWorld(2);
 
       const trailCount = ide?.stage?.trailsLog?.length ?? 0;
-      const processCount = ide?.stage?.threads?.processes?.length ?? 0;
+      const processCount = activeProcessCount();
 
       if (trailCount === lastTrailCount) stableTrailCycles += 1;
       else stableTrailCycles = 0;
