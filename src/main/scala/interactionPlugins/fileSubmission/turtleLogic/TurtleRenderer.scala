@@ -81,6 +81,12 @@ object TurtleRenderer {
 
       case (s, TurtleXmlParser.Repeat(times, body)) =>
         (0 until times).foldLeft(s) { (acc, _) => runCommands(body, acc) }
+
+      case (s, TurtleXmlParser.IfThen(body)) =>
+        runCommands(body, s)
+
+      case (s, TurtleXmlParser.WhileLoop(body)) =>
+        runCommands(body, s)
     }
   }
 

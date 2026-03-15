@@ -20,6 +20,8 @@ object TurtleXmlParser {
   case object PenUp extends Command
   case object PenDown extends Command
   case class Repeat(times: Int, body: List[Command]) extends Command
+  case class IfThen(body: List[Command]) extends Command
+  case class WhileLoop(body: List[Command]) extends Command
 
   def parse(xml: String): List[Command] = {
     val hasDomParser = {
@@ -60,7 +62,20 @@ object TurtleXmlParser {
     }
 
     val withoutRepeats = repeatPattern.replaceAllIn(xml, "")
-    repeats ++ parseLinearBlocks(withoutRepeats)
+    val (controls, linearCandidateXml) = parseControlStructures(withoutRepeats)
+    repeats ++ controls ++ parseLinearBlocks(linearCandidateXml)
+  }
+
+  private def parseControlStructures(xml: String): (List[Command], String) = {
+    val ifPattern = """(?s)<block\s+s="doIf"[^>]*>.*?<script>(.*?)</script>\s*</block>""".r
+    val whilePattern = """(?s)<block\s+s="(?:doUntil|doWhile|doForever)"[^>]*>.*?<script>(.*?)</script>\s*</block>""".r
+
+    val ifCommands = ifPattern.findAllMatchIn(xml).toList.map(m => IfThen(parseLinearBlocks(m.group(1))))
+    val whileCommands = whilePattern.findAllMatchIn(xml).toList.map(m => WhileLoop(parseLinearBlocks(m.group(1))))
+
+    val withoutIf = ifPattern.replaceAllIn(xml, "")
+    val withoutWhile = whilePattern.replaceAllIn(withoutIf, "")
+    (ifCommands ++ whileCommands, withoutWhile)
   }
 
   private def parseLinearBlocks(xml: String): List[Command] = {
@@ -151,6 +166,18 @@ object TurtleXmlParser {
           .map(parseScript)
           .getOrElse(Nil)
         Some(Repeat(times, body))
+      case "doIf" =>
+        val body = blockElement.childNodesAsList
+          .collect { case node if node.nodeName == "script" => parseScript(node) }
+          .headOption
+          .getOrElse(Nil)
+        Some(IfThen(body))
+      case "doUntil" | "doWhile" | "doForever" =>
+        val body = blockElement.childNodesAsList
+          .collect { case node if node.nodeName == "script" => parseScript(node) }
+          .headOption
+          .getOrElse(Nil)
+        Some(WhileLoop(body))
       case _ => None
     }
   }

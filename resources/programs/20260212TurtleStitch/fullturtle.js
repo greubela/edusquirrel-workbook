@@ -381,10 +381,25 @@
 
   async function runGreenFlagOnce() {
     forceLayout();
+    try { ide.stopAllScripts?.(); } catch (_) {}
     try { ide.stage.clearPenTrails?.(); } catch (_) {}
     ide.runScripts();
-    await sleep(700);
-    try { ide.stop?.(); } catch (_) {}
+
+    // Wait until pen trails stabilize or timeout.
+    const started = Date.now();
+    let lastTrailCount = -1;
+    let stableCycles = 0;
+    while (Date.now() - started < 1800) {
+      stepWorld(2);
+      const trailCount = ide?.stage?.trailsLog?.length ?? 0;
+      if (trailCount === lastTrailCount) stableCycles += 1;
+      else stableCycles = 0;
+      lastTrailCount = trailCount;
+      if (stableCycles >= 3) break;
+      await sleep(120);
+    }
+
+    try { ide.stopAllScripts?.(); } catch (_) {}
     stepWorld(3);
   }
 
