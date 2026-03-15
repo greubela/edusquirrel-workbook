@@ -23,11 +23,11 @@ object TurtleRenderer {
   )
 
   def renderToPngDataUrl(commands: List[TurtleXmlParser.Command]): String = {
-    val segments = execute(commands)
+    val segments = simulateSegments(commands)
     renderSegments(segments)
   }
 
-  private def execute(commands: List[TurtleXmlParser.Command]): List[Segment] = {
+  private[turtleLogic] def simulateSegments(commands: List[TurtleXmlParser.Command]): List[Segment] = {
     val initial = TurtleState(0.0, 0.0, headingDegrees = 90.0, penDown = true, segments = Nil, clearFrom = 0)
     val endState = runCommands(commands, initial)
     endState.segments.reverse.drop(endState.clearFrom)

@@ -385,17 +385,34 @@
     try { ide.stage.clearPenTrails?.(); } catch (_) {}
     ide.runScripts();
 
-    // Wait until pen trails stabilize or timeout.
+    // Wait until execution has either finished or pen trails stabilized.
+    // Some projects may draw later (e.g. after waits/async blocks), so
+    // requiring only a "stable trail count" can terminate too early.
     const started = Date.now();
+    const minRuntimeMs = 700;
+    const maxRuntimeMs = 3500;
     let lastTrailCount = -1;
-    let stableCycles = 0;
-    while (Date.now() - started < 1800) {
+    let stableTrailCycles = 0;
+    let idleProcessCycles = 0;
+    while (Date.now() - started < maxRuntimeMs) {
       stepWorld(2);
+
       const trailCount = ide?.stage?.trailsLog?.length ?? 0;
-      if (trailCount === lastTrailCount) stableCycles += 1;
-      else stableCycles = 0;
+      const processCount = ide?.stage?.threads?.processes?.length ?? 0;
+
+      if (trailCount === lastTrailCount) stableTrailCycles += 1;
+      else stableTrailCycles = 0;
       lastTrailCount = trailCount;
-      if (stableCycles >= 3) break;
+
+      if (processCount === 0) idleProcessCycles += 1;
+      else idleProcessCycles = 0;
+
+      const runtimeMs = Date.now() - started;
+      const minRuntimeReached = runtimeMs >= minRuntimeMs;
+      const trailsDone = trailCount > 0 && stableTrailCycles >= 3;
+      const processesDone = idleProcessCycles >= 3;
+      if (minRuntimeReached && (trailsDone || processesDone)) break;
+
       await sleep(120);
     }
 
