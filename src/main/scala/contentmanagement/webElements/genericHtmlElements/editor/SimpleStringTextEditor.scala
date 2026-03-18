@@ -10,7 +10,7 @@ case class SimpleStringTextEditor(
                                    stateToBind: Var[String],
                                    monoSpace: Boolean = false,
                                    onUserInput: String => Unit = _ => ()
-                                 ) extends HtmlAppElement{
+                                 ) extends HtmlAppElement {
 
   private val editorTextArea = textArea(
     rows := 8,
@@ -25,6 +25,9 @@ case class SimpleStringTextEditor(
       }
     )
   )
+
+
+
 
   private val domElement = {
     div(

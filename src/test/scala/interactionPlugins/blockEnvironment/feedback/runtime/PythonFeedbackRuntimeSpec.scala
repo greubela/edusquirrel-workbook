@@ -1,13 +1,6 @@
 package interactionPlugins.blockEnvironment.feedback.runtime
 
-import interactionPlugins.pythonExercises.{
-  PythonRunRequest,
-  PythonRunResult,
-  PythonRunStatus,
-  PythonTestResult,
-  PythonTestStatus,
-  PythonUnitTest
-}
+import interactionPlugins.programmingExercise.pythonExercisesUnsorted.{PythonRunRequest, PythonRunResult, PythonRunStatus, PythonTestResult, PythonTestStatus, PythonUnitTest}
 import munit.FunSuite
 
 import scala.collection.mutable

@@ -13,7 +13,7 @@ import interactionPlugins.blockEnvironment.feedback.{
   PythonTestResult
 }
 import interactionPlugins.blockEnvironment.feedback.rules.{PythonStaticRules, VmStaticRules}
-import interactionPlugins.pythonExercises.PythonRunStatus
+import interactionPlugins.programmingExercise.pythonExercisesUnsorted.PythonRunStatus
 import munit.FunSuite
 
 import scala.concurrent.{ExecutionContext, Future}

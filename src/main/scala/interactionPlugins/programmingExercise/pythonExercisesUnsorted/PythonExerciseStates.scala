@@ -1,10 +1,9 @@
-package interactionPlugins.pythonExercises
+package interactionPlugins.programmingExercise.pythonExercisesUnsorted
 
 import workbook.model.feedback.FeedbackStatus
 import workbook.model.feedback.FeedbackStatus.FINISHED
-import workbook.model.feedback.grading.GradingGrade
 import workbook.model.feedback.grading.GradingGrade.{CORRECT, GRADING_ERROR, INCORRECT, PARTIALLY_CORRECT}
-import workbook.model.feedback.grading.GradingResult
+import workbook.model.feedback.grading.{GradingGrade, GradingResult}
 
 
 /** Represents the current code inside the editor. */

@@ -1,11 +1,12 @@
-package interactionPlugins.pythonExercises
+package interactionPlugins.programmingExercise.pythonExercisesUnsorted
+
+import org.scalajs.dom
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
-import scala.scalajs.js.JSON
 import scala.scalajs.js.JSConverters.*
-import org.scalajs.dom
+import scala.scalajs.js.JSON
 
 private[interactionPlugins] final case class PythonRunRequest(
     code: String,

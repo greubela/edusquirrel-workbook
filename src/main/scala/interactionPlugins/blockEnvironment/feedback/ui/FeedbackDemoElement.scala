@@ -14,7 +14,7 @@ import interactionPlugins.blockEnvironment.feedback.{
   UltrichsNewCoolFeedback
 }
 import interactionPlugins.blockEnvironment.feedback.ml.MlRouter
-import interactionPlugins.pythonExercises.PythonRuntimeService
+import interactionPlugins.programmingExercise.pythonExercisesUnsorted.PythonRuntimeService
 import workbook.model.feedback.FeedbackStatus
 
 import scala.concurrent.ExecutionContext.Implicits.global

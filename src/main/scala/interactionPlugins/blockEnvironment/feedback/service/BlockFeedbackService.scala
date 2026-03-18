@@ -7,7 +7,7 @@ import interactionPlugins.blockEnvironment.feedback.diagnosis.{DiagnosisAdapters
 import interactionPlugins.blockEnvironment.feedback.rules.{PythonStaticRules, VmStaticRules}
 import interactionPlugins.blockEnvironment.feedback.ml.{BlockFeedbackSignals, DecisionLayer, FeatureExtractor, MlRouter, MlTrainingLogger}
 import interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
-import interactionPlugins.pythonExercises.PythonRunStatus
+import interactionPlugins.programmingExercise.pythonExercisesUnsorted.PythonRunStatus
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.scalajs.js

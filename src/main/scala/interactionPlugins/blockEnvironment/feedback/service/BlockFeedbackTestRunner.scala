@@ -1,12 +1,10 @@
 package interactionPlugins.blockEnvironment.feedback
 
 import interactionPlugins.blockEnvironment.feedback.runtime.PythonFeedbackRuntime
-import interactionPlugins.pythonExercises.{
-  PythonRunRequest,
-  PythonRunStatus,
-  PythonTestResult => RuntimeTestResult,
-  PythonTestStatus
-}
+import interactionPlugins.programmingExercise.pythonExercisesUnsorted
+import interactionPlugins.programmingExercise.pythonExercisesUnsorted.{PythonFixture, PythonRunRequest, PythonRunResult, PythonRunStatus, PythonTestStatus, PythonUnitTest}
+import interactionPlugins.pythonExercises.{PythonRunRequest, PythonRunStatus, PythonTestStatus, PythonTestResult as RuntimeTestResult}
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
@@ -29,7 +27,7 @@ object BlockFeedbackTestRunner:
   private[feedback] def executeWithRunner(
     request: BlockFeedbackRequest,
     plan: BlockFeedbackTestPlan,
-    runPython: PythonRunRequest => Future[interactionPlugins.pythonExercises.PythonRunResult]
+    runPython: PythonRunRequest => Future[PythonRunResult]
   )(using ExecutionContext): Future[PythonRuntimeOutcome] =
     executeWithRuntime(request, plan, (req, _) => runPython(req))
 
@@ -41,7 +39,7 @@ object BlockFeedbackTestRunner:
   private[feedback] def executeWithRuntime(
     request: BlockFeedbackRequest,
     plan: BlockFeedbackTestPlan,
-    runPython: (PythonRunRequest, Boolean) => Future[interactionPlugins.pythonExercises.PythonRunResult]
+    runPython: (PythonRunRequest, Boolean) => Future[PythonRunResult]
   )(using ExecutionContext): Future[PythonRuntimeOutcome] =
     val rawPython = request.pythonSource
     val runtimeFixtures = plan.fixtures.map(toRuntimeFixture)
@@ -59,7 +57,7 @@ object BlockFeedbackTestRunner:
         timeoutMs = plan.timeoutMs
       )
 
-    def allPassed(expected: Seq[BlockFeedbackPythonTest], results: Seq[RuntimeTestResult], hidden: Boolean): Boolean =
+    def allPassed(expected: Seq[BlockFeedbackPythonTest], results: Seq[pythonExercisesUnsorted.PythonTestResult], hidden: Boolean): Boolean =
       expected.forall { t =>
         results
           .find(r => r.name == t.name && r.isHidden == hidden)
@@ -67,9 +65,9 @@ object BlockFeedbackTestRunner:
       }
 
     def combineScore(
-      visibleResults: Seq[RuntimeTestResult],
-      hiddenResults: Seq[RuntimeTestResult],
-      hiddenExecuted: Boolean
+                      visibleResults: Seq[pythonExercisesUnsorted.PythonTestResult],
+                      hiddenResults: Seq[pythonExercisesUnsorted.PythonTestResult],
+                      hiddenExecuted: Boolean
     ): Double =
       val weights: Map[(String, Boolean), Double] =
         (plan.visibleTests.map(t => (t.name, false) -> t.weight) ++
@@ -99,7 +97,7 @@ object BlockFeedbackTestRunner:
           (!request.config.runHiddenOnlyIfVisiblePass || visibleAllPassed)
 
       val runHidden = shouldRunHidden && plan.hiddenTests.nonEmpty
-      val hiddenRunF: Future[Option[interactionPlugins.pythonExercises.PythonRunResult]] =
+      val hiddenRunF: Future[Option[PythonRunResult]] =
         if runHidden then runPython(hiddenReq, isolatePerTest).map(Some(_))
         else Future.successful(None)
 
@@ -167,7 +165,7 @@ object BlockFeedbackTestRunner:
       stderr = None
     )
 
-  private def mapRuntimeTestResult(entry: RuntimeTestResult): PythonTestResult =
+  private def mapRuntimeTestResult(entry: pythonExercisesUnsorted.PythonTestResult): PythonTestResult =
     val passed = entry.status == PythonTestStatus.Passed
 
     def parseExpectedActual(msg: String): Option[(String, String)] = {
@@ -201,8 +199,8 @@ object BlockFeedbackTestRunner:
   private def toRuntimeTest(
       test: BlockFeedbackPythonTest,
       humanLanguage: contentmanagement.model.language.HumanLanguage
-  ): interactionPlugins.pythonExercises.PythonUnitTest =
-    interactionPlugins.pythonExercises.PythonUnitTest(
+  ): PythonUnitTest =
+    pythonExercisesUnsorted.PythonUnitTest(
       name = test.name,
       code = test.code,
       weight = test.weight,
@@ -247,8 +245,8 @@ object BlockFeedbackTestRunner:
 
   private def toRuntimeFixture(
       fixture: BlockFeedbackPythonFixture
-  ): interactionPlugins.pythonExercises.PythonFixture =
-    interactionPlugins.pythonExercises.PythonFixture(
+  ): PythonFixture =
+    pythonExercisesUnsorted.PythonFixture(
       path = fixture.path,
       content = fixture.content,
       isBinary = fixture.isBinary

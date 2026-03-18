@@ -1,13 +1,6 @@
 package interactionPlugins.blockEnvironment.feedback.runtime
 
-import interactionPlugins.pythonExercises.{
-  PythonRunRequest,
-  PythonRunResult,
-  PythonRuntimeService,
-  PythonRunStatus,
-  PythonTestResult,
-  PythonTestStatus
-}
+import interactionPlugins.programmingExercise.pythonExercisesUnsorted.{PythonRunRequest, PythonRunResult, PythonRunStatus, PythonRuntimeService, PythonTestResult, PythonTestStatus}
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js.timers.{SetTimeoutHandle, clearTimeout, setTimeout}
 import java.util.concurrent.TimeoutException

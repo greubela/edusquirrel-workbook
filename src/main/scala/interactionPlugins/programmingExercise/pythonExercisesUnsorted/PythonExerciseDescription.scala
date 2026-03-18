@@ -1,4 +1,4 @@
-package interactionPlugins.pythonExercises
+package interactionPlugins.programmingExercise.pythonExercisesUnsorted
 
 import contentmanagement.model.language.*
 
