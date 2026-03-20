@@ -3,7 +3,7 @@ package contentmanagement.webElements.genericHtmlElements.editor
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement
-import contentmanagement.webElements.genericHtmlElements.editor.CodeMirrorEditor.{CodeMirrorHandle, EditorConfig, facade}
+import contentmanagement.webElements.genericHtmlElements.editor.CodeMirrorEditor.{CodeMirrorHandle, EditorConfig, facade, waitForFacade}
 import org.scalajs.dom
 
 import scala.scalajs.js
@@ -21,40 +21,42 @@ case class CodeMirrorEditor(content: Var[String]) extends HtmlAppElement {
     div(
       cls := "code-mirror-editor",
       onMountCallback { ctx =>
-        facade match {
-          case Some(cmFacade) =>
-            val container = ctx.thisNode.ref
-            val initialValue = content.now()
+        waitForFacade { maybeFacade =>
+          maybeFacade match {
+            case Some(cmFacade) =>
+              val container = ctx.thisNode.ref
+              val initialValue = content.now()
 
-            var updatingFromVar = false
+              var updatingFromVar = false
 
-            val createdHandle = cmFacade.createEditor(
-              EditorConfig(
-                parent = container,
-                doc = initialValue,
-                onDocChange = value =>
-                  if (!updatingFromVar) {
-                    updatingFromEditor = true
-                    content.writer.onNext(value)
-                    updatingFromEditor = false
-                  }
+              val createdHandle = cmFacade.createEditor(
+                EditorConfig(
+                  parent = container,
+                  doc = initialValue,
+                  onDocChange = value =>
+                    if (!updatingFromVar) {
+                      updatingFromEditor = true
+                      content.writer.onNext(value)
+                      updatingFromEditor = false
+                    }
+                )
               )
-            )
 
-            handle = Some(createdHandle)
+              handle = Some(createdHandle)
 
-            content.signal.foreach { value =>
-              handle.foreach { editorHandle =>
-                if (!updatingFromEditor && editorHandle.getDoc() != value) {
-                  updatingFromVar = true
-                  editorHandle.setDoc(value)
-                  updatingFromVar = false
+              content.signal.foreach { value =>
+                handle.foreach { editorHandle =>
+                  if (!updatingFromEditor && editorHandle.getDoc() != value) {
+                    updatingFromVar = true
+                    editorHandle.setDoc(value)
+                    updatingFromVar = false
+                  }
                 }
-              }
-            }(ctx.owner)
+              }(ctx.owner)
 
-          case None =>
-            dom.console.error("CodeMirror facade is not available on window.EduSquirrelCodeMirror")
+            case None =>
+              dom.console.error("CodeMirror facade is not available on window.EduSquirrelCodeMirror")
+          }
         }
       },
       onUnmountCallback { _ =>
@@ -100,5 +102,26 @@ object CodeMirrorEditor {
     val maybeFacade = js.Dynamic.global.selectDynamic("EduSquirrelCodeMirror")
     if (js.isUndefined(maybeFacade) || maybeFacade == null) None
     else Some(maybeFacade.asInstanceOf[CodeMirrorFacade])
+  }
+
+  private def waitForFacade(callback: Option[CodeMirrorFacade] => Unit): Unit = {
+    facade match {
+      case some @ Some(_) =>
+        callback(some)
+      case None =>
+        val readyPromise = js.Dynamic.global.selectDynamic("EduSquirrelCodeMirrorReady")
+        if (js.isUndefined(readyPromise) || readyPromise == null) {
+          callback(None)
+        } else {
+          readyPromise
+            .asInstanceOf[js.Promise[js.Any]]
+            .`then`[Unit]((_: js.Any) => callback(facade))
+            .`catch`(((error: scala.Any) => {
+              dom.console.error("Failed to initialize CodeMirror facade", error.asInstanceOf[js.Any])
+              callback(None)
+              (): Unit
+            }): js.Function1[scala.Any, Unit | js.Thenable[Unit]])
+        }
+    }
   }
 }
