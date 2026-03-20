@@ -10,7 +10,7 @@ import scala.scalajs.js
   * Utility that loads the CodeMirror 5 assets from a CDN only once and exposes the global factory.
   * This keeps the Python editor implementation self-contained within the plugin package.
   */
-private[pythonExercises] object CodeMirrorLoader {
+object CodeMirrorLoader {
 
   private val BaseCssHref = "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"
   private val ThemeCssHref = "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/eclipse.min.css"
@@ -81,12 +81,12 @@ private[pythonExercises] object CodeMirrorLoader {
 }
 
 @js.native
-private[pythonExercises] trait CodeMirrorFactory extends js.Object {
+trait CodeMirrorFactory extends js.Object {
   def fromTextArea(textArea: dom.html.TextArea, options: js.Any): CodeMirrorInstance = js.native
 }
 
 @js.native
-private[pythonExercises] trait CodeMirrorInstance extends js.Object {
+trait CodeMirrorInstance extends js.Object {
   def getValue(): String = js.native
   def setValue(value: String): Unit = js.native
   def on(eventName: String, handler: js.Function2[CodeMirrorInstance, js.Any, Any]): Unit = js.native
