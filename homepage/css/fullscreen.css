@@ -1,5 +1,5 @@
 /* Import colors and base styles */
-@import url('colors.css');
+@import url('./colors.css');
 
 
 /* --- Fullscreen Overlay --- */
