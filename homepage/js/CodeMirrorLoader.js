@@ -9,8 +9,8 @@ import {
 } from "https://cdn.jsdelivr.net/npm/@codemirror/view@6.38.6/+esm";
 import {defaultKeymap, history, historyKeymap, indentWithTab} from "https://cdn.jsdelivr.net/npm/@codemirror/commands@6.8.1/+esm";
 import {
-  HighlightStyle,
   bracketMatching,
+  defaultHighlightStyle,
   foldGutter,
   foldKeymap,
   indentOnInput,
@@ -18,38 +18,12 @@ import {
 } from "https://cdn.jsdelivr.net/npm/@codemirror/language@6.11.3/+esm";
 import {highlightSelectionMatches, searchKeymap} from "https://cdn.jsdelivr.net/npm/@codemirror/search@6.5.11/+esm";
 import {python} from "https://cdn.jsdelivr.net/npm/@codemirror/lang-python@6.2.1/+esm";
-import {oneDark} from "https://cdn.jsdelivr.net/npm/@codemirror/theme-one-dark@6.1.3/+esm";
-import {tags} from "https://cdn.jsdelivr.net/npm/@lezer/highlight@1.2.1/+esm";
-
-const pythonHighlightStyle = HighlightStyle.define([
-  {tag: tags.keyword, color: "#c678dd", fontWeight: "600"},
-  {tag: [tags.name, tags.deleted, tags.character, tags.propertyName, tags.macroName], color: "#e06c75"},
-  {tag: [tags.function(tags.variableName), tags.labelName], color: "#61afef"},
-  {tag: [tags.color, tags.constant(tags.name), tags.standard(tags.name)], color: "#d19a66"},
-  {tag: [tags.definition(tags.name), tags.separator], color: "#e5c07b"},
-  {tag: tags.className, color: "#e5c07b", fontWeight: "600"},
-  {tag: [tags.number, tags.changed, tags.annotation, tags.modifier, tags.self, tags.namespace], color: "#d19a66"},
-  {tag: tags.typeName, color: "#56b6c2"},
-  {tag: [tags.operator, tags.operatorKeyword], color: "#56b6c2"},
-  {tag: tags.tagName, color: "#e06c75"},
-  {tag: tags.attributeName, color: "#d19a66"},
-  {tag: tags.regexp, color: "#56b6c2"},
-  {tag: tags.string, color: "#98c379"},
-  {tag: tags.special(tags.string), color: "#56b6c2"},
-  {tag: [tags.meta, tags.comment], color: "#7f848e", fontStyle: "italic"},
-  {tag: tags.link, color: "#7fbaff", textDecoration: "underline"},
-  {tag: tags.heading, fontWeight: "700", color: "#e06c75"},
-  {tag: [tags.atom, tags.bool, tags.special(tags.variableName)], color: "#d19a66"},
-  {tag: tags.invalid, color: "#ffffff", backgroundColor: "#e05252"}
-]);
 
 const editorTheme = EditorView.theme({
   "&": {
     height: "100%",
     minHeight: "16rem",
-    backgroundColor: "#282c34",
-    color: "#abb2bf",
-    border: "1px solid rgba(255, 255, 255, 0.08)",
+    border: "1px solid #d0d7de",
     borderRadius: "10px"
   },
   ".cm-scroller": {
@@ -57,40 +31,43 @@ const editorTheme = EditorView.theme({
     lineHeight: "1.5"
   },
   ".cm-content": {
-    caretColor: "#61afef",
-    padding: "12px 0"
+    padding: "12px 0",
+    textAlign: "left"
   },
   ".cm-gutters": {
-    backgroundColor: "#21252b",
-    color: "#5c6370",
+    backgroundColor: "#f6f8fa",
+    color: "#57606a",
     border: "none",
     borderTopLeftRadius: "10px",
     borderBottomLeftRadius: "10px"
   },
+  ".cm-line": {
+    textAlign: "left"
+  },
   ".cm-activeLine": {
-    backgroundColor: "rgba(255, 255, 255, 0.04)"
+    backgroundColor: "#f6f8fa"
   },
   ".cm-activeLineGutter": {
-    backgroundColor: "rgba(97, 175, 239, 0.12)",
-    color: "#7fbaff"
+    backgroundColor: "#eaf2ff",
+    color: "#0969da"
   },
   ".cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection": {
-    backgroundColor: "rgba(97, 175, 239, 0.28)"
+    backgroundColor: "#cce0ff"
   },
   ".cm-cursor, .cm-dropCursor": {
-    borderLeftColor: "#61afef"
+    borderLeftColor: "#0969da"
   },
   ".cm-tooltip": {
-    border: "1px solid rgba(255, 255, 255, 0.1)",
-    backgroundColor: "#21252b"
+    border: "1px solid #d0d7de",
+    backgroundColor: "#ffffff"
   },
   ".cm-panels": {
-    backgroundColor: "#21252b",
-    color: "#abb2bf"
+    backgroundColor: "#ffffff",
+    color: "#24292f"
   },
   ".cm-matchingBracket": {
-    backgroundColor: "rgba(86, 182, 194, 0.18)",
-    outline: "1px solid rgba(86, 182, 194, 0.45)"
+    backgroundColor: "#ddf4ff",
+    outline: "1px solid #54aeff"
   }
 });
 
@@ -105,7 +82,7 @@ const baseExtensions = [
   highlightActiveLine(),
   highlightSelectionMatches(),
   python(),
-  syntaxHighlighting(pythonHighlightStyle),
+  syntaxHighlighting(defaultHighlightStyle, {fallback: true}),
   keymap.of([
     indentWithTab,
     ...defaultKeymap,
@@ -113,7 +90,6 @@ const baseExtensions = [
     ...foldKeymap,
     ...searchKeymap
   ]),
-  oneDark,
   editorTheme
 ];
 
