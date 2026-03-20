@@ -117,9 +117,4 @@ body {
     padding: 1.5rem;
   }
 
-  .sponsor-row {
-    flex-direction: column;
-    gap: 0.75rem;
-    text-align: center;
-  }
 }
