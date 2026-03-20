@@ -14,7 +14,7 @@ private[pyodide] final class WorkerBackend(stdoutVar: Var[String], stderrVar: Va
 
   private val worker =
     new dom.Worker(
-      "./PyodideWorker.js",
+      "./js/PyodideWorker.js",
       js.Dynamic.literal(`type` = "module").asInstanceOf[dom.WorkerOptions]
     )
 
