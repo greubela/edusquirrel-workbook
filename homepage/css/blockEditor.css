@@ -171,15 +171,19 @@
 .be-program-editor__python-view .code-mirror-editor {
   height: auto;
   display: flex;
+  width: 100%;
+  text-align: left;
 }
 
 .be-program-editor__python-view .code-mirror-editor .cm-editor {
   flex: 1;
   height: auto;
+  text-align: left;
 }
 
 .be-program-editor__python-view .code-mirror-editor .cm-scroller {
   overflow: auto;
+  text-align: left;
 }
 
 /* turtle output */
@@ -304,5 +308,4 @@
 .simple-selector-editor__select {
   width: fit-content;
 }
-
 
