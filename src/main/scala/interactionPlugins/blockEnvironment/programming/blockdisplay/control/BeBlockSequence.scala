@@ -37,7 +37,7 @@ case class BeBlockSequence(sequence: BeSequence) extends BeBlock {
     val nested: BoxManualPositioning = new BoxManualPositioning() {
       def calcOffsetsAndDimensions(config: BeRenderingConfig): List[ManualPositionElement] = {
         val columns = List(onlyControlFlow, onlyExpressions)
-        val maxColumnWidths = columns.map(_.map(_.displaySize(config).width).max)
+        val maxColumnWidths = columns.map(_.map(_.displaySize(config).width).maxOption.getOrElse(0.0))
 
         val res = mutable.ListBuffer[ManualPositionElement]()
         var offsetY: Double = 0

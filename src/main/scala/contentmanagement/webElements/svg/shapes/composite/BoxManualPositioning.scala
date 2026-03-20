@@ -37,7 +37,7 @@ abstract class BoxManualPositioning() extends BeShapeComposite {
 
   override def displaySize(rendererConfig: BeRenderingConfig): Dimension[Double] = {
     val bounds = getOffsetAndDimension(rendererConfig).map(element => element.relativeOffset.withDimension(element.shapeDimension))
-    Dimension(bounds.map(_.endX).max, bounds.map(_.endY).max)
+    Dimension(bounds.map(_.endX).maxOption.getOrElse(0.0), bounds.map(_.endY).maxOption.getOrElse(0.0))
   }
 
 
