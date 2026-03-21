@@ -5,31 +5,20 @@ import cats.effect.unsafe.implicits.global
 import contentmanagement.model.file.{FileDescription, LoadedFile}
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import contentmanagement.storage.LanguageMapTriplesStorage.*
-import fs2.Stream
 import fs2.data.csv.*
+import fs2.{Fallible, Stream}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.scalajs.js
+import scala.scalajs.js.{Dictionary, JSON}
 
 case class LanguageMapTriplesStorage(val fileDataStorage: DataStorage[FileDescription, LoadedFile]) extends DataStorage[FileDescription, List[MapEntryTripel]]("tripleStorage", false) {
+
 
   override protected def executeLoading(file: FileDescription)(ec: ExecutionContext): Future[List[MapEntryTripel]] = {
     case class FullCsvFileInfo(fileDescription: LoadedFile, csvData: List[List[String]], fileLanguageOp: Option[HumanLanguage], mapGroupIdOp: Option[String])
     val futFile: Future[LoadedFile] = fileDataStorage.loadAsFuture(file)(ec)
-    val futAndCsv: Future[(LoadedFile, List[List[String]])] = futFile.map(curLoadedFile => {
-      parseCsv(curLoadedFile.fileDataAsUtf8String).map(res => (curLoadedFile, res))(ec)
-    })(ec).flatten
-    
-    val futInfo: Future[FullCsvFileInfo] = futAndCsv.map(tup => FullCsvFileInfo(tup._1, tup._2 , languageFromFileDescription(tup._1.description), mapGroupId(tup._1.description)))(ec)
-    val futTriples: Future[List[MapEntryTripel]] = futInfo.map(curFileInfo => {
-       if (curFileInfo.fileLanguageOp.isEmpty || curFileInfo.mapGroupIdOp.isEmpty) {
-        List.empty[MapEntryTripel]
-      } else {
-        curFileInfo.csvData.filter(_.size >= 2).map(curColumns => {
-          MapEntryTripel(s"${curFileInfo.mapGroupIdOp.get}/${curColumns.head}", curFileInfo.fileLanguageOp.get, curColumns(1))
-        })
-      }
-    })(ec)
-    futTriples
+    futFile.map(loadedFile => triplesFromFile(loadedFile))(ec)
   }
 
   override protected def initialValueWhileLoading(in: FileDescription): Option[List[MapEntryTripel]] = None
@@ -57,22 +46,45 @@ object LanguageMapTriplesStorage {
 
   case class MapEntryTripel(mapId: String, language: HumanLanguage, value: String)
 
-  private def parseCsv(content: String): Future[List[List[String]]] = {
-    val res =     Stream
-      .emit(content).covary[IO]
-      .through(lowlevel.rows(separator = ';'))
-      .map(_.values.toList) // Row[String] → List[String]
+  private def parseJson(content: String): Map[String, String] = {
+    val parsed: Dictionary[String] = JSON.parse(content).asInstanceOf[js.Dictionary[String]]
+    parsed.toMap
+  }
+
+  private def triplesFromFile(file: LoadedFile): List[MapEntryTripel] = {
+    val languageOp = languageFromFileDescription(file.description)
+    val mapGroupIdOp = mapGroupId(file.description)
+    if (languageOp.isEmpty || mapGroupIdOp.isEmpty) {
+      List.empty[MapEntryTripel]
+    }
+    else if (file.description.extension == "json") {
+      parseJson(file.fileDataAsUtf8String).toList.map(tup => {
+        MapEntryTripel(mapGroupIdOp.get + "/" + tup._1, languageOp.get, tup._2)
+      })
+    } else if (file.description.extension == "csv") {
+      parseCsv(file.fileDataAsUtf8String).filter(_.size >= 2).map(curColumns => {
+        MapEntryTripel(s"${mapGroupIdOp.get}/${curColumns.head}", languageOp.get, curColumns(1))
+      })
+    } else {
+      List.empty[MapEntryTripel]
+    }
+  }
+
+  private def parseCsv(content: String): List[List[String]] = {
+    val res: Either[Throwable, List[List[String]]] = Stream
+      .emit(content)
+      .covary[Fallible]
+      .through(lowlevel.rows[Fallible, String](separator = ';'))
+      .map(_.values.toList)
       .compile
       .toList
-      .unsafeToFuture()
-    println("called parse csv!")
-    res
+
+    res.getOrElse(List.empty[List[String]])
+
   }
 
   private def languageFromFileDescription(file: FileDescription): Option[HumanLanguage] = {
     val langSuffix: Option[String] = file.nameWithoutExtension.split("-").lastOption.map(_.toLowerCase)
-
-    println("languageFromFileDescription for file: " + file + " -> " + langSuffix)
     langSuffix.map(languageByFileSuffix)
   }
 

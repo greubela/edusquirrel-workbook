@@ -1,14 +1,9 @@
 package contentmanagement.storage
 
-import cats.effect.IO
-import cats.effect.unsafe.implicits.global
-import com.raquo.airstream.state.Var
-import contentmanagement.model.file.{FileDescription, LoadedFile}
+import contentmanagement.model.file.FileDescription
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import contentmanagement.storage.LabelLanguageMapStorage.*
 import contentmanagement.storage.LanguageMapTriplesStorage.MapEntryTripel
-import fs2.Stream
-import fs2.data.csv.*
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
@@ -17,14 +12,11 @@ case class LabelLanguageMapStorage(languageTriplesStorage: LanguageMapTriplesSto
 
   override protected def executeLoading(id: String)(ec: ExecutionContext): Future[LanguageMap[HumanLanguage]] = {
 
-    println("executeLoading in LanguageMap for id: " + id)
-
     val allTriples: Future[List[List[MapEntryTripel]]] = Future.traverse(LabelLanguageMapStorage.languageMapFiles)(file => {
       languageTriplesStorage.loadAsFuture(file, false)(ec)
     })
 
     allTriples.map(_.flatten)(ec).map(triples => {
-      println("!!!!!!!!!!!!!!!!!!!!!!!!!!!! received " + triples.size + " triples for id: " + id + " from " + LabelLanguageMapStorage.languageMapFiles.size + " files")
       val languageMaps: Set[(String, LanguageMap[HumanLanguage])] = triplesToLanguageMaps(triples)
       languageMaps.find(_._1 == id).map(_._2).getOrElse(LabelLanguageMapStorage.languageMapNonExistentMap(id))
     })(ec)
@@ -45,6 +37,7 @@ object LabelLanguageMapStorage {
       AppLanguage.English -> "[language data is loading]",
     )
   )
+
   def languageMapNonExistentMap(id: String): LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(
     Map(
       AppLanguage.German -> s"[Keine Sprachdaten für ID: '${id}']",
@@ -53,10 +46,11 @@ object LabelLanguageMapStorage {
   )
 
   private val languageMapFiles: List[FileDescription] = List(
-    FileDescription.relativeToResourceFolder("/languageMaps/EmbroideryWorkbook-de.csv"),
+    FileDescription.relativeToResourceFolder("/languageMaps/EmbroideryWorkbook-de.json"),
     FileDescription.relativeToResourceFolder("/languageMaps/EmbroideryWorkbook-en.csv"),
     FileDescription.relativeToResourceFolder("/languageMaps/basic-en.csv"),
-    FileDescription.relativeToResourceFolder("/languageMaps/basic-en.csv")
+    FileDescription.relativeToResourceFolder("/languageMaps/basic-de.json"),
+    //   FileDescription.relativeToResourceFolder("/languageMaps/basic-fr.csv")
   )
 
   private def triplesToLanguageMaps(triples: List[MapEntryTripel]): Set[(String, LanguageMap[HumanLanguage])] = {
@@ -68,26 +62,26 @@ object LabelLanguageMapStorage {
       .toSet
   }
 
-/*
-  val noSectionSelectedMap: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(
-    Map(
-      AppLanguage.German -> "[Kein Abschnitt des Arbeitsheftes ausgewählt]",
-      AppLanguage.English -> "[No workbook section selected]",
+  /*
+    val noSectionSelectedMap: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(
+      Map(
+        AppLanguage.German -> "[Kein Abschnitt des Arbeitsheftes ausgewählt]",
+        AppLanguage.English -> "[No workbook section selected]",
+      )
     )
-  )
 
 
 
-  val dataLoadingMap: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(
-    Map(
-      AppLanguage.German -> "[Daten werden geladen]",
-      AppLanguage.English -> "[data is loading]",
+    val dataLoadingMap: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(
+      Map(
+        AppLanguage.German -> "[Daten werden geladen]",
+        AppLanguage.English -> "[data is loading]",
+      )
     )
-  )
 
-  val imageLoadingMap: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-    AppLanguage.German -> "[Bild wird geladen]",
-    AppLanguage.English -> "[Image is loading]",
-  ))
-*/
+    val imageLoadingMap: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
+      AppLanguage.German -> "[Bild wird geladen]",
+      AppLanguage.English -> "[Image is loading]",
+    ))
+  */
 }

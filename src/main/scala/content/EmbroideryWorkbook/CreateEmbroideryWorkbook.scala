@@ -40,8 +40,7 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenContainerElement
   private def createExploreExerciseDownloadInteraction(filename: String): HtmlWorkbookElement = {
     TurtleStitchExploreProjectExercise.createElementLine(workbookInfoVar, createFileDescription(filename))
   }
-
-
+  
   private def thirdExercise: HtmlExerciseContainer = {
 
     val elements: List[HtmlWorkbookElement] = List(
@@ -56,10 +55,7 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenContainerElement
     HtmlExerciseContainer(workbookInfoVar, elements.toList)
   }
 
-
   private def secondExercise: HtmlExerciseContainer = {
-
-
 
     val elements: List[HtmlWorkbookElement] = List(
       HtmlContainerTitle(workbookInfoVar, "EmbroideryWorkbook/Ex2Title"),
