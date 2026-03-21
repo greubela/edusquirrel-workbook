@@ -11,6 +11,8 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 
 case class FileDataStorage() extends DataStorage[FileDescription, LoadedFile]("FileDataStore", false) {
 
+  def load(file: FileDescription)(using ec: ExecutionContext): Future[LoadedFile] = executeLoading(file)(ec)
+
   override protected def executeLoading(file: FileDescription)(ec: ExecutionContext): Future[LoadedFile] = {
     val data: Future[Array[Byte]] = file match {
       case FileDescription.InternetResourceFileDescription(url, serverLocationDir, nameWithoutExtension, extension, copyrightInfo) => {
