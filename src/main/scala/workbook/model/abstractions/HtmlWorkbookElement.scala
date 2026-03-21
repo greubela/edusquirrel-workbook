@@ -12,13 +12,6 @@ trait HtmlWorkbookElement extends HtmlAppElement {
   def workbookInfoVar: Var[WorkbookInfo]
 }
 
-trait WorkbookExerciseTitle extends HtmlWorkbookElement {
-  def titleMap: LanguageMap[HumanLanguage]
-}
-
-trait WorkbookInstruction extends HtmlWorkbookElement {
-  def instructionMap: LanguageMap[HumanLanguage]
-}
 
 trait WorkbookInteraction[T] extends HtmlWorkbookElement {
   def id: String

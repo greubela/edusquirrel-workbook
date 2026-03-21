@@ -3,14 +3,11 @@ package contentmanagement.storage
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.file.*
-import org.scalajs.dom
-import org.scalajs.dom.URL
+import contentmanagement.model.language.{HumanLanguage, LanguageMap}
 import workbook.model.info.WorkbookInfo
 
-import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
 
 abstract class DataStorage[I, O](storageName: String, debug: Boolean) {
@@ -24,13 +21,13 @@ abstract class DataStorage[I, O](storageName: String, debug: Boolean) {
   protected def formatOutputForLogging(out: O): String
 
   private val cachedOutputVars: mutable.HashMap[I, Var[Option[O]]] = new mutable.HashMap(50, 0.25)
+  private val cachedCalculations: mutable.HashMap[I, O] = new mutable.HashMap(50, 0.25)
 
   private var cache_hits: Long = 0
   private var cache_misses: Long = 0
 
   private var execution_requested: Long = 0
   private var execution_succeeded: Long = 0
-
 
   private def logInfo(str: String): Unit = if (debug) {
     println(s"[INFO] for data storage '$storageName': " + str
@@ -50,6 +47,7 @@ abstract class DataStorage[I, O](storageName: String, debug: Boolean) {
 
   def deleteFromStorage(toDelete: List[I] = List()): Unit = {
     toDelete.foreach(desc => cachedOutputVars.remove(desc))
+    toDelete.foreach(desc => cachedCalculations.remove(desc))
   }
 
   def createSignalDependendVar(inputSignal: Signal[I])(implicit ec: ExecutionContext): Var[Option[O]] = {
@@ -65,34 +63,63 @@ abstract class DataStorage[I, O](storageName: String, debug: Boolean) {
     resultVar
   }
 
-  def loadIntoVariable(input: I, forceReloading: Boolean = false)(implicit ec: ExecutionContext): Var[Option[O]] = {
-    if (cachedOutputVars.contains(input)) {
+  def loadAsFuture(input: I, forceReloading: Boolean = false)(implicit ec: ExecutionContext): Future[O] = {
+    if (cachedCalculations.contains(input) && !forceReloading) {
       cache_hits = cache_hits + 1
-      val resultVar = cachedOutputVars(input)
       logInfo(s"cache hit for input '${formatInputForLogging(input)}''")
-      if (forceReloading) requestExecution(input, resultVar)(ec)
-      cachedOutputVars(input)
-    }
-    else {
+      Future.successful(cachedCalculations(input))
+    } else if (cachedCalculations.contains(input) && forceReloading) {
+      requestExecution(input)(ec)._1
+    } else {
       cache_misses = cache_misses + 1
       logInfo(s"cache miss for input '${formatInputForLogging(input)}''")
-      val resultVariable: Var[Option[O]] = Var(None)
-      cachedOutputVars.put(input, resultVariable)
-      requestExecution(input, resultVariable)(ec)
-      resultVariable
+      requestExecution(input)(ec)._1
     }
   }
 
-  private def requestExecution(input: I, updateVar: Var[Option[O]])(implicit ec: ExecutionContext): Unit = {
+
+  private def getOrCreateVar(input: I)(implicit ec: ExecutionContext): Var[Option[O]] = {
+    if (cachedOutputVars.contains(input)) cachedOutputVars(input)
+    else {
+      val res = Var[Option[O]](initialValueWhileLoading(input))
+      cachedOutputVars.put(input, res)
+      res
+    }
+  }
+
+  def loadIntoVariable(input: I, forceReloading: Boolean = false)(implicit ec: ExecutionContext): Var[Option[O]] = {
+    if (cachedOutputVars.contains(input) && !forceReloading) {
+      cache_hits = cache_hits + 1
+      logInfo(s"cache hit for input '${formatInputForLogging(input)}''")
+      cachedOutputVars(input)
+    } else if (cachedCalculations.contains(input) && forceReloading) {
+      requestExecution(input)(ec)._2
+    } else {
+      cache_misses = cache_misses + 1
+      logInfo(s"cache miss for input '${formatInputForLogging(input)}''")
+      requestExecution(input)(ec)._2
+    }
+  }
+
+  private def requestExecution(input: I)(implicit ec: ExecutionContext): (Future[O], Var[Option[O]]) = {
+    val promise = Promise[O]()
+    val varRes = getOrCreateVar(input)
     execution_requested = execution_requested + 1
     executeLoading(input)(ec).onComplete {
       case Success(outputData) => {
         execution_succeeded = execution_succeeded + 1
-        updateVar.set(Some(outputData))
+        cachedCalculations.put(input, outputData)
+        varRes.set(Some(outputData))
+        promise.success(outputData)
         logInfo(s"Successfully calculated output: '${formatInputForLogging(input)}' -> '${formatOutputForLogging(outputData)}'")
       }
-      case Failure(error) => logError(s"Failed to load output for input '${formatInputForLogging(input)}", error)
+      case Failure(error) => {
+        promise.failure(error)
+        logError(s"Failed to load output for input '${formatInputForLogging(input)}", error)
+      }
     }(ec)
+
+    (promise.future, varRes)
   }
 
   def startLoading(input: I)(implicit ec: ExecutionContext): Unit = loadIntoVariable(input)(ec)
@@ -104,10 +131,10 @@ object DataStorage {
 
   val fileDataStore: FileDataStorage = FileDataStorage()
 
-
-  private val languageMapStorage: LabelLanguageMapStorage = LabelLanguageMapStorage()
+  private val languageMapStorage: LabelLanguageMapStorage = LabelLanguageMapStorage(LanguageMapTriplesStorage(fileDataStore))
 
   def labelSignalFromLanguageMapName(languageMapName: String, workbookInfoVar: Var[WorkbookInfo]): Signal[String] = {
+    println("request language map for name: " + languageMapName)
     val languageMapVar = languageMapStorage.loadIntoVariable(languageMapName)(ExecutionContext.Implicits.global)
     languageMapVar.signal.combineWith(workbookInfoVar.signal).map(tup => {
       tup._1 match {
@@ -115,8 +142,8 @@ object DataStorage {
         case None => tup._2.languageStringFromMap(LabelLanguageMapStorage.languageMapLoadingMap)
       }
     })
-    
-    
+
+
   }
 
 }

@@ -12,7 +12,7 @@ import scala.concurrent.ExecutionContext
 case class HtmlImageElement(imageSignal: StrictSignal[Option[FullImage]], workbookInfoVar: Var[WorkbookInfo]) {
 
 
-  def getDomSignal(): Signal[Element] = imageSignal.map {
+  def getDomSignal: Signal[Element] = imageSignal.map {
     case None => {
       span(
         text <-- DataStorage.labelSignalFromLanguageMapName("imageLoadingMap", workbookInfoVar)

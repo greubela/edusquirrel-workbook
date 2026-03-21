@@ -36,8 +36,9 @@ object FileDescription {
 
   def relativeToResourceFolder(pathRelativeToResourceFolder: String, copyrightInfo: CopyrightInfo = unknownCopyrightInfo): FileDescription = {
     val str = if (pathRelativeToResourceFolder.startsWith("/")) pathRelativeToResourceFolder.substring(1) else pathRelativeToResourceFolder
-    val url = new URL(s"../resources/$str", dom.window.location.href)
-    FileDescription(url)
+    val url = new URL(s"../resources/" + str, dom.window.location.href)
+    val res = FileDescription(url)
+    res
   }
 
   def apply(file: File): FileDescription = apply(file, unknownCopyrightInfo)
@@ -72,14 +73,19 @@ object FileDescription {
     val parts = fullPath.split("\\\\")
     val filename: String = parts.last.split("/").last.trim
 
-    val filenameSplitted = filename.split("\\.")
+    val (nameWithoutExtension, extension) = if(filename.contains(".")){
+      val filenameSplitted = filename.split("\\.")
+      val extension: String = filenameSplitted.last.trim
+      val nameWithoutExtension = filename.substring(0, filename.length - extension.length - 1)
+      (nameWithoutExtension, extension)
+    }else{
+      (filename, "")
+    }
 
-    val extension: String = if (filenameSplitted.contains(".")) filenameSplitted.last.trim else ""
+    val filePath = fullPath.substring(0, fullPath.length - filename.length - 1)
 
-    val nameWithoutExtension = if (filenameSplitted.contains(".")) filename.substring(0, filename.length - extension.length - 1) else filename
-    val filePath = fullPath.substring(0, fullPath.length - nameWithoutExtension.length - 1)
-
-    (filePath, nameWithoutExtension, extension)
+    val res = (filePath, nameWithoutExtension, extension)
+    res
   }
 
 }

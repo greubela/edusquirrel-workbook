@@ -41,39 +41,16 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenContainerElement
     TurtleStitchExploreProjectExercise.createElementLine(workbookInfoVar, createFileDescription(filename))
   }
 
-  private def createInstructions(maps: List[LanguageMap[HumanLanguage]]): List[HtmlWorkbookElement] =
-    maps.map(HtmlUnsafeHtmlInstructionElement(workbookInfoVar, _))
 
   private def thirdExercise: HtmlExerciseContainer = {
-    val title = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
-      AppLanguage.English -> "Third time´s the charm",
-      AppLanguage.German -> "Aller guten Dinge sind drei"
-    ))
-
-    val instr0: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-      AppLanguage.English -> "Download the following program and execute it (once).",
-      AppLanguage.German -> "Lade das folgende Programm herunter und führe es (einmal) aus."
-    ))
-
-    val instr1: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-      AppLanguage.English -> "Describe what the commands pen up and pen down do.",
-      AppLanguage.German -> "Beschreibe was die Befehle Stift hoch und Stift runter tun."
-    ))
-
-    val instr2: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-      AppLanguage.English -> "Change the numbers in the 'go to' command. Describe what happens and what the variables x and y are for.",
-      AppLanguage.German -> "Ändere die Zahlen im 'Gehe zu' Befehl. Beschreibe, was passiert und wofür die Variablen x und y sind."
-    ))
-
-    val instructionElements = createInstructions(List(instr0, instr1, instr2))
 
     val elements: List[HtmlWorkbookElement] = List(
-      HtmlContainerTitle(workbookInfoVar, title),
-      instructionElements(0),
+      HtmlContainerTitle(workbookInfoVar, "EmbroideryWorkbook/Ex3Title"),
+      HtmlUnsafeHtmlInstructionElement(workbookInfoVar, "EmbroideryWorkbook/Ex3Instr1"),
       createExploreExerciseDownloadInteraction("updown_forward"),
-      instructionElements(1),
+      HtmlUnsafeHtmlInstructionElement(workbookInfoVar, "EmbroideryWorkbook/Ex3Instr2"),
       createTextInput(),
-      instructionElements(2),
+      HtmlUnsafeHtmlInstructionElement(workbookInfoVar, "EmbroideryWorkbook/Ex3Instr3"),
       createTextInput()
     )
     HtmlExerciseContainer(workbookInfoVar, elements.toList)
@@ -81,42 +58,18 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenContainerElement
 
 
   private def secondExercise: HtmlExerciseContainer = {
-    val title = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
-      AppLanguage.English -> "A second program for variety",
-      AppLanguage.German -> "Ein zweites Programm für Vielfalt"
-    ))
 
-    val instr0: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-      AppLanguage.English -> "Download the following program and execute it repeatedly.",
-      AppLanguage.German -> "Lade das folgende Programm herunter und führe es mehrfach aus."
-    ))
 
-    val instr1: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-      AppLanguage.English -> "Describe what happened and esp. what differed.",
-      AppLanguage.German -> "Beschreibe was passiert ist und insb. was anders war."
-    ))
-
-    val instr2: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-      AppLanguage.English -> "Change the number in the green command running stitch to different values and describe, how the result changes because of that.",
-      AppLanguage.German -> "Ändere die Zahl im grünen Befehl Laufstich auf verschiedene Werte und beschreibe, wie sich das Ergebnis hierdurch verändert."
-    ))
-
-    val instr3: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-      AppLanguage.English -> "Remove the running stitch command and replace it with a cross stitch command. Also change the numbers in this commmand and describe, how the result changes because of that.",
-      AppLanguage.German -> "Entferne den Befehl Laufstich und ersetze ihn mit einem Kreuzstich-Befehl. Ändere auch in diesem Befehl die Zahlen und beschreibe, wie sich das Ergebnis hierdurch verändert."
-    ))
-
-    val instructionElements = createInstructions(List(instr0, instr1, instr2, instr3))
 
     val elements: List[HtmlWorkbookElement] = List(
-      HtmlContainerTitle(workbookInfoVar, title),
-      instructionElements(0),
+      HtmlContainerTitle(workbookInfoVar, "EmbroideryWorkbook/Ex2Title"),
+      HtmlUnsafeHtmlInstructionElement(workbookInfoVar, "EmbroideryWorkbook/Ex2Instr1"),
       createExploreExerciseDownloadInteraction("reset_forward"),
-      instructionElements(1),
+      HtmlUnsafeHtmlInstructionElement(workbookInfoVar, "EmbroideryWorkbook/Ex2Instr2"),
       createTextInput(),
-      instructionElements(2),
+      HtmlUnsafeHtmlInstructionElement(workbookInfoVar, "EmbroideryWorkbook/Ex2Instr3"),
       createTextInput(),
-      instructionElements(3),
+      HtmlUnsafeHtmlInstructionElement(workbookInfoVar, "EmbroideryWorkbook/Ex2Instr4"),
       createTextInput(),
     )
     HtmlExerciseContainer(workbookInfoVar, elements.toList)
@@ -124,50 +77,19 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenContainerElement
 
   private def firstExercise: HtmlExerciseContainer = {
 
-    val title = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
-      AppLanguage.English -> "A simple program to start",
-      AppLanguage.German -> "Ein einfaches Programm zum Anfang"
-    ))
-
-    val instr1: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-      AppLanguage.English -> "Read the commands within the following Program and try to guess what kind of shape it creates.",
-      AppLanguage.German -> "Lies die Befehle im folgendem Programm und vermute, wie die Figur aussieht, die hierdurch erstellt wird.",
-    ))
-
-    val instr2: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-      AppLanguage.English -> "Describe, how the shape created by the program will probably look like.",
-      AppLanguage.German -> "Beschreibe, wie die durch das Programm erstellte Figur vermutlich aussieht.",
-    ))
-
-    val instr3: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-      AppLanguage.English -> "Verify your expectation. <br> <br> To do so, downlaod the program with the button above and open it in <a target=\"_blank\" href=\"https://www.turtlestitch.org/run\"> TurtleStitch </a> by clicking on the file symbol (\uD83D\uDCDD) and then 'open...'. Execute the program afterwards by clicking on the green flag.",
-      AppLanguage.German -> "Überprüfe deine Vermutung. <br> <br> Lade hierfür zunächst das Programm mit dem obigen Knopf herunter und öffne es in <a target=\"_blank\" href=\"https://www.turtlestitch.org/run\"> TurtleStitch </a> indem du auf das Dateisymbol (\uD83D\uDCDD) klickst und 'Öffnen...' auswählst. Führe das Programm dann aus, indem du die grüne Fahne drückst.",
-    ))
-
-    val instr4: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-      AppLanguage.English -> "Below the result image, additional information are available. How many stitches and how much space is required for the shape?",
-      AppLanguage.German -> "Unter dem Ergebnis werden Informationen angezeigt. Wie viele Stiche und wie viel Platz werden für die Figur benötigt?"
-    ))
-
-    val instr5: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-      AppLanguage.English -> "Execute the program again and then once more. Describe what happens.",
-      AppLanguage.German -> "Führe das Programm erneut und dann noch mal aus. Beschreibe, was passiert."
-    ))
-
-    val instructionElements = createInstructions(List(instr1, instr2, instr3, instr4, instr5))
 
     val elements: List[HtmlWorkbookElement] = List(
-      HtmlContainerTitle(workbookInfoVar, title),
-      instructionElements(0),
+      HtmlContainerTitle(workbookInfoVar, "EmbroideryWorkbook/Ex1Title"),
+      HtmlUnsafeHtmlInstructionElement(workbookInfoVar, "EmbroideryWorkbook/Ex1Instr1"),
       createExploreExerciseDownloadInteraction("simple_forward"),
-     // createExploreExerciseDownloadInteraction("complex_example"),
-     // createExploreExerciseDownloadInteraction("more_complex"),
-      instructionElements(1),
+      // createExploreExerciseDownloadInteraction("complex_example"),
+      // createExploreExerciseDownloadInteraction("more_complex"),
+      HtmlUnsafeHtmlInstructionElement(workbookInfoVar, "EmbroideryWorkbook/Ex1Instr2"),
       createTextInput(),
-      instructionElements(2),
-      instructionElements(3),
+      HtmlUnsafeHtmlInstructionElement(workbookInfoVar, "EmbroideryWorkbook/Ex1Instr3"),
+      HtmlUnsafeHtmlInstructionElement(workbookInfoVar, "EmbroideryWorkbook/Ex1Instr4"),
       createTextInput(),
-      instructionElements(4),
+      HtmlUnsafeHtmlInstructionElement(workbookInfoVar, "EmbroideryWorkbook/Ex1Instr5"),
     )
 
     HtmlExerciseContainer(workbookInfoVar, elements.toList)

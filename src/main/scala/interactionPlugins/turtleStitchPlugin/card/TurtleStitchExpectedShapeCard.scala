@@ -17,7 +17,7 @@ case class TurtleStitchExpectedShapeCard(workbookInfoVar: L.Var[WorkbookInfo], e
   )
 
   private val imgElementSignal: Signal[Element] = {
-    HtmlImageElement(expectedOutcome, workbookInfoVar).getDomSignal()
+    HtmlImageElement(expectedOutcome, workbookInfoVar).getDomSignal
   }
 
 
