@@ -9,9 +9,9 @@ import contentmanagement.webElements.svg.AppSvgElement
 import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig, BlockEnvironmentLanguageMap}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
+import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.WorkbookInfo
 import workbook.model.interaction.InteractionVariable
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
 case class TurtleProgrammingPreview(workbookInfoVar: Var[WorkbookInfo], editorState: EditorState, expectedSvgResult: AppSvgElement) extends HtmlWorkbookElement {
 

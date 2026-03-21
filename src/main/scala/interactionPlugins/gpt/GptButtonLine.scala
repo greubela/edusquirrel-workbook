@@ -2,8 +2,8 @@ package interactionPlugins.gpt
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import workbook.model.abstractions.{HtmlWorkbookElement, WorkbookInteraction}
 import workbook.model.info.WorkbookInfo
-import workbook.workbookHtmlElements.abstractions.{HtmlWorkbookElement, WorkbookInteraction}
 
 case class GptButtonLine(workbookInfoVar: Var[WorkbookInfo], textInteraction: WorkbookInteraction[String]) extends HtmlWorkbookElement {
 

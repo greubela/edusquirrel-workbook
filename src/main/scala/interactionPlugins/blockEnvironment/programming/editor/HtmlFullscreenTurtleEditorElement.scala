@@ -19,8 +19,8 @@ import contentmanagement.webElements.svg.shapes.decorations.{BeDataArrow, Contro
 import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.elements.*
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 import contentmanagement.webElements.genericHtmlElements.editor.*
+import workbook.model.abstractions.HtmlWorkbookElement
 
 object HtmlFullscreenTurtleEditorElement {
 

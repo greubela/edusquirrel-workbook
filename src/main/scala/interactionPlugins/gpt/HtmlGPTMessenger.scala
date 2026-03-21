@@ -9,12 +9,12 @@ import contentmanagement.model.chat.MessengerModel
 import contentmanagement.webElements.genericHtmlElements.editor.SimpleMessengerEditor
 
 import util.Serializer
+import workbook.model.abstractions.{HtmlWorkbookElement, WorkbookInteraction}
 import workbook.model.info.WorkbookInfo
 import workbook.model.interaction.*
 import workbook.model.interaction.history.*
 import workbook.model.interaction.sync.*
-import workbook.workbookHtmlElements.abstractions.{HtmlWorkbookElement, WorkbookInteraction}
-import workbook.workbookHtmlElements.basic.HtmlButtonElement
+import workbook.htmlElements.basic.*
 
 case class HtmlGPTMessenger(workbookInfoVar: Var[WorkbookInfo], textInteraction: WorkbookInteraction[String]) extends WorkbookInteraction[MessengerModel] {
 

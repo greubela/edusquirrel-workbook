@@ -1,10 +1,10 @@
 package contentmanagement.storage
 
+import contentmanagement.model.file.FileDescription
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import contentmanagement.storage.LabelLanguageMapStorage.languageMapLoadingMap
 
 import scala.concurrent.{ExecutionContext, Future}
-
 
 case class LabelLanguageMapStorage() extends DataStorage[String, LanguageMap[HumanLanguage]]("languageMap", false) {
 
@@ -15,9 +15,20 @@ case class LabelLanguageMapStorage() extends DataStorage[String, LanguageMap[Hum
   override protected def formatInputForLogging(in: String): String = in
 
   override protected def formatOutputForLogging(out: LanguageMap[HumanLanguage]): String = out.toString
+
+  private def loadLanguageMap(file: FileDescription): Future[LanguageMap[HumanLanguage]] = {
+    ???
+  }
+
 }
 
 object LabelLanguageMapStorage {
+
+
+  private val languageMapFiles: List[FileDescription] = List(
+    FileDescription.relativeToResourceFolder("/languageMaps/basic-de.csv"),
+    FileDescription.relativeToResourceFolder("/languageMaps/basic-en.csv")
+  )
 
   def getLanguageMapByName(name: String): LanguageMap[HumanLanguage] = {
     name match {
@@ -45,7 +56,7 @@ object LabelLanguageMapStorage {
   val dataLoadingMap: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(
     Map(
       AppLanguage.German -> "[Daten werden geladen]",
-      AppLanguage.English -> "[label data loading]",
+      AppLanguage.English -> "[Data is loading]",
     )
   )
 

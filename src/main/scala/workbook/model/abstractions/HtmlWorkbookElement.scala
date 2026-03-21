@@ -1,4 +1,4 @@
-package workbook.workbookHtmlElements.abstractions
+package workbook.model.abstractions
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*

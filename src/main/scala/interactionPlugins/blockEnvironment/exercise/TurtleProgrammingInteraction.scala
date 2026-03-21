@@ -10,11 +10,11 @@ import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
 import util.Serializer
+import workbook.model.abstractions.WorkbookInteraction
 import workbook.model.info.WorkbookInfo
 import workbook.model.interaction.InteractionVariable
 import workbook.model.interaction.history.UpdateImportance.MAJOR
 import workbook.model.interaction.sync.{LocalStorageSync, SyncInformation, SyncStrategy}
-import workbook.workbookHtmlElements.abstractions.WorkbookInteraction
 
 case class TurtleProgrammingInteraction(workbookInfoVar: Var[WorkbookInfo], id: String, expectedSvgResult: AppSvgElement) extends WorkbookInteraction[BeProgram] {
 

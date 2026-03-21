@@ -3,9 +3,9 @@ package workbook.model
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.language.*
+import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.WorkbookInfo
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-import workbook.workbookHtmlElements.container.HtmlExerciseContainer
+import workbook.htmlElements.container.HtmlExerciseContainer
 
 case class WorkbookSection(
                             workbookInfoVar: Var[WorkbookInfo],

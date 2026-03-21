@@ -1,4 +1,4 @@
-package util
+package workbook.model.interaction.history
 
 import com.raquo.airstream.core.Observer
 import com.raquo.airstream.state.Var

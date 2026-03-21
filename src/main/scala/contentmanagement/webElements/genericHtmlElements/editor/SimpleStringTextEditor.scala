@@ -3,8 +3,7 @@ package contentmanagement.webElements.genericHtmlElements.editor
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement
-import workbook.model.display.InteractionComponent
-import workbook.model.display.InteractionComponent.*
+import workbook.model.abstractions.InteractionComponent
 
 case class SimpleStringTextEditor(
                                    stateToBind: Var[String],

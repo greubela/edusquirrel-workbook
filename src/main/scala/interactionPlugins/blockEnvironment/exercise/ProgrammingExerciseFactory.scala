@@ -7,9 +7,9 @@ import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.WorkbookInfo
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-import workbook.workbookHtmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement}
+import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement}
 
 object ProgrammingExerciseFactory {
 

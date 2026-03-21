@@ -10,14 +10,14 @@ import interactionPlugins.turtleStitchPlugin.card.*
 import org.scalajs.dom
 import org.scalajs.dom.URL
 import workbook.model.*
+import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.{WorkbookConfig, WorkbookInfo}
 import workbook.user.User
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-import workbook.workbookHtmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement, HtmlUnsafeHtmlInstructionElement}
-import workbook.workbookHtmlElements.container.*
-import workbook.workbookHtmlElements.interactions.HtmlBasicTextInteraction
+import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement, HtmlUnsafeHtmlInstructionElement}
+import workbook.htmlElements.container.*
+import workbook.htmlElements.interactions.HtmlBasicTextInteraction
 
-class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenElement) {
+class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenContainerElement) {
 
   private var id = 0
 

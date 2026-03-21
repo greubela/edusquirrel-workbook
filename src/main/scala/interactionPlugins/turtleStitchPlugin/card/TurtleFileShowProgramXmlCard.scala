@@ -2,18 +2,13 @@ package interactionPlugins.turtleStitchPlugin.card
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import contentmanagement.model.file.*
 import contentmanagement.model.language.*
 import contentmanagement.storage.DataStorage
 import interactionPlugins.turtleStitchPlugin.*
-import org.scalajs.dom.URL
-import util.ReadOnlyVar
 import util.web.DownloadHelper
+import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.WorkbookInfo
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-import contentmanagement.model.file.*
-import contentmanagement.model.language.AppLanguage.{English, Python}
-import interactionPlugins.fileSubmission.turtleLogic.{TurtleRenderer, TurtleXmlParser}
-import interactionPlugins.fileSubmission.turtleStitch.TurtleStitchBeExpressionAdapter
 
 import scala.concurrent.ExecutionContext
 
@@ -118,7 +113,7 @@ object TurtleFileShowProgramXmlCard {
            ): TurtleFileShowProgramXmlCard = {
     TurtleFileShowProgramXmlCard(
       workbookInfoVar,
-      "TurtleStitch_" + fileDescription.filename ,
+      "TurtleStitch_" + fileDescription.filename,
       TurtleStitchLanguageMaps.languageMapProvidedProjectLabel,
       TranslationMaps.languageMapImageLoading,
       DataStorage.fileDataStore.loadIntoVariable(fileDescription)(ExecutionContext.global).signal.mapLazy(_.map(_.fileDataAsUtf8String))

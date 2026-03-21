@@ -9,12 +9,12 @@ import interactionPlugins.blockEnvironment.exercise.{ProgrammingExerciseFactory,
 import interactionPlugins.gpt.GptExerciseFactory
 import interactionPlugins.visualNovel.VisualNovelPanel
 import workbook.model.*
+import workbook.model.abstractions.WorkbookInteraction
 import workbook.model.info.{WorkbookConfig, WorkbookInfo}
 import workbook.user.User
-import workbook.workbookHtmlElements.abstractions.WorkbookInteraction
-import workbook.workbookHtmlElements.container.*
+import workbook.htmlElements.container.*
 
-class TestWorkbook(fullscreenElement: HtmlFullScreenElement) extends HtmlAppElement {
+class TestWorkbook(fullscreenElement: HtmlFullScreenContainerElement) extends HtmlAppElement {
 
 
   private val domElement: Element = div()
@@ -93,7 +93,7 @@ object TestWorkbook {
     WorkbookSection(workbookInfoVar, secTitle, contList)
   }
 
-  def createTestWorkbook(fullscreenElement: HtmlFullScreenElement): Workbook = {
+  def createTestWorkbook(fullscreenElement: HtmlFullScreenContainerElement): Workbook = {
     val defaultInfo = WorkbookInfo(List[HumanLanguage](AppLanguage.English, AppLanguage.German, AppLanguage.Ukrainian, AppLanguage.Danish, AppLanguage.Turkish),fullscreenElement, WorkbookConfig(AppLanguage.German, None, User("TestUser", "dummy@test.de")), Map())
     val workbookInfoVar = Var(defaultInfo)
 

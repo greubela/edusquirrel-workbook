@@ -10,12 +10,12 @@ import interactionPlugins.turtleStitchPlugin.card.*
 import interactionPlugins.turtleStitchPlugin.card.TurtleStitchFileUploadButtonCard.StorageFormat
 import org.scalajs.dom.URL
 import util.web.DownloadHelper
+import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.WorkbookInfo
 import workbook.model.interaction.InteractionVariable
 import workbook.model.interaction.history.UpdateImportance.TEMPORARY
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-import workbook.workbookHtmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement}
-import workbook.workbookHtmlElements.interactions.HtmlBasicTextInteraction
+import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement}
+import workbook.htmlElements.interactions.HtmlBasicTextInteraction
 
 import scala.concurrent.ExecutionContext
 

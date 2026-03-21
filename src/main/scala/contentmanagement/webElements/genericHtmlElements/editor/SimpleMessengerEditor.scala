@@ -5,10 +5,10 @@ import contentmanagement.model.chat.MessengerModel
 import contentmanagement.model.chat.MessengerModel.{Message, SenderRole}
 import contentmanagement.model.language.AppLanguage
 import contentmanagement.webElements.HtmlAppElement
+import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.interaction.InteractionVariable.*
 import workbook.model.interaction.*
 import workbook.model.interaction.history.UpdateImportance
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 import scala.scalajs.js
 
 case class SimpleMessengerEditor(chatExercise: InteractionVariable[MessengerModel]) extends HtmlAppElement {

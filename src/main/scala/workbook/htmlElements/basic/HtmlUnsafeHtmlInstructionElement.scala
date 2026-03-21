@@ -1,10 +1,10 @@
-package workbook.workbookHtmlElements.basic
+package workbook.htmlElements.basic
 
 import com.raquo.laminar.DomApi
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.language.{HumanLanguage, LanguageMap}
+import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.WorkbookInfo
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
 case class HtmlUnsafeHtmlInstructionElement(workbookInfoVar: Var[WorkbookInfo], languageMap: LanguageMap[HumanLanguage]) extends HtmlWorkbookElement {
 

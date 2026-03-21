@@ -1,11 +1,10 @@
-package workbook.workbookHtmlElements.head
+package workbook.htmlElements.headerElements
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.language.{AppLanguage, HumanLanguage}
+import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.WorkbookInfo
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-
 
 case class LanguageSelectionLine(workbookInfoVar: Var[WorkbookInfo]) extends HtmlWorkbookElement{
 
@@ -28,8 +27,6 @@ case class LanguageSelectionLine(workbookInfoVar: Var[WorkbookInfo]) extends Htm
   )
 
   override def getDomElement(): L.Element = domElement
-
-
 
 }
 

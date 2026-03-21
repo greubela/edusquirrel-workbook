@@ -10,10 +10,10 @@ import interactionPlugins.turtleStitchPlugin.card.TurtleStitchFileUploadButtonCa
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLButtonElement, HTMLDivElement, HTMLInputElement}
 import util.TypeConversion
+import workbook.model.abstractions.WorkbookInteraction
 import workbook.model.info.WorkbookInfo
 import workbook.model.interaction.InteractionVariable
 import workbook.model.interaction.history.UpdateImportance
-import workbook.workbookHtmlElements.abstractions.WorkbookInteraction
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.scalajs.js

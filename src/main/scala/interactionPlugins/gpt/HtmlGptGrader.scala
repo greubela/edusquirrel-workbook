@@ -5,9 +5,9 @@ import com.raquo.laminar.api.L.svg
 import com.raquo.laminar.api.L.Var
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import org.scalajs.dom.{SVGLinearGradientElement, SVGSVGElement}
+import workbook.model.abstractions.{HtmlWorkbookElement, WorkbookInteraction}
 import workbook.model.info.WorkbookInfo
-import workbook.workbookHtmlElements.abstractions.{HtmlWorkbookElement, WorkbookInteraction}
-import workbook.workbookHtmlElements.basic.HtmlButtonElement
+import workbook.htmlElements.basic.HtmlButtonElement
 
 case class HtmlGptGrader(workbookInfoVar: Var[WorkbookInfo], textInteraction: WorkbookInteraction[String]) extends HtmlWorkbookElement {
 

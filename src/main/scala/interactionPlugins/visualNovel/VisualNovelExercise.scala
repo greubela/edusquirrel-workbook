@@ -3,7 +3,6 @@ package interactionPlugins.visualNovel
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.file.*
 
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
 /*
 case class VisualNovelExercise(

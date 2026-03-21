@@ -4,9 +4,9 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.file.*
 import interactionPlugins.turtleStitchPlugin.TurtleStitchLanguageMaps
+import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.WorkbookInfo
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-import workbook.workbookHtmlElements.basic.HtmlImageElement
+import workbook.htmlElements.basic.HtmlImageElement
 
 import scala.concurrent.ExecutionContext
 

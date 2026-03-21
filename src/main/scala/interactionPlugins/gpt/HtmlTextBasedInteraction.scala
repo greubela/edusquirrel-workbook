@@ -7,10 +7,9 @@ import contentmanagement.model.chat.MessengerModel
 import contentmanagement.webElements.genericHtmlElements.editor.*
 import interactionPlugins.gpt.*
 import org.scalajs.dom.{SVGLinearGradientElement, SVGSVGElement}
-
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-import workbook.workbookHtmlElements.basic.*
-import workbook.workbookHtmlElements.container.HtmlFullScreenElement
+import workbook.model.abstractions.HtmlWorkbookElement
+import workbook.htmlElements.basic.*
+import workbook.htmlElements.container.HtmlFullScreenContainerElement
 /*
 case class HtmlTextBasedInteraction(
                                      fullscreenElement: HtmlFullScreenElement

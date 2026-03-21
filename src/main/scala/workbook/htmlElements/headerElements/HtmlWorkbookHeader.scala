@@ -1,12 +1,12 @@
-package workbook.workbookHtmlElements.head
+package workbook.htmlElements.headerElements
 
 import com.raquo.laminar.DomApi
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import workbook.model.WorkbookSection
+import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.WorkbookInfo
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-import workbook.workbookHtmlElements.head.LanguageSelectionLine
+import workbook.htmlElements.headerElements.LanguageSelectionLine
 
 case class HtmlWorkbookHeader(workbookInfoVar: Var[WorkbookInfo], workbookTitle: LanguageMap[HumanLanguage], sections: List[WorkbookSection]) extends HtmlWorkbookElement {
 

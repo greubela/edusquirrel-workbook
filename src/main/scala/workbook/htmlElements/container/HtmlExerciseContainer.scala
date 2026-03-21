@@ -1,9 +1,9 @@
-package workbook.workbookHtmlElements.container
+package workbook.htmlElements.container
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Signal
+import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.WorkbookInfo
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
 case class HtmlExerciseContainer(workbookInfoVar: L.Var[WorkbookInfo], children: Signal[List[HtmlWorkbookElement]]) extends HtmlWorkbookElement{
 

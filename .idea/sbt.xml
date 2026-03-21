@@ -32,8 +32,8 @@
         <option name="externalProjectPath" value="$PROJECT_DIR$/src/main/main" />
         <option name="modules">
           <set>
-            <option value="$PROJECT_DIR$/src/main/main" />
-            <option value="$PROJECT_DIR$/src/main/main/project" />
+            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\src\main\main" />
+            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\src\main\main\project" />
           </set>
         </option>
         <option name="sbtVersion" value="1.11.4" />

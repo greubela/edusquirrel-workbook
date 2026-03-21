@@ -2,10 +2,10 @@ package interactionPlugins.gpt
 
 import com.raquo.laminar.api.L.Var
 import contentmanagement.model.language.{HumanLanguage, LanguageMap}
+import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.WorkbookInfo
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-import workbook.workbookHtmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement, HtmlSubExerciseSpacer}
-import workbook.workbookHtmlElements.interactions.HtmlBasicTextInteraction
+import workbook.htmlElements.basic.*
+import workbook.htmlElements.interactions.HtmlBasicTextInteraction
 
 object GptExerciseFactory {
 
@@ -15,8 +15,8 @@ object GptExerciseFactory {
     val instr = HtmlPlaintextInstructionElement(workbookInfo, instruction)
     val text = HtmlBasicTextInteraction(workbookInfo, myId)
     val gpt = GptButtonLine(workbookInfo, text)
-    val spacer = HtmlSubExerciseSpacer(workbookInfo)
-    if (withSpacerBefore) List(spacer, instr, text, gpt)
+   // val spacer = HtmlSubExerciseSpacer(workbookInfo)
+    if (withSpacerBefore) List(instr, text, gpt)
     else List(instr, text, gpt)
   }
 

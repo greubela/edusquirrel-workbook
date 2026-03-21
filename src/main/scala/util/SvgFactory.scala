@@ -1,4 +1,4 @@
-package workbook.workbookHtmlElements
+package util
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*

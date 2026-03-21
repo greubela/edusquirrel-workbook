@@ -1,9 +1,9 @@
-package workbook.workbookHtmlElements.basic
+package workbook.htmlElements.basic
 
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.language.{HumanLanguage, LanguageMap}
+import workbook.model.abstractions.WorkbookExerciseTitle
 import workbook.model.info.WorkbookInfo
-import workbook.workbookHtmlElements.abstractions.WorkbookExerciseTitle
 
 case class HtmlContainerTitle(workbookInfoVar: Var[WorkbookInfo], titleMap: LanguageMap[HumanLanguage]) extends WorkbookExerciseTitle {
 

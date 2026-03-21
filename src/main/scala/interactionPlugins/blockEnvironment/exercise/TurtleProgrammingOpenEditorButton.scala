@@ -6,8 +6,8 @@ import interactionPlugins.blockEnvironment.config.BlockEnvironmentLanguageMap
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
+import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.WorkbookInfo
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
 
 case class TurtleProgrammingOpenEditorButton(workbookInfoVar: Var[WorkbookInfo], editorState: EditorState) extends HtmlWorkbookElement {
 

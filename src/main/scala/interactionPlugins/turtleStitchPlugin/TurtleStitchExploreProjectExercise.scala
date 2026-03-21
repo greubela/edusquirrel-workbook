@@ -3,20 +3,12 @@ package interactionPlugins.turtleStitchPlugin
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.model.file.*
-import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap, TranslationMaps}
-import contentmanagement.storage.DataStorage
-import interactionPlugins.fileSubmission.*
-import interactionPlugins.turtleStitchPlugin.TurtleStitchFacade
+import contentmanagement.model.language.{HumanLanguage, LanguageMap}
 import interactionPlugins.turtleStitchPlugin.card.*
-import org.scalajs.dom.URL
-import util.ReadOnlyVar
-import util.web.DownloadHelper
+import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.WorkbookInfo
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
-import workbook.workbookHtmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement}
-import workbook.workbookHtmlElements.interactions.HtmlBasicTextInteraction
-import contentmanagement.model.file.*
-import scala.concurrent.ExecutionContext
+import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement}
+import workbook.htmlElements.interactions.HtmlBasicTextInteraction
 
 object TurtleStitchExploreProjectExercise {
 

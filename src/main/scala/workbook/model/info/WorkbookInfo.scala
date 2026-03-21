@@ -2,13 +2,13 @@ package workbook.model.info
 
 import contentmanagement.model.language.*
 import contentmanagement.storage.DataStorage
+import workbook.model.abstractions.WorkbookInteraction
 import workbook.user.User
-import workbook.workbookHtmlElements.abstractions.WorkbookInteraction
-import workbook.workbookHtmlElements.container.HtmlFullScreenElement
+import workbook.htmlElements.container.HtmlFullScreenContainerElement
 
 case class WorkbookInfo(
                          availableLanguages: List[HumanLanguage],
-                         fullscreenElement: HtmlFullScreenElement,
+                         fullscreenElement: HtmlFullScreenContainerElement,
                          config: WorkbookConfig,
                          estimatedDurations: Map[WorkbookInteraction[_], Double]
                        ) {

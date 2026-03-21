@@ -1,13 +1,13 @@
-package workbook.workbookHtmlElements.container
+package workbook.htmlElements.container
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
 import contentmanagement.webElements.HtmlAppElement
 import org.scalajs.dom
 import org.scalajs.dom.{KeyboardEvent, html}
-import workbook.workbookHtmlElements.abstractions.HtmlWorkbookElement
+import workbook.model.abstractions.HtmlWorkbookElement
 
-case class HtmlFullScreenElement() extends HtmlAppElement {
+case class HtmlFullScreenContainerElement() extends HtmlAppElement {
 
   private val overlayActiveVar: Var[Boolean] = Var(false)
 

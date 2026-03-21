@@ -1,6 +1,6 @@
-package workbook.workbookHtmlElements.abstractions
+package workbook.model.abstractions
 
-import workbook.workbookHtmlElements.container.HtmlExerciseContainer
+import workbook.htmlElements.container.HtmlExerciseContainer
 
 trait HtmlExerciseFactory[T] {
 

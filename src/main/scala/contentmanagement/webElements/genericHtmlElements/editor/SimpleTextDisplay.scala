@@ -2,18 +2,11 @@ package contentmanagement.webElements.genericHtmlElements.editor
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import workbook.model.display.InteractionComponent
+import workbook.model.abstractions.*
+import workbook.model.abstractions.InteractionComponent.InteractionComponentWithReactiveVars
 
-case class SimpleTextDisplay(displaySignal: Signal[Option[String]]) extends InteractionComponent {
-
-
-  val isHiddenVar: Var[Boolean] = Var(false)
-
-  def setHighlight(highlight: Boolean): Unit = {}
-
-  def setVisible(visible: Boolean): Unit = isHiddenVar.set(!visible)
-
-  def setDisabled(disabled: Boolean): Unit = {}
+case class SimpleTextDisplay(displaySignal: Signal[Option[String]]) extends InteractionComponentWithReactiveVars(false, false, false) {
+  
 
   private val editorTextArea = textArea(
     rows := 8,
