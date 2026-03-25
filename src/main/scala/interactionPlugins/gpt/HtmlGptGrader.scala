@@ -15,7 +15,10 @@ case class HtmlGptGrader(workbookInfoVar: Var[WorkbookInfo], textInteraction: Wo
   private val submitButton = HtmlButtonElement(HtmlGptGrader.gradingButtonSvg, event => {
     println("grading not implemented yet :( ")
 
-    AccessLLM.callStreamed("write a short poem about a raven", update => println("Update: >>>" + update + "<<<"), error => println("Error: >>>" + error + "<<<"))
+    val llmResponse = AccessLLM("https://ypcgzj23.trafficplex.cloud/chat").sendRequest(
+      AccessLLM.ChatRequest("write a short poem about a raven", contentmanagement.model.chat.MessengerModel(List()))
+    )
+    println("started streamed response: >>>" + llmResponse + "<<<")
 
   })
 
