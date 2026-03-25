@@ -13,6 +13,7 @@ import {
   defaultHighlightStyle,
   foldGutter,
   foldKeymap,
+  indentUnit,
   indentOnInput,
   syntaxHighlighting
 } from "https://cdn.jsdelivr.net/npm/@codemirror/language@6.11.3/+esm";
@@ -72,6 +73,8 @@ const editorTheme = EditorView.theme({
 });
 
 const baseExtensions = [
+  EditorState.tabSize.of(4),
+  indentUnit.of("    "),
   lineNumbers(),
   highlightActiveLineGutter(),
   history(),
