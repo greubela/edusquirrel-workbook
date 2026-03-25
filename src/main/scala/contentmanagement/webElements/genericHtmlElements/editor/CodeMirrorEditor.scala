@@ -8,7 +8,10 @@ import org.scalajs.dom
 
 import scala.scalajs.js
 
-case class CodeMirrorEditor(content: Var[String]) extends HtmlAppElement {
+case class CodeMirrorEditor(
+                             content: Var[String],
+                             onUserInput: String => Unit = _ => ()
+                           ) extends HtmlAppElement {
 
   private var handle: Option[CodeMirrorHandle] = None
   private var updatingFromEditor: Boolean = false
@@ -36,6 +39,7 @@ case class CodeMirrorEditor(content: Var[String]) extends HtmlAppElement {
                   if (!updatingFromVar) {
                     updatingFromEditor = true
                     content.writer.onNext(value)
+                    onUserInput(value)
                     updatingFromEditor = false
                   }
               )
