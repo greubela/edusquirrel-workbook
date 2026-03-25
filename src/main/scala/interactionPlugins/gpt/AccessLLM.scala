@@ -1,16 +1,21 @@
 package interactionPlugins.gpt
 
+import com.raquo.airstream.core.Observer
+import com.raquo.laminar.api.L.{Var, unsafeWindowOwner}
 import contentmanagement.model.chat.MessengerModel
+import contentmanagement.model.chat.MessengerModel.{BasicPerson, Message, Person, SenderRole}
+import contentmanagement.model.language.LanguageMap
 import org.scalajs.dom
 import org.scalajs.dom.{Headers, HttpMethod, RequestInit}
 import upickle.default.*
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Future, Promise}
 import scala.scalajs.js
+import scala.scalajs.js.Thenable
 import scala.scalajs.js.Thenable.Implicits.*
 import scala.scalajs.js.annotation.*
 import scala.scalajs.js.typedarray.Uint8Array
-import scala.scalajs.js.Thenable
 
 @js.native
 @JSGlobal("TextDecoder")
@@ -29,40 +34,30 @@ trait ReadableStreamDefaultReader extends js.Object {
   def read(): Thenable[ReadableStreamReaderChunk] = js.native
 }
 
-object AccessLLM {
+case class AccessLLM(serverAccess: String) {
+  import AccessLLM.*
 
-  val serverAccess: String = "https://ypcgzj23.trafficplex.cloud/chat" // http://127.0.0.1:8001/chat
-
-  type MessangerHistory = MessengerModel
-
-  case class ChunkUpdateEvent(prompt: String, allResponsesUntilNow: String, newestChunk: String, chunkFinished: Boolean, timestampMillis: Long)
-
-  case class ErrorEvent(prompt: String, errorMsg: String, timestampMillis: Long)
-
-  private case class ChatRequest(systemPrompt: String, messengerModel: MessengerModel)
-  private given ReadWriter[ChatRequest] = macroRW
-
-  def callStreamed(systemPrompt: String, curHistory: MessangerHistory, handleOnUpdate: ChunkUpdateEvent => Any, handleOnError: ErrorEvent => Any): Unit = {
-    val requestBody = write(ChatRequest(systemPrompt, curHistory))
-    callStreamedRaw(promptForEvents = systemPrompt, requestBody = requestBody, handleOnUpdate, handleOnError)
-  }
-
-  def callStreamed(prompt: String, handleOnUpdate: ChunkUpdateEvent => Any, handleOnError: ErrorEvent => Any): Unit = {
-    val fallbackHistory = MessengerModel(List())
-    callStreamed(prompt, fallbackHistory, handleOnUpdate, handleOnError)
-  }
-
-  private def callStreamedRaw(promptForEvents: String, requestBody: String, handleOnUpdate: ChunkUpdateEvent => Any, handleOnError: ErrorEvent => Any): Unit = {
-
-    var latestChunkUpdateEvent = ChunkUpdateEvent(
-      prompt = promptForEvents,
-      allResponsesUntilNow = "",
-      newestChunk = "",
-      chunkFinished = false,
-      timestampMillis = System.currentTimeMillis()
+  def sendRequest(chatRequest: ChatRequest): LlmResponse = {
+    val responseVar = Var(
+      LlmResponseContent(
+        generatedText = "",
+        errorMsg = None,
+        finishedGeneration = false,
+        lastChangeTimestampMillis = System.currentTimeMillis()
+      )
     )
 
-    println("send json: " + requestBody + "\n\n\n")
+    val response = LlmResponse(
+      chatRequest = chatRequest,
+      responseVar = responseVar
+    )
+
+    sendRequestStreamed(chatRequest, responseVar)
+    response
+  }
+
+  private def sendRequestStreamed(chatRequest: ChatRequest, responseVar: Var[LlmResponseContent]): Unit = {
+    val requestBody = write(chatRequest)
 
     val myHeaders = new Headers()
     myHeaders.set("Content-Type", "application/json")
@@ -76,29 +71,30 @@ object AccessLLM {
     val request = new dom.Request(serverAccess, requestInit)
 
     dom.fetch(request).toFuture.flatMap { response =>
-      val reader = response.body.getReader().asInstanceOf[ReadableStreamDefaultReader]
+      if !response.ok then
+        throw new RuntimeException(s"HTTP ${response.status.toInt} while calling $serverAccess")
+
+      val body = response.body
+      if body == null then
+        throw new RuntimeException(s"No response body while calling $serverAccess")
+
+      val reader = body.getReader().asInstanceOf[ReadableStreamDefaultReader]
       val decoder = new TextDecoder("utf-8")
+
+      def updateResponse(updateFn: LlmResponseContent => LlmResponseContent): Unit = {
+        responseVar.update { current =>
+          updateFn(current).copy(lastChangeTimestampMillis = System.currentTimeMillis())
+        }
+      }
 
       def pump(): Unit = {
         reader.read().toFuture.map { chunk =>
-          if (!chunk.done && chunk.value != null) {
+          if !chunk.done && chunk.value != null then
             val curChunkText = decoder.decode(chunk.value)
-            val updatedText = latestChunkUpdateEvent.allResponsesUntilNow + curChunkText
-
-            println("[INFO] AccessLLM, received text: >>>" + curChunkText + "<<<")
-
-            latestChunkUpdateEvent = latestChunkUpdateEvent.copy(
-              allResponsesUntilNow = updatedText,
-              newestChunk = curChunkText,
-              chunkFinished = false,
-              timestampMillis = System.currentTimeMillis()
-            )
-
-            handleOnUpdate(latestChunkUpdateEvent)
+            updateResponse(cur => cur.copy(generatedText = cur.generatedText + curChunkText, finishedGeneration = false))
             pump()
-          } else {
-            handleOnUpdate(latestChunkUpdateEvent.copy(chunkFinished = true))
-          }
+          else
+            updateResponse(cur => cur.copy(finishedGeneration = true))
         }
       }
 
@@ -107,8 +103,53 @@ object AccessLLM {
     }.recover { case e =>
       println("[ERROR] AccessLLM: " + e.getMessage)
       e.printStackTrace()
-      handleOnError(ErrorEvent(promptForEvents, e.getMessage, System.currentTimeMillis()))
+      responseVar.update(_.copy(errorMsg = Some(e.getMessage), finishedGeneration = true, lastChangeTimestampMillis = System.currentTimeMillis()))
     }
   }
+}
 
+object AccessLLM {
+  case class ChatRequest(systemPrompt: String, messengerModel: MessengerModel)
+
+  case class LlmResponseContent(generatedText: String, errorMsg: Option[String], finishedGeneration: Boolean, lastChangeTimestampMillis: Long)
+
+  case class LlmResponse(chatRequest: ChatRequest, responseVar: Var[LlmResponseContent]) {
+    private val completionPromise = Promise[MessengerModel]()
+
+    private def resolveCompletion(content: LlmResponseContent): Unit = {
+      if content.finishedGeneration then
+        content.errorMsg match
+          case Some(errorMessage) => completionPromise.tryFailure(new RuntimeException(errorMessage))
+          case None => completionPromise.trySuccess(getCurrentMessageState())
+    }
+
+    responseVar.signal.addObserver(Observer[LlmResponseContent](resolveCompletion))(unsafeWindowOwner)
+    resolveCompletion(responseVar.now())
+
+    def waitForFullGeneration(): Future[MessengerModel] = completionPromise.future
+
+    def getCurrentMessageState(): MessengerModel = {
+      val currentResponse = responseVar.now()
+      val priorMessage = chatRequest.messengerModel
+
+      if currentResponse.generatedText.trim.isEmpty then priorMessage
+      else priorMessage.addMessage(
+        Message(
+          text = currentResponse.generatedText,
+          timestampEpochMillis = currentResponse.lastChangeTimestampMillis.toString,
+          author = teacherAuthor(priorMessage),
+          senderRole = SenderRole.TEACHER
+        )
+      )
+    }
+
+  }
+
+  private def teacherAuthor(priorMessage: MessengerModel): Person = {
+    priorMessage.orderedMessages.reverse.collectFirst {
+      case message if message.senderRole == SenderRole.TEACHER => message.author
+    }.getOrElse(BasicPerson(LanguageMap.universalMap("AI")))
+  }
+
+  given ReadWriter[ChatRequest] = macroRW
 }
