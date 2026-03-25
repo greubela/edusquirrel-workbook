@@ -1,53 +1,76 @@
 package interactionPlugins.visualNovel
 
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.file.*
+import upickle.default.*
+import workbook.htmlElements.basic.HtmlContainerTitle
+import workbook.model.abstractions.WorkbookInteraction
+import workbook.model.info.WorkbookInfo
+import workbook.model.interaction.history.UpdateImportance
+import workbook.model.interaction.InteractionVariable
+import util.Serializer
+import contentmanagement.model.language.{HumanLanguage, LanguageMap}
 
+case class VisualNovelPanelView(panelIndex: Int, viewedAtEpochMillis: Long)
 
-/*
-case class VisualNovelExercise(
-                                exerciseContent: ExerciseWithTitleDescription,
-                                panels: List[VisualNovelPanel]
-                                // ,imageMap: Map[ImageDescription, FullImage]
-                              ) {
+case class VisualNovelExercise(workbookInfoVar: Var[WorkbookInfo],
+                               id: String,
+                               titleMap: LanguageMap[HumanLanguage],
+                               panels: List[VisualNovelPanel]) extends WorkbookInteraction[Set[VisualNovelPanelView]] {
 
-  private val pageHistorySerializer = new util.Serializer[List[Int]] {
-    override def serialize(obj: List[Int]): String = obj.mkString(",")
+  require(panels.nonEmpty, "VisualNovelExercise requires at least one panel")
 
-    override def deserialize(str: String): List[Int] =
-      if (str.isBlank) List() else str.split(",").map(_.toInt).toList
-  }
-  private val initialPageHistory = if (panels.nonEmpty) List(1) else List()
-  private val pageHistoryVariable = InteractionVariable(exerciseContent, initialPageHistory, pageHistorySerializer)
+  private given ReadWriter[VisualNovelPanelView] = macroRW
 
-  val pageHistory: ExerciseInteractionHistory[List[Int]] = new ExerciseInteractionHistory[List[Int]] {
-    override def underlyingExercise: ExerciseWithTitleDescription = exerciseContent
+  private val panelViewSerializer = new Serializer[Set[VisualNovelPanelView]] {
+    override def serialize(obj: Set[VisualNovelPanelView]): String = write(obj.toList.sortBy(_.panelIndex))
 
-    override def editorStateVariable: InteractionVariable[List[Int]] = pageHistoryVariable
+    override def deserialize(str: String): Set[VisualNovelPanelView] = {
+      if (str.isBlank) Set.empty else read[List[VisualNovelPanelView]](str).toSet
+    }
   }
 
   private val currentIndex = Var(0)
-  val currentPanelSignal: Signal[VisualNovelPanel] = currentIndex.signal.map(panels)
+
+  private def nowMillis: Long = System.currentTimeMillis()
+
+  override val interactionVariable: InteractionVariable[Set[VisualNovelPanelView]] =
+    InteractionVariable(
+      this,
+      Set(VisualNovelPanelView(panelIndex = 0, viewedAtEpochMillis = nowMillis)),
+      panelViewSerializer
+    )
+
+  private val htmlTitleElement = HtmlContainerTitle(workbookInfoVar, titleMap)
 
   private def totalPanels: Int = panels.length
 
-  def getDomElement(): Element = domElement
+  private val currentPanelSignal: Signal[VisualNovelPanel] = currentIndex.signal.map(panels)
 
-  // exercise information
-  private val htmlTitleElement = HtmlExerciseTitleElement(exerciseContent.titleMap)
+  private def navigateBy(offset: Int): Unit = {
+    val oldIndex = currentIndex.now()
+    val newIndex = (oldIndex + offset).max(0).min(totalPanels - 1)
+    if (newIndex != oldIndex) {
+      currentIndex.update(_ => newIndex)
 
-  private lazy val domElement: Element = div(cls := "container-exercise style-vbox",
-    htmlTitleElement.getDomElement(),
-    interactionDomElement,
-    navigationElement
-  )
+      val currentHistory = interactionVariable.currentValue
+      val alreadySeen = currentHistory.exists(_.panelIndex == newIndex)
+      if (!alreadySeen) {
+        val updatedViewHistory = currentHistory + VisualNovelPanelView(
+          panelIndex = newIndex,
+          viewedAtEpochMillis = nowMillis
+        )
+        interactionVariable.updateStateFromUserInteraction(updatedViewHistory, nowMillis, UpdateImportance.MAJOR)
+      }
+    }
+  }
 
-  private lazy val navigationElement = div(
+  private val navigationElement: Element = div(
     cls := "visual-novel-navigation",
+    styleAttr := "position: sticky; top: 0; z-index: 10; background: var(--background-color, #fff);",
     button(
       "←",
       disabled <-- currentIndex.signal.map(_ == 0),
-      onClick --> { _ => navigateBy(-1) }
+      onClick.mapTo(-1) --> navigateBy
     ),
     span(
       cls := "visual-novel-counter",
@@ -56,59 +79,16 @@ case class VisualNovelExercise(
     button(
       "→",
       disabled <-- currentIndex.signal.map(_ >= totalPanels - 1),
-      onClick --> { _ => navigateBy(1) }
+      onClick.mapTo(1) --> navigateBy
     )
   )
 
-  private def navigateBy(offset: Int): Unit = {
-    val oldIndex = currentIndex.now()
-    val newIndex = (oldIndex + offset).max(0).min(totalPanels - 1)
-    if (newIndex != oldIndex) {
-      currentIndex.update(_ => newIndex)
+  private val domElement: Element = div(
+    cls := "container-exercise style-vbox",
+    htmlTitleElement.getDomElement(),
+    navigationElement,
+    child <-- currentPanelSignal.map(_.panelContent.getDomElement())
+  )
 
-      val currentHistory = pageHistory.editorStateVariable.asVar.now()
-      val updatedHistory = currentHistory :+ (newIndex + 1)
-      pageHistory.editorStateVariable.updateStateFromUserInteraction(updatedHistory, System.currentTimeMillis(), UpdateImportance.MAJOR)
-    }
-  }
-
-  private lazy val interactionDomElement = {
-
-    div(
-      cls := "visual-novel-container",
-
-      // Hauptbild
-      img(
-        cls := "visual-novel-image",
-        alt <-- currentPanelSignal.map(_.description),
-        //src <-- currentPanelSignal.map(panel => imageMap(panel.image).imgSourceString)
-        src <-- currentPanelSignal.map(panelSignal => {
-          val desc = panelSignal.image
-          desc match {
-            case ServerImageDescription(url) => url
-            case _ => {
-              println("VisualNovelExercise: Cannot handle description: " + desc)
-              "???"
-            }
-          }
-        })
-      ),
-
-      // Quelle klein darunter
-      div(
-        cls := "visual-novel-source",
-        child.text <-- currentPanelSignal.map(panel => s"Quelle: ${panel.source}")
-      ),
-
-      // Text zum Bild (z.B. was gesagt wird)
-      div(
-        cls := "visual-novel-text",
-        child.text <-- currentPanelSignal.map(_.textContent)
-      ),
-
-    )
-
-  }
+  override def getDomElement(): Element = domElement
 }
-*/
-
