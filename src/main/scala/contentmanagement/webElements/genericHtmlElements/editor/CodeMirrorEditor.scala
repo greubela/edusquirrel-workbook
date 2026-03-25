@@ -3,7 +3,7 @@ package contentmanagement.webElements.genericHtmlElements.editor
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement
-import contentmanagement.webElements.genericHtmlElements.editor.CodeMirrorEditor.{CodeMirrorHandle, EditorConfig, facade, waitForFacade}
+import contentmanagement.webElements.genericHtmlElements.editor.CodeMirrorEditor.{CodeMirrorHandle, EditorConfig, waitForFacade}
 import org.scalajs.dom
 
 import scala.scalajs.js
@@ -21,42 +21,40 @@ case class CodeMirrorEditor(content: Var[String]) extends HtmlAppElement {
     div(
       cls := "code-mirror-editor",
       onMountCallback { ctx =>
-        waitForFacade { maybeFacade =>
-          maybeFacade match {
-            case Some(cmFacade) =>
-              val container = ctx.thisNode.ref
-              val initialValue = content.now()
+        waitForFacade {
+          case Some(cmFacade) =>
+            val container = ctx.thisNode.ref
+            val initialValue = content.now()
 
-              var updatingFromVar = false
+            var updatingFromVar = false
 
-              val createdHandle = cmFacade.createEditor(
-                EditorConfig(
-                  parent = container,
-                  doc = initialValue,
-                  onDocChange = value =>
-                    if (!updatingFromVar) {
-                      updatingFromEditor = true
-                      content.writer.onNext(value)
-                      updatingFromEditor = false
-                    }
-                )
-              )
-
-              handle = Some(createdHandle)
-
-              content.signal.foreach { value =>
-                handle.foreach { editorHandle =>
-                  if (!updatingFromEditor && editorHandle.getDoc() != value) {
-                    updatingFromVar = true
-                    editorHandle.setDoc(value)
-                    updatingFromVar = false
+            val createdHandle = cmFacade.createEditor(
+              EditorConfig(
+                parent = container,
+                doc = initialValue,
+                onDocChange = value =>
+                  if (!updatingFromVar) {
+                    updatingFromEditor = true
+                    content.writer.onNext(value)
+                    updatingFromEditor = false
                   }
-                }
-              }(ctx.owner)
+              )
+            )
 
-            case None =>
-              dom.console.error("CodeMirror facade is not available on window.EduSquirrelCodeMirror")
-          }
+            handle = Some(createdHandle)
+
+            content.signal.foreach { value =>
+              handle.foreach { editorHandle =>
+                if (!updatingFromEditor && editorHandle.getDoc() != value) {
+                  updatingFromVar = true
+                  editorHandle.setDoc(value)
+                  updatingFromVar = false
+                }
+              }
+            }(ctx.owner)
+
+          case None =>
+            dom.console.error("CodeMirror facade is not available on window.EduSquirrelCodeMirror")
         }
       },
       onUnmountCallback { _ =>
@@ -70,15 +68,18 @@ case class CodeMirrorEditor(content: Var[String]) extends HtmlAppElement {
 object CodeMirrorEditor {
 
   @js.native
-  trait CodeMirrorFacade extends js.Object {
+  private trait CodeMirrorFacade extends js.Object {
     def createEditor(config: EditorConfig): CodeMirrorHandle = js.native
   }
 
   @js.native
   trait CodeMirrorHandle extends js.Object {
     def setDoc(value: String): Unit = js.native
+
     def getDoc(): String = js.native
+
     def focus(): Unit = js.native
+
     def destroy(): Unit = js.native
   }
 
@@ -106,7 +107,7 @@ object CodeMirrorEditor {
 
   private def waitForFacade(callback: Option[CodeMirrorFacade] => Unit): Unit = {
     facade match {
-      case some @ Some(_) =>
+      case some@Some(_) =>
         callback(some)
       case None =>
         val readyPromise = js.Dynamic.global.selectDynamic("EduSquirrelCodeMirrorReady")
