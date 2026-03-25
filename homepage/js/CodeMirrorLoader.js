@@ -7,7 +7,7 @@ import {
   lineNumbers,
   highlightActiveLineGutter
 } from "https://cdn.jsdelivr.net/npm/@codemirror/view@6.38.6/+esm";
-import {defaultKeymap, history, historyKeymap, indentWithTab} from "https://cdn.jsdelivr.net/npm/@codemirror/commands@6.8.1/+esm";
+import {defaultKeymap, history, historyKeymap, indentLess, indentMore} from "https://cdn.jsdelivr.net/npm/@codemirror/commands@6.8.1/+esm";
 import {
   bracketMatching,
   defaultHighlightStyle,
@@ -19,6 +19,22 @@ import {
 } from "https://cdn.jsdelivr.net/npm/@codemirror/language@6.11.3/+esm";
 import {highlightSelectionMatches, searchKeymap} from "https://cdn.jsdelivr.net/npm/@codemirror/search@6.5.11/+esm";
 import {python} from "https://cdn.jsdelivr.net/npm/@codemirror/lang-python@6.2.1/+esm";
+
+const INDENT_SPACES = "    ";
+
+const replaceTabsWithSpaces = (text) => text.replace(/\t/g, INDENT_SPACES);
+
+const indentWithSpaces = ({state, dispatch}) => {
+  const {from, to, empty} = state.selection.main;
+  if (!empty) {
+    return indentMore({state, dispatch});
+  }
+  dispatch(state.update({
+    changes: {from, to, insert: INDENT_SPACES},
+    selection: {anchor: from + INDENT_SPACES.length}
+  }));
+  return true;
+};
 
 const editorTheme = EditorView.theme({
   "&": {
@@ -74,7 +90,7 @@ const editorTheme = EditorView.theme({
 
 const baseExtensions = [
   EditorState.tabSize.of(4),
-  indentUnit.of("    "),
+  indentUnit.of(INDENT_SPACES),
   lineNumbers(),
   highlightActiveLineGutter(),
   history(),
@@ -87,7 +103,7 @@ const baseExtensions = [
   python(),
   syntaxHighlighting(defaultHighlightStyle, {fallback: true}),
   keymap.of([
-    indentWithTab,
+    {key: "Tab", run: indentWithSpaces, shift: indentLess},
     ...defaultKeymap,
     ...historyKeymap,
     ...foldKeymap,
@@ -101,7 +117,7 @@ const codeMirrorFacade = {
     let isProgrammaticUpdate = false;
 
     const state = EditorState.create({
-      doc,
+      doc: replaceTabsWithSpaces(doc),
       extensions: [
         ...baseExtensions,
         EditorView.updateListener.of((update) => {
@@ -116,7 +132,7 @@ const codeMirrorFacade = {
 
     return {
       setDoc(newDoc) {
-        const nextDoc = newDoc ?? "";
+        const nextDoc = replaceTabsWithSpaces(newDoc ?? "");
         if (view.state.doc.toString() === nextDoc) {
           return;
         }
