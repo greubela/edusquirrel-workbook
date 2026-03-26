@@ -1,13 +1,11 @@
 package interactionPlugins.programmingExercise.pythonExercise.pyodide
 
-
-
-
-
 import com.raquo.laminar.api.L.Var
+import interactionPlugins.programmingExercise.pythonExercise.data.PythonExecutionResult.PythonExecutionRunningState
+import interactionPlugins.programmingExercise.pythonExercise.data.PythonUnitTestResult.{GradingStatus, PythonUnitTestGradingResult}
 import interactionPlugins.programmingExercise.pythonExercise.data.*
-import interactionPlugins.programmingExercise.pythonExercise.pyodide.*
-
+import util.web.JsHelpers.*
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideEnvironment.Backend
 import org.scalajs.dom
 
 import scala.collection.mutable
@@ -16,15 +14,8 @@ import scala.concurrent.{Future, Promise}
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
 
-import interactionPlugins.programmingExercise.pythonExercise.data.*
-import interactionPlugins.programmingExercise.pythonExercise.pyodide.*
-import interactionPlugins.programmingExercise.pythonExercise.data.PythonExecutionResult.*
-import interactionPlugins.programmingExercise.pythonExercise.data.PythonUnitTestResult.*
-import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideEnvironment.*
-
 private[pyodide] final class WorkerBackend() extends Backend {
 
-/*
   private val worker =
     new dom.Worker(
       "./js/PyodideWorker.js",
@@ -39,8 +30,6 @@ private[pyodide] final class WorkerBackend() extends Backend {
   worker.onmessage = { (e: dom.MessageEvent) =>
     val data = e.data.asInstanceOf[js.Dynamic]
     data.`type`.asInstanceOf[String] match {
-      case "stdout" => appendVar(stdoutVar, data.text.asInstanceOf[String])
-      case "stderr" => appendVar(stderrVar, data.text.asInstanceOf[String])
       case "module-callback" =>
         val moduleName = data.moduleName.asInstanceOf[String]
         val functionName = data.functionName.asInstanceOf[String]
@@ -52,7 +41,7 @@ private[pyodide] final class WorkerBackend() extends Backend {
           if data.`type`.asInstanceOf[String] == "error" then p.failure(new RuntimeException(data.error.asInstanceOf[String]))
           else p.success(data)
         }
-      case other => dom.console.warn(s"Unhandled worker message type: $other")
+      case _ => ()
     }
   }: js.Function1[dom.MessageEvent, Any]
 
@@ -75,98 +64,122 @@ private[pyodide] final class WorkerBackend() extends Backend {
     if initialized then Future.successful(())
     else send("init").map(_ => initialized = true)
 
-  override def registerModule(binding: ModuleBinding): Future[Unit] = {
-    binding.callbacks.foreach { case (name, fn) => moduleCallbacks.update((binding.moduleName, name), fn) }
+  private def toExecutionState(parsed: js.Dynamic): PythonExecutionResult.PythonExecutionState = {
+    val runningState =
+      if asBoolean(parsed.success) then PythonExecutionRunningState.FINISHED_SUCCESS
+      else if asBoolean(parsed.lineLimitHit) then PythonExecutionRunningState.FINISHED_LINE_LIMIT
+      else PythonExecutionRunningState.FINISHED_ERROR
+
+    PythonExecutionResult.PythonExecutionState(
+      stdout = "",
+      stderr = asStringOption(parsed.exception).getOrElse(""),
+      globals = asStringMap(parsed.globals),
+      locals = asStringMap(parsed.locals),
+      linesExecuted = asInt(parsed.linesExecuted),
+      runningState = runningState
+    )
+  }
+
+  private def runningExecutionResult(request: PythonExecutionRequest): PythonExecutionResult =
+    PythonExecutionResult(
+      request = request,
+      state = PythonExecutionResult.PythonExecutionState("", "", Map.empty, Map.empty, 0, PythonExecutionRunningState.RUNNING)
+    )
+
+  override def registerModule(
+      moduleName: String,
+      callbacks: Map[String, Seq[js.Any] => Unit]
+  ): Future[Unit] = {
+    callbacks.foreach { case (name, fn) => moduleCallbacks.update((moduleName, name), fn) }
     init().flatMap { _ =>
       send(
         "registerModule",
         js.Dictionary(
-          "moduleName" -> binding.moduleName,
-          "functionNames" -> binding.callbacks.keys.toJSArray
+          "moduleName" -> moduleName,
+          "functionNames" -> callbacks.keys.toJSArray
         )
       ).map(_ => ())
     }
   }
 
-  override def executeCode(pythonCode: String, maxExecutedLines: Option[Int]): Future[ExecutionResult] = {
-    clearVar(stdoutVar)
-    clearVar(stderrVar)
+  override def executeCodeFull(request: PythonExecutionRequest): Future[PythonExecutionResult] =
     init().flatMap { _ =>
-      val payload = js.Dictionary[js.Any]("code" -> pythonCode)
-      maxExecutedLines.foreach(limit => payload.update("maxExecutedLines", limit))
+      val payload = js.Dictionary[js.Any]("code" -> request.pythonCode)
+      request.maxLinesToExecute.foreach(limit => payload.update("maxExecutedLines", limit))
       send("executeCode", payload).map { msg =>
         val parsed = msg.payload.asInstanceOf[js.Dynamic]
-        parseExecutionResult(pythonCode, stdoutVar.now(), stderrVar.now(), parsed)
+        PythonExecutionResult(request, toExecutionState(parsed))
       }
     }
+
+  override def executeCodeLinewise(
+      request: PythonExecutionRequest,
+      updateAtLeastEveryNLines: Int
+  ): Var[PythonExecutionResult] = {
+    val resultVar = Var(runningExecutionResult(request))
+    executeCodeFull(request).foreach(resultVar.set)
+    resultVar
   }
 
-  override def executeUnitTest(
-      pythonCode: String,
-      pyUnitTest: PythonUnitTest,
-      maxExecutedLines: Option[Int]
-  ): Future[PythonUnitTestResult] = {
-    clearVar(stdoutVar)
-    clearVar(stderrVar)
+  private def executeSingleUnitTest(
+      pythonCode: PythonExecutionRequest,
+      test: PythonUnitTest
+  ): Future[PythonUnitTestGradingResult] =
     init().flatMap { _ =>
       val payload = js.Dictionary[js.Any](
-        "code" -> pythonCode,
-        "testCode" -> pyUnitTest.testCode,
-        "testName" -> pyUnitTest.testName
+        "code" -> pythonCode.pythonCode,
+        "testCode" -> test.testCode,
+        "testName" -> test.testName
       )
-      maxExecutedLines.foreach(limit => payload.update("maxExecutedLines", limit))
+      pythonCode.maxLinesToExecute.foreach(limit => payload.update("maxExecutedLines", limit))
       send("executeUnitTest", payload).map { msg =>
         val parsed = msg.payload.asInstanceOf[js.Dynamic]
-        val execution = parseExecutionResult(
-          pythonCode,
-          stdoutVar.now() + optString(parsed.stdout).getOrElse(""),
-          stderrVar.now(),
-          parsed
-        )
-        PythonUnitTestResult(
-          test = pyUnitTest,
-          execution = execution,
-          success = boolValue(parsed.success),
-          testRunnerOutput = optString(parsed.stdout).getOrElse(""),
-          failures = jsonArrayToList(parsed.failures),
-          errors = jsonArrayToList(parsed.errors)
-        )
+        val executionResult = PythonExecutionResult(pythonCode, toExecutionState(parsed))
+        val gradingStatus = if asBoolean(parsed.success) then GradingStatus.SUCCESS else GradingStatus.FAILED
+        PythonUnitTestGradingResult(test = test, result = executionResult, gradingStatus = gradingStatus)
       }
     }
+
+  override def executeUnitTestsFull(
+      pythonCode: PythonExecutionRequest,
+      unitTests: List[PythonUnitTest]
+  ): Future[PythonUnitTestResult] =
+    Future.sequence(unitTests.map(executeSingleUnitTest(pythonCode, _))).map { tests =>
+      PythonUnitTestResult(userCode = pythonCode, tests = tests.toSet)
+    }
+
+  override def executeUnitTestLinewise(
+      pythonCode: PythonExecutionRequest,
+      unitTests: List[PythonUnitTest],
+      updateAtLeastEveryNLines: Int
+  ): Var[PythonUnitTestResult] = {
+    val initial = unitTests.map { test =>
+      PythonUnitTestGradingResult(test, runningExecutionResult(pythonCode), GradingStatus.UNFINISHED)
+    }
+    val resultVar = Var(PythonUnitTestResult(pythonCode, initial.toSet))
+
+    unitTests.foldLeft(Future.successful(List.empty[PythonUnitTestGradingResult])) { (accFuture, test) =>
+      for {
+        acc <- accFuture
+        next <- executeSingleUnitTest(pythonCode, test)
+      } yield {
+        val updated = (acc :+ next).toSet
+        val unfinished = unitTests.filterNot(t => updated.exists(_.test == t)).map { remaining =>
+          PythonUnitTestGradingResult(remaining, runningExecutionResult(pythonCode), GradingStatus.UNFINISHED)
+        }
+        resultVar.set(PythonUnitTestResult(pythonCode, updated ++ unfinished))
+        acc :+ next
+      }
+    }
+
+    resultVar
   }
 
   override def destroy(): Unit = {
     worker.postMessage(js.Dynamic.literal(`type` = "destroy"))
     worker.terminate()
+    pending.values.foreach(_.tryFailure(new RuntimeException("Worker destroyed")))
+    pending.clear()
+    initialized = false
   }
-  
- */
-
-
-  def registerModule(
-                      moduleName: String,
-                      callbacks: Map[String, Seq[js.Any] => Unit]
-                    ): Future[Unit] = ???
-
-  def executeCodeFull(
-                       request: PythonExecutionRequest
-                     ): Future[PythonExecutionResult] = ???
-
-  def executeCodeLinewise(
-                           request: PythonExecutionRequest,
-                           updateAtLeastEveryNLines: Int = 1
-                         ): Var[PythonExecutionResult] = ???
-
-  def executeUnitTestsFull(
-                            pythonCode: PythonExecutionRequest,
-                            unitTests: List[PythonUnitTest],
-                          ): Future[PythonUnitTestResult] = ???
-
-  def executeUnitTestLinewise(
-                               pythonCode: PythonExecutionRequest,
-                               unitTests: List[PythonUnitTest],
-                               updateAtLeastEveryNLines: Int = 100,
-                             ): Var[PythonUnitTestResult] = ???
-
-  def destroy(): Unit = ???
 }
