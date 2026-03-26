@@ -1,26 +1,19 @@
 package interactionPlugins.programmingExercise.pythonExercise.pyodide
 
-
-
-
-
 import com.raquo.laminar.api.L.Var
+import interactionPlugins.programmingExercise.pythonExercise.data.PythonExecutionResult.PythonExecutionRunningState
+import interactionPlugins.programmingExercise.pythonExercise.data.PythonUnitTestResult.{GradingStatus, PythonUnitTestGradingResult}
 import interactionPlugins.programmingExercise.pythonExercise.data.*
-import interactionPlugins.programmingExercise.pythonExercise.pyodide.*
+import util.web.JsHelpers.*
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideEnvironment.Backend
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.scalajs.js
 
-import interactionPlugins.programmingExercise.pythonExercise.data.*
-import interactionPlugins.programmingExercise.pythonExercise.pyodide.*
-import interactionPlugins.programmingExercise.pythonExercise.data.PythonExecutionResult.*
-import interactionPlugins.programmingExercise.pythonExercise.data.PythonUnitTestResult.*
-import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideEnvironment.*
-
 final class MainThreadBackend() extends Backend {
-  
-/*
-  private var pyOpt: Option[Pyodide] = None
+
+  private var pyOpt: Option[PyodideEnvironment.Pyodide] = None
   private var envGlobals: js.Any = _
 
   private val helperCode =
@@ -42,11 +35,13 @@ final class MainThreadBackend() extends Backend {
       |class ExecutionLineLimitExceeded(Exception):
       |    pass
       |
+      |
       |def _safe_repr(x):
       |    try:
       |        return repr(x)
       |    except Exception as e:
       |        return f"<unreprable {type(x).__name__}: {e}>"
+      |
       |
       |def _snapshot_namespace(ns):
       |    out = {}
@@ -62,6 +57,7 @@ final class MainThreadBackend() extends Backend {
       |            tag = "value"
       |        out[k] = f"[{tag}:{kind}] {_safe_repr(v)}"
       |    return out
+      |
       |
       |def _run_with_optional_line_limit(fn, filenames, max_lines):
       |    lines_executed = 0
@@ -103,6 +99,7 @@ final class MainThreadBackend() extends Backend {
       |    finally:
       |        sys.settrace(old_trace)
       |
+      |
       |def _execute_code_impl(code, max_lines):
       |    def body():
       |        exec(compile(code, "<user_code>", "exec"), globals(), locals())
@@ -118,6 +115,7 @@ final class MainThreadBackend() extends Backend {
       |        "lineLimitHit": run["lineLimitHit"]
       |    }
       |    return json.dumps(result)
+      |
       |
       |def _execute_unit_test_impl(code, test_code, test_name, max_lines):
       |    stream = io.StringIO()
@@ -155,18 +153,12 @@ final class MainThreadBackend() extends Backend {
       |    return json.dumps(result)
       |""".stripMargin
 
-  private def initPy(): Future[Pyodide] =
+  private def initPy(): Future[PyodideEnvironment.Pyodide] =
     pyOpt match {
       case Some(py) => Future.successful(py)
       case None =>
-        promiseToFuture(loadPyodide()).flatMap { py =>
+        promiseToFuture(PyodideEnvironment.loadPyodide()).flatMap { py =>
           pyOpt = Some(py)
-          py.setStdout(js.Dynamic.literal(
-            batched = ((msg: String) => appendVar(stdoutVar, msg + "\n")): js.Function1[String, Unit]
-          ))
-          py.setStderr(js.Dynamic.literal(
-            batched = ((msg: String) => appendVar(stderrVar, msg + "\n")): js.Function1[String, Unit]
-          ))
           envGlobals = py.runPython("dict(__name__='__main__')")
           promiseToFuture(py.runPythonAsync(helperCode, js.Dynamic.literal(
             globals = envGlobals,
@@ -183,89 +175,97 @@ final class MainThreadBackend() extends Backend {
         js.Any.fromFunction1((args: js.Array[js.Any]) => fn(args.toSeq))
       )
 
-  override def registerModule(binding: ModuleBinding): Future[Unit] =
+  private def toExecutionState(parsed: js.Dynamic): PythonExecutionResult.PythonExecutionState = {
+    val runningState =
+      if asBoolean(parsed.success) then PythonExecutionRunningState.FINISHED_SUCCESS
+      else if asBoolean(parsed.lineLimitHit) then PythonExecutionRunningState.FINISHED_LINE_LIMIT
+      else PythonExecutionRunningState.FINISHED_ERROR
+
+    PythonExecutionResult.PythonExecutionState(
+      stdout = "",
+      stderr = asStringOption(parsed.exception).getOrElse(""),
+      globals = asStringMap(parsed.globals),
+      locals = asStringMap(parsed.locals),
+      linesExecuted = asInt(parsed.linesExecuted),
+      runningState = runningState
+    )
+  }
+
+  private def runningExecutionResult(request: PythonExecutionRequest): PythonExecutionResult =
+    PythonExecutionResult(
+      request = request,
+      state = PythonExecutionResult.PythonExecutionState("", "", Map.empty, Map.empty, 0, PythonExecutionRunningState.RUNNING)
+    )
+
+  override def registerModule(
+      moduleName: String,
+      callbacks: Map[String, Seq[js.Any] => Unit]
+  ): Future[Unit] =
     initPy().map { py =>
       val dict = js.Dynamic.literal()
-      binding.callbacks.foreach { case (name, fn) =>
-        dict.updateDynamic(name)(wrapCallback(fn))
-      }
-      py.registerJsModule(binding.moduleName, dict.asInstanceOf[js.Object])
+      callbacks.foreach { case (name, fn) => dict.updateDynamic(name)(wrapCallback(fn)) }
+      py.registerJsModule(moduleName, dict.asInstanceOf[js.Object])
     }
 
-  override def executeCode(pythonCode: String, maxExecutedLines: Option[Int]): Future[ExecutionResult] = {
-    clearVar(stdoutVar)
-    clearVar(stderrVar)
+  override def executeCodeFull(request: PythonExecutionRequest): Future[PythonExecutionResult] =
     initPy().flatMap { py =>
-      val maxExpr = maxExecutedLines.fold("None")(_.toString)
+      val maxExpr = request.maxLinesToExecute.fold("None")(_.toString)
       promiseToFuture(py.runPythonAsync(
-        s"_execute_code_impl(${js.JSON.stringify(pythonCode)}, $maxExpr)",
+        s"_execute_code_impl(${js.JSON.stringify(request.pythonCode)}, $maxExpr)",
         js.Dynamic.literal(globals = envGlobals, locals = envGlobals, filename = "<bridge>")
       )).map { raw =>
-        val parsed = decodeJsonResult(raw)
-        parseExecutionResult(pythonCode, stdoutVar.now(), stderrVar.now(), parsed)
+        val parsed = js.JSON.parse(raw.asInstanceOf[String]).asInstanceOf[js.Dynamic]
+        PythonExecutionResult(request, toExecutionState(parsed))
       }
     }
+
+  override def executeCodeLinewise(
+      request: PythonExecutionRequest,
+      updateAtLeastEveryNLines: Int
+  ): Var[PythonExecutionResult] = {
+    val resultVar = Var(runningExecutionResult(request))
+    executeCodeFull(request).foreach(resultVar.set)
+    resultVar
   }
 
-  override def executeUnitTest(
-      pythonCode: String,
-      pyUnitTest: PythonUnitTest,
-      maxExecutedLines: Option[Int]
+  override def executeUnitTestsFull(
+      pythonCode: PythonExecutionRequest,
+      unitTests: List[PythonUnitTest]
   ): Future[PythonUnitTestResult] = {
-    clearVar(stdoutVar)
-    clearVar(stderrVar)
-    initPy().flatMap { py =>
-      val maxExpr = maxExecutedLines.fold("None")(_.toString)
-      promiseToFuture(py.runPythonAsync(
-        s"_execute_unit_test_impl(${js.JSON.stringify(pythonCode)}, ${js.JSON.stringify(pyUnitTest.testCode)}, ${js.JSON.stringify(pyUnitTest.testName)}, $maxExpr)",
-        js.Dynamic.literal(globals = envGlobals, locals = envGlobals, filename = "<bridge>")
-      )).map { raw =>
-        val parsed = decodeJsonResult(raw)
-        val execution = parseExecutionResult(
-          pythonCode,
-          stdoutVar.now() + optString(parsed.stdout).getOrElse(""),
-          stderrVar.now(),
-          parsed
-        )
-        PythonUnitTestResult(
-          test = pyUnitTest,
-          execution = execution,
-          success = boolValue(parsed.success),
-          testRunnerOutput = optString(parsed.stdout).getOrElse(""),
-          failures = jsonArrayToList(parsed.failures),
-          errors = jsonArrayToList(parsed.errors)
-        )
+    def runOne(test: PythonUnitTest): Future[PythonUnitTestGradingResult] =
+      initPy().flatMap { py =>
+        val maxExpr = pythonCode.maxLinesToExecute.fold("None")(_.toString)
+        promiseToFuture(py.runPythonAsync(
+          s"_execute_unit_test_impl(${js.JSON.stringify(pythonCode.pythonCode)}, ${js.JSON.stringify(test.testCode)}, ${js.JSON.stringify(test.testName)}, $maxExpr)",
+          js.Dynamic.literal(globals = envGlobals, locals = envGlobals, filename = "<bridge>")
+        )).map { raw =>
+          val parsed = js.JSON.parse(raw.asInstanceOf[String]).asInstanceOf[js.Dynamic]
+          val result = PythonExecutionResult(pythonCode, toExecutionState(parsed))
+          val gradingStatus = if asBoolean(parsed.success) then GradingStatus.SUCCESS else GradingStatus.FAILED
+          PythonUnitTestGradingResult(test = test, result = result, gradingStatus = gradingStatus)
+        }
       }
+
+    Future.sequence(unitTests.map(runOne)).map { testResults =>
+      PythonUnitTestResult(userCode = pythonCode, tests = testResults.toSet)
     }
   }
 
-  override def destroy(): Unit = ()*/
+  override def executeUnitTestLinewise(
+      pythonCode: PythonExecutionRequest,
+      unitTests: List[PythonUnitTest],
+      updateAtLeastEveryNLines: Int
+  ): Var[PythonUnitTestResult] = {
+    val initResults = unitTests.map { test =>
+      PythonUnitTestGradingResult(test, runningExecutionResult(pythonCode), GradingStatus.UNFINISHED)
+    }
+    val resultVar = Var(PythonUnitTestResult(pythonCode, initResults.toSet))
+    executeUnitTestsFull(pythonCode, unitTests).foreach(resultVar.set)
+    resultVar
+  }
 
-  def registerModule(
-                      moduleName: String,
-                      callbacks: Map[String, Seq[js.Any] => Unit]
-                    ): Future[Unit] = ???
-
-  def executeCodeFull(
-                       request: PythonExecutionRequest
-                     ): Future[PythonExecutionResult] = ???
-
-  def executeCodeLinewise(
-                           request: PythonExecutionRequest,
-                           updateAtLeastEveryNLines: Int = 1
-                         ): Var[PythonExecutionResult] = ???
-
-  def executeUnitTestsFull(
-                            pythonCode: PythonExecutionRequest,
-                            unitTests: List[PythonUnitTest],
-                          ): Future[PythonUnitTestResult] = ???
-
-  def executeUnitTestLinewise(
-                               pythonCode: PythonExecutionRequest,
-                               unitTests: List[PythonUnitTest],
-                               updateAtLeastEveryNLines: Int = 100,
-                             ): Var[PythonUnitTestResult] = ???
-
-  def destroy(): Unit = ???
-  
+  override def destroy(): Unit = {
+    pyOpt = None
+    envGlobals = null
+  }
 }
