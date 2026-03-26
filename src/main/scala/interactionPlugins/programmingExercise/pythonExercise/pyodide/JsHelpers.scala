@@ -2,11 +2,17 @@ package interactionPlugins.programmingExercise.pythonExercise.pyodide
 
 import com.raquo.laminar.api.L.Var
 
+import interactionPlugins.programmingExercise.pythonExercise.data.*
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.*
+import interactionPlugins.programmingExercise.pythonExercise.data.PythonExecutionResult.*
+import interactionPlugins.programmingExercise.pythonExercise.data.PythonUnitTestResult.*
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideEnvironment.*
+
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.js
 
-private[pyodide] object Helpers {
-
+object JsHelpers {
+/*
   def promiseToFuture[A](p: js.Promise[A]): Future[A] = {
     val pr = Promise[A]()
     p.`then`[Unit](
@@ -70,4 +76,6 @@ private[pyodide] object Helpers {
       maxExecutedLines = optInt(parsed.maxExecutedLines),
       lineLimitHit = boolValue(parsed.lineLimitHit)
     )
+    
+ */
 }

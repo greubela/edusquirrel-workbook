@@ -1,14 +1,25 @@
 package interactionPlugins.programmingExercise.pythonExercise.pyodide
 
-import com.raquo.laminar.api.L.Var
 
+
+
+
+import com.raquo.laminar.api.L.Var
+import interactionPlugins.programmingExercise.pythonExercise.data.*
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.*
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.scalajs.js
 
-private[pyodide] final class MainThreadBackend(stdoutVar: Var[String], stderrVar: Var[String]) extends Backend {
-  import Helpers.*
+import interactionPlugins.programmingExercise.pythonExercise.data.*
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.*
+import interactionPlugins.programmingExercise.pythonExercise.data.PythonExecutionResult.*
+import interactionPlugins.programmingExercise.pythonExercise.data.PythonUnitTestResult.*
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideEnvironment.*
 
+final class MainThreadBackend() extends Backend {
+  
+/*
   private var pyOpt: Option[Pyodide] = None
   private var envGlobals: js.Any = _
 
@@ -228,5 +239,33 @@ private[pyodide] final class MainThreadBackend(stdoutVar: Var[String], stderrVar
     }
   }
 
-  override def destroy(): Unit = ()
+  override def destroy(): Unit = ()*/
+
+  def registerModule(
+                      moduleName: String,
+                      callbacks: Map[String, Seq[js.Any] => Unit]
+                    ): Future[Unit] = ???
+
+  def executeCodeFull(
+                       request: PythonExecutionRequest
+                     ): Future[PythonExecutionResult] = ???
+
+  def executeCodeLinewise(
+                           request: PythonExecutionRequest,
+                           updateAtLeastEveryNLines: Int = 1
+                         ): Var[PythonExecutionResult] = ???
+
+  def executeUnitTestsFull(
+                            pythonCode: PythonExecutionRequest,
+                            unitTests: List[PythonUnitTest],
+                          ): Future[PythonUnitTestResult] = ???
+
+  def executeUnitTestLinewise(
+                               pythonCode: PythonExecutionRequest,
+                               unitTests: List[PythonUnitTest],
+                               updateAtLeastEveryNLines: Int = 100,
+                             ): Var[PythonUnitTestResult] = ???
+
+  def destroy(): Unit = ???
+  
 }
