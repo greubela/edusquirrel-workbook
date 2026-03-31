@@ -16,17 +16,7 @@ if (!isWorkerContext) {
 
   let pyodide = null;
   let envGlobals = null;
-  let envLocals = null;
   let initialized = false;
-
-  function installStdStreams() {
-    pyodide.setStdout({
-      batched: (msg) => self.postMessage({ type: "stdout", text: msg + "\n" })
-    });
-    pyodide.setStderr({
-      batched: (msg) => self.postMessage({ type: "stderr", text: msg + "\n" })
-    });
-  }
 
   function helpersPython() {
     return `
@@ -45,9 +35,6 @@ HELPER_EXCLUDE = {
     "HELPER_EXCLUDE", "USER_NS"
 }
 
-# Dedicated execution namespace for user code.
-# Keeping this separate from helper globals prevents helper internals from
-# leaking into user variable snapshots and keeps environment state isolated.
 USER_NS = {"__name__": "__main__"}
 
 class ExecutionLineLimitExceeded(Exception):
@@ -186,34 +173,42 @@ def _execute_unit_test_impl(code, test_code, test_name, max_lines):
 `;
   }
 
+  async function bootstrapState() {
+    envGlobals = pyodide.runPython("dict(__name__='__main__')");
+    await pyodide.runPythonAsync(helpersPython(), {
+      globals: envGlobals,
+      locals: envGlobals,
+      filename: "<bootstrap>"
+    });
+  }
+
   async function init() {
     if (initialized) return;
     pyodide = await loadPyodide();
-    installStdStreams();
-    envGlobals = pyodide.runPython("dict(__name__='__main__')");
-    envLocals = envGlobals;
-    await pyodide.runPythonAsync(helpersPython(), {
-      globals: envGlobals,
-      locals: envLocals,
-      filename: "<bootstrap>"
-    });
+    await bootstrapState();
     initialized = true;
   }
 
-  async function registerModule(moduleName, functionNames) {
-    const members = {};
-    for (const fnName of functionNames) {
-      members[fnName] = (...args) => {
-        self.postMessage({
-          type: "module-callback",
-          moduleName,
-          functionName: fnName,
-          args
-        });
-        return undefined;
-      };
-    }
-    pyodide.registerJsModule(moduleName, members);
+  async function registerModule(moduleName) {
+    const proxy = new Proxy(
+      {},
+      {
+        get(_target, prop) {
+          if (typeof prop !== "string") return undefined;
+          return (...args) => {
+            self.postMessage({
+              type: "module-callback",
+              moduleName,
+              functionName: prop,
+              args
+            });
+            return undefined;
+          };
+        }
+      }
+    );
+
+    pyodide.registerJsModule(moduleName, proxy);
   }
 
   function parseMaybeLimit(msg) {
@@ -231,7 +226,7 @@ def _execute_unit_test_impl(code, test_code, test_name, max_lines):
         }
         case "registerModule": {
           await init();
-          await registerModule(msg.moduleName, msg.functionNames);
+          await registerModule(msg.moduleName);
           self.postMessage({ type: "registered", requestId: msg.requestId, moduleName: msg.moduleName });
           break;
         }
@@ -239,7 +234,7 @@ def _execute_unit_test_impl(code, test_code, test_name, max_lines):
           await init();
           const resultText = await pyodide.runPythonAsync(
             `_execute_code_impl(${JSON.stringify(msg.code)}, ${JSON.stringify(parseMaybeLimit(msg))})`,
-            { globals: envGlobals, locals: envLocals, filename: "<bridge>" }
+            { globals: envGlobals, locals: envGlobals, filename: "<bridge>" }
           );
           self.postMessage({ type: "result", requestId: msg.requestId, payload: JSON.parse(resultText) });
           break;
@@ -248,9 +243,15 @@ def _execute_unit_test_impl(code, test_code, test_name, max_lines):
           await init();
           const resultText = await pyodide.runPythonAsync(
             `_execute_unit_test_impl(${JSON.stringify(msg.code)}, ${JSON.stringify(msg.testCode)}, ${JSON.stringify(msg.testName)}, ${JSON.stringify(parseMaybeLimit(msg))})`,
-            { globals: envGlobals, locals: envLocals, filename: "<bridge>" }
+            { globals: envGlobals, locals: envGlobals, filename: "<bridge>" }
           );
           self.postMessage({ type: "result", requestId: msg.requestId, payload: JSON.parse(resultText) });
+          break;
+        }
+        case "resetState": {
+          await init();
+          await bootstrapState();
+          self.postMessage({ type: "reset-done", requestId: msg.requestId });
           break;
         }
         case "destroy": {
