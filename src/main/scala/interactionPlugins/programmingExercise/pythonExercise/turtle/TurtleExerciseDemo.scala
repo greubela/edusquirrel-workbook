@@ -6,7 +6,7 @@ import contentmanagement.webElements.HtmlAppElement
 import contentmanagement.webElements.genericHtmlElements.canvas.WebCanvas
 import contentmanagement.webElements.genericHtmlElements.editor.CodeMirrorEditor
 import interactionPlugins.programmingExercise.pythonExercise.data.PythonExecutionRequest
-import interactionPlugins.programmingExercise.pythonExercise.pyodide.{MainThreadBackend, PyodideEnvironment}
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.{MainThreadBackend, PyodideEnvironment, PyodideWorkerEnvironment}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js
@@ -33,11 +33,20 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
   private val globalsVar = Var("{}")
 
   private val outputCanvas: WebCanvas = WebCanvas(1000, 1000)
-  private val pyodideEnvironment: PyodideEnvironment = {
-    val environment = new MainThreadBackend()
+
+  private val asyncBackend = {
+    val environment = new PyodideWorkerEnvironment()
     environment.register(TurtleAsyncBackend(outputCanvas))
     environment
   }
+
+  private val syncBackend = {
+    val environment = new MainThreadBackend()
+    environment.register(TurtleBackend(outputCanvas))
+    environment
+  }
+
+  private val pyodideEnvironment: PyodideEnvironment = asyncBackend
 
   private val inputEditorElement = CodeMirrorEditor(codeVar)
 
