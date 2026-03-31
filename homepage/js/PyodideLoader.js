@@ -16,11 +16,12 @@ if (!isWorkerContext) {
 
   let pyodide = null;
   let envGlobals = null;
+  let executeCodeHelper = null;
+  let executeUnitTestHelper = null;
   let initialized = false;
 
   function helpersPython() {
     return `
-import json
 import traceback
 import unittest
 import io
@@ -28,7 +29,7 @@ import sys
 import contextlib
 
 HELPER_EXCLUDE = {
-    "json", "traceback", "unittest", "io", "sys", "contextlib",
+    "traceback", "unittest", "io", "sys", "contextlib",
     "ExecutionLineLimitExceeded",
     "_snapshot_namespace", "_run_with_optional_line_limit",
     "_execute_code_impl", "_execute_unit_test_impl",
@@ -127,7 +128,7 @@ def _execute_code_impl(code, max_lines):
         "maxExecutedLines": max_lines,
         "lineLimitHit": run["lineLimitHit"]
     }
-    return json.dumps(result)
+    return result
 
 
 def _execute_unit_test_impl(code, test_code, test_name, max_lines):
@@ -169,17 +170,37 @@ def _execute_unit_test_impl(code, test_code, test_name, max_lines):
         "maxExecutedLines": max_lines,
         "lineLimitHit": run["lineLimitHit"]
     }
-    return json.dumps(result)
+    return result
 `;
   }
 
+  function destroyHelperProxies() {
+    executeCodeHelper?.destroy();
+    executeUnitTestHelper?.destroy();
+    executeCodeHelper = null;
+    executeUnitTestHelper = null;
+  }
+
   async function bootstrapState() {
+    destroyHelperProxies();
     envGlobals = pyodide.runPython("dict(__name__='__main__')");
     await pyodide.runPythonAsync(helpersPython(), {
       globals: envGlobals,
       locals: envGlobals,
       filename: "<bootstrap>"
     });
+    executeCodeHelper = envGlobals.get("_execute_code_impl");
+    executeUnitTestHelper = envGlobals.get("_execute_unit_test_impl");
+  }
+
+  function callHelper(helper, ...args) {
+    const pyResult = helper(...args);
+    if (pyResult && typeof pyResult.toJs === "function") {
+      const result = pyResult.toJs({ dict_converter: Object.fromEntries });
+      pyResult.destroy();
+      return result;
+    }
+    return pyResult;
   }
 
   async function init() {
@@ -232,20 +253,20 @@ def _execute_unit_test_impl(code, test_code, test_name, max_lines):
         }
         case "executeCode": {
           await init();
-          const resultText = await pyodide.runPythonAsync(
-            `_execute_code_impl(${JSON.stringify(msg.code)}, ${JSON.stringify(parseMaybeLimit(msg))})`,
-            { globals: envGlobals, locals: envGlobals, filename: "<bridge>" }
-          );
-          self.postMessage({ type: "result", requestId: msg.requestId, payload: JSON.parse(resultText) });
+          const payload = callHelper(executeCodeHelper, msg.code, parseMaybeLimit(msg));
+          self.postMessage({ type: "result", requestId: msg.requestId, payload });
           break;
         }
         case "executeUnitTest": {
           await init();
-          const resultText = await pyodide.runPythonAsync(
-            `_execute_unit_test_impl(${JSON.stringify(msg.code)}, ${JSON.stringify(msg.testCode)}, ${JSON.stringify(msg.testName)}, ${JSON.stringify(parseMaybeLimit(msg))})`,
-            { globals: envGlobals, locals: envGlobals, filename: "<bridge>" }
+          const payload = callHelper(
+            executeUnitTestHelper,
+            msg.code,
+            msg.testCode,
+            msg.testName,
+            parseMaybeLimit(msg)
           );
-          self.postMessage({ type: "result", requestId: msg.requestId, payload: JSON.parse(resultText) });
+          self.postMessage({ type: "result", requestId: msg.requestId, payload });
           break;
         }
         case "resetState": {
