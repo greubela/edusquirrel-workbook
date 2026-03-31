@@ -62,7 +62,7 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
         val eventsToSync = syncInfo.syncStrategy.selectEventsToSync(history)
         syncInfo.syncSource.syncTo(keyForSerialization, InteractionVariable.serializeHistory(eventsToSync, io))
       })
-      println("[INFO] history '" + keyForSerialization + "' changed, synced to " + syncSources.size + " sources")//, current value: \n" + io.serialize(underlyingVar.now()) + ")")
+      //println("[INFO] history '" + keyForSerialization + "' changed, synced to " + syncSources.size + " sources")//, current value: \n" + io.serialize(underlyingVar.now()) + ")")
     }
 
   }
@@ -83,7 +83,7 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
     if (withoutDefault.nonEmpty) {
       history = withoutDefault
     }
-    println("[INFO] synced history '" + keyForSerialization + "' from all sources, added " + (history.size - eventCount) + " events")//, current value: \n" + io.serialize(underlyingVar.now()))
+    //println("[INFO] synced history '" + keyForSerialization + "' from all sources, added " + (history.size - eventCount) + " events")//, current value: \n" + io.serialize(underlyingVar.now()))
 
     updateVarFromHistory()
   }

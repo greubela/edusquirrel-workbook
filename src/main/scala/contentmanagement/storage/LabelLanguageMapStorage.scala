@@ -22,7 +22,7 @@ case class LabelLanguageMapStorage(languageTriplesStorage: LanguageMapTriplesSto
     })(ec)
   }
 
-  override protected def initialValueWhileLoading(in: String): Option[LanguageMap[HumanLanguage]] = Some(languageMapLoadingMap)
+  override protected def defaultValueWhileLoading(in: String): Option[LanguageMap[HumanLanguage]] = Some(languageMapLoadingMap)
 
   override protected def formatInputForLogging(in: String): String = in
 

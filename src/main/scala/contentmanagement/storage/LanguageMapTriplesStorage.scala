@@ -21,7 +21,7 @@ case class LanguageMapTriplesStorage(val fileDataStorage: DataStorage[FileDescri
     futFile.map(loadedFile => triplesFromFile(loadedFile))(ec)
   }
 
-  override protected def initialValueWhileLoading(in: FileDescription): Option[List[MapEntryTripel]] = None
+  override protected def defaultValueWhileLoading(in: FileDescription): Option[List[MapEntryTripel]] = None
 
   override protected def formatInputForLogging(in: FileDescription): String = in.toString
 

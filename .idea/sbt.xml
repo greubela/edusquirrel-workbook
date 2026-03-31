@@ -8,11 +8,11 @@
         <option name="externalProjectPath" value="$PROJECT_DIR$/../2025 04 28 ScalaJS 3 Basic Project" />
         <option name="modules">
           <set>
-            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook" />
-            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\project" />
+            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\2025 04 28 ScalaJS 3 Basic Project" />
+            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\2025 04 28 ScalaJS 3 Basic Project\project" />
           </set>
         </option>
-        <option name="sbtVersion" value="1.11.4" />
+        <option name="sbtVersion" value="1.10.0" />
         <option name="useSbtShellForBuild" value="true" />
         <option name="useSbtShellForImport" value="true" />
       </SbtProjectSettings>

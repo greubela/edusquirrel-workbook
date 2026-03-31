@@ -43,7 +43,7 @@ object TurtleStitchFacade {
     protected def executeLoading(xml: String)(ec: scala.concurrent.ExecutionContext): scala.concurrent.Future[String] =
       withFreshEditor(_.simulateGreenFlag(xml).toFuture)(using ec)
 
-    override protected def initialValueWhileLoading(in: String): Option[String] = None
+    override protected def defaultValueWhileLoading(in: String): Option[String] = None
 
     protected def formatInputForLogging(in: String): String = "XmlInput(" + in.length + ", " + in.substring(0, 20) + ")"
 
@@ -54,10 +54,11 @@ object TurtleStitchFacade {
 
     protected def executeLoading(in: (String, HumanLanguage))(ec: scala.concurrent.ExecutionContext): scala.concurrent.Future[String] = {
       val (xml, language) = in
+      println("execute loading program svg data src storage")
       withFreshEditor(_.calcProgramSvg(xml, turtleLang(language)).toFuture)(using ec)
     }
 
-    protected def initialValueWhileLoading(in: (String, HumanLanguage)): Option[String] =
+    protected def defaultValueWhileLoading(in: (String, HumanLanguage)): Option[String] =
       Some(TranslationMaps.languageMapImageLoading.getInLanguage(in._2))
 
     protected def formatInputForLogging(in: (String, HumanLanguage)): String = "XmlInput(" + in._1.length + ", " + in._1.substring(0, 60) + ", " + turtleLang(in._2) + ")"
@@ -70,7 +71,7 @@ object TurtleStitchFacade {
     protected def executeLoading(xml: String)(ec: scala.concurrent.ExecutionContext): scala.concurrent.Future[String] =
       withFreshEditor(_.simulateGreenFlag(xml).toFuture)(using ec)
 
-    protected def initialValueWhileLoading(in: String): Option[String] = None
+    protected def defaultValueWhileLoading(in: String): Option[String] = None
 
     protected def formatInputForLogging(in: String): String = "XmlInput(" + in.length + ", " + in.substring(0, 60) + ")"
 

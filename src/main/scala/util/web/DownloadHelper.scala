@@ -26,7 +26,6 @@ object DownloadHelper {
     promise.future
   }
 
-
   def fetchUrl(url: String): Future[Array[Byte]] = {
     val promise = Promise[Array[Byte]]()
     dom.fetch(url).`then`(

@@ -32,7 +32,7 @@ case class FileDataStorage() extends DataStorage[FileDescription, LoadedFile]("F
   }
 
 
-  override protected def initialValueWhileLoading(in: FileDescription): Option[LoadedFile] = None
+  override protected def defaultValueWhileLoading(in: FileDescription): Option[LoadedFile] = None
 
   override protected def formatInputForLogging(in: FileDescription): String = in.toString
 
