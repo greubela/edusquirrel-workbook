@@ -56,7 +56,8 @@
 
   // ---- Script loader ----
   const SNAP_SCRIPT_ORDER = [
-    "turtlestitchsrc/morphic.js",
+    // adjustes
+    "adjusted/adjustedMorphic.js", // adjusted
     "turtlestitchsrc/symbols.js",
     "turtlestitchsrc/widgets.js",
     "turtlestitchsrc/blocks.js",
