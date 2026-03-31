@@ -23,6 +23,11 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
       |forward(120)
       |left(120)
       |forward(120)
+      |x: int = 3
+      |print(x)
+      |y: float = 5
+      |z = x + y
+      |print("res: " + str(z))
       |""".stripMargin
   )
   private val stdoutVar = Var("")
