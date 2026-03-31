@@ -31,7 +31,10 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
 
   val outputCanvas: WebCanvas = WebCanvas(1000, 1000)
   val turtleBackend: TurtleBackend = new TurtleBackendImpl(outputCanvas)
-  val pyodideEnvironment: PyodideEnvironment = new PyodideEnvironment(ExecutionBackend.Worker)
+  // Turtle integration uses synchronous JS callbacks (for values such as default_turtle_id).
+  // Those callbacks are not return-value-compatible with the worker bridge, so keep this
+  // environment on the main thread.
+  val pyodideEnvironment: PyodideEnvironment = new PyodideEnvironment(ExecutionBackend.MainThread)
 
   private val inputEditorElement = CodeMirrorEditor(codeVar)
 
@@ -119,9 +122,14 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
   )
 
   private val setupFuture = for {
-    _ <- pyodideEnvironment.registerModule("_scalajs_turtle_backend", backendCallbacks)
+    _ <- pyodideEnvironment.registerSyncModule("_scalajs_turtle_backend", backendCallbacks)
     _ <- pyodideEnvironment.executeCodeFull(PythonExecutionRequest(TurtlePythonModule.moduleBootstrapPython, None))
   } yield isReady.set(true)
+
+  setupFuture.failed.foreach { error =>
+    stderrVar.set(s"Failed to initialize turtle runtime: ${error.getMessage}")
+    dom.console.error("Failed to initialize turtle runtime", error)
+  }
 
   private val startButton: Element = button(
     "Run turtle",

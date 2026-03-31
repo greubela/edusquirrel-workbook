@@ -21,10 +21,20 @@ final class PyodideEnvironment(
       case ExecutionBackend.Worker => new WorkerBackend()
     }
 
+  def registerSyncModule(
+                          moduleName: String,
+                          callbacks: Map[String, Seq[js.Any] => js.Any]
+                        ): Future[Unit] = delegate.registerSyncModule(moduleName, callbacks)
+
+  def registerAsyncModule(
+                           moduleName: String,
+                           callbacks: Map[String, Seq[js.Any] => Unit]
+                         ): Future[Unit] = delegate.registerAsyncModule(moduleName, callbacks)
+
   def registerModule(
                       moduleName: String,
                       callbacks: Map[String, Seq[js.Any] => js.Any]
-                    ): Future[Unit] = delegate.registerModule(moduleName, callbacks)
+                    ): Future[Unit] = registerSyncModule(moduleName, callbacks)
   
 
   def executeCodeFull(
@@ -59,10 +69,15 @@ object PyodideEnvironment {
 
   trait Backend {
 
-    def registerModule(
-                        moduleName: String,
-                        callbacks: Map[String, Seq[js.Any] => js.Any]
-                      ): Future[Unit]
+    def registerSyncModule(
+                            moduleName: String,
+                            callbacks: Map[String, Seq[js.Any] => js.Any]
+                          ): Future[Unit]
+
+    def registerAsyncModule(
+                             moduleName: String,
+                             callbacks: Map[String, Seq[js.Any] => Unit]
+                           ): Future[Unit]
 
     def executeCodeFull(
                          request: PythonExecutionRequest

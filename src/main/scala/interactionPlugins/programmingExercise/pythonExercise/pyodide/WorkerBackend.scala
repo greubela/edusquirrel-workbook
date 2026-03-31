@@ -23,7 +23,7 @@ private[pyodide] final class WorkerBackend() extends Backend {
     )
 
   private val pending = mutable.Map.empty[String, Promise[js.Dynamic]]
-  private val moduleCallbacks = mutable.Map.empty[(String, String), Seq[js.Any] => js.Any]
+  private val moduleCallbacks = mutable.Map.empty[(String, String), Seq[js.Any] => Unit]
   private var initialized = false
   private var requestCounter = 0
 
@@ -86,9 +86,19 @@ private[pyodide] final class WorkerBackend() extends Backend {
       state = PythonExecutionResult.PythonExecutionState("", "", Map.empty, Map.empty, 0, PythonExecutionRunningState.RUNNING)
     )
 
-  override def registerModule(
+  override def registerSyncModule(
       moduleName: String,
       callbacks: Map[String, Seq[js.Any] => js.Any]
+  ): Future[Unit] =
+    Future.failed(
+      new UnsupportedOperationException(
+        s"Worker backend does not support synchronous JS module callbacks for module '$moduleName'. Register this module with main-thread backend, or use registerAsyncModule."
+      )
+    )
+
+  override def registerAsyncModule(
+      moduleName: String,
+      callbacks: Map[String, Seq[js.Any] => Unit]
   ): Future[Unit] = {
     callbacks.foreach { case (name, fn) => moduleCallbacks.update((moduleName, name), fn) }
     init().flatMap { _ =>
