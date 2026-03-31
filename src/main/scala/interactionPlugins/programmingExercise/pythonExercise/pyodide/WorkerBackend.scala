@@ -71,8 +71,11 @@ private[pyodide] final class WorkerBackend() extends Backend {
       else PythonExecutionRunningState.FINISHED_ERROR
 
     PythonExecutionResult.PythonExecutionState(
-      stdout = "",
-      stderr = asStringOption(parsed.exception).getOrElse(""),
+      stdout = asStringOption(parsed.stdout).getOrElse(""),
+      stderr = List(asStringOption(parsed.stderr), asStringOption(parsed.exception))
+        .flatten
+        .filter(_.nonEmpty)
+        .mkString("\n"),
       globals = asStringMap(parsed.globals),
       locals = asStringMap(parsed.locals),
       linesExecuted = asInt(parsed.linesExecuted),

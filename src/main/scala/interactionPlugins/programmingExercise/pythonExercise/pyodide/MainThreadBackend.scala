@@ -23,14 +23,20 @@ final class MainThreadBackend() extends Backend {
       |import unittest
       |import io
       |import sys
+      |import contextlib
       |
       |HELPER_EXCLUDE = {
-      |    "json", "traceback", "unittest", "io", "sys",
+      |    "json", "traceback", "unittest", "io", "sys", "contextlib",
       |    "ExecutionLineLimitExceeded",
       |    "_snapshot_namespace", "_run_with_optional_line_limit",
       |    "_execute_code_impl", "_execute_unit_test_impl",
-      |    "HELPER_EXCLUDE"
+      |    "HELPER_EXCLUDE", "USER_NS"
       |}
+      |
+      |# Dedicated execution namespace for user code.
+      |# Keeping this separate from helper globals prevents helper internals from
+      |# leaking into user variable snapshots and keeps environment state isolated.
+      |USER_NS = {"__name__": "__main__"}
       |
       |class ExecutionLineLimitExceeded(Exception):
       |    pass
@@ -101,15 +107,23 @@ final class MainThreadBackend() extends Backend {
       |
       |
       |def _execute_code_impl(code, max_lines):
+      |    stream_out = io.StringIO()
+      |    stream_err = io.StringIO()
+      |    user_ns = USER_NS
+      |
       |    def body():
-      |        exec(compile(code, "<user_code>", "exec"), globals(), locals())
+      |        with contextlib.redirect_stdout(stream_out):
+      |            with contextlib.redirect_stderr(stream_err):
+      |                exec(compile(code, "<user_code>", "exec"), user_ns, user_ns)
       |
       |    run = _run_with_optional_line_limit(body, ["<user_code>"], max_lines)
       |    result = {
       |        "success": run["ok"],
+      |        "stdout": stream_out.getvalue(),
+      |        "stderr": stream_err.getvalue(),
       |        "exception": run["exception"],
-      |        "globals": _snapshot_namespace(globals()),
-      |        "locals": _snapshot_namespace(locals()),
+      |        "globals": _snapshot_namespace(user_ns),
+      |        "locals": _snapshot_namespace(user_ns),
       |        "linesExecuted": run["linesExecuted"],
       |        "maxExecutedLines": max_lines,
       |        "lineLimitHit": run["lineLimitHit"]
@@ -118,17 +132,22 @@ final class MainThreadBackend() extends Backend {
       |
       |
       |def _execute_unit_test_impl(code, test_code, test_name, max_lines):
-      |    stream = io.StringIO()
+      |    stream_out = io.StringIO()
+      |    stream_err = io.StringIO()
+      |    test_stream = io.StringIO()
+      |    user_ns = USER_NS
       |
       |    def body():
-      |        exec(compile(code, "<user_code>", "exec"), globals(), locals())
-      |        exec(compile(test_code, "<unit_tests>", "exec"), globals(), locals())
+      |        with contextlib.redirect_stdout(stream_out):
+      |            with contextlib.redirect_stderr(stream_err):
+      |                exec(compile(code, "<user_code>", "exec"), user_ns, user_ns)
+      |                exec(compile(test_code, "<unit_tests>", "exec"), user_ns, user_ns)
       |        suite = unittest.defaultTestLoader.loadTestsFromName(test_name, module=None)
-      |        runner = unittest.TextTestRunner(stream=stream, verbosity=2)
-      |        globals()["__last_test_result"] = runner.run(suite)
+      |        runner = unittest.TextTestRunner(stream=test_stream, verbosity=2)
+      |        user_ns["__last_test_result"] = runner.run(suite)
       |
       |    run = _run_with_optional_line_limit(body, ["<user_code>", "<unit_tests>"], max_lines)
-      |    test_result = globals().get("__last_test_result", None)
+      |    test_result = user_ns.get("__last_test_result", None)
       |    if test_result is not None and run["ok"]:
       |        success = test_result.wasSuccessful()
       |        failures = [f[1] for f in test_result.failures]
@@ -140,11 +159,12 @@ final class MainThreadBackend() extends Backend {
       |
       |    result = {
       |        "success": success,
-      |        "stdout": stream.getvalue(),
+      |        "stdout": stream_out.getvalue() + test_stream.getvalue(),
+      |        "stderr": stream_err.getvalue(),
       |        "failures": failures,
       |        "errors": errors,
-      |        "globals": _snapshot_namespace(globals()),
-      |        "locals": _snapshot_namespace(locals()),
+      |        "globals": _snapshot_namespace(user_ns),
+      |        "locals": _snapshot_namespace(user_ns),
       |        "exception": run["exception"],
       |        "linesExecuted": run["linesExecuted"],
       |        "maxExecutedLines": max_lines,
@@ -198,8 +218,11 @@ final class MainThreadBackend() extends Backend {
       else PythonExecutionRunningState.FINISHED_ERROR
 
     PythonExecutionResult.PythonExecutionState(
-      stdout = "",
-      stderr = asStringOption(parsed.exception).getOrElse(""),
+      stdout = asStringOption(parsed.stdout).getOrElse(""),
+      stderr = List(asStringOption(parsed.stderr), asStringOption(parsed.exception))
+        .flatten
+        .filter(_.nonEmpty)
+        .mkString("\n"),
       globals = asStringMap(parsed.globals),
       locals = asStringMap(parsed.locals),
       linesExecuted = asInt(parsed.linesExecuted),
