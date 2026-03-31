@@ -27,6 +27,7 @@ case class TurtleBackend(canvas: WebCanvas) extends SyncModuleBackend {
   private var backgroundColor: String = "#ffffff"
 
   override def handleModuleCall(callbackName: String, args: Seq[JsDataVariable]): js.Any = {
+    print("handleModuleCall(" + callbackName + ", " + args.mkString(", ") + ")")
     callbackName match {
       case "forward" | "fd" => forward(numberArg(args, 0)); js.undefined
       case "backward" | "back" | "bk" => forward(-numberArg(args, 0)); js.undefined
