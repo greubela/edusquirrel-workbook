@@ -36,7 +36,7 @@ case class HtmlGPTMessenger(workbookInfoVar: Var[WorkbookInfo], textInteraction:
 
   private val scaffoldingEditor = SimpleMessengerEditor(interactionVariable)
 
-  private val scaffoldingButton = HtmlButtonElement(HtmlGPTMessenger.scaffoldingButtonSvg, event => {
+  private val scaffoldingButton = HtmlButtonElement(workbookInfoVar, HtmlGPTMessenger.scaffoldingButtonSvg, event => {
     workbookInfoVar.now().fullscreenElement.setElementFullscreen(scaffoldingEditor.getDomElement())
   })
 

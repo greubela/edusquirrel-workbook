@@ -12,7 +12,7 @@ import workbook.htmlElements.basic.HtmlButtonElement
 case class HtmlGptGrader(workbookInfoVar: Var[WorkbookInfo], textInteraction: WorkbookInteraction[String]) extends HtmlWorkbookElement {
 
 
-  private val submitButton = HtmlButtonElement(HtmlGptGrader.gradingButtonSvg, event => {
+  private val submitButton = HtmlButtonElement(workbookInfoVar, HtmlGptGrader.gradingButtonSvg, event => {
     println("grading not implemented yet :( ")
 
     val llmResponse = AccessLLM("https://ypcgzj23.trafficplex.cloud/chat").sendRequest(

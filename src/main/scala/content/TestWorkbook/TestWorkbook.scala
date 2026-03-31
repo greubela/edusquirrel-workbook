@@ -7,7 +7,9 @@ import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap
 import contentmanagement.webElements.HtmlAppElement
 import interactionPlugins.blockEnvironment.exercise.{ProgrammingExerciseFactory, TurtleProgrammingInteraction}
 import interactionPlugins.gpt.GptExerciseFactory
+import interactionPlugins.programmingExercise.pythonExercise.turtle.TurtleExerciseDemo
 import interactionPlugins.visualNovel.VisualNovelPanel
+import workbook.htmlElements.basic.{HtmlButtonElement, HtmlUnsafeHtmlInstructionElement}
 import workbook.model.*
 import workbook.model.abstractions.WorkbookInteraction
 import workbook.model.info.{WorkbookConfig, WorkbookInfo}
@@ -64,6 +66,15 @@ object TestWorkbook {
     HtmlExerciseContainer(workbookInfoVar, gptElements)
   }
 
+  private def turtleDemo(workbookInfoVar: Var[WorkbookInfo]): HtmlExerciseContainer = {
+    val turtleDemo = TurtleExerciseDemo()
+
+    HtmlExerciseContainer(workbookInfoVar, List(
+      HtmlUnsafeHtmlInstructionElement(workbookInfoVar, "EmbroideryWorkbook/Ex1Instr2"),
+      HtmlButtonElement(workbookInfoVar, "turtle-demo-button", event => workbookInfoVar.now().fullscreenElement.setElementFullscreen(turtleDemo.getDomElement()))
+    ))
+  }
+
   private def blockProgCont(workbookInfoVar: Var[WorkbookInfo]): HtmlExerciseContainer = {
     val progElements = ProgrammingExerciseFactory.createTurtleProgrammingExercise(workbookInfoVar, "prog-007", defaultTitle, ProgrammingExerciseFactory.DefaultPentagonExpectedResult)
     HtmlExerciseContainer(workbookInfoVar, progElements)
@@ -72,10 +83,13 @@ object TestWorkbook {
   private def visualNovelCont(workbookInfoVar: Var[WorkbookInfo]): HtmlExerciseContainer = {
     ??? // todo
   }
-  
- 
+
+
   def createTestSection(workbookInfoVar: Var[WorkbookInfo]): WorkbookSection = {
-    val contList = List(
+
+
+    val contList: List[HtmlExerciseContainer] = List(
+      turtleDemo(workbookInfoVar),
       gptCont(workbookInfoVar),
       blockProgCont(workbookInfoVar)
     )
@@ -94,7 +108,7 @@ object TestWorkbook {
   }
 
   def createTestWorkbook(fullscreenElement: HtmlFullScreenContainerElement): Workbook = {
-    val defaultInfo = WorkbookInfo(List[HumanLanguage](AppLanguage.English, AppLanguage.German, AppLanguage.Ukrainian, AppLanguage.Danish, AppLanguage.Turkish),fullscreenElement, WorkbookConfig(AppLanguage.German, None, User("TestUser", "dummy@test.de")), Map())
+    val defaultInfo = WorkbookInfo(List[HumanLanguage](AppLanguage.English, AppLanguage.German, AppLanguage.Ukrainian, AppLanguage.Danish, AppLanguage.Turkish), fullscreenElement, WorkbookConfig(AppLanguage.German, None, User("TestUser", "dummy@test.de")), Map())
     val workbookInfoVar = Var(defaultInfo)
 
     val sec = createTestSection(workbookInfoVar)
