@@ -23,7 +23,7 @@ private[pyodide] final class WorkerBackend() extends Backend {
     )
 
   private val pending = mutable.Map.empty[String, Promise[js.Dynamic]]
-  private val moduleCallbacks = mutable.Map.empty[(String, String), Seq[js.Any] => Unit]
+  private val moduleCallbacks = mutable.Map.empty[(String, String), Seq[js.Any] => js.Any]
   private var initialized = false
   private var requestCounter = 0
 
@@ -88,7 +88,7 @@ private[pyodide] final class WorkerBackend() extends Backend {
 
   override def registerModule(
       moduleName: String,
-      callbacks: Map[String, Seq[js.Any] => Unit]
+      callbacks: Map[String, Seq[js.Any] => js.Any]
   ): Future[Unit] = {
     callbacks.foreach { case (name, fn) => moduleCallbacks.update((moduleName, name), fn) }
     init().flatMap { _ =>
