@@ -2,6 +2,7 @@ package interactionPlugins.programmingExercise.pythonExercise.turtle
 
 import contentmanagement.model.color.{AppColor, RGBColor}
 import contentmanagement.webElements.genericHtmlElements.canvas.{AppCanvas, WebCanvas}
+import org.scalajs.dom
 import util.numbers.AlgebriteNumber
 
 import scala.collection.mutable
@@ -85,6 +86,83 @@ final class TurtleBackendImpl(canvas: AppCanvas[?]) extends TurtleBackend {
       )
     }
   }
+
+  private def asDouble(v: js.Any): Double =
+    js.typeOf(v) match {
+      case "number" => v.asInstanceOf[Double]
+      case "string" => v.toString.toDouble
+      case "boolean" => if v.asInstanceOf[Boolean] then 1.0 else 0.0
+      case _ => v.toString.toDouble
+    }
+
+  private def asInt(v: js.Any): Int = asDouble(v).toInt
+  private def asString(v: js.Any): String = v.toString
+
+  // JS-friendly API for direct pyodide module registration ---------------------------------------
+
+  def default_turtle_id(): Int = defaultTurtleId
+  def prepare_for_run(): Unit = prepareForRun()
+  def create_turtle(): Int = createTurtle()
+
+  def call_turtle(id: Int, method: String, args: js.Any*): js.Any =
+    method match {
+      case "forward" | "fd" => turtleForward(id, asDouble(args(0)))
+      case "backward" | "back" | "bk" => turtleBackward(id, asDouble(args(0)))
+      case "left" | "lt" => turtleLeft(id, asDouble(args(0)))
+      case "right" | "rt" => turtleRight(id, asDouble(args(0)))
+      case "goto" | "setpos" | "setposition" => turtleGoTo(id, asDouble(args(0)), asDouble(args(1)))
+      case "setx" => turtleSetX(id, asDouble(args(0)))
+      case "sety" => turtleSetY(id, asDouble(args(0)))
+      case "setheading" | "seth" => turtleSetHeading(id, asDouble(args(0)))
+      case "home" => turtleHome(id)
+      case "penup" | "pu" | "up" => turtlePenUp(id)
+      case "pendown" | "pd" | "down" => turtlePenDown(id)
+      case "pensize" | "width" =>
+        if args.nonEmpty then { turtlePenSizeSet(id, asDouble(args(0))); ().asInstanceOf[js.Any] }
+        else turtlePenSizeGet(id).asInstanceOf[js.Any]
+      case "pencolor" =>
+        if args.nonEmpty then { turtlePenColorSet(id, asString(args(0))); ().asInstanceOf[js.Any] }
+        else turtlePenColorGet(id).asInstanceOf[js.Any]
+      case "fillcolor" =>
+        if args.nonEmpty then { turtleFillColorSet(id, asString(args(0))); ().asInstanceOf[js.Any] }
+        else turtleFillColorGet(id).asInstanceOf[js.Any]
+      case "color" =>
+        if args.nonEmpty then {
+          val pen = asString(args(0))
+          val fill = if args.length >= 2 then asString(args(1)) else pen
+          turtleColorSet(id, pen, fill)
+          ().asInstanceOf[js.Any]
+        } else turtleColorGet(id).asInstanceOf[js.Any]
+      case "position" | "pos" => turtlePosition(id).asInstanceOf[js.Any]
+      case "xcor" => turtleXCor(id).asInstanceOf[js.Any]
+      case "ycor" => turtleYCor(id).asInstanceOf[js.Any]
+      case "heading" => turtleHeading(id).asInstanceOf[js.Any]
+      case "distance" => turtleDistance(id, asDouble(args(0)), asDouble(args(1))).asInstanceOf[js.Any]
+      case "isdown" => turtleIsDown(id).asInstanceOf[js.Any]
+      case "showturtle" | "st" => turtleShowTurtle(id)
+      case "hideturtle" | "ht" => turtleHideTurtle(id)
+      case "isvisible" => turtleIsVisible(id).asInstanceOf[js.Any]
+      case "clear" => turtleClear(id)
+      case "reset" => turtleReset(id)
+      case _ =>
+        dom.console.warn(s"Unsupported turtle method: $method")
+        ().asInstanceOf[js.Any]
+    }
+
+  def call_screen(method: String, args: js.Any*): js.Any =
+    method match {
+      case "bgcolor" =>
+        if args.nonEmpty then { screenBgColorSet(asString(args(0))); ().asInstanceOf[js.Any] }
+        else screenBgColorGet().asInstanceOf[js.Any]
+      case "clear" | "clearscreen" => screenClearScreen()
+      case "reset" | "resetscreen" => screenResetScreen()
+      case "title" =>
+        if args.nonEmpty then screenTitleSet(asString(args(0)))
+        else screenTitleGet().asInstanceOf[js.Any]
+      case _ =>
+        dom.console.warn(s"Unsupported screen method: $method")
+        ().asInstanceOf[js.Any]
+    }
 
   override def createTurtle(): Int = {
     val id = nextId

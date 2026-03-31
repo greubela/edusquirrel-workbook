@@ -5,18 +5,18 @@ object TurtlePythonModule {
     """
       |import sys
       |import types
-      |import _scalajs_turtle_backend as backend
+      |from scalaturtle import turtle as backend
       |
       |class _Screen:
       |    def __getattr__(self, name):
-      |        return lambda *args, _backend=backend: _backend.call_screen(name, *args)
+      |        return lambda *args: backend.call_screen(name, *args)
       |
       |class Turtle:
       |    def __init__(self):
       |        self._id = backend.create_turtle()
       |
       |    def __getattr__(self, name):
-      |        return lambda *args, _backend=backend, _id=self._id: _backend.call_turtle(_id, name, *args)
+      |        return lambda *args: backend.call_turtle(self._id, name, *args)
       |
       |_screen = _Screen()
       |_default_id = backend.default_turtle_id()
@@ -25,7 +25,7 @@ object TurtlePythonModule {
       |    return _screen
       |
       |def __getattr__(name):
-      |    return lambda *args, _backend=backend, _id=_default_id: _backend.call_turtle(_id, name, *args)
+      |    return lambda *args: backend.call_turtle(_default_id, name, *args)
       |
       |m = types.ModuleType("turtle")
       |m.Turtle = Turtle

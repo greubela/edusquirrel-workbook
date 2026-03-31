@@ -254,6 +254,11 @@ final class MainThreadBackend() extends Backend {
       name -> ((args: Seq[js.Any]) => { cb(args); ().asInstanceOf[js.Any] })
     })
 
+  override def registerJsModule(moduleName: String, module: js.Object): Future[Unit] =
+    initPy().map { py =>
+      py.registerJsModule(moduleName, module)
+    }
+
   override def executeCodeFull(request: PythonExecutionRequest): Future[PythonExecutionResult] =
     initPy().flatMap { py =>
       val maxExpr = request.maxLinesToExecute.fold("None")(_.toString)
