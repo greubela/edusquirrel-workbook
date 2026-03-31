@@ -168,10 +168,10 @@ final class MainThreadBackend() extends Backend {
         }
     }
 
-  private def wrapCallback(fn: Seq[js.Any] => Unit): js.Function =
+  private def wrapCallback(fn: Seq[js.Any] => js.Any): js.Function =
     js.Dynamic.global
       .eval("(function(f){ return function(){ return f(Array.prototype.slice.call(arguments)); }; })")
-      .asInstanceOf[js.Function1[js.Function1[js.Array[js.Any], Unit], js.Function]](
+      .asInstanceOf[js.Function1[js.Function1[js.Array[js.Any], js.Any], js.Function]](
         js.Any.fromFunction1((args: js.Array[js.Any]) => fn(args.toSeq))
       )
 
@@ -199,7 +199,7 @@ final class MainThreadBackend() extends Backend {
 
   override def registerModule(
       moduleName: String,
-      callbacks: Map[String, Seq[js.Any] => Unit]
+      callbacks: Map[String, Seq[js.Any] => js.Any]
   ): Future[Unit] =
     initPy().map { py =>
       val dict = js.Dynamic.literal()

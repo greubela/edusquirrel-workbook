@@ -23,7 +23,7 @@ final class PyodideEnvironment(
 
   def registerModule(
                       moduleName: String,
-                      callbacks: Map[String, Seq[js.Any] => Unit]
+                      callbacks: Map[String, Seq[js.Any] => js.Any]
                     ): Future[Unit] = delegate.registerModule(moduleName, callbacks)
   
 
@@ -61,7 +61,7 @@ object PyodideEnvironment {
 
     def registerModule(
                         moduleName: String,
-                        callbacks: Map[String, Seq[js.Any] => Unit]
+                        callbacks: Map[String, Seq[js.Any] => js.Any]
                       ): Future[Unit]
 
     def executeCodeFull(
