@@ -69,6 +69,7 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
         stderrVar.set(result.state.stderr)
         globalsVar.set(js.JSON.stringify(result.state.globals.toJSDictionary.asInstanceOf[js.Any]))
       case scala.util.Failure(exception) =>
+        println("execution failure: " + exception.getMessage)
         stderrVar.set(exception.getMessage)
     }
   }
