@@ -213,7 +213,7 @@ final class MainThreadBackend() extends Backend {
       state = PythonExecutionResult.PythonExecutionState("", "", Map.empty, Map.empty, 0, PythonExecutionRunningState.RUNNING)
     )
 
-  override def registerModule(
+  override def registerSyncModule(
       moduleName: String,
       callbacks: Map[String, Seq[js.Any] => js.Any]
   ): Future[Unit] =
@@ -222,6 +222,14 @@ final class MainThreadBackend() extends Backend {
       callbacks.foreach { case (name, fn) => dict.updateDynamic(name)(wrapCallback(fn)) }
       py.registerJsModule(moduleName, dict.asInstanceOf[js.Object])
     }
+
+  override def registerAsyncModule(
+      moduleName: String,
+      callbacks: Map[String, Seq[js.Any] => Unit]
+  ): Future[Unit] =
+    registerSyncModule(moduleName, callbacks.map { case (name, cb) =>
+      name -> ((args: Seq[js.Any]) => { cb(args); ().asInstanceOf[js.Any] })
+    })
 
   override def executeCodeFull(request: PythonExecutionRequest): Future[PythonExecutionResult] =
     initPy().flatMap { py =>
