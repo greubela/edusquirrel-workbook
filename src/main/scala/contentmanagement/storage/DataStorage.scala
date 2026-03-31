@@ -200,7 +200,6 @@ object DataStorage {
         case None => tup._2.languageStringFromMap(LabelLanguageMapStorage.languageMapLoadingMap)
       }
     })
-
   }
 
 

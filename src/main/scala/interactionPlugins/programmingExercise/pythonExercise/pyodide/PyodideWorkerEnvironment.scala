@@ -16,11 +16,10 @@ import scala.scalajs.js.JSConverters.*
 
 class PyodideWorkerEnvironment extends PyodideEnvironment {
 
-  private val worker =
-    new dom.Worker(
-      "./js/PyodideLoader.js",
-      js.Dynamic.literal(`type` = "module").asInstanceOf[dom.WorkerOptions]
-    )
+  private val worker = new dom.Worker(
+    "./js/PyodideLoader.js",
+    js.Dynamic.literal(`type` = "module").asInstanceOf[dom.WorkerOptions]
+  )
 
   private val pending: mutable.Map[String, Promise[js.Dynamic]] = mutable.Map.empty
   private val registeredBackends: mutable.Map[String, AsyncModuleBackend] = mutable.Map.empty
@@ -117,9 +116,9 @@ class PyodideWorkerEnvironment extends PyodideEnvironment {
   }
 
   private def executeUnitTestsBatch(
-      pythonCode: PythonExecutionRequest,
-      unitTests: List[PythonUnitTest]
-  ): Future[List[PythonUnitTestGradingResult]] =
+                                     pythonCode: PythonExecutionRequest,
+                                     unitTests: List[PythonUnitTest]
+                                   ): Future[List[PythonUnitTestGradingResult]] =
     init().flatMap { _ =>
       val payload = js.Dictionary[js.Any](
         "code" -> pythonCode.pythonCode,
@@ -159,18 +158,18 @@ class PyodideWorkerEnvironment extends PyodideEnvironment {
     }
 
   override def executeUnitTestsFull(
-      pythonCode: PythonExecutionRequest,
-      unitTests: List[PythonUnitTest]
-  ): Future[PythonUnitTestResult] =
+                                     pythonCode: PythonExecutionRequest,
+                                     unitTests: List[PythonUnitTest]
+                                   ): Future[PythonUnitTestResult] =
     executeUnitTestsBatch(pythonCode, unitTests).map { tests =>
       PythonUnitTestResult(userCode = pythonCode, tests = tests.toSet)
     }
 
   override def executeUnitTestLinewise(
-      pythonCode: PythonExecutionRequest,
-      unitTests: List[PythonUnitTest],
-      updateAtLeastEveryNLines: Int
-  ): L.Var[PythonUnitTestResult] = {
+                                        pythonCode: PythonExecutionRequest,
+                                        unitTests: List[PythonUnitTest],
+                                        updateAtLeastEveryNLines: Int
+                                      ): L.Var[PythonUnitTestResult] = {
     val initial = unitTests.map { test =>
       PythonUnitTestGradingResult(test, PyodideHelper.runningExecutionResult(pythonCode), GradingStatus.UNFINISHED)
     }

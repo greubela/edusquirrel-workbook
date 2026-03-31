@@ -7,7 +7,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @deprecated("Use TurtleStitchEditor directly", "2026-03")
 object TurtleStitchFacade {
-
+  
   val programSvgDataSrcStorage: DataStorage[(String, HumanLanguage), String] =
     TurtleStitchEditor.programSvgDataSrcStorage
 

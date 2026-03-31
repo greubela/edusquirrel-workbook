@@ -149,7 +149,13 @@ object TurtleStitchEditor {
     def clearProjectChangeListener(): Unit = js.native
     def destroy(): Unit = js.native
   }
-
+  
+  
+  
+  /*private def withSingletonEditor[T](task: JsEditorHandle => Future[T])(using ec: ExecutionContext): Future[T] = {
+    
+  }*/
+  
   private def withFreshEditor[T](task: JsEditorHandle => Future[T])(using ec: ExecutionContext): Future[T] = {
     TurtleStitchPoCNative
       .createEditor(js.Dynamic.literal(hidden = true).asInstanceOf[js.Object])
