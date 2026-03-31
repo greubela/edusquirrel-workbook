@@ -6,7 +6,7 @@ import contentmanagement.webElements.HtmlAppElement
 import contentmanagement.webElements.genericHtmlElements.canvas.WebCanvas
 import contentmanagement.webElements.genericHtmlElements.editor.CodeMirrorEditor
 import interactionPlugins.programmingExercise.pythonExercise.data.PythonExecutionRequest
-import interactionPlugins.programmingExercise.pythonExercise.pyodide.{PyodideEnvironment, PyodideWorkerEnvironment}
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.{MainThreadBackend, PyodideEnvironment}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js
@@ -34,7 +34,7 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
 
   private val outputCanvas: WebCanvas = WebCanvas(1000, 1000)
   private val pyodideEnvironment: PyodideEnvironment = {
-    val environment = new PyodideWorkerEnvironment()
+    val environment = new MainThreadBackend()
     environment.register(TurtleBackend(outputCanvas))
     environment
   }
