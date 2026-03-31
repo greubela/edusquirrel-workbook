@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L
 import interactionPlugins.programmingExercise.pythonExercise.data.*
 import interactionPlugins.programmingExercise.pythonExercise.data.PythonUnitTestResult.{GradingStatus, PythonUnitTestGradingResult}
 import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideEnvironment.*
-import util.web.JsHelpers.promiseToFuture
+import util.web.JsHelpers.{asBoolean, asStringOption, asStringSeq, promiseToFuture}
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -134,27 +134,53 @@ class MainThreadBackend extends PyodideEnvironment {
     resultVar
   }
 
-  private def executeSingleUnitTest(
+  private def executeUnitTestsBatch(
       pythonCode: PythonExecutionRequest,
-      test: PythonUnitTest
-  ): Future[PythonUnitTestGradingResult] =
+      unitTests: List[PythonUnitTest]
+  ): Future[List[PythonUnitTestGradingResult]] =
     initIfNeeded().map { pyodide =>
+      val testsPayload = unitTests.zipWithIndex.map { case (test, idx) =>
+        js.Dynamic.literal(index = idx, testName = test.testName, testCode = test.testCode)
+      }.toJSArray
       val resultText = pyodide.runPython(
-        s"_execute_unit_test_impl(${js.JSON.stringify(pythonCode.pythonCode)}, ${js.JSON.stringify(test.testCode)}, ${js.JSON.stringify(test.testName)}, ${js.JSON.stringify(pythonCode.maxLinesToExecute.map(_.asInstanceOf[js.Any]).getOrElse(null))})"
+        s"_execute_unit_tests_batch_impl(${js.JSON.stringify(pythonCode.pythonCode)}, ${js.JSON.stringify(testsPayload)}, ${js.JSON.stringify(pythonCode.maxLinesToExecute.map(_.asInstanceOf[js.Any]).getOrElse(null))})"
       )
-      val parsed = js.JSON.parse(resultText.toString).asInstanceOf[js.Dynamic]
-      val executionResult = PythonExecutionResult(pythonCode, PyodideHelper.toExecutionState(parsed))
-      val gradingStatus =
-        if executionResult.state.runningState == PythonExecutionResult.PythonExecutionRunningState.FINISHED_SUCCESS then GradingStatus.SUCCESS
-        else GradingStatus.FAILED
-      PythonUnitTestGradingResult(test = test, result = executionResult, gradingStatus = gradingStatus)
+      val parsedBatch = js.JSON.parse(resultText.toString).asInstanceOf[js.Dynamic]
+      val lineLimitHit = asBoolean(parsedBatch.lineLimitHit)
+      val sharedStdout = asStringOption(parsedBatch.stdout).getOrElse("")
+      val sharedStderr = asStringOption(parsedBatch.stderr).getOrElse("")
+      val batchException = asStringOption(parsedBatch.exception).orNull
+
+      parsedBatch.tests.asInstanceOf[js.Array[js.Dynamic]].toSeq.map { testPayload =>
+        val index = testPayload.index.asInstanceOf[Int]
+        val test = unitTests(index)
+        val details = (asStringSeq(testPayload.failures) ++ asStringSeq(testPayload.errors)).mkString("\n").trim
+        val combinedStderr = List(sharedStderr, asStringOption(testPayload.stderr).getOrElse(""), details).filter(_.nonEmpty).mkString("\n")
+
+        val parsedExecutionPayload = js.Dynamic.literal(
+          success = asBoolean(testPayload.success) && !lineLimitHit,
+          stdout = sharedStdout + asStringOption(testPayload.stdout).getOrElse(""),
+          stderr = combinedStderr,
+          exception = if lineLimitHit then batchException else asStringOption(testPayload.exception).orNull,
+          globals = parsedBatch.globals,
+          locals = parsedBatch.locals,
+          linesExecuted = parsedBatch.linesExecuted,
+          lineLimitHit = parsedBatch.lineLimitHit
+        )
+        val executionResult = PythonExecutionResult(pythonCode, PyodideHelper.toExecutionState(parsedExecutionPayload))
+        val gradingStatus =
+          if executionResult.state.runningState == PythonExecutionResult.PythonExecutionRunningState.FINISHED_SUCCESS then GradingStatus.SUCCESS
+          else GradingStatus.FAILED
+
+        PythonUnitTestGradingResult(test = test, result = executionResult, gradingStatus = gradingStatus)
+      }.toList
     }
 
   override def executeUnitTestsFull(
       pythonCode: PythonExecutionRequest,
       unitTests: List[PythonUnitTest]
   ): Future[PythonUnitTestResult] =
-    Future.sequence(unitTests.map(executeSingleUnitTest(pythonCode, _))).map { tests =>
+    executeUnitTestsBatch(pythonCode, unitTests).map { tests =>
       PythonUnitTestResult(userCode = pythonCode, tests = tests.toSet)
     }
 
@@ -166,18 +192,8 @@ class MainThreadBackend extends PyodideEnvironment {
     val initial = unitTests.map(test => PythonUnitTestGradingResult(test, PyodideHelper.runningExecutionResult(pythonCode), GradingStatus.UNFINISHED)).toSet
     val resultVar = L.Var(PythonUnitTestResult(pythonCode, initial))
 
-    unitTests.foldLeft(Future.successful(List.empty[PythonUnitTestGradingResult])) { (accFuture, test) =>
-      for {
-        acc <- accFuture
-        next <- executeSingleUnitTest(pythonCode, test)
-      } yield {
-        val finished = (acc :+ next).toSet
-        val unfinished = unitTests.filterNot(testCase => finished.exists(_.test == testCase)).map { remaining =>
-          PythonUnitTestGradingResult(remaining, PyodideHelper.runningExecutionResult(pythonCode), GradingStatus.UNFINISHED)
-        }
-        resultVar.set(PythonUnitTestResult(pythonCode, finished ++ unfinished))
-        acc :+ next
-      }
+    executeUnitTestsBatch(pythonCode, unitTests).foreach { completed =>
+      resultVar.set(PythonUnitTestResult(pythonCode, completed.toSet))
     }
 
     resultVar
