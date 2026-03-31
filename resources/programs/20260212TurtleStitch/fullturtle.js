@@ -116,6 +116,9 @@
       this._loopBound = this._loop.bind(this);
       this._languageScriptElement = null;
       this._instanceId = nextEditorInstanceId++;
+      this._onProjectChange = null;
+      this._projectXmlDebounce = null;
+      this._projectXmlPushInFlight = false;
     }
 
     static sleep(ms) {
@@ -150,6 +153,7 @@
 
       const ide = new IDE_Morph({ noAutoFill: true, noCloud: true });
       ide.openIn(world);
+      this._instrumentProjectChanges(ide);
 
       this.wrap = wrap;
       this.canvas = canvas;
@@ -158,6 +162,50 @@
 
       this.forceLayout();
       this._scheduleLoop();
+    }
+
+    _instrumentProjectChanges(ide) {
+      const originalRecordUnsavedChanges = typeof ide.recordUnsavedChanges === "function"
+        ? ide.recordUnsavedChanges.bind(ide)
+        : null;
+
+      if (originalRecordUnsavedChanges) {
+        ide.recordUnsavedChanges = (...args) => {
+          const result = originalRecordUnsavedChanges(...args);
+          this._scheduleProjectXmlPush();
+          return result;
+        };
+      }
+
+      const originalOpenProjectString = typeof ide.openProjectString === "function"
+        ? ide.openProjectString.bind(ide)
+        : null;
+
+      if (originalOpenProjectString) {
+        ide.openProjectString = (...args) => {
+          const result = originalOpenProjectString(...args);
+          this._scheduleProjectXmlPush();
+          return result;
+        };
+      }
+    }
+
+    _scheduleProjectXmlPush() {
+      if (!this._onProjectChange) return;
+      if (this._projectXmlDebounce) clearTimeout(this._projectXmlDebounce);
+      this._projectXmlDebounce = setTimeout(async () => {
+        if (this._projectXmlPushInFlight || !this._onProjectChange) return;
+        this._projectXmlPushInFlight = true;
+        try {
+          const xml = await this.getProjectXml();
+          this._onProjectChange(xml);
+        } catch (e) {
+          warn("project xml callback failed:", e);
+        } finally {
+          this._projectXmlPushInFlight = false;
+          this._projectXmlDebounce = null;
+        }
+      }, 120);
     }
 
     _scheduleLoop() {
@@ -263,6 +311,29 @@
       try { this.ide.selectSprite?.(this.ide.currentSprite); } catch (_) {}
       this.forceLayout();
       this.stepWorld(3);
+    }
+
+    async setProjectXml(xml_content) {
+      if (typeof xml_content !== "string") throw new Error("xml_content must be a string");
+      await this.loadProjectXmlCanonical(xml_content);
+      this._scheduleProjectXmlPush();
+    }
+
+    async getProjectXml() {
+      await this.boot();
+      if (!this.ide?.serializer || !this.ide?.scenes || !this.ide?.scene) {
+        throw new Error("IDE is not ready for XML serialization.");
+      }
+      return this.ide.serializer.serialize(new Project(this.ide.scenes, this.ide.scene));
+    }
+
+    setProjectChangeListener(callback) {
+      this._onProjectChange = typeof callback === "function" ? callback : null;
+      this._scheduleProjectXmlPush();
+    }
+
+    clearProjectChangeListener() {
+      this._onProjectChange = null;
     }
 
     allProgramPictures() {
@@ -455,6 +526,10 @@
         cancelAnimationFrame(this._rafId);
       }
 
+      if (this._projectXmlDebounce) {
+        clearTimeout(this._projectXmlDebounce);
+      }
+
       try { this.ide?.stopAllScripts?.(); } catch (_) {}
       try { this.ide?.destroy?.(); } catch (_) {}
       try { this.world?.destroy?.(); } catch (_) {}
@@ -477,6 +552,8 @@
 
       this._rafId = null;
       this._languageScriptElement = null;
+      this._onProjectChange = null;
+      this._projectXmlDebounce = null;
       this.world = null;
       this.ide = null;
       this.canvas = null;

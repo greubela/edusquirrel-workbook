@@ -57,7 +57,7 @@ case class TurtleFileShowProgramXmlCard(
   private def getSvgProgramDisplayElement(humanLanguage: HumanLanguage, xml: Option[String]): Element = {
     if (xml.isEmpty) mapDataSrcStringToElement(None)
     else {
-      val elVar = TurtleStitchFacade.programSvgDataSrcStorage.loadIntoVariable((xml.get, humanLanguage))(ExecutionContext.global)
+      val elVar = TurtleStitchEditor.programSvgDataSrcStorage.loadIntoVariable((xml.get, humanLanguage))(ExecutionContext.global)
       div(
         child <-- elVar.signal.map(mapDataSrcStringToElement)
       )
@@ -67,7 +67,7 @@ case class TurtleFileShowProgramXmlCard(
   private def getPngOutputDisplayElement(xml: Option[String]): Element = {
     if (xml.isEmpty) mapDataSrcStringToElement(None)
     else {
-      val elVar = TurtleStitchFacade.programOutputDataSrcStorage.loadIntoVariable(xml.get)(ExecutionContext.global)
+      val elVar = TurtleStitchEditor.programOutputDataSrcStorage.loadIntoVariable(xml.get)(ExecutionContext.global)
       div(
         child <-- elVar.signal.map(mapDataSrcStringToElement)
       )
