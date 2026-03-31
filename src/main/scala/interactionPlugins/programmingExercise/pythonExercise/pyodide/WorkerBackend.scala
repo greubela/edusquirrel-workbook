@@ -115,6 +115,13 @@ private[pyodide] final class WorkerBackend() extends Backend {
     }
   }
 
+  override def registerJsModule(moduleName: String, module: js.Object): Future[Unit] =
+    Future.failed(
+      new UnsupportedOperationException(
+        s"Worker backend cannot register direct JS object modules for module '$moduleName'. Use main-thread backend."
+      )
+    )
+
   override def executeCodeFull(request: PythonExecutionRequest): Future[PythonExecutionResult] =
     init().flatMap { _ =>
       val payload = js.Dictionary[js.Any]("code" -> request.pythonCode)
