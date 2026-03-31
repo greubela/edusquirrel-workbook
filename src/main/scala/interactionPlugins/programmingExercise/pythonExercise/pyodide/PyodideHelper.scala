@@ -41,9 +41,10 @@ object PyodideHelper {
       |import io
       |import sys
       |import contextlib
+      |import types
       |
       |HELPER_EXCLUDE = {
-      |    "json", "traceback", "unittest", "io", "sys", "contextlib",
+      |    "json", "traceback", "unittest", "io", "sys", "contextlib", "types",
       |    "ExecutionLineLimitExceeded",
       |    "_snapshot_namespace", "_run_with_optional_line_limit",
       |    "_execute_code_impl", "_execute_unit_test_impl",
@@ -75,6 +76,11 @@ object PyodideHelper {
       |            continue
       |        kind = type(v).__name__
       |        if callable(v):
+      |            # Keep user-defined callables (functions / classes declared in user
+      |            # code), but hide technical helper callables such as imported proxy
+      |            # functions from runtime support modules.
+      |            if getattr(v, "__module__", None) != "__main__":
+      |                continue
       |            tag = "callable"
       |        else:
       |            tag = "value"

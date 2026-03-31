@@ -33,6 +33,11 @@ class MainThreadBackend extends PyodideEnvironment {
       )
     }
 
+  private def rawArgsToSeq(rawArgs: js.Any): Seq[js.Any] =
+    if js.isUndefined(rawArgs) || rawArgs == null then Seq.empty
+    else if js.Array.isArray(rawArgs) then rawArgs.asInstanceOf[js.Array[js.Any]].toSeq
+    else Seq(rawArgs)
+
   private def createAsyncModuleProxy(backend: AsyncModuleBackend): js.Object = {
     val handler = js.Dynamic.literal(
       get = { (_: js.Any, prop: js.Any) =>
@@ -44,10 +49,10 @@ class MainThreadBackend extends PyodideEnvironment {
           case "__all__" => backend.exportedNames.toJSArray
           case name if name.startsWith("__") => js.undefined
           case _ =>
-            ((rawArgs: js.Array[js.Any]) => {
-              backend.handleModuleCall(callbackName, toJsDataVariables(rawArgs.toSeq))
+            ((rawArgs: js.Any) => {
+              backend.handleModuleCall(callbackName, toJsDataVariables(rawArgsToSeq(rawArgs)))
               js.undefined
-            }): js.Function1[js.Array[js.Any], js.UndefOr[js.Any]]
+            }): js.Function1[js.Any, js.UndefOr[js.Any]]
         }
       }: js.Function2[js.Any, js.Any, js.Any]
     )
@@ -75,8 +80,8 @@ class MainThreadBackend extends PyodideEnvironment {
           )
           case name if name.startsWith("__") => js.undefined
           case _ =>
-            ((rawArgs: js.Array[js.Any]) =>
-              backend.handleModuleCall(callbackName, toJsDataVariables(rawArgs.toSeq))): js.Function1[js.Array[js.Any], js.Any]
+            ((rawArgs: js.Any) =>
+              backend.handleModuleCall(callbackName, toJsDataVariables(rawArgsToSeq(rawArgs)))): js.Function1[js.Any, js.Any]
         }
       }: js.Function2[js.Any, js.Any, js.Any]
     )
