@@ -6,7 +6,8 @@ import contentmanagement.webElements.HtmlAppElement
 import contentmanagement.webElements.genericHtmlElements.canvas.WebCanvas
 import contentmanagement.webElements.genericHtmlElements.editor.CodeMirrorEditor
 import interactionPlugins.programmingExercise.pythonExercise.data.PythonExecutionRequest
-import interactionPlugins.programmingExercise.pythonExercise.pyodide.{MainThreadBackend, PyodideEnvironment, PyodideWorkerEnvironment}
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideWorkerClient.PythonRunReport
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.{MainThreadBackend, PyodideEnvironment, PyodideWorkerClient}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js
@@ -28,13 +29,20 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
       |print("res: " + str(z))
       |""".stripMargin
   )
+
   private val stdoutVar = Var("")
   private val stderrVar = Var("")
   private val globalsVar = Var("{}")
 
   private val outputCanvas: WebCanvas = WebCanvas(1000, 1000)
 
-  private val asyncBackend = {
+  private val turtleBackend = {
+    val client = PyodideWorkerClient()
+    client.addCallbacks("turtle", List("left", "forward", "right", "goto"))
+    client
+  }
+
+  /*private val asyncBackend = {
     val environment = new PyodideWorkerEnvironment()
     environment.register(TurtleAsyncBackend(outputCanvas))
     environment
@@ -44,9 +52,7 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
     val environment = new MainThreadBackend()
     environment.register(TurtleBackend(outputCanvas))
     environment
-  }
-
-  private val pyodideEnvironment: PyodideEnvironment = syncBackend
+  }*/
 
   private val inputEditorElement = CodeMirrorEditor(codeVar)
 
@@ -62,6 +68,13 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
     globalsVar.set("{}")
 
     val request = PythonExecutionRequest(codeVar.now(), Some(20_000))
+    turtleBackend.run(codeVar.now()).onComplete {
+      case scala.util.Success(runReport: PythonRunReport) =>
+        println("successfully executed, commands: " + runReport.callbackOps.mkString("\n", " -> ", "\n") + "report: " + runReport)
+      case scala.util.Failure(exception) =>
+        println("execution failure: " + exception.getMessage)
+        stderrVar.set(exception.getMessage)
+    }/*
     pyodideEnvironment.executeCodeFull(request).onComplete {
       case scala.util.Success(result) =>
         println("successfully executed, result: " + result)
@@ -71,7 +84,7 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
       case scala.util.Failure(exception) =>
         println("execution failure: " + exception.getMessage)
         stderrVar.set(exception.getMessage)
-    }
+    }*/
   }
 
   private val outputStdOut: Element = pre(child.text <-- stdoutVar.signal)

@@ -36,7 +36,7 @@ object PyodideWorkerClient {
 
 }
 
-final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.mjs") {
+final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.js") {
 
   private val worker =
     new dom.Worker(
