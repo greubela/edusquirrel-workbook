@@ -31,6 +31,20 @@ object TurtlePythonModule {
       |m.Turtle = Turtle
       |m.Screen = Screen
       |m.__getattr__ = __getattr__
+      |m.__all__ = [
+      |    "Turtle", "Screen",
+      |    "forward", "fd",
+      |    "backward", "back", "bk",
+      |    "left", "lt", "right", "rt",
+      |    "goto", "setpos", "setposition", "setx", "sety",
+      |    "setheading", "seth", "home",
+      |    "penup", "pu", "up", "pendown", "pd", "down",
+      |    "pensize", "width",
+      |    "pencolor", "fillcolor", "color",
+      |    "position", "pos", "xcor", "ycor", "heading", "distance",
+      |    "isdown", "showturtle", "st", "hideturtle", "ht", "isvisible",
+      |    "clear", "reset"
+      |]
       |sys.modules["turtle"] = m
       |""".stripMargin
 }
