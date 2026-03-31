@@ -47,12 +47,14 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
   )
 
   private def runCurrentCode(): Unit = {
+    println("runCurrentCode!: " + codeVar.now())
     stdoutVar.set("")
     stderrVar.set("")
     globalsVar.set("{}")
 
     val request = PythonExecutionRequest(codeVar.now(), Some(20_000))
     pyodideEnvironment.executeCodeFull(request).foreach { result =>
+      println("successfully executed, result: " + result)
       stdoutVar.set(result.state.stdout)
       stderrVar.set(result.state.stderr)
       globalsVar.set(js.JSON.stringify(result.state.globals.toJSDictionary.asInstanceOf[js.Any]))
