@@ -28,6 +28,12 @@ class PyodideWorkerEnvironment extends PyodideEnvironment {
   private var destroyed = false
   private var initFuture: Option[Future[Unit]] = None
 
+
+  private def failAllPending(cause: Throwable): Unit = {
+    pending.values.foreach(_.tryFailure(cause))
+    pending.clear()
+  }
+
   worker.onmessage = { (e: dom.MessageEvent) =>
     val data = e.data.asInstanceOf[js.Dynamic]
     data.`type`.asInstanceOf[String] match {
@@ -53,6 +59,12 @@ class PyodideWorkerEnvironment extends PyodideEnvironment {
         ()
     }
   }: js.Function1[dom.MessageEvent, Any]
+
+  worker.onerror = { (e: dom.ErrorEvent) =>
+    val message = Option(e.message).filter(_.nonEmpty).getOrElse("Pyodide worker error")
+    failAllPending(new RuntimeException(message))
+  }: js.Function1[dom.ErrorEvent, Any]
+
 
   private def nextRequestId(): String = {
     requestCounter += 1
@@ -181,8 +193,7 @@ class PyodideWorkerEnvironment extends PyodideEnvironment {
     destroyed = true
     worker.postMessage(js.Dynamic.literal(`type` = "destroy"))
     worker.terminate()
-    pending.values.foreach(_.tryFailure(new RuntimeException("Worker destroyed")))
-    pending.clear()
+    failAllPending(new RuntimeException("Worker destroyed"))
     registeredBackends.clear()
     initFuture = None
   }

@@ -12,7 +12,19 @@ const isWorkerContext =
 if (!isWorkerContext) {
   void ensureMainThreadLoader();
 } else {
-  const { loadPyodide } = await import(PYODIDE_MJS_URL);
+  let loadPyodideFn = null;
+  let loadPyodidePromise = null;
+
+  function ensureWorkerLoader() {
+    if (loadPyodideFn) return Promise.resolve(loadPyodideFn);
+    if (!loadPyodidePromise) {
+      loadPyodidePromise = import(PYODIDE_MJS_URL).then((module) => {
+        loadPyodideFn = module.loadPyodide;
+        return loadPyodideFn;
+      });
+    }
+    return loadPyodidePromise;
+  }
 
   let pyodide = null;
   let envGlobals = null;
@@ -262,6 +274,7 @@ def _execute_unit_tests_batch_impl(code, tests, max_lines):
 
   async function init() {
     if (initialized) return;
+    const loadPyodide = await ensureWorkerLoader();
     pyodide = await loadPyodide();
     await bootstrapState();
     initialized = true;
