@@ -1,21 +1,35 @@
-import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/v0.29.3/full/pyodide.mjs";
+const PYODIDE_MJS_URL = "https://cdn.jsdelivr.net/pyodide/v0.29.3/full/pyodide.mjs";
 
-let pyodide = null;
-let envGlobals = null;
-let envLocals = null;
-let initialized = false;
-
-function installStdStreams() {
-  pyodide.setStdout({
-    batched: (msg) => self.postMessage({ type: "stdout", text: msg + "\n" })
-  });
-  pyodide.setStderr({
-    batched: (msg) => self.postMessage({ type: "stderr", text: msg + "\n" })
-  });
+async function ensureMainThreadLoader() {
+  if (typeof globalThis.loadPyodide === "function") return;
+  const pyodideModule = await import(PYODIDE_MJS_URL);
+  globalThis.loadPyodide = pyodideModule.loadPyodide;
 }
 
-function helpersPython() {
-  return `
+const isWorkerContext =
+  typeof WorkerGlobalScope !== "undefined" && globalThis instanceof WorkerGlobalScope;
+
+if (!isWorkerContext) {
+  void ensureMainThreadLoader();
+} else {
+  const { loadPyodide } = await import(PYODIDE_MJS_URL);
+
+  let pyodide = null;
+  let envGlobals = null;
+  let envLocals = null;
+  let initialized = false;
+
+  function installStdStreams() {
+    pyodide.setStdout({
+      batched: (msg) => self.postMessage({ type: "stdout", text: msg + "\n" })
+    });
+    pyodide.setStderr({
+      batched: (msg) => self.postMessage({ type: "stderr", text: msg + "\n" })
+    });
+  }
+
+  function helpersPython() {
+    return `
 import json
 import traceback
 import unittest
@@ -150,88 +164,89 @@ def _execute_unit_test_impl(code, test_code, test_name, max_lines):
     }
     return json.dumps(result)
 `;
-}
-
-async function init() {
-  if (initialized) return;
-  pyodide = await loadPyodide();
-  installStdStreams();
-  envGlobals = pyodide.runPython("dict(__name__='__main__')");
-  envLocals = envGlobals;
-  await pyodide.runPythonAsync(helpersPython(), {
-    globals: envGlobals,
-    locals: envLocals,
-    filename: "<bootstrap>"
-  });
-  initialized = true;
-}
-
-async function registerModule(moduleName, functionNames) {
-  const members = {};
-  for (const fnName of functionNames) {
-    members[fnName] = (...args) => {
-      self.postMessage({
-        type: "module-callback",
-        moduleName,
-        functionName: fnName,
-        args
-      });
-      return undefined;
-    };
   }
-  pyodide.registerJsModule(moduleName, members);
-}
 
-function parseMaybeLimit(msg) {
-  return typeof msg.maxExecutedLines === "number" ? msg.maxExecutedLines : null;
-}
-
-self.onmessage = async (event) => {
-  const msg = event.data;
-  try {
-    switch (msg.type) {
-      case "init": {
-        await init();
-        self.postMessage({ type: "ready", requestId: msg.requestId });
-        break;
-      }
-      case "registerModule": {
-        await init();
-        await registerModule(msg.moduleName, msg.functionNames);
-        self.postMessage({ type: "registered", requestId: msg.requestId, moduleName: msg.moduleName });
-        break;
-      }
-      case "executeCode": {
-        await init();
-        const resultText = await pyodide.runPythonAsync(
-          `_execute_code_impl(${JSON.stringify(msg.code)}, ${JSON.stringify(parseMaybeLimit(msg))})`,
-          { globals: envGlobals, locals: envLocals, filename: "<bridge>" }
-        );
-        self.postMessage({ type: "result", requestId: msg.requestId, payload: JSON.parse(resultText) });
-        break;
-      }
-      case "executeUnitTest": {
-        await init();
-        const resultText = await pyodide.runPythonAsync(
-          `_execute_unit_test_impl(${JSON.stringify(msg.code)}, ${JSON.stringify(msg.testCode)}, ${JSON.stringify(msg.testName)}, ${JSON.stringify(parseMaybeLimit(msg))})`,
-          { globals: envGlobals, locals: envLocals, filename: "<bridge>" }
-        );
-        self.postMessage({ type: "result", requestId: msg.requestId, payload: JSON.parse(resultText) });
-        break;
-      }
-      case "destroy": {
-        self.close();
-        break;
-      }
-      default: {
-        self.postMessage({ type: "error", requestId: msg.requestId, error: `Unknown message type: ${msg.type}` });
-      }
-    }
-  } catch (err) {
-    self.postMessage({
-      type: "error",
-      requestId: msg.requestId,
-      error: err && err.stack ? String(err.stack) : String(err)
+  async function init() {
+    if (initialized) return;
+    pyodide = await loadPyodide();
+    installStdStreams();
+    envGlobals = pyodide.runPython("dict(__name__='__main__')");
+    envLocals = envGlobals;
+    await pyodide.runPythonAsync(helpersPython(), {
+      globals: envGlobals,
+      locals: envLocals,
+      filename: "<bootstrap>"
     });
+    initialized = true;
   }
-};
+
+  async function registerModule(moduleName, functionNames) {
+    const members = {};
+    for (const fnName of functionNames) {
+      members[fnName] = (...args) => {
+        self.postMessage({
+          type: "module-callback",
+          moduleName,
+          functionName: fnName,
+          args
+        });
+        return undefined;
+      };
+    }
+    pyodide.registerJsModule(moduleName, members);
+  }
+
+  function parseMaybeLimit(msg) {
+    return typeof msg.maxExecutedLines === "number" ? msg.maxExecutedLines : null;
+  }
+
+  self.onmessage = async (event) => {
+    const msg = event.data;
+    try {
+      switch (msg.type) {
+        case "init": {
+          await init();
+          self.postMessage({ type: "ready", requestId: msg.requestId });
+          break;
+        }
+        case "registerModule": {
+          await init();
+          await registerModule(msg.moduleName, msg.functionNames);
+          self.postMessage({ type: "registered", requestId: msg.requestId, moduleName: msg.moduleName });
+          break;
+        }
+        case "executeCode": {
+          await init();
+          const resultText = await pyodide.runPythonAsync(
+            `_execute_code_impl(${JSON.stringify(msg.code)}, ${JSON.stringify(parseMaybeLimit(msg))})`,
+            { globals: envGlobals, locals: envLocals, filename: "<bridge>" }
+          );
+          self.postMessage({ type: "result", requestId: msg.requestId, payload: JSON.parse(resultText) });
+          break;
+        }
+        case "executeUnitTest": {
+          await init();
+          const resultText = await pyodide.runPythonAsync(
+            `_execute_unit_test_impl(${JSON.stringify(msg.code)}, ${JSON.stringify(msg.testCode)}, ${JSON.stringify(msg.testName)}, ${JSON.stringify(parseMaybeLimit(msg))})`,
+            { globals: envGlobals, locals: envLocals, filename: "<bridge>" }
+          );
+          self.postMessage({ type: "result", requestId: msg.requestId, payload: JSON.parse(resultText) });
+          break;
+        }
+        case "destroy": {
+          self.close();
+          break;
+        }
+        default: {
+          self.postMessage({ type: "error", requestId: msg.requestId, error: `Unknown message type: ${msg.type}` });
+        }
+      }
+    } catch (err) {
+      self.postMessage({
+        type: "error",
+        requestId: msg.requestId,
+        error: err && err.stack ? String(err.stack) : String(err)
+      });
+    }
+  };
+}

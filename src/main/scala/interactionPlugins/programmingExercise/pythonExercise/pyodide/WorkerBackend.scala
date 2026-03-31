@@ -18,7 +18,7 @@ private[pyodide] final class WorkerBackend() extends Backend {
 
   private val worker =
     new dom.Worker(
-      "./js/PyodideWorker.js",
+      "./js/PyodideLoader.js",
       js.Dynamic.literal(`type` = "module").asInstanceOf[dom.WorkerOptions]
     )
 

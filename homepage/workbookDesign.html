@@ -26,8 +26,8 @@
     <link rel="stylesheet" href="https://unpkg.com/jsxgraph@1.8.0/distrib/jsxgraph.css">
     <script src="https://unpkg.com/jsxgraph@1.8.0/distrib/jsxgraphcore.js"></script>-->
 
-    <!-- Pyodide (provides global loadPyodide used by PythonRuntimeService)
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>-->
+    <!-- Pyodide loader (provides global loadPyodide for main-thread backend and worker entrypoint). -->
+    <script type="module" src="./js/PyodideLoader.js"></script>
     <script type="module" src="./js/CodeMirrorLoader.js"></script>
 
     <link rel="stylesheet" href="css/messenger.css">
