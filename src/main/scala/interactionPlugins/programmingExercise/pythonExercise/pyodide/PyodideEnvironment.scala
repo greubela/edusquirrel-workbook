@@ -12,7 +12,6 @@ object PyodideEnvironment {
 
   case class JsDataVariable(varName: String, jsTypeOf: String, stringRepresentation: String)
 
-
   trait AsyncModuleBackend() {
     def moduleName: String
 
@@ -47,6 +46,8 @@ trait PyodideEnvironment {
 
   def register(asyncBackend: AsyncModuleBackend): Unit
 
+  def register(syncBackend: SyncModuleBackend): Unit
+
   def executeCodeFull(request: PythonExecutionRequest): Future[PythonExecutionResult]
 
   def executeCodeLinewise(request: PythonExecutionRequest, updateAtLeastEveryNLines: Int = 1): Var[PythonExecutionResult]
@@ -60,4 +61,3 @@ trait PyodideEnvironment {
   def destroy(): Unit
 
 }
-
