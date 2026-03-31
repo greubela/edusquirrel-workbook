@@ -1,5 +1,5 @@
 package interactionPlugins.programmingExercise.pythonExercise.turtle
-
+/*
 import contentmanagement.model.color.{AppColor, RGBColor}
 import contentmanagement.webElements.genericHtmlElements.canvas.WebCanvas
 import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideEnvironment
@@ -178,3 +178,4 @@ case class TurtleAsyncBackend(canvas: WebCanvas) extends AsyncModuleBackend {
 
   private def toCanvasY(y: AlgebriteNumber): Double = canvas.getHeight / 2.0 - y.toDouble
 }
+*/

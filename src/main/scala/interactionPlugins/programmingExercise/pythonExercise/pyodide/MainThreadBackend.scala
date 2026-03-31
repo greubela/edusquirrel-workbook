@@ -1,5 +1,6 @@
 package interactionPlugins.programmingExercise.pythonExercise.pyodide
 
+/*
 import com.raquo.laminar.api.L
 import interactionPlugins.programmingExercise.pythonExercise.data.*
 import interactionPlugins.programmingExercise.pythonExercise.data.PythonUnitTestResult.{GradingStatus, PythonUnitTestGradingResult}
@@ -11,7 +12,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
-
 class MainThreadBackend extends PyodideEnvironment {
 
   private var destroyed = false
@@ -221,3 +221,4 @@ class MainThreadBackend extends PyodideEnvironment {
     syncBackends.clear()
   }
 }
+*/

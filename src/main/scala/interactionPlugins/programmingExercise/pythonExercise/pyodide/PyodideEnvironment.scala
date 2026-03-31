@@ -1,5 +1,5 @@
 package interactionPlugins.programmingExercise.pythonExercise.pyodide
-
+/*
 import com.raquo.laminar.api.L.Var
 import interactionPlugins.programmingExercise.pythonExercise.data.*
 import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideEnvironment.*
@@ -62,3 +62,4 @@ trait PyodideEnvironment {
   def destroy(): Unit
 
 }
+*/

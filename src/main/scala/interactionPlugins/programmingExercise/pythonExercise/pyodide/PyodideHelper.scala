@@ -5,7 +5,7 @@ import interactionPlugins.programmingExercise.pythonExercise.data.{PythonExecuti
 import util.web.JsHelpers.{asBoolean, asInt, asStringMap, asStringOption}
 
 import scala.scalajs.js
-
+/*
 object PyodideHelper {
 
   def toExecutionState(parsed: js.Dynamic): PythonExecutionResult.PythonExecutionState = {
@@ -252,4 +252,4 @@ object PyodideHelper {
       |    }
       |    return json.dumps(result)
       |""".stripMargin
-}
+}*/

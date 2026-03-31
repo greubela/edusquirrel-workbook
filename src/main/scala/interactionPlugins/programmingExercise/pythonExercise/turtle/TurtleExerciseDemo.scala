@@ -7,7 +7,7 @@ import contentmanagement.webElements.genericHtmlElements.canvas.WebCanvas
 import contentmanagement.webElements.genericHtmlElements.editor.CodeMirrorEditor
 import interactionPlugins.programmingExercise.pythonExercise.data.PythonExecutionRequest
 import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideWorkerClient.PythonRunReport
-import interactionPlugins.programmingExercise.pythonExercise.pyodide.{MainThreadBackend, PyodideEnvironment, PyodideWorkerClient}
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.*
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js
