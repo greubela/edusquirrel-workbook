@@ -7,7 +7,6 @@ import contentmanagement.webElements.genericHtmlElements.canvas.WebCanvas
 import contentmanagement.webElements.genericHtmlElements.editor.CodeMirrorEditor
 import interactionPlugins.programmingExercise.pythonExercise.data.PythonExecutionRequest
 import interactionPlugins.programmingExercise.pythonExercise.pyodide.{PyodideEnvironment, PyodideWorkerEnvironment}
-import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideEnvironment.*
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js
@@ -33,19 +32,14 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
   private val stderrVar = Var("")
   private val globalsVar = Var("{}")
 
-  val outputCanvas: WebCanvas = WebCanvas(1000, 1000)
-  //val turtleBackend: TurtleBackendImpl = new TurtleBackendImpl(outputCanvas)
-  // Turtle integration uses synchronous JS callbacks (for values such as default_turtle_id).
-  // Those callbacks are not return-value-compatible with the worker bridge, so keep this
-  // environment on the main thread.
-  val pyodideEnvironment: PyodideEnvironment = {
-    val res = new PyodideWorkerEnvironment()
-    res.register(TurtleBackend(outputCanvas))
-    res
+  private val outputCanvas: WebCanvas = WebCanvas(1000, 1000)
+  private val pyodideEnvironment: PyodideEnvironment = {
+    val environment = new PyodideWorkerEnvironment()
+    environment.register(TurtleBackend(outputCanvas))
+    environment
   }
 
   private val inputEditorElement = CodeMirrorEditor(codeVar)
-
 
   private val startButton: Element = button(
     "Run turtle",
@@ -53,22 +47,21 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
   )
 
   private def runCurrentCode(): Unit = {
-    /*if !isReady.now() then return
-    turtleBackend.prepareForRun()
     stdoutVar.set("")
     stderrVar.set("")
     globalsVar.set("{}")
+
     val request = PythonExecutionRequest(codeVar.now(), Some(20_000))
     pyodideEnvironment.executeCodeFull(request).foreach { result =>
       stdoutVar.set(result.state.stdout)
       stderrVar.set(result.state.stderr)
       globalsVar.set(js.JSON.stringify(result.state.globals.toJSDictionary.asInstanceOf[js.Any]))
-    }*/
+    }
   }
 
-  val outputStdOut: Element = pre(child.text <-- stdoutVar.signal)
-  val outputStdErr: Element = pre(color := "#b00020", child.text <-- stderrVar.signal)
-  val globalVariables: Element = pre(child.text <-- globalsVar.signal)
+  private val outputStdOut: Element = pre(child.text <-- stdoutVar.signal)
+  private val outputStdErr: Element = pre(color := "#b00020", child.text <-- stderrVar.signal)
+  private val globalVariables: Element = pre(child.text <-- globalsVar.signal)
 
   override def getDomElement(): L.Element = {
     div(

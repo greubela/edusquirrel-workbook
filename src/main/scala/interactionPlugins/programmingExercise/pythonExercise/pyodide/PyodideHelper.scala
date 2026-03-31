@@ -8,8 +8,7 @@ import scala.scalajs.js
 
 object PyodideHelper {
 
-
-  private def toExecutionState(parsed: js.Dynamic): PythonExecutionResult.PythonExecutionState = {
+  def toExecutionState(parsed: js.Dynamic): PythonExecutionResult.PythonExecutionState = {
     val runningState =
       if asBoolean(parsed.success) then PythonExecutionRunningState.FINISHED_SUCCESS
       else if asBoolean(parsed.lineLimitHit) then PythonExecutionRunningState.FINISHED_LINE_LIMIT
@@ -28,13 +27,13 @@ object PyodideHelper {
     )
   }
 
-  private def runningExecutionResult(request: PythonExecutionRequest): PythonExecutionResult =
+  def runningExecutionResult(request: PythonExecutionRequest): PythonExecutionResult =
     PythonExecutionResult(
       request = request,
       state = PythonExecutionResult.PythonExecutionState("", "", Map.empty, Map.empty, 0, PythonExecutionRunningState.RUNNING)
     )
 
-  private val helperCode =
+  val helperCode: String =
     """
       |import json
       |import traceback
@@ -190,5 +189,4 @@ object PyodideHelper {
       |    }
       |    return json.dumps(result)
       |""".stripMargin
-
 }
