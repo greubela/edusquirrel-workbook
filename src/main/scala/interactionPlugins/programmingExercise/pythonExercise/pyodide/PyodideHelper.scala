@@ -47,7 +47,7 @@ object PyodideHelper {
       |    "json", "traceback", "unittest", "io", "sys", "contextlib", "types",
       |    "ExecutionLineLimitExceeded",
       |    "_snapshot_namespace", "_run_with_optional_line_limit",
-      |    "_execute_code_impl", "_execute_unit_test_impl",
+      |    "_execute_code_impl", "_execute_unit_test_impl", "_execute_unit_tests_batch_impl",
       |    "HELPER_EXCLUDE", "USER_NS"
       |}
       |
@@ -186,6 +186,63 @@ object PyodideHelper {
       |        "stderr": stream_err.getvalue(),
       |        "failures": failures,
       |        "errors": errors,
+      |        "globals": _snapshot_namespace(user_ns),
+      |        "locals": _snapshot_namespace(user_ns),
+      |        "exception": run["exception"],
+      |        "linesExecuted": run["linesExecuted"],
+      |        "maxExecutedLines": max_lines,
+      |        "lineLimitHit": run["lineLimitHit"]
+      |    }
+      |    return json.dumps(result)
+      |
+      |
+      |def _execute_unit_tests_batch_impl(code, tests, max_lines):
+      |    stream_out = io.StringIO()
+      |    stream_err = io.StringIO()
+      |    user_ns = USER_NS
+      |    per_test = []
+      |
+      |    def body():
+      |        with contextlib.redirect_stdout(stream_out):
+      |            with contextlib.redirect_stderr(stream_err):
+      |                exec(compile(code, "<user_code>", "exec"), user_ns, user_ns)
+      |
+      |                for idx, test in enumerate(tests):
+      |                    test_stream = io.StringIO()
+      |                    failures = []
+      |                    errors = []
+      |                    success = False
+      |                    test_exception = None
+      |
+      |                    try:
+      |                        exec(compile(test["testCode"], "<unit_tests>", "exec"), user_ns, user_ns)
+      |                        suite = unittest.defaultTestLoader.loadTestsFromName(test["testName"], module=None)
+      |                        runner = unittest.TextTestRunner(stream=test_stream, verbosity=2)
+      |                        test_result = runner.run(suite)
+      |                        success = test_result.wasSuccessful()
+      |                        failures = [f[1] for f in test_result.failures]
+      |                        errors = [e[1] for e in test_result.errors]
+      |                    except Exception:
+      |                        test_exception = traceback.format_exc()
+      |                        errors = errors + [test_exception]
+      |
+      |                    per_test.append({
+      |                        "index": idx,
+      |                        "testName": test["testName"],
+      |                        "success": success,
+      |                        "stdout": test_stream.getvalue(),
+      |                        "stderr": "",
+      |                        "failures": failures,
+      |                        "errors": errors,
+      |                        "exception": test_exception
+      |                    })
+      |
+      |    run = _run_with_optional_line_limit(body, ["<user_code>", "<unit_tests>"], max_lines)
+      |    result = {
+      |        "success": run["ok"] and all(t.get("success", False) for t in per_test),
+      |        "stdout": stream_out.getvalue(),
+      |        "stderr": stream_err.getvalue(),
+      |        "tests": per_test,
       |        "globals": _snapshot_namespace(user_ns),
       |        "locals": _snapshot_namespace(user_ns),
       |        "exception": run["exception"],
