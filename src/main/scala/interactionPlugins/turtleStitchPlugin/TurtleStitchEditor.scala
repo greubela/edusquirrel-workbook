@@ -7,10 +7,11 @@ import contentmanagement.storage.DataStorage
 import contentmanagement.webElements.HtmlAppElement
 import org.scalajs.dom
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js
 import scala.scalajs.js.Promise as JsPromise
 import scala.scalajs.js.annotation.JSGlobal
+import scala.util.Success
 
 case class TurtleStitchEditor(projektXml: Var[String]) extends HtmlAppElement {
 
@@ -131,6 +132,9 @@ case class TurtleStitchEditor(projektXml: Var[String]) extends HtmlAppElement {
 }
 
 object TurtleStitchEditor {
+  private var singletonEditor: Option[JsEditorHandle] = None
+  private var singletonEditorCreation: Option[Future[JsEditorHandle]] = None
+  private var singletonExecutionQueue: Future[Unit] = Future.successful(())
 
   @js.native
   @JSGlobal("TurtleStitchPoC")
@@ -149,12 +153,51 @@ object TurtleStitchEditor {
     def clearProjectChangeListener(): Unit = js.native
     def destroy(): Unit = js.native
   }
-  
-  
-  
-  /*private def withSingletonEditor[T](task: JsEditorHandle => Future[T])(using ec: ExecutionContext): Future[T] = {
-    
-  }*/
+  private def getOrCreateSingletonEditor()(using ec: ExecutionContext): Future[JsEditorHandle] = synchronized {
+    singletonEditor match {
+      case Some(editor) => Future.successful(editor)
+      case None =>
+        singletonEditorCreation match {
+          case Some(inProgress) => inProgress
+          case None =>
+            val creating = TurtleStitchPoCNative
+              .createEditor(js.Dynamic.literal(hidden = true).asInstanceOf[js.Object])
+              .toFuture
+              .map { editor =>
+                synchronized {
+                  singletonEditor = Some(editor)
+                  singletonEditorCreation = None
+                }
+                editor
+              }
+              .recoverWith { case err =>
+                synchronized {
+                  singletonEditorCreation = None
+                }
+                Future.failed(err)
+              }
+            singletonEditorCreation = Some(creating)
+            creating
+        }
+    }
+  }
+
+  private def withSingletonEditor[T](task: JsEditorHandle => Future[T])(using ec: ExecutionContext): Future[T] = {
+    val result = Promise[T]()
+    synchronized {
+      singletonExecutionQueue = singletonExecutionQueue
+        .recover { case _ => () }
+        .flatMap { _ =>
+          getOrCreateSingletonEditor()
+            .flatMap(task)
+            .transform { taskResult =>
+              result.tryComplete(taskResult)
+              Success(())
+            }
+        }
+    }
+    result.future
+  }
   
   private def withFreshEditor[T](task: JsEditorHandle => Future[T])(using ec: ExecutionContext): Future[T] = {
     TurtleStitchPoCNative
