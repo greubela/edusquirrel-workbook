@@ -46,7 +46,7 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
     environment
   }
 
-  private val pyodideEnvironment: PyodideEnvironment = asyncBackend
+  private val pyodideEnvironment: PyodideEnvironment = syncBackend
 
   private val inputEditorElement = CodeMirrorEditor(codeVar)
 
@@ -56,7 +56,7 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
   )
 
   private def runCurrentCode(): Unit = {
-    println("runCurrentCode!: " + codeVar.now())
+    println("runCurrentCode!: " + codeVar.now().toString.split("\n").length + " lines")
     stdoutVar.set("")
     stderrVar.set("")
     globalsVar.set("{}")
