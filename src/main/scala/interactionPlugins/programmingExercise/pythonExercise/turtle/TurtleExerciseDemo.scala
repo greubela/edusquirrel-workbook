@@ -31,7 +31,7 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
 
   val outputCanvas: WebCanvas = WebCanvas(1000, 1000)
   val turtleBackend: TurtleBackend = new TurtleBackendImpl(outputCanvas)
-  val pyodideEnvironment: PyodideEnvironment = new PyodideEnvironment(ExecutionBackend.MainThread)
+  val pyodideEnvironment: PyodideEnvironment = new PyodideEnvironment(ExecutionBackend.Worker)
 
   private val inputEditorElement = CodeMirrorEditor(codeVar)
 
