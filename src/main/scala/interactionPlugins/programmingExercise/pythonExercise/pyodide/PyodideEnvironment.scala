@@ -15,6 +15,8 @@ object PyodideEnvironment {
   trait AsyncModuleBackend() {
     def moduleName: String
 
+    def exportedNames: Seq[String] = Seq.empty
+
     def handleModuleCall(callbackName: String, args: Seq[JsDataVariable]): Unit
   }
 
@@ -46,7 +48,6 @@ trait PyodideEnvironment {
 
   def register(asyncBackend: AsyncModuleBackend): Unit
 
-  def register(syncBackend: SyncModuleBackend): Unit
 
   def executeCodeFull(request: PythonExecutionRequest): Future[PythonExecutionResult]
 

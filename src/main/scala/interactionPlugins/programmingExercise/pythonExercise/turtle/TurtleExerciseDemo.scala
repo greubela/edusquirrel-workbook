@@ -35,7 +35,7 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
   private val outputCanvas: WebCanvas = WebCanvas(1000, 1000)
   private val pyodideEnvironment: PyodideEnvironment = {
     val environment = new MainThreadBackend()
-    environment.register(TurtleBackend(outputCanvas))
+    environment.register(TurtleAsyncBackend(outputCanvas))
     environment
   }
 
@@ -53,11 +53,14 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
     globalsVar.set("{}")
 
     val request = PythonExecutionRequest(codeVar.now(), Some(20_000))
-    pyodideEnvironment.executeCodeFull(request).foreach { result =>
-      println("successfully executed, result: " + result)
-      stdoutVar.set(result.state.stdout)
-      stderrVar.set(result.state.stderr)
-      globalsVar.set(js.JSON.stringify(result.state.globals.toJSDictionary.asInstanceOf[js.Any]))
+    pyodideEnvironment.executeCodeFull(request).onComplete {
+      case scala.util.Success(result) =>
+        println("successfully executed, result: " + result)
+        stdoutVar.set(result.state.stdout)
+        stderrVar.set(result.state.stderr)
+        globalsVar.set(js.JSON.stringify(result.state.globals.toJSDictionary.asInstanceOf[js.Any]))
+      case scala.util.Failure(exception) =>
+        stderrVar.set(exception.getMessage)
     }
   }
 
