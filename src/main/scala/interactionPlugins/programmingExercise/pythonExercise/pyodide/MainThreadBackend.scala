@@ -37,10 +37,18 @@ class MainThreadBackend extends PyodideEnvironment {
     val handler = js.Dynamic.literal(
       get = { (_: js.Any, prop: js.Any) =>
         val callbackName = prop.toString
-        ((rawArgs: js.Array[js.Any]) => {
-          backend.handleModuleCall(callbackName, toJsDataVariables(rawArgs.toSeq))
-          js.undefined
-        }): js.Function1[js.Array[js.Any], js.UndefOr[js.Any]]
+        callbackName match {
+          case "__name__" => backend.moduleName
+          case "__package__" => ""
+          case "__doc__" => s"Proxy module for ${backend.moduleName}"
+          case "__all__" => backend.exportedNames.toJSArray
+          case name if name.startsWith("__") => js.undefined
+          case _ =>
+            ((rawArgs: js.Array[js.Any]) => {
+              backend.handleModuleCall(callbackName, toJsDataVariables(rawArgs.toSeq))
+              js.undefined
+            }): js.Function1[js.Array[js.Any], js.UndefOr[js.Any]]
+        }
       }: js.Function2[js.Any, js.Any, js.Any]
     )
 
@@ -53,8 +61,23 @@ class MainThreadBackend extends PyodideEnvironment {
     val handler = js.Dynamic.literal(
       get = { (_: js.Any, prop: js.Any) =>
         val callbackName = prop.toString
-        ((rawArgs: js.Array[js.Any]) =>
-          backend.handleModuleCall(callbackName, toJsDataVariables(rawArgs.toSeq))): js.Function1[js.Array[js.Any], js.Any]
+        callbackName match {
+          case "__name__" => backend.moduleName
+          case "__package__" => ""
+          case "__doc__" => s"Proxy module for ${backend.moduleName}"
+          case "__all__" => js.Array(
+            "forward", "fd", "backward", "back", "bk", "left", "lt", "right", "rt", "goto", "setpos", "setposition",
+            "setx", "sety", "setheading", "seth", "home", "clear", "reset", "clearscreen", "penup", "pu", "up",
+            "pendown", "pd", "down", "isdown", "pensize", "width", "pencolor", "fillcolor", "color", "position", "pos",
+            "xcor", "ycor", "heading", "distance", "dot", "circle", "bgcolor", "showturtle", "st", "hideturtle", "ht",
+            "isvisible", "speed", "tracer", "update", "listen", "onkey", "onclick", "ontimer", "bye", "done", "mainloop",
+            "Turtle", "RawTurtle", "Screen", "getscreen"
+          )
+          case name if name.startsWith("__") => js.undefined
+          case _ =>
+            ((rawArgs: js.Array[js.Any]) =>
+              backend.handleModuleCall(callbackName, toJsDataVariables(rawArgs.toSeq))): js.Function1[js.Array[js.Any], js.Any]
+        }
       }: js.Function2[js.Any, js.Any, js.Any]
     )
 
@@ -85,7 +108,7 @@ class MainThreadBackend extends PyodideEnvironment {
     pyodideInstance.foreach(_.registerJsModule(asyncBackend.moduleName, createAsyncModuleProxy(asyncBackend)))
   }
 
-  override def register(syncBackend: SyncModuleBackend): Unit = {
+  def register(syncBackend: SyncModuleBackend): Unit = {
     ensureNotDestroyed()
     syncBackends.update(syncBackend.moduleName, syncBackend)
     pyodideInstance.foreach(_.registerJsModule(syncBackend.moduleName, createSyncModuleProxy(syncBackend)))

@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Var
 import interactionPlugins.programmingExercise.pythonExercise.data.*
 import interactionPlugins.programmingExercise.pythonExercise.data.PythonUnitTestResult.{GradingStatus, PythonUnitTestGradingResult}
-import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideEnvironment.{AsyncModuleBackend, JsDataVariable, SyncModuleBackend}
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideEnvironment.{AsyncModuleBackend, JsDataVariable}
 import org.scalajs.dom
 import util.web.JsHelpers.{asBoolean, asStringSeq}
 
@@ -90,8 +90,6 @@ class PyodideWorkerEnvironment extends PyodideEnvironment {
     init().flatMap(_ => send("registerModule", js.Dictionary("moduleName" -> asyncBackend.moduleName))).failed.foreach(_ => ())
   }
 
-  override def register(syncBackend: SyncModuleBackend): Unit =
-    throw new UnsupportedOperationException("Synchronous modules are not supported in worker environments")
 
   override def executeCodeFull(request: PythonExecutionRequest): Future[PythonExecutionResult] =
     init().flatMap { _ =>
