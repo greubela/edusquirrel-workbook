@@ -17,6 +17,7 @@ class MainThreadBackend extends PyodideEnvironment {
   private var destroyed = false
   private var initialized = false
   private var pyodideInstance: Option[Pyodide] = None
+  private var initFuture: Option[Future[Pyodide]] = None
 
   private val asyncBackends: mutable.Map[String, AsyncModuleBackend] = mutable.Map.empty
   private val syncBackends: mutable.Map[String, SyncModuleBackend] = mutable.Map.empty
@@ -96,13 +97,21 @@ class MainThreadBackend extends PyodideEnvironment {
     pyodideInstance match {
       case Some(instance) => Future.successful(instance)
       case None =>
-        promiseToFuture(loadPyodide()).map { pyodide =>
-          pyodideInstance = Some(pyodide)
-          pyodide.runPython(PyodideHelper.helperCode)
-          initialized = true
-          asyncBackends.values.foreach(backend => pyodide.registerJsModule(backend.moduleName, createAsyncModuleProxy(backend)))
-          syncBackends.values.foreach(backend => pyodide.registerJsModule(backend.moduleName, createSyncModuleProxy(backend)))
-          pyodide
+        initFuture.getOrElse {
+          val future = promiseToFuture(loadPyodide()).map { pyodide =>
+            pyodideInstance = Some(pyodide)
+            pyodide.runPython(PyodideHelper.helperCode)
+            initialized = true
+            asyncBackends.values.foreach(backend => pyodide.registerJsModule(backend.moduleName, createAsyncModuleProxy(backend)))
+            syncBackends.values.foreach(backend => pyodide.registerJsModule(backend.moduleName, createSyncModuleProxy(backend)))
+            pyodide
+          }
+
+          initFuture = Some(future)
+          future.andThen {
+            case scala.util.Success(_) => initFuture = None
+            case scala.util.Failure(_) => initFuture = None
+          }
         }
     }
   }
@@ -207,6 +216,7 @@ class MainThreadBackend extends PyodideEnvironment {
     destroyed = true
     initialized = false
     pyodideInstance = None
+    initFuture = None
     asyncBackends.clear()
     syncBackends.clear()
   }
