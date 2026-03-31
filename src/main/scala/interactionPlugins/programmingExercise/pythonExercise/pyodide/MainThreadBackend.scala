@@ -169,11 +169,27 @@ final class MainThreadBackend() extends Backend {
     }
 
   private def wrapCallback(fn: Seq[js.Any] => js.Any): js.Function =
-    js.Dynamic.global
-      .eval("(function(f){ return function(){ return f(Array.prototype.slice.call(arguments)); }; })")
-      .asInstanceOf[js.Function1[js.Function1[js.Array[js.Any], js.Any], js.Function]](
-        js.Any.fromFunction1((args: js.Array[js.Any]) => fn(args.toSeq))
-      )
+    js.Any.fromFunction12(
+      (
+        a1: js.UndefOr[js.Any],
+        a2: js.UndefOr[js.Any],
+        a3: js.UndefOr[js.Any],
+        a4: js.UndefOr[js.Any],
+        a5: js.UndefOr[js.Any],
+        a6: js.UndefOr[js.Any],
+        a7: js.UndefOr[js.Any],
+        a8: js.UndefOr[js.Any],
+        a9: js.UndefOr[js.Any],
+        a10: js.UndefOr[js.Any],
+        a11: js.UndefOr[js.Any],
+        a12: js.UndefOr[js.Any]
+      ) => {
+        val args = Seq(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12)
+          .takeWhile(_.isDefined)
+          .map(_.get)
+        fn(args)
+      }
+    )
 
   private def toExecutionState(parsed: js.Dynamic): PythonExecutionResult.PythonExecutionState = {
     val runningState =

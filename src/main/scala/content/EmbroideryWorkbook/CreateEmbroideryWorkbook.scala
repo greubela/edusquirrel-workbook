@@ -161,5 +161,3 @@ class CreateEmbroideryWorkbook(fullScreenElement: HtmlFullScreenContainerElement
   }*/
 
 }
-
-
