@@ -6,6 +6,7 @@ import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideWorkerClient.*
 
 object PyodideWorkerClient {
   final case class CallbackOp(
@@ -40,9 +41,7 @@ final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.mjs") {
   private val worker =
     new dom.Worker(
       workerUrl,
-      new dom.WorkerOptions {
-        `type` = "module"
-      }
+      js.Dynamic.literal(`type` = "module").asInstanceOf[dom.WorkerOptions]
     )
 
   private var nextId = 1
@@ -51,7 +50,7 @@ final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.mjs") {
   private val preheated: Future[Unit] = requestUnit("init")
 
   worker.onmessage = { (event: dom.MessageEvent) =>
-    val data = dyn(event.data)
+    val data = dyn(event.data.asInstanceOf[js.Any])
     val id = asInt(data.id).toString
 
     pending.get(id).foreach { promise =>
@@ -165,8 +164,8 @@ final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.mjs") {
     )
   }
 
-  private def obj(fields: (String, Any)*): js.Object =
-    js.Dynamic.literal(fields.map { case (k, v) => k -> v.asInstanceOf[Any] } *).asInstanceOf[js.Object]
+  private def obj(fields: (String, js.Any)*): js.Object =
+    js.Dynamic.literal(fields*).asInstanceOf[js.Object]
 
   private def dyn(value: js.Any): js.Dynamic =
     value.asInstanceOf[js.Dynamic]
