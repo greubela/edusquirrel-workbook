@@ -1,5 +1,31 @@
 package interactionPlugins.programmingExercise.pythonExercise.turtle
 
+import contentmanagement.webElements.genericHtmlElements.canvas.WebCanvas
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideEnvironment
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideEnvironment.AsyncModuleBackend
+
+
+case class TurtleBackend(canvas: WebCanvas) extends AsyncModuleBackend {
+
+  override val moduleName: String = "turtle"
+
+  override def handleModuleCall(callbackName: String, args: Seq[PyodideEnvironment.JsDataVariable]): Unit = ???
+  
+  private def forward(distance: Double): Unit = {
+    ???
+  }
+  
+  private def left(angle: Double): Unit = {
+    ???
+  }
+  
+}
+
+
+
+
+
+/*
 import scala.scalajs.js
 
 /** Browser-side backend for the Python `turtle` compatibility layer.
@@ -384,3 +410,4 @@ trait TurtleBackend {
   /** Set the title of the drawing surface. */
   def screenTitleSet(title: String): Unit
 }
+*/

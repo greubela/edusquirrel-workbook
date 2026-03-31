@@ -1,5 +1,5 @@
 package interactionPlugins.programmingExercise.pythonExercise.turtle
-
+/*
 import contentmanagement.model.color.{AppColor, RGBColor}
 import contentmanagement.webElements.genericHtmlElements.canvas.{AppCanvas, WebCanvas}
 import org.scalajs.dom
@@ -10,7 +10,7 @@ import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExportAll
 
 @JSExportAll
-final class TurtleBackendImpl(canvas: AppCanvas[?]) extends TurtleBackend {
+final class TurtleBackendImpl(canvas: AppCanvas[?]) {
 
   private case class TurtleState(
       id: Int,
@@ -30,9 +30,9 @@ final class TurtleBackendImpl(canvas: AppCanvas[?]) extends TurtleBackend {
   private var bgColor = "#ffffff"
   private val defaultIdInternal = createTurtle()
 
-  override def defaultTurtleId: Int = defaultIdInternal
+  def defaultTurtleId: Int = defaultIdInternal
 
-  override def prepareForRun(): Unit = {
+  def prepareForRun(): Unit = {
     screenClearScreen()
     createIfMissing(defaultIdInternal)
   }
@@ -320,3 +320,4 @@ final class TurtleBackendImpl(canvas: AppCanvas[?]) extends TurtleBackend {
   override def screenTitleGet(): String = titleText
   override def screenTitleSet(title: String): Unit = titleText = title
 }
+*/

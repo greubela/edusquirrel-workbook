@@ -101,7 +101,7 @@ object TestWorkbook {
 
     val contList: List[HtmlExerciseContainer] = List(
       pythonTurtleDemo(workbookInfoVar),
-      turtleEditorDemo(workbookInfoVar),
+    //  turtleEditorDemo(workbookInfoVar),
       gptCont(workbookInfoVar),
       blockProgCont(workbookInfoVar)
     )
