@@ -8,6 +8,7 @@ import contentmanagement.webElements.HtmlAppElement
 import interactionPlugins.blockEnvironment.exercise.{ProgrammingExerciseFactory, TurtleProgrammingInteraction}
 import interactionPlugins.gpt.GptExerciseFactory
 import interactionPlugins.programmingExercise.pythonExercise.turtle.TurtleExerciseDemo
+import interactionPlugins.turtleStitchPlugin.TurtleStitchEditor
 import interactionPlugins.visualNovel.VisualNovelPanel
 import workbook.htmlElements.basic.{HtmlButtonElement, HtmlUnsafeHtmlInstructionElement}
 import workbook.model.*
@@ -66,11 +67,22 @@ object TestWorkbook {
     HtmlExerciseContainer(workbookInfoVar, gptElements)
   }
 
-  private def turtleDemo(workbookInfoVar: Var[WorkbookInfo]): HtmlExerciseContainer = {
+  private def pythonTurtleDemo(workbookInfoVar: Var[WorkbookInfo]): HtmlExerciseContainer = {
     val turtleDemo = TurtleExerciseDemo()
 
     HtmlExerciseContainer(workbookInfoVar, List(
       HtmlUnsafeHtmlInstructionElement(workbookInfoVar, "EmbroideryWorkbook/Ex1Instr2"),
+      HtmlButtonElement(workbookInfoVar, "turtle-demo-button", event => workbookInfoVar.now().fullscreenElement.setElementFullscreen(turtleDemo.getDomElement()))
+    ))
+  }
+
+  private def turtleEditorDemo(workbookInfoVar: Var[WorkbookInfo]): HtmlExerciseContainer = {
+    val turtleVar = Var(simple_turtle_xml)
+    turtleVar.signal.foreach(newVal => println("Turtle XML changed: " + newVal.size + "/" + newVal.take(60)))(unsafeWindowOwner)
+    val turtleDemo = TurtleStitchEditor(turtleVar)
+
+    HtmlExerciseContainer(workbookInfoVar, List(
+      HtmlUnsafeHtmlInstructionElement(workbookInfoVar, "EmbroideryWorkbook/Ex1Instr3"),
       HtmlButtonElement(workbookInfoVar, "turtle-demo-button", event => workbookInfoVar.now().fullscreenElement.setElementFullscreen(turtleDemo.getDomElement()))
     ))
   }
@@ -87,9 +99,9 @@ object TestWorkbook {
 
   def createTestSection(workbookInfoVar: Var[WorkbookInfo]): WorkbookSection = {
 
-
     val contList: List[HtmlExerciseContainer] = List(
-      turtleDemo(workbookInfoVar),
+      pythonTurtleDemo(workbookInfoVar),
+      turtleEditorDemo(workbookInfoVar),
       gptCont(workbookInfoVar),
       blockProgCont(workbookInfoVar)
     )
@@ -126,5 +138,11 @@ object TestWorkbook {
     Workbook(workbookInfoVar, title, List(sec))
   }
 
+
+  private val simple_turtle_xml: String = """<project name="simple_forward" app="TurtleStitch 2.11, http://www.turtlestitch.org" version="2"><notes></notes><scenes select="1"><scene name="simple_forward"><notes></notes><hidden></hidden><headers></headers><code></code><blocks></blocks><primitives></primitives><stage name="Bühne" width="480" height="360" costume="0" color="255,255,255,1" tempo="60" threadsafe="false" penlog="false" volume="100" pan="0" lines="round" ternary="false" hyperops="true" codify="false" inheritance="true" sublistIDs="false" id="6"><costumes><list struct="atomic" id="7"></list></costumes><sounds><list struct="atomic" id="8"></list></sounds><variables></variables><blocks></blocks><scripts></scripts><sprites select="1"><sprite name="Objekt" idx="1" x="0" y="0" heading="90" scale="0.1" volume="100" pan="0" rotation="1" draggable="true" hidden="true" costume="0" color="0,0,0,1" pen="tip" id="13"><costumes><list struct="atomic" id="14"></list></costumes><sounds><list struct="atomic" id="15"></list></sounds><blocks></blocks><variables></variables><scripts><script x="70" y="80"><block s="receiveGo"></block><block s="forward"><l>100</l></block></script></scripts></sprite></sprites></stage><variables></variables></scene></scenes>
+                                            |<creator>anonymous</creator>
+                                            |<origCreator>anonymous</origCreator>
+                                            |<origName></origName>
+                                            |</project>""".stripMargin
 
 }

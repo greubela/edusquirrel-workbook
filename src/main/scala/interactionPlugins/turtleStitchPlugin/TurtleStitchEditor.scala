@@ -82,7 +82,7 @@ case class TurtleStitchEditor(projektXml: Var[String]) extends HtmlAppElement {
       case None =>
         val options = js.Dynamic.literal(
           parentNode = parentNode,
-          width = 1400,
+          width = 3579,
           height = 1000,
           hidden = false
         )
