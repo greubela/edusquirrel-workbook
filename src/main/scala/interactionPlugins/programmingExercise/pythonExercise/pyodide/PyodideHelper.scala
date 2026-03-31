@@ -129,7 +129,7 @@ object PyodideHelper {
       |        sys.settrace(old_trace)
       |
       |
-      |def _execute_code_impl(code, max_lines):
+      |def _execute_code_impl(code, max_lines, include_snapshots):
       |    stream_out = io.StringIO()
       |    stream_err = io.StringIO()
       |    user_ns = USER_NS
@@ -140,13 +140,15 @@ object PyodideHelper {
       |                exec(compile(code, "<user_code>", "exec"), user_ns, user_ns)
       |
       |    run = _run_with_optional_line_limit(body, ["<user_code>"], max_lines)
+      |    snapshots = _snapshot_namespace(user_ns) if include_snapshots else {}
+      |
       |    result = {
       |        "success": run["ok"],
       |        "stdout": stream_out.getvalue(),
       |        "stderr": stream_err.getvalue(),
       |        "exception": run["exception"],
-      |        "globals": _snapshot_namespace(user_ns),
-      |        "locals": _snapshot_namespace(user_ns),
+      |        "globals": snapshots,
+      |        "locals": snapshots,
       |        "linesExecuted": run["linesExecuted"],
       |        "maxExecutedLines": max_lines,
       |        "lineLimitHit": run["lineLimitHit"]
@@ -154,7 +156,7 @@ object PyodideHelper {
       |    return json.dumps(result)
       |
       |
-      |def _execute_unit_test_impl(code, test_code, test_name, max_lines):
+      |def _execute_unit_test_impl(code, test_code, test_name, max_lines, include_snapshots):
       |    stream_out = io.StringIO()
       |    stream_err = io.StringIO()
       |    test_stream = io.StringIO()
@@ -180,14 +182,16 @@ object PyodideHelper {
       |        failures = []
       |        errors = []
       |
+      |    snapshots = _snapshot_namespace(user_ns) if include_snapshots else {}
+      |
       |    result = {
       |        "success": success,
       |        "stdout": stream_out.getvalue() + test_stream.getvalue(),
       |        "stderr": stream_err.getvalue(),
       |        "failures": failures,
       |        "errors": errors,
-      |        "globals": _snapshot_namespace(user_ns),
-      |        "locals": _snapshot_namespace(user_ns),
+      |        "globals": snapshots,
+      |        "locals": snapshots,
       |        "exception": run["exception"],
       |        "linesExecuted": run["linesExecuted"],
       |        "maxExecutedLines": max_lines,

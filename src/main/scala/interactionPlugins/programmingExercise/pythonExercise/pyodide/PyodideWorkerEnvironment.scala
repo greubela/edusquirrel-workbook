@@ -95,6 +95,7 @@ class PyodideWorkerEnvironment extends PyodideEnvironment {
     init().flatMap { _ =>
       val payload = js.Dictionary[js.Any]("code" -> request.pythonCode)
       request.maxLinesToExecute.foreach(limit => payload.update("maxExecutedLines", limit))
+      payload.update("includeSnapshots", request.includeSnapshots)
       send("executeCode", payload).map(message => parseExecutionResult(request, message))
     }
 
@@ -112,7 +113,8 @@ class PyodideWorkerEnvironment extends PyodideEnvironment {
       val payload = js.Dictionary[js.Any](
         "code" -> pythonCode.pythonCode,
         "testCode" -> test.testCode,
-        "testName" -> test.testName
+        "testName" -> test.testName,
+        "includeSnapshots" -> pythonCode.includeSnapshots
       )
       pythonCode.maxLinesToExecute.foreach(limit => payload.update("maxExecutedLines", limit))
 

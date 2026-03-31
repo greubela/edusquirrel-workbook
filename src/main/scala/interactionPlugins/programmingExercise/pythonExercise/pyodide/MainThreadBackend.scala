@@ -122,7 +122,7 @@ class MainThreadBackend extends PyodideEnvironment {
   override def executeCodeFull(request: PythonExecutionRequest): Future[PythonExecutionResult] =
     initIfNeeded().flatMap { pyodide =>
       val resultText = pyodide.runPython(
-        s"_execute_code_impl(${js.JSON.stringify(request.pythonCode)}, ${js.JSON.stringify(request.maxLinesToExecute.map(_.asInstanceOf[js.Any]).getOrElse(null))})"
+        s"_execute_code_impl(${js.JSON.stringify(request.pythonCode)}, ${js.JSON.stringify(request.maxLinesToExecute.map(_.asInstanceOf[js.Any]).getOrElse(null))}, ${js.JSON.stringify(request.includeSnapshots)})"
       )
       val parsed = js.JSON.parse(resultText.toString).asInstanceOf[js.Dynamic]
       Future.successful(PythonExecutionResult(request, PyodideHelper.toExecutionState(parsed)))
@@ -140,7 +140,7 @@ class MainThreadBackend extends PyodideEnvironment {
   ): Future[PythonUnitTestGradingResult] =
     initIfNeeded().map { pyodide =>
       val resultText = pyodide.runPython(
-        s"_execute_unit_test_impl(${js.JSON.stringify(pythonCode.pythonCode)}, ${js.JSON.stringify(test.testCode)}, ${js.JSON.stringify(test.testName)}, ${js.JSON.stringify(pythonCode.maxLinesToExecute.map(_.asInstanceOf[js.Any]).getOrElse(null))})"
+        s"_execute_unit_test_impl(${js.JSON.stringify(pythonCode.pythonCode)}, ${js.JSON.stringify(test.testCode)}, ${js.JSON.stringify(test.testName)}, ${js.JSON.stringify(pythonCode.maxLinesToExecute.map(_.asInstanceOf[js.Any]).getOrElse(null))}, ${js.JSON.stringify(pythonCode.includeSnapshots)})"
       )
       val parsed = js.JSON.parse(resultText.toString).asInstanceOf[js.Dynamic]
       val executionResult = PythonExecutionResult(pythonCode, PyodideHelper.toExecutionState(parsed))
