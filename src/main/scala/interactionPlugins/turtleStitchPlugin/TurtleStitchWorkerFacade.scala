@@ -9,7 +9,7 @@ import interactionPlugins.turtleStitchPlugin.TurtleStitchEditor.turtleLang
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
 
-object TurtleStitchFacade {
+object TurtleStitchWorkerFacade {
 
   def getPngDataSrcOfGreenFlagProgramEditor(turtleStitchXml: String, language:HumanLanguage): Var[Option[String]] = {
     implicit val ec: ExecutionContext = ExecutionContext.global
@@ -85,8 +85,5 @@ object TurtleStitchFacade {
       workerInit = None
       queuedWork = Future.successful(())
   }
-
-  def downloadDst(xml: String)(using ec: ExecutionContext): Future[Unit] =
-    TurtleStitchEditor.downloadDst(xml)
 
 }

@@ -791,6 +791,41 @@
       this.ide.runScripts();
     }
 
+    greenFlagTopBlocks() {
+      const ide = this.ide;
+      if (!ide) return [];
+
+      const topBlocks = [];
+      const addFromScripts = (scripts) => {
+        scripts?.children?.forEach?.((block) => {
+          if (block?.selector !== "receiveGo") return;
+          if (typeof block.topBlock === "function" && block.topBlock() !== block) return;
+          topBlocks.push(block);
+        });
+      };
+
+      addFromScripts(ide.stage?.scripts);
+      ide.sprites?.asArray?.().forEach((sprite) => addFromScripts(sprite?.scripts));
+      return topBlocks;
+    }
+
+    greenFlagLispCode() {
+      const snippets = this.greenFlagTopBlocks()
+        .map((block) => {
+          try {
+            return typeof block?.toLisp === "function" ? block.toLisp(4) : "";
+          } catch (_) {
+            return "";
+          }
+        })
+        .filter((text) => typeof text === "string" && text.trim().length > 0);
+
+      if (!snippets.length) {
+        throw new Error("No green-flag script found for Lisp export.");
+      }
+      return snippets.join("\n\n");
+    }
+
     async runGreenFlagOnce() {
       this.forceLayout();
       try { this.ide.stopAllScripts?.(); } catch (_) {}
@@ -862,6 +897,12 @@
       return this.snapshotStagePngDataUrl();
     }
 
+    async getGreenFlagAsLispCode(xml, language = "en") {
+      await this.loadProjectXmlCanonical(xml);
+      await this.setLanguageWithoutProjectReloadAsync(language);
+      return this.greenFlagLispCode();
+    }
+
     destroy() {
       if (this.destroyed) return;
       this.destroyed = true;
@@ -931,6 +972,15 @@
           engine.simulateGreenFlag(payload?.xml_content, payload?.language || "en"),
           12000,
           "simulateGreenFlag"
+        );
+        return { id, ok: true, result };
+      }
+      case "getGreenFlagAsLispCode": {
+        const engine = await ensureSingletonEngine();
+        const result = await withTimeout(
+          engine.getGreenFlagAsLispCode(payload?.xml_content, payload?.language || "en"),
+          12000,
+          "getGreenFlagAsLispCode"
         );
         return { id, ok: true, result };
       }
