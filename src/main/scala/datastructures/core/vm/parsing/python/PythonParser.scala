@@ -152,64 +152,6 @@ object PythonParser {
   private val SelfAttributeAssignmentPattern =
     """^(self|cls)\.([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)\s*(.+)$""".r
 
-  private def splitInlineComment(line: String): (String, Option[String]) = {
-    var index = 0
-    var commentIndex = -1
-    var stringDelimiter: Option[String] = None
-    val length = line.length
-    while (index < length && commentIndex == -1) {
-      stringDelimiter match {
-        case Some(delimiter) if delimiter.length == 1 =>
-          val current = line.charAt(index)
-          if (current == '\\') {
-            index += 2
-          } else if (current == delimiter.head) {
-            stringDelimiter = None
-            index += 1
-          } else {
-            index += 1
-          }
-        case Some(delimiter) =>
-          if (line.startsWith(delimiter, index)) {
-            stringDelimiter = None
-            index += delimiter.length
-          } else {
-            index += 1
-          }
-        case None =>
-          if (line.startsWith("\"\"\"", index)) {
-            stringDelimiter = Some("\"\"\"")
-            index += 3
-          } else if (line.startsWith("'''", index)) {
-            stringDelimiter = Some("'''")
-            index += 3
-          } else {
-            val current = line.charAt(index)
-            current match {
-              case '\\' => index += 2
-              case '\"' =>
-                stringDelimiter = Some("\"")
-                index += 1
-              case '\'' =>
-                stringDelimiter = Some("'")
-                index += 1
-              case '#' =>
-                commentIndex = index
-              case _ =>
-                index += 1
-            }
-          }
-      }
-    }
-    if (commentIndex >= 0) {
-      val codePart = line.substring(0, commentIndex)
-      val commentText = line.substring(commentIndex + 1).trim
-      (codePart, if (commentText.nonEmpty) Some(commentText) else Some(""))
-    } else {
-      (line, None)
-    }
-  }
-
   private def parseBlock(
                           lines: Vector[ParsedLine],
                           startIndex: Int,
@@ -224,7 +166,7 @@ object PythonParser {
         return (expressions.toList, index)
       }
 
-      val (codePortion, inlineComment) = splitInlineComment(line.content)
+      val (codePortion, inlineComment) = PythonCommentScanner.splitInlineComment(line.content)
       val trimmed = codePortion.trim
       if (trimmed.isEmpty) {
         inlineComment match {
@@ -362,7 +304,7 @@ object PythonParser {
           ignoredBodyExpressions ++= nested
           index = nextIndex
         } else {
-          val (codePortion, inlineComment) = splitInlineComment(line.content)
+          val (codePortion, inlineComment) = PythonCommentScanner.splitInlineComment(line.content)
           val trimmed = codePortion.trim
           if (trimmed.isEmpty) {
             inlineComment.foreach { commentText =>
@@ -541,7 +483,7 @@ object PythonParser {
     while (index < endIndex) {
       val line = lines(index)
       if (line.indent == bodyIndent) {
-        val (codePortion, _) = splitInlineComment(line.content)
+        val (codePortion, _) = PythonCommentScanner.splitInlineComment(line.content)
         val trimmed = codePortion.trim
         trimmed match {
           case SelfAttributeAnnotationAssignmentPattern(_, attributeName, typeHint, valueSource) =>
