@@ -44,11 +44,24 @@ object WorkbookLanguageInfo {
 
   case class LabelLanguageMapStorage(fileDataStorage: AsyncDataCache[FileDescription, LoadedFile]) extends AsyncDataCache[String, LanguageMap[HumanLanguage]]("languageMap", false) {
 
-    private val languageTriplesStorage: LanguageMapTriplesStorage = LanguageMapTriplesStorage(fileDataStorage)
+    val languageTriplesStorage: LanguageMapTriplesStorage = LanguageMapTriplesStorage(fileDataStorage)
+    private var languageFilesToLoad: List[FileDescription] = WorkbookLanguageInfo.languageMapFiles
+
+    def addLanguageFile(fileDescription: FileDescription): Unit = {
+      if (!languageFilesToLoad.contains(fileDescription)) {
+        languageFilesToLoad = languageFilesToLoad ++ List(fileDescription)
+      }
+    }
+
+    def addLanguageFiles(fileDescriptions: List[FileDescription]): Unit = {
+      fileDescriptions.foreach(addLanguageFile)
+    }
+
+    def allLanguageFiles: List[FileDescription] = languageFilesToLoad
 
     override protected def executeLoading(id: String)(ec: ExecutionContext): Future[LanguageMap[HumanLanguage]] = {
 
-      val allTriples: Future[List[List[MapEntryTripel]]] = Future.traverse(languageMapFiles)(file => {
+      val allTriples: Future[List[List[MapEntryTripel]]] = Future.traverse(allLanguageFiles)(file => {
         languageTriplesStorage.loadAsFuture(file, false)(ec)
       })
 
@@ -66,7 +79,7 @@ object WorkbookLanguageInfo {
 
   }
 
-  private case class LanguageMapTriplesStorage(fileDataStorage: AsyncDataCache[FileDescription, LoadedFile]) extends AsyncDataCache[FileDescription, List[MapEntryTripel]]("tripleStorage", false) {
+  case class LanguageMapTriplesStorage(fileDataStorage: AsyncDataCache[FileDescription, LoadedFile]) extends AsyncDataCache[FileDescription, List[MapEntryTripel]]("tripleStorage", false) {
 
     override protected def executeLoading(file: FileDescription)(ec: ExecutionContext): Future[List[MapEntryTripel]] = {
       case class FullCsvFileInfo(fileDescription: LoadedFile, csvData: List[List[String]], fileLanguageOp: Option[HumanLanguage], mapGroupIdOp: Option[String])
@@ -84,7 +97,7 @@ object WorkbookLanguageInfo {
 
   private case class LanguageMapWithId(id: String, languageMap: LanguageMap[HumanLanguage])
 
-  private case class MapEntryTripel(mapId: String, language: HumanLanguage, value: String)
+  case class MapEntryTripel(mapId: String, language: HumanLanguage, value: String)
 
 
   private def triplesFromFile(file: LoadedFile): List[MapEntryTripel] = {

@@ -138,6 +138,14 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean) {
     }
   }
 
+  def reloadAll()(implicit ec: ExecutionContext): Unit = {
+    cachedRequests.synchronized {
+      val allKeys = cachedRequests.keys.toList
+      deleteFromStorage(allKeys)
+      allKeys.foreach(input => loadIntoVariable(input, forceReloading = true)(ec))
+    }
+  }
+
   // abstract methods for child classes
 
   protected def executeLoading(in: I)(ec: ExecutionContext): Future[O]
@@ -188,5 +196,4 @@ object AsyncDataCache {
 
 
 }
-
 
