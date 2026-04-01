@@ -32,7 +32,7 @@ object TurtleStitchWorkerFacade {
       s"SvgOutput(${out.length}, ${out.substring(0, 60)} ...)"
   }
 
-  private val worker: TurtleStitchWorker = new TurtleStitchWorker()
+  private var worker: TurtleStitchWorker = new TurtleStitchWorker()
   private val queueLock = new AnyRef
   private var queuedWork: Future[Unit] = Future.successful(())
   private var workerInit: Option[Future[Unit]] = None
@@ -50,6 +50,10 @@ object TurtleStitchWorkerFacade {
         .recover { case _ => () }
         .flatMap(_ => ensureWorkerInitialized())
         .flatMap(_ => task(worker))
+        .recoverWith { case error if isTimeoutError(error) =>
+          resetWorkerInstance()
+          ensureWorkerInitialized().flatMap(_ => task(worker))
+        }
 
       runTask.onComplete {
         case Success(value) => result.success(value)
@@ -79,9 +83,20 @@ object TurtleStitchWorkerFacade {
       }
     }
 
+  private def isTimeoutError(error: Throwable): Boolean =
+    Option(error.getMessage).exists(_.contains("Timeout:"))
+
+  private def resetWorkerInstance(): Unit =
+    queueLock.synchronized {
+      worker.destroy()
+      worker = new TurtleStitchWorker()
+      workerInit = None
+    }
+
   def destroyWorker(): Unit =
     queueLock.synchronized {
       worker.destroy()
+      worker = new TurtleStitchWorker()
       workerInit = None
       queuedWork = Future.successful(())
   }
