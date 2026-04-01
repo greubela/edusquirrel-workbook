@@ -1,19 +1,23 @@
 package workbook.factory
 
-import com.raquo.laminar.api.L
+import com.raquo.laminar.api.L.{*, given}
 import content.WorkbookFactory
 import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
 import datastructures.web.file.FileDescription
+import interactionPlugins.slideshow.{SlideDeckExercise, SlidePanel}
 import interactionPlugins.turtleStitchPlugin.TurtleStitchExploreProjectExercise
 import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement, HtmlUnsafeHtmlInstructionElement}
-import workbook.htmlElements.interactions.HtmlBasicTextInteraction
+import workbook.htmlElements.interactions.{HtmlBasicCheckboxInteraction, HtmlBasicTextInteraction, HtmlReorderInteraction}
 import workbook.htmlElements.container.HtmlExerciseContainer
 import workbook.model.{Workbook, WorkbookSection}
 import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.AllWorkbookInfo
 
+import upickle.default.{ReadWriter, macroRW, read}
+
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
+import scala.util.Try
 
 case class JsonWorkbookRuntimeFactory(
                                        override val workbookInfo: AllWorkbookInfo,
@@ -84,12 +88,46 @@ case class JsonWorkbookRuntimeFactory(
       case "HtmlBasicTextInteraction" =>
         HtmlBasicTextInteraction(workbookInfo, args.getOrElse("id", nextId("json-text")))
 
+      case "HtmlBasicCheckboxInteraction" =>
+        HtmlBasicCheckboxInteraction(
+          workbookInfo,
+          args.getOrElse("id", nextId("json-checkbox")),
+          args.getOrElse("labelLanguageMapId", throw missingArg("labelLanguageMapId", factory))
+        )
+
+      case "HtmlReorderInteraction" =>
+        val elements = JsonWorkbookRuntimeFactory.parseStringListArg(args.get("elementsJson"), args.get("elements"))
+        HtmlReorderInteraction[String](
+          workbookInfo = workbookInfo,
+          id = args.getOrElse("id", nextId("json-reorder")),
+          elements = elements,
+          elementRenderer = snippet => pre(code(snippet))
+        )
+
+      case "SlideDeckExercise" =>
+        val slides = JsonWorkbookRuntimeFactory.parseSlideSpecs(args.getOrElse("slidesJson", throw missingArg("slidesJson", factory)), factory)
+          .map(spec =>
+            SlidePanel.imageSlide(
+              image = FileDescription.relativeToResourceFolder(spec.imagePath),
+              textMapId = spec.textMapId,
+              sourceMapId = spec.sourceMapId,
+              descriptionMapId = spec.descriptionMapId,
+              workbookInfo = workbookInfo
+            )
+          )
+        SlideDeckExercise(
+          workbookInfo = workbookInfo,
+          id = args.getOrElse("id", nextId("json-slideshow")),
+          titleMapId = args.getOrElse("titleMapId", throw missingArg("titleMapId", factory)),
+          slides = slides
+        )
+
       case "TurtleStitchExploreProjectExercise" =>
         val path = args.getOrElse("resourcePath", throw missingArg("resourcePath", factory))
         TurtleStitchExploreProjectExercise.createElementLine(workbookInfo, FileDescription.relativeToResourceFolder(path))
 
       case other =>
-        HtmlUnsafeHtmlInstructionElement(workbookInfo, L.Val(s"[Unknown elementName: '$other']"))
+        HtmlUnsafeHtmlInstructionElement(workbookInfo, Val(s"[Unknown elementName: '$other']"))
     }
   }
 
@@ -98,6 +136,18 @@ case class JsonWorkbookRuntimeFactory(
 }
 
 object JsonWorkbookRuntimeFactory {
+
+  private case class SlideSpecJson(imagePath: String, textMapId: String, sourceMapId: String, descriptionMapId: String)
+  private given ReadWriter[SlideSpecJson] = macroRW
+
+  private def parseStringListArg(jsonValue: Option[String], newlineValue: Option[String]): List[String] =
+    jsonValue.flatMap(raw => Try(read[List[String]](raw)).toOption)
+      .orElse(newlineValue.map(_.split("\n").toList.map(_.trim).filter(_.nonEmpty)))
+      .getOrElse(List.empty)
+
+  private def parseSlideSpecs(serializedSlides: String, factory: WorkbookElementFactory): List[SlideSpecJson] =
+    Try(read[List[SlideSpecJson]](serializedSlides))
+      .getOrElse(throw IllegalArgumentException(s"Invalid slidesJson for element '${factory.elementName}'"))
 
   private val sourceJsonByWorkbookIdentity: mutable.HashMap[Int, JsonWorkbookFactory] = mutable.HashMap.empty
 
