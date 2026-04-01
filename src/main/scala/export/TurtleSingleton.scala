@@ -3,9 +3,12 @@ package `export`
 import contentmanagement.webElements.svg.TurtlePathBuilder
 import contentmanagement.webElements.svg.TurtlePathBuilder.TurtleCommand
 import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand
+import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand.*
+import datastructures.core.geometry.{Dimension, Point}
 import util.web.JsHelpers
 
 import scala.scalajs.js
+import scala.scalajs.js.JSConverters.*
 import scala.scalajs.js.annotation.{JSExport, JSExportTopLevel}
 
 @JSExportTopLevel("turtle")
@@ -149,5 +152,58 @@ object TurtleSingleton {
 
   @JSExport def svgPathBuilderCommands(): List[SvgPathBuilderCommand[T]] = {
     turtlePathBuilder.pathBuilderCommands
+  }
+
+  @JSExport def executionSnapshot(): js.Object = {
+    val turtleCommandsDto = turtlePathBuilder.turtleCommands.map(cmd => js.Dynamic.literal(
+      name = cmd.name,
+      args = cmd.args.toJSArray
+    ))
+
+    val svgCommandsDto = turtlePathBuilder.pathBuilderCommands.flatMap(serializeSvgCommand)
+
+    js.Dynamic.literal(
+      startPoint = pointDto(turtlePathBuilder.startPoint),
+      turtleState = js.Dynamic.literal(
+        x = turtlePathBuilder.turtleState.x,
+        y = turtlePathBuilder.turtleState.y,
+        headingDeg = turtlePathBuilder.turtleState.headingDeg,
+        penDown = turtlePathBuilder.turtleState.penDown,
+        visible = turtlePathBuilder.turtleState.visible
+      ),
+      turtleCommands = turtleCommandsDto.toJSArray,
+      svgPathBuilderCommands = svgCommandsDto.toJSArray
+    ).asInstanceOf[js.Object]
+  }
+
+  private def pointDto(point: Point[T]): js.Object =
+    js.Dynamic.literal(x = point.x, y = point.y).asInstanceOf[js.Object]
+
+  private def dimensionDto(d: Dimension[T]): js.Object =
+    js.Dynamic.literal(dx = d.width, dy = d.height).asInstanceOf[js.Object]
+
+  private def serializeSvgCommand(command: SvgPathBuilderCommand[T]): Option[js.Object] = {
+    command match {
+      case MoveAbs(p) =>
+        Some(js.Dynamic.literal(kind = "MoveAbs", x = p.x, y = p.y).asInstanceOf[js.Object])
+      case LineAbs(p) =>
+        Some(js.Dynamic.literal(kind = "LineAbs", x = p.x, y = p.y).asInstanceOf[js.Object])
+      case MoveRel(d) =>
+        Some(js.Dynamic.literal(kind = "MoveRel", dx = d.width, dy = d.height).asInstanceOf[js.Object])
+      case ArcRel(rx, ry, rot, largeArc, sweep, d) =>
+        Some(js.Dynamic.literal(
+          kind = "ArcRel",
+          rx = rx,
+          ry = ry,
+          rotationDeg = rot,
+          largeArc = largeArc,
+          sweep = sweep,
+          dx = d.width,
+          dy = d.height
+        ).asInstanceOf[js.Object])
+      case CenteredCircleControl(radius) =>
+        Some(js.Dynamic.literal(kind = "CenteredCircleControl", radius = radius).asInstanceOf[js.Object])
+      case _ => None
+    }
   }
 }

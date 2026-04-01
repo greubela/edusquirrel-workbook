@@ -173,6 +173,51 @@ self.onmessage = async event => {
             case "run":
                 await handleRun(id, payload);
                 return;
+            case "runTurtle":
+                await pyodideReady;
+
+                const code = payload.code;
+                const context = payload.context || {};
+                const resetGlobals = !!payload.resetGlobals;
+                const captureStdout = !!payload.captureStdout;
+                const captureStderr = !!payload.captureStderr;
+                const turtleMethods = payload.turtleMethods || [];
+                const turtleSingleton = self.turtle;
+                if (!turtleSingleton) {
+                    throw new Error("Global turtle singleton is not available in worker scope.");
+                }
+
+                if (resetGlobals) {
+                    await recreatePyodide();
+                }
+
+                turtleSingleton.reset();
+
+                const turtleModule = {};
+                for (const methodName of turtleMethods) {
+                    turtleModule[methodName] = (...args) => {
+                        callbackOps.push({
+                            module: "turtle",
+                            method: methodName,
+                            args
+                        });
+                        turtleSingleton.handleCommand(methodName, args);
+                        return undefined;
+                    };
+                }
+                pyodide.registerJsModule("turtle", turtleModule);
+
+                clearBuffers();
+                setStreams(captureStdout, captureStderr);
+                applyContext(context);
+                await pyodide.runPythonAsync(code);
+                ok(id, {
+                    callbackOps,
+                    stdout: stdoutBuffer.join(""),
+                    stderr: stderrBuffer.join(""),
+                    turtleResult: turtleSingleton.executionSnapshot()
+                });
+                return;
             default:
                 throw new Error(`Unknown request kind: ${kind}`);
         }

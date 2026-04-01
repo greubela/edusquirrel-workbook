@@ -39,6 +39,14 @@ object PyodideBackends {
                                     stderr: String
                                   )
 
+  final case class TurtleExecutionResult[T: Fractional](
+                                                          regularExecutionResult: PythonRunReport,
+                                                          startPoint: datastructures.core.geometry.Point[T],
+                                                          turtleState: contentmanagement.webElements.svg.TurtlePathBuilder.TurtleState[T],
+                                                          turtleCommands: List[contentmanagement.webElements.svg.TurtlePathBuilder.TurtleCommand[T]],
+                                                          svgPathBuilderCommands: List[contentmanagement.webElements.svg.builder.SvgPathBuilderCommand[T]]
+                                                        )
+
   final case class PythonWorkerFailure(
                                         message: String,
                                         stdout: String,
