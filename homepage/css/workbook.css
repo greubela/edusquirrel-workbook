@@ -150,6 +150,30 @@ h3 {
   font-size: 0.95rem;
 }
 
+.instruction-content p {
+  margin: 0 0 var(--space-md) 0;
+}
+
+.instruction-content p:last-child {
+  margin-bottom: 0;
+}
+
+.instruction-content ul {
+  margin-top: 0;
+}
+
+.instruction-callout {
+  border-left: var(--space-xs) solid var(--color-container-border-active);
+  background: var(--color-interaction-background);
+  border-radius: var(--radius-sm);
+  padding: var(--space-md);
+}
+
+.instruction-callout--warning {
+  border-left-color: var(--color-accent-error);
+  background: var(--color-surface-subtle);
+}
+
 .button-line{
   margin: 0 auto;
   gap: var(--space-md);
@@ -321,17 +345,17 @@ textarea.workbook-interaction  {
 }
 
 .simple-boolean-editor {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-sm);
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: var(--color-surface-muted);
   color: var(--color-text-primary);
   font-size: 0.95rem;
   font-weight: 600;
-  width: fit-content;
+  width: min(100%, 520px);
   user-select: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
@@ -343,10 +367,11 @@ textarea.workbook-interaction  {
 }
 
 .simple-boolean-editor__body {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: var(--space-sm);
   cursor: pointer;
+  width: 100%;
 }
 
 .simple-boolean-editor__checkbox {
@@ -391,6 +416,35 @@ textarea.workbook-interaction  {
 .simple-boolean-editor__label-text {
   color: var(--color-text-primary);
   letter-spacing: 0.01em;
+}
+
+.reorder-interaction {
+  padding: var(--space-md);
+}
+
+.reorder-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.reorder-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  padding: var(--space-sm) var(--space-md);
+  box-shadow: var(--shadow-soft);
+}
+
+.reorder-item--dragging {
+  opacity: 0.65;
+}
+
+.drop-placeholder {
+  height: 2.5rem;
+  border: 2px dashed var(--color-accent-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-interaction-background);
 }
 @media (max-width: 768px) {
   .container-exercise {

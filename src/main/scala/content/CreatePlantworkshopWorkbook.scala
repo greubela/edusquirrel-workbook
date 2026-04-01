@@ -3,7 +3,7 @@ package content
 import com.raquo.laminar.api.L.{*, given}
 import datastructures.web.file.FileDescription
 import interactionPlugins.slideshow.{SlideDeckExercise, SlidePanel}
-import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement}
+import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement, HtmlUnsafeHtmlInstructionElement}
 import workbook.htmlElements.container.HtmlExerciseContainer
 import workbook.htmlElements.interactions.{HtmlBasicCheckboxInteraction, HtmlReorderInteraction}
 import workbook.model.{Workbook, WorkbookSection}
@@ -16,6 +16,12 @@ case class CreatePlantworkshopWorkbook(override val workbookInfo: AllWorkbookInf
 
   private def textElement(languageMapId: String): HtmlPlaintextInstructionElement =
     HtmlPlaintextInstructionElement(
+      workbookInfo,
+      workbookInfo.stringSignalFromLanguageMapId(languageMapId)(ExecutionContext.global)
+    )
+
+  private def htmlElement(languageMapId: String): HtmlUnsafeHtmlInstructionElement =
+    HtmlUnsafeHtmlInstructionElement(
       workbookInfo,
       workbookInfo.stringSignalFromLanguageMapId(languageMapId)(ExecutionContext.global)
     )
@@ -66,10 +72,8 @@ case class CreatePlantworkshopWorkbook(override val workbookInfo: AllWorkbookInf
   private def createMotivationSection(): WorkbookSection = {
     val intro = HtmlExerciseContainer(workbookInfo, List(
       HtmlContainerTitle(workbookInfo, "PlantWorkshop/section0Title"),
-      textElement("PlantWorkshop/section0Intro"),
-      textElement("PlantWorkshop/section0Goal"),
-      textElement("PlantWorkshop/section0Safety"),
-      textElement("PlantWorkshop/section0Status")
+      htmlElement("PlantWorkshop/section0IntroHtml"),
+      htmlElement("PlantWorkshop/section0SafetyHtml")
     ))
 
     WorkbookSection(workbookInfo, "PlantWorkshop/section0Title", List(intro))
@@ -127,6 +131,7 @@ case class CreatePlantworkshopWorkbook(override val workbookInfo: AllWorkbookInf
         textElement("PlantWorkshop/section1ChecklistIntro"),
         textElement("PlantWorkshop/section1WiringHint")
       ) ++ componentChecklist ++ List(
+        htmlElement("PlantWorkshop/section1PowerWarningHtml"),
         createWiringSlideshow(),
         textElement("PlantWorkshop/section1RelayInfo")
       )
