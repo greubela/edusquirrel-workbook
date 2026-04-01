@@ -458,7 +458,17 @@
             image && image._bitmap ? image._bitmap :
             image && image._canvas ? image._canvas :
             image;
-          return originalDrawImage.call(this, normalizedImage, ...rest);
+          if (!normalizedImage) {
+            return;
+          }
+          try {
+            return originalDrawImage.call(this, normalizedImage, ...rest);
+          } catch (err) {
+            if (err instanceof TypeError) {
+              return;
+            }
+            throw err;
+          }
         };
         try {
           Object.defineProperty(contextProto, "__turtleWorkerDrawImagePatched", {

@@ -27,7 +27,9 @@ case class CreateEmbroideryWorkbook(override val workbookInfo: AllWorkbookInfo) 
         List(
           firstSection,
           secondSection
-        ))
+        )
+          ++ CreatePlantworkshopWorkbook(workbookInfo).createWorkbook.sections
+      )
     }
     workbookInfo.workbookInfoVar.update(oldVal => oldVal.copy(config = oldVal.config.copy(activeSection = Some(firstSection))))
     res
@@ -44,7 +46,7 @@ case class CreateEmbroideryWorkbook(override val workbookInfo: AllWorkbookInfo) 
   private def createExploreExerciseDownloadInteraction(filename: String): HtmlWorkbookElement = {
     TurtleStitchExploreProjectExercise.createElementLine(workbookInfo, createFileDescription(filename))
   }
-  
+
   private def thirdExercise: HtmlExerciseContainer = {
 
     val elements: List[HtmlWorkbookElement] = List(
@@ -82,8 +84,6 @@ case class CreateEmbroideryWorkbook(override val workbookInfo: AllWorkbookInfo) 
       HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/Ex1Title"),
       HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex1Instr1"),
       createExploreExerciseDownloadInteraction("simple_forward"),
-      // createExploreExerciseDownloadInteraction("complex_example"),
-      // createExploreExerciseDownloadInteraction("more_complex"),
       HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex1Instr2"),
       createTextInput(),
       HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex1Instr3"),
@@ -97,21 +97,12 @@ case class CreateEmbroideryWorkbook(override val workbookInfo: AllWorkbookInfo) 
   }
 
 
-
   private def createFirstSection(): WorkbookSection = {
 
     val exercises = List(
       firstExercise,
       secondExercise,
       thirdExercise,
-      /* createExecuteProgramExercise(
-         LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
-           AppLanguage.English -> "The second program",
-           AppLanguage.German -> "Das zweite Programm"
-         )
-         ),
-         "simple_forward"
-       )*/
     )
 
     WorkbookSection(
@@ -122,26 +113,5 @@ case class CreateEmbroideryWorkbook(override val workbookInfo: AllWorkbookInfo) 
 
   }
 
-  /*private def createExecuteProgramExercise(titleMap: LanguageMap[HumanLanguage], filename: String): HtmlExerciseContainer = {
-    val tup = createImageAndUrl(filename)
-    val res = TurtleStitchFileFactory.createExecuteProgramExercise(
-      workbookInfoVar,
-      nextId(),
-      titleMap,
-      tup._1,
-      tup._2
-    )
-    HtmlExerciseContainer(workbookInfoVar, res.toList)
-  }
-
-  private def createProgrammingSubmissionExercise(titleMap: LanguageMap[HumanLanguage], destImg: ImageDescription): HtmlExerciseContainer = {
-    val res = TurtleStitchFileFactory.createReprogramShapeExercise(
-      workbookInfoVar,
-      nextId(),
-      titleMap,
-      destImg
-    )
-    HtmlExerciseContainer(workbookInfoVar, res.toList)
-  }*/
 
 }

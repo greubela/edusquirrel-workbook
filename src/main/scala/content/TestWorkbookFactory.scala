@@ -75,7 +75,7 @@ object TestWorkbookFactory {
 
     val contList: List[HtmlExerciseContainer] = List(
       pythonTurtleDemo(workbookInfo),
-    //  turtleEditorDemo(workbookInfoVar),
+      turtleEditorDemo(workbookInfo),
       gptCont(workbookInfo),
       blockProgCont(workbookInfo)
     )
