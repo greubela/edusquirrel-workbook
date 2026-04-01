@@ -940,7 +940,7 @@
     }
   }
 
-  const OPERATION_TIMEOUT_MS = 25000;
+  const OPERATION_TIMEOUT_MS = 75000;
 
   async function handleMessage(data) {
     const { id, type, payload } = data || {};
