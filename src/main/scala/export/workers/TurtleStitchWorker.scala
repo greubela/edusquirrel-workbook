@@ -1,4 +1,4 @@
-package interactionPlugins.turtleStitchPlugin
+package `export`.workers
 
 import org.scalajs.dom
 
