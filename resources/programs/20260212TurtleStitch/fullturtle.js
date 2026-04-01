@@ -604,7 +604,7 @@
   const impl = {
     calcProgramPng: async (xml_content) => {
       const preview = await ensureSingletonPreview();
-      return preview.simulateGreenFlag(xml_content);
+      return preview.calcProgramPng(xml_content);
     },
     calcProgramSvg: async (xml_content, language) => {
       const preview = await ensureSingletonPreview();

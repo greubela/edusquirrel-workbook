@@ -1,17 +1,19 @@
 package contentmanagement.model.vm.parsing.python
 
-import contentmanagement.model.language.AppLanguage.{English, JavaScript, Python}
-import contentmanagement.model.language.LanguageMap
-import contentmanagement.model.vm.code.BeExpression
-import contentmanagement.model.vm.code.controlStructures.{BeIfElse, BeSequence, BeWhile}
-import contentmanagement.model.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
-import contentmanagement.model.vm.code.usage.BeAssignVariable
-import contentmanagement.model.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
-import contentmanagement.model.vm.code.others.BeReturn
-import contentmanagement.model.vm.parsing.python.PythonParser.KnownStructure
-import contentmanagement.model.vm.types.BeDataType
+import datastructures.core.language.AppLanguage.{English, JavaScript, Python}
+import datastructures.core.vm.parsing.python.PythonParser.KnownStructure
+import datastructures.core.language.LanguageMap
+import datastructures.core.vm.code.BeExpression
+import datastructures.core.vm.code.controlStructures.{BeIfElse, BeSequence, BeWhile}
+import datastructures.core.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
+import datastructures.core.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
+import datastructures.core.vm.code.others.BeReturn
+import datastructures.core.vm.code.usage.BeAssignVariable
+import datastructures.core.vm.parsing.python.{DefaultDefinitions, PythonNormalizer, PythonParser}
+import datastructures.core.vm.types.BeDataType
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import munit.FunSuite
+
 import scala.collection.mutable
 
 class PythonParserSpec extends FunSuite {

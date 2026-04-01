@@ -4,15 +4,15 @@ import com.raquo.laminar.api.L.*
 import upickle.default.*
 import workbook.htmlElements.basic.HtmlContainerTitle
 import workbook.model.abstractions.WorkbookInteraction
-import workbook.model.info.WorkbookInfo
+import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 import workbook.model.interaction.history.UpdateImportance
 import workbook.model.interaction.InteractionVariable
-import util.Serializer
-import contentmanagement.model.language.{HumanLanguage, LanguageMap}
+import datastructures.core.language.{HumanLanguage, LanguageMap}
+import util.serializing.Serializer
 
 case class VisualNovelPanelView(panelIndex: Int, viewedAtEpochMillis: Long)
 
-case class VisualNovelExercise(workbookInfoVar: Var[WorkbookInfo],
+case class VisualNovelExercise(workbookInfo: AllWorkbookInfo,
                                id: String,
                                titleMap: LanguageMap[HumanLanguage],
                                panels: List[VisualNovelPanel]) extends WorkbookInteraction[Set[VisualNovelPanelView]] {
@@ -40,7 +40,7 @@ case class VisualNovelExercise(workbookInfoVar: Var[WorkbookInfo],
       panelViewSerializer
     )
 
-  private val htmlTitleElement = HtmlContainerTitle(workbookInfoVar, titleMap)
+  private val htmlTitleElement = HtmlContainerTitle(workbookInfo, workbookInfo.stringSignalFromLanguageMap(titleMap))
 
   private def totalPanels: Int = panels.length
 

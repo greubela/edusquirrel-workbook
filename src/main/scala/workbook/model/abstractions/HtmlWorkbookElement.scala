@@ -2,14 +2,15 @@ package workbook.model.abstractions
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import contentmanagement.webElements.HtmlAppElement
-import workbook.model.info.WorkbookInfo
+import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
+import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 import workbook.model.interaction.*
 import workbook.model.interaction.history.*
 
 trait HtmlWorkbookElement extends HtmlAppElement {
-  def workbookInfoVar: Var[WorkbookInfo]
+    def workbookInfo: AllWorkbookInfo
+    def workbookInfoVar: Var[WorkbookInfo] = workbookInfo.workbookInfoVar
 }
 
 

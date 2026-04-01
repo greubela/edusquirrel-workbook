@@ -1,6 +1,6 @@
 package contentmanagement.webElements.shapes.meta
 
-import contentmanagement.model.geometry.*
+import datastructures.core.geometry.Point
 
 sealed trait PositionInformation[T: Fractional] {
 

@@ -1,8 +1,8 @@
 package contentmanagement.webElements.shapesNew
 
-import contentmanagement.model.geometry.Dimension
 import contentmanagement.webElements.shapes.meta.*
 import contentmanagement.webElements.svg.AppSvgElement
+import datastructures.core.geometry.Dimension
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 

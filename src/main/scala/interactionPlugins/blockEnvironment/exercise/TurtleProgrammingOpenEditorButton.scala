@@ -7,16 +7,16 @@ import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.WorkbookInfo
+import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 
-case class TurtleProgrammingOpenEditorButton(workbookInfoVar: Var[WorkbookInfo], editorState: EditorState) extends HtmlWorkbookElement {
+case class TurtleProgrammingOpenEditorButton(workbookInfo: AllWorkbookInfo, editorState: EditorState) extends HtmlWorkbookElement {
 
 
   private val fullscreenEditor = HtmlFullscreenTurtleEditorElement(editorState)
 
   private def openFullEditor(): Unit = {
     //fullscreenEditor.bindToProgram(currentProgram)
-    workbookInfoVar.now().fullscreenElement.setElementFullscreen(fullscreenEditor.getDomElement())
+    workbookInfo.technicalElements.fullScreenContainer.setElementFullscreen(fullscreenEditor.getDomElement())
   }
 
   override def getDomElement(): Element =

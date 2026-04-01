@@ -1,10 +1,10 @@
 package contentmanagement.webElements.svg.shapes.special.nested
 
-import contentmanagement.model.geometry.{Bounds, Dimension}
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.controlFlow.ControlFlowPart
 import contentmanagement.webElements.svg.shapes.composite.*
 import contentmanagement.webElements.svg.shapes.*
+import datastructures.core.geometry.{Bounds, Dimension}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 case class ShapeWithControlFlow(cf: ControlFlowShape, expr: BeShape, newCF: ControlFlowPart=null)  extends ControlFlowAndExpressionShape{

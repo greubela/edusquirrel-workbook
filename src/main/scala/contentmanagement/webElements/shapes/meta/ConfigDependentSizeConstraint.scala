@@ -1,6 +1,6 @@
 package contentmanagement.webElements.shapes.meta
 
-import contentmanagement.model.geometry.Dimension
+import datastructures.core.geometry.Dimension
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import util.numbers.*
 

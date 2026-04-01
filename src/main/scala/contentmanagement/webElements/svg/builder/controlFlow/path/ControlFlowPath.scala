@@ -1,9 +1,9 @@
 package contentmanagement.webElements.svg.builder.controlFlow.path
 
-import contentmanagement.model.geometry.Point
 import contentmanagement.webElements.svg.builder.controlFlow.ControlFlowOverlayElement
 import contentmanagement.webElements.svg.shapes.BeShape
 import contentmanagement.webElements.svg.shapes.composite.{BoxManualPositioning, ManualPositionElement}
+import datastructures.core.geometry.Point
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 

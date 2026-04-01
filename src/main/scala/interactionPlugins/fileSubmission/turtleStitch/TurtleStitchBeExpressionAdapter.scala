@@ -1,6 +1,6 @@
 package interactionPlugins.fileSubmission.turtleStitch
 
-import contentmanagement.model.vm.code.BeExpression
+import datastructures.core.vm.code.BeExpression
 import org.scalajs.dom
 
 import java.nio.charset.{Charset, StandardCharsets}

@@ -1,14 +1,14 @@
 package interactionPlugins.blockEnvironment.programming.blockdisplay.define
 
 import com.raquo.laminar.api.L
-import contentmanagement.model.language.AppLanguage.{English, Python}
-import contentmanagement.model.language.{HumanLanguage, LanguageMap}
-import contentmanagement.model.vm.code.defining.*
-import contentmanagement.model.vm.code.tree.BeExpressionNode
+import datastructures.core.language.AppLanguage.{English, Python}
 import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowShape, TextShape}
 import contentmanagement.webElements.svg.shapes.composite.ShapeAroundShape
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.*
 import contentmanagement.webElements.svg.shapes.datatypes.RectangleShape
+import datastructures.core.language.{HumanLanguage, LanguageMap}
+import datastructures.core.vm.code.defining.BeDefineFunction
+import datastructures.core.vm.code.tree.BeExpressionNode
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.blockdisplay.*
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer

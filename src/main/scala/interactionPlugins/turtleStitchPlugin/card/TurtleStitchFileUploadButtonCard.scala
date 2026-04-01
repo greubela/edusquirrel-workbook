@@ -11,7 +11,7 @@ import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLButtonElement, HTMLDivElement, HTMLInputElement}
 import util.TypeConversion
 import workbook.model.abstractions.WorkbookInteraction
-import workbook.model.info.WorkbookInfo
+import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 import workbook.model.interaction.InteractionVariable
 import workbook.model.interaction.history.UpdateImportance
 
@@ -21,7 +21,7 @@ import scala.scalajs.js.typedarray.*
 import scala.util.{Failure, Success}
 
 case class TurtleStitchFileUploadButtonCard(
-                                 workbookInfoVar: L.Var[WorkbookInfo],
+                                 workbookInfo: AllWorkbookInfo,
                                  id: String,
                                  acceptedTypes: List[String],
                                  storageFormat: StorageFormat = BYTES_AS_BASE64_STRING

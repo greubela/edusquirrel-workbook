@@ -1,6 +1,5 @@
 package contentmanagement.webElements.svg.shapes.special.nested
 
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.compositeElements.AppDecoratedSvgElement
@@ -8,6 +7,7 @@ import contentmanagement.webElements.svg.shapes.BeShape.BeShapeComposite
 import contentmanagement.webElements.svg.shapes.composite.{BoxManualPositioning, ManualPositionElement}
 import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.ControlFlowShapeDoubleWidth
 import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowAndExpressionShape, ControlFlowShape}
+import datastructures.core.geometry.{Bounds, Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 import scala.collection.mutable

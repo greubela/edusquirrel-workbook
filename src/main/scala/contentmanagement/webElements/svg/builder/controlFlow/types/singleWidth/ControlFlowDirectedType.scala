@@ -1,7 +1,7 @@
 package contentmanagement.webElements.svg.builder.controlFlow.types.singleWidth
 
-import contentmanagement.model.geometry.Dimension
 import contentmanagement.webElements.svg.builder.controlFlow.path.{ControlFlowPathOverlay, PathStatus, PathType}
+import datastructures.core.geometry.Dimension
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 case class ControlFlowDirectedType(goesDown: Boolean, isActive: Boolean = false) extends ControlFlowTypeSingleWidth {

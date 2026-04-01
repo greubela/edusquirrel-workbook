@@ -4,17 +4,16 @@ import com.raquo.airstream.ownership.Owner
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.api.L.Var
-import contentmanagement.model.language.HumanLanguage
-import contentmanagement.model.language.AppLanguage
-import contentmanagement.model.language.AppLanguage.*
-import contentmanagement.model.vm.code.others.BeStartProgram
-import contentmanagement.model.language.ProgrammingLanguage
-import contentmanagement.model.vm.parsing.cpp.CppParser
-import contentmanagement.model.vm.parsing.python.PythonParser
 import contentmanagement.webElements.HtmlAppElement
 import contentmanagement.webElements.genericHtmlElements.editor.{CodeMirrorEditor, SimpleStringTextEditor}
 import contentmanagement.webElements.genericHtmlElements.other.{HtmlTab, HtmlTabElement}
+import datastructures.core.language.{AppLanguage, HumanLanguage, ProgrammingLanguage}
 import interactionPlugins.blockEnvironment.programming.BeProgram
+import datastructures.core.language.*
+import datastructures.core.language.AppLanguage.*
+import datastructures.core.vm.code.others.BeStartProgram
+import datastructures.core.vm.parsing.cpp.CppParser
+import datastructures.core.vm.parsing.python.PythonParser
 
 case class HtmlBeProgramEditor(
                                 editorState: EditorState,

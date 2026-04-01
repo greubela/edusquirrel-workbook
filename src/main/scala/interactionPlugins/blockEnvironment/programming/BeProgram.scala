@@ -1,17 +1,17 @@
 package interactionPlugins.blockEnvironment.programming
 
-import contentmanagement.datastructures.tree.*
-import contentmanagement.datastructures.tree.nodeImpl.*
-import contentmanagement.model.language.*
-import contentmanagement.model.vm.code.*
-import contentmanagement.model.vm.code.controlStructures.BeSequence
-import contentmanagement.model.vm.code.defining.{BeDefineFunction, BeDefineVariable}
-import contentmanagement.model.vm.code.others.BeStartProgram
-import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionReference, BeExtensionPoint}
-import contentmanagement.model.vm.code.usage.*
-import contentmanagement.model.vm.parsing.python.PythonParser
-import contentmanagement.model.vm.types.*
-import contentmanagement.model.vm.types.BeChildRole.*
+import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
+import datastructures.core.tree.{Tree, TreeStructureAndExecutionContext, TreeStructureContext}
+import datastructures.core.tree.nodeImpl.NodeBasedTreePosition
+import datastructures.core.vm.code.BeExpression
+import datastructures.core.vm.code.controlStructures.BeSequence
+import datastructures.core.vm.code.defining.{BeDefineFunction, BeDefineVariable}
+import datastructures.core.vm.code.others.BeStartProgram
+import datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference, BeExtensionPoint}
+import datastructures.core.vm.code.usage.{BeFunctionCall, BeUseValue}
+import datastructures.core.vm.parsing.python.PythonParser
+import datastructures.core.vm.types.BeChildRole.*
+import datastructures.core.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeDataValueLiteral, BeScope}
 import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.*
 import interactionPlugins.blockEnvironment.programming.blockdisplay.other.BeBlockPlaceholder

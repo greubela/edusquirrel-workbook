@@ -2,24 +2,26 @@ package workbook.model
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.language.*
-import contentmanagement.storage.DataStorage
+import datastructures.core.language.{HumanLanguage, LanguageMap}
+import datastructures.web.storage.AsyncDataCache
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.WorkbookInfo
+import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 import workbook.htmlElements.headerElements.HtmlWorkbookHeader
 
-case class Workbook(workbookInfoVar: Var[WorkbookInfo], title: LanguageMap[HumanLanguage], sections: List[WorkbookSection]) extends HtmlWorkbookElement {
+import scala.concurrent.ExecutionContext
+
+case class Workbook(workbookInfo: AllWorkbookInfo, title: LanguageMap[HumanLanguage], sections: List[WorkbookSection]) extends HtmlWorkbookElement {
   
   private def getElement(activeSection: Option[WorkbookSection]): Element =
     if (activeSection.isEmpty) {
       span(
-        text <-- DataStorage.labelSignalFromLanguageMapName("noSectionSelected", workbookInfoVar)
+        text <-- workbookInfo.stringSignalFromLanguageMapId("basic/noSectionSelected")(ExecutionContext.global),
       )
     } else {
       activeSection.get.getDomElement()
     }
 
-  private val titleLine = HtmlWorkbookHeader(workbookInfoVar, title, sections)
+  private val titleLine = HtmlWorkbookHeader(workbookInfo, title, sections)
 
   override def getDomElement(): L.Element = L.div(
     cls := "workbook",

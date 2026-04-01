@@ -1,14 +1,15 @@
 package contentmanagement.webElements.genericHtmlElements.editor
 
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.chat.MessengerModel
-import contentmanagement.model.chat.MessengerModel.{Message, SenderRole}
-import contentmanagement.model.language.AppLanguage
 import contentmanagement.webElements.HtmlAppElement
+import datastructures.core.chat.MessengerModel.{Message, SenderRole}
+import datastructures.core.chat.MessengerModel
+import datastructures.core.language.{AppLanguage, LanguageMap}
 import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.interaction.InteractionVariable.*
 import workbook.model.interaction.*
 import workbook.model.interaction.history.UpdateImportance
+
 import scala.scalajs.js
 
 case class SimpleMessengerEditor(chatExercise: InteractionVariable[MessengerModel]) extends HtmlAppElement {
@@ -62,7 +63,7 @@ case class SimpleMessengerEditor(chatExercise: InteractionVariable[MessengerMode
       val currentState = chatExercise.currentValue
       val nextState = currentState.addMessage(
         text = trimmed,
-        author = MessengerModel.BasicPerson(name = contentmanagement.model.language.LanguageMap.universalMap("Me")),
+        author = MessengerModel.BasicPerson(name = LanguageMap.universalMap("Me")),
         senderRole = SenderRole.USER,
         timestampEpochMillis = System.currentTimeMillis()
       )

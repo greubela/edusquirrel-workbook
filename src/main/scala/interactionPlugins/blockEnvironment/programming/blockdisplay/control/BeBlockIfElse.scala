@@ -1,14 +1,14 @@
 package interactionPlugins.blockEnvironment.programming.blockdisplay.control
 
-import contentmanagement.datastructures.tree.*
-import contentmanagement.datastructures.tree.nodeImpl.*
-import contentmanagement.model.vm.code.controlStructures.BeIfElse
-import contentmanagement.model.vm.code.tree.BeExpressionNode
-import contentmanagement.model.vm.types.BeChildRole.{BodySequence, ConditionInControlStructure}
+import datastructures.core.vm.types.BeChildRole.{BodySequence, ConditionInControlStructure}
 import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.{ControlFlowCross, ControlFlowShapeDoubleWidth, IfElseSplit, IfElseUnion}
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.ControlFlowDirected
 import contentmanagement.webElements.svg.shapes.special.nested.NestedControlStructureShape
 import contentmanagement.webElements.svg.shapes.*
+import datastructures.core.tree.TreeStructureContext
+import datastructures.core.tree.nodeImpl.NodeBasedTreePosition
+import datastructures.core.vm.code.controlStructures.BeIfElse
+import datastructures.core.vm.code.tree.BeExpressionNode
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, RenderingInformation}
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer

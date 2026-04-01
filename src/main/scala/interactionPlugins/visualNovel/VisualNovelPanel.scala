@@ -1,11 +1,11 @@
 package interactionPlugins.visualNovel
 
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.file.FileDescription
-import contentmanagement.model.language.{HumanLanguage, LanguageMap}
 import contentmanagement.webElements.HtmlAppElement
+import datastructures.core.language.{HumanLanguage, LanguageMap}
+import datastructures.web.file.FileDescription
 import workbook.htmlElements.basic.HtmlImageElement
-import workbook.model.info.WorkbookInfo
+import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 
 case class VisualNovelPanel(panelContent: HtmlAppElement)
 
@@ -15,9 +15,9 @@ object VisualNovelPanel {
             textContent: LanguageMap[HumanLanguage],
             source: LanguageMap[HumanLanguage],
             description: LanguageMap[HumanLanguage],
-            workbookInfoVar: Var[WorkbookInfo]): VisualNovelPanel = {
+            workbookInfo: AllWorkbookInfo): VisualNovelPanel = {
 
-    val imageElement = HtmlImageElement(image, workbookInfoVar)
+    val imageElement = HtmlImageElement(image, workbookInfo)
 
     val panelElement = new HtmlAppElement {
       override def getDomElement(): Element = div(
@@ -28,15 +28,15 @@ object VisualNovelPanel {
         ),
         div(
           cls := "visual-novel-source",
-          child.text <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(source.getInLanguage)
+          child.text <-- workbookInfo.stringSignalFromLanguageMap(source)
         ),
         div(
           cls := "visual-novel-description",
-          child.text <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(description.getInLanguage)
+          child.text <-- workbookInfo.stringSignalFromLanguageMap(description)
         ),
         div(
           cls := "visual-novel-text",
-          child.text <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(textContent.getInLanguage)
+          child.text <-- workbookInfo.stringSignalFromLanguageMap(textContent)
         )
       )
     }

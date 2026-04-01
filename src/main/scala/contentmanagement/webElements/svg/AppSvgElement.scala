@@ -5,13 +5,14 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.codecs.StringAsIsCodec
 import com.raquo.laminar.nodes.ReactiveHtmlElement
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.atomarElements.{AppCircleSvgElement, AppPathSvgElement, AppRectangleSvgElement, AppTextSvgElement}
 import contentmanagement.webElements.svg.compositeElements.{AppDecoratedSvgElement, AppGroupSvgElement}
-import contentmanagement.model.AppFont
 
 import scala.math.BigDecimal.RoundingMode
 import com.raquo.laminar.keys.{StyleProp, SvgAttr}
+import datastructures.core.geometry.{Bounds, Dimension, Point}
+import datastructures.web.font.AppFont
+
 // todo: verify overlays and finish for other elements... move to subclasses?
 trait AppSvgElement {
 

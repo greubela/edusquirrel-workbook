@@ -1,10 +1,10 @@
 package contentmanagement.webElements.svg.shapes.datatypes
 
-import contentmanagement.model.geometry.{Bounds, Dimension}
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.shapes.ShapeFactory
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapePathBased
+import datastructures.core.geometry.{Bounds, Dimension}
 
 object FunctionDefineShape extends BeShapePathBased {
 

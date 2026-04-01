@@ -1,9 +1,9 @@
 package contentmanagement.webElements.svg.builder.controlFlow.types.doubleWidth
 
-import contentmanagement.model.geometry.Dimension
 import contentmanagement.webElements.svg.builder.controlFlow.path.{ControlFlowPathOverlay, PathStatus, PathType}
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapeContainerable
 import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
+import datastructures.core.geometry.Dimension
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 case class IfElseUnionType() extends ControlFlowTypeDoubleWidth {

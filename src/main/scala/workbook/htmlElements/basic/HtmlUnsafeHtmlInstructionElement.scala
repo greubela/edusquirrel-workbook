@@ -2,15 +2,15 @@ package workbook.htmlElements.basic
 
 import com.raquo.laminar.DomApi
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.language.{HumanLanguage, LanguageMap}
-import contentmanagement.storage.DataStorage
+import datastructures.core.language.{HumanLanguage, LanguageMap}
+import datastructures.web.storage.AsyncDataCache
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.WorkbookInfo
+import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 
-case class HtmlUnsafeHtmlInstructionElement(workbookInfoVar: Var[WorkbookInfo], labelSignal: Signal[String]) extends HtmlWorkbookElement {
+import scala.concurrent.ExecutionContext
 
-
-
+case class HtmlUnsafeHtmlInstructionElement(workbookInfo: AllWorkbookInfo, labelSignal: Signal[String]) extends HtmlWorkbookElement {
+  
   override def getDomElement(): Element = div(
     cls := "workbook-element exercise-instruction",
     child <-- labelSignal.map { html =>
@@ -22,8 +22,9 @@ case class HtmlUnsafeHtmlInstructionElement(workbookInfoVar: Var[WorkbookInfo], 
 
 object HtmlUnsafeHtmlInstructionElement {
   
-  def apply(workbookInfoVar: Var[WorkbookInfo], languageMapId: String): HtmlUnsafeHtmlInstructionElement = {
-    HtmlUnsafeHtmlInstructionElement(workbookInfoVar, DataStorage.labelSignalFromLanguageMapName(languageMapId, workbookInfoVar))
+  def apply(workbookInfo: AllWorkbookInfo, languageMapId: String): HtmlUnsafeHtmlInstructionElement = {
+    val signal: Signal[String] = workbookInfo.stringSignalFromLanguageMapId(languageMapId)(ExecutionContext.global)
+    HtmlUnsafeHtmlInstructionElement(workbookInfo, signal)
   }
   
 }

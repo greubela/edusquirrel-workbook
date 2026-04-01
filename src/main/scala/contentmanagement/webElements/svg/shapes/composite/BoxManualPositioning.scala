@@ -1,10 +1,10 @@
 package contentmanagement.webElements.svg.shapes.composite
 
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.compositeElements.AppGroupSvgElement
 import contentmanagement.webElements.svg.shapes.BeShape
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapeComposite
+import datastructures.core.geometry.{Bounds, Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 import scala.collection.mutable

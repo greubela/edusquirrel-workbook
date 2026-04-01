@@ -3,17 +3,17 @@ package interactionPlugins.blockEnvironment.exercise
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.api.L.Var
 import com.raquo.laminar.api.L.svg
-import contentmanagement.model.geometry.Bounds
-import contentmanagement.model.language.*
 import contentmanagement.webElements.svg.AppSvgElement
+import datastructures.core.geometry.Bounds
+import datastructures.core.language.{HumanLanguage, LanguageMap}
 import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig, BlockEnvironmentLanguageMap}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.WorkbookInfo
+import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 import workbook.model.interaction.InteractionVariable
 
-case class TurtleProgrammingPreview(workbookInfoVar: Var[WorkbookInfo], editorState: EditorState, expectedSvgResult: AppSvgElement) extends HtmlWorkbookElement {
+case class TurtleProgrammingPreview(workbookInfo: AllWorkbookInfo, editorState: EditorState, expectedSvgResult: AppSvgElement) extends HtmlWorkbookElement {
 
   private val renderedSvg: SvgElement = {
     val expectedElement = expectedSvgResult

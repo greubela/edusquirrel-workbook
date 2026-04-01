@@ -1,12 +1,12 @@
 package contentmanagement.webElements.svg.builder.controlFlow
 
-import contentmanagement.model.geometry.Point
 import contentmanagement.webElements.svg.builder.controlFlow.path.ControlFlowPathOverlay
 import contentmanagement.webElements.svg.builder.controlFlow.types.doubleWidth.{ControlFlowCrossType, IfElseSplitType, IfElseUnionType}
 import contentmanagement.webElements.svg.builder.controlFlow.types.singleWidth.{ControlFlowDirectedType, ControlFlowProgramStarterType, ControlFlowProgramStopperType}
 import contentmanagement.webElements.svg.shapes.ControlFlowShape
 import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.{ControlFlowCross, IfElseSplit, IfElseUnion}
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.{ControlFlowDirected, ControlFlowProgramStarter, ControlFlowProgramStopper}
+import datastructures.core.geometry.Point
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder

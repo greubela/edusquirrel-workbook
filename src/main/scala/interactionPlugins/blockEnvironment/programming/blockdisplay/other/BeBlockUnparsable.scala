@@ -1,12 +1,12 @@
 package interactionPlugins.blockEnvironment.programming.blockdisplay.other
 
-import contentmanagement.model.language.LanguageMap
-import contentmanagement.model.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
-import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowShape, TextShape}
 import contentmanagement.webElements.svg.shapes.composite.ShapeAroundShape
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.ControlFlowEmpty
 import contentmanagement.webElements.svg.shapes.datatypes.RectangleShape
+import datastructures.core.language.LanguageMap
+import datastructures.core.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
+import datastructures.core.vm.code.tree.BeExpressionNode
 import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, BeBlockSingleShape, RenderingInformation}
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
 

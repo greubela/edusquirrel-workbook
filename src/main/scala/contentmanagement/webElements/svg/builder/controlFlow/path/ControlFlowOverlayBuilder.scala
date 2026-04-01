@@ -1,10 +1,10 @@
 package contentmanagement.webElements.svg.builder.controlFlow.path
 
-import contentmanagement.model.geometry.{Dimension, Point}
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.builder.controlFlow.*
 import contentmanagement.webElements.svg.shapes.composite.*
 import contentmanagement.webElements.svg.shapes.*
+import datastructures.core.geometry.{Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 import scala.collection.mutable

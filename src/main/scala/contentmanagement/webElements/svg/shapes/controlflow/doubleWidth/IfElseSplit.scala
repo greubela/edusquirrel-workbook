@@ -1,12 +1,12 @@
 package contentmanagement.webElements.svg.shapes.controlflow.doubleWidth
 
 import com.raquo.laminar.api.L
-import contentmanagement.model.geometry.{Dimension, Point}
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.shapes.*
 import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
 import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.IfElseSplit.*
 import contentmanagement.webElements.svg.shapes.decorations.{BeDataArrow, PathSplitOverlay}
+import datastructures.core.geometry.{Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder

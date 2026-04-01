@@ -1,10 +1,10 @@
 package contentmanagement.webElements.svg.shapes.controlflow.doubleWidth
 
-import contentmanagement.model.geometry.{Dimension, Point}
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.shapes.BeShape
 import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
 import contentmanagement.webElements.svg.shapes.decorations.{BeDataArrow, ControlArrowLeftRight, PathSplitOverlay, PathUnionOverlay}
+import datastructures.core.geometry.{Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder

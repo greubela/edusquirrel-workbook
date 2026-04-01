@@ -1,11 +1,11 @@
 package contentmanagement.webElements.svg.builder.controlFlow
 
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
-import contentmanagement.model.language.{HumanLanguage, LanguageMap}
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.controlFlow.path.{ControlFlowPathOverlay, ControlFlowOverlayBuilder}
 import contentmanagement.webElements.svg.shapes.*
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapeContainerable
+import datastructures.core.geometry.{Bounds, Dimension, Point}
+import datastructures.core.language.{HumanLanguage, LanguageMap}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 

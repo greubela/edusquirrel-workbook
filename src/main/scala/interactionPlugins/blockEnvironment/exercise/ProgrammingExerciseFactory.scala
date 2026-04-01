@@ -2,13 +2,13 @@ package interactionPlugins.blockEnvironment.exercise
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.geometry.{Bounds, Point}
-import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
+import datastructures.core.geometry.{Bounds, Point}
+import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.WorkbookInfo
+import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement}
 
 object ProgrammingExerciseFactory {
@@ -54,9 +54,9 @@ object ProgrammingExerciseFactory {
     strokeWidth = "4"
   )
 
-  def createTurtleProgrammingExercise(workbookInfoVar: Var[WorkbookInfo], id: String, titleMap: LanguageMap[HumanLanguage], expectedSvgResult: AppSvgElement): List[HtmlWorkbookElement] = {
+  def createTurtleProgrammingExercise(workbookInfo: AllWorkbookInfo, id: String, titleMap: LanguageMap[HumanLanguage], expectedSvgResult: AppSvgElement): List[HtmlWorkbookElement] = {
 
-    val titleElement = HtmlContainerTitle(workbookInfoVar, titleMap)
+    val titleElement = HtmlContainerTitle(workbookInfo, workbookInfo.stringSignalFromLanguageMap(titleMap))
 
     val instruction = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
       AppLanguage.English -> "Use Turtle Commands to program the Shape on the right!",
@@ -67,9 +67,9 @@ object ProgrammingExerciseFactory {
       AppLanguage.Turkish -> "Sağdaki şekli programlamak için Turtle komutlarını kullan!",
       AppLanguage.Danish -> "Brug Turtle-kommandoer til at programmere formen til højre!"
     ))
-    val instructionElement = HtmlPlaintextInstructionElement(workbookInfoVar, instruction)
+    val instructionElement = HtmlPlaintextInstructionElement(workbookInfo, workbookInfo.stringSignalFromLanguageMap(instruction))
 
-    val interactionElement = TurtleProgrammingInteraction(workbookInfoVar, id, expectedSvgResult)
+    val interactionElement = TurtleProgrammingInteraction(workbookInfo, id, expectedSvgResult)
 
     List(titleElement, instructionElement, interactionElement)
   }

@@ -1,10 +1,10 @@
 package contentmanagement.webElements.svg.builder.controlFlow.types.doubleWidth
 
-import contentmanagement.model.geometry.{Dimension, Point}
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.builder.controlFlow.path.{ControlFlowPath, ControlFlowPathOverlay, ControlFlowPathSegment, PathStatus, PathType, SegmentType}
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapeContainerable
 import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
+import datastructures.core.geometry.{Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 case class RepetitionSplitMiddleType() extends ControlFlowTypeDoubleWidth {

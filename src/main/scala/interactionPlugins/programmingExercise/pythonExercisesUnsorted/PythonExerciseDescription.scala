@@ -1,6 +1,6 @@
 package interactionPlugins.programmingExercise.pythonExercisesUnsorted
 
-import contentmanagement.model.language.*
+import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
 
 final case class PythonExerciseDescription(
     id: String,

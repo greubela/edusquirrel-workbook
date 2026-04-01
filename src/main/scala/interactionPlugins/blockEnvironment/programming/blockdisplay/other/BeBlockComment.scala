@@ -1,12 +1,12 @@
 package interactionPlugins.blockEnvironment.programming.blockdisplay.other
 
-import contentmanagement.model.vm.code.errors.BeSingleLineComment
-import contentmanagement.model.vm.code.tree.BeExpressionNode
 import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowShape, TextShape}
 import contentmanagement.webElements.svg.shapes.composite.ShapeAroundShape
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.*
 import contentmanagement.webElements.svg.shapes.datatypes.{BeErrorShape, RectangleShape}
 import contentmanagement.webElements.svg.shapes.special.{CommandShape, CommentShape}
+import datastructures.core.vm.code.errors.BeSingleLineComment
+import datastructures.core.vm.code.tree.BeExpressionNode
 import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, BeBlockSingleShape, RenderingInformation}
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
 

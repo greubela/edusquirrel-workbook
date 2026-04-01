@@ -2,21 +2,21 @@ package interactionPlugins.blockEnvironment.exercise
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.geometry.Bounds
-import contentmanagement.model.language.AppLanguage
 import contentmanagement.webElements.svg.AppSvgElement
+import datastructures.core.geometry.Bounds
+import datastructures.core.language.AppLanguage
 import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig, BlockEnvironmentLanguageMap}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
-import util.Serializer
+import util.serializing.Serializer
 import workbook.model.abstractions.WorkbookInteraction
-import workbook.model.info.WorkbookInfo
+import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 import workbook.model.interaction.InteractionVariable
 import workbook.model.interaction.history.UpdateImportance.MAJOR
 import workbook.model.interaction.sync.{LocalStorageSync, SyncInformation, SyncStrategy}
 
-case class TurtleProgrammingInteraction(workbookInfoVar: Var[WorkbookInfo], id: String, expectedSvgResult: AppSvgElement) extends WorkbookInteraction[BeProgram] {
+case class TurtleProgrammingInteraction(workbookInfo: AllWorkbookInfo, id: String, expectedSvgResult: AppSvgElement) extends WorkbookInteraction[BeProgram] {
 
   private val defaultProgram: BeProgram = BeProgram(BeProgram.miniProgramExpression())
 
@@ -32,10 +32,10 @@ case class TurtleProgrammingInteraction(workbookInfoVar: Var[WorkbookInfo], id: 
     io)
 
   private val editorState: EditorState = {
-    val initRenderer = BeRenderingConfig.defaultWithLanguage(workbookInfoVar.now().config.currentWorkbookLanguage)
+    val initRenderer = BeRenderingConfig.defaultWithLanguage(workbookInfo.workbookInfoVar.now().config.currentWorkbookLanguage)
     val rendererVar = Var(initRenderer)
-    
-    workbookInfoVar.signal.foreach(onNext => rendererVar.update(_.copy(language = onNext.config.currentWorkbookLanguage)))(unsafeWindowOwner)
+
+    workbookInfo.workbookInfoVar.signal.foreach(onNext => rendererVar.update(_.copy(language = onNext.config.currentWorkbookLanguage)))(unsafeWindowOwner)
 
     val initControllerState: BeEditorControllerState = BeEditorControllerState.default()
     EditorState(
@@ -45,8 +45,8 @@ case class TurtleProgrammingInteraction(workbookInfoVar: Var[WorkbookInfo], id: 
     )
   }
 
-  private val openEditorButton = TurtleProgrammingOpenEditorButton(workbookInfoVar, editorState)
-  private val programmingView = TurtleProgrammingPreview(workbookInfoVar, editorState, expectedSvgResult)
+  private val openEditorButton = TurtleProgrammingOpenEditorButton(workbookInfo, editorState)
+  private val programmingView = TurtleProgrammingPreview(workbookInfo, editorState, expectedSvgResult)
 
   private val domElement: Element =
     div(

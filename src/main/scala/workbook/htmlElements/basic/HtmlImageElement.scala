@@ -2,20 +2,18 @@ package workbook.htmlElements.basic
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.file.{FileDescription, FullImage, LoadedFile}
-import contentmanagement.storage
-import contentmanagement.storage.DataStorage
+import datastructures.web.file.{FileDescription, FullImage, LoadedFile}
+import datastructures.web.storage.AsyncDataCache
 import workbook.model.info.*
 
 import scala.concurrent.ExecutionContext
 
-case class HtmlImageElement(imageSignal: StrictSignal[Option[FullImage]], workbookInfoVar: Var[WorkbookInfo]) {
-
-
+case class HtmlImageElement(imageSignal: StrictSignal[Option[FullImage]], workbookInfo: AllWorkbookInfo) {
+  
   def getDomSignal: Signal[Element] = imageSignal.map {
     case None => {
       span(
-        text <-- DataStorage.labelSignalFromLanguageMapName("imageLoadingMap", workbookInfoVar)
+        text <-- workbookInfo.stringSignalFromLanguageMapId("basic/imageLoadingMap")(ExecutionContext.global)
       )
     }
     case Some(fullImg: FullImage) => {
@@ -27,14 +25,14 @@ case class HtmlImageElement(imageSignal: StrictSignal[Option[FullImage]], workbo
 
 object HtmlImageElement {
 
-  def apply(fullImage: FullImage, workbookInfoVar: Var[WorkbookInfo]): HtmlImageElement = {
-    HtmlImageElement(Var(Some(fullImage)).signal, workbookInfoVar)
+  def apply(fullImage: FullImage, workbookInfo: AllWorkbookInfo): HtmlImageElement = {
+    HtmlImageElement(Var(Some(fullImage)).signal, workbookInfo)
   }
 
-  def apply(fileDescription: FileDescription, workbookInfoVar: Var[WorkbookInfo]): HtmlImageElement = {
-    val fullImgVar: Var[Option[LoadedFile]] = DataStorage.fileDataStore.loadIntoVariable(fileDescription)(ExecutionContext.global)
+  def apply(fileDescription: FileDescription, workbookInfo: AllWorkbookInfo): HtmlImageElement = {
+    val fullImgVar: Var[Option[LoadedFile]] = workbookInfo.technicalElements.fileStore.loadIntoVariable(fileDescription)(ExecutionContext.global)
     val imageSignal: StrictSignal[Option[FullImage]] = fullImgVar.signal.mapLazy(_.map(_.toImage))
-    HtmlImageElement(imageSignal, workbookInfoVar)
+    HtmlImageElement(imageSignal, workbookInfo)
   }
 
 }

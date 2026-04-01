@@ -1,13 +1,13 @@
 package content.plantworkshop
 
-import contentmanagement.model.language.{HumanLanguage, LanguageMap}
-import contentmanagement.model.vm.code.BeExpression
-import contentmanagement.model.vm.code.controlStructures.{BeIfElse, BeSequence}
-import contentmanagement.model.vm.code.defining.{BeDefineFunction, BeDefineVariable}
-import contentmanagement.model.vm.code.others.BeStartProgram
-import contentmanagement.model.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
-import contentmanagement.model.vm.parsing.python.DefaultDefinitions
-import contentmanagement.model.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
+import datastructures.core.language.{HumanLanguage, LanguageMap}
+import datastructures.core.vm.code.BeExpression
+import datastructures.core.vm.code.controlStructures.{BeIfElse, BeSequence}
+import datastructures.core.vm.code.defining.{BeDefineFunction, BeDefineVariable}
+import datastructures.core.vm.code.others.BeStartProgram
+import datastructures.core.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
+import datastructures.core.vm.parsing.python.DefaultDefinitions
+import datastructures.core.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
 import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.BeProgram
 

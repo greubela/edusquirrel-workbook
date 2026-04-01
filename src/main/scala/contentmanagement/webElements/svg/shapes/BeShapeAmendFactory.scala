@@ -17,68 +17,68 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
   }
 
   def defaultTextAmends: Seq[L.Modifier[L.SvgElement]] = List(
-    //svg.fill := rendererConfig.colorPalette.grayscale(0).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebStyleString
+    //svg.fill := rendererConfig.colorPalette.grayscale(0).toWebColor.webStyleRgbString
+    svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebColor.webStyleRgbString
   )
 
   def invertedTextAmends: Seq[L.Modifier[L.SvgElement]] = List(
-    //svg.fill := rendererConfig.colorPalette.grayscale(4).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.grayscale(4).toWebStyleString
+    //svg.fill := rendererConfig.colorPalette.grayscale(4).toWebColor.webStyleRgbString,
+    svg.stroke := rendererConfig.colorPalette.grayscale(4).toWebColor.webStyleRgbString
   )
 
   def variableColorsDefAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebStyleString,
-    svg.fill := rendererConfig.colorPalette.grayscale(1).toWebStyleString,
+    svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebColor.webStyleRgbString,
+    svg.fill := rendererConfig.colorPalette.grayscale(1).toWebColor.webStyleRgbString,
   )
 
   def variableColorsUsedAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.stroke := rendererConfig.colorPalette.grayscale(3).toWebStyleString,
-    svg.fill := rendererConfig.colorPalette.grayscale(4).toWebStyleString,
+    svg.stroke := rendererConfig.colorPalette.grayscale(3).toWebColor.webStyleRgbString,
+    svg.fill := rendererConfig.colorPalette.grayscale(4).toWebColor.webStyleRgbString,
   )
 
   def mutedColorsAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.fill := rendererConfig.colorPalette.grayscale(4).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.grayscale(4).toWebStyleString
+    svg.fill := rendererConfig.colorPalette.grayscale(4).toWebColor.webStyleRgbString,
+    svg.stroke := rendererConfig.colorPalette.grayscale(4).toWebColor.webStyleRgbString
   )
 
   def mutedColorsFunctionAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.fill := rendererConfig.colorPalette.yellows(4).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.yellows(4).toWebStyleString
+    svg.fill := rendererConfig.colorPalette.yellows(4).toWebColor.webStyleRgbString,
+    svg.stroke := rendererConfig.colorPalette.yellows(4).toWebColor.webStyleRgbString
   )
 
   def errorColorsAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.fill := rendererConfig.colorPalette.reds(3).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.reds(1).toWebStyleString
+    svg.fill := rendererConfig.colorPalette.reds(3).toWebColor.webStyleRgbString,
+    svg.stroke := rendererConfig.colorPalette.reds(1).toWebColor.webStyleRgbString
   )
 
   def acceptedDestinationAmends: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.fill := rendererConfig.colorPalette.greens(0).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.greens(0).toWebStyleString
+    svg.fill := rendererConfig.colorPalette.greens(0).toWebColor.webStyleRgbString,
+    svg.stroke := rendererConfig.colorPalette.greens(0).toWebColor.webStyleRgbString
   )
 
   def acceptingColorsAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.fill := rendererConfig.colorPalette.greens(4).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.greens(4).toWebStyleString
+    svg.fill := rendererConfig.colorPalette.greens(4).toWebColor.webStyleRgbString,
+    svg.stroke := rendererConfig.colorPalette.greens(4).toWebColor.webStyleRgbString
   )
 
   def literalColorsAmend: Seq[L.Modifier[L.SvgElement]] = List(
     svg.fill := "white",
-    svg.stroke := rendererConfig.colorPalette.grayscale(1).toWebStyleString
+    svg.stroke := rendererConfig.colorPalette.grayscale(1).toWebColor.webStyleRgbString
   )
 
   def defaultFunctionColorsAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.fill := rendererConfig.colorPalette.yellows(3).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.yellows(2).toWebStyleString,
+    svg.fill := rendererConfig.colorPalette.yellows(3).toWebColor.webStyleRgbString,
+    svg.stroke := rendererConfig.colorPalette.yellows(2).toWebColor.webStyleRgbString,
   )
 
   def defaultControlColors: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.fill := rendererConfig.colorPalette.yellows(2).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.yellows(0).toWebStyleString,
+    svg.fill := rendererConfig.colorPalette.yellows(2).toWebColor.webStyleRgbString,
+    svg.stroke := rendererConfig.colorPalette.yellows(0).toWebColor.webStyleRgbString,
   )
 
   def defaultControlFlowBackgroundAmend: Seq[L.Modifier[L.SvgElement]] = List(
-    svg.fill := rendererConfig.colorPalette.yellows(2).toWebStyleString,
-    svg.stroke := rendererConfig.colorPalette.yellows(0).toWebStyleString,
+    svg.fill := rendererConfig.colorPalette.yellows(2).toWebColor.webStyleRgbString,
+    svg.stroke := rendererConfig.colorPalette.yellows(0).toWebColor.webStyleRgbString,
   )
 
   def onMouseEnterAmend(handler: MouseEvent => Any): Seq[L.Modifier[L.SvgElement]] = List(
@@ -94,8 +94,8 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
     val strokeW = rendererConfig.controlSegmentSize / 5.0
     List(
       svg.strokeWidth := strokeW + "px",
-      svg.fill := rendererConfig.colorPalette.grayscale(4).toWebStyleString,
-      svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebStyleString,
+      svg.fill := rendererConfig.colorPalette.grayscale(4).toWebColor.webStyleRgbString,
+      svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebColor.webStyleRgbString,
     )
   }
 
@@ -103,8 +103,8 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
     val strokeW = rendererConfig.controlSegmentSize / 5.0
     List(
       svg.strokeWidth := strokeW + "px",
-      svg.fill := rendererConfig.colorPalette.grayscale(4).toWebStyleString,
-      svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebStyleString,
+      svg.fill := rendererConfig.colorPalette.grayscale(4).toWebColor.webStyleRgbString,
+      svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebColor.webStyleRgbString,
     )
   }
 
@@ -112,22 +112,22 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
     val strokeW = rendererConfig.controlSegmentSize / 5.0
     List(
       svg.strokeWidth := strokeW + "px",
-      svg.fill := rendererConfig.colorPalette.grayscale(4).toWebStyleString,
-      svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebStyleString,
+      svg.fill := rendererConfig.colorPalette.grayscale(4).toWebColor.webStyleRgbString,
+      svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebColor.webStyleRgbString,
     )
   }
 
   def inActiveDecorationElements: Seq[L.Modifier[L.SvgElement]] = {
     List(
       svg.stroke := "transparent",
-      svg.fill := rendererConfig.colorPalette.yellows(3).toWebStyleString,
+      svg.fill := rendererConfig.colorPalette.yellows(3).toWebColor.webStyleRgbString,
     )
   }
 
   def activeDecorationElements: Seq[L.Modifier[L.SvgElement]] = {
     List(
       svg.stroke := "transparent",
-      svg.fill := rendererConfig.colorPalette.grayscale(0).toWebStyleString,
+      svg.fill := rendererConfig.colorPalette.grayscale(0).toWebColor.webStyleRgbString,
     )
   }
 
@@ -136,7 +136,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
     List(
       svg.strokeWidth := strokeW + "px",
       svg.fill := "transparent",
-      svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebStyleString,
+      svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebColor.webStyleRgbString,
     )
   }
 
@@ -146,7 +146,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
       svg.strokeDashArray := "1,1",
       svg.strokeWidth := strokeW + "px",
       svg.fill := "transparent",
-      svg.stroke := rendererConfig.colorPalette.yellows(4).toWebStyleString,
+      svg.stroke := rendererConfig.colorPalette.yellows(4).toWebColor.webStyleRgbString,
     )
   }
   def activeTrueConditionControlFlowAmends: Seq[L.Modifier[L.SvgElement]] = {
@@ -154,7 +154,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
     List(
       svg.strokeWidth := strokeW + "px",
       svg.fill := "transparent",
-      svg.stroke := rendererConfig.colorPalette.greens(0).toWebStyleString,
+      svg.stroke := rendererConfig.colorPalette.greens(0).toWebColor.webStyleRgbString,
     )
   }
 
@@ -164,7 +164,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
       svg.strokeDashArray := "1,1",
       svg.strokeWidth := strokeW + "px",
       svg.fill := "transparent",
-      svg.stroke := rendererConfig.colorPalette.greens(2).toWebStyleString,
+      svg.stroke := rendererConfig.colorPalette.greens(2).toWebColor.webStyleRgbString,
     )
   }
 
@@ -173,7 +173,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
     List(
       svg.strokeWidth := strokeW + "px",
       svg.fill := "transparent",
-      svg.stroke := rendererConfig.colorPalette.reds(0).toWebStyleString,
+      svg.stroke := rendererConfig.colorPalette.reds(0).toWebColor.webStyleRgbString,
     )
   }
 
@@ -183,7 +183,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
       svg.strokeDashArray := "1,1",
       svg.strokeWidth := strokeW + "px",
       svg.fill := "transparent",
-      svg.stroke := rendererConfig.colorPalette.reds(2).toWebStyleString,
+      svg.stroke := rendererConfig.colorPalette.reds(2).toWebColor.webStyleRgbString,
     )
   }
 

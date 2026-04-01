@@ -2,12 +2,12 @@ package interactionPlugins.blockEnvironment.config
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.Signal
-import contentmanagement.model.AppFont
-import contentmanagement.model.color.{AppColorPalette, RGBYColorPalette}
-import contentmanagement.model.geometry.Dimension
-import contentmanagement.model.language.{AppLanguage, HumanLanguage}
 import contentmanagement.webElements.svg.builder.controlFlow.path.SegmentType
 import contentmanagement.webElements.svg.shapes.{BeShapeAmendFactory, ShapeAmends}
+import datastructures.core.color.{AppColorPalette, RGBYColorPalette}
+import datastructures.core.geometry.Dimension
+import datastructures.core.language.{AppLanguage, HumanLanguage}
+import datastructures.web.font.AppFont
 
 
 case class BeRenderingConfig(

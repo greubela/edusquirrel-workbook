@@ -1,9 +1,9 @@
 package contentmanagement.webElements.svg.shapes.composite
 
-import contentmanagement.model.geometry.*
 import contentmanagement.webElements.svg.shapes.BeShape
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import BeShape.*
+import datastructures.core.geometry.{Bounds, Dimension, Point}
 
 import scala.collection.mutable
 

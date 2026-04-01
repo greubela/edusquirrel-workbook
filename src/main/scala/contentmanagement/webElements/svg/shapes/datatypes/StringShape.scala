@@ -1,11 +1,11 @@
 package contentmanagement.webElements.svg.shapes.datatypes
 
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.shapes.ShapeFactory
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import contentmanagement.webElements.svg.shapes.BeShape.{BeShapeAtomic, BeShapeContainerable, BeShapePathBased}
+import datastructures.core.geometry.{Bounds, Dimension, Point}
 
 
 object StringShape extends BeShapePathBased {

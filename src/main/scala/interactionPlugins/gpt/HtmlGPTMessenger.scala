@@ -4,19 +4,17 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.svg
 import com.raquo.laminar.api.L.Var
 import com.raquo.laminar.nodes.ReactiveSvgElement
-import contentmanagement.model.chat
-import contentmanagement.model.chat.MessengerModel
 import contentmanagement.webElements.genericHtmlElements.editor.SimpleMessengerEditor
-
-import util.Serializer
+import datastructures.core.chat.MessengerModel
+import util.serializing.Serializer
 import workbook.model.abstractions.{HtmlWorkbookElement, WorkbookInteraction}
-import workbook.model.info.WorkbookInfo
+import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 import workbook.model.interaction.*
 import workbook.model.interaction.history.*
 import workbook.model.interaction.sync.*
 import workbook.htmlElements.basic.*
 
-case class HtmlGPTMessenger(workbookInfoVar: Var[WorkbookInfo], textInteraction: WorkbookInteraction[String]) extends WorkbookInteraction[MessengerModel] {
+case class HtmlGPTMessenger(workbookInfo: AllWorkbookInfo, textInteraction: WorkbookInteraction[String]) extends WorkbookInteraction[MessengerModel] {
 
   override def id: String = textInteraction.id + "_scaffolding"
 
@@ -36,8 +34,8 @@ case class HtmlGPTMessenger(workbookInfoVar: Var[WorkbookInfo], textInteraction:
 
   private val scaffoldingEditor = SimpleMessengerEditor(interactionVariable)
 
-  private val scaffoldingButton = HtmlButtonElement(workbookInfoVar, HtmlGPTMessenger.scaffoldingButtonSvg, event => {
-    workbookInfoVar.now().fullscreenElement.setElementFullscreen(scaffoldingEditor.getDomElement())
+  private val scaffoldingButton = HtmlButtonElement(workbookInfo, HtmlGPTMessenger.scaffoldingButtonSvg, event => {
+    workbookInfo.technicalElements.fullScreenContainer.setElementFullscreen(scaffoldingEditor.getDomElement())
   })
 
   private val domElement: L.Element = scaffoldingButton.getDomElement()

@@ -1,7 +1,7 @@
 package contentmanagement.webElements.svg.shapes.controlflow.singleWidth
 
-import contentmanagement.model.geometry.{Dimension, Point}
 import contentmanagement.webElements.svg.shapes.decorations.ControlArrowUpDown
+import datastructures.core.geometry.{Dimension, Point}
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.ControlFlowPath

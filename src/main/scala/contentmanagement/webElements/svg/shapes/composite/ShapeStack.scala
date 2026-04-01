@@ -1,8 +1,8 @@
 package contentmanagement.webElements.svg.shapes.composite
 
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.shapes.BeShape
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapeBox
+import datastructures.core.geometry.{Bounds, Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 case class ShapeStack(

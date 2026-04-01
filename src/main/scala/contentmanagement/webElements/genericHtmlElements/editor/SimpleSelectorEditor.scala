@@ -2,8 +2,8 @@ package contentmanagement.webElements.genericHtmlElements.editor
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{option => optionTag, *}
-import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import contentmanagement.webElements.HtmlAppElement
+import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
 
 case class SimpleSelectorEditor[T](
   forVar: Var[T],

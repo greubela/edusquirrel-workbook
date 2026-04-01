@@ -2,8 +2,8 @@ package contentmanagement.webElements.genericHtmlElements.editor
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{label => labelTag, *}
-import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
 import contentmanagement.webElements.HtmlAppElement
+import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
 
 case class SimpleBooleanEditor(forVar: Var[Boolean], label: LanguageMap[HumanLanguage]) extends HtmlAppElement {
 

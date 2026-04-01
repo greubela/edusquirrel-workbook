@@ -1,9 +1,9 @@
 package contentmanagement.webElements.svg.builder.controlFlow.types.singleWidth
 
-import contentmanagement.model.geometry.{Dimension, Point}
 import contentmanagement.webElements.svg.builder.controlFlow.path.{ControlFlowPathOverlay, PathStatus, PathType, SegmentType}
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapeContainerable
 import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowStarterBackground
+import datastructures.core.geometry.{Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 case class ControlFlowProgramStarterType() extends ControlFlowTypeSingleWidth {

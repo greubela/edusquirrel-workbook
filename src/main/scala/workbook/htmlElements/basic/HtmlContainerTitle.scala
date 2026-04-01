@@ -1,12 +1,14 @@
 package workbook.htmlElements.basic
 
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.language.{HumanLanguage, LanguageMap}
-import contentmanagement.storage.DataStorage
+import datastructures.core.language.{HumanLanguage, LanguageMap}
+import datastructures.web.storage.AsyncDataCache
 import workbook.model.abstractions.*
-import workbook.model.info.WorkbookInfo
+import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 
-case class HtmlContainerTitle(workbookInfoVar: Var[WorkbookInfo], titleSignal: Signal[String]) extends HtmlWorkbookElement {
+import scala.concurrent.ExecutionContext
+
+case class HtmlContainerTitle(workbookInfo: AllWorkbookInfo, titleSignal: Signal[String]) extends HtmlWorkbookElement {
 
   override def getDomElement(): Element = {
     div(
@@ -22,11 +24,8 @@ case class HtmlContainerTitle(workbookInfoVar: Var[WorkbookInfo], titleSignal: S
 
 object HtmlContainerTitle {
 
-  def apply(workbookInfoVar: Var[WorkbookInfo], languageMapId: String): HtmlContainerTitle = HtmlContainerTitle(workbookInfoVar, DataStorage.labelSignalFromLanguageMapName(languageMapId, workbookInfoVar))
+  def apply(workbookInfo: AllWorkbookInfo, languageMapId: String): HtmlContainerTitle =
+    HtmlContainerTitle(workbookInfo, workbookInfo.stringSignalFromLanguageMapId(languageMapId)(ExecutionContext.global))
 
-  def apply(workbookInfoVar: Var[WorkbookInfo], languageMap: LanguageMap[HumanLanguage])  = {
-    println("[WARN] language Map that got not transferred to a proper file: " + languageMap)
-    new HtmlContainerTitle(workbookInfoVar, workbookInfoVar.signal.map(_.languageStringFromMap(languageMap)))
-  }
 
 }

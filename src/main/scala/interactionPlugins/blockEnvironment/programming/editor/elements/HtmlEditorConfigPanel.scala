@@ -3,12 +3,12 @@ package interactionPlugins.blockEnvironment.programming.editor.elements
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.{*, given}
 import com.raquo.laminar.api.L.{render, unsafeWindowOwner}
-import contentmanagement.model.language.{HumanLanguage, LanguageMap}
 import contentmanagement.webElements.genericHtmlElements.editor.{SimpleBooleanEditor, SimpleSelectorEditor}
 import interactionPlugins.blockEnvironment.config.{BeTreeControllerConfig, BeTreeDisplayConfig, ControlFlowDisplay}
 import org.scalajs.dom
 import org.scalajs.dom.html
 import contentmanagement.webElements.HtmlAppElement
+import datastructures.core.language.{HumanLanguage, LanguageMap}
 import scala.scalajs.js
 
 case class HtmlEditorConfigPanel(editorState: EditorState) extends HtmlAppElement {

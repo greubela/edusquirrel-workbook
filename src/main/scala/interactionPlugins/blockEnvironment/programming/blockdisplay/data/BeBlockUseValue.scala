@@ -1,17 +1,16 @@
 package interactionPlugins.blockEnvironment.programming.blockdisplay.data
 
 import com.raquo.laminar.api.L
-import contentmanagement.model.language.AppLanguage.{BlockDisplay, English}
-import contentmanagement.model.language.LanguageMap
-import contentmanagement.model.vm.code.*
-import contentmanagement.model.vm.code.tree.BeExpressionNode
-import contentmanagement.model.vm.code.usage.*
-import contentmanagement.model.vm.types.{BeDataValueLiteral, BeUseValueReference}
+import datastructures.core.language.AppLanguage.{BlockDisplay, English}
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapeContainerable
 import contentmanagement.webElements.svg.shapes.composite.ShapeAroundShape
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.*
 import contentmanagement.webElements.svg.shapes.datatypes.LiteralShape
 import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeAmendFactory, ControlFlowShape, TextShape}
+import datastructures.core.language.LanguageMap
+import datastructures.core.vm.code.tree.BeExpressionNode
+import datastructures.core.vm.code.usage.BeUseValue
+import datastructures.core.vm.types.{BeDataValueLiteral, BeUseValueReference}
 import interactionPlugins.blockEnvironment.programming.blockdisplay.*
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
 

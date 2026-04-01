@@ -3,13 +3,13 @@ package interactionPlugins.gpt
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import workbook.model.abstractions.{HtmlWorkbookElement, WorkbookInteraction}
-import workbook.model.info.WorkbookInfo
+import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 
-case class GptButtonLine(workbookInfoVar: Var[WorkbookInfo], textInteraction: WorkbookInteraction[String]) extends HtmlWorkbookElement {
+case class GptButtonLine(workbookInfo: AllWorkbookInfo, textInteraction: WorkbookInteraction[String]) extends HtmlWorkbookElement {
 
   
-  private val htmlGPTMessenger = HtmlGPTMessenger(workbookInfoVar, textInteraction)
-  private var htmlGptGrader = HtmlGptGrader(workbookInfoVar, textInteraction)
+  private val htmlGPTMessenger = HtmlGPTMessenger(workbookInfo, textInteraction)
+  private var htmlGptGrader = HtmlGptGrader(workbookInfo, textInteraction)
 
   override def getDomElement(): L.Element =    div(
     cls := "button-line",

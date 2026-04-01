@@ -3,7 +3,6 @@ package contentmanagement.webElements.genericHtmlElements.editor
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement
-import contentmanagement.webElements.genericHtmlElements.editor.CodeMirrorEditor.{CodeMirrorHandle, EditorConfig, waitForFacade}
 import org.scalajs.dom
 
 import scala.scalajs.js
@@ -12,6 +11,8 @@ case class CodeMirrorEditor(
                              content: Var[String],
                              onUserInput: String => Unit = _ => ()
                            ) extends HtmlAppElement {
+
+  import CodeMirrorEditor._
 
   private var handle: Option[CodeMirrorHandle] = None
   private var updatingFromEditor: Boolean = false

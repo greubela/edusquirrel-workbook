@@ -1,8 +1,8 @@
 package contentmanagement.webElements.svg.builder
 
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.builder.*
 import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand.*
+import datastructures.core.geometry.{Bounds, Dimension, Point}
 
 import scala.collection.mutable
 

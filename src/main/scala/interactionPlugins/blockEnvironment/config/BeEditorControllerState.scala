@@ -1,7 +1,7 @@
 package interactionPlugins.blockEnvironment.config
 
-import contentmanagement.model.geometry.Point
-import contentmanagement.model.vm.code.tree.BeExpressionNode
+import datastructures.core.geometry.Point
+import datastructures.core.vm.code.tree.BeExpressionNode
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.ControlFlowPath
 

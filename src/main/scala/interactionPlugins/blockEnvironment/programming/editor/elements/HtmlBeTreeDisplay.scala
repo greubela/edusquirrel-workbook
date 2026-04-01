@@ -3,18 +3,18 @@ package interactionPlugins.blockEnvironment.programming.editor.elements
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.geometry.Point
-import contentmanagement.webElements.genericHtmlElements.canvas.SvgCanvas
 import contentmanagement.webElements.svg.shapes.*
 import contentmanagement.webElements.svg.shapes.composite.HorizontalAlignment.*
 import contentmanagement.webElements.svg.shapes.composite.VerticalAlignment.*
 import contentmanagement.webElements.svg.shapes.composite.{HorizontalAlignment, ShapeStack, VerticalAlignment}
+import datastructures.core.geometry.Point
 import interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig, ControlFlowDisplay}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeTreeDropTarget, RenderingInformation}
 import interactionPlugins.blockEnvironment.programming.editor.*
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
 import util.Timing
+import workbook.htmlElements.basic.canvas.SvgCanvas
 
 import scala.collection.mutable
 

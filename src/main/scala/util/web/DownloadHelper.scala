@@ -2,8 +2,6 @@ package util.web
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.file.*
-import contentmanagement.storage.*
 import org.scalajs.dom
 import org.scalajs.dom.{Blob, File, URL}
 import util.TypeConversion

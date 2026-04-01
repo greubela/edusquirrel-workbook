@@ -2,18 +2,18 @@ package interactionPlugins.turtleStitchPlugin.card
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.file.*
-import contentmanagement.model.language.*
-import contentmanagement.storage.DataStorage
+import datastructures.core.language.{HumanLanguage, LanguageMap, TranslationMaps}
+import datastructures.web.file.FileDescription
+import datastructures.web.storage.AsyncDataCache
 import interactionPlugins.turtleStitchPlugin.*
 import util.web.DownloadHelper
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.WorkbookInfo
+import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 
 import scala.concurrent.ExecutionContext
 
 case class TurtleFileShowProgramXmlCard(
-                                         workbookInfoVar: Var[WorkbookInfo],
+                                         workbookInfo: AllWorkbookInfo,
                                          desiredFilename: String,
                                          headlineLanguageMap: LanguageMap[HumanLanguage],
                                          nonexistingImageLanguageMap: LanguageMap[HumanLanguage],
@@ -21,11 +21,11 @@ case class TurtleFileShowProgramXmlCard(
                                        ) extends HtmlWorkbookElement {
 
   private val headline: Element = h3(
-    child <-- workbookInfoVar.signal.map(_.languageStringFromMap(headlineLanguageMap))
+    text <-- workbookInfo.stringSignalFromLanguageMap(headlineLanguageMap)
   )
 
   private val downloadButton: Element = button(
-    child <-- workbookInfoVar.signal.map(_.languageStringFromMap(TurtleStitchLanguageMaps.languageMapDownloadButton)),
+    text <-- workbookInfo.stringSignalFromLanguageMap(TurtleStitchLanguageMaps.languageMapDownloadButton),
     onClick --> { _ =>
       projectXmlVar.now().foreach(f = currentXml => {
         DownloadHelper.downloadFile(desiredFilename, currentXml)
@@ -48,7 +48,7 @@ case class TurtleFileShowProgramXmlCard(
     case Some(value) if value.startsWith("data:image") => img(src := value, styleAttr := "max-width: 100%")
     case Some(value) => span(value)
     case None => span(
-      child <-- workbookInfoVar.signal.map(_.languageStringFromMap(nonexistingImageLanguageMap))
+      text <-- workbookInfo.stringSignalFromLanguageMap(nonexistingImageLanguageMap)
       //.signal.map(info => nonexistingImageLanguageMap.getInLanguage(info.config.currentWorkbookLanguage))
       //
     )
@@ -93,8 +93,9 @@ case class TurtleFileShowProgramXmlCard(
   override def getDomElement(): Element = domElement
 
   lazy val asWorkbookElement: HtmlWorkbookElement = new HtmlWorkbookElement() {
-    override def workbookInfoVar: L.Var[WorkbookInfo] = getWorkshopInfoVar
-
+    
+    override def workbookInfo: AllWorkbookInfo = TurtleFileShowProgramXmlCard.this.workbookInfo
+    
     private val myDomElement: L.Element = div(
       cls := "workbook-interaction preview-line",
       domElement
@@ -108,15 +109,15 @@ case class TurtleFileShowProgramXmlCard(
 object TurtleFileShowProgramXmlCard {
 
   def apply(
-             workbookInfoVar: Var[WorkbookInfo],
+             workbookInfo: AllWorkbookInfo,
              fileDescription: FileDescription,
            ): TurtleFileShowProgramXmlCard = {
     TurtleFileShowProgramXmlCard(
-      workbookInfoVar,
+      workbookInfo,
       "TurtleStitch_" + fileDescription.filename,
       TurtleStitchLanguageMaps.languageMapProvidedProjectLabel,
       TranslationMaps.languageMapImageLoading,
-      DataStorage.fileDataStore.loadIntoVariable(fileDescription)(ExecutionContext.global).signal.mapLazy(_.map(_.fileDataAsUtf8String))
+      workbookInfo.technicalElements.fileStore.loadIntoVariable(fileDescription)(ExecutionContext.global).signal.mapLazy(_.map(_.fileDataAsUtf8String))
     )
   }
 
@@ -124,7 +125,7 @@ object TurtleFileShowProgramXmlCard {
              forUploadButton: TurtleStitchFileUploadButtonCard
            ): TurtleFileShowProgramXmlCard = {
     TurtleFileShowProgramXmlCard(
-      forUploadButton.workbookInfoVar,
+      forUploadButton.workbookInfo,
       "exercise" + forUploadButton.id,
       TurtleStitchLanguageMaps.languageMapShowUploadedProgramText,
       TurtleStitchLanguageMaps.languageMapShowEmptyPreview,

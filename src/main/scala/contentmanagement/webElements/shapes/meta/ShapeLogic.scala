@@ -1,7 +1,7 @@
 package contentmanagement.webElements.shapes.meta
 
-import contentmanagement.model.geometry.Dimension
 import contentmanagement.webElements.svg.AppSvgElement
+import datastructures.core.geometry.Dimension
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 trait ShapeLogic[T : Fractional] {

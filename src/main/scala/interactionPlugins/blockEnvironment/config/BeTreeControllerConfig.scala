@@ -2,8 +2,8 @@ package interactionPlugins.blockEnvironment.config
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.eventPropToProcessor
-import contentmanagement.model.geometry.Point
-import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
+import datastructures.core.geometry.Point
+import datastructures.core.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.*
 import interactionPlugins.blockEnvironment.programming.editor.elements.*

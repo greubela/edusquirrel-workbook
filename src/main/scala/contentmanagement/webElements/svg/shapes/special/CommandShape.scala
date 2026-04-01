@@ -1,9 +1,9 @@
 package contentmanagement.webElements.svg.shapes.special
 
-import contentmanagement.model.geometry.{Bounds, Dimension}
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapePathBased
 import contentmanagement.webElements.svg.shapes.{BeShapeDecoration, ShapeFactory}
+import datastructures.core.geometry.{Bounds, Dimension}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 case class CommandShape() extends BeShapePathBased {

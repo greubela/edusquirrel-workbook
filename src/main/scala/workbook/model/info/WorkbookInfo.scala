@@ -1,21 +1,23 @@
 package workbook.model.info
 
-import contentmanagement.model.language.*
-import contentmanagement.storage.DataStorage
+import datastructures.core.language.{HumanLanguage, LanguageMap}
+import datastructures.web.file.{FileDescription, LoadedFile}
+import datastructures.web.storage.AsyncDataCache
 import workbook.model.abstractions.WorkbookInteraction
 import workbook.user.User
 import workbook.htmlElements.container.HtmlFullScreenContainerElement
+import workbook.singletons.WorkbookLanguageInfo.{LabelLanguageMapStorage, LanguageMapTriplesStorage}
 
 case class WorkbookInfo(
                          availableLanguages: List[HumanLanguage],
-                         fullscreenElement: HtmlFullScreenContainerElement,
                          config: WorkbookConfig,
                          estimatedDurations: Map[WorkbookInteraction[_], Double]
                        ) {
 
 
-  def languageStringFromMap(languageMap: LanguageMap[HumanLanguage]): String = languageMap.getInLanguage(config.currentWorkbookLanguage)
   
   
-
+  
 }
+
+

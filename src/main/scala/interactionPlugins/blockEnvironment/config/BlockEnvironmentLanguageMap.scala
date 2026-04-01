@@ -1,6 +1,6 @@
 package interactionPlugins.blockEnvironment.config
 
-import contentmanagement.model.language.*
+import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
 
 object BlockEnvironmentLanguageMap {
 

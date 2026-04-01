@@ -1,7 +1,8 @@
 package contentmanagement.webElements.svg.builder
 
-import contentmanagement.model.geometry.{Dimension, Point}
 import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand.*
+import datastructures.core.geometry.{Dimension, Point}
+
 // SvgPathParser.scala
 object SvgPathParser {
 

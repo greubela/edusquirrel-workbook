@@ -1,12 +1,12 @@
 package interactionPlugins.fileSubmission.turtleStitch
 
-import contentmanagement.model.language.LanguageMap
-import contentmanagement.model.vm.code.BeExpression
-import contentmanagement.model.vm.code.controlStructures.BeSequence
-import contentmanagement.model.vm.code.defining.{BeDefineFunction, BeDefineVariable}
-import contentmanagement.model.vm.code.others.BeStartProgram
-import contentmanagement.model.vm.code.usage.{BeFunctionCall, BeUseValue}
-import contentmanagement.model.vm.types.{BeDataType, BeDataValueLiteral}
+import datastructures.core.language.LanguageMap
+import datastructures.core.vm.code.BeExpression
+import datastructures.core.vm.code.controlStructures.BeSequence
+import datastructures.core.vm.code.defining.{BeDefineFunction, BeDefineVariable}
+import datastructures.core.vm.code.others.BeStartProgram
+import datastructures.core.vm.code.usage.{BeFunctionCall, BeUseValue}
+import datastructures.core.vm.types.{BeDataType, BeDataValueLiteral}
 import interactionPlugins.fileSubmission.turtleStitch.TurtleStitchProgramModel.*
 
 object TurtleStitchToBeExpressionParser {

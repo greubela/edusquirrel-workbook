@@ -1,7 +1,6 @@
 package contentmanagement.webElements.svg.shapes
 
-import contentmanagement.model.geometry.Bounds
-import contentmanagement.webElements.svg.builder.SvgPathBuilder
+import datastructures.core.geometry.Bounds
 
 /**
   * Test-only accessors for invoking [[ShapeFactory]] helpers that are package-private.

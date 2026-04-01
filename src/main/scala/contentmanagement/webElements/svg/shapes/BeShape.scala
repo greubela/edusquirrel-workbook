@@ -2,12 +2,12 @@ package contentmanagement.webElements.svg.shapes
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Signal
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.compositeElements.AppGroupSvgElement
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapeContainerable
 import contentmanagement.webElements.svg.shapes.datatypes.{DuckShape, RectangleShape, UnitShape}
+import datastructures.core.geometry.{Bounds, Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.*

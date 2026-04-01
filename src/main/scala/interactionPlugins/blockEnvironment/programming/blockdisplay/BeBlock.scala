@@ -1,11 +1,11 @@
 package interactionPlugins.blockEnvironment.programming.blockdisplay
 
-import contentmanagement.datastructures.tree.TreeStructureContext
-import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreePosition
-import contentmanagement.model.geometry.Bounds
-import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
 import contentmanagement.webElements.svg.shapes.special.nested.ShapeWithControlFlow
 import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeAmendFactory, ControlFlowAndExpressionShape, ControlFlowShape}
+import datastructures.core.geometry.Bounds
+import datastructures.core.tree.TreeStructureContext
+import datastructures.core.tree.nodeImpl.NodeBasedTreePosition
+import datastructures.core.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
 import interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.elements.EditorState

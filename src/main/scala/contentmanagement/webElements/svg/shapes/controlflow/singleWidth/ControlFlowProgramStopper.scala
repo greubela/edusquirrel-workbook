@@ -2,7 +2,6 @@ package contentmanagement.webElements.svg.shapes.controlflow.singleWidth
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.svg
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.compositeElements.AppDecoratedSvgElement
@@ -12,6 +11,7 @@ import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.ControlF
 import contentmanagement.webElements.svg.shapes.controlflow.*
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.ControlFlowProgramStopper.*
 import contentmanagement.webElements.svg.shapes.decorations.TriangleOverlay
+import datastructures.core.geometry.{Bounds, Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder

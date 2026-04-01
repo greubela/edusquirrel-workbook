@@ -4,7 +4,7 @@ import com.raquo.airstream.ownership.Owner
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Signal
-import contentmanagement.model.vm.code.BeExpression
+import datastructures.core.vm.code.BeExpression
 import interactionPlugins.blockEnvironment.config
 import interactionPlugins.blockEnvironment.config.*
 import interactionPlugins.blockEnvironment.programming.BeProgram

@@ -1,9 +1,9 @@
 package contentmanagement.webElements.svg.builder
 
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.shapes.{DecorationFactory, TestShapeFactoryAccess}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand.MoveAbs
+import datastructures.core.geometry.{Bounds, Dimension, Point}
 import munit.FunSuite
 
 class SvgPathRoundTripSuite extends FunSuite {

@@ -3,8 +3,8 @@ package interactionPlugins.gpt
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveSvgElement
-import contentmanagement.model.chat.MessengerModel
 import contentmanagement.webElements.genericHtmlElements.editor.*
+import datastructures.core.chat.MessengerModel
 import interactionPlugins.gpt.*
 import org.scalajs.dom.{SVGLinearGradientElement, SVGSVGElement}
 import workbook.model.abstractions.HtmlWorkbookElement

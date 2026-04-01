@@ -2,18 +2,18 @@ package interactionPlugins.blockEnvironment.programming.editor.elements
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.geometry.{Bounds, Point}
-import contentmanagement.model.language.AppLanguage.English
-import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
-import contentmanagement.model.vm.code.BeExpression
-import contentmanagement.model.vm.code.controlStructures.{BeIfElse, BeSequence, BeSequenceInfo, BeWhile}
-import contentmanagement.model.vm.code.usage.BeUseValue
-import contentmanagement.model.vm.types.*
-import contentmanagement.model.vm.types.BeDataType.BeDataTypeAtomic
+import datastructures.core.language.AppLanguage.English
+import datastructures.core.vm.types.BeDataType.BeDataTypeAtomic
 import contentmanagement.webElements.HtmlAppElement
 import contentmanagement.webElements.svg.shapes.TextShape
 import contentmanagement.webElements.svg.shapes.composite.ShapeAroundShape
 import contentmanagement.webElements.svg.shapes.datatypes.RectangleShape
+import datastructures.core.geometry.{Bounds, Point}
+import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
+import datastructures.core.vm.code.BeExpression
+import datastructures.core.vm.code.controlStructures.{BeIfElse, BeSequence, BeSequenceInfo, BeWhile}
+import datastructures.core.vm.code.usage.BeUseValue
+import datastructures.core.vm.types.{BeDataType, BeDataValueLiteral}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 
 import scala.collection.mutable
@@ -64,7 +64,7 @@ object HtmlBlockLibraryTab {
     val resDiv = div(
       child <-- editorState.rendererConfigVar.signal.map(renderingInfo => {
 
-        val amends: Seq[L.Modifier[L.SvgElement]] = List(svg.fill := renderingInfo.colorPalette.yellows(2).toWebStyleString)
+        val amends: Seq[L.Modifier[L.SvgElement]] = List(svg.fill := renderingInfo.colorPalette.yellows(2).toWebColor.webStyleRgbString)
 
         res
           .addAmends(amends)

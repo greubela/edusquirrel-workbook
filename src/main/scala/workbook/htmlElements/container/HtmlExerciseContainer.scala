@@ -3,9 +3,9 @@ package workbook.htmlElements.container
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Signal
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.WorkbookInfo
+import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 
-case class HtmlExerciseContainer(workbookInfoVar: L.Var[WorkbookInfo], children: Signal[List[HtmlWorkbookElement]]) extends HtmlWorkbookElement{
+case class HtmlExerciseContainer(workbookInfo: AllWorkbookInfo, children: Signal[List[HtmlWorkbookElement]]) extends HtmlWorkbookElement{
 
   private val domElement: L.Element = L.div(
     L.cls := "container-exercise style-vbox",
@@ -14,5 +14,7 @@ case class HtmlExerciseContainer(workbookInfoVar: L.Var[WorkbookInfo], children:
   override def getDomElement(): L.Element = domElement
 }
 object HtmlExerciseContainer {
-  def apply(configVar: L.Var[WorkbookInfo], children: List[HtmlWorkbookElement]): HtmlExerciseContainer = HtmlExerciseContainer(configVar, L.Var(children).signal)
+  
+  def apply(workbookInfo: AllWorkbookInfo, children: List[HtmlWorkbookElement]): HtmlExerciseContainer = 
+    HtmlExerciseContainer(workbookInfo, L.Var(children).signal)
 }

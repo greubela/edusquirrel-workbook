@@ -1,10 +1,10 @@
 package interactionPlugins.blockEnvironment.rendering
 
-import contentmanagement.model.geometry.{Dimension, Point}
 import contentmanagement.webElements.svg.shapes.composite.*
 import contentmanagement.webElements.svg.shapes.composite.HorizontalAlignment.Left
 import contentmanagement.webElements.svg.shapes.composite.VerticalAlignment.Center
 import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowShape}
+import datastructures.core.geometry.{Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.PathStatus

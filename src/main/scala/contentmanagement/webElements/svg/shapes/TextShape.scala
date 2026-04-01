@@ -2,12 +2,12 @@ package contentmanagement.webElements.svg.shapes
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.svg
-import contentmanagement.model.geometry.{Bounds, Dimension}
-import contentmanagement.model.language.{HumanLanguage, LanguageMap}
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.atomarElements.AppTextSvgElement
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import BeShape.BeShapeAtomic
+import datastructures.core.geometry.{Bounds, Dimension}
+import datastructures.core.language.{HumanLanguage, LanguageMap}
 
 case class TextShape(languageMap: LanguageMap[HumanLanguage], amends: Seq[L.Modifier[L.SvgElement]] = List()) extends BeShapeAtomic {
 
@@ -17,8 +17,8 @@ case class TextShape(languageMap: LanguageMap[HumanLanguage], amends: Seq[L.Modi
   override def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
     val useAmends = if (amends.isEmpty) {
       List(
-        svg.fill := rendererConfig.colorPalette.grayscale(0).toWebStyleString,
-        svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebStyleString
+        svg.fill := rendererConfig.colorPalette.grayscale(0).toWebColor.webStyleRgbString,
+        svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebColor.webStyleRgbString
       )
     }else{
       amends

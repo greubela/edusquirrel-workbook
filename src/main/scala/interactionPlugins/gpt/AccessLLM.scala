@@ -2,9 +2,9 @@ package interactionPlugins.gpt
 
 import com.raquo.airstream.core.Observer
 import com.raquo.laminar.api.L.{Var, unsafeWindowOwner}
-import contentmanagement.model.chat.MessengerModel
-import contentmanagement.model.chat.MessengerModel.{BasicPerson, Message, Person, SenderRole}
-import contentmanagement.model.language.LanguageMap
+import datastructures.core.chat.MessengerModel.{BasicPerson, Message, Person, SenderRole}
+import datastructures.core.chat.MessengerModel
+import datastructures.core.language.LanguageMap
 import org.scalajs.dom
 import org.scalajs.dom.{Headers, HttpMethod, RequestInit}
 import upickle.default.*

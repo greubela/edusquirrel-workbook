@@ -3,11 +3,11 @@ package interactionPlugins.programmingExercise.pythonExercise.turtle
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement
-import contentmanagement.webElements.genericHtmlElements.canvas.WebCanvas
 import contentmanagement.webElements.genericHtmlElements.editor.CodeMirrorEditor
 import interactionPlugins.programmingExercise.pythonExercise.data.PythonExecutionRequest
 import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.*
 import interactionPlugins.programmingExercise.pythonExercise.pyodide.*
+import workbook.htmlElements.basic.canvas.WebCanvas
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js

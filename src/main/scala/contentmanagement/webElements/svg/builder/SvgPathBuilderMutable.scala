@@ -1,14 +1,12 @@
 package contentmanagement.webElements.svg.builder
 
-import contentmanagement.model.geometry.*
 import contentmanagement.webElements.svg.atomarElements.*
 
 import scala.collection.mutable
-
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.atomarElements.AppPathSvgElement
 import contentmanagement.webElements.svg.builder.*
 import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand.*
+import datastructures.core.geometry.{Bounds, Dimension, Point}
 
 import scala.collection.mutable
 
@@ -187,6 +185,6 @@ case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Poin
     AppPathSvgElement[T](pathD.toString(), cornerPoints.toList, controlLines.toList)
 
 
-  def moveWholePath(dimension: contentmanagement.model.geometry.Dimension[T]): SvgPathBuilder[T] = ???
+  def moveWholePath(dimension: Dimension[T]): SvgPathBuilder[T] = ???
 
 }

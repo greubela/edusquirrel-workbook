@@ -1,6 +1,6 @@
 package interactionPlugins.fileSubmission
 
-import contentmanagement.model.vm.code.BeExpression
+import datastructures.core.vm.code.BeExpression
 import interactionPlugins.fileSubmission.turtleLogic.TurtleRenderer
 import interactionPlugins.fileSubmission.turtleStitch.{
   TurtleStitchFromBeExpressionSerializer,

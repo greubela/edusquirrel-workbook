@@ -1,9 +1,9 @@
 package contentmanagement.webElements.svg.shapes.decorations
 
 import com.raquo.laminar.api.L
-import contentmanagement.model.geometry.{Dimension, Point}
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.shapes.{BeShapeDecoration, DecorationFactory}
+import datastructures.core.geometry.{Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 case class ControlArrowSplit(pointsDown: Boolean = true, isActive: Boolean = true, cleanOrigin: Boolean = false) extends BeShapeDecoration {

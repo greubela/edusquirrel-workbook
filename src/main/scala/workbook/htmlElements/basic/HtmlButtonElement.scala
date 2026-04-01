@@ -6,9 +6,9 @@ import com.raquo.laminar.nodes.ReactiveSvgElement
 import contentmanagement.webElements.HtmlAppElement
 import org.scalajs.dom.{MouseEvent, SVGSVGElement}
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.WorkbookInfo
+import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 
-case class HtmlButtonElement(workbookInfoVar: Var[WorkbookInfo], childElem: Element, onAction: MouseEvent => Any) extends HtmlWorkbookElement {
+case class HtmlButtonElement(workbookInfo: AllWorkbookInfo, childElem: Element, onAction: MouseEvent => Any) extends HtmlWorkbookElement {
 
   private val domElement: Element = {
 
@@ -31,15 +31,15 @@ case class HtmlButtonElement(workbookInfoVar: Var[WorkbookInfo], childElem: Elem
 }
 object HtmlButtonElement {
 
-  def apply(workbookInfoVar: Var[WorkbookInfo], buttonSvg: ReactiveSvgElement[SVGSVGElement], onAction: MouseEvent => Any): HtmlButtonElement = {
+  def apply(workbookInfo: AllWorkbookInfo, buttonSvg: ReactiveSvgElement[SVGSVGElement], onAction: MouseEvent => Any): HtmlButtonElement = {
     val refElement: Element = div(buttonSvg)
-    HtmlButtonElement(workbookInfoVar, refElement, onAction)
+    HtmlButtonElement(workbookInfo, refElement, onAction)
   }
 
-  def apply(workbookInfoVar: Var[WorkbookInfo], string: String, onAction: MouseEvent => Any): HtmlButtonElement = {
+  def apply(workbookInfo: AllWorkbookInfo, string: String, onAction: MouseEvent => Any): HtmlButtonElement = {
     println("[WARN] String button should not be created, just for demo!!: " + string)
     HtmlButtonElement(
-      workbookInfoVar,
+      workbookInfo,
       div(
         string
       ),

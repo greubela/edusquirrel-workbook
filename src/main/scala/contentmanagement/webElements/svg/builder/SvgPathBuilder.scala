@@ -1,10 +1,10 @@
 package contentmanagement.webElements.svg.builder
 
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.atomarElements.AppPathSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand.*
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapeAtomic
+import datastructures.core.geometry.{Bounds, Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 trait SvgPathBuilder[T: Fractional] {

@@ -1,7 +1,7 @@
 package contentmanagement.webElements.svg.shapes
 
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
+import datastructures.core.geometry.{Bounds, Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 

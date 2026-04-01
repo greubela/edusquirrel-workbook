@@ -3,12 +3,7 @@ package interactionPlugins.blockEnvironment.programming.editor
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.{h2, *, given}
 import com.raquo.laminar.api.L.{render, unsafeWindowOwner}
-import contentmanagement.model.geometry.{Bounds, Point}
-import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
-import contentmanagement.model.language.AppLanguage.{English, German, Python}
-import contentmanagement.model.vm.code.BeExpression
-import contentmanagement.model.vm.code.others.BeStartProgram
-import contentmanagement.model.vm.parsing.python.PythonParser
+import datastructures.core.language.AppLanguage.{English, German, Python}
 import contentmanagement.webElements.HtmlAppElement
 import contentmanagement.webElements.genericHtmlElements.editor.SimpleTextDisplay
 import contentmanagement.webElements.svg.shapes.BeShape
@@ -20,6 +15,11 @@ import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRe
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.elements.*
 import contentmanagement.webElements.genericHtmlElements.editor.*
+import datastructures.core.geometry.{Bounds, Point}
+import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
+import datastructures.core.vm.code.BeExpression
+import datastructures.core.vm.code.others.BeStartProgram
+import datastructures.core.vm.parsing.python.PythonParser
 import workbook.model.abstractions.HtmlWorkbookElement
 
 object HtmlFullscreenTurtleEditorElement {

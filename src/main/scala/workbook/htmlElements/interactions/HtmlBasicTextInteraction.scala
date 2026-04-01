@@ -4,10 +4,10 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Var
 import contentmanagement.webElements.genericHtmlElements.editor.SimpleStringExerciseVariableTextEditor
 import workbook.model.abstractions.WorkbookInteraction
-import workbook.model.info.WorkbookInfo
+import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 import workbook.model.interaction.InteractionVariable
 
-case class HtmlBasicTextInteraction(workbookInfoVar: Var[WorkbookInfo], id: String) extends WorkbookInteraction[String]{
+case class HtmlBasicTextInteraction(workbookInfo: AllWorkbookInfo, id: String) extends WorkbookInteraction[String]{
 
   override val interactionVariable: InteractionVariable[String] = InteractionVariable.stringVariable(this, "")
 

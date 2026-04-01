@@ -2,23 +2,28 @@
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
 import content.EmbroideryWorkbook.CreateEmbroideryWorkbook
-import content.TestWorkbook.TestWorkbook
+import content.TestWorkbook.TestWorkbookFactory
 import content.plantworkshop
 import content.plantworkshop.PlantWorkshopApp
 import org.scalajs.dom
 import org.scalajs.dom.document
 import workbook.htmlElements.container.HtmlFullScreenContainerElement
+import workbook.model.info.AllWorkbookInfo
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 
-private val fullscreenElement: HtmlFullScreenContainerElement = HtmlFullScreenContainerElement()
+
+private def info = AllWorkbookInfo.singleton
+private def workbookInfoVar = AllWorkbookInfo.singleton.workbookInfoVar
+private def fullscreenElement = AllWorkbookInfo.singleton.technicalElements.fullScreenContainer
 
 private val idAndContentList: List[(String, Element)] = List(
   ("plantWorkshopApp", plantworkshop.PlantWorkshopApp.appElement),
   //("testEditor", HtmlFullscreenTurtleEditorElement(BeProgram.debugGraphicsProgram().fullProgram).getDomElement()),
-  ("workbookTest", TestWorkbook.createTestWorkbook(fullscreenElement).getDomElement()),
+  //("workbookTest", TestWorkbookFactory.createTestWorkbook(AllWorkbookInfo.singleton.technicalElements.fullScreenContainer).getDomElement()),
   //("worksheetMonks", TestWorkbook(fullscreenElement).getDomElement()),
-  ("workbookEmbroidery", CreateEmbroideryWorkbook(fullscreenElement).createWorkbook().getDomElement()),
+  ("workbookEmbroidery", CreateEmbroideryWorkbook(info).createWorkbook.getDomElement()),
+
 )
 
 def insertWorkbookContent(): Unit = {

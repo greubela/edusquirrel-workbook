@@ -1,9 +1,9 @@
 package interactionPlugins.fileSubmission.turtleStitch
 
-import contentmanagement.model.vm.code.controlStructures.BeSequence
-import contentmanagement.model.vm.code.defining.BeDefineFunction
-import contentmanagement.model.vm.code.others.BeStartProgram
-import contentmanagement.model.vm.code.usage.BeFunctionCall
+import datastructures.core.vm.code.controlStructures.BeSequence
+import datastructures.core.vm.code.defining.BeDefineFunction
+import datastructures.core.vm.code.others.BeStartProgram
+import datastructures.core.vm.code.usage.BeFunctionCall
 import interactionPlugins.fileSubmission.TurtleFileSubmission
 import munit.FunSuite
 

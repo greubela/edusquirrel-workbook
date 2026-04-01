@@ -1,12 +1,11 @@
 package workbook.model.interaction
 
 
-
-import util.Serializer
 import com.raquo.airstream.ownership.Owner
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
 import upickle.default.*
+import util.serializing.Serializer
 import workbook.model.abstractions.WorkbookInteraction
 import workbook.model.interaction.history.*
 import workbook.model.interaction.history.UpdateImportance.DEFAULT

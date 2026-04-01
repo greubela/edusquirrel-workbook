@@ -2,8 +2,9 @@ package interactionPlugins.programmingExercise.pythonExercise.turtle
 
 import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.CallbackLibrary
 import util.numbers.AlgebriteNumber
-import contentmanagement.model.color.{AppColor, RGBColor}
-import contentmanagement.webElements.genericHtmlElements.canvas.WebCanvas
+import datastructures.core.color.{AppColor, RGBColor, WebColor}
+import workbook.htmlElements.basic.canvas.WebCanvas
+
 import scala.scalajs.js
 import scala.util.Try
 
@@ -148,7 +149,7 @@ case class ExecuteTurtleOps(canvas: WebCanvas) {
 
   private def parseColorArg(value: js.Any): Option[AppColor] = {
     val normalized = stripWrappingQuotes(value.toString.trim)
-    Try(AppColor.fromWebStyleString(normalized)).toOption
+    Try(WebColor(normalized)).toOption
   }
 
   private def stripWrappingQuotes(value: String): String =

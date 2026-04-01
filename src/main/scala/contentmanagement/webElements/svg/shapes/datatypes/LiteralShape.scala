@@ -1,7 +1,5 @@
 package contentmanagement.webElements.svg.shapes.datatypes
 
-import contentmanagement.model.color.RGBColor
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.shapes.BeShape.{BeShapeAtomic, BeShapeContainerable, BeShapePathBased}
 
@@ -9,6 +7,8 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.svg
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.shapes.ShapeFactory
+import datastructures.core.color.RGBColor
+import datastructures.core.geometry.{Bounds, Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 object LiteralShape extends BeShapePathBased {

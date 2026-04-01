@@ -2,9 +2,9 @@ package interactionPlugins.turtleStitchPlugin
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import contentmanagement.model.language.{AppLanguage, HumanLanguage, TranslationMaps}
-import contentmanagement.storage.DataStorage
 import contentmanagement.webElements.HtmlAppElement
+import datastructures.core.language.{AppLanguage, HumanLanguage, TranslationMaps}
+import datastructures.web.storage.AsyncDataCache
 import org.scalajs.dom
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -214,7 +214,7 @@ object TurtleStitchEditor {
   private[turtleStitchPlugin] def turtleLang(language: HumanLanguage): String =
     AppLanguage.turtleStitchLangMap.getOrElse(language, "en")
 
-  val programSvgDataSrcStorage: DataStorage[(String, HumanLanguage), String] = new DataStorage[(String, HumanLanguage), String]("ProgramSvgDataSrc", false) {
+  val programSvgDataSrcStorage: AsyncDataCache[(String, HumanLanguage), String] = new AsyncDataCache[(String, HumanLanguage), String]("ProgramSvgDataSrc", false) {
     protected def executeLoading(in: (String, HumanLanguage))(ec: ExecutionContext): Future[String] = {
       val (xml, language) = in
       withSingletonEditor(_.calcProgramSvg(xml, turtleLang(language)).toFuture)(using ec)
@@ -230,7 +230,7 @@ object TurtleStitchEditor {
       s"SvgOutput(${out.length}, ${out.substring(0, 60)} ...)"
   }
 
-  val programOutputDataSrcStorage: DataStorage[String, String] = new DataStorage[String, String]("ProgramPngDataSrc", false) {
+  val programOutputDataSrcStorage: AsyncDataCache[String, String] = new AsyncDataCache[String, String]("ProgramPngDataSrc", false) {
     protected def executeLoading(xml: String)(ec: ExecutionContext): Future[String] =
       withSingletonEditor(_.simulateGreenFlag(xml).toFuture)(using ec)
 

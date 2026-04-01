@@ -1,9 +1,9 @@
 package contentmanagement.webElements.svg.compositeElements
 
-import contentmanagement.model.geometry.{Bounds, Dimension}
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.shapes.*
 import contentmanagement.webElements.svg.shapes.datatypes.UnitShape
+import datastructures.core.geometry.{Bounds, Dimension}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 /*
 enum RenderOption {

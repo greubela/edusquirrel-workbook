@@ -1,6 +1,6 @@
 package workbook.model.info
 
-import contentmanagement.model.language.HumanLanguage
+import datastructures.core.language.HumanLanguage
 import workbook.model.WorkbookSection
 import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.interaction.sync.{LocalStorageSync, SyncInformation, SyncStrategy}

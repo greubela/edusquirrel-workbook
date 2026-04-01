@@ -1,8 +1,8 @@
 package contentmanagement.webElements.svg.builder
 
-import contentmanagement.model.geometry.{Dimension, Point}
 import contentmanagement.webElements.svg.atomarElements.AppLineSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand.{AbsoluteCommand, RelativeCommand}
+import datastructures.core.geometry.{Dimension, Point}
 
 trait SvgPathBuilderCommand[T: Fractional] {
 

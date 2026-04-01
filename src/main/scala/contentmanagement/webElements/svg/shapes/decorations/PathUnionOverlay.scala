@@ -1,9 +1,9 @@
 package contentmanagement.webElements.svg.shapes.decorations
 
 import com.raquo.laminar.api.L
-import contentmanagement.model.geometry.{Dimension, Point}
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.shapes.BeShapeDecoration
+import datastructures.core.geometry.{Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 case class PathUnionOverlay() extends BeShapeDecoration {

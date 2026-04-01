@@ -1,12 +1,12 @@
 package interactionPlugins.fileSubmission.turtleStitch
 
-import contentmanagement.model.language.AppLanguage
-import contentmanagement.model.vm.code.BeExpression
-import contentmanagement.model.vm.code.controlStructures.BeSequence
-import contentmanagement.model.vm.code.defining.BeDefineVariable
-import contentmanagement.model.vm.code.others.BeStartProgram
-import contentmanagement.model.vm.code.usage.{BeFunctionCall, BeUseValue}
-import contentmanagement.model.vm.types.BeDataValueLiteral
+import datastructures.core.language.{AppLanguage, LanguageMap}
+import datastructures.core.vm.code.controlStructures.BeSequence
+import datastructures.core.vm.code.{BeExpression, defining}
+import datastructures.core.vm.code.defining.{BeDefineFunction, BeDefineVariable}
+import datastructures.core.vm.code.others.BeStartProgram
+import datastructures.core.vm.code.usage.{BeFunctionCall, BeUseValue}
+import datastructures.core.vm.types.BeDataValueLiteral
 
 object TurtleStitchFromBeExpressionSerializer {
 
@@ -40,12 +40,12 @@ object TurtleStitchFromBeExpressionSerializer {
   private def isReceiveGo(call: BeFunctionCall): Boolean = selectorOf(call) == "receiveGo"
 
   private def createReceiveGoCall(): BeFunctionCall = {
-    val define = contentmanagement.model.vm.code.defining.BeDefineFunction(
+    val define = BeDefineFunction(
       inputs = Nil,
       outputs = None,
       body = BeExpression.pass,
-      functionTypeInfo = contentmanagement.model.vm.code.defining.BeDefineFunction.functionInfo(
-        contentmanagement.model.language.LanguageMap.universalMap("receiveGo")
+      functionTypeInfo = defining.BeDefineFunction.functionInfo(
+        LanguageMap.universalMap("receiveGo")
       )
     )
     BeFunctionCall(define, Map.empty)

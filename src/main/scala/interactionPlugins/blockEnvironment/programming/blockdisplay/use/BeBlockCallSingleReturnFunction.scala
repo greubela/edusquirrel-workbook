@@ -1,16 +1,15 @@
 package interactionPlugins.blockEnvironment.programming.blockdisplay.use
 
-import contentmanagement.model.vm.code.*
-import contentmanagement.model.vm.code.defining.BeDefineFunction.Operator
-import contentmanagement.model.vm.code.defining.BeDefineVariable
-import contentmanagement.model.vm.code.tree.BeExpressionNode
-import contentmanagement.model.vm.code.usage.{BeFunctionCall, BeUseValue}
-import contentmanagement.model.vm.types.BeChildRole.FunctionParameter
+import datastructures.core.vm.code.defining.BeDefineFunction.Operator
+import datastructures.core.vm.types.BeChildRole.FunctionParameter
 import contentmanagement.webElements.svg.shapes.composite.{HBoxSameHeight, ShapeAroundShape}
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.*
 import contentmanagement.webElements.svg.shapes.datatypes.UnitShape
 import contentmanagement.webElements.svg.shapes.decorations.BeDataArrow
 import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeAmendFactory, ControlFlowShape, TextShape}
+import datastructures.core.vm.code.defining.BeDefineVariable
+import datastructures.core.vm.code.tree.BeExpressionNode
+import datastructures.core.vm.code.usage.{BeFunctionCall, BeUseValue}
 import interactionPlugins.blockEnvironment.programming.blockdisplay.*
 import interactionPlugins.blockEnvironment.programming.blockdisplay.data.{BeBlockDefineVariable, BeBlockUseValue}
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer

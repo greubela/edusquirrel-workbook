@@ -2,10 +2,10 @@ package interactionPlugins.blockEnvironment.programming.blockdisplay.other
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{Signal, eventPropToProcessor, svg}
-import contentmanagement.datastructures.tree.nodeImpl.NodeBasedTreePosition
-import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
 import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowShape}
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.*
+import datastructures.core.tree.nodeImpl.NodeBasedTreePosition
+import datastructures.core.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
 import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, BeBlockSingleShape, BeTreeDropTarget, RenderingInformation}
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
 

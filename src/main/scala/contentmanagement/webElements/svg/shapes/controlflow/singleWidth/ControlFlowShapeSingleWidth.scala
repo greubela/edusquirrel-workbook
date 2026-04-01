@@ -1,8 +1,8 @@
 package contentmanagement.webElements.svg.shapes.controlflow.singleWidth
 
-import contentmanagement.model.geometry.Dimension
 import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
 import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowShape}
+import datastructures.core.geometry.Dimension
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 

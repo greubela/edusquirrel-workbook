@@ -2,8 +2,8 @@ package contentmanagement.webElements.svg.atomarElements
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{Signal, svg}
-import contentmanagement.model.geometry.{Bounds, Dimension, Point}
 import contentmanagement.webElements.svg.AppSvgElement
+import datastructures.core.geometry.{Bounds, Dimension, Point}
 
 case class AppCircleSvgElement[T: Fractional](
     center: Point[T],

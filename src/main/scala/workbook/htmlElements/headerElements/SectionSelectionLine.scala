@@ -1,13 +1,15 @@
 package workbook.htmlElements.headerElements
 
 import com.raquo.laminar.api.L
-import contentmanagement.model.language.{HumanLanguage, LanguageMap}
 import workbook.model.WorkbookSection
-import workbook.model.info.WorkbookInfo
+import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 import com.raquo.laminar.api.L.*
+import datastructures.core.language.{HumanLanguage, LanguageMap}
 import workbook.model.abstractions.HtmlWorkbookElement
 
-case class SectionSelectionLine(workbookInfoVar: Var[WorkbookInfo], sections: List[WorkbookSection]) extends HtmlWorkbookElement {
+import scala.concurrent.ExecutionContext
+
+case class SectionSelectionLine(workbookInfo: AllWorkbookInfo, sections: List[WorkbookSection]) extends HtmlWorkbookElement {
 
 
   private def selectSection(section: WorkbookSection): Unit = {
@@ -28,7 +30,9 @@ case class SectionSelectionLine(workbookInfoVar: Var[WorkbookInfo], sections: Li
       } else {
         "section-block"
       }),
-      child <-- workbookInfoVar.signal.map(_.languageStringFromMap(section.sectionTitle)),
+      div(
+        text <-- workbookInfo.stringSignalFromLanguageMap(section.sectionTitle)
+      ) ,
       onClick --> { event => selectSection(section)},
     )
   }
