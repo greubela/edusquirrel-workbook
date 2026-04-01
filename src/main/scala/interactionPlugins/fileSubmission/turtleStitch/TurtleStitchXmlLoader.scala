@@ -1,5 +1,6 @@
 package interactionPlugins.fileSubmission.turtleStitch
 
+import interactionPlugins.fileSubmission.NodeDomSupport
 import interactionPlugins.fileSubmission.turtleStitch.TurtleStitchProgramModel.*
 import org.scalajs.dom
 import scala.scalajs.js
@@ -16,35 +17,32 @@ object TurtleStitchXmlLoader {
 
   def load(xml: String): Project = {
     scala.util.Try {
-      val hasDomParser = scala.util.Try(js.Dynamic.global.selectDynamic("DOMParser")).toOption
-        .exists(parser => !(js.isUndefined(parser) || parser == null))
-      val hasDocument = scala.util.Try(js.Dynamic.global.selectDynamic("document")).toOption
-        .exists(document => !(js.isUndefined(document) || document == null))
+      NodeDomSupport.parseXml(xml).map { document =>
+        val maybeProjectNode = Option(document.getElementsByTagName("project").item(0)).orElse(Option(document.documentElement).filter(_.nodeName == "project"))
 
-      if (!hasDomParser || !hasDocument) {
+        maybeProjectNode.map { projectNode =>
+          val scenesNode = firstChild(projectNode, "scenes")
+          val sceneNodes = childrenNamed(scenesNode, "scene")
+          val scenes = sceneNodes.map(parseScene).toVector
+
+          Option.when(scenes.nonEmpty) {
+            Project(
+              name = attr(projectNode, "name").getOrElse("Untitled"),
+              app = attr(projectNode, "app").getOrElse(""),
+              version = attr(projectNode, "version").getOrElse("2"),
+              notes = textChild(projectNode, "notes").getOrElse(""),
+              thumbnail = textChild(projectNode, "thumbnail").filter(_.nonEmpty),
+              scenes = scenes,
+              selectedScene = attrIntOpt(scenesNode, "select").getOrElse(1),
+              creator = textChild(projectNode, "creator").filter(_.nonEmpty),
+              origCreator = textChild(projectNode, "origCreator").filter(_.nonEmpty),
+              origName = textChild(projectNode, "origName").filter(_.nonEmpty)
+            )
+          }
+        }
+      }.flatten.flatten.getOrElse {
         warnFallback("DOM parser is unavailable in this runtime")
         loadWithStringFallback(xml)
-      } else {
-        val parser = new dom.DOMParser()
-        val document = parser.parseFromString(xml, "text/xml".asInstanceOf[dom.MIMEType])
-        val projectNode = Option(document.getElementsByTagName("project").item(0)).getOrElse(document.documentElement)
-
-        val scenesNode = firstChild(projectNode, "scenes")
-        val sceneNodes = childrenNamed(scenesNode, "scene")
-        val scenes = sceneNodes.map(parseScene).toVector
-
-        Project(
-          name = attr(projectNode, "name").getOrElse("Untitled"),
-          app = attr(projectNode, "app").getOrElse(""),
-          version = attr(projectNode, "version").getOrElse("2"),
-          notes = textChild(projectNode, "notes").getOrElse(""),
-          thumbnail = textChild(projectNode, "thumbnail").filter(_.nonEmpty),
-          scenes = scenes,
-          selectedScene = attrIntOpt(scenesNode, "select").getOrElse(1),
-          creator = textChild(projectNode, "creator").filter(_.nonEmpty),
-          origCreator = textChild(projectNode, "origCreator").filter(_.nonEmpty),
-          origName = textChild(projectNode, "origName").filter(_.nonEmpty)
-        )
       }
     }.recover { case error =>
       warnFallback(s"DOM parsing failed (${error.getClass.getSimpleName}); using string parser")
