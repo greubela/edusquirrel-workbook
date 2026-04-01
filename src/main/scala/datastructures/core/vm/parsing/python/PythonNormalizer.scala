@@ -1,6 +1,7 @@
 package datastructures.core.vm.parsing.python
 
 import scala.collection.mutable
+import util.text.ParenthesesUtils.stripOuterBalancedParens
 
 class PythonNormalizer {
 
@@ -223,39 +224,8 @@ class PythonNormalizer {
   }
 
   private def normalizeIfCondition(raw: String): String = {
-    val stripped = stripOuterParentheses(raw.trim)
+    val stripped = stripOuterBalancedParens(raw.trim)
     normalizeComparisonSpacing(stripped)
-  }
-
-  private def stripOuterParentheses(text: String): String = {
-    var current = text
-    var continue = true
-    while (
-      continue &&
-      current.length >= 2 &&
-      current.head == '(' &&
-      current.last == ')' &&
-      parenthesesBalanced(current.substring(1, current.length - 1))
-    ) {
-      current = current.substring(1, current.length - 1).trim
-    }
-    current
-  }
-
-  private def parenthesesBalanced(text: String): Boolean = {
-    var depth = 0
-    var index = 0
-    var balanced = true
-    while (index < text.length && balanced) {
-      text.charAt(index) match {
-        case '(' => depth += 1
-        case ')' =>
-          if (depth == 0) balanced = false else depth -= 1
-        case _ =>
-      }
-      index += 1
-    }
-    balanced && depth == 0
   }
 
   private def normalizeComparisonSpacing(text: String): String = {
@@ -366,12 +336,12 @@ class PythonNormalizer {
     val withoutAugmentation = transformAugmentedAssignment(text)
     val normalized = normalizeAssignmentExpression(withoutAugmentation)
     val cleaned = normalized match {
-      case ReturnPattern(body) => s"return ${stripOuterParentheses(body)}".trim
-      case WhilePattern(condition, suffix) => s"while ${stripOuterParentheses(condition)}$suffix"
-      case IfPattern(condition, suffix) => s"if ${stripOuterParentheses(condition)}$suffix"
+      case ReturnPattern(body) => s"return ${stripOuterBalancedParens(body)}".trim
+      case WhilePattern(condition, suffix) => s"while ${stripOuterBalancedParens(condition)}$suffix"
+      case IfPattern(condition, suffix) => s"if ${stripOuterBalancedParens(condition)}$suffix"
       case other =>
         val assignmentSplit = splitSimpleAssignment(other).map { case (target, expr) =>
-          s"${target.trim} = ${stripOuterParentheses(expr)}"
+          s"${target.trim} = ${stripOuterBalancedParens(expr)}"
         }
         assignmentSplit.getOrElse(other)
     }

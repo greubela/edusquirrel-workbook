@@ -10,7 +10,7 @@ import datastructures.core.geometry.Dimension
 import datastructures.core.geometry.Point
 import org.scalajs.dom
 import util.web.JsHelpers.*
-import util.web.WorkerRequestTracker
+import util.web.{WorkerProtocolHelpers, WorkerRequestTracker}
 
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -29,23 +29,14 @@ final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.js") {
 
   private val preheated: Future[Unit] = requestUnit("init")
 
-  worker.onmessage = { (event: dom.MessageEvent) =>
-    tracker.complete(event.data.asInstanceOf[js.Any])
-  }
+  WorkerProtocolHelpers.wireMessages(worker, tracker)
 
   worker.onerror = { (event: dom.ErrorEvent) =>
-    val ex = js.JavaScriptException(
-      s"${event.message} (${event.filename}:${event.lineno}:${event.colno})"
-    )
-    tracker.failAll(
-      obj(
-        "ok" -> false,
-        "error" -> obj(
-          "message" -> ex.getMessage,
-          "stdout" -> "",
-          "stderr" -> ""
-        )
-      ).asInstanceOf[js.Dynamic]
+    WorkerProtocolHelpers.failAllFromWorkerError(
+      tracker,
+      event,
+      "stdout" -> "",
+      "stderr" -> ""
     )
   }
 
@@ -148,23 +139,16 @@ final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.js") {
   private def requestUnit(kind: String, payload: js.Object = emptyObj): Future[Unit] =
     request(kind, payload).map(_ => ())
 
-  private def request(kind: String, payload: js.Object = emptyObj): Future[js.Any] = {
-    val promise = Promise[js.Any]()
-    val id = tracker.register { (data: js.Dynamic) =>
-      if (asBoolean(data.ok)) promise.success(data.payload.asInstanceOf[js.Any])
-      else promise.failure(readFailure(data.error))
-    }
-
-    worker.postMessage(
-      obj(
-        "id" -> id,
-        "kind" -> kind,
-        "payload" -> payload
-      )
+  private def request(kind: String, payload: js.Object = emptyObj): Future[js.Any] =
+    WorkerProtocolHelpers.request(
+      worker = worker,
+      tracker = tracker,
+      operation = kind,
+      payload = payload,
+      operationFieldName = "kind",
+      responsePayloadFieldName = "payload",
+      onError = readFailure
     )
-
-    promise.future
-  }
 
   private def readRunReport(value: js.Any): PythonRunReport = {
     val payload = asDynamic(value)
