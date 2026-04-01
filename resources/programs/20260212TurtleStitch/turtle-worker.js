@@ -940,6 +940,8 @@
     }
   }
 
+  const OPERATION_TIMEOUT_MS = 25000;
+
   async function handleMessage(data) {
     const { id, type, payload } = data || {};
     if (!id || typeof type !== "string") {
@@ -955,7 +957,7 @@
         const engine = await ensureSingletonEngine();
         const result = await withTimeout(
           engine.calcProgramSvg(payload?.xml_content, payload?.language || "en"),
-          12000,
+          OPERATION_TIMEOUT_MS,
           "calcProgramSvg"
         );
         return { id, ok: true, result };
@@ -964,7 +966,7 @@
         const engine = await ensureSingletonEngine();
         const result = await withTimeout(
           engine.simulateGreenFlag(payload?.xml_content, payload?.language || "en"),
-          12000,
+          OPERATION_TIMEOUT_MS,
           "simulateGreenFlag"
         );
         return { id, ok: true, result };
@@ -973,7 +975,7 @@
         const engine = await ensureSingletonEngine();
         const result = await withTimeout(
           engine.getGreenFlagAsLispCode(payload?.xml_content, payload?.language || "en"),
-          12000,
+          OPERATION_TIMEOUT_MS,
           "getGreenFlagAsLispCode"
         );
         return { id, ok: true, result };
