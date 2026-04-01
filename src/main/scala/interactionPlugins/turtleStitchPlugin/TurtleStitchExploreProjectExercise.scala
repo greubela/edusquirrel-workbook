@@ -1,14 +1,13 @@
 package interactionPlugins.turtleStitchPlugin
 
-import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.*
-import datastructures.core.language.{HumanLanguage, LanguageMap}
 import datastructures.web.file.FileDescription
-import interactionPlugins.turtleStitchPlugin.card.*
-import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
+import interactionPlugins.turtleStitchPlugin.card.TurtleFileShowProgramXmlCard
 import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement}
 import workbook.htmlElements.interactions.HtmlBasicTextInteraction
+import workbook.model.abstractions.HtmlWorkbookElement
+import workbook.model.info.AllWorkbookInfo
+
+import scala.concurrent.ExecutionContext
 
 object TurtleStitchExploreProjectExercise {
 
@@ -18,26 +17,24 @@ object TurtleStitchExploreProjectExercise {
   def createElements(
                       workbookInfo: AllWorkbookInfo,
                       baseId: String,
-                      title: LanguageMap[HumanLanguage],
+                      titleLanguageMapId: String,
                       imageShowCommands: FileDescription,
                       projectToDownload: FileDescription
                     ): List[HtmlWorkbookElement] = {
 
-    val htmlTitleElement = HtmlContainerTitle(workbookInfo, workbookInfo.stringSignalFromLanguageMap(title))
-    val instr = HtmlPlaintextInstructionElement(workbookInfo, workbookInfo.stringSignalFromLanguageMap(TurtleStitchLanguageMaps.languageMapDefaultReadExerciseInstruction))
-    //val down = TurtleFileProgramPreviewCard(workbookInfo, baseId, projectToDownload)
+    val htmlTitleElement = HtmlContainerTitle(workbookInfo, titleLanguageMapId)
+    val instr = HtmlPlaintextInstructionElement(workbookInfo, workbookInfo.stringSignalFromLanguageMapId("TurtleStitch/defaultReadExerciseInstruction")(ExecutionContext.global))
 
     val preview: HtmlWorkbookElement = TurtleFileShowProgramXmlCard(
       workbookInfo,
       projectToDownload
     )
 
-
-    val instr2 = HtmlPlaintextInstructionElement(workbookInfo, workbookInfo.stringSignalFromLanguageMap(TurtleStitchLanguageMaps.languageMapDefaultAnalyzeExerciseInstruction))
+    val instr2 = HtmlPlaintextInstructionElement(workbookInfo, workbookInfo.stringSignalFromLanguageMapId("TurtleStitch/defaultAnalyzeExerciseInstruction")(ExecutionContext.global))
 
     val text = HtmlBasicTextInteraction(workbookInfo, baseId)
 
-    val instr3 = HtmlPlaintextInstructionElement(workbookInfo, workbookInfo.stringSignalFromLanguageMap(TurtleStitchLanguageMaps.languageMapDefaultExecuteExerciseInstruction))
+    val instr3 = HtmlPlaintextInstructionElement(workbookInfo, workbookInfo.stringSignalFromLanguageMapId("TurtleStitch/defaultExecuteExerciseInstruction")(ExecutionContext.global))
 
     List(htmlTitleElement, instr, preview, instr2, text, instr3)
 

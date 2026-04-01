@@ -3,15 +3,19 @@ package workbook.model
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import datastructures.core.language.{HumanLanguage, LanguageMap}
-import datastructures.web.storage.AsyncDataCache
-import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 import workbook.htmlElements.headerElements.HtmlWorkbookHeader
+import workbook.model.abstractions.HtmlWorkbookElement
+import workbook.model.info.AllWorkbookInfo
 
 import scala.concurrent.ExecutionContext
 
-case class Workbook(workbookInfo: AllWorkbookInfo, title: LanguageMap[HumanLanguage], sections: List[WorkbookSection]) extends HtmlWorkbookElement {
-  
+case class Workbook(
+                     workbookInfo: AllWorkbookInfo,
+                     title: LanguageMap[HumanLanguage],
+                     sections: List[WorkbookSection],
+                     titleLanguageMapId: Option[String] = None
+                   ) extends HtmlWorkbookElement {
+
   private def getElement(activeSection: Option[WorkbookSection]): Element =
     if (activeSection.isEmpty) {
       span(
@@ -21,7 +25,7 @@ case class Workbook(workbookInfo: AllWorkbookInfo, title: LanguageMap[HumanLangu
       activeSection.get.getDomElement()
     }
 
-  private val titleLine = HtmlWorkbookHeader(workbookInfo, title, sections)
+  private val titleLine = HtmlWorkbookHeader(workbookInfo, title, sections, titleLanguageMapId)
 
   override def getDomElement(): L.Element = L.div(
     cls := "workbook",
@@ -36,5 +40,10 @@ case class Workbook(workbookInfo: AllWorkbookInfo, title: LanguageMap[HumanLangu
 
   )
 
+}
 
+object Workbook {
+  def apply(workbookInfo: AllWorkbookInfo, titleLanguageMapId: String, sections: List[WorkbookSection]): Workbook = {
+    Workbook(workbookInfo, LanguageMap.mapBasedLanguageMap(Map.empty[HumanLanguage, String]), sections, Some(titleLanguageMapId))
+  }
 }

@@ -4,7 +4,6 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import interactionPlugins.fileSubmission.*
-import interactionPlugins.turtleStitchPlugin.TurtleStitchLanguageMaps
 import interactionPlugins.turtleStitchPlugin.card.TurtleStitchFileUploadButtonCard.*
 import interactionPlugins.turtleStitchPlugin.card.TurtleStitchFileUploadButtonCard.StorageFormat.{BYTES_AS_BASE64_STRING, BYTES_AS_RAW_STRING}
 import org.scalajs.dom
@@ -40,7 +39,7 @@ case class TurtleStitchFileUploadButtonCard(
   )
 
   private lazy val uploadButton: ReactiveHtmlElement[HTMLButtonElement] = button(
-    child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(TurtleStitchLanguageMaps.languageMapUploadButton.getInLanguage),
+    text <-- workbookInfo.stringSignalFromLanguageMapId("TurtleStitch/uploadButton")(ExecutionContext.global),
     uploadInput,
     onClick --> { _ =>
       uploadInput.ref.click()
@@ -50,7 +49,7 @@ case class TurtleStitchFileUploadButtonCard(
   private lazy val fileDom: ReactiveHtmlElement[HTMLDivElement] = div(
     cls := "preview-card",
     h3(
-      child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(TurtleStitchLanguageMaps.languageMapUploadButton.getInLanguage),
+      text <-- workbookInfo.stringSignalFromLanguageMapId("TurtleStitch/uploadButton")(ExecutionContext.global),
     ),
     div(
       cls := "preview-content",

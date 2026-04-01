@@ -16,11 +16,16 @@ import scala.scalajs.js.{Dictionary, JSON}
 object WorkbookLanguageInfo {
 
   val languageMapFiles: List[FileDescription] = List(
-    FileDescription.relativeToResourceFolder("/languageMaps/EmbroideryWorkbook-de.json"),
-    FileDescription.relativeToResourceFolder("/languageMaps/EmbroideryWorkbook-en.csv"),
-    FileDescription.relativeToResourceFolder("/languageMaps/basic-en.csv"),
+    FileDescription.relativeToResourceFolder("/languageMaps/basic-en.json"),
     FileDescription.relativeToResourceFolder("/languageMaps/basic-de.json"),
-    //   FileDescription.relativeToResourceFolder("/languageMaps/basic-fr.csv")
+    FileDescription.relativeToResourceFolder("/languageMaps/TurtleStitch-en.json"),
+    FileDescription.relativeToResourceFolder("/languageMaps/TurtleStitch-de.json"),
+    FileDescription.relativeToResourceFolder("/languageMaps/BlockEditor-en.json"),
+    FileDescription.relativeToResourceFolder("/languageMaps/BlockEditor-de.json"),
+    FileDescription.relativeToResourceFolder("/languageMaps/EmbroideryWorkbook-en.json"),
+    FileDescription.relativeToResourceFolder("/languageMaps/EmbroideryWorkbook-de.json"),
+    FileDescription.relativeToResourceFolder("/languageMaps/TestWorkbook-en.json"),
+    FileDescription.relativeToResourceFolder("/languageMaps/TestWorkbook-de.json"),
   )
 
   private val languageByFileSuffix: Map[String, HumanLanguage] = Map(

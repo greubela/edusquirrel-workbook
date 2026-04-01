@@ -4,7 +4,6 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
 import content.WorkbookFactory
 import contentmanagement.webElements.HtmlAppElement
-import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
 import interactionPlugins.blockEnvironment.exercise.{ProgrammingExerciseFactory, TurtleProgrammingInteraction}
 import interactionPlugins.gpt.GptExerciseFactory
 import interactionPlugins.programmingExercise.pythonExercise.turtle.TurtleExerciseDemo
@@ -24,17 +23,7 @@ case class TestWorkbookFactory(override val workbookInfo: AllWorkbookInfo) exten
     
     val sec = TestWorkbookFactory.createTestSection(workbookInfo)
 
-    val title: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-      AppLanguage.English -> "Test Workbook",
-      AppLanguage.German -> "Beispielheft",
-      AppLanguage.French -> "Cahier de test",
-      AppLanguage.Ukrainian -> "Тестовий зошит",
-      AppLanguage.Russian -> "Тестовая тетрадь",
-      AppLanguage.Turkish -> "Test Çalışma Kitabı",
-      AppLanguage.Danish -> "Testarbejdsbog"
-    ))
-
-    Workbook(workbookInfo, title, List(sec))
+    Workbook(workbookInfo, "TestWorkbook/workbookTitle", List(sec))
   }
   
   
@@ -42,42 +31,12 @@ case class TestWorkbookFactory(override val workbookInfo: AllWorkbookInfo) exten
 
 object TestWorkbookFactory {
 
-  private val defaultTitle: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
-    AppLanguage.English -> "this is the title.",
-    AppLanguage.German -> "Das ist der Titel.",
-    AppLanguage.French -> "Ceci est le titre.",
-    AppLanguage.Ukrainian -> "Це заголовок.",
-    AppLanguage.Russian -> "Это заголовок.",
-    AppLanguage.Turkish -> "Bu başlıktır.",
-    AppLanguage.Danish -> "Dette er titlen."
-  ))
-
-  private val textInstruction1: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
-    AppLanguage.English -> "Write a text!",
-    AppLanguage.German -> "Schreibe einen Text!",
-    AppLanguage.French -> "Écris un texte !",
-    AppLanguage.Ukrainian -> "Напиши текст!",
-    AppLanguage.Russian -> "Напиши текст!",
-    AppLanguage.Turkish -> "Bir metin yaz!",
-    AppLanguage.Danish -> "Skriv en tekst!"
-  ))
-
-  private val textInstruction2: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
-    AppLanguage.English -> "Write another text!",
-    AppLanguage.German -> "Schreibe noch einen Text!",
-    AppLanguage.French -> "Écris encore un texte !",
-    AppLanguage.Ukrainian -> "Напиши ще один текст!",
-    AppLanguage.Russian -> "Напиши ещё один текст!",
-    AppLanguage.Turkish -> "Bir metin daha yaz!",
-    AppLanguage.Danish -> "Skriv endnu en tekst!"
-  ))
-
   private def gptCont(workbookInfo: AllWorkbookInfo): HtmlExerciseContainer = {
     val gptElements = GptExerciseFactory.createGptExercise(
       workbookInfo,
       "text-007",
-      defaultTitle,
-      List(textInstruction1, textInstruction2)
+      "TestWorkbook/exerciseTitle",
+      List("TestWorkbook/writeText1", "TestWorkbook/writeText2")
     )
     HtmlExerciseContainer(workbookInfo, gptElements)
   }
@@ -103,7 +62,7 @@ object TestWorkbookFactory {
   }
 
   private def blockProgCont(workbookInfo: AllWorkbookInfo): HtmlExerciseContainer = {
-    val progElements = ProgrammingExerciseFactory.createTurtleProgrammingExercise(workbookInfo, "prog-007", defaultTitle, ProgrammingExerciseFactory.DefaultPentagonExpectedResult)
+    val progElements = ProgrammingExerciseFactory.createTurtleProgrammingExercise(workbookInfo, "prog-007", "TestWorkbook/exerciseTitle", ProgrammingExerciseFactory.DefaultPentagonExpectedResult)
     HtmlExerciseContainer(workbookInfo, progElements)
   }
 
@@ -122,16 +81,7 @@ object TestWorkbookFactory {
     )
 
 
-    val secTitle = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
-      AppLanguage.English -> "This is section 1.",
-      AppLanguage.German -> "Das ist Abschnitt 1.",
-      AppLanguage.French -> "Ceci est la section 1.",
-      AppLanguage.Ukrainian -> "Це розділ 1.",
-      AppLanguage.Russian -> "Это раздел 1.",
-      AppLanguage.Turkish -> "Bu bölüm 1.",
-      AppLanguage.Danish -> "Dette er afsnit 1."
-    ))
-    WorkbookSection(workbookInfo, secTitle, contList)
+    WorkbookSection(workbookInfo, "TestWorkbook/section1Title", contList)
   }
 
 

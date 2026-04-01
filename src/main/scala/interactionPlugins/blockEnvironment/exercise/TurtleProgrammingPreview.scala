@@ -5,8 +5,7 @@ import com.raquo.laminar.api.L.Var
 import com.raquo.laminar.api.L.svg
 import contentmanagement.webElements.svg.AppSvgElement
 import datastructures.core.geometry.Bounds
-import datastructures.core.language.{HumanLanguage, LanguageMap}
-import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig, BlockEnvironmentLanguageMap}
+import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
 import workbook.model.abstractions.HtmlWorkbookElement
@@ -43,10 +42,10 @@ case class TurtleProgrammingPreview(workbookInfo: AllWorkbookInfo, editorState: 
     //treeDom.amend(cls := "programming-preview-tree")
   }
 
-  private def previewCard(cardType: String, cardLabel: LanguageMap[HumanLanguage], cardContent: Signal[Element]): Element = div(
+  private def previewCard(cardType: String, cardLabelMapId: String, cardContent: Signal[Element]): Element = div(
     cls := "preview-card",
     h3(
-      child <-- workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(cardLabel.getInLanguage)
+      text <-- workbookInfo.stringSignalFromLanguageMapId(cardLabelMapId)(scala.concurrent.ExecutionContext.global)
     ),
     div(
       cls := "preview-content",
@@ -58,8 +57,8 @@ case class TurtleProgrammingPreview(workbookInfo: AllWorkbookInfo, editorState: 
     div(
       cls := "workbook-interaction preview-line",
       //
-      previewCard("program", BlockEnvironmentLanguageMap.languageMapYourProgram, editorState.treeToEdit.signal.map(renderProgramPreview)),
-      previewCard("output", BlockEnvironmentLanguageMap.languageMapProgramOutcome, Var(div(renderedSvg)).signal),
+      previewCard("program", "BlockEditor/yourProgram", editorState.treeToEdit.signal.map(renderProgramPreview)),
+      previewCard("output", "BlockEditor/programOutcome", Var(div(renderedSvg)).signal),
     )
 
   override def getDomElement(): Element = domElement

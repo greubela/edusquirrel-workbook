@@ -1,14 +1,15 @@
 package interactionPlugins.turtleStitchPlugin
 
 import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.*
-import datastructures.core.language.{HumanLanguage, LanguageMap}
+import com.raquo.laminar.api.L.{*, given}
 import datastructures.web.file.FullImage
 import interactionPlugins.turtleStitchPlugin.card.*
 import interactionPlugins.turtleStitchPlugin.card.TurtleStitchFileUploadButtonCard.StorageFormat
 import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement}
 import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.AllWorkbookInfo
+
+import scala.concurrent.ExecutionContext
 
 object TurtleStitchRecreateShapeExercise {
 
@@ -40,13 +41,13 @@ object TurtleStitchRecreateShapeExercise {
   def createElements(
                       pWorkbookInfo: AllWorkbookInfo,
                       baseId: String,
-                      title: LanguageMap[HumanLanguage],
+                      titleLanguageMapId: String,
                       expectedOutcome: FullImage
                     ): List[HtmlWorkbookElement] = {
 
-    val htmlTitleElement = HtmlContainerTitle(pWorkbookInfo, pWorkbookInfo.stringSignalFromLanguageMap(title))
+    val htmlTitleElement = HtmlContainerTitle(pWorkbookInfo, titleLanguageMapId)
 
-    val instr = HtmlPlaintextInstructionElement(pWorkbookInfo, pWorkbookInfo.stringSignalFromLanguageMap(TurtleStitchLanguageMaps.languageMapDefaultReprogramInstruction))
+    val instr = HtmlPlaintextInstructionElement(pWorkbookInfo, pWorkbookInfo.stringSignalFromLanguageMapId("TurtleStitch/defaultReprogramInstruction")(ExecutionContext.global))
 
     val uploadLine: HtmlWorkbookElement = createInteractionElement(pWorkbookInfo, baseId, expectedOutcome)
 

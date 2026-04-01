@@ -1,19 +1,17 @@
 package interactionPlugins.turtleStitchPlugin.card
 
-import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import datastructures.web.file.FullImage
-import interactionPlugins.turtleStitchPlugin.TurtleStitchLanguageMaps
-import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 import workbook.htmlElements.basic.HtmlImageElement
+import workbook.model.abstractions.HtmlWorkbookElement
+import workbook.model.info.AllWorkbookInfo
 
 import scala.concurrent.ExecutionContext
 
 case class TurtleStitchExpectedShapeCard(workbookInfo: AllWorkbookInfo, expectedOutcome: FullImage) extends HtmlWorkbookElement {
 
   private val headline: Element = h3(
-    text <-- workbookInfo.stringSignalFromLanguageMap(TurtleStitchLanguageMaps.languageMapShowExpected)
+    text <-- workbookInfo.stringSignalFromLanguageMapId("TurtleStitch/showExpected")(ExecutionContext.global)
   )
 
   private val imgElementSignal: Signal[Element] = {

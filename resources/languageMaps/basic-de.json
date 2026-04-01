@@ -1,4 +1,5 @@
-  {
-    "dataLoadingMap": "[Daten werden geladen]",
-    "imageLoadingMap": "[Bild wird geladen]"
-  }
+{
+  "dataLoadingMap": "[Daten werden geladen]",
+  "imageLoadingMap": "[Bild wird geladen]",
+  "noSectionSelected": "[Kein Abschnitt ausgewählt]"
+}
