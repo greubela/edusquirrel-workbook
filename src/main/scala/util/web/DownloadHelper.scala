@@ -94,4 +94,16 @@ object DownloadHelper {
     downloadFromObjectUrl(desiredFilename, url)
   }
 
+  def downloadSvg(desiredFilename: String, svgContent: String): Unit = {
+    val blob = new Blob(
+      js.Array(svgContent),
+      new dom.BlobPropertyBag {
+        `type` = "image/svg+xml;charset=utf-8"
+      }
+    )
+
+    val url = URL.createObjectURL(blob)
+    downloadFromObjectUrl(desiredFilename, url)
+  }
+
 }

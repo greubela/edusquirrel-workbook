@@ -1,5 +1,8 @@
 package util.web
 
+import org.scalajs.dom
+
+import scala.concurrent.{Future, Promise}
 import scala.scalajs.js
 import util.web.JsHelpers.*
 
@@ -33,4 +36,57 @@ final class WorkerRequestTracker {
 
   def clear(): Unit =
     pending.clear()
+}
+
+object WorkerProtocolHelpers {
+
+  def wireMessages(worker: dom.Worker, tracker: WorkerRequestTracker): Unit = {
+    worker.onmessage = { (event: dom.MessageEvent) =>
+      tracker.complete(event.data.asInstanceOf[js.Any])
+    }
+  }
+
+  def failAllFromWorkerError(
+                              tracker: WorkerRequestTracker,
+                              event: dom.ErrorEvent,
+                              extraErrorFields: (String, js.Any)*
+                            ): Unit = {
+    val errorMessage =
+      s"${event.message} (${event.filename}:${event.lineno}:${event.colno})"
+
+    tracker.failAll(
+      obj(
+        "ok" -> false,
+        "error" -> obj(
+          ("message" -> errorMessage) +: extraErrorFields *
+        )
+      ).asInstanceOf[js.Dynamic]
+    )
+  }
+
+  def request(
+               worker: dom.Worker,
+               tracker: WorkerRequestTracker,
+               operation: String,
+               payload: js.Object,
+               operationFieldName: String,
+               responsePayloadFieldName: String,
+               onError: js.Any => Throwable
+             ): Future[js.Any] = {
+    val promise = Promise[js.Any]()
+    val id = tracker.register { (data: js.Dynamic) =>
+      if (asBoolean(data.ok)) promise.success(data.selectDynamic(responsePayloadFieldName).asInstanceOf[js.Any])
+      else promise.failure(onError(data.error.asInstanceOf[js.Any]))
+    }
+
+    worker.postMessage(
+      obj(
+        "id" -> id,
+        operationFieldName -> operation,
+        "payload" -> payload
+      )
+    )
+
+    promise.future
+  }
 }

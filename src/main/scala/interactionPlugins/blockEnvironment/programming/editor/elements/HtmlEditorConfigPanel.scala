@@ -6,10 +6,9 @@ import com.raquo.laminar.api.L.{render, unsafeWindowOwner}
 import contentmanagement.webElements.genericHtmlElements.editor.{SimpleBooleanEditor, SimpleSelectorEditor}
 import interactionPlugins.blockEnvironment.config.{BeTreeControllerConfig, BeTreeDisplayConfig, ControlFlowDisplay}
 import org.scalajs.dom
-import org.scalajs.dom.html
 import contentmanagement.webElements.HtmlAppElement
 import datastructures.core.language.{HumanLanguage, LanguageMap}
-import scala.scalajs.js
+import util.web.DownloadHelper
 
 case class HtmlEditorConfigPanel(editorState: EditorState) extends HtmlAppElement {
 
@@ -78,20 +77,10 @@ case class HtmlEditorConfigPanel(editorState: EditorState) extends HtmlAppElemen
     rootNode.unmount()
 
     if (svgContent.nonEmpty) {
-      val blob = new dom.Blob(
-        js.Array(svgContent),
-        js.Dynamic
-          .literal(`type` = "image/svg+xml;charset=utf-8")
-          .asInstanceOf[dom.BlobPropertyBag]
+      DownloadHelper.downloadSvg(
+        desiredFilename = s"be-program-${System.currentTimeMillis()}.svg",
+        svgContent = svgContent
       )
-      val url = dom.URL.createObjectURL(blob)
-      val anchor = dom.document.createElement("a").asInstanceOf[html.Anchor]
-      anchor.href = url
-      anchor.download = s"be-program-${System.currentTimeMillis()}.svg"
-      dom.document.body.appendChild(anchor)
-      anchor.click()
-      dom.document.body.removeChild(anchor)
-      dom.window.setTimeout(() => dom.URL.revokeObjectURL(url), 0)
     }
   }
 

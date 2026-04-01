@@ -2,10 +2,12 @@ package `export`.workers
 
 import org.scalajs.dom
 import util.web.JsHelpers.*
-import util.web.WorkerRequestTracker
+import util.web.{WorkerProtocolHelpers, WorkerRequestTracker}
 
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import scala.scalajs.js.Promise as JsPromise
+import scala.scalajs.js.JSConverters.*
 
 /**
  * Minimal client facade around turtle-worker.js.
@@ -26,19 +28,12 @@ case class TurtleStitchWorker(
   private val worker = new dom.Worker(workerUrl)
   private val tracker = new WorkerRequestTracker
 
-  worker.onmessage = { (event: dom.MessageEvent) =>
-    tracker.complete(event.data.asInstanceOf[js.Any])
-  }
+  WorkerProtocolHelpers.wireMessages(worker, tracker)
 
   worker.onerror = { (event: dom.ErrorEvent) =>
-    val errorMessage =
-      s"${event.message} (${event.filename}:${event.lineno}:${event.colno})"
-
-    tracker.failAll(
-      obj(
-        "ok" -> false,
-        "error" -> obj("message" -> errorMessage)
-      ).asInstanceOf[js.Dynamic]
+    WorkerProtocolHelpers.failAllFromWorkerError(
+      tracker,
+      event
     )
   }
 
@@ -85,29 +80,24 @@ case class TurtleStitchWorker(
       ()
     }
 
-  private def request(operation: String, payload: js.Object): JsPromise[js.Any] = {
-    new JsPromise[js.Any]((resolve, reject) => {
-      val id = tracker.register { (data: js.Dynamic) =>
-        val ok = asBoolean(data.selectDynamic("ok").asInstanceOf[js.Any])
-        if (ok) resolve(data.selectDynamic("result"))
-        else {
-          val error = asDynamic(data.selectDynamic("error").asInstanceOf[js.Any])
+  private def request(operation: String, payload: js.Object): JsPromise[js.Any] =
+    WorkerProtocolHelpers
+      .request(
+        worker = worker,
+        tracker = tracker,
+        operation = operation,
+        payload = payload,
+        operationFieldName = "type",
+        responsePayloadFieldName = "result",
+        onError = value => {
+          val error = asDynamic(value)
           val message =
             error.selectDynamic("message")
               .asInstanceOf[js.Any]
               .asInstanceOf[js.UndefOr[String]]
               .getOrElse(s"Worker operation failed: $operation")
-          reject(js.JavaScriptException(message))
+          js.JavaScriptException(message)
         }
-      }
-
-      worker.postMessage(
-        obj(
-          "id" -> id,
-          "type" -> operation,
-          "payload" -> payload
-        )
       )
-    })
-  }
+      .toJSPromise
 }
