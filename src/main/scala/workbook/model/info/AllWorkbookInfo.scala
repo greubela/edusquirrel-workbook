@@ -30,6 +30,19 @@ case class AllWorkbookInfo() {
     workbookInfoVar.update(curInfo => curInfo.copy(config = func(curInfo.config)))
   }
 
+  def addLanguageFile(file: FileDescription): Unit = {
+    addLanguageFiles(List(file))
+  }
+
+  def addLanguageFiles(files: List[FileDescription]): Unit = {
+    val uniqueFiles = files.distinct
+    technicalElements.languageMapStorage.addLanguageFiles(uniqueFiles)
+    uniqueFiles.foreach(curFile =>
+      technicalElements.languageMapStorage.languageTriplesStorage.loadIntoVariable(curFile)(ExecutionContext.global)
+    )
+    technicalElements.languageMapStorage.reloadAll()(ExecutionContext.global)
+  }
+
   @deprecated("Use AllWorkbookInfo::stringSignalFromLanguageMapId instead", "2026-04-01")
   def stringSignalFromLanguageMap(languageMap: LanguageMap[HumanLanguage]): Signal[String] = {
     println("[WARN] language Map that got not transferred to a proper file: " + languageMap + " at: \n" + new Exception().getStackTrace.map(_.getMethodName).mkString("Array(", ", ", ")") + "\n")

@@ -1,0 +1,17 @@
+{
+  "WorkbookTitle": "Custom JSON Workbook",
+  "Sec1Title": "Section 1: Fundamentals",
+  "Sec2Title": "Section 2: Follow-up",
+  "Ex1Title": "Exercise 1",
+  "Ex1Instr1a": "Read the prompt and answer in your own words.",
+  "Ex1Instr1b": "Add one real-world example.",
+  "Ex2Title": "Exercise 2",
+  "Ex2Instr2a": "Describe the key concept.",
+  "Ex2Instr2b": "Compare it with your previous answer.",
+  "Ex3Title": "Exercise 3",
+  "Ex3Instr3a": "Summarize section 1 in 3 bullet points.",
+  "Ex4Title": "Exercise 4",
+  "Ex4Instr1": "Apply the knowledge from section 1.",
+  "Ex5Title": "Exercise 5",
+  "Ex5Instr1": "Reflect on your progress."
+}
