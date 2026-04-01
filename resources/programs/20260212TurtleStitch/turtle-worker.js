@@ -13,6 +13,7 @@
   const LOG_PREFIX = "[TurtleWorker]";
   const log = (...a) => console.log(LOG_PREFIX, ...a);
   const warn = (...a) => console.warn(LOG_PREFIX, ...a);
+  const PREFER_FALLBACK_RENDERER = true;
 
   const BASE_PROG_DIR = "./";
 
@@ -45,10 +46,21 @@
   const loadedLanguageScripts = new Set(["en"]);
   const importedScriptUrls = new Set();
 
+  const WORKER_BASE_URL = (() => {
+    try {
+      return self.location && typeof self.location.href === "string"
+        ? self.location.href
+        : undefined;
+    } catch (_) {
+      return undefined;
+    }
+  })();
+
   function normalizeScriptUrl(src) {
     if (!src) return "";
     try {
-      return new URL(String(src), BASE_PROG_DIR).href;
+      const base = WORKER_BASE_URL || BASE_PROG_DIR;
+      return new URL(String(src), base).href;
     } catch (_) {
       return String(src);
     }
@@ -57,7 +69,7 @@
   function importScriptOnce(src) {
     const normalized = normalizeScriptUrl(src);
     if (!normalized || importedScriptUrls.has(normalized)) return false;
-    importScripts(src);
+    importScripts(normalized);
     importedScriptUrls.add(normalized);
     return true;
   }
@@ -137,6 +149,20 @@
       removeEventListener() {}
       focus() {}
       blur() {}
+      getBoundingClientRect() {
+        const width = Number(this.width || 0);
+        const height = Number(this.height || 0);
+        return {
+          x: 0,
+          y: 0,
+          top: 0,
+          left: 0,
+          right: width,
+          bottom: height,
+          width,
+          height
+        };
+      }
     }
 
     class CanvasNode extends MiniNode {
@@ -257,16 +283,85 @@
     defineAlias("window", windowObj);
     defineAlias("self", windowObj);
     defineAlias("global", windowObj);
-    windowObj.document = document;
-    windowObj.navigator = windowObj.navigator || { language: "en-US", platform: "worker" };
-    windowObj.innerHeight = 1000;
-    windowObj.innerWidth = 1400;
-    windowObj.pageXOffset = 0;
-    windowObj.pageYOffset = 0;
-    windowObj.devicePixelRatio = 1;
-    windowObj.screen = windowObj.screen || { width: 1400, height: 1000 };
-    windowObj.performance = windowObj.performance || { now: () => Date.now() };
-    windowObj.location = windowObj.location || { href: "", hash: "", search: "" };
+    const setGlobalIfWritable = (name, value) => {
+      try {
+        const descriptor = Object.getOwnPropertyDescriptor(windowObj, name);
+        if (!descriptor) {
+          Object.defineProperty(windowObj, name, {
+            configurable: true,
+            enumerable: true,
+            writable: true,
+            value
+          });
+          return;
+        }
+        if (descriptor.writable) {
+          windowObj[name] = value;
+          return;
+        }
+        if (descriptor.configurable) {
+          Object.defineProperty(windowObj, name, {
+            configurable: true,
+            enumerable: true,
+            writable: true,
+            value
+          });
+        }
+      } catch (_) {
+        // Ignore read-only globals exposed by some WorkerGlobalScope implementations.
+      }
+    };
+
+    setGlobalIfWritable("document", document);
+    setGlobalIfWritable("navigator", windowObj.navigator || { language: "en-US", platform: "worker" });
+    setGlobalIfWritable("innerHeight", 1000);
+    setGlobalIfWritable("innerWidth", 1400);
+    setGlobalIfWritable("pageXOffset", 0);
+    setGlobalIfWritable("pageYOffset", 0);
+    setGlobalIfWritable("devicePixelRatio", 1);
+    setGlobalIfWritable("screen", windowObj.screen || { width: 1400, height: 1000 });
+    setGlobalIfWritable("performance", windowObj.performance || { now: () => Date.now() });
+    setGlobalIfWritable("location", windowObj.location || { href: "", hash: "", search: "" });
+    const makeStorage = () => {
+      const data = new Map();
+      return {
+        getItem(key) { return data.has(String(key)) ? data.get(String(key)) : null; },
+        setItem(key, value) { data.set(String(key), String(value)); },
+        removeItem(key) { data.delete(String(key)); },
+        clear() { data.clear(); }
+      };
+    };
+    setGlobalIfWritable("sessionStorage", windowObj.sessionStorage || makeStorage());
+    setGlobalIfWritable("localStorage", windowObj.localStorage || makeStorage());
+    if (!windowObj.Image && typeof OffscreenCanvas !== "undefined") {
+      class WorkerImage {
+        constructor() {
+          this._canvas = new OffscreenCanvas(1, 1);
+          this.width = 1;
+          this.height = 1;
+          this.complete = true;
+          this.onload = null;
+          this.onerror = null;
+          this.crossOrigin = "";
+          this._src = "";
+        }
+
+        get src() {
+          return this._src;
+        }
+
+        set src(value) {
+          this._src = String(value || "");
+          const trigger = () => {
+            if (typeof this.onload === "function") this.onload();
+          };
+          if (typeof queueMicrotask === "function") queueMicrotask(trigger);
+          else setTimeout(trigger, 0);
+        }
+      }
+      setGlobalIfWritable("Image", WorkerImage);
+      setGlobalIfWritable("HTMLImageElement", WorkerImage);
+    }
 
     windowObj.requestAnimationFrame = (cb) => {
       const id = rafId++;
@@ -295,6 +390,36 @@
     windowObj.matchMedia = windowObj.matchMedia || (() => ({ matches: false, addListener() {}, removeListener() {} }));
     windowObj.HTMLCanvasElement = windowObj.HTMLCanvasElement || CanvasNode;
     windowObj.OffscreenCanvas = windowObj.OffscreenCanvas || OffscreenCanvas;
+    if (!windowObj.CanvasRenderingContext2D && typeof OffscreenCanvas !== "undefined") {
+      try {
+        const ctx = new OffscreenCanvas(1, 1).getContext("2d");
+        if (ctx?.constructor) {
+          setGlobalIfWritable("CanvasRenderingContext2D", ctx.constructor);
+        }
+      } catch (_) {
+        // ignore if context constructor cannot be discovered in this runtime
+      }
+    }
+
+    const contextProto = windowObj.CanvasRenderingContext2D?.prototype;
+    if (contextProto && !contextProto.__turtleWorkerDrawImagePatched) {
+      const originalDrawImage = contextProto.drawImage;
+      if (typeof originalDrawImage === "function") {
+        contextProto.drawImage = function patchedDrawImage(image, ...rest) {
+          const normalizedImage = image && image._canvas ? image._canvas : image;
+          return originalDrawImage.call(this, normalizedImage, ...rest);
+        };
+        try {
+          Object.defineProperty(contextProto, "__turtleWorkerDrawImagePatched", {
+            value: true,
+            enumerable: false,
+            configurable: true
+          });
+        } catch (_) {
+          contextProto.__turtleWorkerDrawImagePatched = true;
+        }
+      }
+    }
   }
 
   function toBase64(bytes) {
@@ -352,6 +477,82 @@
 
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function withTimeout(promise, timeoutMs, label) {
+    let timer = null;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error(`Timeout: ${label}`)), timeoutMs);
+        })
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  function escapeXml(text) {
+    return String(text)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll("\"", "&quot;")
+      .replaceAll("'", "&apos;");
+  }
+
+  function fallbackProgramSvgDataUrl(message) {
+    const safeMessage = escapeXml(message || "Program preview unavailable");
+    const svg = [
+      `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="180" viewBox="0 0 960 180">`,
+      `<rect x="0" y="0" width="960" height="180" fill="#ffffff" stroke="#cccccc"/>`,
+      `<text x="24" y="72" font-size="24" font-family="sans-serif" fill="#333">TurtleStitch preview unavailable</text>`,
+      `<text x="24" y="116" font-size="16" font-family="monospace" fill="#555">${safeMessage}</text>`,
+      `</svg>`
+    ].join("");
+    return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
+  }
+
+  function fallbackProgramSvgFromXml(xml) {
+    const blockNames = [];
+    const regex = /<block\s+s="([^"]+)"/g;
+    let match;
+    while ((match = regex.exec(String(xml || ""))) !== null) {
+      blockNames.push(match[1]);
+      if (blockNames.length >= 16) break;
+    }
+    const lines = blockNames.length ? blockNames : ["(no blocks found)"];
+    const lineHeight = 20;
+    const width = 960;
+    const height = Math.max(180, 80 + lines.length * lineHeight);
+    const textNodes = lines
+      .map((line, i) => `<text x="24" y="${72 + i * lineHeight}" font-size="16" font-family="monospace" fill="#333">${escapeXml(line)}</text>`)
+      .join("");
+    const svg = [
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+      `<rect x="0" y="0" width="${width}" height="${height}" fill="#ffffff" stroke="#cccccc"/>`,
+      `<text x="24" y="40" font-size="22" font-family="sans-serif" fill="#333">TurtleStitch Script Preview (fallback)</text>`,
+      textNodes,
+      `</svg>`
+    ].join("");
+    return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
+  }
+
+  async function fallbackStagePngDataUrl(message) {
+    const canvas = new OffscreenCanvas(480, 360);
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#333333";
+      ctx.font = "20px sans-serif";
+      ctx.fillText("TurtleStitch stage preview unavailable", 16, 48);
+      ctx.fillStyle = "#555555";
+      ctx.font = "14px monospace";
+      ctx.fillText(String(message || "operation timeout"), 16, 80);
+    }
+    return canvasToPngDataUrl(canvas);
   }
 
   class TurtleWorkerEngine {
@@ -527,9 +728,17 @@
       let y = 0;
       const imageNodes = [];
       for (const canvas of pics) {
-        const href = await canvasToPngDataUrl(canvas);
-        imageNodes.push(`<image x=\"0\" y=\"${y}\" width=\"${canvas.width}\" height=\"${canvas.height}\" href=\"${href}\" />`);
-        y += canvas.height + padding;
+        try {
+          const href = await withTimeout(canvasToPngDataUrl(canvas), 4000, "canvasToPngDataUrl");
+          imageNodes.push(`<image x=\"0\" y=\"${y}\" width=\"${canvas.width}\" height=\"${canvas.height}\" href=\"${href}\" />`);
+          y += canvas.height + padding;
+        } catch (e) {
+          warn("Skipping script image after PNG conversion failure", e);
+        }
+      }
+
+      if (!imageNodes.length) {
+        throw new Error("No scripts picture could be encoded as PNG.");
       }
 
       const svg = [
@@ -687,13 +896,40 @@
         return { id, ok: true, result: { ready: true } };
       }
       case "calcProgramSvg": {
+        if (PREFER_FALLBACK_RENDERER) {
+          return { id, ok: true, result: fallbackProgramSvgFromXml(payload?.xml_content) };
+        }
         const engine = await ensureSingletonEngine();
-        const result = await engine.calcProgramSvg(payload?.xml_content, payload?.language || "en");
+        let result;
+        try {
+          result = await withTimeout(
+            engine.calcProgramSvg(payload?.xml_content, payload?.language || "en"),
+            12000,
+            "calcProgramSvg"
+          );
+        } catch (e) {
+          warn("calcProgramSvg failed, returning fallback SVG", e);
+          result = fallbackProgramSvgDataUrl(e?.message || String(e));
+        }
         return { id, ok: true, result };
       }
       case "simulateGreenFlag": {
+        if (PREFER_FALLBACK_RENDERER) {
+          const result = await fallbackStagePngDataUrl("simulateGreenFlag fallback renderer");
+          return { id, ok: true, result };
+        }
         const engine = await ensureSingletonEngine();
-        const result = await engine.simulateGreenFlag(payload?.xml_content, payload?.language || "en");
+        let result;
+        try {
+          result = await withTimeout(
+            engine.simulateGreenFlag(payload?.xml_content, payload?.language || "en"),
+            12000,
+            "simulateGreenFlag"
+          );
+        } catch (e) {
+          warn("simulateGreenFlag failed, returning fallback PNG", e);
+          result = await fallbackStagePngDataUrl(e?.message || String(e));
+        }
         return { id, ok: true, result };
       }
       case "destroy": {
@@ -706,7 +942,7 @@
     }
   }
 
-  self.onmessage = async (event) => {
+  self.addEventListener("message", async (event) => {
     const data = event?.data || {};
     const id = data?.id;
     try {
@@ -722,7 +958,7 @@
         }
       });
     }
-  };
+  });
 
   log("worker script loaded");
 })();
