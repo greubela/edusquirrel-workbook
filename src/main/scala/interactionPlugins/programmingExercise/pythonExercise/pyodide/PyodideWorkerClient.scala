@@ -2,6 +2,11 @@ package interactionPlugins.programmingExercise.pythonExercise.pyodide
 
 
 import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.*
+import contentmanagement.webElements.svg.TurtlePathBuilder.{TurtleCommand, TurtleState}
+import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand
+import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand.*
+import datastructures.core.geometry.Dimension
+import datastructures.core.geometry.Point
 import org.scalajs.dom
 
 import scala.concurrent.{Future, Promise}
@@ -110,6 +115,32 @@ final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.js") {
       requestUnit("reset")
     }
 
+  def runTurtle(
+                 code: String,
+                 turtleMethods: Seq[String],
+                 config: PythonRunConfig = PythonRunConfig()
+               ): Future[(PythonRunReport, js.Any)] =
+    afterPreheat {
+      request("runTurtle",
+        obj(
+          "code" -> code,
+          "context" -> config.context,
+          "resetGlobals" -> config.resetGlobals,
+          "captureStdout" -> config.captureStdout,
+          "captureStderr" -> config.captureStderr,
+          "turtleMethods" -> turtleMethods.toJSArray
+        )
+      ).map { value =>
+        val payload = dyn(value)
+        val runReport = PythonRunReport(
+          callbackOps = asArray(payload.callbackOps).iterator.map(readCallbackOp).toVector,
+          stdout = asString(payload.stdout),
+          stderr = asString(payload.stderr)
+        )
+        (runReport, payload.turtleResult.asInstanceOf[js.Any])
+      }
+    }
+
   def terminate(): Unit =
     worker.terminate()
 
@@ -187,4 +218,102 @@ final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.js") {
 
   private val emptyObj: js.Object =
     (new js.Object).asInstanceOf[js.Object]
+}
+
+object PyodideWorkerClient {
+
+  def executeTurtleCode[T: Fractional](
+                                        worker: PyodideWorkerClient,
+                                        turtlePythonCode: String
+                                      ): Future[TurtleExecutionResult[T]] = {
+    val callbackLibrary = turtleCallbackLibrary()
+    val runCode = s"import turtle\n$turtlePythonCode"
+
+    worker.runTurtle(runCode, callbackLibrary.methodMap.keys.toSeq).map { (runReport, turtlePayloadRaw) =>
+      val turtlePayload = turtlePayloadRaw.asInstanceOf[js.Dynamic]
+      TurtleExecutionResult[T](
+        regularExecutionResult = runReport,
+        startPoint = parsePoint[T](turtlePayload.startPoint.asInstanceOf[js.Any]),
+        turtleState = parseTurtleState[T](turtlePayload.turtleState.asInstanceOf[js.Any]),
+        turtleCommands = parseTurtleCommands[T](turtlePayload.turtleCommands.asInstanceOf[js.Any]),
+        svgPathBuilderCommands = parseSvgCommands[T](turtlePayload.svgPathBuilderCommands.asInstanceOf[js.Any])
+      )
+    }
+  }
+
+  private def turtleCallbackLibrary(): CallbackLibrary = {
+    val methods =
+      `export`.TurtleSingleton.allowedCommands().toList.map(name => name -> ignoreMethod).toMap
+    CallbackLibrary("turtle", methods)
+  }
+
+  private def ignoreMethod(args: Vector[js.Any]): Unit = ()
+
+  private def parseTurtleCommands[T: Fractional](value: js.Any): List[TurtleCommand[T]] = {
+    val arr = value.asInstanceOf[js.Array[js.Any]]
+    arr.iterator.toList.map { raw =>
+      val dyn = raw.asInstanceOf[js.Dynamic]
+      val name = dyn.name.asInstanceOf[String]
+      val args = dyn.args.asInstanceOf[js.Array[js.Any]].iterator.flatMap(toT[T]).toList
+      TurtleCommand[T](name, args)
+    }
+  }
+
+  private def parseTurtleState[T: Fractional](value: js.Any): TurtleState[T] = {
+    val dyn = value.asInstanceOf[js.Dynamic]
+    TurtleState[T](
+      x = toT[T](dyn.x.asInstanceOf[js.Any]).get,
+      y = toT[T](dyn.y.asInstanceOf[js.Any]).get,
+      headingDeg = toT[T](dyn.headingDeg.asInstanceOf[js.Any]).get,
+      penDown = dyn.penDown.asInstanceOf[Boolean],
+      visible = dyn.visible.asInstanceOf[Boolean]
+    )
+  }
+
+  private def parsePoint[T: Fractional](value: js.Any): Point[T] = {
+    val dyn = value.asInstanceOf[js.Dynamic]
+    Point[T](
+      toT[T](dyn.x.asInstanceOf[js.Any]).get,
+      toT[T](dyn.y.asInstanceOf[js.Any]).get
+    )
+  }
+
+  private def parseSvgCommands[T: Fractional](value: js.Any): List[SvgPathBuilderCommand[T]] = {
+    val arr = value.asInstanceOf[js.Array[js.Any]]
+    arr.iterator.toList.flatMap { raw =>
+      val dyn = raw.asInstanceOf[js.Dynamic]
+      val kind = dyn.kind.asInstanceOf[String]
+      kind match {
+        case "MoveAbs" =>
+          Some(MoveAbs[T](Point[T](toT[T](dyn.x.asInstanceOf[js.Any]).get, toT[T](dyn.y.asInstanceOf[js.Any]).get)))
+        case "LineAbs" =>
+          Some(LineAbs[T](Point[T](toT[T](dyn.x.asInstanceOf[js.Any]).get, toT[T](dyn.y.asInstanceOf[js.Any]).get)))
+        case "MoveRel" =>
+          Some(MoveRel[T](Dimension[T](toT[T](dyn.dx.asInstanceOf[js.Any]).get, toT[T](dyn.dy.asInstanceOf[js.Any]).get)))
+        case "ArcRel" =>
+          Some(ArcRel[T](
+            rx = toT[T](dyn.rx.asInstanceOf[js.Any]).get,
+            ry = toT[T](dyn.ry.asInstanceOf[js.Any]).get,
+            xAxisRotationDeg = toT[T](dyn.rotationDeg.asInstanceOf[js.Any]).get,
+            largeArc = dyn.largeArc.asInstanceOf[Boolean],
+            sweep = dyn.sweep.asInstanceOf[Boolean],
+            d = Dimension[T](toT[T](dyn.dx.asInstanceOf[js.Any]).get, toT[T](dyn.dy.asInstanceOf[js.Any]).get)
+          ))
+        case "CenteredCircleControl" =>
+          Some(CenteredCircleControl[T](toT[T](dyn.radius.asInstanceOf[js.Any]).get))
+        case _ => None
+      }
+    }
+  }
+
+  private def toT[T: Fractional](value: js.Any): Option[T] = {
+    val asDouble = js.typeOf(value) match {
+      case "number" => Some(value.asInstanceOf[Double])
+      case "string" => value.toString.toDoubleOption
+      case "boolean" => Some(if value.asInstanceOf[Boolean] then 1d else 0d)
+      case _ => value.toString.toDoubleOption
+    }
+    val numeric = summon[Fractional[T]]
+    asDouble.flatMap(v => numeric.parseString(v.toString))
+  }
 }
