@@ -88,3 +88,25 @@ Supporting assets live in:
 - Interactions are specialized `WorkbookInteraction[T]` elements with state.
 
 If you keep that chain in mind, most feature and bug-fix navigation becomes straightforward.
+
+
+## 7) Language map files (dynamic labels)
+
+Language maps are loaded from `resources/languageMaps` at runtime. File naming is:
+
+- `[group]-[language].[json|csv]`
+- examples: `basic-en.json`, `TurtleStitch-de.json`
+
+Each file contributes entries for one `group` and one language. In JSON, entries are key/value pairs. In CSV, each row is:
+
+- `[entryName];[actualLabelText]`
+
+The effective language map id used in code is:
+
+- `group/entryName`
+- example: `basic/imageLoadingMap`
+
+Use language-map IDs in code via `AllWorkbookInfo.stringSignalFromLanguageMapId(...)` or helpers like `HtmlContainerTitle(workbookInfo, "group/entry")`.
+
+To add a new language file, add the file and register it in `WorkbookLanguageInfo.languageMapFiles`.
+

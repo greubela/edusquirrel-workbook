@@ -2,44 +2,32 @@ package interactionPlugins.turtleStitchPlugin.card
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import datastructures.core.language.{HumanLanguage, LanguageMap, TranslationMaps}
+import datastructures.core.language.HumanLanguage
 import datastructures.web.file.FileDescription
-import datastructures.web.storage.AsyncDataCache
 import interactionPlugins.turtleStitchPlugin.*
 import util.web.DownloadHelper
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
+import workbook.model.info.AllWorkbookInfo
 
 import scala.concurrent.ExecutionContext
 
 case class TurtleFileShowProgramXmlCard(
                                          workbookInfo: AllWorkbookInfo,
                                          desiredFilename: String,
-                                         headlineLanguageMap: LanguageMap[HumanLanguage],
-                                         nonexistingImageLanguageMap: LanguageMap[HumanLanguage],
+                                         headlineLanguageMapId: String,
+                                         nonexistingImageLanguageMapId: String,
                                          projectXmlVar: StrictSignal[Option[String]]
                                        ) extends HtmlWorkbookElement {
 
   private val headline: Element = h3(
-    text <-- workbookInfo.stringSignalFromLanguageMap(headlineLanguageMap)
+    text <-- workbookInfo.stringSignalFromLanguageMapId(headlineLanguageMapId)(ExecutionContext.global)
   )
 
   private val downloadButton: Element = button(
-    text <-- workbookInfo.stringSignalFromLanguageMap(TurtleStitchLanguageMaps.languageMapDownloadButton),
+    text <-- workbookInfo.stringSignalFromLanguageMapId("TurtleStitch/downloadButton")(ExecutionContext.global),
     onClick --> { _ =>
       projectXmlVar.now().foreach(f = currentXml => {
         DownloadHelper.downloadFile(desiredFilename, currentXml)
-        /*val res = TurtleStitchFacade.programXmlRunOutputStorage.loadIntoVariable(currentXml)(ExecutionContext.global)
-        println("res: " + res)
-        
-        val res2 = TurtleXmlParser.parse(currentXml)
-        println("res2: " + res2)
-        val res3 = TurtleRenderer.renderToPngDataUrl(res2)
-        println("res3: " + res3)
-        println("xml: " + currentXml)
-        val res = TurtleStitchBeExpressionAdapter.fromXml(currentXml)
-        println("python: " + res.getInLanguage(Python, English))
-        println("res: " + res)*/
       })
     }
   )
@@ -48,9 +36,7 @@ case class TurtleFileShowProgramXmlCard(
     case Some(value) if value.startsWith("data:image") => img(src := value, styleAttr := "max-width: 100%")
     case Some(value) => span(value)
     case None => span(
-      text <-- workbookInfo.stringSignalFromLanguageMap(nonexistingImageLanguageMap)
-      //.signal.map(info => nonexistingImageLanguageMap.getInLanguage(info.config.currentWorkbookLanguage))
-      //
+      text <-- workbookInfo.stringSignalFromLanguageMapId(nonexistingImageLanguageMapId)(ExecutionContext.global)
     )
   }
 
@@ -79,14 +65,12 @@ case class TurtleFileShowProgramXmlCard(
     downloadButton
   )
 
-  private def getWorkshopInfoVar = workbookInfoVar
-
   override def getDomElement(): Element = domElement
 
   lazy val asWorkbookElement: HtmlWorkbookElement = new HtmlWorkbookElement() {
-    
+
     override def workbookInfo: AllWorkbookInfo = TurtleFileShowProgramXmlCard.this.workbookInfo
-    
+
     private val myDomElement: L.Element = div(
       cls := "workbook-interaction preview-line",
       domElement
@@ -106,8 +90,8 @@ object TurtleFileShowProgramXmlCard {
     TurtleFileShowProgramXmlCard(
       workbookInfo,
       "TurtleStitch_" + fileDescription.filename,
-      TurtleStitchLanguageMaps.languageMapProvidedProjectLabel,
-      TranslationMaps.languageMapImageLoading,
+      "TurtleStitch/providedProjectLabel",
+      "basic/imageLoadingMap",
       workbookInfo.technicalElements.fileStore.loadIntoVariable(fileDescription)(ExecutionContext.global).signal.mapLazy(_.map(_.fileDataAsUtf8String))
     )
   }
@@ -118,11 +102,10 @@ object TurtleFileShowProgramXmlCard {
     TurtleFileShowProgramXmlCard(
       forUploadButton.workbookInfo,
       "exercise" + forUploadButton.id,
-      TurtleStitchLanguageMaps.languageMapShowUploadedProgramText,
-      TurtleStitchLanguageMaps.languageMapShowEmptyPreview,
+      "TurtleStitch/showUploadedProgramText",
+      "TurtleStitch/showEmptyPreview",
       forUploadButton.interactionVariable.interactionSignal.mapLazy(curVal => Some(curVal))
     )
   }
 
 }
-

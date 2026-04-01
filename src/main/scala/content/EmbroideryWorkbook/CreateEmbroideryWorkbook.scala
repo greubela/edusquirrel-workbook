@@ -4,7 +4,6 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
 import content.TestWorkbook.TestWorkbookFactory
 import content.WorkbookFactory
-import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
 import datastructures.web.file.FileDescription
 import interactionPlugins.turtleStitchPlugin.TurtleStitchExploreProjectExercise
 import interactionPlugins.turtleStitchPlugin.card.*
@@ -24,11 +23,8 @@ case class CreateEmbroideryWorkbook(override val workbookInfo: AllWorkbookInfo) 
     val firstSection = createFirstSection()
     val secondSection = TestWorkbookFactory.createTestSection(workbookInfo)
     val res: Workbook = {
-      new Workbook(workbookInfo,
-        LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
-          AppLanguage.English -> "Learn to Program with Embroidery Patterns",
-          AppLanguage.German -> "Programmieren lernen mit der Stickmaschine"
-        )),
+      Workbook(workbookInfo,
+        "EmbroideryWorkbook/workbookTitle",
         List(
           firstSection,
           secondSection
@@ -121,10 +117,7 @@ case class CreateEmbroideryWorkbook(override val workbookInfo: AllWorkbookInfo) 
 
     WorkbookSection(
       workbookInfo,
-      LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
-        AppLanguage.English -> "Section 1: Introduction",
-        AppLanguage.German -> "Abschnitt 1: Einarbeitung"
-      )),
+      "EmbroideryWorkbook/section1Title",
       exercises
     )
 

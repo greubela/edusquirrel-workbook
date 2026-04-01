@@ -1,15 +1,15 @@
 package interactionPlugins.blockEnvironment.exercise
 
-import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import datastructures.core.geometry.{Bounds, Point}
-import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement}
+import workbook.model.abstractions.HtmlWorkbookElement
+import workbook.model.info.AllWorkbookInfo
+
+import scala.concurrent.ExecutionContext
 
 object ProgrammingExerciseFactory {
 
@@ -54,26 +54,16 @@ object ProgrammingExerciseFactory {
     strokeWidth = "4"
   )
 
-  def createTurtleProgrammingExercise(workbookInfo: AllWorkbookInfo, id: String, titleMap: LanguageMap[HumanLanguage], expectedSvgResult: AppSvgElement): List[HtmlWorkbookElement] = {
+  def createTurtleProgrammingExercise(workbookInfo: AllWorkbookInfo, id: String, titleLanguageMapId: String, expectedSvgResult: AppSvgElement): List[HtmlWorkbookElement] = {
 
-    val titleElement = HtmlContainerTitle(workbookInfo, workbookInfo.stringSignalFromLanguageMap(titleMap))
+    val titleElement = HtmlContainerTitle(workbookInfo, titleLanguageMapId)
 
-    val instruction = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
-      AppLanguage.English -> "Use Turtle Commands to program the Shape on the right!",
-      AppLanguage.German -> "Programmiere die Form auf der rechten Seite nach!",
-      AppLanguage.French -> "Utilise les commandes Turtle pour programmer la forme à droite !",
-      AppLanguage.Ukrainian -> "Використай команди Turtle, щоб запрограмувати фігуру праворуч!",
-      AppLanguage.Russian -> "Используй команды Turtle, чтобы запрограммировать фигуру справа!",
-      AppLanguage.Turkish -> "Sağdaki şekli programlamak için Turtle komutlarını kullan!",
-      AppLanguage.Danish -> "Brug Turtle-kommandoer til at programmere formen til højre!"
-    ))
-    val instructionElement = HtmlPlaintextInstructionElement(workbookInfo, workbookInfo.stringSignalFromLanguageMap(instruction))
+    val instructionElement = HtmlPlaintextInstructionElement(workbookInfo, workbookInfo.stringSignalFromLanguageMapId("BlockEditor/turtleProgrammingInstruction")(ExecutionContext.global))
 
     val interactionElement = TurtleProgrammingInteraction(workbookInfo, id, expectedSvgResult)
 
     List(titleElement, instructionElement, interactionElement)
   }
-  
 
 
 }

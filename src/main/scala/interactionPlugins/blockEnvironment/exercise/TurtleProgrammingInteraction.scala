@@ -5,7 +5,7 @@ import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.svg.AppSvgElement
 import datastructures.core.geometry.Bounds
 import datastructures.core.language.AppLanguage
-import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig, BlockEnvironmentLanguageMap}
+import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}

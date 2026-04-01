@@ -2,9 +2,8 @@ package workbook.htmlElements.headerElements
 
 import com.raquo.laminar.api.L
 import workbook.model.WorkbookSection
-import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
+import workbook.model.info.AllWorkbookInfo
 import com.raquo.laminar.api.L.*
-import datastructures.core.language.{HumanLanguage, LanguageMap}
 import workbook.model.abstractions.HtmlWorkbookElement
 
 import scala.concurrent.ExecutionContext
@@ -15,15 +14,17 @@ case class SectionSelectionLine(workbookInfo: AllWorkbookInfo, sections: List[Wo
   private def selectSection(section: WorkbookSection): Unit = {
     workbookInfoVar.update(curInfo => curInfo.copy(config = curInfo.config.copy(activeSection = Some(section))))
   }
-  /*
-  <div class="progress-steps"><div class="progress-step active">0. Motivation</div><div class="progress-step">1. Bauteile &amp; Aufbau</div><div class="progress-step">2. Pumpe steuern</div><div class="progress-step">3. Feuchtigkeit messen</div><div class="progress-step">4. Messwerte &amp; Pumpe</div><div class="progress-step">5. Test &amp; Fertig</div></div>
-   */
 
   private def isSectionActiveSignal(section: WorkbookSection): Signal[Boolean] = {
     workbookInfoVar.signal.map(_.config.activeSection.contains(section))
   }
 
   private def sectionToElement(section: WorkbookSection): Element = {
+    val titleSignal: Signal[String] = section.sectionTitleLanguageMapId match {
+      case Some(mapId) => workbookInfo.stringSignalFromLanguageMapId(mapId)(ExecutionContext.global)
+      case None => workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(section.sectionTitle.getInLanguage)
+    }
+
     div(
       cls <-- isSectionActiveSignal(section).map(isSectionShowing => if (isSectionShowing) {
         "section-block active"
@@ -31,7 +32,7 @@ case class SectionSelectionLine(workbookInfo: AllWorkbookInfo, sections: List[Wo
         "section-block"
       }),
       div(
-        text <-- workbookInfo.stringSignalFromLanguageMap(section.sectionTitle)
+        text <-- titleSignal
       ) ,
       onClick --> { event => selectSection(section)},
     )

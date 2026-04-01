@@ -1,0 +1,13 @@
+{
+  "defaultReadExerciseInstruction": "Lies die Befehle im folgendem Programm durch",
+  "defaultExerciseTitle": "Programmiere die Figur!",
+  "providedProjectLabel": "Vorgegebenes Projekt",
+  "defaultExecuteExerciseInstruction": "Überprüfe deine Vermutung!",
+  "defaultAnalyzeExerciseInstruction": "Beschreibe die Figur, die vermutlich entsteht",
+  "defaultReprogramInstruction": "Öffne TurtleStitch (https://www.turtlestitch.org/run) und programmiere die Figur im rechten Abschnitt. Klicke dann auf das Dateisymbol (📝) und sichere deine Datei auf dem Computer. Lade sie zum Schluss mit dem Button im linken Abschnitt hoch.",
+  "showUploadedProgramText": "Hochgeladenes Projekt (Programm)",
+  "showEmptyPreview": "Hochgeladenes Projekt (fehlt)",
+  "showExpected": "Erwünschtes Ergebnis",
+  "uploadButton": "TurtleStitch Projekt Hochladen (XML)",
+  "downloadButton": "Gezeigtes Projekt Herunterladen"
+}
