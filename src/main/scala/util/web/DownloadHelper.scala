@@ -39,15 +39,23 @@ object DownloadHelper {
   }
 
 
-  def downloadFromUrl(desiredName: String, url: URL): Unit = {
+  private def triggerDownload(url: String, filename: String): Unit = {
     val anchor = dom.document.createElement("a").asInstanceOf[dom.html.Anchor]
-    anchor.href = url.toString
-    anchor.download = desiredName
+    anchor.href = url
+    anchor.download = filename
     anchor.style.display = "none"
 
     dom.document.body.appendChild(anchor)
     anchor.click()
     dom.document.body.removeChild(anchor)
+  }
+
+  private def downloadFromObjectUrl(desiredFilename: String, objectUrl: String): Unit =
+    try triggerDownload(objectUrl, desiredFilename)
+    finally URL.revokeObjectURL(objectUrl)
+
+  def downloadFromUrl(desiredName: String, url: URL): Unit = {
+    triggerDownload(url.toString, desiredName)
   }
 
   def downloadFile(desiredFilename: String, uint8: Uint8Array): Unit = {
@@ -59,17 +67,7 @@ object DownloadHelper {
     )
 
     val url = URL.createObjectURL(blob)
-
-    val a = dom.document.createElement("a").asInstanceOf[dom.html.Anchor]
-    a.href = url
-    a.download = desiredFilename
-    a.style.display = "none"
-
-    dom.document.body.appendChild(a)
-    a.click()
-
-    dom.document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    downloadFromObjectUrl(desiredFilename, url)
   }
 
   def downloadFile(desiredFilename: String, bytes: Array[Byte]): Unit = {
@@ -91,17 +89,7 @@ object DownloadHelper {
     )
 
     val url = URL.createObjectURL(blob)
-
-    val a = dom.document.createElement("a").asInstanceOf[dom.html.Anchor]
-    a.href = url
-    a.download = desiredFilename
-    a.style.display = "none"
-
-    dom.document.body.appendChild(a)
-    a.click()
-
-    dom.document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    downloadFromObjectUrl(desiredFilename, url)
   }
 
 }

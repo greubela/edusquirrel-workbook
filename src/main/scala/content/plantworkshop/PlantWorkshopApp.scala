@@ -3,6 +3,7 @@ package content.plantworkshop
 import com.raquo.laminar.api.L.*
 import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBlockLibraryTab}
 import org.scalajs.dom
+import util.web.DownloadHelper
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
@@ -928,16 +929,7 @@ object Task5_Test {
 
   private def downloadArduinoSketch(): Unit = {
     val code = buildFinalArduinoSketch()
-    val blob = new dom.Blob(
-      js.Array(code),
-      dom.BlobPropertyBag(`type` = "text/plain;charset=utf-8")
-    )
-    val url = dom.URL.createObjectURL(blob)
-    val anchor = dom.document.createElement("a").asInstanceOf[dom.html.Anchor]
-    anchor.href = url
-    anchor.download = "plantworkshop.ino"
-    anchor.click()
-    dom.URL.revokeObjectURL(url)
+    DownloadHelper.downloadFile("plantworkshop.ino", code)
   }
 
   def render(): HtmlElement = {
