@@ -2,6 +2,7 @@ package interactionPlugins.fileSubmission
 
 import interactionPlugins.fileSubmission.turtleLogic.TurtleXmlParser
 import interactionPlugins.fileSubmission.turtleStitch.TurtleStitchProgramModel.*
+import interactionPlugins.blockEnvironment.programming.BeProgram
 import munit.FunSuite
 
 import java.nio.charset.StandardCharsets
@@ -175,6 +176,21 @@ class TurtleFileSubmissionSpec extends FunSuite {
       assert(newSelectors.headOption.contains("receiveGo"))
       assert(newSelectors.contains("receiveGo"))
     }
+  }
+
+  test("parseFileBytesToBeExpression converts UTF-8 XML bytes to a BeExpression") {
+    val bytes = xmlWithRepeatNoPentrails.getBytes(StandardCharsets.UTF_8)
+    val expression = TurtleFileSubmission.parseFileBytesToBeExpression(bytes)
+
+    assert(expression != null)
+  }
+
+  test("parseFileBytesToBeProgram converts UTF-8 XML bytes to a BeProgram") {
+    val bytes = xmlWithMixedCommandsNoPentrails.getBytes(StandardCharsets.UTF_8)
+    val program = TurtleFileSubmission.parseFileBytesToBeProgram(bytes)
+
+    assert(program.isInstanceOf[BeProgram])
+    assert(program.fullProgram != null)
   }
 
   test("self-closing receiveGo blocks are preserved through parse and round trip") {
