@@ -2,6 +2,7 @@ package interactionPlugins.programmingExercise.pythonExercise.pyodide
 
 import munit.FunSuite
 import scala.scalajs.js
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.CallbackOp
 
 class PyodideWorkerClientTurtleDecodeSpec extends FunSuite {
 
@@ -49,5 +50,20 @@ class PyodideWorkerClientTurtleDecodeSpec extends FunSuite {
     }
 
     assert(ex.getMessage.contains("Expected numeric field 'x'"))
+  }
+
+  test("turtleBuilderFromCallbacks replays turtle operations in order") {
+    val callbackOps = Seq(
+      CallbackOp("turtle", "forward", Vector(50)),
+      CallbackOp("turtle", "left", Vector(90)),
+      CallbackOp("turtle", "forward", Vector(25))
+    )
+
+    val builder = PyodideWorkerClient.turtleBuilderFromCallbacks[Double](callbackOps)
+
+    assertEquals(builder.turtleState.x, 50d)
+    assertEquals(builder.turtleState.y, -25d)
+    assertEquals(builder.turtleState.headingDeg, 90d)
+    assertEquals(builder.turtleCommands.map(_.name), List("forward", "left", "forward"))
   }
 }
