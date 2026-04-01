@@ -1,6 +1,7 @@
 package interactionPlugins.fileSubmission
 
 import datastructures.core.vm.code.BeExpression
+import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.fileSubmission.turtleLogic.TurtleRenderer
 import interactionPlugins.fileSubmission.turtleStitch.{
   TurtleStitchFromBeExpressionSerializer,
@@ -10,6 +11,7 @@ import interactionPlugins.fileSubmission.turtleStitch.{
   TurtleStitchXmlLoader
 }
 
+import java.nio.charset.{Charset, StandardCharsets}
 import scala.util.Try
 
 object TurtleFileSubmission {
@@ -47,6 +49,15 @@ object TurtleFileSubmission {
 
   def parseToBeExpression(xml: String): BeExpression =
     TurtleStitchToBeExpressionParser.parseXml(xml)
+
+  def parseFileBytesToBeExpression(fileBytes: Array[Byte], charset: Charset = StandardCharsets.UTF_8): BeExpression =
+    parseToBeExpression(new String(fileBytes, charset))
+
+  def parseToBeProgram(xml: String): BeProgram =
+    BeProgram(parseToBeExpression(xml))
+
+  def parseFileBytesToBeProgram(fileBytes: Array[Byte], charset: Charset = StandardCharsets.UTF_8): BeProgram =
+    parseToBeProgram(new String(fileBytes, charset))
 
   def serializeFromBeExpression(expression: BeExpression, projectName: String = "fromBeExpression"): String =
     TurtleStitchFromBeExpressionSerializer.toXml(expression, projectName)
