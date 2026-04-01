@@ -1,9 +1,54 @@
 package contentmanagement.webElements.genericHtmlElements.editor
 
+import com.raquo.airstream.core.Signal
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement
-import workbook.model.abstractions.InteractionComponent
+
+trait StringEditorBinding {
+  def current: Signal[String]
+  def update(nextValue: String): Unit
+}
+
+object SimpleStringTextEditor {
+
+  def fromBinding(
+                   binding: StringEditorBinding,
+                   monoSpace: Boolean = false,
+                   rowsCount: Int = 8,
+                   colsCount: Int = 80,
+                   containerClass: String = "simple-text-editor workbook-interaction"
+                 ): HtmlAppElement = {
+    SimpleStringTextEditorBinding(
+      binding = binding,
+      monoSpace = monoSpace,
+      rowsCount = rowsCount,
+      colsCount = colsCount,
+      containerClass = containerClass
+    )
+  }
+
+  private case class SimpleStringTextEditorBinding(
+                                                     binding: StringEditorBinding,
+                                                     monoSpace: Boolean,
+                                                     rowsCount: Int,
+                                                     colsCount: Int,
+                                                     containerClass: String
+                                                   ) extends HtmlAppElement {
+    private val editorTextArea = textArea(
+      rows := rowsCount,
+      cols := colsCount,
+      cls := containerClass,
+      if (monoSpace) cls := "mono" else cls := "",
+      controlled(
+        value <-- binding.current,
+        onInput.mapToValue --> binding.update
+      )
+    )
+
+    override def getDomElement(): L.Element = editorTextArea
+  }
+}
 
 case class SimpleStringTextEditor(
                                    stateToBind: Var[String],
@@ -11,30 +56,19 @@ case class SimpleStringTextEditor(
                                    onUserInput: String => Unit = _ => ()
                                  ) extends HtmlAppElement {
 
-  private val editorTextArea = textArea(
-    rows := 8,
-    cols := 80,
-    cls := "simple-text-editor workbook-interaction",
-    if (monoSpace) cls := "mono" else cls := "",
-    controlled(
-      value <-- stateToBind.signal,
-      onInput.mapToValue --> { value =>
-        onUserInput(value)
-        stateToBind.set(value)
-      }
-    )
-  )
-
-
-
-
-  private val domElement = {
-    div(
-      cls := "simple-text-editor",
-      editorTextArea
-    )
+  private val binding = new StringEditorBinding {
+    override val current: Signal[String] = stateToBind.signal
+    override def update(nextValue: String): Unit = {
+      onUserInput(nextValue)
+      stateToBind.set(nextValue)
+    }
   }
 
-  def getDomElement(): L.Element = editorTextArea
+  private val baseEditor = SimpleStringTextEditor.fromBinding(
+    binding = binding,
+    monoSpace = monoSpace
+  )
+
+  override def getDomElement(): L.Element = baseEditor.getDomElement()
 
 }

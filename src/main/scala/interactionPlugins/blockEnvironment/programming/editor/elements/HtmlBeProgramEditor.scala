@@ -5,7 +5,7 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.api.L.Var
 import contentmanagement.webElements.HtmlAppElement
-import contentmanagement.webElements.genericHtmlElements.editor.{CodeMirrorEditor, SimpleStringTextEditor}
+import contentmanagement.webElements.genericHtmlElements.editor.CodeMirrorEditor
 import contentmanagement.webElements.genericHtmlElements.other.{HtmlTab, HtmlTabElement}
 import datastructures.core.language.{AppLanguage, HumanLanguage, ProgrammingLanguage}
 import interactionPlugins.blockEnvironment.programming.BeProgram
@@ -96,7 +96,6 @@ case class HtmlBeProgramEditor(
       strVar,
       onUserInput = _ => textDirtyVar.set(true)
     )
-    //SimpleStringTextEditor(strVar, onUserInput = _ => textDirtyVar.set(true))
 
   private val pythonViewTab = HtmlTab(
     TextViewTabNr,
