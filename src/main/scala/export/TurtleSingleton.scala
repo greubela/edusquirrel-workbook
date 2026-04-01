@@ -3,7 +3,6 @@ package `export`
 import contentmanagement.webElements.svg.TurtlePathBuilder
 import contentmanagement.webElements.svg.TurtlePathBuilder.TurtleCommand
 import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand
-import util.numbers.AlgebriteNumber
 import util.web.JsHelpers
 
 import scala.scalajs.js
@@ -22,11 +21,98 @@ object TurtleSingleton {
 
   @JSExport def getX(): T = turtlePathBuilder.getX()
 
+  @JSExport def getY(): T = turtlePathBuilder.turtleState.y
+
+  @JSExport def heading(): T = turtlePathBuilder.turtleState.headingDeg
+
+  @JSExport def xcor(): T = getX()
+
+  @JSExport def ycor(): T = getY()
+
+  @JSExport def position(): js.Array[T] = js.Array(getX(), getY())
+
+  @JSExport def pos(): js.Array[T] = position()
+
+  @JSExport def isdown(): Boolean = turtlePathBuilder.turtleState.penDown
+
+  @JSExport def isvisible(): Boolean = turtlePathBuilder.turtleState.visible
+
+  @JSExport def towards(x: T, y: T): T = turtlePathBuilder.towards(x, y)
+
   @JSExport def forward(distance: T): Unit = {
     turtlePathBuilder = turtlePathBuilder.forward(distance)
   }
 
-  @JSExport def allowedCommands(): Set[String] = Set("forward", "fd",
+  @JSExport def backward(distance: T): Unit = {
+    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("backward", List(distance)))
+  }
+
+  @JSExport def left(rotationDeg: T): Unit = {
+    turtlePathBuilder = turtlePathBuilder.left(rotationDeg)
+  }
+
+  @JSExport def right(rotationDeg: T): Unit = {
+    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("right", List(rotationDeg)))
+  }
+
+  @JSExport def goto(x: T, y: T): Unit = {
+    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("goto", List(x, y)))
+  }
+
+  @JSExport def setpos(x: T, y: T): Unit = goto(x, y)
+
+  @JSExport def setposition(x: T, y: T): Unit = goto(x, y)
+
+  @JSExport def setx(x: T): Unit = {
+    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("setx", List(x)))
+  }
+
+  @JSExport def sety(y: T): Unit = {
+    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("sety", List(y)))
+  }
+
+  @JSExport def setheading(degrees: T): Unit = {
+    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("setheading", List(degrees)))
+  }
+
+  @JSExport def seth(degrees: T): Unit = setheading(degrees)
+
+  @JSExport def penup(): Unit = {
+    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("penup", List()))
+  }
+
+  @JSExport def pendown(): Unit = {
+    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("pendown", List()))
+  }
+
+  @JSExport def home(): Unit = {
+    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("home", List()))
+  }
+
+  @JSExport def clear(): Unit = {
+    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("clear", List()))
+  }
+
+  @JSExport def clearscreen(): Unit = clear()
+
+  @JSExport def showturtle(): Unit = {
+    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("showturtle", List()))
+  }
+
+  @JSExport def hideturtle(): Unit = {
+    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("hideturtle", List()))
+  }
+
+  @JSExport def dot(size: T): Unit = {
+    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("dot", List(size)))
+  }
+
+  @JSExport def circle(radius: T): Unit = {
+    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("circle", List(radius)))
+  }
+
+  @JSExport def allowedCommands(): Set[String] = Set(
+    "forward", "fd",
     "backward", "back", "bk",
     "left", "lt",
     "right", "rt",
@@ -43,7 +129,12 @@ object TurtleSingleton {
     "reset",
     "dot",
     "circle",
-    // todo: finish
+    "position", "pos",
+    "xcor", "ycor",
+    "heading",
+    "towards",
+    "isdown",
+    "isvisible"
   )
 
 
@@ -59,7 +150,4 @@ object TurtleSingleton {
   @JSExport def svgPathBuilderCommands(): List[SvgPathBuilderCommand[T]] = {
     turtlePathBuilder.pathBuilderCommands
   }
-
-  // todo finish
-
 }
