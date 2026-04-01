@@ -22,6 +22,9 @@ case class TurtleStitchEditor(projektXml: Var[String]) extends HtmlAppElement {
   private val domElement: L.Element =
     div(
       cls := "turtle-stitch-editor",
+      width := "100%",
+      minHeight := "620px",
+      height := "75vh",
       onMountCallback { ctx =>
         mount(ctx.thisNode.ref)
           .`then`[Unit]({ jsHandle =>
@@ -82,7 +85,7 @@ case class TurtleStitchEditor(projektXml: Var[String]) extends HtmlAppElement {
       case Some(existing) => JsPromise.resolve(existing)
       case None =>
         TurtleStitchEditor.TurtleStitchPoCNative
-          .createEditor(TurtleStitchEditor.editorOptions(hidden = false, parentNode = Some(parentNode), width = Some(1440), height = Some(1000)))
+          .createEditor(TurtleStitchEditor.editorOptions(hidden = false, parentNode = Some(parentNode)))
           .`then`[TurtleStitchEditor.JsEditorHandle]({ created =>
             handle = Some(created)
             created
