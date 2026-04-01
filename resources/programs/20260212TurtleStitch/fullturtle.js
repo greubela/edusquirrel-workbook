@@ -85,6 +85,7 @@
   let scriptsLoaded = false;
   let singletonPreview = null;
   let singletonBootPromise = null;
+  let serializerCompatibilityPatchApplied = false;
 
   function injectScript(src) {
     return new Promise((resolve, reject) => {
@@ -100,7 +101,32 @@
   async function ensureScriptsLoaded() {
     if (scriptsLoaded) return;
     for (const p of SNAP_SCRIPT_ORDER) await injectScript(p);
+    applySerializerCompatibilityPatch();
     scriptsLoaded = true;
+  }
+
+  function applySerializerCompatibilityPatch() {
+    if (serializerCompatibilityPatchApplied) return;
+    if (!window.SnapSerializer || !window.SnapSerializer.prototype) return;
+
+    const proto = window.SnapSerializer.prototype;
+    const originalLoadProjectModel = proto.loadProjectModel;
+    if (typeof originalLoadProjectModel !== "function") return;
+
+    proto.loadProjectModel = function patchedLoadProjectModel(xmlNode, ide, remixID) {
+      const appInfo = xmlNode?.attributes?.app;
+      const thisApp = this.app && typeof this.app === "string" ? this.app : null;
+      const thisAppName = thisApp ? thisApp.split(" ")[0] : null;
+      if (appInfo && thisAppName) {
+        const incomingAppName = appInfo.split(" ")[0];
+        if (incomingAppName && incomingAppName !== thisAppName) {
+          xmlNode.attributes.app = thisApp;
+        }
+      }
+      return originalLoadProjectModel.call(this, xmlNode, ide, remixID);
+    };
+
+    serializerCompatibilityPatchApplied = true;
   }
 
   let nextEditorInstanceId = 1;
@@ -120,6 +146,8 @@
       this._onProjectChange = null;
       this._projectXmlDebounce = null;
       this._projectXmlPushInFlight = false;
+      this._resizeObserver = null;
+      this._onWindowResize = null;
     }
 
     static sleep(ms) {
@@ -133,27 +161,39 @@
       if (this.world && this.ide) return;
 
       const hidden = this.options.hidden !== false;
+      const size = this._resolveEditorSize();
       const wrap = document.createElement("div");
       wrap.style.position = hidden ? "fixed" : "relative";
       wrap.style.left = hidden ? "-20000px" : "0";
       wrap.style.top = "0";
-      wrap.style.width = `${this.options.width || 1400}px`;
-      wrap.style.height = `${this.options.height || 1000}px`;
+      wrap.style.width = `${size.width}px`;
+      wrap.style.height = `${size.height}px`;
+      wrap.style.overflow = "hidden";
 
       const canvas = document.createElement("canvas");
-      canvas.width = this.options.width || 1400;
-      canvas.height = this.options.height || 1000;
+      canvas.width = size.width;
+      canvas.height = size.height;
+      canvas.style.width = "100%";
+      canvas.style.height = "100%";
       canvas.tabIndex = 1;
       wrap.appendChild(canvas);
 
       const parentNode = this.options.parentNode || document.body;
       parentNode.appendChild(wrap);
 
+      const hostPageTitle = document.title;
+
       const world = new WorldMorph(canvas);
       world.worldCanvas = canvas;
 
       const ide = new IDE_Morph({ noAutoFill: true, noCloud: true });
       ide.openIn(world);
+      if (ide?.config) {
+        ide.config.preserveTitle = true;
+      }
+      if (document.title !== hostPageTitle) {
+        document.title = hostPageTitle;
+      }
       this._instrumentProjectChanges(ide);
 
       this.wrap = wrap;
@@ -162,7 +202,57 @@
       this.ide = ide;
 
       this.forceLayout();
+      this._bindResizeHandling();
       this._scheduleLoop();
+    }
+
+    _resolveEditorSize() {
+      const fallbackWidth = 1400;
+      const fallbackHeight = 1000;
+      const explicitWidth = Number(this.options.width);
+      const explicitHeight = Number(this.options.height);
+      if (Number.isFinite(explicitWidth) && Number.isFinite(explicitHeight)) {
+        return {
+          width: Math.max(320, Math.floor(explicitWidth)),
+          height: Math.max(320, Math.floor(explicitHeight))
+        };
+      }
+
+      const host = this.options.parentNode;
+      if (host && typeof host.getBoundingClientRect === "function") {
+        const rect = host.getBoundingClientRect();
+        const width = Math.max(320, Math.floor(rect.width || fallbackWidth));
+        const height = Math.max(320, Math.floor(rect.height || fallbackHeight));
+        return { width, height };
+      }
+      return { width: fallbackWidth, height: fallbackHeight };
+    }
+
+    _bindResizeHandling() {
+      if (this.options.hidden !== false) return;
+      const host = this.options.parentNode;
+      if (!host) return;
+      const resize = () => this._resizeToHost();
+
+      if (typeof window.ResizeObserver === "function") {
+        this._resizeObserver = new ResizeObserver(resize);
+        this._resizeObserver.observe(host);
+      } else {
+        this._onWindowResize = resize;
+        window.addEventListener("resize", this._onWindowResize);
+      }
+    }
+
+    _resizeToHost() {
+      if (!this.world || !this.canvas || !this.wrap) return;
+      const size = this._resolveEditorSize();
+      if (this.canvas.width === size.width && this.canvas.height === size.height) return;
+
+      this.wrap.style.width = `${size.width}px`;
+      this.wrap.style.height = `${size.height}px`;
+      this.canvas.width = size.width;
+      this.canvas.height = size.height;
+      this.forceLayout();
     }
 
     _instrumentProjectChanges(ide) {
@@ -543,6 +633,10 @@
       } catch (_) {}
 
       try { this.wrap?.remove?.(); } catch (_) {}
+      try { this._resizeObserver?.disconnect?.(); } catch (_) {}
+      if (this._onWindowResize) {
+        try { window.removeEventListener("resize", this._onWindowResize); } catch (_) {}
+      }
 
       if (window.world === this.world) window.world = null;
       if (window.ide === this.ide) window.ide = null;
@@ -555,6 +649,8 @@
       this._languageScriptElement = null;
       this._onProjectChange = null;
       this._projectXmlDebounce = null;
+      this._resizeObserver = null;
+      this._onWindowResize = null;
       this.world = null;
       this.ide = null;
       this.canvas = null;
