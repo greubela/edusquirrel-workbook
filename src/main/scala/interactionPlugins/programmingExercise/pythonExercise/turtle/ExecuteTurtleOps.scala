@@ -1,16 +1,10 @@
 package interactionPlugins.programmingExercise.pythonExercise.turtle
 
-import com.sun.tools.javac.tree.TreeInfo.args
-import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.{CallbackLibrary, CallbackOp}
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.CallbackLibrary
 import util.numbers.AlgebriteNumber
 import contentmanagement.model.color.{AppColor, RGBColor}
-import contentmanagement.webElements.genericHtmlElements.canvas.{AppCanvas, WebCanvas}
-import org.scalajs.dom
-import util.numbers.AlgebriteNumber
-
-import scala.collection.mutable
+import contentmanagement.webElements.genericHtmlElements.canvas.WebCanvas
 import scala.scalajs.js
-import scala.scalajs.js.annotation.JSExportAll
 import scala.util.Try
 
 case class ExecuteTurtleOps(canvas: WebCanvas) {
@@ -42,7 +36,7 @@ case class ExecuteTurtleOps(canvas: WebCanvas) {
   private def fillDot(args: Vector[js.Any]): Unit = {
     val size = if args.nonEmpty then numberArg(args, 0) else AlgebriteNumber("6")
     val dotColor = if args.length >= 2 then colorArg(args, 1) else turtle.penColor
-    fillDot(size, colorArg(args, 1))
+    fillDot(size, dotColor)
   }
 
   private def drawCircle(radius: AlgebriteNumber): Unit = {
@@ -122,9 +116,35 @@ case class ExecuteTurtleOps(canvas: WebCanvas) {
     if resetTurtle then turtle = initState
   }
 
-  private def numberArg(args: Vector[js.Any], idx: Int): AlgebriteNumber = ???
+  private def numberArg(args: Vector[js.Any], idx: Int): AlgebriteNumber =
+    args
+      .lift(idx)
+      .flatMap(parseNumberArg)
+      .getOrElse(AlgebriteNumber("0"))
 
-  private def colorArg(args: Vector[js.Any], idx: Int): AppColor = ???
+  private def parseNumberArg(value: js.Any): Option[AlgebriteNumber] = {
+    val parse = summon[Fractional[AlgebriteNumber]].parseString(_)
+    js.typeOf(value) match {
+      case "number" => Some(AlgebriteNumber(value.asInstanceOf[Double].toString))
+      case "boolean" => Some(if value.asInstanceOf[Boolean] then AlgebriteNumber("1") else AlgebriteNumber("0"))
+      case "string" => parse(stripWrappingQuotes(value.asInstanceOf[String].trim))
+      case _ => parse(stripWrappingQuotes(value.toString.trim))
+    }
+  }
+
+  private def colorArg(args: Vector[js.Any], idx: Int): AppColor =
+    args
+      .lift(idx)
+      .flatMap(parseColorArg)
+      .getOrElse(RGBColor.black)
+
+  private def parseColorArg(value: js.Any): Option[AppColor] = {
+    val normalized = stripWrappingQuotes(value.toString.trim)
+    Try(AppColor.fromWebStyleString(normalized)).toOption
+  }
+
+  private def stripWrappingQuotes(value: String): String =
+    value.stripPrefix("'").stripSuffix("'").stripPrefix("\"").stripSuffix("\"")
 
   private def normalizeHeading(angle: AlgebriteNumber): AlgebriteNumber =
     AlgebriteNumber((((angle.toDouble % 360.0) + 360.0) % 360.0).toString)
