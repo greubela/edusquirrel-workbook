@@ -3,13 +3,15 @@ package contentmanagement.webElements.genericHtmlElements.editor
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement
+import datastructures.web.font.AppFont
 import org.scalajs.dom
 
 import scala.scalajs.js
 
 case class CodeMirrorEditor(
                              content: Var[String],
-                             onUserInput: String => Unit = _ => ()
+                             onUserInput: String => Unit = _ => (),
+                             editorFont: Signal[AppFont] = Val(AppFont("JetBrains Mono", 14))
                            ) extends HtmlAppElement {
 
   import CodeMirrorEditor._
@@ -24,6 +26,9 @@ case class CodeMirrorEditor(
   override def getDomElement(): L.Element = {
     div(
       cls := "code-mirror-editor",
+      styleAttr <-- editorFont.map(font =>
+        s"--code-font-family: '${font.name}', 'Fira Code', 'JetBrains Mono', monospace; --code-font-size: ${font.sizeInPx}px;"
+      ),
       onMountCallback { ctx =>
         waitForFacade {
           case Some(cmFacade) =>

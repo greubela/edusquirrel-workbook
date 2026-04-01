@@ -10,15 +10,14 @@ import {
 import {defaultKeymap, history, historyKeymap, indentLess, indentMore} from "https://cdn.jsdelivr.net/npm/@codemirror/commands@6.8.1/+esm";
 import {
   bracketMatching,
-  defaultHighlightStyle,
   foldGutter,
   foldKeymap,
   indentUnit,
   indentOnInput,
-  syntaxHighlighting
 } from "https://cdn.jsdelivr.net/npm/@codemirror/language@6.11.3/+esm";
 import {highlightSelectionMatches, searchKeymap} from "https://cdn.jsdelivr.net/npm/@codemirror/search@6.5.11/+esm";
 import {python} from "https://cdn.jsdelivr.net/npm/@codemirror/lang-python@6.2.1/+esm";
+import {oneDark} from "https://cdn.jsdelivr.net/npm/@codemirror/theme-one-dark@6.1.3/+esm";
 
 const INDENT_SPACES = "    ";
 
@@ -37,54 +36,10 @@ const indentWithSpaces = ({state, dispatch}) => {
 };
 
 const editorTheme = EditorView.theme({
-  "&": {
-    height: "100%",
-    minHeight: "16rem",
-    border: "1px solid #d0d7de",
-    borderRadius: "10px"
-  },
   ".cm-scroller": {
-    fontFamily: "var(--font-mono, 'Fira Code', 'JetBrains Mono', monospace)",
+    fontFamily: "var(--code-font-family, var(--font-mono, 'Fira Code', 'JetBrains Mono', monospace))",
+    fontSize: "var(--code-font-size, 14px)",
     lineHeight: "1.5"
-  },
-  ".cm-content": {
-    padding: "12px 0",
-    textAlign: "left"
-  },
-  ".cm-gutters": {
-    backgroundColor: "#f6f8fa",
-    color: "#57606a",
-    border: "none",
-    borderTopLeftRadius: "10px",
-    borderBottomLeftRadius: "10px"
-  },
-  ".cm-line": {
-    textAlign: "left"
-  },
-  ".cm-activeLine": {
-    backgroundColor: "#f6f8fa"
-  },
-  ".cm-activeLineGutter": {
-    backgroundColor: "#eaf2ff",
-    color: "#0969da"
-  },
-  ".cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection": {
-    backgroundColor: "#cce0ff"
-  },
-  ".cm-cursor, .cm-dropCursor": {
-    borderLeftColor: "#0969da"
-  },
-  ".cm-tooltip": {
-    border: "1px solid #d0d7de",
-    backgroundColor: "#ffffff"
-  },
-  ".cm-panels": {
-    backgroundColor: "#ffffff",
-    color: "#24292f"
-  },
-  ".cm-matchingBracket": {
-    backgroundColor: "#ddf4ff",
-    outline: "1px solid #54aeff"
   }
 });
 
@@ -101,7 +56,7 @@ const baseExtensions = [
   highlightActiveLine(),
   highlightSelectionMatches(),
   python(),
-  syntaxHighlighting(defaultHighlightStyle, {fallback: true}),
+  oneDark,
   keymap.of([
     {key: "Tab", run: indentWithSpaces, shift: indentLess},
     ...defaultKeymap,
