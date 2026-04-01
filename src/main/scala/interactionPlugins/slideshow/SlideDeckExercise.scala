@@ -66,7 +66,6 @@ case class SlideDeckExercise(
 
   private val navigationElement: Element = div(
     cls := "visual-novel-navigation",
-    styleAttr := "position: sticky; top: 0; z-index: 10; background: var(--background-color, #fff);",
     button(
       child.text <-- workbookInfo.stringSignalFromLanguageMapId("PlantWorkshop/slideshowBack")(scala.concurrent.ExecutionContext.global),
       disabled <-- currentIndex.signal.map(_ == 0),
