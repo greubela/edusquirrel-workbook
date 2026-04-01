@@ -71,12 +71,6 @@
     return true;
   }
 
-  function importScriptForce(src) {
-    const normalized = normalizeScriptUrl(src);
-    if (!normalized) return false;
-    importScripts(normalized);
-    return true;
-  }
 
   function installWorkerDomShim() {
     if (globalThis.document && globalThis.window) return;
@@ -638,16 +632,16 @@
       if (!this.ide) return false;
 
       const requestedLanguage = this.requestedLanguageCode(language);
-      try { globalThis.SnapTranslator?.unload?.(); } catch (_) {}
+      let safeLang = this.normalizeSnapLanguage(requestedLanguage);
 
-      const safeLangForImport = this.normalizeSnapLanguage(requestedLanguage);
-      if (safeLangForImport !== "en") {
-        // SnapTranslator.unload() strips language entries.
-        // Re-import requested language scripts to repopulate translations.
-        importScriptForce(BASE_PROG_DIR + "adjusted/lang-" + safeLangForImport + ".js");
+      if (safeLang !== "en") {
+        // Language packs should only be imported once per worker lifetime.
+        // Repeated importScripts() can be expensive and destabilize long-running workers.
+        importScriptOnce(BASE_PROG_DIR + "adjusted/lang-" + safeLang + ".js");
+        // Re-check after import so unsupported language requests gracefully fall back.
+        safeLang = this.normalizeSnapLanguage(requestedLanguage);
       }
 
-      const safeLang = this.normalizeSnapLanguage(requestedLanguage);
       if (globalThis.SnapTranslator) {
         globalThis.SnapTranslator.language = safeLang;
       }
