@@ -1,3 +1,4 @@
+import org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv
 
 import org.scalajs.linker.interface.ModuleKind
 
@@ -13,8 +14,16 @@ lazy val workbookApp = project.in(file("."))
     // stdout/stderr even when tests pass.
     Test / logBuffered := !sys.env.get("PRINT_SIMULATION").contains("1"),
 
+    // Run tests in jsdom-backed Node so DOMParser/XMLSerializer are available
+    // without depending on ad-hoc runtime globals.
+    Test / jsEnv := new JSDOMNodeJSEnv(),
+
     scalaJSLinkerConfig ~= {
       _.withModuleKind(ModuleKind.ESModule)
+    },
+
+    Test / scalaJSLinkerConfig ~= {
+      _.withModuleKind(ModuleKind.NoModule)
     },
 
     // Libraries

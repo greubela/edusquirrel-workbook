@@ -14,18 +14,20 @@ object TurtleStitchXmlLoader {
   // We intentionally keep tolerant parsing (DOM + string fallback) for workbook robustness.
 
   private val EmptyProject = Project()
+  private var domUnavailableWarned = false
 
   def load(xml: String): Project = {
     scala.util.Try {
-      NodeDomSupport.parseXml(xml).map { document =>
-        val maybeProjectNode = Option(document.getElementsByTagName("project").item(0)).orElse(Option(document.documentElement).filter(_.nodeName == "project"))
-
-        maybeProjectNode.map { projectNode =>
-          val scenesNode = firstChild(projectNode, "scenes")
-          val sceneNodes = childrenNamed(scenesNode, "scene")
-          val scenes = sceneNodes.map(parseScene).toVector
-
-          Option.when(scenes.nonEmpty) {
+      NodeDomSupport.parseXml(xml) match {
+        case Some(document) =>
+          val parsedProject = for {
+            projectNode <- Option(document.getElementsByTagName("project").item(0))
+              .orElse(Option(document.documentElement).filter(_.nodeName == "project"))
+            scenesNode = firstChild(projectNode, "scenes")
+            sceneNodes = childrenNamed(scenesNode, "scene")
+            scenes = sceneNodes.map(parseScene).toVector
+            if scenes.nonEmpty
+          } yield {
             Project(
               name = attr(projectNode, "name").getOrElse("Untitled"),
               app = attr(projectNode, "app").getOrElse(""),
@@ -39,10 +41,15 @@ object TurtleStitchXmlLoader {
               origName = textChild(projectNode, "origName").filter(_.nonEmpty)
             )
           }
-        }
-      }.flatten.flatten.getOrElse {
-        warnFallback("DOM parser is unavailable in this runtime")
-        loadWithStringFallback(xml)
+
+          parsedProject.getOrElse(loadWithStringFallback(xml))
+
+        case None =>
+          if (!domUnavailableWarned) {
+            domUnavailableWarned = true
+            warnFallback("DOM parser is unavailable in this runtime")
+          }
+          loadWithStringFallback(xml)
       }
     }.recover { case error =>
       warnFallback(s"DOM parsing failed (${error.getClass.getSimpleName}); using string parser")
