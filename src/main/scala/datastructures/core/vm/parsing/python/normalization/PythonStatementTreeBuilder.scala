@@ -1,6 +1,7 @@
 package datastructures.core.vm.parsing.python.normalization
 
 import PythonNormalizationModel._
+import datastructures.core.vm.parsing.python.PythonBlockWalker
 import scala.collection.mutable
 import util.text.ParenthesesUtils.stripOuterBalancedParens
 
@@ -98,12 +99,10 @@ object PythonStatementTreeBuilder {
   }
 
   private def parseBody(lines: Vector[Line], startIndex: Int, parentIndent: Int): (List[Statement], Int) = {
-    if (startIndex >= lines.length) (Nil, startIndex)
-    else {
-      val nextLine = lines(startIndex)
-      if (nextLine.level <= parentIndent) (Nil, startIndex)
-      else parseBlockStatements(lines, startIndex, nextLine.level)
-    }
+    val walker = PythonBlockWalker.forLines(lines, _.level, _.text)
+    val firstRelevant = walker.skipBlankLines(startIndex)
+    if (firstRelevant >= lines.length || lines(firstRelevant).level <= parentIndent) (Nil, startIndex)
+    else parseBlockStatements(lines, firstRelevant, lines(firstRelevant).level)
   }
 
   private def normalizeIfCondition(raw: String): String = {

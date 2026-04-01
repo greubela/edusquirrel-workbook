@@ -9,13 +9,13 @@ class PythonNormalizationStagesSpec extends FunSuite {
   private val normalizer = new PythonNormalizer()
 
   test("comment scanner ignores hashes inside strings") {
-    val (code, comment) = PythonCommentScanner.splitInlineComment("value = '# not comment' # real comment")
+    val (code, comment) = PythonCommentScanner.splitCodeAndComment("value = '# not comment' # real comment")
     assertEquals(code, "value = '# not comment' ")
     assertEquals(comment, Some("real comment"))
   }
 
   test("comment scanner handles escaped quotes before comment") {
-    val (code, comment) = PythonCommentScanner.splitInlineComment("msg = \"a \\\"#\\\" b\" # trailing")
+    val (code, comment) = PythonCommentScanner.splitCodeAndComment("msg = \"a \\\"#\\\" b\" # trailing")
     assertEquals(code, "msg = \"a \\\"#\\\" b\" ")
     assertEquals(comment, Some("trailing"))
   }
