@@ -3,6 +3,7 @@ package datastructures.core.vm.parsing.python
 import ParsingUtils.keepExpression
 import PythonParser.ParseContext
 import datastructures.core.vm.types.BeDataType.{AnyType, BeUnionAllowedTypes}
+import datastructures.core.vm.parsing.python.normalization.PythonCommentScanner
 import datastructures.core.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.code.controlStructures.{BeIfElse, BeSequence, BeWhile}

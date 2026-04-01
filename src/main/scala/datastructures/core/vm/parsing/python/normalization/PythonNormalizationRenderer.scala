@@ -1,4 +1,4 @@
-package datastructures.core.vm.parsing.python
+package datastructures.core.vm.parsing.python.normalization
 
 import PythonNormalizationModel._
 import scala.collection.mutable

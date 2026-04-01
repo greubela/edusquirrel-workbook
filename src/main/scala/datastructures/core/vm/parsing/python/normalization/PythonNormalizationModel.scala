@@ -1,4 +1,4 @@
-package datastructures.core.vm.parsing.python
+package datastructures.core.vm.parsing.python.normalization
 
 object PythonNormalizationModel {
   final case class RawLine(indent: Int, text: String)

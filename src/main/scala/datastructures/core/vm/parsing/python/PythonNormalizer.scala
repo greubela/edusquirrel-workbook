@@ -1,6 +1,11 @@
 package datastructures.core.vm.parsing.python
 
-import PythonNormalizationModel.{ParsedStatementTree, RawLine}
+import datastructures.core.vm.parsing.python.normalization.PythonNormalizationModel.{ParsedStatementTree, RawLine}
+import datastructures.core.vm.parsing.python.normalization.{
+  PythonLineNormalizationStage,
+  PythonNormalizationRenderer,
+  PythonStatementTreeBuilder
+}
 
 class PythonNormalizer {
 

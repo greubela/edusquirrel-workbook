@@ -1,6 +1,7 @@
 package contentmanagement.model.vm.parsing.python
 
-import datastructures.core.vm.parsing.python.{PythonCommentScanner, PythonNormalizer}
+import datastructures.core.vm.parsing.python.PythonNormalizer
+import datastructures.core.vm.parsing.python.normalization.PythonCommentScanner
 import munit.FunSuite
 
 class PythonNormalizationStagesSpec extends FunSuite {
