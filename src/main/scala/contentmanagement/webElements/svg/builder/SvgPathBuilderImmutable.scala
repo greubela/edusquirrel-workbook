@@ -6,6 +6,11 @@ import datastructures.core.geometry.{Bounds, Dimension, Point}
 
 import scala.collection.mutable
 
+object SvgPathBuilderImmutable {
+  
+  def apply[T: Fractional](start: Point[T]): SvgPathBuilderImmutable[T] = SvgPathBuilderImmutable[T](StartPathCommand(start), List())
+  
+}
 
 case class SvgPathBuilderImmutable[T: Fractional](
                                                    startCommand: StartPathCommand[T],

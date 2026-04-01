@@ -5,6 +5,13 @@ import scala.scalajs.js
 
 object JsHelpers {
 
+
+  def parseDouble(s: js.Any): Option[Double] = {
+    try Some(s.asInstanceOf[Double])
+    catch case _ => try Some(s.toString.toDouble)
+    catch case _ => None
+  }
+  
   def promiseToFuture[A](p: js.Promise[A]): Future[A] = {
     val pr = Promise[A]()
     p.`then`[Unit](

@@ -56,7 +56,6 @@ case class ExecuteTurtleOps(canvas: WebCanvas) {
     def synonymMap(names: List[String], function: Vector[js.Any] => Unit): Map[String, Vector[js.Any] => Unit] = names.map(_ -> function).toMap
 
     def funcMap(name: String, function: Vector[js.Any] => Unit): Map[String, Vector[js.Any] => Unit] = Map(name -> function)
-
     synonymMap(List("forward", "fd"), args => forward(numberArg(args, 0)))
       ++ synonymMap(List("backward", "back", "bk"), args => forward(-numberArg(args, 0)))
       ++ synonymMap(List("left", "lt"), args => left(numberArg(args, 0)))
