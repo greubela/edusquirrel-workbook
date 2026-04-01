@@ -13,8 +13,6 @@
   const LOG_PREFIX = "[TurtleWorker]";
   const log = (...a) => console.log(LOG_PREFIX, ...a);
   const warn = (...a) => console.warn(LOG_PREFIX, ...a);
-  const PREFER_FALLBACK_RENDERER = true;
-
   const BASE_PROG_DIR = "./";
 
   const SNAP_SCRIPT_ORDER = [
@@ -204,6 +202,66 @@
       }
     }
 
+    class ImageNode extends MiniNode {
+      constructor() {
+        super("img");
+        this.width = 0;
+        this.height = 0;
+        this.complete = false;
+        this.onload = null;
+        this.onerror = null;
+        this.crossOrigin = "";
+        this._src = "";
+        this._bitmap = null;
+      }
+
+      get src() {
+        return this._src;
+      }
+
+      set src(value) {
+        this._src = String(value || "");
+        this.complete = false;
+        this._bitmap = null;
+
+        const notifyError = (err) => {
+          this.complete = false;
+          if (typeof this.onerror === "function") this.onerror(err);
+        };
+
+        const notifyReady = () => {
+          this.complete = true;
+          if (typeof this.onload === "function") this.onload();
+        };
+
+        if (!this._src) {
+          notifyReady();
+          return;
+        }
+
+        const canDecodeBitmap = typeof fetch === "function" && typeof createImageBitmap === "function";
+        if (!canDecodeBitmap) {
+          if (typeof queueMicrotask === "function") queueMicrotask(notifyReady);
+          else setTimeout(notifyReady, 0);
+          return;
+        }
+
+        fetch(this._src)
+          .then((response) => {
+            if (!response.ok) throw new Error(`Image fetch failed (${response.status})`);
+            return response.blob();
+          })
+          .then((blob) => createImageBitmap(blob))
+          .then((bitmap) => {
+            this._bitmap = bitmap;
+            this.width = bitmap.width || this.width;
+            this.height = bitmap.height || this.height;
+            notifyReady();
+          })
+          .catch(notifyError);
+      }
+    }
+
     class ScriptNode extends MiniNode {
       constructor() {
         super("script");
@@ -241,8 +299,12 @@
         const t = String(tag).toLowerCase();
         if (t === "canvas") return new CanvasNode();
         if (t === "textarea") return new TextAreaNode();
+        if (t === "img" || t === "image") return new ImageNode();
         if (t === "script") return new ScriptNode();
         return new MiniNode(t);
+      },
+      createElementNS(_namespace, tag) {
+        return this.createElement(tag);
       },
       getElementById(id) {
         return byId.get(String(id)) || null;
@@ -334,29 +396,9 @@
     setGlobalIfWritable("sessionStorage", windowObj.sessionStorage || makeStorage());
     setGlobalIfWritable("localStorage", windowObj.localStorage || makeStorage());
     if (!windowObj.Image && typeof OffscreenCanvas !== "undefined") {
-      class WorkerImage {
+      class WorkerImage extends ImageNode {
         constructor() {
-          this._canvas = new OffscreenCanvas(1, 1);
-          this.width = 1;
-          this.height = 1;
-          this.complete = true;
-          this.onload = null;
-          this.onerror = null;
-          this.crossOrigin = "";
-          this._src = "";
-        }
-
-        get src() {
-          return this._src;
-        }
-
-        set src(value) {
-          this._src = String(value || "");
-          const trigger = () => {
-            if (typeof this.onload === "function") this.onload();
-          };
-          if (typeof queueMicrotask === "function") queueMicrotask(trigger);
-          else setTimeout(trigger, 0);
+          super();
         }
       }
       setGlobalIfWritable("Image", WorkerImage);
@@ -406,7 +448,10 @@
       const originalDrawImage = contextProto.drawImage;
       if (typeof originalDrawImage === "function") {
         contextProto.drawImage = function patchedDrawImage(image, ...rest) {
-          const normalizedImage = image && image._canvas ? image._canvas : image;
+          const normalizedImage =
+            image && image._bitmap ? image._bitmap :
+            image && image._canvas ? image._canvas :
+            image;
           return originalDrawImage.call(this, normalizedImage, ...rest);
         };
         try {
@@ -491,68 +536,6 @@
     } finally {
       if (timer) clearTimeout(timer);
     }
-  }
-
-  function escapeXml(text) {
-    return String(text)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll("\"", "&quot;")
-      .replaceAll("'", "&apos;");
-  }
-
-  function fallbackProgramSvgDataUrl(message) {
-    const safeMessage = escapeXml(message || "Program preview unavailable");
-    const svg = [
-      `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="180" viewBox="0 0 960 180">`,
-      `<rect x="0" y="0" width="960" height="180" fill="#ffffff" stroke="#cccccc"/>`,
-      `<text x="24" y="72" font-size="24" font-family="sans-serif" fill="#333">TurtleStitch preview unavailable</text>`,
-      `<text x="24" y="116" font-size="16" font-family="monospace" fill="#555">${safeMessage}</text>`,
-      `</svg>`
-    ].join("");
-    return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
-  }
-
-  function fallbackProgramSvgFromXml(xml) {
-    const blockNames = [];
-    const regex = /<block\s+s="([^"]+)"/g;
-    let match;
-    while ((match = regex.exec(String(xml || ""))) !== null) {
-      blockNames.push(match[1]);
-      if (blockNames.length >= 16) break;
-    }
-    const lines = blockNames.length ? blockNames : ["(no blocks found)"];
-    const lineHeight = 20;
-    const width = 960;
-    const height = Math.max(180, 80 + lines.length * lineHeight);
-    const textNodes = lines
-      .map((line, i) => `<text x="24" y="${72 + i * lineHeight}" font-size="16" font-family="monospace" fill="#333">${escapeXml(line)}</text>`)
-      .join("");
-    const svg = [
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
-      `<rect x="0" y="0" width="${width}" height="${height}" fill="#ffffff" stroke="#cccccc"/>`,
-      `<text x="24" y="40" font-size="22" font-family="sans-serif" fill="#333">TurtleStitch Script Preview (fallback)</text>`,
-      textNodes,
-      `</svg>`
-    ].join("");
-    return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
-  }
-
-  async function fallbackStagePngDataUrl(message) {
-    const canvas = new OffscreenCanvas(480, 360);
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#333333";
-      ctx.font = "20px sans-serif";
-      ctx.fillText("TurtleStitch stage preview unavailable", 16, 48);
-      ctx.fillStyle = "#555555";
-      ctx.font = "14px monospace";
-      ctx.fillText(String(message || "operation timeout"), 16, 80);
-    }
-    return canvasToPngDataUrl(canvas);
   }
 
   class TurtleWorkerEngine {
@@ -896,40 +879,21 @@
         return { id, ok: true, result: { ready: true } };
       }
       case "calcProgramSvg": {
-        if (PREFER_FALLBACK_RENDERER) {
-          return { id, ok: true, result: fallbackProgramSvgFromXml(payload?.xml_content) };
-        }
         const engine = await ensureSingletonEngine();
-        let result;
-        try {
-          result = await withTimeout(
-            engine.calcProgramSvg(payload?.xml_content, payload?.language || "en"),
-            12000,
-            "calcProgramSvg"
-          );
-        } catch (e) {
-          warn("calcProgramSvg failed, returning fallback SVG", e);
-          result = fallbackProgramSvgDataUrl(e?.message || String(e));
-        }
+        const result = await withTimeout(
+          engine.calcProgramSvg(payload?.xml_content, payload?.language || "en"),
+          12000,
+          "calcProgramSvg"
+        );
         return { id, ok: true, result };
       }
       case "simulateGreenFlag": {
-        if (PREFER_FALLBACK_RENDERER) {
-          const result = await fallbackStagePngDataUrl("simulateGreenFlag fallback renderer");
-          return { id, ok: true, result };
-        }
         const engine = await ensureSingletonEngine();
-        let result;
-        try {
-          result = await withTimeout(
-            engine.simulateGreenFlag(payload?.xml_content, payload?.language || "en"),
-            12000,
-            "simulateGreenFlag"
-          );
-        } catch (e) {
-          warn("simulateGreenFlag failed, returning fallback PNG", e);
-          result = await fallbackStagePngDataUrl(e?.message || String(e));
-        }
+        const result = await withTimeout(
+          engine.simulateGreenFlag(payload?.xml_content, payload?.language || "en"),
+          12000,
+          "simulateGreenFlag"
+        );
         return { id, ok: true, result };
       }
       case "destroy": {
