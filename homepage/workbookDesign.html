@@ -5,11 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Workbook for Squirrels</title>
 
-    <!-- Previous CSP (kept for reference):
-    <meta http-equiv="Content-Security-Policy"
-          content="default-src 'self'; script-src 'self' https://esm.sh https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com;">
-    -->
-    <!-- Updated CSP: allow local proxy calls + Pyodide/WASM + CDN scripts used by the demo. -->
     <meta http-equiv="Content-Security-Policy"
           content="
           img-src 'self' data: blob:;
@@ -19,38 +14,22 @@
                style-src 'self' 'unsafe-inline' https://unpkg.com;">
 
     <!-- Dependencies -->
-    <!-- <script src="https://unpkg.com/algebrite@1.4.0/dist/algebrite.bundle-for-browser.js"></script> -->
+    <script src="https://unpkg.com/algebrite@1.4.0/dist/algebrite.bundle-for-browser.js"></script>
     <script src="../resources/programs/20260212TurtleStitch/fullturtle.js"></script>
-
-    <!-- JSXGraph global (JSXGraph uses a JavaScript-number-based math system, so pass plain numbers)
-    <link rel="stylesheet" href="https://unpkg.com/jsxgraph@1.8.0/distrib/jsxgraph.css">
-    <script src="https://unpkg.com/jsxgraph@1.8.0/distrib/jsxgraphcore.js"></script>-->
-
-    <!-- Pyodide loader (provides global loadPyodide for main-thread backend and worker entrypoint). -->
-    <script type="module" src="./js/PyodideLoader.js"></script>
     <script type="module" src="./js/CodeMirrorLoader.js"></script>
 
-    <link rel="stylesheet" href="css/messenger.css">
-    <link rel="stylesheet" href="css/fullscreen.css">
-    <link rel="stylesheet" href="css/blockEditor.css">
+    <link rel="stylesheet" href="./css/messenger.css">
+    <link rel="stylesheet" href="./css/fullscreen.css">
+    <link rel="stylesheet" href="./css/blockEditor.css">
+    <link rel="stylesheet" href="./css/workbook.css">
 
-    <link rel="stylesheet" href="cssOld/fonts.css">
-    <link rel="stylesheet" href="css/workbook.css">
-    <link rel="stylesheet" href="./cssDts/exercise-vbox.css">
-    <link rel="stylesheet" href="./cssDts/exercise-compact.css">
-    <link rel="stylesheet" href="./cssDts/exercise-visualnovel.css">
-
-    <!-- Previous bundle entry (kept for reference):
     <script type="module" src="../target/scala-3.3.3/workbookapp-fastopt/main.js"></script>
-    -->
-    <!-- Updated script: use webpack bundle output (fastOptJS / webpack). -->
-    <script type="module" src="../target/scala-3.3.3/scalajs-bundler/main/workbookapp-fastopt.js"></script>
 
 </head>
 <body>
 <div id="app">
     <div class="container">
-        <div id="workbookTest">
+        <div id="workbookEmbroidery">
 
 
         </div>
