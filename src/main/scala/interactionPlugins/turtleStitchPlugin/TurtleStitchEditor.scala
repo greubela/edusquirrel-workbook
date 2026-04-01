@@ -217,7 +217,7 @@ object TurtleStitchEditor {
   val programSvgDataSrcStorage: DataStorage[(String, HumanLanguage), String] = new DataStorage[(String, HumanLanguage), String]("ProgramSvgDataSrc", false) {
     protected def executeLoading(in: (String, HumanLanguage))(ec: ExecutionContext): Future[String] = {
       val (xml, language) = in
-      withFreshEditor(_.calcProgramSvg(xml, turtleLang(language)).toFuture)(using ec)
+      withSingletonEditor(_.calcProgramSvg(xml, turtleLang(language)).toFuture)(using ec)
     }
 
     protected def defaultValueWhileLoading(in: (String, HumanLanguage)): Option[String] =
@@ -232,7 +232,7 @@ object TurtleStitchEditor {
 
   val programOutputDataSrcStorage: DataStorage[String, String] = new DataStorage[String, String]("ProgramPngDataSrc", false) {
     protected def executeLoading(xml: String)(ec: ExecutionContext): Future[String] =
-      withFreshEditor(_.simulateGreenFlag(xml).toFuture)(using ec)
+      withSingletonEditor(_.simulateGreenFlag(xml).toFuture)(using ec)
 
     protected def defaultValueWhileLoading(in: String): Option[String] = None
 
@@ -244,5 +244,5 @@ object TurtleStitchEditor {
   }
 
   def downloadDst(xml: String)(using ec: ExecutionContext): Future[Unit] =
-    withFreshEditor(_.downloadDst(xml).toFuture)
+    withSingletonEditor(_.downloadDst(xml).toFuture)
 }

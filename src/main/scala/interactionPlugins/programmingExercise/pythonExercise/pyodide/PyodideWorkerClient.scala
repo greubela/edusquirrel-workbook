@@ -1,40 +1,13 @@
 package interactionPlugins.programmingExercise.pythonExercise.pyodide
 
 
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.*
 import org.scalajs.dom
+
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
-import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideWorkerClient.*
-
-object PyodideWorkerClient {
-  final case class CallbackOp(
-                               module: String,
-                               method: String,
-                               args: Vector[js.Any]
-                             )
-
-  final case class PythonRunConfig(
-                                    context: js.Dictionary[js.Any] = js.Dictionary.empty,
-                                    resetGlobals: Boolean = false,
-                                    captureStdout: Boolean = true,
-                                    captureStderr: Boolean = true
-                                  )
-
-  final case class PythonRunReport(
-                                    callbackOps: Vector[CallbackOp],
-                                    stdout: String,
-                                    stderr: String
-                                  )
-
-  final case class PythonWorkerFailure(
-                                        message: String,
-                                        stdout: String,
-                                        stderr: String
-                                      ) extends RuntimeException(message)
-
-}
 
 final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.js") {
 
@@ -83,6 +56,32 @@ final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.js") {
         )
       )
     }
+
+  private def handleLibrary(callbacks: List[CallbackOp], library: CallbackLibrary): Unit = {
+    println("handleLibrary: " + callbacks.size + " callbacks, library '" + library.moduleName + "' (" + library.methodMap.size + " methods)")
+    callbacks.foreach(op => {
+      println("---- EXECUTE OP: " + op.module + "." + op.method + "(" + op.args.mkString(", ") + ")")
+      library.methodMap.get(op.method).foreach { method => method(op.args) }
+    })
+  }
+
+  def runWithCallbackLibrary(code: String, callbackLibrary: CallbackLibrary, config: PythonRunConfig = PythonRunConfig()): Future[PythonRunReport] = {
+    val res = Promise[PythonRunReport]()
+    addCallbacks(callbackLibrary.moduleName, callbackLibrary.methodMap.keys.toSeq)
+
+    val exRes = run(code, config)
+    exRes.onComplete {
+      case scala.util.Success(runReport: PythonRunReport) => {
+        handleLibrary(runReport.callbackOps.toList, callbackLibrary)
+        res.success(runReport)
+      }
+      case scala.util.Failure(exception) => {
+        res.failure(exception)
+      }
+    }
+
+    res.future
+  }
 
   def run(
            code: String,
@@ -165,7 +164,7 @@ final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.js") {
   }
 
   private def obj(fields: (String, js.Any)*): js.Object =
-    js.Dynamic.literal(fields*).asInstanceOf[js.Object]
+    js.Dynamic.literal(fields *).asInstanceOf[js.Object]
 
   private def dyn(value: js.Any): js.Dynamic =
     value.asInstanceOf[js.Dynamic]

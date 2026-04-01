@@ -6,7 +6,7 @@ import contentmanagement.webElements.HtmlAppElement
 import contentmanagement.webElements.genericHtmlElements.canvas.WebCanvas
 import contentmanagement.webElements.genericHtmlElements.editor.CodeMirrorEditor
 import interactionPlugins.programmingExercise.pythonExercise.data.PythonExecutionRequest
-import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideWorkerClient.PythonRunReport
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.*
 import interactionPlugins.programmingExercise.pythonExercise.pyodide.*
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -34,13 +34,11 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
   private val stderrVar = Var("")
   private val globalsVar = Var("{}")
 
-  private val outputCanvas: WebCanvas = WebCanvas(1000, 1000)
+  private val outputCanvas: WebCanvas = WebCanvas(500, 500)
 
-  private val turtleBackend = {
-    val client = PyodideWorkerClient()
-    client.addCallbacks("turtle", List("left", "forward", "right", "goto"))
-    client
-  }
+  private val turtleExecutionHandler = ExecuteTurtleOps(outputCanvas)
+
+  private val turtleBackend = PyodideWorkerClient()
 
   /*private val asyncBackend = {
     val environment = new PyodideWorkerEnvironment()
@@ -67,10 +65,11 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
     stderrVar.set("")
     globalsVar.set("{}")
 
-    val request = PythonExecutionRequest(codeVar.now(), Some(20_000))
-    turtleBackend.run(codeVar.now()).onComplete {
+    turtleBackend.runWithCallbackLibrary(codeVar.now(), turtleExecutionHandler.callbackLibrary).onComplete {
       case scala.util.Success(runReport: PythonRunReport) =>
         println("successfully executed, commands: " + runReport.callbackOps.mkString("\n", " -> ", "\n") + "report: " + runReport)
+        stdoutVar.set(runReport.stdout)
+        stderrVar.set(runReport.stderr)
       case scala.util.Failure(exception) =>
         println("execution failure: " + exception.getMessage)
         stderrVar.set(exception.getMessage)
@@ -98,7 +97,6 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
       gap := "1rem",
       div(flex := "1", inputEditorElement.getDomElement()),
       div(
-        width := "420px",
         display.flex,
         flexDirection.column,
         gap := "0.75rem",

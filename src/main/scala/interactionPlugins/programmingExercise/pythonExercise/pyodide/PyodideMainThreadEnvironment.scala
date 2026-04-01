@@ -1,7 +1,6 @@
 package interactionPlugins.programmingExercise.pythonExercise.pyodide
 
-import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.{JsDataVariable, SyncModuleBackend}
-import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideWorkerClient.{CallbackOp, PythonRunConfig, PythonRunReport}
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.*
 
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
@@ -70,7 +69,7 @@ final class PyodideMainThreadEnvironment {
           p.success(PythonRunReport(callbackOps, stdoutBuffer.mkString, stderrBuffer.mkString))
           ()
         }, { (err: Any) =>
-          p.failure(PyodideWorkerClient.PythonWorkerFailure(
+          p.failure(PythonWorkerFailure(
             message = Option(err).map(_.toString).getOrElse("Pyodide run failed"),
             stdout = stdoutBuffer.mkString,
             stderr = stderrBuffer.mkString
