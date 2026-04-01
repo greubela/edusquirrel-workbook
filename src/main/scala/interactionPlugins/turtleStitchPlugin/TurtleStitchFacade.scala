@@ -7,7 +7,6 @@ import datastructures.web.storage.AsyncDataCache
 import interactionPlugins.turtleStitchPlugin.TurtleStitchEditor.turtleLang
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.control.NonFatal
 
 object TurtleStitchFacade {
 
@@ -18,12 +17,11 @@ object TurtleStitchFacade {
 
   private val worker: TurtleStitchWorker = new TurtleStitchWorker()
   @volatile private var workerValidated: Boolean = false
-  @volatile private var workerDisabled: Boolean = false
 
   private val programSvgDataSrcStorage: AsyncDataCache[(String, HumanLanguage), String] = new AsyncDataCache[(String, HumanLanguage), String]("ProgramSvgDataSrc", false) {
     protected def executeLoading(in: (String, HumanLanguage))(ec: ExecutionContext): Future[String] = {
       val (xml, language) = in
-      calcPngDataSrcOfGreenFlagProgramWorker(xml, language)
+      calcPngDataSrcWithValidatedWorker(xml, language)
     }
 
     protected def defaultValueWhileLoading(in: (String, HumanLanguage)): Option[String] =
@@ -36,28 +34,12 @@ object TurtleStitchFacade {
       s"SvgOutput(${out.length}, ${out.substring(0, 60)} ...)"
   }
 
-  private def calcPngDataSrcOfGreenFlagProgramEditor(turtleStitchXml: String, language: HumanLanguage): Future[String] = {
-    implicit val ec: ExecutionContext = ExecutionContext.global
-    TurtleStitchEditor.withSingletonEditor(
-      _.calcProgramSvg(turtleStitchXml, TurtleStitchEditor.turtleLang(language)).toFuture)
-  }
-
   private def calcPngDataSrcWithValidatedWorker(turtleStitchXml: String, language: HumanLanguage): Future[String] = {
     implicit val ec: ExecutionContext = ExecutionContext.global
-    if (workerDisabled) {
-      println("worker disabled")
-      calcPngDataSrcOfGreenFlagProgramEditor(turtleStitchXml, language)
-    } else {
-      val workerAttempt =
-        if (workerValidated) calcPngDataSrcOfGreenFlagProgramWorker(turtleStitchXml, language)
-        else validateWorker().flatMap(_ => calcPngDataSrcOfGreenFlagProgramWorker(turtleStitchXml, language))
-
-      workerAttempt.recoverWith { case NonFatal(_) =>
-        workerDisabled = true
-        println("WORKER CRASHED!")
-        calcPngDataSrcOfGreenFlagProgramEditor(turtleStitchXml, language)
-      }
-    }
+    val workerAttempt =
+      if (workerValidated) calcPngDataSrcOfGreenFlagProgramWorker(turtleStitchXml, language)
+      else validateWorker().flatMap(_ => calcPngDataSrcOfGreenFlagProgramWorker(turtleStitchXml, language))
+    workerAttempt
   }
 
   private def validateWorker()(implicit ec: ExecutionContext): Future[Unit] =

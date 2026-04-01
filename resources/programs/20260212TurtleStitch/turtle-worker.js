@@ -43,6 +43,24 @@
 
   let scriptsLoaded = false;
   const loadedLanguageScripts = new Set(["en"]);
+  const importedScriptUrls = new Set();
+
+  function normalizeScriptUrl(src) {
+    if (!src) return "";
+    try {
+      return new URL(String(src), BASE_PROG_DIR).href;
+    } catch (_) {
+      return String(src);
+    }
+  }
+
+  function importScriptOnce(src) {
+    const normalized = normalizeScriptUrl(src);
+    if (!normalized || importedScriptUrls.has(normalized)) return false;
+    importScripts(src);
+    importedScriptUrls.add(normalized);
+    return true;
+  }
 
   function installWorkerDomShim() {
     if (globalThis.document && globalThis.window) return;
@@ -53,6 +71,17 @@
     const styleProxy = {
       setProperty() {},
       removeProperty() {}
+    };
+
+    const tryLoadScriptNode = (node) => {
+      if (!node || node.tagName !== "SCRIPT" || !node.src || node.__scriptLoaded) return;
+      try {
+        importScriptOnce(node.src);
+        node.__scriptLoaded = true;
+        if (typeof node.onload === "function") node.onload();
+      } catch (e) {
+        if (typeof node.onerror === "function") node.onerror(e);
+      }
     };
 
     class MiniNode {
@@ -76,13 +105,8 @@
         child.parentNode = this;
         this.children.push(child);
 
-        if (this === document.head && child.tagName === "SCRIPT" && child.src) {
-          try {
-            importScripts(child.src);
-            if (typeof child.onload === "function") child.onload();
-          } catch (e) {
-            if (typeof child.onerror === "function") child.onerror(e);
-          }
+        if (this === document.head && child.tagName === "SCRIPT") {
+          tryLoadScriptNode(child);
         }
         return child;
       }
@@ -157,10 +181,22 @@
     class ScriptNode extends MiniNode {
       constructor() {
         super("script");
-        this.src = "";
+        this.__src = "";
+        this.__scriptLoaded = false;
         this.async = false;
         this.onload = null;
         this.onerror = null;
+      }
+
+      get src() {
+        return this.__src;
+      }
+
+      set src(v) {
+        this.__src = String(v || "");
+        if (this.parentNode && this.parentNode.tagName === "HEAD") {
+          tryLoadScriptNode(this);
+        }
       }
     }
 
@@ -306,7 +342,7 @@
     globalThis.base_prog_dir = BASE_PROG_DIR;
 
     const urls = SNAP_SCRIPT_ORDER.map((p) => BASE_PROG_DIR + p);
-    importScripts(...urls);
+    urls.forEach((url) => importScriptOnce(url));
 
     if (!globalThis.WorldMorph || !globalThis.IDE_Morph) {
       throw new Error("WorldMorph/IDE_Morph missing after worker script load");
@@ -398,7 +434,7 @@
       try { globalThis.SnapTranslator?.unload?.(); } catch (_) {}
 
       if (safeLang !== "en" && !loadedLanguageScripts.has(safeLang)) {
-        importScripts(BASE_PROG_DIR + "adjusted/lang-" + safeLang + ".js");
+        importScriptOnce(BASE_PROG_DIR + "adjusted/lang-" + safeLang + ".js");
         loadedLanguageScripts.add(safeLang);
       }
 
