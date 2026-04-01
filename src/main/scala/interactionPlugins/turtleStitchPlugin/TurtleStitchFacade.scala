@@ -23,7 +23,7 @@ object TurtleStitchFacade {
   private val programSvgDataSrcStorage: AsyncDataCache[(String, HumanLanguage), String] = new AsyncDataCache[(String, HumanLanguage), String]("ProgramSvgDataSrc", false) {
     protected def executeLoading(in: (String, HumanLanguage))(ec: ExecutionContext): Future[String] = {
       val (xml, language) = in
-      calcPngDataSrcWithValidatedWorker(xml, language)
+      calcPngDataSrcOfGreenFlagProgramWorker(xml, language)
     }
 
     protected def defaultValueWhileLoading(in: (String, HumanLanguage)): Option[String] =
@@ -45,6 +45,7 @@ object TurtleStitchFacade {
   private def calcPngDataSrcWithValidatedWorker(turtleStitchXml: String, language: HumanLanguage): Future[String] = {
     implicit val ec: ExecutionContext = ExecutionContext.global
     if (workerDisabled) {
+      println("worker disabled")
       calcPngDataSrcOfGreenFlagProgramEditor(turtleStitchXml, language)
     } else {
       val workerAttempt =
@@ -53,6 +54,7 @@ object TurtleStitchFacade {
 
       workerAttempt.recoverWith { case NonFatal(_) =>
         workerDisabled = true
+        println("WORKER CRASHED!")
         calcPngDataSrcOfGreenFlagProgramEditor(turtleStitchXml, language)
       }
     }
