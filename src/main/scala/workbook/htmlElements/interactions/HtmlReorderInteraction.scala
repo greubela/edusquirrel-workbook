@@ -46,10 +46,30 @@ case class HtmlReorderInteraction[T](
     if (order.length == elements.length && order.toSet == defaultOrder.toSet) order else defaultOrder
 
   private def moveItem(current: List[Int], draggedId: Int, insertIndex: Int): List[Int] = {
+    val fromIndex = current.indexOf(draggedId)
+    if (fromIndex < 0) return current
     val clean = current.filterNot(_ == draggedId)
-    val safeIndex = insertIndex.max(0).min(clean.length)
+    val adjustedInsertIndex = if (insertIndex > fromIndex) insertIndex - 1 else insertIndex
+    val safeIndex = adjustedInsertIndex.max(0).min(clean.length)
     val (front, back) = clean.splitAt(safeIndex)
     front ++ List(draggedId) ++ back
+  }
+
+  private def dropIndex(container: org.scalajs.dom.html.Div, mouseY: Double): Int = {
+    val items = container.querySelectorAll(".reorder-item")
+    var newIndex = items.length
+    var found = false
+    var i = 0
+    while (i < items.length && !found) {
+      val rect = items.item(i).asInstanceOf[org.scalajs.dom.html.Div].getBoundingClientRect()
+      val middleY = rect.top + (rect.height / 2)
+      if (mouseY < middleY) {
+        newIndex = i
+        found = true
+      }
+      i += 1
+    }
+    newIndex
   }
 
   private def renderItem(itemId: Int): Element = {
@@ -57,6 +77,7 @@ case class HtmlReorderInteraction[T](
 
     div(
       cls := "reorder-item",
+      cls.toggle("reorder-item--dragging") <-- draggingId.signal.map(_.contains(itemId)),
       draggable := true,
       onDragStart --> (_ => draggingId.set(Some(itemId))),
       onDragEnd --> (_ => {
@@ -72,24 +93,13 @@ case class HtmlReorderInteraction[T](
       cls := "reorder-list",
       onDragOver.preventDefault --> { e =>
         val container = e.currentTarget.asInstanceOf[org.scalajs.dom.html.Div]
-        val items = container.querySelectorAll(".reorder-item")
-        val mouseY = e.clientY
-
-        var newIndex = items.length
-        var found = false
-        var i = 0
-        while (i < items.length && !found) {
-          val rect = items.item(i).asInstanceOf[org.scalajs.dom.html.Div].getBoundingClientRect()
-          val middleY = rect.top + (rect.height / 2)
-          if (mouseY < middleY) { newIndex = i; found = true }
-          i += 1
-        }
-
-        hoverIndex.set(Some(newIndex))
+        hoverIndex.set(Some(dropIndex(container, e.clientY)))
       },
-      onDrop.preventDefault --> { _ =>
-        (draggingId.now(), hoverIndex.now()) match {
-          case (Some(idToMove), Some(targetIdx)) =>
+      onDrop.preventDefault --> { e =>
+        val container = e.currentTarget.asInstanceOf[org.scalajs.dom.html.Div]
+        val targetIdx = dropIndex(container, e.clientY)
+        draggingId.now() match {
+          case Some(idToMove) =>
             val updated = moveItem(sanitizeOrder(orderVar.now()), idToMove, targetIdx)
             orderVar.set(updated)
           case _ =>
@@ -97,10 +107,10 @@ case class HtmlReorderInteraction[T](
         draggingId.set(None)
         hoverIndex.set(None)
       },
-      children <-- orderVar.signal.combineWith(draggingId.signal, hoverIndex.signal).map {
-        case (rawOrder, dragging, hover) =>
+      children <-- orderVar.signal.combineWith(hoverIndex.signal).map {
+        case (rawOrder, hover) =>
           val ordered = sanitizeOrder(rawOrder)
-          val visible = ordered.filterNot(id => dragging.contains(id)).map(renderItem)
+          val visible = ordered.map(renderItem)
 
           hover match {
             case Some(index) =>
