@@ -1,9 +1,10 @@
 package interactionPlugins.programmingExercise.pythonExercise.pyodide
 
 import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.*
+import util.web.JsHelpers.promiseToFuture
 
 import scala.collection.mutable
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
@@ -64,19 +65,11 @@ final class PyodideMainThreadEnvironment {
         setStreams(pyodide, config.captureStdout, config.captureStderr)
         applyContext(pyodide, config.context)
 
-        val p = Promise[PythonRunReport]()
-        pyodide.runPythonAsync(code).`then`[Unit]({ (_: js.Any) =>
-          p.success(PythonRunReport(callbackOps, stdoutBuffer.mkString, stderrBuffer.mkString))
-          ()
-        }, { (err: Any) =>
-          p.failure(PythonWorkerFailure(
-            message = Option(err).map(_.toString).getOrElse("Pyodide run failed"),
-            stdout = stdoutBuffer.mkString,
-            stderr = stderrBuffer.mkString
-          ))
-          ()
-        })
-        p.future
+        promiseToFuture(pyodide.runPythonAsync(code))
+          .map(_ => PythonRunReport(callbackOps, stdoutBuffer.mkString, stderrBuffer.mkString))
+          .recoverWith { case err =>
+            Future.failed(toPythonWorkerFailure(err))
+          }
       }
     }
 
@@ -107,7 +100,7 @@ final class PyodideMainThreadEnvironment {
       case Some(instance) => Future.successful(instance)
       case None =>
         pyodidePromise.getOrElse {
-          val created = fromPromise(loadPyodide()).map { pyodide =>
+          val created = promiseToFuture(loadPyodide()).map { pyodide =>
             pyodideInstance = Some(pyodide)
             reinstallModules(pyodide)
             pyodide
@@ -180,11 +173,20 @@ final class PyodideMainThreadEnvironment {
   private def afterPreheat[A](fa: => Future[A]): Future[A] =
     preheated.flatMap(_ => fa)
 
-  private def fromPromise[A](promise: js.Promise[A]): Future[A] = {
-    val p = Promise[A]()
-    promise.`then`[Unit]({ (value: A) => p.success(value); () }, { (err: Any) => p.failure(js.JavaScriptException(err)); () })
-    p.future
-  }
+  private def toPythonWorkerFailure(err: Throwable): PythonWorkerFailure =
+    PythonWorkerFailure(
+      message = unwrapJavaScriptException(err),
+      stdout = stdoutBuffer.mkString,
+      stderr = stderrBuffer.mkString
+    )
+
+  private def unwrapJavaScriptException(err: Throwable): String =
+    err match {
+      case jsErr: js.JavaScriptException =>
+        Option(jsErr.exception).map(_.toString).getOrElse("Pyodide run failed")
+      case other =>
+        Option(other.getMessage).getOrElse("Pyodide run failed")
+    }
 
   private def toSeq(rawArgs: js.Any): Seq[js.Any] =
     if js.isUndefined(rawArgs) || rawArgs == null then Seq.empty
