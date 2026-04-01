@@ -1,13 +1,12 @@
-package interactionPlugins.programmingExercise.pythonExercise.pyodide
+package `export`.workers
 
-
-import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.*
+import `export`.modules.TurtleSingleton
 import contentmanagement.webElements.svg.TurtlePathBuilder
 import contentmanagement.webElements.svg.TurtlePathBuilder.{TurtleCommand, TurtleState}
 import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand
 import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand.*
-import datastructures.core.geometry.Dimension
-import datastructures.core.geometry.Point
+import datastructures.core.geometry.{Dimension, Point}
+import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.*
 import org.scalajs.dom
 import util.web.JsHelpers.*
 import util.web.{WorkerProtocolHelpers, WorkerRequestTracker}
@@ -229,7 +228,7 @@ object PyodideWorkerClient {
     }
   }
 
-  private[pyodide] def turtleBuilderFromCallbacks[T: Fractional](
+   def turtleBuilderFromCallbacks[T: Fractional](
                                                                    callbackOps: Seq[CallbackOp]
                                                                  ): TurtlePathBuilder[T] = {
     callbackOps
@@ -242,13 +241,14 @@ object PyodideWorkerClient {
 
   private def turtleCallbackLibrary(): CallbackLibrary = {
     val methods =
-      `export`.TurtleSingleton.allowedCommands().toList.map(name => name -> ignoreMethod).toMap
+      TurtleSingleton.allowedCommands().toList.map(name => name -> ignoreMethod).toMap
     CallbackLibrary("turtle", methods)
   }
 
   private def ignoreMethod(args: Vector[js.Any]): Unit = ()
 
-  private[pyodide] def parseTurtleCommands[T: Fractional](value: js.Any): List[TurtleCommand[T]] = {
+  
+   def parseTurtleCommands[T: Fractional](value: js.Any): List[TurtleCommand[T]] = {
     val arr = value.asInstanceOf[js.Array[js.Any]]
     arr.iterator.toList.map { raw =>
       val dyn = raw.asInstanceOf[js.Dynamic]
@@ -258,7 +258,7 @@ object PyodideWorkerClient {
     }
   }
 
-  private[pyodide] def parseTurtleState[T: Fractional](value: js.Any): TurtleState[T] = {
+   def parseTurtleState[T: Fractional](value: js.Any): TurtleState[T] = {
     val dyn = value.asInstanceOf[js.Dynamic]
     TurtleState[T](
       x = readNumberField[T](dyn, TurtleFieldKeys.X),
@@ -269,12 +269,12 @@ object PyodideWorkerClient {
     )
   }
 
-  private[pyodide] def parsePoint[T: Fractional](value: js.Any, fieldName: String = "point"): Point[T] = {
+   def parsePoint[T: Fractional](value: js.Any, fieldName: String = "point"): Point[T] = {
     val dyn = value.asInstanceOf[js.Dynamic]
     readPoint[T](dyn, TurtleFieldKeys.X, TurtleFieldKeys.Y, fieldName)
   }
 
-  private[pyodide] def parseSvgCommands[T: Fractional](value: js.Any): List[SvgPathBuilderCommand[T]] = {
+   def parseSvgCommands[T: Fractional](value: js.Any): List[SvgPathBuilderCommand[T]] = {
     val arr = value.asInstanceOf[js.Array[js.Any]]
     arr.iterator.toList.flatMap { raw =>
       val dyn = raw.asInstanceOf[js.Dynamic]
@@ -302,7 +302,7 @@ object PyodideWorkerClient {
     }
   }
 
-  private[pyodide] def readNumberField[T: Fractional](dyn: js.Dynamic, fieldName: String): T =
+   def readNumberField[T: Fractional](dyn: js.Dynamic, fieldName: String): T =
     readNumberField[T](dyn, fieldName, fieldName)
 
   private def readNumberField[T: Fractional](dyn: js.Dynamic, fieldName: String, displayFieldName: String): T = {
@@ -312,11 +312,11 @@ object PyodideWorkerClient {
     }
   }
 
-  private[pyodide] def readBoolField(dyn: js.Dynamic, fieldName: String): Boolean = {
+   def readBoolField(dyn: js.Dynamic, fieldName: String): Boolean = {
     readBooleanField(dyn, fieldName)
   }
 
-  private[pyodide] def readPoint[T: Fractional](dyn: js.Dynamic, xField: String, yField: String, context: String): Point[T] =
+   def readPoint[T: Fractional](dyn: js.Dynamic, xField: String, yField: String, context: String): Point[T] =
     Point[T](
       readNumberField[T](dyn, xField, s"$context.$xField"),
       readNumberField[T](dyn, yField, s"$context.$yField")

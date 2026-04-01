@@ -4,7 +4,6 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import org.scalajs.dom
 import org.scalajs.dom.{Blob, File, URL}
-import util.TypeConversion
 
 import java.io.IOException
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -20,7 +19,7 @@ object DownloadHelper {
     reader.readAsArrayBuffer(file)
 
     val promise = Promise[Array[Byte]]()
-    reader.onload = _ => promise.success(TypeConversion.decodeArrayBuffer(reader.result.asInstanceOf[ArrayBuffer]))
+    reader.onload = _ => promise.success(JsHelpers.decodeArrayBuffer(reader.result.asInstanceOf[ArrayBuffer]))
     reader.onerror = event => promise.failure(new Exception(s"Could not read '${file.name}': ${event.toString}"))
     promise.future
   }
@@ -34,7 +33,7 @@ object DownloadHelper {
         if (!response.ok)
           Future.failed(new IOException(s"IO Error while fetching '$url': response status ${response.status}"))
         else
-          JsHelpers.promiseToFuture(response.arrayBuffer()).map(TypeConversion.decodeArrayBuffer).recoverWith { case err =>
+          JsHelpers.promiseToFuture(response.arrayBuffer()).map(JsHelpers.decodeArrayBuffer).recoverWith { case err =>
             Future.failed(new IOException(s"Error loading buffer after fetching '$url': ${err.toString}"))
           }
       }

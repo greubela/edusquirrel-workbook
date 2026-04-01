@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
-import util.TypeConversion
+import util.web.JsHelpers
 
 sealed trait FullImage {
   def fileDescription: FileDescription
@@ -29,7 +29,7 @@ object FullImage {
     def download(): Unit = loadedFile.download()
 
     override lazy val imageSourceString: String = {
-      val b64str = TypeConversion.byteArrayToBase64String(loadedFile.data)
+      val b64str = JsHelpers.byteArrayToBase64String(loadedFile.data)
       "data:image/" + loadedFile.description.extension + ";base64, " + b64str
     }
   }

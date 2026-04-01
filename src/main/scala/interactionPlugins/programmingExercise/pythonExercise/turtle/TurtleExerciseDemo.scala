@@ -1,5 +1,6 @@
 package interactionPlugins.programmingExercise.pythonExercise.turtle
 
+import `export`.workers.PyodideWorkerClient
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement

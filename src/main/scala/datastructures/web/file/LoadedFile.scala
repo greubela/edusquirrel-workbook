@@ -1,6 +1,5 @@
 package datastructures.web.file
 
-import util.TypeConversion
 import util.web.DownloadHelper
 
 case class LoadedFile(description: FileDescription, data: Array[Byte]) {

@@ -2,8 +2,19 @@ package util.web
 
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.js
+import scala.scalajs.js.typedarray.{ArrayBuffer, DataView}
 
 object JsHelpers {
+
+
+  def decodeArrayBuffer(buf: ArrayBuffer): Array[Byte] = {
+    val data = new DataView(buf)
+    Array.tabulate[Byte](data.byteLength)(index => data.getInt8(index))
+  }
+
+  def base64StringToByteArray(in: String): Array[Byte] = java.util.Base64.getDecoder.decode(in)
+
+  def byteArrayToBase64String(in: Array[Byte]): String = java.util.Base64.getEncoder.encodeToString(in)
 
 
   def parseDouble(s: js.Any): Option[Double] = {

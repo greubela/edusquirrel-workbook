@@ -1,6 +1,8 @@
 package interactionPlugins.programmingExercise.pythonExercise.pyodide
 
+import `export`.workers.PyodideWorkerClient
 import munit.FunSuite
+
 import scala.scalajs.js
 import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.CallbackOp
 

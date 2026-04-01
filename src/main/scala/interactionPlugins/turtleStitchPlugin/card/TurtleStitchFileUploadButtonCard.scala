@@ -8,7 +8,7 @@ import interactionPlugins.turtleStitchPlugin.card.TurtleStitchFileUploadButtonCa
 import interactionPlugins.turtleStitchPlugin.card.TurtleStitchFileUploadButtonCard.StorageFormat.{BYTES_AS_BASE64_STRING, BYTES_AS_RAW_STRING}
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLButtonElement, HTMLDivElement, HTMLInputElement}
-import util.TypeConversion
+import util.web.{DownloadHelper, JsHelpers}
 import workbook.model.abstractions.WorkbookInteraction
 import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 import workbook.model.interaction.InteractionVariable
@@ -61,7 +61,7 @@ case class TurtleStitchFileUploadButtonCard(
   private def onFileReadSuccessfully(bytes: Array[Byte]): Unit = {
     val contentAsString: String = storageFormat match {
       case BYTES_AS_RAW_STRING => new String(bytes.map(_.toByte), "UTF-8")
-      case BYTES_AS_BASE64_STRING => TypeConversion.byteArrayToBase64String(bytes)
+      case BYTES_AS_BASE64_STRING => JsHelpers.byteArrayToBase64String(bytes)
     }
 
     interactionVariable.updateStateFromUserInteraction(contentAsString, System.currentTimeMillis(), UpdateImportance.MAJOR)
@@ -69,7 +69,7 @@ case class TurtleStitchFileUploadButtonCard(
   }
 
   private def onNewFileSelected(file: File): Unit = {
-    val fileFut: Future[Array[Byte]] = readBytes(file)
+    val fileFut: Future[Array[Byte]] = DownloadHelper.fetchFile(file)
 
     fileFut.onComplete {
       case Success(data) => onFileReadSuccessfully(data)
@@ -77,14 +77,7 @@ case class TurtleStitchFileUploadButtonCard(
     }(ExecutionContext.global)
 
   }
-
-  def readBytes(file: File): Future[Array[Byte]] = {
-    file.arrayBuffer().toFuture.map { buffer =>
-      val array = new Uint8Array(buffer)
-      Array.tabulate(array.length)(i => array(i).toByte)
-    }(scala.concurrent.ExecutionContext.global)
-  }
-
+  
   def getDomElement(): Element = fileDom
 
 }
