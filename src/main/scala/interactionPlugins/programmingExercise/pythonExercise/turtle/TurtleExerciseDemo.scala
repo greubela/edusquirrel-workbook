@@ -40,18 +40,6 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
 
   private val turtleBackend = PyodideWorkerClient()
 
-  /*private val asyncBackend = {
-    val environment = new PyodideWorkerEnvironment()
-    environment.register(TurtleAsyncBackend(outputCanvas))
-    environment
-  }
-
-  private val syncBackend = {
-    val environment = new MainThreadBackend()
-    environment.register(TurtleBackend(outputCanvas))
-    environment
-  }*/
-
   private val inputEditorElement = CodeMirrorEditor(codeVar)
 
   private val startButton: Element = button(
@@ -65,13 +53,20 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
     stderrVar.set("")
     globalsVar.set("{}")
     turtleExecutionHandler.reset()
+    PyodideWorkerClient.executeTurtleCode[Double](turtleBackend, codeVar.now()).onComplete {
+      case scala.util.Success(res: TurtleExecutionResult[Double]) =>
+        println("res 1: " + res)
+      case scala.util.Failure(exception) =>
+        println("execution failure 1: " + exception.getMessage)
+        stderrVar.set(exception.getMessage)
+    }
     turtleBackend.runWithCallbackLibrary(codeVar.now(), turtleExecutionHandler.callbackLibrary).onComplete {
       case scala.util.Success(runReport: PythonRunReport) =>
-        println("successfully executed, commands: " + runReport.callbackOps.mkString("\n", " -> ", "\n") + "report: " + runReport)
+        println("successfully executed, commands 2: " + runReport.callbackOps.mkString("\n", " -> ", "\n") + "report: " + runReport)
         stdoutVar.set(runReport.stdout)
         stderrVar.set(runReport.stderr)
       case scala.util.Failure(exception) =>
-        println("execution failure: " + exception.getMessage)
+        println("execution failure 2: " + exception.getMessage)
         stderrVar.set(exception.getMessage)
     }/*
     pyodideEnvironment.executeCodeFull(request).onComplete {

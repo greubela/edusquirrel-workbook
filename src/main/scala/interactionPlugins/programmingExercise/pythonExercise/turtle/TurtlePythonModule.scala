@@ -1,5 +1,5 @@
 package interactionPlugins.programmingExercise.pythonExercise.turtle
-
+/*
 object TurtlePythonModule {
   val moduleBootstrapPython: String =
     """
@@ -48,3 +48,4 @@ object TurtlePythonModule {
       |sys.modules["turtle"] = m
       |""".stripMargin
 }
+*/

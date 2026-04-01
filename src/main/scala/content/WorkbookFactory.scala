@@ -17,6 +17,5 @@ trait WorkbookFactory {
   def workbookInfoVar: L.Var[WorkbookInfo] = workbookInfo.workbookInfoVar
 
   def createWorkbook: Workbook
-
-
+  
 }

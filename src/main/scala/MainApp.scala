@@ -23,7 +23,6 @@ private val idAndContentList: List[(String, Element)] = List(
   //("workbookTest", TestWorkbookFactory.createTestWorkbook(AllWorkbookInfo.singleton.technicalElements.fullScreenContainer).getDomElement()),
   //("worksheetMonks", TestWorkbook(fullscreenElement).getDomElement()),
   ("workbookEmbroidery", CreateEmbroideryWorkbook(info).createWorkbook.getDomElement()),
-
 )
 
 def insertWorkbookContent(): Unit = {
