@@ -8,6 +8,8 @@ import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand.*
 import datastructures.core.geometry.Dimension
 import datastructures.core.geometry.Point
 import org.scalajs.dom
+import util.web.JsHelpers.*
+import util.web.WorkerRequestTracker
 
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -22,33 +24,28 @@ final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.js") {
       js.Dynamic.literal(`type` = "module").asInstanceOf[dom.WorkerOptions]
     )
 
-  private var nextId = 1
-  private val pending = js.Dictionary[Promise[js.Any]]()
+  private val tracker = new WorkerRequestTracker
 
   private val preheated: Future[Unit] = requestUnit("init")
 
   worker.onmessage = { (event: dom.MessageEvent) =>
-    val data = dyn(event.data.asInstanceOf[js.Any])
-    val id = asInt(data.id).toString
-
-    pending.get(id).foreach { promise =>
-      pending -= id
-      if (asBoolean(data.ok)) {
-        promise.success(data.payload.asInstanceOf[js.Any])
-      } else {
-        promise.failure(readFailure(data.error))
-      }
-    }
+    tracker.complete(event.data.asInstanceOf[js.Any])
   }
 
   worker.onerror = { (event: dom.ErrorEvent) =>
     val ex = js.JavaScriptException(
       s"${event.message} (${event.filename}:${event.lineno}:${event.colno})"
     )
-    pending.keys.foreach { key =>
-      pending(key).failure(ex)
-      pending -= key
-    }
+    tracker.failAll(
+      obj(
+        "ok" -> false,
+        "error" -> obj(
+          "message" -> ex.getMessage,
+          "stdout" -> "",
+          "stderr" -> ""
+        )
+      ).asInstanceOf[js.Dynamic]
+    )
   }
 
   def addCallbacks(moduleName: String, methodNames: Seq[String]): Future[Unit] =
@@ -131,7 +128,7 @@ final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.js") {
           "turtleMethods" -> turtleMethods.toJSArray
         )
       ).map { value =>
-        val payload = dyn(value)
+        val payload = asDynamic(value)
         val runReport = PythonRunReport(
           callbackOps = asArray(payload.callbackOps).iterator.map(readCallbackOp).toVector,
           stdout = asString(payload.stdout),
@@ -151,11 +148,11 @@ final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.js") {
     request(kind, payload).map(_ => ())
 
   private def request(kind: String, payload: js.Object = emptyObj): Future[js.Any] = {
-    val id = nextId
-    nextId += 1
-
     val promise = Promise[js.Any]()
-    pending(id.toString) = promise
+    val id = tracker.register { (data: js.Dynamic) =>
+      if (asBoolean(data.ok)) promise.success(data.payload.asInstanceOf[js.Any])
+      else promise.failure(readFailure(data.error))
+    }
 
     worker.postMessage(
       obj(
@@ -169,7 +166,7 @@ final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.js") {
   }
 
   private def readRunReport(value: js.Any): PythonRunReport = {
-    val payload = dyn(value)
+    val payload = asDynamic(value)
     PythonRunReport(
       callbackOps = asArray(payload.callbackOps).iterator.map(readCallbackOp).toVector,
       stdout = asString(payload.stdout),
@@ -178,7 +175,7 @@ final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.js") {
   }
 
   private def readCallbackOp(value: js.Any): CallbackOp = {
-    val op = dyn(value)
+    val op = asDynamic(value)
     CallbackOp(
       module = asString(op.module),
       method = asString(op.method),
@@ -187,7 +184,7 @@ final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.js") {
   }
 
   private def readFailure(value: js.Any): PythonWorkerFailure = {
-    val error = dyn(value)
+    val error = asDynamic(value)
     PythonWorkerFailure(
       message = asString(error.message),
       stdout = asString(error.stdout),
@@ -195,29 +192,6 @@ final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.js") {
     )
   }
 
-  private def obj(fields: (String, js.Any)*): js.Object =
-    js.Dynamic.literal(fields *).asInstanceOf[js.Object]
-
-  private def dyn(value: js.Any): js.Dynamic =
-    value.asInstanceOf[js.Dynamic]
-
-  private def asString(value: js.Any): String =
-    value.asInstanceOf[String]
-
-  private def asBoolean(value: js.Any): Boolean =
-    value.asInstanceOf[Boolean]
-
-  private def asInt(value: js.Any): Int =
-    value.asInstanceOf[Int]
-
-  private def asArray(value: js.Any): js.Array[js.Any] =
-    value.asInstanceOf[js.Array[js.Any]]
-
-  private def asDict(value: js.Any): js.Dictionary[js.Any] =
-    value.asInstanceOf[js.Dictionary[js.Any]]
-
-  private val emptyObj: js.Object =
-    (new js.Object).asInstanceOf[js.Object]
 }
 
 object PyodideWorkerClient {
@@ -340,9 +314,7 @@ object PyodideWorkerClient {
   }
 
   private[pyodide] def readBoolField(dyn: js.Dynamic, fieldName: String): Boolean = {
-    val raw = readRequiredField(dyn, fieldName, fieldName)
-    if (js.typeOf(raw) == "boolean") raw.asInstanceOf[Boolean]
-    else throw new IllegalArgumentException(s"Expected boolean field '$fieldName', but got '${js.typeOf(raw)}'.")
+    readBooleanField(dyn, fieldName)
   }
 
   private[pyodide] def readPoint[T: Fractional](dyn: js.Dynamic, xField: String, yField: String, context: String): Point[T] =
@@ -351,23 +323,8 @@ object PyodideWorkerClient {
       readNumberField[T](dyn, yField, s"$context.$yField")
     )
 
-  private def readStringField(dyn: js.Dynamic, fieldName: String): String = {
-    val raw = readRequiredField(dyn, fieldName, fieldName)
-    if (js.typeOf(raw) == "string") raw.asInstanceOf[String]
-    else throw new IllegalArgumentException(s"Expected string field '$fieldName', but got '${js.typeOf(raw)}'.")
-  }
-
-  private def readArrayField(dyn: js.Dynamic, fieldName: String): js.Array[js.Any] = {
-    val raw = readRequiredField(dyn, fieldName, fieldName)
-    if (js.Array.isArray(raw.asInstanceOf[js.Any])) raw.asInstanceOf[js.Array[js.Any]]
-    else throw new IllegalArgumentException(s"Expected array field '$fieldName', but got '${js.typeOf(raw)}'.")
-  }
-
   private def readRequiredField(dyn: js.Dynamic, fieldName: String, displayFieldName: String): js.Any = {
-    val raw = dyn.selectDynamic(fieldName).asInstanceOf[js.Any]
-    if (js.isUndefined(raw) || raw == null)
-      throw new IllegalArgumentException(s"Missing required field '$displayFieldName'.")
-    raw
+    util.web.JsHelpers.readRequiredField(dyn, fieldName, displayFieldName)
   }
 
   private def toT[T: Fractional](value: js.Any): Option[T] = {

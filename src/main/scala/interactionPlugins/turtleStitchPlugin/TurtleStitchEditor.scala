@@ -81,15 +81,8 @@ case class TurtleStitchEditor(projektXml: Var[String]) extends HtmlAppElement {
     handle match {
       case Some(existing) => JsPromise.resolve(existing)
       case None =>
-        val options = js.Dynamic.literal(
-          parentNode = parentNode,
-          width = 1440,
-          height = 1000,
-          hidden = false
-        )
-
         TurtleStitchEditor.TurtleStitchPoCNative
-          .createEditor(options.asInstanceOf[js.Object])
+          .createEditor(TurtleStitchEditor.editorOptions(hidden = false, parentNode = Some(parentNode), width = Some(1440), height = Some(1000)))
           .`then`[TurtleStitchEditor.JsEditorHandle]({ created =>
             handle = Some(created)
             created
@@ -119,7 +112,7 @@ case class TurtleStitchEditor(projektXml: Var[String]) extends HtmlAppElement {
       case Some(existing) => task(existing)
       case None =>
         TurtleStitchEditor.TurtleStitchPoCNative
-          .createEditor(js.Dynamic.literal(hidden = true).asInstanceOf[js.Object])
+          .createEditor(TurtleStitchEditor.editorOptions(hidden = true))
           .toFuture
           .flatMap { temporary =>
             task(temporary).andThen { case _ =>
@@ -153,6 +146,19 @@ private[turtleStitchPlugin] object TurtleStitchEditor {
     def clearProjectChangeListener(): Unit = js.native
     def destroy(): Unit = js.native
   }
+
+  private[turtleStitchPlugin] def editorOptions(
+                                                  hidden: Boolean,
+                                                  parentNode: Option[dom.Node] = None,
+                                                  width: Option[Int] = None,
+                                                  height: Option[Int] = None
+                                                ): js.Object = {
+    val raw = js.Dynamic.literal(hidden = hidden)
+    parentNode.foreach(node => raw.updateDynamic("parentNode")(node))
+    width.foreach(w => raw.updateDynamic("width")(w))
+    height.foreach(h => raw.updateDynamic("height")(h))
+    raw.asInstanceOf[js.Object]
+  }
   private def getOrCreateSingletonEditor()(using ec: ExecutionContext): Future[JsEditorHandle] = synchronized {
     singletonEditor match {
       case Some(editor) => Future.successful(editor)
@@ -161,7 +167,7 @@ private[turtleStitchPlugin] object TurtleStitchEditor {
           case Some(inProgress) => inProgress
           case None =>
             val creating = TurtleStitchPoCNative
-              .createEditor(js.Dynamic.literal(hidden = true).asInstanceOf[js.Object])
+              .createEditor(editorOptions(hidden = true))
               .toFuture
               .map { editor =>
                 synchronized {
@@ -201,7 +207,7 @@ private[turtleStitchPlugin] object TurtleStitchEditor {
   
   private def withFreshEditor[T](task: JsEditorHandle => Future[T])(using ec: ExecutionContext): Future[T] = {
     TurtleStitchPoCNative
-      .createEditor(js.Dynamic.literal(hidden = true).asInstanceOf[js.Object])
+      .createEditor(editorOptions(hidden = true))
       .toFuture
       .flatMap { editor =>
         task(editor).andThen { case _ =>

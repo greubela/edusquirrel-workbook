@@ -47,4 +47,61 @@ object JsHelpers {
   def asInt(value: js.Any): Int =
     if value == null || js.isUndefined(value) then 0
     else value.asInstanceOf[Double].toInt
+
+  def asDynamic(value: js.Any): js.Dynamic =
+    value.asInstanceOf[js.Dynamic]
+
+  def asArray(value: js.Any): js.Array[js.Any] =
+    value.asInstanceOf[js.Array[js.Any]]
+
+  def asDict(value: js.Any): js.Dictionary[js.Any] =
+    value.asInstanceOf[js.Dictionary[js.Any]]
+
+  def asString(value: js.Any): String =
+    value.asInstanceOf[String]
+
+  def obj(fields: (String, js.Any)*): js.Object =
+    js.Dynamic.literal(fields *).asInstanceOf[js.Object]
+
+  val emptyObj: js.Object =
+    (new js.Object).asInstanceOf[js.Object]
+
+  def readRequiredField(dyn: js.Dynamic, fieldName: String, displayFieldName: String = ""): js.Any = {
+    val shownName = if displayFieldName.nonEmpty then displayFieldName else fieldName
+    val raw = dyn.selectDynamic(fieldName).asInstanceOf[js.Any]
+    if (js.isUndefined(raw) || raw == null)
+      throw new IllegalArgumentException(s"Missing required field '$shownName'.")
+    raw
+  }
+
+  def readStringField(dyn: js.Dynamic, fieldName: String): String = {
+    val raw = readRequiredField(dyn, fieldName, fieldName)
+    if (js.typeOf(raw) == "string") raw.asInstanceOf[String]
+    else throw new IllegalArgumentException(s"Expected string field '$fieldName', but got '${js.typeOf(raw)}'.")
+  }
+
+  def readBooleanField(dyn: js.Dynamic, fieldName: String): Boolean = {
+    val raw = readRequiredField(dyn, fieldName, fieldName)
+    if (js.typeOf(raw) == "boolean") raw.asInstanceOf[Boolean]
+    else throw new IllegalArgumentException(s"Expected boolean field '$fieldName', but got '${js.typeOf(raw)}'.")
+  }
+
+  def readArrayField(dyn: js.Dynamic, fieldName: String): js.Array[js.Any] = {
+    val raw = readRequiredField(dyn, fieldName, fieldName)
+    if (js.Array.isArray(raw.asInstanceOf[js.Any])) raw.asInstanceOf[js.Array[js.Any]]
+    else throw new IllegalArgumentException(s"Expected array field '$fieldName', but got '${js.typeOf(raw)}'.")
+  }
+
+  def anyToSeq(raw: js.Any): Seq[js.Any] =
+    if js.isUndefined(raw) || raw == null then Seq.empty
+    else if js.Array.isArray(raw) then raw.asInstanceOf[js.Array[js.Any]].toSeq
+    else Seq(raw)
+
+  def javascriptErrorMessage(err: Throwable, fallback: String): String =
+    err match {
+      case jsErr: js.JavaScriptException =>
+        Option(jsErr.exception).map(_.toString).getOrElse(fallback)
+      case other =>
+        Option(other.getMessage).getOrElse(fallback)
+    }
 }
