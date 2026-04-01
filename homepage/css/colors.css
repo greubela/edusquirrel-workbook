@@ -1,23 +1,11 @@
 /* Shared design tokens for the workbook experience */
 :root {
-
-    // blue-ish color palette:
-
-    --color-container-background: #eef2f8;
-    --color-container-border-passive: #d6deeb;
-    --color-container-border-inactive: #1565c0;
-    --color-container-border-active: #2196f3;
-    --color-container-accent: #1565c0;
-
-
-
-
-
-
-
-
-
-
+  /* Container palette */
+  --color-container-background: #eef2f8;
+  --color-container-border-passive: #d6deeb;
+  --color-container-border-inactive: #1565c0;
+  --color-container-border-active: #2196f3;
+  --color-container-accent: #1565c0;
 
   /* Typography */
   --font-family-base: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -31,17 +19,11 @@
   --space-lg: 12px;
   --space-xl: 24px;
 
-  --standard-border-radius: var(--radius-sm);
   --radius-sm: 8px;
   --radius-md: 14px;
   --radius-lg: 22px;
 
-  --padding-small: 10px;
   --padding-medium: 20px;
-
-  --card-width: 500px;
-  --card-height: 750px;
-
   --transition: all 0.3s;
 
   /* Shadows */
@@ -49,9 +31,6 @@
   --shadow-soft: 0 22px 48px -28px rgba(15, 23, 42, 0.45);
   --shadow-button: 0 10px 24px -18px rgba(15, 23, 42, 0.5);
   --shadow-focus: 0 0 0 2px rgba(37, 99, 235, 0.2);
-  --shadow-highlight-editor: 0 18px 38px -24px rgba(48, 102, 229, 0.55);
-  --shadow-highlight-scaffolding: 0 18px 38px -24px rgba(245, 197, 66, 0.55);
-  --shadow-highlight-grading: 0 18px 38px -24px rgba(47, 155, 116, 0.55);
 
   /* Core palette */
   --color-surface: #ffffff;
@@ -64,75 +43,34 @@
 
   --color-text-primary: #182333;
   --color-text-secondary: #4c566a;
-  --color-text-contrast: #2f3c4f;
   --color-text-inverse: #ffffff;
 
   --color-focus: #2563eb;
 
   /* Accent colors */
-
-
-
-
-  --color-accent-blue-foreground: #2196f3;
   --color-accent-blue-background: #e3f2fd;
-  --color-container-background: #eef2f8;
-
-
   --color-accent-primary: #3066e5;
-  --color-accent-warm: #f5c542;
-  --color-accent-neutral: #d9dee8;
-  --color-accent-success: #2f9b74;
   --color-accent-error: #e66a6a;
-  
+
   /* Theme colors */
   --color-theme: #3066e5;
-  --color-accent: #f5c542;
   --color-dark: #003200;
 
   --color-on-accent-primary: var(--color-text-inverse);
-  --color-on-accent-warm: #3b2a00;
-  --color-on-accent-neutral: var(--color-text-contrast);
-  --color-on-accent-success: var(--color-text-inverse);
-  --color-on-accent-error: var(--color-text-inverse);
-
-  /* Status colors */
-  --color-status-info-bg: var(--color-surface-subtle);
-  --color-status-info-text: var(--color-text-secondary);
-  --color-status-warning-bg: var(--color-accent-warm);
-  --color-status-warning-text: var(--color-on-accent-warm);
-  --color-status-error-bg: var(--color-accent-error);
-  --color-status-error-text: var(--color-on-accent-error);
 
   /* Label palette */
   --color-label-editor-bg: var(--color-accent-primary);
   --color-label-editor-text: var(--color-on-accent-primary);
-  --color-label-scaffolding-bg: var(--color-accent-warm);
-  --color-label-scaffolding-text: var(--color-on-accent-warm);
-  --color-label-grading-correct-bg: var(--color-accent-success);
-  --color-label-grading-correct-text: var(--color-on-accent-success);
 
   /* Interaction surfaces */
   --color-interaction-background: var(--color-surface);
   --color-interaction-background-alt: var(--color-surface-muted);
   --color-interaction-border: var(--color-border-subtle);
 
-  /* Inputs */
-  --color-input-background: var(--color-surface);
-
   /* Buttons */
   --color-button-background: var(--color-surface-muted);
   --color-button-hover: var(--color-surface);
   --color-button-border: var(--color-interaction-border);
-
-  /* Background helpers */
-  --bg-card: var(--color-surface);
-  --bg-card-dark: var(--color-surface-subtle);
-
-  /* Gradients */
-
-  /* Legacy tokens mapped to the new palette */
-
 }
 
 * {
