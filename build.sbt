@@ -1,10 +1,10 @@
 
 import org.scalajs.linker.interface.ModuleKind
 
-enablePlugins(ScalaJSPlugin, ScalaJSBundlerPlugin)
+enablePlugins(ScalaJSPlugin)
 
 lazy val workbookApp = project.in(file("."))
-  .enablePlugins(ScalaJSPlugin, ScalaJSBundlerPlugin)
+  .enablePlugins(ScalaJSPlugin)
   .settings(
     scalaVersion := "3.3.3",
     scalaJSUseMainModuleInitializer := true,
@@ -14,7 +14,7 @@ lazy val workbookApp = project.in(file("."))
     Test / logBuffered := !sys.env.get("PRINT_SIMULATION").contains("1"),
 
     scalaJSLinkerConfig ~= {
-      _.withModuleKind(ModuleKind.CommonJSModule)
+      _.withModuleKind(ModuleKind.ESModule)
     },
 
     // Libraries
