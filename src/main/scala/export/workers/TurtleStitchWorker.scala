@@ -64,6 +64,18 @@ case class TurtleStitchWorker(
       )
     )
 
+  def getGreenFlagAsLispCode(xml_content: String): JsPromise[String] =
+    getGreenFlagAsLispCode(xml_content, "en")
+
+  def getGreenFlagAsLispCode(xml_content: String, language: String): JsPromise[String] =
+    requestString(
+      operation = "getGreenFlagAsLispCode",
+      payload = obj(
+        "xml_content" -> xml_content,
+        "language" -> language.asInstanceOf[js.Any]
+      )
+    )
+
   def destroy(): Unit = {
     requestUnit("destroy")
     worker.terminate()

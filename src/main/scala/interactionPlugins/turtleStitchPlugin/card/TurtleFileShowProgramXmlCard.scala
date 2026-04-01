@@ -43,7 +43,7 @@ case class TurtleFileShowProgramXmlCard(
   private def getPngProgramDisplayElement(humanLanguage: HumanLanguage, xml: Option[String]): Element = {
     if (xml.isEmpty) mapDataSrcStringToElement(None)
     else {
-      val elVar: Var[Option[String]] = TurtleStitchFacade.getPngDataSrcOfGreenFlagProgramEditor(xml.get, humanLanguage)
+      val elVar: Var[Option[String]] = TurtleStitchWorkerFacade.getPngDataSrcOfGreenFlagProgramEditor(xml.get, humanLanguage)
       div(
         child <-- elVar.signal.map(mapDataSrcStringToElement)
       )

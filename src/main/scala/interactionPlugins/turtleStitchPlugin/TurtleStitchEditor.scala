@@ -107,6 +107,9 @@ case class TurtleStitchEditor(projektXml: Var[String]) extends HtmlAppElement {
   def simulateGreenFlag()(using ec: ExecutionContext): Future[String] =
     withEditorHandle(_.simulateGreenFlag(projektXml.now()).toFuture)
 
+  def getGreenFlagAsLispCode()(using ec: ExecutionContext): Future[String] =
+    withEditorHandle(_.getGreenFlagAsLispCode(projektXml.now()).toFuture)
+
   def downloadDst()(using ec: ExecutionContext): Future[Unit] =
     withEditorHandle(_.downloadDst(projektXml.now()).toFuture)
 
@@ -142,6 +145,7 @@ private[turtleStitchPlugin] object TurtleStitchEditor {
   trait JsEditorHandle extends js.Object {
     def calcProgramSvg(xml_content: String, language: String): JsPromise[String] = js.native
     def simulateGreenFlag(xml_content: String): JsPromise[String] = js.native
+    def getGreenFlagAsLispCode(xml_content: String): JsPromise[String] = js.native
     def downloadDst(xml_content: String): JsPromise[Unit] = js.native
     def setProjectXml(xml_content: String): JsPromise[Unit] = js.native
     def getProjectXml(): JsPromise[String] = js.native
@@ -239,4 +243,7 @@ private[turtleStitchPlugin] object TurtleStitchEditor {
 
   def downloadDst(xml: String)(using ec: ExecutionContext): Future[Unit] =
     withSingletonEditor(_.downloadDst(xml).toFuture)
+
+  def getGreenFlagAsLispCode(xml: String)(using ec: ExecutionContext): Future[String] =
+    withSingletonEditor(_.getGreenFlagAsLispCode(xml).toFuture)
 }

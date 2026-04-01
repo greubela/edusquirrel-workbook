@@ -83,8 +83,6 @@
   ];
 
   let scriptsLoaded = false;
-  let singletonPreview = null;
-  let singletonBootPromise = null;
   let serializerCompatibilityPatchApplied = false;
 
   function injectScript(src) {
@@ -539,6 +537,41 @@
       this.ide.runScripts();
     }
 
+    greenFlagTopBlocks() {
+      const ide = this.ide;
+      if (!ide) return [];
+
+      const topBlocks = [];
+      const addFromScripts = (scripts) => {
+        scripts?.children?.forEach?.((block) => {
+          if (block?.selector !== "receiveGo") return;
+          if (typeof block.topBlock === "function" && block.topBlock() !== block) return;
+          topBlocks.push(block);
+        });
+      };
+
+      addFromScripts(ide.stage?.scripts);
+      ide.sprites?.asArray?.().forEach((sprite) => addFromScripts(sprite?.scripts));
+      return topBlocks;
+    }
+
+    greenFlagLispCode() {
+      const snippets = this.greenFlagTopBlocks()
+        .map((block) => {
+          try {
+            return typeof block?.toLisp === "function" ? block.toLisp(4) : "";
+          } catch (_) {
+            return "";
+          }
+        })
+        .filter((text) => typeof text === "string" && text.trim().length > 0);
+
+      if (!snippets.length) {
+        throw new Error("No green-flag script found for Lisp export.");
+      }
+      return snippets.join("\n\n");
+    }
+
     async runGreenFlagOnce() {
       this.forceLayout();
       try { this.ide.stopAllScripts?.(); } catch (_) {}
@@ -593,6 +626,12 @@
       await this.loadProjectXmlCanonical(xml_content);
       await this.runGreenFlagOnce();
       return this.snapshotStagePngDataUrl();
+    }
+
+    async getGreenFlagAsLispCode(xml_content) {
+      if (typeof xml_content !== "string") throw new Error("xml_content must be a string");
+      await this.loadProjectXmlCanonical(xml_content);
+      return this.greenFlagLispCode();
     }
 
     async downloadDst(xml_content) {
@@ -660,59 +699,40 @@
     }
   }
 
-  async function ensureSingletonPreview() {
-    await ensureScriptsLoaded();
-    if (singletonPreview && !singletonPreview._destroyed) return singletonPreview;
-    if (singletonBootPromise) return singletonBootPromise;
-
-    singletonBootPromise = (async () => {
-      const instance = new TurtleStitchEditorInstance({ hidden: true, width: 1400, height: 1000 });
-      await instance.boot();
-      singletonPreview = instance;
-
-      // Keep these globals only for legacy debugging compatibility and only for singleton preview.
-      window.world = instance.world;
-      window.ide = instance.ide;
-
-      log("[INFO] TurtleStitch hidden singleton preview booted.");
-      return instance;
-    })();
-
-    try {
-      return await singletonBootPromise;
-    } finally {
-      singletonBootPromise = null;
-    }
-  }
-
   async function createEditorInstance(options = {}) {
+    await ensureScriptsLoaded();
     const instance = new TurtleStitchEditorInstance(options);
     await instance.boot();
     return instance;
   }
 
   async function destroyHiddenPreview() {
-    if (!singletonPreview) return;
-    singletonPreview.destroy();
-    singletonPreview = null;
+    // Kept for backwards compatibility; editor instances are no longer singletons.
+  }
+
+  function unsupportedDirectApi(operation) {
+    throw new Error(
+      `${operation} is not supported as a static TurtleStitchPoC API call. ` +
+      "Create an editor via createEditor(...) for stateful editor operations, " +
+      "or use TurtleWorker for background computation."
+    );
   }
 
   const impl = {
     calcProgramPng: async (xml_content) => {
-      const preview = await ensureSingletonPreview();
-      return preview.calcProgramPng(xml_content);
+      return unsupportedDirectApi("calcProgramPng");
     },
     calcProgramSvg: async (xml_content, language) => {
-      const preview = await ensureSingletonPreview();
-      return preview.calcProgramSvg(xml_content, language);
+      return unsupportedDirectApi("calcProgramSvg");
     },
     simulateGreenFlag: async (xml_content) => {
-      const preview = await ensureSingletonPreview();
-      return preview.simulateGreenFlag(xml_content);
+      return unsupportedDirectApi("simulateGreenFlag");
+    },
+    getGreenFlagAsLispCode: async (xml_content) => {
+      return unsupportedDirectApi("getGreenFlagAsLispCode");
     },
     downloadDst: async (xml_content) => {
-      const preview = await ensureSingletonPreview();
-      return preview.downloadDst(xml_content);
+      return unsupportedDirectApi("downloadDst");
     },
     createEditor: async (options = {}) => createEditorInstance(options),
     destroyHiddenPreview
@@ -721,7 +741,7 @@
   // Boot and mark ready
   (async () => {
     try {
-      await ensureSingletonPreview();
+      await ensureScriptsLoaded();
       api._impl = impl;
       resolveReady();
       log("[INFO] API ready.");
