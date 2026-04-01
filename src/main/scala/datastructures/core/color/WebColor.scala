@@ -42,7 +42,47 @@ private case class WebColorNamed(name: String, sixDigitHexString: String) extend
 
 object WebColor {
 
+  private val webStyleRgbRegex = """^rgb\s*\(\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)(?:\s*,\s*([+-]?\d*\.?\d+))?\s*\)$""".r
 
+  def parseWebStyleRgbString(stringRepresentation: String): Option[RGBColor] = {
+
+    def parseComponent(component: String): Option[Double] = {
+      component.toDoubleOption.filter(value => value >= 0)
+    }
+
+    def normalizeColorComponent(value: Double, allInUnitRange: Boolean): Int = {
+      val normalized =
+        if (allInUnitRange) value * 255.0
+        else value
+      math.round(normalized).toInt
+    }
+
+    def normalizeAlpha(value: Double): Int = {
+      val normalized = if (value <= 1.0) value * 255.0 else value
+      math.round(normalized).toInt
+    }
+
+    stringRepresentation.toLowerCase match {
+      case webStyleRgbRegex(redPart, greenPart, bluePart, alphaPart) =>
+        val colorParts = Seq(redPart, greenPart, bluePart).map(parseComponent)
+        val alpha = Option(alphaPart).map(parseComponent).getOrElse(Some(255.0))
+
+        if (colorParts.forall(_.isDefined) && alpha.isDefined) {
+          val colorValues = colorParts.flatten
+          val alphaValue = alpha.get
+          val allInUnitRange = colorValues.forall(_ <= 1.0)
+          val red = normalizeColorComponent(colorValues(0), allInUnitRange)
+          val green = normalizeColorComponent(colorValues(1), allInUnitRange)
+          val blue = normalizeColorComponent(colorValues(2), allInUnitRange)
+          val normalizedAlpha = normalizeAlpha(alphaValue)
+
+          if (red <= 255 && green <= 255 && blue <= 255 && normalizedAlpha <= 255)
+            Some(RGBColor(red, green, blue, normalizedAlpha))
+          else None
+        } else None
+      case _ => None
+    }
+  }
 
   private def getSixDigitHex(stringRepresentation: String): Option[String] = {
 
@@ -73,13 +113,15 @@ object WebColor {
     val lower = stringRepresentation.toLowerCase
     val exWebNameCode = webColorNames.get(lower)
     val pureHex: Option[String] = getSixDigitHex(lower)
+    val rgbOption = parseWebStyleRgbString(lower)
 
     if (exWebNameCode.isDefined) {
       WebColorNamed(lower, exWebNameCode.get.substring(1, 7))
     } else if (pureHex.nonEmpty) {
       WebColorHexString(pureHex.get)
+    } else if (rgbOption.nonEmpty) {
+      rgbOption.get
     } else {
-      // todo: rgb(...) parser
       throw new IllegalArgumentException("Unknown web color '" + stringRepresentation + "'!")
     }
 
