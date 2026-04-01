@@ -640,10 +640,11 @@
       const requestedLanguage = this.requestedLanguageCode(language);
       try { globalThis.SnapTranslator?.unload?.(); } catch (_) {}
 
-      if (requestedLanguage !== "en") {
+      const safeLangForImport = this.normalizeSnapLanguage(requestedLanguage);
+      if (safeLangForImport !== "en") {
         // SnapTranslator.unload() strips language entries.
         // Re-import requested language scripts to repopulate translations.
-        importScriptForce(BASE_PROG_DIR + "adjusted/lang-" + requestedLanguage + ".js");
+        importScriptForce(BASE_PROG_DIR + "adjusted/lang-" + safeLangForImport + ".js");
       }
 
       const safeLang = this.normalizeSnapLanguage(requestedLanguage);
@@ -652,6 +653,15 @@
       }
 
       const ide = this.ide;
+      if (typeof ide.setLanguage === "function") {
+        await new Promise((resolve) => {
+          try {
+            ide.setLanguage(safeLang, () => resolve(), true);
+          } catch (_) {
+            resolve();
+          }
+        });
+      }
       try { ide.flushBlocksCache?.(); } catch (_) {}
       try { globalThis.SpriteMorph?.prototype?.initBlocks?.(); } catch (_) {}
       try { ide.spriteBar?.tabBar?.tabTo?.("scripts"); } catch (_) {}
