@@ -23,6 +23,30 @@ object TurtleXmlParser {
   case class IfThen(body: List[Command]) extends Command
   case class WhileLoop(body: List[Command]) extends Command
 
+  def simplify(xml: String): String = {
+    val hasDomParser = {
+      scala.util.Try(js.Dynamic.global.selectDynamic("DOMParser")).toOption
+        .exists(p => !(js.isUndefined(p) || p == null))
+    }
+    val hasXmlSerializer = {
+      scala.util.Try(js.Dynamic.global.selectDynamic("XMLSerializer")).toOption
+        .exists(p => !(js.isUndefined(p) || p == null))
+    }
+
+    if (hasDomParser && hasXmlSerializer) simplifyWithDomParser(xml)
+    else simplifyWithStringFallback(xml)
+  }
+
+  def getGreenFlagCommands(xml: String): List[Command] = {
+    val hasDomParser = {
+      scala.util.Try(js.Dynamic.global.selectDynamic("DOMParser")).toOption
+        .exists(p => !(js.isUndefined(p) || p == null))
+    }
+
+    if (hasDomParser) getGreenFlagCommandsWithDomParser(xml)
+    else getGreenFlagCommandsWithStringFallback(xml)
+  }
+
   def parse(xml: String): List[Command] = {
     val hasDomParser = {
       scala.util.Try(js.Dynamic.global.selectDynamic("DOMParser")).toOption
@@ -33,14 +57,38 @@ object TurtleXmlParser {
     else parseWithStringFallback(xml)
   }
 
+  private def simplifyWithDomParser(xml: String): String = {
+    val parser = new dom.DOMParser()
+    val document = parser.parseFromString(xml, "text/xml".asInstanceOf[dom.MIMEType])
+    removeNodesByTagName(document, "pentrails")
+    removeNodesByTagName(document, "thumbnail")
+    new dom.XMLSerializer().serializeToString(document)
+  }
+
+  private def simplifyWithStringFallback(xml: String): String =
+    """(?is)<(pentrails|thumbnail)\b[^>]*>.*?</\1>|<(pentrails|thumbnail)\b[^>]*/>""".r.replaceAllIn(xml, "")
+
+  private def getGreenFlagCommandsWithDomParser(xml: String): List[Command] = {
+    val parser = new dom.DOMParser()
+    val document = parser.parseFromString(xml, "text/xml".asInstanceOf[dom.MIMEType])
+    getTopLevelScripts(document)
+      .map(parseScript)
+      .find(_.contains(ReceiveGo))
+      .getOrElse(Nil)
+  }
+
+  private def getGreenFlagCommandsWithStringFallback(xml: String): List[Command] =
+    """(?is)<script\b[^>]*>(.*?)</script>""".r.findAllMatchIn(xml).toList
+      .map(_.group(0))
+      .map(parseWithStringFallback)
+      .find(_.contains(ReceiveGo))
+      .getOrElse(Nil)
+
   private def parseWithDomParser(xml: String): List[Command] = {
     val parser = new dom.DOMParser()
     val document = parser.parseFromString(xml, "text/xml".asInstanceOf[dom.MIMEType])
 
-    val scripts = document.getElementsByTagName("script")
-    val topLevelScripts = (0 until scripts.length).toList
-      .map(i => scripts.item(i))
-      .filter(node => Option(node.parentNode).exists(_.nodeName == "scripts"))
+    val topLevelScripts = getTopLevelScripts(document)
 
     val allScriptCommands = topLevelScripts.flatMap(parseScript)
 
@@ -50,6 +98,13 @@ object TurtleXmlParser {
       (0 until blocks.length).toList
         .flatMap(i => parseBlock(blocks.item(i)).toList)
     }
+  }
+
+  private def getTopLevelScripts(document: dom.Document): List[dom.Node] = {
+    val scripts = document.getElementsByTagName("script")
+    (0 until scripts.length).toList
+      .map(i => scripts.item(i))
+      .filter(node => Option(node.parentNode).exists(_.nodeName == "scripts"))
   }
 
   private def parseWithStringFallback(xml: String): List[Command] = {
@@ -231,5 +286,13 @@ object TurtleXmlParser {
       }
 
     next(node)
+  }
+
+  private def removeNodesByTagName(document: dom.Document, tagName: String): Unit = {
+    val nodes = document.getElementsByTagName(tagName)
+    val toRemove = (0 until nodes.length).toList.map(nodes.item)
+    toRemove.foreach { node =>
+      Option(node.parentNode).foreach(_.removeChild(node))
+    }
   }
 }
