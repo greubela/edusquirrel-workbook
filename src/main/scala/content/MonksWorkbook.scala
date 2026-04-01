@@ -1,4 +1,4 @@
-package content.monks
+package content
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}

@@ -1,4 +1,4 @@
-package content.TestWorkbook
+package content
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
@@ -10,11 +10,11 @@ import interactionPlugins.programmingExercise.pythonExercise.turtle.TurtleExerci
 import interactionPlugins.turtleStitchPlugin.TurtleStitchEditor
 import interactionPlugins.visualNovel.VisualNovelPanel
 import workbook.htmlElements.basic.{HtmlButtonElement, HtmlUnsafeHtmlInstructionElement}
+import workbook.htmlElements.container.*
 import workbook.model.*
 import workbook.model.abstractions.WorkbookInteraction
 import workbook.model.info.{AllWorkbookInfo, WorkbookConfig, WorkbookInfo}
 import workbook.user.User
-import workbook.htmlElements.container.*
 
 case class TestWorkbookFactory(override val workbookInfo: AllWorkbookInfo) extends WorkbookFactory {
 

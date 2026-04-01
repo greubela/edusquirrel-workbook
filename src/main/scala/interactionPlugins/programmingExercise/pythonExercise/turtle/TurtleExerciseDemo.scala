@@ -36,8 +36,6 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
 
   private val outputCanvas: WebCanvas = WebCanvas(1000, 1000)
 
-  private val turtleExecutionHandler = ExecuteTurtleOps(outputCanvas)
-
   private val turtleBackend = PyodideWorkerClient()
 
   private val inputEditorElement = CodeMirrorEditor(codeVar)
@@ -52,7 +50,6 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
     stdoutVar.set("")
     stderrVar.set("")
     globalsVar.set("{}")
-    turtleExecutionHandler.reset()
     PyodideWorkerClient.executeTurtleCode[Double](turtleBackend, codeVar.now()).onComplete {
       case scala.util.Success(res: TurtleExecutionResult[Double]) =>
         println("res 1: " + res)
@@ -60,25 +57,7 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
         println("execution failure 1: " + exception.getMessage)
         stderrVar.set(exception.getMessage)
     }
-    turtleBackend.runWithCallbackLibrary(codeVar.now(), turtleExecutionHandler.callbackLibrary).onComplete {
-      case scala.util.Success(runReport: PythonRunReport) =>
-        println("successfully executed, commands 2: " + runReport.callbackOps.mkString("\n", " -> ", "\n") + "report: " + runReport)
-        stdoutVar.set(runReport.stdout)
-        stderrVar.set(runReport.stderr)
-      case scala.util.Failure(exception) =>
-        println("execution failure 2: " + exception.getMessage)
-        stderrVar.set(exception.getMessage)
-    }/*
-    pyodideEnvironment.executeCodeFull(request).onComplete {
-      case scala.util.Success(result) =>
-        println("successfully executed, result: " + result)
-        stdoutVar.set(result.state.stdout)
-        stderrVar.set(result.state.stderr)
-        globalsVar.set(js.JSON.stringify(result.state.globals.toJSDictionary.asInstanceOf[js.Any]))
-      case scala.util.Failure(exception) =>
-        println("execution failure: " + exception.getMessage)
-        stderrVar.set(exception.getMessage)
-    }*/
+
   }
 
   private val outputStdOut: Element = pre(child.text <-- stdoutVar.signal)

@@ -1,9 +1,7 @@
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
-import content.EmbroideryWorkbook.CreateEmbroideryWorkbook
-import content.TestWorkbook.TestWorkbookFactory
-import content.plantworkshop
+import content.{CreateEmbroideryWorkbook, TestWorkbookFactory, plantworkshop}
 import content.plantworkshop.PlantWorkshopApp
 import org.scalajs.dom
 import org.scalajs.dom.document

@@ -1,21 +1,20 @@
-package content.EmbroideryWorkbook
+package content
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
-import content.TestWorkbook.TestWorkbookFactory
 import content.WorkbookFactory
 import datastructures.web.file.FileDescription
 import interactionPlugins.turtleStitchPlugin.TurtleStitchExploreProjectExercise
 import interactionPlugins.turtleStitchPlugin.card.*
 import org.scalajs.dom
 import org.scalajs.dom.URL
+import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement, HtmlUnsafeHtmlInstructionElement}
+import workbook.htmlElements.container.*
+import workbook.htmlElements.interactions.HtmlBasicTextInteraction
 import workbook.model.*
 import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.{AllWorkbookInfo, WorkbookConfig, WorkbookInfo}
 import workbook.user.User
-import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement, HtmlUnsafeHtmlInstructionElement}
-import workbook.htmlElements.container.*
-import workbook.htmlElements.interactions.HtmlBasicTextInteraction
 
 case class CreateEmbroideryWorkbook(override val workbookInfo: AllWorkbookInfo) extends WorkbookFactory {
 
