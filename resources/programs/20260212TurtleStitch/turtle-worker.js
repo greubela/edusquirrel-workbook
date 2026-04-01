@@ -41,7 +41,6 @@
   ];
 
   let scriptsLoaded = false;
-  const loadedLanguageScripts = new Set(["en"]);
   const importedScriptUrls = new Set();
 
   const WORKER_BASE_URL = (() => {
@@ -69,6 +68,13 @@
     if (!normalized || importedScriptUrls.has(normalized)) return false;
     importScripts(normalized);
     importedScriptUrls.add(normalized);
+    return true;
+  }
+
+  function importScriptForce(src) {
+    const normalized = normalizeScriptUrl(src);
+    if (!normalized) return false;
+    importScripts(normalized);
     return true;
   }
 
@@ -604,24 +610,33 @@
     normalizeSnapLanguage(lang) {
       if (!lang || typeof lang !== "string") return "en";
       if (globalThis.SnapTranslator?.dict && (lang in globalThis.SnapTranslator.dict)) return lang;
-      if (lang.includes("_")) {
-        const base = lang.split("_")[0];
+      if (lang.includes("_") || lang.includes("-")) {
+        const base = lang.split(/[_-]/)[0];
         if (globalThis.SnapTranslator?.dict && (base in globalThis.SnapTranslator.dict)) return base;
       }
       return "en";
     }
 
+    requestedLanguageCode(lang) {
+      if (!lang || typeof lang !== "string") return "en";
+      const normalized = lang.trim().toLowerCase();
+      if (!normalized) return "en";
+      return normalized.split(/[_-]/)[0] || "en";
+    }
+
     async setLanguageWithoutProjectReloadAsync(language) {
       if (!this.ide) return false;
 
-      const safeLang = this.normalizeSnapLanguage(language);
+      const requestedLanguage = this.requestedLanguageCode(language);
       try { globalThis.SnapTranslator?.unload?.(); } catch (_) {}
 
-      if (safeLang !== "en" && !loadedLanguageScripts.has(safeLang)) {
-        importScriptOnce(BASE_PROG_DIR + "adjusted/lang-" + safeLang + ".js");
-        loadedLanguageScripts.add(safeLang);
+      if (requestedLanguage !== "en") {
+        // SnapTranslator.unload() strips language entries.
+        // Re-import requested language scripts to repopulate translations.
+        importScriptForce(BASE_PROG_DIR + "adjusted/lang-" + requestedLanguage + ".js");
       }
 
+      const safeLang = this.normalizeSnapLanguage(requestedLanguage);
       if (globalThis.SnapTranslator) {
         globalThis.SnapTranslator.language = safeLang;
       }
@@ -644,6 +659,9 @@
       await this.boot();
       if (typeof xml !== "string") throw new Error("xml must be a string");
 
+      // TurtleStitch XML parsing depends on English block specs.
+      // Keep the editor in English while loading project XML.
+      await this.setLanguageWithoutProjectReloadAsync("en");
       this.ide.loadProjectXML(xml);
       await sleep(350);
 
@@ -819,8 +837,8 @@
 
     async simulateGreenFlag(xml, language = "en") {
       await this.loadProjectXmlCanonical(xml);
-      await this.setLanguageWithoutProjectReloadAsync(language);
       await this.runGreenFlagOnce();
+      await this.setLanguageWithoutProjectReloadAsync(language);
       return this.snapshotStagePngDataUrl();
     }
 
