@@ -72,6 +72,7 @@ final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.js") {
     val exRes = run(code, config)
     exRes.onComplete {
       case scala.util.Success(runReport: PythonRunReport) => {
+        println("run fully executed, incl. all commands ")
         handleLibrary(runReport.callbackOps.toList, callbackLibrary)
         res.success(runReport)
       }

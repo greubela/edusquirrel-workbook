@@ -28,7 +28,7 @@ object PyodideBackends {
 
   final case class PythonRunConfig(
                                     context: js.Dictionary[js.Any] = js.Dictionary.empty,
-                                    resetGlobals: Boolean = false,
+                                    resetGlobals: Boolean = true,
                                     captureStdout: Boolean = true,
                                     captureStderr: Boolean = true
                                   )

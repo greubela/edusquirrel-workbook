@@ -10,7 +10,6 @@ import scala.util.Try
 case class ExecuteTurtleOps(canvas: WebCanvas) {
 
 
-
   private case class TurtleState(
                                   x: AlgebriteNumber,
                                   y: AlgebriteNumber,
@@ -22,14 +21,19 @@ case class ExecuteTurtleOps(canvas: WebCanvas) {
                                   visible: Boolean
                                 )
 
-  private val initState = TurtleState(AlgebriteNumber("0"), AlgebriteNumber("0"), AlgebriteNumber("90"), true, AlgebriteNumber("2"), RGBColor.red, RGBColor.black, true)
+  private val initState = TurtleState(AlgebriteNumber("0"), AlgebriteNumber("0"), AlgebriteNumber("0"), true, AlgebriteNumber("5"), RGBColor.red, RGBColor.black, true)
   private var backgroundColor: AppColor = RGBColor.yellow
 
 
-  private var turtle = {
+  def reset(): Unit = {
     canvas.clear(backgroundColor)
     canvas.setFillColor(initState.fillColor)
     canvas.setStrokeColor(initState.penColor)
+    turtle = initState
+  }
+
+  private var turtle = {
+    reset()
     initState
   }
 
@@ -65,17 +69,19 @@ case class ExecuteTurtleOps(canvas: WebCanvas) {
       ++ synonymMap(List("clear", "clearscreen"), args => clearScreen(resetTurtle = false))
       ++ funcMap("setx", args => goto(numberArg(args, 0), turtle.y))
       ++ funcMap("sety", args => goto(turtle.x, numberArg(args, 0)))
-      ++ funcMap("home", args => turtle = turtle.copy(x = AlgebriteNumber("0"), y = AlgebriteNumber("0"), headingDeg = AlgebriteNumber("90")))
+      ++ funcMap("home", args => turtle = turtle.copy(x = AlgebriteNumber("0"), y = AlgebriteNumber("0"), headingDeg = AlgebriteNumber("0")))
       ++ funcMap("reset", args => clearScreen(resetTurtle = true))
       ++ funcMap("dot", fillDot)
       ++ funcMap("circle", args => drawCircle(numberArg(args, 0)))
   }
 
+  private def twoDigitDoubleToAlgebrite(double: Double): AlgebriteNumber = AlgebriteNumber(("%.2f").format(double))
+
   private def forward(distance: AlgebriteNumber): Unit = {
     println("##### foooorwaaaard!!!")
-    val rad = turtle.headingDeg.toDouble * Math.PI / 180.0
-    val dx = AlgebriteNumber((Math.cos(rad) * distance.toDouble).toString)
-    val dy = AlgebriteNumber((Math.sin(rad) * distance.toDouble).toString)
+    val rad: Double = turtle.headingDeg.toDouble * Math.PI / 180.0
+    val dx = twoDigitDoubleToAlgebrite(Math.cos(rad) * distance.toDouble)
+    val dy = twoDigitDoubleToAlgebrite(Math.sin(rad) * distance.toDouble)
     val nx = turtle.x + dx
     val ny = turtle.y + dy
     drawMove(nx, ny)
@@ -103,6 +109,8 @@ case class ExecuteTurtleOps(canvas: WebCanvas) {
         toCanvasY(newY),
         turtle.penSize.toDouble
       )
+    } else {
+      println("pen is not down")
     }
   }
 

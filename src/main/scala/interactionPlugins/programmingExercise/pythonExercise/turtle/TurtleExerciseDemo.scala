@@ -34,7 +34,7 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
   private val stderrVar = Var("")
   private val globalsVar = Var("{}")
 
-  private val outputCanvas: WebCanvas = WebCanvas(500, 500)
+  private val outputCanvas: WebCanvas = WebCanvas(1000, 1000)
 
   private val turtleExecutionHandler = ExecuteTurtleOps(outputCanvas)
 
@@ -64,7 +64,7 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
     stdoutVar.set("")
     stderrVar.set("")
     globalsVar.set("{}")
-
+    turtleExecutionHandler.reset()
     turtleBackend.runWithCallbackLibrary(codeVar.now(), turtleExecutionHandler.callbackLibrary).onComplete {
       case scala.util.Success(runReport: PythonRunReport) =>
         println("successfully executed, commands: " + runReport.callbackOps.mkString("\n", " -> ", "\n") + "report: " + runReport)
@@ -97,6 +97,7 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
       gap := "1rem",
       div(flex := "1", inputEditorElement.getDomElement()),
       div(
+        width := "750px",
         display.flex,
         flexDirection.column,
         gap := "0.75rem",
