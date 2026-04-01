@@ -131,7 +131,7 @@ case class TurtleStitchEditor(projektXml: Var[String]) extends HtmlAppElement {
   }
 }
 
-object TurtleStitchEditor {
+private[turtleStitchPlugin] object TurtleStitchEditor {
   private var singletonEditor: Option[JsEditorHandle] = None
   private var singletonEditorCreation: Option[Future[JsEditorHandle]] = None
   private var singletonExecutionQueue: Future[Unit] = Future.successful(())
@@ -182,7 +182,7 @@ object TurtleStitchEditor {
     }
   }
 
-  private def withSingletonEditor[T](task: JsEditorHandle => Future[T])(using ec: ExecutionContext): Future[T] = {
+  def withSingletonEditor[T](task: JsEditorHandle => Future[T])(using ec: ExecutionContext): Future[T] = {
     val result = Promise[T]()
     synchronized {
       singletonExecutionQueue = singletonExecutionQueue
@@ -210,27 +210,12 @@ object TurtleStitchEditor {
         }
       }
   }
-
-  private[turtleStitchPlugin] def turtleLang(language: HumanLanguage): String =
+  
+  def turtleLang(language: HumanLanguage): String =
     AppLanguage.turtleStitchLangMap.getOrElse(language, "en")
+  
 
-  val programSvgDataSrcStorage: AsyncDataCache[(String, HumanLanguage), String] = new AsyncDataCache[(String, HumanLanguage), String]("ProgramSvgDataSrc", false) {
-    protected def executeLoading(in: (String, HumanLanguage))(ec: ExecutionContext): Future[String] = {
-      val (xml, language) = in
-      withSingletonEditor(_.calcProgramSvg(xml, turtleLang(language)).toFuture)(using ec)
-    }
-
-    protected def defaultValueWhileLoading(in: (String, HumanLanguage)): Option[String] =
-      Some(TranslationMaps.languageMapImageLoading.getInLanguage(in._2))
-
-    protected def formatInputForLogging(in: (String, HumanLanguage)): String =
-      s"XmlInput(${in._1.length}, ${in._1.substring(0, 60)}, ${turtleLang(in._2)})"
-
-    protected def formatOutputForLogging(out: String): String =
-      s"SvgOutput(${out.length}, ${out.substring(0, 60)} ...)"
-  }
-
-  val programOutputDataSrcStorage: AsyncDataCache[String, String] = new AsyncDataCache[String, String]("ProgramPngDataSrc", false) {
+  private val programOutputDataSrcStorage: AsyncDataCache[String, String] = new AsyncDataCache[String, String]("ProgramPngDataSrc", false) {
     protected def executeLoading(xml: String)(ec: ExecutionContext): Future[String] =
       withSingletonEditor(_.simulateGreenFlag(xml).toFuture)(using ec)
 

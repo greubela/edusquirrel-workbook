@@ -1,5 +1,6 @@
 package contentmanagement.webElements.svg.shapes
 
+import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import datastructures.core.geometry.Bounds
 
 /**

@@ -54,25 +54,16 @@ case class TurtleFileShowProgramXmlCard(
     )
   }
 
-  private def getSvgProgramDisplayElement(humanLanguage: HumanLanguage, xml: Option[String]): Element = {
+  private def getPngProgramDisplayElement(humanLanguage: HumanLanguage, xml: Option[String]): Element = {
     if (xml.isEmpty) mapDataSrcStringToElement(None)
     else {
-      val elVar = TurtleStitchEditor.programSvgDataSrcStorage.loadIntoVariable((xml.get, humanLanguage))(ExecutionContext.global)
+      val elVar: Var[Option[String]] = TurtleStitchFacade.getPngDataSrcOfGreenFlagProgramEditor(xml.get, humanLanguage)
       div(
         child <-- elVar.signal.map(mapDataSrcStringToElement)
       )
     }
   }
 
-  private def getPngOutputDisplayElement(xml: Option[String]): Element = {
-    if (xml.isEmpty) mapDataSrcStringToElement(None)
-    else {
-      val elVar = TurtleStitchEditor.programOutputDataSrcStorage.loadIntoVariable(xml.get)(ExecutionContext.global)
-      div(
-        child <-- elVar.signal.map(mapDataSrcStringToElement)
-      )
-    }
-  }
 
   private val domElement: Element = div(
     cls := "preview-card",
@@ -83,7 +74,7 @@ case class TurtleFileShowProgramXmlCard(
         val xmlSignal: Signal[Option[String]] = projectXmlVar.signal
         val languageSignal: Signal[HumanLanguage] = workbookInfoVar.signal.map(_.config.currentWorkbookLanguage)
         val combinedSignal: Signal[(HumanLanguage, Option[String])] = languageSignal.combineWith(xmlSignal)
-        combinedSignal.map(tup => getSvgProgramDisplayElement(tup._1, tup._2))
+        combinedSignal.map(tup => getPngProgramDisplayElement(tup._1, tup._2))
       }),
     downloadButton
   )
