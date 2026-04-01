@@ -344,6 +344,24 @@ textarea.workbook-interaction  {
   opacity: 0.85;
 }
 
+
+.workbook-interaction.simple-boolean-editor {
+  width: 100%;
+  box-sizing: border-box;
+  margin: var(--space-sm) 0;
+  padding: var(--space-md);
+  border-left: var(--space-md) solid var(--color-container-border-inactive);
+  border-top: var(--space-xs) solid var(--color-container-border-passive);
+  border-right: var(--space-xs) solid var(--color-container-border-passive);
+  border-bottom: var(--space-xs) solid var(--color-container-border-passive);
+  background: var(--color-interaction-background);
+}
+
+.workbook-interaction.simple-boolean-editor:hover {
+  border-left-color: var(--color-container-border-active);
+  background: var(--color-interaction-background-alt);
+}
+
 .simple-boolean-editor {
   display: flex;
   align-items: center;

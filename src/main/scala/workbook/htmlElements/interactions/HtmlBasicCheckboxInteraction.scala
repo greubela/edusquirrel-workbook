@@ -22,7 +22,7 @@ case class HtmlBasicCheckboxInteraction(
 
   override def getDomElement(): L.Element = {
     div(
-      cls := "simple-boolean-editor",
+      cls := "workbook-interaction simple-boolean-editor",
       label(
         cls := "simple-boolean-editor__body",
         input(

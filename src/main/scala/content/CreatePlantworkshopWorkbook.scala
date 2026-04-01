@@ -120,7 +120,10 @@ case class CreatePlantworkshopWorkbook(override val workbookInfo: AllWorkbookInf
         "componentPump",
         "componentRelay",
         "componentPowerSupply",
-        "componentConnectionCable"
+        "componentWires",
+        "componentHoses",
+        "componentConnectionCable",
+        "componentUsbCable"
       ),
       "plant-components-check"
     )
