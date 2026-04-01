@@ -26,6 +26,8 @@ object WorkbookLanguageInfo {
     FileDescription.relativeToResourceFolder("/languageMaps/EmbroideryWorkbook-de.json"),
     FileDescription.relativeToResourceFolder("/languageMaps/TestWorkbook-en.json"),
     FileDescription.relativeToResourceFolder("/languageMaps/TestWorkbook-de.json"),
+    FileDescription.relativeToResourceFolder("/languageMaps/PlantWorkshop-en.json"),
+    FileDescription.relativeToResourceFolder("/languageMaps/PlantWorkshop-de.json"),
   )
 
   private val languageByFileSuffix: Map[String, HumanLanguage] = Map(

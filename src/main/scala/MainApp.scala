@@ -1,7 +1,7 @@
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
-import content.{CreateEmbroideryWorkbook, TestWorkbookFactory, plantworkshop}
+import content.{CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, TestWorkbookFactory, plantworkshop}
 import content.plantworkshop.PlantWorkshopApp
 import org.scalajs.dom
 import org.scalajs.dom.document
@@ -17,6 +17,7 @@ private def fullscreenElement = AllWorkbookInfo.singleton.technicalElements.full
 
 private val idAndContentList: List[(String, Element)] = List(
   ("plantWorkshopApp", plantworkshop.PlantWorkshopApp.appElement),
+  ("workbookPlantWorkshop", CreatePlantworkshopWorkbook(info).createWorkbook.getDomElement()),
   //("testEditor", HtmlFullscreenTurtleEditorElement(BeProgram.debugGraphicsProgram().fullProgram).getDomElement()),
   //("workbookTest", TestWorkbookFactory.createTestWorkbook(AllWorkbookInfo.singleton.technicalElements.fullScreenContainer).getDomElement()),
   //("worksheetMonks", TestWorkbook(fullscreenElement).getDomElement()),

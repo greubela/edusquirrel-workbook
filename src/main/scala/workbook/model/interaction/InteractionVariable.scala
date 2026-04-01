@@ -114,6 +114,21 @@ object InteractionVariable {
       io)
 
 
+  def booleanVariable(interaction: WorkbookInteraction[Boolean], defaultValue: Boolean): InteractionVariable[Boolean] = {
+    val io = new Serializer[Boolean] {
+      override def serialize(obj: Boolean): String = obj.toString
+
+      override def deserialize(serialized: String): Boolean = serialized.toBooleanOption.getOrElse(false)
+    }
+    InteractionVariable(
+      interaction,
+      List(InteractionVariableState(defaultValue, System.currentTimeMillis(), UpdateImportance.DEFAULT)),
+      interaction.workbookInfoVar.now().config.getSyncDestinations(),
+      io
+    )
+  }
+
+
   private case class SerializedExerciseVariableState(
                                                       epochTimestampMillis: Long,
                                                       serializedValue: String,
