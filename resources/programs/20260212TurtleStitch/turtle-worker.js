@@ -41,7 +41,6 @@
   ];
 
   let scriptsLoaded = false;
-  const loadedLanguageScripts = new Set(["en"]);
   const importedScriptUrls = new Set();
 
   const WORKER_BASE_URL = (() => {
@@ -69,6 +68,13 @@
     if (!normalized || importedScriptUrls.has(normalized)) return false;
     importScripts(normalized);
     importedScriptUrls.add(normalized);
+    return true;
+  }
+
+  function importScriptForce(src) {
+    const normalized = normalizeScriptUrl(src);
+    if (!normalized) return false;
+    importScripts(normalized);
     return true;
   }
 
@@ -634,9 +640,10 @@
       const requestedLanguage = this.requestedLanguageCode(language);
       try { globalThis.SnapTranslator?.unload?.(); } catch (_) {}
 
-      if (requestedLanguage !== "en" && !loadedLanguageScripts.has(requestedLanguage)) {
-        importScriptOnce(BASE_PROG_DIR + "adjusted/lang-" + requestedLanguage + ".js");
-        loadedLanguageScripts.add(requestedLanguage);
+      if (requestedLanguage !== "en") {
+        // SnapTranslator.unload() strips language entries.
+        // Re-import requested language scripts to repopulate translations.
+        importScriptForce(BASE_PROG_DIR + "adjusted/lang-" + requestedLanguage + ".js");
       }
 
       const safeLang = this.normalizeSnapLanguage(requestedLanguage);
