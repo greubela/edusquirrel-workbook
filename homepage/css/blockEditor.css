@@ -92,12 +92,6 @@
   justify-items: center;
 }
 
-.be-fullscreen-panel__placeholder {
-  font-size: var(--fontsize-text);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
 .be-fullscreen-panel-label {
   margin: 0;
   font-size: 0.95rem;
@@ -308,4 +302,3 @@
 .simple-selector-editor__select {
   width: fit-content;
 }
-
