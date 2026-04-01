@@ -222,6 +222,32 @@ final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.js") {
 
 object PyodideWorkerClient {
 
+  private object TurtleFieldKeys {
+    val StartPoint = "startPoint"
+    val TurtleState = "turtleState"
+    val TurtleCommands = "turtleCommands"
+    val SvgPathBuilderCommands = "svgPathBuilderCommands"
+
+    val Name = "name"
+    val Args = "args"
+    val Kind = "kind"
+
+    val X = "x"
+    val Y = "y"
+    val Dx = "dx"
+    val Dy = "dy"
+    val Rx = "rx"
+    val Ry = "ry"
+    val RotationDeg = "rotationDeg"
+    val Radius = "radius"
+
+    val HeadingDeg = "headingDeg"
+    val PenDown = "penDown"
+    val Visible = "visible"
+    val LargeArc = "largeArc"
+    val Sweep = "sweep"
+  }
+
   def executeTurtleCode[T: Fractional](
                                         worker: PyodideWorkerClient,
                                         turtlePythonCode: String
@@ -233,10 +259,10 @@ object PyodideWorkerClient {
       val turtlePayload = turtlePayloadRaw.asInstanceOf[js.Dynamic]
       TurtleExecutionResult[T](
         regularExecutionResult = runReport,
-        startPoint = parsePoint[T](turtlePayload.startPoint.asInstanceOf[js.Any]),
-        turtleState = parseTurtleState[T](turtlePayload.turtleState.asInstanceOf[js.Any]),
-        turtleCommands = parseTurtleCommands[T](turtlePayload.turtleCommands.asInstanceOf[js.Any]),
-        svgPathBuilderCommands = parseSvgCommands[T](turtlePayload.svgPathBuilderCommands.asInstanceOf[js.Any])
+        startPoint = parsePoint[T](readRequiredField(turtlePayload, TurtleFieldKeys.StartPoint, TurtleFieldKeys.StartPoint), TurtleFieldKeys.StartPoint),
+        turtleState = parseTurtleState[T](readRequiredField(turtlePayload, TurtleFieldKeys.TurtleState, TurtleFieldKeys.TurtleState)),
+        turtleCommands = parseTurtleCommands[T](readRequiredField(turtlePayload, TurtleFieldKeys.TurtleCommands, TurtleFieldKeys.TurtleCommands)),
+        svgPathBuilderCommands = parseSvgCommands[T](readRequiredField(turtlePayload, TurtleFieldKeys.SvgPathBuilderCommands, TurtleFieldKeys.SvgPathBuilderCommands))
       )
     }
   }
@@ -249,61 +275,99 @@ object PyodideWorkerClient {
 
   private def ignoreMethod(args: Vector[js.Any]): Unit = ()
 
-  private def parseTurtleCommands[T: Fractional](value: js.Any): List[TurtleCommand[T]] = {
+  private[pyodide] def parseTurtleCommands[T: Fractional](value: js.Any): List[TurtleCommand[T]] = {
     val arr = value.asInstanceOf[js.Array[js.Any]]
     arr.iterator.toList.map { raw =>
       val dyn = raw.asInstanceOf[js.Dynamic]
-      val name = dyn.name.asInstanceOf[String]
-      val args = dyn.args.asInstanceOf[js.Array[js.Any]].iterator.flatMap(toT[T]).toList
+      val name = readStringField(dyn, TurtleFieldKeys.Name)
+      val args = readArrayField(dyn, TurtleFieldKeys.Args).iterator.flatMap(toT[T]).toList
       TurtleCommand[T](name, args)
     }
   }
 
-  private def parseTurtleState[T: Fractional](value: js.Any): TurtleState[T] = {
+  private[pyodide] def parseTurtleState[T: Fractional](value: js.Any): TurtleState[T] = {
     val dyn = value.asInstanceOf[js.Dynamic]
     TurtleState[T](
-      x = toT[T](dyn.x.asInstanceOf[js.Any]).get,
-      y = toT[T](dyn.y.asInstanceOf[js.Any]).get,
-      headingDeg = toT[T](dyn.headingDeg.asInstanceOf[js.Any]).get,
-      penDown = dyn.penDown.asInstanceOf[Boolean],
-      visible = dyn.visible.asInstanceOf[Boolean]
+      x = readNumberField[T](dyn, TurtleFieldKeys.X),
+      y = readNumberField[T](dyn, TurtleFieldKeys.Y),
+      headingDeg = readNumberField[T](dyn, TurtleFieldKeys.HeadingDeg),
+      penDown = readBoolField(dyn, TurtleFieldKeys.PenDown),
+      visible = readBoolField(dyn, TurtleFieldKeys.Visible)
     )
   }
 
-  private def parsePoint[T: Fractional](value: js.Any): Point[T] = {
+  private[pyodide] def parsePoint[T: Fractional](value: js.Any, fieldName: String = "point"): Point[T] = {
     val dyn = value.asInstanceOf[js.Dynamic]
-    Point[T](
-      toT[T](dyn.x.asInstanceOf[js.Any]).get,
-      toT[T](dyn.y.asInstanceOf[js.Any]).get
-    )
+    readPoint[T](dyn, TurtleFieldKeys.X, TurtleFieldKeys.Y, fieldName)
   }
 
-  private def parseSvgCommands[T: Fractional](value: js.Any): List[SvgPathBuilderCommand[T]] = {
+  private[pyodide] def parseSvgCommands[T: Fractional](value: js.Any): List[SvgPathBuilderCommand[T]] = {
     val arr = value.asInstanceOf[js.Array[js.Any]]
     arr.iterator.toList.flatMap { raw =>
       val dyn = raw.asInstanceOf[js.Dynamic]
-      val kind = dyn.kind.asInstanceOf[String]
+      val kind = readStringField(dyn, TurtleFieldKeys.Kind)
       kind match {
         case "MoveAbs" =>
-          Some(MoveAbs[T](Point[T](toT[T](dyn.x.asInstanceOf[js.Any]).get, toT[T](dyn.y.asInstanceOf[js.Any]).get)))
+          Some(MoveAbs[T](readPoint[T](dyn, TurtleFieldKeys.X, TurtleFieldKeys.Y, kind)))
         case "LineAbs" =>
-          Some(LineAbs[T](Point[T](toT[T](dyn.x.asInstanceOf[js.Any]).get, toT[T](dyn.y.asInstanceOf[js.Any]).get)))
+          Some(LineAbs[T](readPoint[T](dyn, TurtleFieldKeys.X, TurtleFieldKeys.Y, kind)))
         case "MoveRel" =>
-          Some(MoveRel[T](Dimension[T](toT[T](dyn.dx.asInstanceOf[js.Any]).get, toT[T](dyn.dy.asInstanceOf[js.Any]).get)))
+          Some(MoveRel[T](Dimension[T](readNumberField[T](dyn, TurtleFieldKeys.Dx), readNumberField[T](dyn, TurtleFieldKeys.Dy))))
         case "ArcRel" =>
           Some(ArcRel[T](
-            rx = toT[T](dyn.rx.asInstanceOf[js.Any]).get,
-            ry = toT[T](dyn.ry.asInstanceOf[js.Any]).get,
-            xAxisRotationDeg = toT[T](dyn.rotationDeg.asInstanceOf[js.Any]).get,
-            largeArc = dyn.largeArc.asInstanceOf[Boolean],
-            sweep = dyn.sweep.asInstanceOf[Boolean],
-            d = Dimension[T](toT[T](dyn.dx.asInstanceOf[js.Any]).get, toT[T](dyn.dy.asInstanceOf[js.Any]).get)
+            rx = readNumberField[T](dyn, TurtleFieldKeys.Rx),
+            ry = readNumberField[T](dyn, TurtleFieldKeys.Ry),
+            xAxisRotationDeg = readNumberField[T](dyn, TurtleFieldKeys.RotationDeg),
+            largeArc = readBoolField(dyn, TurtleFieldKeys.LargeArc),
+            sweep = readBoolField(dyn, TurtleFieldKeys.Sweep),
+            d = Dimension[T](readNumberField[T](dyn, TurtleFieldKeys.Dx), readNumberField[T](dyn, TurtleFieldKeys.Dy))
           ))
         case "CenteredCircleControl" =>
-          Some(CenteredCircleControl[T](toT[T](dyn.radius.asInstanceOf[js.Any]).get))
+          Some(CenteredCircleControl[T](readNumberField[T](dyn, TurtleFieldKeys.Radius)))
         case _ => None
       }
     }
+  }
+
+  private[pyodide] def readNumberField[T: Fractional](dyn: js.Dynamic, fieldName: String): T =
+    readNumberField[T](dyn, fieldName, fieldName)
+
+  private def readNumberField[T: Fractional](dyn: js.Dynamic, fieldName: String, displayFieldName: String): T = {
+    val raw = readRequiredField(dyn, fieldName, displayFieldName)
+    toT[T](raw).getOrElse {
+      throw new IllegalArgumentException(s"Expected numeric field '$displayFieldName', but got '${js.typeOf(raw)}'.")
+    }
+  }
+
+  private[pyodide] def readBoolField(dyn: js.Dynamic, fieldName: String): Boolean = {
+    val raw = readRequiredField(dyn, fieldName, fieldName)
+    if (js.typeOf(raw) == "boolean") raw.asInstanceOf[Boolean]
+    else throw new IllegalArgumentException(s"Expected boolean field '$fieldName', but got '${js.typeOf(raw)}'.")
+  }
+
+  private[pyodide] def readPoint[T: Fractional](dyn: js.Dynamic, xField: String, yField: String, context: String): Point[T] =
+    Point[T](
+      readNumberField[T](dyn, xField, s"$context.$xField"),
+      readNumberField[T](dyn, yField, s"$context.$yField")
+    )
+
+  private def readStringField(dyn: js.Dynamic, fieldName: String): String = {
+    val raw = readRequiredField(dyn, fieldName, fieldName)
+    if (js.typeOf(raw) == "string") raw.asInstanceOf[String]
+    else throw new IllegalArgumentException(s"Expected string field '$fieldName', but got '${js.typeOf(raw)}'.")
+  }
+
+  private def readArrayField(dyn: js.Dynamic, fieldName: String): js.Array[js.Any] = {
+    val raw = readRequiredField(dyn, fieldName, fieldName)
+    if (js.Array.isArray(raw.asInstanceOf[js.Any])) raw.asInstanceOf[js.Array[js.Any]]
+    else throw new IllegalArgumentException(s"Expected array field '$fieldName', but got '${js.typeOf(raw)}'.")
+  }
+
+  private def readRequiredField(dyn: js.Dynamic, fieldName: String, displayFieldName: String): js.Any = {
+    val raw = dyn.selectDynamic(fieldName).asInstanceOf[js.Any]
+    if (js.isUndefined(raw) || raw == null)
+      throw new IllegalArgumentException(s"Missing required field '$displayFieldName'.")
+    raw
   }
 
   private def toT[T: Fractional](value: js.Any): Option[T] = {
