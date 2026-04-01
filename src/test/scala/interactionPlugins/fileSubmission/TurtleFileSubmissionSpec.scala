@@ -66,11 +66,11 @@ class TurtleFileSubmissionSpec extends FunSuite {
     assertEquals(
       commands,
       List(
+        TurtleXmlParser.ReceiveGo,
         TurtleXmlParser.Repeat(
           10,
           List(TurtleXmlParser.Forward(10.0), TurtleXmlParser.TurnRight(15.0))
-        ),
-        TurtleXmlParser.ReceiveGo
+        )
       )
     )
   }
@@ -91,6 +91,7 @@ class TurtleFileSubmissionSpec extends FunSuite {
     assertEquals(
       commands,
       List(
+        TurtleXmlParser.ReceiveGo,
         TurtleXmlParser.Repeat(
           10,
           List(
@@ -104,8 +105,7 @@ class TurtleFileSubmissionSpec extends FunSuite {
             TurtleXmlParser.SetHeading(90.0),
             TurtleXmlParser.SetHeading(30.0)
           )
-        ),
-        TurtleXmlParser.ReceiveGo
+        )
       )
     )
   }
