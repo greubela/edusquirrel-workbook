@@ -222,6 +222,97 @@ h3 {
   transform: translateY(-1px);
 }
 
+/* --- Slideshow / visual novel styling --- */
+.visual-novel-navigation {
+  position: sticky;
+  top: var(--space-sm);
+  z-index: 10;
+  width: fit-content;
+  margin: 0 auto;
+  padding: var(--space-sm) var(--space-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  border: 1px solid var(--color-container-border-inactive);
+  border-radius: var(--radius-md);
+  background: var(--color-interaction-background);
+  box-shadow: var(--shadow-button);
+}
+
+.visual-novel-navigation button {
+  min-width: 120px;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-button-border);
+  background: var(--color-button-background);
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-button);
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.visual-novel-navigation button:hover:not(:disabled) {
+  background: var(--color-button-hover);
+  transform: translateY(-1px);
+}
+
+.visual-novel-navigation button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.visual-novel-counter {
+  min-width: 72px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--color-container-accent);
+  letter-spacing: 0.02em;
+}
+
+.visual-novel-container {
+  margin: var(--space-md);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  border: 1px solid var(--color-container-border-inactive);
+  border-radius: var(--radius-md);
+  background: var(--color-interaction-background);
+}
+
+.visual-novel-image {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  background: white;
+  border: 1px solid var(--color-container-border-passive);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+}
+
+.visual-novel-image img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+}
+
+.visual-novel-source,
+.visual-novel-description,
+.visual-novel-text {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-container-border-passive);
+  border-radius: var(--radius-sm);
+  background: var(--color-container-background);
+}
+
+.visual-novel-source {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
 
 /* --- SVG Button Styling --- */
 .svg-button {
