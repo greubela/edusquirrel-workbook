@@ -2,6 +2,7 @@ package interactionPlugins.programmingExercise.pythonExercise.pyodide
 
 
 import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.*
+import contentmanagement.webElements.svg.TurtlePathBuilder
 import contentmanagement.webElements.svg.TurtlePathBuilder.{TurtleCommand, TurtleState}
 import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand
 import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand.*
@@ -255,16 +256,30 @@ object PyodideWorkerClient {
     val callbackLibrary = turtleCallbackLibrary()
     val runCode = s"import turtle\n$turtlePythonCode"
 
-    worker.runTurtle(runCode, callbackLibrary.methodMap.keys.toSeq).map { (runReport, turtlePayloadRaw) =>
-      val turtlePayload = turtlePayloadRaw.asInstanceOf[js.Dynamic]
+    worker
+      .addCallbacks(callbackLibrary.moduleName, callbackLibrary.methodMap.keys.toSeq)
+      .flatMap(_ => worker.run(runCode))
+      .map { runReport =>
+      val turtleStateAfterRun = turtleBuilderFromCallbacks[T](runReport.callbackOps)
       TurtleExecutionResult[T](
         regularExecutionResult = runReport,
-        startPoint = parsePoint[T](readRequiredField(turtlePayload, TurtleFieldKeys.StartPoint, TurtleFieldKeys.StartPoint), TurtleFieldKeys.StartPoint),
-        turtleState = parseTurtleState[T](readRequiredField(turtlePayload, TurtleFieldKeys.TurtleState, TurtleFieldKeys.TurtleState)),
-        turtleCommands = parseTurtleCommands[T](readRequiredField(turtlePayload, TurtleFieldKeys.TurtleCommands, TurtleFieldKeys.TurtleCommands)),
-        svgPathBuilderCommands = parseSvgCommands[T](readRequiredField(turtlePayload, TurtleFieldKeys.SvgPathBuilderCommands, TurtleFieldKeys.SvgPathBuilderCommands))
+        startPoint = turtleStateAfterRun.startPoint,
+        turtleState = turtleStateAfterRun.turtleState,
+        turtleCommands = turtleStateAfterRun.turtleCommands,
+        svgPathBuilderCommands = turtleStateAfterRun.pathBuilderCommands
       )
     }
+  }
+
+  private[pyodide] def turtleBuilderFromCallbacks[T: Fractional](
+                                                                   callbackOps: Seq[CallbackOp]
+                                                                 ): TurtlePathBuilder[T] = {
+    callbackOps
+      .filter(_.module == "turtle")
+      .foldLeft(TurtlePathBuilder[T]()) { (builder, op) =>
+        val command = TurtleCommand[T](op.method, op.args.flatMap(toT[T]).toList)
+        builder.handleStringCommand(command)
+      }
   }
 
   private def turtleCallbackLibrary(): CallbackLibrary = {
