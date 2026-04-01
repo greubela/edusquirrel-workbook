@@ -198,9 +198,29 @@
     };
 
     const windowObj = globalThis;
-    windowObj.window = windowObj;
-    windowObj.self = windowObj;
-    windowObj.global = windowObj;
+    const defineAlias = (name, value) => {
+      try {
+        const descriptor = Object.getOwnPropertyDescriptor(windowObj, name);
+        if (!descriptor) {
+          Object.defineProperty(windowObj, name, {
+            configurable: true,
+            enumerable: true,
+            writable: true,
+            value
+          });
+          return;
+        }
+        if (descriptor.writable) {
+          windowObj[name] = value;
+        }
+      } catch (_) {
+        // Ignore read-only global aliases in strict mode workers.
+      }
+    };
+
+    defineAlias("window", windowObj);
+    defineAlias("self", windowObj);
+    defineAlias("global", windowObj);
     windowObj.document = document;
     windowObj.navigator = windowObj.navigator || { language: "en-US", platform: "worker" };
     windowObj.innerHeight = 1000;
