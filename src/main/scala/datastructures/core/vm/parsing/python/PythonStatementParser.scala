@@ -2,7 +2,7 @@ package datastructures.core.vm.parsing.python
 
 import ParsingUtils.keepExpression
 import PythonClassParser.{ClassParseResult, ClassParserApi}
-import PythonLexerLike.{ParsedLine, splitInlineComment}
+import PythonLexerLike.{ParsedLine, splitCodeAndComment}
 import PythonSymbolTable.ParseContext
 import datastructures.core.language.LanguageMap
 import datastructures.core.vm.code.BeExpression
@@ -57,7 +57,7 @@ object PythonStatementParser {
       val line = lines(index)
       if (line.indent < indent) return BlockParseResult(expressions.toList, index)
 
-      val (codePortion, inlineComment) = splitInlineComment(line.content)
+      val (codePortion, inlineComment) = splitCodeAndComment(line.content)
       val trimmed = codePortion.trim
 
       if (trimmed.isEmpty) {

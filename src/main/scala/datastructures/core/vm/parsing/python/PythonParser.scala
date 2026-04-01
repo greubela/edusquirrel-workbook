@@ -2,11 +2,10 @@ package datastructures.core.vm.parsing.python
 
 import ParsingUtils.keepExpression
 import PythonClassParser.{ClassParseResult, ClassParserApi}
-import PythonLexerLike.{ParsedLine, determineBodyIndent, skipEmptyLines, toParsedLines}
+import PythonLexerLike.{ParsedLine, findBodyIndent, skipBlankLines, toParsedLines}
 import PythonStatementParser.{BlockParseResult, NodeWithNext, StatementApi}
 import PythonSymbolTable.{CurrentlyKnownStructures, KnownStructure, ParseContext}
 import datastructures.core.vm.types.BeDataType.{AnyType, BeUnionAllowedTypes}
-import datastructures.core.vm.parsing.python.normalization.PythonCommentScanner
 import datastructures.core.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.code.controlStructures.{BeIfElse, BeSequence, BeWhile}
@@ -19,36 +18,30 @@ import datastructures.core.vm.types.{BeDataType, BeDataValueLiteral, BeDataValue
 /**
  * Parses Python source code that has been normalized by [[PythonNormalizer]].
  */
-object PythonParser {
+class PythonParser(
+                    normalizer: PythonNormalizer = PythonNormalizer.default,
+                    config: PythonFrontendConfig = PythonFrontendConfig.default
+                  ) {
 
-  private val normalizer = new PythonNormalizer()
   type KnownStructure = PythonSymbolTable.KnownStructure
   val KnownStructure: PythonSymbolTable.KnownStructure.type = PythonSymbolTable.KnownStructure
-
-  final case class CodeParsingResult(
-                                      definedClasses: List[BeDefineClass],
-                                      definedFunctions: List[BeDefineFunction],
-                                      definedVariables: List[BeDefineVariable],
-                                      currentlyKnownStructures: CurrentlyKnownStructures,
-                                      codeExpression: BeSequence
-                                    )
 
   def parsePython(source: String): BeSequence = parsePythonWithDetails(source).codeExpression
 
   def parsePythonWithDetails(
                               source: String,
-                              initialKnownStructures: Seq[KnownStructure] = PythonSymbolTable.defaultKnownStructures
-                            ): CodeParsingResult = {
+                              initialKnownStructures: Seq[KnownStructure] = config.defaultKnownStructures
+                            ): PythonParser.CodeParsingResult = {
     val normalized = normalizer.normalizePython(source)
     val initialStructures = CurrentlyKnownStructures.fromKnown(initialKnownStructures)
     if (normalized.trim.isEmpty) {
-      CodeParsingResult(Nil, Nil, Nil, initialStructures, BeSequence.optionalBody(Nil))
+      PythonParser.CodeParsingResult(Nil, Nil, Nil, initialStructures, BeSequence.optionalBody(Nil))
     } else {
       val context = new ParseContext(initialStructures)
       val lines = toParsedLines(normalized)
       val blockResult = parseBlock(lines, 0, 0, context)
       val expression = BeSequence.optionalBody(blockResult.expressions.filter(keepExpression))
-      CodeParsingResult(context.definedClasses, context.definedFunctions, context.definedVariables, context.currentStructures, expression)
+      PythonParser.CodeParsingResult(context.definedClasses, context.definedFunctions, context.definedVariables, context.currentStructures, expression)
     }
   }
 
@@ -99,7 +92,7 @@ object PythonParser {
 
     val returnVariable = returnSource.map(_.trim).filter(_.nonEmpty).map(returnHint => BeDefineVariable(LanguageMap.universalMap("return"), mapType(Some(returnHint))))
 
-    val computedIndent = determineBodyIndent(lines, headerIndex + 1, indent)
+    val computedIndent = findBodyIndent(lines, headerIndex + 1, indent)
 
     val (bodyExpressions, nextIndex) = try {
       if (computedIndent <= indent) {
@@ -150,7 +143,7 @@ object PythonParser {
 
   private def parseWhile(lines: Vector[ParsedLine], headerIndex: Int, indent: Int, conditionSource: String, context: ParseContext): NodeWithNext = {
     val conditionExpr = parseExpression(conditionSource.trim, context)
-    val computedIndent = determineBodyIndent(lines, headerIndex + 1, indent)
+    val computedIndent = findBodyIndent(lines, headerIndex + 1, indent)
     if (computedIndent <= indent) {
       NodeWithNext(BeExpressionUnparsable(lines(headerIndex).content.trim, "Missing body for while loop"), headerIndex + 1)
     } else {
@@ -163,16 +156,16 @@ object PythonParser {
 
   private def parseIf(lines: Vector[ParsedLine], headerIndex: Int, indent: Int, conditionSource: String, context: ParseContext): NodeWithNext = {
     val conditionExpr = parseExpression(conditionSource.trim, context)
-    val computedIndent = determineBodyIndent(lines, headerIndex + 1, indent)
+    val computedIndent = findBodyIndent(lines, headerIndex + 1, indent)
     if (computedIndent <= indent) {
       NodeWithNext(BeExpressionUnparsable(lines(headerIndex).content.trim, "Missing body for if clause"), headerIndex + 1)
     } else {
       val thenBlock = parseBlock(lines, headerIndex + 1, computedIndent, context)
-      val nextIndex = skipEmptyLines(lines, thenBlock.nextIndex)
+      val nextIndex = skipBlankLines(lines, thenBlock.nextIndex)
       if (nextIndex < lines.length && lines(nextIndex).indent == indent) {
         lines(nextIndex).content.trim match {
           case ElsePattern() =>
-            val elseIndent = determineBodyIndent(lines, nextIndex + 1, indent)
+            val elseIndent = findBodyIndent(lines, nextIndex + 1, indent)
             if (elseIndent <= indent) {
               NodeWithNext(BeExpressionUnparsable(lines(nextIndex).content.trim, "Missing body for else clause"), nextIndex + 1)
             } else {
@@ -323,4 +316,30 @@ object PythonParser {
     case _ => None
   }
 
+}
+
+object PythonParser {
+  final case class CodeParsingResult(
+                                      definedClasses: List[BeDefineClass],
+                                      definedFunctions: List[BeDefineFunction],
+                                      definedVariables: List[BeDefineVariable],
+                                      currentlyKnownStructures: CurrentlyKnownStructures,
+                                      codeExpression: BeSequence
+                                    )
+
+  type KnownStructure = PythonSymbolTable.KnownStructure
+  val KnownStructure: PythonSymbolTable.KnownStructure.type = PythonSymbolTable.KnownStructure
+
+  private object PythonParserInstance extends PythonParser(PythonNormalizer.default, PythonFrontendConfig.default)
+
+  def default: PythonParser = new PythonParser(PythonNormalizer.default, PythonFrontendConfig.default)
+
+  def parsePython(source: String): BeSequence =
+    PythonParserInstance.parsePython(source)
+
+  def parsePythonWithDetails(
+                              source: String,
+                              initialKnownStructures: Seq[KnownStructure] = PythonFrontendConfig.default.defaultKnownStructures
+                            ): CodeParsingResult =
+    PythonParserInstance.parsePythonWithDetails(source, initialKnownStructures)
 }

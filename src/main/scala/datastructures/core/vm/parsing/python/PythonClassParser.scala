@@ -1,6 +1,6 @@
 package datastructures.core.vm.parsing.python
 
-import PythonLexerLike.{ParsedLine, determineBodyIndent, splitInlineComment}
+import PythonLexerLike.{ParsedLine, findBodyIndent, splitCodeAndComment}
 import PythonSymbolTable.ParseContext
 import datastructures.core.language.{HumanLanguage, LanguageMap}
 import datastructures.core.vm.code.BeExpression
@@ -47,7 +47,7 @@ object PythonClassParser {
                   context: ParseContext,
                   api: ClassParserApi
                 ): ClassParseResult = {
-    val bodyIndent = determineBodyIndent(lines, headerIndex + 1, indent)
+    val bodyIndent = findBodyIndent(lines, headerIndex + 1, indent)
     basesSource.foreach(_ => ())
     if (bodyIndent <= indent) {
       ClassParseResult(BeExpressionUnparsable(lines(headerIndex).content.trim, s"Missing body for class $name"), headerIndex + 1)
@@ -67,7 +67,7 @@ object PythonClassParser {
           ignoredBodyExpressions ++= nested.expressions
           index = nested.nextIndex
         } else {
-          val (codePortion, inlineComment) = splitInlineComment(line.content)
+          val (codePortion, inlineComment) = splitCodeAndComment(line.content)
           val trimmed = codePortion.trim
           if (trimmed.isEmpty) {
             inlineComment.foreach(commentText => ignoredBodyExpressions += BeSingleLineComment(LanguageMap.universalMap(commentText)))
@@ -153,7 +153,7 @@ object PythonClassParser {
 
     val returnVariable = returnSource.map(_.trim).filter(_.nonEmpty).map(returnHint => BeDefineVariable(LanguageMap.universalMap("return"), api.mapType(Some(returnHint))))
 
-    val computedIndent = determineBodyIndent(lines, headerIndex + 1, indent)
+    val computedIndent = findBodyIndent(lines, headerIndex + 1, indent)
 
     val (bodyExpressions, nextIndex, discoveredAttributes) =
       if (computedIndent <= indent) {
@@ -190,7 +190,7 @@ object PythonClassParser {
     while (index < endIndex) {
       val line = lines(index)
       if (line.indent == bodyIndent) {
-        val (codePortion, _) = splitInlineComment(line.content)
+        val (codePortion, _) = splitCodeAndComment(line.content)
         val trimmed = codePortion.trim
         trimmed match {
           case SelfAttributeAnnotationAssignmentPattern(_, attributeName, typeHint, valueSource) =>

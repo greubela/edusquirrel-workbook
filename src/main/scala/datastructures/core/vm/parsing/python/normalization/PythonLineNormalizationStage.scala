@@ -16,7 +16,7 @@ object PythonLineNormalizationStage {
     nonEmpty.flatMap { line =>
       val indentSpaces = line.takeWhile(_ == ' ').length
       val content = line.substring(indentSpaces)
-      val (codePart, inlineComment) = PythonCommentScanner.splitInlineComment(content)
+      val (codePart, inlineComment) = PythonCommentScanner.splitCodeAndComment(content)
       val entries = mutable.ListBuffer[RawLine]()
       val codeText = codePart.trim
       if (codeText.nonEmpty) {
