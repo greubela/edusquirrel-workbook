@@ -13,7 +13,7 @@ import scala.scalajs.js.Promise as JsPromise
  * - Expose both capabilities needed by the feature:
  *   1) scripts snapshot (`calcProgramSvg`)
  *   2) stage preview after green-flag simulation (`simulateGreenFlag`)
- * - Keep `getGreenFlagPng` for compatibility with existing call sites; language is currently ignored.
+ * - Keep `getGreenFlagPng` for compatibility with existing call sites.
  * - Keep worker as a classic script worker (no module mode), because turtle-worker.js loads classic
  *   Snap/TurtleStitch scripts via `importScripts`.
  */
@@ -55,20 +55,28 @@ case class TurtleStitchWorker(
   def init(): JsPromise[Unit] =
     requestUnit("init")
 
-  // language is intentionally ignored for now
   def getGreenFlagPng(xml_content: String, language: String): JsPromise[String] =
-    simulateGreenFlag(xml_content)
+    simulateGreenFlag(xml_content, language)
 
   def calcProgramSvg(xml_content: String, language: String): JsPromise[String] =
     requestString(
       operation = "calcProgramSvg",
-      payload = js.Dynamic.literal(xml_content = xml_content)
+      payload = js.Dynamic.literal(
+        xml_content = xml_content,
+        language = language.asInstanceOf[js.Any]
+      )
     )
 
   def simulateGreenFlag(xml_content: String): JsPromise[String] =
+    simulateGreenFlag(xml_content, "en")
+
+  def simulateGreenFlag(xml_content: String, language: String): JsPromise[String] =
     requestString(
       operation = "simulateGreenFlag",
-      payload = js.Dynamic.literal(xml_content = xml_content)
+      payload = js.Dynamic.literal(
+        xml_content = xml_content,
+        language = language.asInstanceOf[js.Any]
+      )
     )
 
   def destroy(): Unit = {

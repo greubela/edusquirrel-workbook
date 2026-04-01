@@ -42,6 +42,7 @@
   ];
 
   let scriptsLoaded = false;
+  const loadedLanguageScripts = new Set(["en"]);
 
   function installWorkerDomShim() {
     if (globalThis.document && globalThis.window) return;
@@ -359,6 +360,46 @@
       }
     }
 
+
+    normalizeSnapLanguage(lang) {
+      if (!lang || typeof lang !== "string") return "en";
+      if (globalThis.SnapTranslator?.dict && (lang in globalThis.SnapTranslator.dict)) return lang;
+      if (lang.includes("_")) {
+        const base = lang.split("_")[0];
+        if (globalThis.SnapTranslator?.dict && (base in globalThis.SnapTranslator.dict)) return base;
+      }
+      return "en";
+    }
+
+    async setLanguageWithoutProjectReloadAsync(language) {
+      if (!this.ide) return false;
+
+      const safeLang = this.normalizeSnapLanguage(language);
+      try { globalThis.SnapTranslator?.unload?.(); } catch (_) {}
+
+      if (safeLang !== "en" && !loadedLanguageScripts.has(safeLang)) {
+        importScripts(BASE_PROG_DIR + "adjusted/lang-" + safeLang + ".js");
+        loadedLanguageScripts.add(safeLang);
+      }
+
+      if (globalThis.SnapTranslator) {
+        globalThis.SnapTranslator.language = safeLang;
+      }
+
+      const ide = this.ide;
+      try { ide.flushBlocksCache?.(); } catch (_) {}
+      try { globalThis.SpriteMorph?.prototype?.initBlocks?.(); } catch (_) {}
+      try { ide.spriteBar?.tabBar?.tabTo?.("scripts"); } catch (_) {}
+      try { ide.createCategories?.(); } catch (_) {}
+      try { ide.categories?.refreshEmpty?.(); } catch (_) {}
+      try { ide.createCorralBar?.(); } catch (_) {}
+      try { ide.refreshCustomizedPalette?.(); } catch (_) {}
+      try { ide.fixLayout?.(); } catch (_) {}
+      this.forceLayout();
+      this.stepWorld(4);
+      return true;
+    }
+
     async loadProjectXmlCanonical(xml) {
       await this.boot();
       if (typeof xml !== "string") throw new Error("xml must be a string");
@@ -520,13 +561,17 @@
       throw new Error("Could not generate stage PNG snapshot.");
     }
 
-    async calcProgramSvg(xml) {
+    async calcProgramSvg(xml, language = "en") {
       await this.loadProjectXmlCanonical(xml);
+      await this.setLanguageWithoutProjectReloadAsync(language);
+      this.forceLayout();
+      this.stepWorld(2);
       return this.snapshotAllProgramsSvgDataUrl();
     }
 
-    async simulateGreenFlag(xml) {
+    async simulateGreenFlag(xml, language = "en") {
       await this.loadProjectXmlCanonical(xml);
+      await this.setLanguageWithoutProjectReloadAsync(language);
       await this.runGreenFlagOnce();
       return this.snapshotStagePngDataUrl();
     }
@@ -587,12 +632,12 @@
       }
       case "calcProgramSvg": {
         const engine = await ensureSingletonEngine();
-        const result = await engine.calcProgramSvg(payload?.xml_content);
+        const result = await engine.calcProgramSvg(payload?.xml_content, payload?.language || "en");
         return { id, ok: true, result };
       }
       case "simulateGreenFlag": {
         const engine = await ensureSingletonEngine();
-        const result = await engine.simulateGreenFlag(payload?.xml_content);
+        const result = await engine.simulateGreenFlag(payload?.xml_content, payload?.language || "en");
         return { id, ok: true, result };
       }
       case "destroy": {
