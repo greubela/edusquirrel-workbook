@@ -6,7 +6,8 @@ import datastructures.core.language.{HumanLanguage, TranslationMaps}
 import datastructures.web.storage.AsyncDataCache
 import interactionPlugins.turtleStitchPlugin.TurtleStitchEditor.turtleLang
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.util.{Failure, Success}
 
 object TurtleStitchFacade {
 
@@ -15,13 +16,10 @@ object TurtleStitchFacade {
     programSvgDataSrcStorage.loadIntoVariable( (turtleStitchXml, language) )
   }
 
-  private val worker: TurtleStitchWorker = new TurtleStitchWorker()
-  @volatile private var workerValidated: Boolean = false
-
   private val programSvgDataSrcStorage: AsyncDataCache[(String, HumanLanguage), String] = new AsyncDataCache[(String, HumanLanguage), String]("ProgramSvgDataSrc", false) {
     protected def executeLoading(in: (String, HumanLanguage))(ec: ExecutionContext): Future[String] = {
       val (xml, language) = in
-      calcPngDataSrcWithValidatedWorker(xml, language)
+      calcPngDataSrcWithQueuedWorker(xml, language)(using ec)
     }
 
     protected def defaultValueWhileLoading(in: (String, HumanLanguage)): Option[String] =
@@ -34,21 +32,58 @@ object TurtleStitchFacade {
       s"SvgOutput(${out.length}, ${out.substring(0, 60)} ...)"
   }
 
-  private def calcPngDataSrcWithValidatedWorker(turtleStitchXml: String, language: HumanLanguage): Future[String] = {
-    implicit val ec: ExecutionContext = ExecutionContext.global
-    val workerAttempt =
-      if (workerValidated) calcPngDataSrcOfGreenFlagProgramWorker(turtleStitchXml, language)
-      else validateWorker().flatMap(_ => calcPngDataSrcOfGreenFlagProgramWorker(turtleStitchXml, language))
-    workerAttempt
-  }
+  private val worker: TurtleStitchWorker = new TurtleStitchWorker()
+  private val queueLock = new AnyRef
+  private var queuedWork: Future[Unit] = Future.successful(())
+  private var workerInit: Option[Future[Unit]] = None
 
-  private def validateWorker()(implicit ec: ExecutionContext): Future[Unit] =
-    worker.init().toFuture.map { _ =>
-      workerValidated = true
+  private def calcPngDataSrcWithQueuedWorker(turtleStitchXml: String, language: HumanLanguage)(using ec: ExecutionContext): Future[String] =
+    enqueueWorkerTask { worker =>
+      worker.calcProgramSvg(turtleStitchXml, TurtleStitchEditor.turtleLang(language)).toFuture
     }
 
-  private def calcPngDataSrcOfGreenFlagProgramWorker(turtleStitchXml: String, language: HumanLanguage): Future[String] = {
-    worker.calcProgramSvg(turtleStitchXml, TurtleStitchEditor.turtleLang(language)).toFuture
+  private def enqueueWorkerTask[T](task: TurtleStitchWorker => Future[T])(using ec: ExecutionContext): Future[T] = {
+    val result = Promise[T]()
+
+    queueLock.synchronized {
+      val runTask = queuedWork
+        .recover { case _ => () }
+        .flatMap(_ => ensureWorkerInitialized())
+        .flatMap(_ => task(worker))
+
+      runTask.onComplete {
+        case Success(value) => result.success(value)
+        case Failure(error) => result.failure(error)
+      }(ec)
+
+      queuedWork = runTask.map(_ => ()).recover { case _ => () }
+    }
+
+    result.future
+  }
+
+  private def ensureWorkerInitialized()(using ec: ExecutionContext): Future[Unit] =
+    queueLock.synchronized {
+      workerInit match {
+        case Some(existingInit) => existingInit
+        case None =>
+          val init = worker.init().toFuture
+          workerInit = Some(init)
+          init.andThen {
+            case Failure(_) =>
+              queueLock.synchronized {
+                workerInit = None
+              }
+            case Success(_) => ()
+          }(ExecutionContext.parasitic)
+      }
+    }
+
+  def destroyWorker(): Unit =
+    queueLock.synchronized {
+      worker.destroy()
+      workerInit = None
+      queuedWork = Future.successful(())
   }
 
   def downloadDst(xml: String)(using ec: ExecutionContext): Future[Unit] =
