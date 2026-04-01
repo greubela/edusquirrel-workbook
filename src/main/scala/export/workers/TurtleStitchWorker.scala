@@ -1,6 +1,8 @@
 package `export`.workers
 
 import org.scalajs.dom
+import util.web.JsHelpers.*
+import util.web.WorkerRequestTracker
 
 import scala.scalajs.js
 import scala.scalajs.js.Promise as JsPromise
@@ -22,34 +24,22 @@ case class TurtleStitchWorker(
 ) {
 
   private val worker = new dom.Worker(workerUrl)
-
-  private var nextId = 1
-  private val pending = js.Dictionary[js.Function1[js.Dynamic, Unit]]()
+  private val tracker = new WorkerRequestTracker
 
   worker.onmessage = { (event: dom.MessageEvent) =>
-    val data = event.data.asInstanceOf[js.Dynamic]
-    val id = data.selectDynamic("id").asInstanceOf[Int].toString
-
-    pending.get(id).foreach { callback =>
-      pending -= id
-      callback(data)
-    }
+    tracker.complete(event.data.asInstanceOf[js.Any])
   }
 
   worker.onerror = { (event: dom.ErrorEvent) =>
     val errorMessage =
       s"${event.message} (${event.filename}:${event.lineno}:${event.colno})"
 
-    pending.keys.foreach { id =>
-      val handler = pending(id)
-      pending -= id
-      handler(
-        js.Dynamic.literal(
-          ok = false,
-          error = js.Dynamic.literal(message = errorMessage)
-        )
-      )
-    }
+    tracker.failAll(
+      obj(
+        "ok" -> false,
+        "error" -> obj("message" -> errorMessage)
+      ).asInstanceOf[js.Dynamic]
+    )
   }
 
   def init(): JsPromise[Unit] =
@@ -61,9 +51,9 @@ case class TurtleStitchWorker(
   def calcProgramSvg(xml_content: String, language: String): JsPromise[String] =
     requestString(
       operation = "calcProgramSvg",
-      payload = js.Dynamic.literal(
-        xml_content = xml_content,
-        language = language.asInstanceOf[js.Any]
+      payload = obj(
+        "xml_content" -> xml_content,
+        "language" -> language.asInstanceOf[js.Any]
       )
     )
 
@@ -73,16 +63,16 @@ case class TurtleStitchWorker(
   def simulateGreenFlag(xml_content: String, language: String): JsPromise[String] =
     requestString(
       operation = "simulateGreenFlag",
-      payload = js.Dynamic.literal(
-        xml_content = xml_content,
-        language = language.asInstanceOf[js.Any]
+      payload = obj(
+        "xml_content" -> xml_content,
+        "language" -> language.asInstanceOf[js.Any]
       )
     )
 
   def destroy(): Unit = {
     requestUnit("destroy")
     worker.terminate()
-    pending.clear()
+    tracker.clear()
   }
 
   private def requestString(operation: String, payload: js.Object): JsPromise[String] =
@@ -96,17 +86,15 @@ case class TurtleStitchWorker(
     }
 
   private def request(operation: String, payload: js.Object): JsPromise[js.Any] = {
-    val id = nextId
-    nextId += 1
-
     new JsPromise[js.Any]((resolve, reject) => {
-      pending(id.toString) = { (data: js.Dynamic) =>
-        val ok = data.selectDynamic("ok").asInstanceOf[Boolean]
+      val id = tracker.register { (data: js.Dynamic) =>
+        val ok = asBoolean(data.selectDynamic("ok").asInstanceOf[js.Any])
         if (ok) resolve(data.selectDynamic("result"))
         else {
+          val error = asDynamic(data.selectDynamic("error").asInstanceOf[js.Any])
           val message =
-            data.selectDynamic("error")
-              .selectDynamic("message")
+            error.selectDynamic("message")
+              .asInstanceOf[js.Any]
               .asInstanceOf[js.UndefOr[String]]
               .getOrElse(s"Worker operation failed: $operation")
           reject(js.JavaScriptException(message))
@@ -114,15 +102,12 @@ case class TurtleStitchWorker(
       }
 
       worker.postMessage(
-        js.Dynamic.literal(
-          id = id,
-          `type` = operation,
-          payload = payload
+        obj(
+          "id" -> id,
+          "type" -> operation,
+          "payload" -> payload
         )
       )
     })
   }
-
-  private val emptyObj: js.Object =
-    (new js.Object).asInstanceOf[js.Object]
 }

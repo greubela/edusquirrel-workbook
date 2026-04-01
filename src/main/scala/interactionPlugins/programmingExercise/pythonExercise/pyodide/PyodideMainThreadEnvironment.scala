@@ -2,6 +2,7 @@ package interactionPlugins.programmingExercise.pythonExercise.pyodide
 
 import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.*
 import util.web.JsHelpers.promiseToFuture
+import util.web.JsHelpers.{anyToSeq, javascriptErrorMessage}
 
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -181,17 +182,10 @@ final class PyodideMainThreadEnvironment {
     )
 
   private def unwrapJavaScriptException(err: Throwable): String =
-    err match {
-      case jsErr: js.JavaScriptException =>
-        Option(jsErr.exception).map(_.toString).getOrElse("Pyodide run failed")
-      case other =>
-        Option(other.getMessage).getOrElse("Pyodide run failed")
-    }
+    javascriptErrorMessage(err, "Pyodide run failed")
 
   private def toSeq(rawArgs: js.Any): Seq[js.Any] =
-    if js.isUndefined(rawArgs) || rawArgs == null then Seq.empty
-    else if js.Array.isArray(rawArgs) then rawArgs.asInstanceOf[js.Array[js.Any]].toSeq
-    else Seq(rawArgs)
+    anyToSeq(rawArgs)
 
   private def toJsDataVariables(args: Seq[js.Any]): Seq[JsDataVariable] =
     args.zipWithIndex.map { case (value, idx) =>

@@ -8,6 +8,7 @@ import util.TypeConversion
 
 import java.io.IOException
 import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import scala.scalajs.js.typedarray.{ArrayBuffer, Uint8Array}
 import scala.util.*
@@ -25,17 +26,18 @@ object DownloadHelper {
   }
 
   def fetchUrl(url: String): Future[Array[Byte]] = {
-    val promise = Promise[Array[Byte]]()
-    dom.fetch(url).`then`(
-      onRejected = err => promise.failure(new IOException(s"Unknown Error while fetching '$url': ${err.toString}")),
-      onFulfilled = response =>
+    JsHelpers.promiseToFuture(dom.fetch(url))
+      .recoverWith { case err =>
+        Future.failed(new IOException(s"Unknown Error while fetching '$url': ${err.toString}"))
+      }
+      .flatMap { response =>
         if (!response.ok)
-          promise.failure(new IOException(s"IO Error while fetching '$url': response status ${response.status}"))
-        else response.arrayBuffer().`then`(
-          onRejected = err => promise.failure(new IOException(s"Error loading buffer after fetching '$url': ${err.toString}")),
-          onFulfilled = buffer => promise.success(TypeConversion.decodeArrayBuffer(buffer)))
-    )
-    promise.future
+          Future.failed(new IOException(s"IO Error while fetching '$url': response status ${response.status}"))
+        else
+          JsHelpers.promiseToFuture(response.arrayBuffer()).map(TypeConversion.decodeArrayBuffer).recoverWith { case err =>
+            Future.failed(new IOException(s"Error loading buffer after fetching '$url': ${err.toString}"))
+          }
+      }
   }
 
 
