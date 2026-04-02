@@ -15,7 +15,7 @@ import scala.scalajs.js.JSConverters.*
  * API design choices:
  * - Keep worker protocol private (`request`) and expose typed methods for supported operations only.
  * - Expose both capabilities needed by the feature:
- *   1) scripts snapshot (`calcProgramSvg`)
+ *   1) scripts snapshot (`calcProgramPng`)
  *   2) stage preview after green-flag simulation (`simulateGreenFlag`)
  * - Keep `getGreenFlagPng` for compatibility with existing call sites.
  * - Keep worker as a classic script worker (no module mode), because turtle-worker.js loads classic
@@ -43,18 +43,24 @@ case class TurtleStitchWorker(
   def getGreenFlagPng(xml_content: String, language: String): JsPromise[String] =
     simulateGreenFlag(xml_content, language)
 
-  def calcProgramSvg(xml_content: String, language: String): JsPromise[String] =
+  /** Green-flag program-code snapshot (scripts/blocks rendering) as PNG data URL, not executed stage output. */
+  def calcProgramPng(xml_content: String, language: String): JsPromise[String] =
     requestString(
-      operation = "calcProgramSvg",
+      operation = "calcProgramPng",
       payload = obj(
         "xml_content" -> xml_content,
         "language" -> language.asInstanceOf[js.Any]
       )
     )
 
+  /** Backwards-compatible alias; returns PNG data URL. */
+  def calcProgramSvg(xml_content: String, language: String): JsPromise[String] =
+    calcProgramPng(xml_content, language)
+
   def simulateGreenFlag(xml_content: String): JsPromise[String] =
     simulateGreenFlag(xml_content, "en")
 
+  /** Executed-stage snapshot after reset + single green-flag run. */
   def simulateGreenFlag(xml_content: String, language: String): JsPromise[String] =
     requestString(
       operation = "simulateGreenFlag",
