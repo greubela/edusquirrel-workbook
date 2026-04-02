@@ -4,12 +4,16 @@
 // 2) Preview image after one green-flag execution pass (PNG data URL)
 //
 // Notes:
-// - This file intentionally omits editor UI, keyboard input, DOM integration, and language switching.
+// - This file intentionally omits editor UI, keyboard input, and most DOM integration.
 // - It provides a small DOM shim sufficient for Morphic/Snap loading in worker scope.
 // - Deterministic policy for green-flag snapshots:
 //   * no timeout-based completion logic
 //   * no fallback image sources
 //   * either produce the canonical result or fail with an error
+// - Request policy: never use per-request timeout cutoffs. Operations should
+//   either finish naturally or keep waiting forever until externally canceled.
+// - XML must be loaded while editor language is English (canonical parser state).
+//   Afterwards, switch to requested language before taking script snapshots.
 
 (() => {
   "use strict";
@@ -647,8 +651,12 @@
       }
 
       const ide = this.ide;
-      // NOTE: `ide.setLanguage` can block indefinitely in worker-only runtimes.
-      // We therefore set translator state directly and refresh UI caches deterministically.
+      // IMPORTANT:
+      // Apply language synchronously (no callback waiting): in worker-mode we already
+      // load language scripts via importScripts and then force-refresh all block caches.
+      this.safeCall("ide.setLanguage(fire-and-forget)", () => ide.setLanguage?.(safeLang, undefined, true));
+      if (globalThis.SnapTranslator) globalThis.SnapTranslator.language = safeLang;
+
       await this.settleWorldCycles(2);
       if (globalThis.SnapTranslator?.language !== safeLang) {
         throw new Error(`Failed to set TurtleStitch language to '${safeLang}'.`);
@@ -672,7 +680,7 @@
       if (typeof xml !== "string") throw new Error("xml must be a string");
 
       // TurtleStitch XML parsing depends on English block specs.
-      // Keep the editor in English while loading project XML.
+      // Keep editor in English while loading XML; caller can switch language afterwards.
       await this.setLanguage("en");
       this.ide.loadProjectXML(xml);
       await this.settleWorldCycles(12);
