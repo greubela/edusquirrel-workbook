@@ -135,8 +135,17 @@
       }
 
       setAttribute(name, value) {
-        this.attributes.set(name, String(value));
-        if (name === "id") this.id = String(value);
+        const attrName = String(name);
+        const attrValue = String(value);
+        this.attributes.set(attrName, attrValue);
+        if (attrName === "id") this.id = attrValue;
+
+        // Keep common DOM attributes in sync with element properties.
+        // Snap/TurtleStitch often relies on setAttribute() rather than direct property assignment.
+        if (attrName === "src" && "src" in this) this.src = attrValue;
+        else if (attrName === "href" && "href" in this) this.href = attrValue;
+        else if (attrName === "width" && "width" in this) this.width = Number(attrValue) || 0;
+        else if (attrName === "height" && "height" in this) this.height = Number(attrValue) || 0;
       }
 
       getAttribute(name) {
