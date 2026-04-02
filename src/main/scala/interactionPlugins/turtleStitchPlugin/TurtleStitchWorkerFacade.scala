@@ -11,12 +11,24 @@ import scala.util.{Failure, Success}
 
 object TurtleStitchWorkerFacade {
 
-  def getPngDataSrcOfGreenFlagProgramEditor(turtleStitchXml: String, language:HumanLanguage): Var[Option[String]] = {
+  /**
+   * Returns a preview image for the program code beneath green-flag event handlers.
+   *
+   * IMPORTANT:
+   * - This is the "program snapshot" pipeline (editor scripts/blocks view),
+   *   not the "executed stage after green-flag run" pipeline.
+   * - The executed stage snapshot is handled by worker methods like simulateGreenFlag/getGreenFlagPng.
+   */
+  def getGreenFlagProgramSnapshotDataSrc(turtleStitchXml: String, language:HumanLanguage): Var[Option[String]] = {
     implicit val ec: ExecutionContext = ExecutionContext.global
-    programSvgDataSrcStorage.loadIntoVariable( (turtleStitchXml, language) )
+    programPngDataSrcStorage.loadIntoVariable( (turtleStitchXml, language) )
   }
 
-  private val programSvgDataSrcStorage: AsyncDataCache[(String, HumanLanguage), String] = new AsyncDataCache[(String, HumanLanguage), String]("ProgramSvgDataSrc", false) {
+  /** Backwards-compatible alias for previous API name. */
+  def getPngDataSrcOfGreenFlagProgramEditor(turtleStitchXml: String, language:HumanLanguage): Var[Option[String]] =
+    getGreenFlagProgramSnapshotDataSrc(turtleStitchXml, language)
+
+  private val programPngDataSrcStorage: AsyncDataCache[(String, HumanLanguage), String] = new AsyncDataCache[(String, HumanLanguage), String]("ProgramPngDataSrc", false) {
     protected def executeLoading(in: (String, HumanLanguage))(ec: ExecutionContext): Future[String] = {
       val (xml, language) = in
       calcPngDataSrcWithQueuedWorker(xml, language)(using ec)
@@ -29,7 +41,7 @@ object TurtleStitchWorkerFacade {
       s"XmlInput(${in._1.length}, ${in._1.substring(0, 60)}, ${turtleLang(in._2)})"
 
     protected def formatOutputForLogging(out: String): String =
-      s"SvgOutput(${out.length}, ${out.substring(0, 60)} ...)"
+      s"PngOutput(${out.length}, ${out.substring(0, 60)} ...)"
   }
 
   private var worker: TurtleStitchWorker = new TurtleStitchWorker()
@@ -37,9 +49,13 @@ object TurtleStitchWorkerFacade {
   private var queuedWork: Future[Unit] = Future.successful(())
   private var workerInit: Option[Future[Unit]] = None
 
+  /**
+   * Uses the worker's green-flag program snapshot operation (`calcProgramPng`) to render script blocks.
+   * This intentionally does not execute the program.
+   */
   private def calcPngDataSrcWithQueuedWorker(turtleStitchXml: String, language: HumanLanguage)(using ec: ExecutionContext): Future[String] =
     enqueueWorkerTask { worker =>
-      worker.calcProgramSvg(turtleStitchXml, TurtleStitchEditor.turtleLang(language)).toFuture
+      worker.calcProgramPng(turtleStitchXml, TurtleStitchEditor.turtleLang(language)).toFuture
     }
 
   private def enqueueWorkerTask[T](task: TurtleStitchWorker => Future[T])(using ec: ExecutionContext): Future[T] = {
