@@ -51,8 +51,12 @@ object WorkerProtocolHelpers {
                               event: dom.ErrorEvent,
                               extraErrorFields: (String, js.Any)*
                             ): Unit = {
-    val errorMessage =
-      s"${event.message} (${event.filename}:${event.lineno}:${event.colno})"
+    val dynamicEvent = event.asInstanceOf[js.Dynamic]
+    val message = dynamicEvent.selectDynamic("message").asInstanceOf[js.UndefOr[String]].getOrElse("Worker error")
+    val filename = dynamicEvent.selectDynamic("filename").asInstanceOf[js.UndefOr[String]].getOrElse("unknown")
+    val lineno = dynamicEvent.selectDynamic("lineno").asInstanceOf[js.UndefOr[Int]].getOrElse(0)
+    val colno = dynamicEvent.selectDynamic("colno").asInstanceOf[js.UndefOr[Int]].getOrElse(0)
+    val errorMessage = s"$message ($filename:$lineno:$colno)"
 
     tracker.failAll(
       obj(

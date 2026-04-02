@@ -50,10 +50,6 @@ object TurtleStitchWorkerFacade {
         .recover { case _ => () }
         .flatMap(_ => ensureWorkerInitialized())
         .flatMap(_ => task(worker))
-        .recoverWith { case error if isTimeoutError(error) =>
-          resetWorkerInstance()
-          ensureWorkerInitialized().flatMap(_ => task(worker))
-        }
 
       runTask.onComplete {
         case Success(value) => result.success(value)
@@ -81,16 +77,6 @@ object TurtleStitchWorkerFacade {
             case Success(_) => ()
           }(ExecutionContext.parasitic)
       }
-    }
-
-  private def isTimeoutError(error: Throwable): Boolean =
-    Option(error.getMessage).exists(_.contains("Timeout:"))
-
-  private def resetWorkerInstance(): Unit =
-    queueLock.synchronized {
-      worker.destroy()
-      worker = new TurtleStitchWorker()
-      workerInit = None
     }
 
   def destroyWorker(): Unit =
