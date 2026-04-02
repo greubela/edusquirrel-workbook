@@ -32,7 +32,7 @@ object TurtleStitchWorkerFacade {
       s"SvgOutput(${out.length}, ${out.substring(0, 60)} ...)"
   }
 
-  private val worker: TurtleStitchWorker = new TurtleStitchWorker()
+  private var worker: TurtleStitchWorker = new TurtleStitchWorker()
   private val queueLock = new AnyRef
   private var queuedWork: Future[Unit] = Future.successful(())
   private var workerInit: Option[Future[Unit]] = None
@@ -82,6 +82,7 @@ object TurtleStitchWorkerFacade {
   def destroyWorker(): Unit =
     queueLock.synchronized {
       worker.destroy()
+      worker = new TurtleStitchWorker()
       workerInit = None
       queuedWork = Future.successful(())
   }

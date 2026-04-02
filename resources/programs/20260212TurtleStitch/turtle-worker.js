@@ -534,20 +534,6 @@
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  async function withTimeout(promise, timeoutMs, label) {
-    let timer = null;
-    try {
-      return await Promise.race([
-        promise,
-        new Promise((_, reject) => {
-          timer = setTimeout(() => reject(new Error(`Timeout: ${label}`)), timeoutMs);
-        })
-      ]);
-    } finally {
-      if (timer) clearTimeout(timer);
-    }
-  }
-
   class TurtleWorkerEngine {
     constructor(options = {}) {
       this.options = options;
@@ -744,7 +730,7 @@
       const imageNodes = [];
       for (const canvas of pics) {
         try {
-          const href = await withTimeout(canvasToPngDataUrl(canvas), 4000, "canvasToPngDataUrl");
+          const href = await canvasToPngDataUrl(canvas);
           imageNodes.push(`<image x=\"0\" y=\"${y}\" width=\"${canvas.width}\" height=\"${canvas.height}\" href=\"${href}\" />`);
           y += canvas.height + padding;
         } catch (e) {
@@ -953,29 +939,17 @@
       }
       case "calcProgramSvg": {
         const engine = await ensureSingletonEngine();
-        const result = await withTimeout(
-          engine.calcProgramSvg(payload?.xml_content, payload?.language || "en"),
-          12000,
-          "calcProgramSvg"
-        );
+        const result = await engine.calcProgramSvg(payload?.xml_content, payload?.language || "en");
         return { id, ok: true, result };
       }
       case "simulateGreenFlag": {
         const engine = await ensureSingletonEngine();
-        const result = await withTimeout(
-          engine.simulateGreenFlag(payload?.xml_content, payload?.language || "en"),
-          12000,
-          "simulateGreenFlag"
-        );
+        const result = await engine.simulateGreenFlag(payload?.xml_content, payload?.language || "en");
         return { id, ok: true, result };
       }
       case "getGreenFlagAsLispCode": {
         const engine = await ensureSingletonEngine();
-        const result = await withTimeout(
-          engine.getGreenFlagAsLispCode(payload?.xml_content, payload?.language || "en"),
-          12000,
-          "getGreenFlagAsLispCode"
-        );
+        const result = await engine.getGreenFlagAsLispCode(payload?.xml_content, payload?.language || "en");
         return { id, ok: true, result };
       }
       case "destroy": {
