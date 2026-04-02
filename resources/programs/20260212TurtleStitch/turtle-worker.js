@@ -652,21 +652,10 @@
 
       const ide = this.ide;
       // IMPORTANT:
-      // Existing blocks/palette labels are reliably relabeled only when calling ide.setLanguage.
-      // Intended behavior: do not timeout individual requests; wait until setLanguage finishes.
-      // If setLanguage never calls back, this request intentionally keeps running.
-      const setLanguageApplied = await new Promise((resolve) => {
-        if (!ide || typeof ide.setLanguage !== "function") return resolve(false);
-        try {
-          ide.setLanguage(safeLang, () => resolve(true), true);
-        } catch (_) {
-          resolve(false);
-        }
-      });
-
-      if (!setLanguageApplied && globalThis.SnapTranslator) {
-        globalThis.SnapTranslator.language = safeLang;
-      }
+      // Apply language synchronously (no callback waiting): in worker-mode we already
+      // load language scripts via importScripts and then force-refresh all block caches.
+      this.safeCall("ide.setLanguage(fire-and-forget)", () => ide.setLanguage?.(safeLang, undefined, true));
+      if (globalThis.SnapTranslator) globalThis.SnapTranslator.language = safeLang;
 
       await this.settleWorldCycles(2);
       if (globalThis.SnapTranslator?.language !== safeLang) {
