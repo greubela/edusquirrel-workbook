@@ -472,7 +472,7 @@
             return originalDrawImage.call(this, normalizedImage, ...rest);
           } catch (err) {
             warn("drawImage failed in worker canvas context", err);
-            throw err;
+            return undefined;
           }
         };
         try {
@@ -503,7 +503,9 @@
     if (typeof canvasLike.toDataURL === "function") {
       try {
         return canvasLike.toDataURL("image/png");
-      } catch (_) {}
+      } catch (err) {
+        warn("canvas.toDataURL(image/png) failed", err);
+      }
     }
 
     if (typeof canvasLike.convertToBlob === "function") {
@@ -645,15 +647,13 @@
       }
 
       const ide = this.ide;
-      if (typeof ide.setLanguage === "function") {
-        await new Promise((resolve) => {
-          try {
-            ide.setLanguage(safeLang, () => resolve(), true);
-          } catch (_) {
-            resolve();
-          }
-        });
+      // NOTE: `ide.setLanguage` can block indefinitely in worker-only runtimes.
+      // We therefore set translator state directly and refresh UI caches deterministically.
+      await this.settleWorldCycles(2);
+      if (globalThis.SnapTranslator?.language !== safeLang) {
+        throw new Error(`Failed to set TurtleStitch language to '${safeLang}'.`);
       }
+
       this.safeCall("ide.flushBlocksCache", () => ide.flushBlocksCache?.());
       this.safeCall("SpriteMorph.initBlocks", () => globalThis.SpriteMorph?.prototype?.initBlocks?.());
       this.safeCall("ide.spriteBar.tabTo(scripts)", () => ide.spriteBar?.tabBar?.tabTo?.("scripts"));
@@ -696,10 +696,10 @@
         }
 
         let pic = null;
-        if (typeof top.scriptPic === "function") {
-          pic = top.scriptPic();
-        } else if (typeof top.fullImage === "function") {
+        if (typeof top.fullImage === "function") {
           pic = top.fullImage();
+        } else if (typeof top.scriptPic === "function") {
+          pic = top.scriptPic();
         }
 
         if (!pic) {
@@ -917,12 +917,13 @@
   }
 
   async function handleMessage(data) {
-    const { id, type, payload } = data || {};
-    if (!id || typeof type !== "string") {
-      throw new Error("Worker message must include { id, type, payload }");
+    const { id, type, operation, payload } = data || {};
+    const op = typeof type === "string" ? type : operation;
+    if (!id || typeof op !== "string") {
+      throw new Error("Worker message must include { id, type|operation, payload }");
     }
 
-    switch (type) {
+    switch (op) {
       case "init": {
         await ensureSingletonEngine();
         return { id, ok: true, result: { ready: true } };
@@ -948,7 +949,7 @@
         return { id, ok: true, result: { destroyed: true } };
       }
       default:
-        throw new Error(`Unsupported worker operation: ${type}`);
+        throw new Error(`Unsupported worker operation: ${op}`);
     }
   }
 
