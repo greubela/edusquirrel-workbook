@@ -534,20 +534,6 @@
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  async function withTimeout(promise, timeoutMs, label) {
-    let timer = null;
-    try {
-      return await Promise.race([
-        promise,
-        new Promise((_, reject) => {
-          timer = setTimeout(() => reject(new Error(`Timeout: ${label}`)), timeoutMs);
-        })
-      ]);
-    } finally {
-      if (timer) clearTimeout(timer);
-    }
-  }
-
   class TurtleWorkerEngine {
     constructor(options = {}) {
       this.options = options;
@@ -611,36 +597,25 @@
     }
 
 
-    normalizeSnapLanguage(lang) {
-      if (!lang || typeof lang !== "string") return "en";
-      if (globalThis.SnapTranslator?.dict && (lang in globalThis.SnapTranslator.dict)) return lang;
-      if (lang.includes("_") || lang.includes("-")) {
-        const base = lang.split(/[_-]/)[0];
-        if (globalThis.SnapTranslator?.dict && (base in globalThis.SnapTranslator.dict)) return base;
-      }
-      return "en";
-    }
-
-    requestedLanguageCode(lang) {
-      if (!lang || typeof lang !== "string") return "en";
-      const normalized = lang.trim().toLowerCase();
+    normalizeRequestedLanguage(language) {
+      if (typeof language !== "string") return "en";
+      const normalized = language.trim().toLowerCase();
       if (!normalized) return "en";
       return normalized.split(/[_-]/)[0] || "en";
     }
 
-    async setLanguageWithoutProjectReloadAsync(language) {
+    languageExists(lang) {
+      return Boolean(globalThis.SnapTranslator?.dict && lang in globalThis.SnapTranslator.dict);
+    }
+
+    async setLanguage(language) {
       if (!this.ide) return false;
 
-      const requestedLanguage = this.requestedLanguageCode(language);
-      let safeLang = this.normalizeSnapLanguage(requestedLanguage);
-
-      if (safeLang !== "en") {
-        // Language packs should only be imported once per worker lifetime.
-        // Repeated importScripts() can be expensive and destabilize long-running workers.
-        importScriptOnce(BASE_PROG_DIR + "adjusted/lang-" + safeLang + ".js");
-        // Re-check after import so unsupported language requests gracefully fall back.
-        safeLang = this.normalizeSnapLanguage(requestedLanguage);
+      const requestedLanguage = this.normalizeRequestedLanguage(language);
+      if (requestedLanguage !== "en" && !this.languageExists(requestedLanguage)) {
+        importScriptOnce(BASE_PROG_DIR + "adjusted/lang-" + requestedLanguage + ".js");
       }
+      const safeLang = this.languageExists(requestedLanguage) ? requestedLanguage : "en";
 
       if (globalThis.SnapTranslator) {
         globalThis.SnapTranslator.language = safeLang;
@@ -675,7 +650,7 @@
 
       // TurtleStitch XML parsing depends on English block specs.
       // Keep the editor in English while loading project XML.
-      await this.setLanguageWithoutProjectReloadAsync("en");
+      await this.setLanguage("en");
       this.ide.loadProjectXML(xml);
       await sleep(350);
 
@@ -744,7 +719,7 @@
       const imageNodes = [];
       for (const canvas of pics) {
         try {
-          const href = await withTimeout(canvasToPngDataUrl(canvas), 4000, "canvasToPngDataUrl");
+          const href = await canvasToPngDataUrl(canvas);
           imageNodes.push(`<image x=\"0\" y=\"${y}\" width=\"${canvas.width}\" height=\"${canvas.height}\" href=\"${href}\" />`);
           y += canvas.height + padding;
         } catch (e) {
@@ -878,7 +853,7 @@
 
     async calcProgramSvg(xml, language = "en") {
       await this.loadProjectXmlCanonical(xml);
-      await this.setLanguageWithoutProjectReloadAsync(language);
+      await this.setLanguage(language);
       this.forceLayout();
       this.stepWorld(2);
       return this.snapshotAllProgramsSvgDataUrl();
@@ -887,13 +862,13 @@
     async simulateGreenFlag(xml, language = "en") {
       await this.loadProjectXmlCanonical(xml);
       await this.runGreenFlagOnce();
-      await this.setLanguageWithoutProjectReloadAsync(language);
+      await this.setLanguage(language);
       return this.snapshotStagePngDataUrl();
     }
 
     async getGreenFlagAsLispCode(xml, language = "en") {
       await this.loadProjectXmlCanonical(xml);
-      await this.setLanguageWithoutProjectReloadAsync(language);
+      await this.setLanguage(language);
       return this.greenFlagLispCode();
     }
 
@@ -940,8 +915,6 @@
     }
   }
 
-  const OPERATION_TIMEOUT_MS = 75000;
-
   async function handleMessage(data) {
     const { id, type, payload } = data || {};
     if (!id || typeof type !== "string") {
@@ -955,29 +928,17 @@
       }
       case "calcProgramSvg": {
         const engine = await ensureSingletonEngine();
-        const result = await withTimeout(
-          engine.calcProgramSvg(payload?.xml_content, payload?.language || "en"),
-          OPERATION_TIMEOUT_MS,
-          "calcProgramSvg"
-        );
+        const result = await engine.calcProgramSvg(payload?.xml_content, payload?.language || "en");
         return { id, ok: true, result };
       }
       case "simulateGreenFlag": {
         const engine = await ensureSingletonEngine();
-        const result = await withTimeout(
-          engine.simulateGreenFlag(payload?.xml_content, payload?.language || "en"),
-          OPERATION_TIMEOUT_MS,
-          "simulateGreenFlag"
-        );
+        const result = await engine.simulateGreenFlag(payload?.xml_content, payload?.language || "en");
         return { id, ok: true, result };
       }
       case "getGreenFlagAsLispCode": {
         const engine = await ensureSingletonEngine();
-        const result = await withTimeout(
-          engine.getGreenFlagAsLispCode(payload?.xml_content, payload?.language || "en"),
-          OPERATION_TIMEOUT_MS,
-          "getGreenFlagAsLispCode"
-        );
+        const result = await engine.getGreenFlagAsLispCode(payload?.xml_content, payload?.language || "en");
         return { id, ok: true, result };
       }
       case "destroy": {
