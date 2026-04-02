@@ -6,6 +6,10 @@
 // Notes:
 // - This file intentionally omits editor UI, keyboard input, DOM integration, and language switching.
 // - It provides a small DOM shim sufficient for Morphic/Snap loading in worker scope.
+// - Deterministic policy for green-flag snapshots:
+//   * no timeout-based completion logic
+//   * no fallback image sources
+//   * either produce the canonical result or fail with an error
 
 (() => {
   "use strict";
@@ -467,10 +471,8 @@
           try {
             return originalDrawImage.call(this, normalizedImage, ...rest);
           } catch (err) {
-            if (err instanceof TypeError) {
-              return;
-            }
-            throw err;
+            warn("drawImage failed in worker canvas context", err);
+            return undefined;
           }
         };
         try {
@@ -501,7 +503,9 @@
     if (typeof canvasLike.toDataURL === "function") {
       try {
         return canvasLike.toDataURL("image/png");
-      } catch (_) {}
+      } catch (err) {
+        warn("canvas.toDataURL(image/png) failed", err);
+      }
     }
 
     if (typeof canvasLike.convertToBlob === "function") {
@@ -537,10 +541,6 @@
       throw new Error("WorldMorph/IDE_Morph missing after worker script load");
     }
     scriptsLoaded = true;
-  }
-
-  function sleep(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   class TurtleWorkerEngine {
@@ -592,6 +592,22 @@
       }
     }
 
+    async settleWorldCycles(cycles = 6) {
+      for (let i = 0; i < cycles; i++) {
+        this.stepWorld(1);
+        await Promise.resolve();
+      }
+    }
+
+    safeCall(label, action) {
+      try {
+        return action();
+      } catch (err) {
+        warn(`${label} failed`, err);
+        return undefined;
+      }
+    }
+
     forceLayout() {
       if (!this.world || !this.ide) return;
       try {
@@ -631,23 +647,21 @@
       }
 
       const ide = this.ide;
-      if (typeof ide.setLanguage === "function") {
-        await new Promise((resolve) => {
-          try {
-            ide.setLanguage(safeLang, () => resolve(), true);
-          } catch (_) {
-            resolve();
-          }
-        });
+      // NOTE: `ide.setLanguage` can block indefinitely in worker-only runtimes.
+      // We therefore set translator state directly and refresh UI caches deterministically.
+      await this.settleWorldCycles(2);
+      if (globalThis.SnapTranslator?.language !== safeLang) {
+        throw new Error(`Failed to set TurtleStitch language to '${safeLang}'.`);
       }
-      try { ide.flushBlocksCache?.(); } catch (_) {}
-      try { globalThis.SpriteMorph?.prototype?.initBlocks?.(); } catch (_) {}
-      try { ide.spriteBar?.tabBar?.tabTo?.("scripts"); } catch (_) {}
-      try { ide.createCategories?.(); } catch (_) {}
-      try { ide.categories?.refreshEmpty?.(); } catch (_) {}
-      try { ide.createCorralBar?.(); } catch (_) {}
-      try { ide.refreshCustomizedPalette?.(); } catch (_) {}
-      try { ide.fixLayout?.(); } catch (_) {}
+
+      this.safeCall("ide.flushBlocksCache", () => ide.flushBlocksCache?.());
+      this.safeCall("SpriteMorph.initBlocks", () => globalThis.SpriteMorph?.prototype?.initBlocks?.());
+      this.safeCall("ide.spriteBar.tabTo(scripts)", () => ide.spriteBar?.tabBar?.tabTo?.("scripts"));
+      this.safeCall("ide.createCategories", () => ide.createCategories?.());
+      this.safeCall("ide.categories.refreshEmpty", () => ide.categories?.refreshEmpty?.());
+      this.safeCall("ide.createCorralBar", () => ide.createCorralBar?.());
+      this.safeCall("ide.refreshCustomizedPalette", () => ide.refreshCustomizedPalette?.());
+      this.safeCall("ide.fixLayout", () => ide.fixLayout?.());
       this.forceLayout();
       this.stepWorld(4);
       return true;
@@ -661,59 +675,46 @@
       // Keep the editor in English while loading project XML.
       await this.setLanguage("en");
       this.ide.loadProjectXML(xml);
-      await sleep(350);
+      await this.settleWorldCycles(12);
 
-      try { this.ide.selectSprite?.(this.ide.currentSprite); } catch (_) {}
+      this.safeCall("ide.selectSprite(currentSprite)", () => this.ide.selectSprite?.(this.ide.currentSprite));
       this.forceLayout();
       this.stepWorld(4);
     }
 
-    allProgramPictures() {
-      const pics = [];
-      const ide = this.ide;
-      if (!ide) return pics;
-
-      ide.sprites?.asArray?.().forEach((sprite) => {
-        if (sprite?.scripts?.scriptsPicture) {
-          const pic = sprite.scripts.scriptsPicture();
-          if (pic) pics.push(pic);
-        }
-
-        sprite?.customBlocks?.forEach((def) => {
-          const pic = def?.scriptsPicture?.();
-          if (pic) pics.push(pic);
-        });
-      });
-
-      if (ide.stage?.scripts?.scriptsPicture) {
-        const stagePic = ide.stage.scripts.scriptsPicture();
-        if (stagePic) pics.push(stagePic);
+    greenFlagProgramPictures() {
+      const topBlocks = this.greenFlagTopBlocks();
+      if (!topBlocks.length) {
+        throw new Error("No green-flag scripts found for program snapshot.");
       }
 
-      ide.stage?.customBlocks?.forEach((def) => {
-        const pic = def?.scriptsPicture?.();
-        if (pic) pics.push(pic);
-      });
+      const pics = [];
+      for (const block of topBlocks) {
+        const top = typeof block?.topBlock === "function" ? block.topBlock() : block;
+        if (!top) {
+          throw new Error("Encountered invalid green-flag top block while building program snapshot.");
+        }
 
-      ide.stage?.globalBlocks?.forEach((def) => {
-        const pic = def?.scriptsPicture?.();
-        if (pic) pics.push(pic);
-      });
+        let pic = null;
+        if (typeof top.fullImage === "function") {
+          pic = top.fullImage();
+        } else if (typeof top.scriptPic === "function") {
+          pic = top.scriptPic();
+        }
 
+        if (!pic) {
+          throw new Error("Could not render a green-flag script picture.");
+        }
+        pics.push(pic);
+      }
       return pics;
     }
 
-    svgDataUrlFromString(svgMarkup) {
-      const encoded = btoa(unescape(encodeURIComponent(svgMarkup)));
-      return `data:image/svg+xml;base64,${encoded}`;
-    }
-
-    async snapshotAllProgramsSvgDataUrl() {
+    async snapshotProgramsPngDataUrl(pics) {
       this.forceLayout();
       this.stepWorld(2);
 
       const padding = 20;
-      const pics = this.allProgramPictures();
       if (!pics.length) throw new Error("No scripts picture could be generated.");
 
       let width = 0;
@@ -725,28 +726,27 @@
       });
 
       let y = 0;
-      const imageNodes = [];
+      const composite = document.createElement("canvas");
+      composite.width = Math.max(1, width);
+      composite.height = Math.max(1, height);
+      const ctx = composite.getContext("2d");
+      if (!ctx) throw new Error("Could not get 2D context for program snapshot composition.");
+
       for (const canvas of pics) {
         try {
-          const href = await canvasToPngDataUrl(canvas);
-          imageNodes.push(`<image x=\"0\" y=\"${y}\" width=\"${canvas.width}\" height=\"${canvas.height}\" href=\"${href}\" />`);
-          y += canvas.height + padding;
-        } catch (e) {
-          warn("Skipping script image after PNG conversion failure", e);
+          ctx.drawImage(canvas, 0, y);
+        } catch (err) {
+          warn("Failed to draw program snapshot layer", err);
+          throw new Error("Could not compose program snapshot PNG from script images.");
         }
+        y += canvas.height + padding;
       }
 
-      if (!imageNodes.length) {
-        throw new Error("No scripts picture could be encoded as PNG.");
-      }
+      return canvasToPngDataUrl(composite);
+    }
 
-      const svg = [
-        `<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"${width}\" height=\"${height}\" viewBox=\"0 0 ${width} ${height}\">`,
-        ...imageNodes,
-        "</svg>"
-      ].join("\n");
-
-      return this.svgDataUrlFromString(svg);
+    async snapshotGreenFlagProgramsPngDataUrl() {
+      return this.snapshotProgramsPngDataUrl(this.greenFlagProgramPictures());
     }
 
     activeProcessCount() {
@@ -805,19 +805,19 @@
     }
 
     async runGreenFlagOnce() {
+      // Deterministic, fail-fast policy:
+      // - no wall-clock timeouts
+      // - no fallback completion heuristics
+      // - complete only when processes become idle and trails stabilize
       this.forceLayout();
-      try { this.ide.stopAllScripts?.(); } catch (_) {}
-      try { this.ide.stage.clearPenTrails?.(); } catch (_) {}
+      this.safeCall("ide.stopAllScripts(before run)", () => this.ide.stopAllScripts?.());
+      this.safeCall("ide.stage.clearPenTrails", () => this.ide.stage.clearPenTrails?.());
       this.runGreenFlag();
 
-      const started = Date.now();
-      const minRuntimeMs = 700;
-      const maxRuntimeMs = 3500;
       let lastTrailCount = -1;
       let stableTrailCycles = 0;
       let idleProcessCycles = 0;
-
-      while (Date.now() - started < maxRuntimeMs) {
+      while (true) {
         this.stepWorld(2);
 
         const trailCount = this.ide?.stage?.trailsLog?.length ?? 0;
@@ -830,42 +830,34 @@
         if (processCount === 0) idleProcessCycles += 1;
         else idleProcessCycles = 0;
 
-        const runtimeMs = Date.now() - started;
-        const minRuntimeReached = runtimeMs >= minRuntimeMs;
-        const trailsDone = trailCount > 0 && stableTrailCycles >= 3;
+        const trailsDone = stableTrailCycles >= 3;
         const processesDone = idleProcessCycles >= 3;
 
-        if (minRuntimeReached && (trailsDone || processesDone)) break;
-
-        await sleep(120);
+        if (trailsDone && processesDone) break;
+        await Promise.resolve();
       }
 
-      try { this.ide.stopAllScripts?.(); } catch (_) {}
+      this.safeCall("ide.stopAllScripts(after run)", () => this.ide.stopAllScripts?.());
       this.stepWorld(3);
     }
 
     async snapshotStagePngDataUrl() {
+      // No fallback behavior here: stage.fullImage() is the canonical output source.
       this.forceLayout();
       this.stepWorld(2);
 
-      try {
-        const stageImage = this.ide?.stage?.fullImage?.();
-        if (stageImage) return await canvasToPngDataUrl(stageImage);
-      } catch (_) {}
-
-      if (this.world?.worldCanvas) {
-        return canvasToPngDataUrl(this.world.worldCanvas);
-      }
+      const stageImage = this.ide?.stage?.fullImage?.();
+      if (stageImage) return await canvasToPngDataUrl(stageImage);
 
       throw new Error("Could not generate stage PNG snapshot.");
     }
 
-    async calcProgramSvg(xml, language = "en") {
+    async calcProgramPng(xml, language = "en") {
       await this.loadProjectXmlCanonical(xml);
       await this.setLanguage(language);
       this.forceLayout();
       this.stepWorld(2);
-      return this.snapshotAllProgramsSvgDataUrl();
+      return this.snapshotGreenFlagProgramsPngDataUrl();
     }
 
     async simulateGreenFlag(xml, language = "en") {
@@ -885,17 +877,17 @@
       if (this.destroyed) return;
       this.destroyed = true;
 
-      try { this.ide?.stopAllScripts?.(); } catch (_) {}
-      try { this.ide?.destroy?.(); } catch (_) {}
-      try { this.world?.destroy?.(); } catch (_) {}
+      this.safeCall("ide.stopAllScripts(destroy)", () => this.ide?.stopAllScripts?.());
+      this.safeCall("ide.destroy", () => this.ide?.destroy?.());
+      this.safeCall("world.destroy", () => this.world?.destroy?.());
 
-      try {
+      this.safeCall("canvas.cleanup", () => {
         if (this.canvas) {
           this.canvas.width = 0;
           this.canvas.height = 0;
           this.canvas.remove?.();
         }
-      } catch (_) {}
+      });
 
       this.world = null;
       this.ide = null;
@@ -925,19 +917,20 @@
   }
 
   async function handleMessage(data) {
-    const { id, type, payload } = data || {};
-    if (!id || typeof type !== "string") {
-      throw new Error("Worker message must include { id, type, payload }");
+    const { id, type, operation, payload } = data || {};
+    const op = typeof type === "string" ? type : operation;
+    if (!id || typeof op !== "string") {
+      throw new Error("Worker message must include { id, type|operation, payload }");
     }
 
-    switch (type) {
+    switch (op) {
       case "init": {
         await ensureSingletonEngine();
         return { id, ok: true, result: { ready: true } };
       }
-      case "calcProgramSvg": {
+      case "calcProgramPng": {
         const engine = await ensureSingletonEngine();
-        const result = await engine.calcProgramSvg(payload?.xml_content, payload?.language || "en");
+        const result = await engine.calcProgramPng(payload?.xml_content, payload?.language || "en");
         return { id, ok: true, result };
       }
       case "simulateGreenFlag": {
@@ -956,7 +949,7 @@
         return { id, ok: true, result: { destroyed: true } };
       }
       default:
-        throw new Error(`Unsupported worker operation: ${type}`);
+        throw new Error(`Unsupported worker operation: ${op}`);
     }
   }
 
