@@ -3,7 +3,7 @@ package content
 import com.raquo.laminar.api.L.{*, given}
 import datastructures.web.file.FileDescription
 import interactionPlugins.slideshow.{SlideDeckExercise, SlidePanel}
-import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement, HtmlUnsafeHtmlInstructionElement}
+import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlMarkdownInstructionElement, HtmlPlaintextInstructionElement}
 import workbook.htmlElements.container.HtmlExerciseContainer
 import workbook.htmlElements.interactions.{HtmlBasicCheckboxInteraction, HtmlReorderInteraction}
 import workbook.model.{Workbook, WorkbookSection}
@@ -20,11 +20,8 @@ case class CreatePlantworkshopWorkbook(override val workbookInfo: AllWorkbookInf
       workbookInfo.stringSignalFromLanguageMapId(languageMapId)(ExecutionContext.global)
     )
 
-  private def htmlElement(languageMapId: String): HtmlUnsafeHtmlInstructionElement =
-    HtmlUnsafeHtmlInstructionElement(
-      workbookInfo,
-      workbookInfo.stringSignalFromLanguageMapId(languageMapId)(ExecutionContext.global)
-    )
+  private def markdownElement(languageMapId: String): HtmlMarkdownInstructionElement =
+    HtmlMarkdownInstructionElement(workbookInfo, languageMapId)
 
   private def checklist(keys: List[String], prefix: String): List[HtmlWorkbookElement] =
     keys.map { key =>
@@ -72,8 +69,8 @@ case class CreatePlantworkshopWorkbook(override val workbookInfo: AllWorkbookInf
   private def createMotivationSection(): WorkbookSection = {
     val intro = HtmlExerciseContainer(workbookInfo, List(
       HtmlContainerTitle(workbookInfo, "PlantWorkshop/section0Title"),
-      htmlElement("PlantWorkshop/section0IntroHtml"),
-      htmlElement("PlantWorkshop/section0SafetyHtml")
+      markdownElement("PlantWorkshop/section0IntroMarkdown"),
+      markdownElement("PlantWorkshop/section0SafetyMarkdown")
     ))
 
     WorkbookSection(workbookInfo, "PlantWorkshop/section0Title", List(intro))
@@ -107,7 +104,6 @@ case class CreatePlantworkshopWorkbook(override val workbookInfo: AllWorkbookInf
     SlideDeckExercise(
       workbookInfo = workbookInfo,
       id = nextId("plant-wiring-slideshow"),
-      titleMapId = "PlantWorkshop/wiringSlideshowTitle",
       slides = slides
     )
   }
@@ -134,7 +130,7 @@ case class CreatePlantworkshopWorkbook(override val workbookInfo: AllWorkbookInf
         textElement("PlantWorkshop/section1ChecklistIntro"),
         textElement("PlantWorkshop/section1WiringHint")
       ) ++ componentChecklist ++ List(
-        htmlElement("PlantWorkshop/section1PowerWarningHtml"),
+        markdownElement("PlantWorkshop/section1PowerWarningMarkdown"),
         createWiringSlideshow(),
         textElement("PlantWorkshop/section1RelayInfo")
       )

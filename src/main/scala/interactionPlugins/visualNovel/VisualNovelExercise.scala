@@ -11,8 +11,7 @@ object VisualNovelExercise {
   def apply(
              workbookInfo: AllWorkbookInfo,
              id: String,
-             titleMapId: String,
              panels: List[SlidePanel]
            ): SlideDeckExercise =
-    SlideDeckExercise(workbookInfo, id, titleMapId, panels)
+    SlideDeckExercise(workbookInfo, id, panels)
 }
