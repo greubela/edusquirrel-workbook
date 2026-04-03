@@ -109,6 +109,99 @@ body {
   margin-top: var(--space-xl);
 }
 
+
+.container-exercise.container-level-1 {
+  background-color: var(--color-workbook-surface-level-1);
+}
+
+.container-exercise.container-level-2,
+.container-sub.container-level-2 {
+  background-color: var(--color-workbook-surface-level-2);
+}
+
+.container-exercise.container-level-3,
+.container-sub.container-level-3 {
+  background-color: var(--color-workbook-surface-level-3);
+}
+
+.container-exercise.container-level-4,
+.container-sub.container-level-4 {
+  background-color: var(--color-workbook-surface-level-4);
+}
+
+.container-sub {
+  margin: var(--space-md) var(--space-lg);
+  padding: var(--space-md);
+  border-radius: var(--radius-sm);
+  border-left: var(--space-sm) solid var(--color-container-border-inactive);
+  border-top: var(--space-xs) solid var(--color-container-border-passive);
+  border-right: var(--space-xs) solid var(--color-container-border-passive);
+  border-bottom: var(--space-xs) solid var(--color-container-border-passive);
+}
+
+.container-sub .workbook-element {
+  border-left: none;
+}
+
+.container-title-level-1 h1,
+.container-title-level-2 h2,
+.container-title-level-3 h3,
+.container-title-level-4 h4,
+.container-title-level-5 h5,
+.container-title-level-6 h6 {
+  margin: 0;
+}
+
+
+.container-title-level-1 h1 {
+  font-size: clamp(2.1rem, 4.5vw, 3rem);
+}
+
+.container-title-level-2 h2 {
+  font-size: clamp(1.75rem, 3.4vw, 2.2rem);
+}
+
+.container-title-level-3 h3 {
+  font-size: 1.3rem;
+}
+
+.container-title-level-4 h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-container-accent);
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  color: var(--color-container-accent);
+  margin: 0 0 var(--space-md) 0;
+  line-height: 1.25;
+}
+
+.markdown-content h2 {
+  font-size: 1.8rem;
+}
+
+.markdown-content h3 {
+  font-size: 1.3rem;
+}
+
+.markdown-content h4 {
+  font-size: 1.1rem;
+}
+
+.markdown-content ul {
+  margin: 0 0 var(--space-md) var(--space-xl);
+}
+
+.markdown-content ul:last-child {
+  margin-bottom: 0;
+}
+
 /* Workbook Elements */
 
 .workbook-element{

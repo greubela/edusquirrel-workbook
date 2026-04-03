@@ -6,9 +6,9 @@ import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
 import datastructures.web.file.FileDescription
 import interactionPlugins.slideshow.{SlideDeckExercise, SlidePanel}
 import interactionPlugins.turtleStitchPlugin.TurtleStitchExploreProjectExercise
-import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement, HtmlUnsafeHtmlInstructionElement}
+import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlMarkdownInstructionElement, HtmlPlaintextInstructionElement, HtmlUnsafeHtmlInstructionElement}
 import workbook.htmlElements.interactions.{HtmlBasicCheckboxInteraction, HtmlBasicTextInteraction, HtmlReorderInteraction}
-import workbook.htmlElements.container.HtmlExerciseContainer
+import workbook.htmlElements.container.{HtmlExerciseContainer, HtmlSubContainer}
 import workbook.model.{Workbook, WorkbookSection}
 import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.AllWorkbookInfo
@@ -29,7 +29,7 @@ case class JsonWorkbookRuntimeFactory(
 
     val withoutDependencies: List[(WorkbookSectionJson, WorkbookSection)] = jsonFactory.workbookContent.sections.map(sectionJson => {
       val containers = sectionJson.sectionContent.map(container =>
-        HtmlExerciseContainer(workbookInfo, container.elements.map(createWorkbookElement))
+        HtmlExerciseContainer.withLevel(workbookInfo, container.elements.map(createWorkbookElement), container.level)
       )
 
       val sec = WorkbookSection(
@@ -74,7 +74,14 @@ case class JsonWorkbookRuntimeFactory(
 
     factory.elementName match {
       case "HtmlContainerTitle" =>
-        HtmlContainerTitle(workbookInfo, args.getOrElse("languageMapId", throw missingArg("languageMapId", factory)))
+        HtmlContainerTitle.withLevel(
+          workbookInfo,
+          args.getOrElse("languageMapId", throw missingArg("languageMapId", factory)),
+          JsonWorkbookRuntimeFactory.parseIntArg(args.get("level"), 2)
+        )
+
+      case "HtmlMarkdownInstructionElement" =>
+        HtmlMarkdownInstructionElement(workbookInfo, args.getOrElse("languageMapId", throw missingArg("languageMapId", factory)))
 
       case "HtmlUnsafeHtmlInstructionElement" =>
         HtmlUnsafeHtmlInstructionElement(workbookInfo, args.getOrElse("languageMapId", throw missingArg("languageMapId", factory)))
@@ -118,13 +125,21 @@ case class JsonWorkbookRuntimeFactory(
         SlideDeckExercise(
           workbookInfo = workbookInfo,
           id = args.getOrElse("id", nextId("json-slideshow")),
-          titleMapId = args.getOrElse("titleMapId", throw missingArg("titleMapId", factory)),
           slides = slides
         )
 
       case "TurtleStitchExploreProjectExercise" =>
         val path = args.getOrElse("resourcePath", throw missingArg("resourcePath", factory))
         TurtleStitchExploreProjectExercise.createElementLine(workbookInfo, FileDescription.relativeToResourceFolder(path))
+
+      case "HtmlSubContainer" =>
+        val serializedChildren = args.getOrElse("childrenJson", throw missingArg("childrenJson", factory))
+        val nestedFactories = JsonWorkbookRuntimeFactory.parseNestedElements(serializedChildren, factory)
+        HtmlSubContainer.withLevel(
+          workbookInfo = workbookInfo,
+          children = nestedFactories.map(createWorkbookElement),
+          level = JsonWorkbookRuntimeFactory.parseIntArg(args.get("level"), 2)
+        )
 
       case other =>
         HtmlUnsafeHtmlInstructionElement(workbookInfo, Val(s"[Unknown elementName: '$other']"))
@@ -148,6 +163,13 @@ object JsonWorkbookRuntimeFactory {
   private def parseSlideSpecs(serializedSlides: String, factory: WorkbookElementFactory): List[SlideSpecJson] =
     Try(read[List[SlideSpecJson]](serializedSlides))
       .getOrElse(throw IllegalArgumentException(s"Invalid slidesJson for element '${factory.elementName}'"))
+
+  private def parseNestedElements(serializedElements: String, factory: WorkbookElementFactory): List[WorkbookElementFactory] =
+    Try(read[List[WorkbookElementFactory]](serializedElements))
+      .getOrElse(throw IllegalArgumentException(s"Invalid childrenJson for element '${factory.elementName}'"))
+
+  private def parseIntArg(maybeRaw: Option[String], defaultValue: Int): Int =
+    maybeRaw.flatMap(raw => Try(raw.trim.toInt).toOption).getOrElse(defaultValue)
 
   private val sourceJsonByWorkbookIdentity: mutable.HashMap[Int, JsonWorkbookFactory] = mutable.HashMap.empty
 
