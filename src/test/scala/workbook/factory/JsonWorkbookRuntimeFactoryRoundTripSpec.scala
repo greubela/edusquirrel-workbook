@@ -85,7 +85,6 @@ class JsonWorkbookRuntimeFactoryRoundTripSpec extends FunSuite {
       |                "elementName": "SlideDeckExercise",
       |                "factoryArgs": {
       |                  "id": "slide-1",
-      |                  "titleMapId": "PlantWorkshop/wiringSlideshowTitle",
       |                  "slidesJson": "[{\"imagePath\":\"img/plantworkshop/step0.png\",\"textMapId\":\"PlantWorkshop/wiringSlideText1\",\"sourceMapId\":\"PlantWorkshop/wiringSlideSource\",\"descriptionMapId\":\"PlantWorkshop/wiringSlideDescription\"}]"
       |                }
       |              }

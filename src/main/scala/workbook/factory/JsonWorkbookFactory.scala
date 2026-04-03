@@ -57,7 +57,8 @@ object WorkbookSectionJson {
 
 case class ExerciseContainerJson(
                                   exerciseId: String,
-                                  elements: List[WorkbookElementFactory]
+                                  elements: List[WorkbookElementFactory],
+                                  level: Int = 1
                                 )
 
 object ExerciseContainerJson {

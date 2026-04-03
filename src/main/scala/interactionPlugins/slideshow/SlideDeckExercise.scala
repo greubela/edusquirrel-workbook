@@ -2,7 +2,6 @@ package interactionPlugins.slideshow
 
 import com.raquo.laminar.api.L.*
 import upickle.default.*
-import workbook.htmlElements.basic.HtmlContainerTitle
 import workbook.model.abstractions.WorkbookInteraction
 import workbook.model.info.AllWorkbookInfo
 import workbook.model.interaction.InteractionVariable
@@ -14,7 +13,6 @@ case class SlideView(slideIndex: Int, viewedAtEpochMillis: Long)
 case class SlideDeckExercise(
                               workbookInfo: AllWorkbookInfo,
                               id: String,
-                              titleMapId: String,
                               slides: List[SlidePanel]
                             ) extends WorkbookInteraction[Set[SlideView]] {
 
@@ -40,7 +38,6 @@ case class SlideDeckExercise(
       slideViewSerializer
     )
 
-  private val htmlTitleElement = HtmlContainerTitle(workbookInfo, titleMapId)
 
   private def totalSlides: Int = slides.length
 
@@ -84,7 +81,6 @@ case class SlideDeckExercise(
 
   override def getDomElement(): Element = div(
     cls := "container-exercise style-vbox",
-    htmlTitleElement.getDomElement(),
     navigationElement,
     child <-- currentSlideSignal.map(_.panelContent.getDomElement())
   )
