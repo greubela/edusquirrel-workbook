@@ -21,10 +21,7 @@ case class CreatePlantworkshopWorkbook(override val workbookInfo: AllWorkbookInf
     )
 
   private def markdownElement(languageMapId: String): HtmlMarkdownInstructionElement =
-    HtmlMarkdownInstructionElement(
-      workbookInfo,
-      workbookInfo.stringSignalFromLanguageMapId(languageMapId)(ExecutionContext.global)
-    )
+    HtmlMarkdownInstructionElement(workbookInfo, languageMapId)
 
   private def checklist(keys: List[String], prefix: String): List[HtmlWorkbookElement] =
     keys.map { key =>
