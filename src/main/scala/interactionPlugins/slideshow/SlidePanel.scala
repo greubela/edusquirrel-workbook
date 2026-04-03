@@ -22,21 +22,21 @@ object SlidePanel {
 
     val panelElement = new HtmlAppElement {
       override def getDomElement(): Element = div(
-        cls := "visual-novel-container",
+        cls := "slide-deck-container workbook-interaction",
         div(
-          cls := "visual-novel-image",
+          cls := "slide-deck-image",
           child <-- imageElement.getDomSignal
         ),
         div(
-          cls := "visual-novel-source",
+          cls := "slide-deck-source",
           child.text <-- workbookInfo.stringSignalFromLanguageMapId(sourceMapId)(scala.concurrent.ExecutionContext.global)
         ),
         div(
-          cls := "visual-novel-description",
+          cls := "slide-deck-description",
           child.text <-- workbookInfo.stringSignalFromLanguageMapId(descriptionMapId)(scala.concurrent.ExecutionContext.global)
         ),
         div(
-          cls := "visual-novel-text",
+          cls := "slide-deck-text",
           child.text <-- workbookInfo.stringSignalFromLanguageMapId(textMapId)(scala.concurrent.ExecutionContext.global)
         )
       )

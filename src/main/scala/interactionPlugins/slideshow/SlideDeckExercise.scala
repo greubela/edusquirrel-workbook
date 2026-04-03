@@ -62,14 +62,14 @@ case class SlideDeckExercise(
   }
 
   private val navigationElement: Element = div(
-    cls := "visual-novel-navigation",
+    cls := "slide-deck-navigation",
     button(
       child.text <-- workbookInfo.stringSignalFromLanguageMapId("PlantWorkshop/slideshowBack")(scala.concurrent.ExecutionContext.global),
       disabled <-- currentIndex.signal.map(_ == 0),
       onClick.mapTo(-1) --> navigateBy
     ),
     span(
-      cls := "visual-novel-counter",
+      cls := "slide-deck-counter",
       child.text <-- currentIndex.signal.map(i => s"${i + 1}/$totalSlides")
     ),
     button(

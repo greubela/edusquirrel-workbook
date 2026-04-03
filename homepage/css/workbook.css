@@ -330,8 +330,8 @@ h3 {
   transform: translateY(-1px);
 }
 
-/* --- Slideshow / visual novel styling --- */
-.visual-novel-navigation {
+/* --- Slide deck styling --- */
+.slide-deck-navigation {
   position: sticky;
   top: var(--space-sm);
   z-index: 10;
@@ -348,7 +348,7 @@ h3 {
   box-shadow: var(--shadow-button);
 }
 
-.visual-novel-navigation button {
+button {
   min-width: 120px;
   padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-md);
@@ -361,18 +361,18 @@ h3 {
   transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.visual-novel-navigation button:hover:not(:disabled) {
+button:hover:not(:disabled) {
   background: var(--color-button-hover);
   transform: translateY(-1px);
 }
 
-.visual-novel-navigation button:disabled {
+button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   box-shadow: none;
 }
 
-.visual-novel-counter {
+.slide-deck-counter {
   min-width: 72px;
   text-align: center;
   font-weight: 700;
@@ -380,18 +380,17 @@ h3 {
   letter-spacing: 0.02em;
 }
 
-.visual-novel-container {
+.slide-deck-container {
   margin: var(--space-md);
   padding: var(--space-md);
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-  border: 1px solid var(--color-container-border-inactive);
   border-radius: var(--radius-md);
   background: var(--color-interaction-background);
 }
 
-.visual-novel-image {
+.slide-deck-image {
   width: 100%;
   display: flex;
   justify-content: center;
@@ -401,22 +400,22 @@ h3 {
   padding: var(--space-md);
 }
 
-.visual-novel-image img {
+.slide-deck-image img {
   max-width: 100%;
   height: auto;
   border-radius: var(--radius-sm);
 }
 
-.visual-novel-source,
-.visual-novel-description,
-.visual-novel-text {
+.slide-deck-source,
+.slide-deck-description,
+.slide-deck-text {
   padding: var(--space-sm) var(--space-md);
   border: 1px solid var(--color-container-border-passive);
   border-radius: var(--radius-sm);
   background: var(--color-container-background);
 }
 
-.visual-novel-source {
+.slide-deck-source {
   font-size: 0.9rem;
   color: var(--color-text-secondary);
 }
