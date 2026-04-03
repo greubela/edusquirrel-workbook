@@ -3,6 +3,7 @@
   "section0Title": "0. Motivation",
   "section1Title": "1. Bauteile & Aufbau",
   "section1ChecklistIntro": "Checkliste für die Bauteile:",
+  "section1Subtitle1": "Aufbau und Verkabelung",
   "section1WiringHint": "So werden die Komponenten verbunden:",
   "section1RelayInfo": "Warum ein Relais? Das Arduino kann nur kleine Ströme direkt schalten, aber die Pumpe braucht mehr Strom. Der Arduino steuert das Relais und das Relais schaltet die Pumpe an/aus.",
   "componentArduino": "Arduino Board",

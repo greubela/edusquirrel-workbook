@@ -3,6 +3,7 @@
   "section0Title": "0. Motivation",
   "section1Title": "1. Components & Setup",
   "section1ChecklistIntro": "Checklist for components:",
+  "section1Subtitle1": "Wiring it together",
   "section1WiringHint": "This is how the components are connected:",
   "section1RelayInfo": "Why a relay? The Arduino can only switch small currents directly, but the pump needs more current. The Arduino controls the relay, and the relay switches the pump on/off.",
   "componentArduino": "Arduino Board",

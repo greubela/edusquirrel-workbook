@@ -124,19 +124,25 @@ case class CreatePlantworkshopWorkbook(override val workbookInfo: AllWorkbookInf
       "plant-components-check"
     )
 
-    val container = HtmlExerciseContainer(workbookInfo,
-      List(
-        HtmlContainerTitle(workbookInfo, "PlantWorkshop/section1Title"),
-        textElement("PlantWorkshop/section1ChecklistIntro"),
-        textElement("PlantWorkshop/section1WiringHint")
-      ) ++ componentChecklist ++ List(
-        markdownElement("PlantWorkshop/section1PowerWarningMarkdown"),
-        createWiringSlideshow(),
-        textElement("PlantWorkshop/section1RelayInfo")
+    val container = List(
+      HtmlExerciseContainer(workbookInfo,
+        List(
+          HtmlContainerTitle(workbookInfo, "PlantWorkshop/section1Title"),
+          textElement("PlantWorkshop/section1ChecklistIntro"),
+          textElement("PlantWorkshop/section1WiringHint")
+        ) ++ componentChecklist
+      ),
+      HtmlExerciseContainer(workbookInfo,
+        List(
+          HtmlContainerTitle(workbookInfo, "PlantWorkshop/section1Subtitle1"),
+          markdownElement("PlantWorkshop/section1PowerWarningMarkdown"),
+          createWiringSlideshow(),
+          textElement("PlantWorkshop/section1RelayInfo")
+        )
       )
     )
 
-    WorkbookSection(workbookInfo, "PlantWorkshop/section1Title", List(container))
+    WorkbookSection(workbookInfo, "PlantWorkshop/section1Title", container)
   }
 
   private def createPumpControlSection(): WorkbookSection = {

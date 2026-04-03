@@ -80,7 +80,7 @@ case class SlideDeckExercise(
   )
 
   override def getDomElement(): Element = div(
-    cls := "container-exercise style-vbox",
+    cls := "workbook-interaction",
     navigationElement,
     child <-- currentSlideSignal.map(_.panelContent.getDomElement())
   )
