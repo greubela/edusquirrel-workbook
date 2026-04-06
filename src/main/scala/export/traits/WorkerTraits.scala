@@ -13,7 +13,7 @@ object WorkerTraits {
                            id: String
                          ) {
     private var info: mutable.Map[String, String] = mutable.Map(
-      "timestampEnqueued" -> LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_DATE_TIME),
+      "timestampReceived" -> LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_DATE_TIME),
     )
   }
 
@@ -31,14 +31,15 @@ object WorkerTraits {
   case class CommandHistory(
                              command: WorkerCommand,
                              timestampRequested: LocalDateTime,
-                             timestampEnqueued: LocalDateTime,
+                             timestampReceived: LocalDateTime,
                              timestampStarted: LocalDateTime,
                              timestampFinished: LocalDateTime,
                            )
 
   case class PendingTask(
                           requestId: String,
+                          command: WorkerCommand,
                           promise: Promise[ExecutionResult],
-                          timestampRequested: LocalDateTime
+                          timestampEnqueued: LocalDateTime
                         )
 }
