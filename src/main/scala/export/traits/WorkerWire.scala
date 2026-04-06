@@ -10,36 +10,47 @@ import scala.scalajs.js
 // helper functions that bind everything together (not type conversions, those are done in JsHelper).
 private object WorkerWire {
 
+  case class OutboundMessage(payload: js.Object, transferables: js.Array[dom.Transferable] = js.Array())
 
-  def init(paramsForInit: Map[String, String], canvas: Option[OffscreenCanvas]): js.Object =
+  def init(paramsForInit: Map[String, String], canvas: Option[OffscreenCanvas]): OutboundMessage =
     if (canvas.nonEmpty) {
-      js.Dynamic.literal(
+      OutboundMessage(
+        payload = js.Dynamic.literal(
         kind = "init",
         params = JsHelpers.stringMapHelper.fromScalaToJs(paramsForInit),
         canvas = canvas.get
-      ).asInstanceOf[js.Object]
+      ).asInstanceOf[js.Object],
+        transferables = js.Array(canvas.get.asInstanceOf[dom.Transferable])
+      )
 
     } else {
-      js.Dynamic.literal(kind = "init", params = JsHelpers.stringMapHelper.fromScalaToJs(paramsForInit)).asInstanceOf[js.Object]
+      OutboundMessage(
+        payload = js.Dynamic.literal(kind = "init", params = JsHelpers.stringMapHelper.fromScalaToJs(paramsForInit)).asInstanceOf[js.Object]
+      )
 
     }
 
-  def request(id: String, command: WorkerCommand): js.Object =
+  def request(id: String, command: WorkerCommand): OutboundMessage =
     if (command.canvas.nonEmpty) {
-      js.Dynamic.literal(
+      OutboundMessage(
+        payload = js.Dynamic.literal(
         kind = "request",
         id = id,
         name = command.name,
         params = JsHelpers.stringMapHelper.fromScalaToJs(command.params),
         canvas = command.canvas.get
-      ).asInstanceOf[js.Object]
+      ).asInstanceOf[js.Object],
+        transferables = js.Array(command.canvas.get.asInstanceOf[dom.Transferable])
+      )
     } else {
-      js.Dynamic.literal(
+      OutboundMessage(
+        payload = js.Dynamic.literal(
         kind = "request",
         id = id,
         name = command.name,
         params = JsHelpers.stringMapHelper.fromScalaToJs(command.params)
       ).asInstanceOf[js.Object]
+      )
     }
 
   def response(
