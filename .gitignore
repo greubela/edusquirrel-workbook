@@ -3,6 +3,7 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+
 ### IntelliJ IDEA ###
 .idea/modules.xml
 .idea/jarRepositories.xml
@@ -57,3 +58,6 @@ tools/openai-proxy/ml-logs/
 
 ### Secrets ###
 .env
+
+### node
+node_modules/*
