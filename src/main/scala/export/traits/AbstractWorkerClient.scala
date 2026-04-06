@@ -1,9 +1,14 @@
 package `export`.traits
 
 import `export`.traits.WorkerTraits.*
+import `export`.traits.WorkerTraits.WorkerState.WORKER_READY
+import com.raquo.airstream.state.StrictSignal
+import com.raquo.laminar.api.L.Var
 import org.scalajs.dom
+import org.scalajs.dom.html.Canvas
 import util.web.JsHelpers
 
+import java.time
 import java.time.LocalDateTime
 import java.util.UUID
 import scala.collection.mutable
@@ -24,28 +29,6 @@ import scala.scalajs.js
  */
 object AbstractWorkerClient {
 
-  def apply(exportedName: String, autoInit: Boolean = true): AbstractWorkerClient = {
-    val worker =
-      new dom.Worker(
-        "./js/worker-bootstrap.js",
-        js.Dynamic.literal(`type` = "module").asInstanceOf[dom.WorkerOptions]
-      )
-
-    val client = new AbstractWorkerClient(worker, autoInit) {}
-    worker.postMessage(
-      js.Dynamic.literal(
-        kind = "init-server",
-        moduleUrl = "./workbookapp-fastopt/main.js",
-        exportedName = exportedName
-      )
-    )
-
-    if (autoInit) {
-      client.init()
-    }
-
-    client
-  }
 
 }
 
@@ -55,65 +38,60 @@ object AbstractWorkerClient {
  * Commands are sent asynchronously, while completion/failure is mapped back using request ids.
  */
 abstract class AbstractWorkerClient(
-                                     protected val worker: dom.Worker,
-                                     val autoInit: Boolean = true
+                                     val exportedName: String,
+                                     val paramsForInit: Map[String, String],
+                                     val canvasForInit: Option[Canvas]
                                    ) {
 
+  private val worker = {
+    val worker = new dom.Worker(
+      "./js/worker-bootstrap.js",
+      js.Dynamic.literal(`type` = "module").asInstanceOf[dom.WorkerOptions]
+    )
+    worker.postMessage(
+      js.Dynamic.literal(
+        kind = "init-server",
+        moduleUrl = "../../target/scala-3.3.3/workbookapp-fastopt/main.js",
+        //moduleUrl = "./workbookapp-fastopt/main.js",
+        exportedName = exportedName
+      )
+    )
+    worker
+  }
+
+
   private val pendingTasks = mutable.Map.empty[String, PendingTask]
-  private val initPromise = Promise[Boolean]()
-  private var initRequested = false
+  private val serverStateVar: Var[WorkerState] = Var(WorkerState.WORKER_STARTING)
+  def serverStateSignal: StrictSignal[WorkerState] = serverStateVar.signal
+  private val pendingOutboundMessages = mutable.Queue.empty[js.Object]
 
   initMessageHandling()
 
-  final def init(): Future[Boolean] = synchronized {
-    if (!initRequested) {
-      initRequested = true
-      worker.postMessage(WorkerWire.init)
+  private def postOrQueue(message: js.Object): Unit = synchronized {
+    val sendNow = serverStateVar.now() match {
+      case WorkerState.WORKER_READY(initRequested: Boolean, initSuccess: Boolean) => initSuccess
+      case _ => false
     }
-
-    initPromise.future
-  }
-
-  final def bindCanvas(
-                        name: String,
-                        canvas: dom.html.Canvas,
-                        args: Map[String, String] = Map.empty
-                      ): Unit = {
-    val canvasWithOffscreen = canvas.asInstanceOf[js.Dynamic]
-    val offscreen = canvasWithOffscreen.transferControlToOffscreen().asInstanceOf[dom.OffscreenCanvas]
-
-    worker
-      .asInstanceOf[js.Dynamic]
-      .postMessage(
-        WorkerWire.canvasBind(name, offscreen, args),
-        js.Array(offscreen.asInstanceOf[js.Any])
-      )
+    if (sendNow) worker.postMessage(message)
+    else pendingOutboundMessages.enqueue(message)
   }
 
   final def enqueue(
-                     workerCommand: WorkerCommand
-                   ): Future[ExecutionResult] = {
-
+                     commandName: String,
+                     commandParams: Map[String, String],
+                     commandCanvas: Option[Canvas] = None
+                   ): Future[ExecutionResult] = synchronized {
     val id = UUID.randomUUID().toString
     val promise = Promise[ExecutionResult]()
-    pendingTasks.put(id, PendingTask(id, workerCommand, promise, LocalDateTime.now()))
 
-    worker.postMessage(WorkerWire.request(id, workerCommand.name, workerCommand.params))
+    val offscreenCanvas = commandCanvas.map(_.asInstanceOf[js.Dynamic].transferControlToOffscreen().asInstanceOf[dom.OffscreenCanvas])
+    val cmd = WorkerCommand(commandName, commandParams, offscreenCanvas)
+
+    pendingTasks.put(id, PendingTask(id, WorkerCommand(commandName, commandParams, None), promise, LocalDateTime.now()))
+    postOrQueue(WorkerWire.request(id, cmd))
 
     promise.future
   }
-
-  final def terminate(): Unit = {
-    pendingTasks.values.foreach { p =>
-      p.promise.tryFailure(
-        new IllegalStateException("Worker terminated before reply")
-      )
-    }
-    pendingTasks.clear()
-    initPromise.tryFailure(new IllegalStateException("Worker terminated before init reply"))
-    worker.terminate()
-  }
-
 
 
   private def readServerTimestamp(raw: js.Dynamic, fieldName: String, fallback: LocalDateTime): LocalDateTime = {
@@ -123,64 +101,86 @@ abstract class AbstractWorkerClient(
       .getOrElse(fallback)
   }
 
+  private def receiveServerReady(msg: dom.MessageEvent): Unit = synchronized {
+    val offCanvas = canvasForInit.map(_.asInstanceOf[js.Dynamic].transferControlToOffscreen().asInstanceOf[dom.OffscreenCanvas])
+    worker.postMessage(WorkerWire.init(paramsForInit, offCanvas))
+    serverStateVar.set(WORKER_READY(true, false))
+  }
+
+  private def receiveServerInited(msg: js.Dynamic): Unit = synchronized {
+    val ok = JsHelpers.parseOrElse[Boolean](msg.ok, false)
+    if (ok) {
+      serverStateVar.update {
+        case WORKER_READY(initRequested: Boolean, _) => WORKER_READY(true, true)
+        case oldVal => oldVal
+      }
+      while (pendingOutboundMessages.nonEmpty) {
+        worker.postMessage(pendingOutboundMessages.dequeue())
+      }
+    } else {
+      terminate(Some(JsHelpers.parseOrElse[String](msg.error, "Worker initialization failed")))
+    }
+  }
+
+  private def receiveResponse(msg: js.Dynamic): Unit = synchronized {
+    val id = msg.id.asInstanceOf[String]
+    pendingTasks.remove(id).foreach { p =>
+      if (JsHelpers.parseOrElse[Boolean](msg.ok, true)) {
+        val data = JsHelpers.readStringMap(msg.data.asInstanceOf[js.Any]) //JsHelpers.stringMapHelper.fromJsToScala(msg.data).getOrElse(Map.empty)
+
+        val timestampReceived = readServerTimestamp(msg, "timestampReceived", LocalDateTime.now())
+        val timestampStarted = readServerTimestamp(msg, "timestampStarted", LocalDateTime.now())
+        val timestampFinished = readServerTimestamp(msg, "timestampFinished", LocalDateTime.now())
+
+        val result = ExecutionResult(
+          history = CommandHistory(
+            command = p.command,
+            timestampRequested = p.timestampRequested,
+            timestampReceived = timestampReceived,
+            timestampStarted = timestampStarted,
+            timestampFinished = timestampFinished
+          ),
+          data = data,
+          error = None,
+          stdOut = "",
+          stdErr = ""
+        )
+        p.promise.trySuccess(result)
+      } else {
+        val error = JsHelpers.parseOrElse[String](msg.error, "Unknown worker error")
+        p.promise.tryFailure(new RuntimeException(error))
+      }
+    }
+  }
+
   private def initMessageHandling(): Unit = {
     worker.onmessage = { (e: dom.MessageEvent) =>
       val msg = e.data.asInstanceOf[js.Dynamic]
       val kind = msg.kind.asInstanceOf[js.UndefOr[String]].getOrElse("")
 
-      if (kind == "response") {
-        val id = msg.id.asInstanceOf[String]
-        pendingTasks.remove(id).foreach { p =>
-          if (JsHelpers.parseOrElse[Boolean](msg.ok, true)) {
-            val data = JsHelpers.stringMapHelper.fromJsToScala(msg.data).getOrElse(Map.empty)
-            val timestampReceived = readServerTimestamp(msg, "timestampReceived", p.timestampEnqueued)
-            val timestampStarted = readServerTimestamp(msg, "timestampStarted", timestampReceived)
-            val timestampFinished = readServerTimestamp(msg, "timestampFinished", LocalDateTime.now())
-
-            val result = ExecutionResult(
-              history = CommandHistory(
-                command = p.command,
-                timestampRequested = p.command.timestampRequested,
-                timestampReceived = timestampReceived,
-                timestampStarted = timestampStarted,
-                timestampFinished = timestampFinished
-              ),
-              data = data,
-              error = None,
-              stdOut = "",
-              stdErr = ""
-            )
-            p.promise.trySuccess(result)
-          } else {
-            val error = JsHelpers.parseOrElse[String](msg.error, "Unknown worker error")
-            p.promise.tryFailure(new RuntimeException(error))
-          }
-        }
+      if (kind == "server-ready") {
+        receiveServerReady(e)
       } else if (kind == "init-result") {
-        val ok = JsHelpers.parseOrElse[Boolean](msg.ok, false)
-        if (ok) {
-          initPromise.trySuccess(true)
-        } else {
-          val error = JsHelpers.parseOrElse[String](msg.error, "Worker initialization failed")
-          initPromise.tryFailure(new RuntimeException(error))
-        }
+        receiveServerInited(msg)
       } else if (kind == "server-failed") {
-        val ex = new RuntimeException(JsHelpers.parseOrElse[String](msg.error, "Worker initialization failed"))
-        pendingTasks.values.foreach(_.promise.tryFailure(ex))
-        pendingTasks.clear()
-        initPromise.tryFailure(ex)
+        terminate(Some(JsHelpers.parseOrElse[String](msg.error, "Server reported failure")))
+      } else if (kind == "response") {
+        receiveResponse(msg)
       }
     }
 
     worker.onerror = { (e: dom.ErrorEvent) =>
-      val ex = new RuntimeException(
-        s"Worker error: ${Option(e.message).getOrElse("unknown error")}"
-      )
-      pendingTasks.values.foreach { p =>
-        p.promise.tryFailure(ex)
-      }
-      pendingTasks.clear()
-      initPromise.tryFailure(ex)
+      terminate(Some(s"Worker error: ${Option(e.message).getOrElse("unknown error")}"))
     }
   }
+
+  def terminate(msg: Option[String]): Unit = synchronized {
+    serverStateVar.set(WorkerState.WORKER_TERMINATED)
+    worker.terminate()
+    val ex = new RuntimeException(msg.getOrElse("Worker is now terminated for unknown reasons."))
+    pendingTasks.values.foreach(_.promise.tryFailure(ex))
+    pendingTasks.clear()
+    pendingOutboundMessages.clear()
+  }
+
 }

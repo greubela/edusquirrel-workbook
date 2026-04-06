@@ -7,32 +7,19 @@ import java.time.LocalDateTime
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
-final class MathWorkerClient(
-                              exportedName: String = "startMathWorkerServer",
-                              autoInit: Boolean = true
-                            ) {
+final class MathWorkerClient() extends AbstractWorkerClient("startMathWorkerServer", Map(), None){
 
-  private val workerClient = AbstractWorkerClient(exportedName, autoInit)
 
   def add(a: Int, b: Int): Future[Int] =
     execute("add", a, b)
 
   def multiply(a: Int, b: Int): Future[Int] =
     execute("multiply", a, b)
-
-  def init(): Future[Boolean] = workerClient.init()
-
-  def terminate(): Unit = workerClient.terminate()
-
+  
   private def execute(name: String, a: Int, b: Int): Future[Int] = {
-    workerClient
-      .enqueue(
-        WorkerCommand(
-          name = name,
-          params = Map("a" -> a.toString, "b" -> b.toString),
-          timestampRequested = LocalDateTime.now()
-        )
-      )
+    enqueue(name, Map("a" -> a.toString, "b" -> b.toString))
       .map(_.data.get("value").flatMap(_.toIntOption).getOrElse(0))
   }
+  
+  
 }

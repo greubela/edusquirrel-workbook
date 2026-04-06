@@ -1,6 +1,8 @@
 package `export`.traits
 
+import `export`.traits.WorkerTraits.WorkerCommand
 import org.scalajs.dom
+import org.scalajs.dom.OffscreenCanvas
 import util.web.JsHelpers
 
 import scala.scalajs.js
@@ -8,17 +10,37 @@ import scala.scalajs.js
 // helper functions that bind everything together (not type conversions, those are done in JsHelper).
 private object WorkerWire {
 
-  def request(
-               id: String,
-               name: String,
-               params: Map[String, String]
-             ): js.Object =
-    js.Dynamic.literal(
-      kind = "request",
-      id = id,
-      name = name,
-      params = JsHelpers.stringMapHelper.fromScalaToJs(params)
-    ).asInstanceOf[js.Object]
+
+  def init(paramsForInit: Map[String, String], canvas: Option[OffscreenCanvas]): js.Object =
+    if (canvas.nonEmpty) {
+      js.Dynamic.literal(
+        kind = "init",
+        params = JsHelpers.stringMapHelper.fromScalaToJs(paramsForInit),
+        canvas = canvas.get
+      ).asInstanceOf[js.Object]
+
+    } else {
+      js.Dynamic.literal(kind = "init", params = JsHelpers.stringMapHelper.fromScalaToJs(paramsForInit)).asInstanceOf[js.Object]
+
+    }
+
+  def request(id: String, command: WorkerCommand): js.Object =
+    if (command.canvas.nonEmpty) {
+      js.Dynamic.literal(
+        kind = "request",
+        id = id,
+        name = command.name,
+        params = JsHelpers.stringMapHelper.fromScalaToJs(command.params),
+        canvas = command.canvas.get
+      ).asInstanceOf[js.Object]
+    } else {
+      js.Dynamic.literal(
+        kind = "request",
+        id = id,
+        name = command.name,
+        params = JsHelpers.stringMapHelper.fromScalaToJs(command.params)
+      ).asInstanceOf[js.Object]
+    }
 
   def response(
                 id: String,
@@ -52,21 +74,6 @@ private object WorkerWire {
       timestampReceived = timestampReceived,
       timestampStarted = timestampStarted,
       timestampFinished = timestampFinished
-    ).asInstanceOf[js.Object]
-
-  def init: js.Object =
-    js.Dynamic.literal(kind = "init").asInstanceOf[js.Object]
-
-  def canvasBind(
-                  name: String,
-                  canvas: dom.OffscreenCanvas,
-                  args: Map[String, String]
-                ): js.Object =
-    js.Dynamic.literal(
-      kind = "bind-canvas",
-      name = name,
-      canvas = canvas,
-      args = JsHelpers.stringMapHelper.fromScalaToJs(args)
     ).asInstanceOf[js.Object]
 
 

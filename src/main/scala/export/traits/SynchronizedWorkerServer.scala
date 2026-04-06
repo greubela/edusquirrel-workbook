@@ -12,8 +12,9 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
  * The server intentionally does not apply any timeout policy.
  */
 abstract class SynchronizedWorkerServer(
-                                         using ec: ExecutionContext
-                                       ) extends AbstractWorkerServer {
+                                       workerName: String,
+                                       debug: Boolean = false
+                                       ) extends AbstractWorkerServer(workerName, debug) {
 
   private val queue = mutable.Queue.empty[(WorkerCommand, Promise[Map[String, String]])]
   private var running = false

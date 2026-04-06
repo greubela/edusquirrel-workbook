@@ -8,16 +8,19 @@ import org.scalajs.dom.document
 import workbook.htmlElements.container.HtmlFullScreenContainerElement
 import workbook.model.info.AllWorkbookInfo
 import `export`.workers.MathWorkerClient
+import `export`.workers.client.TurtleStitchWorkerClient
+import com.raquo.laminar.api.L.unsafeWindowOwner
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.scalajs.js
 
 
 private def info = AllWorkbookInfo.singleton
 private def workbookInfoVar = AllWorkbookInfo.singleton.workbookInfoVar
 private def fullscreenElement = AllWorkbookInfo.singleton.technicalElements.fullScreenContainer
 
-private val idAndContentList: List[(String, Element)] = List(
+private lazy val idAndContentList: List[(String, Element)] = List(
   ("plantWorkshopApp", plantworkshop.PlantWorkshopApp.appElement),
   ("workbookPlantWorkshop", CreatePlantworkshopWorkbook(info).createWorkbook.getDomElement()),
   //("testEditor", HtmlFullscreenTurtleEditorElement(BeProgram.debugGraphicsProgram().fullProgram).getDomElement()),
@@ -44,21 +47,31 @@ def insertWorkbookContent(): Unit = {
       }
     }
   }
-
   idAndContentList.foreach { case (id, contentElement) => tryToLoad(id, contentElement) }
-
 }
+
+def initWorkbook(): Unit = {
+  insertWorkbookContent()
+
+  val mathWorkerClient = new MathWorkerClient()
+  mathWorkerClient.add(7, 5).foreach(result => println(s"MathWorker add(7, 5) = $result"))
+  mathWorkerClient.multiply(7, 5).foreach(result => println(s"MathWorker multiply(7, 5) = $result"))
+  
+  val turtleWorker = new TurtleStitchWorkerClient(dom.document.createElement("canvas").asInstanceOf[dom.html.Canvas])
+  turtleWorker.serverStateSignal.foreach("TurtleWorker status changed: " + _.toString)(unsafeWindowOwner)
+  
+}
+
 
 @main
 def mainApp(): Unit = {
+  if (js.typeOf(js.Dynamic.global.selectDynamic("document")) != "undefined") {
+    //resetLocalStorage()
+    initWorkbook()
+  }else{
+    println("MainApp skipped: no document (worker/module import context).")
+  }
 
-  //resetLocalStorage()
-
-  insertWorkbookContent()
-
-  val mathWorkerClient = new MathWorkerClient("startMathWorkerServer")
-  mathWorkerClient.add(7, 5).foreach(result => println(s"MathWorker add(7, 5) = $result"))
-  mathWorkerClient.multiply(7, 5).foreach(result => println(s"MathWorker multiply(7, 5) = $result"))
 }
 
 def resetLocalStorage(): Unit = {
@@ -90,60 +103,3 @@ object Main:
   implicit val executionContext: ExecutionContextExecutor = ExecutionContext.global
 
 end Main
-/*
-final case class SimpleExercise(
-                                 id: String,
-                                 englishTitle: String,
-                                 duration: Double,
-                                 instruction: String
-                               ) extends ExerciseWithTitleDescription with ExerciseInstructionDescription {
-  override def titleMap: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> englishTitle))
-
-  override def estimatedTimeInMinutes: Double = duration
-
-  def instructionMap: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> instruction))
-}
-
-final case class SampleSection(
-                                override val title: String,
-                                override val exercises: List[ExerciseWithTitleDescription],
-                                override val sectionsRequiredBefore: List[ExerciseSection] = Nil,
-                                override val sectionsRecommendedBefore: List[ExerciseSection] = Nil
-                              ) extends ExerciseSection
-
-def sampleSections: List[ExerciseSection] = {
-  val introExercises = List(
-    SimpleExercise("intro-1", "Getting Started", 3, "Read the welcome material."),
-    SimpleExercise("intro-2", "First Steps", 5, "Complete the introductory quiz."),
-    SimpleExercise("intro-3", "Warmup", 2, "Review the glossary.")
-  )
-  val basicsExercises = List(
-    SimpleExercise("basic-1", "Core Concepts", 8, "Work through the foundational lesson."),
-    SimpleExercise("basic-2", "Examples", 6, "Study the worked examples.")
-  )
-  val practiceExercises = List(
-    SimpleExercise("practice-1", "Drills", 4, "Solve the practice problems."),
-    SimpleExercise("practice-2", "Challenge", 9, "Attempt the challenge exercise."),
-    SimpleExercise("practice-3", "Reflection", 3, "Write a short reflection.")
-  )
-  val extensionExercises = List(
-    SimpleExercise("extension-1", "Project Setup", 7, "Prepare the project workspace."),
-    SimpleExercise("extension-2", "Project Build", 10, "Implement the project milestone."),
-    SimpleExercise("extension-3", "Review", 5, "Conduct a peer review.")
-  )
-
-  val sectionA = SampleSection("Orientation", introExercises)
-  val sectionB = SampleSection("Fundamentals", basicsExercises, sectionsRequiredBefore = List(sectionA))
-  val sectionC = SampleSection("Practice", practiceExercises, sectionsRequiredBefore = List(sectionB))
-  val sectionD = SampleSection(
-    "Project",
-    extensionExercises,
-    sectionsRequiredBefore = List(sectionB),
-    sectionsRecommendedBefore = List(sectionA)
-  )
-
-  List(sectionA, sectionB, sectionC, sectionD)
-
-
-}
-*/

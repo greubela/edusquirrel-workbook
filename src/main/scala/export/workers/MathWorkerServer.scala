@@ -1,15 +1,23 @@
 package `export`.workers
 
-import `export`.traits.AbstractWorkerServer
+import `export`.traits.{AbstractWorkerServer, SynchronizedWorkerServer}
 import `export`.traits.WorkerTraits.WorkerCommand
+import org.scalajs.dom.OffscreenCanvas
 
-import scala.concurrent.Future
+import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExportTopLevel
 
-final class MathWorkerServer extends AbstractWorkerServer {
+final class MathWorkerServer extends AbstractWorkerServer("MathWorkerServer", false) {
 
-  override def init(): Future[Boolean] = Future.successful(true)
+  override def init(params: Map[String, String], canvas: Option[OffscreenCanvas]): Future[Boolean] = {
+    val p = Promise[Boolean]()
+    js.timers.setTimeout(0) {
+      p.success(true)
+    }
+    p.future
+  }
 
   override protected def handleTask(workerCommand: WorkerCommand): Future[Map[String, String]] = {
     val a = workerCommand.params.get("a").flatMap(_.toIntOption).getOrElse(0)

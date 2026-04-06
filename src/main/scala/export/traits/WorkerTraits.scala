@@ -1,6 +1,7 @@
 package `export`.traits
 
 import com.raquo.airstream.state.Var
+import org.scalajs.dom.OffscreenCanvas
 
 import java.time.LocalDateTime
 import scala.collection.mutable
@@ -8,7 +9,13 @@ import scala.concurrent.Promise
 import scala.scalajs.js.timers.SetTimeoutHandle
 
 object WorkerTraits {
-    
+
+  enum WorkerState {
+    case WORKER_STARTING
+    case WORKER_READY(initRequested: Boolean, initSuccess: Boolean)
+    case WORKER_TERMINATED
+  }
+
   case class CommandState(
                            id: String
                          ) {
@@ -17,7 +24,7 @@ object WorkerTraits {
     )
   }
 
-  case class WorkerCommand(name: String, params: Map[String, String], timestampRequested: LocalDateTime) {
+  case class WorkerCommand(name: String, params: Map[String, String], canvas: Option[OffscreenCanvas] = None) {
 
   }
 
@@ -40,6 +47,6 @@ object WorkerTraits {
                           requestId: String,
                           command: WorkerCommand,
                           promise: Promise[ExecutionResult],
-                          timestampEnqueued: LocalDateTime
+                          timestampRequested: LocalDateTime
                         )
 }

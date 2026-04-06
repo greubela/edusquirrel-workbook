@@ -2,9 +2,13 @@ package `export`.traits
 
 import `export`.traits.WorkerTraits.*
 import org.scalajs.dom
+import org.scalajs.dom.OffscreenCanvas
+import util.web.JsHelpers
 
+import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js
+import scala.scalajs.js.annotation.JSExportTopLevel
 
 /**
  * Base server runtime that executes inside a dedicated WebWorker.
@@ -19,12 +23,15 @@ import scala.scalajs.js
  * - subclasses should only focus on task behavior (`handleTask`) and optional custom scheduling.
  */
 abstract class AbstractWorkerServer(
-                                     using ec: ExecutionContext
+                                     workerName: String,
+                                     debug: Boolean = false
                                    ) {
+
+  implicit protected val ec: ExecutionContext = ExecutionContext.global
 
   protected val self: js.Dynamic = js.Dynamic.global.self
 
-  protected var boundCanvas: Option[dom.OffscreenCanvas] = None
+  def logInfo(msg: String): Unit = if (debug) println(s"[INFO] from Worker::$workerName: $msg")
 
   /**
    * Completion signal for worker initialization.
@@ -39,7 +46,78 @@ abstract class AbstractWorkerServer(
   /**
    * Pre-heats worker state before any command execution starts.
    */
-  def init(): Future[Boolean]
+  protected def init(params: Map[String, String], canvas: Option[OffscreenCanvas]): Future[Boolean]
+
+  protected def handleTask(
+                            workerCommand: WorkerCommand
+                          ): Future[Map[String, String]]
+
+
+  private def receivedInit(msg: js.Dynamic): Unit = {
+
+    val paramsRaw = msg.params.asInstanceOf[js.UndefOr[js.Any]].map(_.asInstanceOf[js.Any]).getOrElse(js.Dictionary.empty[String])
+    val params = util.web.JsHelpers.readStringMap(paramsRaw)
+    val canvas: Option[OffscreenCanvas] = JsHelpers.parseOrEmpty[OffscreenCanvas](msg.canvas)
+
+    triggerInit(params, canvas).onComplete {
+      case scala.util.Success(value) =>
+        self.postMessage(
+          js.Dynamic.literal(
+            kind = "init-result",
+            ok = value
+          )
+        )
+      case scala.util.Failure(ex) =>
+        self.postMessage(
+          js.Dynamic.literal(
+            kind = "init-result",
+            ok = false,
+            error = Option(ex.getMessage).getOrElse("Unknown init error")
+          )
+        )
+    }
+  }
+
+  private def receivedRequest(msg: js.Dynamic): Unit = {
+    val requestId = msg.id.asInstanceOf[String]
+    val commandName = msg.name.asInstanceOf[String]
+    val paramsRaw = msg.params.asInstanceOf[js.UndefOr[js.Any]].map(_.asInstanceOf[js.Any]).getOrElse(js.Dictionary.empty[String])
+    val params = util.web.JsHelpers.readStringMap(paramsRaw)
+
+    val canvas: Option[OffscreenCanvas] = JsHelpers.parseOrEmpty[OffscreenCanvas](msg.canvas)
+    val timestampReceived = java.time.LocalDateTime.now()
+
+    val command = WorkerCommand(
+      name = commandName,
+      params = params
+    )
+
+    executeWhenReady(command).onComplete {
+      case scala.util.Success((data, timestampStarted)) =>
+        val timestampFinished = java.time.LocalDateTime.now()
+        self.postMessage(
+          WorkerWire.response(
+            requestId,
+            data,
+            timestampReceived = timestampReceived.toString,
+            timestampStarted = timestampStarted.toString,
+            timestampFinished = timestampFinished.toString
+          )
+        )
+      case scala.util.Failure(ex) =>
+        val timestampFinished = java.time.LocalDateTime.now()
+        self.postMessage(
+          WorkerWire.error(
+            requestId,
+            Option(ex.getMessage).getOrElse("Unknown worker failure"),
+            timestampReceived = timestampReceived.toString,
+            timestampStarted = LocalDateTime.of(0, 0, 0, 0, 0, 0).toString,
+            timestampFinished = timestampFinished.toString
+          )
+        )
+    }
+  }
+
 
   final def start(): Unit = {
     self.onmessage = { (e: dom.MessageEvent) =>
@@ -48,71 +126,9 @@ abstract class AbstractWorkerServer(
 
       kind match {
         case "init" =>
-          triggerInit().onComplete {
-            case scala.util.Success(value) =>
-              self.postMessage(
-                js.Dynamic.literal(
-                  kind = "init-result",
-                  ok = value
-                )
-              )
-            case scala.util.Failure(ex) =>
-              self.postMessage(
-                js.Dynamic.literal(
-                  kind = "init-result",
-                  ok = false,
-                  error = Option(ex.getMessage).getOrElse("Unknown init error")
-                )
-              )
-          }
+          receivedInit(msg)
 
-        case "request" =>
-          val requestId = msg.id.asInstanceOf[String]
-          val commandName = msg.name.asInstanceOf[String]
-          val paramsRaw = msg.params.asInstanceOf[js.UndefOr[js.Any]].map(_.asInstanceOf[js.Any]).getOrElse(js.Dictionary.empty[String])
-          val params = util.web.JsHelpers.readStringMap(paramsRaw)
-          val timestampReceived = java.time.LocalDateTime.now()
-
-          val command = WorkerCommand(
-            name = commandName,
-            params = params,
-            timestampRequested = timestampReceived
-          )
-
-          val timestampStarted = java.time.LocalDateTime.now()
-          executeWhenReady(command).onComplete {
-            case scala.util.Success(data) =>
-              val timestampFinished = java.time.LocalDateTime.now()
-              self.postMessage(
-                WorkerWire.response(
-                  requestId,
-                  data,
-                  timestampReceived = timestampReceived.toString,
-                  timestampStarted = timestampStarted.toString,
-                  timestampFinished = timestampFinished.toString
-                )
-              )
-            case scala.util.Failure(ex) =>
-              val timestampFinished = java.time.LocalDateTime.now()
-              self.postMessage(
-                WorkerWire.error(
-                  requestId,
-                  Option(ex.getMessage).getOrElse("Unknown worker failure"),
-                  timestampReceived = timestampReceived.toString,
-                  timestampStarted = timestampStarted.toString,
-                  timestampFinished = timestampFinished.toString
-                )
-              )
-          }
-
-        case "bind-canvas" =>
-          val name = msg.name.asInstanceOf[String]
-          val canvas = msg.canvas.asInstanceOf[dom.OffscreenCanvas]
-          val argsRaw = msg.args.asInstanceOf[js.UndefOr[js.Any]].map(_.asInstanceOf[js.Any]).getOrElse(js.Dictionary.empty[String])
-          val args = util.web.JsHelpers.readStringMap(argsRaw)
-
-          boundCanvas = Some(canvas)
-          onCanvasBound(name, canvas, args)
+        case "request" => receivedRequest(msg)
 
         case other =>
           val now = java.time.LocalDateTime.now().toString
@@ -121,26 +137,26 @@ abstract class AbstractWorkerServer(
     }
   }
 
-  private def triggerInit(): Future[Boolean] = synchronized {
+  private def triggerInit(params: Map[String, String], canvas: Option[OffscreenCanvas]): Future[Boolean] = synchronized {
     if (!initStarted) {
       initStarted = true
-      init().onComplete {
+      init(params, canvas).onComplete {
         case scala.util.Success(value) => isInited.trySuccess(value)
         case scala.util.Failure(ex) => isInited.tryFailure(ex)
       }
     }
-
     isInited.future
   }
 
-  protected def executeWhenReady(workerCommand: WorkerCommand): Future[Map[String, String]] = {
+  protected def executeWhenReady(workerCommand: WorkerCommand): Future[(Map[String, String], LocalDateTime)] = {
     isInited.future.flatMap {
-      case true => execute(workerCommand)
+      case true => {
+        val started = LocalDateTime.now()
+        execute(workerCommand).map(data => (data, started))
+      }
       case false => Future.failed(new IllegalStateException("Worker initialization was not successful."))
     }
   }
-
-  protected def onCanvasBound(name: String, canvas: dom.OffscreenCanvas, args: Map[String, String]): Unit = ()
 
   /**
    * Scheduling hook.
@@ -151,8 +167,5 @@ abstract class AbstractWorkerServer(
   protected def execute(workerCommand: WorkerCommand): Future[Map[String, String]] =
     handleTask(workerCommand)
 
-  protected def handleTask(
-                            workerCommand: WorkerCommand
-                          ): Future[Map[String, String]]
 
 }
