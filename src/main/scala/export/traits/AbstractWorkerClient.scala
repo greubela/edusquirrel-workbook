@@ -25,48 +25,11 @@ import scala.scalajs.js
 object AbstractWorkerClient {
 
   def apply(exportedName: String, autoInit: Boolean = true): AbstractWorkerClient = {
-    val bootstrapSource =
-      """
-        |self.__workerServerStarted = false;
-        |
-        |self.onmessage = async (event) => {
-        |  const msg = event.data || {};
-        |  if (msg.kind !== 'init-server') return;
-        |
-        |  if (self.__workerServerStarted) {
-        |    self.postMessage({ kind: 'server-ready' });
-        |    return;
-        |  }
-        |
-        |  try {
-        |    const mod = await import(msg.moduleUrl);
-        |    const starter = mod[msg.exportedName];
-        |    if (typeof starter !== 'function') {
-        |      throw new Error(`Export '${msg.exportedName}' not found in worker module.`);
-        |    }
-        |    starter();
-        |    self.__workerServerStarted = true;
-        |    self.postMessage({ kind: 'server-ready' });
-        |  } catch (err) {
-        |    const message = err && err.message ? err.message : String(err);
-        |    self.postMessage({ kind: 'server-failed', error: message });
-        |  }
-        |};
-        |""".stripMargin
-
-    val blob = new dom.Blob(
-      js.Array(bootstrapSource),
-      dom.BlobPropertyBag(`type` = "text/javascript")
-    )
-    val workerUrl = dom.URL.createObjectURL(blob)
-
     val worker =
       new dom.Worker(
-        workerUrl,
+        "./js/worker-bootstrap.js",
         js.Dynamic.literal(`type` = "module").asInstanceOf[dom.WorkerOptions]
       )
-
-    dom.URL.revokeObjectURL(workerUrl)
 
     val client = new AbstractWorkerClient(worker, autoInit) {}
     worker.postMessage(
