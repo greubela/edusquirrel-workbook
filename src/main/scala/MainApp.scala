@@ -7,8 +7,10 @@ import org.scalajs.dom
 import org.scalajs.dom.document
 import workbook.htmlElements.container.HtmlFullScreenContainerElement
 import workbook.model.info.AllWorkbookInfo
+import `export`.workers.MathWorkerClient
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 
 private def info = AllWorkbookInfo.singleton
@@ -53,6 +55,10 @@ def mainApp(): Unit = {
   //resetLocalStorage()
 
   insertWorkbookContent()
+
+  val mathWorkerClient = new MathWorkerClient("startMathWorkerServer")
+  mathWorkerClient.add(7, 5).foreach(result => println(s"MathWorker add(7, 5) = $result"))
+  mathWorkerClient.multiply(7, 5).foreach(result => println(s"MathWorker multiply(7, 5) = $result"))
 }
 
 def resetLocalStorage(): Unit = {
