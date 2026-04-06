@@ -89,7 +89,8 @@ abstract class AbstractWorkerServer(
 
     val command = WorkerCommand(
       name = commandName,
-      params = params
+      params = params,
+      canvas = canvas
     )
 
     executeWhenReady(command).onComplete {

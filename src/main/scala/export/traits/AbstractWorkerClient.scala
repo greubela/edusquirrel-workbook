@@ -63,18 +63,22 @@ abstract class AbstractWorkerClient(
   private val pendingTasks = mutable.Map.empty[String, PendingTask]
   private val serverStateVar: Var[WorkerState] = Var(WorkerState.WORKER_STARTING)
   def serverStateSignal: StrictSignal[WorkerState] = serverStateVar.signal
-  private val pendingOutboundMessages = mutable.Queue.empty[js.Object]
+  private val pendingOutboundMessages = mutable.Queue.empty[WorkerWire.OutboundMessage]
 
   initMessageHandling()
 
-  private def postOrQueue(message: js.Object): Unit = synchronized {
+  private def postOrQueue(message: WorkerWire.OutboundMessage): Unit = synchronized {
     val sendNow = serverStateVar.now() match {
       case WorkerState.WORKER_READY(initRequested: Boolean, initSuccess: Boolean) => initSuccess
       case _ => false
     }
-    if (sendNow) worker.postMessage(message)
+    if (sendNow) postMessage(message)
     else pendingOutboundMessages.enqueue(message)
   }
+
+  private def postMessage(message: WorkerWire.OutboundMessage): Unit =
+    if (message.transferables.nonEmpty) worker.postMessage(message.payload, message.transferables)
+    else worker.postMessage(message.payload)
 
   final def enqueue(
                      commandName: String,
@@ -103,7 +107,7 @@ abstract class AbstractWorkerClient(
 
   private def receiveServerReady(msg: dom.MessageEvent): Unit = synchronized {
     val offCanvas = canvasForInit.map(_.asInstanceOf[js.Dynamic].transferControlToOffscreen().asInstanceOf[dom.OffscreenCanvas])
-    worker.postMessage(WorkerWire.init(paramsForInit, offCanvas))
+    postMessage(WorkerWire.init(paramsForInit, offCanvas))
     serverStateVar.set(WORKER_READY(true, false))
   }
 
@@ -115,7 +119,7 @@ abstract class AbstractWorkerClient(
         case oldVal => oldVal
       }
       while (pendingOutboundMessages.nonEmpty) {
-        worker.postMessage(pendingOutboundMessages.dequeue())
+        postMessage(pendingOutboundMessages.dequeue())
       }
     } else {
       terminate(Some(JsHelpers.parseOrElse[String](msg.error, "Worker initialization failed")))
