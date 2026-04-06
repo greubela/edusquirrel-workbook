@@ -11,6 +11,8 @@ import `export`.workers.MathWorkerClient
 import `export`.workers.client.TurtleStitchWorkerClient
 import com.raquo.laminar.api.L.unsafeWindowOwner
 
+import `export`.traits.WorkerTraits.WorkerState
+
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
@@ -54,12 +56,13 @@ def initWorkbook(): Unit = {
   insertWorkbookContent()
 
   val mathWorkerClient = new MathWorkerClient()
+  mathWorkerClient.serverStateSignal.foreach(newSig => println("MathWorker status changed: " + newSig.toString))(unsafeWindowOwner)
   mathWorkerClient.add(7, 5).foreach(result => println(s"MathWorker add(7, 5) = $result"))
   mathWorkerClient.multiply(7, 5).foreach(result => println(s"MathWorker multiply(7, 5) = $result"))
-  
+
   val turtleWorker = new TurtleStitchWorkerClient(dom.document.createElement("canvas").asInstanceOf[dom.html.Canvas])
-  turtleWorker.serverStateSignal.foreach("TurtleWorker status changed: " + _.toString)(unsafeWindowOwner)
-  
+  turtleWorker.serverStateSignal.foreach(newSig => println("TurtleWorker status changed: " + newSig.toString))(unsafeWindowOwner)
+
 }
 
 

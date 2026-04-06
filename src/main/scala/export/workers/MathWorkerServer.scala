@@ -9,7 +9,7 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExportTopLevel
 
-final class MathWorkerServer extends AbstractWorkerServer("MathWorkerServer", false) {
+final class MathWorkerServer extends AbstractWorkerServer("MathWorkerServer", true) {
 
   override def init(params: Map[String, String], canvas: Option[OffscreenCanvas]): Future[Boolean] = {
     val p = Promise[Boolean]()

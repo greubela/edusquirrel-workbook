@@ -6,6 +6,7 @@ import com.raquo.airstream.state.StrictSignal
 import com.raquo.laminar.api.L.Var
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
+import util.IdHelper
 import util.web.JsHelpers
 
 import java.time
@@ -40,7 +41,8 @@ object AbstractWorkerClient {
 abstract class AbstractWorkerClient(
                                      val exportedName: String,
                                      val paramsForInit: Map[String, String],
-                                     val canvasForInit: Option[Canvas]
+                                     val canvasForInit: Option[Canvas],
+                                     val id: String = IdHelper.getNextId()
                                    ) {
 
   private val worker = {
@@ -62,7 +64,9 @@ abstract class AbstractWorkerClient(
 
   private val pendingTasks = mutable.Map.empty[String, PendingTask]
   private val serverStateVar: Var[WorkerState] = Var(WorkerState.WORKER_STARTING)
+
   def serverStateSignal: StrictSignal[WorkerState] = serverStateVar.signal
+
   private val pendingOutboundMessages = mutable.Queue.empty[WorkerWire.OutboundMessage]
 
   initMessageHandling()
@@ -96,7 +100,6 @@ abstract class AbstractWorkerClient(
 
     promise.future
   }
-
 
   private def readServerTimestamp(raw: js.Dynamic, fieldName: String, fallback: LocalDateTime): LocalDateTime = {
     JsHelpers.parseOrElse[js.UndefOr[String]](raw.selectDynamic(fieldName), js.undefined)

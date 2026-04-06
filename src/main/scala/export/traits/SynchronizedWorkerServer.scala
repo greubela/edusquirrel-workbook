@@ -13,7 +13,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
  */
 abstract class SynchronizedWorkerServer(
                                        workerName: String,
-                                       debug: Boolean = false
+                                       debug: Boolean = true
                                        ) extends AbstractWorkerServer(workerName, debug) {
 
   private val queue = mutable.Queue.empty[(WorkerCommand, Promise[Map[String, String]])]

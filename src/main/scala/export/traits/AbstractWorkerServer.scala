@@ -24,14 +24,14 @@ import scala.scalajs.js.annotation.JSExportTopLevel
  */
 abstract class AbstractWorkerServer(
                                      workerName: String,
-                                     debug: Boolean = false
+                                     debug: Boolean = true
                                    ) {
 
   implicit protected val ec: ExecutionContext = ExecutionContext.global
 
   protected val self: js.Dynamic = js.Dynamic.global.self
 
-  def logInfo(msg: String): Unit = if (debug) println(s"[INFO] from Worker::$workerName: $msg")
+  def logInfo(msg: String): Unit = if (debug) dom.console.log(s"[INFO] from Worker::$workerName (${java.time.LocalDateTime.now().toString}): $msg")
 
   /**
    * Completion signal for worker initialization.
@@ -124,13 +124,12 @@ abstract class AbstractWorkerServer(
     self.onmessage = { (e: dom.MessageEvent) =>
       val msg = e.data.asInstanceOf[js.Dynamic]
       val kind = msg.kind.asInstanceOf[String]
+      logInfo(s"Received message: ${kind}")
 
       kind match {
         case "init" =>
           receivedInit(msg)
-
         case "request" => receivedRequest(msg)
-
         case other =>
           val now = java.time.LocalDateTime.now().toString
           self.postMessage(WorkerWire.error("unknown", s"Unknown worker message kind '$other'", now, now, now))

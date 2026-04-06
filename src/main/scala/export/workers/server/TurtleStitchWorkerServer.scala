@@ -1,6 +1,6 @@
 package `export`.workers.server
 
-import `export`.traits.SynchronizedWorkerServer
+import `export`.traits.{AbstractWorkerServer, SynchronizedWorkerServer}
 import `export`.traits.WorkerTraits.WorkerCommand
 import `export`.workers.MathWorkerServer
 import org.scalajs.dom
@@ -15,9 +15,10 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExportTopLevel
 
-case class TurtleStitchWorkerServer(id: String = IdHelper.getNextId()) extends SynchronizedWorkerServer("TurtleStitchWorker" + id, true) {
+case class TurtleStitchWorkerServer(id: String = IdHelper.getNextId()) extends AbstractWorkerServer("TurtleStitchWorker" + id, true) {
 
   private def loadScripts(basePath: String, scriptNames: List[String]): Future[Unit] = {
+    logInfo(s"Loading scripts from $basePath: ${scriptNames.mkString(", ")}")
     val p = Promise[Unit]()
     var i = 0
 
@@ -31,6 +32,7 @@ case class TurtleStitchWorkerServer(id: String = IdHelper.getNextId()) extends S
         p.success(())
       }
     }
+    loadNext()
 
     p.future
   }
@@ -46,7 +48,11 @@ case class TurtleStitchWorkerServer(id: String = IdHelper.getNextId()) extends S
       logInfo(s"Successfully loaded $scriptName in $loadingDuration ms")
       p.trySuccess(())
     })
-    script.addEventListener("error", (_: dom.Event) => p.tryFailure(new RuntimeException(s"Failed to load $scriptName")))
+    script.addEventListener("error", (_: dom.Event) => {
+      val loadingDuration = ChronoUnit.MILLIS.between(start, LocalDateTime.now())
+      logInfo(s"Error at loading script $scriptName after $loadingDuration ms")
+      p.tryFailure(new RuntimeException(s"Failed to load $scriptName"))
+    })
     document.head.appendChild(script)
     p.future
   }
@@ -73,7 +79,7 @@ object TurtleStitchWorkerServer {
 
   @JSExportTopLevel("startTurtleWorkerServer")
   def startMathWorkerServer(): Unit =
-    new MathWorkerServer().start()
+    new TurtleStitchWorkerServer().start()
 
 
   private val basePath = "../resources/programs/20260212TurtleStitch/";
