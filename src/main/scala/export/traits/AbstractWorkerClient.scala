@@ -10,10 +10,16 @@ import scala.concurrent.{Future, Promise}
 import scala.scalajs.js
 import scala.scalajs.js.timers.*
 
+object AbstractWorkerClient {
+
+  def apply(exportedName: String): AbstractWorkerClient = ??? // todo
+
+}
+
 abstract class AbstractWorkerClient(
                                      protected val worker: dom.Worker
                                    ) {
-  
+
   initMessageHandling()
 
   private val pendingTasks = mutable.Map.empty[String, PendingTask]
@@ -26,7 +32,7 @@ abstract class AbstractWorkerClient(
     val promise = Promise[ExecutionResult]()
     pendingTasks.put(id, PendingTask(id, promise, java.time.LocalDateTime.now()))
    //worker.postMessage(WorkerWire.request(id, workerCommand.name, workerCommand.params))
-    // todo 
+    // todo
     promise.future
   }
 
@@ -51,7 +57,7 @@ abstract class AbstractWorkerClient(
         pendingTasks.remove(id).foreach { p =>
           if (JsHelpers.parseOrElse[Boolean](msg.ok, true)) {
             val data = JsHelpers.stringMapHelper.fromJsToScala(msg.data)
-            // todo 
+            // todo
           } else {
             val error = JsHelpers.parseOrElse[String](msg.error, "Unknown worker error")
             p.promise.tryFailure(new RuntimeException(error))
@@ -59,7 +65,7 @@ abstract class AbstractWorkerClient(
         }
       }
     }
-    
+
     worker.onerror = { (e: dom.ErrorEvent) =>
       val ex = new RuntimeException(
         s"Worker error: ${Option(e.message).getOrElse("unknown error")}"
