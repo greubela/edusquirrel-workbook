@@ -142,7 +142,7 @@ object TurtleSingleton {
 
 
   @JSExport def handleCommand(name: String, args: Vector[js.Any]): Unit = {
-    val cmd = TurtleCommand[T](name, args.flatMap(JsHelpers.parseDouble).toList)
+    val cmd = TurtleCommand[T](name, args.flatMap(JsHelpers.doubleHelper.fromJsToScala).toList)
     turtlePathBuilder = turtlePathBuilder.handleStringCommand(cmd)
   }
 

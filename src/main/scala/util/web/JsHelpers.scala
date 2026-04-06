@@ -6,6 +6,54 @@ import scala.scalajs.js.typedarray.{ArrayBuffer, DataView}
 
 object JsHelpers {
 
+  trait ConvertScalaAndJs[TYPE_SCALA, TYPE_JS]{
+    
+    def fromScalaToJs(in: TYPE_SCALA): TYPE_JS
+    protected def parseFromJs(in: TYPE_JS): TYPE_SCALA
+
+    def fromJsOrDefault(in: TYPE_JS, default: TYPE_SCALA): TYPE_SCALA = fromJsToScala(in).getOrElse(default)
+    
+    def fromJsToScala(in: TYPE_JS): Option[TYPE_SCALA] = {
+      try Some(in.asInstanceOf[TYPE_SCALA])
+      catch case _ => try Some(parseFromJs(in))
+      catch case _ => None
+    }
+    
+    def unsafeFromJsToScala(in: TYPE_JS): TYPE_SCALA = fromJsToScala(in).get
+  }
+  
+  trait TypeConverter[I, O] {
+    def convertToO(in: I): O
+    def convertToI(in: O): I
+  }
+
+
+
+  val stringMapHelper: ConvertScalaAndJs[Map[String, String], js.Any] = new ConvertScalaAndJs[Map[String, String], js.Any] {
+    override def fromScalaToJs(in: Map[String, String]): js.Any = js.Dictionary(in.toSeq *)
+    override def parseFromJs(in: js.Any): Map[String, String] = in.asInstanceOf[js.Dictionary[String]].toMap
+  }
+
+  def readStringMap(data: js.Any): Map[String, String] =
+    if (data == null || js.isUndefined(data)) Map.empty
+    else data.asInstanceOf[js.Dictionary[String]].toMap
+
+  def asStringMap(value: js.Any): Map[String, String] =
+    if value == null || js.isUndefined(value) then Map.empty
+    else value.asInstanceOf[js.Dictionary[String]].toMap
+
+  
+  val doubleHelper: ConvertScalaAndJs[Double, js.Any] = new ConvertScalaAndJs[Double, js.Any] {
+    override def fromScalaToJs(in: Double): js.Any = in
+    override def parseFromJs(in: js.Any): Double = in.toString.toDouble
+  }
+  
+  
+
+  def parseOrElse[T](jsVal: js.Dynamic, default: T): T = {
+    if (js.isUndefined(jsVal)) default
+    else jsVal.asInstanceOf[T]
+  }
 
   def decodeArrayBuffer(buf: ArrayBuffer): Array[Byte] = {
     val data = new DataView(buf)
@@ -15,13 +63,7 @@ object JsHelpers {
   def base64StringToByteArray(in: String): Array[Byte] = java.util.Base64.getDecoder.decode(in)
 
   def byteArrayToBase64String(in: Array[Byte]): String = java.util.Base64.getEncoder.encodeToString(in)
-
-
-  def parseDouble(s: js.Any): Option[Double] = {
-    try Some(s.asInstanceOf[Double])
-    catch case _ => try Some(s.toString.toDouble)
-    catch case _ => None
-  }
+  
   
   def promiseToFuture[A](p: js.Promise[A]): Future[A] = {
     val pr = Promise[A]()
@@ -37,10 +79,6 @@ object JsHelpers {
     )
     pr.future
   }
-
-  def asStringMap(value: js.Any): Map[String, String] =
-    if value == null || js.isUndefined(value) then Map.empty
-    else value.asInstanceOf[js.Dictionary[String]].toMap
 
   def asStringSeq(value: js.Any): Seq[String] =
     if value == null || js.isUndefined(value) then Seq.empty
