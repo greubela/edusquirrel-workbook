@@ -1,6 +1,7 @@
 package util.web
 
 import com.raquo.laminar.api.L.i
+import org.scalajs.dom
 
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
@@ -76,6 +77,14 @@ object JsHelpers {
 
   def byteArrayToBase64String(in: Array[Byte]): String = java.util.Base64.getEncoder.encodeToString(in)
 
+  def blobToDataUrl(blob: dom.Blob): Future[String] = {
+    val p = Promise[String]()
+    val reader = new dom.FileReader()
+    reader.onload = (_: dom.Event) => p.trySuccess(reader.result.asInstanceOf[String])
+    reader.onerror = (_: dom.Event) => p.tryFailure(new RuntimeException("Failed to convert blob to data URL"))
+    reader.readAsDataURL(blob)
+    p.future
+  }
 
   def promiseToFuture[A](p: js.Promise[A]): Future[A] = {
     val pr = Promise[A]()
