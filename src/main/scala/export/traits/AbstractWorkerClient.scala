@@ -37,6 +37,9 @@ object AbstractWorkerClient {
  * Stateful client runtime for commands sent to a worker.
  *
  * Commands are sent asynchronously, while completion/failure is mapped back using request ids.
+ *
+ * Important: worker clients must not use sleep/timeouts to "wait" for completion semantics.
+ * Completion must be driven by worker protocol messages only.
  */
 abstract class AbstractWorkerClient(
                                      val exportedName: String,
@@ -46,14 +49,11 @@ abstract class AbstractWorkerClient(
                                    ) {
 
   private val worker = {
-    val worker = new dom.Worker(
-      "./js/worker-bootstrap.js",
-      js.Dynamic.literal(`type` = "module").asInstanceOf[dom.WorkerOptions]
-    )
+    val worker = new dom.Worker("./js/worker-bootstrap.js")
     worker.postMessage(
       js.Dynamic.literal(
         kind = "init-server",
-        moduleUrl = "../../target/scala-3.3.3/workbookapp-fastopt/main.js",
+        moduleUrl = "../../target/scala-3.3.3/workbookapp-fastopt.js",
         //moduleUrl = "./workbookapp-fastopt/main.js",
         exportedName = exportedName
       )

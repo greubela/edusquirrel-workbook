@@ -4,7 +4,6 @@ import com.raquo.laminar.api.L.{*, given}
 import content.{CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, TestWorkbookFactory, plantworkshop}
 import content.plantworkshop.PlantWorkshopApp
 import org.scalajs.dom
-import org.scalajs.dom.document
 import workbook.htmlElements.container.HtmlFullScreenContainerElement
 import workbook.model.info.AllWorkbookInfo
 import `export`.workers.MathWorkerClient
@@ -16,13 +15,14 @@ import `export`.traits.WorkerTraits.WorkerState
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
+import scala.scalajs.js.Thenable.Implicits.*
 
 
 private def info = AllWorkbookInfo.singleton
 private def workbookInfoVar = AllWorkbookInfo.singleton.workbookInfoVar
 private def fullscreenElement = AllWorkbookInfo.singleton.technicalElements.fullScreenContainer
 
-private lazy val idAndContentList: List[(String, Element)] = List(
+private def idAndContentList: List[(String, Element)] = List(
   ("plantWorkshopApp", plantworkshop.PlantWorkshopApp.appElement),
   ("workbookPlantWorkshop", CreatePlantworkshopWorkbook(info).createWorkbook.getDomElement()),
   //("testEditor", HtmlFullscreenTurtleEditorElement(BeProgram.debugGraphicsProgram().fullProgram).getDomElement()),
@@ -35,7 +35,7 @@ def insertWorkbookContent(): Unit = {
 
   def tryToLoad(containerId: String, contentElement: Element): Unit = {
     println("try to load: " + containerId)
-    val container = document.getElementById(containerId)
+    val container = dom.document.getElementById(containerId)
     if (container != null) {
       println("Loading Content: " + containerId)
       val combinedElement = div(
@@ -62,6 +62,25 @@ def initWorkbook(): Unit = {
 
   val turtleWorker = new TurtleStitchWorkerClient(dom.document.createElement("canvas").asInstanceOf[dom.html.Canvas])
   turtleWorker.serverStateSignal.foreach(newSig => println("TurtleWorker status changed: " + newSig.toString))(unsafeWindowOwner)
+
+
+  val turtleDemoProjectUrl = "../resources/workbookresources/embroidery/existingProjects/simple_forward.xml"
+  dom.fetch(turtleDemoProjectUrl).toFuture
+    .flatMap(_.text().toFuture)
+    .foreach { xml =>
+      turtleWorker.snapshotGreenFlagProgramsPngDataUrl(xml, "en").onComplete {
+        case scala.util.Success(png) =>
+          println("TurtleWorker snapshotGreenFlagProgramsPngDataUrl success, prefix: " + png.take(64))
+        case scala.util.Failure(err) =>
+          println("TurtleWorker snapshotGreenFlagProgramsPngDataUrl failure: " + err.getMessage)
+      }
+      turtleWorker.getGreenFlagAsLispCode(xml, "en").onComplete {
+        case scala.util.Success(lisp) =>
+          println("TurtleWorker getGreenFlagAsLispCode success: " + lisp)
+        case scala.util.Failure(err) =>
+          println("TurtleWorker getGreenFlagAsLispCode failure: " + err.getMessage)
+      }
+    }
 
 }
 

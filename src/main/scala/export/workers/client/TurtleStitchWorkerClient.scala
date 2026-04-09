@@ -4,22 +4,27 @@ import `export`.traits.AbstractWorkerClient
 import org.scalajs.dom.html.Canvas
 
 import scala.concurrent.Future
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
+case class TurtleStitchWorkerClient(canvas: Canvas)
+    extends AbstractWorkerClient("startTurtleWorkerServer", Map("hi" -> "bye"), Some(canvas)) {
 
-case class TurtleStitchWorkerClient(canvas: Canvas) extends AbstractWorkerClient("startTurtleWorkerServer", Map("hi" -> "bye"), Some(canvas)) {
-
+  def snapshotGreenFlagProgramsPngDataUrl(xml_content: String, language: String = "en"): Future[String] =
+    enqueue(
+      "snapshotGreenFlagProgramsPngDataUrl",
+      Map(
+        "xml_content" -> xml_content,
+        "language" -> language
+      )
+    ).map(_.data.getOrElse("value", ""))
 
   def getGreenFlagAsLispCode(xml_content: String, language: String): Future[String] =
-    ???
-    
-  
-  
-  
-  /*
-.enqueue(name, Map("a" -> a.toString, "b" -> b.toString))
-    .map(_.data.get("value").flatMap(_.toIntOption).getOrElse(0))
-  */
-  
-  
-  
+    enqueue(
+      "getGreenFlagAsLispCode",
+      Map(
+        "xml_content" -> xml_content,
+        "language" -> language
+      )
+    ).map(_.data.getOrElse("value", ""))
+
 }

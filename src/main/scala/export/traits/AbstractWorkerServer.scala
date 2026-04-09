@@ -21,6 +21,7 @@ import scala.scalajs.js.annotation.JSExportTopLevel
  * Notes:
  * - all JS/Scala type conversion should stay in `JsHelpers`.
  * - subclasses should only focus on task behavior (`handleTask`) and optional custom scheduling.
+ * - Worker server implementations must not rely on sleeping, timeout loops, or timer-based completion heuristics.
  */
 abstract class AbstractWorkerServer(
                                      workerName: String,
