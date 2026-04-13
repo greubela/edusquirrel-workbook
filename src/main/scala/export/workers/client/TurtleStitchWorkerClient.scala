@@ -1,30 +1,39 @@
 package `export`.workers.client
 
-import `export`.traits.AbstractWorkerClient
+import `export`.traits.WorkerTraits.WorkerState
+import `export`.traits.WorkerTraits.WorkerState.WORKER_READY
+import `export`.workers.TurtleStitchWorker
+import com.raquo.airstream.state.StrictSignal
+import com.raquo.laminar.api.L.Var
 import org.scalajs.dom.html.Canvas
 
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.scalajs.js.Promise as JsPromise
+import scala.scalajs.js.JSConverters.*
 
-case class TurtleStitchWorkerClient(canvas: Canvas)
-    extends AbstractWorkerClient("startTurtleWorkerServer", Map("hi" -> "bye"), Some(canvas)) {
+case class TurtleStitchWorkerClient(canvas: Canvas) {
+
+  private val worker = TurtleStitchWorker()
+  private val serverStateVar: Var[WorkerState] = Var(WorkerState.WORKER_STARTING)
+
+  def serverStateSignal: StrictSignal[WorkerState] = serverStateVar.signal
+
+  private val preheat: Future[Unit] =
+    worker.init().toFuture.map { _ =>
+      serverStateVar.set(WORKER_READY(true, true))
+    }.recoverWith { case ex: Throwable =>
+      serverStateVar.set(WorkerState.WORKER_TERMINATED)
+      Future.failed(ex)
+    }
+
+  private def afterPreheat[A](op: => JsPromise[A]): Future[A] =
+    preheat.flatMap(_ => op.toFuture)
 
   def snapshotGreenFlagProgramsPngDataUrl(xml_content: String, language: String = "en"): Future[String] =
-    enqueue(
-      "snapshotGreenFlagProgramsPngDataUrl",
-      Map(
-        "xml_content" -> xml_content,
-        "language" -> language
-      )
-    ).map(_.data.getOrElse("value", ""))
+    afterPreheat(worker.calcProgramPng(xml_content, language))
 
   def getGreenFlagAsLispCode(xml_content: String, language: String): Future[String] =
-    enqueue(
-      "getGreenFlagAsLispCode",
-      Map(
-        "xml_content" -> xml_content,
-        "language" -> language
-      )
-    ).map(_.data.getOrElse("value", ""))
+    afterPreheat(worker.getGreenFlagAsLispCode(xml_content, language))
 
 }

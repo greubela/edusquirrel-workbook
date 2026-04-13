@@ -360,6 +360,13 @@ object TurtleStitchWorkerServer {
     js.Dynamic.global.self.updateDynamic("document")(document)
     js.Dynamic.global.self.updateDynamic("window")(js.Dynamic.global.self)
 
+    if (js.isUndefined(js.Dynamic.global.self.selectDynamic("HTMLCanvasElement"))) {
+      js.Dynamic.global.self.updateDynamic("HTMLCanvasElement")(js.Dynamic.global.OffscreenCanvas)
+    }
+    if (js.isUndefined(js.Dynamic.global.self.selectDynamic("Image"))) {
+      js.Dynamic.global.self.updateDynamic("Image")((() => js.Dynamic.literal(width = 0, height = 0)).asInstanceOf[js.Function0[js.Dynamic]])
+    }
+
     try {
       js.Dynamic.global.importScripts("data:application/javascript,var%20document%20%3D%20self.document%3Bvar%20window%20%3D%20self.window%20%7C%7C%20self%3B")
     } catch {
@@ -377,7 +384,7 @@ object TurtleStitchWorkerServer {
     }
   }
 
-  private val basePath = "../resources/programs/20260212TurtleStitch/"
+  private val basePath = "../../resources/programs/20260212TurtleStitch/"
 
   private val turtleScripts: List[String] = List(
     "adjusted/adjustedMorphic.js",

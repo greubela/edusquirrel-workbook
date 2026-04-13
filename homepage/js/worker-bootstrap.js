@@ -1,6 +1,6 @@
 self.__workerServerStarted = false;
 
-self.onmessage = (event) => {
+self.onmessage = async (event) => {
   const msg = event.data || {};
   if (msg.kind !== 'init-server') return;
 
@@ -10,12 +10,27 @@ self.onmessage = (event) => {
   }
 
   try {
-    importScripts(msg.moduleUrl);
-    const starter = self[msg.exportedName];
-    if (typeof starter !== 'function') {
-      throw new Error(`Export '${msg.exportedName}' not found on worker global scope.`);
+    let starter = null;
+    let owner = self;
+
+    if (msg.moduleType === 'module') {
+      const mod = await import(msg.moduleUrl);
+      if (typeof mod?.[msg.exportedName] === 'function') {
+        starter = mod[msg.exportedName];
+        owner = mod;
+      } else {
+        starter = self[msg.exportedName];
+      }
+    } else {
+      importScripts(msg.moduleUrl);
+      starter = self[msg.exportedName];
     }
-    starter();
+
+    if (typeof starter !== 'function') {
+      throw new Error(`Export '${msg.exportedName}' not found.`);
+    }
+
+    starter.call(owner);
     self.__workerServerStarted = true;
     self.postMessage({ kind: 'server-ready' });
   } catch (err) {
