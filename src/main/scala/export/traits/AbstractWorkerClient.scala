@@ -9,58 +9,55 @@ import org.scalajs.dom.html.Canvas
 import util.IdHelper
 import util.web.JsHelpers
 
-import java.time
 import java.time.LocalDateTime
 import java.util.UUID
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.js
 
+object AbstractWorkerClient
+
 /**
- * Base worker client facade that owns a dedicated worker instance.
+ * Generic request/response worker client base for servers that speak `WorkerWire` protocol.
  *
  * Responsibilities:
- * - boot worker runtime (via exported server entrypoint)
- * - optionally auto-initialize server pre-heating
- * - enqueue commands and resolve Futures from response frames
- * - keep client-side tracking for pending tasks
+ * - own worker lifecycle/state transitions
+ * - bootstrap worker server entry (`init-server`) from configurable URLs/exports
+ * - send `init` once worker signals `server-ready`
+ * - queue requests until `init-result(ok = true)`
+ * - map `response` / `error` frames back to pending Futures
  *
  * Notes:
- * - all JS/Scala type conversion should stay in `JsHelpers`.
- */
-object AbstractWorkerClient {
-
-
-}
-
-/**
- * Stateful client runtime for commands sent to a worker.
- *
- * Commands are sent asynchronously, while completion/failure is mapped back using request ids.
- *
- * Important: worker clients must not use sleep/timeouts to "wait" for completion semantics.
- * Completion must be driven by worker protocol messages only.
+ * - this class targets `WorkerWire` protocol workers.
+ * - clients with custom/non-`WorkerWire` protocols can use dedicated wrappers instead.
  */
 abstract class AbstractWorkerClient(
+                                     val bootstrapUrl: String,
+                                     val moduleUrl: String,
                                      val exportedName: String,
+                                     val workerOptions: Option[dom.WorkerOptions],
                                      val paramsForInit: Map[String, String],
                                      val canvasForInit: Option[Canvas],
+                                     val moduleType: String = "module",
                                      val id: String = IdHelper.getNextId()
                                    ) {
 
   private val worker = {
-    val worker = new dom.Worker("./js/worker-bootstrap.js")
-    worker.postMessage(
+    val created = workerOptions
+      .map(options => new dom.Worker(bootstrapUrl, options))
+      .getOrElse(new dom.Worker(bootstrapUrl))
+
+    created.postMessage(
       js.Dynamic.literal(
         kind = "init-server",
-        moduleUrl = "../../target/scala-3.3.3/workbookapp-fastopt.js",
-        //moduleUrl = "./workbookapp-fastopt/main.js",
-        exportedName = exportedName
+        moduleUrl = moduleUrl,
+        exportedName = exportedName,
+        moduleType = moduleType
       )
     )
-    worker
-  }
 
+    created
+  }
 
   private val pendingTasks = mutable.Map.empty[String, PendingTask]
   private val serverStateVar: Var[WorkerState] = Var(WorkerState.WORKER_STARTING)
@@ -133,7 +130,7 @@ abstract class AbstractWorkerClient(
     val id = msg.id.asInstanceOf[String]
     pendingTasks.remove(id).foreach { p =>
       if (JsHelpers.parseOrElse[Boolean](msg.ok, true)) {
-        val data = JsHelpers.readStringMap(msg.data.asInstanceOf[js.Any]) //JsHelpers.stringMapHelper.fromJsToScala(msg.data).getOrElse(Map.empty)
+        val data = JsHelpers.readStringMap(msg.data.asInstanceOf[js.Any])
 
         val timestampReceived = readServerTimestamp(msg, "timestampReceived", LocalDateTime.now())
         val timestampStarted = readServerTimestamp(msg, "timestampStarted", LocalDateTime.now())
