@@ -14,7 +14,7 @@ object AppLanguage {
 
   def allLanguages: Set[AppLanguage] = humanLanguages ++ programmingLanguages
 
-  val humanLanguages: Set[HumanLanguage] = Set(English, German, French)
+  val humanLanguages: Set[HumanLanguage] = Set(English, German, French, Ukrainian, Russian, Turkish, Danish, Spanish)
   val programmingLanguages: Set[ProgrammingLanguage] = Set(Python, Java, JavaScript, Rust, Lisp, Cpp, BlockDisplay)
   
   case object English extends HumanLanguage("English", "EN")
