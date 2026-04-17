@@ -14,7 +14,7 @@ import scala.concurrent.ExecutionContext
 case class AllWorkbookInfo() {
 
   private val defaultInfo = WorkbookInfo(
-    List[HumanLanguage](AppLanguage.English, AppLanguage.German, AppLanguage.Ukrainian, AppLanguage.Danish, AppLanguage.Turkish),
+    List[HumanLanguage](AppLanguage.German, AppLanguage.English, AppLanguage.Spanish, AppLanguage.French, AppLanguage.Ukrainian, AppLanguage.Danish, AppLanguage.Turkish),
     WorkbookConfig(AppLanguage.German, None, User("TestUser", "dummy@test.de")),
     Map())
   
