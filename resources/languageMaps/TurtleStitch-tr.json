@@ -1,0 +1,14 @@
+{
+  "defaultReadExerciseInstruction": "Aşağıdaki programdaki komutları okuyun",
+  "defaultExerciseTitle": "Şekli yeniden oluşturun!",
+  "providedProjectLabel": "Hazır proje",
+  "defaultExecuteExerciseInstruction": "Tahmininizi doğrulayın!",
+  "defaultAnalyzeExerciseInstruction": "Oluşmasını beklediğiniz şekli açıklayın",
+  "defaultReprogramInstruction": "TurtleStitch'i açın (https://www.turtlestitch.org/run) ve sağda gösterilen şekli programlayın. Ardından dosya simgesine (📝) tıklayın ve dosyayı bilgisayarınıza kaydedin. Son olarak dosyanızı soldaki düğmeyle yükleyin.",
+  "showUploadedProgramText": "Yüklenen proje (kod önizleme)",
+  "showEmptyPreview": "Yüklenen proje (eksik)",
+  "showExpected": "Beklenen çıktı",
+  "uploadTitle": "Proje yükle",
+  "uploadButton": "TurtleStitch projesi yükle (XML)",
+  "downloadButton": "Gösterilen projeyi indir"
+}
