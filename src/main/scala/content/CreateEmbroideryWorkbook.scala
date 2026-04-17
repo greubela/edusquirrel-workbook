@@ -22,7 +22,7 @@ case class CreateEmbroideryWorkbook(override val workbookInfo: AllWorkbookInfo) 
         thirdSection,
         fourthSection,
         fifthSection,
-        sixthSection,
+        //sixthSection,
         finalSection
       )
     )
