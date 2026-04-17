@@ -5,17 +5,11 @@
   "AnalyzeProgram": "Lade das gezeigte Programm herunter und führe es in <a target=\"_blank\" href=\"https://www.turtlestitch.org/run\"> TurtleStitch </a> aus",
   "ConfirmSteps": "Aufgabe erledigt.",
   "workbookTitle": "Programmieren lernen mit der Stickmaschine",
-
   "section0Title": "Abschnitt 0: Übersicht",
   "S0E1Title": "Ziel des Workshops",
   "S0E1I1": "Unser Ziel ist, einen Einkaufsbeutel selbst mit Stickereien zu verzieren. Der Workshop ist hierfür in zwei Teile geteilt.",
-
   "S0E1I2": "Im ersten Teil lernen wir, wie man Muster durch Programmierung erstellt. Hierfür sind die Abschnitte 1 bis 6 dieses Arbeitsheft, in dem primär vorhandene Muster nachprogrammiert werden. Umso weiter du kommst, umso mehr Techniken lernst du kennen, mit denen man Muster erstellen kann!",
-
   "S0E1I3": "Im zweiten Teil erstellen wir dann selbst ein Muster, das wir in den Beutel sticken. Hier benutzen wir die Techniken die wir davor gelernt haben. Dafür hast du die letzte Stunde des Workshops Zeit!",
-
-
-
   "section1Title": "Abschnitt 1: TurtleStitch",
   "Ex1Title": "Ein einfaches Programm zum Anfang",
   "Ex1Instr1": "Lies die Befehle im folgendem Programm und vermute, wie die Figur aussieht, die hierdurch erstellt wird.",
