@@ -4,7 +4,7 @@ import `export`.workers.TurtleStitchWorker
 import com.raquo.laminar.api.L.Var
 import datastructures.core.language.{HumanLanguage, TranslationMaps}
 import datastructures.web.storage.AsyncDataCache
-import interactionPlugins.turtleStitchPlugin.TurtleStitchEditor.turtleLang
+import interactionPlugins.turtleStitchPlugin.TurtleStitchEditor.{turtleLang, withSingletonEditor}
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
@@ -19,29 +19,38 @@ object TurtleStitchWorkerFacade {
    *   not the "executed stage after green-flag run" pipeline.
    * - The executed stage snapshot is handled by worker methods like simulateGreenFlag/getGreenFlagPng.
    */
-  def getGreenFlagProgramSnapshotDataSrc(turtleStitchXml: String, language:HumanLanguage): Var[Option[String]] = {
+  def getGreenFlagProgramSnapshotDataSrc(turtleStitchXml: String, language: HumanLanguage): Var[Option[String]] = {
     implicit val ec: ExecutionContext = ExecutionContext.global
-    programPngDataSrcStorage.loadIntoVariable( (turtleStitchXml, language) )
+    programPngDataSrcStorage.loadIntoVariable((turtleStitchXml, language))
   }
 
+  private val EMPTY_PNG_DATA_URL: String = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
+  
   /** Backwards-compatible alias for previous API name. */
-  def getPngDataSrcOfGreenFlagProgramEditor(turtleStitchXml: String, language:HumanLanguage): Var[Option[String]] =
+  def getPngDataSrcOfGreenFlagProgramEditor(turtleStitchXml: String, language: HumanLanguage): Var[Option[String]] =
     getGreenFlagProgramSnapshotDataSrc(turtleStitchXml, language)
 
-  private val programPngDataSrcStorage: AsyncDataCache[(String, HumanLanguage), String] = new AsyncDataCache[(String, HumanLanguage), String]("ProgramPngDataSrc", false) {
+  private val programPngDataSrcStorage: AsyncDataCache[(String, HumanLanguage), String] = new AsyncDataCache[(String, HumanLanguage), String]("ProgramPngDataSrc", true) {
     protected def executeLoading(in: (String, HumanLanguage))(ec: ExecutionContext): Future[String] = {
       val (xml, language) = in
-      calcPngDataSrcWithQueuedWorker(xml, language)(using ec)
+      //calcPngDataSrcWithQueuedWorker(xml, language)(using ec)
+      println("[WARN] TurtleStitchWorkerFacade::programPngDataSrcStorage - still using non-parallel rendering.")
+      if(xml.strip.isEmpty || !xml.contains("TurtleStitch") || !xml.contains("scripts")) Future.successful(EMPTY_PNG_DATA_URL)
+      else TurtleStitchEditor.withSingletonEditor(_.calcProgramSvg(xml, turtleLang(language)).toFuture)(using ec)
     }
 
     protected def defaultValueWhileLoading(in: (String, HumanLanguage)): Option[String] =
       Some(TranslationMaps.languageMapImageLoading.getInLanguage(in._2))
 
     protected def formatInputForLogging(in: (String, HumanLanguage)): String =
-      s"XmlInput(${in._1.length}, ${in._1.substring(0, 60)}, ${turtleLang(in._2)})"
+      val xmlStr =
+        if (in._1.length > 60) s"XmlInput(${in._1.length}, ${in._1.substring(0, 60)})"
+        else s"XmlInput($in._1)"
+      s"XmlInput($xmlStr}, ${turtleLang(in._2)})"
 
     protected def formatOutputForLogging(out: String): String =
-      s"PngOutput(${out.length}, ${out.substring(0, 60)} ...)"
+      if (out.length > 60) s"PngOutput(${out.length}, ${out.substring(0, 60)} ...)"
+      else s"PngOutput($out)"
   }
 
   private var worker: TurtleStitchWorker = new TurtleStitchWorker()
@@ -101,6 +110,6 @@ object TurtleStitchWorkerFacade {
       worker = new TurtleStitchWorker()
       workerInit = None
       queuedWork = Future.successful(())
-  }
+    }
 
 }

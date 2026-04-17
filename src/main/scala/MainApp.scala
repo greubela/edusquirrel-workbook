@@ -54,7 +54,7 @@ def insertWorkbookContent(): Unit = {
 
 def initWorkbook(): Unit = {
   insertWorkbookContent()
-
+/*
   val mathWorkerClient = new MathWorkerClient()
   mathWorkerClient.serverStateSignal.foreach(newSig => println("MathWorker status changed: " + newSig.toString))(unsafeWindowOwner)
   mathWorkerClient.add(7, 5).foreach(result => println(s"MathWorker add(7, 5) = $result"))
@@ -62,7 +62,6 @@ def initWorkbook(): Unit = {
 
   val turtleWorker = new TurtleStitchWorkerClient(dom.document.createElement("canvas").asInstanceOf[dom.html.Canvas])
   turtleWorker.serverStateSignal.foreach(newSig => println("TurtleWorker status changed: " + newSig.toString))(unsafeWindowOwner)
-
 
   val turtleDemoProjectUrl = "../resources/workbookresources/embroidery/existingProjects/simple_forward.xml"
   dom.fetch(turtleDemoProjectUrl).toFuture
@@ -81,6 +80,8 @@ def initWorkbook(): Unit = {
           println("TurtleWorker getGreenFlagAsLispCode failure: " + err.getMessage)
       }
     }
+
+ */
 
 }
 

@@ -104,7 +104,7 @@ object TurtleFileShowProgramXmlCard {
       "exercise" + forUploadButton.id,
       "TurtleStitch/showUploadedProgramText",
       "TurtleStitch/showEmptyPreview",
-      forUploadButton.interactionVariable.interactionSignal.mapLazy(curVal => Some(curVal))
+      forUploadButton.interactionVariable.interactionSignal
     )
   }
 

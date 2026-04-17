@@ -52,7 +52,7 @@ object TestWorkbookFactory {
 
   private def turtleEditorDemo(workbookInfo: AllWorkbookInfo): HtmlExerciseContainer = {
     val turtleVar = Var(simple_turtle_xml)
-    turtleVar.signal.foreach(newVal => println("Turtle XML changed: " + newVal.size + "/" + newVal.take(60)))(unsafeWindowOwner)
+    //turtleVar.signal.foreach(newVal => println("Turtle XML changed: " + newVal.size + "/" + newVal.take(60)))(unsafeWindowOwner)
     val turtleDemo = new TurtleStitchEditor(turtleVar)
 
     HtmlExerciseContainer(workbookInfo, List(

@@ -22,7 +22,7 @@ object SlidePanel {
 
     val panelElement = new HtmlAppElement {
       override def getDomElement(): Element = div(
-        cls := "slide-deck-container workbook-interaction",
+        cls := "slide-deck-container",
         div(
           cls := "slide-deck-image",
           child <-- imageElement.getDomSignal

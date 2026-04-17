@@ -1,117 +1,308 @@
 package content
 
-import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.{*, given}
-import content.WorkbookFactory
 import datastructures.web.file.FileDescription
-import interactionPlugins.turtleStitchPlugin.TurtleStitchExploreProjectExercise
-import interactionPlugins.turtleStitchPlugin.card.*
-import org.scalajs.dom
-import org.scalajs.dom.URL
-import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement, HtmlUnsafeHtmlInstructionElement}
+import interactionPlugins.turtleStitchPlugin.{TurtleStitchExploreProjectExercise, TurtleStitchRecreateShapeExercise}
+import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlImageElement, HtmlUnsafeHtmlInstructionElement}
 import workbook.htmlElements.container.*
-import workbook.htmlElements.interactions.HtmlBasicTextInteraction
 import workbook.model.*
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.{AllWorkbookInfo, WorkbookConfig, WorkbookInfo}
+import workbook.model.info.{AllWorkbookInfo, WorkbookConfig}
 import workbook.user.User
 
 case class CreateEmbroideryWorkbook(override val workbookInfo: AllWorkbookInfo) extends WorkbookFactory {
 
+
   override def createWorkbook: Workbook = {
-    val firstSection = createFirstSection()
-    val secondSection = TestWorkbookFactory.createTestSection(workbookInfo)
-    val res: Workbook = {
-      Workbook(workbookInfo,
-        "EmbroideryWorkbook/workbookTitle",
-        List(
-          firstSection,
-          secondSection
-        )
-          ++ CreatePlantworkshopWorkbook(workbookInfo).createWorkbook.sections
+    val res = workbook(
+      "EmbroideryWorkbook/workbookTitle",
+      List(
+        introSection,
+        firstSection,
+        secondSection,
+        thirdSection,
+        fourthSection,
+        fifthSection,
+        sixthSection,
+        finalSection
       )
-    }
+    )
+    workbookInfo.workbookInfoVar.update(oldVal => oldVal.copy(config = oldVal.config.copy(activeSection = Some(introSection))))
+    res
+  }
+
+  def createWorkbook2: Workbook = {
+
+    val secondSection = TestWorkbookFactory.createTestSection(workbookInfo)
+    val res = workbook(
+      "EmbroideryWorkbook/workbookTitle",
+      List(
+        firstSection,
+        secondSection,
+        thirdSection
+      )
+        ++ CreatePlantworkshopWorkbook(workbookInfo).createWorkbook.sections
+    )
+
     workbookInfo.workbookInfoVar.update(oldVal => oldVal.copy(config = oldVal.config.copy(activeSection = Some(firstSection))))
     res
   }
 
-  private def createFileDescription(filename: String): FileDescription = {
-    FileDescription.relativeToResourceFolder("workbookresources/embroidery/existingProjects/" + filename + ".xml")
-  }
-
-  private def createTextInput(): HtmlWorkbookElement = {
-    HtmlBasicTextInteraction(workbookInfo, nextId())
-  }
 
   private def createExploreExerciseDownloadInteraction(filename: String): HtmlWorkbookElement = {
-    TurtleStitchExploreProjectExercise.createElementLine(workbookInfo, createFileDescription(filename))
+    val fileDesc = FileDescription.relativeToResourceFolder("workbookresources/embroidery/existingProjects/" + filename + ".xml")
+    TurtleStitchExploreProjectExercise.createElementLine(workbookInfo, fileDesc)
   }
 
-  private def thirdExercise: HtmlExerciseContainer = {
-
-    val elements: List[HtmlWorkbookElement] = List(
-      HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/Ex3Title"),
-      HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex3Instr1"),
-      createExploreExerciseDownloadInteraction("updown_forward"),
-      HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex3Instr2"),
-      createTextInput(),
-      HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex3Instr3"),
-      createTextInput()
-    )
-    HtmlExerciseContainer(workbookInfo, elements.toList)
+  private def createRecreateShapeUploadInteraction(imageName: String): HtmlWorkbookElement = {
+    val fileDesc = FileDescription.relativeToResourceFolder("workbookresources/embroidery/desiredShapes/" + imageName + ".png")
+    val imgElement = HtmlImageElement(fileDesc, workbookInfo)
+    TurtleStitchRecreateShapeExercise.createInteractionElement(workbookInfo, nextId("recreateShape"), imgElement)
   }
 
-  private def secondExercise: HtmlExerciseContainer = {
-
-    val elements: List[HtmlWorkbookElement] = List(
-      HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/Ex2Title"),
-      HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex2Instr1"),
-      createExploreExerciseDownloadInteraction("reset_forward"),
-      HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex2Instr2"),
-      createTextInput(),
-      HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex2Instr3"),
-      createTextInput(),
-      HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex2Instr4"),
-      createTextInput(),
-    )
-    HtmlExerciseContainer(workbookInfo, elements.toList)
-  }
-
-  private def firstExercise: HtmlExerciseContainer = {
-
-
-    val elements: List[HtmlWorkbookElement] = List(
-      HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/Ex1Title"),
-      HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex1Instr1"),
-      createExploreExerciseDownloadInteraction("simple_forward"),
-      HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex1Instr2"),
-      createTextInput(),
-      HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex1Instr3"),
-      HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex1Instr4"),
-      createTextInput(),
-      HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex1Instr5"),
-    )
-
-    HtmlExerciseContainer(workbookInfo, elements.toList)
-
+  private def image(imageName: String, imgType: String = "png"): HtmlWorkbookElement = {
+    image(FileDescription.relativeToResourceFolder("workbookresources/embroidery/images/" + imageName + "." + imgType))
   }
 
 
-  private def createFirstSection(): WorkbookSection = {
-
-    val exercises = List(
-      firstExercise,
-      secondExercise,
-      thirdExercise,
-    )
-
-    WorkbookSection(
-      workbookInfo,
+  private lazy val firstSection: WorkbookSection =
+    section(
       "EmbroideryWorkbook/section1Title",
-      exercises
+      List(
+        container(List(
+          HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/Ex1Title"),
+          HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex1Instr1"),
+          createExploreExerciseDownloadInteraction("simple_forward"),
+          HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex1Instr2"),
+          createTextInput(),
+          HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex1Instr3"),
+          HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex1Instr4"),
+          createTextInput(),
+          HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex1Instr5"),
+          createTextInput(),
+        )),
+        container(List(
+          HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/Ex2Title"),
+          HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex2Instr1"),
+          createExploreExerciseDownloadInteraction("reset_forward"),
+          HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex2Instr2"),
+          createTextInput(),
+          HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex2Instr3"),
+          createTextInput(),
+          HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex2Instr4"),
+          createTextInput(),
+        )),
+        container(List(
+          HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/Ex3Title"),
+          HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex3Instr1"),
+          createExploreExerciseDownloadInteraction("updown_forward"),
+          HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex3Instr2"),
+          createTextInput(),
+          HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex3Instr3"),
+          createTextInput()
+        )),
+      )
     )
 
-  }
+
+  private lazy val secondSection: WorkbookSection =
+    section(
+      "EmbroideryWorkbook/section2Title",
+      List(
+        container(List(
+          HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/S2E1Title"),
+
+          instructionHtml("EmbroideryWorkbook/RecreateShape"),
+          createRecreateShapeUploadInteraction("square"),
+
+          instructionHtml("EmbroideryWorkbook/AnalyzeProgram"),
+          createExploreExerciseDownloadInteraction("simple_repeat"),
+
+          instructionHtml("EmbroideryWorkbook/S2E1I1"),
+          createTextInput(),
+          instructionHtml("EmbroideryWorkbook/S2E1I2"),
+          createTextInput(),
+          instructionHtml("EmbroideryWorkbook/S2E1I3"),
+          createTextInput(),
+          instructionHtml("EmbroideryWorkbook/S2E1I4"),
+          createTextInput(),
+        )),
+        container(List(
+          HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/S2E2Title"),
+          instructionHtml("EmbroideryWorkbook/AnalyzeProgram"),
+          createExploreExerciseDownloadInteraction("complex_repeat"),
+
+          instructionHtml("EmbroideryWorkbook/S2E2I1"),
+          createTextInput(),
+          instructionHtml("EmbroideryWorkbook/S2E2I2"),
+          createTextInput(),
+          instructionHtml("EmbroideryWorkbook/S2E2I3"),
+          createTextInput(),
+          instructionHtml("EmbroideryWorkbook/S2E2I4"),
+          createTextInput(),
+        )),
+        container(List(
+          HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/S2E3Title"),
+          instructionHtml("EmbroideryWorkbook/RecreateShape"),
+          createRecreateShapeUploadInteraction("two_squares"),
+          instructionHtml("EmbroideryWorkbook/RecreateShape"),
+          createRecreateShapeUploadInteraction("four_squares"),
+          instructionHtml("EmbroideryWorkbook/RecreateShape"),
+          createRecreateShapeUploadInteraction("five_triangles"),
+          instructionHtml("EmbroideryWorkbook/RecreateShape"),
+          createRecreateShapeUploadInteraction("pinwheel"),
+        )),
+        container(List(
+          HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/S2E4Title"),
+          instructionHtml("EmbroideryWorkbook/S2E4I1"),
+          instructionHtml("EmbroideryWorkbook/RecreateShape"),
+          createRecreateShapeUploadInteraction("squarewheel"),
+          instructionHtml("EmbroideryWorkbook/RecreateShape"),
+          createRecreateShapeUploadInteraction("blocky_eight"),
+          instructionHtml("EmbroideryWorkbook/RecreateShape"),
+          createRecreateShapeUploadInteraction("repeat_large"),
+        )),
+      )
+    )
+
+  private lazy val thirdSection: WorkbookSection = section(
+    "EmbroideryWorkbook/section3Title",
+    List(
+      container(List(
+        HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/S3E1Title"),
+        instructionHtml("EmbroideryWorkbook/S3E1I1"),
+        checklist("EmbroideryWorkbook/ConfirmSteps"),
+
+        instructionHtml("EmbroideryWorkbook/S3E1I2"),
+        image("block_square"),
+        checklist("EmbroideryWorkbook/ConfirmSteps"),
+
+        instructionHtml("EmbroideryWorkbook/S3E1I3"),
+        image("block_usesquare"),
+        checklist("EmbroideryWorkbook/ConfirmSteps"),
+
+        instructionHtml("EmbroideryWorkbook/S3E1I4"),
+        createTextInput(),
+      )),
+      container(List(
+        HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/S3E2Title"),
+
+        instructionHtml("EmbroideryWorkbook/RecreateShapeWithBlocks"),
+        createRecreateShapeUploadInteraction("five_triangles"),
+        instructionHtml("EmbroideryWorkbook/RecreateShapeWithBlocks"),
+        createRecreateShapeUploadInteraction("repeat_large"),
+        instructionHtml("EmbroideryWorkbook/S3E2I1"),
+        createTextInput()
+      )),
+      container(List(
+        HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/S3E3Title"),
+
+        instructionHtml("EmbroideryWorkbook/S3E3I1"),
+        image("parameter_create"),
+
+        instructionHtml("EmbroideryWorkbook/S3E3I2"),
+        image("parameter_name"),
+
+        instructionHtml("EmbroideryWorkbook/S3E3I3"),
+        createTextInput(),
+
+        instructionHtml("EmbroideryWorkbook/RecreateShapeWithBlocks"),
+        createRecreateShapeUploadInteraction("houses_larger"),
+      ))
+    ))
+
+
+  private lazy val fourthSection: WorkbookSection =
+    section(
+      "EmbroideryWorkbook/section4Title",
+      List(
+        container(List(
+          HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/S4E1Title"),
+
+          instructionHtml("EmbroideryWorkbook/S4E1I1"),
+
+          instructionHtml("EmbroideryWorkbook/AnalyzeProgram"),
+          createExploreExerciseDownloadInteraction("parameter_error"),
+
+          instructionHtml("EmbroideryWorkbook/S4E1I2"),
+          createTextInput(),
+
+          instructionHtml("EmbroideryWorkbook/S4E1I3"),
+          createTextInput(),
+
+          instructionHtml("EmbroideryWorkbook/S4E1I4"),
+          checklist("EmbroideryWorkbook/ConfirmSteps"),
+
+          instructionHtml("EmbroideryWorkbook/S4E1I5"),
+          createTextInput(),
+
+          instructionHtml("EmbroideryWorkbook/S4E1I6"),
+          createTextInput(),
+        )),
+        container(List(
+          HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/S4E2Title"),
+
+          instructionHtml("EmbroideryWorkbook/RecreateShapeWithCounting"),
+          createRecreateShapeUploadInteraction("houses_larger"),
+
+          instructionHtml("EmbroideryWorkbook/RecreateShapeWithCounting"),
+          createRecreateShapeUploadInteraction("circles_larger"),
+        ))
+      )
+    )
+
+
+  private lazy val introSection: WorkbookSection =
+    section(
+      "EmbroideryWorkbook/section0Title",
+      List(
+        container(List(
+          HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/S0E1Title"),
+          instructionHtml("EmbroideryWorkbook/S0E1I1"),
+          instructionHtml("EmbroideryWorkbook/S0E1I2"),
+          instructionHtml("EmbroideryWorkbook/S0E1I3"),
+
+        ))
+      ))
+
+  private lazy val fifthSection: WorkbookSection =
+    section(
+      "EmbroideryWorkbook/section5Title",
+      List(
+        container(List(
+          HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/S5E1Title"),
+
+          instructionHtml("EmbroideryWorkbook/S5E1I1"),
+
+        ))
+      ))
+
+  private lazy val sixthSection: WorkbookSection =
+    section(
+      "EmbroideryWorkbook/section6Title",
+      List(
+        container(List(
+          HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/S6E1Title"),
+
+          instructionHtml("EmbroideryWorkbook/S6E1I1"),
+
+        ))
+      ))
+
+
+  private lazy val finalSection: WorkbookSection =
+    section(
+      "EmbroideryWorkbook/section7Title",
+      List(
+        container(List(
+          HtmlContainerTitle(workbookInfo, "EmbroideryWorkbook/S7E1Title"),
+          instructionHtml("EmbroideryWorkbook/S7E1I1"),
+          instructionHtml("EmbroideryWorkbook/S7E1I2"),
+          instructionHtml("EmbroideryWorkbook/S7E1I3"),
+          instructionHtml("EmbroideryWorkbook/S7E1I4"),
+          createRecreateShapeUploadInteraction("empty"),
+
+        ))
+      ))
 
 
 }

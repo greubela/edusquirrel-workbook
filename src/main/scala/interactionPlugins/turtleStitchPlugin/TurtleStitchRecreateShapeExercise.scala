@@ -5,7 +5,7 @@ import com.raquo.laminar.api.L.{*, given}
 import datastructures.web.file.FullImage
 import interactionPlugins.turtleStitchPlugin.card.*
 import interactionPlugins.turtleStitchPlugin.card.TurtleStitchFileUploadButtonCard.StorageFormat
-import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement}
+import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlImageElement, HtmlPlaintextInstructionElement}
 import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.AllWorkbookInfo
 
@@ -17,7 +17,7 @@ object TurtleStitchRecreateShapeExercise {
   def createInteractionElement(
                                 pWorkbookInfo: AllWorkbookInfo,
                                 baseId: String,
-                                expectedOutcome: FullImage
+                                expectedOutcome: HtmlImageElement
                               ): HtmlWorkbookElement = {
     new HtmlWorkbookElement() {
 
@@ -31,9 +31,9 @@ object TurtleStitchRecreateShapeExercise {
 
       override def getDomElement(): L.Element = div(
         cls := "workbook-interaction preview-line",
+        expectedOutcomePreview.getDomElement(),
         fileInteraction.getDomElement(),
-        preview.getDomElement(),
-        expectedOutcomePreview.getDomElement()
+        preview.getDomElement()
       )
     }
   }
@@ -42,7 +42,7 @@ object TurtleStitchRecreateShapeExercise {
                       pWorkbookInfo: AllWorkbookInfo,
                       baseId: String,
                       titleLanguageMapId: String,
-                      expectedOutcome: FullImage
+                      expectedOutcome: HtmlImageElement
                     ): List[HtmlWorkbookElement] = {
 
     val htmlTitleElement = HtmlContainerTitle(pWorkbookInfo, titleLanguageMapId)

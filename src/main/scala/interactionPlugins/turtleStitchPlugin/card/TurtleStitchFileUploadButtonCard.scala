@@ -24,9 +24,9 @@ case class TurtleStitchFileUploadButtonCard(
                                  id: String,
                                  acceptedTypes: List[String],
                                  storageFormat: StorageFormat = BYTES_AS_BASE64_STRING
-                               ) extends WorkbookInteraction[String] {
+                               ) extends WorkbookInteraction[Option[String]] {
 
-  override val interactionVariable: InteractionVariable[String] = InteractionVariable.stringVariable(this, "")
+  override val interactionVariable: InteractionVariable[Option[String]] = InteractionVariable.stringOptionVariable(this, None)
 
   private lazy val uploadInput: ReactiveHtmlElement[HTMLInputElement] = input(
     styleAttr := "display:none;",
@@ -49,7 +49,7 @@ case class TurtleStitchFileUploadButtonCard(
   private lazy val fileDom: ReactiveHtmlElement[HTMLDivElement] = div(
     cls := "preview-card",
     h3(
-      text <-- workbookInfo.stringSignalFromLanguageMapId("TurtleStitch/uploadButton")(ExecutionContext.global),
+      text <-- workbookInfo.stringSignalFromLanguageMapId("TurtleStitch/uploadTitle")(ExecutionContext.global),
     ),
     div(
       cls := "preview-content",
@@ -63,8 +63,7 @@ case class TurtleStitchFileUploadButtonCard(
       case BYTES_AS_RAW_STRING => new String(bytes.map(_.toByte), "UTF-8")
       case BYTES_AS_BASE64_STRING => JsHelpers.byteArrayToBase64String(bytes)
     }
-
-    interactionVariable.updateStateFromUserInteraction(contentAsString, System.currentTimeMillis(), UpdateImportance.MAJOR)
+    interactionVariable.updateStateFromUserInteraction(Some(contentAsString), System.currentTimeMillis(), UpdateImportance.MAJOR)
 
   }
 

@@ -22,8 +22,8 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
 
   def interactionSignal: StrictSignal[T] = underlyingVar.signal
 
-  def lastUpdate: InteractionVariableState[T] = history.maxBy(_.epochTimestampMillis) 
-  
+  def lastUpdate: InteractionVariableState[T] = history.maxBy(_.epochTimestampMillis)
+
   def currentValue: T = underlyingVar.now()
 
   def createBoundVarWithUpdateImportance(importance: UpdateImportance): Var[T] = {
@@ -56,7 +56,7 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
   private val keyForSerialization: String = underlyingInteraction.id + "_history"
 
   def syncToAll(): Unit = {
-    if(history.exists(_.updateImportance != DEFAULT)) {
+    if (history.exists(_.updateImportance != DEFAULT)) {
       syncSources.foreach(syncInfo => {
         val eventsToSync = syncInfo.syncStrategy.selectEventsToSync(history)
         syncInfo.syncSource.syncTo(keyForSerialization, InteractionVariable.serializeHistory(eventsToSync, io))
@@ -93,6 +93,20 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
 
 object InteractionVariable {
 
+  def stringOptionVariable(interaction: WorkbookInteraction[Option[String]], defaultValue: Option[String] = None): InteractionVariable[Option[String]] = {
+    val io = new Serializer[Option[String]] {
+      override def serialize(obj: Option[String]): String = obj.map(str => "Some(" + str + ")").getOrElse("None")
+
+      override def deserialize(serialized: String): Option[String] =
+        if (serialized.startsWith("Some(") && serialized.endsWith(")")) Some(serialized.drop(5).dropRight(1).trim)
+        else None
+    }
+
+    InteractionVariable(interaction,
+      List(InteractionVariableState(defaultValue, System.currentTimeMillis(), UpdateImportance.DEFAULT)),
+      interaction.workbookInfoVar.now().config.getSyncDestinations(),
+      io)
+  }
 
   def stringVariable(interaction: WorkbookInteraction[String], defaultValue: String): InteractionVariable[String] = {
     val io = new Serializer[String] {

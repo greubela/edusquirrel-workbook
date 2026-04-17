@@ -1,6 +1,12 @@
 /* Shared design tokens for the workbook experience.
    Color policy: define colors only in this file and consume them via CSS variables in other stylesheets. */
 :root {
+
+  /* borders */
+
+  --interaction-border: 2px solid var(--color-accent-active);
+  --interaction-highlight-transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+
   /* Canonical workbook palette (keep compact for maintainability). */
   --color-ink: #182333;
   --color-accent-strong: #1565c0;

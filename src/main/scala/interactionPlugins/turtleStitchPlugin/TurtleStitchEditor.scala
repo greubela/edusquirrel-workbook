@@ -130,7 +130,7 @@ case class TurtleStitchEditor(projektXml: Var[String]) extends HtmlAppElement {
   }
 }
 
-private[turtleStitchPlugin] object TurtleStitchEditor {
+object TurtleStitchEditor {
   private var singletonEditor: Option[JsEditorHandle] = None
   private var singletonEditorCreation: Option[Future[JsEditorHandle]] = None
   private var singletonExecutionQueue: Future[Unit] = Future.successful(())
@@ -226,7 +226,6 @@ private[turtleStitchPlugin] object TurtleStitchEditor {
   
   def turtleLang(language: HumanLanguage): String =
     AppLanguage.turtleStitchLangMap.getOrElse(language, "en")
-  
 
   private val programOutputDataSrcStorage: AsyncDataCache[String, String] = new AsyncDataCache[String, String]("ProgramPngDataSrc", false) {
     protected def executeLoading(xml: String)(ec: ExecutionContext): Future[String] =
@@ -234,11 +233,15 @@ private[turtleStitchPlugin] object TurtleStitchEditor {
 
     protected def defaultValueWhileLoading(in: String): Option[String] = None
 
-    protected def formatInputForLogging(in: String): String =
-      s"XmlInput(${in.length}, ${in.substring(0, 60)})"
+    protected def formatInputForLogging(in: String): String = {
+      if(in.length > 60) s"XmlInput(${in.length}, ${in.substring(0, 60)})"
+      else s"XmlInput($in)"
+    }
 
-    protected def formatOutputForLogging(out: String): String =
-      s"PngOutput(${out.length}, ${out.substring(0, 60)} ...)"
+    protected def formatOutputForLogging(out: String): String = {
+      if(out.length > 60) s"PngOutput(${out.length}, ${out.substring(0, 60)} ...)"
+      else s"PngOutput($out)"
+    }
   }
 
   def downloadDst(xml: String)(using ec: ExecutionContext): Future[Unit] =

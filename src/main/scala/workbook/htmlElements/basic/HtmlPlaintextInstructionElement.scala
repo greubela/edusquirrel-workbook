@@ -6,6 +6,8 @@ import datastructures.core.language.{HumanLanguage, LanguageMap}
 import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 
+import scala.concurrent.ExecutionContext
+
 case class HtmlPlaintextInstructionElement(workbookInfo: AllWorkbookInfo, contentSignal: Signal[String]) extends HtmlWorkbookElement {
 
   override def getDomElement(): L.Element = div(
@@ -14,5 +16,13 @@ case class HtmlPlaintextInstructionElement(workbookInfo: AllWorkbookInfo, conten
       text <-- contentSignal
     )
   )
+}
 
+object HtmlPlaintextInstructionElement {
+
+  def apply(workbookInfo: AllWorkbookInfo, languageMapId: String): HtmlPlaintextInstructionElement = {
+    val signal: Signal[String] = workbookInfo.stringSignalFromLanguageMapId(languageMapId)(ExecutionContext.global)
+    HtmlPlaintextInstructionElement(workbookInfo, signal)
+  }
+  
 }

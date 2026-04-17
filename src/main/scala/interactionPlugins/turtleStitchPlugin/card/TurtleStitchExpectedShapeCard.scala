@@ -8,15 +8,13 @@ import workbook.model.info.AllWorkbookInfo
 
 import scala.concurrent.ExecutionContext
 
-case class TurtleStitchExpectedShapeCard(workbookInfo: AllWorkbookInfo, expectedOutcome: FullImage) extends HtmlWorkbookElement {
+case class TurtleStitchExpectedShapeCard(workbookInfo: AllWorkbookInfo, imageElement: HtmlImageElement) extends HtmlWorkbookElement {
 
   private val headline: Element = h3(
     text <-- workbookInfo.stringSignalFromLanguageMapId("TurtleStitch/showExpected")(ExecutionContext.global)
   )
 
-  private val imgElementSignal: Signal[Element] = {
-    HtmlImageElement(expectedOutcome, workbookInfo).getDomSignal
-  }
+  private val imgElementSignal: Signal[Element] = imageElement.getDomSignal
 
 
   private val domElement: Element = div(
