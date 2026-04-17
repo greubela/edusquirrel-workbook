@@ -19,7 +19,7 @@ case class SimpleBooleanEditor(forVar: Var[Boolean], label: LanguageMap[HumanLan
   )
 
   private val domElement = div(
-    cls := "simple-boolean-editor",
+    cls := "workbook-interaction simple-boolean-editor",
     labelTag(
       cls := "simple-boolean-editor__body",
       checkbox,

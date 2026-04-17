@@ -548,44 +548,13 @@ textarea.workbook-interaction  {
   box-sizing: border-box;
   margin: var(--space-sm) 0;
   padding: var(--space-md);
-  border-left: var(--space-md) solid var(--color-container-border-inactive);
-  border-top: var(--space-xs) solid var(--color-container-border-passive);
-  border-right: var(--space-xs) solid var(--color-container-border-passive);
-  border-bottom: var(--space-xs) solid var(--color-container-border-passive);
-  background: var(--color-interaction-background);
-}
-
-.workbook-interaction.simple-boolean-editor:hover {
-  border-left-color: var(--color-container-border-active);
-  background: var(--color-interaction-background-alt);
-}
-
-.simple-boolean-editor {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface-muted);
-  color: var(--color-text-primary);
-  font-size: 0.95rem;
-  font-weight: 600;
-  width: min(100%, 520px);
-  user-select: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-}
-
-.simple-boolean-editor:hover {
-  border-color: var(--color-border-strong);
-  background: var(--color-interaction-background);
-  box-shadow: var(--shadow-soft);
 }
 
 .simple-boolean-editor__body {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  padding: var(--space-sm);
   cursor: pointer;
   width: 100%;
 }
