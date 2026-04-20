@@ -7,10 +7,7 @@ import workbook.model.interaction.sync.{LocalStorageSync, SyncInformation, SyncS
 import workbook.user.User
 
 
-case class WorkbookConfig(currentWorkbookLanguage: HumanLanguage, activeSection: Option[WorkbookSection], currentUser: User) {
-  
-  def getSyncDestinations(): List[SyncInformation] = 
-    List(SyncInformation(LocalStorageSync, SyncStrategy.SYNC_EVERYTHING))
-  
+case class WorkbookConfig(activeSection: Option[WorkbookSection]) {
+
 
 }

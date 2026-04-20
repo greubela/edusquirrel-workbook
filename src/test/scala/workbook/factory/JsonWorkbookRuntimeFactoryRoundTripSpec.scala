@@ -1,8 +1,8 @@
 package workbook.factory
 
 import munit.FunSuite
+import workbook.model.info.FullInfo
 import scala.scalajs.js
-import workbook.model.info.AllWorkbookInfo
 
 class JsonWorkbookRuntimeFactoryRoundTripSpec extends FunSuite {
 
@@ -101,7 +101,7 @@ class JsonWorkbookRuntimeFactoryRoundTripSpec extends FunSuite {
       println("[INFO] Skipping round-trip runtime workbook test because DOM 'document' is unavailable.")
       assert(true)
     } else {
-      val workbookInfo = AllWorkbookInfo()
+      val workbookInfo = FullInfo()
       val runtimeFactory = JsonWorkbookRuntimeFactory.fromJson(workbookInfo, sampleJson)
 
       val workbook = runtimeFactory.createWorkbook
@@ -121,7 +121,7 @@ class JsonWorkbookRuntimeFactoryRoundTripSpec extends FunSuite {
       println("[INFO] Skipping plant interaction runtime workbook test because DOM 'document' is unavailable.")
       assert(true)
     } else {
-      val workbookInfo = AllWorkbookInfo()
+      val workbookInfo = FullInfo()
       val runtimeFactory = JsonWorkbookRuntimeFactory.fromJson(workbookInfo, plantInteractionJson)
 
       val workbook = runtimeFactory.createWorkbook

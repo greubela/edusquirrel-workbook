@@ -8,13 +8,11 @@ import workbook.model.info.*
 
 import scala.concurrent.ExecutionContext
 
-case class HtmlImageElement(imageSignal: StrictSignal[Option[FullImage]], workbookInfo: AllWorkbookInfo) {
-  
+case class HtmlImageElement(imageSignal: StrictSignal[Option[FullImage]], fullInfo: FullInfo) {
+
   def getDomSignal: Signal[Element] = imageSignal.map {
     case None => {
-      span(
-        text <-- workbookInfo.stringSignalFromLanguageMapId("basic/imageLoadingMap")(ExecutionContext.global)
-      )
+      span(text <-- fullInfo.signals.stringFromLanguageMapId("basic/imageLoadingMap"))
     }
     case Some(fullImg: FullImage) => {
       img(src := fullImg.imageSourceString, styleAttr := "max-width: 100%")
@@ -25,14 +23,14 @@ case class HtmlImageElement(imageSignal: StrictSignal[Option[FullImage]], workbo
 
 object HtmlImageElement {
 
-  def apply(fullImage: FullImage, workbookInfo: AllWorkbookInfo): HtmlImageElement = {
-    HtmlImageElement(Var(Some(fullImage)).signal, workbookInfo)
+  def apply(fullImage: FullImage, fullInfo: FullInfo): HtmlImageElement = {
+    HtmlImageElement(Var(Some(fullImage)).signal, fullInfo)
   }
 
-  def apply(fileDescription: FileDescription, workbookInfo: AllWorkbookInfo): HtmlImageElement = {
-    val fullImgVar: Var[Option[LoadedFile]] = workbookInfo.technicalElements.fileStore.loadIntoVariable(fileDescription)(ExecutionContext.global)
+  def apply(fileDescription: FileDescription, fullInfo: FullInfo): HtmlImageElement = {
+    val fullImgVar: Var[Option[LoadedFile]] = fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(ExecutionContext.global)
     val imageSignal: StrictSignal[Option[FullImage]] = fullImgVar.signal.mapLazy(_.map(_.toImage))
-    HtmlImageElement(imageSignal, workbookInfo)
+    HtmlImageElement(imageSignal, fullInfo)
   }
 
 }

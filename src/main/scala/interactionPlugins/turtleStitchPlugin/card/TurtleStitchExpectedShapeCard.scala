@@ -4,18 +4,17 @@ import com.raquo.laminar.api.L.*
 import datastructures.web.file.FullImage
 import workbook.htmlElements.basic.HtmlImageElement
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.AllWorkbookInfo
+import workbook.model.info.FullInfo
 
 import scala.concurrent.ExecutionContext
 
-case class TurtleStitchExpectedShapeCard(workbookInfo: AllWorkbookInfo, imageElement: HtmlImageElement) extends HtmlWorkbookElement {
+case class TurtleStitchExpectedShapeCard(fullInfo: FullInfo, imageElement: HtmlImageElement) extends HtmlWorkbookElement {
 
   private val headline: Element = h3(
-    text <-- workbookInfo.stringSignalFromLanguageMapId("TurtleStitch/showExpected")(ExecutionContext.global)
+    text <-- fullInfo.signals.stringFromLanguageMapId("TurtleStitch/showExpected")
   )
 
   private val imgElementSignal: Signal[Element] = imageElement.getDomSignal
-
 
   private val domElement: Element = div(
     cls := "preview-card",

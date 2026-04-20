@@ -4,21 +4,15 @@ import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement
 import datastructures.web.file.FileDescription
 import workbook.htmlElements.basic.HtmlImageElement
-import workbook.model.info.AllWorkbookInfo
+import workbook.model.info.FullInfo
 
 case class SlidePanel(panelContent: HtmlAppElement)
 
 object SlidePanel {
 
-  def imageSlide(
-                  image: FileDescription,
-                  textMapId: String,
-                  sourceMapId: String,
-                  descriptionMapId: String,
-                  workbookInfo: AllWorkbookInfo
-                ): SlidePanel = {
+  def imageSlide(image: FileDescription, textMapId: String, sourceMapId: String, descriptionMapId: String, fullInfo: FullInfo): SlidePanel = {
 
-    val imageElement = HtmlImageElement(image, workbookInfo)
+    val imageElement = HtmlImageElement(image, fullInfo)
 
     val panelElement = new HtmlAppElement {
       override def getDomElement(): Element = div(
@@ -29,15 +23,15 @@ object SlidePanel {
         ),
         div(
           cls := "slide-deck-source",
-          child.text <-- workbookInfo.stringSignalFromLanguageMapId(sourceMapId)(scala.concurrent.ExecutionContext.global)
+          child.text <-- fullInfo.signals.stringFromLanguageMapId(sourceMapId)
         ),
         div(
           cls := "slide-deck-description",
-          child.text <-- workbookInfo.stringSignalFromLanguageMapId(descriptionMapId)(scala.concurrent.ExecutionContext.global)
+          child.text <-- fullInfo.signals.stringFromLanguageMapId(descriptionMapId)
         ),
         div(
           cls := "slide-deck-text",
-          child.text <-- workbookInfo.stringSignalFromLanguageMapId(textMapId)(scala.concurrent.ExecutionContext.global)
+          child.text <-- fullInfo.signals.stringFromLanguageMapId(textMapId)
         )
       )
     }

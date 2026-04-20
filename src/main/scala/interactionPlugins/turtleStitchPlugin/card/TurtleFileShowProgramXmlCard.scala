@@ -7,12 +7,12 @@ import datastructures.web.file.FileDescription
 import interactionPlugins.turtleStitchPlugin.*
 import util.web.DownloadHelper
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.AllWorkbookInfo
+import workbook.model.info.FullInfo
 
 import scala.concurrent.ExecutionContext
 
 case class TurtleFileShowProgramXmlCard(
-                                         workbookInfo: AllWorkbookInfo,
+                                         fullInfo: FullInfo,
                                          desiredFilename: String,
                                          headlineLanguageMapId: String,
                                          nonexistingImageLanguageMapId: String,
@@ -20,11 +20,11 @@ case class TurtleFileShowProgramXmlCard(
                                        ) extends HtmlWorkbookElement {
 
   private val headline: Element = h3(
-    text <-- workbookInfo.stringSignalFromLanguageMapId(headlineLanguageMapId)(ExecutionContext.global)
+    text <-- fullInfo.signals.stringFromLanguageMapId(headlineLanguageMapId)
   )
 
   private val downloadButton: Element = button(
-    text <-- workbookInfo.stringSignalFromLanguageMapId("TurtleStitch/downloadButton")(ExecutionContext.global),
+    text <-- fullInfo.signals.stringFromLanguageMapId("TurtleStitch/downloadButton"),
     onClick --> { _ =>
       projectXmlVar.now().foreach(f = currentXml => {
         DownloadHelper.downloadFile(desiredFilename, currentXml)
@@ -36,7 +36,7 @@ case class TurtleFileShowProgramXmlCard(
     case Some(value) if value.startsWith("data:image") => img(src := value, styleAttr := "max-width: 100%")
     case Some(value) => span(value)
     case None => span(
-      text <-- workbookInfo.stringSignalFromLanguageMapId(nonexistingImageLanguageMapId)(ExecutionContext.global)
+      text <-- fullInfo.signals.stringFromLanguageMapId(nonexistingImageLanguageMapId)
     )
   }
 
@@ -58,7 +58,7 @@ case class TurtleFileShowProgramXmlCard(
       cls := "preview-content",
       child <-- {
         val xmlSignal: Signal[Option[String]] = projectXmlVar.signal
-        val languageSignal: Signal[HumanLanguage] = workbookInfoVar.signal.map(_.config.currentWorkbookLanguage)
+        val languageSignal: Signal[HumanLanguage] = fullInfo.signals.currentLanguage
         val combinedSignal: Signal[(HumanLanguage, Option[String])] = languageSignal.combineWith(xmlSignal)
         combinedSignal.map(tup => getPngProgramDisplayElement(tup._1, tup._2))
       }),
@@ -69,7 +69,7 @@ case class TurtleFileShowProgramXmlCard(
 
   lazy val asWorkbookElement: HtmlWorkbookElement = new HtmlWorkbookElement() {
 
-    override def workbookInfo: AllWorkbookInfo = TurtleFileShowProgramXmlCard.this.workbookInfo
+    override def fullInfo: FullInfo = TurtleFileShowProgramXmlCard.this.fullInfo
 
     private val myDomElement: L.Element = div(
       cls := "workbook-interaction preview-line",
@@ -84,15 +84,15 @@ case class TurtleFileShowProgramXmlCard(
 object TurtleFileShowProgramXmlCard {
 
   def apply(
-             workbookInfo: AllWorkbookInfo,
+             fullInfo: FullInfo,
              fileDescription: FileDescription,
            ): TurtleFileShowProgramXmlCard = {
     TurtleFileShowProgramXmlCard(
-      workbookInfo,
+      fullInfo,
       "TurtleStitch_" + fileDescription.filename,
       "TurtleStitch/providedProjectLabel",
       "basic/imageLoadingMap",
-      workbookInfo.technicalElements.fileStore.loadIntoVariable(fileDescription)(ExecutionContext.global).signal.mapLazy(_.map(_.fileDataAsUtf8String))
+      fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(ExecutionContext.global).signal.mapLazy(_.map(_.fileDataAsUtf8String))
     )
   }
 
@@ -100,7 +100,7 @@ object TurtleFileShowProgramXmlCard {
              forUploadButton: TurtleStitchFileUploadButtonCard
            ): TurtleFileShowProgramXmlCard = {
     TurtleFileShowProgramXmlCard(
-      forUploadButton.workbookInfo,
+      forUploadButton.fullInfo,
       "exercise" + forUploadButton.id,
       "TurtleStitch/showUploadedProgramText",
       "TurtleStitch/showEmptyPreview",

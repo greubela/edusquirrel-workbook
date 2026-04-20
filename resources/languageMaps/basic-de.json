@@ -1,5 +1,8 @@
 {
   "dataLoadingMap": "[Daten werden geladen]",
   "imageLoadingMap": "[Bild wird geladen]",
-  "noSectionSelected": "[Kein Abschnitt ausgewählt]"
+  "noSectionSelected": "[Kein Abschnitt ausgewählt]",
+  "noWorkbookLoaded": "[Kein Arbeitsheft geladen!]",
+  "resetLocalStorage": "Alle gespeicherten Daten löschen",
+  "downloadEverything": "Alle gespeicherten Daten herunterladen"
 }

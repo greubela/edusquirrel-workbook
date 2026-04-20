@@ -9,10 +9,10 @@ import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRe
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
+import workbook.model.info.{FullInfo, HomepageInfo}
 import workbook.model.interaction.InteractionVariable
 
-case class TurtleProgrammingPreview(workbookInfo: AllWorkbookInfo, editorState: EditorState, expectedSvgResult: AppSvgElement) extends HtmlWorkbookElement {
+case class TurtleProgrammingPreview(fullInfo: FullInfo, editorState: EditorState, expectedSvgResult: AppSvgElement) extends HtmlWorkbookElement {
 
   private val renderedSvg: SvgElement = {
     val expectedElement = expectedSvgResult
@@ -45,7 +45,7 @@ case class TurtleProgrammingPreview(workbookInfo: AllWorkbookInfo, editorState: 
   private def previewCard(cardType: String, cardLabelMapId: String, cardContent: Signal[Element]): Element = div(
     cls := "preview-card",
     h3(
-      text <-- workbookInfo.stringSignalFromLanguageMapId(cardLabelMapId)(scala.concurrent.ExecutionContext.global)
+      text <-- fullInfo.signals.stringFromLanguageMapId(cardLabelMapId)
     ),
     div(
       cls := "preview-content",

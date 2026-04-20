@@ -4,26 +4,24 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import datastructures.core.language.{AppLanguage, HumanLanguage}
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
+import workbook.model.info.{FullInfo, HomepageInfo}
 
-case class LanguageSelectionLine(workbookInfo: AllWorkbookInfo) extends HtmlWorkbookElement{
+case class LanguageSelectionLine(fullInfo: FullInfo) extends HtmlWorkbookElement {
 
-  private def selectLanguage(language: HumanLanguage): Unit = {
-    workbookInfoVar.update(curInfo => curInfo.copy(config = curInfo.config.copy(currentWorkbookLanguage = language)))
+
+  private def forLanguages(availableLanguages: List[HumanLanguage]): List[Element] = {
+    availableLanguages.map(curLang => {
+      val childElement: Element = LanguageSelectionLine.flagImgMap(30)(curLang)
+      div(
+        onClick --> { _ => fullInfo.control.changeLanguage(curLang) },
+        child <-- Var(childElement).signal
+      )
+    })
   }
-
-
+  
   private val domElement = div(
     cls := "select-language-line",
-    children <-- {
-      workbookInfoVar.signal.map(_.availableLanguages.map(curLang => {
-        val childElement: Element = LanguageSelectionLine.flagImgMap(30)(curLang)
-        div(
-          onClick --> { _ => selectLanguage(curLang) },
-          child <-- Var(childElement).signal
-        )
-      }))
-    }
+    children <-- fullInfo.signals.availableLanguages.map(forLanguages)
   )
 
   override def getDomElement(): L.Element = domElement
@@ -31,7 +29,7 @@ case class LanguageSelectionLine(workbookInfo: AllWorkbookInfo) extends HtmlWork
 }
 
 object LanguageSelectionLine {
-  
+
   private def flagImgMap(width: Double): Map[HumanLanguage, Element] = Map(
     AppLanguage.German -> deFlag(width),
     AppLanguage.English -> enFlag(width),
@@ -46,10 +44,9 @@ object LanguageSelectionLine {
   private def esFlag(width: Double): Element = {
     img(
       src := "../resources/img/flags/esFlag.svg",
-      styleAttr := "width:" + width + "px; height:" + (width/3*2) + "px;",
+      styleAttr := "width:" + width + "px; height:" + (width / 3 * 2) + "px;",
     )
   }
-
 
 
   private def dkFlag(width: Double): Element =

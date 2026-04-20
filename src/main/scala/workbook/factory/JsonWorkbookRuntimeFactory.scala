@@ -6,34 +6,39 @@ import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
 import datastructures.web.file.FileDescription
 import interactionPlugins.slideshow.{SlideDeckExercise, SlidePanel}
 import interactionPlugins.turtleStitchPlugin.TurtleStitchExploreProjectExercise
-import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlMarkdownInstructionElement, HtmlPlaintextInstructionElement, HtmlUnsafeHtmlInstructionElement}
+import workbook.htmlElements.basic.*
 import workbook.htmlElements.interactions.{HtmlBasicCheckboxInteraction, HtmlBasicTextInteraction, HtmlReorderInteraction}
-import workbook.htmlElements.container.{HtmlExerciseContainer, HtmlSubContainer}
+import workbook.htmlElements.container.*
 import workbook.model.{Workbook, WorkbookSection}
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.AllWorkbookInfo
 
 import upickle.default.{ReadWriter, macroRW, read}
+import workbook.model.info.FullInfo
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 case class JsonWorkbookRuntimeFactory(
-                                       override val workbookInfo: AllWorkbookInfo,
+                                       override val fullInfo: FullInfo,
                                        jsonFactory: JsonWorkbookFactory
                                      ) extends WorkbookFactory {
 
+
+  override def createWorkbook: Workbook = ???
+
+
+  /*
   override def createWorkbook: Workbook = {
     applyMetadata(jsonFactory.workbookMetadata)
 
     val withoutDependencies: List[(WorkbookSectionJson, WorkbookSection)] = jsonFactory.workbookContent.sections.map(sectionJson => {
       val containers = sectionJson.sectionContent.map(container =>
-        HtmlExerciseContainer.withLevel(workbookInfo, container.elements.map(createWorkbookElement), container.level)
+        HtmlExerciseContainer.withLevel(fullInfo, container.elements.map(createWorkbookElement), container.level)
       )
 
       val sec = WorkbookSection(
-        workbookInfo = workbookInfo,
+        fullInfo = fullInfo,
         sectionTitle = LanguageMap.mapBasedLanguageMap(Map.empty),
         sectionContent = containers,
         sectionsRequiredBefore = List.empty,
@@ -51,22 +56,18 @@ case class JsonWorkbookRuntimeFactory(
       )
     )
 
-    val wb = Workbook(workbookInfo, jsonFactory.workbookMetadata.titleMapId, allSections)
-    allSections.headOption.foreach(first => workbookInfo.updateConfig(_.copy(activeSection = Some(first))))
+    val wb = Workbook(fullInfo, jsonFactory.workbookMetadata.titleMapId, allSections)
     JsonWorkbookRuntimeFactory.register(wb, jsonFactory)
     wb
   }
 
   private def applyMetadata(metadata: WorkbookMetadataJson): Unit = {
-    workbookInfo.addLanguageFiles(metadata.languageMapFiles.map(path => FileDescription.relativeToResourceFolder(path)))
+    fullInfo.control.addLanguageFiles(metadata.languageMapFiles.map(path => FileDescription.relativeToResourceFolder(path)))
 
     val available = metadata.availableLanguages.flatMap(JsonWorkbookRuntimeFactory.parseHumanLanguage)
     val defaultLanguage = JsonWorkbookRuntimeFactory.parseHumanLanguage(metadata.defaultLanguage).getOrElse(AppLanguage.default())
 
-    workbookInfo.workbookInfoVar.update(cur => cur.copy(
-      availableLanguages = if (available.nonEmpty) available else cur.availableLanguages,
-      config = cur.config.copy(currentWorkbookLanguage = defaultLanguage)
-    ))
+    println("sth missing from apply metadata??")
   }
 
   private def createWorkbookElement(factory: WorkbookElementFactory): HtmlWorkbookElement = {
@@ -75,29 +76,33 @@ case class JsonWorkbookRuntimeFactory(
     factory.elementName match {
       case "HtmlContainerTitle" =>
         HtmlContainerTitle.withLevel(
-          workbookInfo,
+          fullInfo,
           args.getOrElse("languageMapId", throw missingArg("languageMapId", factory)),
           JsonWorkbookRuntimeFactory.parseIntArg(args.get("level"), 2)
         )
 
       case "HtmlMarkdownInstructionElement" =>
-        HtmlMarkdownInstructionElement(workbookInfo, args.getOrElse("languageMapId", throw missingArg("languageMapId", factory)))
-
+        HtmlInstructionElement.fromMarkdownLanguageMapId(
+          fullInfo,
+          args.getOrElse("languageMapId", throw missingArg("languageMapId", factory))
+        )
       case "HtmlUnsafeHtmlInstructionElement" =>
-        HtmlUnsafeHtmlInstructionElement(workbookInfo, args.getOrElse("languageMapId", throw missingArg("languageMapId", factory)))
-
+        HtmlInstructionElement.fromUnsafeHtmlLanguageMapId(
+          fullInfo,
+          args.getOrElse("languageMapId", throw missingArg("languageMapId", factory))
+        )
       case "HtmlPlaintextInstructionElement" =>
-        HtmlPlaintextInstructionElement(
-          workbookInfo,
-          workbookInfo.stringSignalFromLanguageMapId(args.getOrElse("languageMapId", throw missingArg("languageMapId", factory)))(ExecutionContext.global)
+        HtmlInstructionElement.fromPlaintextLanguageMapId(
+          fullInfo,
+          args.getOrElse("languageMapId", throw missingArg("languageMapId", factory))
         )
 
       case "HtmlBasicTextInteraction" =>
-        HtmlBasicTextInteraction(workbookInfo, args.getOrElse("id", nextId("json-text")))
+        HtmlBasicTextInteraction(fullInfo, args.getOrElse("id", nextId("json-text")))
 
       case "HtmlBasicCheckboxInteraction" =>
         HtmlBasicCheckboxInteraction(
-          workbookInfo,
+          fullInfo,
           args.getOrElse("id", nextId("json-checkbox")),
           args.getOrElse("labelLanguageMapId", throw missingArg("labelLanguageMapId", factory))
         )
@@ -105,7 +110,7 @@ case class JsonWorkbookRuntimeFactory(
       case "HtmlReorderInteraction" =>
         val elements = JsonWorkbookRuntimeFactory.parseStringListArg(args.get("elementsJson"), args.get("elements"))
         HtmlReorderInteraction[String](
-          workbookInfo = workbookInfo,
+          fullInfo = fullInfo,
           id = args.getOrElse("id", nextId("json-reorder")),
           elements = elements,
           elementRenderer = snippet => pre(code(snippet))
@@ -119,35 +124,37 @@ case class JsonWorkbookRuntimeFactory(
               textMapId = spec.textMapId,
               sourceMapId = spec.sourceMapId,
               descriptionMapId = spec.descriptionMapId,
-              workbookInfo = workbookInfo
+              fullInfo = fullInfo
             )
           )
         SlideDeckExercise(
-          workbookInfo = workbookInfo,
+          fullInfo = fullInfo,
           id = args.getOrElse("id", nextId("json-slideshow")),
           slides = slides
         )
 
       case "TurtleStitchExploreProjectExercise" =>
         val path = args.getOrElse("resourcePath", throw missingArg("resourcePath", factory))
-        TurtleStitchExploreProjectExercise.createElementLine(workbookInfo, FileDescription.relativeToResourceFolder(path))
+        TurtleStitchExploreProjectExercise.createElementLine(fullInfo, FileDescription.relativeToResourceFolder(path))
 
       case "HtmlSubContainer" =>
         val serializedChildren = args.getOrElse("childrenJson", throw missingArg("childrenJson", factory))
         val nestedFactories = JsonWorkbookRuntimeFactory.parseNestedElements(serializedChildren, factory)
         HtmlSubContainer.withLevel(
-          workbookInfo = workbookInfo,
+          workbookInfo = fullInfo,
           children = nestedFactories.map(createWorkbookElement),
           level = JsonWorkbookRuntimeFactory.parseIntArg(args.get("level"), 2)
         )
 
-      case other =>
-        HtmlUnsafeHtmlInstructionElement(workbookInfo, Val(s"[Unknown elementName: '$other']"))
+      case other => ???
     }
   }
 
-  private def missingArg(requiredArg: String, factory: WorkbookElementFactory): IllegalArgumentException =
+  private def missingArg(requiredArg: String, factory: WorkbookElementFactory): IllegalArgumentException = {
     IllegalArgumentException(s"Missing arg '$requiredArg' for element '${factory.elementName}'")
+
+  }
+  */
 }
 
 object JsonWorkbookRuntimeFactory {
@@ -173,7 +180,7 @@ object JsonWorkbookRuntimeFactory {
 
   private val sourceJsonByWorkbookIdentity: mutable.HashMap[Int, JsonWorkbookFactory] = mutable.HashMap.empty
 
-  def fromJson(workbookInfo: AllWorkbookInfo, json: String): JsonWorkbookRuntimeFactory =
+  def fromJson(workbookInfo: FullInfo, json: String): JsonWorkbookRuntimeFactory =
     JsonWorkbookRuntimeFactory(workbookInfo, JsonWorkbookFactory.fromJson(json))
 
   def toJsonString(workbook: Workbook, pretty: Boolean = true): Option[String] =

@@ -3,19 +3,22 @@ package interactionPlugins.slideshow
 import com.raquo.laminar.api.L.*
 import upickle.default.*
 import workbook.model.abstractions.WorkbookInteraction
-import workbook.model.info.AllWorkbookInfo
 import workbook.model.interaction.InteractionVariable
 import workbook.model.interaction.history.UpdateImportance
 import util.serializing.Serializer
+import workbook.model.info.FullInfo
 
 case class SlideView(slideIndex: Int, viewedAtEpochMillis: Long)
 
 case class SlideDeckExercise(
-                              workbookInfo: AllWorkbookInfo,
+                              fullInfo: FullInfo,
                               id: String,
                               slides: List[SlidePanel]
                             ) extends WorkbookInteraction[Set[SlideView]] {
 
+  override val defaultValue: Set[SlideView] = Set.empty
+  
+  
   require(slides.nonEmpty, "SlideDeckExercise requires at least one slide")
 
   private given ReadWriter[SlideView] = macroRW
@@ -34,7 +37,6 @@ case class SlideDeckExercise(
   override val interactionVariable: InteractionVariable[Set[SlideView]] =
     InteractionVariable(
       this,
-      Set(SlideView(slideIndex = 0, viewedAtEpochMillis = nowMillis)),
       slideViewSerializer
     )
 
@@ -64,7 +66,7 @@ case class SlideDeckExercise(
   private val navigationElement: Element = div(
     cls := "slide-deck-navigation",
     button(
-      child.text <-- workbookInfo.stringSignalFromLanguageMapId("PlantWorkshop/slideshowBack")(scala.concurrent.ExecutionContext.global),
+      child.text <-- fullInfo.signals.stringFromLanguageMapId("PlantWorkshop/slideshowBack"),
       disabled <-- currentIndex.signal.map(_ == 0),
       onClick.mapTo(-1) --> navigateBy
     ),
@@ -73,7 +75,7 @@ case class SlideDeckExercise(
       child.text <-- currentIndex.signal.map(i => s"${i + 1}/$totalSlides")
     ),
     button(
-      child.text <-- workbookInfo.stringSignalFromLanguageMapId("PlantWorkshop/slideshowNext")(scala.concurrent.ExecutionContext.global),
+      child.text <-- fullInfo.signals.stringFromLanguageMapId("PlantWorkshop/slideshowNext"),
       disabled <-- currentIndex.signal.map(_ >= totalSlides - 1),
       onClick.mapTo(1) --> navigateBy
     )

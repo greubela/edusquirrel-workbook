@@ -2,19 +2,22 @@ package workbook.htmlElements.interactions
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
+import util.serializing.Serializer
 import workbook.model.abstractions.WorkbookInteraction
-import workbook.model.info.AllWorkbookInfo
+import workbook.model.info.FullInfo
 import workbook.model.interaction.InteractionVariable
 
 import scala.concurrent.ExecutionContext
 
 case class HtmlBasicCheckboxInteraction(
-                                         workbookInfo: AllWorkbookInfo,
+                                         fullInfo: FullInfo,
                                          id: String,
                                          labelSignal: Signal[String]
                                        ) extends WorkbookInteraction[Boolean] {
 
-  override val interactionVariable: InteractionVariable[Boolean] = InteractionVariable.booleanVariable(this, false)
+  override val defaultValue: Boolean = false
+  
+  override val interactionVariable: InteractionVariable[Boolean] = InteractionVariable[Boolean](this, Serializer.booleanIO)
 
   private val checkboxVar = interactionVariable.createBoundVarWithUpdateImportance(
     workbook.model.interaction.history.UpdateImportance.MAJOR
@@ -43,10 +46,10 @@ case class HtmlBasicCheckboxInteraction(
 }
 
 object HtmlBasicCheckboxInteraction {
-  def apply(workbookInfo: AllWorkbookInfo, id: String, labelLanguageMapId: String): HtmlBasicCheckboxInteraction =
+  def apply(fullInfo: FullInfo, id: String, labelLanguageMapId: String): HtmlBasicCheckboxInteraction =
     HtmlBasicCheckboxInteraction(
-      workbookInfo = workbookInfo,
+      fullInfo = fullInfo,
       id = id,
-      labelSignal = workbookInfo.stringSignalFromLanguageMapId(labelLanguageMapId)(ExecutionContext.global)
+      labelSignal = fullInfo.signals.stringFromLanguageMapId(labelLanguageMapId)
     )
 }

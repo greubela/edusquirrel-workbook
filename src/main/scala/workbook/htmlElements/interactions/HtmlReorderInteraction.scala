@@ -1,22 +1,23 @@
 package workbook.htmlElements.interactions
 
 import com.raquo.laminar.api.L.*
+import datastructures.core.language.AppLanguage.Java
 import util.serializing.Serializer
 import workbook.model.abstractions.WorkbookInteraction
-import workbook.model.info.AllWorkbookInfo
+import workbook.model.info.FullInfo
 import workbook.model.interaction.InteractionVariable
 import workbook.model.interaction.history.UpdateImportance
 
 import scala.util.Try
 
 case class HtmlReorderInteraction[T](
-                                      workbookInfo: AllWorkbookInfo,
+                                      fullInfo: FullInfo,
                                       id: String,
                                       elements: List[T],
                                       elementRenderer: T => Element
                                     ) extends WorkbookInteraction[List[Int]] {
-
-  private val defaultOrder: List[Int] = elements.indices.toList
+  
+  override val defaultValue: List[Int] = elements.indices.toList // todo: shuffled?
 
   private val orderSerializer = new Serializer[List[Int]] {
     override def serialize(obj: List[Int]): String = obj.mkString(",")
@@ -29,21 +30,21 @@ case class HtmlReorderInteraction[T](
         .filter(_.nonEmpty)
         .flatMap(token => Try(token.toInt).toOption)
 
-      if (parsed.length == elements.length && parsed.toSet == defaultOrder.toSet) parsed
-      else defaultOrder
+      if (parsed.length == elements.length && parsed.toSet == defaultValue.toSet) parsed
+      else defaultValue
     }
   }
 
   override val interactionVariable: InteractionVariable[List[Int]] =
-    InteractionVariable(this, defaultOrder, orderSerializer)
+    InteractionVariable(this, orderSerializer)
 
-  private val orderVar = interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MAJOR)
+  private val orderVar = interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MINOR)
 
   private val draggingId: Var[Option[Int]] = Var(None)
   private val hoverIndex: Var[Option[Int]] = Var(None)
 
   private def sanitizeOrder(order: List[Int]): List[Int] =
-    if (order.length == elements.length && order.toSet == defaultOrder.toSet) order else defaultOrder
+    if (order.length == elements.length && order.toSet == defaultValue.toSet) order else defaultValue
 
   private def moveItem(current: List[Int], draggedId: Int, insertIndex: Int): List[Int] = {
     val fromIndex = current.indexOf(draggedId)

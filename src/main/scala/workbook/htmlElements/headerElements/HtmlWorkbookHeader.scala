@@ -2,32 +2,30 @@ package workbook.htmlElements.headerElements
 
 import com.raquo.laminar.api.L.*
 import datastructures.core.language.{HumanLanguage, LanguageMap}
+import org.scalajs.dom.console
+import workbook.htmlElements.basic.HtmlButtonElement
 import workbook.model.WorkbookSection
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.AllWorkbookInfo
+import workbook.model.info.FullInfo
 
 import scala.concurrent.ExecutionContext
 
 case class HtmlWorkbookHeader(
-                               workbookInfo: AllWorkbookInfo,
-                               workbookTitle: LanguageMap[HumanLanguage],
+                               fullInfo: FullInfo,
+                               workbookTitleId: String,
                                sections: List[WorkbookSection],
-                               workbookTitleMapId: Option[String] = None
                              ) extends HtmlWorkbookElement {
 
-  private val languageLine: LanguageSelectionLine = LanguageSelectionLine(workbookInfo)
-  private val sectionLine: SectionSelectionLine = SectionSelectionLine(workbookInfo, sections)
-
-  private val titleSignal: Signal[String] = workbookTitleMapId match {
-    case Some(mapId) => workbookInfo.stringSignalFromLanguageMapId(mapId)(ExecutionContext.global)
-    case None => workbookInfoVar.signal.map(_.config.currentWorkbookLanguage).map(workbookTitle.getInLanguage)
-  }
+  private val languageLine: LanguageSelectionLine = LanguageSelectionLine(fullInfo)
+  private val sectionLine: SectionSelectionLine = SectionSelectionLine(fullInfo, sections)
+  private val userConfigLine: UserConfigLine = UserConfigLine(fullInfo)
 
   private val domElement: Element = div(
     cls := "workbook-title-line",
     h1(
-      text <-- titleSignal,
+      text <-- fullInfo.signals.stringFromLanguageMapId(workbookTitleId),
     ),
+    userConfigLine.getDomElement(),
     languageLine.getDomElement(),
     sectionLine.getDomElement()
   )

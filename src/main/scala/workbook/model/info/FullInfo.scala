@@ -1,0 +1,83 @@
+package workbook.model.info
+
+import com.raquo.laminar.api.L.*
+import contentmanagement.webElements.HtmlAppElement
+import datastructures.core.language.{AppLanguage, HumanLanguage}
+import org.scalajs.dom
+import workbook.htmlElements.container.HtmlFullScreenContainerElement
+import workbook.model.info.*
+import workbook.model.info.FullInfo.HomepageDefaults
+import workbook.model.info.control.{HomepageCurrentInfo, HomepageDataControl, HomepageSignalInfo}
+import workbook.model.interaction.sync.SyncInformation
+import workbook.singletons.{FileDataStorage, WorkbookLanguageInfo}
+
+case class FullInfo() extends HtmlAppElement {
+
+  private lazy val domElement: Element = {
+    val workbookSignal: Signal[Element] = signals.workbook.mapLazy {
+      case Some(workbook) => workbook.loadedWorkbook.getDomElement()
+      case None => div(text <-- signals.stringFromLanguageMapId("basic/noWorkbookLoaded"))
+    }
+    val withFullscreen: Signal[List[Element]] = workbookSignal.map(workbookDom => List(technical.fullScreenContainer.getDomElement(), workbookDom))
+    div(children <-- withFullscreen)
+  }
+
+  override def getDomElement(): Element = domElement
+
+  private val defaults: HomepageDefaults = HomepageDefaults()
+
+  lazy val technical = TechnicalHomepageElements(HtmlFullScreenContainerElement(), FileDataStorage())
+
+  private val defaultInfo = HomepageInfo(
+    homepageDefaults = HomepageDefaults(),
+    currentLanguage = defaults.defaultLanguage,
+    workbookInfo = None,
+    userInfo = None
+  )
+
+  private[info] val homepageInfoVar: Var[HomepageInfo] = Var(defaultInfo)
+
+/*  homepageInfoVar.signal.foreach(onNext => {
+    println("Changed homepageInfoVar at: " + new Exception().getStackTrace().take(3).map(_.getMethodName).mkString(" -> ") + " (to: " + onNext.toString + ")")
+  })(unsafeWindowOwner)*/
+
+  def control: HomepageDataControl = HomepageDataControl(this)
+
+  def signals: HomepageSignalInfo = HomepageSignalInfo(this)
+
+  def current: HomepageCurrentInfo = HomepageCurrentInfo(this)
+
+
+}
+
+object FullInfo {
+
+  private[info] case class HomepageDefaults(
+                                             availableLanguages: List[HumanLanguage] = List(AppLanguage.German, AppLanguage.English),
+                                             defaultLanguage: HumanLanguage = AppLanguage.German,
+                                             defaultSyncLocation: List[SyncInformation] = List(SyncInformation.syncEverythingToBrowser)
+                                           )
+
+  val singleton = FullInfo()
+
+  def resetLocalStorage(): Unit = {
+    val map = (0 until dom.window.localStorage.length)
+      .flatMap { i =>
+        Option(dom.window.localStorage.key(i)).flatMap { key =>
+          Option(dom.window.localStorage.getItem(key)).map(value => key -> value)
+        }
+      }
+      .toMap
+
+    println("[WARN] resetting local storage in MainApp!")
+
+    map.keys.foreach(curKey => {
+      println(curKey.toString + " -> " + map(curKey))
+    })
+
+
+    dom.window.localStorage.clear()
+  }
+
+
+}

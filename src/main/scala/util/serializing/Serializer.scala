@@ -1,8 +1,41 @@
 package util.serializing
 
+import datastructures.core.chat.MessengerModel
+
 trait Serializer[T] {
 
   def serialize(obj: T): String
+
   def deserialize(str: String): T
 
+}
+
+
+object Serializer {
+
+  lazy val messengerIo: Serializer[MessengerModel] = new Serializer[MessengerModel] {
+    override def serialize(obj: MessengerModel): String = obj.toJson
+
+    override def deserialize(str: String): MessengerModel = MessengerModel.fromJson(str)
+  }
+  
+  lazy val stringOptionIO: Serializer[Option[String]] = new Serializer[Option[String]] {
+    override def serialize(obj: Option[String]): String = obj.map(str => "Some(" + str + ")").getOrElse("None")
+
+    override def deserialize(serialized: String): Option[String] =
+      if (serialized.startsWith("Some(") && serialized.endsWith(")")) Some(serialized.drop(5).dropRight(1).trim)
+      else None
+  }
+
+  val stringIO: Serializer[String] = new Serializer[String] {
+    override def serialize(obj: String): String = obj
+
+    override def deserialize(serialized: String): String = serialized
+  }
+
+  val booleanIO: Serializer[Boolean] = new Serializer[Boolean] {
+    override def serialize(obj: Boolean): String = obj.toString
+    override def deserialize(serialized: String): Boolean = serialized.toBooleanOption.getOrElse(false)
+  }
+  
 }

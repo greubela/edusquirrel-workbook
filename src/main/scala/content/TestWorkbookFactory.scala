@@ -8,70 +8,28 @@ import interactionPlugins.blockEnvironment.exercise.{ProgrammingExerciseFactory,
 import interactionPlugins.gpt.GptExerciseFactory
 import interactionPlugins.programmingExercise.pythonExercise.turtle.TurtleExerciseDemo
 import interactionPlugins.turtleStitchPlugin.TurtleStitchEditor
-import interactionPlugins.visualNovel.VisualNovelPanel
-import workbook.htmlElements.basic.{HtmlButtonElement, HtmlUnsafeHtmlInstructionElement}
+import workbook.htmlElements.basic.*
 import workbook.htmlElements.container.*
 import workbook.model.*
 import workbook.model.abstractions.WorkbookInteraction
-import workbook.model.info.{AllWorkbookInfo, WorkbookConfig, WorkbookInfo}
+import workbook.model.info.{FullInfo, HomepageInfo, WorkbookConfig}
 import workbook.user.User
 
-case class TestWorkbookFactory(override val workbookInfo: AllWorkbookInfo) extends WorkbookFactory {
+case class TestWorkbookFactory(override val fullInfo: FullInfo) extends WorkbookFactory {
 
 
-  override def createWorkbook: Workbook = {
-    
-    val sec = TestWorkbookFactory.createTestSection(workbookInfo)
 
-    Workbook(workbookInfo, "TestWorkbook/workbookTitle", List(sec))
-  }
-  
-  
-}
-
-object TestWorkbookFactory {
-
-  private def gptCont(workbookInfo: AllWorkbookInfo): HtmlExerciseContainer = {
-    val gptElements = GptExerciseFactory.createGptExercise(
-      workbookInfo,
-      "text-007",
-      "TestWorkbook/exerciseTitle",
-      List("TestWorkbook/writeText1", "TestWorkbook/writeText2")
-    )
-    HtmlExerciseContainer(workbookInfo, gptElements)
-  }
-
-  private def pythonTurtleDemo(workbookInfo: AllWorkbookInfo): HtmlExerciseContainer = {
-    val turtleDemo = TurtleExerciseDemo()
-
-    HtmlExerciseContainer(workbookInfo, List(
-      HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex1Instr2"),
-      HtmlButtonElement(workbookInfo, "turtle-demo-button", event => workbookInfo.technicalElements.fullScreenContainer.setElementFullscreen(turtleDemo.getDomElement()))
-    ))
-  }
-
-  private def turtleEditorDemo(workbookInfo: AllWorkbookInfo): HtmlExerciseContainer = {
-    val turtleVar = Var(simple_turtle_xml)
-    //turtleVar.signal.foreach(newVal => println("Turtle XML changed: " + newVal.size + "/" + newVal.take(60)))(unsafeWindowOwner)
-    val turtleDemo = new TurtleStitchEditor(turtleVar)
-
-    HtmlExerciseContainer(workbookInfo, List(
-      HtmlUnsafeHtmlInstructionElement(workbookInfo, "EmbroideryWorkbook/Ex1Instr3"),
-      HtmlButtonElement(workbookInfo, "turtle-demo-button", event => workbookInfo.technicalElements.fullScreenContainer.setElementFullscreen(turtleDemo.getDomElement()))
-    ))
-  }
-
-  private def blockProgCont(workbookInfo: AllWorkbookInfo): HtmlExerciseContainer = {
+  private def blockProgCont(workbookInfo: FullInfo): HtmlExerciseContainer = {
     val progElements = ProgrammingExerciseFactory.createTurtleProgrammingExercise(workbookInfo, "prog-007", "TestWorkbook/exerciseTitle", ProgrammingExerciseFactory.DefaultPentagonExpectedResult)
     HtmlExerciseContainer(workbookInfo, progElements)
   }
 
-  private def visualNovelCont(workbookInfo: AllWorkbookInfo): HtmlExerciseContainer = {
+  private def visualNovelCont(workbookInfo: FullInfo): HtmlExerciseContainer = {
     ??? // todo
   }
 
 
-  def createTestSection(workbookInfo: AllWorkbookInfo): WorkbookSection = {
+  def createTestSection(workbookInfo: FullInfo): WorkbookSection = {
 
     val contList: List[HtmlExerciseContainer] = List(
       pythonTurtleDemo(workbookInfo),
@@ -92,4 +50,44 @@ object TestWorkbookFactory {
                                             |<origName></origName>
                                             |</project>""".stripMargin
 
+  private def gptCont(workbookInfo: FullInfo): HtmlExerciseContainer = {
+    val gptElements = GptExerciseFactory.createGptExercise(
+      workbookInfo,
+      "text-007",
+      "TestWorkbook/exerciseTitle",
+      List("TestWorkbook/writeText1", "TestWorkbook/writeText2")
+    )
+    HtmlExerciseContainer(workbookInfo, gptElements)
+  }
+
+
+  private def pythonTurtleDemo(fullInfo: FullInfo): HtmlExerciseContainer = {
+    val turtleDemo = TurtleExerciseDemo()
+
+    HtmlExerciseContainer(fullInfo, List(
+      instructionPlaintext("EmbroideryWorkbook/Ex1Instr2"),
+      HtmlButtonElement.withTextLabel(fullInfo, "basic/demoButton", event => fullInfo.technical.makeFullscreen(turtleDemo.getDomElement()))
+    ))
+  }
+
+
+  private def turtleEditorDemo(fullInfo: FullInfo): HtmlExerciseContainer = {
+    val turtleVar = Var(simple_turtle_xml)
+    //turtleVar.signal.foreach(newVal => println("Turtle XML changed: " + newVal.size + "/" + newVal.take(60)))(unsafeWindowOwner)
+    val turtleDemo = new TurtleStitchEditor(turtleVar)
+
+    HtmlExerciseContainer(fullInfo, List(
+      instructionPlaintext( "EmbroideryWorkbook/Ex1Instr3"),
+      HtmlButtonElement.withTextLabel(fullInfo, "basic/demoButton", event => fullInfo.technical.makeFullscreen(turtleDemo.getDomElement()))
+    ))
+  }
+  
+  override def createWorkbook: Workbook = {
+    val sec = createTestSection(fullInfo)
+    Workbook(fullInfo, "TestWorkbook/workbookTitle", List(sec))
+  }
+  
+  
+  
 }
+

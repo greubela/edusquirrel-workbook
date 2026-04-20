@@ -5,9 +5,9 @@ import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import datastructures.core.geometry.{Bounds, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlPlaintextInstructionElement}
+import workbook.htmlElements.basic.*
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.AllWorkbookInfo
+import workbook.model.info.FullInfo
 
 import scala.concurrent.ExecutionContext
 
@@ -54,11 +54,11 @@ object ProgrammingExerciseFactory {
     strokeWidth = "4"
   )
 
-  def createTurtleProgrammingExercise(workbookInfo: AllWorkbookInfo, id: String, titleLanguageMapId: String, expectedSvgResult: AppSvgElement): List[HtmlWorkbookElement] = {
+  def createTurtleProgrammingExercise(workbookInfo: FullInfo, id: String, titleLanguageMapId: String, expectedSvgResult: AppSvgElement): List[HtmlWorkbookElement] = {
 
     val titleElement = HtmlContainerTitle(workbookInfo, titleLanguageMapId)
 
-    val instructionElement = HtmlPlaintextInstructionElement(workbookInfo, workbookInfo.stringSignalFromLanguageMapId("BlockEditor/turtleProgrammingInstruction")(ExecutionContext.global))
+    val instructionElement = HtmlInstructionElement.fromPlaintextLanguageMapId(workbookInfo, "BlockEditor/turtleProgrammingInstruction")
 
     val interactionElement = TurtleProgrammingInteraction(workbookInfo, id, expectedSvgResult)
 

@@ -7,13 +7,13 @@ import com.raquo.laminar.nodes.ReactiveSvgElement
 import datastructures.core.chat.MessengerModel
 import org.scalajs.dom.{SVGLinearGradientElement, SVGSVGElement}
 import workbook.model.abstractions.{HtmlWorkbookElement, WorkbookInteraction}
-import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 import workbook.htmlElements.basic.HtmlButtonElement
+import workbook.model.info.{FullInfo, HomepageInfo}
 
-case class HtmlGptGrader(workbookInfo: AllWorkbookInfo, textInteraction: WorkbookInteraction[String]) extends HtmlWorkbookElement {
+case class HtmlGptGrader(fullInfo: FullInfo, textInteraction: WorkbookInteraction[String]) extends HtmlWorkbookElement {
 
 
-  private val submitButton = HtmlButtonElement(workbookInfo, HtmlGptGrader.gradingButtonSvg, event => {
+  private val submitButton = HtmlButtonElement.withSvgContent(fullInfo, HtmlGptGrader.gradingButtonSvg, event => {
     println("grading not implemented yet :( ")
 
     val llmResponse = AccessLLM("https://ypcgzj23.trafficplex.cloud/chat").sendRequest(

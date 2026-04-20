@@ -3,11 +3,11 @@ package workbook.htmlElements.container
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Signal
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.AllWorkbookInfo
+import workbook.model.info.FullInfo
 
 case class HtmlExerciseContainer(
-                                  workbookInfo: AllWorkbookInfo,
-                                  children: Signal[List[HtmlWorkbookElement]],
+                                  fullInfo: FullInfo,
+                                  children: List[HtmlWorkbookElement],
                                   level: Int = 1
                                 ) extends HtmlWorkbookElement {
 
@@ -16,17 +16,9 @@ case class HtmlExerciseContainer(
   private val domElement: L.Element = L.div(
     L.cls := "container-exercise style-vbox",
     L.cls := s"container-level-$normalizedLevel",
-    L.children <-- children.map(_.map(_.getDomElement()))
+    //L.cls := "workbook-element container-sub style-vbox",
+    L.children <-- L.Var(children.map(_.getDomElement())).signal
   )
 
   override def getDomElement(): L.Element = domElement
-}
-
-object HtmlExerciseContainer {
-
-  def apply(workbookInfo: AllWorkbookInfo, children: List[HtmlWorkbookElement]): HtmlExerciseContainer =
-    HtmlExerciseContainer(workbookInfo, L.Var(children).signal, 1)
-
-  def withLevel(workbookInfo: AllWorkbookInfo, children: List[HtmlWorkbookElement], level: Int): HtmlExerciseContainer =
-    HtmlExerciseContainer(workbookInfo, L.Var(children).signal, level)
 }

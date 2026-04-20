@@ -10,15 +10,16 @@ import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
 import util.serializing.Serializer
+import workbook.htmlElements.basic.HtmlButtonElement
 import workbook.model.abstractions.WorkbookInteraction
-import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
+import workbook.model.info.{FullInfo, HomepageInfo}
 import workbook.model.interaction.InteractionVariable
 import workbook.model.interaction.history.UpdateImportance.MAJOR
 import workbook.model.interaction.sync.{LocalStorageSync, SyncInformation, SyncStrategy}
 
-case class TurtleProgrammingInteraction(workbookInfo: AllWorkbookInfo, id: String, expectedSvgResult: AppSvgElement) extends WorkbookInteraction[BeProgram] {
+case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expectedSvgResult: AppSvgElement) extends WorkbookInteraction[BeProgram] {
 
-  private val defaultProgram: BeProgram = BeProgram(BeProgram.miniProgramExpression())
+  val defaultValue: BeProgram = BeProgram(BeProgram.miniProgramExpression())
 
   private val io = new Serializer[BeProgram]() {
     override def serialize(obj: BeProgram): String = obj.fullProgram.getInLanguage(AppLanguage.Python, AppLanguage.English)
@@ -28,14 +29,13 @@ case class TurtleProgrammingInteraction(workbookInfo: AllWorkbookInfo, id: Strin
 
   override val interactionVariable: InteractionVariable[BeProgram] = InteractionVariable[BeProgram](
     this,
-    defaultProgram,
     io)
 
   private val editorState: EditorState = {
-    val initRenderer = BeRenderingConfig.defaultWithLanguage(workbookInfo.workbookInfoVar.now().config.currentWorkbookLanguage)
+    val initRenderer = BeRenderingConfig.defaultWithLanguage(fullInfo.signals.currentLanguage.now())
     val rendererVar = Var(initRenderer)
 
-    workbookInfo.workbookInfoVar.signal.foreach(onNext => rendererVar.update(_.copy(language = onNext.config.currentWorkbookLanguage)))(unsafeWindowOwner)
+    fullInfo.signals.currentLanguage.foreach(currentLanguage => rendererVar.update(_.copy(language = currentLanguage)))(unsafeWindowOwner)
 
     val initControllerState: BeEditorControllerState = BeEditorControllerState.default()
     EditorState(
@@ -45,8 +45,14 @@ case class TurtleProgrammingInteraction(workbookInfo: AllWorkbookInfo, id: Strin
     )
   }
 
-  private val openEditorButton = TurtleProgrammingOpenEditorButton(workbookInfo, editorState)
-  private val programmingView = TurtleProgrammingPreview(workbookInfo, editorState, expectedSvgResult)
+  private val openEditorButton = HtmlButtonElement.withTextLabel(fullInfo, "BlockEditor/openEditor", _ => openFullEditor())
+  private val fullscreenEditor = HtmlFullscreenTurtleEditorElement(editorState)
+
+  private def openFullEditor(): Unit = {
+    fullInfo.technical.makeFullscreen(fullscreenEditor.getDomElement())
+  }
+
+  private val programmingView = TurtleProgrammingPreview(fullInfo, editorState, expectedSvgResult)
 
   private val domElement: Element =
     div(

@@ -9,7 +9,7 @@ import interactionPlugins.blockEnvironment.config
 import interactionPlugins.blockEnvironment.config.*
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.blockdisplay.BeTreeDropTarget
-import workbook.model.info.WorkbookInfo
+import workbook.model.info.HomepageInfo
 import workbook.model.interaction.InteractionVariable
 
 case class EditorState(

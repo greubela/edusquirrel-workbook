@@ -5,9 +5,9 @@ import com.raquo.laminar.api.L.{*, given}
 import datastructures.web.file.FullImage
 import interactionPlugins.turtleStitchPlugin.card.*
 import interactionPlugins.turtleStitchPlugin.card.TurtleStitchFileUploadButtonCard.StorageFormat
-import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlImageElement, HtmlPlaintextInstructionElement}
+import workbook.htmlElements.basic.*
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.AllWorkbookInfo
+import workbook.model.info.FullInfo
 
 import scala.concurrent.ExecutionContext
 
@@ -15,13 +15,13 @@ object TurtleStitchRecreateShapeExercise {
 
 
   def createInteractionElement(
-                                pWorkbookInfo: AllWorkbookInfo,
+                                pWorkbookInfo: FullInfo,
                                 baseId: String,
                                 expectedOutcome: HtmlImageElement
                               ): HtmlWorkbookElement = {
     new HtmlWorkbookElement() {
 
-      def workbookInfo: AllWorkbookInfo = pWorkbookInfo
+      def fullInfo: FullInfo = pWorkbookInfo
 
       private val fileInteraction = TurtleStitchFileUploadButtonCard(pWorkbookInfo, baseId, List(".xml,text/xml"), StorageFormat.BYTES_AS_RAW_STRING)
 
@@ -38,21 +38,6 @@ object TurtleStitchRecreateShapeExercise {
     }
   }
 
-  def createElements(
-                      pWorkbookInfo: AllWorkbookInfo,
-                      baseId: String,
-                      titleLanguageMapId: String,
-                      expectedOutcome: HtmlImageElement
-                    ): List[HtmlWorkbookElement] = {
-
-    val htmlTitleElement = HtmlContainerTitle(pWorkbookInfo, titleLanguageMapId)
-
-    val instr = HtmlPlaintextInstructionElement(pWorkbookInfo, pWorkbookInfo.stringSignalFromLanguageMapId("TurtleStitch/defaultReprogramInstruction")(ExecutionContext.global))
-
-    val uploadLine: HtmlWorkbookElement = createInteractionElement(pWorkbookInfo, baseId, expectedOutcome)
-
-    List(htmlTitleElement, instr, uploadLine)
-  }
 
 
 }

@@ -6,36 +6,29 @@ import com.raquo.laminar.api.L.Var
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import contentmanagement.webElements.genericHtmlElements.editor.SimpleMessengerEditor
 import datastructures.core.chat.MessengerModel
+import org.scalajs.dom.SVGSVGElement
 import util.serializing.Serializer
 import workbook.model.abstractions.{HtmlWorkbookElement, WorkbookInteraction}
-import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
 import workbook.model.interaction.*
 import workbook.model.interaction.history.*
 import workbook.model.interaction.sync.*
 import workbook.htmlElements.basic.*
+import workbook.model.info.{FullInfo, HomepageInfo}
 
-case class HtmlGPTMessenger(workbookInfo: AllWorkbookInfo, textInteraction: WorkbookInteraction[String]) extends WorkbookInteraction[MessengerModel] {
+case class HtmlGPTMessenger(fullInfo: FullInfo, textInteraction: WorkbookInteraction[String]) extends WorkbookInteraction[MessengerModel] {
 
   override def id: String = textInteraction.id + "_scaffolding"
 
+  override val defaultValue: MessengerModel = MessengerModel.testSample()
+  
   override def interactionVariable: InteractionVariable[MessengerModel] = {
-    val sampleMessages = MessengerModel.testSample()
-
-    val io: Serializer[MessengerModel] = new Serializer[MessengerModel] {
-      override def serialize(obj: MessengerModel): String = obj.toJson
-
-      override def deserialize(str: String): MessengerModel = MessengerModel.fromJson(str)
-    }
-    InteractionVariable[MessengerModel](this,
-      List(InteractionVariableState(sampleMessages, System.currentTimeMillis(), UpdateImportance.DEFAULT)),
-      List(SyncInformation(LocalStorageSync, SyncStrategy.SYNC_EVERYTHING)),
-      io)
+    InteractionVariable[MessengerModel](this, Serializer.messengerIo)
   }
 
   private val scaffoldingEditor = SimpleMessengerEditor(interactionVariable)
 
-  private val scaffoldingButton = HtmlButtonElement(workbookInfo, HtmlGPTMessenger.scaffoldingButtonSvg, event => {
-    workbookInfo.technicalElements.fullScreenContainer.setElementFullscreen(scaffoldingEditor.getDomElement())
+  private val scaffoldingButton = HtmlButtonElement.withSvgContent(fullInfo, HtmlGPTMessenger.scaffoldingButtonSvg, event => {
+    fullInfo.technical.makeFullscreen(scaffoldingEditor.getDomElement())
   })
 
   private val domElement: L.Element = scaffoldingButton.getDomElement()
@@ -46,7 +39,7 @@ case class HtmlGPTMessenger(workbookInfo: AllWorkbookInfo, textInteraction: Work
 
 object HtmlGPTMessenger {
   
-  def scaffoldingButtonSvg = {
+  def scaffoldingButtonSvg: ReactiveSvgElement[SVGSVGElement] = {
     svg.svg(
       svg.cls := "button-show-scaffolder",
       svg.viewBox := "0 0 24 24",

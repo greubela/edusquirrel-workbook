@@ -8,9 +8,10 @@ import interactionPlugins.turtleStitchPlugin.card.TurtleStitchFileUploadButtonCa
 import interactionPlugins.turtleStitchPlugin.card.TurtleStitchFileUploadButtonCard.StorageFormat.{BYTES_AS_BASE64_STRING, BYTES_AS_RAW_STRING}
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLButtonElement, HTMLDivElement, HTMLInputElement}
+import util.serializing.Serializer
 import util.web.{DownloadHelper, JsHelpers}
 import workbook.model.abstractions.WorkbookInteraction
-import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
+import workbook.model.info.{FullInfo, HomepageInfo}
 import workbook.model.interaction.InteractionVariable
 import workbook.model.interaction.history.UpdateImportance
 
@@ -20,13 +21,15 @@ import scala.scalajs.js.typedarray.*
 import scala.util.{Failure, Success}
 
 case class TurtleStitchFileUploadButtonCard(
-                                 workbookInfo: AllWorkbookInfo,
-                                 id: String,
-                                 acceptedTypes: List[String],
-                                 storageFormat: StorageFormat = BYTES_AS_BASE64_STRING
+                                             fullInfo: FullInfo,
+                                             id: String,
+                                             acceptedTypes: List[String],
+                                             storageFormat: StorageFormat = BYTES_AS_BASE64_STRING
                                ) extends WorkbookInteraction[Option[String]] {
 
-  override val interactionVariable: InteractionVariable[Option[String]] = InteractionVariable.stringOptionVariable(this, None)
+  override val defaultValue: Option[String] = None
+  
+  override val interactionVariable: InteractionVariable[Option[String]] = InteractionVariable[Option[String]](this, Serializer.stringOptionIO)
 
   private lazy val uploadInput: ReactiveHtmlElement[HTMLInputElement] = input(
     styleAttr := "display:none;",
@@ -39,7 +42,7 @@ case class TurtleStitchFileUploadButtonCard(
   )
 
   private lazy val uploadButton: ReactiveHtmlElement[HTMLButtonElement] = button(
-    text <-- workbookInfo.stringSignalFromLanguageMapId("TurtleStitch/uploadButton")(ExecutionContext.global),
+    text <-- fullInfo.signals.stringFromLanguageMapId("TurtleStitch/uploadButton"),
     uploadInput,
     onClick --> { _ =>
       uploadInput.ref.click()
@@ -49,7 +52,7 @@ case class TurtleStitchFileUploadButtonCard(
   private lazy val fileDom: ReactiveHtmlElement[HTMLDivElement] = div(
     cls := "preview-card",
     h3(
-      text <-- workbookInfo.stringSignalFromLanguageMapId("TurtleStitch/uploadTitle")(ExecutionContext.global),
+      text <-- fullInfo.signals.stringFromLanguageMapId("TurtleStitch/uploadTitle"),
     ),
     div(
       cls := "preview-content",

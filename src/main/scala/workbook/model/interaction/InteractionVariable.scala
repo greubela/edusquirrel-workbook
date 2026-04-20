@@ -7,56 +7,88 @@ import com.raquo.laminar.api.L.*
 import upickle.default.*
 import util.serializing.Serializer
 import workbook.model.abstractions.WorkbookInteraction
+import workbook.model.interaction.InteractionVariable.InteractionVariableStorage
 import workbook.model.interaction.history.*
 import workbook.model.interaction.history.UpdateImportance.DEFAULT
 import workbook.model.interaction.sync.*
 
-case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T], initHistory: List[InteractionVariableState[T]], initSyncInformation: List[SyncInformation], io: Serializer[T]) {
+import scala.collection.mutable
 
-  assert(initHistory.nonEmpty, "ExerciseVariable: initHistory must not be empty (must provide history with default state!)")
+case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T], private val initStorageState: InteractionVariableStorage[T]) {
 
-  private var history: List[InteractionVariableState[T]] = initHistory
-  private var syncSources: List[SyncInformation] = initSyncInformation
+  private implicit val appOwner: Owner = unsafeWindowOwner
 
-  private val underlyingVar: Var[T] = Var[T](initHistory.maxBy(_.epochTimestampMillis).value)
+  private val innerState: Var[InteractionVariableStorage[T]] = {
+    val withLoaded = initStorageState.withSyncFromAll().withCleanedDefaultStates()
+    Var(withLoaded)
+  }
+  lazy val interactionSignal: StrictSignal[T] = innerState.signal.mapLazy(_.lastState.value)
 
-  def interactionSignal: StrictSignal[T] = underlyingVar.signal
+  def currentValue: T = synchronized {
+    interactionSignal.now()
+  }
 
-  def lastUpdate: InteractionVariableState[T] = history.maxBy(_.epochTimestampMillis)
+  def syncFromAll(): Unit = synchronized {
+    innerState.update(_.withSyncFromAll())
+  }
 
-  def currentValue: T = underlyingVar.now()
+  def syncToAll(): Unit = synchronized {
+    innerState.now().syncToAll()
+  }
 
-  def createBoundVarWithUpdateImportance(importance: UpdateImportance): Var[T] = {
-    val outerVar = Var[T](underlyingVar.now())
+  def resetInteractionVariable(newDefaultValue: T, newSyncSources: List[SyncInformation]): Unit = synchronized {
+    innerState.update(_.afterReset(newDefaultValue, newSyncSources))
+  }
+
+
+  def createBoundVarWithUpdateImportance(importance: UpdateImportance): Var[T] = synchronized {
+    val outerVar = Var[T](interactionSignal.now())
     outerVar.signal.foreach(newValue => updateStateFromUserInteraction(newValue, System.currentTimeMillis(), importance))
-    underlyingVar.signal.foreach(newValue => if (newValue != outerVar.now()) outerVar.update(_ => newValue))
+    interactionSignal.foreach(newValue => if (newValue != outerVar.now()) outerVar.set(newValue))
     outerVar
   }
 
-  def updateStateFromUserInteraction(newValue: T, epochTimestampMillis: Long, updateSize: UpdateImportance): Unit = {
-    if (newValue != underlyingVar.now()) {
-      val newState = InteractionVariableState[T](newValue, epochTimestampMillis, updateSize)
-      history = history ++ List(newState)
-      underlyingVar.update(_ => newValue)
-      syncToAll()
-      //println("updated history at " + epochTimestampMillis + " (" + updateSize + "): " + newState)
+  def updateStateFromUserInteraction(newValue: T, epochTimestampMillis: Long, updateSize: UpdateImportance): Unit = synchronized {
+    println("InteractionVariable.updateStateFromUserInteraction: " + newValue + " (" + updateSize + ")")
+    val lastKnown = innerState.now().lastState
+    if (newValue != lastKnown.value || updateSize != lastKnown.updateImportance) {
+      val newInteractionState = InteractionVariableState[T](newValue, epochTimestampMillis, updateSize)
+      innerState.update(_.withAdditionalStates(List(newInteractionState)))
+      updateSize match {
+        case UpdateImportance.MAJOR => syncToAll()
+        case UpdateImportance.MINOR => syncToAll()
+        case UpdateImportance.TEMPORARY =>
+        case UpdateImportance.DEFAULT =>
+      }
     }
   }
 
-  private def updateVarFromHistory(): Unit = {
-    val setValue = history.maxBy(_.epochTimestampMillis).value
-    if (underlyingVar.now() != setValue) {
-      underlyingVar.update(_ => setValue)
-      //println("[INFO] Set current var state to: " + setValue)
-    } else {
-      //println("val not changed (" + asVar.now() + ") from history (" + setValue + ")")
+
+}
+
+object InteractionVariable {
+
+  private[interaction] case class InteractionVariableStorage[T](keyForSerialization: String, history: List[InteractionVariableState[T]], syncSources: List[SyncInformation], io: Serializer[T]) {
+
+    def lastState: InteractionVariableState[T] = history.maxBy(_.epochTimestampMillis)
+
+    def afterReset(defaultValue: T, syncSources: List[SyncInformation]): InteractionVariableStorage[T] = {
+      InteractionVariableStorage(keyForSerialization, defaultValue, syncSources, io)
     }
-  }
 
-  private val keyForSerialization: String = underlyingInteraction.id + "_history"
+    def withAdditionalStates(additionalStates: List[InteractionVariableState[T]]): InteractionVariableStorage[T] = {
+      this.copy(history = history ++ additionalStates).withCleanedDefaultStates()
+    }
 
-  def syncToAll(): Unit = {
-    if (history.exists(_.updateImportance != DEFAULT)) {
+    def withCleanedDefaultStates(): InteractionVariableStorage[T] = {
+      if (!history.exists(_.updateImportance == DEFAULT) || !history.exists(_.updateImportance != DEFAULT)) {
+        this
+      } else {
+        this.copy(history = history.filter(_.updateImportance != DEFAULT))
+      }
+    }
+
+    def syncToAll(): Unit = {
       syncSources.foreach(syncInfo => {
         val eventsToSync = syncInfo.syncStrategy.selectEventsToSync(history)
         syncInfo.syncSource.syncTo(keyForSerialization, InteractionVariable.serializeHistory(eventsToSync, io))
@@ -64,82 +96,33 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
       //println("[INFO] history '" + keyForSerialization + "' changed, synced to " + syncSources.size + " sources")//, current value: \n" + io.serialize(underlyingVar.now()) + ")")
     }
 
+
+    def withSyncFromAll(): InteractionVariableStorage[T] = {
+      val syncedFromHistory = mutable.ListBuffer[InteractionVariableState[T]]()
+      syncSources.foreach(syncInfo => {
+        val eventStr = syncInfo.syncSource.syncKeyFrom(keyForSerialization)
+        if (eventStr.nonEmpty) {
+          val addToHistory = InteractionVariable.deserializeHistory(eventStr.get, io)
+          syncedFromHistory ++= addToHistory
+        }
+      })
+      withAdditionalStates(syncedFromHistory.toList)
+    }
   }
 
-  def syncFromAll(): Unit = {
-    val eventCount = history.size
+  object InteractionVariableStorage {
 
-    syncSources.foreach(syncInfo => {
-      val eventStr = syncInfo.syncSource.syncKeyFrom(keyForSerialization)
-      if (eventStr.nonEmpty) {
-        val addToHistory = InteractionVariable.deserializeHistory(eventStr.get, io)
-        val newHistory = (addToHistory.toSet ++ history.toSet).toList.sortBy(_.epochTimestampMillis)
-        history = newHistory
-      }
-    })
 
-    val withoutDefault = history.filter(_.updateImportance != UpdateImportance.DEFAULT)
-    if (withoutDefault.nonEmpty) {
-      history = withoutDefault
+    def apply[T](syncId: String, defaultValue: T, syncSources: List[SyncInformation], io: Serializer[T]): InteractionVariableStorage[T] = {
+      val history: List[InteractionVariableState[T]] = List(InteractionVariableState[T](defaultValue, System.currentTimeMillis(), UpdateImportance.DEFAULT))
+      InteractionVariableStorage[T](syncId, history, syncSources, io)
     }
-    //println("[INFO] synced history '" + keyForSerialization + "' from all sources, added " + (history.size - eventCount) + " events")//, current value: \n" + io.serialize(underlyingVar.now()))
-
-    updateVarFromHistory()
   }
 
-  implicit val appOwner: Owner = unsafeWindowOwner
-  syncFromAll()
-}
-
-object InteractionVariable {
-
-  def stringOptionVariable(interaction: WorkbookInteraction[Option[String]], defaultValue: Option[String] = None): InteractionVariable[Option[String]] = {
-    val io = new Serializer[Option[String]] {
-      override def serialize(obj: Option[String]): String = obj.map(str => "Some(" + str + ")").getOrElse("None")
-
-      override def deserialize(serialized: String): Option[String] =
-        if (serialized.startsWith("Some(") && serialized.endsWith(")")) Some(serialized.drop(5).dropRight(1).trim)
-        else None
-    }
-
-    InteractionVariable(interaction,
-      List(InteractionVariableState(defaultValue, System.currentTimeMillis(), UpdateImportance.DEFAULT)),
-      interaction.workbookInfoVar.now().config.getSyncDestinations(),
-      io)
-  }
-
-  def stringVariable(interaction: WorkbookInteraction[String], defaultValue: String): InteractionVariable[String] = {
-    val io = new Serializer[String] {
-      override def serialize(obj: String): String = obj
-
-      override def deserialize(serialized: String): String = serialized
-    }
-    InteractionVariable(interaction,
-      List(InteractionVariableState(defaultValue, System.currentTimeMillis(), UpdateImportance.DEFAULT)),
-      interaction.workbookInfoVar.now().config.getSyncDestinations(),
-      io)
-  }
-
-  def apply[T](interaction: WorkbookInteraction[T], defaultValue: T, io: Serializer[T]): InteractionVariable[T] =
-    InteractionVariable(
-      interaction,
-      List(InteractionVariableState(defaultValue, System.currentTimeMillis(), UpdateImportance.DEFAULT)),
-      interaction.workbookInfoVar.now().config.getSyncDestinations(),
-      io)
-
-
-  def booleanVariable(interaction: WorkbookInteraction[Boolean], defaultValue: Boolean): InteractionVariable[Boolean] = {
-    val io = new Serializer[Boolean] {
-      override def serialize(obj: Boolean): String = obj.toString
-
-      override def deserialize(serialized: String): Boolean = serialized.toBooleanOption.getOrElse(false)
-    }
-    InteractionVariable(
-      interaction,
-      List(InteractionVariableState(defaultValue, System.currentTimeMillis(), UpdateImportance.DEFAULT)),
-      interaction.workbookInfoVar.now().config.getSyncDestinations(),
-      io
-    )
+  def apply[T](interaction: WorkbookInteraction[T], io: Serializer[T]): InteractionVariable[T] = {
+    val sync = interaction.fullInfo.current.allSyncSources
+    val storage = InteractionVariableStorage(interaction.id + "_history", interaction.defaultValue, sync, io)
+    InteractionVariable(interaction, storage)
   }
 
 

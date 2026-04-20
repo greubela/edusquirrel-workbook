@@ -3,30 +3,22 @@ package content
 import com.raquo.laminar.api.L.{*, given}
 import datastructures.web.file.FileDescription
 import interactionPlugins.slideshow.{SlideDeckExercise, SlidePanel}
-import workbook.htmlElements.basic.{HtmlContainerTitle, HtmlMarkdownInstructionElement, HtmlPlaintextInstructionElement}
+import workbook.htmlElements.basic.*
 import workbook.htmlElements.container.HtmlExerciseContainer
 import workbook.htmlElements.interactions.{HtmlBasicCheckboxInteraction, HtmlReorderInteraction}
 import workbook.model.{Workbook, WorkbookSection}
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.AllWorkbookInfo
+import workbook.model.info.FullInfo
 
 import scala.concurrent.ExecutionContext
 
-case class CreatePlantworkshopWorkbook(override val workbookInfo: AllWorkbookInfo) extends WorkbookFactory {
+case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 
-  private def textElement(languageMapId: String): HtmlPlaintextInstructionElement =
-    HtmlPlaintextInstructionElement(
-      workbookInfo,
-      workbookInfo.stringSignalFromLanguageMapId(languageMapId)(ExecutionContext.global)
-    )
-
-  private def markdownElement(languageMapId: String): HtmlMarkdownInstructionElement =
-    HtmlMarkdownInstructionElement(workbookInfo, languageMapId)
 
   private def checklist(keys: List[String], prefix: String): List[HtmlWorkbookElement] =
     keys.map { key =>
       HtmlBasicCheckboxInteraction(
-        workbookInfo = workbookInfo,
+        fullInfo = fullInfo,
         id = nextId(prefix),
         labelLanguageMapId = s"PlantWorkshop/$key"
       )
@@ -34,7 +26,7 @@ case class CreatePlantworkshopWorkbook(override val workbookInfo: AllWorkbookInf
 
   private def codeReorder(baseId: String, snippets: List[String]): HtmlReorderInteraction[String] =
     HtmlReorderInteraction[String](
-      workbookInfo = workbookInfo,
+      fullInfo = fullInfo,
       id = nextId(baseId),
       elements = snippets,
       elementRenderer = snippet => pre(code(snippet))
@@ -50,30 +42,24 @@ case class CreatePlantworkshopWorkbook(override val workbookInfo: AllWorkbookInf
       createTestSection()
     )
 
-    val workbook = Workbook(
-      workbookInfo = workbookInfo,
+    Workbook(
+      fullInfo = fullInfo,
       titleLanguageMapId = "PlantWorkshop/workbookTitle",
       sections = sections
     )
-
-    sections.headOption.foreach(first => workbookInfo.updateConfig(_.copy(activeSection = Some(first))))
-    workbook
   }
 
-  private def missingElementPlaceholder(contextKey: String): HtmlWorkbookElement =
-    HtmlPlaintextInstructionElement(
-      workbookInfo,
-      workbookInfo.stringSignalFromLanguageMapId(s"PlantWorkshop/$contextKey")(ExecutionContext.global)
-    )
+  private def missingElementPlaceholder(contextKey: String): HtmlWorkbookElement = instructionPlaintext(s"PlantWorkshop/$contextKey")
+
 
   private def createMotivationSection(): WorkbookSection = {
-    val intro = HtmlExerciseContainer(workbookInfo, List(
-      HtmlContainerTitle(workbookInfo, "PlantWorkshop/section0Title"),
-      markdownElement("PlantWorkshop/section0IntroMarkdown"),
-      markdownElement("PlantWorkshop/section0SafetyMarkdown")
+    val intro = HtmlExerciseContainer(fullInfo, List(
+      HtmlContainerTitle(fullInfo, "PlantWorkshop/section0Title"),
+      instructionMarkdown("PlantWorkshop/section0IntroMarkdown"),
+      instructionMarkdown("PlantWorkshop/section0SafetyMarkdown")
     ))
 
-    WorkbookSection(workbookInfo, "PlantWorkshop/section0Title", List(intro))
+    WorkbookSection(fullInfo, "PlantWorkshop/section0Title", List(intro))
   }
 
   private def createWiringSlideshow(): SlideDeckExercise = {
@@ -83,26 +69,26 @@ case class CreatePlantworkshopWorkbook(override val workbookInfo: AllWorkbookInf
         textMapId = "PlantWorkshop/wiringSlideText1",
         sourceMapId = "PlantWorkshop/wiringSlideSource",
         descriptionMapId = "PlantWorkshop/wiringSlideDescription",
-        workbookInfo = workbookInfo
+        fullInfo = fullInfo
       ),
       SlidePanel.imageSlide(
         FileDescription.relativeToResourceFolder("img/plantworkshop/step1.png"),
         textMapId = "PlantWorkshop/wiringSlideText2",
         sourceMapId = "PlantWorkshop/wiringSlideSource",
         descriptionMapId = "PlantWorkshop/wiringSlideDescription",
-        workbookInfo = workbookInfo
+        fullInfo = fullInfo
       ),
       SlidePanel.imageSlide(
         FileDescription.relativeToResourceFolder("img/plantworkshop/step2.png"),
         textMapId = "PlantWorkshop/wiringSlideText3",
         sourceMapId = "PlantWorkshop/wiringSlideSource",
         descriptionMapId = "PlantWorkshop/wiringSlideDescription",
-        workbookInfo = workbookInfo
+        fullInfo = fullInfo
       )
     )
 
     SlideDeckExercise(
-      workbookInfo = workbookInfo,
+      fullInfo = fullInfo,
       id = nextId("plant-wiring-slideshow"),
       slides = slides
     )
@@ -125,24 +111,24 @@ case class CreatePlantworkshopWorkbook(override val workbookInfo: AllWorkbookInf
     )
 
     val container = List(
-      HtmlExerciseContainer(workbookInfo,
+      HtmlExerciseContainer(fullInfo,
         List(
-          HtmlContainerTitle(workbookInfo, "PlantWorkshop/section1Title"),
-          textElement("PlantWorkshop/section1ChecklistIntro"),
-          textElement("PlantWorkshop/section1WiringHint")
+          HtmlContainerTitle(fullInfo, "PlantWorkshop/section1Title"),
+          instructionPlaintext("PlantWorkshop/section1ChecklistIntro"),
+          instructionPlaintext("PlantWorkshop/section1WiringHint")
         ) ++ componentChecklist
       ),
-      HtmlExerciseContainer(workbookInfo,
+      HtmlExerciseContainer(fullInfo,
         List(
-          HtmlContainerTitle(workbookInfo, "PlantWorkshop/section1Subtitle1"),
-          markdownElement("PlantWorkshop/section1PowerWarningMarkdown"),
+          HtmlContainerTitle(fullInfo, "PlantWorkshop/section1Subtitle1"),
+          instructionMarkdown("PlantWorkshop/section1PowerWarningMarkdown"),
           createWiringSlideshow(),
-          textElement("PlantWorkshop/section1RelayInfo")
+          instructionPlaintext("PlantWorkshop/section1RelayInfo")
         )
       )
     )
 
-    WorkbookSection(workbookInfo, "PlantWorkshop/section1Title", container)
+    WorkbookSection(fullInfo, "PlantWorkshop/section1Title", container)
   }
 
   private def createPumpControlSection(): WorkbookSection = {
@@ -157,17 +143,17 @@ case class CreatePlantworkshopWorkbook(override val workbookInfo: AllWorkbookInf
       "plant-pump-done"
     )
 
-    val container = HtmlExerciseContainer(workbookInfo, List(
-      HtmlContainerTitle(workbookInfo, "PlantWorkshop/section2Title"),
-      textElement("PlantWorkshop/section2Goal"),
-      textElement("PlantWorkshop/section2Instruction"),
-      textElement("PlantWorkshop/section2BeginnerHint"),
+    val container = HtmlExerciseContainer(fullInfo, List(
+      HtmlContainerTitle(fullInfo, "PlantWorkshop/section2Title"),
+      instructionPlaintext("PlantWorkshop/section2Goal"),
+      instructionPlaintext("PlantWorkshop/section2Instruction"),
+      instructionPlaintext("PlantWorkshop/section2BeginnerHint"),
       reorder,
-      textElement("PlantWorkshop/section2AdvancedHint"),
+      instructionPlaintext("PlantWorkshop/section2AdvancedHint"),
       missingElementPlaceholder("missingPumpInteraction")
     ) ++ checklistItems)
 
-    WorkbookSection(workbookInfo, "PlantWorkshop/section2Title", List(container))
+    WorkbookSection(fullInfo, "PlantWorkshop/section2Title", List(container))
   }
 
   private def createMoistureSection(): WorkbookSection = {
@@ -188,17 +174,17 @@ case class CreatePlantworkshopWorkbook(override val workbookInfo: AllWorkbookInf
       "plant-moisture-done"
     )
 
-    val container = HtmlExerciseContainer(workbookInfo, List(
-      HtmlContainerTitle(workbookInfo, "PlantWorkshop/section3Title"),
-      textElement("PlantWorkshop/section3Goal"),
-      textElement("PlantWorkshop/section3Instruction"),
-      textElement("PlantWorkshop/section3BeginnerHint"),
+    val container = HtmlExerciseContainer(fullInfo, List(
+      HtmlContainerTitle(fullInfo, "PlantWorkshop/section3Title"),
+      instructionPlaintext("PlantWorkshop/section3Goal"),
+      instructionPlaintext("PlantWorkshop/section3Instruction"),
+      instructionPlaintext("PlantWorkshop/section3BeginnerHint"),
       reorder,
-      textElement("PlantWorkshop/section3AdvancedHint"),
+      instructionPlaintext("PlantWorkshop/section3AdvancedHint"),
       missingElementPlaceholder("missingMoistureInteraction")
     ) ++ checklistItems)
 
-    WorkbookSection(workbookInfo, "PlantWorkshop/section3Title", List(container))
+    WorkbookSection(fullInfo, "PlantWorkshop/section3Title", List(container))
   }
 
   private def createCombinedSection(): WorkbookSection = {
@@ -220,17 +206,17 @@ case class CreatePlantworkshopWorkbook(override val workbookInfo: AllWorkbookInf
       "plant-combined-done"
     )
 
-    val container = HtmlExerciseContainer(workbookInfo, List(
-      HtmlContainerTitle(workbookInfo, "PlantWorkshop/section4Title"),
-      textElement("PlantWorkshop/section4Goal"),
-      textElement("PlantWorkshop/section4Instruction"),
-      textElement("PlantWorkshop/section4BeginnerHint"),
+    val container = HtmlExerciseContainer(fullInfo, List(
+      HtmlContainerTitle(fullInfo, "PlantWorkshop/section4Title"),
+      instructionPlaintext("PlantWorkshop/section4Goal"),
+      instructionPlaintext("PlantWorkshop/section4Instruction"),
+      instructionPlaintext("PlantWorkshop/section4BeginnerHint"),
       reorder,
-      textElement("PlantWorkshop/section4AdvancedHint"),
+      instructionPlaintext("PlantWorkshop/section4AdvancedHint"),
       missingElementPlaceholder("missingCombinedInteraction")
     ) ++ checklistItems)
 
-    WorkbookSection(workbookInfo, "PlantWorkshop/section4Title", List(container))
+    WorkbookSection(fullInfo, "PlantWorkshop/section4Title", List(container))
   }
 
   private def createTestSection(): WorkbookSection = {
@@ -255,18 +241,18 @@ case class CreatePlantworkshopWorkbook(override val workbookInfo: AllWorkbookInf
       "plant-migration-check"
     )
 
-    val container = HtmlExerciseContainer(workbookInfo,
+    val container = HtmlExerciseContainer(fullInfo,
       List(
-        HtmlContainerTitle(workbookInfo, "PlantWorkshop/section5Title"),
-        textElement("PlantWorkshop/section5DownloadInfo"),
-        textElement("PlantWorkshop/section5Troubleshooting"),
+        HtmlContainerTitle(fullInfo, "PlantWorkshop/section5Title"),
+        instructionPlaintext("PlantWorkshop/section5DownloadInfo"),
+        instructionPlaintext("PlantWorkshop/section5Troubleshooting"),
         missingElementPlaceholder("missingArduinoExport"),
-        textElement("PlantWorkshop/migrationChecklistTitle")
+        instructionPlaintext("PlantWorkshop/migrationChecklistTitle")
       ) ++ testChecklistItems ++ migrationChecklistItems ++ List(
-        textElement("PlantWorkshop/legacyReference")
+        instructionPlaintext("PlantWorkshop/legacyReference")
       )
     )
 
-    WorkbookSection(workbookInfo, "PlantWorkshop/section5Title", List(container))
+    WorkbookSection(fullInfo, "PlantWorkshop/section5Title", List(container))
   }
 }

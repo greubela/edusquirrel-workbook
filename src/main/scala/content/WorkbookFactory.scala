@@ -1,15 +1,41 @@
 package content
 
 import com.raquo.laminar.api.L
+
+import scala.concurrent.*
+import workbook.model.info.*
+import workbook.model.info.control.*
+import com.raquo.laminar.api.L.*
+import datastructures.core.language.AppLanguage.*
+import datastructures.core.language.*
+import datastructures.core.language.*
 import datastructures.web.file.FileDescription
-import workbook.htmlElements.basic.{HtmlImageElement, HtmlPlaintextInstructionElement, HtmlUnsafeHtmlInstructionElement}
+import workbook.htmlElements.basic.*
 import workbook.htmlElements.container.HtmlExerciseContainer
 import workbook.htmlElements.interactions.{HtmlBasicCheckboxInteraction, HtmlBasicTextInteraction}
-import workbook.model.abstractions.HtmlWorkbookElement
+import workbook.model.abstractions.{HtmlWorkbookElement, WorkbookInteraction}
+import workbook.model.info.{FullInfo, HomepageInfo}
 import workbook.model.{Workbook, WorkbookSection}
-import workbook.model.info.{AllWorkbookInfo, WorkbookInfo}
+import workbook.model.info.*
+import workbook.model.info.control.*
 
 trait WorkbookFactory {
+
+
+  def availableLanguages: List[HumanLanguage] = List(English, German) // todo remove default value
+  def defaultSectionActiveNr: Int  = 0
+  def estimatedDurations: Map[WorkbookInteraction[_], Double] = Map()  // todo remove default value
+
+  def createEverything: AllWorkbookInfo = {
+    val workbook = createWorkbook
+    val section: Option[WorkbookSection] = if (workbook.sections.size <= defaultSectionActiveNr) None else Some(workbook.sections(defaultSectionActiveNr))
+    println("section active: " + section + "(" + workbook.sections.size + ")")
+    val config = WorkbookConfig(section)
+    AllWorkbookInfo(availableLanguages, workbook, config, estimatedDurations)
+  }
+
+
+
 
   private var id = 0
 
@@ -18,51 +44,52 @@ trait WorkbookFactory {
     prefix + "-" + id
   }
 
-  def workbookInfo: AllWorkbookInfo
-
-  def workbookInfoVar: L.Var[WorkbookInfo] = workbookInfo.workbookInfoVar
+  def fullInfo: FullInfo
 
   def createWorkbook: Workbook
 
   protected def createTextInput(id: String = nextId()): HtmlWorkbookElement = {
-    HtmlBasicTextInteraction(workbookInfo, id)
+    HtmlBasicTextInteraction(fullInfo, id)
   }
 
   protected def container(elements: List[HtmlWorkbookElement]): HtmlExerciseContainer = {
-    HtmlExerciseContainer(workbookInfo, elements)
+    HtmlExerciseContainer(fullInfo, elements)
   }
 
   protected def section(titleIdMap: String, exercises: List[HtmlExerciseContainer]): WorkbookSection = {
     WorkbookSection(
-      workbookInfo,
+      fullInfo,
       titleIdMap,
       exercises
     )
   }
 
-  def image(imageLocation: FileDescription): HtmlWorkbookElement = pseudoElement(HtmlImageElement(imageLocation, workbookInfo).getDomSignal)
+  def image(imageLocation: FileDescription): HtmlWorkbookElement = pseudoElement(HtmlImageElement(imageLocation, fullInfo).getDomSignal)
 
-  protected def workbook(titleMapId: String, sections: List[WorkbookSection]): Workbook = Workbook(workbookInfo, titleMapId, sections)
+  protected def workbook(titleMapId: String, sections: List[WorkbookSection]): Workbook = Workbook(fullInfo, titleMapId, sections)
 
-  protected def instructionPlaintext(textMapId: String): HtmlWorkbookElement = HtmlPlaintextInstructionElement(workbookInfo, textMapId)
-  protected def instructionHtml(textMapId: String): HtmlWorkbookElement = HtmlUnsafeHtmlInstructionElement(workbookInfo, textMapId)
+  protected def instructionPlaintext(textMapId: String): HtmlWorkbookElement = HtmlInstructionElement.fromPlaintextLanguageMapId(fullInfo, textMapId)
+
+  protected def instructionHtml(textMapId: String): HtmlWorkbookElement = HtmlInstructionElement.fromUnsafeHtmlLanguageMapId(fullInfo, textMapId)
+
+  protected def instructionMarkdown(textMapId: String): HtmlInstructionElement = HtmlInstructionElement.fromMarkdownLanguageMapId(fullInfo, textMapId)
 
   protected def checklist(labelMapId: String, elementIdd: String = nextId()): HtmlWorkbookElement =
-      HtmlBasicCheckboxInteraction(
-        workbookInfo = workbookInfo,
-        id = elementIdd,
-        labelLanguageMapId = labelMapId
-      )
+    HtmlBasicCheckboxInteraction(
+      fullInfo = fullInfo,
+      id = elementIdd,
+      labelLanguageMapId = labelMapId
+    )
 
 
   private def pseudoElement(dom: L.Signal[L.Element]): HtmlWorkbookElement = new HtmlWorkbookElement {
-    override def workbookInfo: AllWorkbookInfo = WorkbookFactory.this.workbookInfo
+    override def fullInfo: FullInfo = WorkbookFactory.this.fullInfo
 
     override def getDomElement(): L.Element = L.div(L.cls := "workbook-element exercise-instruction", L.child <-- dom)
   }
 
   private def pseudoElement(dom: L.Element): HtmlWorkbookElement = new HtmlWorkbookElement {
-    override def workbookInfo: AllWorkbookInfo = WorkbookFactory.this.workbookInfo
+    override def fullInfo: FullInfo = WorkbookFactory.this.fullInfo
 
     override def getDomElement(): L.Element = L.div(L.cls := "workbook-element exercise-instruction", dom)
   }

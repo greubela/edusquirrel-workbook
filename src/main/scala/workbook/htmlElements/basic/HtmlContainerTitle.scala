@@ -2,11 +2,11 @@ package workbook.htmlElements.basic
 
 import com.raquo.laminar.api.L.*
 import workbook.model.abstractions.*
-import workbook.model.info.AllWorkbookInfo
+import workbook.model.info.FullInfo
 
 import scala.concurrent.ExecutionContext
 
-case class HtmlContainerTitle(workbookInfo: AllWorkbookInfo, titleSignal: Signal[String], level: Int = 2) extends HtmlWorkbookElement {
+case class HtmlContainerTitle(fullInfo: FullInfo, languageMapId: String, level: Int = 2) extends HtmlWorkbookElement {
 
   private def normalizedLevel: Int = math.max(1, math.min(6, level))
 
@@ -23,18 +23,9 @@ case class HtmlContainerTitle(workbookInfo: AllWorkbookInfo, titleSignal: Signal
     div(
       cls := "workbook-element container-title",
       cls := s"container-title-level-$normalizedLevel",
-      child <-- titleSignal.map(headingElement)
+      text <-- fullInfo.signals.stringFromLanguageMapId(languageMapId)
     )
   }
 
 }
 
-object HtmlContainerTitle {
-
-  def apply(workbookInfo: AllWorkbookInfo, languageMapId: String): HtmlContainerTitle =
-    HtmlContainerTitle(workbookInfo, workbookInfo.stringSignalFromLanguageMapId(languageMapId)(ExecutionContext.global), 2)
-
-  def withLevel(workbookInfo: AllWorkbookInfo, languageMapId: String, level: Int): HtmlContainerTitle =
-    HtmlContainerTitle(workbookInfo, workbookInfo.stringSignalFromLanguageMapId(languageMapId)(ExecutionContext.global), level)
-
-}
