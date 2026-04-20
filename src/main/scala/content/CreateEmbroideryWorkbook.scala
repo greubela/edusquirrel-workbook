@@ -4,6 +4,8 @@ import datastructures.core.language.AppLanguage.*
 import datastructures.core.language.HumanLanguage
 import datastructures.web.file.FileDescription
 import interactionPlugins.turtleStitchPlugin.{TurtleStitchExploreProjectExercise, TurtleStitchRecreateShapeExercise}
+import org.scalajs.dom.URL
+import util.web.DownloadHelper
 import workbook.htmlElements.basic.*
 import workbook.htmlElements.container.*
 import workbook.model.*
@@ -255,6 +257,7 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
           HtmlContainerTitle(fullInfo, "EmbroideryWorkbook/S5E1Title"),
 
           instructionHtml("EmbroideryWorkbook/S5E1I1"),
+          //HtmlButtonElement.withTextLabel(fullInfo, "EmbroideryWorkbook/downloadButton", _ => DownloadHelper.downloadFromUrl("workbook.pdf", URL("https://evadid.it/edusquirrel/resources/workbookpdfs/20250402StickmaschineArbeitsheft.pdf")))
 
         ))
       ))

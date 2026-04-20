@@ -63,7 +63,7 @@
   "S4E2Title": "Wiederholungen mit Zähler benutzen",
   "section5Title": "Abschnitt 5 (Optional): Fallunterscheidungen",
   "S5E1Title": "Upps...",
-  "S5E1I1": "Das digitale Arbeitsheft ist noch nicht ganz fertig. Frage bitte einen der Betreuenden nach dem ausgedruckten Arbeitsheft.",
+  "S5E1I1": "Das digitale Arbeitsheft ist noch nicht ganz fertig. Bitte benutze die <a target=\"_blank\" href=\"https://evadid.it/edusquirrel/resources/workbookpdfs/20250402StickmaschineArbeitsheft.pdf\">Digitale Version</a>",
   "section6Title": "Abschnitt 6 (Optional): Rekursion",
   "S6E1Title": "Upps...",
   "S6E1I1": "Das digitale Arbeitsheft ist noch nicht ganz fertig. Frage bitte einen der Betreuenden nach dem ausgedruckten Arbeitsheft.",
@@ -72,6 +72,7 @@
   "S7E1I1": "In den vorherigen Aufgaben hast du verschiedene Techniken kennen gelernt, um Muster zu programmieren.Jetzt ist deine Kreativität gefragt – sowohl beim Design, als auch beim Programmieren: Erstelle ein schönes Muster und lade es dann hier hoch.",
   "S7E1I2": "Damit das Muster gestickt werden kann, muss es folgende Eigenschaften erfüllen:",
   "S7E1I3": "<div><ol>\n\t<li>Es darf maximal eine Größe von 20x20cm besitzen</li>\n\t<li>Das Muster darf nur eine Farbe verwenden (schwarz, rot, grün, blau) </li>\n\t<li> Die Stiche dürfen nicht zu weit und zu nah voneinander entfernt sein. Achte ggf. auf Warnungen im Programm oder lass einen Betreuer drüber schauen.</li>\n<ol></div>",
-  "S7E1I4": "Einer der Betreuenden hilft dir gerne, das Muster in eine Einkaufstasche zu sticken. Falls das Muster nicht rechtzeitig fertig wird, sticken wir es nach dem Workshop und schicken es an deine Schule!"
+  "S7E1I4": "Einer der Betreuenden hilft dir gerne, das Muster in eine Einkaufstasche zu sticken. Falls das Muster nicht rechtzeitig fertig wird, sticken wir es nach dem Workshop und schicken es an deine Schule!",
+  "downloadButton": "Arbeitsheft herunterladen"
 }
 
