@@ -10,6 +10,7 @@ import workbook.model.info.FullInfo.HomepageDefaults
 import workbook.model.info.control.{HomepageCurrentInfo, HomepageDataControl, HomepageSignalInfo}
 import workbook.model.interaction.sync.SyncInformation
 import workbook.singletons.{FileDataStorage, WorkbookLanguageInfo}
+import workbook.user.User
 
 case class FullInfo() extends HtmlAppElement {
 
@@ -37,9 +38,9 @@ case class FullInfo() extends HtmlAppElement {
 
   private[info] val homepageInfoVar: Var[HomepageInfo] = Var(defaultInfo)
 
-/*  homepageInfoVar.signal.foreach(onNext => {
-    println("Changed homepageInfoVar at: " + new Exception().getStackTrace().take(3).map(_.getMethodName).mkString(" -> ") + " (to: " + onNext.toString + ")")
-  })(unsafeWindowOwner)*/
+  /*  homepageInfoVar.signal.foreach(onNext => {
+      println("Changed homepageInfoVar at: " + new Exception().getStackTrace().take(3).map(_.getMethodName).mkString(" -> ") + " (to: " + onNext.toString + ")")
+    })(unsafeWindowOwner)*/
 
   def control: HomepageDataControl = HomepageDataControl(this)
 
@@ -52,11 +53,15 @@ case class FullInfo() extends HtmlAppElement {
 
 object FullInfo {
 
-  private[info] case class HomepageDefaults(
-                                             availableLanguages: List[HumanLanguage] = List(AppLanguage.German, AppLanguage.English),
-                                             defaultLanguage: HumanLanguage = AppLanguage.German,
-                                             defaultSyncLocation: List[SyncInformation] = List(SyncInformation.syncEverythingToBrowser)
-                                           )
+  private[info] case class HomepageDefaults() {
+    val availableLanguages: List[HumanLanguage] = List(AppLanguage.German, AppLanguage.English)
+
+    val defaultLanguage: HumanLanguage = AppLanguage.German
+
+    val defaultSyncLocation: List[SyncInformation] = List(SyncInformation.syncEverythingToBrowser)
+
+    val defaultUser: AllUserInfo = AllUserInfo(User("TestUser", "test@homepage"), UserConfig(defaultSyncLocation))
+  }
 
   val singleton = FullInfo()
 
@@ -69,7 +74,7 @@ object FullInfo {
       }
       .toMap
 
-    println("[WARN] resetting local storage in MainApp!")
+    println("[WARN] resetting local storage in FullInfo! (CallStack: " + new Exception().getStackTrace().take(6).map(_.getMethodName).mkString(" -> ") + ")")
 
     map.keys.foreach(curKey => {
       println(curKey.toString + " -> " + map(curKey))
@@ -79,5 +84,10 @@ object FullInfo {
     dom.window.localStorage.clear()
   }
 
+  def setDummyUser(): Unit = {
+    if (singleton.current.userInfo.isEmpty) {
+      singleton.control.changeUser(Some(singleton.defaults.defaultUser))
+    }
+  }
 
 }

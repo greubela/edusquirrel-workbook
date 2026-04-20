@@ -32,7 +32,7 @@ case class HomepageDataControl(fullInfo: FullInfo) {
   }
 
   def changeWorkbook(newWorkbook: AllWorkbookInfo): Unit = fullInfo.synchronized {
-    saveAndResetAllInfo()
+    //saveAndResetAllInfo()
     fullInfo.homepageInfoVar.update(curInfo => curInfo.copy(workbookInfo = Some(newWorkbook)))
     interactions.foreach(_.interactionVariable.syncFromAll())
   }
@@ -43,7 +43,7 @@ case class HomepageDataControl(fullInfo: FullInfo) {
   }
 
   def changeUser(userInfo: Option[AllUserInfo]): Unit = fullInfo.synchronized {
-    saveAndResetAllInfo()
+    //saveAndResetAllInfo() //todo without dummy
 
     // set new info into var
     fullInfo.homepageInfoVar.update(curInfo => curInfo.copy(userInfo = userInfo))

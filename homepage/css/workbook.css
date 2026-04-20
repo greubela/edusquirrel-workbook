@@ -214,7 +214,7 @@ body {
   border-top: var(--space-xs) solid var(--color-container-border-passive);
   border-right: var(--space-xs) solid var(--color-container-border-passive);
   border-bottom: var(--space-xs) solid var(--color-container-border-passive);
-
+  width: 100%;
 }
 
 .workbook-interaction:focus{
@@ -495,11 +495,15 @@ textarea.workbook-interaction  {
   font-family: var(--font-family);
 }
 
+.simple-text-editor{
+  width: 100%;
+  height: 100%;
+}
+
 .simple-text-editor textarea.mono {
   font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   resize: vertical;
   min-height: 50px;
-}
 
 .simple-text-editor textarea[disabled] {
   background: var(--color-interaction-background-alt);

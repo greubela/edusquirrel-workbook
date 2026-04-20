@@ -30,7 +30,7 @@ object TurtleStitchWorkerFacade {
   def getPngDataSrcOfGreenFlagProgramEditor(turtleStitchXml: String, language: HumanLanguage): Var[Option[String]] =
     getGreenFlagProgramSnapshotDataSrc(turtleStitchXml, language)
 
-  private val programPngDataSrcStorage: AsyncDataCache[(String, HumanLanguage), String] = new AsyncDataCache[(String, HumanLanguage), String]("ProgramPngDataSrc", true) {
+  private val programPngDataSrcStorage: AsyncDataCache[(String, HumanLanguage), String] = new AsyncDataCache[(String, HumanLanguage), String]("ProgramPngDataSrc", false) {
     protected def executeLoading(in: (String, HumanLanguage))(ec: ExecutionContext): Future[String] = {
       val (xml, language) = in
       //calcPngDataSrcWithQueuedWorker(xml, language)(using ec)

@@ -31,10 +31,8 @@ trait WorkbookFactory {
     val section: Option[WorkbookSection] = if (workbook.sections.size <= defaultSectionActiveNr) None else Some(workbook.sections(defaultSectionActiveNr))
     println("section active: " + section + "(" + workbook.sections.size + ")")
     val config = WorkbookConfig(section)
-    AllWorkbookInfo(availableLanguages, workbook, config, estimatedDurations)
+    AllWorkbookInfo(workbook, config, estimatedDurations)
   }
-
-
 
 
   private var id = 0
@@ -66,7 +64,7 @@ trait WorkbookFactory {
 
   def image(imageLocation: FileDescription): HtmlWorkbookElement = pseudoElement(HtmlImageElement(imageLocation, fullInfo).getDomSignal)
 
-  protected def workbook(titleMapId: String, sections: List[WorkbookSection]): Workbook = Workbook(fullInfo, titleMapId, sections)
+  protected def workbook(titleMapId: String, sections: List[WorkbookSection]): Workbook = Workbook(fullInfo, titleMapId, sections, availableLanguages)
 
   protected def instructionPlaintext(textMapId: String): HtmlWorkbookElement = HtmlInstructionElement.fromPlaintextLanguageMapId(fullInfo, textMapId)
 

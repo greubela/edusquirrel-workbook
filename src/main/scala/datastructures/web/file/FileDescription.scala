@@ -50,6 +50,7 @@ object FileDescription {
   def apply(filename: String, data: Array[Byte]): FileDescription = FileDescription(filename, data, unknownCopyrightInfo)
 
   def apply(file: File, copyrightInfo: CopyrightInfo): FileDescription = {
+    println("file: " + file.name)
     val parts = nameParts(file.name)
     UploadedResourceFileDescription(file, parts._2, parts._3, copyrightInfo)
   }
@@ -71,18 +72,21 @@ object FileDescription {
 
   private def nameParts(fullPath: String): (String, String, String) = {
     val parts = fullPath.split("\\\\")
-    val filename: String = parts.last.split("/").last.trim
+    val filenameWithExtension: String = parts.last.split("/").last.trim
 
-    val (nameWithoutExtension, extension) = if(filename.contains(".")){
-      val filenameSplitted = filename.split("\\.")
-      val extension: String = filenameSplitted.last.trim
-      val nameWithoutExtension = filename.substring(0, filename.length - extension.length - 1)
-      (nameWithoutExtension, extension)
-    }else{
-      (filename, "")
-    }
+    val (nameWithoutExtension, extension) =
+      if (filenameWithExtension.contains(".")) {
+        val filenameParts = filenameWithExtension.split("\\.")
+        val extension: String = filenameParts.last.trim
+        val nameWithoutExtension = filenameWithExtension.substring(0, filenameWithExtension.length - extension.length - 1)
+        (nameWithoutExtension, extension)
+      } else {
+        (filenameWithExtension, "")
+      }
 
-    val filePath = fullPath.substring(0, fullPath.length - filename.length - 1)
+    val filePath =
+      if (fullPath == filenameWithExtension) ""
+      else fullPath.substring(0, fullPath.length - filenameWithExtension.length - 1)
 
     val res = (filePath, nameWithoutExtension, extension)
     res

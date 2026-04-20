@@ -11,9 +11,6 @@ import scala.util.{Failure, Success}
 
 object JsHelpers {
 
-  
-  
-  
   trait ConvertScalaAndJs[TYPE_SCALA, TYPE_JS]{
 
     def fromScalaToJs(in: TYPE_SCALA): TYPE_JS
@@ -30,10 +27,7 @@ object JsHelpers {
     def unsafeFromJsToScala(in: TYPE_JS): TYPE_SCALA = fromJsToScala(in).get
   }
 
-  trait TypeConverter[I, O] {
-    def convertToO(in: I): O
-    def convertToI(in: O): I
-  }
+
 
 
 

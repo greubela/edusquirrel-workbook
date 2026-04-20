@@ -4,7 +4,8 @@ import com.raquo.laminar.api.L.{*, given}
 import content.plantworkshop.PlantWorkshopApp
 import content.{CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, plantworkshop}
 import org.scalajs.dom
-import workbook.model.info.FullInfo
+import workbook.model.info.{AllUserInfo, FullInfo}
+import workbook.user.User
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 import scala.scalajs.js
@@ -21,7 +22,6 @@ private def load(containerId: String): Unit = {
     }
     case "workbookEmbroidery" => {
       info.control.changeWorkbook(CreateEmbroideryWorkbook(info))
-
       info.getDomElement()
     }
     case "workbookPlantWorkshop" => {
@@ -32,7 +32,7 @@ private def load(containerId: String): Unit = {
   }
 
   val container = dom.document.getElementById(containerId)
-  
+
   if (dom.document.readyState == "loading") renderOnDomContentLoaded(container, domElement)
   else render(container, domElement)
 }
@@ -44,6 +44,10 @@ private def testCalculations(): Unit = {
 
 @main
 def mainApp(): Unit = {
+//  FullInfo.resetLocalStorage()
+
+  FullInfo.setDummyUser()
+
   if (js.typeOf(js.Dynamic.global.selectDynamic("document")) != "undefined") {
     val canLoad: List[String] = tryToLoad.flatMap(id => if (dom.document.getElementById(id) != null) Some(id) else None)
     if (canLoad.isEmpty) println("Found no container to load a workbook into. Tried: " + tryToLoad.mkString(", "))

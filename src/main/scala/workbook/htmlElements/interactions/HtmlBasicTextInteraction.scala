@@ -26,7 +26,7 @@ case class HtmlBasicTextInteraction(fullInfo: FullInfo, id: String, initConfig: 
   interactionVariable.interactionSignal.foreach(newStorageValue => {
     val oldValue = varBoundToEditor.now()
     varBoundToEditor.set(newStorageValue)
-    println("new Storage value '" + newStorageValue + "' should overwrite editor value: " + oldValue + " -> " + varBoundToEditor.now())
+    //println("new Storage value '" + newStorageValue + "' should overwrite editor value: " + oldValue + " -> " + varBoundToEditor.now())
   })(unsafeWindowOwner)
   varBoundToEditor.signal.foreach(newEditorValue => onUserInputChanged(newEditorValue))(unsafeWindowOwner)
 
@@ -42,7 +42,11 @@ case class HtmlBasicTextInteraction(fullInfo: FullInfo, id: String, initConfig: 
     interactionVariable.updateStateFromUserInteraction(newDisplayedText, System.currentTimeMillis(), updateType)
   }
 
-  private val domElement: L.Element = editor.getDomElement()
+  private val domElement: L.Element =
+    L.div(
+      L.cls := "workbook-interaction",
+      editor.getDomElement()
+    )
   override def getDomElement(): L.Element = domElement
   
 
