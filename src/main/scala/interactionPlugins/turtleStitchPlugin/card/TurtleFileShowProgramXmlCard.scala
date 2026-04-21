@@ -16,7 +16,8 @@ case class TurtleFileShowProgramXmlCard(
                                          desiredFilename: String,
                                          headlineLanguageMapId: String,
                                          nonexistingImageLanguageMapId: String,
-                                         projectXmlVar: StrictSignal[Option[String]]
+                                         projectXmlVar: StrictSignal[Option[String]],
+                                         downloadButtonMapId: String = "TurtleStitch/downloadButton"
                                        ) extends HtmlWorkbookElement {
 
   private val headline: Element = h3(
@@ -24,7 +25,7 @@ case class TurtleFileShowProgramXmlCard(
   )
 
   private val downloadButton: Element = button(
-    text <-- fullInfo.signals.stringFromLanguageMapId("TurtleStitch/downloadButton"),
+    text <-- fullInfo.signals.stringFromLanguageMapId(downloadButtonMapId),
     onClick --> { _ =>
       projectXmlVar.now().foreach(f = currentXml => {
         DownloadHelper.downloadFile(desiredFilename, currentXml)
@@ -92,7 +93,8 @@ object TurtleFileShowProgramXmlCard {
       "TurtleStitch_" + fileDescription.filename,
       "TurtleStitch/providedProjectLabel",
       "basic/imageLoadingMap",
-      fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(ExecutionContext.global).signal.mapLazy(_.map(_.fileDataAsUtf8String))
+      fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(ExecutionContext.global).signal.mapLazy(_.map(_.fileDataAsUtf8String)),
+      "TurtleStitch/downloadButton"
     )
   }
 
@@ -104,7 +106,8 @@ object TurtleFileShowProgramXmlCard {
       "exercise" + forUploadButton.id,
       "TurtleStitch/showUploadedProgramText",
       "TurtleStitch/showEmptyPreview",
-      forUploadButton.interactionVariable.interactionSignal
+      forUploadButton.interactionVariable.interactionSignal,
+      "TurtleStitch/redownloadProgram"
     )
   }
 
