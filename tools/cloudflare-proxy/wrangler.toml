@@ -1,0 +1,9 @@
+name = "edusquirrel-proxy"
+main = "src/worker.js"
+compatibility_date = "2024-09-01"
+
+# Set OPENAI_API_KEY as a secret via:
+#   npx wrangler secret put OPENAI_API_KEY
+
+[vars]
+OPENAI_MODEL = "gpt-4o-mini"

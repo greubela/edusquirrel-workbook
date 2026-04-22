@@ -2,6 +2,12 @@
   "name": "edusquirrel-workbook",
   "private": true,
   "type": "module",
+  "scripts": {
+    "build": "sbt -batch fastOptJS",
+    "assemble": "node tools/dev/assemble-site.mjs",
+    "dev": "npm run build && npm run assemble && npx --yes http-server _site -p 4173 -c-1",
+    "preview": "npx --yes http-server _site -p 4173 -c-1"
+  },
   "devDependencies": {
     "jsdom": "^20.0.3"
   }

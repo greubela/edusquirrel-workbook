@@ -144,6 +144,11 @@ async function handleRun(id, payload) {
     setStreams(captureStdout, captureStderr);
     applyContext(context);
 
+    try { await pyodide.loadPackagesFromImports(code); } catch (_) {}
+    if (Array.isArray(payload.packages) && payload.packages.length > 0) {
+        try { await pyodide.loadPackage(payload.packages); } catch (_) {}
+    }
+
     await pyodide.runPythonAsync(code);
 
     ok(id, {

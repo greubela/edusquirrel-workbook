@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Workbook for Squirrels</title>
 
+    <!-- CSP: allow local proxy calls + Pyodide/WASM + CDN scripts used by the demo. -->
     <meta http-equiv="Content-Security-Policy"
           content="
           img-src 'self' data: blob:;
@@ -13,17 +14,18 @@
               script-src 'self' https://esm.sh https://unpkg.com https://cdn.jsdelivr.net 'wasm-unsafe-eval';
                style-src 'self' 'unsafe-inline' https://unpkg.com;">
 
+    <!-- Styles -->
+    <link rel="stylesheet" href="../css/messenger.css">
+    <link rel="stylesheet" href="../css/fullscreen.css">
+    <link rel="stylesheet" href="../css/blockEditor.css">
+    <link rel="stylesheet" href="../css/workbook.css">
+
     <!-- Dependencies -->
-    <script src="https://unpkg.com/algebrite@1.4.0/dist/algebrite.bundle-for-browser.js"></script>
+    <!-- <script src="https://unpkg.com/algebrite@1.4.0/dist/algebrite.bundle-for-browser.js"></script>-->
     <script src="../resources/programs/20260212TurtleStitch/fullturtle.js"></script>
-    <script type="module" src="./js/CodeMirrorLoader.js"></script>
 
-    <link rel="stylesheet" href="./css/messenger.css">
-    <link rel="stylesheet" href="./css/fullscreen.css">
-    <link rel="stylesheet" href="./css/blockEditor.css">
-    <link rel="stylesheet" href="./css/workbook.css">
-
-    <script type="module" src="../target/scala-3.3.3/workbookapp-fastopt/main.js"></script>
+    <script>window.EDUSQUIRREL_APP_AS_MODULE = true;</script>
+    <script src="../js/app-loader.js"></script>
 
 </head>
 <body>

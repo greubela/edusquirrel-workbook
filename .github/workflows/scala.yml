@@ -1,10 +1,9 @@
-name: Scala CI
+name: Deploy to GitHub Pages
 
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -25,25 +24,61 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 11
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '11'
+          java-version: '17'
+          cache: 'sbt'
 
       - name: Set up sbt
         uses: sbt/setup-sbt@v1
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'lts/*'
+      - name: Build Scala.js (fastOptJS)
+        run: sbt -batch -v fastOptJS
 
-      - name: Build Scala.js
+      - name: Assemble GitHub Pages site
         run: |
-          sbt -v fastOptJS fullOptJS
-          mkdir -p dist
-          find . \( -path "*/target/scala-*/**/*fastopt.js" -o -path "*/target/scala-*/**/*opt.js" \) \
-            -print -exec cp {} dist/ \;
+          set -e
+          rm -rf _site
+          mkdir -p _site
 
+          # 1) Copy the static homepage tree (index.html + per-page subdirs).
+          cp -R homepage/. _site/
 
+          # 2) Copy the Scala.js bundle to the canonical /js/app/ location
+          #    that the HTML pages and feedback-demo-loader.js expect.
+          mkdir -p _site/js/app
+          BUNDLE_DIR=$(find target -type d -name 'workbookapp-fastopt' | head -n 1)
+          if [ -z "$BUNDLE_DIR" ]; then
+            echo "Could not find workbookapp-fastopt build output." >&2
+            exit 1
+          fi
+          cp -R "$BUNDLE_DIR"/. _site/js/app/
+
+          # 3) Make /resources/ available next to the pages so links like
+          #    ./resources/... and ../resources/... resolve correctly.
+          if [ -d resources ]; then
+            cp -R resources _site/resources
+          fi
+
+          # 4) Optional favicon at the root.
+          if [ -f favicon.ico ]; then
+            cp favicon.ico _site/favicon.ico
+          fi
+
+          echo "::group::_site root"
+          ls -la _site
+          echo "::endgroup::"
+          echo "::group::_site/js/app"
+          ls -la _site/js/app | head -n 30
+          echo "::endgroup::"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
