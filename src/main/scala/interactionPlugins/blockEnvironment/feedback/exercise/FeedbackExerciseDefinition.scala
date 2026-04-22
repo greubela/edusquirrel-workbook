@@ -1,6 +1,6 @@
 package interactionPlugins.blockEnvironment.feedback
 
-import contentmanagement.model.language.AppLanguage
+import datastructures.core.language.AppLanguage
 
 /**
  * Backend-oriented exercise definition for the feedback pipeline.

@@ -1,0 +1,13 @@
+{
+  "defaultReadExerciseInstruction": "Read the commands within the following Program",
+  "defaultExerciseTitle": "Re-Create the Shape!",
+  "providedProjectLabel": "Prepared Project",
+  "defaultExecuteExerciseInstruction": "Verify your expectation!",
+  "defaultAnalyzeExerciseInstruction": "Describe the shape you expect to be created",
+  "defaultReprogramInstruction": "Open TurtleStitch (https://www.turtlestitch.org/run) and program the shape shown on the right. Then, click on the file symbol (📝) and save the file on your computer. Lastly, upload your file via the button on the left.",
+  "showUploadedProgramText": "Uploaded Project (Code Preview)",
+  "showEmptyPreview": "Uploaded Project (missing)",
+  "showExpected": "Desired Output",
+  "uploadButton": "Upload TurtleStitch Project (XML)",
+  "downloadButton": "Download Shown Project"
+}

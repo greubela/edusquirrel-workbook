@@ -1,6 +1,6 @@
 package interactionPlugins.blockEnvironment.feedback
 
-import contentmanagement.model.language.AppLanguage
+import datastructures.core.language.AppLanguage
 
 /**
  * In-memory registry of feedback exercise definitions.
@@ -29,6 +29,8 @@ object BlockFeedbackExerciseRegistry {
   val intToRomanExerciseId: String = "block:int-to-roman"
   val normalizeWhitespaceExerciseId: String = "block:normalize-whitespace"
   val rotateListExerciseId: String = "block:rotate-list"
+  val flattenNestedExerciseId: String = "block:flatten-nested"
+  val caesarCipherExerciseId: String = "block:caesar-cipher"
 
   // Script exercises (no function required)
   val fizzBuzzScriptExerciseId: String = "script:fizzbuzz"
@@ -1331,6 +1333,201 @@ object BlockFeedbackExerciseRegistry {
     )
   // @end wordCountScript
 
+  // @exercise val=flattenNested id=block:flatten-nested
+  // ──────────────────────────────────────────────────────────────────────
+  // Flatten a nested list  ·  block:flatten-nested
+  // ──────────────────────────────────────────────────────────────────────
+  val flattenNested: FeedbackExerciseDefinition =
+    FeedbackExerciseDefinition(
+      id = flattenNestedExerciseId,
+      titleTranslations = Map(
+        english -> "Flatten a nested list",
+        german -> "Verschachtelte Liste glätten"
+      ),
+      statementTranslations = Map(
+        english -> "Implement `flatten(xs)` that takes an arbitrarily nested list and returns a flat list of all the leaf numbers in order.\n\nExample: `flatten([1, [2, [3, 4]], 5])` → `[1, 2, 3, 4, 5]`",
+        german -> "Implementiere `flatten(xs)`, das eine beliebig tief verschachtelte Liste entgegennimmt und eine flache Liste aller Zahlen in Reihenfolge zurückgibt.\n\nBeispiel: `flatten([1, [2, [3, 4]], 5])` → `[1, 2, 3, 4, 5]`"
+      ),
+      config =
+        BlockFeedbackConfig(
+          enableVmStaticChecks = true,
+          enablePythonStaticChecks = true,
+          enableUnitTests = true,
+          enableAiSummary = true,
+          visibleTests = Seq(
+            BlockFeedbackPythonTest(
+              name = "flat_input",
+              code = "assert flatten([1, 2, 3]) == [1, 2, 3]",
+              hint = Some("A list with no nesting should be returned unchanged."),
+              hintDE = Some("Eine Liste ohne Verschachtelung soll unverändert zurückgegeben werden.")
+            ),
+            BlockFeedbackPythonTest(
+              name = "one_level_nested",
+              code = "assert flatten([1, [2, 3], 4]) == [1, 2, 3, 4]",
+              hint = Some("Handle one level of nesting first."),
+              hintDE = Some("Behandle zuerst eine Ebene der Verschachtelung.")
+            ),
+            BlockFeedbackPythonTest(
+              name = "deeply_nested",
+              code = "assert flatten([1, [2, [3, [4, [5]]]]]) == [1, 2, 3, 4, 5]",
+              hint = Some("Think recursively: a nested list is itself a list that also needs flattening."),
+              hintDE = Some("Denke rekursiv: Eine verschachtelte Liste ist selbst eine Liste, die auch geglättet werden muss.")
+            )
+          ),
+          hiddenTests = Seq(
+            BlockFeedbackPythonTest(
+              name = "empty_list",
+              code = "assert flatten([]) == []",
+              hint = Some("An empty list should return an empty list."),
+              hintDE = Some("Eine leere Liste soll eine leere Liste zurückgeben.")
+            ),
+            BlockFeedbackPythonTest(
+              name = "empty_nested",
+              code = "assert flatten([[], [[], []]]) == []",
+              hint = Some("Empty sublists contribute nothing to the result."),
+              hintDE = Some("Leere Unterlisten tragen nichts zum Ergebnis bei.")
+            ),
+            BlockFeedbackPythonTest(
+              name = "mixed_depth",
+              code = "assert flatten([[1, 2], 3, [4, [5, 6]], 7]) == [1, 2, 3, 4, 5, 6, 7]",
+              weight = 2.0,
+              hint = Some("Elements at different nesting depths must all appear in left-to-right order."),
+              hintDE = Some("Elemente auf unterschiedlichen Verschachtelungsebenen müssen alle in Links-nach-rechts-Reihenfolge erscheinen.")
+            ),
+            BlockFeedbackPythonTest(
+              name = "negative_and_zero",
+              code = "assert flatten([[-1, 0], [1, [-2, 3]]]) == [-1, 0, 1, -2, 3]",
+              hint = Some("Negative numbers and zero must be preserved."),
+              hintDE = Some("Negative Zahlen und Null müssen erhalten bleiben.")
+            ),
+            BlockFeedbackPythonTest(
+              name = "single_element",
+              code = "assert flatten([[[[42]]]]) == [42]",
+              weight = 1.5,
+              hint = Some("A single number wrapped in multiple layers should still be unwrapped completely."),
+              hintDE = Some("Eine einzelne Zahl in mehreren Schichten soll vollständig entschachtelt werden.")
+            ),
+            BlockFeedbackPythonTest(
+              name = "order_preserved",
+              code = "assert flatten([[3, 1], [4, 1], [5, 9], [2, 6]]) == [3, 1, 4, 1, 5, 9, 2, 6]",
+              hint = Some("The original left-to-right order must be preserved exactly."),
+              hintDE = Some("Die ursprüngliche Reihenfolge von links nach rechts muss exakt erhalten bleiben.")
+            )
+          ),
+          fixtures = Nil,
+          packages = Nil,
+          timeoutMs = 4000
+        )
+    )
+  // @end flattenNested
+
+  // @exercise val=caesarCipher id=block:caesar-cipher
+  // ──────────────────────────────────────────────────────────────────────
+  // Caesar cipher  ·  block:caesar-cipher
+  // ──────────────────────────────────────────────────────────────────────
+  val caesarCipher: FeedbackExerciseDefinition =
+    FeedbackExerciseDefinition(
+      id = caesarCipherExerciseId,
+      titleTranslations = Map(
+        english -> "Caesar cipher",
+        german -> "Caesar-Verschlüsselung"
+      ),
+      statementTranslations = Map(
+        english -> "Implement `caesar(text, shift)` that encodes a string with a Caesar cipher: shift each letter by `shift` positions in the alphabet, wrapping around. Preserve case; leave non-letter characters unchanged.\n\nExample: `caesar('Hello, World!', 3)` → `'Khoor, Zruog!'`",
+        german -> "Implementiere `caesar(text, shift)`, das einen String mit einer Caesar-Verschlüsselung kodiert: Verschiebe jeden Buchstaben um `shift` Positionen im Alphabet (mit Umbruch). Groß-/Kleinschreibung bleibt erhalten; Nicht-Buchstaben bleiben unverändert.\n\nBeispiel: `caesar('Hello, World!', 3)` → `'Khoor, Zruog!'`"
+      ),
+      config =
+        BlockFeedbackConfig(
+          enableVmStaticChecks = true,
+          enablePythonStaticChecks = true,
+          enableUnitTests = true,
+          enableAiSummary = true,
+          visibleTests = Seq(
+            BlockFeedbackPythonTest(
+              name = "classic_rot3",
+              code = "assert caesar('Hello, World!', 3) == 'Khoor, Zruog!'",
+              hint = Some("The classic Caesar shift is 3. Punctuation and spaces stay unchanged."),
+              hintDE = Some("Die klassische Caesar-Verschiebung ist 3. Satzzeichen und Leerzeichen bleiben unverändert.")
+            ),
+            BlockFeedbackPythonTest(
+              name = "lowercase",
+              code = "assert caesar('abc', 1) == 'bcd'",
+              hint = Some("Lowercase letters must also be shifted."),
+              hintDE = Some("Kleinbuchstaben müssen ebenfalls verschoben werden.")
+            ),
+            BlockFeedbackPythonTest(
+              name = "wrap_around",
+              code = "assert caesar('xyz', 3) == 'abc'",
+              hint = Some("After 'z' the alphabet wraps back to 'a'."),
+              hintDE = Some("Nach 'z' beginnt das Alphabet wieder bei 'a'.")
+            )
+          ),
+          hiddenTests = Seq(
+            BlockFeedbackPythonTest(
+              name = "uppercase_wrap",
+              code = "assert caesar('XYZ', 3) == 'ABC'",
+              hint = Some("Uppercase letters also wrap from Z back to A."),
+              hintDE = Some("Großbuchstaben wechseln ebenfalls von Z zu A.")
+            ),
+            BlockFeedbackPythonTest(
+              name = "mixed_case_preserved",
+              code = "assert caesar('AbCdEf', 13) == 'NoPqRs'",
+              weight = 2.0,
+              hint = Some("The case of each letter must be preserved after shifting."),
+              hintDE = Some("Die Groß-/Kleinschreibung jedes Buchstabens muss nach der Verschiebung erhalten bleiben.")
+            ),
+            BlockFeedbackPythonTest(
+              name = "shift_zero",
+              code = "assert caesar('Hello', 0) == 'Hello'",
+              hint = Some("A shift of 0 must return the original string unchanged."),
+              hintDE = Some("Eine Verschiebung von 0 muss den ursprünglichen String unverändert zurückgeben.")
+            ),
+            BlockFeedbackPythonTest(
+              name = "shift_26_identity",
+              code = "assert caesar('Python', 26) == 'Python'",
+              hint = Some("Shifting by the full alphabet length (26) is the same as no shift."),
+              hintDE = Some("Eine Verschiebung um die volle Alphabetlänge (26) entspricht keiner Verschiebung.")
+            ),
+            BlockFeedbackPythonTest(
+              name = "non_letters_unchanged",
+              code = "assert caesar('123 !@# abc', 5) == '123 !@# fgh'",
+              hint = Some("Digits, spaces, and symbols must not be shifted."),
+              hintDE = Some("Ziffern, Leerzeichen und Symbole dürfen nicht verschoben werden.")
+            ),
+            BlockFeedbackPythonTest(
+              name = "large_shift",
+              code = "assert caesar('abc', 29) == 'def'",
+              hint = Some("Shifts larger than 26 should still work by wrapping modulo 26."),
+              hintDE = Some("Verschiebungen größer als 26 sollen durch Modulo 26 korrekt funktionieren.")
+            ),
+            BlockFeedbackPythonTest(
+              name = "negative_shift_decode",
+              code = "assert caesar('Khoor', -3) == 'Hello'",
+              weight = 2.0,
+              hint = Some("A negative shift decodes a previously encoded message."),
+              hintDE = Some("Eine negative Verschiebung dekodiert eine zuvor kodierte Nachricht.")
+            ),
+            BlockFeedbackPythonTest(
+              name = "empty_string",
+              code = "assert caesar('', 7) == ''",
+              hint = Some("An empty string should return an empty string."),
+              hintDE = Some("Ein leerer String soll einen leeren String zurückgeben.")
+            ),
+            BlockFeedbackPythonTest(
+              name = "roundtrip",
+              code = "assert caesar(caesar('Secret message 42!', 17), -17) == 'Secret message 42!'",
+              weight = 2.0,
+              hint = Some("Encoding and then decoding with the opposite shift must restore the original text."),
+              hintDE = Some("Kodieren und anschließendes Dekodieren mit der entgegengesetzten Verschiebung muss den Originaltext wiederherstellen.")
+            )
+          ),
+          fixtures = Nil,
+          packages = Nil,
+          timeoutMs = 4000
+        )
+    )
+  // @end caesarCipher
+
   // @byExerciseId ────────────────────────────────────────────────────────
   // Lookup map and public API – add new exercises here after defining them.
   // ──────────────────────────────────────────────────────────────────────
@@ -1355,7 +1552,9 @@ object BlockFeedbackExerciseRegistry {
       evenSquaresScriptExerciseId -> evenSquaresScript,
       fibonacciScriptExerciseId -> fibonacciScript,
       primesScriptExerciseId -> primesScript,
-      wordCountScriptExerciseId -> wordCountScript
+      wordCountScriptExerciseId -> wordCountScript,
+      flattenNestedExerciseId -> flattenNested,
+      caesarCipherExerciseId -> caesarCipher
     )
 
   /** Lookup an exercise definition by id. */

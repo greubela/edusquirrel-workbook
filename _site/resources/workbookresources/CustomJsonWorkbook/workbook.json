@@ -1,0 +1,83 @@
+{
+  "workbookMetadata": {
+    "id": "custom-workbook",
+    "availableLanguages": ["de", "en", "ua", "dk"],
+    "defaultLanguage": "en",
+    "languageMapFiles": [
+      "./languageMaps/CustomWorkbook-en.json",
+      "./languageMaps/CustomWorkbook-ua.json",
+      "./languageMaps/CustomWorkbook-dk.json",
+      "./languageMaps/CustomWorkbook-de.json"
+    ],
+    "titleMapId": "CustomWorkbook/WorkbookTitle",
+    "estimatedInteractionDurationSeconds": {
+      "exercise-1a": 50.0,
+      "exercise-1b": 70.0,
+      "exercise-2a": 40.0,
+      "exercise-2b": 65.0,
+      "exercise-3a": 90.0
+    }
+  },
+  "workbookContent": {
+    "sections": [
+      {
+        "sectionId": "section-1",
+        "sectionTitleMapId": "CustomWorkbook/Sec1Title",
+        "sectionsRequiredBefore": [],
+        "sectionContent": [
+          {
+            "exerciseId": "sec1-ex1",
+            "elements": [
+              { "elementName": "HtmlContainerTitle", "factoryArgs": { "languageMapId": "CustomWorkbook/Ex1Title" } },
+              { "elementName": "HtmlUnsafeHtmlInstructionElement", "factoryArgs": { "languageMapId": "CustomWorkbook/Ex1Instr1a" } },
+              { "elementName": "HtmlBasicTextInteraction", "factoryArgs": { "id": "exercise-1a" } },
+              { "elementName": "HtmlUnsafeHtmlInstructionElement", "factoryArgs": { "languageMapId": "CustomWorkbook/Ex1Instr1b" } },
+              { "elementName": "HtmlBasicTextInteraction", "factoryArgs": { "id": "exercise-1b" } }
+            ]
+          },
+          {
+            "exerciseId": "sec1-ex2",
+            "elements": [
+              { "elementName": "HtmlContainerTitle", "factoryArgs": { "languageMapId": "CustomWorkbook/Ex2Title" } },
+              { "elementName": "HtmlUnsafeHtmlInstructionElement", "factoryArgs": { "languageMapId": "CustomWorkbook/Ex2Instr2a" } },
+              { "elementName": "HtmlBasicTextInteraction", "factoryArgs": { "id": "exercise-2a" } },
+              { "elementName": "HtmlUnsafeHtmlInstructionElement", "factoryArgs": { "languageMapId": "CustomWorkbook/Ex2Instr2b" } },
+              { "elementName": "HtmlBasicTextInteraction", "factoryArgs": { "id": "exercise-2b" } }
+            ]
+          },
+          {
+            "exerciseId": "sec1-ex3",
+            "elements": [
+              { "elementName": "HtmlContainerTitle", "factoryArgs": { "languageMapId": "CustomWorkbook/Ex3Title" } },
+              { "elementName": "HtmlUnsafeHtmlInstructionElement", "factoryArgs": { "languageMapId": "CustomWorkbook/Ex3Instr3a" } },
+              { "elementName": "HtmlBasicTextInteraction", "factoryArgs": { "id": "exercise-3a" } }
+            ]
+          }
+        ]
+      },
+      {
+        "sectionId": "section-2",
+        "sectionTitleMapId": "CustomWorkbook/Sec2Title",
+        "sectionsRequiredBefore": ["section-1"],
+        "sectionContent": [
+          {
+            "exerciseId": "sec2-ex1",
+            "elements": [
+              { "elementName": "HtmlContainerTitle", "factoryArgs": { "languageMapId": "CustomWorkbook/Ex4Title" } },
+              { "elementName": "HtmlUnsafeHtmlInstructionElement", "factoryArgs": { "languageMapId": "CustomWorkbook/Ex4Instr1" } },
+              { "elementName": "HtmlBasicTextInteraction", "factoryArgs": { "id": "exercise-4a" } }
+            ]
+          },
+          {
+            "exerciseId": "sec2-ex2",
+            "elements": [
+              { "elementName": "HtmlContainerTitle", "factoryArgs": { "languageMapId": "CustomWorkbook/Ex5Title" } },
+              { "elementName": "HtmlUnsafeHtmlInstructionElement", "factoryArgs": { "languageMapId": "CustomWorkbook/Ex5Instr1" } },
+              { "elementName": "HtmlBasicTextInteraction", "factoryArgs": { "id": "exercise-5a" } }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,11 +1,11 @@
 package interactionPlugins.blockEnvironment.feedback.rules
 
-import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
-import contentmanagement.model.vm.code.controlStructures.BeSequence
-import contentmanagement.model.vm.code.defining.BeDefineVariable
-import contentmanagement.model.vm.code.others.BeStartProgram
-import contentmanagement.model.vm.code.usage.BeUseValue
-import contentmanagement.model.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
+import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
+import datastructures.core.vm.code.controlStructures.BeSequence
+import datastructures.core.vm.code.defining.BeDefineVariable
+import datastructures.core.vm.code.others.BeStartProgram
+import datastructures.core.vm.code.usage.BeUseValue
+import datastructures.core.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
 import munit.FunSuite
 
 final class VmStaticRulesSpec extends FunSuite {

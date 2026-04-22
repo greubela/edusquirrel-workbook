@@ -1,6 +1,6 @@
 package interactionPlugins.blockEnvironment.feedback.rules
 
-import contentmanagement.model.language.{AppLanguage, HumanLanguage}
+import datastructures.core.language.{AppLanguage, HumanLanguage}
 
 import scala.collection.mutable
 import scala.util.matching.Regex

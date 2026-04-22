@@ -1,6 +1,6 @@
 package interactionPlugins.blockEnvironment.feedback.diagnosis
 
-import contentmanagement.model.language.{AppLanguage, HumanLanguage}
+import datastructures.core.language.{AppLanguage, HumanLanguage}
 import interactionPlugins.blockEnvironment.feedback.{BlockFeedbackRequest, BlockFeedbackTestPlan, PythonTestResult}
 import interactionPlugins.blockEnvironment.feedback.ml.{BlockFeedbackSignals, DecisionLayer}
 import interactionPlugins.blockEnvironment.feedback.rules.RuleResult

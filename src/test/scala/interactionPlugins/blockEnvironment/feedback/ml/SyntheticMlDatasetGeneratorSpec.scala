@@ -1,9 +1,9 @@
 package interactionPlugins.blockEnvironment.feedback.ml
 
-import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
-import contentmanagement.model.vm.code.BeExpression
-import contentmanagement.model.vm.code.others.BeStartProgram
-import contentmanagement.model.vm.parsing.python.PythonParser
+import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
+import datastructures.core.vm.code.BeExpression
+import datastructures.core.vm.code.others.BeStartProgram
+import datastructures.core.vm.parsing.python.PythonParser
 import interactionPlugins.blockEnvironment.feedback.{
   BlockFeedbackConfig,
   BlockFeedbackMeta,
@@ -13,7 +13,7 @@ import interactionPlugins.blockEnvironment.feedback.{
   PythonTestResult
 }
 import interactionPlugins.blockEnvironment.feedback.rules.{PythonStaticRules, VmStaticRules}
-import interactionPlugins.programmingExercise.pythonExercisesUnsorted.PythonRunStatus
+import interactionPlugins.blockEnvironment.feedback.runtime.PythonRunStatus
 import munit.FunSuite
 
 import scala.concurrent.{ExecutionContext, Future, Promise}

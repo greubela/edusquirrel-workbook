@@ -104,9 +104,7 @@ object MlTrainingLogger:
               headers = js.Dictionary("content-type" -> "application/json"),
               body = jsonLine
             )
-            // prevent unhandled promise rejections in Node/Scala.js test runs
             fetch(url, opts)
-              .`catch`((_: js.Any) => ())
             ()
         catch
           case _: Throwable => js.Dynamic.global.console.log(jsonLine)

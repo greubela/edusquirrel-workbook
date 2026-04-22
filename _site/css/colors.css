@@ -1,0 +1,135 @@
+/* Shared design tokens for the workbook experience.
+   Color policy: define colors only in this file and consume them via CSS variables in other stylesheets. */
+:root {
+
+  /* borders */
+
+  --interaction-border: 2px solid var(--color-accent-active);
+  --interaction-highlight-transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+
+  /* Canonical workbook palette (keep compact for maintainability). */
+  --color-ink: #182333;
+  --color-accent-strong: #1565c0;
+  --color-accent-primary: #2383dd;
+  --color-accent-active: #2196f3;
+  --color-border-soft: #d6deeb;
+  --color-surface-level-1: #e8f2ff;
+  --color-surface-level-2: #edf3fb;
+  --color-surface-muted: #f2f2f2;
+  --color-surface-base: #ffffff;
+  --color-text-muted: #4c566a;
+
+  /* Feedback / status colors (outside workbook core count). */
+  --color-error-500: #e66a6a;
+  --color-success-500: #2f9a6a;
+
+  /* Opacity variants (must also come from tokens, not inline rgba values). */
+  --color-shadow-blue-soft: rgba(21, 101, 192, 0.08);
+  --color-shadow-text-soft: rgba(24, 35, 51, 0.05);
+  --color-shadow-blue-strong: rgba(35, 131, 221, 0.85);
+  --color-outline-blue-soft: rgba(21, 101, 192, 0.15);
+  --color-focus-ring: rgba(37, 99, 235, 0.2);
+
+  /* Typography */
+  --font-family-base: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-family: var(--font-family-base);
+  --fontsize-text: 14px;
+
+  /* Layout sizes and spacing */
+  --space-xs: 2px;
+  --space-sm: 4px;
+  --space-md: 8px;
+  --space-lg: 12px;
+  --space-xl: 24px;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+
+  --padding-medium: 20px;
+  --transition: all 0.3s;
+
+  /* Shadows */
+  --shadow-light: 0 2px 6px rgba(24, 35, 51, 0.2);
+  --shadow-soft: 0 22px 48px -28px rgba(24, 35, 51, 0.35);
+  --shadow-button: 0 10px 24px -18px rgba(24, 35, 51, 0.5);
+  --shadow-focus: 0 0 0 2px var(--color-focus-ring);
+
+  /* Workbook-level semantic colors */
+  --color-workbook-background: var(--color-surface-level-2);
+  --color-workbook-surface-level-1: var(--color-surface-level-1);
+  --color-workbook-surface-level-2: var(--color-surface-muted);
+  --color-workbook-surface-level-3: var(--color-surface-base);
+  --color-workbook-surface-level-4: var(--color-surface-level-2);
+  --color-workbook-border-default: var(--color-border-soft);
+  --color-workbook-border-inactive: var(--color-accent-strong);
+  --color-workbook-border-active: var(--color-accent-active);
+  --color-workbook-accent: var(--color-accent-strong);
+
+  /* App surfaces */
+  --color-app-background: var(--color-workbook-background);
+  --color-page-gradient-start: var(--color-surface-level-2);
+  --color-page-gradient-mid: var(--color-workbook-background);
+  --color-page-gradient-end: var(--color-workbook-background);
+  --color-header-gradient-start: var(--color-surface-level-1);
+  --color-header-gradient-end: var(--color-surface-level-1);
+  --color-surface: var(--color-surface-base);
+  --color-surface-subtle: var(--color-surface-level-2);
+
+  --color-border-subtle: var(--color-workbook-border-default);
+  --color-border-strong: var(--color-workbook-border-default);
+  --color-border: var(--color-border-subtle);
+
+  --color-text-primary: var(--color-ink);
+  --color-text-secondary: var(--color-text-muted);
+  --color-text-inverse: var(--color-surface-base);
+
+  --color-focus: var(--color-accent-primary);
+
+  /* Accent colors */
+  --color-accent-blue-background: var(--color-surface-level-1);
+  --color-accent-error: var(--color-error-500);
+  --color-accent-success: var(--color-success-500);
+
+  /* Theme colors */
+  --color-theme: var(--color-accent-primary);
+  --color-dark: var(--color-ink);
+
+  --color-on-accent-primary: var(--color-text-inverse);
+
+  /* Label palette */
+  --color-label-editor-bg: var(--color-accent-primary);
+  --color-label-editor-text: var(--color-on-accent-primary);
+
+  /* Interaction surfaces */
+  --color-interaction-background: var(--color-surface);
+  --color-interaction-background-alt: var(--color-surface-muted);
+  --color-interaction-border: var(--color-border-subtle);
+
+  /* Buttons */
+  --color-button-background: var(--color-surface-muted);
+  --color-button-hover: var(--color-surface);
+  --color-button-border: var(--color-interaction-border);
+
+  /* Backward-compatible aliases used across existing stylesheets. */
+  --color-container-background: var(--color-workbook-surface-level-1);
+  --color-container-border-passive: var(--color-workbook-border-default);
+  --color-container-border-inactive: var(--color-workbook-border-inactive);
+  --color-container-border-active: var(--color-workbook-border-active);
+  --color-container-accent: var(--color-workbook-accent);
+  --color-tab-active-start: var(--color-accent-active);
+  --color-tab-active-end: var(--color-accent-primary);
+  --color-tab-active-border: var(--color-workbook-border-inactive);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: var(--font-family);
+}
+
+body {
+  background-color: var(--color-app-background);
+  color: var(--color-text-primary);
+}

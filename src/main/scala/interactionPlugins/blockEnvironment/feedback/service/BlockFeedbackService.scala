@@ -1,14 +1,12 @@
 package interactionPlugins.blockEnvironment.feedback
 
-import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
-import contentmanagement.model.vm.code.BeExpression
+import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
+import datastructures.core.vm.code.BeExpression
 import interactionPlugins.blockEnvironment.feedback.ai.{FetchProxyLlmClient, LlmClient, PromptTemplates, QualityGate}
 import interactionPlugins.blockEnvironment.feedback.diagnosis.{DiagnosisAdapters, DiagnosisEngine}
 import interactionPlugins.blockEnvironment.feedback.rules.{PythonStaticRules, VmStaticRules}
 import interactionPlugins.blockEnvironment.feedback.ml.{BlockFeedbackSignals, DecisionLayer, FeatureExtractor, MlRouter, MlTrainingLogger}
-import interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
-import interactionPlugins.programmingExercise.pythonExercisesUnsorted.PythonRunStatus
-
+import interactionPlugins.blockEnvironment.feedback.runtime.PythonRunStatus
 import scala.concurrent.{ExecutionContext, Future}
 import scala.scalajs.js
 
@@ -296,8 +294,6 @@ object BlockFeedbackService:
                 testPlanEffective.copy(derivedHints = testPlanEffective.derivedHints ++ Seq(passthroughText))
               else testPlanEffective
             else
-              // log
-              FeedbackDemoElement.logEvent("AI currently not available, fallback text!")
               val fallbackGated = QualityGate.enforce(fallbackCandidate, prompt.constraints, prompt.testNames, rawPython)
               val fallbackText = truncateWords(
                 normalizeStudentFacingText(fallbackGated.finalText),
@@ -307,7 +303,6 @@ object BlockFeedbackService:
                 testPlanEffective.copy(derivedHints = testPlanEffective.derivedHints ++ Seq(fallbackText))
               else testPlanEffective
           case None =>
-            FeedbackDemoElement.logEvent("AI currently not available, another fallback!")
             testPlanEffective
 
       val basePlanHintsCount = testPlanEffective.derivedHints.size

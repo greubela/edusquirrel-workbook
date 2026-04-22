@@ -3,7 +3,7 @@ package interactionPlugins.blockEnvironment.feedback
 /**
  * Feedback-owned representation of a Python test case.
  *
- * Intentionally decoupled from interactionPlugins.pythonExercises.* so the
+ * Intentionally decoupled from interactionPlugins.blockEnvironment.feedback.runtime.* so the
  * feedback module can evolve independently. Conversion into the runtime model
  * happens at the execution boundary.
  */

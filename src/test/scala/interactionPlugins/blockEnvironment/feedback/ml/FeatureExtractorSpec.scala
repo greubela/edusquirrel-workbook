@@ -25,18 +25,7 @@ final class FeatureExtractorSpec extends FunSuite {
       "py_rules_failed_warning",
       "py_rules_failed_error",
       "vm_rules_failed_warning",
-      "vm_rules_failed_error",
-      "err_has_traceback",
-      "err_syntaxerror",
-      "err_indentationerror",
-      "err_nameerror",
-      "err_typeerror",
-      "err_valueerror",
-      "err_attributeerror",
-      "err_indexerror",
-      "err_keyerror",
-      "err_zerodivisionerror",
-      "err_timeout"
+      "vm_rules_failed_error"
     )
 
     assertEquals(FeatureExtractor.defaultFeatureOrder, expected)

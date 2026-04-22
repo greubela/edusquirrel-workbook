@@ -1,6 +1,6 @@
 package interactionPlugins.blockEnvironment.feedback
 
-import contentmanagement.model.language.{AppLanguage, HumanLanguage}
+import datastructures.core.language.{AppLanguage, HumanLanguage}
 
 /**
  * Detects function-name mismatches: the student named their function differently

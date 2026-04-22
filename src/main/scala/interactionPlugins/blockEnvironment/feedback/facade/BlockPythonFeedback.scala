@@ -1,7 +1,7 @@
 package interactionPlugins.blockEnvironment.feedback
 
-import contentmanagement.model.language.HumanLanguage
-import contentmanagement.model.vm.code.BeExpression
+import datastructures.core.language.HumanLanguage
+import datastructures.core.vm.code.BeExpression
 import scala.concurrent.{ExecutionContext, Future}
 
 /**

@@ -1,6 +1,6 @@
 package interactionPlugins.blockEnvironment.feedback
 
-import contentmanagement.model.language.AppLanguage
+import datastructures.core.language.AppLanguage
 
 /**
  * Encapsulates the collection of tests, fixtures, packages and hints that

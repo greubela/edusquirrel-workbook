@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workbook for Squirrels</title>
+
+    <!-- CSP: allow local proxy calls + Pyodide/WASM + CDN scripts used by the demo. -->
+    <meta http-equiv="Content-Security-Policy"
+          content="
+          img-src 'self' data: blob:;
+          default-src 'self';
+          connect-src 'self' blob: http://localhost:8787 http://localhost:8000 http://127.0.0.1:8000 https://pytutorai-proxy.ultrichedima.workers.dev https://edusquirrel-proxy.ultrichedima.workers.dev https://cdn.jsdelivr.net https://ypcgzj23.trafficplex.cloud;
+          script-src 'self' blob: https://esm.sh https://unpkg.com https://cdn.jsdelivr.net 'wasm-unsafe-eval';
+          worker-src 'self' blob:;
+          style-src 'self' 'unsafe-inline' https://unpkg.com;">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="../css/messenger.css">
+    <link rel="stylesheet" href="../css/fullscreen.css">
+    <link rel="stylesheet" href="../css/blockEditor.css">
+    <link rel="stylesheet" href="../css/workbook.css">
+
+    <!-- Dependencies -->
+    <!-- <script src="https://unpkg.com/algebrite@1.4.0/dist/algebrite.bundle-for-browser.js"></script>-->
+    <script src="../resources/programs/20260212TurtleStitch/fullturtle.js"></script>
+
+    <script src="../js/config.js"></script>
+    <script>window.EDUSQUIRREL_APP_AS_MODULE = true;</script>
+    <script src="../js/app-loader.js"></script>
+
+    <!--<script type="module" src="../js/CodeMirrorLoader.js"></script>-->
+
+</head>
+<body>
+<div id="app">
+    <div class="container">
+        <div id="workbookEmbroidery">
+
+
+        </div>
+    </div>
+</div>
+</body>
+</html>

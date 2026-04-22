@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino Plant Workshop</title>
+
+    <meta http-equiv="Content-Security-Policy"
+          content="
+          default-src 'self';
+          connect-src 'self' blob: http://localhost:8787 http://localhost:8000 http://127.0.0.1:8000 https://pytutorai-proxy.ultrichedima.workers.dev https://edusquirrel-proxy.ultrichedima.workers.dev https://cdn.jsdelivr.net https://medv.io https://cdnjs.cloudflare.com;
+          script-src 'self' blob: 'unsafe-inline' https://esm.sh https://unpkg.com https://cdnjs.cloudflare.com https://medv.io 'wasm-unsafe-eval';
+          worker-src 'self' blob:;
+          style-src 'self' 'unsafe-inline' https://unpkg.com https://cdnjs.cloudflare.com;
+          img-src 'self' data: blob:;">
+
+    <!-- Prism für Syntax Highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-arduino.min.js"></script>
+
+    <!-- Plant Workshop CSS -->
+    <link rel="stylesheet" href="../css/plantWorkshop.css">
+
+    <script src="../js/config.js"></script>
+    <script>window.EDUSQUIRREL_APP_AS_MODULE = true;</script>
+    <script src="../js/app-loader.js"></script>
+</head>
+<body>
+    <div id="plantWorkshopApp"></div>
+
+    <!-- CodeJar Editor - made available globally for the Scala.js bundle. -->
+    <script type="module">
+      import { CodeJar } from 'https://medv.io/codejar/codejar.js';
+      window.CodeJar = CodeJar;
+    </script>
+</body>
+</html>

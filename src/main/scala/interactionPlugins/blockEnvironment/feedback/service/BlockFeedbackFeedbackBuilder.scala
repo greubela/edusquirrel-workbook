@@ -1,8 +1,8 @@
 package interactionPlugins.blockEnvironment.feedback
 
-import contentmanagement.model.language.{AppLanguage, HumanLanguage}
+import datastructures.core.language.{AppLanguage, HumanLanguage}
+import interactionPlugins.blockEnvironment.feedback.runtime.PythonRunStatus
 import interactionPlugins.blockEnvironment.feedback.rules.{RuleResult, RuleSeverity}
-import interactionPlugins.programmingExercise.pythonExercisesUnsorted.PythonRunStatus
 import workbook.model.feedback.FeedbackStatus
 
 /**

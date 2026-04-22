@@ -1,17 +1,17 @@
 package interactionPlugins.blockEnvironment.feedback.rules
 
-import contentmanagement.model.language.AppLanguage
-import contentmanagement.model.language.HumanLanguage
-import contentmanagement.model.language.LanguageMap
-import contentmanagement.model.vm.code.BeExpression
-import contentmanagement.model.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
-import contentmanagement.model.vm.code.defining.BeDefineVariable
-import contentmanagement.model.vm.code.others.{BeReturn, BeStartProgram}
-import contentmanagement.model.vm.code.tree.{BeExpressionNode, BeExpressionReference}
-import contentmanagement.model.vm.code.usage.{BeAssignVariable, BeUseValue}
-import contentmanagement.model.vm.types.{BeChildPosition, BeScope, BeUseValueReference}
-import contentmanagement.model.vm.types.BeScope.GlobalScope
-import contentmanagement.model.vm.types.BeChildRole.ConditionInControlStructure
+import datastructures.core.language.AppLanguage
+import datastructures.core.language.HumanLanguage
+import datastructures.core.language.LanguageMap
+import datastructures.core.vm.code.BeExpression
+import datastructures.core.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
+import datastructures.core.vm.code.defining.BeDefineVariable
+import datastructures.core.vm.code.others.{BeReturn, BeStartProgram}
+import datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference}
+import datastructures.core.vm.code.usage.{BeAssignVariable, BeUseValue}
+import datastructures.core.vm.types.{BeChildPosition, BeScope, BeUseValueReference}
+import datastructures.core.vm.types.BeScope.GlobalScope
+import datastructures.core.vm.types.BeChildRole.ConditionInControlStructure
 
 import scala.collection.mutable
 

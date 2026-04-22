@@ -695,9 +695,37 @@ $originalPrompt
       loopIndents.size >= 2 && loopIndents.max > loopIndents.min
     }
 
+    // Word-boundary matching to avoid false positives on German verbs like
+    // "versetze"/"setze" (⊃ "set") or English "predict"/"verdict" (⊃ "dict").
+    def matchesWord(haystack: String, word: String): Boolean =
+      s"(?i)\\b${java.util.regex.Pattern.quote(word)}\\b".r.findFirstIn(haystack).isDefined
+
+    // "set" is both an English verb ("set the value") and a data structure name
+    // ("use a set"). We look for data-structure context patterns to avoid
+    // false positives when "set" is used as the common verb "to set".
+    val mentionsSetAsDataStructure = {
+      val setDataStructurePatterns = Seq(
+        "(?i)\\ba\\s+set\\b",         // "a set"
+        "(?i)\\bein\\s+set\\b",       // "ein Set" (German)
+        "(?i)\\bthe\\s+set\\b",       // "the set"
+        "(?i)\\buse\\s+set\\b",       // "use set"
+        "(?i)\\busing\\s+set\\b",     // "using set"
+        "(?i)\\binto\\s+set\\b",      // "into set"
+        "(?i)\\bwith\\s+set\\b",      // "with set"
+        "(?i)\\bset\\s*\\(",          // "set(" — code-like usage
+        "(?i)\\bein\\s+set\\s+ver",   // "ein Set verwenden" (German)
+        "(?i)\\bnutze\\s+.*\\bset\\b", // "nutze ein Set" (German)
+        "(?i)\\bverwende\\s+.*\\bset\\b"  // "verwende ein Set" (German)
+      )
+      setDataStructurePatterns.exists(p => p.r.findFirstIn(textLower).isDefined)
+    }
+
     val mentionsDictSetAdvice =
-      textLower.contains("dictionary") || textLower.contains("dict") ||
-        textLower.contains("set") || textLower.contains("hashmap")
+      textLower.contains("dictionary") ||
+        matchesWord(textLower, "dict") ||
+        mentionsSetAsDataStructure ||
+        textLower.contains("hashmap") ||
+        textLower.contains("hash map")
     val sourceHasDictSet =
       sourceMentionsAny(Seq("dict(", "set(", "{}", "{", "}", "defaultdict", "counter("))
 

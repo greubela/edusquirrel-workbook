@@ -1,6 +1,6 @@
 package interactionPlugins.blockEnvironment.feedback.ai
 
-import contentmanagement.model.language.{AppLanguage, HumanLanguage}
+import datastructures.core.language.{AppLanguage, HumanLanguage}
 import interactionPlugins.blockEnvironment.feedback.diagnosis.{Diagnosis, DiagnosisJson}
 import interactionPlugins.blockEnvironment.feedback.ml.{BlockFeedbackSignals, DecisionLayer}
 

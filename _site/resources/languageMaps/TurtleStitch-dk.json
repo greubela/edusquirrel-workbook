@@ -1,0 +1,14 @@
+{
+  "defaultReadExerciseInstruction": "Læs kommandoerne i det følgende program",
+  "defaultExerciseTitle": "Genskab figuren!",
+  "providedProjectLabel": "Forberedt projekt",
+  "defaultExecuteExerciseInstruction": "Tjek din forventning!",
+  "defaultAnalyzeExerciseInstruction": "Beskriv den figur, du forventer bliver lavet",
+  "defaultReprogramInstruction": "Åbn TurtleStitch (https://www.turtlestitch.org/run) og programmer figuren, der vises til højre. Klik derefter på filsymbolet (📝) og gem filen på din computer. Til sidst uploader du din fil via knappen til venstre.",
+  "showUploadedProgramText": "Uploadet projekt (kodeforhåndsvisning)",
+  "showEmptyPreview": "Uploadet projekt (mangler)",
+  "showExpected": "Forventet resultat",
+  "uploadTitle": "Upload projekt",
+  "uploadButton": "Upload TurtleStitch-projekt (XML)",
+  "downloadButton": "Download det viste projekt"
+}

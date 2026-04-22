@@ -1,6 +1,6 @@
 package interactionPlugins.blockEnvironment.feedback
 
-import interactionPlugins.programmingExercise.pythonExercisesUnsorted.PythonRunStatus
+import interactionPlugins.blockEnvironment.feedback.runtime.PythonRunStatus
 
 /**
  * Intermediate structure that groups the information returned from the Python runtime.

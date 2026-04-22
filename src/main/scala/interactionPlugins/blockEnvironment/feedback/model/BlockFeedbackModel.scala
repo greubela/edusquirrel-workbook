@@ -1,7 +1,7 @@
 package interactionPlugins.blockEnvironment.feedback
 
-import contentmanagement.model.language.{AppLanguage, HumanLanguage, LanguageMap}
-import contentmanagement.model.vm.code.BeExpression
+import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
+import datastructures.core.vm.code.BeExpression
 
 /**
  * Metadata for a feedback invocation (exercise ID, user ID, etc.).

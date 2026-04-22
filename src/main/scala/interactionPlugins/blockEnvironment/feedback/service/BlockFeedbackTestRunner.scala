@@ -1,10 +1,12 @@
 package interactionPlugins.blockEnvironment.feedback
 
 import interactionPlugins.blockEnvironment.feedback.runtime.PythonFeedbackRuntime
-import interactionPlugins.programmingExercise.pythonExercisesUnsorted
-import interactionPlugins.programmingExercise.pythonExercisesUnsorted.{PythonFixture, PythonRunRequest, PythonRunResult, PythonRunStatus, PythonTestStatus, PythonUnitTest}
-import interactionPlugins.pythonExercises.{PythonRunRequest, PythonRunStatus, PythonTestStatus, PythonTestResult as RuntimeTestResult}
-
+import interactionPlugins.blockEnvironment.feedback.runtime.{
+  PythonRunRequest,
+  PythonRunStatus,
+  PythonTestResult => RuntimeTestResult,
+  PythonTestStatus
+}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
@@ -27,7 +29,7 @@ object BlockFeedbackTestRunner:
   private[feedback] def executeWithRunner(
     request: BlockFeedbackRequest,
     plan: BlockFeedbackTestPlan,
-    runPython: PythonRunRequest => Future[PythonRunResult]
+    runPython: PythonRunRequest => Future[interactionPlugins.blockEnvironment.feedback.runtime.PythonRunResult]
   )(using ExecutionContext): Future[PythonRuntimeOutcome] =
     executeWithRuntime(request, plan, (req, _) => runPython(req))
 
@@ -39,7 +41,7 @@ object BlockFeedbackTestRunner:
   private[feedback] def executeWithRuntime(
     request: BlockFeedbackRequest,
     plan: BlockFeedbackTestPlan,
-    runPython: (PythonRunRequest, Boolean) => Future[PythonRunResult]
+    runPython: (PythonRunRequest, Boolean) => Future[interactionPlugins.blockEnvironment.feedback.runtime.PythonRunResult]
   )(using ExecutionContext): Future[PythonRuntimeOutcome] =
     val rawPython = request.pythonSource
     val runtimeFixtures = plan.fixtures.map(toRuntimeFixture)
@@ -57,7 +59,7 @@ object BlockFeedbackTestRunner:
         timeoutMs = plan.timeoutMs
       )
 
-    def allPassed(expected: Seq[BlockFeedbackPythonTest], results: Seq[pythonExercisesUnsorted.PythonTestResult], hidden: Boolean): Boolean =
+    def allPassed(expected: Seq[BlockFeedbackPythonTest], results: Seq[RuntimeTestResult], hidden: Boolean): Boolean =
       expected.forall { t =>
         results
           .find(r => r.name == t.name && r.isHidden == hidden)
@@ -65,9 +67,9 @@ object BlockFeedbackTestRunner:
       }
 
     def combineScore(
-                      visibleResults: Seq[pythonExercisesUnsorted.PythonTestResult],
-                      hiddenResults: Seq[pythonExercisesUnsorted.PythonTestResult],
-                      hiddenExecuted: Boolean
+      visibleResults: Seq[RuntimeTestResult],
+      hiddenResults: Seq[RuntimeTestResult],
+      hiddenExecuted: Boolean
     ): Double =
       val weights: Map[(String, Boolean), Double] =
         (plan.visibleTests.map(t => (t.name, false) -> t.weight) ++
@@ -97,7 +99,7 @@ object BlockFeedbackTestRunner:
           (!request.config.runHiddenOnlyIfVisiblePass || visibleAllPassed)
 
       val runHidden = shouldRunHidden && plan.hiddenTests.nonEmpty
-      val hiddenRunF: Future[Option[PythonRunResult]] =
+      val hiddenRunF: Future[Option[interactionPlugins.blockEnvironment.feedback.runtime.PythonRunResult]] =
         if runHidden then runPython(hiddenReq, isolatePerTest).map(Some(_))
         else Future.successful(None)
 
@@ -165,7 +167,7 @@ object BlockFeedbackTestRunner:
       stderr = None
     )
 
-  private def mapRuntimeTestResult(entry: pythonExercisesUnsorted.PythonTestResult): PythonTestResult =
+  private def mapRuntimeTestResult(entry: RuntimeTestResult): PythonTestResult =
     val passed = entry.status == PythonTestStatus.Passed
 
     def parseExpectedActual(msg: String): Option[(String, String)] = {
@@ -198,9 +200,9 @@ object BlockFeedbackTestRunner:
 
   private def toRuntimeTest(
       test: BlockFeedbackPythonTest,
-      humanLanguage: contentmanagement.model.language.HumanLanguage
-  ): PythonUnitTest =
-    pythonExercisesUnsorted.PythonUnitTest(
+      humanLanguage: datastructures.core.language.HumanLanguage
+  ): interactionPlugins.blockEnvironment.feedback.runtime.PythonUnitTest =
+    interactionPlugins.blockEnvironment.feedback.runtime.PythonUnitTest(
       name = test.name,
       code = test.code,
       weight = test.weight,
@@ -209,10 +211,10 @@ object BlockFeedbackTestRunner:
 
   private def buildHint(
       test: BlockFeedbackPythonTest,
-      humanLanguage: contentmanagement.model.language.HumanLanguage
+      humanLanguage: datastructures.core.language.HumanLanguage
   ): String =
     val code = Option(test.code).getOrElse("").trim
-    val isGerman = humanLanguage == contentmanagement.model.language.AppLanguage.German
+    val isGerman = humanLanguage == datastructures.core.language.AppLanguage.German
 
     val hintOpt = (if isGerman then test.hintDE.orElse(test.hint) else test.hint)
       .map(_.trim).filter(_.nonEmpty)
@@ -245,8 +247,8 @@ object BlockFeedbackTestRunner:
 
   private def toRuntimeFixture(
       fixture: BlockFeedbackPythonFixture
-  ): PythonFixture =
-    pythonExercisesUnsorted.PythonFixture(
+  ): interactionPlugins.blockEnvironment.feedback.runtime.PythonFixture =
+    interactionPlugins.blockEnvironment.feedback.runtime.PythonFixture(
       path = fixture.path,
       content = fixture.content,
       isBinary = fixture.isBinary
