@@ -38,6 +38,8 @@
   --fd-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
   --fd-radius: 18px;
   --fd-mono: "Anonymous Pro", ui-monospace, "Segoe UI Variable", "Segoe UI", monospace;
+  --cm-indent-color: rgba(255, 255, 255, 0.10);
+  --cm-indent-active-color: rgba(255, 255, 255, 0.30);
   --fd-sans: "Aptos", "Segoe UI Variable", "Segoe UI", sans-serif;
 }
 
@@ -478,63 +480,6 @@ body {
   border-radius: 16px;
 }
 
-.code-mirror-editor .CodeMirror {
-  height: 100%;
-  min-height: 320px;
-  border-radius: 16px;
-  border: 1px solid rgba(120, 142, 190, 0.35);
-  background: rgba(10, 16, 30, 0.7) !important;
-  color: var(--fd-text);
-  box-shadow: inset 0 0 0 1px rgba(10, 16, 30, 0.45);
-}
-
-.code-mirror-editor .CodeMirror-gutters {
-  background: rgba(10, 16, 30, 0.7) !important;
-  border-right: 1px solid rgba(120, 142, 190, 0.2);
-}
-
-.code-mirror-editor .CodeMirror-scroll {
-  min-height: 320px;
-  background: rgba(10, 16, 30, 0.7) !important;
-}
-
-
-.fd-page .CodeMirror .cm-keyword    { color: #c792ea !important; font-weight: 600; }
-.fd-page .CodeMirror .cm-def        { color: #ffcb6b !important; font-weight: 600; }
-.fd-page .CodeMirror .cm-variable   { color: #eeffff !important; }
-.fd-page .CodeMirror .cm-variable-2 { color: #89ddff !important; }
-.fd-page .CodeMirror .cm-property   { color: #80cbc4 !important; }
-.fd-page .CodeMirror .cm-operator   { color: #89ddff !important; }
-.fd-page .CodeMirror .cm-number     { color: #f78c6c !important; }
-.fd-page .CodeMirror .cm-string     { color: #c3e88d !important; }
-.fd-page .CodeMirror .cm-string-2   { color: #a5d6a7 !important; font-style: italic; }
-.fd-page .CodeMirror .cm-comment    { color: #7986a8 !important; font-style: italic; }
-.fd-page .CodeMirror .cm-builtin    { color: #82aaff !important; }
-.fd-page .CodeMirror .cm-atom       { color: #ff9cac !important; font-weight: 600; }
-.fd-page .CodeMirror .cm-meta       { color: #ffd580 !important; }
-.fd-page .CodeMirror .cm-punctuation { color: #aabfd6 !important; }
-.fd-page .CodeMirror .cm-bracket    { color: #ffd700 !important; }
-.fd-page .CodeMirror .cm-error      { color: #ff5555 !important; text-decoration: underline dotted #ff5555; }
-.fd-page .CodeMirror .cm-qualifier  { color: #b2ccd6 !important; }
-.fd-page .CodeMirror-matchingbracket    { color: #ffd700 !important; font-weight: 700; background: rgba(255,215,0,0.18) !important; border-bottom: 2px solid #ffd700; }
-.fd-page .CodeMirror-nonmatchingbracket { color: #ff5555 !important; background: rgba(255,85,85,0.18) !important; }
-.fd-page .cm-editor .cm-keyword      { color: #c792ea !important; font-weight: 600; }
-.fd-page .cm-editor .cm-def          { color: #ffcb6b !important; font-weight: 600; }
-.fd-page .cm-editor .cm-variableName { color: #eeffff !important; }
-.fd-page .cm-editor .cm-propertyName { color: #80cbc4 !important; }
-.fd-page .cm-editor .cm-operator     { color: #89ddff !important; }
-.fd-page .cm-editor .cm-number       { color: #f78c6c !important; }
-.fd-page .cm-editor .cm-string       { color: #c3e88d !important; }
-.fd-page .cm-editor .cm-comment      { color: #7986a8 !important; font-style: italic; }
-.fd-page .cm-editor .cm-builtin      { color: #82aaff !important; }
-.fd-page .cm-editor .cm-attributeName{ color: #80cbc4 !important; }
-.fd-page .cm-editor .cm-typeName     { color: #82aaff !important; }
-.fd-page .cm-editor .cm-bool         { color: #ff9cac !important; font-weight: 600; }
-.fd-page .cm-editor .cm-null         { color: #ff9cac !important; font-weight: 600; }
-.fd-page .cm-editor .cm-punctuation  { color: #aabfd6 !important; }
-.fd-page .cm-editor .cm-brace        { color: #ffd700 !important; }
-.fd-page .cm-editor .cm-invalid      { color: #ff5555 !important; text-decoration: underline dotted #ff5555; }
-.fd-page .cm-editor .cm-decorator    { color: #ffd580 !important; }
 
 /* Inline code-token highlighting in feedback */
 .fd-token-def {
@@ -850,8 +795,8 @@ body {
 
 .fd-tt-icon--dark  { opacity: 1;    transform: scale(1);    }
 .fd-tt-icon--dark::before {
-  -webkit-mask-image: url(../../src/main/scala/interactionPlugins/blockEnvironment/feedback/ui/moon.svg);
-          mask-image: url(../../src/main/scala/interactionPlugins/blockEnvironment/feedback/ui/moon.svg);
+  -webkit-mask-image: url(../img/feedback/moon.svg);
+          mask-image: url(../img/feedback/moon.svg);
 }
 .fd-tt-icon--light {
   opacity: 0.35;
@@ -859,8 +804,8 @@ body {
   color: rgba(255, 210, 80, 0.80);
 }
 .fd-tt-icon--light::before {
-  -webkit-mask-image: url(../../src/main/scala/interactionPlugins/blockEnvironment/feedback/ui/sun.svg);
-          mask-image: url(../../src/main/scala/interactionPlugins/blockEnvironment/feedback/ui/sun.svg);
+  -webkit-mask-image: url(../img/feedback/sun.svg);
+          mask-image: url(../img/feedback/sun.svg);
 }
 
 [data-theme="light"] .fd-theme-toggle {
@@ -914,6 +859,8 @@ body {
   --fd-good:         #007a3d;
   --fd-bad:          #cc0000;
   --fd-shadow:       0 18px 50px rgba(0, 0, 0, 0.09);
+  --cm-indent-color: rgba(40, 65, 130, 0.18);
+  --cm-indent-active-color: rgba(40, 65, 130, 0.42);
 }
 
 [data-theme="light"] body {

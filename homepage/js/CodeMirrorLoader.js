@@ -1,4 +1,4 @@
-import {EditorState} from "https://cdn.jsdelivr.net/npm/@codemirror/state@6.5.2/+esm";
+import {EditorState} from "https://esm.sh/@codemirror/state@6.5.2";
 import {
   EditorView,
   keymap,
@@ -6,18 +6,21 @@ import {
   highlightActiveLine,
   lineNumbers,
   highlightActiveLineGutter
-} from "https://cdn.jsdelivr.net/npm/@codemirror/view@6.38.6/+esm";
-import {defaultKeymap, history, historyKeymap, indentLess, indentMore} from "https://cdn.jsdelivr.net/npm/@codemirror/commands@6.8.1/+esm";
+} from "https://esm.sh/@codemirror/view@6.38.6?deps=@codemirror/state@6.5.2";
+import {defaultKeymap, history, historyKeymap, indentLess, indentMore} from "https://esm.sh/@codemirror/commands@6.8.1?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3";
 import {
   bracketMatching,
   foldGutter,
   foldKeymap,
   indentUnit,
   indentOnInput,
-} from "https://cdn.jsdelivr.net/npm/@codemirror/language@6.11.3/+esm";
-import {highlightSelectionMatches, searchKeymap} from "https://cdn.jsdelivr.net/npm/@codemirror/search@6.5.11/+esm";
-import {python} from "https://cdn.jsdelivr.net/npm/@codemirror/lang-python@6.2.1/+esm";
-import {oneDark} from "https://cdn.jsdelivr.net/npm/@codemirror/theme-one-dark@6.1.3/+esm";
+  syntaxHighlighting,
+  defaultHighlightStyle
+} from "https://esm.sh/@codemirror/language@6.11.3?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6";
+import {highlightSelectionMatches, searchKeymap} from "https://esm.sh/@codemirror/search@6.5.11?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6";
+import {python} from "https://esm.sh/@codemirror/lang-python@6.2.1?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3,@codemirror/autocomplete@6.18.4";
+import {oneDark} from "https://esm.sh/@codemirror/theme-one-dark@6.1.3?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3";
+import {indentationMarkers} from "https://esm.sh/@replit/codemirror-indentation-markers@6.5.3?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3";
 
 const INDENT_SPACES = "    ";
 
@@ -40,6 +43,10 @@ const editorTheme = EditorView.theme({
     fontFamily: "var(--code-font-family, var(--font-mono, 'Fira Code', 'JetBrains Mono', monospace))",
     fontSize: "var(--code-font-size, 14px)",
     lineHeight: "1.5"
+  },
+  ".cm-indent-markers": {
+    "--indent-marker-bg-color":     "var(--cm-indent-color,        rgba(255,255,255,0.10))",
+    "--indent-marker-active-bg-color": "var(--cm-indent-active-color, rgba(255,255,255,0.28))"
   }
 });
 
@@ -55,7 +62,13 @@ const baseExtensions = [
   bracketMatching(),
   highlightActiveLine(),
   highlightSelectionMatches(),
+  indentationMarkers({
+    thickness: 1,
+    highlightActiveBlock: true,
+    hideFirstIndent: false
+  }),
   python(),
+  syntaxHighlighting(defaultHighlightStyle, {fallback: true}),
   oneDark,
   keymap.of([
     {key: "Tab", run: indentWithSpaces, shift: indentLess},
