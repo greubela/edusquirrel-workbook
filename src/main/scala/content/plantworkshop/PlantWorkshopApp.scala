@@ -159,7 +159,7 @@ object Task0_Motivation {
           className := "info-box",
           strong("Hinweis: "),
           "Wir arbeiten mit Arduino, einer Plattform, welche es einfach macht, Hardware mit Code zu steuern. ",
-          "Keine Sorge, wenn ihr noch nie programmiert habt, wir fangen ganz von vorne an!",
+          "Keine Sorge, wenn ihr noch nie programmiert habt, wir fangen ganz von vorne an! ",
           "Ihr habt die Wahl zwischen einem Anfängermodus mit Drag-and-Drop Codebausteinen und einem Fortgeschrittenenmodus, in dem ihr Codelückentext selbst ausfüllen könnt. ",
         )
       ),
@@ -181,12 +181,9 @@ object Task0_Motivation {
 // ========================================
 object Task1_ComponentChecklist {
   private val checkedItems: Var[Set[String]] = Var(Set.empty)
-  private val buildSteps = List(
-    "../resources/img/plantworkshop/step0.png",
-    "../resources/img/plantworkshop/step1.png",
-    "../resources/img/plantworkshop/step2.png"
-  )
+  private val buildSteps = (1 to 11).map(i => s"../resources/img/plantworkshop/schaltkreis/Plant%20conv%20$i.png").toList
   private val currentBuildStep: Var[Int] = Var(0)
+  private val showWiringDetails = false
 
   def render(): HtmlElement = {
     div(
@@ -211,7 +208,6 @@ object Task1_ComponentChecklist {
 
       div(
         className := "task-box",
-        h3("🔧 Aufbau & Verkabelung"),
         div(
           className := "safety-warning",
           backgroundColor := "#ffe5e5",
@@ -223,49 +219,57 @@ object Task1_ComponentChecklist {
             strong("Niemals Strom ohne Aufseher einschalten! "),
             "Die Stromversorgung darf nur zusammen mit einer betreuenden Person aktiviert werden."
           )
-        ),
-        p("So werden die Komponenten verbunden:"),
-        div(
-          className := "wiring-diagram",
-          h4("Feuchtigkeitssensor:"),
-          ul(
-            li("+ → Arduino D2"),
-            li("- → Arduino GND"),
-            li("S (Signal) → Arduino A0 (analoger Eingang)")
-          ),
-          div(
-            className := "info-box small-info",
-            strong("Hinweis: "),
-            "Wir schließen den Sensor an einen digitalen Pin (D2) für die Stromversorgung an, ",
-            "damit wir ihn nur bei Bedarf einschalten können und so die Lebensdauer verlängern."
-          ),
-          h4("Relais-Modul:"),
-          ul(
-            li("DC+ → Arduino 5V"),
-            li("DC- → Arduino GND"),
-            li("IN → Arduino D8 (digitaler Eingang)")
-          ),
-          h4("Pumpe:"),
-          ul(
-            li("Pumpe + → Relais NO (Normally Open)"),
-            li("Pumpe - → Netzteil -"),
-            li("Netzteil + → Relais COM (Common)")
-          ),
-          div(
-            className := "info-box small-info",
-            strong("Wichtig: "),
-            "Das Relais trennt die Pumpe vom Arduino-Stromkreis. ",
-            "Niemals die Pumpe direkt am Arduino anschließen! ",
-            "Zwischen Pumpe, Relais und Netzteil keine Jumperkabel verwenden!"
-          )
-        ),
-        div(
-          className := "info-box",
-          strong("Warum ein Relais? "),
-          "Das Arduino kann nur kleine Ströme direkt schalten, aber die Pumpe braucht mehr Strom. ",
-          "Der Arduino steuert das Relais und das Relais schaltet die Pumpe an/aus."
         )
       ),
+
+      if (showWiringDetails)
+        div(
+          className := "task-box",
+          h3("🔧 Aufbau & Verkabelung"),
+          p("So werden die Komponenten verbunden:"),
+          div(
+            className := "wiring-diagram",
+            h4("Feuchtigkeitssensor:"),
+            ul(
+              li("+ → Arduino D2"),
+              li("- → Arduino GND"),
+              li("S (Signal) → Arduino A0 (analoger Eingang)")
+            ),
+            div(
+              className := "info-box small-info",
+              strong("Hinweis: "),
+              "Wir schließen den Sensor an einen digitalen Pin (D2) für die Stromversorgung an, ",
+              "damit wir ihn nur bei Bedarf einschalten können und so die Lebensdauer verlängern."
+            ),
+            h4("Relais-Modul:"),
+            ul(
+              li("DC+ → Arduino 5V"),
+              li("DC- → Arduino GND"),
+              li("IN → Arduino D8 (digitaler Eingang)")
+            ),
+            h4("Pumpe:"),
+            ul(
+              li("Pumpe + → Relais NO (Normally Open)"),
+              li("Pumpe - → Netzteil -"),
+              li("Netzteil + → Relais COM (Common)")
+            ),
+            div(
+              className := "info-box small-info",
+              strong("Wichtig: "),
+              "Das Relais trennt die Pumpe vom Arduino-Stromkreis. ",
+              "Niemals die Pumpe direkt am Arduino anschließen! ",
+              "Zwischen Pumpe, Relais und Netzteil keine Jumperkabel verwenden!"
+            )
+          ),
+          div(
+            className := "info-box",
+            strong("Warum ein Relais? "),
+            "Das Arduino kann nur kleine Ströme direkt schalten, aber die Pumpe braucht mehr Strom. ",
+            "Der Arduino steuert das Relais und das Relais schaltet die Pumpe an/aus."
+          )
+        )
+      else
+        emptyNode,
 
       div(
         className := "task-box",
@@ -305,7 +309,31 @@ object Task1_ComponentChecklist {
               borderRadius := "8px"
             ),
             child <-- currentBuildStep.signal.map {
+              case 0 =>
+                div(
+                  width := "820px",
+                  div(
+                    className := "info-box",
+                    strong("Hinweis:"),
+                    p(
+                      "In den nächsten Schritten benötigt ihr Jumperkabel. ",
+                      "Nehmt euch jetzt schon ein paar Jumperkabel und legt sie beiseite."
+                    )
+                  )
+                )
               case 1 =>
+                div(
+                  width := "820px",
+                  div(
+                    className := "info-box",
+                    strong("Hinweis:"),
+                    p(
+                      "Nehmt euch jetzt einen Arduino Nano, ein Relais und den Feuchtigkeitssensor. ",
+                      "Diese Bauteile verbinden wir gleich miteinander."
+                    )
+                  )
+                )
+              case 2 =>
                 div(
                   display := "flex",
                   gap := "12px",
@@ -338,8 +366,149 @@ object Task1_ComponentChecklist {
                     )
                   )
                 )
-              case _ =>
-                emptyNode
+              case 3 =>
+                div(
+                  display := "flex",
+                  gap := "12px",
+                  width := "820px",
+                  div(
+                    className := "info-box",
+                    flex := "1",
+                    strong("Verkabelung:"),
+                    ul(
+                      li(" Relais DC+ __ Arduino 5V"),
+                      li(" Relais DC- __ Arduino GND"),
+                      li(" Relais IN __ Arduino D8")
+                    )
+                  ),
+                  div(
+                    className := "info-box",
+                    flex := "2",
+                    strong("Was macht diese Verkabelung?"),
+                    p(
+                      "Das Relais wird mit 5V und GND vom Arduino versorgt. ",
+                      "Über den Pin D8 steuert der Arduino das Relais an. "
+                    ),
+                    p(
+                      "Das Relais funktioniert als Schalter zwischen Arduino und Pumpe. ",
+                      "So kann der Arduino die Pumpe sicher ein- und ausschalten, obwohl die Pumpe mehr Strom braucht, als der Arduino liefern kann."
+                    ),
+                    p(
+                      "Wichtig: Die Pumpe wird nicht direkt am Arduino angeschlossen, ",
+                      "sondern über das Relais geschaltet."
+                    )
+                  )
+                )
+              case 4 =>
+                div(
+                  width := "820px",
+                  div(
+                    className := "info-box",
+                    strong("Zwischenstand:"),
+                    p(
+                      "So sollte euer Aufbau bis hier aussehen. ",
+                      "Vergleicht eure Verkabelung mit dem Bild und prüft kurz alle Verbindungen, bevor es weitergeht."
+                    )
+                  )
+                )
+              case 5 =>
+                div(
+                  width := "820px",
+                  div(
+                    className := "info-box",
+                    strong("Hinweis:"),
+                    p(
+                      "Schneidet euch jetzt 3 Stücke Draht zurecht und legt sie bereit. ",
+                      "Diese braucht ihr in den nächsten Schritten. Jumperkabel werden ab jetzt nicht mehr verwendet."
+                    )
+                  )
+                )
+              case 6 =>
+                div(
+                  width := "820px",
+                  div(
+                    className := "info-box",
+                    strong("Hinweis:"),
+                    p(
+                      "Nehmt euch jetzt das Relais, die Pumpe und den Adapter. ",
+                      "Den Adapter verbinden wir später mit dem Netzteil."
+                    ),
+                    p(
+                      "Das Relais ist dasselbe wie vorher, ",
+                      "aber wir arbeiten jetzt mit den Anschlüssen auf der anderen Seite."
+                    )
+                  )
+                )
+              case 7 =>
+                div(
+                  display := "flex",
+                  gap := "12px",
+                  width := "820px",
+                  div(
+                    className := "info-box",
+                    flex := "1",
+                    strong("Verkabelung:"),
+                    ul(
+                      li(" Pumpe + __ Relais NO (Normally Open)"),
+                      li(" Pumpe - __ Adapter -"),
+                      li(" Adapter + __ Relais COM (Common)")
+                    )
+                  ),
+                  div(
+                    className := "info-box",
+                    flex := "2",
+                    strong("Was macht diese Verkabelung?"),
+                    p(
+                      "Hier verbindet ihr Relais, Pumpe und Adapter mit den vorbereiteten Drähten. ",
+                      "Das Relais schaltet später den Strom zur Pumpe."
+                    ),
+                    p(
+                      "Der Pluspol vom Adapter geht über COM und NO zur Pumpe, ",
+                      "der Minuspol vom Adapter wird direkt mit der Pumpe verbunden."
+                    ),
+                    p(
+                      "Wichtig: Für diese Verbindung keine Jumperkabel verwenden, ",
+                      "sondern die zugeschnittenen Drähte."
+                    )
+                  )
+                )
+              case 8 =>
+                div(
+                  width := "820px",
+                  div(
+                    className := "info-box",
+                    strong("Hinweis:"),
+                    p(
+                      "Verbindet jetzt den Adapter mit dem Netzteil. ",
+                      "Achtet dabei darauf, dass Plus und Minus richtig angeschlossen sind."
+                    )
+                  )
+                )
+              case 9 =>
+                div(
+                  width := "820px",
+                  div(
+                    className := "info-box",
+                    strong("Hinweis:"),
+                    p(
+                      "Nehmt von der großen PVC-Schlauchrolle zwei Stücke mit jeweils 50 cm Länge. ",
+                      "Diese beiden Schlauchstücke werden gleich für die Pumpe benötigt."
+                    )
+                  )
+                )
+              case 10 =>
+                div(
+                  width := "820px",
+                  div(
+                    className := "info-box",
+                    strong("Hinweis:"),
+                    p(
+                      "Verbindet jetzt die beiden Schlauchstücke mit der Pumpe. ",
+                      "Ein Schlauchstück kommt an den Eingang und das andere an den Ausgang der Pumpe."
+                    )
+                  )
+                )
+              case _ => emptyNode
             }
           )
         )
@@ -708,6 +877,7 @@ object Task4_Combined {
       snippets(2),
       snippets(12),
       snippets(4),
+      snippets(8),
       snippets(9),
       snippets(14),
       snippets(11),
@@ -1060,6 +1230,7 @@ object DragAndDropHelper {
     else if (normalized.contains("Serial.print")) "Gib Text im Serial Monitor ohne Zeilenumbruch aus."
     else if (normalized.contains("Serial.println")) "Gib Text oder Wert im Serial Monitor mit Zeilenumbruch aus."
     else if (normalized.contains("delay(2000)")) "Warte 2000 ms."
+    else if (normalized.contains("int feuchtigkeitsGrenze")) "Erstelle eine Ganzzahlvariable für die Feuchtigkeitsgrenze."
     else if (normalized.contains("delay(10000)")) "Warte 10000 ms."
     else if (normalized.startsWith("if")) "Starte einen if-Block."
     else if (normalized.startsWith("} else {")) "Beende den if-Block und starte den else-Zweig."

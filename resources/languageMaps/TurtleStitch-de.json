@@ -10,5 +10,6 @@
   "showExpected": "Ziel",
   "uploadTitle": "Projekt hochladen",
   "uploadButton": "Hochladen (XML)",
-  "downloadButton": "Gezeigtes Projekt Herunterladen"
+  "downloadButton": "Gezeigtes Projekt Herunterladen",
+  "redownloadProgram": "Deine Abgabe herunterladen"
 }

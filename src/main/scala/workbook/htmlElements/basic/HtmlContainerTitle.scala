@@ -23,7 +23,7 @@ case class HtmlContainerTitle(fullInfo: FullInfo, languageMapId: String, level: 
     div(
       cls := "workbook-element container-title",
       cls := s"container-title-level-$normalizedLevel",
-      text <-- fullInfo.signals.stringFromLanguageMapId(languageMapId)
+      child <-- fullInfo.signals.stringFromLanguageMapId(languageMapId).map(headingElement)
     )
   }
 

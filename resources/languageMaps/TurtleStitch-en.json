@@ -9,5 +9,6 @@
   "showEmptyPreview": "Uploaded Project (missing)",
   "showExpected": "Desired Output",
   "uploadButton": "Upload TurtleStitch Project (XML)",
-  "downloadButton": "Download Shown Project"
+  "downloadButton": "Download Shown Project",
+  "redownloadProgram": "Download your submission"
 }
