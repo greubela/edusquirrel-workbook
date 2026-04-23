@@ -772,14 +772,7 @@ object FeedbackDemoElement:
                   ),
                   div(
                     cls := "fd-editor",
-                    if hasCodeMirrorFacade then
-                      CodeMirrorEditor(pythonCodeVar).getDomElement()
-                    else
-                      textArea(
-                        cls := "fd-textarea",
-                        value <-- pythonCodeVar.signal,
-                        onInput.mapToValue --> pythonCodeVar.set
-                      )
+                    CodeMirrorEditor(pythonCodeVar).getDomElement()
                   )
                 )
               )

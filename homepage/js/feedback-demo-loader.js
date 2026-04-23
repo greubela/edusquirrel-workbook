@@ -17,7 +17,7 @@
     }
 
     var script = document.createElement("script");
-    script.defer = true;
+    script.type = "module";
     script.src = paths[index] + "?" + cacheBust;
     script.onerror = function () {
       loadAt(index + 1);
@@ -25,8 +25,23 @@
     document.head.appendChild(script);
   }
 
+  function waitForCodeMirror(maxMs) {
+    var start = Date.now();
+    return new Promise(function (resolve) {
+      function tick() {
+        if (window.EduSquirrelCodeMirrorReady && typeof window.EduSquirrelCodeMirrorReady.then === "function") {
+          window.EduSquirrelCodeMirrorReady.then(resolve, resolve);
+          return;
+        }
+        if (Date.now() - start > maxMs) { resolve(); return; }
+        setTimeout(tick, 30);
+      }
+      tick();
+    });
+  }
+
   function startLoading() {
-    loadAt(0);
+    waitForCodeMirror(8000).then(function () { loadAt(0); });
   }
 
   if (document.readyState === "loading") {
