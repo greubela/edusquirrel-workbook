@@ -1,6 +1,0 @@
-[submodule "lib/bootstrap"]
-	path = lib/bootstrap
-	url = https://github.com/twbs/bootstrap.git
-[submodule "lib/bootstrap-icons"]
-	path = lib/bootstrap-icons
-	url = https://github.com/twbs/icons.git
