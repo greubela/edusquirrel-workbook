@@ -3,6 +3,7 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
 import content.plantworkshop.PlantWorkshopApp
 import content.{CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, plantworkshop}
+import interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
 import org.scalajs.dom
 import workbook.model.info.{AllUserInfo, FullInfo}
 import workbook.user.User
@@ -12,7 +13,7 @@ import scala.scalajs.js
 
 private def info = FullInfo.singleton
 
-private val tryToLoad: List[String] = List("plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop")
+private val tryToLoad: List[String] = List("plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "feedbackDemoRoot")
 
 private def load(containerId: String): Unit = {
   println("loading workbook: " + containerId)
@@ -27,6 +28,9 @@ private def load(containerId: String): Unit = {
     case "workbookPlantWorkshop" => {
       info.control.changeWorkbook(CreatePlantworkshopWorkbook(info))
       info.getDomElement()
+    }
+    case "feedbackDemoRoot" => {
+      FeedbackDemoElement.element()
     }
     case other => div("Workbook '" + other + "' not available via MainApp::load!")
   }

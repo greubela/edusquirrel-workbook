@@ -9,26 +9,25 @@
           content="default-src 'self'; script-src 'self' 'unsafe-inline' https://esm.sh https://unpkg.com https://cdnjs.cloudflare.com https://medv.io; style-src 'self' 'unsafe-inline' https://unpkg.com https://cdnjs.cloudflare.com;">
 
     <!-- Prism für Syntax Highlighting -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-arduino.min.js"></script>
 
     <!-- Plant Workshop CSS -->
-    <link rel="stylesheet" href="css/plantWorkshop.css">
+    <link rel="stylesheet" href="../css/plantWorkshop.css">
 
+    <script>window.EDUSQUIRREL_APP_AS_MODULE = true;</script>
+    <script src="../js/app-loader.js"></script>
 </head>
 <body>
     <div id="plantWorkshopApp"></div>
 
-    <!-- CodeJar Editor - load before Scala.js -->
+    <!-- CodeJar Editor - made available globally for the Scala.js bundle. -->
     <script type="module">
       import { CodeJar } from 'https://medv.io/codejar/codejar.js';
       window.CodeJar = CodeJar;
-      
-      // Load Scala.js after CodeJar is ready
-      import('../target/scala-3.3.3/workbookapp-fastopt/main.js');
     </script>
 </body>
 </html>

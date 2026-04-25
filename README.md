@@ -110,3 +110,39 @@ Use language-map IDs in code via `AllWorkbookInfo.stringSignalFromLanguageMapId(
 
 To add a new language file, add the file and register it in `WorkbookLanguageInfo.languageMapFiles`.
 
+
+## 8) GitHub Pages deployment
+
+The site is deployed by [`.github/workflows/scala.yml`](.github/workflows/scala.yml) on every push to `main`. Layout:
+
+```
+homepage/
+├── index.html              ← landing page (entry point)
+├── workbook/index.html     ← Block/Python editor
+├── plant/index.html        ← Plant workshop
+├── feedback/index.html     ← Feedback demo
+├── embroidery/index.html   ← Embroidery workbook
+├── css/
+└── js/
+    ├── config.js           ← LLM_PROXY_URL pointing at the Cloudflare worker
+    ├── app-loader.js       ← finds the Scala.js bundle (with fallbacks)
+    └── ...                 ← supporting scripts
+```
+
+The workflow runs `sbt fastOptJS`, copies `homepage/` into `_site/`, then drops the Scala.js bundle into `_site/js/app/` and copies `resources/` next to the pages. The result is published to GitHub Pages.
+
+### Local preview of the deployed layout
+
+```bash
+npm run dev          # sbt fastOptJS + assemble _site/ + serve on http://localhost:4173
+# or, if you already built:
+npm run preview
+```
+
+## 9) LLM proxy (Cloudflare Worker)
+
+LLM calls go through a Cloudflare Worker so the OpenAI key never reaches the browser. The frontend reads `window.LLM_PROXY_URL` from [`homepage/js/config.js`](homepage/js/config.js).
+
+By default the deployed site reuses the existing **`pytutorai-proxy`** worker (same code, same `/api/llm/complete` contract). If you want a dedicated worker, deploy [`tools/cloudflare-proxy/`](tools/cloudflare-proxy/README.md) and update the URL in `config.js`.
+
+Local FastAPI proxy still works for offline development — see [`tools/openai-proxy/README.md`](tools/openai-proxy/README.md).

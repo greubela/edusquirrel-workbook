@@ -1,0 +1,13 @@
+{
+  "name": "edusquirrel-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npx wrangler dev",
+    "deploy": "npx wrangler deploy",
+    "secret": "npx wrangler secret put OPENAI_API_KEY"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
