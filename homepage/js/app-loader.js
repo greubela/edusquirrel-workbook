@@ -15,6 +15,9 @@
   var origin = window.location.origin || "";
 
   var defaultPaths = [
+    "../../artifacts/newest/client.js",
+    "../../artifacts/newest/client-fastOpt.js",
+    "../../artifacts/stable/client.js",
     "../js/app/main.js",
     "./js/app/main.js",
     origin + "/js/app/main.js",
