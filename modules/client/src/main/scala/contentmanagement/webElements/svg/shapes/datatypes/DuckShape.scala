@@ -5,7 +5,7 @@ import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import contentmanagement.webElements.svg.shapes.BeShape.*
-import datastructures.core.geometry.{Bounds, Dimension, Point}
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 
 object DuckShape extends BeShapePathBased {
 

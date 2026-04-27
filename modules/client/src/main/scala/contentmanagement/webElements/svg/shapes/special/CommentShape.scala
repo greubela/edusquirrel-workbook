@@ -3,8 +3,8 @@ package contentmanagement.webElements.svg.shapes.special
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapePathBased
 import contentmanagement.webElements.svg.shapes.ShapeFactory
-import datastructures.core.geometry.{Bounds, Dimension}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension}
 
 case class CommentShape() extends BeShapePathBased {
 

@@ -15,11 +15,11 @@ import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRe
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.elements.*
 import contentmanagement.webElements.genericHtmlElements.editor.*
-import datastructures.core.geometry.{Bounds, Point}
 import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.code.others.BeStartProgram
 import datastructures.core.vm.parsing.python.PythonParser
+import it.evadid.core.datastructures.geometry.{Bounds, Point}
 import workbook.model.abstractions.HtmlWorkbookElement
 
 object HtmlFullscreenTurtleEditorElement {

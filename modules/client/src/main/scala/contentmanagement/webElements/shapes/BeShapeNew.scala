@@ -2,8 +2,8 @@ package contentmanagement.webElements.shapesNew
 
 import contentmanagement.webElements.shapes.meta.*
 import contentmanagement.webElements.svg.AppSvgElement
-import datastructures.core.geometry.Dimension
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import it.evadid.core.datastructures.geometry.Dimension
 
 
 case class BeShapeNew[T: Fractional](

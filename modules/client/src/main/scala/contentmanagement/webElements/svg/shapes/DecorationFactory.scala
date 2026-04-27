@@ -1,8 +1,8 @@
 package contentmanagement.webElements.svg.shapes
 
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
-import datastructures.core.geometry.{Bounds, Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 
 
 case class DecorationFactory[T: Fractional](renderingConfig: BeRenderingConfig) {

@@ -3,8 +3,10 @@ package contentmanagement.webElements.svg.compositeElements
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.shapes.*
 import contentmanagement.webElements.svg.shapes.datatypes.UnitShape
-import datastructures.core.geometry.{Bounds, Dimension}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension}
+
+
 /*
 enum RenderOption {
   case RENDER_CONTROL_FLOW, RENDER_EXPRESSION, RENDER_BOTH

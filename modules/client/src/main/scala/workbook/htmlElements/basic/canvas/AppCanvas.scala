@@ -2,9 +2,9 @@ package workbook.htmlElements.basic.canvas
 
 import contentmanagement.webElements.HtmlAppElement
 import datastructures.core.color.AppColor
-import datastructures.core.geometry.Bounds
 import datastructures.web.file.FullImage
 import datastructures.web.font.AppFont
+import it.evadid.core.datastructures.geometry.Bounds
 
 trait AppCanvas[C] extends HtmlAppElement {
   

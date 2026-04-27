@@ -8,8 +8,8 @@ import com.raquo.laminar.api.L.svg
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.shapes.ShapeFactory
 import datastructures.core.color.RGBColor
-import datastructures.core.geometry.{Bounds, Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 
 object LiteralShape extends BeShapePathBased {
 

@@ -1,4 +1,4 @@
-package datastructures.core.geometry
+package it.evadid.core.datastructures.geometry
 
 final case class Point[T: Fractional](x: T, y: T) {
   private val N = summon[Fractional[T]]

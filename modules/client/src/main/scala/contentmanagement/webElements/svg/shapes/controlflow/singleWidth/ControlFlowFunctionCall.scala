@@ -1,10 +1,10 @@
 package contentmanagement.webElements.svg.shapes.controlflow.singleWidth
 
 import contentmanagement.webElements.svg.AppSvgElement
-import datastructures.core.geometry.{Bounds, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
+import it.evadid.core.datastructures.geometry.{Bounds, Point}
 
 case class ControlFlowFunctionCall() extends ControlFlowShapeSingleWidth {
 

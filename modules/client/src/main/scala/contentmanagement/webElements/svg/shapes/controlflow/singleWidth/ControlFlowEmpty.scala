@@ -3,10 +3,10 @@ package contentmanagement.webElements.svg.shapes.controlflow.singleWidth
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.svg
 import contentmanagement.webElements.svg.AppSvgElement
-import datastructures.core.geometry.{Bounds, Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 
 case class ControlFlowEmpty() extends ControlFlowShapeSingleWidth {
 

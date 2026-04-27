@@ -1,4 +1,5 @@
-package datastructures.core.geometry
+package it.evadid.core.datastructures.geometry
+
 
 import scala.math.Fractional.Implicits.infixFractionalOps
 import scala.math.Integral.Implicits.infixIntegralOps

@@ -11,12 +11,12 @@ import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.ControlF
 import contentmanagement.webElements.svg.shapes.controlflow.*
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.ControlFlowProgramStopper.*
 import contentmanagement.webElements.svg.shapes.decorations.TriangleOverlay
-import datastructures.core.geometry.{Bounds, Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.PathSegment
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.PathStatus.FINISHED
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 
 case class ControlFlowProgramStopper() extends ControlFlowShapeSingleWidth {
 

@@ -5,9 +5,9 @@ import com.raquo.laminar.api.L.Signal
 import contentmanagement.webElements.svg.builder.controlFlow.path.SegmentType
 import contentmanagement.webElements.svg.shapes.{BeShapeAmendFactory, ShapeAmends}
 import datastructures.core.color.{AppColorPalette, RGBYColorPalette}
-import datastructures.core.geometry.Dimension
 import datastructures.core.language.{AppLanguage, HumanLanguage}
 import datastructures.web.font.AppFont
+import it.evadid.core.datastructures.geometry.Dimension
 
 
 case class BeRenderingConfig(

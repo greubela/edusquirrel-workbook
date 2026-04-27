@@ -7,8 +7,8 @@ import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import com.raquo.laminar.api.L
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.shapes.{BeShapeDecoration, DecorationFactory}
-import datastructures.core.geometry.{Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import it.evadid.core.datastructures.geometry.{Dimension, Point}
 
 case class ControlArrowCross(pointsDown: Boolean = true, isActive: Boolean = true, cleanOrigin: Boolean = false) extends BeShapeDecoration {
 

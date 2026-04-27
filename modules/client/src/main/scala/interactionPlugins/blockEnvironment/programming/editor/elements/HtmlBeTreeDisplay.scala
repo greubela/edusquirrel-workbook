@@ -7,12 +7,12 @@ import contentmanagement.webElements.svg.shapes.*
 import contentmanagement.webElements.svg.shapes.composite.HorizontalAlignment.*
 import contentmanagement.webElements.svg.shapes.composite.VerticalAlignment.*
 import contentmanagement.webElements.svg.shapes.composite.{HorizontalAlignment, ShapeStack, VerticalAlignment}
-import datastructures.core.geometry.Point
 import interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig, ControlFlowDisplay}
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeTreeDropTarget, RenderingInformation}
 import interactionPlugins.blockEnvironment.programming.editor.*
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
+import it.evadid.core.datastructures.geometry.Point
 import util.Timing
 import workbook.htmlElements.basic.canvas.SvgCanvas
 

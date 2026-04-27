@@ -3,7 +3,7 @@ package contentmanagement.webElements.svg.atomarElements
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.svg.AppSvgElement
-import datastructures.core.geometry.{Bounds, Point}
+import it.evadid.core.datastructures.geometry.{Bounds, Point}
 
 case class AppPathSvgElement[T: Fractional]
 (

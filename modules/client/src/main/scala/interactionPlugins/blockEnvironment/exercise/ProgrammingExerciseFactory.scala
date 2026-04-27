@@ -3,8 +3,8 @@ package interactionPlugins.blockEnvironment.exercise
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
-import datastructures.core.geometry.{Bounds, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import it.evadid.core.datastructures.geometry.{Bounds, Point}
 import workbook.htmlElements.basic.*
 import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.FullInfo

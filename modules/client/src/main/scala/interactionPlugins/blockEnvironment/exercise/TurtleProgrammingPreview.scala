@@ -4,10 +4,10 @@ import com.raquo.laminar.api.L.*
 import com.raquo.laminar.api.L.Var
 import com.raquo.laminar.api.L.svg
 import contentmanagement.webElements.svg.AppSvgElement
-import datastructures.core.geometry.Bounds
 import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
+import it.evadid.core.datastructures.geometry.Bounds
 import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.{FullInfo, HomepageInfo}
 import workbook.model.interaction.InteractionVariable

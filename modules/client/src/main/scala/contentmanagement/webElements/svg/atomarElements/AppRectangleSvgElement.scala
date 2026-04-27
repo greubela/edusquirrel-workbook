@@ -3,7 +3,7 @@ package contentmanagement.webElements.svg.atomarElements
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{Modifier, Signal, SvgElement, seqToModifier, svg}
 import contentmanagement.webElements.svg.*
-import datastructures.core.geometry.Bounds
+import it.evadid.core.datastructures.geometry.Bounds
 
 case class AppRectangleSvgElement[T](
                                       bounds: Bounds[T],

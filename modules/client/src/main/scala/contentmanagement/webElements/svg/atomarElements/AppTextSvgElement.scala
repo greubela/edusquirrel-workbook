@@ -3,8 +3,8 @@ package contentmanagement.webElements.svg.atomarElements
 import com.raquo.laminar.api.L.{Signal, seqToModifier, svg, textToTextNode}
 import com.raquo.laminar.api.{L, textToTextNode}
 import contentmanagement.webElements.svg.AppSvgElement
-import datastructures.core.geometry.Bounds
 import datastructures.web.font.AppFont
+import it.evadid.core.datastructures.geometry.Bounds
 
 case class AppTextSvgElement[T: Fractional](displayText: String, pBounds: Bounds[T], font: AppFont,
                                             override val mods: Seq[L.Modifier[L.SvgElement]] = List(),

@@ -4,10 +4,10 @@ import com.raquo.laminar.api.L
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.shapes.composite.{BoxManualPositioning, ManualPositionElement}
 import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeDecoration}
-import datastructures.core.geometry.{Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.*
+import it.evadid.core.datastructures.geometry.{Dimension, Point}
 
 import scala.collection.mutable
 

@@ -4,8 +4,8 @@ import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.compositeElements.AppDecoratedSvgElement
 import contentmanagement.webElements.svg.shapes.BeShape
 import contentmanagement.webElements.svg.shapes.BeShape.{BeShapeComposite, BeShapeContainerable}
-import datastructures.core.geometry.{Bounds, Dimension}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension}
 
 
 case class ShapeAroundShape(outerShape: BeShapeContainerable, innerShape: BeShape) extends BeShapeComposite {

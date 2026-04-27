@@ -5,7 +5,6 @@ import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.shapes.composite.*
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.{ControlFlowProgramStarter, ControlFlowProgramStopper}
 import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeAmendFactory, ControlFlowAndExpressionShape, ControlFlowShape}
-import datastructures.core.geometry.{Bounds, Dimension}
 import datastructures.core.tree.TreeStructureContext
 import datastructures.core.tree.nodeImpl.NodeBasedTreePosition
 import datastructures.core.vm.code.tree.BeExpressionNode
@@ -13,6 +12,7 @@ import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.*
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer.ControlFlowLine
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension}
 
 case class BeBlockStarter(
                          ) extends BeBlock {

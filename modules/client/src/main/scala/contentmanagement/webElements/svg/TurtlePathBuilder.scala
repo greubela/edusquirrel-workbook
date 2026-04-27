@@ -2,7 +2,7 @@ package contentmanagement.webElements.svg
 
 import contentmanagement.webElements.svg.TurtlePathBuilder.{TurtleCommand, TurtleState}
 import contentmanagement.webElements.svg.builder.{SvgPathBuilder, SvgPathBuilderCommand, SvgPathBuilderImmutable}
-import datastructures.core.geometry.Point
+import it.evadid.core.datastructures.geometry.Point
 
 case class TurtlePathBuilder[T: Fractional](
                                              startPoint: Point[T],

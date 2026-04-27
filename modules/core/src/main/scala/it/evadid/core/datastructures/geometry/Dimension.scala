@@ -1,4 +1,5 @@
-package datastructures.core.geometry
+package it.evadid.core.datastructures.geometry
+
 
 final case class Dimension[T: Fractional](width: T, height: T) {
   private val N = summon[Fractional[T]]

@@ -1,9 +1,9 @@
 package interactionPlugins.blockEnvironment.config
 
-import datastructures.core.geometry.Point
 import datastructures.core.vm.code.tree.BeExpressionNode
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.ControlFlowPath
+import it.evadid.core.datastructures.geometry.Point
 
 
 case class BeDraggingEvent(draggedProgram: BeProgram) {

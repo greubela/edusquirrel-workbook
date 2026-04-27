@@ -3,8 +3,8 @@ package contentmanagement.webElements.svg.shapes.controlflow
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapePathBased
 import contentmanagement.webElements.svg.shapes.DecorationFactory
-import datastructures.core.geometry.{Bounds, Dimension}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension}
 
 case class ControlFlowStarterBackground() extends BeShapePathBased {
 

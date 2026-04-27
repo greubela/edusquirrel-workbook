@@ -4,7 +4,7 @@ import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.shapes.ShapeFactory
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapePathBased
-import datastructures.core.geometry.{Bounds, Dimension}
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension}
 
 
 object RectangleShape extends BeShapePathBased {

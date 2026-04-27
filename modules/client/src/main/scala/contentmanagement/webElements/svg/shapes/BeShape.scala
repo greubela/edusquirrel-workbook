@@ -7,11 +7,11 @@ import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.compositeElements.AppGroupSvgElement
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapeContainerable
 import contentmanagement.webElements.svg.shapes.datatypes.{DuckShape, RectangleShape, UnitShape}
-import datastructures.core.geometry.{Bounds, Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.*
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer.*
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 
 case class ShapeAmends(baseAmends: Seq[L.Modifier[L.SvgElement]], signalAmends: Seq[Signal[L.Modifier[L.SvgElement]]], doOnRendering: Seq[(Bounds[Double], BeShape) => Any])
 

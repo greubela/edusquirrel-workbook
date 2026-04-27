@@ -10,8 +10,8 @@ import contentmanagement.webElements.svg.compositeElements.{AppDecoratedSvgEleme
 
 import scala.math.BigDecimal.RoundingMode
 import com.raquo.laminar.keys.{StyleProp, SvgAttr}
-import datastructures.core.geometry.{Bounds, Dimension, Point}
 import datastructures.web.font.AppFont
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 
 // todo: verify overlays and finish for other elements... move to subclasses?
 trait AppSvgElement {

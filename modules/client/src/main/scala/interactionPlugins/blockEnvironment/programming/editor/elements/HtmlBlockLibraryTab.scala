@@ -8,13 +8,13 @@ import contentmanagement.webElements.HtmlAppElement
 import contentmanagement.webElements.svg.shapes.TextShape
 import contentmanagement.webElements.svg.shapes.composite.ShapeAroundShape
 import contentmanagement.webElements.svg.shapes.datatypes.RectangleShape
-import datastructures.core.geometry.{Bounds, Point}
 import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.code.controlStructures.{BeIfElse, BeSequence, BeSequenceInfo, BeWhile}
 import datastructures.core.vm.code.usage.BeUseValue
 import datastructures.core.vm.types.{BeDataType, BeDataValueLiteral}
 import interactionPlugins.blockEnvironment.programming.BeProgram
+import it.evadid.core.datastructures.geometry.{Bounds, Point}
 
 import scala.collection.mutable
 

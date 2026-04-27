@@ -5,7 +5,7 @@ import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import contentmanagement.webElements.svg.shapes.BeShape.{BeShapeAtomic, BeShapeContainerable, BeShapePathBased}
 import contentmanagement.webElements.svg.shapes.{AmendedShape, BeShape, ShapeFactory}
-import datastructures.core.geometry.{Bounds, Dimension}
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension}
 
 case object BeErrorShape extends BeShapePathBased {
 

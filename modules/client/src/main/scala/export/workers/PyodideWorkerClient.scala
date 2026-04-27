@@ -5,8 +5,8 @@ import contentmanagement.webElements.svg.TurtlePathBuilder
 import contentmanagement.webElements.svg.TurtlePathBuilder.{TurtleCommand, TurtleState}
 import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand
 import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand.*
-import datastructures.core.geometry.{Dimension, Point}
 import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.*
+import it.evadid.core.datastructures.geometry.{Dimension, Point}
 import org.scalajs.dom
 import util.web.JsHelpers.*
 import util.web.{WorkerProtocolHelpers, WorkerRequestTracker}

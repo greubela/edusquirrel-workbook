@@ -3,12 +3,12 @@ package interactionPlugins.blockEnvironment.exercise
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.svg.AppSvgElement
-import datastructures.core.geometry.Bounds
 import datastructures.core.language.AppLanguage
 import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
+import it.evadid.core.datastructures.geometry.Bounds
 import util.serializing.Serializer
 import workbook.htmlElements.basic.HtmlButtonElement
 import workbook.model.abstractions.WorkbookInteraction

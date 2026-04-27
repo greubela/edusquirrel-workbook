@@ -4,8 +4,8 @@ import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.builder.controlFlow.path.{ControlFlowPath, ControlFlowPathOverlay, ControlFlowPathSegment, PathStatus, PathType, SegmentType}
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapeContainerable
 import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
-import datastructures.core.geometry.Dimension
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import it.evadid.core.datastructures.geometry.Dimension
 
 case class ControlFlowCrossType() extends ControlFlowTypeDoubleWidth {
 

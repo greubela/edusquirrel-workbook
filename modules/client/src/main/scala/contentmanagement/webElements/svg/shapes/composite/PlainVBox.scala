@@ -1,8 +1,8 @@
 package contentmanagement.webElements.svg.shapes.composite
 
 import contentmanagement.webElements.svg.shapes.BeShape
-import datastructures.core.geometry.Point
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import it.evadid.core.datastructures.geometry.Point
 
 case class PlainVBox(shapes: List[BeShape]) extends BoxManualPositioning {
 

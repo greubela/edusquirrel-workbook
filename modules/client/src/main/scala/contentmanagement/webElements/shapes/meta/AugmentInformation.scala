@@ -3,7 +3,7 @@ package contentmanagement.webElements.shapes.meta
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Signal
 import contentmanagement.webElements.shapesNew.BeShapeNew
-import datastructures.core.geometry.Bounds
+import it.evadid.core.datastructures.geometry.Bounds
 
 case class AugmentInformation[T: Fractional](
                                baseAmends: Seq[L.Modifier[L.SvgElement]],

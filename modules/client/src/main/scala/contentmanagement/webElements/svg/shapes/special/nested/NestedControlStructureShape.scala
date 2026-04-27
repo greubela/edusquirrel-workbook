@@ -7,8 +7,8 @@ import contentmanagement.webElements.svg.shapes.BeShape.BeShapeComposite
 import contentmanagement.webElements.svg.shapes.composite.{BoxManualPositioning, ManualPositionElement}
 import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.ControlFlowShapeDoubleWidth
 import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowAndExpressionShape, ControlFlowShape}
-import datastructures.core.geometry.{Bounds, Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 
 import scala.collection.mutable
 

@@ -4,8 +4,8 @@ import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.compositeElements.AppGroupSvgElement
 import contentmanagement.webElements.svg.shapes.BeShape
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapeComposite
-import datastructures.core.geometry.{Bounds, Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 
 import scala.collection.mutable
 

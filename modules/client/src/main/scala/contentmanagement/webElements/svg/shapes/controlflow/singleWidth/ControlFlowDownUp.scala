@@ -1,10 +1,10 @@
 package contentmanagement.webElements.svg.shapes.controlflow.singleWidth
 
 import contentmanagement.webElements.svg.shapes.decorations.ControlArrowUpDown
-import datastructures.core.geometry.{Dimension, Point}
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.ControlFlowPath
+import it.evadid.core.datastructures.geometry.{Dimension, Point}
 
 case class ControlFlowDownUp(isActive: Boolean = false) extends ControlFlowShapeSingleWidth {
 

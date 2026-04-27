@@ -3,7 +3,7 @@ package contentmanagement.webElements.svg.compositeElements
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{Signal, nodeSeqToModifier, seqToModifier, svg}
 import contentmanagement.webElements.svg.AppSvgElement
-import datastructures.core.geometry.Bounds
+import it.evadid.core.datastructures.geometry.Bounds
 
 case class AppGroupSvgElement(childElements: List[AppSvgElement], mods: Seq[L.Modifier[L.SvgElement]] = List(), override val signalMods: Seq[Signal[L.Modifier[L.SvgElement]]] = List()) extends AppSvgElement {
 

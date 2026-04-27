@@ -1,7 +1,7 @@
 package contentmanagement.webElements.shapes.meta
 
-import datastructures.core.geometry.Dimension
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import it.evadid.core.datastructures.geometry.Dimension
 import util.numbers.*
 
 case class ConfigDependentSizeConstraint[T: Fractional](

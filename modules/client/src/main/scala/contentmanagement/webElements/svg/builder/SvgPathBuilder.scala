@@ -4,8 +4,8 @@ import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.atomarElements.AppPathSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand.*
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapeAtomic
-import datastructures.core.geometry.{Bounds, Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 
 trait SvgPathBuilder[T: Fractional] {
 

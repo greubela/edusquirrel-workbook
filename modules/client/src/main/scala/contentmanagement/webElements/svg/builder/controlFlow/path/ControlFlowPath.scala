@@ -3,8 +3,8 @@ package contentmanagement.webElements.svg.builder.controlFlow.path
 import contentmanagement.webElements.svg.builder.controlFlow.ControlFlowOverlayElement
 import contentmanagement.webElements.svg.shapes.BeShape
 import contentmanagement.webElements.svg.shapes.composite.{BoxManualPositioning, ManualPositionElement}
-import datastructures.core.geometry.Point
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import it.evadid.core.datastructures.geometry.Point
 
 
 case class ControlFlowPath(curStatus: PathStatus, pathType: PathType, segments: List[ControlFlowPathSegment]) extends ControlFlowOverlayElement {

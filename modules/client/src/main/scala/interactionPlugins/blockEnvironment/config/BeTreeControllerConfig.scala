@@ -2,11 +2,11 @@ package interactionPlugins.blockEnvironment.config
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.eventPropToProcessor
-import datastructures.core.geometry.Point
 import datastructures.core.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.*
 import interactionPlugins.blockEnvironment.programming.editor.elements.*
+import it.evadid.core.datastructures.geometry.Point
 import org.scalajs.dom.{DragEvent, MouseEvent}
 
 trait BeTreeControllerConfig {

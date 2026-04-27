@@ -1,8 +1,8 @@
 package interactionPlugins.programmingExercise.pythonExercise.pyodide
 
 import scala.scalajs.js
-
 import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.*
+import it.evadid.core.datastructures.geometry.Point
 
 object PyodideBackends {
 
@@ -40,11 +40,11 @@ object PyodideBackends {
                                   )
 
   final case class TurtleExecutionResult[T: Fractional](
-                                                          regularExecutionResult: PythonRunReport,
-                                                          startPoint: datastructures.core.geometry.Point[T],
-                                                          turtleState: contentmanagement.webElements.svg.TurtlePathBuilder.TurtleState[T],
-                                                          turtleCommands: List[contentmanagement.webElements.svg.TurtlePathBuilder.TurtleCommand[T]],
-                                                          svgPathBuilderCommands: List[contentmanagement.webElements.svg.builder.SvgPathBuilderCommand[T]]
+                                                         regularExecutionResult: PythonRunReport,
+                                                         startPoint: Point[T],
+                                                         turtleState: contentmanagement.webElements.svg.TurtlePathBuilder.TurtleState[T],
+                                                         turtleCommands: List[contentmanagement.webElements.svg.TurtlePathBuilder.TurtleCommand[T]],
+                                                         svgPathBuilderCommands: List[contentmanagement.webElements.svg.builder.SvgPathBuilderCommand[T]]
                                                         )
 
   final case class PythonWorkerFailure(

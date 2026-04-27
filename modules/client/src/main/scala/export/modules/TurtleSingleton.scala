@@ -4,7 +4,7 @@ import contentmanagement.webElements.svg.TurtlePathBuilder
 import contentmanagement.webElements.svg.TurtlePathBuilder.TurtleCommand
 import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand
 import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand.*
-import datastructures.core.geometry.{Dimension, Point}
+import it.evadid.core.datastructures.geometry.{Dimension, Point}
 import util.web.JsHelpers
 
 import scala.scalajs.js

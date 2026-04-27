@@ -6,7 +6,7 @@ import scala.collection.mutable
 import contentmanagement.webElements.svg.atomarElements.AppPathSvgElement
 import contentmanagement.webElements.svg.builder.*
 import contentmanagement.webElements.svg.builder.SvgPathBuilderCommand.*
-import datastructures.core.geometry.{Bounds, Dimension, Point}
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 
 import scala.collection.mutable
 

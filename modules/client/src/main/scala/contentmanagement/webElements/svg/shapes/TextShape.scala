@@ -6,8 +6,8 @@ import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.atomarElements.AppTextSvgElement
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import BeShape.BeShapeAtomic
-import datastructures.core.geometry.{Bounds, Dimension}
 import datastructures.core.language.{HumanLanguage, LanguageMap}
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension}
 
 case class TextShape(languageMap: LanguageMap[HumanLanguage], amends: Seq[L.Modifier[L.SvgElement]] = List()) extends BeShapeAtomic {
 

@@ -4,8 +4,8 @@ import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.builder.controlFlow.*
 import contentmanagement.webElements.svg.shapes.composite.*
 import contentmanagement.webElements.svg.shapes.*
-import datastructures.core.geometry.{Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import it.evadid.core.datastructures.geometry.{Dimension, Point}
 
 import scala.collection.mutable
 

@@ -1,6 +1,6 @@
 package datastructures.web.font
 
-import datastructures.core.geometry.Dimension
+import it.evadid.core.datastructures.geometry.Dimension
 import org.scalajs.dom
 import org.scalajs.dom.document
 

@@ -5,7 +5,7 @@ import contentmanagement.webElements.svg.AppSvgElement
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{Signal, nodeSeqToModifier, seqToModifier, svg}
 import contentmanagement.webElements.svg.AppSvgElement
-import datastructures.core.geometry.Bounds
+import it.evadid.core.datastructures.geometry.Bounds
 
 case class AppDecoratedSvgElement(mainElement: AppSvgElement, overlays: List[AppSvgElement], underlays: List[AppSvgElement]) extends AppSvgElement {
 

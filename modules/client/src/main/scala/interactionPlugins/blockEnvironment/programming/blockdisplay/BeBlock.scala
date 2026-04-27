@@ -2,7 +2,6 @@ package interactionPlugins.blockEnvironment.programming.blockdisplay
 
 import contentmanagement.webElements.svg.shapes.special.nested.ShapeWithControlFlow
 import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeAmendFactory, ControlFlowAndExpressionShape, ControlFlowShape}
-import datastructures.core.geometry.Bounds
 import datastructures.core.tree.TreeStructureContext
 import datastructures.core.tree.nodeImpl.NodeBasedTreePosition
 import datastructures.core.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
@@ -10,6 +9,7 @@ import interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeCont
 import interactionPlugins.blockEnvironment.programming.*
 import interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
+import it.evadid.core.datastructures.geometry.Bounds
 
 case class BeTreeDropTarget(extensionPoint: BeExtensionPoint, placeholderForPosition: NodeBasedTreePosition, placeholderBounds: Bounds[Double], placeholderShape: BeShape)
 

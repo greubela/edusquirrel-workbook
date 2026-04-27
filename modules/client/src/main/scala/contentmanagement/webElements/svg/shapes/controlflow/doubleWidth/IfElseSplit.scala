@@ -6,12 +6,12 @@ import contentmanagement.webElements.svg.shapes.*
 import contentmanagement.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
 import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.IfElseSplit.*
 import contentmanagement.webElements.svg.shapes.decorations.{BeDataArrow, PathSplitOverlay}
-import datastructures.core.geometry.{Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.PathStatus.{HANDLED, OPEN, PAUSED}
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.{ControlFlowPath, PathSegment}
+import it.evadid.core.datastructures.geometry.{Dimension, Point}
 
 case class IfElseSplit() extends ControlFlowShapeDoubleWidth {
 

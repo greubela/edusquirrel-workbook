@@ -8,12 +8,12 @@ import contentmanagement.webElements.svg.shapes.{BeShape, BeShapeDecoration}
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.builder.SvgPathBuilder
 import contentmanagement.webElements.svg.shapes.decorations.{ControlArrowUpDown, PathCrossOverlay, PathUnionOverlay}
-import datastructures.core.geometry.{Bounds, Dimension, Point}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.ControlFlowPath
 import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.PathStatus.{FINISHED, HANDLED, OPEN}
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 
 case class IfElseUnion() extends ControlFlowShapeDoubleWidth {
 
