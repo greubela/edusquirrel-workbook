@@ -1,38 +1,30 @@
+import Dependencies.*
 import org.scalajs.jsenv.nodejs.NodeJSEnv
-import org.scalajs.linker.interface.ModuleKind
-import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
-import Dependencies._
-import org.scalajs.jsenv.nodejs.NodeJSEnv
-import org.scalajs.linker.interface.ModuleKind
-import org.scalajs.linker.interface.OutputPatterns
-import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
-import Dependencies._
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.*
 
-lazy val buildAll = taskKey[Unit]("Build all deliverable artifacts")
+lazy val buildAll = taskKey[Unit]("Build server/client, copy artifacts, then clean targets")
+buildAll := Build.executeBuild(server, client, false).value
 
-buildAll := {
-  (server / Compile / packageBin).value
-  (client / Compile / fullLinkJS).value
-}
+lazy val deployAll = taskKey[Unit]("BuildAll, then copy new files to /artifact/stable")
+deployAll := Build.executeBuild(server, client, true).value
 
 lazy val root = (project in file("."))
+  .settings(Settings.globalSettings)
   .aggregate(core, server, client)
   .settings(
     name := "edusquirrel-workbook",
     publish / skip := true
   )
 
-ThisBuild / organization := "it.evadid"
-ThisBuild / version := "0.1"
-ThisBuild / scalaVersion := "3.3.3"
-
 lazy val core = (project in file("./modules/core"))
+  .settings(Settings.globalSettings)
   .settings(
     name := "core",
     libraryDependencies ++= coreDependencies.value
   )
 
 lazy val server = (project in file("./modules/server"))
+  .settings(Settings.globalSettings).settings(Settings.jvmSettings)
   .dependsOn(core)
   .settings(
     name := "server",
@@ -40,6 +32,7 @@ lazy val server = (project in file("./modules/server"))
   )
 
 lazy val client = (project in file("./modules/client"))
+  .settings(Settings.globalSettings).settings(Settings.jsSettings)
   .enablePlugins(ScalaJSPlugin)
   .dependsOn(core)
   .settings(
@@ -96,13 +89,3 @@ lazy val workbookApp = project.in(file("."))
 
   )
 */
-
-ThisBuild / organization := "it.evadid"
-ThisBuild / version := "0.1"
-ThisBuild / scalaVersion := "3.3.3"
-
-ThisBuild / Compile / packageBin / artifactPath := (ThisBuild / baseDirectory).value / "artifacts" / s"${name.value}.jar"
-ThisBuild / Compile / fastLinkJS / scalaJSLinkerOutputDirectory := (ThisBuild / baseDirectory).value / "artifacts"
-ThisBuild / Compile / fullLinkJS / scalaJSLinkerOutputDirectory := (ThisBuild / baseDirectory).value / "artifacts"
-ThisBuild / Compile / fastLinkJS / scalaJSLinkerConfig := scalaJSLinkerConfig.value.withOutputPatterns(OutputPatterns.fromJSFile(s"${name.value}-fastopt.js"))
-ThisBuild / Compile / fullLinkJS / scalaJSLinkerConfig := scalaJSLinkerConfig.value.withOutputPatterns(OutputPatterns.fromJSFile(s"${name.value}-fullopt.js"))

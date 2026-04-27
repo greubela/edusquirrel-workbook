@@ -22,7 +22,7 @@ object Dependencies {
     "org.scalameta" %%% "munit" % "1.2.1" % Test,
     "io.github.cquiroz" %%% "scala-java-time" % "2.6.0",
     "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.6.0",
-    ("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0")
-      .cross(CrossVersion.for3Use2_13)
+    ("org.scala-js" %% "scalajs-env-jsdom-nodejs" % "1.1.0").cross(CrossVersion.for3Use2_13),
+    ("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0").cross(CrossVersion.for3Use2_13)
   ))
 }

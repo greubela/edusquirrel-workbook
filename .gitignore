@@ -11,6 +11,7 @@ target/
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
+**/artifacts/**
 
 ### Eclipse ###
 .apt_generated
