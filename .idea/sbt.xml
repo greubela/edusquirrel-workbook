@@ -22,6 +22,9 @@
         <option name="modules">
           <set>
             <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook" />
+            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\modules\client" />
+            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\modules\core" />
+            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\modules\server" />
             <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\project" />
           </set>
         </option>
