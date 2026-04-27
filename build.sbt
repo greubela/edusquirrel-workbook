@@ -1,9 +1,58 @@
 import org.scalajs.jsenv.nodejs.NodeJSEnv
-
 import org.scalajs.linker.interface.ModuleKind
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
+import Dependencies._
+import org.scalajs.jsenv.nodejs.NodeJSEnv
+import org.scalajs.linker.interface.ModuleKind
+import org.scalajs.linker.interface.OutputPatterns
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
+import Dependencies._
 
-enablePlugins(ScalaJSPlugin)
+lazy val buildAll = taskKey[Unit]("Build all deliverable artifacts")
 
+buildAll := {
+  (server / Compile / packageBin).value
+  (client / Compile / fullLinkJS).value
+}
+
+lazy val root = (project in file("."))
+  .aggregate(core, server, client)
+  .settings(
+    name := "edusquirrel-workbook",
+    publish / skip := true
+  )
+
+ThisBuild / organization := "it.evadid"
+ThisBuild / version := "0.1"
+ThisBuild / scalaVersion := "3.3.3"
+
+lazy val core = (project in file("./modules/core"))
+  .settings(
+    name := "core",
+    libraryDependencies ++= coreDependencies.value
+  )
+
+lazy val server = (project in file("./modules/server"))
+  .dependsOn(core)
+  .settings(
+    name := "server",
+    libraryDependencies ++= (coreDependencies.value ++ jvmDependencies.value)
+  )
+
+lazy val client = (project in file("./modules/client"))
+  .enablePlugins(ScalaJSPlugin)
+  .dependsOn(core)
+  .settings(
+    name := "client",
+    scalaJSUseMainModuleInitializer := true,
+    Test / jsEnv := new NodeJSEnv(),
+    libraryDependencies ++= (coreDependencies.value ++ jsDependencies.value)
+  )
+
+
+// Todo: Worker Module 
+
+/*
 lazy val workbookApp = project.in(file("."))
   .enablePlugins(ScalaJSPlugin)
   .settings(
@@ -46,3 +95,14 @@ lazy val workbookApp = project.in(file("."))
     //Compile / npmDependencies += "openai" -> "4.33.0"
 
   )
+*/
+
+ThisBuild / organization := "it.evadid"
+ThisBuild / version := "0.1"
+ThisBuild / scalaVersion := "3.3.3"
+
+ThisBuild / Compile / packageBin / artifactPath := (ThisBuild / baseDirectory).value / "artifacts" / s"${name.value}.jar"
+ThisBuild / Compile / fastLinkJS / scalaJSLinkerOutputDirectory := (ThisBuild / baseDirectory).value / "artifacts"
+ThisBuild / Compile / fullLinkJS / scalaJSLinkerOutputDirectory := (ThisBuild / baseDirectory).value / "artifacts"
+ThisBuild / Compile / fastLinkJS / scalaJSLinkerConfig := scalaJSLinkerConfig.value.withOutputPatterns(OutputPatterns.fromJSFile(s"${name.value}-fastopt.js"))
+ThisBuild / Compile / fullLinkJS / scalaJSLinkerConfig := scalaJSLinkerConfig.value.withOutputPatterns(OutputPatterns.fromJSFile(s"${name.value}-fullopt.js"))
