@@ -1,7 +1,8 @@
-package datastructures.core.chat
+package it.evadid.core.datastructures.chat
 
 import MessengerModel.{Message, SenderRole}
-import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 import upickle.default.*
 
 case class MessengerModel(messages: List[Message]) {

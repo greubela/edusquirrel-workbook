@@ -1,9 +1,9 @@
 package interactionPlugins.blockEnvironment.feedback
 
-import datastructures.core.language.HumanLanguage
 import datastructures.core.vm.code.BeExpression
-import scala.concurrent.{ExecutionContext, Future}
+import it.evadid.core.datastructures.language.AppLanguage.*
 
+import scala.concurrent.{ExecutionContext, Future}
 /**
  * Public entry point for the Python feedback pipeline.
  */

@@ -5,11 +5,11 @@ import sbt.Keys._
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 object Settings {
 
-  lazy val globalSettings = Seq(
-    target := (ThisBuild / baseDirectory).value / "target" / name.value,
+  def globalSettings = Seq(
+    target := (ThisBuild / baseDirectory).value / "target" / thisProject.value.id,
     organization := "it.evadid",
     version := "0.1",
-    scalaVersion := "3.3.3"
+    scalaVersion := "3.8.3"
   )
 
   lazy val jsSettings = Seq(

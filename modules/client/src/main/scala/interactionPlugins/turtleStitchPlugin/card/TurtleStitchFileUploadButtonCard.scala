@@ -1,25 +1,20 @@
 package interactionPlugins.turtleStitchPlugin.card
 
-import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
-import interactionPlugins.fileSubmission.*
 import interactionPlugins.turtleStitchPlugin.card.TurtleStitchFileUploadButtonCard.*
 import interactionPlugins.turtleStitchPlugin.card.TurtleStitchFileUploadButtonCard.StorageFormat.{BYTES_AS_BASE64_STRING, BYTES_AS_RAW_STRING}
+import it.evadid.core.util.io.Serializer
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLButtonElement, HTMLDivElement, HTMLInputElement}
-import util.serializing.Serializer
 import util.web.{DownloadHelper, JsHelpers}
 import workbook.model.abstractions.WorkbookInteraction
-import workbook.model.info.{FullInfo, HomepageInfo}
+import workbook.model.info.FullInfo
 import workbook.model.interaction.InteractionVariable
 import workbook.model.interaction.history.UpdateImportance
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.scalajs.js
-import scala.scalajs.js.typedarray.*
 import scala.util.{Failure, Success}
-
 case class TurtleStitchFileUploadButtonCard(
                                              fullInfo: FullInfo,
                                              id: String,

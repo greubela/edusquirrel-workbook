@@ -2,16 +2,13 @@ package contentmanagement.webElements.genericHtmlElements.editor
 
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement
-import datastructures.core.chat.MessengerModel.{Message, SenderRole}
-import datastructures.core.chat.MessengerModel
-import datastructures.core.language.{AppLanguage, LanguageMap}
-import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.interaction.InteractionVariable.*
+import it.evadid.core.datastructures.chat.MessengerModel
+import it.evadid.core.datastructures.chat.MessengerModel.{Message, SenderRole}
+import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import workbook.model.interaction.*
 import workbook.model.interaction.history.UpdateImportance
 
 import scala.scalajs.js
-
 case class SimpleMessengerEditor(chatExercise: InteractionVariable[MessengerModel]) extends HtmlAppElement {
 
   private val messageInput = Var("")

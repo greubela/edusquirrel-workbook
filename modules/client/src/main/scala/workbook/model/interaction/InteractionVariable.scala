@@ -1,12 +1,14 @@
 package workbook.model.interaction
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 import util.serializing.*
 import com.raquo.airstream.ownership.Owner
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
-import datastructures.core.chat.MessengerModel
-import datastructures.core.chat.MessengerModel.Message
-import util.serializing.{Serializer, TypeConverter}
+import it.evadid.core.datastructures.chat.MessengerModel.Message
+import it.evadid.core.datastructures.chat.MessengerModel
+import it.evadid.core.util.io.{Serializer, TypeConverter}
 import workbook.model.abstractions.WorkbookInteraction
 import workbook.model.interaction.InteractionVariable.*
 import workbook.model.interaction.InteractionVariableState.SerializedExerciseVariableState

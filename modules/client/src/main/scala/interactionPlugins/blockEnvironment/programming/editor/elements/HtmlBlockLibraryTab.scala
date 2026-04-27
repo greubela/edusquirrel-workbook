@@ -2,22 +2,20 @@ package interactionPlugins.blockEnvironment.programming.editor.elements
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import datastructures.core.language.AppLanguage.English
-import datastructures.core.vm.types.BeDataType.BeDataTypeAtomic
 import contentmanagement.webElements.HtmlAppElement
 import contentmanagement.webElements.svg.shapes.TextShape
 import contentmanagement.webElements.svg.shapes.composite.ShapeAroundShape
 import contentmanagement.webElements.svg.shapes.datatypes.RectangleShape
-import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.code.controlStructures.{BeIfElse, BeSequence, BeSequenceInfo, BeWhile}
 import datastructures.core.vm.code.usage.BeUseValue
 import datastructures.core.vm.types.{BeDataType, BeDataValueLiteral}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import it.evadid.core.datastructures.geometry.{Bounds, Point}
+import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 
 import scala.collection.mutable
-
 case class HtmlBlockLibraryTab(
                                 elements: List[(BeProgram, Element)]
                               ) extends HtmlAppElement {

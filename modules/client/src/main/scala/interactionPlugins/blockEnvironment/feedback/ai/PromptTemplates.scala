@@ -1,9 +1,11 @@
 package interactionPlugins.blockEnvironment.feedback.ai
 
-import datastructures.core.language.{AppLanguage, HumanLanguage}
 import interactionPlugins.blockEnvironment.feedback.diagnosis.{Diagnosis, DiagnosisJson}
 import interactionPlugins.blockEnvironment.feedback.ml.{BlockFeedbackSignals, DecisionLayer}
+import it.evadid.core.datastructures.language.AppLanguage
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 /**
  * Prompt building + strict constraints for post-routing LLM usage.
  *

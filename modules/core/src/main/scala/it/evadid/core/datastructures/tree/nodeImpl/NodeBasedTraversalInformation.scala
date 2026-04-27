@@ -1,7 +1,6 @@
-package datastructures.core.tree.nodeImpl
+package it.evadid.core.datastructures.tree.nodeImpl
 
-import datastructures.core.tree.*
-import datastructures.core.tree.nodeImpl.*
+import it.evadid.core.datastructures.tree.{Tree, TreeStructureContext}
 
 case class NodeBasedTraversalInformation[D](protected[nodeImpl] val curNode: NodeBasedTreeNode[D], curPosition: NodeBasedTreePosition, private val parentInfo: Option[NodeBasedTraversalInformation[D]], tree: Tree[NodeBasedTreePosition, D])
   extends TreeStructureContext[NodeBasedTreePosition, D]{

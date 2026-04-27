@@ -1,28 +1,22 @@
 package interactionPlugins.blockEnvironment.feedback.ui
 
-import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.{*, given}
-import datastructures.core.language.{AppLanguage, HumanLanguage}
+import com.raquo.laminar.api.L.*
+import contentmanagement.webElements.genericHtmlElements.editor.CodeMirrorEditor
 import datastructures.core.vm.code.others.BeStartProgram
 import datastructures.core.vm.parsing.python.PythonParser
-import contentmanagement.webElements.genericHtmlElements.editor.CodeMirrorEditor
-import interactionPlugins.blockEnvironment.feedback.{
-  BlockFeedbackExerciseRegistry,
-  BlockFeedbackService,
-  BlockFeedbackTestResultFormatter,
-  FeedbackTestDisplay,
-  UltrichsNewCoolFeedback
-}
 import interactionPlugins.blockEnvironment.feedback.ml.MlRouter
 import interactionPlugins.blockEnvironment.feedback.runtime.PythonRuntimeService
+import interactionPlugins.blockEnvironment.feedback.*
+import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.core.datastructures.language.AppLanguage.*
+import org.scalajs.dom
 import workbook.model.feedback.FeedbackStatus
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Failure, Success}
-import org.scalajs.dom
 import scala.scalajs.js
 import scala.scalajs.js.JSON
 import scala.scalajs.js.timers.{SetIntervalHandle, clearInterval, setInterval}
+import scala.util.{Failure, Success}
 
 object FeedbackDemoElement:
 

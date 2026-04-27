@@ -1,6 +1,6 @@
 package datastructures.core.vm.types
 
-import datastructures.core.tree.nodeImpl.NodeBasedTreePosition
+import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreePosition
 
 case class BeChildPosition(roleInParent: BeChildRole, curScope: BeScope) {
 

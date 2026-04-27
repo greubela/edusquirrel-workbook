@@ -1,14 +1,11 @@
 package workbook.htmlElements.interactions
 
 import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.{*, given}
-import util.serializing.Serializer
+import com.raquo.laminar.api.L.*
+import it.evadid.core.util.io.Serializer
 import workbook.model.abstractions.WorkbookInteraction
 import workbook.model.info.FullInfo
 import workbook.model.interaction.InteractionVariable
-
-import scala.concurrent.ExecutionContext
-
 case class HtmlBasicCheckboxInteraction(
                                          fullInfo: FullInfo,
                                          id: String,

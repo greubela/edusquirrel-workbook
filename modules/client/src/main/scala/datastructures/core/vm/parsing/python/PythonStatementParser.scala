@@ -1,23 +1,28 @@
 package datastructures.core.vm.parsing.python
 
-import ParsingUtils.keepExpression
-import PythonClassParser.{ClassParseResult, ClassParserApi}
-import PythonLexerLike.{ParsedLine, splitCodeAndComment}
-import PythonSymbolTable.ParseContext
-import datastructures.core.language.LanguageMap
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.code.errors.{BeExpressionUnparsable, BeSingleLineComment}
 import datastructures.core.vm.code.usage.BeAssignVariable
+import datastructures.core.vm.parsing.python.ParsingUtils.keepExpression
+import datastructures.core.vm.parsing.python.PythonClassParser.ClassParseResult
+import datastructures.core.vm.parsing.python.PythonLexerLike.{ParsedLine, splitCodeAndComment}
+import datastructures.core.vm.parsing.python.PythonSymbolTable.ParseContext
+import it.evadid.core.datastructures.language.LanguageMap
 
 import scala.collection.mutable
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 object PythonStatementParser {
 
   final case class BlockParseResult(expressions: List[BeExpression], nextIndex: Int)
+
   final case class NodeWithNext(expression: BeExpression, nextIndex: Int)
 
   private final case class DispatchRule(matches: String => Boolean, handle: DispatchContext => DispatchOutcome)
+
   private final case class DispatchContext(lines: Vector[ParsedLine], index: Int, indent: Int, trimmed: String, context: ParseContext)
+
   private final case class DispatchOutcome(expressions: List[BeExpression], nextIndex: Int)
 
   private val AnnotationAssignmentPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([^=]+?)\s*=\s*(.+)$""".r

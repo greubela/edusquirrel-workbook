@@ -1,20 +1,18 @@
 package datastructures.core.vm.code
 
-import datastructures.core.vm.types.BeScope.GlobalScope
-import datastructures.core.language.{HumanLanguage, ProgrammingLanguage}
-import datastructures.core.tree.nodeImpl.NodeBasedTreeImpl
 import datastructures.core.vm.code.controlStructures.BeSequence
 import datastructures.core.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
 import datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference, BeExtensionPoint}
 import datastructures.core.vm.io.BeExpressionIO
 import datastructures.core.vm.simulation.{BeExpressionExecutor, BeSimulatorConfig, BeSimulatorState}
 import datastructures.core.vm.static.BeExpressionStaticInformation
-import datastructures.core.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeDataValue, BeDataValueUnit, BeInfo, BeScope}
+import datastructures.core.vm.types.BeScope.GlobalScope
+import datastructures.core.vm.types.*
 import interactionPlugins.blockEnvironment.programming.BeExpressionTree
-import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
+import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreeImpl
 
-import scala.collection.mutable
-
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 
 trait BeExpression {
 

@@ -3,8 +3,9 @@ package interactionPlugins.turtleStitchPlugin
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement
-import datastructures.core.language.{AppLanguage, HumanLanguage, TranslationMaps}
 import datastructures.web.storage.AsyncDataCache
+import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.core.datastructures.language.AppLanguage.*
 import org.scalajs.dom
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -12,7 +13,6 @@ import scala.scalajs.js
 import scala.scalajs.js.Promise as JsPromise
 import scala.scalajs.js.annotation.JSGlobal
 import scala.util.Success
-
 case class TurtleStitchEditor(projektXml: Var[String]) extends HtmlAppElement {
 
   private var handle: Option[TurtleStitchEditor.JsEditorHandle] = None

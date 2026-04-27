@@ -1,19 +1,19 @@
 package datastructures.core.vm.code.controlStructures
 
-import datastructures.core.vm.types.BeScope.InSequenceScope
-import datastructures.core.language.{HumanLanguage, ProgrammingLanguage}
-import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
-import interactionPlugins.blockEnvironment.programming.blockdisplay.control.BeBlockSequence
-import util.CodeStringBuilder
-import datastructures.core.language.*
-import datastructures.core.language.AppLanguage.*
 import datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference, BeExtensionPoint}
 import datastructures.core.vm.code.{BeControlStructure, BeExpression}
 import datastructures.core.vm.io.BeExpressionIO
 import datastructures.core.vm.simulation.{BeExpressionExecutor, BeSimulatorConfig, BeSimulatorState}
 import datastructures.core.vm.static.BeExpressionStaticInformation
-import datastructures.core.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeDataValue, BeDataValueUnit, BeScope}
+import datastructures.core.vm.types.BeScope.InSequenceScope
+import datastructures.core.vm.types.*
+import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
+import interactionPlugins.blockEnvironment.programming.blockdisplay.control.BeBlockSequence
+import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.util.CodeStringBuilder
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 case class BeSequenceInfo(mustEvaluateTo: Option[BeDataType], maxBodyElements: Option[Int] = None)
 
 case class BeSequence(body: List[BeExpression], sequenceInfo: BeSequenceInfo) extends BeControlStructure {

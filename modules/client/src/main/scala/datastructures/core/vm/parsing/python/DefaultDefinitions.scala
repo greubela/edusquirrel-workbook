@@ -1,11 +1,13 @@
 package datastructures.core.vm.parsing.python
 
 import datastructures.core.vm.types.BeDataType.{AnyType, Boolean => BooleanType, Numeric => NumericType, String => StringType}
-import datastructures.core.language.LanguageMap
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import datastructures.core.vm.types.BeDataType
+import it.evadid.core.datastructures.language.LanguageMap
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 object DefaultDefinitions {
 
   type NamedFunction = (String, BeDefineFunction)

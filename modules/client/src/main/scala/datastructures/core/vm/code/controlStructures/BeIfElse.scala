@@ -1,17 +1,16 @@
 package datastructures.core.vm.code.controlStructures
 
-import datastructures.core.vm.types.BeChildRole.ConditionInControlStructure
-import datastructures.core.vm.types.BeScope.InSequenceScope
-import datastructures.core.language.*
-import datastructures.core.language.AppLanguage.*
 import datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import datastructures.core.vm.code.{BeControlStructure, BeExpression}
 import datastructures.core.vm.io.BeExpressionIO
 import datastructures.core.vm.static.BeExpressionStaticInformation
-import datastructures.core.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo, BeScope}
+import datastructures.core.vm.types.BeChildRole.ConditionInControlStructure
+import datastructures.core.vm.types.BeScope.InSequenceScope
+import datastructures.core.vm.types.*
 import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import interactionPlugins.blockEnvironment.programming.blockdisplay.control.BeBlockIfElse
-import util.CodeStringBuilder
+import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.util.CodeStringBuilder
 
 case class BeIfElse(
                      condition: BeSequence,

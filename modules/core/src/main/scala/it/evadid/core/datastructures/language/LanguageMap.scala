@@ -1,11 +1,10 @@
-package datastructures.core.language
+package it.evadid.core.datastructures.language
 
 trait LanguageMap[T <: AppLanguage]() {
   def getInLanguage(language: T): String
 
   protected def availableLanguages: Set[T]
 }
-
 
 object LanguageMap {
   def empty[T <: AppLanguage]: LanguageMap[T] = mapBasedLanguageMap(Map.empty)

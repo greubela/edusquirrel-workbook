@@ -1,7 +1,7 @@
 package interactionPlugins.blockEnvironment.feedback
 
-import datastructures.core.language.{AppLanguage, HumanLanguage}
-
+import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.core.datastructures.language.AppLanguage.*
 /**
  * Detects function-name mismatches: the student named their function differently
  * from what the test suite expects.

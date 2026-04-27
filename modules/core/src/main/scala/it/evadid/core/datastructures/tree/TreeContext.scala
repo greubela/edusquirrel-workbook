@@ -1,4 +1,4 @@
-package datastructures.core.tree
+package it.evadid.core.datastructures.tree
 
 trait TreeStructureAndExecutionContext[P <: TreePosition, D, O] extends TreeStructureContext[P, D] with TreeFunctorExecutionContext[P, D, O] {
   def accessChildrenResults: List[O]

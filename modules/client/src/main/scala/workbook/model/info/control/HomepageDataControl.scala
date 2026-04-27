@@ -1,12 +1,9 @@
 package workbook.model.info.control
 
-import com.raquo.laminar.api.L.*
 import content.WorkbookFactory
-import datastructures.core.language.HumanLanguage
+import it.evadid.core.datastructures.language.AppLanguage.*
 import workbook.model.abstractions.WorkbookInteraction
-import workbook.model.info.analyze.WorkbookUserDataAnalyzer
 import workbook.model.info.*
-
 case class HomepageDataControl(fullInfo: FullInfo) {
 
   private def interactions: List[WorkbookInteraction[_]] = fullInfo.current.allAvailableInteractions

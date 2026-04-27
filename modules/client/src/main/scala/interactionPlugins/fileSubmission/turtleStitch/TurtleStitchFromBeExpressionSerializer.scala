@@ -1,13 +1,12 @@
 package interactionPlugins.fileSubmission.turtleStitch
 
-import datastructures.core.language.{AppLanguage, LanguageMap}
 import datastructures.core.vm.code.controlStructures.BeSequence
-import datastructures.core.vm.code.{BeExpression, defining}
-import datastructures.core.vm.code.defining.{BeDefineFunction, BeDefineVariable}
+import datastructures.core.vm.code.defining.BeDefineFunction
 import datastructures.core.vm.code.others.BeStartProgram
 import datastructures.core.vm.code.usage.{BeFunctionCall, BeUseValue}
+import datastructures.core.vm.code.{BeExpression, defining}
 import datastructures.core.vm.types.BeDataValueLiteral
-
+import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 object TurtleStitchFromBeExpressionSerializer {
 
   // Upstream references for XML shape compatibility:

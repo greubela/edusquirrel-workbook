@@ -1,4 +1,4 @@
-package datastructures.core.color
+package it.evadid.core.datastructures.color
 
 case class RGBColor(red: Int, green: Int, blue: Int, alpha: Int = 255) extends AppColor {
 

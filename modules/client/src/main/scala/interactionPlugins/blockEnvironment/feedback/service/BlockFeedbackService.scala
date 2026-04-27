@@ -1,15 +1,16 @@
 package interactionPlugins.blockEnvironment.feedback
 
-import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
 import datastructures.core.vm.code.BeExpression
 import interactionPlugins.blockEnvironment.feedback.ai.{FetchProxyLlmClient, LlmClient, PromptTemplates, QualityGate}
 import interactionPlugins.blockEnvironment.feedback.diagnosis.{DiagnosisAdapters, DiagnosisEngine}
+import interactionPlugins.blockEnvironment.feedback.ml.*
 import interactionPlugins.blockEnvironment.feedback.rules.{PythonStaticRules, VmStaticRules}
-import interactionPlugins.blockEnvironment.feedback.ml.{BlockFeedbackSignals, DecisionLayer, FeatureExtractor, MlRouter, MlTrainingLogger}
 import interactionPlugins.blockEnvironment.feedback.runtime.PythonRunStatus
+import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.scalajs.js
-
 /**
  * Central orchestration of the Python feedback pipeline.
  *

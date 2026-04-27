@@ -1,9 +1,11 @@
 package datastructures.core.vm.types
 
-import datastructures.core.language.AppLanguage
 import datastructures.core.vm.code.defining.BeDefineVariable
+import it.evadid.core.datastructures.language.AppLanguage
 import scala.util.Try
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 trait BeDataValue {
 
   def currentType: BeDataType

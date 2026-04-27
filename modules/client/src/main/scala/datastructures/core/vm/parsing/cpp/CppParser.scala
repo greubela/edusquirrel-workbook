@@ -1,6 +1,5 @@
 package datastructures.core.vm.parsing.cpp
 
-import datastructures.core.language.{HumanLanguage, LanguageMap}
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
 import datastructures.core.vm.code.defining.{BeDefineFunction, BeDefineVariable}
@@ -8,12 +7,14 @@ import datastructures.core.vm.code.errors.{BeExpressionUnparsable, BeExpressionU
 import datastructures.core.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import datastructures.core.vm.parsing.python.DefaultDefinitions
 import datastructures.core.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 
 /**
  *
  * c++ parser is currently minimal and only understands a subset of statements
  * Anything it doesn't understand is ignored (so it won't crash the editor on tab switch).
- * 
+ *
  */
 object CppParser {
 
@@ -115,6 +116,7 @@ object CppParser {
     private var i = 0
 
     private def eof: Boolean = i >= s.length
+
     private def peek: Char = if (eof) '\u0000' else s.charAt(i)
 
     private def skipWhitespace(): Unit = {

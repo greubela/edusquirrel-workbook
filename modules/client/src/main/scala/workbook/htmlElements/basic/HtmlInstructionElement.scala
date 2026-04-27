@@ -2,13 +2,9 @@ package workbook.htmlElements.basic
 
 import com.raquo.laminar.DomApi
 import com.raquo.laminar.api.L.*
-import datastructures.core.language.LanguageMap
 import util.web.MarkdownToHtml
 import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.FullInfo
-
-import scala.concurrent.ExecutionContext
-
 case class HtmlInstructionElement(fullInfo: FullInfo, languageMapId: String, childSignal: Signal[Element]) extends HtmlWorkbookElement {
 
 

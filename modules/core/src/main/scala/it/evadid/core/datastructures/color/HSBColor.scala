@@ -1,4 +1,4 @@
-package datastructures.core.color
+package it.evadid.core.datastructures.color
 
 case class HSBColor(hue: Double, saturation: Double, brightness: Double) extends AppColor {
 

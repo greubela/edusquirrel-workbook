@@ -2,10 +2,11 @@ package workbook.htmlElements.headerElements
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import datastructures.core.language.{AppLanguage, HumanLanguage}
+import datastructures.web.file.FileDescription
+import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.core.datastructures.language.AppLanguage.*
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.{FullInfo, HomepageInfo}
-
+import workbook.model.info.FullInfo
 case class LanguageSelectionLine(fullInfo: FullInfo) extends HtmlWorkbookElement {
 
 
@@ -44,11 +45,10 @@ object LanguageSelectionLine {
 
   private def esFlag(width: Double): Element = {
     img(
-      src := "../resources/img/flags/esFlag.svg",
+      src := FileDescription.relativeToResourceFolder("/img/flags/esFlag.svg").fullPath,
       styleAttr := "width:" + width + "px; height:" + (width / 3 * 2) + "px;",
     )
   }
-
 
   private def dkFlag(width: Double): Element =
     svg.svg(

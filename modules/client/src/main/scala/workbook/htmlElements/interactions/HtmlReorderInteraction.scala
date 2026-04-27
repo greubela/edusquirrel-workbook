@@ -1,15 +1,13 @@
 package workbook.htmlElements.interactions
 
 import com.raquo.laminar.api.L.*
-import datastructures.core.language.AppLanguage.Java
-import util.serializing.Serializer
+import it.evadid.core.util.io.Serializer
 import workbook.model.abstractions.WorkbookInteraction
 import workbook.model.info.FullInfo
 import workbook.model.interaction.InteractionVariable
 import workbook.model.interaction.history.UpdateImportance
 
 import scala.util.Try
-
 case class HtmlReorderInteraction[T](
                                       fullInfo: FullInfo,
                                       id: String,

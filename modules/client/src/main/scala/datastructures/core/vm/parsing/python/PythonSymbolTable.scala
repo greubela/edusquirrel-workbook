@@ -1,14 +1,16 @@
 package datastructures.core.vm.parsing.python
 
-import datastructures.core.language.LanguageMap
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.code.controlStructures.BeSequence
 import datastructures.core.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
 import datastructures.core.vm.types.BeDataType.AnyType
 import datastructures.core.vm.types.{AssigningNotPossible, AssigningPossibleWithImplicitCast, AssigningPossibleWithSameType, BeDataType}
+import it.evadid.core.datastructures.language.LanguageMap
 
 import scala.collection.mutable
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 object PythonSymbolTable {
   sealed trait KnownStructure {
     def name: String
@@ -16,8 +18,11 @@ object PythonSymbolTable {
 
   object KnownStructure {
     final case class Variable(name: String, variable: BeDefineVariable) extends KnownStructure
+
     final case class Function(name: String, function: BeDefineFunction) extends KnownStructure
+
     final case class Operator(name: String, function: BeDefineFunction) extends KnownStructure
+
     final case class Class(name: String, clazz: BeDefineClass) extends KnownStructure
   }
 
@@ -99,6 +104,7 @@ object PythonSymbolTable {
     }
 
     def pushScope(): Unit = scopes = mutable.LinkedHashMap[String, BeDefineVariable]() :: scopes
+
     def popScope(): Unit = scopes = scopes.tail
 
     def assignVariable(name: String, dataType: BeDataType): BeDefineVariable = {
@@ -118,6 +124,7 @@ object PythonSymbolTable {
     }
 
     def lookupVariable(name: String): Option[BeDefineVariable] = scopes.collectFirst { case scope if scope.contains(name) => scope(name) }
+
     private def currentScope: mutable.LinkedHashMap[String, BeDefineVariable] = scopes.head
 
     def registerVariable(name: String, variable: BeDefineVariable): Unit = {
@@ -221,8 +228,11 @@ object PythonSymbolTable {
     }
 
     def definedClasses: List[BeDefineClass] = classesBuffer.toList
+
     def definedFunctions: List[BeDefineFunction] = functionsBuffer.toList
+
     def definedVariables: List[BeDefineVariable] = variablesBuffer.toList
+
     def currentStructures: CurrentlyKnownStructures = currentlyKnownStructures
   }
 }

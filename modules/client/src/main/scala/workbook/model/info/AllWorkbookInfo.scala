@@ -1,11 +1,9 @@
 package workbook.model.info
 
-import datastructures.core.language.{AppLanguage, HumanLanguage}
-import workbook.factory.WorkbookMetadataJson
+import it.evadid.core.datastructures.language.AppLanguage.*
 import workbook.model.Workbook
 import workbook.model.abstractions.WorkbookInteraction
 import workbook.model.info.AllWorkbookInfo.WorkbookMetadata
-
 case class AllWorkbookInfo(
                             loadedWorkbook: Workbook, 
                             config: WorkbookConfig, 

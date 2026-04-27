@@ -2,16 +2,15 @@ package workbook.model.info
 
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement
-import datastructures.core.language.{AppLanguage, HumanLanguage}
+import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.core.datastructures.language.AppLanguage.*
 import org.scalajs.dom
 import workbook.htmlElements.container.HtmlFullScreenContainerElement
-import workbook.model.info.*
 import workbook.model.info.FullInfo.HomepageDefaults
 import workbook.model.info.control.{HomepageCurrentInfo, HomepageDataControl, HomepageSignalInfo}
 import workbook.model.interaction.sync.SyncInformation
-import workbook.singletons.{FileDataStorage, WorkbookLanguageInfo}
+import workbook.singletons.FileDataStorage
 import workbook.user.User
-
 case class FullInfo() extends HtmlAppElement {
 
   private lazy val domElement: Element = {

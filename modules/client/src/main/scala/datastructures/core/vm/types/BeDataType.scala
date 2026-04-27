@@ -1,14 +1,11 @@
 package datastructures.core.vm.types
 
-import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.*
-import datastructures.core.language.AppLanguage.{BlockDisplay, Cpp, Java, Python}
 import contentmanagement.webElements.svg.shapes.BeShape
-import BeShape.BeShapeContainerable
-import contentmanagement.webElements.svg.shapes.datatypes.{BooleanShape, DateShape, DuckShape, NumericShape, StringShape, UnitShape}
-import datastructures.core.language.{LanguageMap, ProgrammingLanguage}
+import contentmanagement.webElements.svg.shapes.BeShape.BeShapeContainerable
+import contentmanagement.webElements.svg.shapes.datatypes.*
+import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.language.LanguageMap
 import util.numbers.AlgebriteNumber
-
 sealed trait BeDataType {
 
   def formatTypeForDisplay: LanguageMap[ProgrammingLanguage]
@@ -32,9 +29,9 @@ sealed trait BeDataType {
 object BeDataType {
 
   private def mapWithOverrides(
-      default: String,
-      overrides: (ProgrammingLanguage, String)*
-  ): LanguageMap[ProgrammingLanguage] = {
+                                default: String,
+                                overrides: (ProgrammingLanguage, String)*
+                              ): LanguageMap[ProgrammingLanguage] = {
     if (overrides.isEmpty) LanguageMap.universalMap(default)
     else {
       val overrideMap = LanguageMap.mapBasedLanguageMap(overrides.toMap)
@@ -160,7 +157,7 @@ object BeDataType {
       val trimmed = str.trim
       val alreadyQuoted =
         (trimmed.length >= 2 && ((trimmed.head == '"' && trimmed.last == '"') || (trimmed.head == '\'' && trimmed.last == '\''))) ||
-          (trimmed.length >= 6 && ((trimmed.startsWith("\"\"\"") && trimmed.endsWith("\"\"\"")) || (trimmed.startsWith("'''") && trimmed.endsWith("'''") )))
+          (trimmed.length >= 6 && ((trimmed.startsWith("\"\"\"") && trimmed.endsWith("\"\"\"")) || (trimmed.startsWith("'''") && trimmed.endsWith("'''"))))
       val value = if (alreadyQuoted) trimmed else s"\"$str\""
       LanguageMap.universalMap(value)
     },
@@ -232,7 +229,7 @@ object BeDataType {
     LanguageMap.universalMap("Error"),
     str => LanguageMap.universalMap(str.toString), str => false, Set()) // todo
 
-    val allKnownTypesThatHaveLiterals: Set[BeDataType] = Set(Int, Numeric, Boolean, String, Date, Unit)
+  val allKnownTypesThatHaveLiterals: Set[BeDataType] = Set(Int, Numeric, Boolean, String, Date, Unit)
 
 
   /*

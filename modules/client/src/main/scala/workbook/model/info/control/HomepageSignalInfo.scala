@@ -1,14 +1,13 @@
 package workbook.model.info.control
 
-import com.raquo.airstream.flatten.FlattenStrategy.allowFlatten
 import com.raquo.laminar.api.L.*
-import datastructures.core.language.{HumanLanguage, LanguageMap}
+import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.language.LanguageMap
 import workbook.model.WorkbookSection
 import workbook.model.info.*
 import workbook.singletons.WorkbookLanguageInfo
 
 import scala.concurrent.*
-
 case class HomepageSignalInfo(fullInfo: FullInfo) {
 
   private lazy val baseSignal: StrictSignal[HomepageInfo] = {

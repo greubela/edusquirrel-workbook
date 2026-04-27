@@ -2,9 +2,9 @@ package interactionPlugins.gpt
 
 import com.raquo.airstream.core.Observer
 import com.raquo.laminar.api.L.{Var, unsafeWindowOwner}
-import datastructures.core.chat.MessengerModel.{BasicPerson, Message, Person, SenderRole}
-import datastructures.core.chat.MessengerModel
-import datastructures.core.language.LanguageMap
+import it.evadid.core.datastructures.chat.MessengerModel
+import it.evadid.core.datastructures.chat.MessengerModel.{BasicPerson, Message, Person, SenderRole}
+import it.evadid.core.datastructures.language.LanguageMap
 import org.scalajs.dom
 import org.scalajs.dom.{Headers, HttpMethod, RequestInit}
 import upickle.default.*
@@ -16,7 +16,6 @@ import scala.scalajs.js.Thenable
 import scala.scalajs.js.Thenable.Implicits.*
 import scala.scalajs.js.annotation.*
 import scala.scalajs.js.typedarray.Uint8Array
-
 @js.native
 @JSGlobal("TextDecoder")
 class TextDecoder(encoding: String = "utf-8") extends js.Object {

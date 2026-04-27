@@ -9,6 +9,9 @@ import util.web.*
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
+
 case class FileDataStorage() extends AsyncDataCache[FileDescription, LoadedFile]("FileDataStore", false) {
 
   def load(file: FileDescription)(using ec: ExecutionContext): Future[LoadedFile] = executeLoading(file)(ec)

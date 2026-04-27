@@ -1,4 +1,4 @@
-package datastructures.core.tree
+package it.evadid.core.datastructures.tree
 
 trait TreePosition {
   def isRoot: Boolean

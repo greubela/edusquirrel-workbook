@@ -1,14 +1,14 @@
 package datastructures.web.storage
 
 import com.raquo.airstream.state.Var
-import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import datastructures.core.language.{HumanLanguage, LanguageMap}
 
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean) {
 
   // Helper Classes

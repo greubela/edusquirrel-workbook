@@ -1,18 +1,12 @@
 package content
 
-import datastructures.core.language.AppLanguage.*
-import datastructures.core.language.HumanLanguage
 import datastructures.web.file.FileDescription
 import interactionPlugins.turtleStitchPlugin.{TurtleStitchExploreProjectExercise, TurtleStitchRecreateShapeExercise}
-import org.scalajs.dom.URL
-import util.web.DownloadHelper
+import it.evadid.core.datastructures.language.AppLanguage.*
 import workbook.htmlElements.basic.*
-import workbook.htmlElements.container.*
 import workbook.model.*
 import workbook.model.abstractions.HtmlWorkbookElement
-import workbook.model.info.{FullInfo, WorkbookConfig}
-import workbook.user.User
-
+import workbook.model.info.FullInfo
 case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 
 

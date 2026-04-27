@@ -1,4 +1,4 @@
-package util
+package it.evadid.core.util
 
 import scala.collection.mutable
 

@@ -1,27 +1,10 @@
 package interactionPlugins.blockEnvironment.programming.editor
 
 import com.raquo.airstream.state.Var
-import com.raquo.laminar.api.L.{h2, *, given}
-import com.raquo.laminar.api.L.{render, unsafeWindowOwner}
-import datastructures.core.language.AppLanguage.{English, German, Python}
+import com.raquo.laminar.api.L.{h2, *}
 import contentmanagement.webElements.HtmlAppElement
-import contentmanagement.webElements.genericHtmlElements.editor.SimpleTextDisplay
-import contentmanagement.webElements.svg.shapes.BeShape
-import contentmanagement.webElements.svg.shapes.controlflow.*
-import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.{ControlFlowCross, IfElseSplit, IfElseUnion}
-import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.{ControlFlowProgramStarter, ControlFlowProgramStopper}
-import contentmanagement.webElements.svg.shapes.decorations.{BeDataArrow, ControlArrowUpDown}
-import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig}
-import interactionPlugins.blockEnvironment.programming.*
-import interactionPlugins.blockEnvironment.programming.editor.elements.*
-import contentmanagement.webElements.genericHtmlElements.editor.*
-import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
 import datastructures.core.vm.code.BeExpression
-import datastructures.core.vm.code.others.BeStartProgram
-import datastructures.core.vm.parsing.python.PythonParser
-import it.evadid.core.datastructures.geometry.{Bounds, Point}
-import workbook.model.abstractions.HtmlWorkbookElement
-
+import interactionPlugins.blockEnvironment.programming.editor.elements.*
 object HtmlFullscreenTurtleEditorElement {
 
   def apply(initExpr: BeExpression): HtmlFullscreenTurtleEditorElement = {

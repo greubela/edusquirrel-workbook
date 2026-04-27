@@ -1,18 +1,17 @@
 package datastructures.core.vm.code.usage
 
-import datastructures.core.vm.types.BeChildRole.ValueInAssignment
-import datastructures.core.language.{HumanLanguage, ProgrammingLanguage}
-import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
-import interactionPlugins.blockEnvironment.programming.blockdisplay.use.BeBlockAssignValue
-import datastructures.core.language.*
-import datastructures.core.language.AppLanguage.*
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.code.defining.BeDefineVariable
 import datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import datastructures.core.vm.io.BeExpressionIO
 import datastructures.core.vm.static.BeExpressionStaticInformation
+import datastructures.core.vm.types.BeChildRole.ValueInAssignment
 import datastructures.core.vm.types.{BeChildPosition, BeChildRole, BeInfo, BeScope}
+import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
+import interactionPlugins.blockEnvironment.programming.blockdisplay.use.BeBlockAssignValue
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) extends BeExpression {
 
   //private val assignPossible: BeDataTypeAssigningPossible = target.variableType.canTakeValuesFrom(value.possibleStaticTypes)

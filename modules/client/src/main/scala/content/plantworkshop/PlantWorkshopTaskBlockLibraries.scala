@@ -1,6 +1,5 @@
 package content.plantworkshop
 
-import datastructures.core.language.{HumanLanguage, LanguageMap}
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.code.controlStructures.{BeIfElse, BeSequence}
 import datastructures.core.vm.code.defining.{BeDefineFunction, BeDefineVariable}
@@ -8,9 +7,9 @@ import datastructures.core.vm.code.others.BeStartProgram
 import datastructures.core.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import datastructures.core.vm.parsing.python.DefaultDefinitions
 import datastructures.core.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
-import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.BeProgram
-
+import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.language.LanguageMap
 object PlantWorkshopTaskBlockLibraries {
 
   private def valueRefProgram(name: String, tpe: BeDataType): BeProgram = {

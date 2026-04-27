@@ -1,17 +1,18 @@
 package datastructures.core.vm.code.others
 
-import datastructures.core.vm.types.BeChildRole.BodySequence
-import datastructures.core.vm.types.BeScope.InSequenceScope
-import datastructures.core.language.{HumanLanguage, ProgrammingLanguage}
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.code.controlStructures.BeSequence
 import datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import datastructures.core.vm.io.BeExpressionIO
 import datastructures.core.vm.static.BeExpressionStaticInformation
+import datastructures.core.vm.types.BeChildRole.BodySequence
+import datastructures.core.vm.types.BeScope.InSequenceScope
 import datastructures.core.vm.types.{BeChildPosition, BeChildRole, BeScope}
 import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import interactionPlugins.blockEnvironment.programming.blockdisplay.control.BeBlockStarter
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 case class BeStartProgram(startSequence: Option[BeSequence]) extends BeExpression {
 
 

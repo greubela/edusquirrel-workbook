@@ -1,10 +1,9 @@
 package datastructures.core.vm.code.defining
 
-import datastructures.core.language.AppLanguage.{JavaScript, Python}
+import it.evadid.core.datastructures.language.AppLanguage.{JavaScript, Python}
 import BeDefineFunction.*
 import datastructures.core.vm.types.BeChildRole.BodySequence
 import datastructures.core.vm.types.BeScope.InSequenceScope
-import datastructures.core.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
 import datastructures.core.vm.code.{BeDefineStructure, BeExpression}
 import datastructures.core.vm.code.controlStructures.BeSequence
 import datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference}
@@ -13,8 +12,10 @@ import datastructures.core.vm.static.BeExpressionStaticInformation
 import datastructures.core.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeScope}
 import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import interactionPlugins.blockEnvironment.programming.blockdisplay.define.BeBlockDefineSingleReturnFunction
-import util.CodeStringBuilder
+import it.evadid.core.util.CodeStringBuilder
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 case class BeDefineFunction(
                              inputs: List[BeDefineVariable],
                              outputs: Option[BeDefineVariable],

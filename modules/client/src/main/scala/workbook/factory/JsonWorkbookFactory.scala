@@ -1,7 +1,8 @@
 package workbook.factory
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 import upickle.default.{ReadWriter, macroRW, read, write}
-
 /**
  * Serializable DTO model for building workbooks from JSON.
  *

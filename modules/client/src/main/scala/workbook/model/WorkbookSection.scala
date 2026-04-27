@@ -2,7 +2,6 @@ package workbook.model
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import datastructures.core.language.{HumanLanguage, LanguageMap}
 import workbook.htmlElements.container.HtmlExerciseContainer
 import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.FullInfo

@@ -1,15 +1,17 @@
 package datastructures.core.vm.parsing.python
 
-import PythonLexerLike.{ParsedLine, findBodyIndent, splitCodeAndComment}
-import PythonSymbolTable.ParseContext
-import datastructures.core.language.{HumanLanguage, LanguageMap}
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.code.controlStructures.BeSequence
 import datastructures.core.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
 import datastructures.core.vm.code.errors.{BeExpressionUnparsable, BeSingleLineComment}
-import datastructures.core.vm.types.BeDataType.{AnyType, BeUnionAllowedTypes}
+import datastructures.core.vm.parsing.python.PythonLexerLike.{ParsedLine, findBodyIndent, splitCodeAndComment}
+import datastructures.core.vm.parsing.python.PythonSymbolTable.ParseContext
 import datastructures.core.vm.types.BeDataType
+import datastructures.core.vm.types.BeDataType.AnyType
+import it.evadid.core.datastructures.language.LanguageMap
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 import scala.collection.mutable
 
 object PythonClassParser {
@@ -24,7 +26,9 @@ object PythonClassParser {
   private val IfPattern = """^if\s+(.+):$""".r
 
   final case class AttributeRecord(name: String, variable: BeDefineVariable)
+
   final case class ParsedMethod(name: String, template: BeDefineFunction, attributes: List[AttributeRecord], nextIndex: Int)
+
   final case class ClassParseResult(expression: BeExpression, nextIndex: Int)
 
   final case class ClassParserApi(

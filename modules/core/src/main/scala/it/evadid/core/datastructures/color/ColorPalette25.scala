@@ -1,4 +1,4 @@
-package datastructures.core.color
+package it.evadid.core.datastructures.color
 
 trait ColorPalette25 extends AppColorPalette {
 

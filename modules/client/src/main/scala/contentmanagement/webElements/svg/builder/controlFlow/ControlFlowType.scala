@@ -1,13 +1,8 @@
 package contentmanagement.webElements.svg.builder.controlFlow
 
-import contentmanagement.webElements.svg.AppSvgElement
-import contentmanagement.webElements.svg.builder.controlFlow.path.{ControlFlowPathOverlay, ControlFlowOverlayBuilder}
-import contentmanagement.webElements.svg.shapes.*
+import contentmanagement.webElements.svg.builder.controlFlow.path.ControlFlowPathOverlay
 import contentmanagement.webElements.svg.shapes.BeShape.BeShapeContainerable
-import datastructures.core.language.{HumanLanguage, LanguageMap}
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
-import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 
 
 trait ControlFlowType {

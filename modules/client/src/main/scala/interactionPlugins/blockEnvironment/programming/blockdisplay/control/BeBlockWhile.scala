@@ -5,14 +5,14 @@ import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.*
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.ControlFlowDownUp
 import contentmanagement.webElements.svg.shapes.special.nested.NestedControlStructureShape
 import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowAndExpressionShape, ControlFlowShape}
-import datastructures.core.tree.TreeStructureContext
-import datastructures.core.tree.nodeImpl.NodeBasedTreePosition
 import datastructures.core.vm.code.controlStructures.BeWhile
 import datastructures.core.vm.code.tree.BeExpressionNode
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, RenderingInformation}
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer.{ControlFlowDecreaseLine, ControlFlowIncreaseLine}
+import it.evadid.core.datastructures.tree.TreeStructureContext
+import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreePosition
 
 case class BeBlockWhile(whileExpr: BeWhile) extends BeBlock {
 

@@ -1,6 +1,5 @@
 package datastructures.core.vm.code.usage
 
-import datastructures.core.language.{HumanLanguage, ProgrammingLanguage}
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.code.defining.BeDefineVariable
 import datastructures.core.vm.io.BeExpressionIO
@@ -9,6 +8,10 @@ import datastructures.core.vm.types.{BeDataType, BeDataValue, BeDataValueLiteral
 import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import interactionPlugins.blockEnvironment.programming.blockdisplay.data.BeBlockUseValue
 
+
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
+
 /* necessary to distinguish between "variable is used in a reading context for assigning" or "variable is used in a reading context as parameter"...
  because the VALUE and VARIABLE might be the same... but the USAGE is not (for comparison reasons)
  also... necessary to get from the definevariable to the usevariable
@@ -16,7 +19,7 @@ enables to not implement everything in the value (which would be problematic for
 */
 
 case class BeUseValue(value: BeDataValue, contextIfKnown: Option[BeDefineVariable]) extends BeExpression {
-  
+
   override def staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation {
     override def staticType: BeDataType = value.currentType
 

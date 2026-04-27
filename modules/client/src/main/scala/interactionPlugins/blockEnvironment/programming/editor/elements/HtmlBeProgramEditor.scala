@@ -3,18 +3,15 @@ package interactionPlugins.blockEnvironment.programming.editor.elements
 import com.raquo.airstream.ownership.Owner
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import com.raquo.laminar.api.L.Var
 import contentmanagement.webElements.HtmlAppElement
 import contentmanagement.webElements.genericHtmlElements.editor.CodeMirrorEditor
 import contentmanagement.webElements.genericHtmlElements.other.{HtmlTab, HtmlTabElement}
-import datastructures.core.language.{AppLanguage, HumanLanguage, ProgrammingLanguage}
-import interactionPlugins.blockEnvironment.programming.BeProgram
-import datastructures.core.language.*
-import datastructures.core.language.AppLanguage.*
 import datastructures.core.vm.code.others.BeStartProgram
 import datastructures.core.vm.parsing.cpp.CppParser
 import datastructures.core.vm.parsing.python.PythonParser
-
+import interactionPlugins.blockEnvironment.programming.BeProgram
+import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.core.datastructures.language.AppLanguage.*
 case class HtmlBeProgramEditor(
                                 editorState: EditorState,
                                 textLanguage: ProgrammingLanguage = Python

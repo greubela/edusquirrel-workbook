@@ -1,6 +1,5 @@
 package interactionPlugins.fileSubmission.turtleStitch
 
-import datastructures.core.language.LanguageMap
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.code.controlStructures.BeSequence
 import datastructures.core.vm.code.defining.{BeDefineFunction, BeDefineVariable}
@@ -8,7 +7,7 @@ import datastructures.core.vm.code.others.BeStartProgram
 import datastructures.core.vm.code.usage.{BeFunctionCall, BeUseValue}
 import datastructures.core.vm.types.{BeDataType, BeDataValueLiteral}
 import interactionPlugins.fileSubmission.turtleStitch.TurtleStitchProgramModel.*
-
+import it.evadid.core.datastructures.language.LanguageMap
 object TurtleStitchToBeExpressionParser {
 
   private val OperatorSymbols = Set(

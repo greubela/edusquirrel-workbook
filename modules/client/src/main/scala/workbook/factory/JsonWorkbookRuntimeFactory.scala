@@ -1,22 +1,13 @@
 package workbook.factory
 
-import com.raquo.laminar.api.L.{*, given}
 import content.WorkbookFactory
-import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
-import datastructures.web.file.FileDescription
-import interactionPlugins.slideshow.{SlideDeckExercise, SlidePanel}
-import interactionPlugins.turtleStitchPlugin.TurtleStitchExploreProjectExercise
-import workbook.htmlElements.basic.*
-import workbook.htmlElements.interactions.{HtmlBasicCheckboxInteraction, HtmlBasicTextInteraction, HtmlReorderInteraction}
-import workbook.htmlElements.container.*
-import workbook.model.{Workbook, WorkbookSection}
-import workbook.model.abstractions.HtmlWorkbookElement
-
+import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.core.datastructures.language.AppLanguage.*
 import upickle.default.{ReadWriter, macroRW, read}
+import workbook.model.Workbook
 import workbook.model.info.FullInfo
 
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 case class JsonWorkbookRuntimeFactory(

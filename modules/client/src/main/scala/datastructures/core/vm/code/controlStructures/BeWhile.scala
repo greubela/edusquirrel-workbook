@@ -2,20 +2,19 @@ package datastructures.core.vm.code.controlStructures
 
 import datastructures.core.vm.types.BeChildRole.ConditionInControlStructure
 import datastructures.core.vm.types.BeScope.InSequenceScope
-import datastructures.core.language.{HumanLanguage, ProgrammingLanguage}
 import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import interactionPlugins.blockEnvironment.programming.blockdisplay.control.BeBlockWhile
-import util.CodeStringBuilder
 import util.text.ParenthesesUtils.stripOuterBalancedParens
-import datastructures.core.language.*
-import datastructures.core.language.AppLanguage.*
 import datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import datastructures.core.vm.code.{BeControlStructure, BeExpression}
 import datastructures.core.vm.io.BeExpressionIO
 import datastructures.core.vm.simulation.{BeExpressionExecutor, BeSimulatorConfig, BeSimulatorState}
 import datastructures.core.vm.static.BeExpressionStaticInformation
 import datastructures.core.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeDataValue, BeInfo, BeScope}
+import it.evadid.core.util.CodeStringBuilder
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 case class BeWhile(
                     condition: BeSequence,
                     body: BeSequence)

@@ -1,16 +1,15 @@
 package workbook.htmlElements.basic.canvas
 
-import com.raquo.laminar.api.L.{*, given}
+import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
-import datastructures.core.color.{AppColor, RGBColor}
 import datastructures.web.file.FullImage
 import datastructures.web.font.AppFont
+import it.evadid.core.datastructures.color.{AppColor, RGBColor}
 import org.scalajs.dom
 import org.scalajs.dom.CanvasRenderingContext2D
 import org.scalajs.dom.html.Canvas
 
 import scala.scalajs.js.JSConverters.*
-
 class WebCanvas(canvas: ReactiveHtmlElement[Canvas], width: Int, height: Int) extends AppCanvas[ReactiveHtmlElement[Canvas]] {
 
   def getDomElement(): HtmlElement = getCanvas

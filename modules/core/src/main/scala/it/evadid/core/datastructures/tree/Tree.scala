@@ -1,8 +1,7 @@
-package datastructures.core.tree
+package it.evadid.core.datastructures.tree
 
-import datastructures.core.tree.*
-import datastructures.core.tree.nodeImpl.*
-import util.{CodeStringBuilder, FunctionalUtility}
+import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreePosition
+import it.evadid.core.util.{CodeStringBuilder, FunctionalUtility}
 
 import scala.collection.mutable
 

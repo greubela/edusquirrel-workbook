@@ -1,6 +1,7 @@
 package datastructures.core.vm.code.errors
 
-import datastructures.core.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.io.BeExpressionIO
 import datastructures.core.vm.static.BeExpressionStaticInformation

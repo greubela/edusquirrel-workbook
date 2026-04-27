@@ -1,7 +1,7 @@
 package interactionPlugins.blockEnvironment.feedback
 
-import datastructures.core.language.{AppLanguage, HumanLanguage}
-
+import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.core.datastructures.language.AppLanguage.*
 /**
  * Central formatting helper for test result presentation.
  */

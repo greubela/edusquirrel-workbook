@@ -1,8 +1,10 @@
 package datastructures.web.file
 
-import CopyrightInfo.{AuthorInfo, LicenceInfo}
-import datastructures.core.language.{HumanLanguage, LanguageMap}
+import datastructures.web.file.CopyrightInfo.{AuthorInfo, LicenceInfo}
+import it.evadid.core.datastructures.language.LanguageMap
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 
 case class CopyrightInfo(licenceInfo: LicenceInfo, authorInfo: AuthorInfo) {
 

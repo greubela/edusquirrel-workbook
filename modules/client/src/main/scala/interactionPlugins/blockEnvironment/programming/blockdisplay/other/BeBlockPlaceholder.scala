@@ -4,10 +4,10 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{Signal, eventPropToProcessor, svg}
 import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowShape}
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.*
-import datastructures.core.tree.nodeImpl.NodeBasedTreePosition
 import datastructures.core.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
 import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, BeBlockSingleShape, BeTreeDropTarget, RenderingInformation}
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
+import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreePosition
 
 case class BeBlockPlaceholder(extensionPoint: BeExtensionPoint, myPositionInTree: NodeBasedTreePosition) extends BeBlockSingleShape {
 

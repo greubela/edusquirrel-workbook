@@ -2,15 +2,14 @@ package interactionPlugins.turtleStitchPlugin.card
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import datastructures.core.language.HumanLanguage
 import datastructures.web.file.FileDescription
 import interactionPlugins.turtleStitchPlugin.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 import util.web.DownloadHelper
 import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.FullInfo
 
 import scala.concurrent.ExecutionContext
-
 case class TurtleFileShowProgramXmlCard(
                                          fullInfo: FullInfo,
                                          desiredFilename: String,

@@ -1,7 +1,6 @@
-package datastructures.core.tree.nodeImpl
+package it.evadid.core.datastructures.tree.nodeImpl
 
-import datastructures.core.tree.*
-import datastructures.core.tree.nodeImpl.*
+import it.evadid.core.datastructures.tree.TreePosition
 
 case class NodeBasedTreePosition(childIndices: List[Int]) extends TreePosition {
 

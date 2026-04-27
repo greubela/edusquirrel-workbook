@@ -1,10 +1,12 @@
 package interactionPlugins.blockEnvironment.feedback.diagnosis
 
-import datastructures.core.language.{AppLanguage, HumanLanguage}
-import interactionPlugins.blockEnvironment.feedback.{BlockFeedbackRequest, BlockFeedbackTestPlan, PythonTestResult}
 import interactionPlugins.blockEnvironment.feedback.ml.{BlockFeedbackSignals, DecisionLayer}
 import interactionPlugins.blockEnvironment.feedback.rules.RuleResult
+import interactionPlugins.blockEnvironment.feedback.{BlockFeedbackRequest, BlockFeedbackTestPlan, PythonTestResult}
+import it.evadid.core.datastructures.language.AppLanguage
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 object DiagnosisEngine:
 
   def build(

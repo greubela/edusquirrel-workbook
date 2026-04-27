@@ -8,7 +8,6 @@ import workbook.singletons.WorkbookLanguageInfo
 import workbook.singletons.WorkbookLanguageInfo.LabelLanguageMapStorage
 
 import scala.concurrent.ExecutionContext
-
 case class TechnicalHomepageElements(
                                       private[info] fullScreenContainer: HtmlFullScreenContainerElement,
                                       fileStore: AsyncDataCache[FileDescription, LoadedFile],

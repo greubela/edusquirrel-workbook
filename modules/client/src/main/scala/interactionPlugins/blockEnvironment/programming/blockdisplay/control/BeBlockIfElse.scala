@@ -5,14 +5,14 @@ import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.{Control
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.ControlFlowDirected
 import contentmanagement.webElements.svg.shapes.special.nested.NestedControlStructureShape
 import contentmanagement.webElements.svg.shapes.*
-import datastructures.core.tree.TreeStructureContext
-import datastructures.core.tree.nodeImpl.NodeBasedTreePosition
 import datastructures.core.vm.code.controlStructures.BeIfElse
 import datastructures.core.vm.code.tree.BeExpressionNode
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, RenderingInformation}
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer.{ControlFlowDecreaseLine, ControlFlowIncreaseLine, ControlFlowReplaceLine}
+import it.evadid.core.datastructures.tree.TreeStructureContext
+import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreePosition
 
 case class BeBlockIfElse(expr: BeIfElse) extends BeBlock {
 

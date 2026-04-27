@@ -1,7 +1,6 @@
 package interactionPlugins.blockEnvironment.feedback
 
-import datastructures.core.language.AppLanguage
-
+import it.evadid.core.datastructures.language.AppLanguage
 /**
  * Encapsulates the collection of tests, fixtures, packages and hints that
  * should run for a specific submission.

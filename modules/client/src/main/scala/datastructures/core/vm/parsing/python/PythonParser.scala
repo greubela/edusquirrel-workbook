@@ -1,19 +1,19 @@
 package datastructures.core.vm.parsing.python
 
-import ParsingUtils.keepExpression
-import PythonClassParser.{ClassParseResult, ClassParserApi}
-import PythonLexerLike.{ParsedLine, findBodyIndent, skipBlankLines, toParsedLines}
-import PythonStatementParser.{BlockParseResult, NodeWithNext, StatementApi}
-import PythonSymbolTable.{CurrentlyKnownStructures, KnownStructure, ParseContext}
-import datastructures.core.vm.types.BeDataType.{AnyType, BeUnionAllowedTypes}
-import datastructures.core.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.code.controlStructures.{BeIfElse, BeSequence, BeWhile}
 import datastructures.core.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
 import datastructures.core.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import datastructures.core.vm.code.others.BeReturn
 import datastructures.core.vm.code.usage.{BeFunctionCall, BeUseValue}
+import datastructures.core.vm.parsing.python.ParsingUtils.keepExpression
+import datastructures.core.vm.parsing.python.PythonClassParser.{ClassParseResult, ClassParserApi}
+import datastructures.core.vm.parsing.python.PythonLexerLike.{ParsedLine, findBodyIndent, skipBlankLines, toParsedLines}
+import datastructures.core.vm.parsing.python.PythonStatementParser.{BlockParseResult, NodeWithNext, StatementApi}
+import datastructures.core.vm.parsing.python.PythonSymbolTable.{CurrentlyKnownStructures, ParseContext}
+import datastructures.core.vm.types.BeDataType.{AnyType, BeUnionAllowedTypes}
 import datastructures.core.vm.types.{BeDataType, BeDataValueLiteral, BeDataValueUnit, BeUseValueReference}
+import it.evadid.core.datastructures.language.LanguageMap
 
 /**
  * Parses Python source code that has been normalized by [[PythonNormalizer]].

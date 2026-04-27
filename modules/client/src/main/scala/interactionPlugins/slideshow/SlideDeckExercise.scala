@@ -1,13 +1,12 @@
 package interactionPlugins.slideshow
 
 import com.raquo.laminar.api.L.*
+import it.evadid.core.util.io.Serializer
 import upickle.default.*
 import workbook.model.abstractions.WorkbookInteraction
+import workbook.model.info.FullInfo
 import workbook.model.interaction.InteractionVariable
 import workbook.model.interaction.history.UpdateImportance
-import util.serializing.Serializer
-import workbook.model.info.FullInfo
-
 case class SlideView(slideIndex: Int, viewedAtEpochMillis: Long)
 
 case class SlideDeckExercise(

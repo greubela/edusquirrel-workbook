@@ -2,19 +2,15 @@ package interactionPlugins.gpt
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.svg
-import com.raquo.laminar.api.L.Var
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import contentmanagement.webElements.genericHtmlElements.editor.SimpleMessengerEditor
-import datastructures.core.chat.MessengerModel
+import it.evadid.core.datastructures.chat.MessengerModel
+import it.evadid.core.util.io.Serializer
 import org.scalajs.dom.SVGSVGElement
-import util.serializing.Serializer
-import workbook.model.abstractions.{HtmlWorkbookElement, WorkbookInteraction}
-import workbook.model.interaction.*
-import workbook.model.interaction.history.*
-import workbook.model.interaction.sync.*
 import workbook.htmlElements.basic.*
-import workbook.model.info.{FullInfo, HomepageInfo}
-
+import workbook.model.abstractions.WorkbookInteraction
+import workbook.model.info.FullInfo
+import workbook.model.interaction.*
 case class HtmlGPTMessenger(fullInfo: FullInfo, textInteraction: WorkbookInteraction[String]) extends WorkbookInteraction[MessengerModel] {
 
   override def id: String = textInteraction.id + "_scaffolding"

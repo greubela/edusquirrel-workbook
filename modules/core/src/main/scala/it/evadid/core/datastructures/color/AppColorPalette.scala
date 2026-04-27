@@ -1,4 +1,4 @@
-package datastructures.core.color
+package it.evadid.core.datastructures.color
 
 trait AppColorPalette {
 
@@ -6,11 +6,9 @@ trait AppColorPalette {
 
 }
 
-
-
 object AppColorPalette {
 
-  def defaultRGBYPalette25: ColorPalette25 with RGBYColorPalette = new ColorPalette25() with RGBYColorPalette {
+  def defaultRGBYPalette25: ColorPalette25 with RGBYColorPalette = new ColorPalette25()  with RGBYColorPalette {
 
     override def grayscale: List[AppColor] = List(
       WebColor("#282828"),

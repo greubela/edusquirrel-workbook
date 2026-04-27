@@ -4,11 +4,11 @@ import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowShape, Text
 import contentmanagement.webElements.svg.shapes.composite.ShapeAroundShape
 import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.*
 import contentmanagement.webElements.svg.shapes.datatypes.RectangleShape
-import datastructures.core.language.LanguageMap
 import datastructures.core.vm.code.errors.BeExpressionUnsupported
 import datastructures.core.vm.code.tree.BeExpressionNode
 import interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, BeBlockSingleShape, RenderingInformation}
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
+import it.evadid.core.datastructures.language.LanguageMap
 
 case class BeBlockUnsupported(beExpressionUnsupported: BeExpressionUnsupported) extends BeBlockSingleShape {
 

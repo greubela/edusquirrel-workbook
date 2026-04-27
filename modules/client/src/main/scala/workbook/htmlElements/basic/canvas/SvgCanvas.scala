@@ -1,14 +1,11 @@
 package workbook.htmlElements.basic.canvas
 
 import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.{*, given}
+import com.raquo.laminar.api.L.*
 import com.raquo.laminar.modifiers.KeySetter.SvgAttrSetter
-import datastructures.core.color.{AppColor, RGBColor}
 import datastructures.web.file.FullImage
 import datastructures.web.font.AppFont
-import org.scalajs.dom
-import org.scalajs.dom.SVGSVGElement
-
+import it.evadid.core.datastructures.color.{AppColor, RGBColor}
 class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
 
   override def getDomElement(): Element = canvasElement

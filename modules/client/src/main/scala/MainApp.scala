@@ -1,16 +1,12 @@
 
-import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.{*, given}
-import content.plantworkshop.PlantWorkshopApp
+import com.raquo.laminar.api.L.*
 import content.{CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, plantworkshop}
 import interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
 import org.scalajs.dom
-import workbook.model.info.{AllUserInfo, FullInfo}
-import workbook.user.User
+import workbook.model.info.FullInfo
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 import scala.scalajs.js
-
 private def info = FullInfo.singleton
 
 private val tryToLoad: List[String] = List("plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "feedbackDemoRoot")
@@ -43,12 +39,12 @@ private def load(containerId: String): Unit = {
 
 
 private def testCalculations(): Unit = {
-
+  println("still alive 444 ?")
 }
 
 @main
 def mainApp(): Unit = {
-//  FullInfo.resetLocalStorage()
+  //  FullInfo.resetLocalStorage()
 
   FullInfo.setDummyUser()
 

@@ -1,15 +1,14 @@
 package interactionPlugins.blockEnvironment.programming.editor.elements
 
 import com.raquo.airstream.state.Var
-import com.raquo.laminar.api.L.{*, given}
-import com.raquo.laminar.api.L.{render, unsafeWindowOwner}
+import com.raquo.laminar.api.L.*
+import contentmanagement.webElements.HtmlAppElement
 import contentmanagement.webElements.genericHtmlElements.editor.{SimpleBooleanEditor, SimpleSelectorEditor}
 import interactionPlugins.blockEnvironment.config.{BeTreeControllerConfig, BeTreeDisplayConfig, ControlFlowDisplay}
+import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.language.LanguageMap
 import org.scalajs.dom
-import contentmanagement.webElements.HtmlAppElement
-import datastructures.core.language.{HumanLanguage, LanguageMap}
 import util.web.DownloadHelper
-
 case class HtmlEditorConfigPanel(editorState: EditorState) extends HtmlAppElement {
 
   private def createDisplayConfigVar[T](

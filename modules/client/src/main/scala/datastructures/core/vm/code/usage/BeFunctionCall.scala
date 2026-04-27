@@ -1,19 +1,19 @@
 package datastructures.core.vm.code.usage
 
-import datastructures.core.vm.code.defining.BeDefineFunction.{Operator, *}
-import datastructures.core.vm.types.BeChildRole.FunctionParameter
-import datastructures.core.vm.types.BeInfo.*
-import datastructures.core.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
-import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
-import interactionPlugins.blockEnvironment.programming.blockdisplay.use.BeBlockCallSingleReturnFunction
-import datastructures.core.language.*
-import datastructures.core.language.AppLanguage.*
 import datastructures.core.vm.code.BeExpression
+import datastructures.core.vm.code.defining.BeDefineFunction.Operator
 import datastructures.core.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import datastructures.core.vm.io.BeExpressionIO
 import datastructures.core.vm.static.BeExpressionStaticInformation
-import datastructures.core.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeDataValue, BeInfo, BeScope}
+import datastructures.core.vm.types.BeChildRole.FunctionParameter
+import datastructures.core.vm.types.*
+import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
+import interactionPlugins.blockEnvironment.programming.blockdisplay.use.BeBlockCallSingleReturnFunction
+import it.evadid.core.datastructures.language.LanguageMap
+
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 
 case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDefineVariable, BeExpression]) extends BeExpression {
 
@@ -68,7 +68,7 @@ case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDe
         val needsParentheses = childOperators.exists { op =>
           val childPrecedence = operatorPrecedence.getOrElse(op, Int.MaxValue)
           childPrecedence < parentPrecedence ||
-          (childPrecedence == parentPrecedence && requiresGroupingForEqualPrecedence(parentOperator, isLeft))
+            (childPrecedence == parentPrecedence && requiresGroupingForEqualPrecedence(parentOperator, isLeft))
         }
         if (needsParentheses) s"($operand)" else operand
       }
@@ -97,6 +97,7 @@ case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDe
 
       def isOperatorBoundary(expression: String, start: Int, length: Int): Boolean = {
         def isIdent(ch: Char): Boolean = ch.isLetterOrDigit || ch == '_'
+
         val before = if (start > 0) expression.charAt(start - 1) else ' '
         val after = if (start + length < expression.length) expression.charAt(start + length) else ' '
         val requiresWordBoundary = (0 until length).exists(i => expression.charAt(start + i).isLetter)

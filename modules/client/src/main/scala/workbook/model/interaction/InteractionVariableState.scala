@@ -1,9 +1,11 @@
 package workbook.model.interaction
 
-import util.serializing.Serializer
+import it.evadid.core.util.io.Serializer
 import workbook.model.interaction.InteractionVariableState.SerializedExerciseVariableState
 import workbook.model.interaction.history.UpdateImportance
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 
 case class InteractionVariableState[T](value: T, epochTimestampMillis: Long, updateImportance: UpdateImportance) {
 

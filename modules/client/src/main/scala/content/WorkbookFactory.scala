@@ -1,24 +1,14 @@
 package content
 
 import com.raquo.laminar.api.L
-
-import scala.concurrent.*
-import workbook.model.info.*
-import workbook.model.info.control.*
-import com.raquo.laminar.api.L.*
-import datastructures.core.language.AppLanguage.*
-import datastructures.core.language.*
-import datastructures.core.language.*
 import datastructures.web.file.FileDescription
+import it.evadid.core.datastructures.language.AppLanguage.*
 import workbook.htmlElements.basic.*
 import workbook.htmlElements.container.HtmlExerciseContainer
 import workbook.htmlElements.interactions.{HtmlBasicCheckboxInteraction, HtmlBasicTextInteraction}
 import workbook.model.abstractions.{HtmlWorkbookElement, WorkbookInteraction}
-import workbook.model.info.{FullInfo, HomepageInfo}
-import workbook.model.{Workbook, WorkbookSection}
 import workbook.model.info.*
-import workbook.model.info.control.*
-
+import workbook.model.{Workbook, WorkbookSection}
 trait WorkbookFactory {
 
 

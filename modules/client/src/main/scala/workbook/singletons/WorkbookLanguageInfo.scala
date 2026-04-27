@@ -1,18 +1,13 @@
 package workbook.singletons
 
-import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
 import datastructures.web.file.{FileDescription, LoadedFile}
 import datastructures.web.storage.AsyncDataCache
-import datastructures.web.storage.AsyncDataCache.*
-import fs2.data.csv.lowlevel
-import fs2.{Fallible, Stream}
+import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import util.serializing.IoSerialization
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
-import scala.scalajs.js
-import scala.scalajs.js.{Dictionary, JSON}
-
 object WorkbookLanguageInfo {
 
   val languageMapFiles: List[FileDescription] = List(

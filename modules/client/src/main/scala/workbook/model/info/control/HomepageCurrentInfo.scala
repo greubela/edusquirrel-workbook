@@ -1,11 +1,10 @@
 package workbook.model.info.control
 
-import datastructures.core.language.HumanLanguage
+import it.evadid.core.datastructures.language.AppLanguage.*
 import workbook.model.abstractions.WorkbookInteraction
 import workbook.model.info.*
 import workbook.model.info.analyze.WorkbookUserDataAnalyzer
 import workbook.model.interaction.sync.SyncInformation
-
 case class HomepageCurrentInfo(fullInfo: FullInfo) {
 
   private def now(): HomepageInfo = fullInfo.homepageInfoVar.now()

@@ -1,11 +1,7 @@
 package workbook.model.info
 
-import datastructures.core.language.HumanLanguage
-import workbook.model.Workbook
-import workbook.model.abstractions.WorkbookInteraction
+import it.evadid.core.datastructures.language.AppLanguage.*
 import workbook.model.info.FullInfo.HomepageDefaults
-import workbook.model.info.{AllUserInfo, AllWorkbookInfo}
-
 
 case class HomepageInfo(
                          private[info] val homepageDefaults: HomepageDefaults,

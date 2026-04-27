@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ScalaCompilerConfiguration">
     <option name="separateProdTestSources" value="true" />
-    <profile name="sbt 1" modules="customCardApp,edusquirrel-workbook,edusquirrel-workbook.client,edusquirrel-workbook.core,edusquirrel-workbook.core.main,edusquirrel-workbook.core.test,edusquirrel-workbook.main,edusquirrel-workbook.server,edusquirrel-workbook.server.main,edusquirrel-workbook.server.test,edusquirrel-workbook.test,edusquirrel-workbook.workbook-client,edusquirrel-workbook_9548,edusquirrel-workbook_9548.main,edusquirrel-workbook_9548.test,main,main.main,main.main.test,main.main~1,main.test,workbookApp" />
-    <profile name="sbt 2" modules="customCardApp.main,customCardApp.test,edusquirrel-workbook.client.main,edusquirrel-workbook.client.test,edusquirrel-workbook.workbook-client.main,edusquirrel-workbook.workbook-client.test,workbookApp.main,workbookApp.test">
+    <profile name="sbt 1" modules="customCardApp,edusquirrel-workbook,edusquirrel-workbook.client,edusquirrel-workbook.core,edusquirrel-workbook.core.coreJS,edusquirrel-workbook.core.coreJVM,edusquirrel-workbook.core.coreJVM.main,edusquirrel-workbook.core.coreJVM.test,edusquirrel-workbook.core.main,edusquirrel-workbook.core.test,edusquirrel-workbook.main,edusquirrel-workbook.server,edusquirrel-workbook.server.main,edusquirrel-workbook.server.test,edusquirrel-workbook.test,edusquirrel-workbook.workbook-client,edusquirrel-workbook_9548,edusquirrel-workbook_9548.main,edusquirrel-workbook_9548.test,main,main.main,main.main.test,main.main~1,main.test,workbookApp" />
+    <profile name="sbt 2" modules="customCardApp.main,customCardApp.test,edusquirrel-workbook.client.main,edusquirrel-workbook.client.test,edusquirrel-workbook.core.coreJS.main,edusquirrel-workbook.core.coreJS.test,edusquirrel-workbook.workbook-client.main,edusquirrel-workbook.workbook-client.test,workbookApp.main,workbookApp.test">
       <parameters>
         <parameter value="-scalajs" />
       </parameters>

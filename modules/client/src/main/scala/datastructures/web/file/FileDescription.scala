@@ -1,6 +1,8 @@
 package datastructures.web.file
 
-import CopyrightInfo.unknownCopyrightInfo
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
+import datastructures.web.file.CopyrightInfo.unknownCopyrightInfo
 import org.scalajs.dom
 import org.scalajs.dom.{File, URL}
 
@@ -14,7 +16,7 @@ sealed trait FileDescription {
   def extension: String
 
   lazy val filename: String = nameWithoutExtension + "." + extension
-  lazy val fullPath: String = location.getOrElse("") + filename
+  lazy val fullPath: String = location.map(_ + "/").getOrElse("") + filename
 }
 
 object FileDescription {
@@ -36,7 +38,7 @@ object FileDescription {
 
   def relativeToResourceFolder(pathRelativeToResourceFolder: String, copyrightInfo: CopyrightInfo = unknownCopyrightInfo): FileDescription = {
     val str = if (pathRelativeToResourceFolder.startsWith("/")) pathRelativeToResourceFolder.substring(1) else pathRelativeToResourceFolder
-    val url = new URL(s"../resources/" + str, dom.window.location.href)
+    val url = new URL(s"../../resources/" + str, dom.window.location.href)
     val res = FileDescription(url)
     res
   }
@@ -68,7 +70,6 @@ object FileDescription {
     val parts = nameParts(filename)
     NamedDataFileDescription(parts._2, parts._3, data, copyrightInfo)
   }
-
 
   private def nameParts(fullPath: String): (String, String, String) = {
     val parts = fullPath.split("\\\\")

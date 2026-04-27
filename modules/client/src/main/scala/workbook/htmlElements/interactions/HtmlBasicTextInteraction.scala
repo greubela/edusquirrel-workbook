@@ -1,21 +1,14 @@
 package workbook.htmlElements.interactions
 
-import com.raquo.airstream.core.Signal
 import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.Var
-import contentmanagement.webElements.HtmlAppElement
-import contentmanagement.webElements.genericHtmlElements.editor.SimpleTextEditor.TextEditorConfig
+import com.raquo.laminar.api.L.{Var, unsafeWindowOwner}
 import contentmanagement.webElements.genericHtmlElements.editor.*
-import util.serializing.Serializer
-import workbook.htmlElements.interactions.HtmlBasicTextInteraction.*
+import contentmanagement.webElements.genericHtmlElements.editor.SimpleTextEditor.TextEditorConfig
+import it.evadid.core.util.io.Serializer
 import workbook.model.abstractions.WorkbookInteraction
+import workbook.model.info.FullInfo
 import workbook.model.interaction.InteractionVariable
 import workbook.model.interaction.history.UpdateImportance
-
-import com.raquo.airstream.ownership.Owner
-import com.raquo.laminar.api.L.unsafeWindowOwner
-import workbook.model.info.{FullInfo, HomepageInfo}
-
 case class HtmlBasicTextInteraction(fullInfo: FullInfo, id: String, initConfig: TextEditorConfig = SimpleTextEditor.defaultConfig) extends WorkbookInteraction[String]{
 
   override val defaultValue: String = ""

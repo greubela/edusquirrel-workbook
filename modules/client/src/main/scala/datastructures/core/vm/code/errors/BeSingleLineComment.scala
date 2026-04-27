@@ -1,14 +1,13 @@
 package datastructures.core.vm.code.errors
 
-import datastructures.core.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
 import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import interactionPlugins.blockEnvironment.programming.blockdisplay.other.BeBlockComment
-import datastructures.core.language.*
-import datastructures.core.language.AppLanguage.*
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.io.BeExpressionIO
 import datastructures.core.vm.static.BeExpressionStaticInformation
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 case class BeSingleLineComment(commentStr: LanguageMap[HumanLanguage]) extends BeExpression {
 
 

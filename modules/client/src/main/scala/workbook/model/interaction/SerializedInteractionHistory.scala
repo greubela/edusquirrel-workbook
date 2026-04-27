@@ -3,6 +3,8 @@ package workbook.model.interaction
 import workbook.model.interaction.InteractionVariableState.SerializedExerciseVariableState
 import workbook.model.interaction.history.UpdateImportance
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 
 case class SerializedInteractionHistory(keyForSerialization: String, states: List[SerializedExerciseVariableState]) {
   override lazy val toString: String = upickle.default.write(this)

@@ -1,8 +1,5 @@
 package interactionPlugins.blockEnvironment.programming
 
-import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
-import datastructures.core.tree.{Tree, TreeStructureAndExecutionContext, TreeStructureContext}
-import datastructures.core.tree.nodeImpl.NodeBasedTreePosition
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.code.controlStructures.BeSequence
 import datastructures.core.vm.code.defining.{BeDefineFunction, BeDefineVariable}
@@ -11,11 +8,15 @@ import datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference
 import datastructures.core.vm.code.usage.{BeFunctionCall, BeUseValue}
 import datastructures.core.vm.parsing.python.PythonParser
 import datastructures.core.vm.types.BeChildRole.*
-import datastructures.core.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeDataValueLiteral, BeScope}
+import datastructures.core.vm.types.*
 import interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.*
 import interactionPlugins.blockEnvironment.programming.blockdisplay.other.BeBlockPlaceholder
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
+import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
+import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreePosition
+import it.evadid.core.datastructures.tree.{Tree, TreeStructureAndExecutionContext, TreeStructureContext}
 
 type BeBlockTree = Tree[NodeBasedTreePosition, BeBlock]
 type BeExpressionTree = Tree[NodeBasedTreePosition, BeExpressionNode]

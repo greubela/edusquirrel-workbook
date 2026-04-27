@@ -1,15 +1,11 @@
 package interactionPlugins.blockEnvironment.feedback
 
-import interactionPlugins.blockEnvironment.feedback.runtime.PythonFeedbackRuntime
-import interactionPlugins.blockEnvironment.feedback.runtime.{
-  PythonRunRequest,
-  PythonRunStatus,
-  PythonTestResult => RuntimeTestResult,
-  PythonTestStatus
-}
+import interactionPlugins.blockEnvironment.feedback.runtime.{PythonFeedbackRuntime, PythonRunRequest, PythonRunStatus, PythonTestStatus, PythonTestResult as RuntimeTestResult}
+import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.core.datastructures.language.AppLanguage.*
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
-
 /**
  * Executes the Python unit tests that belong to a derived test plan.
  */
@@ -200,7 +196,7 @@ object BlockFeedbackTestRunner:
 
   private def toRuntimeTest(
       test: BlockFeedbackPythonTest,
-      humanLanguage: datastructures.core.language.HumanLanguage
+      humanLanguage: HumanLanguage
   ): interactionPlugins.blockEnvironment.feedback.runtime.PythonUnitTest =
     interactionPlugins.blockEnvironment.feedback.runtime.PythonUnitTest(
       name = test.name,
@@ -211,10 +207,10 @@ object BlockFeedbackTestRunner:
 
   private def buildHint(
       test: BlockFeedbackPythonTest,
-      humanLanguage: datastructures.core.language.HumanLanguage
+      humanLanguage: HumanLanguage
   ): String =
     val code = Option(test.code).getOrElse("").trim
-    val isGerman = humanLanguage == datastructures.core.language.AppLanguage.German
+    val isGerman = humanLanguage == AppLanguage.German
 
     val hintOpt = (if isGerman then test.hintDE.orElse(test.hint) else test.hint)
       .map(_.trim).filter(_.nonEmpty)

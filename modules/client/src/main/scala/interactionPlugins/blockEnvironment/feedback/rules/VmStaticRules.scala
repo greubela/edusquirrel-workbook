@@ -1,17 +1,16 @@
 package interactionPlugins.blockEnvironment.feedback.rules
 
-import datastructures.core.language.AppLanguage
-import datastructures.core.language.HumanLanguage
-import datastructures.core.language.LanguageMap
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
 import datastructures.core.vm.code.defining.BeDefineVariable
 import datastructures.core.vm.code.others.{BeReturn, BeStartProgram}
-import datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference}
+import datastructures.core.vm.code.tree.BeExpressionReference
 import datastructures.core.vm.code.usage.{BeAssignVariable, BeUseValue}
-import datastructures.core.vm.types.{BeChildPosition, BeScope, BeUseValueReference}
-import datastructures.core.vm.types.BeScope.GlobalScope
 import datastructures.core.vm.types.BeChildRole.ConditionInControlStructure
+import datastructures.core.vm.types.BeScope.GlobalScope
+import datastructures.core.vm.types.{BeChildPosition, BeUseValueReference}
+import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.core.datastructures.language.AppLanguage.*
 
 import scala.collection.mutable
 

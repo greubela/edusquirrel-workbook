@@ -1,6 +1,6 @@
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.*
 import sbt.*
-import sbt.Keys.{artifacts, *}
+import sbt.Keys.*
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -8,59 +8,56 @@ import java.time.format.DateTimeFormatter
 object Build {
 
 
-  def executeBuild(
-                    server: Project,
-                    client: Project,
-                    copyToStable: Boolean = false
-                  ): Def.Initialize[Task[Unit]] = Def.task {
+  private def ensureDirectories(root: File): Unit = {
+    IO.createDirectory(root / "artifacts")
+    IO.createDirectory(root / "artifacts" / "newest")
+    IO.createDirectory(root / "artifacts" / "stable")
+
+    IO.createDirectory(root / "artifacts" / "history")
+    IO.createDirectory(root / "artifacts" / "history" / "client")
+    IO.createDirectory(root / "artifacts" / "history" / "server")
+  }
+
+
+  def moveClientFiles(root: File, outputFile: File, isRelease: Boolean, distTag: String, distFileName: String = "client.js"): Def.Initialize[Task[Unit]] = Def.task {
+
     val log = streams.value.log
+    val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss"))
+
+    ensureDirectories(root)
+
+    IO.copyFile(outputFile, (ThisBuild / baseDirectory).value / "artifacts" / "newest" / distFileName)
+    log.info(s"Copied current version of $distFileName to newest!")
+
+    if (isRelease) {
+      IO.copyFile(outputFile, (ThisBuild / baseDirectory).value / "artifacts" / "stable" / distFileName)
+      IO.copyFile(outputFile, (ThisBuild / baseDirectory).value / "artifacts" / "history" / "client" / s"$timestamp-$distTag-$distFileName")
+      log.info(s"Copied release versions of $distFileName to stable!")
+    }
+  }
+
+
+  def buildServer(
+                   server: Project,
+                   distFileName: String = "server.jar",
+                   isRelease: Boolean = false
+                 ): Def.Initialize[Task[Unit]] = Def.task {
+    val log = streams.value.log
+    val root = (ThisBuild / baseDirectory).value
+
+    val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss"))
 
     val serverJar = (server / Compile / packageBin).value
 
-    val fullReport = (client / Compile / fullLinkJS).value
-    val fastReport = (client / Compile / fastLinkJS).value
+    ensureDirectories(root)
 
-    val clientFull =
-      (client / Compile / fullLinkJS / scalaJSLinkedFile).value.data
+    IO.copyFile(serverJar, root / "artifacts" / "newest" / distFileName)
+    log.info(s"Copied current version of $distFileName to newest!")
 
-    val clientFast =
-      (client / Compile / fastLinkJS / scalaJSLinkedFile).value.data
-
-    val root = (ThisBuild / baseDirectory).value
-    val artifacts = root / "artifacts"
-
-    val newest = artifacts / "newest"
-    val historyClient = artifacts / "history" / "client"
-    val historyServer = artifacts / "history" / "server"
-
-    IO.createDirectory(newest)
-    IO.createDirectory(historyClient)
-    IO.createDirectory(historyServer)
-
-    val timestamp =
-      LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss"))
-
-    IO.copyFile(serverJar, newest / "server.jar")
-    IO.copyFile(clientFull, newest / "client.js")
-    IO.copyFile(clientFast, newest / "client-fastOpt.js")
-
-    IO.copyFile(serverJar, historyServer / s"$timestamp-server.jar")
-    IO.copyFile(clientFull, historyClient / s"$timestamp-client-fullOpt.js")
-
-    log.info(s"Copied newest artifacts to ${artifacts.getAbsolutePath}")
-
-    if(copyToStable) {
-      val stable = artifacts / "stable"
-      val stableClient = artifacts / "history" / "client"
-      val stableServer = artifacts / "history" / "server"
-
-      IO.createDirectory(stable)
-      IO.createDirectory(stableClient)
-      IO.createDirectory(stableServer)
-
-      IO.copyFile(serverJar, stable / "server.jar")
-      IO.copyFile(clientFull, stable / "client.js")
-      log.info(s"Copied stable artifacts to ${artifacts.getAbsolutePath}")
+    if (isRelease) {
+      IO.copyFile(serverJar, root / "artifacts" / "stable" / distFileName)
+      IO.copyFile(serverJar, root / "artifacts" / "history" / "server" / s"$timestamp-$distFileName")
+      log.info(s"Copied release versions of $distFileName to stable!")
     }
 
   }

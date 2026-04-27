@@ -2,13 +2,12 @@ package workbook.model
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import datastructures.core.language.{HumanLanguage, LanguageMap}
+import it.evadid.core.datastructures.language.AppLanguage.*
 import workbook.htmlElements.headerElements.HtmlWorkbookHeader
 import workbook.model.abstractions.{HtmlWorkbookElement, WorkbookInteraction}
-import workbook.model.info.{AllWorkbookInfo, FullInfo, HomepageInfo}
+import workbook.model.info.FullInfo
 
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext
 
 case class Workbook(
                      fullInfo: FullInfo,

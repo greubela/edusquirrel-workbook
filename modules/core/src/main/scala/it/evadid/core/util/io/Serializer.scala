@@ -1,16 +1,8 @@
-package util.serializing
+package it.evadid.core.util.io
 
-import datastructures.core.chat.MessengerModel
+import it.evadid.core.datastructures.chat.MessengerModel
 import upickle.*
 import upickle.default.readwriter
-import workbook.model.interaction.InteractionVariable.*
-import workbook.model.interaction.history.UpdateImportance
-
-trait TypeConverter[I, O] {
-  def convertToO(in: I): O
-
-  def convertToI(in: O): I
-}
 
 trait Serializer[T] extends TypeConverter[T, String] {
   override def convertToO(in: T): String = serialize(in)
@@ -52,7 +44,6 @@ object Serializer {
 
     override def deserialize(serialized: String): Boolean = serialized.toBooleanOption.getOrElse(false)
   }
-
 
 
 }

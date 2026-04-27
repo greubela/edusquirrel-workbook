@@ -1,8 +1,10 @@
 package interactionPlugins.blockEnvironment.feedback
 
-import datastructures.core.language.{AppLanguage, HumanLanguage, LanguageMap}
 import datastructures.core.vm.code.BeExpression
+import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 /**
  * Metadata for a feedback invocation (exercise ID, user ID, etc.).
  * Optional useful later for logging/analytics.

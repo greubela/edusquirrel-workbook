@@ -2,14 +2,12 @@ package interactionPlugins.gpt
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.svg
-import com.raquo.laminar.api.L.Var
 import com.raquo.laminar.nodes.ReactiveSvgElement
-import datastructures.core.chat.MessengerModel
+import it.evadid.core.datastructures.chat.MessengerModel
 import org.scalajs.dom.{SVGLinearGradientElement, SVGSVGElement}
-import workbook.model.abstractions.{HtmlWorkbookElement, WorkbookInteraction}
 import workbook.htmlElements.basic.HtmlButtonElement
-import workbook.model.info.{FullInfo, HomepageInfo}
-
+import workbook.model.abstractions.{HtmlWorkbookElement, WorkbookInteraction}
+import workbook.model.info.FullInfo
 case class HtmlGptGrader(fullInfo: FullInfo, textInteraction: WorkbookInteraction[String]) extends HtmlWorkbookElement {
 
 

@@ -1,4 +1,4 @@
-package util
+package it.evadid.core.util
 
 case class CodeStringBuilder(initStr: String = "") {
 

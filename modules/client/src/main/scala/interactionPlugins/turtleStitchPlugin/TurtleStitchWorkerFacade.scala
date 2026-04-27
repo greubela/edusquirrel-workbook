@@ -2,13 +2,13 @@ package interactionPlugins.turtleStitchPlugin
 
 import `export`.workers.TurtleStitchWorker
 import com.raquo.laminar.api.L.Var
-import datastructures.core.language.{HumanLanguage, TranslationMaps}
 import datastructures.web.storage.AsyncDataCache
-import interactionPlugins.turtleStitchPlugin.TurtleStitchEditor.{turtleLang, withSingletonEditor}
+import interactionPlugins.turtleStitchPlugin.TurtleStitchEditor.turtleLang
+import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.language.TranslationMaps
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
-
 object TurtleStitchWorkerFacade {
 
   /**

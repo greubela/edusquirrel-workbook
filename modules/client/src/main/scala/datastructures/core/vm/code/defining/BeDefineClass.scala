@@ -1,7 +1,6 @@
 package datastructures.core.vm.code.defining
 
-import datastructures.core.language.AppLanguage.{Java, JavaScript, Python}
-import datastructures.core.language.{HumanLanguage, LanguageMap, ProgrammingLanguage}
+import it.evadid.core.datastructures.language.AppLanguage.{Java, JavaScript, Python}
 import datastructures.core.vm.code.{BeDefineStructure, BeExpression}
 import datastructures.core.vm.code.tree.BeExpressionNode
 import datastructures.core.vm.io.BeExpressionIO
@@ -9,6 +8,8 @@ import datastructures.core.vm.static.BeExpressionStaticInformation
 import datastructures.core.vm.types.{BeDataType, BeInfo}
 import interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 case class BeDefineClass(
     name: LanguageMap[HumanLanguage],
     attributes: List[BeDefineVariable],

@@ -1,7 +1,6 @@
 package interactionPlugins.blockEnvironment.feedback
 
-import datastructures.core.language.AppLanguage
-
+import it.evadid.core.datastructures.language.AppLanguage
 /**
  * In-memory registry of feedback exercise definitions.
  *

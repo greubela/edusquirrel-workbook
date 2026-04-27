@@ -1,10 +1,12 @@
 package datastructures.core.vm.simulation
 
-import datastructures.core.tree.nodeImpl.NodeBasedTreePosition
 import datastructures.core.vm.code.BeExpression
 import datastructures.core.vm.types.BeScope
 import interactionPlugins.blockEnvironment.programming.*
+import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreePosition
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 
 case class BeSimulatorState(isMiniStep: Boolean,
                             program: BeProgram,

@@ -1,8 +1,9 @@
 package datastructures.core.vm.types
 
-import datastructures.core.language.{HumanLanguage, LanguageMap}
-import datastructures.core.tree.{TreePosition, TreeStructureContext}
-import datastructures.core.tree.nodeImpl.NodeBasedTreePosition
+import it.evadid.core.datastructures.language.LanguageMap
+
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 
 case class BeInfo(message: LanguageMap[HumanLanguage], infoType: BeInfo.InfoType) {
 
@@ -20,12 +21,12 @@ object BeInfo {
     case DivideByZero, InvalidReference
   }
 
-  enum WarningType extends InfoType{
+  enum WarningType extends InfoType {
     case ImplicitTypeCast
   }
 
   def typeMismatchInfo(contextStrBegin: String, expectedType: BeDataType, actualType: BeDataType): Option[BeInfo] = {
-    expectedType.canTakeValuesFrom(actualType) match{
+    expectedType.canTakeValuesFrom(actualType) match {
       case AssigningNotPossible() => Some(
         BeInfo(LanguageMap.universalMap(contextStrBegin.trim + " must be able to evaluate to " + expectedType + "!"), BeInfo.SyntaxError.TypeMismatch)
       )
@@ -36,6 +37,5 @@ object BeInfo {
     }
   }
 
-        
-    
-  }
+
+}

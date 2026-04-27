@@ -1,14 +1,15 @@
-package datastructures.core.language
+package it.evadid.core.datastructures.language
 
 sealed trait AppLanguage() {
   val name: String
 }
 
-sealed class HumanLanguage(val name: String, val nameAbbr: String) extends AppLanguage
-
-sealed class ProgrammingLanguage(val name: String, val fileEnding: String) extends AppLanguage
 
 object AppLanguage {
+
+  sealed class HumanLanguage(val name: String, val nameAbbr: String) extends AppLanguage
+
+  sealed class ProgrammingLanguage(val name: String, val fileEnding: String) extends AppLanguage
 
   def default(): HumanLanguage = English
 

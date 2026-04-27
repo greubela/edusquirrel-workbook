@@ -3,20 +3,20 @@ package interactionPlugins.blockEnvironment.exercise
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.svg.AppSvgElement
-import datastructures.core.language.AppLanguage
-import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig}
+import interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig}
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
-import interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
-import it.evadid.core.datastructures.geometry.Bounds
-import util.serializing.Serializer
+import interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
+import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.core.util.io.Serializer
 import workbook.htmlElements.basic.HtmlButtonElement
 import workbook.model.abstractions.WorkbookInteraction
-import workbook.model.info.{FullInfo, HomepageInfo}
+import workbook.model.info.FullInfo
 import workbook.model.interaction.InteractionVariable
 import workbook.model.interaction.history.UpdateImportance.MAJOR
-import workbook.model.interaction.sync.{LocalStorageSync, SyncInformation, SyncStrategy}
 
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expectedSvgResult: AppSvgElement) extends WorkbookInteraction[BeProgram] {
 
   val defaultValue: BeProgram = BeProgram(BeProgram.miniProgramExpression())

@@ -1,15 +1,9 @@
 package workbook.htmlElements.headerElements
 
 import com.raquo.laminar.api.L.*
-import datastructures.core.language.{HumanLanguage, LanguageMap}
-import org.scalajs.dom.console
-import workbook.htmlElements.basic.HtmlButtonElement
 import workbook.model.WorkbookSection
 import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.FullInfo
-
-import scala.concurrent.ExecutionContext
-
 case class HtmlWorkbookHeader(
                                fullInfo: FullInfo,
                                workbookTitleId: String,

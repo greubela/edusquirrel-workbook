@@ -4,14 +4,14 @@ import datastructures.core.vm.types.BeChildRole.ExpressionInSequence
 import contentmanagement.webElements.svg.AppSvgElement
 import contentmanagement.webElements.svg.shapes.composite.*
 import contentmanagement.webElements.svg.shapes.{BeShape, ControlFlowAndExpressionShape}
-import datastructures.core.tree.TreeStructureContext
-import datastructures.core.tree.nodeImpl.NodeBasedTreePosition
 import datastructures.core.vm.code.controlStructures.BeSequence
 import datastructures.core.vm.code.tree.BeExpressionNode
 import interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import interactionPlugins.blockEnvironment.programming.blockdisplay.*
 import interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
+import it.evadid.core.datastructures.tree.TreeStructureContext
+import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreePosition
 
 import scala.collection.mutable
 
