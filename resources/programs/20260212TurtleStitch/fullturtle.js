@@ -13,10 +13,10 @@
   // Public readiness / error signals
   window.TurtleStitchPoCError = null;
   let resolveReady, rejectReady;
-  window.TurtleStitchPoCReady = new Promise((res, rej) => { resolveReady = res; rejectReady = rej; });
-
-  // Internal ready flag
-  let isReady = false;
+  window.TurtleStitchPoCReady = new Promise((res, rej) => {
+    resolveReady = res;
+    rejectReady = rej;
+  });
 
   // Stub API exposed immediately (never undefined)
   // Calls will wait for TurtleStitchPoCReady and then dispatch to real implementations.
@@ -37,16 +37,27 @@
       await window.TurtleStitchPoCReady;
       return api._impl.downloadDst(xml_content);
     },
+    createEditor: async (options = {}) => {
+      await window.TurtleStitchPoCReady;
+      return api._impl.createEditor(options);
+    },
+    destroyHiddenPreview: async () => {
+      await window.TurtleStitchPoCReady;
+      return api._impl.destroyHiddenPreview();
+    },
     _impl: null
   };
 
   window.TurtleStitchPoC = api;
 
-  window.base_prog_dir = "../resources/programs/20260212TurtleStitch/";
+  const BASE_PROG_DIR = "../resources/programs/20260212TurtleStitch/";
+  // keep for backward compatibility with scripts that read this global directly
+  window.base_prog_dir = BASE_PROG_DIR;
 
   // ---- Script loader ----
   const SNAP_SCRIPT_ORDER = [
-    "turtlestitchsrc/morphic.js",
+    // adjustes
+    "adjusted/adjustedMorphic.js", // adjusted
     "turtlestitchsrc/symbols.js",
     "turtlestitchsrc/widgets.js",
     "turtlestitchsrc/blocks.js",
@@ -68,23 +79,16 @@
     "turtlestitchsrc/locale.js",
     "turtlestitchsrc/cloud.js",
     "turtlestitchsrc/api.js",
-    "turtlestitchsrc/embroider.js",
-
+    "turtlestitchsrc/embroider.js"
   ];
 
-
   let scriptsLoaded = false;
-  let booted = false;
-  let bootPromise = null;
+  let serializerCompatibilityPatchApplied = false;
 
-  let world = null;
-  let ide = null;
   function injectScript(src) {
-
-    //log("injectScript", base_prog_dir + src);
     return new Promise((resolve, reject) => {
       const s = document.createElement("script");
-      s.src = base_prog_dir + src;
+      s.src = BASE_PROG_DIR + src;
       s.async = false;
       s.onload = () => resolve();
       s.onerror = () => reject(new Error("Failed to load " + src));
@@ -94,321 +98,651 @@
 
   async function ensureScriptsLoaded() {
     if (scriptsLoaded) return;
-    //log("Loading TurtleStitch scripts…");
     for (const p of SNAP_SCRIPT_ORDER) await injectScript(p);
+    applySerializerCompatibilityPatch();
     scriptsLoaded = true;
-    //log("Scripts loaded.");
   }
 
-  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-  function stepWorld(n = 2) { for (let i = 0; i < n; i++) { try { world.doOneCycle(); } catch (_) {} } }
+  function applySerializerCompatibilityPatch() {
+    if (serializerCompatibilityPatchApplied) return;
+    if (!window.SnapSerializer || !window.SnapSerializer.prototype) return;
 
-  function forceLayout() {
-    if (!world || !ide) return;
-    try {
-      const c = world.worldCanvas;
-      const w = new Point(c.width, c.height);
-      world.setExtent(w);
-      if (ide.setExtent) ide.setExtent(w);
-      if (ide.fixLayout) ide.fixLayout();
-    } catch (e) { warn("forceLayout exception:", e); }
-    stepWorld(3);
+    const proto = window.SnapSerializer.prototype;
+    const originalLoadProjectModel = proto.loadProjectModel;
+    if (typeof originalLoadProjectModel !== "function") return;
+
+    proto.loadProjectModel = function patchedLoadProjectModel(xmlNode, ide, remixID) {
+      const appInfo = xmlNode?.attributes?.app;
+      const thisApp = this.app && typeof this.app === "string" ? this.app : null;
+      const thisAppName = thisApp ? thisApp.split(" ")[0] : null;
+      if (appInfo && thisAppName) {
+        const incomingAppName = appInfo.split(" ")[0];
+        if (incomingAppName && incomingAppName !== thisAppName) {
+          xmlNode.attributes.app = thisApp;
+        }
+      }
+      return originalLoadProjectModel.call(this, xmlNode, ide, remixID);
+    };
+
+    serializerCompatibilityPatchApplied = true;
   }
 
-  function setLanguageAsync(lang) {
-    return new Promise((resolve) => {
-      if (!ide || typeof ide.setLanguage !== "function") return resolve(false);
-      ide.setLanguage(lang, () => resolve(true), true);
-    });
-  }
+  let nextEditorInstanceId = 1;
 
-  function normalizeSnapLanguage(lang) {
-    if (!lang || typeof lang !== "string") return "en";
-    if (window.SnapTranslator?.dict && (lang in window.SnapTranslator.dict)) return lang;
-    if (lang.includes("_")) {
-      const base = lang.split("_")[0];
-      if (window.SnapTranslator?.dict && (base in window.SnapTranslator.dict)) return base;
-    }
-    return "en";
-  }
-
-  function loadLanguageScriptAsync(lang) {
-    return new Promise((resolve) => {
-      const translation = document.getElementById("language");
-      if (translation?.parentNode) translation.parentNode.removeChild(translation);
-      if (lang === "en") return resolve();
-
-      const script = document.createElement("script");
-      script.id = "language";
-      script.onload = () => resolve();
-      script.onerror = () => resolve();
-      //console.log("script: " + base_prog_dir + "adjusted/lang-" + lang + ".js");
-      script.src = base_prog_dir + "adjusted/lang-" + lang + ".js";
-      document.head.appendChild(script);
-    });
-  }
-
-  // TurtleStitch/Snap language switching normally serializes + reloads the current project.
-  // That reload path is locale-sensitive and can drop blocks for some locales (e.g. tr).
-  // Here we only switch UI language state, never re-opening the loaded XML project.
-  async function setLanguageWithoutProjectReloadAsync(lang) {
-    if (!ide) return false;
-    const safeLang = normalizeSnapLanguage(lang);
-
-    // keep Snap's language dictionary state in sync with what setLanguage() expects,
-    // but avoid reflectLanguage() because it reloads the whole project.
-    try { window.SnapTranslator?.unload?.(); } catch (_) {}
-    await loadLanguageScriptAsync(safeLang);
-    if (window.SnapTranslator) {
-      window.SnapTranslator.language = safeLang;
+  class TurtleStitchEditorInstance {
+    constructor(options = {}) {
+      this.options = options;
+      this.world = null;
+      this.ide = null;
+      this.wrap = null;
+      this.canvas = null;
+      this._rafId = null;
+      this._destroyed = false;
+      this._loopBound = this._loop.bind(this);
+      this._languageScriptElement = null;
+      this._instanceId = nextEditorInstanceId++;
+      this._onProjectChange = null;
+      this._projectXmlDebounce = null;
+      this._projectXmlPushInFlight = false;
+      this._resizeObserver = null;
+      this._onWindowResize = null;
     }
 
-    try { ide.flushBlocksCache?.(); } catch (_) {}
-    try { window.SpriteMorph?.prototype?.initBlocks?.(); } catch (_) {}
-    try { ide.spriteBar?.tabBar?.tabTo?.("scripts"); } catch (_) {}
-    try { ide.createCategories?.(); } catch (_) {}
-    try { ide.categories?.refreshEmpty?.(); } catch (_) {}
-    try { ide.createCorralBar?.(); } catch (_) {}
-    try { ide.refreshCustomizedPalette?.(); } catch (_) {}
-    try { ide.fixLayout?.(); } catch (_) {}
-    forceLayout();
-    stepWorld(4);
-    return true;
-  }
+    static sleep(ms) {
+      return new Promise(r => setTimeout(r, ms));
+    }
 
-  async function boot() {
-    await ensureScriptsLoaded();
-    if (booted) return;
-    if (bootPromise) return bootPromise;
-
-    bootPromise = (async () => {
+    async boot() {
+      if (this._destroyed) throw new Error("Editor was destroyed");
+      await ensureScriptsLoaded();
       if (!window.WorldMorph || !window.IDE_Morph) throw new Error("WorldMorph/IDE_Morph missing after load.");
+      if (this.world && this.ide) return;
 
+      const hidden = this.options.hidden !== false;
+      const size = this._resolveEditorSize();
       const wrap = document.createElement("div");
-      wrap.style.position = "fixed";
-      wrap.style.left = "-20000px";
+      wrap.style.position = hidden ? "fixed" : "relative";
+      wrap.style.left = hidden ? "-20000px" : "0";
       wrap.style.top = "0";
+      wrap.style.width = `${size.width}px`;
+      wrap.style.height = `${size.height}px`;
+      wrap.style.overflow = "hidden";
 
       const canvas = document.createElement("canvas");
-      canvas.width = 1400;
-      canvas.height = 1000;
+      canvas.width = size.width;
+      canvas.height = size.height;
+      canvas.style.width = "100%";
+      canvas.style.height = "100%";
       canvas.tabIndex = 1;
       wrap.appendChild(canvas);
-      document.body.appendChild(wrap);
 
-      world = new WorldMorph(canvas);
+      const parentNode = this.options.parentNode || document.body;
+      parentNode.appendChild(wrap);
+
+      const hostPageTitle = document.title;
+
+      const world = new WorldMorph(canvas);
       world.worldCanvas = canvas;
 
-      ide = new IDE_Morph({ noAutoFill: true, noCloud: true });
+      const ide = new IDE_Morph({ noAutoFill: true, noCloud: true });
       ide.openIn(world);
-
-      window.world = world;
-      window.ide = ide;
-
-      forceLayout();
-
-      (function loop() {
-        try { world.doOneCycle(); } catch (_) {}
-        requestAnimationFrame(loop);
-      })();
-
-      booted = true;
-      log("[INFO] TurtleStitch IDE successfully booted.");
-    })();
-
-    return bootPromise;
-  }
-
-  async function loadProjectXmlCanonical(xml) {
-    await boot();
-    await setLanguageWithoutProjectReloadAsync("en");
-    ide.loadProjectXML(xml);
-    await sleep(350);
-    try { ide.selectSprite?.(ide.currentSprite); } catch (_) {}
-    forceLayout();
-    stepWorld(3);
-  }
-
-  function ctorName(o) { try { return o?.constructor?.name || typeof o; } catch (_) { return "?"; } }
-  function isBlockish(m) {
-    try {
-      if (!m) return false;
-      if (m.selector || m.blockSpec || m.isBlock) return true;
-      return ctorName(m).includes("Block");
-    } catch (_) { return false; }
-  }
-  function scoreMorph(m) {
-    try {
-      if (!m || !m.children) return 0;
-      let blocks = 0;
-      for (const ch of m.children) if (isBlockish(ch)) blocks++;
-      return blocks * 1000 + m.children.length;
-    } catch (_) { return 0; }
-  }
-  function walkMorphTree(root, maxNodes = 8000) {
-    const out = [];
-    const stack = [root];
-    const seen = new Set();
-    let n = 0;
-
-    while (stack.length && n < maxNodes) {
-      const m = stack.pop();
-      if (!m || typeof m !== "object" || seen.has(m)) continue;
-      seen.add(m); n++;
-
-      const kids = (m.children && Array.isArray(m.children)) ? m.children.length : 0;
-      if (typeof m.fullImage === "function" && kids > 0) {
-        out.push({ m, ctor: ctorName(m), kids, score: scoreMorph(m) });
+      if (ide?.config) {
+        ide.config.preserveTitle = true;
       }
-      try {
-        if (m.children && Array.isArray(m.children)) {
-          for (let i = m.children.length - 1; i >= 0; i--) stack.push(m.children[i]);
-        }
-      } catch (_) {}
+      if (document.title !== hostPageTitle) {
+        document.title = hostPageTitle;
+      }
+      this._instrumentProjectChanges(ide);
+
+      this.wrap = wrap;
+      this.canvas = canvas;
+      this.world = world;
+      this.ide = ide;
+
+      this.forceLayout();
+      this._bindResizeHandling();
+      this._scheduleLoop();
     }
-    out.sort((a,b) => b.score - a.score);
-    return out;
-  }
 
-  function findBestProgramMorph() {
-    const roots = [];
-    if (ide?.spriteEditor) roots.push(ide.spriteEditor);
-    if (ide?.spriteEditor?.contents) roots.push(ide.spriteEditor.contents);
-    if (ide?.currentSprite?.scripts) roots.push(ide.currentSprite.scripts);
-
-    const all = [];
-    for (const r of roots) all.push(...walkMorphTree(r));
-    return all.length ? all[0].m : null;
-  }
-
-  function snapshotMorphToPngDataUrl(morph) {
-    forceLayout();
-    try { morph.fixLayout?.(); } catch (_) {}
-    try { morph.changed?.(); } catch (_) {}
-    stepWorld(2);
-    return morph.fullImage().toDataURL("image/png");
-  }
-
-  function svgDataUrlFromString(svgMarkup) {
-    const encoded = btoa(unescape(encodeURIComponent(svgMarkup)));
-    return `data:image/svg+xml;base64,${encoded}`;
-  }
-
-  function allProgramPictures() {
-    const pics = [];
-
-    if (!ide) return pics;
-
-    ide.sprites?.asArray?.().forEach((sprite) => {
-      if (sprite?.scripts?.scriptsPicture) {
-        const pic = sprite.scripts.scriptsPicture();
-        if (pic) pics.push(pic);
+    _resolveEditorSize() {
+      const fallbackWidth = 1400;
+      const fallbackHeight = 1000;
+      const explicitWidth = Number(this.options.width);
+      const explicitHeight = Number(this.options.height);
+      if (Number.isFinite(explicitWidth) && Number.isFinite(explicitHeight)) {
+        return {
+          width: Math.max(320, Math.floor(explicitWidth)),
+          height: Math.max(320, Math.floor(explicitHeight))
+        };
       }
-      sprite?.customBlocks?.forEach((def) => {
+
+      const host = this.options.parentNode;
+      if (host && typeof host.getBoundingClientRect === "function") {
+        const rect = host.getBoundingClientRect();
+        const width = Math.max(320, Math.floor(rect.width || fallbackWidth));
+        const height = Math.max(320, Math.floor(rect.height || fallbackHeight));
+        return { width, height };
+      }
+      return { width: fallbackWidth, height: fallbackHeight };
+    }
+
+    _bindResizeHandling() {
+      if (this.options.hidden !== false) return;
+      const host = this.options.parentNode;
+      if (!host) return;
+      const resize = () => this._resizeToHost();
+
+      if (typeof window.ResizeObserver === "function") {
+        this._resizeObserver = new ResizeObserver(resize);
+        this._resizeObserver.observe(host);
+      } else {
+        this._onWindowResize = resize;
+        window.addEventListener("resize", this._onWindowResize);
+      }
+    }
+
+    _resizeToHost() {
+      if (!this.world || !this.canvas || !this.wrap) return;
+      const size = this._resolveEditorSize();
+      if (this.canvas.width === size.width && this.canvas.height === size.height) return;
+
+      this.wrap.style.width = `${size.width}px`;
+      this.wrap.style.height = `${size.height}px`;
+      this.canvas.width = size.width;
+      this.canvas.height = size.height;
+      this.forceLayout();
+    }
+
+    _instrumentProjectChanges(ide) {
+      const originalRecordUnsavedChanges = typeof ide.recordUnsavedChanges === "function"
+        ? ide.recordUnsavedChanges.bind(ide)
+        : null;
+
+      if (originalRecordUnsavedChanges) {
+        ide.recordUnsavedChanges = (...args) => {
+          const result = originalRecordUnsavedChanges(...args);
+          this._scheduleProjectXmlPush();
+          return result;
+        };
+      }
+
+      const originalOpenProjectString = typeof ide.openProjectString === "function"
+        ? ide.openProjectString.bind(ide)
+        : null;
+
+      if (originalOpenProjectString) {
+        ide.openProjectString = (...args) => {
+          const result = originalOpenProjectString(...args);
+          this._scheduleProjectXmlPush();
+          return result;
+        };
+      }
+    }
+
+    _scheduleProjectXmlPush() {
+      if (!this._onProjectChange) return;
+      if (this._projectXmlDebounce) clearTimeout(this._projectXmlDebounce);
+      this._projectXmlDebounce = setTimeout(async () => {
+        if (this._projectXmlPushInFlight || !this._onProjectChange) return;
+        this._projectXmlPushInFlight = true;
+        try {
+          const xml = await this.getProjectXml();
+          this._onProjectChange(xml);
+        } catch (e) {
+          warn("project xml callback failed:", e);
+        } finally {
+          this._projectXmlPushInFlight = false;
+          this._projectXmlDebounce = null;
+        }
+      }, 120);
+    }
+
+    _scheduleLoop() {
+      if (this._destroyed) return;
+      this._rafId = requestAnimationFrame(this._loopBound);
+    }
+
+    _loop() {
+      if (this._destroyed || !this.world) return;
+      try {
+        this.world.doOneCycle();
+      } catch (_) {}
+      this._scheduleLoop();
+    }
+
+    stepWorld(n = 2) {
+      if (!this.world) return;
+      for (let i = 0; i < n; i++) {
+        try {
+          this.world.doOneCycle();
+        } catch (_) {}
+      }
+    }
+
+    forceLayout() {
+      if (!this.world || !this.ide) return;
+      try {
+        const c = this.world.worldCanvas;
+        const w = new Point(c.width, c.height);
+        this.world.setExtent(w);
+        if (this.ide.setExtent) this.ide.setExtent(w);
+        if (this.ide.fixLayout) this.ide.fixLayout();
+      } catch (e) {
+        warn("forceLayout exception:", e);
+      }
+      this.stepWorld(3);
+    }
+
+    setLanguageAsync(lang) {
+      return new Promise((resolve) => {
+        if (!this.ide || typeof this.ide.setLanguage !== "function") return resolve(false);
+        this.ide.setLanguage(lang, () => resolve(true), true);
+      });
+    }
+
+    normalizeSnapLanguage(lang) {
+      if (!lang || typeof lang !== "string") return "en";
+      if (window.SnapTranslator?.dict && (lang in window.SnapTranslator.dict)) return lang;
+      if (lang.includes("_")) {
+        const base = lang.split("_")[0];
+        if (window.SnapTranslator?.dict && (base in window.SnapTranslator.dict)) return base;
+      }
+      return "en";
+    }
+
+    loadLanguageScriptAsync(lang) {
+      return new Promise((resolve) => {
+        if (this._languageScriptElement?.parentNode) {
+          this._languageScriptElement.parentNode.removeChild(this._languageScriptElement);
+        }
+        this._languageScriptElement = null;
+        if (lang === "en") return resolve();
+
+        const script = document.createElement("script");
+        script.id = `language-editor-${this._instanceId}`;
+        script.onload = () => resolve();
+        script.onerror = () => resolve();
+        script.src = BASE_PROG_DIR + "adjusted/lang-" + lang + ".js";
+        this._languageScriptElement = script;
+        document.head.appendChild(script);
+      });
+    }
+
+    async setLanguageWithoutProjectReloadAsync(lang) {
+      if (!this.ide) return false;
+      const safeLang = this.normalizeSnapLanguage(lang);
+
+      try { window.SnapTranslator?.unload?.(); } catch (_) {}
+      await this.loadLanguageScriptAsync(safeLang);
+      if (window.SnapTranslator) {
+        window.SnapTranslator.language = safeLang;
+      }
+
+      const ide = this.ide;
+      try { ide.flushBlocksCache?.(); } catch (_) {}
+      try { window.SpriteMorph?.prototype?.initBlocks?.(); } catch (_) {}
+      try { ide.spriteBar?.tabBar?.tabTo?.("scripts"); } catch (_) {}
+      try { ide.createCategories?.(); } catch (_) {}
+      try { ide.categories?.refreshEmpty?.(); } catch (_) {}
+      try { ide.createCorralBar?.(); } catch (_) {}
+      try { ide.refreshCustomizedPalette?.(); } catch (_) {}
+      try { ide.fixLayout?.(); } catch (_) {}
+      this.forceLayout();
+      this.stepWorld(4);
+      return true;
+    }
+
+    async loadProjectXmlCanonical(xml) {
+      await this.boot();
+      await this.setLanguageWithoutProjectReloadAsync("en");
+      this.ide.loadProjectXML(xml);
+      await TurtleStitchEditorInstance.sleep(350);
+      try { this.ide.selectSprite?.(this.ide.currentSprite); } catch (_) {}
+      this.forceLayout();
+      this.stepWorld(3);
+    }
+
+    async setProjectXml(xml_content) {
+      if (typeof xml_content !== "string") throw new Error("xml_content must be a string");
+      await this.loadProjectXmlCanonical(xml_content);
+      this._scheduleProjectXmlPush();
+    }
+
+    async getProjectXml() {
+      await this.boot();
+      if (!this.ide?.serializer || !this.ide?.scenes || !this.ide?.scene) {
+        throw new Error("IDE is not ready for XML serialization.");
+      }
+      return this.ide.serializer.serialize(new Project(this.ide.scenes, this.ide.scene));
+    }
+
+    setProjectChangeListener(callback) {
+      this._onProjectChange = typeof callback === "function" ? callback : null;
+      this._scheduleProjectXmlPush();
+    }
+
+    clearProjectChangeListener() {
+      this._onProjectChange = null;
+    }
+
+    allProgramPictures() {
+      const pics = [];
+      const ide = this.ide;
+      if (!ide) return pics;
+
+      ide.sprites?.asArray?.().forEach((sprite) => {
+        if (sprite?.scripts?.scriptsPicture) {
+          const pic = sprite.scripts.scriptsPicture();
+          if (pic) pics.push(pic);
+        }
+        sprite?.customBlocks?.forEach((def) => {
+          const pic = def?.scriptsPicture?.();
+          if (pic) pics.push(pic);
+        });
+      });
+
+      if (ide.stage?.scripts?.scriptsPicture) {
+        const stagePic = ide.stage.scripts.scriptsPicture();
+        if (stagePic) pics.push(stagePic);
+      }
+      ide.stage?.customBlocks?.forEach((def) => {
         const pic = def?.scriptsPicture?.();
         if (pic) pics.push(pic);
       });
-    });
+      ide.stage?.globalBlocks?.forEach((def) => {
+        const pic = def?.scriptsPicture?.();
+        if (pic) pics.push(pic);
+      });
 
-    if (ide.stage?.scripts?.scriptsPicture) {
-      const stagePic = ide.stage.scripts.scriptsPicture();
-      if (stagePic) pics.push(stagePic);
+      return pics;
     }
-    ide.stage?.customBlocks?.forEach((def) => {
-      const pic = def?.scriptsPicture?.();
-      if (pic) pics.push(pic);
-    });
-    ide.stage?.globalBlocks?.forEach((def) => {
-      const pic = def?.scriptsPicture?.();
-      if (pic) pics.push(pic);
-    });
 
-    return pics;
-  }
+    svgDataUrlFromString(svgMarkup) {
+      const encoded = btoa(unescape(encodeURIComponent(svgMarkup)));
+      return `data:image/svg+xml;base64,${encoded}`;
+    }
 
-  function snapshotAllProgramsSvgDataUrl() {
-    forceLayout();
-    stepWorld(2);
+    snapshotAllProgramsSvgDataUrl() {
+      this.forceLayout();
+      this.stepWorld(2);
 
-    const padding = 20;
-    const pics = allProgramPictures();
-    if (!pics.length) throw new Error("No scripts picture could be generated.");
+      const padding = 20;
+      const pics = this.allProgramPictures();
+      if (!pics.length) throw new Error("No scripts picture could be generated.");
 
-    let width = 0;
-    let height = 0;
-    pics.forEach((p, i) => {
-      width = Math.max(width, p.width);
-      height += p.height;
-      if (i < pics.length - 1) height += padding;
-    });
+      let width = 0;
+      let height = 0;
+      pics.forEach((p, i) => {
+        width = Math.max(width, p.width);
+        height += p.height;
+        if (i < pics.length - 1) height += padding;
+      });
 
-    let y = 0;
-    const images = pics.map((canvas) => {
-      const href = canvas.toDataURL("image/png");
-      const node = `<image x="0" y="${y}" width="${canvas.width}" height="${canvas.height}" href="${href}" />`;
-      y += canvas.height + padding;
-      return node;
-    }).join("\n");
+      let y = 0;
+      const images = pics.map((canvas) => {
+        const href = canvas.toDataURL("image/png");
+        const node = `<image x=\"0\" y=\"${y}\" width=\"${canvas.width}\" height=\"${canvas.height}\" href=\"${href}\" />`;
+        y += canvas.height + padding;
+        return node;
+      }).join("\n");
 
-    const svg = [
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
-      images,
-      "</svg>"
-    ].join("\n");
+      const svg = [
+        `<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"${width}\" height=\"${height}\" viewBox=\"0 0 ${width} ${height}\">`,
+        images,
+        "</svg>"
+      ].join("\n");
 
-    return svgDataUrlFromString(svg);
-  }
+      return this.svgDataUrlFromString(svg);
+    }
 
-  async function runGreenFlagOnce() {
-    forceLayout();
-    try { ide.stage.clearPenTrails?.(); } catch (_) {}
-    ide.runScripts();
-    await sleep(700);
-    try { ide.stop?.(); } catch (_) {}
-    stepWorld(3);
-  }
+    snapshotStagePngDataUrl() {
+      this.forceLayout();
+      this.stepWorld(2);
 
-  // Real implementations (wired into api._impl once boot finishes)
-  const impl = {
+      try {
+        const stageImage = this.ide?.stage?.fullImage?.();
+        if (stageImage && typeof stageImage.toDataURL === "function") {
+          return stageImage.toDataURL("image/png");
+        }
+      } catch (_) {}
 
-    calcProgramSvg: async (xml_content, language) => {
-      if (typeof xml_content !== "string") throw new Error("xml_content must be a string");
-      await loadProjectXmlCanonical(xml_content);
-      if (language && language !== "en") {
-        await setLanguageAsync(language);
-        forceLayout(); stepWorld(2);
+      if (this.world?.worldCanvas && typeof this.world.worldCanvas.toDataURL === "function") {
+        return this.world.worldCanvas.toDataURL("image/png");
       }
-      return snapshotAllProgramsSvgDataUrl();
-    },
 
-    simulateGreenFlag: async (xml_content) => {
-      if (typeof xml_content !== "string") throw new Error("xml_content must be a string");
-      await loadProjectXmlCanonical(xml_content);
-      await runGreenFlagOnce();
-      return snapshotStagePngDataUrl();
-    },
+      throw new Error("Could not generate stage PNG snapshot.");
+    }
 
-    downloadDst: async (xml_content) => {
+    activeProcessCount() {
+      const ide = this.ide;
+      const world = this.world;
+      const processBuckets = [
+        ide?.stage?.threads?.processes,
+        ide?.threads?.processes,
+        ide?.currentSprite?.threads?.processes,
+        world?.hand?.threads?.processes
+      ];
+
+      return processBuckets.reduce((acc, bucket) => {
+        if (Array.isArray(bucket)) return acc + bucket.length;
+        return acc;
+      }, 0);
+    }
+
+    runGreenFlag() {
+      if (typeof this.ide?.pressStart === "function") {
+        this.ide.pressStart();
+        return;
+      }
+      this.ide.runScripts();
+    }
+
+    greenFlagTopBlocks() {
+      const ide = this.ide;
+      if (!ide) return [];
+
+      const topBlocks = [];
+      const addFromScripts = (scripts) => {
+        scripts?.children?.forEach?.((block) => {
+          if (block?.selector !== "receiveGo") return;
+          if (typeof block.topBlock === "function" && block.topBlock() !== block) return;
+          topBlocks.push(block);
+        });
+      };
+
+      addFromScripts(ide.stage?.scripts);
+      ide.sprites?.asArray?.().forEach((sprite) => addFromScripts(sprite?.scripts));
+      return topBlocks;
+    }
+
+    greenFlagLispCode() {
+      const snippets = this.greenFlagTopBlocks()
+        .map((block) => {
+          try {
+            return typeof block?.toLisp === "function" ? block.toLisp(4) : "";
+          } catch (_) {
+            return "";
+          }
+        })
+        .filter((text) => typeof text === "string" && text.trim().length > 0);
+
+      if (!snippets.length) {
+        throw new Error("No green-flag script found for Lisp export.");
+      }
+      return snippets.join("\n\n");
+    }
+
+    async runGreenFlagOnce() {
+      this.forceLayout();
+      try { this.ide.stopAllScripts?.(); } catch (_) {}
+      try { this.ide.stage.clearPenTrails?.(); } catch (_) {}
+      this.runGreenFlag();
+
+      const started = Date.now();
+      const minRuntimeMs = 700;
+      const maxRuntimeMs = 3500;
+      let lastTrailCount = -1;
+      let stableTrailCycles = 0;
+      let idleProcessCycles = 0;
+      while (Date.now() - started < maxRuntimeMs) {
+        this.stepWorld(2);
+
+        const trailCount = this.ide?.stage?.trailsLog?.length ?? 0;
+        const processCount = this.activeProcessCount();
+
+        if (trailCount === lastTrailCount) stableTrailCycles += 1;
+        else stableTrailCycles = 0;
+        lastTrailCount = trailCount;
+
+        if (processCount === 0) idleProcessCycles += 1;
+        else idleProcessCycles = 0;
+
+        const runtimeMs = Date.now() - started;
+        const minRuntimeReached = runtimeMs >= minRuntimeMs;
+        const trailsDone = trailCount > 0 && stableTrailCycles >= 3;
+        const processesDone = idleProcessCycles >= 3;
+        if (minRuntimeReached && (trailsDone || processesDone)) break;
+
+        await TurtleStitchEditorInstance.sleep(120);
+      }
+
+      try { this.ide.stopAllScripts?.(); } catch (_) {}
+      this.stepWorld(3);
+    }
+
+    async calcProgramSvg(xml_content, language) {
       if (typeof xml_content !== "string") throw new Error("xml_content must be a string");
-      await loadProjectXmlCanonical(xml_content);
-      await runGreenFlagOnce();
+      await this.loadProjectXmlCanonical(xml_content);
+      if (language && language !== "en") {
+        await this.setLanguageAsync(language);
+        this.forceLayout();
+        this.stepWorld(2);
+      }
+      return this.snapshotAllProgramsSvgDataUrl();
+    }
+
+    async simulateGreenFlag(xml_content) {
+      if (typeof xml_content !== "string") throw new Error("xml_content must be a string");
+      await this.loadProjectXmlCanonical(xml_content);
+      await this.runGreenFlagOnce();
+      return this.snapshotStagePngDataUrl();
+    }
+
+    async getGreenFlagAsLispCode(xml_content) {
+      if (typeof xml_content !== "string") throw new Error("xml_content must be a string");
+      await this.loadProjectXmlCanonical(xml_content);
+      return this.greenFlagLispCode();
+    }
+
+    async downloadDst(xml_content) {
+      if (typeof xml_content !== "string") throw new Error("xml_content must be a string");
+      await this.loadProjectXmlCanonical(xml_content);
+      await this.runGreenFlagOnce();
 
       if (typeof window.exportEmbroidery !== "function") {
         throw new Error("exportEmbroidery not found (src/embroider.js missing?)");
       }
-      const stage = ide?.stage;
+      const stage = this.ide?.stage;
       const trailsLog = stage?.trailsLog || stage?.turtle?.trailsLog || null;
       if (!trailsLog) throw new Error("No trailsLog after running; cannot export DST.");
       window.exportEmbroidery(trailsLog, "turtlestitch-export", "dst");
     }
+
+    destroy() {
+      if (this._destroyed) return;
+      this._destroyed = true;
+
+      if (this._rafId !== null) {
+        cancelAnimationFrame(this._rafId);
+      }
+
+      if (this._projectXmlDebounce) {
+        clearTimeout(this._projectXmlDebounce);
+      }
+
+      try { this.ide?.stopAllScripts?.(); } catch (_) {}
+      try { this.ide?.destroy?.(); } catch (_) {}
+      try { this.world?.destroy?.(); } catch (_) {}
+
+      try {
+        if (this.canvas) {
+          this.canvas.width = 0;
+          this.canvas.height = 0;
+        }
+      } catch (_) {}
+
+      try { this.wrap?.remove?.(); } catch (_) {}
+      try { this._resizeObserver?.disconnect?.(); } catch (_) {}
+      if (this._onWindowResize) {
+        try { window.removeEventListener("resize", this._onWindowResize); } catch (_) {}
+      }
+
+      if (window.world === this.world) window.world = null;
+      if (window.ide === this.ide) window.ide = null;
+
+      if (this._languageScriptElement?.parentNode) {
+        this._languageScriptElement.parentNode.removeChild(this._languageScriptElement);
+      }
+
+      this._rafId = null;
+      this._languageScriptElement = null;
+      this._onProjectChange = null;
+      this._projectXmlDebounce = null;
+      this._resizeObserver = null;
+      this._onWindowResize = null;
+      this.world = null;
+      this.ide = null;
+      this.canvas = null;
+      this.wrap = null;
+      this.options = null;
+      this._loopBound = null;
+    }
+  }
+
+  async function createEditorInstance(options = {}) {
+    await ensureScriptsLoaded();
+    const instance = new TurtleStitchEditorInstance(options);
+    await instance.boot();
+    return instance;
+  }
+
+  async function destroyHiddenPreview() {
+    // Kept for backwards compatibility; editor instances are no longer singletons.
+  }
+
+  function unsupportedDirectApi(operation) {
+    throw new Error(
+      `${operation} is not supported as a static TurtleStitchPoC API call. ` +
+      "Create an editor via createEditor(...) for stateful editor operations, " +
+      "or use TurtleWorker for background computation."
+    );
+  }
+
+  const impl = {
+    calcProgramPng: async (xml_content) => {
+      return unsupportedDirectApi("calcProgramPng");
+    },
+    calcProgramSvg: async (xml_content, language) => {
+      return unsupportedDirectApi("calcProgramSvg");
+    },
+    simulateGreenFlag: async (xml_content) => {
+      return unsupportedDirectApi("simulateGreenFlag");
+    },
+    getGreenFlagAsLispCode: async (xml_content) => {
+      return unsupportedDirectApi("getGreenFlagAsLispCode");
+    },
+    downloadDst: async (xml_content) => {
+      return unsupportedDirectApi("downloadDst");
+    },
+    createEditor: async (options = {}) => createEditorInstance(options),
+    destroyHiddenPreview
   };
 
   // Boot and mark ready
   (async () => {
     try {
-      await boot();
+      await ensureScriptsLoaded();
       api._impl = impl;
-      isReady = true;
       resolveReady();
       log("[INFO] API ready.");
     } catch (e) {

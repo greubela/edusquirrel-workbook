@@ -1,35 +1,71 @@
+import Dependencies.*
+import org.scalajs.jsenv.nodejs.NodeJSEnv
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.*
+import sbtcrossproject.CrossPlugin.autoImport.*
+import scalajscrossproject.ScalaJSCrossPlugin.autoImport.*
+import sbtcrossproject.CrossPlugin.autoImport.*
 
-import org.scalajs.linker.interface.ModuleKind
+lazy val buildFast = taskKey[Unit]("Build client as fast as possible")
+buildFast := Def.sequential(
+  client / Compile / fastLinkJS,
+  Def.taskDyn {
+    val clientFastOutput = (client / Compile / fastLinkJS / scalaJSLinkedFile).value.data
+    val root = (ThisBuild / baseDirectory).value
+    Build.moveClientFiles(root, clientFastOutput, false, "fast", "client.js")
+  }
+).value
 
-enablePlugins(ScalaJSPlugin, ScalaJSBundlerPlugin)
-
-lazy val workbookApp = project.in(file("."))
-  .enablePlugins(ScalaJSPlugin, ScalaJSBundlerPlugin)
-  .settings(
-    scalaVersion := "3.3.3",
-    scalaJSUseMainModuleInitializer := true,
-
-    // For the simulation-style specs (e.g. PRINT_SIMULATION=1), we want to see
-    // stdout/stderr even when tests pass.
-    Test / logBuffered := !sys.env.get("PRINT_SIMULATION").contains("1"),
-
-    scalaJSLinkerConfig ~= {
-      _.withModuleKind(ModuleKind.CommonJSModule)
+lazy val deployAll = taskKey[Unit]("Builds and deploys server + client")
+deployAll := {
+  Def.sequential(
+    client / Compile / fullLinkJS,
+    Def.taskDyn {
+      val clientOutput = (client / Compile / fullLinkJS / scalaJSLinkedFile).value.data
+      val base = (ThisBuild / baseDirectory).value
+      Build.moveClientFiles(base, clientOutput, true, "full", "client.js")
     },
+  ).value
 
-    // Libraries
-    libraryDependencies ++= Seq(
-      "org.scala-js" %%% "scalajs-dom" % "2.8.0",
-      "com.raquo" %%% "laminar" % "17.2.1",
-      "com.lihaoyi" %%% "upickle" % "4.3.1",
-      "com.lihaoyi" %%% "fastparse" % "3.1.1",
-      "org.scalameta" %%% "munit" % "1.2.1" % Test,
+  Build.buildServer(server, "server.jar", true).value
+}
 
-      "io.github.cquiroz" %%% "scala-java-time" % "2.6.0",
-      "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.6.0" // needed for ZoneId / TZ database
-    ),
 
-    // NPM dependencies
-    //Compile / npmDependencies += "openai" -> "4.33.0"
-
+lazy val root = (project in file("."))
+  .settings(Settings.globalSettings)
+  .aggregate(server, client)
+  .settings(
+    name := "edusquirrel-workbook",
+    publish / skip := true
   )
+
+lazy val core = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Pure)
+  .in(file("./modules/core"))
+  .settings(Settings.globalSettings)
+  .settings(
+    name := "core",
+    libraryDependencies ++= coreDependencies.value
+  )
+
+lazy val server = (project in file("./modules/server"))
+  .settings(Settings.globalSettings).settings(Settings.jvmSettings)
+  .dependsOn(core.jvm)
+  .settings(
+    name := "server",
+    libraryDependencies ++= (coreDependencies.value ++ jvmDependencies.value)
+  )
+
+lazy val client = (project in file("./modules/client"))
+  .settings(Settings.globalSettings).settings(Settings.jsSettings)
+  .enablePlugins(ScalaJSPlugin)
+  .dependsOn(core.js)
+  .settings(
+    name := "client",
+    scalaJSUseMainModuleInitializer := true,
+    Test / jsEnv := new NodeJSEnv(),
+    libraryDependencies ++= (coreDependencies.value ++ jsDependencies.value)
+  )
+
+
+// Todo: Worker Module 
+

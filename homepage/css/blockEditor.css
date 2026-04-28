@@ -1,7 +1,6 @@
 /* Import colors and base styles */
 @import url('colors.css');
-
-
+/* Color policy: use only semantic color variables from colors.css (no hardcoded color values). */
 
 /* --- Block Environment Fullscreen Editor Layout --- */
 
@@ -94,12 +93,6 @@
   justify-items: center;
 }
 
-.be-fullscreen-panel__placeholder {
-  font-size: var(--fontsize-text);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
 .be-fullscreen-panel-label {
   margin: 0;
   font-size: 0.95rem;
@@ -173,15 +166,19 @@
 .be-program-editor__python-view .code-mirror-editor {
   height: auto;
   display: flex;
+  width: 100%;
+  text-align: left;
 }
 
 .be-program-editor__python-view .code-mirror-editor .cm-editor {
   flex: 1;
   height: auto;
+  text-align: left;
 }
 
 .be-program-editor__python-view .code-mirror-editor .cm-scroller {
   overflow: auto;
+  text-align: left;
 }
 
 /* turtle output */
@@ -306,5 +303,3 @@
 .simple-selector-editor__select {
   width: fit-content;
 }
-
-

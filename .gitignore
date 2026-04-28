@@ -4,16 +4,14 @@ target/
 !**/src/test/**/target/
 
 ### IntelliJ IDEA ###
-.idea/modules.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
+.idea/*
 *.iws
 *.iml
 *.ipr
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
+**/artifacts/**
 
 ### Eclipse ###
 .apt_generated
@@ -39,12 +37,16 @@ build/
 
 ### VS Code ###
 .vscode/
+.metals/
 
 ### Local dev secrets / venvs ###
 tools/openai-proxy/.env
 tools/openai-proxy/.venv/
 tools/openai-proxy/chatlogs/
 tools/openai-proxy/ml-logs/
+tools/cloudflare-proxy/.dev.vars
+tools/cloudflare-proxy/.wrangler/
+**/__pycache__/
 
 ### Mac OS ###
 .DS_Store
@@ -53,5 +55,12 @@ tools/openai-proxy/ml-logs/
 .bsp/
 **/target/**
 
+### GitHub Pages assembly output ###
+_site/
+dist/
+
 ### Secrets ###
 .env
+
+### node
+node_modules/*

@@ -8,8 +8,8 @@
         <option name="externalProjectPath" value="$PROJECT_DIR$/../2025 04 28 ScalaJS 3 Basic Project" />
         <option name="modules">
           <set>
-            <option value="$PROJECT_DIR$/../2025 04 28 ScalaJS 3 Basic Project" />
-            <option value="$PROJECT_DIR$/../2025 04 28 ScalaJS 3 Basic Project/project" />
+            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\2025 04 28 ScalaJS 3 Basic Project" />
+            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\2025 04 28 ScalaJS 3 Basic Project\project" />
           </set>
         </option>
         <option name="sbtVersion" value="1.10.0" />
@@ -21,8 +21,13 @@
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="modules">
           <set>
-            <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/project" />
+            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook" />
+            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\modules\client" />
+            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\modules\core" />
+            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\modules\core\.js" />
+            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\modules\core\.jvm" />
+            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\modules\server" />
+            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\project" />
           </set>
         </option>
         <option name="sbtVersion" value="1.11.4" />
@@ -32,8 +37,8 @@
         <option name="externalProjectPath" value="$PROJECT_DIR$/src/main/main" />
         <option name="modules">
           <set>
-            <option value="$PROJECT_DIR$/src/main/main" />
-            <option value="$PROJECT_DIR$/src/main/main/project" />
+            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\src\main\main" />
+            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\src\main\main\project" />
           </set>
         </option>
         <option name="sbtVersion" value="1.11.4" />
