@@ -1,4 +1,4 @@
-package util.web
+package it.evadid.core.util
 
 import scala.collection.mutable
 import scala.util.matching.Regex

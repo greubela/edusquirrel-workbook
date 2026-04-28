@@ -11,7 +11,7 @@ import scala.concurrent.*
 case class HomepageSignalInfo(fullInfo: FullInfo) {
 
   private lazy val baseSignal: StrictSignal[HomepageInfo] = {
-    fullInfo.homepageInfoVar.signal
+    fullInfo.homepageInfoState.signal
   }
 
   lazy val activeSection: StrictSignal[Option[WorkbookSection]] = {
@@ -24,7 +24,7 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
   }
 
   lazy val availableLanguages: StrictSignal[List[HumanLanguage]] = {
-    val default = fullInfo.homepageInfoVar.now().homepageDefaults.availableLanguages
+    val default = fullInfo.homepageInfoState.now().homepageDefaults.availableLanguages
     baseSignal.mapLazy(_.workbookInfo.map(_.loadedWorkbook.availableInLanguages).getOrElse(default))
   }
 

@@ -4,6 +4,8 @@ import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.state.{State, StateHelper}
+import it.evadid.core.datastructures.state.StateHelper.*
 import org.scalajs.dom
 import workbook.htmlElements.container.HtmlFullScreenContainerElement
 import workbook.model.info.FullInfo.HomepageDefaults
@@ -35,8 +37,8 @@ case class FullInfo() extends HtmlAppElement {
     userInfo = None
   )
 
-  private[info] val homepageInfoVar: Var[HomepageInfo] = Var(defaultInfo)
-
+  private[info] val homepageInfoState: Var[HomepageInfo] = Var(defaultInfo)
+  // private[info] val homepageInfoState2: Var[HomepageInfo] = State(defaultInfo).toAirstreamVar
   /*  homepageInfoVar.signal.foreach(onNext => {
       println("Changed homepageInfoVar at: " + new Exception().getStackTrace().take(3).map(_.getMethodName).mkString(" -> ") + " (to: " + onNext.toString + ")")
     })(unsafeWindowOwner)*/

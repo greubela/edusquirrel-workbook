@@ -7,7 +7,7 @@ import workbook.model.info.analyze.WorkbookUserDataAnalyzer
 import workbook.model.interaction.sync.SyncInformation
 case class HomepageCurrentInfo(fullInfo: FullInfo) {
 
-  private def now(): HomepageInfo = fullInfo.homepageInfoVar.now()
+  private def now(): HomepageInfo = fullInfo.homepageInfoState.now()
 
 
   def workbookInfo: Option[AllWorkbookInfo] = fullInfo.synchronized {

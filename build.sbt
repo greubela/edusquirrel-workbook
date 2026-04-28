@@ -46,6 +46,12 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
     name := "core",
     libraryDependencies ++= coreDependencies.value
   )
+  .jsSettings(
+    libraryDependencies ++= jsDependencies.value
+  )
+  .jvmSettings(
+    libraryDependencies ++= jvmDependencies.value
+  )
 
 lazy val server = (project in file("./modules/server"))
   .settings(Settings.globalSettings).settings(Settings.jvmSettings)
