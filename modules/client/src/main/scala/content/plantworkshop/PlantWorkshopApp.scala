@@ -568,7 +568,7 @@ object Task2_MoistureSensor {
   )
 
   val snippets = List(
-    CodeSnippet(1, "int feuchtigkeitsGrenze = 100;"),
+    CodeSnippet(1, "int feuchtigkeitsGrenze = 400;"),
     CodeSnippet(2, "digitalWrite(SENSOR_POWER_PIN, HIGH);"),
     CodeSnippet(3, "delay(10);"),
     CodeSnippet(4, "int messwert = analogRead(SENSOR_PIN);"),
@@ -624,7 +624,7 @@ object Task2_MoistureSensor {
           "Mit ", code("analogRead(SENSOR_PIN)"), " liest man analoge Werte. ",
           "Um den Sensor zu schonen, wird er kurz über ", code("SENSOR_POWER_PIN"), " ein- und anschließend wieder ausgeschaltet. Der Sensor wird mit HIGH aktiviert und mit LOW deaktiviert. ",
           "Mit ", code("delay(10);"), " wartet ihr kurz, bis der Sensor stabil misst. ",
-          "Setzt außerdem einen Grenzwert, z. B. ", code("int feuchtigkeitsGrenze = 100;"), "."
+          "Setzt außerdem einen Grenzwert, z. B. ", code("int feuchtigkeitsGrenze = 400;"), "."
         )
       ),
 
@@ -723,9 +723,9 @@ object Task3_PumpControl {
   )
 
   val snippets = List(
-    CodeSnippet(1, "digitalWrite(PUMP_PIN, LOW);"),
+    CodeSnippet(1, "digitalWrite(PUMP_PIN, HIGH);"),
     CodeSnippet(2, "delay(2000);"),
-    CodeSnippet(3, "digitalWrite(PUMP_PIN, HIGH);")
+    CodeSnippet(3, "digitalWrite(PUMP_PIN, LOW);")
   )
 
   val sourceSnippets: Var[List[CodeSnippet]] = Var(
@@ -754,7 +754,7 @@ object Task3_PumpControl {
         div(
           className := "info-box",
           strong("Hinweis: "),
-          "In dieser Schaltung wird das Relais mit ", code("digitalWrite(PUMP_PIN, LOW)"), " eingeschaltet und mit ", code("HIGH"), " ausgeschaltet."
+          "In dieser Schaltung wird das Relais mit ", code("digitalWrite(PUMP_PIN, HIGH)"), " eingeschaltet und mit ", code("LOW"), " ausgeschaltet."
         )
       ),
 
@@ -801,17 +801,17 @@ object Task3_PumpControl {
       advancedCodeState,
       "Schreibt den Code für die Pumpensteuerung:",
       code => {
-        val hasOn = code.contains("digitalWrite(PUMP_PIN, LOW)")
-        val hasOff = code.contains("digitalWrite(PUMP_PIN, HIGH)")
+        val hasOn = code.contains("digitalWrite(PUMP_PIN, HIGH)")
+        val hasOff = code.contains("digitalWrite(PUMP_PIN, LOW)")
         val hasShortDelay = code.contains("delay(2000)")
 
         if (hasOn && hasOff && hasShortDelay) {
           "✅ Perfekt! Die Pumpe wird richtig gesteuert!"
         } else {
           "⚠️ Code sieht noch nicht vollständig aus. Prüfe:\n" +
-          (if (!hasOn) "- Pumpe einschalten (LOW)\n" else "") +
+          (if (!hasOn) "- Pumpe einschalten (HIGH)\n" else "") +
           (if (!hasShortDelay) "- 2 Sekunden warten\n" else "") +
-          (if (!hasOff) "- Pumpe ausschalten (HIGH)\n" else "")
+          (if (!hasOff) "- Pumpe ausschalten (LOW)\n" else "")
         }
       }
     )
@@ -854,7 +854,7 @@ object Task4_Combined {
   )
 
   val snippets = List(
-    CodeSnippet(1, "int feuchtigkeitsGrenze = 100;"),
+    CodeSnippet(1, "int feuchtigkeitsGrenze = 400;"),
     CodeSnippet(2, "digitalWrite(SENSOR_POWER_PIN, HIGH);"),
     CodeSnippet(3, "delay(10);"),
     CodeSnippet(4, "int messwert = analogRead(SENSOR_PIN);"),
@@ -862,9 +862,9 @@ object Task4_Combined {
     CodeSnippet(6, "Serial.print(\"Analoger Wert: \" );"),
     CodeSnippet(7, "Serial.println(messwert);"),
     CodeSnippet(8, "if (messwert < feuchtigkeitsGrenze) {"),
-    CodeSnippet(9, "  digitalWrite(PUMP_PIN, LOW);"),
+    CodeSnippet(9, "  digitalWrite(PUMP_PIN, HIGH);"),
     CodeSnippet(10, "  delay(2000);"),
-    CodeSnippet(11, "  digitalWrite(PUMP_PIN, HIGH);"),
+    CodeSnippet(11, "  digitalWrite(PUMP_PIN, LOW);"),
     CodeSnippet(12, "} else {"),
     CodeSnippet(13, "  Serial.println(\"Boden feucht - keine Bewässerung nötig\");"),
     CodeSnippet(14, "}"),
@@ -1009,7 +1009,7 @@ object Task4_Combined {
           (if (!hasMeasurement) "- Sensor-Messung mit analogRead fehlt\n" else "") +
           (if (!hasSensorPower) "- Sensor über SENSOR_POWER_PIN ein-/ausschalten\n" else "") +
           (if (!hasCondition) "- if-Bedingung mit messwert < feuchtigkeitsGrenze oder messwert > feuchtigkeitsGrenze fehlt\n" else "") +
-          (if (!hasPumpControl) "- Pumpensteuerung (LOW/HIGH) unvollständig\n" else "") +
+          (if (!hasPumpControl) "- Pumpensteuerung (HIGH/LOW) unvollständig\n" else "") +
           (if (!hasSerial) "- Ausgabe des Messwerts fehlt\n" else "") +
           (if (!hasLoopDelay) "- Wartezeit delay(10000) fehlt\n" else "")
         }
@@ -1079,7 +1079,7 @@ object Task5_Test {
        |const int SENSOR_POWER_PIN = 2; // Pin, damit der Sensor nicht so schnell rostet
        |const int PUMP_PIN = 8; // Pin fürs relais für die pumpe
        |
-       |int feuchtigkeitsGrenze = 100;
+      |int feuchtigkeitsGrenze = 400;
        |
        |void setup() {
        |  Serial.begin(9600);
@@ -1087,7 +1087,7 @@ object Task5_Test {
        |  pinMode(PUMP_PIN, OUTPUT);
        |  pinMode(SENSOR_POWER_PIN, OUTPUT);
        |
-       |  digitalWrite(PUMP_PIN, HIGH);
+      |  digitalWrite(PUMP_PIN, LOW);
        |  digitalWrite(SENSOR_POWER_PIN, LOW);
        |}
        |
@@ -1225,8 +1225,8 @@ object DragAndDropHelper {
     else if (normalized.contains("digitalWrite(SENSOR_POWER_PIN, LOW)")) "Setze SENSOR_POWER_PIN auf LOW (Sensor aus)."
     else if (normalized.contains("analogRead(SENSOR_PIN)")) "Lies den analogen Wert von SENSOR_PIN und speichere ihn als messwert."
     else if (normalized.contains("messwert < feuchtigkeitsGrenze")) "Prüfe: Ist messwert kleiner als feuchtigkeitsGrenze?"
-    else if (normalized.contains("digitalWrite(PUMP_PIN, LOW)")) "Setze PUMP_PIN auf LOW (Pumpe an)."
-    else if (normalized.contains("digitalWrite(PUMP_PIN, HIGH)")) "Setze PUMP_PIN auf HIGH (Pumpe aus)."
+    else if (normalized.contains("digitalWrite(PUMP_PIN, HIGH)")) "Setze PUMP_PIN auf HIGH (Pumpe an)."
+    else if (normalized.contains("digitalWrite(PUMP_PIN, LOW)")) "Setze PUMP_PIN auf LOW (Pumpe aus)."
     else if (normalized.contains("Serial.print")) "Gib Text im Serial Monitor ohne Zeilenumbruch aus."
     else if (normalized.contains("Serial.println")) "Gib Text oder Wert im Serial Monitor mit Zeilenumbruch aus."
     else if (normalized.contains("delay(2000)")) "Warte 2000 ms."
