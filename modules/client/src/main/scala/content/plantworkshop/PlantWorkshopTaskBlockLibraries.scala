@@ -10,6 +10,10 @@ import datastructures.core.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueR
 import interactionPlugins.blockEnvironment.programming.BeProgram
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
+/**
+  * Block library builders for the Plant Workshop tasks.
+  * Provides small program fragments used in the block editor palettes.
+  */
 object PlantWorkshopTaskBlockLibraries {
 
   private def valueRefProgram(name: String, tpe: BeDataType): BeProgram = {
@@ -158,6 +162,7 @@ object PlantWorkshopTaskBlockLibraries {
     )
   }
 
+  /** Blocks for moisture sensor basics (task 2). */
   def task2LibraryPrograms(): List[BeProgram] = {
     val sensorValueVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("sensorValue"), BeDataType.Int)
     val highVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("HIGH"), BeDataType.Int)
@@ -185,6 +190,7 @@ object PlantWorkshopTaskBlockLibraries {
     )
   }
 
+  /** Blocks for pump control (task 3). */
   def task3LibraryPrograms(): List[BeProgram] = {
     List(
       valueRefProgram("PUMP_PIN", BeDataType.Int),
@@ -197,6 +203,7 @@ object PlantWorkshopTaskBlockLibraries {
     )
   }
 
+  /** Blocks for combined logic (task 4). */
   def task4LibraryPrograms(): List[BeProgram] = {
     val messwertVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("messwert"), BeDataType.Int)
     val grenzeVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("feuchtigkeitsGrenze"), BeDataType.Int)
