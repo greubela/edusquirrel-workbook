@@ -14,7 +14,7 @@ private[state] case class ObservableValueImpl[T](initValue: Option[T]) extends O
   private def allObserversSorted(): List[Observer[T]] = (oneTimeObservers.toList ++ observers.toList).sortBy(_.executionPriority).reverse
 
   private[state] def onNewValueArrived(newValueTry: Try[T]): Unit = syncLock.synchronized {
-    if (lastValuePropagated.nonEmpty && lastValuePropagated.get != newValueTry) {
+    if (lastValuePropagated.isEmpty || lastValuePropagated.get != newValueTry) {
       lastValuePropagated = Some(newValueTry)
       allObserversSorted().foreach(curObserver => fireObserver(newValueTry, curObserver))
       oneTimeObservers.clear()
@@ -49,7 +49,9 @@ private[state] case class ObservableValueImpl[T](initValue: Option[T]) extends O
 
   def deriveValue[O](withFunc: T => O, executeFunctionWith: ExecutionMethod = ExecutionMethod.executeSync, deriveLogic: ObserverDerivationLogic = ObserverDerivationLogic.DeriveOnlyLastValues): ObservableValue[O] = syncLock.synchronized {
     val res = DerivedObservableValue(withFunc, executeFunctionWith, deriveLogic)
-    observers += Observer(res.handleOnNewBaseValue, ExecutionMethod.executeSync, 10000)
+    val baseObserver = Observer(res.handleOnNewBaseValue, ExecutionMethod.executeSync, 10000)
+    observers += baseObserver
+    lastValuePropagated.foreach(result => fireObserver(result, baseObserver))
     res
   }
 
