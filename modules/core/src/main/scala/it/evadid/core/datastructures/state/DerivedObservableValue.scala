@@ -11,7 +11,7 @@ private case class DerivedObservableValue[I, O](
                                                  deriveLogic: ObserverDerivationLogic
                                                ) extends ObservableValue[O] {
 
-  private def inputQueue: mutable.Queue[Try[I]] = mutable.Queue()
+  private val inputQueue: mutable.Queue[Try[I]] = mutable.Queue()
 
   private var runningExecution: Option[Promise[O]] = None
   private val outObs: ObservableValueImpl[O] = ObservableValueImpl[O](None)
