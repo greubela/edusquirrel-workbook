@@ -34,7 +34,7 @@ class StateObservableValueTest extends FunSuite {
     assertEquals(Await.result(future, 1.second), 5)
   }
 
-  test("DerivedObservableValue derives all values".ignore) {
+  test("DerivedObservableValue derives all values") {
     // TODO: Derivation does not currently emit values in this setup; re-enable once the derived pipeline is fixed.
     val base = State(1)
     val derived = base.observable.deriveValue(_ * 2, deriveLogic = ObserverDerivationLogic.DeriveAllValues)
@@ -48,7 +48,7 @@ class StateObservableValueTest extends FunSuite {
     assertEquals(Await.result(derived.currentValueOrWaitForUpdate, 1.second), 6)
   }
 
-  test("DerivedObservableValue with DeriveOnlyLastValues drops intermediate queued values".ignore) {
+  test("DerivedObservableValue with DeriveOnlyLastValues drops intermediate queued values") {
     // TODO: Derivation with async execution is currently not emitting updates; re-enable when fixed.
     val gate = Promise[Unit]()
     val base = State(1)
