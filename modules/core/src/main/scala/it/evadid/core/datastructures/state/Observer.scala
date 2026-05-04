@@ -1,5 +1,7 @@
 package it.evadid.core.datastructures.state
 
-case class Observer[T](val handleOnUpdate: T => Any, val handleOnError: Throwable => Any, executionMethod: ExecutionMethod) {
+import scala.util.Try
+
+case class Observer[T](val handleOnUpdate: Try[T] => Any, executionMethod: ExecutionMethod, executionPriority: Int) {
 
 }

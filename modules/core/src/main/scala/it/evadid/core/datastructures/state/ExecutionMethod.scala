@@ -25,10 +25,10 @@ object ExecutionMethod {
     override def handleExecution[I, O](func: I => O, input: I, callback: Try[O] => Any): Unit = {
       Future {
         func(input)
-      }(ec).onComplete {
+      }(using ec).onComplete {
         case Success(output) => callback.apply(Success(output))
         case Failure(e) => callback.apply(Failure(e))
-      }(ec)
+      }(using ec)
     }
   }
 

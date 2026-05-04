@@ -49,7 +49,6 @@ case class FullInfo() extends HtmlAppElement {
 
   def current: HomepageCurrentInfo = HomepageCurrentInfo(this)
 
-
 }
 
 object FullInfo {
