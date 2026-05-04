@@ -49,9 +49,7 @@ private[state] case class ObservableValueImpl[T](initValue: Option[T]) extends O
 
   def deriveValue[O](withFunc: T => O, executeFunctionWith: ExecutionMethod = ExecutionMethod.executeSync, deriveLogic: ObserverDerivationLogic = ObserverDerivationLogic.DeriveOnlyLastValues): ObservableValue[O] = syncLock.synchronized {
     val res = DerivedObservableValue(withFunc, executeFunctionWith, deriveLogic)
-    val baseObserver = Observer(res.handleOnNewBaseValue, ExecutionMethod.executeSync, 10000)
-    observers += baseObserver
-    lastValuePropagated.foreach(result => fireObserver(result, baseObserver))
+    addObserver(Observer(res.handleOnNewBaseValue, ExecutionMethod.executeSync, 10000))
     res
   }
 
