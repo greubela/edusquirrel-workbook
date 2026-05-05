@@ -17,7 +17,7 @@ case class HomepageDataControl(fullInfo: FullInfo) {
     interactions.foreach(_.interactionVariable.syncToAll())
     downloadAllAvailableData()
     // Clear old Status
-    FullInfo.resetLocalStorage()
+    fullInfo.technical.resetLocalStorage()
     interactions.foreach(_.resetInteraction(syncBefore = false, syncAfter = false))
   }
 

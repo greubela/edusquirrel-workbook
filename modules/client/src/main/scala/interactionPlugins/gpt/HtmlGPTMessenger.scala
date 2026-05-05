@@ -24,7 +24,7 @@ case class HtmlGPTMessenger(fullInfo: FullInfo, textInteraction: WorkbookInterac
   private val scaffoldingEditor = SimpleMessengerEditor(interactionVariable)
 
   private val scaffoldingButton = HtmlButtonElement.withSvgContent(fullInfo, HtmlGPTMessenger.scaffoldingButtonSvg, event => {
-    fullInfo.technical.makeFullscreen(scaffoldingEditor.getDomElement())
+    fullInfo.technical.makeFullscreen(scaffoldingEditor)
   })
 
   private val domElement: L.Element = scaffoldingButton.getDomElement()

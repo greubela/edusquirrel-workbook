@@ -49,7 +49,7 @@ case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expected
   private val fullscreenEditor = HtmlFullscreenTurtleEditorElement(editorState)
 
   private def openFullEditor(): Unit = {
-    fullInfo.technical.makeFullscreen(fullscreenEditor.getDomElement())
+    fullInfo.technical.makeFullscreen(fullscreenEditor)
   }
 
   private val programmingView = TurtleProgrammingPreview(fullInfo, editorState, expectedSvgResult)

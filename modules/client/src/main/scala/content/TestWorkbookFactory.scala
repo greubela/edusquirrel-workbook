@@ -66,7 +66,7 @@ case class TestWorkbookFactory(override val fullInfo: FullInfo) extends Workbook
 
     HtmlExerciseContainer(fullInfo, List(
       instructionPlaintext("EmbroideryWorkbook/Ex1Instr2"),
-      HtmlButtonElement.withTextLabel(fullInfo, "basic/demoButton", event => fullInfo.technical.makeFullscreen(turtleDemo.getDomElement()))
+      HtmlButtonElement.withTextLabel(fullInfo, "basic/demoButton", event => fullInfo.technical.makeFullscreen(turtleDemo))
     ))
   }
 
@@ -78,7 +78,7 @@ case class TestWorkbookFactory(override val fullInfo: FullInfo) extends Workbook
 
     HtmlExerciseContainer(fullInfo, List(
       instructionPlaintext( "EmbroideryWorkbook/Ex1Instr3"),
-      HtmlButtonElement.withTextLabel(fullInfo, "basic/demoButton", event => fullInfo.technical.makeFullscreen(turtleDemo.getDomElement()))
+      HtmlButtonElement.withTextLabel(fullInfo, "basic/demoButton", event => fullInfo.technical.makeFullscreen(turtleDemo))
     ))
   }
   

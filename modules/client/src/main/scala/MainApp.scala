@@ -3,11 +3,12 @@ import com.raquo.laminar.api.L.*
 import content.{CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, plantworkshop}
 import interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
 import org.scalajs.dom
+import workbook.htmlElements.HtmlFullWorkbookApp
 import workbook.model.info.FullInfo
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 import scala.scalajs.js
-private def info = FullInfo.singleton
+
 
 private val tryToLoad: List[String] = List("plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "feedbackDemoRoot")
 
@@ -18,12 +19,12 @@ private def load(containerId: String): Unit = {
       plantworkshop.PlantWorkshopApp.appElement
     }
     case "workbookEmbroidery" => {
-      info.control.changeWorkbook(CreateEmbroideryWorkbook(info))
-      info.getDomElement()
+      HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreateEmbroideryWorkbook(HtmlFullWorkbookApp.fullInfo))
+      HtmlFullWorkbookApp.getDomElement()
     }
     case "workbookPlantWorkshop" => {
-      info.control.changeWorkbook(CreatePlantworkshopWorkbook(info))
-      info.getDomElement()
+      HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreatePlantworkshopWorkbook(HtmlFullWorkbookApp.fullInfo))
+      HtmlFullWorkbookApp.getDomElement()
     }
     case "feedbackDemoRoot" => {
       FeedbackDemoElement.element()
@@ -45,8 +46,6 @@ private def testCalculations(): Unit = {
 @main
 def mainApp(): Unit = {
   //  FullInfo.resetLocalStorage()
-
-  FullInfo.setDummyUser()
 
   if (js.typeOf(js.Dynamic.global.selectDynamic("document")) != "undefined") {
     val canLoad: List[String] = tryToLoad.flatMap(id => if (dom.document.getElementById(id) != null) Some(id) else None)
