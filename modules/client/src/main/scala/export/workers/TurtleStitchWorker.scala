@@ -22,7 +22,7 @@ import scala.scalajs.js.JSConverters.*
  *   Snap/TurtleStitch scripts via `importScripts`.
  */
 case class TurtleStitchWorker(
-    workerUrl: String = "../resources/programs/20260212TurtleStitch/turtle-worker.js"
+    workerUrl: String = "../../resources/programs/20260212TurtleStitch/turtle-worker.js" // sth wrong :(
 ) {
 
   private val worker = new dom.Worker(workerUrl)

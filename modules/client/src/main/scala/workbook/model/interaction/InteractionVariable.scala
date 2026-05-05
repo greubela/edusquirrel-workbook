@@ -8,6 +8,7 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.chat.MessengerModel.Message
 import it.evadid.core.datastructures.chat.MessengerModel
+import it.evadid.core.datastructures.state.State
 import it.evadid.core.util.io.{Serializer, TypeConverter}
 import workbook.model.abstractions.WorkbookInteraction
 import workbook.model.interaction.InteractionVariable.*
@@ -22,14 +23,19 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
 
   private implicit val appOwner: Owner = unsafeWindowOwner
 
-  private val innerState: Var[InteractionVariableStorage[T]] = {
+  /*private val innerState: Var[InteractionVariableStorage[T]] = {
     val withLoaded = initStorageState.withSyncFromAll().withCleanedDefaultStates()
     Var(withLoaded)
+  }*/
+
+  private val innerState = State[InteractionVariableStorage[T]](initStorageState)
+
+  lazy val interactionSignal: StrictSignal[T] = {
+    createBoundVarWithUpdateImportance(UpdateImportance.TEMPORARY).signal
   }
-  lazy val interactionSignal: StrictSignal[T] = innerState.signal.mapLazy(_.lastState.value)
 
   def currentValue: T = synchronized {
-    interactionSignal.now()
+    innerState.now().lastState.value
   }
 
   def syncFromAll(): Unit = synchronized {
@@ -44,11 +50,10 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
     innerState.update(_.afterReset(newDefaultValue, newSyncSources))
   }
 
-
   def createBoundVarWithUpdateImportance(importance: UpdateImportance): Var[T] = synchronized {
-    val outerVar = Var[T](interactionSignal.now())
-    outerVar.signal.foreach(newValue => updateStateFromUserInteraction(newValue, System.currentTimeMillis(), importance))
-    interactionSignal.foreach(newValue => if (newValue != outerVar.now()) outerVar.set(newValue))
+    val outerVar = Var[T](currentValue)
+    innerState.observable.addObserver(newValue => if (newValue != outerVar.now()) outerVar.set(currentValue))
+    outerVar.signal.foreach(newValue => if(newValue != currentValue) updateStateFromUserInteraction(newValue, System.currentTimeMillis(), importance))
     outerVar
   }
 
@@ -129,7 +134,7 @@ object InteractionVariable {
         val serialized = serializedWithStrategy(curInfo.syncStrategy)
         curInfo.syncSource.syncTo(keyForSerialization, serialized.toString)
       })
-      println("[INFO] history '" + keyForSerialization + "' changed, synced to " + syncSources.size + " sources")//, current value: \n" + io.serialize(underlyingVar.now()) + ")")
+      println("[INFO] history '" + keyForSerialization + "' changed, synced to " + syncSources.size + " sources") //, current value: \n" + io.serialize(underlyingVar.now()) + ")")
     }
 
     def withSyncFromAll(): InteractionVariableStorage[T] = {
