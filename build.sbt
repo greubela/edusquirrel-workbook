@@ -58,6 +58,7 @@ lazy val server = (project in file("./modules/server"))
   .dependsOn(core.jvm)
   .settings(
     name := "server",
+    Compile / mainClass := Some("it.evadid.server.BackendServer"),
     libraryDependencies ++= (coreDependencies.value ++ jvmDependencies.value)
   )
 
