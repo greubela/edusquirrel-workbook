@@ -1,37 +1,62 @@
 package it.evadid.distribution.executor
 
-import it.evadid.distribution.ExecutionCommand.ExecutionInfo
+import com.sun.source.doctree.AuthorTree
 import it.evadid.distribution.ExecutionCommand
-import it.evadid.distribution.clients.ExecutionClient
+import it.evadid.distribution.ExecutionCommand.{ExecutionInfo, ExecutionResult}
+import it.evadid.distribution.executor.Executor.{BasicLogger, ExecutorHistory, Logger}
 
-import java.util.concurrent.Executors
-import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import java.time.LocalDateTime
 import scala.util.Try
 
 trait Executor {
 
   def canExecute(executionCommand: ExecutionCommand): Boolean
 
-  def execute(executionCommand: ExecutionCommand): Try[ExecutionCommand.ExecutionInfo]
-
-  def forceExecution(executionCommand: ExecutionCommand): ExecutionCommand.ExecutionInfo = {
-    if (!canExecute(executionCommand)) {
-      throw new IllegalArgumentException(s"Executor cannot execute command '${executionCommand.name}'")
-    }
-    execute(executionCommand).getOrElse {
-      throw new IllegalStateException(s"Executor reported it can execute '${executionCommand.name}' but returned no result")
-    }
+  def execute(executionCommand: ExecutionCommand): Try[(ExecutionResult, ExecutorHistory, Logger)] = Try {
+    val timeExecutionStarted = LocalDateTime.now()
+    val logger = BasicLogger()
+    val result = handleExecution(executionCommand, logger)
+    val timeExecutionFinished = LocalDateTime.now()
+    (result, ExecutorHistory(timeExecutionStarted, timeExecutionFinished), logger)
   }
 
-  /**
-   * Returns a queued/synchronized execution client for this executor.
-   *
-   * Commands are processed in FIFO order and never in parallel.
-   */
+  protected def resultFromValue[T](value: T, toStringFunc: T => String = (str: T) => str.toString): ExecutionResult = ExecutionResult(Map("result" -> toStringFunc(value)), "", "")
+
+  protected def handleExecution(executionCommand: ExecutionCommand, logger: Logger): ExecutionResult
+
 }
 
 object Executor {
-  
-  
+
+  case class ExecutorHistory(timeExecutionStarted: LocalDateTime, timeExecutionFinished: LocalDateTime)
+
+  private case class BasicLogger() extends Logger {
+    private val out = StringBuilder()
+    private val err = StringBuilder()
+
+    def logInfo(msg: String): Unit = out.append(s"[INFO] ${LocalDateTime.now().toString}: $msg\n")
+
+    def logWarn(msg: String): Unit = out.append(s"[WARN] ${LocalDateTime.now().toString}: $msg\n")
+
+    def logError(msg: String): Unit = err.append(s"[ERROR] ${LocalDateTime.now().toString}: $msg\n")
+
+    def logException(throwable: Throwable): Unit = err.append(s"[EXCEPTION] ${LocalDateTime.now().toString}: ${throwable.getMessage}\n ${throwable.getStackTrace.mkString("\n")}\n")
+
+    def getOut(): String = out.toString()
+
+    def getErr(): String = err.toString()
+  }
+
+  trait Logger {
+    def logInfo(msg: String): Unit
+
+    def logWarn(msg: String): Unit
+
+    def logError(msg: String): Unit
+
+    def getOut(): String
+
+    def getErr(): String
+  }
+
 }

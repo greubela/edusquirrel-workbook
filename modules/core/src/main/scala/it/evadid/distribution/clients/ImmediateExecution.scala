@@ -11,7 +11,8 @@ case class ImmediateExecution(val handlers: List[Executor]) extends LocalExecuti
 
   // Executes command synchronously and immediately returns the result
 
-  override def executeCommand(executionCommand: ExecutionCommand): Future[ExecutionInfo] = Future.successful(executeWithFirstHandler(executionCommand))
+  override def executeCommand(executionCommand: ExecutionCommand): Future[ExecutionInfo] = Future.successful(executeCommandSync(executionCommand))
 
+  def executeCommandSync(executionCommand: ExecutionCommand): ExecutionInfo = executeWithFirstHandler(executionCommand)
 
 }

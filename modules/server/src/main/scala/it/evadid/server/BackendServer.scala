@@ -2,67 +2,33 @@ package it.evadid.server
 
 import it.evadid.distribution.*
 import it.evadid.distribution.ExecutionCommand.ExecutionInfo
+import it.evadid.distribution.clients.{AsyncExecution, ExecutionClient, ImmediateExecution}
 import it.evadid.distribution.executor.Executor
+import it.evadid.executors.MathExecutor
+import play.api.libs.json.{JsValue, Json}
+import play.api.mvc.Results.*
+import play.api.mvc.{DefaultActionBuilder, Handler, RequestHeader}
+import play.api.routing.sird.*
+import play.core.server.{NettyServer, ServerConfig}
 import upickle.default.{read, write}
 
 import java.time.LocalDateTime
+import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
-import play.api.libs.json.{JsValue, Json}
-import play.api.mvc.DefaultActionBuilder
-import play.api.mvc.Results.Status
-import play.api.mvc.Results.*
-import play.api.mvc.{Handler, RequestHeader}
-import play.api.routing.sird.*
-import play.core.server.{NettyServer, ServerConfig}
 
 /**
  * Minimal Play-based HTTP server with dummy REST functionality.
  */
 object BackendServer extends ExecutionServer {
 
-  private val dummyExecutor: Executor = new Executor {
-    override def canExecute(executionCommand: ExecutionCommand): Boolean = true
-
-    override def execute(executionCommand: ExecutionCommand): Option[ExecutionInfo] = {
-      val now = LocalDateTime.now()
-      val result = ExecutionCommand.ExecutionResult(
-        data = executionCommand.params,
-        stdOut = s"Dummy executed command '${executionCommand.name}'",
-        stdErr = ""
-      )
-      Some(ExecutionInfo(
-        command = executionCommand,
-        result = Success(result),
-        meta = Some(
-          ExecutionCommand.CommandHistory(
-            timestampCommandRequested = now,
-            timestampCommandReceived = now,
-            timestampExecutionStarted = now,
-            timestampExecutionFinished = now
-          )
-        )
-      ))
-    }
-  }
-
-  var executors: List[Executor] = List(dummyExecutor)
-
-  override def getExecutor: Executor = new Executor {
-    override def canExecute(executionCommand: ExecutionCommand): Boolean =
-      executors.exists(_.canExecute(executionCommand))
-
-    override def execute(executionCommand: ExecutionCommand): Option[ExecutionInfo] =
-      executors.find(_.canExecute(executionCommand)).flatMap(_.execute(executionCommand))
-  }
+  def localExecutionClient: ImmediateExecution = ImmediateExecution(List(MathExecutor()))
 
   def onExecuteCommandReceived(rawCommand: String): ExecutionInfo = {
     val executionCommand = read[ExecutionCommand](rawCommand)
     if (executionCommand.name.trim.isEmpty) {
       throw new IllegalArgumentException("ExecutionCommand.name must not be empty")
     }
-    getExecutor.execute(executionCommand).getOrElse {
-      throw new IllegalStateException(s"No executor available for command '${executionCommand.name}'")
-    }
+    localExecutionClient.executeCommandSync(executionCommand)
   }
 
   private def handleExecuteCommand(rawBody: Option[String]): (Int, String) = {

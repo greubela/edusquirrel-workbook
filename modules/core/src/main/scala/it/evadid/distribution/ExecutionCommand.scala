@@ -10,7 +10,7 @@ case class ExecutionCommand(name: String, params: Map[String, String]) {
 
 object ExecutionCommand {
 
-  case class ExecutionInfo(command: ExecutionCommand, result: Try[ExecutionResult], meta: Option[CommandHistory])
+  case class ExecutionInfo(command: ExecutionCommand, result: Try[ExecutionResult], meta: Option[ExecutionHistory])
 
   case class ExecutionResult(
                               data: Map[String, String],
@@ -18,7 +18,7 @@ object ExecutionCommand {
                               stdErr: String
                             )
 
-  case class CommandHistory(
+  case class ExecutionHistory(
                              timestampCommandRequested: LocalDateTime,
                              timestampCommandReceived: LocalDateTime,
                              timestampExecutionStarted: LocalDateTime,
@@ -43,7 +43,7 @@ object ExecutionCommand {
 
   given ReadWriter[ExecutionCommand] = macroRW
   given ReadWriter[ExecutionResult] = macroRW
-  given ReadWriter[CommandHistory] = macroRW
+  given ReadWriter[ExecutionHistory] = macroRW
   given ReadWriter[ExecutionInfo] = macroRW
 
 }

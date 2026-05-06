@@ -8,7 +8,7 @@ import upickle.default.{read, write}
 
 import java.time.LocalDateTime
 import scala.util.{Success, Try}
-
+/*
 object BackendWorker extends ExecutionServer {
 
   private val dummyExecutor: Executor = new Executor {
@@ -24,7 +24,7 @@ object BackendWorker extends ExecutionServer {
       Some(ExecutionInfo(
         command = executionCommand,
         result = Success(result),
-        meta = Some(ExecutionCommand.CommandHistory(now, now, now, now))
+        meta = Some(ExecutionCommand.ExecutionHistory(now, now, now, now))
       ))
     }
   }
@@ -88,4 +88,4 @@ object BackendWorker extends ExecutionServer {
       }
     }
   }
-}
+}*/

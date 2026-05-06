@@ -6,7 +6,7 @@ import upickle.default.{read, write}
 
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
-
+/*
 trait WorkerLike {
   def postMessage(message: String): Unit
   var onmessage: dom.MessageEvent => Unit
@@ -73,3 +73,4 @@ class WorkerExecution private[clients](worker: WorkerLike) extends ExecutionClie
     promise.future
   }
 }
+*/

@@ -2,13 +2,13 @@
 import com.raquo.laminar.api.L.*
 import content.{CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, plantworkshop}
 import interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
+import it.evadid.distribution.clients.{AsyncExecution, ExecutionClient, ImmediateExecution, ServerExecution}
+import it.evadid.executors.MathExecutor
 import org.scalajs.dom
 import workbook.htmlElements.HtmlFullWorkbookApp
-import workbook.model.info.FullInfo
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 import scala.scalajs.js
-
 
 private val tryToLoad: List[String] = List("plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "feedbackDemoRoot")
 
@@ -38,9 +38,16 @@ private def load(containerId: String): Unit = {
   else render(container, domElement)
 }
 
-
 private def testCalculations(): Unit = {
-  println("still alive 444 ?")
+ /* val executors = List(MathExecutor())
+  val clients: List[ExecutionClient] = List(ImmediateExecution(executors), AsyncExecution(executors), ServerExecution("127.0.0.1", 9000))
+*/
+  /*clients.foreach(curClient => {
+    curClient.executeCommand(ExecutionCommand("add", Map("a" -> "1", "b" -> "2"))).onComplete {
+      case Success(result) => println(s"${curClient.getClass} success: " + result)
+      case Failure(err) => println(s"${curClient.getClass} error: " + err.getMessage())
+    }
+  })*/
 }
 
 @main
