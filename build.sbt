@@ -57,7 +57,7 @@ lazy val root = (project in file("."))
   )
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)
-  .crossType(CrossType.Pure)
+  .crossType(CrossType.Full)
   .in(file("./modules/core"))
   .settings(Settings.globalSettings)
   .settings(
@@ -107,8 +107,7 @@ lazy val worker = (project in file("./modules/worker"))
     scalaJSUseMainModuleInitializer := true,
     Compile / mainClass := Some("it.evadid.worker.BackendWorker"),
     Test / jsEnv := new NodeJSEnv(),
-    libraryDependencies ++= (coreDependencies.value ++ jsDependencies.value),
-    Compile / unmanagedSourceDirectories += (ThisBuild / baseDirectory).value / "modules" / "core" / "src" / "main" / "scala-js"
+    libraryDependencies ++= (coreDependencies.value ++ jsDependencies.value)
   )
 
 
