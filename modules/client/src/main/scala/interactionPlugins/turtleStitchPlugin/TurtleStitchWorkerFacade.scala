@@ -79,7 +79,7 @@ object TurtleStitchWorkerFacade {
       runTask.onComplete {
         case Success(value) => result.success(value)
         case Failure(error) => result.failure(error)
-      }(ec)
+      }(using ec)
 
       queuedWork = runTask.map(_ => ()).recover { case _ => () }
     }
@@ -100,7 +100,7 @@ object TurtleStitchWorkerFacade {
                 workerInit = None
               }
             case Success(_) => ()
-          }(ExecutionContext.parasitic)
+          }(using ExecutionContext.parasitic)
       }
     }
 

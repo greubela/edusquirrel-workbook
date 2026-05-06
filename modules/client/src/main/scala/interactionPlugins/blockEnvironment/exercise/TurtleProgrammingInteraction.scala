@@ -35,7 +35,7 @@ case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expected
     val initRenderer = BeRenderingConfig.defaultWithLanguage(fullInfo.signals.currentLanguage.now())
     val rendererVar = Var(initRenderer)
 
-    fullInfo.signals.currentLanguage.foreach(currentLanguage => rendererVar.update(_.copy(language = currentLanguage)))(unsafeWindowOwner)
+    fullInfo.signals.currentLanguage.foreach(currentLanguage => rendererVar.update(_.copy(language = currentLanguage)))(using unsafeWindowOwner)
 
     val initControllerState: BeEditorControllerState = BeEditorControllerState.default()
     EditorState(

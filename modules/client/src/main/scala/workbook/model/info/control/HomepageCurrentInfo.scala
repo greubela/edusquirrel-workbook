@@ -28,7 +28,7 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
     now().userInfo.map(_.config.syncDestinations).getOrElse(default)
   }
 
-  def allAvailableInteractions: List[WorkbookInteraction[_]] = fullInfo.synchronized {
+  def allAvailableInteractions: List[WorkbookInteraction[?]] = fullInfo.synchronized {
     val default = List()
     now().workbookInfo.map(_.loadedWorkbook.allInteractionElements).getOrElse(default)
   }

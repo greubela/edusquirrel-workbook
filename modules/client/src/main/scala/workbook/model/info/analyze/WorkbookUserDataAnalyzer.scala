@@ -63,11 +63,11 @@ case class WorkbookUserDataAnalyzer(technical: TechnicalControl, userInfo: AllUs
 
   def upload(file: FileDescription): Unit = {
     println("Trying to parse session data :)")
-    technical.fileStore.loadAsFuture(file)(ExecutionContext.global).foreach(loadedFile => {
+    technical.fileStore.loadAsFuture(file)(using ExecutionContext.global).foreach(loadedFile => {
       val str = loadedFile.fileDataAsUtf8String
       val data: SessionData = upickle.default.read(str)
       tryToLoad(data)
-    })(ExecutionContext.global)
+    })(using ExecutionContext.global)
   }
 
 

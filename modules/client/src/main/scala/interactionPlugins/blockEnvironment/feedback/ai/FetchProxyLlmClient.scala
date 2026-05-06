@@ -111,7 +111,7 @@ final class FetchProxyLlmClient(
       future.onComplete { res =>
         clearTimeout(handle)
         p.tryComplete(res)
-      }(scala.scalajs.concurrent.JSExecutionContext.Implicits.queue)
+      }(using scala.scalajs.concurrent.JSExecutionContext.Implicits.queue)
       p.future
     }
   }

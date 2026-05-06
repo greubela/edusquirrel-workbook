@@ -34,5 +34,5 @@ case class ServerExecution(ip: String, port: Int) extends ExecutionClient {
       throw new IllegalStateException("Server response is missing 'executionInfo' field")
     )
     read[ExecutionCommand.ExecutionInfo](executionInfoJson)
-  }(ExecutionContext.global)
+  }(using ExecutionContext.global)
 }

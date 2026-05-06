@@ -93,7 +93,7 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean) {
     executeLoading(input)(ExecutionContext.Implicits.global).onComplete {
       case Success(outputData) => fetchedRequest.succeeded(outputData)
       case Failure(error) => fetchedRequest.failed(error)
-    }(ExecutionContext.Implicits.global)
+    }(using ExecutionContext.Implicits.global)
     logInfo("requested execution for " + formatInputForLogging(input))
 
     fetchedRequest
@@ -128,12 +128,12 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean) {
     cachedRequests.synchronized {
       val resultVar: Var[Option[O]] = Var(None)
       inputSignal.foreach(newValue => {
-        val actualVar = loadIntoVariable(newValue)(ec)
+        val actualVar = loadIntoVariable(newValue)(using ec)
         resultVar.set(actualVar.now())
         actualVar.signal.foreach(newValue => {
           resultVar.set(newValue)
-        })(unsafeWindowOwner)
-      })(unsafeWindowOwner)
+        })(using unsafeWindowOwner)
+      })(using unsafeWindowOwner)
       resultVar
     }
   }
@@ -142,7 +142,7 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean) {
     cachedRequests.synchronized {
       val allKeys = cachedRequests.keys.toList
       deleteFromStorage(allKeys)
-      allKeys.foreach(input => loadIntoVariable(input, forceReloading = true)(ec))
+      allKeys.foreach(input => loadIntoVariable(input, forceReloading = true)(using ec))
     }
   }
 
@@ -196,4 +196,3 @@ object AsyncDataCache {
 
 
 }
-

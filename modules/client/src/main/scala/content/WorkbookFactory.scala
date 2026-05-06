@@ -14,7 +14,7 @@ trait WorkbookFactory {
 
   def availableLanguages: List[HumanLanguage] = List(English, German) // todo remove default value
   def defaultSectionActiveNr: Int  = 0
-  def estimatedDurations: Map[WorkbookInteraction[_], Double] = Map()  // todo remove default value
+  def estimatedDurations: Map[WorkbookInteraction[?], Double] = Map()  // todo remove default value
 
   def createEverything: AllWorkbookInfo = {
     val workbook = createWorkbook

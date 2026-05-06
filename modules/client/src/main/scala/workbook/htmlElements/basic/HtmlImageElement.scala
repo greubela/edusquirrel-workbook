@@ -28,7 +28,7 @@ object HtmlImageElement {
   }
 
   def apply(fileDescription: FileDescription, fullInfo: FullInfo): HtmlImageElement = {
-    val fullImgVar: Var[Option[LoadedFile]] = fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(ExecutionContext.global)
+    val fullImgVar: Var[Option[LoadedFile]] = fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(using ExecutionContext.global)
     val imageSignal: StrictSignal[Option[FullImage]] = fullImgVar.signal.mapLazy(_.map(_.toImage))
     HtmlImageElement(imageSignal, fullInfo)
   }
