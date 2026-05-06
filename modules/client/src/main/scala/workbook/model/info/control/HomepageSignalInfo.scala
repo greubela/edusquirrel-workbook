@@ -3,6 +3,7 @@ package workbook.model.info.control
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
+import it.evadid.core.datastructures.state.StateHelper.*
 import workbook.model.WorkbookSection
 import workbook.model.info.*
 import workbook.singletons.WorkbookLanguageInfo
@@ -31,7 +32,7 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
   lazy val currentLanguage: StrictSignal[HumanLanguage] = baseSignal.mapLazy(_.currentLanguage)
 
   def languageMapOpFromId(languageMapId: String): StrictSignal[Option[LanguageMap[HumanLanguage]]] = {
-    fullInfo.technical.languageMapStorage.loadIntoVariable(languageMapId)(using ExecutionContext.global).signal
+    fullInfo.technical.languageMapStorage.loadIntoVariable(languageMapId)(using ExecutionContext.global).toAirstreamVar.signal
     //Var(None).signal
   }
 

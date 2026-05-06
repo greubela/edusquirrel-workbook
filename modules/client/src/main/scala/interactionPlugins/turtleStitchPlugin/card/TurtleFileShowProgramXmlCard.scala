@@ -5,6 +5,8 @@ import com.raquo.laminar.api.L.*
 import datastructures.web.file.FileDescription
 import interactionPlugins.turtleStitchPlugin.*
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.state.State
+import it.evadid.core.datastructures.state.StateHelper.*
 import util.web.DownloadHelper
 import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.FullInfo
@@ -43,9 +45,9 @@ case class TurtleFileShowProgramXmlCard(
   private def getPngProgramDisplayElement(humanLanguage: HumanLanguage, xml: Option[String]): Element = {
     if (xml.isEmpty) mapDataSrcStringToElement(None)
     else {
-      val elVar: Var[Option[String]] = TurtleStitchWorkerFacade.getGreenFlagProgramSnapshotDataSrc(xml.get, humanLanguage)
+      val elState: State[Option[String]] = TurtleStitchWorkerFacade.getGreenFlagProgramSnapshotDataSrc(xml.get, humanLanguage)
       div(
-        child <-- elVar.signal.map(mapDataSrcStringToElement)
+        child <-- elState.toAirstreamVar.signal.map(mapDataSrcStringToElement)
       )
     }
   }
@@ -92,7 +94,7 @@ object TurtleFileShowProgramXmlCard {
       "TurtleStitch_" + fileDescription.filename,
       "TurtleStitch/providedProjectLabel",
       "basic/imageLoadingMap",
-      fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(using ExecutionContext.global).signal.mapLazy(_.map(_.fileDataAsUtf8String)),
+      fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(using ExecutionContext.global).toAirstreamVar.signal.mapLazy(_.map(_.fileDataAsUtf8String)),
       "TurtleStitch/downloadButton"
     )
   }

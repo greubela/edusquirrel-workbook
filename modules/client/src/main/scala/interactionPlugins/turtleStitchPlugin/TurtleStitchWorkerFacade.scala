@@ -1,10 +1,10 @@
 package interactionPlugins.turtleStitchPlugin
 
 import `export`.workers.TurtleStitchWorker
-import com.raquo.laminar.api.L.Var
 import datastructures.web.storage.AsyncDataCache
 import interactionPlugins.turtleStitchPlugin.TurtleStitchEditor.turtleLang
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.language.TranslationMaps
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -19,7 +19,7 @@ object TurtleStitchWorkerFacade {
    *   not the "executed stage after green-flag run" pipeline.
    * - The executed stage snapshot is handled by worker methods like simulateGreenFlag/getGreenFlagPng.
    */
-  def getGreenFlagProgramSnapshotDataSrc(turtleStitchXml: String, language: HumanLanguage): Var[Option[String]] = {
+  def getGreenFlagProgramSnapshotDataSrc(turtleStitchXml: String, language: HumanLanguage): State[Option[String]] = {
     implicit val ec: ExecutionContext = ExecutionContext.global
     programPngDataSrcStorage.loadIntoVariable((turtleStitchXml, language))
   }
@@ -27,7 +27,7 @@ object TurtleStitchWorkerFacade {
   private val EMPTY_PNG_DATA_URL: String = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
   
   /** Backwards-compatible alias for previous API name. */
-  def getPngDataSrcOfGreenFlagProgramEditor(turtleStitchXml: String, language: HumanLanguage): Var[Option[String]] =
+  def getPngDataSrcOfGreenFlagProgramEditor(turtleStitchXml: String, language: HumanLanguage): State[Option[String]] =
     getGreenFlagProgramSnapshotDataSrc(turtleStitchXml, language)
 
   private val programPngDataSrcStorage: AsyncDataCache[(String, HumanLanguage), String] = new AsyncDataCache[(String, HumanLanguage), String]("ProgramPngDataSrc", false) {
