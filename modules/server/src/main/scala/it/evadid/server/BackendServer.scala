@@ -20,7 +20,6 @@ import play.core.server.{NettyServer, ServerConfig}
  */
 object BackendServer extends ExecutionServer {
 
-
   private val dummyExecutor: Executor = new Executor {
     override def canExecute(executionCommand: ExecutionCommand): Boolean = true
 
@@ -127,7 +126,6 @@ object BackendServer extends ExecutionServer {
         }
     }
   }
-
 
   def main(args: Array[String]): Unit = {
     val port = args.headOption.flatMap(_.toIntOption).getOrElse(9000)
