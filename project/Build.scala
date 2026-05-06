@@ -1,5 +1,6 @@
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.*
 import sbt.*
+import sbtassembly.AssemblyPlugin.autoImport.*
 import sbt.Keys.*
 
 import java.time.LocalDateTime
@@ -47,7 +48,7 @@ object Build {
 
     val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss"))
 
-    val serverJar = (server / Compile / packageBin).value
+    val serverJar = (server / assembly).value
 
     ensureDirectories(root)
 

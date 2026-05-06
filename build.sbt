@@ -1,3 +1,4 @@
+import sbtassembly.AssemblyPlugin.autoImport.*
 import Dependencies.*
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.*
@@ -59,6 +60,13 @@ lazy val server = (project in file("./modules/server"))
   .settings(
     name := "server",
     Compile / mainClass := Some("it.evadid.server.BackendServer"),
+    assembly / mainClass := Some("it.evadid.server.BackendServer"),
+    assembly / assemblyJarName := "server.jar",
+    assembly / assemblyMergeStrategy := {
+      case PathList("META-INF", "versions", _*) => MergeStrategy.discard
+      case PathList("META-INF", "io.netty.versions.properties") => MergeStrategy.first
+      case x => (assembly / assemblyMergeStrategy).value(x)
+    },
     libraryDependencies ++= (coreDependencies.value ++ jvmDependencies.value)
   )
 
