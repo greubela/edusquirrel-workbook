@@ -88,28 +88,38 @@ object PythonStatementParser {
 
   private def buildDispatchRules(api: StatementApi): List[DispatchRule] = List(
     DispatchRule(_.matches(AnnotationAssignmentPattern.regex), ctx => {
-      val AnnotationAssignmentPattern(name, typeHint, valueStr) = ctx.trimmed
+      val (name, typeHint, valueStr) = ctx.trimmed match
+        case AnnotationAssignmentPattern(parsedName, parsedTypeHint, parsedValueStr) => (parsedName, parsedTypeHint, parsedValueStr)
+        case _ => throw new IllegalArgumentException(s"Invalid annotation assignment: '${ctx.trimmed}'")
       val variable = ctx.context.defineVariable(name, api.mapType(Some(typeHint.trim)))
       val valueExpr = api.parseExpression(valueStr, ctx.context)
       DispatchOutcome(List(BeAssignVariable(variable, valueExpr)), ctx.index + 1)
     }),
     DispatchRule(_.matches(ClassPattern.regex), ctx => {
-      val ClassPattern(name, bases) = ctx.trimmed
+      val (name, bases) = ctx.trimmed match
+        case ClassPattern(parsedName, parsedBases) => (parsedName, parsedBases)
+        case _ => throw new IllegalArgumentException(s"Invalid class definition: '${ctx.trimmed}'")
       val result = api.parseClass(ctx.lines, ctx.index, ctx.indent, name, Option(bases), ctx.context)
       DispatchOutcome(List(result.expression), result.nextIndex)
     }),
     DispatchRule(_.matches(FunctionPattern.regex), ctx => {
-      val FunctionPattern(name, params, returnType) = ctx.trimmed
+      val (name, params, returnType) = ctx.trimmed match
+        case FunctionPattern(parsedName, parsedParams, parsedReturnType) => (parsedName, parsedParams, parsedReturnType)
+        case _ => throw new IllegalArgumentException(s"Invalid function definition: '${ctx.trimmed}'")
       val result = api.parseFunction(ctx.lines, ctx.index, ctx.indent, name, params, Option(returnType), ctx.context)
       DispatchOutcome(List(result.expression), result.nextIndex)
     }),
     DispatchRule(_.matches(WhilePattern.regex), ctx => {
-      val WhilePattern(conditionSource) = ctx.trimmed
+      val conditionSource = ctx.trimmed match
+        case WhilePattern(parsedConditionSource) => parsedConditionSource
+        case _ => throw new IllegalArgumentException(s"Invalid while statement: '${ctx.trimmed}'")
       val result = api.parseWhile(ctx.lines, ctx.index, ctx.indent, conditionSource, ctx.context)
       DispatchOutcome(List(result.expression), result.nextIndex)
     }),
     DispatchRule(_.matches(IfPattern.regex), ctx => {
-      val IfPattern(conditionSource) = ctx.trimmed
+      val conditionSource = ctx.trimmed match
+        case IfPattern(parsedConditionSource) => parsedConditionSource
+        case _ => throw new IllegalArgumentException(s"Invalid if statement: '${ctx.trimmed}'")
       val result = api.parseIf(ctx.lines, ctx.index, ctx.indent, conditionSource, ctx.context)
       DispatchOutcome(List(result.expression), result.nextIndex)
     }),
@@ -120,7 +130,9 @@ object PythonStatementParser {
     DispatchRule(_.startsWith("return"), ctx => DispatchOutcome(List(api.parseReturn(ctx.trimmed, ctx.context)), ctx.index + 1)),
     DispatchRule(_ == "pass", ctx => DispatchOutcome(List(BeExpression.pass), ctx.index + 1)),
     DispatchRule(_.matches(AssignmentPattern.regex), ctx => {
-      val AssignmentPattern(name, valueStr) = ctx.trimmed
+      val (name, valueStr) = ctx.trimmed match
+        case AssignmentPattern(parsedName, parsedValueStr) => (parsedName, parsedValueStr)
+        case _ => throw new IllegalArgumentException(s"Invalid assignment: '${ctx.trimmed}'")
       val valueExpr = api.parseExpression(valueStr, ctx.context)
       val variable = ctx.context.assignVariable(name, api.inferType(valueExpr))
       DispatchOutcome(List(BeAssignVariable(variable, valueExpr)), ctx.index + 1)

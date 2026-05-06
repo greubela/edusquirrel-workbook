@@ -122,7 +122,7 @@ object AccessLLM {
           case None => completionPromise.trySuccess(getCurrentMessageState())
     }
 
-    responseVar.signal.addObserver(Observer[LlmResponseContent](resolveCompletion))(unsafeWindowOwner)
+    responseVar.signal.addObserver(Observer[LlmResponseContent](resolveCompletion))(using unsafeWindowOwner)
     resolveCompletion(responseVar.now())
 
     def waitForFullGeneration(): Future[MessengerModel] = completionPromise.future

@@ -1,5 +1,7 @@
 package it.evadid.core.datastructures.language
 
+import scala.reflect.ClassTag
+
 trait LanguageMap[T <: AppLanguage]() {
   def getInLanguage(language: T): String
 
@@ -19,13 +21,13 @@ object LanguageMap {
     protected def availableLanguages: Set[T] = maps.flatMap(_.availableLanguages).toSet
   }
 
-  def universalMap[T <: AppLanguage](string: String): LanguageMap[T] = new LanguageMap[T]() {
+  def universalMap[T <: AppLanguage](string: String)(using classTag: ClassTag[T]): LanguageMap[T] = new LanguageMap[T]() {
     def getInLanguage(language: T): String = string
 
     def map(func: String => String): LanguageMap[T] = LanguageMap.universalMap(func(string))
 
     protected def availableLanguages: Set[T] = {
-      AppLanguage.allLanguages.filter(_.isInstanceOf[T]).map(_.asInstanceOf[T]).toSet
+      AppLanguage.allLanguages.collect { case language: T => language }.toSet
     }
 
     override def toString: String = "UniversalLanguageMap('" + string + "')"
@@ -41,7 +43,7 @@ object LanguageMap {
     override def toString: String = "MapBasedLanguageMap(" + pMap + ")"
   }
 
-  def mkLanguageMap[T <: AppLanguage](start: String, sep: String, end: String, maps: List[LanguageMap[T]]): LanguageMap[T] = {
+  def mkLanguageMap[T <: AppLanguage](start: String, sep: String, end: String, maps: List[LanguageMap[T]])(using classTag: ClassTag[T]): LanguageMap[T] = {
     var res: LanguageMap[T] = universalMap(start)
     for (curMap <- maps) {
       res = combinedMap(res, curMap)
