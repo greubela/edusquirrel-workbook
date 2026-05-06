@@ -8,14 +8,14 @@
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="modules">
           <set>
-            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook" />
-            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\modules\client" />
-            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\modules\core" />
-            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\modules\core\.js" />
-            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\modules\core\.jvm" />
-            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\modules\server" />
-            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\modules\worker" />
-            <option value="C:\Users\André Greubel\Seafile\Meine Bibliothek\Programmierprojekte\edusquirrel-workbook\project" />
+            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook" />
+            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\client" />
+            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\core" />
+            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\core\.js" />
+            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\core\.jvm" />
+            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\server" />
+            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\worker" />
+            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\project" />
           </set>
         </option>
         <option name="sbtVersion" value="1.11.4" />

@@ -2,7 +2,7 @@
 import com.raquo.laminar.api.L.*
 import content.{CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, plantworkshop}
 import interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
-import it.evadid.distribution.clients.{AsyncExecution, ExecutionClient, ImmediateExecution, ServerExecution}
+import it.evadid.distribution.clients.*
 import it.evadid.executors.MathExecutor
 import org.scalajs.dom
 import workbook.htmlElements.HtmlFullWorkbookApp

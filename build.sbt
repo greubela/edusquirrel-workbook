@@ -98,7 +98,6 @@ lazy val client = (project in file("./modules/client"))
     libraryDependencies ++= (coreDependencies.value ++ jsDependencies.value)
   )
 
-
 lazy val worker = (project in file("./modules/worker"))
   .settings(Settings.globalSettings).settings(Settings.jsSettings)
   .enablePlugins(ScalaJSPlugin)
