@@ -1,15 +1,21 @@
 package it.evadid.server
 
+import it.evadid.distribution.*
+import it.evadid.distribution.ExecutionCommand.ExecutionInfo
+
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.Results.*
 import play.api.routing.sird.*
 import play.core.server.{NettyServer, ServerConfig}
 
-
 /**
  * Minimal Play-based HTTP server with dummy REST functionality.
  */
-object BackendServer {
+object BackendServer extends ExecutionServer {
+
+
+  val getExecutor: Executor = ??? // todo: implement later
+
 
   def main(args: Array[String]): Unit = {
     val port = args.headOption.flatMap(_.toIntOption).getOrElse(9000)
@@ -20,8 +26,13 @@ object BackendServer {
       ServerConfig(port = Some(port), address = "0.0.0.0")
     ) { components =>
       import components.defaultActionBuilder as Action
-
       {
+        case GET(p"/executeCommand") =>
+          Action {
+            ??? // somehow call a method onExecutionCommandReceived with relevant info that calls the executor and then send back results.
+            Ok(Json.obj("status" -> "ok", "service" -> "edusquirrel-server"))
+          }
+
         case GET(p"/health") =>
           Action {
             Ok(Json.obj("status" -> "ok", "service" -> "edusquirrel-server"))
