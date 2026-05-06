@@ -24,7 +24,7 @@ buildWorkerFast := Def.sequential(
   Def.taskDyn {
     val workerFastOutput = (worker / Compile / fastLinkJS / scalaJSLinkedFile).value.data
     val root = (ThisBuild / baseDirectory).value
-    Build.moveClientFiles(root, workerFastOutput, false, "fast", "worker.js")
+    Build.moveClientFiles(root, workerFastOutput, false, "fast", "backend-worker.js")
   }
 ).value
 
@@ -39,7 +39,7 @@ deployAll := {
       val base = (ThisBuild / baseDirectory).value
       Def.sequential(
         Build.moveClientFiles(base, clientOutput, true, "full", "client.js"),
-        Build.moveClientFiles(base, workerOutput, true, "full", "worker.js")
+        Build.moveClientFiles(base, workerOutput, true, "full", "backend-worker.js")
       )
     },
   ).value

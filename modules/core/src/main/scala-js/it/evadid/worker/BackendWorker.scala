@@ -54,15 +54,14 @@ object BackendWorker extends ExecutionServer {
     val requestId = payload.getOrElse("requestId", throw new IllegalArgumentException("Missing requestId"))
     val rawCommand = payload.getOrElse("command", throw new IllegalArgumentException("Missing command"))
 
-    val executionInfo = Try(onExecuteCommandReceived(rawCommand)) match {
-      case Success(info) => info
-      case scala.util.Failure(exception) =>
-        ExecutionInfo(
-          command = ExecutionCommand("invalid", Map.empty),
-          result = scala.util.Failure(exception),
-          meta = None
-        )
-    }
+    val executionInfo = Try(onExecuteCommandReceived(rawCommand)).fold(
+      exception => ExecutionInfo(
+        command = ExecutionCommand("invalid", Map.empty),
+        result = scala.util.Failure(exception),
+        meta = None
+      ),
+      identity
+    )
 
     write(Map(
       "requestId" -> requestId,

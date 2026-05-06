@@ -1,23 +1,21 @@
 package it.evadid.distribution.clients
 
-import it.evadid.distribution.executor.Executor
 import it.evadid.distribution.ExecutionCommand
-import upickle.default.{read, write}
+import it.evadid.distribution.executor.Executor
+import upickle.default.read
 
-import scala.concurrent.Future
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 case class ServerExecution(ip: String, port: Int) extends ExecutionClient {
 
   private val httpClient = HttpClient.newHttpClient()
 
-  val handlers = List.empty[Executor]
-  
-  // Sends command to a server with given data and executes it there (see BackendServer for a possible backend impl)
+  val handlers: List[Executor] = List.empty
 
-  override def executeCommand(executionCommand: ExecutionCommand): Future[ExecutionCommand.ExecutionInfo] = Future.fromTry(Try {
+  override def executeCommand(executionCommand: ExecutionCommand): Future[ExecutionCommand.ExecutionInfo] = Future {
     val commandJson = upickle.default.write(executionCommand)
     val request = HttpRequest
       .newBuilder(URI.create(s"http://$ip:$port/executeCommand"))
@@ -31,10 +29,10 @@ case class ServerExecution(ip: String, port: Int) extends ExecutionClient {
       throw new RuntimeException(s"Server responded with status ${response.statusCode()}: $message")
     }
     val responseData = read[Map[String, String]](response.body())
-    val executionInfoJson = responseData.getOrElse("executionInfo",
+    val executionInfoJson = responseData.getOrElse(
+      "executionInfo",
       throw new IllegalStateException("Server response is missing 'executionInfo' field")
     )
     read[ExecutionCommand.ExecutionInfo](executionInfoJson)
-  })
-  
+  }(ExecutionContext.global)
 }
