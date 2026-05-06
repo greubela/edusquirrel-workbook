@@ -2,14 +2,15 @@ package it.evadid.distribution.clients
 
 import it.evadid.distribution.*
 import it.evadid.distribution.ExecutionCommand.ExecutionInfo
+import it.evadid.distribution.executor.Executor
 
 import scala.concurrent.{ExecutionContext, Future}
 
-case class AsyncExecution(commandHandler: Executor, ec: ExecutionContext = ExecutionContext.global) extends ExecutionClient {
+case class AsyncExecution(handlers: List[Executor], ec: ExecutionContext = ExecutionContext.global) extends LocalExecutionClient {
 
 
   override def executeCommand(executionCommand: ExecutionCommand): Future[ExecutionInfo] = Future {
-    commandHandler.forceExecution(executionCommand)
+    executeWithFirstHandler(executionCommand)
   }(using ec)
   
 }

@@ -2,7 +2,8 @@ package it.evadid.server
 
 import it.evadid.distribution.ExecutionCommand
 import it.evadid.distribution.ExecutionCommand.ExecutionInfo
-import it.evadid.distribution.{ExecutionCommand as Cmd, Executor}
+import it.evadid.distribution.ExecutionCommand as Cmd
+import it.evadid.distribution.executor.Executor
 import munit.FunSuite
 import upickle.default.write
 

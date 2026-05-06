@@ -2,6 +2,7 @@ package it.evadid.worker
 
 import it.evadid.distribution.ExecutionCommand.ExecutionInfo
 import it.evadid.distribution.*
+import it.evadid.distribution.executor.Executor
 import org.scalajs.dom
 import upickle.default.{read, write}
 

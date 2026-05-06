@@ -1,6 +1,6 @@
 package it.evadid.distribution.clients
 
-import it.evadid.distribution.{ExecutionClient, ExecutionCommand}
+import it.evadid.distribution.ExecutionCommand
 import org.scalajs.dom
 import upickle.default.{read, write}
 

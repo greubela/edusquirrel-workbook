@@ -2,11 +2,11 @@ package it.evadid.server
 
 import it.evadid.distribution.*
 import it.evadid.distribution.ExecutionCommand.ExecutionInfo
+import it.evadid.distribution.executor.Executor
 import upickle.default.{read, write}
 
 import java.time.LocalDateTime
 import scala.util.{Failure, Success, Try}
-
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.DefaultActionBuilder
 import play.api.mvc.Results.Status

@@ -1,14 +1,19 @@
-package it.evadid.distribution
+package it.evadid.distribution.executor
 
-import it.evadid.distribution.clients.SynchronizedExecution
+import it.evadid.distribution.ExecutionCommand.ExecutionInfo
+import it.evadid.distribution.ExecutionCommand
+import it.evadid.distribution.clients.ExecutionClient
 
-import scala.concurrent.ExecutionContext
+import java.util.concurrent.Executors
+import scala.collection.mutable
+import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.util.Try
 
 trait Executor {
 
   def canExecute(executionCommand: ExecutionCommand): Boolean
 
-  def execute(executionCommand: ExecutionCommand): Option[ExecutionCommand.ExecutionInfo]
+  def execute(executionCommand: ExecutionCommand): Try[ExecutionCommand.ExecutionInfo]
 
   def forceExecution(executionCommand: ExecutionCommand): ExecutionCommand.ExecutionInfo = {
     if (!canExecute(executionCommand)) {
@@ -24,7 +29,9 @@ trait Executor {
    *
    * Commands are processed in FIFO order and never in parallel.
    */
-  def makeSynced(ec: ExecutionContext = ExecutionContext.global): ExecutionClient =
-    SynchronizedExecution(this, ec)
+}
+
+object Executor {
+  
   
 }

@@ -1,6 +1,7 @@
 package it.evadid.distribution.clients
 
-import it.evadid.distribution.{ExecutionClient, ExecutionCommand}
+import it.evadid.distribution.executor.Executor
+import it.evadid.distribution.ExecutionCommand
 import upickle.default.{read, write}
 
 import scala.concurrent.Future
@@ -12,6 +13,8 @@ case class ServerExecution(ip: String, port: Int) extends ExecutionClient {
 
   private val httpClient = HttpClient.newHttpClient()
 
+  val handlers = List.empty[Executor]
+  
   // Sends command to a server with given data and executes it there (see BackendServer for a possible backend impl)
 
   override def executeCommand(executionCommand: ExecutionCommand): Future[ExecutionCommand.ExecutionInfo] = Future.fromTry(Try {
