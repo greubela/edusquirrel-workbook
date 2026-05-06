@@ -6,7 +6,7 @@ import upickle.default.{read, write}
 
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
-/*
+
 trait WorkerLike {
   def postMessage(message: String): Unit
   var onmessage: dom.MessageEvent => Unit
@@ -48,10 +48,7 @@ class WorkerExecution private[clients](worker: WorkerLike) extends ExecutionClie
         val executionInfoJson = payload.getOrElse("executionInfo",
           throw new IllegalStateException("Worker response is missing 'executionInfo' field")
         )
-        pending.remove(requestId) match {
-          case Some(promise) => promise.success(read[ExecutionCommand.ExecutionInfo](executionInfoJson))
-          case None =>
-        }
+        pending.remove(requestId).foreach(_.success(read[ExecutionCommand.ExecutionInfo](executionInfoJson)))
       case _ =>
     }
   }
@@ -73,4 +70,3 @@ class WorkerExecution private[clients](worker: WorkerLike) extends ExecutionClie
     promise.future
   }
 }
-*/
