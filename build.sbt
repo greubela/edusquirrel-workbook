@@ -16,14 +16,31 @@ buildFast := Def.sequential(
   }
 ).value
 
+
+
+lazy val buildWorkerFast = taskKey[Unit]("Build worker as fast as possible")
+buildWorkerFast := Def.sequential(
+  worker / Compile / fastLinkJS,
+  Def.taskDyn {
+    val workerFastOutput = (worker / Compile / fastLinkJS / scalaJSLinkedFile).value.data
+    val root = (ThisBuild / baseDirectory).value
+    Build.moveClientFiles(root, workerFastOutput, false, "fast", "worker.js")
+  }
+).value
+
 lazy val deployAll = taskKey[Unit]("Builds and deploys server + client")
 deployAll := {
   Def.sequential(
     client / Compile / fullLinkJS,
+    worker / Compile / fullLinkJS,
     Def.taskDyn {
       val clientOutput = (client / Compile / fullLinkJS / scalaJSLinkedFile).value.data
+      val workerOutput = (worker / Compile / fullLinkJS / scalaJSLinkedFile).value.data
       val base = (ThisBuild / baseDirectory).value
-      Build.moveClientFiles(base, clientOutput, true, "full", "client.js")
+      Def.sequential(
+        Build.moveClientFiles(base, clientOutput, true, "full", "client.js"),
+        Build.moveClientFiles(base, workerOutput, true, "full", "worker.js")
+      )
     },
   ).value
 
@@ -33,7 +50,7 @@ deployAll := {
 
 lazy val root = (project in file("."))
   .settings(Settings.globalSettings)
-  .aggregate(server, client)
+  .aggregate(server, client, worker)
   .settings(
     name := "edusquirrel-workbook",
     publish / skip := true
@@ -82,5 +99,17 @@ lazy val client = (project in file("./modules/client"))
   )
 
 
-// Todo: Worker Module 
+lazy val worker = (project in file("./modules/worker"))
+  .settings(Settings.globalSettings).settings(Settings.jsSettings)
+  .enablePlugins(ScalaJSPlugin)
+  .dependsOn(core.js)
+  .settings(
+    name := "worker",
+    scalaJSUseMainModuleInitializer := true,
+    Compile / mainClass := Some("it.evadid.worker.BackendWorker"),
+    Test / jsEnv := new NodeJSEnv(),
+    libraryDependencies ++= (coreDependencies.value ++ jsDependencies.value),
+    Compile / unmanagedSourceDirectories += (ThisBuild / baseDirectory).value / "modules" / "core" / "src" / "main" / "scala-js"
+  )
+
 
