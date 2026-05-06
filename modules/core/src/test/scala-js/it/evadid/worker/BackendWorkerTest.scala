@@ -15,7 +15,7 @@ class BackendWorkerTest extends FunSuite {
     ExecutionInfo(
       command,
       Success(Cmd.ExecutionResult(Map("handledBy" -> marker), s"$marker handled", "")),
-      Some(Cmd.CommandHistory(LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now()))
+      Some(Cmd.ExecutionHistory(LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now()))
     )
 
   private def configuredExecutor(canHandle: ExecutionCommand => Boolean, marker: String): Executor = new Executor {

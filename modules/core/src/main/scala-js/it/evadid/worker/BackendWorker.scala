@@ -24,7 +24,7 @@ object BackendWorker extends ExecutionServer {
       Some(ExecutionInfo(
         command = executionCommand,
         result = Success(result),
-        meta = Some(ExecutionCommand.CommandHistory(now, now, now, now))
+        meta = Some(ExecutionCommand.ExecutionHistory(now, now, now, now))
       ))
     }
   }

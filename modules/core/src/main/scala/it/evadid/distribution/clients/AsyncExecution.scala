@@ -4,6 +4,7 @@ import it.evadid.distribution.*
 import it.evadid.distribution.ExecutionCommand.ExecutionInfo
 import it.evadid.distribution.executor.Executor
 
+import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
 case class AsyncExecution(handlers: List[Executor], ec: ExecutionContext = ExecutionContext.global) extends LocalExecutionClient {
