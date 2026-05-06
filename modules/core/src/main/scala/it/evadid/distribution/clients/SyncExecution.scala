@@ -11,7 +11,7 @@ case class SyncExecution(handleCommand: Executor) extends ExecutionClient{
   
   // Executes command synchronously and immediately returns the result
   
-  override def executeCommand(executionCommand: ExecutionCommand): Future[ExecutionInfo] = Future.successful(handleCommand.execute(executionCommand))
+  override def executeCommand(executionCommand: ExecutionCommand): Future[ExecutionInfo] = Future.successful(handleCommand.forceExecution(executionCommand))
   
   
 }

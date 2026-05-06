@@ -9,7 +9,7 @@ case class AsyncExecution(commandHandler: Executor, ec: ExecutionContext = Execu
 
 
   override def executeCommand(executionCommand: ExecutionCommand): Future[ExecutionInfo] = Future {
-    commandHandler.execute(executionCommand)
+    commandHandler.forceExecution(executionCommand)
   }(using ec)
   
 }
