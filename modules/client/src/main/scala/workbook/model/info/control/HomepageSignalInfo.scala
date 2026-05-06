@@ -31,7 +31,7 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
   lazy val currentLanguage: StrictSignal[HumanLanguage] = baseSignal.mapLazy(_.currentLanguage)
 
   def languageMapOpFromId(languageMapId: String): StrictSignal[Option[LanguageMap[HumanLanguage]]] = {
-    fullInfo.technical.languageMapStorage.loadIntoVariable(languageMapId)(ExecutionContext.global).signal
+    fullInfo.technical.languageMapStorage.loadIntoVariable(languageMapId)(using ExecutionContext.global).signal
     //Var(None).signal
   }
 

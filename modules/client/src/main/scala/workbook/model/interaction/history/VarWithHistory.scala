@@ -8,7 +8,7 @@ import scala.collection.mutable
 case class VarWithHistory[T](variable: Var[T]) {
   val stateList = mutable.ListBuffer[T]()
   
-  variable.signal.addObserver(Observer[T](newValue => stateList.append(newValue)))(unsafeWindowOwner)
+  variable.signal.addObserver(Observer[T](newValue => stateList.append(newValue)))(using unsafeWindowOwner)
 }
 
 object VarWithHistory {

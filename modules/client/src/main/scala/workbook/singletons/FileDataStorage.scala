@@ -29,7 +29,7 @@ case class FileDataStorage() extends AsyncDataCache[FileDescription, LoadedFile]
       }
     }
 
-    val res: Future[LoadedFile] = data.map(data => LoadedFile(file, data))(ec)
+    val res: Future[LoadedFile] = data.map(data => LoadedFile(file, data))(using ec)
     res
 
   }

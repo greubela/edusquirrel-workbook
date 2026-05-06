@@ -72,7 +72,7 @@ case class EditorState(
         treeToEdit.update(_.withInsertions(editorTreeDisplayConfig.now(), addedMap))
       }
     }
-  })(new Owner() {})
+  })(using new Owner() {})
 
 
   /*def handleDrop(point: Point[Double], onProgram: BeProgram): Unit = {

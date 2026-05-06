@@ -92,7 +92,7 @@ object TurtleFileShowProgramXmlCard {
       "TurtleStitch_" + fileDescription.filename,
       "TurtleStitch/providedProjectLabel",
       "basic/imageLoadingMap",
-      fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(ExecutionContext.global).signal.mapLazy(_.map(_.fileDataAsUtf8String)),
+      fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(using ExecutionContext.global).signal.mapLazy(_.map(_.fileDataAsUtf8String)),
       "TurtleStitch/downloadButton"
     )
   }

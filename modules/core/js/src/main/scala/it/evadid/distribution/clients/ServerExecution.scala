@@ -6,6 +6,7 @@ import org.scalajs.dom
 import upickle.default.read
 
 import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js.JSON
 import scala.scalajs.js.Thenable.Implicits.*
 

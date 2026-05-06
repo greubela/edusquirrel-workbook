@@ -9,24 +9,25 @@ import scala.concurrent.{Future, Promise}
 
 trait WorkerLike {
   def postMessage(message: String): Unit
-  var onmessage: dom.MessageEvent => Unit
-  var onerror: dom.ErrorEvent => Any
+  def onmessage: dom.MessageEvent => Unit
+  def onmessage_=(handler: dom.MessageEvent => Unit): Unit
+  def onerror: dom.ErrorEvent => Any
+  def onerror_=(handler: dom.ErrorEvent => Any): Unit
 }
 
 private class DomWorkerAdapter(path: String) extends WorkerLike {
   private val worker = new dom.Worker(path)
+  private var messageHandler: dom.MessageEvent => Unit = _ => ()
+  private var errorHandler: dom.ErrorEvent => Any = _ => ()
 
   override def postMessage(message: String): Unit = worker.postMessage(message)
+  override def onmessage: dom.MessageEvent => Unit = messageHandler
+  override def onmessage_=(handler: dom.MessageEvent => Unit): Unit = messageHandler = handler
+  override def onerror: dom.ErrorEvent => Any = errorHandler
+  override def onerror_=(handler: dom.ErrorEvent => Any): Unit = errorHandler = handler
 
-  override def onmessage_=(handler: dom.MessageEvent => Unit): Unit =
-    worker.onmessage = handler
-
-  override def onmessage: dom.MessageEvent => Unit = worker.onmessage
-
-  override def onerror_=(handler: dom.ErrorEvent => Any): Unit =
-    worker.onerror = handler
-
-  override def onerror: dom.ErrorEvent => Any = worker.onerror
+  worker.onmessage = (event: dom.MessageEvent) => onmessage(event)
+  worker.onerror = (event: dom.ErrorEvent) => onerror(event)
 }
 
 object WorkerExecution {

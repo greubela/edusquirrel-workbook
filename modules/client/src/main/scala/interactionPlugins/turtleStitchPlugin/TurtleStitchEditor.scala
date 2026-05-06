@@ -65,7 +65,7 @@ case class TurtleStitchEditor(projektXml: Var[String]) extends HtmlAppElement {
                     })
                 }
               }
-            }(ctx.owner)
+            }(using ctx.owner)
             ()
           })
           .`catch`((err: scala.Any) => {

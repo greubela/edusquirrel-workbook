@@ -7,7 +7,7 @@ import workbook.model.info.AllWorkbookInfo.WorkbookMetadata
 case class AllWorkbookInfo(
                             loadedWorkbook: Workbook, 
                             config: WorkbookConfig, 
-                            estimatedDurations: Map[WorkbookInteraction[_], Double]) {
+                           estimatedDurations: Map[WorkbookInteraction[?], Double]) {
 
   def getMetadata(): WorkbookMetadata = WorkbookMetadata(loadedWorkbook.titleLanguageMapId, loadedWorkbook.availableInLanguages)
 

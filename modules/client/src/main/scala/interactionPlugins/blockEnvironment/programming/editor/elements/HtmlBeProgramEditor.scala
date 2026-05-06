@@ -29,7 +29,7 @@ case class HtmlBeProgramEditor(
     if (!textDirtyVar.now()) {
       strVar.set(tree.fullProgram.expressionIO.getInLanguage(textLanguage, English))
     }
-  }(new Owner() {})
+  }(using new Owner() {})
   private var language: HumanLanguage = AppLanguage.English
 
 

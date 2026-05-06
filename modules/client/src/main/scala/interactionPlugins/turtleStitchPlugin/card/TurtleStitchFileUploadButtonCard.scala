@@ -71,7 +71,7 @@ case class TurtleStitchFileUploadButtonCard(
     fileFut.onComplete {
       case Success(data) => onFileReadSuccessfully(data)
       case Failure(error) => println("[WARN] could not load file, ignoring content: " + error.getMessage)
-    }(ExecutionContext.global)
+    }(using ExecutionContext.global)
 
   }
   
