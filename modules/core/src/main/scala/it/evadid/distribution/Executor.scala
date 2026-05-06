@@ -1,5 +1,9 @@
 package it.evadid.distribution
 
+import it.evadid.distribution.clients.SynchronizedExecution
+
+import scala.concurrent.ExecutionContext
+
 trait Executor {
 
   def canExecute(executionCommand: ExecutionCommand): Boolean
@@ -14,5 +18,13 @@ trait Executor {
       throw new IllegalStateException(s"Executor reported it can execute '${executionCommand.name}' but returned no result")
     }
   }
+
+  /**
+   * Returns a queued/synchronized execution client for this executor.
+   *
+   * Commands are processed in FIFO order and never in parallel.
+   */
+  def makeSynced(ec: ExecutionContext = ExecutionContext.global): ExecutionClient =
+    SynchronizedExecution(this, ec)
   
 }
