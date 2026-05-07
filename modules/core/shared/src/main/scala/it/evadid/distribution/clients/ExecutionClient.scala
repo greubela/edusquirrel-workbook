@@ -1,7 +1,7 @@
 package it.evadid.distribution.clients
 
 import it.evadid.distribution.ExecutionCommand
-import it.evadid.distribution.ExecutionCommand.ExecutionInfo
+import it.evadid.distribution.*
 
 import scala.concurrent.Future
 

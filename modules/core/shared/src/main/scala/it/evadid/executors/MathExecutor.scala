@@ -1,7 +1,6 @@
 package it.evadid.executors
 
-import it.evadid.distribution.ExecutionCommand
-import it.evadid.distribution.ExecutionCommand.ExecutionResult
+import it.evadid.distribution.*
 import it.evadid.distribution.executor.Executor
 import it.evadid.distribution.executor.Executor.Logger
 

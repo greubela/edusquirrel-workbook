@@ -45,7 +45,7 @@ class ServerExecutionTest extends FunSuite {
         os.write(bytes)
         os.close()
     } { port =>
-      val client = ServerExecution("127.0.0.1", port)
+      val client = ExecuteOnRemoteServer("127.0.0.1", port)
       val command = ExecutionCommand("echo", Map("x" -> "1"))
 
       val info = Await.result(client.executeCommand(command), 5.seconds)
@@ -64,7 +64,7 @@ class ServerExecutionTest extends FunSuite {
       os.write(bytes)
       os.close()
     } { port =>
-      val client = ServerExecution("127.0.0.1", port)
+      val client = ExecuteOnRemoteServer("127.0.0.1", port)
       val command = ExecutionCommand("echo", Map.empty)
       intercept[RuntimeException] {
         Await.result(client.executeCommand(command), 5.seconds)
@@ -80,7 +80,7 @@ class ServerExecutionTest extends FunSuite {
       os.write(bytes)
       os.close()
     } { port =>
-      val client = ServerExecution("127.0.0.1", port)
+      val client = ExecuteOnRemoteServer("127.0.0.1", port)
       val command = ExecutionCommand("echo", Map.empty)
       intercept[IllegalStateException] {
         Await.result(client.executeCommand(command), 5.seconds)

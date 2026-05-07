@@ -1,8 +1,7 @@
 package it.evadid.server
 
 import it.evadid.distribution.*
-import it.evadid.distribution.ExecutionCommand.ExecutionInfo
-import it.evadid.distribution.clients.{AsyncExecution, ExecutionClient, ImmediateExecution}
+import it.evadid.distribution.clients.{ExecuteLocalAsync, ExecutionClient, ExecuteLocalImmediate}
 import it.evadid.distribution.executor.Executor
 import it.evadid.executors.MathExecutor
 import play.api.libs.json.{JsValue, Json}
@@ -21,7 +20,7 @@ import scala.util.{Failure, Success, Try}
  */
 object BackendServer extends ExecutionServer {
 
-  def localExecutionClient: ImmediateExecution = ImmediateExecution(List(MathExecutor()))
+  def localExecutionClient: ExecuteLocalImmediate = ExecuteLocalImmediate(List(MathExecutor()))
 
   def onExecuteCommandReceived(rawCommand: String): ExecutionInfo = {
     val executionCommand = read[ExecutionCommand](rawCommand)
@@ -36,7 +35,7 @@ object BackendServer extends ExecutionServer {
       case Some(rawCommand) if rawCommand.nonEmpty =>
         Try(onExecuteCommandReceived(rawCommand)) match {
           case Success(executionInfo) if executionInfo.result.isSuccess =>
-            (200, write(Map("executionInfo" -> write(executionInfo))))
+            (200, write(Map("executionInfo" -> write(executionInfo)(using ExecutionCommand.given_ReadWriter_ExecutionInfo))))
           case Success(executionInfo) =>
             (500, Json.obj("error" -> executionInfo.result.failed.get.getMessage).toString())
           case Failure(exception) =>

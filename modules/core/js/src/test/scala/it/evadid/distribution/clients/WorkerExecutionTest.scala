@@ -1,7 +1,8 @@
 package it.evadid.distribution.clients
 
-import it.evadid.distribution.ExecutionCommand
-import it.evadid.distribution.ExecutionCommand.ExecutionInfo
+import it.evadid.distribution.*
+import it.evadid.distribution.executor.Executor
+import it.evadid.distribution.*
 import munit.FunSuite
 import org.scalajs.dom
 import upickle.default.{read, write}
@@ -25,10 +26,10 @@ class WorkerExecutionTest extends FunSuite {
         "executionInfo" -> write(
           ExecutionInfo(
             command = command,
-            result = scala.util.Success(ExecutionCommand.ExecutionResult(command.params, "ok", "")),
+            result = scala.util.Success(ExecutionResult(command.params, "ok", "")),
             meta = None
           )
-        )
+        )(using ExecutionCommand.given_ReadWriter_ExecutionInfo)
       ))
 
       val event = js.Dynamic.literal(data = response).asInstanceOf[dom.MessageEvent]

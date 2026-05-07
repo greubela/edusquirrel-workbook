@@ -2,8 +2,8 @@ package it.evadid.distribution.executor
 
 import com.sun.source.doctree.AuthorTree
 import it.evadid.distribution.ExecutionCommand
-import it.evadid.distribution.ExecutionCommand.{ExecutionInfo, ExecutionResult}
-import it.evadid.distribution.executor.Executor.{BasicLogger, ExecutorHistory, Logger}
+import it.evadid.distribution.*
+import it.evadid.distribution.executor.Executor.*
 
 import java.time.LocalDateTime
 import scala.util.Try

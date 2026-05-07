@@ -1,6 +1,6 @@
 package it.evadid.distribution.clients
 
-import it.evadid.distribution.ExecutionCommand
+import it.evadid.distribution.*
 import org.scalajs.dom
 import upickle.default.{read, write}
 
@@ -37,7 +37,7 @@ object WorkerExecution {
 
 class WorkerExecution private[clients](worker: WorkerLike) extends ExecutionClient {
 
-  private val pending = mutable.Map.empty[String, Promise[ExecutionCommand.ExecutionInfo]]
+  private val pending = mutable.Map.empty[String, Promise[ExecutionInfo]]
 
   worker.onmessage = (event: dom.MessageEvent) => {
     event.data match {
@@ -49,7 +49,7 @@ class WorkerExecution private[clients](worker: WorkerLike) extends ExecutionClie
         val executionInfoJson = payload.getOrElse("executionInfo",
           throw new IllegalStateException("Worker response is missing 'executionInfo' field")
         )
-        pending.remove(requestId).foreach(_.success(read[ExecutionCommand.ExecutionInfo](executionInfoJson)))
+        pending.remove(requestId).foreach(_.success(read[ExecutionInfo](executionInfoJson)(using ExecutionCommand.given_ReadWriter_ExecutionInfo)))
       case _ =>
     }
   }
@@ -59,9 +59,9 @@ class WorkerExecution private[clients](worker: WorkerLike) extends ExecutionClie
     pending.values.foreach(_.tryFailure(exception))
     pending.clear()
 
-  override def executeCommand(executionCommand: ExecutionCommand): Future[ExecutionCommand.ExecutionInfo] = {
+  override def executeCommand(executionCommand: ExecutionCommand): Future[ExecutionInfo] = {
     val requestId = java.util.UUID.randomUUID().toString
-    val promise = Promise[ExecutionCommand.ExecutionInfo]()
+    val promise = Promise[ExecutionInfo]()
     pending.put(requestId, promise)
     val payload = write(Map(
       "requestId" -> requestId,

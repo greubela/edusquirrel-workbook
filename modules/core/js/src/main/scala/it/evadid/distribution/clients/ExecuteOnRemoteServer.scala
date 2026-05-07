@@ -1,6 +1,6 @@
 package it.evadid.distribution.clients
 
-import it.evadid.distribution.ExecutionCommand
+import it.evadid.distribution.*
 import it.evadid.distribution.executor.Executor
 import org.scalajs.dom
 import upickle.default.read
@@ -10,11 +10,11 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js.JSON
 import scala.scalajs.js.Thenable.Implicits.*
 
-case class ServerExecution(ip: String, port: Int) extends ExecutionClient {
+case class ExecuteOnRemoteServer(ip: String, port: Int) extends ExecutionClient {
 
   val handlers: List[Executor] = List.empty
 
-  override def executeCommand(executionCommand: ExecutionCommand): Future[ExecutionCommand.ExecutionInfo] = {
+  override def executeCommand(executionCommand: ExecutionCommand): Future[ExecutionInfo] = {
     val commandJson = upickle.default.write(executionCommand)
     dom.fetch(
       s"http://$ip:$port/executeCommand",
@@ -34,7 +34,7 @@ case class ServerExecution(ip: String, port: Int) extends ExecutionClient {
           "executionInfo",
           throw new IllegalStateException("Server response is missing 'executionInfo' field")
         )
-        read[ExecutionCommand.ExecutionInfo](executionInfoJson)
+        read[ExecutionInfo](executionInfoJson)(using ExecutionCommand.given_ReadWriter_ExecutionInfo)
       }
     }
   }

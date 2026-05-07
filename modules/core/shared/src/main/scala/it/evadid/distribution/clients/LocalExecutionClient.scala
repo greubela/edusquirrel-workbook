@@ -1,7 +1,6 @@
 package it.evadid.distribution.clients
 
-import it.evadid.distribution.ExecutionCommand
-import it.evadid.distribution.ExecutionCommand.{ExecutionHistory, ExecutionInfo}
+import it.evadid.distribution.*
 import it.evadid.distribution.executor.Executor
 
 import java.time.LocalDateTime
@@ -10,8 +9,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.*
 
 trait LocalExecutionClient extends ExecutionClient {
-
-
+  
   def handlers: List[Executor]
 
   protected def executeWithFirstHandler(executionCommand: ExecutionCommand, timeExecutionRequested: LocalDateTime = LocalDateTime.now()): ExecutionInfo = {

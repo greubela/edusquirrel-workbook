@@ -6,8 +6,8 @@ import sbtcrossproject.CrossPlugin.autoImport.*
 import scalajscrossproject.ScalaJSCrossPlugin.autoImport.*
 import sbtcrossproject.CrossPlugin.autoImport.*
 
-lazy val buildFast = taskKey[Unit]("Build client as fast as possible")
-buildFast := Def.sequential(
+lazy val buildClientFast = taskKey[Unit]("Build client as fast as possible")
+buildClientFast := Def.sequential(
   client / Compile / fastLinkJS,
   Def.taskDyn {
     val clientFastOutput = (client / Compile / fastLinkJS / scalaJSLinkedFile).value.data
@@ -15,8 +15,6 @@ buildFast := Def.sequential(
     Build.moveClientFiles(root, clientFastOutput, false, "fast", "client.js")
   }
 ).value
-
-
 
 lazy val buildWorkerFast = taskKey[Unit]("Build worker as fast as possible")
 buildWorkerFast := Def.sequential(
@@ -44,6 +42,11 @@ deployAll := {
     },
   ).value
 
+  Build.buildServer(server, "server.jar", true).value
+}
+
+lazy val buildServerFast = taskKey[Unit]("Builds a server")
+buildServerFast := {
   Build.buildServer(server, "server.jar", true).value
 }
 
@@ -105,7 +108,7 @@ lazy val worker = (project in file("./modules/worker"))
   .settings(
     name := "worker",
     scalaJSUseMainModuleInitializer := true,
-    Compile / mainClass := Some("it.evadid.worker.BackendWorker"),
+    Compile / mainClass := Some("it.evadid.worker.WebWorkerBackendServer"),
     Test / jsEnv := new NodeJSEnv(),
     libraryDependencies ++= (coreDependencies.value ++ jsDependencies.value)
   )

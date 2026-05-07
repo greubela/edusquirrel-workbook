@@ -1,19 +1,26 @@
 package it.evadid.worker
 
-import it.evadid.distribution.ExecutionCommand.ExecutionInfo
 import it.evadid.distribution.*
 import org.scalajs.dom
-import upickle.default.{read, write}
+import upickle.ReadWriter
+import upickle.default.*
 
 import java.time.LocalDateTime
-import scala.util.{Success, Try}
+import scala.util.*
 
-object BackendWorker {
+object WebWorkerBackendServer {
+
+
+  given mapRW: ReadWriter[Map[String, String]] =
+    readwriter[ujson.Value].bimap[Map[String, String]](
+      m => ujson.Obj.from(m.view.mapValues(ujson.Str(_))),
+      json => json.obj.view.map { case (k, v) => k -> v.str }.toMap
+    )
 
   def onExecuteCommandReceived(rawCommand: String): ExecutionInfo = {
     val executionCommand = read[ExecutionCommand](rawCommand)
     val now = LocalDateTime.now()
-    val result = ExecutionCommand.ExecutionResult(
+    val result = ExecutionResult(
       data = executionCommand.params,
       stdOut = s"Worker executed command '${executionCommand.name}'",
       stdErr = ""
@@ -21,7 +28,7 @@ object BackendWorker {
     ExecutionInfo(
       command = executionCommand,
       result = Success(result),
-      meta = Some(ExecutionCommand.ExecutionHistory(now, now, now, now))
+      meta = Some(ExecutionHistory(now, now, now, now))
     )
   }
 
@@ -41,8 +48,8 @@ object BackendWorker {
 
     write(Map(
       "requestId" -> requestId,
-      "executionInfo" -> write(executionInfo)
-    ))
+      "executionInfo" -> write(executionInfo)(using ExecutionCommand.given_ReadWriter_ExecutionInfo)
+    ))(using mapRW)
   }
 
   def main(args: Array[String]): Unit = {
@@ -58,7 +65,7 @@ object BackendWorker {
                 result = scala.util.Failure(new IllegalArgumentException("Worker expects string messages")),
                 meta = None
               )
-            )))
+            )(using ExecutionCommand.given_ReadWriter_ExecutionInfo)))(using mapRW)
           )
       }
     }

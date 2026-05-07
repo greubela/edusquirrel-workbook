@@ -10,9 +10,9 @@
           <set>
             <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook" />
             <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\client" />
-            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\core" />
-            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\core\.js" />
-            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\core\.jvm" />
+            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\core\js" />
+            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\core\jvm" />
+            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\core\shared" />
             <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\server" />
             <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\worker" />
             <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\project" />
