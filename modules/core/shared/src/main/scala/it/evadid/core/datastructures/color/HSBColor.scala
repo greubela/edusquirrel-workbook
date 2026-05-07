@@ -7,13 +7,13 @@ case class HSBColor(hue: Double, saturation: Double, brightness: Double) extends
   
   def toRGB: RGBColor = {
 
-    assert(saturation >= 0 || saturation <= 1 || brightness >= 0 || brightness <= 1, "checking bounding condition of HSB")
+    assert(saturation >= 0 && saturation <= 1 && brightness >= 0 && brightness <= 1, "checking bounding condition of HSB")
 
     if (saturation == 0) convert(brightness, brightness, brightness, 0)
     else {
       val newHue = hue - Math.floor(hue);
 
-      val i = Math.floor(6 * newHue).asInstanceOf[Integer]
+      val i = Math.floor(6 * newHue).toInt
       val f = 6 * newHue - i;
 
       val p = brightness * (1 - saturation);
@@ -38,7 +38,7 @@ case class HSBColor(hue: Double, saturation: Double, brightness: Double) extends
   def toHSB: HSBColor = this
 
   private def convert(red: Double, green: Double, blue: Double, alpha: Double = 1.0): RGBColor = {
-    assert(red >= 0 || red <= 1 || green >= 0 || green <= 1 || blue >= 0 || blue <= 1 || alpha >= 0 || alpha <= 1, "Bad RGB values");
+    assert(red >= 0 && red <= 1 && green >= 0 && green <= 1 && blue >= 0 && blue <= 1 && alpha >= 0 && alpha <= 1, "Bad RGB values")
     val redval = Math.round(255 * red).asInstanceOf[Int]
     val greenval = Math.round(255 * green).asInstanceOf[Int]
     val blueval = Math.round(255 * blue).asInstanceOf[Int]
