@@ -1,8 +1,7 @@
 package interactionPlugins.gpt
 
-import com.raquo.airstream.core.Observer
-import com.raquo.laminar.api.L.{Var, unsafeWindowOwner}
-import it.evadid.core.datastructures.chat.MessengerModel
+import com.raquo.laminar.api.L.{Observer, Var, unsafeWindowOwner}
+import it.evadid.core.datastructures.chat.{MessengerChatCompletionRequest, MessengerModel}
 import it.evadid.core.datastructures.chat.MessengerModel.{BasicPerson, Message, Person, SenderRole}
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.distribution.ExecutionCommand
@@ -13,9 +12,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
 
 case class AccessLLM(serverAccess: String) {
+
   import AccessLLM.*
 
-  def sendRequest(chatRequest: ChatRequest): LlmResponse = {
+  def sendRequest(messengerChatCompletionRequest: MessengerChatCompletionRequest): LlmResponse = {
     val responseVar = Var(
       LlmResponseContent(
         generatedText = "",
@@ -26,15 +26,15 @@ case class AccessLLM(serverAccess: String) {
     )
 
     val response = LlmResponse(
-      chatRequest = chatRequest,
+      messengerChatCompletionRequest = messengerChatCompletionRequest,
       responseVar = responseVar
     )
 
-    sendRequestOverExecutionServer(chatRequest, responseVar)
+    sendRequestOverExecutionServer(messengerChatCompletionRequest, responseVar)
     response
   }
 
-  private def sendRequestOverExecutionServer(chatRequest: ChatRequest, responseVar: Var[LlmResponseContent]): Unit = {
+  private def sendRequestOverExecutionServer(messengerChatCompletionRequest: MessengerChatCompletionRequest, responseVar: Var[LlmResponseContent]): Unit = {
     try {
       val parsedUrl = new java.net.URI(serverAccess)
       val host = parsedUrl.getHost
@@ -44,8 +44,8 @@ case class AccessLLM(serverAccess: String) {
       val command = ExecutionCommand(
         name = "llm_chat",
         params = Map(
-          "systemPrompt" -> chatRequest.systemPrompt,
-          "messengerModel" -> write(chatRequest.messengerModel)
+          "systemPrompt" -> messengerChatCompletionRequest.systemPrompt,
+          "messengerModel" -> write(messengerChatCompletionRequest.messengerModel)
         )
       )
 
@@ -70,11 +70,10 @@ case class AccessLLM(serverAccess: String) {
 }
 
 object AccessLLM {
-  case class ChatRequest(systemPrompt: String, messengerModel: MessengerModel)
 
   case class LlmResponseContent(generatedText: String, errorMsg: Option[String], finishedGeneration: Boolean, lastChangeTimestampMillis: Long)
 
-  case class LlmResponse(chatRequest: ChatRequest, responseVar: Var[LlmResponseContent]) {
+  case class LlmResponse(messengerChatCompletionRequest: MessengerChatCompletionRequest, responseVar: Var[LlmResponseContent]) {
     private val completionPromise = Promise[MessengerModel]()
 
     private def resolveCompletion(content: LlmResponseContent): Unit = {
@@ -91,7 +90,7 @@ object AccessLLM {
 
     def getCurrentMessageState(): MessengerModel = {
       val currentResponse = responseVar.now()
-      val priorMessage = chatRequest.messengerModel
+      val priorMessage = messengerChatCompletionRequest.messengerModel
 
       if currentResponse.generatedText.trim.isEmpty then priorMessage
       else priorMessage.addMessage(
@@ -112,5 +111,5 @@ object AccessLLM {
     }.getOrElse(BasicPerson(LanguageMap.universalMap("AI")))
   }
 
-  given ReadWriter[ChatRequest] = macroRW
+  given ReadWriter[MessengerChatCompletionRequest] = macroRW
 }

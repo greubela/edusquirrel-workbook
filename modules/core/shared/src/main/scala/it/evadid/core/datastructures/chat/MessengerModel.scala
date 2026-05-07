@@ -3,6 +3,7 @@ package it.evadid.core.datastructures.chat
 import MessengerModel.{Message, SenderRole}
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.distribution.ExecutionResult
 import upickle.default.*
 
 case class MessengerModel(messages: List[Message]) {
@@ -39,7 +40,9 @@ object MessengerModel {
       _.getInLanguage(AppLanguage.default()),
       value => LanguageMap.universalMap(value)
     )
-
+  
+  given ReadWriter[MessengerChatCompletionRequest] = macroRW
+  
   given ReadWriter[SenderRole] = readwriter[String].bimap[SenderRole](_.toString, SenderRole.valueOf)
 
   given ReadWriter[BasicPerson] = macroRW

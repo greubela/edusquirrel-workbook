@@ -1,8 +1,8 @@
 package it.evadid.server
 
 import it.evadid.distribution.*
-import it.evadid.distribution.clients.{ExecuteLocalAsync, ExecutionClient, ExecuteLocalImmediate}
-import it.evadid.distribution.executor.Executor
+import it.evadid.distribution.clients.{ExecuteLocalAsync, ExecuteLocalImmediate, ExecutionClient}
+import it.evadid.distribution.executor.{ExecutableCommandExecutor, Executor}
 import it.evadid.executors.MathExecutor
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.Results.*
@@ -20,41 +20,44 @@ import scala.util.{Failure, Success, Try}
  */
 object BackendServer extends ExecutionServer {
 
+  private def envOrError(name: String): String = {
+    env(name).getOrElse(throw new IllegalStateException(s"$name is not configured in env"))
+  }
+
   private def env(name: String): Option[String] =
     Option(System.getenv(name)).map(_.trim).filter(_.nonEmpty)
 
   private def envInt(name: String): Option[Int] =
     env(name).flatMap(_.toIntOption)
 
+  def localExecutionClient: ExecuteLocalImmediate =
+    ExecuteLocalImmediate(List(
+      MathExecutor(),
 
-  def localExecutionClient: ExecuteLocalImmediate = ExecuteLocalImmediate(List(MathExecutor()))
+      ExecutableCommandExecutor(Set(
+        CompleteChatWithLLMCommand(envOrError("OPENAI_API_KEY"), envOrError("OPENAI_MODEL"))
+      ))
 
+    ))
 
-  private val handleLLMCommand = new HandleLLMCommand()
-  private val handleSQLCommand = new HandleSQLCommand()
-
-  def onExecuteCommandReceived(rawCommand: String): ExecutionInfo = {
-    val executionCommand = read[ExecutionCommand](rawCommand)
-    if (executionCommand.name.trim.isEmpty) {
-      throw new IllegalArgumentException("ExecutionCommand.name must not be empty")
-    }
-    executionCommand.name match
-      case "llm_chat" => handleLLMCommand.handle(executionCommand)
-      case "sql_upsert_interaction_event" => handleSQLCommand.handle(executionCommand)
-      case _ => localExecutionClient.executeCommandSync(executionCommand)
-  }
 
   private def handleExecuteCommand(rawBody: Option[String]): (Int, String) = {
     rawBody match {
-      case Some(rawCommand) if rawCommand.nonEmpty =>
-        Try(onExecuteCommandReceived(rawCommand)) match {
-          case Success(executionInfo) if executionInfo.result.isSuccess =>
-            (200, write(Map("executionInfo" -> write(executionInfo)(using ExecutionCommand.given_ReadWriter_ExecutionInfo))))
-          case Success(executionInfo) =>
-            (500, Json.obj("error" -> executionInfo.result.failed.get.getMessage).toString())
-          case Failure(exception) =>
-            (400, Json.obj("error" -> exception.getMessage).toString())
+      case Some(rawCommand) if rawCommand.nonEmpty => Try {
+        val executionCommand = read[ExecutionCommand](rawCommand)
+        println(s"[server] Received command: ${executionCommand.name} with params: ${executionCommand.params}")
+        if (executionCommand.name.trim.isEmpty) {
+          throw new IllegalArgumentException("ExecutionCommand.name must not be empty")
         }
+        localExecutionClient.executeCommandSync(executionCommand)
+      } match {
+        case Success(executionInfo) if executionInfo.result.isSuccess =>
+          (200, write(Map("executionInfo" -> write(executionInfo)(using ExecutionCommand.given_ReadWriter_ExecutionInfo))))
+        case Success(executionInfo) =>
+          (500, Json.obj("error" -> executionInfo.result.failed.get.getMessage).toString())
+        case Failure(exception) =>
+          (400, Json.obj("error" -> exception.getMessage).toString())
+      }
       case _ =>
         (400, Json.obj("error" -> "Missing request body for executeCommand").toString())
     }

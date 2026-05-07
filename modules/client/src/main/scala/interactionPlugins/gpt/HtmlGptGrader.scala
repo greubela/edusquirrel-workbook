@@ -3,7 +3,7 @@ package interactionPlugins.gpt
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.svg
 import com.raquo.laminar.nodes.ReactiveSvgElement
-import it.evadid.core.datastructures.chat.MessengerModel
+import it.evadid.core.datastructures.chat.*
 import org.scalajs.dom.{SVGLinearGradientElement, SVGSVGElement}
 import workbook.htmlElements.basic.HtmlButtonElement
 import workbook.model.abstractions.{HtmlWorkbookElement, WorkbookInteraction}
@@ -15,7 +15,7 @@ case class HtmlGptGrader(fullInfo: FullInfo, textInteraction: WorkbookInteractio
     println("grading not implemented yet :( ")
 
     val llmResponse = AccessLLM("https://ypcgzj23.trafficplex.cloud/chat").sendRequest(
-      AccessLLM.ChatRequest("write a short poem about a raven", MessengerModel(List()))
+      MessengerChatCompletionRequest("write a short poem about a raven", MessengerModel(List()))
     )
     println("started streamed response: >>>" + llmResponse + "<<<")
 
