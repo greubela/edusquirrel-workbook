@@ -5,33 +5,12 @@ import com.raquo.laminar.api.L.{Var, unsafeWindowOwner}
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.datastructures.chat.MessengerModel.{BasicPerson, Message, Person, SenderRole}
 import it.evadid.core.datastructures.language.LanguageMap
-import org.scalajs.dom
-import org.scalajs.dom.{Headers, HttpMethod, RequestInit}
+import it.evadid.distribution.ExecutionCommand
+import it.evadid.distribution.clients.ExecuteOnRemoteServer
 import upickle.default.*
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
-import scala.scalajs.js
-import scala.scalajs.js.Thenable
-import scala.scalajs.js.Thenable.Implicits.*
-import scala.scalajs.js.annotation.*
-import scala.scalajs.js.typedarray.Uint8Array
-@js.native
-@JSGlobal("TextDecoder")
-class TextDecoder(encoding: String = "utf-8") extends js.Object {
-  def decode(input: Uint8Array, options: js.UndefOr[js.Dictionary[Boolean]] = js.undefined): String = js.native
-}
-
-@js.native
-trait ReadableStreamReaderChunk extends js.Object {
-  val done: Boolean
-  val value: Uint8Array
-}
-
-@js.native
-trait ReadableStreamDefaultReader extends js.Object {
-  def read(): Thenable[ReadableStreamReaderChunk] = js.native
-}
 
 case class AccessLLM(serverAccess: String) {
   import AccessLLM.*
@@ -51,58 +30,41 @@ case class AccessLLM(serverAccess: String) {
       responseVar = responseVar
     )
 
-    sendRequestStreamed(chatRequest, responseVar)
+    sendRequestOverExecutionServer(chatRequest, responseVar)
     response
   }
 
-  private def sendRequestStreamed(chatRequest: ChatRequest, responseVar: Var[LlmResponseContent]): Unit = {
-    val requestBody = write(chatRequest)
+  private def sendRequestOverExecutionServer(chatRequest: ChatRequest, responseVar: Var[LlmResponseContent]): Unit = {
+    try {
+      val parsedUrl = new java.net.URI(serverAccess)
+      val host = parsedUrl.getHost
+      val port = if (parsedUrl.getPort > 0) parsedUrl.getPort else 443
+      val client = ExecuteOnRemoteServer(host, port)
 
-    val myHeaders = new Headers()
-    myHeaders.set("Content-Type", "application/json")
+      val command = ExecutionCommand(
+        name = "llm_chat",
+        params = Map(
+          "systemPrompt" -> chatRequest.systemPrompt,
+          "messengerModel" -> write(chatRequest.messengerModel)
+        )
+      )
 
-    val requestInit = new RequestInit {
-      method = HttpMethod.POST
-      this.headers = myHeaders
-      body = requestBody
-    }
-
-    val request = new dom.Request(serverAccess, requestInit)
-
-    dom.fetch(request).toFuture.flatMap { response =>
-      if !response.ok then
-        throw new RuntimeException(s"HTTP ${response.status.toInt} while calling $serverAccess")
-
-      val body = response.body
-      if body == null then
-        throw new RuntimeException(s"No response body while calling $serverAccess")
-
-      val reader = body.getReader().asInstanceOf[ReadableStreamDefaultReader]
-      val decoder = new TextDecoder("utf-8")
-
-      def updateResponse(updateFn: LlmResponseContent => LlmResponseContent): Unit = {
-        responseVar.update { current =>
-          updateFn(current).copy(lastChangeTimestampMillis = System.currentTimeMillis())
-        }
+      client.executeCommand(command).map { executionInfo =>
+        executionInfo.result.fold(
+          failure => responseVar.set(LlmResponseContent("", Some(failure.getMessage), finishedGeneration = true, System.currentTimeMillis())),
+          success => {
+            val generated = success.data.getOrElse("generatedText", "")
+            responseVar.set(LlmResponseContent(generated, None, finishedGeneration = true, System.currentTimeMillis()))
+          }
+        )
+      }.recover { case e =>
+        println("[ERROR] AccessLLM: " + e.getMessage)
+        e.printStackTrace()
+        responseVar.set(LlmResponseContent("", Some(e.getMessage), finishedGeneration = true, System.currentTimeMillis()))
       }
-
-      def pump(): Unit = {
-        reader.read().toFuture.map { chunk =>
-          if !chunk.done && chunk.value != null then
-            val curChunkText = decoder.decode(chunk.value)
-            updateResponse(cur => cur.copy(generatedText = cur.generatedText + curChunkText, finishedGeneration = false))
-            pump()
-          else
-            updateResponse(cur => cur.copy(finishedGeneration = true))
-        }
-      }
-
-      pump()
-      js.Promise.resolve(())
-    }.recover { case e =>
-      println("[ERROR] AccessLLM: " + e.getMessage)
-      e.printStackTrace()
-      responseVar.update(_.copy(errorMsg = Some(e.getMessage), finishedGeneration = true, lastChangeTimestampMillis = System.currentTimeMillis()))
+    } catch {
+      case e: Exception =>
+        responseVar.set(LlmResponseContent("", Some(s"Invalid serverAccess '$serverAccess': ${e.getMessage}"), finishedGeneration = true, System.currentTimeMillis()))
     }
   }
 }

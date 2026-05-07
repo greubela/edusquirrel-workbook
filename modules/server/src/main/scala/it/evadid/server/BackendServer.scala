@@ -29,12 +29,19 @@ object BackendServer extends ExecutionServer {
 
   def localExecutionClient: ExecuteLocalImmediate = ExecuteLocalImmediate(List(MathExecutor()))
 
+
+  private val handleLLMCommand = new HandleLLMCommand()
+  private val handleSQLCommand = new HandleSQLCommand()
+
   def onExecuteCommandReceived(rawCommand: String): ExecutionInfo = {
     val executionCommand = read[ExecutionCommand](rawCommand)
     if (executionCommand.name.trim.isEmpty) {
       throw new IllegalArgumentException("ExecutionCommand.name must not be empty")
     }
-    localExecutionClient.executeCommandSync(executionCommand)
+    executionCommand.name match
+      case "llm_chat" => handleLLMCommand.handle(executionCommand)
+      case "sql_upsert_interaction_event" => handleSQLCommand.handle(executionCommand)
+      case _ => localExecutionClient.executeCommandSync(executionCommand)
   }
 
   private def handleExecuteCommand(rawBody: Option[String]): (Int, String) = {
