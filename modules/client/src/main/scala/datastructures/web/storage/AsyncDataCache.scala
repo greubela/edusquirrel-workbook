@@ -1,7 +1,7 @@
 package datastructures.web.storage
 
-import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.state.State
 
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -16,25 +16,25 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean) {
   private trait CachedRequest {
     def createFuture: Future[O]
 
-    def getVariable: Var[Option[O]]
+    def getVariable: State[Option[O]]
   }
 
-  private case class FinishedRequest(outputVar: Var[Option[O]], output: O) extends CachedRequest {
+  private case class FinishedRequest(outputVar: State[Option[O]], output: O) extends CachedRequest {
     def createFuture: Future[O] = Future.successful(output)
 
-    def getVariable: Var[Option[O]] = outputVar
+    def getVariable: State[Option[O]] = outputVar
   }
 
-  private case class DeletedRequest(input: I, outputVar: Var[Option[O]]) extends CachedRequest {
+  private case class DeletedRequest(input: I, outputVar: State[Option[O]]) extends CachedRequest {
     def createFuture: Future[O] = startExecution(input, outputVar).createFuture
 
-    def getVariable: Var[Option[O]] = startExecution(input, outputVar).getVariable
+    def getVariable: State[Option[O]] = startExecution(input, outputVar).getVariable
   }
 
-  private case class StartedRequest(input: I, outputVar: Var[Option[O]]) extends CachedRequest {
+  private case class StartedRequest(input: I, outputVar: State[Option[O]]) extends CachedRequest {
     private val waitingPromise: mutable.HashSet[Promise[O]] = new mutable.HashSet()
 
-    def getVariable: Var[Option[O]] = outputVar
+    def getVariable: State[Option[O]] = outputVar
 
     def createFuture: Future[O] = {
       val promise = Promise[O]()
@@ -74,10 +74,10 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean) {
     //logInfo("ensuring cache for " + formatInputForLogging(input) + " (forceReloading: " + forceReloading + ", cached: " +isInCache + ")")
     if (cachedElement.isEmpty) {
       cache_misses = cache_misses + 1
-      startExecution(input, Var(defaultValueWhileLoading(input)))
+      startExecution(input, State(defaultValueWhileLoading(input)))
     }
     else if (forceReloading) {
-      val useVar = cachedElement.map(_.getVariable).getOrElse(Var(defaultValueWhileLoading(input)))
+      val useVar = cachedElement.map(_.getVariable).getOrElse(State(defaultValueWhileLoading(input)))
       startExecution(input, useVar)
     }
     else {
@@ -86,7 +86,7 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean) {
     }
   }
 
-  private def startExecution(input: I, outputVar: Var[Option[O]]): StartedRequest = {
+  private def startExecution(input: I, outputVar: State[Option[O]]): StartedRequest = {
     execution_requested = execution_requested + 1
     val fetchedRequest = StartedRequest(input, outputVar)
     cachedRequests.put(input, fetchedRequest)
@@ -118,21 +118,21 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean) {
     }
   }
 
-  def loadIntoVariable(input: I, forceReloading: Boolean = false)(implicit ec: ExecutionContext): Var[Option[O]] = {
+  def loadIntoVariable(input: I, forceReloading: Boolean = false)(implicit ec: ExecutionContext): State[Option[O]] = {
     cachedRequests.synchronized {
       ensureCache(input, forceReloading).getVariable
     }
   }
 
-  def createSignalDependendVar(inputSignal: Signal[I])(implicit ec: ExecutionContext): Var[Option[O]] = {
+  def createSignalDependendVar(inputSignal: Signal[I])(implicit ec: ExecutionContext): State[Option[O]] = {
     cachedRequests.synchronized {
-      val resultVar: Var[Option[O]] = Var(None)
+      val resultVar: State[Option[O]] = State(None)
       inputSignal.foreach(newValue => {
         val actualVar = loadIntoVariable(newValue)(using ec)
         resultVar.set(actualVar.now())
-        actualVar.signal.foreach(newValue => {
+        actualVar.observable.addObserver(newValue => {
           resultVar.set(newValue)
-        })(using unsafeWindowOwner)
+        })
       })(using unsafeWindowOwner)
       resultVar
     }
