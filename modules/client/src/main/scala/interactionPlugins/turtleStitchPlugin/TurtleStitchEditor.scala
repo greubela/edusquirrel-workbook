@@ -177,14 +177,14 @@ object TurtleStitchEditor {
               .createEditor(editorOptions(hidden = true))
               .toFuture
               .map { editor =>
-                synchronized {
+                TurtleStitchEditor.synchronized {
                   singletonEditor = Some(editor)
                   singletonEditorCreation = None
                 }
                 editor
               }
               .recoverWith { case err =>
-                synchronized {
+                TurtleStitchEditor.synchronized {
                   singletonEditorCreation = None
                 }
                 Future.failed(err)

@@ -17,7 +17,7 @@ case class CodeStringBuilder(initStr: String = "") {
 
   def appendAsLines(multipleLineString: String) = {
     val lines = multipleLineString.split("\n")
-    changeForEach(lines, (sb, str) => sb.appendNextLine(str))
+    changeForEach(lines.toIndexedSeq, (sb, str) => sb.appendNextLine(str))
   }
 
   def appendNextLine(str: String): CodeStringBuilder = {
