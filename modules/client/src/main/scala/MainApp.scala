@@ -42,14 +42,23 @@ private def load(containerId: String): Unit = {
 
 private def testCalculations(): Unit = {
   val executors = List(MathExecutor())
-  val clients: List[ExecutionClient] = List(ExecuteLocalAsync(executors), ExecuteLocalImmediate(executors), ExecuteOnRemoteServer("127.0.0.1", 9000))
+  val clients: List[ExecutionClient] = List(
+    ExecuteLocalAsync(executors),
+    ExecuteLocalImmediate(executors),
+    ExecuteOnRemoteServer("ypcgzj23.trafficplex.cloud", 443)
+  )
 
-  clients.foreach(curClient => {
-    curClient.executeCommand(ExecutionCommand("add", Map("a" -> "1", "b" -> "2"))).onComplete {
+  val commands: List[ExecutionCommand] = List(
+    ExecutionCommand("add", Map("a" -> "1", "b" -> "2")),
+    ExecutionCommand("mult", Map("a" -> "1", "b" -> "2", "c" -> "3"))
+  )
+
+  clients.foreach(curClient => commands.foreach(curCommand =>{
+    curClient.executeCommand(curCommand).onComplete {
       case Success(result) => println(s"${curClient.getClass} success: " + result)
       case Failure(err) => println(s"${curClient.getClass} error: " + err.getMessage)
     }(using ExecutionContext.global)
-  })
+  }))
 }
 
 @main

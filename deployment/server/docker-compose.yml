@@ -41,7 +41,7 @@ configs:
       ypcgzj23.trafficplex.cloud {
           @preflight method OPTIONS
           handle @preflight {
-              header Access-Control-Allow-Origin "https://andregreubel.ddns.net" "https://evadid.it/"
+              header Access-Control-Allow-Origin *
               header Access-Control-Allow-Methods "GET, POST, OPTIONS"
               header Access-Control-Allow-Headers "Content-Type, Authorization"
               header Vary "Origin"
@@ -49,7 +49,7 @@ configs:
           }
 
           header {
-              Access-Control-Allow-Origin "https://andregreubel.ddns.net" "https://evadid.it/"
+              Access-Control-Allow-Origin *
               Access-Control-Allow-Methods "GET, POST, OPTIONS"
               Access-Control-Allow-Headers "Content-Type, Authorization"
               Vary "Origin"

@@ -5,19 +5,21 @@ import it.evadid.distribution.executor.Executor
 import org.scalajs.dom
 import upickle.default.read
 
+import java.time.LocalDateTime
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js.JSON
 import scala.scalajs.js.Thenable.Implicits.*
 
-case class ExecuteOnRemoteServer(ip: String, port: Int) extends ExecutionClient {
+case class ExecuteOnRemoteServer(hostname: String, port: Int) extends ExecutionClient {
 
   val handlers: List[Executor] = List.empty
 
   override def executeCommand(executionCommand: ExecutionCommand): Future[ExecutionInfo] = {
+    val requested = LocalDateTime.now()
     val commandJson = upickle.default.write(executionCommand)
     dom.fetch(
-      s"http://$ip:$port/executeCommand",
+      s"https://$hostname:$port/executeCommand",
       new dom.RequestInit {
         method = dom.HttpMethod.POST
         headers = JSON.parse("""{"Content-Type":"application/json"}""").asInstanceOf[dom.HeadersInit]
@@ -34,7 +36,9 @@ case class ExecuteOnRemoteServer(ip: String, port: Int) extends ExecutionClient 
           "executionInfo",
           throw new IllegalStateException("Server response is missing 'executionInfo' field")
         )
-        read[ExecutionInfo](executionInfoJson)(using ExecutionCommand.given_ReadWriter_ExecutionInfo)
+        val serverReceived = read[ExecutionInfo](executionInfoJson)(using ExecutionCommand.given_ReadWriter_ExecutionInfo)
+        val timeFixed = serverReceived.copy(meta = serverReceived.meta.map(_.copy(timestampCommandRequested = requested)))
+        timeFixed
       }
     }
   }
