@@ -11,7 +11,7 @@ case class LanguageSelectionLine(fullInfo: FullInfo) extends HtmlWorkbookElement
 
 
   private def forLanguages(availableLanguages: List[HumanLanguage]): List[Element] = {
-    println("LanguageSelectionLine: " + availableLanguages)
+    //println("LanguageSelectionLine: " + availableLanguages)
     availableLanguages.map(curLang => {
       val childElement: Element = LanguageSelectionLine.flagImgMap(30)(curLang)
       div(

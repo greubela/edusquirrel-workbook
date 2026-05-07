@@ -60,7 +60,7 @@ object BackendServer extends ExecutionServer {
     }
   }
 
-  private def handleHealth(): String = Json.obj("status" -> "ok", "service" -> "edusquirrel-server", "version" -> env("VERSION").getOrElse("[unknown]")).toString()
+  private def handleHealth(): String = Json.obj("status" -> "ok", "service" -> "edusquirrel-server", "version" -> env("SERVER_VERSION").getOrElse("[unknown]")).toString()
 
   private def handleItems(): String = Json.obj(
     "items" -> Json.arr(
@@ -107,8 +107,8 @@ object BackendServer extends ExecutionServer {
   }
 
   def main(args: Array[String]): Unit = {
-    val port = envInt("PORT").getOrElse(9000)
-    val host = env("HOST").getOrElse("[unknown]")
+    val port = envInt("SERVER_PORT").getOrElse(9000)
+    val host = env("SERVER_HOSTNAME").getOrElse("[unknown]")
 
     println(s"[server] Booting Play HTTP server on $host:$port ...")
 
@@ -117,7 +117,7 @@ object BackendServer extends ExecutionServer {
       buildApiRouter(Action)
     }
 
-    println(s"[server] Ready and serving requests at http://0.0.0.0:$port")
+    println(s"[server] Ready and serving requests at http://$host:$port")
 
     Runtime.getRuntime.addShutdownHook(Thread(() => {
       println("[server] Shutdown requested. Stopping Play HTTP server...")

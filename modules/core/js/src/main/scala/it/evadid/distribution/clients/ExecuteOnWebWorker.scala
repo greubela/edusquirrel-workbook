@@ -1,41 +1,16 @@
 package it.evadid.distribution.clients
 
 import it.evadid.distribution.*
+import it.evadid.distribution.clients.ExecuteOnWebWorker.WorkerLike
 import org.scalajs.dom
 import upickle.default.{read, write}
 
+import java.io.FileDescriptor
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
 
-trait WorkerLike {
-  def postMessage(message: String): Unit
-  def onmessage: dom.MessageEvent => Unit
-  def onmessage_=(handler: dom.MessageEvent => Unit): Unit
-  def onerror: dom.ErrorEvent => Any
-  def onerror_=(handler: dom.ErrorEvent => Any): Unit
-}
 
-private class DomWorkerAdapter(path: String) extends WorkerLike {
-  private val worker = new dom.Worker(path)
-  private var messageHandler: dom.MessageEvent => Unit = _ => ()
-  private var errorHandler: dom.ErrorEvent => Any = _ => ()
-
-  override def postMessage(message: String): Unit = worker.postMessage(message)
-  override def onmessage: dom.MessageEvent => Unit = messageHandler
-  override def onmessage_=(handler: dom.MessageEvent => Unit): Unit = messageHandler = handler
-  override def onerror: dom.ErrorEvent => Any = errorHandler
-  override def onerror_=(handler: dom.ErrorEvent => Any): Unit = errorHandler = handler
-
-  worker.onmessage = (event: dom.MessageEvent) => onmessage(event)
-  worker.onerror = (event: dom.ErrorEvent) => onerror(event)
-}
-
-object WorkerExecution {
-  def apply(workerScriptPath: String): WorkerExecution =
-    new WorkerExecution(new DomWorkerAdapter(workerScriptPath))
-}
-
-class WorkerExecution private[clients](worker: WorkerLike) extends ExecutionClient {
+class ExecuteOnWebWorker private[clients](worker: WorkerLike) extends ExecutionClient {
 
   private val pending = mutable.Map.empty[String, Promise[ExecutionInfo]]
 
@@ -70,4 +45,42 @@ class WorkerExecution private[clients](worker: WorkerLike) extends ExecutionClie
     worker.postMessage(payload)
     promise.future
   }
+}
+
+object ExecuteOnWebWorker {
+
+  def apply(workerScriptPath: String): ExecuteOnWebWorker = new ExecuteOnWebWorker(new DomWorkerAdapter(workerScriptPath))
+
+  trait WorkerLike {
+    def postMessage(message: String): Unit
+
+    def onmessage: dom.MessageEvent => Unit
+
+    def onmessage_=(handler: dom.MessageEvent => Unit): Unit
+
+    def onerror: dom.ErrorEvent => Any
+
+    def onerror_=(handler: dom.ErrorEvent => Any): Unit
+  }
+
+  private class DomWorkerAdapter(path: String) extends WorkerLike {
+    private val worker = new dom.Worker(path)
+    private var messageHandler: dom.MessageEvent => Unit = _ => ()
+    private var errorHandler: dom.ErrorEvent => Any = _ => ()
+
+    override def postMessage(message: String): Unit = worker.postMessage(message)
+
+    override def onmessage: dom.MessageEvent => Unit = messageHandler
+
+    override def onmessage_=(handler: dom.MessageEvent => Unit): Unit = messageHandler = handler
+
+    override def onerror: dom.ErrorEvent => Any = errorHandler
+
+    override def onerror_=(handler: dom.ErrorEvent => Any): Unit = errorHandler = handler
+
+    worker.onmessage = (event: dom.MessageEvent) => onmessage(event)
+    worker.onerror = (event: dom.ErrorEvent) => onerror(event)
+  }
+
+
 }

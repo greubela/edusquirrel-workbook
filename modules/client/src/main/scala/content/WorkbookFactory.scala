@@ -18,8 +18,8 @@ trait WorkbookFactory {
 
   def createEverything: AllWorkbookInfo = {
     val workbook = createWorkbook
-    val section: Option[WorkbookSection] = if (workbook.sections.size <= defaultSectionActiveNr) None else Some(workbook.sections(defaultSectionActiveNr))
-    println("section active: " + section + "(" + workbook.sections.size + ")")
+    val section: Option[WorkbookSection] = workbook.sections.lift(defaultSectionActiveNr)
+    //println("section active: " + section + "(" + workbook.sections.size + ")")
     val config = WorkbookConfig(section)
     AllWorkbookInfo(workbook, config, estimatedDurations)
   }

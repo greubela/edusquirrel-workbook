@@ -18,18 +18,17 @@ class HandleSQLCommand {
     env(name).getOrElse(throw new IllegalStateException(s"$name is not configured"))
 
   def handle(command: ExecutionCommand): ExecutionInfo = {
-    val host = requiredParam(command, "sqlHost")
-    val port = requiredParam(command, "sqlPort")
-    val database = requiredParam(command, "sqlDatabase")
+    val host =  requiredEnv("SQL_HOST")
+    val port = requiredEnv("SQL_PORT")
+    val database = requiredEnv("SQL_DATABASE")
+    val sqlUser = requiredEnv("SQL_USER")
+    val sqlPw = requiredEnv("SQL_PW")
 
     val programId = requiredParam(command, "programId")
     val userId = requiredParam(command, "userId")
     val keyId = requiredParam(command, "keyId")
     val eventTime = requiredParam(command, "eventtime")
-    val eventData = command.params.getOrElse("eventdata", "")
-
-    val sqlUser = requiredEnv("SQL_USER")
-    val sqlPw = requiredEnv("SQL_PW")
+    val eventData = requiredParam(command, "eventdata")
 
     val jdbcUrl = s"jdbc:postgresql://$host:$port/$database"
 

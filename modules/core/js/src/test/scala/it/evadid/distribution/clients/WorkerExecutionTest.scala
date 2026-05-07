@@ -39,7 +39,7 @@ class WorkerExecutionTest extends FunSuite {
 
   test("worker execution resolves command result from worker response") {
     val fakeWorker = new FakeWorker
-    val client = new WorkerExecution(fakeWorker)
+    val client = new ExecuteOnWebWorker(fakeWorker)
 
     val resultF: Future[ExecutionInfo] = client.executeCommand(ExecutionCommand("build", Map("a" -> "b")))
 

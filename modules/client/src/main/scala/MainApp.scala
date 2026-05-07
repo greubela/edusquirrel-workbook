@@ -1,14 +1,15 @@
 
 import com.raquo.laminar.api.L.*
 import content.{CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, plantworkshop}
+import datastructures.web.file.FileDescription
 import interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
 import it.evadid.distribution.clients.*
 import it.evadid.distribution.*
 import it.evadid.executors.MathExecutor
 import org.scalajs.dom
 import workbook.htmlElements.HtmlFullWorkbookApp
-import scala.util.*
 
+import scala.util.*
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 import scala.scalajs.js
 
@@ -45,7 +46,8 @@ private def testCalculations(): Unit = {
   val clients: List[ExecutionClient] = List(
     ExecuteLocalAsync(executors),
     ExecuteLocalImmediate(executors),
-    ExecuteOnRemoteServer("ypcgzj23.trafficplex.cloud", 443)
+    ExecuteOnRemoteServer("ypcgzj23.trafficplex.cloud", 443),
+    ExecuteOnWebWorker(FileDescription.relativeToArtifactsFolder("/newest/backend-worker.js").fullPath)
   )
 
   val commands: List[ExecutionCommand] = List(
