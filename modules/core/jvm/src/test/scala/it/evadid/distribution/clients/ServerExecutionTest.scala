@@ -1,7 +1,8 @@
 package it.evadid.distribution.clients
 
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
-import it.evadid.distribution.ExecutionCommand
+import it.evadid.distribution.{ExecutionCommand, ExecutionInfo, ExecutionResult}
+import it.evadid.distribution.ExecutionCommand.given
 import munit.FunSuite
 import upickle.default.{read, write}
 
@@ -31,13 +32,13 @@ class ServerExecutionTest extends FunSuite {
         val requestBody = new String(exchange.getRequestBody.readAllBytes(), StandardCharsets.UTF_8)
         val command = read[ExecutionCommand](requestBody)
 
-        val response = ExecutionCommand.ExecutionInfo(
+        val response = ExecutionInfo(
           command = command,
-          result = Success(ExecutionCommand.ExecutionResult(command.params, "ok", "")),
+          result = Success(ExecutionResult(command.params, "ok", "")),
           meta = None
         )
 
-        val payload = Map("executionInfo" -> write(response))
+        val payload: Map[String, String] = Map("executionInfo" -> write(response))
         val bytes = write(payload).getBytes(StandardCharsets.UTF_8)
         exchange.getResponseHeaders.add("Content-Type", "application/json")
         exchange.sendResponseHeaders(200, bytes.length)
