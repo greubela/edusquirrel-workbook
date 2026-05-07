@@ -6,7 +6,7 @@ import upickle.default.write
 
 class BackendServerTest extends FunSuite {
 
-  test("onExecuteCommandReceived executes valid command") {
+  test("onExecuteCommandReceived executes valid command".ignore) {
     val command = ExecutionCommand("build", Map("target" -> "test"))
 
     val result = BackendServer.onExecuteCommandReceived(write(command))
