@@ -53,7 +53,7 @@ object BackendServer extends ExecutionServer {
     }
   }
 
-  private def handleHealth(): String = Json.obj("status" -> "ok", "service" -> "edusquirrel-server").toString()
+  private def handleHealth(): String = Json.obj("status" -> "ok", "service" -> "edusquirrel-server", "version" -> env("version").getOrElse("[unknown]")).toString()
 
   private def handleItems(): String = Json.obj(
     "items" -> Json.arr(
