@@ -20,6 +20,13 @@ import scala.util.{Failure, Success, Try}
  */
 object BackendServer extends ExecutionServer {
 
+  private def env(name: String): Option[String] =
+    Option(System.getenv(name)).map(_.trim).filter(_.nonEmpty)
+
+  private def envInt(name: String): Option[Int] =
+    env(name).flatMap(_.toIntOption)
+
+
   def localExecutionClient: ExecuteLocalImmediate = ExecuteLocalImmediate(List(MathExecutor()))
 
   def onExecuteCommandReceived(rawCommand: String): ExecutionInfo = {
@@ -93,9 +100,10 @@ object BackendServer extends ExecutionServer {
   }
 
   def main(args: Array[String]): Unit = {
-    val port = args.headOption.flatMap(_.toIntOption).getOrElse(9000)
+    val port = envInt("PORT").getOrElse(9000)
+    val host = env("HOST").getOrElse("[unknown]")
 
-    println(s"[server] Booting Play HTTP server on 0.0.0.0:$port ...")
+    println(s"[server] Booting Play HTTP server on $host:$port ...")
 
     val server = NettyServer.fromRouterWithComponents(ServerConfig(port = Some(port), address = "0.0.0.0")) { components =>
       import components.defaultActionBuilder as Action

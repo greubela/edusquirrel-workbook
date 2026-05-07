@@ -19,7 +19,9 @@ services:
     image: eclipse-temurin:21-jre-alpine
     restart: unless-stopped
     working_dir: /app
-    command: ["java", "-jar", "/app/server.jar", "9000"]
+    command: ["java", "-jar", "/app/server.jar"]
+    env_file:
+      - .env
     volumes:
       - /home/andre/javaserver/artifacts/newest/server.jar:/app/server.jar:ro
     expose:
