@@ -1,6 +1,6 @@
 package it.evadid.worker
 
-import it.evadid.distribution.*
+import it.evadid.distribution.command.*
 import org.scalajs.dom
 import upickle.ReadWriter
 import upickle.default.*
@@ -18,7 +18,7 @@ object WebWorkerBackendServer {
     )
 
   def onExecuteCommandReceived(rawCommand: String): ExecutionInfo = {
-    val executionCommand = read[ExecutionCommand](rawCommand)
+    val executionCommand = ExecutionCommand.fromJson(rawCommand)
     val now = LocalDateTime.now()
     val result = ExecutionResult(
       data = executionCommand.params,
@@ -48,7 +48,7 @@ object WebWorkerBackendServer {
 
     write(Map(
       "requestId" -> requestId,
-      "executionInfo" -> write(executionInfo)(using ExecutionCommand.given_ReadWriter_ExecutionInfo)
+      "executionInfo" -> executionInfo.toJson
     ))(using mapRW)
   }
 
@@ -59,14 +59,13 @@ object WebWorkerBackendServer {
           dom.DedicatedWorkerGlobalScope.self.postMessage(handleMessage(text))
         case _ =>
           dom.DedicatedWorkerGlobalScope.self.postMessage(
-            write(Map("requestId" -> "unknown", "executionInfo" -> write(
+            write(Map("requestId" -> "unknown", "executionInfo" ->
               ExecutionInfo(
                 command = ExecutionCommand("invalid", Map.empty),
                 result = scala.util.Failure(new IllegalArgumentException("Worker expects string messages")),
                 meta = None
-              )
-            )(using ExecutionCommand.given_ReadWriter_ExecutionInfo)))(using mapRW)
-          )
+              ).toJson
+            )))
       }
     }
   }

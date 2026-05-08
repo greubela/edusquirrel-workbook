@@ -1,11 +1,9 @@
 
 import com.raquo.laminar.api.L.*
 import content.{CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, plantworkshop}
-import datastructures.web.file.FileDescription
+
 import interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
-import it.evadid.distribution.clients.*
-import it.evadid.distribution.*
-import it.evadid.executors.MathExecutor
+
 import org.scalajs.dom
 import workbook.htmlElements.HtmlFullWorkbookApp
 
@@ -42,25 +40,9 @@ private def load(containerId: String): Unit = {
 }
 
 private def testCalculations(): Unit = {
-  val executors = List(MathExecutor())
-  val clients: List[ExecutionClient] = List(
-    ExecuteLocalAsync(executors),
-    ExecuteLocalImmediate(executors),
-    ExecuteOnRemoteServer("ypcgzj23.trafficplex.cloud", 443),
-    ExecuteOnWebWorker(FileDescription.relativeToArtifactsFolder("/newest/backend-worker.js").fullPath)
-  )
 
-  val commands: List[ExecutionCommand] = List(
-    ExecutionCommand("add", Map("a" -> "1", "b" -> "2")),
-    ExecutionCommand("mult", Map("a" -> "1", "b" -> "2", "c" -> "3"))
-  )
-
-  clients.foreach(curClient => commands.foreach(curCommand =>{
-    curClient.executeCommand(curCommand).onComplete {
-      case Success(result) => println(s"${curClient.getClass} success: " + result)
-      case Failure(err) => println(s"${curClient.getClass} error: " + err.getMessage)
-    }(using ExecutionContext.global)
-  }))
+  println("testing no calculations atm :)")
+  
 }
 
 @main

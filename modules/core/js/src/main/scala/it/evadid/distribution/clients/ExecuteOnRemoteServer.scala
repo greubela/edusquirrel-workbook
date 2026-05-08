@@ -1,23 +1,26 @@
 package it.evadid.distribution.clients
 
-import it.evadid.distribution.*
-import it.evadid.distribution.executor.Executor
+import it.evadid.core.util.io.serializer.DistributionSerializer
 import org.scalajs.dom
 import upickle.default.read
+import it.evadid.distribution.command.*
 
 import java.time.LocalDateTime
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js.JSON
 import scala.scalajs.js.Thenable.Implicits.*
+import it.evadid.distribution.command.*
+import it.evadid.util.Logger
 
 case class ExecuteOnRemoteServer(hostname: String, port: Int) extends ExecutionClient {
 
-  val handlers: List[Executor] = List.empty
 
-  override def executeCommand(executionCommand: ExecutionCommand): Future[ExecutionInfo] = {
+  override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = true
+
+  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionInfo] = {
     val requested = LocalDateTime.now()
-    val commandJson = upickle.default.write(executionCommand)
+    val commandJson = executionCommand.toJson
     dom.fetch(
       s"https://$hostname:$port/executeCommand",
       new dom.RequestInit {
@@ -36,8 +39,8 @@ case class ExecuteOnRemoteServer(hostname: String, port: Int) extends ExecutionC
           "executionInfo",
           throw new IllegalStateException("Server response is missing 'executionInfo' field")
         )
-        val serverReceived = read[ExecutionInfo](executionInfoJson)(using ExecutionCommand.given_ReadWriter_ExecutionInfo)
-        val timeFixed = serverReceived.copy(meta = serverReceived.meta.map(_.copy(timestampCommandRequested = requested)))
+        val serverReceived = ExecutionInfo.fromJson(executionInfoJson)
+        val timeFixed = serverReceived.fixTime(requested, requested)
         timeFixed
       }
     }

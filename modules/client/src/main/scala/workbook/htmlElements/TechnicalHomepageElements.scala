@@ -5,6 +5,7 @@ import contentmanagement.webElements.HtmlAppElement
 import datastructures.web.file.{FileDescription, LoadedFile}
 import datastructures.web.storage.AsyncDataCache
 import it.evadid.core.datastructures.state.{ObservableValue, State}
+import it.evadid.distribution.clients.ExecutionClient
 import org.scalajs.dom
 import workbook.htmlElements.container.HtmlFullScreenContainerElement
 import workbook.model.info.control.TechnicalControl
@@ -14,11 +15,12 @@ import workbook.singletons.WorkbookLanguageInfo.LabelLanguageMapStorage
 import scala.concurrent.ExecutionContext
 
 
-
 case class TechnicalHomepageElements(
                                       fullScreenContainer: HtmlFullScreenContainerElement,
                                       fileStore: AsyncDataCache[FileDescription, LoadedFile],
-                                    ) extends TechnicalControl{
+                                      backendServerExecutor: ExecutionClient,
+                                      workerServerExecutor: ExecutionClient,
+                                    ) extends TechnicalControl {
 
   override val languageMapStorage: LabelLanguageMapStorage = LabelLanguageMapStorage(fileStore)
 

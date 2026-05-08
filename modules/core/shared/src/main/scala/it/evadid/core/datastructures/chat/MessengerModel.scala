@@ -1,61 +1,41 @@
 package it.evadid.core.datastructures.chat
 
-import MessengerModel.{Message, SenderRole}
+import it.evadid.core.datastructures.chat.MessengerModel.*
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.distribution.ExecutionResult
-import upickle.default.*
+import it.evadid.core.util.io.serializer.DistributionSerializer
+import it.evadid.distribution.*
+
 
 case class MessengerModel(messages: List[Message]) {
 
   def orderedMessages: List[Message] =
     messages.sortBy(_.timestampEpochMillis.toLongOption.getOrElse(0L))
 
-  def addMessage(message: Message): MessengerModel =
-    copy(messages = orderedMessages :+ message)
+  def addMessage(message: Message): MessengerModel = {
+    val newMessages: List[Message] = orderedMessages :+ message
+    MessengerModel(newMessages)
+  }
 
   def addMessage(text: String, author: MessengerModel.Person, senderRole: SenderRole, timestampEpochMillis: Long = System.currentTimeMillis()): MessengerModel =
     addMessage(Message(text, timestampEpochMillis.toString, author, senderRole))
 
-  def toJson: String = write(this)
+  def toJson: String = DistributionSerializer.serializerMessageModelJson.serialize(this)
 }
 
 object MessengerModel {
+
+  def fromJson(json: String): MessengerModel = DistributionSerializer.serializerMessageModelJson.deserialize(json)
+
+
   sealed trait Person {
     def name: LanguageMap[HumanLanguage]
+
     def avatarSvg: Option[String] = None
   }
 
   case class BasicPerson(name: LanguageMap[HumanLanguage], override val avatarSvg: Option[String] = None) extends Person
 
-  enum SenderRole {
-    case USER
-    case TEACHER
-  }
-
-  case class Message(text: String, timestampEpochMillis: String, author: Person, senderRole: SenderRole = SenderRole.USER)
-
-  given ReadWriter[LanguageMap[HumanLanguage]] =
-    readwriter[String].bimap[LanguageMap[HumanLanguage]](
-      _.getInLanguage(AppLanguage.default()),
-      value => LanguageMap.universalMap(value)
-    )
-  
-  given ReadWriter[MessengerChatCompletionRequest] = macroRW
-  
-  given ReadWriter[SenderRole] = readwriter[String].bimap[SenderRole](_.toString, SenderRole.valueOf)
-
-  given ReadWriter[BasicPerson] = macroRW
-  given ReadWriter[Person] = readwriter[BasicPerson].bimap[Person](
-    {
-      case person: BasicPerson => person
-    },
-    basicPerson => basicPerson
-  )
-  given ReadWriter[Message] = macroRW
-  given ReadWriter[MessengerModel] = macroRW
-
-  def fromJson(json: String): MessengerModel = read[MessengerModel](json)
 
   def testSample(): MessengerModel = {
     val student = BasicPerson(LanguageMap.universalMap("Student"))

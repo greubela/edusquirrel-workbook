@@ -1,6 +1,9 @@
 package workbook.htmlElements
 
 import com.raquo.laminar.api.L.*
+import datastructures.web.file.FileDescription
+import it.evadid.distribution.clients.{ExecuteOnRemoteServer, ExecuteOnWebWorker}
+import it.evadid.executors.MathExecutor
 import workbook.htmlElements.container.HtmlFullScreenContainerElement
 import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.{FullInfo, HomepageDefaults, HomepageInfo}
@@ -8,7 +11,13 @@ import workbook.singletons.FileDataStorage
 
 object HtmlFullWorkbookApp extends HtmlWorkbookElement {
 
-  private lazy val technical = TechnicalHomepageElements(HtmlFullScreenContainerElement(), FileDataStorage())
+
+  private lazy val technical = TechnicalHomepageElements(
+    HtmlFullScreenContainerElement(),
+    FileDataStorage(),
+    ExecuteOnRemoteServer("ypcgzj23.trafficplex.cloud", 443),
+    ExecuteOnWebWorker(FileDescription.relativeToArtifactsFolder("/newest/backend-worker.js").fullPath),
+  )
 
   private val defaults: HomepageDefaults = HomepageDefaults()
 
@@ -20,7 +29,7 @@ object HtmlFullWorkbookApp extends HtmlWorkbookElement {
   )
 
   val fullInfo: FullInfo = {
-    val res = FullInfo( defaults, technical, initHomepageInfo)
+    val res = FullInfo(defaults, technical, initHomepageInfo)
     if (res.current.userInfo.isEmpty) {
       res.control.changeUser(Some(defaults.defaultUser))
     }
@@ -38,7 +47,6 @@ object HtmlFullWorkbookApp extends HtmlWorkbookElement {
 
 
   override def getDomElement(): Element = workbookDomElement
-
 
 
 }

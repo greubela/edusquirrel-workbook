@@ -1,10 +1,9 @@
 package it.evadid.server
 
-import it.evadid.distribution.*
-import it.evadid.distribution.clients.{ExecuteLocalAsync, ExecuteLocalImmediate, ExecutionClient}
-import it.evadid.distribution.executor.{ExecutableCommandExecutor, Executor}
-import it.evadid.executors.MathExecutor
-import play.api.libs.json.{JsValue, Json}
+import it.evadid.core.util.io.serializer.DistributionSerializer
+import it.evadid.distribution.command.*
+import it.evadid.util.JvmUtils
+import play.api.libs.json.Json
 import play.api.mvc.Results.*
 import play.api.mvc.{DefaultActionBuilder, Handler, RequestHeader}
 import play.api.routing.sird.*
@@ -12,106 +11,60 @@ import play.core.server.{NettyServer, ServerConfig}
 import upickle.default.{read, write}
 
 import java.time.LocalDateTime
-import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
 
 /**
  * Minimal Play-based HTTP server with dummy REST functionality.
  */
-object BackendServer extends ExecutionServer {
+object BackendServer {
 
-  private def envOrError(name: String): String = {
-    env(name).getOrElse(throw new IllegalStateException(s"$name is not configured in env"))
-  }
+  private val serverStartedAt: LocalDateTime = LocalDateTime.now()
 
-  private def env(name: String): Option[String] =
-    Option(System.getenv(name)).map(_.trim).filter(_.nonEmpty)
+  private def handleExecuteCommand(bodyOption: Option[String]): Future[(Int, String)] = {
 
-  private def envInt(name: String): Option[Int] =
-    env(name).flatMap(_.toIntOption)
+    if (bodyOption.isEmpty || bodyOption.get.isEmpty) Future.successful((400, Json.obj("error" -> "Missing request body for executeCommand").toString()))
+    else {
+      val promise: Promise[(Int, String)] = Promise[(Int, String)]()
+      val executionCommand = ExecutionCommand.fromJson(bodyOption.get)
+      BackendCommandHandler.handleExecution(executionCommand).map {
+        case e: ExecutionInfo if (e.result.isSuccess) => (200, write(Map("executionInfo" -> DistributionSerializer.serializerExecutionInfoJson.serialize(e))))
+        case e: ExecutionInfo => (500, write(Map("error" -> e.result.failed.get.getMessage)))
+      }(using ExecutionContext.global).onComplete(promise.complete)
 
-  def localExecutionClient: ExecuteLocalImmediate =
-    ExecuteLocalImmediate(List(
-      MathExecutor(),
-
-      ExecutableCommandExecutor(Set(
-        CompleteChatWithLLMCommand(envOrError("OPENAI_API_KEY"), envOrError("OPENAI_MODEL"))
-      ))
-
-    ))
-
-
-  private def handleExecuteCommand(rawBody: Option[String]): (Int, String) = {
-    rawBody match {
-      case Some(rawCommand) if rawCommand.nonEmpty => Try {
-        val executionCommand = read[ExecutionCommand](rawCommand)
-        println(s"[server] Received command: ${executionCommand.name} with params: ${executionCommand.params}")
-        if (executionCommand.name.trim.isEmpty) {
-          throw new IllegalArgumentException("ExecutionCommand.name must not be empty")
-        }
-        localExecutionClient.executeCommandSync(executionCommand)
-      } match {
-        case Success(executionInfo) if executionInfo.result.isSuccess =>
-          (200, write(Map("executionInfo" -> write(executionInfo)(using ExecutionCommand.given_ReadWriter_ExecutionInfo))))
-        case Success(executionInfo) =>
-          (500, Json.obj("error" -> executionInfo.result.failed.get.getMessage).toString())
-        case Failure(exception) =>
-          (400, Json.obj("error" -> exception.getMessage).toString())
-      }
-      case _ =>
-        (400, Json.obj("error" -> "Missing request body for executeCommand").toString())
+      promise.future
     }
   }
 
-  private def handleHealth(): String = Json.obj("status" -> "ok", "service" -> "edusquirrel-server", "version" -> env("SERVER_VERSION").getOrElse("[unknown]")).toString()
-
-  private def handleItems(): String = Json.obj(
-    "items" -> Json.arr(
-      Json.obj("id" -> 1, "name" -> "dummy-pencil"),
-      Json.obj("id" -> 2, "name" -> "dummy-notebook")
-    )
+  private def handleHealth(): String = Json.obj(
+    "status" -> "ok",
+    "service" -> "edusquirrel-server",
+    "version" -> JvmUtils.env("SERVER_VERSION").getOrElse("[unknown]"),
+    "serverStartedAt" -> serverStartedAt.toString
   ).toString()
-
-  private def handleItem(id: String): String = Json.obj("id" -> id, "name" -> s"dummy-item-$id").toString()
-
-  private def handleCreateItem(payload: JsValue): String =
-    Json.obj("message" -> "dummy item created", "payload" -> payload).toString()
 
   private def buildApiRouter(action: DefaultActionBuilder): PartialFunction[RequestHeader, Handler] = {
     {
       case POST(p"/executeCommand") =>
-        action { request =>
+        action.async { request =>
           val bodyAsText = request.body.asText.orElse(request.body.asJson.map(_.toString))
-          val (status, responseBody) = handleExecuteCommand(bodyAsText)
-          Status(status)(responseBody).as("application/json")
+
+          handleExecuteCommand(bodyAsText).map {
+            case (status, responseBody) => Status(status)(responseBody).as("application/json")
+          }
         }
 
       case GET(p"/health") =>
         action {
           Ok(handleHealth()).as("application/json")
         }
-
-      case GET(p"/api/items") =>
-        action {
-          Ok(handleItems()).as("application/json")
-        }
-
-      case GET(p"/api/items/$id") =>
-        action {
-          Ok(handleItem(id)).as("application/json")
-        }
-
-      case POST(p"/api/items") =>
-        action { request =>
-          val payload: JsValue = request.body.asJson.getOrElse(Json.obj("raw" -> request.body.toString))
-          Created(handleCreateItem(payload)).as("application/json")
-        }
     }
   }
 
   def main(args: Array[String]): Unit = {
-    val port = envInt("SERVER_PORT").getOrElse(9000)
-    val host = env("SERVER_HOSTNAME").getOrElse("[unknown]")
+    val port = JvmUtils.envInt("SERVER_PORT").getOrElse(9000)
+    val host = JvmUtils.env("SERVER_HOSTNAME").getOrElse("[unknown]")
 
     println(s"[server] Booting Play HTTP server on $host:$port ...")
 

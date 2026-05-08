@@ -1,5 +1,8 @@
 package it.evadid.server
 
+import it.evadid.distribution.*
+import it.evadid.distribution.command.*
+/*
 import it.evadid.distribution.{ExecutionCommand, ExecutionInfo, ExecutionResult}
 
 import java.sql.{Connection, DriverManager, PreparedStatement, Timestamp}
@@ -68,3 +71,4 @@ class HandleSQLCommand {
     }
   }
 }
+*/

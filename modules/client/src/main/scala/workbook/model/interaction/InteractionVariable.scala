@@ -6,8 +6,6 @@ import util.serializing.*
 import com.raquo.airstream.ownership.Owner
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.chat.MessengerModel.Message
-import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.util.io.{Serializer, TypeConverter}
 import workbook.model.abstractions.WorkbookInteraction

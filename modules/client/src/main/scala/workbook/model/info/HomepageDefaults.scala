@@ -2,6 +2,7 @@ package workbook.model.info
 
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.executors.MathExecutor
 import workbook.model.interaction.sync.SyncInformation
 import workbook.user.User
 

@@ -2,8 +2,7 @@ package contentmanagement.webElements.genericHtmlElements.editor
 
 import com.raquo.laminar.api.L.*
 import contentmanagement.webElements.HtmlAppElement
-import it.evadid.core.datastructures.chat.MessengerModel
-import it.evadid.core.datastructures.chat.MessengerModel.{Message, SenderRole}
+import it.evadid.core.datastructures.chat.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import workbook.model.interaction.*
 import workbook.model.interaction.history.UpdateImportance

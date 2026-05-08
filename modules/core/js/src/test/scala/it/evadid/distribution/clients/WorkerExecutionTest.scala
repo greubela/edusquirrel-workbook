@@ -1,7 +1,7 @@
 package it.evadid.distribution.clients
 
 import it.evadid.distribution.*
-import it.evadid.distribution.executor.Executor
+import it.evadid.distribution.executor.SyncExecutor
 import it.evadid.distribution.*
 import munit.FunSuite
 import org.scalajs.dom

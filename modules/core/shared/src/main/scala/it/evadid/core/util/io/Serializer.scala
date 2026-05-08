@@ -2,7 +2,7 @@ package it.evadid.core.util.io
 
 import it.evadid.core.datastructures.chat.MessengerModel
 import upickle.*
-import upickle.default.readwriter
+import upickle.default.{read, readwriter, write}
 
 trait Serializer[T] extends TypeConverter[T, String] {
   override def convertToO(in: T): String = serialize(in)
@@ -18,7 +18,12 @@ trait Serializer[T] extends TypeConverter[T, String] {
 
 
 object Serializer {
-
+  
+  def fromUpickleJson[T](upickle: ReadWriter[T]): Serializer[T] = new Serializer[T] {
+    def serialize(in: T): String = write(in)(using upickle)
+    def deserialize(in: String): T = read(in)(using upickle)
+  }
+  
   lazy val messengerIo: Serializer[MessengerModel] = new Serializer[MessengerModel] {
     override def serialize(obj: MessengerModel): String = obj.toJson
 

@@ -1,7 +1,7 @@
 package it.evadid.distribution.executor
 
-import it.evadid.distribution.{ExecutionCommand, ExecutionResult}
-
+import it.evadid.distribution.*
+/*
 case class ExecutableCommandExecutor(commandHandler: Set[ExecutableCommand[?]]) extends Executor {
 
   private lazy val commandMap: Map[String, ExecutableCommand[?]] = commandHandler.map(c => c.getClass.getName -> c).toMap
@@ -12,3 +12,4 @@ case class ExecutableCommandExecutor(commandHandler: Set[ExecutableCommand[?]]) 
     commandMap(executionCommand.name).handleExecution(executionCommand.params)
 
 }
+*/

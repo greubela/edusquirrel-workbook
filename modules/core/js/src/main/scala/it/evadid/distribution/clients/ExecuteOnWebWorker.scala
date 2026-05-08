@@ -1,7 +1,8 @@
 package it.evadid.distribution.clients
 
-import it.evadid.distribution.*
 import it.evadid.distribution.clients.ExecuteOnWebWorker.WorkerLike
+import it.evadid.distribution.command.*
+import it.evadid.util.Logger
 import org.scalajs.dom
 import upickle.default.{read, write}
 
@@ -24,7 +25,7 @@ class ExecuteOnWebWorker private[clients](worker: WorkerLike) extends ExecutionC
         val executionInfoJson = payload.getOrElse("executionInfo",
           throw new IllegalStateException("Worker response is missing 'executionInfo' field")
         )
-        pending.remove(requestId).foreach(_.success(read[ExecutionInfo](executionInfoJson)(using ExecutionCommand.given_ReadWriter_ExecutionInfo)))
+        pending.remove(requestId).foreach(_.success(ExecutionInfo.fromJson(executionInfoJson)))
       case _ =>
     }
   }
@@ -34,17 +35,19 @@ class ExecuteOnWebWorker private[clients](worker: WorkerLike) extends ExecutionC
     pending.values.foreach(_.tryFailure(exception))
     pending.clear()
 
-  override def executeCommand(executionCommand: ExecutionCommand): Future[ExecutionInfo] = {
+  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionInfo] = {
     val requestId = java.util.UUID.randomUUID().toString
     val promise = Promise[ExecutionInfo]()
     pending.put(requestId, promise)
     val payload = write(Map(
       "requestId" -> requestId,
-      "command" -> write(executionCommand)
+      "command" -> executionCommand.toJson
     ))
     worker.postMessage(payload)
     promise.future
   }
+
+  override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = true
 }
 
 object ExecuteOnWebWorker {

@@ -1,5 +1,20 @@
 package it.evadid.server
 
+
+import it.evadid.distribution.*
+import it.evadid.distribution.command.*
+import it.evadid.distribution.commandTypes.LLMCommands.{MessengerChatCompletionRequest, MessengerChatCompletionResponse}
+import it.evadid.util.Logger
+
+import scala.concurrent.Future
+case class CompleteChatWithLLMCommand(apiKey: String, model: String) {
+  
+  def handleLlmChatRequest(request: MessengerChatCompletionRequest, logger: Logger): Future[MessengerChatCompletionResponse] = ???
+  
+}
+
+
+/*
 import it.evadid.core.datastructures.chat.{MessengerChatCompletionRequest, MessengerModel}
 import it.evadid.core.util.io.TypeConverter
 import it.evadid.distribution.{ExecutionInfo, ExecutionResult}
@@ -62,3 +77,4 @@ case class CompleteChatWithLLMCommand(apiKey: String, model: String) extends Exe
   }
 
 }
+*/
