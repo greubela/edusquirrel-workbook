@@ -15,9 +15,6 @@ object CompleteChatWithLLMCommand {
 
   private val openAiHttpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build()
 
-  private val apiKey = it.evadid.util.JvmUtils.env("OPENAI_API_KEY")
-  private val model = it.evadid.util.JvmUtils.env("OPENAI_MODEL")
-  
   def handleLlmChatRequest(mesRequest: MessengerChatCompletionRequest, logger: Logger): Future[MessengerModel] = Future {
 
     val messagesJson = Json.arr(
@@ -29,14 +26,15 @@ object CompleteChatWithLLMCommand {
       )
     })
 
-    val payload = Json.obj("model" -> model, "messages" -> messagesJson).toString()
+    val payload = Json.obj("model" -> it.evadid.util.JvmUtils.envOrError("OPENAI_MODEL"), "messages" -> messagesJson).toString()
 
-    logger.logInfo("Using API key: " + apiKey)
+    val apiKey = it.evadid.util.JvmUtils.envOrError("OPENAI_API_KEY")
+    logger.logInfo(s"Using API key (prefix): ${apiKey.take(8)}...")
     
     val request = HttpRequest.newBuilder()
       .uri(URI.create("https://api.openai.com/v1/chat/completions"))
       .timeout(Duration.ofSeconds(60))
-      .header("Authorization", s"Bearer $apiKey")
+      .header("Authorization", s"Bearer ${apiKey}")
       .header("Content-Type", "application/json")
       .POST(HttpRequest.BodyPublishers.ofString(payload))
       .build()
