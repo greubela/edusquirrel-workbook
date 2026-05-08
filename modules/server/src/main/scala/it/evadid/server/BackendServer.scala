@@ -29,10 +29,9 @@ object BackendServer {
       val promise: Promise[(Int, String)] = Promise[(Int, String)]()
       val executionCommand = ExecutionCommand.fromJson(bodyOption.get)
       BackendCommandHandler.handleExecution(executionCommand).map {
-        case e: ExecutionInfo if (e.result.isSuccess) => (200, write(Map("executionInfo" -> DistributionSerializer.serializerExecutionInfoJson.serialize(e))))
-        case e: ExecutionInfo => (500, write(Map("error" -> e.result.failed.get.getMessage)))
+        case e: ExecutionInfo => (200, write(Map("executionInfo" -> DistributionSerializer.serializerExecutionInfoJson.serialize(e))))
+        case _ => (500, write(Map("error" -> "unknown error in server :/")))
       }(using ExecutionContext.global).onComplete(promise.complete)
-
       promise.future
     }
   }
@@ -41,7 +40,8 @@ object BackendServer {
     "status" -> "ok",
     "service" -> "edusquirrel-server",
     "version" -> JvmUtils.env("SERVER_VERSION").getOrElse("[unknown]"),
-    "serverStartedAt" -> serverStartedAt.toString
+    "serverStartedAt" -> serverStartedAt.toString,
+    "relevant api model" -> JvmUtils.env("OPENAI_MODEL").getOrElse("[unknown]")
   ).toString()
 
   private def buildApiRouter(action: DefaultActionBuilder): PartialFunction[RequestHeader, Handler] = {

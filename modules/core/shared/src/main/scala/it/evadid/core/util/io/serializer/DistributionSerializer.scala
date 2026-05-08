@@ -7,6 +7,7 @@ import it.evadid.core.util.io.{Serializer, TypeConverter}
 import it.evadid.distribution.command.*
 import it.evadid.distribution.command.ExecutionResult.*
 import it.evadid.distribution.command.ExecutionInfo.*
+import it.evadid.distribution.commandTypes.LLMCommands.{MessengerChatCompletionRequest, MessengerChatCompletionResponse}
 import upickle.ReadWriter
 import upickle.default.*
 
@@ -36,6 +37,10 @@ object DistributionSerializer {
 
   given rwMessageModel: ReadWriter[MessengerModel] = macroRW
 
+  given mccres: ReadWriter[MessengerChatCompletionResponse] = macroRW
+
+  given mccreq: ReadWriter[MessengerChatCompletionRequest] = macroRW
+
 
   lazy val serializeExecutionCommandJson: Serializer[ExecutionCommand] = new Serializer[ExecutionCommand] {
     override def serialize(obj: ExecutionCommand): String = write(obj)(using bec)
@@ -57,6 +62,8 @@ object DistributionSerializer {
   lazy val serializerMessageModelJson: Serializer[MessengerModel] = Serializer.fromUpickleJson(rwMessageModel)
 
 
+  lazy val serializerChatRequestJson: Serializer[MessengerChatCompletionRequest] = Serializer.fromUpickleJson[MessengerChatCompletionRequest](mccreq)
+  lazy val serializerChatResponseJson: Serializer[MessengerChatCompletionResponse] = Serializer.fromUpickleJson[MessengerChatCompletionResponse](mccres)
   /*
 
 

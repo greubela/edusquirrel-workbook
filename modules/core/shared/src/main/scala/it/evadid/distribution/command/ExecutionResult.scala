@@ -38,6 +38,13 @@ object ExecutionResult {
 
   case class TypedExecutionResult[T](result: T, stdOut: String, stdErr: String, data: Map[String, String]) extends ExecutionResult {
     lazy val toJson: String = untyped.toJson
+    
+    def map[O](mapValue: T => O, valueToMap: O => Map[String, String]): TypedExecutionResult[O] = {
+      val newResult = mapValue(result)
+      val newMap = valueToMap(newResult)
+      TypedExecutionResult(newResult, stdOut, stdErr, newMap)
+    }
+    
   }
 
 }

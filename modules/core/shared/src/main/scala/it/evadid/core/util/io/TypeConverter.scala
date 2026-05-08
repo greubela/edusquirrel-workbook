@@ -11,5 +11,10 @@ trait TypeConverter[I, O] {
 
 object TypeConverter {
   
-  
+  lazy val singleValueMap: TypeConverter[Map[String, String], String] = new TypeConverter[Map[String, String], String] {
+    def convertToO(in: Map[String, String]): String = in.values.head
+    def convertToI(in: String): Map[String, String] = Map("singleValue" -> in)
+  }
+
+
 }

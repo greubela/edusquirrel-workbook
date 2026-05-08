@@ -1,60 +1,38 @@
 package it.evadid.server
 
-
-import it.evadid.distribution.*
+import it.evadid.core.datastructures.chat.{MessengerModel, SenderRole}
 import it.evadid.distribution.command.*
-import it.evadid.distribution.commandTypes.LLMCommands.{MessengerChatCompletionRequest, MessengerChatCompletionResponse}
+import it.evadid.distribution.commandTypes.LLMCommands.MessengerChatCompletionRequest
 import it.evadid.util.Logger
-
-import scala.concurrent.Future
-case class CompleteChatWithLLMCommand(apiKey: String, model: String) {
-  
-  def handleLlmChatRequest(request: MessengerChatCompletionRequest, logger: Logger): Future[MessengerChatCompletionResponse] = ???
-  
-}
-
-
-/*
-import it.evadid.core.datastructures.chat.{MessengerChatCompletionRequest, MessengerModel}
-import it.evadid.core.util.io.TypeConverter
-import it.evadid.distribution.{ExecutionInfo, ExecutionResult}
-import it.evadid.distribution.executor.ExecutableCommand
 import play.api.libs.json.Json
 
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.time.Duration
-import scala.util.Success
+import scala.concurrent.{ExecutionContext, Future}
 
-case class CompleteChatWithLLMCommand(apiKey: String, model: String) extends ExecutableCommand[MessengerChatCompletionRequest] {
+object CompleteChatWithLLMCommand {
 
   private val openAiHttpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build()
+
+  private val apiKey = it.evadid.util.JvmUtils.env("OPENAI_API_KEY")
+  private val model = it.evadid.util.JvmUtils.env("OPENAI_MODEL")
   
-  override def name: String = "execute-llm-request"
-
-  override def dataConverter: TypeConverter[Map[String, String], MessengerChatCompletionRequest] = new TypeConverter[Map[String, String], MessengerChatCompletionRequest] {
-
-    override def convertToO(in: Map[String, String]): MessengerChatCompletionRequest =
-      upickle.default.read[MessengerChatCompletionRequest](in("serialized-data"))(using MessengerModel.given_ReadWriter_MessengerChatCompletionRequest)
-    
-    override def convertToI(in: MessengerChatCompletionRequest): Map[String, String] = Map(
-      "serialized-data" -> upickle.default.write(in)(using MessengerModel.given_ReadWriter_MessengerChatCompletionRequest)
-    )
-  }
-
-  override def handleExecution(data: MessengerChatCompletionRequest): ExecutionResult = {
+  def handleLlmChatRequest(mesRequest: MessengerChatCompletionRequest, logger: Logger): Future[MessengerModel] = Future {
 
     val messagesJson = Json.arr(
-      Json.obj("role" -> "system", "content" -> data.systemPrompt)
-    ) ++ Json.arr(data.messengerModel.orderedMessages.map { msg =>
+      Json.obj("role" -> "system", "content" -> mesRequest.systemPrompt)
+    ) ++ Json.arr(mesRequest.messengerModel.orderedMessages.map { msg =>
       Json.obj(
-        "role" -> (if msg.senderRole == MessengerModel.SenderRole.USER then "user" else "assistant"),
+        "role" -> (if msg.senderRole == SenderRole.USER then "user" else "assistant"),
         "content" -> msg.text
       )
-    }*)
+    })
 
     val payload = Json.obj("model" -> model, "messages" -> messagesJson).toString()
 
+    logger.logInfo("Using API key: " + apiKey)
+    
     val request = HttpRequest.newBuilder()
       .uri(URI.create("https://api.openai.com/v1/chat/completions"))
       .timeout(Duration.ofSeconds(60))
@@ -64,6 +42,7 @@ case class CompleteChatWithLLMCommand(apiKey: String, model: String) extends Exe
       .build()
 
     val response = openAiHttpClient.send(request, HttpResponse.BodyHandlers.ofString())
+
     if response.statusCode() / 100 != 2 then
       throw new RuntimeException(s"OpenAI API error ${response.statusCode()}: ${response.body()}")
 
@@ -73,7 +52,25 @@ case class CompleteChatWithLLMCommand(apiKey: String, model: String) extends Exe
       .flatMap(choice => (choice \ "message" \ "content").asOpt[String])
       .getOrElse(throw new RuntimeException("OpenAI response did not contain choices[0].message.content"))
 
-    ExecutionResult(Map("generatedText" -> generatedText), "", "")
+    mesRequest.continueWith(generatedText, "agent")
+  }(using ExecutionContext.global)
+
+}
+
+
+/*
+
+
+case class CompleteChatWithLLMCommand(apiKey: String, model: String) extends ExecutableCommand[MessengerChatCompletionRequest] {
+
+  
+
+  override def handleExecution(data: MessengerChatCompletionRequest): ExecutionResult = {
+
+   *)
+
+
+
   }
 
 }

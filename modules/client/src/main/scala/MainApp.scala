@@ -1,14 +1,18 @@
 
 import com.raquo.laminar.api.L.*
 import content.{CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, plantworkshop}
-
 import interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
-
+import it.evadid.core.datastructures.chat.MessengerModel
+import it.evadid.distribution.clients.ExecutionClient
+import it.evadid.distribution.command.ExecutionInfo
+import it.evadid.distribution.commandTypes.LLMCommands
+import it.evadid.distribution.commandTypes.LLMCommands.*
+import it.evadid.util.Logger
 import org.scalajs.dom
 import workbook.htmlElements.HtmlFullWorkbookApp
 
 import scala.util.*
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.scalajs.js
 
 private val tryToLoad: List[String] = List("plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "feedbackDemoRoot")
@@ -41,8 +45,16 @@ private def load(containerId: String): Unit = {
 
 private def testCalculations(): Unit = {
 
-  println("testing no calculations atm :)")
-  
+  println("testing some calculations atm :)")
+
+  val systemPrompt: String = "You are a helpful and smart assistant teacher. The teacher is speaking with the student. If you are requested to continue the conversation and help the student (because the teacher is not available right now), please do so in the language of the student. Note not to give away answers!"
+
+  val backend: ExecutionClient = HtmlFullWorkbookApp.fullInfo.technical.backendServerExecutor
+  val request: MessengerChatCompletionRequest = MessengerChatCompletionRequest(systemPrompt, MessengerModel.testCompletion())
+  val resultFut: Future[ExecutionInfo] = LLMCommands.completeLLMCommandFactory.sendCommandTo(backend, Logger(), request)
+
+  resultFut.onComplete(res => println("future completed: " + res))(using ExecutionContext.global)
+
 }
 
 @main

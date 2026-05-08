@@ -37,6 +37,21 @@ object MessengerModel {
   case class BasicPerson(name: LanguageMap[HumanLanguage], override val avatarSvg: Option[String] = None) extends Person
 
 
+  def testCompletion(): MessengerModel = {
+    val student = BasicPerson(LanguageMap.universalMap("Student"))
+    val agent = BasicPerson(LanguageMap.universalMap("Agent"))
+
+    val startTime = System.currentTimeMillis() - (1000 * 60 * 60 * 3)
+    val minute = 60 * 1000
+
+    val messages = List(
+      Message("Hi, how can I help you?", (startTime + minute * 0).toString, agent, SenderRole.TEACHER),
+      Message("Ich brauche eine schnelle Methode zum multiplizieren zweistelliger Zahlen", (startTime + minute * 1).toString, student, SenderRole.USER),
+    )
+
+    MessengerModel(messages)
+  }
+
   def testSample(): MessengerModel = {
     val student = BasicPerson(LanguageMap.universalMap("Student"))
     val agent = BasicPerson(LanguageMap.universalMap("Agent"))
