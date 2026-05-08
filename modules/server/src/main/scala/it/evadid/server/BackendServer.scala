@@ -11,6 +11,7 @@ import play.core.server.{NettyServer, ServerConfig}
 import upickle.default.{read, write}
 
 import java.time.LocalDateTime
+import java.io.{PrintWriter, StringWriter}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
@@ -52,6 +53,15 @@ object BackendServer {
 
           handleExecuteCommand(bodyAsText).map {
             case (status, responseBody) => Status(status)(responseBody).as("application/json")
+          }.recover {
+            case err =>
+              val stackWriter = StringWriter()
+              err.printStackTrace(PrintWriter(stackWriter))
+              InternalServerError(Json.obj(
+                "error" -> Option(err.getMessage).getOrElse(err.getClass.getName),
+                "exceptionType" -> err.getClass.getName,
+                "stackTrace" -> stackWriter.toString
+              ).toString()).as("application/json")
           }
         }
 
