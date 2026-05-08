@@ -22,12 +22,13 @@ object BackendCommandHandler {
 
   ))
 
-  def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionInfo] = {
-    println(s"[server] Received command: ${executionCommand.name} with params: ${executionCommand.params}")
+  def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionInfo] = {
+    logger.logInfo(s"[server] Received command: ${executionCommand.name} with params: ${executionCommand.params}")
     if (executionCommand.name.trim.isEmpty) {
+      logger.logError("ExecutionCommand.name must not be empty")
       throw new IllegalArgumentException("ExecutionCommand.name must not be empty")
     }
-    localHandler.handleExecution(executionCommand, Logger())
+    localHandler.handleExecution(executionCommand, logger)
   }
 
 

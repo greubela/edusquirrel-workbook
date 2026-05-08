@@ -2,7 +2,7 @@ package it.evadid.server
 
 import it.evadid.core.util.io.serializer.DistributionSerializer
 import it.evadid.distribution.command.*
-import it.evadid.util.JvmUtils
+import it.evadid.util.{JvmUtils, Logger}
 import play.api.libs.json.Json
 import play.api.mvc.Results.*
 import play.api.mvc.{DefaultActionBuilder, Handler, RequestHeader}
@@ -29,7 +29,7 @@ object BackendServer {
     else {
       val promise: Promise[(Int, String)] = Promise[(Int, String)]()
       val executionCommand = ExecutionCommand.fromJson(bodyOption.get)
-      BackendCommandHandler.handleExecution(executionCommand).map {
+      BackendCommandHandler.handleExecution(executionCommand, Logger()).map {
         case e: ExecutionInfo => (200, write(Map("executionInfo" -> DistributionSerializer.serializerExecutionInfoJson.serialize(e))))
         case _ => (500, write(Map("error" -> "unknown error in server :/")))
       }(using ExecutionContext.global).onComplete(promise.complete)
