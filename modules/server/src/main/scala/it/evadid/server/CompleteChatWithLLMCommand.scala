@@ -17,14 +17,17 @@ object CompleteChatWithLLMCommand {
 
   def handleLlmChatRequest(mesRequest: MessengerChatCompletionRequest, logger: Logger): Future[MessengerModel] = Future {
 
-    val messagesJson = Json.arr(
-      Json.obj("role" -> "system", "content" -> mesRequest.systemPrompt)
-    ) ++ Json.arr(mesRequest.messengerModel.orderedMessages.map { msg =>
+    val orderedMessages = mesRequest.messengerModel.orderedMessages.map { msg =>
       Json.obj(
         "role" -> (if msg.senderRole == SenderRole.USER then "user" else "assistant"),
         "content" -> msg.text
       )
-    })
+    }
+
+    // Build a flat JSON array for OpenAI: [systemMessage, message1, message2, ...]
+    val messagesJson = Json.arr(
+      Json.obj("role" -> "system", "content" -> mesRequest.systemPrompt)
+    ) ++ play.api.libs.json.JsArray(orderedMessages)
 
     val payload = Json.obj("model" -> it.evadid.util.JvmUtils.envOrError("OPENAI_MODEL"), "messages" -> messagesJson).toString()
 
