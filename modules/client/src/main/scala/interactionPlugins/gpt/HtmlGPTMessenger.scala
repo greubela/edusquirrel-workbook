@@ -91,7 +91,7 @@ object HtmlGPTMessenger {
         val msg1: Message = Message("@assistant: the current exercise has the following instruction:\n" + exText, LLMCommands.workbookPerson, LocalDateTime.now())
 
         val scText: String = scaffoldingInfo.additionalScaffolds.getWithLanguagePreference(LLMCommands.langPreference)
-        val msg2 = Message("@assistant: please note while giving feedback to the student: " + scText, LLMCommands.workbookPerson, LocalDateTime.now())
+        val msg2 = Message("@assistant: please note while giving feedback to the student:\n" + scText, LLMCommands.workbookPerson, LocalDateTime.now())
 
         if (!interactionVariable.currentValue.messages.exists(_.author.role == WORKBOOK)) {
           interactionVariable.updateStateFromUserInteraction(_.addMessage(msg1).addMessage(msg2), MAJOR)
