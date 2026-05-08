@@ -10,8 +10,7 @@ import workbook.model.info.{FullInfo, HomepageDefaults, HomepageInfo}
 import workbook.singletons.FileDataStorage
 
 object HtmlFullWorkbookApp extends HtmlWorkbookElement {
-
-
+  
   private lazy val technical = TechnicalHomepageElements(
     HtmlFullScreenContainerElement(),
     FileDataStorage(),

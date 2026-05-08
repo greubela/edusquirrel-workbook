@@ -13,6 +13,7 @@
   "section1Title": "Abschnitt 1: TurtleStitch",
   "Ex1Title": "Ein einfaches Programm zum Anfang",
   "Ex1Instr1": "Lies die Befehle im folgendem Programm und vermute, wie die Figur aussieht, die hierdurch erstellt wird.",
+  "Ex1Instr1Scaff": "Bei dieser Aufgabe soll der Lernende verstehen, dass das Programm  die Bewegung einer Figur beschreibt.",
   "Ex1Instr2": "Beschreibe, wie die durch das Programm erstellte Figur vermutlich aussieht.",
   "Ex1Instr3": "Überprüfe deine Vermutung. <br> <br> Lade hierfür zunächst das Programm mit dem obigen Knopf herunter und öffne es in <a target=\"_blank\" href=\"https://www.turtlestitch.org/run\"> TurtleStitch </a> indem du auf das Dateisymbol (📝) klickst und 'Öffnen...' auswählst. Führe das Programm dann aus, indem du die grüne Fahne drückst.",
   "Ex1Instr4": "Unter dem Ergebnis werden Informationen angezeigt. Wie viele Stiche und wie viel Platz werden für die Figur benötigt?",

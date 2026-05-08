@@ -36,7 +36,7 @@ trait WorkbookFactory {
 
   def createWorkbook: Workbook
 
-  protected def createTextInput(id: String = nextId()): HtmlWorkbookElement = {
+  protected def createTextInput(id: String = nextId()): WorkbookInteraction[String] = {
     HtmlBasicTextInteraction(fullInfo, id)
   }
 

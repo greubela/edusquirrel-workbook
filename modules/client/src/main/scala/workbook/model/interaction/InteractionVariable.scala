@@ -1,13 +1,13 @@
 package workbook.model.interaction
 
-import it.evadid.core.datastructures.language.*
-import it.evadid.core.datastructures.language.AppLanguage.*
-import util.serializing.*
 import com.raquo.airstream.ownership.Owner
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.util.io.{Serializer, TypeConverter}
+import util.serializing.*
 import workbook.model.abstractions.WorkbookInteraction
 import workbook.model.interaction.InteractionVariable.*
 import workbook.model.interaction.InteractionVariableState.SerializedExerciseVariableState
@@ -15,6 +15,8 @@ import workbook.model.interaction.history.*
 import workbook.model.interaction.history.UpdateImportance.DEFAULT
 import workbook.model.interaction.sync.*
 
+import java.time
+import java.time.LocalDateTime
 import scala.collection.mutable
 
 case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T], private val initStorageState: InteractionVariableStorage[T]) {
@@ -51,21 +53,26 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
   def createBoundVarWithUpdateImportance(importance: UpdateImportance): Var[T] = synchronized {
     val outerVar = Var[T](currentValue)
     innerState.observable.addObserver(newValue => if (newValue != outerVar.now()) outerVar.set(currentValue))
-    outerVar.signal.foreach(newValue => if(newValue != currentValue) updateStateFromUserInteraction(newValue, System.currentTimeMillis(), importance))
+    outerVar.signal.foreach(newValue => if (newValue != currentValue) setStateFromUserInteraction(newValue, importance, LocalDateTime.now()))
     outerVar
   }
 
-  def updateStateFromUserInteraction(newValue: T, epochTimestampMillis: Long, updateSize: UpdateImportance): Unit = synchronized {
+  def updateStateFromUserInteraction(updater: T => T, updateSize: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now()): Unit = synchronized {
+    val nextState = updater(innerState.now().lastState.value)
+    setStateFromUserInteraction(nextState, updateSize, timestamp)
+  }
+
+  def setStateFromUserInteraction(newValue: T, updateSize: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now()): Unit = synchronized {
     // println("InteractionVariable.updateStateFromUserInteraction: " + newValue + " (" + updateSize + ")")
     val lastKnown = innerState.now().lastState
     if (newValue != lastKnown.value || updateSize != lastKnown.updateImportance) {
-      val newInteractionState = InteractionVariableState[T](newValue, epochTimestampMillis, updateSize)
+      val newInteractionState = InteractionVariableState[T](newValue, updateSize, timestamp)
       innerState.update(_.withAdditionalStates(List(newInteractionState)))
       updateSize match {
         case UpdateImportance.MAJOR => syncToAll()
         case UpdateImportance.MINOR => syncToAll()
-        case UpdateImportance.TEMPORARY =>
-        case UpdateImportance.DEFAULT =>
+        case UpdateImportance.TEMPORARY => syncToAll()
+        case UpdateImportance.DEFAULT => syncToAll()
       }
     }
   }
@@ -104,7 +111,7 @@ object InteractionVariable {
         println("history: " + history.map(_.serialized(io)).mkString(","))
         println("lastState: " + history.maxBy(_.epochTimestampMillis).serialized(io))
       }*/
-      history.maxBy(_.epochTimestampMillis)
+      history.maxBy(_.timestamp)
     }
 
     def afterReset(defaultValue: T, syncSources: List[SyncInformation]): InteractionVariableStorage[T] = {
@@ -151,7 +158,7 @@ object InteractionVariable {
   object InteractionVariableStorage {
 
     def apply[T](syncId: String, defaultValue: T, syncSources: List[SyncInformation], io: Serializer[T]): InteractionVariableStorage[T] = {
-      val history: List[InteractionVariableState[T]] = List(InteractionVariableState[T](defaultValue, System.currentTimeMillis(), UpdateImportance.DEFAULT))
+      val history: List[InteractionVariableState[T]] = List(InteractionVariableState[T](defaultValue, UpdateImportance.DEFAULT, LocalDateTime.now()))
       InteractionVariableStorage[T](syncId, history, syncSources, io)
     }
   }
@@ -161,28 +168,6 @@ object InteractionVariable {
     val storage = InteractionVariableStorage(interaction.id + "_history", interaction.defaultValue, sync, io)
     InteractionVariable(interaction, storage)
   }
-
-
-
-
-
-  /*
-    private def serializeHistory[T](history: List[InteractionVariableState[T]], serializer: Serializer[T]): String = {
-      val serializedHistory: List[SerializedExerciseVariableState] = history.map(curState =>
-        SerializedExerciseVariableState(curState.epochTimestampMillis, serializer.serialize(curState.value), curState.updateImportance)
-      )
-    }
-
-    private def deserializeHistory[T](serializedHistory: String, serializer: Serializer[T]): Set[InteractionVariableState[T]] = {
-      val deserialized = read[List[SerializedExerciseVariableState]](serializedHistory)
-      deserialized.map(curState =>
-        InteractionVariableState(
-          serializer.deserialize(curState.serializedValue),
-          curState.epochTimestampMillis,
-          curState.updateImportance
-        )
-      ).toSet
-    }*/
 
 
 }

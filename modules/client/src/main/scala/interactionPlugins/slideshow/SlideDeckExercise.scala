@@ -16,8 +16,7 @@ case class SlideDeckExercise(
                             ) extends WorkbookInteraction[Set[SlideView]] {
 
   override val defaultValue: Set[SlideView] = Set.empty
-  
-  
+
   require(slides.nonEmpty, "SlideDeckExercise requires at least one slide")
 
   private given ReadWriter[SlideView] = macroRW
@@ -57,7 +56,7 @@ case class SlideDeckExercise(
           slideIndex = newIndex,
           viewedAtEpochMillis = nowMillis
         )
-        interactionVariable.updateStateFromUserInteraction(updatedViewHistory, nowMillis, UpdateImportance.MAJOR)
+        interactionVariable.setStateFromUserInteraction(updatedViewHistory, UpdateImportance.MAJOR)
       }
     }
   }

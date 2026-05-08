@@ -15,9 +15,7 @@ object BackendCommandHandler {
   private val localHandler: ExecutionClient = ExecutionClientPool(List(
 
     LLMCommands.completeLLMCommandFactory.toExecutionClient(
-      
       (request: MessengerChatCompletionRequest, logger: Logger) => CompleteChatWithLLMCommand.handleLlmChatRequest(request, logger)
-      
     )
 
   ))

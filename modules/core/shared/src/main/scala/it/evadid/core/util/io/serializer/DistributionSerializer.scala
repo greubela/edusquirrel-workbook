@@ -1,7 +1,6 @@
 package it.evadid.core.util.io.serializer
 
-import it.evadid.core.datastructures.chat.MessengerModel.{BasicPerson, Person}
-import it.evadid.core.datastructures.chat.{Message, MessengerModel, SenderRole}
+import it.evadid.core.datastructures.chat.{Message, MessengerModel, Person, SenderRole}
 import it.evadid.core.util.io.serializer.DefaultSerializer.{*, given}
 import it.evadid.core.util.io.{Serializer, TypeConverter}
 import it.evadid.distribution.command.*
@@ -15,31 +14,29 @@ import scala.util.Try
 
 object DistributionSerializer {
 
-  given bec: ReadWriter[ExecutionCommand] = macroRW
+  private[serializer] given bec: ReadWriter[ExecutionCommand] = macroRW
 
-  given uer: ReadWriter[UntypedExecutionResult] = macroRW
+  private[serializer] given uer: ReadWriter[UntypedExecutionResult] = macroRW
 
-  given ReadWriter[ExecutionHistory] = macroRW
+  private[serializer] given ReadWriter[ExecutionHistory] = macroRW
 
-  given tei: ReadWriter[ExecutionInfo] = serializerExecutionInfoJson.uPickleReadWrite
+  private[serializer] given tei: ReadWriter[ExecutionInfo] = serializerExecutionInfoJson.uPickleReadWrite
 
-  given er: ReadWriter[ExecutionResult] = serializerExecutionResultJson.uPickleReadWrite
+  private[serializer] given er: ReadWriter[ExecutionResult] = serializerExecutionResultJson.uPickleReadWrite
 
-  given uei: ReadWriter[UntypedExecutionInfo] = macroRW
+  private[serializer] given uei: ReadWriter[UntypedExecutionInfo] = macroRW
 
-  given rwRole: ReadWriter[SenderRole] = readwriter[String].bimap[SenderRole](_.toString, SenderRole.valueOf)
+  private[serializer] given rwRole: ReadWriter[SenderRole] = readwriter[String].bimap[SenderRole](_.showName, str => SenderRole.allRoles.find(_.showName == str).getOrElse(throw new RuntimeException(s"Unknown role: $str")))
 
-  given rwBPerson: ReadWriter[BasicPerson] = macroRW
+  private[serializer] given rwPerson: ReadWriter[Person] = macroRW
 
-  given rwPerson: ReadWriter[Person] = readwriter[BasicPerson].bimap[Person]({ case person: BasicPerson => person }, basicPerson => basicPerson)
+  private[serializer] given rwMessage: ReadWriter[Message] = macroRW
 
-  given rwMessage: ReadWriter[Message] = macroRW
+  private[serializer] given rwMessageModel: ReadWriter[MessengerModel] = macroRW
 
-  given rwMessageModel: ReadWriter[MessengerModel] = macroRW
+  private[serializer] given mccres: ReadWriter[MessengerChatCompletionResponse] = macroRW
 
-  given mccres: ReadWriter[MessengerChatCompletionResponse] = macroRW
-
-  given mccreq: ReadWriter[MessengerChatCompletionRequest] = macroRW
+  private[serializer] given mccreq: ReadWriter[MessengerChatCompletionRequest] = macroRW
 
 
   lazy val serializeExecutionCommandJson: Serializer[ExecutionCommand] = new Serializer[ExecutionCommand] {
@@ -47,6 +44,7 @@ object DistributionSerializer {
 
     override def deserialize(str: String): ExecutionCommand = read(str)(using bec)
   }
+
   lazy val serializerExecutionResultJson: Serializer[ExecutionResult] = new Serializer[ExecutionResult]() {
     override def serialize(obj: ExecutionResult): String = write(obj.untyped)(using uer)
 

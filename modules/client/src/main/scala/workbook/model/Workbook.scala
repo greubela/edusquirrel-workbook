@@ -16,15 +16,8 @@ case class Workbook(
                      availableInLanguages: List[HumanLanguage] = List()
                    ) extends HtmlWorkbookElement {
 
-  lazy val allInteractionElements: List[WorkbookInteraction[?]] = {
-    val res = mutable.ListBuffer[WorkbookInteraction[?]]()
-    sections.foreach(curSection => curSection.sectionContent.foreach(curContainer => curContainer.children.foreach {
-      case interaction: WorkbookInteraction[?] => res.append(interaction)
-      case other =>
-    }))
-    res.toList
-  }
-
+  override lazy val workbookChildren: List[HtmlWorkbookElement] = sections
+  
   private def getElement(activeSection: Option[WorkbookSection]): Element =
     if (activeSection.isEmpty) {
       span(

@@ -9,10 +9,14 @@ import org.scalajs.dom.{SVGLinearGradientElement, SVGSVGElement}
 import workbook.htmlElements.basic.HtmlButtonElement
 import workbook.model.abstractions.{HtmlWorkbookElement, WorkbookInteraction}
 import workbook.model.info.FullInfo
+
+
+
 case class HtmlGptGrader(fullInfo: FullInfo, textInteraction: WorkbookInteraction[String]) extends HtmlWorkbookElement {
-
-
+  
   private val submitButton = HtmlButtonElement.withSvgContent(fullInfo, HtmlGptGrader.gradingButtonSvg, event => {
+    
+    
     println("grading not implemented yet :( ")
 
     ??? // todo 

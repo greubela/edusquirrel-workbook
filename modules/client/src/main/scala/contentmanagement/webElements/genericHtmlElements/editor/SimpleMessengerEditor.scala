@@ -7,8 +7,9 @@ import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import workbook.model.interaction.*
 import workbook.model.interaction.history.UpdateImportance
 
+import java.time.LocalDateTime
 import scala.scalajs.js
-case class SimpleMessengerEditor(chatExercise: InteractionVariable[MessengerModel]) extends HtmlAppElement {
+case class SimpleMessengerEditor(chatExercise: InteractionVariable[MessengerModel], onUserAddedMessage: MessengerModel => Any) extends HtmlAppElement {
 
   private val messageInput = Var("")
 
@@ -48,28 +49,23 @@ case class SimpleMessengerEditor(chatExercise: InteractionVariable[MessengerMode
 
   override def getDomElement(): Element = domElement
 
-  def onUserAddedMessage(message: String): Unit = {
-    println("message send :)")
-  }
-
   private def sendCurrentMessage(): Unit = {
     val trimmed = messageInput.now().trim
     if (trimmed.nonEmpty) {
-      onUserAddedMessage(trimmed)
       val currentState = chatExercise.currentValue
       val nextState = currentState.addMessage(
         text = trimmed,
-        author = MessengerModel.BasicPerson(name = LanguageMap.universalMap("Me")),
-        senderRole = SenderRole.USER,
-        timestampEpochMillis = System.currentTimeMillis()
+        author = Person("student", "it.evadid.student", SenderRole.USER, None),
+        timestamp = LocalDateTime.now()
       )
-      chatExercise.updateStateFromUserInteraction(nextState, System.currentTimeMillis(), UpdateImportance.MAJOR)
+      chatExercise.setStateFromUserInteraction(nextState, UpdateImportance.MAJOR)
       messageInput.set("")
+      onUserAddedMessage(nextState)
     }
   }
 
   private def renderMessage(message: Message): Element = {
-    val isUserMessage = message.senderRole == SenderRole.USER
+    val isUserMessage = message.author.role == SenderRole.USER
     val rowClass = if (isUserMessage) "messenger-message-row-user" else "messenger-message-row-teacher"
     val bubbleClass = if (isUserMessage) "messenger-bubble-user" else "messenger-bubble-teacher"
 
@@ -83,7 +79,7 @@ case class SimpleMessengerEditor(chatExercise: InteractionVariable[MessengerMode
         cls := "messenger-message-content",
         div(
           cls := "messenger-author",
-          message.author.name.getInLanguage(AppLanguage.default())
+          message.author.name
         ),
         div(
           cls := s"messenger-bubble $bubbleClass",
@@ -91,7 +87,7 @@ case class SimpleMessengerEditor(chatExercise: InteractionVariable[MessengerMode
         ),
         div(
           cls := "messenger-timestamp",
-          formatTimestamp(message.timestampEpochMillis)
+          message.timestamp.toString
         )
       )
     )
@@ -110,13 +106,5 @@ case class SimpleMessengerEditor(chatExercise: InteractionVariable[MessengerMode
       )
     )
 
-  private def formatTimestamp(timestampEpochMillis: String): String = {
-    timestampEpochMillis.toLongOption
-      .map { epoch =>
-        val date = new js.Date(epoch.toDouble)
-        f"${date.getHours().toInt}%02d:${date.getMinutes().toInt}%02d"
-      }
-      .getOrElse(timestampEpochMillis)
-    //timestampEpochMillis + " (<- formatted!)"
-  }
+
 }

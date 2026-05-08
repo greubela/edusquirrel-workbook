@@ -6,6 +6,7 @@ import datastructures.web.file.{FileDescription, LoadedFile}
 import datastructures.web.storage.AsyncDataCache
 import it.evadid.core.datastructures.state.ObservableValue
 import it.evadid.distribution.clients.ExecutionClient
+import workbook.model.abstractions.WorkbookInteraction
 import workbook.singletons.WorkbookLanguageInfo.LabelLanguageMapStorage
 
 trait TechnicalControl {
@@ -25,5 +26,6 @@ trait TechnicalControl {
   def backendServerExecutor: ExecutionClient
 
   def workerServerExecutor: ExecutionClient
+
 
 }

@@ -46,15 +46,14 @@ private def load(containerId: String): Unit = {
 private def testCalculations(): Unit = {
 
   println("testing some calculations atm :)")
-
-  val systemPrompt: String = "You are a helpful and smart assistant teacher. The teacher is speaking with the student. If you are requested to continue the conversation and help the student (because the teacher is not available right now), please do so in the language of the student. Note not to give away answers!"
-
+/*
+  val systemPrompt: String = "Please entertain this human :-)"
   val backend: ExecutionClient = HtmlFullWorkbookApp.fullInfo.technical.backendServerExecutor
-  val request: MessengerChatCompletionRequest = MessengerChatCompletionRequest(systemPrompt, MessengerModel.testCompletion())
+  val request: MessengerChatCompletionRequest = MessengerChatCompletionRequest(systemPrompt, MessengerModel.testCompletion)
   val resultFut: Future[ExecutionInfo] = LLMCommands.completeLLMCommandFactory.sendCommandTo(backend, Logger(), request)
 
   resultFut.onComplete(res => println("future completed: " + res))(using ExecutionContext.global)
-
+*/
 }
 
 @main

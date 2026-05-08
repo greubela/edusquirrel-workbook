@@ -5,7 +5,7 @@ import com.raquo.laminar.api.L.{*, given}
 import content.WorkbookFactory
 import contentmanagement.webElements.HtmlAppElement
 import interactionPlugins.blockEnvironment.exercise.{ProgrammingExerciseFactory, TurtleProgrammingInteraction}
-import interactionPlugins.gpt.GptExerciseFactory
+import interactionPlugins.gpt.*
 import interactionPlugins.programmingExercise.pythonExercise.turtle.TurtleExerciseDemo
 import interactionPlugins.turtleStitchPlugin.TurtleStitchEditor
 import workbook.htmlElements.basic.*
@@ -34,7 +34,7 @@ case class TestWorkbookFactory(override val fullInfo: FullInfo) extends Workbook
     val contList: List[HtmlExerciseContainer] = List(
       pythonTurtleDemo(workbookInfo),
       turtleEditorDemo(workbookInfo),
-      gptCont(workbookInfo),
+      //gptCont(workbookInfo),
       blockProgCont(workbookInfo)
     )
 
@@ -50,7 +50,7 @@ case class TestWorkbookFactory(override val fullInfo: FullInfo) extends Workbook
                                             |<origName></origName>
                                             |</project>""".stripMargin
 
-  private def gptCont(workbookInfo: FullInfo): HtmlExerciseContainer = {
+  /*private def gptCont(workbookInfo: FullInfo): HtmlExerciseContainer = {
     val gptElements = GptExerciseFactory.createGptExercise(
       workbookInfo,
       "text-007",
@@ -58,7 +58,7 @@ case class TestWorkbookFactory(override val fullInfo: FullInfo) extends Workbook
       List("TestWorkbook/writeText1", "TestWorkbook/writeText2")
     )
     HtmlExerciseContainer(workbookInfo, gptElements)
-  }
+  }*/
 
 
   private def pythonTurtleDemo(fullInfo: FullInfo): HtmlExerciseContainer = {

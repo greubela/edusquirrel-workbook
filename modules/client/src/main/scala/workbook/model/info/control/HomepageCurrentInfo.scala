@@ -8,8 +8,7 @@ import workbook.model.interaction.sync.SyncInformation
 case class HomepageCurrentInfo(fullInfo: FullInfo) {
 
   private def now(): HomepageInfo = fullInfo.homepageInfoState.now()
-
-
+  
   def workbookInfo: Option[AllWorkbookInfo] = fullInfo.synchronized {
     now().workbookInfo
   }
@@ -30,7 +29,7 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
 
   def allAvailableInteractions: List[WorkbookInteraction[?]] = fullInfo.synchronized {
     val default = List()
-    now().workbookInfo.map(_.loadedWorkbook.allInteractionElements).getOrElse(default)
+    now().workbookInfo.map(_.loadedWorkbook.allContainedInteractions).getOrElse(default)
   }
 
   def allAvailableLanguages: List[HumanLanguage] = fullInfo.synchronized {

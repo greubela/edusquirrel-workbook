@@ -43,7 +43,7 @@ case class WorkbookUserDataAnalyzer(technical: TechnicalControl, userInfo: AllUs
 
   def downloadAllData(): Unit = {
     println("download session data :)")
-    val history: List[SerializedInteractionHistory] = workbookInfo.loadedWorkbook.allInteractionElements.map(_.interactionVariable.serializeHistory())
+    val history: List[SerializedInteractionHistory] = workbookInfo.loadedWorkbook.allContainedInteractions.map(_.interactionVariable.serializeHistory())
     val data = SessionData(userInfo.user, history, workbookInfo.getMetadata(), System.currentTimeMillis())
     val str = upickle.default.write(data)
     val name = s"${data.currentUserInfo.id}-${data.metadata.workbookId}-${data.epochTimestampMillis}.json"
@@ -53,7 +53,7 @@ case class WorkbookUserDataAnalyzer(technical: TechnicalControl, userInfo: AllUs
   private def tryToLoad(sessionData: SessionData): Unit = {
     println("Trying to load session data :)")
     if (sessionData.currentUserInfo.id == userInfo.user.id) {
-      workbookInfo.loadedWorkbook.allInteractionElements.foreach(curInteraction => {
+      workbookInfo.loadedWorkbook.allContainedInteractions.foreach(curInteraction => {
         sessionData.interactionHistory.foreach(curHistory => {
           curInteraction.interactionVariable.addHistory(curHistory)
         })

@@ -1,9 +1,8 @@
 package it.evadid.core.datastructures.language
 
-sealed trait AppLanguage() {
+sealed trait AppLanguage() { // todo: make a sealed trait again 
   val name: String
 }
-
 
 object AppLanguage {
 

@@ -19,7 +19,7 @@ case class LanguageSelectionLine(fullInfo: FullInfo) extends HtmlWorkbookElement
         child <-- Var(childElement).signal
       )
     })
-  }
+  } 
 
   private val domElement = div(
     cls := "select-language-line",

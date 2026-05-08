@@ -6,6 +6,12 @@ trait LanguageMap[T <: AppLanguage]() {
   def getInLanguage(language: T): String
 
   protected def availableLanguages: Set[T]
+  
+  def getWithLanguagePreference(possibleLanguages: List[T]): String = {
+    val preferredLanguage = possibleLanguages.find(availableLanguages.contains)
+    getInLanguage(preferredLanguage.getOrElse(availableLanguages.head))
+  }
+
 }
 
 object LanguageMap {
