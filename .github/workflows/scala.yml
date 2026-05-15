@@ -34,8 +34,8 @@ jobs:
       - name: Set up sbt
         uses: sbt/setup-sbt@v1
 
-      - name: Build Scala.js (buildFast)
-        run: sbt -batch -v buildFast
+      - name: Build Scala.js (buildClientFast)
+        run: sbt -batch -v buildClientFast
 
       - name: Assemble GitHub Pages site
         run: |
@@ -48,11 +48,11 @@ jobs:
 
           # 2) Copy the Scala.js bundle to the canonical /js/app/ location
           #    that the HTML pages and feedback-demo-loader.js expect.
-          # buildFast writes the linked JS to artifacts/newest/client.js
+          # buildClientFast writes the linked JS to artifacts/newest/client.js
           mkdir -p _site/js/app
           BUNDLE_FILE="artifacts/newest/client.js"
           if [ ! -f "$BUNDLE_FILE" ]; then
-            echo "Could not find buildFast output at $BUNDLE_FILE" >&2
+            echo "Could not find buildClientFast output at $BUNDLE_FILE" >&2
             exit 1
           fi
           cp "$BUNDLE_FILE" _site/js/app/main.js
