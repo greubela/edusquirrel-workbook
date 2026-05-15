@@ -74,13 +74,13 @@ object WorkbookLanguageInfo {
     override protected def executeLoading(id: String)(ec: ExecutionContext): Future[LanguageMap[HumanLanguage]] = {
 
       val allTriples: Future[List[List[MapEntryTripel]]] = Future.traverse(allLanguageFiles)(file => {
-        languageTriplesStorage.loadAsFuture(file, false)(ec)
+        languageTriplesStorage.loadAsFuture(file, false)(using ec)
       })
 
-      allTriples.map(_.flatten)(ec).map(triples => {
+      allTriples.map(_.flatten)(using ec).map(triples => {
         val languageMaps: Set[(String, LanguageMap[HumanLanguage])] = triplesToLanguageMaps(triples)
         languageMaps.find(_._1 == id).map(_._2).getOrElse(languageMapNonExistentMap(id))
-      })(ec)
+      })(using ec)
     }
 
     override protected def defaultValueWhileLoading(in: String): Option[LanguageMap[HumanLanguage]] = Some(languageMapLoadingMap)
@@ -95,8 +95,8 @@ object WorkbookLanguageInfo {
 
     override protected def executeLoading(file: FileDescription)(ec: ExecutionContext): Future[List[MapEntryTripel]] = {
       case class FullCsvFileInfo(fileDescription: LoadedFile, csvData: List[List[String]], fileLanguageOp: Option[HumanLanguage], mapGroupIdOp: Option[String])
-      val futFile: Future[LoadedFile] = fileDataStorage.loadAsFuture(file)(ec)
-      futFile.map(loadedFile => triplesFromFile(loadedFile))(ec)
+      val futFile: Future[LoadedFile] = fileDataStorage.loadAsFuture(file)(using ec)
+      futFile.map(loadedFile => triplesFromFile(loadedFile))(using ec)
     }
 
     override protected def defaultValueWhileLoading(in: FileDescription): Option[List[MapEntryTripel]] = None

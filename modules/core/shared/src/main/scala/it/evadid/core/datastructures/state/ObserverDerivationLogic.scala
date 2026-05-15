@@ -1,0 +1,13 @@
+package it.evadid.core.datastructures.state
+
+sealed trait ObserverDerivationLogic {
+
+}
+
+object ObserverDerivationLogic {
+
+  case object DeriveAllValues extends ObserverDerivationLogic
+  case object DeriveOnlyLastValues extends ObserverDerivationLogic
+
+}
+

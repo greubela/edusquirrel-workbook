@@ -16,9 +16,7 @@ object WorkerTraits {
     case WORKER_TERMINATED
   }
 
-  case class CommandState(
-                           id: String
-                         ) {
+  case class CommandState(id: String) {
     private var info: mutable.Map[String, String] = mutable.Map(
       "timestampReceived" -> LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_DATE_TIME),
     )

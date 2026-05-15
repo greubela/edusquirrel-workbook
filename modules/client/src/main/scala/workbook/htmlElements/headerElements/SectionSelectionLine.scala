@@ -17,7 +17,7 @@ case class SectionSelectionLine(fullInfo: FullInfo, sections: List[WorkbookSecti
 
   private def isSectionActiveSignal(section: WorkbookSection): Signal[Boolean] = {
     fullInfo.signals.workbook.map(allWorkbookInfo => {
-      allWorkbookInfo.map(curInfo => curInfo.config.activeSection == section).getOrElse(false)
+      allWorkbookInfo.exists(curInfo => curInfo.config.activeSection == section)
     })
   }
 

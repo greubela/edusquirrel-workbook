@@ -3,7 +3,8 @@ package workbook.htmlElements.basic
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import datastructures.web.file.{FileDescription, FullImage, LoadedFile}
-import datastructures.web.storage.AsyncDataCache
+import it.evadid.core.datastructures.state.State
+import it.evadid.core.datastructures.state.StateHelper.*
 import workbook.model.info.*
 
 import scala.concurrent.ExecutionContext
@@ -28,8 +29,8 @@ object HtmlImageElement {
   }
 
   def apply(fileDescription: FileDescription, fullInfo: FullInfo): HtmlImageElement = {
-    val fullImgVar: Var[Option[LoadedFile]] = fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(ExecutionContext.global)
-    val imageSignal: StrictSignal[Option[FullImage]] = fullImgVar.signal.mapLazy(_.map(_.toImage))
+    val fullImgState: State[Option[LoadedFile]] = fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(using ExecutionContext.global)
+    val imageSignal: StrictSignal[Option[FullImage]] = fullImgState.toAirstreamVar.signal.mapLazy(_.map(_.toImage))
     HtmlImageElement(imageSignal, fullInfo)
   }
 

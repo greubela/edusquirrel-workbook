@@ -1,6 +1,6 @@
 package datastructures.core.vm.code.defining
 
-import it.evadid.core.datastructures.language.AppLanguage.{Java, JavaScript, Python}
+import it.evadid.core.datastructures.language.AppLanguage.{Cpp, Java, JavaScript, Lisp, Python}
 import datastructures.core.vm.code.{BeDefineStructure, BeExpression}
 import datastructures.core.vm.code.tree.BeExpressionNode
 import datastructures.core.vm.io.BeExpressionIO
@@ -114,26 +114,30 @@ case class BeDefineClass(
           val finalBody = if (bodyLines.isEmpty) List(s"$indent// TODO: add members") else bodyLines.toList
           ((s"class $className {" :: finalBody) :+ "}").mkString("\n")
 
-        case Java =>
+        case Java | Cpp =>
           val indent = "    "
           val fieldLines = attributes.map { attribute =>
             val attributeName = attribute.name.getInLanguage(humanLanguage)
-            val attributeType = ensureDefaultType(attribute.variableType, Java, "Object")
-            s"$indent private $attributeType $attributeName;"
+            val defaultType = if (programmingLanguage == Java) "Object" else "auto"
+            val attributeType = ensureDefaultType(attribute.variableType, programmingLanguage, defaultType)
+            val visibility = if (programmingLanguage == Java) "private " else ""
+            s"$indent${visibility}$attributeType $attributeName;"
           }
 
           val methodBlocks = methods.map { method =>
             val methodName = method.functionTypeInfo.displayName.getInLanguage(humanLanguage)
-            val returnType = method.outputs.map(output => ensureDefaultType(output.variableType, Java, "void")).getOrElse("void")
+            val defaultReturnType = if (programmingLanguage == Java) "void" else "auto"
+            val returnType = method.outputs.map(output => ensureDefaultType(output.variableType, programmingLanguage, defaultReturnType)).getOrElse(defaultReturnType)
             val parameters = method.inputs
               .map { input =>
-                val paramType = ensureDefaultType(input.variableType, Java, "Object")
+                val paramType = ensureDefaultType(input.variableType, programmingLanguage, if (programmingLanguage == Java) "Object" else "auto")
                 val paramName = input.name.getInLanguage(humanLanguage)
                 s"$paramType $paramName"
               }
               .mkString(", ")
-            val header = s"$indent public $returnType $methodName($parameters) {"
-            val body = indentLines(splitLines(method.body.expressionIO.getInLanguage(Java, humanLanguage)), indent + indent)
+            val visibility = if (programmingLanguage == Java) "public " else ""
+            val header = s"$indent$visibility$returnType $methodName($parameters) {"
+            val body = indentLines(splitLines(method.body.expressionIO.getInLanguage(programmingLanguage, humanLanguage)), indent + indent)
             val ensuredBody = if (body.nonEmpty) body else List(s"$indent${indent}// TODO: implement")
             (header :: ensuredBody) :+ s"$indent }"
           }
@@ -152,7 +156,14 @@ case class BeDefineClass(
           }
 
           val finalBody = if (bodyLines.isEmpty) List(s"$indent// TODO: add members") else bodyLines.toList
-          ((s"public class $className {" :: finalBody) :+ "}").mkString("\n")
+          val classHeader = if (programmingLanguage == Java) s"public class $className {" else s"class $className {"
+          (classHeader :: (finalBody :+ "}")).mkString("\n")
+
+        case Lisp =>
+          val slotNames = attributes.map(_.name.getInLanguage(humanLanguage).toLowerCase).mkString(" ")
+          val classLine = s"(defclass ${className.toLowerCase} () ($slotNames))"
+          val methodLines = methods.map(_.expressionIO.getInLanguage(Lisp, humanLanguage)).filter(_.trim.nonEmpty)
+          if (methodLines.isEmpty) classLine else classLine + "\n" + methodLines.mkString("\n")
 
         case _ => ""
       }

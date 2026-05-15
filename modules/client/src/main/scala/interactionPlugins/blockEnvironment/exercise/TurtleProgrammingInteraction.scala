@@ -35,7 +35,7 @@ case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expected
     val initRenderer = BeRenderingConfig.defaultWithLanguage(fullInfo.signals.currentLanguage.now())
     val rendererVar = Var(initRenderer)
 
-    fullInfo.signals.currentLanguage.foreach(currentLanguage => rendererVar.update(_.copy(language = currentLanguage)))(unsafeWindowOwner)
+    fullInfo.signals.currentLanguage.foreach(currentLanguage => rendererVar.update(_.copy(language = currentLanguage)))(using unsafeWindowOwner)
 
     val initControllerState: BeEditorControllerState = BeEditorControllerState.default()
     EditorState(
@@ -49,7 +49,7 @@ case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expected
   private val fullscreenEditor = HtmlFullscreenTurtleEditorElement(editorState)
 
   private def openFullEditor(): Unit = {
-    fullInfo.technical.makeFullscreen(fullscreenEditor.getDomElement())
+    fullInfo.technical.makeFullscreen(fullscreenEditor)
   }
 
   private val programmingView = TurtleProgrammingPreview(fullInfo, editorState, expectedSvgResult)

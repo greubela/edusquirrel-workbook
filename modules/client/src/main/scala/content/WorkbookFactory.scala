@@ -14,12 +14,12 @@ trait WorkbookFactory {
 
   def availableLanguages: List[HumanLanguage] = List(English, German) // todo remove default value
   def defaultSectionActiveNr: Int  = 0
-  def estimatedDurations: Map[WorkbookInteraction[_], Double] = Map()  // todo remove default value
+  def estimatedDurations: Map[WorkbookInteraction[?], Double] = Map()  // todo remove default value
 
   def createEverything: AllWorkbookInfo = {
     val workbook = createWorkbook
-    val section: Option[WorkbookSection] = if (workbook.sections.size <= defaultSectionActiveNr) None else Some(workbook.sections(defaultSectionActiveNr))
-    println("section active: " + section + "(" + workbook.sections.size + ")")
+    val section: Option[WorkbookSection] = workbook.sections.lift(defaultSectionActiveNr)
+    //println("section active: " + section + "(" + workbook.sections.size + ")")
     val config = WorkbookConfig(section)
     AllWorkbookInfo(workbook, config, estimatedDurations)
   }
@@ -36,7 +36,7 @@ trait WorkbookFactory {
 
   def createWorkbook: Workbook
 
-  protected def createTextInput(id: String = nextId()): HtmlWorkbookElement = {
+  protected def createTextInput(id: String = nextId()): WorkbookInteraction[String] = {
     HtmlBasicTextInteraction(fullInfo, id)
   }
 

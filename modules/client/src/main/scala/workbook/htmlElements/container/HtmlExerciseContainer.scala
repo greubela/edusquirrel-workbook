@@ -7,10 +7,12 @@ import workbook.model.info.{AllWorkbookInfo, FullInfo}
 
 case class HtmlExerciseContainer(
                                   fullInfo: FullInfo,
-                                  children: List[HtmlWorkbookElement],
+                                  containerElements: List[HtmlWorkbookElement],
                                   level: Int = 1,
                                   isMainContainer: Boolean = true
                                 ) extends HtmlWorkbookElement {
+
+  override lazy val workbookChildren: List[HtmlWorkbookElement] = containerElements
 
   private val normalizedLevel: Int = math.max(1, math.min(6, level))
 
@@ -20,7 +22,7 @@ case class HtmlExerciseContainer(
     //L.cls := "container-exercise style-vbox",
    // L.cls := s"container-level-$normalizedLevel",
     L.cls := clsString,
-    L.children <-- L.Var(children.map(_.getDomElement())).signal
+    L.children <-- L.Var(workbookChildren.map(_.getDomElement())).signal
   )
 
   override def getDomElement(): L.Element = domElement

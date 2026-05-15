@@ -83,6 +83,26 @@ case class BeDefineFunction(
             .changeIntLevel(-1)
             .appendNextLine("}")
             .toString
+        case Java | Cpp =>
+          val returnType = outputs
+            .map(_.variableType.formatTypeForDisplay.getInLanguage(programmingLanguage).trim)
+            .filter(_.nonEmpty)
+            .getOrElse(if (programmingLanguage == Java) "void" else "auto")
+          val parameters = inputs.map { input =>
+            val paramType = input.variableType.formatTypeForDisplay.getInLanguage(programmingLanguage).trim
+            val renderedType = if (paramType.nonEmpty) paramType else if (programmingLanguage == Java) "Object" else "auto"
+            s"$renderedType ${input.name.getInLanguage(humanLanguage)}"
+          }.mkString("(", ", ", ")")
+          val builder = CodeStringBuilder()
+            .appendNextLine(s"$returnType $functionName$parameters {")
+            .changeIntLevel(1)
+          if (bodyStr.trim.isEmpty) builder.appendNextLine(if (programmingLanguage == Java) "// pass" else "// pass")
+          else builder.appendAsLines(bodyStr)
+          builder.changeIntLevel(-1).appendNextLine("}").toString
+        case Lisp =>
+          val parameters = inputs.map(_.name.getInLanguage(humanLanguage).toLowerCase).mkString("(", " ", ")")
+          val bodyLines = if (bodyStr.trim.isEmpty) "  nil" else bodyStr.linesIterator.map("  " + _).mkString("\n")
+          s"(defun ${functionName.toLowerCase} $parameters\n$bodyLines\n)"
         case _ => ""
       }
     }

@@ -1,17 +1,19 @@
 package content
 
 import datastructures.web.file.FileDescription
+import interactionPlugins.gpt.GptInteractionLine
 import interactionPlugins.turtleStitchPlugin.{TurtleStitchExploreProjectExercise, TurtleStitchRecreateShapeExercise}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import workbook.htmlElements.basic.*
 import workbook.model.*
 import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.FullInfo
+
 case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 
 
   override val availableLanguages: List[HumanLanguage] = List(German, English, Spanish, French, Ukrainian, Danish, Turkish)
-  
+
   override lazy val createWorkbook: Workbook = {
     workbook(
       "EmbroideryWorkbook/workbookTitle",
@@ -28,7 +30,7 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
     )
   }
 
-  
+
   private def createExploreExerciseDownloadInteraction(filename: String): HtmlWorkbookElement = {
     val fileDesc = FileDescription.relativeToResourceFolder("workbookresources/embroidery/existingProjects/" + filename + ".xml")
     TurtleStitchExploreProjectExercise.createElementLine(fullInfo, fileDesc)
@@ -44,7 +46,10 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
     image(FileDescription.relativeToResourceFolder("workbookresources/embroidery/images/" + imageName + "." + imgType))
   }
 
-  private lazy val firstSection: WorkbookSection =
+  private lazy val firstSection: WorkbookSection = {
+
+    val textInputGpt1 = createTextInput()
+
     section(
       "EmbroideryWorkbook/section1Title",
       List(
@@ -53,8 +58,10 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
           instructionHtml("EmbroideryWorkbook/Ex1Instr1"),
           createExploreExerciseDownloadInteraction("simple_forward"),
           instructionHtml("EmbroideryWorkbook/Ex1Instr2"),
-          createTextInput(),
+          textInputGpt1,
+          GptInteractionLine(fullInfo, textInputGpt1, "EmbroideryWorkbook/Ex1Instr1", Some("EmbroideryWorkbook/Ex1Instr1Scaff"), None),
           instructionHtml("EmbroideryWorkbook/Ex1Instr3"),
+          checklist("EmbroideryWorkbook/ConfirmSteps"),
           instructionHtml("EmbroideryWorkbook/Ex1Instr4"),
           createTextInput(),
           instructionHtml("EmbroideryWorkbook/Ex1Instr5"),
@@ -82,6 +89,7 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
         )),
       )
     )
+  }
 
 
   private lazy val secondSection: WorkbookSection =

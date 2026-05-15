@@ -16,7 +16,7 @@ case class BeBlockUnparsable(beExpressionUnsupported: BeExpressionUnparsable) ex
 
     val container = RectangleShape
     val text = TextShape(LanguageMap.universalMap(beExpressionUnsupported.originalSource)).addAmends(renderingInformation.factory.defaultTextAmends)
-    val res = ShapeAroundShape(container, text) addAmends (renderingInformation.factory.errorColorsAmend)
+    val res = ShapeAroundShape(container, text).addAmends(renderingInformation.factory.errorColorsAmend)
 
     (ControlFlowEmpty(), res)
   }

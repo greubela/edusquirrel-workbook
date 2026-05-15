@@ -2,12 +2,18 @@
 import com.raquo.laminar.api.L.*
 import content.{CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, plantworkshop}
 import interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
+import it.evadid.core.datastructures.chat.MessengerModel
+import it.evadid.distribution.clients.ExecutionClient
+import it.evadid.distribution.command.ExecutionInfo
+import it.evadid.distribution.commandTypes.LLMCommands
+import it.evadid.distribution.commandTypes.LLMCommands.*
+import it.evadid.util.Logger
 import org.scalajs.dom
-import workbook.model.info.FullInfo
+import workbook.htmlElements.HtmlFullWorkbookApp
 
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
+import scala.util.*
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.scalajs.js
-private def info = FullInfo.singleton
 
 private val tryToLoad: List[String] = List("plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "feedbackDemoRoot")
 
@@ -18,12 +24,12 @@ private def load(containerId: String): Unit = {
       plantworkshop.PlantWorkshopApp.appElement
     }
     case "workbookEmbroidery" => {
-      info.control.changeWorkbook(CreateEmbroideryWorkbook(info))
-      info.getDomElement()
+      HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreateEmbroideryWorkbook(HtmlFullWorkbookApp.fullInfo))
+      HtmlFullWorkbookApp.getDomElement()
     }
     case "workbookPlantWorkshop" => {
-      info.control.changeWorkbook(CreatePlantworkshopWorkbook(info))
-      info.getDomElement()
+      HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreatePlantworkshopWorkbook(HtmlFullWorkbookApp.fullInfo))
+      HtmlFullWorkbookApp.getDomElement()
     }
     case "feedbackDemoRoot" => {
       FeedbackDemoElement.element()
@@ -37,16 +43,22 @@ private def load(containerId: String): Unit = {
   else render(container, domElement)
 }
 
-
 private def testCalculations(): Unit = {
-  println("still alive 444 ?")
+
+  println("testing some calculations atm :)")
+/*
+  val systemPrompt: String = "Please entertain this human :-)"
+  val backend: ExecutionClient = HtmlFullWorkbookApp.fullInfo.technical.backendServerExecutor
+  val request: MessengerChatCompletionRequest = MessengerChatCompletionRequest(systemPrompt, MessengerModel.testCompletion)
+  val resultFut: Future[ExecutionInfo] = LLMCommands.completeLLMCommandFactory.sendCommandTo(backend, Logger(), request)
+
+  resultFut.onComplete(res => println("future completed: " + res))(using ExecutionContext.global)
+*/
 }
 
 @main
 def mainApp(): Unit = {
   //  FullInfo.resetLocalStorage()
-
-  FullInfo.setDummyUser()
 
   if (js.typeOf(js.Dynamic.global.selectDynamic("document")) != "undefined") {
     val canLoad: List[String] = tryToLoad.flatMap(id => if (dom.document.getElementById(id) != null) Some(id) else None)

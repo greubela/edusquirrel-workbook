@@ -61,7 +61,7 @@ case class CodeMirrorEditor(
                   updatingFromVar = false
                 }
               }
-            }(ctx.owner)
+            }(using ctx.owner)
 
           case None =>
             dom.console.error("CodeMirror facade is not available on window.EduSquirrelCodeMirror")

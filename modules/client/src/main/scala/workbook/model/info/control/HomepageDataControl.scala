@@ -6,7 +6,7 @@ import workbook.model.abstractions.WorkbookInteraction
 import workbook.model.info.*
 case class HomepageDataControl(fullInfo: FullInfo) {
 
-  private def interactions: List[WorkbookInteraction[_]] = fullInfo.current.allAvailableInteractions
+  private def interactions: List[WorkbookInteraction[?]] = fullInfo.current.allAvailableInteractions
 
 
   def downloadAllAvailableData(): Unit = fullInfo.current.workbookUserData.foreach(_.downloadAllData())
@@ -17,7 +17,7 @@ case class HomepageDataControl(fullInfo: FullInfo) {
     interactions.foreach(_.interactionVariable.syncToAll())
     downloadAllAvailableData()
     // Clear old Status
-    FullInfo.resetLocalStorage()
+    fullInfo.technical.resetLocalStorage()
     interactions.foreach(_.resetInteraction(syncBefore = false, syncAfter = false))
   }
 
