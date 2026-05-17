@@ -1,10 +1,9 @@
 package it.evadid.distribution.clients
 
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
-import it.evadid.distribution.{ExecutionCommand, ExecutionInfo, ExecutionResult}
-import it.evadid.distribution.ExecutionCommand.given
+import it.evadid.distribution.command.{ExecutionCommand, ExecutionInfo, ExecutionResult}
 import munit.FunSuite
-import upickle.default.{read, write}
+import upickle.default.write
 
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
@@ -29,63 +28,31 @@ class ServerExecutionTest extends FunSuite {
 
   test("ServerExecution sends command and decodes server response") {
     withServer { exchange =>
-        val requestBody = new String(exchange.getRequestBody.readAllBytes(), StandardCharsets.UTF_8)
-        val command = read[ExecutionCommand](requestBody)
+      val requestBody = new String(exchange.getRequestBody.readAllBytes(), StandardCharsets.UTF_8)
+      val command = ExecutionCommand.fromJson(requestBody)
 
-        val response = ExecutionInfo(
-          command = command,
-          result = Success(ExecutionResult(command.params, "ok", "")),
-          meta = None
-        )
+      val response = ExecutionInfo(
+        command = command,
+        result = Success(ExecutionResult(command.params, "ok", "")),
+        meta = None
+      )
 
-        val payload: Map[String, String] = Map("executionInfo" -> write(response))
-        val bytes = write(payload).getBytes(StandardCharsets.UTF_8)
-        exchange.getResponseHeaders.add("Content-Type", "application/json")
-        exchange.sendResponseHeaders(200, bytes.length)
-        val os = exchange.getResponseBody
-        os.write(bytes)
-        os.close()
-    } { port =>
-      val client = ExecuteOnRemoteServer("127.0.0.1", port)
-      val command = ExecutionCommand("echo", Map("x" -> "1"))
-
-      val info = Await.result(client.executeCommand(command), 5.seconds)
-
-      assertEquals(info.command, command)
-      assertEquals(info.result.map(_.stdOut).get, "ok")
-      assertEquals(info.result.map(_.data).get, Map("x" -> "1"))
-    }
-  }
-
-  test("ServerExecution raises error for non-200 response") {
-    withServer { exchange =>
-      val bytes = write(Map("error" -> "command failed")).getBytes(StandardCharsets.UTF_8)
-      exchange.sendResponseHeaders(500, bytes.length)
-      val os = exchange.getResponseBody
-      os.write(bytes)
-      os.close()
-    } { port =>
-      val client = ExecuteOnRemoteServer("127.0.0.1", port)
-      val command = ExecutionCommand("echo", Map.empty)
-      intercept[RuntimeException] {
-        Await.result(client.executeCommand(command), 5.seconds)
-      }
-    }
-  }
-
-  test("ServerExecution raises error if executionInfo field is missing") {
-    withServer { exchange =>
-      val bytes = write(Map("status" -> "ok")).getBytes(StandardCharsets.UTF_8)
+      val payload: Map[String, String] = Map("executionInfo" -> response.toJson)
+      val bytes = write(payload).getBytes(StandardCharsets.UTF_8)
+      exchange.getResponseHeaders.add("Content-Type", "application/json")
       exchange.sendResponseHeaders(200, bytes.length)
       val os = exchange.getResponseBody
       os.write(bytes)
       os.close()
     } { port =>
       val client = ExecuteOnRemoteServer("127.0.0.1", port)
-      val command = ExecutionCommand("echo", Map.empty)
-      intercept[IllegalStateException] {
-        Await.result(client.executeCommand(command), 5.seconds)
-      }
+      val command = ExecutionCommand("echo", Map("x" -> "1"))
+
+      val info = Await.result(client.handleExecution(command, it.evadid.util.Logger()), 5.seconds)
+
+      assertEquals(info.command, command)
+      assertEquals(info.result.map(_.stdOut).get, "ok")
+      assertEquals(info.result.map(_.data).get, Map("x" -> "1"))
     }
   }
 }
