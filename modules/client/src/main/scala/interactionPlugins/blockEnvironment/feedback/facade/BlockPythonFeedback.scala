@@ -1,7 +1,9 @@
 package interactionPlugins.blockEnvironment.feedback
 
 import datastructures.core.vm.code.BeExpression
+import interactionPlugins.blockEnvironment.feedback.ai.CommandLlmClient
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.distribution.clients.{ExecuteOnRemoteServer, ExecutionClient}
 
 import scala.concurrent.{ExecutionContext, Future}
 /**
@@ -19,12 +21,14 @@ object BlockPythonFeedback:
     exerciseId: String,
     currentLanguage: HumanLanguage,
     studentProgram: BeExpression,
-    submissionNr: Int
+    submissionNr: Int,
+    executor: ExecutionClient
   )(using ExecutionContext): Future[UltrichsNewCoolFeedback] =
     BlockFeedbackService.generateFeedbackForExerciseId(
       exerciseId = exerciseId,
       studentProgram = studentProgram,
       submissionNr = submissionNr,
-      humanLanguage = currentLanguage
+      humanLanguage = currentLanguage,
+      llmClient = CommandLlmClient(executor)
     )
 
