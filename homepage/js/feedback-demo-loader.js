@@ -2,6 +2,7 @@
     var cacheBust = "v=" + Date.now();
     var origin = window.location.origin || "";
     var paths = [
+        "../../artifacts/newest/client.js",
         "../js/app/main.js",
         "./js/app/main.js",
         origin + "/js/app/main.js",
@@ -9,7 +10,6 @@
         "../target/scala-3.3.3/workbookapp-fastopt/main.js",
         "/target/scala-3.3.3/workbookapp-fastopt/main.js",
         "./../target/scala-3.3.3/workbookapp-fastopt/main.js",
-        "../../artifacts/newest/client.js",
     ];
 
     function loadAt(index) {
