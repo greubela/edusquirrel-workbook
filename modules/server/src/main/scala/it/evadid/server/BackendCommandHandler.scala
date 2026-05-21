@@ -2,7 +2,7 @@ package it.evadid.server
 
 import it.evadid.distribution.clients.*
 import it.evadid.distribution.commandTypes.LLMCommands
-import it.evadid.distribution.commandTypes.LLMCommands.{MessengerChatCompletionRequest, MessengerChatCompletionResponse}
+import it.evadid.distribution.commandTypes.LLMCommands.{FeedbackLlmRequest, MessengerChatCompletionRequest, MessengerChatCompletionResponse}
 import it.evadid.executors.MathExecutor
 import it.evadid.util.*
 import it.evadid.distribution.command.*
@@ -16,6 +16,10 @@ object BackendCommandHandler {
 
     LLMCommands.completeLLMCommandFactory.toExecutionClient(
       (request: MessengerChatCompletionRequest, logger: Logger) => CompleteChatWithLLMCommand.handleLlmChatRequest(request, logger)
+    ),
+
+    LLMCommands.feedbackLlmCommandFactory.toExecutionClient(
+      (request: FeedbackLlmRequest, logger: Logger) => CompleteChatWithLLMCommand.handleFeedbackLlmRequest(request, logger)
     )
 
   ))

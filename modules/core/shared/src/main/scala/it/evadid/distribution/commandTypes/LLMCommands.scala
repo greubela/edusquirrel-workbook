@@ -29,5 +29,14 @@ object LLMCommands {
     DistributionSerializer.serializerMessageModelJson
   )
 
+  case class FeedbackLlmRequest(prompt: String, systemPrompt: String)
+
+  val feedbackLlmCommandFactory: ExecutionCommandFactory[FeedbackLlmRequest, String] =
+    ExecutionCommandFactory(
+      "feedback-llm-request",
+      DistributionSerializer.serializerFeedbackLlmRequestJson,
+      DistributionSerializer.serializerStringJson
+    )
+
 
 }
