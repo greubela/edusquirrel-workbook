@@ -1,6 +1,6 @@
 package workbook.model.interaction.sync
 
-trait ExerciseVariableSyncSource {
+trait SyncDestination {
 
   def syncTo(key: String, value: String): Unit
 
