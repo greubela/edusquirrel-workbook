@@ -8,6 +8,7 @@ body {
     color: var(--color-text-primary);
     margin: 0;
     padding: 0;
+    padding-bottom: var(--page-bottom-padding, calc(var(--space-xl) * 5));
     line-height: 1.6;
     background: linear-gradient(
             180deg,
@@ -306,7 +307,6 @@ h3 {
     background-color: var(--color-surface);
     padding: var(--space-md);
     flex: 1;
-/ / Each item grows equally
 }
 
 .preview-line .preview-content {
@@ -390,12 +390,16 @@ button:disabled {
     flex-direction: column;
     gap: var(--space-md);
     background: var(--color-interaction-background);
+    overflow-anchor: none;
 }
 
 .slide-deck-image {
     width: 100%;
     display: flex;
     justify-content: center;
+    align-items: center;
+    aspect-ratio: 3 / 2;
+    overflow: hidden;
     background: var(--color-surface);
     border: 1px solid var(--color-container-border-passive);
     border-radius: var(--radius-md);
@@ -403,25 +407,80 @@ button:disabled {
 }
 
 .slide-deck-image img {
-    max-width: 100%;
-    height: auto;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
     border-radius: var(--radius-sm);
-}
-
-.slide-deck-source,
-.slide-deck-description,
-.slide-deck-text {
-    padding: var(--space-sm) var(--space-md);
-    border: 1px solid var(--color-container-border-passive);
-    border-radius: var(--radius-sm);
-    background: var(--color-container-background);
 }
 
 .slide-deck-source {
+    padding: var(--space-md) var(--space-lg);
+    border: 1px solid var(--color-container-border-passive);
+    border-radius: var(--radius-sm);
+    background: var(--color-container-background);
     font-size: 0.9rem;
     color: var(--color-text-secondary);
 }
 
+.slide-deck-description {
+    padding: calc(var(--space-xl) + 6px) calc(var(--space-xl) + 8px) var(--space-sm);
+    border: 1px solid #bbdefb;
+    border-bottom: 0;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    background: var(--color-container-background);
+    font-weight: 700;
+    color: #1565c0;
+}
+
+.slide-deck-text {
+    padding: var(--space-sm) calc(var(--space-xl) + 8px) calc(var(--space-xl) + 6px);
+    border: 1px solid #bbdefb;
+    border-top: 0;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    background: var(--color-container-background);
+}
+
+.slide-deck-text-title {
+    display: block;
+    margin-bottom: var(--space-sm);
+    color: #1565c0;
+    font-weight: 700 !important;
+}
+
+.slide-deck-text-body {
+    line-height: 1.6;
+}
+
+.slide-deck-text.two-columns {
+    display: grid;
+    grid-template-columns: 3fr 7fr;
+    gap: var(--space-lg);
+}
+
+.slide-deck-column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    background: var(--color-container-background);
+    border: 1px solid var(--color-container-border-passive);
+    border-radius: var(--radius-sm);
+    padding: var(--space-md);
+}
+
+.slide-deck-column-title {
+    color: var(--color-container-accent);
+    font-weight: 700;
+}
+
+.slide-deck-column-body {
+    line-height: 1.6;
+}
+
+@media (max-width: 860px) {
+    .slide-deck-text.two-columns {
+        grid-template-columns: 1fr;
+    }
+}
 
 /* --- SVG Button Styling --- */
 .svg-button {

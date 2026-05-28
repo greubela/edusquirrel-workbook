@@ -63,29 +63,32 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
   }
 
   private def createWiringSlideshow(): SlideDeckExercise = {
-    val slides = List(
-      SlidePanel.imageSlide(
-        FileDescription.relativeToResourceFolder("img/plantworkshop/step0.png"),
-        textMapId = "PlantWorkshop/wiringSlideText1",
-        sourceMapId = "PlantWorkshop/wiringSlideSource",
-        descriptionMapId = "PlantWorkshop/wiringSlideDescription",
-        fullInfo = fullInfo
-      ),
-      SlidePanel.imageSlide(
-        FileDescription.relativeToResourceFolder("img/plantworkshop/step1.png"),
-        textMapId = "PlantWorkshop/wiringSlideText2",
-        sourceMapId = "PlantWorkshop/wiringSlideSource",
-        descriptionMapId = "PlantWorkshop/wiringSlideDescription",
-        fullInfo = fullInfo
-      ),
-      SlidePanel.imageSlide(
-        FileDescription.relativeToResourceFolder("img/plantworkshop/step2.png"),
-        textMapId = "PlantWorkshop/wiringSlideText3",
-        sourceMapId = "PlantWorkshop/wiringSlideSource",
-        descriptionMapId = "PlantWorkshop/wiringSlideDescription",
-        fullInfo = fullInfo
-      )
-    )
+    val slides = (1 to 11).toList.map { i =>
+      if (i == 3 || i == 4 || i == 8) {
+        SlidePanel.imageSlideTwoColumns(
+          FileDescription.relativeToResourceFolder(s"img/plantworkshop/schaltkreis/Plant conv $i.png"),
+          leftLabel = s"PlantWorkshop/LLabel",
+          rightLabel = s"PlantWorkshop/RLabel",
+          leftBody = s"PlantWorkshop/wiringSlideTextL${i}",
+          rightBody = s"PlantWorkshop/wiringSlideTextR${i}",
+          fullInfo = fullInfo
+        )
+      } else if (i == 5) {
+        SlidePanel.imageSlide(
+          FileDescription.relativeToResourceFolder(s"img/plantworkshop/schaltkreis/Plant conv $i.png"),
+          textMapId = s"PlantWorkshop/wiringSlideText${i}",
+          descriptionMapId = s"PlantWorkshop/wiringSlideCurrentStatus",
+          fullInfo = fullInfo
+        )
+      } else {
+        SlidePanel.imageSlide(
+          FileDescription.relativeToResourceFolder(s"img/plantworkshop/schaltkreis/Plant conv $i.png"),
+          textMapId = s"PlantWorkshop/wiringSlideText${i}",
+          descriptionMapId = s"PlantWorkshop/wiringSlideHelp",
+          fullInfo = fullInfo
+        )
+      }
+    }
 
     SlideDeckExercise(
       fullInfo = fullInfo,
@@ -93,6 +96,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       slides = slides
     )
   }
+
 
   private def createComponentsSection(): WorkbookSection = {
     val componentChecklist = checklist(
