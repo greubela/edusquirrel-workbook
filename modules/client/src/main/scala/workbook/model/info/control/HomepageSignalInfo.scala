@@ -3,6 +3,7 @@ package workbook.model.info.control
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
+import it.evadid.core.datastructures.state.StateHelper.*
 import workbook.model.WorkbookSection
 import workbook.model.info.*
 import workbook.singletons.WorkbookLanguageInfo
@@ -11,7 +12,7 @@ import scala.concurrent.*
 case class HomepageSignalInfo(fullInfo: FullInfo) {
 
   private lazy val baseSignal: StrictSignal[HomepageInfo] = {
-    fullInfo.homepageInfoVar.signal
+    fullInfo.homepageInfoState.signal
   }
 
   lazy val activeSection: StrictSignal[Option[WorkbookSection]] = {
@@ -24,14 +25,14 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
   }
 
   lazy val availableLanguages: StrictSignal[List[HumanLanguage]] = {
-    val default = fullInfo.homepageInfoVar.now().homepageDefaults.availableLanguages
+    val default = fullInfo.homepageInfoState.now().homepageDefaults.availableLanguages
     baseSignal.mapLazy(_.workbookInfo.map(_.loadedWorkbook.availableInLanguages).getOrElse(default))
   }
 
   lazy val currentLanguage: StrictSignal[HumanLanguage] = baseSignal.mapLazy(_.currentLanguage)
 
   def languageMapOpFromId(languageMapId: String): StrictSignal[Option[LanguageMap[HumanLanguage]]] = {
-    fullInfo.technical.languageMapStorage.loadIntoVariable(languageMapId)(ExecutionContext.global).signal
+    fullInfo.technical.languageMapStorage.loadIntoVariable(languageMapId)(using ExecutionContext.global).toAirstreamVar.signal
     //Var(None).signal
   }
 

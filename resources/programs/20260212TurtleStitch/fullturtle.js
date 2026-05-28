@@ -50,7 +50,7 @@
 
   window.TurtleStitchPoC = api;
 
-  const BASE_PROG_DIR = "../resources/programs/20260212TurtleStitch/";
+  const BASE_PROG_DIR = "../../resources/programs/20260212TurtleStitch/";
   // keep for backward compatibility with scripts that read this global directly
   window.base_prog_dir = BASE_PROG_DIR;
 

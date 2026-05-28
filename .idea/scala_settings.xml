@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ScalaProjectSettings">
-    <option name="compilerHighlightingDelay" value="500" />
-    <option name="compilerHighlightingScala3" value="false" />
-    <option name="incrementalHighlighting" value="true" />
     <option name="migrateConfigurationsNotificationShown" value="true" />
-    <option name="showImplicitConversions" value="true" />
   </component>
 </project>

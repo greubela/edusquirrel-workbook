@@ -36,6 +36,13 @@ object FileDescription {
     override val toString: String = "NamedDataFileDescription(" + fullPath + ": " + data.length + " bytes)"
   }
 
+  def relativeToArtifactsFolder(pathRelativeToResourceFolder: String, copyrightInfo: CopyrightInfo = unknownCopyrightInfo): FileDescription = {
+    val str = if (pathRelativeToResourceFolder.startsWith("/")) pathRelativeToResourceFolder.substring(1) else pathRelativeToResourceFolder
+    val url = new URL(s"../../artifacts/" + str, dom.window.location.href)
+    val res = FileDescription(url)
+    res
+  }
+
   def relativeToResourceFolder(pathRelativeToResourceFolder: String, copyrightInfo: CopyrightInfo = unknownCopyrightInfo): FileDescription = {
     val str = if (pathRelativeToResourceFolder.startsWith("/")) pathRelativeToResourceFolder.substring(1) else pathRelativeToResourceFolder
     val url = new URL(s"../../resources/" + str, dom.window.location.href)

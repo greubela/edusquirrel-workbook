@@ -14,11 +14,11 @@ case class TurtleStitchExpectedShapeCard(fullInfo: FullInfo, imageElement: HtmlI
     text <-- fullInfo.signals.stringFromLanguageMapId("TurtleStitch/showExpected")
   )
 
-  private val imgElementSignal: Signal[Element] = imageElement.getDomSignal
+  private val imgElementSignal: Signal[List[Element]] = imageElement.getDomSignal.map(preview => List(headline, preview))
 
   private val domElement: Element = div(
     cls := "preview-card",
-    children <-- imgElementSignal.map(preview => List(headline, preview)),
+    children <-- imgElementSignal,
   )
 
   override def getDomElement(): Element = domElement

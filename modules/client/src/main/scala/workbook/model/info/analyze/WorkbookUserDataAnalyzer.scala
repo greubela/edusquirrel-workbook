@@ -7,13 +7,14 @@ import upickle.default.ReadWriter.join
 import util.web.DownloadHelper
 import workbook.model.info.*
 import workbook.model.info.AllWorkbookInfo.WorkbookMetadata
+import workbook.model.info.control.TechnicalControl
 import workbook.model.interaction.InteractionVariableState.SerializedExerciseVariableState
 import workbook.model.interaction.SerializedInteractionHistory
 import workbook.model.interaction.history.UpdateImportance
 import workbook.user.User
 
 import scala.concurrent.ExecutionContext
-case class WorkbookUserDataAnalyzer(userInfo: AllUserInfo, workbookInfo: AllWorkbookInfo) {
+case class WorkbookUserDataAnalyzer(technical: TechnicalControl, userInfo: AllUserInfo, workbookInfo: AllWorkbookInfo) {
 
   private given uiRW: upickle.ReadWriter[UpdateImportance] = upickle.readwriter[String].bimap[UpdateImportance](_.toString, UpdateImportance.valueOf)
 
@@ -42,7 +43,7 @@ case class WorkbookUserDataAnalyzer(userInfo: AllUserInfo, workbookInfo: AllWork
 
   def downloadAllData(): Unit = {
     println("download session data :)")
-    val history: List[SerializedInteractionHistory] = workbookInfo.loadedWorkbook.allInteractionElements.map(_.interactionVariable.serializeHistory())
+    val history: List[SerializedInteractionHistory] = workbookInfo.loadedWorkbook.allContainedInteractions.map(_.interactionVariable.serializeHistory())
     val data = SessionData(userInfo.user, history, workbookInfo.getMetadata(), System.currentTimeMillis())
     val str = upickle.default.write(data)
     val name = s"${data.currentUserInfo.id}-${data.metadata.workbookId}-${data.epochTimestampMillis}.json"
@@ -52,7 +53,7 @@ case class WorkbookUserDataAnalyzer(userInfo: AllUserInfo, workbookInfo: AllWork
   private def tryToLoad(sessionData: SessionData): Unit = {
     println("Trying to load session data :)")
     if (sessionData.currentUserInfo.id == userInfo.user.id) {
-      workbookInfo.loadedWorkbook.allInteractionElements.foreach(curInteraction => {
+      workbookInfo.loadedWorkbook.allContainedInteractions.foreach(curInteraction => {
         sessionData.interactionHistory.foreach(curHistory => {
           curInteraction.interactionVariable.addHistory(curHistory)
         })
@@ -62,11 +63,11 @@ case class WorkbookUserDataAnalyzer(userInfo: AllUserInfo, workbookInfo: AllWork
 
   def upload(file: FileDescription): Unit = {
     println("Trying to parse session data :)")
-    FullInfo.singleton.technical.fileStore.loadAsFuture(file)(ExecutionContext.global).foreach(loadedFile => {
+    technical.fileStore.loadAsFuture(file)(using ExecutionContext.global).foreach(loadedFile => {
       val str = loadedFile.fileDataAsUtf8String
       val data: SessionData = upickle.default.read(str)
       tryToLoad(data)
-    })(ExecutionContext.global)
+    })(using ExecutionContext.global)
   }
 
 

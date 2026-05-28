@@ -1,7 +1,7 @@
 package interactionPlugins.blockEnvironment.feedback
 
 import datastructures.core.vm.code.BeExpression
-import interactionPlugins.blockEnvironment.feedback.ai.{FetchProxyLlmClient, LlmClient, PromptTemplates, QualityGate}
+import interactionPlugins.blockEnvironment.feedback.ai.{LlmClient, PromptTemplates, QualityGate}
 import interactionPlugins.blockEnvironment.feedback.diagnosis.{DiagnosisAdapters, DiagnosisEngine}
 import interactionPlugins.blockEnvironment.feedback.ml.*
 import interactionPlugins.blockEnvironment.feedback.rules.{PythonStaticRules, VmStaticRules}
@@ -69,8 +69,6 @@ object BlockFeedbackService:
     }
   }
 
-  private lazy val proxyLlmClient: LlmClient = FetchProxyLlmClient.default()
-
   def withExerciseId(
       exerciseId: String,
       request: BlockFeedbackRequest
@@ -79,9 +77,10 @@ object BlockFeedbackService:
 
   def generateFeedbackForExercise(
       exerciseId: String,
-      request: BlockFeedbackRequest
+      request: BlockFeedbackRequest,
+      llmClient: LlmClient
   )(using ExecutionContext): Future[BlockFeedbackResult] =
-    generateFeedback(withExerciseId(exerciseId, request))
+    generateFeedback(withExerciseId(exerciseId, request), llmClient)
 
   def requestForExerciseId(
       exerciseId: String,
@@ -115,12 +114,14 @@ object BlockFeedbackService:
       exerciseId: String,
       studentProgram: BeExpression,
       submissionNr: Int,
-      humanLanguage: HumanLanguage = AppLanguage.default()
+      humanLanguage: HumanLanguage = AppLanguage.default(),
+      llmClient: LlmClient
   )(using ExecutionContext): Future[BlockFeedbackResult] =
-    generateFeedback(requestForExerciseId(exerciseId, studentProgram, submissionNr, humanLanguage))
+    generateFeedback(requestForExerciseId(exerciseId, studentProgram, submissionNr, humanLanguage), llmClient)
 
   def generateFeedback(
-    request: BlockFeedbackRequest
+    request: BlockFeedbackRequest,
+    llmClient: LlmClient
   )(using ExecutionContext): Future[BlockFeedbackResult] =
     val effectiveConfig =
       BlockFeedbackConfigProvider.resolveConfig(request.meta.exerciseId, request.config)
@@ -335,7 +336,7 @@ object BlockFeedbackService:
           )
 
           def llmWithRetries(currentPrompt: String, attempt: Int): Future[String] =
-            proxyLlmClient
+            llmClient
               .completeWithMeta(
                 currentPrompt,
                 logTag      = logTag,

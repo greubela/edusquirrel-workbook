@@ -14,7 +14,6 @@ import scala.concurrent.ExecutionContext
 
 case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 
-
   private def checklist(keys: List[String], prefix: String): List[HtmlWorkbookElement] =
     keys.map { key =>
       HtmlBasicCheckboxInteraction(
@@ -50,7 +49,6 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
   }
 
   private def missingElementPlaceholder(contextKey: String): HtmlWorkbookElement = instructionPlaintext(s"PlantWorkshop/$contextKey")
-
 
   private def createMotivationSection(): WorkbookSection = {
     val intro = HtmlExerciseContainer(fullInfo, List(

@@ -15,7 +15,10 @@ object Dependencies {
     "org.scalameta" %%% "munit" % "1.3.0" % Test,
   ))
 
-  val jvmDependencies = Def.setting(Seq.empty[ModuleID])
+  val jvmDependencies = Def.setting(Seq(
+    "org.playframework" %% "play-netty-server" % "3.0.10",
+    "org.playframework" %% "play-json" % "3.0.4"
+  ))
 
   val jsDependencies = Def.setting(Seq(
     "org.scala-js" %%% "scalajs-dom" % "2.8.0",

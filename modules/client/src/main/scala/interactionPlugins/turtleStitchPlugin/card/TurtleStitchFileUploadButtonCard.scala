@@ -61,7 +61,7 @@ case class TurtleStitchFileUploadButtonCard(
       case BYTES_AS_RAW_STRING => new String(bytes.map(_.toByte), "UTF-8")
       case BYTES_AS_BASE64_STRING => JsHelpers.byteArrayToBase64String(bytes)
     }
-    interactionVariable.updateStateFromUserInteraction(Some(contentAsString), System.currentTimeMillis(), UpdateImportance.MAJOR)
+    interactionVariable.setStateFromUserInteraction(Some(contentAsString), UpdateImportance.MAJOR)
 
   }
 
@@ -71,7 +71,7 @@ case class TurtleStitchFileUploadButtonCard(
     fileFut.onComplete {
       case Success(data) => onFileReadSuccessfully(data)
       case Failure(error) => println("[WARN] could not load file, ignoring content: " + error.getMessage)
-    }(ExecutionContext.global)
+    }(using ExecutionContext.global)
 
   }
   

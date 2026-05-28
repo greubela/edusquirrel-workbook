@@ -7,16 +7,15 @@ import workbook.model.info.analyze.WorkbookUserDataAnalyzer
 import workbook.model.interaction.sync.SyncInformation
 case class HomepageCurrentInfo(fullInfo: FullInfo) {
 
-  private def now(): HomepageInfo = fullInfo.homepageInfoVar.now()
-
-
+  private def now(): HomepageInfo = fullInfo.homepageInfoState.now()
+  
   def workbookInfo: Option[AllWorkbookInfo] = fullInfo.synchronized {
     now().workbookInfo
   }
 
   def workbookUserData: Option[WorkbookUserDataAnalyzer] = fullInfo.synchronized {
     if (userInfo.isEmpty || workbookInfo.isEmpty) None
-    else Some(WorkbookUserDataAnalyzer(userInfo.get, workbookInfo.get))
+    else Some(WorkbookUserDataAnalyzer(fullInfo.technical, userInfo.get, workbookInfo.get))
   }
 
   def userInfo: Option[AllUserInfo] = fullInfo.synchronized {
@@ -28,9 +27,9 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
     now().userInfo.map(_.config.syncDestinations).getOrElse(default)
   }
 
-  def allAvailableInteractions: List[WorkbookInteraction[_]] = fullInfo.synchronized {
+  def allAvailableInteractions: List[WorkbookInteraction[?]] = fullInfo.synchronized {
     val default = List()
-    now().workbookInfo.map(_.loadedWorkbook.allInteractionElements).getOrElse(default)
+    now().workbookInfo.map(_.loadedWorkbook.allContainedInteractions).getOrElse(default)
   }
 
   def allAvailableLanguages: List[HumanLanguage] = fullInfo.synchronized {

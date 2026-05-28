@@ -7,6 +7,7 @@ import datastructures.core.vm.parsing.python.PythonParser
 import interactionPlugins.blockEnvironment.feedback.ml.MlRouter
 import interactionPlugins.blockEnvironment.feedback.runtime.PythonRuntimeService
 import interactionPlugins.blockEnvironment.feedback.*
+import interactionPlugins.blockEnvironment.feedback.ai.CommandLlmClient
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import org.scalajs.dom
@@ -19,6 +20,8 @@ import scala.scalajs.js.timers.{SetIntervalHandle, clearInterval, setInterval}
 import scala.util.{Failure, Success}
 
 object FeedbackDemoElement:
+
+  private lazy val demoLlmClient = CommandLlmClient(workbook.BackendServerConfig.executor)
 
   private val defaultLanguage: HumanLanguage = AppLanguage.English
 
@@ -490,7 +493,7 @@ object FeedbackDemoElement:
           .copy(pythonSourceOverride = Some(pythonCodeVar.now()))
 
       BlockFeedbackService
-        .generateFeedback(req)
+        .generateFeedback(req, demoLlmClient)
         .onComplete {
           case Success(feedback) =>
             isRunningVar.set(false)

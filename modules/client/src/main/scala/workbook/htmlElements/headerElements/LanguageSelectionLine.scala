@@ -11,7 +11,7 @@ case class LanguageSelectionLine(fullInfo: FullInfo) extends HtmlWorkbookElement
 
 
   private def forLanguages(availableLanguages: List[HumanLanguage]): List[Element] = {
-    println("LanguageSelectionLine: " + availableLanguages)
+    //println("LanguageSelectionLine: " + availableLanguages)
     availableLanguages.map(curLang => {
       val childElement: Element = LanguageSelectionLine.flagImgMap(30)(curLang)
       div(
@@ -19,7 +19,7 @@ case class LanguageSelectionLine(fullInfo: FullInfo) extends HtmlWorkbookElement
         child <-- Var(childElement).signal
       )
     })
-  }
+  } 
 
   private val domElement = div(
     cls := "select-language-line",
@@ -46,15 +46,15 @@ object LanguageSelectionLine {
   private def esFlag(width: Double): Element = {
     img(
       src := FileDescription.relativeToResourceFolder("/img/flags/esFlag.svg").fullPath,
-      styleAttr := "width:" + width + "px; height:" + (width / 3 * 2) + "px;",
+      styleAttr := s"width:${width}px; height:${width / 3 * 2}px;",
     )
   }
 
   private def dkFlag(width: Double): Element =
     svg.svg(
       svg.xmlns := "http://www.w3.org/2000/svg",
-      svg.width := width + "",
-      svg.height := width / 37 * 28 + "",
+      svg.width := s"$width",
+      svg.height := s"${width / 37 * 28}",
       svg.viewBox := "0 0 37 28",
 
       svg.path(
@@ -72,8 +72,8 @@ object LanguageSelectionLine {
   private def ukFlag(width: Double): Element = {
     svg.svg(
       svg.xmlns := "http://www.w3.org/2000/svg",
-      svg.width := width + "",
-      svg.height := width / 3 * 2 + "",
+      svg.width := s"$width",
+      svg.height := s"${width / 3 * 2}",
       svg.viewBox := "0 0 1200 800",
       svg.rect(
         svg.width := "1200",
@@ -93,8 +93,8 @@ object LanguageSelectionLine {
   private def trFlag(width: Double): Element =
     svg.svg(
       svg.xmlns := "http://www.w3.org/2000/svg",
-      svg.width := width + "",
-      svg.height := width / 3 * 4 + "",
+      svg.width := s"$width",
+      svg.height := s"${width / 3 * 4}",
       svg.viewBox := "0 -30000 90000 60000",
 
       svg.path(
@@ -112,8 +112,8 @@ object LanguageSelectionLine {
     svg.svg(
       svg.xmlns := "http://www.w3.org/2000/svg",
       svg.viewBox := "0 0 9 6",
-      svg.width := width + "",
-      svg.height := width / 3 * 2 + "",
+      svg.width := s"$width",
+      svg.height := s"${width / 3 * 2}",
 
       svg.rect(
         svg.fill := "#fff",
@@ -140,8 +140,8 @@ object LanguageSelectionLine {
     svg.svg(
       svg.xmlns := "http://www.w3.org/2000/svg",
       svg.viewBox := "0 0 900 600",
-      svg.width := width + "",
-      svg.height := width / 3 * 2 + "",
+      svg.width := s"$width",
+      svg.height := s"${width / 3 * 2}",
       svg.path(
         svg.fill := "#CE1126",
         svg.d := "M0 0h900v600H0"
@@ -160,8 +160,8 @@ object LanguageSelectionLine {
     svg.svg(
       svg.xmlns := "http://www.w3.org/2000/svg",
       svg.viewBox := "0 0 50 30",
-      svg.width := width + "",
-      svg.height := width / 10 * 6 + "",
+      svg.width := s"$width",
+      svg.height := s"${width / 10 * 6}",
 
       svg.clipPathTag(
         svg.idAttr := "t",
@@ -199,8 +199,8 @@ object LanguageSelectionLine {
   private def deFlag(width: Double): Element = svg.svg(
     svg.cls := "language-flag",
     svg.viewBox := "0 0 5 3",
-    svg.width := width + "",
-    svg.height := width / 10 * 6 + "",
+    svg.width := s"$width",
+    svg.height := s"${width / 10 * 6}",
     svg.rect(
       svg.x := "0",
       svg.y := "0",

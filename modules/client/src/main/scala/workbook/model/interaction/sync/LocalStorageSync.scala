@@ -4,7 +4,7 @@ import org.scalajs.dom
 import org.scalajs.dom.Storage
 
 
-object LocalStorageSync extends ExerciseVariableSyncSource {
+object LocalStorageSync extends SyncDestination {
 
   private val storage: Storage = dom.window.localStorage
 

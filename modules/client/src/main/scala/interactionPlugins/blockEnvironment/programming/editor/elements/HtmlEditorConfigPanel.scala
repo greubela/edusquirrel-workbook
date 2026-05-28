@@ -21,14 +21,14 @@ case class HtmlEditorConfigPanel(editorState: EditorState) extends HtmlAppElemen
       if (derived.now() != newValue) {
         derived.set(newValue)
       }
-    }(unsafeWindowOwner)
+    }(using unsafeWindowOwner)
 
     derived.signal.foreach { newValue =>
       val currentConfig = editorState.editorTreeDisplayConfig.now()
       if (getter(currentConfig) != newValue) {
         editorState.editorTreeDisplayConfig.update(cfg => setter(cfg, newValue))
       }
-    }(unsafeWindowOwner)
+    }(using unsafeWindowOwner)
 
     derived
   }

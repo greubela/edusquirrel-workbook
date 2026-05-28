@@ -2,7 +2,7 @@ package workbook.htmlElements.basic
 
 import com.raquo.laminar.DomApi
 import com.raquo.laminar.api.L.*
-import util.web.MarkdownToHtml
+import it.evadid.core.util.MarkdownToHtml
 import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.FullInfo
 case class HtmlInstructionElement(fullInfo: FullInfo, languageMapId: String, childSignal: Signal[Element]) extends HtmlWorkbookElement {

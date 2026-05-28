@@ -65,7 +65,7 @@ case class TurtleStitchEditor(projektXml: Var[String]) extends HtmlAppElement {
                     })
                 }
               }
-            }(ctx.owner)
+            }(using ctx.owner)
             ()
           })
           .`catch`((err: scala.Any) => {
@@ -177,14 +177,14 @@ object TurtleStitchEditor {
               .createEditor(editorOptions(hidden = true))
               .toFuture
               .map { editor =>
-                synchronized {
+                TurtleStitchEditor.synchronized {
                   singletonEditor = Some(editor)
                   singletonEditorCreation = None
                 }
                 editor
               }
               .recoverWith { case err =>
-                synchronized {
+                TurtleStitchEditor.synchronized {
                   singletonEditorCreation = None
                 }
                 Future.failed(err)
