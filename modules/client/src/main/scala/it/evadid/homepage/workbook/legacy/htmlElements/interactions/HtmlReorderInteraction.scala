@@ -37,7 +37,7 @@ case class HtmlReorderInteraction[T](
   }
 
   override val interactionVariable: InteractionVariable[List[Int]] =
-    InteractionVariable(this, orderSerializer)
+    InteractionVariable(this)
 
   private val orderVar = interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MINOR)
 

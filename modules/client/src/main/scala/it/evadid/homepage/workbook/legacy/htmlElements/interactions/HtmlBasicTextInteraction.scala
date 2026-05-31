@@ -15,7 +15,7 @@ case class HtmlBasicTextInteraction(fullInfo: FullInfo, id: String, initConfig: 
 
   override val defaultValue: String = ""
 
-  override val interactionVariable: InteractionVariable[String] = InteractionVariable[String](this, Serializer.stringIO)
+  override val interactionVariable: InteractionVariable[String] = InteractionVariable[String](this)
 
   override val serializer: Serializer[String] = Serializer.stringIO
   

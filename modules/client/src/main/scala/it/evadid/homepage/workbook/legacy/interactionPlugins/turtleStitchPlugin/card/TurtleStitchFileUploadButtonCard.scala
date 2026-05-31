@@ -26,7 +26,7 @@ case class TurtleStitchFileUploadButtonCard(
   
   override val defaultValue: Option[String] = None
   
-  override val interactionVariable: InteractionVariable[Option[String]] = InteractionVariable[Option[String]](this, Serializer.stringOptionIO)
+  override val interactionVariable: InteractionVariable[Option[String]] = InteractionVariable[Option[String]](this)
 
   private lazy val uploadInput: ReactiveHtmlElement[HTMLInputElement] = input(
     styleAttr := "display:none;",

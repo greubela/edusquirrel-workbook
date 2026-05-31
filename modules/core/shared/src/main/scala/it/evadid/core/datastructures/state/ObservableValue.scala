@@ -18,7 +18,6 @@ trait ObservableValue[T] {
         case Failure(error) => handleOnError(error)
       }
     }
-
     addObserver(Observer(derivedFunc, informObserverWith, observerPriority))
   }
   

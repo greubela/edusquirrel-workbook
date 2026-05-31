@@ -30,7 +30,7 @@ case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expected
 
   override val serializer: Serializer[BeProgram] = io
 
-  override val interactionVariable: InteractionVariable[BeProgram] = InteractionVariable[BeProgram](this, io)
+  override val interactionVariable: InteractionVariable[BeProgram] = InteractionVariable[BeProgram](this)
   private val boundVar: Var[BeProgram] = interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR).toAirstreamVar
 
 

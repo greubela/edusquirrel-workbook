@@ -40,7 +40,7 @@ case class HtmlGPTMessenger(
   override val serializer: Serializer[MessengerModel] = Serializer.messengerIo
   
   val interactionVariable: InteractionVariable[MessengerModel] = {
-    val res = InteractionVariable[MessengerModel](this, serializer)
+    val res = InteractionVariable[MessengerModel](this)
     HtmlGPTMessenger.seedMessenger(textInteraction, res, languageMapIdExerciseText, languageMapIdScaffoldingInfo)
     res
   }

@@ -18,7 +18,7 @@ case class HtmlBasicCheckboxInteraction(
 
   override val defaultValue: Boolean = false
 
-  override val interactionVariable: InteractionVariable[Boolean] = InteractionVariable[Boolean](this, Serializer.booleanIO)
+  override val interactionVariable: InteractionVariable[Boolean] = InteractionVariable[Boolean](this)
 
   private val checkboxVar = interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MAJOR)
 

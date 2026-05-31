@@ -26,7 +26,7 @@ trait WorkbookInteraction[T] extends WorkbookElement {
       interactionVariable.syncToAll()
     }
 
-    interactionVariable.resetInteractionVariable(defaultValue, newSyncDest)
+    interactionVariable.resetInteractionVariable(newSyncDest)
 
     if (syncAfter) {
       interactionVariable.syncFromAll()
@@ -40,7 +40,7 @@ object WorkbookInteraction {
 
   private case class WorkbookBasicVariableInteraction[T](override val defaultValue: T, override val serializer: Serializer[T], override val id: String) extends WorkbookInteraction[T] {
 
-    override val interactionVariable: InteractionVariable[T] = InteractionVariable[T](this, serializer)
+    override val interactionVariable: InteractionVariable[T] = InteractionVariable[T](this)
 
   }
 

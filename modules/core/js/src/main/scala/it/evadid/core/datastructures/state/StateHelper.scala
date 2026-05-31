@@ -25,7 +25,7 @@ object StateHelper {
     
     def createInteractionSignal(): StrictSignal[T] = {
       val res = Var[T](interactionVariable.currentValue)
-      interactionVariable.addListener(onNewState => res.set(onNewState.value))
+      interactionVariable.observableValue.addObserver(newValue => res.set(newValue))
       res.signal
     }
     

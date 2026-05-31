@@ -11,6 +11,6 @@ case class LabeledCheckboxInteraction(override val id: String, langIdCheckboxLab
 
   override def serializer: Serializer[Boolean] = Serializer.booleanIO
 
-  override def interactionVariable: InteractionVariable[Boolean] = InteractionVariable[Boolean](this, serializer)
+  override def interactionVariable: InteractionVariable[Boolean] = InteractionVariable[Boolean](this)
 
 }
