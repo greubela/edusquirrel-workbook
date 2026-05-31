@@ -1,15 +1,16 @@
 
 import com.raquo.laminar.api.L.*
-import content.{CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, plantworkshop}
-import interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.ExecutionInfo
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.distribution.commandTypes.LLMCommands.*
+import it.evadid.homepage.control.HtmlFullWorkbookApp
+import it.evadid.homepage.workbook.content.CreateEmbroideryWorkbook
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
+import it.evadid.homepage.workbook.legacy.plantworkshop.PlantWorkshopApp
 import it.evadid.util.Logger
 import org.scalajs.dom
-import workbook.htmlElements.HtmlFullWorkbookApp
 
 import scala.util.*
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
@@ -21,15 +22,16 @@ private def load(containerId: String): Unit = {
   println("loading workbook: " + containerId)
   val domElement = containerId match {
     case "plantWorkshopApp" => {
-      plantworkshop.PlantWorkshopApp.appElement
+      PlantWorkshopApp.appElement
     }
     case "workbookEmbroidery" => {
       HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreateEmbroideryWorkbook(HtmlFullWorkbookApp.fullInfo))
       HtmlFullWorkbookApp.getDomElement()
     }
     case "workbookPlantWorkshop" => {
-      HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreatePlantworkshopWorkbook(HtmlFullWorkbookApp.fullInfo))
-      HtmlFullWorkbookApp.getDomElement()
+     // HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreatePlantworkshopWorkbook(HtmlFullWorkbookApp.fullInfo))
+      //HtmlFullWorkbookApp.getDomElement()
+      ???
     }
     case "feedbackDemoRoot" => {
       FeedbackDemoElement.element()

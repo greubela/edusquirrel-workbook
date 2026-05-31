@@ -1,11 +1,11 @@
 package interactionPlugins.fileSubmission.turtleStitch
 
-import datastructures.core.vm.code.controlStructures.BeSequence
-import datastructures.core.vm.code.defining.BeDefineFunction
-import datastructures.core.vm.code.others.BeStartProgram
-import datastructures.core.vm.code.usage.BeFunctionCall
-import interactionPlugins.fileSubmission.TurtleFileSubmission
+import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.TurtleFileSubmission
 import munit.FunSuite
+import todomove.datastructures.core.vm.code.controlStructures.BeSequence
+import todomove.datastructures.core.vm.code.defining.BeDefineFunction
+import todomove.datastructures.core.vm.code.others.BeStartProgram
+import todomove.datastructures.core.vm.code.usage.BeFunctionCall
 
 class TurtleStitchToBeExpressionParserSpec extends FunSuite {
 

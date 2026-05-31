@@ -1,0 +1,336 @@
+package it.evadid.homepage.workbook.htmlRenderer.basicRenderer
+
+import com.raquo.laminar.api.L
+import com.raquo.laminar.api.L.*
+import com.raquo.laminar.nodes.ReactiveHtmlElement
+import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
+import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
+import it.evadid.homepage.HtmlAppElement
+import it.evadid.homepage.control.HtmlFullWorkbookApp.fullInfo
+import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
+import it.evadid.homepage.workbook.legacy.htmlElements.basic.HtmlButtonElement
+import it.evadid.workbook.model.elements.{Workbook, WorkbookSection}
+import org.scalajs.dom
+import org.scalajs.dom.{File, HTMLInputElement}
+import todomove.datastructures.web.file.FileFactory
+
+object HtmlWorkbookRenderer extends HtmlRenderFactory[Workbook] {
+
+  def createDomElement(workbook: Workbook): Element = div(
+    cls := "it/evadid/homepage/workbook",
+    createDomHeader(workbook),
+    createDomBody(workbook)
+  )
+
+  /*
+  Header
+   */
+  def createDomHeader(workbook: Workbook): Element = div(
+    cls := "workbook-header",
+    createDomHeaderTitleLine(workbook),
+    UserConfigLine(workbook).getDomElement(),
+    LanguageSelectionLine(workbook).getDomElement(),
+    SectionSelectionLine(workbook).getDomElement()
+  )
+
+  private def createDomHeaderTitleLine(workbook: Workbook): Element = div(
+    cls := "workbook-title-line",
+    h1(text <-- contentIdStringSignal(workbook.workbookTitle))
+  )
+
+  /*
+  BODY
+   */
+
+  private def createDomBody(workbook: Workbook): Element = div(
+    cls := "workbook-body",
+    children <-- fullInfo.signals.activeSection.map(sectionContainer)
+  )
+
+  private def createDomNoSectionActivePlaceholder(): Element = span(
+    text <-- contentIdStringSignal(LanguageMapContentId("basic/noSectionSelected")),
+  )
+
+  private def createDomSectionContent(workbookSection: WorkbookSection): List[Element] =
+    workbookSection.sectionContent.map(HtmlRenderFactory.renderWorkbookElement).map(_.getDomElement())
+
+  private def sectionContainer(currentlyActiveSection: Option[WorkbookSection]): List[Element] =
+    currentlyActiveSection.map(createDomSectionContent).getOrElse(List(createDomNoSectionActivePlaceholder()))
+}
+
+private case class SectionSelectionLine(workbook: Workbook) extends HtmlAppElement {
+
+  private def sections: List[WorkbookSection] = workbook.sections
+
+  private def selectSection(section: WorkbookSection): Unit = {
+    fullInfo.control.updateWorkbookConfig(_.copy(activeSection = Some(section)))
+  }
+
+  private def isSectionActiveSignal(section: WorkbookSection): Signal[Boolean] = {
+    fullInfo.signals.workbook.map(allWorkbookInfo => {
+      allWorkbookInfo.exists(curInfo => curInfo.config.activeSection == section)
+    })
+  }
+
+  private def sectionToElement(section: WorkbookSection): Element = {
+    div(
+      cls <-- isSectionActiveSignal(section).map(isSectionShowing => if (isSectionShowing) {
+        "section-block active"
+      } else {
+        "section-block"
+      }),
+      div(
+        text <-- fullInfo.signals.stringFromLanguageMapId(section.sectionTitle)
+      ),
+      onClick --> { event => selectSection(section) },
+    )
+  }
+
+  override def getDomElement(): L.Element = div(
+    cls := "section-overview",
+    sections.map(sectionToElement)
+  )
+}
+
+private case class LanguageSelectionLine(workbook: Workbook) extends HtmlAppElement {
+
+  private def createDomForLanguageSelectionFlag(currentLanguage: HumanLanguage): Element = div(
+    onClick --> { _ => fullInfo.control.changeLanguage(currentLanguage) },
+    LanguageSelectionLine.flagImgMap(30)(currentLanguage)
+  )
+
+  private val domElement = div(
+    cls := "select-language-line",
+    children <-- Var(workbook.availableLanguages.map(createDomForLanguageSelectionFlag)).signal
+  )
+
+  override def getDomElement(): L.Element = domElement
+
+}
+
+private case class UserConfigLine(workbook: Workbook) extends HtmlAppElement {
+
+  private val resetButton = HtmlButtonElement.withTextLabel(fullInfo, "basic/resetLocalStorage", event => fullInfo.control.saveAndResetAllInfo())
+  private val downloadDataButton = HtmlButtonElement.withTextLabel(fullInfo, "basic/downloadEverything", event => fullInfo.control.downloadAllAvailableData())
+  private val uploadButton = HtmlButtonElement.withTextLabel(fullInfo, "basic/uploadSession", event => uploadInput.ref.click())
+
+  private lazy val uploadInput: ReactiveHtmlElement[HTMLInputElement] = input(
+    styleAttr := "display:none;",
+    typ := "file",
+    accept := "json",
+    onChange --> { event =>
+      val inputElement = event.target.asInstanceOf[dom.html.Input]
+      if (inputElement.files.length > 0) fileToUploadSelected(inputElement.files.item(0))
+    }
+  )
+
+  private def fileToUploadSelected(file: File): Unit = {
+    fullInfo.current.workbookUserData.foreach(_.upload(FileFactory.fromFile(file)))
+  }
+
+  private val domElement: Element = div(
+    styleAttr := "display:none;",
+    uploadInput,
+    resetButton.getDomElement(),
+    downloadDataButton.getDomElement(),
+    uploadButton.getDomElement(),
+  )
+
+  override def getDomElement(): Element = domElement
+}
+
+
+private object LanguageSelectionLine {
+
+  def flagImgMap(width: Double): Map[HumanLanguage, Element] = Map(
+    AppLanguage.German -> deFlag(width),
+    AppLanguage.English -> enFlag(width),
+    AppLanguage.Spanish -> esFlag(width),
+    AppLanguage.Danish -> dkFlag(width),
+    AppLanguage.Russian -> ruFlag(width),
+    AppLanguage.Ukrainian -> ukFlag(width),
+    AppLanguage.Turkish -> trFlag(width),
+    AppLanguage.French -> frFlag(width)
+  )
+
+  private def esFlag(width: Double): Element = {
+    img(
+      src := FileFactory.relativeToResourceFolder("/img/flags/esFlag.svg").fullPath,
+      styleAttr := s"width:${width}px; height:${width / 3 * 2}px;",
+    )
+  }
+
+  private def dkFlag(width: Double): Element =
+    svg.svg(
+      svg.xmlns := "http://www.w3.org/2000/svg",
+      svg.width := s"$width",
+      svg.height := s"${width / 37 * 28}",
+      svg.viewBox := "0 0 37 28",
+
+      svg.path(
+        svg.fill := "#c8102e",
+        svg.d := "M0,0H37V28H0Z"
+      ),
+
+      svg.path(
+        svg.stroke := "#fff",
+        svg.strokeWidth := "4",
+        svg.d := "M0,14h37M14,0v28"
+      )
+    )
+
+  private def ukFlag(width: Double): Element = {
+    svg.svg(
+      svg.xmlns := "http://www.w3.org/2000/svg",
+      svg.width := s"$width",
+      svg.height := s"${width / 3 * 2}",
+      svg.viewBox := "0 0 1200 800",
+      svg.rect(
+        svg.width := "1200",
+        svg.height := "800",
+        svg.fill := "#0057B7"
+      ),
+
+      svg.rect(
+        svg.width := "1200",
+        svg.height := "400",
+        svg.y := "400",
+        svg.fill := "#FFD700"
+      )
+    )
+  }
+
+  private def trFlag(width: Double): Element =
+    svg.svg(
+      svg.xmlns := "http://www.w3.org/2000/svg",
+      svg.width := s"$width",
+      svg.height := s"${width / 3 * 4}",
+      svg.viewBox := "0 -30000 90000 60000",
+
+      svg.path(
+        svg.fill := "#e30a17",
+        svg.d := "m0-30000h90000v60000H0z"
+      ),
+
+      svg.path(
+        svg.fill := "#fff",
+        svg.d := "m41750 0 13568-4408-8386 11541V-7133l8386 11541zm925 8021a15000 15000 0 1 1 0-16042 12000 12000 0 1 0 0 16042z"
+      )
+    )
+
+  private def ruFlag(width: Double): Element =
+    svg.svg(
+      svg.xmlns := "http://www.w3.org/2000/svg",
+      svg.viewBox := "0 0 9 6",
+      svg.width := s"$width",
+      svg.height := s"${width / 3 * 2}",
+
+      svg.rect(
+        svg.fill := "#fff",
+        svg.width := "9",
+        svg.height := "3"
+      ),
+
+      svg.rect(
+        svg.fill := "#d52b1e",
+        svg.y := "3",
+        svg.width := "9",
+        svg.height := "3"
+      ),
+
+      svg.rect(
+        svg.fill := "#0039a6",
+        svg.y := "2",
+        svg.width := "9",
+        svg.height := "2"
+      )
+    )
+
+  private def frFlag(width: Double): Element =
+    svg.svg(
+      svg.xmlns := "http://www.w3.org/2000/svg",
+      svg.viewBox := "0 0 900 600",
+      svg.width := s"$width",
+      svg.height := s"${width / 3 * 2}",
+      svg.path(
+        svg.fill := "#CE1126",
+        svg.d := "M0 0h900v600H0"
+      ),
+      svg.path(
+        svg.fill := "#fff",
+        svg.d := "M0 0h600v600H0"
+      ),
+      svg.path(
+        svg.fill := "#002654",
+        svg.d := "M0 0h300v600H0"
+      )
+    )
+
+  private def enFlag(width: Double): Element =
+    svg.svg(
+      svg.xmlns := "http://www.w3.org/2000/svg",
+      svg.viewBox := "0 0 50 30",
+      svg.width := s"$width",
+      svg.height := s"${width / 10 * 6}",
+
+      svg.clipPathTag(
+        svg.idAttr := "t",
+        svg.path(
+          svg.d := "M25,15h25v15zv15h-25zh-25v-15zv-15h25z"
+        )
+      ),
+
+      svg.path(
+        svg.d := "M0,0v30h50v-30z",
+        svg.fill := "#012169"
+      ),
+
+      svg.path(
+        svg.d := "M0,0 50,30M50,0 0,30",
+        svg.stroke := "#fff",
+        svg.strokeWidth := "6"
+      ),
+
+      svg.path(
+        svg.d := "M0,0 50,30M50,0 0,30",
+        svg.clipPathAttr := "url(#t)",
+        svg.stroke := "#C8102E",
+        svg.strokeWidth := "4"
+      ),
+
+      svg.path(
+        svg.d := "M-1 11h22v-12h8v12h22v8h-22v12h-8v-12h-22z",
+        svg.fill := "#C8102E",
+        svg.stroke := "#FFF",
+        svg.strokeWidth := "2"
+      )
+    )
+
+  private def deFlag(width: Double): Element = svg.svg(
+    svg.cls := "language-flag",
+    svg.viewBox := "0 0 5 3",
+    svg.width := s"$width",
+    svg.height := s"${width / 10 * 6}",
+    svg.rect(
+      svg.x := "0",
+      svg.y := "0",
+      svg.width := "5",
+      svg.height := "3",
+      svg.fill := "#000"
+    ),
+    svg.rect(
+      svg.x := "0",
+      svg.y := "1",
+      svg.width := "5",
+      svg.height := "1",
+      svg.fill := "#D00"
+    ),
+    svg.rect(
+      svg.x := "0",
+      svg.y := "2",
+      svg.width := "5",
+      svg.height := "1",
+      svg.fill := "#FFCE00"
+    )
+  )
+}

@@ -15,6 +15,7 @@ trait LanguageMap[T <: AppLanguage]() {
 }
 
 object LanguageMap {
+   
   def empty[T <: AppLanguage]: LanguageMap[T] = mapBasedLanguageMap(Map.empty)
 
   def combinedMap[T <: AppLanguage](maps: List[LanguageMap[T]]) = new LanguageMap[T]() {

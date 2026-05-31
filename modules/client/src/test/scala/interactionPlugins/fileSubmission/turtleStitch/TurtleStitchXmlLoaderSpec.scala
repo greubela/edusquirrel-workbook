@@ -1,5 +1,6 @@
 package interactionPlugins.fileSubmission.turtleStitch
 
+import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchXmlLoader
 import munit.FunSuite
 
 class TurtleStitchXmlLoaderSpec extends FunSuite {

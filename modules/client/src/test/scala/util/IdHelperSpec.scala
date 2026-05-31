@@ -1,5 +1,6 @@
 package util
 
+import it.evadid.homepage.util.IdHelper
 import munit.FunSuite
 
 class IdHelperSpec extends FunSuite {

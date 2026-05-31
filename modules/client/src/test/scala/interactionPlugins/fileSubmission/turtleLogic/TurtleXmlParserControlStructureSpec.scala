@@ -1,5 +1,6 @@
 package interactionPlugins.fileSubmission.turtleLogic
 
+import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleLogic.TurtleXmlParser
 import munit.FunSuite
 
 class TurtleXmlParserControlStructureSpec extends FunSuite {

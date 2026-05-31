@@ -2,6 +2,8 @@ package it.evadid.core.datastructures.state
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.state.*
+import it.evadid.workbook.model.interaction.sync.UpdateImportance
+import it.evadid.workbook.model.interaction.variable.InteractionVariable
 
 
 object StateHelper {
@@ -14,6 +16,21 @@ object StateHelper {
     def toState: State[T] = fromAirstreamVarToState(airstreamVar)
   }
 
+  implicit class InteractionVariableOnJS[T](interactionVariable: InteractionVariable[T]) {
+    
+    def createBoundVarWithUpdateImportance(updateImportance: UpdateImportance): Var[T] = {
+      val state = interactionVariable.createBoundStateWithUpdateImportance(updateImportance)
+      fromStateToAirstreamVar(state)
+    }
+    
+    def createInteractionSignal(): StrictSignal[T] = {
+      val res = Var[T](interactionVariable.currentValue)
+      interactionVariable.addListener(onNewState => res.set(onNewState.value))
+      res.signal
+    }
+    
+  }
+  
   def fromStateToAirstreamVar[T](state: State[T]): Var[T] = {
     val airstreamVar = Var(state.now())
     bindTogether(state, airstreamVar)
@@ -31,5 +48,6 @@ object StateHelper {
     airstreamVar.signal.distinct.foreach(state.set)(using unsafeWindowOwner)
   }
 
+  
 
 }

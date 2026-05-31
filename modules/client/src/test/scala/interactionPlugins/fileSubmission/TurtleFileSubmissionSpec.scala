@@ -1,8 +1,10 @@
 package interactionPlugins.fileSubmission
 
-import interactionPlugins.fileSubmission.turtleLogic.TurtleXmlParser
-import interactionPlugins.fileSubmission.turtleStitch.TurtleStitchProgramModel.*
-import interactionPlugins.blockEnvironment.programming.BeProgram
+import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchProgramModel.*
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
+import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleLogic.TurtleXmlParser
+import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.{TurtleFileSubmission, turtleStitch}
+import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchToBeExpressionParser
 import munit.FunSuite
 
 import java.nio.charset.StandardCharsets
@@ -150,7 +152,7 @@ class TurtleFileSubmissionSpec extends FunSuite {
   test("green flag script survives xml -> model -> xml round trip") {
     XmlFactory.all.foreach { xml =>
       val project = TurtleFileSubmission.loadProject(xml)
-      val expression = interactionPlugins.fileSubmission.turtleStitch.TurtleStitchToBeExpressionParser.parseProject(project)
+      val expression = TurtleStitchToBeExpressionParser.parseProject(project)
       val xmlRoundTripped = TurtleFileSubmission.serializeFromBeExpression(expression, "roundTrip1")
 
       val originalSelectors = greenFlagSelectors(xml)
@@ -241,7 +243,7 @@ class TurtleFileSubmissionSpec extends FunSuite {
     val results = XmlFactory.all.zipWithIndex.map { case (xml, index) =>
       val roundTripTry = Try {
         val initialProject = TurtleFileSubmission.loadProject(xml)
-        val expression = interactionPlugins.fileSubmission.turtleStitch.TurtleStitchToBeExpressionParser.parseProject(initialProject)
+        val expression = turtleStitch.TurtleStitchToBeExpressionParser.parseProject(initialProject)
         val roundTrippedXml = TurtleFileSubmission.serializeFromBeExpression(expression, s"roundTrip-${index + 1}")
         val roundTrippedProject = TurtleFileSubmission.loadProject(roundTrippedXml)
 

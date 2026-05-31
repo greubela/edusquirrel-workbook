@@ -1,15 +1,16 @@
 package datastructures.core.vm.code
 
-import datastructures.core.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
-import datastructures.core.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
-import datastructures.core.vm.code.defining.BeDefineFunction.functionInfo
-import datastructures.core.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
-import datastructures.core.vm.code.others.{BeReturn, BeStartProgram}
-import datastructures.core.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
-import datastructures.core.vm.types.{BeDataType, BeDataValueLiteral}
+import todomove.datastructures.core.vm.code.defining.BeDefineFunction.functionInfo
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
 import munit.FunSuite
+import todomove.datastructures.core.vm.code.BeExpression
+import todomove.datastructures.core.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
+import todomove.datastructures.core.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
+import todomove.datastructures.core.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
+import todomove.datastructures.core.vm.code.others.{BeReturn, BeStartProgram}
+import todomove.datastructures.core.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
+import todomove.datastructures.core.vm.types.{BeDataType, BeDataValueLiteral}
 
 class BeExpressionLanguageSupportTest extends FunSuite {
 
