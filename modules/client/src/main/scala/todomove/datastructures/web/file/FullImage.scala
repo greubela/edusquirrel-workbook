@@ -34,6 +34,8 @@ object FullImage {
     }
   }
 
+  def apply(loadedFile: LoadedFile): FullImage = LoadedFileImage(loadedFile)
+
 
   //def apply(path: SvgPathBuilder): FullImage = ???
 

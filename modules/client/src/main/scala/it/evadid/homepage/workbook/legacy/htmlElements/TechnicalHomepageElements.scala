@@ -4,11 +4,11 @@ import com.raquo.laminar.api.L.{Element, StrictSignal}
 import it.evadid.core.datastructures.file.*
 import it.evadid.core.datastructures.state.{ObservableValue, State}
 import it.evadid.distribution.clients.ExecutionClient
-import it.evadid.homepage.HtmlAppElement
 import it.evadid.homepage.workbook.legacy.model.info.control.TechnicalControl
 import it.evadid.homepage.workbook.legacy.singletons.WorkbookLanguageInfo
 import org.scalajs.dom
 import WorkbookLanguageInfo.LabelLanguageMapStorage
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.legacy.htmlElements.container.HtmlFullScreenContainerElement
 import todomove.datastructures.web.storage.AsyncDataCache
 

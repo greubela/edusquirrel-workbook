@@ -2,7 +2,7 @@ package it.evadid.homepage.workbook.legacy.htmlElements.container
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
-import it.evadid.homepage.HtmlAppElement
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.legacy.model.abstractions.HtmlWorkbookElement
 import org.scalajs.dom
 import org.scalajs.dom.{KeyboardEvent, html}

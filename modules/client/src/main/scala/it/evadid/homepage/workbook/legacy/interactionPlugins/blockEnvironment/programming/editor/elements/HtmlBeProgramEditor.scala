@@ -5,7 +5,7 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.HtmlAppElement
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
 import todomove.datastructures.core.vm.code.others.BeStartProgram
 import todomove.datastructures.core.vm.parsing.cpp.CppParser

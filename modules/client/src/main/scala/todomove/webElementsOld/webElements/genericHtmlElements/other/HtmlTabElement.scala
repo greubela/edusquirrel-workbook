@@ -2,7 +2,7 @@ package todomove.webElementsOld.webElements.genericHtmlElements.other
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.HtmlAppElement
+import it.evadid.homepage.webElements.HtmlAppElement
 
 case class HtmlTab(tabNr: Int, tabDiv: L.HtmlElement, tabLabel: String)
 

@@ -2,7 +2,7 @@ package it.evadid.homepage.workbook.content
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
-import it.evadid.homepage.HtmlAppElement
+import it.evadid.homepage.webElements.HtmlAppElement
 
 class MonksWorkbook extends HtmlAppElement{
 

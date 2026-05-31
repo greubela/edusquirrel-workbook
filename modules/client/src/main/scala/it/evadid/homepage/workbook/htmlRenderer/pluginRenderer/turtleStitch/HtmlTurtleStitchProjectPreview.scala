@@ -14,7 +14,7 @@ import it.evadid.workbook.plugins.TurtleStitch.TurtleStitchProjectState
 
 import scala.concurrent.ExecutionContext
 
-object HtmlTurtleStitchPreviewRenderer {
+object HtmlTurtleStitchProjectPreview {
 
   def render(turtleStitchState: State[TurtleStitchProjectState]): Element = {
     val xmlSignal: Signal[Option[String]] = turtleStitchState.toAirstreamVar.signal.map(_.programXml)

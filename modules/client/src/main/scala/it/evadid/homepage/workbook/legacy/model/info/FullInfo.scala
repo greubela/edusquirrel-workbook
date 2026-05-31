@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.core.datastructures.state.{State, StateHelper}
-import it.evadid.homepage.HtmlAppElement
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.legacy.htmlElements.TechnicalHomepageElements
 import it.evadid.homepage.workbook.legacy.htmlElements.container.HtmlFullScreenContainerElement
 import it.evadid.homepage.workbook.legacy.model.info.control.{HomepageCurrentInfo, HomepageDataControl, HomepageSignalInfo, TechnicalControl}

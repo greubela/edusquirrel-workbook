@@ -3,9 +3,7 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.gpt
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.svg
 import com.raquo.laminar.nodes.ReactiveSvgElement
-import it.evadid.core.datastructures.chat.*
-import it.evadid.distribution.commandTypes.LLMCommands.MessengerChatCompletionRequest
-import it.evadid.homepage.workbook.legacy.htmlElements.basic.HtmlButtonElement
+import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.workbook.legacy.model.abstractions.HtmlWorkbookElement
 import it.evadid.homepage.workbook.legacy.model.info.FullInfo
 import it.evadid.workbook.model.interaction.WorkbookInteraction
@@ -13,10 +11,10 @@ import org.scalajs.dom.{SVGLinearGradientElement, SVGSVGElement}
 
 
 case class HtmlGptGrader(fullInfo: FullInfo, textInteraction: WorkbookInteraction[String]) extends HtmlWorkbookElement {
-  
-  private val submitButton = HtmlButtonElement.withSvgContent(fullInfo, HtmlGptGrader.gradingButtonSvg, event => {
-    
-    
+
+  private val submitButton = HtmlButtonElement.withSvgContent(HtmlGptGrader.gradingButtonSvg, event => {
+
+
     println("grading not implemented yet :( ")
 
     ??? // todo 

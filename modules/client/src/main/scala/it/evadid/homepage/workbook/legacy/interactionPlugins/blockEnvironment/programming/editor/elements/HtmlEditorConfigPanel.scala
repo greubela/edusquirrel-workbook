@@ -4,8 +4,8 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
-import it.evadid.homepage.HtmlAppElement
 import it.evadid.homepage.util.web.DownloadHelper
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeTreeControllerConfig, BeTreeDisplayConfig, ControlFlowDisplay}
 import org.scalajs.dom
 import todomove.webElementsOld.webElements.genericHtmlElements.editor.{SimpleBooleanEditor, SimpleSelectorEditor}

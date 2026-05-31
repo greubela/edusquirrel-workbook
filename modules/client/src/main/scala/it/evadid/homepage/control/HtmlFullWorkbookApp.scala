@@ -12,6 +12,7 @@ import it.evadid.homepage.workbook.legacy.model.info.*
 import it.evadid.homepage.workbook.legacy.singletons.FileDataStorage
 import todomove.datastructures.web.file.FileFactory
 import it.evadid.homepage.*
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.HtmlWorkbookRenderer
 
 object HtmlFullWorkbookApp extends HtmlAppElement{

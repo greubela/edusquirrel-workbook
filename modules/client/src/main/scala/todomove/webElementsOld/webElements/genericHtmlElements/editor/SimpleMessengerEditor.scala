@@ -3,7 +3,7 @@ package todomove.webElementsOld.webElements.genericHtmlElements.editor
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.chat.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
-import it.evadid.homepage.HtmlAppElement
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 import it.evadid.workbook.model.interaction.variable.InteractionVariable
 

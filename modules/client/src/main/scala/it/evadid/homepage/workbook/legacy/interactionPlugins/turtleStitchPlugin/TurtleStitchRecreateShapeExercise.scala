@@ -2,9 +2,11 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{*, given}
-import it.evadid.homepage.workbook.legacy.htmlElements.basic.HtmlImageElement
+import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.homepage.webElements.basic.HtmlImageElement
+import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.turtleStitch.TurtleStitchExpectedShapeCard
 import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.card.TurtleStitchFileUploadButtonCard.StorageFormat
-import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.card.{TurtleStitchExpectedShapeCard, TurtleStitchFileUploadButtonCard}
+import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.card.TurtleStitchFileUploadButtonCard
 import it.evadid.homepage.workbook.legacy.model.abstractions.HtmlWorkbookElement
 import it.evadid.homepage.workbook.legacy.model.info.FullInfo
 
@@ -15,7 +17,7 @@ object TurtleStitchRecreateShapeExercise {
                                 pWorkbookInfo: FullInfo,
                                 baseId: String,
                                 expectedOutcome: HtmlImageElement
-                              ): HtmlWorkbookElement = {
+                              ): HtmlAppElement = {
     new HtmlWorkbookElement() {
 
       def fullInfo: FullInfo = pWorkbookInfo
@@ -24,7 +26,7 @@ object TurtleStitchRecreateShapeExercise {
 
       //val preview: HtmlWorkbookElement = TurtleFileShowProgramXmlCard(fileInteraction)
 
-      private val expectedOutcomePreview = TurtleStitchExpectedShapeCard(pWorkbookInfo, expectedOutcome)
+      private val expectedOutcomePreview = TurtleStitchExpectedShapeCard(expectedOutcome)
 
       override def getDomElement(): L.Element = div(
         cls := "workbook-interaction preview-line",

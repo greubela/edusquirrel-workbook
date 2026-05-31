@@ -4,7 +4,7 @@ import com.raquo.airstream.core.Signal
 import com.raquo.airstream.ownership.Owner
 import com.raquo.laminar.api.L.*
 import SimpleTextEditor.*
-import it.evadid.homepage.HtmlAppElement
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 
 object SimpleTextEditor {

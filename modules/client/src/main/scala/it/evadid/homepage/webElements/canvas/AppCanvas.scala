@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.canvas
 
 import it.evadid.core.datastructures.color.AppColor
 import it.evadid.core.datastructures.file.*
-import it.evadid.homepage.HtmlAppElement
+import it.evadid.homepage.webElements.HtmlAppElement
 import todomove.datastructures.web.file.FullImage
 import todomove.datastructures.web.font.AppFont
 

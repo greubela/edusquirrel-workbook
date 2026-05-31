@@ -4,13 +4,11 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.svg
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.chat.SenderRole.WORKBOOK
-import it.evadid.core.datastructures.chat.{Message, MessengerModel, SenderRole, Message as errText}
-import it.evadid.core.datastructures.language.AppLanguage.{Danish, English, German, HumanLanguage}
-import it.evadid.core.datastructures.language.LanguageMap
+import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.distribution.commandTypes.LLMCommands.MessengerChatCompletionRequest
-import it.evadid.homepage.workbook.legacy.htmlElements.basic.HtmlButtonElement
+import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.workbook.legacy.model.abstractions.ScaffoldingInformation
 import it.evadid.homepage.workbook.legacy.model.info.FullInfo
 import it.evadid.util.Logger
@@ -38,7 +36,7 @@ case class HtmlGPTMessenger(
   override val defaultValue: MessengerModel = MessengerModel.apply(List())
 
   override val serializer: Serializer[MessengerModel] = Serializer.messengerIo
-  
+
   val interactionVariable: InteractionVariable[MessengerModel] = {
     val res = InteractionVariable[MessengerModel](this)
     HtmlGPTMessenger.seedMessenger(textInteraction, res, languageMapIdExerciseText, languageMapIdScaffoldingInfo)
@@ -71,13 +69,13 @@ case class HtmlGPTMessenger(
 
   private val scaffoldingEditor = SimpleMessengerEditor(interactionVariable, onUserSendMessage)
 
-  private val scaffoldingButton = HtmlButtonElement.withSvgContent(fullInfo, HtmlGPTMessenger.scaffoldingButtonSvg, event => {
+  private val scaffoldingButton = HtmlButtonElement.withSvgContent(HtmlGPTMessenger.scaffoldingButtonSvg, event => {
     fullInfo.technical.makeFullscreen(scaffoldingEditor)
   })
 
   private val domElement: L.Element = scaffoldingButton.getDomElement()
 
- // override def getDomElement(): L.Element = domElement
+  // override def getDomElement(): L.Element = domElement
 
 }
 

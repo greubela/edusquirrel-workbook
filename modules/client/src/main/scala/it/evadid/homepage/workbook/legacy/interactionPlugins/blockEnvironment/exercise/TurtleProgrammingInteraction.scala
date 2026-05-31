@@ -3,19 +3,17 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.e
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.*
-import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.core.util.io.Serializer
-import it.evadid.workbook.model.interaction.WorkbookInteraction
-import it.evadid.workbook.model.interaction.sync.UpdateImportance
-import it.evadid.workbook.model.interaction.sync.UpdateImportance.MAJOR
-import it.evadid.workbook.model.interaction.variable.InteractionVariable
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
-import it.evadid.homepage.workbook.legacy.htmlElements.basic.HtmlButtonElement
+import it.evadid.core.util.io.Serializer
+import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
 import it.evadid.homepage.workbook.legacy.model.info.FullInfo
+import it.evadid.workbook.model.interaction.WorkbookInteraction
+import it.evadid.workbook.model.interaction.sync.UpdateImportance
+import it.evadid.workbook.model.interaction.variable.InteractionVariable
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 
 case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expectedSvgResult: AppSvgElement) extends WorkbookInteraction[BeProgram] {
@@ -48,7 +46,7 @@ case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expected
     )
   }
 
-  private val openEditorButton = HtmlButtonElement.withTextLabel(fullInfo, "BlockEditor/openEditor", _ => openFullEditor())
+  private val openEditorButton = HtmlButtonElement.withTextLabel(LanguageMapContentId("BlockEditor/openEditor"), _ => openFullEditor())
   private val fullscreenEditor = HtmlFullscreenTurtleEditorElement(editorState)
 
   private def openFullEditor(): Unit = {
@@ -72,6 +70,6 @@ case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expected
 
 
   // override def getDomElement(): L.Element = domElement
-  
-  
+
+
 }

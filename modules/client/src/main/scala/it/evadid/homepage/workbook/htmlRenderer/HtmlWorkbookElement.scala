@@ -1,7 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer
 
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.HtmlAppElement
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.legacy.model.info.FullInfo
 import it.evadid.workbook.model.abstractions.WorkbookElement
 

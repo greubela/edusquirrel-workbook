@@ -4,7 +4,7 @@ import com.raquo.laminar.DomApi
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.MarkdownToHtml
-import it.evadid.homepage.HtmlAppElement
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.workbook.model.abstractions.*
 import it.evadid.workbook.model.abstractions.RoleInWorkbook.*

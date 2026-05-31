@@ -15,7 +15,7 @@ object HtmlTurtleStitchExploreProjectRenderer extends HtmlRenderFactory[TurtleSt
 
   override protected def createDomElement(workbookElement: TurtleStitchExploreProjectElement): Element = {
 
-    val preview: Element = HtmlTurtleStitchPreviewRenderer.render(workbookElement.projectToDownload)
+    val preview: Element = HtmlTurtleStitchProjectPreview.render(workbookElement.projectToDownload)
 
     val downloadButton: Element = button(
       text <-- HtmlRenderFactory.contentIdStringSignal(LanguageMapContentId("TurtleStitch/downloadButton")),
