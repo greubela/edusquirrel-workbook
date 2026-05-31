@@ -88,7 +88,7 @@ private case class SectionSelectionLine(workbook: Workbook) extends HtmlAppEleme
 
   override def getDomElement(): L.Element = div(
     cls := "section-overview",
-    sections.map(sectionToElement)
+    children <-- Var(sections.map(sectionToElement)).signal
   )
 }
 

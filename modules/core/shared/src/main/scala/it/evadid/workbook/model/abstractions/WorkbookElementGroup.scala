@@ -7,9 +7,9 @@ trait WorkbookElementGroup[T <: WorkbookElement] extends WorkbookElement {
  
   def groupElements: List[T]
 
-  override val childrenOfThisElement: List[WorkbookElement] = groupElements
+  override lazy val childrenOfThisElement: List[WorkbookElement] = groupElements
 
-  def groupType: Option[WorkbookGroupType] = Some(WorkbookGroupType.SECTION)
+  def groupType: Option[WorkbookGroupType] = None
 }
 
 object WorkbookElementGroup {

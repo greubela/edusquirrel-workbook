@@ -13,7 +13,7 @@ case class Workbook(
 
 
   override val groupElements: List[WorkbookSection] = sections
-  
+
   override val groupType: Option[WorkbookGroupType] = Some(WorkbookGroupType.WORKBOOK)
 
 }

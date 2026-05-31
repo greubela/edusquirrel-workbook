@@ -11,7 +11,7 @@ case class GptInteractionElement(
                              ) extends WorkbookElement {
 
 
-  override val childrenOfThisElement: List[WorkbookElement] = List() //List(htmlGPTMessenger).flatten
+  override lazy val childrenOfThisElement: List[WorkbookElement] = List() //List(htmlGPTMessenger).flatten
 
   //private var htmlGptGrader = HtmlGptGrader(fullInfo, textInteraction)
 

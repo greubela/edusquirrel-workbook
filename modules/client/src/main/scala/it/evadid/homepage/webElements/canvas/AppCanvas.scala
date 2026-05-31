@@ -1,4 +1,4 @@
-package it.evadid.homepage.workbook.legacy.htmlElements.basic.canvas
+package it.evadid.homepage.webElements.canvas
 
 import it.evadid.core.datastructures.color.AppColor
 import it.evadid.core.datastructures.file.*

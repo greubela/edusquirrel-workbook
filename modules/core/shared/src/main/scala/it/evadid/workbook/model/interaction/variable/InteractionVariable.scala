@@ -63,6 +63,10 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T])
     innerState.update(_.withAddedEvents(syncedFromHistory.toSet))
   }
 
+  def resetHistory(): Unit = synchronized {
+    innerState.set(defaultHistory)
+  }
+  
   def resetInteractionVariable(newSyncSources: List[SyncInformation]): Unit = synchronized {
     syncSources.set(List())
     innerState.set(defaultHistory)

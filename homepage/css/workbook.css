@@ -20,7 +20,7 @@ body {
 
 /* workbook title line */
 
-.workbook-title-line {
+.workbook-header {
     background: linear-gradient(180deg, var(--color-header-gradient-start) 0%, var(--color-header-gradient-end) 100%);
     box-shadow: 0 1px 0 var(--color-shadow-blue-soft);
     margin-bottom: var(--space-xl);
@@ -37,7 +37,7 @@ body {
     z-index: 1000;
 }
 
-.workbook-title-line .select-language-line {
+.select-language-line {
     display: flex;
     flex-direction: row;
     align-items: center;

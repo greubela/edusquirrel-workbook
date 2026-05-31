@@ -4,7 +4,7 @@ import it.evadid.workbook.model.interaction.WorkbookInteraction
 
 trait WorkbookElement {
 
-  val childrenOfThisElement: List[WorkbookElement] = List()
+  lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
   lazy val allContainedInteractions: List[WorkbookInteraction[?]] =
     childrenOfThisElement.flatMap(_.allContainedInteractions) ++ this.match {

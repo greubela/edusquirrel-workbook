@@ -4,6 +4,7 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.homepage.workbook.legacy.model.info.{AllUserInfo, AllWorkbookInfo, FullInfo, WorkbookConfig}
 import it.evadid.workbook.model.interaction.WorkbookInteraction
+
 case class HomepageDataControl(fullInfo: FullInfo) {
 
   private def interactions: List[WorkbookInteraction[?]] = fullInfo.current.allAvailableInteractions
@@ -12,14 +13,12 @@ case class HomepageDataControl(fullInfo: FullInfo) {
   def downloadAllAvailableData(): Unit = fullInfo.current.workbookUserData.foreach(_.downloadAllData())
 
   def saveAndResetAllInfo(): Unit = fullInfo.synchronized {
-    val curHomepageInfo = fullInfo.homepageInfoState.now()
     // Save everything that is still present
-    interactions.foreach(_.interactionVariable.syncToAll())
+    interactions.foreach(_.interactionVariable.syncToAll(true))
     downloadAllAvailableData()
     // Clear old Status
     fullInfo.technical.resetLocalStorage()
-    println("HomepageDataControl::saveAndResetAllInfo [WARN] not implemented propely, now removing all sync destinations!")
-    interactions.foreach(curInteraction => curInteraction.resetInteraction(syncBefore = false, syncAfter = false, List()))
+    interactions.foreach(_.clearHistory(false))
   }
 
   def changeWorkbook(factory: WorkbookFactory): Unit = {
@@ -33,6 +32,7 @@ case class HomepageDataControl(fullInfo: FullInfo) {
     //saveAndResetAllInfo()
     fullInfo.homepageInfoState.update(curInfo => curInfo.copy(workbookInfo = Some(newWorkbook)))
     interactions.foreach(_.interactionVariable.syncFromAll())
+
   }
 
   def updateWorkbookConfig(func: WorkbookConfig => WorkbookConfig): Unit = fullInfo.synchronized {
@@ -43,11 +43,12 @@ case class HomepageDataControl(fullInfo: FullInfo) {
   def changeUser(userInfo: Option[AllUserInfo]): Unit = fullInfo.synchronized {
     //saveAndResetAllInfo() //todo without dummy
 
-    // set new info into var
+    interactions.foreach(_.interactionVariable.syncToAll(true))
+
+    val syncDest = userInfo.map(_.config.syncDestinations).getOrElse(fullInfo.defaults.defaultSyncLocation)
     fullInfo.homepageInfoState.update(curInfo => curInfo.copy(userInfo = userInfo))
-    // propagate
-    println("HomepageDataControl::changeUser [WARN] not implemented propely, now removing all sync destinations!")
-    interactions.foreach(_.resetInteraction(syncBefore = false, syncAfter = true, List()))
+
+    interactions.foreach(_.resetInteraction(syncBefore = false, syncAfter = true, syncDest))
   }
 
   def changeLanguage(language: HumanLanguage): Unit = fullInfo.synchronized {

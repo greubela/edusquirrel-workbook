@@ -1,18 +1,25 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.card
-
+/*
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.*
 import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.StateHelper.*
+import it.evadid.homepage.HtmlAppElement
 import it.evadid.homepage.util.web.DownloadHelper
 import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchWorkerFacade
 import it.evadid.homepage.workbook.legacy.model.abstractions.HtmlWorkbookElement
 import it.evadid.homepage.workbook.legacy.model.info.FullInfo
+import it.evadid.workbook.plugins.TurtleStitch.TurtleStitchProjectState
 
 import scala.concurrent.ExecutionContext
+
+
+
+
 case class TurtleFileShowProgramXmlCard(
                                          fullInfo: FullInfo,
                                          desiredFilename: String,
@@ -22,9 +29,6 @@ case class TurtleFileShowProgramXmlCard(
                                          downloadButtonMapId: String = "TurtleStitch/downloadButton"
                                        ) extends HtmlWorkbookElement {
 
-  private val headline: Element = h3(
-    text <-- fullInfo.signals.stringFromLanguageMapId(headlineLanguageMapId)
-  )
 
   private val downloadButton: Element = button(
     text <-- fullInfo.signals.stringFromLanguageMapId(downloadButtonMapId),
@@ -35,38 +39,8 @@ case class TurtleFileShowProgramXmlCard(
     }
   )
 
-  private def mapDataSrcStringToElement(dataSrcString: Option[String]): Element = dataSrcString match {
-    case Some(value) if value.startsWith("data:image") => img(src := value, styleAttr := "max-width: 100%")
-    case Some(value) => span(value)
-    case None => span(
-      text <-- fullInfo.signals.stringFromLanguageMapId(nonexistingImageLanguageMapId)
-    )
-  }
 
-  private def getPngProgramDisplayElement(humanLanguage: HumanLanguage, xml: Option[String]): Element = {
-    if (xml.isEmpty) mapDataSrcStringToElement(None)
-    else {
-      val elState: State[Option[String]] = TurtleStitchWorkerFacade.getGreenFlagProgramSnapshotDataSrc(xml.get, humanLanguage)
-      div(
-        child <-- elState.toAirstreamVar.signal.map(mapDataSrcStringToElement)
-      )
-    }
-  }
-
-
-  private val domElement: Element = div(
-    cls := "preview-card",
-    headline,
-    div(
-      cls := "preview-content",
-      child <-- {
-        val xmlSignal: Signal[Option[String]] = projectXmlVar.signal
-        val languageSignal: Signal[HumanLanguage] = fullInfo.signals.currentLanguage
-        val combinedSignal: Signal[(HumanLanguage, Option[String])] = languageSignal.combineWith(xmlSignal)
-        combinedSignal.map(tup => getPngProgramDisplayElement(tup._1, tup._2))
-      }),
-    downloadButton
-  )
+  private val domElement: Element =
 
   override def getDomElement(): Element = domElement
 
@@ -114,3 +88,4 @@ object TurtleFileShowProgramXmlCard {
   }
 
 }
+*/

@@ -62,8 +62,9 @@ trait WorkbookFactory {
   }
 
   protected def container(langIdContainerLabel: String, elements: List[WorkbookElement]): WorkbookElementGroup[WorkbookElement] = {
-    val containerTitle = LangMapContentBasedElement(LanguageMapContentId(langIdContainerLabel), LangMapContentIdType(TypeOfTextContent.PLAINTEXT, RoleInWorkbook.CONTAINER_TITLE))
-    WorkbookElementGroup(List(containerTitle) ++ elements, Some(WorkbookGroupType.EXERCISE_CONTAINER))
+    //val containerTitle = LangMapContentBasedElement(LanguageMapContentId(langIdContainerLabel), LangMapContentIdType(TypeOfTextContent.PLAINTEXT, RoleInWorkbook.CONTAINER_TITLE))
+    //WorkbookElementGroup(List(containerTitle) ++ elements, Some(WorkbookGroupType.EXERCISE_CONTAINER))
+    ExerciseContainer(LanguageMapContentId(langIdContainerLabel), elements)
   }
 
   /*
@@ -71,14 +72,14 @@ trait WorkbookFactory {
    */
 
   protected def instructionPlaintext(langIdContent: String): WorkbookElement =
-    LangMapContentBasedElement(LanguageMapContentId(langIdContent), LangMapContentIdType(TypeOfTextContent.PLAINTEXT, RoleInWorkbook.EXERCISE_DESCRIPTION))
+    LangMapContentBasedElement(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextContent.PLAINTEXT))
 
   protected def instructionHtml(langIdContent: String): WorkbookElement =
-    LangMapContentBasedElement(LanguageMapContentId(langIdContent), LangMapContentIdType(TypeOfTextContent.HTML, RoleInWorkbook.EXERCISE_DESCRIPTION))
+    LangMapContentBasedElement(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextContent.HTML))
   //HtmlInstructionElement.fromUnsafeHtmlLanguageMapId(fullInfo, textMapId)
 
   protected def instructionMarkdown(langIdContent: String): WorkbookElement =
-    LangMapContentBasedElement(LanguageMapContentId(langIdContent), LangMapContentIdType(TypeOfTextContent.MARKDOWN, RoleInWorkbook.EXERCISE_DESCRIPTION))
+    LangMapContentBasedElement(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextContent.MARKDOWN))
   //HtmlInstructionElement.fromMarkdownLanguageMapId(fullInfo, textMapId)
 
   def image(imageLocation: FileDescription): ImageElement = {

@@ -12,6 +12,7 @@ import it.evadid.homepage.workbook.legacy.model.info.*
 import it.evadid.homepage.workbook.legacy.singletons.FileDataStorage
 import todomove.datastructures.web.file.FileFactory
 import it.evadid.homepage.*
+import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.HtmlWorkbookRenderer
 
 object HtmlFullWorkbookApp extends HtmlAppElement{
 
@@ -41,7 +42,7 @@ object HtmlFullWorkbookApp extends HtmlAppElement{
 
   private lazy val workbookDomElement: Element = {
     val workbookSignal: Signal[Element] = fullInfo.signals.workbook.mapLazy {
-      case Some(workbook) => div("HtmlFullWorkbookApp::workbookDomelement not properly re-implemented yet!") //workbook.loadedWorkbook.getDomElement()
+      case Some(workbookInfo) => HtmlWorkbookRenderer.render(workbookInfo.loadedWorkbook).getDomElement()//div("HtmlFullWorkbookApp::workbookDomelement not properly re-implemented yet!") //workbook.loadedWorkbook.getDomElement()
       case None => div(text <-- fullInfo.signals.stringFromLanguageMapId("basic/noWorkbookLoaded"))
     }
     val withFullscreen: Signal[List[Element]] = workbookSignal.map(workbookDom => List(technical.fullScreenContainer.getDomElement(), workbookDom))

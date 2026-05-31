@@ -7,7 +7,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.pr
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.*
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.homepage.util.Timing
-import it.evadid.homepage.workbook.legacy.htmlElements.basic.canvas.SvgCanvas
+import it.evadid.homepage.webElements.canvas.SvgCanvas
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig, ControlFlowDisplay}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.{BeBlockRenderingTree, BeProgram}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.{BeTreeDropTarget, RenderingInformation}

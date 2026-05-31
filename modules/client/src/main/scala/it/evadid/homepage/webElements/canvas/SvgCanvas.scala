@@ -1,4 +1,4 @@
-package it.evadid.homepage.workbook.legacy.htmlElements.basic.canvas
+package it.evadid.homepage.webElements.canvas
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*

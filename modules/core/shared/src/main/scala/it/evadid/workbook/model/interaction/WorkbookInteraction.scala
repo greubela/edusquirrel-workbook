@@ -10,7 +10,6 @@ trait WorkbookInteraction[T] extends WorkbookElement {
   
   override lazy val allContainedInteractions: List[WorkbookInteraction[?]] = List(this)
   lazy val isDisabledState: State[Boolean] = State(false)
-  
 
   def defaultValue: T
   def serializer: Serializer[T]
@@ -20,14 +19,18 @@ trait WorkbookInteraction[T] extends WorkbookElement {
 
   //   val syncDest: List[SyncInformation] = fullInfo.current.allSyncSources
 
-  def resetInteraction(syncBefore: Boolean, syncAfter: Boolean, newSyncDest: List[SyncInformation]): Unit = id.synchronized {
+  def clearHistory(syncBefore: Boolean): Unit = id.synchronized {
+    if (syncBefore) {
+      interactionVariable.syncToAll(true)
+    }
+    interactionVariable.resetHistory()
+  }
 
+  def resetInteraction(syncBefore: Boolean, syncAfter: Boolean, newSyncDest: List[SyncInformation]): Unit = id.synchronized {
     if (syncBefore) {
       interactionVariable.syncToAll()
     }
-
     interactionVariable.resetInteractionVariable(newSyncDest)
-
     if (syncAfter) {
       interactionVariable.syncFromAll()
       interactionVariable.syncToAll()
