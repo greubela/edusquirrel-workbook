@@ -1,4 +1,4 @@
-package it.evadid.homepage.workbook.legacy
+package it.evadid.homepage.control
 
 import it.evadid.distribution.clients.ExecuteOnRemoteServer
 

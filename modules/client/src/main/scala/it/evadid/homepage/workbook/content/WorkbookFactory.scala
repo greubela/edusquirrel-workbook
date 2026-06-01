@@ -5,8 +5,8 @@ import com.raquo.laminar.api.L
 import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.homepage.control.info.{AllWorkbookInfo, FullInfo, WorkbookConfig}
 import it.evadid.homepage.workbook.htmlRenderer.*
-import it.evadid.homepage.workbook.legacy.model.info.*
 import it.evadid.workbook.model.abstractions.*
 import it.evadid.workbook.model.elements.*
 import it.evadid.workbook.model.interaction.*
@@ -46,7 +46,7 @@ trait WorkbookFactory {
   Control
    */
   protected def createTextInput(id: String = nextId()): WorkbookInteraction[String] = {
-    WorkbookInteraction.createBasicStringInteraction(id, "")
+    WorkbookInteraction.TextInteractionBasic(id)
   }
 
   /*

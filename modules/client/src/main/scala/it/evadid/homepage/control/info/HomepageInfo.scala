@@ -1,4 +1,4 @@
-package it.evadid.homepage.workbook.legacy.model.info
+package it.evadid.homepage.control.info
 
 import it.evadid.core.datastructures.language.AppLanguage.*
 

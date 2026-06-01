@@ -1,8 +1,8 @@
-package it.evadid.homepage.workbook.legacy.model.info
+package it.evadid.homepage.control.info
 
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.homepage.workbook.legacy.model.info.AllWorkbookInfo.WorkbookMetadata
+import AllWorkbookInfo.WorkbookMetadata
 import it.evadid.workbook.model.elements.Workbook
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 

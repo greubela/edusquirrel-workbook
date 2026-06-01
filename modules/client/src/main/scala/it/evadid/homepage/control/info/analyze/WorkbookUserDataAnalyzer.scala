@@ -1,13 +1,13 @@
-package it.evadid.homepage.workbook.legacy.model.info.analyze
+package it.evadid.homepage.control.info.analyze
 
 import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
+import it.evadid.core.datastructures.user.User
+import it.evadid.homepage.control.info.{AllUserInfo, AllWorkbookInfo}
+import it.evadid.homepage.control.info.control.TechnicalControl
 import it.evadid.homepage.util.web.DownloadHelper
-import it.evadid.homepage.workbook.legacy.model.info.AllWorkbookInfo.WorkbookMetadata
-import it.evadid.homepage.workbook.legacy.model.info.control.TechnicalControl
-import it.evadid.homepage.workbook.legacy.model.info.{AllUserInfo, AllWorkbookInfo}
-import it.evadid.homepage.workbook.legacy.user.User
+import it.evadid.homepage.control.info.AllWorkbookInfo.WorkbookMetadata
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 import it.evadid.workbook.model.interaction.variable.*

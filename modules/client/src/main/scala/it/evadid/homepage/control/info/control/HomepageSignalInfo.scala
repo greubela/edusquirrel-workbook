@@ -1,11 +1,11 @@
-package it.evadid.homepage.workbook.legacy.model.info.control
+package it.evadid.homepage.control.info.control
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.state.StateHelper.*
-import it.evadid.homepage.workbook.legacy.model.info.{AllWorkbookInfo, FullInfo, HomepageInfo}
-import it.evadid.homepage.workbook.legacy.singletons.WorkbookLanguageInfo
+import it.evadid.homepage.control.WorkbookLanguageInfo
+import it.evadid.homepage.control.info.{AllWorkbookInfo, FullInfo, HomepageInfo}
 import it.evadid.workbook.model.elements.WorkbookSection
 
 import scala.concurrent.*

@@ -6,7 +6,6 @@ import it.evadid.core.datastructures.file.*
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.homepage.control.HtmlFullWorkbookApp
-import it.evadid.homepage.workbook.legacy.model.info.*
 import todomove.datastructures.web.file.FullImage
 import todomove.datastructures.web.file.FullImage.LoadedFileImage
 import it.evadid.homepage.webElements.*

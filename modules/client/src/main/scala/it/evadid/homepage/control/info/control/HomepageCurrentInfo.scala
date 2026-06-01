@@ -1,8 +1,8 @@
-package it.evadid.homepage.workbook.legacy.model.info.control
+package it.evadid.homepage.control.info.control
 
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.workbook.legacy.model.info.analyze.WorkbookUserDataAnalyzer
-import it.evadid.homepage.workbook.legacy.model.info.{AllUserInfo, AllWorkbookInfo, FullInfo, HomepageInfo}
+import it.evadid.homepage.control.info.{AllUserInfo, AllWorkbookInfo, FullInfo, HomepageInfo}
+import it.evadid.homepage.control.info.analyze.WorkbookUserDataAnalyzer
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 import it.evadid.workbook.model.interaction.sync.SyncInformation
 case class HomepageCurrentInfo(fullInfo: FullInfo) {

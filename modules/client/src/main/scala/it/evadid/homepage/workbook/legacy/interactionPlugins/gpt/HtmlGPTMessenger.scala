@@ -8,9 +8,8 @@ import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.distribution.commandTypes.LLMCommands.MessengerChatCompletionRequest
+import it.evadid.homepage.control.info.FullInfo
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
-import it.evadid.homepage.workbook.legacy.model.abstractions.ScaffoldingInformation
-import it.evadid.homepage.workbook.legacy.model.info.FullInfo
 import it.evadid.util.Logger
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 import it.evadid.workbook.model.interaction.sync.UpdateImportance.MAJOR
@@ -82,15 +81,15 @@ case class HtmlGPTMessenger(
 object HtmlGPTMessenger {
 
   private def seedMessenger(textInteraction: WorkbookInteraction[String], interactionVariable: InteractionVariable[MessengerModel], languageMapIdExerciseText: String, languageMapIdScaffoldingInfo: String): Unit = {
-
-    val scaffoldingInformation: Future[ScaffoldingInformation[String]] = ??? //textInteraction.loadScaffoldingInformation(languageMapIdExerciseText, languageMapIdScaffoldingInfo)
+/*
+    //val scaffoldingInformation: Future[ScaffoldingInformation[String]] = ??? //textInteraction.loadScaffoldingInformation(languageMapIdExerciseText, languageMapIdScaffoldingInfo)
 
     scaffoldingInformation.onComplete {
       case Success(scaffoldingInfo) => {
-        val exText: String = scaffoldingInfo.exerciseText.getWithLanguagePreference(LLMCommands.langPreference)
+        val exText: String = ??? //scaffoldingInfo.exerciseText.getWithLanguagePreference(LLMCommands.langPreference)
         val msg1: Message = Message("@assistant: the current exercise has the following instruction:\n" + exText, LLMCommands.workbookPerson, LocalDateTime.now())
 
-        val scText: String = scaffoldingInfo.additionalScaffolds.getWithLanguagePreference(LLMCommands.langPreference)
+        val scText: String = ??? //scaffoldingInfo.additionalScaffolds.getWithLanguagePreference(LLMCommands.langPreference)
         val msg2 = Message("@assistant: please note while giving feedback to the student:\n" + scText, LLMCommands.workbookPerson, LocalDateTime.now())
 
         if (!interactionVariable.currentValue.messages.exists(_.author.role == WORKBOOK)) {
@@ -108,7 +107,7 @@ object HtmlGPTMessenger {
         }
       }
     }(using ExecutionContext.global)
-
+*/
   }
 
 

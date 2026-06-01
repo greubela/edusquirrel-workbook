@@ -1,5 +1,5 @@
 package it.evadid.homepage.workbook.legacy.model.abstractions
-
+/*
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
@@ -23,3 +23,4 @@ trait HtmlWorkbookElement extends HtmlAppElement {
 }
 
 
+*/

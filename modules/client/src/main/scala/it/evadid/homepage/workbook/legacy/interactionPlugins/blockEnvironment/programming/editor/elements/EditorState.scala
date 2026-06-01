@@ -4,12 +4,12 @@ import com.raquo.airstream.ownership.Owner
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Signal
+import it.evadid.homepage.control.info.HomepageInfo
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeTreeDropTarget
-import it.evadid.homepage.workbook.legacy.model.info.HomepageInfo
 import todomove.datastructures.core.vm.code.BeExpression
 
 case class EditorState(

@@ -5,14 +5,12 @@ import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.distribution.clients.ExecuteOnWebWorker
 import it.evadid.executors.MathExecutor
 import it.evadid.homepage.workbook.htmlRenderer.*
-import it.evadid.homepage.workbook.legacy.BackendServerConfig
-import it.evadid.homepage.workbook.legacy.htmlElements.TechnicalHomepageElements
-import it.evadid.homepage.workbook.legacy.htmlElements.container.HtmlFullScreenContainerElement
-import it.evadid.homepage.workbook.legacy.model.info.*
 import it.evadid.homepage.workbook.legacy.singletons.FileDataStorage
 import todomove.datastructures.web.file.FileFactory
 import it.evadid.homepage.*
+import it.evadid.homepage.control.info.{FullInfo, HomepageDefaults, HomepageInfo}
 import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.homepage.webElements.basic.HtmlFullScreenContainerElement
 import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.HtmlWorkbookRenderer
 
 object HtmlFullWorkbookApp extends HtmlAppElement{

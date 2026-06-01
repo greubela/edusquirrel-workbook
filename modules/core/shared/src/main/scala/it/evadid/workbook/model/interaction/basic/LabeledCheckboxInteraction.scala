@@ -5,7 +5,7 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 import it.evadid.workbook.model.interaction.variable.InteractionVariable
 
-case class LabeledCheckboxInteraction(override val id: String, langIdCheckboxLabel: LanguageMapContentId) extends WorkbookInteraction[Boolean] {
+case class LabeledCheckboxInteraction(override val id: String, checkboxLabel: LanguageMapContentId) extends WorkbookInteraction[Boolean] {
 
   override def defaultValue: Boolean = false
 

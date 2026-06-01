@@ -4,12 +4,16 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.control.HtmlFullWorkbookApp
+import it.evadid.homepage.control.info.FullInfo
+import it.evadid.homepage.webElements.basic.HtmlImageElement
 import it.evadid.homepage.workbook.htmlRenderer.*
-import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.{HtmlExerciseContainerRenderer, HtmlLangMapContentRenderer, HtmlWorkbookRenderer}
+import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.*
+import it.evadid.homepage.workbook.htmlRenderer.interactionEditors.*
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.turtleStitch.HtmlTurtleStitchExploreProjectRenderer
-import it.evadid.homepage.workbook.legacy.model.info.FullInfo
 import it.evadid.workbook.model.abstractions.WorkbookElement
-import it.evadid.workbook.model.elements.{ExerciseContainer, LangMapContentBasedElement, Workbook}
+import it.evadid.workbook.model.elements.{ExerciseContainer, ImageElement, LangMapContentBasedElement, Workbook}
+import it.evadid.workbook.model.interaction.WorkbookInteraction.TextInteractionBasic
+import it.evadid.workbook.model.interaction.basic.LabeledCheckboxInteraction
 import it.evadid.workbook.plugins.TurtleStitch.TurtleStitchExploreProjectElement
 
 trait HtmlRenderFactory[T <: WorkbookElement] {
@@ -42,12 +46,25 @@ object HtmlRenderFactory {
     div("HtmlRenderFactory::renderWorkbookElement cannot yet render objects of type '" + workbookElement.getClass.getName + "'!")
   }
 
+  private def fromElement[T <: WorkbookElement](any: T, element: Element): HtmlWorkbookElement[T] = {
+    val useDom = L.div(L.cls := "workbook-element exercise-instruction", element)
+    HtmlWorkbookElement[T](HtmlFullWorkbookApp.fullInfo, any, useDom)
+  }
+
   def renderWorkbookElement[T <: WorkbookElement](anyElement: T): HtmlWorkbookElement[?] = {
     anyElement match {
+      // structure
       case w: Workbook => HtmlWorkbookRenderer.render(w)
       case c: ExerciseContainer => HtmlExerciseContainerRenderer.render(c)
+      // basic
       case c: LangMapContentBasedElement => HtmlLangMapContentRenderer.render(c)
+      case i: ImageElement => fromElement[ImageElement](i, HtmlImageElement(i.location).getDomElement())
+      // interactions
+      case i: TextInteractionBasic => HtmlSimpleTextInteractionRenderer.render(i)
+      case i: LabeledCheckboxInteraction => HtmlBasicCheckboxRenderer.render(i)
+      // plugins
       case t: TurtleStitchExploreProjectElement => HtmlTurtleStitchExploreProjectRenderer.render(t)
+      // error
       case _: T => HtmlWorkbookElement[T](HtmlFullWorkbookApp.fullInfo, anyElement, createPlaceholderElement[T](anyElement))
     }
   }

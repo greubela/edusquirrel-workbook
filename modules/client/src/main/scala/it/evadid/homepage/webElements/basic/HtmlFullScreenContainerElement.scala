@@ -1,11 +1,10 @@
-package it.evadid.homepage.workbook.legacy.htmlElements.container
+package it.evadid.homepage.webElements.basic
 
 import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.{*, given}
+import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.workbook.legacy.model.abstractions.HtmlWorkbookElement
 import org.scalajs.dom
-import org.scalajs.dom.{KeyboardEvent, html}
+import org.scalajs.dom.KeyboardEvent
 
 case class HtmlFullScreenContainerElement() extends HtmlAppElement {
 

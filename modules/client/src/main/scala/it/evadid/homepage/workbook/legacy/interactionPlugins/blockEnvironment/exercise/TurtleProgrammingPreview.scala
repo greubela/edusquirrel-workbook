@@ -2,14 +2,14 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.e
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Bounds
+import it.evadid.homepage.control.info.{FullInfo, HomepageInfo}
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
-import it.evadid.homepage.workbook.legacy.model.abstractions.HtmlWorkbookElement
-import it.evadid.homepage.workbook.legacy.model.info.{FullInfo, HomepageInfo}
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 
-case class TurtleProgrammingPreview(fullInfo: FullInfo, editorState: EditorState, expectedSvgResult: AppSvgElement) extends HtmlWorkbookElement {
+case class TurtleProgrammingPreview(fullInfo: FullInfo, editorState: EditorState, expectedSvgResult: AppSvgElement) extends HtmlAppElement {
 
   private val renderedSvg: SvgElement = {
     val expectedElement = expectedSvgResult

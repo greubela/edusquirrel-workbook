@@ -7,7 +7,7 @@ import it.evadid.workbook.model.interaction.sync.UpdateImportance
 import it.evadid.workbook.model.interaction.variable.InteractionVariable
 
 import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
-import it.evadid.homepage.workbook.legacy.model.info.FullInfo
+import it.evadid.homepage.control.info.FullInfo
 import scala.util.Try
 case class HtmlReorderInteraction[T](
                                       fullInfo: FullInfo,

@@ -3,14 +3,14 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.gpt
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.svg
 import com.raquo.laminar.nodes.ReactiveSvgElement
+import it.evadid.homepage.control.info.FullInfo
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
-import it.evadid.homepage.workbook.legacy.model.abstractions.HtmlWorkbookElement
-import it.evadid.homepage.workbook.legacy.model.info.FullInfo
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 import org.scalajs.dom.{SVGLinearGradientElement, SVGSVGElement}
 
 
-case class HtmlGptGrader(fullInfo: FullInfo, textInteraction: WorkbookInteraction[String]) extends HtmlWorkbookElement {
+case class HtmlGptGrader(fullInfo: FullInfo, textInteraction: WorkbookInteraction[String]) extends HtmlAppElement {
 
   private val submitButton = HtmlButtonElement.withSvgContent(HtmlGptGrader.gradingButtonSvg, event => {
 

@@ -4,8 +4,8 @@ import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.control.HtmlFullWorkbookApp
+import it.evadid.homepage.control.info.FullInfo
 import it.evadid.homepage.webElements.*
-import it.evadid.homepage.workbook.legacy.model.info.FullInfo
 import org.scalajs.dom.{MouseEvent, SVGSVGElement}
 import it.evadid.homepage.webElements.*
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory;

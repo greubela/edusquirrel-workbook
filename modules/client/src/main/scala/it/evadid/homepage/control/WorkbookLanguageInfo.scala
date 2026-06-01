@@ -1,4 +1,4 @@
-package it.evadid.homepage.workbook.legacy.singletons
+package it.evadid.homepage.control
 
 import it.evadid.core.datastructures.file.*
 import it.evadid.core.datastructures.language.AppLanguage.*

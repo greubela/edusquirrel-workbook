@@ -1,11 +1,11 @@
-package it.evadid.homepage.workbook.legacy.model.info.control
+package it.evadid.homepage.control.info.control
 
 import com.raquo.laminar.api.L.StrictSignal
 import it.evadid.core.datastructures.file.*
 import it.evadid.core.datastructures.state.ObservableValue
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.workbook.legacy.singletons.WorkbookLanguageInfo.LabelLanguageMapStorage
+import it.evadid.homepage.control.WorkbookLanguageInfo.LabelLanguageMapStorage
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 import todomove.datastructures.web.storage.AsyncDataCache
 

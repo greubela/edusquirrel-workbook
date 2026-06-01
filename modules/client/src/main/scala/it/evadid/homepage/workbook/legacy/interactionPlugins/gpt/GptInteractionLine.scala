@@ -5,8 +5,8 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.datastructures.state.State
-import it.evadid.homepage.workbook.legacy.model.abstractions.HtmlWorkbookElement
-import it.evadid.homepage.workbook.legacy.model.info.{FullInfo, HomepageInfo}
+import it.evadid.homepage.control.info.{FullInfo, HomepageInfo}
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -18,7 +18,7 @@ case class GptInteractionLine(
                                languageMapIDExerciseText: String,
                                languageMapIdScaffoldingHints: Option[String] = None,
                                languageMapIdGradingHints: Option[String] = None,
-                             ) extends HtmlWorkbookElement {
+                             ) extends HtmlAppElement {
 
 
   //private var htmlGptGrader = HtmlGptGrader(fullInfo, textInteraction)

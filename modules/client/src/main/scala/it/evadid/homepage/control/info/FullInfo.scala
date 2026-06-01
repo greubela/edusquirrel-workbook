@@ -1,16 +1,16 @@
-package it.evadid.homepage.workbook.legacy.model.info
+package it.evadid.homepage.control.info
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.core.datastructures.state.{State, StateHelper}
+import it.evadid.core.datastructures.user.User
+import it.evadid.homepage.control.TechnicalHomepageElements
+import it.evadid.homepage.control.info.control.{HomepageCurrentInfo, HomepageDataControl, HomepageSignalInfo, TechnicalControl}
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.workbook.legacy.htmlElements.TechnicalHomepageElements
-import it.evadid.homepage.workbook.legacy.htmlElements.container.HtmlFullScreenContainerElement
-import it.evadid.homepage.workbook.legacy.model.info.control.{HomepageCurrentInfo, HomepageDataControl, HomepageSignalInfo, TechnicalControl}
+import it.evadid.homepage.webElements.basic.HtmlFullScreenContainerElement
 import it.evadid.homepage.workbook.legacy.singletons.FileDataStorage
-import it.evadid.homepage.workbook.legacy.user.User
 import it.evadid.workbook.model.interaction.sync.SyncInformation
 import org.scalajs.dom
 
