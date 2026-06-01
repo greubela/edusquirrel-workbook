@@ -13,6 +13,7 @@ import scala.scalajs.js
 import scala.scalajs.js.Promise as JsPromise
 import scala.scalajs.js.annotation.JSGlobal
 import scala.util.Success
+
 case class TurtleStitchEditor(projektXml: Var[String]) extends HtmlAppElement {
 
   private var handle: Option[TurtleStitchEditor.JsEditorHandle] = None

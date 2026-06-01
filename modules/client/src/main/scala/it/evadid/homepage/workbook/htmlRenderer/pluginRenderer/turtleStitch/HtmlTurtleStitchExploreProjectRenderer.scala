@@ -3,18 +3,13 @@ package it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.turtleStitch
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.homepage.util.web.DownloadHelper
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.workbook.plugins.TurtleStitch.TurtleStitchExploreProjectElement
-
-import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.*
 
 object HtmlTurtleStitchExploreProjectRenderer extends HtmlRenderFactory[TurtleStitchExploreProjectElement] {
 
   override protected def createDomElement(workbookElement: TurtleStitchExploreProjectElement): Element = {
-    
+
     div(
       cls := "workbook-interaction preview-line",
       div(
