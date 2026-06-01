@@ -15,9 +15,12 @@ private[state] case class ObservableValueImpl[T](initValue: Option[T]) extends O
 
   private[state] def onNewValueArrived(newValueTry: Try[T]): Unit = syncLock.synchronized {
     if (lastValuePropagated.isEmpty || lastValuePropagated.get != newValueTry) {
+    //  println("ObservableValueImpl::onNewValueArrived: " + newValueTry + " (last: " + lastValuePropagated + ", observers: " + allObserversSorted().size + " = " + observers.size + " + " + oneTimeObservers.size + ")")
       lastValuePropagated = Some(newValueTry)
       allObserversSorted().foreach(curObserver => fireObserver(newValueTry, curObserver))
       oneTimeObservers.clear()
+    }else{
+    //  println("ObserableValueImpl::onNewValueArrived: suppressed update '" + newValueTry + "'!")
     }
   }
 
@@ -41,6 +44,7 @@ private[state] case class ObservableValueImpl[T](initValue: Option[T]) extends O
   }
 
   def addObserver(observer: Observer[T]): Subscription[T] = syncLock.synchronized {
+   // println("observers added by: " + Exception().getStackTrace().mkString("->"))
     observers += observer
     lastValuePropagated.foreach(result => fireObserver(result, observer))
     Subscription(this, observer)

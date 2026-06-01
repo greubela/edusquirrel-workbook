@@ -18,8 +18,8 @@
             <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\project" />
           </set>
         </option>
-        <option name="sbtVersion" value="1.11.4" />
       </SbtProjectSettings>
     </option>
+    <option name="maximumHeapSize" value="2500" />
   </component>
 </project>

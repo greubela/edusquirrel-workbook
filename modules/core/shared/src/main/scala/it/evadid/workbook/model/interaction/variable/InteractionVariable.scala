@@ -8,6 +8,7 @@ import it.evadid.workbook.model.interaction.variable.*
 
 import java.time.LocalDateTime
 import scala.collection.mutable
+import it.evadid.core.util.*
 
 case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T]) {
 
@@ -19,6 +20,8 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T])
   val keyForSerialization: String = underlyingInteraction.id + "_history"
 
   lazy val observableValue: ObservableValue[T] = innerState.observable.deriveValue(_.lastState.value, ExecutionMethod.executeSync, DeriveOnlyLastValues)
+
+  lazy val tmpObservable: ObservableValue[InteractionVariableHistory[T]] = innerState.observable
 
   def createBoundStateWithUpdateImportance(importance: UpdateImportance): State[T] = synchronized {
     val outerState = State[T](currentValue)
@@ -49,7 +52,9 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T])
       val serialized = innerState.now().serializedWithStrategy(curInfo.syncStrategy, underlyingInteraction.serializer)
       curInfo.syncSource.syncTo(keyForSerialization, serialized.toString)
     })
-    println("[INFO] history '" + keyForSerialization + "' changed, synced to " + syncSources.now().size + " sources") //, current value: \n" + io.serialize(underlyingVar.now()) + ")")
+    println("[INFO] history '" + keyForSerialization + "' changed, synced to " + syncSources.now().size + " sources"
+      + ", current value: " + innerState.now().lastState.value
+      + ", last update time: " + InfoUtil.datetimeFormattedForLog(innerState.now().lastState.timestamp) + ", total events: " + innerState.now().events.size + ")")
   }
 
   def syncFromAll(): Unit = synchronized {
@@ -66,7 +71,7 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T])
   def resetHistory(): Unit = synchronized {
     innerState.set(defaultHistory)
   }
-  
+
   def resetInteractionVariable(newSyncSources: List[SyncInformation]): Unit = synchronized {
     syncSources.set(List())
     innerState.set(defaultHistory)
@@ -79,12 +84,15 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T])
   }
 
   def setStateFromUserInteraction(newValue: T, updateSize: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now()): Unit = synchronized {
-    // println("InteractionVariable.updateStateFromUserInteraction: " + newValue + " (" + updateSize + ")")
+    //println("InteractionVariable.updateStateFromUserInteraction: " + newValue + " (" + updateSize + ", oldValue: " + innerState.now().lastState.value + ")")
+
     val lastKnown = innerState.now().lastState
     if (newValue != lastKnown.value || updateSize != lastKnown.updateImportance) {
       val newInteractionState = InteractionVariableState[T](newValue, updateSize, timestamp)
       innerState.update(_.withAddedEvent(newInteractionState))
       syncToAll()
+    } else {
+     // println("Update supressed!")
     }
   }
 

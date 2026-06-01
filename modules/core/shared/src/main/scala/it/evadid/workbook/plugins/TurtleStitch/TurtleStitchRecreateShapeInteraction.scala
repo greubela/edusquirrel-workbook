@@ -15,6 +15,6 @@ case class TurtleStitchRecreateShapeInteraction(override val id: String, imageTo
     override def deserialize(s: String): TurtleStitchProjectState = TurtleStitchProjectState.parseFromStringOrEmpty(s)
   }
 
-  def interactionVariable: InteractionVariable[TurtleStitchProjectState] = InteractionVariable[TurtleStitchProjectState](this)
+  override val interactionVariable: InteractionVariable[TurtleStitchProjectState] = InteractionVariable[TurtleStitchProjectState](this)
 
 }

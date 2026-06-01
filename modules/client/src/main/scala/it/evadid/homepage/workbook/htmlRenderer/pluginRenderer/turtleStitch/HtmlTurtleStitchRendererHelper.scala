@@ -79,6 +79,8 @@ object HtmlTurtleStitchRendererHelper {
 
   def renderProjectPreviewImage(workbookInteraction: WorkbookInteraction[TurtleStitchProjectState]): Element = {
     val xmlSignal: Signal[Option[String]] = workbookInteraction.interactionVariable.createInteractionSignal().map(_.programXml)
+    //xmlSignal.foreach(newContent => println("xml signal changed for workbook interaction " + workbookInteraction.id + ": " + newContent))(using unsafeWindowOwner)
+
     renderProjectPreviewWithXmlSignal(xmlSignal)
   }
 
@@ -111,6 +113,7 @@ object HtmlTurtleStitchRendererHelper {
 
   private def getImageSignal(xmlSignal: Signal[Option[String]], languageSignal: Signal[HumanLanguage]): Signal[Element] = {
     xmlSignal.map(_.getOrElse("")).combineWith(languageSignal).flatMapSwitch(tup => {
+     // println("signal changed, xml: " + tup._1.size + ", language: " + tup._2)
       if (tup._1.trim.isEmpty) Var(renderProjectEmpty()).signal
       else convertTurtleStitchXmlAndLanguageToProgramSrcStringState(tup._1, tup._2).toAirstreamVar.signal.map {
         case Some(imgSrc) => tryRenderStringAsImageSrc(imgSrc)
@@ -120,6 +123,7 @@ object HtmlTurtleStitchRendererHelper {
   }
 
   private def convertTurtleStitchXmlAndLanguageToProgramSrcStringState(xml: String, humanLanguage: HumanLanguage): State[Option[String]] = {
+    //println("try to render xml: " + xml.take(20) + ".../" + xml.size + " in language: " + humanLanguage)
     if (xml.trim.isEmpty) State(None)
     else try {
       TurtleStitchWorkerFacade.getGreenFlagProgramSnapshotDataSrc(xml, humanLanguage)
@@ -127,7 +131,6 @@ object HtmlTurtleStitchRendererHelper {
       e.printStackTrace()
       State(Some("[Error at loading image: " + e.getMessage + "]"))
   }
-
 
   /*
   Upload Button
@@ -148,6 +151,7 @@ object HtmlTurtleStitchRendererHelper {
     )
 
     private def onFileReadSuccessfully(bytes: Array[Byte]): Unit = {
+      println("file read successfully, content has " + bytes.length + " bytes!")
       TurtleStitchProjectState.parseFromBytes(bytes).match {
         case Success(newState) => workbookInteraction.interactionVariable.setStateFromUserInteraction(newState, UpdateImportance.MAJOR)
         case Failure(err) => println("HtmlTurtleStitchFileUploadCardRenderer::onFileReadSuccessfully error: " + err.getMessage)

@@ -23,7 +23,7 @@ object State {
 
   private[state] case class StateImpl[T](initValue: T) extends State[T]{
 
-    val observable: ObservableValueImpl[T] = ObservableValueImpl[T](Some(initValue))
+    override val observable: ObservableValueImpl[T] = ObservableValueImpl[T](Some(initValue))
 
     private var currentValue: T = initValue
 
