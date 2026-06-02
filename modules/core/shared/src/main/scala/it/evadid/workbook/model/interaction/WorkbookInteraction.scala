@@ -13,13 +13,13 @@ trait WorkbookInteraction[T] extends WorkbookElement {
   override lazy val allContainedInteractions: List[WorkbookInteraction[?]] = List(this)
   lazy val isDisabledState: State[Boolean] = State(false)
 
-  def defaultValue: T
+  val defaultValue: T
 
-  def serializer: Serializer[T]
+  val serializer: Serializer[T]
 
-  def interactionVariable: InteractionVariable[T]
+  val interactionVariable: InteractionVariable[T] = InteractionVariable[T](this)
 
-  def id: String
+  val id: String
 
   //   val syncDest: List[SyncInformation] = fullInfo.current.allSyncSources
 

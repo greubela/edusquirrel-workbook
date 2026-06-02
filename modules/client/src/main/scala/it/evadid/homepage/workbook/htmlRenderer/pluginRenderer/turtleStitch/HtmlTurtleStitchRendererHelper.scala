@@ -113,7 +113,7 @@ object HtmlTurtleStitchRendererHelper {
 
   private def getImageSignal(xmlSignal: Signal[Option[String]], languageSignal: Signal[HumanLanguage]): Signal[Element] = {
     xmlSignal.map(_.getOrElse("")).combineWith(languageSignal).flatMapSwitch(tup => {
-     // println("signal changed, xml: " + tup._1.size + ", language: " + tup._2)
+      // println("signal changed, xml: " + tup._1.size + ", language: " + tup._2)
       if (tup._1.trim.isEmpty) Var(renderProjectEmpty()).signal
       else convertTurtleStitchXmlAndLanguageToProgramSrcStringState(tup._1, tup._2).toAirstreamVar.signal.map {
         case Some(imgSrc) => tryRenderStringAsImageSrc(imgSrc)

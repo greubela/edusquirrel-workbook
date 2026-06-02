@@ -7,10 +7,8 @@ import it.evadid.workbook.model.interaction.variable.InteractionVariable
 
 case class LabeledCheckboxInteraction(override val id: String, checkboxLabel: LanguageMapContentId) extends WorkbookInteraction[Boolean] {
 
-  override def defaultValue: Boolean = false
+  override val defaultValue: Boolean = false
 
-  override def serializer: Serializer[Boolean] = Serializer.booleanIO
-
-  override def interactionVariable: InteractionVariable[Boolean] = InteractionVariable[Boolean](this)
-
+  override val serializer: Serializer[Boolean] = Serializer.booleanIO
+  
 }

@@ -2,6 +2,7 @@ package it.evadid.homepage.workbook.content
 
 import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.control.info.FullInfo
 import it.evadid.workbook.model.abstractions.WorkbookElement
 import it.evadid.workbook.model.elements.*
@@ -59,7 +60,7 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
           createExploreExerciseDownloadInteraction("simple_forward"),
           instructionHtml("EmbroideryWorkbook/Ex1Instr2"),
           textInputGpt1,
-          GptInteractionElement(textInputGpt1, "EmbroideryWorkbook/Ex1Instr1", Some("EmbroideryWorkbook/Ex1Instr1Scaff"), None),
+          GptInteractionElement("gpt-ex1instr2", textInputGpt1, LanguageMapContentId("EmbroideryWorkbook/Ex1Instr1"), List(LanguageMapContentId("EmbroideryWorkbook/Ex1Instr1Scaff")), List()),
           instructionHtml("EmbroideryWorkbook/Ex1Instr3"),
           checklist("EmbroideryWorkbook/ConfirmSteps"),
           instructionHtml("EmbroideryWorkbook/Ex1Instr4"),

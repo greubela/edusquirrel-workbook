@@ -28,7 +28,7 @@ case class HtmlGPTMessenger(
                              languageMapIdScaffoldingInfo: String
                            ) extends WorkbookInteraction[MessengerModel] {
 
-  override def id: String = textInteraction.id + "_scaffolding"
+  override val id: String = textInteraction.id + "_scaffolding"
 
   private val systemPromptId: String = "prompts/scaffolding-system-prompt"
 
@@ -36,11 +36,12 @@ case class HtmlGPTMessenger(
 
   override val serializer: Serializer[MessengerModel] = Serializer.messengerIo
 
-  val interactionVariable: InteractionVariable[MessengerModel] = {
+  /*override val interactionVariable: InteractionVariable[MessengerModel] = {
     val res = InteractionVariable[MessengerModel](this)
     HtmlGPTMessenger.seedMessenger(textInteraction, res, languageMapIdExerciseText, languageMapIdScaffoldingInfo)
+  // sollte so okay sein, weil alle weiteren Änderungen ja daran stattfinden... also wenn was rein geladen wird, wird das raus gelöscht, nicht angehängt...
     res
-  }
+  }*/
 
   private def sendError(err: Throwable): Unit = interactionVariable.synchronized {
     println(s"error while sending message to LLM: ${err.getMessage}\n    ${err.getStackTrace.mkString("\n    ")}")
