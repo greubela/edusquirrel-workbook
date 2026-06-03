@@ -9,6 +9,7 @@ import datastructures.core.vm.code.usage.{BeAssignVariable, BeUseValue}
 import datastructures.core.vm.types.BeChildRole.ConditionInControlStructure
 import datastructures.core.vm.types.BeScope.GlobalScope
 import datastructures.core.vm.types.{BeChildPosition, BeUseValueReference}
+import datastructures.core.vm.types.BeInfo
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 
@@ -41,7 +42,41 @@ object VmStaticRules {
 
     results ++= checkUnreachableAfterReturn(allExprs, humanLanguage)
 
+    results ++= checkSyntaxErrors(root, humanLanguage)
+
     results.toList
+  }
+
+  private def checkSyntaxErrors(root: BeExpression, humanLanguage: HumanLanguage): Seq[RuleResult] = {
+    val errors = root.staticInformationSubtree.syntaxErrors
+    if errors.isEmpty then
+      Seq(RuleResult(
+        id = "VM_NO_SYNTAX_ERRORS",
+        category = "VM_TYPES",
+        severity = RuleSeverity.Info,
+        passed = true,
+        message = t(humanLanguage)(
+          "Es wurden keine Typ-Inkonsistenzen oder nicht-parsbare Blöcke gefunden.",
+          "No type inconsistencies or unparsable blocks were found."
+        ),
+        details = None
+      ))
+    else
+      errors.map { info =>
+        val msg = info.message.getInLanguage(humanLanguage)
+        val (id, cat) = info.infoType match {
+          case BeInfo.SyntaxError.UnparsableBlock   => ("VM_UNPARSABLE_BLOCK",   "VM_ERRORS")
+          case BeInfo.SyntaxError.UnsupportedBlock  => ("VM_UNSUPPORTED_BLOCK",  "VM_ERRORS")
+          case BeInfo.SyntaxError.TypeMismatch      => ("VM_TYPE_MISMATCH",      "VM_TYPES")
+          case BeInfo.SyntaxError.StructureMismatch => ("VM_STRUCTURE_MISMATCH", "VM_ERRORS")
+          case BeInfo.SyntaxError.MissingValue      => ("VM_MISSING_VALUE",      "VM_ERRORS")
+          case _                                    => ("VM_SYNTAX_ERROR",       "VM_ERRORS")
+        }
+        RuleResult(
+          id = id, category = cat, severity = RuleSeverity.Warning, passed = false,
+          message = msg, details = Some(info.infoType.toString)
+        )
+      }
   }
 
   /** Traverses the tree and collects all BeExpression nodes. */

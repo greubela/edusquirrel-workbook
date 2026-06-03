@@ -258,6 +258,93 @@ object PythonStaticRules {
       )
     }
 
+    val importLines = lines.zipWithIndex.filter { case (line, _) =>
+      val tr = line.trim
+      (tr.startsWith("import ") || tr.startsWith("from ")) && !tr.startsWith("#")
+    }
+    val unusedImports = importLines.flatMap { case (line, lineNum) =>
+      val tr = line.trim
+      val moduleName =
+        if tr.startsWith("import ") then
+          tr.drop(7).takeWhile(c => c.isLetterOrDigit || c == '_' || c == '.').split("\\.").head
+        else if tr.startsWith("from ") then
+          tr.drop(5).takeWhile(c => c.isLetterOrDigit || c == '_' || c == '.').split("\\.").head
+        else ""
+      val usedElsewhere =
+        if tr.startsWith("import ") then
+          normalized.replace(line, "").contains(s"$moduleName.")
+        else {
+          val rest = normalized.replace(line, "")
+          val afterImport = tr.drop(tr.indexOf(" import ") + 8)
+          val names = afterImport.split(",").map(_.trim.takeWhile(c => c.isLetterOrDigit || c == '_')).filter(_.nonEmpty)
+          names.isEmpty || names.exists(n => rest.contains(n))
+        }
+      if moduleName.nonEmpty && !usedElsewhere then Some((lineNum + 1, moduleName))
+      else None
+    }
+    if unusedImports.nonEmpty then {
+      val detail = unusedImports.map { case (ln, m) => s"line $ln: '$m'" }.mkString(", ")
+      results += RuleResult(
+        id = "PY_UNUSED_IMPORTS", category = "PYTHON_STYLE", severity = RuleSeverity.Warning, passed = false,
+        message = t(humanLanguage)(
+          s"${unusedImports.size} nicht verwendete(r) Import(s): $detail.",
+          s"${unusedImports.size} unused import(s): $detail."
+        ),
+        details = Some(detail)
+      )
+    } else if importLines.nonEmpty then {
+      results += RuleResult(
+        id = "PY_UNUSED_IMPORTS", category = "PYTHON_STYLE", severity = RuleSeverity.Info, passed = true,
+        message = t(humanLanguage)("Alle Importe werden verwendet.", "All imports are used."),
+        details = None
+      )
+    }
+
+    val defLineIndices = lines.zipWithIndex.collect {
+      case (line, idx) if line.startsWith("def ") || line.startsWith("async def ") => idx
+    }
+    if defLineIndices.nonEmpty then {
+      val DefPat = """^(?:async\s+)?def\s+([a-zA-Z_]\w*)\s*\(""".r
+      val missingReturn = defLineIndices.zip(defLineIndices.drop(1) :+ lines.length).flatMap {
+        case (start, end) =>
+          val bodyLines = lines.slice(start + 1, end)
+          val hasReturn = bodyLines.exists(l =>
+            l.trim.startsWith("return") || l.contains("return ") || l.trim == "return"
+          )
+          if !hasReturn then {
+            val isStub = bodyLines.forall(l =>
+              l.trim.isEmpty || l.trim == "pass" || l.trim == "..." || l.trim.startsWith("#")
+            )
+            if isStub then None
+            else {
+              val name = DefPat.findFirstMatchIn(lines(start).trim).map(_.group(1)).getOrElse("?")
+              Some(s"'$name' (line ${start + 1})")
+            }
+          } else None
+      }
+      if missingReturn.nonEmpty then {
+        val detail = missingReturn.mkString(", ")
+        results += RuleResult(
+          id = "PY_MISSING_RETURN", category = "PYTHON_SEMANTICS", severity = RuleSeverity.Warning, passed = false,
+          message = t(humanLanguage)(
+            s"Folgende Funktion(en) fehlt ein 'return': $detail.",
+            s"The following function(s) appear to have no 'return': $detail."
+          ),
+          details = Some(detail)
+        )
+      } else {
+        results += RuleResult(
+          id = "PY_MISSING_RETURN", category = "PYTHON_SEMANTICS", severity = RuleSeverity.Info, passed = true,
+          message = t(humanLanguage)(
+            "Alle Funktionen enthalten mindestens ein 'return'.",
+            "All functions contain at least one 'return' statement."
+          ),
+          details = None
+        )
+      }
+    }
+
+
     results.toList
   }
 
