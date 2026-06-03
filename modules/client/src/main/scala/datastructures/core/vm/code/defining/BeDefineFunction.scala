@@ -39,7 +39,7 @@ case class BeDefineFunction(
 
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO() {
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
+    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
       def formatTypeHint(variable: BeDefineVariable): Option[String] = {
         variable.variableType match {
           case BeDataType.AnyType => None
@@ -57,7 +57,7 @@ case class BeDefineFunction(
       }
 
       val inputsStr = inputs.map(formatParameter)
-      val bodyStr = body.expressionIO.getInLanguage(programmingLanguage, humanLanguage)
+      val bodyStr = body.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable)
       val functionName = functionTypeInfo.displayName.getInLanguage(humanLanguage)
 
       programmingLanguage match {

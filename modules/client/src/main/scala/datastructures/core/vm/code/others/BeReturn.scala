@@ -12,8 +12,8 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 case class BeReturn(value: Option[BeExpression]) extends BeExpression {
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
-      val valueString = value.map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage).replaceAll("\n", " "))
+    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
+      val valueString = value.map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable).replaceAll("\n", " "))
       val base = valueString match {
         case Some(text) if text.nonEmpty => s"return $text"
         case _ => "return"

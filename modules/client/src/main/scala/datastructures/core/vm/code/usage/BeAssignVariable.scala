@@ -25,17 +25,17 @@ case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) exten
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
 
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
+    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
 
       def sanitizeRustName(name: String): String =
         if (name.nonEmpty && name.head.isUpper) name.head.toLower + name.tail else name
 
-      val renderedValue = value.expressionIO.getInLanguage(programmingLanguage, humanLanguage).replaceAll("\n", " ")
+      val renderedValue = value.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable).replaceAll("\n", " ")
       val targetName = programmingLanguage match {
         case Python if renderedValue.trim.startsWith("lambda") =>
           target.name.getInLanguage(humanLanguage)
         case _ =>
-          target.expressionIO.getInLanguage(programmingLanguage, humanLanguage)
+          target.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable)
       }
 
       programmingLanguage match {

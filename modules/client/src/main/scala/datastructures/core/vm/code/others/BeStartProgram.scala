@@ -21,8 +21,8 @@ case class BeStartProgram(startSequence: Option[BeSequence]) extends BeExpressio
   }
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String =
-      startSequence.map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage)).getOrElse("")
+    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String =
+      startSequence.map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable)).getOrElse("")
 
     override def createBlock(): BeBlock = BeBlockStarter()
   }

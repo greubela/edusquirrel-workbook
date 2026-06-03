@@ -21,7 +21,7 @@ case class BeExpressionUnsupported(originalSource: String) extends BeExpression 
   }
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO() {
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = originalSource
+    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = originalSource
 
     override def createBlock(): BeBlock = BeBlockUnsupported(BeExpressionUnsupported.this)
   }

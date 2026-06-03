@@ -29,10 +29,10 @@ case class BeWhile(
   }
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
+    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
       val conditionString =
-        stripOuterBalancedParens(condition.expressionIO.getInLanguage(programmingLanguage, humanLanguage).replaceAll("\n", ""))
-      val bodyString = body.expressionIO.getInLanguage(programmingLanguage, humanLanguage)
+        stripOuterBalancedParens(condition.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable).replaceAll("\n", ""))
+      val bodyString = body.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable)
       programmingLanguage match {
         case Python =>
           CodeStringBuilder().appendNextLine(s"while $conditionString:")

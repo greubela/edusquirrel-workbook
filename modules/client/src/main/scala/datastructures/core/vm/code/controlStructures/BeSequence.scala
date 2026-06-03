@@ -30,20 +30,20 @@ case class BeSequence(body: List[BeExpression], sequenceInfo: BeSequenceInfo) ex
   }
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
+    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
       programmingLanguage match {
-        case Python => body.map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage)).mkString("\n")
+        case Python => body.map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable)).mkString("\n")
         case Java | JavaScript | Rust =>
-          body.map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage)).mkString("\n")
+          body.map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable)).mkString("\n")
         case Cpp =>
           // In C++, semicolons belong to statements, not expression contexts.
           // This sequence type is also used for conditions / expressions (e.g. if/while condition),
           // so we only auto-append semicolons for statement-like sequences.
           if (sequenceInfo.mustEvaluateTo.nonEmpty) {
-            body.map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage)).mkString("\n")
+            body.map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable)).mkString("\n")
           } else {
             body
-              .map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage))
+              .map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable))
               .map { rendered =>
                 val trimmed = rendered.trim
                 if (trimmed.isEmpty) rendered
@@ -59,7 +59,7 @@ case class BeSequence(body: List[BeExpression], sequenceInfo: BeSequenceInfo) ex
             val builder = CodeStringBuilder("(progn")
               .changeIntLevel(1)
             val withBody = body.foldLeft(builder) { (acc, expr) =>
-              acc.appendAsLines(expr.expressionIO.getInLanguage(programmingLanguage, humanLanguage))
+              acc.appendAsLines(expr.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable))
             }
             withBody.changeIntLevel(-1)
               .appendNextLine(")")

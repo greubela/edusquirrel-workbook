@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 trait BeExpressionIO {
 
-  def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = ""
+  def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = ""
 
   def createBlock(): BeBlock = ???
 }

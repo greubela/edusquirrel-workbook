@@ -27,9 +27,9 @@ case class BeRepeatNr(amount: Int, body: BeSequence) extends BeControlStructure 
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO() {
 
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
+    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
 
-      val bodyString = body.expressionIO.getInLanguage(programmingLanguage, humanLanguage)
+      val bodyString = body.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable)
 
       programmingLanguage match {
         case Python => {
