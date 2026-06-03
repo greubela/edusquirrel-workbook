@@ -57,13 +57,19 @@ jobs:
           fi
           cp "$BUNDLE_FILE" _site/js/app/main.js
 
-          # 3) Make /resources/ available next to the pages so links like
-          #    ./resources/... and ../resources/... resolve correctly.
+          # 3) Copy resources (images, PDFs, programs).
           if [ -d resources ]; then
             cp -R resources _site/resources
           fi
 
-          # 4) Optional favicon at the root.
+          # 4) Fix relative paths: homepage files use ../resources/ (correct
+          #    locally), but on GitHub Pages resources/ is a sibling of the
+          #    HTML root, not a parent dir. One sed pass handles both depths:
+          #      ../resources/   -> resources/   (files at _site root)
+          #      ../../resources/ -> ../resources/ (files one level deep)
+          find _site -name "*.html" -exec sed -i 's|../resources/|resources/|g' {} +
+
+          # 5) Optional favicon at the root.
           if [ -f favicon.ico ]; then
             cp favicon.ico _site/favicon.ico
           fi
