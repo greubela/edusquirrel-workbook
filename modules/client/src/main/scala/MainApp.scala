@@ -29,7 +29,7 @@ private def load(containerId: String): Unit = {
       HtmlFullWorkbookApp.getDomElement()
     }
     case "workbookPlantWorkshop" => {
-     // HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreatePlantworkshopWorkbook(HtmlFullWorkbookApp.fullInfo))
+      // HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreatePlantworkshopWorkbook(HtmlFullWorkbookApp.fullInfo))
       //HtmlFullWorkbookApp.getDomElement()
       ???
     }
@@ -48,14 +48,14 @@ private def load(containerId: String): Unit = {
 private def testCalculations(): Unit = {
 
   println("testing some calculations atm :)")
-/*
-  val systemPrompt: String = "Please entertain this human :-)"
-  val backend: ExecutionClient = HtmlFullWorkbookApp.fullInfo.technical.backendServerExecutor
-  val request: MessengerChatCompletionRequest = MessengerChatCompletionRequest(systemPrompt, MessengerModel.testCompletion)
-  val resultFut: Future[ExecutionInfo] = LLMCommands.completeLLMCommandFactory.sendCommandTo(backend, Logger(), request)
+  /*
+    val systemPrompt: String = "Please entertain this human :-)"
+    val backend: ExecutionClient = HtmlFullWorkbookApp.fullInfo.technical.backendServerExecutor
+    val request: MessengerChatCompletionRequest = MessengerChatCompletionRequest(systemPrompt, MessengerModel.testCompletion)
+    val resultFut: Future[ExecutionInfo] = LLMCommands.completeLLMCommandFactory.sendCommandTo(backend, Logger(), request)
 
-  resultFut.onComplete(res => println("future completed: " + res))(using ExecutionContext.global)
-*/
+    resultFut.onComplete(res => println("future completed: " + res))(using ExecutionContext.global)
+  */
 }
 
 @main
@@ -66,7 +66,10 @@ def mainApp(): Unit = {
     val canLoad: List[String] = tryToLoad.flatMap(id => if (dom.document.getElementById(id) != null) Some(id) else None)
     if (canLoad.isEmpty) println("Found no container to load a workbook into. Tried: " + tryToLoad.mkString(", "))
     if (canLoad.size > 1) println("Found more than one workbook to load: " + canLoad.mkString(", "))
-    if (canLoad.nonEmpty) load(canLoad.head)
+    if (canLoad.nonEmpty) {
+      val loadBasicsFut = HtmlFullWorkbookApp.fullInfo.technical.contentStorage.futureForDefaultsLoaded()
+      loadBasicsFut.onComplete(finished => load(canLoad.head))(using ExecutionContext.global)
+    }
     testCalculations()
   } else {
     println("MainApp skipped: no document (worker/module import context).")
