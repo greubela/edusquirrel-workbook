@@ -7,31 +7,41 @@ import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
 
-import it.evadid.core.datastructures.language.*
-import it.evadid.core.datastructures.language.AppLanguage.*
 abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean) {
 
   // Helper Classes
 
   private trait CachedRequest {
+
+    def outputIfPresent: Option[O]
+
     def createFuture: Future[O]
 
     def getVariable: State[Option[O]]
   }
 
   private case class FinishedRequest(outputVar: State[Option[O]], output: O) extends CachedRequest {
+
+    override val outputIfPresent: Option[O] = Some(output)
+
     def createFuture: Future[O] = Future.successful(output)
 
     def getVariable: State[Option[O]] = outputVar
   }
 
   private case class DeletedRequest(input: I, outputVar: State[Option[O]]) extends CachedRequest {
+
+    override val outputIfPresent: Option[O] = None
+
     def createFuture: Future[O] = startExecution(input, outputVar).createFuture
 
     def getVariable: State[Option[O]] = startExecution(input, outputVar).getVariable
   }
 
   private case class StartedRequest(input: I, outputVar: State[Option[O]]) extends CachedRequest {
+
+    override val outputIfPresent: Option[O] = None
+
     private val waitingPromise: mutable.HashSet[Promise[O]] = new mutable.HashSet()
 
     def getVariable: State[Option[O]] = outputVar
@@ -109,6 +119,22 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean) {
           cachedRequests.put(curInput, DeletedRequest(curInput, curRequest.getVariable))
         })
       })
+    }
+  }
+
+  def cacheCopy(): Map[I, O] = {
+    cachedRequests.synchronized{
+      cachedRequests
+        .toList
+        .filter(_._2.outputIfPresent.nonEmpty)
+        .map(tup => (tup._1, tup._2.outputIfPresent.get))
+        .toMap
+    }
+  }
+  
+  def getOutputIfLoaded(input: I): Option[O] = {
+    cachedRequests.synchronized {
+      cachedRequests.get(input).flatMap(_.outputIfPresent)
     }
   }
 

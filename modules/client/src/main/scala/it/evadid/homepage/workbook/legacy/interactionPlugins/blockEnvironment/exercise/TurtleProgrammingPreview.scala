@@ -2,6 +2,7 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.e
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Bounds
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.control.info.{FullInfo, HomepageInfo}
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig}
@@ -42,7 +43,7 @@ case class TurtleProgrammingPreview(fullInfo: FullInfo, editorState: EditorState
   private def previewCard(cardType: String, cardLabelMapId: String, cardContent: Signal[Element]): Element = div(
     cls := "preview-card",
     h3(
-      text <-- fullInfo.signals.stringFromLanguageMapId(cardLabelMapId)
+      text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId(cardLabelMapId))
     ),
     div(
       cls := "preview-content",

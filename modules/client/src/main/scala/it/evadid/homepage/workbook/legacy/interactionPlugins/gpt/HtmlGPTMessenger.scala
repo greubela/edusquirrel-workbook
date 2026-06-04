@@ -5,6 +5,7 @@ import com.raquo.laminar.api.L.svg
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.chat.SenderRole.WORKBOOK
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.distribution.commandTypes.LLMCommands.MessengerChatCompletionRequest
@@ -30,7 +31,7 @@ case class HtmlGPTMessenger(
 
   override val id: String = textInteraction.id + "_scaffolding"
 
-  private val systemPromptId: String = "prompts/scaffolding-system-prompt"
+  private val systemPromptId: LanguageMapContentId = LanguageMapContentId("prompts/scaffolding-system-prompt")
 
   override val defaultValue: MessengerModel = MessengerModel.apply(List())
 
@@ -51,7 +52,7 @@ case class HtmlGPTMessenger(
   }
 
   private def onUserSendMessage(messageState: MessengerModel): Unit = {
-    val systemPromptFuture = fullInfo.technical.languageMapStorage.loadAsFuture(systemPromptId)(using ExecutionContext.global)
+    val systemPromptFuture = fullInfo.technical.contentStorage.asStorage.loadAsFuture(systemPromptId)(using ExecutionContext.global)
     val curValTextarea = textInteraction.interactionVariable.currentValue
     val inputStr = if (curValTextarea.trim.nonEmpty) s"@assistant: the textarea for the solution reads '$curValTextarea'" else s"@assistant: currently no text in solution area"
     val languageStr = s", please answer in ${fullInfo.signals.currentLanguage.now()}"

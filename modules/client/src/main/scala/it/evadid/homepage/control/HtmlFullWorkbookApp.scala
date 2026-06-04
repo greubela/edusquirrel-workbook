@@ -2,6 +2,7 @@ package it.evadid.homepage.control
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.file.FileDescription
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.distribution.clients.ExecuteOnWebWorker
 import it.evadid.executors.MathExecutor
 import it.evadid.homepage.workbook.htmlRenderer.*
@@ -42,7 +43,7 @@ object HtmlFullWorkbookApp extends HtmlAppElement{
   private lazy val workbookDomElement: Element = {
     val workbookSignal: Signal[Element] = fullInfo.signals.workbook.mapLazy {
       case Some(workbookInfo) => HtmlWorkbookRenderer.render(workbookInfo.loadedWorkbook).getDomElement()//div("HtmlFullWorkbookApp::workbookDomelement not properly re-implemented yet!") //workbook.loadedWorkbook.getDomElement()
-      case None => div(text <-- fullInfo.signals.stringFromLanguageMapId("basic/noWorkbookLoaded"))
+      case None => div(text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId("basic/noWorkbookLoaded")))
     }
     val withFullscreen: Signal[List[Element]] = workbookSignal.map(workbookDom => List(technical.fullScreenContainer.getDomElement(), workbookDom))
     div(children <-- withFullscreen)

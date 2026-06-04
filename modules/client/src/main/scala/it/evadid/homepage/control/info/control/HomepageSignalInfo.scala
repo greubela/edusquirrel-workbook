@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.state.StateHelper.*
-import it.evadid.homepage.control.WorkbookLanguageInfo
+import it.evadid.homepage.control.*
 import it.evadid.homepage.control.info.{AllWorkbookInfo, FullInfo, HomepageInfo}
 import it.evadid.workbook.model.elements.WorkbookSection
 
@@ -32,27 +32,26 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
 
   lazy val currentLanguage: StrictSignal[HumanLanguage] = baseSignal.mapLazy(_.currentLanguage)
 
-  def languageMapOpFromId(languageMapId: String): StrictSignal[Option[LanguageMap[HumanLanguage]]] = {
-    fullInfo.technical.languageMapStorage.loadIntoVariable(languageMapId)(using ExecutionContext.global).toAirstreamVar.signal
-    //Var(None).signal
+  def languageMapOpFromId(languageMapId: LanguageMapContentId): StrictSignal[Option[LanguageMap[HumanLanguage]]] = {
+    fullInfo.technical.contentStorage.asStorage.loadIntoVariable(languageMapId)(using ExecutionContext.global).toAirstreamVar.signal
   }
 
-  def languageMapFromId(languageMapId: String): Signal[LanguageMap[HumanLanguage]] = {
+  def languageMapFromId(languageMapId: LanguageMapContentId): Signal[LanguageMap[HumanLanguage]] = {
     languageMapOpFromId(languageMapId).map {
-      case None => WorkbookLanguageInfo.languageMapLoadingMap
+      case None => WorkbookContentStorage.languageMapLoadingMap
       case Some(map) => map
     }
   }
 
-  def stringFromLanguageMapId(languageMapId: String): Signal[String] = {
+  def stringFromLanguageMapId(languageMapId: LanguageMapContentId): Signal[String] = {
     Signal.combine(currentLanguage, languageMapFromId(languageMapId)).map(tup => {
       tup._2.getInLanguage(tup._1)
     })
   }
 
-  def stringFromLanguageMapId(languageMapId: LanguageMapContentId): Signal[String] = {
-    stringFromLanguageMapId(languageMapId.languageMapIdentifier + "/" + languageMapId.languageMapKey)
-  }
+  /*def stringFromLanguageMapId(languageMapId: LanguageMapContentId): Signal[String] = {
+    stringFromLanguageMapId(languageMapId. + "/" + languageMapId.languageMapKey)
+  }*/
 
 
 }

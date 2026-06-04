@@ -3,6 +3,7 @@ package it.evadid.homepage.webElements.basic
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.file.*
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.homepage.control.HtmlFullWorkbookApp
@@ -18,7 +19,7 @@ case class HtmlImageElement(imageSignal: Signal[Option[FullImage]]) extends Html
   override def getDomElement(): Element = div(child <-- getDomSignal)
   
   def getDomSignal: Signal[Element] = imageSignal.map {
-    case None => span(text <-- HtmlFullWorkbookApp.fullInfo.signals.stringFromLanguageMapId("basic/imageLoadingMap"))
+    case None => span(text <-- HtmlFullWorkbookApp.fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId("basic/imageLoadingMap")))
     case Some(fullImg: FullImage) => img(src := fullImg.imageSourceString, styleAttr := "max-width: 100%")
   }
   

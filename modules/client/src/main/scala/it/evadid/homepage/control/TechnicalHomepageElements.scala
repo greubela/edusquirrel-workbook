@@ -1,15 +1,15 @@
 package it.evadid.homepage.control
 
+import it.evadid.homepage.control.*
 import it.evadid.core.datastructures.file.{FileDescription, LoadedFile}
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.homepage.control.info.control.TechnicalControl
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlFullScreenContainerElement
-import WorkbookLanguageInfo.LabelLanguageMapStorage
 import org.scalajs.dom
 import todomove.datastructures.web.storage.AsyncDataCache
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 case class TechnicalHomepageElements(
                                       fullScreenContainer: HtmlFullScreenContainerElement,
@@ -17,29 +17,13 @@ case class TechnicalHomepageElements(
                                       backendServerExecutor: ExecutionClient,
                                       workerServerExecutor: ExecutionClient,
                                     ) extends TechnicalControl {
+  
 
-  override val languageMapStorage: LabelLanguageMapStorage = LabelLanguageMapStorage(fileStore)
-
-  // load as soon as possible
-  WorkbookLanguageInfo.languageMapFiles.foreach(fileStore.loadIntoVariable(_)(using ExecutionContext.global))
 
   def makeFullscreen(element: HtmlAppElement): Unit = {
     fullScreenContainer.setElementFullscreen(element.getDomElement())
   }
-
-  def addLanguageFile(file: FileDescription): Unit = fileStore.synchronized {
-    addLanguageFiles(List(file))
-  }
-
-  def addLanguageFiles(files: List[FileDescription]): Unit = fileStore.synchronized {
-    val uniqueFiles = files.distinct
-    languageMapStorage.addLanguageFiles(uniqueFiles)
-    uniqueFiles.foreach(curFile =>
-      languageMapStorage.languageTriplesStorage.loadIntoVariable(curFile)(using ExecutionContext.global)
-    )
-    languageMapStorage.reloadAll()(using ExecutionContext.global)
-  }
-
+  
   def resetLocalStorage(): Unit = {
     val map = (0 until dom.window.localStorage.length)
       .flatMap { i =>

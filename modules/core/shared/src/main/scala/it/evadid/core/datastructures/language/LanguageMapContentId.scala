@@ -1,7 +1,8 @@
 package it.evadid.core.datastructures.language
 
-case class LanguageMapContentId(languageMapIdentifier: String, languageMapKey: String) {
+case class LanguageMapContentId(languageMapId: String, entryKey: String) {
 
+  val fullId: String = languageMapId + "/" + entryKey
 
 }
 
