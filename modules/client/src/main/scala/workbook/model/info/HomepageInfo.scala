@@ -1,6 +1,7 @@
 package workbook.model.info
 
 import it.evadid.core.datastructures.language.AppLanguage.*
+import workbook.model.WorkbookSection
 import workbook.model.info.HomepageDefaults
 
 case class HomepageInfo(
@@ -8,6 +9,7 @@ case class HomepageInfo(
                          currentLanguage: HumanLanguage,
                          workbookInfo: Option[AllWorkbookInfo],
                          userInfo: Option[AllUserInfo],
+                         activeSection: Option[WorkbookSection] = None,
                        ) {
 
 

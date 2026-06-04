@@ -94,6 +94,10 @@ body {
 
 /* workbook content */
 
+.workbook-section--hidden {
+    display: none !important;
+}
+
 .container-exercise {
     width: min(100%, 980px);
     margin: 0 auto;
@@ -260,6 +264,93 @@ h3 {
     font-size: 0.95rem;
 }
 
+/* --- Labeled instruction pair (title + body) --- */
+
+.instruction-goal {
+    background: var(--color-surface-subtle);
+    border-left-color: var(--color-accent-success);
+}
+
+.instruction-goal__title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-accent-success);
+    margin-bottom: var(--space-xs);
+}
+
+.instruction-goal__body {
+    line-height: 1.6;
+}
+
+.instruction-task {
+    background: var(--color-surface-subtle);
+    border-left-color: var(--color-accent-primary);
+}
+
+.instruction-task__title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-accent-primary);
+    margin-bottom: var(--space-xs);
+}
+
+.instruction-task__body {
+    line-height: 1.6;
+}
+
+.instruction-pair__title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-container-accent);
+    margin-bottom: var(--space-xs);
+}
+
+.instruction-pair__body {
+    line-height: 1.6;
+}
+
+.instruction-hint {
+    background: var(--color-surface-subtle);
+    border-left-color: var(--color-text-muted-light);
+}
+
+.instruction-hint__title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted-light);
+    margin-bottom: var(--space-xs);
+}
+
+.instruction-hint__body {
+    line-height: 1.6;
+}
+
+.instruction-safety {
+    background: var(--color-surface-subtle);
+    border-left-color: var(--color-accent-error);
+}
+
+.instruction-safety__title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-accent-error);
+    margin-bottom: var(--space-xs);
+}
+
+.instruction-safety__body {
+    line-height: 1.6;
+}
+
 .instruction-content p {
     margin: 0 0 var(--space-md) 0;
 }
@@ -307,9 +398,6 @@ h3 {
     background-color: var(--color-surface);
     padding: var(--space-md);
     flex: 1;
-}
-
-.preview-line .preview-content {
 }
 
 .programming-preview-tree {
@@ -693,6 +781,31 @@ textarea.workbook-interaction {
     box-shadow: var(--shadow-soft);
 }
 
+.reorder-item--code {
+    padding: 0;
+    overflow: hidden;
+}
+
+.reorder-item--code pre {
+    margin: 0;
+    background: var(--color-code-background);
+    color: var(--color-code-text);
+    font-family: var(--color-code-font);
+    font-size: var(--color-code-size);
+    padding: 14px 18px;
+    cursor: grab;
+    user-select: none;
+    transition: transform 0.1s;
+}
+
+.reorder-item--code pre:active {
+    cursor: grabbing;
+}
+
+.reorder-item--code:hover pre {
+    transform: translateY(-1px);
+}
+
 .reorder-item--dragging {
     opacity: 0.65;
 }
@@ -702,6 +815,53 @@ textarea.workbook-interaction {
     border: 2px dashed var(--color-accent-primary);
     border-radius: var(--radius-sm);
     background: var(--color-interaction-background);
+}
+
+.task-box {
+    background: #e3f2fd;
+    padding: 20px;
+    border-radius: 4px;
+    margin-bottom: 25px;
+}
+
+.task-box .mode-toggle {
+    display: flex;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
+}
+
+.task-box .mode-toggle .mode-toggle__btn {
+    flex: 1;
+    padding: 10px 16px;
+    border: 2px solid #2196f3 !important;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.95em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: auto !important;
+    background: white !important;
+    color: #2196f3 !important;
+    box-shadow: none !important;
+}
+
+.task-box .mode-toggle .mode-toggle__btn:hover {
+    background: #e3f2fd !important;
+    transform: translateY(-1px);
+}
+
+.task-box .mode-toggle .mode-toggle__btn--active {
+    background: #2196f3 !important;
+    color: white !important;
+    border-color: #1976d2 !important;
+}
+
+.task-box .mode-toggle .mode-toggle__btn--active:hover {
+    background: #1976d2 !important;
+}
+
+.mode-hidden {
+    display: none !important;
 }
 
 @media (max-width: 768px) {

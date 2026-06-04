@@ -12,7 +12,8 @@ case class HtmlReorderInteraction[T](
                                       fullInfo: FullInfo,
                                       id: String,
                                       elements: List[T],
-                                      elementRenderer: T => Element
+                                      elementRenderer: T => Element,
+                                      itemCssClass: String = ""
                                     ) extends WorkbookInteraction[List[Int]] {
   
   override val defaultValue: List[Int] = elements.indices.toList // todo: shuffled?
@@ -74,8 +75,10 @@ case class HtmlReorderInteraction[T](
   private def renderItem(itemId: Int): Element = {
     val content: Element = elementRenderer(elements(itemId))
 
+    val baseCls = if (itemCssClass.nonEmpty) s"reorder-item $itemCssClass" else "reorder-item"
+
     div(
-      cls := "reorder-item",
+      cls := baseCls,
       cls.toggle("reorder-item--dragging") <-- draggingId.signal.map(_.contains(itemId)),
       draggable := true,
       onDragStart --> (_ => draggingId.set(Some(itemId))),

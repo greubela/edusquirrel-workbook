@@ -16,7 +16,7 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
   }
 
   lazy val activeSection: StrictSignal[Option[WorkbookSection]] = {
-    workbook.mapLazy(_.flatMap(_.config.activeSection))
+    baseSignal.mapLazy(_.activeSection)
   }
 
   lazy val workbook: StrictSignal[Option[AllWorkbookInfo]] = {

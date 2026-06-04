@@ -17,28 +17,18 @@ case class Workbook(
                    ) extends HtmlWorkbookElement {
 
   override lazy val workbookChildren: List[HtmlWorkbookElement] = sections
-  
-  private def getElement(activeSection: Option[WorkbookSection]): Element =
-    if (activeSection.isEmpty) {
-      span(
-        text <-- fullInfo.signals.stringFromLanguageMapId("basic/noSectionSelected"),
-      )
-    } else {
-      activeSection.get.getDomElement()
-    }
 
   private val titleLine = HtmlWorkbookHeader(fullInfo, titleLanguageMapId, sections)
 
-  private lazy val sectionContentSignal: Signal[Element] = {
-    val activeSectionSignal: Signal[Option[WorkbookSection]] = fullInfo.signals.activeSection
-    val noSectionLoadedLabel: Signal[String] = fullInfo.signals.stringFromLanguageMapId("basic/noSectionSelected")
-
-    Signal.combine(activeSectionSignal, noSectionLoadedLabel).map { case (aS, nS) =>
-      if (aS.isEmpty) span(nS) else aS.get.getDomElement()
-    }
+  private def sectionWrapper(section: WorkbookSection): Element = {
+    div(
+      cls := "workbook-section",
+      cls.toggle("workbook-section--hidden") <-- fullInfo.signals.activeSection.map(_.forall(_ != section)),
+      section.getDomElement()
+    )
   }
 
-  override def getDomElement(): L.Element = L.div(
+  private lazy val domElement: L.Element = L.div(
     cls := "workbook",
     div(
       cls := "workbook-header",
@@ -46,8 +36,10 @@ case class Workbook(
     ),
     div(
       cls := "workbook-body",
-      child <-- sectionContentSignal
+      sections.map(sectionWrapper)
     )
   )
+
+  override def getDomElement(): L.Element = domElement
 
 }

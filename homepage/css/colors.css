@@ -12,16 +12,25 @@
   --color-accent-strong: #1565c0;
   --color-accent-primary: #2383dd;
   --color-accent-active: #2196f3;
+  --color-accent-purple: #9c27b0;
   --color-border-soft: #d6deeb;
   --color-surface-level-1: #e8f2ff;
   --color-surface-level-2: #edf3fb;
   --color-surface-muted: #f2f2f2;
   --color-surface-base: #ffffff;
   --color-text-muted: #4c566a;
+  --color-text-muted-light: #a2a2a2;
 
   /* Feedback / status colors (outside workbook core count). */
-  --color-error-500: #e66a6a;
+  --color-error-500: #f91818;
   --color-success-500: #2f9a6a;
+
+  /* Code editor palette (for code blocks in reorder items and editors). */
+  --color-code-background: #282c34;
+  --color-code-text: #61afef;
+  --color-code-accent: #c678dd;
+  --color-code-font: 'Consolas', 'Monaco', monospace;
+  --color-code-size: 14px;
 
   /* Opacity variants (must also come from tokens, not inline rgba values). */
   --color-shadow-blue-soft: rgba(21, 101, 192, 0.08);

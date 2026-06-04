@@ -11,6 +11,7 @@ import workbook.model.abstractions.HtmlWorkbookElement
 import workbook.model.info.FullInfo
 
 import scala.concurrent.ExecutionContext
+import content.plantworkshop.helpers.{CodeEditorHelper, PumpControlValidator}
 
 case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 
@@ -28,17 +29,18 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       fullInfo = fullInfo,
       id = nextId(baseId),
       elements = snippets,
-      elementRenderer = snippet => pre(code(snippet))
+      elementRenderer = snippet => pre(code(snippet)),
+      itemCssClass = "reorder-item--code"
     )
 
-  override def createWorkbook: Workbook = {
+  private lazy val workbook: Workbook = {
     val sections = List(
-      createMotivationSection(),
-      createComponentsSection(),
-      createPumpControlSection(),
-      createMoistureSection(),
-      createCombinedSection(),
-      createTestSection()
+      motivationSection,
+      componentsSection,
+      pumpControlSection,
+      moistureSection,
+      combinedSection,
+      testSection
     )
 
     Workbook(
@@ -48,9 +50,11 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     )
   }
 
+  override def createWorkbook: Workbook = workbook
+
   private def missingElementPlaceholder(contextKey: String): HtmlWorkbookElement = instructionPlaintext(s"PlantWorkshop/$contextKey")
 
-  private def createMotivationSection(): WorkbookSection = {
+  private lazy val motivationSection: WorkbookSection = {
     val intro = HtmlExerciseContainer(fullInfo, List(
       HtmlContainerTitle(fullInfo, "PlantWorkshop/section0Title"),
       instructionMarkdown("PlantWorkshop/section0IntroMarkdown"),
@@ -96,7 +100,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
   }
 
 
-  private def createComponentsSection(): WorkbookSection = {
+  private lazy val componentsSection: WorkbookSection = {
     val componentChecklist = checklist(
       List(
         "componentArduino",
@@ -123,9 +127,8 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       HtmlExerciseContainer(fullInfo,
         List(
           HtmlContainerTitle(fullInfo, "PlantWorkshop/section1Subtitle1"),
-          instructionMarkdown("PlantWorkshop/section1PowerWarningMarkdown"),
-          createWiringSlideshow(),
-          instructionPlaintext("PlantWorkshop/section1RelayInfo")
+          instructionLabeledPair("PlantWorkshop/safetyTitle", "PlantWorkshop/section1SafetyText", "instruction-safety"),
+          createWiringSlideshow()
         )
       )
     )
@@ -133,32 +136,80 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     WorkbookSection(fullInfo, "PlantWorkshop/section1Title", container)
   }
 
-  private def createPumpControlSection(): WorkbookSection = {
+  private lazy val pumpControlSection: WorkbookSection = {
     val reorder = codeReorder("plant-pump-reorder", List(
-      "digitalWrite(PUMP_PIN, LOW);",
+      "digitalWrite(PUMP_PIN, HIGH);",
       "delay(2000);",
-      "digitalWrite(PUMP_PIN, HIGH);"
+      "digitalWrite(PUMP_PIN, LOW);"
     ))
+    // Initialize the reorder DOM once so its state persists across toggles
+    val reorderDom = reorder.getDomElement()
+
+    val advancedCodeState = Var(
+      "// TODO: Ergänze hier dein Programm\n// Beispiel:\n// digitalWrite(PUMP_PIN, HIGH);\n// delay(2000);\n// digitalWrite(PUMP_PIN, LOW);"
+    )
+
+    val codeEditor = CodeEditorHelper.createCodeEditor(
+      advancedCodeState,
+      "PlantWorkshop/pumpCodeEditorTodo",
+      PumpControlValidator.validatePumpControl
+    )
 
     val checklistItems = checklist(
       List("pumpDone1", "pumpDone2", "pumpDone3"),
       "plant-pump-done"
     )
 
-    val container = HtmlExerciseContainer(fullInfo, List(
-      HtmlContainerTitle(fullInfo, "PlantWorkshop/section2Title"),
-      instructionPlaintext("PlantWorkshop/section2Goal"),
-      instructionPlaintext("PlantWorkshop/section2Instruction"),
-      instructionPlaintext("PlantWorkshop/section2BeginnerHint"),
-      reorder,
-      instructionPlaintext("PlantWorkshop/section2AdvancedHint"),
-      missingElementPlaceholder("missingPumpInteraction")
-    ) ++ checklistItems)
+    val isBeginnerMode = Var(true)
 
-    WorkbookSection(fullInfo, "PlantWorkshop/section2Title", List(container))
+    val toggleArea = div(
+      cls := "task-box",
+      div(
+        cls := "mode-toggle",
+        button(
+          cls := "mode-toggle__btn",
+          cls.toggle("mode-toggle__btn--active") <-- isBeginnerMode.signal,
+          "Anfänger",
+          onClick.mapTo(true) --> isBeginnerMode
+        ),
+        button(
+          cls := "mode-toggle__btn",
+          cls.toggle("mode-toggle__btn--active") <-- isBeginnerMode.signal.map(!_),
+          "Fortgeschritten",
+          onClick.mapTo(false) --> isBeginnerMode
+        )
+      ),
+      div(
+        cls.toggle("mode-hidden") <-- isBeginnerMode.signal.map(!_),
+        reorderDom
+      ),
+      div(
+        cls.toggle("mode-hidden") <-- isBeginnerMode.signal,
+        codeEditor
+      )
+    )
+
+    val containers = List(
+      HtmlExerciseContainer(fullInfo, List(
+        HtmlContainerTitle(fullInfo, "PlantWorkshop/section2Title"),
+        instructionLabeledPair("PlantWorkshop/goalTitle", "PlantWorkshop/section2GoalText", "instruction-goal"),
+        instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section2InstructionText", "instruction-task"),
+        instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section2HintText", "instruction-hint")
+      )),
+      HtmlExerciseContainer(fullInfo, List(
+        pseudoElement(toggleArea)
+      )),
+      HtmlExerciseContainer(fullInfo,
+        List(
+          instructionPlaintext("PlantWorkshop/section2AdvancedHint")
+        ) ++ checklistItems
+      )
+    )
+
+    WorkbookSection(fullInfo, "PlantWorkshop/section2Title", containers)
   }
 
-  private def createMoistureSection(): WorkbookSection = {
+  private lazy val moistureSection: WorkbookSection = {
     val reorder = codeReorder("plant-moisture-reorder", List(
       "digitalWrite(SENSOR_POWER_PIN, HIGH);",
       "delay(10);",
@@ -170,26 +221,72 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "  Serial.println(\"Boden ist FEUCHT\");",
       "}"
     ))
+    val reorderDom = reorder.getDomElement()
 
     val checklistItems = checklist(
       List("moistureDone1", "moistureDone2", "moistureDone3"),
       "plant-moisture-done"
     )
 
-    val container = HtmlExerciseContainer(fullInfo, List(
-      HtmlContainerTitle(fullInfo, "PlantWorkshop/section3Title"),
-      instructionPlaintext("PlantWorkshop/section3Goal"),
-      instructionPlaintext("PlantWorkshop/section3Instruction"),
-      instructionPlaintext("PlantWorkshop/section3BeginnerHint"),
-      reorder,
-      instructionPlaintext("PlantWorkshop/section3AdvancedHint"),
-      missingElementPlaceholder("missingMoistureInteraction")
-    ) ++ checklistItems)
+    val isBeginnerMode = Var(true)
 
-    WorkbookSection(fullInfo, "PlantWorkshop/section3Title", List(container))
+    val advancedCodeState = Var(
+      "// TODO: Ergänze hier dein Programm\n// Beispiel:\n// digitalWrite(PUMP_PIN, HIGH);\n// delay(2000);\n// digitalWrite(PUMP_PIN, LOW);"
+    )
+
+    val codeEditor = CodeEditorHelper.createCodeEditor(
+      advancedCodeState,
+      "PlantWorkshop/pumpCodeEditorTodo",
+      PumpControlValidator.validatePumpControl
+    )
+    val toggleArea = div(
+      cls := "task-box",
+      div(
+        cls := "mode-toggle",
+        button(
+          cls := "mode-toggle__btn",
+          cls.toggle("mode-toggle__btn--active") <-- isBeginnerMode.signal,
+          "Anfänger",
+          onClick.mapTo(true) --> isBeginnerMode
+        ),
+        button(
+          cls := "mode-toggle__btn",
+          cls.toggle("mode-toggle__btn--active") <-- isBeginnerMode.signal.map(!_),
+          "Fortgeschritten",
+          onClick.mapTo(false) --> isBeginnerMode
+        )
+      ),
+      div(
+        cls.toggle("mode-hidden") <-- isBeginnerMode.signal.map(!_),
+        reorderDom
+      ),
+      div(
+        cls.toggle("mode-hidden") <-- isBeginnerMode.signal,
+        codeEditor
+      )
+    )
+
+    val containers = List(
+      HtmlExerciseContainer(fullInfo, List(
+        HtmlContainerTitle(fullInfo, "PlantWorkshop/section3Title"),
+        instructionLabeledPair("PlantWorkshop/goalTitle", "PlantWorkshop/section3GoalText", "instruction-goal"),
+        instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section3InstructionText", "instruction-task"),
+        instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section3HintText", "instruction-hint")
+      )),
+      HtmlExerciseContainer(fullInfo, List(
+        pseudoElement(toggleArea)
+      )),
+      HtmlExerciseContainer(fullInfo,
+        List(
+          instructionPlaintext("PlantWorkshop/section3AdvancedHint")
+        ) ++ checklistItems
+      )
+    )
+
+    WorkbookSection(fullInfo, "PlantWorkshop/section3Title", containers)
   }
 
-  private def createCombinedSection(): WorkbookSection = {
+  private lazy val combinedSection: WorkbookSection = {
     val reorder = codeReorder("plant-combined-reorder", List(
       "digitalWrite(SENSOR_POWER_PIN, HIGH);",
       "delay(10);",
@@ -202,26 +299,73 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "}",
       "delay(10000);"
     ))
+    val reorderDom = reorder.getDomElement()
 
     val checklistItems = checklist(
       List("combinedDone1", "combinedDone2", "combinedDone3"),
       "plant-combined-done"
     )
 
-    val container = HtmlExerciseContainer(fullInfo, List(
-      HtmlContainerTitle(fullInfo, "PlantWorkshop/section4Title"),
-      instructionPlaintext("PlantWorkshop/section4Goal"),
-      instructionPlaintext("PlantWorkshop/section4Instruction"),
-      instructionPlaintext("PlantWorkshop/section4BeginnerHint"),
-      reorder,
-      instructionPlaintext("PlantWorkshop/section4AdvancedHint"),
-      missingElementPlaceholder("missingCombinedInteraction")
-    ) ++ checklistItems)
+    val isBeginnerMode = Var(true)
 
-    WorkbookSection(fullInfo, "PlantWorkshop/section4Title", List(container))
+    val advancedCodeState = Var(
+      "// TODO: Ergänze hier dein Programm\n// Beispiel:\n// digitalWrite(PUMP_PIN, HIGH);\n// delay(2000);\n// digitalWrite(PUMP_PIN, LOW);"
+    )
+
+    val codeEditor = CodeEditorHelper.createCodeEditor(
+      advancedCodeState,
+      "PlantWorkshop/pumpCodeEditorTodo",
+      PumpControlValidator.validatePumpControl
+    )
+    
+    val toggleArea = div(
+      cls := "task-box",
+      div(
+        cls := "mode-toggle",
+        button(
+          cls := "mode-toggle__btn",
+          cls.toggle("mode-toggle__btn--active") <-- isBeginnerMode.signal,
+          "Anfänger",
+          onClick.mapTo(true) --> isBeginnerMode
+        ),
+        button(
+          cls := "mode-toggle__btn",
+          cls.toggle("mode-toggle__btn--active") <-- isBeginnerMode.signal.map(!_),
+          "Fortgeschritten",
+          onClick.mapTo(false) --> isBeginnerMode
+        )
+      ),
+      div(
+        cls.toggle("mode-hidden") <-- isBeginnerMode.signal.map(!_),
+        reorderDom
+      ),
+      div(
+        cls.toggle("mode-hidden") <-- isBeginnerMode.signal,
+        codeEditor
+      )
+    )
+
+    val containers = List(
+      HtmlExerciseContainer(fullInfo, List(
+        HtmlContainerTitle(fullInfo, "PlantWorkshop/section4Title"),
+        instructionLabeledPair("PlantWorkshop/goalTitle", "PlantWorkshop/section4GoalText", "instruction-goal"),
+        instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section4InstructionText", "instruction-task"),
+        instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section4HintText", "instruction-hint")
+      )),
+      HtmlExerciseContainer(fullInfo, List(
+        pseudoElement(toggleArea)
+      )),
+      HtmlExerciseContainer(fullInfo,
+        List(
+          instructionPlaintext("PlantWorkshop/section4AdvancedHint")
+        ) ++ checklistItems
+      )
+    )
+
+    WorkbookSection(fullInfo, "PlantWorkshop/section4Title", containers)
   }
 
-  private def createTestSection(): WorkbookSection = {
+  private lazy val testSection: WorkbookSection = {
     val testChecklistItems = checklist(
       List(
         "testChecklistSensorValues",

@@ -147,8 +147,13 @@ object InteractionVariable {
       syncSources.foreach(syncInfo => {
         val eventStr = syncInfo.syncSource.syncKeyFrom(keyForSerialization)
         if (eventStr.nonEmpty) {
-          val serializedHistory = SerializedInteractionHistory(eventStr.get)
-          serializedHistory.states.foreach(curState => syncedFromHistory += InteractionVariableState(io, curState))
+          try {
+            val serializedHistory = SerializedInteractionHistory(eventStr.get)
+            serializedHistory.states.foreach(curState => syncedFromHistory += InteractionVariableState(io, curState))
+          } catch {
+            case exception: Throwable =>
+              println(s"[warn] Skipping invalid interaction history for '$keyForSerialization': ${exception.getMessage}")
+          }
         }
       })
       withAdditionalStates(syncedFromHistory.toList)

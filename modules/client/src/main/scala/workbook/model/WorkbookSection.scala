@@ -15,9 +15,11 @@ case class WorkbookSection(
   
   override lazy val workbookChildren: List[HtmlWorkbookElement] = sectionContent
 
-  def signal: L.Signal[List[L.Element]] = L.Var(sectionContent).signal.map(_.map(_.getDomElement()))
+  private val sectionSignal: L.Signal[List[L.Element]] = L.Var(sectionContent).signal.map(_.map(_.getDomElement()))
 
-  override def getDomElement(): L.Element = L.div(
-    L.children <-- signal
+  private lazy val domElement: L.Element = L.div(
+    L.children <-- sectionSignal
   )
+
+  override def getDomElement(): L.Element = domElement
 }

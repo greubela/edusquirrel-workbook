@@ -62,6 +62,9 @@ trait WorkbookFactory {
 
   protected def instructionMarkdown(textMapId: String): HtmlInstructionElement = HtmlInstructionElement.fromMarkdownLanguageMapId(fullInfo, textMapId)
 
+  protected def instructionLabeledPair(titleMapId: String, bodyMapId: String, cssClass: String = "instruction-pair"): HtmlInstructionLabeledPair =
+    HtmlInstructionLabeledPair(fullInfo, titleMapId, bodyMapId, cssClass)
+
   protected def checklist(labelMapId: String, elementIdd: String = nextId()): HtmlWorkbookElement =
     HtmlBasicCheckboxInteraction(
       fullInfo = fullInfo,
@@ -70,13 +73,13 @@ trait WorkbookFactory {
     )
 
 
-  private def pseudoElement(dom: L.Signal[L.Element]): HtmlWorkbookElement = new HtmlWorkbookElement {
+  protected def pseudoElement(dom: L.Signal[L.Element]): HtmlWorkbookElement = new HtmlWorkbookElement {
     override def fullInfo: FullInfo = WorkbookFactory.this.fullInfo
 
     override def getDomElement(): L.Element = L.div(L.cls := "workbook-element exercise-instruction", L.child <-- dom)
   }
 
-  private def pseudoElement(dom: L.Element): HtmlWorkbookElement = new HtmlWorkbookElement {
+  protected def pseudoElement(dom: L.Element): HtmlWorkbookElement = new HtmlWorkbookElement {
     override def fullInfo: FullInfo = WorkbookFactory.this.fullInfo
 
     override def getDomElement(): L.Element = L.div(L.cls := "workbook-element exercise-instruction", dom)
