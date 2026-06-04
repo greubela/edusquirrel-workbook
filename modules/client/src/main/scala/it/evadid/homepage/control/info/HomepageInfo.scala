@@ -9,7 +9,7 @@ case class HomepageInfo(
                          userInfo: Option[AllUserInfo],
                        ) {
 
-  
+
   override val toString: String = s"HomepageInfo(userInfo: $userInfo, workbookInfo: $workbookInfo)"
 
 }

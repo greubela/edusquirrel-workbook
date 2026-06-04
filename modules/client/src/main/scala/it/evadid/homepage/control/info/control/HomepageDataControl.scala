@@ -40,7 +40,8 @@ case class HomepageDataControl(fullInfo: FullInfo) {
 
   def updateWorkbookConfig(func: WorkbookConfig => WorkbookConfig): Unit = fullInfo.synchronized {
     if (fullInfo.homepageInfoState.now().workbookInfo.isEmpty) throw new Exception("No workbook loaded!")
-    fullInfo.homepageInfoState.update(curInfo => curInfo.copy(workbookInfo = curInfo.workbookInfo.map(curWorkbook => curWorkbook.copy(config = func(curWorkbook.config)))))
+    val currentConfig = fullInfo.homepageInfoState.now().workbookInfo.get.config
+    fullInfo.homepageInfoState.update(curInfo => curInfo.copy(activeSection = func(currentConfig).activeSection))
   }
 
   def changeUser(userInfo: Option[AllUserInfo]): Unit = fullInfo.synchronized {

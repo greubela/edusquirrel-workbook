@@ -75,7 +75,7 @@ input:checked + .slider { background-color: #2196f3; }
 input:checked + .slider:before { transform: translateX(24px); }
 .mode-text { font-weight: 600; color: #444; }
 
-/* --- DRAG & DROP BEREICH --- */
+
 .dnd-area {
     display: flex;
     flex-direction: row;
@@ -110,8 +110,8 @@ input:checked + .slider:before { transform: translateX(24px); }
 
 /* --- CODE BLÖCKE --- */
 .code-block {
-    background: #282c34; /* Dark Theme */
-    color: #61afef;       /* Code Blau */
+    background: #282c34;
+    color: #61afef;       
     font-family: 'Consolas', 'Monaco', monospace;
     font-size: 14px;
     padding: 14px 18px;
@@ -487,7 +487,6 @@ code {
         width: 100%;
     }
 }
-
 
 .be-tab-element {
     display: flex;
