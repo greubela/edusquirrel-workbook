@@ -32,12 +32,13 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
 
   lazy val currentLanguage: StrictSignal[HumanLanguage] = baseSignal.mapLazy(_.currentLanguage)
 
-  def languageMapOpFromId(languageMapId: LanguageMapContentId): StrictSignal[Option[LanguageMap[HumanLanguage]]] = {
-    fullInfo.technical.contentStorage.asStorage.loadIntoVariable(languageMapId)(using ExecutionContext.global).toAirstreamVar.signal
+  def getLanguageMapIfLoaded(languageMapId: LanguageMapContentId): Option[LanguageMap[HumanLanguage]] = {
+    fullInfo.technical.contentStorage.getSyncIfLoaded(languageMapId)
   }
 
   def languageMapFromId(languageMapId: LanguageMapContentId): Signal[LanguageMap[HumanLanguage]] = {
-    languageMapOpFromId(languageMapId).map {
+    val languageMapOpFromId = fullInfo.technical.contentStorage.asStorage.loadIntoVariable(languageMapId)(using ExecutionContext.global).toAirstreamVar.signal
+    languageMapOpFromId.map {
       case None => WorkbookContentStorage.languageMapLoadingMap
       case Some(map) => map
     }
@@ -48,10 +49,5 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
       tup._2.getInLanguage(tup._1)
     })
   }
-
-  /*def stringFromLanguageMapId(languageMapId: LanguageMapContentId): Signal[String] = {
-    stringFromLanguageMapId(languageMapId. + "/" + languageMapId.languageMapKey)
-  }*/
-
 
 }

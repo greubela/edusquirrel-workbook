@@ -18,6 +18,10 @@ case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, Loa
   private var lastFinishedCache: Option[LanguageMapTripleStore] = None
   private val loadedFiles: mutable.HashSet[LoadedFile] = mutable.HashSet()
 
+  def getSyncIfLoaded(languageMapContentId: LanguageMapContentId): Option[LanguageMap[HumanLanguage]] = {
+    lastFinishedCache.flatMap(_.getMap(languageMapContentId))
+  }
+
   lazy val asStorage: AsyncDataCache[LanguageMapContentId, LanguageMap[HumanLanguage]] = new AsyncDataCache[LanguageMapContentId, LanguageMap[HumanLanguage]]("contentIdCache", false) {
 
     protected def executeLoadingWithMaxTries(in: LanguageMapContentId, curTries: Int)(ec: ExecutionContext): Future[LanguageMap[HumanLanguage]] = {
