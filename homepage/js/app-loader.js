@@ -6,10 +6,11 @@
 //   2) Local preview of the assembled _site/ directory
 //   3) Local sbt fastOptJS dev (bundle still under target/scala-3.3.3/...)
 //
-// Page authors can override the search list before this script runs by
-// setting window.EDUSQUIRREL_APP_PATHS to an array of strings. If they want
-// the script tag to be injected as a JS module (the workbook does), they can
-// set window.EDUSQUIRREL_APP_AS_MODULE = true.
+// Page authors can override defaults before this script runs:
+//   window.EDUSQUIRREL_APP_PATHS  – array of URLs to try in order
+//   window.EDUSQUIRREL_APP_AS_MODULE = false – load as plain script instead of ES module
+//   window.EduSquirrelCodeMirrorReady – a Promise; when present the bundle is
+//     deferred until that promise resolves so CodeMirror is ready first
 (function () {
   var cacheBust = "v=" + Date.now();
   var origin = window.location.origin || "";
@@ -45,7 +46,14 @@
     document.head.appendChild(script);
   }
 
-  function start() { loadAt(0); }
+  function start() {
+    var cmReady = window.EduSquirrelCodeMirrorReady;
+    if (cmReady && typeof cmReady.then === "function") {
+      cmReady.then(function () { loadAt(0); }, function () { loadAt(0); });
+    } else {
+      loadAt(0);
+    }
+  }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", start);
