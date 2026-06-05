@@ -42,7 +42,10 @@ case class InteractionVariableHistory[T](events: Set[InteractionVariableState[T]
     try {
       withAddedEvents(serializedHistory.deserialize(serializer))
     } catch {
-      case e: Throwable => this
+      case e: Throwable => {
+        println("[Error] could not deserialize " + serializedHistory + " with " + serializer)
+        this
+      }
     }
   }
   

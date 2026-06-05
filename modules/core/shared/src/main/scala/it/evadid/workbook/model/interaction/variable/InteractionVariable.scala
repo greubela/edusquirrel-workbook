@@ -61,8 +61,12 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T])
     val syncedFromHistory = mutable.ListBuffer[InteractionVariableState[T]]()
     syncSources.now().foreach(syncInfo => {
       syncInfo.syncSource.syncKeyFrom(keyForSerialization).foreach(eventStr => {
-        val serializedHistory = InteractionVariableHistorySerialized(eventStr)
-        syncedFromHistory.addAll(serializedHistory.deserialize(underlyingInteraction.serializer).events)
+        try {
+          val serializedHistory = InteractionVariableHistorySerialized(eventStr)
+          syncedFromHistory.addAll(serializedHistory.deserialize(underlyingInteraction.serializer).events)
+        } catch {
+          case err: Throwable => println("[ERROR] could not deserialize " + eventStr + " with " + underlyingInteraction.serializer)
+        }
       })
     })
     innerState.update(_.withAddedEvents(syncedFromHistory.toSet))
@@ -92,7 +96,7 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T])
       innerState.update(_.withAddedEvent(newInteractionState))
       syncToAll()
     } else {
-     // println("Update supressed!")
+      // println("Update supressed!")
     }
   }
 
