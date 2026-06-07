@@ -28,9 +28,7 @@ case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expected
 
   override val serializer: Serializer[BeProgram] = io
 
-  override val interactionVariable: InteractionVariable[BeProgram] = InteractionVariable[BeProgram](this)
   private val boundVar: Var[BeProgram] = interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR).toAirstreamVar
-
 
   private val editorState: EditorState = {
     val initRenderer = BeRenderingConfig.defaultWithLanguage(fullInfo.signals.currentLanguage.now())

@@ -35,10 +35,7 @@ case class HtmlReorderInteraction[T](
       else defaultValue
     }
   }
-
-  override val interactionVariable: InteractionVariable[List[Int]] =
-    InteractionVariable(this)
-
+  
   private val orderVar = interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MINOR)
 
   private val draggingId: Var[Option[Int]] = Var(None)

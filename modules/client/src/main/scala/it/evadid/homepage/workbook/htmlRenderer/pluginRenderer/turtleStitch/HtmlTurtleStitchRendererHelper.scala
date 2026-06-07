@@ -80,7 +80,6 @@ object HtmlTurtleStitchRendererHelper {
   def renderProjectPreviewImage(workbookInteraction: WorkbookInteraction[TurtleStitchProjectState]): Element = {
     val xmlSignal: Signal[Option[String]] = workbookInteraction.interactionVariable.createInteractionSignal().map(_.programXml)
     //xmlSignal.foreach(newContent => println("xml signal changed for workbook interaction " + workbookInteraction.id + ": " + newContent))(using unsafeWindowOwner)
-
     renderProjectPreviewWithXmlSignal(xmlSignal)
   }
 

@@ -17,7 +17,8 @@ trait WorkbookInteraction[T] extends WorkbookElement {
 
   val serializer: Serializer[T]
 
-  val interactionVariable: InteractionVariable[T] = InteractionVariable[T](this)
+  // needs to be lazy or defaultValue (from subclass) might not be inited!
+  lazy val interactionVariable: InteractionVariable[T] = InteractionVariable[T](this)
 
   val id: String
 
@@ -46,7 +47,7 @@ trait WorkbookInteraction[T] extends WorkbookElement {
 object WorkbookInteraction {
 
   abstract class WorkbookBasicVariableInteraction[T](override val defaultValue: T, override val serializer: Serializer[T], override val id: String) extends WorkbookInteraction[T] {
-    override val interactionVariable: InteractionVariable[T] = InteractionVariable[T](this)
+
   }
 
   case class TextInteractionBasic(override val id: String) extends WorkbookBasicVariableInteraction[String]("", Serializer.stringIO, id)
