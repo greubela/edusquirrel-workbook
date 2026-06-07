@@ -13,6 +13,8 @@ case class AllWorkbookInfo(
 
   def getMetadata(): WorkbookMetadata = WorkbookMetadata(loadedWorkbook.workbookTitle, loadedWorkbook.availableLanguages)
 
+  private val toString: String = s"AllWorkbookInfo(loadedWorkbook: ${loadedWorkbook.workbookTitle}, config: $config, estimatedDurations: $estimatedDurations)"
+
 }
 
 object AllWorkbookInfo {

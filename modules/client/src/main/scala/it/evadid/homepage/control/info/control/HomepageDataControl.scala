@@ -31,8 +31,11 @@ case class HomepageDataControl(fullInfo: FullInfo) {
   def changeWorkbook(newWorkbook: AllWorkbookInfo): Unit = fullInfo.synchronized {
     //saveAndResetAllInfo()
     fullInfo.homepageInfoState.update(curInfo => curInfo.copy(workbookInfo = Some(newWorkbook)))
-    interactions.foreach(_.interactionVariable.syncFromAll())
-
+    interactions.map(_.interactionVariable).foreach(curIntVar => {
+      curIntVar.syncToAll(true)
+      curIntVar.resetInteractionVariable(fullInfo.current.allSyncSources)
+      curIntVar.syncFromAll()
+    })
   }
 
   def updateWorkbookConfig(func: WorkbookConfig => WorkbookConfig): Unit = fullInfo.synchronized {
