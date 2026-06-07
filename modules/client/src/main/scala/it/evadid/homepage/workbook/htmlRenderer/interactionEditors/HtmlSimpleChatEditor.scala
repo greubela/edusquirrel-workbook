@@ -5,11 +5,13 @@ import it.evadid.core.datastructures.chat.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
+import it.evadid.workbook.model.interaction.sync.UpdateImportance.TEMPORARY
 import it.evadid.workbook.model.interaction.variable.InteractionVariable
 
 import java.time.LocalDateTime
 import scala.scalajs.js
 
+import it.evadid.core.datastructures.state.StateHelper.*
 //todo: to State[Var]... aber problematisch mit listener. später (:
 case class HtmlSimpleChatEditor(chatExercise: InteractionVariable[MessengerModel], onUserAddedMessage: MessengerModel => Any) extends HtmlAppElement {
 
@@ -22,8 +24,8 @@ case class HtmlSimpleChatEditor(chatExercise: InteractionVariable[MessengerModel
         cls := "messenger-editor",
         div(
           cls := "messenger-history",
-          children <-- Var(List(div("SimpleMessengerEditor::domElement unfinished :("))).signal
-          //children <-- chatExercise..map(_.orderedMessages.map(renderMessage))
+          //children <-- Var(List(div("SimpleMessengerEditor::domElement unfinished :("))).signal
+          children <-- chatExercise.createInteractionSignal().map(_.orderedMessages.map(renderMessage))
         ),
         div(
           cls := "messenger-composer",
