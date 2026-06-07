@@ -14,11 +14,16 @@ case class GptInteractionElement(
                                   gradingCriteria: List[LanguageMapContentId]
                                 ) extends WorkbookElement {
 
+  val scaffoldingInteractionOp: Option[MessagingInteraction] = {
+    if(scaffoldingHints.nonEmpty){
+      println("[WARN] creating messaging interaction for id '" + id + "' with test scaffolding hints")
+      Some(MessagingInteraction(id + "_scaffoldingMessenger", MessengerModel.testCompletion))
+    }else{
+      None
+    }
+  }
 
-  private val defaultScaffolding: MessengerModel = ???
-  private val scaffoldingMessenger: MessagingInteraction = MessagingInteraction("scaffoldingMessenger", defaultScaffolding)
-
-  override lazy val childrenOfThisElement: List[WorkbookElement] = List(scaffoldingMessenger)
+  override lazy val childrenOfThisElement: List[WorkbookElement] = scaffoldingInteractionOp.toList
 
   //private var htmlGptGrader = HtmlGptGrader(fullInfo, textInteraction)
 

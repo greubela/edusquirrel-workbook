@@ -11,12 +11,12 @@ import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.distribution.commandTypes.LLMCommands.MessengerChatCompletionRequest
 import it.evadid.homepage.control.info.FullInfo
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
+import it.evadid.homepage.workbook.htmlRenderer.interactionEditors.HtmlSimpleChatEditor
 import it.evadid.util.Logger
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 import it.evadid.workbook.model.interaction.sync.UpdateImportance.MAJOR
 import it.evadid.workbook.model.interaction.variable.*
 import org.scalajs.dom.SVGSVGElement
-import todomove.webElementsOld.webElements.genericHtmlElements.editor.SimpleMessengerEditor
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
@@ -68,9 +68,9 @@ case class HtmlGPTMessenger(
     }(using ExecutionContext.global)
   }
 
-  private val scaffoldingEditor = SimpleMessengerEditor(interactionVariable, onUserSendMessage)
+  private val scaffoldingEditor = HtmlSimpleChatEditor(interactionVariable, onUserSendMessage)
 
-  private val scaffoldingButton = HtmlButtonElement.withSvgContent(HtmlGPTMessenger.scaffoldingButtonSvg, event => {
+  private val scaffoldingButton = HtmlButtonElement.withSvgContent(HtmlGPTMessenger.scaffoldingButtonSvgMergeWithHtmlButton, event => {
     fullInfo.technical.makeFullscreen(scaffoldingEditor)
   })
 
@@ -113,7 +113,7 @@ object HtmlGPTMessenger {
   }
 
 
-  def scaffoldingButtonSvg: ReactiveSvgElement[SVGSVGElement] = {
+  def scaffoldingButtonSvgMergeWithHtmlButton: ReactiveSvgElement[SVGSVGElement] = {
     svg.svg(
       svg.cls := "button-show-scaffolder",
       svg.viewBox := "0 0 24 24",

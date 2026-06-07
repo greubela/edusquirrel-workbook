@@ -1,4 +1,4 @@
-package todomove.webElementsOld.webElements.genericHtmlElements.editor
+package it.evadid.homepage.workbook.htmlRenderer.interactionEditors
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.chat.*
@@ -10,7 +10,8 @@ import it.evadid.workbook.model.interaction.variable.InteractionVariable
 import java.time.LocalDateTime
 import scala.scalajs.js
 
-case class SimpleMessengerEditor(chatExercise: InteractionVariable[MessengerModel], onUserAddedMessage: MessengerModel => Any) extends HtmlAppElement {
+//todo: to State[Var]... aber problematisch mit listener. später (:
+case class HtmlSimpleChatEditor(chatExercise: InteractionVariable[MessengerModel], onUserAddedMessage: MessengerModel => Any) extends HtmlAppElement {
 
   private val messageInput = Var("")
 

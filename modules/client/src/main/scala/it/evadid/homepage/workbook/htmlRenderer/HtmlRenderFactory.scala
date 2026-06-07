@@ -9,12 +9,14 @@ import it.evadid.homepage.webElements.basic.HtmlImageElement
 import it.evadid.homepage.workbook.htmlRenderer.*
 import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionEditors.*
+import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.gpt.HtmlGptTextfieldInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.turtleStitch.{HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRenderer}
 import it.evadid.workbook.model.abstractions.WorkbookElement
 import it.evadid.workbook.model.elements.{ExerciseContainer, ImageElement, LangMapContentBasedElement, Workbook}
 import it.evadid.workbook.model.interaction.WorkbookInteraction.TextInteractionBasic
 import it.evadid.workbook.model.interaction.basic.LabeledCheckboxInteraction
 import it.evadid.workbook.plugins.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
+import it.evadid.workbook.plugins.gpt.GptInteractionElement
 
 trait HtmlRenderFactory[T <: WorkbookElement] {
 
@@ -62,9 +64,12 @@ object HtmlRenderFactory {
       // interactions
       case i: TextInteractionBasic => HtmlSimpleTextInteractionRenderer.render(i)
       case i: LabeledCheckboxInteraction => HtmlBasicCheckboxRenderer.render(i)
-      // plugins
+      // plugins -- turtle
       case t: TurtleStitchExploreProjectElement => HtmlTurtleStitchExploreProjectRenderer.render(t)
       case t: TurtleStitchRecreateShapeInteraction => HtmlTurtleStitchRecreateShapeRenderer.render(t)
+      // plugins -- gpt
+      case g: GptInteractionElement => HtmlGptTextfieldInteractionRenderer.render(g)
+      
       // error
       case _: T => HtmlWorkbookElement[T](HtmlFullWorkbookApp.fullInfo, anyElement, createPlaceholderElement[T](anyElement))
     }

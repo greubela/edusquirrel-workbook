@@ -24,9 +24,7 @@ case class GptInteractionLine(
   //private var htmlGptGrader = HtmlGptGrader(fullInfo, textInteraction)
   
   val htmlGPTMessenger: Option[HtmlGPTMessenger] = languageMapIdScaffoldingHints.map(hintID => HtmlGPTMessenger(fullInfo, textInteraction, languageMapIDExerciseText, hintID))
-
-
-
+  
   lazy val domElement: L.Element = {
     div(
       cls := "button-line",
