@@ -10,7 +10,7 @@ import todomove.datastructures.core.vm.code.defining.BeDefineVariable
 import todomove.datastructures.core.vm.code.others.{BeReturn, BeStartProgram}
 import todomove.datastructures.core.vm.code.tree.BeExpressionReference
 import todomove.datastructures.core.vm.code.usage.{BeAssignVariable, BeUseValue}
-import todomove.datastructures.core.vm.types.{BeChildPosition, BeUseValueReference}
+import todomove.datastructures.core.vm.types.{BeChildPosition, BeInfo, BeUseValueReference}
 
 import scala.collection.mutable
 
@@ -40,10 +40,42 @@ object VmStaticRules {
     results ++= checkUnusedVariables(allExprs, humanLanguage)
 
     results ++= checkUnreachableAfterReturn(allExprs, humanLanguage)
-
+    results ++= checkSyntaxErrors(root, humanLanguage)
     results.toList
   }
 
+  private def checkSyntaxErrors(root: BeExpression, humanLanguage: HumanLanguage): Seq[RuleResult] = {
+    val errors = root.staticInformationSubtree.syntaxErrors
+    if errors.isEmpty then
+      Seq(RuleResult(
+        id = "VM_NO_SYNTAX_ERRORS",
+        category = "VM_TYPES",
+        severity = RuleSeverity.Info,
+        passed = true,
+        message = t(humanLanguage)(
+          "Es wurden keine Typ-Inkonsistenzen oder nicht-parsbare Blöcke gefunden.",
+          "No type inconsistencies or unparsable blocks were found."
+        ),
+        details = None
+      ))
+    else
+      errors.map { info =>
+        val msg = info.message.getInLanguage(humanLanguage)
+        val (id, cat) = info.infoType match {
+          case BeInfo.SyntaxError.UnparsableBlock => ("VM_UNPARSABLE_BLOCK", "VM_ERRORS")
+          case BeInfo.SyntaxError.UnsupportedBlock => ("VM_UNSUPPORTED_BLOCK", "VM_ERRORS")
+          case BeInfo.SyntaxError.TypeMismatch => ("VM_TYPE_MISMATCH", "VM_TYPES")
+          case BeInfo.SyntaxError.StructureMismatch => ("VM_STRUCTURE_MISMATCH", "VM_ERRORS")
+          case BeInfo.SyntaxError.MissingValue => ("VM_MISSING_VALUE", "VM_ERRORS")
+          case _ => ("VM_SYNTAX_ERROR", "VM_ERRORS")
+        }
+        RuleResult(
+          id = id, category = cat, severity = RuleSeverity.Warning, passed = false,
+          message = msg, details = Some(info.infoType.toString)
+        )
+      }
+  }
+  
   /** Traverses the tree and collects all BeExpression nodes. */
   private def collectAllExpressions(root: BeExpression): List[BeExpression] = {
     val buffer = mutable.ListBuffer.empty[BeExpression]

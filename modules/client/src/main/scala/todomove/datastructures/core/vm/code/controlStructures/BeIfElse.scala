@@ -41,10 +41,10 @@ case class BeIfElse(
   }
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = {
-      val conditionString = condition.expressionIO.getInLanguage(programmingLanguage, humanLanguage).replaceAll("\n", "")
-      val thenBodyString = thenBody.expressionIO.getInLanguage(programmingLanguage, humanLanguage)
-      val elseBodyString = elseBody.expressionIO.getInLanguage(programmingLanguage, humanLanguage)
+    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
+      val conditionString = condition.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable).replaceAll("\n", "")
+      val thenBodyString = thenBody.expressionIO.getInLanguage(programmingLanguage, humanLanguage,skipUnparsable)
+      val elseBodyString = elseBody.expressionIO.getInLanguage(programmingLanguage, humanLanguage,skipUnparsable)
       val hasElseBody = elseBody.body.nonEmpty
       programmingLanguage match {
         case Python => {

@@ -26,9 +26,6 @@ trait BeExpression {
     new BeExpressionIO() {}
   }
 
-  def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String =
-    expressionIO.getInLanguage(programmingLanguage, humanLanguage)
-
   def expressionExecutor(simulatorConfig: BeSimulatorConfig, stateBeforeExecution: BeSimulatorState): BeExpressionExecutor = {
     println("[WARN] Execution support is not implemented for " + getClass.getSimpleName + " (defaulting to NoOp)")
     new BeExpressionExecutor(simulatorConfig, stateBeforeExecution, this) {

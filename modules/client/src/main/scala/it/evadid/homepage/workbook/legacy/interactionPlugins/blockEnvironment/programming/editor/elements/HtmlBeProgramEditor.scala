@@ -25,10 +25,10 @@ case class HtmlBeProgramEditor(
   private val BlockViewTabNr = 0
   private val TextViewTabNr = 1
 
-  private val strVar: Var[String] = Var(editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(textLanguage, English))
+  private val strVar: Var[String] = Var(editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(textLanguage, English, false))
   editorState.treeToEdit.signal.foreach { tree =>
     if (!textDirtyVar.now()) {
-      strVar.set(tree.fullProgram.expressionIO.getInLanguage(textLanguage, English))
+      strVar.set(tree.fullProgram.expressionIO.getInLanguage(textLanguage, English, false))
     }
   }(using new Owner() {})
   private var language: HumanLanguage = AppLanguage.English
@@ -117,7 +117,7 @@ case class HtmlBeProgramEditor(
         // Only overwrite the text view if the user doesn't have unsynced edits.
         // avoids silently deleting unsupported C++ statements
         if (!textDirtyVar.now()) {
-          val source = editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(textLanguage, language)
+          val source = editorState.treeToEdit.now().fullProgram.expressionIO.getInLanguage(textLanguage, language, false)
           parseWarningVar.set(None)
           strVar.set(source)
         }

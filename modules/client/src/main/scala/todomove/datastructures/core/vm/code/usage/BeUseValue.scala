@@ -27,7 +27,7 @@ case class BeUseValue(value: BeDataValue, contextIfKnown: Option[BeDefineVariabl
   }
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage): String = value match {
+    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = value match {
       case BeDataValueLiteral(literalStr) if contextIfKnown.nonEmpty =>
         contextIfKnown.get.variableType.formatValueForDisplay(literalStr).getInLanguage(programmingLanguage)
       case BeDataValueLiteral(literalStr) => literalStr

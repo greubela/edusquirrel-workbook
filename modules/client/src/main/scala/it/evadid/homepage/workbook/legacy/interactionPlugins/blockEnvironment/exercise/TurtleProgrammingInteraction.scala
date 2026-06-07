@@ -21,7 +21,7 @@ case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expected
   val defaultValue: BeProgram = BeProgram(BeProgram.miniProgramExpression())
 
   private val io = new Serializer[BeProgram]() {
-    override def serialize(obj: BeProgram): String = obj.fullProgram.getInLanguage(AppLanguage.Python, AppLanguage.English)
+    override def serialize(obj: BeProgram): String = obj.fullProgram.expressionIO.getInLanguage(AppLanguage.Python, AppLanguage.English, false)
 
     override def deserialize(str: String): BeProgram = BeProgram.fromPythonString(str)
   }

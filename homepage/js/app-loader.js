@@ -30,7 +30,7 @@
     ? window.EDUSQUIRREL_APP_PATHS
     : defaultPaths;
 
-  var asModule = window.EDUSQUIRREL_APP_AS_MODULE === true;
+  var asModule = window.EDUSQUIRREL_APP_AS_MODULE !== true;
 
   function loadAt(index) {
     if (index >= paths.length) {
