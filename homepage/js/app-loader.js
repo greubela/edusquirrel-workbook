@@ -21,6 +21,9 @@
     "../js/app/main.js",
     "./js/app/main.js",
     origin + "/js/app/main.js",
+    "../target/client/scala-3.8.3/client-fastopt.js",
+    "../../target/client/scala-3.8.3/client-fastopt.js",
+    origin + "/target/client/scala-3.8.3/client-fastopt.js",
     "../target/scala-3.3.3/workbookapp-fastopt/main.js",
     "../../target/scala-3.3.3/workbookapp-fastopt/main.js",
     origin + "/target/scala-3.3.3/workbookapp-fastopt/main.js"

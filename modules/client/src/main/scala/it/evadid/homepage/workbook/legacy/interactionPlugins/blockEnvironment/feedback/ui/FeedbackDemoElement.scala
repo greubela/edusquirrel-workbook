@@ -13,8 +13,14 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.fe
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.service.BlockFeedbackService
 import it.evadid.homepage.workbook.legacy.model.feedback.FeedbackStatus
 import org.scalajs.dom
+import todomove.datastructures.core.vm.code.BeExpression
+import todomove.datastructures.core.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import todomove.datastructures.core.vm.code.others.BeStartProgram
+import todomove.datastructures.core.vm.code.tree.BeExpressionReference
 import todomove.datastructures.core.vm.parsing.python.PythonParser
+import todomove.datastructures.core.vm.types.BeChildPosition
+import todomove.datastructures.core.vm.types.BeChildRole.NoRole
+import todomove.datastructures.core.vm.types.BeScope.GlobalScope
 import todomove.webElementsOld.webElements.genericHtmlElements.editor.CodeMirrorEditor
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -28,6 +34,74 @@ object FeedbackDemoElement:
   private lazy val demoLlmClient = CommandLlmClient(BackendServerConfig.executor)
 
   private val defaultLanguage: HumanLanguage = AppLanguage.English
+
+  private final case class SourceProblem(originalSource: String, message: String, severity: String)
+
+  private def editorDiagnosticsFor(program: BeExpression, rawPython: String): Seq[CodeMirrorEditor.Diagnostic] =
+    val tree =
+      program.recToTree(withExtensions = false, BeChildPosition(NoRole, GlobalScope()))
+
+    val problems =
+      tree.values.toSeq.collect {
+        case BeExpressionReference(_, BeExpressionUnparsable(original, message)) =>
+          SourceProblem(original, message, "warning")
+        case BeExpressionReference(_, BeExpressionUnsupported(original)) =>
+          SourceProblem(original, s"Unknown Python structure: $original", "soft")
+      }
+
+    problems.flatMap(problemToDiagnostic(_, rawPython)).distinctBy(d => (d.line, d.endLine, d.fromCh, d.toCh, d.message))
+
+  private def problemToDiagnostic(problem: SourceProblem, rawPython: String): Option[CodeMirrorEditor.Diagnostic] =
+    val source = Option(problem.originalSource).getOrElse("").replace("\r\n", "\n").trim
+    if source.isEmpty then None
+    else
+      val lines = Option(rawPython).getOrElse("").replace("\r\n", "\n").split("\n", -1).toIndexedSeq
+      val sourceLines = source.split("\n", -1).map(_.trim).filter(_.nonEmpty).toIndexedSeq
+      if sourceLines.isEmpty then None
+      else
+        val first = sourceLines.head
+        val exactLine = lines.zipWithIndex.collectFirst {
+          case (line, idx) if line.trim == first => line -> idx
+        }
+        val containingLine = exactLine.orElse {
+          lines.zipWithIndex.collectFirst {
+            case (line, idx) if line.contains(first) => line -> idx
+          }
+        }
+
+        containingLine.map { case (line, idx) =>
+          val fromCh = line.indexOf(first) match
+            case pos if pos >= 0 => Some(pos)
+            case _               => None
+          val toCh = fromCh.map(_ + first.length)
+          CodeMirrorEditor.Diagnostic(
+            line = idx + 1,
+            endLine = Some(idx + sourceLines.size),
+            fromCh = if sourceLines.size == 1 then fromCh else None,
+            toCh = if sourceLines.size == 1 then toCh else None,
+            message = problem.message,
+            severity = problem.severity
+          )
+        }
+
+  private def runtimeLineDiagnostic(message: String): Option[CodeMirrorEditor.Diagnostic] =
+    val normalized = Option(message).getOrElse("").replace("\r\n", "\n")
+    val LinePattern = """(?i)\bline\s+(\d+)\b""".r
+    LinePattern.findFirstMatchIn(normalized).flatMap { m =>
+      m.group(1).toIntOption.map { lineNr =>
+        val headline =
+          normalized
+            .linesIterator
+            .map(_.trim)
+            .find(line => line.nonEmpty && (line.contains("SyntaxError") || line.contains("IndentationError")))
+            .getOrElse("Python could not execute this line.")
+        CodeMirrorEditor.Diagnostic(
+          line = math.max(1, lineNr),
+          message = headline,
+          severity = "error"
+        )
+      }
+    }
 
   private def genericSampleFromStatement(exerciseId: String): String =
     val statement =
@@ -280,6 +354,10 @@ object FeedbackDemoElement:
     val showTestsVar = Var(true)
     val showFeedbackVar = Var(true)
     val showEditorVar = Var(true)
+    lazy val pythonEditor: CodeMirrorEditor = CodeMirrorEditor(
+      pythonCodeVar,
+      onUserInput = _ => pythonEditor.clearDiagnostics()
+    )
 
     def tx(lang: HumanLanguage, en: String, de: String): String =
       if lang == AppLanguage.German then de else en
@@ -473,16 +551,22 @@ object FeedbackDemoElement:
       errorVar.set(None)
       feedbackVar.set(None)
       isRunningVar.set(true)
+      pythonEditor.clearDiagnostics()
       logEvent("Run feedback started")
 
-      val programExpr =
+      val (programExpr, parserDiagnostics) =
         try
           val parsed = PythonParser.parsePython(pythonCodeVar.now())
-          BeStartProgram(parsed)
+          val program = BeStartProgram(parsed)
+          val diagnostics = editorDiagnosticsFor(program, pythonCodeVar.now())
+          if diagnostics.nonEmpty then
+            pythonEditor.setDiagnostics(diagnostics)
+          program -> diagnostics
         catch
           case t: Throwable =>
             isRunningVar.set(false)
             errorVar.set(Option(t.getMessage).filter(_.nonEmpty).orElse(Some(t.toString)))
+            runtimeLineDiagnostic(Option(t.getMessage).getOrElse(t.toString)).foreach(d => pythonEditor.setDiagnostics(Seq(d)))
             logEvent("Parse failed: " + Option(t.getMessage).getOrElse(t.toString))
             return
 
@@ -502,6 +586,14 @@ object FeedbackDemoElement:
           case Success(feedback) =>
             isRunningVar.set(false)
             feedbackVar.set(Some(feedback))
+            val runtimeDiagnostics =
+              feedback.debug
+                .flatMap(_.rawRuntimeError)
+                .flatMap(runtimeLineDiagnostic)
+                .toSeq
+            val allDiagnostics =
+              (parserDiagnostics ++ runtimeDiagnostics).distinctBy(d => (d.line, d.endLine, d.fromCh, d.toCh, d.message))
+            pythonEditor.setDiagnostics(allDiagnostics)
             logEvent("Feedback generated")
             saveSession()
             val primary = feedbackMessage(feedback).trim
@@ -514,6 +606,9 @@ object FeedbackDemoElement:
           case Failure(ex) =>
             isRunningVar.set(false)
             errorVar.set(Option(ex.getMessage).filter(_.nonEmpty).orElse(Some(ex.toString)))
+            val runtimeDiagnostics =
+              runtimeLineDiagnostic(Option(ex.getMessage).getOrElse(ex.toString)).toSeq
+            pythonEditor.setDiagnostics((parserDiagnostics ++ runtimeDiagnostics).distinctBy(d => (d.line, d.endLine, d.fromCh, d.toCh, d.message)))
             logEvent("Feedback failed: " + Option(ex.getMessage).getOrElse(ex.toString))
             saveSession()
         }
@@ -773,7 +868,7 @@ object FeedbackDemoElement:
                   ),
                   div(
                     cls := "fd-editor",
-                    CodeMirrorEditor(pythonCodeVar).getDomElement()
+                    pythonEditor.getDomElement()
                   )
                 )
               )

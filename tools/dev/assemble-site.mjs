@@ -7,10 +7,11 @@ const OUT = join(ROOT, "_site");
 
 function log(msg) { console.log(`[assemble-site] ${msg}`); }
 
-function findBundleDir(start) {
+function findBundle(start) {
   const target = join(start, "target");
   if (!existsSync(target)) return null;
   const stack = [target];
+  let legacyDir = null;
   while (stack.length) {
     const dir = stack.pop();
     let entries;
@@ -20,12 +21,14 @@ function findBundleDir(start) {
       let s;
       try { s = statSync(full); } catch { continue; }
       if (s.isDirectory()) {
-        if (name === "workbookapp-fastopt") return full;
+        if (name === "workbookapp-fastopt") legacyDir = full;
         stack.push(full);
+      } else if (name === "client-fastopt.js") {
+        return { type: "file", path: full };
       }
     }
   }
-  return null;
+  return legacyDir ? { type: "dir", path: legacyDir } : null;
 }
 
 log(`output: ${OUT}`);
@@ -38,15 +41,22 @@ for (const name of (existsSync(OUT) ? readdirSync(OUT) : [])) {
 log("copy homepage/ → _site/");
 cpSync(join(ROOT, "homepage"), OUT, { recursive: true });
 
-const bundleDir = findBundleDir(ROOT);
-if (!bundleDir) {
-  console.error("[assemble-site] Could not find target/.../workbookapp-fastopt — run `npm run build` first.");
+const bundle = findBundle(ROOT);
+if (!bundle) {
+  console.error("[assemble-site] Could not find target/.../client-fastopt.js — run `npm run build` first.");
   process.exit(1);
 }
 const appOut = join(OUT, "js", "app");
 mkdirSync(appOut, { recursive: true });
-log(`copy ${bundleDir} → ${appOut}`);
-cpSync(bundleDir, appOut, { recursive: true });
+if (bundle.type === "file") {
+  log(`copy ${bundle.path} → ${join(appOut, "main.js")}`);
+  cpSync(bundle.path, join(appOut, "main.js"));
+  const mapPath = `${bundle.path}.map`;
+  if (existsSync(mapPath)) cpSync(mapPath, join(appOut, "main.js.map"));
+} else {
+  log(`copy ${bundle.path} → ${appOut}`);
+  cpSync(bundle.path, appOut, { recursive: true });
+}
 
 const resourcesDir = join(ROOT, "resources");
 const resourcesOut = join(OUT, "resources");
