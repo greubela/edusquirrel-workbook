@@ -129,7 +129,7 @@ homepage/
     └── ...                 ← supporting scripts
 ```
 
-The workflow runs `sbt fastOptJS`, copies `homepage/` into `_site/`, then drops the Scala.js bundle into `_site/js/app/` and copies `resources/` next to the pages. The result is published to GitHub Pages.
+The workflow builds the Scala.js client and worker, then runs `tools/dev/assemble-site.mjs`. That script mirrors `homepage/` into `_site/`, copies the current client bundle to `_site/js/app/main.js`, publishes `artifacts/newest/` for worker-backed interactions, and copies `resources/` including images, PDFs, fonts, and workbook assets next to the pages. The result is checked and published to GitHub Pages.
 
 ### Local preview of the deployed layout
 
