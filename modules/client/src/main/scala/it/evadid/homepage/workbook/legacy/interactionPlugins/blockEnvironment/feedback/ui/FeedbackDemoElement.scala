@@ -86,21 +86,39 @@ object FeedbackDemoElement:
 
   private def runtimeLineDiagnostic(message: String): Option[CodeMirrorEditor.Diagnostic] =
     val normalized = Option(message).getOrElse("").replace("\r\n", "\n")
+    val FramePattern = """(?i)File\s+"([^"]+)",\s+line\s+(\d+)""".r
     val LinePattern = """(?i)\bline\s+(\d+)\b""".r
-    LinePattern.findFirstMatchIn(normalized).flatMap { m =>
-      m.group(1).toIntOption.map { lineNr =>
-        val headline =
-          normalized
-            .linesIterator
-            .map(_.trim)
-            .find(line => line.nonEmpty && (line.contains("SyntaxError") || line.contains("IndentationError")))
-            .getOrElse("Python could not execute this line.")
-        CodeMirrorEditor.Diagnostic(
-          line = math.max(1, lineNr),
-          message = headline,
-          severity = "error"
-        )
-      }
+    val frames =
+      FramePattern
+        .findAllMatchIn(normalized)
+        .flatMap(m => m.group(2).toIntOption.map(lineNr => m.group(1) -> lineNr))
+        .toSeq
+    val studentFrameLine =
+      frames
+        .collect {
+          case ("<student-source>", lineNr) => lineNr
+          case ("<string>", lineNr)         => lineNr
+        }
+        .lastOption
+    val fallbackLine =
+      if frames.nonEmpty then None
+      else
+        LinePattern
+          .findFirstMatchIn(normalized)
+          .flatMap(m => m.group(1).toIntOption)
+
+    studentFrameLine.orElse(fallbackLine).map { lineNr =>
+      val headline =
+        normalized
+          .linesIterator
+          .map(_.trim)
+          .find(line => line.nonEmpty && (line.contains("SyntaxError") || line.contains("IndentationError")))
+          .getOrElse("Python could not execute this line.")
+      CodeMirrorEditor.Diagnostic(
+        line = math.max(1, lineNr),
+        message = headline,
+        severity = "error"
+      )
     }
 
   private def genericSampleFromStatement(exerciseId: String): String =
