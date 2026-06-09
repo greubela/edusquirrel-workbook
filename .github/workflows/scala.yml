@@ -64,7 +64,12 @@ jobs:
             ["../../artifacts/", "../artifacts/"],
             ["../../resources/", "../resources/"],
           ];
-          const counts = Object.fromEntries(replacements.map(([from]) => [from, 0]));
+          const rootPageReplacements = [
+            ["../resources/", "resources/"],
+          ];
+          const counts = Object.fromEntries(
+            [...replacements, ...rootPageReplacements].map(([from]) => [from, 0])
+          );
 
           function hasTextExtension(path) {
             const dot = path.lastIndexOf(".");
@@ -85,6 +90,21 @@ jobs:
             if (after !== before) writeFileSync(path, after);
           }
 
+          function patchRootPage() {
+            const path = join(siteDir, "index.html");
+            if (!existsSync(path)) return;
+            const before = readFileSync(path, "utf8");
+            let after = before;
+            for (const [from, to] of rootPageReplacements) {
+              const count = after.split(from).length - 1;
+              if (count > 0) {
+                counts[from] += count;
+                after = after.replaceAll(from, to);
+              }
+            }
+            if (after !== before) writeFileSync(path, after);
+          }
+
           function walk(dir) {
             for (const entry of readdirSync(dir)) {
               const path = join(dir, entry);
@@ -95,6 +115,7 @@ jobs:
           }
 
           walk(siteDir);
+          patchRootPage();
           console.log(`GitHub Pages paths adjusted: ${JSON.stringify(counts)}`);
           NODE
 
@@ -117,6 +138,11 @@ jobs:
 
           if grep -R -I -Fq '../../resources/' _site; then
             echo "Unpatched GitHub Pages resource path found in _site." >&2
+            exit 1
+          fi
+
+          if grep -Fq '../resources/' _site/index.html; then
+            echo "Unpatched root resource path found in _site/index.html." >&2
             exit 1
           fi
 
