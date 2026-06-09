@@ -7,20 +7,15 @@ import it.evadid.homepage.control.BackendServerConfig
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.BlockFeedbackTestResultFormatter
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ai.CommandLlmClient
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config.BlockFeedbackExerciseRegistry
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.diagnosis.PythonCodeMirrorDiagnostics
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ml.MlRouter
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{FeedbackTestDisplay, UltrichsNewCoolFeedback}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime.PythonRuntimeService
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.service.BlockFeedbackService
 import it.evadid.homepage.workbook.legacy.model.feedback.FeedbackStatus
 import org.scalajs.dom
-import todomove.datastructures.core.vm.code.BeExpression
-import todomove.datastructures.core.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import todomove.datastructures.core.vm.code.others.BeStartProgram
-import todomove.datastructures.core.vm.code.tree.BeExpressionReference
 import todomove.datastructures.core.vm.parsing.python.PythonParser
-import todomove.datastructures.core.vm.types.BeChildPosition
-import todomove.datastructures.core.vm.types.BeChildRole.NoRole
-import todomove.datastructures.core.vm.types.BeScope.GlobalScope
 import todomove.webElementsOld.webElements.genericHtmlElements.editor.CodeMirrorEditor
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -34,92 +29,6 @@ object FeedbackDemoElement:
   private lazy val demoLlmClient = CommandLlmClient(BackendServerConfig.executor)
 
   private val defaultLanguage: HumanLanguage = AppLanguage.English
-
-  private final case class SourceProblem(originalSource: String, message: String, severity: String)
-
-  private def editorDiagnosticsFor(program: BeExpression, rawPython: String): Seq[CodeMirrorEditor.Diagnostic] =
-    val tree =
-      program.recToTree(withExtensions = false, BeChildPosition(NoRole, GlobalScope()))
-
-    val problems =
-      tree.values.toSeq.collect {
-        case BeExpressionReference(_, BeExpressionUnparsable(original, message)) =>
-          SourceProblem(original, message, "warning")
-        case BeExpressionReference(_, BeExpressionUnsupported(original)) =>
-          SourceProblem(original, s"Unknown Python structure: $original", "soft")
-      }
-
-    problems.flatMap(problemToDiagnostic(_, rawPython)).distinctBy(d => (d.line, d.endLine, d.fromCh, d.toCh, d.message))
-
-  private def problemToDiagnostic(problem: SourceProblem, rawPython: String): Option[CodeMirrorEditor.Diagnostic] =
-    val source = Option(problem.originalSource).getOrElse("").replace("\r\n", "\n").trim
-    if source.isEmpty then None
-    else
-      val lines = Option(rawPython).getOrElse("").replace("\r\n", "\n").split("\n", -1).toIndexedSeq
-      val sourceLines = source.split("\n", -1).map(_.trim).filter(_.nonEmpty).toIndexedSeq
-      if sourceLines.isEmpty then None
-      else
-        val first = sourceLines.head
-        val exactLine = lines.zipWithIndex.collectFirst {
-          case (line, idx) if line.trim == first => line -> idx
-        }
-        val containingLine = exactLine.orElse {
-          lines.zipWithIndex.collectFirst {
-            case (line, idx) if line.contains(first) => line -> idx
-          }
-        }
-
-        containingLine.map { case (line, idx) =>
-          val fromCh = line.indexOf(first) match
-            case pos if pos >= 0 => Some(pos)
-            case _               => None
-          val toCh = fromCh.map(_ + first.length)
-          CodeMirrorEditor.Diagnostic(
-            line = idx + 1,
-            endLine = Some(idx + sourceLines.size),
-            fromCh = if sourceLines.size == 1 then fromCh else None,
-            toCh = if sourceLines.size == 1 then toCh else None,
-            message = problem.message,
-            severity = problem.severity
-          )
-        }
-
-  private def runtimeLineDiagnostic(message: String): Option[CodeMirrorEditor.Diagnostic] =
-    val normalized = Option(message).getOrElse("").replace("\r\n", "\n")
-    val FramePattern = """(?i)File\s+"([^"]+)",\s+line\s+(\d+)""".r
-    val LinePattern = """(?i)\bline\s+(\d+)\b""".r
-    val frames =
-      FramePattern
-        .findAllMatchIn(normalized)
-        .flatMap(m => m.group(2).toIntOption.map(lineNr => m.group(1) -> lineNr))
-        .toSeq
-    val studentFrameLine =
-      frames
-        .collect {
-          case ("<student-source>", lineNr) => lineNr
-          case ("<string>", lineNr)         => lineNr
-        }
-        .lastOption
-    val fallbackLine =
-      if frames.nonEmpty then None
-      else
-        LinePattern
-          .findFirstMatchIn(normalized)
-          .flatMap(m => m.group(1).toIntOption)
-
-    studentFrameLine.orElse(fallbackLine).map { lineNr =>
-      val headline =
-        normalized
-          .linesIterator
-          .map(_.trim)
-          .find(line => line.nonEmpty && (line.contains("SyntaxError") || line.contains("IndentationError")))
-          .getOrElse("Python could not execute this line.")
-      CodeMirrorEditor.Diagnostic(
-        line = math.max(1, lineNr),
-        message = headline,
-        severity = "error"
-      )
-    }
 
   private def genericSampleFromStatement(exerciseId: String): String =
     val statement =
@@ -576,7 +485,7 @@ object FeedbackDemoElement:
         try
           val parsed = PythonParser.parsePython(pythonCodeVar.now())
           val program = BeStartProgram(parsed)
-          val diagnostics = editorDiagnosticsFor(program, pythonCodeVar.now())
+          val diagnostics = PythonCodeMirrorDiagnostics.forProgram(program, pythonCodeVar.now())
           if diagnostics.nonEmpty then
             pythonEditor.setDiagnostics(diagnostics)
           program -> diagnostics
@@ -584,7 +493,9 @@ object FeedbackDemoElement:
           case t: Throwable =>
             isRunningVar.set(false)
             errorVar.set(Option(t.getMessage).filter(_.nonEmpty).orElse(Some(t.toString)))
-            runtimeLineDiagnostic(Option(t.getMessage).getOrElse(t.toString)).foreach(d => pythonEditor.setDiagnostics(Seq(d)))
+            PythonCodeMirrorDiagnostics
+              .forRuntimeMessage(Option(t.getMessage).getOrElse(t.toString))
+              .foreach(d => pythonEditor.setDiagnostics(Seq(d)))
             logEvent("Parse failed: " + Option(t.getMessage).getOrElse(t.toString))
             return
 
@@ -607,10 +518,10 @@ object FeedbackDemoElement:
             val runtimeDiagnostics =
               feedback.debug
                 .flatMap(_.rawRuntimeError)
-                .flatMap(runtimeLineDiagnostic)
+                .flatMap(PythonCodeMirrorDiagnostics.forRuntimeMessage)
                 .toSeq
             val allDiagnostics =
-              (parserDiagnostics ++ runtimeDiagnostics).distinctBy(d => (d.line, d.endLine, d.fromCh, d.toCh, d.message))
+              PythonCodeMirrorDiagnostics.deduplicate(parserDiagnostics ++ runtimeDiagnostics)
             pythonEditor.setDiagnostics(allDiagnostics)
             logEvent("Feedback generated")
             saveSession()
@@ -625,8 +536,8 @@ object FeedbackDemoElement:
             isRunningVar.set(false)
             errorVar.set(Option(ex.getMessage).filter(_.nonEmpty).orElse(Some(ex.toString)))
             val runtimeDiagnostics =
-              runtimeLineDiagnostic(Option(ex.getMessage).getOrElse(ex.toString)).toSeq
-            pythonEditor.setDiagnostics((parserDiagnostics ++ runtimeDiagnostics).distinctBy(d => (d.line, d.endLine, d.fromCh, d.toCh, d.message)))
+              PythonCodeMirrorDiagnostics.forRuntimeMessage(Option(ex.getMessage).getOrElse(ex.toString)).toSeq
+            pythonEditor.setDiagnostics(PythonCodeMirrorDiagnostics.deduplicate(parserDiagnostics ++ runtimeDiagnostics))
             logEvent("Feedback failed: " + Option(ex.getMessage).getOrElse(ex.toString))
             saveSession()
         }
