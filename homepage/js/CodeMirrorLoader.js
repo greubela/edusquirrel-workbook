@@ -296,7 +296,8 @@ const codeMirrorFacade = {
             from: 0,
             to: view.state.doc.length,
             insert: nextDoc
-          }
+          },
+          effects: setDiagnosticsEffect.of([])
         });
         isProgrammaticUpdate = false;
       },
