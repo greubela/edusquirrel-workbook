@@ -32,7 +32,7 @@ case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDe
   }
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
+    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
 
       val operatorPrecedence: Map[String, Int] = Map(
         "or" -> 1,
@@ -130,7 +130,7 @@ case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDe
 
       val parameterValuesFormatted: List[String] = parameterWithValues
         .map(
-          tup => tup._2.map(curVal => curVal.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable).replaceAll("\n", "")).getOrElse("")
+          tup => tup._2.map(curVal => curVal.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable).replaceAll("\n", "")).getOrElse("")
         )
 
       val nameStr = funcDef.functionTypeInfo.displayName.getInLanguage(humanLanguage)
@@ -143,7 +143,7 @@ case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDe
     }
 
 
-    override def createBlock(): BeBlock = BeBlockCallSingleReturnFunction(BeFunctionCall.this)
+    override def toBlock(): BeBlock = BeBlockCallSingleReturnFunction(BeFunctionCall.this)
   }
 
   override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = {

@@ -26,17 +26,17 @@ case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) exten
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
 
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
+    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
 
       def sanitizeRustName(name: String): String =
         if (name.nonEmpty && name.head.isUpper) name.head.toLower + name.tail else name
 
-      val renderedValue = value.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable).replaceAll("\n", " ")
+      val renderedValue = value.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable).replaceAll("\n", " ")
       val targetName = programmingLanguage match {
         case Python if renderedValue.trim.startsWith("lambda") =>
           target.name.getInLanguage(humanLanguage)
         case _ =>
-          target.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable)
+          target.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable)
       }
 
       programmingLanguage match {
@@ -51,7 +51,7 @@ case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) exten
     }
 
 
-    override def createBlock(): BeBlock = BeBlockAssignValue(target, value)
+    override def toBlock(): BeBlock = BeBlockAssignValue(target, value)
   }
 
   override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = List(

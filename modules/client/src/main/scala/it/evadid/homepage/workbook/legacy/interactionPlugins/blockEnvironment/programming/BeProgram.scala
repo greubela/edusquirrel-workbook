@@ -37,7 +37,7 @@ case class BeProgram(fullProgram: BeExpression) {
         (structure.curValue, BeBlockPlaceholder(structure.curValue.asInstanceOf[BeExtensionPoint], structure.curPosition))
       }
       case BeExpressionReference(childPos, expression) => {
-        (structure.curValue, expression.expressionIO.createBlock())
+        (structure.curValue, expression.expressionIO.toBlock())
       }
     }
   })

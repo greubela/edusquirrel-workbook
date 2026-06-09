@@ -1,6 +1,5 @@
 package todomove.datastructures.core.vm.code.controlStructures
 
-import todomove.datastructures.core.vm.types.BeScope.InSequenceScope
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.util.CodeStringBuilder
@@ -9,6 +8,7 @@ import todomove.datastructures.core.vm.code.tree.{BeExpressionNode, BeExpression
 import todomove.datastructures.core.vm.code.{BeControlStructure, BeExpression}
 import todomove.datastructures.core.vm.io.BeExpressionIO
 import todomove.datastructures.core.vm.static.BeExpressionStaticInformation
+import todomove.datastructures.core.vm.types.BeScope.InSequenceScope
 import todomove.datastructures.core.vm.types.{BeChildPosition, BeChildRole, BeInfo, BeScope}
 
 case class BeRepeatNr(amount: Int, body: BeSequence) extends BeControlStructure {
@@ -27,9 +27,9 @@ case class BeRepeatNr(amount: Int, body: BeSequence) extends BeControlStructure 
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO() {
 
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
+    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
 
-      val bodyString = body.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable)
+      val bodyString = body.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable)
 
       programmingLanguage match {
         case Python => {
@@ -91,7 +91,7 @@ case class BeRepeatNr(amount: Int, body: BeSequence) extends BeControlStructure 
     }
 
 
-    override def createBlock(): BeBlock =
+    override def toBlock(): BeBlock =
       throw new NotImplementedError("Block rendering is not implemented for BeRepeatNr")
 
   }

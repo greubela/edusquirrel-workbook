@@ -37,7 +37,7 @@ final case class BlockFeedbackRequest(
     def pythonSource: String =
         pythonSourceOverride
           .map(_.replace("\r\n", "\n"))
-                    .getOrElse(studentCodePython.expressionIO.getInLanguage(AppLanguage.Python, preferredHumanLanguage, true))
+                    .getOrElse(studentCodePython.expressionIO.toStringInLanguage(AppLanguage.Python, preferredHumanLanguage, true))
 }
 
 /** Alias: internally we use the same type as the UI direction. */

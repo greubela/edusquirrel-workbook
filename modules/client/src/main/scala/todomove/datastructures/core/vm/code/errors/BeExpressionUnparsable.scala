@@ -19,11 +19,11 @@ case class BeExpressionUnparsable(originalSource: String, message: String) exten
   }
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO() {
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
+    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
       if (skipUnparsable) "" else originalSource
     }
 
-    override def createBlock(): BeBlock = BeBlockUnparsable(BeExpressionUnparsable.this)
+    override def toBlock(): BeBlock = BeBlockUnparsable(BeExpressionUnparsable.this)
   }
 
 

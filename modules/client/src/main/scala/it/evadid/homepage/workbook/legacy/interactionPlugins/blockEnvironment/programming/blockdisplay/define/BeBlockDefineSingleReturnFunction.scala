@@ -18,7 +18,7 @@ case class BeBlockDefineSingleReturnFunction(
 
   override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
 
-    val text = LanguageMap.universalMap[HumanLanguage](beDefineFunction.expressionIO.getInLanguage(Python, English).replaceAll("\n", ""))
+    val text = LanguageMap.universalMap[HumanLanguage](beDefineFunction.expressionIO.toStringInLanguage(Python, English).replaceAll("\n", ""))
     val textShape = TextShape(text).addAmends(renderingInformation.factory.defaultTextAmends)
 
     val res = ShapeAroundShape(RectangleShape, textShape)

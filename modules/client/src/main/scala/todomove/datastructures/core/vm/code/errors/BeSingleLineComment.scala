@@ -16,7 +16,7 @@ case class BeSingleLineComment(commentStr: LanguageMap[HumanLanguage]) extends B
   }
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO() {
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
+    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
       val comment = commentStr.getInLanguage(humanLanguage)
       if (comment.contains("\n")) comment.replaceAll("\n", " ") else comment
       programmingLanguage match {
@@ -30,7 +30,7 @@ case class BeSingleLineComment(commentStr: LanguageMap[HumanLanguage]) extends B
       }
     }
 
-    override def createBlock(): BeBlock = BeBlockComment(BeSingleLineComment.this)
+    override def toBlock(): BeBlock = BeBlockComment(BeSingleLineComment.this)
   }
 
 

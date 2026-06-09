@@ -1,10 +1,6 @@
 package todomove.datastructures.core.vm.code
 
-import todomove.datastructures.core.vm.types.BeScope.GlobalScope
-import todomove.datastructures.core.vm.types.*
 import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreeImpl
-import it.evadid.core.datastructures.language.*
-import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeExpressionTree
 import todomove.datastructures.core.vm.code.controlStructures.BeSequence
 import todomove.datastructures.core.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
@@ -12,7 +8,8 @@ import todomove.datastructures.core.vm.code.tree.{BeExpressionNode, BeExpression
 import todomove.datastructures.core.vm.io.BeExpressionIO
 import todomove.datastructures.core.vm.simulation.{BeExpressionExecutor, BeSimulatorConfig, BeSimulatorState}
 import todomove.datastructures.core.vm.static.BeExpressionStaticInformation
-import todomove.datastructures.core.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeDataValue, BeDataValueUnit, BeInfo, BeScope}
+import todomove.datastructures.core.vm.types.BeScope.GlobalScope
+import todomove.datastructures.core.vm.types.*
 
 trait BeExpression {
 

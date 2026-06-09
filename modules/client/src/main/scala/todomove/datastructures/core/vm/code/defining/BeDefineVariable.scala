@@ -19,7 +19,7 @@ case class BeDefineVariable(
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO() {
     
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
+    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
       val baseName = name.getInLanguage(humanLanguage)
       val typeHint = variableType.formatTypeForDisplay.getInLanguage(programmingLanguage).trim
       programmingLanguage match {
@@ -35,7 +35,7 @@ case class BeDefineVariable(
       }
     }
 
-    override def createBlock(): BeBlock =      BeBlockDefineVariable(BeDefineVariable.this)
+    override def toBlock(): BeBlock =      BeBlockDefineVariable(BeDefineVariable.this)
     
   }
 

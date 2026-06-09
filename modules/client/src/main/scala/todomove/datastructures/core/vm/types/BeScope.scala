@@ -7,6 +7,7 @@ sealed trait BeScope {
 
   def parentScopes: List[BeScope]
 
+  // todo: implemented wrong. think about direction...
   def isSubScope(other: BeScope): Boolean = other.parentScopes.contains(other) 
 }
 

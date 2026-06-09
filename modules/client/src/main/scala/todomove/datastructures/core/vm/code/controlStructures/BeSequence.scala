@@ -1,11 +1,7 @@
 package todomove.datastructures.core.vm.code.controlStructures
 
-import todomove.datastructures.core.vm.types.BeScope.InSequenceScope
-import todomove.datastructures.core.vm.types.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.util.CodeStringBuilder
-import it.evadid.core.datastructures.language.*
-import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.control.BeBlockSequence
 import todomove.datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference, BeExtensionPoint}
@@ -13,7 +9,8 @@ import todomove.datastructures.core.vm.code.{BeControlStructure, BeExpression}
 import todomove.datastructures.core.vm.io.BeExpressionIO
 import todomove.datastructures.core.vm.simulation.{BeExpressionExecutor, BeSimulatorConfig, BeSimulatorState}
 import todomove.datastructures.core.vm.static.BeExpressionStaticInformation
-import todomove.datastructures.core.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeDataValue, BeDataValueUnit, BeScope}
+import todomove.datastructures.core.vm.types.*
+import todomove.datastructures.core.vm.types.BeScope.InSequenceScope
 
 case class BeSequenceInfo(mustEvaluateTo: Option[BeDataType], maxBodyElements: Option[Int] = None)
 
@@ -30,20 +27,20 @@ case class BeSequence(body: List[BeExpression], sequenceInfo: BeSequenceInfo) ex
   }
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
+    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
       programmingLanguage match {
-        case Python => body.map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable)).mkString("\n")
+        case Python => body.map(_.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable)).mkString("\n")
         case Java | JavaScript | Rust =>
-          body.map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable)).mkString("\n")
+          body.map(_.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable)).mkString("\n")
         case Cpp =>
           // In C++, semicolons belong to statements, not expression contexts.
           // This sequence type is also used for conditions / expressions (e.g. if/while condition),
           // so we only auto-append semicolons for statement-like sequences.
           if (sequenceInfo.mustEvaluateTo.nonEmpty) {
-            body.map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable)).mkString("\n")
+            body.map(_.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable)).mkString("\n")
           } else {
             body
-              .map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable))
+              .map(_.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable))
               .map { rendered =>
                 val trimmed = rendered.trim
                 if (trimmed.isEmpty) rendered
@@ -59,7 +56,7 @@ case class BeSequence(body: List[BeExpression], sequenceInfo: BeSequenceInfo) ex
             val builder = CodeStringBuilder("(progn")
               .changeIntLevel(1)
             val withBody = body.foldLeft(builder) { (acc, expr) =>
-              acc.appendAsLines(expr.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable))
+              acc.appendAsLines(expr.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable))
             }
             withBody.changeIntLevel(-1)
               .appendNextLine(")")
@@ -79,7 +76,7 @@ case class BeSequence(body: List[BeExpression], sequenceInfo: BeSequenceInfo) ex
     }
 
 
-    override def createBlock(): BeBlock = BeBlockSequence(myRef)
+    override def toBlock(): BeBlock = BeBlockSequence(myRef)
   }
 
   override def expressionExecutor(simulatorConfig: BeSimulatorConfig, stateBeforeExecution: BeSimulatorState): BeExpressionExecutor = new BeExpressionExecutor(simulatorConfig, stateBeforeExecution, this) {

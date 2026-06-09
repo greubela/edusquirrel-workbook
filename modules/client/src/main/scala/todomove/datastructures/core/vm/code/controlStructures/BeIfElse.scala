@@ -1,17 +1,17 @@
 package todomove.datastructures.core.vm.code.controlStructures
 
-import todomove.datastructures.core.vm.types.BeChildRole.ConditionInControlStructure
-import todomove.datastructures.core.vm.types.BeScope.InSequenceScope
-import todomove.datastructures.core.vm.types.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.util.CodeStringBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.control.BeBlockIfElse
 import todomove.datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import todomove.datastructures.core.vm.code.{BeControlStructure, BeExpression}
-import todomove.datastructures.core.vm.io.BeExpressionIO
+import todomove.datastructures.core.vm.controlflow.ControlFlowType
+import todomove.datastructures.core.vm.io.{BeExpressionIO, BeExpressionLine, BeCodeLines}
 import todomove.datastructures.core.vm.static.BeExpressionStaticInformation
-import todomove.datastructures.core.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeInfo, BeScope}
+import todomove.datastructures.core.vm.types.*
+import todomove.datastructures.core.vm.types.BeChildRole.ConditionInControlStructure
+import todomove.datastructures.core.vm.types.BeScope.InSequenceScope
 
 case class BeIfElse(
                      condition: BeSequence,
@@ -40,11 +40,43 @@ case class BeIfElse(
 
   }
 
+  override def getChildren(withExtensions: Boolean, myScope: BeScope): List[BeExpressionNode] = {
+    List(
+      BeExpressionReference(BeChildPosition(ConditionInControlStructure, InSequenceScope(condition, myScope)), condition),
+      BeExpressionReference(BeChildPosition(BeChildRole.BodySequence(0), InSequenceScope(thenBody, myScope)), thenBody),
+      BeExpressionReference(BeChildPosition(BeChildRole.BodySequence(1), InSequenceScope(elseBody, myScope)), elseBody),
+    )
+  }
+  
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
-      val conditionString = condition.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable).replaceAll("\n", "")
-      val thenBodyString = thenBody.expressionIO.getInLanguage(programmingLanguage, humanLanguage,skipUnparsable)
-      val elseBodyString = elseBody.expressionIO.getInLanguage(programmingLanguage, humanLanguage,skipUnparsable)
+    
+    override def toExpressionLines(myScope: BeScope, myStack: List[ControlFlowType]): BeCodeLines = {
+      // BeExpressionLine (nr, expr, role, scope, cfStack)
+/*
+      val condScope = InSequenceScope(condition, myScope)
+      val thenScope = InSequenceScope(thenBody, myScope)
+      val elseScope = InSequenceScope(elseBody, myScope)
+
+      val condLines = condition.expressionIO.toExpressionLines(condScope, myStack ++ Some(ControlFlowType.IfElseBranch))
+
+      if (condLines.lines.size != 1) {
+        println(s"[WARN] BeIfElse::toExpressionLines - condition does not have exactly 1 line (${condLines.lines.size}) instead!")
+      }
+      val thenLines = thenBody.expressionIO.toExpressionLines(thenScope, myStack ++ List(ControlFlowType.IfElseBody(false), ControlFlowType.IfElseBody(true)))
+      val elseLines = elseBody.expressionIO.toExpressionLines(elseScope, myStack ++ List(ControlFlowType.IfElseBody(true), ControlFlowType.IfElseBody(false)))
+
+      // lineExpression: BeExpression, lineRole: BeChildRole, scope: BeScope, controlFlowStack: List[ControlFlowType]): BeExpressionLines = {
+
+      condLines
+        .appendNewLines(thenLines)
+*/
+      ???
+    }
+
+    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
+      val conditionString = condition.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable).replaceAll("\n", "")
+      val thenBodyString = thenBody.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable)
+      val elseBodyString = elseBody.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable)
       val hasElseBody = elseBody.body.nonEmpty
       programmingLanguage match {
         case Python => {
@@ -167,17 +199,9 @@ case class BeIfElse(
     }
 
 
-    override def createBlock(): BeBlock = new BeBlockIfElse(myRef)
+    override def toBlock(): BeBlock = new BeBlockIfElse(myRef)
   }
 
-
-  override def getChildren(withExtensions: Boolean, myScope: BeScope): List[BeExpressionNode] = {
-    List(
-      BeExpressionReference(BeChildPosition(ConditionInControlStructure, InSequenceScope(condition, myScope)), condition),
-      BeExpressionReference(BeChildPosition(BeChildRole.BodySequence(0), InSequenceScope(thenBody, myScope)), thenBody),
-      BeExpressionReference(BeChildPosition(BeChildRole.BodySequence(1), InSequenceScope(elseBody, myScope)), elseBody),
-    )
-  }
 
   override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
     val newCondition = newChildren.collectFirst {

@@ -13,8 +13,8 @@ import todomove.datastructures.core.vm.types.{BeChildPosition, BeChildRole, BeSc
 case class BeReturn(value: Option[BeExpression]) extends BeExpression {
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
-      val valueString = value.map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable).replaceAll("\n", " "))
+    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
+      val valueString = value.map(_.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable).replaceAll("\n", " "))
       val base = valueString match {
         case Some(text) if text.nonEmpty => s"return $text"
         case _ => "return"

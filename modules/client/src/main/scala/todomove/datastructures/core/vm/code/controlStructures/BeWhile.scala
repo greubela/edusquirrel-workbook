@@ -1,12 +1,8 @@
 package todomove.datastructures.core.vm.code.controlStructures
 
-import todomove.datastructures.core.vm.types.BeChildRole.ConditionInControlStructure
-import todomove.datastructures.core.vm.types.BeScope.InSequenceScope
-import it.evadid.homepage.util.text.ParenthesesUtils.stripOuterBalancedParens
-import it.evadid.core.util.CodeStringBuilder
-
-import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.util.CodeStringBuilder
+import it.evadid.homepage.util.text.ParenthesesUtils.stripOuterBalancedParens
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.control.BeBlockWhile
 import todomove.datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference}
@@ -14,7 +10,9 @@ import todomove.datastructures.core.vm.code.{BeControlStructure, BeExpression}
 import todomove.datastructures.core.vm.io.BeExpressionIO
 import todomove.datastructures.core.vm.simulation.{BeExpressionExecutor, BeSimulatorConfig, BeSimulatorState}
 import todomove.datastructures.core.vm.static.BeExpressionStaticInformation
-import todomove.datastructures.core.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeDataValue, BeInfo, BeScope}
+import todomove.datastructures.core.vm.types.*
+import todomove.datastructures.core.vm.types.BeChildRole.ConditionInControlStructure
+import todomove.datastructures.core.vm.types.BeScope.InSequenceScope
 
 case class BeWhile(
                     condition: BeSequence,
@@ -30,10 +28,10 @@ case class BeWhile(
   }
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
+    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
       val conditionString =
-        stripOuterBalancedParens(condition.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable).replaceAll("\n", ""))
-      val bodyString = body.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable)
+        stripOuterBalancedParens(condition.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable).replaceAll("\n", ""))
+      val bodyString = body.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable)
       programmingLanguage match {
         case Python =>
           CodeStringBuilder().appendNextLine(s"while $conditionString:")
@@ -91,7 +89,7 @@ case class BeWhile(
     }
 
 
-    override def createBlock(): BeBlock = BeBlockWhile(BeWhile.this)
+    override def toBlock(): BeBlock = BeBlockWhile(BeWhile.this)
   }
 
   override def expressionExecutor(simulatorConfig: BeSimulatorConfig, stateBeforeExecution: BeSimulatorState): BeExpressionExecutor = new BeExpressionExecutor(simulatorConfig, stateBeforeExecution, this) {

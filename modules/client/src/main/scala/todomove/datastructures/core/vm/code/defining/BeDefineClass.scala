@@ -23,7 +23,7 @@ case class BeDefineClass(
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO() {
 
-    override def getInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
+    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
       val className = name.getInLanguage(humanLanguage)
 
       def splitLines(block: String): List[String] = block.split("\n", -1).toList
@@ -53,11 +53,11 @@ case class BeDefineClass(
           }
 
           val extraBlocks = bodyExtras
-            .flatMap(extra => indentLines(splitLines(extra.expressionIO.getInLanguage(Python, humanLanguage, skipUnparsable)), indent))
+            .flatMap(extra => indentLines(splitLines(extra.expressionIO.toStringInLanguage(Python, humanLanguage, skipUnparsable)), indent))
             .filter(_.nonEmpty)
 
           val methodBlocks = methods
-            .map(method => indentLines(splitLines(method.expressionIO.getInLanguage(Python, humanLanguage, skipUnparsable)), indent))
+            .map(method => indentLines(splitLines(method.expressionIO.toStringInLanguage(Python, humanLanguage, skipUnparsable)), indent))
             .filter(_.nonEmpty)
 
           val bodyLines = scala.collection.mutable.ListBuffer[String]()
@@ -92,7 +92,7 @@ case class BeDefineClass(
 
           val methodBlocks = methods
             .map { method =>
-              val rendered = splitLines(method.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable)) match {
+              val rendered = splitLines(method.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable)) match {
                 case head :: tail => head.replaceFirst("^function\\s+", "") :: tail
                 case Nil => Nil
               }
@@ -138,7 +138,7 @@ case class BeDefineClass(
               .mkString(", ")
             val visibility = if (programmingLanguage == Java) "public " else ""
             val header = s"$indent$visibility$returnType $methodName($parameters) {"
-            val body = indentLines(splitLines(method.body.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable)), indent + indent)
+            val body = indentLines(splitLines(method.body.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable)), indent + indent)
             val ensuredBody = if (body.nonEmpty) body else List(s"$indent${indent}// TODO: implement")
             (header :: ensuredBody) :+ s"$indent }"
           }
@@ -163,14 +163,14 @@ case class BeDefineClass(
         case Lisp =>
           val slotNames = attributes.map(_.name.getInLanguage(humanLanguage).toLowerCase).mkString(" ")
           val classLine = s"(defclass ${className.toLowerCase} () ($slotNames))"
-          val methodLines = methods.map(_.expressionIO.getInLanguage(programmingLanguage, humanLanguage, skipUnparsable)).filter(_.trim.nonEmpty)
+          val methodLines = methods.map(_.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable)).filter(_.trim.nonEmpty)
           if (methodLines.isEmpty) classLine else classLine + "\n" + methodLines.mkString("\n")
 
         case _ => ""
       }
     }
 
-    override def createBlock(): BeBlock =
+    override def toBlock(): BeBlock =
       throw new NotImplementedError("Block rendering is not implemented for BeDefineClass")
 
   }
