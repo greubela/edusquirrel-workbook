@@ -7,6 +7,7 @@ import it.evadid.homepage.control.BackendServerConfig
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.BlockFeedbackTestResultFormatter
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ai.CommandLlmClient
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config.BlockFeedbackExerciseRegistry
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.diagnosis.PythonCodeMirrorDiagnostics
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ml.MlRouter
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{FeedbackTestDisplay, UltrichsNewCoolFeedback}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime.PythonRuntimeService
@@ -280,6 +281,10 @@ object FeedbackDemoElement:
     val showTestsVar = Var(true)
     val showFeedbackVar = Var(true)
     val showEditorVar = Var(true)
+    lazy val pythonEditor: CodeMirrorEditor = CodeMirrorEditor(
+      pythonCodeVar,
+      onUserInput = _ => pythonEditor.clearDiagnostics()
+    )
 
     def tx(lang: HumanLanguage, en: String, de: String): String =
       if lang == AppLanguage.German then de else en
@@ -473,16 +478,24 @@ object FeedbackDemoElement:
       errorVar.set(None)
       feedbackVar.set(None)
       isRunningVar.set(true)
+      pythonEditor.clearDiagnostics()
       logEvent("Run feedback started")
 
-      val programExpr =
+      val (programExpr, parserDiagnostics) =
         try
           val parsed = PythonParser.parsePython(pythonCodeVar.now())
-          BeStartProgram(parsed)
+          val program = BeStartProgram(parsed)
+          val diagnostics = PythonCodeMirrorDiagnostics.forProgram(program, pythonCodeVar.now())
+          if diagnostics.nonEmpty then
+            pythonEditor.setDiagnostics(diagnostics)
+          program -> diagnostics
         catch
           case t: Throwable =>
             isRunningVar.set(false)
             errorVar.set(Option(t.getMessage).filter(_.nonEmpty).orElse(Some(t.toString)))
+            PythonCodeMirrorDiagnostics
+              .forRuntimeMessage(Option(t.getMessage).getOrElse(t.toString))
+              .foreach(d => pythonEditor.setDiagnostics(Seq(d)))
             logEvent("Parse failed: " + Option(t.getMessage).getOrElse(t.toString))
             return
 
@@ -502,6 +515,14 @@ object FeedbackDemoElement:
           case Success(feedback) =>
             isRunningVar.set(false)
             feedbackVar.set(Some(feedback))
+            val runtimeDiagnostics =
+              feedback.debug
+                .flatMap(_.rawRuntimeError)
+                .flatMap(PythonCodeMirrorDiagnostics.forRuntimeMessage)
+                .toSeq
+            val allDiagnostics =
+              PythonCodeMirrorDiagnostics.deduplicate(parserDiagnostics ++ runtimeDiagnostics)
+            pythonEditor.setDiagnostics(allDiagnostics)
             logEvent("Feedback generated")
             saveSession()
             val primary = feedbackMessage(feedback).trim
@@ -514,6 +535,9 @@ object FeedbackDemoElement:
           case Failure(ex) =>
             isRunningVar.set(false)
             errorVar.set(Option(ex.getMessage).filter(_.nonEmpty).orElse(Some(ex.toString)))
+            val runtimeDiagnostics =
+              PythonCodeMirrorDiagnostics.forRuntimeMessage(Option(ex.getMessage).getOrElse(ex.toString)).toSeq
+            pythonEditor.setDiagnostics(PythonCodeMirrorDiagnostics.deduplicate(parserDiagnostics ++ runtimeDiagnostics))
             logEvent("Feedback failed: " + Option(ex.getMessage).getOrElse(ex.toString))
             saveSession()
         }
@@ -773,7 +797,7 @@ object FeedbackDemoElement:
                   ),
                   div(
                     cls := "fd-editor",
-                    CodeMirrorEditor(pythonCodeVar).getDomElement()
+                    pythonEditor.getDomElement()
                   )
                 )
               )

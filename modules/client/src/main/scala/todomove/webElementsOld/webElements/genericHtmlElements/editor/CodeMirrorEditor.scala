@@ -23,6 +23,11 @@ case class CodeMirrorEditor(
 
   def currentDoc: Option[String] = handle.map(_.getDoc())
 
+  def setDiagnostics(diagnostics: Seq[CodeMirrorEditor.Diagnostic]): Unit =
+    handle.foreach(_.setDiagnostics(js.Array(diagnostics.map(_.toJs)*)))
+
+  def clearDiagnostics(): Unit = setDiagnostics(Nil)
+
   override def getDomElement(): L.Element = {
     div(
       cls := "code-mirror-editor",
@@ -88,9 +93,30 @@ object CodeMirrorEditor {
 
     def getDoc(): String = js.native
 
+    def setDiagnostics(diagnostics: js.Array[js.Object]): Unit = js.native
+
     def focus(): Unit = js.native
 
     def destroy(): Unit = js.native
+  }
+
+  final case class Diagnostic(
+      line: Int,
+      endLine: Option[Int] = None,
+      fromCh: Option[Int] = None,
+      toCh: Option[Int] = None,
+      message: String = "",
+      severity: String = "warning"
+  ) {
+    def toJs: js.Object =
+      js.Dynamic.literal(
+        line = line,
+        endLine = endLine.getOrElse(line),
+        fromCh = fromCh.fold[js.Any](js.undefined)(identity),
+        toCh = toCh.fold[js.Any](js.undefined)(identity),
+        message = message,
+        severity = severity
+      ).asInstanceOf[js.Object]
   }
 
   trait EditorConfig extends js.Object {

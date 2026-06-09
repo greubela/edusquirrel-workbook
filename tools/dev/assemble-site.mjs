@@ -7,10 +7,20 @@ const OUT = join(ROOT, "_site");
 
 function log(msg) { console.log(`[assemble-site] ${msg}`); }
 
-function findBundleDir(start) {
+function fileCandidate(path, label = "file") {
+  return existsSync(path) ? { type: label, path } : null;
+}
+
+function findBundle(start) {
+  const artifactBundle =
+    fileCandidate(join(start, "artifacts", "newest", "client.js"), "file") ||
+    fileCandidate(join(start, "artifacts", "newest", "client-fastOpt.js"), "file");
+  if (artifactBundle) return artifactBundle;
+
   const target = join(start, "target");
   if (!existsSync(target)) return null;
   const stack = [target];
+  let legacyDir = null;
   while (stack.length) {
     const dir = stack.pop();
     let entries;
@@ -20,41 +30,57 @@ function findBundleDir(start) {
       let s;
       try { s = statSync(full); } catch { continue; }
       if (s.isDirectory()) {
-        if (name === "workbookapp-fastopt") return full;
+        if (name === "workbookapp-fastopt") legacyDir = full;
         stack.push(full);
+      } else if (name === "client-fastopt.js") {
+        return { type: "file", path: full };
       }
     }
   }
-  return null;
+  return legacyDir ? { type: "dir", path: legacyDir } : null;
+}
+
+function copyDirIfExists(source, destination, label) {
+  if (!existsSync(source)) return false;
+  log(`copy ${label}`);
+  cpSync(source, destination, { recursive: true });
+  return true;
 }
 
 log(`output: ${OUT}`);
+rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
-for (const name of (existsSync(OUT) ? readdirSync(OUT) : [])) {
-  if (name === "resources") continue;
-  rmSync(join(OUT, name), { recursive: true, force: true });
-}
 
 log("copy homepage/ → _site/");
 cpSync(join(ROOT, "homepage"), OUT, { recursive: true });
 
-const bundleDir = findBundleDir(ROOT);
-if (!bundleDir) {
-  console.error("[assemble-site] Could not find target/.../workbookapp-fastopt — run `npm run build` first.");
+const bundle = findBundle(ROOT);
+if (!bundle) {
+  console.error("[assemble-site] Could not find artifacts/newest/client.js or target/.../client-fastopt.js — run `npm run build` first.");
   process.exit(1);
 }
 const appOut = join(OUT, "js", "app");
 mkdirSync(appOut, { recursive: true });
-log(`copy ${bundleDir} → ${appOut}`);
-cpSync(bundleDir, appOut, { recursive: true });
+if (bundle.type === "file") {
+  log(`copy ${bundle.path} → ${join(appOut, "main.js")}`);
+  cpSync(bundle.path, join(appOut, "main.js"));
+  const mapPath = `${bundle.path}.map`;
+  if (existsSync(mapPath)) cpSync(mapPath, join(appOut, "main.js.map"));
+} else {
+  log(`copy ${bundle.path} → ${appOut}`);
+  cpSync(bundle.path, appOut, { recursive: true });
+}
 
 const resourcesDir = join(ROOT, "resources");
 const resourcesOut = join(OUT, "resources");
-if (existsSync(resourcesDir) && !existsSync(resourcesOut)) {
-  log("copy resources/ → _site/resources/");
-  cpSync(resourcesDir, resourcesOut, { recursive: true });
-} else if (existsSync(resourcesOut)) {
-  log("skip resources/ (already present; rm -rf _site/resources to refresh)");
+copyDirIfExists(resourcesDir, resourcesOut, "resources/ → _site/resources/");
+
+const artifactsDir = join(ROOT, "artifacts");
+if (existsSync(artifactsDir)) {
+  const artifactsOut = join(OUT, "artifacts");
+  mkdirSync(artifactsOut, { recursive: true });
+  copyDirIfExists(join(artifactsDir, "newest"), join(artifactsOut, "newest"), "artifacts/newest/ → _site/artifacts/newest/");
+  copyDirIfExists(join(artifactsDir, "stable"), join(artifactsOut, "stable"), "artifacts/stable/ → _site/artifacts/stable/");
 }
 
 const favicon = join(ROOT, "favicon.ico");

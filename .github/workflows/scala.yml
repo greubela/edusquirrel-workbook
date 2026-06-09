@@ -34,45 +34,122 @@ jobs:
       - name: Set up sbt
         uses: sbt/setup-sbt@v1
 
-      - name: Build Scala.js (buildClientFast)
-        run: sbt -batch -v buildClientFast
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build Scala.js client and worker
+        run: sbt -batch -v buildClientFast buildWorkerFast
 
       - name: Assemble GitHub Pages site
+        run: node tools/dev/assemble-site.mjs
+
+      - name: Adapt asset paths for GitHub Pages
         run: |
-          set -e
-          rm -rf _site
-          mkdir -p _site
+          set -euo pipefail
 
-          # 1) Copy the static homepage tree (index.html + per-page subdirs).
-          cp -R homepage/. _site/
+          node --input-type=module <<'NODE'
+          import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+          import { join } from "node:path";
 
-          # 2) Copy the Scala.js bundle to the canonical /js/app/ location
-          #    that the HTML pages and feedback-demo-loader.js expect.
-          # buildClientFast writes the linked JS to artifacts/newest/client.js
-          mkdir -p _site/js/app
-          BUNDLE_FILE="artifacts/newest/client.js"
-          if [ ! -f "$BUNDLE_FILE" ]; then
-            echo "Could not find buildClientFast output at $BUNDLE_FILE" >&2
+          const siteDir = "_site";
+          if (!existsSync(siteDir)) {
+            console.error(`${siteDir} does not exist.`);
+            process.exit(1);
+          }
+
+          const textExtensions = new Set([".css", ".html", ".js", ".json", ".map", ".mjs"]);
+          const replacements = [
+            ["../../artifacts/", "../artifacts/"],
+            ["../../resources/", "../resources/"],
+          ];
+          const rootPageReplacements = [
+            ["../resources/", "resources/"],
+          ];
+          const counts = Object.fromEntries(
+            [...replacements, ...rootPageReplacements].map(([from]) => [from, 0])
+          );
+
+          function hasTextExtension(path) {
+            const dot = path.lastIndexOf(".");
+            return dot >= 0 && textExtensions.has(path.slice(dot));
+          }
+
+          function patchFile(path) {
+            if (!hasTextExtension(path)) return;
+            const before = readFileSync(path, "utf8");
+            let after = before;
+            for (const [from, to] of replacements) {
+              const count = after.split(from).length - 1;
+              if (count > 0) {
+                counts[from] += count;
+                after = after.replaceAll(from, to);
+              }
+            }
+            if (after !== before) writeFileSync(path, after);
+          }
+
+          function patchRootPage() {
+            const path = join(siteDir, "index.html");
+            if (!existsSync(path)) return;
+            const before = readFileSync(path, "utf8");
+            let after = before;
+            for (const [from, to] of rootPageReplacements) {
+              const count = after.split(from).length - 1;
+              if (count > 0) {
+                counts[from] += count;
+                after = after.replaceAll(from, to);
+              }
+            }
+            if (after !== before) writeFileSync(path, after);
+          }
+
+          function walk(dir) {
+            for (const entry of readdirSync(dir)) {
+              const path = join(dir, entry);
+              const stat = statSync(path);
+              if (stat.isDirectory()) walk(path);
+              else if (stat.isFile()) patchFile(path);
+            }
+          }
+
+          walk(siteDir);
+          patchRootPage();
+          console.log(`GitHub Pages paths adjusted: ${JSON.stringify(counts)}`);
+          NODE
+
+      - name: Verify Pages artifact
+        run: |
+          set -euo pipefail
+
+          test -f _site/index.html
+          test -f _site/js/app/main.js
+          test -d _site/resources
+          test -d _site/resources/img
+          test -d _site/img
+          test -f _site/artifacts/newest/client.js
+          test -f _site/artifacts/newest/backend-worker.js
+
+          if grep -R -I -Fq '../../artifacts/' _site; then
+            echo "Unpatched GitHub Pages artifact path found in _site." >&2
             exit 1
           fi
-          cp "$BUNDLE_FILE" _site/js/app/main.js
 
-          # 3) Make /resources/ available next to the pages so links like
-          #    ./resources/... and ../resources/... resolve correctly.
-          if [ -d resources ]; then
-            cp -R resources _site/resources
+          if grep -R -I -Fq '../../resources/' _site; then
+            echo "Unpatched GitHub Pages resource path found in _site." >&2
+            exit 1
           fi
-          
-          # 4) Fix relative paths: homepage files use ../resources/ (correct
-          #    locally), but on GitHub Pages resources/ is a sibling of the
-          #    HTML root, not a parent dir. One sed pass handles both depths:
-          #      ../resources/   -> resources/   (files at _site root)
-          #      ../../resources/ -> ../resources/ (files one level deep)
-               find _site -name "*.html" -exec sed -i 's|../resources/|resources/|g' {} +
 
-          # 5) Optional favicon at the root.
-          if [ -f favicon.ico ]; then
-            cp favicon.ico _site/favicon.ico
+          if grep -Fq '../resources/' _site/index.html; then
+            echo "Unpatched root resource path found in _site/index.html." >&2
+            exit 1
+          fi
+
+          ASSET_COUNT="$(find _site -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' -o -iname '*.gif' -o -iname '*.svg' \) | wc -l)"
+          if [ "$ASSET_COUNT" -lt 1 ]; then
+            echo "No image assets were copied into _site." >&2
+            exit 1
           fi
 
           echo "::group::_site root"
@@ -81,6 +158,10 @@ jobs:
           echo "::group::_site/js/app"
           ls -la _site/js/app | head -n 30
           echo "::endgroup::"
+          echo "::group::_site/artifacts/newest"
+          ls -la _site/artifacts/newest | head -n 30
+          echo "::endgroup::"
+          echo "Image assets copied: $ASSET_COUNT"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

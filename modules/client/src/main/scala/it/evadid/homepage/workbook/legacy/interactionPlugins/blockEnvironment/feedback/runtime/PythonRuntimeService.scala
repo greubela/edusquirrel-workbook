@@ -173,7 +173,7 @@ try:
       else:
         handle.write(data)
 
-  exec(_code_source, namespace, namespace)
+  exec(compile(_code_source, "<student-source>", "exec"), namespace, namespace)
 
   total_weight = sum(test.get("weight", 1.0) for test in _tests) or 1.0
   earned = 0.0
@@ -223,7 +223,7 @@ try:
           entry["status"] = "failed"
           entry["message"] = f"expected={right_val} actual={left_val}"
       else:
-        exec(test_code, namespace, namespace)
+        exec(compile(test_code, "<feedback-test>", "exec"), namespace, namespace)
         earned += entry["weight"]
     except AssertionError as assertion_error:
       entry["status"] = "failed"

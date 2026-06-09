@@ -10,6 +10,10 @@
 // setting window.EDUSQUIRREL_APP_PATHS to an array of strings. If they want
 // the script tag to be injected as a JS module (the workbook does), they can
 // set window.EDUSQUIRREL_APP_AS_MODULE = true.
+//
+// Pages that load CodeMirror before the Scala.js app can expose
+// window.EduSquirrelCodeMirrorReady. The loader waits briefly for that promise
+// when it sees a CodeMirror script tag, then continues even if CodeMirror fails.
 (function () {
   var cacheBust = "v=" + Date.now();
   var origin = window.location.origin || "";
@@ -21,6 +25,9 @@
     "../js/app/main.js",
     "./js/app/main.js",
     origin + "/js/app/main.js",
+    "../target/client/scala-3.8.3/client-fastopt.js",
+    "../../target/client/scala-3.8.3/client-fastopt.js",
+    origin + "/target/client/scala-3.8.3/client-fastopt.js",
     "../target/scala-3.3.3/workbookapp-fastopt/main.js",
     "../../target/scala-3.3.3/workbookapp-fastopt/main.js",
     origin + "/target/scala-3.3.3/workbookapp-fastopt/main.js"
@@ -45,7 +52,45 @@
     document.head.appendChild(script);
   }
 
-  function start() { loadAt(0); }
+  function hasCodeMirrorScript() {
+    var scripts = document.getElementsByTagName("script");
+    for (var i = 0; i < scripts.length; i++) {
+      var src = scripts[i].src || "";
+      if (src.indexOf("/js/CodeMirrorLoader.js") !== -1 ||
+          src.indexOf("/js/feedback-demo-codemirror.js") !== -1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function waitForCodeMirror(maxMs) {
+    if (!hasCodeMirrorScript()) return Promise.resolve();
+
+    var startTime = Date.now();
+    return new Promise(function (resolve) {
+      function tick() {
+        var ready = window.EduSquirrelCodeMirrorReady;
+        if (ready && typeof ready.then === "function") {
+          ready.then(resolve, resolve);
+          return;
+        }
+        if (Date.now() - startTime > maxMs) {
+          resolve();
+          return;
+        }
+        setTimeout(tick, 30);
+      }
+
+      tick();
+    });
+  }
+
+  function start() {
+    waitForCodeMirror(8000).then(function () {
+      loadAt(0);
+    });
+  }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", start);
