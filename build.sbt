@@ -87,7 +87,9 @@ lazy val server = (project in file("./modules/server"))
       case PathList("META-INF", "io.netty.versions.properties") => MergeStrategy.first
       case x => (assembly / assemblyMergeStrategy).value(x)
     },
-    libraryDependencies ++= (coreDependencies.value ++ jvmDependencies.value)
+    libraryDependencies ++= (coreDependencies.value ++ jvmDependencies.value ++ Seq(
+      "org.postgresql" % "postgresql" % "42.7.7"
+    ))
   )
 
 lazy val client = (project in file("./modules/client"))
