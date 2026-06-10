@@ -86,6 +86,20 @@ object SvgPathBuilderCommand {
     def toAbsoluteCommand(start: Point[T]): AbsoluteCommand[T] = AddControlLinesCommand(start, Nil)
   }
 
+  /* ToDo: Close properly
+    case class ClosePath[T: Fractional](start: Point[T]) extends SvgPathBuilderCommand[T], RelativeCommand[T], AbsoluteCommand[T] {
+      def getPathDString(): String = " Z"
+
+      override def toRelativeCommand(start: Point[T]): RelativeCommand[T] = this
+
+      override def toAbsoluteCommand(start: Point[T]): AbsoluteCommand[T] = this
+
+      //override def relativeMovement: Dimension[T] = start
+
+      //override def positionAfterCommand: Point[T] = ???
+    }
+     */
+
   // Lines
   case class LineAbs[T: Fractional](p: Point[T]) extends AbsoluteCommand[T] {
     def getPathDString(): String = s" L ${pt(p)}"

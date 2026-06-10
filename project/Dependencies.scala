@@ -12,6 +12,7 @@ object Dependencies {
   val coreDependencies = Def.setting(Seq(
     "com.lihaoyi" %%% "upickle" % "4.4.3",
     "com.lihaoyi" %%% "fastparse" % "3.1.1",
+    "org.creativescala" %% "doodle" % "0.34.0",
     "org.scalameta" %%% "munit" % "1.3.0" % Test,
   ))
 
