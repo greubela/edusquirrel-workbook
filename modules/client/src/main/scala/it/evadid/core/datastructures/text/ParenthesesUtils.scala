@@ -1,4 +1,4 @@
-package it.evadid.homepage.util.text
+package it.evadid.core.datastructures.text
 
 object ParenthesesUtils {
 
