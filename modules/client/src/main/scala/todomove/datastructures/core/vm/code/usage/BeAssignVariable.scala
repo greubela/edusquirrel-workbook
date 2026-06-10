@@ -29,7 +29,7 @@ case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) exten
     override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
 
       def sanitizeRustName(name: String): String =
-        if (name.nonEmpty && name.head.isUpper) name.head.toLower + name.tail else name
+        if (name.nonEmpty && name.head.isUpper) s"${name.head.toLower}${name.tail}" else name
 
       val renderedValue = value.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable).replaceAll("\n", " ")
       val targetName = programmingLanguage match {

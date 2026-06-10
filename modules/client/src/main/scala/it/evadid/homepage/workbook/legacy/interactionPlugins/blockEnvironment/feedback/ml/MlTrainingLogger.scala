@@ -39,7 +39,7 @@ object MlTrainingLogger:
 
   private def toJson(example: Example): String = {
     val d = js.Dictionary[js.Any](
-      "timestampEpochMillis" -> example.timestampEpochMillis,
+      "timestampEpochMillis" -> example.timestampEpochMillis.toDouble,
       "exerciseId" -> example.exerciseId.orNull,
       "submissionNr" -> example.submissionNr,
       "weakLabel" -> example.weakLabel,

@@ -7,7 +7,7 @@ import it.evadid.homepage.control.info.control.TechnicalControl
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlFullScreenContainerElement
 import org.scalajs.dom
-import todomove.datastructures.web.storage.AsyncDataCache
+import it.evadid.core.datastructures.storage.AsyncDataCache
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 

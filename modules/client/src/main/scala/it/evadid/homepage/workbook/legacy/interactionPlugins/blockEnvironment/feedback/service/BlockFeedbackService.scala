@@ -225,7 +225,7 @@ object BlockFeedbackService:
               .filter(_.nonEmpty)
               .foldLeft(text) { (acc, name) =>
                 acc
-                  .replaceAllLiterally(s"$name test", "the failing case")
+                  .replace(s"$name test", "the failing case")
               }
 
           // Reduce test-centric phrasing to student-centric phrasing.

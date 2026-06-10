@@ -7,8 +7,8 @@ import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.homepage.control.*
 import it.evadid.homepage.control.info.{AllWorkbookInfo, FullInfo, HomepageInfo}
 import it.evadid.workbook.model.elements.WorkbookSection
-import todomove.datastructures.web.storage.AsyncData
-import todomove.datastructures.web.storage.AsyncData.*
+import it.evadid.core.datastructures.storage.AsyncData
+import it.evadid.core.datastructures.storage.AsyncData.*
 
 import scala.concurrent.*
 
@@ -40,12 +40,11 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
 
   def signalWithEnsuredLanguageMap(languageMapId: LanguageMapContentId): Signal[LanguageMap[HumanLanguage]] = {
     val languageMapOpFromId: StrictSignal[AsyncData[LanguageMap[HumanLanguage]]] = fullInfo.technical.contentStorage.asStorage.loadIntoVariable(languageMapId)(using ExecutionContext.global).toAirstreamVar.signal
-    languageMapOpFromId.mapLazy(asyncData => asyncData.match {
-    case AsyncDataLoading => WorkbookContentStorage.languageMapLoadingMap
-    case AsyncDataSuccess(map) => map
-    case AsyncDataFailed(cause) => WorkbookContentStorage.languageMapError(languageMapId, cause)
-    case s@_ => throw new IllegalArgumentException("[ERROR] HomepageSignalInfo::signalWithEnsuredLanguageMap: this should be unreachable, but somehow it wasn´t: " + s.toString)
-    })
+    languageMapOpFromId.mapLazy {
+      case AsyncDataLoading() => WorkbookContentStorage.languageMapLoadingMap
+      case AsyncDataSuccess(map) => map
+      case AsyncDataFailed(cause) => WorkbookContentStorage.languageMapError(languageMapId, cause)
+    }
   }
 
   def stringFromLanguageMap(languageMap: LanguageMap[HumanLanguage]): Signal[String] = {

@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.file.*
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.homepage.control.*
 import it.evadid.homepage.webElements.HtmlAppElement
-import todomove.datastructures.web.storage.AsyncDataCache
+import it.evadid.core.datastructures.storage.AsyncDataCache
 
 trait TechnicalControl {
 

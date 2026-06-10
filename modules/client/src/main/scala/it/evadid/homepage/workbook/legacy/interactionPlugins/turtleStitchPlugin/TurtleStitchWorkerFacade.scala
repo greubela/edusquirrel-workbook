@@ -8,7 +8,7 @@ import it.evadid.workbook.model.elements.ImageElement
 import todomove.`export`.workers.TurtleStitchWorker
 import todomove.datastructures.web.file.FullImage
 import todomove.datastructures.web.file.FullImage.DataSourceImage
-import todomove.datastructures.web.storage.{AsyncData, AsyncDataCache}
+import it.evadid.core.datastructures.storage.{AsyncData, AsyncDataCache}
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}

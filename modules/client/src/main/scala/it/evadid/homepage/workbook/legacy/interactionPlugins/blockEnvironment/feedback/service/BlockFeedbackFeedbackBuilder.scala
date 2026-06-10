@@ -103,7 +103,7 @@ object BlockFeedbackFeedbackBuilder:
   private def findUnusedVariables(rawPython: String, humanLanguage: HumanLanguage): Seq[String] =
     val lines = Option(rawPython).getOrElse("").replace("\r\n", "\n").split("\n", -1)
     val isGerman = humanLanguage == AppLanguage.German
-    lines.zipWithIndex.flatMap { case (line, idx) =>
+    lines.toIndexedSeq.zipWithIndex.flatMap { case (line, idx) =>
       val trimmed = line.trim
       if trimmed.matches("^_[a-zA-Z0-9_]+ *=.*") then
         if isGerman then

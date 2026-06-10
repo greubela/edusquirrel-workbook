@@ -11,7 +11,7 @@ import it.evadid.workbook.model.abstractions.TypeOfTextContent
 import it.evadid.workbook.model.elements.ImageElement
 import it.evadid.workbook.model.elements.ImageElement.LanguageMapBasedImageElement
 import todomove.datastructures.web.file.FullImage
-import todomove.datastructures.web.storage.AsyncData;
+import it.evadid.core.datastructures.storage.AsyncData
 
 case class HtmlImageElement(imageSignal: Signal[AsyncData[FullImage]], underlyingImage: Option[ImageElement] = None) extends HtmlAppElement {
 
@@ -35,9 +35,8 @@ case class HtmlImageElement(imageSignal: Signal[AsyncData[FullImage]], underlyin
 
   def render(img: AsyncData[FullImage]): Element = img.match {
     case AsyncData.AsyncDataSuccess(img) => img.newDomImage
-    case AsyncData.AsyncDataLoading => renderImageLoading()
+    case AsyncData.AsyncDataLoading() => renderImageLoading()
     case AsyncData.AsyncDataFailed(cause) => renderImageFailed(cause)
-    case e:Any => div("This should be unreachable but: " + e)
   }
 
   def getDomSignal: Signal[Element] = imageSignal.map(render)

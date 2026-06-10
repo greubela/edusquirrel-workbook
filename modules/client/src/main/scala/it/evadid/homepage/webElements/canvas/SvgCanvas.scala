@@ -221,7 +221,7 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
       svg.height := "" + height,
       //svg.href := "data:image/" + img.fileInfo.fileType + ";base64," + img.base64String,
       svg.href := img.imageSourceString,
-      svg.opacity := (alphaUpTo255 / 255.0) + "",
+      svg.opacity := s"${alphaUpTo255 / 255.0}",
       svg.preserveAspectRatio := "none"
     )
     elements.update(_ :+ newImg)
@@ -240,7 +240,7 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
       svg.textAnchor := "middle",
       svg.dominantBaseline := "middle",
       svg.fontFamily := selectedFont.name,
-      svg.fontSize := selectedFont.sizeInPx + "px",
+      svg.fontSize := s"${selectedFont.sizeInPx}px",
       svg.fill := fillColor.toRGB.toHex(),
       content
     )
