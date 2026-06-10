@@ -285,57 +285,6 @@ object WorkbookContentStorage {
     "es" -> AppLanguage.Spanish
   )
 
-  // Impl :
-  /*
-    case class LabelLanguageMapStorage(fileDataStorage: AsyncDataCache[FileDescription, LoadedFile]) extends AsyncDataCache[String, LanguageMap[HumanLanguage]]("languageMap", false) {
-
-      val languageTriplesStorage: LanguageMapTriplesStorage = LanguageMapTriplesStorage(fileDataStorage)
-      private var languageFilesToLoad: List[FileDescription] = WorkbookLanguageInfo.languageMapFiles
-
-      def addLanguageFile(fileDescription: FileDescription): Unit = {
-        if (!languageFilesToLoad.contains(fileDescription)) {
-          languageFilesToLoad = languageFilesToLoad ++ List(fileDescription)
-        }
-      }
-
-      def addLanguageFiles(fileDescriptions: List[FileDescription]): Unit = {
-        fileDescriptions.foreach(addLanguageFile)
-      }
-
-      def allLanguageFiles: List[FileDescription] = languageFilesToLoad
-
-      override protected def executeLoading(id: String)(ec: ExecutionContext): Future[LanguageMap[HumanLanguage]] = {
-
-        val allTriples: Future[List[List[MapEntryTripel]]] = Future.traverse(allLanguageFiles)(file => {
-          languageTriplesStorage.loadAsFuture(file, false)(using ec)
-        })
-
-
-      }
-
-      override protected def defaultValueWhileLoading(in: String): Option[LanguageMap[HumanLanguage]] = Some(languageMapLoadingMap)
-
-      override protected def formatInputForLogging(in: String): String = in
-
-      override protected def formatOutputForLogging(out: LanguageMap[HumanLanguage]): String = out.toString
-
-    }
-
-    case class LanguageMapTriplesStorage(fileDataStorage: AsyncDataCache[FileDescription, LoadedFile]) extends AsyncDataCache[FileDescription, List[MapEntryTripel]]("tripleStorage", false) {
-
-      override protected def executeLoading(file: FileDescription)(ec: ExecutionContext): Future[List[MapEntryTripel]] = {
-        case class FullCsvFileInfo(fileDescription: LoadedFile, csvData: List[List[String]], fileLanguageOp: Option[HumanLanguage], mapGroupIdOp: Option[String])
-        val futFile: Future[LoadedFile] = fileDataStorage.loadAsFuture(file)(using ec)
-        futFile.map(loadedFile => triplesFromFile(loadedFile))(using ec)
-      }
-
-      override protected def defaultValueWhileLoading(in: FileDescription): Option[List[MapEntryTripel]] = None
-
-      override protected def formatInputForLogging(in: FileDescription): String = in.toString
-
-      override protected def formatOutputForLogging(out: List[MapEntryTripel]): String = out.toString
-    }*/
-
   def languageMapError(id: LanguageMapContentId, cause: Throwable): LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(
     Map(
       AppLanguage.German -> s"[Fehler beim Laden von id '${id.toString}: ${cause.getMessage}]",

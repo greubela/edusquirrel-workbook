@@ -1,5 +1,7 @@
 package it.evadid.core.datastructures.state
 
+import it.evadid.core.datastructures.storage.AsyncData
+
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
@@ -18,12 +20,20 @@ trait ObservableValue[T] {
         case Failure(error) => handleOnError(error)
       }
     }
+
     addObserver(Observer(derivedFunc, informObserverWith, observerPriority))
   }
-  
+
   private[state] def removeObserver(observer: Observer[T]): Unit
 
   def deriveValue[O](withFunc: T => O, executeFunctionWith: ExecutionMethod = ExecutionMethod.executeSync, deriveLogic: ObserverDerivationLogic = ObserverDerivationLogic.DeriveOnlyLastValues): ObservableValue[O]
 
   def combineWith[O](other: ObservableValue[O]): ObservableValue[(T, O)]
+}
+
+object ObservableValue {
+  
+
+  
+  
 }

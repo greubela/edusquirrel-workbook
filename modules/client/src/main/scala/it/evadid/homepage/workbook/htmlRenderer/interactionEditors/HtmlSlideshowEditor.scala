@@ -20,6 +20,7 @@ object HtmlSlideshowEditor extends HtmlRenderFactory[Slideshow] {
   }
 
   private def createSlideshowPanel(panel: SlideshowPanel.ImageSlide): Element = {
+    //val img = HtmlImageElement(panel.image
     ???
   }
 

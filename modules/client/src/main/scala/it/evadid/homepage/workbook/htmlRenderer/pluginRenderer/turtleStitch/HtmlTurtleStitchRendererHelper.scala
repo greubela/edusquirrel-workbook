@@ -5,7 +5,7 @@ import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.file.{FileDescription, LoadedFile}
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.datastructures.state.ObservableValue
+import it.evadid.core.datastructures.state.{ObservableValue, State}
 import it.evadid.core.datastructures.state.StateHelper.{InteractionVariableOnJS, StateBasedVar}
 import it.evadid.core.datastructures.storage.AsyncData
 import it.evadid.core.datastructures.storage.AsyncData.*
@@ -24,9 +24,9 @@ import it.evadid.workbook.model.interaction.sync.UpdateImportance
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLInputElement}
 import todomove.datastructures.web.file.FullImage
-
 import it.evadid.core.datastructures.storage.AsyncData
 import it.evadid.core.datastructures.storage.AsyncData.*
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -97,18 +97,18 @@ object HtmlTurtleStitchRendererHelper {
    */
 
   private def renderProjectPreviewWithXmlSignal(xmlSignal: Signal[AsyncData[String]]): Element = {
-    val signalForImg: StrictSignal[AsyncData[FullImage]] = getImageSignal(xmlSignal, HtmlFullWorkbookApp.fullInfo.signals.currentLanguage)
+    val signalForImg: ObservableValue[AsyncData[FullImage]] = getImageSignal(xmlSignal, HtmlFullWorkbookApp.fullInfo.signals.currentLanguage)
     div(
       cls := "preview-card",
       div(
         cls := "preview-content",
-        child <-- HtmlImageElement(signalForImg).getDomSignal
+        child <-- HtmlImageElement(signalForImg, None).getDomSignal
       )
     )
   }
 
-  private def getImageSignal(xmlSignal: Signal[AsyncData[String]], languageSignal: Signal[HumanLanguage]): StrictSignal[AsyncData[FullImage]] = {
-    val res = Var[AsyncData[FullImage]](AsyncData.AsyncDataLoading())
+  private def getImageSignal(xmlSignal: Signal[AsyncData[String]], languageSignal: Signal[HumanLanguage]): ObservableValue[AsyncData[FullImage]] = {
+    val res = State[AsyncData[FullImage]](AsyncData.AsyncDataLoading())
     xmlSignal.combineWith(languageSignal).foreach {
       case (AsyncDataLoading(), _) => res.set(AsyncData.AsyncDataLoading[FullImage]())
       case (AsyncDataFailed(cause), _) => res.set(AsyncData.AsyncDataFailed[FullImage](cause))
@@ -117,7 +117,7 @@ object HtmlTurtleStitchRendererHelper {
         snapshot.addObserver(newValue => res.set(newValue))
       }
     }(using unsafeWindowOwner)
-    res.signal
+    res.observable
   }
 
   /*

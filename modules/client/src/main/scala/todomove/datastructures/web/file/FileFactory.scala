@@ -3,6 +3,8 @@ package todomove.datastructures.web.file
 import it.evadid.core.datastructures.file.CopyrightInfo.unknownCopyrightInfo
 import it.evadid.core.datastructures.file.{CopyrightInfo, FileDescription, LoadedFile}
 import it.evadid.homepage.util.web.DownloadHelper
+import it.evadid.workbook.model.abstractions.TypeOfTextContent
+import it.evadid.workbook.model.abstractions.TypeOfTextContent.URL_TYPE
 import org.scalajs.dom
 import org.scalajs.dom.{File, URL}
 
@@ -22,7 +24,15 @@ object FileFactory {
     override val toString: String = "UploadedResourceFileDescription(" + fullPath + ")"
 
     def loadData(): Future[LoadedFile] = DownloadHelper.fetchFile(file).map(data => LoadedFile(this, data))(using ExecutionContext.global)
-    
+
+  }
+
+
+  def resolve(howToResolveUrl: URL_TYPE, src: String): FileDescription = {
+    howToResolveUrl.match {
+      case TypeOfTextContent.URL_RELATIVE_TO_GLOBAL_RESOURCES => relativeToResourceFolder(src)
+      case TypeOfTextContent.URL_RELATIVE_TO_WORKBOOK_RESOURCES(workbookRoot) => fromUrl(URL(workbookRoot.fullPath + "/" + src))
+    }
   }
 
 

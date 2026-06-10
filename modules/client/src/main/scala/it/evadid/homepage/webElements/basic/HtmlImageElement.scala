@@ -5,18 +5,21 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.file.*
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
+import it.evadid.core.datastructures.state.StateHelper.*
+import it.evadid.core.datastructures.state.{ObservableValue, State}
+import it.evadid.core.datastructures.storage.AsyncData
+import it.evadid.core.datastructures.storage.AsyncData.AsyncDataSuccess
 import it.evadid.homepage.control.{HtmlFullWorkbookApp, WorkbookContentStorage}
 import it.evadid.homepage.webElements.*
 import it.evadid.workbook.model.abstractions.TypeOfTextContent
 import it.evadid.workbook.model.elements.ImageElement
 import it.evadid.workbook.model.elements.ImageElement.LanguageMapBasedImageElement
-import todomove.datastructures.web.file.FullImage
-import it.evadid.core.datastructures.storage.AsyncData
+import todomove.datastructures.web.file.FullImage.*
+import todomove.datastructures.web.file.{FileFactory, FullImage}
 
-case class HtmlImageElement(imageSignal: Signal[AsyncData[FullImage]], underlyingImage: Option[ImageElement] = None) extends HtmlAppElement {
+import scala.concurrent.ExecutionContext
 
-  override def getDomElement(): Element = div(child <-- getDomSignal)
-
+case class HtmlImageElement(imageSignal: ObservableValue[AsyncData[FullImage]], underlyingImage: Option[ImageElement] = None) extends HtmlAppElement {
 
   private def stringSignal(id: LanguageMapContentId): Signal[String] =
     HtmlFullWorkbookApp.fullInfo.signals.stringFromLanguageMapId(id)
@@ -29,8 +32,9 @@ case class HtmlImageElement(imageSignal: Signal[AsyncData[FullImage]], underlyin
   }
 
   private def renderImageFailed(cause: Throwable): Element = {
-    val map = WorkbookContentStorage.languageMapImageError(underlyingImage, cause)
-    div("Image loading failed: " + cause.getMessage)
+    //val map = WorkbookContentStorage.languageMapImageError(underlyingImage, cause)
+    //div("Image loading failed: " + cause.getMessage)
+    div(text <-- stringSignal(LanguageMapContentId("basic/missingContent")))
   }
 
   def render(img: AsyncData[FullImage]): Element = img.match {
@@ -39,46 +43,43 @@ case class HtmlImageElement(imageSignal: Signal[AsyncData[FullImage]], underlyin
     case AsyncData.AsyncDataFailed(cause) => renderImageFailed(cause)
   }
 
-  def getDomSignal: Signal[Element] = imageSignal.map(render)
+  def getDomSignal: Signal[Element] = imageSignal.toSignal.map(render)
 
+  override def getDomElement(): Element = div(child <-- getDomSignal)
 }
 
 object HtmlImageElement {
 
-  private def getImageSignal(image: ImageElement): Signal[Either[Option[FullImage], Throwable]] = {
-    /*imageElement.match {
-      case ImageElement.FileBasedImageElement(location) => {
-        val fullImgState: State[Option[LoadedFile]] = HtmlFullWorkbookApp.fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(using ExecutionContext.global)
-        val imageSignal: StrictSignal[Option[FullImage]] = fullImgState.toAirstreamVar.signal.mapLazy(_.map(LoadedFileImage(_)))
-      }
-      case i@ImageElement.LanguageMapBasedImageElement(languageMapContentId, copyrightInfo, howToResolveUrl) => HtmlImageElement(i)
-    }*/
-    ???
+  private val fileStore = HtmlFullWorkbookApp.fullInfo.technical.fileStore
+  private val signals = HtmlFullWorkbookApp.fullInfo.signals
+
+  private def getImageSignal(image: ImageElement): ObservableValue[AsyncData[FullImage]] = {
+    val fileSignal: ObservableValue[AsyncData[LoadedFile]] = image.match {
+      case ImageElement.FileBasedImageElement(fileDescription) =>
+        fileStore.loadIntoVariable(fileDescription)(using ExecutionContext.global).observable
+      case i@ImageElement.LanguageMapBasedImageElement(languageMapContentId, copyrightInfo, howToResolveUrl) =>
+        val srcSignal: Signal[String] = signals.stringFromLanguageMapId(languageMapContentId)
+        val srcFile: Signal[FileDescription] = srcSignal.map(FileFactory.resolve(howToResolveUrl, _))
+        srcFile.mapAsync(fileDesc => fileStore.loadAsFuture(fileDesc)(using ExecutionContext.global))(using ExecutionContext.global)
+    }
+    fileSignal.map(loadedFile => LoadedFileImage(loadedFile))
   }
 
-  def apply(fullImage: FullImage): HtmlImageElement = {
-    // HtmlImageElement(Var(Some(fullImage)).signal)
-    ???
+  def apply(fullImage: FullImage): HtmlImageElement = fullImage.match {
+    case DataSourceImage(dataSource: String, fileFormat: String) =>
+      HtmlImageElement(State[AsyncData[FullImage]](AsyncDataSuccess(fullImage)).observable, None)
+    case LoadedFileImage(loadedFile) =>
+      val imageElement = ImageElement.FileBasedImageElement(loadedFile.description)
+      HtmlImageElement(State[AsyncData[FullImage]](AsyncDataSuccess(fullImage)).observable, Some(imageElement))
+
   }
 
   def apply(fileDescription: FileDescription): HtmlImageElement = {
-    // HtmlImageElement(imageSignal)
-    ???
+    HtmlImageElement(ImageElement.FileBasedImageElement(fileDescription))
   }
 
   def apply(imageElement: ImageElement): HtmlImageElement = {
-    imageElement.match {
-      case ImageElement.FileBasedImageElement(location) => HtmlImageElement(location)
-      case i@ImageElement.LanguageMapBasedImageElement(languageMapContentId, copyrightInfo, howToResolveUrl) => HtmlImageElement(i)
-    }
-  }
-
-  def apply(image: LanguageMapBasedImageElement): HtmlImageElement = {
-    val srcSignal: Signal[String] = HtmlFullWorkbookApp.fullInfo.signals.stringFromLanguageMapId(image.languageMapContentId)
-    image.howToResolveUrl.match {
-      case TypeOfTextContent.URL_RELATIVE_TO_GLOBAL_RESOURCES => ???
-      case TypeOfTextContent.URL_RELATIVE_TO_WORKBOOK_RESOURCES(workbookRoot) => ???
-    }
+    HtmlImageElement(getImageSignal(imageElement), Some(imageElement))
   }
 
 }
