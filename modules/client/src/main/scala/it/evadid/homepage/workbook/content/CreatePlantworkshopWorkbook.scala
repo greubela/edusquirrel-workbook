@@ -1,13 +1,14 @@
 package it.evadid.homepage.workbook.content
 
+import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.homepage.control.info.FullInfo
-import it.evadid.homepage.workbook.legacy.plantworkshop.helpers.*
 import it.evadid.workbook.model.abstractions.WorkbookElement
 import it.evadid.workbook.model.elements.*
 import it.evadid.workbook.model.elements.LabeledInstructionElement.*
 import it.evadid.workbook.model.interaction.basic.LabeledCheckboxInteraction
 import it.evadid.workbook.model.interaction.plugins.slideshow.{Slideshow, SlideshowPanel}
+import todomove.datastructures.web.file.FileFactory
 
 case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 
@@ -56,24 +57,28 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
 
   private lazy val wiringSlideshow: Slideshow = {
     val panels = (1 to 11).toList.map { i =>
-      // FileDescription.relativeToResourceFolder(s"img/plantworkshop/schaltkreis/Plant conv $i.png"),
-      val imageId = LanguageMapContentId(s"PlantWorkshop/wiringSlideshowImage$i")
+      // 
+      val curImage: ImageElement = ImageElement(
+        FileFactory.relativeToResourceFolder(s"img/plantworkshop/schaltkreis/Plant conv $i.png")
+      )
+      //val unusedId = LanguageMapContentId(s"PlantWorkshop/wiringSlideshowImage$i")
+      
       if (i == 3 || i == 4 || i == 8) {
         SlideshowPanel.TwoColumnImagePanel(
-          imageId,
+          curImage,
           LanguageMapContentId("PlantWorkshop/LLabel"),
           LanguageMapContentId("PlantWorkshop/RLabel"),
           LanguageMapContentId(s"PlantWorkshop/wiringSlideTextL${i}"),
           LanguageMapContentId(s"PlantWorkshop/wiringSlideTextR${i}")
         )
       } else if (i == 5) {
-        SlideshowPanel.ImageSlide(imageId,
+        SlideshowPanel.ImageSlide(curImage,
           LanguageMapContentId(s"PlantWorkshop/wiringSlideText${i}"),
           LanguageMapContentId(s"PlantWorkshop/wiringSlideCurrentStatus")
         )
       }
       else {
-        SlideshowPanel.ImageSlide(imageId,
+        SlideshowPanel.ImageSlide(curImage,
           LanguageMapContentId(s"PlantWorkshop/wiringSlideText${i}"),
           LanguageMapContentId(s"PlantWorkshop/wiringSlideHelp")
         )

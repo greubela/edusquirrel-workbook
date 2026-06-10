@@ -7,7 +7,6 @@ import it.evadid.homepage.util.web.{DownloadHelper, JsHelpers}
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 
 sealed trait FullImage {
-  def fileDescription: FileDescription
 
   def imageSourceString: String
 
@@ -22,15 +21,22 @@ sealed trait FullImage {
 
 object FullImage {
 
-  case class LoadedFileImage(loadedFile: LoadedFile) extends FullImage {
+  case class DataSourceImage(dataSource: String, fileFormat: String) extends FullImage {
 
-    val fileDescription: FileDescription = loadedFile.description
+    assert(dataSource.startsWith("data:image/"), "dataSource must start with 'data:image/'")
+
+    override def imageSourceString: String = dataSource
+
+    override def download(): Unit = DownloadHelper.downloadFile(s"unknown.$fileFormat", dataSource)
+  }
+
+  case class LoadedFileImage(loadedFile: LoadedFile) extends FullImage {
 
     def download(): Unit = DownloadHelper.downloadFile(loadedFile.description.filenameWithExtension, loadedFile.data)
 
     override lazy val imageSourceString: String = {
       val b64str = JsHelpers.byteArrayToBase64String(loadedFile.data)
-      "data:image/" + loadedFile.description.extension + ";base64, " + b64str
+      "data:image/" + loadedFile.description.extensionOrEmpty + ";base64, " + b64str
     }
   }
 

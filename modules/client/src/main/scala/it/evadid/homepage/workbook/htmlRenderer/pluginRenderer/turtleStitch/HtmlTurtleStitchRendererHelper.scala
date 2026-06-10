@@ -2,16 +2,17 @@ package it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.turtleStitch
 
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
-import it.evadid.core.datastructures.file.FileDescription
+import it.evadid.core.datastructures.file.{FileDescription, LoadedFile}
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.StateHelper.{InteractionVariableOnJS, StateBasedVar}
+import it.evadid.core.datastructures.state.{ObservableValue, State}
 import it.evadid.core.util.InfoUtil
 import it.evadid.homepage.control.HtmlFullWorkbookApp
 import it.evadid.homepage.control.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.util.web.DownloadHelper
 import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.homepage.webElements.basic.HtmlImageElement
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.contentIdStringSignal
 import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchWorkerFacade
@@ -20,6 +21,9 @@ import it.evadid.workbook.model.interaction.plugins.TurtleStitch.TurtleStitchPro
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLInputElement}
+import todomove.datastructures.web.file.FullImage
+import todomove.datastructures.web.storage.AsyncData
+import todomove.datastructures.web.storage.AsyncData.*
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
@@ -31,10 +35,6 @@ object HtmlTurtleStitchRendererHelper {
    */
   def renderProjectEmpty(): Element = {
     div(text <-- contentIdStringSignal(LanguageMapContentId("TurtleStitch/showEmptyPreview")))
-  }
-
-  def renderImageLoading(): Element = {
-    div(text <-- contentIdStringSignal(LanguageMapContentId("basic/imageLoadingMap")))
   }
 
   /*
@@ -78,13 +78,15 @@ object HtmlTurtleStitchRendererHelper {
    */
 
   def renderProjectPreviewImage(workbookInteraction: WorkbookInteraction[TurtleStitchProjectState]): Element = {
-    val xmlSignal: Signal[Option[String]] = workbookInteraction.interactionVariable.createInteractionSignal().map(_.programXml)
+    val xmlSignal: Signal[AsyncData[String]] = workbookInteraction.interactionVariable.createInteractionSignal().map(_.programXml).map(AsyncData.fromOption)
     //xmlSignal.foreach(newContent => println("xml signal changed for workbook interaction " + workbookInteraction.id + ": " + newContent))(using unsafeWindowOwner)
     renderProjectPreviewWithXmlSignal(xmlSignal)
   }
 
   def renderProjectPreviewImage(fileDescription: FileDescription): Element = {
-    val xmlSignal: Signal[Option[String]] = fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(using ExecutionContext.global).toAirstreamVar.signal.mapLazy(_.map(_.fileDataAsUtf8String))
+    val file: Signal[AsyncData[LoadedFile]] = fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(using ExecutionContext.global).toAirstreamVar.signal
+    val xmlSignal: Signal[AsyncData[String]] = file.map(_.map(_.fileDataAsUtf8String))
+    //  val xmlSignal: Signal[AsyncData[String]] = fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(using ExecutionContext.global).mapLazy(_..map(_.fileDataAsUtf8String)).map(AsyncData.fromOption)
     renderProjectPreviewWithXmlSignal(xmlSignal)
   }
 
@@ -92,44 +94,49 @@ object HtmlTurtleStitchRendererHelper {
   Project Preview Helper
    */
 
-  private def tryRenderStringAsImageSrc(strValue: String): Element = {
-    if (strValue.trim.isEmpty) renderProjectEmpty()
-    else if (strValue.startsWith("data:image")) img(src := strValue, styleAttr := "max-width: 100%")
-    else if (strValue.contains("Error")) span(strValue)
-    //else span("[Error while rendering as image: " + value + "]")
-    else renderImageLoading()
-  }
-
-  private def renderProjectPreviewWithXmlSignal(xmlSignal: Signal[Option[String]]): Element = {
+  private def renderProjectPreviewWithXmlSignal(xmlSignal: Signal[AsyncData[String]]): Element = {
+    val signalForImg: StrictSignal[AsyncData[FullImage]] = getImageSignal(xmlSignal, HtmlFullWorkbookApp.fullInfo.signals.currentLanguage)
     div(
       cls := "preview-card",
       div(
         cls := "preview-content",
-        child <-- getImageSignal(xmlSignal, HtmlFullWorkbookApp.fullInfo.signals.currentLanguage)
+        child <-- HtmlImageElement(signalForImg).getDomSignal
       )
     )
   }
 
-  private def getImageSignal(xmlSignal: Signal[Option[String]], languageSignal: Signal[HumanLanguage]): Signal[Element] = {
-    xmlSignal.map(_.getOrElse("")).combineWith(languageSignal).flatMapSwitch(tup => {
-      // println("signal changed, xml: " + tup._1.size + ", language: " + tup._2)
-      if (tup._1.trim.isEmpty) Var(renderProjectEmpty()).signal
-      else convertTurtleStitchXmlAndLanguageToProgramSrcStringState(tup._1, tup._2).toAirstreamVar.signal.map {
-        case Some(imgSrc) => tryRenderStringAsImageSrc(imgSrc)
-        case None => renderImageLoading()
+  private def getImageSignal(xmlSignal: Signal[AsyncData[String]], languageSignal: Signal[HumanLanguage]): StrictSignal[AsyncData[FullImage]] = {
+    val res = Var[AsyncData[FullImage]](AsyncData.AsyncDataLoading())
+    xmlSignal.combineWith(languageSignal).foreach {
+      case (AsyncDataLoading, h: HumanLanguage) => res.set(AsyncData.AsyncDataLoading[FullImage]())
+      case (AsyncDataFailed(cause), h: HumanLanguage) => res.set(AsyncData.AsyncDataFailed[FullImage](cause))
+      case (AsyncDataSuccess(xml), h: HumanLanguage) => {
+        val snapshot: ObservableValue[AsyncData[FullImage]] = TurtleStitchWorkerFacade.getGreenFlagProgramSnapshotDataSrc(xml, h)
+        snapshot.addObserver(newValue => res.set(newValue))
       }
-    })
+    }(using unsafeWindowOwner)
+    res.signal
   }
 
-  private def convertTurtleStitchXmlAndLanguageToProgramSrcStringState(xml: String, humanLanguage: HumanLanguage): State[Option[String]] = {
+  /*
+    private def getImageSignal(xmlSignal: Signal[Option[String]], languageSignal: Signal[HumanLanguage]): Signal[Element] = {
+      xmlSignal.map(_.getOrElse("")).combineWith(languageSignal).flatMapSwitch(tup => {
+        // println("signal changed, xml: " + tup._1.size + ", language: " + tup._2)
+        if (tup._1.trim.isEmpty) Var(renderProjectEmpty()).signal
+        else convertTurtleStitchXmlAndLanguageToProgramSrcStringState(tup._1, tup._2).toAirstreamVar.signal.map {
+          case AsyncData.AsyncDataSuccess(imgSrc) => tryRenderStringAsImageSrc(imgSrc)
+          case AsyncData.AsyncDataLoading => renderImageLoading()
+          case AsyncData.AsyncDataFailed(cause) => renderImageFailed(cause)
+        }
+      })
+    }
+  
+  private def convertTurtleStitchXmlAndLanguageToProgramSrcStringState(xml: String, humanLanguage: HumanLanguage): State[AsyncData[String]] = {
     //println("try to render xml: " + xml.take(20) + ".../" + xml.size + " in language: " + humanLanguage)
-    if (xml.trim.isEmpty) State(None)
-    else try {
-      TurtleStitchWorkerFacade.getGreenFlagProgramSnapshotDataSrc(xml, humanLanguage)
-    } catch case e: Throwable =>
-      e.printStackTrace()
-      State(Some("[Error at loading image: " + e.getMessage + "]"))
-  }
+    if (xml.trim.isEmpty) State(AsyncData.AsyncDataFailed(new IllegalArgumentException("xml is empty")))
+    else TurtleStitchWorkerFacade.getGreenFlagProgramSnapshotDataSrc(xml, humanLanguage)
+
+  }*/
 
   /*
   Upload Button

@@ -12,6 +12,12 @@ sealed trait ImageElement extends WorkbookElement {
 
 object ImageElement {
 
+  def apply(fileDescription: FileDescription): ImageElement = FileBasedImageElement(fileDescription)
+
+  def apply(languageMapContentId: LanguageMapContentId, copyrightInfo: CopyrightInfo, howToResolveUrl: URL_TYPE): ImageElement = LanguageMapBasedImageElement(languageMapContentId, copyrightInfo, howToResolveUrl)
+  
+  
+  
   case class FileBasedImageElement(location: FileDescription) extends ImageElement {
 
   }
@@ -21,7 +27,7 @@ object ImageElement {
                                            copyrightInfo: CopyrightInfo,
                                            howToResolveUrl: URL_TYPE
                                          ) extends ImageElement {
-
+        
 
   }
 

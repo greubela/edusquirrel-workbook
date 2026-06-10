@@ -60,7 +60,7 @@ def mainApp(): Unit = {
     if (canLoad.isEmpty) println("Found no container to load a workbook into. Tried: " + tryToLoad.mkString(", "))
     if (canLoad.size > 1) println("Found more than one workbook to load: " + canLoad.mkString(", "))
     if (canLoad.nonEmpty) {
-      val loadBasicsFut = HtmlFullWorkbookApp.fullInfo.technical.contentStorage.futureForDefaultsLoaded()
+      val loadBasicsFut = HtmlFullWorkbookApp.fullInfo.technical.contentStorage.futureForDefaultsLoaded
       loadBasicsFut.onComplete(finished => load(canLoad.head))(using ExecutionContext.global)
     }
     testCalculations()

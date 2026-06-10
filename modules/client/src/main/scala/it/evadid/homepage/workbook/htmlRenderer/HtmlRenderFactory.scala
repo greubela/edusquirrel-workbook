@@ -61,7 +61,7 @@ object HtmlRenderFactory {
       case c: ExerciseContainer => HtmlExerciseContainerRenderer.render(c)
       // basic
       case c: LangMapContentBasedElement => HtmlLangMapContentRenderer.render(c)
-      case i: FileBasedImageElement => fromElement[ImageElement](i, HtmlImageElement(i.location).getDomElement())
+      case i: ImageElement => fromElement[ImageElement](i, HtmlImageElement(i).getDomElement())
       case b: LabeledInstructionElement => HtmlInstructionLabeledPairRenderer.render(b)
       // interactions
       case i: TextInteractionBasic => HtmlSimpleTextInteractionRenderer.render(i)

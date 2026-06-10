@@ -10,14 +10,14 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object FileFactory {
 
-  private case class InternetResourceFileDescription(url: URL, serverLocationDir: String, filenameWithoutExtension: String, extension: String, copyrightInfo: CopyrightInfo) extends FileDescription {
+  private case class InternetResourceFileDescription(url: URL, serverLocationDir: String, filenameWithoutExtension: String, extension: Option[String], copyrightInfo: CopyrightInfo) extends FileDescription {
     val location: Option[String] = Some(serverLocationDir)
     override val toString: String = "InternetResourceFileDescription(" + fullPath + ")"
 
     def loadData(): Future[LoadedFile] = DownloadHelper.fetchUrl(url.href).map(data => LoadedFile(this, data))(using ExecutionContext.global)
   }
 
-  private case class UploadedResourceFileDescription(file: File, filenameWithoutExtension: String, extension: String, copyrightInfo: CopyrightInfo) extends FileDescription {
+  private case class UploadedResourceFileDescription(file: File, filenameWithoutExtension: String, extension: Option[String], copyrightInfo: CopyrightInfo) extends FileDescription {
     val location: Option[String] = None
     override val toString: String = "UploadedResourceFileDescription(" + fullPath + ")"
 

@@ -9,13 +9,13 @@ import it.evadid.workbook.model.elements.LabeledInstructionElement
 object HtmlInstructionLabeledPairRenderer extends HtmlRenderFactory[LabeledInstructionElement] {
 
   override protected def createDomElement(workbookElement: LabeledInstructionElement): Element = div(
-    cls := "workbook-element exercise-instruction instruction-pair",
+    cls := "workbook-element exercise-instruction ${workbookElement.labelType.associatedCssString}",
     div(
-      cls := s"instruction-pair__title",
+      cls := s"${workbookElement.labelType.associatedCssString}__title",
       text <-- super.contentIdStringSignal(workbookElement.titleLable)
     ),
     div(
-      cls := s"instruction-pair__body",
+      cls := s"${workbookElement.labelType.associatedCssString}__body",
       text <-- super.contentIdStringSignal(workbookElement.bodyContent)
     )
   )

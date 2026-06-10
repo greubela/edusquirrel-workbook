@@ -18,8 +18,6 @@ case class FileDataStorage() extends AsyncDataCache[FileDescription, LoadedFile]
     file.loadData()
   }
 
-  override protected def defaultValueWhileLoading(in: FileDescription): Option[LoadedFile] = None
-
   override protected def formatInputForLogging(in: FileDescription): String = in.toString
 
   override protected def formatOutputForLogging(out: LoadedFile): String = out.toString

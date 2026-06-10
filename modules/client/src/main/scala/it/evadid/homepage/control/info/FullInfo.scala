@@ -21,10 +21,10 @@ case class FullInfo(
 
 
   private[info] val homepageInfoState: Var[HomepageInfo] = Var(initInfo)
-  // private[info] val homepageInfoState2: Var[HomepageInfo] = State(defaultInfo).toAirstreamVar
+  /* private[info] val homepageInfoState2: Var[HomepageInfo] = State(defaultInfo).toAirstreamVar
   homepageInfoState.signal.foreach(onNext => {
     println("Changed homepageInfoVar at: " + new Exception().getStackTrace().take(6).map(_.getMethodName).mkString(" -> ") + " (to: " + onNext.toString + ")")
-  })(using unsafeWindowOwner)
+  })(using unsafeWindowOwner)*/
 
   def control: HomepageDataControl = HomepageDataControl(this)
 

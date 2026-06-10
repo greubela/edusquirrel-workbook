@@ -10,11 +10,7 @@ trait TechnicalControl {
 
   def fileStore: AsyncDataCache[FileDescription, LoadedFile]
 
-  val contentStorage: WorkbookContentStorage = {
-    val res = WorkbookContentStorage(fileStore)
-    res.futureForDefaultsLoaded()
-    res
-  }
+  val contentStorage: WorkbookContentStorage = WorkbookContentStorage(fileStore)
 
   def makeFullscreen(element: HtmlAppElement): Unit
 

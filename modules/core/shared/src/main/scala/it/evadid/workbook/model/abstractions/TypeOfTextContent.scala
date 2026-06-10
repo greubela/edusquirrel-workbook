@@ -12,7 +12,7 @@ object TypeOfTextContent {
 
   case object MARKDOWN extends TypeOfTextContent
 
-  sealed trait URL_TYPE extends TypeOfTextContent
+  sealed trait URL_TYPE extends TypeOfTextContent 
 
   case object URL_RELATIVE_TO_GLOBAL_RESOURCES extends URL_TYPE
 

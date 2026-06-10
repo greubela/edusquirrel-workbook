@@ -2,6 +2,7 @@ package it.evadid.workbook.model.interaction.plugins.slideshow
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.model.abstractions.WorkbookElement
+import it.evadid.workbook.model.elements.ImageElement
 
 // Todo: Overwork Slideshow Panel so it uses generic WorkbookElement
 trait SlideshowPanel extends WorkbookElement {
@@ -11,7 +12,7 @@ trait SlideshowPanel extends WorkbookElement {
 object SlideshowPanel {
 
   case class TwoColumnImagePanel(
-                                  imageSrc: LanguageMapContentId,
+                                  image: ImageElement,
                                   leftLabel: LanguageMapContentId,
                                   rightLabel: LanguageMapContentId,
                                   leftBody: LanguageMapContentId,
@@ -21,7 +22,7 @@ object SlideshowPanel {
   }
 
   case class ImageSlide(
-                         imageSrc: LanguageMapContentId,
+                         image: ImageElement,
                          titleLabel: LanguageMapContentId,
                          description: LanguageMapContentId
                        ) extends SlideshowPanel
@@ -43,44 +44,7 @@ object SlideshowPanel {
     val imageElement = HtmlImageElement(image, fullInfo)
 
     val panelElement = new HtmlAppElement {
-      override def getDomElement(): Element = div(
-        cls := "slide-deck-container",
-        div(
-          cls := "slide-deck-image",
-          child <-- imageElement.getDomSignal
-        ),
-        if (sourceMapId.nonEmpty) {
-          div(
-            cls := "slide-deck-source",
-            child.text <-- fullInfo.signals.stringFromLanguageMapId(sourceMapId)
-          )
-        } else emptyNode,
-        div(
-          cls := "slide-deck-text two-columns",
-          div(
-            cls := "slide-deck-column",
-            div(
-              cls := "slide-deck-column-title",
-              HtmlInstructionElement.fromMarkdownLanguageMapId(fullInfo, leftLabel).getDomElement()
-            ),
-            div(
-              cls := "slide-deck-column-body",
-              HtmlInstructionElement.fromMarkdownLanguageMapId(fullInfo, leftBody).getDomElement()
-            )
-          ),
-          div(
-            cls := "slide-deck-column",
-            div(
-              cls := "slide-deck-column-title",
-              HtmlInstructionElement.fromMarkdownLanguageMapId(fullInfo, rightLabel).getDomElement()
-            ),
-            div(
-              cls := "slide-deck-column-body",
-              HtmlInstructionElement.fromMarkdownLanguageMapId(fullInfo, rightBody).getDomElement()
-            )
-          )
-        )
-      )
+      override def getDomElement(): Element =
     }
  */
 

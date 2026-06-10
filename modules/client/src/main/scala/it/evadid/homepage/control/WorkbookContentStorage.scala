@@ -5,6 +5,7 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap, LanguageMapContentId}
 import it.evadid.homepage.control.WorkbookContentStorage.{LanguageMapTripleStore, MapEntryTripel, triplesFromFile}
 import it.evadid.homepage.util.serializing.IoSerialization
+import it.evadid.workbook.model.elements.ImageElement
 import org.scalajs.dom.URL
 import todomove.datastructures.web.file.FileFactory
 import todomove.datastructures.web.storage.AsyncDataCache
@@ -23,56 +24,54 @@ case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, Loa
     lastFinishedCache.flatMap(_.getMap(languageMapContentId))
   }
 
-  lazy val asStorage: AsyncDataCache[LanguageMapContentId, LanguageMap[HumanLanguage]] = new AsyncDataCache[LanguageMapContentId, LanguageMap[HumanLanguage]]("contentIdCache", false) {
+  lazy val asStorage: AsyncDataCache[LanguageMapContentId, LanguageMap[HumanLanguage]] = new AsyncDataCache[LanguageMapContentId, LanguageMap[HumanLanguage]]("contentIdCache", false, false) {
+
+    private val maxTries: Int = 2
 
     protected def executeLoadingWithMaxTries(in: LanguageMapContentId, curTries: Int)(ec: ExecutionContext): Future[LanguageMap[HumanLanguage]] = {
       fileStore.synchronized {
-        if (curTries > 3) {
-          Future.failed(new IllegalStateException("cannot load '" + formatInputForLogging(in) + "' even after three attempts!"))
-        }
-        else if (lastFinishedCache.nonEmpty && lastFinishedCache.get.contains(in)) {
+        if (lastFinishedCache.nonEmpty && lastFinishedCache.get.contains(in)) {
           val res: LanguageMap[HumanLanguage] = lastFinishedCache.get.getMap(in).get
           Future.successful(res)
+        } else if (curTries > maxTries) {
+          val cacheBegin = lastFinishedCache.map(_.triples.take(20).map(_.contentId.fullId).mkString("[", ",", "]")).getOrElse("[empty]")
+          Future.failed(new IllegalStateException(s"cannot load '${formatInputForLogging(in)}' (='${in.fullId}') even after $maxTries attempts! First 20 in cache: ${cacheBegin}"))
         } else {
           val res = Promise[LanguageMap[HumanLanguage]]()
-          futureForDefaultsLoaded()
-            .onComplete(finished => res.completeWith(executeLoadingWithMaxTries(in, curTries + 1)(ec)))
+          futureForDefaultsLoaded.onComplete(finished => res.completeWith(executeLoadingWithMaxTries(in, curTries + 1)(ec)))
           res.future
         }
       }
     }
 
     override protected def executeLoading(in: LanguageMapContentId)(ec: ExecutionContext): Future[LanguageMap[HumanLanguage]] =
-      executeLoadingWithMaxTries(in, 0)(ec)
+      executeLoadingWithMaxTries(in, 1)(ec)
 
-
-    override protected def defaultValueWhileLoading(in: LanguageMapContentId): Option[LanguageMap[HumanLanguage]] = None
-
-    override protected def formatInputForLogging(in: LanguageMapContentId): String = in.toString
+    override protected def formatInputForLogging(in: LanguageMapContentId): String = in.fullId
 
     override protected def formatOutputForLogging(out: LanguageMap[HumanLanguage]): String = out.toString
   }
 
-  def futureForDefaultsLoaded(): Future[Unit] = fileStore.synchronized {
-
+  lazy val futureForDefaultsLoaded: Future[Unit] = fileStore.synchronized {
     val res = Promise[Unit]()
     withDirsLoaded(WorkbookContentStorage.languageMapDirs)
       //withFilesEnsured(WorkbookContentStorage.languageMapFiles.toSet)
       .onComplete {
         case Success(any) => res.success(())
         case Failure(err) => {
-          println("[ERROR] WorkbookContentStorage: " + err.getMessage)
+          //println("[ERROR] WorkbookContentStorage: " + err.getMessage)
           res.failure(err)
         }
       }
     res.future
-
   }
 
   def addTriples(triples: Set[MapEntryTripel]): Unit = fileStore.synchronized {
     val existingTriples: Set[MapEntryTripel] = lastFinishedCache.map(_.triples).getOrElse(Set.empty)
     val newStore = LanguageMapTripleStore(existingTriples ++ triples)
     lastFinishedCache = Some(newStore)
+    // ensure caches are working
+    asStorage.reloadAll()
     triples.foreach(curTriple => asStorage.loadAsFuture(curTriple.contentId))
   }
 
@@ -176,18 +175,15 @@ object WorkbookContentStorage {
   private def triplesToLanguageMaps(triples: Set[MapEntryTripel]): Set[LanguageMapWithId] = {
     triples
       .groupBy(_.contentId)
-      .map { case (mapId, entries) =>
-        mapId -> LanguageMap.mapBasedLanguageMap(entries.map(entry => entry.language -> entry.value).toMap)
+      .map {
+        case (mapId, entries) =>
+          val languageMap: Map[HumanLanguage, String] = entries.map(entry => entry.language -> entry.value).toMap
+          //println("read map from " + triples.size + " triples to " + languageMap.size + " entries (in languages: " + languageMap.keys + ")")
+          LanguageMapWithId(mapId, LanguageMap.mapBasedLanguageMap(languageMap))
       }
       .map(tup => LanguageMapWithId(tup._1, tup._2))
       .toSet
   }
-
-  private def mapGroupId(file: FileDescription): Option[String] = {
-    val parts: Array[String] = file.filenameWithoutExtension.split("-")
-    if (parts.length < 2) None else Some(parts.dropRight(1).mkString("-"))
-  }
-
 
   private def languageFromFileDescription(file: FileDescription): Option[HumanLanguage] = {
     val langSuffix: Option[String] = file.filenameWithoutExtension.split("-").lastOption.map(_.toLowerCase)
@@ -196,18 +192,19 @@ object WorkbookContentStorage {
 
   private def triplesFromFile(file: LoadedFile): Set[MapEntryTripel] = {
     val languageOp = languageFromFileDescription(file.description)
-    val mapGroupIdOp = mapGroupId(file.description)
-    if (languageOp.isEmpty || mapGroupIdOp.isEmpty) {
+    val languageMapIdOp = file.description.dirNames.lastOption
+    //println("######## loading triples from file '" + file.description.fullPath + ": " + languageMapIdOp + " /" + languageOp)
+    if (languageOp.isEmpty || languageMapIdOp.isEmpty) {
       Set.empty[MapEntryTripel]
     }
     else {
-      if (file.description.extension == "json") {
+      if (file.description.extensionOrEmpty == "json") {
         IoSerialization.parseJson(file.fileDataAsUtf8String).toList.map(tup => {
-          MapEntryTripel(LanguageMapContentId(mapGroupIdOp.get.toLowerCase, tup._1.toLowerCase), languageOp.get, tup._2)
+          MapEntryTripel(LanguageMapContentId(languageMapIdOp.get.toLowerCase, tup._1.toLowerCase), languageOp.get, tup._2)
         }).toSet
-      } else if (file.description.extension == "csv") {
+      } else if (file.description.extensionOrEmpty == "csv") {
         IoSerialization.parseCsv(file.fileDataAsUtf8String).filter(_.size >= 2).map(curColumns => {
-          MapEntryTripel(LanguageMapContentId(mapGroupIdOp.get.toLowerCase, curColumns.head.toLowerCase), languageOp.get, curColumns(1))
+          MapEntryTripel(LanguageMapContentId(languageMapIdOp.get.toLowerCase, curColumns.head.toLowerCase), languageOp.get, curColumns(1))
         }).toSet
       } else {
         Set.empty[MapEntryTripel]
@@ -282,7 +279,6 @@ object WorkbookContentStorage {
     "de" -> AppLanguage.German,
     "fr" -> AppLanguage.French,
     "ua" -> AppLanguage.Ukrainian,
-    "uk" -> AppLanguage.Ukrainian,
     "ru" -> AppLanguage.Russian,
     "tr" -> AppLanguage.Turkish,
     "dk" -> AppLanguage.Danish,
@@ -340,6 +336,19 @@ object WorkbookContentStorage {
       override protected def formatOutputForLogging(out: List[MapEntryTripel]): String = out.toString
     }*/
 
+  def languageMapError(id: LanguageMapContentId, cause: Throwable): LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(
+    Map(
+      AppLanguage.German -> s"[Fehler beim Laden von id '${id.toString}: ${cause.getMessage}]",
+      AppLanguage.English -> s"[Error while loading id '${id.toString}: ${cause.getMessage}]"
+    )
+  )
+
+  def languageMapImageError(img: Option[ImageElement], cause: Throwable): LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(
+    Map(
+      AppLanguage.German -> s"[Fehler beim Laden von Bild '${img.toString}: ${cause.getMessage}]",
+      AppLanguage.English -> s"[Error while loading id '${img.toString}: ${cause.getMessage}]"
+    )
+  )
 
   val languageMapLoadingMap: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(
     Map(

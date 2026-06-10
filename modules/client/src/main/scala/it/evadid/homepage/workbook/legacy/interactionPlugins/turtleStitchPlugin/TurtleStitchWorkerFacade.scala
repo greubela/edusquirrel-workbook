@@ -1,46 +1,29 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin
 
-import TurtleStitchEditor.turtleLang
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.language.TranslationMaps
+import it.evadid.core.datastructures.state.{ObservableValue, State}
+import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchEditor.turtleLang
+import it.evadid.workbook.model.elements.ImageElement
 import todomove.`export`.workers.TurtleStitchWorker
-import todomove.datastructures.web.storage.AsyncDataCache
+import todomove.datastructures.web.file.FullImage
+import todomove.datastructures.web.file.FullImage.DataSourceImage
+import todomove.datastructures.web.storage.{AsyncData, AsyncDataCache}
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
+
 object TurtleStitchWorkerFacade {
 
-  /**
-   * Returns a preview image for the program code beneath green-flag event handlers.
-   *
-   * IMPORTANT:
-   * - This is the "program snapshot" pipeline (editor scripts/blocks view),
-   *   not the "executed stage after green-flag run" pipeline.
-   * - The executed stage snapshot is handled by worker methods like simulateGreenFlag/getGreenFlagPng.
-   */
-  def getGreenFlagProgramSnapshotDataSrc(turtleStitchXml: String, language: HumanLanguage): State[Option[String]] = {
-    implicit val ec: ExecutionContext = ExecutionContext.global
-    programPngDataSrcStorage.loadIntoVariable((turtleStitchXml, language))
-  }
-
-  private val EMPTY_PNG_DATA_URL: String = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
-  
-  /** Backwards-compatible alias for previous API name. */
-  def getPngDataSrcOfGreenFlagProgramEditor(turtleStitchXml: String, language: HumanLanguage): State[Option[String]] =
-    getGreenFlagProgramSnapshotDataSrc(turtleStitchXml, language)
 
   private val programPngDataSrcStorage: AsyncDataCache[(String, HumanLanguage), String] = new AsyncDataCache[(String, HumanLanguage), String]("ProgramPngDataSrc", false) {
     protected def executeLoading(in: (String, HumanLanguage))(ec: ExecutionContext): Future[String] = {
       val (xml, language) = in
       //calcPngDataSrcWithQueuedWorker(xml, language)(using ec)
       println("[WARN] TurtleStitchWorkerFacade::programPngDataSrcStorage - still using non-parallel rendering.")
-      if(xml.strip.isEmpty || !xml.contains("TurtleStitch") || !xml.contains("scripts")) Future.successful(EMPTY_PNG_DATA_URL)
+      if (xml.strip.isEmpty || !xml.contains("TurtleStitch") || !xml.contains("scripts")) Future.successful(EMPTY_PNG_DATA_URL)
       else TurtleStitchEditor.withSingletonEditor(_.calcProgramSvg(xml, turtleLang(language)).toFuture)(using ec)
     }
-
-    protected def defaultValueWhileLoading(in: (String, HumanLanguage)): Option[String] =
-      Some(TranslationMaps.languageMapImageLoading.getInLanguage(in._2))
 
     protected def formatInputForLogging(in: (String, HumanLanguage)): String =
       val xmlStr =
@@ -52,6 +35,38 @@ object TurtleStitchWorkerFacade {
       if (out.length > 60) s"PngOutput(${out.length}, ${out.substring(0, 60)} ...)"
       else s"PngOutput($out)"
   }
+
+
+  /**
+   * Returns a preview image for the program code beneath green-flag event handlers.
+   *
+   * IMPORTANT:
+   * - This is the "program snapshot" pipeline (editor scripts/blocks view),
+   *   not the "executed stage after green-flag run" pipeline.
+   * - The executed stage snapshot is handled by worker methods like simulateGreenFlag/getGreenFlagPng.
+   */
+  def getGreenFlagProgramSnapshotDataSrc(turtleStitchXml: String, language: HumanLanguage): ObservableValue[AsyncData[FullImage]] = {
+    implicit val ec: ExecutionContext = ExecutionContext.global
+
+    programPngDataSrcStorage.loadIntoVariable((turtleStitchXml, language)).observable.deriveValue {
+      case AsyncData.AsyncDataSuccess(xmlVal) => try {
+        AsyncData.AsyncDataSuccess[FullImage](DataSourceImage(xmlVal, "png"))
+      } catch {
+        case e: Throwable => {
+          val ex = new Exception("Cannot convert TurtleStitch XML to image", e)
+          AsyncData.AsyncDataFailed[FullImage](ex)
+        }
+      }
+      case f@AsyncData.AsyncDataFailed(cause) => AsyncData.AsyncDataFailed[FullImage](cause)
+      case l@AsyncData.AsyncDataLoading() => AsyncData.AsyncDataLoading[FullImage]()
+    }
+  }
+
+  private val EMPTY_PNG_DATA_URL: String = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
+/*
+  /** Backwards-compatible alias for previous API name. */
+  def getPngDataSrcOfGreenFlagProgramEditor(turtleStitchXml: String, language: HumanLanguage): State[AsyncData[String]] =
+    getGreenFlagProgramSnapshotDataSrc(turtleStitchXml, language)
 
   private var worker: TurtleStitchWorker = new TurtleStitchWorker()
   private val queueLock = new AnyRef
@@ -111,5 +126,5 @@ object TurtleStitchWorkerFacade {
       workerInit = None
       queuedWork = Future.successful(())
     }
-
+*/
 }

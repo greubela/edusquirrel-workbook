@@ -10,7 +10,7 @@ import java.time.LocalDateTime
 import scala.collection.mutable
 import it.evadid.core.util.*
 
-case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T]) {
+case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T], debug: Boolean = false) {
 
   private val defaultHistory = InteractionVariableHistory[T](Set(InteractionVariableState[T](underlyingInteraction.defaultValue, UpdateImportance.DEFAULT, LocalDateTime.now())))
 
@@ -52,9 +52,11 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T])
       val serialized = innerState.now().serializedWithStrategy(curInfo.syncStrategy, underlyingInteraction.serializer)
       curInfo.syncSource.syncTo(keyForSerialization, serialized.toString)
     })
-    println("[INFO] history '" + keyForSerialization + "' changed, synced to " + syncSources.now().size + " sources"
-      + ", current value: " + innerState.now().lastState.value
-      + ", last update time: " + InfoUtil.datetimeFormattedForLog(innerState.now().lastState.timestamp) + ", total events: " + innerState.now().events.size + ")")
+    if (debug) {
+      println("[INFO] history '" + keyForSerialization + "' changed, synced to " + syncSources.now().size + " sources"
+        + ", current value: " + innerState.now().lastState.value
+        + ", last update time: " + InfoUtil.datetimeFormattedForLog(innerState.now().lastState.timestamp) + ", total events: " + innerState.now().events.size + ")")
+    }
   }
 
   def syncFromAll(): Unit = synchronized {

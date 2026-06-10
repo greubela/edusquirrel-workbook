@@ -7,6 +7,8 @@ import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.homepage.control.*
 import it.evadid.homepage.control.info.{AllWorkbookInfo, FullInfo, HomepageInfo}
 import it.evadid.workbook.model.elements.WorkbookSection
+import todomove.datastructures.web.storage.AsyncData
+import todomove.datastructures.web.storage.AsyncData.*
 
 import scala.concurrent.*
 
@@ -36,16 +38,22 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
     fullInfo.technical.contentStorage.getSyncIfLoaded(languageMapId)
   }
 
-  def languageMapFromId(languageMapId: LanguageMapContentId): Signal[LanguageMap[HumanLanguage]] = {
-    val languageMapOpFromId = fullInfo.technical.contentStorage.asStorage.loadIntoVariable(languageMapId)(using ExecutionContext.global).toAirstreamVar.signal
-    languageMapOpFromId.map {
-      case None => WorkbookContentStorage.languageMapLoadingMap
-      case Some(map) => map
-    }
+  def signalWithEnsuredLanguageMap(languageMapId: LanguageMapContentId): Signal[LanguageMap[HumanLanguage]] = {
+    val languageMapOpFromId: StrictSignal[AsyncData[LanguageMap[HumanLanguage]]] = fullInfo.technical.contentStorage.asStorage.loadIntoVariable(languageMapId)(using ExecutionContext.global).toAirstreamVar.signal
+    languageMapOpFromId.mapLazy(asyncData => asyncData.match {
+    case AsyncDataLoading => WorkbookContentStorage.languageMapLoadingMap
+    case AsyncDataSuccess(map) => map
+    case AsyncDataFailed(cause) => WorkbookContentStorage.languageMapError(languageMapId, cause)
+    case s@_ => throw new IllegalArgumentException("[ERROR] HomepageSignalInfo::signalWithEnsuredLanguageMap: this should be unreachable, but somehow it wasn´t: " + s.toString)
+    })
+  }
+
+  def stringFromLanguageMap(languageMap: LanguageMap[HumanLanguage]): Signal[String] = {
+    currentLanguage.mapLazy(curLang => languageMap.getInLanguage(curLang))
   }
 
   def stringFromLanguageMapId(languageMapId: LanguageMapContentId): Signal[String] = {
-    Signal.combine(currentLanguage, languageMapFromId(languageMapId)).map(tup => {
+    Signal.combine(currentLanguage, signalWithEnsuredLanguageMap(languageMapId)).map(tup => {
       tup._2.getInLanguage(tup._1)
     })
   }
