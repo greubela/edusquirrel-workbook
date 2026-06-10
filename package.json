@@ -9,6 +9,7 @@
     "preview": "npx --yes http-server _site -p 4173 -c-1"
   },
   "devDependencies": {
-    "jsdom": "^20.0.3"
+    "jsdom": "^20.0.3",
+    "playwright": "^1.60.0"
   }
 }
