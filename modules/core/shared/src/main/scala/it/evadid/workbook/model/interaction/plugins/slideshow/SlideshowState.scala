@@ -8,12 +8,25 @@ import upickle.default.{ReadWriter, macroRW}
 
 import java.time.LocalDateTime
 
+/**
+ * Stores the interaction history for a slideshow without owning any UI rendering details.
+ * Transition recording lives here so renderers only decide when navigation happened while the model decides how that navigation is represented.
+ */
 case class SlideshowState(
                            allPanels: List[SlideshowPanel],
                            events: Set[SlideshowProceededEvent]
                          ) {
 
   private lazy val eventsSorted: List[SlideshowProceededEvent] = events.toList.sortBy(_.proceededAt)
+
+  /**
+   * Records that the user moved from one panel index to another and returns the updated slideshow state.
+   * Both indices are resolved against `allPanels`, keeping event creation tied to the model's panel list rather than to a specific renderer.
+   */
+  def recordTransitionByIndex(oldPanelIndex: Int, newPanelIndex: Int, proceededAt: LocalDateTime = LocalDateTime.now()): SlideshowState = {
+    val event = SlideshowProceededEvent(allPanels(oldPanelIndex), allPanels(newPanelIndex), proceededAt)
+    copy(events = events + event)
+  }
 
   def timestampsWhereUserSwitchedFromOrToPanel(panel: SlideshowPanel): Set[LocalDateTime] =
     timestampsWhereUserSwitchedFromPanel(panel) ++ timestampsWhereUserSwitchedToPanel(panel)

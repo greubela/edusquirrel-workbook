@@ -18,6 +18,8 @@ import it.evadid.workbook.model.interaction.WorkbookInteraction.TextInteractionB
 import it.evadid.workbook.model.interaction.basic.LabeledCheckboxInteraction
 import it.evadid.workbook.model.interaction.plugins.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
 import it.evadid.workbook.model.interaction.plugins.gpt.GptInteractionElement
+import it.evadid.workbook.model.interaction.plugins.reorderExercise.ReorderInteraction
+import it.evadid.workbook.model.interaction.plugins.slideshow.Slideshow
 
 trait HtmlRenderFactory[T <: WorkbookElement] {
 
@@ -66,6 +68,8 @@ object HtmlRenderFactory {
       // interactions
       case i: TextInteractionBasic => HtmlSimpleTextInteractionRenderer.render(i)
       case i: LabeledCheckboxInteraction => HtmlBasicCheckboxRenderer.render(i)
+      case s: Slideshow => HtmlSlideshowEditor.render(s)
+      case r: ReorderInteraction[?] => HtmlReorderInteractionRenderer.render(r)
       // plugins -- turtle
       case t: TurtleStitchExploreProjectElement => HtmlTurtleStitchExploreProjectRenderer.render(t)
       case t: TurtleStitchRecreateShapeInteraction => HtmlTurtleStitchRecreateShapeRenderer.render(t)
