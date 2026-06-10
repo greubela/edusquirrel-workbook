@@ -16,8 +16,8 @@ import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.contentIdStringSignal
 import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchWorkerFacade
 import it.evadid.workbook.model.interaction.WorkbookInteraction
+import it.evadid.workbook.model.interaction.plugins.TurtleStitch.TurtleStitchProjectState
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
-import it.evadid.workbook.plugins.TurtleStitch.TurtleStitchProjectState
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLInputElement}
 

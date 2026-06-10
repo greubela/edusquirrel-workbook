@@ -1,6 +1,6 @@
-package it.evadid.workbook.plugins.TurtleStitch
+package it.evadid.workbook.model.interaction.plugins.TurtleStitch
 
-import it.evadid.workbook.plugins.TurtleStitch.TurtleStitchProjectState.StorageFormat.{BYTES_AS_BASE64_STRING, BYTES_AS_RAW_STRING}
+import TurtleStitchProjectState.StorageFormat.{BYTES_AS_BASE64_STRING, BYTES_AS_RAW_STRING}
 
 import scala.util.*
 

@@ -12,11 +12,12 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionEditors.*
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.gpt.HtmlGptTextfieldInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.turtleStitch.{HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRenderer}
 import it.evadid.workbook.model.abstractions.WorkbookElement
-import it.evadid.workbook.model.elements.{ExerciseContainer, ImageElement, LangMapContentBasedElement, Workbook}
+import it.evadid.workbook.model.elements.ImageElement.FileBasedImageElement
+import it.evadid.workbook.model.elements.{ExerciseContainer, ImageElement, LabeledInstructionElement, LangMapContentBasedElement, Workbook}
 import it.evadid.workbook.model.interaction.WorkbookInteraction.TextInteractionBasic
 import it.evadid.workbook.model.interaction.basic.LabeledCheckboxInteraction
-import it.evadid.workbook.plugins.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
-import it.evadid.workbook.plugins.gpt.GptInteractionElement
+import it.evadid.workbook.model.interaction.plugins.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
+import it.evadid.workbook.model.interaction.plugins.gpt.GptInteractionElement
 
 trait HtmlRenderFactory[T <: WorkbookElement] {
 
@@ -60,7 +61,8 @@ object HtmlRenderFactory {
       case c: ExerciseContainer => HtmlExerciseContainerRenderer.render(c)
       // basic
       case c: LangMapContentBasedElement => HtmlLangMapContentRenderer.render(c)
-      case i: ImageElement => fromElement[ImageElement](i, HtmlImageElement(i.location).getDomElement())
+      case i: FileBasedImageElement => fromElement[ImageElement](i, HtmlImageElement(i.location).getDomElement())
+      case b: LabeledInstructionElement => HtmlInstructionLabeledPairRenderer.render(b)
       // interactions
       case i: TextInteractionBasic => HtmlSimpleTextInteractionRenderer.render(i)
       case i: LabeledCheckboxInteraction => HtmlBasicCheckboxRenderer.render(i)

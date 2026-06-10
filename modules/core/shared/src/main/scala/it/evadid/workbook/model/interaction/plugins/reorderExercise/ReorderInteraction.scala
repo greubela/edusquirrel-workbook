@@ -1,14 +1,36 @@
-package it.evadid.homepage.workbook.legacy.htmlElements.interactions
+package it.evadid.workbook.model.interaction.plugins.reorderExercise
 
-import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
+import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
-import it.evadid.homepage.control.info.FullInfo
 import it.evadid.workbook.model.interaction.WorkbookInteraction
-import it.evadid.workbook.model.interaction.sync.UpdateImportance
 
-import scala.util.Try
+sealed trait ReorderInteraction[T] extends WorkbookInteraction[ReorderInteractionState[T]]
 
+object ReorderInteraction {
+
+  case class ReorderCodeInteraction(override val id: String, lines: List[String], programmingLanguage: ProgrammingLanguage, seed: Long = 0) extends ReorderInteraction[String] {
+
+    override val defaultValue: ReorderInteractionState[String] = {
+      ReorderInteractionState.initStateFromElementsAndSeed(lines, seed, Serializer.stringIO, ReorderType.CODELINES(programmingLanguage))
+    }
+    override val serializer: Serializer[ReorderInteractionState[String]] = defaultValue.serializer
+  }
+
+  case class ReorderMapIdInteraction(override val id: String, ids: List[LanguageMapContentId], seed: Long = 0) extends ReorderInteraction[LanguageMapContentId] {
+
+    override val defaultValue: ReorderInteractionState[LanguageMapContentId] = {
+      ReorderInteractionState.initStateFromElementsAndSeed(ids, seed, LanguageMapContentId.serializer, ReorderType.LANGUAGE_MAP_IDS)
+    }
+    override val serializer: Serializer[ReorderInteractionState[LanguageMapContentId]] = defaultValue.serializer
+
+  }
+
+
+}
+
+
+/*
 case class HtmlReorderInteraction[T](
                                       fullInfo: FullInfo,
                                       id: String,
@@ -131,3 +153,5 @@ case class HtmlReorderInteraction[T](
       listElement
     )
 }
+
+*/

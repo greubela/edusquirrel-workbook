@@ -7,8 +7,8 @@ import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.homepage.workbook.htmlRenderer.interactionEditors.HtmlSimpleChatEditor
-import it.evadid.workbook.plugins.TurtleStitch.TurtleStitchExploreProjectElement
-import it.evadid.workbook.plugins.gpt.GptInteractionElement
+import it.evadid.workbook.model.interaction.plugins.TurtleStitch.TurtleStitchExploreProjectElement
+import it.evadid.workbook.model.interaction.plugins.gpt.GptInteractionElement
 import org.scalajs.dom.SVGSVGElement
 
 import scala.collection.mutable

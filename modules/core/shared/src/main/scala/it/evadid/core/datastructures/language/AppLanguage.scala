@@ -15,7 +15,7 @@ object AppLanguage {
   def allLanguages: Set[AppLanguage] = humanLanguages ++ programmingLanguages
 
   val humanLanguages: Set[HumanLanguage] = Set(English, German, French, Ukrainian, Russian, Turkish, Danish, Spanish)
-  val programmingLanguages: Set[ProgrammingLanguage] = Set(Python, Java, JavaScript, Rust, Lisp, Cpp, BlockDisplay)
+  val programmingLanguages: Set[ProgrammingLanguage] = Set(Python, Java, JavaScript, Rust, Lisp, Cpp, C, BlockDisplay)
   
   case object English extends HumanLanguage("English", "EN")
   case object German extends HumanLanguage("German", "DE")
@@ -32,6 +32,7 @@ object AppLanguage {
   case object Rust extends ProgrammingLanguage("Rust", "rs")
   case object Lisp extends ProgrammingLanguage("LISP", "lisp")
   case object Cpp extends ProgrammingLanguage("C++", "cpp")
+  case object C extends ProgrammingLanguage("C", "c")
   case object BlockDisplay extends ProgrammingLanguage("Block Display", "bd")
 
   val turtleStitchLangMap: Map[HumanLanguage, String] = Map(
