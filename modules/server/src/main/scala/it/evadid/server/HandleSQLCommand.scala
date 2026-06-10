@@ -9,21 +9,53 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object HandleSQLCommand {
 
-  private def env(name: String): Option[String] =
-    Option(System.getenv(name)).map(_.trim).filter(_.nonEmpty)
+  private[server] final case class DatabaseConfig(
+                                                    host: String,
+                                                    port: String,
+                                                    database: String,
+                                                    user: String,
+                                                    password: String
+                                                  ) {
+    val jdbcUrl: String = s"jdbc:postgresql://$host:$port/$database"
+  }
 
-  private def requiredEnv(name: String): String =
-    env(name).getOrElse(throw new IllegalStateException(s"$name is not configured"))
+  private[server] trait SyncDbExecutor {
+    def upsert(config: DatabaseConfig, request: SyncToDbRequest): Int
+  }
+
+  private def env(name: String, envProvider: String => Option[String]): Option[String] =
+    envProvider(name).map(_.trim).filter(_.nonEmpty)
+
+  private def requiredEnv(name: String, envProvider: String => Option[String]): String =
+    env(name, envProvider).getOrElse(throw new IllegalStateException(s"$name is not configured"))
+
+  private[server] def readDatabaseConfig(envProvider: String => Option[String]): DatabaseConfig =
+    DatabaseConfig(
+      host = requiredEnv("SQL_HOST", envProvider),
+      port = requiredEnv("SQL_PORT", envProvider),
+      database = requiredEnv("SQL_DATABASE", envProvider),
+      user = requiredEnv("SQL_USER", envProvider),
+      password = requiredEnv("SQL_PW", envProvider)
+    )
+
+  private[server] def syncToDb(
+                                request: SyncToDbRequest,
+                                logger: Logger,
+                                envProvider: String => Option[String],
+                                executor: SyncDbExecutor
+                              ): SyncToDbResponse = {
+    val config = readDatabaseConfig(envProvider)
+
+    logger.logInfo(s"syncing key '${request.keyId}' to database for program '${request.programId}' and user '${request.userId}'")
+    SyncToDbResponse(executor.upsert(config, request))
+  }
 
   def handleSyncToDbRequest(request: SyncToDbRequest, logger: Logger): Future[SyncToDbResponse] = Future {
-    val host = requiredEnv("SQL_HOST")
-    val port = requiredEnv("SQL_PORT")
-    val database = requiredEnv("SQL_DATABASE")
-    val sqlUser = requiredEnv("SQL_USER")
-    val sqlPw = requiredEnv("SQL_PW")
-    val jdbcUrl = s"jdbc:postgresql://$host:$port/$database"
+    syncToDb(request, logger, name => Option(System.getenv(name)), JdbcSyncDbExecutor)
+  }(using ExecutionContext.global)
 
-    val upsertSql =
+  private object JdbcSyncDbExecutor extends SyncDbExecutor {
+    private val upsertSql =
       """
         |INSERT INTO "InteractionEvents" ("programId", "userId", "keyId", "eventtime", "eventdata")
         |VALUES (?, ?, ?, ?, ?)
@@ -33,22 +65,21 @@ object HandleSQLCommand {
         |  "eventdata" = EXCLUDED."eventdata"
         |""".stripMargin
 
-    logger.logInfo(s"syncing key '${request.keyId}' to database for program '${request.programId}' and user '${request.userId}'")
-    val rowsAffected = UsingConnection(jdbcUrl, sqlUser, sqlPw) { conn =>
-      val stmt = conn.prepareStatement(upsertSql)
-      try {
-        stmt.setString(1, request.programId)
-        stmt.setString(2, request.userId)
-        stmt.setString(3, request.keyId)
-        stmt.setTimestamp(4, Timestamp.valueOf(LocalDateTime.parse(request.eventTime)))
-        stmt.setString(5, request.eventData)
-        stmt.executeUpdate()
-      } finally {
-        stmt.close()
+    override def upsert(config: DatabaseConfig, request: SyncToDbRequest): Int =
+      UsingConnection(config.jdbcUrl, config.user, config.password) { conn =>
+        val stmt = conn.prepareStatement(upsertSql)
+        try {
+          stmt.setString(1, request.programId)
+          stmt.setString(2, request.userId)
+          stmt.setString(3, request.keyId)
+          stmt.setTimestamp(4, Timestamp.valueOf(LocalDateTime.parse(request.eventTime)))
+          stmt.setString(5, request.eventData)
+          stmt.executeUpdate()
+        } finally {
+          stmt.close()
+        }
       }
-    }
-    SyncToDbResponse(rowsAffected)
-  }(using ExecutionContext.global)
+  }
 
   private object UsingConnection {
     def apply[T](jdbcUrl: String, user: String, pw: String)(f: Connection => T): T = {
