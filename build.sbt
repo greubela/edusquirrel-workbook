@@ -83,6 +83,7 @@ lazy val server = (project in file("./modules/server"))
     assembly / mainClass := Some("it.evadid.server.BackendServer"),
     assembly / assemblyJarName := "server.jar",
     assembly / assemblyMergeStrategy := {
+      case PathList("module-info.class") => MergeStrategy.discard
       case PathList("META-INF", "versions", _*) => MergeStrategy.discard
       case PathList("META-INF", "io.netty.versions.properties") => MergeStrategy.first
       case x => (assembly / assemblyMergeStrategy).value(x)
