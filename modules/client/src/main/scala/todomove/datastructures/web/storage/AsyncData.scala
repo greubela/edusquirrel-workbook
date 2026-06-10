@@ -4,13 +4,13 @@ import java.time.LocalDateTime
 
 sealed trait AsyncData[T] {
 
-  val loadingSince: Option[LocalDateTime] = None
+  def loadingSince: Option[LocalDateTime] = None
 
-  val value: Option[T] = None
+  def value: Option[T] = None
 
-  val failure: Option[Throwable] = None
+  def failure: Option[Throwable] = None
 
-  val asEither: Either[Throwable, Option[T]]
+  def asEither: Either[Throwable, Option[T]]
 
   def map[O](func: T => O): AsyncData[O] = {
     asEither match {
@@ -25,8 +25,8 @@ sealed trait AsyncData[T] {
     }
   }
 
-  val toOption: Option[T] = asEither.match {
-    case Left(value) => None
+  def toOption: Option[T] = asEither match {
+    case Left(_) => None
     case Right(value) => value
   }
 }
