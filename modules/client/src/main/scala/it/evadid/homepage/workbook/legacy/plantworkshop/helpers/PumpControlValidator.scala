@@ -1,4 +1,4 @@
-package content.plantworkshop.helpers
+package it.evadid.homepage.workbook.legacy.plantworkshop.helpers
 
 object PumpControlValidator {
   def validatePumpControl(code: String): String = {

@@ -26,6 +26,7 @@ object Serializer {
     def deserialize(in: String): T = read(in)(using upickle)
   }
 
+  
   lazy val messengerIo: Serializer[MessengerModel] = new Serializer[MessengerModel] {
     override def serialize(obj: MessengerModel): String = obj.toJson
 

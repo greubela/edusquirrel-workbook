@@ -8,6 +8,5 @@ import it.evadid.workbook.model.interaction.variable.InteractionVariable
 case class MessagingInteraction(override val id: String, override val defaultValue: MessengerModel) extends WorkbookInteraction[MessengerModel]{
 
   override val serializer: Serializer[MessengerModel] = Serializer.messengerIo
-
-
+  
 }

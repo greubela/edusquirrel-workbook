@@ -1,4 +1,4 @@
-package it.evadid.workbook.plugins.TurtleStitch
+package it.evadid.workbook.model.interaction.plugins.TurtleStitch
 
 import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.workbook.model.abstractions.WorkbookElement

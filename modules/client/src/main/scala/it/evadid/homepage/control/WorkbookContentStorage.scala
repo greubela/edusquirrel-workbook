@@ -57,14 +57,14 @@ case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, Loa
 
     val res = Promise[Unit]()
     withDirsLoaded(WorkbookContentStorage.languageMapDirs)
-    //withFilesEnsured(WorkbookContentStorage.languageMapFiles.toSet)
+      //withFilesEnsured(WorkbookContentStorage.languageMapFiles.toSet)
       .onComplete {
-      case Success(any) => res.success(())
-      case Failure(err) => {
-        println("[ERROR] WorkbookContentStorage: " + err.getMessage)
-        res.failure(err)
+        case Success(any) => res.success(())
+        case Failure(err) => {
+          println("[ERROR] WorkbookContentStorage: " + err.getMessage)
+          res.failure(err)
+        }
       }
-    }
     res.future
 
   }
@@ -200,16 +200,18 @@ object WorkbookContentStorage {
     if (languageOp.isEmpty || mapGroupIdOp.isEmpty) {
       Set.empty[MapEntryTripel]
     }
-    else if (file.description.extension == "json") {
-      IoSerialization.parseJson(file.fileDataAsUtf8String).toList.map(tup => {
-        MapEntryTripel(LanguageMapContentId(mapGroupIdOp.get, tup._1), languageOp.get, tup._2)
-      }).toSet
-    } else if (file.description.extension == "csv") {
-      IoSerialization.parseCsv(file.fileDataAsUtf8String).filter(_.size >= 2).map(curColumns => {
-        MapEntryTripel(LanguageMapContentId(mapGroupIdOp.get, curColumns.head), languageOp.get, curColumns(1))
-      }).toSet
-    } else {
-      Set.empty[MapEntryTripel]
+    else {
+      if (file.description.extension == "json") {
+        IoSerialization.parseJson(file.fileDataAsUtf8String).toList.map(tup => {
+          MapEntryTripel(LanguageMapContentId(mapGroupIdOp.get.toLowerCase, tup._1.toLowerCase), languageOp.get, tup._2)
+        }).toSet
+      } else if (file.description.extension == "csv") {
+        IoSerialization.parseCsv(file.fileDataAsUtf8String).filter(_.size >= 2).map(curColumns => {
+          MapEntryTripel(LanguageMapContentId(mapGroupIdOp.get.toLowerCase, curColumns.head.toLowerCase), languageOp.get, curColumns(1))
+        }).toSet
+      } else {
+        Set.empty[MapEntryTripel]
+      }
     }
   }
 

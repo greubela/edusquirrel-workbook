@@ -1,16 +1,17 @@
 package it.evadid.homepage.workbook.content
 
 
-import com.raquo.laminar.api.L
 import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.control.info.{AllWorkbookInfo, FullInfo, WorkbookConfig}
-import it.evadid.homepage.workbook.htmlRenderer.*
 import it.evadid.workbook.model.abstractions.*
 import it.evadid.workbook.model.elements.*
+import it.evadid.workbook.model.elements.ImageElement.FileBasedImageElement
+import it.evadid.workbook.model.elements.LabeledInstructionElement.LabelType
 import it.evadid.workbook.model.interaction.*
 import it.evadid.workbook.model.interaction.basic.*
+import it.evadid.workbook.model.interaction.plugins.reorderExercise.ReorderInteraction
 import todomove.datastructures.web.file.FileFactory
 
 trait WorkbookFactory {
@@ -83,10 +84,13 @@ trait WorkbookFactory {
   //HtmlInstructionElement.fromMarkdownLanguageMapId(fullInfo, textMapId)
 
   def image(imageLocation: FileDescription): ImageElement = {
-    ImageElement(imageLocation)
+    FileBasedImageElement(imageLocation)
     //LangIdBasedContent(imageLocation.fullPath, LangIdBasedContent(TypeOfTextContent.URL, RoleInWorkbook.IMAGE))
     //pseudoElement(HtmlImageElement(imageLocation, fullInfo).getDomSignal)
   }
+
+  protected def instructionLabeledPair(titleMapId: String, bodyMapId: String, labelType: LabelType): LabeledInstructionElement =
+    LabeledInstructionElement(LanguageMapContentId(titleMapId), LanguageMapContentId(bodyMapId), labelType)
 
   def image(imageName: String, imgType: String = "png"): ImageElement = {
     val fileDesc: FileDescription = FileFactory.relativeToResourceFolder("workbookresources/embroidery/images/" + imageName + "." + imgType)
@@ -95,6 +99,14 @@ trait WorkbookFactory {
 
   protected def checklist(langIdCheckboxLabel: String, elementId: String = nextId()): WorkbookInteraction[Boolean] = {
     LabeledCheckboxInteraction(elementId, LanguageMapContentId(langIdCheckboxLabel))
+  }
+
+  /*
+  Common Interactions
+   */
+
+  protected def codeReorder(baseId: String, snippets: List[String], programmingLanguage: ProgrammingLanguage): ReorderInteraction[String] = {
+    ReorderInteraction.ReorderCodeInteraction(baseId, snippets, programmingLanguage)
   }
 
 

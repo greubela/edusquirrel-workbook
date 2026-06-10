@@ -1,4 +1,4 @@
-package it.evadid.workbook.plugins.gpt
+package it.evadid.workbook.model.interaction.plugins.gpt
 
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.datastructures.language.LanguageMapContentId

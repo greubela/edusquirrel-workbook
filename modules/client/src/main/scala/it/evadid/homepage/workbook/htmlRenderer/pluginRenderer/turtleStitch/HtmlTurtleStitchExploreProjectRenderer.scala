@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
-import it.evadid.workbook.plugins.TurtleStitch.TurtleStitchExploreProjectElement
+import it.evadid.workbook.model.interaction.plugins.TurtleStitch.TurtleStitchExploreProjectElement
 
 object HtmlTurtleStitchExploreProjectRenderer extends HtmlRenderFactory[TurtleStitchExploreProjectElement] {
 
