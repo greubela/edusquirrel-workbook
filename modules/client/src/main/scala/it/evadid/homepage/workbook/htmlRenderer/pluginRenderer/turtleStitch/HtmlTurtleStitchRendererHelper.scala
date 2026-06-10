@@ -5,8 +5,10 @@ import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.file.{FileDescription, LoadedFile}
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.state.ObservableValue
 import it.evadid.core.datastructures.state.StateHelper.{InteractionVariableOnJS, StateBasedVar}
-import it.evadid.core.datastructures.state.{ObservableValue, State}
+import it.evadid.core.datastructures.storage.AsyncData
+import it.evadid.core.datastructures.storage.AsyncData.*
 import it.evadid.core.util.InfoUtil
 import it.evadid.homepage.control.HtmlFullWorkbookApp
 import it.evadid.homepage.control.HtmlFullWorkbookApp.fullInfo
@@ -22,9 +24,9 @@ import it.evadid.workbook.model.interaction.sync.UpdateImportance
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLInputElement}
 import todomove.datastructures.web.file.FullImage
+
 import it.evadid.core.datastructures.storage.AsyncData
 import it.evadid.core.datastructures.storage.AsyncData.*
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}

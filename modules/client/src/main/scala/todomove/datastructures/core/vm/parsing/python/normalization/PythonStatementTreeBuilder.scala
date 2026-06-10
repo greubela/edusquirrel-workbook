@@ -3,7 +3,7 @@ package todomove.datastructures.core.vm.parsing.python.normalization
 import PythonNormalizationModel._
 import todomove.datastructures.core.vm.parsing.python.PythonBlockWalker
 import scala.collection.mutable
-import it.evadid.core.datastructures.text.ParenthesesUtils.stripOuterBalancedParens
+import todomove.datastructures.text.ParenthesesUtils.stripOuterBalancedParens
 
 object PythonStatementTreeBuilder {
 
