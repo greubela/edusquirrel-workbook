@@ -8,7 +8,7 @@ import it.evadid.homepage.util.serializing.IoSerialization
 import it.evadid.workbook.model.elements.ImageElement
 import org.scalajs.dom.URL
 import todomove.datastructures.web.file.FileFactory
-import todomove.datastructures.web.storage.AsyncDataCache
+import it.evadid.core.datastructures.storage.AsyncDataCache
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global

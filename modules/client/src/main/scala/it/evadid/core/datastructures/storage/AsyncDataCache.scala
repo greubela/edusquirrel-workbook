@@ -1,9 +1,8 @@
-package todomove.datastructures.web.storage
+package it.evadid.core.datastructures.storage
 
-import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.state.State
-import todomove.datastructures.web.storage.AsyncData.*
-import todomove.datastructures.web.storage.AsyncDataCache.*
+import it.evadid.core.datastructures.storage.AsyncData.*
+import it.evadid.core.datastructures.storage.AsyncDataCache.*
 
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future, Promise}

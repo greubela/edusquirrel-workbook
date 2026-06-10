@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import org.scalajs.dom
-import todomove.datastructures.web.storage.AsyncDataCache
+import it.evadid.core.datastructures.storage.AsyncDataCache
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js

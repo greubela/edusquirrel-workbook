@@ -39,7 +39,7 @@ case class HtmlFullScreenContainerElement() extends HtmlAppElement {
   private val overlayElement: Element =
     div(
       cls := "fullscreen-overlay",
-      cls.toggle("is-visible") <-- overlayActiveVar.signal,
+      cls("is-visible") <-- overlayActiveVar.signal,
       L.onKeyDown --> (event => onKeyDown(event)),
       button(
         typ := "button",

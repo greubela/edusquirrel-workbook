@@ -22,8 +22,8 @@ import it.evadid.workbook.model.interaction.sync.UpdateImportance
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLInputElement}
 import todomove.datastructures.web.file.FullImage
-import todomove.datastructures.web.storage.AsyncData
-import todomove.datastructures.web.storage.AsyncData.*
+import it.evadid.core.datastructures.storage.AsyncData
+import it.evadid.core.datastructures.storage.AsyncData.*
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
@@ -108,9 +108,9 @@ object HtmlTurtleStitchRendererHelper {
   private def getImageSignal(xmlSignal: Signal[AsyncData[String]], languageSignal: Signal[HumanLanguage]): StrictSignal[AsyncData[FullImage]] = {
     val res = Var[AsyncData[FullImage]](AsyncData.AsyncDataLoading())
     xmlSignal.combineWith(languageSignal).foreach {
-      case (AsyncDataLoading, h: HumanLanguage) => res.set(AsyncData.AsyncDataLoading[FullImage]())
-      case (AsyncDataFailed(cause), h: HumanLanguage) => res.set(AsyncData.AsyncDataFailed[FullImage](cause))
-      case (AsyncDataSuccess(xml), h: HumanLanguage) => {
+      case (AsyncDataLoading(), _) => res.set(AsyncData.AsyncDataLoading[FullImage]())
+      case (AsyncDataFailed(cause), _) => res.set(AsyncData.AsyncDataFailed[FullImage](cause))
+      case (AsyncDataSuccess(xml), h) => {
         val snapshot: ObservableValue[AsyncData[FullImage]] = TurtleStitchWorkerFacade.getGreenFlagProgramSnapshotDataSrc(xml, h)
         snapshot.addObserver(newValue => res.set(newValue))
       }

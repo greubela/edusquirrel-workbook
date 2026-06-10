@@ -93,7 +93,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
   def splitSymbolControlFlowAmends: Seq[L.Modifier[L.SvgElement]] = {
     val strokeW = rendererConfig.controlSegmentSize / 5.0
     List(
-      svg.strokeWidth := strokeW + "px",
+      svg.strokeWidth := s"${strokeW}px",
       svg.fill := rendererConfig.colorPalette.grayscale(4).toWebColor.webStyleRgbString,
       svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebColor.webStyleRgbString,
     )
@@ -102,7 +102,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
   def unionSymbolControlFlowAmends: Seq[L.Modifier[L.SvgElement]] = {
     val strokeW = rendererConfig.controlSegmentSize / 5.0
     List(
-      svg.strokeWidth := strokeW + "px",
+      svg.strokeWidth := s"${strokeW}px",
       svg.fill := rendererConfig.colorPalette.grayscale(4).toWebColor.webStyleRgbString,
       svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebColor.webStyleRgbString,
     )
@@ -111,7 +111,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
   def crossSymbolControlFlowAmends: Seq[L.Modifier[L.SvgElement]] = {
     val strokeW = rendererConfig.controlSegmentSize / 5.0
     List(
-      svg.strokeWidth := strokeW + "px",
+      svg.strokeWidth := s"${strokeW}px",
       svg.fill := rendererConfig.colorPalette.grayscale(4).toWebColor.webStyleRgbString,
       svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebColor.webStyleRgbString,
     )
@@ -134,7 +134,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
   def activeControlFlowAmends: Seq[L.Modifier[L.SvgElement]] = {
     val strokeW = rendererConfig.controlSegmentSize / 5.0
     List(
-      svg.strokeWidth := strokeW + "px",
+      svg.strokeWidth := s"${strokeW}px",
       svg.fill := "transparent",
       svg.stroke := rendererConfig.colorPalette.grayscale(0).toWebColor.webStyleRgbString,
     )
@@ -144,7 +144,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
     val strokeW = rendererConfig.controlSegmentSize / 5.0
     List(
       svg.strokeDashArray := "1,1",
-      svg.strokeWidth := strokeW + "px",
+      svg.strokeWidth := s"${strokeW}px",
       svg.fill := "transparent",
       svg.stroke := rendererConfig.colorPalette.yellows(4).toWebColor.webStyleRgbString,
     )
@@ -152,7 +152,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
   def activeTrueConditionControlFlowAmends: Seq[L.Modifier[L.SvgElement]] = {
     val strokeW = rendererConfig.controlSegmentSize / 5.0
     List(
-      svg.strokeWidth := strokeW + "px",
+      svg.strokeWidth := s"${strokeW}px",
       svg.fill := "transparent",
       svg.stroke := rendererConfig.colorPalette.greens(0).toWebColor.webStyleRgbString,
     )
@@ -162,7 +162,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
     val strokeW = rendererConfig.controlSegmentSize / 5.0
     List(
       svg.strokeDashArray := "1,1",
-      svg.strokeWidth := strokeW + "px",
+      svg.strokeWidth := s"${strokeW}px",
       svg.fill := "transparent",
       svg.stroke := rendererConfig.colorPalette.greens(2).toWebColor.webStyleRgbString,
     )
@@ -171,7 +171,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
   def activeFalseConditionControlFlowAmends: Seq[L.Modifier[L.SvgElement]] = {
     val strokeW = rendererConfig.controlSegmentSize / 5.0
     List(
-      svg.strokeWidth := strokeW + "px",
+      svg.strokeWidth := s"${strokeW}px",
       svg.fill := "transparent",
       svg.stroke := rendererConfig.colorPalette.reds(0).toWebColor.webStyleRgbString,
     )
@@ -181,7 +181,7 @@ case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {
     val strokeW = rendererConfig.controlSegmentSize / 5.0
     List(
       svg.strokeDashArray := "1,1",
-      svg.strokeWidth := strokeW + "px",
+      svg.strokeWidth := s"${strokeW}px",
       svg.fill := "transparent",
       svg.stroke := rendererConfig.colorPalette.reds(2).toWebColor.webStyleRgbString,
     )

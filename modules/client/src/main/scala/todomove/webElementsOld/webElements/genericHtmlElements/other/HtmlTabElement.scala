@@ -19,7 +19,7 @@ case class HtmlTabElement(tabs: List[HtmlTab], onTabSwitched: (HtmlTab, HtmlTab)
         button(
           typ := "button",
           cls := "be-tab-element__label",
-          className.toggle("be-tab-element__label--active") <-- activeTabVar.signal.map(_.tabNr == tab.tabNr),
+          cls("be-tab-element__label--active") <-- activeTabVar.signal.map(_.tabNr == tab.tabNr),
           tab.tabLabel,
           onClick --> { _ =>
             val current = activeTabVar.now()
