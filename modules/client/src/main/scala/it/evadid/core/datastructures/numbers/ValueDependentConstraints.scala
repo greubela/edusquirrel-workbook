@@ -1,4 +1,4 @@
-package it.evadid.homepage.util.numbers
+package it.evadid.core.datastructures.numbers
 
 import scala.collection.immutable.HashSet
 

@@ -1,4 +1,4 @@
-package it.evadid.homepage.util.numbers
+package it.evadid.core.datastructures.numbers
 
 trait NumberConstraint[T: Fractional] {
   def minimum: Option[T]

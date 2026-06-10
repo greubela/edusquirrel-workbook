@@ -1,7 +1,7 @@
 package todomove.webElementsOld.webElements.shapes.meta
 
 import it.evadid.core.datastructures.geometry.Dimension
-import it.evadid.homepage.util.numbers.{NumberConstraint, NumberConstraintImpl, ValueDependentConstraints}
+import it.evadid.core.datastructures.numbers.{NumberConstraint, NumberConstraintImpl, ValueDependentConstraints}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 case class ConfigDependentSizeConstraint[T: Fractional](
