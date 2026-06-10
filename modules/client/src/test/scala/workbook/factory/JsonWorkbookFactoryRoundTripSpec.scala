@@ -59,4 +59,4 @@ class JsonWorkbookFactoryRoundTripSpec extends FunSuite {
     assertEquals(parsed.workbookContent.sections.head.sectionContent.head.elements.head.elementName, "HtmlBasicTextInteraction")
   }
 }
-*(
+*/

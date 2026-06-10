@@ -22,8 +22,7 @@ object FileFactory {
     override val toString: String = "UploadedResourceFileDescription(" + fullPath + ")"
 
     def loadData(): Future[LoadedFile] = DownloadHelper.fetchFile(file).map(data => LoadedFile(this, data))(using ExecutionContext.global)
-
-
+    
   }
 
 
@@ -49,6 +48,13 @@ object FileFactory {
   def relativeToResourceFolder(pathRelativeToResourceFolder: String, copyrightInfo: CopyrightInfo = unknownCopyrightInfo): FileDescription = {
     val str = if (pathRelativeToResourceFolder.startsWith("/")) pathRelativeToResourceFolder.substring(1) else pathRelativeToResourceFolder
     val url = new URL(s"../../resources/" + str, dom.window.location.href)
+    fromUrl(url, copyrightInfo)
+  }
+
+  def asDirectoryRelativeToResources(pathRelativeToResourceFolder: String, copyrightInfo: CopyrightInfo = unknownCopyrightInfo): FileDescription = {
+    val str = if (pathRelativeToResourceFolder.startsWith("/")) pathRelativeToResourceFolder.substring(1) else pathRelativeToResourceFolder
+    val url = new URL(s"../../resources" + str, dom.window.location.href)
+    url.pathname = url.pathname + "/" + pathRelativeToResourceFolder
     fromUrl(url, copyrightInfo)
   }
 

@@ -5,6 +5,7 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap, LanguageMapContentId}
 import it.evadid.homepage.control.WorkbookContentStorage.{LanguageMapTripleStore, MapEntryTripel, triplesFromFile}
 import it.evadid.homepage.util.serializing.IoSerialization
+import org.scalajs.dom.URL
 import todomove.datastructures.web.file.FileFactory
 import todomove.datastructures.web.storage.AsyncDataCache
 
@@ -53,8 +54,11 @@ case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, Loa
   }
 
   def futureForDefaultsLoaded(): Future[Unit] = fileStore.synchronized {
+
     val res = Promise[Unit]()
-    withFilesEnsured(WorkbookContentStorage.languageMapFiles.toSet).onComplete {
+    withDirsLoaded(WorkbookContentStorage.languageMapDirs)
+    //withFilesEnsured(WorkbookContentStorage.languageMapFiles.toSet)
+      .onComplete {
       case Success(any) => res.success(())
       case Failure(err) => {
         println("[ERROR] WorkbookContentStorage: " + err.getMessage)
@@ -62,23 +66,43 @@ case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, Loa
       }
     }
     res.future
+
   }
 
   def addTriples(triples: Set[MapEntryTripel]): Unit = fileStore.synchronized {
     val existingTriples: Set[MapEntryTripel] = lastFinishedCache.map(_.triples).getOrElse(Set.empty)
     val newStore = LanguageMapTripleStore(existingTriples ++ triples)
     lastFinishedCache = Some(newStore)
+    triples.foreach(curTriple => asStorage.loadAsFuture(curTriple.contentId))
+  }
+
+  def addLoadedFile(loadedFile: LoadedFile): Unit = fileStore.synchronized {
+    loadedFiles += loadedFile
+    addTriples(triplesFromFile(loadedFile))
   }
 
   def addFile(fileDescription: FileDescription): Unit = fileStore.synchronized {
     fileStore.loadAsFuture(fileDescription)(using ExecutionContext.global)
       .onComplete {
         case Success(loadedFile) => {
-          loadedFiles += loadedFile
-          addTriples(triplesFromFile(loadedFile))
+          addLoadedFile(loadedFile)
         }
-        case Failure(err) =>
+        case Failure(err) => {
+          println("[WARN] error loading file: " + fileDescription.fullPath + " : " + err.getMessage)
+        }
       }
+  }
+
+  def withDirsLoaded(dirs: Set[FileDescription]): Future[LanguageMapTripleStore] = fileStore.synchronized {
+    val res: Promise[LanguageMapTripleStore] = Promise[LanguageMapTripleStore]()
+    WorkbookContentStorage.loadAllFilesInDirs(fileStore, dirs).onComplete {
+      case Success(loadedFiles) => {
+        loadedFiles.foreach(addLoadedFile)
+        res.success(lastFinishedCache.get)
+      }
+      case Failure(err) => res.failure(err)
+    }
+    res.future
   }
 
   def withFilesEnsured(fileDescriptions: Set[FileDescription]): Future[LanguageMapTripleStore] = fileStore.synchronized {
@@ -116,7 +140,6 @@ object WorkbookContentStorage {
     def getContentIfPresent(contentId: LanguageMapContentId, language: HumanLanguage): Option[String] =
       toLanguageMaps.find(_.contentId == contentId).map(_.languageMap.getInLanguage(language))
   }
-
 
   case class LanguageMapWithId(contentId: LanguageMapContentId, languageMap: LanguageMap[HumanLanguage])
 
@@ -190,35 +213,66 @@ object WorkbookContentStorage {
     }
   }
 
+  private val languageMapDirs: Set[FileDescription] = Set(
+    FileFactory.relativeToResourceFolder("/languageMaps/basic"),
+    FileFactory.relativeToResourceFolder("/languageMaps/turtlestitch"),
+    FileFactory.relativeToResourceFolder("/languageMaps/blockeditor"),
+    FileFactory.relativeToResourceFolder("/languageMaps/embroideryworkbook"),
+    FileFactory.relativeToResourceFolder("/languageMaps/testworkbook"),
+    FileFactory.relativeToResourceFolder("/languageMaps/plantworkshop"),
+  )
 
-  val languageMapFiles: List[FileDescription] = List(
-    FileFactory.relativeToResourceFolder("/languageMaps/basic-en.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/basic-de.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/basic-ua.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/basic-dk.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/basic-tr.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/basic-fr.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/basic-es.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/TurtleStitch-en.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/TurtleStitch-de.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/TurtleStitch-ua.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/TurtleStitch-dk.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/TurtleStitch-tr.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/TurtleStitch-fr.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/TurtleStitch-es.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/BlockEditor-en.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/BlockEditor-de.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/EmbroideryWorkbook-en.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/EmbroideryWorkbook-de.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/EmbroideryWorkbook-ua.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/EmbroideryWorkbook-dk.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/EmbroideryWorkbook-tr.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/EmbroideryWorkbook-fr.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/EmbroideryWorkbook-es.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/TestWorkbook-en.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/TestWorkbook-de.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/PlantWorkshop-en.json"),
-    FileFactory.relativeToResourceFolder("/languageMaps/PlantWorkshop-de.json"),
+  def loadAllFilesInDirs(fileStore: AsyncDataCache[FileDescription, LoadedFile], dirs: Set[FileDescription]): Future[Set[LoadedFile]] = {
+    val allFiles = dirs
+      .flatMap(curDir => languageByFileSuffix.keys.map(curSuffix => curDir.fullPath + "/map-" + curSuffix + ".json"))
+      .map(urlStr => FileFactory.fromUrl(URL(urlStr), CopyrightInfo.unknownCopyrightInfo))
+
+    val allFutures: Future[Set[Try[LoadedFile]]] = Future.traverse(allFiles)(curFile => {
+      fileStore.loadAsFuture(curFile, false).map(Success(_)).recover { case e => Failure(e) }
+    })
+
+    allFutures.onComplete {
+      case Success(tryList) => {
+        val successCount = tryList.count(_.isSuccess)
+        val failedCount = tryList.count(_.isFailure)
+        println(s"[INFO] loaded language maps: $successCount loaded, $failedCount not found!")
+      }
+      case Failure(err) => {
+        println("[ERROR] could not load language maps: " + err.getMessage)
+      }
+    }
+
+    allFutures.map(_.collect { case Success(loadedFile) => loadedFile })
+  }
+
+  private val languageMapFiles: List[FileDescription] = List(
+    FileFactory.relativeToResourceFolder("/languageMaps/basic/map-en.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/basic/map-de.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/basic/map-ua.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/basic/map-dk.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/basic/map-tr.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/basic/map-fr.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/basic/map-es.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/turtlestitch/map-en.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/turtlestitch/map-de.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/turtlestitch/map-ua.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/turtlestitch/map-dk.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/turtlestitch/map-tr.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/turtlestitch/map-fr.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/turtlestitch/map-es.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/blockeditor/map-en.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/blockeditor/map-de.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/embroideryworkbook/map-en.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/embroideryworkbook/map-de.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/embroideryworkbook/map-ua.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/embroideryworkbook/map-dk.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/embroideryworkbook/map-tr.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/embroideryworkbook/map-fr.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/embroideryworkbook/map-es.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/testworkbook/map-en.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/testworkbook/map-de.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/plantworkshop/map-en.json"),
+    FileFactory.relativeToResourceFolder("/languageMaps/plantworkshop/map-de.json"),
   )
 
   private val languageByFileSuffix: Map[String, HumanLanguage] = Map(
