@@ -5,7 +5,6 @@ import java.time.format.DateTimeFormatter
 
 object InfoUtil {
 
-
   def datetimeFormattedForFilenames(dateTime: LocalDateTime = LocalDateTime.now()): String = {
     dateTime.format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"))
   }
@@ -13,6 +12,5 @@ object InfoUtil {
   def datetimeFormattedForLog(dateTime: LocalDateTime = LocalDateTime.now()): String = {
     dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
   }
-
-
+  
 }

@@ -1,20 +1,13 @@
 package it.evadid.homepage.workbook.content
 
-import com.raquo.laminar.api.L.{*, given}
-import it.evadid.core.datastructures.file.FileDescription
-import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.homepage.control.info.FullInfo
-import it.evadid.homepage.workbook.legacy.htmlElements.interactions.HtmlReorderInteraction
 import it.evadid.homepage.workbook.legacy.plantworkshop.helpers.*
 import it.evadid.workbook.model.abstractions.WorkbookElement
 import it.evadid.workbook.model.elements.*
 import it.evadid.workbook.model.elements.LabeledInstructionElement.*
 import it.evadid.workbook.model.interaction.basic.LabeledCheckboxInteraction
-import it.evadid.workbook.model.interaction.plugins.reorderExercise.ReorderInteraction
 import it.evadid.workbook.model.interaction.plugins.slideshow.{Slideshow, SlideshowPanel}
-
-import scala.concurrent.ExecutionContext
 
 case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 
@@ -27,7 +20,6 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         LanguageMapContentId(s"PlantWorkshop/$key")
       )
     }
-
 
   private lazy val workbook: Workbook = {
     val sections = List(
@@ -255,6 +247,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "plant-moisture-done"
     )
 
+    /*
     val isBeginnerMode = Var(true)
 
     val advancedCodeState = Var(
@@ -266,7 +259,6 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "PlantWorkshop/pumpCodeEditorTodo",
       PumpControlValidator.validatePumpControl
     )
-    /*
     val toggleArea = div(
       cls := "task-box",
       div(
@@ -297,7 +289,8 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     val ex1 = container("PlantWorkshop/section3Title", List(
       instructionLabeledPair("PlantWorkshop/goalTitle", "PlantWorkshop/section3GoalText", GoalLabel),
       instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section3InstructionText", TaskLabel),
-      instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section3HintText", HintLabel)
+      instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section3HintText", HintLabel),
+      reorder
     ))
 
     /*
@@ -324,13 +317,14 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "}",
       "delay(10000);"
     ), AppLanguage.C)
-    
+
 
     val checklistItems = checklist(
       List("combinedDone1", "combinedDone2", "combinedDone3"),
       "plant-combined-done"
     )
 
+    /*
     val isBeginnerMode = Var(true)
 
     val advancedCodeState = Var(
@@ -342,34 +336,33 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "PlantWorkshop/pumpCodeEditorTodo",
       PumpControlValidator.validatePumpControl
     )
-/*
-    val toggleArea = div(
-      cls := "task-box",
-      div(
-        cls := "mode-toggle",
-        button(
-          cls := "mode-toggle__btn",
-          cls.toggle("mode-toggle__btn--active") <-- isBeginnerMode.signal,
-          "Anfänger",
-          onClick.mapTo(true) --> isBeginnerMode
-        ),
-        button(
-          cls := "mode-toggle__btn",
-          cls.toggle("mode-toggle__btn--active") <-- isBeginnerMode.signal.map(!_),
-          "Fortgeschritten",
-          onClick.mapTo(false) --> isBeginnerMode
+        val toggleArea = div(
+          cls := "task-box",
+          div(
+            cls := "mode-toggle",
+            button(
+              cls := "mode-toggle__btn",
+              cls.toggle("mode-toggle__btn--active") <-- isBeginnerMode.signal,
+              "Anfänger",
+              onClick.mapTo(true) --> isBeginnerMode
+            ),
+            button(
+              cls := "mode-toggle__btn",
+              cls.toggle("mode-toggle__btn--active") <-- isBeginnerMode.signal.map(!_),
+              "Fortgeschritten",
+              onClick.mapTo(false) --> isBeginnerMode
+            )
+          ),
+          div(
+            cls.toggle("mode-hidden") <-- isBeginnerMode.signal.map(!_),
+            reorderDom
+          ),
+          div(
+            cls.toggle("mode-hidden") <-- isBeginnerMode.signal,
+            codeEditor
+          )
         )
-      ),
-      div(
-        cls.toggle("mode-hidden") <-- isBeginnerMode.signal.map(!_),
-        reorderDom
-      ),
-      div(
-        cls.toggle("mode-hidden") <-- isBeginnerMode.signal,
-        codeEditor
-      )
-    )
-*/
+    */
     val ex1 = container("PlantWorkshop/section4Title", List(
       instructionLabeledPair("PlantWorkshop/goalTitle", "PlantWorkshop/section4GoalText", GoalLabel),
       instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section4InstructionText", TaskLabel),

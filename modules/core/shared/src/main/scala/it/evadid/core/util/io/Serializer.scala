@@ -14,7 +14,7 @@ trait Serializer[T] extends TypeConverter[T, String] {
   def deserialize(str: String): T
 
   lazy val uPickleReadWrite: ReadWriter[T] = readwriter[String].bimap[T](nonString => serialize(nonString), string => deserialize(string))
-  
+
 }
 
 
@@ -26,7 +26,6 @@ object Serializer {
     def deserialize(in: String): T = read(in)(using upickle)
   }
 
-  
   lazy val messengerIo: Serializer[MessengerModel] = new Serializer[MessengerModel] {
     override def serialize(obj: MessengerModel): String = obj.toJson
 

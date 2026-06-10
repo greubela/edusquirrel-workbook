@@ -1,15 +1,13 @@
 package it.evadid.homepage.workbook.content
 
-import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.control.info.FullInfo
 import it.evadid.workbook.model.abstractions.WorkbookElement
 import it.evadid.workbook.model.elements.*
-import todomove.datastructures.web.file.FileFactory
-import it.evadid.homepage.workbook.htmlRenderer.*
 import it.evadid.workbook.model.interaction.plugins.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
 import it.evadid.workbook.model.interaction.plugins.gpt.GptInteractionElement
+import todomove.datastructures.web.file.FileFactory
 
 case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 
