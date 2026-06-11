@@ -875,3 +875,61 @@ textarea.workbook-interaction {
         height: 38px;
     }
 }
+
+/* workbook header user menu */
+
+.workbook-title-line {
+    position: relative;
+    width: min(100%, 1240px);
+    display: grid;
+    grid-template-columns: minmax(48px, 1fr) auto minmax(48px, 1fr);
+    align-items: center;
+    gap: var(--space-lg);
+}
+
+.workbook-title-line h1 {
+    grid-column: 2;
+    text-align: center;
+}
+
+.workbook-user-menu-anchor {
+    grid-column: 3;
+    justify-self: end;
+}
+
+.workbook-user-menu-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    border: 1px solid var(--color-dropdown-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-sm);
+    background: var(--color-dropdown-trigger-background);
+    color: var(--color-text-primary);
+    cursor: pointer;
+    box-shadow: var(--shadow-light);
+}
+
+.workbook-user-menu-trigger:hover,
+.workbook-user-menu-trigger:focus-visible {
+    background: var(--color-dropdown-trigger-hover);
+    outline: none;
+}
+
+.workbook-user-menu-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--color-theme);
+    color: var(--color-on-accent-primary);
+    font-weight: 700;
+    line-height: 1;
+}
+
+.workbook-user-menu-caret {
+    font-size: 0.9rem;
+    line-height: 1;
+}

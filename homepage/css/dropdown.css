@@ -1,0 +1,45 @@
+@import url("./colors.css");
+
+/* Generic dropdown menu infrastructure.
+   To overlay neighbouring components, render the menu in a .dropdown-anchor container. */
+
+.dropdown-anchor {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    overflow: visible;
+}
+
+.html-dropdown-menu {
+    position: absolute;
+    top: calc(100% + var(--space-md));
+    right: 0;
+    z-index: 2000;
+    min-width: 220px;
+    padding: var(--space-md);
+    background: var(--color-dropdown-background);
+    border: 1px solid var(--color-dropdown-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.html-dropdown-menu-item {
+    width: 100%;
+    border: 0;
+    border-radius: var(--radius-sm);
+    padding: var(--space-md) var(--space-lg);
+    background: var(--color-transparent);
+    color: var(--color-text-primary);
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+
+.html-dropdown-menu-item:hover,
+.html-dropdown-menu-item:focus-visible {
+    background: var(--color-dropdown-item-hover);
+    outline: none;
+}
