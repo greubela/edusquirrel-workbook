@@ -59,15 +59,15 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   test("all BeExpression subclasses render for Python, Java, Lisp, and C++".ignore) {
     allExpressions.foreach { expr =>
       targetLanguages.foreach { language =>
-        val rendered = expr.getInLanguage(language, humanLanguage)
+        val rendered = expr.expressionIO.toStringInLanguage(language, humanLanguage)
         assert(rendered.trim.nonEmpty, s"${expr.getClass.getSimpleName} should render non-empty for ${language.name}")
       }
     }
   }
 
   test("Python rendering includes type hints for variable and function signatures") {
-    val renderedVariable = xVar.getInLanguage(Python, humanLanguage)
-    val renderedFunction = function.getInLanguage(Python, humanLanguage)
+    val renderedVariable = xVar.expressionIO.toStringInLanguage(Python, humanLanguage)
+    val renderedFunction = function.expressionIO.toStringInLanguage(Python, humanLanguage)
 
     assert(renderedVariable.contains(":"), s"Expected Python variable hint in: $renderedVariable")
     assert(renderedFunction.contains("def add("), clues(renderedFunction))
@@ -87,7 +87,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       )
     ))
 
-    val rendered = scripted.getInLanguage(Python, humanLanguage)
+    val rendered = scripted.expressionIO.toStringInLanguage(Python, humanLanguage)
 
     val expected =
       """x: int = 1
@@ -122,7 +122,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         |}
         |""".stripMargin
 
-    assertEquals(scripted.getInLanguage(Java, humanLanguage), expected)
+    assertEquals(scripted.expressionIO.toStringInLanguage(Java, humanLanguage), expected)
   }
 
   test("Lisp sequence rendering matches expected string exactly".ignore) {
@@ -150,7 +150,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         |  )
         |)""".stripMargin
 
-    assertEquals(scripted.getInLanguage(Lisp, humanLanguage), expected)
+    assertEquals(scripted.expressionIO.toStringInLanguage(Lisp, humanLanguage), expected)
   }
 
   test("C++ sequence rendering matches expected string exactly".ignore) {
@@ -174,6 +174,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         |}
         |""".stripMargin
 
-    assertEquals(scripted.getInLanguage(Cpp, humanLanguage), expected)
+    assertEquals(scripted.expressionIO.toStringInLanguage(Cpp, humanLanguage), expected)
   }
 }
