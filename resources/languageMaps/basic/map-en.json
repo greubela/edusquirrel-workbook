@@ -3,5 +3,6 @@
   "imageLoadingMap": "[Image is loading!]",
   "noSectionSelected": "[No section selected!]",
   "noWorkbookLoaded": "[No workbook loaded!]",
-  "missingContent":  "[No Content Available]"
+  "missingContent": "[No Content Available]",
+  "workbookfooterprivacyinfo": "Privacy information: Workbook entries are stored locally in this browser unless you download or upload them."
 }

@@ -45,9 +45,25 @@ object HtmlFullWorkbookApp extends HtmlAppElement{
       case Some(workbookInfo) => HtmlWorkbookRenderer.render(workbookInfo.loadedWorkbook).getDomElement()//div("HtmlFullWorkbookApp::workbookDomelement not properly re-implemented yet!") //workbook.loadedWorkbook.getDomElement()
       case None => div(text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId("basic/noWorkbookLoaded")))
     }
-    val withFullscreen: Signal[List[Element]] = workbookSignal.map(workbookDom => List(technical.fullScreenContainer.getDomElement(), workbookDom))
-    div(children <-- withFullscreen)
+
+    div(
+      cls := "workbook-app-shell",
+      technical.fullScreenContainer.getDomElement(),
+      mainTag(
+        cls := "workbook-main",
+        child <-- workbookSignal
+      ),
+      initFooter()
+    )
   }
+
+  def initFooter(): Element = footerTag(
+    cls := "workbook-footer",
+    div(
+      cls := "workbook-footer-content",
+      span(text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId("basic/workbookfooterprivacyinfo")))
+    )
+  )
 
   override def getDomElement(): Element = workbookDomElement
 

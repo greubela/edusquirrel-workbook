@@ -1,10 +1,11 @@
 {
   "dataLoadingMap": "[Daten werden geladen]",
   "imageLoadingMap": "[Bild wird geladen]",
-  "missingContent":  "[Kein Inhalt vorhanden]",
+  "missingContent": "[Kein Inhalt vorhanden]",
   "noSectionSelected": "[Kein Abschnitt ausgewählt]",
   "noWorkbookLoaded": "[Kein Arbeitsheft geladen!]",
   "resetLocalStorage": "Alle Eingaben löschen",
   "downloadEverything": "Download (Arbeitsheft -> Datei)",
-  "uploadSession": "Laden (Datei -> Arbeitsheft)"
+  "uploadSession": "Laden (Datei -> Arbeitsheft)",
+  "workbookfooterprivacyinfo": "Datenschutzhinweis: Arbeitsheft-Eingaben werden lokal in diesem Browser gespeichert, sofern du sie nicht herunter- oder hochlädst."
 }

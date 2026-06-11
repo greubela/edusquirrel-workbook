@@ -1,5 +1,6 @@
 {
   "dataLoadingMap": "[chargement des données]",
   "imageLoadingMap": "[chargement de l'image]",
-  "noSectionSelected": "[aucune section sélectionnée]"
+  "noSectionSelected": "[aucune section sélectionnée]",
+  "workbookfooterprivacyinfo": "Confidentialité : les réponses du cahier sont stockées localement dans ce navigateur, sauf téléchargement ou téléversement."
 }

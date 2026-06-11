@@ -1,5 +1,6 @@
 {
   "dataLoadingMap": "[cargando datos]",
   "imageLoadingMap": "[cargando imagen]",
-  "noSectionSelected": "[ninguna sección seleccionada]"
+  "noSectionSelected": "[ninguna sección seleccionada]",
+  "workbookfooterprivacyinfo": "Privacidad: Las entradas del cuaderno se guardan localmente en este navegador, salvo que las descargues o subas."
 }
