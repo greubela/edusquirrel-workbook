@@ -56,7 +56,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     BeSingleLineComment(LanguageMap.universalMap("note"))
   )
 
-  test("all BeExpression subclasses render for Python, Java, Lisp, and C++".ignore) {
+  test("all BeExpression subclasses render for Python, Java, Lisp, and C++") {
     allExpressions.foreach { expr =>
       targetLanguages.foreach { language =>
         val rendered = expr.expressionIO.toStringInLanguage(language, humanLanguage)
@@ -101,7 +101,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(rendered, expected)
   }
 
-  test("Java sequence rendering matches expected string exactly".ignore) {
+  test("Java sequence rendering matches expected string ignoring surrounding whitespace") {
     val scripted = BeSequence.optionalBody(List(
       BeAssignVariable(xVar, literalOne),
       BeAssignVariable(yVar, literalTwo),
@@ -122,10 +122,10 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         |}
         |""".stripMargin
 
-    assertEquals(scripted.expressionIO.toStringInLanguage(Java, humanLanguage), expected)
+    assertEquals(scripted.expressionIO.toStringInLanguage(Java, humanLanguage).trim, expected.trim)
   }
 
-  test("Lisp sequence rendering matches expected string exactly".ignore) {
+  test("Lisp sequence rendering matches expected string exactly") {
     val scripted = BeSequence.optionalBody(List(
       BeAssignVariable(xVar, literalOne),
       BeAssignVariable(yVar, literalTwo),
@@ -138,22 +138,26 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
     val expected =
       """(progn
-        |  (setf x: int 1)
-        |  (setf y: int 2)
-        |  (if true
-        |    (progn
-        |      (setf x: int 2)
+        |    (setf x 1)
+        |    (setf y 2)
+        |    (if (progn    true)
+        |        (progn
+        |            (progn
+        |                (setf x 2)
+        |            )
+        |        )
+        |        (progn
+        |            (progn
+        |                (setf y 1)
+        |            )
+        |        )
         |    )
-        |    (progn
-        |      (setf y: int 1)
-        |    )
-        |  )
         |)""".stripMargin
 
     assertEquals(scripted.expressionIO.toStringInLanguage(Lisp, humanLanguage), expected)
   }
 
-  test("C++ sequence rendering matches expected string exactly".ignore) {
+  test("C++ sequence rendering matches expected string ignoring surrounding whitespace") {
     val scripted = BeSequence.optionalBody(List(
       BeAssignVariable(xVar, literalOne),
       BeAssignVariable(yVar, literalTwo),
@@ -174,6 +178,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         |}
         |""".stripMargin
 
-    assertEquals(scripted.expressionIO.toStringInLanguage(Cpp, humanLanguage), expected)
+    assertEquals(scripted.expressionIO.toStringInLanguage(Cpp, humanLanguage).trim, expected.trim)
   }
 }

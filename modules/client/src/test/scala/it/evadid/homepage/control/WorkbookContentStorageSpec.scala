@@ -7,7 +7,7 @@ import munit.FunSuite
 
 class WorkbookContentStorageSpec extends FunSuite {
 
-  test("language map triples use universal entries as fallback for missing explicit languages".ignore) {
+  test("language map triples use universal entries as fallback for missing explicit languages") {
     val contentId = LanguageMapContentId("testmap", "image1url")
     val store = LanguageMapTripleStore(Set(
       UniversalMapEntry(contentId, "universal.png"),
@@ -21,7 +21,7 @@ class WorkbookContentStorageSpec extends FunSuite {
     assertEquals(languageMap.getInLanguage(Spanish), "universal.png")
   }
 
-  test("language map triples can be backed by only a universal entry".ignore) {
+  test("language map triples can be backed by only a universal entry") {
     val contentId = LanguageMapContentId("testmap", "sharedasset")
     val store = LanguageMapTripleStore(Set(
       UniversalMapEntry(contentId, "shared.png")

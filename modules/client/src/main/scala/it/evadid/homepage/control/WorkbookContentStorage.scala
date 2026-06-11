@@ -244,7 +244,7 @@ object WorkbookContentStorage {
     }
   }
 
-  private val languageMapDirs: Set[FileDescription] = Set(
+  private lazy val languageMapDirs: Set[FileDescription] = Set(
     FileFactory.relativeToResourceFolder("/languageMaps/basic"),
     FileFactory.relativeToResourceFolder("/languageMaps/turtlestitch"),
     FileFactory.relativeToResourceFolder("/languageMaps/blockeditor"),
@@ -276,7 +276,7 @@ object WorkbookContentStorage {
     allFutures.map(_.collect { case Success(loadedFile) => loadedFile })
   }
 
-  private val languageMapFiles: List[FileDescription] = List(
+  private lazy val languageMapFiles: List[FileDescription] = List(
     FileFactory.relativeToResourceFolder("/languageMaps/basic/map-en.json"),
     FileFactory.relativeToResourceFolder("/languageMaps/basic/map-de.json"),
     FileFactory.relativeToResourceFolder("/languageMaps/basic/map-ua.json"),

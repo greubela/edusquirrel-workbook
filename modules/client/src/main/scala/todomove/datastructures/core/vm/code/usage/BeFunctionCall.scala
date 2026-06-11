@@ -138,6 +138,9 @@ case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDe
       programmingLanguage match {
         case Python | Java | JavaScript | Rust | Cpp =>
           formatCallForInfix(funcDef.functionTypeInfo.funcType, nameStr, parameterValuesFormatted)
+        case Lisp =>
+          val callParts = (nameStr :: parameterValuesFormatted).filter(_.nonEmpty)
+          callParts.mkString("(", " ", ")")
         case _ => ""
       }
     }
