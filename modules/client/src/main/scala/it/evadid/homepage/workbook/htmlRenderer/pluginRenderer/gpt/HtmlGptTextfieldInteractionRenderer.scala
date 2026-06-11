@@ -3,29 +3,61 @@ package it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.gpt
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveSvgElement
-import it.evadid.core.datastructures.chat.MessengerModel
+import it.evadid.core.datastructures.chat.{Message, MessengerModel}
+import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.distribution.commandTypes.LLMCommands
+import it.evadid.distribution.commandTypes.LLMCommands.MessengerChatCompletionRequest
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.homepage.workbook.htmlRenderer.interactionEditors.HtmlSimpleChatEditor
+import it.evadid.util.Logger
 import it.evadid.workbook.model.interaction.plugins.TurtleStitch.TurtleStitchExploreProjectElement
 import it.evadid.workbook.model.interaction.plugins.gpt.GptInteractionElement
+import it.evadid.workbook.model.interaction.sync.UpdateImportance.MAJOR
+import it.evadid.workbook.model.interaction.variable.InteractionVariable
 import org.scalajs.dom.SVGSVGElement
 
+import java.time.LocalDateTime
 import scala.collection.mutable
+import scala.concurrent.ExecutionContext
+import scala.util.{Failure, Success}
 
 object HtmlGptTextfieldInteractionRenderer extends HtmlRenderFactory[GptInteractionElement] {
 
 
-  private def onUserSendMessage(curModel: MessengerModel): Unit = {
-    println("user added message!")
+  private val systemPromptId: LanguageMapContentId = LanguageMapContentId("prompts/scaffolding-system-prompt")
+
+  private def sendError(err: Throwable, interactionVariable: InteractionVariable[MessengerModel]): Unit = interactionVariable.synchronized {
+    println(s"error while sending message to LLM: ${err.getMessage}\n    ${err.getStackTrace.mkString("\n    ")}")
+    val errText: String = s"@student: Unfortunately, I could not generate an answer. The error I got was ${err.getMessage}. I printed additional information on the browser console!"
+    val errMsg = Message(errText, LLMCommands.workbookPerson, LocalDateTime.now())
+    interactionVariable.updateStateFromUserInteraction(_.addMessage(errMsg), MAJOR)
+  }
+
+  private def onUserSendMessage(messageState: MessengerModel, interactionVariable: InteractionVariable[MessengerModel]): Unit = {
+    val systemPromptFuture = fullInfo.technical.contentStorage.asStorage.loadAsFuture(systemPromptId)(using ExecutionContext.global)
+    /*val curValTextarea = textInteraction.interactionVariable.currentValue
+    val inputStr = if (curValTextarea.trim.nonEmpty) s"@assistant: the textarea for the solution reads '$curValTextarea'" else s"@assistant: currently no text in solution area"
+    val languageStr = s", please answer in ${fullInfo.signals.currentLanguage.now()}"
+    val currentStateMsg = Message(inputStr + languageStr, LLMCommands.workbookPerson, LocalDateTime.now())
+    val nextMessageState = messageState.addMessage(currentStateMsg)*/
+
+    val requestFuture = systemPromptFuture.map { systemPrompt => MessengerChatCompletionRequest(systemPrompt.getWithLanguagePreference(LLMCommands.langPreference), messageState) }(using ExecutionContext.global)
+    LLMCommands.completeLLMCommandFactory.waitAndSendCommandTo(fullInfo.technical.backendServerExecutor, Logger(), requestFuture).onComplete {
+      case Success(result) if result.result.isSuccess => interactionVariable.setStateFromUserInteraction(result.typedResult.get.result, MAJOR)
+      case Success(result) if result.result.isFailure => sendError(new Exception("Received invalid result from worker", result.result.failed.get), interactionVariable)
+      case Failure(err) => sendError(err, interactionVariable)
+      case e: Any => sendError(new Exception("Received invalid result from worker: " + e.toString), interactionVariable) // should be unrechable
+    }(using ExecutionContext.global)
   }
 
   override protected def createDomElement(workbookElement: GptInteractionElement): L.Element = {
 
     val elements: mutable.ListBuffer[Element] = mutable.ListBuffer()
 
+    val interactionVariable = workbookElement.scaffoldingInteractionOp.get.interactionVariable
     if (workbookElement.scaffoldingInteractionOp.nonEmpty) {
-      val scaffoldingChat = HtmlSimpleChatEditor(workbookElement.scaffoldingInteractionOp.get.interactionVariable, onUserSendMessage)
+      val scaffoldingChat = HtmlSimpleChatEditor(interactionVariable, msg => onUserSendMessage(msg, interactionVariable))
       val openChatButton = HtmlButtonElement.withSvgContent(createScaffoldingButtonSvg(), event => {
         fullInfo.technical.makeFullscreen(scaffoldingChat)
       })
@@ -33,8 +65,11 @@ object HtmlGptTextfieldInteractionRenderer extends HtmlRenderFactory[GptInteract
     }
 
     div(
-      cls := "button-line",
-      children <-- Var(elements.toList).signal
+      cls := "workbook-interaction workbook-element",
+      div(
+        cls := "button-line",
+        children <-- Var(elements.toList).signal
+      )
     )
 
 

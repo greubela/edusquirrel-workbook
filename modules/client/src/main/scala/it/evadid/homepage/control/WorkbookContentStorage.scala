@@ -251,6 +251,7 @@ object WorkbookContentStorage {
     FileFactory.relativeToResourceFolder("/languageMaps/embroideryworkbook"),
     FileFactory.relativeToResourceFolder("/languageMaps/testworkbook"),
     FileFactory.relativeToResourceFolder("/languageMaps/plantworkshop"),
+    FileFactory.relativeToResourceFolder("/languageMaps/prompts"),
   )
 
   def loadAllFilesInDirs(fileStore: AsyncDataCache[FileDescription, LoadedFile], dirs: Set[FileDescription]): Future[Set[LoadedFile]] = {

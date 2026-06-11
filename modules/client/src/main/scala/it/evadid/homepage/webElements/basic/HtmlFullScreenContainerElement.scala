@@ -41,6 +41,10 @@ case class HtmlFullScreenContainerElement() extends HtmlAppElement {
       cls := "fullscreen-overlay",
       cls("is-visible") <-- overlayActiveVar.signal,
       L.onKeyDown --> (event => onKeyDown(event)),
+      div(
+        cls := "fullscreen-content",
+        contentContainer
+      ),
       button(
         typ := "button",
         cls := "fullscreen-close-button",
@@ -48,10 +52,6 @@ case class HtmlFullScreenContainerElement() extends HtmlAppElement {
         title := "Exit full screen",
         "×",
         onClick --> (_ => closeFullscreen())
-      ),
-      div(
-        cls := "fullscreen-content",
-        contentContainer
       )
     )
 

@@ -89,7 +89,10 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
   }
 
 
-  private lazy val secondSection: WorkbookSection =
+  private lazy val secondSection: WorkbookSection = {
+
+    val gptText1 = createTextInput("EmbroideryWorkbook/moreCornersTextExTextInput")
+
     section(
       "Section2",
       "EmbroideryWorkbook/section2Title",
@@ -97,6 +100,10 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
         container("EmbroideryWorkbook/S2E1Title", List(
           instructionHtml("EmbroideryWorkbook/RecreateShape"),
           createRecreateShapeUploadInteraction("square"),
+
+          instructionHtml("EmbroideryWorkbook/S2E1I0"),
+          gptText1,
+          GptInteractionElement("gpt-s2i1", gptText1, LanguageMapContentId("EmbroideryWorkbook/S2E1I0"), List(LanguageMapContentId("EmbroideryWorkbook/S2E1I0Scaff")), List()),
 
           instructionHtml("EmbroideryWorkbook/AnalyzeProgram"),
           createExploreExerciseDownloadInteraction("simple_repeat"),
@@ -144,6 +151,7 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
         )),
       )
     )
+  }
 
   private lazy val thirdSection: WorkbookSection = section(
     "Section3",

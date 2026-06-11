@@ -12,7 +12,7 @@ object SimpleTextEditor {
 
   val defaultConfig: TextEditorConfig = TextEditorConfig(
     monospace = false,
-    rowsCount = 8,
+    rowsCount = 4,
     colsCount = 110,
     containerClass = "simple-text-editor"
   )

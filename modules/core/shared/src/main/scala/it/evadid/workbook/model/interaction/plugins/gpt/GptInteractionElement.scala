@@ -19,7 +19,7 @@ case class GptInteractionElement(
   val scaffoldingInteractionOp: Option[MessagingInteraction] = {
     if(scaffoldingHints.nonEmpty){
       println("[WARN] creating messaging interaction for id '" + id + "' with test scaffolding hints")
-      Some(MessagingInteraction(id + "_scaffoldingMessenger", MessengerModel.testCompletion))
+      Some(MessagingInteraction(id + "_scaffoldingMessenger", MessengerModel.turtleStitchHelperExample))
     }else{
       None
     }

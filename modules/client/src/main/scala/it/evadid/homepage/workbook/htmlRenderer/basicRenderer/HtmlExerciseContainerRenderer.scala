@@ -1,11 +1,11 @@
 package it.evadid.homepage.workbook.htmlRenderer.basicRenderer
 
 import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.Element
+import com.raquo.laminar.api.L.*
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
-import it.evadid.workbook.model.abstractions.{WorkbookElement, WorkbookElementGroup}
+import it.evadid.workbook.model.elements.ExerciseContainer
 
-object HtmlExerciseContainerRenderer extends HtmlRenderFactory[WorkbookElementGroup[WorkbookElement]] {
+object HtmlExerciseContainerRenderer extends HtmlRenderFactory[ExerciseContainer] {
 
   private def level = 1 // todo: calculate correctly 
 
@@ -13,17 +13,40 @@ object HtmlExerciseContainerRenderer extends HtmlRenderFactory[WorkbookElementGr
 
   private val normalizedLevel: Int = math.max(1, math.min(6, level))
 
-  private val clsString = if (isMainContainer) s"container-exercise style-vbox container-level-$normalizedLevel" else s"container-sub container-level-$normalizedLevel"
+  private val clsStringContainer = if (isMainContainer) s"container-exercise style-vbox container-level-$normalizedLevel" else s"container-sub container-level-$normalizedLevel"
+  private val clsStringTitle = s"workbook-element container-title-level-$normalizedLevel"
 
-  private def renderChildren(container: WorkbookElement): List[Element] = {
-    container.childrenOfThisElement.map(HtmlRenderFactory.renderWorkbookElement).map(_.getDomElement())
+  private def renderAllChildren(container: ExerciseContainer): List[Element] = {
+    val title = renderContainerTitle(container)
+    val rest = container.childrenOfThisElement.map(HtmlRenderFactory.renderWorkbookElement).map(_.getDomElement())
+    List(title) ++ rest
   }
 
-  override protected def createDomElement(workbookElement: WorkbookElementGroup[WorkbookElement]): L.Element = L.div(
+  private def headingElement(content: String): Element = (normalizedLevel + 1) match {
+    case 1 => h1(content)
+    case 2 => h2(content)
+    case 3 => h3(content)
+    case 4 => h4(content)
+    case 5 => h5(content)
+    case _ => h6(content)
+  }
+
+  private def renderContainerTitle(container: ExerciseContainer): Element = {
+    div(
+      cls := "workbook-element container-title",
+      cls := s"container-title-level-$normalizedLevel",
+      /*h2(
+        text <-- fullInfo.signals.stringFromLanguageMapId(container.containerTitle)
+      )*/
+       child <-- fullInfo.signals.stringFromLanguageMapId(container.containerTitle).map(headingElement)
+    )
+  }
+
+  override protected def createDomElement(workbookElement: ExerciseContainer): Element = div(
     //L.cls := "container-exercise style-vbox",
     // L.cls := s"container-level-$normalizedLevel",
-    L.cls := clsString,
-    L.children <-- L.Var(renderChildren(workbookElement)).signal
+    cls := clsStringContainer,
+    children <-- Var(renderAllChildren(workbookElement)).signal
   )
 
 

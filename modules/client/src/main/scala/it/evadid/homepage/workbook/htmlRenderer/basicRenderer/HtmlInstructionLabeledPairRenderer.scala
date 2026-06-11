@@ -2,7 +2,6 @@ package it.evadid.homepage.workbook.htmlRenderer.basicRenderer
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
-import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.HtmlExerciseContainerRenderer.renderChildren
 import it.evadid.workbook.model.abstractions.{WorkbookElement, WorkbookElementGroup}
 import it.evadid.workbook.model.elements.LabeledInstructionElement
 

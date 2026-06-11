@@ -1,5 +1,5 @@
 {
-  "RecreateShape": "Reprogram the pattern shown in <a target=\"_blank\" href=\"https://www.turtlestitch.org/run\"> TurtleStitch </a>. Then save the project and upload it here.",
+  "RecreateShape": "Reprogram the pattern shown in <a target=\"_blank\" href=\"https://www.turtlestitch.org/run\">TurtleStitch</a>. Then save the project and upload it here.",
   "RecreateShapeWithBlocks": "Program the pattern shown. Use your own blocks. Then save the project and upload it here.",
   "RecreateShapeWithCounting": "Program the pattern shown. Use your own blocks and counting repetitions. Then save the project and upload it here.",
   "AnalyzeProgram": "Download the program shown and run it in <a target=\"_blank\" href=\"https://www.turtlestitch.org/run\"> TurtleStitch </a>",
@@ -28,8 +28,9 @@
   "Ex3Instr2": "Describe what the pen up and pen down commands do.",
   "Ex3Instr3": "Change the numbers in the 'Go To' command. Describe what happens and what the variables x and y are for.",
   "section2Title": "Section 2: Repetitions",
-  "S2E1Title": "More beautiful programs through repetition",
-  "S2E1I1": "Describe what comes out of the program",
+  "S2E1Title": "Repeat the code, not yourself!",
+  "S2E1I0": "Describe how you could create a pentagon using the techniques you currently know and argue why this approach does not scale well when further increasing the number of corners.",
+  "S2E1I1": "Describe the shape created by the program",
   "S2E1I2": "Change the number in the 'Repeat' block to 3 and describe what comes out.",
   "S2E1I3": "Change the number in the 'Repeat' block to 6 and describe what comes out.",
   "S2E1I4": "Describe in your own words what the 'Repeat' block does.",

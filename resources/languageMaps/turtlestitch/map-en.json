@@ -8,7 +8,8 @@
   "showUploadedProgramText": "Uploaded Project (Code Preview)",
   "showEmptyPreview": "Uploaded Project (missing)",
   "showExpected": "Desired Output",
-  "uploadButton": "Upload TurtleStitch Project (XML)",
+  "uploadTitle": "Your Submission",
+  "uploadButton": "Upload (XML)",
   "downloadButton": "Download Shown Project",
   "redownloadProgram": "Download your submission"
 }

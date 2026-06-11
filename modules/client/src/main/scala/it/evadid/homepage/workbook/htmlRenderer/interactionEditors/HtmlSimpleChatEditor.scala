@@ -60,7 +60,7 @@ case class HtmlSimpleChatEditor(chatExercise: InteractionVariable[MessengerModel
       val currentState = chatExercise.currentValue
       val nextState = currentState.addMessage(
         text = trimmed,
-        author = Person("student", "it.evadid.student", SenderRole.USER, None),
+        author = Person("Student", "it.evadid.student", SenderRole.USER, None),
         timestamp = LocalDateTime.now()
       )
       chatExercise.setStateFromUserInteraction(nextState, UpdateImportance.MAJOR)

@@ -253,9 +253,9 @@ body {
 
 .workbook-interaction {
     border-left: var(--space-md) solid var(--color-container-border-inactive);
-    border-top: var(--space-xs) solid var(--color-container-border-passive);
-    border-right: var(--space-xs) solid var(--color-container-border-passive);
-    border-bottom: var(--space-xs) solid var(--color-container-border-passive);
+    /*border-top: var(--space-xs) solid var(--color-container-border-passive);*/
+    /*border-right: var(--space-xs) solid var(--color-container-border-inactive);*/
+    /*border-bottom: var(--space-xs) solid var(--color-container-border-passive);*/
     width: 100%;
 }
 
@@ -478,7 +478,12 @@ h3 {
 
 button {
     min-width: 120px;
-    padding: var(--space-sm) var(--space-md);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: var(--space-sm);
     border-radius: var(--radius-md);
     border: var(--interaction-border);
     background: var(--color-button-background);
@@ -487,6 +492,7 @@ button {
     cursor: pointer;
     font-weight: 600;
     transition: var(--interaction-highlight-transition);
+    margin: 0 auto;
 }
 
 button:hover:not(:disabled) {
@@ -607,20 +613,6 @@ button:disabled {
 }
 
 /* --- SVG Button Styling --- */
-.svg-button {
-    width: 52px;
-    height: 36px;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-button-border);
-    background: var(--color-button-background);
-    box-shadow: var(--shadow-button);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-    cursor: pointer;
-    padding: var(--space-xs);
-}
 
 .svg-button:hover {
     transform: translateY(-2px);
@@ -930,7 +922,7 @@ textarea.workbook-interaction {
 
 .workbook-user-menu-anchor {
     grid-column: 3;
-    justify-self: end;
+/*    justify-self: end;*/
 }
 
 .workbook-user-menu-trigger {
