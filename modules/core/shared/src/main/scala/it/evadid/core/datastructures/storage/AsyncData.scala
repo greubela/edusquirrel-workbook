@@ -38,6 +38,10 @@ object AsyncData {
     case Some(v) => AsyncData.AsyncDataSuccess(v)
   }
 
+  /*case class AsyncDataMissing[T]() extends AsyncData[T] {
+
+  }*/
+
   case class AsyncDataLoading[T]() extends AsyncData[T] {
     override val asEither: Either[Throwable, Option[T]] = Right(None)
     override val loadingSince: Option[LocalDateTime] = Some(LocalDateTime.now())
