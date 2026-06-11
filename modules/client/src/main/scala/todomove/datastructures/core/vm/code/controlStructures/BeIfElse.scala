@@ -2,8 +2,6 @@ package todomove.datastructures.core.vm.code.controlStructures
 
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.util.CodeStringBuilder
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.control.BeBlockIfElse
 import todomove.datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import todomove.datastructures.core.vm.code.{BeControlStructure, BeExpression}
 import todomove.datastructures.core.vm.controlflow.ControlFlowType
@@ -199,7 +197,6 @@ case class BeIfElse(
     }
 
 
-    override def toBlock(): BeBlock = new BeBlockIfElse(myRef)
   }
 
 

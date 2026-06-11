@@ -2,8 +2,6 @@ package todomove.datastructures.core.vm.code.errors
 
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.other.BeBlockUnsupported
 import todomove.datastructures.core.vm.code.BeExpression
 import todomove.datastructures.core.vm.io.BeExpressionIO
 import todomove.datastructures.core.vm.static.BeExpressionStaticInformation
@@ -28,7 +26,6 @@ case class BeExpressionUnsupported(originalSource: String) extends BeExpression 
       originalSource
     }
 
-    override def toBlock(): BeBlock = BeBlockUnsupported(BeExpressionUnsupported.this)
   }
 
 

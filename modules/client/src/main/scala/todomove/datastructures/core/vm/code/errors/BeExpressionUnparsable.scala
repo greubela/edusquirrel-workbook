@@ -2,8 +2,6 @@ package todomove.datastructures.core.vm.code.errors
 
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.other.BeBlockUnparsable
 import todomove.datastructures.core.vm.code.BeExpression
 import todomove.datastructures.core.vm.io.BeExpressionIO
 import todomove.datastructures.core.vm.static.BeExpressionStaticInformation
@@ -23,7 +21,6 @@ case class BeExpressionUnparsable(originalSource: String, message: String) exten
       if (skipUnparsable) "" else originalSource
     }
 
-    override def toBlock(): BeBlock = BeBlockUnparsable(BeExpressionUnparsable.this)
   }
 
 

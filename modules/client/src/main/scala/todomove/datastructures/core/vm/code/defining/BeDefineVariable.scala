@@ -3,8 +3,6 @@ package todomove.datastructures.core.vm.code.defining
 import it.evadid.core.datastructures.language.AppLanguage.{Cpp, Java, Python}
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.data.BeBlockDefineVariable
 import todomove.datastructures.core.vm.code.BeDefineStructure
 import todomove.datastructures.core.vm.code.tree.BeExpressionNode
 import todomove.datastructures.core.vm.io.BeExpressionIO
@@ -35,7 +33,6 @@ case class BeDefineVariable(
       }
     }
 
-    override def toBlock(): BeBlock =      BeBlockDefineVariable(BeDefineVariable.this)
     
   }
 

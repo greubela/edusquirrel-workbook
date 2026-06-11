@@ -8,8 +8,6 @@ import it.evadid.core.util.CodeStringBuilder
 
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.define.BeBlockDefineSingleReturnFunction
 import todomove.datastructures.core.vm.code.{BeDefineStructure, BeExpression}
 import todomove.datastructures.core.vm.code.controlStructures.BeSequence
 import todomove.datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference}
@@ -108,8 +106,6 @@ case class BeDefineFunction(
       }
     }
 
-    override def toBlock(): BeBlock =
-      BeBlockDefineSingleReturnFunction(BeDefineFunction.this)
 
 
   }

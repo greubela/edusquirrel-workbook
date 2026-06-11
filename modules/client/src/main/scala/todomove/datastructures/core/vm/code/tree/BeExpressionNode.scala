@@ -4,7 +4,6 @@ import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreePosition
 
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.other.BeBlockPlaceholder
 import todomove.datastructures.core.vm.code.BeExpression
 import todomove.datastructures.core.vm.types.{BeChildPosition, BeDataType}
 

@@ -1,10 +1,9 @@
 package todomove.datastructures.core.vm.code
 
 import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreeImpl
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeExpressionTree
 import todomove.datastructures.core.vm.code.controlStructures.BeSequence
 import todomove.datastructures.core.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
-import todomove.datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference, BeExtensionPoint}
+import todomove.datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference, BeExpressionTree, BeExtensionPoint}
 import todomove.datastructures.core.vm.io.BeExpressionIO
 import todomove.datastructures.core.vm.simulation.{BeExpressionExecutor, BeSimulatorConfig, BeSimulatorState}
 import todomove.datastructures.core.vm.static.BeExpressionStaticInformation
