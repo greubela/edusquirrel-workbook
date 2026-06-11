@@ -15,7 +15,7 @@ import it.evadid.workbook.model.abstractions.WorkbookElement
 import it.evadid.workbook.model.elements.ImageElement.FileBasedImageElement
 import it.evadid.workbook.model.elements.{ExerciseContainer, ImageElement, LabeledInstructionElement, LangMapContentBasedElement, Workbook}
 import it.evadid.workbook.model.interaction.WorkbookInteraction.TextInteractionBasic
-import it.evadid.workbook.model.interaction.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction}
+import it.evadid.workbook.model.interaction.basic.*
 import it.evadid.workbook.model.interaction.plugins.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
 import it.evadid.workbook.model.interaction.plugins.gpt.GptInteractionElement
 import it.evadid.workbook.model.interaction.plugins.reorderExercise.ReorderInteraction
@@ -69,6 +69,12 @@ object HtmlRenderFactory {
       case i: TextInteractionBasic => HtmlSimpleTextInteractionRenderer.render(i)
       case i: LabeledCheckboxInteraction => HtmlBasicCheckboxRenderer.render(i)
       case i: LabeledNumberInteraction => HtmlBasicNumberRenderer.render(i)
+      case i: ChoiceSelectionInteraction => HtmlChoiceSelectionRenderer.render(i)
+      case i: MatchingInteraction => HtmlMatchingInteractionRenderer.render(i)
+      case i: CategorizationInteraction => HtmlCategorizationInteractionRenderer.render(i)
+      case i: FillInBlanksInteraction => HtmlFillInBlanksRenderer.render(i)
+      case i: DropdownBlanksInteraction => HtmlDropdownBlanksRenderer.render(i)
+      case i: TableFillInInteraction => HtmlTableFillInRenderer.render(i)
       case s: Slideshow => HtmlSlideshowEditor.render(s)
       case r: ReorderInteraction[?] => HtmlReorderInteractionRenderer.render(r)
       // plugins -- turtle
