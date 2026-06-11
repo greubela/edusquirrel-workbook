@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.homepage.control.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.basic.HtmlButtonElement
+import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlDropdownMenu}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.workbook.model.elements.{Workbook, WorkbookSection}
 import org.scalajs.dom
@@ -35,7 +35,8 @@ object HtmlWorkbookRenderer extends HtmlRenderFactory[Workbook] {
 
   private def createDomHeaderTitleLine(workbook: Workbook): Element = div(
     cls := "workbook-title-line",
-    h1(text <-- contentIdStringSignal(workbook.workbookTitle))
+    h1(text <-- contentIdStringSignal(workbook.workbookTitle)),
+    UserMenu().getDomElement()
   )
 
   /*
@@ -56,6 +57,48 @@ object HtmlWorkbookRenderer extends HtmlRenderFactory[Workbook] {
 
   private def sectionContainer(currentlyActiveSection: Option[WorkbookSection]): List[Element] =
     currentlyActiveSection.map(createDomSectionContent).getOrElse(List(createDomNoSectionActivePlaceholder()))
+}
+
+private case class UserMenu() extends HtmlAppElement {
+
+  private val isOpen: Var[Boolean] = Var(false)
+
+  private def userInitials(name: String): String = {
+    val parts = name.trim.split("\\s+").filter(_.nonEmpty).toList
+    val initials = parts.take(2).flatMap(_.headOption).mkString.toUpperCase
+    if (initials.nonEmpty) initials else "?"
+  }
+
+  private val currentUserName: Signal[String] = Var(
+    fullInfo.current.userInfo.map(_.user.name).getOrElse("User")
+  ).signal
+
+  private val currentUserInitials: Signal[String] = currentUserName.map(userInitials)
+
+  private val menu: HtmlDropdownMenu = HtmlDropdownMenu(List(
+    HtmlDropdownMenu.menuItem("Einstellungen"),
+    HtmlDropdownMenu.menuItem("Persönliche Daten herunterladen"),
+    HtmlDropdownMenu.menuItem("Abmelden")
+  ))
+
+  private val domElement: Element = div(
+    cls := "workbook-user-menu-anchor dropdown-anchor",
+    button(
+      cls := "workbook-user-menu-trigger",
+      typ := "button",
+      aria.label := "Benutzermenü öffnen",
+      title <-- currentUserName.map(name => s"Benutzermenü für $name öffnen"),
+      onClick --> { event =>
+        event.stopPropagation()
+        isOpen.update(!_)
+      },
+      span(cls := "workbook-user-menu-icon", child.text <-- currentUserInitials),
+      span(cls := "workbook-user-menu-caret", "▾")
+    ),
+    child.maybe <-- isOpen.signal.map(open => Option.when(open)(menu.getDomElement()))
+  )
+
+  override def getDomElement(): Element = domElement
 }
 
 private case class SectionSelectionLine(workbook: Workbook) extends HtmlAppElement {

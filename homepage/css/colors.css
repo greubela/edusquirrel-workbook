@@ -20,6 +20,7 @@
   --color-surface-base: #ffffff;
   --color-text-muted: #4c566a;
   --color-text-muted-light: #a2a2a2;
+  --color-transparent: transparent;
 
   /* Feedback / status colors (outside workbook core count). */
   --color-error-500: #f91818;
@@ -119,6 +120,13 @@
   --color-button-background: var(--color-surface-muted);
   --color-button-hover: var(--color-surface);
   --color-button-border: var(--color-interaction-border);
+
+  /* Dropdown menus */
+  --color-dropdown-background: var(--color-surface-base);
+  --color-dropdown-border: var(--color-border-soft);
+  --color-dropdown-item-hover: var(--color-surface-level-2);
+  --color-dropdown-trigger-background: var(--color-surface-base);
+  --color-dropdown-trigger-hover: var(--color-surface-level-2);
 
   /* Backward-compatible aliases used across existing stylesheets. */
   --color-container-background: var(--color-workbook-surface-level-1);
