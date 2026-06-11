@@ -6,8 +6,6 @@ import todomove.datastructures.core.vm.types.*
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.use.BeBlockCallSingleReturnFunction
 import todomove.datastructures.core.vm.code.BeExpression
 import todomove.datastructures.core.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import todomove.datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference}
@@ -146,7 +144,6 @@ case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDe
     }
 
 
-    override def toBlock(): BeBlock = BeBlockCallSingleReturnFunction(BeFunctionCall.this)
   }
 
   override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = {

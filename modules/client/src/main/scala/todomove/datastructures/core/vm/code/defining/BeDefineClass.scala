@@ -4,7 +4,6 @@ import it.evadid.core.datastructures.language.AppLanguage.{Cpp, Java, JavaScript
 
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import todomove.datastructures.core.vm.code.{BeDefineStructure, BeExpression}
 import todomove.datastructures.core.vm.code.tree.BeExpressionNode
 import todomove.datastructures.core.vm.io.BeExpressionIO
@@ -170,8 +169,6 @@ case class BeDefineClass(
       }
     }
 
-    override def toBlock(): BeBlock =
-      throw new NotImplementedError("Block rendering is not implemented for BeDefineClass")
 
   }
 

@@ -3,7 +3,6 @@ package todomove.datastructures.core.vm.code.controlStructures
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.util.CodeStringBuilder
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import todomove.datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import todomove.datastructures.core.vm.code.{BeControlStructure, BeExpression}
 import todomove.datastructures.core.vm.io.BeExpressionIO
@@ -91,8 +90,6 @@ case class BeRepeatNr(amount: Int, body: BeSequence) extends BeControlStructure 
     }
 
 
-    override def toBlock(): BeBlock =
-      throw new NotImplementedError("Block rendering is not implemented for BeRepeatNr")
 
   }
 

@@ -5,8 +5,6 @@ import todomove.datastructures.core.vm.types.BeScope.InSequenceScope
 
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.control.BeBlockStarter
 import todomove.datastructures.core.vm.code.BeExpression
 import todomove.datastructures.core.vm.code.controlStructures.BeSequence
 import todomove.datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference}
@@ -25,7 +23,6 @@ case class BeStartProgram(startSequence: Option[BeSequence]) extends BeExpressio
     override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String =
       startSequence.map(_.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable)).getOrElse("")
 
-    override def toBlock(): BeBlock = BeBlockStarter()
   }
 
 

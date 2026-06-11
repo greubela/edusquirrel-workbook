@@ -4,8 +4,6 @@ import todomove.datastructures.core.vm.types.BeChildRole.ValueInAssignment
 
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.use.BeBlockAssignValue
 import todomove.datastructures.core.vm.code.BeExpression
 import todomove.datastructures.core.vm.code.defining.BeDefineVariable
 import todomove.datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference}
@@ -51,7 +49,6 @@ case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) exten
     }
 
 
-    override def toBlock(): BeBlock = BeBlockAssignValue(target, value)
   }
 
   override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = List(

@@ -6,6 +6,7 @@ import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreePosition
 import it.evadid.core.datastructures.tree.{Tree, TreeStructureAndExecutionContext, TreeStructureContext}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.block.BeBlockRendererFactory
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.other.BeBlockPlaceholder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
 import todomove.datastructures.core.vm.code.BeExpression
@@ -37,7 +38,7 @@ case class BeProgram(fullProgram: BeExpression) {
         (structure.curValue, BeBlockPlaceholder(structure.curValue.asInstanceOf[BeExtensionPoint], structure.curPosition))
       }
       case BeExpressionReference(childPos, expression) => {
-        (structure.curValue, expression.expressionIO.toBlock())
+        (structure.curValue, BeBlockRendererFactory.blockFor(expression))
       }
     }
   })
