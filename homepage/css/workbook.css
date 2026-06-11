@@ -18,6 +18,42 @@ body {
     );
 }
 
+
+.workbook-app-shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.workbook-main {
+    flex: 1 0 auto;
+}
+
+.workbook-footer {
+    flex: 0 0 auto;
+    min-height: 36px;
+    max-height: 50px;
+    padding: 0 var(--space-lg);
+    background: linear-gradient(180deg, var(--color-header-gradient-start) 0%, var(--color-header-gradient-end) 100%);
+    border-top: 1px solid var(--color-border-subtle);
+    box-shadow: 0 -1px 0 var(--color-shadow-blue-soft);
+    color: var(--color-text-secondary);
+    font-size: 0.78rem;
+    line-height: 1.25;
+    overflow: hidden;
+}
+
+.workbook-footer-content {
+    min-height: 36px;
+    max-height: 50px;
+    width: min(100%, 980px);
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
 /* workbook title line */
 
 .workbook-header {

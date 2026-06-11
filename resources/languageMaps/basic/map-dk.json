@@ -1,5 +1,6 @@
 {
   "dataLoadingMap": "[data indlæses]",
   "imageLoadingMap": "[billedet indlæses]",
-  "noSectionSelected": "[intet afsnit valgt]"
+  "noSectionSelected": "[intet afsnit valgt]",
+  "workbookfooterprivacyinfo": "Privatliv: Arbejdshæftets indtastninger gemmes lokalt i denne browser, medmindre du downloader eller uploader dem."
 }
