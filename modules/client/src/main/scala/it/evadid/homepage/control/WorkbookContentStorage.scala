@@ -3,7 +3,7 @@ package it.evadid.homepage.control
 import it.evadid.core.datastructures.file.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap, LanguageMapContentId}
-import it.evadid.homepage.control.WorkbookContentStorage.{LanguageMapTripleStore, MapEntryTripel, triplesFromFile}
+import it.evadid.homepage.control.WorkbookContentStorage.{LanguageMapEntry, LanguageMapTripleStore, triplesFromFile}
 import it.evadid.homepage.util.serializing.IoSerialization
 import it.evadid.workbook.model.elements.ImageElement
 import org.scalajs.dom.URL
@@ -66,8 +66,8 @@ case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, Loa
     res.future
   }
 
-  def addTriples(triples: Set[MapEntryTripel]): Unit = fileStore.synchronized {
-    val existingTriples: Set[MapEntryTripel] = lastFinishedCache.map(_.triples).getOrElse(Set.empty)
+  def addTriples(triples: Set[LanguageMapEntry]): Unit = fileStore.synchronized {
+    val existingTriples: Set[LanguageMapEntry] = lastFinishedCache.map(_.triples).getOrElse(Set.empty)
     val newStore = LanguageMapTripleStore(existingTriples ++ triples)
     lastFinishedCache = Some(newStore)
     // ensure caches are working
@@ -129,7 +129,7 @@ case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, Loa
 
 object WorkbookContentStorage {
 
-  case class LanguageMapTripleStore(triples: Set[MapEntryTripel]) {
+  case class LanguageMapTripleStore(triples: Set[LanguageMapEntry]) {
     private lazy val toLanguageMaps: Set[LanguageMapWithId] = triplesToLanguageMaps(triples)
 
     def contains(contentId: LanguageMapContentId): Boolean = toLanguageMaps.exists(_.contentId == contentId)
@@ -142,13 +142,27 @@ object WorkbookContentStorage {
 
   case class LanguageMapWithId(contentId: LanguageMapContentId, languageMap: LanguageMap[HumanLanguage])
 
-  case class MapEntryTripel(contentId: LanguageMapContentId, language: HumanLanguage, value: String)
+  sealed trait LanguageMapEntry {
+    def contentId: LanguageMapContentId
+    def value: String
+  }
 
-  private def ensureLoaded(fileStore: AsyncDataCache[FileDescription, LoadedFile], ensureFiles: Set[FileDescription]): Future[List[MapEntryTripel]] = {
+  case class MapEntryTripel(contentId: LanguageMapContentId,
+                            language: HumanLanguage,
+                            value: String) extends LanguageMapEntry
 
-    val resPromise = Promise[List[MapEntryTripel]]()
+  case class UniversalMapEntry(contentId: LanguageMapContentId,
+                               value: String) extends LanguageMapEntry
+
+  private sealed trait LanguageMapFileKind
+  private case class RegularLanguageMapFile(language: HumanLanguage) extends LanguageMapFileKind
+  private case object UniversalLanguageMapFile extends LanguageMapFileKind
+
+  private def ensureLoaded(fileStore: AsyncDataCache[FileDescription, LoadedFile], ensureFiles: Set[FileDescription]): Future[List[LanguageMapEntry]] = {
+
+    val resPromise = Promise[List[LanguageMapEntry]]()
     val filesFinished = mutable.ListBuffer[FileDescription]()
-    val triplesLoaded = mutable.ListBuffer[MapEntryTripel]()
+    val triplesLoaded = mutable.ListBuffer[LanguageMapEntry]()
 
     def onFileFailed(err: Throwable): Unit = {
       resPromise.failure(err)
@@ -172,42 +186,60 @@ object WorkbookContentStorage {
     resPromise.future
   }
 
-  private def triplesToLanguageMaps(triples: Set[MapEntryTripel]): Set[LanguageMapWithId] = {
+  private def triplesToLanguageMaps(triples: Set[LanguageMapEntry]): Set[LanguageMapWithId] = {
     triples
       .groupBy(_.contentId)
       .map {
         case (mapId, entries) =>
-          val languageMap: Map[HumanLanguage, String] = entries.map(entry => entry.language -> entry.value).toMap
+          val languageMap: Map[HumanLanguage, String] = entries
+            .collect { case MapEntryTripel(_, language, value) => language -> value }
+            .toMap
+          val explicitLanguageMap = LanguageMap.mapBasedLanguageMap(languageMap)
+          val universalLanguageMap = entries.collectFirst {
+            case UniversalMapEntry(_, value) => LanguageMap.universalMap[HumanLanguage](value)
+          }
           //println("read map from " + triples.size + " triples to " + languageMap.size + " entries (in languages: " + languageMap.keys + ")")
-          LanguageMapWithId(mapId, LanguageMap.mapBasedLanguageMap(languageMap))
+          val mergedLanguageMap = universalLanguageMap
+            .map(universalMap => LanguageMap.combinedMap(List(explicitLanguageMap, universalMap)))
+            .getOrElse(explicitLanguageMap)
+          LanguageMapWithId(mapId, mergedLanguageMap)
       }
-      .map(tup => LanguageMapWithId(tup._1, tup._2))
       .toSet
   }
 
-  private def languageFromFileDescription(file: FileDescription): Option[HumanLanguage] = {
+  private def languageMapFileKindFromFileDescription(file: FileDescription): Option[LanguageMapFileKind] = {
     val langSuffix: Option[String] = file.filenameWithoutExtension.split("-").lastOption.map(_.toLowerCase)
-    langSuffix.map(WorkbookContentStorage.languageByFileSuffix)
+    langSuffix.flatMap {
+      case "universal" => Some(UniversalLanguageMapFile)
+      case suffix => WorkbookContentStorage.languageByFileSuffix.get(suffix).map(RegularLanguageMapFile.apply)
+    }
   }
 
-  private def triplesFromFile(file: LoadedFile): Set[MapEntryTripel] = {
-    val languageOp = languageFromFileDescription(file.description)
+  private def languageMapEntry(contentId: LanguageMapContentId,
+                               fileKind: LanguageMapFileKind,
+                               value: String): LanguageMapEntry = fileKind match {
+    case RegularLanguageMapFile(language) => MapEntryTripel(contentId, language, value)
+    case UniversalLanguageMapFile => UniversalMapEntry(contentId, value)
+  }
+
+  private def triplesFromFile(file: LoadedFile): Set[LanguageMapEntry] = {
+    val languageOp = languageMapFileKindFromFileDescription(file.description)
     val languageMapIdOp = file.description.dirNames.lastOption
     //println("######## loading triples from file '" + file.description.fullPath + ": " + languageMapIdOp + " /" + languageOp)
     if (languageOp.isEmpty || languageMapIdOp.isEmpty) {
-      Set.empty[MapEntryTripel]
+      Set.empty[LanguageMapEntry]
     }
     else {
       if (file.description.extensionOrEmpty == "json") {
         IoSerialization.parseJson(file.fileDataAsUtf8String).toList.map(tup => {
-          MapEntryTripel(LanguageMapContentId(languageMapIdOp.get.toLowerCase, tup._1.toLowerCase), languageOp.get, tup._2)
+          languageMapEntry(LanguageMapContentId(languageMapIdOp.get.toLowerCase, tup._1.toLowerCase), languageOp.get, tup._2)
         }).toSet
       } else if (file.description.extensionOrEmpty == "csv") {
         IoSerialization.parseCsv(file.fileDataAsUtf8String).filter(_.size >= 2).map(curColumns => {
-          MapEntryTripel(LanguageMapContentId(languageMapIdOp.get.toLowerCase, curColumns.head.toLowerCase), languageOp.get, curColumns(1))
+          languageMapEntry(LanguageMapContentId(languageMapIdOp.get.toLowerCase, curColumns.head.toLowerCase), languageOp.get, curColumns(1))
         }).toSet
       } else {
-        Set.empty[MapEntryTripel]
+        Set.empty[LanguageMapEntry]
       }
     }
   }
@@ -223,7 +255,7 @@ object WorkbookContentStorage {
 
   def loadAllFilesInDirs(fileStore: AsyncDataCache[FileDescription, LoadedFile], dirs: Set[FileDescription]): Future[Set[LoadedFile]] = {
     val allFiles = dirs
-      .flatMap(curDir => languageByFileSuffix.keys.map(curSuffix => curDir.fullPath + "/map-" + curSuffix + ".json"))
+      .flatMap(curDir => languageMapFileSuffixes.map(curSuffix => curDir.fullPath + "/map-" + curSuffix + ".json"))
       .map(urlStr => FileFactory.fromUrl(URL(urlStr), CopyrightInfo.unknownCopyrightInfo))
 
     val allFutures: Future[Set[Try[LoadedFile]]] = Future.traverse(allFiles)(curFile => {
@@ -284,6 +316,9 @@ object WorkbookContentStorage {
     "dk" -> AppLanguage.Danish,
     "es" -> AppLanguage.Spanish
   )
+
+  private val universalLanguageMapFileSuffix: String = "universal"
+  private val languageMapFileSuffixes: Set[String] = languageByFileSuffix.keySet + universalLanguageMapFileSuffix
 
   def languageMapError(id: LanguageMapContentId, cause: Throwable): LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(
     Map(
