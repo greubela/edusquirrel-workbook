@@ -969,3 +969,64 @@ textarea.workbook-interaction {
     font-size: 0.9rem;
     line-height: 1;
 }
+
+.simple-number-editor {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.simple-number-editor__body {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    width: 100%;
+    padding: var(--space-md);
+    background-color: var(--color-surface);
+}
+
+.simple-number-editor__label-text {
+    color: var(--color-text-primary);
+    letter-spacing: 0.01em;
+    flex: 0 0 auto;
+}
+
+.simple-number-editor__input {
+    min-width: 0;
+    flex: 1 1 auto;
+    border: var(--interaction-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-xs) var(--space-sm);
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+}
+
+.simple-number-editor__input:focus-visible,
+.simple-number-editor__spinner-button:focus-visible {
+    outline: none;
+    border-color: var(--color-focus);
+    box-shadow: var(--shadow-focus);
+}
+
+.simple-number-editor__spinner {
+    display: inline-flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+}
+
+.simple-number-editor__spinner-button {
+    border: var(--interaction-border);
+    background: var(--color-surface-muted);
+    color: var(--color-text-primary);
+    line-height: 1;
+    padding: 0.1rem 0.35rem;
+    cursor: pointer;
+}
+
+.simple-number-editor__spinner-button:first-child {
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.simple-number-editor__spinner-button:last-child {
+    border-top: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
