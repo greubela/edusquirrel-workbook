@@ -101,6 +101,16 @@ trait WorkbookFactory {
     LabeledCheckboxInteraction(elementId, LanguageMapContentId(langIdCheckboxLabel))
   }
 
+  protected def numberInput(
+                             langIdNumberLabel: String,
+                             numberType: NumberType,
+                             defaultValue: String = "0",
+                             diff: BigDecimal = BigDecimal(1),
+                             elementId: String = nextId()
+                           ): WorkbookInteraction[String] = {
+    LabeledNumberInteraction(elementId, LanguageMapContentId(langIdNumberLabel), numberType, defaultValue, diff)
+  }
+
   /*
   Common Interactions
    */
