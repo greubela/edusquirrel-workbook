@@ -70,15 +70,22 @@ case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, Loa
   }
 
   def addTriples(triples: Set[MapEntryTripel]): Unit = fileStore.synchronized {
+    if (triples.isEmpty) return
     val existingTriples: Set[MapEntryTripel] = lastFinishedCache.map(_.triples).getOrElse(Set.empty)
     val newStore = LanguageMapTripleStore(existingTriples ++ triples)
     lastFinishedCache = Some(newStore)
-    triples.foreach(curTriple => asStorage.loadAsFuture(curTriple.contentId))
+    val affectedContentIds = triples.map(_.contentId).toList.distinct
+    asStorage.deleteFromStorage(affectedContentIds)
+    affectedContentIds.foreach(asStorage.loadAsFuture(_))
+  }
+
+  def addLoadedFiles(batch: Iterable[LoadedFile]): Unit = fileStore.synchronized {
+    batch.foreach(loadedFiles += _)
+    addTriples(batch.flatMap(triplesFromFile).toSet)
   }
 
   def addLoadedFile(loadedFile: LoadedFile): Unit = fileStore.synchronized {
-    loadedFiles += loadedFile
-    addTriples(triplesFromFile(loadedFile))
+    addLoadedFiles(Iterable.single(loadedFile))
   }
 
   def addFile(fileDescription: FileDescription): Unit = fileStore.synchronized {
@@ -97,8 +104,8 @@ case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, Loa
     val res: Promise[LanguageMapTripleStore] = Promise[LanguageMapTripleStore]()
     WorkbookContentStorage.loadAllFilesInDirs(fileStore, dirs).onComplete {
       case Success(loadedFiles) => {
-        loadedFiles.foreach(addLoadedFile)
-        res.success(lastFinishedCache.get)
+        addLoadedFiles(loadedFiles)
+        res.success(lastFinishedCache.getOrElse(LanguageMapTripleStore(Set.empty)))
       }
       case Failure(err) => res.failure(err)
     }
@@ -184,8 +191,28 @@ object WorkbookContentStorage {
   }
 
   private def mapGroupId(file: FileDescription): Option[String] = {
-    val parts: Array[String] = file.filenameWithoutExtension.split("-")
-    if (parts.length < 2) None else Some(parts.dropRight(1).mkString("-"))
+    val fromLocation = file.location.flatMap { loc =>
+      val normalized = loc.replace("\\", "/").stripSuffix("/")
+      normalized.split("/").filter(_.nonEmpty).lastOption
+    }
+    fromLocation.orElse {
+      val segments = file.fullPath.replace("\\", "/").split("/").filter(_.nonEmpty)
+      val languageMapsIndex = segments.indexWhere(_.equalsIgnoreCase("languageMaps"))
+      if (languageMapsIndex >= 0 && segments.length > languageMapsIndex + 1) {
+        segments.lift(languageMapsIndex + 1).filter(_.nonEmpty)
+      } else {
+        val parts = file.filenameWithoutExtension.split("-")
+        if (parts.length < 2) None else Some(parts.dropRight(1).mkString("-"))
+      }
+    }
+  }
+
+  private def languageMapFileUrl(dir: FileDescription, suffix: String): String = {
+    val base = dir.location match {
+      case Some(loc) => loc.stripSuffix("/") + "/" + dir.filenameWithoutExtension
+      case None => dir.fullPath.stripSuffix("/")
+    }
+    s"$base/map-$suffix.json"
   }
 
 
@@ -222,11 +249,12 @@ object WorkbookContentStorage {
     FileFactory.relativeToResourceFolder("/languageMaps/embroideryworkbook"),
     FileFactory.relativeToResourceFolder("/languageMaps/testworkbook"),
     FileFactory.relativeToResourceFolder("/languageMaps/plantworkshop"),
+    FileFactory.relativeToResourceFolder("/languageMaps/iubworkbook"),
   )
 
   def loadAllFilesInDirs(fileStore: AsyncDataCache[FileDescription, LoadedFile], dirs: Set[FileDescription]): Future[Set[LoadedFile]] = {
     val allFiles = dirs
-      .flatMap(curDir => languageByFileSuffix.keys.map(curSuffix => curDir.fullPath + "/map-" + curSuffix + ".json"))
+      .flatMap(curDir => languageByFileSuffix.keys.map(curSuffix => languageMapFileUrl(curDir, curSuffix)))
       .map(urlStr => FileFactory.fromUrl(URL(urlStr), CopyrightInfo.unknownCopyrightInfo))
 
     val allFutures: Future[Set[Try[LoadedFile]]] = Future.traverse(allFiles)(curFile => {

@@ -15,7 +15,9 @@ trait FileDescription {
 
   def extension: String
 
-  lazy val filenameWithExtension: String = filenameWithoutExtension + "." + extension
+  lazy val filenameWithExtension: String =
+    if (extension.isEmpty) filenameWithoutExtension
+    else filenameWithoutExtension + "." + extension
   lazy val fullPath: String = location.map(_ + "/").getOrElse("") + filenameWithExtension
   
   def loadData(): Future[LoadedFile]

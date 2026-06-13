@@ -1,13 +1,15 @@
-package content
+package it.evadid.homepage.workbook.content
 
 import it.evadid.core.datastructures.language.AppLanguage.*
-import workbook.htmlElements.basic.*
-import workbook.model.*
-import workbook.model.info.FullInfo
+import it.evadid.homepage.control.info.FullInfo
+import it.evadid.workbook.model.abstractions.WorkbookElement
+import it.evadid.workbook.model.elements.*
 
 case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 
   override val availableLanguages: List[HumanLanguage] = List(German)
+
+  override val workbookId: String = "IuBWorkbook"
 
   private def t(key: String): String = s"IuBWorkbook/$key"
 
@@ -23,21 +25,22 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
   )
 
   private lazy val introSection: WorkbookSection = section(
+    "section0",
     t("section0Title"),
     List(
-      container(List(
+      container(t("introScenario"), List(
         instructionHtml(t("introScenario")),
       )),
-      container(List(
+      container(t("introAnswerTask"), List(
         instructionHtml(t("introAnswerTask")),
         createTextInput(),
       )),
-      container(List(
+      container(t("introSnowdenIntro"), List(
         instructionHtml(t("introSnowdenIntro")),
         instructionHtml(t("introArticle")),
         instructionHtml(t("introQuote")),
       )),
-      container(List(
+      container(t("introTaskText"), List(
         instructionHtml(t("introTaskText")),
         instructionHtml(t("introRatesInfo")),
         instructionHtml(t("introWidgetPlaceholder")),
@@ -49,9 +52,10 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
   )
 
   private lazy val losslessSection: WorkbookSection = section(
+    "section1",
     t("section1Title"),
     List(
-      container(List(
+      container(t("s1Task1Title"), List(
         instructionHtml(t("s1Task1Title")),
         instructionHtml(t("s1Task1Intro")),
         instructionHtml(t("s1Task1Widget")),
@@ -60,7 +64,7 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
         instructionHtml(t("s1Task1B")),
         createTextInput(),
       )),
-      container(List(
+      container(t("s1Task2Title"), List(
         instructionHtml(t("s1IntroP1")),
         instructionHtml(t("s1Transition")),
         instructionHtml(t("s1Task2Title")),
@@ -73,7 +77,7 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
         instructionHtml(t("s1Task2C")),
         createTextInput(),
       )),
-      container(List(
+      container(t("s1Task3Title"), List(
         instructionHtml(t("s1Task3Title")),
         instructionHtml(t("s1Task3RleWidget")),
         instructionHtml(t("s1Task3A")),
@@ -87,7 +91,7 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
         instructionHtml(t("s1Task3D")),
         createTextInput(),
       )),
-      container(List(
+      container(t("s1Task4Title"), List(
         instructionHtml(t("s1Task4Title")),
         instructionHtml(t("s1Task4QuotePlain")),
         instructionHtml(t("s1Task4A")),
@@ -96,7 +100,7 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
         instructionHtml(t("s1Task4B")),
         createTextInput(),
       )),
-      container(List(
+      container(t("s1ClosingTitle"), List(
         instructionHtml(t("s1ClosingTitle")),
         instructionHtml(t("s1ClosingIntro")),
         instructionHtml(t("s1ClosingA")),
@@ -108,9 +112,10 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
   )
 
   private lazy val lossySection: WorkbookSection = section(
+    "section2",
     t("section2Title"),
     List(
-      container(List(
+      container(t("s2Task1Title"), List(
         instructionHtml(t("s2IntroP1")),
         instructionHtml(t("s2IntroP2")),
         instructionHtml(t("s2Task1Title")),
@@ -123,11 +128,11 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
         instructionHtml(t("s2Task1C")),
         createTextInput(),
       )),
-      container(List(
+      container(t("s2ExplanationP1"), List(
         instructionHtml(t("s2ExplanationP1")),
         instructionHtml(t("s2ExplanationP2")),
       )),
-      container(List(
+      container(t("s2Task2Title"), List(
         instructionHtml(t("s2Task2Title")),
         instructionHtml(t("s2Task2Widget")),
         instructionHtml(t("s2Task2A")),
@@ -135,7 +140,7 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
         instructionHtml(t("s2Task2B")),
         createTextInput(),
       )),
-      container(List(
+      container(t("s2Task3Title"), List(
         instructionHtml(t("s2Task3Title")),
         instructionHtml(t("s2Task3A")),
         createTextInput(),
@@ -144,7 +149,7 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
         instructionHtml(t("s2Task3C")),
         createTextInput(),
       )),
-      container(List(
+      container(t("s2ClosingTitle"), List(
         instructionHtml(t("s2ClosingTitle")),
         instructionHtml(t("s2ClosingIntro")),
         instructionHtml(t("s2ClosingA")),
@@ -156,9 +161,10 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
   )
 
   private lazy val filetypesSection: WorkbookSection = section(
+    "section3",
     t("section3Title"),
     List(
-      container(List(
+      container(t("s3Task1Title"), List(
         instructionHtml(t("s3IntroP1")),
         instructionHtml(t("s3IntroP2")),
         instructionHtml(t("s3Task1Title")),
@@ -169,7 +175,7 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
         instructionHtml(t("s3Task1B")),
         createTextInput(),
       )),
-      container(List(
+      container(t("s3Task2Title"), List(
         instructionHtml(t("s3Task2Title")),
         instructionHtml(t("s3Task2Intro")),
         instructionHtml(t("s3Task2A")),
@@ -177,7 +183,7 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
         instructionHtml(t("s3Task2B")),
         createTextInput(),
       )),
-      container(List(
+      container(t("s3Task3Title"), List(
         instructionHtml(t("s3Task3Title")),
         instructionHtml(t("s3Task3Intro")),
         instructionHtml(t("s3Task3A")),
@@ -185,7 +191,7 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
         instructionHtml(t("s3Task3B")),
         createTextInput(),
       )),
-      container(List(
+      container(t("s3Task4Title"), List(
         instructionHtml(t("s3Task4Title")),
         instructionHtml(t("s3Task4Intro")),
         instructionHtml(t("s3Task4Widget")),
@@ -196,7 +202,7 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
         instructionHtml(t("s3Task4C")),
         createTextInput(),
       )),
-      container(List(
+      container(t("s3ClosingTitle"), List(
         instructionHtml(t("s3ClosingTitle")),
         instructionHtml(t("s3ClosingA")),
         createTextInput(),
@@ -207,9 +213,10 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
   )
 
   private lazy val finalSection: WorkbookSection = section(
+    "section4",
     t("section4Title"),
     List(
-      container(List(
+      container(t("s4Task1Title"), List(
         instructionHtml(t("s4IntroP1")),
         instructionHtml(t("s4IntroP2")),
         instructionHtml(t("s4IntroP3")),
@@ -221,7 +228,7 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
         instructionHtml(t("s4Task1B")),
         createTextInput(),
       )),
-      container(List(
+      container(t("s4ClosingTitle"), List(
         instructionHtml(t("s4ClosingTitle")),
         instructionHtml(t("s4ClosingA")),
         createTextInput(),
@@ -231,7 +238,7 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
         instructionHtml(t("s4ClosingC")),
         createTextInput(),
       )),
-      container(List(
+      container(t("s4PlenumTitle"), List(
         instructionHtml(t("s4PlenumTitle")),
         instructionHtml(t("s4PlenumNote")),
         instructionHtml(t("s4PlenumQuestions")),

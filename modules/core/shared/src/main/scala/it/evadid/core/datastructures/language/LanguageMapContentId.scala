@@ -2,18 +2,21 @@ package it.evadid.core.datastructures.language
 
 import it.evadid.core.util.io.Serializer
 
-case class LanguageMapContentId(languageMapId: String, entryKey: String) {
+case class LanguageMapContentId private (languageMapId: String, entryKey: String) {
 
-  val fullId: String = languageMapId.toLowerCase + "/" + entryKey.toLowerCase
+  val fullId: String = languageMapId + "/" + entryKey
 
 }
 
 object LanguageMapContentId {
 
+  def apply(languageMapId: String, entryKey: String): LanguageMapContentId =
+    new LanguageMapContentId(languageMapId.toLowerCase, entryKey.toLowerCase)
+
   def apply(fullId: String): LanguageMapContentId = {
     val parts = fullId.split("/")
     if (parts.length != 2) throw new IllegalArgumentException(s"Invalid language map identifier: $fullId")
-    LanguageMapContentId(parts(0), parts(1))
+    apply(parts(0), parts(1))
   }
 
   def serializer: Serializer[LanguageMapContentId] = new Serializer[LanguageMapContentId] {
@@ -29,8 +32,3 @@ object LanguageMapContentId {
   }
 
 }
-
-
-
-
-

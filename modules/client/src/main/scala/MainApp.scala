@@ -1,14 +1,12 @@
 
 import com.raquo.laminar.api.L.*
-import content.{CreateCompressionWorkbook, CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, plantworkshop}
-import interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.ExecutionInfo
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.distribution.commandTypes.LLMCommands.*
 import it.evadid.homepage.control.HtmlFullWorkbookApp
-import it.evadid.homepage.workbook.content.CreateEmbroideryWorkbook
+import it.evadid.homepage.workbook.content.{CreateCompressionWorkbook, CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
 import it.evadid.homepage.workbook.legacy.plantworkshop.PlantWorkshopApp
 import it.evadid.util.Logger
@@ -31,9 +29,8 @@ private def load(containerId: String): Unit = {
       HtmlFullWorkbookApp.getDomElement()
     }
     case "workbookPlantWorkshop" => {
-      // HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreatePlantworkshopWorkbook(HtmlFullWorkbookApp.fullInfo))
-      //HtmlFullWorkbookApp.getDomElement()
-      ???
+      HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreatePlantworkshopWorkbook(HtmlFullWorkbookApp.fullInfo))
+      HtmlFullWorkbookApp.getDomElement()
     }
     case "workbookCompression" => {
       HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreateCompressionWorkbook(HtmlFullWorkbookApp.fullInfo))
