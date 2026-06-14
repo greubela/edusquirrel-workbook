@@ -23,7 +23,12 @@ services:
     env_file:
       - .env
     volumes:
-      - /home/andre/javaserver/artifacts/newest/server.jar:/app/server.jar:ro
+      - type: bind
+        source: /home/andre/javaserver/artifacts/newest/server.jar
+        target: /app/server.jar
+        read_only: true
+        bind:
+          create_host_path: false
     expose:
       - "9000"
     environment:
