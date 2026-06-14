@@ -1,6 +1,7 @@
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.control.HtmlFullWorkbookApp
+import it.evadid.homepage.util.web.DownloadHelper
 import it.evadid.homepage.workbook.content.{CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
 import it.evadid.homepage.workbook.legacy.plantworkshop.PlantWorkshopApp
@@ -40,7 +41,12 @@ private def load(containerId: String): Unit = {
 
 private def testCalculations(): Unit = {
 
-  println("testing some calculations atm :)")
+  //println("testing some calculations atm :)")
+
+  DownloadHelper.fetchUrl("https://ypcgzj23.trafficplex.cloud/health").onComplete(res => {
+    println("Backend Health check: " + res.toString)
+  })(using ExecutionContext.global)
+
   /*
     val systemPrompt: String = "Please entertain this human :-)"
     val backend: ExecutionClient = HtmlFullWorkbookApp.fullInfo.technical.backendServerExecutor
