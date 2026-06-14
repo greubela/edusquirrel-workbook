@@ -13,19 +13,15 @@ object BackendCommandHandler {
 
 
   private val localHandler: ExecutionClient = ExecutionClientPool(List(
-
     LLMCommands.completeLLMCommandFactory.toExecutionClient(
       (request: MessengerChatCompletionRequest, logger: Logger) => CompleteChatWithLLMCommand.handleLlmChatRequest(request, logger)
     ),
-
     LLMCommands.feedbackLlmCommandFactory.toExecutionClient(
       (request: FeedbackLlmRequest, logger: Logger) => CompleteChatWithLLMCommand.handleFeedbackLlmRequest(request, logger)
     ),
-
     SQLCommands.syncToDbCommand.toExecutionClient(
       (request: SyncToDbRequest, logger: Logger) => HandleSQLCommand.handleSyncToDbRequest(request, logger)
     )
-
   ))
 
   def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionInfo] = {
