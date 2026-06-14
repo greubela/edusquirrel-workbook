@@ -26,11 +26,11 @@ case class FullInfo(
     println("Changed homepageInfoVar at: " + new Exception().getStackTrace().take(6).map(_.getMethodName).mkString(" -> ") + " (to: " + onNext.toString + ")")
   })(using unsafeWindowOwner)*/
 
-  def control: HomepageDataControl = HomepageDataControl(this)
+  lazy val control: HomepageDataControl = HomepageDataControl(this)
 
-  def signals: HomepageSignalInfo = HomepageSignalInfo(this)
+  lazy val signals: HomepageSignalInfo = HomepageSignalInfo(this)
 
-  def current: HomepageCurrentInfo = HomepageCurrentInfo(this)
+  lazy val current: HomepageCurrentInfo = HomepageCurrentInfo(this)
 
 }
 

@@ -14,14 +14,41 @@ trait State[T] {
 
   def update(func: T => T): State[T]
 
-  //def biMap[O](mapForward: T => O, mapBackward: O => T, executionMethod: ExecutionMethod = ExecuteLocalSync()): State[O]
+  def biMap[O](mapForward: T => O, mapBackward: O => T, executionMethod: ExecutionMethod = ExecuteLocalSync()): State[O]
 }
+
 
 object State {
 
   def apply[T](initVal: T): State[T] = StateImpl(initVal)
 
-  private[state] case class StateImpl[T](initValue: T) extends State[T]{
+  private[state] case class DerivedState[I, O](baseState: State[I], mapForward: I => O, mapBackward: O => I) extends State[O] {
+
+    lazy val observable: ObservableValue[O] = baseState.observable.deriveValue(mapForward, ExecutionMethod.executeSync, ObserverDerivationLogic.DeriveAllValues)
+
+    def now(): O = baseState.observable.syncLock.synchronized {
+      mapForward(baseState.now())
+    }
+
+    def set(newValue: O): Unit = baseState.observable.syncLock.synchronized {
+      baseState.set(mapBackward(newValue))
+    }
+
+    def update(func: O => O): State[O] = baseState.observable.syncLock.synchronized {
+      val res = func(now())
+      set(res)
+      this
+    }
+
+    def biMap[T](mapForward2: O => T, mapBackward2: T => O, executionMethod: ExecutionMethod = ExecuteLocalSync()): State[T] = baseState.observable.syncLock.synchronized {
+      val res: State[T] = DerivedState[O, T](this, mapForward2, mapBackward2)
+      res
+    }
+
+
+  }
+
+  private[state] case class StateImpl[T](initValue: T) extends State[T] {
 
     override val observable: ObservableValueImpl[T] = ObservableValueImpl[T](Some(initValue))
 
@@ -44,7 +71,9 @@ object State {
       this
     }
 
-    //override def biMap[O](mapForward: T => O, mapBackward: O => T, executionMethod: ExecutionMethod): State[O] = ???
+    override def biMap[O](mapForward: T => O, mapBackward: O => T, executionMethod: ExecutionMethod): State[O] = observable.syncLock.synchronized {
+      DerivedState(this, mapForward, mapBackward)
+    }
   }
 
 

@@ -1,5 +1,5 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.gpt
-
+/*
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.svg
 import com.raquo.laminar.nodes.ReactiveSvgElement
@@ -133,4 +133,4 @@ object HtmlGPTMessenger {
     )
   }
 
-}
+}*/

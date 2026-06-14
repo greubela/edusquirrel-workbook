@@ -1,12 +1,18 @@
 package it.evadid.workbook.model.interaction.plugins.gpt
 
 import it.evadid.core.datastructures.chat.MessengerModel
-import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.language.{LanguageMapContentId, LanguageMapIdResolver}
+import it.evadid.core.datastructures.state.State
 import it.evadid.workbook.model.abstractions.WorkbookElement
 import it.evadid.workbook.model.elements.Workbook
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 import it.evadid.workbook.model.interaction.basic.MessagingInteraction
+import it.evadid.workbook.model.interaction.basic.MessagingInteraction.MessengerModelScaffolding
+import it.evadid.workbook.model.interaction.sync.UpdateImportance.MAJOR
 import upickle.default.{ReadWriter, macroRW}
+
+import scala.util.{Failure, Success}
+import scala.concurrent.*
 
 case class GptInteractionElement(
                                   id: String,
@@ -15,19 +21,40 @@ case class GptInteractionElement(
                                   scaffoldingHints: List[LanguageMapContentId],
                                   gradingCriteria: List[LanguageMapContentId]
                                 ) extends WorkbookElement {
+  println("[WARN] creating messaging interaction for id '" + id + "' with no grading!")
 
-  val scaffoldingInteractionOp: Option[MessagingInteraction] = {
-    if(scaffoldingHints.nonEmpty){
-      println("[WARN] creating messaging interaction for id '" + id + "' with test scaffolding hints")
-      Some(MessagingInteraction(id + "_scaffoldingMessenger", MessengerModel.turtleStitchHelperExample))
-    }else{
-      None
-    }
-  }
-
+  private val allContentIds: Set[LanguageMapContentId] = scaffoldingHints.toSet ++ gradingCriteria.toSet
+  private val scaffoldingInteraction: MessagingInteraction = MessagingInteraction(id + "_scaffoldingMessenger")
+  lazy val scaffoldingInteractionOp: Option[MessagingInteraction] = if (scaffoldingHints.nonEmpty) Some(scaffoldingInteraction) else None
   override lazy val childrenOfThisElement: List[WorkbookElement] = scaffoldingInteractionOp.toList
 
   lazy val serialized: SerializedGptInteractionElement = SerializedGptInteractionElement.fromElement(this)
+
+  def initScaffoldingIfEmpty(resolver: LanguageMapIdResolver): Future[Unit] = {
+    val res = Promise[Unit]()
+    resolver.resolveToStrings(allContentIds.toSeq).onComplete {
+      case Success(map) =>
+        initScaffoldingIfEmpty(map)
+        res.success(())
+      case Failure(err) =>
+        err.printStackTrace()
+        res.failure(err)
+    }(using ExecutionContext.global)
+    res.future
+  }
+
+  def initScaffoldingIfEmpty(resolvedIds: Map[LanguageMapContentId, String]): Unit = {
+    val exText = resolvedIds(exerciseText)
+    val scaffHints = scaffoldingHints.map(resolvedIds)
+    val curInput = underlyingTextInteraction.interactionVariable.currentValue
+    val msg: MessengerModel = MessengerModel.getScaffoldingInitMessage(exText, curInput, scaffHints)
+    val msgSc: MessengerModelScaffolding = MessengerModelScaffolding(msg)
+    if (scaffoldingInteraction.interactionVariable.currentValue.messengerModel.orderedMessages.isEmpty) {
+      scaffoldingInteraction.interactionVariable.setStateFromUserInteraction(msgSc, MAJOR)
+    }
+  }
+
+
 
   //private var htmlGptGrader = HtmlGptGrader(fullInfo, textInteraction)
 
@@ -35,6 +62,11 @@ case class GptInteractionElement(
 
 
 }
+
+object GptInteractionElement {
+
+}
+
 
 /**
  * Authored/importable representation of a [[GptInteractionElement]].

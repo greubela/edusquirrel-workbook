@@ -9,6 +9,7 @@ import it.evadid.workbook.model.interaction.sync.UpdateImportance.TEMPORARY
 import it.evadid.workbook.model.interaction.variable.InteractionVariable
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Success, Try}
 
 object StateHelper {
 
@@ -25,7 +26,13 @@ object StateHelper {
   }
 
 
-  implicit class AsyncSignal[T](underlying: Signal[T]) {
+  implicit class RichSignal[T](underlying: Signal[T]) {
+
+    def toObservableValue: ObservableValue[T] = {
+      val res = ObservableValueImpl[T](None)
+      underlying.foreach(next => res.onNewValueArrived(Success.apply(next)))(using unsafeWindowOwner)
+      res
+    }
 
     def toAsync: Signal[AsyncData[T]] = underlying.map(AsyncDataSuccess(_))
 

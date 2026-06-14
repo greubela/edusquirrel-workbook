@@ -1,5 +1,5 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.gpt
-
+/*
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
@@ -37,3 +37,4 @@ case class GptInteractionLine(
 
 
 }
+*/

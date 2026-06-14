@@ -31,6 +31,8 @@ object Serializer {
 
     override def deserialize(str: String): MessengerModel = MessengerModel.fromJson(str)
   }
+  
+  
 
   lazy val stringOptionIO: Serializer[Option[String]] = new Serializer[Option[String]] {
     override def serialize(obj: Option[String]): String = obj.map(str => "Some(" + str + ")").getOrElse("None")

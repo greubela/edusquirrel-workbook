@@ -2,20 +2,18 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionEditors
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.chat.*
-import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
+import it.evadid.core.datastructures.state.State
+import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.model.interaction.sync.UpdateImportance
-import it.evadid.workbook.model.interaction.sync.UpdateImportance.TEMPORARY
-import it.evadid.workbook.model.interaction.variable.InteractionVariable
 
 import java.time.LocalDateTime
-import scala.scalajs.js
 
-import it.evadid.core.datastructures.state.StateHelper.*
 //todo: to State[Var]... aber problematisch mit listener. später (:
-case class HtmlSimpleChatEditor(chatExercise: InteractionVariable[MessengerModel], onUserAddedMessage: MessengerModel => Any) extends HtmlAppElement {
+case class HtmlSimpleChatEditor(interactionVar: State[MessengerModel], onUserAddedMessage: MessengerModel => Any) extends HtmlAppElement {
+
 
   private val messageInput = Var("")
+
 
   private val domElement: Element = {
     div(
@@ -25,7 +23,7 @@ case class HtmlSimpleChatEditor(chatExercise: InteractionVariable[MessengerModel
         div(
           cls := "messenger-history",
           //children <-- Var(List(div("SimpleMessengerEditor::domElement unfinished :("))).signal
-          children <-- chatExercise.createInteractionSignal().map(_.orderedMessages.map(renderMessage))
+          children <-- interactionVar.toAirstreamVar.signal.map(_.orderedMessages.map(renderMessage))
         ),
         div(
           cls := "messenger-composer",
@@ -57,13 +55,13 @@ case class HtmlSimpleChatEditor(chatExercise: InteractionVariable[MessengerModel
   private def sendCurrentMessage(): Unit = {
     val trimmed = messageInput.now().trim
     if (trimmed.nonEmpty) {
-      val currentState = chatExercise.currentValue
+      val currentState = interactionVar.now()
       val nextState = currentState.addMessage(
         text = trimmed,
         author = Person("Student", "it.evadid.student", SenderRole.USER, None),
         timestamp = LocalDateTime.now()
       )
-      chatExercise.setStateFromUserInteraction(nextState, UpdateImportance.MAJOR)
+      interactionVar.set(nextState) //setStateFromUserInteraction(nextState, UpdateImportance.MAJOR)
       messageInput.set("")
       onUserAddedMessage(nextState)
     }
