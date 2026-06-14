@@ -26,9 +26,13 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
 
   private def tryExecutionWithHandlers(handlers: List[ExecutionClient], command: ExecutionCommand, promiseToFulfill: Promise[ExecutionInfo], priorFailures: List[Throwable], logger: Logger): Unit = {
     if (handlers.isEmpty) {
-      val errorStr: String = s"ExecutionClientPool: no handler for command ${command.name} available (${priorFailures.size} attempts: ${priorFailures.size})"
+      val errorStr: String =
+        if (priorFailures.isEmpty) s"ExecutionClientPool: no handler for command ${command.name} registered"
+        else s"ExecutionClientPool: all handlers for command ${command.name} failed (${priorFailures.size} attempts: ${priorFailures.size})"
       logger.logError(errorStr)
-      logger.logError(priorFailures.map(_.getMessage).mkString("\n    ", "\n    ", "\n"))
+      if (priorFailures.nonEmpty) {
+        logger.logError(priorFailures.map(_.getMessage).mkString("\n    ", "\n    ", "\n"))
+      }
       promiseToFulfill.failure(buildExceptionStack(errorStr, priorFailures))
     } else {
       handlers.head.handleExecution(command, logger)
