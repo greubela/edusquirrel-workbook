@@ -21,8 +21,14 @@ case class ExecuteOnRemoteServer(hostname: String, port: Int) extends ExecutionC
   override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionInfo] = {
     val requested = LocalDateTime.now()
     val commandJson = executionCommand.toJson
+    val dest = if (hostname.startsWith("http")) {
+      s"$hostname:$port/executeCommand"
+    } else {
+      s"https://$hostname:$port/executeCommand"
+    }
+
     dom.fetch(
-      s"https://$hostname:$port/executeCommand",
+      dest,
       new dom.RequestInit {
         method = dom.HttpMethod.POST
         headers = JSON.parse("""{"Content-Type":"application/json"}""").asInstanceOf[dom.HeadersInit]

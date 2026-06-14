@@ -3,7 +3,7 @@ package it.evadid.homepage.control
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.distribution.clients.ExecuteOnWebWorker
+import it.evadid.distribution.clients.{ExecuteOnRemoteServer, ExecuteOnWebWorker}
 import it.evadid.executors.MathExecutor
 import it.evadid.homepage.workbook.htmlRenderer.*
 import it.evadid.homepage.workbook.legacy.singletons.FileDataStorage
@@ -20,6 +20,7 @@ object HtmlFullWorkbookApp extends HtmlAppElement{
     HtmlFullScreenContainerElement(),
     FileDataStorage(),
     BackendServerConfig.executor,
+    //ExecuteOnRemoteServer("http://localhost", 9000),
     ExecuteOnWebWorker(FileFactory.relativeToArtifactsFolder("/newest/backend-worker.js").fullPath),
   )
 

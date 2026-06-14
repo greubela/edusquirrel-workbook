@@ -43,19 +43,23 @@ private def testCalculations(): Unit = {
 
   //println("testing some calculations atm :)")
 
-  DownloadHelper.fetchUrl("https://ypcgzj23.trafficplex.cloud/health").onComplete(res => {
-    println("Backend Health check: " + res.toString)
-  })(using ExecutionContext.global)
+  DownloadHelper.fetchUrl("https://ypcgzj23.trafficplex.cloud/health").onComplete {
+    case Success(res) => println("Backend Health check: " + new String(res))
+    case Failure(err) => println("Backend Health error: " + err.getMessage)
+  }(using ExecutionContext.global)
 
-  /*
-    val systemPrompt: String = "Please entertain this human :-)"
-    val backend: ExecutionClient = HtmlFullWorkbookApp.fullInfo.technical.backendServerExecutor
-    val request: MessengerChatCompletionRequest = MessengerChatCompletionRequest(systemPrompt, MessengerModel.testCompletion)
-    val resultFut: Future[ExecutionInfo] = LLMCommands.completeLLMCommandFactory.sendCommandTo(backend, Logger(), request)
 
-    resultFut.onComplete(res => println("future completed: " + res))(using ExecutionContext.global)
-  */
 }
+
+/*
+  val systemPrompt: String = "Please entertain this human :-)"
+  val backend: ExecutionClient = HtmlFullWorkbookApp.fullInfo.technical.backendServerExecutor
+  val request: MessengerChatCompletionRequest = MessengerChatCompletionRequest(systemPrompt, MessengerModel.testCompletion)
+  val resultFut: Future[ExecutionInfo] = LLMCommands.completeLLMCommandFactory.sendCommandTo(backend, Logger(), request)
+
+  resultFut.onComplete(res => println("future completed: " + res))(using ExecutionContext.global)
+*/
+
 
 @main
 def mainApp(): Unit = {
