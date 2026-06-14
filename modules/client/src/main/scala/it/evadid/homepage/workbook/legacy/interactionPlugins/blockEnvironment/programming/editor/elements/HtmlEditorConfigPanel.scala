@@ -6,14 +6,17 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.homepage.util.web.DownloadHelper
 import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.homepage.webElements.editor.*
+
+import todomove.webElementsOld.webElements.genericHtmlElements.editor.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeTreeControllerConfig, BeTreeDisplayConfig, ControlFlowDisplay}
 import org.scalajs.dom
-import todomove.webElementsOld.webElements.genericHtmlElements.editor.{SimpleBooleanEditor, SimpleSelectorEditor}
+
 case class HtmlEditorConfigPanel(editorState: EditorState) extends HtmlAppElement {
 
   private def createDisplayConfigVar[T](
-      getter: BeTreeDisplayConfig => T
-  )(setter: (BeTreeDisplayConfig, T) => BeTreeDisplayConfig): Var[T] = {
+                                         getter: BeTreeDisplayConfig => T
+                                       )(setter: (BeTreeDisplayConfig, T) => BeTreeDisplayConfig): Var[T] = {
     val derived = Var(getter(editorState.editorTreeDisplayConfig.now()))
 
     editorState.editorTreeDisplayConfig.signal.foreach { config =>
@@ -34,9 +37,9 @@ case class HtmlEditorConfigPanel(editorState: EditorState) extends HtmlAppElemen
   }
 
   private def booleanDisplayConfigEditor(
-      label: String,
-      getter: BeTreeDisplayConfig => Boolean
-  )(setter: (BeTreeDisplayConfig, Boolean) => BeTreeDisplayConfig): Element = {
+                                          label: String,
+                                          getter: BeTreeDisplayConfig => Boolean
+                                        )(setter: (BeTreeDisplayConfig, Boolean) => BeTreeDisplayConfig): Element = {
     SimpleBooleanEditor(
       createDisplayConfigVar(getter)(setter),
       LanguageMap.universalMap[HumanLanguage](label)

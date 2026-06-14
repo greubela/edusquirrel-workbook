@@ -4,6 +4,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.control.BackendServerConfig
+import it.evadid.homepage.webElements.editor.CodeMirrorEditor
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.BlockFeedbackTestResultFormatter
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ai.CommandLlmClient
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config.BlockFeedbackExerciseRegistry
@@ -16,7 +17,6 @@ import it.evadid.homepage.workbook.legacy.model.feedback.FeedbackStatus
 import org.scalajs.dom
 import todomove.datastructures.core.vm.code.others.BeStartProgram
 import todomove.datastructures.core.vm.parsing.python.PythonParser
-import todomove.webElementsOld.webElements.genericHtmlElements.editor.CodeMirrorEditor
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js

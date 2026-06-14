@@ -9,8 +9,8 @@ import it.evadid.core.datastructures.state.State
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.distribution.commandTypes.LLMCommands.{MessengerChatCompletionRequest, workbookPerson}
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
+import it.evadid.homepage.webElements.editor.SimpleChatEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
-import it.evadid.homepage.workbook.htmlRenderer.interactionEditors.HtmlSimpleChatEditor
 import it.evadid.util.Logger
 import it.evadid.workbook.model.interaction.basic.MessagingInteraction
 import it.evadid.workbook.model.interaction.basic.MessagingInteraction.MessengerModelScaffolding
@@ -63,8 +63,9 @@ object HtmlGptTextfieldInteractionRenderer extends HtmlRenderFactory[GptInteract
       val boundState = interactionVariable
         .createBoundStateWithUpdateImportance(MAJOR)
         .biMap(_.messengerModel, MessengerModelScaffolding.apply)
-      val scaffoldingChat = HtmlSimpleChatEditor(boundState, msg => onUserSendMessage(msg, boundState))
+      val scaffoldingChat = SimpleChatEditor(boundState, msg => onUserSendMessage(msg, boundState))
       val openChatButton = HtmlButtonElement.withSvgContent(createScaffoldingButtonSvg(), event => {
+        println("initing scaffolding!")
         workbookElement.initScaffoldingIfEmpty(fullInfo.signals.langMapIdResolver)
         fullInfo.technical.makeFullscreen(scaffoldingChat)
       })

@@ -1,7 +1,7 @@
-package it.evadid.homepage.workbook.htmlRenderer.interactionEditors
+package it.evadid.homepage.webElements.editor
 
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.chat.*
+import it.evadid.core.datastructures.chat.{Message, MessengerModel, Person, SenderRole}
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.homepage.webElements.HtmlAppElement
@@ -9,11 +9,9 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import java.time.LocalDateTime
 
 //todo: to State[Var]... aber problematisch mit listener. später (:
-case class HtmlSimpleChatEditor(interactionVar: State[MessengerModel], onUserAddedMessage: MessengerModel => Any) extends HtmlAppElement {
-
+case class SimpleChatEditor(interactionVar: State[MessengerModel], onUserAddedMessage: MessengerModel => Any) extends HtmlAppElement {
 
   private val messageInput = Var("")
-
 
   private val domElement: Element = {
     div(

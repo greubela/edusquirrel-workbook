@@ -1,4 +1,4 @@
-package todomove.webElementsOld.webElements.genericHtmlElements.editor
+package it.evadid.homepage.webElements.editor
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{option as optionTag, *}
@@ -61,3 +61,5 @@ object SimpleSelectorEditor {
     SimpleSelectorEditor(forVar, options, options.map(labelGenerator))
   }
 }
+
+

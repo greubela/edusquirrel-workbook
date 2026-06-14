@@ -4,12 +4,12 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Var
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.core.util.io.Serializer
+import it.evadid.homepage.webElements.editor.SimpleTextEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.workbook.model.interaction.WorkbookInteraction.TextInteractionBasic
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 import it.evadid.workbook.model.interaction.variable.InteractionVariable
-import todomove.webElementsOld.webElements.genericHtmlElements.editor.SimpleTextEditor
-import todomove.webElementsOld.webElements.genericHtmlElements.editor.SimpleTextEditor.TextEditorConfig
+import SimpleTextEditor.TextEditorConfig
 
 object HtmlSimpleTextInteractionRenderer extends HtmlRenderFactory[TextInteractionBasic] {
 

@@ -4,11 +4,11 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.canvas.WebCanvas
+import it.evadid.homepage.webElements.editor.CodeMirrorEditor
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.data.PythonExecutionRequest
 import todomove.`export`.workers.PyodideWorkerClient
-import todomove.webElementsOld.webElements.genericHtmlElements.editor.CodeMirrorEditor
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js

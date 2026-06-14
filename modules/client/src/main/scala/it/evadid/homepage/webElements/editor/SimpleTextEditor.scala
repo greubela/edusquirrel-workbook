@@ -1,4 +1,4 @@
-package todomove.webElementsOld.webElements.genericHtmlElements.editor
+package it.evadid.homepage.webElements.editor
 
 import com.raquo.airstream.core.Signal
 import com.raquo.airstream.ownership.Owner

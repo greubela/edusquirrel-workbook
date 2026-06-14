@@ -11,7 +11,7 @@ import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.distribution.commandTypes.LLMCommands.MessengerChatCompletionRequest
 import it.evadid.homepage.control.info.FullInfo
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
-import it.evadid.homepage.workbook.htmlRenderer.interactionEditors.HtmlSimpleChatEditor
+import it.evadid.homepage.webElements.editor.HtmlSimpleChatEditor
 import it.evadid.util.Logger
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 import it.evadid.workbook.model.interaction.sync.UpdateImportance.MAJOR

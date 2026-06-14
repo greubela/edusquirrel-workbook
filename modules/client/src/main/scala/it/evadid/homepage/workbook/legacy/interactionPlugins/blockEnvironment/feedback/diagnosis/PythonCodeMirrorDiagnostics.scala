@@ -1,12 +1,12 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.diagnosis
 
+import it.evadid.homepage.webElements.editor.CodeMirrorEditor
 import todomove.datastructures.core.vm.code.BeExpression
 import todomove.datastructures.core.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import todomove.datastructures.core.vm.code.tree.BeExpressionReference
 import todomove.datastructures.core.vm.types.BeChildPosition
 import todomove.datastructures.core.vm.types.BeChildRole.NoRole
 import todomove.datastructures.core.vm.types.BeScope.GlobalScope
-import todomove.webElementsOld.webElements.genericHtmlElements.editor.CodeMirrorEditor
 
 object PythonCodeMirrorDiagnostics:
 
