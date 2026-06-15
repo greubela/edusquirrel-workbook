@@ -47,7 +47,7 @@ object HandleSQLCommand {
                               ): SyncToDbResponse = {
     val config = readDatabaseConfig(envProvider)
 
-    logger.logInfo(s"database config: $config")
+    //logger.logInfo(s"database config: $config")
 
     logger.logInfo(s"syncing key '${request.keyId}' to database for program '${request.programId}' and user '${request.userId}'")
     SyncToDbResponse(executor.upsert(config, request, logger))
