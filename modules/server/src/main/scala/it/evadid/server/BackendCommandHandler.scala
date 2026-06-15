@@ -25,7 +25,7 @@ object BackendCommandHandler {
   ))
 
   def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionInfo] = {
-    logger.logInfo(s"[server] Received command: ${executionCommand.name} with params: ${executionCommand.params}")
+    logger.logInfo(s"[server] Received command: ${executionCommand.name} with params keys: ${executionCommand.params.keys}")
     if (executionCommand.name.trim.isEmpty) {
       logger.logError("ExecutionCommand.name must not be empty")
       throw new IllegalArgumentException("ExecutionCommand.name must not be empty")

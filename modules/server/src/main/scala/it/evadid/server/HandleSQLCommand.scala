@@ -10,17 +10,17 @@ import scala.concurrent.{ExecutionContext, Future}
 object HandleSQLCommand {
 
   private[server] final case class DatabaseConfig(
-                                                    host: String,
-                                                    port: String,
-                                                    database: String,
-                                                    user: String,
-                                                    password: String
-                                                  ) {
+                                                   host: String,
+                                                   port: String,
+                                                   database: String,
+                                                   user: String,
+                                                   password: String
+                                                 ) {
     val jdbcUrl: String = s"jdbc:postgresql://$host:$port/$database"
   }
 
   private[server] trait SyncDbExecutor {
-    def upsert(config: DatabaseConfig, request: SyncToDbRequest): Int
+    def upsert(config: DatabaseConfig, request: SyncToDbRequest, logger: Logger): Int
   }
 
   private def env(name: String, envProvider: String => Option[String]): Option[String] =
@@ -46,8 +46,10 @@ object HandleSQLCommand {
                               ): SyncToDbResponse = {
     val config = readDatabaseConfig(envProvider)
 
+    logger.logInfo(s"database config: $config")
+
     logger.logInfo(s"syncing key '${request.keyId}' to database for program '${request.programId}' and user '${request.userId}'")
-    SyncToDbResponse(executor.upsert(config, request))
+    SyncToDbResponse(executor.upsert(config, request, logger))
   }
 
   def handleSyncToDbRequest(request: SyncToDbRequest, logger: Logger): Future[SyncToDbResponse] = Future {
@@ -65,7 +67,7 @@ object HandleSQLCommand {
         |  "eventdata" = EXCLUDED."eventdata"
         |""".stripMargin
 
-    override def upsert(config: DatabaseConfig, request: SyncToDbRequest): Int =
+    override def upsert(config: DatabaseConfig, request: SyncToDbRequest, logger: Logger): Int =
       UsingConnection(config.jdbcUrl, config.user, config.password) { conn =>
         val stmt = conn.prepareStatement(upsertSql)
         try {
@@ -75,6 +77,11 @@ object HandleSQLCommand {
           stmt.setTimestamp(4, Timestamp.valueOf(LocalDateTime.parse(request.eventTime)))
           stmt.setString(5, request.eventData)
           stmt.executeUpdate()
+        } catch {
+          case e: Exception => {
+            logger.logError(s"Error syncing to database: ${e.getMessage}")
+            throw e
+          }
         } finally {
           stmt.close()
         }
