@@ -44,8 +44,11 @@ case class GptInteractionElement(
   }
 
   def initScaffoldingIfEmpty(resolvedIds: Map[LanguageMapContentId, String]): Unit = {
-    val exText = resolvedIds(exerciseText)
-    val scaffHints = scaffoldingHints.map(resolvedIds)
+
+    println("resolved ids: " + resolvedIds.keys.mkString("[", ", ", "]"))
+
+    val exText: String = resolvedIds.getOrElse(exerciseText, "[unresolved: " + exerciseText.fullId + "]")
+    val scaffHints: List[String] = scaffoldingHints.map(id => resolvedIds.getOrElse(id, s"[unresolved: $id]"))
     val curInput = underlyingTextInteraction.interactionVariable.currentValue
     val msg: MessengerModel = MessengerModel.getScaffoldingInitMessage(exText, curInput, scaffHints)
     val msgSc: MessengerModelScaffolding = MessengerModelScaffolding(msg)
