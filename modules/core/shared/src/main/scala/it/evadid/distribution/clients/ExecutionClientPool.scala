@@ -19,8 +19,9 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
       new Exception(lastMsg)
     }
     else {
-      val priorException = buildExceptionStack(exceptions.head.getMessage, exceptions.tail)
-      new Exception(lastMsg, priorException)
+      val failure = exceptions.head
+      exceptions.tail.foreach(failure.addSuppressed)
+      new Exception(lastMsg, failure)
     }
   }
 

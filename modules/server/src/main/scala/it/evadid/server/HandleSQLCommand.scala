@@ -3,7 +3,7 @@ package it.evadid.server
 import it.evadid.distribution.commandTypes.SQLCommands.{SyncToDbRequest, SyncToDbResponse}
 import it.evadid.util.Logger
 
-import java.sql.{Connection, DriverManager, Timestamp}
+import java.sql.{Connection, DriverManager, SQLException, Timestamp}
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -16,7 +16,7 @@ object HandleSQLCommand {
                                                     user: String,
                                                     password: String
                                                   ) {
-    val jdbcUrl: String = s"jdbc:postgresql://$host:$port/$database"
+    val jdbcUrl: String = s"jdbc:mysql://$host:$port/$database"
   }
 
   private[server] trait SyncDbExecutor {
@@ -57,12 +57,11 @@ object HandleSQLCommand {
   private object JdbcSyncDbExecutor extends SyncDbExecutor {
     private val upsertSql =
       """
-        |INSERT INTO "InteractionEvents" ("programId", "userId", "keyId", "eventtime", "eventdata")
+        |INSERT INTO `InteractionEvents` (`programId`, `userId`, `keyId`, `eventtime`, `eventdata`)
         |VALUES (?, ?, ?, ?, ?)
-        |ON CONFLICT ("programId", "userId", "keyId")
-        |DO UPDATE SET
-        |  "eventtime" = EXCLUDED."eventtime",
-        |  "eventdata" = EXCLUDED."eventdata"
+        |ON DUPLICATE KEY UPDATE
+        |  `eventtime` = VALUES(`eventtime`),
+        |  `eventdata` = VALUES(`eventdata`)
         |""".stripMargin
 
     override def upsert(config: DatabaseConfig, request: SyncToDbRequest): Int =
@@ -83,9 +82,33 @@ object HandleSQLCommand {
 
   private object UsingConnection {
     def apply[T](jdbcUrl: String, user: String, pw: String)(f: Connection => T): T = {
-      val conn = DriverManager.getConnection(jdbcUrl, user, pw)
+      ensureMysqlDriverAvailable(jdbcUrl)
+      val conn =
+        try {
+          DriverManager.getConnection(jdbcUrl, user, pw)
+        } catch {
+          case ex: SQLException =>
+            throw new SQLException(
+              s"Could not connect to MySQL database at $jdbcUrl as user '$user': ${ex.getMessage}",
+              ex.getSQLState,
+              ex.getErrorCode,
+              ex
+            )
+        }
       try f(conn)
       finally conn.close()
     }
+
+    private def ensureMysqlDriverAvailable(jdbcUrl: String): Unit =
+      try {
+        Class.forName("com.mysql.cj.jdbc.Driver")
+      } catch {
+        case ex: ClassNotFoundException =>
+          throw new IllegalStateException(
+            s"MySQL JDBC driver is not available on the server classpath for $jdbcUrl. " +
+              "Add com.mysql:mysql-connector-j to the server runtime dependencies.",
+            ex
+          )
+      }
   }
 }

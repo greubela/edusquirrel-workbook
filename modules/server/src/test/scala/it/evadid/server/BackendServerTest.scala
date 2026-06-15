@@ -34,7 +34,7 @@ class BackendServerTest extends FunSuite {
     assertEquals(config.database, "workbook")
     assertEquals(config.user, "server_user")
     assertEquals(config.password, "server_password")
-    assertEquals(config.jdbcUrl, "jdbc:postgresql://db.example.test:5432/workbook")
+    assertEquals(config.jdbcUrl, "jdbc:mysql://db.example.test:5432/workbook")
   }
 
   test("sync-to-db fails fast when a required credential is missing") {
@@ -81,7 +81,7 @@ class BackendServerTest extends FunSuite {
     val response = HandleSQLCommand.syncToDb(request, Logger(), env.get, executor)
 
     assertEquals(response.rowsAffected, 1)
-    assertEquals(observedConfig.map(_.jdbcUrl), Some("jdbc:postgresql://db.example.test:5432/workbook"))
+    assertEquals(observedConfig.map(_.jdbcUrl), Some("jdbc:mysql://db.example.test:5432/workbook"))
     assertEquals(observedConfig.map(_.user), Some("server_user"))
     assertEquals(observedConfig.map(_.password), Some("server_password"))
     assertEquals(observedRequest, Some(request))
