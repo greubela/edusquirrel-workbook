@@ -3,7 +3,7 @@ package it.evadid.homepage.util.web
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import org.scalajs.dom
-import org.scalajs.dom.{Blob, File, URL}
+import org.scalajs.dom.{Blob, File, HttpMethod, RequestInit, Response, URL}
 
 import java.io.IOException
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -38,7 +38,6 @@ object DownloadHelper {
           }
       }
   }
-
 
   private def triggerDownload(url: String, filename: String): Unit = {
     val anchor = dom.document.createElement("a").asInstanceOf[dom.html.Anchor]
@@ -103,6 +102,31 @@ object DownloadHelper {
 
     val url = URL.createObjectURL(blob)
     downloadFromObjectUrl(desiredFilename, url)
+  }
+
+  def postTo(url: String, jsonPayload: String): Future[String] = {
+    val init = new RequestInit {
+      method = HttpMethod.POST
+      headers = js.Dictionary(
+        "Content-Type" -> "application/json",
+        "Accept" -> "application/json"
+      )
+      body = jsonPayload
+    }
+
+    val promise: Future[Response] = dom.fetch(url, init).toFuture
+    promise.flatMap(_.text().toFuture)(using ExecutionContext.global)
+    /*toFuture.flatMap {
+      case Success(response): Success[Response] => if response.ok then
+        response.text().toFuture
+      else
+        response.text().toFuture.flatMap { body =>
+          Future.failed(
+            new RuntimeException(s"POST $url failed: HTTP ${response.status} ${response.statusText}: $body")
+          )
+        }
+        
+    }*/
   }
 
 }
