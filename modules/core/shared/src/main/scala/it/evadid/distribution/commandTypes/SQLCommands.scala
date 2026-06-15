@@ -7,9 +7,10 @@ object SQLCommands {
 
   case class SyncToDbRequest(
                               programId: String,
+                              scenarioId: String,
                               userId: String,
-                              keyId: String,
                               eventTime: String,
+                              keyId: String,
                               eventData: String
                             )
 

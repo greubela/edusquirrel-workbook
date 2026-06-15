@@ -5,6 +5,7 @@ import it.evadid.util.Logger
 
 import java.sql.{Connection, DriverManager, SQLException, Timestamp}
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import scala.concurrent.{ExecutionContext, Future}
 
 object HandleSQLCommand {
@@ -59,21 +60,23 @@ object HandleSQLCommand {
   private object JdbcSyncDbExecutor extends SyncDbExecutor {
     private val upsertSql =
       """
-        |INSERT INTO `InteractionEvents` (`programId`, `userId`, `keyId`, `eventtime`, `eventdata`)
+        |INSERT INTO `events` (`programid`, `scenarioid`, `userid`, `timestamp`, `serializeddata`)
         |VALUES (?, ?, ?, ?, ?)
         |ON DUPLICATE KEY UPDATE
-        |  `eventtime` = VALUES(`eventtime`),
-        |  `eventdata` = VALUES(`eventdata`)
+        |  `timestamp` = VALUES(`timestamp`),
+        |  `serializeddata` = VALUES(`serializeddata`)
         |""".stripMargin
+
+    private val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
     override def upsert(config: DatabaseConfig, request: SyncToDbRequest, logger: Logger): Int =
       UsingConnection(config.jdbcUrl, config.user, config.password) { conn =>
         val stmt = conn.prepareStatement(upsertSql)
         try {
           stmt.setString(1, request.programId)
-          stmt.setString(2, request.userId)
-          stmt.setString(3, request.keyId)
-          stmt.setTimestamp(4, Timestamp.valueOf(LocalDateTime.parse(request.eventTime)))
+          stmt.setString(2, request.scenarioId)
+          stmt.setString(3, request.userId)
+          stmt.setTimestamp(4, Timestamp.valueOf(LocalDateTime.parse(request.eventTime, formatter)))
           stmt.setString(5, request.eventData)
           stmt.executeUpdate()
         } catch {

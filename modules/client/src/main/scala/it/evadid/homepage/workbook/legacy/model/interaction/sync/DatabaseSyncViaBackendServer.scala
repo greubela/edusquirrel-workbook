@@ -12,11 +12,20 @@ object DatabaseSyncViaBackendServer extends SyncDestination{
     val info = HtmlFullWorkbookApp.fullInfo
     val backend = info.technical.backendServerExecutor
 
-    val userId = info.current.userInfo.map(_.user.id).getOrElse("unknownUser")
-    val scenarioId = info.current.workbookInfo.map(_.getMetadata().workbookId)
+    val userId: String = info.current.userInfo.map(_.user.id).getOrElse("unknownUser")
+    val scenarioId: String = info.current.workbookInfo.map(_.loadedWorkbook.workbookId).getOrElse("unknownScenario")
     val time = datetimeFormattedForLog()
 
-    val request = SQLCommands.SyncToDbRequest("edusquirrel", userId, key, time, value)
+    val eventdata: String =
+      s"""{
+      "type": "syncEvent",
+      "name": "syncInfo",
+      "source": "DatabaseSync",
+      "key": "$key",
+      "data": "$value"
+    }"""
+
+    val request = SQLCommands.SyncToDbRequest("edusquirrel", scenarioId, userId, time, key, eventdata)
     SQLCommands.syncToDbCommand.sendCommandTo(backend, Logger(), request)
   }
   override def syncAllFrom(): Map[String, String] = Map()
