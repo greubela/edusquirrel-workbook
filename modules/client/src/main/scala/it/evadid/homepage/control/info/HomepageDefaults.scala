@@ -14,8 +14,8 @@ case class HomepageDefaults() {
 
   val defaultSyncLocation: List[SyncInformation] = List(
     SyncInformation(LocalStorageSync, SyncStrategy.SYNC_EVERYTHING),
-    //SyncInformation(DatabaseSyncViaBackendServer, SYNC_EVERYTHING)
-    SyncInformation(DatabaseSyncViaTmpMathBackend, SYNC_EVERYTHING)
+    SyncInformation(DatabaseSyncViaBackendServer, SYNC_EVERYTHING)
+    //SyncInformation(DatabaseSyncViaTmpMathBackend, SYNC_EVERYTHING)
   )
 
   val defaultUser: AllUserInfo = AllUserInfo(User("TestUser", "test@homepage"), UserConfig(defaultSyncLocation))

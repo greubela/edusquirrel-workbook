@@ -24,14 +24,15 @@ object BackendServer {
   private val serverStartedAt: LocalDateTime = LocalDateTime.now()
 
   private def handleExecuteCommand(bodyOption: Option[String]): Future[(Int, String)] = {
-
     if (bodyOption.isEmpty || bodyOption.get.isEmpty) Future.successful((400, Json.obj("error" -> "Missing request body for executeCommand").toString()))
     else {
       val promise: Promise[(Int, String)] = Promise[(Int, String)]()
       val executionCommand = ExecutionCommand.fromJson(bodyOption.get)
-      BackendCommandHandler.handleExecution(executionCommand, Logger()).map { executionInfo =>
-        (200, write(Map("executionInfo" -> DistributionSerializer.serializerExecutionInfoJson.serialize(executionInfo))))
-      }(using ExecutionContext.global).onComplete(promise.complete)
+      val execRes = BackendCommandHandler.handleExecution(executionCommand, Logger())
+      execRes.onComplete {
+        case Success(executionInfo) => promise.success(200, write(Map("executionInfo" -> DistributionSerializer.serializerExecutionInfoJson.serialize(executionInfo))))
+        case Failure(err) => promise.failure(err)
+      }(using ExecutionContext.global)
       promise.future
     }
   }
@@ -55,9 +56,13 @@ object BackendServer {
           }.recover {
             case err =>
               val stackWriter = StringWriter()
+              println("execution err: " + err.getMessage)
               err.printStackTrace(PrintWriter(stackWriter))
+
               InternalServerError(Json.obj(
                 "error" -> Option(err.getMessage).getOrElse(err.getClass.getName),
+                "errorDetailed" -> err.getLocalizedMessage,
+                "logErr" -> "missing",
                 "exceptionType" -> err.getClass.getName,
                 "stackTrace" -> stackWriter.toString
               ).toString()).as("application/json")
