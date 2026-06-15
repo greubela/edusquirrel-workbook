@@ -86,6 +86,7 @@ lazy val server = (project in file("./modules/server"))
       case PathList("module-info.class") => MergeStrategy.discard
       case PathList("META-INF", "versions", _*) => MergeStrategy.discard
       case PathList("META-INF", "io.netty.versions.properties") => MergeStrategy.first
+      case PathList("google", "protobuf", file) if file.endsWith(".proto") => MergeStrategy.first
       case x => (assembly / assemblyMergeStrategy).value(x)
     },
     libraryDependencies ++= (coreDependencies.value ++ jvmDependencies.value ++ Seq(
@@ -115,5 +116,4 @@ lazy val worker = (project in file("./modules/worker"))
     Test / jsEnv := new NodeJSEnv(),
     libraryDependencies ++= (coreDependencies.value ++ jsDependencies.value)
   )
-
 
