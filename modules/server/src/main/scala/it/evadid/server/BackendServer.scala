@@ -28,7 +28,7 @@ object BackendServer {
     else {
       val promise: Promise[(Int, String)] = Promise[(Int, String)]()
       val executionCommand = ExecutionCommand.fromJson(bodyOption.get)
-      val execRes = BackendCommandHandler.handleExecution(executionCommand, Logger())
+      val execRes = BackendCommandHandler.handleExecution(executionCommand, Logger().withPrintToStd())
       execRes.onComplete {
         case Success(executionInfo) => promise.success(200, write(Map("executionInfo" -> DistributionSerializer.serializerExecutionInfoJson.serialize(executionInfo))))
         case Failure(err) => promise.failure(err)
