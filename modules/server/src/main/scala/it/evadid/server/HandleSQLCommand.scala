@@ -3,7 +3,7 @@ package it.evadid.server
 import it.evadid.distribution.commandTypes.SQLCommands.{SyncToDbRequest, SyncToDbResponse}
 import it.evadid.util.Logger
 
-import java.sql.{Connection, DriverManager, Timestamp}
+import java.sql.{Connection, DriverManager, SQLException, Timestamp}
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -90,9 +90,33 @@ object HandleSQLCommand {
 
   private object UsingConnection {
     def apply[T](jdbcUrl: String, user: String, pw: String)(f: Connection => T): T = {
-      val conn = DriverManager.getConnection(jdbcUrl, user, pw)
+      ensurePostgresDriverAvailable(jdbcUrl)
+      val conn =
+        try {
+          DriverManager.getConnection(jdbcUrl, user, pw)
+        } catch {
+          case ex: SQLException =>
+            throw new SQLException(
+              s"Could not connect to PostgreSQL database at $jdbcUrl as user '$user': ${ex.getMessage}",
+              ex.getSQLState,
+              ex.getErrorCode,
+              ex
+            )
+        }
       try f(conn)
       finally conn.close()
     }
+
+    private def ensurePostgresDriverAvailable(jdbcUrl: String): Unit =
+      try {
+        Class.forName("org.postgresql.Driver")
+      } catch {
+        case ex: ClassNotFoundException =>
+          throw new IllegalStateException(
+            s"PostgreSQL JDBC driver is not available on the server classpath for $jdbcUrl. " +
+              "Add org.postgresql:postgresql to the server runtime dependencies.",
+            ex
+          )
+      }
   }
 }
