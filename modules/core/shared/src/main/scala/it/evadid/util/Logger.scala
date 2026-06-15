@@ -12,6 +12,33 @@ trait Logger {
   def getOut(): String
 
   def getErr(): String
+  
+  def withPrintToStd(): Logger = new Logger(){
+
+    override def logInfo(msg: String): Unit = {
+      println(msg)
+      Logger.this.logInfo(msg)
+    }
+
+    override def logWarn(msg: String): Unit = {
+      println(msg)
+      Logger.this.logWarn(msg)
+    }
+
+    override def logError(msg: String): Unit = {
+      println(msg)
+      Logger.this.logError(msg)
+    }
+
+    override def getOut(): String = {
+      Logger.this.getOut()
+    }
+
+    override def getErr(): String = {
+      Logger.this.getErr()
+    }
+  }
+  
 }
 
 object Logger {
