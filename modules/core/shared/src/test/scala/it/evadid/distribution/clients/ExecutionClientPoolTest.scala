@@ -49,7 +49,7 @@ class ExecutionClientPoolTest extends FunSuite {
 
   test("preserves the original handler failure cause chain") {
     val rootCause = new Exception("Connection refused")
-    val handlerFailure = new Exception("Could not connect to PostgreSQL database", rootCause)
+    val handlerFailure = new Exception("Could not connect to database", rootCause)
     val pool = ExecutionClientPool(List(failingClient("sync-to-db-request", handlerFailure)))
 
     val error = intercept[Exception] {

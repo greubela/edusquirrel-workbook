@@ -10,13 +10,13 @@ import scala.concurrent.{ExecutionContext, Future}
 object HandleSQLCommand {
 
   private[server] final case class DatabaseConfig(
-                                                   host: String,
-                                                   port: String,
-                                                   database: String,
-                                                   user: String,
-                                                   password: String
-                                                 ) {
-    val jdbcUrl: String = s"jdbc:postgresql://$host:$port/$database"
+                                                    host: String,
+                                                    port: String,
+                                                    database: String,
+                                                    user: String,
+                                                    password: String
+                                                  ) {
+    val jdbcUrl: String = s"jdbc:mysql://$host:$port/$database"
   }
 
   private[server] trait SyncDbExecutor {
@@ -59,12 +59,11 @@ object HandleSQLCommand {
   private object JdbcSyncDbExecutor extends SyncDbExecutor {
     private val upsertSql =
       """
-        |INSERT INTO "InteractionEvents" ("programId", "userId", "keyId", "eventtime", "eventdata")
+        |INSERT INTO `InteractionEvents` (`programId`, `userId`, `keyId`, `eventtime`, `eventdata`)
         |VALUES (?, ?, ?, ?, ?)
-        |ON CONFLICT ("programId", "userId", "keyId")
-        |DO UPDATE SET
-        |  "eventtime" = EXCLUDED."eventtime",
-        |  "eventdata" = EXCLUDED."eventdata"
+        |ON DUPLICATE KEY UPDATE
+        |  `eventtime` = VALUES(`eventtime`),
+        |  `eventdata` = VALUES(`eventdata`)
         |""".stripMargin
 
     override def upsert(config: DatabaseConfig, request: SyncToDbRequest, logger: Logger): Int =
@@ -90,14 +89,14 @@ object HandleSQLCommand {
 
   private object UsingConnection {
     def apply[T](jdbcUrl: String, user: String, pw: String)(f: Connection => T): T = {
-      ensurePostgresDriverAvailable(jdbcUrl)
+      ensureMysqlDriverAvailable(jdbcUrl)
       val conn =
         try {
           DriverManager.getConnection(jdbcUrl, user, pw)
         } catch {
           case ex: SQLException =>
             throw new SQLException(
-              s"Could not connect to PostgreSQL database at $jdbcUrl as user '$user': ${ex.getMessage}",
+              s"Could not connect to MySQL database at $jdbcUrl as user '$user': ${ex.getMessage}",
               ex.getSQLState,
               ex.getErrorCode,
               ex
@@ -107,14 +106,14 @@ object HandleSQLCommand {
       finally conn.close()
     }
 
-    private def ensurePostgresDriverAvailable(jdbcUrl: String): Unit =
+    private def ensureMysqlDriverAvailable(jdbcUrl: String): Unit =
       try {
-        Class.forName("org.postgresql.Driver")
+        Class.forName("com.mysql.cj.jdbc.Driver")
       } catch {
         case ex: ClassNotFoundException =>
           throw new IllegalStateException(
-            s"PostgreSQL JDBC driver is not available on the server classpath for $jdbcUrl. " +
-              "Add org.postgresql:postgresql to the server runtime dependencies.",
+            s"MySQL JDBC driver is not available on the server classpath for $jdbcUrl. " +
+              "Add com.mysql:mysql-connector-j to the server runtime dependencies.",
             ex
           )
       }

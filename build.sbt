@@ -89,7 +89,7 @@ lazy val server = (project in file("./modules/server"))
       case x => (assembly / assemblyMergeStrategy).value(x)
     },
     libraryDependencies ++= (coreDependencies.value ++ jvmDependencies.value ++ Seq(
-      "org.postgresql" % "postgresql" % "42.7.7"
+      "com.mysql" % "mysql-connector-j" % "9.7.0"
     ))
   )
 
