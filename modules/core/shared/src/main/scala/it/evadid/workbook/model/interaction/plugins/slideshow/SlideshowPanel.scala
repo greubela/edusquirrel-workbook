@@ -2,8 +2,8 @@ package it.evadid.workbook.model.interaction.plugins.slideshow
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.model.abstractions.WorkbookElement
+import it.evadid.workbook.model.elements.ImageElement.FileBasedImageElement
 
-// Todo: Overwork Slideshow Panel so it uses generic WorkbookElement
 trait SlideshowPanel extends WorkbookElement {
 
 }
@@ -11,7 +11,7 @@ trait SlideshowPanel extends WorkbookElement {
 object SlideshowPanel {
 
   case class TwoColumnImagePanel(
-                                  imageSrc: LanguageMapContentId,
+                                  image: FileBasedImageElement,
                                   leftLabel: LanguageMapContentId,
                                   rightLabel: LanguageMapContentId,
                                   leftBody: LanguageMapContentId,
@@ -21,9 +21,9 @@ object SlideshowPanel {
   }
 
   case class ImageSlide(
-                         imageSrc: LanguageMapContentId,
-                         titleLabel: LanguageMapContentId,
-                         description: LanguageMapContentId
+                         image: FileBasedImageElement,
+                         headerMapId: LanguageMapContentId,
+                         bodyMapId: LanguageMapContentId
                        ) extends SlideshowPanel
 
 
