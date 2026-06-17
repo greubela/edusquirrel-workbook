@@ -10,13 +10,14 @@ import it.evadid.workbook.model.interaction.WorkbookInteraction.TextInteractionB
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 import it.evadid.workbook.model.interaction.variable.InteractionVariable
 import SimpleTextEditor.TextEditorConfig
+import it.evadid.workbook.model.interaction.WorkbookInteraction
 
 object HtmlSimpleTextInteractionRenderer extends HtmlRenderFactory[TextInteractionBasic] {
 
   private val initConfig: TextEditorConfig = SimpleTextEditor.defaultConfig
-
+    
   override def createDomElement(workbookElement: TextInteractionBasic): L.Element = {
-    val varBoundToEditor: Var[String] = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MINOR).toAirstreamVar
+    val varBoundToEditor: Var[String] = workbookElement.interactionVariable.createBoundStateWithUpdateLogic(WorkbookInteraction.decideTextareaUpdateImportance).toAirstreamVar
     val curConfig: Var[TextEditorConfig] = Var(initConfig)
     val editor: SimpleTextEditor = SimpleTextEditor(varBoundToEditor, curConfig)
 

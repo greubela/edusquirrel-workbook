@@ -7,17 +7,6 @@ import SimpleTextEditor.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 
-object SimpleTextEditor {
-  case class TextEditorConfig(monospace: Boolean, rowsCount: Int, colsCount: Int, containerClass: String)
-
-  val defaultConfig: TextEditorConfig = TextEditorConfig(
-    monospace = false,
-    rowsCount = 4,
-    colsCount = 110,
-    containerClass = "simple-text-editor"
-  )
-}
-
 case class SimpleTextEditor(
                              varToBind: Var[String],
                              config: Var[TextEditorConfig] = Var(defaultConfig),
@@ -43,4 +32,15 @@ case class SimpleTextEditor(
     )
   )
 
+}
+
+object SimpleTextEditor {
+  case class TextEditorConfig(monospace: Boolean, rowsCount: Int, colsCount: Int, containerClass: String)
+
+  val defaultConfig: TextEditorConfig = TextEditorConfig(
+    monospace = false,
+    rowsCount = 4,
+    colsCount = 110,
+    containerClass = "simple-text-editor"
+  )
 }

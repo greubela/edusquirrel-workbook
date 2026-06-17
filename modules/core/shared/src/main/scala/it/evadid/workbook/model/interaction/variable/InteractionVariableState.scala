@@ -21,5 +21,9 @@ object InteractionVariableState {
   def apply[T](io: Serializer[T], serializedState: InteractionVariableStateSerialized): InteractionVariableState[T] =
     InteractionVariableState(io.deserialize(serializedState.serializedValue), serializedState.updateImportance, DefaultSerializer.serializerLocalDateTimeString.deserialize(serializedState.timestamp))
 
+  case class DesignatedInteractionState[T](value: T, timestamp: LocalDateTime)
+
+  case class InteractionVariableStateChanged[T](lastState: InteractionVariableState[T], newState: DesignatedInteractionState[T])
+
 }
 

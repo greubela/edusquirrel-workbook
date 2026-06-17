@@ -14,7 +14,6 @@ object SyncStrategy {
   object SYNC_EVERYTHING extends SyncStrategy {
     override def selectEventsToSync[T](events: Set[InteractionVariableState[T]]): Set[InteractionVariableState[T]] = events
   }
-  //, SYNC_MAJOR_ONLY, SYNC_LAST_ONLY
 
 }
 
