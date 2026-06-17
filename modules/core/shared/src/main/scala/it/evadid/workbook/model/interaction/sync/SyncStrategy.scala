@@ -15,5 +15,12 @@ object SyncStrategy {
     override def selectEventsToSync[T](events: Set[InteractionVariableState[T]]): Set[InteractionVariableState[T]] = events
   }
 
+  private case class DesiredRelevance(desired: List[UpdateImportance]) extends SyncStrategy {
+    override def selectEventsToSync[T](events: Set[InteractionVariableState[T]]): Set[InteractionVariableState[T]] = events.filter(e => desired.contains(e.updateImportance))
+  }
+
+  val SYNC_MAJOR: SyncStrategy = DesiredRelevance(List(UpdateImportance.MAJOR))
+  val SYNC_MINOR: SyncStrategy = DesiredRelevance(List(UpdateImportance.MINOR, UpdateImportance.MAJOR))
+
 }
 

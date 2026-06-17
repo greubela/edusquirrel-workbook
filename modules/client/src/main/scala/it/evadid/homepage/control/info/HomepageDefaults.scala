@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.workbook.legacy.model.interaction.sync.{DatabaseSyncViaBackendServer, DatabaseSyncViaTmpMathBackend, LocalStorageSync}
 import it.evadid.workbook.model.interaction.sync.*
-import it.evadid.workbook.model.interaction.sync.SyncStrategy.SYNC_EVERYTHING
+import it.evadid.workbook.model.interaction.sync.SyncStrategy.{SYNC_EVERYTHING, SYNC_MAJOR}
 
 case class HomepageDefaults() {
   val availableLanguages: List[HumanLanguage] = List(AppLanguage.German, AppLanguage.English)
@@ -14,7 +14,7 @@ case class HomepageDefaults() {
 
   val defaultSyncLocation: List[SyncInformation] = List(
     SyncInformation(LocalStorageSync, SyncStrategy.SYNC_EVERYTHING),
-    SyncInformation(DatabaseSyncViaBackendServer, SYNC_EVERYTHING)
+    SyncInformation(DatabaseSyncViaBackendServer, SYNC_MAJOR)
     //SyncInformation(DatabaseSyncViaTmpMathBackend, SYNC_EVERYTHING)
   )
 
