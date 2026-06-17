@@ -12,5 +12,10 @@ object InfoUtil {
   def datetimeFormattedForLog(dateTime: LocalDateTime = LocalDateTime.now()): String = {
     dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
   }
-  
+
+  def datetimeFormattedForDb(dateTime: LocalDateTime = LocalDateTime.now()): String = {
+    val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+    formatter.format(dateTime)
+  }
+
 }
