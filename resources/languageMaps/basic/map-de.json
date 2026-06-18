@@ -5,5 +5,7 @@
   "noWorkbookLoaded": "[Kein Arbeitsheft geladen!]",
   "resetLocalStorage": "Alle Eingaben löschen",
   "downloadEverything": "Download (Arbeitsheft -> Datei)",
-  "uploadSession": "Laden (Datei -> Arbeitsheft)"
+  "uploadSession": "Laden (Datei -> Arbeitsheft)",
+  "previousSection": "← Vorheriger Abschnitt",
+  "nextSection": "Nächster Abschnitt →"
 }

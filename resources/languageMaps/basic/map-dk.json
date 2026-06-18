@@ -1,5 +1,7 @@
 {
   "dataLoadingMap": "[data indlæses]",
   "imageLoadingMap": "[billedet indlæses]",
-  "noSectionSelected": "[intet afsnit valgt]"
+  "noSectionSelected": "[intet afsnit valgt]",
+  "previousSection": "← Forrige afsnit",
+  "nextSection": "Næste afsnit →"
 }

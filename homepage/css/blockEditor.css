@@ -30,7 +30,7 @@
   padding: var(--space-lg);
   background-color: var(--color-surface-muted);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-medium);
 }
 
 .be-fullscreen-editor .block-library{
@@ -76,7 +76,7 @@
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-light);
-  padding: var(--padding-medium);
+  padding: var(--space-lg);
   display: grid;
   grid-template-rows: auto 1fr;
   gap: var(--space-sm);
@@ -129,7 +129,7 @@
   color: var(--color-text-secondary);
   cursor: pointer;
   font-size: var(--fontsize-text);
-  padding: 0.4rem 0.8rem;
+  padding: var(--space-sm) var(--space-md);
   transition: var(--transition);
 }
 
@@ -152,7 +152,7 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: var(--padding-medium);
+  padding: var(--space-lg);
 }
 
 .be-program-editor__python-view,

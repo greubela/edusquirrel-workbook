@@ -1,5 +1,7 @@
 {
   "dataLoadingMap": "[cargando datos]",
   "imageLoadingMap": "[cargando imagen]",
-  "noSectionSelected": "[ninguna sección seleccionada]"
+  "noSectionSelected": "[ninguna sección seleccionada]",
+  "previousSection": "← Sección anterior",
+  "nextSection": "Siguiente sección →"
 }

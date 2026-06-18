@@ -1,5 +1,7 @@
 {
   "dataLoadingMap": "[veriler yükleniyor]",
   "imageLoadingMap": "[görsel yükleniyor]",
-  "noSectionSelected": "[bölüm seçilmedi]"
+  "noSectionSelected": "[bölüm seçilmedi]",
+  "previousSection": "← Önceki bölüm",
+  "nextSection": "Sonraki bölüm →"
 }

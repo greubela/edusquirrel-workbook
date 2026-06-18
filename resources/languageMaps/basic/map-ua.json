@@ -1,5 +1,7 @@
 {
   "dataLoadingMap": "[дані завантажуються]",
   "imageLoadingMap": "[зображення завантажується]",
-  "noSectionSelected": "[розділ не вибрано]"
+  "noSectionSelected": "[розділ не вибрано]",
+  "previousSection": "← Попередній розділ",
+  "nextSection": "Наступний розділ →"
 }

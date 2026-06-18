@@ -1,6 +1,8 @@
 package it.evadid.homepage.workbook.htmlRenderer.basicRenderer
 
+import com.raquo.laminar.DomApi
 import com.raquo.laminar.api.L.*
+import it.evadid.core.util.MarkdownToHtml
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.HtmlExerciseContainerRenderer.renderChildren
 import it.evadid.workbook.model.abstractions.{WorkbookElement, WorkbookElementGroup}
@@ -18,7 +20,10 @@ object HtmlInstructionLabeledPairRenderer extends HtmlRenderFactory[LabeledInstr
       ),
       div(
         cls := s"${cssLabel}__body",
-        text <-- super.contentIdStringSignal(workbookElement.bodyContent)
+        child <-- super.contentIdStringSignal(workbookElement.bodyContent).map { text =>
+          val html = MarkdownToHtml.transform(text)
+          foreignHtmlElement(DomApi.unsafeParseHtmlString(s"<div class=\"${cssLabel}__body--html\">$html</div>"))
+        }
       )
     )
   }

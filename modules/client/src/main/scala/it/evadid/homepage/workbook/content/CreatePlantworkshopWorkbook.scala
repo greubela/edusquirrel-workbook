@@ -114,8 +114,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     val container1 = container(
       "PlantWorkshop/section1Title",
       List(
-        instructionPlaintext("PlantWorkshop/section1ChecklistIntro"),
-        instructionPlaintext("PlantWorkshop/section1WiringHint")
+        instructionLabeledPair("PlantWorkshop/section1ChecklistIntro","PlantWorkshop/section1WiringHint", TaskLabel)
       ) ++ componentChecklist
     )
 
@@ -327,37 +326,57 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
   private lazy val testSection: WorkbookSection = {
     val testChecklistItems = checklist(
       List(
-        "testChecklistSensorValues",
-        "testChecklistPumpStarts",
-        "testChecklistPumpStops"
+        "testChecklistSensorDry",
+        "testChecklistSensorWet",
+        "testChecklistPumpDry",
+        "testChecklistPumpStopsShortly",
+        "testChecklistMoistNoPump"
       ),
       "plant-test-check"
     )
 
-    val migrationChecklistItems = checklist(
-      List(
-        "migrationChecklist1",
-        "migrationChecklist2",
-        "migrationChecklist3",
-        "migrationChecklist4",
-        "migrationChecklist5",
-        "migrationChecklist6"
-      ),
-      "plant-migration-check"
-    )
-
-    val ex1 = container(
+    val downloadContainer = container(
       "PlantWorkshop/section5Title",
       List(
-        instructionPlaintext("PlantWorkshop/section5DownloadInfo"),
-        instructionPlaintext("PlantWorkshop/section5Troubleshooting"),
-        missingElementPlaceholder("missingArduinoExport"),
-        instructionPlaintext("PlantWorkshop/migrationChecklistTitle")
-      ) ++ testChecklistItems ++ migrationChecklistItems ++ List(
-        instructionPlaintext("PlantWorkshop/legacyReference")
+        instructionLabeledPair("PlantWorkshop/safetyTitle", "PlantWorkshop/section5SafetyWarningText", SafetyLabel),
+        instructionMarkdown("PlantWorkshop/section5DownloadSteps")
       )
     )
 
-    section("section5", "PlantWorkshop/section5Title", List(ex1))
+    val testChecklistContainer = container(
+      "PlantWorkshop/section5TestChecklistTitle",
+      List(
+        instructionLabeledPair("PlantWorkshop/section5TestChecklistTitle", "PlantWorkshop/section5TestChecklistIntro", TaskLabel)
+      ) ++ testChecklistItems
+    )
+
+    val troubleshootingContainer = container(
+      "PlantWorkshop/section5TroubleshootingTitle",
+      List(
+        instructionLabeledPair("PlantWorkshop/section5TroubleshootingTitle", "PlantWorkshop/section5TroubleshootingText", HintLabel)
+      )
+    )
+
+    val bonusContainer = container(
+      "PlantWorkshop/section5BonusTitle",
+      List(
+        instructionLabeledPair("PlantWorkshop/section5BonusTitle", "PlantWorkshop/section5BonusText", GoalLabel)
+      )
+    )
+
+    val congratulationsContainer = container(
+      "PlantWorkshop/section5Congratulations",
+      List(
+        instructionPlaintext("PlantWorkshop/section5Congratulations")
+      )
+    )
+
+    section("section5", "PlantWorkshop/section5Title", List(
+      downloadContainer,
+      testChecklistContainer,
+      troubleshootingContainer,
+      bonusContainer,
+      congratulationsContainer
+    ))
   }
 }

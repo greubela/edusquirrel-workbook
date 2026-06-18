@@ -8,7 +8,7 @@ body {
     color: var(--color-text-primary);
     margin: 0;
     padding: 0;
-    padding-bottom: var(--page-bottom-padding, calc(var(--space-xl) * 5));
+    padding-bottom: var(--page-bottom-padding, var(--space-3xl));
     line-height: 1.6;
     background: linear-gradient(
             180deg,
@@ -28,13 +28,58 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-md);
 
     position: sticky;
     top: 0;
-    padding: 1.25rem 1rem 1rem;
+    padding: 0;
     border-bottom: 1px solid var(--color-border-subtle);
     z-index: 1000;
+}
+
+/* Toggle button to collapse/expand the header */
+.workbook-header-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    cursor: pointer;
+    padding: var(--space-sm) var(--space-xl);
+    user-select: none;
+    transition: background 0.2s ease;
+    border-top: 1px solid var(--color-border-subtle);
+}
+
+.workbook-header-toggle:hover {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.workbook-header-toggle-icon {
+    font-size: 0.75rem;
+    color: var(--color-text-muted-light);
+    transition: transform 0.2s ease;
+    line-height: 1;
+}
+
+/* Collapsible content wrapper */
+.workbook-header-collapsible {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-sm);
+    width: 100%;
+    padding: 0 var(--space-xl) var(--space-md);
+    overflow: hidden;
+    max-height: 500px;
+    opacity: 1;
+    transition: max-height 0.3s ease, opacity 0.25s ease, padding 0.25s ease;
+}
+
+.workbook-header-collapsible.workbook-header-collapsed {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-bottom: 0;
 }
 
 .select-language-line {
@@ -56,14 +101,14 @@ body {
 }
 
 .section-block {
-    flex: 1 1 164px;
-    min-height: 72px;
-    max-width: 150px;
-    padding: 11px 12px;
+    flex: 1 1 160px;
+    min-height: 64px;
+    max-width: 160px;
+    padding: var(--space-sm) var(--space-md);
     text-align: center;
     background: var(--color-button-background);
     border: 2px solid var(--color-button-border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
     font-size: 0.85rem;
@@ -103,13 +148,13 @@ body {
     margin: 0 auto;
     gap: var(--space-sm);
     background-color: var(--color-container-background);
-    box-shadow: var(--shadow-soft);
+    box-shadow: var(--shadow-medium);
 
-    border-radius: var(--space-md);
+    border-radius: var(--radius-lg);
     display: flex;
     flex-direction: column;
-    border-top: var(--space-md) solid var(--color-container-border-passive);
-    border-bottom: var(--space-md) solid var(--color-container-border-passive);
+    border: 1px solid var(--color-border-soft);
+    /* overflow hidden removed to avoid clipping reorder tooltips that extend outside the container */
 }
 
 .container-exercise + .container-exercise {
@@ -140,14 +185,10 @@ body {
     margin: var(--space-md) var(--space-lg);
     padding: var(--space-md);
     border-radius: var(--radius-sm);
-    border-left: var(--space-sm) solid var(--color-container-border-inactive);
-    border-top: var(--space-xs) solid var(--color-container-border-passive);
-    border-right: var(--space-xs) solid var(--color-container-border-passive);
-    border-bottom: var(--space-xs) solid var(--color-container-border-passive);
-}
-
-.container-sub .workbook-element {
-    border-left: none;
+    border-left: var(--space-md) solid var(--color-container-border-inactive);
+    border-top: 1px solid var(--color-container-border-passive);
+    border-right: 1px solid var(--color-container-border-passive);
+    border-bottom: 1px solid var(--color-container-border-passive);
 }
 
 .container-title-level-1 h1,
@@ -161,19 +202,19 @@ body {
 
 
 .container-title-level-1 h1 {
-    font-size: clamp(2.1rem, 4.5vw, 3rem);
+    font-size: clamp(2rem, 4.5vw, 2.8rem);
 }
 
 .container-title-level-2 h2 {
-    font-size: clamp(1.75rem, 3.4vw, 2.2rem);
+    font-size: clamp(1.65rem, 3.4vw, 2.1rem);
 }
 
 .container-title-level-3 h3 {
-    font-size: 1.3rem;
+    font-size: 1.25rem;
 }
 
 .container-title-level-4 h4 {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     font-weight: 600;
     color: var(--color-container-accent);
 }
@@ -190,15 +231,15 @@ body {
 }
 
 .markdown-content h2 {
-    font-size: 1.8rem;
+    font-size: 1.6rem;
 }
 
 .markdown-content h3 {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
 }
 
 .markdown-content h4 {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
 }
 
 .markdown-content ul {
@@ -209,17 +250,17 @@ body {
     margin-bottom: 0;
 }
 
-/* Workbook Elements */
+/* Workbook Elements — no left border on basic elements (only instructional boxes use colored strips) */
 
 .workbook-element {
-    border-left: var(--space-md) solid var(--color-container-border-passive);
+    border-left: none;
 }
 
 .workbook-interaction {
     border-left: var(--space-md) solid var(--color-container-border-inactive);
-    border-top: var(--space-xs) solid var(--color-container-border-passive);
-    border-right: var(--space-xs) solid var(--color-container-border-passive);
-    border-bottom: var(--space-xs) solid var(--color-container-border-passive);
+    border-top: 1px solid var(--color-container-border-passive);
+    border-right: 1px solid var(--color-container-border-passive);
+    border-bottom: 1px solid var(--color-container-border-passive);
     width: 100%;
 }
 
@@ -236,7 +277,7 @@ h1 {
     color: var(--color-container-accent);
     text-align: center;
     font-weight: 600;
-    font-size: clamp(2.1rem, 4.5vw, 3rem);
+    font-size: clamp(2rem, 4.5vw, 2.8rem);
     line-height: 1.2;
     letter-spacing: -0.01em;
 }
@@ -245,30 +286,32 @@ h2 {
     color: var(--color-container-accent);
     text-align: left;
     font-weight: 600;
-    font-size: clamp(1.75rem, 3.4vw, 2.2rem);
+    font-size: clamp(1.65rem, 3.4vw, 2.1rem);
 }
 
 h3 {
     color: var(--color-container-accent);
     text-align: left;
     font-weight: 600;
-    font-size: 16px;
+    font-size: 1.05rem;
 }
 
 .container-title {
-    padding: var(--space-md) var(--space-lg);
+    padding: var(--space-lg) var(--space-xl) var(--space-md);
 }
 
 .exercise-instruction {
-    padding: var(--space-md) var(--space-lg);
+    padding: var(--space-md) var(--space-xl);
     font-size: 0.95rem;
 }
 
 /* --- Labeled instruction pair (title + body) --- */
 
 .instruction-goal {
-    background: var(--color-surface-subtle);
-    border-left-color: var(--color-accent-success);
+    border-left: var(--space-sm) solid var(--color-accent-success);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: var(--space-md) var(--space-lg);
+    margin: 0;
 }
 
 .instruction-goal__title {
@@ -285,8 +328,10 @@ h3 {
 }
 
 .instruction-task {
-    background: var(--color-surface-subtle);
-    border-left-color: var(--color-accent-primary);
+    border-left: var(--space-sm) solid var(--color-accent-primary);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: var(--space-md) var(--space-lg);
+    margin: 0;
 }
 
 .instruction-task__title {
@@ -316,8 +361,10 @@ h3 {
 }
 
 .instruction-hint {
-    background: var(--color-surface-subtle);
-    border-left-color: var(--color-text-muted-light);
+    border-left: var(--space-sm) solid var(--color-text-muted-light);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: var(--space-md) var(--space-lg);
+    margin: 0;
 }
 
 .instruction-hint__title {
@@ -334,8 +381,10 @@ h3 {
 }
 
 .instruction-safety {
-    background: var(--color-surface-subtle);
-    border-left-color: var(--color-accent-error);
+    border-left: var(--space-sm) solid var(--color-accent-error);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: var(--space-md) var(--space-lg);
+    margin: 0;
 }
 
 .instruction-safety__title {
@@ -456,6 +505,7 @@ button {
 button:hover:not(:disabled) {
     background: var(--color-button-hover);
     transform: translateY(-1px);
+    box-shadow: var(--shadow-medium);
 }
 
 button:disabled {
@@ -511,18 +561,18 @@ button:disabled {
 }
 
 .slide-deck-description {
-    padding: calc(var(--space-xl) + 6px) calc(var(--space-xl) + 8px) var(--space-sm);
-    border: 1px solid #bbdefb;
+    padding: var(--space-lg) var(--space-xl) var(--space-sm);
+    border: 1px solid var(--color-slide-border);
     border-bottom: 0;
     border-radius: var(--radius-sm) var(--radius-sm) 0 0;
     background: var(--color-container-background);
     font-weight: 700;
-    color: #1565c0;
+    color: var(--color-slide-accent-text);
 }
 
 .slide-deck-text {
-    padding: var(--space-sm) calc(var(--space-xl) + 8px) calc(var(--space-xl) + 6px);
-    border: 1px solid #bbdefb;
+    padding: var(--space-sm) var(--space-xl) var(--space-lg);
+    border: 1px solid var(--color-slide-border);
     border-top: 0;
     border-radius: 0 0 var(--radius-sm) var(--radius-sm);
     background: var(--color-container-background);
@@ -531,7 +581,7 @@ button:disabled {
 .slide-deck-text-title {
     display: block;
     margin-bottom: var(--space-sm);
-    color: #1565c0;
+    color: var(--color-slide-accent-text);
     font-weight: 700 !important;
 }
 
@@ -680,7 +730,7 @@ textarea.workbook-interaction {
     border-radius: var(--radius-sm);
     background: var(--color-surface-muted);
     color: var(--color-text-primary);
-    padding: calc(var(--space-sm) + 2px) var(--space-md);
+    padding: var(--space-md) var(--space-md);
     font-size: 0.95rem;
     line-height: 1.4;
     appearance: none;
@@ -850,11 +900,12 @@ textarea.workbook-interaction {
     background: var(--color-interaction-background);
 }
 
+/* Task box — refactored to use design tokens */
 .task-box {
-    background: #e3f2fd;
-    padding: 20px;
-    border-radius: 4px;
-    margin-bottom: 25px;
+    background: var(--color-taskbox-background);
+    padding: var(--space-lg);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-xl);
 }
 
 .task-box .mode-toggle {
@@ -865,36 +916,96 @@ textarea.workbook-interaction {
 
 .task-box .mode-toggle .mode-toggle__btn {
     flex: 1;
-    padding: 10px 16px;
-    border: 2px solid #2196f3 !important;
-    border-radius: 6px;
+    padding: var(--space-sm) var(--space-md);
+    border: 2px solid var(--color-taskbox-border) !important;
+    border-radius: var(--radius-sm);
     font-weight: 600;
     font-size: 0.95em;
     cursor: pointer;
     transition: all 0.2s ease;
     min-width: auto !important;
-    background: white !important;
-    color: #2196f3 !important;
+    background: var(--color-taskbox-btn-bg) !important;
+    color: var(--color-taskbox-btn-text) !important;
     box-shadow: none !important;
 }
 
 .task-box .mode-toggle .mode-toggle__btn:hover {
-    background: #e3f2fd !important;
+    background: var(--color-taskbox-background) !important;
     transform: translateY(-1px);
 }
 
 .task-box .mode-toggle .mode-toggle__btn--active {
-    background: #2196f3 !important;
-    color: white !important;
-    border-color: #1976d2 !important;
+    background: var(--color-taskbox-btn-active) !important;
+    color: var(--color-text-inverse) !important;
+    border-color: var(--color-taskbox-btn-active-hover) !important;
 }
 
 .task-box .mode-toggle .mode-toggle__btn--active:hover {
-    background: #1976d2 !important;
+    background: var(--color-taskbox-btn-active-hover) !important;
 }
 
 .mode-hidden {
     display: none !important;
+}
+
+/* Styling für Listen innerhalb von instruction-labeled-pair body-Inhalten (Markdown) */
+.workbook-element.exercise-instruction .instruction-goal__body--html ul,
+.workbook-element.exercise-instruction .instruction-task__body--html ul,
+.workbook-element.exercise-instruction .instruction-hint__body--html ul,
+.workbook-element.exercise-instruction .instruction-safety__body--html ul {
+    margin: 0.5em 0;
+    padding-left: 2rem;
+}
+
+.workbook-element.exercise-instruction .instruction-goal__body--html li,
+.workbook-element.exercise-instruction .instruction-task__body--html li,
+.workbook-element.exercise-instruction .instruction-hint__body--html li,
+.workbook-element.exercise-instruction .instruction-safety__body--html li {
+    margin-bottom: 0.3em;
+    list-style-type: disc;
+}
+
+.workbook-element.exercise-instruction .instruction-goal__body--html p,
+.workbook-element.exercise-instruction .instruction-task__body--html p,
+.workbook-element.exercise-instruction .instruction-hint__body--html p,
+.workbook-element.exercise-instruction .instruction-safety__body--html p {
+    margin: 0.5em 0;
+}
+
+/* Section navigation buttons at end of each section */
+.section-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-md);
+    width: min(100%, 980px);
+    margin: var(--space-xl) auto;
+    padding: 0 var(--space-xl);
+}
+
+.section-nav-btn {
+    min-width: 180px;
+    padding: var(--space-md) var(--space-lg);
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-button-border);
+    background: var(--color-button-background);
+    color: var(--color-text-primary);
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    box-shadow: var(--shadow-button);
+}
+
+.section-nav-btn:hover {
+    background: var(--color-button-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-medium);
+    border-color: var(--color-accent-primary);
+}
+
+.section-nav-next {
+    margin-left: auto;
 }
 
 @media (max-width: 768px) {
@@ -902,6 +1013,19 @@ textarea.workbook-interaction {
         padding: var(--space-lg);
     }
 
+    .section-navigation {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .section-nav-btn {
+        min-width: unset;
+        width: 100%;
+    }
+
+    .section-nav-next {
+        margin-left: 0;
+    }
 
     .svg-button {
         width: 38px;

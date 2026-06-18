@@ -2,5 +2,10 @@
   "dataLoadingMap": "[Data is loading!]",
   "imageLoadingMap": "[Image is loading!]",
   "noSectionSelected": "[No section selected!]",
-  "noWorkbookLoaded": "[No workbook loaded!]"
+  "noWorkbookLoaded": "[No workbook loaded!]",
+  "resetLocalStorage": "Clear all input",
+  "downloadEverything": "Download (workbook -> file)",
+  "uploadSession": "Upload (file -> workbook)",
+  "previousSection": "← Previous section",
+  "nextSection": "Next section →"
 }
