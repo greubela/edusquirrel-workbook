@@ -105,8 +105,14 @@ trait WorkbookFactory {
   Common Interactions
    */
 
-  protected def codeReorder(baseId: String, snippets: List[String], programmingLanguage: ProgrammingLanguage, hints: List[LanguageMapContentId] = List.empty): ReorderInteraction[String] = {
-    ReorderInteraction.ReorderCodeInteraction(baseId, snippets, programmingLanguage, hints = hints)
+  protected def codeReorder(
+    baseId: String,
+    snippets: List[String],
+    programmingLanguage: ProgrammingLanguage,
+    hints: List[LanguageMapContentId] = List.empty,
+    orderConstraints: List[(Int, Int)] = Nil
+  ): ReorderInteraction[String] = {
+    ReorderInteraction.ReorderCodeInteraction(baseId, snippets, programmingLanguage, hints = hints, orderConstraints = orderConstraints)
   }
 
 

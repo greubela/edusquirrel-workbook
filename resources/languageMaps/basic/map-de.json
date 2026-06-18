@@ -7,5 +7,10 @@
   "downloadEverything": "Download (Arbeitsheft -> Datei)",
   "uploadSession": "Laden (Datei -> Arbeitsheft)",
   "previousSection": "← Vorheriger Abschnitt",
-  "nextSection": "Nächster Abschnitt →"
+  "nextSection": "Nächster Abschnitt →",
+  "checkSolution": "Lösung prüfen",
+  "beginnerMode": "Anfänger",
+  "advancedMode": "Fortgeschritten",
+  "reorderFeedbackSuccess": "✅ Sehr gut! Die Reihenfolge ist korrekt.",
+  "reorderFeedbackWrongOrder": "⚠️ Fast! Die Logik passt noch nicht ganz. Prüfe, welche Schritte zwingend vor anderen kommen müssen."
 }

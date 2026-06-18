@@ -893,6 +893,38 @@ textarea.workbook-interaction {
     opacity: 0.65;
 }
 
+.reorder-feedback {
+    margin-top: var(--space-md);
+    padding: var(--space-md) var(--space-lg);
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.reorder-interaction .btn-check {
+    margin-top: var(--space-md);
+    padding: var(--space-sm) var(--space-lg);
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-button-border);
+    background: var(--color-button-background);
+    color: var(--color-text-primary);
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    box-shadow: var(--shadow-button);
+    width: 100%;
+}
+
+.reorder-interaction .btn-check:hover {
+    background: var(--color-button-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-medium);
+    border-color: var(--color-accent-primary);
+}
+
 .drop-placeholder {
     height: 2.5rem;
     border: 2px dashed var(--color-accent-primary);

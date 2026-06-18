@@ -108,6 +108,29 @@ object HtmlReorderInteractionRenderer extends HtmlRenderFactory[ReorderInteracti
       )
     }
 
+    val feedbackVar: Var[Option[LanguageMapContentId]] = Var(None)
+
+    def orderIsCorrect(current: List[Int], state: ReorderInteractionState[T]): Boolean = reorder match {
+      case codeInteraction: ReorderInteraction.ReorderCodeInteraction if codeInteraction.orderConstraints.nonEmpty =>
+        val positions = current.zipWithIndex.toMap
+        codeInteraction.orderConstraints.forall { case (first, second) =>
+          positions.get(first).exists(firstIdx => positions.get(second).exists(secondIdx => firstIdx < secondIdx))
+        }
+      case _ =>
+        current == state.correctOrder
+    }
+
+    def checkSolution(): Unit = {
+      val state = stateVar.now()
+      val current = state.currentOrder
+
+      if (orderIsCorrect(current, state)) {
+        feedbackVar.set(Some(LanguageMapContentId("basic/reorderFeedbackSuccess")))
+      } else {
+        feedbackVar.set(Some(LanguageMapContentId("basic/reorderFeedbackWrongOrder")))
+      }
+    }
+
     div(
       cls := "workbook-interaction reorder-interaction",
       div(
@@ -124,6 +147,7 @@ object HtmlReorderInteractionRenderer extends HtmlRenderFactory[ReorderInteracti
               val state = stateVar.now()
               val updated = moveItem(sanitizeOrder(state.currentOrder, state), idToMove, targetIdx)
               updateOrder(updated)
+              feedbackVar.set(None)
             case _ =>
           }
           draggingId.set(None)
@@ -141,6 +165,18 @@ object HtmlReorderInteractionRenderer extends HtmlRenderFactory[ReorderInteracti
               case None =>
                 visible
             }
+        }
+      ),
+      button(
+        cls := "btn-check",
+        text <-- contentIdStringSignal(LanguageMapContentId("basic/checkSolution")),
+        onClick --> { _ => checkSolution() }
+      ),
+      div(
+        cls := "reorder-feedback",
+        child.text <-- feedbackVar.signal.flatMapSwitch {
+          case Some(contentId) => contentIdStringSignal(contentId)
+          case None => Val("")
         }
       )
     )

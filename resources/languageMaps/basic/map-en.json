@@ -7,5 +7,10 @@
   "downloadEverything": "Download (workbook -> file)",
   "uploadSession": "Upload (file -> workbook)",
   "previousSection": "← Previous section",
-  "nextSection": "Next section →"
+  "nextSection": "Next section →",
+  "checkSolution": "Check solution",
+  "beginnerMode": "Beginner",
+  "advancedMode": "Advanced",
+  "reorderFeedbackSuccess": "✅ Very good! The order is correct.",
+  "reorderFeedbackWrongOrder": "⚠️ Close! The logic is not quite right yet. Check which steps must come before others."
 }

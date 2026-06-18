@@ -133,9 +133,10 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     reorderId: String,
     snippets: List[String],
     codeEditorTitle: String,
-    hints: List[LanguageMapContentId] = List.empty
+    hints: List[LanguageMapContentId] = List.empty,
+    orderConstraints: List[(Int, Int)] = Nil
   ): HtmlEmbeddedDomInteraction = {
-    val reorder = codeReorder(reorderId, snippets, AppLanguage.C, hints)
+    val reorder = codeReorder(reorderId, snippets, AppLanguage.C, hints, orderConstraints)
     val reorderDom = HtmlReorderInteractionRenderer.render(reorder).getDomElement()
 
     val advancedCodeState = Var(
@@ -157,13 +158,13 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         button(
           cls := "mode-toggle__btn",
           cls.toggle("mode-toggle__btn--active") <-- isBeginnerMode.signal,
-          "Anfänger",
+          text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId("basic/beginnerMode")),
           onClick.mapTo(true) --> isBeginnerMode
         ),
         button(
           cls := "mode-toggle__btn",
           cls.toggle("mode-toggle__btn--active") <-- isBeginnerMode.signal.map(!_),
-          "Fortgeschritten",
+          text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId("basic/advancedMode")),
           onClick.mapTo(false) --> isBeginnerMode
         )
       ),
@@ -279,29 +280,49 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     val codeTask = createCodeTaskToggle(
       "plant-combined-reorder",
       List(
+        "int feuchtigkeitsGrenze = 400;",
         "digitalWrite(SENSOR_POWER_PIN, HIGH);",
         "delay(10);",
         "int messwert = analogRead(SENSOR_PIN);",
         "digitalWrite(SENSOR_POWER_PIN, LOW);",
         "if (messwert < feuchtigkeitsGrenze) {",
-        "  digitalWrite(PUMP_PIN, LOW);",
-        "  delay(2000);",
         "  digitalWrite(PUMP_PIN, HIGH);",
+        "  delay(2000);",
+        "  digitalWrite(PUMP_PIN, LOW);",
+        "} else {",
+        "  Serial.println(\"Boden feucht - keine Bewässerung nötig\");",
         "}",
         "delay(10000);"
       ),
       "PlantWorkshop/pumpCodeEditorTodo",
       List(
+        LanguageMapContentId("PlantWorkshop/reorderHintFeuchtigkeitsGrenze"),
         LanguageMapContentId("PlantWorkshop/reorderHintSensorPowerHigh"),
         LanguageMapContentId("PlantWorkshop/reorderHintDelay10"),
         LanguageMapContentId("PlantWorkshop/reorderHintAnalogRead"),
         LanguageMapContentId("PlantWorkshop/reorderHintSensorPowerLow"),
         LanguageMapContentId("PlantWorkshop/reorderHintMesswertCheck"),
-        LanguageMapContentId("PlantWorkshop/reorderHintPumpLow"),
-        LanguageMapContentId("PlantWorkshop/reorderHintDelay2000"),
         LanguageMapContentId("PlantWorkshop/reorderHintPumpHigh"),
+        LanguageMapContentId("PlantWorkshop/reorderHintDelay2000"),
+        LanguageMapContentId("PlantWorkshop/reorderHintPumpLow"),
+        LanguageMapContentId("PlantWorkshop/reorderHintElseBlock"),
+        LanguageMapContentId("PlantWorkshop/reorderHintSerialPrintln"),
         LanguageMapContentId("PlantWorkshop/reorderHintCloseBrace"),
         LanguageMapContentId("PlantWorkshop/reorderHintDelay10000")
+      ),
+      orderConstraints = List(
+        1 -> 2,
+        2 -> 3,
+        3 -> 4,
+        0 -> 5,
+        4 -> 5,
+        5 -> 6,
+        6 -> 7,
+        7 -> 8,
+        8 -> 9,
+        9 -> 10,
+        10 -> 11,
+        11 -> 12
       )
     )
 
