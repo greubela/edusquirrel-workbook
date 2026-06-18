@@ -11,7 +11,27 @@ object HtmlReorderInteractionRenderer extends HtmlRenderFactory[ReorderInteracti
 
   override protected def createDomElement(reorder: ReorderInteraction[?]): Element = reorder match {
     case codeInteraction: ReorderInteraction.ReorderCodeInteraction =>
-      renderReorder(codeInteraction, (state, itemId) => pre(code(state.elements(itemId))), itemCssClass = "reorder-item--code")
+      renderReorder(
+        codeInteraction,
+        (state, itemId) => {
+          val contentElement: Element = pre(code(state.elements(itemId)))
+          val hintOpt = codeInteraction.hints.lift(itemId)
+          hintOpt match {
+            case Some(hintId) =>
+              div(
+                cls := "reorder-item-content",
+                contentElement,
+                span(
+                  cls := "reorder-item-hint",
+                  text <-- contentIdStringSignal(hintId)
+                )
+              )
+            case None =>
+              contentElement
+          }
+        },
+        itemCssClass = "reorder-item--code"
+      )
     case mapIds: ReorderInteraction.ReorderMapIdInteraction =>
       renderReorder(
         mapIds,

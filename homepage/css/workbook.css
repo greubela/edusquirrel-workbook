@@ -783,7 +783,7 @@ textarea.workbook-interaction {
 
 .reorder-item--code {
     padding: 0;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .reorder-item--code pre {
@@ -804,6 +804,39 @@ textarea.workbook-interaction {
 
 .reorder-item--code:hover pre {
     transform: translateY(-1px);
+}
+
+.reorder-item-content {
+    position: relative;
+}
+
+.reorder-item-hint {
+    position: absolute;
+    left: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    min-width: 220px;
+    max-width: 300px;
+    background: var(--color-tooltip-background);
+    color: var(--color-tooltip-text);
+    border: 1px solid var(--color-tooltip-border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.35;
+    font-family: var(--font-family-base);
+    box-shadow: 0 8px 20px var(--color-tooltip-shadow);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+    z-index: 2100;
+    pointer-events: none;
+    white-space: normal;
+}
+
+.reorder-item-content:hover .reorder-item-hint {
+    opacity: 1;
+    visibility: visible;
 }
 
 .reorder-item--dragging {

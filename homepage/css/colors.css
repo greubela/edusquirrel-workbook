@@ -120,6 +120,12 @@
   --color-button-hover: var(--color-surface);
   --color-button-border: var(--color-interaction-border);
 
+  /* Tooltip palette (for reorder hints and similar hover overlays). */
+  --color-tooltip-background: var(--color-surface-base);
+  --color-tooltip-text: var(--color-ink);
+  --color-tooltip-border: var(--color-border-soft);
+  --color-tooltip-shadow: rgba(24, 35, 51, 0.15);
+
   /* Backward-compatible aliases used across existing stylesheets. */
   --color-container-background: var(--color-workbook-surface-level-1);
   --color-container-border-passive: var(--color-workbook-border-default);

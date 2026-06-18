@@ -98,5 +98,21 @@
   "componentUsbCable": "USB cable",
   "section0IntroMarkdown": "## 🌱 Welcome to the Arduino plant workshop!\nToday we will learn how to build an automatic watering system with Arduino. Using this microcontroller, we will read a moisture sensor and control a pump so that our plants get water at exactly the right time.\n\n**What you will learn:**\n- How to read sensors (measure moisture in the soil)\n- How to control electrical devices (switch pump on/off)\n- How to combine both parts (automatic watering)\n\n> **Note:** We are using Arduino, a platform that makes it easy to control hardware with code. No worries if you have never programmed before — we start from the very beginning! You can choose between a beginner mode with drag-and-drop code blocks and an advanced mode where you fill in code gaps yourself.",
   "section0SafetyMarkdown": "### Safety notes\n- **Water and electricity:** Make sure no electrical parts (except the sensor) come into contact with water.\n- **Power supply:** Use only the provided power supplies and voltage levels.\n- **If you have problems or are unsure:** Always ask for help.",
-  "section1PowerWarningMarkdown": "> **⚠️ IMPORTANT SAFETY RULE:** Never switch on power without a supervisor! The power supply may only be activated together with a supervising adult."
+  "section1PowerWarningMarkdown": "> **⚠️ IMPORTANT SAFETY RULE:** Never switch on power without a supervisor! The power supply may only be activated together with a supervising adult.",
+
+  "reorderHintPumpHigh": "Set PUMP_PIN to HIGH (pump on).",
+  "reorderHintPumpLow": "Set PUMP_PIN to LOW (pump off).",
+  "reorderHintDelay2000": "Wait 2000 ms.",
+  "reorderHintDelay10": "Wait 10 ms.",
+  "reorderHintDelay10000": "Wait 10000 ms.",
+  "reorderHintSensorPowerHigh": "Set SENSOR_POWER_PIN to HIGH (sensor on).",
+  "reorderHintSensorPowerLow": "Set SENSOR_POWER_PIN to LOW (sensor off).",
+  "reorderHintAnalogRead": "Read the analog value from SENSOR_PIN and store it as messwert.",
+  "reorderHintMesswertCheck": "Check: Is messwert less than feuchtigkeitsGrenze?",
+  "reorderHintSerialPrint": "Print text to Serial Monitor without line break.",
+  "reorderHintSerialPrintln": "Print text or value to Serial Monitor with line break.",
+  "reorderHintFeuchtigkeitsGrenze": "Create an integer variable for the moisture threshold.",
+  "reorderHintIfBlock": "Start an if-block.",
+  "reorderHintElseBlock": "End the if-block and start the else branch.",
+  "reorderHintCloseBrace": "Close the block."
 }

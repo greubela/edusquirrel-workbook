@@ -8,16 +8,19 @@ import it.evadid.workbook.model.elements.LabeledInstructionElement
 
 object HtmlInstructionLabeledPairRenderer extends HtmlRenderFactory[LabeledInstructionElement] {
 
-  override protected def createDomElement(workbookElement: LabeledInstructionElement): Element = div(
-    cls := "workbook-element exercise-instruction instruction-pair",
+  override protected def createDomElement(workbookElement: LabeledInstructionElement): Element = {
+    val cssLabel = workbookElement.labelType.associatedCssString
     div(
-      cls := s"instruction-pair__title",
-      text <-- super.contentIdStringSignal(workbookElement.titleLable)
-    ),
-    div(
-      cls := s"instruction-pair__body",
-      text <-- super.contentIdStringSignal(workbookElement.bodyContent)
+      cls := s"workbook-element exercise-instruction $cssLabel",
+      div(
+        cls := s"${cssLabel}__title",
+        text <-- super.contentIdStringSignal(workbookElement.titleLable)
+      ),
+      div(
+        cls := s"${cssLabel}__body",
+        text <-- super.contentIdStringSignal(workbookElement.bodyContent)
+      )
     )
-  )
+  }
 
 }

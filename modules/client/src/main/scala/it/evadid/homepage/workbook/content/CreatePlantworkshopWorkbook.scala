@@ -133,9 +133,10 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
   private def createCodeTaskToggle(
     reorderId: String,
     snippets: List[String],
-    codeEditorTitle: String
+    codeEditorTitle: String,
+    hints: List[LanguageMapContentId] = List.empty
   ): HtmlEmbeddedDomInteraction = {
-    val reorder = codeReorder(reorderId, snippets, AppLanguage.C)
+    val reorder = codeReorder(reorderId, snippets, AppLanguage.C, hints)
     val reorderDom = HtmlReorderInteractionRenderer.render(reorder).getDomElement()
 
     val advancedCodeState = Var(
@@ -193,7 +194,12 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         "delay(2000);",
         "digitalWrite(PUMP_PIN, LOW);"
       ),
-      "PlantWorkshop/pumpCodeEditorTodo"
+      "PlantWorkshop/pumpCodeEditorTodo",
+      List(
+        LanguageMapContentId("PlantWorkshop/reorderHintPumpHigh"),
+        LanguageMapContentId("PlantWorkshop/reorderHintDelay2000"),
+        LanguageMapContentId("PlantWorkshop/reorderHintPumpLow")
+      )
     )
 
     section(
@@ -209,10 +215,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
           )
         ),
         container("PlantWorkshop/section2Title", List(codeTask)),
-        container(
-          "PlantWorkshop/section2Title",
-          List(instructionPlaintext("PlantWorkshop/section2AdvancedHint")) ++ checklistItems
-        )
+        container("PlantWorkshop/section2Title", checklistItems)
       )
     )
   }
@@ -236,7 +239,18 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         "  Serial.println(\"Boden ist FEUCHT\");",
         "}"
       ),
-      "PlantWorkshop/pumpCodeEditorTodo"
+      "PlantWorkshop/pumpCodeEditorTodo",
+      List(
+        LanguageMapContentId("PlantWorkshop/reorderHintSensorPowerHigh"),
+        LanguageMapContentId("PlantWorkshop/reorderHintDelay10"),
+        LanguageMapContentId("PlantWorkshop/reorderHintAnalogRead"),
+        LanguageMapContentId("PlantWorkshop/reorderHintSensorPowerLow"),
+        LanguageMapContentId("PlantWorkshop/reorderHintMesswertCheck"),
+        LanguageMapContentId("PlantWorkshop/reorderHintSerialPrintln"),
+        LanguageMapContentId("PlantWorkshop/reorderHintElseBlock"),
+        LanguageMapContentId("PlantWorkshop/reorderHintSerialPrintln"),
+        LanguageMapContentId("PlantWorkshop/reorderHintCloseBrace")
+      )
     )
 
     section(
@@ -252,10 +266,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
           )
         ),
         container("PlantWorkshop/section3Title", List(codeTask)),
-        container(
-          "PlantWorkshop/section3AdvancedHint",
-          List(instructionPlaintext("PlantWorkshop/section3AdvancedHint")) ++ checklistItems
-        )
+        container("PlantWorkshop/section3Title", checklistItems)
       )
     )
   }
@@ -280,7 +291,19 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         "}",
         "delay(10000);"
       ),
-      "PlantWorkshop/pumpCodeEditorTodo"
+      "PlantWorkshop/pumpCodeEditorTodo",
+      List(
+        LanguageMapContentId("PlantWorkshop/reorderHintSensorPowerHigh"),
+        LanguageMapContentId("PlantWorkshop/reorderHintDelay10"),
+        LanguageMapContentId("PlantWorkshop/reorderHintAnalogRead"),
+        LanguageMapContentId("PlantWorkshop/reorderHintSensorPowerLow"),
+        LanguageMapContentId("PlantWorkshop/reorderHintMesswertCheck"),
+        LanguageMapContentId("PlantWorkshop/reorderHintPumpLow"),
+        LanguageMapContentId("PlantWorkshop/reorderHintDelay2000"),
+        LanguageMapContentId("PlantWorkshop/reorderHintPumpHigh"),
+        LanguageMapContentId("PlantWorkshop/reorderHintCloseBrace"),
+        LanguageMapContentId("PlantWorkshop/reorderHintDelay10000")
+      )
     )
 
     section(
@@ -296,10 +319,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
           )
         ),
         container("PlantWorkshop/section4Title", List(codeTask)),
-        container(
-          "PlantWorkshop/section4AdvancedHint",
-          List(instructionPlaintext("PlantWorkshop/section4AdvancedHint")) ++ checklistItems
-        )
+        container("PlantWorkshop/section4Title", checklistItems)
       )
     )
   }
