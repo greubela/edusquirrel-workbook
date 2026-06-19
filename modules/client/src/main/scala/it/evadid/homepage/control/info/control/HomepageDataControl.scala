@@ -32,7 +32,7 @@ case class HomepageDataControl(fullInfo: FullInfo) {
     fullInfo.homepageInfoState.update(curInfo => curInfo.copy(workbookInfo = Some(newWorkbook)))
     interactions.map(_.interactionVariable).foreach(curIntVar => {
       curIntVar.syncToAll(true)
-      curIntVar.resetInteractionVariable(fullInfo.current.allSyncSources)
+      curIntVar.resetHistoryAndSync(fullInfo.current.allSyncSources)
       curIntVar.syncFromAll()
     })
   }

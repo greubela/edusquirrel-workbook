@@ -1,10 +1,15 @@
 package it.evadid.homepage.workbook.legacy.model.interaction.sync
 
+import it.evadid.core.datastructures.state.State
 import it.evadid.core.util.InfoUtil.datetimeFormattedForLog
 import it.evadid.distribution.commandTypes.SQLCommands
 import it.evadid.homepage.control.HtmlFullWorkbookApp
 import it.evadid.util.Logger
 import it.evadid.workbook.model.interaction.sync.SyncDestination
+import it.evadid.workbook.model.interaction.variable.InteractionVariableHistorySerialized.RichInteractionVariableHistorySerialized
+
+import java.time.LocalDateTime
+import scala.collection.mutable
 
 object DatabaseSyncViaBackendServer extends SyncDestination{
 

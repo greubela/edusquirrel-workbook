@@ -92,7 +92,7 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
     innerState.set(defaultHistory)
   }
 
-  def resetInteractionVariable(newSyncSources: List[SyncInformation]): Unit = this.synchronized {
+  def resetHistoryAndSync(newSyncSources: List[SyncInformation]): Unit = this.synchronized {
     syncSources.set(List())
     innerState.set(defaultHistory)
     syncSources.set(newSyncSources)

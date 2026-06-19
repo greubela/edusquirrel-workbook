@@ -3,6 +3,7 @@ package it.evadid.workbook.model.interaction.variable
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.model.interaction.sync.UpdateImportance.DEFAULT
 import it.evadid.workbook.model.interaction.sync.{SyncStrategy, UpdateImportance}
+import it.evadid.workbook.model.interaction.variable.InteractionVariableHistorySerialized.RichInteractionVariableHistorySerialized
 
 import java.time.LocalDateTime
 import scala.util.Try
@@ -21,6 +22,11 @@ case class InteractionVariableHistory[T](events: Set[InteractionVariableState[T]
     InteractionVariableHistorySerialized(events.map(_.serialized(serializer)))
   }
 
+  def serializedWithStrategyAndKey(syncKey: String, syncStrategy: SyncStrategy, serializer: Serializer[T]): RichInteractionVariableHistorySerialized = {
+    val lastStateSer = lastState.serialized(serializer)
+    RichInteractionVariableHistorySerialized(syncKey, lastStateSer.serializedValue, lastStateSer.timestamp, serializedWithStrategy(syncStrategy, serializer))
+  }
+  
   def serializedWithStrategy(syncStrategy: SyncStrategy, serializer: Serializer[T]): InteractionVariableHistorySerialized = {
     val syncEvents = syncStrategy.selectEventsToSync(events)
     InteractionVariableHistory(syncEvents).cleanedHistory().serialized(serializer)

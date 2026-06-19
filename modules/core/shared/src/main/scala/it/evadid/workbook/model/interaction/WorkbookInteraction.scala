@@ -37,7 +37,7 @@ trait WorkbookInteraction[T] extends WorkbookElement {
     if (syncBefore) {
       interactionVariable.syncToAll()
     }
-    interactionVariable.resetInteractionVariable(newSyncDest)
+    interactionVariable.resetHistoryAndSync(newSyncDest)
     if (syncAfter) {
       interactionVariable.syncFromAll()
       interactionVariable.syncToAll()
