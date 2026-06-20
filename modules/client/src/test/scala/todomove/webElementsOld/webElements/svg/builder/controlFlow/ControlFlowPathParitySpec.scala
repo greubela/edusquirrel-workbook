@@ -1,15 +1,15 @@
-package contentmanagement.webElements.svg.builder.controlFlow
+package todomove.webElementsOld.webElements.svg.builder.controlFlow
 
-import contentmanagement.webElements.svg.builder.controlFlow.path.ControlFlowPathOverlay
-import contentmanagement.webElements.svg.builder.controlFlow.types.doubleWidth.{ControlFlowCrossType, IfElseSplitType, IfElseUnionType}
-import contentmanagement.webElements.svg.builder.controlFlow.types.singleWidth.{ControlFlowDirectedType, ControlFlowProgramStarterType, ControlFlowProgramStopperType}
-import contentmanagement.webElements.svg.shapes.ControlFlowShape
-import contentmanagement.webElements.svg.shapes.controlflow.doubleWidth.{ControlFlowCross, IfElseSplit, IfElseUnion}
-import contentmanagement.webElements.svg.shapes.controlflow.singleWidth.{ControlFlowDirected, ControlFlowProgramStarter, ControlFlowProgramStopper}
-import datastructures.core.geometry.Point
-import interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
-import interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
+import todomove.webElementsOld.webElements.svg.builder.controlFlow.path.ControlFlowPathOverlay
+import todomove.webElementsOld.webElements.svg.builder.controlFlow.types.doubleWidth.{ControlFlowCrossType, IfElseSplitType, IfElseUnionType}
+import todomove.webElementsOld.webElements.svg.builder.controlFlow.types.singleWidth.{ControlFlowDirectedType, ControlFlowProgramStarterType, ControlFlowProgramStopperType}
+import todomove.webElementsOld.webElements.svg.shapes.ControlFlowShape
+import todomove.webElementsOld.webElements.svg.shapes.controlflow.doubleWidth.{ControlFlowCross, IfElseSplit, IfElseUnion}
+import todomove.webElementsOld.webElements.svg.shapes.controlflow.singleWidth.{ControlFlowDirected, ControlFlowProgramStarter, ControlFlowProgramStopper}
+import it.evadid.core.datastructures.geometry.Point
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 import munit.FunSuite
 
 class ControlFlowPathParitySpec extends FunSuite {
