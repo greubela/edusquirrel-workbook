@@ -1,8 +1,7 @@
-package it.evadid.evacuation.core.datastructures.matrix
+package it.evadid.core.datastructures.matrix
 
 import scala.language.implicitConversions
 
-import it.evadid.evacuation.core.datastructures.Direction
 
 import scala.collection.mutable
 

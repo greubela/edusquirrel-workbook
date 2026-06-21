@@ -1,7 +1,7 @@
 package it.evadid.evacuation.eva2.control.modes
 
-import it.evadid.evacuation.core.datastructures.Direction
-import it.evadid.evacuation.core.datastructures.matrix.PositionInMatrix
+import it.evadid.core.datastructures.matrix.Direction
+import it.evadid.core.datastructures.matrix.PositionInMatrix
 import it.evadid.evacuation.core.graphic.sprites.BasicOverlaySprite
 import it.evadid.evacuation.core.graphic.sprites.traits.OverlaySprite
 import it.evadid.evacuation.eva2.algorithm.escaping.{Evacuation, EvacuationMetaData, EvacuationStep}

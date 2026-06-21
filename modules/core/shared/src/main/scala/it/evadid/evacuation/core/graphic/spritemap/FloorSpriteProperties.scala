@@ -1,6 +1,6 @@
 package it.evadid.evacuation.core.graphic.spritemap
 
-import it.evadid.evacuation.core.datastructures.matrix.MatrixPosition
+import it.evadid.core.datastructures.matrix.MatrixPosition
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer

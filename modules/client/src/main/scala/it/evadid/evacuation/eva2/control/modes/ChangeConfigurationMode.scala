@@ -1,6 +1,6 @@
 package it.evadid.evacuation.eva2.control.modes
 
-import it.evadid.evacuation.core.datastructures.matrix.PositionInMatrix
+import it.evadid.core.datastructures.matrix.PositionInMatrix
 import it.evadid.evacuation.core.graphic.spritemap.SpriteMapResourceIdentifier
 import it.evadid.evacuation.core.graphic.sprites.traits.OverlaySprite
 import it.evadid.evacuation.eva2.control.Eva2ControlMode

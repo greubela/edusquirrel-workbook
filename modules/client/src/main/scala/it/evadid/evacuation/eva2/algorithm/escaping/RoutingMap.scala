@@ -2,8 +2,8 @@ package it.evadid.evacuation.eva2.algorithm.escaping
 
 import it.evadid.evacuation.core.algorithm.routing.model.RoutingOption
 import it.evadid.evacuation.core.datastructures.maps.MultiHashMapList
-import it.evadid.evacuation.core.datastructures.matrix
-import it.evadid.evacuation.core.datastructures.matrix.PositionInMatrix
+import it.evadid.core.datastructures.matrix
+import it.evadid.core.datastructures.matrix.PositionInMatrix
 
 import scala.collection.MapView
 
