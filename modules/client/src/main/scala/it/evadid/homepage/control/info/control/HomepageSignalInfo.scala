@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap, LanguageMapContentId, LanguageMapIdResolver}
 import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.homepage.control.*
-import it.evadid.homepage.control.info.{AllWorkbookInfo, FullInfo, HomepageInfo}
+import it.evadid.homepage.control.info.{AllUserInfo, AllWorkbookInfo, FullInfo, HomepageInfo}
 import it.evadid.workbook.model.elements.WorkbookSection
 import it.evadid.core.datastructures.storage.AsyncData
 import it.evadid.core.datastructures.storage.AsyncData.*
@@ -33,6 +33,10 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
   lazy val workbook: StrictSignal[Option[AllWorkbookInfo]] = {
     baseSignal.mapLazy(_.workbookInfo)
     // Var(None).signal
+  }
+
+  lazy val currentUserInfo: StrictSignal[Option[AllUserInfo]] = {
+    baseSignal.mapLazy(_.userInfo)
   }
 
   lazy val availableLanguages: StrictSignal[List[HumanLanguage]] = {

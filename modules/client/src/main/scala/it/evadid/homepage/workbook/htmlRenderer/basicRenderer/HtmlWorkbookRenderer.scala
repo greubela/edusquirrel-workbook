@@ -5,6 +5,7 @@ import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
+import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlDropdownMenu}
@@ -69,17 +70,45 @@ private case class UserMenu() extends HtmlAppElement {
     if (initials.nonEmpty) initials else "?"
   }
 
-  private val currentUserName: Signal[String] = Var(
-    fullInfo.current.userInfo.map(_.user.name).getOrElse("User")
-  ).signal
+  private val currentUserName: Signal[String] = fullInfo.signals.currentUserInfo.map(
+    _.map(_.user.name).getOrElse("User")
+  )
 
   private val currentUserInitials: Signal[String] = currentUserName.map(userInitials)
 
-  private val menu: HtmlDropdownMenu = HtmlDropdownMenu(List(
-    HtmlDropdownMenu.menuItem("Einstellungen"),
-    HtmlDropdownMenu.menuItem("Persönliche Daten herunterladen"),
-    HtmlDropdownMenu.menuItem("Abmelden")
-  ))
+  private def localizedLabel(contentId: LanguageMapContentId): Signal[String] =
+    fullInfo.signals.stringFromLanguageMapId(contentId)
+
+  private def closeMenu(): Unit = isOpen.set(false)
+
+  private def switchUser(user: User): Unit = {
+    fullInfo.control.changeUser(Some(fullInfo.defaults.createDefaultUserInfo(user)))
+    closeMenu()
+  }
+
+  private def label(contentId: LanguageMapContentId): HtmlAppElement = new HtmlAppElement {
+    private val domElement: Element = div(
+      cls := "html-dropdown-menu-label",
+      role := "presentation",
+      child.text <-- localizedLabel(contentId)
+    )
+
+    override def getDomElement(): Element = domElement
+  }
+
+  private val menu: HtmlDropdownMenu = HtmlDropdownMenu(
+    List(
+      HtmlDropdownMenu.menuItem(localizedLabel(LanguageMapContentId("basic/settings"))),
+      HtmlDropdownMenu.menuItem(localizedLabel(LanguageMapContentId("basic/downloadEverything"))),
+      HtmlDropdownMenu.menuItem(localizedLabel(LanguageMapContentId("basic/logout")), _ => {
+        fullInfo.control.changeUser(None)
+        closeMenu()
+      }),
+      label(LanguageMapContentId("basic/switchUser"))
+    ) ++ fullInfo.defaults.selectableUsers.map(user =>
+      HtmlDropdownMenu.menuItem(Var(user.name).signal, _ => switchUser(user))
+    )
+  )
 
   private val domElement: Element = div(
     cls := "workbook-user-menu-anchor dropdown-anchor",

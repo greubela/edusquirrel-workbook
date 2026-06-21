@@ -7,5 +7,8 @@
   "resetLocalStorage": "Alle Eingaben löschen",
   "downloadEverything": "Download (Arbeitsheft -> Datei)",
   "uploadSession": "Laden (Datei -> Arbeitsheft)",
+  "settings": "Einstellungen",
+  "logout": "Abmelden",
+  "switchUser": "Benutzer wechseln",
   "workbookfooterprivacyinfo": "Datenschutzhinweis: Arbeitsheft-Eingaben werden lokal in diesem Browser gespeichert, sofern du sie nicht herunter- oder hochlädst."
 }
