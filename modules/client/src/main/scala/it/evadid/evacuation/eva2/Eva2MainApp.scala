@@ -16,7 +16,7 @@ object Eva2MainApp {
 
   val version = "2022-10-28"
 
-  def main(args: Array[String]): Unit = {
+  def main2(args: Array[String]): Unit = {
 
 
     window.addEventListener("drop", (e: dom.DragEvent) => {

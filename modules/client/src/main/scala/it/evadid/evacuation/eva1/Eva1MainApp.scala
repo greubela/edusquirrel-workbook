@@ -14,7 +14,7 @@ object Eva1MainApp {
 
   val version = "2022-09-01"
 
-  def main(args: Array[String]): Unit = {
+  def main2(args: Array[String]): Unit = {
 
     println("Created Eva1 Page at: " + new Date() + ", compiled at: " + version)
 

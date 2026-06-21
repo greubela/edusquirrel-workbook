@@ -84,10 +84,16 @@ lazy val server = (project in file("./modules/server"))
     assembly / assemblyJarName := "server.jar",
     assembly / assemblyMergeStrategy := {
       case PathList("module-info.class") => MergeStrategy.discard
-      case PathList("META-INF", "versions", _*) => MergeStrategy.discard
+        // JavaFX / Gluon native-image metadata; conflicts across javafx-* jars
+      case PathList("META-INF", "substrate", "config", _*) => MergeStrategy.discard
       case PathList("META-INF", "io.netty.versions.properties") => MergeStrategy.first
       case PathList("google", "protobuf", file) if file.endsWith(".proto") => MergeStrategy.first
+
+      case PathList("META-INF", "substrate", "config", _*) => MergeStrategy.first
+
+      case PathList("META-INF", "versions", _*) => MergeStrategy.discard
       case x => (assembly / assemblyMergeStrategy).value(x)
+
     },
     libraryDependencies ++= (coreDependencies.value ++ jvmDependencies.value ++ Seq(
       "com.mysql" % "mysql-connector-j" % "9.7.0"
@@ -101,6 +107,7 @@ lazy val client = (project in file("./modules/client"))
   .settings(
     name := "client",
     scalaJSUseMainModuleInitializer := true,
+    Compile / mainClass := Some("mainApp"),
     Test / jsEnv := new NodeJSEnv(),
     libraryDependencies ++= (coreDependencies.value ++ jsDependencies.value)
   )
