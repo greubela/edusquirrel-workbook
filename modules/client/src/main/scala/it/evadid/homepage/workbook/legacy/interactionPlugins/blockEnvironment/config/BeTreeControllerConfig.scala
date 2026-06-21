@@ -8,7 +8,7 @@ import it.evadid.core.datastructures.geometry.Point
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
 import org.scalajs.dom.{DragEvent, MouseEvent}
-import todomove.datastructures.core.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
+import it.evadid.workbook.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
 
 trait BeTreeControllerConfig {
 

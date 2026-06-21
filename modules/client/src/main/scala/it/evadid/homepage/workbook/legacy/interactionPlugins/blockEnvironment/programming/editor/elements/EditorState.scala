@@ -10,7 +10,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.co
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeTreeDropTarget
-import todomove.datastructures.core.vm.code.BeExpression
+import it.evadid.workbook.vm.code.BeExpression
 
 case class EditorState(
                         treeToEdit: Var[BeProgram],

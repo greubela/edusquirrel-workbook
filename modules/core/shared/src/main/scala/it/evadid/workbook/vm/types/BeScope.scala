@@ -1,0 +1,35 @@
+package it.evadid.workbook.vm.types
+
+import it.evadid.workbook.vm.code.controlStructures.BeSequence
+import it.evadid.workbook.vm.code.defining.{BeDefineClass, BeDefineFunction}
+
+sealed trait BeScope {
+
+  def parentScopes: List[BeScope]
+
+  // todo: implemented wrong. think about direction...
+  def isSubScope(other: BeScope): Boolean = other.parentScopes.contains(other) 
+}
+
+object BeScope {
+
+  case class GlobalScope() extends BeScope {
+    def parentScopes: List[BeScope] = List()
+  }
+
+  case class InFunctionScope(funcDef: BeDefineFunction, parentScope: BeScope) extends BeScope {
+    def parentScopes: List[BeScope] = parentScope :: parentScope.parentScopes
+  }
+
+  case class InClassScope(classDef: BeDefineClass, parentScope: BeScope) extends BeScope {
+    def parentScopes: List[BeScope] = parentScope :: parentScope.parentScopes
+  }
+
+  case class InSequenceScope(seq: BeSequence, parentScope: BeScope) extends BeScope {
+    def parentScopes: List[BeScope] = parentScope :: parentScope.parentScopes
+  }
+
+
+}
+
+

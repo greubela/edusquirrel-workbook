@@ -5,7 +5,7 @@ import it.evadid.distribution.clients.{ExecuteOnRemoteServer, ExecutionClient}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ai.CommandLlmClient
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.UltrichsNewCoolFeedback
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.service.BlockFeedbackService
-import todomove.datastructures.core.vm.code.BeExpression
+import it.evadid.workbook.vm.code.BeExpression
 
 import scala.concurrent.{ExecutionContext, Future}
 /**

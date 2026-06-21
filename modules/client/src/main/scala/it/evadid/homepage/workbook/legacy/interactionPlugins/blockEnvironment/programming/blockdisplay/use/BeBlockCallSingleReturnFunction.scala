@@ -1,14 +1,14 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.use
 
-import todomove.datastructures.core.vm.code.defining.BeDefineFunction.Operator
-import todomove.datastructures.core.vm.types.BeChildRole.FunctionParameter
+import it.evadid.workbook.vm.code.defining.BeDefineFunction.Operator
+import it.evadid.workbook.vm.types.BeChildRole.FunctionParameter
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlockSingleShape, RenderingInformation}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.data.{BeBlockDefineVariable, BeBlockUseValue}
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.data.{BeBlockDefineVariable, BeBlockUseValue, BeDataTypeShapeAdapter}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
-import todomove.datastructures.core.vm.code.defining.BeDefineVariable
-import todomove.datastructures.core.vm.code.tree.BeExpressionNode
-import todomove.datastructures.core.vm.code.usage.{BeFunctionCall, BeUseValue}
+import it.evadid.workbook.vm.code.defining.BeDefineVariable
+import it.evadid.workbook.vm.code.tree.BeExpressionNode
+import it.evadid.workbook.vm.code.usage.{BeFunctionCall, BeUseValue}
 import todomove.webElementsOld.webElements.svg.shapes.{BeShape, BeShapeAmendFactory, ControlFlowShape, TextShape}
 import todomove.webElementsOld.webElements.svg.shapes.composite.{HBoxSameHeight, ShapeAroundShape}
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.singleWidth.ControlFlowFunctionCall
@@ -36,7 +36,7 @@ case class BeBlockCallSingleReturnFunction(
     val factory = BeShapeAmendFactory(renderingInformation.renderingConfig)
     val signalAmends = factory.muteOnTreeDragged(renderingInformation.inProgram, renderingInformation.editorState.controllerStateVar.signal, factory.defaultFunctionColorsAmend)
 
-    val outputShape = function.funcDef.outputs.map(_.variableType.createContainerShape.get).getOrElse(UnitShape)
+    val outputShape = function.funcDef.outputs.flatMap(output => BeDataTypeShapeAdapter.containerShapeFor(output.variableType)).getOrElse(UnitShape)
 
     val shape = ShapeAroundShape(outputShape, childBox).addSignalAmends(signalAmends)
 

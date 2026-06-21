@@ -1,14 +1,14 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.control
 
-import todomove.datastructures.core.vm.types.BeChildRole.{BodySequence, ConditionInControlStructure}
+import it.evadid.workbook.vm.types.BeChildRole.{BodySequence, ConditionInControlStructure}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer.{ControlFlowDecreaseLine, ControlFlowIncreaseLine, ControlFlowReplaceLine}
 import it.evadid.core.datastructures.tree.TreeStructureContext
 import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreePosition
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, RenderingInformation}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
-import todomove.datastructures.core.vm.code.controlStructures.BeIfElse
-import todomove.datastructures.core.vm.code.tree.BeExpressionNode
+import it.evadid.workbook.vm.code.controlStructures.BeIfElse
+import it.evadid.workbook.vm.code.tree.BeExpressionNode
 import todomove.webElementsOld.webElements.svg.shapes.{BeShape, ControlFlowAndExpressionShape, ControlFlowShape}
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.doubleWidth.{ControlFlowCross, ControlFlowShapeDoubleWidth, IfElseSplit, IfElseUnion}
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.singleWidth.ControlFlowDirected

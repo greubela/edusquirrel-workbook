@@ -3,13 +3,13 @@ package it.evadid.homepage.workbook.legacy.plantworkshop
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
-import todomove.datastructures.core.vm.code.BeExpression
-import todomove.datastructures.core.vm.code.controlStructures.{BeIfElse, BeSequence}
-import todomove.datastructures.core.vm.code.defining.{BeDefineFunction, BeDefineVariable}
-import todomove.datastructures.core.vm.code.others.BeStartProgram
-import todomove.datastructures.core.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
-import todomove.datastructures.core.vm.parsing.python.DefaultDefinitions
-import todomove.datastructures.core.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
+import it.evadid.workbook.vm.code.BeExpression
+import it.evadid.workbook.vm.code.controlStructures.{BeIfElse, BeSequence}
+import it.evadid.workbook.vm.code.defining.{BeDefineFunction, BeDefineVariable}
+import it.evadid.workbook.vm.code.others.BeStartProgram
+import it.evadid.workbook.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
+import it.evadid.workbook.vm.parsing.python.DefaultDefinitions
+import it.evadid.workbook.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
 
 /**
   * Block library builders for the Plant Workshop tasks.

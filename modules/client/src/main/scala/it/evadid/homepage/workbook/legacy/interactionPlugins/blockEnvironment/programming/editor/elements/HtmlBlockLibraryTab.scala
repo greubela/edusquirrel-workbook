@@ -7,10 +7,10 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
-import todomove.datastructures.core.vm.code.BeExpression
-import todomove.datastructures.core.vm.code.controlStructures.{BeIfElse, BeSequence, BeSequenceInfo, BeWhile}
-import todomove.datastructures.core.vm.code.usage.BeUseValue
-import todomove.datastructures.core.vm.types.{BeDataType, BeDataValueLiteral}
+import it.evadid.workbook.vm.code.BeExpression
+import it.evadid.workbook.vm.code.controlStructures.{BeIfElse, BeSequence, BeSequenceInfo, BeWhile}
+import it.evadid.workbook.vm.code.usage.BeUseValue
+import it.evadid.workbook.vm.types.{BeDataType, BeDataValueLiteral}
 import todomove.webElementsOld.webElements.svg.shapes.TextShape
 import todomove.webElementsOld.webElements.svg.shapes.composite.ShapeAroundShape
 import todomove.webElementsOld.webElements.svg.shapes.datatypes.RectangleShape
