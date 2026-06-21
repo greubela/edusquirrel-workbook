@@ -12,7 +12,7 @@
   "beginnerMode": "Beginner",
   "advancedMode": "Advanced",
   "reorderFeedbackSuccess": "✅ Very good! The order is correct.",
-  "reorderFeedbackWrongOrder": "⚠️ Close! The logic is not quite right yet. Check which steps must come before others."
+  "reorderFeedbackWrongOrder": "⚠️ Close! The logic is not quite right yet. Check which steps must come before others.",
   "missingContent": "[No Content Available]",
   "settings": "Settings",
   "logout": "Log out",

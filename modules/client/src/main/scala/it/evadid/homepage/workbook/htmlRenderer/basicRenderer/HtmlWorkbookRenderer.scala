@@ -7,6 +7,7 @@ import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.HtmlFullWorkbookApp.fullInfo
+import it.evadid.homepage.control.info.AllUserInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlDropdownMenu}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
@@ -129,8 +130,8 @@ private case class UserMenu() extends HtmlAppElement {
 
   private def closeMenu(): Unit = isOpen.set(false)
 
-  private def switchUser(user: User): Unit = {
-    fullInfo.control.changeUser(Some(fullInfo.defaults.createDefaultUserInfo(user)))
+  private def switchUser(user: AllUserInfo): Unit = {
+    fullInfo.control.changeUser(Some(user))
     closeMenu()
   }
 
@@ -154,7 +155,7 @@ private case class UserMenu() extends HtmlAppElement {
       }),
       label(LanguageMapContentId("basic/switchUser"))
     ) ++ fullInfo.defaults.selectableUsers.map(user =>
-      HtmlDropdownMenu.menuItem(Var(user.name).signal, _ => switchUser(user))
+      HtmlDropdownMenu.menuItem(Var(user.user.name).signal, _ => switchUser(user))
     )
   )
 

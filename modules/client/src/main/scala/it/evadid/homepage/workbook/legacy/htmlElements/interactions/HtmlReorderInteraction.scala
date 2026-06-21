@@ -8,7 +8,7 @@ import it.evadid.workbook.model.interaction.WorkbookInteraction
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 
 import scala.util.Try
-
+/*
 case class HtmlReorderInteraction[T](
                                       fullInfo: FullInfo,
                                       id: String,
@@ -130,4 +130,4 @@ case class HtmlReorderInteraction[T](
       cls := "workbook-interaction reorder-interaction",
       listElement
     )
-}
+}*/

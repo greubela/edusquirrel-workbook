@@ -8,9 +8,15 @@ import scala.scalajs.js.{Dictionary, JSON}
 
 object IoSerialization {
 
-  def parseJson(content: String): Map[String, String] = {
+  def parseJson(content: String): Map[String, String] = try {
     val parsed: Dictionary[String] = JSON.parse(content).asInstanceOf[js.Dictionary[String]]
     parsed.toMap
+  } catch {
+    case e: Throwable => {
+      e.printStackTrace()
+      println("Error parsing JSON: " + e.getMessage + "\n" + content)
+      Map.empty[String, String]
+    }
   }
 
   def parseCsv(content: String): List[List[String]] = {

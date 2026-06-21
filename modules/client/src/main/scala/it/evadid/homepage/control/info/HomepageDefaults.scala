@@ -8,28 +8,27 @@ import it.evadid.workbook.model.interaction.sync.*
 import it.evadid.workbook.model.interaction.sync.SyncStrategy.{SYNC_EVERYTHING, SYNC_MAJOR}
 
 case class HomepageDefaults() {
-  val availableLanguages: List[HumanLanguage] = List(AppLanguage.German, AppLanguage.English)
+  lazy val availableLanguages: List[HumanLanguage] = List(AppLanguage.German, AppLanguage.English)
 
-  val defaultLanguage: HumanLanguage = AppLanguage.German
+  lazy val defaultLanguage: HumanLanguage = AppLanguage.German
 
-  val defaultSyncLocation: List[SyncInformation] = List(
+  lazy val defaultSyncLocation: List[SyncInformation] = List(
     SyncInformation(LocalStorageSync, SyncStrategy.SYNC_EVERYTHING),
     SyncInformation(DatabaseSyncViaBackendServer, SYNC_MAJOR)
-    //SyncInformation(DatabaseSyncViaTmpMathBackend, SYNC_EVERYTHING)
   )
 
-  val defaultUser: AllUserInfo = createDefaultUserInfo(User("TestUser", "test@homepage"))
+  lazy val defaultUser: AllUserInfo = selectableUsers.head
 
-  val defaultUserConfig: UserConfig = UserConfig(
+  lazy val defaultUserConfig: UserConfig = UserConfig(
     defaultSyncLocation
   )
 
-  val selectableUsers: List[User] = List(
+  lazy val selectableUsers: List[AllUserInfo] = List(
     User("André", "andre@homepage"),
     User("TestUser", "test@homepage"),
     User("TestStudent", "test-student@homepage"),
     User("Bettina", "bettina@homepage")
-  )
+  ).map(createDefaultUserInfo)
 
   def createDefaultUserInfo(user: User): AllUserInfo = AllUserInfo(user, defaultUserConfig)
 }

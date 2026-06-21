@@ -6,20 +6,14 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.control.HtmlFullWorkbookApp
 import it.evadid.homepage.control.info.FullInfo
 import it.evadid.homepage.webElements.basic.HtmlImageElement
-import it.evadid.homepage.workbook.htmlRenderer.*
 import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionEditors.*
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.gpt.HtmlGptTextfieldInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.reorderExercise.HtmlReorderInteractionRenderer
-import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.slideshow.HtmlSlideshowRenderer
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.turtleStitch.{HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRenderer}
 import it.evadid.homepage.workbook.legacy.htmlElements.HtmlEmbeddedDomInteraction
-import it.evadid.homepage.workbook.legacy.htmlElements.interactions.HtmlReorderInteraction
-import it.evadid.workbook.model.interaction.plugins.reorderExercise.ReorderInteraction
-import it.evadid.workbook.model.interaction.plugins.slideshow.Slideshow
 import it.evadid.workbook.model.abstractions.WorkbookElement
-import it.evadid.workbook.model.elements.ImageElement.FileBasedImageElement
-import it.evadid.workbook.model.elements.{ExerciseContainer, ImageElement, LabeledInstructionElement, LangMapContentBasedElement, Workbook}
+import it.evadid.workbook.model.elements.*
 import it.evadid.workbook.model.interaction.WorkbookInteraction.TextInteractionBasic
 import it.evadid.workbook.model.interaction.basic.*
 import it.evadid.workbook.model.interaction.plugins.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
@@ -81,7 +75,6 @@ object HtmlRenderFactory {
       case i: FillInBlanksInteraction => HtmlFillInBlanksRenderer.render(i)
       case i: DropdownBlanksInteraction => HtmlDropdownBlanksRenderer.render(i)
       case i: TableFillInInteraction => HtmlTableFillInRenderer.render(i)
-      case s: Slideshow => HtmlSlideshowEditor.render(s)
       case r: ReorderInteraction[?] => HtmlReorderInteractionRenderer.render(r)
       // plugins -- turtle
       case t: TurtleStitchExploreProjectElement => HtmlTurtleStitchExploreProjectRenderer.render(t)
@@ -89,9 +82,8 @@ object HtmlRenderFactory {
       // plugins -- gpt
       case g: GptInteractionElement => HtmlGptTextfieldInteractionRenderer.render(g)
       // plugins -- slideshow & reorder
-      case s: Slideshow => HtmlSlideshowRenderer.render(s)
-      case r: ReorderInteraction[?] => HtmlReorderInteractionRenderer.render(r)
-      case r: HtmlReorderInteraction[?] @unchecked => fromElement(r, r.getDomElement())
+      case s: Slideshow => HtmlSlideshowEditor.render(s) // editor instead of renderer
+      /*case r: HtmlReorderInteraction[?] @unchecked => fromElement(r, r.getDomElement())*/
       case e: HtmlEmbeddedDomInteraction => fromElement(e, e.domElement)
 
       // error

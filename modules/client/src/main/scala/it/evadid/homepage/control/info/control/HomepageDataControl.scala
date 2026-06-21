@@ -4,6 +4,7 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.control.info.{AllUserInfo, AllWorkbookInfo, FullInfo, WorkbookConfig}
 import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.workbook.model.interaction.WorkbookInteraction
+import it.evadid.workbook.model.interaction.sync.SyncInformation
 
 case class HomepageDataControl(fullInfo: FullInfo) {
 
@@ -46,10 +47,9 @@ case class HomepageDataControl(fullInfo: FullInfo) {
 
   def changeUser(userInfo: Option[AllUserInfo]): Unit = fullInfo.synchronized {
     //saveAndResetAllInfo() //todo without dummy
-
     interactions.foreach(_.interactionVariable.syncToAll(true))
 
-    val syncDest = userInfo.map(_.config.syncDestinations).getOrElse(fullInfo.defaults.defaultSyncLocation)
+    val syncDest: List[SyncInformation] = userInfo.map(_.config.syncDestinations).getOrElse(fullInfo.defaults.defaultSyncLocation)
     fullInfo.homepageInfoState.update(curInfo => curInfo.copy(userInfo = userInfo))
 
     interactions.foreach(_.resetInteraction(syncBefore = false, syncAfter = true, syncDest))

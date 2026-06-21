@@ -9,9 +9,9 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
 
   override val availableLanguages: List[HumanLanguage] = List(German)
 
-  override val workbookId: String = "IuBWorkbook"
+  override val workbookId: String = "CompressionWorkbook"
 
-  private def t(key: String): String = s"IuBWorkbook/$key"
+  private def t(key: String): String = s"CompressionWorkbook/$key"
 
   override lazy val createWorkbook: Workbook = workbook(
     t("workbookTitle"),
