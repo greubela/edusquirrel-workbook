@@ -12,10 +12,13 @@ case class LanguageMapContentId(val languageMapId: String, val entryKey: String)
 
 object LanguageMapContentId {
 
+  def apply(languageMapId: String, entryKey: String): LanguageMapContentId =
+    new LanguageMapContentId(languageMapId.toLowerCase, entryKey.toLowerCase)
+
   def apply(fullId: String): LanguageMapContentId = {
     val parts = fullId.split("/")
     if (parts.length != 2) throw new IllegalArgumentException(s"Invalid language map identifier: $fullId")
-    LanguageMapContentId(parts(0).trim.toLowerCase, parts(1).trim.toLowerCase)
+    apply(parts(0), parts(1))
   }
 
   def serializer: Serializer[LanguageMapContentId] = new Serializer[LanguageMapContentId] {
@@ -31,8 +34,3 @@ object LanguageMapContentId {
   }
 
 }
-
-
-
-
-

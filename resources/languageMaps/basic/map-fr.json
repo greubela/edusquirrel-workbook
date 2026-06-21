@@ -3,4 +3,11 @@
   "imageLoadingMap": "[chargement de l'image]",
   "noSectionSelected": "[aucune section sélectionnée]",
   "workbookfooterprivacyinfo": "Confidentialité : les réponses du cahier sont stockées localement dans ce navigateur, sauf téléchargement ou téléversement."
+  "previousSection": "← Section précédente",
+  "nextSection": "Section suivante →",
+  "checkSolution": "Vérifier la solution",
+  "beginnerMode": "Débutant",
+  "advancedMode": "Avancé",
+  "reorderFeedbackSuccess": "✅ Très bien ! L'ordre est correct.",
+  "reorderFeedbackWrongOrder": "⚠️ Presque ! La logique n'est pas encore tout à fait juste. Vérifie quelles étapes doivent venir avant les autres."
 }

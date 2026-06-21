@@ -75,9 +75,13 @@ case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, Loa
     triples.foreach(curTriple => asStorage.loadAsFuture(curTriple.contentId))
   }
 
+  def addLoadedFiles(batch: Iterable[LoadedFile]): Unit = fileStore.synchronized {
+    batch.foreach(loadedFiles += _)
+    addTriples(batch.flatMap(triplesFromFile).toSet)
+  }
+
   def addLoadedFile(loadedFile: LoadedFile): Unit = fileStore.synchronized {
-    loadedFiles += loadedFile
-    addTriples(triplesFromFile(loadedFile))
+    addLoadedFiles(Iterable.single(loadedFile))
   }
 
   def addFile(fileDescription: FileDescription): Unit = fileStore.synchronized {
@@ -96,8 +100,8 @@ case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, Loa
     val res: Promise[LanguageMapTripleStore] = Promise[LanguageMapTripleStore]()
     WorkbookContentStorage.loadAllFilesInDirs(fileStore, dirs).onComplete {
       case Success(loadedFiles) => {
-        loadedFiles.foreach(addLoadedFile)
-        res.success(lastFinishedCache.get)
+        addLoadedFiles(loadedFiles)
+        res.success(lastFinishedCache.getOrElse(LanguageMapTripleStore(Set.empty)))
       }
       case Failure(err) => res.failure(err)
     }
@@ -215,6 +219,40 @@ object WorkbookContentStorage {
     }
   }
 
+  private def mapGroupId(file: FileDescription): Option[String] = {
+    val fromLocation = file.location.flatMap { loc =>
+      val normalized = loc.replace("\\", "/").stripSuffix("/")
+      normalized.split("/").filter(_.nonEmpty).lastOption
+    }
+    fromLocation.orElse {
+      val segments = file.fullPath.replace("\\", "/").split("/").filter(_.nonEmpty)
+      val languageMapsIndex = segments.indexWhere(_.equalsIgnoreCase("languageMaps"))
+      if (languageMapsIndex >= 0 && segments.length > languageMapsIndex + 1) {
+        segments.lift(languageMapsIndex + 1).filter(_.nonEmpty)
+      } else {
+        val parts = file.filenameWithoutExtension.split("-")
+        if (parts.length < 2) None else Some(parts.dropRight(1).mkString("-"))
+      }
+    }
+  }
+
+  private def languageMapFileUrl(dir: FileDescription, suffix: String): String = {
+    val base = dir.location match {
+      case Some(loc) => loc.stripSuffix("/") + "/" + dir.filenameWithoutExtension
+      case None => dir.fullPath.stripSuffix("/")
+    }
+    s"$base/map-$suffix.json"
+  }
+
+
+  private def languageFromFileDescription(file: FileDescription): Option[HumanLanguage] = {
+    val langSuffix: Option[String] = file.filenameWithoutExtension.split("-").lastOption.map(_.toLowerCase)
+    langSuffix.flatMap {
+      case "universal" => Some(UniversalLanguageMapFile)
+      case suffix => WorkbookContentStorage.languageByFileSuffix.get(suffix).map(RegularLanguageMapFile.apply)
+    }
+  }
+
   private def languageMapEntry(contentId: LanguageMapContentId,
                                fileKind: LanguageMapFileKind,
                                value: String): LanguageMapEntry = fileKind match {
@@ -251,6 +289,7 @@ object WorkbookContentStorage {
     FileFactory.relativeToResourceFolder("/languageMaps/embroideryworkbook"),
     FileFactory.relativeToResourceFolder("/languageMaps/testworkbook"),
     FileFactory.relativeToResourceFolder("/languageMaps/plantworkshop"),
+    FileFactory.relativeToResourceFolder("/languageMaps/iubworkbook"),
     FileFactory.relativeToResourceFolder("/languageMaps/prompts"),
   )
 

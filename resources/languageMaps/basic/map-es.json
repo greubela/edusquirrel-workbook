@@ -3,4 +3,11 @@
   "imageLoadingMap": "[cargando imagen]",
   "noSectionSelected": "[ninguna sección seleccionada]",
   "workbookfooterprivacyinfo": "Privacidad: Las entradas del cuaderno se guardan localmente en este navegador, salvo que las descargues o subas."
+  "previousSection": "← Sección anterior",
+  "nextSection": "Siguiente sección →",
+  "checkSolution": "Comprobar solución",
+  "beginnerMode": "Principiante",
+  "advancedMode": "Avanzado",
+  "reorderFeedbackSuccess": "✅ ¡Muy bien! El orden es correcto.",
+  "reorderFeedbackWrongOrder": "⚠️ ¡Casi! La lógica aún no es correcta. Revisa qué pasos deben ir antes que otros."
 }

@@ -11,4 +11,11 @@
   "logout": "Abmelden",
   "switchUser": "Benutzer wechseln",
   "workbookfooterprivacyinfo": "Datenschutzhinweis: Arbeitsheft-Eingaben werden lokal in diesem Browser gespeichert, sofern du sie nicht herunter- oder hochlädst."
+  "previousSection": "← Vorheriger Abschnitt",
+  "nextSection": "Nächster Abschnitt →",
+  "checkSolution": "Lösung prüfen",
+  "beginnerMode": "Anfänger",
+  "advancedMode": "Fortgeschritten",
+  "reorderFeedbackSuccess": "✅ Sehr gut! Die Reihenfolge ist korrekt.",
+  "reorderFeedbackWrongOrder": "⚠️ Fast! Die Logik passt noch nicht ganz. Prüfe, welche Schritte zwingend vor anderen kommen müssen."
 }
