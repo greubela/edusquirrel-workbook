@@ -4,5 +4,11 @@
   "noSectionSelected": "[No section selected!]",
   "noWorkbookLoaded": "[No workbook loaded!]",
   "missingContent": "[No Content Available]",
+  "resetLocalStorage": "Delete all input",
+  "downloadEverything": "Download (workbook -> file)",
+  "uploadSession": "Load (file -> workbook)",
+  "settings": "Settings",
+  "logout": "Log out",
+  "switchUser": "Switch user",
   "workbookfooterprivacyinfo": "Privacy information: Your interaction with the workbook is logged and stored locally in your browser. It is not shared with anyone else."
 }

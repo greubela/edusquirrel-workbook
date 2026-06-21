@@ -15,7 +15,7 @@ import it.evadid.workbook.model.interaction.sync.SyncInformation
 import org.scalajs.dom
 
 case class FullInfo(
-                     private[info] val defaults: HomepageDefaults,
+                     val defaults: HomepageDefaults,
                      val technical: TechnicalControl,
                      private[info] val initInfo: HomepageInfo) {
 
