@@ -1,9 +1,10 @@
 package it.evadid.server
 
 import it.evadid.distribution.clients.*
-import it.evadid.distribution.commandTypes.{LLMCommands, SQLCommands}
+import it.evadid.distribution.commandTypes.{LLMCommands, MailCommands, SQLCommands}
 import it.evadid.distribution.commandTypes.LLMCommands.{FeedbackLlmRequest, MessengerChatCompletionRequest}
 import it.evadid.distribution.commandTypes.SQLCommands.SyncToDbRequest
+import it.evadid.distribution.commandTypes.MailCommands.SendMailRequest
 import it.evadid.util.*
 import it.evadid.distribution.command.*
 
@@ -21,6 +22,9 @@ object BackendCommandHandler {
     ),
     SQLCommands.syncToDbCommand.toExecutionClient(
       (request: SyncToDbRequest, logger: Logger) => HandleSQLCommand.handleSyncToDbRequest(request, logger)
+    ),
+    MailCommands.sendMailCommand.toExecutionClient(
+      (request: SendMailRequest, logger: Logger) => SendMailCommand.handleSendMailRequest(request, logger)
     )
   ))
 

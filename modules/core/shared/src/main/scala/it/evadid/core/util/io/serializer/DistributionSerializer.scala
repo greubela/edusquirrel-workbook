@@ -7,6 +7,7 @@ import it.evadid.distribution.command.*
 import it.evadid.distribution.command.ExecutionResult.*
 import it.evadid.distribution.command.ExecutionInfo.*
 import it.evadid.distribution.commandTypes.LLMCommands.{FeedbackLlmRequest, MessengerChatCompletionRequest, MessengerChatCompletionResponse}
+import it.evadid.distribution.commandTypes.MailCommands.{SendMailRequest, SendMailResponse}
 import it.evadid.distribution.commandTypes.SQLCommands.{SyncToDbRequest, SyncToDbResponse}
 import upickle.ReadWriter
 import upickle.default.*
@@ -45,6 +46,10 @@ object DistributionSerializer {
 
   private[serializer] given stdbres: ReadWriter[SyncToDbResponse] = macroRW
 
+  private[serializer] given sendMailReq: ReadWriter[SendMailRequest] = macroRW
+
+  private[serializer] given sendMailRes: ReadWriter[SendMailResponse] = macroRW
+
 
   lazy val serializeExecutionCommandJson: Serializer[ExecutionCommand] = new Serializer[ExecutionCommand] {
     override def serialize(obj: ExecutionCommand): String = write(obj)(using bec)
@@ -72,6 +77,8 @@ object DistributionSerializer {
   lazy val serializerFeedbackLlmRequestJson: Serializer[FeedbackLlmRequest] = Serializer.fromUpickleJson[FeedbackLlmRequest](flreq)
   lazy val serializerSyncToDbRequestJson: Serializer[SyncToDbRequest] = Serializer.fromUpickleJson[SyncToDbRequest](stdbreq)
   lazy val serializerSyncToDbResponseJson: Serializer[SyncToDbResponse] = Serializer.fromUpickleJson[SyncToDbResponse](stdbres)
+  lazy val serializerSendMailRequestJson: Serializer[SendMailRequest] = Serializer.fromUpickleJson[SendMailRequest](sendMailReq)
+  lazy val serializerSendMailResponseJson: Serializer[SendMailResponse] = Serializer.fromUpickleJson[SendMailResponse](sendMailRes)
   lazy val serializerStringJson: Serializer[String] = Serializer.stringIO
   /*
 
