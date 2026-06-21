@@ -29,9 +29,9 @@ buildWorkerFast := Def.sequential(
 lazy val deployAll = taskKey[Unit]("Builds and deploys server + client")
 deployAll := {
   Def.sequential(
-    client / Compile / fullLinkJS,
-    worker / Compile / fullLinkJS,
     Def.taskDyn {
+      (client / Compile / fullLinkJS).value
+      (worker / Compile / fullLinkJS).value
       val clientOutput = (client / Compile / fullLinkJS / scalaJSLinkedFile).value.data
       val workerOutput = (worker / Compile / fullLinkJS / scalaJSLinkedFile).value.data
       val base = (ThisBuild / baseDirectory).value
