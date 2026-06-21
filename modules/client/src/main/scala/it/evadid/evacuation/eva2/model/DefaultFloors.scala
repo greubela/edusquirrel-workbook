@@ -1,6 +1,6 @@
 package it.evadid.evacuation.eva2.model
 
-import it.evadid.evacuation.core.datastructures.matrix.{Matrix, MatrixDimension}
+import it.evadid.core.datastructures.matrix.{Matrix, MatrixDimension}
 import it.evadid.evacuation.core.graphic.spritemap.{EvaSpriteMap, SpriteMapResourceIdentifier}
 import it.evadid.evacuation.core.graphic.sprites.traits.FloorSprite
 import it.evadid.evacuation.core.io.util.LocalResourceReader

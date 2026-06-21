@@ -1,7 +1,7 @@
 package it.evadid.evacuation.eva2.model
 
-import it.evadid.evacuation.core.datastructures.Direction
-import it.evadid.evacuation.core.datastructures.matrix.{Matrix, MatrixDimension, MatrixPosition, PositionInMatrix}
+import it.evadid.core.datastructures.matrix.Direction
+import it.evadid.core.datastructures.matrix.{Matrix, MatrixDimension, MatrixPosition, PositionInMatrix}
 import it.evadid.evacuation.core.graphic.sprites.traits.{FloorSprite, PersonSprite}
 import it.evadid.evacuation.eva2.model.FloorMatrix.FloorMatrix
 import it.evadid.evacuation.eva2.model.ProgramState.spriteMap

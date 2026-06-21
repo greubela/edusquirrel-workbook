@@ -1,7 +1,7 @@
 package it.evadid.evacuation.core.graphic.spritemap
 
-import it.evadid.evacuation.core.datastructures.Direction
-import it.evadid.evacuation.core.datastructures.matrix.{MatrixDimension, MatrixPosition}
+import it.evadid.core.datastructures.matrix.Direction
+import it.evadid.core.datastructures.matrix.{MatrixDimension, MatrixPosition}
 import it.evadid.evacuation.core.graphic.spritemap.SpriteMapConfig.parseSpriteMapAnimLine
 import it.evadid.evacuation.core.graphic.sprites._
 import it.evadid.evacuation.core.graphic.sprites.traits.Sprite

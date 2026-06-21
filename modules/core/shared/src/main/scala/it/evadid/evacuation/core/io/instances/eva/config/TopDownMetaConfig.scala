@@ -1,6 +1,6 @@
 package it.evadid.evacuation.core.io.instances.eva.config
 
-import it.evadid.evacuation.core.datastructures.matrix.{MatrixDimension, MatrixPosition}
+import it.evadid.core.datastructures.matrix.{MatrixDimension, MatrixPosition}
 import it.evadid.evacuation.core.graphic.spritemap.SpriteMap
 import it.evadid.evacuation.core.graphic.sprites.traits.{FloorSprite, Sprite}
 

@@ -1,6 +1,5 @@
-package it.evadid.evacuation.core.datastructures
+package it.evadid.core.datastructures.matrix
 
-import it.evadid.evacuation.core.datastructures.matrix.MatrixPosition
 
 case class Direction(name: String, toPosition: MatrixPosition) {
 

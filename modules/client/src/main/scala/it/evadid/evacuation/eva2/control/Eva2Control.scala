@@ -1,7 +1,7 @@
 package it.evadid.evacuation.eva2.control
 
 import it.evadid.evacuation.control.EvaControl
-import it.evadid.evacuation.core.datastructures.matrix.PositionInMatrix
+import it.evadid.core.datastructures.matrix.PositionInMatrix
 import it.evadid.evacuation.core.graphic.spritemap.SpriteMapResourceIdentifier
 import it.evadid.evacuation.core.graphic.sprites.traits.{OverlaySprite, Sprite}
 import it.evadid.evacuation.core.utility.BufferedExecution

@@ -1,6 +1,6 @@
 package it.evadid.evacuation.core.graphic.spritemap
 
-import it.evadid.evacuation.core.datastructures.matrix.MatrixDimension
+import it.evadid.core.datastructures.matrix.MatrixDimension
 import it.evadid.evacuation.core.graphic.sprites.traits.{FloorSprite, OverlaySprite, PersonSprite, Sprite}
 import it.evadid.evacuation.core.io.instances.eva.config.SpriteMapMetaConfig
 

@@ -1,6 +1,6 @@
 package it.evadid.evacuation.eva2.control.traits
 
-import it.evadid.evacuation.core.datastructures.matrix.PositionInMatrix
+import it.evadid.core.datastructures.matrix.PositionInMatrix
 
 trait SimpleTileMapController {
 

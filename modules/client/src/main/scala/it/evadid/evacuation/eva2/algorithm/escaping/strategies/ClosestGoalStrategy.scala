@@ -1,6 +1,6 @@
 package it.evadid.evacuation.eva2.algorithm.escaping.strategies
 
-import it.evadid.evacuation.core.datastructures.matrix.{Neighbourhood, PositionInMatrix}
+import it.evadid.core.datastructures.matrix.{Neighbourhood, PositionInMatrix}
 import it.evadid.evacuation.eva2.algorithm.escaping.RoutingMap.RoutingMap
 import it.evadid.evacuation.eva2.algorithm.escaping.strategies.ClosestGoalStrategy.{CGSimInfo, CGStepInfo}
 import it.evadid.evacuation.eva2.algorithm.escaping.{EvacuationStrategy, PersonOrderSelector, PersonRoutingOption}

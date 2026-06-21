@@ -1,6 +1,6 @@
 package it.evadid.evacuation.eva2.io
 
-import it.evadid.evacuation.core.datastructures.matrix.{MatrixDimension, MatrixPosition}
+import it.evadid.core.datastructures.matrix.{MatrixDimension, MatrixPosition}
 import it.evadid.evacuation.core.graphic.spritemap.SpriteMapConfig
 import it.evadid.evacuation.core.io.instances.eva.config.TopDownMetaConfig
 import it.evadid.evacuation.core.io.util.LocalResourceReader
