@@ -1,9 +1,11 @@
 package it.evadid.homepage.webElements.editor
 
 import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.contentIdStringSignal
 import SimpleNumberEditor.*
 
 case class SimpleNumberEditor[T](
@@ -14,15 +16,21 @@ case class SimpleNumberEditor[T](
   override def getDomElement(): Element = domElement
 
   private val domElement: Element = div(
-    cls := "simple-number-editor",
+    cls := RootClass,
     child <-- config.signal.map(createNumberEditor)
   )
 
-  private def createNumberEditor(curConfig: NumberEditorConfig[T]): Element = div(
-    cls := curConfig.containerClass,
+  private def createNumberEditor(curConfig: NumberEditorConfig[T]): Element = label(
+    cls := BodyClass,
+    curConfig.label.map { labelId =>
+      span(
+        cls := LabelClass,
+        text <-- contentIdStringSignal(labelId)
+      )
+    },
     input(
       typ := "text",
-      cls := curConfig.inputClass,
+      cls := InputClass,
       controlled(
         value <-- varToBind.signal.map(curConfig.format),
         onInput.mapToValue
@@ -31,19 +39,19 @@ case class SimpleNumberEditor[T](
       )
     ),
     div(
-      cls := curConfig.spinnerClass,
+      cls := SpinnerClass,
       button(
         typ := "button",
-        cls := curConfig.buttonClass,
-        aria.label := curConfig.incrementLabel,
-        curConfig.incrementContent,
+        cls := SpinnerButtonClass,
+        aria.label <-- contentIdStringSignal(curConfig.incrementLabel),
+        "▲",
         onClick.mapTo(adjust(curConfig.diff, curConfig)) --> varToBind.writer
       ),
       button(
         typ := "button",
-        cls := curConfig.buttonClass,
-        aria.label := curConfig.decrementLabel,
-        curConfig.decrementContent,
+        cls := SpinnerButtonClass,
+        aria.label <-- contentIdStringSignal(curConfig.decrementLabel),
+        "▼",
         onClick.mapTo(adjust(numeric.negate(curConfig.diff), curConfig)) --> varToBind.writer
       )
     )
@@ -68,20 +76,25 @@ case class SimpleNumberEditor[T](
 }
 
 object SimpleNumberEditor {
+  private val RootClass = "simple-number-editor"
+  private val BodyClass = "simple-number-editor__body"
+  private val LabelClass = "simple-number-editor__label-text"
+  private val InputClass = "simple-number-editor__input"
+  private val SpinnerClass = "simple-number-editor__spinner"
+  private val SpinnerButtonClass = "simple-number-editor__spinner-button"
+
+  private val DefaultIncrementLabel = LanguageMapContentId("basic/increaseNumber")
+  private val DefaultDecrementLabel = LanguageMapContentId("basic/decreaseNumber")
+
   case class NumberEditorConfig[T](
     diff: T,
     minimum: Option[T] = None,
     maximum: Option[T] = None,
+    label: Option[LanguageMapContentId] = None,
     parse: String => Option[T],
     format: T => String = (value: T) => value.toString,
-    containerClass: String = "simple-number-editor__body",
-    inputClass: String = "simple-number-editor__input",
-    spinnerClass: String = "simple-number-editor__spinner",
-    buttonClass: String = "simple-number-editor__spinner-button",
-    incrementLabel: String = "Increase number",
-    decrementLabel: String = "Decrease number",
-    incrementContent: String = "▲",
-    decrementContent: String = "▼"
+    incrementLabel: LanguageMapContentId = DefaultIncrementLabel,
+    decrementLabel: LanguageMapContentId = DefaultDecrementLabel
   )
 
   def defaultConfig[T](diff: T)(using numeric: Numeric[T]): NumberEditorConfig[T] = NumberEditorConfig(
@@ -89,8 +102,13 @@ object SimpleNumberEditor {
     parse = value => numeric.parseString(value.trim)
   )
 
-  def defaultConfig[T](diff: T, minimum: Option[T], maximum: Option[T])(using numeric: Numeric[T]): NumberEditorConfig[T] =
-    defaultConfig(diff).copy(minimum = minimum, maximum = maximum)
+  def defaultConfig[T](
+    diff: T,
+    minimum: Option[T],
+    maximum: Option[T],
+    label: Option[LanguageMapContentId] = None
+  )(using numeric: Numeric[T]): NumberEditorConfig[T] =
+    defaultConfig(diff).copy(minimum = minimum, maximum = maximum, label = label)
 
   def apply[T](varToBind: Var[T], diff: T)(using numeric: Numeric[T]): SimpleNumberEditor[T] =
     SimpleNumberEditor(varToBind, Var(defaultConfig(diff)))
