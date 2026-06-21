@@ -30,174 +30,129 @@ type BeBlockRenderingContext = TreeStructureAndExecutionContext[NodeBasedTreePos
 
 case class BeProgram(fullProgram: BeExpression) {
 
-  def expressionTree(displayConfig: BeTreeDisplayConfig): BeExpressionTree = fullProgram.recToTree(displayConfig.displayPlaceholders, BeChildPosition(NoRole, BeScope.GlobalScope()))
+  def expressionTree(displayConfig: BeTreeDisplayConfig): BeExpressionTree =
+    BeProgramViewHelpers.expressionTree(fullProgram, displayConfig)
 
-  def blockRenderingTree(displayConfig: BeTreeDisplayConfig): BeBlockRenderingTree = expressionTree(displayConfig).mapWithStructure(structure => {
-    structure.curValue match {
-      case BeExtensionPoint(isRequired, childPos, dataType) => {
-        (structure.curValue, BeBlockPlaceholder(structure.curValue.asInstanceOf[BeExtensionPoint], structure.curPosition))
-      }
-      case BeExpressionReference(childPos, expression) => {
-        (structure.curValue, BeBlockRendererFactory.blockFor(expression))
-      }
-    }
-  })
+  def blockRenderingTree(displayConfig: BeTreeDisplayConfig): BeBlockRenderingTree =
+    BeProgramViewHelpers.blockRenderingTree(expressionTree(displayConfig))
 
-  def withInsertions(displayConfig: BeTreeDisplayConfig, additionMap: Map[BeExtensionPoint, BeExpression]): BeProgram = {
-    val exprTree = expressionTree(displayConfig)
+  def withInsertions(displayConfig: BeTreeDisplayConfig, additionMap: Map[BeExtensionPoint, BeExpression]): BeProgram =
+    BeProgramTreeMutationHelpers.withInsertions(this, displayConfig, additionMap)
+
+  def canInsertAtPosition(insertAtPosition: NodeBasedTreePosition, newProgram: BeProgram): Boolean =
+    BeProgramTreeMutationHelpers.canInsertAtPosition(this, insertAtPosition, newProgram)
+
+  override val toString: String = BeProgramViewHelpers.toDisplayString(fullProgram)
+
+}
+
+object BeProgram {
+
+  def fromPythonString(pythonString: String): BeProgram =
+    BeProgramConstructionHelpers.fromPythonString(pythonString)
+
+  def createSimpleFunc(functionName: LanguageMap[HumanLanguage], parNames: List[LanguageMap[HumanLanguage]], parTypes: List[BeDataType], parValues: List[String], output: Option[BeDataType]): BeProgram =
+    BeProgramConstructionHelpers.createSimpleFunc(functionName, parNames, parTypes, parValues, output)
+
+  def createSimpleFunc(functionName: String, parNames: List[String], parTypes: List[BeDataType], parValues: List[String], output: Option[BeDataType]): BeProgram =
+    BeProgramConstructionHelpers.createSimpleFunc(functionName, parNames, parTypes, parValues, output)
+
+  def createOneParFunc(functionName: String, parName: String, parType: BeDataType, valueString: String): BeProgram =
+    BeProgramConstructionHelpers.createOneParFunc(functionName, parName, parType, valueString)
+
+  def miniProgramExpression(): BeExpression =
+    BeProgramConstructionHelpers.miniProgramExpression()
+
+  def miniProgram(): BeProgram =
+    BeProgramConstructionHelpers.miniProgram()
+
+  def debugGraphicsProgram2(): BeProgram =
+    BeProgramConstructionHelpers.debugGraphicsProgram2()
+
+  def parseSimpleWhile(): BeProgram =
+    BeProgramConstructionHelpers.parseSimpleWhile()
+
+  def parseSimpleIf(): BeProgram =
+    BeProgramConstructionHelpers.parseSimpleIf()
+
+  def debugGraphicsProgram3(): BeProgram =
+    BeProgramConstructionHelpers.debugGraphicsProgram3()
+
+  def debugGraphicsProgram(): BeProgram =
+    BeProgramConstructionHelpers.debugGraphicsProgram()
+
+  def sampleParsedProgram(): BeProgram =
+    BeProgramConstructionHelpers.sampleParsedProgram()
+
+  def sampleParsedProgram2(): BeProgram =
+    BeProgramConstructionHelpers.sampleParsedProgram2()
+
+}
+
+private object BeProgramViewHelpers {
+
+  def expressionTree(fullProgram: BeExpression, displayConfig: BeTreeDisplayConfig): BeExpressionTree =
+    fullProgram.recToTree(displayConfig.displayPlaceholders, BeChildPosition(NoRole, BeScope.GlobalScope()))
+
+  def blockRenderingTree(expressionTree: BeExpressionTree): BeBlockRenderingTree =
+    expressionTree.mapWithStructure(structure => {
+      structure.curValue match {
+        case extensionPoint: BeExtensionPoint =>
+          (structure.curValue, BeBlockPlaceholder(extensionPoint, structure.curPosition))
+        case BeExpressionReference(childPos, expression) =>
+          (structure.curValue, BeBlockRendererFactory.blockFor(expression))
+      }
+    })
+
+  def toDisplayString(fullProgram: BeExpression): String =
+    "BeProgram(" + fullProgram.toString + ")"
+
+}
+
+private object BeProgramTreeMutationHelpers {
+
+  def withInsertions(program: BeProgram, displayConfig: BeTreeDisplayConfig, additionMap: Map[BeExtensionPoint, BeExpression]): BeProgram = {
+    val exprTree = program.expressionTree(displayConfig)
     val res: Map[NodeBasedTreePosition, Option[BeExpression]] = {
       exprTree.applyWithChildResults[Option[BeExpression]]((structureContext, childrenResultMap) => {
         structureContext.curValue match {
-          case name@BeExtensionPoint(isRequired, childPos, dataType) => {
-            if (additionMap.contains(name)) Some(additionMap(name))
-            else None
-          }
-          case BeExpressionReference(childPos, expression) => {
+          case name: BeExtensionPoint =>
+            additionMap.get(name)
+          case BeExpressionReference(childPos, expression) =>
             val childrenResultList: List[(BeChildRole, BeExpression)] =
               childrenResultMap.toList.filter(_._2.nonEmpty).map(tup => (tup._1.childPosition.roleInParent, tup._2.get))
             Some(expression.withReplacedChildren(childrenResultList))
-          }
         }
       })
     }
     BeProgram(res(exprTree.rootPosition.forChild(0)).get)
   }
 
-
-
-  /*
-    val res: Option[(BeChildPosition, BeExpression)] = structureContext.curValue match {
-      case BeExtensionPoint(isRequired, childPos, dataType) => {
-        val replaceWith = additionMap.get(structureContext.curValue.asInstanceOf[BeExtensionPoint])
-        if (replaceWith.nonEmpty && dataType.canTakeValuesFrom(replaceWith.get.canEvaluateTo).possibleWithoutSyntaxErrors) Some((childPos, replaceWith.get))
-        else None
-      }
-      case BeExpressionReference(childPos, expression) => {
-       // childrenResults.toList().map(tup => tup)
-        ???
-      }
-        val childrenResults2: List[(BeChildRole, BeExpression)] = structureContext.accessChildrenResults.flatten.map(tup => (tup._1.roleInParent, tup._2))
-        Some((childPos, expression.withReplacedChildren(childrenResults)))
-      }
-
-        ???
-    }
-    )
-
-    val reparsedExpression = expressionTree.mapWithContext[Option[(BeChildPosition, BeExpression)]](context => {
-      context.curValue match {
-        case BeExtensionPoint(isRequired, childPos, dataType) => {
-          val replaceWith = additionMap.get(context.curValue.asInstanceOf[BeExtensionPoint])
-          if (replaceWith.nonEmpty && dataType.canTakeValuesFrom(replaceWith.get.canEvaluateTo).possibleWithoutSyntaxErrors) Some((childPos, replaceWith.get))
-          else None
-        }
-        case BeExpressionReference(childPos, expression) => {
-          val childrenResults: List[(BeChildRole, BeExpression)] = context.accessChildrenResults.flatten.map(tup => (tup._1.roleInParent, tup._2))
-          Some((childPos, expression.withReplacedChildren(childrenResults)))
-        }
-      }
-    })*/
-  /*
-    val rootOp = reparsedExpression.getData(reparsedExpression.rootPosition.forChild(0)).get
-    val newExpr = rootOp.map(_._2).getOrElse(BeExpression.pass)
-    BeProgram(newExpr)
-  }*/
-
-  /*
-      .flatMap(curChild => curChild match {
-      case
-        if (!additionMap.contains(curChild.asInstanceOf[BeExtensionPoint])) {
-          None
-        } else {
-          val exprToAdd = additionMap(curChild.asInstanceOf[BeExtensionPoint])
-          if ((exprToAdd.canEvaluateTo).possibleWithoutSyntaxErrors) {
-            Some((childPos, exprToAdd))
-          } else {
-            None
-          }
-        }
-      case BeExpressionReference(childPos, expression) => Some((childPos, expression))
-    })
-   */
-
-
-  def canInsertAtPosition(insertAtPosition: NodeBasedTreePosition, newProgram: BeProgram): Boolean = {
+  def canInsertAtPosition(program: BeProgram, insertAtPosition: NodeBasedTreePosition, newProgram: BeProgram): Boolean =
     false
-  }
-
-  //lazy val asExpression: BeExpression = BeProgram.expressionTreeToExpression(expressionTree)
-
-  override val toString: String = {
-    "BeProgram(" + fullProgram.toString + ")"
-  }
 
 }
 
-object BeProgram {
+private object BeProgramConstructionHelpers {
 
-  def fromPythonString(pythonString: String): BeProgram = {
-    val parsingResult = PythonParser.parsePythonWithDetails(pythonString)
-    val expression = BeStartProgram(parsingResult.codeExpression)
-    BeProgram(expression)
-  }
+  def fromPythonString(pythonString: String): BeProgram =
+    BeProgram(parsePythonExpression(pythonString))
 
   def createSimpleFunc(functionName: LanguageMap[HumanLanguage], parNames: List[LanguageMap[HumanLanguage]], parTypes: List[BeDataType], parValues: List[String], output: Option[BeDataType]): BeProgram = {
-
-    val parVariables: List[BeDefineVariable] = parNames.zip(parTypes).zipWithIndex.map((tup, curIndex) => {
-      val (curName, curType) = tup
-      BeDefineVariable(curName, curType)
-    })
-
-    val outputVar = output.map(typeSet => BeDefineVariable(LanguageMap.universalMap("output"), typeSet))
-
-    val parValueMap = parVariables.zip(parValues).map((parVar, parVal) => {
-      parVar -> BeUseValue(BeDataValueLiteral(parVal), Some(parVar))
-    }).toMap
-
-    val expression: BeExpression =
-      BeFunctionCall(
-        BeDefineFunction(
-          parVariables, outputVar, BeExpression.pass, BeDefineFunction.functionInfo(functionName)
-        ),
-        parValueMap
-      )
-
-    BeProgram(expression)
+    val parVariables = defineParameters(parNames, parTypes)
+    createFunctionCallProgram(functionName, parVariables, parValues, output)
   }
 
   def createSimpleFunc(functionName: String, parNames: List[String], parTypes: List[BeDataType], parValues: List[String], output: Option[BeDataType]): BeProgram = {
-
     val funcNameMap: LanguageMap[HumanLanguage] = LanguageMap.universalMap(functionName)
-
-    val parVariables: List[BeDefineVariable] = parNames.zip(parTypes).zipWithIndex.map((tup, curIndex) => {
-      val (curName, curType) = tup
-      BeDefineVariable(LanguageMap.universalMap(curName), curType)
-    })
-
-    val outputVar = output.map(typeSet => BeDefineVariable(LanguageMap.universalMap("output"), typeSet))
-
-    val parValueMap = parVariables.zip(parValues).map((parVar, parVal) => {
-      parVar -> BeUseValue(BeDataValueLiteral(parVal), Some(parVar))
-    }).toMap
-
-    val expression: BeExpression =
-      BeFunctionCall(
-        BeDefineFunction(
-          parVariables, outputVar, BeExpression.pass, BeDefineFunction.functionInfo(funcNameMap)
-        ),
-        parValueMap
-      )
-
-    BeProgram(expression)
+    val parNameMaps: List[LanguageMap[HumanLanguage]] = parNames.map(LanguageMap.universalMap)
+    createSimpleFunc(funcNameMap, parNameMaps, parTypes, parValues, output)
   }
 
-
-  def createOneParFunc(functionName: String, parName: String, parType: BeDataType, valueString: String): BeProgram = {
+  def createOneParFunc(functionName: String, parName: String, parType: BeDataType, valueString: String): BeProgram =
     createSimpleFunc(functionName, List(parName), List(parType), List(valueString), None)
-  }
 
   def miniProgramExpression(): BeExpression = {
-
     val forwardName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
       AppLanguage.German -> "vorwärts",
       AppLanguage.English -> "forward"
@@ -220,8 +175,7 @@ object BeProgram {
           BeFunctionCall(
             forwardFunc,
             Map(parameter -> BeUseValue(BeDataValueLiteral("100"), Some(parameter)))
-          )
-          ,
+          ),
           BeFunctionCall(
             forwardFunc,
             Map(parameter -> BeUseValue(BeDataValueLiteral("100"), Some(parameter)))
@@ -229,127 +183,120 @@ object BeProgram {
         )
       )
     )
-
-
   }
 
-  def miniProgram(): BeProgram = {
+  def miniProgram(): BeProgram =
     BeProgram(miniProgramExpression())
+
+  def debugGraphicsProgram2(): BeProgram = fromPythonString(
+    """
+      |i = 1
+      |while i < 3:
+      |    i = i + 1
+      |println("finished!")
+      |""".stripMargin
+  )
+
+  def parseSimpleWhile(): BeProgram = fromPythonString(
+    """
+      |i: int = 3
+      |while i < 5:
+      |    i = i + 1
+      |""".stripMargin
+  )
+
+  def parseSimpleIf(): BeProgram = fromPythonString(
+    """
+      |if c:
+      |    x = "hi"
+      |else:
+      |    x = "bye"
+      |""".stripMargin
+  )
+
+  def debugGraphicsProgram3(): BeProgram = fromPythonString(
+    """
+      |import turtle
+      |# comments are supported
+      |        if i == 2:
+      |            turnLeft(90)
+      |        else:
+      |            backward("never!")
+      |    i = i + 1
+      |""".stripMargin
+  )
+
+  def debugGraphicsProgram(): BeProgram = fromPythonString(
+    """
+      |import turtle
+      |# comments are supported
+      |syntax error!!
+      |i = 3
+      |while i < 10:
+      |    j = 2
+      |    while j < 2:
+      |        j = j + 1
+      |        if i == 2:
+      |            turnLeft(90)
+      |        else:
+      |            backward("never!")
+      |    i = i + 1
+      |""".stripMargin
+  )
+
+  def sampleParsedProgram(): BeProgram = fromPythonString(
+    """
+      |import turtle
+      |callFunc("duck")
+      |if score > 10:
+      |    func(A)
+      |else:
+      |    doSomething()
+      |    if another > 3:
+      |        forward(1000)
+      |    else:
+      |        backward("never!")
+      |""".stripMargin
+  )
+
+  def sampleParsedProgram2(): BeProgram = fromPythonString(
+    """
+      |import os
+      |x=3
+      |if you´re happy and you know it syntax error
+      |# comment are supported
+      |if score > 10:
+      |    func(A)
+      |elif score == 10:
+      |    func("B")
+      |else:
+      |    forward(1000)
+      |""".stripMargin
+  )
+
+  private def parsePythonExpression(pythonString: String): BeExpression = {
+    val parsingResult = PythonParser.parsePythonWithDetails(pythonString)
+    BeStartProgram(parsingResult.codeExpression)
   }
 
-  def debugGraphicsProgram2(): BeProgram = {
-    val somePython =
-      """
-        |i = 1
-        |while i < 3:
-        |    i = i + 1
-        |println("finished!")
-        |""".stripMargin
-    val parsingResult = PythonParser.parsePythonWithDetails(somePython)
-    val expression = BeStartProgram(parsingResult.codeExpression)
+  private def defineParameters(parNames: List[LanguageMap[HumanLanguage]], parTypes: List[BeDataType]): List[BeDefineVariable] =
+    parNames.zip(parTypes).map((curName, curType) => BeDefineVariable(curName, curType))
+
+  private def createFunctionCallProgram(functionName: LanguageMap[HumanLanguage], parVariables: List[BeDefineVariable], parValues: List[String], output: Option[BeDataType]): BeProgram = {
+    val outputVar = output.map(typeSet => BeDefineVariable(LanguageMap.universalMap("output"), typeSet))
+    val parValueMap = parVariables.zip(parValues).map((parVar, parVal) => {
+      parVar -> BeUseValue(BeDataValueLiteral(parVal), Some(parVar))
+    }).toMap
+
+    val expression: BeExpression =
+      BeFunctionCall(
+        BeDefineFunction(
+          parVariables, outputVar, BeExpression.pass, BeDefineFunction.functionInfo(functionName)
+        ),
+        parValueMap
+      )
+
     BeProgram(expression)
   }
-
-  def parseSimpleWhile(): BeProgram = {
-    val somePython =
-      """
-        |i: int = 3
-        |while i < 5:
-        |    i = i + 1
-        |""".stripMargin
-    val parsingResult = PythonParser.parsePythonWithDetails(somePython)
-    val expression = BeStartProgram(parsingResult.codeExpression)
-    BeProgram(expression)
-  }
-
-  def parseSimpleIf(): BeProgram = {
-    val somePython =
-      """
-        |if c:
-        |    x = "hi"
-        |else:
-        |    x = "bye"
-        |""".stripMargin
-    val parsingResult = PythonParser.parsePythonWithDetails(somePython)
-    val expression = BeStartProgram(parsingResult.codeExpression)
-    BeProgram(expression)
-  }
-
-  def debugGraphicsProgram3(): BeProgram = {
-    val somePython =
-      """
-        |import turtle
-        |# comments are supported
-        |        if i == 2:
-        |            turnLeft(90)
-        |        else:
-        |            backward("never!")
-        |    i = i + 1
-        |""".stripMargin
-    val parsingResult = PythonParser.parsePythonWithDetails(somePython)
-    val expression = BeStartProgram(parsingResult.codeExpression)
-    BeProgram(expression)
-  }
-
-  def debugGraphicsProgram(): BeProgram = {
-    val somePython =
-      """
-        |import turtle
-        |# comments are supported
-        |syntax error!!
-        |i = 3
-        |while i < 10:
-        |    j = 2
-        |    while j < 2:
-        |        j = j + 1
-        |        if i == 2:
-        |            turnLeft(90)
-        |        else:
-        |            backward("never!")
-        |    i = i + 1
-        |""".stripMargin
-    val parsingResult = PythonParser.parsePythonWithDetails(somePython)
-    val expression = BeStartProgram(parsingResult.codeExpression)
-    BeProgram(expression)
-  }
-
-  def sampleParsedProgram(): BeProgram = {
-    val somePython =
-      """
-        |import turtle
-        |callFunc("duck")
-        |if score > 10:
-        |    func(A)
-        |else:
-        |    doSomething()
-        |    if another > 3:
-        |        forward(1000)
-        |    else:
-        |        backward("never!")
-        |""".stripMargin
-    val parsingResult = PythonParser.parsePythonWithDetails(somePython)
-    val expression = BeStartProgram(parsingResult.codeExpression)
-    BeProgram(expression)
-  }
-
-  def sampleParsedProgram2(): BeProgram = {
-    val somePython =
-      """
-        |import os
-        |x=3
-        |if you´re happy and you know it syntax error
-        |# comment are supported
-        |if score > 10:
-        |    func(A)
-        |elif score == 10:
-        |    func("B")
-        |else:
-        |    forward(1000)
-        |""".stripMargin
-    val parsingResult = PythonParser.parsePythonWithDetails(somePython)
-    val expression = BeStartProgram(parsingResult.codeExpression)
-    BeProgram(expression)
-  }
-
 
 }
