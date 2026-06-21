@@ -96,7 +96,8 @@ lazy val server = (project in file("./modules/server"))
 
     },
     libraryDependencies ++= (coreDependencies.value ++ jvmDependencies.value ++ Seq(
-      "com.mysql" % "mysql-connector-j" % "9.7.0"
+      "com.mysql" % "mysql-connector-j" % "9.7.0",
+      "org.eclipse.angus" % "jakarta.mail" % "2.0.3"
     ))
   )
 
