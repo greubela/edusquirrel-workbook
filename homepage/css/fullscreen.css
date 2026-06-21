@@ -27,7 +27,7 @@
   height: 90vh;
   max-width: 90vw;
   max-height: 90vh;
-  background-color: var(--color-surface, #ffffff);
+  background-color: var(--color-surface);
   border-radius: var(--standard-border-radius, 12px);
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.35);
   overflow: hidden;
@@ -61,7 +61,7 @@
   border: none;
   border-radius: 999px;
   background-color: rgba(0, 0, 0, 0.65);
-  color: #ffffff;
+  color: var(--color-text-inverse);
   font-size: 1.75rem;
   display: flex;
   align-items: center;

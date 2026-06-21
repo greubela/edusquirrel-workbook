@@ -1,6 +1,7 @@
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.control.HtmlFullWorkbookApp
+import it.evadid.homepage.workbook.content.{CreateCompressionWorkbook, CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook}
 import it.evadid.homepage.util.web.DownloadHelper
 import it.evadid.homepage.workbook.content.{CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
@@ -11,7 +12,7 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 import scala.scalajs.js
 import scala.util.*
 
-private val tryToLoad: List[String] = List("plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "feedbackDemoRoot")
+private val tryToLoad: List[String] = List("plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "workbookCompression", "feedbackDemoRoot")
 
 private def load(containerId: String): Unit = {
   println("loading workbook: " + containerId)
@@ -25,6 +26,10 @@ private def load(containerId: String): Unit = {
     }
     case "workbookPlantWorkshop" => {
       HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreatePlantworkshopWorkbook(HtmlFullWorkbookApp.fullInfo))
+      HtmlFullWorkbookApp.getDomElement()
+    }
+    case "workbookCompression" => {
+      HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreateCompressionWorkbook(HtmlFullWorkbookApp.fullInfo))
       HtmlFullWorkbookApp.getDomElement()
     }
     case "feedbackDemoRoot" => {

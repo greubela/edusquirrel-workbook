@@ -10,7 +10,13 @@ import it.evadid.homepage.workbook.htmlRenderer.*
 import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionEditors.*
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.gpt.HtmlGptTextfieldInteractionRenderer
+import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.reorderExercise.HtmlReorderInteractionRenderer
+import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.slideshow.HtmlSlideshowRenderer
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.turtleStitch.{HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRenderer}
+import it.evadid.homepage.workbook.legacy.htmlElements.HtmlEmbeddedDomInteraction
+import it.evadid.homepage.workbook.legacy.htmlElements.interactions.HtmlReorderInteraction
+import it.evadid.workbook.model.interaction.plugins.reorderExercise.ReorderInteraction
+import it.evadid.workbook.model.interaction.plugins.slideshow.Slideshow
 import it.evadid.workbook.model.abstractions.WorkbookElement
 import it.evadid.workbook.model.elements.ImageElement.FileBasedImageElement
 import it.evadid.workbook.model.elements.{ExerciseContainer, ImageElement, LabeledInstructionElement, LangMapContentBasedElement, Workbook}
@@ -82,7 +88,12 @@ object HtmlRenderFactory {
       case t: TurtleStitchRecreateShapeInteraction => HtmlTurtleStitchRecreateShapeRenderer.render(t)
       // plugins -- gpt
       case g: GptInteractionElement => HtmlGptTextfieldInteractionRenderer.render(g)
-      
+      // plugins -- slideshow & reorder
+      case s: Slideshow => HtmlSlideshowRenderer.render(s)
+      case r: ReorderInteraction[?] => HtmlReorderInteractionRenderer.render(r)
+      case r: HtmlReorderInteraction[?] @unchecked => fromElement(r, r.getDomElement())
+      case e: HtmlEmbeddedDomInteraction => fromElement(e, e.domElement)
+
       // error
       case _: T => HtmlWorkbookElement[T](HtmlFullWorkbookApp.fullInfo, anyElement, createPlaceholderElement[T](anyElement))
     }

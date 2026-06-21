@@ -9,7 +9,14 @@ sealed trait ReorderInteraction[T] extends WorkbookInteraction[ReorderInteractio
 
 object ReorderInteraction {
 
-  case class ReorderCodeInteraction(override val id: String, lines: List[String], programmingLanguage: ProgrammingLanguage, seed: Long = 0) extends ReorderInteraction[String] {
+  case class ReorderCodeInteraction(
+    override val id: String,
+    lines: List[String],
+    programmingLanguage: ProgrammingLanguage,
+    seed: Long = 0,
+    hints: List[LanguageMapContentId] = List.empty,
+    orderConstraints: List[(Int, Int)] = Nil
+  ) extends ReorderInteraction[String] {
 
     override val defaultValue: ReorderInteractionState[String] = {
       ReorderInteractionState.initStateFromElementsAndSeed(lines, seed, Serializer.stringIO, ReorderType.CODELINES(programmingLanguage))

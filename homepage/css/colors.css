@@ -15,7 +15,7 @@
   --color-accent-purple: #9c27b0;
   --color-border-soft: #d6deeb;
   --color-surface-level-1: #e8f2ff;
-  --color-surface-level-2: #edf3fb;
+  --color-surface-level-2: #d6e0ee;
   --color-surface-muted: #f2f2f2;
   --color-surface-base: #ffffff;
   --color-text-muted: #4c566a;
@@ -43,27 +43,30 @@
   /* Typography */
   --font-family-base: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   --font-family: var(--font-family-base);
-  --fontsize-text: 14px;
+  --fontsize-text: 15px;
 
-  /* Layout sizes and spacing */
-  --space-xs: 2px;
-  --space-sm: 4px;
-  --space-md: 8px;
-  --space-lg: 12px;
+  /* Layout sizes and spacing — compact scale (75% of initial expansion) */
+  --space-xs: 3px;
+  --space-sm: 5px;
+  --space-md: 10px;
+  --space-lg: 14px;
   --space-xl: 24px;
+  --space-2xl: 36px;
+  --space-3xl: 48px;
 
   --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 22px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
 
   --padding-medium: 20px;
-  --transition: all 0.3s;
+  --transition: all 0.25s ease;
 
-  /* Shadows */
-  --shadow-light: 0 2px 6px rgba(24, 35, 51, 0.2);
-  --shadow-soft: 0 22px 48px -28px rgba(24, 35, 51, 0.35);
-  --shadow-button: 0 10px 24px -18px rgba(24, 35, 51, 0.5);
-  --shadow-focus: 0 0 0 2px var(--color-focus-ring);
+  /* Shadows — layered depth for card hierarchy */
+  --shadow-light: 0 1px 3px rgba(24, 35, 51, 0.12);
+  --shadow-soft: 0 4px 16px rgba(24, 35, 51, 0.10);
+  --shadow-medium: 0 8px 28px -8px rgba(24, 35, 51, 0.18);
+  --shadow-button: 0 4px 12px -6px rgba(24, 35, 51, 0.35);
+  --shadow-focus: 0 0 0 3px var(--color-focus-ring);
 
   /* Workbook-level semantic colors */
   --color-workbook-background: var(--color-surface-level-2);
@@ -128,6 +131,12 @@
   --color-dropdown-trigger-background: var(--color-surface-base);
   --color-dropdown-trigger-hover: var(--color-surface-level-2);
 
+  /* Tooltip palette (for reorder hints and similar hover overlays). */
+  --color-tooltip-background: var(--color-surface-base);
+  --color-tooltip-text: var(--color-ink);
+  --color-tooltip-border: var(--color-border-soft);
+  --color-tooltip-shadow: rgba(24, 35, 51, 0.15);
+
   /* Backward-compatible aliases used across existing stylesheets. */
   --color-container-background: var(--color-workbook-surface-level-1);
   --color-container-border-passive: var(--color-workbook-border-default);
@@ -137,6 +146,19 @@
   --color-tab-active-start: var(--color-accent-active);
   --color-tab-active-end: var(--color-accent-primary);
   --color-tab-active-border: var(--color-workbook-border-inactive);
+
+  /* Slide-deck semantic tokens */
+  --color-slide-border: var(--color-border-soft);
+  --color-slide-accent: var(--color-accent-strong);
+  --color-slide-accent-text: var(--color-accent-strong);
+
+  /* Task-box semantic tokens */
+  --color-taskbox-background: var(--color-surface-level-1);
+  --color-taskbox-border: var(--color-accent-active);
+  --color-taskbox-btn-active: var(--color-accent-active);
+  --color-taskbox-btn-active-hover: var(--color-accent-strong);
+  --color-taskbox-btn-text: var(--color-accent-active);
+  --color-taskbox-btn-bg: var(--color-surface-base);
 }
 
 * {
