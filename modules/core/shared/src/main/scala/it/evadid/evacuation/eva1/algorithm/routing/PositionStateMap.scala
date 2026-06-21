@@ -2,7 +2,7 @@ package it.evadid.evacuation.eva1.algorithm.routing
 
 import it.evadid.evacuation.eva1.model.evagraph.EvaGraphTypes._
 import it.evadid.evacuation.core.algorithm.routing.model.RoutingOption
-import it.evadid.evacuation.core.datastructures.graphs.Edge
+import it.evadid.core.datastructures.graph.Edge
 import it.evadid.evacuation.core.datastructures.maps.MultiHashMapList
 import it.evadid.evacuation.eva1.algorithm.events.eventtypes.{PersonFinishedEvent, PersonInsertedEvent, PersonReceivedEvent, PersonSentEvent}
 import it.evadid.evacuation.eva1.algorithm.events.traits.PersonEvent

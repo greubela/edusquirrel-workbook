@@ -2,7 +2,7 @@ package it.evadid.evacuation.eva1.algorithm.routing
 
 import it.evadid.evacuation.core.algorithm.routing.RoutingOptionsToDestinationCalculator
 import it.evadid.evacuation.core.algorithm.routing.model.RoutingOption
-import it.evadid.evacuation.core.datastructures.graphs.{PositionableEdge, WeightedNeighbourStructure}
+import it.evadid.core.datastructures.graph.{PositionableEdge, WeightedNeighbourStructure}
 import it.evadid.evacuation.core.datastructures.maps.MultiHashMapList
 import it.evadid.evacuation.core.utility.Counter
 import it.evadid.evacuation.eva1.algorithm.events.eventtypes.PersonInsertedEvent

@@ -1,4 +1,4 @@
-package it.evadid.evacuation.core.datastructures.graphs
+package it.evadid.core.datastructures.graph
 
 trait NeighbourStructure[N, A, E <: Edge[N, A]] {
 

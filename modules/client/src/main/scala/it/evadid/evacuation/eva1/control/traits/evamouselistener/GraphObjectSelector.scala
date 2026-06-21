@@ -1,6 +1,6 @@
 package it.evadid.evacuation.eva1.control.traits.evamouselistener
 
-import it.evadid.evacuation.core.datastructures.graphs.Positionable
+import it.evadid.core.datastructures.graph.Positionable
 
 trait GraphObjectSelector[O <: Positionable] extends GraphObjectsSelector[O] {
 

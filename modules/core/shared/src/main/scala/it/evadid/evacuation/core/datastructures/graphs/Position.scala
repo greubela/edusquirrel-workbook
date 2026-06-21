@@ -1,5 +1,7 @@
 package it.evadid.evacuation.core.datastructures.graphs
 
+import it.evadid.core.datastructures.graph.Positionable
+
 import scala.language.implicitConversions
 
 

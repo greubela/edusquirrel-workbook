@@ -1,6 +1,6 @@
 package it.evadid.evacuation.eva1.model.evagraph
 
-import it.evadid.evacuation.core.datastructures.graphs.{ImmutableGraphListImpl, PositionableEdge, WeightedNeighbourStructure}
+import it.evadid.core.datastructures.graph.{ImmutableGraphListImpl, PositionableEdge, WeightedNeighbourStructure}
 
 case class EvaGraphModel(nodesList: List[Router], edgesList: List[PositionableEdge[Router, ConnectionInfo]]) extends ImmutableGraphListImpl[Router, ConnectionInfo, PositionableEdge[Router, ConnectionInfo]](nodesList, edgesList) with WeightedNeighbourStructure[Router, ConnectionInfo, PositionableEdge[Router, ConnectionInfo]] {
 
