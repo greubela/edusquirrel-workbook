@@ -3,7 +3,7 @@ package it.evadid.evacuation.eva2.configuration
 import it.evadid.evacuation.config.property.ObservableConfigProperty.PropertyListener
 import it.evadid.evacuation.config.property.discrete.{BasicDiscreteConfigProperty, BasicDiscreteObservableConfigProperty, ObservableDiscreteConfigProperty}
 import it.evadid.evacuation.config.value.ConfigValue
-import it.evadid.evacuation.core.datastructures.matrix.Neighbourhood
+import it.evadid.core.datastructures.matrix.Neighbourhood
 import it.evadid.evacuation.eva2.algorithm.escaping.strategies.{ClosestGoalStrategy, MultipleGoalStrategy, ThresholdAcceptanceStrategy}
 import it.evadid.evacuation.eva2.algorithm.escaping.{EvacuationStrategy, PersonOrderSelector}
 import it.evadid.evacuation.eva2.configuration.ui.ShowMovementOption

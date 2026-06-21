@@ -1,6 +1,6 @@
 package it.evadid.evacuation.eva2.graphic
 
-import it.evadid.evacuation.core.datastructures.matrix.MatrixDimension
+import it.evadid.core.datastructures.matrix.MatrixDimension
 import it.evadid.evacuation.core.graphic.spritemap.FrameData
 import it.evadid.evacuation.eva2.model.EvaFloorMap
 

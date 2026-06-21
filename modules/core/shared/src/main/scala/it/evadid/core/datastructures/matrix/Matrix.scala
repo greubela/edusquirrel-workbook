@@ -1,8 +1,8 @@
-package it.evadid.evacuation.core.datastructures.matrix
+package it.evadid.core.datastructures.matrix
 
 import scala.language.implicitConversions
 
-import it.evadid.evacuation.core.datastructures.matrix.MatrixPosition._
+import MatrixPosition._
 
 case class Matrix[T](dim: MatrixDimension, elements: List[T]) {
 

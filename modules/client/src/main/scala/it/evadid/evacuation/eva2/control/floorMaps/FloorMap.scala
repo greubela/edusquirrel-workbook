@@ -1,6 +1,6 @@
 package it.evadid.evacuation.eva2.control.floorMaps
 
-import it.evadid.evacuation.core.datastructures.matrix.PositionInMatrix
+import it.evadid.core.datastructures.matrix.PositionInMatrix
 import it.evadid.evacuation.core.graphic.sprites.traits.{OverlaySprite, Sprite}
 import it.evadid.evacuation.eva2.configuration.ui.PersonDrawingInformation
 import it.evadid.evacuation.eva2.control.traits.TileMapController

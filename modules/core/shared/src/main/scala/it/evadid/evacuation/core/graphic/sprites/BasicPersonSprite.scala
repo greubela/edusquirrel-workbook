@@ -1,6 +1,6 @@
 package it.evadid.evacuation.core.graphic.sprites
 
-import it.evadid.evacuation.core.datastructures.Direction
+import it.evadid.core.datastructures.matrix.Direction
 import it.evadid.evacuation.core.graphic.spritemap.FrameData
 import it.evadid.evacuation.core.graphic.sprites.traits.PersonSprite
 

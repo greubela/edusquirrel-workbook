@@ -1,6 +1,6 @@
 package it.evadid.evacuation.eva2.control.floorMaps
 
-import it.evadid.evacuation.core.datastructures.matrix.{Matrix, MatrixPosition, PositionInMatrix}
+import it.evadid.core.datastructures.matrix.{Matrix, MatrixPosition, PositionInMatrix}
 import it.evadid.evacuation.core.graphic.model.EvaImage
 import it.evadid.evacuation.core.graphic.spritemap.SpriteMap
 import it.evadid.evacuation.core.graphic.sprites.traits.{OverlaySprite, Sprite}
