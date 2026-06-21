@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ScalaProjectSettings">
+    <option name="compilerHighlightingScala3" value="false" />
+    <option name="includeLiterals" value="true" />
     <option name="intInjectionMapping">
       <map>
         <entry key="css" value="CSS" />
@@ -24,5 +26,6 @@
       </map>
     </option>
     <option name="migrateConfigurationsNotificationShown" value="true" />
+    <option name="showImplicitConversions" value="true" />
   </component>
 </project>
