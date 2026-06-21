@@ -5,7 +5,7 @@ import com.raquo.laminar.api.L.{h2, *}
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.elements.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeProgramEditor, HtmlBlockLibraryTab, HtmlEditorConfigPanel}
-import todomove.datastructures.core.vm.code.BeExpression
+import it.evadid.workbook.vm.code.BeExpression
 
 object HtmlFullscreenTurtleEditorElement {
 

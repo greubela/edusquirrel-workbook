@@ -1,16 +1,16 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.rules
 
-import todomove.datastructures.core.vm.types.BeChildRole.ConditionInControlStructure
-import todomove.datastructures.core.vm.types.BeScope.GlobalScope
+import it.evadid.workbook.vm.types.BeChildRole.ConditionInControlStructure
+import it.evadid.workbook.vm.types.BeScope.GlobalScope
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
-import todomove.datastructures.core.vm.code.BeExpression
-import todomove.datastructures.core.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
-import todomove.datastructures.core.vm.code.defining.BeDefineVariable
-import todomove.datastructures.core.vm.code.others.{BeReturn, BeStartProgram}
-import todomove.datastructures.core.vm.code.tree.BeExpressionReference
-import todomove.datastructures.core.vm.code.usage.{BeAssignVariable, BeUseValue}
-import todomove.datastructures.core.vm.types.{BeChildPosition, BeInfo, BeUseValueReference}
+import it.evadid.workbook.vm.code.BeExpression
+import it.evadid.workbook.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
+import it.evadid.workbook.vm.code.defining.BeDefineVariable
+import it.evadid.workbook.vm.code.others.{BeReturn, BeStartProgram}
+import it.evadid.workbook.vm.code.tree.BeExpressionReference
+import it.evadid.workbook.vm.code.usage.{BeAssignVariable, BeUseValue}
+import it.evadid.workbook.vm.types.{BeChildPosition, BeInfo, BeUseValueReference}
 
 import scala.collection.mutable
 

@@ -6,12 +6,12 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.pr
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.define.BeBlockDefineSingleReturnFunction
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.other.{BeBlockComment, BeBlockUnparsable, BeBlockUnsupported}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.use.{BeBlockAssignValue, BeBlockCallSingleReturnFunction}
-import todomove.datastructures.core.vm.code.BeExpression
-import todomove.datastructures.core.vm.code.controlStructures.{BeIfElse, BeSequence, BeWhile}
-import todomove.datastructures.core.vm.code.defining.{BeDefineFunction, BeDefineVariable}
-import todomove.datastructures.core.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
-import todomove.datastructures.core.vm.code.others.BeStartProgram
-import todomove.datastructures.core.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
+import it.evadid.workbook.vm.code.BeExpression
+import it.evadid.workbook.vm.code.controlStructures.{BeIfElse, BeSequence, BeWhile}
+import it.evadid.workbook.vm.code.defining.{BeDefineFunction, BeDefineVariable}
+import it.evadid.workbook.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
+import it.evadid.workbook.vm.code.others.BeStartProgram
+import it.evadid.workbook.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 
 /**
  * Client-side renderer dispatch for block-environment expressions.

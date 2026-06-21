@@ -15,8 +15,8 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.fe
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.service.BlockFeedbackService
 import it.evadid.homepage.workbook.legacy.model.feedback.FeedbackStatus
 import org.scalajs.dom
-import todomove.datastructures.core.vm.code.others.BeStartProgram
-import todomove.datastructures.core.vm.parsing.python.PythonParser
+import it.evadid.workbook.vm.code.others.BeStartProgram
+import it.evadid.workbook.vm.parsing.python.PythonParser
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js

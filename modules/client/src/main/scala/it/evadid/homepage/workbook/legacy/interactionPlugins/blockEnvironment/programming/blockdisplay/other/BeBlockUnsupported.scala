@@ -3,8 +3,8 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.p
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, BeBlockSingleShape, RenderingInformation}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
-import todomove.datastructures.core.vm.code.errors.BeExpressionUnsupported
-import todomove.datastructures.core.vm.code.tree.BeExpressionNode
+import it.evadid.workbook.vm.code.errors.BeExpressionUnsupported
+import it.evadid.workbook.vm.code.tree.BeExpressionNode
 import todomove.webElementsOld.webElements.svg.shapes.{BeShape, ControlFlowShape, TextShape}
 import todomove.webElementsOld.webElements.svg.shapes.composite.ShapeAroundShape
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.singleWidth.ControlFlowDirected

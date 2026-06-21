@@ -8,7 +8,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.co
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.{BeBlockRenderingContext, BeProgram}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
-import todomove.datastructures.core.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
+import it.evadid.workbook.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
 import todomove.webElementsOld.webElements.svg.shapes.{BeShape, BeShapeAmendFactory, ControlFlowAndExpressionShape, ControlFlowShape}
 import todomove.webElementsOld.webElements.svg.shapes.special.nested.ShapeWithControlFlow
 

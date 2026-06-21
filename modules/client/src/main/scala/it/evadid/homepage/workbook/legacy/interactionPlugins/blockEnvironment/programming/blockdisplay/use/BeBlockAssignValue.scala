@@ -1,13 +1,13 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.use
 
-import todomove.datastructures.core.vm.types.BeChildRole.ValueInAssignment
+import it.evadid.workbook.vm.types.BeChildRole.ValueInAssignment
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.data.{BeBlockDefineVariable, BeBlockUseValue}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, BeBlockSingleShape, RenderingInformation}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
-import todomove.datastructures.core.vm.code.BeExpression
-import todomove.datastructures.core.vm.code.defining.BeDefineVariable
-import todomove.datastructures.core.vm.code.tree.BeExpressionNode
-import todomove.datastructures.core.vm.code.usage.BeUseValue
+import it.evadid.workbook.vm.code.BeExpression
+import it.evadid.workbook.vm.code.defining.BeDefineVariable
+import it.evadid.workbook.vm.code.tree.BeExpressionNode
+import it.evadid.workbook.vm.code.usage.BeUseValue
 import todomove.webElementsOld.webElements.svg.shapes.{BeShape, ControlFlowShape}
 import todomove.webElementsOld.webElements.svg.shapes.composite.{HBoxSameHeight, ShapeAroundShape}
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.singleWidth.{ControlFlowDirected, ControlFlowFunctionCall}

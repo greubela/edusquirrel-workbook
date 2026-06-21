@@ -4,11 +4,11 @@ import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.control.BeBlockSequence
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.other.BeBlockUnsupported
 import munit.FunSuite
-import todomove.datastructures.core.vm.code.controlStructures.BeSequence
-import todomove.datastructures.core.vm.code.defining.BeDefineVariable
-import todomove.datastructures.core.vm.code.errors.BeExpressionUnsupported
-import todomove.datastructures.core.vm.code.usage.{BeAssignVariable, BeUseValue}
-import todomove.datastructures.core.vm.types.{BeDataType, BeDataValueLiteral}
+import it.evadid.workbook.vm.code.controlStructures.BeSequence
+import it.evadid.workbook.vm.code.defining.BeDefineVariable
+import it.evadid.workbook.vm.code.errors.BeExpressionUnsupported
+import it.evadid.workbook.vm.code.usage.{BeAssignVariable, BeUseValue}
+import it.evadid.workbook.vm.types.{BeDataType, BeDataValueLiteral}
 
 class BeBlockRendererFactorySpec extends FunSuite {
 

@@ -9,15 +9,15 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.pr
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.block.BeBlockRendererFactory
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.other.BeBlockPlaceholder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
-import todomove.datastructures.core.vm.code.BeExpression
-import todomove.datastructures.core.vm.code.controlStructures.BeSequence
-import todomove.datastructures.core.vm.code.defining.{BeDefineFunction, BeDefineVariable}
-import todomove.datastructures.core.vm.code.others.BeStartProgram
-import todomove.datastructures.core.vm.code.tree.{BeExpressionNode, BeExpressionReference, BeExtensionPoint}
-import todomove.datastructures.core.vm.code.usage.{BeFunctionCall, BeUseValue}
-import todomove.datastructures.core.vm.parsing.python.PythonParser
-import todomove.datastructures.core.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeDataValueLiteral, BeScope}
-import todomove.datastructures.core.vm.types.BeChildRole.NoRole
+import it.evadid.workbook.vm.code.BeExpression
+import it.evadid.workbook.vm.code.controlStructures.BeSequence
+import it.evadid.workbook.vm.code.defining.{BeDefineFunction, BeDefineVariable}
+import it.evadid.workbook.vm.code.others.BeStartProgram
+import it.evadid.workbook.vm.code.tree.{BeExpressionNode, BeExpressionReference, BeExtensionPoint}
+import it.evadid.workbook.vm.code.usage.{BeFunctionCall, BeUseValue}
+import it.evadid.workbook.vm.parsing.python.PythonParser
+import it.evadid.workbook.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeDataValueLiteral, BeScope}
+import it.evadid.workbook.vm.types.BeChildRole.NoRole
 
 type BeBlockTree = Tree[NodeBasedTreePosition, BeBlock]
 type BeExpressionTree = Tree[NodeBasedTreePosition, BeExpressionNode]
