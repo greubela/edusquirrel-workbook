@@ -6,7 +6,7 @@ import it.evadid.evacuation.core.datastructures.graphs._
 
 object EvaGraphTypes {
 
-  type EvaGraph = Graph[Router, ConnectionInfo, PositionableEdge[Router, ConnectionInfo]] with WeightedNeighbourStructure[Router, ConnectionInfo, PositionableEdge[Router, ConnectionInfo]]
+  type EvaGraph = Graph[Router, ConnectionInfo, PositionableEdge[Router, ConnectionInfo]] & WeightedNeighbourStructure[Router, ConnectionInfo, PositionableEdge[Router, ConnectionInfo]]
 
   type EvaEdge = PositionableEdge[Router, ConnectionInfo]
   //type RouterOrEdge = Either[Router, EvaEdge]

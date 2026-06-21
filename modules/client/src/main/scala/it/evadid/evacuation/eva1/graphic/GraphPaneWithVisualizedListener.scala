@@ -12,7 +12,7 @@ class GraphPaneWithVisualizedListener[C](canvas: EvaCanvas[C], graphVisualizer: 
   canvas.addMouseListener(EvaMouseListener.funtionOnActionListener(repaint))
 
 
-  private var listener: Option[ListenerWithVisualizer[_]] = None
+  private var listener: Option[ListenerWithVisualizer[?]] = None
 
 
   def repaint(): Unit = {
@@ -60,7 +60,7 @@ class GraphPaneWithVisualizedListener[C](canvas: EvaCanvas[C], graphVisualizer: 
   private case class ListenerWithVisualizer[M <: EvaMouseListener](mouseListener: M, visualizer: Option[MouseListenerVisualizer[M]]) {
     def asBasic: EvaMouseListener = mouseListener
 
-    def visualizeInto(canvas: EvaCanvas[_]): Unit = if (visualizer.isDefined) visualizer.get.visualizeMouseListener(mouseListener, canvas)
+    def visualizeInto(canvas: EvaCanvas[?]): Unit = if (visualizer.isDefined) visualizer.get.visualizeMouseListener(mouseListener, canvas)
   }
 
 }

@@ -10,13 +10,13 @@ object TopDownMetaConfig extends SpriteMapMetaConfig {
   private val encodingDim = MatrixDimension(7, 50)
 
   override def positionToId(matrixPosition: MatrixPosition): Int = {
-    val pim = matrixPosition in encodingDim
+    val pim = matrixPosition.in(encodingDim)
     assert(pim.isInRange, "SpriteMap IO at the moment supports max. 7x36 (252) tiles (DefaultMetaConfig). Invalid positioin: " + matrixPosition + "!")
     pim.asIndex.get
   }
 
   override def selectorSpriteAtPosition(matrixPosition: MatrixPosition, spriteMap: SpriteMap): Sprite = {
-    val index = (matrixPosition in encodingDim)
+    val index = (matrixPosition.in(encodingDim))
 
     if (index.isInRange && spriteMap.sprites.exists(_.id == index.asIndex.get)) {
       spriteMap.sprites.find(_.id == index.asIndex.get).get

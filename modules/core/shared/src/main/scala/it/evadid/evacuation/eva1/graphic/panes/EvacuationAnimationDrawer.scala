@@ -7,7 +7,7 @@ import it.evadid.evacuation.eva1.graphic.drawer.instances.stated.{EdgeUtilizatio
 import it.evadid.evacuation.eva1.graphic.drawer.traits.{StatedEdgeDrawer, StatedNodeDrawer, StatedPersonDrawer}
 import it.evadid.evacuation.shared.traits.graphic.EvaCanvas
 
-class EvacuationAnimationDrawer(canvas: EvaCanvas[_], personDrawer: StatedPersonDrawer, edgeDrawer: StatedEdgeDrawer, nodeDrawer: StatedNodeDrawer) {
+class EvacuationAnimationDrawer(canvas: EvaCanvas[?], personDrawer: StatedPersonDrawer, edgeDrawer: StatedEdgeDrawer, nodeDrawer: StatedNodeDrawer) {
 
   def visualizeSituation(currentTime: Long, simulation: EvacuationFlowSimulation): Unit = {
     val evacuationState = simulation.getStateAt(currentTime)
@@ -22,7 +22,7 @@ class EvacuationAnimationDrawer(canvas: EvaCanvas[_], personDrawer: StatedPerson
 
 object EvacuationAnimationDrawer {
 
-  def getStandardDrawer(canvas: EvaCanvas[_]): EvacuationAnimationDrawer =
+  def getStandardDrawer(canvas: EvaCanvas[?]): EvacuationAnimationDrawer =
     new EvacuationAnimationDrawer(canvas, new StandardPersonDrawer(canvas), new EdgeUtilizationDrawer(canvas), new LabeledNodeDrawer(canvas))
 
 

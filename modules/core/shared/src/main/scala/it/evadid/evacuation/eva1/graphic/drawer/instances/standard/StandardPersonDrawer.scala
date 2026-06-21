@@ -9,7 +9,7 @@ import it.evadid.evacuation.eva1.model.evagraph.EvaGraphTypes.EvaEdge
 import it.evadid.evacuation.eva1.model.evagraph.{Person, Router}
 import it.evadid.evacuation.shared.traits.graphic.EvaCanvas
 
-class StandardPersonDrawer(evaCanvas: EvaCanvas[_]) extends StatedPersonDrawer {
+class StandardPersonDrawer(evaCanvas: EvaCanvas[?]) extends StatedPersonDrawer {
 
 
   override def drawPersonsOnNodes(curSimulationTime: Long, curState: MultiHashMapList[Router, Person], lastEvents: Map[Person, PersonEvent]): Unit = {

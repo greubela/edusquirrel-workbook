@@ -8,7 +8,7 @@ import it.evadid.evacuation.eva1.graphic.panes.EvacuationAnimationDrawer
 import it.evadid.evacuation.eva1.model.evagraph.{Person, Router}
 import it.evadid.evacuation.shared.traits.graphic.EvaCanvas
 
-class LabeledNodeDrawer(canvas: EvaCanvas[_]) extends StatedNodeDrawer {
+class LabeledNodeDrawer(canvas: EvaCanvas[?]) extends StatedNodeDrawer {
 
 
   override def drawNodes(curSimulationTime: Long, nodes: Seq[Router], curState: MultiHashMapList[Router, Person], safePersons: MultiHashMapList[Router, Person], lastEvents: Map[Person, PersonEvent]): Unit = {

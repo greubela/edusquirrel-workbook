@@ -13,7 +13,7 @@ trait NodeDrawer {
 
 object NodeDrawer{
 
-  def drawLabel(canvas: EvaCanvas[_], node: Router, labelFill: EvaColor, labelStroke: EvaColor, textColor: EvaColor, font: EvaFont, text: String): Unit = {
+  def drawLabel(canvas: EvaCanvas[?], node: Router, labelFill: EvaColor, labelStroke: EvaColor, textColor: EvaColor, font: EvaFont, text: String): Unit = {
 
     canvas.setFont(font)
 

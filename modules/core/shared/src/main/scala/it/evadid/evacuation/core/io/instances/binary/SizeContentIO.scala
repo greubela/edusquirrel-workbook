@@ -9,7 +9,7 @@ case class SizeContentIO(bitsForSize: Int) extends IO[List[BitSequence], BitSequ
   override def encode(in: List[BitSequence]): BitSequence = {
     in.foreach(bitSeq => assert(bitSeq.size < (1 << bitsForSize), "BitSeq size of " + bitSeq.size + " cannot be encoded with " + bitsForSize + "bits!"))
     val withSizes = in.map(bitSeq => BitSequence(bitSeq.size).ensureSize(bitsForSize).append(bitSeq))
-    withSizes.foldLeft(BitSequence.empty)(_ append _)
+    withSizes.foldLeft(BitSequence.empty)(_.append(_))
   }
 
   override def decode(out: BitSequence): List[BitSequence] = {

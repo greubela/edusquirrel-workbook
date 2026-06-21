@@ -20,7 +20,7 @@ class RoutingOptionsToDestinationCalculator {
     val closedEdges = mutable.HashSet[Edge[N, I]]()
 
     val distOrdering: Ordering[RoutingOption[N]] = Ordering.by(_.remainingDistance)
-    val queue = new mutable.PriorityQueue[RoutingOption[N]]()(distOrdering.reverse)
+    val queue = new mutable.PriorityQueue[RoutingOption[N]]()(using distOrdering.reverse)
 
     queue += RoutingOption[N](startPoint, None, startPoint, 0)
 

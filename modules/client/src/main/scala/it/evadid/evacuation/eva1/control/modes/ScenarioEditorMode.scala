@@ -20,7 +20,7 @@ import org.scalajs.dom.{Element, document, html}
 
 class ScenarioEditorMode extends Eva1ControlMode {
 
-  private val graphPane: GraphPaneWithVisualizedListener[html.Canvas] = GraphPaneWithVisualizedListener[Canvas]()(createNewCanvas)
+  private val graphPane: GraphPaneWithVisualizedListener[html.Canvas] = GraphPaneWithVisualizedListener[Canvas]()(using createNewCanvas)
 
   private var showConfigObject: Option[RouterOrEdge] = None
 

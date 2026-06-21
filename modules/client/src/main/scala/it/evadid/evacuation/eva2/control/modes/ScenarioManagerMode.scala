@@ -42,7 +42,7 @@ case class ScenarioManagerMode() extends Eva2ControlMode {
       insertControl.getInsertOverlays
     } else if (managerModeTabPane.getCurrentTab == managerModeTabPane.tabInsert && insertControl.floorMapToInsert.isDefined) {
       System.out.println("highlight pos!")
-      List((insertControl.insertAtPosition in ProgramState.floorMatrix.dim, BasicOverlaySprite.yellowOverlay(225)))
+      List((insertControl.insertAtPosition.in(ProgramState.floorMatrix.dim), BasicOverlaySprite.yellowOverlay(225)))
     } else {
       println("show preview: " + ProgramState.config.previewInsertion.getValue.value + " current tab: " + managerModeTabPane.getCurrentTab + " defined?: " + insertControl.floorMapToInsert.isDefined)
       List()
@@ -270,7 +270,7 @@ case class ScenarioManagerMode() extends Eva2ControlMode {
         val x = Integer.parseInt(xField.value)
         val y = Integer.parseInt(yField.value)
 
-        val pim = MatrixPosition(x, y) in ProgramState.floorMatrix.dim
+        val pim = MatrixPosition(x, y).in(ProgramState.floorMatrix.dim)
         if (pim.isInRange) {
           println("inserting at: " + pim)
           insertAtPosition(pim)
@@ -287,7 +287,7 @@ case class ScenarioManagerMode() extends Eva2ControlMode {
       val buf: mutable.ListBuffer[(PositionInMatrix, OverlaySprite)] = mutable.ListBuffer()
 
       insertControl.floorMapToInsert.get.floorMatrix.elementsAtPosition.map(
-        tup => (tup._1, tup._2.cPos.add(insertControl.insertAtPosition) in currentMap.floorMatrix.dim)
+        tup => (tup._1, tup._2.cPos.add(insertControl.insertAtPosition).in(currentMap.floorMatrix.dim))
       ).filter(_._2.isInRange
       ).foreach(tup => {
         buf.append((tup._2, BasicOverlaySprite.whiteOverlay))
@@ -295,7 +295,7 @@ case class ScenarioManagerMode() extends Eva2ControlMode {
       })
 
       insertControl.floorMapToInsert.get.persons.foreach(person => {
-        val pim = person.pos.cPos.add(insertControl.insertAtPosition) in currentMap.floorMatrix.dim
+        val pim = person.pos.cPos.add(insertControl.insertAtPosition).in(currentMap.floorMatrix.dim)
         if (pim.isInRange) buf.append((pim, OverlaySprite.fromSprite(person.sprite)))
       })
 

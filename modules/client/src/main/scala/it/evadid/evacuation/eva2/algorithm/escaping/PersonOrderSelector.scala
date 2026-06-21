@@ -27,7 +27,7 @@ object PersonOrderSelector {
         floorMatrix.savePositions.map(_.cPos.euclidianDistTo(person.pos)).min
       })
 
-      notMovedYet.sorted(airlineOrdering)
+      notMovedYet.sorted(using airlineOrdering)
 
     }
   }

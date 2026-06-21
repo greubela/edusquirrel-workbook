@@ -16,7 +16,7 @@ class BitplaneConverter extends Converter[Array[Byte]] {
 
   override def reconstruct(out: Array[Byte]): Array[Byte] = {
 
-    val bitSequence = out.toList.map(BitSequence.paddedNumber(_, 8)).foldLeft(BitSequence.empty)(_ append _)
+    val bitSequence = out.toList.map(BitSequence.paddedNumber(_, 8)).foldLeft(BitSequence.empty)(_.append(_))
     assert(bitSequence.size == out.length * 8, "lengths are not matching, seq length: " + bitSequence.size + ", arr length: " + out.length + "!")
 
     val res = bitSequence.seq.sliding(out.length, out.length).map(new BitSequence(_)).toList

@@ -65,10 +65,10 @@ case class EvaFloorMap(floorMatrix: Matrix[FloorSprite], persons: Set[Person]) {
     if (right) updated = updated.addColumn(_ => spriteMap.defaultEmpty)
 
     var updatedPersons = persons
-    if (top) updatedPersons = updatedPersons.map(person => Person(person.id, person.pos.cPos.inDirection(Direction.BOTTOM) in updated.dim, person.sprite))
-    if (left) updatedPersons = updatedPersons.map(person => Person(person.id, person.pos.cPos.inDirection(Direction.RIGHT) in updated.dim, person.sprite))
+    if (top) updatedPersons = updatedPersons.map(person => Person(person.id, person.pos.cPos.inDirection(Direction.BOTTOM).in(updated.dim), person.sprite))
+    if (left) updatedPersons = updatedPersons.map(person => Person(person.id, person.pos.cPos.inDirection(Direction.RIGHT).in(updated.dim), person.sprite))
 
-    updatedPersons = updatedPersons.map(person => Person(person.id, person.pos.cPos in updated.dim, person.sprite))
+    updatedPersons = updatedPersons.map(person => Person(person.id, person.pos.cPos.in(updated.dim), person.sprite))
 
     val res = EvaFloorMap(updated, updatedPersons)
 
@@ -84,10 +84,10 @@ case class EvaFloorMap(floorMatrix: Matrix[FloorSprite], persons: Set[Person]) {
     if (right && updated.dim.cols > 1) updated = updated.removeColumn()
 
     var updatedPersons = persons
-    if (top && updated.dim.rows > 1) updatedPersons = updatedPersons.map(person => Person(person.id, person.pos.cPos.inDirection(Direction.TOP) in updated.dim, person.sprite))
-    if (left && updated.dim.cols > 1) updatedPersons = updatedPersons.map(person => Person(person.id, person.pos.cPos.inDirection(Direction.LEFT) in updated.dim, person.sprite))
+    if (top && updated.dim.rows > 1) updatedPersons = updatedPersons.map(person => Person(person.id, person.pos.cPos.inDirection(Direction.TOP).in(updated.dim), person.sprite))
+    if (left && updated.dim.cols > 1) updatedPersons = updatedPersons.map(person => Person(person.id, person.pos.cPos.inDirection(Direction.LEFT).in(updated.dim), person.sprite))
 
-    updatedPersons = updatedPersons.map(person => Person(person.id, person.pos.cPos in updated.dim, person.sprite))
+    updatedPersons = updatedPersons.map(person => Person(person.id, person.pos.cPos.in(updated.dim), person.sprite))
 
     updatedPersons = updatedPersons.filter(_.pos.isInRange)
 
@@ -135,7 +135,7 @@ case class EvaFloorMap(floorMatrix: Matrix[FloorSprite], persons: Set[Person]) {
 
       map.toList.zipWithIndex.map(tup => {
         val (((pos, sprite), index)): ((MatrixPosition, PersonSprite), Int) = tup
-        Person(index, pos in curMatrix.dim, sprite)
+        Person(index, pos.in(curMatrix.dim), sprite)
       })
     }
 

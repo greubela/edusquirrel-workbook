@@ -6,7 +6,7 @@ import it.evadid.evacuation.eva1.graphic.drawer.traits.{EdgeDrawer, NodeDrawer}
 import it.evadid.evacuation.eva1.model.evagraph.EvaGraphTypes.EvaGraph
 import it.evadid.evacuation.shared.traits.graphic.EvaCanvas
 
-class EvacuationGraphDrawer(canvas: EvaCanvas[_], nodeDrawer: NodeDrawer, edgeDrawer: EdgeDrawer) {
+class EvacuationGraphDrawer(canvas: EvaCanvas[?], nodeDrawer: NodeDrawer, edgeDrawer: EdgeDrawer) {
 
   def visualizeGraph(graph: EvaGraph): Unit = {
     edgeDrawer.drawEdges(graph.edges)
@@ -16,7 +16,7 @@ class EvacuationGraphDrawer(canvas: EvaCanvas[_], nodeDrawer: NodeDrawer, edgeDr
 
 object EvacuationGraphDrawer {
 
-  def getStandardDrawer(canvas: EvaCanvas[_]): EvacuationGraphDrawer =
+  def getStandardDrawer(canvas: EvaCanvas[?]): EvacuationGraphDrawer =
     new EvacuationGraphDrawer(canvas, new InitPersonsNodeDrawer(canvas), new StandardEdgeDrawer(canvas))
 
 }

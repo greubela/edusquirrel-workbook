@@ -14,7 +14,7 @@ object GenericGraphSelectorVisualizer {
 
 
   def getAddEdgeVisualizer(): MouseListenerVisualizer[GraphObjectsSelector[Router]] = new MouseListenerVisualizer[GraphObjectsSelector[Router]] {
-    override def visualizeMouseListener(mouseListener: GraphObjectsSelector[Router], canvas: EvaCanvas[_]): Unit = {
+    override def visualizeMouseListener(mouseListener: GraphObjectsSelector[Router], canvas: EvaCanvas[?]): Unit = {
       val state = mouseListener.getState()
 
       if (state.curSelected.isEmpty && state.curMousePos.isDefined && state.curHighlightDest.nonEmpty) {
@@ -35,16 +35,16 @@ object GenericGraphSelectorVisualizer {
   }
 
   def getObjectSelectorVisualizer(lineColor: EvaColor = EvaColor(254, 224, 139)): GraphObjectSelectorVisualizer[RouterOrEdge] = new GraphObjectSelectorVisualizer[RouterOrEdge] {
-    override def drawHighlightLine(canvas: EvaCanvas[_], start: Position, end: Position): Unit = genericHighlightLine(canvas, start, end, lineColor)
+    override def drawHighlightLine(canvas: EvaCanvas[?], start: Position, end: Position): Unit = genericHighlightLine(canvas, start, end, lineColor)
 
-    override def highlight(canvas: EvaCanvas[_], obj: RouterOrEdge): Unit = obj.getEither() match {
+    override def highlight(canvas: EvaCanvas[?], obj: RouterOrEdge): Unit = obj.getEither() match {
       case Left(router) => genericRouterHighlight(canvas, router, lineColor)
       case Right(edge) => genericEdgeHighlight(canvas, edge, lineColor)
     }
   }
 
   val getSpaceSelectorVisualizer: MouseListenerVisualizer[GraphSpaceSelector] = new MouseListenerVisualizer[GraphSpaceSelector]() {
-    override def visualizeMouseListener(mouseListener: GraphSpaceSelector, canvas: EvaCanvas[_]): Unit = {
+    override def visualizeMouseListener(mouseListener: GraphSpaceSelector, canvas: EvaCanvas[?]): Unit = {
       val state = mouseListener.getState()
       if (state.curMousePos.isDefined) {
 
@@ -64,17 +64,17 @@ object GenericGraphSelectorVisualizer {
     }
   }
 
-  def genericEdgeHighlight(canvas: EvaCanvas[_], edge: EvaEdge, color: EvaColor = yellowHighlightColor): Unit = {
+  def genericEdgeHighlight(canvas: EvaCanvas[?], edge: EvaEdge, color: EvaColor = yellowHighlightColor): Unit = {
     canvas.setColor(color)
     canvas.drawCircle(edge.pos.x, edge.pos.y, 20, 3)
   }
 
-  def genericHighlightLine(canvas: EvaCanvas[_], start: Position, dest: Position, lineColor: EvaColor = EvaColor.black): Unit = {
+  def genericHighlightLine(canvas: EvaCanvas[?], start: Position, dest: Position, lineColor: EvaColor = EvaColor.black): Unit = {
     canvas.setColor(lineColor)
     canvas.drawLine(start.x, start.y, dest.x, dest.y, 2)
   }
 
-  def genericRouterHighlight(canvas: EvaCanvas[_], obj: Router, color: EvaColor = yellowHighlightColor): Unit = {
+  def genericRouterHighlight(canvas: EvaCanvas[?], obj: Router, color: EvaColor = yellowHighlightColor): Unit = {
     canvas.setColor(color)
     canvas.drawArc(obj.pos.x, obj.pos.y, 10, 180 + 45, 360 - 90, 3)
   }

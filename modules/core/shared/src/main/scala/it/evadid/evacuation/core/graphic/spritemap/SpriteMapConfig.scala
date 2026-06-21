@@ -10,8 +10,8 @@ import it.evadid.evacuation.core.io.instances.eva.config.SpriteMapMetaConfig
 
 case class SpriteMapConfig(formatLines: Seq[String], config: SpriteMapMetaConfig) {
 
-  val linesCleaned: Seq[String] = formatLines.map(_.trim()).filterNot(_.isEmpty).filterNot(_ startsWith "#").filterNot(_ startsWith "//")
-  val allSpriteLines: Seq[String] = linesCleaned.filterNot(_ contains "=")
+  val linesCleaned: Seq[String] = formatLines.map(_.trim()).filterNot(_.isEmpty).filterNot(_.startsWith("#")).filterNot(_.startsWith("//"))
+  val allSpriteLines: Seq[String] = linesCleaned.filterNot(_.contains("="))
 
   private val notAnimLines = allSpriteLines.filter(!_.startsWith("a"))
   val basicSprites: List[Sprite] = notAnimLines.flatMap(SpriteMapConfig.parseSpriteMapLine(_, config)).toList
@@ -21,11 +21,11 @@ case class SpriteMapConfig(formatLines: Seq[String], config: SpriteMapMetaConfig
   val sprites: List[Sprite] = basicSprites ++ personSprites
   val allImages: List[Sprite] = basicSprites ++ personSpritesSingle
 
-  val varLines: Seq[String] = linesCleaned.filter(_ contains "=")
+  val varLines: Seq[String] = linesCleaned.filter(_.contains("="))
 
-  def getVariable(name: String): Option[String] = varLines.find(_ startsWith (name + "=")).map(_.split("=")(1))
+  def getVariable(name: String): Option[String] = varLines.find(_.startsWith(name + "=")).map(_.split("=")(1))
 
-  def getIntVariable(name: String): Option[Int] = getVariable(name).map(_ replaceAll("\\D+", "")).map(Integer.parseInt)
+  def getIntVariable(name: String): Option[Int] = getVariable(name).map(_.replaceAll("\\D+", "")).map(Integer.parseInt)
 
   private val columns: Option[Int] = getIntVariable("cols")
   private val rows: Option[Int] = getIntVariable("rows")

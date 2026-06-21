@@ -24,7 +24,7 @@ case class PositionInMatrix(cPos: MatrixPosition, dim: MatrixDimension, unused: 
   def getFrom[T](m: Matrix[T]): Option[T] = asIndex.map(m.elements)
 
   def neighbours(neighbourFunc: Seq[MatrixPosition]): Set[PositionInMatrix] =
-    neighbourFunc.map(_ add cPos).map(_ in dim).filter(_.isInRange).toSet
+    neighbourFunc.map(_.add(cPos)).map(_.in(dim)).filter(_.isInRange).toSet
 
   override val toString: String = "PiM[" + cPos.x + "|" + cPos.y + "]"
 }
@@ -45,7 +45,7 @@ object PositionInMatrix {
 
   def main(args: Array[String]): Unit = {
 
-    val pim: PositionInMatrix = (0, 1) in MatrixDimension(2, 5)
+    val pim: PositionInMatrix = (0, 1).in(MatrixDimension(2, 5))
    // print("index: " + pim.asIndex + " --> transposed: " + pim.transposedIndex)
 
   }

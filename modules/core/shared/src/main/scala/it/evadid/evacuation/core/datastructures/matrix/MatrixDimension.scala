@@ -9,8 +9,8 @@ case class MatrixDimension(cols: Int, rows: Int, wrapAround: Boolean) {
 
   def transposed: MatrixDimension = MatrixDimension(rows, cols, wrapAround)
 
-  val positions: Seq[PositionInMatrix] = (0 until rows).flatMap(rowNr => (0 until cols).map(colNr => MatrixPosition(colNr, rowNr))).map(_ in this)
-  val transposedPositions: Seq[PositionInMatrix] = (0 until cols).flatMap(colNr => (0 until rows).map(rowNr => MatrixPosition(colNr, rowNr))).map(_ in this)
+  val positions: Seq[PositionInMatrix] = (0 until rows).flatMap(rowNr => (0 until cols).map(colNr => MatrixPosition(colNr, rowNr))).map(_.in(this))
+  val transposedPositions: Seq[PositionInMatrix] = (0 until cols).flatMap(colNr => (0 until rows).map(rowNr => MatrixPosition(colNr, rowNr))).map(_.in(this))
 
   def positionsClockwise: Seq[PositionInMatrix] = {
     ???

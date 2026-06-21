@@ -22,8 +22,8 @@ object SpriteMapResourceLoader {
 
   def loadSpriteMap(id: SpriteMapResourceIdentifier)(implicit reader: ResourceReader): Future[EvaSpriteMap] = {
     id.layout.toLowerCase match {
-      case "topdown" => SpriteMapResourceLoader.loadSpriteMap(id, "defs/2022-04-26-TopdownTilemap.txt", TopDownMetaConfig)(reader)
-      case "default" => SpriteMapResourceLoader.loadSpriteMap(id, "defs/2022-04-15-NewDefaultTilemap.txt", DefaultMetaConfig)(reader)
+      case "topdown" => SpriteMapResourceLoader.loadSpriteMap(id, "defs/2022-04-26-TopdownTilemap.txt", TopDownMetaConfig)(using reader)
+      case "default" => SpriteMapResourceLoader.loadSpriteMap(id, "defs/2022-04-15-NewDefaultTilemap.txt", DefaultMetaConfig)(using reader)
     }
 
   }

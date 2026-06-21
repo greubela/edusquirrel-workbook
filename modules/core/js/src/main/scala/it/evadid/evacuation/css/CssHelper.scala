@@ -6,7 +6,7 @@ import org.scalajs.dom.document
 object CssHelper {
 
 
-  def initCssUpdateRoutine(variables: Map[String, ObservableVar[_]]): Unit ={
+  def initCssUpdateRoutine(variables: Map[String, ObservableVar[?]]): Unit ={
     def updateVarsToCSS(): Unit = {
       document.body.style = variables.toList.map(tup => "--" + tup._1 + ": " + tup._2.currentValue + ";").mkString("\n")
     }
