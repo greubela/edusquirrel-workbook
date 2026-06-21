@@ -1,13 +1,12 @@
 package it.evadid.evacuation.eva2.algorithm.escaping.strategies
 
+import it.evadid.core.datastructures.matrix.{Neighbourhood, PositionInMatrix}
 import it.evadid.evacuation.core.algorithm.routing.Dijkstra.DijkstraInformation
 import it.evadid.evacuation.core.algorithm.routing.{Dijkstra, ReveresedCachedPathfinding}
-import it.evadid.core.datastructures.matrix.{Neighbourhood, PositionInMatrix}
 import it.evadid.evacuation.eva2.algorithm.escaping.RoutingMap.RoutingMap
 import it.evadid.evacuation.eva2.algorithm.escaping.strategies.MultipleGoalStrategyOld.{MGSimulationInformation, MGStepInformation}
-import it.evadid.evacuation.eva2.algorithm.escaping.{EvacuationStrategy, PersonOrderSelector, PersonRoutingOption}
-import it.evadid.evacuation.eva2.model.FloorMatrix.FloorMatrix
-import it.evadid.evacuation.eva2.model.{EvaFloorMap, Person}
+import it.evadid.evacuation.eva2.algorithm.escaping.*
+import it.evadid.evacuation.eva2.model.*
 
 import scala.collection.mutable.ListBuffer
 

@@ -6,7 +6,7 @@ import it.evadid.evacuation.core.algorithm.routing.model.RoutingOption
 import it.evadid.evacuation.core.datastructures.maps.MultiHashMapList
 import it.evadid.core.datastructures.matrix.{Neighbourhood, PositionInMatrix}
 import it.evadid.evacuation.eva2.algorithm.escaping.RoutingMap.RoutingMap
-import it.evadid.evacuation.eva2.model.FloorMatrix.FloorMatrix
+import it.evadid.evacuation.eva2.model.*
 import it.evadid.evacuation.eva2.model.{EvaFloorMap, Person, ProgramState}
 
 import scala.collection.mutable

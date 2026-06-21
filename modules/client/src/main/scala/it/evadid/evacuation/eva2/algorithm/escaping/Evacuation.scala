@@ -1,13 +1,11 @@
 package it.evadid.evacuation.eva2.algorithm.escaping
 
+import it.evadid.core.datastructures.matrix.*
 import it.evadid.evacuation.core.algorithm.routing.RoutingOptionsToDestinationCalculator
-import it.evadid.core.datastructures.matrix.Direction
-import it.evadid.core.datastructures.matrix.{MatrixPosition, Neighbourhood, PositionInMatrix}
 import it.evadid.evacuation.core.graphic.spritemap.EvaSpriteMap
 import it.evadid.evacuation.eva2.graphic.EvaMapDrawer
 import it.evadid.evacuation.eva2.io.{FloorMapIO, ScenarioCache}
-import it.evadid.evacuation.eva2.model.FloorMatrix.FloorMatrix
-import it.evadid.evacuation.eva2.model.{DefaultFloors, EvaFloorMap, ProgramState}
+import it.evadid.evacuation.eva2.model.*
 
 import java.awt.Color
 import java.io.File

@@ -1,6 +1,6 @@
 package it.evadid.evacuation.eva2.algorithm.escaping
 
-import it.evadid.evacuation.eva2.model.FloorMatrix.FloorMatrix
+import it.evadid.evacuation.eva2.model.*
 import it.evadid.evacuation.eva2.model.{EvaFloorMap, Person}
 
 import scala.util.Random
