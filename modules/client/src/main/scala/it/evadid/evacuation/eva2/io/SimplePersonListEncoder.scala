@@ -27,7 +27,7 @@ case class SimplePersonListEncoder(spriteMap: EvaSpriteMap, dim: MatrixDimension
         val id = ByteFixedLengthIntIO.decode(arr.slice(8, 12))
 
         val sprite = spriteMap.sprites.find(_.id == id).map(_.asInstanceOf[PersonSprite])
-        val pos = MatrixPosition(x, y) in dim
+        val pos = MatrixPosition(x, y).in(dim)
         assert(sprite.nonEmpty, "Cannot find person sprite with id " + id)
         sprite.map(Person(tup._2, pos, _))
       })

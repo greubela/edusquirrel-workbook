@@ -5,7 +5,7 @@ import it.evadid.evacuation.eva1.graphic.drawer.traits.EdgeDrawer
 import it.evadid.evacuation.eva1.model.evagraph.EvaGraphTypes.EvaEdge
 import it.evadid.evacuation.shared.traits.graphic.EvaCanvas
 
-class StandardEdgeDrawer(canvas: EvaCanvas[_]) extends EdgeDrawer {
+class StandardEdgeDrawer(canvas: EvaCanvas[?]) extends EdgeDrawer {
 
   override def drawEdges(edges: Seq[EvaEdge]): Unit = if (edges.nonEmpty) {
 

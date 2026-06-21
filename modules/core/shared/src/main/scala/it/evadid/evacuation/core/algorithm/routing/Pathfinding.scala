@@ -17,7 +17,7 @@ trait Pathfinding[N, I] {
   protected def shortestPathMap(graphAccess: GraphAccess[N, I], start: N, dest: Option[N]): Map[N, SearchNode[N, I]] = {
 
     val closed = mutable.Map[N, SearchNode[N, I]]()
-    val queue = new mutable.PriorityQueue[SearchNode[N, I]]()(getOrderingAscending.reverse)
+    val queue = new mutable.PriorityQueue[SearchNode[N, I]]()(using getOrderingAscending.reverse)
 
     queue.enqueue(initStartNode(start))
 

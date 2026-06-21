@@ -6,7 +6,7 @@ import it.evadid.evacuation.shared.traits.graphic.EvaCanvas
 
 trait GraphObjectSelectorVisualizer[O <: Positionable] extends MouseListenerVisualizer[GraphObjectSelector[O]] {
 
-  override def visualizeMouseListener(mouseListener: GraphObjectSelector[O], canvas: EvaCanvas[_]): Unit = {
+  override def visualizeMouseListener(mouseListener: GraphObjectSelector[O], canvas: EvaCanvas[?]): Unit = {
     val selectorState = mouseListener.getState()
     // println(new Date() + ": visualize selector state!")
     canvas.setColor(GenericGraphSelectorVisualizer.yellowHighlightColor)
@@ -19,8 +19,8 @@ trait GraphObjectSelectorVisualizer[O <: Positionable] extends MouseListenerVisu
     selectorState.curSelected.foreach(obj => highlight(canvas, obj))
   }
 
-  def drawHighlightLine(canvas: EvaCanvas[_], start: Position, end: Position): Unit
+  def drawHighlightLine(canvas: EvaCanvas[?], start: Position, end: Position): Unit
 
-  def highlight(canvas: EvaCanvas[_], obj: O): Unit
+  def highlight(canvas: EvaCanvas[?], obj: O): Unit
 
 }

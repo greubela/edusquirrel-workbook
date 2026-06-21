@@ -19,7 +19,7 @@ case class ControllableCanvasFloorMap(spriteMap: SpriteMap, matrix: Matrix[Sprit
 
     val xPos = (xPixelPos / spriteMap.spriteSize).toInt
     val yPos = (yPixelPos / spriteMap.spriteSize).toInt
-    MatrixPosition(xPos, yPos) in matrix
+    MatrixPosition(xPos, yPos).in(matrix)
   }
 
   canvas.addMouseListener(new EvaMouseListener {

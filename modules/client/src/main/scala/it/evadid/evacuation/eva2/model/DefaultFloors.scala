@@ -55,7 +55,7 @@ object DefaultFloors {
       val floorMap = createEmptyExample(sm.get, MatrixDimension(12,8))
       val str = FloorMapIO(sm.get).encode(EvaFloorMap(floorMap, Set[Person]()))
       println("Result:\n" + str)
-    })(context)
+    })(using context)
 
     Thread.sleep(5000)
     println("---")

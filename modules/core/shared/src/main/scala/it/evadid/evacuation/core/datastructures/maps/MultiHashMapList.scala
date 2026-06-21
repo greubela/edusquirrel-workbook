@@ -125,7 +125,7 @@ class MultiHashMapList[K, V] {
 
   def removeAllValues(useFilter: V => Boolean): MultiHashMapList.this.type = this synchronized {
     map.keys.foreach(key => {
-      map(key).filter(useFilter).toList.foreach(this removeElement(key, _))
+      map(key).filter(useFilter).toList.foreach(this.removeElement(key, _))
     })
     this
   }

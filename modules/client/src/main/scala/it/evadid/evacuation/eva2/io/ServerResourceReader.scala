@@ -30,7 +30,7 @@ object ServerResourceReader extends ResourceReader {
   }
 
   override def getResourceLines(resourceName: String): Future[List[String]] = {
-    getResourceText(resourceName).map(_ split "\n").map(_.toList)
+    getResourceText(resourceName).map(_.split("\n")).map(_.toList)
   }
 
   override def getResourceText(resourceName: String): Future[String] = {

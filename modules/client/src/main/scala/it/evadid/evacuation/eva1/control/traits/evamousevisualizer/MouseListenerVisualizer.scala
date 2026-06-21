@@ -4,6 +4,6 @@ import it.evadid.evacuation.shared.traits.graphic.{EvaCanvas, EvaMouseListener}
 
 trait MouseListenerVisualizer[M <: EvaMouseListener] {
 
-  def visualizeMouseListener(mouseListener: M, canvas: EvaCanvas[_]): Unit
+  def visualizeMouseListener(mouseListener: M, canvas: EvaCanvas[?]): Unit
 
 }

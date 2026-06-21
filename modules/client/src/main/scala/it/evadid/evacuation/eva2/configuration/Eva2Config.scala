@@ -18,7 +18,7 @@ case class Eva2Config() {
   val previewInsertion: ObservableDiscreteConfigProperty[Boolean] = BasicDiscreteObservableConfigProperty(BasicDiscreteConfigProperty.createBooleanProperty("preview-insertion", "Preview Insertion"))
 
   val neighbourhood: ObservableDiscreteConfigProperty[Neighbourhood] = BasicDiscreteObservableConfigProperty(Eva2Config.createNeighbourhoodProperty())
-  val strategy: ObservableDiscreteConfigProperty[EvacuationStrategy[_, _]] = BasicDiscreteObservableConfigProperty(Eva2Config.createStrategyProperty())
+  val strategy: ObservableDiscreteConfigProperty[EvacuationStrategy[?, ?]] = BasicDiscreteObservableConfigProperty(Eva2Config.createStrategyProperty())
 
 
 
@@ -53,19 +53,19 @@ object Eva2Config {
     ConfigValue(Neighbourhood.moore, Neighbourhood.moore.name, Some("Moore (8 directions)"))
   ), Neighbourhood.neumann, "Neighbourhood Function")
 
-  private def createStrategyProperty(): BasicDiscreteConfigProperty[EvacuationStrategy[_, _]] = {
+  private def createStrategyProperty(): BasicDiscreteConfigProperty[EvacuationStrategy[?, ?]] = {
 
-    val strat1: EvacuationStrategy[_, _] = ClosestGoalStrategy(PersonOrderSelector.getRandomSelector)
-    val strat2: EvacuationStrategy[_, _] = ThresholdAcceptanceStrategy(PersonOrderSelector.getRandomSelector, 1.3)
-    val strat3: EvacuationStrategy[_, _] = ThresholdAcceptanceStrategy(PersonOrderSelector.getRandomSelector, 1.5)
-    val strat4: EvacuationStrategy[_, _] = MultipleGoalStrategy(PersonOrderSelector.getRandomSelector, 1.3)
-    val strat5: EvacuationStrategy[_, _] = MultipleGoalStrategy(PersonOrderSelector.getRandomSelector, 1.5)
-    BasicDiscreteConfigProperty[EvacuationStrategy[_, _]]("strategy", List[ConfigValue[EvacuationStrategy[_, _]]](
-      ConfigValue[EvacuationStrategy[_, _]](strat1, "cgro", Some("Closest Goal, Random Order")),
-      ConfigValue[EvacuationStrategy[_, _]](strat2, "taro30", Some("Threshold Acceptance (30%), Random Order")),
-      ConfigValue[EvacuationStrategy[_, _]](strat3, "raro50", Some("Threshold Acceptance (50%), Random Order")),
-      ConfigValue[EvacuationStrategy[_, _]](strat4, "mgro30", Some("Multiple Goals (30%), Random Order")),
-      ConfigValue[EvacuationStrategy[_, _]](strat5, "mgro50", Some("Multiple Goals (50%), Random Order"))
+    val strat1: EvacuationStrategy[?, ?] = ClosestGoalStrategy(PersonOrderSelector.getRandomSelector)
+    val strat2: EvacuationStrategy[?, ?] = ThresholdAcceptanceStrategy(PersonOrderSelector.getRandomSelector, 1.3)
+    val strat3: EvacuationStrategy[?, ?] = ThresholdAcceptanceStrategy(PersonOrderSelector.getRandomSelector, 1.5)
+    val strat4: EvacuationStrategy[?, ?] = MultipleGoalStrategy(PersonOrderSelector.getRandomSelector, 1.3)
+    val strat5: EvacuationStrategy[?, ?] = MultipleGoalStrategy(PersonOrderSelector.getRandomSelector, 1.5)
+    BasicDiscreteConfigProperty[EvacuationStrategy[?, ?]]("strategy", List[ConfigValue[EvacuationStrategy[?, ?]]](
+      ConfigValue[EvacuationStrategy[?, ?]](strat1, "cgro", Some("Closest Goal, Random Order")),
+      ConfigValue[EvacuationStrategy[?, ?]](strat2, "taro30", Some("Threshold Acceptance (30%), Random Order")),
+      ConfigValue[EvacuationStrategy[?, ?]](strat3, "raro50", Some("Threshold Acceptance (50%), Random Order")),
+      ConfigValue[EvacuationStrategy[?, ?]](strat4, "mgro30", Some("Multiple Goals (30%), Random Order")),
+      ConfigValue[EvacuationStrategy[?, ?]](strat5, "mgro50", Some("Multiple Goals (50%), Random Order"))
     ), strat4, "Fleeing Algorithm")
   }
 

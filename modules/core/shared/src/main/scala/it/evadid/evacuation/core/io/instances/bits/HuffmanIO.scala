@@ -63,7 +63,7 @@ object HuffmanIO {
   def createEncodingMap[T](frequencyMap: Map[T, Int]): Map[T, BitSequence] = {
 
     val ordering: Ordering[HuffmanNode[T]] = Ordering.by(_.weight)
-    val nodes = new mutable.PriorityQueue[HuffmanNode[T]]()(ordering.reverse)
+    val nodes = new mutable.PriorityQueue[HuffmanNode[T]]()(using ordering.reverse)
     frequencyMap.foreachEntry((element, weight) => nodes.enqueue(HuffmanNodeOuter(element, weight)))
 
     while (nodes.size > 1) {

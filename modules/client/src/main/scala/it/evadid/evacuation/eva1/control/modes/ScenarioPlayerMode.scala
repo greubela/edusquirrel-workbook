@@ -22,8 +22,8 @@ class ScenarioPlayerMode extends Eva1ControlMode {
 
   private val timeLabel = EvaHtmlFactory.createLabel("Animation Time: 0 s")
 
-  private val animPane: Option[ControllableAnimationPane[html.Canvas]] = evacuation.map(ControllableAnimationPane(_)(createNewCanvas))
-  private val basicPane = GraphPaneBasic()(createNewCanvas)
+  private val animPane: Option[ControllableAnimationPane[html.Canvas]] = evacuation.map(ControllableAnimationPane(_)(using createNewCanvas))
+  private val basicPane = GraphPaneBasic()(using createNewCanvas)
 
   private var handlerID = -1
 

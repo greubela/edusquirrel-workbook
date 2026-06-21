@@ -36,7 +36,7 @@ class ScenarioCache(resourceReader: ResourceReader) {
   }
 
   def loadSpriteMap(id: SpriteMapResourceIdentifier): Future[EvaSpriteMap] = if (!spritesMap.contains(id)) {
-    val spriteMap = SpriteMapResourceLoader.loadSpriteMap(id)(resourceReader)
+    val spriteMap = SpriteMapResourceLoader.loadSpriteMap(id)(using resourceReader)
     spriteMap.onComplete(map => spritesMap.put(id, map.get))
     spriteMap
   } else Future {

@@ -9,7 +9,7 @@ object PaddedIO extends IO[List[BitSequence], BitSequence] {
     val maxSize = bitSequences.maxBy(_.size).size
     bitSequences.map(_.ensureSize(maxSize))
     val size = BitSequence.fullInt(maxSize)
-    bitSequences.foldLeft(size)(_ append _)
+    bitSequences.foldLeft(size)(_.append(_))
   }
 
   override def decode(out: BitSequence): List[BitSequence] = {
