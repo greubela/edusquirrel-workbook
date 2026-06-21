@@ -2,7 +2,8 @@ package it.evadid.evacuation.eva1.model.evagraph
 
 import scala.language.implicitConversions
 
-import it.evadid.evacuation.core.datastructures.graphs._
+import it.evadid.core.datastructures.graph._
+import it.evadid.evacuation.core.datastructures.graphs.Position
 
 object EvaGraphTypes {
 

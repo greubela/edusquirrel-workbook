@@ -1,6 +1,7 @@
 package it.evadid.evacuation.eva1.control.traits.evamouselistener
 
-import it.evadid.evacuation.core.datastructures.graphs.{Position, Positionable}
+import it.evadid.core.datastructures.graph.{Positionable}
+import it.evadid.evacuation.core.datastructures.graphs.{Position}
 import it.evadid.evacuation.eva1.control.traits.{GraphObjectSelectorState, VisualizableMouseListener}
 import it.evadid.evacuation.eva1.model.evagraph.EvaGraphTypes.EvaGraph
 

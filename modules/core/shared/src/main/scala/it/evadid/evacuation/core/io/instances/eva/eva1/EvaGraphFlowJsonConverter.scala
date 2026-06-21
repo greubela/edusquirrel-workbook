@@ -1,6 +1,7 @@
 package it.evadid.evacuation.core.io.instances.eva.eva1
 
-import it.evadid.evacuation.core.datastructures.graphs.{Position, PositionableEdge}
+import it.evadid.core.datastructures.graph.{PositionableEdge}
+import it.evadid.evacuation.core.datastructures.graphs.{Position}
 import it.evadid.evacuation.core.io.traits.encoder.IO
 import it.evadid.evacuation.eva1.model.evagraph.{ConnectionInfo, EvaGraphModel, Router}
 import upickle.default.{macroRW, ReadWriter => RW, _}

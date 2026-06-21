@@ -4,7 +4,7 @@ import it.evadid.evacuation.core.algorithm.routing.Dijkstra.DijkstraInformation
 import it.evadid.evacuation.core.algorithm.routing.model.SearchNode
 import it.evadid.evacuation.core.algorithm.routing.{Dijkstra, GraphAccess}
 import it.evadid.evacuation.core.datastructures.Direction
-import it.evadid.evacuation.core.datastructures.graphs.{Edge, WeightedNeighbourStructure}
+import it.evadid.core.datastructures.graph.{Edge, WeightedNeighbourStructure}
 import it.evadid.evacuation.core.datastructures.matrix._
 import it.evadid.evacuation.core.graphic.spritemap.FloorSpriteProperties
 import it.evadid.evacuation.core.graphic.sprites.traits.FloorSprite

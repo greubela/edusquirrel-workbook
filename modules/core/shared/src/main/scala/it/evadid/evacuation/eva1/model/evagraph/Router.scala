@@ -1,6 +1,7 @@
 package it.evadid.evacuation.eva1.model.evagraph
 
-import it.evadid.evacuation.core.datastructures.graphs.{Position, Positionable}
+import it.evadid.core.datastructures.graph.{Positionable}
+import it.evadid.evacuation.core.datastructures.graphs.{Position}
 
 case class Router(pos: Position, initCapacity: Int, maxCapacity: Int, isExit: Boolean) extends Positionable {
   override def toString: String = "R[" + pos.x + "|" + pos.y + "]"

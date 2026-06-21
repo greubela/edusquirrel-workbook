@@ -1,7 +1,8 @@
 package it.evadid.evacuation.eva1.model.evagraph
 
 import it.evadid.evacuation.core.datastructures.graphs.Position._
-import it.evadid.evacuation.core.datastructures.graphs._
+import it.evadid.core.datastructures.graph._
+import it.evadid.evacuation.core.datastructures.graphs.Position
 import it.evadid.evacuation.eva1.model.evagraph.EvaGraphTypes.RouterOrEdge
 
 class ObservableEvaGraphModel extends ObservableGraph[Router, ConnectionInfo] with WeightedNeighbourStructure[Router, ConnectionInfo, Edge[Router, ConnectionInfo]] {

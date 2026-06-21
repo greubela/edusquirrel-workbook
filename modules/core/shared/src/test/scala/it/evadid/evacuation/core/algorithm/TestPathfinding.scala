@@ -3,7 +3,8 @@ package it.evadid.evacuation.core.algorithm
 import it.evadid.evacuation.core.algorithm.routing.Dijkstra.DijkstraInformation
 import it.evadid.evacuation.core.algorithm.routing.model.SearchNode
 import it.evadid.evacuation.core.algorithm.routing.{Dijkstra, GraphAccess}
-import it.evadid.evacuation.core.datastructures.graphs._
+import it.evadid.core.datastructures.graph._
+import it.evadid.evacuation.core.datastructures.graphs.Position
 
 object TestPathfinding {
 

@@ -1,7 +1,7 @@
 package it.evadid.evacuation.core.algorithm.routing
 
 import it.evadid.evacuation.core.algorithm.routing.model.RoutingOption
-import it.evadid.evacuation.core.datastructures.graphs.{Edge, WeightedNeighbourStructure}
+import it.evadid.core.datastructures.graph.{Edge, WeightedNeighbourStructure}
 import it.evadid.evacuation.core.datastructures.maps.MultiHashMapList
 
 import scala.collection.mutable

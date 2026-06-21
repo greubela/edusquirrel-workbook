@@ -1,4 +1,6 @@
-package it.evadid.evacuation.core.datastructures.graphs
+package it.evadid.core.datastructures.graph
+
+import it.evadid.evacuation.core.datastructures.graphs.Position
 
 trait Positionable {
   def pos: Position

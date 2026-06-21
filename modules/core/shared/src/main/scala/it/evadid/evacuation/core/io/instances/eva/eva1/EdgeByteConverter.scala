@@ -1,6 +1,6 @@
 package it.evadid.evacuation.core.io.instances.eva.eva1
 
-import it.evadid.evacuation.core.datastructures.graphs.PositionableEdge
+import it.evadid.core.datastructures.graph.PositionableEdge
 import it.evadid.evacuation.core.io.instances.basic.{ByteFixedLengthIntIO, ByteFixedLengthShortIO}
 import it.evadid.evacuation.core.io.instances.eva.eva1.EdgeByteConverter.BYTES_PER_EDGE
 import it.evadid.evacuation.core.io.traits.encoder.IO.ByteIO
