@@ -62,6 +62,7 @@
   "section2HintText": "In this circuit, the relay is turned on with `digitalWrite(PUMP_PIN, HIGH)` and turned off with `LOW`.",
   "section2AdvancedHint": "Advanced mode migration TODO: full code editor with validation feedback.",
   "section1SafetyText": "Never switch on power without a supervisor! The power supply may only be activated together with a supervising adult.",
+  "pumpCodeEditorTodo": "TODO: Code editor for advanced mode will be implemented later.",
   "pumpDone1": "I can explain why the relay is turned on with HIGH and turned off with LOW.",
   "pumpDone2": "I can create the 2-second watering cycle.",
   "pumpDone3": "I tested ON -> delay -> OFF order.",
