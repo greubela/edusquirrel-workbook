@@ -92,7 +92,7 @@ class PythonParser(
       context.defineVariable(paramName, mapType(typeHint))
     }
 
-    val returnVariable = returnSource.map(_.trim).filter(_.nonEmpty).map(returnHint => BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("return"), mapType(Some(returnHint))))
+    val returnVariable = returnSource.map(_.trim).filter(_.nonEmpty).map(returnHint => BeDefineVariable(BeEntityName.fromUniversalNameInParts("return"), mapType(Some(returnHint))))
 
     val computedIndent = findBodyIndent(lines, headerIndex + 1, indent)
 
@@ -109,8 +109,7 @@ class PythonParser(
 
     val body = BeSequence.optionalBody(bodyExpressions)
     val functionInfo = BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(name))
-    val indentWidth = if (bodyExpressions.nonEmpty && computedIndent > indent) computedIndent - indent else 4
-    val functionDef = BeDefineFunction(parameterDefinitions, returnVariable, body, functionInfo, indentWidth)
+    val functionDef = BeDefineFunction(parameterDefinitions, returnVariable, body, functionInfo)
     context.registerFunction(name, functionDef)
     NodeWithNext(functionDef, nextIndex)
   }

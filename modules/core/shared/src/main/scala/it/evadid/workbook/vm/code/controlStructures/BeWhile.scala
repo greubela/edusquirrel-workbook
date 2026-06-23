@@ -21,9 +21,7 @@ case class BeWhile(
   override def allPossibleBodies: List[BeExpression] = List(body)
 
   override def staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation {
-
     override def syntaxErrors: Seq[BeInfo] = BeInfo.typeMismatchInfo("while condition", BeDataType.Boolean, condition.staticInformationExpression.staticType).toList
-
   }
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {

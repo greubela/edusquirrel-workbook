@@ -15,7 +15,6 @@ case class BeDefineVariable(
     variableType: BeDataType
 ) extends BeDefineStructure {
 
-
   override def expressionIO: BeExpressionIO = new BeExpressionIO() {
     
     override def toStringWithConfig(config: CodeRepresentationConfig): String = {
@@ -51,19 +50,3 @@ case class BeDefineVariable(
 
 }
 
-object BeDefineVariable {
-  def apply(name: LanguageMap[HumanLanguage], variableType: BeDataType): BeDefineVariable =
-    BeDefineVariable(BeEntityName.fromMapInCodeNotation(name.asInstanceOf[LanguageMap[HumanLanguage]]), variableType)
-
-  def fromLanguageMap(name: LanguageMap[HumanLanguage], variableType: BeDataType): BeDefineVariable =
-    apply(name, variableType)
-}
-
-/*
-trait BeValueDefinition {
-
-  def currentValue(simulator: BeSimulatorState): Option[String]
-
-  def createBlock(displayConfig: BeDisplayConfig, roleInParent: BeChildRole): BeBlock
-}
-*/

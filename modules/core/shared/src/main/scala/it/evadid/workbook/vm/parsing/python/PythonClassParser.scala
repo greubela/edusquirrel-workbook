@@ -156,7 +156,7 @@ object PythonClassParser {
       methodContext.defineVariable(paramName, api.mapType(typeHint))
     }
 
-    val returnVariable = returnSource.map(_.trim).filter(_.nonEmpty).map(returnHint => BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("return"), api.mapType(Some(returnHint))))
+    val returnVariable = returnSource.map(_.trim).filter(_.nonEmpty).map(returnHint => BeDefineVariable(BeEntityName.fromUniversalNameInParts("return"), api.mapType(Some(returnHint))))
 
     val computedIndent = findBodyIndent(lines, headerIndex + 1, indent)
 
@@ -177,8 +177,7 @@ object PythonClassParser {
 
     val body = BeSequence.optionalBody(bodyExpressions)
     val functionInfo = BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(name))
-    val indentWidth = if (bodyExpressions.nonEmpty && computedIndent > indent) computedIndent - indent else 4
-    val template = BeDefineFunction(parameterDefinitions, returnVariable, body, functionInfo, indentWidth)
+    val template = BeDefineFunction(parameterDefinitions, returnVariable, body, functionInfo)
     ParsedMethod(name, template, discoveredAttributes, nextIndex)
   }
 
@@ -227,7 +226,7 @@ object PythonClassParser {
         api.inferType(api.parseExpression(valueText, isolated))
       }.getOrElse(AnyType)
     }
-    val attribute = BeDefineVariable(LanguageMap.universalMap[HumanLanguage](attributeName), dataType)
+    val attribute = BeDefineVariable(BeEntityName.fromUniversalNameInParts(attributeName), dataType)
     buffer.update(attributeName, attribute)
   }
 }

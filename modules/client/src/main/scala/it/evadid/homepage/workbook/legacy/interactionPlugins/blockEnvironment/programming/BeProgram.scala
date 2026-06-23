@@ -154,20 +154,15 @@ private object BeProgramConstructionHelpers {
     createSimpleFunc(functionName, List(parName), List(parType), List(valueString), None)
 
   def miniProgramExpression(): BeExpression = {
-    val forwardName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
-      AppLanguage.German -> "vorwärts",
-      AppLanguage.English -> "forward"
-    ))
+    val forwardName: BeEntityName = BeEntityName.fromMapInCodeNotation(Map(AppLanguage.German -> "vorwärts", AppLanguage.English -> "forward"))
 
-    val parameter: BeDefineVariable = BeDefineVariable(
-      LanguageMap.mapBasedLanguageMap(Map(
-        AppLanguage.German -> "distanz",
-        AppLanguage.English -> "distance")
-      ),
-      BeDataType.Numeric)
+    val distanceName: BeEntityName = BeEntityName.fromMapInCodeNotation(Map(AppLanguage.German -> "distanz", AppLanguage.English -> "distance"))
+
+
+    val parameter: BeDefineVariable = BeDefineVariable(distanceName, BeDataType.Numeric)
 
     val forwardFunc = BeDefineFunction(
-      List(parameter), None, BeExpression.pass, BeDefineFunction.functionInfo(BeEntityName.fromMapInCodeNotation(forwardName))
+      List(parameter), None, BeExpression.pass, BeDefineFunction.functionInfo(forwardName)
     )
 
     BeStartProgram(
@@ -281,10 +276,10 @@ private object BeProgramConstructionHelpers {
   }
 
   private def defineParameters(parNames: List[LanguageMap[HumanLanguage]], parTypes: List[BeDataType]): List[BeDefineVariable] =
-    parNames.zip(parTypes).map((curName, curType) => BeDefineVariable(curName, curType))
+    parNames.zip(parTypes).map((curName, curType) => BeDefineVariable(BeEntityName.fromMapInCodeNotation(curName), curType))
 
   private def createFunctionCallProgram(functionName: LanguageMap[HumanLanguage], parVariables: List[BeDefineVariable], parValues: List[String], output: Option[BeDataType]): BeProgram = {
-    val outputVar = output.map(typeSet => BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("output"), typeSet))
+    val outputVar = output.map(typeSet => BeDefineVariable(BeEntityName.fromCodeString("output"), typeSet))
     val parValueMap = parVariables.zip(parValues).map((parVar, parVal) => {
       parVar -> BeUseValue(BeDataValueLiteral(parVal), Some(parVar))
     }).toMap

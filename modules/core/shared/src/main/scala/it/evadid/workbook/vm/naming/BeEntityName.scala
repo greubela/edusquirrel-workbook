@@ -18,6 +18,8 @@ sealed trait BeEntityName {
 
 object BeEntityName {
 
+  def fromCodeString(stringInCode: String): BeEntityName = fromUniversalNameInParts(stringInCode)
+
   def fromUniversalNameInParts(universalNameInParts: String): BeEntityName = BeEntityNamePartsBased(LanguageMap.universalMap(universalNameInParts))
 
   def fromMapInCodeNotation(partsMap: LanguageMap[HumanLanguage]): BeEntityName = BeEntityNamePartsBased(partsMap)

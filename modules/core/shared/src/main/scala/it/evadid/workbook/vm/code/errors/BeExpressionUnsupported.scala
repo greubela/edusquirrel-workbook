@@ -21,8 +21,7 @@ case class BeExpressionUnsupported(originalSource: String) extends BeExpression 
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO() {
     override def toStringWithConfig(config: CodeRepresentationConfig): String ={
-      import config.{programmingLanguage, humanLanguage, skipUnparsable}
-      if(skipUnparsable){
+      if(config.skipUnparsable){
         println(s"[WARN] BeExpressionUnsupported::getInLanguage with flag 'skipUnparsable' set to true. Still rendering because '$originalSource' is unsupported, not unparsable!")
       }
       originalSource

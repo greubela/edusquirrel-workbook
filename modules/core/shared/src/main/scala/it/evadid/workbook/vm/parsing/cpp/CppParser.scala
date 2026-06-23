@@ -35,14 +35,14 @@ object CppParser {
       scopes.collectFirst { case scope if scope.contains(name) => scope(name) }
 
     def defineVariable(name: String, dataType: BeDataType): BeDefineVariable = {
-      val variable = BeDefineVariable(LanguageMap.universalMap[HumanLanguage](name), dataType)
+      val variable = BeDefineVariable(BeEntityName.fromUniversalNameInParts(name), dataType)
       scopes.head.update(name, variable)
       variable
     }
 
     def assignVariable(name: String, dataType: BeDataType): BeDefineVariable = {
       lookupVariable(name).getOrElse {
-        val variable = BeDefineVariable(LanguageMap.universalMap[HumanLanguage](name), dataType)
+        val variable = BeDefineVariable(BeEntityName.fromUniversalNameInParts(name), dataType)
         scopes.head.update(name, variable)
         variable
       }
@@ -659,7 +659,7 @@ object CppParser {
     val args = splitArgs(argsText)
 
     val parameters: List[BeDefineVariable] = args.zipWithIndex.map { case (_, idx) =>
-      BeDefineVariable(LanguageMap.universalMap[HumanLanguage](s"arg${idx + 1}"), BeDataType.AnyType)
+      BeDefineVariable(BeEntityName.fromUniversalNameInParts(s"arg${idx + 1}"), BeDataType.AnyType)
     }
 
     val funcDef = BeDefineFunction(

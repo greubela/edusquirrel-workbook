@@ -105,7 +105,7 @@ object TurtleStitchToBeExpressionParser {
 
   private def createDefinition(signature: Signature): BeDefineFunction = {
     val params = (1 to signature.arity).toList.map { idx =>
-      BeDefineVariable(LanguageMap.universalMap[HumanLanguage](s"arg$idx"), BeDataType.AnyType)
+      BeDefineVariable(BeEntityName.fromCodeString(s"arg$idx"), BeDataType.AnyType)
     }
 
     if (signature.isOperator)

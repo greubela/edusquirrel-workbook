@@ -1,20 +1,19 @@
-package it.evadid.workbook.vm.naming
+package it.evadid.workbook.vm.parsing.`abstract`
 
-import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
-import it.evadid.workbook.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
-import it.evadid.workbook.vm.types.BeDataType
+import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.workbook.vm.code.defining.{BeDefineClass, BeDefineFunction}
 
-object VmDefsStore {
-
+object KnownStructures {
 
   private val knownClasses: Map[String, BeDefineClass] = Map()
 
   private val knownFunctions: Map[String, BeDefineFunction] = Map()
 
-
-
-
   private val turtleClass: BeDefineClass = {
+
+
+
+
 
     /*
         inputs: List[BeDefineVariable],
@@ -23,12 +22,12 @@ object VmDefsStore {
         functionTypeInfo: BeFunctionTypeInfo,
         indentWidth: Int = 4
      */
-/*
-    val forward = BeDefineFunction()
-    val backward = BeDefineFunction
-    val left = BeDefineFunction
-    val right = BeDefineFunction
-*/
+    /*
+        val forward = BeDefineFunction()
+        val backward = BeDefineFunction
+        val left = BeDefineFunction
+        val right = BeDefineFunction
+    */
 
     ???
   }
@@ -46,5 +45,5 @@ object VmDefsStore {
   }
 
 
-}
 
+}

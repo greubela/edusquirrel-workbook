@@ -20,8 +20,7 @@ case class BeDefineFunction(
                              inputs: List[BeDefineVariable],
                              outputs: Option[BeDefineVariable],
                              body: BeSequence,
-                             functionTypeInfo: BeFunctionTypeInfo,
-                             indentWidth: Int = 4
+                             functionTypeInfo: BeFunctionTypeInfo
                            ) extends BeDefineStructure {
 
   /*
@@ -68,7 +67,7 @@ case class BeDefineFunction(
         case Python =>
           val parameters = inputsStr.mkString("(", ", ", ")")
           val returnAnnotation = outputs.flatMap(output => formatTypeHint(output)).map(hint => s" -> $hint").getOrElse("")
-          val indentation = " " * indentWidth
+          val indentation = " " * 2
           val bodyLines = if (bodyStr.isEmpty) List(indentation + "pass")
           else {
             bodyStr.split("\n", -1).toList.map { line =>

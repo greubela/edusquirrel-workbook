@@ -16,10 +16,9 @@ case class BeSingleLineComment(commentStr: LanguageMap[HumanLanguage]) extends B
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO() {
     override def toStringWithConfig(config: CodeRepresentationConfig): String = {
-      import config.{programmingLanguage, humanLanguage, skipUnparsable}
-      val comment = commentStr.getInLanguage(humanLanguage)
+      val comment = commentStr.getInLanguage(config.humanLanguage)
       if (comment.contains("\n")) comment.replaceAll("\n", " ") else comment
-      programmingLanguage match {
+      config.programmingLanguage match {
         case Python => s"# $comment"
         case Java => s"// $comment"
         case Cpp => s"// $comment"
