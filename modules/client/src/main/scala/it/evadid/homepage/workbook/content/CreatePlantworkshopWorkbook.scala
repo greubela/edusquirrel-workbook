@@ -1,13 +1,10 @@
 package it.evadid.homepage.workbook.content
 
-import com.raquo.laminar.api.L.{*, given}
 import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.homepage.control.info.FullInfo
-import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.reorderExercise.HtmlReorderInteractionRenderer
-import it.evadid.homepage.workbook.legacy.htmlElements.HtmlEmbeddedDomInteraction
-import it.evadid.homepage.workbook.legacy.plantworkshop.helpers.*
 import it.evadid.workbook.model.abstractions.WorkbookElement
+import it.evadid.workbook.model.interaction.plugins.reorderExercise.ReorderInteraction
 import it.evadid.workbook.model.elements.*
 import it.evadid.workbook.model.elements.ImageElement.FileBasedImageElement
 import it.evadid.workbook.model.elements.LabeledInstructionElement.*
@@ -131,57 +128,13 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     section("section1", "PlantWorkshop/section1Title", List(container1, container2))
   }
 
-  private def createCodeTaskToggle(
+  private def createCodeReorderTask(
     reorderId: String,
     snippets: List[String],
-    codeEditorTitle: String,
     hints: List[LanguageMapContentId] = List.empty,
     orderConstraints: List[(Int, Int)] = Nil
-  ): HtmlEmbeddedDomInteraction = {
-    val reorder = codeReorder(reorderId, snippets, AppLanguage.C, hints, orderConstraints)
-    val reorderDom = HtmlReorderInteractionRenderer.render(reorder).getDomElement()
-
-    val advancedCodeState = Var(
-      "// TODO: Ergänze hier dein Programm\n// Beispiel:\n// digitalWrite(PUMP_PIN, HIGH);\n// delay(2000);\n// digitalWrite(PUMP_PIN, LOW);"
-    )
-
-    val codeEditor = CodeEditorHelper.createCodeEditor(
-      advancedCodeState,
-      codeEditorTitle,
-      PumpControlValidator.validatePumpControl
-    )
-
-    val isBeginnerMode = Var(true)
-
-    val toggleArea = div(
-      cls := "task-box",
-      div(
-        cls := "mode-toggle",
-        button(
-          cls := "mode-toggle__btn",
-          cls.toggle("mode-toggle__btn--active") <-- isBeginnerMode.signal,
-          text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId("basic/beginnerMode")),
-          onClick.mapTo(true) --> isBeginnerMode
-        ),
-        button(
-          cls := "mode-toggle__btn",
-          cls.toggle("mode-toggle__btn--active") <-- isBeginnerMode.signal.map(!_),
-          text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId("basic/advancedMode")),
-          onClick.mapTo(false) --> isBeginnerMode
-        )
-      ),
-      div(
-        cls.toggle("mode-hidden") <-- isBeginnerMode.signal.map(!_),
-        reorderDom
-      ),
-      div(
-        cls.toggle("mode-hidden") <-- isBeginnerMode.signal,
-        codeEditor
-      )
-    )
-
-    HtmlEmbeddedDomInteraction(nextId(reorderId + "-toggle"), toggleArea)
-  }
+  ): ReorderInteraction[String] =
+    codeReorder(reorderId, snippets, AppLanguage.C, hints, orderConstraints)
 
   private lazy val pumpControlSection: WorkbookSection = {
     val checklistItems = checklist(
@@ -189,14 +142,13 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "plant-pump-done"
     )
 
-    val codeTask = createCodeTaskToggle(
+    val codeTask = createCodeReorderTask(
       "plant-pump-reorder",
       List(
         "digitalWrite(PUMP_PIN, HIGH);",
         "delay(2000);",
         "digitalWrite(PUMP_PIN, LOW);"
       ),
-      "PlantWorkshop/pumpCodeEditorTodo",
       List(
         LanguageMapContentId("PlantWorkshop/reorderHintPumpHigh"),
         LanguageMapContentId("PlantWorkshop/reorderHintDelay2000"),
@@ -228,7 +180,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "plant-moisture-done"
     )
 
-    val codeTask = createCodeTaskToggle(
+    val codeTask = createCodeReorderTask(
       "plant-moisture-reorder",
       List(
         "digitalWrite(SENSOR_POWER_PIN, HIGH);",
@@ -241,7 +193,6 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         "  Serial.println(\"Boden ist FEUCHT\");",
         "}"
       ),
-      "PlantWorkshop/pumpCodeEditorTodo",
       List(
         LanguageMapContentId("PlantWorkshop/reorderHintSensorPowerHigh"),
         LanguageMapContentId("PlantWorkshop/reorderHintDelay10"),
@@ -279,7 +230,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "plant-combined-done"
     )
 
-    val codeTask = createCodeTaskToggle(
+    val codeTask = createCodeReorderTask(
       "plant-combined-reorder",
       List(
         "int feuchtigkeitsGrenze = 400;",
@@ -296,7 +247,6 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         "}",
         "delay(10000);"
       ),
-      "PlantWorkshop/pumpCodeEditorTodo",
       List(
         LanguageMapContentId("PlantWorkshop/reorderHintFeuchtigkeitsGrenze"),
         LanguageMapContentId("PlantWorkshop/reorderHintSensorPowerHigh"),
@@ -387,19 +337,12 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       )
     )
 
-    val congratulationsContainer = container(
-      "PlantWorkshop/section5Congratulations",
-      List(
-        instructionPlaintext("PlantWorkshop/section5Congratulations")
-      )
-    )
-
     section("section5", "PlantWorkshop/section5Title", List(
       downloadContainer,
       testChecklistContainer,
       troubleshootingContainer,
       bonusContainer,
-      congratulationsContainer
+      instructionPlaintext("PlantWorkshop/section5Congratulations")
     ))
   }
 }

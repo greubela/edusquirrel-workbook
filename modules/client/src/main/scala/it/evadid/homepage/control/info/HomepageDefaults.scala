@@ -18,11 +18,11 @@ case class HomepageDefaults() {
     //SyncInformation(DatabaseSyncViaTmpMathBackend, SYNC_EVERYTHING)
   )
 
-  val defaultUser: AllUserInfo = createDefaultUserInfo(User("TestUser", "test@homepage"))
-
   val defaultUserConfig: UserConfig = UserConfig(
     defaultSyncLocation
   )
+
+  val defaultUser: AllUserInfo = createDefaultUserInfo(User("TestUser", "test@homepage"))
 
   val selectableUsers: List[User] = List(
     User("André", "andre@homepage"),

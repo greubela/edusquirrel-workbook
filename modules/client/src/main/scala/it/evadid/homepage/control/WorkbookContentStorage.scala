@@ -244,15 +244,6 @@ object WorkbookContentStorage {
     s"$base/map-$suffix.json"
   }
 
-
-  private def languageFromFileDescription(file: FileDescription): Option[HumanLanguage] = {
-    val langSuffix: Option[String] = file.filenameWithoutExtension.split("-").lastOption.map(_.toLowerCase)
-    langSuffix.flatMap {
-      case "universal" => Some(UniversalLanguageMapFile)
-      case suffix => WorkbookContentStorage.languageByFileSuffix.get(suffix).map(RegularLanguageMapFile.apply)
-    }
-  }
-
   private def languageMapEntry(contentId: LanguageMapContentId,
                                fileKind: LanguageMapFileKind,
                                value: String): LanguageMapEntry = fileKind match {
@@ -268,16 +259,22 @@ object WorkbookContentStorage {
       Set.empty[LanguageMapEntry]
     }
     else {
-      if (file.description.extensionOrEmpty == "json") {
-        IoSerialization.parseJson(file.fileDataAsUtf8String).toList.map(tup => {
-          languageMapEntry(LanguageMapContentId(languageMapIdOp.get.toLowerCase, tup._1.toLowerCase), languageOp.get, tup._2)
-        }).toSet
-      } else if (file.description.extensionOrEmpty == "csv") {
-        IoSerialization.parseCsv(file.fileDataAsUtf8String).filter(_.size >= 2).map(curColumns => {
-          languageMapEntry(LanguageMapContentId(languageMapIdOp.get.toLowerCase, curColumns.head.toLowerCase), languageOp.get, curColumns(1))
-        }).toSet
-      } else {
-        Set.empty[LanguageMapEntry]
+      try {
+        if (file.description.extensionOrEmpty == "json") {
+          IoSerialization.parseJson(file.fileDataAsUtf8String).toList.map(tup => {
+            languageMapEntry(LanguageMapContentId(languageMapIdOp.get.toLowerCase, tup._1.toLowerCase), languageOp.get, tup._2)
+          }).toSet
+        } else if (file.description.extensionOrEmpty == "csv") {
+          IoSerialization.parseCsv(file.fileDataAsUtf8String).filter(_.size >= 2).map(curColumns => {
+            languageMapEntry(LanguageMapContentId(languageMapIdOp.get.toLowerCase, curColumns.head.toLowerCase), languageOp.get, curColumns(1))
+          }).toSet
+        } else {
+          Set.empty[LanguageMapEntry]
+        }
+      } catch {
+        case err: Throwable =>
+          println(s"[WARN] could not parse language map file '${file.description.fullPath}': ${err.getMessage}")
+          Set.empty[LanguageMapEntry]
       }
     }
   }

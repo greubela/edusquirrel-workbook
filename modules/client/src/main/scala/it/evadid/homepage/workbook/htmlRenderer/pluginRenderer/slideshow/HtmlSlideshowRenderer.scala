@@ -53,12 +53,12 @@ object HtmlSlideshowRenderer extends HtmlRenderFactory[Slideshow] {
         cls := "slide-deck-container",
         div(
           cls := "slide-deck-image",
-          HtmlImageElement(panel.image.location).getDomElement()
+          child <-- HtmlImageElement(panel.image).getDomSignal
         ),
         div(
           cls := "slide-deck-text",
-          div(cls := "slide-deck-text-title", markdownFromMapId(panel.headerMapId)),
-          div(cls := "slide-deck-text-body", markdownFromMapId(panel.bodyMapId))
+          div(cls := "slide-deck-text-title", markdownFromMapId(panel.titleLabel)),
+          div(cls := "slide-deck-text-body", markdownFromMapId(panel.description))
         )
       )
 
@@ -67,7 +67,7 @@ object HtmlSlideshowRenderer extends HtmlRenderFactory[Slideshow] {
         cls := "slide-deck-container",
         div(
           cls := "slide-deck-image",
-          HtmlImageElement(panel.image.location).getDomElement()
+          child <-- HtmlImageElement(panel.image).getDomSignal
         ),
         div(
           cls := "slide-deck-text two-columns",
