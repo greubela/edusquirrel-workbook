@@ -27,7 +27,7 @@ case class BeBlockCallSingleReturnFunction(
       .sortBy(_._1.childPosition.roleInParent.asInstanceOf[FunctionParameter].nr)
       .map(_._2)
 
-    val nameShape = TextShape(function.funcDef.functionTypeInfo.displayName)
+    val nameShape = TextShape(function.funcDef.functionTypeInfo.displayName.asLanguageMap(it.evadid.workbook.vm.naming.NamingStyle.SnakeCase))
     val namePos = function.funcDef.functionTypeInfo.displayNamePosition
 
     val childrenWithName: List[BeShape] = parameterChildrenInOrder.slice(0, namePos) ++ List(nameShape) ++ parameterChildrenInOrder.slice(namePos, parameterChildrenInOrder.size)

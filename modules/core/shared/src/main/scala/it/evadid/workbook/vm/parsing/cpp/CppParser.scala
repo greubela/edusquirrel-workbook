@@ -1,5 +1,6 @@
 package it.evadid.workbook.vm.parsing.cpp
 
+import it.evadid.workbook.vm.naming.BeEntityName
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.workbook.vm.code.BeExpression
@@ -34,14 +35,14 @@ object CppParser {
       scopes.collectFirst { case scope if scope.contains(name) => scope(name) }
 
     def defineVariable(name: String, dataType: BeDataType): BeDefineVariable = {
-      val variable = BeDefineVariable(LanguageMap.universalMap(name), dataType)
+      val variable = BeDefineVariable(LanguageMap.universalMap[HumanLanguage](name), dataType)
       scopes.head.update(name, variable)
       variable
     }
 
     def assignVariable(name: String, dataType: BeDataType): BeDefineVariable = {
       lookupVariable(name).getOrElse {
-        val variable = BeDefineVariable(LanguageMap.universalMap(name), dataType)
+        val variable = BeDefineVariable(LanguageMap.universalMap[HumanLanguage](name), dataType)
         scopes.head.update(name, variable)
         variable
       }
@@ -665,7 +666,7 @@ object CppParser {
       inputs = parameters,
       outputs = None,
       body = BeSequence.optionalBody(Nil),
-      functionTypeInfo = BeDefineFunction.functionInfo(LanguageMap.universalMap[HumanLanguage](name))
+      functionTypeInfo = BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(name))
     )
 
     val valueMap: Map[BeDefineVariable, BeExpression] = parameters.zip(args).map { case (par, raw) =>

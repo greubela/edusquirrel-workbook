@@ -15,7 +15,7 @@ case class BeBlockDefineVariable(
 
   override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
     val outerShape = BeDataTypeShapeAdapter.containerShapeFor(varDef.variableType).get
-    val textShape = TextShape(varDef.name, renderingInformation.factory.invertedTextAmends)
+    val textShape = TextShape(varDef.name.asLanguageMap(it.evadid.workbook.vm.naming.NamingStyle.SnakeCase), renderingInformation.factory.invertedTextAmends)
     val res = ShapeAroundShape(outerShape, textShape)
       .addAmends(renderingInformation.factory.variableColorsDefAmend)
     (ControlFlowEmpty(), res)

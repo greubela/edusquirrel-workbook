@@ -1,5 +1,6 @@
 package it.evadid.workbook.vm.code.controlStructures
 
+import it.evadid.workbook.vm.naming.CodeRepresentationConfig
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.util.CodeStringBuilder
 import it.evadid.workbook.vm.code.tree.{BeExpressionNode, BeExpressionReference, BeExtensionPoint}
@@ -25,7 +26,8 @@ case class BeSequence(body: List[BeExpression], sequenceInfo: BeSequenceInfo) ex
   }
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
-    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
+    override def toStringWithConfig(config: CodeRepresentationConfig): String = {
+      import config.{programmingLanguage, humanLanguage, skipUnparsable}
       programmingLanguage match {
         case Python => body.map(_.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable)).mkString("\n")
         case Java | JavaScript | Rust =>

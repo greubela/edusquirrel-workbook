@@ -27,7 +27,7 @@ case class BeUseValueReference(variable: BeDefineVariable) extends BeDataValue {
 
   override def currentType: BeDataType = variable.variableType
 
-  override def displayAsString: String = variable.name.getInLanguage(AppLanguage.default())
+  override def displayAsString: String = variable.name.universalInterpretation()
 }
 
 case class BeDataValueLiteral(literalString: String) extends BeDataValue {

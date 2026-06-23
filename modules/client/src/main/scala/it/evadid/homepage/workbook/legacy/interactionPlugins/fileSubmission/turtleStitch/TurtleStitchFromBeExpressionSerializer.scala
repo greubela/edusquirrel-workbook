@@ -2,9 +2,11 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.tur
 
 import it.evadid.workbook.vm.code.{defining}
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
+import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.workbook.vm.code.controlStructures.BeSequence
 import it.evadid.workbook.vm.code.{BeExpression, defining}
 import it.evadid.workbook.vm.code.defining.BeDefineFunction
+import it.evadid.workbook.vm.naming.BeEntityName
 import it.evadid.workbook.vm.code.others.BeStartProgram
 import it.evadid.workbook.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.workbook.vm.types.BeDataValueLiteral
@@ -46,7 +48,7 @@ object TurtleStitchFromBeExpressionSerializer {
       outputs = None,
       body = BeExpression.pass,
       functionTypeInfo = defining.BeDefineFunction.functionInfo(
-        LanguageMap.universalMap("receiveGo")
+        BeEntityName.fromUniversalNameInParts("receiveGo")
       )
     )
     BeFunctionCall(define, Map.empty)
@@ -66,7 +68,7 @@ object TurtleStitchFromBeExpressionSerializer {
   }
 
   private def selectorOf(call: BeFunctionCall): String =
-    call.funcDef.functionTypeInfo.displayName.getInLanguage(AppLanguage.English).trim
+    call.funcDef.functionTypeInfo.displayName.getNameIn(AppLanguage.English, it.evadid.workbook.vm.naming.NamingStyle.SnakeCase).trim
 
   private def orderedArgs(call: BeFunctionCall): List[BeExpression] =
     call.funcDef.inputs.flatMap(variable => call.parameterValueMap.get(variable))

@@ -9,6 +9,7 @@ import it.evadid.workbook.vm.code.BeExpression
 import it.evadid.workbook.vm.code.controlStructures.BeSequence
 import it.evadid.workbook.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import it.evadid.workbook.vm.io.BeExpressionIO
+import it.evadid.workbook.vm.naming.CodeRepresentationConfig
 import it.evadid.workbook.vm.static.BeExpressionStaticInformation
 import it.evadid.workbook.vm.types.{BeChildPosition, BeChildRole, BeScope}
 
@@ -20,8 +21,8 @@ case class BeStartProgram(startSequence: Option[BeSequence]) extends BeExpressio
   }
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
-    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String =
-      startSequence.map(_.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable)).getOrElse("")
+    override def toStringWithConfig(config: CodeRepresentationConfig): String =
+      startSequence.map(_.expressionIO.toStringWithConfig(config)).getOrElse("")
 
   }
 

@@ -7,11 +7,12 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.workbook.vm.code.{BeDefineStructure, BeExpression}
 import it.evadid.workbook.vm.code.tree.BeExpressionNode
 import it.evadid.workbook.vm.io.BeExpressionIO
+import it.evadid.workbook.vm.naming.{BeEntityName, CodeRepresentationConfig}
 import it.evadid.workbook.vm.static.BeExpressionStaticInformation
 import it.evadid.workbook.vm.types.{BeDataType, BeInfo}
 
 case class BeDefineClass(
-    name: LanguageMap[HumanLanguage],
+    name: BeEntityName,
     attributes: List[BeDefineVariable],
     methods: List[BeDefineFunction],
     bodyExtras: List[BeExpression] = Nil
@@ -22,8 +23,9 @@ case class BeDefineClass(
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO() {
 
-    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
-      val className = name.getInLanguage(humanLanguage)
+    override def toStringWithConfig(config: CodeRepresentationConfig): String = {
+      import config.{programmingLanguage, humanLanguage, skipUnparsable}
+      val className = name.getNameIn(humanLanguage, config.namingStyle)
 
       def splitLines(block: String): List[String] = block.split("\n", -1).toList
 
@@ -45,7 +47,7 @@ case class BeDefineClass(
         case Python =>
           val indent = " " * 4
           val attributeLines = attributes.flatMap { attribute =>
-            val attributeName = attribute.name.getInLanguage(humanLanguage)
+            val attributeName = attribute.name.getNameIn(humanLanguage, config.namingStyle)
             val typeHint = attribute.variableType.formatTypeForDisplay.getInLanguage(Python).trim
             val rendered = if (typeHint.nonEmpty) s"$attributeName: $typeHint" else attributeName
             Option.when(rendered.trim.nonEmpty)(indent + rendered)
@@ -83,7 +85,7 @@ case class BeDefineClass(
           val constructorLines: List[String] =
             if (attributes.nonEmpty) {
               val assignments = attributes.map { attribute =>
-                val attributeName = attribute.name.getInLanguage(humanLanguage)
+                val attributeName = attribute.name.getNameIn(humanLanguage, config.namingStyle)
                 s"${indent}${indent}this.$attributeName = null;"
               }
               (s"${indent}constructor() {" :: assignments) :+ s"${indent}}"
@@ -117,7 +119,7 @@ case class BeDefineClass(
         case Java | Cpp =>
           val indent = "    "
           val fieldLines = attributes.map { attribute =>
-            val attributeName = attribute.name.getInLanguage(humanLanguage)
+            val attributeName = attribute.name.getNameIn(humanLanguage, config.namingStyle)
             val defaultType = if (programmingLanguage == Java) "Object" else "auto"
             val attributeType = ensureDefaultType(attribute.variableType, programmingLanguage, defaultType)
             val visibility = if (programmingLanguage == Java) "private " else ""
@@ -125,13 +127,13 @@ case class BeDefineClass(
           }
 
           val methodBlocks = methods.map { method =>
-            val methodName = method.functionTypeInfo.displayName.getInLanguage(humanLanguage)
+            val methodName = method.functionTypeInfo.displayName.getNameIn(humanLanguage, config.namingStyle)
             val defaultReturnType = if (programmingLanguage == Java) "void" else "auto"
             val returnType = method.outputs.map(output => ensureDefaultType(output.variableType, programmingLanguage, defaultReturnType)).getOrElse(defaultReturnType)
             val parameters = method.inputs
               .map { input =>
                 val paramType = ensureDefaultType(input.variableType, programmingLanguage, if (programmingLanguage == Java) "Object" else "auto")
-                val paramName = input.name.getInLanguage(humanLanguage)
+                val paramName = input.name.getNameIn(humanLanguage, config.namingStyle)
                 s"$paramType $paramName"
               }
               .mkString(", ")
@@ -160,7 +162,7 @@ case class BeDefineClass(
           (classHeader :: (finalBody :+ "}")).mkString("\n")
 
         case Lisp =>
-          val slotNames = attributes.map(_.name.getInLanguage(humanLanguage).toLowerCase).mkString(" ")
+          val slotNames = attributes.map(_.name.getNameIn(humanLanguage, config.namingStyle).toLowerCase).mkString(" ")
           val classLine = s"(defclass ${className.toLowerCase} () ($slotNames))"
           val methodLines = methods.map(_.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable)).filter(_.trim.nonEmpty)
           if (methodLines.isEmpty) classLine else classLine + "\n" + methodLines.mkString("\n")
@@ -189,4 +191,12 @@ case class BeDefineClass(
 
 
 
+}
+
+object BeDefineClass {
+  def apply(name: LanguageMap[HumanLanguage], attributes: List[BeDefineVariable], methods: List[BeDefineFunction], bodyExtras: List[BeExpression]): BeDefineClass =
+    BeDefineClass(BeEntityName.fromMapInCodeNotation(name.asInstanceOf[LanguageMap[HumanLanguage]]), attributes, methods, bodyExtras)
+
+  def fromLanguageMap(name: LanguageMap[HumanLanguage], attributes: List[BeDefineVariable], methods: List[BeDefineFunction], bodyExtras: List[BeExpression] = Nil): BeDefineClass =
+    apply(name, attributes, methods, bodyExtras)
 }

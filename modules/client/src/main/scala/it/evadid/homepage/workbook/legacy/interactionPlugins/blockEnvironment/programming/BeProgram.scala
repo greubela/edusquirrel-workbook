@@ -15,6 +15,7 @@ import it.evadid.workbook.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import it.evadid.workbook.vm.code.others.BeStartProgram
 import it.evadid.workbook.vm.code.tree.{BeExpressionNode, BeExpressionReference, BeExtensionPoint}
 import it.evadid.workbook.vm.code.usage.{BeFunctionCall, BeUseValue}
+import it.evadid.workbook.vm.naming.BeEntityName
 import it.evadid.workbook.vm.parsing.python.PythonParser
 import it.evadid.workbook.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeDataValueLiteral, BeScope}
 import it.evadid.workbook.vm.types.BeChildRole.NoRole
@@ -166,7 +167,7 @@ private object BeProgramConstructionHelpers {
       BeDataType.Numeric)
 
     val forwardFunc = BeDefineFunction(
-      List(parameter), None, BeExpression.pass, BeDefineFunction.functionInfo(forwardName)
+      List(parameter), None, BeExpression.pass, BeDefineFunction.functionInfo(BeEntityName.fromMapInCodeNotation(forwardName))
     )
 
     BeStartProgram(
@@ -283,7 +284,7 @@ private object BeProgramConstructionHelpers {
     parNames.zip(parTypes).map((curName, curType) => BeDefineVariable(curName, curType))
 
   private def createFunctionCallProgram(functionName: LanguageMap[HumanLanguage], parVariables: List[BeDefineVariable], parValues: List[String], output: Option[BeDataType]): BeProgram = {
-    val outputVar = output.map(typeSet => BeDefineVariable(LanguageMap.universalMap("output"), typeSet))
+    val outputVar = output.map(typeSet => BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("output"), typeSet))
     val parValueMap = parVariables.zip(parValues).map((parVar, parVal) => {
       parVar -> BeUseValue(BeDataValueLiteral(parVal), Some(parVar))
     }).toMap
@@ -291,7 +292,7 @@ private object BeProgramConstructionHelpers {
     val expression: BeExpression =
       BeFunctionCall(
         BeDefineFunction(
-          parVariables, outputVar, BeExpression.pass, BeDefineFunction.functionInfo(functionName)
+          parVariables, outputVar, BeExpression.pass, BeDefineFunction.functionInfo(BeEntityName.fromMapInCodeNotation(functionName))
         ),
         parValueMap
       )

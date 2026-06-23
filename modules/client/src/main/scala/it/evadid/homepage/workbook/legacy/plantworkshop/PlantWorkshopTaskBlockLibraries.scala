@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.legacy.plantworkshop
 
+import it.evadid.workbook.vm.naming.BeEntityName
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
@@ -33,7 +34,7 @@ object PlantWorkshopTaskBlockLibraries {
       inputs = inputDefs,
       outputs = None,
       body = BeExpression.pass,
-      functionTypeInfo = BeDefineFunction.functionInfo(LanguageMap.universalMap[HumanLanguage](name))
+      functionTypeInfo = BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(name))
     )
 
     val valueMap: Map[BeDefineVariable, BeExpression] = inputDefs.zip(params.map(_._3)).map { case (inputDef, expr) =>
@@ -61,7 +62,7 @@ object PlantWorkshopTaskBlockLibraries {
       inputs = inputDefs,
       outputs = outputVar,
       body = BeExpression.pass,
-      functionTypeInfo = BeDefineFunction.functionInfo(LanguageMap.universalMap[HumanLanguage](name))
+      functionTypeInfo = BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(name))
     )
 
     val valueMap: Map[BeDefineVariable, BeExpression] = inputDefs.zip(params.map(_._3)).map { case (inputDef, expr) =>

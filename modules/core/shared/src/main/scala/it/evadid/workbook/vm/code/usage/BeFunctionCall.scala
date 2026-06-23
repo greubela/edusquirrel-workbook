@@ -1,5 +1,6 @@
 package it.evadid.workbook.vm.code.usage
 
+import it.evadid.workbook.vm.naming.CodeRepresentationConfig
 import it.evadid.workbook.vm.code.defining.BeDefineFunction.Operator
 import it.evadid.workbook.vm.types.BeChildRole.FunctionParameter
 import it.evadid.workbook.vm.types.*
@@ -30,7 +31,8 @@ case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDe
   }
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
-    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
+    override def toStringWithConfig(config: CodeRepresentationConfig): String = {
+      import config.{programmingLanguage, humanLanguage, skipUnparsable}
 
       val operatorPrecedence: Map[String, Int] = Map(
         "or" -> 1,
@@ -131,7 +133,7 @@ case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDe
           tup => tup._2.map(curVal => curVal.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable).replaceAll("\n", "")).getOrElse("")
         )
 
-      val nameStr = funcDef.functionTypeInfo.displayName.getInLanguage(humanLanguage)
+      val nameStr = funcDef.functionTypeInfo.displayName.getNameIn(humanLanguage, config.namingStyle)
 
       programmingLanguage match {
         case Python | Java | JavaScript | Rust | Cpp =>

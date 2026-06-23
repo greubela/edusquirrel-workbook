@@ -1,6 +1,7 @@
 package it.evadid.workbook.vm.code.usage
 
 
+import it.evadid.workbook.vm.naming.CodeRepresentationConfig
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.workbook.vm.code.BeExpression
@@ -25,12 +26,15 @@ case class BeUseValue(value: BeDataValue, contextIfKnown: Option[BeDefineVariabl
   }
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
-    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = value match {
+    override def toStringWithConfig(config: CodeRepresentationConfig): String = {
+      import config.{programmingLanguage, humanLanguage, skipUnparsable}
+      value match {
       case BeDataValueLiteral(literalStr) if contextIfKnown.nonEmpty =>
         contextIfKnown.get.variableType.formatValueForDisplay(literalStr).getInLanguage(programmingLanguage)
       case BeDataValueLiteral(literalStr) => literalStr
-      case reference: BeUseValueReference => reference.variable.name.getInLanguage(humanLanguage)
+      case reference: BeUseValueReference => reference.variable.name.getNameIn(humanLanguage, config.namingStyle)
       case _ => value.displayAsString
+      }
     }
 
   }
