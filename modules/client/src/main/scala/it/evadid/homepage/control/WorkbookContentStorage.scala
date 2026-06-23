@@ -144,6 +144,7 @@ object WorkbookContentStorage {
 
   sealed trait LanguageMapEntry {
     def contentId: LanguageMapContentId
+
     def value: String
   }
 
@@ -155,7 +156,9 @@ object WorkbookContentStorage {
                                value: String) extends LanguageMapEntry
 
   private sealed trait LanguageMapFileKind
+
   private case class RegularLanguageMapFile(language: HumanLanguage) extends LanguageMapFileKind
+
   private case object UniversalLanguageMapFile extends LanguageMapFileKind
 
   private def ensureLoaded(fileStore: AsyncDataCache[FileDescription, LoadedFile], ensureFiles: Set[FileDescription]): Future[List[LanguageMapEntry]] = {
@@ -191,18 +194,22 @@ object WorkbookContentStorage {
       .groupBy(_.contentId)
       .map {
         case (mapId, entries) =>
-          val languageMap: Map[HumanLanguage, String] = entries
+          val baseLanguageMap: Map[HumanLanguage, String] = entries
             .collect { case MapEntryTripel(_, language, value) => language -> value }
             .toMap
-          val explicitLanguageMap = LanguageMap.mapBasedLanguageMap(languageMap)
-          val universalLanguageMap = entries.collectFirst {
+          val baseEmpty: Boolean = baseLanguageMap.isEmpty
+          val explicitLanguageMap: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(baseLanguageMap)
+          entries.collectFirst {
             case UniversalMapEntry(_, value) => LanguageMap.universalMap[HumanLanguage](value)
+          }.match {
+            case Some(universalMap) if baseEmpty => LanguageMapWithId(mapId, universalMap)
+            case Some(universalMap) => LanguageMapWithId(mapId, explicitLanguageMap.withFallback(universalMap))
+            case None if baseEmpty => {
+              println(s"[WARN] No content read for language map with id $mapId")
+              LanguageMapWithId(mapId, LanguageMap.emptyMap())
+            }
+            case None => LanguageMapWithId(mapId, explicitLanguageMap)
           }
-          //println("read map from " + triples.size + " triples to " + languageMap.size + " entries (in languages: " + languageMap.keys + ")")
-          val mergedLanguageMap = universalLanguageMap
-            .map(universalMap => LanguageMap.combinedMap(List(explicitLanguageMap, universalMap)))
-            .getOrElse(explicitLanguageMap)
-          LanguageMapWithId(mapId, mergedLanguageMap)
       }
       .toSet
   }

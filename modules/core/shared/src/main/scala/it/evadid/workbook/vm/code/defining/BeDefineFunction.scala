@@ -23,6 +23,9 @@ case class BeDefineFunction(
                              indentWidth: Int = 4
                            ) extends BeDefineStructure {
 
+  /*
+  toSnapPattern
+   */
 
   override def staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation() {
     /*
@@ -130,8 +133,7 @@ case class BeDefineFunction(
       case (BodySequence(0), expr) => expr
     }.map(replacement => copy(body = replacement.asInstanceOf[BeSequence])).getOrElse(BeDefineFunction.this)
   }
-  
-  
+
 }
 
 object BeDefineFunction {

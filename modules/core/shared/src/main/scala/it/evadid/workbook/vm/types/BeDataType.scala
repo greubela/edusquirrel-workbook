@@ -2,6 +2,7 @@ package it.evadid.workbook.vm.types
 
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
+
 sealed trait BeDataType {
 
   def formatTypeForDisplay: LanguageMap[ProgrammingLanguage]
@@ -18,30 +19,19 @@ sealed trait BeDataType {
 
 object BeDataType {
 
-  private def mapWithOverrides(
-                                default: String,
-                                overrides: (ProgrammingLanguage, String)*
-                              ): LanguageMap[ProgrammingLanguage] = {
-    if (overrides.isEmpty) LanguageMap.universalMap(default)
-    else {
-      val overrideMap = LanguageMap.mapBasedLanguageMap(overrides.toMap)
-      LanguageMap.combinedMap(List(overrideMap, LanguageMap.universalMap(default)))
-    }
-  }
-
   sealed trait BeUnionType extends BeDataType {
 
   }
 
   object AnyType extends BeUnionType {
-    private val displayMap = LanguageMap.combinedMap[
+    private val displayMap: LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap("Any") /*LanguageMap.concatLanguageMaps[
       ProgrammingLanguage
     ](
       List(
         LanguageMap.mapBasedLanguageMap(Map(Python -> "Any", Java -> "Object")),
         LanguageMap.universalMap("Any")
       )
-    )
+    )*/
 
     def formatTypeForDisplay: LanguageMap[ProgrammingLanguage] = displayMap
 
@@ -138,7 +128,7 @@ object BeDataType {
 
 
   val String = BeDataTypeAtomic(
-    mapWithOverrides("str", Python -> "str", Java -> "String", Cpp -> "String"),
+    LanguageMap.mapBasedLanguageMap(Map(Python -> "str", Java -> "String", Cpp -> "String")),
     str => {
       val trimmed = str.trim
       val alreadyQuoted =
@@ -156,7 +146,7 @@ object BeDataType {
     Set())
 
   val Numeric = BeDataTypeAtomic(
-    mapWithOverrides("float", Python -> "float", Java -> "double"),
+    LanguageMap.mapBasedLanguageMap(Map(Python -> "float", Java -> "double")),
     str => LanguageMap.universalMap(BigDecimal(str.trim).toDouble.toString),
     str => scala.util.Try(BigDecimal(str.trim)).isSuccess,
     Set(String))
@@ -164,14 +154,14 @@ object BeDataType {
   // Separate integer type, useful for languages like C++ where int/float matters.
   // Can be implicitly cast to Numeric (float) and String.
   val Int = BeDataTypeAtomic(
-    mapWithOverrides("int", Python -> "int", Java -> "int", Cpp -> "int"),
+    LanguageMap.mapBasedLanguageMap(Map(Python -> "int", Java -> "int", Cpp -> "int")),
     str => LanguageMap.universalMap(str.trim),
     str => scala.util.Try(BigInt(str.trim)).isSuccess,
     Set(Numeric, String)
   )
 
   val Boolean = BeDataTypeAtomic(
-    mapWithOverrides("bool", Python -> "bool", Java -> "boolean"),
+    LanguageMap.mapBasedLanguageMap(Map(Python -> "bool", Java -> "boolean")),
     str => LanguageMap.universalMap(str),
     str => {
       val trimmed = str.trim
@@ -181,7 +171,7 @@ object BeDataType {
   )
 
   val Date = BeDataTypeAtomic(
-    mapWithOverrides("date", Python -> "date", Java -> "Date"),
+    LanguageMap.mapBasedLanguageMap(Map(Python -> "date", Java -> "Date")),
     str => LanguageMap.universalMap(str.toString),
     str => {
       val trimmed = str.trim
@@ -192,7 +182,7 @@ object BeDataType {
   )
 
   val Unit = BeDataTypeAtomic(
-    mapWithOverrides("None", Python -> "None", Java -> "void"),
+    LanguageMap.mapBasedLanguageMap(Map(Python -> "None", Java -> "void")),
     str => LanguageMap.universalMap(str.toString),
     str => false,
     Set(String))
