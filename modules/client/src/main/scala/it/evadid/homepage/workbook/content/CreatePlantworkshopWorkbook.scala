@@ -161,15 +161,15 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "PlantWorkshop/section2Title",
       List(
         container(
-          "PlantWorkshop/section2Title",
+          "PlantWorkshop/section2Subtitle1",
           List(
             instructionLabeledPair("PlantWorkshop/goalTitle", "PlantWorkshop/section2GoalText", GoalLabel),
             instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section2InstructionText", TaskLabel),
             instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section2HintText", HintLabel)
           )
         ),
-        container("PlantWorkshop/section2Title", List(codeTask)),
-        container("PlantWorkshop/section2Title", checklistItems)
+        container("PlantWorkshop/section2Subtitle2", List(codeTask)),
+        container("PlantWorkshop/section2Subtitle3", checklistItems)
       )
     )
   }
@@ -211,15 +211,15 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "PlantWorkshop/section3Title",
       List(
         container(
-          "PlantWorkshop/section3Title",
+          "PlantWorkshop/section3Subtitle1",
           List(
             instructionLabeledPair("PlantWorkshop/goalTitle", "PlantWorkshop/section3GoalText", GoalLabel),
             instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section3InstructionText", TaskLabel),
             instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section3HintText", HintLabel)
           )
         ),
-        container("PlantWorkshop/section3Title", List(codeTask)),
-        container("PlantWorkshop/section3Title", checklistItems)
+        container("PlantWorkshop/section3Subtitle2", List(codeTask)),
+        container("PlantWorkshop/section3Subtitle3", checklistItems)
       )
     )
   }
@@ -283,15 +283,15 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "PlantWorkshop/section4Title",
       List(
         container(
-          "PlantWorkshop/section4Title",
+          "PlantWorkshop/section4Subtitle1",
           List(
             instructionLabeledPair("PlantWorkshop/goalTitle", "PlantWorkshop/section4GoalText", GoalLabel),
             instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section4InstructionText", TaskLabel),
             instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section4HintText", HintLabel)
           )
         ),
-        container("PlantWorkshop/section4Title", List(codeTask)),
-        container("PlantWorkshop/section4Title", checklistItems)
+        container("PlantWorkshop/section4Subtitle2", List(codeTask)),
+        container("PlantWorkshop/section4Subtitle3", checklistItems)
       )
     )
   }
@@ -337,12 +337,17 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       )
     )
 
+    val congratulationsContainer = container(
+      "PlantWorkshop/section5CongratulationsTitle",
+      List(instructionPlaintext("PlantWorkshop/section5Congratulations"))
+    )
+
     section("section5", "PlantWorkshop/section5Title", List(
       downloadContainer,
       testChecklistContainer,
       troubleshootingContainer,
       bonusContainer,
-      instructionPlaintext("PlantWorkshop/section5Congratulations")
+      congratulationsContainer
     ))
   }
 }
