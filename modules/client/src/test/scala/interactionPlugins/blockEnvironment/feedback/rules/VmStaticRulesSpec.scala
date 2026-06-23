@@ -1,6 +1,7 @@
 package interactionPlugins.blockEnvironment.feedback.rules
 
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
+import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.rules.VmStaticRules
 import it.evadid.workbook.vm.code.controlStructures.BeSequence

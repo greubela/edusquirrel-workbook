@@ -1,5 +1,6 @@
 package it.evadid.workbook.vm.code
 
+import it.evadid.workbook.vm.naming.BeEntityName
 import it.evadid.workbook.vm.code.defining.BeDefineFunction.functionInfo
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
@@ -17,9 +18,9 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   private val targetLanguages = List(Python, Java, Lisp, Cpp)
   private val humanLanguage = English
 
-  private val xVar = BeDefineVariable(LanguageMap.universalMap("x"), BeDataType.Int)
-  private val yVar = BeDefineVariable(LanguageMap.universalMap("y"), BeDataType.Int)
-  private val boolVar = BeDefineVariable(LanguageMap.universalMap("ok"), BeDataType.Boolean)
+  private val xVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("x"), BeDataType.Int)
+  private val yVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("y"), BeDataType.Int)
+  private val boolVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("ok"), BeDataType.Boolean)
 
   private val literalOne = BeUseValue(BeDataValueLiteral("1"), Some(xVar))
   private val literalTwo = BeUseValue(BeDataValueLiteral("2"), Some(yVar))
@@ -31,9 +32,9 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   private val function = BeDefineFunction(
     inputs = List(xVar, yVar),
-    outputs = Some(BeDefineVariable(LanguageMap.universalMap("result"), BeDataType.Int)),
+    outputs = Some(BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("result"), BeDataType.Int)),
     body = BeSequence.optionalBody(List(returnX)),
-    functionTypeInfo = functionInfo(LanguageMap.universalMap("add"))
+    functionTypeInfo = functionInfo(BeEntityName.fromUniversalNameInParts("add"))
   )
 
   private val functionCall = BeFunctionCall(function, Map(xVar -> literalOne, yVar -> literalTwo))
@@ -41,7 +42,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   private val allExpressions: List[BeExpression] = List(
     xVar,
     function,
-    BeDefineClass(LanguageMap.universalMap("Counter"), attributes = List(xVar), methods = List(function)),
+    BeDefineClass(BeEntityName.fromUniversalNameInParts("Counter"), attributes = List(xVar), methods = List(function)),
     assignX,
     BeUseValue(BeDataValueLiteral("7"), Some(xVar)),
     functionCall,

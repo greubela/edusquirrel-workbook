@@ -1,7 +1,9 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch
 
+import it.evadid.workbook.vm.naming.BeEntityName
 import TurtleStitchProgramModel.*
 import it.evadid.core.datastructures.language.LanguageMap
+import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.workbook.vm.code.BeExpression
 import it.evadid.workbook.vm.code.controlStructures.BeSequence
 import it.evadid.workbook.vm.code.defining.{BeDefineFunction, BeDefineVariable}
@@ -103,12 +105,12 @@ object TurtleStitchToBeExpressionParser {
 
   private def createDefinition(signature: Signature): BeDefineFunction = {
     val params = (1 to signature.arity).toList.map { idx =>
-      BeDefineVariable(LanguageMap.universalMap(s"arg$idx"), BeDataType.AnyType)
+      BeDefineVariable(LanguageMap.universalMap[HumanLanguage](s"arg$idx"), BeDataType.AnyType)
     }
 
     if (signature.isOperator)
       BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.operatorInfo(signature.name, if (signature.arity <= 1) 0 else 1))
     else
-      BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.functionInfo(LanguageMap.universalMap(signature.name)))
+      BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(signature.name)))
   }
 }

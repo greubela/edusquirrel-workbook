@@ -12,6 +12,7 @@ import it.evadid.workbook.vm.code.{BeDefineStructure, BeExpression}
 import it.evadid.workbook.vm.code.controlStructures.BeSequence
 import it.evadid.workbook.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import it.evadid.workbook.vm.io.BeExpressionIO
+import it.evadid.workbook.vm.naming.{BeEntityName, CodeRepresentationConfig}
 import it.evadid.workbook.vm.static.BeExpressionStaticInformation
 import it.evadid.workbook.vm.types.{BeChildPosition, BeChildRole, BeDataType, BeScope}
 
@@ -41,7 +42,8 @@ case class BeDefineFunction(
 
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO() {
-    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
+    override def toStringWithConfig(config: CodeRepresentationConfig): String = {
+      import config.{programmingLanguage, humanLanguage, skipUnparsable}
       def formatTypeHint(variable: BeDefineVariable): Option[String] = {
         variable.variableType match {
           case BeDataType.AnyType => None
@@ -50,7 +52,7 @@ case class BeDefineFunction(
       }
 
       def formatParameter(parameter: BeDefineVariable): String = {
-        val base = parameter.name.getInLanguage(humanLanguage)
+        val base = parameter.name.getNameIn(humanLanguage, config.namingStyle)
         programmingLanguage match {
           case Python =>
             formatTypeHint(parameter).map(hint => s"$base: $hint").getOrElse(base)
@@ -60,7 +62,7 @@ case class BeDefineFunction(
 
       val inputsStr = inputs.map(formatParameter)
       val bodyStr = body.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable)
-      val functionName = functionTypeInfo.displayName.getInLanguage(humanLanguage)
+      val functionName = functionTypeInfo.displayName.getNameIn(humanLanguage, config.namingStyle)
 
       programmingLanguage match {
         case Python =>
@@ -93,7 +95,7 @@ case class BeDefineFunction(
           val parameters = inputs.map { input =>
             val paramType = input.variableType.formatTypeForDisplay.getInLanguage(programmingLanguage).trim
             val renderedType = if (paramType.nonEmpty) paramType else if (programmingLanguage == Java) "Object" else "auto"
-            s"$renderedType ${input.name.getInLanguage(humanLanguage)}"
+            s"$renderedType ${input.name.getNameIn(humanLanguage, config.namingStyle)}"
           }.mkString("(", ", ", ")")
           val builder = CodeStringBuilder()
             .appendNextLine(s"$returnType $functionName$parameters {")
@@ -102,7 +104,7 @@ case class BeDefineFunction(
           else builder.appendAsLines(bodyStr)
           builder.changeIntLevel(-1).appendNextLine("}").toString
         case Lisp =>
-          val parameters = inputs.map(_.name.getInLanguage(humanLanguage).toLowerCase).mkString("(", " ", ")")
+          val parameters = inputs.map(_.name.getNameIn(humanLanguage, config.namingStyle).toLowerCase).mkString("(", " ", ")")
           val bodyLines = if (bodyStr.trim.isEmpty) "  nil" else bodyStr.linesIterator.map("  " + _).mkString("\n")
           s"(defun ${functionName.toLowerCase} $parameters\n$bodyLines\n)"
         case _ => ""
@@ -138,9 +140,9 @@ case class BeDefineFunction(
 
 object BeDefineFunction {
 
-  case class BeFunctionTypeInfo(isMethodInClass: Option[BeDefineClass], isNamed: Option[LanguageMap[HumanLanguage]], funcType: BeFunctionType) {
+  case class BeFunctionTypeInfo(isMethodInClass: Option[BeDefineClass], isNamed: Option[BeEntityName], funcType: BeFunctionType) {
 
-    def displayName: LanguageMap[HumanLanguage] = isNamed.getOrElse(LanguageMap.universalMap("λ"))
+    def displayName: BeEntityName = isNamed.getOrElse(BeEntityName.fromUniversalNameInParts("λ"))
 
     def displayNamePosition: Int = funcType match {
       case Operator(pos) => pos
@@ -159,7 +161,7 @@ object BeDefineFunction {
 
   case class Operator(nameBeforeChildNr: Int) extends BeFunctionType
 
-  def methodFunctionInfo(methodInClass: BeDefineClass, name: LanguageMap[HumanLanguage]): BeFunctionTypeInfo = {
+  def methodFunctionInfo(methodInClass: BeDefineClass, name: BeEntityName): BeFunctionTypeInfo = {
     BeFunctionTypeInfo(Some(methodInClass), Some(name), Method())
   }
 
@@ -167,12 +169,12 @@ object BeDefineFunction {
     BeFunctionTypeInfo(None, None, Lambda())
   }
 
-  def functionInfo(name: LanguageMap[HumanLanguage]): BeFunctionTypeInfo = {
+  def functionInfo(name: BeEntityName): BeFunctionTypeInfo = {
     BeFunctionTypeInfo(None, Some(name), Function())
   }
 
   def operatorInfo(symbol: String, position: Int): BeFunctionTypeInfo = {
-    BeFunctionTypeInfo(None, Some(LanguageMap.universalMap(symbol)), Operator(position))
+    BeFunctionTypeInfo(None, Some(BeEntityName.fromUniversalNameInParts(symbol)), Operator(position))
   }
 
 }

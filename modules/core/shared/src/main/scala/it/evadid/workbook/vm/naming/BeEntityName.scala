@@ -1,5 +1,6 @@
 package it.evadid.workbook.vm.naming
 
+import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
 
@@ -8,6 +9,10 @@ sealed trait BeEntityName {
   def getNameIn(humanLanguage: HumanLanguage, namingStyle: NamingStyle): String
 
   def universalInterpretation(): String = getNameIn(English, NamingStyle.SnakeCase)
+
+  def asLanguageMap(namingStyle: NamingStyle): LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(
+    AppLanguage.humanLanguages.map(language => language -> getNameIn(language, namingStyle)).toMap
+  )
 
 }
 
