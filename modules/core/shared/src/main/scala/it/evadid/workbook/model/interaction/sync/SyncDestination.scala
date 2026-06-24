@@ -31,6 +31,8 @@ abstract class SyncDestination[T](val io: Serializer[T]) {
 
   def syncKeyFrom(key: String): Option[String]
 
+  def clear(): Unit = ()
+
   /*
 
     private val syncState = State[ClientServerSyncStatus](ClientServerSyncStatus(SyncStatusUnsynced, SyncStatusUnsynced))

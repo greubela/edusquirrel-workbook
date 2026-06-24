@@ -3,7 +3,7 @@ package it.evadid.server
 import it.evadid.distribution.clients.*
 import it.evadid.distribution.commandTypes.{LLMCommands, MailCommands, SQLCommands}
 import it.evadid.distribution.commandTypes.LLMCommands.{FeedbackLlmRequest, MessengerChatCompletionRequest}
-import it.evadid.distribution.commandTypes.SQLCommands.SyncToDbRequest
+import it.evadid.distribution.commandTypes.SQLCommands.{ClearDbRequest, FetchFromDbRequest, SyncToDbRequest}
 import it.evadid.distribution.commandTypes.MailCommands.SendMailRequest
 import it.evadid.util.*
 import it.evadid.distribution.command.*
@@ -22,6 +22,12 @@ object BackendCommandHandler {
     ),
     SQLCommands.syncToDbCommand.toExecutionClient(
       (request: SyncToDbRequest, logger: Logger) => HandleSQLCommand.handleSyncToDbRequest(request, logger)
+    ),
+    SQLCommands.fetchFromDbCommand.toExecutionClient(
+      (request: FetchFromDbRequest, logger: Logger) => HandleSQLCommand.handleFetchFromDbRequest(request, logger)
+    ),
+    SQLCommands.clearDbCommand.toExecutionClient(
+      (request: ClearDbRequest, logger: Logger) => HandleSQLCommand.handleClearDbRequest(request, logger)
     ),
     MailCommands.sendMailCommand.toExecutionClient(
       (request: SendMailRequest, logger: Logger) => SendMailCommand.handleSendMailRequest(request, logger)

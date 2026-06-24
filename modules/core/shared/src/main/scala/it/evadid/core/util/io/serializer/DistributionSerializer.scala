@@ -8,7 +8,7 @@ import it.evadid.distribution.command.ExecutionResult.*
 import it.evadid.distribution.command.ExecutionInfo.*
 import it.evadid.distribution.commandTypes.LLMCommands.{FeedbackLlmRequest, MessengerChatCompletionRequest, MessengerChatCompletionResponse}
 import it.evadid.distribution.commandTypes.MailCommands.{SendMailRequest, SendMailResponse}
-import it.evadid.distribution.commandTypes.SQLCommands.{SyncToDbRequest, SyncToDbResponse}
+import it.evadid.distribution.commandTypes.SQLCommands.{ClearDbRequest, ClearDbResponse, FetchFromDbRequest, FetchFromDbResponse, SyncToDbRequest, SyncToDbResponse}
 import upickle.ReadWriter
 import upickle.default.*
 
@@ -46,6 +46,14 @@ object DistributionSerializer {
 
   private[serializer] given stdbres: ReadWriter[SyncToDbResponse] = macroRW
 
+  private[serializer] given fdbreq: ReadWriter[FetchFromDbRequest] = macroRW
+
+  private[serializer] given fdbres: ReadWriter[FetchFromDbResponse] = macroRW
+
+  private[serializer] given cdbreq: ReadWriter[ClearDbRequest] = macroRW
+
+  private[serializer] given cdbres: ReadWriter[ClearDbResponse] = macroRW
+
   private[serializer] given sendMailReq: ReadWriter[SendMailRequest] = macroRW
 
   private[serializer] given sendMailRes: ReadWriter[SendMailResponse] = macroRW
@@ -77,6 +85,10 @@ object DistributionSerializer {
   lazy val serializerFeedbackLlmRequestJson: Serializer[FeedbackLlmRequest] = Serializer.fromUpickleJson[FeedbackLlmRequest](flreq)
   lazy val serializerSyncToDbRequestJson: Serializer[SyncToDbRequest] = Serializer.fromUpickleJson[SyncToDbRequest](stdbreq)
   lazy val serializerSyncToDbResponseJson: Serializer[SyncToDbResponse] = Serializer.fromUpickleJson[SyncToDbResponse](stdbres)
+  lazy val serializerFetchFromDbRequestJson: Serializer[FetchFromDbRequest] = Serializer.fromUpickleJson[FetchFromDbRequest](fdbreq)
+  lazy val serializerFetchFromDbResponseJson: Serializer[FetchFromDbResponse] = Serializer.fromUpickleJson[FetchFromDbResponse](fdbres)
+  lazy val serializerClearDbRequestJson: Serializer[ClearDbRequest] = Serializer.fromUpickleJson[ClearDbRequest](cdbreq)
+  lazy val serializerClearDbResponseJson: Serializer[ClearDbResponse] = Serializer.fromUpickleJson[ClearDbResponse](cdbres)
   lazy val serializerSendMailRequestJson: Serializer[SendMailRequest] = Serializer.fromUpickleJson[SendMailRequest](sendMailReq)
   lazy val serializerSendMailResponseJson: Serializer[SendMailResponse] = Serializer.fromUpickleJson[SendMailResponse](sendMailRes)
   lazy val serializerStringJson: Serializer[String] = Serializer.stringIO
