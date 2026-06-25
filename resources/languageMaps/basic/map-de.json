@@ -17,5 +17,15 @@
   "beginnerMode": "Anfänger",
   "advancedMode": "Fortgeschritten",
   "reorderFeedbackSuccess": "✅ Sehr gut! Die Reihenfolge ist korrekt.",
-  "reorderFeedbackWrongOrder": "⚠️ Fast! Die Logik passt noch nicht ganz. Prüfe, welche Schritte zwingend vor anderen kommen müssen."
+  "reorderFeedbackWrongOrder": "⚠️ Fast! Die Logik passt noch nicht ganz. Prüfe, welche Schritte zwingend vor anderen kommen müssen.",
+  "startSortingActivity": "Zuordnungsübung starten",
+  "sortingCurrentTerm": "Aktueller Begriff",
+  "sortingLastErrorCount": "Fehler beim letzten Versuch: {count}",
+  "sortingSessionErrorCount": "Fehler in diesem Versuch: {count}",
+  "sortingFeedbackSuccess": "✅ Sehr gut! Alle Begriffe sind richtig zugeordnet.",
+  "sortingErrorPopupOk": "Verstanden",
+  "sortingResetExercise": "Übung zurücksetzen",
+  "startSortingReasonActivity": "Zuordnungsübung mit Begründung starten",
+  "sortingReasonPrompt": "Begründe kurz, warum du diesen Begriff gleich so zuordnen wirst:",
+  "sortingReasonConfirm": "Begründung bestätigen"
 }

@@ -39,6 +39,18 @@
   --color-shadow-blue-strong: rgba(35, 131, 221, 0.85);
   --color-outline-blue-soft: rgba(21, 101, 192, 0.15);
   --color-focus-ring: rgba(37, 99, 235, 0.2);
+  --color-scrim-medium: rgba(0, 0, 0, 0.35);
+  --color-surface-frosted: rgba(255, 255, 255, 0.35);
+
+  /* Feedback opacity variants (success / error chips, banners, overlays). */
+  --color-success-background-soft: rgba(47, 154, 106, 0.15);
+  --color-success-background-medium: rgba(47, 154, 106, 0.35);
+  --color-success-border-medium: rgba(47, 154, 106, 0.45);
+  --color-success-border-strong: rgba(47, 154, 106, 0.65);
+  --color-error-background-soft: rgba(249, 24, 24, 0.15);
+  --color-error-background-medium: rgba(249, 24, 24, 0.35);
+  --color-error-border-medium: rgba(249, 24, 24, 0.45);
+  --color-error-border-strong: rgba(249, 24, 24, 0.65);
 
   /* Typography */
   --font-family-base: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;

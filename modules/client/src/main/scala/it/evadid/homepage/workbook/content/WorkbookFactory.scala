@@ -12,6 +12,8 @@ import it.evadid.workbook.model.elements.LabeledInstructionElement.LabelType
 import it.evadid.workbook.model.interaction.*
 import it.evadid.workbook.model.interaction.basic.*
 import it.evadid.workbook.model.interaction.plugins.reorderExercise.ReorderInteraction
+import it.evadid.workbook.model.interaction.plugins.sortingExercise.{SortingInteraction, SortingItem}
+import it.evadid.workbook.model.interaction.plugins.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
 import todomove.datastructures.web.file.FileFactory
 
 trait WorkbookFactory {
@@ -123,6 +125,39 @@ trait WorkbookFactory {
     orderConstraints: List[(Int, Int)] = Nil
   ): ReorderInteraction[String] = {
     ReorderInteraction.ReorderCodeInteraction(baseId, snippets, programmingLanguage, hints = hints, orderConstraints = orderConstraints)
+  }
+
+  protected def sortingExercise(
+    id: String,
+    fieldKeys: List[String],
+    items: List[(String, Int, String)]
+  ): SortingInteraction = {
+    SortingInteraction(
+      id = id,
+      fields = fieldKeys.map(LanguageMapContentId.apply),
+      items = items.map { case (labelKey, correctFieldIndex, errorKey) =>
+        SortingItem(LanguageMapContentId(labelKey), correctFieldIndex, LanguageMapContentId(errorKey))
+      }
+    )
+  }
+
+  protected def sortingReasonExercise(
+    id: String,
+    fieldKeys: List[String],
+    items: List[(String, Int, String, String)]
+  ): SortingReasonInteraction = {
+    SortingReasonInteraction(
+      id = id,
+      fields = fieldKeys.map(LanguageMapContentId.apply),
+      items = items.map { case (labelKey, correctFieldIndex, errorKey, reasonPromptKey) =>
+        SortingReasonItem(
+          LanguageMapContentId(labelKey),
+          correctFieldIndex,
+          LanguageMapContentId(errorKey),
+          LanguageMapContentId(reasonPromptKey)
+        )
+      }
+    )
   }
 
 

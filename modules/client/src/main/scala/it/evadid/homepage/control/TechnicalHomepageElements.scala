@@ -21,7 +21,7 @@ case class TechnicalHomepageElements(
 
 
   def makeFullscreen(element: HtmlAppElement): Unit = {
-    fullScreenContainer.setElementFullscreen(element.getDomElement())
+    fullScreenContainer.setElementFullscreen(element)
   }
   
   def resetLocalStorage(): Unit = {

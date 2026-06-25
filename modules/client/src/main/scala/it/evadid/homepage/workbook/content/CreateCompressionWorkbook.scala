@@ -20,6 +20,7 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
       losslessSection,
       lossySection,
       filetypesSection,
+      sortingDemoSection,
       finalSection
     )
   )
@@ -209,6 +210,45 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
         instructionHtml(t("s3ClosingB")),
         createTextInput(),
       )),
+    )
+  )
+
+  private lazy val sortingDemoSection: WorkbookSection = section(
+    "sectionSortingDemo",
+    t("sortingDemoSectionTitle"),
+    List(
+      container(t("sortingDemoContainerTitle"), List(
+        instructionHtml(t("sortingDemoIntro")),
+        sortingExercise(
+          "compression-sorting-demo",
+          List(
+            t("sortingDemoFieldLossless"),
+            t("sortingDemoFieldLossy")
+          ),
+          List(
+            (t("sortingDemoItemRle"), 0, t("sortingDemoErrorRle")),
+            (t("sortingDemoItemJpeg"), 1, t("sortingDemoErrorJpeg")),
+            (t("sortingDemoItemPng"), 0, t("sortingDemoErrorPng")),
+            (t("sortingDemoItemMp3"), 1, t("sortingDemoErrorMp3"))
+          )
+        )
+      )),
+      container(t("sortingReasonDemoContainerTitle"), List(
+        instructionHtml(t("sortingReasonDemoIntro")),
+        sortingReasonExercise(
+          "compression-sorting-reason-demo",
+          List(
+            t("sortingDemoFieldLossless"),
+            t("sortingDemoFieldLossy")
+          ),
+          List(
+            (t("sortingDemoItemRle"), 0, t("sortingDemoErrorRle"), t("sortingReasonDemoItemRlePrompt")),
+            (t("sortingDemoItemJpeg"), 1, t("sortingDemoErrorJpeg"), t("sortingReasonDemoItemJpegPrompt")),
+            (t("sortingDemoItemPng"), 0, t("sortingDemoErrorPng"), t("sortingReasonDemoItemPngPrompt")),
+            (t("sortingDemoItemMp3"), 1, t("sortingDemoErrorMp3"), t("sortingReasonDemoItemMp3Prompt"))
+          )
+        )
+      ))
     )
   )
 

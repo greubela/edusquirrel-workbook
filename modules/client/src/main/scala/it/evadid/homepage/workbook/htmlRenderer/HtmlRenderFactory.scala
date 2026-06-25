@@ -11,6 +11,8 @@ import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionEditors.*
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.gpt.HtmlGptTextfieldInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.reorderExercise.HtmlReorderInteractionRenderer
+import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.sortingExercise.HtmlSortingInteractionRenderer
+import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.sortingReasonExercise.HtmlSortingReasonInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.slideshow.HtmlSlideshowRenderer
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.turtleStitch.{HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRenderer}
 import it.evadid.homepage.workbook.legacy.htmlElements.HtmlEmbeddedDomInteraction
@@ -25,6 +27,8 @@ import it.evadid.workbook.model.interaction.basic.*
 import it.evadid.workbook.model.interaction.plugins.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
 import it.evadid.workbook.model.interaction.plugins.gpt.GptInteractionElement
 import it.evadid.workbook.model.interaction.plugins.reorderExercise.ReorderInteraction
+import it.evadid.workbook.model.interaction.plugins.sortingExercise.SortingInteraction
+import it.evadid.workbook.model.interaction.plugins.sortingReasonExercise.SortingReasonInteraction
 import it.evadid.workbook.model.interaction.plugins.slideshow.Slideshow
 
 trait HtmlRenderFactory[T <: WorkbookElement] {
@@ -83,6 +87,8 @@ object HtmlRenderFactory {
       case i: TableFillInInteraction => HtmlTableFillInRenderer.render(i)
       case s: Slideshow => HtmlSlideshowEditor.render(s)
       case r: ReorderInteraction[?] => HtmlReorderInteractionRenderer.render(r)
+      case s: SortingInteraction => HtmlSortingInteractionRenderer.render(s)
+      case s: SortingReasonInteraction => HtmlSortingReasonInteractionRenderer.render(s)
       // plugins -- turtle
       case t: TurtleStitchExploreProjectElement => HtmlTurtleStitchExploreProjectRenderer.render(t)
       case t: TurtleStitchRecreateShapeInteraction => HtmlTurtleStitchRecreateShapeRenderer.render(t)

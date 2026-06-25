@@ -127,5 +127,26 @@
 
   "s4PlenumTitle": "<strong>Plenumsdiskussion</strong>",
   "s4PlenumNote": "Die folgenden Fragen sind Impulse für das gemeinsame Gespräch:",
-  "s4PlenumQuestions": "<ul><li>Wäre die Situation im Szenario ohne Informatikkenntnisse lösbar gewesen? Was folgt daraus für die Frage, wer Zugang zu diesem Wissen haben sollte?</li><li>In welchen Situationen könntest du selbst in den nächsten Jahren/Jahrzehnten in eine ähnliche Lage kommen?</li><li>Was wäre nötig, damit dieses Wissen nicht nur Einzelnen nützt, sondern gesellschaftlich verfügbar ist?</li></ul>"
+  "s4PlenumQuestions": "<ul><li>Wäre die Situation im Szenario ohne Informatikkenntnisse lösbar gewesen? Was folgt daraus für die Frage, wer Zugang zu diesem Wissen haben sollte?</li><li>In welchen Situationen könntest du selbst in den nächsten Jahren/Jahrzehnten in eine ähnliche Lage kommen?</li><li>Was wäre nötig, damit dieses Wissen nicht nur Einzelnen nützt, sondern gesellschaftlich verfügbar ist?</li></ul>",
+
+  "sortingDemoSectionTitle": "Test: Zuordnungsübung",
+  "sortingDemoContainerTitle": "Demo – Kompressionsverfahren zuordnen",
+  "sortingDemoIntro": "<p>Ordne die Begriffe nacheinander dem richtigen Kompressionstyp zu. Ziehe den aktuellen Begriff auf das passende Feld. Bei einer falschen Zuordnung erhältst du eine Rückmeldung und musst es erneut versuchen.</p>",
+  "sortingDemoFieldLossless": "Verlustfrei",
+  "sortingDemoFieldLossy": "Verlustbehaftet",
+  "sortingDemoItemRle": "Run-Length Encoding (RLE)",
+  "sortingDemoItemJpeg": "JPEG-Kompression",
+  "sortingDemoItemPng": "PNG",
+  "sortingDemoItemMp3": "MP3",
+  "sortingDemoErrorRle": "RLE ist ein verlustfreies Verfahren – aus der codierten Darstellung lässt sich der Originaltext exakt wiederherstellen.",
+  "sortingDemoErrorJpeg": "JPEG ist verlustbehaftet – beim Speichern gehen Bilddetails verloren, um die Dateigröße zu reduzieren.",
+  "sortingDemoErrorPng": "PNG komprimiert verlustfrei – jedes Pixel bleibt exakt erhalten.",
+  "sortingDemoErrorMp3": "MP3 ist verlustbehaftet – beim Komprimieren von Audio werden Informationen entfernt, die das Ohr kaum wahrnimmt.",
+
+  "sortingReasonDemoContainerTitle": "Demo – Zuordnung mit Begründung",
+  "sortingReasonDemoIntro": "<p>Wie bei der Zuordnungsübung zuvor – aber vor jedem Begriff musst du kurz begründen, warum du ihn gleich einem Kompressionstyp zuordnen wirst. Erst danach kannst du den Begriff ziehen.</p>",
+  "sortingReasonDemoItemRlePrompt": "Warum ordnest du Run-Length Encoding (RLE) gleich einem dieser Kompressionstypen zu?",
+  "sortingReasonDemoItemJpegPrompt": "Warum ordnest du JPEG-Kompression gleich einem dieser Kompressionstypen zu?",
+  "sortingReasonDemoItemPngPrompt": "Warum ordnest du PNG gleich einem dieser Kompressionstypen zu?",
+  "sortingReasonDemoItemMp3Prompt": "Warum ordnest du MP3 gleich einem dieser Kompressionstypen zu?"
 }
