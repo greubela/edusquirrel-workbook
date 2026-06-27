@@ -1,52 +1,59 @@
 package it.evadid.distribution.clients
 
-import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState}
-import it.evadid.core.datastructures.state.async.AsyncDataState.{AsyncDataFailed, AsyncDataStateFinished}
 import it.evadid.distribution.command.*
-import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoUntyped
+import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.util.Logger
 
 import java.time.LocalDateTime
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.*
+import scala.util.{Failure, Success}
 
-private case class SynchronizedExecutionClient(baseHandler: ExecutionClient,  ec: ExecutionContext) extends ExecutionClient {
+private case class SynchronizedExecutionClient(baseHandler: ExecutionClient, ec: ExecutionContext) extends ExecutionClient {
 
-  private val queue = mutable.Queue.empty[(ExecutionCommand, Promise[AsyncDataStateFinished[Nothing, ExecutionInfo]], LocalDateTime, Logger)]
+  case class QueuedCommand(command: ExecutionCommand, promise: Promise[ExecutionClientResponse], timeReceived: LocalDateTime, logger: Logger)
+
+  private val queue = mutable.Queue.empty[QueuedCommand]
   private var running = false
 
+  override def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]] = baseHandler.executeCommand(executionCommand, logger)
 
-
-  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[AsyncDataStateFinished[Nothing, ExecutionInfo]] = synchronized {
-    val promise = Promise[AsyncDataStateFinished[Nothing, ExecutionInfo]]()
-    queue.enqueue((executionCommand, promise, LocalDateTime.now(), logger))
+  override def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = queue.synchronized {
+    val promise = Promise[ExecutionClientResponse]()
+    queue.enqueue(QueuedCommand(executionCommand, promise, LocalDateTime.now(), Logger()))
     ensureRunning()
     promise.future
   }
 
-  private def ensureRunning(): Unit = synchronized {
+  private def ensureRunning(): Unit = queue.synchronized {
+
+    def afterFinished(): Unit = {
+      running = false
+      ensureRunning()
+    }
+
     if (!running && queue.nonEmpty) {
-      val (command, promise, timeRequested, logger) = queue.dequeue()
+      val queuedCommand: QueuedCommand = queue.dequeue()
       running = true
-      baseHandler.handleExecution(command, logger).onComplete{
-        case Success(state) => {
-          handleOnComplete(state, promise, timeRequested)
+      val timestampStarted: LocalDateTime = LocalDateTime.now()
+      queuedCommand.logger.logInfo(s"ExecutionClient: start to execute command ${queuedCommand.command.name} at ${timestampStarted}")
+      executeCommand(queuedCommand.command, queuedCommand.logger).onComplete {
+        case Success(resMap) => {
+          val res = ExecutionClientResponse(queuedCommand.timeReceived, timestampStarted, LocalDateTime.now(), Right(resMap), Some(queuedCommand.command), queuedCommand.logger.getOut(), queuedCommand.logger.getErr())
+          queuedCommand.promise.success(res)
+          afterFinished()
         }
         case Failure(err) => {
-          val exception = SerializedException(s"ExecutionClient: failed to execute command ${command.name}", err)
-          handleOnComplete(AsyncDataFailed(exception, None), promise, timeRequested)
+          val errMsg: String = s"ExecutionClient: failed to execute command ${queuedCommand.command.name} at ${timestampStarted}!: ${err.getMessage}"
+          queuedCommand.logger.logError(errMsg)
+          queuedCommand.promise.failure(Exception(errMsg, err))
+          afterFinished()
         }
-      }(using ec)
+      }(using ExecutionContext.global)
+
     }
   }
 
-  private def handleOnComplete(result: AsyncDataStateFinished[Nothing, ExecutionInfo], promise: Promise[AsyncDataStateFinished[Nothing, ExecutionInfo]], executionRequested: LocalDateTime): Unit = synchronized {
-    val fixedTime: AsyncDataStateFinished[Nothing, ExecutionInfo] = result.mapFinished(_.withFixedTime(executionRequested, executionRequested))
-    promise.success(fixedTime)
-    running = false
-    ensureRunning()
-  }
-
   override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = baseHandler.canExecuteCommand(executionCommand)
+
 }

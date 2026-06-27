@@ -1,9 +1,6 @@
 package it.evadid.distribution.clients
 
-import it.evadid.core.datastructures.state.async.AsyncDataState.*
-import it.evadid.core.datastructures.state.async.{AsyncData, AsyncFuture}
 import it.evadid.distribution.command.*
-import it.evadid.distribution.command.ExecutionInfo.*
 import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.util.Logger
 
@@ -20,20 +17,13 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
     throw err
   }
 
-
-
-  /*private def executeWithHandlers(handlers: List[ExecutionClient], executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionClientResponse] = {
-
-    tryExecutionWithHandlers(handlers, executionCommand, None, logger)
-  }*/
-
   private def allThatCanExecute(executionCommand: ExecutionCommand): List[ExecutionClient] = clients.filter(_.canExecuteCommand(executionCommand))
 
   override def allUnderlyingClients: List[ExecutionClient] = clients
 
-  override protected def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]] = ???
+  override def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]] = ???
 
-  override protected def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = {
+  override def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = {
     val timestampReceived: LocalDateTime = LocalDateTime.now()
     val allHandlers = allThatCanExecute(executionCommand)
     tryExecutionWithHandlers(timestampReceived, allHandlers, executionCommand, None, Logger())

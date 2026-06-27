@@ -1,13 +1,11 @@
 package it.evadid.distribution.command
 
-import it.evadid.core.datastructures.state.async.AsyncData
-import it.evadid.core.datastructures.state.async.AsyncDataState.AsyncDataStateFinished
 import it.evadid.core.util.io.{Serializer, TypeConverter}
 import it.evadid.distribution.clients.{ExecutionClient, LocalExecutionClient}
 import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoTyped
-import it.evadid.distribution.command.ExecutionResult.ExecutionResultTyped
 import it.evadid.util.Logger
 
+import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
 case class ExecutionCommandFactory[I, O](
@@ -19,33 +17,26 @@ case class ExecutionCommandFactory[I, O](
 
   private def toCommand(data: I): ExecutionCommand = ExecutionCommand(name, TypeConverter.singleValueMap.convertToI(serializerIn.serialize(data)))
 
-  def toExecutionClient(handler: (I, Logger) => Future[O]): ExecutionClient = new LocalExecutionClient {
-    override def calculateResult(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionResult] = {
-
+  def toLocalExecutionClient(handler: (I, Logger) => Future[O]): ExecutionClient = new LocalExecutionClient {
+    def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]] = {
       val parsedInput: I = serializerIn.deserialize(TypeConverter.singleValueMap.convertToO(executionCommand.params))
-      handler.apply(parsedInput, logger)
-        .map(output => {
-          val rawData = serializerOut.serialize(output)
-          val rawMap = TypeConverter.singleValueMap.convertToI(rawData)
-          ExecutionResultTyped[O](output, logger.getOut(), logger.getErr(), rawMap)
-        })(using ExecutionContext.global)
+      handler.apply(parsedInput, logger).map(output => TypeConverter.singleValueMap.convertToI(serializerOut.serialize(output)))(using ExecutionContext.global)
     }
 
     override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = executionCommand.name == name
   }
 
-  def waitAndSendCommandTo(client: ExecutionClient, logger: Logger, data: Future[I]): AsyncData[Nothing, ExecutionInfoTyped[O]] = {
-    val res: Future[ExecutionInfoTyped[O]] = data.flatMap(inputData => {
-      val async: AsyncData[Nothing, ExecutionInfoTyped[O]] = sendCommandTo(client, logger, inputData)
-      async.futureFirstValue
+  def waitAndSendCommandTo(client: ExecutionClient, logger: Logger, data: Future[I]): Future[ExecutionInfoTyped[O]] = {
+    data.flatMap(inputData => {
+      sendCommandTo(client, logger, inputData)
     })(using ExecutionContext.global)
-    AsyncData.forFuture(res)
   }
 
-  def sendCommandTo(client: ExecutionClient, logger: Logger, data: I): AsyncData[Nothing, ExecutionInfoTyped[O]] = {
+  def sendCommandTo(client: ExecutionClient, logger: Logger, data: I): Future[ExecutionInfoTyped[O]] = {
+    val timestampRequested: LocalDateTime = LocalDateTime.now()
     val command: ExecutionCommand = toCommand(data)
-    val async: Future[AsyncDataStateFinished[Nothing, ExecutionInfo]] = client.handleExecution(command, logger)
-    AsyncData.forStateFuture(async).map(_.toTyped[O](rawMap => serializerOut.deserialize(TypeConverter.singleValueMap.convertToO(rawMap))))
+    val response: Future[ExecutionInfo] = client.handleCommand(command)
+    response.map(_.toTyped[O](rawMap => serializerOut.deserialize(TypeConverter.singleValueMap.convertToO(rawMap))))(using ExecutionContext.global)
   }
 
 }

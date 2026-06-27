@@ -19,21 +19,9 @@ trait ExecutionClient {
 
   def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse]
 
-  protected def finishUnsafeWithResponse(executionCommand: ExecutionCommand, timestampRequested: LocalDateTime, response: ExecutionClientResponse): ExecutionInfo = {
-    val history = ExecutionHistory(timestampRequested, response.timestampReceived, response.timestampStarted, response.timestampFinished)
-    response.response.match {
-      case Left(err) =>
-        println("ExecutionClientResponse indicated an error: \n" + response)
-        throw err
-      case Right(resMap) =>
-        val result = ExecutionResultUntyped(resMap, response.loggerOut, response.loggerError)
-        ExecutionInfoUntyped(executionCommand, result, history)
-    }
-  }
-
   def handleCommand(executionCommand: ExecutionCommand): Future[ExecutionInfo] = {
     val timestampRequested: LocalDateTime = LocalDateTime.now()
-    handleExecution(executionCommand).map(finishUnsafeWithResponse(executionCommand, timestampRequested, _))(using ExecutionContext.global)
+    handleExecution(executionCommand).map(ExecutionClient.finishUnsafeWithResponse(executionCommand, timestampRequested, _))(using ExecutionContext.global)
   }
 
   def makeSynchronized(ec: ExecutionContext): ExecutionClient = SynchronizedExecutionClient(this, ec)
@@ -48,6 +36,19 @@ object ExecutionClient {
 
 
   def apply(clients: List[ExecutionClient]): ExecutionClient = ExecutionClientPool(clients)
+
+
+  def finishUnsafeWithResponse(executionCommand: ExecutionCommand, timestampRequested: LocalDateTime, response: ExecutionClientResponse): ExecutionInfo = {
+    val history = ExecutionHistory(timestampRequested, response.timestampReceived, response.timestampStarted, response.timestampFinished)
+    response.response.match {
+      case Left(err) =>
+        println("ExecutionClientResponse indicated an error: \n" + response)
+        throw err
+      case Right(resMap) =>
+        val result = ExecutionResultUntyped(resMap, response.loggerOut, response.loggerError)
+        ExecutionInfoUntyped(executionCommand, result, history)
+    }
+  }
 
 }
 

@@ -1,10 +1,8 @@
 package it.evadid.distribution.clients
 
 
-import it.evadid.core.datastructures.state.async.AsyncData
-import it.evadid.core.datastructures.state.async.AsyncDataState.{AsyncDataStateFinished, AsyncDataSuccess}
 import it.evadid.distribution.command.*
-import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoUntyped
+import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.util.Logger
 
 import java.time.LocalDateTime
@@ -16,18 +14,22 @@ import scala.util.*
  */
 trait LocalExecutionClient extends ExecutionClient {
 
-  protected def getExecutionContext: ExecutionContext = ExecutionContext.global
+  protected given ExecutionContext = ExecutionContext.global
 
-  /*
-  override def handleCommand(executionCommand: ExecutionCommand, logger: Logger): Future[AsyncDataStateFinished[Nothing, ExecutionInfo]] = {
-    val timeExecutionRequested: LocalDateTime = LocalDateTime.now()
-    val fut: Future[AsyncDataStateFinished[Nothing, ExecutionInfo]] = handleExecution(executionCommand, logger).map {
-      (result: ExecutionResult, duration: ExecutionDuration, logger: Logger) => {
-        val history = ExecutionHistory(timeExecutionRequested, timeExecutionRequested, duration.timeExecutionStarted, duration.timeExecutionFinished)
-        AsyncDataSuccess[Nothing, ExecutionInfo](ExecutionInfoUntyped(executionCommand, result, history))
-      }
-    }(using getExecutionContext)
-    fut
+  override def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = {
+    val timestampReceived: LocalDateTime = LocalDateTime.now()
+    val logger = Logger()
+    executeCommand(executionCommand, logger).map { (resMap: Map[String, String]) =>
+      ExecutionClientResponse(timestampReceived, timestampReceived, LocalDateTime.now(), Right(resMap), Some(executionCommand), logger.getOut(), logger.getErr())
+    }.recover { (err: Throwable) =>
+      val newErr = SerializedException("Error in executeCommand: " + err.getMessage, err)
+      ExecutionClientResponse(timestampReceived, timestampReceived, LocalDateTime.now(), Left(newErr), Some(executionCommand), logger.getOut(), logger.getErr())
+    }
+  }
+
+
+  /*override def handleCommand(executionCommand: ExecutionCommand, logger: Logger): Future[AsyncDataStateFinished[Nothing, ExecutionInfo]] = {
+
   }*/
 
   /*private def execute(executionCommand: ExecutionCommand): Future[(ExecutionResult, ExecutionDuration, Logger)] = {
@@ -41,9 +43,10 @@ trait LocalExecutionClient extends ExecutionClient {
     })(using ExecutionContext.global)
   }*/
 
-  def calculateResult(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionResult]
+  //def calculateResult(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionResult]
 
-  protected def resultFromValue[T](value: T, toStringFunc: T => String = (str: T) => str.toString): ExecutionResult = ExecutionResult(Map("result" -> toStringFunc(value)), "", "")
+  //protected def resultFromValue[T](value: T, toStringFunc: T => String = (str: T) => str.toString): ExecutionResult = ExecutionResult(Map("result" -> toStringFunc(value)), "", "")
+
 
 
 }
