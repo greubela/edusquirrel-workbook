@@ -17,12 +17,26 @@ import scala.util.Try
 case class ExecuteOnRemoteServer(ip: String, port: Int) extends RemoteExecutionClient {
 
 
-  /*
   private val httpClient = HttpClient.newHttpClient()
+  /*
 
   override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = true
 
   override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[AsyncDataStateFinished[Nothing, ExecutionInfo]] = Future {
+
+    val executionInfoJson = responseData.getOrElse(
+      "executionInfo",
+      throw new IllegalStateException("Server response is missing 'executionInfo' field")
+    )
+    val res = ExecutionInfo.fromJson(executionInfoJson)
+    AsyncDataSuccess(res)
+  }(using ExecutionContext.global)
+
+
+
+   */
+
+  override protected def sendTo(ip: String, port: Int, executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = Future {
     val commandJson = executionCommand.toJson
     val request = HttpRequest
       .newBuilder(URI.create(s"http://$ip:$port/executeCommand"))
@@ -36,18 +50,8 @@ case class ExecuteOnRemoteServer(ip: String, port: Int) extends RemoteExecutionC
       throw new RuntimeException(s"Server responded with status ${response.statusCode()}: $message")
     }
     val responseData = read[Map[String, String]](response.body())
-    val executionInfoJson = responseData.getOrElse(
-      "executionInfo",
-      throw new IllegalStateException("Server response is missing 'executionInfo' field")
-    )
-    val res = ExecutionInfo.fromJson(executionInfoJson)
-    AsyncDataSuccess(res)
+    ExecutionClientResponse.apply(responseData)
   }(using ExecutionContext.global)
-
-
-
-   */
-
 }
 
 

@@ -13,7 +13,7 @@ trait RemoteExecutionClient extends ExecutionClient {
 
   override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = true
 
-  def sendTo(ip: String, port: Int, command: ExecutionCommand): Future[ExecutionClientResponse] = ???
+  protected def sendTo(ip: String, port: Int, command: ExecutionCommand): Future[ExecutionClientResponse]
 
   override def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = {
     sendTo(ip, port, executionCommand)
