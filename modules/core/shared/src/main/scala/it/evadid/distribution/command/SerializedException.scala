@@ -19,12 +19,8 @@ object SerializedException {
 
 
   def apply(err: Throwable): SerializedException = {
-    if (err.getCause != null) return SerializedException(err.getMessage, err.getStackTrace.map(toSimple), None)
-    else return {
-      val cause = SerializedException(err.getCause)
-      SerializedException(err.getMessage, err.getStackTrace.map(toSimple), Some(cause))
-    }
-
+    val cause = Option(err.getCause).map(SerializedException.apply)
+    SerializedException(err.getMessage, err.getStackTrace.map(toSimple), cause)
   }
 
 }
