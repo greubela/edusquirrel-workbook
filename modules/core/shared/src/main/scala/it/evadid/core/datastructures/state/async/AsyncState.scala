@@ -23,5 +23,5 @@ implicit class AsyncState[F, S](underlying: ObservableValue[AsyncDataState[F, S]
 
   override def stateNow(): AsyncDataState[F, S] = observeAllStates.now().getOrElse(AsyncDataLoading[F, S]())
 
-  override val observeAllStates: ObservableValue[AsyncDataState[F, S]] = underlying
+  override lazy val observeAllStates: ObservableValue[AsyncDataState[F, S]] = underlying
 }

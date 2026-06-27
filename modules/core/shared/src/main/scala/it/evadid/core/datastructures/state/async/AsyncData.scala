@@ -16,7 +16,7 @@ trait AsyncData[F, S] {
 
   protected given ExecutionContext = ExecutionContext.global
 
-  val observeAllStates: ObservableValue[AsyncDataState[F, S]]
+  lazy val observeAllStates: ObservableValue[AsyncDataState[F, S]]
 
   lazy val observeLoadedStates: ObservableValue[AsyncDataStateFinished[F, S]] = observeAllStates.deriveSome {
     case f: AsyncDataStateFinished[F, S] => Some(f)

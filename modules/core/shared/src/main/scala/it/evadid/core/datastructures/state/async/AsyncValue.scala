@@ -7,7 +7,7 @@ import scala.util.Try
 
 case class AsyncValue[F, S](underlyingState: AsyncDataStateFinished[F, S]) extends AsyncData[F, S] {
 
-  override val observeAllStates: ObservableValue[AsyncDataState[F, S]] = ConstantValueObservable(underlyingState)
+  override lazy val observeAllStates: ObservableValue[AsyncDataState[F, S]] = ConstantValueObservable(underlyingState)
 
   override def stateNow(): AsyncDataState[F, S] = underlyingState
 }

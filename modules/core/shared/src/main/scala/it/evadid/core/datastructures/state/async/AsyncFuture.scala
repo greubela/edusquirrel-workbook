@@ -32,7 +32,7 @@ case class AsyncFuture[F, S](underlying: Future[Either[FailureInfo[F], S]]) exte
     AsyncFuture(res.future)
   }
 
-  override val observeAllStates: ObservableValue[AsyncDataState[F, S]] = {
+  override lazy val observeAllStates: ObservableValue[AsyncDataState[F, S]] = {
     val res = ObservableValueImpl[AsyncDataState[F, S]](Some(AsyncDataLoading[F, S]()))
     withFinishedFirstState(state => res.onNewValueArrived(Success(state)))
     res
