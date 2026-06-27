@@ -13,8 +13,9 @@ trait ExecutionClient {
 
   def canExecuteCommand(executionCommand: ExecutionCommand): Boolean
 
-
-  private[distribution] def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]]
+  private[distribution] def handleExecutionRaw(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]] = {
+    handleExecution(executionCommand).map(_.response.toOption.get)(using ExecutionContext.global)
+  }
 
   def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse]
 

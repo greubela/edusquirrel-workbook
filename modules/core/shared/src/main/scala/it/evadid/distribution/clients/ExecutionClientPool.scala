@@ -41,7 +41,7 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
       failFuture(logger, s"ExecutionClientPool: all handlers for command ${command.name} failed! See logs or cause(s) for reasons.)", failures)
     } else {
       val timestampStarted: LocalDateTime = LocalDateTime.now()
-      handlers.head.executeCommand(command, logger)
+      handlers.head.handleExecutionRaw(command, logger)
         .map(resMap => {
           ExecutionClientResponse(timestampReceived, timestampStarted, LocalDateTime.now(), Right(resMap), Some(command), logger.getOut(), logger.getErr())
         })(using ExecutionContext.global)
@@ -54,7 +54,5 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
     }
   }
 
-  override private[distribution] def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]] = {
-    handleExecution(executionCommand).map(_.response.toOption.get)(using ExecutionContext.global)
-  }
+
 }
