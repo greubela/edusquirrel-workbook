@@ -14,10 +14,39 @@ import scala.scalajs.js.JSON
 import scala.scalajs.js.Thenable.Implicits.*
 import it.evadid.distribution.command.*
 import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoUntyped
+import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.util.Logger
 
-case class ExecuteOnRemoteServer(hostname: String, port: Int) extends ExecutionClient {
+case class JsRemoteExecutionClient(hostname: String, port: Int) extends RemoteExecutionClient {
 
+  override protected def sendTo(ip: String, port: Int, executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = {
+    val commandJson = executionCommand.toJson
+    val dest = if (hostname.startsWith("http")) {
+      s"$hostname:$port/executeCommand"
+    } else {
+      s"https://$hostname:$port/executeCommand"
+    }
+
+     dom.fetch(
+      dest,
+      new dom.RequestInit {
+        method = dom.HttpMethod.POST
+        headers = JSON.parse("""{"Content-Type":"application/json"}""").asInstanceOf[dom.HeadersInit]
+        body = commandJson
+      }
+    ).toFuture.flatMap { response =>
+      response.text().toFuture.map { body =>
+        if (!response.ok) {
+          val message = scala.util.Try(read[Map[String, String]](body).getOrElse("error", body)).getOrElse(body)
+          throw new RuntimeException(s"Server responded with status ${response.status}: $message")
+        }
+        val responseData: Map[String, String] = read[Map[String, String]](body)
+        ExecutionClientResponse.apply(responseData)
+      }
+    }
+  }
+
+  /*
   override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = true
 
   override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[AsyncDataStateFinished[Nothing, ExecutionInfo]] = {
@@ -53,5 +82,7 @@ case class ExecuteOnRemoteServer(hostname: String, port: Int) extends ExecutionC
       }
     }
     future.map((futVal: ExecutionInfoUntyped) => AsyncDataSuccess(futVal))
-  }
+  }*/
+
+
 }

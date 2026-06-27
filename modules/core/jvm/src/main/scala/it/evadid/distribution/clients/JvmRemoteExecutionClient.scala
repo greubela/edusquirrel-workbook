@@ -9,14 +9,14 @@ import java.net.http.*
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
-case class JvmRemoteExecutionClient(ip: String, port: Int) extends RemoteExecutionClient {
+case class JvmRemoteExecutionClient(hostname: String, port: Int) extends RemoteExecutionClient {
 
   private val httpClient = HttpClient.newHttpClient()
 
-  override protected def sendTo(ip: String, port: Int, executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = Future {
+  override protected def sendTo(hostname: String, port: Int, executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = Future {
     val commandJson = executionCommand.toJson
     val request = HttpRequest
-      .newBuilder(URI.create(s"http://$ip:$port/executeCommand"))
+      .newBuilder(URI.create(s"http://$hostname:$port/executeCommand"))
       .header("Content-Type", "application/json")
       .POST(HttpRequest.BodyPublishers.ofString(commandJson))
       .build()
