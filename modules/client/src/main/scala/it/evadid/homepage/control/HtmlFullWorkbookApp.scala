@@ -1,27 +1,25 @@
 package it.evadid.homepage.control
 
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.file.FileDescription
+import it.evadid.core.datastructures.file.{FileDescription, LoadedFile}
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.distribution.clients.{ExecuteOnRemoteServer, ExecuteOnWebWorker}
-import it.evadid.executors.MathExecutor
-import it.evadid.homepage.workbook.htmlRenderer.*
-import it.evadid.homepage.workbook.legacy.singletons.FileDataStorage
-import todomove.datastructures.web.file.FileFactory
-import it.evadid.homepage.*
-import it.evadid.homepage.control.info.{FullInfo, HomepageDefaults, HomepageInfo}
+import it.evadid.core.datastructures.state.storage.AsyncDataCache
+import it.evadid.homepage.control.info.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlFullScreenContainerElement
 import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.HtmlWorkbookRenderer
+import todomove.datastructures.web.file.FileFactory
 
-object HtmlFullWorkbookApp extends HtmlAppElement{
+import scala.concurrent.{ExecutionContext, Future}
+
+object HtmlFullWorkbookApp extends HtmlAppElement {
 
   private lazy val technical = TechnicalHomepageElements(
     HtmlFullScreenContainerElement(),
-    FileDataStorage(),
+    fileDataStorage,
     BackendServerConfig.executor,
     //ExecuteOnRemoteServer("http://localhost", 9000),
-    ExecuteOnWebWorker(FileFactory.relativeToArtifactsFolder("/newest/backend-worker.js").fullPath),
+    //ExecuteOnWebWorker(FileFactory.relativeToArtifactsFolder("/newest/backend-worker.js").fullPath),
   )
 
   private val defaults: HomepageDefaults = HomepageDefaults()
@@ -43,7 +41,7 @@ object HtmlFullWorkbookApp extends HtmlAppElement{
 
   private lazy val workbookDomElement: Element = {
     val workbookSignal: Signal[Element] = fullInfo.signals.workbook.mapLazy {
-      case Some(workbookInfo) => HtmlWorkbookRenderer.render(workbookInfo.loadedWorkbook).getDomElement()//div("HtmlFullWorkbookApp::workbookDomelement not properly re-implemented yet!") //workbook.loadedWorkbook.getDomElement()
+      case Some(workbookInfo) => HtmlWorkbookRenderer.render(workbookInfo.loadedWorkbook).getDomElement() //div("HtmlFullWorkbookApp::workbookDomelement not properly re-implemented yet!") //workbook.loadedWorkbook.getDomElement()
       case None => div(text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId("basic/noWorkbookLoaded")))
     }
 
@@ -67,6 +65,17 @@ object HtmlFullWorkbookApp extends HtmlAppElement{
   )
 
   override def getDomElement(): Element = workbookDomElement
+
+
+  private lazy val fileDataStorage: AsyncDataCache[FileDescription, LoadedFile] = new AsyncDataCache[FileDescription, LoadedFile]("FileDataStore", false) {
+    def load(file: FileDescription)(using ec: ExecutionContext): Future[LoadedFile] = file.loadData()
+
+    override protected def executeLoading(file: FileDescription)(ec: ExecutionContext): Future[LoadedFile] = file.loadData()
+
+    override protected def formatInputForLogging(in: FileDescription): String = in.toString
+
+    override protected def formatOutputForLogging(out: LoadedFile): String = out.toString
+  }
 
 
 }

@@ -1,7 +1,6 @@
 package it.evadid.core.datastructures.chat
 
-import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
-import it.evadid.core.util.io.serializer.DistributionSerializer
+import it.evadid.core.util.io.serializer.DefaultSerializer
 
 import java.time.LocalDateTime
 
@@ -18,12 +17,12 @@ case class MessengerModel(messages: List[Message]) {
   def addMessage(text: String, author: Person, timestamp: LocalDateTime = LocalDateTime.now()): MessengerModel =
     addMessage(Message(text, author, timestamp))
 
-  def toJson: String = DistributionSerializer.serializerMessageModelJson.serialize(this)
+  def toJson: String = DefaultSerializer.serializerMessageModelJson.serialize(this)
 }
 
 object MessengerModel {
 
-  def fromJson(json: String): MessengerModel = DistributionSerializer.serializerMessageModelJson.deserialize(json)
+  def fromJson(json: String): MessengerModel = DefaultSerializer.serializerMessageModelJson.deserialize(json)
 
   //def testCompletion: MessengerModel = MessengerModel(List(Message("Please write a short poem :)", Person("test", "test", SenderRole.USER, None))))
 

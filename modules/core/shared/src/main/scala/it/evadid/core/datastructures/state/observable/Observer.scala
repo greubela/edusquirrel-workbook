@@ -1,4 +1,6 @@
-package it.evadid.core.datastructures.state
+package it.evadid.core.datastructures.state.observable
+
+import it.evadid.core.datastructures.state.ExecutionMethod
 
 import scala.util.Try
 

@@ -1,8 +1,11 @@
 package it.evadid.distribution.clients
 
+import it.evadid.core.datastructures.state.async.AsyncData
 import it.evadid.distribution.clients.*
 import it.evadid.util.Logger
 import it.evadid.distribution.command.*
+import it.evadid.distribution.command.ExecutionInfo.*
+
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
@@ -10,9 +13,9 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
 
   def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = clients.exists(_.canExecuteCommand(executionCommand))
 
-  def handleExecution(executionCommand: ExecutionCommand, logger: Logger = Logger()): Future[ExecutionInfo] = tryAllHandlersAfterEachOtherInOrder(executionCommand, logger)
+  def handleExecution(executionCommand: ExecutionCommand, logger: Logger = Logger()): AsyncData[Nothing, ExecutionInfo] = tryAllHandlersAfterEachOtherInOrder(executionCommand, logger)
 
-  private def tryWithHandler(handler: ExecutionClient, command: ExecutionCommand, logger: Logger): Future[ExecutionInfo] = handler.handleExecution(command, logger)
+  private def tryWithHandler(handler: ExecutionClient, command: ExecutionCommand, logger: Logger): AsyncData[Nothing, ExecutionInfo] = handler.handleExecution(command, logger)
 
   def buildExceptionStack(lastMsg: String, exceptions: List[Throwable]): Exception = {
     if (exceptions.isEmpty) {
@@ -37,6 +40,7 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
       promiseToFulfill.failure(buildExceptionStack(errorStr, priorFailures))
     } else {
       handlers.head.handleExecution(command, logger)
+        .futureFirstValue
         .onComplete(futRes =>
           if (futRes.isSuccess) promiseToFulfill.success(futRes.get)
           else {
@@ -46,16 +50,17 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
     }
   }
 
-  private def executeWithHandlers(handlers: List[ExecutionClient], executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionInfo] = {
+  private def executeWithHandlers(handlers: List[ExecutionClient], executionCommand: ExecutionCommand, logger: Logger): AsyncData[Nothing, ExecutionInfo] = {
     val timeExecutionRequested: LocalDateTime = LocalDateTime.now()
     val resultPromise = Promise[ExecutionInfo]()
     tryExecutionWithHandlers(handlers, executionCommand, resultPromise, List(), logger)
-    resultPromise.future.map(info => info.fixTime(timeExecutionRequested, info.meta.map(_.timestampCommandReceived).getOrElse(timeExecutionRequested)))(using ExecutionContext.global)
+    AsyncData.forFuture(resultPromise.future.map(info => info.withFixedTime(timeExecutionRequested, info.history.timestampCommandReceived))(using ExecutionContext.global))
+
   }
 
   private def allThatCanExecute(executionCommand: ExecutionCommand): List[ExecutionClient] = clients.filter(_.canExecuteCommand(executionCommand))
 
-  def tryAllHandlersAfterEachOtherInOrder(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionInfo] = {
+  def tryAllHandlersAfterEachOtherInOrder(executionCommand: ExecutionCommand, logger: Logger): AsyncData[Nothing, ExecutionInfo] = {
     val allHandlers = allThatCanExecute(executionCommand)
     executeWithHandlers(allHandlers, executionCommand, logger)
   }

@@ -6,15 +6,14 @@ import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.State
+import it.evadid.core.datastructures.state.async.AsyncDataState.{AsyncDataFailed, AsyncDataSuccess}
 import it.evadid.distribution.commandTypes.LLMCommands
-import it.evadid.distribution.commandTypes.LLMCommands.{MessengerChatCompletionRequest, workbookPerson}
+import it.evadid.distribution.commandTypes.LLMCommands.MessengerChatCompletionRequest
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.editor.SimpleChatEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.util.Logger
-import it.evadid.workbook.model.interaction.basic.MessagingInteraction
 import it.evadid.workbook.model.interaction.basic.MessagingInteraction.MessengerModelScaffolding
-import it.evadid.workbook.model.interaction.plugins.TurtleStitch.TurtleStitchExploreProjectElement
 import it.evadid.workbook.model.interaction.plugins.gpt.GptInteractionElement
 import it.evadid.workbook.model.interaction.sync.UpdateImportance.MAJOR
 import it.evadid.workbook.model.interaction.variable.InteractionVariable
@@ -46,12 +45,14 @@ object HtmlGptTextfieldInteractionRenderer extends HtmlRenderFactory[GptInteract
     val nextMessageState = messageState.addMessage(currentStateMsg)*/
 
     val requestFuture = systemPromptFuture.map { systemPrompt => MessengerChatCompletionRequest(systemPrompt.getWithLanguagePreference(LLMCommands.langPreference), messageState) }(using ExecutionContext.global)
-    LLMCommands.completeLLMCommandFactory.waitAndSendCommandTo(fullInfo.technical.backendServerExecutor, Logger(), requestFuture).onComplete {
-      case Success(result) if result.result.isSuccess => mmState.set(result.typedResult.get.result)
-      case Success(result) if result.result.isFailure => sendError(new Exception("Received invalid result from worker", result.result.failed.get), mmState)
+    LLMCommands.completeLLMCommandFactory.waitAndSendCommandTo(fullInfo.technical.backendServerExecutor, Logger(), requestFuture).futureFirstState.onComplete {
+      case Success(result) => result match {
+        case AsyncDataSuccess(resultInfo) => mmState.set(resultInfo.resultTyped.result)
+        case AsyncDataFailed(err, data) => sendError(err, mmState)
+      }
       case Failure(err) => sendError(err, mmState)
-      case e: Any => sendError(new Exception("Received invalid result from worker: " + e.toString), mmState) // should be unrechable
     }(using ExecutionContext.global)
+
   }
 
   override protected def createDomElement(workbookElement: GptInteractionElement): L.Element = {

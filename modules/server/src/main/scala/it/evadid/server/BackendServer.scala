@@ -1,20 +1,21 @@
 package it.evadid.server
 
-import it.evadid.core.util.io.serializer.DistributionSerializer
+import it.evadid.core.datastructures.state.async.AsyncDataState.*
+import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.*
 import it.evadid.util.{JvmUtils, Logger}
 import play.api.libs.json.Json
 import play.api.mvc.Results.*
-import play.api.mvc.{DefaultActionBuilder, Handler, RequestHeader}
+import play.api.mvc.*
 import play.api.routing.sird.*
 import play.core.server.{NettyServer, ServerConfig}
-import upickle.default.{read, write}
+import upickle.default.write
 
-import java.time.LocalDateTime
 import java.io.{PrintWriter, StringWriter}
+import java.time.LocalDateTime
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.*
+import scala.util.{Failure, Success}
 
 /**
  * Minimal Play-based HTTP server with dummy REST functionality.
@@ -29,8 +30,14 @@ object BackendServer {
       val promise: Promise[(Int, String)] = Promise[(Int, String)]()
       val executionCommand = ExecutionCommand.fromJson(bodyOption.get)
       val execRes = BackendCommandHandler.handleExecution(executionCommand, Logger().withPrintToStd())
-      execRes.onComplete {
-        case Success(executionInfo) => promise.success(200, write(Map("executionInfo" -> DistributionSerializer.serializerExecutionInfoJson.serialize(executionInfo))))
+      execRes.futureFirstState.onComplete {
+        case Success(state) => state.match {
+          case AsyncDataSuccess(exInfo) => promise.success(200, write(Map("executionInfo" -> DefaultSerializer.serializerExecutionInfoJson.serialize(exInfo.toUntyped))))
+          case AsyncDataFailed(cause, additionalData) => {
+            val exception = new Exception("Execution failed in BackendServer::handleExecuteCommand: " + cause.getMessage + "\nAdditional info: " + additionalData, cause )
+            promise.failure(exception)
+          }
+        }
         case Failure(err) => promise.failure(err)
       }(using ExecutionContext.global)
       promise.future

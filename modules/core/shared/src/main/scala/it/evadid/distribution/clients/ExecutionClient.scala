@@ -1,6 +1,8 @@
 package it.evadid.distribution.clients
 
+import it.evadid.core.datastructures.state.async.AsyncData
 import it.evadid.distribution.command.*
+import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoUntyped
 import it.evadid.util.Logger
 
 import java.time.LocalDateTime
@@ -10,8 +12,10 @@ trait ExecutionClient {
 
   def canExecuteCommand(executionCommand: ExecutionCommand): Boolean
 
-  def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionInfo]
-    
+  def handleExecution(executionCommand: ExecutionCommand, logger: Logger): AsyncData[Nothing, ExecutionInfo]
+
+  //def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[AsyncStateFinished[Nothing, ExecutionInfoUntyped]]
+
   def makeSynchronized(ec: ExecutionContext): ExecutionClient = SynchronizedExecutionClient(this, ec)
 
   def allUnderlyingClients: List[ExecutionClient] = List(this)

@@ -1,11 +1,14 @@
-package it.evadid.core.datastructures.storage
+package it.evadid.core.datastructures.state.storage
 
 import it.evadid.core.datastructures.state.State
-import it.evadid.core.datastructures.storage.AsyncData.*
-import it.evadid.core.datastructures.storage.AsyncDataCache.*
+import it.evadid.core.datastructures.state.async.AsyncDataState.*
+import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState, AsyncState}
+import it.evadid.core.datastructures.state.storage.AsyncDataCache.*
+import it.evadid.distribution.command.SerializedException
 
+import java.time.LocalDateTime
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.*
 import scala.util.{Failure, Success}
 
 abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean = false, printError: Boolean = false) {
@@ -19,18 +22,17 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean = false,
   private var execution_requested: Long = 0
   private var execution_succeeded: Long = 0
 
-  private def emptyAsyncState: State[AsyncData[O]] = State(AsyncData.AsyncDataLoading[O]())
-  
-  private def ensureCache(input: I, forceReloading: Boolean = false): CachedRequest[I, O] = {
-    
-    val cachedElement = cachedRequests.get(input)
+  private def emptyAsyncState: State[AsyncDataState[Nothing, O]] = State(AsyncDataLoading[Nothing, O]())
+
+  private def ensureCache(input: I, forceReloading: CachedRequest[I, O] => Boolean = _ => false): CachedRequest[I, O] = {
+    val cachedElement: Option[CachedRequest[I, O]] = cachedRequests.get(input)
     //logInfo("ensuring cache for " + formatInputForLogging(input) + " (forceReloading: " + forceReloading + ", cached: " +isInCache + ")")
     if (cachedElement.isEmpty) {
       cache_misses = cache_misses + 1
       startExecution(input, emptyAsyncState)
     }
-    else if (forceReloading) {
-      val useVar: State[AsyncData[O]] = cachedElement.map(_.getVariable).getOrElse(emptyAsyncState)
+    else if (forceReloading(cachedElement.get)) {
+      val useVar: State[AsyncDataState[Nothing, O]] = cachedElement.map(_.getVariable).getOrElse(emptyAsyncState)
       startExecution(input, useVar)
     }
     else {
@@ -39,7 +41,7 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean = false,
     }
   }
 
-  private def startExecution(input: I, outputVar: State[AsyncData[O]]): StartedRequest[I, O] = {
+  private def startExecution(input: I, outputVar: State[AsyncDataState[Nothing, O]]): StartedRequest[I, O] = {
     execution_requested = execution_requested + 1
     val fetchedRequest = StartedRequest(this, input, outputVar)
     cachedRequests.put(input, fetchedRequest)
@@ -80,31 +82,35 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean = false,
     }
   }
 
+  def loadAllAsFuture(inputs: List[I], maximumAge: LocalDateTime)(implicit ec: ExecutionContext): Future[Map[I, AsyncDataStateFinished[Nothing, O]]] = {
+
+    def handleInput(input: I): Future[(I, AsyncDataStateFinished[Nothing, O])] =
+      loadAsFuture(inputs.head, maximumAge)
+        .map[(I, AsyncDataStateFinished[Nothing, O])](res => (input, AsyncDataSuccess(res)))
+        .recover { case e: Throwable => (input, AsyncDataFailed(e, None)) }
+
+    Future.traverse(inputs)(handleInput).map(_.toMap)
+
+  }
+
+  def loadAsFuture(input: I, maximumAge: LocalDateTime)(implicit ec: ExecutionContext): Future[O] = {
+    cachedRequests.synchronized {
+      ensureCache(input, cache => cache.requestCompletedAt.isEmpty || cache.requestCompletedAt.get.isBefore(maximumAge))
+    }.createFuture
+  }
+
   def loadAsFuture(input: I, forceReloading: Boolean = false)(implicit ec: ExecutionContext): Future[O] = {
     cachedRequests.synchronized {
-      ensureCache(input, forceReloading).createFuture
+      ensureCache(input, _ => forceReloading).createFuture
     }
   }
 
-  def loadIntoVariable(input: I, forceReloading: Boolean = false)(implicit ec: ExecutionContext): State[AsyncData[O]] = {
+  def loadIntoVariable(input: I, forceReloading: Boolean = false)(implicit ec: ExecutionContext): AsyncData[Nothing, O] = {
     cachedRequests.synchronized {
-      ensureCache(input, forceReloading).getVariable
+      val state: State[AsyncDataState[Nothing, O]] = ensureCache(input, _ => forceReloading).getVariable
+      AsyncState(state.observable)
     }
   }
-
-  /*def createSignalDependendVar(inputSignal: Signal[I])(implicit ec: ExecutionContext): State[Option[O]] = {
-    cachedRequests.synchronized {
-      val resultVar: State[Option[O]] = State(None)
-      inputSignal.foreach(newValue => {
-        val actualVar = loadIntoVariable(newValue)(using ec)
-        resultVar.set(actualVar.now())
-        actualVar.observable.addObserver(newValue => {
-          resultVar.set(newValue)
-        })
-      })(using unsafeWindowOwner)
-      resultVar
-    }
-  }*/
 
   def reloadAll()(implicit ec: ExecutionContext): Unit = {
     cachedRequests.synchronized {
@@ -168,43 +174,49 @@ object AsyncDataCache {
 
     def createFuture: Future[O]
 
-    def getVariable: State[AsyncData[O]]
+    def getVariable: State[AsyncDataState[Nothing, O]]
+
+    def requestCompletedAt: Option[LocalDateTime] = None
   }
 
-  private[storage] case class SucceededRequest[I, O](associatedStore: AsyncDataCache[I, O], outputVar: State[AsyncData[O]], output: O) extends CachedRequest[I, O] {
+  private[storage] case class SucceededRequest[I, O](associatedStore: AsyncDataCache[I, O], outputVar: State[AsyncDataState[Nothing, O]], output: O, timestamp: LocalDateTime = LocalDateTime.now()) extends CachedRequest[I, O] {
 
     override val outputIfPresent: Option[O] = Some(output)
 
     def createFuture: Future[O] = Future.successful(output)
 
-    def getVariable: State[AsyncData[O]] = outputVar
+    def getVariable: State[AsyncDataState[Nothing, O]] = outputVar
+
+    override def requestCompletedAt: Option[LocalDateTime] = Some(timestamp)
   }
 
-  private[storage] case class FailedRequest[I, O](associatedStore: AsyncDataCache[I, O], outputVar: State[AsyncData[O]], cause: Throwable) extends CachedRequest[I, O] {
+  private[storage] case class FailedRequest[I, O](associatedStore: AsyncDataCache[I, O], outputVar: State[AsyncDataState[Nothing, O]], cause: Throwable, timestamp: LocalDateTime = LocalDateTime.now()) extends CachedRequest[I, O] {
 
     override val outputIfPresent: Option[O] = None
 
     def createFuture: Future[O] = Future.failed(cause)
 
-    def getVariable: State[AsyncData[O]] = outputVar
+    def getVariable: State[AsyncDataState[Nothing, O]] = outputVar
+
+    override def requestCompletedAt: Option[LocalDateTime] = Some(timestamp)
   }
 
-  private[storage] case class DeletedRequest[I, O](associatedStore: AsyncDataCache[I, O], input: I, outputVar: State[AsyncData[O]]) extends CachedRequest[I, O] {
+  private[storage] case class DeletedRequest[I, O](associatedStore: AsyncDataCache[I, O], input: I, outputVar: State[AsyncDataState[Nothing, O]]) extends CachedRequest[I, O] {
 
     override val outputIfPresent: Option[O] = None
 
     def createFuture: Future[O] = associatedStore.startExecution(input, outputVar).createFuture
 
-    def getVariable: State[AsyncData[O]] = associatedStore.startExecution(input, outputVar).getVariable
+    def getVariable: State[AsyncDataState[Nothing, O]] = associatedStore.startExecution(input, outputVar).getVariable
   }
 
-  private[storage] case class StartedRequest[I, O](associatedStore: AsyncDataCache[I, O], input: I, outputVar: State[AsyncData[O]]) extends CachedRequest[I, O] {
+  private[storage] case class StartedRequest[I, O](associatedStore: AsyncDataCache[I, O], input: I, outputVar: State[AsyncDataState[Nothing, O]]) extends CachedRequest[I, O] {
 
     override val outputIfPresent: Option[O] = None
 
     private val waitingPromise: mutable.HashSet[Promise[O]] = new mutable.HashSet()
 
-    def getVariable: State[AsyncData[O]] = outputVar
+    def getVariable: State[AsyncDataState[Nothing, O]] = outputVar
 
     def createFuture: Future[O] = {
       val promise = Promise[O]()
@@ -218,14 +230,14 @@ object AsyncDataCache {
       associatedStore.logInfo(s"Successfully calculated output: '${associatedStore.formatInputForLogging(input)}' -> '${associatedStore.formatOutputForLogging(output)}'")
 
       waitingPromise.foreach(promise => promise.success(output))
-      outputVar.set(AsyncData.AsyncDataSuccess(output))
+      outputVar.set(AsyncDataSuccess(output))
       waitingPromise.clear()
     }
 
     def failed(cause: Throwable): Unit = {
       associatedStore.cachedRequests.put(input, FailedRequest(associatedStore, outputVar, cause))
       associatedStore.logError(s"Failed to load output for input '${associatedStore.formatInputForLogging(input)}", cause)
-      outputVar.set(AsyncDataFailed(cause))
+      outputVar.set(AsyncDataFailed(SerializedException(cause), None))
       waitingPromise.foreach(promise => promise.failure(cause))
     }
   }

@@ -1,6 +1,7 @@
 package it.evadid.core.util.io
 
 import it.evadid.core.datastructures.chat.MessengerModel
+import it.evadid.core.util.io.TypeConverter.ConverterResult
 import upickle.*
 import upickle.default.{read, readwriter, write}
 
@@ -8,6 +9,10 @@ trait Serializer[T] extends TypeConverter[T, String] {
   override def convertToO(in: T): String = serialize(in)
 
   override def convertToI(in: String): T = deserialize(in)
+
+  def trySerializeAll(in: IterableOnce[T]): ConverterResult[T, String] = super.tryConvertAllToO(in)
+
+  def tryDeserializeAll(in: IterableOnce[String]): ConverterResult[T, String] = super.tryConvertAllToI(in)
 
   def serialize(obj: T): String
 
@@ -20,6 +25,7 @@ trait Serializer[T] extends TypeConverter[T, String] {
 
 object Serializer {
 
+
   def fromUpickleJson[T](upickle: ReadWriter[T]): Serializer[T] = new Serializer[T] {
     def serialize(in: T): String = write(in)(using upickle)
 
@@ -31,8 +37,7 @@ object Serializer {
 
     override def deserialize(str: String): MessengerModel = MessengerModel.fromJson(str)
   }
-  
-  
+
 
   lazy val stringOptionIO: Serializer[Option[String]] = new Serializer[Option[String]] {
     override def serialize(obj: Option[String]): String = obj.map(str => "Some(" + str + ")").getOrElse("None")

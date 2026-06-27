@@ -1,7 +1,9 @@
 package it.evadid.distribution.clients
 
+import it.evadid.core.datastructures.state.async.AsyncData
 import it.evadid.distribution.*
 import it.evadid.distribution.command.*
+import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoUntyped
 import it.evadid.util.Logger
 import upickle.default.read
 
@@ -16,7 +18,8 @@ case class ExecuteOnRemoteServer(ip: String, port: Int) extends ExecutionClient 
 
   override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = true
 
-  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionInfo] = Future {
+  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): AsyncData[Nothing, ExecutionInfo] = AsyncData.forFuture(
+    Future {
     val commandJson = executionCommand.toJson
     val request = HttpRequest
       .newBuilder(URI.create(s"http://$ip:$port/executeCommand"))
@@ -35,6 +38,6 @@ case class ExecuteOnRemoteServer(ip: String, port: Int) extends ExecutionClient 
       throw new IllegalStateException("Server response is missing 'executionInfo' field")
     )
     ExecutionInfo.fromJson(executionInfoJson)
-  }(using ExecutionContext.global)
+  }(using ExecutionContext.global))
 
 }

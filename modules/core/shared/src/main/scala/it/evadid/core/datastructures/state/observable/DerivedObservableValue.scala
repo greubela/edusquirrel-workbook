@@ -1,8 +1,10 @@
-package it.evadid.core.datastructures.state
+package it.evadid.core.datastructures.state.observable
+
+import it.evadid.core.datastructures.state.*
 
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
-import scala.util.{Failure, Success, Try}
+import scala.util.*
 
 
 private case class DerivedObservableValue[I, O](
@@ -60,11 +62,10 @@ private case class DerivedObservableValue[I, O](
     outObs.addObserver(observer)
   }
 
-  override def deriveValue[T](withFunc: O => T, executeFunctionWith: ExecutionMethod, deriveLogic: ObserverDerivationLogic): ObservableValue[T] = syncLock.synchronized {
-    outObs.deriveValue[T](withFunc, executeFunctionWith, deriveLogic)
-  }
-
-  override def combineWith[T](other: ObservableValue[T]): ObservableValue[(O, T)] = outObs.combineWith[T](other)
-
   override private[state] def removeObserver(observer: Observer[O]): Unit = outObs.removeObserver(observer)
+
+  override def now(): Option[O] = outObs.now()
+
+  override def addNextChangeObserver(observer: Observer[O]): Unit = outObs.addNextChangeObserver(observer)
+
 }

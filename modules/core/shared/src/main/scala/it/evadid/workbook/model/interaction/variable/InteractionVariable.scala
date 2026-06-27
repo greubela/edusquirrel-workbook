@@ -1,29 +1,35 @@
 package it.evadid.workbook.model.interaction.variable
 
-import it.evadid.core.datastructures.state.ObserverDerivationLogic.DeriveOnlyLastValues
-import it.evadid.core.datastructures.state.{ExecutionMethod, ObservableValue, State, Subscription}
+import it.evadid.core.datastructures.state.async.AsyncDataState.AsyncDataSuccess
+import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState, AsyncState}
+import it.evadid.core.datastructures.state.observable.ObservableValue
+import it.evadid.core.datastructures.state.observable.ObserverDerivationLogic.DeriveOnlyLastValues
+import it.evadid.core.datastructures.state.{ExecutionMethod, State}
 import it.evadid.core.util.*
 import it.evadid.workbook.model.interaction.*
-import it.evadid.workbook.model.interaction.sync.{SyncInformation, UpdateImportance}
-import it.evadid.workbook.model.interaction.variable.*
+import it.evadid.workbook.model.interaction.sync.SyncInformation.{SyncCache, SyncInformationWithContext}
+import it.evadid.workbook.model.interaction.sync.*
 import it.evadid.workbook.model.interaction.variable.InteractionVariableState.{DesignatedInteractionState, InteractionVariableStateChanged}
 
 import java.time.LocalDateTime
-import scala.collection.mutable
 
 case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T], debug: Boolean = false) {
 
   private val defaultHistory = InteractionVariableHistory[T](Set(InteractionVariableState[T](underlyingInteraction.defaultValue, UpdateImportance.DEFAULT, LocalDateTime.now())))
 
   private val innerState: State[InteractionVariableHistory[T]] = State(defaultHistory)
-  private val syncSources = State[List[SyncInformation]](List())
+  private val syncControl: State[Option[SyncControl]] = State(None)
 
   val keyForSerialization: String = underlyingInteraction.id + "_history"
 
   lazy val observableValue: ObservableValue[T] = innerState.observable.deriveValue(_.lastState.value, ExecutionMethod.executeSync, DeriveOnlyLastValues)
 
-  lazy val tmpObservable: ObservableValue[InteractionVariableHistory[T]] = innerState.observable
+  lazy val asAsync: AsyncData[Nothing, T] = {
+    val obsState: ObservableValue[AsyncDataState[Nothing, T]] = observableValue.deriveValue(cur => AsyncDataSuccess(cur), ExecutionMethod.executeSync, DeriveOnlyLastValues)
+    AsyncState(obsState)
+  }
 
+  lazy val tmpObservable: ObservableValue[InteractionVariableHistory[T]] = innerState.observable
 
   def createBoundStateWithUpdateLogic(relevanceFunc: InteractionVariableStateChanged[T] => UpdateImportance): State[T] = this.synchronized {
     val outerState = State[T](currentValue)
@@ -61,56 +67,78 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
     innerState.update(_.withAddedEvents(underlyingInteraction.serializer, history))
   }
 
-  def syncToAll(forceFlush: Boolean = false): Unit = this.synchronized {
-    syncSources.now().foreach(curInfo => {
-      val serialized = innerState.now().serializedWithStrategy(curInfo.syncStrategy, underlyingInteraction.serializer)
-      curInfo.syncSource.syncTo(keyForSerialization, serialized.toString)
-    })
+  def executeStore(syncSource: SyncInformationWithContext): Unit = {
+
+    //val serialized = innerState.now().serializedWithStrategy(syncSource.syncStrategy, underlyingInteraction.serializer)
+    syncSource.storeTo(keyForSerialization, innerState.now(), underlyingInteraction.serializer)
+
     if (debug) {
-      println("[INFO] history '" + keyForSerialization + "' changed, synced to " + syncSources.now().size + " sources"
+      println("[INFO] synced interaction variable with key'" + keyForSerialization + "' to source: " + syncSource.syncSource
         + ", current value: " + innerState.now().lastState.value
         + ", last update time: " + InfoUtil.datetimeFormattedForLog(innerState.now().lastState.timestamp) + ", total events: " + innerState.now().events.size + ")")
     }
   }
 
-  def syncFromAll(): Unit = this.synchronized {
-    val syncedFromHistory = mutable.ListBuffer[InteractionVariableState[T]]()
-    syncSources.now().foreach(syncInfo => {
-      syncInfo.syncSource.syncKeyFrom(keyForSerialization).foreach(eventStr => {
-        try {
-          val serializedHistory = InteractionVariableHistorySerialized(eventStr)
-          syncedFromHistory.addAll(serializedHistory.deserialize(underlyingInteraction.serializer).events)
-        } catch {
-          case err: Throwable => println("[ERROR] could not deserialize " + eventStr + " with " + underlyingInteraction.serializer)
-        }
-      })
+  def executeLoad(syncCache: List[SyncCache]): Unit = this.synchronized {
+    syncCache.foreach((curCache: SyncCache) => {
+      val parsed: SyncInformation.SyncFetchedHistory[T] = curCache.typedHistory[T](keyForSerialization, underlyingInteraction.serializer)
+      if (debug && parsed.unparsableElements.states.nonEmpty) {
+        println("[Warn] InteractionVariable '" + keyForSerialization + "' could not parse from " + parsed.unparsableElements.states.size + " elements!")
+      }
+      innerState.update(_.withAddedEvents(parsed.typedElements))
     })
-    innerState.update(_.withAddedEvents(syncedFromHistory.toSet))
   }
 
-  def resetHistory(): Unit = this.synchronized {
+  def resetHistoryAndSyncControl(newSyncControl: Option[SyncControl]): Unit = this.synchronized {
+    syncControl.set(newSyncControl)
     innerState.set(defaultHistory)
   }
 
-  def resetHistoryAndSync(newSyncSources: List[SyncInformation]): Unit = this.synchronized {
-    syncSources.set(List())
-    innerState.set(defaultHistory)
-    syncSources.set(newSyncSources)
-  }
 
+  /*
+    def fetchFromAll(): Unit = this.synchronized {
+
+      val sources: List[SyncInformationWithContext] = syncSources.now()
+      val applyFunc: SyncInformationWithContext => Future[InteractionVariableHistory[T]] = _.fetchFrom(keyForSerialization, underlyingInteraction.serializer)
+
+      given ExecutionContext = ExecutionContext.global
+
+      val allHistories: Future[List[InteractionVariableHistory[T]]] = Future.traverse(sources)(applyFunc)
+
+      allHistories.onComplete {
+        case Success(curHistories) => curHistories.foreach((curHistory: InteractionVariableHistory[T]) => innerState.update(_.withAddedEvents(curHistory)))
+        case Failure(err) => println("[ERROR] could not fetch history from all sources: " + err)
+      }
+
+    }
+
+    def resetHistory(): Unit = this.synchronized {
+      innerState.set(defaultHistory)
+    }
+
+    def resetHistoryAndSyncInfo(newSyncSources: List[SyncInformationWithContext]): Unit = this.synchronized {
+      syncSources.set(List())
+      innerState.set(defaultHistory)
+      syncSources.set(newSyncSources)
+    }
+  */
   def updateStateFromUserInteraction(updater: T => T, updateSize: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now()): Unit = this.synchronized {
-    val nextState = updater(innerState.now().lastState.value)
+    val nextState: T = updater(innerState.now().lastState.value)
     setStateFromUserInteraction(nextState, updateSize, timestamp)
   }
 
   def setStateFromUserInteraction(newValue: T, updateSize: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now()): Unit = this.synchronized {
     println("InteractionVariable.updateStateFromUserInteraction: " + newValue + " (" + updateSize + ", oldValue: " + innerState.now().lastState.value + ")")
 
-    val lastKnown = innerState.now().lastState
+    val lastKnown: InteractionVariableState[T] = innerState.now().lastState
     if (newValue != lastKnown.value || updateSize != lastKnown.updateImportance) {
       val newInteractionState = InteractionVariableState[T](newValue, updateSize, timestamp)
       innerState.update(_.withAddedEvent(newInteractionState))
-      syncToAll()
+      if (syncControl.now().nonEmpty) {
+        syncControl.now().foreach(_.requestStore(keyForSerialization, innerState.now(), underlyingInteraction.serializer))
+      } else {
+        println("[WARN] changed update was not committed because no syncTarget was available!")
+      }
     } else {
       // println("Update supressed!")
     }

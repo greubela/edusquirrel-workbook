@@ -12,14 +12,14 @@ import java.time.LocalDateTime
 case class InteractionVariableState[T](value: T, updateImportance: UpdateImportance, timestamp: LocalDateTime) {
 
   def serialized(io: Serializer[T]): InteractionVariableStateSerialized =
-    InteractionVariableStateSerialized(io.serialize(value), updateImportance, DefaultSerializer.serializerLocalDateTimeString.serialize(timestamp))
+    InteractionVariableStateSerialized(io.serialize(value), updateImportance, timestamp)
 
 }
 
 object InteractionVariableState {
 
   def apply[T](io: Serializer[T], serializedState: InteractionVariableStateSerialized): InteractionVariableState[T] =
-    InteractionVariableState(io.deserialize(serializedState.serializedValue), serializedState.updateImportance, DefaultSerializer.serializerLocalDateTimeString.deserialize(serializedState.timestamp))
+    InteractionVariableState(io.deserialize(serializedState.serializedValue), serializedState.updateImportance, serializedState.timestamp)
 
   case class DesignatedInteractionState[T](value: T, timestamp: LocalDateTime)
 

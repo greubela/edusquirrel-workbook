@@ -1,7 +1,7 @@
 package it.evadid.core.datastructures.language
 
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
-import it.evadid.core.datastructures.state.ObservableValue
+import it.evadid.core.datastructures.state.observable.ObservableValue
 
 import scala.concurrent.{ExecutionContext, Future}
 

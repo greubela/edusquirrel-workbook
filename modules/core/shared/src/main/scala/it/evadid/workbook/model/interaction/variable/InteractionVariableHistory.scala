@@ -1,12 +1,8 @@
 package it.evadid.workbook.model.interaction.variable
 
 import it.evadid.core.util.io.Serializer
+import it.evadid.workbook.model.interaction.sync.SyncStrategy
 import it.evadid.workbook.model.interaction.sync.UpdateImportance.DEFAULT
-import it.evadid.workbook.model.interaction.sync.{SyncStrategy, UpdateImportance}
-import it.evadid.workbook.model.interaction.variable.InteractionVariableHistorySerialized.RichInteractionVariableHistorySerialized
-
-import java.time.LocalDateTime
-import scala.util.Try
 
 case class InteractionVariableHistory[T](events: Set[InteractionVariableState[T]]) {
 
@@ -14,7 +10,7 @@ case class InteractionVariableHistory[T](events: Set[InteractionVariableState[T]
 
   def cleanedHistory(): InteractionVariableHistory[T] = {
     val nonDefault = events.filter(_.updateImportance != DEFAULT)
-    if(nonDefault.nonEmpty) InteractionVariableHistory(nonDefault)
+    if (nonDefault.nonEmpty) InteractionVariableHistory(nonDefault)
     else InteractionVariableHistory(Set(lastState))
   }
 
@@ -22,11 +18,6 @@ case class InteractionVariableHistory[T](events: Set[InteractionVariableState[T]
     InteractionVariableHistorySerialized(events.map(_.serialized(serializer)))
   }
 
-  def serializedWithStrategyAndKey(syncKey: String, syncStrategy: SyncStrategy, serializer: Serializer[T]): RichInteractionVariableHistorySerialized = {
-    val lastStateSer = lastState.serialized(serializer)
-    RichInteractionVariableHistorySerialized(syncKey, lastStateSer.serializedValue, lastStateSer.timestamp, serializedWithStrategy(syncStrategy, serializer))
-  }
-  
   def serializedWithStrategy(syncStrategy: SyncStrategy, serializer: Serializer[T]): InteractionVariableHistorySerialized = {
     val syncEvents = syncStrategy.selectEventsToSync(events)
     InteractionVariableHistory(syncEvents).cleanedHistory().serialized(serializer)
@@ -45,18 +36,17 @@ case class InteractionVariableHistory[T](events: Set[InteractionVariableState[T]
   }
 
   def withAddedEvents(serializer: Serializer[T], serializedHistory: InteractionVariableHistorySerialized): InteractionVariableHistory[T] = {
-    try {
-      withAddedEvents(serializedHistory.deserialize(serializer))
-    } catch {
-      case e: Throwable => {
-        println("[Error] could not deserialize " + serializedHistory + " with " + serializer)
-        this
-      }
-    }
+    val (success, failed) = serializedHistory.tryDeserialize(serializer)
+    if (failed.states.nonEmpty) println("[WARN] could not deserialize " + failed.states.size + " states in InteractionVariableHistory::withAddedEvents!")
+    withAddedEvents(success)
   }
-  
-  
 
+
+}
+
+object InteractionVariableHistory {
+
+  def empty[T]: InteractionVariableHistory[T] = InteractionVariableHistory(Set())
 
 }
 

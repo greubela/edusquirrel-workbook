@@ -1,15 +1,15 @@
 package it.evadid.core.datastructures.state
 
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.state.*
-import it.evadid.core.datastructures.storage.AsyncData
-import it.evadid.core.datastructures.storage.AsyncData.AsyncDataSuccess
+import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState}
+import it.evadid.core.datastructures.state.observable.{ObservableValue, ObservableValueImpl}
+import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 import it.evadid.workbook.model.interaction.sync.UpdateImportance.TEMPORARY
 import it.evadid.workbook.model.interaction.variable.InteractionVariable
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Success, Try}
+import scala.util.Success
 
 object StateHelper {
 
@@ -29,24 +29,30 @@ object StateHelper {
   implicit class RichSignal[T](underlying: Signal[T]) {
 
     def toObservableValue: ObservableValue[T] = {
-      val res = ObservableValueImpl[T](None)
+      val res = underlying match {
+        case strict: StrictSignal[T] => ObservableValueImpl[T](Some(strict.now()))
+        case signal: Signal[T] => ObservableValueImpl[T](None)
+      }
       underlying.foreach(next => res.onNewValueArrived(Success.apply(next)))(using unsafeWindowOwner)
       res
     }
 
-    def toAsync: Signal[AsyncData[T]] = underlying.map(AsyncDataSuccess(_))
+    def toAsync: AsyncData[Nothing, T] = underlying.toObservableValue.toAsync
 
-    def mapAsync[O](func: T => Future[O])(implicit ec: ExecutionContext): ObservableValue[AsyncData[O]] = {
-      val res: State[AsyncData[O]] = State(AsyncData.AsyncDataLoading[O]())
-      underlying.foreach(nextValue => func(nextValue).onComplete {
-        case scala.util.Success(result) => res.set(AsyncDataSuccess(result))
-        case scala.util.Failure(cause) => res.set(AsyncData.AsyncDataFailed[O](new Exception("Failure during AsyncSignal::mapAsync", cause)))
-      }(using ec))(using unsafeWindowOwner)
-      res.observable
-    }
+    def mapAsync[O](func: T => Future[O])(implicit ec: ExecutionContext): AsyncData[Nothing, O] = toAsync.mapAsync(func)
+
   }
 
+  implicit class RichAsyncData[F, S](underlying: AsyncData[F, S]) {
 
+    def toStateSignal: StrictSignal[AsyncDataState[?, S]] = {
+      val res: Var[AsyncDataState[?, S]] = Var(AsyncDataLoading[Nothing, S]())
+      underlying.observeAllStates.addObserver(onNext => res.set(onNext))
+      res.signal
+    }
+
+  }
+  /*
   implicit class ObservableValueAsync[T](underlying: ObservableValue[AsyncData[T]]) {
 
     def toSignal: Signal[AsyncData[T]] = {
@@ -74,6 +80,8 @@ object StateHelper {
 
 
   }
+
+  */
 
   implicit class InteractionVariableOnJS[T](interactionVariable: InteractionVariable[T]) {
 

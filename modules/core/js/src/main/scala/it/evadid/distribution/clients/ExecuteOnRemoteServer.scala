@@ -1,6 +1,7 @@
 package it.evadid.distribution.clients
 
-import it.evadid.core.util.io.serializer.DistributionSerializer
+import it.evadid.core.datastructures.state.async.{AsyncData, AsyncFuture}
+import it.evadid.core.util.io.serializer.DefaultSerializer
 import org.scalajs.dom
 import upickle.default.read
 import it.evadid.distribution.command.*
@@ -11,6 +12,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js.JSON
 import scala.scalajs.js.Thenable.Implicits.*
 import it.evadid.distribution.command.*
+import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoUntyped
 import it.evadid.util.Logger
 
 case class ExecuteOnRemoteServer(hostname: String, port: Int) extends ExecutionClient {
@@ -18,7 +20,7 @@ case class ExecuteOnRemoteServer(hostname: String, port: Int) extends ExecutionC
 
   override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = true
 
-  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionInfo] = {
+  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): AsyncData[Nothing, ExecutionInfo] = {
     val requested = LocalDateTime.now()
     val commandJson = executionCommand.toJson
     val dest = if (hostname.startsWith("http")) {
@@ -27,7 +29,7 @@ case class ExecuteOnRemoteServer(hostname: String, port: Int) extends ExecutionC
       s"https://$hostname:$port/executeCommand"
     }
 
-    dom.fetch(
+    val future = dom.fetch(
       dest,
       new dom.RequestInit {
         method = dom.HttpMethod.POST
@@ -46,9 +48,10 @@ case class ExecuteOnRemoteServer(hostname: String, port: Int) extends ExecutionC
           throw new IllegalStateException("Server response is missing 'executionInfo' field")
         )
         val serverReceived = ExecutionInfo.fromJson(executionInfoJson)
-        val timeFixed = serverReceived.fixTime(requested, requested)
+        val timeFixed = serverReceived.withFixedTime(requested, requested)
         timeFixed
       }
     }
+    AsyncData.forFuture(future)
   }
 }

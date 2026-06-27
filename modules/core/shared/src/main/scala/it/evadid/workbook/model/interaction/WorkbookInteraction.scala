@@ -3,6 +3,7 @@ package it.evadid.workbook.model.interaction
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.util.io.*
 import it.evadid.workbook.model.abstractions.WorkbookElement
+import it.evadid.workbook.model.interaction.sync.SyncInformation.SyncInformationWithContext
 import it.evadid.workbook.model.interaction.sync.UpdateImportance.{MAJOR, MINOR, TEMPORARY}
 import it.evadid.workbook.model.interaction.sync.{SyncInformation, UpdateImportance}
 import it.evadid.workbook.model.interaction.variable.InteractionVariable
@@ -26,24 +27,24 @@ trait WorkbookInteraction[T] extends WorkbookElement {
 
   //   val syncDest: List[SyncInformation] = fullInfo.current.allSyncSources
 
-  def clearHistory(syncBefore: Boolean): Unit = id.synchronized {
+  /*def clearHistory(syncBefore: Boolean): Unit = id.synchronized {
     if (syncBefore) {
       interactionVariable.syncToAll(true)
     }
     interactionVariable.resetHistory()
   }
 
-  def resetInteraction(syncBefore: Boolean, syncAfter: Boolean, newSyncDest: List[SyncInformation]): Unit = id.synchronized {
+  def resetInteraction(syncBefore: Boolean, syncAfter: Boolean, newSyncDest: List[SyncInformationWithContext]): Unit = id.synchronized {
     if (syncBefore) {
       interactionVariable.syncToAll()
     }
-    interactionVariable.resetHistoryAndSync(newSyncDest)
+    interactionVariable.resetHistoryAndSyncInfo(newSyncDest)
     if (syncAfter) {
-      interactionVariable.syncFromAll()
+      interactionVariable.fetchFromAll()
       interactionVariable.syncToAll()
     }
   }
-
+*/
 }
 
 object WorkbookInteraction {

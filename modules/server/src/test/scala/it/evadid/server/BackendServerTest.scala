@@ -1,7 +1,7 @@
 package it.evadid.server
 
 import it.evadid.distribution.command.ExecutionCommand
-import it.evadid.distribution.commandTypes.SQLCommands.{ClearDbRequest, FetchFromDbRequest, SyncToDbRequest}
+import it.evadid.distribution.commandTypes.SQLCommands.{ClearUsageInDbRequest, FetchFromDbRequest, StoreToDbRequest}
 import it.evadid.util.Logger
 import munit.FunSuite
 
@@ -60,7 +60,7 @@ class BackendServerTest extends FunSuite {
       "SQL_USER" -> "server_user",
       "SQL_PW" -> "server_password"
     )
-    val request = SyncToDbRequest(
+    val request = StoreToDbRequest(
       programId = "program-1",
       scenarioId = "scenario-1",
       userId = "user-1",
@@ -70,9 +70,9 @@ class BackendServerTest extends FunSuite {
     )
 
     var observedConfig: Option[HandleSQLCommand.DatabaseConfig] = None
-    var observedRequest: Option[SyncToDbRequest] = None
+    var observedRequest: Option[StoreToDbRequest] = None
     val executor = new HandleSQLCommand.SyncDbExecutor {
-      override def upsert(config: HandleSQLCommand.DatabaseConfig, request: SyncToDbRequest, logger: Logger): Int = {
+      override def upsert(config: HandleSQLCommand.DatabaseConfig, request: StoreToDbRequest, logger: Logger): Int = {
         observedConfig = Some(config)
         observedRequest = Some(request)
         1
@@ -80,7 +80,7 @@ class BackendServerTest extends FunSuite {
 
       override def fetch(config: HandleSQLCommand.DatabaseConfig, request: FetchFromDbRequest, logger: Logger): Map[String, String] = Map.empty
 
-      override def clear(config: HandleSQLCommand.DatabaseConfig, request: ClearDbRequest, logger: Logger): Int = 0
+      override def clear(config: HandleSQLCommand.DatabaseConfig, request: ClearUsageInDbRequest, logger: Logger): Int = 0
     }
 
     val response = HandleSQLCommand.syncToDb(request, Logger(), env.get, executor)
@@ -110,7 +110,7 @@ class BackendServerTest extends FunSuite {
     var observedConfig: Option[HandleSQLCommand.DatabaseConfig] = None
     var observedRequest: Option[FetchFromDbRequest] = None
     val executor = new HandleSQLCommand.SyncDbExecutor {
-      override def upsert(config: HandleSQLCommand.DatabaseConfig, request: SyncToDbRequest, logger: Logger): Int = 0
+      override def upsert(config: HandleSQLCommand.DatabaseConfig, request: StoreToDbRequest, logger: Logger): Int = 0
 
       override def fetch(config: HandleSQLCommand.DatabaseConfig, request: FetchFromDbRequest, logger: Logger): Map[String, String] = {
         observedConfig = Some(config)
@@ -118,7 +118,7 @@ class BackendServerTest extends FunSuite {
         Map("answer-1" -> "stored-history")
       }
 
-      override def clear(config: HandleSQLCommand.DatabaseConfig, request: ClearDbRequest, logger: Logger): Int = 0
+      override def clear(config: HandleSQLCommand.DatabaseConfig, request: ClearUsageInDbRequest, logger: Logger): Int = 0
     }
 
     val response = HandleSQLCommand.fetchFromDb(request, Logger(), env.get, executor)
@@ -137,7 +137,7 @@ class BackendServerTest extends FunSuite {
       "SQL_USER" -> "server_user",
       "SQL_PW" -> "server_password"
     )
-    val request = ClearDbRequest(
+    val request = ClearUsageInDbRequest(
       programId = "program-1",
       scenarioId = "scenario-1",
       userId = "user-1",
@@ -145,13 +145,13 @@ class BackendServerTest extends FunSuite {
     )
 
     var observedConfig: Option[HandleSQLCommand.DatabaseConfig] = None
-    var observedRequest: Option[ClearDbRequest] = None
+    var observedRequest: Option[ClearUsageInDbRequest] = None
     val executor = new HandleSQLCommand.SyncDbExecutor {
-      override def upsert(config: HandleSQLCommand.DatabaseConfig, request: SyncToDbRequest, logger: Logger): Int = 0
+      override def upsert(config: HandleSQLCommand.DatabaseConfig, request: StoreToDbRequest, logger: Logger): Int = 0
 
       override def fetch(config: HandleSQLCommand.DatabaseConfig, request: FetchFromDbRequest, logger: Logger): Map[String, String] = Map.empty
 
-      override def clear(config: HandleSQLCommand.DatabaseConfig, request: ClearDbRequest, logger: Logger): Int = {
+      override def clear(config: HandleSQLCommand.DatabaseConfig, request: ClearUsageInDbRequest, logger: Logger): Int = {
         observedConfig = Some(config)
         observedRequest = Some(request)
         2

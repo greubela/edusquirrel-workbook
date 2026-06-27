@@ -1,55 +1,63 @@
 package it.evadid.distribution.commandTypes
 
-import it.evadid.core.util.io.serializer.DistributionSerializer
+import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.ExecutionCommandFactory
+import it.evadid.workbook.model.interaction.sync.SyncFormatter.{InteractionSyncRequest, RichInteractionVariableFormatter}
+import it.evadid.workbook.model.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.model.interaction.sync.{SyncContext, UsageContext}
+import it.evadid.workbook.model.interaction.variable.InteractionVariableHistorySerialized
 
 object SQLCommands {
 
-  case class SyncToDbRequest(
-                              programId: String,
-                              scenarioId: String,
-                              userId: String,
-                              eventTime: String,
-                              keyId: String,
-                              eventData: String
-                            )
+  trait DbRequest {
+    def databaseName: String
 
-  case class SyncToDbResponse(rowsAffected: Int)
+    def usageContext: UsageContext
+
+    lazy val formatter: RichInteractionVariableFormatter = RichInteractionVariableFormatter()
+  }
+
+  case class StoreToDbRequest(
+                               request: InteractionSyncRequest,
+                               databaseName: String
+                             ) extends DbRequest {
+
+    lazy val usageContext: UsageContext = request.syncContext.toUsageContext
+    lazy val serializedValueString: String = formatter.serialize(request)
+
+  }
 
   case class FetchFromDbRequest(
-                                 programId: String,
-                                 scenarioId: String,
-                                 userId: String,
-                                 keyId: Option[String]
-                               )
+                                 usageContext: UsageContext,
+                                 databaseName: String
+                               ) extends DbRequest
 
-  case class FetchFromDbResponse(values: Map[String, String])
+  case class ClearUsageInDbRequest(
+                                    usageContext: UsageContext,
+                                    limitToKey: Option[String],
+                                    databaseName: String
+                                  ) extends DbRequest {
+  }
 
-  case class ClearDbRequest(
-                             programId: String,
-                             scenarioId: String,
-                             userId: String,
-                             keyId: Option[String]
-                           )
 
-  case class ClearDbResponse(rowsAffected: Int)
+  case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionVariableHistorySerialized])
 
-  val syncToDbCommand: ExecutionCommandFactory[SyncToDbRequest, SyncToDbResponse] = ExecutionCommandFactory(
+  val syncToDbCommand: ExecutionCommandFactory[StoreToDbRequest, SyncSuccess] = ExecutionCommandFactory(
     "sync-to-db-request",
-    DistributionSerializer.serializerSyncToDbRequestJson,
-    DistributionSerializer.serializerSyncToDbResponseJson
+    DefaultSerializer.serializerStoreToDbRequestJson,
+    DefaultSerializer.serializerSyncSuccess
   )
 
-  val fetchFromDbCommand: ExecutionCommandFactory[FetchFromDbRequest, FetchFromDbResponse] = ExecutionCommandFactory(
+  val fetchFromDbCommand: ExecutionCommandFactory[FetchFromDbRequest, DbFetchResponse] = ExecutionCommandFactory(
     "fetch-from-db-request",
-    DistributionSerializer.serializerFetchFromDbRequestJson,
-    DistributionSerializer.serializerFetchFromDbResponseJson
+    DefaultSerializer.serializerFetchFromDbRequestJson,
+    DefaultSerializer.serializerDbFetchResponse
   )
 
-  val clearDbCommand: ExecutionCommandFactory[ClearDbRequest, ClearDbResponse] = ExecutionCommandFactory(
-    "clear-db-request",
-    DistributionSerializer.serializerClearDbRequestJson,
-    DistributionSerializer.serializerClearDbResponseJson
+  val clearValuesDbCommand: ExecutionCommandFactory[ClearUsageInDbRequest, SyncSuccess] = ExecutionCommandFactory(
+    "clear-values-in-db-request",
+    DefaultSerializer.serializerClearUsageInDbRequestJson,
+    DefaultSerializer.serializerSyncSuccess
   )
 
 }

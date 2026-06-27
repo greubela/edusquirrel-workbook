@@ -1,18 +1,7 @@
 package it.evadid.homepage.control.info
 
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.language.AppLanguage
-import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.core.datastructures.state.StateHelper.*
-import it.evadid.core.datastructures.state.{State, StateHelper}
-import it.evadid.core.datastructures.user.User
-import it.evadid.homepage.control.TechnicalHomepageElements
-import it.evadid.homepage.control.info.control.{HomepageCurrentInfo, HomepageDataControl, HomepageSignalInfo, TechnicalControl}
-import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.basic.HtmlFullScreenContainerElement
-import it.evadid.homepage.workbook.legacy.singletons.FileDataStorage
-import it.evadid.workbook.model.interaction.sync.SyncInformation
-import org.scalajs.dom
+import it.evadid.homepage.control.info.control.*
 
 case class FullInfo(
                      val defaults: HomepageDefaults,

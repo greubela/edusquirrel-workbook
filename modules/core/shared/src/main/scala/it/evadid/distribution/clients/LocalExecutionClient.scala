@@ -1,7 +1,9 @@
 package it.evadid.distribution.clients
 
 
+import it.evadid.core.datastructures.state.async.AsyncData
 import it.evadid.distribution.command.*
+import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoUntyped
 import it.evadid.util.Logger
 
 import java.time.LocalDateTime
@@ -15,14 +17,15 @@ trait LocalExecutionClient extends ExecutionClient {
 
   protected def getExecutionContext: ExecutionContext = ExecutionContext.global
 
-  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionInfo] = {
+  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): AsyncData[Nothing, ExecutionInfo] = {
     val timeExecutionRequested = LocalDateTime.now()
-    execute(executionCommand).map {
+    val fut =  execute(executionCommand).map {
       (result: ExecutionResult, duration: ExecutionDuration, logger: Logger) => {
         val history = ExecutionHistory(timeExecutionRequested, timeExecutionRequested, duration.timeExecutionStarted, duration.timeExecutionFinished)
-        ExecutionInfo(executionCommand, Success(result), Some(history))
+        ExecutionInfoUntyped(executionCommand, result, history)
       }
     }(using getExecutionContext)
+    AsyncData.forFuture(fut)
   }
 
   private def execute(executionCommand: ExecutionCommand): Future[(ExecutionResult, ExecutionDuration, Logger)] = {

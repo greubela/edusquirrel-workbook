@@ -4,9 +4,9 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.state.storage.AsyncDataCache
 import it.evadid.homepage.webElements.HtmlAppElement
 import org.scalajs.dom
-import it.evadid.core.datastructures.storage.AsyncDataCache
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js

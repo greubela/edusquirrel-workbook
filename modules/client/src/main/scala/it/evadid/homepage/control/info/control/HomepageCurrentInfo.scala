@@ -1,17 +1,31 @@
 package it.evadid.homepage.control.info.control
 
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.control.info.{AllUserInfo, AllWorkbookInfo, FullInfo, HomepageInfo}
 import it.evadid.homepage.control.info.analyze.WorkbookUserDataAnalyzer
+import it.evadid.homepage.control.info.*
 import it.evadid.workbook.model.interaction.WorkbookInteraction
-import it.evadid.workbook.model.interaction.sync.SyncInformation
+import it.evadid.workbook.model.interaction.sync.SyncInformation.SyncInformationWithContext
+import it.evadid.workbook.model.interaction.sync.{SyncControl, SyncInformation, UsageContext}
+import it.evadid.workbook.model.interaction.variable.InteractionVariable
+
+import java.time.LocalDateTime
+
 case class HomepageCurrentInfo(fullInfo: FullInfo) {
 
   private def now(): HomepageInfo = fullInfo.homepageInfoState.now()
-  
+
   def workbookInfo: Option[AllWorkbookInfo] = fullInfo.synchronized {
     now().workbookInfo
   }
+
+  def currentSyncSourcces: List[SyncInformationWithContext] = fullInfo.synchronized {
+    val curContext: UsageContext = fullInfo.homepageInfoState.now().toContext
+    val syncInformation: List[SyncInformation] = userInfo.map(_.config.syncDestinations.toList).toList.flatten
+    val syncWithContext: List[SyncInformationWithContext] = syncInformation.map(_.forContext(fullInfo.current.currentHomepageContext))
+    syncWithContext
+  }
+
+  def currentHomepageContext: UsageContext = now().toContext
 
   def workbookUserData: Option[WorkbookUserDataAnalyzer] = fullInfo.synchronized {
     if (userInfo.isEmpty || workbookInfo.isEmpty) None
@@ -22,10 +36,6 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
     now().userInfo
   }
 
-  def allSyncSources: List[SyncInformation] = fullInfo.synchronized {
-    val default = now().homepageDefaults.defaultSyncLocation
-    now().userInfo.map(_.config.syncDestinations).getOrElse(default)
-  }
 
   def allAvailableInteractions: List[WorkbookInteraction[?]] = fullInfo.synchronized {
     val default = List()

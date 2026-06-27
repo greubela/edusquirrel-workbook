@@ -51,8 +51,8 @@ class ServerExecutionTest extends FunSuite {
       val info = Await.result(client.handleExecution(command, it.evadid.util.Logger()), 5.seconds)
 
       assertEquals(info.command, command)
-      assertEquals(info.result.map(_.stdOut).get, "ok")
-      assertEquals(info.result.map(_.data).get, Map("x" -> "1"))
+      assertEquals(info.resultTry.map(_.stdOut).get, "ok")
+      assertEquals(info.resultTry.map(_.data).get, Map("x" -> "1"))
     }
   }
 }

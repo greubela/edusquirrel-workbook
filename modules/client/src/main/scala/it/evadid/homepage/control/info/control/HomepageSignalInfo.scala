@@ -2,20 +2,20 @@ package it.evadid.homepage.control.info.control
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap, LanguageMapContentId, LanguageMapIdResolver}
+import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.state.StateHelper.*
+import it.evadid.core.datastructures.state.async.AsyncData
+import it.evadid.core.datastructures.state.async.AsyncDataState.{AsyncDataFailed, AsyncDataLoading, AsyncDataSuccess}
 import it.evadid.homepage.control.*
-import it.evadid.homepage.control.info.{AllUserInfo, AllWorkbookInfo, FullInfo, HomepageInfo}
+import it.evadid.homepage.control.info.*
 import it.evadid.workbook.model.elements.WorkbookSection
-import it.evadid.core.datastructures.storage.AsyncData
-import it.evadid.core.datastructures.storage.AsyncData.*
 
 import scala.concurrent.*
-import it.evadid.core.datastructures.state.StateHelper.*
+
 case class HomepageSignalInfo(fullInfo: FullInfo) {
 
   lazy val contentStorage: WorkbookContentStorage = WorkbookContentStorage(fullInfo.technical.fileStore)
-  
+
   lazy val langMapIdResolver: LanguageMapIdResolver = new LanguageMapIdResolver(fullInfo.signals.currentLanguage.toObservableValue) {
     override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[AppLanguage.HumanLanguage]] = {
       contentStorage.asStorage.loadAsFuture(id)(using ExecutionContext.global)
@@ -53,11 +53,11 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
   }
 
   def signalWithEnsuredLanguageMap(languageMapId: LanguageMapContentId): Signal[LanguageMap[HumanLanguage]] = {
-    val languageMapOpFromId: StrictSignal[AsyncData[LanguageMap[HumanLanguage]]] = contentStorage.asStorage.loadIntoVariable(languageMapId)(using ExecutionContext.global).toAirstreamVar.signal
-    languageMapOpFromId.mapLazy {
+    val languageMapOpFromId: AsyncData[Nothing, LanguageMap[HumanLanguage]] = contentStorage.asStorage.loadIntoVariable(languageMapId)(using ExecutionContext.global)
+    languageMapOpFromId.toStateSignal.mapLazy {
       case AsyncDataLoading() => WorkbookContentStorage.languageMapLoadingMap
       case AsyncDataSuccess(map) => map
-      case AsyncDataFailed(cause) => WorkbookContentStorage.languageMapError(languageMapId, cause)
+      case AsyncDataFailed(cause, data) => WorkbookContentStorage.languageMapError(languageMapId, cause)
     }
   }
 

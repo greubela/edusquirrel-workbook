@@ -1,63 +1,130 @@
 package it.evadid.homepage.control.info.control
 
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.control.info.{AllUserInfo, AllWorkbookInfo, FullInfo, WorkbookConfig}
+import it.evadid.core.datastructures.state.async.AsyncDataState.AsyncDataStateFinished
+import it.evadid.core.datastructures.state.storage.AsyncDataCache
+import it.evadid.core.util.io.Serializer
+import it.evadid.homepage.control.info.*
+import it.evadid.homepage.control.info.control.HomepageDataControl.CachedSyncControl
 import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.workbook.model.interaction.WorkbookInteraction
-import it.evadid.workbook.model.interaction.sync.SyncInformation
+import it.evadid.workbook.model.interaction.sync.SyncControl
+import it.evadid.workbook.model.interaction.sync.SyncInformation.{SyncCache, SyncInformationWithContext}
+import it.evadid.workbook.model.interaction.variable.{InteractionVariable, InteractionVariableHistory}
+
+import java.time.LocalDateTime
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 case class HomepageDataControl(fullInfo: FullInfo) {
 
+  private given ExecutionContext = ExecutionContext.global
+
   private def interactions: List[WorkbookInteraction[?]] = fullInfo.current.allAvailableInteractions
-  
+
   def downloadAllAvailableData(): Unit = fullInfo.current.workbookUserData.foreach(_.downloadAllData())
 
-  def saveAndResetAllInfo(): Unit = fullInfo.synchronized {
-    // Save everything that is still present
-    interactions.foreach(_.interactionVariable.syncToAll(true))
-    downloadAllAvailableData()
-    // Clear old Status
-    fullInfo.technical.resetLocalStorage()
-    interactions.foreach(_.clearHistory(false))
+  private val cacheControl: CachedSyncControl = HomepageDataControl.CachedSyncControl(fullInfo)
+
+  private[control] def updateContext(func: HomepageInfo => HomepageInfo): Future[Unit] = fullInfo.synchronized {
+
+    def beforeContextChanged(): Future[Unit] = {
+      downloadAllAvailableData()
+      cacheControl.requestStoreAll(interactions.map(_.interactionVariable))
+    }
+
+    def afterContextChange(): Future[Unit] = Future {
+      val maxTime: LocalDateTime = LocalDateTime.now()
+      interactions.foreach(_.interactionVariable.resetHistoryAndSyncControl(Some(cacheControl)))
+      cacheControl.requestFetchAll(interactions.map(_.interactionVariable), maxTime)
+    }
+
+    beforeContextChanged().flatMap(res1 => {
+      Future.traverse(fullInfo.current.currentSyncSourcces)(_.informAboutContextSwitch()).flatMap(res2 => {
+        fullInfo.homepageInfoState.update(func)
+        afterContextChange()
+      })
+    })
+
   }
 
-  def changeWorkbook(factory: WorkbookFactory): Unit = {
-    //Future {
-    val workbook = factory.createEverything
-    changeWorkbook(workbook)
-    //}(ExecutionContext.global)
+
+  def changeWorkbook(factory: WorkbookFactory): Unit = fullInfo.synchronized {
+    changeWorkbook(factory.createEverything)
   }
 
   def changeWorkbook(newWorkbook: AllWorkbookInfo): Unit = fullInfo.synchronized {
     //saveAndResetAllInfo()
-    fullInfo.homepageInfoState.update(curInfo => curInfo.copy(workbookInfo = Some(newWorkbook)))
-    interactions.map(_.interactionVariable).foreach(curIntVar => {
-      curIntVar.syncToAll(true)
-      curIntVar.resetHistoryAndSync(fullInfo.current.allSyncSources)
-      curIntVar.syncFromAll()
-    })
+    updateContext(_.copy(workbookInfo = Some(newWorkbook)))
   }
 
   def updateWorkbookConfig(func: WorkbookConfig => WorkbookConfig): Unit = fullInfo.synchronized {
     if (fullInfo.homepageInfoState.now().workbookInfo.isEmpty) throw new Exception("No workbook loaded!")
     val currentWorkbookInfo = fullInfo.homepageInfoState.now().workbookInfo.get
     val newWorkbookInfo = currentWorkbookInfo.copy(config = func(currentWorkbookInfo.config))
-    fullInfo.homepageInfoState.update(_.copy(workbookInfo = Some(newWorkbookInfo)))
+    updateContext(_.copy(workbookInfo = Some(newWorkbookInfo)))
   }
 
   def changeUser(userInfo: Option[AllUserInfo]): Unit = fullInfo.synchronized {
-    //saveAndResetAllInfo() //todo without dummy
-    interactions.foreach(_.interactionVariable.syncToAll(true))
-
-    val syncDest: List[SyncInformation] = userInfo.map(_.config.syncDestinations).getOrElse(fullInfo.defaults.defaultSyncLocation)
-    fullInfo.homepageInfoState.update(curInfo => curInfo.copy(userInfo = userInfo))
-
-    interactions.foreach(_.resetInteraction(syncBefore = false, syncAfter = true, syncDest))
+    updateContext(_.copy(userInfo = userInfo))
   }
 
   def changeLanguage(language: HumanLanguage): Unit = fullInfo.synchronized {
     fullInfo.homepageInfoState.update(_.copy(currentLanguage = language))
   }
 
+
+}
+
+object HomepageDataControl {
+
+
+  case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
+
+    private given ExecutionContext = ExecutionContext.global
+
+
+    // load
+    private val requestCache: AsyncDataCache[SyncInformationWithContext, SyncCache] = new AsyncDataCache[SyncInformationWithContext, SyncCache]("syncRequestCache", true, true) {
+
+      override protected def executeLoading(in: SyncInformationWithContext)(ec: ExecutionContext): Future[SyncCache] = in.fetchAllFrom()
+
+      override protected def formatInputForLogging(in: SyncInformationWithContext): String = in.toString
+
+      override protected def formatOutputForLogging(out: SyncCache): String = out.toString
+    }
+
+    private def executeLoadAll(maxAge: LocalDateTime = LocalDateTime.now()): Future[Map[SyncInformationWithContext, AsyncDataStateFinished[Nothing, SyncCache]]] = {
+      requestCache.loadAllAsFuture(fullInfo.current.currentSyncSourcces, maxAge)
+    }
+
+    def requestFetchAll(variables: List[InteractionVariable[?]], maxCacheAge: LocalDateTime): Unit = fullInfo.synchronized {
+      variables.foreach(requestFetch(_, maxCacheAge))
+    }
+
+    override def requestFetch(interactionVariable: InteractionVariable[?], maxCacheAge: LocalDateTime): Unit = fullInfo.synchronized {
+      val fut: Future[List[SyncCache]] = executeLoadAll(maxCacheAge).map(_.values.flatMap(_.value).toList)
+      fut.onComplete {
+        case Success(value) => interactionVariable.executeLoad(value)
+        case Failure(exception) => println(s"Error while fetching sync data: $exception")
+      }
+    }
+
+
+    override def requestStore[T](keyForSerialisation: String, history: InteractionVariableHistory[T], valueSerializer: Serializer[T], forceSyncNow: Boolean): Unit = fullInfo.synchronized {
+      fullInfo.current.currentSyncSourcces.foreach(_.storeTo(keyForSerialisation, history, valueSerializer))
+    }
+
+
+    def requestStoreAll(interactionVariable: List[InteractionVariable[?]]): Future[Unit] = fullInfo.synchronized {
+      Future.traverse(interactionVariable)(requestStoreAll).map(theList => {})
+    }
+
+    def requestStoreAll(interactionVariable: InteractionVariable[?]): Future[Unit] = fullInfo.synchronized {
+      Future.traverse(fullInfo.current.currentSyncSourcces)(_.storeTo(interactionVariable.keyForSerialization, interactionVariable.history, interactionVariable.underlyingInteraction.serializer)).map(theList => {})
+    }
+
+
+  }
 
 }

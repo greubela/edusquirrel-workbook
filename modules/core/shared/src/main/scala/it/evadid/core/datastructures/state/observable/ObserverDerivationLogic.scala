@@ -1,4 +1,4 @@
-package it.evadid.core.datastructures.state
+package it.evadid.core.datastructures.state.observable
 
 sealed trait ObserverDerivationLogic {
 

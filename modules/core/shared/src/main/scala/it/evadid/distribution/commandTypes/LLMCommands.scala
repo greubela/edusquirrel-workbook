@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.chat.*
 import it.evadid.core.datastructures.chat.MessengerModel.*
 import it.evadid.core.datastructures.language.AppLanguage.{Danish, English, German, HumanLanguage}
 import it.evadid.core.datastructures.language.LanguageMap
-import it.evadid.core.util.io.serializer.DistributionSerializer
+import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.*
 import it.evadid.distribution.command.{ExecutionCommandFactory, ExecutionResult}
 
@@ -25,8 +25,8 @@ object LLMCommands {
 
   val completeLLMCommandFactory: ExecutionCommandFactory[MessengerChatCompletionRequest, MessengerModel] =   ExecutionCommandFactory(
     "complete-llm-request",
-    DistributionSerializer.serializerChatRequestJson,
-    DistributionSerializer.serializerMessageModelJson
+    DefaultSerializer.serializerChatRequestJson,
+    DefaultSerializer.serializerMessageModelJson
   )
 
   case class FeedbackLlmRequest(prompt: String, systemPrompt: String)
@@ -34,8 +34,8 @@ object LLMCommands {
   val feedbackLlmCommandFactory: ExecutionCommandFactory[FeedbackLlmRequest, String] =
     ExecutionCommandFactory(
       "feedback-llm-request",
-      DistributionSerializer.serializerFeedbackLlmRequestJson,
-      DistributionSerializer.serializerStringJson
+      DefaultSerializer.serializerFeedbackLlmRequestJson,
+      DefaultSerializer.serializerStringJson
     )
 
 

@@ -3,9 +3,9 @@ package it.evadid.homepage.control.info
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.user.User
-import it.evadid.homepage.workbook.legacy.model.interaction.sync.{DatabaseSyncViaBackendServer, DatabaseSyncViaTmpMathBackend, LocalStorageSync}
+import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServer, LocalStorageSync}
 import it.evadid.workbook.model.interaction.sync.*
-import it.evadid.workbook.model.interaction.sync.SyncStrategy.{SYNC_EVERYTHING, SYNC_MAJOR}
+import it.evadid.workbook.model.interaction.sync.SyncStrategy.SYNC_MAJOR
 
 case class HomepageDefaults() {
   lazy val availableLanguages: List[HumanLanguage] = List(AppLanguage.German, AppLanguage.English)
@@ -13,8 +13,8 @@ case class HomepageDefaults() {
   lazy val defaultLanguage: HumanLanguage = AppLanguage.German
 
   lazy val defaultSyncLocation: List[SyncInformation] = List(
-    SyncInformation(LocalStorageSync, SyncStrategy.SYNC_EVERYTHING),
-    SyncInformation(DatabaseSyncViaBackendServer, SYNC_MAJOR)
+    SyncInformation(LocalStorageSync, SyncStrategy.SYNC_LAST, SyncFormatter.serializeHistory),
+    SyncInformation(DatabaseSyncViaBackendServer("db_332371_12"), SYNC_MAJOR, SyncFormatter.RichInteractionVariableFormatter()),
   )
 
   lazy val defaultUser: AllUserInfo = selectableUsers.head

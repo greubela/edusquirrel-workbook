@@ -4,18 +4,22 @@ import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.user.User
-import it.evadid.homepage.control.info.{AllUserInfo, AllWorkbookInfo}
-import it.evadid.homepage.control.info.control.TechnicalControl
-import it.evadid.homepage.util.web.DownloadHelper
+import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.homepage.control.info.AllWorkbookInfo.WorkbookMetadata
+import it.evadid.homepage.control.info.control.TechnicalControl
+import it.evadid.homepage.control.info.{AllUserInfo, AllWorkbookInfo}
+import it.evadid.homepage.util.web.DownloadHelper
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 import it.evadid.workbook.model.interaction.variable.*
 import upickle.default.ReadWriter.join
 
+import java.time.LocalDateTime
 import scala.concurrent.ExecutionContext
 
 case class WorkbookUserDataAnalyzer(technical: TechnicalControl, userInfo: AllUserInfo, workbookInfo: AllWorkbookInfo) {
+
+  private given ldt: upickle.ReadWriter[LocalDateTime] = DefaultSerializer.serializerLocalDateTimeString.uPickleReadWrite
 
   private given uiRW: upickle.ReadWriter[UpdateImportance] = upickle.readwriter[String].bimap[UpdateImportance](_.toString, UpdateImportance.valueOf)
 

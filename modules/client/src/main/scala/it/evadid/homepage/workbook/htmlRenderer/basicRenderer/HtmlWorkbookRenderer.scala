@@ -5,7 +5,6 @@ import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
-import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.control.info.AllUserInfo
 import it.evadid.homepage.webElements.HtmlAppElement
@@ -231,7 +230,7 @@ private case class LanguageSelectionLine(workbook: Workbook) extends HtmlAppElem
 
 private case class UserConfigLine(workbook: Workbook) extends HtmlAppElement {
 
-  private val resetButton = HtmlButtonElement.withTextLabel(LanguageMapContentId("basic/resetLocalStorage"), event => fullInfo.control.saveAndResetAllInfo())
+  //private val resetButton = HtmlButtonElement.withTextLabel(LanguageMapContentId("basic/resetLocalStorage"), event => fullInfo.control.resetLocalStorage())
   private val downloadDataButton = HtmlButtonElement.withTextLabel(LanguageMapContentId("basic/downloadEverything"), event => fullInfo.control.downloadAllAvailableData())
   private val uploadButton = HtmlButtonElement.withTextLabel(LanguageMapContentId("basic/uploadSession"), event => uploadInput.ref.click())
 
@@ -252,7 +251,7 @@ private case class UserConfigLine(workbook: Workbook) extends HtmlAppElement {
   private val domElement: Element = div(
     styleAttr := "display:none;",
     uploadInput,
-    resetButton.getDomElement(),
+  //  resetButton.getDomElement(),
     downloadDataButton.getDomElement(),
     uploadButton.getDomElement(),
   )

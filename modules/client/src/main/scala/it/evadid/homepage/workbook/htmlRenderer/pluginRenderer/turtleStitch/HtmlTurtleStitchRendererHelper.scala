@@ -2,13 +2,14 @@ package it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.turtleStitch
 
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
-import it.evadid.core.datastructures.file.{FileDescription, LoadedFile}
+import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.datastructures.state.{ObservableValue, State}
-import it.evadid.core.datastructures.state.StateHelper.{InteractionVariableOnJS, StateBasedVar}
-import it.evadid.core.datastructures.storage.AsyncData
-import it.evadid.core.datastructures.storage.AsyncData.*
+import it.evadid.core.datastructures.state.State
+import it.evadid.core.datastructures.state.StateHelper.{RichAsyncData, RichSignal}
+import it.evadid.core.datastructures.state.async.AsyncDataState.*
+import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState}
+import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.core.util.InfoUtil
 import it.evadid.homepage.control.HtmlFullWorkbookApp
 import it.evadid.homepage.control.HtmlFullWorkbookApp.fullInfo
@@ -24,8 +25,6 @@ import it.evadid.workbook.model.interaction.sync.UpdateImportance
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLInputElement}
 import todomove.datastructures.web.file.FullImage
-import it.evadid.core.datastructures.storage.AsyncData
-import it.evadid.core.datastructures.storage.AsyncData.*
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
@@ -80,24 +79,22 @@ object HtmlTurtleStitchRendererHelper {
    */
 
   def renderProjectPreviewImage(workbookInteraction: WorkbookInteraction[TurtleStitchProjectState]): Element = {
-    val xmlSignal: Signal[AsyncData[String]] = workbookInteraction.interactionVariable.createInteractionSignal().map(_.programXml).map(AsyncData.fromOption)
+    val xmlSignal: AsyncData[Nothing, String] = workbookInteraction.interactionVariable.asAsync.map(_.programXml.get)
     //xmlSignal.foreach(newContent => println("xml signal changed for workbook interaction " + workbookInteraction.id + ": " + newContent))(using unsafeWindowOwner)
-    renderProjectPreviewWithXmlSignal(xmlSignal)
+    renderProjectCodePreviewWithAsyncXml(xmlSignal)
   }
 
   def renderProjectPreviewImage(fileDescription: FileDescription): Element = {
-    val file: Signal[AsyncData[LoadedFile]] = fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(using ExecutionContext.global).toAirstreamVar.signal
-    val xmlSignal: Signal[AsyncData[String]] = file.map(_.map(_.fileDataAsUtf8String))
-    //  val xmlSignal: Signal[AsyncData[String]] = fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(using ExecutionContext.global).mapLazy(_..map(_.fileDataAsUtf8String)).map(AsyncData.fromOption)
-    renderProjectPreviewWithXmlSignal(xmlSignal)
+    val xmlSignal: AsyncData[Nothing, String] = fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(using ExecutionContext.global).map(_.fileDataAsUtf8String)
+    renderProjectCodePreviewWithAsyncXml(xmlSignal)
   }
 
   /*
   Project Preview Helper
    */
 
-  private def renderProjectPreviewWithXmlSignal(xmlSignal: Signal[AsyncData[String]]): Element = {
-    val signalForImg: ObservableValue[AsyncData[FullImage]] = getImageSignal(xmlSignal, HtmlFullWorkbookApp.fullInfo.signals.currentLanguage)
+  private def renderProjectCodePreviewWithAsyncXml(xmlSignal: AsyncData[Nothing, String]): Element = {
+    val signalForImg: AsyncData[Nothing, FullImage] = getImageSignal(xmlSignal, HtmlFullWorkbookApp.fullInfo.signals.currentLanguage)
     div(
       cls := "preview-card",
       div(
@@ -107,17 +104,23 @@ object HtmlTurtleStitchRendererHelper {
     )
   }
 
-  private def getImageSignal(xmlSignal: Signal[AsyncData[String]], languageSignal: Signal[HumanLanguage]): ObservableValue[AsyncData[FullImage]] = {
-    val res = State[AsyncData[FullImage]](AsyncData.AsyncDataLoading())
-    xmlSignal.combineWith(languageSignal).foreach {
-      case (AsyncDataLoading(), _) => res.set(AsyncData.AsyncDataLoading[FullImage]())
-      case (AsyncDataFailed(cause), _) => res.set(AsyncData.AsyncDataFailed[FullImage](cause))
+  private def getImageSignal(xmlSignal: AsyncData[Nothing, String], languageSignal: Signal[HumanLanguage]): AsyncData[Nothing, FullImage] = {
+    val asyncLanguage: AsyncData[Nothing, HumanLanguage] = languageSignal.toAsync
+    val combined: AsyncData[Nothing, (String, HumanLanguage)] = xmlSignal.combineIgnoreErrorData(asyncLanguage)
+    combined.mapAsync(tup => TurtleStitchWorkerFacade.getGreenFlagProgramSnapshotDataSrc(tup._1, tup._2).futureFirstValue)
+/*
+    val obsStates: StrictSignal[AsyncDataState[?, String]] = xmlSignal.toStateSignal
+    val res = State[AsyncDataState[Nothing, FullImage]](AsyncDataLoading())
+
+    obsStates.combineWith(languageSignal).foreach {
+      case (AsyncDataLoading(), _) => res.set(AsyncDataLoading[Nothing, FullImage]())
+      case (AsyncDataFailed(cause, data), _) => res.set(AsyncDataFailed[FullImage](cause, data))
       case (AsyncDataSuccess(xml), h) => {
-        val snapshot: ObservableValue[AsyncData[FullImage]] = TurtleStitchWorkerFacade.getGreenFlagProgramSnapshotDataSrc(xml, h)
-        snapshot.addObserver(newValue => res.set(newValue))
+        val snapshot: AsyncData[Nothing, FullImage] = TurtleStitchWorkerFacade.getGreenFlagProgramSnapshotDataSrc(xml, h)
+        snapshot.observeAllStates.addObserver(newState => res.set(newState))
       }
     }(using unsafeWindowOwner)
-    res.observable
+    res.observable*/
   }
 
   /*
