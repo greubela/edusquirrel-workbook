@@ -45,11 +45,8 @@ object HtmlGptTextfieldInteractionRenderer extends HtmlRenderFactory[GptInteract
     val nextMessageState = messageState.addMessage(currentStateMsg)*/
 
     val requestFuture = systemPromptFuture.map { systemPrompt => MessengerChatCompletionRequest(systemPrompt.getWithLanguagePreference(LLMCommands.langPreference), messageState) }(using ExecutionContext.global)
-    LLMCommands.completeLLMCommandFactory.waitAndSendCommandTo(fullInfo.technical.backendServerExecutor, Logger(), requestFuture).futureFirstState.onComplete {
-      case Success(result) => result match {
-        case AsyncDataSuccess(resultInfo) => mmState.set(resultInfo.resultTyped.result)
-        case AsyncDataFailed(err, data) => sendError(err, mmState)
-      }
+    LLMCommands.completeLLMCommandFactory.waitAndSendCommandTo(fullInfo.technical.backendServerExecutor, Logger(), requestFuture).onComplete {
+      case Success(result) => mmState.set(result.resultTyped.result)
       case Failure(err) => sendError(err, mmState)
     }(using ExecutionContext.global)
 
