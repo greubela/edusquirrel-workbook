@@ -1,10 +1,8 @@
 package it.evadid.distribution.formats
 
-import it.evadid.core.datastructures.state.async.AsyncDataState.*
+import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.*
-import play.api.libs.json.JsPath.read
-import play.api.libs.json.{JsValue, Json}
 import upickle.default.write
 
 import java.time.LocalDateTime
@@ -36,13 +34,13 @@ case class ExecutionClientResponse(
   }
 
   def executionInfoEntry(asyncDataStateFinished: Either[SerializedException, Map[String, String]]): (String, String) = response.match {
-    case Right(mapInfo) => "executionResultSuccess" -> write(mapInfo)
+    case Right(mapInfo) => "executionResultSuccess" -> ExecutionClientResponse.serializerMapJson.serialize(mapInfo)
     case Left(cause) => "executionResultFailed" -> DefaultSerializer.serializerExceptionS.serialize(cause)
   }
 
-  lazy val sendFormat: (Int, String) = (200, write(serializedToMap()))
+  lazy val sendFormat: (Int, String) = (200, ExecutionClientResponse.serializerMapJson.serialize(serializedToMap()))
 
-  lazy val toString: String =
+  override lazy val toString: String =
     """
       |ExecutionClientResponse(
       |  timestampReceived=$timestampReceived,
@@ -58,6 +56,8 @@ case class ExecutionClientResponse(
 
 object ExecutionClientResponse {
 
+  private val serializerMapJson: Serializer[Map[String, String]] = ???
+
   def apply(receivedMap: Map[String, String]): ExecutionClientResponse = {
     val timestampReceived: LocalDateTime = DefaultSerializer.serializerLocalDateTimeString.deserialize(receivedMap("timestampReceived"))
     val timestampStarted: LocalDateTime = DefaultSerializer.serializerLocalDateTimeString.deserialize(receivedMap("timestampStarted"))
@@ -69,8 +69,8 @@ object ExecutionClientResponse {
       else Some(DefaultSerializer.serializeExecutionCommandJson.deserialize(receivedMap("executionCommandReceived")))
 
     if (receivedMap.contains("executionResultSuccess")) {
-      val either: Either[SerializedException, Map[String, String]] = readJson(receivedMap.get("executionResultSuccess"))
-      ExecutionClientResponse(timestampReceived, timestampStarted, timestampFinished, either, parsedCommand, loggerOut, loggerError)
+      val resMap: Map[String, String] = serializerMapJson.deserialize(receivedMap("executionResultSuccess"))
+      ExecutionClientResponse(timestampReceived, timestampStarted, timestampFinished, Right(resMap), parsedCommand, loggerOut, loggerError)
     } else if (receivedMap.contains("executionResultFailed")) {
       val cause: SerializedException = DefaultSerializer.serializerExceptionS.deserialize(receivedMap("executionInfoError"))
       ExecutionClientResponse(timestampReceived, timestampStarted, timestampFinished, Left(cause), parsedCommand, loggerOut, loggerError)
@@ -79,7 +79,9 @@ object ExecutionClientResponse {
     }
   }
 
-  private def readJson(json: Option[String]): Either[SerializedException, Map[String, String]] = json.match {
+
+
+  /*private def readJson(json: Option[String]): Either[SerializedException, Map[String, String]] = json.match {
     case None => Left(SerializedException("No JSON provided!"))
     case Some(jsonStr) => {
       val jsonValue: JsValue = Json.parse(jsonStr)
@@ -89,14 +91,14 @@ object ExecutionClientResponse {
         case None => Left(SerializedException("Could not parse JSON str: " + jsonStr))
       }
     }
+  }*/
+
+  def apply(timestampReceived: LocalDateTime, timestampStarted: LocalDateTime, customData: Map[String, String], parsedCommand: Option[ExecutionCommand], loggerOut: String, loggerErr: String): ExecutionClientResponse = {
+    ExecutionClientResponse(timestampReceived, timestampStarted, LocalDateTime.now(), Right(customData), parsedCommand, loggerOut, loggerErr)
   }
 
-  def apply(timestampReceived: LocalDateTime, timestampStarted: LocalDateTime, customData: Map[String, String], parsedCommand: Option[ExecutionCommand]): ExecutionClientResponse = {
-    ExecutionClientResponse(timestampReceived, timestampStarted, LocalDateTime.now(), Right(customData), parsedCommand)
-  }
-
-  def apply(timestampReceived: LocalDateTime, timestampStarted: LocalDateTime, errorMsg: String, cause: Option[SerializedException], parsedExecutionCommand: Option[ExecutionCommand]): ExecutionClientResponse = {
+  def apply(timestampReceived: LocalDateTime, timestampStarted: LocalDateTime, errorMsg: String, cause: Option[SerializedException], parsedExecutionCommand: Option[ExecutionCommand], loggerOut: String, loggerErr: String): ExecutionClientResponse = {
     val errCause: SerializedException = if (cause.nonEmpty) cause.get.asCauseOf(new Exception(errorMsg)) else SerializedException(errorMsg)
-    ExecutionClientResponse(timestampReceived, timestampStarted, LocalDateTime.now(), Left(errCause), parsedExecutionCommand)
+    ExecutionClientResponse(timestampReceived, timestampStarted, LocalDateTime.now(), Left(errCause), parsedExecutionCommand, loggerOut, loggerErr)
   }
 }
