@@ -1,40 +1,17 @@
 package it.evadid.distribution.clients
 
-import it.evadid.core.datastructures.state.async.AsyncData
-import it.evadid.core.datastructures.state.async.AsyncDataState.{AsyncDataStateFinished, AsyncDataSuccess}
-import it.evadid.distribution.*
 import it.evadid.distribution.command.*
-import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoUntyped
 import it.evadid.distribution.formats.ExecutionClientResponse
-import it.evadid.util.Logger
 import upickle.default.read
 
 import java.net.URI
-import java.net.http.{HttpClient, HttpRequest, HttpResponse}
+import java.net.http.*
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
-case class ExecuteOnRemoteServer(ip: String, port: Int) extends RemoteExecutionClient {
-
+case class JvmRemoteExecutionClient(ip: String, port: Int) extends RemoteExecutionClient {
 
   private val httpClient = HttpClient.newHttpClient()
-  /*
-
-  override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = true
-
-  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[AsyncDataStateFinished[Nothing, ExecutionInfo]] = Future {
-
-    val executionInfoJson = responseData.getOrElse(
-      "executionInfo",
-      throw new IllegalStateException("Server response is missing 'executionInfo' field")
-    )
-    val res = ExecutionInfo.fromJson(executionInfoJson)
-    AsyncDataSuccess(res)
-  }(using ExecutionContext.global)
-
-
-
-   */
 
   override protected def sendTo(ip: String, port: Int, executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = Future {
     val commandJson = executionCommand.toJson
