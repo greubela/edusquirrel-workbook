@@ -27,7 +27,6 @@ case class HomepageDataControl(fullInfo: FullInfo) {
   private lazy val cacheControl: CachedSyncControl = HomepageDataControl.CachedSyncControl(fullInfo)
 
   private[control] def updateContext(func: HomepageInfo => HomepageInfo): Future[Unit] = fullInfo.synchronized {
-
     def beforeContextChanged(): Future[Unit] = {
       downloadAllAvailableData()
       cacheControl.requestStoreAll(interactions.map(_.interactionVariable))
@@ -45,7 +44,6 @@ case class HomepageDataControl(fullInfo: FullInfo) {
         afterContextChange()
       })
     })
-
   }
 
 
@@ -59,10 +57,14 @@ case class HomepageDataControl(fullInfo: FullInfo) {
   }
 
   def updateWorkbookConfig(func: WorkbookConfig => WorkbookConfig): Unit = fullInfo.synchronized {
-    if (fullInfo.homepageInfoState.now().workbookInfo.isEmpty) throw new Exception("No workbook loaded!")
-    val currentWorkbookInfo = fullInfo.homepageInfoState.now().workbookInfo.get
-    val newWorkbookInfo = currentWorkbookInfo.copy(config = func(currentWorkbookInfo.config))
-    updateContext(_.copy(workbookInfo = Some(newWorkbookInfo)))
+    if (fullInfo.homepageInfoState.now().workbookInfo.nonEmpty){
+      val currentWorkbookInfo: AllWorkbookInfo = fullInfo.homepageInfoState.now().workbookInfo.get
+      val newWorkbookInfo: AllWorkbookInfo = currentWorkbookInfo.copy(config = func(currentWorkbookInfo.config))
+      fullInfo.homepageInfoState.update(_.copy(workbookInfo = Some(newWorkbookInfo)))
+    }else{
+      println("[WARN] ignore updated workbook config because there is no workbook loaded!")
+    }
+
   }
 
   def changeUser(userInfo: Option[AllUserInfo]): Unit = fullInfo.synchronized {
@@ -83,9 +85,8 @@ object HomepageDataControl {
 
     private given ExecutionContext = ExecutionContext.global
 
-
     // load
-    private val requestCache: AsyncDataCache[SyncInformationWithContext, SyncCache] = new AsyncDataCache[SyncInformationWithContext, SyncCache]("syncRequestCache", true, true) {
+    private val requestCache: AsyncDataCache[SyncInformationWithContext, SyncCache] = new AsyncDataCache[SyncInformationWithContext, SyncCache]("syncRequestCache", false, true) {
 
       override protected def executeLoading(in: SyncInformationWithContext)(ec: ExecutionContext): Future[SyncCache] = in.fetchAllFrom()
 
