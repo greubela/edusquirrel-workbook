@@ -44,7 +44,7 @@ object BackendCommandHandler {
   )
   )
 
-  def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[AsyncDataStateFinished[Nothing, ExecutionInfo]] = {
+  def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[AsyncDataStateFinished[Nothing, ExecutionResult]] = {
     logger.logInfo(s"[server] Received command: ${executionCommand.name} with params keys: ${executionCommand.params.keys}")
     if (executionCommand.name.trim.isEmpty) {
       logger.logError("ExecutionCommand.name must not be empty")

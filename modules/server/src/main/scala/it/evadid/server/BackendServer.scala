@@ -3,7 +3,7 @@ package it.evadid.server
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.*
-import it.evadid.distribution.formats.BackendServerResponse
+import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.util.{JvmUtils, Logger}
 import play.api.libs.json.Json
 import play.api.mvc.*
@@ -25,19 +25,19 @@ object BackendServer {
 
   private val serverStartedAt: LocalDateTime = LocalDateTime.now()
 
-  private def handleExecuteCommand(bodyOption: Option[String]): Future[BackendServerResponse] = {
+  private def handleExecuteCommand(bodyOption: Option[String]): Future[ExecutionClientResponse] = {
     val commandReceived: LocalDateTime = LocalDateTime.now()
     if (bodyOption.isEmpty || bodyOption.get.isEmpty) {
-      Future.successful(BackendServerResponse(commandReceived, "Missing execution command", None, None))
+      Future.successful(ExecutionClientResponse(commandReceived, "Missing execution command", None, None))
     } else {
       ExecutionCommand.tryParse(bodyOption.get).match {
         case Failure(err) => Future.successful(
-          BackendServerResponse(commandReceived, "Could not parse ExecutionCommand", Some(SerializedException(err)), None)
+          ExecutionClientResponse(commandReceived, "Could not parse ExecutionCommand", Some(SerializedException(err)), None)
         )
         case Success(command) => {
           BackendCommandHandler.handleExecution(command, Logger())
-            .map { (result: AsyncDataStateFinished[Nothing, ExecutionInfo]) => BackendServerResponse(commandReceived, result, Some(command)) }
-            .recover { (error: Throwable) => BackendServerResponse(commandReceived, "Error while calculating result", Some(SerializedException(error)), Some(command)) }
+            .map { (result: AsyncDataStateFinished[Nothing, ExecutionInfo]) => ExecutionClientResponse(commandReceived, result, Some(command)) }
+            .recover { (error: Throwable) => ExecutionClientResponse(commandReceived, "Error while calculating result", Some(SerializedException(error)), Some(command)) }
         }
       }
     }
@@ -58,7 +58,7 @@ object BackendServer {
           val bodyAsText = request.body.asText.orElse(request.body.asJson.map(_.toString))
 
           handleExecuteCommand(bodyAsText).map {
-            (response: BackendServerResponse) => {
+            (response: ExecutionClientResponse) => {
               val (status, responseBody) = response.sendFormat
               Status(status)(responseBody).as("application/json")
             }
