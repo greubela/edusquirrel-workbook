@@ -14,7 +14,7 @@ import scala.util.{Failure, Success, Try}
 
 trait AsyncData[F, S] {
 
-  protected given ec: ExecutionContext = ExecutionContext.global
+  protected given ExecutionContext = ExecutionContext.global
 
   val observeAllStates: ObservableValue[AsyncDataState[F, S]]
 
@@ -33,7 +33,7 @@ trait AsyncData[F, S] {
   lazy val futureFirstValue: Future[S] = futureFirstState.map {
     case AsyncDataSuccess(value) => value
     case AsyncDataFailed(err, data) => throw new Exception("AsyncData::futureFirstValue failed because underlying value was error: " + err.msg + "( additional data: " + data + ")", err)
-  }(using ec)
+  }
 
   protected def withFinishedFirstState(func: AsyncDataStateFinished[F, S] => Any): Unit = {
     futureFirstState.onComplete {
@@ -42,12 +42,67 @@ trait AsyncData[F, S] {
         val err: Throwable = Exception("AsyncFuture failed because of future error: " + exception.getMessage, exception)
         func(AsyncDataFailed(SerializedException(err), None))
       }
-    }(using ExecutionContext.global)
+    }
   }
 
-  def map[S2](func: S => S2): AsyncData[F, S2] = AsyncState(observeAllStates.deriveValue(_.map(func)))
+  def map[S2](func: S => S2): AsyncData[F, S2] = mapStates(_.map(func))
 
-  def mapIfError[F2](func: F => F2): AsyncData[F2, S] = AsyncState(observeAllStates.deriveValue(_.mapIfError(func)))
+  def mapIfError[F2](func: F => F2): AsyncData[F2, S] = mapStates(_.mapIfError(func))
+
+  private def mapStates[F2, S2](func: AsyncDataState[F, S] => AsyncDataState[F2, S2]): AsyncData[F2, S2] = AsyncState(observeAllStates.deriveValue(func))
+
+  private def mapStatesAsync[F2, S2](func: AsyncDataState[F, S] => Future[AsyncDataState[F2, S2]]): AsyncData[F2, S2] = {
+    val res: ObservableValueImpl[AsyncDataState[F2, S2]] = ObservableValueImpl(Some(AsyncDataLoading[F2, S2]()))
+
+    observeAllStates.addObserver(curState => {
+      val fut: Future[AsyncDataState[F2, S2]] = func(curState)
+      fut.onComplete {
+        case Success(value) => res.onNewValueArrived(Success(value))
+        case Failure(error) => {
+          val exception = new Exception("Error during computation of Async Value: " + error.getMessage, error)
+          res.onNewValueArrived(Success(AsyncDataFailed(SerializedException(exception), None)))
+        }
+      }
+    })
+    AsyncState(res)
+  }
+
+
+  def mapAsync[S2](func: S => Future[S2]): AsyncData[F, S2] = mapStatesAsync {
+    case AsyncDataSuccess(data) => func(data).map(AsyncDataSuccess(_))
+    case f: AsyncDataFailed[F, S] => {
+      val exception = new Exception("Skipped Async Computation because required value was already an error: " + f.cause.msg)
+      Future.successful(AsyncDataFailed[F, S2](SerializedException(exception), f.additionalData))
+    }
+    case l: AsyncDataLoading[F, S] => Future.successful(l.asInstanceOf[AsyncDataState[F, S2]])
+  }
+
+  def recoverOnErrorIgnoreError(func: AsyncDataFailed[F, S] => Future[AsyncDataStateFinished[F, S]]) = {
+    val res: ObservableValueImpl[AsyncDataState[F, S]] = ObservableValueImpl(Some(AsyncDataLoading[F, S]()))
+
+    observeAllStates.addObserver {
+      case f: AsyncDataFailed[F, S] => func(f).onComplete {
+        case Failure(err) => {
+          val newErr = Exception("Error during recovery of AsyncDataFailed: " + err.getMessage, err)
+          res.onNewValueArrived(Success(AsyncDataFailed(newErr, None)))
+        }
+        case Success(state) => {
+          res.onNewValueArrived(Success(state))
+        }
+      }
+      case other: AsyncDataSuccess[F, S] => res.onNewValueArrived(Success(other))
+      case loading: AsyncDataLoading[F, S] => {}
+    }
+
+    AsyncState(res)
+
+  }
+
+  def recoverOnErrorPushError(func: AsyncDataFailed[F, S] => Future[AsyncDataStateFinished[F, S]]): AsyncData[F, S] = mapStatesAsync {
+    case AsyncDataFailed(cause, data) => func(AsyncDataFailed(cause, data))
+    case other: AsyncDataState[F, S] => Future.successful(other)
+  }
+
 
   def combineIgnoreErrorData[F2, S2](other: AsyncData[F2, S2]): AsyncData[Nothing, (S, S2)] = {
     val res = State[AsyncDataState[Nothing, (S, S2)]](AsyncDataLoading())
@@ -74,28 +129,6 @@ trait AsyncData[F, S] {
     combineIgnoreErrorData(other).map(tup => mapFunc(tup._1, tup._2))
   }
 
-
-  def mapAsync[S2](func: S => Future[S2]): AsyncData[F, S2] = {
-    val res: ObservableValueImpl[AsyncDataState[F, S2]] = ObservableValueImpl(Some(AsyncDataLoading[F, S2]()))
-
-    def onNewBaseValueArrived(resTry: Try[S2]): Unit = resTry.match {
-      case Success(value) => res.onNewValueArrived(Success(AsyncDataSuccess(value)))
-      case Failure(error) => res.onNewValueArrived(Success(AsyncDataFailed(SerializedException(error), None)))
-    }
-
-    observeAllStates.addObserver {
-      case AsyncDataSuccess(data) => func(data).onComplete(onNewBaseValueArrived)(using ec)
-      case f: AsyncDataFailed[F, S] => {
-        val exception = new Exception("Skipped Async Computation because required value was already an error: " + f.cause.msg)
-        res.onNewValueArrived(Success(AsyncDataFailed(SerializedException(exception), f.additionalData)))
-      }
-      case l: AsyncDataLoading[F, S] => res.onNewValueArrived(Success(AsyncDataLoading[F, S2]()))
-    }
-
-    AsyncState(res)
-
-  }
-
   def stateNow(): AsyncDataState[F, S]
 
 }
@@ -108,6 +141,11 @@ object AsyncData {
   def forOption[S](option: Option[S]): AsyncValue[Nothing, S] = option.match {
     case Some(value) => AsyncValue(AsyncDataSuccess(value))
     case None => AsyncValue(AsyncDataFailed[Nothing, S](Exception("AsyncData::forOption with empty option")))
+  }
+
+  def forStateFuture[F, S](future: Future[AsyncDataStateFinished[F, S]]): AsyncFuture[F, S] = {
+    val res: Future[Either[FailureInfo[F], S]] = future.map(_.asEither)(using ExecutionContext.global)
+    AsyncFuture[F, S](res)
   }
 
   def forFuture[S](future: Future[S]): AsyncFuture[Nothing, S] = {

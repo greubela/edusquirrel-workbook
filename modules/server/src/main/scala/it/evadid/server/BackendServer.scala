@@ -3,18 +3,19 @@ package it.evadid.server
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.*
+import it.evadid.distribution.formats.BackendServerResponse
 import it.evadid.util.{JvmUtils, Logger}
 import play.api.libs.json.Json
-import play.api.mvc.Results.*
 import play.api.mvc.*
+import play.api.mvc.Results.*
 import play.api.routing.sird.*
 import play.core.server.{NettyServer, ServerConfig}
 import upickle.default.write
 
 import java.io.{PrintWriter, StringWriter}
 import java.time.LocalDateTime
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.*
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
 /**
@@ -24,23 +25,21 @@ object BackendServer {
 
   private val serverStartedAt: LocalDateTime = LocalDateTime.now()
 
-  private def handleExecuteCommand(bodyOption: Option[String]): Future[(Int, String)] = {
-    if (bodyOption.isEmpty || bodyOption.get.isEmpty) Future.successful((400, Json.obj("error" -> "Missing request body for executeCommand").toString()))
-    else {
-      val promise: Promise[(Int, String)] = Promise[(Int, String)]()
-      val executionCommand = ExecutionCommand.fromJson(bodyOption.get)
-      val execRes = BackendCommandHandler.handleExecution(executionCommand, Logger().withPrintToStd())
-      execRes.futureFirstState.onComplete {
-        case Success(state) => state.match {
-          case AsyncDataSuccess(exInfo) => promise.success(200, write(Map("executionInfo" -> DefaultSerializer.serializerExecutionInfoJson.serialize(exInfo.toUntyped))))
-          case AsyncDataFailed(cause, additionalData) => {
-            val exception = new Exception("Execution failed in BackendServer::handleExecuteCommand: " + cause.getMessage + "\nAdditional info: " + additionalData, cause )
-            promise.failure(exception)
-          }
+  private def handleExecuteCommand(bodyOption: Option[String]): Future[BackendServerResponse] = {
+    val commandReceived: LocalDateTime = LocalDateTime.now()
+    if (bodyOption.isEmpty || bodyOption.get.isEmpty) {
+      Future.successful(BackendServerResponse(commandReceived, "Missing execution command", None, None))
+    } else {
+      ExecutionCommand.tryParse(bodyOption.get).match {
+        case Failure(err) => Future.successful(
+          BackendServerResponse(commandReceived, "Could not parse ExecutionCommand", Some(SerializedException(err)), None)
+        )
+        case Success(command) => {
+          BackendCommandHandler.handleExecution(command, Logger())
+            .map { (result: AsyncDataStateFinished[Nothing, ExecutionInfo]) => BackendServerResponse(commandReceived, result, Some(command)) }
+            .recover { (error: Throwable) => BackendServerResponse(commandReceived, "Error while calculating result", Some(SerializedException(error)), Some(command)) }
         }
-        case Failure(err) => promise.failure(err)
-      }(using ExecutionContext.global)
-      promise.future
+      }
     }
   }
 
@@ -59,7 +58,10 @@ object BackendServer {
           val bodyAsText = request.body.asText.orElse(request.body.asJson.map(_.toString))
 
           handleExecuteCommand(bodyAsText).map {
-            case (status, responseBody) => Status(status)(responseBody).as("application/json")
+            (response: BackendServerResponse) => {
+              val (status, responseBody) = response.sendFormat
+              Status(status)(responseBody).as("application/json")
+            }
           }.recover {
             case err =>
               val stackWriter = StringWriter()

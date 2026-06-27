@@ -140,6 +140,12 @@ object DefaultSerializer {
   lazy val serializerSendMailRequestJson: Serializer[SendMailRequest] = Serializer.fromUpickleJson[SendMailRequest](sendMailReq)
   lazy val serializerSendMailResponseJson: Serializer[SendMailResponse] = Serializer.fromUpickleJson[SendMailResponse](sendMailRes)
   lazy val serializerStringJson: Serializer[String] = Serializer.stringIO
+  lazy val serializerExceptionS: Serializer[SerializedException] = Serializer.fromUpickleJson(errSer)
+  lazy val serializerException: Serializer[Throwable] = new Serializer[Throwable] {
+    override def serialize(obj: Throwable): String = serializerExceptionS.serialize(SerializedException(obj))
+    override def deserialize(str: String): Throwable = serializerExceptionS.deserialize(str)
+  }
+
   /*
 
 

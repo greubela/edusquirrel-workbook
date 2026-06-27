@@ -1,6 +1,7 @@
 package it.evadid.distribution.command
 
 import it.evadid.core.datastructures.state.async.AsyncData
+import it.evadid.core.datastructures.state.async.AsyncDataState.AsyncDataStateFinished
 import it.evadid.core.util.io.{Serializer, TypeConverter}
 import it.evadid.distribution.clients.{ExecutionClient, LocalExecutionClient}
 import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoTyped
@@ -43,8 +44,8 @@ case class ExecutionCommandFactory[I, O](
 
   def sendCommandTo(client: ExecutionClient, logger: Logger, data: I): AsyncData[Nothing, ExecutionInfoTyped[O]] = {
     val command: ExecutionCommand = toCommand(data)
-    val async: AsyncData[Nothing, ExecutionInfo] = client.handleExecution(command, logger)
-    async.map(_.toTyped[O](rawMap => serializerOut.deserialize(TypeConverter.singleValueMap.convertToO(rawMap))))
+    val async: Future[AsyncDataStateFinished[Nothing, ExecutionInfo]] = client.handleExecution(command, logger)
+    AsyncData.forStateFuture(async).map(_.toTyped[O](rawMap => serializerOut.deserialize(TypeConverter.singleValueMap.convertToO(rawMap))))
   }
 
 }

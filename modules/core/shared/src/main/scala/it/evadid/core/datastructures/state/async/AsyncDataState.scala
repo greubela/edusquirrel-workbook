@@ -32,6 +32,9 @@ object AsyncDataState {
   sealed trait AsyncDataStateFinished[F, S] extends AsyncDataState[F, S] {
     val asEither: Either[FailureInfo[F], S]
     val isLoading: Boolean = false
+
+    def mapFinished[S2](func: S => S2): AsyncDataStateFinished[F, S2] = map(func).asInstanceOf[AsyncDataStateFinished[F, S2]]
+
   }
 
   case class AsyncDataSuccess[F, S](dataValue: S) extends AsyncDataStateFinished[F, S] {

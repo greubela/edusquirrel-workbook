@@ -9,7 +9,7 @@ import scala.util.{Failure, Success}
 
 case class AsyncFuture[F, S](underlying: Future[Either[FailureInfo[F], S]]) extends AsyncData[F, S] {
 
-  override def map[S2](func: S => S2): AsyncData[F, S2] = AsyncFuture(underlying.map(_.map(func))(using ec))
+  override def map[S2](func: S => S2): AsyncData[F, S2] = AsyncFuture(underlying.map(_.map(func)))
 
   override def mapIfError[F2](func: F => F2): AsyncData[F2, S] = AsyncFuture(underlying.map(_.swap.map(_.map(func)).swap))
 

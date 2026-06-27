@@ -1,6 +1,7 @@
 package it.evadid.server
 
 import it.evadid.core.datastructures.state.async.AsyncData
+import it.evadid.core.datastructures.state.async.AsyncDataState.AsyncDataStateFinished
 import it.evadid.distribution.clients.*
 import it.evadid.distribution.command.*
 import it.evadid.distribution.commandTypes.LLMCommands.{FeedbackLlmRequest, MessengerChatCompletionRequest}
@@ -43,7 +44,7 @@ object BackendCommandHandler {
   )
   )
 
-  def handleExecution(executionCommand: ExecutionCommand, logger: Logger): AsyncData[Nothing, ExecutionInfo] = {
+  def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[AsyncDataStateFinished[Nothing, ExecutionInfo]] = {
     logger.logInfo(s"[server] Received command: ${executionCommand.name} with params keys: ${executionCommand.params.keys}")
     if (executionCommand.name.trim.isEmpty) {
       logger.logError("ExecutionCommand.name must not be empty")

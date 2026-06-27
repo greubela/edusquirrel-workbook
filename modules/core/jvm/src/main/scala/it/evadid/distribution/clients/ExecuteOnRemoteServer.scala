@@ -1,6 +1,7 @@
 package it.evadid.distribution.clients
 
 import it.evadid.core.datastructures.state.async.AsyncData
+import it.evadid.core.datastructures.state.async.AsyncDataState.{AsyncDataStateFinished, AsyncDataSuccess}
 import it.evadid.distribution.*
 import it.evadid.distribution.command.*
 import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoUntyped
@@ -18,8 +19,7 @@ case class ExecuteOnRemoteServer(ip: String, port: Int) extends ExecutionClient 
 
   override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = true
 
-  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): AsyncData[Nothing, ExecutionInfo] = AsyncData.forFuture(
-    Future {
+  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[AsyncDataStateFinished[Nothing, ExecutionInfo]] = Future {
     val commandJson = executionCommand.toJson
     val request = HttpRequest
       .newBuilder(URI.create(s"http://$ip:$port/executeCommand"))
@@ -37,7 +37,12 @@ case class ExecuteOnRemoteServer(ip: String, port: Int) extends ExecutionClient 
       "executionInfo",
       throw new IllegalStateException("Server response is missing 'executionInfo' field")
     )
-    ExecutionInfo.fromJson(executionInfoJson)
-  }(using ExecutionContext.global))
+    val res = ExecutionInfo.fromJson(executionInfoJson)
+    AsyncDataSuccess(res)
+  }(using ExecutionContext.global)
 
 }
+
+
+
+

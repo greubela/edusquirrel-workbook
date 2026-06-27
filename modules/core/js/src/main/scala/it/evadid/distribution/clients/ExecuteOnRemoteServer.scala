@@ -1,5 +1,6 @@
 package it.evadid.distribution.clients
 
+import it.evadid.core.datastructures.state.async.AsyncDataState.{AsyncDataStateFinished, AsyncDataSuccess}
 import it.evadid.core.datastructures.state.async.{AsyncData, AsyncFuture}
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import org.scalajs.dom
@@ -17,10 +18,9 @@ import it.evadid.util.Logger
 
 case class ExecuteOnRemoteServer(hostname: String, port: Int) extends ExecutionClient {
 
-
   override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = true
 
-  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): AsyncData[Nothing, ExecutionInfo] = {
+  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[AsyncDataStateFinished[Nothing, ExecutionInfo]] = {
     val requested = LocalDateTime.now()
     val commandJson = executionCommand.toJson
     val dest = if (hostname.startsWith("http")) {
@@ -52,6 +52,6 @@ case class ExecuteOnRemoteServer(hostname: String, port: Int) extends ExecutionC
         timeFixed
       }
     }
-    AsyncData.forFuture(future)
+    future.map((futVal: ExecutionInfoUntyped) => AsyncDataSuccess(futVal))
   }
 }

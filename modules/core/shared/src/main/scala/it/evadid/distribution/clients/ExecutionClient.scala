@@ -1,6 +1,7 @@
 package it.evadid.distribution.clients
 
 import it.evadid.core.datastructures.state.async.AsyncData
+import it.evadid.core.datastructures.state.async.AsyncDataState.AsyncDataStateFinished
 import it.evadid.distribution.command.*
 import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoUntyped
 import it.evadid.util.Logger
@@ -12,9 +13,9 @@ trait ExecutionClient {
 
   def canExecuteCommand(executionCommand: ExecutionCommand): Boolean
 
-  def handleExecution(executionCommand: ExecutionCommand, logger: Logger): AsyncData[Nothing, ExecutionInfo]
+  //def handleExecution(executionCommand: ExecutionCommand, logger: Logger): AsyncData[Nothing, ExecutionInfo]
 
-  //def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[AsyncStateFinished[Nothing, ExecutionInfoUntyped]]
+  def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[AsyncDataStateFinished[Nothing, ExecutionInfo]]
 
   def makeSynchronized(ec: ExecutionContext): ExecutionClient = SynchronizedExecutionClient(this, ec)
 
