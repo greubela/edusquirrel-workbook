@@ -35,10 +35,10 @@ private case class SynchronizedExecutionClient(baseHandler: ExecutionClient, ec:
       running = true
       val timestampStarted: LocalDateTime = LocalDateTime.now()
       queuedCommand.logger.logInfo(s"ExecutionClient: start to execute command ${queuedCommand.command.name} at ${timestampStarted}")
-      baseHandler.handleExecution(queuedCommand.command).onComplete {
-        case Success(response) => {
-          val fixedTime: ExecutionClientResponse = response.copy(timestampReceived = queuedCommand.timeReceived)
-          queuedCommand.promise.success(fixedTime)
+      baseHandler.executeCommand(queuedCommand.command, queuedCommand.logger).onComplete {
+        case Success(resMap) => {
+          val result: ExecutionClientResponse = ExecutionClientResponse(queuedCommand.timeReceived, timestampStarted, LocalDateTime.now(), Right(resMap), Some(queuedCommand.command), queuedCommand.logger.getOut(), queuedCommand.logger.getErr())
+          queuedCommand.promise.success(result)
           afterFinished()
         }
         case Failure(err) => {
@@ -54,4 +54,5 @@ private case class SynchronizedExecutionClient(baseHandler: ExecutionClient, ec:
 
   override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = baseHandler.canExecuteCommand(executionCommand)
 
+  override private[distribution] def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]] = baseHandler.executeCommand(executionCommand, logger)
 }

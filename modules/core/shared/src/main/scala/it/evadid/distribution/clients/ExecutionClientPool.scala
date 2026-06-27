@@ -42,7 +42,7 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
     } else {
       val timestampStarted: LocalDateTime = LocalDateTime.now()
       handlers.head.executeCommand(command, logger)
-        .map((resMap: Map[String, String]) => {
+        .map(resMap => {
           ExecutionClientResponse(timestampReceived, timestampStarted, LocalDateTime.now(), Right(resMap), Some(command), logger.getOut(), logger.getErr())
         })(using ExecutionContext.global)
         .recoverWith((err: Throwable) =>
@@ -54,4 +54,7 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
     }
   }
 
+  override private[distribution] def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]] = {
+    handleExecution(executionCommand).map(_.response.toOption.get)(using ExecutionContext.global)
+  }
 }

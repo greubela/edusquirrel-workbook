@@ -16,6 +16,7 @@ trait LocalExecutionClient extends ExecutionClient {
 
   protected given ExecutionContext = ExecutionContext.global
 
+
   override def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = {
     val timestampReceived: LocalDateTime = LocalDateTime.now()
     val logger = Logger()
