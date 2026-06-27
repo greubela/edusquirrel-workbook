@@ -15,7 +15,7 @@ trait ExecutionClient {
 
   //def handleExecution(executionCommand: ExecutionCommand, logger: Logger): AsyncData[Nothing, ExecutionInfo]
 
-  def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]]
+  //def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]]
 
   def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse]
 

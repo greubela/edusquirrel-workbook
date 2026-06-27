@@ -16,8 +16,6 @@ private case class SynchronizedExecutionClient(baseHandler: ExecutionClient, ec:
   private val queue = mutable.Queue.empty[QueuedCommand]
   private var running = false
 
-  override def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]] = baseHandler.executeCommand(executionCommand, logger)
-
   override def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = queue.synchronized {
     val promise = Promise[ExecutionClientResponse]()
     queue.enqueue(QueuedCommand(executionCommand, promise, LocalDateTime.now(), Logger()))
@@ -37,10 +35,10 @@ private case class SynchronizedExecutionClient(baseHandler: ExecutionClient, ec:
       running = true
       val timestampStarted: LocalDateTime = LocalDateTime.now()
       queuedCommand.logger.logInfo(s"ExecutionClient: start to execute command ${queuedCommand.command.name} at ${timestampStarted}")
-      executeCommand(queuedCommand.command, queuedCommand.logger).onComplete {
-        case Success(resMap) => {
-          val res = ExecutionClientResponse(queuedCommand.timeReceived, timestampStarted, LocalDateTime.now(), Right(resMap), Some(queuedCommand.command), queuedCommand.logger.getOut(), queuedCommand.logger.getErr())
-          queuedCommand.promise.success(res)
+      baseHandler.handleExecution(queuedCommand.command).onComplete {
+        case Success(response) => {
+          val fixedTime: ExecutionClientResponse = response.copy(timestampReceived = queuedCommand.timeReceived)
+          queuedCommand.promise.success(fixedTime)
           afterFinished()
         }
         case Failure(err) => {

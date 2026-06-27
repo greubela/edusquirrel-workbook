@@ -21,8 +21,6 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
 
   override def allUnderlyingClients: List[ExecutionClient] = clients
 
-  override def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]] = ???
-
   override def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = {
     val timestampReceived: LocalDateTime = LocalDateTime.now()
     val allHandlers = allThatCanExecute(executionCommand)

@@ -5,6 +5,7 @@ import it.evadid.core.datastructures.state.async.AsyncDataState.{AsyncDataStateF
 import it.evadid.distribution.*
 import it.evadid.distribution.command.*
 import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoUntyped
+import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.util.Logger
 import upickle.default.read
 
@@ -15,6 +16,14 @@ import scala.util.Try
 
 case class ExecuteOnRemoteServer(ip: String, port: Int) extends ExecutionClient {
 
+
+  override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = true
+
+  override def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]] = ???
+
+  override def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = ???
+
+  /*
   private val httpClient = HttpClient.newHttpClient()
 
   override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = true
@@ -40,6 +49,10 @@ case class ExecuteOnRemoteServer(ip: String, port: Int) extends ExecutionClient 
     val res = ExecutionInfo.fromJson(executionInfoJson)
     AsyncDataSuccess(res)
   }(using ExecutionContext.global)
+
+
+
+   */
 
 }
 
