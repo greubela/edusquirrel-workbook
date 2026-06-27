@@ -80,19 +80,6 @@ object ExecutionClientResponse {
   }
 
 
-
-  /*private def readJson(json: Option[String]): Either[SerializedException, Map[String, String]] = json.match {
-    case None => Left(SerializedException("No JSON provided!"))
-    case Some(jsonStr) => {
-      val jsonValue: JsValue = Json.parse(jsonStr)
-      val safeMap: Option[Map[String, String]] = jsonValue.asOpt[Map[String, String]]
-      safeMap match {
-        case Some(map) => Right(map)
-        case None => Left(SerializedException("Could not parse JSON str: " + jsonStr))
-      }
-    }
-  }*/
-
   def apply(timestampReceived: LocalDateTime, timestampStarted: LocalDateTime, customData: Map[String, String], parsedCommand: Option[ExecutionCommand], loggerOut: String, loggerErr: String): ExecutionClientResponse = {
     ExecutionClientResponse(timestampReceived, timestampStarted, LocalDateTime.now(), Right(customData), parsedCommand, loggerOut, loggerErr)
   }
