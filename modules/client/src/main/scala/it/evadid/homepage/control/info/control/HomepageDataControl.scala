@@ -24,7 +24,7 @@ case class HomepageDataControl(fullInfo: FullInfo) {
 
   def downloadAllAvailableData(): Unit = fullInfo.current.workbookUserData.foreach(_.downloadAllData())
 
-  private val cacheControl: CachedSyncControl = HomepageDataControl.CachedSyncControl(fullInfo)
+  private lazy val cacheControl: CachedSyncControl = HomepageDataControl.CachedSyncControl(fullInfo)
 
   private[control] def updateContext(func: HomepageInfo => HomepageInfo): Future[Unit] = fullInfo.synchronized {
 

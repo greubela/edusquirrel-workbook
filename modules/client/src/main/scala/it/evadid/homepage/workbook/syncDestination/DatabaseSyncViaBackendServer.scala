@@ -17,7 +17,7 @@ import scala.util.*
 
 case class DatabaseSyncViaBackendServer(dbName: String) extends SyncDestination {
 
-  private def backend: ExecutionClient = HtmlFullWorkbookApp.fullInfo.technical.backendServerExecutor
+  private lazy val backend: ExecutionClient = HtmlFullWorkbookApp.fullInfo.technical.backendServerExecutor
 
   private given ec: ExecutionContext = ExecutionContext.global
 
