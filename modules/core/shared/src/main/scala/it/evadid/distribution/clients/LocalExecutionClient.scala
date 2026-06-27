@@ -18,6 +18,7 @@ trait LocalExecutionClient extends ExecutionClient {
 
   protected def getExecutionContext: ExecutionContext = ExecutionContext.global
 
+  /*
   override def handleCommand(executionCommand: ExecutionCommand, logger: Logger): Future[AsyncDataStateFinished[Nothing, ExecutionInfo]] = {
     val timeExecutionRequested: LocalDateTime = LocalDateTime.now()
     val fut: Future[AsyncDataStateFinished[Nothing, ExecutionInfo]] = handleExecution(executionCommand, logger).map {
@@ -27,7 +28,7 @@ trait LocalExecutionClient extends ExecutionClient {
       }
     }(using getExecutionContext)
     fut
-  }
+  }*/
 
   /*private def execute(executionCommand: ExecutionCommand): Future[(ExecutionResult, ExecutionDuration, Logger)] = {
     val timeExecutionStarted = LocalDateTime.now()

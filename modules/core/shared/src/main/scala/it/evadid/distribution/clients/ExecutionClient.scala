@@ -1,8 +1,9 @@
 package it.evadid.distribution.clients
 
-import it.evadid.core.datastructures.state.async.AsyncDataState.AsyncDataStateFinished
 import it.evadid.distribution.command.*
 import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoUntyped
+import it.evadid.distribution.command.ExecutionResult.ExecutionResultUntyped
+import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.util.Logger
 
 import java.time.LocalDateTime
@@ -14,20 +15,28 @@ trait ExecutionClient {
 
   //def handleExecution(executionCommand: ExecutionCommand, logger: Logger): AsyncData[Nothing, ExecutionInfo]
 
-  protected def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionResult]
+  protected def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]]
 
-  protected def handleExecution(executionCommand: ExecutionCommand): Future[(ExecutionResult, ExecutionDuration, Logger)] = {
-    val timeExecutionStarted: LocalDateTime = LocalDateTime.now()
-    val logger = Logger()
-    val resultFuture: Future[ExecutionResult] = executeCommand(executionCommand, logger)
-    resultFuture.map(result => {
-      val timeExecutionFinished = LocalDateTime.now()
-      val res = (result, ExecutionDuration(timeExecutionStarted, timeExecutionFinished), logger)
-      res
-    })(using ExecutionContext.global)
+  protected def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse]
+
+  def handleCommand(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionInfo]
+
+  protected def finishUnsafeWithResponse(executionCommand: ExecutionCommand, timestampRequested: LocalDateTime, response: ExecutionClientResponse): ExecutionInfo = {
+    val history = ExecutionHistory(timestampRequested, response.timestampReceived, response.timestampStarted, response.timestampFinished)
+    response.response.match {
+      case Left(err) =>
+        println("ExecutionClientResponse indicated an error: \n" + response)
+        throw err
+      case Right(resMap) =>
+        val result = ExecutionResultUntyped(resMap, response.loggerOut, response.loggerError)
+        ExecutionInfoUntyped(executionCommand, result, history)
+    }
   }
 
-  def handleCommand(executionCommand: ExecutionCommand, logger: Logger): Future[AsyncDataStateFinished[Nothing, ExecutionInfo]]
+  def handleCommand(executionCommand: ExecutionCommand): Future[ExecutionInfo] = {
+    val timestampRequested: LocalDateTime = LocalDateTime.now()
+    handleExecution(executionCommand).map(finishUnsafeWithResponse(executionCommand, timestampRequested, _))(using ExecutionContext.global)
+  }
 
   def makeSynchronized(ec: ExecutionContext): ExecutionClient = SynchronizedExecutionClient(this, ec)
 
