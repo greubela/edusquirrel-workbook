@@ -25,21 +25,21 @@ object BackendServer {
 
   private val serverStartedAt: LocalDateTime = LocalDateTime.now()
 
+
+  def fail(commandReceived: LocalDateTime, msg: String, cause: Option[SerializedException], command: Option[ExecutionCommand], logger: Logger): ExecutionClientResponse = {
+    logger.logError(msg)
+    ExecutionClientResponse(commandReceived, commandReceived, msg, cause, command, logger.getOut(), logger.getErr())
+  }
+
   private def handleExecuteCommand(bodyOption: Option[String]): Future[ExecutionClientResponse] = {
     val commandReceived: LocalDateTime = LocalDateTime.now()
-    if (bodyOption.isEmpty || bodyOption.get.isEmpty) {
-      Future.successful(ExecutionClientResponse(commandReceived, "Missing execution command", None, None))
-    } else {
-      ExecutionCommand.tryParse(bodyOption.get).match {
-        case Failure(err) => Future.successful(
-          ExecutionClientResponse(commandReceived, "Could not parse ExecutionCommand", Some(SerializedException(err)), None)
-        )
-        case Success(command) => {
-          BackendCommandHandler.handleExecution(command, Logger())
-            .map { (result: AsyncDataStateFinished[Nothing, ExecutionInfo]) => ExecutionClientResponse(commandReceived, result, Some(command)) }
-            .recover { (error: Throwable) => ExecutionClientResponse(commandReceived, "Error while calculating result", Some(SerializedException(error)), Some(command)) }
-        }
-      }
+    val logger = Logger()
+
+    if (bodyOption.isEmpty || bodyOption.get.isEmpty)
+      Future.successful(fail(commandReceived, "No Request Body Found", None, None, logger))
+    else ExecutionCommand.tryParse(bodyOption.get).match {
+      case Failure(err) => Future.successful(fail(commandReceived, "Could not parse ExecutionCommand", Some(SerializedException(err)), None, logger))
+      case Success(command) => BackendCommandHandler.handleExecution(command, logger)
     }
   }
 

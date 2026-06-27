@@ -9,11 +9,11 @@ import scala.concurrent.Future
 trait RemoteExecutionClient extends ExecutionClient {
 
   def ip: String
-  def port: String
+  def port: Int
 
   override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = true
 
-  def sendTo(ip: String, port: String, command: ExecutionCommand): Future[ExecutionClientResponse] = ???
+  def sendTo(ip: String, port: Int, command: ExecutionCommand): Future[ExecutionClientResponse] = ???
 
   override def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = {
     sendTo(ip, port, executionCommand)

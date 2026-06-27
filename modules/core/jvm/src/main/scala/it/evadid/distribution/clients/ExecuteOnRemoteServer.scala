@@ -14,14 +14,7 @@ import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
-case class ExecuteOnRemoteServer(ip: String, port: Int) extends ExecutionClient {
-
-  override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = true
-
-  override private[distribution] def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]] = ???
-
-  override def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = ???
-
+case class ExecuteOnRemoteServer(ip: String, port: Int) extends RemoteExecutionClient {
 
 
   /*
