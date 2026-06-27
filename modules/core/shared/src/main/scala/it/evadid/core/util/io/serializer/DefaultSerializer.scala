@@ -146,6 +146,11 @@ object DefaultSerializer {
     override def deserialize(str: String): Throwable = serializerExceptionS.deserialize(str)
   }
 
+
+  private given stringMapRW: ReadWriter[Map[String, String]] = readwriter[Map[String, String]].bimap[Map[String, String]](_.toMap, _.toMap)
+
+  val serializerStringMap: Serializer[Map[String, String]] = Serializer.fromUpickleJson(stringMapRW)
+
   /*
 
 

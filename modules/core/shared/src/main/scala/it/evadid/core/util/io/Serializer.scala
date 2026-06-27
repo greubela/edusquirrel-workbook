@@ -47,6 +47,7 @@ object Serializer {
       else None
   }
 
+
   val stringIO: Serializer[String] = new Serializer[String] {
     override def serialize(obj: String): String = obj
 

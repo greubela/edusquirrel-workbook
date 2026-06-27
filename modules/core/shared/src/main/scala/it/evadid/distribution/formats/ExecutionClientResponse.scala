@@ -12,7 +12,6 @@ case class ExecutionClientResponse(
                                     timestampStarted: LocalDateTime,
                                     timestampFinished: LocalDateTime,
                                     response: Either[SerializedException, Map[String, String]],
-                                    //asyncDataStateFinished: AsyncDataStateFinished[Nothing, ExecutionResult],
                                     parsedExecutionCommand: Option[ExecutionCommand],
                                     loggerOut: String,
                                     loggerError: String
@@ -56,7 +55,7 @@ case class ExecutionClientResponse(
 
 object ExecutionClientResponse {
 
-  private val serializerMapJson: Serializer[Map[String, String]] = ???
+  private val serializerMapJson: Serializer[Map[String, String]] = DefaultSerializer.serializerStringMap
 
   def apply(receivedMap: Map[String, String]): ExecutionClientResponse = {
     val timestampReceived: LocalDateTime = DefaultSerializer.serializerLocalDateTimeString.deserialize(receivedMap("timestampReceived"))

@@ -15,11 +15,9 @@ trait ExecutionClient {
 
   //def handleExecution(executionCommand: ExecutionCommand, logger: Logger): AsyncData[Nothing, ExecutionInfo]
 
-  protected def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]]
+  def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]]
 
-  protected def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse]
-
-  def handleCommand(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionInfo]
+  def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse]
 
   protected def finishUnsafeWithResponse(executionCommand: ExecutionCommand, timestampRequested: LocalDateTime, response: ExecutionClientResponse): ExecutionInfo = {
     val history = ExecutionHistory(timestampRequested, response.timestampReceived, response.timestampStarted, response.timestampFinished)
