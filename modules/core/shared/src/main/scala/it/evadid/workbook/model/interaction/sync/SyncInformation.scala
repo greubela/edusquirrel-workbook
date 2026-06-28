@@ -3,7 +3,7 @@ package it.evadid.workbook.model.interaction.sync
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.model.interaction.sync.SyncFormatter.InteractionSyncRequest
 import it.evadid.workbook.model.interaction.sync.SyncInformation.SyncInformationWithContext
-import it.evadid.workbook.model.interaction.variable.{InteractionVariableHistory, InteractionVariableHistorySerialized}
+import it.evadid.workbook.model.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableHistorySerialized}
 
 import java.time.LocalDateTime
 import scala.collection.mutable
@@ -40,14 +40,6 @@ object SyncInformation {
 
     private given ec: ExecutionContext = ExecutionContext.global
 
-    def storeTo[T](key: String, history: InteractionVariableHistory[T], serializer: Serializer[T]): Future[SyncSuccess] = {
-      val syncContext: SyncContext = usageContext.toSyncContext(key)
-      val historySerialized: InteractionVariableHistorySerialized = history.serializedWithStrategy(syncStrategy, serializer)
-      val diff = history.events.size - historySerialized.states.size
-      println(s"Syncing $key to ${syncSource} with strategy $syncStrategy, diff of $diff")
-      syncSource.storeTo(syncContext, InteractionSyncRequest(syncContext, historySerialized), formatter)
-    }
-
     def informAboutContextSwitch(): Future[SyncSuccess] = if (!syncSource.shouldBePersistant()) syncSource.clearAllValues(usageContext) else Future.successful(SyncSuccess(0, 0, 0, LocalDateTime.now()))
 
     def tryParseValue(key: SyncContext, value: String): Option[(SyncContext, InteractionVariableHistorySerialized)] = {
@@ -55,7 +47,6 @@ object SyncInformation {
     }
 
     def fetchAllFrom(useTimestampForCache: LocalDateTime = LocalDateTime.now()): Future[SyncCache] = {
-
 
       def deserialize(resMap: Map[SyncContext, String]): Map[SyncContext, InteractionVariableHistorySerialized] = {
         val res = mutable.Map.empty[SyncContext, InteractionVariableHistorySerialized]

@@ -24,6 +24,15 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean = false,
 
   private def emptyAsyncState: State[AsyncDataState[Nothing, O]] = State(AsyncDataLoading[Nothing, O]())
 
+  def getSyncIfInCache(input: I, loadIfNotPresent: Boolean = true): Option[O] = cachedRequests.synchronized {
+    val res: Option[O] = cachedRequests.get(input).match {
+      case Some(finished: SucceededRequest[I, O]) => Some(finished.output)
+      case _ => None
+    }
+    if (res.isEmpty && loadIfNotPresent) ensureCache(input)
+    res
+  }
+
   private def ensureCache(input: I, forceReloading: CachedRequest[I, O] => Boolean = _ => false): CachedRequest[I, O] = {
     val cachedElement: Option[CachedRequest[I, O]] = cachedRequests.get(input)
     //logInfo("ensuring cache for " + formatInputForLogging(input) + " (forceReloading: " + forceReloading + ", cached: " +isInCache + ")")

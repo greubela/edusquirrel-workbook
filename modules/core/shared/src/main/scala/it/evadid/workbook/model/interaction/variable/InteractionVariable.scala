@@ -67,6 +67,7 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
     innerState.update(_.withAddedEvents(underlyingInteraction.serializer, history))
   }
 
+  /*
   def executeStore(syncSource: SyncInformationWithContext): Unit = {
 
     //val serialized = innerState.now().serializedWithStrategy(syncSource.syncStrategy, underlyingInteraction.serializer)
@@ -77,7 +78,7 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
         + ", current value: " + innerState.now().lastState.value
         + ", last update time: " + InfoUtil.datetimeFormattedForLog(innerState.now().lastState.timestamp) + ", total events: " + innerState.now().events.size + ")")
     }
-  }
+  }*/
 
   def executeLoad(syncCache: List[SyncCache]): Unit = this.synchronized {
     syncCache.foreach((curCache: SyncCache) => {
@@ -135,7 +136,7 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
       val newInteractionState = InteractionVariableState[T](newValue, updateSize, timestamp)
       innerState.update(_.withAddedEvent(newInteractionState))
       if (syncControl.now().nonEmpty) {
-        syncControl.now().foreach(_.requestStore(keyForSerialization, innerState.now(), underlyingInteraction.serializer))
+        syncControl.now().foreach(_.requestStore(this))
       } else {
         println("[WARN] changed update was not committed because no syncTarget was available!")
       }

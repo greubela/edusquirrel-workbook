@@ -23,7 +23,7 @@ case class HomepageDataControl(fullInfo: FullInfo) {
 
   def downloadAllAvailableData(): Unit = fullInfo.current.workbookUserData.foreach(_.downloadAllData())
 
-  private lazy val cacheControl: CachedSyncControl = HomepageDataControl.CachedSyncControl(fullInfo)
+  private lazy val cacheControl: CachedSyncControl = CachedSyncControl(fullInfo)
 
   private[change] def updateContext(func: HomepageInfo => HomepageInfo): Future[Unit] = fullInfo.synchronized {
     def beforeContextChanged(): Future[Unit] = {
@@ -81,64 +81,5 @@ case class HomepageDataControl(fullInfo: FullInfo) {
 object HomepageDataControl {
 
 
-  case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
-
-    private given ExecutionContext = ExecutionContext.global
-
-    // load
-    private val requestCache: AsyncDataCache[SyncInformationWithContext, SyncCache] = new AsyncDataCache[SyncInformationWithContext, SyncCache]("syncRequestCache", false, true) {
-
-      override protected def executeLoading(in: SyncInformationWithContext)(ec: ExecutionContext): Future[SyncCache] = {
-        in.fetchAllFrom()
-      }
-
-      override protected def formatInputForLogging(in: SyncInformationWithContext): String = s"SyncInfoWithContext(${in.usageContext})"
-
-      override protected def formatOutputForLogging(out: SyncCache): String = s"SyncCache(${out.createdAt}: ${out.values.size} values)"
-    }
-
-    private def executeLoadAll(maxAge: LocalDateTime = LocalDateTime.now()): Future[Map[SyncInformationWithContext, Either[Throwable, SyncCache]]] = {
-      requestCache.loadAllAsFuture(fullInfo.current.currentSyncSources, maxAge)
-    }
-
-    def requestFetchAll(variables: List[InteractionVariable[?]], maxCacheAge: LocalDateTime): Unit = fullInfo.synchronized {
-      variables.foreach(intVar => requestFetch(intVar, maxCacheAge))
-    }
-
-    override def requestFetch(interactionVariable: InteractionVariable[?], maxCacheAge: LocalDateTime): Unit = fullInfo.synchronized {
-
-      def format(in: SyncInformationWithContext, out: Either[Throwable, SyncCache]): String = out.match {
-        case Left(err) => "Failure(" + in.syncSource.getClass.getSimpleName + " -> " + err + ")"
-        case Right(err) => "Success(" + in.syncSource.getClass.getSimpleName + " -> " + err.values.size + " elements)"
-
-      }
-
-      val futMap: Future[Map[SyncInformationWithContext, Either[Throwable, SyncCache]]] = executeLoadAll(maxCacheAge)
-      futMap.onComplete {
-        case Success(resMap) => {
-          val formatted = resMap.map(format).mkString("FetchResults(", ",", ")")
-          println("Successfully executed fetch : " + formatted)
-          resMap.flatMap(_._2.toOption).foreach(cache => interactionVariable.executeLoad(List(cache)))
-        }
-        case Failure(exception) => println(s"Error while fetching sync data: $exception")
-      }
-    }
-
-    override def requestStore[T](keyForSerialisation: String, history: InteractionVariableHistory[T], valueSerializer: Serializer[T], forceSyncNow: Boolean): Unit = fullInfo.synchronized {
-      fullInfo.current.currentSyncSources.foreach(_.storeTo(keyForSerialisation, history, valueSerializer))
-    }
-
-    def requestStoreAll(interactionVariable: List[InteractionVariable[?]]): Future[Unit] = fullInfo.synchronized {
-      Future.traverse(interactionVariable)(requestStoreAll).map(theList => {})
-    }
-
-    def requestStoreAll(interactionVariable: InteractionVariable[?]): Future[Unit] = fullInfo.synchronized {
-      Future.traverse(fullInfo.current.currentSyncSources)((currentSyncSource: SyncInformationWithContext) => {
-        currentSyncSource.storeTo(interactionVariable.keyForSerialization, interactionVariable.history, interactionVariable.underlyingInteraction.serializer)
-      }).map(theList => {})
-    }
-
-
-  }
 
 }

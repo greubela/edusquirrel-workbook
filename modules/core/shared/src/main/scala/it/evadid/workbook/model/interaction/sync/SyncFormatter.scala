@@ -2,13 +2,12 @@ package it.evadid.workbook.model.interaction.sync
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
-import it.evadid.workbook.model.interaction.sync.SyncFormatter.*
 import it.evadid.workbook.model.interaction.variable.{InteractionVariableHistorySerialized, InteractionVariableStateSerialized}
 
 import java.time.LocalDateTime
 
 sealed trait SyncFormatter {
-  def serialize(request: InteractionSyncRequest): String
+  def serialize(syncContext: SyncContext, interactionVariableHistorySerialized: InteractionVariableHistorySerialized): String
 
   def deserialize(serialized: String): InteractionVariableHistorySerialized
 
@@ -24,9 +23,9 @@ object SyncFormatter {
 
   case class RichInteractionVariableFormatter() extends SyncFormatter {
 
-    override def serialize(request: InteractionSyncRequest): String =   {
-      val lastStateSer: InteractionVariableStateSerialized = request.history.lastState
-      val rich = RichInteractionVariableHistorySerialized(request.syncContext.keyForSerialisation, lastStateSer.timestamp, lastStateSer.serializedValue, request.history)
+    override def serialize(syncContext: SyncContext, interactionVariableHistorySerialized: InteractionVariableHistorySerialized): String = {
+      val lastStateSer: InteractionVariableStateSerialized = interactionVariableHistorySerialized.lastState
+      val rich = RichInteractionVariableHistorySerialized(syncContext.keyForSerialisation, lastStateSer.timestamp, lastStateSer.serializedValue, interactionVariableHistorySerialized)
       richSerializer.serialize(rich)
     }
 
@@ -41,9 +40,9 @@ object SyncFormatter {
   }
 
   case class InteractionSyncRequest(
-                                      syncContext: SyncContext,
-                                      history: InteractionVariableHistorySerialized
-                                    )
+                                     syncContext: SyncContext,
+                                     history: InteractionVariableHistorySerialized
+                                   )
 
   // RICH
   case class RichInteractionVariableHistorySerialized(keyForSerialisation: String, lastUpdate: LocalDateTime, lastValue: String, fullHistory: InteractionVariableHistorySerialized) {
@@ -62,8 +61,8 @@ object SyncFormatter {
 
   // Default
   val serializeHistory: SyncFormatter = new SyncFormatter() {
-    def serialize(request: InteractionSyncRequest): String = {
-      serializerHistory.serialize(request.history)
+    override def serialize(syncContext: SyncContext, interactionVariableHistorySerialized: InteractionVariableHistorySerialized): String = {
+      serializerHistory.serialize(interactionVariableHistorySerialized)
     }
 
     def deserialize(serialized: String): InteractionVariableHistorySerialized = {

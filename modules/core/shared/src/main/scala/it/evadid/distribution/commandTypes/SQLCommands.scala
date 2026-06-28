@@ -20,13 +20,14 @@ object SQLCommands {
   }
 
   case class StoreToDbRequest(
-                               request: InteractionSyncRequest,
+                               syncContext: SyncContext,
+                               historySerialized: InteractionVariableHistorySerialized,
                                databaseName: String,
                                hasDatabaseKeyColumn: Boolean
                              ) extends DbRequest {
 
-    lazy val usageContext: UsageContext = request.syncContext.toUsageContext
-    lazy val serializedValueString: String = formatter.serialize(request)
+    lazy val usageContext: UsageContext = syncContext.toUsageContext
+    lazy val serializedValueString: String = formatter.serialize(syncContext, historySerialized)
 
   }
 
@@ -39,16 +40,15 @@ object SQLCommands {
 
 
   case class DeleteInDbRequest(
-                                    usageContext: UsageContext,
-                                    limitToKey: Option[String],
-                                    databaseName: String,
-                                    hasDatabaseKeyColumn: Boolean
-                                  ) extends DbRequest {
+                                usageContext: UsageContext,
+                                limitToKey: Option[String],
+                                databaseName: String,
+                                hasDatabaseKeyColumn: Boolean
+                              ) extends DbRequest {
   }
 
 
   case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionVariableHistorySerialized]) {
-
 
 
   }

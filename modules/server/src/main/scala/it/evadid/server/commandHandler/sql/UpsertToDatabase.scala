@@ -36,12 +36,12 @@ case class UpsertToDatabase(
 
 
     val stmt = connection.prepareStatement(sql)
-    stmt.setString(1, request.request.syncContext.programId)
-    stmt.setString(2, request.request.syncContext.scenarioId)
-    stmt.setString(3, request.request.syncContext.userId)
-    stmt.setTimestamp(4, Timestamp.valueOf(findMaxTimestamp(request.request.history)))
+    stmt.setString(1, request.syncContext.programId)
+    stmt.setString(2, request.syncContext.scenarioId)
+    stmt.setString(3, request.syncContext.userId)
+    stmt.setTimestamp(4, Timestamp.valueOf(findMaxTimestamp(request.historySerialized)))
     stmt.setString(5, request.serializedValueString)
-    stmt.setString(6, request.request.syncContext.keyForSerialisation)
+    stmt.setString(6, request.syncContext.keyForSerialisation)
 
     val res = generic.executeUpdate(stmt)
     println(s"Upserted $res event into database")
@@ -49,7 +49,7 @@ case class UpsertToDatabase(
   }
 
   def upsertIntoTableWithoutKeys(request: StoreToDbRequest, tableName: String = "events"): SyncSuccess = {
-    val key = request.request.syncContext.keyForSerialisation
+    val key = request.syncContext.keyForSerialisation
     delete.deleteByKeyInDatabaseWithoutKey(key, tableName)
     insertIntoTableWithoutKeys(request, tableName)
   }
@@ -66,10 +66,10 @@ case class UpsertToDatabase(
 
     val stmt = connection.prepareStatement(sql)
 
-    stmt.setString(1, request.request.syncContext.programId)
-    stmt.setString(2, request.request.syncContext.scenarioId)
-    stmt.setString(3, request.request.syncContext.userId)
-    stmt.setTimestamp(4, Timestamp.valueOf(findMaxTimestamp(request.request.history)))
+    stmt.setString(1, request.syncContext.programId)
+    stmt.setString(2, request.syncContext.scenarioId)
+    stmt.setString(3, request.syncContext.userId)
+    stmt.setTimestamp(4, Timestamp.valueOf(findMaxTimestamp(request.historySerialized)))
     stmt.setString(5, request.serializedValueString)
 
     val res = generic.executeUpdate(stmt)

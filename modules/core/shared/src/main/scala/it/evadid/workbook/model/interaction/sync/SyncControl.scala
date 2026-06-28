@@ -9,6 +9,5 @@ trait SyncControl {
 
   def requestFetch(interactionVariable: InteractionVariable[?], maxCacheAge: LocalDateTime = LocalDateTime.now()): Unit
 
-  def requestStore[T](keyForSerialisation: String, history: InteractionVariableHistory[T], valueSerializer: Serializer[T], forceSyncNow: Boolean = false): Unit
-
+  def requestStore[T](from: InteractionVariable[T]): Unit
 }
