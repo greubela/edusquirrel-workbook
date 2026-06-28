@@ -27,7 +27,7 @@ case class DatabaseSyncViaBackendServer(dbName: String) extends SyncDestination 
   }
 
   override def fetchAll(context: UsageContext): Future[Map[SyncContext, String]] = {
-    val request = SQLCommands.FetchFromDbRequest(context, dbName)
+    val request = SQLCommands.FetchAllFromDbRequest(context, dbName)
     val exInfoFut: Future[ExecutionInfoTyped[DbFetchResponse]] = SQLCommands.fetchFromDbCommand.sendCommandTo(backend, Logger(), request)
 
     val res = exInfoFut.map(exInfo => {
@@ -42,14 +42,14 @@ case class DatabaseSyncViaBackendServer(dbName: String) extends SyncDestination 
 
   override def clearAllValues(context: UsageContext): Future[SyncSuccess] = {
     val promise: Promise[SyncSuccess] = Promise()
-    val request = SQLCommands.ClearUsageInDbRequest(context, None, dbName)
+    val request = SQLCommands.DeleteInDbRequest(context, None, dbName)
     val exInfoFut: Future[ExecutionInfoTyped[SyncSuccess]] = SQLCommands.clearValuesDbCommand.sendCommandTo(backend, Logger(), request)
     exInfoFut.map(_.resultTyped.result)(using ec)
   }
 
   override def clearValues(context: SyncContext): Future[SyncSuccess] = {
     val promise: Promise[SyncSuccess] = Promise()
-    val request = SQLCommands.ClearUsageInDbRequest(context.toUsageContext, Some(context.keyForSerialisation), dbName)
+    val request = SQLCommands.DeleteInDbRequest(context.toUsageContext, Some(context.keyForSerialisation), dbName)
     val exInfoFut: Future[ExecutionInfoTyped[SyncSuccess]] = SQLCommands.clearValuesDbCommand.sendCommandTo(backend, Logger(), request)
     exInfoFut.map(_.resultTyped.result)(using ec)
   }

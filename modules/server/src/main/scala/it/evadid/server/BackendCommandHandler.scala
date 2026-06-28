@@ -30,12 +30,12 @@ object BackendCommandHandler {
       }
     ),
     SQLCommands.fetchFromDbCommand.toLocalExecutionClient(
-      (request: FetchFromDbRequest, logger: Logger) => Future {
+      (request: FetchAllFromDbRequest, logger: Logger) => Future {
         HandleSQLCommand.fetchAll(request, logger)
       })
     ,
     SQLCommands.clearValuesDbCommand.toLocalExecutionClient(
-      (request: ClearUsageInDbRequest, logger: Logger) => Future{
+      (request: DeleteInDbRequest, logger: Logger) => Future{
         HandleSQLCommand.clearUsage(request, logger)
       }
     ),

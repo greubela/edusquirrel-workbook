@@ -85,7 +85,7 @@ object DefaultSerializer {
 
   private[serializer] given dbresreq: ReadWriter[SyncSuccess] = macroRW
 
-  private[serializer] given fdbreq: ReadWriter[FetchFromDbRequest] = macroRW
+  private[serializer] given fdbreq: ReadWriter[FetchAllFromDbRequest] = macroRW
 
   private[serializer] given ReadWriter[InteractionVariableStateSerialized] = macroRW
 
@@ -98,7 +98,7 @@ object DefaultSerializer {
 
   private[serializer] given dbfresreq: ReadWriter[DbFetchResponse] = macroRW
 
-  private[serializer] given cdbreq: ReadWriter[ClearUsageInDbRequest] = macroRW
+  private[serializer] given cdbreq: ReadWriter[DeleteInDbRequest] = macroRW
 
   private[serializer] given sendMailReq: ReadWriter[SendMailRequest] = macroRW
 
@@ -133,8 +133,8 @@ object DefaultSerializer {
   lazy val serializerChatResponseJson: Serializer[MessengerChatCompletionResponse] = Serializer.fromUpickleJson[MessengerChatCompletionResponse](mccres)
   lazy val serializerFeedbackLlmRequestJson: Serializer[FeedbackLlmRequest] = Serializer.fromUpickleJson[FeedbackLlmRequest](flreq)
   lazy val serializerStoreToDbRequestJson: Serializer[StoreToDbRequest] = Serializer.fromUpickleJson[StoreToDbRequest](stdbreq)
-  lazy val serializerFetchFromDbRequestJson: Serializer[FetchFromDbRequest] = Serializer.fromUpickleJson[FetchFromDbRequest](fdbreq)
-  lazy val serializerClearUsageInDbRequestJson: Serializer[ClearUsageInDbRequest] = Serializer.fromUpickleJson[ClearUsageInDbRequest](cdbreq)
+  lazy val serializerFetchAllFromDbRequestJson: Serializer[FetchAllFromDbRequest] = Serializer.fromUpickleJson[FetchAllFromDbRequest](fdbreq)
+  lazy val serializerDeleteInDbRequestJson: Serializer[DeleteInDbRequest] = Serializer.fromUpickleJson[DeleteInDbRequest](cdbreq)
   lazy val serializerSyncSuccess: Serializer[SyncSuccess] = Serializer.fromUpickleJson[SyncSuccess](dbresreq)
   lazy val serializerDbFetchResponse: Serializer[DbFetchResponse] = Serializer.fromUpickleJson[DbFetchResponse](dbfresreq)
   lazy val serializerSendMailRequestJson: Serializer[SendMailRequest] = Serializer.fromUpickleJson[SendMailRequest](sendMailReq)

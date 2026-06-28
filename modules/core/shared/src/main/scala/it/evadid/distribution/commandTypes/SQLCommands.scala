@@ -14,12 +14,15 @@ object SQLCommands {
 
     def usageContext: UsageContext
 
+    def hasDatabaseKeyColumn: Boolean
+
     lazy val formatter: RichInteractionVariableFormatter = RichInteractionVariableFormatter()
   }
 
   case class StoreToDbRequest(
                                request: InteractionSyncRequest,
-                               databaseName: String
+                               databaseName: String,
+                               hasDatabaseKeyColumn: Boolean
                              ) extends DbRequest {
 
     lazy val usageContext: UsageContext = request.syncContext.toUsageContext
@@ -27,20 +30,28 @@ object SQLCommands {
 
   }
 
-  case class FetchFromDbRequest(
-                                 usageContext: UsageContext,
-                                 databaseName: String
-                               ) extends DbRequest
+  case class FetchAllFromDbRequest(
+                                    usageContext: UsageContext,
+                                    databaseName: String,
+                                    mayLimitToKey: Option[String],
+                                    hasDatabaseKeyColumn: Boolean
+                                  ) extends DbRequest
 
-  case class ClearUsageInDbRequest(
+
+  case class DeleteInDbRequest(
                                     usageContext: UsageContext,
                                     limitToKey: Option[String],
-                                    databaseName: String
+                                    databaseName: String,
+                                    hasDatabaseKeyColumn: Boolean
                                   ) extends DbRequest {
   }
 
 
-  case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionVariableHistorySerialized])
+  case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionVariableHistorySerialized]) {
+
+
+
+  }
 
   val syncToDbCommand: ExecutionCommandFactory[StoreToDbRequest, SyncSuccess] = ExecutionCommandFactory(
     "sync-to-db-request",
@@ -48,15 +59,15 @@ object SQLCommands {
     DefaultSerializer.serializerSyncSuccess
   )
 
-  val fetchFromDbCommand: ExecutionCommandFactory[FetchFromDbRequest, DbFetchResponse] = ExecutionCommandFactory(
+  val fetchFromDbCommand: ExecutionCommandFactory[FetchAllFromDbRequest, DbFetchResponse] = ExecutionCommandFactory(
     "fetch-from-db-request",
-    DefaultSerializer.serializerFetchFromDbRequestJson,
+    DefaultSerializer.serializerFetchAllFromDbRequestJson,
     DefaultSerializer.serializerDbFetchResponse
   )
 
-  val clearValuesDbCommand: ExecutionCommandFactory[ClearUsageInDbRequest, SyncSuccess] = ExecutionCommandFactory(
+  val clearValuesDbCommand: ExecutionCommandFactory[DeleteInDbRequest, SyncSuccess] = ExecutionCommandFactory(
     "clear-values-in-db-request",
-    DefaultSerializer.serializerClearUsageInDbRequestJson,
+    DefaultSerializer.serializerDeleteInDbRequestJson,
     DefaultSerializer.serializerSyncSuccess
   )
 

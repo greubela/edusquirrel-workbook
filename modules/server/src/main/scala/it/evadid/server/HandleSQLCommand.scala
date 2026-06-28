@@ -23,91 +23,9 @@ object HandleSQLCommand {
   // Clear
 
 
-  def clearUsageStatement(connection: Connection, config: DatabaseConfig, request: ClearUsageInDbRequest, logger: Logger): PreparedStatement = {
-    val sql: String =
-      """
-        |DELETE FROM `events`
-        |WHERE `programid` = ? AND `scenarioid` = ? AND `userid` = ?
-        |""".stripMargin
-
-    val stmt: PreparedStatement = connection.prepareStatement(sql)
-
-    stmt.setString(1, request.usageContext.programId)
-    stmt.setString(2, request.usageContext.scenarioId)
-    stmt.setString(3, request.usageContext.userId)
-    stmt
-  }
-
-  def clearUsage(connection: Connection, config: DatabaseConfig, request: ClearUsageInDbRequest, logger: Logger): SyncSuccess = {
-    val config = readConfig(request)
-    logger.logInfo(s"clearing database sync data for program '${request.usageContext.programId}', scenario '${request.usageContext.scenarioId}', user '${request.usageContext.userId}'")
-    val statement = clearUsageStatement(config.newConnection(), config, request, logger)
-    try {
-      SyncSuccess(0, 0, statement.executeUpdate(), LocalDateTime.now())
-    } catch case e: Exception => {
-      statement.close()
-      logger.logError(s"Error fetching from database: ${e.getMessage}")
-      throw e
-    }
-  }
-
-  def clearUsage(request: ClearUsageInDbRequest, logger: Logger): SyncSuccess = {
-    val config = readConfig(request)
-    if (request.limitToKey.isEmpty) {
-      clearUsage(config.newConnection(), config, request, logger)
-    } else {
-      val list = fetchAllEventsAsList(config, request.usageContext, request.formatter, logger)
-      deleteEventsById(config.newConnection(), list.map(_.eventId.toLong), logger)
-    }
-  }
-
-
 
   // Store
 
-  def upsertStatement(connection: Connection, config: DatabaseConfig, request: StoreToDbRequest): PreparedStatement = {
-    // todo: prevent doubling entries...
-    val sql =
-      """
-        |INSERT INTO `events` (`programid`, `scenarioid`, `userid`, `timestamp`, `serializeddata`)
-        |VALUES (?, ?, ?, ?, ?)
-        |ON DUPLICATE KEY UPDATE
-        |  `timestamp` = VALUES(`timestamp`),
-        |  `serializeddata` = VALUES(`serializeddata`)
-        |""".stripMargin
-
-    val stmt = connection.prepareStatement(sql)
-
-    val maxTimestamp: LocalDateTime = request.request.history.states.toList.maxBy(_.timestamp).timestamp
-
-    stmt.setString(1, request.request.syncContext.programId)
-    stmt.setString(2, request.request.syncContext.scenarioId)
-    stmt.setString(3, request.request.syncContext.userId)
-    stmt.setTimestamp(4, Timestamp.valueOf(maxTimestamp))
-    stmt.setString(5, request.serializedValueString)
-    stmt
-  }
-
-  def upsert(connection: Connection, config: DatabaseConfig, request: StoreToDbRequest, logger: Logger): SyncSuccess = {
-    try if (request.request.history.states.nonEmpty) {
-      val stmt = upsertStatement(connection, config, request)
-      val changed = stmt.executeUpdate()
-      SyncSuccess(changed, 0, 0, LocalDateTime.now())
-    } else {
-      SyncSuccess(0, 0, 0, LocalDateTime.now())
-    }
-    catch case e: Exception => {
-      connection.close()
-      logger.logError(s"Error syncing to database: ${e.getMessage}")
-      throw e
-    }
-  }
-
-  def handleStoreToDbRequest(request: StoreToDbRequest, logger: Logger): SyncSuccess = {
-    logger.logInfo(s"syncing key '${request.request.syncContext.keyForSerialisation}' to database for program '${request.request.syncContext.programId}' and user '${request.request.syncContext.userId}'")
-    val config = readConfig(request)
-    upsert(config.newConnection(), config, request, logger)
-  }
 
 
   /*

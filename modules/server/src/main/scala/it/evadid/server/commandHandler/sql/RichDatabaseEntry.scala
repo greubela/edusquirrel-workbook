@@ -12,7 +12,9 @@ sealed trait RichDatabaseEntry {
 
   def usageContext: UsageContext
 
-  def toMapEntry: (SyncContext, RichInteractionVariableHistorySerialized) = usageContext.toSyncContext(keyForSerialisation) -> richHistory
+  def syncContext: SyncContext = usageContext.toSyncContext(keyForSerialisation)
+
+  def toMapEntry: (SyncContext, RichDatabaseEntry) = usageContext.toSyncContext(keyForSerialisation) -> this
 
 }
 

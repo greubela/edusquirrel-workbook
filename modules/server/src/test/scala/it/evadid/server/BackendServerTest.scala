@@ -1,7 +1,7 @@
 package it.evadid.server
 
 import it.evadid.distribution.command.ExecutionCommand
-import it.evadid.distribution.commandTypes.SQLCommands.{ClearUsageInDbRequest, FetchFromDbRequest, StoreToDbRequest}
+import it.evadid.distribution.commandTypes.SQLCommands.{DeleteInDbRequest, FetchAllFromDbRequest, StoreToDbRequest}
 import it.evadid.util.Logger
 import munit.FunSuite
 
@@ -78,9 +78,9 @@ class BackendServerTest extends FunSuite {
         1
       }
 
-      override def fetch(config: HandleSQLCommand.DatabaseConfig, request: FetchFromDbRequest, logger: Logger): Map[String, String] = Map.empty
+      override def fetch(config: HandleSQLCommand.DatabaseConfig, request: FetchAllFromDbRequest, logger: Logger): Map[String, String] = Map.empty
 
-      override def clear(config: HandleSQLCommand.DatabaseConfig, request: ClearUsageInDbRequest, logger: Logger): Int = 0
+      override def clear(config: HandleSQLCommand.DatabaseConfig, request: DeleteInDbRequest, logger: Logger): Int = 0
     }
 
     val response = HandleSQLCommand.syncToDb(request, Logger(), env.get, executor)
@@ -100,7 +100,7 @@ class BackendServerTest extends FunSuite {
       "SQL_USER" -> "server_user",
       "SQL_PW" -> "server_password"
     )
-    val request = FetchFromDbRequest(
+    val request = FetchAllFromDbRequest(
       programId = "program-1",
       scenarioId = "scenario-1",
       userId = "user-1",
@@ -108,17 +108,17 @@ class BackendServerTest extends FunSuite {
     )
 
     var observedConfig: Option[HandleSQLCommand.DatabaseConfig] = None
-    var observedRequest: Option[FetchFromDbRequest] = None
+    var observedRequest: Option[FetchAllFromDbRequest] = None
     val executor = new HandleSQLCommand.SyncDbExecutor {
       override def upsert(config: HandleSQLCommand.DatabaseConfig, request: StoreToDbRequest, logger: Logger): Int = 0
 
-      override def fetch(config: HandleSQLCommand.DatabaseConfig, request: FetchFromDbRequest, logger: Logger): Map[String, String] = {
+      override def fetch(config: HandleSQLCommand.DatabaseConfig, request: FetchAllFromDbRequest, logger: Logger): Map[String, String] = {
         observedConfig = Some(config)
         observedRequest = Some(request)
         Map("answer-1" -> "stored-history")
       }
 
-      override def clear(config: HandleSQLCommand.DatabaseConfig, request: ClearUsageInDbRequest, logger: Logger): Int = 0
+      override def clear(config: HandleSQLCommand.DatabaseConfig, request: DeleteInDbRequest, logger: Logger): Int = 0
     }
 
     val response = HandleSQLCommand.fetchFromDb(request, Logger(), env.get, executor)
@@ -137,7 +137,7 @@ class BackendServerTest extends FunSuite {
       "SQL_USER" -> "server_user",
       "SQL_PW" -> "server_password"
     )
-    val request = ClearUsageInDbRequest(
+    val request = DeleteInDbRequest(
       programId = "program-1",
       scenarioId = "scenario-1",
       userId = "user-1",
@@ -145,13 +145,13 @@ class BackendServerTest extends FunSuite {
     )
 
     var observedConfig: Option[HandleSQLCommand.DatabaseConfig] = None
-    var observedRequest: Option[ClearUsageInDbRequest] = None
+    var observedRequest: Option[DeleteInDbRequest] = None
     val executor = new HandleSQLCommand.SyncDbExecutor {
       override def upsert(config: HandleSQLCommand.DatabaseConfig, request: StoreToDbRequest, logger: Logger): Int = 0
 
-      override def fetch(config: HandleSQLCommand.DatabaseConfig, request: FetchFromDbRequest, logger: Logger): Map[String, String] = Map.empty
+      override def fetch(config: HandleSQLCommand.DatabaseConfig, request: FetchAllFromDbRequest, logger: Logger): Map[String, String] = Map.empty
 
-      override def clear(config: HandleSQLCommand.DatabaseConfig, request: ClearUsageInDbRequest, logger: Logger): Int = {
+      override def clear(config: HandleSQLCommand.DatabaseConfig, request: DeleteInDbRequest, logger: Logger): Int = {
         observedConfig = Some(config)
         observedRequest = Some(request)
         2
