@@ -6,6 +6,8 @@ import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.core.datastructures.state.observable.ObserverDerivationLogic.DeriveOnlyLastValues
 import it.evadid.core.datastructures.state.{ExecutionMethod, State}
 import it.evadid.core.util.*
+import it.evadid.util.logging.Logger
+import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
 import it.evadid.workbook.model.interaction.*
 import it.evadid.workbook.model.interaction.sync.SyncInformation.{SyncCache, SyncInformationWithContext}
 import it.evadid.workbook.model.interaction.sync.*
@@ -19,6 +21,9 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
 
   private val innerState: State[InteractionVariableHistory[T]] = State(defaultHistory)
   private val syncControl: State[Option[SyncControl]] = State(None)
+
+  val fallbackLogger: SyncLogger = SyncLogger(Logger.withNameAndPrefixes(Some(s"InteractionVariableFallbackLogger(${keyForSerialization})"), PrintToStdLogger.printNothing))
+  def useLogger: SyncLogger = syncControl.now().map(_.syncLogger).getOrElse(fallbackLogger)
 
   val keyForSerialization: String = underlyingInteraction.id + "_history"
 
@@ -47,7 +52,6 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
     val outerState = State[T](currentValue)
     innerState.observable.addObserver(newValue => if (newValue != outerState.now()) outerState.set(currentValue))
     outerState.observable.addObserver(newValue => if (newValue != currentValue) setStateFromUserInteraction(newValue, importance, LocalDateTime.now()))
-    //outerVar.signal.foreach(newValue => if (newValue != currentValue) setStateFromUserInteraction(newValue, importance, LocalDateTime.now()))
     outerState
   }
 
@@ -64,72 +68,35 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
   }
 
   def addHistory(history: InteractionVariableHistorySerialized): Unit = this.synchronized {
-    innerState.update(_.withAddedEvents(underlyingInteraction.serializer, history))
+    innerState.update(_.withAddedEvents(useLogger, underlyingInteraction.serializer, history))
   }
-
-  /*
-  def executeStore(syncSource: SyncInformationWithContext): Unit = {
-
-    //val serialized = innerState.now().serializedWithStrategy(syncSource.syncStrategy, underlyingInteraction.serializer)
-    syncSource.storeTo(keyForSerialization, innerState.now(), underlyingInteraction.serializer)
-
-    if (debug) {
-      println("[INFO] synced interaction variable with key'" + keyForSerialization + "' to source: " + syncSource.syncSource
-        + ", current value: " + innerState.now().lastState.value
-        + ", last update time: " + InfoUtil.datetimeFormattedForLog(innerState.now().lastState.timestamp) + ", total events: " + innerState.now().events.size + ")")
-    }
-  }*/
 
   def executeLoad(syncCache: List[SyncCache]): Unit = this.synchronized {
     syncCache.foreach((curCache: SyncCache) => {
       val parsed: SyncInformation.SyncFetchedHistory[T] = curCache.typedHistory[T](keyForSerialization, underlyingInteraction.serializer)
       if (debug && parsed.unparsableElements.states.nonEmpty) {
-        println("[Warn] InteractionVariable '" + keyForSerialization + "' could not parse from " + parsed.unparsableElements.states.size + " elements!")
+        useLogger.logWarn("InteractionVariable '" + keyForSerialization + "' could not parse " + parsed.unparsableElements.states.size + " elements!")
       }
       innerState.update(_.withAddedEvents(parsed.typedElements))
     })
   }
 
   def resetHistoryAndSyncControl(newSyncControl: Option[SyncControl]): Unit = this.synchronized {
+    val wasEmpty: Boolean = syncControl.now().isEmpty
     syncControl.set(newSyncControl)
     innerState.set(defaultHistory)
+
+    if(wasEmpty) useLogger.logAllFrom(fallbackLogger)
   }
 
-
-  /*
-    def fetchFromAll(): Unit = this.synchronized {
-
-      val sources: List[SyncInformationWithContext] = syncSources.now()
-      val applyFunc: SyncInformationWithContext => Future[InteractionVariableHistory[T]] = _.fetchFrom(keyForSerialization, underlyingInteraction.serializer)
-
-      given ExecutionContext = ExecutionContext.global
-
-      val allHistories: Future[List[InteractionVariableHistory[T]]] = Future.traverse(sources)(applyFunc)
-
-      allHistories.onComplete {
-        case Success(curHistories) => curHistories.foreach((curHistory: InteractionVariableHistory[T]) => innerState.update(_.withAddedEvents(curHistory)))
-        case Failure(err) => println("[ERROR] could not fetch history from all sources: " + err)
-      }
-
-    }
-
-    def resetHistory(): Unit = this.synchronized {
-      innerState.set(defaultHistory)
-    }
-
-    def resetHistoryAndSyncInfo(newSyncSources: List[SyncInformationWithContext]): Unit = this.synchronized {
-      syncSources.set(List())
-      innerState.set(defaultHistory)
-      syncSources.set(newSyncSources)
-    }
-  */
   def updateStateFromUserInteraction(updater: T => T, updateSize: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now()): Unit = this.synchronized {
     val nextState: T = updater(innerState.now().lastState.value)
     setStateFromUserInteraction(nextState, updateSize, timestamp)
   }
 
   def setStateFromUserInteraction(newValue: T, updateSize: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now()): Unit = this.synchronized {
-    println("InteractionVariable.updateStateFromUserInteraction: " + newValue + " (" + updateSize + ", oldValue: " + innerState.now().lastState.value + ")")
+
+    useLogger.logInfo(s"InteractionVariable.updateStateFromUserInteraction(${innerState.now().lastState.value} -> $newValue ($timestamp, $updateSize)")
 
     val lastKnown: InteractionVariableState[T] = innerState.now().lastState
     if (newValue != lastKnown.value || updateSize != lastKnown.updateImportance) {
@@ -138,10 +105,10 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
       if (syncControl.now().nonEmpty) {
         syncControl.now().foreach(_.requestStore(this, false))
       } else {
-        println("[WARN] changed update was not committed because no syncTarget was available!")
+        useLogger.logWarn(s"User Interaction Updates at ${timestamp} was not committed because no syncTarget was available!")
       }
     } else {
-      // println("Update supressed!")
+      useLogger.logInfo(s"InteractionVariable.updateStateFromUserInteraction($newValue) was ignored because it was identical to the last known value!")
     }
   }
 

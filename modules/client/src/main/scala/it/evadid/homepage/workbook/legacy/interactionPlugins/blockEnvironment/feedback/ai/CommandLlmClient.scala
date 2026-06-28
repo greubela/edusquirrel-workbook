@@ -12,7 +12,7 @@ final class CommandLlmClient(executor: ExecutionClient) extends LlmClient {
 
   override def complete(prompt: String, systemPrompt: Option[String] = None): Future[String] =
     LLMCommands.feedbackLlmCommandFactory
-      .sendCommandTo(executor, Logger(), FeedbackLlmRequest(prompt, systemPrompt.getOrElse("")))
+      .sendCommandTo(executor, FeedbackLlmRequest(prompt, systemPrompt.getOrElse("")), None, None)
       .map(_.resultTyped.result)
 
 }

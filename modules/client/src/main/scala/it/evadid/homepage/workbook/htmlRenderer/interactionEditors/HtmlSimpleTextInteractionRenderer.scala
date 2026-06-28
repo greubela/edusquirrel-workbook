@@ -27,20 +27,5 @@ object HtmlSimpleTextInteractionRenderer extends HtmlRenderFactory[TextInteracti
     )
   }
 
-  /*
-  interactionVariable.interactionSignal.foreach(newStorageValue => {
-    val oldValue = varBoundToEditor.now()
-    varBoundToEditor.set(newStorageValue)
-    //println("new Storage value '" + newStorageValue + "' should overwrite editor value: " + oldValue + " -> " + varBoundToEditor.now())
-  })(unsafeWindowOwner)
-  varBoundToEditor.signal.foreach(newEditorValue => onUserInputChanged(newEditorValue))(unsafeWindowOwner)*/
-
-
-  /*private def onUserInputChanged(newDisplayedText: String): Unit = {
-    val trimmed = newDisplayedText.trim
-    val isBigUpdate = trimmed.isEmpty || trimmed.length < newDisplayedText.length || trimmed.endsWith(".")
-    val updateType = if (isBigUpdate) UpdateImportance.MINOR else UpdateImportance.TEMPORARY
-    interactionVariable.updateStateFromUserInteraction(newDisplayedText, System.currentTimeMillis(), updateType)
-  }*/
 
 }

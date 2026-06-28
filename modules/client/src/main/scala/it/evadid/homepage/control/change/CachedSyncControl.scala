@@ -3,7 +3,8 @@ package it.evadid.homepage.control.change
 import it.evadid.core.datastructures.state.storage.AsyncDataCache
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.util.logging.LoggingLevel.INFO
-import it.evadid.util.logging.SyncLogger
+import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
+import it.evadid.util.logging.{BasicLogger, Logger}
 import it.evadid.workbook.model.interaction.sync.SyncControl
 import it.evadid.workbook.model.interaction.sync.SyncInformation.{SyncCache, SyncInformationWithContext}
 import it.evadid.workbook.model.interaction.variable.{InteractionVariable, InteractionVariableHistorySerialized}
@@ -15,20 +16,21 @@ import scala.util.{Failure, Success}
 
 case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
 
-  lazy val syncLogger: SyncLogger = SyncLogger()
 
   private given ExecutionContext = ExecutionContext.global
 
   // load
-  private val requestCache: AsyncDataCache[SyncInformationWithContext, SyncCache] = new AsyncDataCache[SyncInformationWithContext, SyncCache]("syncRequestCache", false, true) {
+  private val requestCache: AsyncDataCache[SyncInformationWithContext, SyncCache] = {
+    new AsyncDataCache[SyncInformationWithContext, SyncCache](fullInfo.loggerSystemInfo.syncCacheLogger) {
 
-    override protected def executeLoading(in: SyncInformationWithContext)(ec: ExecutionContext): Future[SyncCache] = {
-      in.fetchAllFrom()
+      override protected def executeLoading(in: SyncInformationWithContext)(ec: ExecutionContext): Future[SyncCache] = {
+        in.fetchAllFrom()
+      }
+
+      override protected def formatInputForLogging(in: SyncInformationWithContext): String = s"SyncInfoWithContext(${in.usageContext})"
+
+      override protected def formatOutputForLogging(out: SyncCache): String = s"SyncCache(${out.createdAt}: ${out.values.size} values)"
     }
-
-    override protected def formatInputForLogging(in: SyncInformationWithContext): String = s"SyncInfoWithContext(${in.usageContext})"
-
-    override protected def formatOutputForLogging(out: SyncCache): String = s"SyncCache(${out.createdAt}: ${out.values.size} values)"
   }
 
   private def executeLoadAll(maxAge: LocalDateTime = LocalDateTime.now()): Future[Map[SyncInformationWithContext, Either[Throwable, SyncCache]]] = {
@@ -133,4 +135,5 @@ case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
   }
 
 
+  override def syncLogger: SyncLogger = fullInfo.loggerSystemInfo.syncControlLogger
 }

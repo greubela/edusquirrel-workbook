@@ -1,0 +1,28 @@
+package it.evadid.homepage.control.model
+
+import it.evadid.util.logging.{BasicLogger, Logger}
+import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
+
+case class HomepageLoggerInfo() {
+
+  lazy val uiAndDomLogger: Logger = Logger.withNameAndPrefixes(Some("UserInterface"), PrintToStdLogger.printEverything)
+
+  lazy val workbookElementLogger: Logger = Logger.withNameAndPrefixes(Some("WorkbookElementLogger"), PrintToStdLogger.printEverything)
+
+  lazy val workbookControlLogger: Logger = Logger.withNameAndPrefixes(Some("WorkbookHomepageControl"), PrintToStdLogger.printEverything)
+
+  lazy val contentStorageLogger: Logger = Logger.withNameAndPrefixes(Some("WorkbookContentStorage"), PrintToStdLogger.printError)
+
+  lazy val syncControlLogger: SyncLogger = SyncLogger(PrintToStdLogger(BasicLogger(), PrintToStdLogger.printEverything))
+
+  lazy val syncCacheLogger: Logger = Logger.withNameAndPrefixes(Some("SyncCacheLogger"), PrintToStdLogger.printEverything)
+
+  lazy val fileDataStorage: Logger = Logger.withNameAndPrefixes(Some("FileDataStorage"), PrintToStdLogger.printError)
+
+}
+
+object HomepageLoggerInfo {
+
+  lazy val singleton = HomepageLoggerInfo()
+
+}

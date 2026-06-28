@@ -6,6 +6,8 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.homepage.control.change.HomepageDataControl.*
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.workbook.content.WorkbookFactory
+import it.evadid.util.logging.Logger
+import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 import it.evadid.workbook.model.interaction.sync.SyncControl
 import it.evadid.workbook.model.interaction.sync.SyncInformation.{SyncCache, SyncInformationWithContext}
@@ -16,6 +18,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 case class HomepageDataControl(fullInfo: FullInfo) {
+
 
   private given ExecutionContext = ExecutionContext.global
 
@@ -62,7 +65,7 @@ case class HomepageDataControl(fullInfo: FullInfo) {
       fullInfo.homepageInfoState.update(_.copy(workbookInfo = Some(newWorkbookInfo)))
       cacheControl.requestFetchAll(interactions.map(_.interactionVariable), LocalDateTime.now())
     } else {
-      println("[WARN] ignore updated workbook config because there is no workbook loaded!")
+      fullInfo.loggerSystemInfo.workbookControlLogger.logWarn("[WARN] ignore updated workbook config because there is no workbook loaded!")
     }
 
   }

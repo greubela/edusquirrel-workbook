@@ -8,6 +8,7 @@ import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.model.AllWorkbookInfo.*
 import it.evadid.homepage.util.web.DownloadHelper
+import it.evadid.util.logging.Logger
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 import it.evadid.workbook.model.interaction.variable.*
@@ -16,7 +17,7 @@ import upickle.default.ReadWriter.join
 import java.time.LocalDateTime
 import scala.concurrent.ExecutionContext
 
-case class WorkbookUserDataAnalyzer(technical: TechnicalControl, userInfo: AllUserInfo, workbookInfo: AllWorkbookInfo) {
+case class WorkbookUserDataAnalyzer(logger: Logger, technical: TechnicalControl, userInfo: AllUserInfo, workbookInfo: AllWorkbookInfo) {
 
   private given ldt: upickle.ReadWriter[LocalDateTime] = DefaultSerializer.serializerLocalDateTimeString.uPickleReadWrite
 
@@ -48,7 +49,8 @@ case class WorkbookUserDataAnalyzer(technical: TechnicalControl, userInfo: AllUs
   private case class SessionData(currentUserInfo: User, interactionHistory: Map[String, InteractionVariableHistorySerialized], metadata: WorkbookMetadata, epochTimestampMillis: Long)
 
   def downloadAllData(): Unit = {
-    println("download session data :)")
+
+    logger.logInfo("WorkbookUserDataAnalyzer: now downloading all session data!")
     val allInteractions: List[WorkbookInteraction[?]] = workbookInfo.loadedWorkbook.allContainedInteractions
     val history: Map[String, InteractionVariableHistorySerialized] = allInteractions.map(interaction => interaction.interactionVariable.keyForSerialization -> interaction.interactionVariable.serializedHistory).toMap
     val data = SessionData(userInfo.user, history, workbookInfo.getMetadata(), System.currentTimeMillis())
@@ -58,7 +60,7 @@ case class WorkbookUserDataAnalyzer(technical: TechnicalControl, userInfo: AllUs
   }
 
   private def tryToLoad(sessionData: SessionData): Unit = {
-    println("Trying to load session data :)")
+    logger.logInfo("WorkbookUserDataAnalyzer: now trying to load prio session data!")
     if (sessionData.currentUserInfo.id == userInfo.user.id) {
       workbookInfo.loadedWorkbook.allContainedInteractions.foreach(curInteraction => {
         sessionData.interactionHistory.foreach(historyTup => if (historyTup._1 == curInteraction.interactionVariable.keyForSerialization) {
@@ -69,7 +71,7 @@ case class WorkbookUserDataAnalyzer(technical: TechnicalControl, userInfo: AllUs
   }
 
   def upload(file: FileDescription): Unit = {
-    println("Trying to parse session data :)")
+    logger.logInfo(s"WorkbookUserDataAnalyzer: Trying to load prio session data based on file ${file.fullPath}!")
     technical.fileStore.loadAsFuture(file)(using ExecutionContext.global).foreach(loadedFile => {
       val str = loadedFile.fileDataAsUtf8String
       val data: SessionData = upickle.default.read(str)
@@ -80,7 +82,3 @@ case class WorkbookUserDataAnalyzer(technical: TechnicalControl, userInfo: AllUs
 
 }
 
-object WorkbookUserDataAnalyzer {
-
-
-}

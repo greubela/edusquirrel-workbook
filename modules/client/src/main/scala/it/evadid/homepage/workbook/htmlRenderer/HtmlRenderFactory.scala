@@ -12,6 +12,7 @@ import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.gpt.HtmlGptTextfi
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.reorderExercise.HtmlReorderInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.turtleStitch.{HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRenderer}
 import it.evadid.homepage.workbook.legacy.htmlElements.HtmlEmbeddedDomInteraction
+import it.evadid.util.logging.Logger
 import it.evadid.workbook.model.abstractions.WorkbookElement
 import it.evadid.workbook.model.elements.*
 import it.evadid.workbook.model.interaction.WorkbookInteraction.TextInteractionBasic
@@ -24,6 +25,8 @@ import it.evadid.workbook.model.interaction.plugins.slideshow.Slideshow
 trait HtmlRenderFactory[T <: WorkbookElement] {
 
   protected def fullInfo: FullInfo = HtmlFullWorkbookApp.fullInfo
+
+  protected def uiAndDomLogger: Logger = fullInfo.loggerSystemInfo.uiAndDomLogger
 
   protected def createDomElement(workbookElement: T): Element
 

@@ -5,13 +5,19 @@ import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState, AsyncState}
 import it.evadid.core.datastructures.state.storage.AsyncDataCache.*
 import it.evadid.distribution.command.SerializedException
+import it.evadid.util.logging.{Logger, LoggingLevel}
+import it.evadid.util.logging.Logger.DerivedLogger
 
 import java.time.LocalDateTime
 import scala.collection.mutable
 import scala.concurrent.*
 import scala.util.{Failure, Success}
 
-abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean = false, printError: Boolean = false) {
+abstract class AsyncDataCache[I, O](baseLogger: Logger) {
+
+
+
+  private val cacheLogger: Logger = Logger.deriveFrom(baseLogger, (msg, _) => appendCacheInfoToMsg(msg))
 
   // actual cache
   private val cachedRequests: mutable.HashMap[I, CachedRequest[I, O]] = new mutable.HashMap(50, 0.25)
@@ -33,7 +39,7 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean = false,
     res
   }
 
-  private def ensureCache(input: I, forceReloading: CachedRequest[I, O] => Boolean = _ => false): CachedRequest[I, O] = {
+  private def ensureCache(input: I, forceReloading: CachedRequest[I, O] => Boolean = _ => false): CachedRequest[I, O] = cachedRequests.synchronized {
     val cachedElement: Option[CachedRequest[I, O]] = cachedRequests.get(input)
     //logInfo("ensuring cache for " + formatInputForLogging(input) + " (forceReloading: " + forceReloading + ", cached: " +isInCache + ")")
     if (cachedElement.isEmpty) {
@@ -50,7 +56,7 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean = false,
     }
   }
 
-  private def startExecution(input: I, outputVar: State[AsyncDataState[Nothing, O]]): StartedRequest[I, O] = {
+  private def startExecution(input: I, outputVar: State[AsyncDataState[Nothing, O]]): StartedRequest[I, O] = cachedRequests.synchronized {
     execution_requested = execution_requested + 1
     val fetchedRequest = StartedRequest(this, input, outputVar)
     cachedRequests.put(input, fetchedRequest)
@@ -58,14 +64,14 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean = false,
       case Success(outputData) => fetchedRequest.succeeded(outputData)
       case Failure(error) => fetchedRequest.failed(error)
     }(using ExecutionContext.Implicits.global)
-    logInfo("requested execution for " + formatInputForLogging(input))
+    cacheLogger.logInfo("requested execution for " + formatInputForLogging(input))
 
     fetchedRequest
   }
 
   // public api
 
-  def removeFromCache(toDelete: List[I] = List()): Unit = {
+  def removeFromCache(toDelete: List[I] = List()): Unit = cachedRequests.synchronized {
     cachedRequests.synchronized {
       toDelete.foreach(curInput => {
         cachedRequests.get(curInput).foreach(curRequest => {
@@ -75,7 +81,7 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean = false,
     }
   }
 
-  def cacheCopy(): Map[I, O] = {
+  def cacheCopy(): Map[I, O] = cachedRequests.synchronized {
     cachedRequests.synchronized {
       cachedRequests
         .toList
@@ -84,14 +90,14 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean = false,
         .toMap
     }
   }
+  /*
+    def getOutputIfLoaded(input: I): Option[O] = cachedRequests.synchronized {
+      cachedRequests.synchronized {
+        cachedRequests.get(input).flatMap(_.outputIfPresent)
+      }
+    }*/
 
-  def getOutputIfLoaded(input: I): Option[O] = {
-    cachedRequests.synchronized {
-      cachedRequests.get(input).flatMap(_.outputIfPresent)
-    }
-  }
-
-  def loadAllAsFuture(inputs: List[I], maximumAge: LocalDateTime)(implicit ec: ExecutionContext): Future[Map[I, Either[Throwable, O]]] = {
+  def loadAllAsFuture(inputs: List[I], maximumAge: LocalDateTime)(implicit ec: ExecutionContext): Future[Map[I, Either[Throwable, O]]] = cachedRequests.synchronized {
 
     def handleInput(input: I): Future[(I, Either[Throwable, O])] =
       loadAsFuture(input, maximumAge)
@@ -101,19 +107,19 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean = false,
     Future.traverse(inputs)(handleInput).map(_.toMap)
   }
 
-  def loadAsFuture(input: I, maximumAge: LocalDateTime)(implicit ec: ExecutionContext): Future[O] = {
+  def loadAsFuture(input: I, maximumAge: LocalDateTime)(implicit ec: ExecutionContext): Future[O] = cachedRequests.synchronized {
     cachedRequests.synchronized {
       ensureCache(input, cache => cache.requestCompletedAt.isEmpty || cache.requestCompletedAt.get.isBefore(maximumAge))
     }.createFuture
   }
 
-  def loadAsFuture(input: I, forceReloading: Boolean = false)(implicit ec: ExecutionContext): Future[O] = {
+  def loadAsFuture(input: I, forceReloading: Boolean = false)(implicit ec: ExecutionContext): Future[O] = cachedRequests.synchronized {
     cachedRequests.synchronized {
       ensureCache(input, _ => forceReloading).createFuture
     }
   }
 
-  def loadIntoVariable(input: I, forceReloading: Boolean = false)(implicit ec: ExecutionContext): AsyncData[Nothing, O] = {
+  def loadIntoVariable(input: I, forceReloading: Boolean = false)(implicit ec: ExecutionContext): AsyncData[Nothing, O] = cachedRequests.synchronized {
     cachedRequests.synchronized {
       val state: State[AsyncDataState[Nothing, O]] = ensureCache(input, _ => forceReloading).getVariable
       AsyncState(state.observable)
@@ -139,34 +145,22 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean = false,
   // logging
 
   override def toString: String = {
-    "DataStorage '" + storageName + "' with " + cacheInfoString
+    appendCacheInfoToMsg(s"AsyncDataStorage(${this.getClass.getSimpleName})")
   }
 
-  private def logInfo(str: String): Unit = if (debug) {
-    println(s"[INFO] for data storage '$storageName': " + str
-      + s"\n    cache performance (${cachedRequests.size} elements): $cache_hits  hits + $cache_misses +  misses"
-      + s"\n    calculation history: $execution_succeeded/$execution_requested succeeded so far (${execution_succeeded * 1.0 / execution_requested}%)"
-      + s"\n    " + cacheInfoString
-    )
-  }
-
-  private def logError(str: String, throwable: Throwable): Unit = if (printError) {
-    throwable.printStackTrace()
-    println(s"[Error] for data storage '$storageName': " + str
-      + "\n    thrown error: " + throwable.getMessage
-      + "\n    cache: " + cache_hits + " hits, " + cache_misses + " misses"
-      + s"\n    " + cacheInfoString
-    )
-  }
-
-
-  private def cacheInfoString: String = {
+  private def appendCacheInfoToMsg(msg: String): String = {
     val cached: List[CachedRequest[I, O]] = cachedRequests.toList.map(_._2)
     val succeeded: List[SucceededRequest[I, O]] = cached.collect { case finished: SucceededRequest[I, O] => finished }
     val failed: List[FailedRequest[I, O]] = cached.collect { case finished: FailedRequest[I, O] => finished }
     val deleted: List[DeletedRequest[I, O]] = cached.collect { case deleted: DeletedRequest[I, O] => deleted }
     val started: List[StartedRequest[I, O]] = cached.collect { case started: StartedRequest[I, O] => started }
-    "cache state: " + cachedRequests.size + " elements (" + started.size + " currently loading, " + succeeded.size + " succeeded, " + failed.size + " failed, " + deleted.size + " deleted)"
+
+    val cacheInfoLines: List[String] = List(
+      s"cache status: currently ${cachedRequests.size} elements (${started.size} loading + ${succeeded.size} finished + ${failed.size} failed + ${deleted.size} deleted)",
+      Logger.formatPerformance("cache", cache_hits, cache_hits + cache_misses, "cache hits", "total requests"),
+      Logger.formatPerformance("fetching", succeeded.size, succeeded.size + failed.size, "succeeded elements", "succeeded + failed elements")
+    )
+    cacheInfoLines.mkString(msg + "\n    Cache Info:\n        ", "\n        ", "\n")
   }
 
 
@@ -235,7 +229,7 @@ object AsyncDataCache {
     def succeeded(output: O): Unit = {
       associatedStore.cachedRequests.put(input, SucceededRequest(associatedStore, outputVar, output))
       associatedStore.execution_succeeded = associatedStore.execution_succeeded + 1
-      associatedStore.logInfo(s"Successfully calculated output: '${associatedStore.formatInputForLogging(input)}' -> '${associatedStore.formatOutputForLogging(output)}'")
+      associatedStore.cacheLogger.logInfo(s"Successfully calculated output: '${associatedStore.formatInputForLogging(input)}' -> '${associatedStore.formatOutputForLogging(output)}'")
 
       waitingPromise.foreach(promise => promise.success(output))
       outputVar.set(AsyncDataSuccess(output))
@@ -244,7 +238,7 @@ object AsyncDataCache {
 
     def failed(cause: Throwable): Unit = {
       associatedStore.cachedRequests.put(input, FailedRequest(associatedStore, outputVar, cause))
-      associatedStore.logError(s"Failed to load output for input '${associatedStore.formatInputForLogging(input)}", cause)
+      associatedStore.cacheLogger.logExceptionWarn(s"Ignoring since fetching failed for input '${associatedStore.formatInputForLogging(input)}", cause)
       outputVar.set(AsyncDataFailed(SerializedException(cause), None))
       waitingPromise.foreach(promise => promise.failure(cause))
     }

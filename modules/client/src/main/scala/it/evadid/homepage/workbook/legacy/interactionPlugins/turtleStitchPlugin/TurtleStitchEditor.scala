@@ -6,6 +6,8 @@ import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.state.storage.AsyncDataCache
 import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.util.logging.Logger
+import it.evadid.util.logging.derived.PrintToStdLogger
 import org.scalajs.dom
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -228,7 +230,9 @@ object TurtleStitchEditor {
   def turtleLang(language: HumanLanguage): String =
     AppLanguage.turtleStitchLangMap.getOrElse(language, "en")
 
-  private val programOutputDataSrcStorage: AsyncDataCache[String, String] = new AsyncDataCache[String, String]("ProgramPngDataSrc", false) {
+
+  private val basicCacheLogger: Logger = Logger.withNameAndPrefixes(Some("TurtleStitchEditor::ProgramPngDataSrcStore"), PrintToStdLogger.printWarnAndError)
+  private val programOutputDataSrcStorage: AsyncDataCache[String, String] = new AsyncDataCache[String, String](basicCacheLogger) {
     protected def executeLoading(xml: String)(ec: ExecutionContext): Future[String] =
       withSingletonEditor(_.simulateGreenFlag(xml).toFuture)(using ec)
 

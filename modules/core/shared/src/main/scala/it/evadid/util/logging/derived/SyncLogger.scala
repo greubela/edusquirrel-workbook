@@ -1,12 +1,13 @@
-package it.evadid.util.logging
+package it.evadid.util.logging.derived
 
 import it.evadid.core.util.InfoUtil
+import it.evadid.util.logging.Logger.DerivedLogger
 import it.evadid.util.logging.LoggingLevel.*
+import it.evadid.util.logging.{Logger, LoggingLevel}
 
-case class SyncLogger() extends Logger {
-  private val baseLogger = Logger().withPrintToStd(false, true, true)
+case class SyncLogger(underlyingLogger: Logger) extends DerivedLogger {
 
-  def prefixArrow(level: LoggingLevel, isOutgoingOption: Option[Boolean]): String = {
+  private def prefixArrow(level: LoggingLevel, isOutgoingOption: Option[Boolean]): String = {
     if (isOutgoingOption.isEmpty) level.match {
       case INFO => "-----"
       case WARN => "--?--"
@@ -22,21 +23,10 @@ case class SyncLogger() extends Logger {
     }
   }
 
-  def prefixTime: String = s"[${InfoUtil.datetimeFormattedForLog()}]"
-
-  def prefixLevel(loggingLevel: LoggingLevel): String = loggingLevel match {
-    case INFO => "INFO"
-    case WARN => "WARN"
-    case ERROR => "ERROR"
-  }
-
   def log(msg: String, level: LoggingLevel, isOutgoingOption: Option[Boolean]): Unit = {
-    baseLogger.log(s"[SyncLogger@$prefixTime] Sync ${prefixArrow(level, isOutgoingOption)} ${prefixLevel(level)}: $msg", level)
+    underlyingLogger.log(s"[SyncLogger@${TimeAndNamePrefixedLogger.prefixTime}] Sync ${prefixArrow(level, isOutgoingOption)} ${TimeAndNamePrefixedLogger.prefixLevel(level)}: $msg", level)
   }
 
   override def log(msg: String, level: LoggingLevel): Unit = log(msg, level, None)
 
-  override def getOut(): String = baseLogger.getOut()
-
-  override def getErr(): String = baseLogger.getErr()
 }

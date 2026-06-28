@@ -15,6 +15,7 @@ import scala.util.*
 private val tryToLoad: List[String] = List("plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "workbookCompression", "feedbackDemoRoot")
 
 private def load(containerId: String): Unit = {
+
   println("loading workbook: " + containerId)
   val domElement = containerId match {
     case "plantWorkshopApp" => {
@@ -55,15 +56,6 @@ private def testCalculations(): Unit = {
 
 
 }
-
-/*
-  val systemPrompt: String = "Please entertain this human :-)"
-  val backend: ExecutionClient = HtmlFullWorkbookApp.fullInfo.technical.backendServerExecutor
-  val request: MessengerChatCompletionRequest = MessengerChatCompletionRequest(systemPrompt, MessengerModel.testCompletion)
-  val resultFut: Future[ExecutionInfo] = LLMCommands.completeLLMCommandFactory.sendCommandTo(backend, Logger(), request)
-
-  resultFut.onComplete(res => println("future completed: " + res))(using ExecutionContext.global)
-*/
 
 
 @main

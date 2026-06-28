@@ -21,7 +21,6 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
     val curContext: UsageContext = fullInfo.homepageInfoState.now().toContext
     val syncInformation: List[SyncInformation] = userInfo.map(_.config.syncDestinations.toList).toList.flatten
     val syncWithContext: List[SyncInformationWithContext] = syncInformation.map(_.forContext(fullInfo.current.currentHomepageContext))
-    println(s"currentSyncSources: ${syncWithContext.map(_.syncSource)}")
     syncWithContext
   }
 
@@ -29,7 +28,7 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
 
   def workbookUserData: Option[WorkbookUserDataAnalyzer] = fullInfo.synchronized {
     if (userInfo.isEmpty || workbookInfo.isEmpty) None
-    else Some(WorkbookUserDataAnalyzer(fullInfo.technical, userInfo.get, workbookInfo.get))
+    else Some(WorkbookUserDataAnalyzer(fullInfo.loggerSystemInfo.workbookControlLogger, fullInfo.technical, userInfo.get, workbookInfo.get))
   }
 
   def userInfo: Option[AllUserInfo] = fullInfo.synchronized {

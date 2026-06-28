@@ -4,8 +4,11 @@ import it.evadid.core.datastructures.file.*
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.state.storage.AsyncDataCache
+import it.evadid.homepage.control.model.{FullInfo, HomepageLoggerInfo}
 import it.evadid.homepage.control.singletons.WorkbookContentStorage.*
 import it.evadid.homepage.util.serializing.IoSerialization
+import it.evadid.util.logging.Logger
+import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.workbook.model.elements.ImageElement
 import org.scalajs.dom.URL
 import todomove.datastructures.web.file.FileFactory
@@ -15,7 +18,7 @@ import scala.concurrent.*
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.*
 
-case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, LoadedFile]) {
+case class WorkbookContentStorage(contentStorageLogger: Logger, fileStore: AsyncDataCache[FileDescription, LoadedFile]) {
 
   private var lastFinishedCache: Option[LanguageMapTripleStore] = None
   private val loadedFiles: mutable.HashSet[LoadedFile] = mutable.HashSet()
@@ -24,7 +27,8 @@ case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, Loa
     lastFinishedCache.flatMap(_.getMap(languageMapContentId))
   }
 
-  lazy val asStorage: AsyncDataCache[LanguageMapContentId, LanguageMap[HumanLanguage]] = new AsyncDataCache[LanguageMapContentId, LanguageMap[HumanLanguage]]("contentIdCache", false, false) {
+
+  lazy val asStorage: AsyncDataCache[LanguageMapContentId, LanguageMap[HumanLanguage]] = new AsyncDataCache[LanguageMapContentId, LanguageMap[HumanLanguage]](contentStorageLogger) {
 
     private val maxTries: Int = 2
 
@@ -59,7 +63,7 @@ case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, Loa
       .onComplete {
         case Success(any) => res.success(())
         case Failure(err) => {
-          //println("[ERROR] WorkbookContentStorage: " + err.getMessage)
+          contentStorageLogger.logExceptionWarn("futuresForDefaultsLoaded failed, there might be problems down the road", err)
           res.failure(err)
         }
       }
@@ -68,7 +72,7 @@ case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, Loa
 
   def addTriples(triples: Set[LanguageMapEntry]): Unit = fileStore.synchronized {
     val existingTriples: Set[LanguageMapEntry] = lastFinishedCache.map(_.triples).getOrElse(Set.empty)
-    val newStore = LanguageMapTripleStore(existingTriples ++ triples)
+    val newStore = LanguageMapTripleStore(contentStorageLogger, existingTriples ++ triples)
     lastFinishedCache = Some(newStore)
     // ensure caches are working
     asStorage.reloadAll()
@@ -77,7 +81,7 @@ case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, Loa
 
   def addLoadedFile(loadedFile: LoadedFile): Unit = fileStore.synchronized {
     loadedFiles += loadedFile
-    addTriples(triplesFromFile(loadedFile))
+    addTriples(triplesFromFile(contentStorageLogger, loadedFile))
   }
 
   def addFile(fileDescription: FileDescription): Unit = fileStore.synchronized {
@@ -87,14 +91,14 @@ case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, Loa
           addLoadedFile(loadedFile)
         }
         case Failure(err) => {
-          println("[WARN] error loading file: " + fileDescription.fullPath + " : " + err.getMessage)
+          contentStorageLogger.logExceptionWarn(s"failed to load file ${fileDescription.fullPath}, ignoring its content", err)
         }
       }
   }
 
   def withDirsLoaded(dirs: Set[FileDescription]): Future[LanguageMapTripleStore] = fileStore.synchronized {
     val res: Promise[LanguageMapTripleStore] = Promise[LanguageMapTripleStore]()
-    WorkbookContentStorage.loadAllFilesInDirs(fileStore, dirs).onComplete {
+    WorkbookContentStorage.loadAllFilesInDirs(contentStorageLogger, fileStore, dirs).onComplete {
       case Success(loadedFiles) => {
         loadedFiles.foreach(addLoadedFile)
         res.success(lastFinishedCache.get)
@@ -104,14 +108,14 @@ case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, Loa
     res.future
   }
 
-  def withFilesEnsured(fileDescriptions: Set[FileDescription]): Future[LanguageMapTripleStore] = fileStore.synchronized {
+  def withFilesEnsured(logger: Logger, fileDescriptions: Set[FileDescription]): Future[LanguageMapTripleStore] = fileStore.synchronized {
     val mappedFiles = loadedFiles.map(_.description)
     val notYetLoaded = fileDescriptions.diff(mappedFiles)
     if (notYetLoaded.isEmpty && lastFinishedCache.nonEmpty) {
       Future.successful(lastFinishedCache.get)
     } else {
       val res: Promise[LanguageMapTripleStore] = Promise[LanguageMapTripleStore]()
-      val triplesFut = WorkbookContentStorage.ensureLoaded(fileStore, fileDescriptions)
+      val triplesFut = WorkbookContentStorage.ensureLoaded(logger, fileStore, fileDescriptions)
       triplesFut.onComplete {
         case Success(triples) => {
           addTriples(triples.toSet)
@@ -129,8 +133,8 @@ case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, Loa
 
 object WorkbookContentStorage {
 
-  case class LanguageMapTripleStore(triples: Set[LanguageMapEntry]) {
-    private lazy val toLanguageMaps: Set[LanguageMapWithId] = triplesToLanguageMaps(triples)
+  case class LanguageMapTripleStore(logger: Logger, triples: Set[LanguageMapEntry]) {
+    private lazy val toLanguageMaps: Set[LanguageMapWithId] = triplesToLanguageMaps(logger, triples)
 
     def contains(contentId: LanguageMapContentId): Boolean = toLanguageMaps.exists(_.contentId == contentId)
 
@@ -161,7 +165,7 @@ object WorkbookContentStorage {
 
   private case object UniversalLanguageMapFile extends LanguageMapFileKind
 
-  private def ensureLoaded(fileStore: AsyncDataCache[FileDescription, LoadedFile], ensureFiles: Set[FileDescription]): Future[List[LanguageMapEntry]] = {
+  private def ensureLoaded(logger: Logger, fileStore: AsyncDataCache[FileDescription, LoadedFile], ensureFiles: Set[FileDescription]): Future[List[LanguageMapEntry]] = {
 
     val resPromise = Promise[List[LanguageMapEntry]]()
     val filesFinished = mutable.ListBuffer[FileDescription]()
@@ -173,7 +177,7 @@ object WorkbookContentStorage {
 
     def onFileLoaded(file: LoadedFile): Unit = resPromise.synchronized {
       filesFinished += file.description
-      triplesLoaded.addAll(triplesFromFile(file))
+      triplesLoaded.addAll(triplesFromFile(logger, file))
       if (filesFinished.size == ensureFiles.size) {
         resPromise.success(triplesLoaded.toList)
       }
@@ -189,7 +193,7 @@ object WorkbookContentStorage {
     resPromise.future
   }
 
-  private def triplesToLanguageMaps(triples: Set[LanguageMapEntry]): Set[LanguageMapWithId] = {
+  private def triplesToLanguageMaps(logger: Logger, triples: Set[LanguageMapEntry]): Set[LanguageMapWithId] = {
     triples
       .groupBy(_.contentId)
       .map {
@@ -205,7 +209,7 @@ object WorkbookContentStorage {
             case Some(universalMap) if baseEmpty => LanguageMapWithId(mapId, universalMap)
             case Some(universalMap) => LanguageMapWithId(mapId, explicitLanguageMap.withFallback(universalMap))
             case None if baseEmpty => {
-              println(s"[WARN] No content read for language map with id $mapId")
+              logger.logWarn(s"No content read for language map with id $mapId")
               LanguageMapWithId(mapId, LanguageMap.emptyMap())
             }
             case None => LanguageMapWithId(mapId, explicitLanguageMap)
@@ -229,10 +233,10 @@ object WorkbookContentStorage {
     case UniversalLanguageMapFile => UniversalMapEntry(contentId, value)
   }
 
-  private def triplesFromFile(file: LoadedFile): Set[LanguageMapEntry] = {
+  private def triplesFromFile(logger: Logger, file: LoadedFile): Set[LanguageMapEntry] = {
     val languageOp = languageMapFileKindFromFileDescription(file.description)
     val languageMapIdOp = file.description.dirNames.lastOption
-    //println("######## loading triples from file '" + file.description.fullPath + ": " + languageMapIdOp + " /" + languageOp)
+    logger.logInfo(s"Loading triples from file '${file.description.fullPath}, corresponding language map id: $languageMapIdOp, language: $languageOp")
     if (languageOp.isEmpty || languageMapIdOp.isEmpty) {
       Set.empty[LanguageMapEntry]
     }
@@ -263,7 +267,7 @@ object WorkbookContentStorage {
 
   )
 
-  def loadAllFilesInDirs(fileStore: AsyncDataCache[FileDescription, LoadedFile], dirs: Set[FileDescription]): Future[Set[LoadedFile]] = {
+  def loadAllFilesInDirs(logger: Logger, fileStore: AsyncDataCache[FileDescription, LoadedFile], dirs: Set[FileDescription]): Future[Set[LoadedFile]] = {
     val allFiles = dirs
       .flatMap(curDir => languageMapFileSuffixes.map(curSuffix => curDir.fullPath + "/map-" + curSuffix + ".json"))
       .map(urlStr => FileFactory.fromUrl(URL(urlStr), CopyrightInfo.unknownCopyrightInfo))
@@ -276,10 +280,10 @@ object WorkbookContentStorage {
       case Success(tryList) => {
         val successCount = tryList.count(_.isSuccess)
         val failedCount = tryList.count(_.isFailure)
-        println(s"[INFO] loaded language maps: $successCount loaded, $failedCount not found!")
+        logger.logInfo(s"WorkbookContentStorage loaded language maps: $successCount loaded, $failedCount not found!")
       }
       case Failure(err) => {
-        println("[ERROR] could not load language maps: " + err.getMessage)
+        logger.logExceptionWarn("Could not load language maps, ignoring them", err)
       }
     }
 

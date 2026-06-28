@@ -21,9 +21,9 @@ trait RemoteExecutionClient extends ExecutionClient {
     val res = sendTo(hostname, port, executionCommand)
     res.map { rec => {
       val timestampReceivedBack: LocalDateTime = LocalDateTime.now()
-      logger.logInfo("\n\n~~~[LOGGING RECEIVED FROM REMOTE EXECUTION CLIENT]~~~\n\n" + rec.loggerOut + "~~~[REMOTE LOGGING FINISHED]~~~")
-      logger.logInfo("\n\n~~~[ERRORS RECEIVED FROM REMOTE EXECUTION CLIENT]~~~\n\n" + rec.loggerError + "~~~[REMOTE ERROR FINISHED]~~~")
       logger.logInfo("Received response from " + hostname + ":" + port + " at " + timestampReceivedBack + ": " + rec.response.toString)
+      logger.logFromExternalInfo(rec.loggerOut)
+      logger.logFromExternalError(rec.loggerError)
       ExecutionClientResponse(rec.timestampReceived, rec.timestampStarted, timestampReceivedBack, rec.response, rec.parsedExecutionCommand, logger.getOut(), logger.getErr())
     }
     }(using ExecutionContext.global)

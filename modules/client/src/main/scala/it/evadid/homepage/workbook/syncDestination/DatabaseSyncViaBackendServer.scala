@@ -6,8 +6,8 @@ import it.evadid.distribution.commandTypes.SQLCommands
 import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.util.logging.Logger
+import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.workbook.model.interaction.sync.*
-import it.evadid.workbook.model.interaction.sync.SyncFormatter.InteractionSyncRequest
 import it.evadid.workbook.model.interaction.sync.SyncInformation.SyncSuccess
 import it.evadid.workbook.model.interaction.variable.InteractionVariableHistorySerialized
 
@@ -21,17 +21,18 @@ case class DatabaseSyncViaBackendServer(dbName: String, hasKeyTable: Boolean) ex
 
   override def storeTo(context: SyncContext, history: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncSuccess] = {
     val dbRequest = StoreToDbRequest(context, history, dbName, hasKeyTable)
-    val exInfo: Future[ExecutionInfoTyped[SyncSuccess]] = SQLCommands.StoreToDbCommand.sendCommandTo(backend, Logger(), dbRequest)
+    val exInfo: Future[ExecutionInfoTyped[SyncSuccess]] = SQLCommands.StoreToDbCommand.sendCommandTo(backend, dbRequest)
     exInfo.map(exInfo => exInfo.resultTyped.result)(using ec)
   }
 
   override def fetchAll(context: UsageContext): Future[Map[SyncContext, String]] = {
     val request = SQLCommands.FetchAllFromDbRequest(context, dbName, None, hasKeyTable)
-    val exInfoFut: Future[ExecutionInfoTyped[DbFetchResponse]] = SQLCommands.fetchFromDbCommand.sendCommandTo(backend, Logger(), request)
+    val exInfoFut: Future[ExecutionInfoTyped[DbFetchResponse]] = SQLCommands.fetchFromDbCommand.sendCommandTo(backend, request)
 
     def serializeBack(context: SyncContext, interactionVariableHistorySerialized: InteractionVariableHistorySerialized): String = {
       request.formatter.serialize(context, interactionVariableHistorySerialized)
     }
+
     val res: Future[Map[SyncContext, String]] = exInfoFut.map(res => {
       val resMap: Map[SyncContext, InteractionVariableHistorySerialized] = res.resultTyped.result.fetchedElements
       resMap.iterator.map(tup => tup._1 -> serializeBack(tup._1, tup._2)).toMap
@@ -43,65 +44,17 @@ case class DatabaseSyncViaBackendServer(dbName: String, hasKeyTable: Boolean) ex
   override def shouldBePersistant(): Boolean = true
 
   override def clearAllValues(context: UsageContext): Future[SyncSuccess] = {
-    val promise: Promise[SyncSuccess] = Promise()
-    val request = SQLCommands.DeleteInDbRequest(context, None, dbName, hasKeyTable)
-    val exInfoFut: Future[ExecutionInfoTyped[SyncSuccess]] = SQLCommands.clearValuesDbCommand.sendCommandTo(backend, Logger(), request)
-    exInfoFut.map(_.resultTyped.result)(using ec)
+    clearValues(context, None)
   }
 
   override def clearValues(context: SyncContext): Future[SyncSuccess] = {
-    val promise: Promise[SyncSuccess] = Promise()
-    val request = SQLCommands.DeleteInDbRequest(context.toUsageContext, Some(context.keyForSerialisation), dbName, hasKeyTable)
-    val exInfoFut: Future[ExecutionInfoTyped[SyncSuccess]] = SQLCommands.clearValuesDbCommand.sendCommandTo(backend, Logger(), request)
+    clearValues(context.toUsageContext, Some(context.keyForSerialisation))
+  }
+
+  def clearValues(context: UsageContext, limitToKey: Option[String]): Future[SyncSuccess] = {
+    val request = SQLCommands.DeleteInDbRequest(context, limitToKey, dbName, hasKeyTable)
+    val exInfoFut: Future[ExecutionInfoTyped[SyncSuccess]] = SQLCommands.clearValuesDbCommand.sendCommandTo(backend, request, None, None)
     exInfoFut.map(_.resultTyped.result)(using ec)
   }
-}
-
-/*
-
-private val cache: mutable.Map[String, String] = mutable.Map.empty
-
-
-private def getSyncContext(key: String): SyncContext = HtmlFullWorkbookApp.fullInfo.current.currentHomepageContext.toSyncContext(key)
-
-override def syncTo(key: String, value: String): Unit = {
-  cache.update(key, value)
-
-  val backend: ExecutionClient = HtmlFullWorkbookApp.fullInfo.technical.backendServerExecutor
-
 
 }
-
-override def syncAllFrom(): Map[String, String] = {
-  fetchFromBackend(None)
-  cache.toMap
-}
-
-override def syncKeyFrom(key: String): Option[String] = {
-  fetchFromBackend(Some(key))
-  cache.get(key)
-}
-
-override def clearValues(key: String): Unit = {
-  cache.clear()
-
-}
-
-private def fetchFromBackend(key: Option[String]): Unit = {
-  val context = getSyncContext(key)
-
-
-  }
-}
-
-private def serializedSyncEvent(key: String, value: String): String =
-  ujson.Obj(
-    "type" -> "syncEvent",
-    "name" -> "syncInfo",
-    "source" -> "DatabaseSync",
-    "key" -> key,
-    "data" -> value
-  ).render()
-
-*/
-

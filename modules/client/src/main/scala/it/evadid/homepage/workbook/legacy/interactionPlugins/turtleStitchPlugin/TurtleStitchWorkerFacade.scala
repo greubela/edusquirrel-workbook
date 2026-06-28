@@ -7,6 +7,8 @@ import it.evadid.core.datastructures.state.async.AsyncData
 import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.core.datastructures.state.storage.AsyncDataCache
 import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchEditor.turtleLang
+import it.evadid.util.logging.Logger
+import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.workbook.model.elements.ImageElement
 import todomove.`export`.workers.TurtleStitchWorker
 import todomove.datastructures.web.file.FullImage
@@ -18,11 +20,15 @@ import scala.util.{Failure, Success}
 object TurtleStitchWorkerFacade {
 
 
-  private val programPngDataSrcStorage: AsyncDataCache[(String, HumanLanguage), String] = new AsyncDataCache[(String, HumanLanguage), String]("ProgramPngDataSrc", false) {
+  lazy val basicCacheLogger: Logger = {
+    println("### Inited Logger in TurtleStitchWorkerFacade::basicCacheLogger")
+    Logger.withNameAndPrefixes(Some("TurtleStitchWorkerFacade::ProgramPngDataSrcStore"), PrintToStdLogger.printWarnAndError)
+  }
+  private lazy val programPngDataSrcStorage: AsyncDataCache[(String, HumanLanguage), String] = new AsyncDataCache[(String, HumanLanguage), String](basicCacheLogger) {
     protected def executeLoading(in: (String, HumanLanguage))(ec: ExecutionContext): Future[String] = {
       val (xml, language) = in
       //calcPngDataSrcWithQueuedWorker(xml, language)(using ec)
-      println("[WARN] TurtleStitchWorkerFacade::programPngDataSrcStorage - still using non-parallel rendering.")
+      basicCacheLogger.logWarn("TurtleStitchWorkerFacade::programPngDataSrcStorage - still using non-parallel rendering.")
       if (xml.strip.isEmpty || !xml.contains("TurtleStitch") || !xml.contains("scripts")) Future.successful(EMPTY_PNG_DATA_URL)
       else TurtleStitchEditor.withSingletonEditor(_.calcProgramSvg(xml, turtleLang(language)).toFuture)(using ec)
     }

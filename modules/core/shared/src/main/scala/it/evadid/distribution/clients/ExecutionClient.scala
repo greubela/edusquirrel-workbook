@@ -5,6 +5,7 @@ import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoUntyped
 import it.evadid.distribution.command.ExecutionResult.ExecutionResultUntyped
 import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.util.logging.Logger
+import it.evadid.util.logging.derived.PrintToStdLogger
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
@@ -21,12 +22,17 @@ trait ExecutionClient {
 
   def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = {
     println("[WARN] creating new logger for Execution of command: " + executionCommand.name + " with params: " + executionCommand.params.mkString(", "))
-    handleExecution(executionCommand, Logger())
+    handleExecution(executionCommand, Logger.withNameAndPrefixes(Some(this.toString), PrintToStdLogger.printEverything))
+  }
+
+  def handleCommand(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionInfo] = {
+    val timestampRequested: LocalDateTime = LocalDateTime.now()
+    handleExecution(executionCommand, logger).map(ExecutionClient.finishUnsafeWithResponse(executionCommand, timestampRequested, _))(using ExecutionContext.global)
   }
 
   def handleCommand(executionCommand: ExecutionCommand): Future[ExecutionInfo] = {
-    val timestampRequested: LocalDateTime = LocalDateTime.now()
-    handleExecution(executionCommand).map(ExecutionClient.finishUnsafeWithResponse(executionCommand, timestampRequested, _))(using ExecutionContext.global)
+    println("[WARN] creating new logger for Execution of command: " + executionCommand.name + " with params: " + executionCommand.params.mkString(", "))
+    handleCommand(executionCommand, Logger.withNameAndPrefixes(Some(this.toString), PrintToStdLogger.printEverything))
   }
 
   def makeSynchronized(ec: ExecutionContext): ExecutionClient = SynchronizedExecutionClient(this, ec)
@@ -47,7 +53,6 @@ object ExecutionClient {
     val history = ExecutionHistory(timestampRequested, response.timestampReceived, response.timestampStarted, response.timestampFinished)
     response.response.match {
       case Left(err) =>
-        println("ExecutionClientResponse indicated an error: \n" + response)
         throw err
       case Right(resMap) =>
         val result = ExecutionResultUntyped(resMap, response.loggerOut, response.loggerError)

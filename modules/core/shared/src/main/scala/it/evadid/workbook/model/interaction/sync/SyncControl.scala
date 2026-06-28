@@ -1,6 +1,6 @@
 package it.evadid.workbook.model.interaction.sync
 
-import it.evadid.util.logging.SyncLogger
+import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.model.interaction.variable.InteractionVariable
 
 import java.time.LocalDateTime

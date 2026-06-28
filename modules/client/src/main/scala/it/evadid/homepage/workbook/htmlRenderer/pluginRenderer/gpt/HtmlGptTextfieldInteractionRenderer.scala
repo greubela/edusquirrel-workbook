@@ -6,24 +6,18 @@ import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.State
-import it.evadid.core.datastructures.state.async.AsyncDataState.{AsyncDataFailed, AsyncDataSuccess}
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.distribution.commandTypes.LLMCommands.MessengerChatCompletionRequest
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.editor.SimpleChatEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
+import it.evadid.util.logging.Logger
 import it.evadid.workbook.model.interaction.basic.MessagingInteraction.MessengerModelScaffolding
 import it.evadid.workbook.model.interaction.plugins.gpt.GptInteractionElement
 import it.evadid.workbook.model.interaction.sync.UpdateImportance.MAJOR
 import it.evadid.workbook.model.interaction.variable.InteractionVariable
 import org.scalajs.dom.SVGSVGElement
-import it.evadid.homepage.control.info.*
-import it.evadid.homepage.control.change.HomepageDataControl.*
-import it.evadid.homepage.control.change.*
-import it.evadid.homepage.control.model.*
-import it.evadid.homepage.control.model.AllWorkbookInfo.*
-import it.evadid.homepage.control.singletons.*
-import it.evadid.util.logging.Logger
+
 import java.time.LocalDateTime
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
@@ -35,7 +29,7 @@ object HtmlGptTextfieldInteractionRenderer extends HtmlRenderFactory[GptInteract
   private val systemPromptId: LanguageMapContentId = LanguageMapContentId("prompts/scaffolding-system-prompt")
 
   private def sendError(err: Throwable, mmState: State[MessengerModel]): Unit = {
-    println(s"error while sending message to LLM: ${err.getMessage}\n    ${err.getStackTrace.mkString("\n    ")}")
+    uiAndDomLogger.logExceptionWarn(s"error while sending message to LLM, a error message will appear in the chat", err)
     val errText: String = s"@student: Unfortunately, I could not generate an answer. The error I got was ${err.getMessage}. I printed additional information on the browser console!"
     val errMsg = Message(errText, LLMCommands.workbookPerson, LocalDateTime.now())
     mmState.update(_.addMessage(errMsg))
@@ -50,7 +44,7 @@ object HtmlGptTextfieldInteractionRenderer extends HtmlRenderFactory[GptInteract
     val nextMessageState = messageState.addMessage(currentStateMsg)*/
 
     val requestFuture = systemPromptFuture.map { systemPrompt => MessengerChatCompletionRequest(systemPrompt.getWithLanguagePreference(LLMCommands.langPreference), messageState) }(using ExecutionContext.global)
-    LLMCommands.completeLLMCommandFactory.waitAndSendCommandTo(fullInfo.technical.backendServerExecutor, Logger(), requestFuture).onComplete {
+    LLMCommands.completeLLMCommandFactory.waitAndSendCommandTo(fullInfo.technical.backendServerExecutor, requestFuture, None).onComplete {
       case Success(result) => mmState.set(result.resultTyped.result)
       case Failure(err) => sendError(err, mmState)
     }(using ExecutionContext.global)
@@ -68,8 +62,8 @@ object HtmlGptTextfieldInteractionRenderer extends HtmlRenderFactory[GptInteract
         .biMap(_.messengerModel, MessengerModelScaffolding.apply)
       val scaffoldingChat = SimpleChatEditor(boundState, msg => onUserSendMessage(msg, boundState))
       val openChatButton = HtmlButtonElement.withSvgContent(createScaffoldingButtonSvg(), event => {
-        println("initing scaffolding!")
-        workbookElement.initScaffoldingIfEmpty(fullInfo.signals.langMapIdResolver)
+
+        workbookElement.initScaffoldingIfEmpty(fullInfo.loggerSystemInfo.workbookElementLogger,fullInfo.signals.langMapIdResolver)
         fullInfo.technical.makeFullscreen(scaffoldingChat)
       })
       elements += openChatButton.getDomElement()

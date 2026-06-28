@@ -6,6 +6,7 @@ import it.evadid.distribution.command.*
 import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.util.JvmUtils
 import it.evadid.util.logging.Logger
+import it.evadid.util.logging.derived.PrintToStdLogger
 import play.api.libs.json.Json
 import play.api.mvc.*
 import play.api.mvc.Results.*
@@ -33,15 +34,15 @@ object BackendServer {
 
   private def handleExecuteCommand(bodyOption: Option[String]): Future[ExecutionClientResponse] = {
     val commandReceived: LocalDateTime = LocalDateTime.now()
-    val logger = Logger()
+    val backendLogger: Logger = Logger.withNameAndPrefixes(Some(s"BackendServerLogger(Request@${commandReceived.toString})"), PrintToStdLogger.printEverything)
 
     if (bodyOption.isEmpty || bodyOption.get.isEmpty)
-      Future.successful(fail(commandReceived, "No Request Body Found", None, None, logger))
+      Future.successful(fail(commandReceived, "No Request Body Found", None, None, backendLogger))
     else ExecutionCommand.tryParse(bodyOption.get).match {
-      case Failure(err) => Future.successful(fail(commandReceived, "Could not parse ExecutionCommand", Some(SerializedException(err)), None, logger))
-      case Success(command) => BackendCommandHandler.handleExecution(commandReceived, command, logger)
+      case Failure(err) => Future.successful(fail(commandReceived, "Could not parse ExecutionCommand", Some(SerializedException(err)), None, backendLogger))
+      case Success(command) => BackendCommandHandler.handleExecution(commandReceived, command, backendLogger)
         .recover{err => {
-        fail(commandReceived, "Could not handle ExecutionCommand: " + err.getMessage, Some(SerializedException(err)), Some(command), logger)
+        fail(commandReceived, "Could not handle ExecutionCommand: " + err.getMessage, Some(SerializedException(err)), Some(command), backendLogger)
       }}
     }
   }

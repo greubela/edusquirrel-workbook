@@ -9,6 +9,8 @@ import it.evadid.homepage.control.model.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlFullScreenContainerElement
 import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.HtmlWorkbookRenderer
+import it.evadid.util.logging.Logger
+import it.evadid.util.logging.derived.PrintToStdLogger
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -67,7 +69,7 @@ object HtmlFullWorkbookApp extends HtmlAppElement {
   override def getDomElement(): Element = workbookDomElement
 
 
-  private lazy val fileDataStorage: AsyncDataCache[FileDescription, LoadedFile] = new AsyncDataCache[FileDescription, LoadedFile]("FileDataStore", false) {
+  private lazy val fileDataStorage: AsyncDataCache[FileDescription, LoadedFile] = new AsyncDataCache[FileDescription, LoadedFile](fullInfo.loggerSystemInfo.fileDataStorage) {
     def load(file: FileDescription)(using ec: ExecutionContext): Future[LoadedFile] = file.loadData()
 
     override protected def executeLoading(file: FileDescription)(ec: ExecutionContext): Future[LoadedFile] = file.loadData()
