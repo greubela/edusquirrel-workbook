@@ -15,7 +15,6 @@ import scala.util.*
 private val tryToLoad: List[String] = List("plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "workbookCompression", "feedbackDemoRoot")
 
 private def load(containerId: String): Unit = {
-
   println("loading workbook: " + containerId)
   val domElement = containerId match {
     case "plantWorkshopApp" => {
@@ -68,7 +67,8 @@ def mainApp(): Unit = {
     if (canLoad.size > 1) println("Found more than one workbook to load: " + canLoad.mkString(", "))
     if (canLoad.nonEmpty) {
       val loadBasicsFut = HtmlFullWorkbookApp.fullInfo.signals.contentStorage.futureForDefaultsLoaded
-      loadBasicsFut.onComplete(finished => load(canLoad.head))(using ExecutionContext.global)
+      /*loadBasicsFut.onComplete(finished => load(canLoad.head))(using ExecutionContext.global)*/
+      load(canLoad.head)
     }
     testCalculations()
   } else {

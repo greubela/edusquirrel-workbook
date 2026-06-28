@@ -57,7 +57,7 @@ case class ExecutionCommandFactory[I, O](
     val response: Future[ExecutionInfo] = client.handleCommand(command, logger)
     response.map(_.toTyped[O](rawMap => {
       val res: O = serializerOut.deserialize(TypeConverter.singleValueMap.convertToO(rawMap))
-      logger.logInfo(s"    Successfully deserialized data received from ${client.toString}: ${serializerForLoggingOut(res)}")
+      logger.logInfo(s"    Successfully deserialized data received from ${client.toString}:\n    ${serializerForLoggingOut(res)}")
       res
     }))(using ExecutionContext.global)
 

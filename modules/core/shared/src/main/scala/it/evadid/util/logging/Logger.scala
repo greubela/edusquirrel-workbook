@@ -7,14 +7,16 @@ trait Logger {
 
 
   private def prefixOther: String = " ~~~[Inserted Messages from external Logger]~~~\n\n "
+
   private def afterOther: String = "\n ~~~[End of externally Inserted Messages]~~~\n\n"
 
-  def logFromExternalInfo(other: String): Unit = if(other.nonEmpty) log(prefixOther + other + afterOther, INFO)
-  def logFromExternalError(other: String): Unit = if(other.nonEmpty) log(prefixOther + other + afterOther, ERROR)
+  def logFromExternalInfo(other: String): Unit = if (other.replace("\\s+", "").trim.nonEmpty) log(prefixOther + other.trim + afterOther, INFO)
 
-  def logOutputFrom(other: Logger): Unit = if(other.getOut().nonEmpty) logFromExternalInfo(other.getOut())
+  def logFromExternalError(other: String): Unit = if (other.replace("\\s+", "").trim.nonEmpty) log(prefixOther + other.trim + afterOther, ERROR)
 
-  def logErrorFrom(other: Logger): Unit = if(other.getErr().nonEmpty) log(other.getErr(), ERROR)
+  def logOutputFrom(other: Logger): Unit = if (other.getOut().trim.nonEmpty) logFromExternalInfo(other.getOut())
+
+  def logErrorFrom(other: Logger): Unit = if (other.getErr().trim.nonEmpty) log(other.getErr(), ERROR)
 
   def logAllFrom(other: Logger): Unit = {
     logOutputFrom(other)
@@ -68,7 +70,6 @@ object Logger {
   }
 
   trait DerivedLogger extends Logger {
-
     def underlyingLogger: Logger
 
     override def getOut(): String = underlyingLogger.getOut()

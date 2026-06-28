@@ -22,8 +22,8 @@ trait RemoteExecutionClient extends ExecutionClient {
     res.map { rec => {
       val timestampReceivedBack: LocalDateTime = LocalDateTime.now()
       logger.logInfo("Received response from " + hostname + ":" + port + " at " + timestampReceivedBack + ": " + rec.response.toString)
-      logger.logFromExternalInfo(rec.loggerOut)
-      logger.logFromExternalError(rec.loggerError)
+      logger.logFromExternalInfo(rec.loggerOut.trim)
+      logger.logFromExternalError(rec.loggerError.trim)
       ExecutionClientResponse(rec.timestampReceived, rec.timestampStarted, timestampReceivedBack, rec.response, rec.parsedExecutionCommand, logger.getOut(), logger.getErr())
     }
     }(using ExecutionContext.global)

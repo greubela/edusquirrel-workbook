@@ -6,7 +6,11 @@ import it.evadid.util.logging.{Logger, LoggingLevel}
 
 case class TimeAndNamePrefixedLogger(name: Option[String], underlyingLogger: Logger) extends DerivedLogger {
 
-  override def log(msg: String, loggingLevel: LoggingLevel): Unit = underlyingLogger.log(TimeAndNamePrefixedLogger.prefixLine(name, msg, loggingLevel), loggingLevel)
+  override def log(msg: String, loggingLevel: LoggingLevel): Unit = {
+    val changed = TimeAndNamePrefixedLogger.prefixLine(name, msg, loggingLevel)
+    underlyingLogger.log(changed, loggingLevel)
+  }
+
 }
 
 object TimeAndNamePrefixedLogger {
@@ -21,7 +25,10 @@ object TimeAndNamePrefixedLogger {
     case LoggingLevel.ERROR => "ERROR"
   }
 
-  def prefixLine(name: Option[String], msg: String, loggingLevel: LoggingLevel): String = s"[${prefixName(name)}@${prefixTime}|${prefixLevel(loggingLevel)}] }"
+  def prefixLine(name: Option[String], msg: String, loggingLevel: LoggingLevel): String = {
+    s"[${prefixTime}|${prefixLevel(loggingLevel)}] ${prefixName(name).trim}: ${msg.trim}\n"
+    //"[PREFIX] " + msg + "\n"
+  }
 
 
 }

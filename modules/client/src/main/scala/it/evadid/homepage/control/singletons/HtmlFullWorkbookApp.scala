@@ -18,22 +18,21 @@ object HtmlFullWorkbookApp extends HtmlAppElement {
 
   private lazy val technical = TechnicalHomepageElements(
     HtmlFullScreenContainerElement(),
-    fileDataStorage,
     BackendServerConfig.executor,
     //ExecuteOnRemoteServer("http://localhost", 9000),
     //ExecuteOnWebWorker(FileFactory.relativeToArtifactsFolder("/newest/backend-worker.js").fullPath),
   )
 
-  private val defaults: HomepageDefaults = HomepageDefaults()
+  private lazy val defaults: HomepageDefaults = HomepageDefaults()
 
-  private val initHomepageInfo = HomepageInfo(
+  private lazy val initHomepageInfo = HomepageInfo(
     homepageDefaults = defaults,
     currentLanguage = defaults.defaultLanguage,
     workbookInfo = None,
     userInfo = None
   )
 
-  val fullInfo: FullInfo = {
+  lazy val fullInfo: FullInfo = {
     val res = FullInfo(defaults, technical, initHomepageInfo)
     if (res.current.userInfo.isEmpty) {
       res.control.changeUser(Some(defaults.defaultUser))
@@ -69,15 +68,7 @@ object HtmlFullWorkbookApp extends HtmlAppElement {
   override def getDomElement(): Element = workbookDomElement
 
 
-  private lazy val fileDataStorage: AsyncDataCache[FileDescription, LoadedFile] = new AsyncDataCache[FileDescription, LoadedFile](fullInfo.loggerSystemInfo.fileDataStorage) {
-    def load(file: FileDescription)(using ec: ExecutionContext): Future[LoadedFile] = file.loadData()
 
-    override protected def executeLoading(file: FileDescription)(ec: ExecutionContext): Future[LoadedFile] = file.loadData()
-
-    override protected def formatInputForLogging(in: FileDescription): String = in.toString
-
-    override protected def formatOutputForLogging(out: LoadedFile): String = out.toString
-  }
 
 
 }

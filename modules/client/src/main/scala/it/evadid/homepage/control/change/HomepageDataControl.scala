@@ -1,21 +1,12 @@
 package it.evadid.homepage.control.change
 
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.core.datastructures.state.storage.AsyncDataCache
-import it.evadid.core.util.io.Serializer
-import it.evadid.homepage.control.change.HomepageDataControl.*
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.workbook.content.WorkbookFactory
-import it.evadid.util.logging.Logger
-import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.workbook.model.interaction.WorkbookInteraction
-import it.evadid.workbook.model.interaction.sync.SyncControl
-import it.evadid.workbook.model.interaction.sync.SyncInformation.{SyncCache, SyncInformationWithContext}
-import it.evadid.workbook.model.interaction.variable.{InteractionVariable, InteractionVariableHistory}
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
 
 case class HomepageDataControl(fullInfo: FullInfo) {
 
@@ -82,7 +73,6 @@ case class HomepageDataControl(fullInfo: FullInfo) {
 }
 
 object HomepageDataControl {
-
 
 
 }

@@ -22,7 +22,7 @@ trait ExecutionClient {
 
   def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = {
     println("[WARN] creating new logger for Execution of command: " + executionCommand.name + " with params: " + executionCommand.params.mkString(", "))
-    handleExecution(executionCommand, Logger.withNameAndPrefixes(Some(this.toString), PrintToStdLogger.printEverything))
+    handleExecution(executionCommand, Logger.withNameAndPrefixes(Some(this.toString), PrintToStdLogger.printWarnAndError))
   }
 
   def handleCommand(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionInfo] = {
@@ -32,7 +32,7 @@ trait ExecutionClient {
 
   def handleCommand(executionCommand: ExecutionCommand): Future[ExecutionInfo] = {
     println("[WARN] creating new logger for Execution of command: " + executionCommand.name + " with params: " + executionCommand.params.mkString(", "))
-    handleCommand(executionCommand, Logger.withNameAndPrefixes(Some(this.toString), PrintToStdLogger.printEverything))
+    handleCommand(executionCommand, Logger.withNameAndPrefixes(Some(this.toString), PrintToStdLogger.printWarnAndError))
   }
 
   def makeSynchronized(ec: ExecutionContext): ExecutionClient = SynchronizedExecutionClient(this, ec)

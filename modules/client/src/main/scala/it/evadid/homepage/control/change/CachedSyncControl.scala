@@ -3,8 +3,7 @@ package it.evadid.homepage.control.change
 import it.evadid.core.datastructures.state.storage.AsyncDataCache
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.util.logging.LoggingLevel.INFO
-import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
-import it.evadid.util.logging.{BasicLogger, Logger}
+import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.model.interaction.sync.SyncControl
 import it.evadid.workbook.model.interaction.sync.SyncInformation.{SyncCache, SyncInformationWithContext}
 import it.evadid.workbook.model.interaction.variable.{InteractionVariable, InteractionVariableHistorySerialized}
@@ -19,62 +18,70 @@ case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
 
   private given ExecutionContext = ExecutionContext.global
 
-  // load
+
   private val requestCache: AsyncDataCache[SyncInformationWithContext, SyncCache] = {
     new AsyncDataCache[SyncInformationWithContext, SyncCache](fullInfo.loggerSystemInfo.syncCacheLogger) {
 
-      override protected def executeLoading(in: SyncInformationWithContext)(ec: ExecutionContext): Future[SyncCache] = {
+      override protected def executeLoading(in: SyncInformationWithContext)(ec: ExecutionContext): Future[SyncCache] = syncLock.synchronized {
         in.fetchAllFrom()
       }
 
-      override protected def formatInputForLogging(in: SyncInformationWithContext): String = s"SyncInfoWithContext(${in.usageContext})"
+      override protected def formatInputForLogging(in: SyncInformationWithContext): String = syncLock.synchronized {
+        s"SyncInfoWithContext(${in.usageContext})"
+      }
 
-      override protected def formatOutputForLogging(out: SyncCache): String = s"SyncCache(${out.createdAt}: ${out.values.size} values)"
+      override protected def formatOutputForLogging(out: SyncCache): String = syncLock.synchronized {
+        s"SyncCache(${out.createdAt}: ${out.values.size} values)"
+      }
     }
   }
 
-  private def executeLoadAll(maxAge: LocalDateTime = LocalDateTime.now()): Future[Map[SyncInformationWithContext, Either[Throwable, SyncCache]]] = {
+  private def executeLoadAll(maxAge: LocalDateTime = LocalDateTime.now()): Future[Map[SyncInformationWithContext, Either[Throwable, SyncCache]]] = requestCache.syncLock.synchronized {
     requestCache.loadAllAsFuture(fullInfo.current.currentSyncSources, maxAge)
   }
 
-  def requestFetchAll(variables: List[InteractionVariable[?]], maxCacheAge: LocalDateTime): Unit = fullInfo.synchronized {
-    variables.foreach(intVar => requestFetch(intVar, maxCacheAge))
+  def requestFetchAll(variables: List[InteractionVariable[?]], maxCacheAge: LocalDateTime): Unit = requestCache.syncLock.synchronized {
+    if (variables.nonEmpty) requestFetch(variables.head, maxCacheAge).onComplete(res => {
+      requestFetchAll(variables.tail, maxCacheAge)
+    })
   }
 
-  override def requestFetch(interactionVariable: InteractionVariable[?], maxCacheAge: LocalDateTime): Unit = fullInfo.synchronized {
+  override def requestFetch(interactionVariable: InteractionVariable[?], maxCacheAge: LocalDateTime): Future[?] = requestCache.syncLock.synchronized {
 
     def format(in: SyncInformationWithContext, out: Either[Throwable, SyncCache]): String = out.match {
       case Left(err) => "Failure(" + in.syncSource.getClass.getSimpleName + " -> " + err + ")"
       case Right(err) => "Success(" + in.syncSource.getClass.getSimpleName + " -> " + err.values.size + " elements)"
-
     }
 
     val futMap: Future[Map[SyncInformationWithContext, Either[Throwable, SyncCache]]] = executeLoadAll(maxCacheAge)
     futMap.onComplete {
       case Success(resMap) => {
         val formatted: String = resMap.map(format).mkString("FetchResults(", ",", ")")
-        println("[INFO] <--- successfully executed fetch : " + formatted)
+        fullInfo.loggerSystemInfo.syncCacheLogger.logInfo("successfully executed fetch : " + formatted)
         resMap.flatMap(_._2.toOption).foreach(cache => interactionVariable.executeLoad(List(cache)))
       }
-      case Failure(exception) => println(s"[ERROR] <-|- error while fetching sync data: $exception")
+      case Failure(exception) => {
+        fullInfo.loggerSystemInfo.syncCacheLogger.logExceptionWarn("ignoring date after error during fetching", exception)
+      }
     }
+    futMap
   }
 
-  override def requestStore[T](from: InteractionVariable[T], forcePush: Boolean): Unit = fullInfo.synchronized {
+  override def requestStore[T](from: InteractionVariable[T], forcePush: Boolean): Unit = requestCache.syncLock.synchronized {
     fullInfo.current.currentSyncSources.foreach(curInfo => requestStore(curInfo, from, forcePush))
   }
 
-  def requestStoreAll(interactionVariable: List[InteractionVariable[?]], forcePush: Boolean): Future[Unit] = fullInfo.synchronized {
+  def requestStoreAll(interactionVariable: List[InteractionVariable[?]], forcePush: Boolean): Future[Unit] = requestCache.syncLock.synchronized {
     Future.traverse(interactionVariable)(intVar => requestStoreAll(intVar, forcePush)).map(theList => {})
   }
 
-  def requestStoreAll(interactionVariable: InteractionVariable[?], forcePush: Boolean): Future[Unit] = fullInfo.synchronized {
+  def requestStoreAll(interactionVariable: InteractionVariable[?], forcePush: Boolean): Future[Unit] = requestCache.syncLock.synchronized {
     Future.traverse(fullInfo.current.currentSyncSources)((currentSyncSource: SyncInformationWithContext) => {
       requestStore(currentSyncSource, interactionVariable, forcePush)
     }).map(theList => {})
   }
 
-  def requestStore(syncSource: SyncInformationWithContext, interactionVariable: InteractionVariable[?], forcePush: Boolean): Future[?] = fullInfo.synchronized {
+  def requestStore(syncSource: SyncInformationWithContext, interactionVariable: InteractionVariable[?], forcePush: Boolean): Future[?] = requestCache.syncLock.synchronized {
     val historyAtRequest = interactionVariable.history // this requests the state, should be consistent across transaction
 
     val syncContext = syncSource.usageContext.toSyncContext(interactionVariable.keyForSerialization)
@@ -135,5 +142,7 @@ case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
   }
 
 
-  override def syncLogger: SyncLogger = fullInfo.loggerSystemInfo.syncControlLogger
+  override def syncLogger: SyncLogger = requestCache.syncLock.synchronized {
+    fullInfo.loggerSystemInfo.syncControlLogger
+  }
 }

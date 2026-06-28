@@ -14,29 +14,28 @@ case class PrintToStdLogger(underlyingLogger: Logger, printMap: Map[LoggingLevel
 
 case object PrintToStdLogger {
 
-  val printError = Map(
+  val printError: Map[LoggingLevel, Boolean] = Map(
+    INFO -> false,
+    WARN -> false,
+    ERROR -> true
+  )
+
+  val printWarnAndError: Map[LoggingLevel, Boolean] = Map(
     INFO -> false,
     WARN -> true,
     ERROR -> true
   )
 
-  val printWarnAndError = Map(
-    INFO -> false,
-    WARN -> true,
-    ERROR -> true
-  )
-
-  val printEverything = Map(
+  val printEverything: Map[LoggingLevel, Boolean] = Map(
     INFO -> true,
     WARN -> true,
     ERROR -> true
   )
 
-  val printNothing = Map(
+  val printNothing: Map[LoggingLevel, Boolean] = Map(
     INFO -> false,
     WARN -> false,
     ERROR -> false
   )
-
 
 }

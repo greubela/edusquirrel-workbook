@@ -15,9 +15,9 @@ case class HomepageLoggerInfo() {
 
   lazy val syncControlLogger: SyncLogger = SyncLogger(PrintToStdLogger(BasicLogger(), PrintToStdLogger.printEverything))
 
-  lazy val syncCacheLogger: Logger = Logger.withNameAndPrefixes(Some("SyncCacheLogger"), PrintToStdLogger.printEverything)
+  lazy val syncCacheLogger: Logger = Logger.withNameAndPrefixes(Some("SyncCacheLogger"), PrintToStdLogger.printWarnAndError)
 
-  lazy val fileDataStorage: Logger = Logger.withNameAndPrefixes(Some("FileDataStorage"), PrintToStdLogger.printError)
+  lazy val fileDataStorageLogger: Logger = Logger.withNameAndPrefixes(Some("FileDataStorage"), PrintToStdLogger.printError)
 
 }
 
