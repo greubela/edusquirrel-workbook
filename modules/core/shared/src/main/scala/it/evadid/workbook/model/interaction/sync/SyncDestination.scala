@@ -8,7 +8,6 @@ import scala.concurrent.{ExecutionContext, Future}
 
 trait SyncDestination {
 
-
   type BackendServerResult[T] = Either[Throwable, T]
 
   protected def debug: Boolean = false

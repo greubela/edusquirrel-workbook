@@ -41,6 +41,8 @@ object SyncInformation {
     def storeTo[T](key: String, history: InteractionVariableHistory[T], serializer: Serializer[T]): Future[SyncSuccess] = {
       val syncContext: SyncContext = usageContext.toSyncContext(key)
       val historySerialized: InteractionVariableHistorySerialized = history.serializedWithStrategy(syncStrategy, serializer)
+      val diff = history.events.size - historySerialized.states.size
+      println(s"Syncing $key to ${syncSource} with strategy $syncStrategy, diff of $diff")
       syncSource.syncTo(syncContext, InteractionSyncRequest(syncContext, historySerialized), formatter)
     }
 

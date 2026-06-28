@@ -23,7 +23,7 @@ case class InteractionVariableHistory[T](events: Set[InteractionVariableState[T]
   }
 
   def serializedWithStrategy(syncStrategy: SyncStrategy, serializer: Serializer[T]): InteractionVariableHistorySerialized = {
-    val syncEvents = syncStrategy.selectEventsToSync(this).events
+    val syncEvents: Set[InteractionVariableState[T]] = syncStrategy.selectEventsToSync(this).events
     InteractionVariableHistory(syncEvents).cleanedHistory().serialized(serializer)
   }
 

@@ -100,6 +100,7 @@ object HomepageDataControl {
     }
 
     def requestFetchAll(variables: List[InteractionVariable[?]], maxCacheAge: LocalDateTime): Unit = fullInfo.synchronized {
+      println(s"requestFetchAll: ${variables.map(_.keyForSerialization)}")
       variables.foreach(requestFetch(_, maxCacheAge))
     }
 
