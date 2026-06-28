@@ -22,7 +22,8 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
   private val innerState: State[InteractionVariableHistory[T]] = State(defaultHistory)
   private val syncControl: State[Option[SyncControl]] = State(None)
 
-  val fallbackLogger: SyncLogger = SyncLogger(Logger.withNameAndPrefixes(Some(s"InteractionVariableFallbackLogger(${keyForSerialization})"), PrintToStdLogger.printNothing))
+  val fallbackLogger: SyncLogger = SyncLogger(Logger.withNameAndPrefixes(Some(s"InteractionVariableFallbackLogger(${keyForSerialization})"), PrintToStdLogger.printEverything))
+
   def useLogger: SyncLogger = syncControl.now().map(_.syncLogger).getOrElse(fallbackLogger)
 
   val keyForSerialization: String = underlyingInteraction.id + "_history"
@@ -86,7 +87,7 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
     syncControl.set(newSyncControl)
     innerState.set(defaultHistory)
 
-    if(wasEmpty) useLogger.logAllFrom(fallbackLogger)
+    if (wasEmpty) useLogger.logAllFrom(fallbackLogger)
   }
 
   def updateStateFromUserInteraction(updater: T => T, updateSize: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now()): Unit = this.synchronized {
@@ -97,18 +98,23 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
   def setStateFromUserInteraction(newValue: T, updateSize: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now()): Unit = this.synchronized {
 
     useLogger.logInfo(s"InteractionVariable.updateStateFromUserInteraction(${innerState.now().lastState.value} -> $newValue ($timestamp, $updateSize)")
-
-    val lastKnown: InteractionVariableState[T] = innerState.now().lastState
-    if (newValue != lastKnown.value || updateSize != lastKnown.updateImportance) {
-      val newInteractionState = InteractionVariableState[T](newValue, updateSize, timestamp)
-      innerState.update(_.withAddedEvent(newInteractionState))
-      if (syncControl.now().nonEmpty) {
-        syncControl.now().foreach(_.requestStore(this, false))
+    try {
+      val lastKnown: InteractionVariableState[T] = innerState.now().lastState
+      if (newValue != lastKnown.value || updateSize != lastKnown.updateImportance) {
+        val newInteractionState = InteractionVariableState[T](newValue, updateSize, timestamp)
+        innerState.update(_.withAddedEvent(newInteractionState))
+        if (syncControl.now().nonEmpty) {
+          syncControl.now().foreach(_.requestStore(this, false))
+        } else {
+          useLogger.logWarn(s"User Interaction Updates at ${timestamp} was not committed because no syncTarget was available!")
+        }
       } else {
-        useLogger.logWarn(s"User Interaction Updates at ${timestamp} was not committed because no syncTarget was available!")
+        useLogger.logInfo(s"InteractionVariable.updateStateFromUserInteraction was ignored because it was identical to the last known value!")
       }
-    } else {
-      useLogger.logInfo(s"InteractionVariable.updateStateFromUserInteraction($newValue) was ignored because it was identical to the last known value!")
+    } catch case e: Exception => {
+      e.printStackTrace()
+      useLogger.logExceptionWarn(s"InteractionVariable.updateStateFromUserInteraction failed with exception", e)
+      throw e
     }
   }
 

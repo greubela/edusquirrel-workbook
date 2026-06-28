@@ -38,7 +38,10 @@ abstract class AsyncDataCache[I, O](val baseLogger: Logger, val retryFailedOnNex
   def getSyncIfInCache(input: I, loadIfNotPresent: Boolean = true): Option[O] = syncLock.synchronized {
     val res: Option[O] = cachedRequests.get(input).match {
       case Some(finished: SucceededRequest[I, O]) => Some(finished.output)
-      case _ => None
+      case o: Any => {
+        println("################" + o + " (" + o.getClass.getSimpleName + ")")
+        None
+      }
     }
     if (res.isEmpty && loadIfNotPresent) ensureCache(input)
     res
@@ -52,16 +55,19 @@ abstract class AsyncDataCache[I, O](val baseLogger: Logger, val retryFailedOnNex
       startExecution(input, emptyAsyncState)
     }
     else if (forceReloading(cachedElement.get)) {
+      cacheLogger.logInfo("Forced reloading of input " + formatInputForLogging(input) + " (element in cache: " + cachedElement.get + ")")
       val useVar: State[AsyncDataState[Nothing, O]] = cachedElement.map(_.getVariable).getOrElse(emptyAsyncState)
       startExecution(input, useVar)
     }
     else {
+      cacheLogger.logInfo("Cache hit for " + formatInputForLogging(input) + " with age of element: " + cachedElement.get.requestCompletedAt + ")")
       cache_hits = cache_hits + 1
       cachedElement.get
     }
   }
 
   private def startExecution(input: I, outputVar: State[AsyncDataState[Nothing, O]]): StartedRequest[I, O] = syncLock.synchronized {
+    cacheLogger.logInfo("requested execution for " + formatInputForLogging(input))
     execution_requested = execution_requested + 1
     val fetchedRequest = StartedRequest(this, input, outputVar)
     cachedRequests.put(input, fetchedRequest)
@@ -69,7 +75,6 @@ abstract class AsyncDataCache[I, O](val baseLogger: Logger, val retryFailedOnNex
       case Success(outputData) => fetchedRequest.succeeded(outputData)
       case Failure(error) => fetchedRequest.failed(input, error)
     }(using ExecutionContext.Implicits.global)
-    cacheLogger.logInfo("requested execution for " + formatInputForLogging(input))
 
     fetchedRequest
   }
@@ -114,7 +119,7 @@ abstract class AsyncDataCache[I, O](val baseLogger: Logger, val retryFailedOnNex
 
   def loadAsFuture(input: I, maximumAge: LocalDateTime)(implicit ec: ExecutionContext): Future[O] = syncLock.synchronized {
     cachedRequests.synchronized {
-      ensureCache(input, cache => cache.requestCompletedAt.isEmpty || cache.requestCompletedAt.get.isBefore(maximumAge))
+      ensureCache(input, (cache: CachedRequest[I, O]) => cache.requestCompletedAt.isEmpty || cache.requestCompletedAt.get.isBefore(maximumAge))
     }.createFuture
   }
 

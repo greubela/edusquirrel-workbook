@@ -27,7 +27,7 @@ case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
       }
 
       override protected def formatInputForLogging(in: SyncInformationWithContext): String = syncLock.synchronized {
-        s"SyncInfoWithContext(${in.usageContext})"
+        s"SyncInfoWithContext(${in.syncSource.getClass.getSimpleName}->${in.usageContext})"
       }
 
       override protected def formatOutputForLogging(out: SyncCache): String = syncLock.synchronized {
@@ -36,14 +36,22 @@ case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
     }
   }
 
-  private def executeLoadAll(maxAge: LocalDateTime = LocalDateTime.now()): Future[Map[SyncInformationWithContext, Either[Throwable, SyncCache]]] = requestCache.syncLock.synchronized {
-    requestCache.loadAllAsFuture(fullInfo.current.currentSyncSources, maxAge)
-  }
-
   def requestFetchAll(variables: List[InteractionVariable[?]], maxCacheAge: LocalDateTime): Unit = requestCache.syncLock.synchronized {
-    if (variables.nonEmpty) requestFetch(variables.head, maxCacheAge).onComplete(res => {
+
+    def continue(): Unit = {
       requestFetchAll(variables.tail, maxCacheAge)
-    })
+    }
+
+    if (variables.nonEmpty) requestFetch(variables.head, maxCacheAge).onComplete {
+      case Success(any) => {
+        syncLogger.log("successfully executed fetchAll", INFO, Option(true))
+        continue()
+      }
+      case Failure(err) => {
+        syncLogger.logExceptionWarn("ignoring date after error during fetching", err)
+        continue()
+      }
+    }
   }
 
   override def requestFetch(interactionVariable: InteractionVariable[?], maxCacheAge: LocalDateTime): Future[?] = requestCache.syncLock.synchronized {
@@ -53,7 +61,7 @@ case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
       case Right(err) => "Success(" + in.syncSource.getClass.getSimpleName + " -> " + err.values.size + " elements)"
     }
 
-    val futMap: Future[Map[SyncInformationWithContext, Either[Throwable, SyncCache]]] = executeLoadAll(maxCacheAge)
+    val futMap: Future[Map[SyncInformationWithContext, Either[Throwable, SyncCache]]] = requestCache.loadAllAsFuture(fullInfo.current.currentSyncSources, maxCacheAge)
     futMap.onComplete {
       case Success(resMap) => {
         val formatted: String = resMap.map(format).mkString("FetchResults(", ",", ")")
@@ -67,40 +75,45 @@ case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
     futMap
   }
 
-  override def requestStore[T](from: InteractionVariable[T], forcePush: Boolean): Unit = requestCache.syncLock.synchronized {
-    fullInfo.current.currentSyncSources.foreach(curInfo => requestStore(curInfo, from, forcePush))
+  override def requestStore[T](from: InteractionVariable[T], forcePush: Boolean): Unit = fullInfo.synchronized {
+    val syncSources: List[SyncInformationWithContext] = fullInfo.current.currentSyncSources
+    //syncLogger.log(s"Store requested for variable ${from.keyForSerialization} and ${syncSources.size} destinations ${syncSources.mkString(",")}", INFO, Some(true))
+    syncSources.foreach((curInfo: SyncInformationWithContext) => requestStore(curInfo, from, forcePush))
   }
 
-  def requestStoreAll(interactionVariable: List[InteractionVariable[?]], forcePush: Boolean): Future[Unit] = requestCache.syncLock.synchronized {
-    Future.traverse(interactionVariable)(intVar => requestStoreAll(intVar, forcePush)).map(theList => {})
+  def requestStoreAll(interactionVariables: List[InteractionVariable[?]], forcePush: Boolean): Future[Unit] = requestCache.syncLock.synchronized {
+    Future.traverse(interactionVariables)(intVar => requestStoreAll(intVar, forcePush)).map(theList => {})
   }
 
-  def requestStoreAll(interactionVariable: InteractionVariable[?], forcePush: Boolean): Future[Unit] = requestCache.syncLock.synchronized {
+  def requestStoreAll(interactionVariable: InteractionVariable[?], forcePush: Boolean): Future[?] = requestCache.syncLock.synchronized {
     Future.traverse(fullInfo.current.currentSyncSources)((currentSyncSource: SyncInformationWithContext) => {
-      requestStore(currentSyncSource, interactionVariable, forcePush)
-    }).map(theList => {})
+      requestStore(currentSyncSource, interactionVariable, forcePush).recover { err =>
+        syncLogger.logExceptionWarn("ignoring date after error during requestStore", err)
+        Future.successful(())
+      }.map(_ => {})
+    })
   }
 
   def requestStore(syncSource: SyncInformationWithContext, interactionVariable: InteractionVariable[?], forcePush: Boolean): Future[?] = requestCache.syncLock.synchronized {
+    syncLogger.log(s"Store requested for variable ${interactionVariable.keyForSerialization} and destination $syncSource", INFO, Some(true))
     val historyAtRequest = interactionVariable.history // this requests the state, should be consistent across transaction
 
     val syncContext = syncSource.usageContext.toSyncContext(interactionVariable.keyForSerialization)
-    val cacheMap: Option[SyncCache] = requestCache.getSyncIfInCache(syncSource, false)
-    val cache: Option[InteractionVariableHistorySerialized] = cacheMap.flatMap(_.values.get(syncContext))
+    val cacheMap: Option[SyncCache] = requestCache.getSyncIfInCache(syncSource, true)
 
     // calc msg info
     val historySerialized: InteractionVariableHistorySerialized = historyAtRequest.serializedWithStrategy(syncSource.syncStrategy, interactionVariable.underlyingInteraction.serializer)
 
-
     val (cacheInfo, shouldFetchBecauseOfCache): (String, Boolean) = {
       if (cacheMap.isEmpty) ("No elements in cache yet", true)
-      else if (cacheMap.get.values.isEmpty) (s"Cache has not elements yet (created at${cacheMap.get.createdAt})", true)
+      else if (cacheMap.get.values.isEmpty) (s"Cache has no elements yet (created at${cacheMap.get.createdAt})", true)
       else if (!cacheMap.get.values.contains(syncContext)) {
         val valueCount: Int = cacheMap.get.values.size
-        val lastKnownInCache: LocalDateTime = cache.get.lastState.timestamp
+        val lastKnownInCache: LocalDateTime = cacheMap.get.values.iterator.map(_._2.lastState).maxBy(_.timestamp).timestamp
         val cacheTime: LocalDateTime = cacheMap.get.createdAt
         (s"Cache does not contain $syncContext ($valueCount elements, created at $cacheTime, last state timestamp: $lastKnownInCache)", true)
       } else {
+        val cache: Option[InteractionVariableHistorySerialized] = cacheMap.get.values.get(syncContext)
         val lastKnownInCache: LocalDateTime = cache.get.lastState.timestamp
         val lastToStore: LocalDateTime = historySerialized.lastState.timestamp
         if (lastToStore.isAfter(lastKnownInCache)) (s"lastToStore is after lastKnownInCache: $lastToStore > $lastKnownInCache", true)
@@ -117,11 +130,10 @@ case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
       val reasoningFormatted: String = reasoning.map(": " + _).getOrElse("")
       val firstLine: String = if (willExecute) s"Now Storing $storeMsgFinished$reasoning" else s"Skipp Storing $storeMsgFinished$reasoning"
       val fullMsg: String = {
-        s"""
-           |$firstLine
+        s"""$firstLine
            |    cache info: $cacheInfo
            |    serializing info: $serializedMsg
-           |""".stripMargin
+           |""".stripMargin.trim
       }
       fullMsg
     }

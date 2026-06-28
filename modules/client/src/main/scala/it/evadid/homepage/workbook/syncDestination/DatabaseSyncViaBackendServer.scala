@@ -15,6 +15,9 @@ import scala.concurrent.*
 
 case class DatabaseSyncViaBackendServer(dbName: String, hasKeyTable: Boolean) extends SyncDestination {
 
+  override val toString: String = "DatabaseSyncViaBackendServer(" + dbName + ", " + hasKeyTable +")"
+
+
   private lazy val backend: ExecutionClient = HtmlFullWorkbookApp.fullInfo.technical.backendServerExecutor
 
   private given ec: ExecutionContext = ExecutionContext.global
