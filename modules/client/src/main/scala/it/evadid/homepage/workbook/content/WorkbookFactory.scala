@@ -4,7 +4,7 @@ package it.evadid.homepage.workbook.content
 import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.control.info.{AllWorkbookInfo, FullInfo, WorkbookConfig}
+import it.evadid.homepage.control.model.*
 import it.evadid.workbook.model.abstractions.*
 import it.evadid.workbook.model.elements.*
 import it.evadid.workbook.model.elements.ImageElement.FileBasedImageElement
@@ -116,12 +116,12 @@ trait WorkbookFactory {
    */
 
   protected def codeReorder(
-    baseId: String,
-    snippets: List[String],
-    programmingLanguage: ProgrammingLanguage,
-    hints: List[LanguageMapContentId] = List.empty,
-    orderConstraints: List[(Int, Int)] = Nil
-  ): ReorderInteraction[String] = {
+                             baseId: String,
+                             snippets: List[String],
+                             programmingLanguage: ProgrammingLanguage,
+                             hints: List[LanguageMapContentId] = List.empty,
+                             orderConstraints: List[(Int, Int)] = Nil
+                           ): ReorderInteraction[String] = {
     ReorderInteraction.ReorderCodeInteraction(baseId, snippets, programmingLanguage, hints = hints, orderConstraints = orderConstraints)
   }
 

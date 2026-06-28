@@ -5,8 +5,8 @@ import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
-import it.evadid.homepage.control.HtmlFullWorkbookApp.fullInfo
-import it.evadid.homepage.control.info.AllUserInfo
+import it.evadid.homepage.control.model.*
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlDropdownMenu}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
@@ -251,7 +251,7 @@ private case class UserConfigLine(workbook: Workbook) extends HtmlAppElement {
   private val domElement: Element = div(
     styleAttr := "display:none;",
     uploadInput,
-  //  resetButton.getDomElement(),
+    //  resetButton.getDomElement(),
     downloadDataButton.getDomElement(),
     uploadButton.getDomElement(),
   )

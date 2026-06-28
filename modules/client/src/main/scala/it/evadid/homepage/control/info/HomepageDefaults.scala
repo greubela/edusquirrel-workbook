@@ -7,6 +7,10 @@ import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServer
 import it.evadid.workbook.model.interaction.sync.*
 import it.evadid.workbook.model.interaction.sync.SyncStrategy.SYNC_MAJOR
 
+import it.evadid.homepage.control.change.HomepageDataControl.*
+import it.evadid.homepage.control.change.*
+import it.evadid.homepage.control.model.*
+import it.evadid.homepage.control.singletons.*
 case class HomepageDefaults() {
   lazy val availableLanguages: List[HumanLanguage] = List(AppLanguage.German, AppLanguage.English)
 
@@ -14,7 +18,8 @@ case class HomepageDefaults() {
 
   lazy val defaultSyncLocation: List[SyncInformation] = List(
     SyncInformation(LocalStorageSync, SyncStrategy.SYNC_LAST, SyncFormatter.serializeHistory),
-    SyncInformation(DatabaseSyncViaBackendServer("db_332371_12"), SYNC_MAJOR, SyncFormatter.RichInteractionVariableFormatter()),
+    SyncInformation(DatabaseSyncViaBackendServer("db_332371_12", true), SYNC_MAJOR, SyncFormatter.RichInteractionVariableFormatter()),
+    SyncInformation(DatabaseSyncViaBackendServer("db_332371_12", false), SYNC_MAJOR, SyncFormatter.RichInteractionVariableFormatter()),
   )
 
   lazy val defaultUser: AllUserInfo = selectableUsers.head

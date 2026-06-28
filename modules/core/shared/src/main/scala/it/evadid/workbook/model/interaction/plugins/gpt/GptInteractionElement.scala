@@ -2,7 +2,6 @@ package it.evadid.workbook.model.interaction.plugins.gpt
 
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.datastructures.language.{LanguageMapContentId, LanguageMapIdResolver}
-import it.evadid.core.datastructures.state.State
 import it.evadid.workbook.model.abstractions.WorkbookElement
 import it.evadid.workbook.model.elements.Workbook
 import it.evadid.workbook.model.interaction.WorkbookInteraction
@@ -11,8 +10,8 @@ import it.evadid.workbook.model.interaction.basic.MessagingInteraction.Messenger
 import it.evadid.workbook.model.interaction.sync.UpdateImportance.MAJOR
 import upickle.default.{ReadWriter, macroRW}
 
-import scala.util.{Failure, Success}
 import scala.concurrent.*
+import scala.util.{Failure, Success}
 
 case class GptInteractionElement(
                                   id: String,

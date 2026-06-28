@@ -4,12 +4,10 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.file.*
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
-import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.StateHelper.*
-import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState, AsyncState, AsyncValue}
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
-import it.evadid.core.datastructures.state.observable.ObservableValue
-import it.evadid.homepage.control.HtmlFullWorkbookApp
+import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState, AsyncState, AsyncValue}
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.webElements.*
 import it.evadid.workbook.model.elements.ImageElement
 import todomove.datastructures.web.file.FullImage.*
@@ -66,7 +64,7 @@ object HtmlImageElement {
   }
 
   def apply(fullImage: FullImage): HtmlImageElement = {
-    val imageContext: Option[ImageElement] = fullImage.match{
+    val imageContext: Option[ImageElement] = fullImage.match {
       case LoadedFileImage(loadedFile) => Some(ImageElement.FileBasedImageElement(loadedFile.description))
       case _ => None
     }

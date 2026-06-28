@@ -81,7 +81,7 @@ case class UpsertToDatabase(
 
 object UpsertToDatabase {
 
-  def handleStoreToDbRequest(request: StoreToDbRequest, logger: Logger): SyncSuccess = {
+  def handleRequest(request: StoreToDbRequest, logger: Logger): SyncSuccess = {
     val config = DatabaseConfig.readFromEnv(request.databaseName)
     val connection = config.newConnection()
 

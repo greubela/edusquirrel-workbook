@@ -3,9 +3,9 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.e
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Bounds
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.homepage.control.info.{FullInfo, HomepageInfo}
+import it.evadid.homepage.control.model.*
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig}
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeTreeControllerConfig, BeTreeDisplayConfig}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
 import todomove.webElementsOld.webElements.svg.AppSvgElement

@@ -1,13 +1,12 @@
-package it.evadid.homepage.control.info.analyze
+package it.evadid.homepage.control.info
 
 import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.user.User
 import it.evadid.core.util.io.serializer.DefaultSerializer
-import it.evadid.homepage.control.info.AllWorkbookInfo.WorkbookMetadata
-import it.evadid.homepage.control.info.control.TechnicalControl
-import it.evadid.homepage.control.info.{AllUserInfo, AllWorkbookInfo}
+import it.evadid.homepage.control.model.*
+import it.evadid.homepage.control.model.AllWorkbookInfo.*
 import it.evadid.homepage.util.web.DownloadHelper
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 import it.evadid.workbook.model.interaction.sync.UpdateImportance

@@ -53,7 +53,7 @@ object SQLCommands {
 
   }
 
-  val syncToDbCommand: ExecutionCommandFactory[StoreToDbRequest, SyncSuccess] = ExecutionCommandFactory(
+  val StoreToDbCommand: ExecutionCommandFactory[StoreToDbRequest, SyncSuccess] = ExecutionCommandFactory(
     "sync-to-db-request",
     DefaultSerializer.serializerStoreToDbRequestJson,
     DefaultSerializer.serializerSyncSuccess

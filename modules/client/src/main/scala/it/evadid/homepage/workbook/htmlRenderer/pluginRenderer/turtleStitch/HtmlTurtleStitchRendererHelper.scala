@@ -11,8 +11,8 @@ import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState}
 import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.core.util.InfoUtil
-import it.evadid.homepage.control.HtmlFullWorkbookApp
-import it.evadid.homepage.control.HtmlFullWorkbookApp.fullInfo
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.util.web.DownloadHelper
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlImageElement

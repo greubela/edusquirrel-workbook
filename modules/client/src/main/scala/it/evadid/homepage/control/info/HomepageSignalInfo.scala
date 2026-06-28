@@ -1,17 +1,22 @@
-package it.evadid.homepage.control.info.control
+package it.evadid.homepage.control.info
 
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.core.datastructures.state.async.AsyncData
-import it.evadid.core.datastructures.state.async.AsyncDataState.{AsyncDataFailed, AsyncDataLoading, AsyncDataSuccess}
+import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.homepage.control.*
-import it.evadid.homepage.control.info.*
+import it.evadid.homepage.control.model.FullInfo
+import it.evadid.homepage.control.singletons.WorkbookContentStorage
 import it.evadid.workbook.model.elements.WorkbookSection
 
 import scala.concurrent.*
 
+import it.evadid.homepage.control.change.HomepageDataControl.*
+import it.evadid.homepage.control.change.*
+import it.evadid.homepage.control.model.*
+import it.evadid.homepage.control.singletons.*
 case class HomepageSignalInfo(fullInfo: FullInfo) {
 
   lazy val contentStorage: WorkbookContentStorage = WorkbookContentStorage(fullInfo.technical.fileStore)

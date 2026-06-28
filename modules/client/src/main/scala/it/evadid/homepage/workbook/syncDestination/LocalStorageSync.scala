@@ -19,7 +19,7 @@ object LocalStorageSync extends SyncDestination {
 
   private val contextToBrowserKeySerializer: Serializer[SyncContext] = SyncContext.serializer
 
-  override def syncTo(context: SyncContext, request: InteractionSyncRequest, formatter: SyncFormatter): Future[SyncInformation.SyncSuccess] = Future {
+  override def storeTo(context: SyncContext, request: InteractionSyncRequest, formatter: SyncFormatter): Future[SyncInformation.SyncSuccess] = Future {
     val value = formatter.serialize(request)
     val serializedKey: String = contextToBrowserKeySerializer.serialize(context)
     storage.setItem(serializedKey, value)

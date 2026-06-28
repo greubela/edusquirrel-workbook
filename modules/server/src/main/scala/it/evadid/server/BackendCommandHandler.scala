@@ -9,6 +9,7 @@ import it.evadid.distribution.commandTypes.MailCommands.SendMailRequest
 import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.distribution.commandTypes.*
 import it.evadid.distribution.formats.ExecutionClientResponse
+import it.evadid.server.commandHandler.sql.{DeleteInDatabase, FetchFromDatabase, UpsertToDatabase}
 import it.evadid.util.*
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -18,27 +19,30 @@ object BackendCommandHandler {
   private given ExecutionContext = ExecutionContext.global
 
   private val localHandler: ExecutionClient = ExecutionClientPool(List(
+    // LLM
     LLMCommands.completeLLMCommandFactory.toLocalExecutionClient(
       (request: MessengerChatCompletionRequest, logger: Logger) => CompleteChatWithLLMCommand.handleLlmChatRequest(request, logger)
     ),
     LLMCommands.feedbackLlmCommandFactory.toLocalExecutionClient(
       (request: FeedbackLlmRequest, logger: Logger) => CompleteChatWithLLMCommand.handleFeedbackLlmRequest(request, logger)
     ),
-    SQLCommands.syncToDbCommand.toLocalExecutionClient(
+    // SQL
+    SQLCommands.StoreToDbCommand.toLocalExecutionClient(
       (request: StoreToDbRequest, logger: Logger) => Future{
-        HandleSQLCommand.handleStoreToDbRequest(request, logger)
+        UpsertToDatabase.handleRequest(request, logger)
       }
     ),
     SQLCommands.fetchFromDbCommand.toLocalExecutionClient(
       (request: FetchAllFromDbRequest, logger: Logger) => Future {
-        HandleSQLCommand.fetchAll(request, logger)
+        FetchFromDatabase.handleRequest(request, logger)
       })
     ,
     SQLCommands.clearValuesDbCommand.toLocalExecutionClient(
       (request: DeleteInDbRequest, logger: Logger) => Future{
-        HandleSQLCommand.clearUsage(request, logger)
+        DeleteInDatabase.handleRequest(request, logger)
       }
     ),
+    // Mail
     MailCommands.sendMailCommand.toLocalExecutionClient(
       (request: SendMailRequest, logger: Logger) => SendMailCommand.handleSendMailRequest(request, logger)
     )

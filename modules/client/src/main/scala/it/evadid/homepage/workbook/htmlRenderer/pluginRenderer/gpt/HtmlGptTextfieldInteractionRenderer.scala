@@ -18,7 +18,12 @@ import it.evadid.workbook.model.interaction.plugins.gpt.GptInteractionElement
 import it.evadid.workbook.model.interaction.sync.UpdateImportance.MAJOR
 import it.evadid.workbook.model.interaction.variable.InteractionVariable
 import org.scalajs.dom.SVGSVGElement
-
+import it.evadid.homepage.control.info.*
+import it.evadid.homepage.control.change.HomepageDataControl.*
+import it.evadid.homepage.control.change.*
+import it.evadid.homepage.control.model.*
+import it.evadid.homepage.control.model.AllWorkbookInfo.*
+import it.evadid.homepage.control.singletons.*
 import java.time.LocalDateTime
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext

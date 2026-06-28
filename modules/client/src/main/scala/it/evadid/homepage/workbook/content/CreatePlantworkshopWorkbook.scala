@@ -1,9 +1,8 @@
 package it.evadid.homepage.workbook.content
 
-import com.raquo.laminar.api.L.{*, given}
-import it.evadid.core.datastructures.file.FileDescription
+import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
-import it.evadid.homepage.control.info.FullInfo
+import it.evadid.homepage.control.model.*
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.reorderExercise.HtmlReorderInteractionRenderer
 import it.evadid.homepage.workbook.legacy.htmlElements.HtmlEmbeddedDomInteraction
 import it.evadid.homepage.workbook.legacy.plantworkshop.helpers.*
@@ -116,7 +115,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     val container1 = container(
       "PlantWorkshop/section1Title",
       List(
-        instructionLabeledPair("PlantWorkshop/section1ChecklistIntro","PlantWorkshop/section1WiringHint", TaskLabel)
+        instructionLabeledPair("PlantWorkshop/section1ChecklistIntro", "PlantWorkshop/section1WiringHint", TaskLabel)
       ) ++ componentChecklist
     )
 
@@ -132,12 +131,12 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
   }
 
   private def createCodeTaskToggle(
-    reorderId: String,
-    snippets: List[String],
-    codeEditorTitle: String,
-    hints: List[LanguageMapContentId] = List.empty,
-    orderConstraints: List[(Int, Int)] = Nil
-  ): HtmlEmbeddedDomInteraction = {
+                                    reorderId: String,
+                                    snippets: List[String],
+                                    codeEditorTitle: String,
+                                    hints: List[LanguageMapContentId] = List.empty,
+                                    orderConstraints: List[(Int, Int)] = Nil
+                                  ): HtmlEmbeddedDomInteraction = {
     val reorder = codeReorder(reorderId, snippets, AppLanguage.C, hints, orderConstraints)
     val reorderDom = HtmlReorderInteractionRenderer.render(reorder).getDomElement()
 

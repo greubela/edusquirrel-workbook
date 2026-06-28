@@ -1,18 +1,18 @@
-package it.evadid.homepage.control
+package it.evadid.homepage.control.singletons
 
 import it.evadid.core.datastructures.file.*
+import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.state.storage.AsyncDataCache
-import it.evadid.homepage.control.WorkbookContentStorage.{LanguageMapEntry, LanguageMapTripleStore, triplesFromFile}
+import it.evadid.homepage.control.singletons.WorkbookContentStorage.*
 import it.evadid.homepage.util.serializing.IoSerialization
 import it.evadid.workbook.model.elements.ImageElement
 import org.scalajs.dom.URL
 import todomove.datastructures.web.file.FileFactory
 
 import scala.collection.mutable
+import scala.concurrent.*
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.*
 
 case class WorkbookContentStorage(fileStore: AsyncDataCache[FileDescription, LoadedFile]) {

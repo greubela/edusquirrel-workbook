@@ -95,7 +95,7 @@ object FetchFromDatabase {
     InteractionVariableHistorySerialized(list.flatMap(_.states).toSet)
   }
 
-  def handleFetchFromDbEvent(request: FetchAllFromDbRequest, logger: Logger): DbFetchResponse = {
+  def handleRequest(request: FetchAllFromDbRequest, logger: Logger): DbFetchResponse = {
     val config = DatabaseConfig.readFromEnv(request.databaseName)
     val connection = config.newConnection()
 

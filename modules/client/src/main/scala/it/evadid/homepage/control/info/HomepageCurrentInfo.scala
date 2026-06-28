@@ -1,15 +1,14 @@
-package it.evadid.homepage.control.info.control
+package it.evadid.homepage.control.info
 
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.control.info.analyze.WorkbookUserDataAnalyzer
-import it.evadid.homepage.control.info.*
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 import it.evadid.workbook.model.interaction.sync.SyncInformation.SyncInformationWithContext
-import it.evadid.workbook.model.interaction.sync.{SyncControl, SyncInformation, UsageContext}
-import it.evadid.workbook.model.interaction.variable.InteractionVariable
+import it.evadid.workbook.model.interaction.sync.{SyncInformation, UsageContext}
 
-import java.time.LocalDateTime
-
+import it.evadid.homepage.control.change.HomepageDataControl.*
+import it.evadid.homepage.control.change.*
+import it.evadid.homepage.control.model.*
+import it.evadid.homepage.control.singletons.*
 case class HomepageCurrentInfo(fullInfo: FullInfo) {
 
   private def now(): HomepageInfo = fullInfo.homepageInfoState.now()

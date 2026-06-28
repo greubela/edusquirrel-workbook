@@ -1,18 +1,16 @@
-package it.evadid.homepage.control.info.control
+package it.evadid.homepage.control.change
 
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.core.datastructures.state.async.AsyncDataState.AsyncDataStateFinished
 import it.evadid.core.datastructures.state.storage.AsyncDataCache
 import it.evadid.core.util.io.Serializer
-import it.evadid.homepage.control.info.*
-import it.evadid.homepage.control.info.control.HomepageDataControl.CachedSyncControl
+import it.evadid.homepage.control.change.HomepageDataControl.*
+import it.evadid.homepage.control.model.*
 import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 import it.evadid.workbook.model.interaction.sync.SyncControl
 import it.evadid.workbook.model.interaction.sync.SyncInformation.{SyncCache, SyncInformationWithContext}
-import it.evadid.workbook.model.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.model.interaction.variable.{InteractionVariable, InteractionVariableHistory}
 
-import java.time
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -27,7 +25,7 @@ case class HomepageDataControl(fullInfo: FullInfo) {
 
   private lazy val cacheControl: CachedSyncControl = HomepageDataControl.CachedSyncControl(fullInfo)
 
-  private[control] def updateContext(func: HomepageInfo => HomepageInfo): Future[Unit] = fullInfo.synchronized {
+  private[change] def updateContext(func: HomepageInfo => HomepageInfo): Future[Unit] = fullInfo.synchronized {
     def beforeContextChanged(): Future[Unit] = {
       downloadAllAvailableData()
       cacheControl.requestStoreAll(interactions.map(_.interactionVariable))

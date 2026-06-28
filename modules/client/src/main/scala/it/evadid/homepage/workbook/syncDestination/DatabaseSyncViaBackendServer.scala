@@ -5,7 +5,7 @@ import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoTyped
 import it.evadid.distribution.commandTypes.SQLCommands
 import it.evadid.distribution.commandTypes.SQLCommands.*
-import it.evadid.homepage.control.HtmlFullWorkbookApp
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.util.Logger
 import it.evadid.workbook.model.interaction.sync.SyncFormatter.InteractionSyncRequest
 import it.evadid.workbook.model.interaction.sync.SyncInformation.SyncSuccess
@@ -14,20 +14,20 @@ import it.evadid.workbook.model.interaction.sync.*
 import scala.concurrent.*
 import scala.util.*
 
-case class DatabaseSyncViaBackendServer(dbName: String) extends SyncDestination {
+case class DatabaseSyncViaBackendServer(dbName: String, hasKeyTable: Boolean) extends SyncDestination {
 
   private lazy val backend: ExecutionClient = HtmlFullWorkbookApp.fullInfo.technical.backendServerExecutor
 
   private given ec: ExecutionContext = ExecutionContext.global
 
-  override def syncTo(context: SyncContext, request: InteractionSyncRequest, formatter: SyncFormatter): Future[SyncSuccess] = {
-    val dbRequest = StoreToDbRequest(request, dbName)
-    val exInfo: Future[ExecutionInfoTyped[SyncSuccess]] = SQLCommands.syncToDbCommand.sendCommandTo(backend, Logger(), dbRequest)
+  override def storeTo(context: SyncContext, request: InteractionSyncRequest, formatter: SyncFormatter): Future[SyncSuccess] = {
+    val dbRequest = StoreToDbRequest(request, dbName, hasKeyTable)
+    val exInfo: Future[ExecutionInfoTyped[SyncSuccess]] = SQLCommands.StoreToDbCommand.sendCommandTo(backend, Logger(), dbRequest)
     exInfo.map(exInfo => exInfo.resultTyped.result)(using ec)
   }
 
   override def fetchAll(context: UsageContext): Future[Map[SyncContext, String]] = {
-    val request = SQLCommands.FetchAllFromDbRequest(context, dbName)
+    val request = SQLCommands.FetchAllFromDbRequest(context, dbName, None, hasKeyTable)
     val exInfoFut: Future[ExecutionInfoTyped[DbFetchResponse]] = SQLCommands.fetchFromDbCommand.sendCommandTo(backend, Logger(), request)
 
     val res = exInfoFut.map(exInfo => {
@@ -42,14 +42,14 @@ case class DatabaseSyncViaBackendServer(dbName: String) extends SyncDestination 
 
   override def clearAllValues(context: UsageContext): Future[SyncSuccess] = {
     val promise: Promise[SyncSuccess] = Promise()
-    val request = SQLCommands.DeleteInDbRequest(context, None, dbName)
+    val request = SQLCommands.DeleteInDbRequest(context, None, dbName, hasKeyTable)
     val exInfoFut: Future[ExecutionInfoTyped[SyncSuccess]] = SQLCommands.clearValuesDbCommand.sendCommandTo(backend, Logger(), request)
     exInfoFut.map(_.resultTyped.result)(using ec)
   }
 
   override def clearValues(context: SyncContext): Future[SyncSuccess] = {
     val promise: Promise[SyncSuccess] = Promise()
-    val request = SQLCommands.DeleteInDbRequest(context.toUsageContext, Some(context.keyForSerialisation), dbName)
+    val request = SQLCommands.DeleteInDbRequest(context.toUsageContext, Some(context.keyForSerialisation), dbName, hasKeyTable)
     val exInfoFut: Future[ExecutionInfoTyped[SyncSuccess]] = SQLCommands.clearValuesDbCommand.sendCommandTo(backend, Logger(), request)
     exInfoFut.map(_.resultTyped.result)(using ec)
   }

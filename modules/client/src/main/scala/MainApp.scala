@@ -1,6 +1,6 @@
 
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.control.HtmlFullWorkbookApp
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.workbook.content.{CreateCompressionWorkbook, CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook}
 import it.evadid.homepage.util.web.DownloadHelper
 import it.evadid.homepage.workbook.content.{CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook}

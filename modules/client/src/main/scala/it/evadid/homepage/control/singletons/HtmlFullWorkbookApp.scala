@@ -1,14 +1,14 @@
-package it.evadid.homepage.control
+package it.evadid.homepage.control.singletons
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.file.{FileDescription, LoadedFile}
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.storage.AsyncDataCache
 import it.evadid.homepage.control.info.*
+import it.evadid.homepage.control.model.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlFullScreenContainerElement
 import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.HtmlWorkbookRenderer
-import todomove.datastructures.web.file.FileFactory
 
 import scala.concurrent.{ExecutionContext, Future}
 

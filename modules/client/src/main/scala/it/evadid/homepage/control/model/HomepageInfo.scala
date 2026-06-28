@@ -1,10 +1,13 @@
-package it.evadid.homepage.control.info
+package it.evadid.homepage.control.model
 
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.homepage.control.info.HomepageDefaults
 import it.evadid.workbook.model.interaction.sync.UsageContext
 
+
+
 case class HomepageInfo(
-                         private[info] val homepageDefaults: HomepageDefaults,
+                         private[control] val homepageDefaults: HomepageDefaults,
                          currentLanguage: HumanLanguage,
                          workbookInfo: Option[AllWorkbookInfo],
                          userInfo: Option[AllUserInfo],

@@ -22,7 +22,7 @@ trait SyncDestination {
 
   def fetchAll(context: UsageContext): Future[Map[SyncContext, String]]
 
-  def syncTo(context: SyncContext, request: InteractionSyncRequest, formatter: SyncFormatter): Future[SyncSuccess]
+  def storeTo(context: SyncContext, request: InteractionSyncRequest, formatter: SyncFormatter): Future[SyncSuccess]
 
   def fetchFrom(context: SyncContext)(implicit ec: ExecutionContext): Future[Option[String]] = fetchAll(context.toUsageContext).map(_.get(context))(using ec)
 

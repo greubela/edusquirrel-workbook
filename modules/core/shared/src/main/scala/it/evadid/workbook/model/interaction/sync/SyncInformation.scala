@@ -45,7 +45,7 @@ object SyncInformation {
       val historySerialized: InteractionVariableHistorySerialized = history.serializedWithStrategy(syncStrategy, serializer)
       val diff = history.events.size - historySerialized.states.size
       println(s"Syncing $key to ${syncSource} with strategy $syncStrategy, diff of $diff")
-      syncSource.syncTo(syncContext, InteractionSyncRequest(syncContext, historySerialized), formatter)
+      syncSource.storeTo(syncContext, InteractionSyncRequest(syncContext, historySerialized), formatter)
     }
 
     def informAboutContextSwitch(): Future[SyncSuccess] = if (!syncSource.shouldBePersistant()) syncSource.clearAllValues(usageContext) else Future.successful(SyncSuccess(0, 0, 0, LocalDateTime.now()))

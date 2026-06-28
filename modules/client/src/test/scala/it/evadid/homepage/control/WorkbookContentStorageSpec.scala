@@ -2,7 +2,7 @@ package it.evadid.homepage.control
 
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, Spanish}
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.homepage.control.WorkbookContentStorage.{LanguageMapTripleStore, MapEntryTripel, UniversalMapEntry}
+import it.evadid.homepage.control.singletons.WorkbookContentStorage.{LanguageMapTripleStore, MapEntryTripel, UniversalMapEntry}
 import munit.FunSuite
 
 class WorkbookContentStorageSpec extends FunSuite {

@@ -1,4 +1,4 @@
-package it.evadid.homepage.control.info
+package it.evadid.homepage.control.model
 
 import it.evadid.workbook.model.interaction.sync.SyncInformation
 

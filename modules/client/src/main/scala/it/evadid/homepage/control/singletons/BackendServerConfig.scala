@@ -1,4 +1,4 @@
-package it.evadid.homepage.control
+package it.evadid.homepage.control.singletons
 
 import it.evadid.distribution.clients.*
 

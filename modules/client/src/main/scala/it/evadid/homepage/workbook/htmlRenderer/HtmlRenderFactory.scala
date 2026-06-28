@@ -3,8 +3,8 @@ package it.evadid.homepage.workbook.htmlRenderer
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.homepage.control.HtmlFullWorkbookApp
-import it.evadid.homepage.control.info.FullInfo
+import it.evadid.homepage.control.model.*
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.webElements.basic.HtmlImageElement
 import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionEditors.*
