@@ -7,12 +7,12 @@ import it.evadid.workbook.model.interaction.sync.UpdateImportance.DEFAULT
 
 case class InteractionVariableHistory[T](events: Set[InteractionVariableState[T]]) {
 
-  lazy val lastState: InteractionVariableState[T] = events.maxBy(_.timestamp)
+  def lastStateOption: Option[InteractionVariableState[T]] = events.maxByOption(_.timestamp)
 
   def cleanedHistory(): InteractionVariableHistory[T] = {
     val nonDefault = events.filter(_.updateImportance != DEFAULT)
     if (nonDefault.nonEmpty) InteractionVariableHistory(nonDefault)
-    else InteractionVariableHistory(Set(lastState))
+    else InteractionVariableHistory(lastStateOption.toSet)
   }
 
   def map(func: Set[InteractionVariableState[T]] => Set[InteractionVariableState[T]]): InteractionVariableHistory[T] = {
@@ -24,8 +24,8 @@ case class InteractionVariableHistory[T](events: Set[InteractionVariableState[T]
   }
 
   def serializedWithStrategy(syncStrategy: SyncStrategy, serializer: Serializer[T]): InteractionVariableHistorySerialized = {
-    val syncEvents: Set[InteractionVariableState[T]] = syncStrategy.selectEventsToSync(this).events
-    InteractionVariableHistory(syncEvents).cleanedHistory().serialized(serializer)
+    val historyToSync: InteractionVariableHistory[T] = syncStrategy.selectEventsToSync(this)
+    historyToSync.cleanedHistory().serialized(serializer)
   }
 
   def withAddedEvents(newEvents: Set[InteractionVariableState[T]]): InteractionVariableHistory[T] = {

@@ -7,7 +7,9 @@ case class InteractionVariableHistorySerialized(states: Set[InteractionVariableS
 
   override lazy val toString: String = DefaultSerializer.serializerInteractionVariableHistoryIgnoreErrors.serialize(this)
 
-  def lastState: InteractionVariableStateSerialized = states.maxBy(_.timestamp)
+  //def lastState: InteractionVariableStateSerialized = states.maxBy(_.timestamp)
+
+  def lastStateOption: Option[InteractionVariableStateSerialized] = states.maxByOption(_.timestamp)
 
   def tryDeserialize[T](valueSerializer: Serializer[T]): (InteractionVariableHistory[T], InteractionVariableHistorySerialized) = {
     val converter: TypeConverter[InteractionVariableStateSerialized, InteractionVariableState[T]] = InteractionVariableStateSerialized.converter(valueSerializer)

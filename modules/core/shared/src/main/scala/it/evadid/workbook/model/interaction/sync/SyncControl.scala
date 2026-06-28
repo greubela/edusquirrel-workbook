@@ -8,9 +8,13 @@ import scala.concurrent.Future
 
 trait SyncControl {
 
-  def requestFetch(interactionVariable: InteractionVariable[?], maxCacheAge: LocalDateTime = LocalDateTime.now()): Future[?]
+  def requestStore[T](from: InteractionVariable[T], forcePush: Boolean, requestTime: LocalDateTime = LocalDateTime.now()): Future[?] = requestStore(List(from), forcePush, requestTime)
 
-  def requestStore[T](from: InteractionVariable[T], forcePush: Boolean): Unit
+  def requestStore(from: List[InteractionVariable[?]], forcePush: Boolean, requestTime: LocalDateTime): Future[?]
+
+  def requestFetch(variables: List[InteractionVariable[?]], requestTime: LocalDateTime): Future[?]
+
+  def requestFetch(interactionVariable: InteractionVariable[?], requestTime: LocalDateTime = LocalDateTime.now()): Future[?]
 
   def syncLogger: SyncLogger
 

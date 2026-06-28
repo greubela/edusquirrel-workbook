@@ -38,7 +38,7 @@ case class ExecutionCommandFactory[I, O](
 
   private def createNewLogger(data: I, command: ExecutionCommand): Logger = {
     val name: String = s"DbSyncViaBackend(${command.name},${data.getClass.getSimpleName})"
-    Logger.withNameAndPrefixes(Some(name), PrintToStdLogger.printEverything)
+    Logger.withNameAndPrefixes(Some(name), PrintToStdLogger.printWarnAndError)
   }
 
   def sendCommandTo(client: ExecutionClient, data: I, loggerOp: Option[Logger] = None, setTimestampRequested: Option[LocalDateTime] = None): Future[ExecutionInfoTyped[O]] = {
@@ -57,7 +57,11 @@ case class ExecutionCommandFactory[I, O](
     val response: Future[ExecutionInfo] = client.handleCommand(command, logger)
     response.map(_.toTyped[O](rawMap => {
       val res: O = serializerOut.deserialize(TypeConverter.singleValueMap.convertToO(rawMap))
-      logger.logInfo(s"    Successfully deserialized data received from ${client.toString}:\n    ${serializerForLoggingOut(res)}")
+      val outDisplay: String = {
+        val serialized: String = serializerForLoggingOut(res)
+        if(serialized.length > 30) serialized.take(30) + "..." else serialized
+      }
+      logger.logInfo(s"    Successfully deserialized data received from ${client.toString}: $outDisplay")
       res
     }))(using ExecutionContext.global)
 

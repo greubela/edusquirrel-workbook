@@ -22,13 +22,15 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
   private val innerState: State[InteractionVariableHistory[T]] = State(defaultHistory)
   private val syncControl: State[Option[SyncControl]] = State(None)
 
+  private def safeLastState: InteractionVariableState[T]  = innerState.now().lastStateOption.getOrElse(InteractionVariableState[T](underlyingInteraction.defaultValue, UpdateImportance.DEFAULT, LocalDateTime.now()))
+
   val fallbackLogger: SyncLogger = SyncLogger(Logger.withNameAndPrefixes(Some(s"InteractionVariableFallbackLogger(${keyForSerialization})"), PrintToStdLogger.printEverything))
 
   def useLogger: SyncLogger = syncControl.now().map(_.syncLogger).getOrElse(fallbackLogger)
 
   val keyForSerialization: String = underlyingInteraction.id + "_history"
 
-  lazy val observableValue: ObservableValue[T] = innerState.observable.deriveValue(_.lastState.value, ExecutionMethod.executeSync, DeriveOnlyLastValues)
+  lazy val observableValue: ObservableValue[T] = innerState.observable.deriveValue(_.lastStateOption.getOrElse(safeLastState).value, ExecutionMethod.executeSync, DeriveOnlyLastValues)
 
   lazy val asAsync: AsyncData[Nothing, T] = {
     val obsState: ObservableValue[AsyncDataState[Nothing, T]] = observableValue.deriveValue(cur => AsyncDataSuccess(cur), ExecutionMethod.executeSync, DeriveOnlyLastValues)
@@ -41,7 +43,7 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
     val outerState = State[T](currentValue)
     innerState.observable.addObserver(newValue => if (newValue != outerState.now()) outerState.set(currentValue))
     outerState.observable.addObserver(newValue => if (newValue != currentValue) {
-      val last = innerState.now().lastState
+      val last = safeLastState
       val newState = DesignatedInteractionState(newValue, LocalDateTime.now())
       val importance = relevanceFunc(InteractionVariableStateChanged(last, newState))
       setStateFromUserInteraction(newValue, importance, newState.timestamp)
@@ -65,7 +67,7 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
   }
 
   def currentValue: T = this.synchronized {
-    innerState.now().lastState.value
+    safeLastState.value
   }
 
   def addHistory(history: InteractionVariableHistorySerialized): Unit = this.synchronized {
@@ -91,15 +93,15 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
   }
 
   def updateStateFromUserInteraction(updater: T => T, updateSize: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now()): Unit = this.synchronized {
-    val nextState: T = updater(innerState.now().lastState.value)
+    val nextState: T = updater(safeLastState.value)
     setStateFromUserInteraction(nextState, updateSize, timestamp)
   }
 
   def setStateFromUserInteraction(newValue: T, updateSize: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now()): Unit = this.synchronized {
 
-    useLogger.logInfo(s"InteractionVariable.updateStateFromUserInteraction(${innerState.now().lastState.value} -> $newValue ($timestamp, $updateSize)")
+    //useLogger.logInfo(s"InteractionVariable.updateStateFromUserInteraction(${innerState.now().lastState.value} -> $newValue ($timestamp, $updateSize)")
     try {
-      val lastKnown: InteractionVariableState[T] = innerState.now().lastState
+      val lastKnown: InteractionVariableState[T] = safeLastState
       if (newValue != lastKnown.value || updateSize != lastKnown.updateImportance) {
         val newInteractionState = InteractionVariableState[T](newValue, updateSize, timestamp)
         innerState.update(_.withAddedEvent(newInteractionState))

@@ -23,7 +23,7 @@ object SyncFormatter {
   case class RichInteractionVariableFormatter() extends SyncFormatter {
 
     override def serialize(syncContext: SyncContext, interactionVariableHistorySerialized: InteractionVariableHistorySerialized): String = {
-      val lastStateSer: InteractionVariableStateSerialized = interactionVariableHistorySerialized.lastState
+      val lastStateSer: InteractionVariableStateSerialized = interactionVariableHistorySerialized.lastStateOption.get
       val rich = RichInteractionVariableHistorySerialized(syncContext.keyForSerialisation, lastStateSer.timestamp, lastStateSer.serializedValue, interactionVariableHistorySerialized)
       richSerializer.serialize(rich)
     }
