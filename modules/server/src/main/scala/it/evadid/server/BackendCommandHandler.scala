@@ -12,6 +12,7 @@ import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.server.commandHandler.sql.{DeleteInDatabase, FetchFromDatabase, UpsertToDatabase}
 import it.evadid.util.*
 
+import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
 object BackendCommandHandler {
@@ -49,13 +50,13 @@ object BackendCommandHandler {
   )
   )
 
-  def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionClientResponse] = {
+  def handleExecution(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionClientResponse] = {
     logger.logInfo(s"[server] Received command: ${executionCommand.name} with params keys: ${executionCommand.params.keys}")
     if (executionCommand.name.trim.isEmpty) {
       logger.logError("ExecutionCommand.name must not be empty")
       throw new IllegalArgumentException("ExecutionCommand.name must not be empty")
     }
-    localHandler.handleExecution(executionCommand)
+    localHandler.handleExecution(executionCommand, logger)
   }
 
 

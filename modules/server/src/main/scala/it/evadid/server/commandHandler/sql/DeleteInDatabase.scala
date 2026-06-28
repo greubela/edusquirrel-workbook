@@ -25,6 +25,7 @@ case class DeleteInDatabase(
     else {
       val placeholders = ids.map(_ => "?").mkString(", ")
       val stmt = connection.prepareStatement(s"DELETE FROM `$tableName` WHERE `eventid` IN ($placeholders)")
+      ids.zipWithIndex.foreach { case (id, index) => stmt.setLong(index + 1, id) }
       val res = generic.executeUpdate(stmt)
       println(s"Deleted $res event from database (${ids.size - res} could not be deleted)")
       SyncSuccess(0, 0, res, LocalDateTime.now())

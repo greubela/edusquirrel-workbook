@@ -16,9 +16,9 @@ private case class SynchronizedExecutionClient(baseHandler: ExecutionClient, ec:
   private val queue = mutable.Queue.empty[QueuedCommand]
   private var running = false
 
-  override def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = queue.synchronized {
+  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionClientResponse] = queue.synchronized {
     val promise = Promise[ExecutionClientResponse]()
-    queue.enqueue(QueuedCommand(executionCommand, promise, LocalDateTime.now(), Logger()))
+    queue.enqueue(QueuedCommand(executionCommand, promise, LocalDateTime.now(), logger))
     ensureRunning()
     promise.future
   }

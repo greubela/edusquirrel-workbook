@@ -22,10 +22,10 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
 
   override def allUnderlyingClients: List[ExecutionClient] = clients
 
-  override def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = {
+  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionClientResponse] = {
     val timestampReceived: LocalDateTime = LocalDateTime.now()
     val allHandlers = allThatCanExecute(executionCommand)
-    tryExecutionWithHandlers(timestampReceived, allHandlers, executionCommand, None, Logger())
+    tryExecutionWithHandlers(timestampReceived, allHandlers, executionCommand, None, logger)
       .map(response => response.copy(timestampReceived = timestampReceived))(using ExecutionContext.global)
   }
 

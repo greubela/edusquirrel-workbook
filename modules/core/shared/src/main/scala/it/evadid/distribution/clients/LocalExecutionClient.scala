@@ -22,37 +22,15 @@ trait LocalExecutionClient extends ExecutionClient {
     executeCommand(executionCommand, logger)
   }
 
-  override def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = {
+  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionClientResponse] = {
     val timestampReceived: LocalDateTime = LocalDateTime.now()
-    val logger = Logger()
-    executeCommand(executionCommand, logger).map { (resMap: Map[String, String]) =>
+    handleExecutionRaw(executionCommand, logger).map { (resMap: Map[String, String]) =>
       ExecutionClientResponse(timestampReceived, timestampReceived, LocalDateTime.now(), Right(resMap), Some(executionCommand), logger.getOut(), logger.getErr())
     }.recover { (err: Throwable) =>
       val newErr = SerializedException("Error in executeCommand: " + err.getMessage, err)
       ExecutionClientResponse(timestampReceived, timestampReceived, LocalDateTime.now(), Left(newErr), Some(executionCommand), logger.getOut(), logger.getErr())
     }
   }
-
-
-  /*override def handleCommand(executionCommand: ExecutionCommand, logger: Logger): Future[AsyncDataStateFinished[Nothing, ExecutionInfo]] = {
-
-  }*/
-
-  /*private def execute(executionCommand: ExecutionCommand): Future[(ExecutionResult, ExecutionDuration, Logger)] = {
-    val timeExecutionStarted = LocalDateTime.now()
-    val logger = Logger()
-    val resultFuture = calculateResult(executionCommand, logger)
-    resultFuture.map(result => {
-      val timeExecutionFinished = LocalDateTime.now()
-      val res = (result, ExecutionDuration(timeExecutionStarted, timeExecutionFinished), logger)
-      res
-    })(using ExecutionContext.global)
-  }*/
-
-  //def calculateResult(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionResult]
-
-  //protected def resultFromValue[T](value: T, toStringFunc: T => String = (str: T) => str.toString): ExecutionResult = ExecutionResult(Map("result" -> toStringFunc(value)), "", "")
-
 
 
 }

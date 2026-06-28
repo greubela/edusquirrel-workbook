@@ -17,7 +17,12 @@ trait ExecutionClient {
     handleExecution(executionCommand).map(_.response.toOption.get)(using ExecutionContext.global)
   }
 
-  def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse]
+  def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionClientResponse]
+
+  def handleExecution(executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = {
+    println("[WARN] creating new logger for Execution of command: " + executionCommand.name + " with params: " + executionCommand.params.mkString(", "))
+    handleExecution(executionCommand, Logger())
+  }
 
   def handleCommand(executionCommand: ExecutionCommand): Future[ExecutionInfo] = {
     val timestampRequested: LocalDateTime = LocalDateTime.now()

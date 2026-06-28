@@ -40,7 +40,7 @@ case class ExecutionClientResponse(
   lazy val sendFormat: (Int, String) = (200, ExecutionClientResponse.serializerMapJson.serialize(serializedToMap()))
 
   override lazy val toString: String =
-    """
+    s"""
       |ExecutionClientResponse(
       |  timestampReceived=$timestampReceived,
       |  timestampStarted=$timestampStarted,

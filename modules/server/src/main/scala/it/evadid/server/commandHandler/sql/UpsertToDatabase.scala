@@ -89,7 +89,6 @@ object UpsertToDatabase {
 
     if (request.hasDatabaseKeyColumn) control.upsertIntoTableWithKeys(request)
     else control.upsertIntoTableWithoutKeys(request, "events")
-
   }
 
 }

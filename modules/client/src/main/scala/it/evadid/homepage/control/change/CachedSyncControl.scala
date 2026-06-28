@@ -49,7 +49,7 @@ case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
     futMap.onComplete {
       case Success(resMap) => {
         val formatted = resMap.map(format).mkString("FetchResults(", ",", ")")
-        println("Successfully executed fetch : " + formatted)
+        //println("Successfully executed fetch : " + formatted)
         resMap.flatMap(_._2.toOption).foreach(cache => interactionVariable.executeLoad(List(cache)))
       }
       case Failure(exception) => println(s"Error while fetching sync data: $exception")
@@ -76,7 +76,6 @@ case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
     val historySerialized: InteractionVariableHistorySerialized = interactionVariable.history.serializedWithStrategy(syncSource.syncStrategy, interactionVariable.underlyingInteraction.serializer)
     val lastEventToSync: LocalDateTime = historySerialized.lastState.timestamp
     val skippedEvents: Int = interactionVariable.history.events.size - historySerialized.states.size
-
 
     if (cache.nonEmpty && lastEventToSync.isBefore(cache.get.createdAt)) {
       println(s"[INFO] skip storing ${interactionVariable.keyForSerialization} with latest event at $lastEventToSync ($skippedEvents events skipped with strategy ${syncSource.syncStrategy.getClass.getSimpleName}) because it is already stored (${cache.get.createdAt})!")
