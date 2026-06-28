@@ -2,7 +2,7 @@ package it.evadid.server
 
 import it.evadid.core.datastructures.chat.{MessengerModel, SenderRole}
 import it.evadid.distribution.commandTypes.LLMCommands.{FeedbackLlmRequest, MessengerChatCompletionRequest}
-import it.evadid.util.Logger
+import it.evadid.util.logging.Logger
 import play.api.libs.json.Json
 
 import java.net.URI

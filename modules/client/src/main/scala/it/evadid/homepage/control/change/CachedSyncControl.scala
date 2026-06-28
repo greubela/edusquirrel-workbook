@@ -1,12 +1,12 @@
 package it.evadid.homepage.control.change
 
 import it.evadid.core.datastructures.state.storage.AsyncDataCache
-import it.evadid.core.util.io.Serializer
 import it.evadid.homepage.control.model.FullInfo
-import it.evadid.workbook.model.interaction.sync.SyncFormatter.InteractionSyncRequest
-import it.evadid.workbook.model.interaction.sync.{SyncContext, SyncControl}
-import it.evadid.workbook.model.interaction.sync.SyncInformation.{SyncCache, SyncInformationWithContext, SyncSuccess}
-import it.evadid.workbook.model.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableHistorySerialized}
+import it.evadid.util.logging.LoggingLevel.INFO
+import it.evadid.util.logging.SyncLogger
+import it.evadid.workbook.model.interaction.sync.SyncControl
+import it.evadid.workbook.model.interaction.sync.SyncInformation.{SyncCache, SyncInformationWithContext}
+import it.evadid.workbook.model.interaction.variable.{InteractionVariable, InteractionVariableHistorySerialized}
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
@@ -14,6 +14,8 @@ import scala.util.{Failure, Success}
 
 
 case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
+
+  lazy val syncLogger: SyncLogger = SyncLogger()
 
   private given ExecutionContext = ExecutionContext.global
 
@@ -48,43 +50,84 @@ case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
     val futMap: Future[Map[SyncInformationWithContext, Either[Throwable, SyncCache]]] = executeLoadAll(maxCacheAge)
     futMap.onComplete {
       case Success(resMap) => {
-        val formatted = resMap.map(format).mkString("FetchResults(", ",", ")")
-        //println("Successfully executed fetch : " + formatted)
+        val formatted: String = resMap.map(format).mkString("FetchResults(", ",", ")")
+        println("[INFO] <--- successfully executed fetch : " + formatted)
         resMap.flatMap(_._2.toOption).foreach(cache => interactionVariable.executeLoad(List(cache)))
       }
-      case Failure(exception) => println(s"Error while fetching sync data: $exception")
+      case Failure(exception) => println(s"[ERROR] <-|- error while fetching sync data: $exception")
     }
   }
 
-  override def requestStore[T](from: InteractionVariable[T]): Unit = fullInfo.synchronized {
-    fullInfo.current.currentSyncSources.foreach(curInfo => requestStore(curInfo, from))
+  override def requestStore[T](from: InteractionVariable[T], forcePush: Boolean): Unit = fullInfo.synchronized {
+    fullInfo.current.currentSyncSources.foreach(curInfo => requestStore(curInfo, from, forcePush))
   }
 
-  def requestStoreAll(interactionVariable: List[InteractionVariable[?]]): Future[Unit] = fullInfo.synchronized {
-    Future.traverse(interactionVariable)(requestStoreAll).map(theList => {})
+  def requestStoreAll(interactionVariable: List[InteractionVariable[?]], forcePush: Boolean): Future[Unit] = fullInfo.synchronized {
+    Future.traverse(interactionVariable)(intVar => requestStoreAll(intVar, forcePush)).map(theList => {})
   }
 
-  def requestStoreAll(interactionVariable: InteractionVariable[?]): Future[Unit] = fullInfo.synchronized {
+  def requestStoreAll(interactionVariable: InteractionVariable[?], forcePush: Boolean): Future[Unit] = fullInfo.synchronized {
     Future.traverse(fullInfo.current.currentSyncSources)((currentSyncSource: SyncInformationWithContext) => {
-      requestStore(currentSyncSource, interactionVariable)
+      requestStore(currentSyncSource, interactionVariable, forcePush)
     }).map(theList => {})
   }
 
-  def requestStore(syncSource: SyncInformationWithContext, interactionVariable: InteractionVariable[?]): Future[?] = fullInfo.synchronized {
-    val cache: Option[SyncCache] = requestCache.getSyncIfInCache(syncSource, false)
+  def requestStore(syncSource: SyncInformationWithContext, interactionVariable: InteractionVariable[?], forcePush: Boolean): Future[?] = fullInfo.synchronized {
+    val historyAtRequest = interactionVariable.history // this requests the state, should be consistent across transaction
 
-    val historySerialized: InteractionVariableHistorySerialized = interactionVariable.history.serializedWithStrategy(syncSource.syncStrategy, interactionVariable.underlyingInteraction.serializer)
-    val lastEventToSync: LocalDateTime = historySerialized.lastState.timestamp
-    val skippedEvents: Int = interactionVariable.history.events.size - historySerialized.states.size
+    val syncContext = syncSource.usageContext.toSyncContext(interactionVariable.keyForSerialization)
+    val cacheMap: Option[SyncCache] = requestCache.getSyncIfInCache(syncSource, false)
+    val cache: Option[InteractionVariableHistorySerialized] = cacheMap.flatMap(_.values.get(syncContext))
 
-    if (cache.nonEmpty && lastEventToSync.isBefore(cache.get.createdAt)) {
-      println(s"[INFO] skip storing ${interactionVariable.keyForSerialization} with latest event at $lastEventToSync ($skippedEvents events skipped with strategy ${syncSource.syncStrategy.getClass.getSimpleName}) because it is already stored (${cache.get.createdAt})!")
-      Future.successful(())
-    } else {
-      println(s"[INFO] storing ${interactionVariable.keyForSerialization} with latest event at $lastEventToSync to destination ($skippedEvents events skipped with strategy ${syncSource.syncStrategy.getClass.getSimpleName})")
-      val syncContext = syncSource.usageContext.toSyncContext(interactionVariable.keyForSerialization)
-      //storeTo(interactionVariable.keyForSerialization, interactionVariable.history, interactionVariable.underlyingInteraction.serializer)
+    // calc msg info
+    val historySerialized: InteractionVariableHistorySerialized = historyAtRequest.serializedWithStrategy(syncSource.syncStrategy, interactionVariable.underlyingInteraction.serializer)
+
+
+    val (cacheInfo, shouldFetchBecauseOfCache): (String, Boolean) = {
+      if (cacheMap.isEmpty) ("No elements in cache yet", true)
+      else if (cacheMap.get.values.isEmpty) (s"Cache has not elements yet (created at${cacheMap.get.createdAt})", true)
+      else if (!cacheMap.get.values.contains(syncContext)) {
+        val valueCount: Int = cacheMap.get.values.size
+        val lastKnownInCache: LocalDateTime = cache.get.lastState.timestamp
+        val cacheTime: LocalDateTime = cacheMap.get.createdAt
+        (s"Cache does not contain $syncContext ($valueCount elements, created at $cacheTime, last state timestamp: $lastKnownInCache)", true)
+      } else {
+        val lastKnownInCache: LocalDateTime = cache.get.lastState.timestamp
+        val lastToStore: LocalDateTime = historySerialized.lastState.timestamp
+        if (lastToStore.isAfter(lastKnownInCache)) (s"lastToStore is after lastKnownInCache: $lastToStore > $lastKnownInCache", true)
+        else (s"lastToStore is before lastKnownInCache: $lastToStore < $lastKnownInCache", false)
+      }
+    }
+
+    def fulLoggerMsg(willExecute: Boolean, reasoning: Option[String]): String = {
+      val serializedMsg: String = {
+        val skippedEvents: Int = interactionVariable.history.events.size - historySerialized.states.size
+        s"serialized $historySerialized events with ${syncSource.syncStrategy} strategy ($skippedEvents skipped, latest ${historySerialized.lastState})"
+      }
+      val storeMsgFinished: String = s"${syncContext.keyForSerialisation} to ${syncSource.syncSource.getClass.getSimpleName}"
+      val reasoningFormatted: String = reasoning.map(": " + _).getOrElse("")
+      val firstLine: String = if (willExecute) s"Now Storing $storeMsgFinished$reasoning" else s"Skipp Storing $storeMsgFinished$reasoning"
+      val fullMsg: String = {
+        s"""
+           |$firstLine
+           |    cache info: $cacheInfo
+           |    serializing info: $serializedMsg
+           |""".stripMargin
+      }
+      fullMsg
+    }
+
+    // actual cache logic
+
+    if (forcePush) {
+      syncLogger.log(fulLoggerMsg(true, Some("push forced by request")), INFO, Option(true))
       syncSource.syncSource.storeTo(syncContext, historySerialized, syncSource.formatter)
+    } else if (shouldFetchBecauseOfCache) {
+      syncLogger.log(fulLoggerMsg(true, Some("Cache requires push")), INFO, Option(true))
+      syncSource.syncSource.storeTo(syncContext, historySerialized, syncSource.formatter)
+    } else {
+      syncLogger.log(fulLoggerMsg(false, Some("local cache indicates destination is up to date")), INFO, Option(true))
+      Future.successful(())
     }
 
   }

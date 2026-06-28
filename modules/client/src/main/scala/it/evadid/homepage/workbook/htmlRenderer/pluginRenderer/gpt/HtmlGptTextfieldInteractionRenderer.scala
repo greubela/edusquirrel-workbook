@@ -12,7 +12,6 @@ import it.evadid.distribution.commandTypes.LLMCommands.MessengerChatCompletionRe
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.editor.SimpleChatEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
-import it.evadid.util.Logger
 import it.evadid.workbook.model.interaction.basic.MessagingInteraction.MessengerModelScaffolding
 import it.evadid.workbook.model.interaction.plugins.gpt.GptInteractionElement
 import it.evadid.workbook.model.interaction.sync.UpdateImportance.MAJOR
@@ -24,6 +23,7 @@ import it.evadid.homepage.control.change.*
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.model.AllWorkbookInfo.*
 import it.evadid.homepage.control.singletons.*
+import it.evadid.util.logging.Logger
 import java.time.LocalDateTime
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext

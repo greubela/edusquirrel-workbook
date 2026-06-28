@@ -5,7 +5,7 @@ import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoTyped
 import it.evadid.distribution.commandTypes.SQLCommands
 import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
-import it.evadid.util.Logger
+import it.evadid.util.logging.Logger
 import it.evadid.workbook.model.interaction.sync.*
 import it.evadid.workbook.model.interaction.sync.SyncFormatter.InteractionSyncRequest
 import it.evadid.workbook.model.interaction.sync.SyncInformation.SyncSuccess

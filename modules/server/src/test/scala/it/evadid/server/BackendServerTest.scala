@@ -2,7 +2,7 @@ package it.evadid.server
 
 import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.distribution.commandTypes.SQLCommands.{DeleteInDbRequest, FetchAllFromDbRequest, StoreToDbRequest}
-import it.evadid.util.Logger
+import it.evadid.util.logging.Logger
 import munit.FunSuite
 
 import scala.concurrent.Await

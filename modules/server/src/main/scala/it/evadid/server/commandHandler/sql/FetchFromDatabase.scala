@@ -1,7 +1,7 @@
 package it.evadid.server.commandHandler.sql
 
 import it.evadid.distribution.commandTypes.SQLCommands.{DbFetchResponse, FetchAllFromDbRequest}
-import it.evadid.util.Logger
+import it.evadid.util.logging.Logger
 import it.evadid.workbook.model.interaction.sync.SyncFormatter.RichInteractionVariableFormatter
 import it.evadid.workbook.model.interaction.sync.{SyncContext, UsageContext}
 import it.evadid.workbook.model.interaction.variable.InteractionVariableHistorySerialized

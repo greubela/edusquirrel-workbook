@@ -15,7 +15,7 @@ import scala.scalajs.js.Thenable.Implicits.*
 import it.evadid.distribution.command.*
 import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoUntyped
 import it.evadid.distribution.formats.ExecutionClientResponse
-import it.evadid.util.Logger
+import it.evadid.util.logging.Logger
 
 case class JsRemoteExecutionClient(hostname: String, port: Int) extends RemoteExecutionClient {
 

@@ -3,7 +3,7 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.f
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.distribution.commandTypes.LLMCommands.FeedbackLlmRequest
-import it.evadid.util.Logger
+import it.evadid.util.logging.Logger
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

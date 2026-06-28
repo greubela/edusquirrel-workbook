@@ -28,7 +28,7 @@ case class HomepageDataControl(fullInfo: FullInfo) {
   private[change] def updateContext(func: HomepageInfo => HomepageInfo): Future[Unit] = fullInfo.synchronized {
     def beforeContextChanged(): Future[Unit] = {
       downloadAllAvailableData()
-      cacheControl.requestStoreAll(interactions.map(_.interactionVariable))
+      cacheControl.requestStoreAll(interactions.map(_.interactionVariable), true)
     }
 
     def afterContextChange(): Future[Unit] = Future {

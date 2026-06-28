@@ -11,6 +11,7 @@ import it.evadid.distribution.commandTypes.*
 import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.server.commandHandler.sql.{DeleteInDatabase, FetchFromDatabase, UpsertToDatabase}
 import it.evadid.util.*
+import it.evadid.util.logging.Logger
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}

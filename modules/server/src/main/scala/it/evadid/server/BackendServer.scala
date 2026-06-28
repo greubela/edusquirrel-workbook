@@ -4,7 +4,8 @@ import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.*
 import it.evadid.distribution.formats.ExecutionClientResponse
-import it.evadid.util.{JvmUtils, Logger}
+import it.evadid.util.JvmUtils
+import it.evadid.util.logging.Logger
 import play.api.libs.json.Json
 import play.api.mvc.*
 import play.api.mvc.Results.*

@@ -3,7 +3,7 @@ package it.evadid.distribution.command
 import it.evadid.core.util.io.{Serializer, TypeConverter}
 import it.evadid.distribution.clients.{ExecutionClient, LocalExecutionClient}
 import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoTyped
-import it.evadid.util.Logger
+import it.evadid.util.logging.Logger
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}

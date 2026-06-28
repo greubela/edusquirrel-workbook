@@ -136,7 +136,7 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T],
       val newInteractionState = InteractionVariableState[T](newValue, updateSize, timestamp)
       innerState.update(_.withAddedEvent(newInteractionState))
       if (syncControl.now().nonEmpty) {
-        syncControl.now().foreach(_.requestStore(this))
+        syncControl.now().foreach(_.requestStore(this, false))
       } else {
         println("[WARN] changed update was not committed because no syncTarget was available!")
       }
