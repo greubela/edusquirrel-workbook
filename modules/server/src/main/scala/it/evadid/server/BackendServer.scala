@@ -25,7 +25,6 @@ object BackendServer {
 
   private val serverStartedAt: LocalDateTime = LocalDateTime.now()
 
-
   def fail(commandReceived: LocalDateTime, msg: String, cause: Option[SerializedException], command: Option[ExecutionCommand], logger: Logger): ExecutionClientResponse = {
     logger.logError(msg)
     ExecutionClientResponse(commandReceived, commandReceived, msg, cause, command, logger.getOut(), logger.getErr())

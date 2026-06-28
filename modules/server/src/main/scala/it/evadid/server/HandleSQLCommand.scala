@@ -17,126 +17,8 @@ object HandleSQLCommand {
 
   // surrounding
 
-  private[server] def readConfig(request: DbRequest): DatabaseConfig = DatabaseConfig(
-    host = System.getenv("SQL_HOST"),
-    port = System.getenv("SQL_PORT"),
-    database = request.databaseName,
-    user = System.getenv("SQL_USER"),
-    password = System.getenv("SQL_PW")
-  )
-
-  private[server] final case class DatabaseConfig(
-                                                   host: String,
-                                                   port: String,
-                                                   database: String,
-                                                   user: String,
-                                                   password: String
-                                                 ) {
-    val jdbcUrl: String = s"jdbc:mysql://$host:$port/$database"
-
-    def newConnection(): java.sql.Connection = {
-      DriverManager.getConnection(jdbcUrl, user, password)
-    }
-
-    def prepareStatement(sql: String): PreparedStatement = {
-      newConnection().prepareStatement(sql)
-    }
-
-
-  }
-
   // Fetch
 
-  private def fetchAllStatement(connection: Connection, config: DatabaseConfig, context: UsageContext): PreparedStatement = {
-    val sql: String =
-      """
-        |SELECT `eventid`, `serializeddata`
-        |FROM `events`
-        |WHERE `programid` = ? AND `scenarioid` = ? AND `userid` = ?
-        |ORDER BY `timestamp` DESC
-        |""".stripMargin
-
-    val stmt = connection.prepareStatement(sql)
-
-    stmt.setString(1, context.programId)
-    stmt.setString(2, context.scenarioId)
-    stmt.setString(3, context.userId)
-    stmt
-  }
-
-
-  case class RichDatabaseHistory(eventId: String, richHistory: RichInteractionVariableHistorySerialized)
-
-  def fetchAllEventsAsList(config: DatabaseConfig, usageContext: UsageContext, formatter: RichInteractionVariableFormatter, logger: Logger): List[RichDatabaseHistory] = {
-
-    logger.logInfo("Fetching events from database for usage context: " + usageContext.toString)
-
-    def readOne(resultSet: ResultSet): Option[(String, String)] = try {
-      val data = resultSet.getString("serializeddata")
-      val eventId = resultSet.getString("eventid")
-      Some(eventId, data)
-    } catch case e: Exception => {
-      logger.logWarn(s"Could not parse element because of the following error: " + e.getMessage)
-      None
-    }
-
-    def readAllAsTuples(resultSet: ResultSet): List[(String, String)] = {
-      val events = mutable.ListBuffer[Option[(String, String)]]()
-      events += readOne(resultSet)
-      while (resultSet.next()) events += readOne(resultSet)
-      events.toList.flatten
-    }
-
-    def readAll(resultSet: ResultSet): List[RichDatabaseHistory] = {
-      readAllAsTuples(resultSet).flatMap(tup => {
-        try {
-          val asRich: RichInteractionVariableHistorySerialized = formatter.deserializeAsRich(tup._2)
-          Some(RichDatabaseHistory(tup._1, asRich))
-        } catch case e: Exception => {
-          logger.logWarn(s"Could not parse element '$tup' because of the following error: " + e.getMessage)
-          None
-        }
-      })
-    }
-
-    val statement = fetchAllStatement(config.newConnection(), config, usageContext)
-    logger.logInfo("Executing query: " + statement.toString)
-    try {
-      val rs = statement.executeQuery()
-      logger.logInfo("Query executed successfully")
-      val res = readAll(rs)
-      logger.logInfo("Read " + res.size + " events: " + res.map(_.eventId).mkString(", "))
-      res
-
-    } catch case e: Exception => {
-      statement.close()
-      logger.logError(s"Error fetching from database: ${e.getMessage}")
-      throw e
-    }
-  }
-
-  def fetchAllEventsInMap(config: DatabaseConfig, request: FetchFromDbRequest, logger: Logger): Map[SyncContext, InteractionVariableHistorySerialized] = {
-    try {
-      val list = fetchAllEventsAsList(config, request.usageContext, request.formatter, logger)
-        .map((curDbRich: RichDatabaseHistory) => request.usageContext.toSyncContext(curDbRich.richHistory.keyForSerialisation) -> curDbRich.richHistory.fullHistory).toMap
-      list
-    } catch case e: Exception => {
-      logger.logError(s"Error in HandleSqlCommand::fetchAllEventsInMap: fetching or converting values from database: ${e.getMessage}")
-      throw e
-    }
-
-  }
-
-  def fetchAll(request: FetchFromDbRequest, logger: Logger): DbFetchResponse = {
-    try {
-      val config = readConfig(request)
-      logger.logInfo("read config for db access!")
-      DbFetchResponse(fetchAllEventsInMap(config, request, logger))
-    } catch case e: Exception => {
-      logger.logError(s"Error in HandleSqlCommand::fetchAll: fetching or converting values from database: ${e.getMessage}")
-      throw e
-    }
-  }
 
   // Clear
 
@@ -179,23 +61,6 @@ object HandleSQLCommand {
     }
   }
 
-  private def deleteEventsById(conn: Connection, ids: List[Long], logger: Logger): SyncSuccess = {
-    if (ids.isEmpty) SyncSuccess(0, 0, 0, LocalDateTime.now())
-    else {
-      val placeholders = ids.map(_ => "?").mkString(", ")
-      val stmt = conn.prepareStatement(s"DELETE FROM `events` WHERE `eventid` IN ($placeholders)")
-      try {
-        ids.zipWithIndex.foreach { case (id, index) => stmt.setLong(index + 1, id) }
-        val nr = stmt.executeUpdate()
-        SyncSuccess(0, 0, nr, LocalDateTime.now())
-      } catch {
-        case e: Exception => logger.logError(s"Error clearing database sync events by id: ${e.getMessage}")
-          throw e
-      } finally {
-        stmt.close()
-      }
-    }
-  }
 
 
   // Store
