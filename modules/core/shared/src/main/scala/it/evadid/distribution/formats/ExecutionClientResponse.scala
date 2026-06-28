@@ -71,7 +71,7 @@ object ExecutionClientResponse {
       val resMap: Map[String, String] = serializerMapJson.deserialize(receivedMap("executionResultSuccess"))
       ExecutionClientResponse(timestampReceived, timestampStarted, timestampFinished, Right(resMap), parsedCommand, loggerOut, loggerError)
     } else if (receivedMap.contains("executionResultFailed")) {
-      val cause: SerializedException = DefaultSerializer.serializerExceptionS.deserialize(receivedMap("executionInfoError"))
+      val cause: SerializedException = DefaultSerializer.serializerExceptionS.deserialize(receivedMap("executionResultFailed"))
       ExecutionClientResponse(timestampReceived, timestampStarted, timestampFinished, Left(cause), parsedCommand, loggerOut, loggerError)
     } else {
       throw new Exception("Received map does not contain neither of the following keys: executionResultSuccess, executionResultFailed")

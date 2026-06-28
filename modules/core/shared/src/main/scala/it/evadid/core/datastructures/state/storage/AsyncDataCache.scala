@@ -85,7 +85,7 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean = false,
   def loadAllAsFuture(inputs: List[I], maximumAge: LocalDateTime)(implicit ec: ExecutionContext): Future[Map[I, AsyncDataStateFinished[Nothing, O]]] = {
 
     def handleInput(input: I): Future[(I, AsyncDataStateFinished[Nothing, O])] =
-      loadAsFuture(inputs.head, maximumAge)
+      loadAsFuture(input, maximumAge)
         .map[(I, AsyncDataStateFinished[Nothing, O])](res => (input, AsyncDataSuccess(res)))
         .recover { case e: Throwable => (input, AsyncDataFailed(e, None)) }
 

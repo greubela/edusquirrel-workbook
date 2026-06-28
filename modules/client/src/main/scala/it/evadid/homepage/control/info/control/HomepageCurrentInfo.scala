@@ -18,10 +18,11 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
     now().workbookInfo
   }
 
-  def currentSyncSourcces: List[SyncInformationWithContext] = fullInfo.synchronized {
+  def currentSyncSources: List[SyncInformationWithContext] = fullInfo.synchronized {
     val curContext: UsageContext = fullInfo.homepageInfoState.now().toContext
     val syncInformation: List[SyncInformation] = userInfo.map(_.config.syncDestinations.toList).toList.flatten
     val syncWithContext: List[SyncInformationWithContext] = syncInformation.map(_.forContext(fullInfo.current.currentHomepageContext))
+    println(s"currentSyncSources: ${syncWithContext.map(_.syncSource)}")
     syncWithContext
   }
 

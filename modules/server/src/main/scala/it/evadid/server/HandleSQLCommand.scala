@@ -50,7 +50,7 @@ object HandleSQLCommand {
   private def fetchAllStatement(connection: Connection, config: DatabaseConfig, context: UsageContext): PreparedStatement = {
     val sql: String =
       """
-        |SELECT `id`, `serializeddata`
+        |SELECT `eventid`, `serializeddata`
         |FROM `events`
         |WHERE `programid` = ? AND `scenarioid` = ? AND `userid` = ?
         |ORDER BY `timestamp` DESC
@@ -69,9 +69,11 @@ object HandleSQLCommand {
 
   def fetchAllEventsAsList(config: DatabaseConfig, usageContext: UsageContext, formatter: RichInteractionVariableFormatter, logger: Logger): List[RichDatabaseHistory] = {
 
+    logger.logInfo("Fetching events from database for usage context: " + usageContext.toString)
+
     def readOne(resultSet: ResultSet): Option[(String, String)] = try {
       val data = resultSet.getString("serializeddata")
-      val eventId = resultSet.getString("id")
+      val eventId = resultSet.getString("eventid")
       Some(eventId, data)
     } catch case e: Exception => {
       logger.logWarn(s"Could not parse element because of the following error: " + e.getMessage)
@@ -98,9 +100,14 @@ object HandleSQLCommand {
     }
 
     val statement = fetchAllStatement(config.newConnection(), config, usageContext)
+    logger.logInfo("Executing query: " + statement.toString)
     try {
       val rs = statement.executeQuery()
-      readAll(rs)
+      logger.logInfo("Query executed successfully")
+      val res = readAll(rs)
+      logger.logInfo("Read " + res.size + " events: " + res.map(_.eventId).mkString(", "))
+      res
+
     } catch case e: Exception => {
       statement.close()
       logger.logError(s"Error fetching from database: ${e.getMessage}")
@@ -109,14 +116,26 @@ object HandleSQLCommand {
   }
 
   def fetchAllEventsInMap(config: DatabaseConfig, request: FetchFromDbRequest, logger: Logger): Map[SyncContext, InteractionVariableHistorySerialized] = {
-    fetchAllEventsAsList(config, request.usageContext, request.formatter, logger).map((curDbRich: RichDatabaseHistory) =>
-      request.usageContext.toSyncContext(curDbRich.richHistory.keyForSerialisation) -> curDbRich.richHistory.fullHistory
-    ).toMap
+    try {
+      val list = fetchAllEventsAsList(config, request.usageContext, request.formatter, logger)
+        .map((curDbRich: RichDatabaseHistory) => request.usageContext.toSyncContext(curDbRich.richHistory.keyForSerialisation) -> curDbRich.richHistory.fullHistory).toMap
+      list
+    } catch case e: Exception => {
+      logger.logError(s"Error in HandleSqlCommand::fetchAllEventsInMap: fetching or converting values from database: ${e.getMessage}")
+      throw e
+    }
+
   }
 
   def fetchAll(request: FetchFromDbRequest, logger: Logger): DbFetchResponse = {
-    val config = readConfig(request)
-    DbFetchResponse(fetchAllEventsInMap(config, request, logger))
+    try {
+      val config = readConfig(request)
+      logger.logInfo("read config for db access!")
+      DbFetchResponse(fetchAllEventsInMap(config, request, logger))
+    } catch case e: Exception => {
+      logger.logError(s"Error in HandleSqlCommand::fetchAll: fetching or converting values from database: ${e.getMessage}")
+      throw e
+    }
   }
 
   // Clear
@@ -152,9 +171,9 @@ object HandleSQLCommand {
 
   def clearUsage(request: ClearUsageInDbRequest, logger: Logger): SyncSuccess = {
     val config = readConfig(request)
-    if(request.limitToKey.isEmpty) {
+    if (request.limitToKey.isEmpty) {
       clearUsage(config.newConnection(), config, request, logger)
-    }else{
+    } else {
       val list = fetchAllEventsAsList(config, request.usageContext, request.formatter, logger)
       deleteEventsById(config.newConnection(), list.map(_.eventId.toLong), logger)
     }
@@ -164,7 +183,7 @@ object HandleSQLCommand {
     if (ids.isEmpty) SyncSuccess(0, 0, 0, LocalDateTime.now())
     else {
       val placeholders = ids.map(_ => "?").mkString(", ")
-      val stmt = conn.prepareStatement(s"DELETE FROM `events` WHERE `id` IN ($placeholders)")
+      val stmt = conn.prepareStatement(s"DELETE FROM `events` WHERE `eventid` IN ($placeholders)")
       try {
         ids.zipWithIndex.foreach { case (id, index) => stmt.setLong(index + 1, id) }
         val nr = stmt.executeUpdate()

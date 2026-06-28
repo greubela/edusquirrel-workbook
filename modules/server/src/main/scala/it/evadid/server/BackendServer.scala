@@ -39,7 +39,9 @@ object BackendServer {
       Future.successful(fail(commandReceived, "No Request Body Found", None, None, logger))
     else ExecutionCommand.tryParse(bodyOption.get).match {
       case Failure(err) => Future.successful(fail(commandReceived, "Could not parse ExecutionCommand", Some(SerializedException(err)), None, logger))
-      case Success(command) => BackendCommandHandler.handleExecution(command, logger)
+      case Success(command) => BackendCommandHandler.handleExecution(command, logger).recover{err => {
+        fail(commandReceived, "Could not handle ExecutionCommand: " + err.getMessage, Some(SerializedException(err)), Some(command), logger)
+      }}
     }
   }
 

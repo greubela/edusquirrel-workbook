@@ -9,8 +9,7 @@ import it.evadid.homepage.control.HtmlFullWorkbookApp
 import it.evadid.util.Logger
 import it.evadid.workbook.model.interaction.sync.SyncFormatter.InteractionSyncRequest
 import it.evadid.workbook.model.interaction.sync.SyncInformation.SyncSuccess
-import it.evadid.workbook.model.interaction.sync.{SyncContext, SyncDestination, SyncFormatter, UsageContext}
-import it.evadid.workbook.model.interaction.variable.InteractionVariableHistorySerialized
+import it.evadid.workbook.model.interaction.sync.*
 
 import scala.concurrent.*
 import scala.util.*
@@ -28,17 +27,18 @@ case class DatabaseSyncViaBackendServer(dbName: String) extends SyncDestination 
   }
 
   override def fetchAll(context: UsageContext): Future[Map[SyncContext, String]] = {
+
+    println("########################## DbSync: Fetching from db, context: " + context)
+
     val serializer = DefaultSerializer.serializerInteractionVariableHistoryIgnoreErrors
     val request = SQLCommands.FetchFromDbRequest(context, dbName)
     val exInfoFut: Future[ExecutionInfoTyped[DbFetchResponse]] = SQLCommands.fetchFromDbCommand.sendCommandTo(backend, Logger(), request)
-    exInfoFut.onComplete{
+    exInfoFut.onComplete {
       case Success(exInfo) => println("DbSync: " + exInfo.resultTyped.result.fetchedElements)
       case Failure(err) => println("DbSync: " + err)
-
     }
 
     val res = exInfoFut.map(exInfo => {
-
       exInfo.resultTyped.result.fetchedElements.map(tup => tup._1 -> serializer.serialize(tup._2)).toMap
     })(using ec)
     //exInfoFut.map(exInfo => .serialize(exInfo.resultTyped.result.fetchedElements))(using ec)

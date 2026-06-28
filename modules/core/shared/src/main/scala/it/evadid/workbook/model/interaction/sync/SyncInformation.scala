@@ -7,6 +7,7 @@ import it.evadid.workbook.model.interaction.variable.{InteractionVariableHistory
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 case class SyncInformation(syncSource: SyncDestination, syncStrategy: SyncStrategy, formatter: SyncFormatter) {
 
@@ -53,7 +54,12 @@ object SyncInformation {
     }
 
     def fetchAllFrom(useTimestampForCache: LocalDateTime = LocalDateTime.now()): Future[SyncCache] = {
+      println(s"Fetching all values from ${syncSource} for context $usageContext")
       val valuesUntyped: Future[Map[SyncContext, String]] = syncSource.fetchAll(usageContext)
+      valuesUntyped.onComplete{
+        case Success(value) => println(s"Fetched values: $value")
+        case Failure(e) => println(s"Failed to fetch values: $e")
+      }
       val valuesHistory: Future[Map[SyncContext, InteractionVariableHistorySerialized]] = valuesUntyped.map(_.flatMap(tup => tryParseValue(tup._1, tup._2).toMap))
       valuesHistory.map((resMap: Map[SyncContext, InteractionVariableHistorySerialized]) => SyncCache(useTimestampForCache, usageContext, resMap))
     }
