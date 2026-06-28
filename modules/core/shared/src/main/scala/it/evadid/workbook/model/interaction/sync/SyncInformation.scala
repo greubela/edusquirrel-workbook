@@ -40,7 +40,7 @@ object SyncInformation {
 
     def storeTo[T](key: String, history: InteractionVariableHistory[T], serializer: Serializer[T]): Future[SyncSuccess] = {
       val syncContext: SyncContext = usageContext.toSyncContext(key)
-      val historySerialized: InteractionVariableHistorySerialized = history.serialized(serializer)
+      val historySerialized: InteractionVariableHistorySerialized = history.serializedWithStrategy(syncStrategy, serializer)
       syncSource.syncTo(syncContext, InteractionSyncRequest(syncContext, historySerialized), formatter)
     }
 

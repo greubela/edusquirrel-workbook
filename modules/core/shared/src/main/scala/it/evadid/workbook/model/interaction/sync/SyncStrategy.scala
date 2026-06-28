@@ -1,27 +1,27 @@
 package it.evadid.workbook.model.interaction.sync
 
-import it.evadid.workbook.model.interaction.variable.InteractionVariableState
+import it.evadid.workbook.model.interaction.variable.InteractionVariableHistory
 
 
 sealed trait SyncStrategy {
 
-  def selectEventsToSync[T](events: Set[InteractionVariableState[T]]): Set[InteractionVariableState[T]]
+  def selectEventsToSync[T](history: InteractionVariableHistory[T]): InteractionVariableHistory[T]
 
 }
 
 object SyncStrategy {
 
   object SYNC_EVERYTHING extends SyncStrategy {
-    override def selectEventsToSync[T](events: Set[InteractionVariableState[T]]): Set[InteractionVariableState[T]] = events
+    override def selectEventsToSync[T](history: InteractionVariableHistory[T]): InteractionVariableHistory[T] = history
   }
 
   private case class DesiredRelevance(desired: List[UpdateImportance]) extends SyncStrategy {
-    override def selectEventsToSync[T](events: Set[InteractionVariableState[T]]): Set[InteractionVariableState[T]] = events.filter(e => desired.contains(e.updateImportance))
+    override def selectEventsToSync[T](history: InteractionVariableHistory[T]): InteractionVariableHistory[T] = history.map(_.filter(e => desired.contains(e.updateImportance)))
   }
 
   object SYNC_LAST extends SyncStrategy {
-    override def selectEventsToSync[T](events: Set[InteractionVariableState[T]]): Set[InteractionVariableState[T]] = {
-      events.filter(_.updateImportance != UpdateImportance.DEFAULT).maxByOption(_.timestamp).toSet
+    override def selectEventsToSync[T](history: InteractionVariableHistory[T]): InteractionVariableHistory[T] = {
+      history.map(_.filter(_.updateImportance != UpdateImportance.DEFAULT).maxByOption(_.timestamp).toSet)
     }
   }
 

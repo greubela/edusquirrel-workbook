@@ -14,12 +14,16 @@ case class InteractionVariableHistory[T](events: Set[InteractionVariableState[T]
     else InteractionVariableHistory(Set(lastState))
   }
 
+  def map(func: Set[InteractionVariableState[T]] => Set[InteractionVariableState[T]]): InteractionVariableHistory[T] = {
+    InteractionVariableHistory(func(events.toSet))
+  }
+
   def serialized(serializer: Serializer[T]): InteractionVariableHistorySerialized = {
     InteractionVariableHistorySerialized(events.map(_.serialized(serializer)))
   }
 
   def serializedWithStrategy(syncStrategy: SyncStrategy, serializer: Serializer[T]): InteractionVariableHistorySerialized = {
-    val syncEvents = syncStrategy.selectEventsToSync(events)
+    val syncEvents = syncStrategy.selectEventsToSync(this).events
     InteractionVariableHistory(syncEvents).cleanedHistory().serialized(serializer)
   }
 

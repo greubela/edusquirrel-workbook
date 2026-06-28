@@ -10,7 +10,7 @@ import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 import it.evadid.workbook.model.interaction.sync.SyncControl
 import it.evadid.workbook.model.interaction.sync.SyncInformation.{SyncCache, SyncInformationWithContext}
-import it.evadid.workbook.model.interaction.variable.{InteractionVariable, InteractionVariableHistory}
+import it.evadid.workbook.model.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableState}
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
@@ -122,7 +122,9 @@ object HomepageDataControl {
     }
 
     def requestStoreAll(interactionVariable: InteractionVariable[?]): Future[Unit] = fullInfo.synchronized {
-      Future.traverse(fullInfo.current.currentSyncSourcces)(_.storeTo(interactionVariable.keyForSerialization, interactionVariable.history, interactionVariable.underlyingInteraction.serializer)).map(theList => {})
+      Future.traverse(fullInfo.current.currentSyncSourcces)((currentSyncSource: SyncInformationWithContext) => {
+        currentSyncSource.storeTo(interactionVariable.keyForSerialization, interactionVariable.history, interactionVariable.underlyingInteraction.serializer)
+      }).map(theList => {})
     }
 
 
