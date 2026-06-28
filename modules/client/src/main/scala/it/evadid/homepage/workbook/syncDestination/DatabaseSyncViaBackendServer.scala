@@ -27,19 +27,11 @@ case class DatabaseSyncViaBackendServer(dbName: String) extends SyncDestination 
   }
 
   override def fetchAll(context: UsageContext): Future[Map[SyncContext, String]] = {
-
-    println("########################## DbSync: Fetching from db, context: " + context)
-
-    val serializer = DefaultSerializer.serializerInteractionVariableHistoryIgnoreErrors
     val request = SQLCommands.FetchFromDbRequest(context, dbName)
     val exInfoFut: Future[ExecutionInfoTyped[DbFetchResponse]] = SQLCommands.fetchFromDbCommand.sendCommandTo(backend, Logger(), request)
-    exInfoFut.onComplete {
-      case Success(exInfo) => println("DbSync: " + exInfo.resultTyped.result.fetchedElements)
-      case Failure(err) => println("DbSync: " + err)
-    }
 
     val res = exInfoFut.map(exInfo => {
-      exInfo.resultTyped.result.fetchedElements.map(tup => tup._1 -> serializer.serialize(tup._2)).toMap
+      exInfo.resultTyped.result.fetchedElements.map(tup => tup._1 -> request.formatter.serialize(InteractionSyncRequest(tup._1, tup._2))).toMap
     })(using ec)
     //exInfoFut.map(exInfo => .serialize(exInfo.resultTyped.result.fetchedElements))(using ec)
 

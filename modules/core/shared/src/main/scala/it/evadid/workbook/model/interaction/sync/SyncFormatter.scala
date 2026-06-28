@@ -13,12 +13,14 @@ sealed trait SyncFormatter {
   def deserialize(serialized: String): InteractionVariableHistorySerialized
 
   def tryDeserialize(serialized: String): Option[InteractionVariableHistorySerialized] =
-    try Some(deserialize(serialized)) catch case _: Throwable => None
+    try Some(deserialize(serialized)) catch case e: Throwable => {
+      println(s"[WARN] from ${getClass.getName}: cannot deserialize: $serialized: ${e.getMessage}")
+      None
+    }
 
 }
 
 object SyncFormatter {
-
 
   case class RichInteractionVariableFormatter() extends SyncFormatter {
 

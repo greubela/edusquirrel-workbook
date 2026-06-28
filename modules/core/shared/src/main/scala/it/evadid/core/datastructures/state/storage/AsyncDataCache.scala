@@ -82,15 +82,14 @@ abstract class AsyncDataCache[I, O](storageName: String, debug: Boolean = false,
     }
   }
 
-  def loadAllAsFuture(inputs: List[I], maximumAge: LocalDateTime)(implicit ec: ExecutionContext): Future[Map[I, AsyncDataStateFinished[Nothing, O]]] = {
+  def loadAllAsFuture(inputs: List[I], maximumAge: LocalDateTime)(implicit ec: ExecutionContext): Future[Map[I, Either[Throwable, O]]] = {
 
-    def handleInput(input: I): Future[(I, AsyncDataStateFinished[Nothing, O])] =
+    def handleInput(input: I): Future[(I, Either[Throwable, O])] =
       loadAsFuture(input, maximumAge)
-        .map[(I, AsyncDataStateFinished[Nothing, O])](res => (input, AsyncDataSuccess(res)))
-        .recover { case e: Throwable => (input, AsyncDataFailed(e, None)) }
+        .map(res => input -> Right(res))
+        .recover { case e: Throwable => input -> Left(e) }
 
     Future.traverse(inputs)(handleInput).map(_.toMap)
-
   }
 
   def loadAsFuture(input: I, maximumAge: LocalDateTime)(implicit ec: ExecutionContext): Future[O] = {

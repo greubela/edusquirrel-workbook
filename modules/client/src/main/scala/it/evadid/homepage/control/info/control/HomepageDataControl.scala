@@ -58,12 +58,12 @@ case class HomepageDataControl(fullInfo: FullInfo) {
   }
 
   def updateWorkbookConfig(func: WorkbookConfig => WorkbookConfig): Unit = fullInfo.synchronized {
-    if (fullInfo.homepageInfoState.now().workbookInfo.nonEmpty){
+    if (fullInfo.homepageInfoState.now().workbookInfo.nonEmpty) {
       val currentWorkbookInfo: AllWorkbookInfo = fullInfo.homepageInfoState.now().workbookInfo.get
       val newWorkbookInfo: AllWorkbookInfo = currentWorkbookInfo.copy(config = func(currentWorkbookInfo.config))
       fullInfo.homepageInfoState.update(_.copy(workbookInfo = Some(newWorkbookInfo)))
       cacheControl.requestFetchAll(interactions.map(_.interactionVariable), LocalDateTime.now())
-    }else{
+    } else {
       println("[WARN] ignore updated workbook config because there is no workbook loaded!")
     }
 
@@ -91,7 +91,6 @@ object HomepageDataControl {
     private val requestCache: AsyncDataCache[SyncInformationWithContext, SyncCache] = new AsyncDataCache[SyncInformationWithContext, SyncCache]("syncRequestCache", false, true) {
 
       override protected def executeLoading(in: SyncInformationWithContext)(ec: ExecutionContext): Future[SyncCache] = {
-        println("##################################################### executeLoading!! (" + in.syncSource + ")")
         in.fetchAllFrom()
       }
 
@@ -100,22 +99,28 @@ object HomepageDataControl {
       override protected def formatOutputForLogging(out: SyncCache): String = s"SyncCache(${out.createdAt}: ${out.values.size} values)"
     }
 
-    private def executeLoadAll(maxAge: LocalDateTime = LocalDateTime.now()): Future[Map[SyncInformationWithContext, AsyncDataStateFinished[Nothing, SyncCache]]] = {
-      println(s"ExecuteLoadAll($maxAge) for ${fullInfo.current.currentSyncSources.size} sources: ${fullInfo.current.currentSyncSources.map(_.toString)}")
+    private def executeLoadAll(maxAge: LocalDateTime = LocalDateTime.now()): Future[Map[SyncInformationWithContext, Either[Throwable, SyncCache]]] = {
       requestCache.loadAllAsFuture(fullInfo.current.currentSyncSources, maxAge)
     }
 
     def requestFetchAll(variables: List[InteractionVariable[?]], maxCacheAge: LocalDateTime): Unit = fullInfo.synchronized {
-      println(s"requestFetchAll: ${variables.map(_.keyForSerialization)}")
-      variables.foreach(requestFetch(_, maxCacheAge))
+      variables.foreach(intVar => requestFetch(intVar, maxCacheAge))
     }
 
     override def requestFetch(interactionVariable: InteractionVariable[?], maxCacheAge: LocalDateTime): Unit = fullInfo.synchronized {
-      val fut: Future[List[SyncCache]] = executeLoadAll(maxCacheAge).map(_.values.flatMap(_.value).toList)
-      fut.onComplete {
-        case Success(value) => {
-          println("loading: " + value)
-          interactionVariable.executeLoad(value)
+
+      def format(in: SyncInformationWithContext, out: Either[Throwable, SyncCache]): String = out.match {
+        case Left(err) => "Failure(" + in.syncSource.getClass.getSimpleName + " -> " + err + ")"
+        case Right(err) => "Success(" + in.syncSource.getClass.getSimpleName + " -> " + err.values.size + " elements)"
+
+      }
+
+      val futMap: Future[Map[SyncInformationWithContext, Either[Throwable, SyncCache]]] = executeLoadAll(maxCacheAge)
+      futMap.onComplete {
+        case Success(resMap) => {
+          val formatted = resMap.map(format).mkString("FetchResults(", ",", ")")
+          println("Successfully executed fetch : " + formatted)
+          resMap.flatMap(_._2.toOption).foreach(cache => interactionVariable.executeLoad(List(cache)))
         }
         case Failure(exception) => println(s"Error while fetching sync data: $exception")
       }

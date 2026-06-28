@@ -6,6 +6,7 @@ import it.evadid.workbook.model.interaction.sync.SyncInformation.SyncInformation
 import it.evadid.workbook.model.interaction.variable.{InteractionVariableHistory, InteractionVariableHistorySerialized}
 
 import java.time.LocalDateTime
+import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
@@ -54,13 +55,19 @@ object SyncInformation {
     }
 
     def fetchAllFrom(useTimestampForCache: LocalDateTime = LocalDateTime.now()): Future[SyncCache] = {
-      println(s"Fetching all values from ${syncSource} for context $usageContext")
-      val valuesUntyped: Future[Map[SyncContext, String]] = syncSource.fetchAll(usageContext)
-      valuesUntyped.onComplete{
-        case Success(value) => println(s"Fetched values: $value")
-        case Failure(e) => println(s"Failed to fetch values: $e")
+
+
+      def deserialize(resMap: Map[SyncContext, String]): Map[SyncContext, InteractionVariableHistorySerialized] = {
+        val res = mutable.Map.empty[SyncContext, InteractionVariableHistorySerialized]
+        resMap.foreach(curTup => {
+          val deserial = formatter.tryDeserialize(curTup._2)
+          if(deserial.nonEmpty) res += curTup._1 -> deserial.get
+        })
+        res.toMap
       }
-      val valuesHistory: Future[Map[SyncContext, InteractionVariableHistorySerialized]] = valuesUntyped.map(_.flatMap(tup => tryParseValue(tup._1, tup._2).toMap))
+
+      val valuesUntyped: Future[Map[SyncContext, String]] = syncSource.fetchAll(usageContext)
+      val valuesHistory: Future[Map[SyncContext, InteractionVariableHistorySerialized]] = valuesUntyped.map(deserialize)
       valuesHistory.map((resMap: Map[SyncContext, InteractionVariableHistorySerialized]) => SyncCache(useTimestampForCache, usageContext, resMap))
     }
 
