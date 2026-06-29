@@ -92,7 +92,7 @@ object ExecutionClientResponse {
       logger.logExceptionWarn(s"ignoring logger error received from remote source because it was not parsable: ${e.getMessage}", e)
       ""
     }
-    logger.logFromExternalError(loggerOut)
+    logger.logFromExternalError(loggerError)
 
     val timestampReceived: LocalDateTime = readFromMap(logger, receivedMap, DefaultSerializer.serializerLocalDateTimeString, "timestampReceived")
     val timestampStarted: LocalDateTime = readFromMap(logger, receivedMap, DefaultSerializer.serializerLocalDateTimeString, "timestampStarted")
