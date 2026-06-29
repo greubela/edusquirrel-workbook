@@ -9,7 +9,7 @@ import it.evadid.workbook.model.interaction.variable.*
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 
 case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
@@ -21,7 +21,7 @@ case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
   override def requestFetch(variables: List[InteractionVariable[?]], requestTime: LocalDateTime): Future[?] = requestCache.syncLock.synchronized {
     def continue(): Future[?] = requestFetch(variables.tail, requestTime)
 
-    if (variables.isEmpty) Future.successful( () )
+    if (variables.isEmpty) Future.successful(())
     else requestFetch(variables.head, requestTime).transformWith {
       case Success(any) => continue()
       case Failure(err) => continue() //syncLogger.logExceptionWarn(s"ignoring date after error during fetching ${variables.head.keyForSerialization}", err) // already printed there
@@ -136,4 +136,9 @@ case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
     fullInfo.loggerSystemInfo.syncControlLogger
   }
 
+  def fetchAndStore(intVars: List[InteractionVariable[?]], requestTime: LocalDateTime = LocalDateTime.now()): Future[?] = {
+    requestFetch(intVars, requestTime).transformWith((any: Try[?]) => requestStore(intVars, false, requestTime))
+  }
+
+  def downloadAllAvailableData(): Unit = fullInfo.current.workbookUserData.foreach(_.downloadAllData())
 }

@@ -6,30 +6,27 @@ import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 
 import java.time.LocalDateTime
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Try
+import scala.concurrent.*
 
-case class HomepageDataControl(fullInfo: FullInfo) {
+case class HomepageUsageControl(fullInfo: FullInfo) {
 
 
   private given ExecutionContext = ExecutionContext.global
 
   private def interactions: List[WorkbookInteraction[?]] = fullInfo.current.allAvailableInteractions
 
-  def downloadAllAvailableData(): Unit = fullInfo.current.workbookUserData.foreach(_.downloadAllData())
-
-  private lazy val cacheControl: CachedSyncControl = CachedSyncControl(fullInfo)
+  private def cacheControl = fullInfo.cacheControl
 
   private[change] def updateContext(func: HomepageInfo => HomepageInfo): Future[?] = fullInfo.synchronized {
     def beforeContextChanged(): Future[?] = {
-      downloadAllAvailableData()
+      cacheControl.downloadAllAvailableData()
       cacheControl.requestStore(interactions.map(_.interactionVariable), true, LocalDateTime.now())
     }
 
     def afterContextChange(): Future[?] = Future {
       val maxTime: LocalDateTime = LocalDateTime.now()
       interactions.foreach(_.interactionVariable.resetHistoryAndSyncControl(Some(cacheControl)))
-      fetchAndStore()
+      cacheControl.fetchAndStore(interactions.map(_.interactionVariable))
     }
 
     beforeContextChanged().flatMap(res1 => {
@@ -40,11 +37,6 @@ case class HomepageDataControl(fullInfo: FullInfo) {
     })
   }
 
-  def fetchAndStore(requestTime: LocalDateTime = LocalDateTime.now()): Future[?] = {
-    cacheControl
-      .requestFetch(interactions.map(_.interactionVariable), requestTime)
-      .transformWith((any: Try[?]) => cacheControl.requestStore(interactions.map(_.interactionVariable), false, requestTime))
-  }
 
   def changeWorkbook(factory: WorkbookFactory): Unit = fullInfo.synchronized {
     changeWorkbook(factory.createEverything)
@@ -60,7 +52,7 @@ case class HomepageDataControl(fullInfo: FullInfo) {
       val currentWorkbookInfo: AllWorkbookInfo = fullInfo.homepageInfoState.now().workbookInfo.get
       val newWorkbookInfo: AllWorkbookInfo = currentWorkbookInfo.copy(config = func(currentWorkbookInfo.config))
       fullInfo.homepageInfoState.update(_.copy(workbookInfo = Some(newWorkbookInfo)))
-      fetchAndStore()
+      cacheControl.fetchAndStore(interactions.map(_.interactionVariable))
     } else {
       fullInfo.loggerSystemInfo.workbookControlLogger.logWarn("[WARN] ignore updated workbook config because there is no workbook loaded!")
     }
@@ -78,7 +70,7 @@ case class HomepageDataControl(fullInfo: FullInfo) {
 
 }
 
-object HomepageDataControl {
+object HomepageUsageControl {
 
 
 }

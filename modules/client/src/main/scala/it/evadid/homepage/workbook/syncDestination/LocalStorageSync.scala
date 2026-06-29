@@ -45,15 +45,15 @@ object LocalStorageSync extends SyncDestination {
   override def shouldBePersistant(): Boolean = false
 
   override def clearAllValues(context: UsageContext): Future[SyncSuccess] = Future {
-    resetStorage()
+    resetCompleteStorage()
   }(using ec)
 
 
   override def clearValues(context: SyncContext): Future[SyncSuccess] = Future {
-    resetStorage()
+    resetCompleteStorage()
   }(using ec)
 
-  private def resetStorage(): SyncSuccess = {
+  def resetCompleteStorage(): SyncSuccess = {
     println("[UGLY WARN IN LOCALSTORAGESYNC] clearing all local storage!")
     dom.window.localStorage.clear()
     SyncSuccess(0, 0, dom.window.localStorage.length, LocalDateTime.now())

@@ -5,7 +5,7 @@ import it.evadid.workbook.model.interaction.WorkbookInteraction
 import it.evadid.workbook.model.interaction.sync.SyncInformation.SyncInformationWithContext
 import it.evadid.workbook.model.interaction.sync.{SyncInformation, UsageContext}
 
-import it.evadid.homepage.control.change.HomepageDataControl.*
+import it.evadid.homepage.control.change.HomepageUsageControl.*
 import it.evadid.homepage.control.change.*
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.singletons.*

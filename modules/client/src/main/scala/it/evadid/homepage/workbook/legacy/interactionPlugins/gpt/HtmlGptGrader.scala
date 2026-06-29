@@ -9,7 +9,7 @@ import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 import org.scalajs.dom.{SVGLinearGradientElement, SVGSVGElement}
 import it.evadid.homepage.control.info.*
-import it.evadid.homepage.control.change.HomepageDataControl.*
+import it.evadid.homepage.control.change.HomepageUsageControl.*
 import it.evadid.homepage.control.change.*
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.model.AllWorkbookInfo.*

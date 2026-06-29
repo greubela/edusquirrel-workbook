@@ -19,45 +19,13 @@ import todomove.datastructures.web.file.FileFactory
 object HtmlWorkbookRenderer extends HtmlRenderFactory[Workbook] {
 
   def createDomElement(workbook: Workbook): Element = {
-    val collapsed: Var[Boolean] = Var(false)
     div(
       cls := "it/evadid/homepage/workbook",
-      createDomHeader(workbook, collapsed),
+      WorkbookHeader(workbook).getDomElement,
       createDomBody(workbook)
     )
   }
 
-  /*
-  Header
-   */
-  def createDomHeader(workbook: Workbook, collapsed: Var[Boolean]): Element = div(
-    cls := "workbook-header",
-    div(
-      cls <-- collapsed.signal.map(c => if (c) "workbook-header-collapsible workbook-header-collapsed" else "workbook-header-collapsible"),
-      createDomHeaderTitleLine(workbook),
-      UserConfigLine(workbook).getDomElement(),
-      LanguageSelectionLine(workbook).getDomElement(),
-      SectionSelectionLine(workbook).getDomElement()
-    ),
-    createDomToggleButton(collapsed)
-  )
-
-  private def createDomToggleButton(collapsed: Var[Boolean]): Element = div(
-    cls := "workbook-header-toggle",
-    onClick --> { _ => collapsed.update(!_) },
-    span(
-      cls := "workbook-header-toggle-icon",
-      child <-- collapsed.signal.map { c =>
-        if (c) span("Navigation anzeigen") else span("Navigation ausblenden")
-      }
-    )
-  )
-
-  private def createDomHeaderTitleLine(workbook: Workbook): Element = div(
-    cls := "workbook-title-line",
-    h1(text <-- contentIdStringSignal(workbook.workbookTitle)),
-    UserDropdownMenu().getDomElement()
-  )
 
   /*
   BODY
@@ -110,71 +78,7 @@ object HtmlWorkbookRenderer extends HtmlRenderFactory[Workbook] {
 }
 
 
-private case class SectionSelectionLine(workbook: Workbook) extends HtmlAppElement {
-
-  private def sections: List[WorkbookSection] = workbook.sections
-
-  private def selectSection(section: WorkbookSection): Unit = {
-    fullInfo.control.updateWorkbookConfig(_.copy(activeSection = Some(section)))
-  }
-
-  private def isSectionActiveSignal(section: WorkbookSection): Signal[Boolean] = {
-    fullInfo.signals.workbook.map(allWorkbookInfo => {
-      allWorkbookInfo.exists(curInfo => curInfo.config.activeSection.contains(section))
-    })
-  }
-
-  private def sectionToElement(section: WorkbookSection): Element = {
-    div(
-      cls <-- isSectionActiveSignal(section).map(isSectionShowing => if (isSectionShowing) {
-        "section-block active"
-      } else {
-        "section-block"
-      }),
-      div(
-        text <-- fullInfo.signals.stringFromLanguageMapId(section.sectionTitle)
-      ),
-      onClick --> { event => selectSection(section) },
-    )
-  }
-
-  override def getDomElement(): L.Element = div(
-    cls := "section-overview",
-    children <-- Var(sections.map(sectionToElement)).signal
-  )
-}
 
 
-
-private case class UserConfigLine(workbook: Workbook) extends HtmlAppElement {
-
-  //private val resetButton = HtmlButtonElement.withTextLabel(LanguageMapContentId("basic/resetLocalStorage"), event => fullInfo.control.resetLocalStorage())
-  private val downloadDataButton = HtmlButtonElement.withTextLabel(LanguageMapContentId("basic/downloadEverything"), event => fullInfo.control.downloadAllAvailableData())
-  private val uploadButton = HtmlButtonElement.withTextLabel(LanguageMapContentId("basic/uploadSession"), event => uploadInput.ref.click())
-
-  private lazy val uploadInput: ReactiveHtmlElement[HTMLInputElement] = input(
-    styleAttr := "display:none;",
-    typ := "file",
-    accept := "json",
-    onChange --> { event =>
-      val inputElement = event.target.asInstanceOf[dom.html.Input]
-      if (inputElement.files.length > 0) fileToUploadSelected(inputElement.files.item(0))
-    }
-  )
-
-  private def fileToUploadSelected(file: File): Unit = {
-    fullInfo.current.workbookUserData.foreach(_.upload(FileFactory.fromFile(file)))
-  }
-
-  private val domElement: Element = div(
-    styleAttr := "display:none;",
-    uploadInput,
-    //  resetButton.getDomElement(),
-    downloadDataButton.getDomElement(),
-    uploadButton.getDomElement(),
-  )
-
-  override def getDomElement(): Element = domElement
-}
 
 
