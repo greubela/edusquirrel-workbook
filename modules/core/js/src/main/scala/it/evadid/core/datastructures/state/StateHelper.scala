@@ -26,6 +26,7 @@ object StateHelper {
   }
 
 
+
   implicit class RichSignal[T](underlying: Signal[T]) {
 
     def toObservableValue: ObservableValue[T] = {

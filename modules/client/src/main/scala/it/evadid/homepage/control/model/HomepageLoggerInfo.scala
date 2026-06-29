@@ -11,9 +11,9 @@ case class HomepageLoggerInfo() {
 
   lazy val workbookControlLogger: Logger = Logger.withNameAndPrefixes(Some("WorkbookHomepageControl"), PrintToStdLogger.printEverything)
 
-  lazy val contentStorageLogger: Logger = Logger.withNameAndPrefixes(Some("WorkbookContentStorage"), PrintToStdLogger.printError)
+  lazy val contentStorageLogger: Logger = Logger.withNameAndPrefixes(Some("WorkbookContentStorage"), PrintToStdLogger.printEverything)
 
-  lazy val syncControlLogger: SyncLogger = SyncLogger(PrintToStdLogger(BasicLogger(), PrintToStdLogger.printEverything))
+  lazy val syncControlLogger: SyncLogger = SyncLogger(PrintToStdLogger(BasicLogger(), PrintToStdLogger.printWarnAndError))
 
   lazy val syncCacheLogger: Logger = Logger.withNameAndPrefixes(Some("SyncCacheLogger"), PrintToStdLogger.printWarnAndError)
 

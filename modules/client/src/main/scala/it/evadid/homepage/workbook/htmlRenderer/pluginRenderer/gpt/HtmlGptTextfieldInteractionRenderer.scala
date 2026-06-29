@@ -35,7 +35,7 @@ object HtmlGptTextfieldInteractionRenderer extends HtmlRenderFactory[GptInteract
   }
 
   private def onUserSendMessage(messageState: MessengerModel, mmState: State[MessengerModel]): Unit = {
-    val systemPromptFuture = fullInfo.signals.contentStorage.asStorage.loadAsFuture(systemPromptId)(using ExecutionContext.global)
+    val systemPromptFuture = fullInfo.signals.langMapIdResolver.resolveMap(systemPromptId)
     /*val curValTextarea = textInteraction.interactionVariable.currentValue
     val inputStr = if (curValTextarea.trim.nonEmpty) s"@assistant: the textarea for the solution reads '$curValTextarea'" else s"@assistant: currently no text in solution area"
     val languageStr = s", please answer in ${fullInfo.signals.currentLanguage.now()}"

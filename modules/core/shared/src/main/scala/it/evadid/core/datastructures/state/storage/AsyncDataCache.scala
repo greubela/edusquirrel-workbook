@@ -107,14 +107,24 @@ abstract class AsyncDataCache[I, O](val baseLogger: Logger, val retryFailedOnNex
       }
     }*/
 
-  def loadAllAsFuture(inputs: List[I], maximumAge: LocalDateTime)(implicit ec: ExecutionContext): Future[Map[I, Either[Throwable, O]]] = syncLock.synchronized {
+  def loadAllAsFuture(inputs: IterableOnce[I])(implicit ec: ExecutionContext): Future[Map[I, Either[Throwable, O]]] = syncLock.synchronized {
+
+    def handleInput(input: I): Future[(I, Either[Throwable, O])] =
+      loadAsFuture(input)
+        .map(res => input -> Right(res))
+        .recover { case e: Throwable => input -> Left(e) }
+
+    Future.traverse(inputs.iterator.toList)(handleInput).map(_.toMap)
+  }
+
+  def loadAllAsFuture(inputs: IterableOnce[I], maximumAge: LocalDateTime)(implicit ec: ExecutionContext): Future[Map[I, Either[Throwable, O]]] = syncLock.synchronized {
 
     def handleInput(input: I): Future[(I, Either[Throwable, O])] =
       loadAsFuture(input, maximumAge)
         .map(res => input -> Right(res))
         .recover { case e: Throwable => input -> Left(e) }
 
-    Future.traverse(inputs)(handleInput).map(_.toMap)
+    Future.traverse(inputs.iterator.toList)(handleInput).map(_.toMap)
   }
 
   def loadAsFuture(input: I, maximumAge: LocalDateTime)(implicit ec: ExecutionContext): Future[O] = syncLock.synchronized {

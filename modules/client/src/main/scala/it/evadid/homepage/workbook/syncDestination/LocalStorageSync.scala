@@ -2,7 +2,6 @@ package it.evadid.homepage.workbook.syncDestination
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.model.interaction.sync.*
-import it.evadid.workbook.model.interaction.sync.SyncFormatter.InteractionSyncRequest
 import it.evadid.workbook.model.interaction.sync.SyncInformation.SyncSuccess
 import it.evadid.workbook.model.interaction.variable.InteractionVariableHistorySerialized
 import org.scalajs.dom
@@ -21,12 +20,12 @@ object LocalStorageSync extends SyncDestination {
 
   override def storeTo(context: SyncContext, history: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncInformation.SyncSuccess] = Future {
     try {
-      val value = formatter.serialize(context, history)
+      val value: String = formatter.serialize(context, history)
       val serializedKey: String = contextToBrowserKeySerializer.serialize(context)
-      //println(s"###################### [DEBUG] storing to local storage: $serializedKey -> $value")
-      storage.setItem(serializedKey, value)
+      println(s"###################### [DEBUG] storing to local storage: $serializedKey -> $value")
+      storage.setItem(serializedKey.toString, value.toString)
       SyncSuccess(1, 0, 0, LocalDateTime.now())
-    }catch case e: Exception => {
+    } catch case e: Exception => {
       e.printStackTrace()
       throw e
     }
