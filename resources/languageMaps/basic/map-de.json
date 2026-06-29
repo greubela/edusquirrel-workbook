@@ -5,17 +5,20 @@
   "noSectionSelected": "[Kein Abschnitt ausgewählt]",
   "noWorkbookLoaded": "[Kein Arbeitsheft geladen!]",
   "resetLocalStorage": "Alle Eingaben löschen",
-  "downloadEverything": "Download (Arbeitsheft -> Datei)",
+  "downloadEverything": "Herunterladen",
   "uploadSession": "Laden (Datei -> Arbeitsheft)",
   "settings": "Einstellungen",
   "logout": "Abmelden",
   "switchUser": "Benutzer wechseln",
-  "workbookfooterprivacyinfo": "Datenschutzhinweis: Arbeitsheft-Eingaben werden lokal in diesem Browser gespeichert, sofern du sie nicht herunter- oder hochlädst.",
+  "workbookfooterprivacyinfo": "Datenschutzhinweis (Testbetrieb): Sämtliche Interaktionen werden lokal im Browser sowie in zwei Datenbanken der HU Berlin gespeichert! Nutze diese Arbeitshefte noch nicht mit Minderjährigen! Kontakt: LS Informatik und Gesellschaft, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin)",
   "previousSection": "← Vorheriger Abschnitt",
   "nextSection": "Nächster Abschnitt →",
   "checkSolution": "Lösung prüfen",
   "beginnerMode": "Anfänger",
   "advancedMode": "Fortgeschritten",
   "reorderFeedbackSuccess": "✅ Sehr gut! Die Reihenfolge ist korrekt.",
-  "reorderFeedbackWrongOrder": "⚠️ Fast! Die Logik passt noch nicht ganz. Prüfe, welche Schritte zwingend vor anderen kommen müssen."
+  "reorderFeedbackWrongOrder": "⚠️ Fast! Die Logik passt noch nicht ganz. Prüfe, welche Schritte zwingend vor anderen kommen müssen.",
+  "noUserLoggedIn": "[Niemand]",
+  "showHeader": "Navigation einblenden",
+  "hideHeader": "Navigation ausblenden"
 }

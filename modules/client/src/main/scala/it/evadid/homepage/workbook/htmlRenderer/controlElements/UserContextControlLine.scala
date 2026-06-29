@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
+import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.language.LanguageMapContentId
@@ -9,7 +10,6 @@ import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.workbook.syncDestination.LocalStorageSync
 import it.evadid.workbook.model.elements.Workbook
 import org.scalajs.dom
-import org.scalajs.dom.DragDataItemKind.file
 import org.scalajs.dom.{File, HTMLInputElement}
 import todomove.datastructures.web.file.FileFactory
 
@@ -54,11 +54,10 @@ private case class UserContextControlLine(workbook: Workbook) extends HtmlAppEle
     }
   )
 
-
   private val domElement: Element = div(
-    styleAttr := "display:none;",
+   styleAttr := "display:none;",
     uploadInput,
-      resetButton.getDomElement(),
+    resetButton.getDomElement(),
     downloadDataButton.getDomElement(),
     uploadButton.getDomElement(),
   )

@@ -4,7 +4,7 @@
   "noSectionSelected": "[No section selected!]",
   "noWorkbookLoaded": "[No workbook loaded!]",
   "resetLocalStorage": "Clear all input",
-  "downloadEverything": "Download (workbook -> file)",
+  "downloadEverything": "Download All",
   "uploadSession": "Upload (file -> workbook)",
   "previousSection": "← Previous section",
   "nextSection": "Next section →",
@@ -17,5 +17,8 @@
   "settings": "Settings",
   "logout": "Log out",
   "switchUser": "Switch user",
-  "workbookfooterprivacyinfo": "Privacy information: Your interaction with the workbook is logged and stored locally in your browser. It is not shared with anyone else."
+  "workbookfooterprivacyinfo": "Privacy information (demo system): All your interactions are stored within your local browser, as well as two databases of Humboldt University. Do not use this page for learning (for now)! Contact: Chair Computer Science and Society, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin, Germany)",
+  "noUserLoggedIn": "[Nobody]",
+  "showHeader": "Show Navigation",
+  "hideHeader": "Hide Navigation"
 }

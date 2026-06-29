@@ -35,7 +35,17 @@
     color: var(--color-text-primary);
     cursor: pointer;
     font: inherit;
-    text-align: left;
+}
+
+
+.html-dropdown-menu-label{
+    width: 100%;
+    border: 0;
+    padding: var(--space-md) var(--space-lg);
+    background: var(--color-container-accent);
+    color: #ffffff;
+    font: inherit;
+    text-align: center;
 }
 
 .html-dropdown-menu-item:hover,

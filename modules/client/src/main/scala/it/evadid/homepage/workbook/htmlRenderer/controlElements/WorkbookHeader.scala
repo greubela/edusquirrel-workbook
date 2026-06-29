@@ -6,31 +6,37 @@ import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.HtmlWorkbookRender
 import it.evadid.workbook.model.elements.Workbook
 import org.scalajs.dom.HTMLDivElement
 
-case class WorkbookHeader(workbook: Workbook) {
+case class WorkbookHeader(workbook: Workbook) extends ControlFactory {
 
   private val collapsed: Var[Boolean] = Var(false)
 
   def getDomElement: Element = domElement
 
-  private lazy val domElement: ReactiveHtmlElement[HTMLDivElement] = div(
-    cls := "workbook-header",
-    div(
-      cls <-- collapsed.signal.map(c => if (c) "workbook-header-collapsible workbook-header-collapsed" else "workbook-header-collapsible"),
+  private lazy val domElement: ReactiveHtmlElement[HTMLDivElement] =     div(
+      cls := "workbook-header",
+      children <-- domChildren
+    )
+
+  lazy val domChildren: Signal[List[Element]] = collapsed.signal.mapLazy(curValue => {
+    if (curValue) {
+      List(createDomToggleButton(collapsed))
+    } else List(
       createDomHeaderTitleLine(workbook),
       UserContextControlLine(workbook).getDomElement(),
       LanguageSelectionLine(workbook).getDomElement(),
-      SectionSelectionLine(workbook).getDomElement()
-    ),
-    createDomToggleButton(collapsed)
-  )
+      SectionSelectionLine(workbook).getDomElement(),
+      createDomToggleButton(collapsed)
+    )
+  })
 
   private def createDomToggleButton(collapsed: Var[Boolean]): Element = div(
     cls := "workbook-header-toggle",
-    onClick --> { _ => collapsed.update(!_) },
     span(
       cls := "workbook-header-toggle-icon",
+      onClick --> { _ => collapsed.update(!_) },
       child <-- collapsed.signal.map { c =>
-        if (c) span("Navigation anzeigen") else span("Navigation ausblenden")
+        if (c) span(text <-- labelString("basic/showHeader"))
+        else span(text <-- labelString("basic/hideHeader"))
       }
     )
   )

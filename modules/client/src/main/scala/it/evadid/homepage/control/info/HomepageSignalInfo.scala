@@ -62,6 +62,7 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
     res.signal
   }
 
+
   def ensuredLanguageMap(languageMapId: LanguageMapContentId): ObservableValue[LanguageMap[HumanLanguage]] = {
 
     contentStorage.languageMapObservable(languageMapId).deriveValue(_.getOrElse(WorkbookLanguageStorage.languageMapLoading(languageMapId)))
@@ -81,6 +82,14 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
   def stringFromLanguageMapId(languageMapId: LanguageMapContentId): Signal[String] = {
     Signal.combine(currentLanguage, ensuredLanguageMapSignal(languageMapId)).map(tup => {
       tup._2.getInLanguage(tup._1)
+    })
+  }
+
+  def stringFromMapWithFallback(base: Signal[Option[LanguageMap[HumanLanguage]]], fallback: Signal[LanguageMap[HumanLanguage]]): Signal[String] = {
+    Signal.combine(base, fallback, currentLanguage).map(trip => {
+      val baseOp = trip._1.map(myMap => myMap.getInLanguage(trip._3))
+      val other = trip._2.getInLanguage(trip._3)
+      baseOp.getOrElse(other)
     })
   }
 
