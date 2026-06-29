@@ -3,7 +3,7 @@ package it.evadid.distribution.formats
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.*
-import upickle.default.write
+import it.evadid.util.logging.Logger
 
 import java.time.LocalDateTime
 
@@ -41,15 +41,15 @@ case class ExecutionClientResponse(
 
   override lazy val toString: String =
     s"""
-      |ExecutionClientResponse(
-      |  timestampReceived=$timestampReceived,
-      |  timestampStarted=$timestampStarted,
-      |  timestampFinished=$timestampFinished,
-      |  response=$response,
-      |  loggerOut=$loggerOut,
-      |  loggerError=$loggerError
-      |)
-      |""".stripMargin
+       |ExecutionClientResponse(
+       |  timestampReceived=$timestampReceived,
+       |  timestampStarted=$timestampStarted,
+       |  timestampFinished=$timestampFinished,
+       |  response=$response,
+       |  loggerOut=$loggerOut,
+       |  loggerError=$loggerError
+       |)
+       |""".stripMargin
 
 }
 
@@ -57,24 +57,60 @@ object ExecutionClientResponse {
 
   private val serializerMapJson: Serializer[Map[String, String]] = DefaultSerializer.serializerStringMap
 
-  def apply(receivedMap: Map[String, String]): ExecutionClientResponse = {
-    val timestampReceived: LocalDateTime = DefaultSerializer.serializerLocalDateTimeString.deserialize(receivedMap("timestampReceived"))
-    val timestampStarted: LocalDateTime = DefaultSerializer.serializerLocalDateTimeString.deserialize(receivedMap("timestampStarted"))
-    val timestampFinished: LocalDateTime = DefaultSerializer.serializerLocalDateTimeString.deserialize(receivedMap("timestampFinished"))
-    val loggerOut: String = receivedMap("loggerOut")
-    val loggerError: String = receivedMap("loggerError")
+  private def failWith(logger: Logger, msg: String): Any = {
+    logger.logWarn(msg)
+    throw SerializedException(msg)
+  }
+
+  private def failWith(logger: Logger, msg: String, err: Throwable): Any = {
+    logger.logExceptionWarn(msg, err)
+    throw SerializedException(msg, err)
+  }
+
+  private def readFromMap[T](logger: Logger, receivedMap: Map[String, String], serializer: Serializer[T], keyStr: String): T = {
+    if (!receivedMap.contains(keyStr)) {
+      failWith(logger, s"ExecutionClientResponse::receivedMap does not contain ${keyStr}, keys: ${receivedMap.keys.toList.mkString(", ")}")
+      throw new UnsupportedOperationException("this can not happen @ ExecutionClientResponse::readFromMap") // failWith already throws
+    } else try
+      serializer.deserialize(receivedMap(keyStr))
+    catch case e: Throwable =>
+      failWith(logger, "ignoring parsing result because of exception: " + e.getMessage, e)
+      throw new UnsupportedOperationException("this can not happen @ ExecutionClientResponse::readFromMap") // failWith already throws
+  }
+
+  def parseFromDefaultMapAndUpdateLogger(logger: Logger, receivedMap: Map[String, String]): ExecutionClientResponse = {
+    val loggerOut: String = try {
+      readFromMap(logger, receivedMap, Serializer.stringIO, "loggerOut")
+    } catch case e: Exception => {
+      logger.logExceptionWarn(s"ignoring logger output received from remote source because it was not parsable: ${e.getMessage}", e)
+      ""
+    }
+    logger.logFromExternalInfo(loggerOut)
+    val loggerError: String = try {
+      readFromMap(logger, receivedMap, Serializer.stringIO, "loggerError")
+    } catch case e: Exception => {
+      logger.logExceptionWarn(s"ignoring logger error received from remote source because it was not parsable: ${e.getMessage}", e)
+      ""
+    }
+    logger.logFromExternalError(loggerOut)
+
+    val timestampReceived: LocalDateTime = readFromMap(logger, receivedMap, DefaultSerializer.serializerLocalDateTimeString, "timestampReceived")
+    val timestampStarted: LocalDateTime = readFromMap(logger, receivedMap, DefaultSerializer.serializerLocalDateTimeString, "timestampStarted")
+    val timestampFinished: LocalDateTime = readFromMap(logger, receivedMap, DefaultSerializer.serializerLocalDateTimeString, "timestampFinished")
     val parsedCommand: Option[ExecutionCommand] =
       if (!receivedMap.contains("executionCommandReceived")) None
-      else Some(DefaultSerializer.serializeExecutionCommandJson.deserialize(receivedMap("executionCommandReceived")))
+      else Some(readFromMap(logger, receivedMap, DefaultSerializer.serializeExecutionCommandJson, "executionCommandReceived"))
 
     if (receivedMap.contains("executionResultSuccess")) {
-      val resMap: Map[String, String] = serializerMapJson.deserialize(receivedMap("executionResultSuccess"))
+      val resMap: Map[String, String] = readFromMap(logger, receivedMap, serializerMapJson, "executionResultSuccess")
       ExecutionClientResponse(timestampReceived, timestampStarted, timestampFinished, Right(resMap), parsedCommand, loggerOut, loggerError)
     } else if (receivedMap.contains("executionResultFailed")) {
-      val cause: SerializedException = DefaultSerializer.serializerExceptionS.deserialize(receivedMap("executionResultFailed"))
+      val cause: SerializedException = readFromMap(logger, receivedMap, DefaultSerializer.serializerExceptionS, "executionResultFailed")
       ExecutionClientResponse(timestampReceived, timestampStarted, timestampFinished, Left(cause), parsedCommand, loggerOut, loggerError)
     } else {
-      throw new Exception("Received map does not contain neither of the following keys: executionResultSuccess, executionResultFailed")
+      val msg = s"Received map does not contain neither of the following keys: executionResultSuccess, executionResultFailed (keys: ${receivedMap.keys.toList.mkString(",")}"
+      logger.logError(msg)
+      throw Exception(msg)
     }
   }
 

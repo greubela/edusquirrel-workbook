@@ -30,5 +30,4 @@ trait LocalExecutionClient extends ExecutionClient {
     }
   }
 
-
 }

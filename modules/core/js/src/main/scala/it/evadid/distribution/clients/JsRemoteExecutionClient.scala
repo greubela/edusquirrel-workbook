@@ -1,25 +1,17 @@
 package it.evadid.distribution.clients
 
-import it.evadid.core.datastructures.state.async.AsyncDataState.{AsyncDataStateFinished, AsyncDataSuccess}
-import it.evadid.core.datastructures.state.async.{AsyncData, AsyncFuture}
-import it.evadid.core.util.io.serializer.DefaultSerializer
-import org.scalajs.dom
-import upickle.default.read
 import it.evadid.distribution.command.*
-
-import java.time.LocalDateTime
-import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.scalajs.js.JSON
-import scala.scalajs.js.Thenable.Implicits.*
-import it.evadid.distribution.command.*
-import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoUntyped
 import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.util.logging.Logger
+import org.scalajs.dom
+import upickle.default.read
+
+import scala.concurrent.Future
+import scala.scalajs.js.JSON
 
 case class JsRemoteExecutionClient(hostname: String, port: Int) extends RemoteExecutionClient {
 
-  override protected def sendTo(ip: String, port: Int, executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = {
+  override protected def sendTo(logger: Logger, ip: String, port: Int, executionCommand: ExecutionCommand): Future[Map[String, String]] = {
     val commandJson = executionCommand.toJson
     val dest = if (hostname.startsWith("http")) {
       s"$hostname:$port/executeCommand"
@@ -27,7 +19,7 @@ case class JsRemoteExecutionClient(hostname: String, port: Int) extends RemoteEx
       s"https://$hostname:$port/executeCommand"
     }
 
-     dom.fetch(
+    dom.fetch(
       dest,
       new dom.RequestInit {
         method = dom.HttpMethod.POST
@@ -35,13 +27,20 @@ case class JsRemoteExecutionClient(hostname: String, port: Int) extends RemoteEx
         body = commandJson
       }
     ).toFuture.flatMap { response =>
+      logger.logInfo("JsRemoteExecutionClient: sent request and waiting for a response")
       response.text().toFuture.map { body =>
         if (!response.ok) {
           val message = scala.util.Try(read[Map[String, String]](body).getOrElse("error", body)).getOrElse(body)
-          throw new RuntimeException(s"Server responded with status ${response.status}: $message")
+          val msg = s"Server responded with status ${response.status}: $message"
+          logger.logError(msg)
+          throw new RuntimeException(msg)
         }
-        val responseData: Map[String, String] = read[Map[String, String]](body)
-        ExecutionClientResponse.apply(responseData)
+        try {
+          read[Map[String, String]](body)
+        } catch case e: Throwable => {
+          logger.logException(e)
+          throw e
+        }
       }
     }
   }

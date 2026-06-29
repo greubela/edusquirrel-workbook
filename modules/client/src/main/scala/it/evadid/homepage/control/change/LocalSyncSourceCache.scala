@@ -1,7 +1,6 @@
 package it.evadid.homepage.control.change
 
 import it.evadid.core.datastructures.state.storage.AsyncDataCache
-import it.evadid.homepage.control.model.FullInfo
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.model.interaction.sync.SyncContext
 import it.evadid.workbook.model.interaction.sync.SyncInformation.{SyncCache, SyncInformationWithContext}
@@ -10,7 +9,7 @@ import it.evadid.workbook.model.interaction.variable.InteractionVariableHistoryS
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
-case class LocalSyncSourceCache(logger: Logger, fullInfo: FullInfo) extends AsyncDataCache[SyncInformationWithContext, SyncCache](logger) {
+case class LocalSyncSourceCache(logger: Logger) extends AsyncDataCache[SyncInformationWithContext, SyncCache](logger) {
 
   private given ExecutionContext = ExecutionContext.global
 

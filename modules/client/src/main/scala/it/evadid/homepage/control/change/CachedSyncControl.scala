@@ -16,7 +16,7 @@ case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
 
   private given ExecutionContext = ExecutionContext.global
 
-  val requestCache = LocalSyncSourceCache(fullInfo.loggerSystemInfo.syncCacheLogger, fullInfo)
+  val requestCache = LocalSyncSourceCache(fullInfo.loggerSystemInfo.syncCacheLogger)
 
   override def requestFetch(variables: List[InteractionVariable[?]], requestTime: LocalDateTime): Future[?] = requestCache.syncLock.synchronized {
     def continue(): Future[?] = requestFetch(variables.tail, requestTime)
@@ -88,7 +88,7 @@ case class CachedSyncControl(fullInfo: FullInfo) extends SyncControl {
       val lastToSync: Option[LocalDateTime] = historySerialized.lastStateOption.map(_.timestamp)
 
       val (cacheInfo, shouldFetchBecauseOfCache): (String, Boolean) = try {
-        if (lastToSync.isEmpty) ("no data to sync", false)
+        if (lastToSync.isEmpty || historySerialized.states.isEmpty) ("no data to sync", false)
         else if (lastInteraction.isEmpty || lastStoredValue.isEmpty) ("cache is currently empty", true)
         else if (lastInteraction.get.isBefore(lastToSync.get)) (s"cache outdated, lastToSync > lastCacheUpdate: ${lastToSync.get} > ${lastInteraction.get}", true)
         else if (lastStoredValue.get.isBefore(lastToSync.get)) (s"cache outdated, lastToSync > lastStoredValue: ${lastToSync.get} > ${lastStoredValue.get}", true)

@@ -15,16 +15,22 @@ trait RemoteExecutionClient extends ExecutionClient {
 
   override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = true
 
-  protected def sendTo(hostname: String, port: Int, command: ExecutionCommand): Future[ExecutionClientResponse]
+  protected def sendTo(logger: Logger, hostname: String, port: Int, command: ExecutionCommand): Future[Map[String, String]]
 
   override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionClientResponse] = {
-    val res = sendTo(hostname, port, executionCommand)
-    res.map { rec => {
+    val res: Future[Map[String, String]] = sendTo(logger, hostname, port, executionCommand)
+    res.map { responseData => {
       val timestampReceivedBack: LocalDateTime = LocalDateTime.now()
-      logger.logInfo("Received response from " + hostname + ":" + port + " at " + timestampReceivedBack + ": " + rec.response.toString)
-      logger.logFromExternalInfo(rec.loggerOut.trim)
-      logger.logFromExternalError(rec.loggerError.trim)
-      ExecutionClientResponse(rec.timestampReceived, rec.timestampStarted, timestampReceivedBack, rec.response, rec.parsedExecutionCommand, logger.getOut(), logger.getErr())
+      logger.logInfo("Received response from " + hostname + ":" + port + " at " + timestampReceivedBack + ", now parsing responseData!")
+
+      try {
+        val rec = ExecutionClientResponse.parseFromDefaultMapAndUpdateLogger(logger, responseData)
+        ExecutionClientResponse(rec.timestampReceived, rec.timestampStarted, timestampReceivedBack, rec.response, rec.parsedExecutionCommand, logger.getOut(), logger.getErr())
+      } catch case e: Throwable => {
+        logger.logWarn(s"Malformed responseData:\n    ${responseData.iterator.map(tup => tup._1 + " -> " + tup._2).mkString("\n    ")}")
+        val err = Exception(s"Could not parse ExecutionClientResponse from responseData: ${e.getMessage}", e)
+        throw err
+      }
     }
     }(using ExecutionContext.global)
   }
