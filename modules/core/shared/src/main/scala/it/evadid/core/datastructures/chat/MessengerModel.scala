@@ -37,7 +37,7 @@ object MessengerModel {
   // may not be vals because of the implicit timestamp!
   def prefaceExercise = Message("@assistant: the current exercise reads as follows:", pWorkbook, LocalDateTime.now())
 
-  def prefaceStudentAnswer = Message("@assistant: the student's answer reads as follows (the student might not have finished typing):", pWorkbook, LocalDateTime.now())
+  def prefaceStudentAnswer = Message("@assistant: the student's answer reads as follows. Note that the student might not have finished typing. In this case, just ask whether there are any questions:", pWorkbook, LocalDateTime.now())
 
   def prefaceGuidelines = Message("@assistant: the teacher explained the reasoning behind the exercise as follows to you:", pWorkbook, LocalDateTime.now())
 
@@ -48,7 +48,7 @@ object MessengerModel {
     val answerMsgs =
       if (studentAnswer.replace("\\s", "").trim.isEmpty) List()
       else List(prefaceStudentAnswer, Message(studentAnswer, pStudent))
-    val guidelines = List(prefaceGuidelines) ++ scaffoldingHints.map(Message(_, pTeacher))
+    val guidelines = List(prefaceGuidelines) ++ scaffoldingHints.map(str => Message("@assistant: " + str, pTeacher))
     val langHints = List(langHint(curLanguage))
 
     MessengerModel(exerciseMsgs ++ guidelines ++ langHints ++ answerMsgs)
