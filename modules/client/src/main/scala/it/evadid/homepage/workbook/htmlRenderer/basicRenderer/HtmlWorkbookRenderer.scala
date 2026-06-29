@@ -10,7 +10,7 @@ import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlDropdownMenu}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
-import it.evadid.homepage.workbook.htmlRenderer.controlElements.LanguageSelectionLine
+import it.evadid.homepage.workbook.htmlRenderer.controlElements.*
 import it.evadid.workbook.model.elements.{Workbook, WorkbookSection}
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLInputElement}
@@ -56,7 +56,7 @@ object HtmlWorkbookRenderer extends HtmlRenderFactory[Workbook] {
   private def createDomHeaderTitleLine(workbook: Workbook): Element = div(
     cls := "workbook-title-line",
     h1(text <-- contentIdStringSignal(workbook.workbookTitle)),
-    UserMenu().getDomElement()
+    UserDropdownMenu().getDomElement()
   )
 
   /*
@@ -109,75 +109,6 @@ object HtmlWorkbookRenderer extends HtmlRenderFactory[Workbook] {
   }
 }
 
-private case class UserMenu() extends HtmlAppElement {
-
-  private val isOpen: Var[Boolean] = Var(false)
-
-  private def userInitials(name: String): String = {
-    val parts = name.trim.split("\\s+").filter(_.nonEmpty).toList
-    val initials = parts.take(2).flatMap(_.headOption).mkString.toUpperCase
-    if (initials.nonEmpty) initials else "?"
-  }
-
-  private val currentUserName: Signal[String] = fullInfo.signals.currentUserInfo.map(
-    _.map(_.user.name).getOrElse("User")
-  )
-
-  private val currentUserInitials: Signal[String] = currentUserName.map(userInitials)
-
-  private def localizedLabel(contentId: LanguageMapContentId): Signal[String] =
-    fullInfo.signals.stringFromLanguageMapId(contentId)
-
-  private def closeMenu(): Unit = isOpen.set(false)
-
-  private def switchUser(user: AllUserInfo): Unit = {
-    fullInfo.control.changeUser(Some(user))
-    closeMenu()
-  }
-
-  private def label(contentId: LanguageMapContentId): HtmlAppElement = new HtmlAppElement {
-    private val domElement: Element = div(
-      cls := "html-dropdown-menu-label",
-      role := "presentation",
-      child.text <-- localizedLabel(contentId)
-    )
-
-    override def getDomElement(): Element = domElement
-  }
-
-  private val menu: HtmlDropdownMenu = HtmlDropdownMenu(
-    List(
-      HtmlDropdownMenu.menuItem(localizedLabel(LanguageMapContentId("basic/settings"))),
-      HtmlDropdownMenu.menuItem(localizedLabel(LanguageMapContentId("basic/downloadEverything"))),
-      HtmlDropdownMenu.menuItem(localizedLabel(LanguageMapContentId("basic/logout")), _ => {
-        fullInfo.control.changeUser(None)
-        closeMenu()
-      }),
-      label(LanguageMapContentId("basic/switchUser"))
-    ) ++ fullInfo.defaults.selectableUsers.map(user =>
-      HtmlDropdownMenu.menuItem(Var(user.user.name).signal, _ => switchUser(user))
-    )
-  )
-
-  private val domElement: Element = div(
-    cls := "workbook-user-menu-anchor dropdown-anchor",
-    button(
-      cls := "workbook-user-menu-trigger",
-      typ := "button",
-      aria.label := "Benutzermenü öffnen",
-      title <-- currentUserName.map(name => s"Benutzermenü für $name öffnen"),
-      onClick --> { event =>
-        event.stopPropagation()
-        isOpen.update(!_)
-      },
-      span(cls := "workbook-user-menu-icon", child.text <-- currentUserInitials),
-      span(cls := "workbook-user-menu-caret", "▾")
-    ),
-    child.maybe <-- isOpen.signal.map(open => Option.when(open)(menu.getDomElement()))
-  )
-
-  override def getDomElement(): Element = domElement
-}
 
 private case class SectionSelectionLine(workbook: Workbook) extends HtmlAppElement {
 

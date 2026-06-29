@@ -3,7 +3,7 @@ package it.evadid.homepage.workbook.legacy.htmlElements.interactions
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
 import it.evadid.core.util.io.Serializer
-import it.evadid.homepage.control.info.FullInfo
+import it.evadid.homepage.control.info.*
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 
