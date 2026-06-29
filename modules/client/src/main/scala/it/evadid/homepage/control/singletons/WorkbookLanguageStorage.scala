@@ -106,7 +106,7 @@ object WorkbookLanguageStorage {
           ParsedTriples(Set(), contentAsList.map(tup => UniversalMapEntry(LanguageMapContentId(languageMapIdOp.get.toLowerCase, tup(0).toLowerCase), tup(1))))
         case _ => ParsedTriples(Set(), Set())
       }
-      logger.logInfo(s"Read ${parsed.regularTriples.size + parsed.universalTriples.size} LanguageMapEntries from file ${file.description.fullPath} (${languageOp.get}/${languageMapIdOp.get})")
+      //logger.logInfo(s"Read ${parsed.regularTriples.size + parsed.universalTriples.size} LanguageMapEntries from file ${file.description.fullPath} (${languageOp.get}/${languageMapIdOp.get})")
       parsed
     }
   }

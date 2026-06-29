@@ -22,7 +22,7 @@ object LocalStorageSync extends SyncDestination {
     try {
       val value: String = formatter.serialize(context, history)
       val serializedKey: String = contextToBrowserKeySerializer.serialize(context)
-      println(s"###################### [DEBUG] storing to local storage: $serializedKey -> $value")
+      //println(s"###################### [DEBUG] storing to local storage: $serializedKey -> $value")
       storage.setItem(serializedKey.toString, value.toString)
       SyncSuccess(1, 0, 0, LocalDateTime.now())
     } catch case e: Exception => {
