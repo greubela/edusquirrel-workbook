@@ -14,8 +14,6 @@ import scala.util.*
  */
 trait LocalExecutionClient extends ExecutionClient {
 
-  protected given ExecutionContext = ExecutionContext.global
-
   protected def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]]
 
   private[distribution] override def handleExecutionRaw(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]] = {

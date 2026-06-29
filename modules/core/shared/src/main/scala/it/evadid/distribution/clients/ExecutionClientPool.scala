@@ -6,6 +6,7 @@ import it.evadid.util.logging.Logger
 
 import java.time.LocalDateTime
 import scala.concurrent.*
+import scala.util.{Failure, Success}
 
 case class ExecutionClientPool(clients: List[ExecutionClient]) extends ExecutionClient {
 
@@ -14,7 +15,7 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
   private def failFuture(logger: Logger, msg: String, cause: Option[Throwable] = None): Future[ExecutionClientResponse] = {
     val err = if (cause.nonEmpty) SerializedException(msg + " (reason: " + cause.get.getMessage + ")", cause) else SerializedException(msg)
     logger.logError(err.getMessage)
-    if(cause.nonEmpty) logger.logError(cause.get.getMessage + "\n" + cause.get.getStackTrace.mkString("\n"))
+    if (cause.nonEmpty) logger.logError(cause.get.getMessage + "\n" + cause.get.getStackTrace.mkString("\n"))
     throw err
   }
 
@@ -51,14 +52,16 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
           logger.logInfo("ExecutionClientPool: execution succeeded with handler " + handlers.head + " at " + timestampFinished)
           ExecutionClientResponse(timestampReceived, timestampStarted, timestampFinished, Right(resMap), Some(command), logger.getOut(), logger.getErr())
         })(using ExecutionContext.global)
-        .recoverWith((err: Throwable) =>
-          val msg = s"Execution Client ${handlers.head} failed execution at ${LocalDateTime.now()}, trying next handler!"
-          logger.logError(msg + "\n" + err.getMessage + "\n" + err.getStackTrace.mkString("\n"))
-          val newFailure: SerializedException = if (failures.isEmpty) SerializedException(err) else failures.get.asCauseOf(Exception(msg))
-          tryExecutionWithHandlers(timestampReceived, handlers.tail, command, Some(newFailure), logger)
-        )(using ExecutionContext.global)
+        .transformWith {
+          case Success(exCliRes) => Future.successful(exCliRes)
+          case Failure(err) => {
+            val msg = s"Execution Client ${handlers.head} failed execution at ${LocalDateTime.now()}, trying next handler!"
+            logger.logError(msg + "\n" + err.getMessage + "\n" + err.getStackTrace.mkString("\n"))
+            val newFailure: SerializedException = if (failures.isEmpty) SerializedException(err) else failures.get.asCauseOf(Exception(msg))
+            tryExecutionWithHandlers(timestampReceived, handlers.tail, command, Some(newFailure), logger)
+          }
+        }
     }
   }
-
 
 }

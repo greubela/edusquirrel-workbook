@@ -12,6 +12,8 @@ import scala.concurrent.{ExecutionContext, Future}
 
 trait ExecutionClient {
 
+  protected given ExecutionContext =ExecutionContext.global
+
   def canExecuteCommand(executionCommand: ExecutionCommand): Boolean
 
   private[distribution] def handleExecutionRaw(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]] = {
