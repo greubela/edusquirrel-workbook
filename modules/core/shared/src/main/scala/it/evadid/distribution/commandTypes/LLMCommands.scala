@@ -10,23 +10,17 @@ import it.evadid.distribution.command.{ExecutionCommandFactory, ExecutionResult}
 
 object LLMCommands {
 
-  val langPreference: List[HumanLanguage] = List(English, German, Danish)
-  val assistantPerson: Person = new Person("assistant", "it.evadid.assistant", SenderRole.AGENT, None)
-  val workbookPerson: Person = new Person("workbook", "it.evadid.workbook", SenderRole.WORKBOOK, None)
-  val teacherPerson: Person = new Person("teacher", "it.evadid.teacher", SenderRole.TEACHER, None)
 
   case class MessengerChatCompletionResponse(newTextGenerated: String)
 
   case class MessengerChatCompletionRequest(systemPrompt: String, messengerModel: MessengerModel) {
-    def continueWith(response: String, userEntity: String): MessengerModel = {
-      messengerModel.addMessage(response, assistantPerson)
-    }
+
   }
 
-  val completeLLMCommandFactory: ExecutionCommandFactory[MessengerChatCompletionRequest, MessengerModel] =   ExecutionCommandFactory(
+  val completeLLMCommandFactory: ExecutionCommandFactory[MessengerChatCompletionRequest, Message] =   ExecutionCommandFactory(
     "complete-llm-request",
     DefaultSerializer.serializerChatRequestJson,
-    DefaultSerializer.serializerMessageModelJson
+    DefaultSerializer.serializerMessageJson
   )
 
   case class FeedbackLlmRequest(prompt: String, systemPrompt: String)

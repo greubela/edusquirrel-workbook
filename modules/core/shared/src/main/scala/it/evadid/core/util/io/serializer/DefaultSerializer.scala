@@ -125,6 +125,7 @@ object DefaultSerializer {
     override def deserialize(str: String): ExecutionInfoUntyped = read(str)(using rw5)
   }
 
+  lazy val serializerMessageJson: Serializer[Message] = Serializer.fromUpickleJson(rwMessage)
   lazy val serializerMessageModelJson: Serializer[MessengerModel] = Serializer.fromUpickleJson(rwMessageModel)
 
   lazy val serializerInteractionVariableHistoryIgnoreErrors: Serializer[InteractionVariableHistorySerialized] = Serializer.fromUpickleJson(ivhsRW)
