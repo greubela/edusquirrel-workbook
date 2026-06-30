@@ -1,25 +1,74 @@
 package it.evadid.distribution.commandTypes
 
-import it.evadid.core.util.io.serializer.DistributionSerializer
+import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.ExecutionCommandFactory
+import it.evadid.workbook.model.interaction.sync.SyncFormatter.{InteractionSyncRequest, RichInteractionVariableFormatter}
+import it.evadid.workbook.model.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.model.interaction.sync.{SyncContext, UsageContext}
+import it.evadid.workbook.model.interaction.variable.InteractionVariableHistorySerialized
 
 object SQLCommands {
 
-  case class SyncToDbRequest(
-                              programId: String,
-                              scenarioId: String,
-                              userId: String,
-                              eventTime: String,
-                              keyId: String,
-                              eventData: String
-                            )
+  trait DbRequest {
+    def databaseName: String
 
-  case class SyncToDbResponse(rowsAffected: Int)
+    def usageContext: UsageContext
 
-  val syncToDbCommand: ExecutionCommandFactory[SyncToDbRequest, SyncToDbResponse] = ExecutionCommandFactory(
+    def hasDatabaseKeyColumn: Boolean
+
+    lazy val formatter: RichInteractionVariableFormatter = RichInteractionVariableFormatter()
+  }
+
+  case class StoreToDbRequest(
+                               syncContext: SyncContext,
+                               historySerialized: InteractionVariableHistorySerialized,
+                               databaseName: String,
+                               hasDatabaseKeyColumn: Boolean
+                             ) extends DbRequest {
+
+    lazy val usageContext: UsageContext = syncContext.toUsageContext
+    lazy val serializedValueString: String = formatter.serialize(syncContext, historySerialized)
+
+  }
+
+  case class FetchAllFromDbRequest(
+                                    usageContext: UsageContext,
+                                    databaseName: String,
+                                    mayLimitToKey: Option[String],
+                                    hasDatabaseKeyColumn: Boolean
+                                  ) extends DbRequest
+
+
+  case class DeleteInDbRequest(
+                                usageContext: UsageContext,
+                                limitToKey: Option[String],
+                                databaseName: String,
+                                hasDatabaseKeyColumn: Boolean
+                              ) extends DbRequest {
+  }
+
+
+  case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionVariableHistorySerialized]) {
+
+
+  }
+
+  val StoreToDbCommand: ExecutionCommandFactory[StoreToDbRequest, SyncSuccess] = ExecutionCommandFactory(
     "sync-to-db-request",
-    DistributionSerializer.serializerSyncToDbRequestJson,
-    DistributionSerializer.serializerSyncToDbResponseJson
+    DefaultSerializer.serializerStoreToDbRequestJson,
+    DefaultSerializer.serializerSyncSuccess
+  )
+
+  val fetchFromDbCommand: ExecutionCommandFactory[FetchAllFromDbRequest, DbFetchResponse] = ExecutionCommandFactory(
+    "fetch-from-db-request",
+    DefaultSerializer.serializerFetchAllFromDbRequestJson,
+    DefaultSerializer.serializerDbFetchResponse
+  )
+
+  val clearValuesDbCommand: ExecutionCommandFactory[DeleteInDbRequest, SyncSuccess] = ExecutionCommandFactory(
+    "clear-values-in-db-request",
+    DefaultSerializer.serializerDeleteInDbRequestJson,
+    DefaultSerializer.serializerSyncSuccess
   )
 
 }

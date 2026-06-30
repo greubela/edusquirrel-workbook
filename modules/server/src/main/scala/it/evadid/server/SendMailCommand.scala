@@ -1,7 +1,8 @@
 package it.evadid.server
 
 import it.evadid.distribution.commandTypes.MailCommands.{SendMailRequest, SendMailResponse}
-import it.evadid.util.{JvmUtils, Logger}
+import it.evadid.util.JvmUtils
+import it.evadid.util.logging.Logger
 import jakarta.mail.*
 import jakarta.mail.internet.{InternetAddress, MimeMessage}
 

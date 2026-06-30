@@ -1,20 +1,24 @@
 package it.evadid.server
 
-import it.evadid.core.util.io.serializer.DistributionSerializer
+import it.evadid.core.datastructures.state.async.AsyncDataState.*
+import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.*
-import it.evadid.util.{JvmUtils, Logger}
+import it.evadid.distribution.formats.ExecutionClientResponse
+import it.evadid.util.JvmUtils
+import it.evadid.util.logging.Logger
+import it.evadid.util.logging.derived.PrintToStdLogger
 import play.api.libs.json.Json
+import play.api.mvc.*
 import play.api.mvc.Results.*
-import play.api.mvc.{DefaultActionBuilder, Handler, RequestHeader}
 import play.api.routing.sird.*
 import play.core.server.{NettyServer, ServerConfig}
-import upickle.default.{read, write}
+import upickle.default.write
 
-import java.time.LocalDateTime
 import java.io.{PrintWriter, StringWriter}
+import java.time.LocalDateTime
+import scala.concurrent.*
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 /**
  * Minimal Play-based HTTP server with dummy REST functionality.
@@ -23,17 +27,23 @@ object BackendServer {
 
   private val serverStartedAt: LocalDateTime = LocalDateTime.now()
 
-  private def handleExecuteCommand(bodyOption: Option[String]): Future[(Int, String)] = {
-    if (bodyOption.isEmpty || bodyOption.get.isEmpty) Future.successful((400, Json.obj("error" -> "Missing request body for executeCommand").toString()))
-    else {
-      val promise: Promise[(Int, String)] = Promise[(Int, String)]()
-      val executionCommand = ExecutionCommand.fromJson(bodyOption.get)
-      val execRes = BackendCommandHandler.handleExecution(executionCommand, Logger().withPrintToStd())
-      execRes.onComplete {
-        case Success(executionInfo) => promise.success(200, write(Map("executionInfo" -> DistributionSerializer.serializerExecutionInfoJson.serialize(executionInfo))))
-        case Failure(err) => promise.failure(err)
-      }(using ExecutionContext.global)
-      promise.future
+  def fail(commandReceived: LocalDateTime, msg: String, cause: Option[SerializedException], command: Option[ExecutionCommand], logger: Logger): ExecutionClientResponse = {
+    logger.logError(msg)
+    ExecutionClientResponse(commandReceived, commandReceived, msg, cause, command, logger.getOut(), logger.getErr())
+  }
+
+  private def handleExecuteCommand(bodyOption: Option[String]): Future[ExecutionClientResponse] = {
+    val commandReceived: LocalDateTime = LocalDateTime.now()
+    val backendLogger: Logger = Logger.withNameAndPrefixes(Some(s"BackendServerLogger(Request@${commandReceived.toString})"), PrintToStdLogger.printEverything)
+
+    if (bodyOption.isEmpty || bodyOption.get.isEmpty)
+      Future.successful(fail(commandReceived, "No Request Body Found", None, None, backendLogger))
+    else ExecutionCommand.tryParse(bodyOption.get).match {
+      case Failure(err) => Future.successful(fail(commandReceived, "Could not parse ExecutionCommand", Some(SerializedException(err)), None, backendLogger))
+      case Success(command) => BackendCommandHandler.handleExecution(commandReceived, command, backendLogger)
+        .recover{err => {
+        fail(commandReceived, "Could not handle ExecutionCommand: " + err.getMessage, Some(SerializedException(err)), Some(command), backendLogger)
+      }}
     }
   }
 
@@ -52,7 +62,10 @@ object BackendServer {
           val bodyAsText = request.body.asText.orElse(request.body.asJson.map(_.toString))
 
           handleExecuteCommand(bodyAsText).map {
-            case (status, responseBody) => Status(status)(responseBody).as("application/json")
+            (response: ExecutionClientResponse) => {
+              val (status, responseBody) = response.sendFormat
+              Status(status)(responseBody).as("application/json")
+            }
           }.recover {
             case err =>
               val stackWriter = StringWriter()

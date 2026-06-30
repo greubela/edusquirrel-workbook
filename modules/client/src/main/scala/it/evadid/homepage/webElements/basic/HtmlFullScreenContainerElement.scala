@@ -23,8 +23,7 @@ case class HtmlFullScreenContainerElement() extends HtmlAppElement {
     if event.key == "Escape" && overlayActiveVar.now() then
       event.preventDefault()
       closeFullscreen()
-    else
-      println("event key: " + event.key)
+  //else      println("event key: " + event.key)
 
   private def lockBackground(): Unit =
     withDocumentBody(_.classList.add(bodyActiveClass))

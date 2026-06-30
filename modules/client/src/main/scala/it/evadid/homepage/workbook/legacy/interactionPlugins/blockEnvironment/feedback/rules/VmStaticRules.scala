@@ -251,7 +251,7 @@ object VmStaticRules {
         )
       else {
         val names = unused.toList
-          .map(_.name.getInLanguage(humanLanguage))
+          .map(_.name.getNameIn(humanLanguage, it.evadid.workbook.vm.naming.NamingStyle.SnakeCase))
           .mkString(", ")
 
         Seq(

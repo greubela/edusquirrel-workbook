@@ -1,8 +1,8 @@
 package it.evadid.server
 
 import it.evadid.distribution.command.ExecutionCommand
-import it.evadid.distribution.commandTypes.SQLCommands.SyncToDbRequest
-import it.evadid.util.Logger
+import it.evadid.distribution.commandTypes.SQLCommands.{DeleteInDbRequest, FetchAllFromDbRequest, StoreToDbRequest}
+import it.evadid.util.logging.Logger
 import munit.FunSuite
 
 import scala.concurrent.Await
@@ -60,7 +60,7 @@ class BackendServerTest extends FunSuite {
       "SQL_USER" -> "server_user",
       "SQL_PW" -> "server_password"
     )
-    val request = SyncToDbRequest(
+    val request = StoreToDbRequest(
       programId = "program-1",
       scenarioId = "scenario-1",
       userId = "user-1",
@@ -70,13 +70,17 @@ class BackendServerTest extends FunSuite {
     )
 
     var observedConfig: Option[HandleSQLCommand.DatabaseConfig] = None
-    var observedRequest: Option[SyncToDbRequest] = None
+    var observedRequest: Option[StoreToDbRequest] = None
     val executor = new HandleSQLCommand.SyncDbExecutor {
-      override def upsert(config: HandleSQLCommand.DatabaseConfig, request: SyncToDbRequest, logger: Logger): Int = {
+      override def upsert(config: HandleSQLCommand.DatabaseConfig, request: StoreToDbRequest, logger: Logger): Int = {
         observedConfig = Some(config)
         observedRequest = Some(request)
         1
       }
+
+      override def fetch(config: HandleSQLCommand.DatabaseConfig, request: FetchAllFromDbRequest, logger: Logger): Map[String, String] = Map.empty
+
+      override def clear(config: HandleSQLCommand.DatabaseConfig, request: DeleteInDbRequest, logger: Logger): Int = 0
     }
 
     val response = HandleSQLCommand.syncToDb(request, Logger(), env.get, executor)
@@ -87,4 +91,78 @@ class BackendServerTest extends FunSuite {
     assertEquals(observedConfig.map(_.password), Some("server_password"))
     assertEquals(observedRequest, Some(request))
   }
+
+  test("fetch-from-db passes database config and request to the fetch executor") {
+    val env = Map(
+      "SQL_HOST" -> "db.example.test",
+      "SQL_PORT" -> "5432",
+      "SQL_DATABASE" -> "workbook",
+      "SQL_USER" -> "server_user",
+      "SQL_PW" -> "server_password"
+    )
+    val request = FetchAllFromDbRequest(
+      programId = "program-1",
+      scenarioId = "scenario-1",
+      userId = "user-1",
+      keyId = Some("answer-1")
+    )
+
+    var observedConfig: Option[HandleSQLCommand.DatabaseConfig] = None
+    var observedRequest: Option[FetchAllFromDbRequest] = None
+    val executor = new HandleSQLCommand.SyncDbExecutor {
+      override def upsert(config: HandleSQLCommand.DatabaseConfig, request: StoreToDbRequest, logger: Logger): Int = 0
+
+      override def fetch(config: HandleSQLCommand.DatabaseConfig, request: FetchAllFromDbRequest, logger: Logger): Map[String, String] = {
+        observedConfig = Some(config)
+        observedRequest = Some(request)
+        Map("answer-1" -> "stored-history")
+      }
+
+      override def clear(config: HandleSQLCommand.DatabaseConfig, request: DeleteInDbRequest, logger: Logger): Int = 0
+    }
+
+    val response = HandleSQLCommand.fetchFromDb(request, Logger(), env.get, executor)
+
+    assertEquals(response.values, Map("answer-1" -> "stored-history"))
+    assertEquals(observedConfig.map(_.jdbcUrl), Some("jdbc:mysql://db.example.test:5432/workbook"))
+    assertEquals(observedRequest, Some(request))
+  }
+
+
+  test("clear-db passes database config and request to the clear executor") {
+    val env = Map(
+      "SQL_HOST" -> "db.example.test",
+      "SQL_PORT" -> "5432",
+      "SQL_DATABASE" -> "workbook",
+      "SQL_USER" -> "server_user",
+      "SQL_PW" -> "server_password"
+    )
+    val request = DeleteInDbRequest(
+      programId = "program-1",
+      scenarioId = "scenario-1",
+      userId = "user-1",
+      keyId = None
+    )
+
+    var observedConfig: Option[HandleSQLCommand.DatabaseConfig] = None
+    var observedRequest: Option[DeleteInDbRequest] = None
+    val executor = new HandleSQLCommand.SyncDbExecutor {
+      override def upsert(config: HandleSQLCommand.DatabaseConfig, request: StoreToDbRequest, logger: Logger): Int = 0
+
+      override def fetch(config: HandleSQLCommand.DatabaseConfig, request: FetchAllFromDbRequest, logger: Logger): Map[String, String] = Map.empty
+
+      override def clear(config: HandleSQLCommand.DatabaseConfig, request: DeleteInDbRequest, logger: Logger): Int = {
+        observedConfig = Some(config)
+        observedRequest = Some(request)
+        2
+      }
+    }
+
+    val response = HandleSQLCommand.clearDb(request, Logger(), env.get, executor)
+
+    assertEquals(response.rowsAffected, 2)
+    assertEquals(observedConfig.map(_.jdbcUrl), Some("jdbc:mysql://db.example.test:5432/workbook"))
+    assertEquals(observedRequest, Some(request))
+  }
+
 }

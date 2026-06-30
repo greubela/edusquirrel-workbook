@@ -1,16 +1,12 @@
 package it.evadid.homepage.workbook.content
 
-import com.raquo.laminar.api.L.{*, given}
-import it.evadid.core.datastructures.file.FileDescription
+import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
-import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
-import it.evadid.homepage.control.info.FullInfo
-import it.evadid.homepage.webElements.editor.SimpleTextEditor
-import it.evadid.homepage.webElements.editor.SimpleTextEditor.TextEditorConfig
+import it.evadid.homepage.control.model.*
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.reorderExercise.HtmlReorderInteractionRenderer
 import it.evadid.homepage.workbook.legacy.htmlElements.HtmlEmbeddedDomInteraction
+import it.evadid.homepage.workbook.legacy.plantworkshop.helpers.*
 import it.evadid.workbook.model.abstractions.WorkbookElement
-import it.evadid.workbook.model.interaction.WorkbookInteraction
 import it.evadid.workbook.model.elements.*
 import it.evadid.workbook.model.elements.ImageElement.FileBasedImageElement
 import it.evadid.workbook.model.elements.LabeledInstructionElement.*
@@ -119,7 +115,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     val container1 = container(
       "PlantWorkshop/section1Title",
       List(
-        instructionLabeledPair("PlantWorkshop/section1ChecklistIntro","PlantWorkshop/section1WiringHint", TaskLabel)
+        instructionLabeledPair("PlantWorkshop/section1ChecklistIntro", "PlantWorkshop/section1WiringHint", TaskLabel)
       ) ++ componentChecklist
     )
 
@@ -134,29 +130,25 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     section("section1", "PlantWorkshop/section1Title", List(container1, container2))
   }
 
-  private val codeEditorConfig: TextEditorConfig = TextEditorConfig(
-    monospace = true,
-    rowsCount = 12,
-    colsCount = 80,
-    containerClass = "simple-text-editor"
-  )
-
   private def createCodeTaskToggle(
-    reorderId: String,
-    snippets: List[String],
-    advancedEditorId: String,
-    editorTitleMapId: String,
-    hints: List[LanguageMapContentId] = List.empty,
-    orderConstraints: List[(Int, Int)] = Nil
-  ): HtmlEmbeddedDomInteraction = {
+                                    reorderId: String,
+                                    snippets: List[String],
+                                    codeEditorTitle: String,
+                                    hints: List[LanguageMapContentId] = List.empty,
+                                    orderConstraints: List[(Int, Int)] = Nil
+                                  ): HtmlEmbeddedDomInteraction = {
     val reorder = codeReorder(reorderId, snippets, AppLanguage.C, hints, orderConstraints)
     val reorderDom = HtmlReorderInteractionRenderer.render(reorder).getDomElement()
 
-    val advancedInput = createTextInput(advancedEditorId)
-    val advancedVar = advancedInput.interactionVariable
-      .createBoundStateWithUpdateLogic(WorkbookInteraction.decideTextareaUpdateImportance)
-      .toAirstreamVar
-    val advancedDom = SimpleTextEditor(advancedVar, Var(codeEditorConfig)).getDomElement()
+    val advancedCodeState = Var(
+      "// TODO: Ergänze hier dein Programm\n// Beispiel:\n// digitalWrite(PUMP_PIN, HIGH);\n// delay(2000);\n// digitalWrite(PUMP_PIN, LOW);"
+    )
+
+    val codeEditor = CodeEditorHelper.createCodeEditor(
+      advancedCodeState,
+      codeEditorTitle,
+      PumpControlValidator.validatePumpControl
+    )
 
     val isBeginnerMode = Var(true)
 
@@ -183,8 +175,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       ),
       div(
         cls.toggle("mode-hidden") <-- isBeginnerMode.signal,
-        h4(text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId(editorTitleMapId))),
-        advancedDom
+        codeEditor
       )
     )
 
@@ -204,7 +195,6 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         "delay(2000);",
         "digitalWrite(PUMP_PIN, LOW);"
       ),
-      "plant-pump-advanced",
       "PlantWorkshop/pumpCodeEditorTodo",
       List(
         LanguageMapContentId("PlantWorkshop/reorderHintPumpHigh"),
@@ -218,15 +208,15 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "PlantWorkshop/section2Title",
       List(
         container(
-          "PlantWorkshop/section2Subtitle1",
+          "PlantWorkshop/section2Title",
           List(
             instructionLabeledPair("PlantWorkshop/goalTitle", "PlantWorkshop/section2GoalText", GoalLabel),
             instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section2InstructionText", TaskLabel),
             instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section2HintText", HintLabel)
           )
         ),
-        container("PlantWorkshop/section2Subtitle2", List(codeTask)),
-        container("PlantWorkshop/section2Subtitle3", checklistItems)
+        container("PlantWorkshop/section2Title", List(codeTask)),
+        container("PlantWorkshop/section2Title", checklistItems)
       )
     )
   }
@@ -250,7 +240,6 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         "  Serial.println(\"Boden ist FEUCHT\");",
         "}"
       ),
-      "plant-moisture-advanced",
       "PlantWorkshop/pumpCodeEditorTodo",
       List(
         LanguageMapContentId("PlantWorkshop/reorderHintSensorPowerHigh"),
@@ -270,15 +259,15 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "PlantWorkshop/section3Title",
       List(
         container(
-          "PlantWorkshop/section3Subtitle1",
+          "PlantWorkshop/section3Title",
           List(
             instructionLabeledPair("PlantWorkshop/goalTitle", "PlantWorkshop/section3GoalText", GoalLabel),
             instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section3InstructionText", TaskLabel),
             instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section3HintText", HintLabel)
           )
         ),
-        container("PlantWorkshop/section3Subtitle2", List(codeTask)),
-        container("PlantWorkshop/section3Subtitle3", checklistItems)
+        container("PlantWorkshop/section3Title", List(codeTask)),
+        container("PlantWorkshop/section3Title", checklistItems)
       )
     )
   }
@@ -306,7 +295,6 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         "}",
         "delay(10000);"
       ),
-      "plant-combined-advanced",
       "PlantWorkshop/pumpCodeEditorTodo",
       List(
         LanguageMapContentId("PlantWorkshop/reorderHintFeuchtigkeitsGrenze"),
@@ -344,15 +332,15 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "PlantWorkshop/section4Title",
       List(
         container(
-          "PlantWorkshop/section4Subtitle1",
+          "PlantWorkshop/section4Title",
           List(
             instructionLabeledPair("PlantWorkshop/goalTitle", "PlantWorkshop/section4GoalText", GoalLabel),
             instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section4InstructionText", TaskLabel),
             instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section4HintText", HintLabel)
           )
         ),
-        container("PlantWorkshop/section4Subtitle2", List(codeTask)),
-        container("PlantWorkshop/section4Subtitle3", checklistItems)
+        container("PlantWorkshop/section4Title", List(codeTask)),
+        container("PlantWorkshop/section4Title", checklistItems)
       )
     )
   }
@@ -399,8 +387,10 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     )
 
     val congratulationsContainer = container(
-      "PlantWorkshop/section5CongratulationsTitle",
-      List(instructionPlaintext("PlantWorkshop/section5Congratulations"))
+      "PlantWorkshop/section5Congratulations",
+      List(
+        instructionPlaintext("PlantWorkshop/section5Congratulations")
+      )
     )
 
     section("section5", "PlantWorkshop/section5Title", List(

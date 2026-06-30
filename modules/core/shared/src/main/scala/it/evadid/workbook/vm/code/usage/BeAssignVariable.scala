@@ -1,5 +1,6 @@
 package it.evadid.workbook.vm.code.usage
 
+import it.evadid.workbook.vm.naming.CodeRepresentationConfig
 import it.evadid.workbook.vm.types.BeChildRole.ValueInAssignment
 
 import it.evadid.core.datastructures.language.*
@@ -24,7 +25,8 @@ case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) exten
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
 
-    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
+    override def toStringWithConfig(config: CodeRepresentationConfig): String = {
+      import config.{programmingLanguage, humanLanguage, skipUnparsable}
 
       def sanitizeRustName(name: String): String =
         if (name.nonEmpty && name.head.isUpper) s"${name.head.toLower}${name.tail}" else name
@@ -32,7 +34,7 @@ case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) exten
       val renderedValue = value.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable).replaceAll("\n", " ")
       val targetName = programmingLanguage match {
         case Python if renderedValue.trim.startsWith("lambda") =>
-          target.name.getInLanguage(humanLanguage)
+          target.name.getNameIn(humanLanguage, config.namingStyle)
         case _ =>
           target.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable)
       }

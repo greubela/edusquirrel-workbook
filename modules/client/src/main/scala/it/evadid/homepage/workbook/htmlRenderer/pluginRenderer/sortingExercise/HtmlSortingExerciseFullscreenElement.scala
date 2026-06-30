@@ -3,7 +3,7 @@ package it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.sortingExercise
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
-import it.evadid.homepage.control.info.FullInfo
+import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.workbook.model.interaction.plugins.sortingExercise.*

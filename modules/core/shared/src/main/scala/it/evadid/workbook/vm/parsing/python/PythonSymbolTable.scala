@@ -1,5 +1,6 @@
 package it.evadid.workbook.vm.parsing.python
 
+import it.evadid.workbook.vm.naming.BeEntityName
 import it.evadid.workbook.vm.types.BeDataType.AnyType
 import it.evadid.core.datastructures.language.LanguageMap
 
@@ -110,7 +111,7 @@ object PythonSymbolTable {
 
     def assignVariable(name: String, dataType: BeDataType): BeDefineVariable = {
       lookupVariable(name).getOrElse {
-        val variable = BeDefineVariable(LanguageMap.universalMap(name), dataType)
+        val variable = BeDefineVariable(BeEntityName.fromUniversalNameInParts(name), dataType)
         currentScope.update(name, variable)
         registerVariable(name, variable)
         variable
@@ -118,7 +119,7 @@ object PythonSymbolTable {
     }
 
     def defineVariable(name: String, dataType: BeDataType): BeDefineVariable = {
-      val variable = BeDefineVariable(LanguageMap.universalMap(name), dataType)
+      val variable = BeDefineVariable(BeEntityName.fromUniversalNameInParts(name), dataType)
       currentScope.update(name, variable)
       registerVariable(name, variable)
       variable
@@ -150,8 +151,8 @@ object PythonSymbolTable {
 
     def resolveFunction(name: String, arity: Int): BeDefineFunction =
       functionsByName.getOrElse(name, {
-        val params = (0 until arity).map(index => BeDefineVariable(LanguageMap.universalMap(s"arg$index"), AnyType)).toList
-        val placeholder = BeDefineFunction(params, None, BeSequence.optionalBody(Nil), BeDefineFunction.functionInfo(LanguageMap.universalMap(name)))
+        val params = (0 until arity).map(index => BeDefineVariable(BeEntityName.fromUniversalNameInParts(s"arg$index"), AnyType)).toList
+        val placeholder = BeDefineFunction(params, None, BeSequence.optionalBody(Nil), BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(name)))
         functionsByName.update(name, placeholder)
         placeholder
       })
@@ -160,7 +161,7 @@ object PythonSymbolTable {
       if (arity <= function.inputs.length) function
       else {
         val additional = (function.inputs.length until arity).map { index =>
-          BeDefineVariable(LanguageMap.universalMap(s"arg$index"), AnyType)
+          BeDefineVariable(BeEntityName.fromUniversalNameInParts(s"arg$index"), AnyType)
         }.toList
         val updated = function.copy(inputs = function.inputs ++ additional)
         functionsByName.update(name, updated)
@@ -209,9 +210,9 @@ object PythonSymbolTable {
               case 1 => "right"
               case other => s"arg$other"
             }
-            BeDefineVariable(LanguageMap.universalMap(paramName), AnyType)
+            BeDefineVariable(BeEntityName.fromUniversalNameInParts(paramName), AnyType)
           }.toList
-          val outputVar = Some(BeDefineVariable(LanguageMap.universalMap("result"), AnyType))
+          val outputVar = Some(BeDefineVariable(BeEntityName.fromUniversalNameInParts("result"), AnyType))
           val function = BeDefineFunction(params, outputVar, BeExpression.pass, BeDefineFunction.operatorInfo(symbol, 1))
           registerOperator(symbol, function)
           function

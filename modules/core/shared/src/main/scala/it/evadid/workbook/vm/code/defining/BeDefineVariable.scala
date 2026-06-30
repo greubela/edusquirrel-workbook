@@ -6,19 +6,20 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.workbook.vm.code.BeDefineStructure
 import it.evadid.workbook.vm.code.tree.BeExpressionNode
 import it.evadid.workbook.vm.io.BeExpressionIO
+import it.evadid.workbook.vm.naming.{BeEntityName, CodeRepresentationConfig}
 import it.evadid.workbook.vm.static.BeExpressionStaticInformation
 import it.evadid.workbook.vm.types.BeDataType
 
 case class BeDefineVariable(
-    name: LanguageMap[HumanLanguage],
+    name: BeEntityName,
     variableType: BeDataType
 ) extends BeDefineStructure {
 
-
   override def expressionIO: BeExpressionIO = new BeExpressionIO() {
     
-    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
-      val baseName = name.getInLanguage(humanLanguage)
+    override def toStringWithConfig(config: CodeRepresentationConfig): String = {
+      import config.{programmingLanguage, humanLanguage, skipUnparsable}
+      val baseName = name.getNameIn(humanLanguage, config.namingStyle)
       val typeHint = variableType.formatTypeForDisplay.getInLanguage(programmingLanguage).trim
       programmingLanguage match {
         case Python =>
@@ -49,12 +50,3 @@ case class BeDefineVariable(
 
 }
 
-
-/*
-trait BeValueDefinition {
-
-  def currentValue(simulator: BeSimulatorState): Option[String]
-
-  def createBlock(displayConfig: BeDisplayConfig, roleInParent: BeChildRole): BeBlock
-}
-*/

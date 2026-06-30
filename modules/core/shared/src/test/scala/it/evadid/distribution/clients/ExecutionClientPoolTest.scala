@@ -1,7 +1,7 @@
 package it.evadid.distribution.clients
 
 import it.evadid.distribution.command.{ExecutionCommand, ExecutionInfo, ExecutionResult}
-import it.evadid.util.Logger
+import it.evadid.util.logging.Logger
 import munit.FunSuite
 
 import scala.concurrent.{Await, Future}

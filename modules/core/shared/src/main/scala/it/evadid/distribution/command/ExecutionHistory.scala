@@ -9,6 +9,10 @@ case class ExecutionHistory(
                              timestampExecutionFinished: LocalDateTime,
                            ) {
 
+  def withFixedTime(timeRequested: LocalDateTime, timeReceived: LocalDateTime): ExecutionHistory = this.copy(
+    timestampCommandRequested = timeRequested,
+    timestampCommandReceived = timeReceived
+  )
 
   override def toString: String = s"ExecutionHistory(req=$timestampCommandRequested, rec=$timestampCommandReceived, sta=$timestampExecutionStarted, fin=$timestampExecutionFinished)"
 

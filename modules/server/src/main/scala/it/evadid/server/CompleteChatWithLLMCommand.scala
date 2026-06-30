@@ -1,8 +1,8 @@
 package it.evadid.server
 
-import it.evadid.core.datastructures.chat.{MessengerModel, SenderRole}
+import it.evadid.core.datastructures.chat.{Message, MessengerModel, SenderRole}
 import it.evadid.distribution.commandTypes.LLMCommands.{FeedbackLlmRequest, MessengerChatCompletionRequest}
-import it.evadid.util.Logger
+import it.evadid.util.logging.Logger
 import play.api.libs.json.Json
 
 import java.net.URI
@@ -18,7 +18,7 @@ object CompleteChatWithLLMCommand {
 
   val apiKeyOp: Option[String] = it.evadid.util.JvmUtils.env("OPENAI_API_KEY")
 
-  def handleLlmChatRequest(mesRequest: MessengerChatCompletionRequest, logger: Logger): Future[MessengerModel] = {
+  def handleLlmChatRequest(mesRequest: MessengerChatCompletionRequest, logger: Logger): Future[Message] = {
     if (apiKeyOp.isEmpty) Future.failed(new RuntimeException("OPENAI_API_KEY is not set"))
     else Future {
       val apiKey = apiKeyOp.get
@@ -64,7 +64,7 @@ object CompleteChatWithLLMCommand {
 
       logger.logInfo(s"received generated text: $generatedText")
 
-      mesRequest.continueWith(generatedText, "agent")
+      Message(generatedText, MessengerModel.pAgent)
     }(using ExecutionContext.global)
   }
 

@@ -13,7 +13,7 @@ class ExecutionInfoIntegrationTest extends FunSuite {
     val restored = ExecutionInfo.fromJson(info.toJson)
 
     assertEquals(restored.command, command)
-    assertEquals(restored.result.get.data, Map("sum" -> "2"))
+    assertEquals(restored.resultTry.get.data, Map("sum" -> "2"))
   }
 
   test("fixTime adds explicit timeline when no meta exists") {
@@ -23,7 +23,7 @@ class ExecutionInfoIntegrationTest extends FunSuite {
 
     val fixed = info.fixTime(requested, received)
 
-    assertEquals(fixed.meta.get.timestampCommandRequested, requested)
-    assertEquals(fixed.meta.get.timestampCommandReceived, received)
+    assertEquals(fixed.historyOp.get.timestampCommandRequested, requested)
+    assertEquals(fixed.historyOp.get.timestampCommandReceived, received)
   }
 }

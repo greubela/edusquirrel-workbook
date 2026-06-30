@@ -1,5 +1,6 @@
 package it.evadid.workbook.vm.code.errors
 
+import it.evadid.workbook.vm.naming.CodeRepresentationConfig
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.workbook.vm.code.BeExpression
@@ -19,8 +20,8 @@ case class BeExpressionUnsupported(originalSource: String) extends BeExpression 
   }
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO() {
-    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = true): String ={
-      if(skipUnparsable){
+    override def toStringWithConfig(config: CodeRepresentationConfig): String ={
+      if(config.skipUnparsable){
         println(s"[WARN] BeExpressionUnsupported::getInLanguage with flag 'skipUnparsable' set to true. Still rendering because '$originalSource' is unsupported, not unparsable!")
       }
       originalSource

@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.legacy.plantworkshop
 
+import it.evadid.workbook.vm.naming.BeEntityName
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
@@ -18,7 +19,7 @@ import it.evadid.workbook.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueRe
 object PlantWorkshopTaskBlockLibraries {
 
   private def valueRefProgram(name: String, tpe: BeDataType): BeProgram = {
-    val defVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage](name), tpe)
+    val defVar = BeDefineVariable(BeEntityName.fromCodeString(name), tpe)
     BeProgram(BeUseValue(BeUseValueReference(defVar), None))
   }
 
@@ -26,14 +27,14 @@ object PlantWorkshopTaskBlockLibraries {
 
   private def arduinoFuncCall(name: String, params: List[(String, BeDataType, BeExpression)]): BeExpression = {
     val inputDefs = params.map { case (pName, pType, _) =>
-      BeDefineVariable(LanguageMap.universalMap[HumanLanguage](pName), pType)
+      BeDefineVariable(BeEntityName.fromCodeString(pName), pType)
     }
 
     val funcDef = BeDefineFunction(
       inputs = inputDefs,
       outputs = None,
       body = BeExpression.pass,
-      functionTypeInfo = BeDefineFunction.functionInfo(LanguageMap.universalMap[HumanLanguage](name))
+      functionTypeInfo = BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(name))
     )
 
     val valueMap: Map[BeDefineVariable, BeExpression] = inputDefs.zip(params.map(_._3)).map { case (inputDef, expr) =>
@@ -52,16 +53,16 @@ object PlantWorkshopTaskBlockLibraries {
       params: List[(String, BeDataType, BeExpression)]
   ): BeExpression = {
     val inputDefs = params.map { case (pName, pType, _) =>
-      BeDefineVariable(LanguageMap.universalMap[HumanLanguage](pName), pType)
+      BeDefineVariable(BeEntityName.fromCodeString(pName), pType)
     }
 
-    val outputVar = Some(BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("result"), returnType))
+    val outputVar = Some(BeDefineVariable(BeEntityName.fromCodeString("result"), returnType))
 
     val funcDef = BeDefineFunction(
       inputs = inputDefs,
       outputs = outputVar,
       body = BeExpression.pass,
-      functionTypeInfo = BeDefineFunction.functionInfo(LanguageMap.universalMap[HumanLanguage](name))
+      functionTypeInfo = BeDefineFunction.functionInfo(BeEntityName.fromCodeString(name))
     )
 
     val valueMap: Map[BeDefineVariable, BeExpression] = inputDefs.zip(params.map(_._3)).map { case (inputDef, expr) =>
@@ -75,7 +76,7 @@ object PlantWorkshopTaskBlockLibraries {
   }
 
   private def assignTyped(varName: String, varType: BeDataType, valueExpr: BeExpression): BeExpression = {
-    val defVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage](varName), varType)
+    val defVar = BeDefineVariable(BeEntityName.fromCodeString(varName), varType)
     BeAssignVariable(defVar, valueExpr)
   }
 
@@ -134,7 +135,7 @@ object PlantWorkshopTaskBlockLibraries {
   }
 
   private def digitalRead(pinName: String): BeExpression = {
-    val pinVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage](pinName), BeDataType.Int)
+    val pinVar = BeDefineVariable(BeEntityName.fromCodeString(pinName), BeDataType.Int)
     arduinoFuncCallWithReturn(
       "digitalRead",
       BeDataType.Int,
@@ -143,7 +144,7 @@ object PlantWorkshopTaskBlockLibraries {
   }
 
   private def analogRead(pinName: String): BeExpression = {
-    val pinVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage](pinName), BeDataType.Int)
+    val pinVar = BeDefineVariable(BeEntityName.fromCodeString(pinName), BeDataType.Int)
     arduinoFuncCallWithReturn(
       "analogRead",
       BeDataType.Int,
@@ -152,8 +153,8 @@ object PlantWorkshopTaskBlockLibraries {
   }
 
   private def digitalWrite(pinName: String, valueName: String): BeExpression = {
-    val pinVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage](pinName), BeDataType.Int)
-    val valVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage](valueName), BeDataType.Int)
+    val pinVar = BeDefineVariable(BeEntityName.fromCodeString(pinName), BeDataType.Int)
+    val valVar = BeDefineVariable(BeEntityName.fromCodeString(valueName), BeDataType.Int)
     arduinoFuncCall(
       "digitalWrite",
       List(
@@ -165,8 +166,8 @@ object PlantWorkshopTaskBlockLibraries {
 
   /** Blocks for moisture sensor basics (task 2). */
   def task2LibraryPrograms(): List[BeProgram] = {
-    val sensorValueVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("sensorValue"), BeDataType.Int)
-    val highVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("HIGH"), BeDataType.Int)
+    val sensorValueVar = BeDefineVariable(BeEntityName.fromCodeString("sensorValue"), BeDataType.Int)
+    val highVar = BeDefineVariable(BeEntityName.fromCodeString("HIGH"), BeDataType.Int)
 
     val readAssign = BeAssignVariable(sensorValueVar, digitalRead("MOISTURE_PIN"))
 
@@ -206,8 +207,8 @@ object PlantWorkshopTaskBlockLibraries {
 
   /** Blocks for combined logic (task 4). */
   def task4LibraryPrograms(): List[BeProgram] = {
-    val messwertVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("messwert"), BeDataType.Int)
-    val grenzeVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("feuchtigkeitsGrenze"), BeDataType.Int)
+    val messwertVar = BeDefineVariable(BeEntityName.fromCodeString("messwert"), BeDataType.Int)
+    val grenzeVar = BeDefineVariable(BeEntityName.fromCodeString("feuchtigkeitsGrenze"), BeDataType.Int)
 
     val readAssign = BeAssignVariable(messwertVar, analogRead("SENSOR_PIN"))
     val condition = ltCondition(
@@ -247,8 +248,8 @@ object PlantWorkshopTaskBlockLibraries {
   }
 
   def task2SuggestedStartProgram(): BeProgram = {
-    val sensorValueVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("sensorValue"), BeDataType.Int)
-    val highVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("HIGH"), BeDataType.Int)
+    val sensorValueVar = BeDefineVariable(BeEntityName.fromCodeString("sensorValue"), BeDataType.Int)
+    val highVar = BeDefineVariable(BeEntityName.fromCodeString("HIGH"), BeDataType.Int)
 
     val readAssign = BeAssignVariable(sensorValueVar, digitalRead("MOISTURE_PIN"))
     val condition = eqCondition(
@@ -279,8 +280,8 @@ object PlantWorkshopTaskBlockLibraries {
 
   // Optional: a small starter program skeleton that roughly matches the old advanced snippet.
   def task4SuggestedStartProgram(): BeProgram = {
-    val messwertVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("messwert"), BeDataType.Int)
-    val grenzeVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("feuchtigkeitsGrenze"), BeDataType.Int)
+    val messwertVar = BeDefineVariable(BeEntityName.fromCodeString("messwert"), BeDataType.Int)
+    val grenzeVar = BeDefineVariable(BeEntityName.fromCodeString("feuchtigkeitsGrenze"), BeDataType.Int)
 
     val readAssign = BeAssignVariable(messwertVar, analogRead("SENSOR_PIN"))
     val condition = ltCondition(

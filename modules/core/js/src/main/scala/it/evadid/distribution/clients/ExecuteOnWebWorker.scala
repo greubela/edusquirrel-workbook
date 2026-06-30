@@ -1,16 +1,6 @@
 package it.evadid.distribution.clients
 
-import it.evadid.distribution.clients.ExecuteOnWebWorker.WorkerLike
-import it.evadid.distribution.command.*
-import it.evadid.util.Logger
-import org.scalajs.dom
-import upickle.default.{read, write}
-
-import java.io.FileDescriptor
-import scala.collection.mutable
-import scala.concurrent.{Future, Promise}
-
-
+/*
 class ExecuteOnWebWorker private[clients](worker: WorkerLike) extends ExecutionClient {
 
   private val pending = mutable.Map.empty[String, Promise[ExecutionInfo]]
@@ -35,7 +25,7 @@ class ExecuteOnWebWorker private[clients](worker: WorkerLike) extends ExecutionC
     pending.values.foreach(_.tryFailure(exception))
     pending.clear()
 
-  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionInfo] = {
+  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): AsyncData[Nothing, ExecutionInfo] = {
     val requestId = java.util.UUID.randomUUID().toString
     val promise = Promise[ExecutionInfo]()
     pending.put(requestId, promise)
@@ -44,7 +34,7 @@ class ExecuteOnWebWorker private[clients](worker: WorkerLike) extends ExecutionC
       "command" -> executionCommand.toJson
     ))
     worker.postMessage(payload)
-    promise.future
+    AsyncData.forFuture(promise.future)
   }
 
   override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = true
@@ -84,6 +74,5 @@ object ExecuteOnWebWorker {
     worker.onmessage = (event: dom.MessageEvent) => onmessage(event)
     worker.onerror = (event: dom.ErrorEvent) => onerror(event)
   }
-
-
 }
+*/

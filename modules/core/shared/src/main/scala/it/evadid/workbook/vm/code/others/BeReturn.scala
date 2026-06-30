@@ -1,5 +1,6 @@
 package it.evadid.workbook.vm.code.others
 
+import it.evadid.workbook.vm.naming.CodeRepresentationConfig
 import it.evadid.workbook.vm.types.BeChildRole.ExpressionInSequence
 import it.evadid.core.datastructures.language.AppLanguage.*
 
@@ -13,7 +14,8 @@ import it.evadid.workbook.vm.types.{BeChildPosition, BeChildRole, BeScope}
 case class BeReturn(value: Option[BeExpression]) extends BeExpression {
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
-    override def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String = {
+    override def toStringWithConfig(config: CodeRepresentationConfig): String = {
+      import config.{programmingLanguage, humanLanguage, skipUnparsable}
       val valueString = value.map(_.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable).replaceAll("\n", " "))
       val base = valueString match {
         case Some(text) if text.nonEmpty => s"return $text"

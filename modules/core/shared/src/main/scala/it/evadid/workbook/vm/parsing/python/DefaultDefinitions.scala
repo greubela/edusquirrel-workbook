@@ -1,5 +1,6 @@
 package it.evadid.workbook.vm.parsing.python
 
+import it.evadid.workbook.vm.naming.BeEntityName
 import it.evadid.workbook.vm.types.BeDataType.{AnyType, Boolean => BooleanType, Numeric => NumericType, String => StringType}
 import it.evadid.core.datastructures.language.LanguageMap
 
@@ -19,9 +20,9 @@ object DefaultDefinitions {
       resultType: BeDataType
   ): NamedFunction = {
     val parameters =
-      List(BeDefineVariable(LanguageMap.universalMap("value"), operandType))
+      List(BeDefineVariable(BeEntityName.fromUniversalNameInParts("value"), operandType))
     val output = Some(
-      BeDefineVariable(LanguageMap.universalMap("result"), resultType)
+      BeDefineVariable(BeEntityName.fromUniversalNameInParts("result"), resultType)
     )
     val function = BeDefineFunction(parameters, output, BeExpression.pass, BeDefineFunction.operatorInfo(symbol, 0))
     symbol -> function
@@ -34,11 +35,11 @@ object DefaultDefinitions {
       resultType: BeDataType
   ): NamedFunction = {
     val parameters = List(
-      BeDefineVariable(LanguageMap.universalMap("left"), leftType),
-      BeDefineVariable(LanguageMap.universalMap("right"), rightType)
+      BeDefineVariable(BeEntityName.fromUniversalNameInParts("left"), leftType),
+      BeDefineVariable(BeEntityName.fromUniversalNameInParts("right"), rightType)
     )
     val output = Some(
-      BeDefineVariable(LanguageMap.universalMap("result"), resultType)
+      BeDefineVariable(BeEntityName.fromUniversalNameInParts("result"), resultType)
     )
     val function = BeDefineFunction(parameters, output, BeExpression.pass, BeDefineFunction.operatorInfo(symbol, 1))
     symbol -> function
@@ -50,12 +51,12 @@ object DefaultDefinitions {
       returnType: Option[BeDataType]
   ): NamedFunction = {
     val inputs = parameters.map { case (paramName, dataType) =>
-      BeDefineVariable(LanguageMap.universalMap(paramName), dataType)
+      BeDefineVariable(BeEntityName.fromUniversalNameInParts(paramName), dataType)
     }
     val output = returnType.map(dataType =>
-      BeDefineVariable(LanguageMap.universalMap("result"), dataType)
+      BeDefineVariable(BeEntityName.fromUniversalNameInParts("result"), dataType)
     )
-    val functionInfo = BeDefineFunction.functionInfo(LanguageMap.universalMap(name))
+    val functionInfo = BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(name))
     val function = BeDefineFunction(inputs, output, BeExpression.pass, functionInfo)
     name -> function
   }

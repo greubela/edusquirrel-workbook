@@ -3,6 +3,7 @@ package it.evadid.workbook.vm.parsing.python
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage, JavaScript, Python}
 import it.evadid.workbook.vm.parsing.python.PythonParser.KnownStructure
 import it.evadid.core.datastructures.language.LanguageMap
+import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.workbook.vm.code.BeExpression
 import it.evadid.workbook.vm.code.controlStructures.{BeIfElse, BeSequence, BeWhile}
 import it.evadid.workbook.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
@@ -412,7 +413,7 @@ class PythonParserSpec extends FunSuite {
           |result = accumulate(3)
           |""".stripMargin,
       assertions = result => {
-        val maybeFunction = result.definedFunctions.find(_.functionTypeInfo.displayName.getInLanguage(English) == "accumulate")
+        val maybeFunction = result.definedFunctions.find(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase) == "accumulate")
         assert(maybeFunction.nonEmpty, "expected accumulate function to be defined")
         val functionBody = maybeFunction.get.body match {
           case seq: BeSequence => seq.body
@@ -439,10 +440,10 @@ class PythonParserSpec extends FunSuite {
           |""".stripMargin,
       assertions = result => {
         val clazz = result.definedClasses
-          .collectFirst { case c if c.name.getInLanguage(English) == "TestClass" => c }
+          .collectFirst { case c if c.name.getNameIn(English, NamingStyle.SnakeCase) == "TestClass" => c }
           .getOrElse(fail("expected TestClass to be parsed as a class"))
 
-        val methodNames = clazz.methods.map(_.functionTypeInfo.displayName.getInLanguage(English)).toSet
+        val methodNames = clazz.methods.map(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase)).toSet
         assertEquals(methodNames, Set("test_method", "test_with_int_result"))
         assert(clazz.methods.forall(_.isInstanceOf[BeDefineFunction]))
         assert(clazz.methods.forall(_.functionTypeInfo.funcType.isInstanceOf[BeDefineFunction.Method]))
@@ -485,7 +486,7 @@ class PythonParserSpec extends FunSuite {
           |""".stripMargin,
       assertions = result => {
         val additionFunctions = result.definedFunctions.filter { function =>
-          function.functionTypeInfo.displayName.getInLanguage(English) == "+"
+          function.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase) == "+"
         }
         assert(additionFunctions.nonEmpty, "expected '+' operator definition to be present")
         assert(
@@ -520,7 +521,7 @@ class PythonParserSpec extends FunSuite {
         )
 
         val classifyFunction = result.definedFunctions.find { function =>
-          function.functionTypeInfo.displayName.getInLanguage(English) == "classify_score"
+          function.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase) == "classify_score"
         }.getOrElse(fail("expected classify_score function to be defined"))
 
         val functionBody = classifyFunction.body match {
@@ -664,12 +665,12 @@ class PythonParserSpec extends FunSuite {
     assertPythonEquivalentAllowingAdditionalTypeHints(python, regenerated)
 
     val circleFunction = parsingResult.definedFunctions
-      .find(_.functionTypeInfo.displayName.getInLanguage(English) == "circle_area")
+      .find(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase) == "circle_area")
       .getOrElse(fail("expected to find circle_area function"))
 
     assertEquals(circleFunction.inputs.length, 1)
     val radiusParam = circleFunction.inputs.head
-    assertEquals(radiusParam.name.getInLanguage(English), "radius")
+    assertEquals(radiusParam.name.getNameIn(English, NamingStyle.SnakeCase), "radius")
     assertEquals(radiusParam.variableType, BeDataType.Numeric)
 
     val returnVariable = circleFunction.outputs.getOrElse(fail("expected return variable"))
@@ -680,13 +681,13 @@ class PythonParserSpec extends FunSuite {
       case other => fail(s"expected function body to be a sequence but was ${other.getClass.getSimpleName}")
     }
     val areaAssignment = bodySequence.body.collectFirst {
-      case assign: BeAssignVariable if assign.target.name.getInLanguage(English) == "area" => assign
+      case assign: BeAssignVariable if assign.target.name.getNameIn(English, NamingStyle.SnakeCase) == "area" => assign
     }.getOrElse(fail("expected assignment to area"))
     assertEquals(areaAssignment.target.variableType, BeDataType.Numeric)
     assertEquals(areaAssignment.value.staticInformationExpression.staticType, BeDataType.Numeric)
 
     val variablesByName = parsingResult.definedVariables.map { variable =>
-      variable.name.getInLanguage(English) -> variable
+      variable.name.getNameIn(English, NamingStyle.SnakeCase) -> variable
     }.toMap
     val testWithNrVar = variablesByName.getOrElse("testWithNr", fail("expected testWithNr variable"))
     assertEquals(testWithNrVar.variableType, BeDataType.Numeric)
@@ -695,12 +696,12 @@ class PythonParserSpec extends FunSuite {
 
     val topAssignments = parsingResult.codeExpression.body.collect { case assign: BeAssignVariable => assign }
     val testAssignment = topAssignments
-      .find(_.target.name.getInLanguage(English) == "testWithNr")
+      .find(_.target.name.getNameIn(English, NamingStyle.SnakeCase) == "testWithNr")
       .getOrElse(fail("expected assignment to testWithNr"))
     assertEquals(testAssignment.value.staticInformationExpression.staticType, BeDataType.Numeric)
 
     val resultAssignment = topAssignments
-      .find(_.target.name.getInLanguage(English) == "result")
+      .find(_.target.name.getNameIn(English, NamingStyle.SnakeCase) == "result")
       .getOrElse(fail("expected assignment to result"))
     assertEquals(resultAssignment.value.staticInformationExpression.staticType, BeDataType.Numeric)
   }
@@ -782,7 +783,7 @@ class PythonParserSpec extends FunSuite {
         |""".stripMargin
     val parsingResult = PythonParser.parsePythonWithDetails(pythonSource)
     val maybeFunction = parsingResult.definedFunctions.find { function =>
-      function.functionTypeInfo.displayName.getInLanguage(English) == "sum_until"
+      function.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase) == "sum_until"
     }
     assert(maybeFunction.nonEmpty, "expected to find sum_until function definition")
     val renderedJavaScript = maybeFunction.get.expressionIO.toStringInLanguage(JavaScript, English)
@@ -812,7 +813,7 @@ class PythonParserSpec extends FunSuite {
 
     val parsingResult = PythonParser.parsePythonWithDetails(pythonSource)
     val outerFunction = parsingResult.definedFunctions.find { function =>
-      function.functionTypeInfo.displayName.getInLanguage(English) == "outer"
+      function.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase) == "outer"
     }.getOrElse(fail("expected to find outer function definition"))
 
     val innerFunction = outerFunction.body match {
@@ -832,9 +833,9 @@ class PythonParserSpec extends FunSuite {
   }
 
   test("merge initial known structures with parsed definitions") {
-    val leftParam = BeDefineVariable(LanguageMap.universalMap("left"), BeDataType.AnyType)
-    val rightParam = BeDefineVariable(LanguageMap.universalMap("right"), BeDataType.AnyType)
-    val resultParam = BeDefineVariable(LanguageMap.universalMap("result"), BeDataType.AnyType)
+    val leftParam = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("left"), BeDataType.AnyType)
+    val rightParam = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("right"), BeDataType.AnyType)
+    val resultParam = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("result"), BeDataType.AnyType)
     val greaterOperator =
       BeDefineFunction(
         inputs = List(leftParam, rightParam),
@@ -882,7 +883,7 @@ class PythonParserSpec extends FunSuite {
     )
 
     val greaterFunctions = result.definedFunctions.filter { func =>
-      func.functionTypeInfo.displayName.getInLanguage(English) == ">"
+      func.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase) == ">"
     }.toSet
     assertEquals(
       greaterFunctions,
@@ -907,26 +908,26 @@ class PythonParserSpec extends FunSuite {
         |""".stripMargin
 
     val result = PythonParser.parsePythonWithDetails(python)
-    val maybeClass = result.definedClasses.collectFirst { case clazz if clazz.name.getInLanguage(English) == "Player" => clazz }
+    val maybeClass = result.definedClasses.collectFirst { case clazz if clazz.name.getNameIn(English, NamingStyle.SnakeCase) == "Player" => clazz }
     assert(maybeClass.nonEmpty, "expected Player class to be parsed")
     val clazz = maybeClass.get
 
-    val attributeNames = clazz.attributes.map(_.name.getInLanguage(English)).toSet
+    val attributeNames = clazz.attributes.map(_.name.getNameIn(English, NamingStyle.SnakeCase)).toSet
     assertEquals(attributeNames, Set("level", "role", "name", "age"))
 
-    val attributeTypes = clazz.attributes.map(attr => attr.name.getInLanguage(English) -> attr.variableType).toMap
+    val attributeTypes = clazz.attributes.map(attr => attr.name.getNameIn(English, NamingStyle.SnakeCase) -> attr.variableType).toMap
     assertEquals(attributeTypes("level"), BeDataType.Numeric)
     assert(attributeTypes("role").formatTypeForDisplay.getInLanguage(Python).contains("str"))
     assert(attributeTypes("name").formatTypeForDisplay.getInLanguage(Python).contains("str"))
     assertEquals(attributeTypes("age"), BeDataType.AnyType)
 
-    val methodNames = clazz.methods.map(_.functionTypeInfo.displayName.getInLanguage(English))
+    val methodNames = clazz.methods.map(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase))
     assertEquals(methodNames, List("__init__", "greet"))
     assert(clazz.methods.forall(_.functionTypeInfo.funcType == BeDefineFunction.Method()))
     assert(clazz.methods.forall(_.functionTypeInfo.isMethodInClass.nonEmpty))
 
-    assert(!result.definedFunctions.exists(_.functionTypeInfo.displayName.getInLanguage(English) == "greet"))
-    assert(!result.definedVariables.exists(v => attributeNames.contains(v.name.getInLanguage(English))))
+    assert(!result.definedFunctions.exists(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase) == "greet"))
+    assert(!result.definedVariables.exists(v => attributeNames.contains(v.name.getNameIn(English, NamingStyle.SnakeCase))))
   }
 
   test("ignore attribute assignments outside init while keeping constructor attributes") {
@@ -948,13 +949,13 @@ class PythonParserSpec extends FunSuite {
       case other => fail(s"expected a single class definition, found ${other.length}")
     }
 
-    val attributeMap = clazz.attributes.map(attr => attr.name.getInLanguage(English) -> attr.variableType).toMap
+    val attributeMap = clazz.attributes.map(attr => attr.name.getNameIn(English, NamingStyle.SnakeCase) -> attr.variableType).toMap
     assertEquals(attributeMap.keySet, Set("value", "ready"))
     assertEquals(attributeMap("value"), BeDataType.Numeric)
     assert(attributeMap("ready").formatTypeForDisplay.getInLanguage(Python).contains("bool"))
     assert(!attributeMap.contains("hidden"))
 
-    assert(!result.definedVariables.exists(_.name.getInLanguage(English) == "temp"))
+    assert(!result.definedVariables.exists(_.name.getNameIn(English, NamingStyle.SnakeCase) == "temp"))
     assert(clazz.methods.forall(_.functionTypeInfo.isMethodInClass.nonEmpty))
   }
 }

@@ -1,6 +1,7 @@
 package it.evadid.core.datastructures.state
 
 import it.evadid.core.datastructures.state.ExecutionMethod.ExecuteLocalSync
+import it.evadid.core.datastructures.state.observable.{ObservableValue, ObservableValueImpl, ObserverDerivationLogic}
 
 import scala.util.{Failure, Success}
 
@@ -44,8 +45,6 @@ object State {
       val res: State[T] = DerivedState[O, T](this, mapForward2, mapBackward2)
       res
     }
-
-
   }
 
   private[state] case class StateImpl[T](initValue: T) extends State[T] {

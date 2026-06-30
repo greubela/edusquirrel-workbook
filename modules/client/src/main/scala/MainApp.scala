@@ -1,16 +1,18 @@
 
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.control.HtmlFullWorkbookApp
-import it.evadid.homepage.workbook.content.{CreateCompressionWorkbook, CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook}
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.util.web.DownloadHelper
-import it.evadid.homepage.workbook.content.{CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook}
+import it.evadid.homepage.workbook.content.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
 import it.evadid.homepage.workbook.legacy.plantworkshop.PlantWorkshopApp
 import org.scalajs.dom
 
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
+import scala.concurrent.*
 import scala.scalajs.js
 import scala.util.*
+
+
+private given ExecutionContextExecutor = ExecutionContext.global
 
 private val tryToLoad: List[String] = List("plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "workbookCompression", "feedbackDemoRoot")
 
@@ -56,15 +58,6 @@ private def testCalculations(): Unit = {
 
 }
 
-/*
-  val systemPrompt: String = "Please entertain this human :-)"
-  val backend: ExecutionClient = HtmlFullWorkbookApp.fullInfo.technical.backendServerExecutor
-  val request: MessengerChatCompletionRequest = MessengerChatCompletionRequest(systemPrompt, MessengerModel.testCompletion)
-  val resultFut: Future[ExecutionInfo] = LLMCommands.completeLLMCommandFactory.sendCommandTo(backend, Logger(), request)
-
-  resultFut.onComplete(res => println("future completed: " + res))(using ExecutionContext.global)
-*/
-
 
 @main
 def mainApp(): Unit = {
@@ -75,19 +68,17 @@ def mainApp(): Unit = {
     if (canLoad.isEmpty) println("Found no container to load a workbook into. Tried: " + tryToLoad.mkString(", "))
     if (canLoad.size > 1) println("Found more than one workbook to load: " + canLoad.mkString(", "))
     if (canLoad.nonEmpty) {
-      val loadBasicsFut = HtmlFullWorkbookApp.fullInfo.signals.contentStorage.futureForDefaultsLoaded
-      loadBasicsFut.onComplete(finished => load(canLoad.head))(using ExecutionContext.global)
+      val loadBasicsFut: Future[?] = HtmlFullWorkbookApp.fullInfo.signals.contentStorage.ensureDefaultLoaded()
+      loadBasicsFut.onComplete {
+        case Success(_) => println("finished loading!")
+        case Failure(err) => err.printStackTrace()
+      }(using ExecutionContext.global)
+      load(canLoad.head)
+      testCalculations()
+    } else {
+      println("MainApp skipped: no document (worker/module import context).")
     }
-    testCalculations()
-  } else {
-    println("MainApp skipped: no document (worker/module import context).")
   }
-
 }
 
 
-object Main:
-
-  implicit val executionContext: ExecutionContextExecutor = ExecutionContext.global
-
-end Main

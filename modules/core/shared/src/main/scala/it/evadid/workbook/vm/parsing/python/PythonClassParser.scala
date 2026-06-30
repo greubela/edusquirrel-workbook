@@ -11,6 +11,7 @@ import it.evadid.workbook.vm.code.BeExpression
 import it.evadid.workbook.vm.code.controlStructures.BeSequence
 import it.evadid.workbook.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
 import it.evadid.workbook.vm.code.errors.{BeExpressionUnparsable, BeSingleLineComment}
+import it.evadid.workbook.vm.naming.BeEntityName
 import it.evadid.workbook.vm.types.BeDataType
 import scala.collection.mutable
 
@@ -128,7 +129,7 @@ object PythonClassParser {
         methodResult.template.copy(
           functionTypeInfo = BeDefineFunction.BeFunctionTypeInfo(
             isMethodInClass = Some(classPlaceholder),
-            isNamed = Some(LanguageMap.universalMap[HumanLanguage](methodResult.name)),
+            isNamed = Some(BeEntityName.fromUniversalNameInParts(methodResult.name)),
             funcType = BeDefineFunction.Method()
           )
         )
@@ -155,7 +156,7 @@ object PythonClassParser {
       methodContext.defineVariable(paramName, api.mapType(typeHint))
     }
 
-    val returnVariable = returnSource.map(_.trim).filter(_.nonEmpty).map(returnHint => BeDefineVariable(LanguageMap.universalMap("return"), api.mapType(Some(returnHint))))
+    val returnVariable = returnSource.map(_.trim).filter(_.nonEmpty).map(returnHint => BeDefineVariable(BeEntityName.fromUniversalNameInParts("return"), api.mapType(Some(returnHint))))
 
     val computedIndent = findBodyIndent(lines, headerIndex + 1, indent)
 
@@ -175,9 +176,8 @@ object PythonClassParser {
     methodContext.popScope()
 
     val body = BeSequence.optionalBody(bodyExpressions)
-    val functionInfo = BeDefineFunction.functionInfo(LanguageMap.universalMap(name))
-    val indentWidth = if (bodyExpressions.nonEmpty && computedIndent > indent) computedIndent - indent else 4
-    val template = BeDefineFunction(parameterDefinitions, returnVariable, body, functionInfo, indentWidth)
+    val functionInfo = BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(name))
+    val template = BeDefineFunction(parameterDefinitions, returnVariable, body, functionInfo)
     ParsedMethod(name, template, discoveredAttributes, nextIndex)
   }
 
@@ -226,7 +226,7 @@ object PythonClassParser {
         api.inferType(api.parseExpression(valueText, isolated))
       }.getOrElse(AnyType)
     }
-    val attribute = BeDefineVariable(LanguageMap.universalMap(attributeName), dataType)
+    val attribute = BeDefineVariable(BeEntityName.fromUniversalNameInParts(attributeName), dataType)
     buffer.update(attributeName, attribute)
   }
 }

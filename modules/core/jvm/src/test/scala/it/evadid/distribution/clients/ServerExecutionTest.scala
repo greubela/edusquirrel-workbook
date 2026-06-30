@@ -2,6 +2,7 @@ package it.evadid.distribution.clients
 
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import it.evadid.distribution.command.{ExecutionCommand, ExecutionInfo, ExecutionResult}
+import it.evadid.util.logging.Logger
 import munit.FunSuite
 import upickle.default.write
 
@@ -45,14 +46,14 @@ class ServerExecutionTest extends FunSuite {
       os.write(bytes)
       os.close()
     } { port =>
-      val client = ExecuteOnRemoteServer("127.0.0.1", port)
+      val client = JvmRemoteExecutionClient("127.0.0.1", port)
       val command = ExecutionCommand("echo", Map("x" -> "1"))
 
-      val info = Await.result(client.handleExecution(command, it.evadid.util.Logger()), 5.seconds)
+      val info = Await.result(client.handleExecution(command, Logger()), 5.seconds)
 
       assertEquals(info.command, command)
-      assertEquals(info.result.map(_.stdOut).get, "ok")
-      assertEquals(info.result.map(_.data).get, Map("x" -> "1"))
+      assertEquals(info.resultTry.map(_.stdOut).get, "ok")
+      assertEquals(info.resultTry.map(_.data).get, Map("x" -> "1"))
     }
   }
 }

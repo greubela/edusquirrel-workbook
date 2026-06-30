@@ -1,17 +1,16 @@
 package it.evadid.homepage.workbook.content
 
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.control.info.FullInfo
-import it.evadid.workbook.model.abstractions.WorkbookElement
+import it.evadid.homepage.control.model.*
 import it.evadid.workbook.model.elements.*
 
 case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 
   override val availableLanguages: List[HumanLanguage] = List(German)
 
-  override val workbookId: String = "IuBWorkbook"
+  override val workbookId: String = "CompressionWorkbook"
 
-  private def t(key: String): String = s"IuBWorkbook/$key"
+  private def t(key: String): String = s"CompressionWorkbook/$key"
 
   override lazy val createWorkbook: Workbook = workbook(
     t("workbookTitle"),

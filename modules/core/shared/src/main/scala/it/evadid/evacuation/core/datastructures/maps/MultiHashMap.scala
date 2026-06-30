@@ -1,69 +1,59 @@
 package it.evadid.evacuation.core.datastructures.maps
 
-trait MultiHashMap[K, V, T[Z <: V]] {
-/*
+trait MultiHashMap[K, V, L[X] <: Iterable[X]] extends Map[K, L[V]]
 
-  def contains(k: K): Boolean
+object MultiHashMap {
 
-  def keys(): Iterable[K]
+  def emptyListBased[K, V](): MultiHashMap[K, V, List] = MultiHashMapEntryBased( List(), [A] => (xs: Iterable[A]) => xs.toList)
+  def emptySetBased[K, V](): MultiHashMap[K, V, Set] = MultiHashMapEntryBased( Set(), [A] => (xs: Iterable[A]) => xs.toSet)
 
-  def clear(): Unit
+}
 
-  def addAll(otherMap: MultiHashMap[K, V, _]): Unit
+private case class MultiHashMapEntryBased[K, V, L[X] <: Iterable[X]](
+                                                                    entries: L[(K, V)],
+                                                                    collectionFactory: [A] => Iterable[A] => L[A]
+                                                                  ) extends MultiHashMap[K, V, L] {
 
-  def getAllEntries: Set[(K, V)]
-
-  def getAllValues: Set[V]
-
-  def getCopy: MultiHashMap[K, V, T[T]]
-
-  def getCopyWithMappedKeys[KK](function: K => KK): MultiHashMap[KK, V, T]
-
-  def getCopyWithFilteredKeys(function: K => Boolean): MultiHashMap[K, V, T]
-
-  def getCopyWithReplacedValues[O](function: Seq[V] => Seq[O]): MultiHashMap[K, O, T]
-
-  def getCopyWithApplied[O](function: V => O): MultiHashMap[K, O, C]
-
-  def +=(kv: (K, C)): MultiHashMap[K, V, C]
-
-  def apply(k: K): C
-
-  def getOrElse(k: K, v: C): C
-
-  def -=(key: K): MultiHashMap[K, V, C]
-
-  def get(key: K): Option[C]
-
-  def addElement(kv: (K, V)): MultiHashMap[K, V, C]
-
-  def removeAllValues(useFilter: V => Boolean): MultiHashMap[K, V, C]
-
-  def -=(kv: (K, V)): MultiHashMap[K, V, C]
-
-
-  def removeElement(kv: (K, V)): MultiHashMap[K, V, C]
-
-
-  def print(): Unit = {
-    keys().foreach(key => {
-      println("key \"" + key + "\":")
-      this (key).foreach(value => {
-        println("    " + value)
-      })
-    })
+  private def buildMapFrom(iterable: Iterable[(K, V)]): MultiHashMapEntryBased[K, V, L] = {
+    MultiHashMapEntryBased(collectionFactory[(K, V)](iterable), collectionFactory)
   }
 
-  override def toString: String = {
-    var str: String = ""
-    keys().foreach(key => {
-      str += "key \"" + key + "\" (" + get(key).get.size + " entries):\n"
-      get(key).get.foreach(value => {
-        str += "\t" + value + "\n"
-      })
-    })
-    str + "\n"
+  private def buildMapOptionFrom(iterable: Iterable[(K, V)]): Option[MultiHashMapEntryBased[K, V, L]] = {
+    if (iterable.isEmpty) None
+    else Some(buildMapFrom(iterable))
   }
-*/
+
+  private def buildValueFrom(iterable: Iterable[(K, V)]): L[V] = {
+    collectionFactory[V](iterable.map(_._2))
+  }
+
+  private def buildValueOptionFrom(iterable: Iterable[(K, V)]): Option[L[V]] = {
+    if (iterable.isEmpty) None
+    else Some(buildValueFrom(iterable))
+  }
+
+  override def get(key: K): Option[L[V]] = {
+    buildValueOptionFrom(entries.filter(_._1 == key))
+  }
+
+  override def iterator: Iterator[(K, L[V])] = {
+    entries.groupBy(_._1).iterator.map { case (k, pairs) => k -> buildValueFrom(pairs) }
+  }
+
+  override def removed(key: K): MultiHashMapEntryBased[K, V, L] = {
+    buildMapFrom(entries.filter(_._1 != key))
+  }
+
+  override def updated[V1 >: L[V]](key: K, value: V1): Map[K, V1] = {
+    Map.from(iterator).updated(key, value)
+  }
+
+  def add(key: K, value: V): MultiHashMapEntryBased[K, V, L] = {
+    buildMapFrom(entries.iterator.toList ++ List((key, value)))
+  }
+
+  def addAll(key: K, values: Iterable[V]): MultiHashMapEntryBased[K, V, L] = {
+    buildMapFrom(entries.iterator.toList ++ values.map(curVal => (key, curVal)))
+  }
 
 }

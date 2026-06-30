@@ -1,5 +1,6 @@
 package it.evadid.core.datastructures.state
 
+import it.evadid.core.datastructures.state.observable.{ObservableValueImpl, ObserverDerivationLogic}
 import munit.FunSuite
 
 import scala.collection.mutable.ListBuffer

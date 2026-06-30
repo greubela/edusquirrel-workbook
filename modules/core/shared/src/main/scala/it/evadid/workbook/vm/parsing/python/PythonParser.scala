@@ -1,5 +1,6 @@
 package it.evadid.workbook.vm.parsing.python
 
+import it.evadid.workbook.vm.naming.BeEntityName
 import ParsingUtils.keepExpression
 import PythonClassParser.{ClassParseResult, ClassParserApi}
 import PythonLexerLike.{ParsedLine, findBodyIndent, skipBlankLines, toParsedLines}
@@ -7,6 +8,7 @@ import PythonStatementParser.{BlockParseResult, NodeWithNext, StatementApi}
 import PythonSymbolTable.{CurrentlyKnownStructures, ParseContext}
 import it.evadid.workbook.vm.types.BeDataType.{AnyType, BeUnionAllowedTypes}
 import it.evadid.core.datastructures.language.LanguageMap
+import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.workbook.vm.code.BeExpression
 import it.evadid.workbook.vm.code.controlStructures.{BeIfElse, BeSequence, BeWhile}
 import it.evadid.workbook.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
@@ -90,7 +92,7 @@ class PythonParser(
       context.defineVariable(paramName, mapType(typeHint))
     }
 
-    val returnVariable = returnSource.map(_.trim).filter(_.nonEmpty).map(returnHint => BeDefineVariable(LanguageMap.universalMap("return"), mapType(Some(returnHint))))
+    val returnVariable = returnSource.map(_.trim).filter(_.nonEmpty).map(returnHint => BeDefineVariable(BeEntityName.fromUniversalNameInParts("return"), mapType(Some(returnHint))))
 
     val computedIndent = findBodyIndent(lines, headerIndex + 1, indent)
 
@@ -106,9 +108,8 @@ class PythonParser(
     }
 
     val body = BeSequence.optionalBody(bodyExpressions)
-    val functionInfo = BeDefineFunction.functionInfo(LanguageMap.universalMap(name))
-    val indentWidth = if (bodyExpressions.nonEmpty && computedIndent > indent) computedIndent - indent else 4
-    val functionDef = BeDefineFunction(parameterDefinitions, returnVariable, body, functionInfo, indentWidth)
+    val functionInfo = BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(name))
+    val functionDef = BeDefineFunction(parameterDefinitions, returnVariable, body, functionInfo)
     context.registerFunction(name, functionDef)
     NodeWithNext(functionDef, nextIndex)
   }

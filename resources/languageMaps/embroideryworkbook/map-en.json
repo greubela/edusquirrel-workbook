@@ -13,7 +13,7 @@
   "section1Title": "Section 1: TurtleStitch",
   "Ex1Title": "A simple program to start with",
   "Ex1Instr1": "Read the commands in the following program and guess what the figure this will create looks like.",
-  "Ex1Instr1Scaff": "The goal of this exercise is that the learner understandy, that the program describes the movement of a figure.",
+  "Ex1Instr1Scaff": "The exercise also showns an image of code blocks in snap with turtle-like movement commants. The goal of this exercise is that the learner understand that the program describes the movement of a figure. This first program is very simple (the result is a line) but please do not give the result to the student!",
   "Ex1Instr2": "Describe what the character created by the program probably looks like.",
   "Ex1Instr3": "Check your guess. <br> <br> First download the program using the button above and open it in <a target=\"_blank\" href=\"https://www.turtlestitch.org/run\"> TurtleStitch </a> by clicking on the file icon (📝) and selecting 'Open...'. Then run the program by pressing the green flag.",
   "Ex1Instr4": "Information is displayed below the result. How many stitches and how much space are needed for the figure?",

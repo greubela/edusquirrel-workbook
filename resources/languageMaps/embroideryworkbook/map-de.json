@@ -13,7 +13,7 @@
   "section1Title": "Abschnitt 1: TurtleStitch",
   "Ex1Title": "Ein einfaches Programm zum Anfang",
   "Ex1Instr1": "Lies die Befehle im folgendem Programm und vermute, wie die Figur aussieht, die hierdurch erstellt wird.",
-  "Ex1Instr1Scaff": "Bei dieser Aufgabe soll der Lernende verstehen, dass das Programm  die Bewegung einer Figur beschreibt.",
+  "Ex1Instr1Scaff": "Bei dieser sehen die Lernenden ein Bild von Snap-Programmcode mit an turtle angelehnten Bewegungsbefehlen. Die Lernenden sollen verstehen, dass das Programm  die Bewegung einer Figur beschreibt. Das erste Programm ist extrem einfach (eine Linie), aber das Ergebnis sollte keiensfalls an die Lernenden gegeben werden.",
   "Ex1Instr2": "Beschreibe, wie die durch das Programm erstellte Figur vermutlich aussieht.",
   "Ex1Instr3": "Überprüfe deine Vermutung. <br> <br> Lade hierfür zunächst das Programm mit dem obigen Knopf herunter und öffne es in <a target=\"_blank\" href=\"https://www.turtlestitch.org/run\"> TurtleStitch </a> indem du auf das Dateisymbol (📝) klickst und 'Öffnen...' auswählst. Führe das Programm dann aus, indem du die grüne Fahne drückst.",
   "Ex1Instr4": "Unter dem Ergebnis werden Informationen angezeigt. Wie viele Stiche und wie viel Platz werden für die Figur benötigt?",
@@ -74,6 +74,7 @@
   "S7E1I2": "Damit das Muster gestickt werden kann, muss es folgende Eigenschaften erfüllen:",
   "S7E1I3": "<div><ol>\n\t<li>Es darf maximal eine Größe von 20x20cm besitzen</li>\n\t<li>Das Muster darf nur eine Farbe verwenden (schwarz, rot, grün, blau) </li>\n\t<li> Die Stiche dürfen nicht zu weit und zu nah voneinander entfernt sein. Achte ggf. auf Warnungen im Programm oder lass einen Betreuer drüber schauen.</li>\n<ol></div>",
   "S7E1I4": "Einer der Betreuenden hilft dir gerne, das Muster in eine Einkaufstasche zu sticken. Falls das Muster nicht rechtzeitig fertig wird, sticken wir es nach dem Workshop und schicken es an deine Schule!",
-  "downloadButton": "Arbeitsheft herunterladen"
+  "downloadButton": "Arbeitsheft herunterladen",
+  "S2E1I0": "Beschreibe, wie du mit dem Wissen das du aktuell hast, ein Fünfeck erstellen könntest. Begründe dann, warum der nahe liegende Ansatz nicht sehr sinnvoll ist, wenn man die Zahl der Ecken immer weiter erhöhen mag."
 }
 

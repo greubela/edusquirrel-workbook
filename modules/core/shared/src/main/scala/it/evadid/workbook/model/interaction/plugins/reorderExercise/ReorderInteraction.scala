@@ -5,7 +5,9 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 
-sealed trait ReorderInteraction[T] extends WorkbookInteraction[ReorderInteractionState[T]]
+sealed trait ReorderInteraction[T] extends WorkbookInteraction[ReorderInteractionState[T]] {
+  val elements: List[T]
+}
 
 object ReorderInteraction {
 
@@ -18,6 +20,8 @@ object ReorderInteraction {
     orderConstraints: List[(Int, Int)] = Nil
   ) extends ReorderInteraction[String] {
 
+    override val elements: List[String] = lines
+
     override val defaultValue: ReorderInteractionState[String] = {
       ReorderInteractionState.initStateFromElementsAndSeed(lines, seed, Serializer.stringIO, ReorderType.CODELINES(programmingLanguage))
     }
@@ -25,6 +29,8 @@ object ReorderInteraction {
   }
 
   case class ReorderMapIdInteraction(override val id: String, ids: List[LanguageMapContentId], seed: Long = 0) extends ReorderInteraction[LanguageMapContentId] {
+
+    val elements: List[LanguageMapContentId] = ids
 
     override val defaultValue: ReorderInteractionState[LanguageMapContentId] = {
       ReorderInteractionState.initStateFromElementsAndSeed(ids, seed, LanguageMapContentId.serializer, ReorderType.LANGUAGE_MAP_IDS)
