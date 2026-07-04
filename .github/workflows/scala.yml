@@ -39,8 +39,8 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Build Scala.js client and worker
-        run: sbt -batch -v buildClientFast buildWorkerFast
+      - name: Build deployment artifacts
+        run: sbt -batch -v deployAll
 
       - name: Assemble GitHub Pages site
         run: node tools/dev/assemble-site.mjs
@@ -129,7 +129,8 @@ jobs:
           test -d _site/resources/img
           test -d _site/img
           test -f _site/artifacts/newest/client.js
-          test -f _site/artifacts/newest/backend-worker.js
+          test -f _site/artifacts/newest/worker.js
+          test -f _site/artifacts/newest/server.jar
 
           if grep -R -I -Fq '../../artifacts/' _site; then
             echo "Unpatched GitHub Pages artifact path found in _site." >&2

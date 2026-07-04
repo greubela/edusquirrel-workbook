@@ -43,23 +43,23 @@ object BuildCommands {
   final case class ArtifactBuildArchitecture(
       client: JsArtifactModule,
       worker: JsArtifactModule,
-      backend: JvmArtifactModule
+      server: JvmArtifactModule
   ) {
-    val modules: Seq[ArtifactModule] = Seq(client, worker, backend)
+    val modules: Seq[ArtifactModule] = Seq(client, worker, server)
   }
 
   lazy val buildClientDev = taskKey[Unit]("Build the client with fastLinkJS and copy it to artifacts/newest")
   lazy val buildClientDeploy = taskKey[Unit]("Build the client with fullLinkJS and copy it to newest, stable, and history")
   lazy val buildWorkerDev = taskKey[Unit]("Build the web worker with fastLinkJS and copy it to artifacts/newest")
   lazy val buildWorkerDeploy = taskKey[Unit]("Build the web worker with fullLinkJS and copy it to newest, stable, and history")
-  lazy val buildBackendDev = taskKey[Unit]("Build the backend assembly and copy it to artifacts/newest")
-  lazy val buildBackendDeploy = taskKey[Unit]("Build the backend assembly and copy it to newest, stable, and history")
+  lazy val buildServerDev = taskKey[Unit]("Build the server assembly and copy it to artifacts/newest")
+  lazy val buildServerDeploy = taskKey[Unit]("Build the server assembly and copy it to newest, stable, and history")
   lazy val buildAllDev = taskKey[Unit]("Build all modules for development")
   lazy val buildAllDeploy = taskKey[Unit]("Build all modules for deployment")
 
   lazy val buildClientFast = taskKey[Unit]("Deprecated alias for buildClientDev")
   lazy val buildWorkerFast = taskKey[Unit]("Deprecated alias for buildWorkerDev")
-  lazy val buildServerFast = taskKey[Unit]("Deprecated alias for buildBackendDev")
+  lazy val buildServerFast = taskKey[Unit]("Deprecated alias for buildServerDev")
   lazy val deployAll = taskKey[Unit]("Deprecated alias for buildAllDeploy")
 
   private val TimestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss")
@@ -69,13 +69,13 @@ object BuildCommands {
     buildClientDeploy := buildJsModuleDeploy(architecture.client).value,
     buildWorkerDev := buildJsModuleDev(architecture.worker).value,
     buildWorkerDeploy := buildJsModuleDeploy(architecture.worker).value,
-    buildBackendDev := buildJvmModule(architecture.backend, BuildMode.Dev).value,
-    buildBackendDeploy := buildJvmModule(architecture.backend, BuildMode.Deploy).value,
-    buildAllDev := Def.sequential(buildClientDev, buildWorkerDev, buildBackendDev).value,
-    buildAllDeploy := Def.sequential(buildClientDeploy, buildWorkerDeploy, buildBackendDeploy).value,
+    buildServerDev := buildJvmModule(architecture.server, BuildMode.Dev).value,
+    buildServerDeploy := buildJvmModule(architecture.server, BuildMode.Deploy).value,
+    buildAllDev := Def.sequential(buildClientDev, buildWorkerDev, buildServerDev).value,
+    buildAllDeploy := Def.sequential(buildClientDeploy, buildWorkerDeploy, buildServerDeploy).value,
     buildClientFast := buildClientDev.value,
     buildWorkerFast := buildWorkerDev.value,
-    buildServerFast := buildBackendDev.value,
+    buildServerFast := buildServerDev.value,
     deployAll := buildAllDeploy.value
   )
 
