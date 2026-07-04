@@ -9,7 +9,7 @@ object BuildArchitecture {
       backendProject: Project
   ): ArtifactBuildArchitecture = ArtifactBuildArchitecture(
     client = JsArtifactModule("client", clientProject, "client.js"),
-    worker = JsArtifactModule("worker", workerProject, "backend-worker.js"),
+    worker = JsArtifactModule("worker", workerProject, "worker.js"),
     backend = JvmArtifactModule("backend", backendProject, "server.jar")
   )
 }
