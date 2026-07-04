@@ -4,7 +4,7 @@ EduSquirrel Workbook is a Scala.js/Laminar project for building **interactive wo
 
 Instead of presenting a fixed page, a workbook is assembled from reusable UI elements and interactions (text prompts, coding tasks, exploratory downloads, GPT-assisted feedback, TurtleStitch tasks, etc.). The goal is to let teachers/authors compose guided learning paths while learners work through sections in the browser.
 
-The repository now uses an sbt **module-based structure**. The data model that can be shared between browser, worker, and JVM code lives in `modules/core`; browser rendering and authored workbook content live in `modules/client`; browser web-worker code lives in `modules/worker`; and the JVM backend lives in `modules/server`.
+The repository now uses an sbt **module-based structure**. The data model that can be shared between browser, worker, and JVM code lives in `modules/core`; browser rendering and authored workbook content live in `modules/client`; browser web-worker code lives in `modules/worker`; and the JVM server lives in `modules/server`.
 
 ## 1) Project goal (for humans)
 
@@ -28,8 +28,8 @@ modules/
 │   ├── js/       # Scala.js-specific core implementation
 │   └── jvm/      # JVM-specific core implementation
 ├── client/       # Scala.js browser app: MainApp, Laminar renderers, workbook content, legacy browser-only UI
-├── worker/       # Scala.js web-worker backend used by in-browser interactions
-└── server/       # JVM backend and command handlers
+├── worker/       # Scala.js web-worker used by in-browser interactions
+└── server/       # JVM server and command handlers
 ```
 
 How the modules relate to each other:
@@ -38,7 +38,7 @@ How the modules relate to each other:
 - `core` is a Scala cross-project for both JS and JVM. Put platform-independent workbook/domain models in `modules/core/shared`.
 - `client` depends on `core.js`. Put DOM/Laminar rendering, browser utilities, workbook assembly, and frontend-only legacy code here.
 - `worker` depends on `core.js`. Put code that runs inside browser workers here.
-- `server` depends on `core.jvm`. Put JVM backend code and server-side command handling here.
+- `server` depends on `core.jvm`. Put JVM server code and server-side command handling here.
 
 This means an old path like `src/main/scala/workbook/model/Workbook.scala` is now represented by the shared model under `modules/core/shared/src/main/scala/it/evadid/workbook/model/...`, while browser-specific workbook rendering lives under `modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/...`.
 
@@ -83,7 +83,7 @@ When implementing features, these are the most useful anchors in the new module 
 - **`HtmlRenderFactory`** (`modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/HtmlRenderFactory.scala`)
   - Browser-side dispatch point for rendering shared elements to Laminar nodes.
 - **`HtmlFullWorkbookApp` and workbook info/control classes** (`modules/client/src/main/scala/it/evadid/homepage/control/...`)
-  - Runtime context for language maps, active workbook/section, storage, backend execution, and fullscreen/browser state.
+  - Runtime context for language maps, active workbook/section, storage, server execution, and fullscreen/browser state.
 
 A practical search pattern is:
 
@@ -185,9 +185,10 @@ Useful sbt tasks from `build.sbt` include:
 
 ```bash
 sbt buildClientFast   # fastLinkJS for modules/client, copied to artifacts/newest/client.js
-sbt buildWorkerFast   # fastLinkJS for modules/worker, copied to artifacts/newest/backend-worker.js
+sbt buildWorkerFast   # fastLinkJS for modules/worker, copied to artifacts/newest/worker.js
 sbt buildServerFast   # assembly jar for modules/server, copied to artifacts/newest/server.jar
-sbt deployAll         # full client + worker + server build and artifact copies
+sbt buildServerDeploy # assembly jar for modules/server, copied to newest, stable, and history when the hash changes
+sbt deployAll         # full client + worker + server deploy builds and artifact copies
 ```
 
 ## 10) GitHub Pages deployment
