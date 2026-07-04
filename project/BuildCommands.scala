@@ -119,10 +119,19 @@ object BuildCommands {
     s"$timestamp-$moduleName-$shortHash-$distFileName"
   }
 
-  private def historyAlreadyContainsHash(historyDir: File, moduleName: String, hash: String): Boolean = {
+  private def newestHistoryFileFor(historyDir: File, distFileName: String): Option[File] =
+    if (historyDir.exists) {
+      IO.listFiles(historyDir)
+        .filter(file => file.isFile && file.getName.endsWith(s"-$distFileName"))
+        .sortBy(file => (file.lastModified, file.getName))
+        .lastOption
+    } else {
+      None
+    }
+
+  private def newestHistoryFileHasHash(historyDir: File, distFileName: String, hash: String): Boolean = {
     val shortHash = hash.take(12)
-    historyDir.exists &&
-      IO.listFiles(historyDir).exists(file => file.isFile && file.getName.contains(s"-$moduleName-$shortHash-"))
+    newestHistoryFileFor(historyDir, distFileName).exists(_.getName.contains(s"-$shortHash-"))
   }
 
   private def publishArtifact(
@@ -143,8 +152,8 @@ object BuildCommands {
 
     if (mode.release) {
       IO.copyFile(sourceFile, root / "artifacts" / "stable" / module.distFileName)
-      if (historyAlreadyContainsHash(historyDir, module.moduleName, artifactHash)) {
-        log.info(s"Skipped history copy for ${module.moduleName} because hash $artifactHash already exists")
+      if (newestHistoryFileHasHash(historyDir, module.distFileName, artifactHash)) {
+        log.info(s"Skipped history copy for ${module.moduleName} because newest history entry already has hash $artifactHash")
       } else {
         val historyFile = historyDir / historyFileName(module.moduleName, module.distFileName, artifactHash)
         IO.copyFile(sourceFile, historyFile)
