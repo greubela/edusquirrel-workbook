@@ -10,10 +10,11 @@ import it.evadid.workbook.vm.code.defining.BeDefineVariable
 import it.evadid.workbook.vm.code.errors.BeExpressionUnsupported
 import it.evadid.workbook.vm.code.usage.{BeAssignVariable, BeUseValue}
 import it.evadid.workbook.vm.types.{BeDataType, BeDataValueLiteral}
+import it.evadid.workbook.vm.naming.BeEntityName
 
 class BeBlockRendererFactorySpec extends FunSuite {
 
-  private val variable = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("x"), BeDataType.Int)
+  private val variable = BeDefineVariable(BeEntityName.fromUniversalNameInParts("x"), BeDataType.Int)
   private val literal = BeUseValue(BeDataValueLiteral("1"), Some(variable))
 
   test("blockFor dispatches core expressions to client-side BeBlock renderers") {
