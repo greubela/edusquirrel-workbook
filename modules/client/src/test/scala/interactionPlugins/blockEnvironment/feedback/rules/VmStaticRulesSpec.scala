@@ -9,6 +9,7 @@ import it.evadid.workbook.vm.code.defining.BeDefineVariable
 import it.evadid.workbook.vm.code.others.BeStartProgram
 import it.evadid.workbook.vm.code.usage.BeUseValue
 import it.evadid.workbook.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
+import it.evadid.workbook.vm.naming.BeEntityName
 import munit.FunSuite
 
 final class VmStaticRulesSpec extends FunSuite {
@@ -16,7 +17,7 @@ final class VmStaticRulesSpec extends FunSuite {
   private def mkVar(name: String): BeDefineVariable = {
     val nameMap: LanguageMap[HumanLanguage] =
       LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(AppLanguage.English -> name))
-    BeDefineVariable(nameMap, BeDataType.AnyType)
+    BeDefineVariable(BeEntityName.fromMapInCodeNotation(nameMap), BeDataType.AnyType)
   }
 
   test("VM_EMPTY_PROGRAM rule should fail for completely empty program") {
