@@ -46,6 +46,11 @@ private def load(containerId: String): Unit = {
   else render(container, domElement)
 }
 
+private def initWorkbookOnlyAfterDependenciesLoaded: Boolean = {
+  val configValue = js.Dynamic.global.selectDynamic("EDUSQUIRREL_INIT_WORKBOOK_ONLY_AFTER_ALL_DEPENDENCIES_LOADED")
+  if (js.isUndefined(configValue)) true else configValue.asInstanceOf[Boolean]
+}
+
 private def testCalculations(): Unit = {
 
   //println("testing some calculations atm :)")
@@ -73,8 +78,18 @@ def mainApp(): Unit = {
         case Success(_) => println("finished loading!")
         case Failure(err) => err.printStackTrace()
       }(using ExecutionContext.global)
-      load(canLoad.head)
-      testCalculations()
+
+      if (initWorkbookOnlyAfterDependenciesLoaded) {
+        loadBasicsFut.onComplete {
+          case Success(_) =>
+            load(canLoad.head)
+            testCalculations()
+          case Failure(_) => println("MainApp skipped workbook initialization because dependencies failed to load.")
+        }(using ExecutionContext.global)
+      } else {
+        load(canLoad.head)
+        testCalculations()
+      }
     } else {
       println("MainApp skipped: no document (worker/module import context).")
     }
