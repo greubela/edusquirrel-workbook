@@ -18,9 +18,9 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   private val targetLanguages = List(Python, Java, Lisp, Cpp)
   private val humanLanguage = English
 
-  private val xVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("x"), BeDataType.Int)
-  private val yVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("y"), BeDataType.Int)
-  private val boolVar = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("ok"), BeDataType.Boolean)
+  private val xVar = BeDefineVariable(BeEntityName.fromUniversalNameInParts("x"), BeDataType.Int)
+  private val yVar = BeDefineVariable(BeEntityName.fromUniversalNameInParts("y"), BeDataType.Int)
+  private val boolVar = BeDefineVariable(BeEntityName.fromUniversalNameInParts("ok"), BeDataType.Boolean)
 
   private val literalOne = BeUseValue(BeDataValueLiteral("1"), Some(xVar))
   private val literalTwo = BeUseValue(BeDataValueLiteral("2"), Some(yVar))
@@ -32,7 +32,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   private val function = BeDefineFunction(
     inputs = List(xVar, yVar),
-    outputs = Some(BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("result"), BeDataType.Int)),
+    outputs = Some(BeDefineVariable(BeEntityName.fromUniversalNameInParts("result"), BeDataType.Int)),
     body = BeSequence.optionalBody(List(returnX)),
     functionTypeInfo = functionInfo(BeEntityName.fromUniversalNameInParts("add"))
   )

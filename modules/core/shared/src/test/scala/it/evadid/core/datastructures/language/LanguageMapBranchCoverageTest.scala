@@ -10,7 +10,7 @@ class LanguageMapBranchCoverageTest extends FunSuite {
 
     val onlyGerman: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(German -> "G"))
     val onlyEnglish: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(English -> "E"))
-    val combined = LanguageMap.concatLanguageMaps(List(onlyGerman, onlyEnglish))
+    val combined = LanguageMap.unionLanguageMap(List(onlyGerman, onlyEnglish))
     assertEquals(combined.getInLanguage(English), "E")
     assertEquals(combined.getInLanguage(French), "[no French]")
 

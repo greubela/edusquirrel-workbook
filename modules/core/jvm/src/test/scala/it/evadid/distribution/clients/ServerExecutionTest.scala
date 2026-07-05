@@ -1,16 +1,16 @@
 package it.evadid.distribution.clients
 
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
-import it.evadid.distribution.command.{ExecutionCommand, ExecutionInfo, ExecutionResult}
-import it.evadid.util.logging.Logger
+import it.evadid.distribution.command.{ExecutionCommand, ExecutionResult}
+import it.evadid.util.logging.{BasicLogger, Logger}
 import munit.FunSuite
+import it.evadid.distribution.formats.ExecutionClientResponse
 import upickle.default.write
 
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
-import scala.util.Success
 
 class ServerExecutionTest extends FunSuite {
 
@@ -32,14 +32,15 @@ class ServerExecutionTest extends FunSuite {
       val requestBody = new String(exchange.getRequestBody.readAllBytes(), StandardCharsets.UTF_8)
       val command = ExecutionCommand.fromJson(requestBody)
 
-      val response = ExecutionInfo(
-        command = command,
-        result = Success(ExecutionResult(command.params, "ok", "")),
-        meta = None
+      val history = it.evadid.distribution.command.ExecutionHistory(
+        java.time.LocalDateTime.parse("2026-01-01T08:00:00"),
+        java.time.LocalDateTime.parse("2026-01-01T08:00:01"),
+        java.time.LocalDateTime.parse("2026-01-01T08:00:02"),
+        java.time.LocalDateTime.parse("2026-01-01T08:00:03")
       )
+      val response = ExecutionClientResponse(history.timestampCommandReceived, history.timestampExecutionStarted, history.timestampExecutionFinished, Right(command.params), Some(command), "ok", "")
 
-      val payload: Map[String, String] = Map("executionInfo" -> response.toJson)
-      val bytes = write(payload).getBytes(StandardCharsets.UTF_8)
+      val bytes = write(response.serializedToMap()).getBytes(StandardCharsets.UTF_8)
       exchange.getResponseHeaders.add("Content-Type", "application/json")
       exchange.sendResponseHeaders(200, bytes.length)
       val os = exchange.getResponseBody
@@ -49,11 +50,11 @@ class ServerExecutionTest extends FunSuite {
       val client = JvmRemoteExecutionClient("127.0.0.1", port)
       val command = ExecutionCommand("echo", Map("x" -> "1"))
 
-      val info = Await.result(client.handleExecution(command, Logger()), 5.seconds)
+      val info = Await.result(client.handleExecution(command, BasicLogger()), 5.seconds)
 
-      assertEquals(info.command, command)
-      assertEquals(info.resultTry.map(_.stdOut).get, "ok")
-      assertEquals(info.resultTry.map(_.data).get, Map("x" -> "1"))
+      assertEquals(info.parsedExecutionCommand, Some(command))
+      assertEquals(info.response, Right(Map("x" -> "1")))
+      assert(info.loggerOut.contains("ok"))
     }
   }
 }

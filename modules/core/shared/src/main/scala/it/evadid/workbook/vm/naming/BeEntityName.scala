@@ -20,6 +20,8 @@ object BeEntityName {
 
   def fromCodeString(stringInCode: String): BeEntityName = fromUniversalNameInParts(stringInCode)
 
+  def fromLiteral(literalName: String): BeEntityName = BeEntityNameLiteral(literalName)
+
   def fromUniversalNameInParts(universalNameInParts: String): BeEntityName = BeEntityNamePartsBased(LanguageMap.universalMap(universalNameInParts))
 
   def fromMapInCodeNotation(partsMap: LanguageMap[HumanLanguage]): BeEntityName = BeEntityNamePartsBased(partsMap)
@@ -33,6 +35,10 @@ object BeEntityName {
       val parts: List[String] = NamingStyle.fromAnyNotationToParts(partsString)
       namingStyle.applyStyle(parts)
     }
+  }
+
+  private case class BeEntityNameLiteral(literalName: String) extends BeEntityName {
+    override def getNameIn(humanLanguage: HumanLanguage, namingStyle: NamingStyle): String = literalName
   }
 
 }

@@ -5,6 +5,7 @@ import it.evadid.core.datastructures.language.AppLanguage.{Cpp, Java, JavaScript
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.workbook.vm.code.{BeDefineStructure, BeExpression}
+import it.evadid.workbook.vm.code.controlStructures.BeSequence
 import it.evadid.workbook.vm.code.tree.BeExpressionNode
 import it.evadid.workbook.vm.io.BeExpressionIO
 import it.evadid.workbook.vm.naming.{BeEntityName, CodeRepresentationConfig}
@@ -180,7 +181,7 @@ case class BeDefineClass(
       val inClass = curMethod.functionTypeInfo.isMethodInClass
       if (inClass.isEmpty)
         Some(BeInfo(LanguageMap.universalMap("Method must have an object it´s called on!"), BeInfo.SyntaxError.StructureMismatch))
-      else if (inClass.get != this)
+      else if (inClass.get.name.universalInterpretation() != BeDefineClass.this.name.universalInterpretation())
         Some(BeInfo(LanguageMap.universalMap("Method must live in the class its defined in!"), BeInfo.SyntaxError.StructureMismatch))
       else None
     })
@@ -194,9 +195,24 @@ case class BeDefineClass(
 }
 
 object BeDefineClass {
+  case class MethodSignature(name: BeEntityName, inputs: List[BeDefineVariable], output: Option[BeDefineVariable])
+
   def apply(name: LanguageMap[HumanLanguage], attributes: List[BeDefineVariable], methods: List[BeDefineFunction], bodyExtras: List[BeExpression]): BeDefineClass =
     BeDefineClass(BeEntityName.fromMapInCodeNotation(name.asInstanceOf[LanguageMap[HumanLanguage]]), attributes, methods, bodyExtras)
 
   def fromLanguageMap(name: LanguageMap[HumanLanguage], attributes: List[BeDefineVariable], methods: List[BeDefineFunction], bodyExtras: List[BeExpression] = Nil): BeDefineClass =
     apply(name, attributes, methods, bodyExtras)
+
+  def withMethods(name: BeEntityName, attributes: List[BeDefineVariable], methodSignatures: List[MethodSignature], bodyExtras: List[BeExpression] = Nil): BeDefineClass = {
+    val ownerInfoClass = BeDefineClass(name, attributes, Nil, bodyExtras)
+    val methods = methodSignatures.map { signature =>
+      BeDefineFunction(
+        signature.inputs,
+        signature.output,
+        BeSequence.optionalBody(List(BeExpression.pass)),
+        BeDefineFunction.methodFunctionInfo(ownerInfoClass, signature.name)
+      )
+    }
+    BeDefineClass(name, attributes, methods, bodyExtras)
+  }
 }
