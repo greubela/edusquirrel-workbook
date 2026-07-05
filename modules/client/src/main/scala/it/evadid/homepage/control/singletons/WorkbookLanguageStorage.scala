@@ -143,6 +143,7 @@ object WorkbookLanguageStorage {
 
   private lazy val languageMapDirs: Set[FileDescription] = Set(
     FileFactory.relativeToResourceFolder("/languageMaps/basic"),
+    FileFactory.relativeToResourceFolder("/languageMaps/entitynames"),
     FileFactory.relativeToResourceFolder("/languageMaps/turtlestitch"),
     FileFactory.relativeToResourceFolder("/languageMaps/blockeditor"),
     FileFactory.relativeToResourceFolder("/languageMaps/embroideryworkbook"),

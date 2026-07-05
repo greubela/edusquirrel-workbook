@@ -173,8 +173,7 @@ object BeDefineFunction {
   }
 
   def operatorInfo(symbol: String, position: Int): BeFunctionTypeInfo = {
-    BeFunctionTypeInfo(None, Some(BeEntityName.fromUniversalNameInParts(symbol)), Operator(position))
+    BeFunctionTypeInfo(None, Some(BeEntityName.fromLiteral(symbol)), Operator(position))
   }
 
 }
-
