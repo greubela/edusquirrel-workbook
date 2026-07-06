@@ -5,10 +5,10 @@ import com.raquo.laminar.api.L.eventPropToProcessor
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.elements.*
 import it.evadid.core.datastructures.geometry.Point
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
+import it.evadid.vm.BeProgram
+import it.evadid.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
 import org.scalajs.dom.{DragEvent, MouseEvent}
-import it.evadid.workbook.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
 
 trait BeTreeControllerConfig {
 

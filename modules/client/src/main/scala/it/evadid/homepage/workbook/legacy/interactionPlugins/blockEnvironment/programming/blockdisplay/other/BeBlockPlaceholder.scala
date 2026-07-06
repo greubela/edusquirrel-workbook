@@ -7,7 +7,7 @@ import com.raquo.laminar.api.L.{Signal, eventPropToProcessor, svg}
 import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreePosition
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, BeBlockSingleShape, BeTreeDropTarget, RenderingInformation}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
-import it.evadid.workbook.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
+import it.evadid.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.singleWidth.ControlFlowDirected
 import todomove.webElementsOld.webElements.svg.shapes.{BeShape, ControlFlowShape}
 

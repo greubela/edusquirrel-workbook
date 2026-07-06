@@ -1,6 +1,7 @@
 package it.evadid.workbook.vm.parsing.java
 
-import it.evadid.workbook.vm.code.defining.{BeDefineClass, BeDefineFunction, KnownBeDefineStructures}
+import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, KnownBeDefineStructures}
+import it.evadid.vm.parsing.java.JavaKnownDefinitionScanner
 import munit.FunSuite
 
 class JavaKnownDefinitionScannerSpec extends FunSuite {

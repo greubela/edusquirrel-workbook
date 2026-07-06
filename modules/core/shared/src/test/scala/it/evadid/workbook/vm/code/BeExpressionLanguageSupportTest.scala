@@ -1,17 +1,17 @@
 package it.evadid.workbook.vm.code
 
-import it.evadid.workbook.vm.naming.BeEntityName
-import it.evadid.workbook.vm.code.defining.BeDefineFunction.functionInfo
+import it.evadid.vm.code.defining.BeDefineFunction.functionInfo
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
+import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
+import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
+import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
+import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
+import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
+import it.evadid.vm.naming.BeEntityName
+import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
 import munit.FunSuite
-import it.evadid.workbook.vm.code.BeExpression
-import it.evadid.workbook.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
-import it.evadid.workbook.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
-import it.evadid.workbook.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
-import it.evadid.workbook.vm.code.others.{BeReturn, BeStartProgram}
-import it.evadid.workbook.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
-import it.evadid.workbook.vm.types.{BeDataType, BeDataValueLiteral}
 
 class BeExpressionLanguageSupportTest extends FunSuite {
 

@@ -1,6 +1,7 @@
 package it.evadid.workbook.vm.code.defining
 
-import it.evadid.workbook.vm.types.BeDataType
+import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, KnownBeDefineStructures}
+import it.evadid.vm.types.BeDataType
 import munit.FunSuite
 
 class KnownBeDefineStructuresSpec extends FunSuite {

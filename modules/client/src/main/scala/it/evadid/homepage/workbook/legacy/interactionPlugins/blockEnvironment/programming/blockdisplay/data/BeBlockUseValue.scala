@@ -6,9 +6,9 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.pr
 import it.evadid.core.datastructures.language.AppLanguage.{BlockDisplay, English}
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlockSingleShape, RenderingInformation}
-import it.evadid.workbook.vm.code.tree.BeExpressionNode
-import it.evadid.workbook.vm.code.usage.BeUseValue
-import it.evadid.workbook.vm.types.{BeDataValueLiteral, BeUseValueReference}
+import it.evadid.vm.code.tree.BeExpressionNode
+import it.evadid.vm.code.usage.BeUseValue
+import it.evadid.vm.types.{BeDataValueLiteral, BeUseValueReference}
 import todomove.webElementsOld.webElements.svg.shapes.{BeShape, BeShapeAmendFactory, ControlFlowShape, TextShape}
 import todomove.webElementsOld.webElements.svg.shapes.composite.ShapeAroundShape
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.singleWidth.ControlFlowEmpty

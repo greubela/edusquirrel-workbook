@@ -1,5 +1,6 @@
 package it.evadid.workbook.vm.naming
 
+import it.evadid.vm.naming.KnownBeEntityNames
 import munit.FunSuite
 
 class KnownBeEntityNamesSpec extends FunSuite {

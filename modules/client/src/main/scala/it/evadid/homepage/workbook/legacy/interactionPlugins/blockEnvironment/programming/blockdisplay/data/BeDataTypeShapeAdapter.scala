@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.data
 
-import it.evadid.workbook.vm.types.BeDataType
+import it.evadid.vm.types.BeDataType
 import todomove.webElementsOld.webElements.svg.shapes.BeShape
 import todomove.webElementsOld.webElements.svg.shapes.BeShape.BeShapeContainerable
 import todomove.webElementsOld.webElements.svg.shapes.datatypes.{BooleanShape, DateShape, DuckShape, NumericShape, StringShape, UnitShape}

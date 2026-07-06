@@ -1,6 +1,7 @@
 package it.evadid.workbook.vm.parsing.python
 
-import it.evadid.workbook.vm.code.defining.BeDefineFunction
+import it.evadid.vm.code.defining.BeDefineFunction
+import it.evadid.vm.parsing.python.PythonKnownDefinitionScanner
 import munit.FunSuite
 
 class PythonKnownDefinitionScannerSpec extends FunSuite {

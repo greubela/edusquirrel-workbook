@@ -6,8 +6,8 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeTreeControllerConfig, BeTreeDisplayConfig}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.elements.{EditorState, HtmlBeTreeDisplay}
+import it.evadid.vm.BeProgram
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 
 case class TurtleProgrammingPreview(fullInfo: FullInfo, editorState: EditorState, expectedSvgResult: AppSvgElement) extends HtmlAppElement {

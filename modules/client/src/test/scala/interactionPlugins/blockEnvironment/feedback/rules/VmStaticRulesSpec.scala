@@ -4,12 +4,12 @@ import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.rules.VmStaticRules
-import it.evadid.workbook.vm.code.controlStructures.BeSequence
-import it.evadid.workbook.vm.code.defining.BeDefineVariable
-import it.evadid.workbook.vm.code.others.BeStartProgram
-import it.evadid.workbook.vm.code.usage.BeUseValue
-import it.evadid.workbook.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
-import it.evadid.workbook.vm.naming.BeEntityName
+import it.evadid.vm.code.controlStructures.BeSequence
+import it.evadid.vm.code.defining.BeDefineVariable
+import it.evadid.vm.code.others.BeStartProgram
+import it.evadid.vm.code.usage.BeUseValue
+import it.evadid.vm.naming.BeEntityName
+import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
 import munit.FunSuite
 
 final class VmStaticRulesSpec extends FunSuite {

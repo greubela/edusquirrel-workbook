@@ -1,23 +1,23 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionEditors
 
-import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.state.*
+import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
-import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
+import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
+import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
 import it.evadid.workbook.model.interaction.basic.{LabeledNumberInteraction, NumberType}
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
+import org.scalajs.dom.HTMLLabelElement
 
-object HtmlBasicNumberRenderer extends HtmlRenderFactory[LabeledNumberInteraction] {
+object HtmlBasicNumberRenderer extends LineBasedRenderingFactory[LabeledNumberInteraction] {
 
   private val TrailingNumberPattern = """^(.*?)([+-]?\s*)((?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)\s*$""".r
 
-  override def createDomElement(lni: LabeledNumberInteraction): L.Element = {
+  override protected def createRendering(lni: LabeledNumberInteraction): AtomarLineRendering = {
 
-    val numberVar = lni.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MINOR).toAirstreamVar
+    val numberVar: Var[String] = lni.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MINOR).toAirstreamVar
 
-    div(
-      cls := "workbook-interaction simple-number-editor",
+    val dom: ReactiveHtmlElement[HTMLLabelElement] =
       label(
         cls := "simple-number-editor__body",
         span(
@@ -50,7 +50,9 @@ object HtmlBasicNumberRenderer extends HtmlRenderFactory[LabeledNumberInteractio
           )
         )
       )
-    )
+
+    RenderingLine(true, dom, "simple-number-editor")
+
   }
 
   private def adjust(currentValue: String, rawDelta: BigDecimal, numberType: NumberType): String = {
@@ -97,5 +99,4 @@ object HtmlBasicNumberRenderer extends HtmlRenderFactory[LabeledNumberInteractio
     case NumberType.IntegerLike => value.setScale(0, BigDecimal.RoundingMode.HALF_UP).toBigInt.toString
     case NumberType.FractionLike | NumberType.AlgebraicLike => value.bigDecimal.stripTrailingZeros.toPlainString
   }
-
 }

@@ -1,15 +1,13 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch
 
-import it.evadid.workbook.vm.code.{defining}
-import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
-import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.workbook.vm.code.controlStructures.BeSequence
-import it.evadid.workbook.vm.code.{BeExpression, defining}
-import it.evadid.workbook.vm.code.defining.BeDefineFunction
-import it.evadid.workbook.vm.naming.BeEntityName
-import it.evadid.workbook.vm.code.others.BeStartProgram
-import it.evadid.workbook.vm.code.usage.{BeFunctionCall, BeUseValue}
-import it.evadid.workbook.vm.types.BeDataValueLiteral
+import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.vm.code.controlStructures.BeSequence
+import it.evadid.vm.code.defining.BeDefineFunction
+import it.evadid.vm.code.others.BeStartProgram
+import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
+import it.evadid.vm.code.{BeExpression, defining}
+import it.evadid.vm.naming.{BeEntityName, NamingStyle}
+import it.evadid.vm.types.BeDataValueLiteral
 
 object TurtleStitchFromBeExpressionSerializer {
 
@@ -68,7 +66,7 @@ object TurtleStitchFromBeExpressionSerializer {
   }
 
   private def selectorOf(call: BeFunctionCall): String =
-    call.funcDef.functionTypeInfo.displayName.getNameIn(AppLanguage.English, it.evadid.workbook.vm.naming.NamingStyle.SnakeCase).trim
+    call.funcDef.functionTypeInfo.displayName.getNameIn(AppLanguage.English, NamingStyle.SnakeCase).trim
 
   private def orderedArgs(call: BeFunctionCall): List[BeExpression] =
     call.funcDef.inputs.flatMap(variable => call.parameterValueMap.get(variable))

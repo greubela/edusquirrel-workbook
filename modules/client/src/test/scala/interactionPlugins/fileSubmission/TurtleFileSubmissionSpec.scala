@@ -1,10 +1,10 @@
 package interactionPlugins.fileSubmission
 
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchProgramModel.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleLogic.TurtleXmlParser
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.{TurtleFileSubmission, turtleStitch}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchToBeExpressionParser
+import it.evadid.vm.BeProgram
 import munit.FunSuite
 
 import java.nio.charset.StandardCharsets

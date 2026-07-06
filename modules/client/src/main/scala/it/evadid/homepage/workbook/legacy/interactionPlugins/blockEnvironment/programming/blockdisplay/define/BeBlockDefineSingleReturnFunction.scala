@@ -4,8 +4,8 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.pr
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlockSingleShape, RenderingInformation}
-import it.evadid.workbook.vm.code.defining.BeDefineFunction
-import it.evadid.workbook.vm.code.tree.BeExpressionNode
+import it.evadid.vm.code.defining.BeDefineFunction
+import it.evadid.vm.code.tree.BeExpressionNode
 import todomove.webElementsOld.webElements.svg.shapes.{BeShape, ControlFlowShape, TextShape}
 import todomove.webElementsOld.webElements.svg.shapes.composite.ShapeAroundShape
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.singleWidth.ControlFlowEmpty

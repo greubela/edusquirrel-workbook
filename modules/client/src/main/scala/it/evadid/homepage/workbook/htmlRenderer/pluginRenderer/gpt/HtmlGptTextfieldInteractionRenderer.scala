@@ -1,17 +1,18 @@
 package it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.gpt
 
-import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
-import it.evadid.core.datastructures.language.AppLanguage.{Danish, English, German, HumanLanguage}
+import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.State
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.distribution.commandTypes.LLMCommands.MessengerChatCompletionRequest
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.editor.SimpleChatEditor
-import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
+import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
+import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, RenderingLine}
+import it.evadid.homepage.workbook.htmlRenderer.{HtmlRenderFactory, HtmlWorkbookElement}
 import it.evadid.workbook.model.interaction.basic.MessagingInteraction.MessengerModelScaffolding
 import it.evadid.workbook.model.interaction.plugins.gpt.GptInteractionElement
 import it.evadid.workbook.model.interaction.sync.UpdateImportance.MAJOR
@@ -23,7 +24,7 @@ import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
-object HtmlGptTextfieldInteractionRenderer extends HtmlRenderFactory[GptInteractionElement] {
+object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[GptInteractionElement] {
 
   private val langPreferences: List[HumanLanguage] = List(English, German, Danish)
 
@@ -56,37 +57,6 @@ object HtmlGptTextfieldInteractionRenderer extends HtmlRenderFactory[GptInteract
 
   }
 
-  override protected def createDomElement(workbookElement: GptInteractionElement): L.Element = {
-
-    val elements: mutable.ListBuffer[Element] = mutable.ListBuffer()
-
-    val interactionVariable: InteractionVariable[MessengerModelScaffolding] = workbookElement.scaffoldingInteractionOp.get.interactionVariable
-    if (workbookElement.scaffoldingInteractionOp.nonEmpty) {
-      val boundState = interactionVariable
-        .createBoundStateWithUpdateImportance(MAJOR)
-        .biMap(_.messengerModel, MessengerModelScaffolding.apply)
-      val scaffoldingChat = SimpleChatEditor(boundState, msg => onUserSendMessage(msg, boundState))
-      val openChatButton = HtmlButtonElement.withSvgContent(createScaffoldingButtonSvg(), event => {
-
-        workbookElement.initScaffoldingIfEmpty(fullInfo.loggerSystemInfo.workbookElementLogger, fullInfo.signals.langMapIdResolver).onComplete {
-          case Success(bool) => if (bool) requestCompletion(workbookElement.scaffoldingInteractionOp.get.interactionVariable.currentValue.messengerModel, boundState)
-        }(using ExecutionContext.global)
-        fullInfo.technical.makeFullscreen(scaffoldingChat)
-      })
-      elements += openChatButton.getDomElement()
-    }
-
-    div(
-      cls := "workbook-interaction workbook-element",
-      div(
-        cls := "button-line",
-        children <-- Var(elements.toList).signal
-      )
-    )
-
-
-  }
-
 
   def createScaffoldingButtonSvg(): ReactiveSvgElement[SVGSVGElement] = {
     svg.svg(
@@ -107,4 +77,29 @@ object HtmlGptTextfieldInteractionRenderer extends HtmlRenderFactory[GptInteract
         svg.strokeLineJoin := "round")
     )
   }
+
+  override protected def createRendering(workbookElement: GptInteractionElement): AtomarLineRendering = {
+
+    val elements: mutable.ListBuffer[Element] = mutable.ListBuffer()
+
+    val interactionVariable: InteractionVariable[MessengerModelScaffolding] = workbookElement.scaffoldingInteractionOp.get.interactionVariable
+    if (workbookElement.scaffoldingInteractionOp.nonEmpty) {
+      val boundState = interactionVariable
+        .createBoundStateWithUpdateImportance(MAJOR)
+        .biMap(_.messengerModel, MessengerModelScaffolding.apply)
+      val scaffoldingChat = SimpleChatEditor(boundState, msg => onUserSendMessage(msg, boundState))
+      val openChatButton = HtmlButtonElement.withSvgContent(createScaffoldingButtonSvg(), event => {
+
+        workbookElement.initScaffoldingIfEmpty(fullInfo.loggerSystemInfo.workbookElementLogger, fullInfo.signals.langMapIdResolver).onComplete {
+          case Success(bool) => if (bool) requestCompletion(workbookElement.scaffoldingInteractionOp.get.interactionVariable.currentValue.messengerModel, boundState)
+        }(using ExecutionContext.global)
+        fullInfo.technical.makeFullscreen(scaffoldingChat)
+      })
+      elements += openChatButton.getDomElement()
+    }
+
+    val elementsFinished: List[Element] = elements.toList
+    RenderingLine(true, elementsFinished, "button-line")
+  }
+
 }

@@ -2,7 +2,7 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
-import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.HtmlWorkbookRenderer.contentIdStringSignal
+import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.HtmlWorkbookRenderer.contentIdStringSignal
 import it.evadid.workbook.model.elements.Workbook
 import org.scalajs.dom.HTMLDivElement
 

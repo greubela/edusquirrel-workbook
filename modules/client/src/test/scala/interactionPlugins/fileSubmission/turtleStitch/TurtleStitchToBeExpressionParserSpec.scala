@@ -1,11 +1,11 @@
 package interactionPlugins.fileSubmission.turtleStitch
 
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.TurtleFileSubmission
+import it.evadid.vm.code.controlStructures.BeSequence
+import it.evadid.vm.code.defining.BeDefineFunction
+import it.evadid.vm.code.others.BeStartProgram
+import it.evadid.vm.code.usage.BeFunctionCall
 import munit.FunSuite
-import it.evadid.workbook.vm.code.controlStructures.BeSequence
-import it.evadid.workbook.vm.code.defining.BeDefineFunction
-import it.evadid.workbook.vm.code.others.BeStartProgram
-import it.evadid.workbook.vm.code.usage.BeFunctionCall
 
 class TurtleStitchToBeExpressionParserSpec extends FunSuite {
 

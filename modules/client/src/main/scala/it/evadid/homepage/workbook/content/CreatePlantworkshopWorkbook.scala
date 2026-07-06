@@ -9,7 +9,7 @@ import it.evadid.homepage.workbook.legacy.plantworkshop.helpers.*
 import it.evadid.workbook.model.abstractions.WorkbookElement
 import it.evadid.workbook.model.elements.*
 import it.evadid.workbook.model.elements.ImageElement.FileBasedImageElement
-import it.evadid.workbook.model.elements.LabeledInstructionElement.*
+import it.evadid.workbook.model.elements.LabeledWorkbookElement.*
 import it.evadid.workbook.model.interaction.basic.LabeledCheckboxInteraction
 import it.evadid.workbook.model.interaction.plugins.slideshow.{Slideshow, SlideshowPanel}
 import todomove.datastructures.web.file.FileFactory
@@ -115,14 +115,14 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     val container1 = container(
       "PlantWorkshop/section1Title",
       List(
-        instructionLabeledPair("PlantWorkshop/section1ChecklistIntro", "PlantWorkshop/section1WiringHint", TaskLabel)
+        labeledInstruction("PlantWorkshop/section1ChecklistIntro", "PlantWorkshop/section1WiringHint", TaskLabel)
       ) ++ componentChecklist
     )
 
     val container2 = container(
       "PlantWorkshop/section1Subtitle1",
       List(
-        instructionLabeledPair("PlantWorkshop/safetyTitle", "PlantWorkshop/section1SafetyText", SafetyLabel),
+        labeledInstruction("PlantWorkshop/safetyTitle", "PlantWorkshop/section1SafetyText", SafetyLabel),
         wiringSlideshow
       )
     )
@@ -138,7 +138,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
                                     orderConstraints: List[(Int, Int)] = Nil
                                   ): HtmlEmbeddedDomInteraction = {
     val reorder = codeReorder(reorderId, snippets, AppLanguage.C, hints, orderConstraints)
-    val reorderDom = HtmlReorderInteractionRenderer.render(reorder).getDomElement()
+    val reorderDom = HtmlReorderInteractionRenderer.renderAppElement(reorder).getDomElement()
 
     val advancedCodeState = Var(
       "// TODO: Ergänze hier dein Programm\n// Beispiel:\n// digitalWrite(PUMP_PIN, HIGH);\n// delay(2000);\n// digitalWrite(PUMP_PIN, LOW);"
@@ -210,9 +210,9 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         container(
           "PlantWorkshop/section2Title",
           List(
-            instructionLabeledPair("PlantWorkshop/goalTitle", "PlantWorkshop/section2GoalText", GoalLabel),
-            instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section2InstructionText", TaskLabel),
-            instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section2HintText", HintLabel)
+            labeledInstruction("PlantWorkshop/goalTitle", "PlantWorkshop/section2GoalText", GoalLabel),
+            labeledInstruction("PlantWorkshop/instructionTitle", "PlantWorkshop/section2InstructionText", TaskLabel),
+            labeledInstruction("PlantWorkshop/hintTitle", "PlantWorkshop/section2HintText", HintLabel)
           )
         ),
         container("PlantWorkshop/section2Title", List(codeTask)),
@@ -261,9 +261,9 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         container(
           "PlantWorkshop/section3Title",
           List(
-            instructionLabeledPair("PlantWorkshop/goalTitle", "PlantWorkshop/section3GoalText", GoalLabel),
-            instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section3InstructionText", TaskLabel),
-            instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section3HintText", HintLabel)
+            labeledInstruction("PlantWorkshop/goalTitle", "PlantWorkshop/section3GoalText", GoalLabel),
+            labeledInstruction("PlantWorkshop/instructionTitle", "PlantWorkshop/section3InstructionText", TaskLabel),
+            labeledInstruction("PlantWorkshop/hintTitle", "PlantWorkshop/section3HintText", HintLabel)
           )
         ),
         container("PlantWorkshop/section3Title", List(codeTask)),
@@ -334,9 +334,9 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         container(
           "PlantWorkshop/section4Title",
           List(
-            instructionLabeledPair("PlantWorkshop/goalTitle", "PlantWorkshop/section4GoalText", GoalLabel),
-            instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section4InstructionText", TaskLabel),
-            instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section4HintText", HintLabel)
+            labeledInstruction("PlantWorkshop/goalTitle", "PlantWorkshop/section4GoalText", GoalLabel),
+            labeledInstruction("PlantWorkshop/instructionTitle", "PlantWorkshop/section4InstructionText", TaskLabel),
+            labeledInstruction("PlantWorkshop/hintTitle", "PlantWorkshop/section4HintText", HintLabel)
           )
         ),
         container("PlantWorkshop/section4Title", List(codeTask)),
@@ -360,7 +360,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     val downloadContainer = container(
       "PlantWorkshop/section5Title",
       List(
-        instructionLabeledPair("PlantWorkshop/safetyTitle", "PlantWorkshop/section5SafetyWarningText", SafetyLabel),
+        labeledInstruction("PlantWorkshop/safetyTitle", "PlantWorkshop/section5SafetyWarningText", SafetyLabel),
         instructionMarkdown("PlantWorkshop/section5DownloadSteps")
       )
     )
@@ -368,21 +368,21 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     val testChecklistContainer = container(
       "PlantWorkshop/section5TestChecklistTitle",
       List(
-        instructionLabeledPair("PlantWorkshop/section5TestChecklistTitle", "PlantWorkshop/section5TestChecklistIntro", TaskLabel)
+        labeledInstruction("PlantWorkshop/section5TestChecklistTitle", "PlantWorkshop/section5TestChecklistIntro", TaskLabel)
       ) ++ testChecklistItems
     )
 
     val troubleshootingContainer = container(
       "PlantWorkshop/section5TroubleshootingTitle",
       List(
-        instructionLabeledPair("PlantWorkshop/section5TroubleshootingTitle", "PlantWorkshop/section5TroubleshootingText", HintLabel)
+        labeledInstruction("PlantWorkshop/section5TroubleshootingTitle", "PlantWorkshop/section5TroubleshootingText", HintLabel)
       )
     )
 
     val bonusContainer = container(
       "PlantWorkshop/section5BonusTitle",
       List(
-        instructionLabeledPair("PlantWorkshop/section5BonusTitle", "PlantWorkshop/section5BonusText", GoalLabel)
+        labeledInstruction("PlantWorkshop/section5BonusTitle", "PlantWorkshop/section5BonusText", GoalLabel)
       )
     )
 

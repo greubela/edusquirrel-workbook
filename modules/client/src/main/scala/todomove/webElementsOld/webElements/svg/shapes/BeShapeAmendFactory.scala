@@ -3,7 +3,7 @@ package todomove.webElementsOld.webElements.svg.shapes
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{Signal, eventPropToProcessor, svg}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
+import it.evadid.vm.BeProgram
 import org.scalajs.dom.MouseEvent
 
 case class BeShapeAmendFactory(rendererConfig: BeRenderingConfig) {

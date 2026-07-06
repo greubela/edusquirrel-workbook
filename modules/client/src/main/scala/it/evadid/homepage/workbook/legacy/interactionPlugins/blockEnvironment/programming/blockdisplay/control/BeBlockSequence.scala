@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.control
 
-import it.evadid.workbook.vm.types.BeChildRole.ExpressionInSequence
+import it.evadid.vm.types.BeChildRole.ExpressionInSequence
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.*
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 import it.evadid.core.datastructures.tree.TreeStructureContext
@@ -8,8 +8,8 @@ import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreePosition
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, RenderingInformation}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
-import it.evadid.workbook.vm.code.controlStructures.BeSequence
-import it.evadid.workbook.vm.code.tree.BeExpressionNode
+import it.evadid.vm.code.controlStructures.BeSequence
+import it.evadid.vm.code.tree.BeExpressionNode
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 import todomove.webElementsOld.webElements.svg.shapes.composite.{BoxManualPositioning, HorizontalAlignment, ManualPositionElement, TableShape, VBoxSameWidth, VerticalAlignment}
 import todomove.webElementsOld.webElements.svg.shapes.{BeShape, ControlFlowAndExpressionShape}

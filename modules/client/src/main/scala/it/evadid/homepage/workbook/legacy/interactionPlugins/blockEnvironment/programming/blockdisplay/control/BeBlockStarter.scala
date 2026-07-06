@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.control
 
-import it.evadid.workbook.vm.types.BeChildRole.BodySequence
+import it.evadid.vm.types.BeChildRole.BodySequence
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer.ControlFlowLine
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension}
@@ -9,7 +9,7 @@ import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreePosition
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, RenderingInformation}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
-import it.evadid.workbook.vm.code.tree.BeExpressionNode
+import it.evadid.vm.code.tree.BeExpressionNode
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 import todomove.webElementsOld.webElements.svg.shapes.composite.{HorizontalAlignment, PlainVBox, VBoxSameWidth, VerticalAlignment}
 import todomove.webElementsOld.webElements.svg.shapes.{BeShape, BeShapeAmendFactory, ControlFlowAndExpressionShape, ControlFlowShape}

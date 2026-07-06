@@ -4,19 +4,18 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
+import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
+import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
 import it.evadid.workbook.model.interaction.plugins.reorderExercise.{ReorderInteraction, ReorderInteractionState}
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 
-import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
-import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
-import it.evadid.workbook.model.interaction.plugins.reorderExercise.{ReorderInteraction, ReorderInteractionState}
-import it.evadid.workbook.model.interaction.sync.UpdateImportance
+object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderInteraction[?]] {
 
-object HtmlReorderInteractionRenderer extends HtmlRenderFactory[ReorderInteraction[?]] {
+  override protected def createRendering(workbookElement: ReorderInteraction[_]): AtomarLineRendering = {
+    placeholder("HtmlReorderInteractionRenderer: Not Refactored properly yet")
+  }
 
-  override protected def createDomElement(reorder: ReorderInteraction[?]): Element = reorder match {
+  protected def createDomElement(reorder: ReorderInteraction[?]): Element = reorder match {
     case codeInteraction: ReorderInteraction.ReorderCodeInteraction =>
       renderReorder(
         codeInteraction,
@@ -188,6 +187,7 @@ object HtmlReorderInteractionRenderer extends HtmlRenderFactory[ReorderInteracti
       )
     )
   }
+
 }
 
 /*

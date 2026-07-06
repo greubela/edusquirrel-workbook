@@ -6,7 +6,9 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.core.util.MarkdownToHtml
 import it.evadid.homepage.webElements.basic.HtmlImageElement
-import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
+import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
+import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
+import it.evadid.homepage.workbook.htmlRenderer.{HtmlRenderFactory, HtmlWorkbookElement}
 import it.evadid.workbook.model.interaction.plugins.slideshow.{Slideshow, SlideshowPanel}
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 
@@ -14,13 +16,13 @@ import it.evadid.workbook.model.interaction.sync.UpdateImportance
  * Renders core slideshow interactions using the legacy slide-deck HTML structure and styles.
  * The renderer owns navigation controls and panel layout, while transition-history updates are delegated to the core slideshow state.
  */
-object HtmlSlideshowEditor extends HtmlRenderFactory[Slideshow] {
+object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
 
   /**
    * Creates the slideshow DOM with localized navigation buttons and a reactive current-panel view.
    * When navigation succeeds, the method updates the bound interaction state through the model-level transition recorder instead of constructing event data directly.
    */
-  override protected def createDomElement(workbookElement: Slideshow): Element = {
+  override protected def createRendering(workbookElement: Slideshow): AtomarLineRendering = {
     val currentIndex = Var(0)
     val stateVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR).toAirstreamVar
     val totalSlides = workbookElement.panels.length
@@ -37,10 +39,10 @@ object HtmlSlideshowEditor extends HtmlRenderFactory[Slideshow] {
     }
 
     if (workbookElement.panels.isEmpty) {
-      div(cls := "workbook-interaction slide-deck", div("Slideshow has no panels."))
+      placeholder("Slideshow with no panels!")
     } else {
-      div(
-        cls := "workbook-interaction slide-deck",
+      val dom = div(
+        cls := "workbook-interaction",
         div(
           cls := "slide-deck-navigation",
           button(
@@ -60,8 +62,10 @@ object HtmlSlideshowEditor extends HtmlRenderFactory[Slideshow] {
         ),
         child <-- currentIndex.signal.map(index => createSlideshowPanelDom(workbookElement.panels(index)))
       )
+      RenderingLine(true, dom, "slide-deck")
     }
   }
+
 
   /**
    * Converts a core slideshow panel into the corresponding slide-deck DOM subtree.
@@ -118,7 +122,7 @@ object HtmlSlideshowEditor extends HtmlRenderFactory[Slideshow] {
    * Each column receives localized markdown title and body content while preserving the `slide-deck-text two-columns` styling hook.
    */
   private def createSlideshowPanel(panel: SlideshowPanel.TwoColumnImagePanel): Element = {
-    div(
+     div(
       cls := "slide-deck-container",
       div(
         cls := "slide-deck-image",
@@ -151,6 +155,8 @@ object HtmlSlideshowEditor extends HtmlRenderFactory[Slideshow] {
       )
     )
   }
+
+
 }
 
 /*

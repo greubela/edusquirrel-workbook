@@ -7,9 +7,9 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
+import it.evadid.vm.BeProgram
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 import todomove.webElementsOld.webElements.svg.AppSvgElement

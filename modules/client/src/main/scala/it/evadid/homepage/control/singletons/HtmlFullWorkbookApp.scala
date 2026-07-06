@@ -1,18 +1,12 @@
 package it.evadid.homepage.control.singletons
 
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.file.{FileDescription, LoadedFile}
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.datastructures.state.storage.AsyncDataCache
 import it.evadid.homepage.control.info.*
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlFullScreenContainerElement
-import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.HtmlWorkbookRenderer
-import it.evadid.util.logging.Logger
-import it.evadid.util.logging.derived.PrintToStdLogger
-
-import scala.concurrent.{ExecutionContext, Future}
+import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.HtmlWorkbookRenderer
 
 object HtmlFullWorkbookApp extends HtmlAppElement {
 
@@ -42,7 +36,7 @@ object HtmlFullWorkbookApp extends HtmlAppElement {
 
   private lazy val workbookDomElement: Element = {
     val workbookSignal: Signal[Element] = fullInfo.signals.workbook.mapLazy {
-      case Some(workbookInfo) => HtmlWorkbookRenderer.render(workbookInfo.loadedWorkbook).getDomElement() //div("HtmlFullWorkbookApp::workbookDomelement not properly re-implemented yet!") //workbook.loadedWorkbook.getDomElement()
+      case Some(workbookInfo) => HtmlWorkbookRenderer.renderAppElement(workbookInfo.loadedWorkbook).getDomElement()
       case None => div(text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId("basic/noWorkbookLoaded")))
     }
 
@@ -66,9 +60,6 @@ object HtmlFullWorkbookApp extends HtmlAppElement {
   )
 
   override def getDomElement(): Element = workbookDomElement
-
-
-
 
 
 }

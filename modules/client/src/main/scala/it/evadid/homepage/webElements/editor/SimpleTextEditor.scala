@@ -1,11 +1,8 @@
 package it.evadid.homepage.webElements.editor
 
-import com.raquo.airstream.core.Signal
-import com.raquo.airstream.ownership.Owner
 import com.raquo.laminar.api.L.*
-import SimpleTextEditor.*
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.model.interaction.sync.UpdateImportance
+import it.evadid.homepage.webElements.editor.SimpleTextEditor.*
 
 case class SimpleTextEditor(
                              varToBind: Var[String],

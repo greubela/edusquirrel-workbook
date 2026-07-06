@@ -3,22 +3,26 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionEditors
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
-import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
-import it.evadid.workbook.model.interaction.plugins.reorderExercise.{ReorderInteraction, ReorderInteractionState, ReorderType}
+import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
+import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
+import it.evadid.workbook.model.interaction.plugins.reorderExercise.*
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 
 /**
  * Renders core reorder interactions as drag-and-drop HTML controls.
  * The renderer maps the concrete interaction variant to the appropriate element view, while all order validation and state mutation rules remain in the core reorder model.
  */
-object HtmlReorderInteractionRenderer extends HtmlRenderFactory[ReorderInteraction[?]] {
+object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderInteraction[?]] {
 
   /**
    * Creates the outer DOM element for a supported reorder interaction variant.
    * This method selects the item renderer for code lines or language-map content and delegates shared drag-and-drop wiring to the typed helper.
    */
-  override protected def createDomElement(workbookElement: ReorderInteraction[?]): Element = {
-    workbookElement match {
+  override protected def createRendering(workbookElement: ReorderInteraction[_]): AtomarLineRendering = {
+
+    val cssStr: String = "reorder-interaction ${reorderTypeCssClass(interaction.defaultValue.elementType)}\",\n    "
+
+    val dom: Element = workbookElement match {
       case interaction: ReorderInteraction.ReorderCodeInteraction =>
         createDomElementForTypedInteraction[String](
           interaction,
@@ -32,6 +36,8 @@ object HtmlReorderInteractionRenderer extends HtmlRenderFactory[ReorderInteracti
           itemCssClass = ""
         )
     }
+
+    RenderingLine(true, dom, cssStr)
   }
 
   /**
@@ -81,7 +87,7 @@ object HtmlReorderInteractionRenderer extends HtmlRenderFactory[ReorderInteracti
       )
     }
 
-    val listElement = div(
+    div(
       cls := "reorder-list",
       onDragOver.preventDefault --> { e =>
         val container = e.currentTarget.asInstanceOf[org.scalajs.dom.html.Div]
@@ -112,11 +118,6 @@ object HtmlReorderInteractionRenderer extends HtmlRenderFactory[ReorderInteracti
           }
       }
     )
-
-    div(
-      cls := s"workbook-interaction reorder-interaction ${reorderTypeCssClass(interaction.defaultValue.elementType)}",
-      listElement
-    )
   }
 
   /**
@@ -128,4 +129,5 @@ object HtmlReorderInteractionRenderer extends HtmlRenderFactory[ReorderInteracti
     case ReorderType.LANGUAGE_MAP_IDS => "reorder-interaction--language-map"
     case ReorderType.BASIC_STRINGS => "reorder-interaction--basic"
   }
+
 }

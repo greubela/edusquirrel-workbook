@@ -11,7 +11,6 @@ import scala.concurrent.*
 import scala.scalajs.js
 import scala.util.*
 
-
 private given ExecutionContextExecutor = ExecutionContext.global
 
 private val tryToLoad: List[String] = List("plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "workbookCompression", "feedbackDemoRoot")
@@ -24,6 +23,10 @@ private def load(containerId: String): Unit = {
     }
     case "workbookEmbroidery" => {
       HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreateEmbroideryWorkbook(HtmlFullWorkbookApp.fullInfo))
+      HtmlFullWorkbookApp.getDomElement()
+    }
+    case "workbookTest" => {
+      HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreateTestWorkbook(HtmlFullWorkbookApp.fullInfo))
       HtmlFullWorkbookApp.getDomElement()
     }
     case "workbookPlantWorkshop" => {

@@ -1,21 +1,22 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionEditors
 
-import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.state.*
+import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
+import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
+import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
 import it.evadid.workbook.model.interaction.basic.LabeledCheckboxInteraction
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
+import org.scalajs.dom.HTMLLabelElement
 
-object HtmlBasicCheckboxRenderer extends HtmlRenderFactory[LabeledCheckboxInteraction] {
+object HtmlBasicCheckboxRenderer extends LineBasedRenderingFactory[LabeledCheckboxInteraction] {
 
-  override def createDomElement(lci: LabeledCheckboxInteraction): L.Element = {
 
-    val checkboxVar = lci.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR).toAirstreamVar
+  override protected def createRendering(lci: LabeledCheckboxInteraction): AtomarLineRendering = {
+    val checkboxVar: Var[Boolean] = lci.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR).toAirstreamVar
 
-    div(
-      cls := "workbook-interaction simple-boolean-editor",
+    val dom: ReactiveHtmlElement[HTMLLabelElement] =
       label(
         cls := "simple-boolean-editor__body",
         input(
@@ -31,9 +32,8 @@ object HtmlBasicCheckboxRenderer extends HtmlRenderFactory[LabeledCheckboxIntera
           text <-- contentIdStringSignal(lci.checkboxLabel)
         )
       )
-    )
+
+    RenderingLine(true, dom, "simple-boolean-editor")
   }
-
-
 }
 
