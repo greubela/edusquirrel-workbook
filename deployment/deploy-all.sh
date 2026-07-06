@@ -1,0 +1,1 @@
+echo "deploy-all.sh does not actually do anything (yet)! It will at one point copy files with FTP and make a docker compose down/up"
