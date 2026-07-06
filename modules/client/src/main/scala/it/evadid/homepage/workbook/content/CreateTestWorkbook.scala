@@ -8,13 +8,15 @@ import it.evadid.workbook.model.interaction.plugins.programming.ProgrammingExerc
 case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
 
   override def createWorkbook: Workbook = {
-    workbook("testWorkbook", List(section1))
+    workbook("TestWorkbook/WorkbookTitle", List(section1))
   }
 
   lazy val section1: WorkbookSection = {
-    section("sec1Id", "sec-1", List[WorkbookElement](
-      ProgrammingExercise(),
-    ))
+    section("sec1Id", "TestWorkbook/Sec1", List[WorkbookElement](
+      container("TestWorkbook/Sec1Cont1", List(
+        ProgrammingExercise("prog-1")
+      )
+    )))
   }
 
   override def workbookId: String = "workbookTest"

@@ -6,7 +6,7 @@ import it.evadid.vm.BeProgram
 import it.evadid.vm.test.BeTestSuite
 import it.evadid.workbook.model.interaction.WorkbookInteraction
 
-case class ProgrammingExercise(testSuite: Option[BeTestSuite] = None) extends WorkbookInteraction[BeProgram] {
+case class ProgrammingExercise(override val id: String, testSuite: Option[BeTestSuite] = None) extends WorkbookInteraction[BeProgram] {
 
   override val defaultValue: BeProgram = BeProgram.empty
   override val serializer: Serializer[BeProgram] = new Serializer[BeProgram]() {
@@ -17,5 +17,4 @@ case class ProgrammingExercise(testSuite: Option[BeTestSuite] = None) extends Wo
       BeProgram.empty
     }
   }
-  override val id: String = ???
 }

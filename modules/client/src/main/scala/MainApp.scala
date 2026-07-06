@@ -13,7 +13,7 @@ import scala.util.*
 
 private given ExecutionContextExecutor = ExecutionContext.global
 
-private val tryToLoad: List[String] = List("plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "workbookCompression", "feedbackDemoRoot")
+private val tryToLoad: List[String] = List("plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "workbookCompression", "feedbackDemoRoot", "workbookTest")
 
 private def load(containerId: String): Unit = {
   println("loading workbook: " + containerId)

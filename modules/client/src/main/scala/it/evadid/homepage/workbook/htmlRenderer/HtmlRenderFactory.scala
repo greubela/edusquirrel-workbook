@@ -11,6 +11,7 @@ import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLine
 import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionEditors.*
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.gpt.HtmlGptTextfieldInteractionRenderer
+import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.programming.HtmlProgrammingExerciseRenderer
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.reorderExercise.HtmlReorderInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.turtleStitch.{HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRenderer}
 import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.{HtmlExerciseContainerRenderer, HtmlWorkbookRenderer}
@@ -21,6 +22,7 @@ import it.evadid.workbook.model.interaction.WorkbookInteraction.TextInteractionB
 import it.evadid.workbook.model.interaction.basic.*
 import it.evadid.workbook.model.interaction.plugins.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
 import it.evadid.workbook.model.interaction.plugins.gpt.GptInteractionElement
+import it.evadid.workbook.model.interaction.plugins.programming.ProgrammingExercise
 import it.evadid.workbook.model.interaction.plugins.reorderExercise.ReorderInteraction
 import it.evadid.workbook.model.interaction.plugins.slideshow.Slideshow
 import org.scalajs.dom.HTMLDivElement
@@ -79,7 +81,7 @@ object HtmlRenderFactory {
   def render[T <: WorkbookElement](anyElement: T): HtmlWorkbookElement[WorkbookElement, HtmlAppElement] = {
     try {
       renderStructureElement(anyElement).asInstanceOf[HtmlWorkbookElement[WorkbookElement, HtmlAppElement]]
-    } catch case e: Exception => {
+    } catch case e: Throwable => {
       renderWorkbookElement(anyElement).asInstanceOf[HtmlWorkbookElement[WorkbookElement, HtmlAppElement]]
     }
   }
@@ -120,8 +122,8 @@ object HtmlRenderFactory {
       case s: Slideshow => HtmlSlideshowEditor.renderWorkbookElement(s) // editor instead of renderer
       /*case r: HtmlReorderInteraction[?] @unchecked => fromElement(r, r.getDomElement())*/
       // case e: HtmlEmbeddedDomInteraction => fromAppElement(e, e.domElement)
-
-      case a: T => ??? //createPlaceholderElement(a)
+      case p: ProgrammingExercise => HtmlProgrammingExerciseRenderer.renderWorkbookElement(p)
+      case a: T => createPlaceholderElement(a)
       // error
     }
   }
