@@ -5,7 +5,8 @@ import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.reorderExercise.HtmlReorderInteractionRenderer
 import it.evadid.homepage.workbook.legacy.htmlElements.HtmlEmbeddedDomInteraction
-import it.evadid.homepage.workbook.legacy.plantworkshop.helpers.*
+import it.evadid.homepage.util.web.DownloadHelper
+import it.evadid.homepage.workbook.legacy.plantworkshop.helpers.CodeEditorHelper
 import it.evadid.workbook.model.abstractions.WorkbookElement
 import it.evadid.workbook.model.elements.*
 import it.evadid.workbook.model.elements.ImageElement.FileBasedImageElement
@@ -31,8 +32,9 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     val sections = List(
       motivationSection,
       componentsSection,
-      pumpControlSection,
+      sensorExploreSection,
       moistureSection,
+      pumpControlSection,
       combinedSection,
       testSection
     )
@@ -55,34 +57,38 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       FileFactory.relativeToResourceFolder(s"img/plantworkshop/schaltkreis/Plant conv $slideIndex.png")
     )
 
-  private lazy val wiringSlideshow: Slideshow = {
-    val panels = (1 to 11).toList.map { i =>
-      val image = wiringSlideImage(i)
-      if (i == 3 || i == 4 || i == 8) {
-        SlideshowPanel.TwoColumnImagePanel(
-          image,
-          LanguageMapContentId("PlantWorkshop/LLabel"),
-          LanguageMapContentId("PlantWorkshop/RLabel"),
-          LanguageMapContentId(s"PlantWorkshop/wiringSlideTextL${i}"),
-          LanguageMapContentId(s"PlantWorkshop/wiringSlideTextR${i}")
-        )
-      } else if (i == 5) {
-        SlideshowPanel.ImageSlide(
-          image,
-          LanguageMapContentId("PlantWorkshop/wiringSlideCurrentStatus"),
-          LanguageMapContentId(s"PlantWorkshop/wiringSlideText${i}")
-        )
-      } else {
-        SlideshowPanel.ImageSlide(
-          image,
-          LanguageMapContentId("PlantWorkshop/wiringSlideHelp"),
-          LanguageMapContentId(s"PlantWorkshop/wiringSlideText${i}")
-        )
-      }
+  private def buildWiringPanel(i: Int): SlideshowPanel = {
+    val image = wiringSlideImage(i)
+    if (i == 3 || i == 4 || i == 8) {
+      SlideshowPanel.TwoColumnImagePanel(
+        image,
+        LanguageMapContentId("PlantWorkshop/LLabel"),
+        LanguageMapContentId("PlantWorkshop/RLabel"),
+        LanguageMapContentId(s"PlantWorkshop/wiringSlideTextL${i}"),
+        LanguageMapContentId(s"PlantWorkshop/wiringSlideTextR${i}")
+      )
+    } else if (i == 5) {
+      SlideshowPanel.ImageSlide(
+        image,
+        LanguageMapContentId("PlantWorkshop/wiringSlideCurrentStatus"),
+        LanguageMapContentId(s"PlantWorkshop/wiringSlideText${i}")
+      )
+    } else {
+      SlideshowPanel.ImageSlide(
+        image,
+        LanguageMapContentId("PlantWorkshop/wiringSlideHelp"),
+        LanguageMapContentId(s"PlantWorkshop/wiringSlideText${i}")
+      )
     }
-
-    Slideshow("plant-wiring-slideshow", panels)
   }
+
+  // Phase A: Arduino, Sensor, Relais verdrahten (Slides 1–5)
+  private lazy val wiringSlideshowPhaseA: Slideshow =
+    Slideshow("plant-wiring-slideshow-a", (1 to 5).toList.map(buildWiringPanel))
+
+  // Phase B: Pumpe und Schläuche anschließen (Slides 6–11)
+  private lazy val wiringSlideshowPhaseB: Slideshow =
+    Slideshow("plant-wiring-slideshow-b", (6 to 11).toList.map(buildWiringPanel))
 
   private lazy val motivationSection: WorkbookSection = {
     val intro = container(
@@ -123,7 +129,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "PlantWorkshop/section1Subtitle1",
       List(
         instructionLabeledPair("PlantWorkshop/safetyTitle", "PlantWorkshop/section1SafetyText", SafetyLabel),
-        wiringSlideshow
+        wiringSlideshowPhaseA
       )
     )
 
@@ -134,20 +140,19 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
                                     reorderId: String,
                                     snippets: List[String],
                                     codeEditorTitle: String,
+                                    advancedCodeTemplate: String,
                                     hints: List[LanguageMapContentId] = List.empty,
                                     orderConstraints: List[(Int, Int)] = Nil
                                   ): HtmlEmbeddedDomInteraction = {
     val reorder = codeReorder(reorderId, snippets, AppLanguage.C, hints, orderConstraints)
     val reorderDom = HtmlReorderInteractionRenderer.render(reorder).getDomElement()
 
-    val advancedCodeState = Var(
-      "// TODO: Ergänze hier dein Programm\n// Beispiel:\n// digitalWrite(PUMP_PIN, HIGH);\n// delay(2000);\n// digitalWrite(PUMP_PIN, LOW);"
-    )
+    val advancedCodeState = Var(advancedCodeTemplate)
 
     val codeEditor = CodeEditorHelper.createCodeEditor(
       advancedCodeState,
       codeEditorTitle,
-      PumpControlValidator.validatePumpControl
+      _ => "Die automatische Code-Prüfung ist noch nicht verfügbar."
     )
 
     val isBeginnerMode = Var(true)
@@ -182,25 +187,189 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     HtmlEmbeddedDomInteraction(nextId(reorderId + "-toggle"), toggleArea)
   }
 
-  private lazy val pumpControlSection: WorkbookSection = {
-    val checklistItems = checklist(
-      List("pumpDone1", "pumpDone2", "pumpDone3"),
-      "plant-pump-done"
+  private val sensorReadAdvancedCodeTemplate: String =
+    """// Sensor kurz aktivieren, messen, wieder ausschalten
+      |digitalWrite(SENSOR_POWER_PIN, TODO_HIGH_LOW);
+      |delay(TODO_DELAY_MS);
+      |int messwert = analogRead(TODO_SENSOR_PIN);
+      |digitalWrite(SENSOR_POWER_PIN, TODO_HIGH_LOW);
+      |
+      |// Messwert im Serial Monitor ausgeben
+      |Serial.print(TODO_TEXT);
+      |Serial.println(TODO_WERT_AUSGABE);""".stripMargin
+
+  private val moistureAdvancedCodeTemplate: String =
+    """// Lege den Grenzwert fest, ab dem der Boden als trocken gilt
+      |int feuchtigkeitsGrenze = TODO_WERT;
+      |
+      |// Sensor nur kurz aktivieren, messen, wieder ausschalten
+      |digitalWrite(SENSOR_POWER_PIN, TODO_HIGH_LOW);
+      |delay(TODO_DELAY_MS);
+      |int messwert = analogRead(TODO_SENSOR_PIN);
+      |digitalWrite(SENSOR_POWER_PIN, TODO_HIGH_LOW);
+      |
+      |// Entscheide anhand des Grenzwerts zwischen trocken und feucht
+      |if (TODO_BEDINGUNG) {
+      |  Serial.println(TODO_TEXT_TROCKEN);
+      |} else {
+      |  Serial.println(TODO_TEXT_FEUCHT);
+      |}""".stripMargin
+
+  private val pumpAdvancedCodeTemplate: String =
+    """void loop() {
+      |  // Schalte die Pumpe ein (Relais-Logik beachten)
+      |  digitalWrite(TODO_PIN, TODO_HIGH_LOW);
+      |
+      |  // Lass sie für die gewünschte Zeit laufen
+      |  delay(TODO_GIESS_DAUER_MS);
+      |
+      |  // Schalte die Pumpe wieder aus
+      |  digitalWrite(TODO_PIN, TODO_HIGH_LOW);
+      |}""".stripMargin
+
+  private val combinedAdvancedCodeTemplate: String =
+    """// Definiere den Grenzwert einmal außerhalb von loop()
+      |int feuchtigkeitsGrenze = TODO_WERT;
+      |
+      |void loop() {
+      |  // 1) Messen
+      |  digitalWrite(SENSOR_POWER_PIN, TODO_HIGH_LOW);
+      |  delay(TODO_STABILISIERUNG_MS);
+      |  int messwert = analogRead(TODO_SENSOR_PIN);
+      |  digitalWrite(SENSOR_POWER_PIN, TODO_HIGH_LOW);
+      |
+      |  // 2) Entscheiden und handeln
+      |  if (TODO_BEDINGUNG) {
+      |    digitalWrite(TODO_PUMP_PIN, TODO_HIGH_LOW);
+      |    delay(TODO_GIESS_DAUER_MS);
+      |    digitalWrite(TODO_PUMP_PIN, TODO_HIGH_LOW);
+      |  } else {
+      |    Serial.println(TODO_FEUCHT_TEXT);
+      |  }
+      |
+      |  // 3) Wartezeit bis zur nächsten Messung
+      |  delay(TODO_WARTEZEIT_MS);
+      |}""".stripMargin
+
+  private val sensorExploreSketch: String =
+    """|/*
+       | * Girls Day - Automatische Pflanzen-Bewässerung
+       | * Modul 2: Sensor auslesen
+       | */
+       |
+       |const int SENSOR_PIN = A0;
+       |const int SENSOR_POWER_PIN = 2;
+       |
+       |void setup() {
+       |  Serial.begin(9600);
+       |  pinMode(SENSOR_POWER_PIN, OUTPUT);
+       |  digitalWrite(SENSOR_POWER_PIN, LOW);
+       |}
+       |
+       |void loop() {
+       |  digitalWrite(SENSOR_POWER_PIN, HIGH);
+       |  delay(10);
+       |  int messwert = analogRead(SENSOR_PIN);
+       |  digitalWrite(SENSOR_POWER_PIN, LOW);
+       |
+       |  Serial.print("Analoger Wert: ");
+       |  Serial.println(messwert);
+       |
+       |  delay(1000);
+       |}
+       |""".stripMargin
+
+  private val pumpTestSketch: String =
+    """|/*
+       | * Girls Day - Automatische Pflanzen-Bewässerung
+       | * Modul 4: Pumpe testen
+       | */
+       |
+       |const int PUMP_PIN = 8;
+       |
+       |void setup() {
+       |  Serial.begin(9600);
+       |  pinMode(PUMP_PIN, OUTPUT);
+       |  digitalWrite(PUMP_PIN, LOW);
+       |}
+       |
+       |void loop() {
+       |  digitalWrite(PUMP_PIN, HIGH);
+       |  delay(2000);
+       |  digitalWrite(PUMP_PIN, LOW);
+       |  delay(5000);
+       |}
+       |""".stripMargin
+
+  private def createDownloadInteraction(
+    buttonLabelKey: String,
+    sketchContent: String,
+    filename: String
+  ): HtmlEmbeddedDomInteraction = {
+    val downloadDiv = div(
+      cls := "download-btn-wrapper",
+      button(
+        cls := "btn-primary",
+        text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId(buttonLabelKey)),
+        onClick --> { _ => DownloadHelper.downloadFile(filename, sketchContent) }
+      )
+    )
+    HtmlEmbeddedDomInteraction(nextId("download"), downloadDiv)
+  }
+
+  private lazy val sensorExploreSection: WorkbookSection = {
+    val exploreChecklistItems = checklist(
+      List("sensorExploreDone1", "sensorExploreDone2", "sensorExploreDone3"),
+      "plant-sensor-explore-check"
     )
 
     val codeTask = createCodeTaskToggle(
-      "plant-pump-reorder",
+      "plant-section2-sensor-read-reorder",
       List(
-        "digitalWrite(PUMP_PIN, HIGH);",
-        "delay(2000);",
-        "digitalWrite(PUMP_PIN, LOW);"
+        "digitalWrite(SENSOR_POWER_PIN, HIGH);",
+        "delay(10);",
+        "int messwert = analogRead(SENSOR_PIN);",
+        "digitalWrite(SENSOR_POWER_PIN, LOW);",
+        "Serial.print(\"Analoger Wert: \");",
+        "Serial.println(messwert);"
       ),
-      "PlantWorkshop/pumpCodeEditorTodo",
+      "PlantWorkshop/sensorReadCodeEditorTodo",
+      sensorReadAdvancedCodeTemplate,
       List(
-        LanguageMapContentId("PlantWorkshop/reorderHintPumpHigh"),
-        LanguageMapContentId("PlantWorkshop/reorderHintDelay2000"),
-        LanguageMapContentId("PlantWorkshop/reorderHintPumpLow")
+        LanguageMapContentId("PlantWorkshop/reorderHintSensorPowerHigh"),
+        LanguageMapContentId("PlantWorkshop/reorderHintDelay10"),
+        LanguageMapContentId("PlantWorkshop/reorderHintAnalogRead"),
+        LanguageMapContentId("PlantWorkshop/reorderHintSensorPowerLow"),
+        LanguageMapContentId("PlantWorkshop/reorderHintSerialPrint"),
+        LanguageMapContentId("PlantWorkshop/reorderHintSerialPrintln")
+      ),
+      orderConstraints = List(
+        0 -> 1,
+        1 -> 2,
+        2 -> 3,
+        3 -> 4,
+        4 -> 5
       )
+    )
+
+    val downloadContainer = container(
+      "PlantWorkshop/section2Subtitle3",
+      List(
+        instructionLabeledPair("PlantWorkshop/safetyTitle", "PlantWorkshop/section6SafetyWarningText", SafetyLabel),
+        instructionMarkdown("PlantWorkshop/section2DownloadSteps"),
+        createDownloadInteraction(
+          "PlantWorkshop/section2DownloadButton",
+          sensorExploreSketch,
+          "sensor-auslesen.ino"
+        )
+      )
+    )
+
+    val measurementContainer = container(
+      "PlantWorkshop/section2Subtitle4",
+      List(
+        instructionLabeledPair("PlantWorkshop/section2MeasurementTitle", "PlantWorkshop/section2MeasurementText", TaskLabel)
+      ) ++ exploreChecklistItems
     )
 
     section(
@@ -208,15 +377,84 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "PlantWorkshop/section2Title",
       List(
         container(
-          "PlantWorkshop/section2Title",
+          "PlantWorkshop/section2Subtitle1",
           List(
             instructionLabeledPair("PlantWorkshop/goalTitle", "PlantWorkshop/section2GoalText", GoalLabel),
             instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section2InstructionText", TaskLabel),
             instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section2HintText", HintLabel)
           )
         ),
-        container("PlantWorkshop/section2Title", List(codeTask)),
-        container("PlantWorkshop/section2Title", checklistItems)
+        container("PlantWorkshop/section2Subtitle2", List(codeTask)),
+        downloadContainer,
+        measurementContainer
+      )
+    )
+  }
+
+  private lazy val pumpControlSection: WorkbookSection = {
+    val checklistItems = checklist(
+      List("pumpDone1", "pumpDone2", "pumpDone3"),
+      "plant-pump-done"
+    )
+
+    val codeTask = createCodeTaskToggle(
+      "plant-section4-pump-reorder",
+      List(
+        "digitalWrite(PUMP_PIN, HIGH);",
+        "delay(2000);",
+        "digitalWrite(PUMP_PIN, LOW);"
+      ),
+      "PlantWorkshop/pumpCodeEditorTodo",
+      pumpAdvancedCodeTemplate,
+      List(
+        LanguageMapContentId("PlantWorkshop/reorderHintPumpHigh"),
+        LanguageMapContentId("PlantWorkshop/reorderHintDelay2000"),
+        LanguageMapContentId("PlantWorkshop/reorderHintPumpLow")
+      )
+    )
+
+    val wiringPhaseBContainer = container(
+      "PlantWorkshop/section4WiringPhaseBTitle",
+      List(
+        instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section4WiringPhaseBHint", TaskLabel),
+        wiringSlideshowPhaseB
+      )
+    )
+
+    val intermediateChecklistItems = checklist(
+      List("section4IntermediateCheckDone1", "section4IntermediateCheckDone2"),
+      "plant-pump-intermediate-check"
+    )
+
+    val downloadContainer = container(
+      "PlantWorkshop/section4DownloadTitle",
+      List(
+        instructionLabeledPair("PlantWorkshop/safetyTitle", "PlantWorkshop/section6SafetyWarningText", SafetyLabel),
+        instructionMarkdown("PlantWorkshop/section4DownloadSteps"),
+        createDownloadInteraction(
+          "PlantWorkshop/section4DownloadButton",
+          pumpTestSketch,
+          "pumpe-test.ino"
+        )
+      ) ++ intermediateChecklistItems
+    )
+
+    section(
+      "section4",
+      "PlantWorkshop/section4Title",
+      List(
+        wiringPhaseBContainer,
+        container(
+          "PlantWorkshop/section4Subtitle1",
+          List(
+            instructionLabeledPair("PlantWorkshop/goalTitle", "PlantWorkshop/section4GoalText", GoalLabel),
+            instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section4InstructionText", TaskLabel),
+            instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section4HintText", HintLabel)
+          )
+        ),
+        container("PlantWorkshop/section4Subtitle2", List(codeTask)),
+        container("PlantWorkshop/section4Subtitle3", checklistItems),
+        downloadContainer
       )
     )
   }
@@ -228,8 +466,9 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     )
 
     val codeTask = createCodeTaskToggle(
-      "plant-moisture-reorder",
+      "plant-section3-sensor-reorder",
       List(
+        "int feuchtigkeitsGrenze = 400;",
         "digitalWrite(SENSOR_POWER_PIN, HIGH);",
         "delay(10);",
         "int messwert = analogRead(SENSOR_PIN);",
@@ -240,8 +479,10 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         "  Serial.println(\"Boden ist FEUCHT\");",
         "}"
       ),
-      "PlantWorkshop/pumpCodeEditorTodo",
+      "PlantWorkshop/moistureCodeEditorTodo",
+      moistureAdvancedCodeTemplate,
       List(
+        LanguageMapContentId("PlantWorkshop/reorderHintFeuchtigkeitsGrenze"),
         LanguageMapContentId("PlantWorkshop/reorderHintSensorPowerHigh"),
         LanguageMapContentId("PlantWorkshop/reorderHintDelay10"),
         LanguageMapContentId("PlantWorkshop/reorderHintAnalogRead"),
@@ -251,6 +492,17 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         LanguageMapContentId("PlantWorkshop/reorderHintElseBlock"),
         LanguageMapContentId("PlantWorkshop/reorderHintSerialPrintln"),
         LanguageMapContentId("PlantWorkshop/reorderHintCloseBrace")
+      ),
+      orderConstraints = List(
+        1 -> 2,
+        2 -> 3,
+        3 -> 4,
+        0 -> 5,
+        4 -> 5,
+        5 -> 6,
+        6 -> 7,
+        7 -> 8,
+        8 -> 9
       )
     )
 
@@ -259,15 +511,15 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "PlantWorkshop/section3Title",
       List(
         container(
-          "PlantWorkshop/section3Title",
+          "PlantWorkshop/section3Subtitle1",
           List(
             instructionLabeledPair("PlantWorkshop/goalTitle", "PlantWorkshop/section3GoalText", GoalLabel),
             instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section3InstructionText", TaskLabel),
             instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section3HintText", HintLabel)
           )
         ),
-        container("PlantWorkshop/section3Title", List(codeTask)),
-        container("PlantWorkshop/section3Title", checklistItems)
+        container("PlantWorkshop/section3Subtitle2", List(codeTask)),
+        container("PlantWorkshop/section3Subtitle3", checklistItems)
       )
     )
   }
@@ -295,7 +547,8 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         "}",
         "delay(10000);"
       ),
-      "PlantWorkshop/pumpCodeEditorTodo",
+      "PlantWorkshop/combinedCodeEditorTodo",
+      combinedAdvancedCodeTemplate,
       List(
         LanguageMapContentId("PlantWorkshop/reorderHintFeuchtigkeitsGrenze"),
         LanguageMapContentId("PlantWorkshop/reorderHintSensorPowerHigh"),
@@ -328,19 +581,19 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     )
 
     section(
-      "section4",
-      "PlantWorkshop/section4Title",
+      "section5",
+      "PlantWorkshop/section5Title",
       List(
         container(
-          "PlantWorkshop/section4Title",
+          "PlantWorkshop/section5Subtitle1",
           List(
-            instructionLabeledPair("PlantWorkshop/goalTitle", "PlantWorkshop/section4GoalText", GoalLabel),
-            instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section4InstructionText", TaskLabel),
-            instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section4HintText", HintLabel)
+            instructionLabeledPair("PlantWorkshop/goalTitle", "PlantWorkshop/section5GoalText", GoalLabel),
+            instructionLabeledPair("PlantWorkshop/instructionTitle", "PlantWorkshop/section5InstructionText", TaskLabel),
+            instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section5HintText", HintLabel)
           )
         ),
-        container("PlantWorkshop/section4Title", List(codeTask)),
-        container("PlantWorkshop/section4Title", checklistItems)
+        container("PlantWorkshop/section5Subtitle2", List(codeTask)),
+        container("PlantWorkshop/section5Subtitle3", checklistItems)
       )
     )
   }
@@ -358,42 +611,42 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     )
 
     val downloadContainer = container(
-      "PlantWorkshop/section5Title",
+      "PlantWorkshop/section6DownloadTitle",
       List(
-        instructionLabeledPair("PlantWorkshop/safetyTitle", "PlantWorkshop/section5SafetyWarningText", SafetyLabel),
-        instructionMarkdown("PlantWorkshop/section5DownloadSteps")
+        instructionLabeledPair("PlantWorkshop/safetyTitle", "PlantWorkshop/section6SafetyWarningText", SafetyLabel),
+        instructionMarkdown("PlantWorkshop/section6DownloadSteps")
       )
     )
 
     val testChecklistContainer = container(
-      "PlantWorkshop/section5TestChecklistTitle",
+      "PlantWorkshop/section6TestChecklistTitle",
       List(
-        instructionLabeledPair("PlantWorkshop/section5TestChecklistTitle", "PlantWorkshop/section5TestChecklistIntro", TaskLabel)
+        instructionLabeledPair("PlantWorkshop/section6TestChecklistTitle", "PlantWorkshop/section6TestChecklistIntro", TaskLabel)
       ) ++ testChecklistItems
     )
 
     val troubleshootingContainer = container(
-      "PlantWorkshop/section5TroubleshootingTitle",
+      "PlantWorkshop/section6TroubleshootingTitle",
       List(
-        instructionLabeledPair("PlantWorkshop/section5TroubleshootingTitle", "PlantWorkshop/section5TroubleshootingText", HintLabel)
+        instructionLabeledPair("PlantWorkshop/section6TroubleshootingTitle", "PlantWorkshop/section6TroubleshootingText", HintLabel)
       )
     )
 
     val bonusContainer = container(
-      "PlantWorkshop/section5BonusTitle",
+      "PlantWorkshop/section6BonusTitle",
       List(
-        instructionLabeledPair("PlantWorkshop/section5BonusTitle", "PlantWorkshop/section5BonusText", GoalLabel)
+        instructionLabeledPair("PlantWorkshop/section6BonusTitle", "PlantWorkshop/section6BonusText", GoalLabel)
       )
     )
 
     val congratulationsContainer = container(
-      "PlantWorkshop/section5Congratulations",
+      "PlantWorkshop/section6Congratulations",
       List(
-        instructionPlaintext("PlantWorkshop/section5Congratulations")
+        instructionPlaintext("PlantWorkshop/section6Congratulations")
       )
     )
 
-    section("section5", "PlantWorkshop/section5Title", List(
+    section("section6", "PlantWorkshop/section6Title", List(
       downloadContainer,
       testChecklistContainer,
       troubleshootingContainer,
