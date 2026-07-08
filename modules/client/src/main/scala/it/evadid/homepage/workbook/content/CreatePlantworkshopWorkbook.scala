@@ -301,6 +301,46 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
        |}
        |""".stripMargin
 
+  private val combinedSketch: String =
+    """|/*
+       | * Girls Day - Automatische Pflanzen-Bewässerung
+       | * Kompletter Arduino Sketch (alle Module kombiniert)
+       | */
+       |
+       |const int SENSOR_PIN = A0;
+       |const int SENSOR_POWER_PIN = 2;
+       |const int PUMP_PIN = 8;
+       |int feuchtigkeitsGrenze = 400;
+       |
+       |void setup() {
+       |  Serial.begin(9600);
+       |  pinMode(SENSOR_POWER_PIN, OUTPUT);
+       |  pinMode(PUMP_PIN, OUTPUT);
+       |  digitalWrite(SENSOR_POWER_PIN, LOW);
+       |  digitalWrite(PUMP_PIN, LOW);
+       |}
+       |
+       |void loop() {
+       |  digitalWrite(SENSOR_POWER_PIN, HIGH);
+       |  delay(10);
+       |  int messwert = analogRead(SENSOR_PIN);
+       |  digitalWrite(SENSOR_POWER_PIN, LOW);
+       |
+       |  Serial.print("Analoger Wert: ");
+       |  Serial.println(messwert);
+       |
+       |  if (messwert < feuchtigkeitsGrenze) {
+       |    digitalWrite(PUMP_PIN, HIGH);
+       |    delay(2000);
+       |    digitalWrite(PUMP_PIN, LOW);
+       |  } else {
+       |    Serial.println("Boden feucht - keine Bewässerung nötig");
+       |  }
+       |
+       |  delay(10000);
+       |}
+       |""".stripMargin
+
   private def createDownloadInteraction(
     buttonLabelKey: String,
     sketchContent: String,
@@ -369,8 +409,10 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "PlantWorkshop/section2Subtitle4",
       List(
         instructionLabeledPair("PlantWorkshop/section2MeasurementTitle", "PlantWorkshop/section2MeasurementText", TaskLabel)
-      ) ++ exploreChecklistItems
+      )
     )
+
+    val selfCheckContainer2 = container("PlantWorkshop/section2Subtitle5", exploreChecklistItems)
 
     section(
       "section2",
@@ -384,9 +426,13 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
             instructionLabeledPair("PlantWorkshop/hintTitle", "PlantWorkshop/section2HintText", HintLabel)
           )
         ),
-        container("PlantWorkshop/section2Subtitle2", List(codeTask)),
+        container("PlantWorkshop/section2Subtitle2", List(
+          instructionCollapsibleHint("PlantWorkshop/section2ReorderHintTitle", "PlantWorkshop/section2ReorderHintBody"),
+          codeTask
+        )),
         downloadContainer,
-        measurementContainer
+        measurementContainer,
+        selfCheckContainer2
       )
     )
   }
@@ -421,11 +467,6 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       )
     )
 
-    val intermediateChecklistItems = checklist(
-      List("section4IntermediateCheckDone1", "section4IntermediateCheckDone2"),
-      "plant-pump-intermediate-check"
-    )
-
     val downloadContainer = container(
       "PlantWorkshop/section4DownloadTitle",
       List(
@@ -436,7 +477,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
           pumpTestSketch,
           "pumpe-test.ino"
         )
-      ) ++ intermediateChecklistItems
+      )
     )
 
     section(
@@ -453,8 +494,8 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
           )
         ),
         container("PlantWorkshop/section4Subtitle2", List(codeTask)),
-        container("PlantWorkshop/section4Subtitle3", checklistItems),
-        downloadContainer
+        downloadContainer,
+        container("PlantWorkshop/section4Subtitle3", checklistItems)
       )
     )
   }
@@ -614,7 +655,12 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "PlantWorkshop/section6DownloadTitle",
       List(
         instructionLabeledPair("PlantWorkshop/safetyTitle", "PlantWorkshop/section6SafetyWarningText", SafetyLabel),
-        instructionMarkdown("PlantWorkshop/section6DownloadSteps")
+        instructionMarkdown("PlantWorkshop/section6DownloadSteps"),
+        createDownloadInteraction(
+          "PlantWorkshop/section6DownloadButton",
+          combinedSketch,
+          "plantworkshop.ino"
+        )
       )
     )
 

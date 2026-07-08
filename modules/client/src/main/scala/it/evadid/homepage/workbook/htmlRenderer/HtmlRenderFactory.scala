@@ -72,6 +72,7 @@ object HtmlRenderFactory {
       case c: LangMapContentBasedElement => HtmlLangMapContentRenderer.render(c)
       case i: ImageElement => fromElement[ImageElement](i, HtmlImageElement(i).getDomElement())
       case b: LabeledInstructionElement => HtmlInstructionLabeledPairRenderer.render(b)
+      case c: CollapsibleInstructionElement => HtmlCollapsibleInstructionRenderer.render(c)
       // interactions
       case i: TextInteractionBasic => HtmlSimpleTextInteractionRenderer.render(i)
       case i: LabeledCheckboxInteraction => HtmlBasicCheckboxRenderer.render(i)

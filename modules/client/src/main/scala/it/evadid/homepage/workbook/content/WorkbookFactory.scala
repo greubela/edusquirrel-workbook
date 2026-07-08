@@ -94,6 +94,9 @@ trait WorkbookFactory {
   protected def instructionLabeledPair(titleMapId: String, bodyMapId: String, labelType: LabelType): LabeledInstructionElement =
     LabeledInstructionElement(LanguageMapContentId(titleMapId), LanguageMapContentId(bodyMapId), labelType)
 
+  protected def instructionCollapsibleHint(titleMapId: String, bodyMapId: String, initiallyCollapsed: Boolean = true): CollapsibleInstructionElement =
+    CollapsibleInstructionElement(LanguageMapContentId(titleMapId), LanguageMapContentId(bodyMapId), initiallyCollapsed)
+
   def image(imageName: String, imgType: String = "png"): ImageElement = {
     val fileDesc: FileDescription = FileFactory.relativeToResourceFolder("workbookresources/embroidery/images/" + imageName + "." + imgType)
     image(fileDesc)
