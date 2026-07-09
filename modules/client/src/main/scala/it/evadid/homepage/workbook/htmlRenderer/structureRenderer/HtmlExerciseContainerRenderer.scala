@@ -33,7 +33,7 @@ object HtmlExerciseContainerRenderer extends HtmlRenderFactory[ExerciseContainer
 
   private def renderContainerTitle(container: ExerciseContainer): Element = {
     div(
-      cls := "workbook-element container-title",
+      cls := "structure-element container-title",
       cls := s"container-title-level-$normalizedLevel",
       /*h2(
         text <-- fullInfo.signals.stringFromLanguageMapId(container.containerTitle)

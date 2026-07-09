@@ -2,173 +2,125 @@
    Color policy: define colors only in this file and consume them via CSS variables in other stylesheets. */
 :root {
 
-  /* borders */
 
-  --interaction-border: 2px solid var(--color-accent-active);
-  --interaction-highlight-transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    --color-red-0: #fdcfcf;
+    --color-red-1: #FBA0A0;
+    --color-red-2: #FA7D7D;
+    --color-red-3: #F85A5A;
+    --color-red-4: #F73737;
+    --color-red-5: #F61313;
+    --color-red-6: #DB0909;
+    --color-red-7: #B80707;
+    --color-red-8: #950606;
+    --color-red-9: #840505;
+    --color-red-10: #740505;
+    --color-red-11: #630404;
+    --color-red-12: #530303;
+    --color-red-13: #420303;
+    --color-red-14: #320202;
+    --color-red-15: #210101;
 
-  /* Canonical workbook palette (keep compact for maintainability). */
-  --color-ink: #182333;
-  --color-accent-strong: #1565c0;
-  --color-accent-primary: #2383dd;
-  --color-accent-active: #2196f3;
-  --color-accent-purple: #9c27b0;
-  --color-border-soft: #d6deeb;
-  --color-surface-level-1: #e8f2ff;
-  --color-surface-level-2: #d6e0ee;
-  --color-surface-muted: #f2f2f2;
-  --color-surface-base: #ffffff;
-  --color-text-muted: #4c566a;
-  --color-text-muted-light: #a2a2a2;
-  --color-transparent: transparent;
+    --color-green-0: #c9fae8;
+    --color-green-1: #93F5D2;
+    --color-green-2: #69F1C0;
+    --color-green-3: #3FEDAE;
+    --color-green-4: #16E89C;
+    --color-green-5: #12BE80;
+    --color-green-6: #0E9464;
+    --color-green-7: #0A6A47;
+    --color-green-8: #06402B;
+    --color-green-9: #053926;
+    --color-green-10: #053221;
+    --color-green-11: #042B1D;
+    --color-green-12: #032418;
+    --color-green-13: #031C13;
+    --color-green-14: #02150E;
+    --color-green-15: #010E0A;
 
-  /* Feedback / status colors (outside workbook core count). */
-  --color-error-500: #f91818;
-  --color-success-500: #2f9a6a;
+    --color-blue-0: #d2d2f9;
+    --color-blue-1: #A6A6F4;
+    --color-blue-2: #8585EF;
+    --color-blue-3: #6464EB;
+    --color-blue-4: #4343E7;
+    --color-blue-5: #2222E3;
+    --color-blue-6: #1A1AC6;
+    --color-blue-7: #1515A5;
+    --color-blue-8: #111184;
+    --color-blue-9: #0F0F75;
+    --color-blue-10: #0D0D67;
+    --color-blue-11: #0B0B58;
+    --color-blue-12: #090949;
+    --color-blue-13: #08083B;
+    --color-blue-14: #06062C;
+    --color-blue-15: #04041D;
 
-  /* Code editor palette (for code blocks in reorder items and editors). */
-  --color-code-background: #282c34;
-  --color-code-text: #61afef;
-  --color-code-accent: #c678dd;
-  --color-code-font: 'Consolas', 'Monaco', monospace;
-  --color-code-size: 14px;
+    --color-yellow-0: #fdfcf8;
+    --color-yellow-1: #F2E1B8;
+    --color-yellow-2: #EDD6A0;
+    --color-yellow-3: #E8CC87;
+    --color-yellow-4: #E4C26E;
+    --color-yellow-5: #DFB756;
+    --color-yellow-6: #DBAD3D;
+    --color-yellow-7: #D3A128;
+    --color-yellow-8: #BA8E23;
+    --color-yellow-9: #A57E1F;
+    --color-yellow-10: #916E1B;
+    --color-yellow-11: #7C5F17;
+    --color-yellow-12: #674F13;
+    --color-yellow-13: #533F10;
+    --color-yellow-14: #3E2F0C;
+    --color-yellow-15: #292008;
 
-  /* Opacity variants (must also come from tokens, not inline rgba values). */
-  --color-shadow-blue-soft: rgba(21, 101, 192, 0.08);
-  --color-shadow-text-soft: rgba(24, 35, 51, 0.05);
-  --color-shadow-blue-strong: rgba(35, 131, 221, 0.85);
-  --color-outline-blue-soft: rgba(21, 101, 192, 0.15);
-  --color-focus-ring: rgba(37, 99, 235, 0.2);
+    /*font-family: PTSans, "Helvetica Neue", "Helvetica", sans-serif;*/
 
-  /* Typography */
-  --font-family-base: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  --font-family: var(--font-family-base);
-  --fontsize-text: 15px;
+    /* Todo: new and lighter gray tones */
 
-  /* Layout sizes and spacing — compact scale (75% of initial expansion) */
-  --space-xs: 3px;
-  --space-sm: 5px;
-  --space-md: 10px;
-  --space-lg: 14px;
-  --space-xl: 24px;
-  --space-2xl: 36px;
-  --space-3xl: 48px;
+    --color-gray-0: #ededed;
+    --color-gray-1: #DBDBDB;
+    --color-gray-2: #CFCFCF;
+    --color-gray-3: #C3C3C3;
+    --color-gray-4: #B8B8B8;
+    --color-gray-5: #ACACAC;
+    --color-gray-6: #A0A0A0;
+    --color-gray-7: #959595;
+    --color-gray-8: #898989;
+    --color-gray-9: #7A7A7A;
+    --color-gray-10: #6B6B6B;
+    --color-gray-11: #5B5B5B;
+    --color-gray-12: #4C4C4C;
+    --color-gray-13: #3D3D3D;
+    --color-gray-14: #2E2E2E;
+    --color-gray-15: #1E1E1E;
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
 
-  --padding-medium: 20px;
-  --transition: all 0.25s ease;
+    /* Choices for Specific Elements */
 
-  /* Shadows — layered depth for card hierarchy */
-  --shadow-light: 0 1px 3px rgba(24, 35, 51, 0.12);
-  --shadow-soft: 0 4px 16px rgba(24, 35, 51, 0.10);
-  --shadow-medium: 0 8px 28px -8px rgba(24, 35, 51, 0.18);
-  --shadow-button: 0 4px 12px -6px rgba(24, 35, 51, 0.35);
-  --shadow-focus: 0 0 0 3px var(--color-focus-ring);
+    --color-background-neutral: var(--color-gray-1);
+    --color-background-neutral-accented: var(--color-gray-2);
 
-  /* Workbook-level semantic colors */
-  --color-workbook-background: var(--color-surface-level-2);
-  --color-workbook-surface-level-1: var(--color-surface-level-1);
-  --color-workbook-surface-level-2: var(--color-surface-muted);
-  --color-workbook-surface-level-3: var(--color-surface-base);
-  --color-workbook-surface-level-4: var(--color-surface-level-2);
-  --color-workbook-border-default: var(--color-border-soft);
-  --color-workbook-border-inactive: var(--color-accent-strong);
-  --color-workbook-border-active: var(--color-accent-active);
-  --color-workbook-accent: var(--color-accent-strong);
+    --color-background-workarea-interactible: white;
+    --color-background-workarea-display: var(--color-gray-0);
 
-  /* App surfaces */
-  --color-app-background: var(--color-workbook-background);
-  --color-page-gradient-start: var(--color-surface-level-2);
-  --color-page-gradient-mid: var(--color-workbook-background);
-  --color-page-gradient-end: var(--color-workbook-background);
-  --color-header-gradient-start: var(--color-surface-level-1);
-  --color-header-gradient-end: var(--color-surface-level-1);
-  --color-surface: var(--color-surface-base);
-  --color-surface-subtle: var(--color-surface-level-2);
+    --color-background-colored: var(--color-blue-0);
+    --color-background-colored-accented: var(--color-blue-2);
 
-  --color-border-subtle: var(--color-workbook-border-default);
-  --color-border-strong: var(--color-workbook-border-default);
-  --color-border: var(--color-border-subtle);
+    --color-textfont-regular: var(--color-gray-12);
 
-  --color-text-primary: var(--color-ink);
-  --color-text-secondary: var(--color-text-muted);
-  --color-text-inverse: var(--color-surface-base);
+    /* Layout sizes and spacing — compact scale (75% of initial expansion) */
 
-  --color-focus: var(--color-accent-primary);
+    --workarea-width: min(100%, 980px);
 
-  /* Accent colors */
-  --color-accent-blue-background: var(--color-surface-level-1);
-  --color-accent-error: var(--color-error-500);
-  --color-accent-success: var(--color-success-500);
+    --space-xs: 3px;
+    --space-sm: 5px;
+    --space-md: 10px;
+    --space-lg: 14px;
+    --space-xl: 24px;
+    --space-2xl: 36px;
+    --space-3xl: 48px;
 
-  /* Theme colors */
-  --color-theme: var(--color-accent-primary);
-  --color-dark: var(--color-ink);
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
 
-  --color-on-accent-primary: var(--color-text-inverse);
 
-  /* Label palette */
-  --color-label-editor-bg: var(--color-accent-primary);
-  --color-label-editor-text: var(--color-on-accent-primary);
-
-  /* Interaction surfaces */
-  --color-interaction-background: var(--color-surface);
-  --color-interaction-background-alt: var(--color-surface-muted);
-  --color-interaction-border: var(--color-border-subtle);
-
-  /* Buttons */
-  --color-button-background: var(--color-surface-muted);
-  --color-button-hover: var(--color-surface);
-  --color-button-border: var(--color-interaction-border);
-
-  /* Dropdown menus */
-  --color-dropdown-background: var(--color-surface-base);
-  --color-dropdown-border: var(--color-border-soft);
-  --color-dropdown-item-hover: var(--color-surface-level-2);
-  --color-dropdown-trigger-background: var(--color-surface-base);
-  --color-dropdown-trigger-hover: var(--color-surface-level-2);
-
-  /* Tooltip palette (for reorder hints and similar hover overlays). */
-  --color-tooltip-background: var(--color-surface-base);
-  --color-tooltip-text: var(--color-ink);
-  --color-tooltip-border: var(--color-border-soft);
-  --color-tooltip-shadow: rgba(24, 35, 51, 0.15);
-
-  /* Backward-compatible aliases used across existing stylesheets. */
-  --color-container-background: var(--color-workbook-surface-level-1);
-  --color-container-border-passive: var(--color-workbook-border-default);
-  --color-container-border-inactive: var(--color-workbook-border-inactive);
-  --color-container-border-active: var(--color-workbook-border-active);
-  --color-container-accent: var(--color-workbook-accent);
-  --color-tab-active-start: var(--color-accent-active);
-  --color-tab-active-end: var(--color-accent-primary);
-  --color-tab-active-border: var(--color-workbook-border-inactive);
-
-  /* Slide-deck semantic tokens */
-  --color-slide-border: var(--color-border-soft);
-  --color-slide-accent: var(--color-accent-strong);
-  --color-slide-accent-text: var(--color-accent-strong);
-
-  /* Task-box semantic tokens */
-  --color-taskbox-background: var(--color-surface-level-1);
-  --color-taskbox-border: var(--color-accent-active);
-  --color-taskbox-btn-active: var(--color-accent-active);
-  --color-taskbox-btn-active-hover: var(--color-accent-strong);
-  --color-taskbox-btn-text: var(--color-accent-active);
-  --color-taskbox-btn-bg: var(--color-surface-base);
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: var(--font-family);
-}
-
-body {
-  background-color: var(--color-app-background);
-  color: var(--color-text-primary);
 }

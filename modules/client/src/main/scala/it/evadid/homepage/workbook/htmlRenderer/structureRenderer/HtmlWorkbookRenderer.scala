@@ -2,6 +2,7 @@ package it.evadid.homepage.workbook.htmlRenderer.structureRenderer
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.*
 import it.evadid.homepage.workbook.htmlRenderer.{HtmlRenderFactory, HtmlWorkbookElement}
@@ -13,20 +14,24 @@ object HtmlWorkbookRenderer extends HtmlRenderFactory[Workbook] {
     val dom = div(
       cls := "it/evadid/homepage/workbook",
       WorkbookHeader(workbook).getDomElement,
-      createDomBody(workbook)
+      div(
+        cls := "workbook-body",
+        children <-- fullInfo.signals.activeSection.map(sectionContainer(workbook, _))
+      ),
+      footerTag(
+        cls := "workbook-footer",
+        div(
+          cls := "workbook-footer-content",
+          span(text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId("basic/workbookfooterprivacyinfo")))
+        )
+      )
     )
     HtmlWorkbookElement[Workbook, HtmlAppElement](fullInfo, workbook, HtmlAppElement(dom))
   }
 
-
   /*
   BODY
    */
-
-  private def createDomBody(workbook: Workbook): Element = div(
-    cls := "workbook-body",
-    children <-- fullInfo.signals.activeSection.map(sectionContainer(workbook, _))
-  )
 
   private def createDomNoSectionActivePlaceholder(): Element = span(
     text <-- contentIdStringSignal(LanguageMapContentId("basic/noSectionSelected")),

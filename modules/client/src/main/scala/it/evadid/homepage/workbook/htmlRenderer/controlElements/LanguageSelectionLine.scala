@@ -89,7 +89,7 @@ object LanguageSelectionLine {
     svg.svg(
       svg.xmlns := "http://www.w3.org/2000/svg",
       svg.width := s"$width",
-      svg.height := s"${width / 3 * 4}",
+      svg.height := s"${width / 4 * 3}",
       svg.viewBox := "0 -30000 90000 60000",
 
       svg.path(

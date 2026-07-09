@@ -26,7 +26,7 @@ import org.scalajs.dom.MouseEvent
 case class HtmlDropdownMenu(isOpen: Var[Boolean], content: List[HtmlAppElement]) extends HtmlAppElement {
 
   private val domElement: Element = div(
-    cls := "html-dropdown-menu",
+    cls := "dropdown-menu",
     role := "menu",
     children <-- Var(content.map(_.getDomElement())).signal
   )
@@ -41,7 +41,7 @@ object HtmlDropdownMenu {
 
   def menuLabel(labelString: Signal[String]): HtmlAppElement = new HtmlAppElement {
     private val domElement: Element = div(
-      cls := "html-dropdown-menu-label",
+      cls := "dropdown-menu-element dropdown-menu-label",
       role := "presentation",
       child.text <-- labelString
     )
@@ -54,8 +54,8 @@ object HtmlDropdownMenu {
   def menuItem(id: String, onAction: MouseEvent => Any): HtmlAppElement = menuItem(strSignal(LanguageMapContentId(id)), onAction)
 
   def menuItem(label: Signal[String], onAction: MouseEvent => Any = _ => ()): HtmlAppElement = new HtmlAppElement {
-    private val domElement: Element = button(
-      cls := "html-dropdown-menu-item",
+    private val domElement: Element = div(
+      cls := "dropdown-menu-element dropdown-menu-item",
       role := "menuitem",
       typ := "button",
       onClick --> { event => onAction(event) },

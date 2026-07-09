@@ -1,5 +1,5 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
-
+/*
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
@@ -65,3 +65,4 @@ private case class UserContextControlLine(workbook: Workbook) extends HtmlAppEle
   override def getDomElement(): Element = domElement
 }
 
+*/

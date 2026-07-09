@@ -9,14 +9,14 @@
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="modules">
           <set>
-            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook" />
-            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\client" />
-            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\core\js" />
-            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\core\jvm" />
-            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\core\shared" />
-            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\server" />
-            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\modules\worker" />
-            <option value="C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\project" />
+            <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/modules/client" />
+            <option value="$PROJECT_DIR$/modules/core/js" />
+            <option value="$PROJECT_DIR$/modules/core/jvm" />
+            <option value="$PROJECT_DIR$/modules/core/shared" />
+            <option value="$PROJECT_DIR$/modules/server" />
+            <option value="$PROJECT_DIR$/modules/worker" />
+            <option value="$PROJECT_DIR$/project" />
           </set>
         </option>
         <option name="sbtVersion" value="1.12.12" />

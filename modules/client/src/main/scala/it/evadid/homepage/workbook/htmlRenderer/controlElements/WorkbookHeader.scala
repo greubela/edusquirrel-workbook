@@ -22,7 +22,7 @@ case class WorkbookHeader(workbook: Workbook) extends ControlFactory {
       List(createDomToggleButton(collapsed))
     } else List(
       createDomHeaderTitleLine(workbook),
-      UserContextControlLine(workbook).getDomElement(),
+      UserDropdownMenu().getDomElement(),
       LanguageSelectionLine(workbook).getDomElement(),
       SectionSelectionLine(workbook).getDomElement(),
       createDomToggleButton(collapsed)
@@ -31,9 +31,8 @@ case class WorkbookHeader(workbook: Workbook) extends ControlFactory {
 
   private def createDomToggleButton(collapsed: Var[Boolean]): Element = div(
     cls := "workbook-header-toggle",
+    onClick --> { _ => collapsed.update(!_) },
     span(
-      cls := "workbook-header-toggle-icon",
-      onClick --> { _ => collapsed.update(!_) },
       child <-- collapsed.signal.map { c =>
         if (c) span(text <-- labelString("basic/showHeader"))
         else span(text <-- labelString("basic/hideHeader"))
@@ -44,7 +43,7 @@ case class WorkbookHeader(workbook: Workbook) extends ControlFactory {
   private def createDomHeaderTitleLine(workbook: Workbook): Element = div(
     cls := "workbook-title-line",
     h1(text <-- contentIdStringSignal(workbook.workbookTitle)),
-    UserDropdownMenu().getDomElement()
+
   )
 
 

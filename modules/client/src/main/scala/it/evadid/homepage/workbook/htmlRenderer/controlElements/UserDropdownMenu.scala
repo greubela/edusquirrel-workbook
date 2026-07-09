@@ -47,9 +47,9 @@ case class UserDropdownMenu() extends HtmlAppElement with ControlFactory{
   }
 
   private val domElement: Element = div(
-    cls := "workbook-user-menu-anchor dropdown-anchor",
-    button(
-      cls := "workbook-user-menu-trigger",
+    cls := "workbook-user-menu",
+    div(
+      cls := "workbook-user-menu-button",
       typ := "button",
       aria.label := "Benutzermenü öffnen",
       title <-- currentUserInitials.map(name => s"Benutzermenü für $name öffnen"),

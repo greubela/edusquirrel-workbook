@@ -6,6 +6,7 @@ import it.evadid.homepage.control.info.*
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlFullScreenContainerElement
+import it.evadid.homepage.workbook.htmlRenderer.controlElements.UserDropdownMenu
 import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.HtmlWorkbookRenderer
 
 object HtmlFullWorkbookApp extends HtmlAppElement {
@@ -46,18 +47,10 @@ object HtmlFullWorkbookApp extends HtmlAppElement {
       mainTag(
         cls := "workbook-main",
         child <-- workbookSignal
-      ),
-      initFooter()
+      )
     )
   }
 
-  def initFooter(): Element = footerTag(
-    cls := "workbook-footer",
-    div(
-      cls := "workbook-footer-content",
-      span(text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId("basic/workbookfooterprivacyinfo")))
-    )
-  )
 
   override def getDomElement(): Element = workbookDomElement
 

@@ -21,7 +21,7 @@ private case class SectionSelectionLine(workbook: Workbook) extends HtmlAppEleme
     })
   }
 
-  private def sectionToElement(section: WorkbookSection): Element = {
+  private def sectionToElement(nr: Int, section: WorkbookSection): Element = {
     div(
       cls <-- isSectionActiveSignal(section).map(isSectionShowing => if (isSectionShowing) {
         "section-block active"
@@ -29,6 +29,11 @@ private case class SectionSelectionLine(workbook: Workbook) extends HtmlAppEleme
         "section-block"
       }),
       div(
+        cls := "section-block-part section-block-number",
+        text <-- Signal.fromValue(nr + "")
+      ),
+      div(
+        cls := "section-block-part section-block-description",
         text <-- fullInfo.signals.stringFromLanguageMapId(section.sectionTitle)
       ),
       onClick --> { event => selectSection(section) },
@@ -37,6 +42,6 @@ private case class SectionSelectionLine(workbook: Workbook) extends HtmlAppEleme
 
   override def getDomElement(): L.Element = div(
     cls := "section-overview",
-    children <-- Var(sections.map(sectionToElement)).signal
+    children <-- Var(sections.zipWithIndex.map(tup => sectionToElement(tup._2, tup._1))).signal
   )
 }
