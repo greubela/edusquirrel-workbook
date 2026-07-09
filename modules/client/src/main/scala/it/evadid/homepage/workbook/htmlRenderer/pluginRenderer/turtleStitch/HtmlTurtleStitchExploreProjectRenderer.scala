@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.RenderingWithCards.ElementCard
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, RenderingWithCards}
-import it.evadid.workbook.model.interaction.plugins.TurtleStitch.TurtleStitchExploreProjectElement
+import it.evadid.workbook.elements.interactionElements.TurtleStitch.TurtleStitchExploreProjectElement
 
 object HtmlTurtleStitchExploreProjectRenderer extends LineBasedRenderingFactory[TurtleStitchExploreProjectElement] {
 

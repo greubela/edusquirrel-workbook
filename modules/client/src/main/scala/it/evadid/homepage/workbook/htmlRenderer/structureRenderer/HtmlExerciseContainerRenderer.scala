@@ -3,7 +3,7 @@ package it.evadid.homepage.workbook.htmlRenderer.structureRenderer
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.{HtmlRenderFactory, HtmlWorkbookElement}
-import it.evadid.workbook.model.elements.ExerciseContainer
+import it.evadid.workbook.elements.structureElements.ExerciseContainer
 
 object HtmlExerciseContainerRenderer extends HtmlRenderFactory[ExerciseContainer] {
 

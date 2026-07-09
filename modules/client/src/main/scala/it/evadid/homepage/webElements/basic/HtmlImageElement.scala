@@ -9,7 +9,7 @@ import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState, AsyncState, AsyncValue}
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.webElements.*
-import it.evadid.workbook.model.elements.ImageElement
+import it.evadid.workbook.elements.displayElements.ImageElement
 import todomove.datastructures.web.file.FullImage.*
 import todomove.datastructures.web.file.{FileFactory, FullImage}
 

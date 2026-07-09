@@ -1,14 +1,11 @@
 package it.evadid.homepage.control.info
 
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.workbook.model.interaction.WorkbookInteraction
+import it.evadid.homepage.control.model.*
+import it.evadid.workbook.model.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.model.interaction.sync.SyncInformation.SyncInformationWithContext
 import it.evadid.workbook.model.interaction.sync.{SyncInformation, UsageContext}
 
-import it.evadid.homepage.control.change.HomepageUsageControl.*
-import it.evadid.homepage.control.change.*
-import it.evadid.homepage.control.model.*
-import it.evadid.homepage.control.singletons.*
 case class HomepageCurrentInfo(fullInfo: FullInfo) {
 
   private def now(): HomepageInfo = fullInfo.homepageInfoState.now()
@@ -36,7 +33,7 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
   }
 
 
-  def allAvailableInteractions: List[WorkbookInteraction[?]] = fullInfo.synchronized {
+  def allAvailableInteractions: List[WorkbookInteractionElement[?]] = fullInfo.synchronized {
     val default = List()
     now().workbookInfo.map(_.loadedWorkbook.allContainedInteractions).getOrElse(default)
   }

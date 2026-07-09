@@ -9,10 +9,10 @@ import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.singletons.{WorkbookContentStorage, WorkbookLanguageStorage}
-import it.evadid.workbook.model.elements.WorkbookSection
 
 import scala.concurrent.*
 import it.evadid.core.datastructures.state.StateHelper.*
+import it.evadid.workbook.elements.structureElements.WorkbookSection
 
 case class HomepageSignalInfo(fullInfo: FullInfo) {
 

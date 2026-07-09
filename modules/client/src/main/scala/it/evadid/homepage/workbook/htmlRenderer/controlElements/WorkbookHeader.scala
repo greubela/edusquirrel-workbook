@@ -3,7 +3,7 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.HtmlWorkbookRenderer.contentIdStringSignal
-import it.evadid.workbook.model.elements.Workbook
+import it.evadid.workbook.elements.structureElements.Workbook
 import org.scalajs.dom.HTMLDivElement
 
 case class WorkbookHeader(workbook: Workbook) extends ControlFactory {

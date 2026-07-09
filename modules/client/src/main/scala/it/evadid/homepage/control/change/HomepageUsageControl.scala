@@ -3,7 +3,7 @@ package it.evadid.homepage.control.change
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.workbook.content.WorkbookFactory
-import it.evadid.workbook.model.interaction.WorkbookInteraction
+import it.evadid.workbook.model.abstractions.WorkbookInteractionElement
 
 import java.time.LocalDateTime
 import scala.concurrent.*
@@ -13,7 +13,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
 
   private given ExecutionContext = ExecutionContext.global
 
-  private def interactions: List[WorkbookInteraction[?]] = fullInfo.current.allAvailableInteractions
+  private def interactions: List[WorkbookInteractionElement[?]] = fullInfo.current.allAvailableInteractions
 
   private def cacheControl = fullInfo.cacheControl
 

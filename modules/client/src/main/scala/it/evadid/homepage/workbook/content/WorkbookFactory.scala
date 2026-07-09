@@ -5,13 +5,13 @@ import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.control.model.*
+import it.evadid.workbook.elements.displayElements.ImageElement.FileBasedImageElement
+import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{LabelType, WorkbookLabel}
+import it.evadid.workbook.elements.displayElements.*
+import it.evadid.workbook.elements.interactionElements.basic.*
+import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
+import it.evadid.workbook.elements.structureElements.*
 import it.evadid.workbook.model.abstractions.*
-import it.evadid.workbook.model.elements.*
-import it.evadid.workbook.model.elements.ImageElement.FileBasedImageElement
-import it.evadid.workbook.model.elements.LabeledWorkbookElement.{LabelType, WorkbookLabel}
-import it.evadid.workbook.model.interaction.*
-import it.evadid.workbook.model.interaction.basic.*
-import it.evadid.workbook.model.interaction.plugins.reorderExercise.ReorderInteraction
 import todomove.datastructures.web.file.FileFactory
 
 trait WorkbookFactory {
@@ -20,7 +20,7 @@ trait WorkbookFactory {
 
   def defaultSectionActiveNr: Int = 0
 
-  def estimatedDurations: Map[WorkbookInteraction[?], Double] = Map() // todo remove default value
+  def estimatedDurations: Map[WorkbookInteractionElement[?], Double] = Map() // todo remove default value
 
   def createEverything: AllWorkbookInfo = {
     val workbook = createWorkbook
@@ -46,8 +46,8 @@ trait WorkbookFactory {
   /*
   Control
    */
-  protected def createTextInput(id: String = nextId()): WorkbookInteraction[String] = {
-    WorkbookInteraction.TextInteractionBasic(id)
+  protected def createTextInput(id: String = nextId()): WorkbookInteractionElement[String] = {
+    TextInteraction(id)
   }
 
   /*
@@ -58,12 +58,12 @@ trait WorkbookFactory {
   }
 
   protected def section(sectionId: String, langIdSectionTitle: String, sectionContent: List[WorkbookElement]): WorkbookSection = {
-    //val sectionTitleElement = LangMapContentIdType(titleMapId, WorkbookIdBasedContent(TypeOfTextContent.PLAINTEXT, RoleInWorkbook.SECTION_TITLE))
+    //val sectionTitleElement = LangMapContentIdType(titleMapId, WorkbookIdBasedContent(TypeOfTextDisplay.PLAINTEXT, RoleInWorkbook.SECTION_TITLE))
     WorkbookSection(sectionId, LanguageMapContentId(langIdSectionTitle), sectionContent)
   }
 
-  protected def container(langIdContainerLabel: String, elements: List[WorkbookElement]): WorkbookElementGroup[WorkbookElement] = {
-    //val containerTitle = LangMapContentBasedElement(LanguageMapContentId(langIdContainerLabel), LangMapContentIdType(TypeOfTextContent.PLAINTEXT, RoleInWorkbook.CONTAINER_TITLE))
+  protected def container(langIdContainerLabel: String, elements: List[WorkbookElement]): WorkbookStructureElement[WorkbookElement] = {
+    //val containerTitle = LangMapContentBasedElement(LanguageMapContentId(langIdContainerLabel), LangMapContentIdType(TypeOfTextDisplay.PLAINTEXT, RoleInWorkbook.CONTAINER_TITLE))
     //WorkbookElementGroup(List(containerTitle) ++ elements, Some(WorkbookGroupType.EXERCISE_CONTAINER))
     ExerciseContainer(LanguageMapContentId(langIdContainerLabel), elements)
   }
@@ -73,19 +73,19 @@ trait WorkbookFactory {
    */
 
   protected def instructionPlaintext(langIdContent: String): WorkbookElement =
-    LangMapContentBasedElement(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextContent.PLAINTEXT))
+    LangMapContentBasedElement(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.PLAINTEXT))
 
   protected def instructionHtml(langIdContent: String): WorkbookElement =
-    LangMapContentBasedElement(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextContent.HTML))
+    LangMapContentBasedElement(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.HTML))
   //HtmlInstructionElement.fromUnsafeHtmlLanguageMapId(fullInfo, textMapId)
 
   protected def instructionMarkdown(langIdContent: String): WorkbookElement =
-    LangMapContentBasedElement(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextContent.MARKDOWN))
+    LangMapContentBasedElement(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN))
   //HtmlInstructionElement.fromMarkdownLanguageMapId(fullInfo, textMapId)
 
   def image(imageLocation: FileDescription): ImageElement = {
     FileBasedImageElement(imageLocation)
-    //LangIdBasedContent(imageLocation.fullPath, LangIdBasedContent(TypeOfTextContent.URL, RoleInWorkbook.IMAGE))
+    //LangIdBasedContent(imageLocation.fullPath, LangIdBasedContent(TypeOfTextDisplay.URL, RoleInWorkbook.IMAGE))
     //pseudoElement(HtmlImageElement(imageLocation, fullInfo).getDomSignal)
   }
 
@@ -99,7 +99,7 @@ trait WorkbookFactory {
     image(fileDesc)
   }
 
-  protected def checklist(langIdCheckboxLabel: String, elementId: String = nextId()): WorkbookInteraction[Boolean] = {
+  protected def checklist(langIdCheckboxLabel: String, elementId: String = nextId()): WorkbookInteractionElement[Boolean] = {
     LabeledCheckboxInteraction(elementId, LanguageMapContentId(langIdCheckboxLabel))
   }
 
@@ -109,7 +109,7 @@ trait WorkbookFactory {
                              defaultValue: String = "0",
                              diff: BigDecimal = BigDecimal(1),
                              elementId: String = nextId()
-                           ): WorkbookInteraction[String] = {
+                           ): WorkbookInteractionElement[String] = {
     LabeledNumberInteraction(elementId, LanguageMapContentId(langIdNumberLabel), numberType, defaultValue, diff)
   }
 

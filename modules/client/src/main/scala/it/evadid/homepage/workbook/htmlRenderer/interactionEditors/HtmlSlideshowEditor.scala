@@ -9,7 +9,7 @@ import it.evadid.homepage.webElements.basic.HtmlImageElement
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
 import it.evadid.homepage.workbook.htmlRenderer.{HtmlRenderFactory, HtmlWorkbookElement}
-import it.evadid.workbook.model.interaction.plugins.slideshow.{Slideshow, SlideshowPanel}
+import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 
 /**

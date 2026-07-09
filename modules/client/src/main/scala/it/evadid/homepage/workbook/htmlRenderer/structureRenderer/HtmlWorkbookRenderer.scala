@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.*
 import it.evadid.homepage.workbook.htmlRenderer.{HtmlRenderFactory, HtmlWorkbookElement}
-import it.evadid.workbook.model.elements.{Workbook, WorkbookSection}
+import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 
 object HtmlWorkbookRenderer extends HtmlRenderFactory[Workbook] {
 

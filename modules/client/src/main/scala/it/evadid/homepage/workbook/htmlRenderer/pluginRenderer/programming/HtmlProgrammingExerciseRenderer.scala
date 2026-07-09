@@ -7,7 +7,7 @@ import it.evadid.homepage.webElements.editor.code.EvaCodeEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, RenderingLine}
-import it.evadid.workbook.model.interaction.plugins.programming.ProgrammingExercise
+import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExercise
 
 case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[ProgrammingExercise] {
 

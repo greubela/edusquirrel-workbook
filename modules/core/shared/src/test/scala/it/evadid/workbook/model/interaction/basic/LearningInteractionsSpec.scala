@@ -1,5 +1,6 @@
 package it.evadid.workbook.model.interaction.basic
 
+import it.evadid.workbook.elements.interactionElements.basic.{ChoiceSelectionState, DropdownBlanksState, FillInBlanksState, MatchingInteractionState, TableFillInState}
 import munit.FunSuite
 
 class LearningInteractionsSpec extends FunSuite {

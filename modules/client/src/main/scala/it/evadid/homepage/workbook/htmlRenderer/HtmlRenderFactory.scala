@@ -16,15 +16,15 @@ import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.reorderExercise.H
 import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.turtleStitch.{HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRenderer}
 import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.{HtmlExerciseContainerRenderer, HtmlWorkbookRenderer}
 import it.evadid.util.logging.Logger
+import it.evadid.workbook.elements.displayElements.*
+import it.evadid.workbook.elements.interactionElements.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
+import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, TextInteraction}
+import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
+import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExercise
+import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
+import it.evadid.workbook.elements.interactionElements.slideshow.Slideshow
+import it.evadid.workbook.elements.structureElements.{ExerciseContainer, Workbook}
 import it.evadid.workbook.model.abstractions.WorkbookElement
-import it.evadid.workbook.model.elements.*
-import it.evadid.workbook.model.interaction.WorkbookInteraction.TextInteractionBasic
-import it.evadid.workbook.model.interaction.basic.*
-import it.evadid.workbook.model.interaction.plugins.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
-import it.evadid.workbook.model.interaction.plugins.gpt.GptInteractionElement
-import it.evadid.workbook.model.interaction.plugins.programming.ProgrammingExercise
-import it.evadid.workbook.model.interaction.plugins.reorderExercise.ReorderInteraction
-import it.evadid.workbook.model.interaction.plugins.slideshow.Slideshow
 import org.scalajs.dom.HTMLDivElement
 
 trait HtmlRenderFactory[T <: WorkbookElement] {
@@ -103,7 +103,7 @@ object HtmlRenderFactory {
       case i: ImageElement => HtmlProxyAppElementRenderer.renderWorkbookElement(i, HtmlImageElement(i))
 
       // interactions
-      case i: TextInteractionBasic => HtmlSimpleTextInteractionRenderer.renderWorkbookElement(i)
+      case i: TextInteraction => HtmlSimpleTextInteractionRenderer.renderWorkbookElement(i)
       case i: LabeledCheckboxInteraction => HtmlBasicCheckboxRenderer.renderWorkbookElement(i)
       case i: LabeledNumberInteraction => HtmlBasicNumberRenderer.renderWorkbookElement(i)
       /*case i: ChoiceSelectionInteraction => HtmlChoiceSelectionRenderer.renderWorkbookElement(i)

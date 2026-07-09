@@ -8,6 +8,7 @@ import it.evadid.core.datastructures.state.{ExecutionMethod, State}
 import it.evadid.core.util.*
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
+import it.evadid.workbook.model.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.model.interaction.*
 import it.evadid.workbook.model.interaction.sync.SyncInformation.{SyncCache, SyncInformationWithContext}
 import it.evadid.workbook.model.interaction.sync.*
@@ -15,7 +16,7 @@ import it.evadid.workbook.model.interaction.variable.InteractionVariableState.{D
 
 import java.time.LocalDateTime
 
-case class InteractionVariable[T](underlyingInteraction: WorkbookInteraction[T], debug: Boolean = false) {
+case class InteractionVariable[T](underlyingInteraction: WorkbookInteractionElement[T], debug: Boolean = false) {
 
   private val defaultHistory = InteractionVariableHistory[T](Set(InteractionVariableState[T](underlyingInteraction.defaultValue, UpdateImportance.DEFAULT, LocalDateTime.now())))
 

@@ -6,7 +6,7 @@ import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRende
 import it.evadid.homepage.workbook.htmlRenderer.HtmlWorkbookElement
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.RenderingWithCards.ElementCard
-import it.evadid.workbook.model.interaction.plugins.TurtleStitch.TurtleStitchRecreateShapeInteraction
+import it.evadid.workbook.elements.interactionElements.TurtleStitch.TurtleStitchRecreateShapeInteraction
 
 object HtmlTurtleStitchRecreateShapeRenderer extends LineBasedRenderingFactory[TurtleStitchRecreateShapeInteraction] {
 

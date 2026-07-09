@@ -2,14 +2,15 @@ package it.evadid.workbook.serialization
 
 import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.workbook.elements.displayElements.LangMapContentBasedElement
+import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 import it.evadid.workbook.model.abstractions.WorkbookElement
-import it.evadid.workbook.model.elements.{LangMapContentBasedElement, Workbook, WorkbookSection}
-import it.evadid.workbook.model.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextContent}
+import it.evadid.workbook.model.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay}
 import munit.FunSuite
 
 class SerializedWorkbookSpec extends FunSuite {
 
-  private val elementType = LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextContent.PLAINTEXT)
+  private val elementType = LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.PLAINTEXT)
 
   private def textElement(id: String): WorkbookElement =
     LangMapContentBasedElement(LanguageMapContentId(id), elementType)

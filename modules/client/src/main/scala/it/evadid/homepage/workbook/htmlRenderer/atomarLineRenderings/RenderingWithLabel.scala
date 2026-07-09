@@ -2,7 +2,7 @@ package it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.HtmlLangMapContentRenderer.contentIdStringSignal
-import it.evadid.workbook.model.elements.LabeledWorkbookElement.WorkbookLabel
+import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.WorkbookLabel
 
 
 // Special

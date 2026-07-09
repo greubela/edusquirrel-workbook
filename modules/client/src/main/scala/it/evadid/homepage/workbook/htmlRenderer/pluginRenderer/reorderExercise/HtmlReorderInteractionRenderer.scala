@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
-import it.evadid.workbook.model.interaction.plugins.reorderExercise.{ReorderInteraction, ReorderInteractionState}
+import it.evadid.workbook.elements.interactionElements.reorderExercise.{ReorderInteraction, ReorderInteractionState}
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 
 object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderInteraction[?]] {

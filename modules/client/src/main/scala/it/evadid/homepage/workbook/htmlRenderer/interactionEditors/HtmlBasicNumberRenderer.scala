@@ -5,7 +5,7 @@ import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
-import it.evadid.workbook.model.interaction.basic.{LabeledNumberInteraction, NumberType}
+import it.evadid.workbook.elements.interactionElements.basic.{LabeledNumberInteraction, NumberType}
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 import org.scalajs.dom.HTMLLabelElement
 

@@ -8,7 +8,7 @@ import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.workbook.syncDestination.LocalStorageSync
-import it.evadid.workbook.model.elements.Workbook
+import it.evadid.workbook.elements.structureElements.Workbook
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLInputElement}
 import todomove.datastructures.web.file.FileFactory

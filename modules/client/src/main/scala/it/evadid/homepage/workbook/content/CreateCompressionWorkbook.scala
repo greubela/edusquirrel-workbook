@@ -2,7 +2,7 @@ package it.evadid.homepage.workbook.content
 
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.control.model.*
-import it.evadid.workbook.model.elements.*
+import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 
 case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 

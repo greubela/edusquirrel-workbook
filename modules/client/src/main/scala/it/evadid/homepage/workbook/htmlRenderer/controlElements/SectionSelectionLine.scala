@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.model.elements.*
+import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 
 
 private case class SectionSelectionLine(workbook: Workbook) extends HtmlAppElement {

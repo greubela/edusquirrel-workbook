@@ -5,22 +5,19 @@ import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.datastructures.state.State
-import it.evadid.core.datastructures.state.StateHelper.{RichAsyncData, RichSignal}
-import it.evadid.core.datastructures.state.async.AsyncDataState.*
-import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState}
-import it.evadid.core.datastructures.state.observable.ObservableValue
+import it.evadid.core.datastructures.state.StateHelper.RichSignal
+import it.evadid.core.datastructures.state.async.AsyncData
 import it.evadid.core.util.InfoUtil
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.util.web.DownloadHelper
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlImageElement
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.contentIdStringSignal
 import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchWorkerFacade
-import it.evadid.workbook.model.interaction.WorkbookInteraction
-import it.evadid.workbook.model.interaction.plugins.TurtleStitch.TurtleStitchProjectState
+import it.evadid.workbook.elements.interactionElements.TurtleStitch.TurtleStitchProjectState
+import it.evadid.workbook.model.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLInputElement}
@@ -54,7 +51,7 @@ object HtmlTurtleStitchRendererHelper {
     )
   }
 
-  def renderDownloadButton(label: LanguageMapContentId, workbookInteraction: WorkbookInteraction[TurtleStitchProjectState]): Element = {
+  def renderDownloadButton(label: LanguageMapContentId, workbookInteraction: WorkbookInteractionElement[TurtleStitchProjectState]): Element = {
     val desiredFilename: String = "TurtleStitch_" + InfoUtil.datetimeFormattedForFilenames() + "_" + workbookInteraction.id + ".xml"
     button(
       text <-- HtmlRenderFactory.contentIdStringSignal(label),
@@ -70,7 +67,7 @@ object HtmlTurtleStitchRendererHelper {
     text <-- HtmlRenderFactory.contentIdStringSignal(label)
   )
 
-  def renderUploadButton(workbookInteraction: WorkbookInteraction[TurtleStitchProjectState], label: LanguageMapContentId = LanguageMapContentId("TurtleStitch/uploadButton")): Element = {
+  def renderUploadButton(workbookInteraction: WorkbookInteractionElement[TurtleStitchProjectState], label: LanguageMapContentId = LanguageMapContentId("TurtleStitch/uploadButton")): Element = {
     HtmlTurtleStitchFileUploadCard(workbookInteraction, label).getDomElement()
   }
 
@@ -78,7 +75,7 @@ object HtmlTurtleStitchRendererHelper {
   Project Preview
    */
 
-  def renderProjectPreviewImage(workbookInteraction: WorkbookInteraction[TurtleStitchProjectState]): Element = {
+  def renderProjectPreviewImage(workbookInteraction: WorkbookInteractionElement[TurtleStitchProjectState]): Element = {
     val xmlSignal: AsyncData[Nothing, String] = workbookInteraction.interactionVariable.asAsync.map(_.programXml.get)
     //xmlSignal.foreach(newContent => println("xml signal changed for workbook interaction " + workbookInteraction.id + ": " + newContent))(using unsafeWindowOwner)
     renderProjectCodePreviewWithAsyncXml(xmlSignal)
@@ -108,19 +105,19 @@ object HtmlTurtleStitchRendererHelper {
     val asyncLanguage: AsyncData[Nothing, HumanLanguage] = languageSignal.toAsync
     val combined: AsyncData[Nothing, (String, HumanLanguage)] = xmlSignal.combineIgnoreErrorData(asyncLanguage)
     combined.mapAsync(tup => TurtleStitchWorkerFacade.getGreenFlagProgramSnapshotDataSrc(tup._1, tup._2).futureFirstValue)
-/*
-    val obsStates: StrictSignal[AsyncDataState[?, String]] = xmlSignal.toStateSignal
-    val res = State[AsyncDataState[Nothing, FullImage]](AsyncDataLoading())
+    /*
+        val obsStates: StrictSignal[AsyncDataState[?, String]] = xmlSignal.toStateSignal
+        val res = State[AsyncDataState[Nothing, FullImage]](AsyncDataLoading())
 
-    obsStates.combineWith(languageSignal).foreach {
-      case (AsyncDataLoading(), _) => res.set(AsyncDataLoading[Nothing, FullImage]())
-      case (AsyncDataFailed(cause, data), _) => res.set(AsyncDataFailed[FullImage](cause, data))
-      case (AsyncDataSuccess(xml), h) => {
-        val snapshot: AsyncData[Nothing, FullImage] = TurtleStitchWorkerFacade.getGreenFlagProgramSnapshotDataSrc(xml, h)
-        snapshot.observeAllStates.addObserver(newState => res.set(newState))
-      }
-    }(using unsafeWindowOwner)
-    res.observable*/
+        obsStates.combineWith(languageSignal).foreach {
+          case (AsyncDataLoading(), _) => res.set(AsyncDataLoading[Nothing, FullImage]())
+          case (AsyncDataFailed(cause, data), _) => res.set(AsyncDataFailed[FullImage](cause, data))
+          case (AsyncDataSuccess(xml), h) => {
+            val snapshot: AsyncData[Nothing, FullImage] = TurtleStitchWorkerFacade.getGreenFlagProgramSnapshotDataSrc(xml, h)
+            snapshot.observeAllStates.addObserver(newState => res.set(newState))
+          }
+        }(using unsafeWindowOwner)
+        res.observable*/
   }
 
   /*
@@ -147,7 +144,7 @@ object HtmlTurtleStitchRendererHelper {
   Upload Button
    */
 
-  private case class HtmlTurtleStitchFileUploadCard(workbookInteraction: WorkbookInteraction[TurtleStitchProjectState], label: LanguageMapContentId) extends HtmlAppElement {
+  private case class HtmlTurtleStitchFileUploadCard(workbookInteraction: WorkbookInteractionElement[TurtleStitchProjectState], label: LanguageMapContentId) extends HtmlAppElement {
 
     private val acceptedTypes: List[String] = List("text/turtle", "text/xml")
 

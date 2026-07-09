@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
-import it.evadid.workbook.model.interaction.plugins.reorderExercise.*
+import it.evadid.workbook.elements.interactionElements.reorderExercise.{ReorderInteraction, ReorderInteractionState, ReorderType}
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 
 /**

@@ -13,8 +13,8 @@ import it.evadid.homepage.webElements.editor.SimpleChatEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, RenderingLine}
 import it.evadid.homepage.workbook.htmlRenderer.{HtmlRenderFactory, HtmlWorkbookElement}
-import it.evadid.workbook.model.interaction.basic.MessagingInteraction.MessengerModelScaffolding
-import it.evadid.workbook.model.interaction.plugins.gpt.GptInteractionElement
+import it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction.MessengerModelScaffolding
+import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.model.interaction.sync.UpdateImportance.MAJOR
 import it.evadid.workbook.model.interaction.variable.InteractionVariable
 import org.scalajs.dom.SVGSVGElement

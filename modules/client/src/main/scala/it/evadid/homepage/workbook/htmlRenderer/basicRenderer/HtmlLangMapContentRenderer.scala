@@ -7,10 +7,10 @@ import it.evadid.core.util.MarkdownToHtml
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, RenderingAsTitle, RenderingLine}
+import it.evadid.workbook.elements.displayElements.LangMapContentBasedElement
 import it.evadid.workbook.model.abstractions.*
 import it.evadid.workbook.model.abstractions.RoleInWorkbook.*
-import it.evadid.workbook.model.abstractions.TypeOfTextContent.*
-import it.evadid.workbook.model.elements.LangMapContentBasedElement
+import it.evadid.workbook.model.abstractions.TypeOfTextDisplay.*
 
 object HtmlLangMapContentRenderer extends LineBasedRenderingFactory[LangMapContentBasedElement] {
 
@@ -27,7 +27,7 @@ object HtmlLangMapContentRenderer extends LineBasedRenderingFactory[LangMapConte
     }
   }
 
-  private def instructionElement(contentId: LanguageMapContentId, typeOfTextContent: TypeOfTextContent): AtomarLineRendering = {
+  private def instructionElement(contentId: LanguageMapContentId, typeOfTextContent: TypeOfTextDisplay): AtomarLineRendering = {
     def instructionPlaintextToElement(text: String): Element = {
       div(cls := "instruction-content", text)
     }

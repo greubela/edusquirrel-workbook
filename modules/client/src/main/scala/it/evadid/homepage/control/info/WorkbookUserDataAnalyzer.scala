@@ -9,7 +9,7 @@ import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.model.AllWorkbookInfo.*
 import it.evadid.homepage.util.web.DownloadHelper
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.model.interaction.WorkbookInteraction
+import it.evadid.workbook.model.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 import it.evadid.workbook.model.interaction.variable.*
 import upickle.default.ReadWriter.join
@@ -51,7 +51,7 @@ case class WorkbookUserDataAnalyzer(logger: Logger, technical: TechnicalControl,
   def downloadAllData(): Unit = {
 
     logger.logInfo("WorkbookUserDataAnalyzer: now downloading all session data!")
-    val allInteractions: List[WorkbookInteraction[?]] = workbookInfo.loadedWorkbook.allContainedInteractions
+    val allInteractions: List[WorkbookInteractionElement[?]] = workbookInfo.loadedWorkbook.allContainedInteractions
     val history: Map[String, InteractionVariableHistorySerialized] = allInteractions.map(interaction => interaction.interactionVariable.keyForSerialization -> interaction.interactionVariable.serializedHistory).toMap
     val data = SessionData(userInfo.user, history, workbookInfo.getMetadata(), System.currentTimeMillis())
     val str = upickle.default.write(data)

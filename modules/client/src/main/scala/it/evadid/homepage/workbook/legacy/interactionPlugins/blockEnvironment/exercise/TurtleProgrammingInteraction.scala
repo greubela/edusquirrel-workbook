@@ -10,11 +10,11 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.co
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
 import it.evadid.vm.BeProgram
-import it.evadid.workbook.model.interaction.WorkbookInteraction
+import it.evadid.workbook.model.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.model.interaction.sync.UpdateImportance
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 
-case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expectedSvgResult: AppSvgElement) extends WorkbookInteraction[BeProgram] {
+case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expectedSvgResult: AppSvgElement) extends WorkbookInteractionElement[BeProgram] {
 
   val defaultValue: BeProgram = BeProgram(BeProgram.miniProgramExpression())
 
@@ -64,8 +64,5 @@ case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expected
       )
     )
 
-
-  // override def getDomElement(): L.Element = domElement
-
-
+  override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 }

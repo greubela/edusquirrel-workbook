@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.model.elements.Workbook
+import it.evadid.workbook.elements.structureElements.Workbook
 import todomove.datastructures.web.file.FileFactory
 
 private case class LanguageSelectionLine(workbook: Workbook) extends HtmlAppElement {
