@@ -303,3 +303,71 @@
 .simple-selector-editor__select {
   width: fit-content;
 }
+
+.simple-number-editor {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.simple-number-editor__body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm, 0.5rem);
+  width: 100%;
+  padding: var(--space-md, 1rem);
+  background-color: var(--color-surface, #ffffff);
+  box-sizing: border-box;
+}
+
+.simple-number-editor__label-text {
+  color: var(--color-text-primary, #1f2933);
+  letter-spacing: 0.01em;
+  flex: 0 0 auto;
+}
+
+.simple-number-editor__input {
+  min-width: 0;
+  flex: 1 1 auto;
+  border: var(--interaction-border, 1px solid var(--color-border-subtle, #d0d7de));
+  border-radius: var(--radius-sm, 0.25rem);
+  padding: var(--space-xs, 0.25rem) var(--space-sm, 0.5rem);
+  background: var(--color-surface, #ffffff);
+  color: var(--color-text-primary, #1f2933);
+  font: inherit;
+}
+
+.simple-number-editor__input:focus-visible,
+.simple-number-editor__spinner-button:focus-visible {
+  outline: none;
+  border-color: var(--color-focus, #0969da);
+  box-shadow: var(--shadow-focus, 0 0 0 3px rgba(9, 105, 218, 0.25));
+}
+
+.simple-number-editor__spinner {
+  display: inline-flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+}
+
+.simple-number-editor__spinner-button {
+  border: var(--interaction-border, 1px solid var(--color-border-subtle, #d0d7de));
+  background: var(--color-surface-muted, #f6f8fa);
+  color: var(--color-text-primary, #1f2933);
+  line-height: 1;
+  padding: 0.1rem 0.35rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+.simple-number-editor__spinner-button:hover {
+  background: var(--color-button-hover, var(--color-surface, #ffffff));
+}
+
+.simple-number-editor__spinner-button:first-child {
+  border-radius: var(--radius-sm, 0.25rem) var(--radius-sm, 0.25rem) 0 0;
+}
+
+.simple-number-editor__spinner-button:last-child {
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm, 0.25rem) var(--radius-sm, 0.25rem);
+}
