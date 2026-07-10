@@ -2,9 +2,10 @@ package it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
 import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement, WorkbookInteractionElement, WorkbookStructureElement}
-
+import it.evadid.core.datastructures.state.StateHelper.*
 case class RenderingWorkbookElementLine(workbookElement: WorkbookElement, content: DomElementCollection, additionalCssStr: String) extends AtomarLineRendering {
 
   protected val lineCssStr: String = getCssString(workbookElement)
@@ -14,6 +15,8 @@ case class RenderingWorkbookElementLine(workbookElement: WorkbookElement, conten
     case i: WorkbookInteractionElement[?] => interactionCssString
     case s: WorkbookStructureElement[?] => structureCssString
   }
+
+  fullInfo
 
   override lazy val render: L.Element = workbookElement.match {
     case d: WorkbookDisplayElement =>
@@ -26,7 +29,7 @@ case class RenderingWorkbookElementLine(workbookElement: WorkbookElement, conten
         cls := elementCssString + " " + interactionCssString ,
         div(
           cls := interactionInfoCssString,
-          "!?!?"
+          text <-- fullInfo.syncControl.createObservableReport(i.interactionVariable).deriveValue(_.latestStateIsSyncedTo.size + "").toEventStream()
         ),
         div(
           cls := interactionContentCssString +" " + additionalCssStr,

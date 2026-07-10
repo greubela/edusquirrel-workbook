@@ -33,7 +33,6 @@ case class RemoteSyncDataCache[K, D](config: RemoteCacheConfig[K, D], lastCacheU
     }
   }
 
-
   def needsWriting(entry: DataEntryToWriteToServer[K, D]): Boolean = {
     val curSyncStatus = getCurrentSyncStatus(entry.dataKey)
     val isEntryNewerThanCache = curSyncStatus.isSubmittedTimeNewerThanLastRequest(entry.timestampDataCreated)

@@ -14,7 +14,6 @@ trait AtomarLineRendering extends HtmlAppElement {
   lazy val render: Element
   lazy val elementsWithoutContainer: DomElementCollection
 
-
   protected val elementCssString: String = "workbook-element"
   protected val displayCssString: String = "display-element"
   protected val interactionCssString: String = "interaction-element"
