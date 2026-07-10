@@ -13,7 +13,7 @@ object HtmlWorkbookRenderer extends HtmlRenderFactory[Workbook] {
   override def renderAppElement(workbook: Workbook): HtmlWorkbookElement[Workbook, HtmlAppElement] = {
     val dom = div(
       cls := "it/evadid/homepage/workbook",
-      WorkbookHeader(workbook).getDomElement,
+      WorkbookHeader( workbook).getDomElement,
       div(
         cls := "workbook-body",
         children <-- fullInfo.signals.activeSection.map(sectionContainer(workbook, _))

@@ -19,6 +19,6 @@
   "switchUser": "Switch user",
   "workbookfooterprivacyinfo": "Privacy information (demo system): All your interactions are stored within your local browser, as well as two databases of Humboldt University. Do not use this page for learning (for now)! Contact: Chair Computer Science and Society, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin, Germany)",
   "noUserLoggedIn": "[Nobody]",
-  "showHeader": "Show Navigation",
-  "hideHeader": "Hide Navigation"
+  "showHeader": "Show Controls",
+  "hideHeader": "Hide Controls"
 }

@@ -24,7 +24,8 @@ object HtmlFullWorkbookApp extends HtmlAppElement {
     homepageDefaults = defaults,
     currentLanguage = defaults.defaultLanguage,
     workbookInfo = None,
-    userInfo = None
+    userInfo = None,
+    displayInfo = defaults.defaultDisplay
   )
 
   lazy val fullInfo: FullInfo = {

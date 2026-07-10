@@ -17,9 +17,17 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
 
   private def cacheControl = fullInfo.cacheControl
 
-  private[change] def updateContext(func: HomepageInfo => HomepageInfo): Future[?] = fullInfo.synchronized {
+  def changeDisplay(func: AllDisplayInfo => AllDisplayInfo): Unit = fullInfo.synchronized {
+    updateInfoWithoutContextChange((curInfo: HomepageInfo) => curInfo.copy(displayInfo = func(curInfo.displayInfo)))
+  }
+
+  private[change] def updateInfoWithoutContextChange(func: HomepageInfo => HomepageInfo): Future[?] = fullInfo.synchronized {
+    Future.successful(fullInfo.homepageInfoState.update(func))
+  }
+
+  private[change] def updateInfoChangingContext(func: HomepageInfo => HomepageInfo): Future[?] = fullInfo.synchronized {
     def beforeContextChanged(): Future[?] = {
-      cacheControl.downloadAllAvailableData()
+      //cacheControl.downloadAllAvailableData()
       cacheControl.requestStore(interactions.map(_.interactionVariable), true, LocalDateTime.now())
     }
 
@@ -44,14 +52,13 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
 
   def changeWorkbook(newWorkbook: AllWorkbookInfo): Unit = fullInfo.synchronized {
     //saveAndResetAllInfo()
-    updateContext(_.copy(workbookInfo = Some(newWorkbook)))
+    updateInfoChangingContext(_.copy(workbookInfo = Some(newWorkbook)))
   }
 
   def updateWorkbookConfig(func: WorkbookConfig => WorkbookConfig): Unit = fullInfo.synchronized {
     if (fullInfo.homepageInfoState.now().workbookInfo.nonEmpty) {
-      val currentWorkbookInfo: AllWorkbookInfo = fullInfo.homepageInfoState.now().workbookInfo.get
-      val newWorkbookInfo: AllWorkbookInfo = currentWorkbookInfo.copy(config = func(currentWorkbookInfo.config))
-      fullInfo.homepageInfoState.update(_.copy(workbookInfo = Some(newWorkbookInfo)))
+      val newInfo: Option[AllWorkbookInfo] = fullInfo.homepageInfoState.now().workbookInfo.map(info => info.copy(config = func(info.config)))
+      updateInfoChangingContext(curInfo => curInfo.copy(workbookInfo = newInfo))
       cacheControl.fetchAndStore(interactions.map(_.interactionVariable))
     } else {
       fullInfo.loggerSystemInfo.workbookControlLogger.logWarn("[WARN] ignore updated workbook config because there is no workbook loaded!")
@@ -60,7 +67,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   }
 
   def changeUser(userInfo: Option[AllUserInfo]): Unit = fullInfo.synchronized {
-    updateContext(_.copy(userInfo = userInfo))
+    updateInfoChangingContext(_.copy(userInfo = userInfo))
   }
 
   def changeLanguage(language: HumanLanguage): Unit = fullInfo.synchronized {

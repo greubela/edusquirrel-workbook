@@ -19,6 +19,6 @@
   "reorderFeedbackSuccess": "✅ Sehr gut! Die Reihenfolge ist korrekt.",
   "reorderFeedbackWrongOrder": "⚠️ Fast! Die Logik passt noch nicht ganz. Prüfe, welche Schritte zwingend vor anderen kommen müssen.",
   "noUserLoggedIn": "[Niemand]",
-  "showHeader": "Navigation einblenden",
-  "hideHeader": "Navigation ausblenden"
+  "showHeader": "Steuerung einblenden",
+  "hideHeader": "Steuerung ausblenden"
 }

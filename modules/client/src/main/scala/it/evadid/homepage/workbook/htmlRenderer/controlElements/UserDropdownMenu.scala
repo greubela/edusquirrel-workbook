@@ -2,7 +2,7 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
-import it.evadid.homepage.control.model.AllUserInfo
+import it.evadid.homepage.control.model.{AllUserInfo, FullInfo}
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlDropdownMenu

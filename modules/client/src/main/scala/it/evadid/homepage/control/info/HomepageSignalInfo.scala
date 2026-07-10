@@ -35,6 +35,8 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
     baseSignal.mapLazy(_.workbookInfo.flatMap(_.config.activeSection))
   }
 
+  lazy val display: StrictSignal[AllDisplayInfo] = baseSignal.mapLazy(_.displayInfo)
+
   lazy val workbook: StrictSignal[Option[AllWorkbookInfo]] = {
     baseSignal.mapLazy(_.workbookInfo)
     // Var(None).signal

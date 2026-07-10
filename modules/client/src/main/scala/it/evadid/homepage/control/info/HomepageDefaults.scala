@@ -21,6 +21,8 @@ case class HomepageDefaults() {
     SyncInformation(DatabaseSyncViaBackendServer("db_332371_12", false), SYNC_MAJOR, SyncFormatter.RichInteractionVariableFormatter()),
   )
 
+  lazy val defaultDisplay: AllDisplayInfo = AllDisplayInfo(true)
+
   lazy val defaultUser: AllUserInfo = selectableUsers.head
 
   lazy val defaultUserConfig: UserConfig = UserConfig(

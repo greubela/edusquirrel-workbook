@@ -11,6 +11,7 @@ case class HomepageInfo(
                          currentLanguage: HumanLanguage,
                          workbookInfo: Option[AllWorkbookInfo],
                          userInfo: Option[AllUserInfo],
+                         displayInfo: AllDisplayInfo
                        ) {
 
 
