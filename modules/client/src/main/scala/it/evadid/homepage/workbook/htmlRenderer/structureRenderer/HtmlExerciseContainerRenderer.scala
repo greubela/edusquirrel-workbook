@@ -2,6 +2,7 @@ package it.evadid.homepage.workbook.htmlRenderer.structureRenderer
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, RenderingAsContainerTitle}
 import it.evadid.homepage.workbook.htmlRenderer.{HtmlRenderFactory, HtmlWorkbookElement}
 import it.evadid.workbook.elements.structureElements.ExerciseContainer
 
@@ -17,29 +18,9 @@ object HtmlExerciseContainerRenderer extends HtmlRenderFactory[ExerciseContainer
   private val clsStringTitle = s"workbook-element container-title-level-$normalizedLevel"
 
   private def renderAllChildren(container: ExerciseContainer): List[Element] = {
-    val title = renderContainerTitle(container)
+    val title = AtomarLineRendering.exerciseContainerTitleLine(container.containerTitle).render
     val rest = container.childrenOfThisElement.map(HtmlRenderFactory.renderWorkbookElement).map(_.getDomElement())
     List(title) ++ rest
-  }
-
-  private def headingElement(content: String): Element = (normalizedLevel + 1) match {
-    case 1 => h1(content)
-    case 2 => h2(content)
-    case 3 => h3(content)
-    case 4 => h4(content)
-    case 5 => h5(content)
-    case _ => h6(content)
-  }
-
-  private def renderContainerTitle(container: ExerciseContainer): Element = {
-    div(
-      cls := "structure-element container-title",
-      cls := s"container-title-level-$normalizedLevel",
-      /*h2(
-        text <-- fullInfo.signals.stringFromLanguageMapId(container.containerTitle)
-      )*/
-       child <-- fullInfo.signals.stringFromLanguageMapId(container.containerTitle).map(headingElement)
-    )
   }
 
   protected def createDomElement(workbookElement: ExerciseContainer): Element = div(

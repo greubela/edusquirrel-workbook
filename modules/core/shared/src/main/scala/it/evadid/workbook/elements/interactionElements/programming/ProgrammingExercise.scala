@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
 import it.evadid.core.util.io.Serializer
 import it.evadid.vm.BeProgram
 import it.evadid.vm.test.BeTestSuite
-import it.evadid.workbook.model.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 
 case class ProgrammingExercise(override val id: String, testSuite: Option[BeTestSuite] = None) extends WorkbookInteractionElement[BeProgram] {
 

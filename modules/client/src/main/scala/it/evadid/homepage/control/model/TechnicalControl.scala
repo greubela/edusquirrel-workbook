@@ -1,7 +1,7 @@
 package it.evadid.homepage.control.model
 
 import it.evadid.core.datastructures.file.{FileDescription, LoadedFile}
-import it.evadid.core.datastructures.state.storage.AsyncDataCache
+import it.evadid.core.datastructures.storage.AsyncDataCache
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.homepage.webElements.HtmlAppElement
 

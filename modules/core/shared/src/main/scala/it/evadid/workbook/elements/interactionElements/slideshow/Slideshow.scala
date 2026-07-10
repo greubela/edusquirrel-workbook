@@ -1,7 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.slideshow
 
 import it.evadid.core.util.io.Serializer
-import it.evadid.workbook.model.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 
 case class Slideshow(override val id: String, panels: List[SlideshowPanel]) extends WorkbookInteractionElement[SlideshowState] {
 

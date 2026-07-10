@@ -5,6 +5,8 @@ import java.time.format.DateTimeFormatter
 
 object InfoUtil {
 
+  def datetimeFormattedForLog(dateTime: Option[LocalDateTime]): String = dateTime.map(datetimeFormattedForLog).getOrElse("[no time]")
+
   def datetimeFormattedForFilenames(dateTime: LocalDateTime = LocalDateTime.now()): String = {
     dateTime.format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"))
   }

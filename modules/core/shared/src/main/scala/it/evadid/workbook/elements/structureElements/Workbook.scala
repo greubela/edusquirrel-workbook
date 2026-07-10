@@ -2,8 +2,8 @@ package it.evadid.workbook.elements.structureElements
 
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.workbook.model.abstractions.*
-import it.evadid.workbook.model.abstractions.WorkbookStructuringType.{EXERCISE_CONTAINER, WORKBOOK}
+import it.evadid.workbook.abstractions.{WorkbookInteractionElement, WorkbookStructureElement, WorkbookStructuringType}
+import it.evadid.workbook.abstractions.WorkbookStructuringType.{EXERCISE_CONTAINER, WORKBOOK}
 
 case class Workbook(
                      workbookId: String,

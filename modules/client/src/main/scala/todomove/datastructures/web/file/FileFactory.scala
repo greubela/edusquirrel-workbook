@@ -3,8 +3,8 @@ package todomove.datastructures.web.file
 import it.evadid.core.datastructures.file.CopyrightInfo.unknownCopyrightInfo
 import it.evadid.core.datastructures.file.{CopyrightInfo, FileDescription, LoadedFile}
 import it.evadid.homepage.util.web.DownloadHelper
-import it.evadid.workbook.model.abstractions.TypeOfTextDisplay
-import it.evadid.workbook.model.abstractions.TypeOfTextDisplay.URL_TYPE
+import it.evadid.workbook.abstractions.TypeOfTextDisplay
+import TypeOfTextDisplay.URL_TYPE
 import org.scalajs.dom
 import org.scalajs.dom.{File, URL}
 

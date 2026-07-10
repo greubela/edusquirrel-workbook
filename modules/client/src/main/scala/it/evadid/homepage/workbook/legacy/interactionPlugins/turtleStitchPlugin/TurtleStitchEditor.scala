@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.core.datastructures.state.storage.AsyncDataCache
+import it.evadid.core.datastructures.storage.AsyncDataCache
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger

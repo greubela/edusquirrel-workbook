@@ -1,8 +1,8 @@
 package it.evadid.workbook.elements.structureElements
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.workbook.model.abstractions.WorkbookStructuringType.EXERCISE_CONTAINER
-import it.evadid.workbook.model.abstractions.{WorkbookElement, WorkbookStructureElement, WorkbookStructuringType}
+import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookStructureElement, WorkbookStructuringType}
+import it.evadid.workbook.abstractions.WorkbookStructuringType.EXERCISE_CONTAINER
 
 case class ExerciseContainer(containerTitle: LanguageMapContentId, containerContent: List[WorkbookElement]) extends WorkbookStructureElement[WorkbookElement] {
 

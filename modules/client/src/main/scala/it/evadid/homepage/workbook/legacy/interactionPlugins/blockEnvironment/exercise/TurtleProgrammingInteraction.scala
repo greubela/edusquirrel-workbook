@@ -6,12 +6,13 @@ import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.core.util.io.Serializer
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.HtmlBasicCheckboxRenderer.fullInfo
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
 import it.evadid.vm.BeProgram
-import it.evadid.workbook.model.abstractions.{WorkbookElement, WorkbookInteractionElement}
-import it.evadid.workbook.model.interaction.sync.UpdateImportance
+import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.interaction.sync.UpdateImportance
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 
 case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expectedSvgResult: AppSvgElement) extends WorkbookInteractionElement[BeProgram] {
@@ -26,7 +27,7 @@ case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expected
 
   override val serializer: Serializer[BeProgram] = io
 
-  private val boundVar: Var[BeProgram] = interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR).toAirstreamVar
+  private val boundVar: Var[BeProgram] = interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl,UpdateImportance.MAJOR).toAirstreamVar
 
   private val editorState: EditorState = {
     val initRenderer = BeRenderingConfig.defaultWithLanguage(fullInfo.signals.currentLanguage.now())

@@ -2,8 +2,8 @@ package it.evadid.workbook.elements.interactionElements.basic
 
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.util.io.Serializer
+import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction.{MessengerModelScaffolding, mmsSer}
-import it.evadid.workbook.model.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import upickle.ReadWriter
 import upickle.default.macroRW
 

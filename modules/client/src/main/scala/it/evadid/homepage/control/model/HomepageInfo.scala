@@ -1,9 +1,8 @@
 package it.evadid.homepage.control.model
 
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.control.info.HomepageDefaults
-import it.evadid.workbook.model.interaction.sync.UsageContext
-
+import it.evadid.homepage.control.singletons.HomepageDefaults
+import it.evadid.workbook.interaction.sync.UsageContext
 
 
 case class HomepageInfo(

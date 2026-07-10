@@ -1,8 +1,8 @@
 package it.evadid.core.datastructures.state.observable
 
 import it.evadid.core.datastructures.state.*
-import it.evadid.core.datastructures.state.async.{AsyncData, AsyncState}
 import it.evadid.core.datastructures.state.async.AsyncDataState.AsyncDataSuccess
+import it.evadid.core.datastructures.state.async.{AsyncData, AsyncState}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.*
@@ -84,9 +84,30 @@ trait ObservableValue[T] {
     res
   }
 
+  def combineWith[O1, O2](other1: ObservableValue[O1], other2: ObservableValue[O2]): ObservableValue[(T, O1, O2)] = {
+    combineWith(other1).combineWith(other2).deriveValue(tup => (tup._1._1, tup._1._2, tup._2))
+  }
+
+  def combineWith[O1, O2, O3](other1: ObservableValue[O1], other2: ObservableValue[O2], other3: ObservableValue[O3]): ObservableValue[(T, O1, O2, O3)] = {
+    this.combineWith(other1).combineWith(other2.combineWith(other3)).deriveValue(tup => (tup._1._1, tup._1._2, tup._2._1, tup._2._2))
+  }
+
+
 }
 
 object ObservableValue {
+
+  def fromList[A](list: List[ObservableValue[A]]): ObservableValue[List[A]] = {
+    val res = CombinedSequenceObservableValue(list)
+
+    list.zipWithIndex.foreach(tup => {
+      val newObs = Observer[A](newValue => res.onUpdatedAtIndex(tup._2, newValue), ExecutionMethod.executeSync, 10000)
+      tup._1.addObserver(newObs)
+    })
+
+    res
+
+  }
 
 
 }

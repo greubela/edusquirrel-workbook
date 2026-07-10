@@ -1,8 +1,8 @@
 package it.evadid.server.commandHandler.sql
 
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.model.interaction.sync.SyncFormatter.RichInteractionVariableFormatter
-import it.evadid.workbook.model.interaction.sync.UsageContext
+import it.evadid.workbook.interaction.sync.UsageContext
+import it.evadid.workbook.interaction.sync.SyncFormatter.RichInteractionVariableFormatter
 
 import java.sql.*
 import scala.collection.mutable

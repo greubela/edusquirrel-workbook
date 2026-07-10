@@ -2,10 +2,10 @@ package it.evadid.server.commandHandler.sql
 
 import it.evadid.distribution.commandTypes.SQLCommands.StoreToDbRequest
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.model.interaction.sync.SyncFormatter.RichInteractionVariableFormatter
-import it.evadid.workbook.model.interaction.sync.SyncInformation.SyncSuccess
-import it.evadid.workbook.model.interaction.sync.UsageContext
-import it.evadid.workbook.model.interaction.variable.InteractionVariableHistorySerialized
+import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
+import it.evadid.workbook.interaction.sync.SyncFormatter.RichInteractionVariableFormatter
+import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.interaction.sync.UsageContext
 
 import java.sql.{Connection, Timestamp}
 import java.time.LocalDateTime

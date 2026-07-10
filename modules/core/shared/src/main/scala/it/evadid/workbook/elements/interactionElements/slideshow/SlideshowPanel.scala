@@ -1,8 +1,8 @@
 package it.evadid.workbook.elements.interactionElements.slideshow
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement}
 import it.evadid.workbook.elements.displayElements.ImageElement
-import it.evadid.workbook.model.abstractions.{WorkbookDisplayElement, WorkbookElement}
 
 // Todo: Overwork Slideshow Panel so it uses generic WorkbookElement
 trait SlideshowPanel extends WorkbookDisplayElement {

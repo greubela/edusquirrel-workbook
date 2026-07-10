@@ -1,9 +1,9 @@
 package it.evadid.homepage.workbook.content
 
 import it.evadid.homepage.control.model.FullInfo
+import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExercise
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
-import it.evadid.workbook.model.abstractions.WorkbookElement
 
 case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
 

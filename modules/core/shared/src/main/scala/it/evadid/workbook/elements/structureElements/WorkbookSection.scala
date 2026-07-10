@@ -1,8 +1,8 @@
 package it.evadid.workbook.elements.structureElements
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.workbook.model.abstractions.*
-import it.evadid.workbook.model.abstractions.WorkbookStructuringType.SECTION
+import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookStructureElement, WorkbookStructuringType}
+import it.evadid.workbook.abstractions.WorkbookStructuringType.SECTION
 
 case class WorkbookSection(
                             sectionId: String,

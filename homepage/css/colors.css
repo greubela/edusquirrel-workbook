@@ -92,17 +92,20 @@
     --color-gray-14: #2E2E2E;
     --color-gray-15: #1E1E1E;
 
-
     /* Choices for Specific Elements */
 
-    --color-background-neutral: var(--color-gray-1);
-    --color-background-neutral-accented: var(--color-gray-2);
+    --color-background-neutral: var(--color-gray-2);
+    --color-background-neutral-accented: var(--color-gray-3);
 
     --color-background-workarea-interactible: white;
     --color-background-workarea-display: var(--color-gray-0);
+    --color-background-workarea-structure: var(--color-background-colored);
 
     --color-background-colored: var(--color-blue-0);
     --color-background-colored-accented: var(--color-blue-2);
+
+    --color-background-colored-correct: var(--color-green-2);
+    --color-background-colored-incorrect: var(--color-red-2);
 
     --color-textfont-regular: var(--color-gray-12);
 
@@ -114,13 +117,15 @@
     --space-sm: 5px;
     --space-md: 10px;
     --space-lg: 14px;
-    --space-xl: 24px;
-    --space-2xl: 36px;
-    --space-3xl: 48px;
+    --space-xl: 28px;
+    --space-2xl: 42px;
+    --space-3xl: 56px;
 
     --radius-sm: 8px;
     --radius-md: 12px;
     --radius-lg: 18px;
 
+
+    --space-element-left: var(--space-lg);
 
 }

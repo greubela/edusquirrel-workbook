@@ -7,15 +7,13 @@ import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlImageElement
-import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, RenderingLine}
-import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.*
-import it.evadid.homepage.workbook.htmlRenderer.interactionEditors.*
-import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.gpt.HtmlGptTextfieldInteractionRenderer
-import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.programming.HtmlProgrammingExerciseRenderer
-import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.reorderExercise.HtmlReorderInteractionRenderer
-import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.turtleStitch.{HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRenderer}
+import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
+import it.evadid.homepage.workbook.htmlRenderer.displayRenderer.*
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.*
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.{HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRenderer}
 import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.{HtmlExerciseContainerRenderer, HtmlWorkbookRenderer}
 import it.evadid.util.logging.Logger
+import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.*
 import it.evadid.workbook.elements.interactionElements.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, TextInteraction}
@@ -24,7 +22,6 @@ import it.evadid.workbook.elements.interactionElements.programming.ProgrammingEx
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.slideshow.Slideshow
 import it.evadid.workbook.elements.structureElements.{ExerciseContainer, Workbook}
-import it.evadid.workbook.model.abstractions.WorkbookElement
 import org.scalajs.dom.HTMLDivElement
 
 trait HtmlRenderFactory[T <: WorkbookElement] {
@@ -41,9 +38,9 @@ trait HtmlRenderFactory[T <: WorkbookElement] {
     HtmlRenderFactory.contentIdStringSignal(contentId)
   }
 
-  def placeholder(str: String): AtomarLineRendering = {
+  def placeholder(workbookElement: WorkbookElement, str: String): AtomarLineRendering = {
     val dom: ReactiveHtmlElement[HTMLDivElement] = div(s"${this.getClass.getName}::render cannot yet render an object because with the following information: $str!")
-    RenderingLine(false, dom)
+    AtomarLineRendering.basicLine(workbookElement, dom)
   }
 
 }
@@ -68,7 +65,7 @@ object HtmlRenderFactory {
 
   private def createPlaceholderElement[T <: WorkbookElement](workbookElement: T): HtmlWorkbookElement[T, AtomarLineRendering] = {
     val dom: ReactiveHtmlElement[HTMLDivElement] = div("HtmlRenderFactory::renderWorkbookElement cannot yet render objects of type '" + workbookElement.getClass.getName + "'!")
-    val rl: AtomarLineRendering = RenderingLine(false, dom, "")
+    val rl: AtomarLineRendering = AtomarLineRendering.basicLine(workbookElement, dom)
     HtmlWorkbookElement[T, AtomarLineRendering](HtmlFullWorkbookApp.fullInfo, workbookElement, rl)
 
   }
@@ -98,7 +95,7 @@ object HtmlRenderFactory {
 
   def renderWorkbookElement[T <: WorkbookElement](anyElement: T): HtmlWorkbookElement[WorkbookElement, AtomarLineRendering] = {
     anyElement match {
-      case c: LangMapContentBasedElement => HtmlLangMapContentRenderer.renderWorkbookElement(c)
+      case c: DisplayLangMapContent => HtmlDisplayLangMapContentRenderer.renderWorkbookElement(c)
       case b: LabeledWorkbookElement[?] => HtmlLabeledWorkbookElementRenderer(b).renderWorkbookElement(b)
       case i: ImageElement => HtmlProxyAppElementRenderer.renderWorkbookElement(i, HtmlImageElement(i))
 
@@ -111,8 +108,8 @@ object HtmlRenderFactory {
       case i: CategorizationInteraction => HtmlCategorizationInteractionRenderer.renderWorkbookElement(i)
       case i: FillInBlanksInteraction => HtmlFillInBlanksRenderer.renderWorkbookElement(i)
       case i: DropdownBlanksInteraction => HtmlDropdownBlanksRenderer.renderWorkbookElement(i)
-      case i: TableFillInInteraction => HtmlTableFillInRenderer.renderWorkbookElement(i)*/
-      case r: ReorderInteraction[?] => HtmlReorderInteractionRenderer.renderWorkbookElement(r)
+      case i: TableFillInInteraction => HtmlTableFillInRenderer.renderWorkbookElement(i)
+      case r: ReorderInteraction[?] => HtmlReorderInteractionRenderer.renderWorkbookElement(r)*/
       // plugins -- turtle
       case t: TurtleStitchExploreProjectElement => HtmlTurtleStitchExploreProjectRenderer.renderWorkbookElement(t)
       case t: TurtleStitchRecreateShapeInteraction => HtmlTurtleStitchRecreateShapeRenderer.renderWorkbookElement(t)

@@ -6,7 +6,7 @@ import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
-import it.evadid.workbook.model.abstractions.WorkbookInteractionElement
+import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import org.scalajs.dom.{SVGLinearGradientElement, SVGSVGElement}
 
 case class HtmlGptGrader(fullInfo: FullInfo, textInteraction: WorkbookInteractionElement[String]) extends HtmlAppElement {

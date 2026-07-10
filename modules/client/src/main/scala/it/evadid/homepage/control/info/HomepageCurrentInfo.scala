@@ -2,9 +2,9 @@ package it.evadid.homepage.control.info
 
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.control.model.*
-import it.evadid.workbook.model.abstractions.WorkbookInteractionElement
-import it.evadid.workbook.model.interaction.sync.SyncInformation.SyncInformationWithContext
-import it.evadid.workbook.model.interaction.sync.{SyncInformation, UsageContext}
+import it.evadid.workbook.abstractions.WorkbookInteractionElement
+import it.evadid.workbook.interaction.sync.{SyncInformation, UsageContext}
+import it.evadid.workbook.interaction.sync.SyncInformation.SyncInformationWithContext
 
 case class HomepageCurrentInfo(fullInfo: FullInfo) {
 

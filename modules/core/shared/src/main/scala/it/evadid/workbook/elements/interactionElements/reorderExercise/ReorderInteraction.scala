@@ -3,7 +3,7 @@ package it.evadid.workbook.elements.interactionElements.reorderExercise
 import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
-import it.evadid.workbook.model.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 
 sealed trait ReorderInteraction[T] extends WorkbookInteractionElement[ReorderInteractionState[T]] {
   val elements: List[T]

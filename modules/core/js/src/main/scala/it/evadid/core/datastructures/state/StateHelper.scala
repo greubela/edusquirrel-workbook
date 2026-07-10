@@ -4,9 +4,9 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState}
 import it.evadid.core.datastructures.state.observable.{ObservableValue, ObservableValueImpl}
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
-import it.evadid.workbook.model.interaction.sync.UpdateImportance
-import it.evadid.workbook.model.interaction.sync.UpdateImportance.TEMPORARY
-import it.evadid.workbook.model.interaction.variable.InteractionVariable
+import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
+import it.evadid.workbook.interaction.variable.InteractionVariable
+import UpdateImportance.TEMPORARY
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Success
@@ -86,17 +86,17 @@ object StateHelper {
 
   implicit class InteractionVariableOnJS[T](interactionVariable: InteractionVariable[T]) {
 
-    def createBoundVarWithUpdateImportance(updateImportance: UpdateImportance): Var[T] = {
-      val state = interactionVariable.createBoundStateWithUpdateImportance(updateImportance)
+    def createBoundVarWithUpdateImportance(syncControl: SyncControl, updateImportance: UpdateImportance): Var[T] = {
+      val state = interactionVariable.createBoundStateWithUpdateImportance(syncControl, updateImportance)
       fromStateToAirstreamVar(state)
     }
 
-    def createInteractionSignal(): StrictSignal[T] = {
+    def createInteractionSignal(syncControl: SyncControl): StrictSignal[T] = {
       // val res = Var[T](interactionVariable.currentValue)
       //interactionVariable.observableValue.addObserver(newValue => res.set(newValue))
       //res.signal
 
-      createBoundVarWithUpdateImportance(TEMPORARY).signal
+      createBoundVarWithUpdateImportance(syncControl, TEMPORARY).signal
     }
 
   }

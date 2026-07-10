@@ -6,7 +6,7 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import ReorderInteractionState.ReorderInteractionStateSerialized
 import ReorderType.CODELINES
-import it.evadid.workbook.model.interaction.variable.{InteractionVariableState, InteractionVariableStateSerialized}
+import it.evadid.workbook.interaction.variable.{InteractionVariableState, InteractionVariableStateSerialized}
 import upickle.{ReadWriter, macroRW}
 
 import java.lang.annotation.ElementType

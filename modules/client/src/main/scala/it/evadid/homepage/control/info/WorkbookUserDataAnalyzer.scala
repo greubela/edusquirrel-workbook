@@ -9,9 +9,9 @@ import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.model.AllWorkbookInfo.*
 import it.evadid.homepage.util.web.DownloadHelper
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.model.abstractions.WorkbookInteractionElement
-import it.evadid.workbook.model.interaction.sync.UpdateImportance
-import it.evadid.workbook.model.interaction.variable.*
+import it.evadid.workbook.abstractions.WorkbookInteractionElement
+import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interaction.variable.{InteractionVariableHistorySerialized, InteractionVariableStateSerialized}
 import upickle.default.ReadWriter.join
 
 import java.time.LocalDateTime
@@ -64,7 +64,7 @@ case class WorkbookUserDataAnalyzer(logger: Logger, technical: TechnicalControl,
     if (sessionData.currentUserInfo.id == userInfo.user.id) {
       workbookInfo.loadedWorkbook.allContainedInteractions.foreach(curInteraction => {
         sessionData.interactionHistory.foreach(historyTup => if (historyTup._1 == curInteraction.interactionVariable.keyForSerialization) {
-          curInteraction.interactionVariable.addHistory(historyTup._2)
+          curInteraction.interactionVariable.updateHistory(_.withAddedEvents(historyTup._2, curInteraction.serializer))
         })
       })
     }

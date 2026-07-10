@@ -1,12 +1,15 @@
 package it.evadid.homepage.workbook.syncDestination
 
+import it.evadid.core.datastructures.storage.RemoteSyncDataCache
+import it.evadid.core.datastructures.storage.RemoteSyncDataCache.FetchResponse
 import it.evadid.core.util.io.Serializer
-import it.evadid.workbook.model.interaction.sync.*
-import it.evadid.workbook.model.interaction.sync.SyncInformation.SyncSuccess
-import it.evadid.workbook.model.interaction.variable.InteractionVariableHistorySerialized
+import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.interaction.sync.*
+import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
 import org.scalajs.dom
 import org.scalajs.dom.Storage
 
+import java.time
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -32,15 +35,9 @@ object LocalStorageSync extends SyncDestination {
   }(using ec)
 
 
-  override def fetchAll(context: UsageContext): Future[Map[SyncContext, String]] = Future {
-    (0 until storage.length)
-      .flatMap { i =>
-        Option(storage.key(i)).flatMap { browserKey =>
-          Option(storage.getItem(browserKey)).map(value => contextToBrowserKeySerializer.deserialize(browserKey) -> value)
-        }
-      }
-      .toMap
-  }(using ec)
+  /*override def fetchAll(context: UsageContext): Future[Map[SyncContext, InteractionVariableHistorySerialized]] = Future {
+
+  }(using ec)*/
 
   override def shouldBePersistant(): Boolean = false
 
@@ -59,4 +56,16 @@ object LocalStorageSync extends SyncDestination {
     SyncSuccess(0, 0, dom.window.localStorage.length, LocalDateTime.now())
   }
 
+  override def fetchAll(context: UsageContext, formatter: SyncFormatter): Future[RemoteSyncDataCache.FetchResponse[SyncContext, InteractionVariableHistorySerialized]] = {
+    val resMap: Map[SyncContext, InteractionVariableHistorySerialized] = (0 until storage.length)
+      .flatMap { i =>
+        Option(storage.key(i)).flatMap { browserKey =>
+          Option(storage.getItem(browserKey)).map(value => contextToBrowserKeySerializer.deserialize(browserKey) -> formatter.deserialize(value))
+        }
+      }
+      .toMap
+
+    val res = FetchResponse.fromMap[SyncContext, InteractionVariableHistorySerialized](time.LocalDateTime.now(), resMap, _.lastStateOption.map(_.timestamp))
+    Future.successful(res)
+  }
 }

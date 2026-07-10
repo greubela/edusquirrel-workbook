@@ -11,10 +11,10 @@ import it.evadid.distribution.command.SerializedException.SimpleStackTraceElemen
 import it.evadid.distribution.commandTypes.LLMCommands.*
 import it.evadid.distribution.commandTypes.MailCommands.{SendMailRequest, SendMailResponse}
 import it.evadid.distribution.commandTypes.SQLCommands.*
-import it.evadid.workbook.model.interaction.sync.*
-import it.evadid.workbook.model.interaction.sync.SyncFormatter.InteractionSyncRequest
-import it.evadid.workbook.model.interaction.sync.SyncInformation.SyncSuccess
-import it.evadid.workbook.model.interaction.variable.{InteractionVariableHistorySerialized, InteractionVariableStateSerialized}
+import it.evadid.workbook.interaction.sync.{SyncContext, UpdateImportance, UsageContext}
+import it.evadid.workbook.interaction.sync.SyncFormatter.InteractionSyncRequest
+import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.interaction.variable.{InteractionVariableHistorySerialized, InteractionVariableStateSerialized}
 import upickle.ReadWriter
 import upickle.default.*
 

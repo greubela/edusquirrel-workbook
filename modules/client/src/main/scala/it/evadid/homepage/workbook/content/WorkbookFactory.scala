@@ -5,13 +5,13 @@ import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.control.model.*
+import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay, WorkbookElement, WorkbookInteractionElement, WorkbookStructureElement}
 import it.evadid.workbook.elements.displayElements.ImageElement.FileBasedImageElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{LabelType, WorkbookLabel}
 import it.evadid.workbook.elements.displayElements.*
 import it.evadid.workbook.elements.interactionElements.basic.*
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.structureElements.*
-import it.evadid.workbook.model.abstractions.*
 import todomove.datastructures.web.file.FileFactory
 
 trait WorkbookFactory {
@@ -73,14 +73,14 @@ trait WorkbookFactory {
    */
 
   protected def instructionPlaintext(langIdContent: String): WorkbookElement =
-    LangMapContentBasedElement(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.PLAINTEXT))
+    DisplayLangMapContent(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.PLAINTEXT))
 
   protected def instructionHtml(langIdContent: String): WorkbookElement =
-    LangMapContentBasedElement(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.HTML))
+    DisplayLangMapContent(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.HTML))
   //HtmlInstructionElement.fromUnsafeHtmlLanguageMapId(fullInfo, textMapId)
 
   protected def instructionMarkdown(langIdContent: String): WorkbookElement =
-    LangMapContentBasedElement(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN))
+    DisplayLangMapContent(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN))
   //HtmlInstructionElement.fromMarkdownLanguageMapId(fullInfo, textMapId)
 
   def image(imageLocation: FileDescription): ImageElement = {

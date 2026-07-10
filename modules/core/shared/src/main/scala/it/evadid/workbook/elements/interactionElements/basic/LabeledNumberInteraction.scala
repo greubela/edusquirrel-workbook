@@ -2,7 +2,7 @@ package it.evadid.workbook.elements.interactionElements.basic
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
-import it.evadid.workbook.model.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 
 /**
  * Describes the kind of numeric value a [[LabeledNumberInteraction]] edits.

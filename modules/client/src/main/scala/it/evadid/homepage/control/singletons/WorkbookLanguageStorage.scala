@@ -3,7 +3,7 @@ package it.evadid.homepage.control.singletons
 import it.evadid.core.datastructures.file.*
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.core.datastructures.state.storage.AsyncDataCache
+import it.evadid.core.datastructures.storage.AsyncDataCache
 import it.evadid.homepage.control.singletons.WorkbookLanguageStorage.*
 import it.evadid.homepage.util.serializing.IoSerialization
 import it.evadid.util.logging.Logger

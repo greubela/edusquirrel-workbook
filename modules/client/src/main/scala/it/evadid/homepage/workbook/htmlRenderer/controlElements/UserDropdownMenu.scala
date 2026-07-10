@@ -7,7 +7,7 @@ import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlDropdownMenu
 
-case class UserDropdownMenu() extends HtmlAppElement with ControlFactory{
+case class UserDropdownMenu() extends HtmlAppElement with ControlFactory {
 
   private val isOpen: Var[Boolean] = Var(false)
 
@@ -33,7 +33,7 @@ case class UserDropdownMenu() extends HtmlAppElement with ControlFactory{
 
   private def createSessionMenu(): List[HtmlAppElement] = List(
     HtmlDropdownMenu.menuLabel(userNameOrNobodySignal),
-    HtmlDropdownMenu.menuItem("basic/downloadEverything", _ => fullInfo.cacheControl.downloadAllAvailableData()),
+    HtmlDropdownMenu.menuItem("basic/downloadEverything", _ => fullInfo.current.workbookUserData.foreach(_.downloadAllData())),
     HtmlDropdownMenu.menuItem("basic/logout", _ => switchUser(None))
   )
 
