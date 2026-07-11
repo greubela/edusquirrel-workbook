@@ -46,7 +46,7 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
         div(
           cls := "slide-deck-navigation",
           button(
-            child.text <-- contentIdStringSignal(LanguageMapContentId("PlantWorkshop/slideshowBack")),
+            child.text <-- laminarHelper.plaintextStringSignal("PlantWorkshop/slideshowBack"),
             disabled <-- currentIndex.signal.map(_ == 0),
             onClick.mapTo(-1) --> navigateBy
           ),
@@ -55,7 +55,7 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
             child.text <-- currentIndex.signal.map(i => s"${i + 1}/$totalSlides")
           ),
           button(
-            child.text <-- contentIdStringSignal(LanguageMapContentId("PlantWorkshop/slideshowNext")),
+            child.text <-- laminarHelper.plaintextStringSignal("PlantWorkshop/slideshowNext"),
             disabled <-- currentIndex.signal.map(_ >= totalSlides - 1),
             onClick.mapTo(1) --> navigateBy
           )
@@ -85,7 +85,7 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
    */
   private def markdownContent(contentId: LanguageMapContentId): Element = {
     div(
-      child <-- contentIdStringSignal(contentId).map { markdownString =>
+      child <-- laminarHelper.plaintextStringSignal(contentId).map { markdownString =>
         val markdownHtml = MarkdownToHtml.transform(markdownString)
         foreignHtmlElement(DomApi.unsafeParseHtmlString(s"<div class=\"markdown-content\">$markdownHtml</div>"))
       }

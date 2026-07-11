@@ -3,9 +3,12 @@ package it.evadid.workbook.abstractions
 import it.evadid.core.datastructures.file.FileDescription
 
 sealed trait TypeOfTextDisplay {
+
 }
 
 object TypeOfTextDisplay {
+  case object PLAINTEXT_UNDERSCORE_REPLACABLE extends TypeOfTextDisplay
+
   case object PLAINTEXT extends TypeOfTextDisplay
 
   case object HTML extends TypeOfTextDisplay

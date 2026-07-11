@@ -12,11 +12,10 @@ import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.editor.SimpleChatEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.HtmlBasicCheckboxRenderer.fullInfo
 import it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction.MessengerModelScaffolding
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
-import it.evadid.workbook.interaction.variable.InteractionVariable
 import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
+import it.evadid.workbook.interaction.variable.InteractionVariable
 import org.scalajs.dom.SVGSVGElement
 
 import java.time.LocalDateTime
@@ -31,7 +30,7 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
   private val systemPromptId: LanguageMapContentId = LanguageMapContentId("prompts/scaffolding-system-prompt")
 
   private def sendError(err: Throwable, mmState: State[MessengerModel]): Unit = {
-    uiAndDomLogger.logExceptionWarn(s"error while sending message to LLM, a error message will appear in the chat", err)
+    laminarHelper.uiAndDomLogger.logExceptionWarn(s"error while sending message to LLM, a error message will appear in the chat", err)
     val errText: String = s"@student: Unfortunately, I could not generate an answer. The error I got was ${err.getMessage}. I printed additional information on the browser console!"
     val errMsg = Message(errText, MessengerModel.pWorkbook, LocalDateTime.now())
     mmState.update(_.addMessage(errMsg))
@@ -85,7 +84,7 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
     val interactionVariable: InteractionVariable[MessengerModelScaffolding] = workbookElement.scaffoldingInteractionOp.get.interactionVariable
     if (workbookElement.scaffoldingInteractionOp.nonEmpty) {
       val boundState = interactionVariable
-        .createBoundStateWithUpdateImportance(fullInfo.syncControl,MAJOR)
+        .createBoundStateWithUpdateImportance(fullInfo.syncControl, MAJOR)
         .biMap(_.messengerModel, MessengerModelScaffolding.apply)
       val scaffoldingChat = SimpleChatEditor(boundState, msg => onUserSendMessage(msg, boundState))
       val openChatButton = HtmlButtonElement.withSvgContent(createScaffoldingButtonSvg(), event => {

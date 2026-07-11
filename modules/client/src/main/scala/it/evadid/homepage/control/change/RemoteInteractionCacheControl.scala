@@ -38,7 +38,7 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
   override def createCurrentReport[T](forVariable: InteractionVariable[T]): InteractionVariableSyncReport[T] = remoteCache.syncLock.synchronized {
     val syncContext = fullInfo.current.currentHomepageContext.toSyncContext(forVariable.keyForSerialization)
     val res = remoteCache.currentReport(syncContext)
-    InteractionVariableSyncReport(forVariable.underlyingInteraction.serializer, forVariable.history, res.cacheStatus)
+    InteractionVariableSyncReport(forVariable.underlyingInteraction.serializer, forVariable.history, res.cacheStatus, res.allAvailableCacheKeys)
   }
 
   override def createObservableReport[T](forVariable: InteractionVariable[T]): ObservableValue[InteractionVariableSyncReport[T]] = remoteCache.syncLock.synchronized {
@@ -48,7 +48,7 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
 
     observableCache.combineWith(observableContext, observableHistory).deriveValue(tup => {
       val report = tup._1.createReportFor(tup._2.toSyncContext(forVariable.keyForSerialization))
-      InteractionVariableSyncReport(forVariable.underlyingInteraction.serializer, tup._3, report.cacheStatus)
+      InteractionVariableSyncReport(forVariable.underlyingInteraction.serializer, tup._3, report.cacheStatus, report.allAvailableCacheKeys)
     })
   }
 

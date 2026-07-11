@@ -28,7 +28,7 @@ object HtmlBasicCheckboxRenderer extends LineBasedRenderingFactory[LabeledCheckb
         ),
         span(
           cls := "simple-boolean-editor__label-text",
-          text <-- contentIdStringSignal(lci.checkboxLabel)
+          text <-- laminarHelper.plaintextStringSignal(lci.checkboxLabel)
         )
       )
 

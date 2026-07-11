@@ -1,0 +1,26 @@
+@import url("./colors.css");
+
+/* TOOLTIP DEFINITION */
+.custom-tooltip-target {
+    position: relative !important;
+    cursor: help;
+}
+.custom-tooltip-target[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--color-background-inverted);
+    color: var(--textcolor-background-inverted);
+
+    padding: var(--space-md);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+.custom-tooltip-target[data-tooltip]:hover::after {
+    opacity: 1;
+}

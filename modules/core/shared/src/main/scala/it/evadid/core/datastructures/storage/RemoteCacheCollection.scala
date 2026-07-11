@@ -19,7 +19,7 @@ case class RemoteCacheCollection[K, D, CK <: CacheKey[K, D]](baseLogger: SyncLog
       val resStatus: SyncStatus[K, D] = remoteCaches(curCacheKey).getCurrentSyncStatus(key)
       curCacheKey -> resStatus
     }).toMap
-    CacheCollectionReport(key, resMap)
+    CacheCollectionReport(key, resMap, remoteCaches.keys.toList)
   }
 
   def allKnownKeys(): Set[K] = remoteCaches.values.flatMap(_.asMap.values.map(_.dataKey)).toSet
@@ -121,7 +121,7 @@ object RemoteCacheCollection {
     def writer: RemoteDataWriter[K, D]
   }
 
-  case class CacheCollectionReport[K, D, CK <: CacheKey[K, D]](key: K, cacheStatus: Map[CK, SyncStatus[K, D]])
+  case class CacheCollectionReport[K, D, CK <: CacheKey[K, D]](key: K, cacheStatus: Map[CK, SyncStatus[K, D]], allAvailableCacheKeys: List[CK])
 
 }
 

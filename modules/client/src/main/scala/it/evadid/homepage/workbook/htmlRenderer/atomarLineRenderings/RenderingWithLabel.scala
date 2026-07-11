@@ -2,7 +2,6 @@ package it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
-import it.evadid.homepage.workbook.htmlRenderer.displayRenderer.HtmlDisplayLangMapContentRenderer.contentIdStringSignal
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.WorkbookLabel
 
@@ -18,7 +17,7 @@ case class RenderingWithLabel(workbookElement: WorkbookElement, containedElement
     val list = List(
       h3(
         cls := s"${cssLabel}__title labeled_container_label",
-        text <-- contentIdStringSignal(label.contentId)
+        text <-- laminarHelper.plaintextStringSignal(label.contentId)
       ),
       div(
         cls := s"${cssLabel}__body labeled_container_content",

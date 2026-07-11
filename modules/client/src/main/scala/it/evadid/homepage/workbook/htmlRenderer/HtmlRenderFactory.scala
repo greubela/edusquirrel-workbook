@@ -2,7 +2,6 @@ package it.evadid.homepage.workbook.htmlRenderer
 
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
-import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.webElements.HtmlAppElement
@@ -12,14 +11,12 @@ import it.evadid.homepage.workbook.htmlRenderer.displayRenderer.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.{HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRenderer}
 import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.{HtmlExerciseContainerRenderer, HtmlWorkbookRenderer}
-import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.*
 import it.evadid.workbook.elements.interactionElements.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExercise
-import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.slideshow.Slideshow
 import it.evadid.workbook.elements.structureElements.{ExerciseContainer, Workbook}
 import org.scalajs.dom.HTMLDivElement
@@ -28,15 +25,11 @@ trait HtmlRenderFactory[T <: WorkbookElement] {
 
   protected def fullInfo: FullInfo = HtmlFullWorkbookApp.fullInfo
 
-  protected def uiAndDomLogger: Logger = fullInfo.loggerSystemInfo.uiAndDomLogger
-
   def render(workbookElement: T): HtmlWorkbookElement[WorkbookElement, HtmlAppElement] = renderAppElement(workbookElement).asInstanceOf[HtmlWorkbookElement[WorkbookElement, HtmlAppElement]]
 
   def renderAppElement(workbookElement: T): HtmlWorkbookElement[T, HtmlAppElement]
 
-  def contentIdStringSignal(contentId: LanguageMapContentId): Signal[String] = {
-    HtmlRenderFactory.contentIdStringSignal(contentId)
-  }
+  protected val laminarHelper: LaminarRenderHelper = LaminarRenderHelper.singleton
 
   def placeholder(workbookElement: WorkbookElement, str: String): AtomarLineRendering = {
     val dom: ReactiveHtmlElement[HTMLDivElement] = div(s"${this.getClass.getName}::render cannot yet render an object because with the following information: $str!")
@@ -48,9 +41,6 @@ trait HtmlRenderFactory[T <: WorkbookElement] {
 
 object HtmlRenderFactory {
 
-  def contentIdStringSignal(languageMapContentId: LanguageMapContentId): Signal[String] = {
-    HtmlFullWorkbookApp.fullInfo.signals.stringFromLanguageMapId(languageMapContentId)
-  }
 
   trait LineBasedRenderingFactory[T <: WorkbookElement] extends HtmlRenderFactory[T] {
     override def renderAppElement(workbookElement: T): HtmlWorkbookElement[T, HtmlAppElement] =

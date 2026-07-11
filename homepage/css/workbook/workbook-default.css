@@ -97,6 +97,20 @@ body {
     background-color: var(--color-background-colored-incorrect);
 }
 
+/* INFO PANEL ELEMENTS */
+.interaction-element-info .sync-info {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+}
+
+.interaction-element-info .info-status-svg {
+    width: 30px;
+    height: 30px;
+    display: block;
+}
+
+
 /* INTERACTION CONTENT */
 
 .interaction-element-content {

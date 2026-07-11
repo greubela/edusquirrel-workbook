@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.*
-import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
+import it.evadid.homepage.workbook.htmlRenderer.{HtmlRenderFactory, LaminarRenderHelper}
 import org.scalajs.dom.{MouseEvent, SVGSVGElement}
 
 case class HtmlButtonElement(childElem: Signal[Element], additionalStyles: String, handleOnAction: MouseEvent => Any) extends HtmlAppElement {
@@ -30,7 +30,7 @@ object HtmlButtonElement {
   }
 
   def withTextLabel(contentId: LanguageMapContentId, onAction: MouseEvent => Any): HtmlButtonElement = {
-    val labelSignal: Signal[String] = HtmlRenderFactory.contentIdStringSignal(contentId)
+    val labelSignal: Signal[String] = LaminarRenderHelper.singleton.plaintextStringSignal(contentId)
     val elementSignal: Signal[Element] = labelSignal.map(span(_))
     HtmlButtonElement(elementSignal, "", onAction)
   }

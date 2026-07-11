@@ -7,7 +7,9 @@ import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlDropdownMenu
 
-case class UserDropdownMenu() extends HtmlAppElement with ControlFactory {
+import javax.naming.ldap.ControlFactory
+
+case class UserDropdownMenu() extends HtmlAppElement {
 
   private val isOpen: Var[Boolean] = Var(false)
 
@@ -40,7 +42,7 @@ case class UserDropdownMenu() extends HtmlAppElement with ControlFactory {
 
   private def createDemoMenu(): List[HtmlAppElement] = {
     List(
-      HtmlDropdownMenu.menuLabel(labelString(LanguageMapContentId("basic/switchUser")))
+      HtmlDropdownMenu.menuLabel(laminarHelper.plaintextStringSignal("basic/switchUser"))
     ) ++
       fullInfo.defaults.selectableUsers.map(user => HtmlDropdownMenu.menuItem(Var(user.user.name).signal, _ => switchUser(Some(user))))
 

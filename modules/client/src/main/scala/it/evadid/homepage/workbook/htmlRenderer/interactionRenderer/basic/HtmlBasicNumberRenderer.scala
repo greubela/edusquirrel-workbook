@@ -5,7 +5,6 @@ import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
-import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.HtmlBasicCheckboxRenderer.fullInfo
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledNumberInteraction, NumberType}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import org.scalajs.dom.HTMLLabelElement
@@ -16,14 +15,14 @@ object HtmlBasicNumberRenderer extends LineBasedRenderingFactory[LabeledNumberIn
 
   override protected def createRendering(lni: LabeledNumberInteraction): AtomarLineRendering = {
 
-    val numberVar: Var[String] = lni.interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl,UpdateImportance.MINOR).toAirstreamVar
+    val numberVar: Var[String] = lni.interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl, UpdateImportance.MINOR).toAirstreamVar
 
     val dom: ReactiveHtmlElement[HTMLLabelElement] =
       label(
         cls := "simple-number-editor__body",
         span(
           cls := "simple-number-editor__label-text",
-          text <-- contentIdStringSignal(lni.numberLabel)
+          text <-- laminarHelper.plaintextStringSignal(lni.numberLabel)
         ),
         input(
           typ := "text",

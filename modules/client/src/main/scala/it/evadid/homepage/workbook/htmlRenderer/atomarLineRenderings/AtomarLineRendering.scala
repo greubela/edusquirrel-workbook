@@ -3,8 +3,7 @@ package it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
-import it.evadid.homepage.workbook.htmlRenderer.displayRenderer.HtmlDisplayLangMapContentRenderer.contentIdStringSignal
+import it.evadid.homepage.workbook.htmlRenderer.{DomElementCollection, LaminarRenderHelper}
 import it.evadid.workbook.abstractions.WorkbookElement
 
 trait AtomarLineRendering extends HtmlAppElement {
@@ -17,7 +16,6 @@ trait AtomarLineRendering extends HtmlAppElement {
   protected val elementCssString: String = "workbook-element"
   protected val displayCssString: String = "display-element"
   protected val interactionCssString: String = "interaction-element"
-  protected val interactionInfoCssString: String = "interaction-element-info"
   protected val interactionContentCssString: String = "interaction-element-content"
   protected val structureCssString: String = "structure-element"
 
@@ -26,7 +24,7 @@ trait AtomarLineRendering extends HtmlAppElement {
 object AtomarLineRendering {
 
   def exerciseContainerTitleLine(content: LanguageMapContentId): AtomarLineRendering = {
-    RenderingAsContainerTitle(contentIdStringSignal(content), 1)
+    RenderingAsContainerTitle(LaminarRenderHelper.singleton.plaintextStringSignal(content), 1)
   }
 
   def cardLine(workbookElement: WorkbookElement, cards: List[ElementCard]): AtomarLineRendering = {

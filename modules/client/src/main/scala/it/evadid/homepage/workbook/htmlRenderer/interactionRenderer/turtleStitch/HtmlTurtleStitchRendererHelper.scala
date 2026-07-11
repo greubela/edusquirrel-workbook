@@ -13,9 +13,7 @@ import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.util.web.DownloadHelper
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlImageElement
-import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
-import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.contentIdStringSignal
-import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.HtmlBasicCheckboxRenderer.fullInfo
+import it.evadid.homepage.workbook.htmlRenderer.{HtmlRenderFactory, LaminarRenderHelper}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchWorkerFacade
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.elements.interactionElements.TurtleStitch.TurtleStitchProjectState
@@ -29,11 +27,14 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 object HtmlTurtleStitchRendererHelper {
+
+  private val laminarHelper: LaminarRenderHelper = LaminarRenderHelper.singleton
+
   /*
    * Basic Elements
    */
   def renderProjectEmpty(): Element = {
-    div(text <-- contentIdStringSignal(LanguageMapContentId("TurtleStitch/showEmptyPreview")))
+    div(text <-- laminarHelper.plaintextStringSignal("TurtleStitch/showEmptyPreview"))
   }
 
   /*
@@ -42,7 +43,7 @@ object HtmlTurtleStitchRendererHelper {
   def renderDownloadButton(label: LanguageMapContentId, projectFromFile: FileDescription): Element = {
     val desiredFilename: String = "TurtleStitch_" + InfoUtil.datetimeFormattedForFilenames() + "_" + projectFromFile.filenameWithExtension
     button(
-      text <-- HtmlRenderFactory.contentIdStringSignal(label),
+      text <-- laminarHelper.plaintextStringSignal(label),
       onClick --> { _ =>
         fullInfo.technical.fileStore.loadAsFuture(projectFromFile).onComplete {
           case Success(projectData) => DownloadHelper.downloadFile(desiredFilename, projectData.data)
@@ -55,7 +56,7 @@ object HtmlTurtleStitchRendererHelper {
   def renderDownloadButton(label: LanguageMapContentId, workbookInteraction: WorkbookInteractionElement[TurtleStitchProjectState]): Element = {
     val desiredFilename: String = "TurtleStitch_" + InfoUtil.datetimeFormattedForFilenames() + "_" + workbookInteraction.id + ".xml"
     button(
-      text <-- HtmlRenderFactory.contentIdStringSignal(label),
+      text <-- laminarHelper.plaintextStringSignal(label),
       onClick --> { _ =>
         workbookInteraction.interactionVariable.currentValue.programXml.foreach(f = currentXml => {
           DownloadHelper.downloadFile(desiredFilename, currentXml)
@@ -65,7 +66,7 @@ object HtmlTurtleStitchRendererHelper {
   }
 
   def cardHeadline(label: LanguageMapContentId): Element = h3(
-    text <-- HtmlRenderFactory.contentIdStringSignal(label)
+    text <-- laminarHelper.plaintextStringSignal(label)
   )
 
   def renderUploadButton(workbookInteraction: WorkbookInteractionElement[TurtleStitchProjectState], label: LanguageMapContentId = LanguageMapContentId("TurtleStitch/uploadButton")): Element = {
@@ -106,83 +107,7 @@ object HtmlTurtleStitchRendererHelper {
     val asyncLanguage: AsyncData[Nothing, HumanLanguage] = languageSignal.toAsync
     val combined: AsyncData[Nothing, (String, HumanLanguage)] = xmlSignal.combineIgnoreErrorData(asyncLanguage)
     combined.mapAsync(tup => TurtleStitchWorkerFacade.getGreenFlagProgramSnapshotDataSrc(tup._1, tup._2).futureFirstValue)
-    /*
-        val obsStates: StrictSignal[AsyncDataState[?, String]] = xmlSignal.toStateSignal
-        val res = State[AsyncDataState[Nothing, FullImage]](AsyncDataLoading())
-
-        obsStates.combineWith(languageSignal).foreach {
-          case (AsyncDataLoading(), _) => res.set(AsyncDataLoading[Nothing, FullImage]())
-          case (AsyncDataFailed(cause, data), _) => res.set(AsyncDataFailed[FullImage](cause, data))
-          case (AsyncDataSuccess(xml), h) => {
-            val snapshot: AsyncData[Nothing, FullImage] = TurtleStitchWorkerFacade.getGreenFlagProgramSnapshotDataSrc(xml, h)
-            snapshot.observeAllStates.addObserver(newState => res.set(newState))
-          }
-        }(using unsafeWindowOwner)
-        res.observable*/
   }
 
-  /*
-    private def getImageSignal(xmlSignal: Signal[Option[String]], languageSignal: Signal[HumanLanguage]): Signal[Element] = {
-      xmlSignal.map(_.getOrElse("")).combineWith(languageSignal).flatMapSwitch(tup => {
-        // println("signal changed, xml: " + tup._1.size + ", language: " + tup._2)
-        if (tup._1.trim.isEmpty) Var(renderProjectEmpty()).signal
-        else convertTurtleStitchXmlAndLanguageToProgramSrcStringState(tup._1, tup._2).toAirstreamVar.signal.map {
-          case AsyncData.AsyncDataSuccess(imgSrc) => tryRenderStringAsImageSrc(imgSrc)
-          case AsyncData.AsyncDataLoading => renderImageLoading()
-          case AsyncData.AsyncDataFailed(cause) => renderImageFailed(cause)
-        }
-      })
-    }
-  
-  private def convertTurtleStitchXmlAndLanguageToProgramSrcStringState(xml: String, humanLanguage: HumanLanguage): State[AsyncData[String]] = {
-    //println("try to render xml: " + xml.take(20) + ".../" + xml.size + " in language: " + humanLanguage)
-    if (xml.trim.isEmpty) State(AsyncData.AsyncDataFailed(new IllegalArgumentException("xml is empty")))
-    else TurtleStitchWorkerFacade.getGreenFlagProgramSnapshotDataSrc(xml, humanLanguage)
 
-  }*/
-
-  /*
-  Upload Button
-   */
-
-  private case class HtmlTurtleStitchFileUploadCard(workbookInteraction: WorkbookInteractionElement[TurtleStitchProjectState], label: LanguageMapContentId) extends HtmlAppElement {
-
-    private val acceptedTypes: List[String] = List("text/turtle", "text/xml")
-
-    private lazy val uploadInput: ReactiveHtmlElement[HTMLInputElement] = input(
-      styleAttr := "display:none;",
-      typ := "file",
-      accept := acceptedTypes.mkString(","),
-      onChange --> { event =>
-        val inputElement = event.target.asInstanceOf[dom.html.Input]
-        if (inputElement.files.length > 0) onNewFileSelected(inputElement.files.item(0))
-      }
-    )
-
-    private def onFileReadSuccessfully(bytes: Array[Byte]): Unit = {
-      println("file read successfully, content has " + bytes.length + " bytes!")
-      TurtleStitchProjectState.parseFromBytes(bytes).match {
-        case Success(newState) => workbookInteraction.interactionVariable.setStateFromUserInteraction(fullInfo.syncControl,newState, UpdateImportance.MAJOR)
-        case Failure(err) => println("HtmlTurtleStitchFileUploadCardRenderer::onFileReadSuccessfully error: " + err.getMessage)
-      }
-    }
-
-    private def onNewFileSelected(file: File): Unit = {
-      val fileFut: Future[Array[Byte]] = DownloadHelper.fetchFile(file)
-
-      fileFut.onComplete {
-        case Success(data) => onFileReadSuccessfully(data)
-        case Failure(error) => println("[WARN] could not load file, ignoring content: " + error.getMessage)
-      }(using ExecutionContext.global)
-
-    }
-
-    def getDomElement(): Element = button(
-      text <-- HtmlRenderFactory.contentIdStringSignal(label),
-      uploadInput,
-      onClick --> { _ =>
-        uploadInput.ref.click()
-      }
-    )
-  }
 }

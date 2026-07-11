@@ -6,6 +6,7 @@ import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
 import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement, WorkbookInteractionElement, WorkbookStructureElement}
 import it.evadid.core.datastructures.state.StateHelper.*
+import it.evadid.homepage.workbook.htmlRenderer.controlElements.InteractionInfoPanel
 case class RenderingWorkbookElementLine(workbookElement: WorkbookElement, content: DomElementCollection, additionalCssStr: String) extends AtomarLineRendering {
 
   protected val lineCssStr: String = getCssString(workbookElement)
@@ -16,7 +17,6 @@ case class RenderingWorkbookElementLine(workbookElement: WorkbookElement, conten
     case s: WorkbookStructureElement[?] => structureCssString
   }
 
-  fullInfo
 
   override lazy val render: L.Element = workbookElement.match {
     case d: WorkbookDisplayElement =>
@@ -24,13 +24,11 @@ case class RenderingWorkbookElementLine(workbookElement: WorkbookElement, conten
         cls := elementCssString + " " + displayCssString + " " + additionalCssStr,
         children <-- content.allElementsSignal
       )
-    case i: WorkbookInteractionElement[?] =>
+    case i: WorkbookInteractionElement[Any] =>
+      val interactionInfoPanel: InteractionInfoPanel = InteractionInfoPanel(i)
       div(
         cls := elementCssString + " " + interactionCssString ,
-        div(
-          cls := interactionInfoCssString,
-          text <-- fullInfo.syncControl.createObservableReport(i.interactionVariable).deriveValue(_.latestStateIsSyncedTo.size + "").toEventStream()
-        ),
+        interactionInfoPanel.getDomElement(),
         div(
           cls := interactionContentCssString +" " + additionalCssStr,
           children <-- content.allElementsSignal

@@ -13,7 +13,7 @@ object HtmlWorkbookRenderer extends HtmlRenderFactory[Workbook] {
   override def renderAppElement(workbook: Workbook): HtmlWorkbookElement[Workbook, HtmlAppElement] = {
     val dom = div(
       cls := "it/evadid/homepage/workbook",
-      WorkbookHeader( workbook).getDomElement,
+      WorkbookHeader( workbook).getDomElement(),
       div(
         cls := "workbook-body",
         children <-- fullInfo.signals.activeSection.map(sectionContainer(workbook, _))
@@ -34,7 +34,7 @@ object HtmlWorkbookRenderer extends HtmlRenderFactory[Workbook] {
    */
 
   private def createDomNoSectionActivePlaceholder(): Element = span(
-    text <-- contentIdStringSignal(LanguageMapContentId("basic/noSectionSelected")),
+    text <-- laminarHelper.plaintextStringSignal("basic/noSectionSelected"),
   )
 
   private def createDomSectionContent(workbookSection: WorkbookSection): List[Element] =
@@ -56,7 +56,7 @@ object HtmlWorkbookRenderer extends HtmlRenderFactory[Workbook] {
         prevSection match {
           case Some(prev) => button(
             cls := "section-nav-btn section-nav-prev",
-            text <-- contentIdStringSignal(LanguageMapContentId("basic/previousSection")),
+            text <-- laminarHelper.plaintextStringSignal("basic/previousSection"),
             onClick --> { _ => fullInfo.control.updateWorkbookConfig(_.copy(activeSection = Some(prev))) }
           )
           case None => emptyNode
@@ -64,7 +64,7 @@ object HtmlWorkbookRenderer extends HtmlRenderFactory[Workbook] {
         nextSection match {
           case Some(next) => button(
             cls := "section-nav-btn section-nav-next",
-            text <-- contentIdStringSignal(LanguageMapContentId("basic/nextSection")),
+            text <-- laminarHelper.plaintextStringSignal("basic/nextSection"),
             onClick --> { _ => fullInfo.control.updateWorkbookConfig(_.copy(activeSection = Some(next))) }
           )
           case None => emptyNode

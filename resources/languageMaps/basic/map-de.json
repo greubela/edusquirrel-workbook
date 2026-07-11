@@ -20,5 +20,10 @@
   "reorderFeedbackWrongOrder": "⚠️ Fast! Die Logik passt noch nicht ganz. Prüfe, welche Schritte zwingend vor anderen kommen müssen.",
   "noUserLoggedIn": "[Niemand]",
   "showHeader": "Steuerung einblenden",
-  "hideHeader": "Steuerung ausblenden"
+  "hideHeader": "Steuerung ausblenden",
+
+  "syncInfoTooltipFull": "[SyncInfo] Zu allen _ Quellen synchronisiert",
+  "syncInfoTooltipPartial": "[SyncInfo] Zu _ / _ Quellen synchronisiert",
+  "syncInfoTooltipDisabled": "[SyncInfo] Synchronisation ist deaktiviert",
+  "syncInfoTooltipWarning": "[SyncInfo] Zu keiner der _ Quellen synchronisiert"
 }

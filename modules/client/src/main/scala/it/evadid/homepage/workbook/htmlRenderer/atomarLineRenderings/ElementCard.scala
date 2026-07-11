@@ -5,13 +5,12 @@ import com.raquo.laminar.api.L.{children, *}
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
-import it.evadid.homepage.workbook.htmlRenderer.displayRenderer.HtmlDisplayLangMapContentRenderer.contentIdStringSignal
 
 case class ElementCard(headline: LanguageMapContentId, content: DomElementCollection) extends HtmlAppElement {
 
   lazy val labelElement: Element = h3(
     cls := "element-card-label",
-    text <-- contentIdStringSignal(headline)
+    text <-- laminarHelper.plaintextStringSignal(headline)
   )
 
   lazy val contentElement: Element = div(
@@ -32,9 +31,6 @@ case class ElementCard(headline: LanguageMapContentId, content: DomElementCollec
 }
 
 object ElementCard {
-
-
-
 
 
 }

@@ -61,7 +61,7 @@ trait SyncControl {
 
 object SyncControl {
 
-  case class InteractionVariableSyncReport[T](serializer: Serializer[T], curLocalHistory: InteractionVariableHistory[T], curRemoteHistory: Map[SyncInformationWithContext, SyncStatus[SyncContext, InteractionVariableHistorySerialized]]) {
+  case class InteractionVariableSyncReport[T](serializer: Serializer[T], curLocalHistory: InteractionVariableHistory[T], curRemoteHistory: Map[SyncInformationWithContext, SyncStatus[SyncContext, InteractionVariableHistorySerialized]], allSyncLocations: List[SyncInformationWithContext]) {
 
     lazy val typedMap: Map[SyncInformationWithContext, InteractionVariableHistory[T]] = {
       curRemoteHistory.iterator.flatMap(remoteTup => {

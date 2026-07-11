@@ -20,5 +20,10 @@
   "workbookfooterprivacyinfo": "Privacy information (demo system): All your interactions are stored within your local browser, as well as two databases of Humboldt University. Do not use this page for learning (for now)! Contact: Chair Computer Science and Society, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin, Germany)",
   "noUserLoggedIn": "[Nobody]",
   "showHeader": "Show Controls",
-  "hideHeader": "Hide Controls"
+  "hideHeader": "Hide Controls",
+
+  "syncInfoTooltipFull": "[SyncInfo] Synced to all ___ destinations",
+  "syncInfoTooltipPartial": "[SyncInfo] Synced to _ / _ destination",
+  "syncInfoTooltipDisabled": "[SyncInfo] Synchronisation is deactivated",
+  "syncInfoTooltipWarning": "[SyncInfo] No sync to any of the _ destinations"
 }

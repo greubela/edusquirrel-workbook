@@ -82,10 +82,15 @@ object WorkbookLanguageStorage {
 
   private def parseJson(str: String): Set[List[String]] = IoSerialization.parseJson(str).toList.map(tup => List(tup(0), tup(1))).toSet
 
-  private def parseContent(content: String, extension: String): Set[List[String]] = {
+  private def parseContent(logger: Logger, file: LoadedFile): Set[List[String]] = try {
+    val extension = file.description.extensionOrEmpty.toLowerCase
+    val content = file.fileDataAsUtf8String
     if (extension.toLowerCase == "json") parseJson(content)
     else if (extension.toLowerCase == "csv") parseCsv(content)
     else Set()
+  }catch case e: Throwable => {
+    logger.logExceptionWarn(s"ignoring content of file ${file.description.fullPath} after exception", e)
+    Set()
   }
 
   private def triplesFromFile(logger: Logger, file: LoadedFile): ParsedTriples = {
@@ -98,7 +103,7 @@ object WorkbookLanguageStorage {
       logger.logWarn(s"could not read file ${file.description.fullPath} because it has an unknown file extension ('${file.description.extensionOrEmpty}'), skipping file")
       ParsedTriples(Set(), Set())
     } else {
-      val contentAsList: Set[List[String]] = parseContent(file.fileDataAsUtf8String, file.description.extensionOrEmpty.toLowerCase)
+      val contentAsList: Set[List[String]] = parseContent(logger, file)
       val parsed: ParsedTriples = languageOp.get.match {
         case RegularLanguageMapFile(language: HumanLanguage) =>
           ParsedTriples(contentAsList.map(tup => MapEntryTripel(LanguageMapContentId(languageMapIdOp.get.toLowerCase, tup(0).toLowerCase), language, tup(1))), Set())

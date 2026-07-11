@@ -94,6 +94,9 @@
 
     /* Choices for Specific Elements */
 
+    --color-background-inverted: var(--color-gray-12);
+    --textcolor-background-inverted: var(--color-gray-2);
+
     --color-background-neutral: var(--color-gray-2);
     --color-background-neutral-accented: var(--color-gray-3);
 
