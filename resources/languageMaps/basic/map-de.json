@@ -28,5 +28,6 @@
   "syncInfoTooltipWarning": "[SyncInfo] Zu keiner der _ Quellen synchronisiert",
 
   "messengerEditorInputPlaceholder": "Gib eine Nachricht ein...",
-  "messengerEditorSendMessageButton": "Absenden"
+  "messengerEditorSendMessageButton": "Absenden",
+  "textEditorPlaceholder": "Gib hier deinen Text ein..."
 }

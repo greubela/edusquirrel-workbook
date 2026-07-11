@@ -1,12 +1,16 @@
 package it.evadid.homepage.webElements.editor
 
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.chat.{Message, MessengerModel, Person, SenderRole}
+import it.evadid.core.datastructures.chat.*
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.core.util.InfoUtil
 import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.homepage.webElements.basic.HtmlButtonElement
+import it.evadid.homepage.webElements.basic.HtmlButtonElement.ButtonConfig
 import it.evadid.homepage.webElements.editor.SimpleChatEditor.{ChatEditorConfig, defaultConfig}
+import it.evadid.homepage.webElements.editor.SimpleTextEditor.TextEditorConfig
 
 import java.time.LocalDateTime
 
@@ -34,29 +38,25 @@ case class SimpleChatEditor(interactionVar: State[MessengerModel], messageInputS
     )
   }
 
+  private lazy val sendButton: HtmlAppElement = HtmlButtonElement.withTextLabel("basic/messengerEditorSendMessageButton", _ => sendCurrentMessage(), ButtonConfig(true, List("messenger-send-button")))
+  private lazy val textEditorConfig: TextEditorConfig = TextEditorConfig(false, 2, 80, LanguageMapContentId("basic/messengerEditorInputPlaceholder"), List("messenger-input"))
+  private lazy val inputEditor: SimpleTextEditor = SimpleTextEditor(messageInput, Var(textEditorConfig))
+
   private lazy val inputArea: Element = {
     div(
       cls := "messenger-composer",
-      textArea(
-        cls := "messenger-input",
-        rows := 2,
-        placeholder <-- laminarHelper.plaintextStringSignal("basic/messengerEditorInputPlaceholder"),
-        controlled(
-          value <-- messageInput.signal,
-          onInput.mapToValue --> messageInput
-        ),
-        onKeyDown.filter(ev => ev.key == "Enter" && !ev.shiftKey) --> { ev =>
-          ev.preventDefault()
-          sendCurrentMessage()
-        }
-      ),
-      button(
-        cls := "messenger-send-button",
-        text <-- laminarHelper.plaintextStringSignal("basic/messengerEditorSendMessageButton"),
-        onClick --> { _ => sendCurrentMessage() }
-      )
+      inputEditor.getDomElement(),
+      sendButton.getDomElement()
     )
   }
+  /*
+   controlled(
+onKeyDown.filter(ev => ev.key == "Enter" && !ev.shiftKey) --> { ev =>
+       ev.preventDefault()
+       sendCurrentMessage()
+     }
+     )
+    */
 
   private def renderMessage(message: Message): Element = try {
     val cssStrPosition = if (config.drawRight(message)) "message-position-left" else "message-position-right"

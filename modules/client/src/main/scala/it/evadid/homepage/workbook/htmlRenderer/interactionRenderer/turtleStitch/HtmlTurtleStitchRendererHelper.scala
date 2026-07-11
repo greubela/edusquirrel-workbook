@@ -41,7 +41,7 @@ object HtmlTurtleStitchRendererHelper {
       fullInfo.technical.fileStore.loadAsFuture(projectFromFile).onComplete {
         case Success(projectData) => DownloadHelper.downloadFile(desiredFilename, projectData.data)
         case Failure(err) => println("HtmlExploreTurtleStitchExploreProjectRenderer::downloadButton error: " + err.getMessage)
-      }(using ExecutionContext.global)).getDomElement()
+      }(using ExecutionContext.global), HtmlButtonElement.stdConfig).getDomElement()
 
   }
 
@@ -50,7 +50,7 @@ object HtmlTurtleStitchRendererHelper {
     HtmlButtonElement.withTextLabel(label, event =>
       workbookInteraction.interactionVariable.currentValue.programXml.foreach(f = currentXml => {
         DownloadHelper.downloadFile(desiredFilename, currentXml)
-      })).getDomElement()
+      }), HtmlButtonElement.stdConfig).getDomElement()
   }
 
   def cardHeadline(label: LanguageMapContentId): Element = h3(

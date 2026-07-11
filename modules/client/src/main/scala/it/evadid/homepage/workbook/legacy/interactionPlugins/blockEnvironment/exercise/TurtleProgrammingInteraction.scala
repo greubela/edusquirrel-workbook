@@ -44,7 +44,7 @@ case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expected
     )
   }
 
-  private val openEditorButton = HtmlButtonElement.withTextLabel(LanguageMapContentId("BlockEditor/openEditor"), _ => openFullEditor())
+  private val openEditorButton = HtmlButtonElement.withTextLabel("BlockEditor/openEditor", _ => openFullEditor())
   private val fullscreenEditor = HtmlFullscreenTurtleEditorElement(editorState)
 
   private def openFullEditor(): Unit = {

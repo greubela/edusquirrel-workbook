@@ -19,7 +19,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       fullInfo.displayControl.setFullscreen(editor)
     }
 
-    val button: HtmlButtonElement = HtmlButtonElement.withTextLabel(LanguageMapContentId("basic/OpenEditor"), event => buttonPressed())
+    val button: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/OpenEditor", event => buttonPressed())
     AtomarLineRendering.basicLine(workbookElement, button.getDomElement())
   }
 

@@ -30,7 +30,7 @@ private[turtleStitch] case class HtmlTurtleStitchFileUploadCard(workbookInteract
       if (inputElement.files.length > 0) onNewFileSelected(inputElement.files.item(0))
     }
   )
-  private lazy val buttonElement = HtmlButtonElement.withTextLabel(label, event => uploadInput.ref.click()).getDomElement()
+  private lazy val buttonElement: Element = HtmlButtonElement.withTextLabel(label, event => uploadInput.ref.click(), HtmlButtonElement.stdConfig).getDomElement()
 
   private def onFileReadSuccessfully(bytes: Array[Byte]): Unit = {
     println("file read successfully, content has " + bytes.length + " bytes!")

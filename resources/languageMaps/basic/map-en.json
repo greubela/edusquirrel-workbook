@@ -29,5 +29,6 @@
 
 
   "messengerEditorInputPlaceholder": "Type your message...",
-  "messengerEditorSendMessageButton": "Send"
+  "messengerEditorSendMessageButton": "Send",
+  "textEditorPlaceholder": "Type your text here..."
 }

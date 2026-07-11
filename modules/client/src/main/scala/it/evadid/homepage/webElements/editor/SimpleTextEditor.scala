@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor
 
 import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.SimpleTextEditor.*
 
@@ -16,7 +17,8 @@ case class SimpleTextEditor(
   def createTextEditor(config: Signal[TextEditorConfig]): Element = textArea(
     rows <-- config.map(_.rowsCount),
     cols <-- config.map(_.colsCount),
-    cls <-- config.map(curConfig =>  s" simple-text-editor-textarea ${curConfig.containerClass}${if(curConfig.monospace) " mono" else ""}"),
+    placeholder <-- config.flatMapSwitch(curConfig => laminarHelper.plaintextStringSignal(curConfig.placeholder)),
+    cls <-- config.map(_.cssStr),
     controlled(
       value <-- varToBind.signal,
       onInput.mapToValue --> varToBind.writer
@@ -26,12 +28,16 @@ case class SimpleTextEditor(
 }
 
 object SimpleTextEditor {
-  case class TextEditorConfig(monospace: Boolean, rowsCount: Int, colsCount: Int, containerClass: String)
+  case class TextEditorConfig(monospace: Boolean, rowsCount: Int, colsCount: Int, placeholder: LanguageMapContentId, cssClasses: List[String]) {
+    lazy val cssMonoStr: String = if(monospace) " mono" else ""
+    lazy val cssStr: String = cssClasses.mkString("simple-text-editor-textarea ", " ", "") + cssMonoStr
+  }
 
   val defaultConfig: TextEditorConfig = TextEditorConfig(
     monospace = false,
     rowsCount = 4,
     colsCount = 110,
-    containerClass = "simple-text-editor"
+    placeholder = LanguageMapContentId("basic/textEditorPlaceholder"),
+    cssClasses = List()
   )
 }
