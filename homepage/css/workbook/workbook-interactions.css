@@ -1,10 +1,79 @@
 
 
-/* TEXT EDITOR  */
-textarea,
-button,
-.simple-text-editor-area {
+/* REMOVE DEFAULTS FROM EVERYTHING */
+
+.workbook-element textarea,
+.workbook-element textarea:hover,
+.workbook-element textarea:focus,
+.workbook-element button,
+.workbook-element button:hover,
+.workbook-element button:focus,
+.workbook-element input,
+.workbook-element input:hover,
+.workbook-element input:focus{
+
+    padding: var(--space-md);
+
+    outline: none;
+    transform:none;
     font-family: inherit;
     font-size: inherit;
     color: inherit;
 }
+
+
+/* GENERIC INTERACTIONABLE ELEMENTS*/
+
+.workbook-element textarea,
+.workbook-element button{
+    background-color: var(--color-background-workarea-interactible);
+    border: var(--space-borders) solid var(--color-background-colored);
+
+}
+.workbook-element textarea:hover,
+.workbook-element button:hover{
+    background-color: var(--color-background-workarea-interactible);
+    border: var(--space-borders) solid var(--color-background-colored-accented);
+    outline: none;
+}
+
+.workbook-element textarea:focus,
+.workbook-element button:focus{
+    background-color: var(--color-background-workarea-interactible);
+    border: var(--space-borders) solid var(--color-background-colored-accented-strong);
+    outline: none;
+}
+
+/* TEXT EDITOR  */
+
+.simple-text-editor-textarea{
+    resize: none;
+}
+
+/* BUTTONS */
+
+.workbook-element button{
+    cursor: pointer;
+}
+.workbook-element .button-svg{
+    border-radius: var(--space-lg);
+    fill: var(--color-background-workarea-interactible);
+}
+
+.workbook-element .button-svg svg {
+    width: calc(var(--space-element-left) * 3 * 4);
+    height: calc(var(--space-element-left) * 3);
+    stroke: var(--textcolor-regular);
+    stroke-width: 1.8;
+}
+
+.workbook-element .button-labeled{
+    border-radius: var(--space-md);
+}
+
+.button-line {
+    margin: 0 auto;
+    gap: var(--space-md);
+    display: flex;
+}
+

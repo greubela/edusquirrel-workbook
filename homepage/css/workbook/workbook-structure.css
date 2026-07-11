@@ -64,6 +64,7 @@ body {
 
 .workbook-element {
     padding-left: calc(var(--space-element-left) * 1);
+    background-color: var(--color-background-workarea-display);
 }
 
 .structure-element {
@@ -131,8 +132,6 @@ body {
 .interaction-element-content {
     grid-column: 2;
     align-content: center;
-    background-color: var(--color-background-workarea-interactible);
-
     width: 100%;
     box-sizing: border-box;
 }
@@ -142,7 +141,13 @@ body {
     width: 100%;
     height: 100%;
 }
+.interaction-element-content *:focus {
+    /* Deaktiviert den blauen Standard-Auswahlring */
+    outline: 1px red;
 
+    /* Falls der Browser eine Border statt Outline nutzt, hier anpassen (z.B. transparent oder grau halten) */
+    border-color: inherit;
+}
 
 /* CARD BASED RENDERING */
 
@@ -246,21 +251,6 @@ body {
 
 /* Workbook Elements — no left border on basic elements (only instructional boxes use colored strips) */
 
-.workbook-element {
-    border-left: none;
-}
-
-.workbook-interaction {
-    border-left: var(--space-md) solid var(--color-container-border-inactive);
-    border-top: 1px solid var(--color-container-border-passive);
-    border-right: 1px solid var(--color-container-border-passive);
-    border-bottom: 1px solid var(--color-container-border-passive);
-    width: 100%;
-}
-
-.workbook-interaction:focus {
-    border-color: var(--color-container-border-active);
-}
 
 
 /* Specific Elements */
@@ -292,13 +282,10 @@ h3 {
 */
 
 
-.exercise-instruction {
-    padding: var(--space-md) var(--space-xl);
-    font-size: 0.95rem;
-}
-
 /* --- Labeled instruction pair (title + body) --- */
 
+
+/*
 .instruction-goal {
     border-left: var(--space-sm) solid var(--color-accent-success);
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
@@ -417,33 +404,9 @@ h3 {
     background: var(--color-surface-subtle);
 }
 
-.button-line {
-    margin: 0 auto;
-    gap: var(--space-md);
-    display: flex;
-}
 
-/* Horizontal Preview Cards */
-.preview-line {
-    display: flex;
-    flex-direction: row;
-    gap: var(--space-md);
-}
+ */
 
-.preview-line .preview-card {
-    display: flex;
-    align-items: center;
-    flex-direction: column;
-    gap: var(--space-md);
-
-    background-color: var(--color-surface);
-    padding: var(--space-md);
-    flex: 1;
-}
-
-.programming-preview-tree {
-    width: 100%;
-}
 
 .programming-exercise-action-button {
     padding: var(--space-sm) var(--space-xl);
@@ -453,7 +416,6 @@ h3 {
     box-shadow: var(--shadow-button);
     color: var(--color-text-primary);
     font-weight: 600;
-    cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
     width: min(100%, 980px);
 }
@@ -619,52 +581,7 @@ button:disabled {
     }
 }
 
-/* --- SVG Button Styling --- */
 
-.svg-button:hover {
-    transform: translateY(-2px);
-    background: var(--color-button-hover);
-}
-
-.svg-button svg {
-    width: 30px;
-    height: 30px;
-    stroke: var(--color-text-primary);
-    stroke-width: 1.8;
-}
-
-.svg-button path {
-    transition: stroke 0.2s ease, fill 0.2s ease;
-}
-
-/* Button colors */
-.svg-button.highlighted .button-borderpath,
-.svg-button.highlighted .button-fill {
-    fill: var(--color-surface-muted);
-    stroke: var(--color-theme);
-}
-
-/* scaffolder button colors */
-.svg-button .button-show-scaffolder {
-    fill: var(--color-surface-muted);
-    stroke: var(--color-dark);
-}
-
-.svg-button.highlighted .button-show-scaffolder {
-    fill: var(--color-surface-muted);
-    stroke: var(--color-dark);
-}
-
-/* Grading button colors */
-.svg-button .button-grading-start .button-borderpath {
-    fill: var(--color-surface-muted);
-    stroke: var(--color-dark);
-}
-
-.svg-button.highlighted .button-grading-start .button-borderpath {
-    fill: var(--color-surface-muted);
-    stroke: var(--color-theme);
-}
 
 /* --- Editors --- */
 

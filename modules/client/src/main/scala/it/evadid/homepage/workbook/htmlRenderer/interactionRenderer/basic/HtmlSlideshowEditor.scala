@@ -5,7 +5,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.core.util.MarkdownToHtml
-import it.evadid.homepage.webElements.basic.HtmlImageElement
+import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.HtmlBasicCheckboxRenderer.fullInfo
@@ -45,6 +45,7 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
         cls := "workbook-interaction",
         div(
           cls := "slide-deck-navigation",
+          // todo HtmlButtonElement.withTextLabel("PlantWorkshop/slideshowBack") --> with set disabled...
           button(
             child.text <-- laminarHelper.plaintextStringSignal("PlantWorkshop/slideshowBack"),
             disabled <-- currentIndex.signal.map(_ == 0),

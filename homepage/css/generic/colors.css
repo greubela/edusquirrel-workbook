@@ -97,7 +97,9 @@
     /* Textcolors */
     --textcolor-background-inverted: var(--color-gray-2);
     --textcolor-regular: var(--color-gray-15);
-
+    --textcolor-colored-light: var(--color-background-colored);
+    --textcolor-colored-strong: var(--color-blue-6);
+    --textcolor-colored-dark: var(--color-blue-14);
     /* Background Colors */
 
     --color-background-inverted: var(--textcolor-regular);
@@ -111,10 +113,36 @@
 
     --color-background-colored: var(--color-blue-0);
     --color-background-colored-accented: var(--color-blue-2);
+    --color-background-colored-accented-strong: var(--color-blue-4);
 
     --color-background-colored-correct: var(--color-green-2);
     --color-background-colored-incorrect: var(--color-red-2);
 
 
-    /* Layout sizes and spacing — compact scale (75% of initial expansion) */
+    /* UPDATE BROWSER DEFAULTS */
+
+    accent-color: var(--color-background-colored-accented);
+
+    ::selection {
+        background-color: red; /* Hintergrund beim Markieren mit der Maus */
+        color: yellow; /* Textfarbe beim Markieren */
+    }
+
+    a:link {
+        color: var(--textcolor-colored-dark);
+    }
+
+    a:visited {
+        color: var(--textcolor-colored-strong);
+    }
+
+    a:hover{
+        color: var(--textcolor-colored-strong);
+        background: var(--color-background-workarea-interactible)
+    }
+    a:active {
+        color: var(--textcolor-colored-light)
+    }
+
+
 }

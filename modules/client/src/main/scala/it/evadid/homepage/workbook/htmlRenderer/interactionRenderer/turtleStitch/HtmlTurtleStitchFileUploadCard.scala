@@ -6,6 +6,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.util.web.DownloadHelper
 import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.elements.interactionElements.TurtleStitch.TurtleStitchProjectState
 import it.evadid.workbook.interaction.sync.UpdateImportance
@@ -29,6 +30,7 @@ private[turtleStitch] case class HtmlTurtleStitchFileUploadCard(workbookInteract
       if (inputElement.files.length > 0) onNewFileSelected(inputElement.files.item(0))
     }
   )
+  private lazy val buttonElement = HtmlButtonElement.withTextLabel(label, event => uploadInput.ref.click()).getDomElement()
 
   private def onFileReadSuccessfully(bytes: Array[Byte]): Unit = {
     println("file read successfully, content has " + bytes.length + " bytes!")
@@ -48,11 +50,6 @@ private[turtleStitch] case class HtmlTurtleStitchFileUploadCard(workbookInteract
 
   }
 
-  def getDomElement(): Element = button(
-    text <-- laminarHelper.plaintextStringSignal(label),
-    uploadInput,
-    onClick --> { _ =>
-      uploadInput.ref.click()
-    }
-  )
+  def getDomElement(): Element = div(uploadInput, buttonElement)
+
 }

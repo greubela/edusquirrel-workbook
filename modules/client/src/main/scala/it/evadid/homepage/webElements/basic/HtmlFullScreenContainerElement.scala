@@ -44,7 +44,8 @@ case class HtmlFullScreenContainerElement() extends HtmlAppElement {
         cls := "fullscreen-content",
         contentContainer
       ),
-      button(
+      // todo : make proper aesthetics...
+      div(
         typ := "button",
         cls := "fullscreen-close-button",
         aria.label := "Exit full screen",

@@ -1,7 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
 import com.raquo.laminar.api.L.*
-import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
@@ -11,19 +10,15 @@ import it.evadid.core.util.InfoUtil
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.util.web.DownloadHelper
-import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.basic.HtmlImageElement
-import it.evadid.homepage.workbook.htmlRenderer.{HtmlRenderFactory, LaminarRenderHelper}
+import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
+import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchWorkerFacade
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.elements.interactionElements.TurtleStitch.TurtleStitchProjectState
-import it.evadid.workbook.interaction.sync.UpdateImportance
-import org.scalajs.dom
-import org.scalajs.dom.{File, HTMLInputElement}
 import todomove.datastructures.web.file.FullImage
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 object HtmlTurtleStitchRendererHelper {
@@ -42,27 +37,20 @@ object HtmlTurtleStitchRendererHelper {
    */
   def renderDownloadButton(label: LanguageMapContentId, projectFromFile: FileDescription): Element = {
     val desiredFilename: String = "TurtleStitch_" + InfoUtil.datetimeFormattedForFilenames() + "_" + projectFromFile.filenameWithExtension
-    button(
-      text <-- laminarHelper.plaintextStringSignal(label),
-      onClick --> { _ =>
-        fullInfo.technical.fileStore.loadAsFuture(projectFromFile).onComplete {
-          case Success(projectData) => DownloadHelper.downloadFile(desiredFilename, projectData.data)
-          case Failure(err) => println("HtmlExploreTurtleStitchExploreProjectRenderer::downloadButton error: " + err.getMessage)
-        }(using ExecutionContext.global)
-      }
-    )
+    HtmlButtonElement.withTextLabel(label, event =>
+      fullInfo.technical.fileStore.loadAsFuture(projectFromFile).onComplete {
+        case Success(projectData) => DownloadHelper.downloadFile(desiredFilename, projectData.data)
+        case Failure(err) => println("HtmlExploreTurtleStitchExploreProjectRenderer::downloadButton error: " + err.getMessage)
+      }(using ExecutionContext.global)).getDomElement()
+
   }
 
   def renderDownloadButton(label: LanguageMapContentId, workbookInteraction: WorkbookInteractionElement[TurtleStitchProjectState]): Element = {
     val desiredFilename: String = "TurtleStitch_" + InfoUtil.datetimeFormattedForFilenames() + "_" + workbookInteraction.id + ".xml"
-    button(
-      text <-- laminarHelper.plaintextStringSignal(label),
-      onClick --> { _ =>
-        workbookInteraction.interactionVariable.currentValue.programXml.foreach(f = currentXml => {
-          DownloadHelper.downloadFile(desiredFilename, currentXml)
-        })
-      }
-    )
+    HtmlButtonElement.withTextLabel(label, event =>
+      workbookInteraction.interactionVariable.currentValue.programXml.foreach(f = currentXml => {
+        DownloadHelper.downloadFile(desiredFilename, currentXml)
+      })).getDomElement()
   }
 
   def cardHeadline(label: LanguageMapContentId): Element = h3(

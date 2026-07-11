@@ -29,14 +29,15 @@ object AtomarLineRendering {
 
   def cardLine(workbookElement: WorkbookElement, cards: List[ElementCard]): AtomarLineRendering = {
 
-    val cardContent = List(
+    val cardContent = div(
+      cls := "element-cards",
       div(cls := "element-card-line label-line",
         cards.map(_.labelElement)),
       div(cls := "element-card-line content-line",
         cards.map(_.contentElement))
     )
 
-    RenderingWorkbookElementLine(workbookElement, cardContent, "element-cards")
+    RenderingWorkbookElementLine(workbookElement, cardContent, "element-card-grid")
   }
 
   def basicLine(workbookElement: WorkbookElement, content: DomElementCollection, additionalCssString: String = ""): RenderingWorkbookElementLine = RenderingWorkbookElementLine(workbookElement, content, additionalCssString)

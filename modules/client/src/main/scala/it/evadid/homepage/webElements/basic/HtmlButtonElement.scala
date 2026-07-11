@@ -25,15 +25,20 @@ case class HtmlButtonElement(childElem: Signal[Element], additionalStyles: Strin
 object HtmlButtonElement {
 
   def withSvgContent(svg: ReactiveSvgElement[SVGSVGElement], onAction: MouseEvent => Any): HtmlButtonElement = {
-    HtmlButtonElement(Var(svg).signal, "svg-button", onAction)
+    HtmlButtonElement(Var(svg).signal, "button-svg", onAction)
     // todo: svg dimensions
   }
 
   def withTextLabel(contentId: LanguageMapContentId, onAction: MouseEvent => Any): HtmlButtonElement = {
     val labelSignal: Signal[String] = LaminarRenderHelper.singleton.plaintextStringSignal(contentId)
     val elementSignal: Signal[Element] = labelSignal.map(span(_))
-    HtmlButtonElement(elementSignal, "", onAction)
+    HtmlButtonElement(elementSignal, "button-labeled", onAction)
   }
+
+  def withTextLabel(contentId: String, onAction: MouseEvent => Any): HtmlButtonElement = {
+    withTextLabel(LanguageMapContentId(contentId), onAction)
+  }
+
 
 
 }
