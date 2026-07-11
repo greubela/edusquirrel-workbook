@@ -1,5 +1,5 @@
 /* Import colors and base styles */
-@import url('../colors.css');
+@import url('../generic/colors.css');
 /* Color policy: use only semantic color variables from colors.css (no hardcoded color values). */
 
 /* --- Block Environment Fullscreen Editor Layout --- */

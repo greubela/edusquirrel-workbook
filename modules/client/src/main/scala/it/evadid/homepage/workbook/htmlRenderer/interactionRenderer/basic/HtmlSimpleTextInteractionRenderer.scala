@@ -18,6 +18,6 @@ object HtmlSimpleTextInteractionRenderer extends LineBasedRenderingFactory[TextI
     val curConfig: Var[TextEditorConfig] = Var(initConfig)
     val editor: SimpleTextEditor = SimpleTextEditor(varBoundToEditor, curConfig)
 
-    AtomarLineRendering.basicLine(workbookElement, editor.getDomElement())
+    AtomarLineRendering.basicLine(workbookElement, editor.getDomElement(), "simple-text-editor")
   }
 }

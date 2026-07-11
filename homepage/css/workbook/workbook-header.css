@@ -1,5 +1,6 @@
 /* HEADER */
-@import url("../colors.css");
+@import url("../generic/colors.css");
+@import url("../generic/dimensions.css");
 
 .workbook-header {
     background: var(--color-background-colored);

@@ -1,0 +1,10 @@
+
+
+/* TEXT EDITOR  */
+textarea,
+button,
+.simple-text-editor-area {
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+}

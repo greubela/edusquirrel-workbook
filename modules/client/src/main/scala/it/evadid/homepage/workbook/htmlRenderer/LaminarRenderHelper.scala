@@ -1,17 +1,37 @@
 package it.evadid.homepage.workbook.htmlRenderer
 
-import com.raquo.laminar.api.L.Signal
+import com.raquo.laminar.api.L.*
+import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.TypeOfTextDisplay
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.{PLAINTEXT, PLAINTEXT_UNDERSCORE_REPLACABLE}
+import org.scalajs.dom.html
 
 case class LaminarRenderHelper() {
 
-  def uiAndDomLogger: Logger = fullInfo.loggerSystemInfo.uiAndDomLogger
+  /* Logging */
+  val uiAndDomLogger: Logger = fullInfo.loggerSystemInfo.uiAndDomLogger
 
+
+  /* Custom Elements */
+  def createTooltip(text: String): Seq[Modifier[ReactiveHtmlElement[html.Element]]] = {
+    Seq(
+      cls := "custom-tooltip-target",
+      dataAttr("tooltip") := text
+    )
+  }
+
+  def createTooltip(text: Signal[String]): Seq[Modifier[ReactiveHtmlElement[html.Element]]] = {
+    Seq(
+      cls := "custom-tooltip-target",
+      dataAttr("tooltip") <-- text
+    )
+  }
+
+  /* Signal Fetching */
 
   def plaintextStringSignal(contentIdAsString: String): Signal[String] = plaintextStringSignal(LanguageMapContentId.apply(contentIdAsString))
 
@@ -33,7 +53,9 @@ case class LaminarRenderHelper() {
     }
   }
 
-  def replaceUnderscores(plaintextUnderscoreReplaceable: String, additionalInfo: List[String], contentId: Option[LanguageMapContentId] = None): String = {
+  /* Helper */
+
+  private def replaceUnderscores(plaintextUnderscoreReplaceable: String, additionalInfo: List[String], contentId: Option[LanguageMapContentId] = None): String = {
     val singleUnderscores = plaintextUnderscoreReplaceable.replaceAll("_+", "_")
     val parts = singleUnderscores.split("_")
     val toInsert = parts.size - 1
@@ -53,10 +75,8 @@ case class LaminarRenderHelper() {
       else if (toInsert > additionalInfo.size) uiAndDomLogger.logWarn(msgStart + s": (${toInsert - additionalInfo.size} elements missing, filling up with '[?]'")
       else if (toInsert < additionalInfo.size) uiAndDomLogger.logWarn(msgStart + s": (provided ${additionalInfo.size - toInsert} unnecessary elements, those will be ignored)")
       else uiAndDomLogger.logInfo(msgStart + s" --> ${result}")
-
       result
     }
-
   }
 
 

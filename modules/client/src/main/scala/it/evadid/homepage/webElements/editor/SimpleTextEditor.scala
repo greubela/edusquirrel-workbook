@@ -11,18 +11,12 @@ case class SimpleTextEditor(
 
   override def getDomElement(): Element = domElement
 
-  private val domElement: Element = {
-    div(
-      cls := "simple-text-editor",
-      child <-- config.signal.map(createTextEditor)
-    )
-  }
+  private val domElement: Element = createTextEditor(config.signal)
 
-  private def createTextEditor(curConfig: TextEditorConfig): Element = textArea(
-    rows := curConfig.rowsCount,
-    cols := curConfig.colsCount,
-    cls := curConfig.containerClass,
-    if (curConfig.monospace) cls := "mono" else cls := "",
+  def createTextEditor(config: Signal[TextEditorConfig]): Element = textArea(
+    rows <-- config.map(_.rowsCount),
+    cols <-- config.map(_.colsCount),
+    cls <-- config.map(curConfig =>  s" simple-text-editor-textarea ${curConfig.containerClass}${if(curConfig.monospace) " mono" else ""}"),
     controlled(
       value <-- varToBind.signal,
       onInput.mapToValue --> varToBind.writer
