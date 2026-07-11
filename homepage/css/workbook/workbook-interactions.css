@@ -12,7 +12,7 @@
 
 
 
-.workbook-elemennt .button-line {
+.workbook-element.button-line {
     margin: 0 auto;
     gap: var(--space-md);
     display: flex;
