@@ -13,7 +13,7 @@ case class HtmlButtonElement(childElem: Signal[Element], buttonStyle: String, ha
 
   private val domElement: Element = {
     button(
-      cls <-- config.map(_.customStyles.mkString("button-svg ", " ", s" ${buttonStyle}")),
+      cls <-- config.map(_.customStyles.mkString("", " ", s" ${buttonStyle}")),
       typ := "button",
       visibility <-- config.map(curConf => if (curConf.isVisible) "visible" else "hidden"),
       onClick --> { event => handleOnAction(event) },

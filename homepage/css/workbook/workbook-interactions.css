@@ -11,23 +11,8 @@
 /* BUTTONS */
 
 
-.workbook-element .button-svg{
-    border-radius: var(--space-lg);
-    fill: var(--color-background-workarea-interactible);
-}
 
-.workbook-element .button-svg svg {
-    width: calc(var(--space-element-left) * 3 * 4);
-    height: calc(var(--space-element-left) * 3);
-    stroke: var(--textcolor-regular);
-    stroke-width: 1.8;
-}
-
-.workbook-element .button-labeled{
-    border-radius: var(--space-md);
-}
-
-.button-line {
+.workbook-elemennt .button-line {
     margin: 0 auto;
     gap: var(--space-md);
     display: flex;
