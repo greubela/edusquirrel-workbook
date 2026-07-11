@@ -8,13 +8,13 @@ import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.TypeOfTextDisplay
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.{PLAINTEXT, PLAINTEXT_UNDERSCORE_REPLACABLE}
-import org.scalajs.dom.html
+import org.scalajs.dom
+import org.scalajs.dom.{MouseEvent, html}
 
 case class LaminarRenderHelper() {
 
   /* Logging */
   val uiAndDomLogger: Logger = fullInfo.loggerSystemInfo.uiAndDomLogger
-
 
   /* Custom Elements */
   def createTooltip(text: String): Seq[Modifier[ReactiveHtmlElement[html.Element]]] = {
@@ -29,6 +29,15 @@ case class LaminarRenderHelper() {
       cls := "custom-tooltip-target",
       dataAttr("tooltip") <-- text
     )
+  }
+
+  def onClickedOutside(onClickedOutside: MouseEvent => Unit): Modifier[HtmlElement] = {
+    onClick --> { (event: MouseEvent) =>
+      val dialog = event.target.asInstanceOf[dom.html.Element]
+      val rect = dialog.getBoundingClientRect()
+      val clickedOutside = event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom
+      if (clickedOutside) onClickedOutside(event)
+    }
   }
 
   /* Signal Fetching */

@@ -1,11 +1,11 @@
-package it.evadid.homepage.control.model
+package it.evadid.homepage.control.info
 
-import it.evadid.util.logging.{BasicLogger, Logger}
 import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
+import it.evadid.util.logging.{BasicLogger, Logger}
 
 case class HomepageLoggerInfo() {
 
-  lazy val uiAndDomLogger: Logger = Logger.withNameAndPrefixes(Some("UserInterface"), PrintToStdLogger.printEverything)
+  lazy val uiAndDomLogger: Logger = Logger.withNameAndPrefixes(Some("UserInterface"), PrintToStdLogger.printWarnAndError)
 
   lazy val workbookElementLogger: Logger = Logger.withNameAndPrefixes(Some("WorkbookElementLogger"), PrintToStdLogger.printEverything)
 

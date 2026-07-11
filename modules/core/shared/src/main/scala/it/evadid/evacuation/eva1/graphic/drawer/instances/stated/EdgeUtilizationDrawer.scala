@@ -5,12 +5,12 @@ import it.evadid.evacuation.eva1.algorithm.events.traits.PersonEvent
 import it.evadid.evacuation.eva1.algorithm.routing.CapacityInformation
 import it.evadid.evacuation.eva1.graphic.drawer.traits.StatedEdgeDrawer
 import it.evadid.evacuation.eva1.model.evagraph.EvaGraphTypes.EvaEdge
-import it.evadid.evacuation.eva1.model.evagraph.Person
+import it.evadid.evacuation.eva1.model.evagraph.EvaPerson
 import it.evadid.evacuation.shared.traits.graphic.EvaCanvas
 
 case class EdgeUtilizationDrawer(canvas: EvaCanvas[?]) extends StatedEdgeDrawer {
 
-  override def drawEdges(curSimulationTime: Long, edgeInformation: Map[EvaEdge, CapacityInformation], lastEvents: Map[Person, PersonEvent]): Unit = if (edgeInformation.keys.nonEmpty) {
+  override def drawEdges(curSimulationTime: Long, edgeInformation: Map[EvaEdge, CapacityInformation], lastEvents: Map[EvaPerson, PersonEvent]): Unit = if (edgeInformation.keys.nonEmpty) {
     val edges = edgeInformation.keys
     val maxCapacity = edges.map(_.content.capacityPerSecond).max
     val minCapacity = edges.map(_.content.capacityPerSecond).min

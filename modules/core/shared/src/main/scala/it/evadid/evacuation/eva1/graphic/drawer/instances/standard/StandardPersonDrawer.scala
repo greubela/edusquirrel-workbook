@@ -6,16 +6,16 @@ import it.evadid.evacuation.eva1.algorithm.events.traits.PersonEvent
 import it.evadid.evacuation.eva1.algorithm.routing.CapacityInformation
 import it.evadid.evacuation.eva1.graphic.drawer.traits.StatedPersonDrawer
 import it.evadid.evacuation.eva1.model.evagraph.EvaGraphTypes.EvaEdge
-import it.evadid.evacuation.eva1.model.evagraph.{Person, Router}
+import it.evadid.evacuation.eva1.model.evagraph.{EvaPerson, Router}
 import it.evadid.evacuation.shared.traits.graphic.EvaCanvas
 
 class StandardPersonDrawer(evaCanvas: EvaCanvas[?]) extends StatedPersonDrawer {
 
 
-  override def drawPersonsOnNodes(curSimulationTime: Long, curState: MultiHashMapList[Router, Person], lastEvents: Map[Person, PersonEvent]): Unit = {
+  override def drawPersonsOnNodes(curSimulationTime: Long, curState: MultiHashMapList[Router, EvaPerson], lastEvents: Map[EvaPerson, PersonEvent]): Unit = {
   }
 
-  override def drawPersonOnEdges(curSimulationTime: Long, curState: Map[EvaEdge, CapacityInformation], lastEvents: Map[Person, PersonEvent]): Unit = {
+  override def drawPersonOnEdges(curSimulationTime: Long, curState: Map[EvaEdge, CapacityInformation], lastEvents: Map[EvaPerson, PersonEvent]): Unit = {
 
 
     curState.keys.foreach(edge => {

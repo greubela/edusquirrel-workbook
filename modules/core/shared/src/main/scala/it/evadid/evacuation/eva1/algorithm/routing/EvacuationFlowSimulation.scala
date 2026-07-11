@@ -11,7 +11,7 @@ import it.evadid.evacuation.eva1.algorithm.routing.FlowRoutingMap.FlowRoutingMap
 import it.evadid.evacuation.eva1.algorithm.strategy.ClosestGoalStrategy
 import it.evadid.evacuation.eva1.model.evagraph.EvaGraphTypes.EvaGraph
 import it.evadid.evacuation.eva1.model.evagraph.ObservableEvaGraphModel.fillToQuickTest
-import it.evadid.evacuation.eva1.model.evagraph.{ConnectionInfo, EvaGraphModel, ObservableEvaGraphModel, Person, Router}
+import it.evadid.evacuation.eva1.model.evagraph.{ConnectionInfo, EvaGraphModel, ObservableEvaGraphModel, EvaPerson, Router}
 
 import scala.collection.mutable
 
@@ -105,7 +105,7 @@ object EvacuationFlowSimulation {
     graph.nodes.foreach(node => {
       val initPersonsAtNode = node.initCapacity
       1.to(initPersonsAtNode).foreach(personNr => {
-        val person = Person(counter.getNext, List())
+        val person = EvaPerson(counter.getNext, List())
         res += PersonInsertedEvent(person, node, graph, 0, -1)
       })
     })

@@ -1,18 +1,13 @@
 package it.evadid.homepage.control.singletons
 
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.homepage.control.info.*
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.basic.HtmlFullScreenContainerElement
-import it.evadid.homepage.workbook.htmlRenderer.controlElements.UserDropdownMenu
-import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.HtmlWorkbookRenderer
+import it.evadid.homepage.workbook.htmlRenderer.controlElements.HtmlWorkbookDomElement
 
 object HtmlFullWorkbookApp extends HtmlAppElement {
 
   private lazy val technical = TechnicalHomepageElements(
-    HtmlFullScreenContainerElement(),
     BackendServerConfig.executor,
     //ExecuteOnRemoteServer("http://localhost", 9000),
     //ExecuteOnWebWorker(FileFactory.relativeToArtifactsFolder("/newest/backend-worker.js").fullPath),
@@ -36,24 +31,10 @@ object HtmlFullWorkbookApp extends HtmlAppElement {
     res
   }
 
-  private lazy val workbookDomElement: Element = {
-    val workbookSignal: Signal[Element] = fullInfo.signals.workbook.mapLazy {
-      case Some(workbookInfo) => HtmlWorkbookRenderer.renderAppElement(workbookInfo.loadedWorkbook).getDomElement()
-      case None => div(text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId("basic/noWorkbookLoaded")))
-    }
 
-    div(
-      cls := "workbook-app-shell",
-      technical.fullScreenContainer.getDomElement(),
-      mainTag(
-        cls := "workbook-main",
-        child <-- workbookSignal
-      )
-    )
-  }
+  private val domElement: Element = HtmlWorkbookDomElement(fullInfo).getDomElement()
 
-
-  override def getDomElement(): Element = workbookDomElement
-
-
+  override def getDomElement(): Element = domElement
 }
+
+

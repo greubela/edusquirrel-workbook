@@ -1,8 +1,10 @@
 package it.evadid.workbook.elements.interactionElements.gpt
 
-import it.evadid.core.datastructures.chat.MessengerModel
+import it.evadid.core.datastructures.chat.{MessengerModel, Person}
+import it.evadid.core.datastructures.chat.SenderRole.USER
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{LanguageMapContentId, LanguageMapIdResolver}
+import it.evadid.core.datastructures.user.User
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction
@@ -33,32 +35,32 @@ case class GptInteractionElement(
 
   private given ExecutionContext = ExecutionContext.global
 
-  def initScaffoldingIfEmpty(syncControl: SyncControl, resolver: LanguageMapIdResolver): Future[Boolean] = {
+  def initScaffoldingIfEmpty(curUser: Person, syncControl: SyncControl, resolver: LanguageMapIdResolver): Future[Boolean] = {
     val curMessages = scaffoldingInteraction.interactionVariable.currentValue.messengerModel.orderedMessages
-    if (curMessages.nonEmpty) Future.successful(curMessages.last.author.personId == MessengerModel.pStudent.personId)
+    if (curMessages.nonEmpty) Future.successful(curMessages.last.author.role == USER)
     val res = Promise[Unit]()
     resolver.resolveAll(allContentIds.toSeq).transform {
       case Success((map, lang)) =>
         if (map.keySet.size != allContentIds.size) syncControl.syncLogger.logWarn("Could not resolve all content ids. Resolved: " + map.keySet.mkString(", ") + " not: " + allContentIds.filter(!map.contains(_)).mkString(", "))
-        Success(initScaffoldingIfEmpty(syncControl, map, lang))
+        Success(initScaffoldingIfEmpty(curUser, syncControl, map, lang))
       case Failure(err) =>
         syncControl.syncLogger.logExceptionWarn(s"GptInteractionElement: failure while resolving language map strings for $id, init will be ignored now!", err)
         Success(false)
     }
   }
 
-  def initScaffoldingIfEmpty(syncControl: SyncControl, resolvedIds: Map[LanguageMapContentId, String], resolvedLanguage: HumanLanguage): Boolean =
+  def initScaffoldingIfEmpty(curUser: Person, syncControl: SyncControl, resolvedIds: Map[LanguageMapContentId, String], resolvedLanguage: HumanLanguage): Boolean =
     if (scaffoldingInteraction.interactionVariable.currentValue.messengerModel.orderedMessages.nonEmpty) false else {
       //logger.logInfo("GptInteractionElement has resolved the following ids: " + resolvedIds.keys.mkString(", "))
 
       val exText: String = resolvedIds.getOrElse(exerciseText, "[unresolved: " + exerciseText.fullId + "]")
       val scaffHints: List[String] = scaffoldingHints.map(id => resolvedIds.getOrElse(id, s"[unresolved: $id]"))
       val curInput = underlyingTextInteraction.interactionVariable.currentValue
-      val msg: MessengerModel = MessengerModel.getScaffoldingInitMessage(exText, curInput, scaffHints, resolvedLanguage)
+      val msg: MessengerModel = MessengerModel.getScaffoldingInitMessage(curUser, exText, curInput, scaffHints, resolvedLanguage)
       val msgSc: MessengerModelScaffolding = MessengerModelScaffolding(msg)
       syncControl.syncLogger.logInfo(s"GptInteractionElement: setting scaffolding messenger for $id to init state (was empty before, now ${msgSc.messengerModel.messages.size} messages)")
       scaffoldingInteraction.interactionVariable.setStateFromUserInteraction(syncControl, msgSc, MAJOR)
-      msg.messages.exists(_.author.personId == MessengerModel.pStudent.personId)
+      msg.messages.exists(_.author.role == USER)
     }
 
 

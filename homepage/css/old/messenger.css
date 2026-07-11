@@ -1,5 +1,124 @@
 /* Color policy: use only semantic color variables from colors.css (no hardcoded color values). */
 
+@import url("../generic/colors.css");
+@import url("../generic/dimensions.css");
+/* Container styling */
+
+.messenger-history {
+    background: var(--color-background-neutral);
+    padding: var(--space-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    /*max-width: calc(var(--workarea-width) * 2 / 3);*/
+    max-width: 600px;
+}
+
+/* Individual message rows */
+.messenger-message {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-md);
+    max-width: 85%;
+}
+
+.messenger-message.message-position-left {
+    align-self: flex-start;
+}
+
+.messenger-message.message-position-right {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+/* Avatars */
+.author-avatar {
+    width: var(--messenger-avatar-dimension); /* Smaller avatar for compactness */
+    height: var(--messenger-avatar-dimension);
+    border-radius: 50%;
+    flex-shrink: 0;
+
+    justify-items: center;
+    align-items: center;
+    display: inline-grid;
+
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--textcolor-regular);
+}
+
+
+/* Message bubble container */
+.message-content {
+    background-color: var(--color-background-workarea-display);
+    padding: var(--space-md) var(--space-md) var(--space-md) var(--space-md);
+    border-radius: var(--space-lg);
+    position: relative;
+}
+
+
+/* Text layouts inside the bubble */
+.message-author {
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.message-text {
+    color: var(--textcolor-regular);
+    word-break: break-word;
+    display: inline;
+}
+
+/* Compact inline-style timestamp layout */
+.message-timestamp {
+
+    float: right;
+    font-size: 10px;
+    color: var(--color-gray-7);
+
+    position: absolute;
+    right: var(--space-md);
+    bottom: 0 /*var(--space-xs);*/
+}
+
+/* Role colors */
+.message-author-role-AGENT .message-author {
+    color: var(--color-role-ai);
+}
+
+.message-author-role-USER .message-author {
+    color: var(--color-role-user);
+}
+
+.message-author-role-SYSTEM .message-author {
+    color: var(--color-role-system);
+}
+
+.message-author-role-TEACHER .message-author {
+    color: var(--color-role-teacher);
+}
+
+
+.message-author-role-AGENT .author-avatar {
+    background: var(--color-role-ai)
+}
+
+.message-author-role-USER .author-avatar {
+    background: var(--color-role-user);
+}
+
+.message-author-role-SYSTEM .author-avatar {
+    background: var(--color-role-system);
+
+}
+
+.message-author-role-TEACHER .author-avatar {
+    background: var(--color-role-teacher);
+}
+
+
+/*
+
 .messenger-editor {
   display: flex;
   flex-direction: column;
@@ -129,3 +248,5 @@
 .messenger-send-button:hover {
   background: var(--color-accent-strong);
 }
+
+ */

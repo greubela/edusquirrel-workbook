@@ -25,5 +25,8 @@
   "syncInfoTooltipFull": "[SyncInfo] Zu allen _ Quellen synchronisiert",
   "syncInfoTooltipPartial": "[SyncInfo] Zu _ / _ Quellen synchronisiert",
   "syncInfoTooltipDisabled": "[SyncInfo] Synchronisation ist deaktiviert",
-  "syncInfoTooltipWarning": "[SyncInfo] Zu keiner der _ Quellen synchronisiert"
+  "syncInfoTooltipWarning": "[SyncInfo] Zu keiner der _ Quellen synchronisiert",
+
+  "messengerEditorInputPlaceholder": "Gib eine Nachricht ein...",
+  "messengerEditorSendMessageButton": "Absenden"
 }

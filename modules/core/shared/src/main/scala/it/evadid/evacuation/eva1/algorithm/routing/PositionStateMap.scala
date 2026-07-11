@@ -8,13 +8,13 @@ import it.evadid.evacuation.eva1.algorithm.events.eventtypes.{PersonFinishedEven
 import it.evadid.evacuation.eva1.algorithm.events.traits.PersonEvent
 import it.evadid.evacuation.eva1.algorithm.routing.FlowRoutingMap.FlowRoutingMap
 import it.evadid.evacuation.eva1.model.evagraph.EvaGraphTypes.{EvaEdge, EvaGraph, RouterOrEdge}
-import it.evadid.evacuation.eva1.model.evagraph.{ConnectionInfo, EvaGraphTypes, Person, Router}
+import it.evadid.evacuation.eva1.model.evagraph.{ConnectionInfo, EvaGraphTypes, EvaPerson, Router}
 
 import scala.collection.mutable
 
-case class PositionStateMap(graph: EvaGraph, positionStateMap: MultiHashMapList[RouterOrEdge, Person]) {
+case class PositionStateMap(graph: EvaGraph, positionStateMap: MultiHashMapList[RouterOrEdge, EvaPerson]) {
 
-  def edgesMap(): MultiHashMapList[EvaEdge, Person] = positionStateMap.getCopyWithFilteredKeys(_.getEither().isRight).getCopyWithMappedKeys(_.getEither().getOrElse(throw new NoSuchElementException("Expected edge position")))
+  def edgesMap(): MultiHashMapList[EvaEdge, EvaPerson] = positionStateMap.getCopyWithFilteredKeys(_.getEither().isRight).getCopyWithMappedKeys(_.getEither().getOrElse(throw new NoSuchElementException("Expected edge position")))
 
   def capacityMap(): Map[EvaEdge, CapacityInformation] = {
     val res = mutable.HashMap[EvaEdge, CapacityInformation]()
@@ -32,14 +32,14 @@ case class PositionStateMap(graph: EvaGraph, positionStateMap: MultiHashMapList[
     res.toMap
   }
 
-  def routerMap(): MultiHashMapList[Router, Person] = positionStateMap.getCopyWithFilteredKeys(_.getEither().isLeft).getCopyWithMappedKeys(_.getEither().swap.getOrElse(throw new NoSuchElementException("Expected router position")))
+  def routerMap(): MultiHashMapList[Router, EvaPerson] = positionStateMap.getCopyWithFilteredKeys(_.getEither().isLeft).getCopyWithMappedKeys(_.getEither().swap.getOrElse(throw new NoSuchElementException("Expected router position")))
 
-  def getPersonAtPositions(pos: RouterOrEdge): Seq[Person] = {
+  def getPersonAtPositions(pos: RouterOrEdge): Seq[EvaPerson] = {
     positionStateMap.get(pos).get.toSeq
   }
 
   private def capacityInformationForEdge(router1: Router, router2: Router): CapacityInformation = {
-    val personsAtEdges: mutable.ListBuffer[Person] = new mutable.ListBuffer[Person]
+    val personsAtEdges: mutable.ListBuffer[EvaPerson] = new mutable.ListBuffer[EvaPerson]
 
     val edges: List[EvaEdge] = graph.allEdgesBetween(router1, router2).toList
     edges.flatMap(edge => positionStateMap.get(EvaGraphTypes.edgeToEither(edge))).foreach(personsAtEdges.addAll(_))
@@ -49,7 +49,7 @@ case class PositionStateMap(graph: EvaGraph, positionStateMap: MultiHashMapList[
   }
 
   private def capacityInformationForEdgeDirected(router1: Router, router2: Router): CapacityInformation = {
-    val personsAtEdges: mutable.ListBuffer[Person] = new mutable.ListBuffer[Person]
+    val personsAtEdges: mutable.ListBuffer[EvaPerson] = new mutable.ListBuffer[EvaPerson]
 
     val edges: List[EvaEdge] = graph.dirEdgesBetween(router1, router2).toList
     edges.flatMap(edge => positionStateMap.get(EvaGraphTypes.edgeToEither(edge))).foreach(personsAtEdges.addAll(_))
@@ -59,13 +59,13 @@ case class PositionStateMap(graph: EvaGraph, positionStateMap: MultiHashMapList[
   }
 
 
-  def tryToSendPerson(routingMap: FlowRoutingMap, evacuationStrategy: FlowStrategy): Option[(Person, RoutingOption[Router])] = {
-    val entitiesAtRouter: Set[(Router, Person)] = positionStateMap.getAllEntries.filter(_._1.getEither().isLeft).map(tup => (tup._1.getEither().swap.getOrElse(throw new NoSuchElementException("Expected router position")), tup._2)).filterNot(_._1.isExit)
+  def tryToSendPerson(routingMap: FlowRoutingMap, evacuationStrategy: FlowStrategy): Option[(EvaPerson, RoutingOption[Router])] = {
+    val entitiesAtRouter: Set[(Router, EvaPerson)] = positionStateMap.getAllEntries.filter(_._1.getEither().isLeft).map(tup => (tup._1.getEither().swap.getOrElse(throw new NoSuchElementException("Expected router position")), tup._2)).filterNot(_._1.isExit)
 
-    val entities: mutable.HashSet[(Router, Person)] = new mutable.HashSet[(Router, Person)]()
+    val entities: mutable.HashSet[(Router, EvaPerson)] = new mutable.HashSet[(Router, EvaPerson)]()
     entities.addAll(entitiesAtRouter)
 
-    var nextStep: Option[(Person, RoutingOption[Router])] = None
+    var nextStep: Option[(EvaPerson, RoutingOption[Router])] = None
     while (nextStep.isEmpty && entities.nonEmpty) {
       val tryToRouteEntry = entities.head
       entities -= tryToRouteEntry
@@ -75,7 +75,7 @@ case class PositionStateMap(graph: EvaGraph, positionStateMap: MultiHashMapList[
     nextStep
   }
 
-  private def tryToRoute(person: Person, currentPositionOfPerson: Router, routingMap: FlowRoutingMap, evacuationStrategy: FlowStrategy): Option[(Person, RoutingOption[Router])] = {
+  private def tryToRoute(person: EvaPerson, currentPositionOfPerson: Router, routingMap: FlowRoutingMap, evacuationStrategy: FlowStrategy): Option[(EvaPerson, RoutingOption[Router])] = {
 
     val allRoutingOptions: mutable.Seq[RoutingOption[Router]] = routingMap.getMap(currentPositionOfPerson).filter(_.nextStep.isDefined)
 
@@ -122,6 +122,6 @@ case class PositionStateMap(graph: EvaGraph, positionStateMap: MultiHashMapList[
 object PositionStateMap {
 
 
-  def getEmpty(graph: EvaGraph): PositionStateMap = PositionStateMap(graph, new MultiHashMapList[RouterOrEdge, Person])
+  def getEmpty(graph: EvaGraph): PositionStateMap = PositionStateMap(graph, new MultiHashMapList[RouterOrEdge, EvaPerson])
 
 }

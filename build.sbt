@@ -1,11 +1,6 @@
-import sbtassembly.AssemblyPlugin.autoImport.*
-import Dependencies.*
+import Dependencies.{*, coreDependencies, jvmDependencies}
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.*
-import sbtcrossproject.CrossPlugin.autoImport.*
-import scalajscrossproject.ScalaJSCrossPlugin.autoImport.*
-import sbtcrossproject.CrossPlugin.autoImport.*
-
 import BuildArchitecture.*
 import BuildCommands.*
 

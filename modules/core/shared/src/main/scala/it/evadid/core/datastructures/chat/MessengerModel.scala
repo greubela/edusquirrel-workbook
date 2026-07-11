@@ -1,5 +1,6 @@
 package it.evadid.core.datastructures.chat
 
+import it.evadid.core.datastructures.chat.SenderRole.USER
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.util.io.serializer.DefaultSerializer
 
@@ -29,10 +30,11 @@ object MessengerModel {
 
   lazy val empty: MessengerModel = MessengerModel(List())
 
-  val pWorkbook = Person("Workbook", "workbook", SenderRole.AGENT, None)
-  val pStudent = Person("Student", "student", SenderRole.USER, None)
-  val pAgent = Person("Agent", "turtle-stitch-helper", SenderRole.AGENT, None)
-  val pTeacher = Person("Teacher", "teacher", SenderRole.USER, None)
+  val pWorkbook = Person("Workbook System", "workbook", SenderRole.SYSTEM, Some("SYS"))
+  //val pStudent = Person("Student", "student", SenderRole.USER, Some("ST"))
+  val pAgent = Person("AI Agent", "turtle-stitch-helper", SenderRole.AGENT, Some("AI"))
+  val pTeacher = Person("Teacher", "teacher", SenderRole.TEACHER, Some("T"))
+  val pFallbackStudent = Person("Student", "student", USER, Some("ST"))
 
   // may not be vals because of the implicit timestamp!
   def prefaceExercise = Message("@assistant: the current exercise reads as follows:", pWorkbook, LocalDateTime.now())
@@ -43,7 +45,7 @@ object MessengerModel {
 
   def langHint(lang: HumanLanguage) = Message(s"@assistant: Please provide feedback to the student. Do so in ${lang.name} or the language the student used last!", pWorkbook, LocalDateTime.now())
 
-  def getScaffoldingInitMessage(exerciseText: String, studentAnswer: String, scaffoldingHints: List[String], curLanguage: HumanLanguage): MessengerModel = {
+  def getScaffoldingInitMessage(pStudent: Person, exerciseText: String, studentAnswer: String, scaffoldingHints: List[String], curLanguage: HumanLanguage): MessengerModel = {
     val exerciseMsgs = List(prefaceExercise, Message(exerciseText, pTeacher))
     val answerMsgs =
       if (studentAnswer.replace("\\s", "").trim.isEmpty) List()

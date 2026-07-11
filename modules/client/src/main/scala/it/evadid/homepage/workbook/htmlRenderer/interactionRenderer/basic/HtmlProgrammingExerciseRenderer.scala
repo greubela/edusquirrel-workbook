@@ -6,6 +6,7 @@ import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.editor.code.EvaCodeEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.HtmlGptTextfieldInteractionRenderer.fullInfo
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExercise
 
 case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[ProgrammingExercise] {
@@ -15,7 +16,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     val editor = EvaCodeEditor(State(workbookElement.interactionVariable.currentValue))
 
     def buttonPressed(): Unit = {
-      fullInfo.technical.makeFullscreen(editor)
+      fullInfo.displayControl.setFullscreen(editor)
     }
 
     val button: HtmlButtonElement = HtmlButtonElement.withTextLabel(LanguageMapContentId("basic/OpenEditor"), event => buttonPressed())

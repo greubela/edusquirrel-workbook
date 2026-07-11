@@ -25,5 +25,9 @@
   "syncInfoTooltipFull": "[SyncInfo] Synced to all ___ destinations",
   "syncInfoTooltipPartial": "[SyncInfo] Synced to _ / _ destination",
   "syncInfoTooltipDisabled": "[SyncInfo] Synchronisation is deactivated",
-  "syncInfoTooltipWarning": "[SyncInfo] No sync to any of the _ destinations"
+  "syncInfoTooltipWarning": "[SyncInfo] No sync to any of the _ destinations",
+
+
+  "messengerEditorInputPlaceholder": "Type your message...",
+  "messengerEditorSendMessageButton": "Send"
 }

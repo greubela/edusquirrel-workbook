@@ -97,7 +97,7 @@
     /* Textcolors */
     --textcolor-background-inverted: var(--color-gray-2);
     --textcolor-regular: var(--color-gray-15);
-    --textcolor-colored-light: var(--color-background-colored);
+    --textcolor-colored-light: var(--color-background-neutral);
     --textcolor-colored-strong: var(--color-blue-6);
     --textcolor-colored-dark: var(--color-blue-14);
     /* Background Colors */
@@ -118,6 +118,13 @@
     --color-background-colored-correct: var(--color-green-2);
     --color-background-colored-incorrect: var(--color-red-2);
 
+    /* ASSOCIATED ROLES */
+
+    --color-role-system: var(--color-green-2);
+    --color-role-user: var(--color-background-colored-accented);
+    --color-role-teacher: #69def1;
+    --color-role-ai: #fabc7d;
+
 
     /* UPDATE BROWSER DEFAULTS */
 
@@ -136,10 +143,11 @@
         color: var(--textcolor-colored-strong);
     }
 
-    a:hover{
+    a:hover {
         color: var(--textcolor-colored-strong);
         background: var(--color-background-workarea-interactible)
     }
+
     a:active {
         color: var(--textcolor-colored-light)
     }

@@ -25,6 +25,8 @@ case class FullInfo(
 
   lazy val syncControl: SyncControl = RemoteInteractionCacheControl(this)
 
+  lazy val displayControl: DisplayControl = DisplayControl(this)
+
 
 }
 

@@ -21,4 +21,6 @@
     --interaction-info-total-width: calc(var(--info-icons-dimension) + 2 * var(--space-element-left));
     --info-icons-dimension: calc(var(--space-element-left) * 2);
     --info-icons-height-cloud: calc(var(--space-element-left) * 2 * 4 / 5);
+
+    --messenger-avatar-dimension: calc(var(--info-icons-dimension) * 2)
 }

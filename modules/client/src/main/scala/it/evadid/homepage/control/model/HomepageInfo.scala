@@ -16,7 +16,7 @@ case class HomepageInfo(
 
   override val toString: String = s"HomepageInfo(userInfo: $userInfo, workbookInfo: $workbookInfo)"
 
-  lazy val toContext = UsageContext("edusquirrel", workbookInfo.map(_.loadedWorkbook.workbookId).getOrElse("[no workbook]"), userInfo.map(_.user.id).getOrElse("[no user]"))
+  lazy val toContext = UsageContext("edusquirrel", workbookInfo.map(_.loadedWorkbook.workbookId).getOrElse("[no workbook]"), userInfo.map(_.user.personId).getOrElse("[no user]"))
 
 
 }

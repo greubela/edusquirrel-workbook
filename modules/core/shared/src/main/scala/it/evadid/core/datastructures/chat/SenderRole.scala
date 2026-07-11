@@ -1,5 +1,7 @@
 package it.evadid.core.datastructures.chat
 
+import it.evadid.workbook.abstractions.WorkbookStructuringType.WORKBOOK
+
 sealed trait SenderRole(val llmName: String, val showName: String) {
 
 }
@@ -12,7 +14,7 @@ object SenderRole {
 
   case object AGENT extends SenderRole("assistant", "aihelper")
 
-  case object WORKBOOK extends SenderRole("user", "workbook")
+  case object SYSTEM extends SenderRole("user", "system")
 
-  val allRoles: List[SenderRole] = List(USER, TEACHER, AGENT, WORKBOOK)
+  val allRoles: List[SenderRole] = List(USER, TEACHER, AGENT, SYSTEM)
 }

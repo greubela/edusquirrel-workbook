@@ -1,6 +1,7 @@
 package it.evadid.core.util.io.serializer
 
 import it.evadid.core.datastructures.chat.*
+import it.evadid.core.datastructures.chat.Person.{BasicPerson, SerializablePerson}
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.core.util.io.Serializer
@@ -63,7 +64,19 @@ object DefaultSerializer {
 
   private[serializer] given rwRole: ReadWriter[SenderRole] = readwriter[String].bimap[SenderRole](_.showName, str => SenderRole.allRoles.find(_.showName == str).getOrElse(throw new RuntimeException(s"Unknown role: $str")))
 
-  private[serializer] given rwPerson: ReadWriter[Person] = macroRW
+  private[serializer] given rwBasicPerson: ReadWriter[SerializablePerson] = macroRW
+
+  private[serializer] given rwPerson: ReadWriter[Person] = new Serializer[Person] {
+    override def serialize(obj: Person): String = {
+      println(s"ReadWriter::Person, serializing${obj}")
+      write(obj.toSerializable)(using rwBasicPerson)
+    }
+
+    override def deserialize(str: String): Person = {
+      println(s"ReadWriter::Person, deserializing${str}")
+      read(str)(using rwBasicPerson)
+    }
+  }.uPickleReadWrite
 
   private[serializer] given rwMessage: ReadWriter[Message] = macroRW
 

@@ -7,6 +7,7 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.HtmlBasicCheckboxRenderer.fullInfo
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.HtmlGptTextfieldInteractionRenderer.fullInfo
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
@@ -47,7 +48,7 @@ case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expected
   private val fullscreenEditor = HtmlFullscreenTurtleEditorElement(editorState)
 
   private def openFullEditor(): Unit = {
-    fullInfo.technical.makeFullscreen(fullscreenEditor)
+    fullInfo.displayControl.setFullscreen(fullscreenEditor)
   }
 
   private val programmingView = TurtleProgrammingPreview(fullInfo, editorState, expectedSvgResult)

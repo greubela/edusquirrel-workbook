@@ -1,11 +1,11 @@
 import sbt._
-import Keys._
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.linker.interface.ModuleKind
 import org.scalajs.linker.interface.OutputPatterns
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import Dependencies._
+import org.jetbrains.sbt.structure.Configuration.Test
 
 object Dependencies {
 

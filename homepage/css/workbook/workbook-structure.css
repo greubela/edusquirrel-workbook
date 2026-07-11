@@ -20,26 +20,38 @@ body {
     flex-direction: column;
 }
 
-/* FOOTER */
-.workbook-footer {
-    position: sticky;
-    bottom: 0;
-    background: var(--color-background-neutral-accented);
-    font-size: 0.75rem;
-    width: 100%;
+/* FULLSCREEN DIALOG*/
+
+html:has(dialog[open]),
+body:has(dialog[open]) {
+    overflow: hidden !important;
 }
 
-.workbook-footer-content {
-    min-height: 36px;
-    max-height: 50px;
-    width: min(100%, 980px);
-    margin: 0 auto;
+dialog::backdrop {
+    background-color: rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+}
+
+dialog{
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: auto;
+    max-width: 100vw;
+    max-height: 100vh;
+}
+
+.fullscreen-content-container {
+    max-width: 95vw;
+    max-height: 95vh;
+    background-color: var(--color-background-workarea-display);
+    overflow-y: auto;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-}
+    flex-direction: column;
 
+    border:  none;
+}
 
 /* workbook structure */
 
@@ -142,10 +154,6 @@ body {
     height: 100%;
 }
 .interaction-element-content *:focus {
-    /* Deaktiviert den blauen Standard-Auswahlring */
-    outline: 1px red;
-
-    /* Falls der Browser eine Border statt Outline nutzt, hier anpassen (z.B. transparent oder grau halten) */
     border-color: inherit;
 }
 
@@ -184,6 +192,51 @@ body {
 .container-title.container-title-level-1 {
     border-bottom: var(--space-xs) solid var(--color-background-colored-accented);
 }
+
+
+
+
+/* FOOTER */
+.workbook-footer {
+    position: sticky;
+    bottom: 0;
+    background: var(--color-background-neutral-accented);
+    font-size: 0.75rem;
+    width: 100%;
+}
+
+.workbook-footer-content {
+    min-height: 36px;
+    max-height: 50px;
+    width: min(100%, 980px);
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 /*

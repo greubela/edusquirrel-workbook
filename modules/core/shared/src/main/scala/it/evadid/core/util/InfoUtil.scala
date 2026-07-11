@@ -11,6 +11,13 @@ object InfoUtil {
     dateTime.format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"))
   }
 
+  def datetimeFormattedForHumans(dateTime: LocalDateTime = LocalDateTime.now()): String = {
+    val today = LocalDateTime.now()
+    if (dateTime.getYear != today.getYear) dateTime.format(DateTimeFormatter.ofPattern("HH:mm (dd.MM.YY)"))
+    else if (dateTime.toLocalDate != today.toLocalDate) dateTime.format(DateTimeFormatter.ofPattern("HH:mm (dd.MM)"))
+    else dateTime.format(DateTimeFormatter.ofPattern("HH:mm"))
+  }
+
   def datetimeFormattedForLog(dateTime: LocalDateTime = LocalDateTime.now()): String = {
     dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
   }

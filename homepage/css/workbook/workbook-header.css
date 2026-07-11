@@ -1,4 +1,4 @@
-/* HEADER */
+
 @import url("../generic/colors.css");
 @import url("../generic/dimensions.css");
 
@@ -146,9 +146,14 @@
 
     width: 100%;
 
-    border: var(--space-borders)solid var(--color-background-colored-accented);
+    border: var(--space-borders) solid var(--color-background-colored-accented);
     border-radius: var(--space-lg);
     overflow: hidden;
+}
+
+.section-block.active{
+    border: var(--space-borders) solid var(--color-background-colored-accented-strong);
+    font-weight: 600;
 }
 
 .section-block-part {
@@ -162,7 +167,7 @@
 .section-block-number {
     font-size: 48px;
     width: 25%;
-    background: var(--color-background-colored-accented);
+    background: var(--color-background-colored);
 }
 
 .section-block-description {
@@ -171,14 +176,10 @@
     background: var(--color-background-workarea-display);
 }
 
-.section-block.active .section-block-number,
-.section-block:hover .section-block-number{
-    background: var(--color-background-colored);
+.section-block:hover{
+    border: var(--space-borders) solid var(--color-background-colored-accented-strong);
 }
 
-.section-block.active .section-block-description{
-    font-weight: 600;
-}
 
 /* HEADER -> NAVIGATION */
 
