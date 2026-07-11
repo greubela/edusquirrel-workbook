@@ -152,5 +152,50 @@
         color: var(--textcolor-colored-light)
     }
 
+    /* REMOVE DEFAULTS FROM EVERYTHING */
+
+    .workbook-element textarea,
+    .workbook-element textarea:hover,
+    .workbook-element textarea:focus,
+    .workbook-element button,
+    .workbook-element button:hover,
+    .workbook-element button:focus,
+    .workbook-element input,
+    .workbook-element input:hover,
+    .workbook-element input:focus{
+        padding: var(--space-md);
+
+        outline: none;
+        transform:none;
+        font-family: inherit;
+        font-size: inherit;
+        color: inherit;
+    }
+
+    textarea,
+    button{
+        background-color: var(--color-background-workarea-interactible);
+        border: var(--space-borders) solid var(--color-background-colored);
+        margin: 0;
+    }
+
+    button{
+        cursor: pointer;
+    }
+
+    textarea:hover,
+    button:hover{
+        background-color: var(--color-background-workarea-interactible);
+        border: var(--space-borders) solid var(--color-background-colored-accented);
+        outline: none;
+    }
+
+    textarea:focus,
+    button:focus{
+        background-color: var(--color-background-workarea-interactible);
+        border: var(--space-borders) solid var(--color-background-colored-accented-strong);
+        outline: none;
+    }
+
 
 }

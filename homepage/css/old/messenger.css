@@ -4,14 +4,18 @@
 @import url("../generic/dimensions.css");
 /* Container styling */
 
+.messenger-editor {
+    width: 100%;
+    box-sizing: border-box;
+    max-width: 600px;
+}
+
 .messenger-history {
     background: var(--color-background-neutral);
     padding: var(--space-lg);
     display: flex;
     flex-direction: column;
     gap: var(--space-sm);
-    /*max-width: calc(var(--workarea-width) * 2 / 3);*/
-    max-width: 600px;
 }
 
 /* Individual message rows */
@@ -115,6 +119,23 @@
 .message-author-role-TEACHER .author-avatar {
     background: var(--color-role-teacher);
 }
+
+
+/* Compose Area */
+
+/* Vertical stack layout for the form */
+.messenger-composer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+/* Full width textarea styling */
+.messenger-composer textarea {
+    min-height: 60px;
+}
+
+
 
 
 /*

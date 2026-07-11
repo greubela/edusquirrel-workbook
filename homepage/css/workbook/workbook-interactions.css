@@ -1,48 +1,6 @@
 
 
-/* REMOVE DEFAULTS FROM EVERYTHING */
 
-.workbook-element textarea,
-.workbook-element textarea:hover,
-.workbook-element textarea:focus,
-.workbook-element button,
-.workbook-element button:hover,
-.workbook-element button:focus,
-.workbook-element input,
-.workbook-element input:hover,
-.workbook-element input:focus{
-
-    padding: var(--space-md);
-
-    outline: none;
-    transform:none;
-    font-family: inherit;
-    font-size: inherit;
-    color: inherit;
-}
-
-
-/* GENERIC INTERACTIONABLE ELEMENTS*/
-
-.workbook-element textarea,
-.workbook-element button{
-    background-color: var(--color-background-workarea-interactible);
-    border: var(--space-borders) solid var(--color-background-colored);
-
-}
-.workbook-element textarea:hover,
-.workbook-element button:hover{
-    background-color: var(--color-background-workarea-interactible);
-    border: var(--space-borders) solid var(--color-background-colored-accented);
-    outline: none;
-}
-
-.workbook-element textarea:focus,
-.workbook-element button:focus{
-    background-color: var(--color-background-workarea-interactible);
-    border: var(--space-borders) solid var(--color-background-colored-accented-strong);
-    outline: none;
-}
 
 /* TEXT EDITOR  */
 
@@ -52,9 +10,7 @@
 
 /* BUTTONS */
 
-.workbook-element button{
-    cursor: pointer;
-}
+
 .workbook-element .button-svg{
     border-radius: var(--space-lg);
     fill: var(--color-background-workarea-interactible);
