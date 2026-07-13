@@ -154,48 +154,57 @@
 
     /* REMOVE DEFAULTS FROM EVERYTHING */
 
-    .workbook-element textarea,
-    .workbook-element textarea:hover,
-    .workbook-element textarea:focus,
-    .workbook-element button,
-    .workbook-element button:hover,
-    .workbook-element button:focus,
-    .workbook-element input,
-    .workbook-element input:hover,
-    .workbook-element input:focus{
+    textarea, textarea:hover, textarea:focus,
+    button, button:hover, button:focus,
+    input, input:hover, input:focus {
         padding: var(--space-md);
 
         outline: none;
-        transform:none;
+        transform: none;
         font-family: inherit;
         font-size: inherit;
         color: inherit;
     }
 
     textarea,
-    button{
+    button {
         background-color: var(--color-background-workarea-interactible);
         border: var(--space-borders) solid var(--color-background-colored);
         margin: 0;
     }
 
-    button{
+    button {
         cursor: pointer;
     }
 
     textarea:hover,
-    button:hover{
+    button:hover {
         background-color: var(--color-background-workarea-interactible);
         border: var(--space-borders) solid var(--color-background-colored-accented);
         outline: none;
     }
 
     textarea:focus,
-    button:focus{
+    button:focus {
         background-color: var(--color-background-workarea-interactible);
         border: var(--space-borders) solid var(--color-background-colored-accented-strong);
         outline: none;
     }
 
+    .button-svg {
+        border-radius: var(--space-lg);
+        fill: var(--color-background-workarea-interactible);
+    }
+
+    .button-svg svg {
+        width: calc(var(--space-element-left) * 3 * 4);
+        height: calc(var(--space-element-left) * 3);
+        stroke: var(--textcolor-regular);
+        stroke-width: 1.8;
+    }
+
+    .button-labeled {
+        border-radius: var(--space-md);
+    }
 
 }

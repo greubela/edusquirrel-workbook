@@ -18,28 +18,23 @@ private val tryToLoad: List[String] = List("plantWorkshopApp", "workbookEmbroide
 private def load(containerId: String): Unit = {
   println("loading workbook: " + containerId)
   val domElement = containerId match {
-    case "plantWorkshopApp" => {
+    case "plantWorkshopApp" =>
       PlantWorkshopApp.appElement
-    }
-    case "workbookEmbroidery" => {
+    case "workbookEmbroidery" =>
       HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreateEmbroideryWorkbook(HtmlFullWorkbookApp.fullInfo))
       HtmlFullWorkbookApp.getDomElement()
-    }
-    case "workbookTest" => {
+    case "workbookTest" =>
       HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreateTestWorkbook(HtmlFullWorkbookApp.fullInfo))
       HtmlFullWorkbookApp.getDomElement()
-    }
-    case "workbookPlantWorkshop" => {
+    case "workbookPlantWorkshop" =>
       HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreatePlantworkshopWorkbook(HtmlFullWorkbookApp.fullInfo))
       HtmlFullWorkbookApp.getDomElement()
-    }
-    case "workbookCompression" => {
+    case "workbookCompression" =>
       HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreateCompressionWorkbook(HtmlFullWorkbookApp.fullInfo))
       HtmlFullWorkbookApp.getDomElement()
-    }
-    case "feedbackDemoRoot" => {
+    case "feedbackDemoRoot" =>
       FeedbackDemoElement.element()
-    }
+
     case other => div("Workbook '" + other + "' not available via MainApp::load!")
   }
 
