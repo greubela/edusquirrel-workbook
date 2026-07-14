@@ -43,14 +43,17 @@ dialog{
 }
 
 .fullscreen-content-container {
+    width: 95vw;
+    height: 90vh;
+    min-height: 32rem;
     max-width: 95vw;
     max-height: 95vh;
     background-color: var(--color-background-workarea-display);
-    overflow-y: auto;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-
-    border:  none;
+    border-radius: var(--radius-md);
+    border: none;
 }
 
 /* workbook structure */
@@ -1075,4 +1078,66 @@ textarea.workbook-interaction {
 .simple-number-editor__spinner-button:last-child {
     border-top: none;
     border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+/* --- Collapsible Instruction Element --- */
+.collapsible-instruction {
+    margin: var(--space-md) 0;
+}
+
+.collapsible-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    cursor: pointer;
+    user-select: none;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--color-surface-muted);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-sm);
+    transition: background 0.2s ease;
+}
+
+.collapsible-header:hover {
+    background: var(--color-surface);
+}
+
+.collapsible-toggle-icon {
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--color-text-muted-light);
+    min-width: 1.2rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.collapsible-title {
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    font-size: 0.92rem;
+}
+
+.collapsible-body {
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.25s ease, padding 0.25s ease;
+}
+
+.collapsible-body--collapsed {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.collapsible-body--expanded {
+    max-height: 2000px;
+    opacity: 1;
+    padding: var(--space-md) var(--space-md) var(--space-sm);
+}
+
+.collapsible-body__text {
+    line-height: 1.6;
+    color: var(--color-text-primary);
+    font-size: 0.92rem;
 }

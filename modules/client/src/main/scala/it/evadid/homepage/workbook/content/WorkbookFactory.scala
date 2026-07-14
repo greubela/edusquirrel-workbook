@@ -10,6 +10,7 @@ import it.evadid.workbook.elements.displayElements.ImageElement.FileBasedImageEl
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{LabelType, WorkbookLabel}
 import it.evadid.workbook.elements.displayElements.*
 import it.evadid.workbook.elements.interactionElements.basic.*
+import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.sortingExercise.{SortingInteraction, SortingItem}
 import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
@@ -131,8 +132,40 @@ trait WorkbookFactory {
                              programmingLanguage: ProgrammingLanguage,
                              hints: List[LanguageMapContentId] = List.empty,
                              orderConstraints: List[(Int, Int)] = Nil
-                           ): ReorderInteraction[String] = {
+                           ): ReorderInteraction.ReorderCodeInteraction = {
     ReorderInteraction.ReorderCodeInteraction(baseId, snippets, programmingLanguage, hints = hints, orderConstraints = orderConstraints)
+  }
+
+  protected def codeTaskToggle(
+                                reorderId: String,
+                                snippets: List[String],
+                                codeEditorTitle: String,
+                                advancedCodeTemplate: String,
+                                hints: List[LanguageMapContentId] = List.empty,
+                                orderConstraints: List[(Int, Int)] = Nil
+                              ): CodeTaskToggleInteraction = {
+    CodeTaskToggleInteraction(
+      nextId(reorderId + "-toggle"),
+      codeReorder(reorderId, snippets, AppLanguage.C, hints, orderConstraints),
+      codeEditorTitle,
+      advancedCodeTemplate
+    )
+  }
+
+  protected def sketchDownload(
+                                buttonLabelKey: String,
+                                sketchContent: String,
+                                filename: String,
+                                id: String,
+                                unlockWhenReorderCorrect: String
+                              ): SketchDownloadInteraction = {
+    SketchDownloadInteraction(
+      nextId(id),
+      LanguageMapContentId(buttonLabelKey),
+      filename,
+      sketchContent,
+      unlockWhenReorderCorrect
+    )
   }
 
   protected def sortingExercise(

@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.reorderExercise.{ReorderInteraction, ReorderInteractionState}
+import it.evadid.workbook.elements.interactionElements.reorderExercise.{ReorderCorrectness, ReorderInteraction, ReorderInteractionState}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderInteraction[?]] {
@@ -116,21 +116,10 @@ object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderI
 
     val feedbackVar: Var[Option[LanguageMapContentId]] = Var(None)
 
-    def orderIsCorrect(current: List[Int], state: ReorderInteractionState[T]): Boolean = reorder match {
-      case codeInteraction: ReorderInteraction.ReorderCodeInteraction if codeInteraction.orderConstraints.nonEmpty =>
-        val positions = current.zipWithIndex.toMap
-        codeInteraction.orderConstraints.forall { case (first, second) =>
-          positions.get(first).exists(firstIdx => positions.get(second).exists(secondIdx => firstIdx < secondIdx))
-        }
-      case _ =>
-        current == state.correctOrder
-    }
-
     def checkSolution(): Unit = {
       val state = stateVar.now()
-      val current = state.currentOrder
 
-      if (orderIsCorrect(current, state)) {
+      if (ReorderCorrectness.isOrderCorrect(reorder, state)) {
         feedbackVar.set(Some(LanguageMapContentId("basic/reorderFeedbackSuccess")))
       } else {
         feedbackVar.set(Some(LanguageMapContentId("basic/reorderFeedbackWrongOrder")))

@@ -1,14 +1,7 @@
 package it.evadid.homepage.workbook.content
 
-import com.raquo.laminar.api.L.*
-import com.raquo.airstream.core.Signal
-import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
-import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.control.model.*
-import it.evadid.homepage.util.web.DownloadHelper
-import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.reorderExercise.HtmlReorderInteractionRenderer
-import it.evadid.homepage.workbook.legacy.htmlElements.HtmlEmbeddedDomInteraction
-import it.evadid.homepage.workbook.legacy.plantworkshop.helpers.*
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.ImageElement.FileBasedImageElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, HintLabel, SafetyLabel, TaskLabel}
@@ -136,77 +129,6 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     )
 
     section("section1", "PlantWorkshop/section1Title", List(container1, container2))
-  }
-
-  private case class CodeTaskToggleResult(
-    interaction: HtmlEmbeddedDomInteraction,
-    isCorrectSignal: Signal[Boolean]
-  )
-
-  private def createCodeTaskToggle(
-                                    reorderId: String,
-                                    snippets: List[String],
-                                    codeEditorTitle: String,
-                                    advancedCodeTemplate: String,
-                                    hints: List[LanguageMapContentId] = List.empty,
-                                    orderConstraints: List[(Int, Int)] = Nil
-                                  ): CodeTaskToggleResult = {
-    val reorder = codeReorder(reorderId, snippets, AppLanguage.C, hints, orderConstraints)
-    val reorderDom = HtmlReorderInteractionRenderer.render(reorder).getDomElement()
-
-    val advancedCodeState = Var(advancedCodeTemplate)
-
-    val codeEditor = CodeEditorHelper.createCodeEditor(
-      advancedCodeState,
-      codeEditorTitle,
-      _ => "Die automatische Code-Prüfung ist noch nicht verfügbar."
-    )
-
-    val isBeginnerMode = Var(true)
-
-    val toggleArea = div(
-      cls := "task-box",
-      div(
-        cls := "mode-toggle",
-        button(
-          cls := "mode-toggle__btn",
-          cls.toggle("mode-toggle__btn--active") <-- isBeginnerMode.signal,
-          text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId("basic/beginnerMode")),
-          onClick.mapTo(true) --> isBeginnerMode
-        ),
-        button(
-          cls := "mode-toggle__btn",
-          cls.toggle("mode-toggle__btn--active") <-- isBeginnerMode.signal.map(!_),
-          text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId("basic/advancedMode")),
-          onClick.mapTo(false) --> isBeginnerMode
-        )
-      ),
-      div(
-        cls.toggle("mode-hidden") <-- isBeginnerMode.signal.map(!_),
-        reorderDom
-      ),
-      div(
-        cls.toggle("mode-hidden") <-- isBeginnerMode.signal,
-        codeEditor
-      )
-    )
-
-    val interaction = HtmlEmbeddedDomInteraction(nextId(reorderId + "-toggle"), toggleArea)
-
-    // Create a signal that tracks whether the reorder task is correctly solved
-    val isCorrectSignal: Signal[Boolean] = reorder.interactionVariable.createInteractionSignal(fullInfo.syncControl).map { state =>
-      val current = state.currentOrder
-      if (orderConstraints.nonEmpty) {
-        val positions = current.zipWithIndex.toMap
-        orderConstraints.forall { case (first, second) =>
-          positions.get(first).exists(firstIdx => positions.get(second).exists(secondIdx => firstIdx < secondIdx))
-        }
-      } else {
-        current == state.correctOrder
-      }
-    }
-
-    CodeTaskToggleResult(interaction, isCorrectSignal)
   }
 
   private val sensorReadAdvancedCodeTemplate: String =
@@ -398,32 +320,13 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
        |}
        |""".stripMargin
 
-  private def createDownloadInteraction(
-    buttonLabelKey: String,
-    sketchContent: String,
-    filename: String,
-    id: String,
-    enabledSignal: Signal[Boolean]
-  ): HtmlEmbeddedDomInteraction = {
-    val downloadDiv = div(
-      cls := "download-btn-wrapper",
-      button(
-        cls := "btn-primary",
-        disabled <-- enabledSignal.map(!_),
-        text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId(buttonLabelKey)),
-        onClick --> { _ => DownloadHelper.downloadFile(filename, sketchContent) }
-      )
-    )
-    HtmlEmbeddedDomInteraction(nextId(id), downloadDiv)
-  }
-
   private lazy val sensorExploreSection: WorkbookSection = {
     val exploreChecklistItems = checklist(
       List("sensorExploreDone1", "sensorExploreDone2", "sensorExploreDone3"),
       "plant-sensor-explore-check"
     )
 
-    val codeTaskResult = createCodeTaskToggle(
+    val codeTask = codeTaskToggle(
       "plant-section2-sensor-read-reorder",
       List(
         "digitalWrite(SENSOR_POWER_PIN, HIGH);",
@@ -457,12 +360,12 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       List(
         instructionLabeledPair("PlantWorkshop/safetyTitle", "PlantWorkshop/section6SafetyWarningText", SafetyLabel),
         instructionMarkdown("PlantWorkshop/section2DownloadSteps"),
-        createDownloadInteraction(
+        sketchDownload(
           "PlantWorkshop/section2DownloadButton",
           sensorExploreSketch,
           "sensor-auslesen.ino",
           "download-sensor",
-          codeTaskResult.isCorrectSignal
+          codeTask.reorder.id
         )
       )
     )
@@ -490,7 +393,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         ),
         container("PlantWorkshop/section2Subtitle2", List(
           instructionCollapsibleHint("PlantWorkshop/ReorderHintTitle", "PlantWorkshop/section2ReorderHintBody"),
-          codeTaskResult.interaction
+          codeTask
         )),
         downloadContainer,
         measurementContainer,
@@ -505,7 +408,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "plant-pump-done"
     )
 
-    val codeTaskResult = createCodeTaskToggle(
+    val codeTask = codeTaskToggle(
       "plant-section4-pump-reorder",
       List(
         "digitalWrite(PUMP_PIN, HIGH);",
@@ -534,12 +437,12 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       List(
         instructionLabeledPair("PlantWorkshop/safetyTitle", "PlantWorkshop/section6SafetyWarningText", SafetyLabel),
         instructionMarkdown("PlantWorkshop/section4DownloadSteps"),
-        createDownloadInteraction(
+        sketchDownload(
           "PlantWorkshop/section4DownloadButton",
           pumpTestSketch,
           "pumpe-test.ino",
           "download-pump",
-          codeTaskResult.isCorrectSignal
+          codeTask.reorder.id
         )
       )
     )
@@ -559,7 +462,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         ),
         container("PlantWorkshop/section4Subtitle2", List(
           instructionCollapsibleHint("PlantWorkshop/ReorderHintTitle", "PlantWorkshop/section4ReorderHintBody"),
-          codeTaskResult.interaction
+          codeTask
         )),
         downloadContainer,
         container("PlantWorkshop/section4Subtitle3", checklistItems)
@@ -573,7 +476,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "plant-moisture-done"
     )
 
-    val codeTaskResult = createCodeTaskToggle(
+    val codeTask = codeTaskToggle(
       "plant-section3-sensor-reorder",
       List(
         "int feuchtigkeitsGrenze = 400;",
@@ -619,12 +522,12 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       List(
         instructionLabeledPair("PlantWorkshop/safetyTitle", "PlantWorkshop/section6SafetyWarningText", SafetyLabel),
         instructionMarkdown("PlantWorkshop/section3DownloadSteps"),
-        createDownloadInteraction(
+        sketchDownload(
           "PlantWorkshop/section3DownloadButton",
           moistureTestSketch,
           "feuchtigkeit-messen.ino",
           "download-moisture",
-          codeTaskResult.isCorrectSignal
+          codeTask.reorder.id
         )
       )
     )
@@ -643,7 +546,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         ),
         container("PlantWorkshop/section3Subtitle2", List(
           instructionCollapsibleHint("PlantWorkshop/ReorderHintTitle", "PlantWorkshop/section3ReorderHintBody"),
-          codeTaskResult.interaction
+          codeTask
         )),
         moistureDownloadContainer,
         container("PlantWorkshop/section3Subtitle3", checklistItems)
@@ -657,7 +560,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       "plant-combined-done"
     )
 
-    val codeTaskResult = createCodeTaskToggle(
+    val codeTask = codeTaskToggle(
       "plant-combined-reorder",
       List(
         "int feuchtigkeitsGrenze = 400;",
@@ -712,12 +615,12 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       List(
         instructionLabeledPair("PlantWorkshop/safetyTitle", "PlantWorkshop/section6SafetyWarningText", SafetyLabel),
         instructionMarkdown("PlantWorkshop/section6DownloadSteps"),
-        createDownloadInteraction(
+        sketchDownload(
           "PlantWorkshop/section6DownloadButton",
           combinedSketch,
           "plantworkshop.ino",
           "download-combined",
-          codeTaskResult.isCorrectSignal
+          codeTask.reorder.id
         )
       )
     )
@@ -736,7 +639,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         ),
         container("PlantWorkshop/section5Subtitle2", List(
           instructionCollapsibleHint("PlantWorkshop/ReorderHintTitle", "PlantWorkshop/section5ReorderHintBody"),
-          codeTaskResult.interaction
+          codeTask
         )),
         combinedDownloadContainer,
         container("PlantWorkshop/section5Subtitle3", checklistItems)

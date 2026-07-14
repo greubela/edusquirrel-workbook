@@ -7,17 +7,14 @@ import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
 import it.evadid.workbook.elements.interactionElements.sortingExercise.SortingInteraction
-import it.evadid.workbook.interaction.sync.UpdateImportance
 
 object HtmlSortingInteractionRenderer extends LineBasedRenderingFactory[SortingInteraction] {
 
   private val errorCountLabelId = LanguageMapContentId("basic/sortingLastErrorCount")
 
   override protected def createRendering(interaction: SortingInteraction): AtomarLineRendering = {
-    val stateVar = interaction.interactionVariable.createBoundVarWithUpdateImportance(fullInfo.syncControl, UpdateImportance.TEMPORARY)
-
     val errorCountSignal =
-      stateVar.signal
+      interaction.interactionVariable.createInteractionSignal(fullInfo.syncControl)
         .combineWith(fullInfo.signals.stringFromLanguageMapId(errorCountLabelId))
         .map { case (state, template) =>
           val totalErrors = state.lastSessionErrorCount + state.sessionErrorCount

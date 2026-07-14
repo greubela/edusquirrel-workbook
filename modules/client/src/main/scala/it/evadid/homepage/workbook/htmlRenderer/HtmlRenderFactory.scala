@@ -9,6 +9,7 @@ import it.evadid.homepage.webElements.basic.HtmlImageElement
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
 import it.evadid.homepage.workbook.htmlRenderer.displayRenderer.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.*
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle.{HtmlCodeTaskToggleRenderer, HtmlSketchDownloadRenderer}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.reorderExercise.HtmlReorderInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingExercise.HtmlSortingInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingReasonExercise.HtmlSortingReasonInteractionRenderer
@@ -18,6 +19,7 @@ import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.*
 import it.evadid.workbook.elements.interactionElements.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, TextInteraction}
+import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExercise
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
@@ -103,6 +105,8 @@ object HtmlRenderFactory {
       case s: SortingInteraction => HtmlSortingInteractionRenderer.renderWorkbookElement(s)
       case s: SortingReasonInteraction => HtmlSortingReasonInteractionRenderer.renderWorkbookElement(s)
       case r: ReorderInteraction[?] => HtmlReorderInteractionRenderer.renderWorkbookElement(r)
+      case c: CodeTaskToggleInteraction => HtmlCodeTaskToggleRenderer.renderWorkbookElement(c)
+      case d: SketchDownloadInteraction => HtmlSketchDownloadRenderer.renderWorkbookElement(d)
       /*case i: ChoiceSelectionInteraction => HtmlChoiceSelectionRenderer.renderWorkbookElement(i)
       case i: MatchingInteraction => HtmlMatchingInteractionRenderer.renderWorkbookElement(i)
       case i: CategorizationInteraction => HtmlCategorizationInteractionRenderer.renderWorkbookElement(i)

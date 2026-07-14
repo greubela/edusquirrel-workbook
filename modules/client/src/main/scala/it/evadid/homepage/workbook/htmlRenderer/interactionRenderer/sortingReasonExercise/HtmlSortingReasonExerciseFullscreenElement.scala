@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
 import it.evadid.homepage.control.model.FullInfo
-import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingExercise.{
   SortingExerciseDragDropHelper,
   SortingFieldLayoutHelper
@@ -18,7 +18,7 @@ import scala.scalajs.js.timers.{SetTimeoutHandle, clearTimeout, setTimeout}
 case class HtmlSortingReasonExerciseFullscreenElement(
   interaction: SortingReasonInteraction,
   fullInfo: FullInfo
-) extends HtmlAppElement {
+) extends HtmlAppElement with FullscreenLifecycle {
 
   private val itemCount = interaction.items.size
   private val fieldCount = interaction.fields.size
@@ -47,6 +47,11 @@ case class HtmlSortingReasonExerciseFullscreenElement(
     case None =>
       reasonFormItemIndex.set(None)
   }(using com.raquo.laminar.api.L.unsafeWindowOwner)
+
+  override def onFullscreenClose(): Unit = {
+    clearWrongFlashTimeout()
+    stateVar.update(_.finalizeAttempt().clearWrongPlacementPreview())
+  }
 
   private def finalizeAndReset(): Unit = {
     stateVar.update(state => state.finalizeAttempt().resetAttempt(itemCount))
