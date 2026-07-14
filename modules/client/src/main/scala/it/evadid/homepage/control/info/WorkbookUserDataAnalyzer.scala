@@ -5,13 +5,14 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.user.User
 import it.evadid.core.util.io.serializer.DefaultSerializer
+import it.evadid.homepage.control.change.TechnicalControl
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.model.AllWorkbookInfo.*
 import it.evadid.homepage.util.web.DownloadHelper
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.model.interaction.WorkbookInteraction
-import it.evadid.workbook.model.interaction.sync.UpdateImportance
-import it.evadid.workbook.model.interaction.variable.*
+import it.evadid.workbook.abstractions.WorkbookInteractionElement
+import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interaction.variable.{InteractionVariableHistorySerialized, InteractionVariableStateSerialized}
 import upickle.default.ReadWriter.join
 
 import java.time.LocalDateTime
@@ -51,20 +52,20 @@ case class WorkbookUserDataAnalyzer(logger: Logger, technical: TechnicalControl,
   def downloadAllData(): Unit = {
 
     logger.logInfo("WorkbookUserDataAnalyzer: now downloading all session data!")
-    val allInteractions: List[WorkbookInteraction[?]] = workbookInfo.loadedWorkbook.allContainedInteractions
+    val allInteractions: List[WorkbookInteractionElement[?]] = workbookInfo.loadedWorkbook.allContainedInteractions
     val history: Map[String, InteractionVariableHistorySerialized] = allInteractions.map(interaction => interaction.interactionVariable.keyForSerialization -> interaction.interactionVariable.serializedHistory).toMap
     val data = SessionData(userInfo.user, history, workbookInfo.getMetadata(), System.currentTimeMillis())
     val str = upickle.default.write(data)
-    val name = s"${data.currentUserInfo.id}-${data.metadata.workbookId}-${data.epochTimestampMillis}.json"
+    val name = s"${data.currentUserInfo.personId}-${data.metadata.workbookId}-${data.epochTimestampMillis}.json"
     DownloadHelper.downloadFile(name, str)
   }
 
   private def tryToLoad(sessionData: SessionData): Unit = {
     logger.logInfo("WorkbookUserDataAnalyzer: now trying to load prio session data!")
-    if (sessionData.currentUserInfo.id == userInfo.user.id) {
+    if (sessionData.currentUserInfo.personId == userInfo.user.personId) {
       workbookInfo.loadedWorkbook.allContainedInteractions.foreach(curInteraction => {
         sessionData.interactionHistory.foreach(historyTup => if (historyTup._1 == curInteraction.interactionVariable.keyForSerialization) {
-          curInteraction.interactionVariable.addHistory(historyTup._2)
+          curInteraction.interactionVariable.updateHistory(_.withAddedEvents(historyTup._2, curInteraction.serializer))
         })
       })
     }

@@ -3,7 +3,9 @@ package it.evadid.homepage.control.model
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.control.change.*
 import it.evadid.homepage.control.info.*
+import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
+import it.evadid.workbook.interaction.sync.SyncControl
 
 case class FullInfo(
                      val defaults: HomepageDefaults,
@@ -21,7 +23,11 @@ case class FullInfo(
 
   lazy val current: HomepageCurrentInfo = HomepageCurrentInfo(this)
 
-  lazy val cacheControl: CachedSyncControl = CachedSyncControl(this)
+  lazy val syncControl: SyncControl = RemoteInteractionCacheControl(this)
+
+  lazy val displayControl: DisplayControl = DisplayControl(this)
+
+
 }
 
 object FullInfo {

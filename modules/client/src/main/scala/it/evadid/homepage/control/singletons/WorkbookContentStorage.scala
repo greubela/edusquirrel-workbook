@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.observable.ObservableValue
-import it.evadid.core.datastructures.state.storage.AsyncDataCache
+import it.evadid.core.datastructures.storage.AsyncDataCache
 import it.evadid.util.logging.Logger
 
 import scala.concurrent.*

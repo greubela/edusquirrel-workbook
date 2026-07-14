@@ -1,55 +1,8 @@
-import sbtassembly.AssemblyPlugin.autoImport.*
-import Dependencies.*
+import Dependencies.{*, coreDependencies, jvmDependencies}
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.*
-import sbtcrossproject.CrossPlugin.autoImport.*
-import scalajscrossproject.ScalaJSCrossPlugin.autoImport.*
-import sbtcrossproject.CrossPlugin.autoImport.*
-
-lazy val buildClientFast = taskKey[Unit]("Build client as fast as possible")
-buildClientFast := Def.sequential(
-  client / Compile / fastLinkJS,
-  Def.taskDyn {
-    val clientFastOutput = (client / Compile / fastLinkJS / scalaJSLinkedFile).value.data
-    val root = (ThisBuild / baseDirectory).value
-    Build.moveClientFiles(root, clientFastOutput, false, "fast", "client.js")
-  }
-).value
-
-lazy val buildWorkerFast = taskKey[Unit]("Build worker as fast as possible")
-buildWorkerFast := Def.sequential(
-  worker / Compile / fastLinkJS,
-  Def.taskDyn {
-    val workerFastOutput = (worker / Compile / fastLinkJS / scalaJSLinkedFile).value.data
-    val root = (ThisBuild / baseDirectory).value
-    Build.moveClientFiles(root, workerFastOutput, false, "fast", "backend-worker.js")
-  }
-).value
-
-lazy val deployAll = taskKey[Unit]("Builds and deploys server + client")
-deployAll := {
-  Def.sequential(
-    Def.taskDyn {
-      (client / Compile / fullLinkJS).value
-      (worker / Compile / fullLinkJS).value
-      val clientOutput = (client / Compile / fullLinkJS / scalaJSLinkedFile).value.data
-      val workerOutput = (worker / Compile / fullLinkJS / scalaJSLinkedFile).value.data
-      val base = (ThisBuild / baseDirectory).value
-      Def.sequential(
-        Build.moveClientFiles(base, clientOutput, true, "full", "client.js"),
-        Build.moveClientFiles(base, workerOutput, true, "full", "backend-worker.js")
-      )
-    },
-  ).value
-
-  Build.buildServer(server, "server.jar", true).value
-}
-
-lazy val buildServerFast = taskKey[Unit]("Builds a server")
-buildServerFast := {
-  Build.buildServer(server, "server.jar", true).value
-}
-
+import BuildArchitecture.*
+import BuildCommands.*
 
 lazy val root = (project in file("."))
   .settings(Settings.globalSettings)
@@ -58,6 +11,7 @@ lazy val root = (project in file("."))
     name := "edusquirrel-workbook",
     publish / skip := true
   )
+  .settings(buildCommandSettings(workbookArtifactArchitecture(client, worker, server)))
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Full)

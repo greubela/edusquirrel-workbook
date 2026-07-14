@@ -1,11 +1,9 @@
 package it.evadid.homepage.webElements.editor
 
-import com.raquo.airstream.core.Signal
-import com.raquo.airstream.ownership.Owner
 import com.raquo.laminar.api.L.*
-import SimpleTextEditor.*
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.model.interaction.sync.UpdateImportance
+import it.evadid.homepage.webElements.editor.SimpleTextEditor.*
 
 case class SimpleTextEditor(
                              varToBind: Var[String],
@@ -14,18 +12,13 @@ case class SimpleTextEditor(
 
   override def getDomElement(): Element = domElement
 
-  private val domElement: Element = {
-    div(
-      cls := "simple-text-editor",
-      child <-- config.signal.map(createTextEditor)
-    )
-  }
+  private val domElement: Element = createTextEditor(config.signal)
 
-  private def createTextEditor(curConfig: TextEditorConfig): Element = textArea(
-    rows := curConfig.rowsCount,
-    cols := curConfig.colsCount,
-    cls := curConfig.containerClass,
-    if (curConfig.monospace) cls := "mono" else cls := "",
+  def createTextEditor(config: Signal[TextEditorConfig]): Element = textArea(
+    rows <-- config.map(_.rowsCount),
+    cols <-- config.map(_.colsCount),
+    placeholder <-- config.flatMapSwitch(curConfig => laminarHelper.plaintextStringSignal(curConfig.placeholder)),
+    cls <-- config.map(_.cssStr),
     controlled(
       value <-- varToBind.signal,
       onInput.mapToValue --> varToBind.writer
@@ -35,12 +28,16 @@ case class SimpleTextEditor(
 }
 
 object SimpleTextEditor {
-  case class TextEditorConfig(monospace: Boolean, rowsCount: Int, colsCount: Int, containerClass: String)
+  case class TextEditorConfig(monospace: Boolean, rowsCount: Int, colsCount: Int, placeholder: LanguageMapContentId, cssClasses: List[String]) {
+    lazy val cssMonoStr: String = if(monospace) " mono" else ""
+    lazy val cssStr: String = cssClasses.mkString("simple-text-editor-textarea ", " ", "") + cssMonoStr
+  }
 
   val defaultConfig: TextEditorConfig = TextEditorConfig(
     monospace = false,
     rowsCount = 4,
     colsCount = 110,
-    containerClass = "simple-text-editor"
+    placeholder = LanguageMapContentId("basic/textEditorPlaceholder"),
+    cssClasses = List()
   )
 }

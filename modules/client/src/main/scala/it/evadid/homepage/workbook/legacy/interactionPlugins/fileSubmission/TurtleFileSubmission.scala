@@ -1,9 +1,9 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission
 
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleLogic.TurtleRenderer
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.{TurtleStitchFromBeExpressionSerializer, TurtleStitchProgramModel, TurtleStitchProgramRenderer, TurtleStitchToBeExpressionParser, TurtleStitchXmlLoader}
-import it.evadid.workbook.vm.code.BeExpression
+import it.evadid.vm.BeProgram
+import it.evadid.vm.code.BeExpression
 
 import java.nio.charset.{Charset, StandardCharsets}
 import scala.util.Try

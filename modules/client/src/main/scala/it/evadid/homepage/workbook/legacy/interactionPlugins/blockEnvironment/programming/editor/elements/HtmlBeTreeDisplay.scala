@@ -3,21 +3,9 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.p
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.*
-import it.evadid.core.datastructures.geometry.Point
-import it.evadid.homepage.util.Timing
-import it.evadid.homepage.webElements.canvas.SvgCanvas
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig, ControlFlowDisplay}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.{BeBlockRenderingTree, BeProgram}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.{BeTreeDropTarget, RenderingInformation}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
-import todomove.webElementsOld.webElements.svg.shapes.ControlFlowAndExpressionShape
-import todomove.webElementsOld.webElements.svg.shapes.composite.{HorizontalAlignment, ShapeStack, VerticalAlignment}
-import todomove.webElementsOld.webElements.svg.shapes.composite.HorizontalAlignment.Left
-import todomove.webElementsOld.webElements.svg.shapes.composite.VerticalAlignment.Top
-
-import scala.collection.mutable
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.*
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeTreeDropTarget
+import it.evadid.vm.BeProgram
 
 case class HtmlBeTreeDisplay(
                               editorState: EditorState,
@@ -98,6 +86,10 @@ object HtmlBeTreeDisplay {
     )
 
 
+  def render(programToDisplay: BeProgram, displayConfig: BeTreeDisplayConfig, rendererConfig: BeRenderingConfig, controllerConfig: BeTreeControllerConfig, editorState: EditorState): (L.HtmlElement, List[BeTreeDropTarget]) = ???
+
+
+  /*
   def render(programToDisplay: BeProgram, displayConfig: BeTreeDisplayConfig, rendererConfig: BeRenderingConfig, controllerConfig: BeTreeControllerConfig, editorState: EditorState): (L.HtmlElement, List[BeTreeDropTarget]) = {
     val tree: BeBlockRenderingTree = programToDisplay.blockRenderingTree(displayConfig)
     val posToDraw = tree.rootPosition.forChild(0)
@@ -158,5 +150,5 @@ object HtmlBeTreeDisplay {
 
 
   }
-
+*/
 }

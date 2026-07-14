@@ -1,0 +1,273 @@
+/* Color policy: use only semantic color variables from colors.css (no hardcoded color values). */
+
+@import url("../generic/colors.css");
+@import url("../generic/dimensions.css");
+/* Container styling */
+
+.messenger-editor {
+    width: 100%;
+    box-sizing: border-box;
+    max-width: 600px;
+}
+
+.messenger-history {
+    background: var(--color-background-neutral);
+    padding: var(--space-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+/* Individual message rows */
+.messenger-message {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-md);
+    max-width: 85%;
+}
+
+.messenger-message.message-position-left {
+    align-self: flex-start;
+}
+
+.messenger-message.message-position-right {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+/* Avatars */
+.author-avatar {
+    width: var(--messenger-avatar-dimension); /* Smaller avatar for compactness */
+    height: var(--messenger-avatar-dimension);
+    border-radius: 50%;
+    flex-shrink: 0;
+
+    justify-items: center;
+    align-items: center;
+    display: inline-grid;
+
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--textcolor-regular);
+}
+
+
+/* Message bubble container */
+.message-content {
+    background-color: var(--color-background-workarea-display);
+    padding: var(--space-md) var(--space-md) var(--space-md) var(--space-md);
+    border-radius: var(--space-lg);
+    position: relative;
+}
+
+
+/* Text layouts inside the bubble */
+.message-author {
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.message-text {
+    color: var(--textcolor-regular);
+    word-break: break-word;
+    display: inline;
+}
+
+/* Compact inline-style timestamp layout */
+.message-timestamp {
+
+    float: right;
+    font-size: 10px;
+    color: var(--color-gray-7);
+
+    position: absolute;
+    right: var(--space-md);
+    bottom: 0 /*var(--space-xs);*/
+}
+
+/* Role colors */
+.message-author-role-AGENT .message-author {
+    color: var(--color-role-ai);
+}
+
+.message-author-role-USER .message-author {
+    color: var(--color-role-user);
+}
+
+.message-author-role-SYSTEM .message-author {
+    color: var(--color-role-system);
+}
+
+.message-author-role-TEACHER .message-author {
+    color: var(--color-role-teacher);
+}
+
+
+.message-author-role-AGENT .author-avatar {
+    background: var(--color-role-ai)
+}
+
+.message-author-role-USER .author-avatar {
+    background: var(--color-role-user);
+}
+
+.message-author-role-SYSTEM .author-avatar {
+    background: var(--color-role-system);
+
+}
+
+.message-author-role-TEACHER .author-avatar {
+    background: var(--color-role-teacher);
+}
+
+
+/* Compose Area */
+
+/* Vertical stack layout for the form */
+.messenger-composer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+/* Full width textarea styling */
+.messenger-composer textarea {
+    min-height: 60px;
+}
+
+
+
+
+/*
+
+.messenger-editor {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-subtle);
+  max-width: 500px;
+  min-height: 420px;
+  overflow: hidden;
+}
+
+.messenger-history {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.messenger-message-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-sm);
+  max-width: 80%;
+}
+
+.messenger-message-row-user {
+  align-self: flex-start;
+}
+
+.messenger-message-row-teacher {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.messenger-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex: 0 0 40px;
+  background: var(--color-border-soft);
+}
+
+.messenger-message-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.messenger-author {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.messenger-bubble {
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.messenger-bubble-user {
+  background: var(--color-surface-level-1);
+  color: var(--color-ink);
+  border-bottom-left-radius: var(--space-sm);
+}
+
+.messenger-bubble-teacher {
+  background: var(--color-surface-base);
+  color: var(--color-ink);
+  border-bottom-right-radius: var(--space-sm);
+}
+
+.messenger-timestamp {
+  font-size: 11px;
+  color: var(--color-text-muted-light);
+}
+
+.messenger-message-row-teacher .messenger-timestamp,
+.messenger-message-row-teacher .messenger-author {
+  text-align: right;
+}
+
+.messenger-composer {
+  border-top: 1px solid var(--color-border-soft);
+  padding: var(--space-md);
+  display: flex;
+  gap: var(--space-sm);
+  background: var(--color-surface-base);
+}
+
+.messenger-input {
+  flex: 1;
+  resize: none;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  padding: var(--space-md) var(--space-lg);
+  font-size: 14px;
+  outline: none;
+  min-height: 44px;
+  font-family: var(--font-family);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.messenger-input:focus {
+  border-color: var(--color-accent-primary);
+  box-shadow: var(--shadow-focus);
+}
+
+.messenger-send-button {
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-primary);
+  color: var(--color-text-inverse);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 0 var(--space-xl);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.messenger-send-button:hover {
+  background: var(--color-accent-strong);
+}
+
+ */

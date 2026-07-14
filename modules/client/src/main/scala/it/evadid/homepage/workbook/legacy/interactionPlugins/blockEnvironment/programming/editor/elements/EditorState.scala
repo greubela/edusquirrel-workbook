@@ -5,9 +5,9 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Signal
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeTreeDropTarget
-import it.evadid.workbook.vm.code.BeExpression
+import it.evadid.vm.BeProgram
+import it.evadid.vm.code.BeExpression
 
 case class EditorState(
                         treeToEdit: Var[BeProgram],
@@ -66,7 +66,9 @@ case class EditorState(
       controllerStateVar.update(_.copy(draggingEvent = None))
       if (legalDropTargetsInOrder.nonEmpty) {
         val addedMap = Map(legalDropTargetsInOrder.head.extensionPoint -> draggedEvent.draggedProgram.fullProgram)
-        treeToEdit.update(_.withInsertions(editorTreeDisplayConfig.now(), addedMap))
+        println("editorstate:: todo")
+       // treeToEdit
+        // todo  treeToEdit.update(_.withInsertions(editorTreeDisplayConfig.now(), addedMap))
       }
     }
   })(using new Owner() {})

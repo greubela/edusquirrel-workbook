@@ -2,12 +2,14 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
-import it.evadid.homepage.control.model.AllUserInfo
+import it.evadid.homepage.control.model.{AllUserInfo, FullInfo}
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlDropdownMenu
 
-case class UserDropdownMenu() extends HtmlAppElement with ControlFactory{
+import javax.naming.ldap.ControlFactory
+
+case class UserDropdownMenu() extends HtmlAppElement {
 
   private val isOpen: Var[Boolean] = Var(false)
 
@@ -33,23 +35,23 @@ case class UserDropdownMenu() extends HtmlAppElement with ControlFactory{
 
   private def createSessionMenu(): List[HtmlAppElement] = List(
     HtmlDropdownMenu.menuLabel(userNameOrNobodySignal),
-    HtmlDropdownMenu.menuItem("basic/downloadEverything", _ => fullInfo.cacheControl.downloadAllAvailableData()),
+    HtmlDropdownMenu.menuItem("basic/downloadEverything", _ => fullInfo.current.workbookUserData.foreach(_.downloadAllData())),
     HtmlDropdownMenu.menuItem("basic/logout", _ => switchUser(None))
   )
 
 
   private def createDemoMenu(): List[HtmlAppElement] = {
     List(
-      HtmlDropdownMenu.menuLabel(labelString(LanguageMapContentId("basic/switchUser")))
+      HtmlDropdownMenu.menuLabel(laminarHelper.plaintextStringSignal("basic/switchUser"))
     ) ++
       fullInfo.defaults.selectableUsers.map(user => HtmlDropdownMenu.menuItem(Var(user.user.name).signal, _ => switchUser(Some(user))))
 
   }
 
   private val domElement: Element = div(
-    cls := "workbook-user-menu-anchor dropdown-anchor",
-    button(
-      cls := "workbook-user-menu-trigger",
+    cls := "workbook-user-menu",
+    div(
+      cls := "workbook-user-menu-button",
       typ := "button",
       aria.label := "Benutzermenü öffnen",
       title <-- currentUserInitials.map(name => s"Benutzermenü für $name öffnen"),

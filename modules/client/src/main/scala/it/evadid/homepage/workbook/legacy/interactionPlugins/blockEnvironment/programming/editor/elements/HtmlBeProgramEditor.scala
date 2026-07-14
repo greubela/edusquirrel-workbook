@@ -6,11 +6,11 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.editor.CodeMirrorEditor
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
-import it.evadid.workbook.vm.code.others.BeStartProgram
-import it.evadid.workbook.vm.parsing.cpp.CppParser
-import it.evadid.workbook.vm.parsing.python.PythonParser
+import it.evadid.homepage.webElements.editor.code.python.CodeMirrorEditor
+import it.evadid.vm.BeProgram
+import it.evadid.vm.code.others.BeStartProgram
+import it.evadid.vm.parsing.cpp.CppParser
+import it.evadid.vm.parsing.python.PythonParser
 import todomove.webElementsOld.webElements.genericHtmlElements.other.{HtmlTab, HtmlTabElement}
 
 case class HtmlBeProgramEditor(

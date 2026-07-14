@@ -1,7 +1,7 @@
 package it.evadid.server.commandHandler.sql
 
-import it.evadid.workbook.model.interaction.sync.SyncFormatter.{RichInteractionVariableFormatter, RichInteractionVariableHistorySerialized}
-import it.evadid.workbook.model.interaction.sync.{SyncContext, UsageContext}
+import it.evadid.workbook.interaction.sync.{SyncContext, UsageContext}
+import it.evadid.workbook.interaction.sync.SyncFormatter.{RichInteractionVariableFormatter, RichInteractionVariableHistorySerialized}
 
 sealed trait RichDatabaseEntry {
   def keyForSerialisation: String

@@ -1,0 +1,210 @@
+/* Shared design tokens for the workbook experience.
+   Color policy: define colors only in this file and consume them via CSS variables in other stylesheets. */
+:root {
+
+
+    --color-red-0: #fdcfcf;
+    --color-red-1: #FBA0A0;
+    --color-red-2: #FA7D7D;
+    --color-red-3: #F85A5A;
+    --color-red-4: #F73737;
+    --color-red-5: #F61313;
+    --color-red-6: #DB0909;
+    --color-red-7: #B80707;
+    --color-red-8: #950606;
+    --color-red-9: #840505;
+    --color-red-10: #740505;
+    --color-red-11: #630404;
+    --color-red-12: #530303;
+    --color-red-13: #420303;
+    --color-red-14: #320202;
+    --color-red-15: #210101;
+
+    --color-green-0: #c9fae8;
+    --color-green-1: #93F5D2;
+    --color-green-2: #69F1C0;
+    --color-green-3: #3FEDAE;
+    --color-green-4: #16E89C;
+    --color-green-5: #12BE80;
+    --color-green-6: #0E9464;
+    --color-green-7: #0A6A47;
+    --color-green-8: #06402B;
+    --color-green-9: #053926;
+    --color-green-10: #053221;
+    --color-green-11: #042B1D;
+    --color-green-12: #032418;
+    --color-green-13: #031C13;
+    --color-green-14: #02150E;
+    --color-green-15: #010E0A;
+
+    --color-blue-0: #d2d2f9;
+    --color-blue-1: #A6A6F4;
+    --color-blue-2: #8585EF;
+    --color-blue-3: #6464EB;
+    --color-blue-4: #4343E7;
+    --color-blue-5: #2222E3;
+    --color-blue-6: #1A1AC6;
+    --color-blue-7: #1515A5;
+    --color-blue-8: #111184;
+    --color-blue-9: #0F0F75;
+    --color-blue-10: #0D0D67;
+    --color-blue-11: #0B0B58;
+    --color-blue-12: #090949;
+    --color-blue-13: #08083B;
+    --color-blue-14: #06062C;
+    --color-blue-15: #04041D;
+
+    --color-yellow-0: #fdfcf8;
+    --color-yellow-1: #F2E1B8;
+    --color-yellow-2: #EDD6A0;
+    --color-yellow-3: #E8CC87;
+    --color-yellow-4: #E4C26E;
+    --color-yellow-5: #DFB756;
+    --color-yellow-6: #DBAD3D;
+    --color-yellow-7: #D3A128;
+    --color-yellow-8: #BA8E23;
+    --color-yellow-9: #A57E1F;
+    --color-yellow-10: #916E1B;
+    --color-yellow-11: #7C5F17;
+    --color-yellow-12: #674F13;
+    --color-yellow-13: #533F10;
+    --color-yellow-14: #3E2F0C;
+    --color-yellow-15: #292008;
+
+    /*font-family: PTSans, "Helvetica Neue", "Helvetica", sans-serif;*/
+
+    /* Todo: new and lighter gray tones */
+
+    --color-gray-0: #F2F2F2;
+    --color-gray-1: #ededed;
+    --color-gray-2: #DBDBDB;
+    --color-gray-3: #C4C4C4;
+    --color-gray-4: #B8B8B8;
+    --color-gray-5: #ACACAC;
+    --color-gray-6: #A0A0A0;
+    --color-gray-7: #959595;
+    --color-gray-8: #898989;
+    --color-gray-9: #7A7A7A;
+    --color-gray-10: #6B6B6B;
+    --color-gray-11: #5B5B5B;
+    --color-gray-12: #4C4C4C;
+    --color-gray-13: #3D3D3D;
+    --color-gray-14: #2E2E2E;
+    --color-gray-15: #1E1E1E;
+
+    /* Choices for Specific Elements */
+
+    /* Textcolors */
+    --textcolor-background-inverted: var(--color-gray-2);
+    --textcolor-regular: var(--color-gray-15);
+    --textcolor-colored-light: var(--color-background-neutral);
+    --textcolor-colored-strong: var(--color-blue-6);
+    --textcolor-colored-dark: var(--color-blue-14);
+    /* Background Colors */
+
+    --color-background-inverted: var(--textcolor-regular);
+
+    --color-background-neutral: var(--color-gray-2);
+    --color-background-neutral-accented: var(--color-gray-3);
+
+    --color-background-workarea-interactible: white;
+    --color-background-workarea-display: var(--color-gray-0);
+    --color-background-workarea-structure: var(--color-background-colored);
+
+    --color-background-colored: var(--color-blue-0);
+    --color-background-colored-accented: var(--color-blue-2);
+    --color-background-colored-accented-strong: var(--color-blue-4);
+
+    --color-background-colored-correct: var(--color-green-2);
+    --color-background-colored-incorrect: var(--color-red-2);
+
+    /* ASSOCIATED ROLES */
+
+    --color-role-system: var(--color-green-2);
+    --color-role-user: var(--color-background-colored-accented);
+    --color-role-teacher: #69def1;
+    --color-role-ai: #fabc7d;
+
+
+    /* UPDATE BROWSER DEFAULTS */
+
+    accent-color: var(--color-background-colored-accented);
+
+    ::selection {
+        background-color: red; /* Hintergrund beim Markieren mit der Maus */
+        color: yellow; /* Textfarbe beim Markieren */
+    }
+
+    a:link {
+        color: var(--textcolor-colored-dark);
+    }
+
+    a:visited {
+        color: var(--textcolor-colored-strong);
+    }
+
+    a:hover {
+        color: var(--textcolor-colored-strong);
+        background: var(--color-background-workarea-interactible)
+    }
+
+    a:active {
+        color: var(--textcolor-colored-light)
+    }
+
+    /* REMOVE DEFAULTS FROM EVERYTHING */
+
+    textarea, textarea:hover, textarea:focus,
+    button, button:hover, button:focus,
+    input, input:hover, input:focus {
+        padding: var(--space-md);
+
+        outline: none;
+        transform: none;
+        font-family: inherit;
+        font-size: inherit;
+        color: inherit;
+    }
+
+    textarea,
+    button {
+        background-color: var(--color-background-workarea-interactible);
+        border: var(--space-borders) solid var(--color-background-colored);
+        margin: 0;
+    }
+
+    button {
+        cursor: pointer;
+    }
+
+    textarea:hover,
+    button:hover {
+        background-color: var(--color-background-workarea-interactible);
+        border: var(--space-borders) solid var(--color-background-colored-accented);
+        outline: none;
+    }
+
+    textarea:focus,
+    button:focus {
+        background-color: var(--color-background-workarea-interactible);
+        border: var(--space-borders) solid var(--color-background-colored-accented-strong);
+        outline: none;
+    }
+
+    .button-svg {
+        border-radius: var(--space-lg);
+        fill: var(--color-background-workarea-interactible);
+    }
+
+    .button-svg svg {
+        width: calc(var(--space-element-left) * 3 * 4);
+        height: calc(var(--space-element-left) * 3);
+        stroke: var(--textcolor-regular);
+        stroke-width: 1.8;
+    }
+
+    .button-labeled {
+        border-radius: var(--space-md);
+    }
+
+}

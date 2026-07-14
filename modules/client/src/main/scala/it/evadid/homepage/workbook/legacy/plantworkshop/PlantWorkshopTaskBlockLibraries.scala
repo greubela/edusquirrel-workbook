@@ -1,21 +1,19 @@
 package it.evadid.homepage.workbook.legacy.plantworkshop
 
-import it.evadid.workbook.vm.naming.BeEntityName
-import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.core.datastructures.language.LanguageMap
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
-import it.evadid.workbook.vm.code.BeExpression
-import it.evadid.workbook.vm.code.controlStructures.{BeIfElse, BeSequence}
-import it.evadid.workbook.vm.code.defining.{BeDefineFunction, BeDefineVariable}
-import it.evadid.workbook.vm.code.others.BeStartProgram
-import it.evadid.workbook.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
-import it.evadid.workbook.vm.parsing.python.DefaultDefinitions
-import it.evadid.workbook.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
+import it.evadid.vm.BeProgram
+import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.controlStructures.{BeIfElse, BeSequence}
+import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
+import it.evadid.vm.code.others.BeStartProgram
+import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
+import it.evadid.vm.naming.BeEntityName
+import it.evadid.vm.parsing.python.DefaultDefinitions
+import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
 
 /**
-  * Block library builders for the Plant Workshop tasks.
-  * Provides small program fragments used in the block editor palettes.
-  */
+ * Block library builders for the Plant Workshop tasks.
+ * Provides small program fragments used in the block editor palettes.
+ */
 object PlantWorkshopTaskBlockLibraries {
 
   private def valueRefProgram(name: String, tpe: BeDataType): BeProgram = {
@@ -48,10 +46,10 @@ object PlantWorkshopTaskBlockLibraries {
   }
 
   private def arduinoFuncCallWithReturn(
-      name: String,
-      returnType: BeDataType,
-      params: List[(String, BeDataType, BeExpression)]
-  ): BeExpression = {
+                                         name: String,
+                                         returnType: BeDataType,
+                                         params: List[(String, BeDataType, BeExpression)]
+                                       ): BeExpression = {
     val inputDefs = params.map { case (pName, pType, _) =>
       BeDefineVariable(BeEntityName.fromCodeString(pName), pType)
     }

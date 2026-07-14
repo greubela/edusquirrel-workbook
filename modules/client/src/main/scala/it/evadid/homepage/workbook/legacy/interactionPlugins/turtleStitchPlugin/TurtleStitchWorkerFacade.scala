@@ -5,11 +5,11 @@ import it.evadid.core.datastructures.language.TranslationMaps
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.async.AsyncData
 import it.evadid.core.datastructures.state.observable.ObservableValue
-import it.evadid.core.datastructures.state.storage.AsyncDataCache
+import it.evadid.core.datastructures.storage.AsyncDataCache
 import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchEditor.turtleLang
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
-import it.evadid.workbook.model.elements.ImageElement
+import it.evadid.workbook.elements.displayElements.ImageElement
 import todomove.`export`.workers.TurtleStitchWorker
 import todomove.datastructures.web.file.FullImage
 import todomove.datastructures.web.file.FullImage.DataSourceImage

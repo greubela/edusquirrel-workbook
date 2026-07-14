@@ -5,14 +5,14 @@ import it.evadid.evacuation.core.datastructures.maps.MultiHashMapList
 import it.evadid.evacuation.eva1.algorithm.events.eventtypes.{PersonFinishedEvent, PersonInsertedEvent, PersonReceivedEvent, PersonSentEvent}
 import it.evadid.evacuation.eva1.algorithm.events.traits.PersonEvent
 import it.evadid.evacuation.eva1.algorithm.routing.FlowRoutingMap.FlowRoutingMap
-import it.evadid.evacuation.eva1.model.evagraph.{Person, Router}
+import it.evadid.evacuation.eva1.model.evagraph.{EvaPerson, Router}
 
 import scala.collection.mutable
 
-case class EvacuationState(curPositionsInState: PositionStateMap, persons: Set[Person], routingMap: FlowRoutingMap, currenTimestamp: Long, handledEvents: List[PersonEvent], remainingEvents: Set[PersonEvent]) {
+case class EvacuationState(curPositionsInState: PositionStateMap, persons: Set[EvaPerson], routingMap: FlowRoutingMap, currenTimestamp: Long, handledEvents: List[PersonEvent], remainingEvents: Set[PersonEvent]) {
 
-  def lastEventMap(): Map[Person, PersonEvent] = {
-    val lastActivityMap = mutable.HashMap[Person, PersonEvent]()
+  def lastEventMap(): Map[EvaPerson, PersonEvent] = {
+    val lastActivityMap = mutable.HashMap[EvaPerson, PersonEvent]()
     persons.foreach(
       curPerson => handledEvents.filter(_.person == curPerson)
         .maxByOption(_.timestampInMs)
@@ -22,14 +22,14 @@ case class EvacuationState(curPositionsInState: PositionStateMap, persons: Set[P
     lastActivityMap.toMap
   }
 
-  def getSafePersons: MultiHashMapList[Router, Person] = {
-    val res = new MultiHashMapList[Router, Person]()
+  def getSafePersons: MultiHashMapList[Router, EvaPerson] = {
+    val res = new MultiHashMapList[Router, EvaPerson]()
     handledEvents.filter(_.isInstanceOf[PersonFinishedEvent]).map(_.asInstanceOf[PersonFinishedEvent]).foreach(pfe => res.addElement((pfe.router, pfe.person)))
     res
   }
 
   def calculateNextState(evacuationStrategy: FlowStrategy): Option[EvacuationState] = {
-    var tryToSend: Option[(Person, RoutingOption[Router])] = curPositionsInState.tryToSendPerson(routingMap, evacuationStrategy)
+    var tryToSend: Option[(EvaPerson, RoutingOption[Router])] = curPositionsInState.tryToSendPerson(routingMap, evacuationStrategy)
     if (tryToSend.isDefined) {
       Some(handleRoutingOption(tryToSend.get._1, tryToSend.get._2))
     } else if (remainingEvents.nonEmpty) {
@@ -39,7 +39,7 @@ case class EvacuationState(curPositionsInState: PositionStateMap, persons: Set[P
     }
   }
 
-  private def handleRoutingOption(person: Person, routingOption: RoutingOption[Router]): EvacuationState = {
+  private def handleRoutingOption(person: EvaPerson, routingOption: RoutingOption[Router]): EvacuationState = {
     val edge = curPositionsInState.graph.dirEdgesBetween(routingOption.curPos, routingOption.nextStep.get).head
     val sentEvent = PersonSentEvent(person, edge, curPositionsInState.graph, currenTimestamp, -1)
     handleEvent(sentEvent)

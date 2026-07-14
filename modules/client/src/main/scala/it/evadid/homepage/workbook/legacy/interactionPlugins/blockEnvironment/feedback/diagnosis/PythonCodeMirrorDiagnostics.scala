@@ -1,12 +1,12 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.diagnosis
 
-import it.evadid.homepage.webElements.editor.CodeMirrorEditor
-import it.evadid.workbook.vm.code.BeExpression
-import it.evadid.workbook.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
-import it.evadid.workbook.vm.code.tree.BeExpressionReference
-import it.evadid.workbook.vm.types.BeChildPosition
-import it.evadid.workbook.vm.types.BeChildRole.NoRole
-import it.evadid.workbook.vm.types.BeScope.GlobalScope
+import it.evadid.homepage.webElements.editor.code.python.CodeMirrorEditor
+import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
+import it.evadid.vm.code.tree.BeExpressionReference
+import it.evadid.vm.types.BeChildPosition
+import it.evadid.vm.types.BeChildRole.NoRole
+import it.evadid.vm.types.BeScope.GlobalScope
 
 object PythonCodeMirrorDiagnostics:
 

@@ -1,17 +1,21 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.block
 
+import it.evadid.core.datastructures.tree.{Tree, TreeStructureAndExecutionContext}
+import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreePosition
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeBlock
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.control.{BeBlockIfElse, BeBlockSequence, BeBlockStarter, BeBlockWhile}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.data.{BeBlockDefineVariable, BeBlockUseValue}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.define.BeBlockDefineSingleReturnFunction
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.other.{BeBlockComment, BeBlockUnparsable, BeBlockUnsupported}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.use.{BeBlockAssignValue, BeBlockCallSingleReturnFunction}
-import it.evadid.workbook.vm.code.BeExpression
-import it.evadid.workbook.vm.code.controlStructures.{BeIfElse, BeSequence, BeWhile}
-import it.evadid.workbook.vm.code.defining.{BeDefineFunction, BeDefineVariable}
-import it.evadid.workbook.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
-import it.evadid.workbook.vm.code.others.BeStartProgram
-import it.evadid.workbook.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
+import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.controlStructures.{BeIfElse, BeSequence, BeWhile}
+import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
+import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
+import it.evadid.vm.code.others.BeStartProgram
+import it.evadid.vm.code.tree.BeExpressionNode
+import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 
 /**
  * Client-side renderer dispatch for block-environment expressions.
@@ -21,6 +25,10 @@ import it.evadid.workbook.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUse
  * are migrated into renderer classes.
  */
 object BeBlockRendererFactory {
+
+  type BeBlockRenderingTree = Tree[NodeBasedTreePosition, (BeExpressionNode, BeBlock)]
+  type BeBlockRenderingContext = TreeStructureAndExecutionContext[NodeBasedTreePosition, (BeExpressionNode, BeBlock), NestedBlockRenderer]
+
 
   def blockFor(expression: BeExpression): BeBlock = expression match {
     case sequence: BeSequence => BeBlockSequence(sequence)

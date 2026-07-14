@@ -1,16 +1,17 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.rules
 
-import it.evadid.workbook.vm.types.BeChildRole.ConditionInControlStructure
-import it.evadid.workbook.vm.types.BeScope.GlobalScope
+import it.evadid.vm.types.BeChildRole.ConditionInControlStructure
+import it.evadid.vm.types.BeScope.GlobalScope
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.workbook.vm.code.BeExpression
-import it.evadid.workbook.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
-import it.evadid.workbook.vm.code.defining.BeDefineVariable
-import it.evadid.workbook.vm.code.others.{BeReturn, BeStartProgram}
-import it.evadid.workbook.vm.code.tree.BeExpressionReference
-import it.evadid.workbook.vm.code.usage.{BeAssignVariable, BeUseValue}
-import it.evadid.workbook.vm.types.{BeChildPosition, BeInfo, BeUseValueReference}
+import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
+import it.evadid.vm.code.defining.BeDefineVariable
+import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
+import it.evadid.vm.code.tree.BeExpressionReference
+import it.evadid.vm.code.usage.{BeAssignVariable, BeUseValue}
+import it.evadid.vm.naming.NamingStyle
+import it.evadid.vm.types.{BeChildPosition, BeInfo, BeUseValueReference}
 
 import scala.collection.mutable
 
@@ -251,7 +252,7 @@ object VmStaticRules {
         )
       else {
         val names = unused.toList
-          .map(_.name.getNameIn(humanLanguage, it.evadid.workbook.vm.naming.NamingStyle.SnakeCase))
+          .map(_.name.getNameIn(humanLanguage, NamingStyle.SnakeCase))
           .mkString(", ")
 
         Seq(

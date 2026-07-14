@@ -1,12 +1,14 @@
 package it.evadid.core.datastructures.state
 
+import com.raquo.airstream.core.Transaction
+import com.raquo.airstream.core.Transaction.onStart
 import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState}
 import it.evadid.core.datastructures.state.observable.{ObservableValue, ObservableValueImpl}
-import it.evadid.core.datastructures.state.async.AsyncDataState.*
-import it.evadid.workbook.model.interaction.sync.UpdateImportance
-import it.evadid.workbook.model.interaction.sync.UpdateImportance.TEMPORARY
-import it.evadid.workbook.model.interaction.variable.InteractionVariable
+import it.evadid.workbook.interaction.sync.UpdateImportance.TEMPORARY
+import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
+import it.evadid.workbook.interaction.variable.InteractionVariable
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Success
@@ -26,6 +28,30 @@ object StateHelper {
   }
 
 
+  implicit class RichObservableValue[T](underlying: ObservableValue[T]) {
+
+    def toEventStream(): EventStream[T] = {
+      // Explicitly reference your own package's Subscription to bypass Laminar's name collision
+      var subscription: Option[it.evadid.core.datastructures.state.Subscription[T]] = None
+
+      EventStream.fromCustomSource(
+        shouldStart = _ => true,
+        start = (fireValue, fireError, _, _) => {
+          val sub = underlying.addObserver(
+            // Pass values straight to the functions; Airstream handles transactions internally
+            handleOnUpdate = v => fireValue(v),
+            handleOnError = e => fireError(e)
+          )
+          subscription = Some(sub)
+        },
+        stop = _ => {
+          subscription.foreach(_.cancel())
+          subscription = None
+        }
+      )
+    }
+  }
+
 
   implicit class RichSignal[T](underlying: Signal[T]) {
 
@@ -44,6 +70,7 @@ object StateHelper {
 
   }
 
+
   implicit class RichAsyncData[F, S](underlying: AsyncData[F, S]) {
 
     def toStateSignal: StrictSignal[AsyncDataState[?, S]] = {
@@ -53,9 +80,9 @@ object StateHelper {
     }
 
   }
-  /*
-  implicit class ObservableValueAsync[T](underlying: ObservableValue[AsyncData[T]]) {
 
+  implicit class ObservableValueAsync[T](underlying: ObservableValue[T]) {
+    /*
     def toSignal: Signal[AsyncData[T]] = {
       val res: Var[AsyncData[T]] = Var(AsyncData.AsyncDataLoading[T]())
       underlying.addObserver(onNext => res.set(onNext))
@@ -77,26 +104,25 @@ object StateHelper {
 
     def map[O](func: T => O): ObservableValue[AsyncData[O]] = {
       underlying.deriveValue(_.map(func))
-    }
+    }*/
 
 
   }
 
-  */
 
   implicit class InteractionVariableOnJS[T](interactionVariable: InteractionVariable[T]) {
 
-    def createBoundVarWithUpdateImportance(updateImportance: UpdateImportance): Var[T] = {
-      val state = interactionVariable.createBoundStateWithUpdateImportance(updateImportance)
+    def createBoundVarWithUpdateImportance(syncControl: SyncControl, updateImportance: UpdateImportance): Var[T] = {
+      val state = interactionVariable.createBoundStateWithUpdateImportance(syncControl, updateImportance)
       fromStateToAirstreamVar(state)
     }
 
-    def createInteractionSignal(): StrictSignal[T] = {
+    def createInteractionSignal(syncControl: SyncControl): StrictSignal[T] = {
       // val res = Var[T](interactionVariable.currentValue)
       //interactionVariable.observableValue.addObserver(newValue => res.set(newValue))
       //res.signal
 
-      createBoundVarWithUpdateImportance(TEMPORARY).signal
+      createBoundVarWithUpdateImportance(syncControl, TEMPORARY).signal
     }
 
   }

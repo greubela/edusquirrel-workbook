@@ -3,6 +3,7 @@ package it.evadid.core.datastructures.state
 import it.evadid.core.datastructures.state.ExecutionMethod.ExecuteLocalSync
 import it.evadid.core.datastructures.state.observable.{ObservableValue, ObservableValueImpl, ObserverDerivationLogic}
 
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 trait State[T] {
@@ -14,6 +15,17 @@ trait State[T] {
   def set(newValue: T): Unit
 
   def update(func: T => T): State[T]
+
+  def updateAsyncUnsafe(func: T => Future[T])(ec: ExecutionContext): Future[State[T]] = this.synchronized {
+    func(now()).transform {
+      case Success(result) =>
+        set(result)
+        Success(this)
+      case Failure(err) =>
+        println("[UGLY WARN STATE] ignored state update because of exception: " + err.getMessage)
+        Success(this)
+    }(using ec)
+  }
 
   def biMap[O](mapForward: T => O, mapBackward: O => T, executionMethod: ExecutionMethod = ExecuteLocalSync()): State[O]
 }

@@ -5,16 +5,16 @@ import com.raquo.airstream.core.Signal
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
 import it.evadid.homepage.control.model.*
-import it.evadid.homepage.workbook.htmlRenderer.pluginRenderer.reorderExercise.HtmlReorderInteractionRenderer
-import it.evadid.homepage.workbook.legacy.htmlElements.HtmlEmbeddedDomInteraction
 import it.evadid.homepage.util.web.DownloadHelper
-import it.evadid.homepage.workbook.legacy.plantworkshop.helpers.CodeEditorHelper
-import it.evadid.workbook.model.abstractions.WorkbookElement
-import it.evadid.workbook.model.elements.*
-import it.evadid.workbook.model.elements.ImageElement.FileBasedImageElement
-import it.evadid.workbook.model.elements.LabeledInstructionElement.*
-import it.evadid.workbook.model.interaction.basic.LabeledCheckboxInteraction
-import it.evadid.workbook.model.interaction.plugins.slideshow.{Slideshow, SlideshowPanel}
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.reorderExercise.HtmlReorderInteractionRenderer
+import it.evadid.homepage.workbook.legacy.htmlElements.HtmlEmbeddedDomInteraction
+import it.evadid.homepage.workbook.legacy.plantworkshop.helpers.*
+import it.evadid.workbook.abstractions.WorkbookElement
+import it.evadid.workbook.elements.displayElements.ImageElement.FileBasedImageElement
+import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, HintLabel, SafetyLabel, TaskLabel}
+import it.evadid.workbook.elements.interactionElements.basic.LabeledCheckboxInteraction
+import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
+import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 import todomove.datastructures.web.file.FileFactory
 
 case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
@@ -194,7 +194,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     val interaction = HtmlEmbeddedDomInteraction(nextId(reorderId + "-toggle"), toggleArea)
 
     // Create a signal that tracks whether the reorder task is correctly solved
-    val isCorrectSignal: Signal[Boolean] = reorder.interactionVariable.createInteractionSignal().map { state =>
+    val isCorrectSignal: Signal[Boolean] = reorder.interactionVariable.createInteractionSignal(fullInfo.syncControl).map { state =>
       val current = state.currentOrder
       if (orderConstraints.nonEmpty) {
         val positions = current.zipWithIndex.toMap

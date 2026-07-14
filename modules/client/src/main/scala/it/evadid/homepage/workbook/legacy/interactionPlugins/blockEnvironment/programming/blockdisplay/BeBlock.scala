@@ -1,16 +1,16 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay
 
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.*
 import it.evadid.core.datastructures.geometry.Bounds
 import it.evadid.core.datastructures.tree.TreeStructureContext
 import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreePosition
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeRenderingConfig, BeTreeControllerConfig, BeTreeDisplayConfig}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.{BeBlockRenderingContext, BeProgram}
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
-import it.evadid.workbook.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
-import todomove.webElementsOld.webElements.svg.shapes.{BeShape, BeShapeAmendFactory, ControlFlowAndExpressionShape, ControlFlowShape}
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.block.BeBlockRendererFactory.BeBlockRenderingContext
+import it.evadid.vm.BeProgram
+import it.evadid.vm.code.tree.{BeExpressionNode, BeExtensionPoint}
 import todomove.webElementsOld.webElements.svg.shapes.special.nested.ShapeWithControlFlow
+import todomove.webElementsOld.webElements.svg.shapes.*
 
 case class BeTreeDropTarget(extensionPoint: BeExtensionPoint, placeholderForPosition: NodeBasedTreePosition, placeholderBounds: Bounds[Double], placeholderShape: BeShape)
 
@@ -77,7 +77,7 @@ abstract class BeBlockSingleShape() extends BeBlock {
                              childResults: Map[(BeExpressionNode, BeBlock), ControlFlowAndExpressionShape],
                              renderingInfo: RenderingInformation
                            ): ControlFlowAndExpressionShape = {
-    
+
     val childrenShapes: List[(BeExpressionNode, BeShape)] = childResults.toList.map(tup => (tup._1._1, tup._2.expressionShapeOrEverything))
     val (cfShape, exprShape) = renderShape(childrenShapes, renderingInfo)
     ShapeWithControlFlow(cfShape, exprShape)

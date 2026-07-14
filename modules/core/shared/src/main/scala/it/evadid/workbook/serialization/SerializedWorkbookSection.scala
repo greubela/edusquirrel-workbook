@@ -1,8 +1,8 @@
 package it.evadid.workbook.serialization
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.workbook.model.abstractions.WorkbookElement
-import it.evadid.workbook.model.elements.WorkbookSection
+import it.evadid.workbook.abstractions.WorkbookElement
+import it.evadid.workbook.elements.structureElements.WorkbookSection
 import upickle.ReadWriter
 import upickle.default.*
 

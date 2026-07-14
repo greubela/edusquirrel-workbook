@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.model.elements.Workbook
+import it.evadid.workbook.elements.structureElements.Workbook
 import todomove.datastructures.web.file.FileFactory
 
 private case class LanguageSelectionLine(workbook: Workbook) extends HtmlAppElement {
@@ -89,7 +89,7 @@ object LanguageSelectionLine {
     svg.svg(
       svg.xmlns := "http://www.w3.org/2000/svg",
       svg.width := s"$width",
-      svg.height := s"${width / 3 * 4}",
+      svg.height := s"${width / 4 * 3}",
       svg.viewBox := "0 -30000 90000 60000",
 
       svg.path(

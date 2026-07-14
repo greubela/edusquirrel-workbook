@@ -6,11 +6,11 @@ import it.evadid.core.datastructures.geometry.{Bounds, Point}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
-import it.evadid.workbook.vm.code.BeExpression
-import it.evadid.workbook.vm.code.controlStructures.{BeIfElse, BeSequence, BeSequenceInfo, BeWhile}
-import it.evadid.workbook.vm.code.usage.BeUseValue
-import it.evadid.workbook.vm.types.{BeDataType, BeDataValueLiteral}
+import it.evadid.vm.BeProgram
+import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.controlStructures.{BeIfElse, BeSequence, BeSequenceInfo, BeWhile}
+import it.evadid.vm.code.usage.BeUseValue
+import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
 import todomove.webElementsOld.webElements.svg.shapes.TextShape
 import todomove.webElementsOld.webElements.svg.shapes.composite.ShapeAroundShape
 import todomove.webElementsOld.webElements.svg.shapes.datatypes.RectangleShape

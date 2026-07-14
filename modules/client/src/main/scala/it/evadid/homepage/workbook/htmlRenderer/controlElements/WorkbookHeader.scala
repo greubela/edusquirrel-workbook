@@ -2,49 +2,55 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
-import it.evadid.homepage.workbook.htmlRenderer.basicRenderer.HtmlWorkbookRenderer.contentIdStringSignal
-import it.evadid.workbook.model.elements.Workbook
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
+import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.workbook.elements.structureElements.Workbook
 import org.scalajs.dom.HTMLDivElement
 
-case class WorkbookHeader(workbook: Workbook) extends ControlFactory {
+case class WorkbookHeader(workbook: Workbook) extends HtmlAppElement {
 
-  private val collapsed: Var[Boolean] = Var(false)
+  //private val collapsed: Var[Boolean] = Var(true)
 
-  def getDomElement: Element = domElement
+  private def collapsedSignal: Signal[Boolean] = fullInfo.signals.display.map(_.collapsedNavigation)
 
-  private lazy val domElement: ReactiveHtmlElement[HTMLDivElement] =     div(
-      cls := "workbook-header",
-      children <-- domChildren
-    )
+  def getDomElement(): Element = domElement
 
-  lazy val domChildren: Signal[List[Element]] = collapsed.signal.mapLazy(curValue => {
-    if (curValue) {
-      List(createDomToggleButton(collapsed))
+  private lazy val domElement: ReactiveHtmlElement[HTMLDivElement] = div(
+    cls := "workbook-header",
+    children <-- domChildren
+  )
+
+  lazy val domChildren: Signal[List[Element]] = collapsedSignal.map((isCollapsed: Boolean) => {
+    if (isCollapsed) {
+      List(
+        createDomHeaderTitleLine(workbook),
+        UserDropdownMenu().getDomElement(),
+        createDomToggleButton()
+      )
     } else List(
       createDomHeaderTitleLine(workbook),
-      UserContextControlLine(workbook).getDomElement(),
+      UserDropdownMenu().getDomElement(),
       LanguageSelectionLine(workbook).getDomElement(),
       SectionSelectionLine(workbook).getDomElement(),
-      createDomToggleButton(collapsed)
+      createDomToggleButton()
     )
   })
 
-  private def createDomToggleButton(collapsed: Var[Boolean]): Element = div(
+  private def createDomToggleButton(): Element = div(
     cls := "workbook-header-toggle",
-    onClick --> { _ => collapsed.update(!_) },
+    onClick --> { _ => fullInfo.control.changeDisplay(displayInfo => displayInfo.copy(collapsedNavigation = !displayInfo.collapsedNavigation)) },
     span(
-      cls := "workbook-header-toggle-icon",
-      child <-- collapsed.signal.map { c =>
-        if (c) span(text <-- labelString("basic/showHeader"))
-        else span(text <-- labelString("basic/hideHeader"))
+      child <-- collapsedSignal.map { c =>
+        if (c) span(text <-- laminarHelper.plaintextStringSignal("basic/showHeader"))
+        else span(text <-- laminarHelper.plaintextStringSignal("basic/hideHeader"))
       }
     )
   )
 
   private def createDomHeaderTitleLine(workbook: Workbook): Element = div(
     cls := "workbook-title-line",
-    h1(text <-- contentIdStringSignal(workbook.workbookTitle)),
-    UserDropdownMenu().getDomElement()
+    h1(text <-- laminarHelper.plaintextStringSignal(workbook.workbookTitle)),
+
   )
 
 

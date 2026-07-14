@@ -4,18 +4,16 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.state.StateHelper.*
-import it.evadid.core.datastructures.state.async.AsyncData
-import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.singletons.{WorkbookContentStorage, WorkbookLanguageStorage}
-import it.evadid.workbook.model.elements.WorkbookSection
+import it.evadid.workbook.elements.structureElements.WorkbookSection
+import it.evadid.workbook.interaction.sync.SyncInformation.SyncInformationWithContext
+import it.evadid.workbook.interaction.sync.UsageContext
 
 import scala.concurrent.*
-import it.evadid.core.datastructures.state.StateHelper.*
 
 case class HomepageSignalInfo(fullInfo: FullInfo) {
-
 
   lazy val contentStorage: WorkbookContentStorage = WorkbookContentStorage(fullInfo.loggerSystemInfo.contentStorageLogger, fullInfo.technical.fileStore)
 
@@ -31,13 +29,29 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
     fullInfo.homepageInfoState.signal
   }
 
+  lazy val currentDisplayInfo: StrictSignal[AllDisplayInfo] = baseSignal.mapLazy(_.displayInfo)
+
   lazy val activeSection: StrictSignal[Option[WorkbookSection]] = {
     baseSignal.mapLazy(_.workbookInfo.flatMap(_.config.activeSection))
   }
 
+  lazy val display: StrictSignal[AllDisplayInfo] = baseSignal.mapLazy(_.displayInfo)
+
   lazy val workbook: StrictSignal[Option[AllWorkbookInfo]] = {
     baseSignal.mapLazy(_.workbookInfo)
     // Var(None).signal
+  }
+
+  lazy val currentSyncDestinationObservable: ObservableValue[List[SyncInformationWithContext]] = {
+    currentSyncDestinations.toObservableValue
+  }
+
+  lazy val currentUsageContext: StrictSignal[UsageContext] = baseSignal.mapLazy(_.toContext)
+
+  lazy val currentSyncDestinations: StrictSignal[List[SyncInformationWithContext]] = {
+    baseSignal.mapLazy(homepageInfo => {
+      homepageInfo.userInfo.map(_.config.syncDestinations.map(_.forContext(homepageInfo.toContext))).getOrElse(List())
+    })
   }
 
   lazy val currentUserInfo: StrictSignal[Option[AllUserInfo]] = {

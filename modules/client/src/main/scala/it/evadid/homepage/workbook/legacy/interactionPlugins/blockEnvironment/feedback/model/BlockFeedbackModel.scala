@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config.BlockFeedbackConfig
-import it.evadid.workbook.vm.code.BeExpression
+import it.evadid.vm.code.BeExpression
 
 /**
  * Metadata for a feedback invocation (exercise ID, user ID, etc.).

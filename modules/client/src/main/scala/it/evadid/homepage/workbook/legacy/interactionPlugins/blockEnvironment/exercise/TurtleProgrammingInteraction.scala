@@ -6,15 +6,17 @@ import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.core.util.io.Serializer
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.HtmlBasicCheckboxRenderer.fullInfo
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.HtmlGptTextfieldInteractionRenderer.fullInfo
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeEditorControllerState, BeRenderingConfig}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.BeProgram
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.HtmlFullscreenTurtleEditorElement
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.editor.elements.EditorState
-import it.evadid.workbook.model.interaction.WorkbookInteraction
-import it.evadid.workbook.model.interaction.sync.UpdateImportance
+import it.evadid.vm.BeProgram
+import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.interaction.sync.UpdateImportance
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 
-case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expectedSvgResult: AppSvgElement) extends WorkbookInteraction[BeProgram] {
+case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expectedSvgResult: AppSvgElement) extends WorkbookInteractionElement[BeProgram] {
 
   val defaultValue: BeProgram = BeProgram(BeProgram.miniProgramExpression())
 
@@ -26,7 +28,7 @@ case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expected
 
   override val serializer: Serializer[BeProgram] = io
 
-  private val boundVar: Var[BeProgram] = interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR).toAirstreamVar
+  private val boundVar: Var[BeProgram] = interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl,UpdateImportance.MAJOR).toAirstreamVar
 
   private val editorState: EditorState = {
     val initRenderer = BeRenderingConfig.defaultWithLanguage(fullInfo.signals.currentLanguage.now())
@@ -42,11 +44,11 @@ case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expected
     )
   }
 
-  private val openEditorButton = HtmlButtonElement.withTextLabel(LanguageMapContentId("BlockEditor/openEditor"), _ => openFullEditor())
+  private val openEditorButton = HtmlButtonElement.withTextLabel("BlockEditor/openEditor", _ => openFullEditor())
   private val fullscreenEditor = HtmlFullscreenTurtleEditorElement(editorState)
 
   private def openFullEditor(): Unit = {
-    fullInfo.technical.makeFullscreen(fullscreenEditor)
+    fullInfo.displayControl.setFullscreen(fullscreenEditor)
   }
 
   private val programmingView = TurtleProgrammingPreview(fullInfo, editorState, expectedSvgResult)
@@ -64,8 +66,5 @@ case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expected
       )
     )
 
-
-  // override def getDomElement(): L.Element = domElement
-
-
+  override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 }

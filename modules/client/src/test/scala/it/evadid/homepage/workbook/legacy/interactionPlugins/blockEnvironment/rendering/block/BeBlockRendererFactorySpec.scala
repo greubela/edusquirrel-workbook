@@ -4,16 +4,17 @@ import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.control.BeBlockSequence
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.other.BeBlockUnsupported
+import it.evadid.vm.code.controlStructures.BeSequence
+import it.evadid.vm.code.defining.BeDefineVariable
+import it.evadid.vm.code.errors.BeExpressionUnsupported
+import it.evadid.vm.code.usage.{BeAssignVariable, BeUseValue}
+import it.evadid.vm.naming.BeEntityName
+import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
 import munit.FunSuite
-import it.evadid.workbook.vm.code.controlStructures.BeSequence
-import it.evadid.workbook.vm.code.defining.BeDefineVariable
-import it.evadid.workbook.vm.code.errors.BeExpressionUnsupported
-import it.evadid.workbook.vm.code.usage.{BeAssignVariable, BeUseValue}
-import it.evadid.workbook.vm.types.{BeDataType, BeDataValueLiteral}
 
 class BeBlockRendererFactorySpec extends FunSuite {
 
-  private val variable = BeDefineVariable(LanguageMap.universalMap[HumanLanguage]("x"), BeDataType.Int)
+  private val variable = BeDefineVariable(BeEntityName.fromUniversalNameInParts("x"), BeDataType.Int)
   private val literal = BeUseValue(BeDataValueLiteral("1"), Some(variable))
 
   test("blockFor dispatches core expressions to client-side BeBlock renderers") {

@@ -5,7 +5,7 @@ import it.evadid.evacuation.core.graphic.model.EvaColor
 import it.evadid.evacuation.eva1.algorithm.events.traits.PersonEvent
 import it.evadid.evacuation.eva1.graphic.drawer.traits.{NodeDrawer, StatedNodeDrawer}
 import it.evadid.evacuation.eva1.graphic.panes.EvacuationAnimationDrawer
-import it.evadid.evacuation.eva1.model.evagraph.{Person, Router}
+import it.evadid.evacuation.eva1.model.evagraph.{EvaPerson, Router}
 import it.evadid.evacuation.shared.traits.graphic.EvaCanvas
 
 class InitPersonsNodeDrawer(canvas: EvaCanvas[?]) extends NodeDrawer with StatedNodeDrawer {
@@ -30,7 +30,7 @@ class InitPersonsNodeDrawer(canvas: EvaCanvas[?]) extends NodeDrawer with Stated
     })
   }
 
-  override def drawNodes(curSimulationTime: Long, nodes: Seq[Router], curState: MultiHashMapList[Router, Person], safePersons: MultiHashMapList[Router, Person], lastEvents: Map[Person, PersonEvent]): Unit = {
+  override def drawNodes(curSimulationTime: Long, nodes: Seq[Router], curState: MultiHashMapList[Router, EvaPerson], safePersons: MultiHashMapList[Router, EvaPerson], lastEvents: Map[EvaPerson, PersonEvent]): Unit = {
     drawNodes(nodes)
   }
 }
