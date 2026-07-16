@@ -35,7 +35,8 @@ object HtmlDisplayLangMapContentRenderer extends LineBasedRenderingFactory[Displ
 
     def instructionMarkdownToElement(markdownString: String): Element = {
       val markdownHtml = MarkdownToHtml.transform(markdownString)
-      instructionUnsafeHtmlToElement(s"<div class=\"instruction-content markdown-content\">${markdownHtml}</div>")
+      foreignHtmlElement(DomApi.unsafeParseHtmlString(
+        s"<div class=\"instruction-content markdown-content\">${markdownHtml}</div>"))
     }
 
     val transformFunction: String => Element = typeOfTextContent.match {

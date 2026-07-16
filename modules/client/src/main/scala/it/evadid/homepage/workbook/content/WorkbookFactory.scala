@@ -10,7 +10,11 @@ import it.evadid.workbook.elements.displayElements.ImageElement.FileBasedImageEl
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{LabelType, WorkbookLabel}
 import it.evadid.workbook.elements.displayElements.*
 import it.evadid.workbook.elements.interactionElements.basic.*
-import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
+import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{
+  AdvancedCodeRequirement,
+  CodeTaskToggleInteraction,
+  SketchDownloadInteraction
+}
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.sortingExercise.{SortingInteraction, SortingItem}
 import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
@@ -93,7 +97,7 @@ trait WorkbookFactory {
   }
 
   protected def labeledInstruction(titleMapId: String, bodyMapId: String, labelType: LabelType): LabeledWorkbookElement[WorkbookElement] = {
-    val instruction: WorkbookElement = instructionHtml(bodyMapId)
+    val instruction: WorkbookElement = instructionMarkdown(bodyMapId)
     LabeledWorkbookElement[WorkbookElement](instruction, WorkbookLabel(LanguageMapContentId(titleMapId), labelType))
   }
 
@@ -142,13 +146,17 @@ trait WorkbookFactory {
                                 codeEditorTitle: String,
                                 advancedCodeTemplate: String,
                                 hints: List[LanguageMapContentId] = List.empty,
-                                orderConstraints: List[(Int, Int)] = Nil
+                                orderConstraints: List[(Int, Int)] = Nil,
+                                advancedRequirements: List[AdvancedCodeRequirement] = Nil,
+                                advancedSuccessMessage: String = "basic/advancedCodeFeedbackSuccess"
                               ): CodeTaskToggleInteraction = {
     CodeTaskToggleInteraction(
       nextId(reorderId + "-toggle"),
       codeReorder(reorderId, snippets, AppLanguage.C, hints, orderConstraints),
-      codeEditorTitle,
-      advancedCodeTemplate
+      LanguageMapContentId(codeEditorTitle),
+      advancedCodeTemplate,
+      advancedRequirements,
+      LanguageMapContentId(advancedSuccessMessage)
     )
   }
 

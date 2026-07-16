@@ -3,10 +3,10 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskTog
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
+import it.evadid.homepage.webElements.editor.code.FillInCodeEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.reorderExercise.HtmlReorderInteractionRenderer
-import it.evadid.homepage.workbook.legacy.plantworkshop.helpers.CodeEditorHelper
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.CodeTaskToggleInteraction
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
@@ -22,10 +22,21 @@ object HtmlCodeTaskToggleRenderer extends LineBasedRenderingFactory[CodeTaskTogg
         .rendering
         .elementsWithoutContainer
 
-    val codeEditor = CodeEditorHelper.createCodeEditor(
-      advancedCodeVar,
-      interaction.codeEditorTitle,
-      _ => "Die automatische Code-Prüfung ist noch nicht verfügbar."
+    val codeEditor = FillInCodeEditor(
+      codeState = advancedCodeVar,
+      resetTemplate = interaction.advancedCodeTemplate,
+      title = laminarHelper.plaintextStringSignal(interaction.codeEditorTitle),
+      todoLegend = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/codeTodoLegend")),
+      checkButtonLabel = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/checkCode")),
+      resetButtonLabel = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/resetCode")),
+      resetConfirmMessage = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/resetCodeConfirm")),
+      resetConfirmYes = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/resetCodeConfirmYes")),
+      resetConfirmNo = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/resetCodeConfirmNo")),
+      incompleteIntroId = LanguageMapContentId("basic/advancedCodeFeedbackIncomplete"),
+      successMessageId = interaction.advancedSuccessMessage,
+      requirements = interaction.advancedRequirements,
+      resolveText = laminarHelper.plaintextStringSignal,
+      language = interaction.reorder.programmingLanguage
     )
 
     def setBeginnerMode(value: Boolean): Unit = {

@@ -6,7 +6,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.editor.code.python.CodeMirrorEditor
+import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.parsing.cpp.CppParser

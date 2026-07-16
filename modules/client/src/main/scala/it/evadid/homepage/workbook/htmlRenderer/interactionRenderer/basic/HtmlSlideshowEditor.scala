@@ -38,30 +38,33 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
       }
     }
 
+    def navigation(): Element =
+      div(
+        cls := "slide-deck-navigation",
+        button(
+          child.text <-- laminarHelper.plaintextStringSignal("PlantWorkshop/slideshowBack"),
+          disabled <-- currentIndex.signal.map(_ == 0),
+          onClick.mapTo(-1) --> navigateBy
+        ),
+        span(
+          cls := "slide-deck-counter",
+          child.text <-- currentIndex.signal.map(i => s"${i + 1}/$totalSlides")
+        ),
+        button(
+          child.text <-- laminarHelper.plaintextStringSignal("PlantWorkshop/slideshowNext"),
+          disabled <-- currentIndex.signal.map(_ >= totalSlides - 1),
+          onClick.mapTo(1) --> navigateBy
+        )
+      )
+
     if (workbookElement.panels.isEmpty) {
       placeholder(workbookElement, "Slideshow with no panels!")
     } else {
       val dom = div(
         cls := "workbook-interaction",
-        div(
-          cls := "slide-deck-navigation",
-          // todo HtmlButtonElement.withTextLabel("PlantWorkshop/slideshowBack") --> with set disabled...
-          button(
-            child.text <-- laminarHelper.plaintextStringSignal("PlantWorkshop/slideshowBack"),
-            disabled <-- currentIndex.signal.map(_ == 0),
-            onClick.mapTo(-1) --> navigateBy
-          ),
-          span(
-            cls := "slide-deck-counter",
-            child.text <-- currentIndex.signal.map(i => s"${i + 1}/$totalSlides")
-          ),
-          button(
-            child.text <-- laminarHelper.plaintextStringSignal("PlantWorkshop/slideshowNext"),
-            disabled <-- currentIndex.signal.map(_ >= totalSlides - 1),
-            onClick.mapTo(1) --> navigateBy
-          )
-        ),
-        child <-- currentIndex.signal.map(index => createSlideshowPanelDom(workbookElement.panels(index)))
+        child <-- currentIndex.signal.map(index =>
+          createSlideshowPanelDom(workbookElement.panels(index), navigation())
+        )
       )
       AtomarLineRendering.basicLine(workbookElement, dom, "slide-deck")
     }
@@ -70,12 +73,13 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
 
   /**
    * Converts a core slideshow panel into the corresponding slide-deck DOM subtree.
-   * Unsupported panel implementations receive an explicit fallback element so newly added panel types fail visibly instead of silently disappearing.
+   * Navigation is placed directly under the slide image. Unsupported panel implementations
+   * receive an explicit fallback element so newly added panel types fail visibly instead of silently disappearing.
    */
-  def createSlideshowPanelDom(panel: SlideshowPanel): Element = {
+  def createSlideshowPanelDom(panel: SlideshowPanel, navigation: Element): Element = {
     panel match {
-      case s: SlideshowPanel.ImageSlide => createSlideshowPanel(s)
-      case s: SlideshowPanel.TwoColumnImagePanel => createSlideshowPanel(s)
+      case s: SlideshowPanel.ImageSlide => createSlideshowPanel(s, navigation)
+      case s: SlideshowPanel.TwoColumnImagePanel => createSlideshowPanel(s, navigation)
       case _ => div("not supported panel type: " + panel.getClass.getSimpleName)
     }
   }
@@ -97,13 +101,14 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
    * Renders a single-image slide with a title and body text using the legacy slide-deck class names.
    * Image loading is delegated to `HtmlImageElement` so file-backed and language-map-backed image sources share the existing image pipeline.
    */
-  private def createSlideshowPanel(panel: SlideshowPanel.ImageSlide): Element = {
+  private def createSlideshowPanel(panel: SlideshowPanel.ImageSlide, navigation: Element): Element = {
     div(
       cls := "slide-deck-container",
       div(
         cls := "slide-deck-image",
         child <-- HtmlImageElement(panel.image).getDomSignal
       ),
+      navigation,
       div(
         cls := "slide-deck-description",
         markdownContent(panel.titleLabel)
@@ -122,13 +127,14 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
    * Renders a two-column image slide using the same structure as the old HTML slideshow implementation.
    * Each column receives localized markdown title and body content while preserving the `slide-deck-text two-columns` styling hook.
    */
-  private def createSlideshowPanel(panel: SlideshowPanel.TwoColumnImagePanel): Element = {
+  private def createSlideshowPanel(panel: SlideshowPanel.TwoColumnImagePanel, navigation: Element): Element = {
      div(
       cls := "slide-deck-container",
       div(
         cls := "slide-deck-image",
         child <-- HtmlImageElement(panel.image).getDomSignal
       ),
+      navigation,
       div(
         cls := "slide-deck-text two-columns",
         div(

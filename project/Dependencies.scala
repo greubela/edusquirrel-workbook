@@ -5,7 +5,6 @@ import org.scalajs.linker.interface.ModuleKind
 import org.scalajs.linker.interface.OutputPatterns
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import Dependencies._
-import org.jetbrains.sbt.structure.Configuration.Test
 
 object Dependencies {
 

@@ -1,4 +1,4 @@
-import Dependencies.{*, coreDependencies, jvmDependencies}
+import Dependencies.{coreDependencies, jvmDependencies, *}
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.*
 import BuildArchitecture.*

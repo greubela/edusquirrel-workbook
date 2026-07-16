@@ -161,6 +161,59 @@
 
 .sorting-reason-form__confirm-button { margin-top: var(--space-sm); }
 
+/* Fill-in code editor (advanced CodeTaskToggle mode) */
+
+.fill-in-code-editor {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.fill-in-code-editor__todo-legend {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.fill-in-code-editor__todo-badge {
+    color: var(--color-accent-error);
+    font-weight: 700;
+}
+
+.fill-in-code-editor__toolbar {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.fill-in-code-editor__reset-btn {
+    padding: var(--space-sm) var(--space-md);
+    font-size: 0.9rem;
+}
+
+.fill-in-code-editor__confirm-actions {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-md);
+    margin-top: var(--space-md);
+}
+
+.fill-in-code-editor__confirm-reset {
+    background: var(--color-background-colored-incorrect);
+}
+
+.fill-in-code-editor__mirror {
+    min-height: 16rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.fill-in-code-editor__mirror .cm-editor,
+.fill-in-code-editor__mirror .cm-scroller {
+    min-height: 16rem;
+}
+
 @media (max-width: 640px) {
     .sorting-fields--cols-2,
     .sorting-fields--cols-3 { grid-template-columns: 1fr; }

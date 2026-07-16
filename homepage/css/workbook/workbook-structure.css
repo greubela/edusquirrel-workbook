@@ -340,8 +340,11 @@ h3 {
 
 /* --- Labeled instruction pair (title + body) --- */
 
+.exercise-instruction {
+    padding: var(--space-md) var(--space-xl);
+    font-size: 0.95rem;
+}
 
-/*
 .instruction-goal {
     border-left: var(--space-sm) solid var(--color-accent-success);
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
@@ -460,10 +463,6 @@ h3 {
     background: var(--color-surface-subtle);
 }
 
-
- */
-
-
 .programming-exercise-action-button {
     padding: var(--space-sm) var(--space-xl);
     border-radius: var(--radius-md);
@@ -497,6 +496,7 @@ h3 {
     border-radius: var(--radius-md);
     background: var(--color-interaction-background);
     box-shadow: var(--shadow-button);
+    flex-shrink: 0;
 }
 
 /*
@@ -729,19 +729,22 @@ textarea.workbook-interaction {
     border: var(--interaction-border);
     background: var(--color-surface);
     appearance: none;
-    display: grid;
-    place-items: center;
+    position: relative;
+    box-sizing: border-box;
+    flex-shrink: 0;
     transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .simple-boolean-editor__checkbox::after {
     content: '';
-    width: 0.35rem;
-    height: 0.7rem;
-    border: 2px solid var(--color-text-inverse);
-    border-top: none;
-    border-left: none;
-    transform: rotate(45deg);
+    position: absolute;
+    left: 50%;
+    top: 45%;
+    width: 0.3rem;
+    height: 0.55rem;
+    border: solid var(--color-text-inverse);
+    border-width: 0 2px 2px 0;
+    transform: translate(-50%, -55%) rotate(45deg);
     opacity: 0;
     transition: opacity 0.2s ease;
 }
@@ -805,6 +808,15 @@ textarea.workbook-interaction {
     cursor: grabbing;
 }
 
+.reorder-item--code pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    border-radius: 0;
+    font-size: inherit;
+    font-family: inherit;
+}
+
 .reorder-item--code:hover pre {
     transform: translateY(-1px);
 }
@@ -856,7 +868,26 @@ textarea.workbook-interaction {
     text-align: center;
 }
 
-.reorder-interaction .btn-check {
+.reorder-feedback--success {
+    background: var(--color-background-colored-correct);
+}
+
+.reorder-feedback--incomplete {
+    background: var(--color-background-colored-incorrect);
+    text-align: left;
+}
+
+.reorder-feedback--incomplete ul {
+    margin: var(--space-sm) 0 0;
+    padding-left: 1.25rem;
+    font-weight: 500;
+}
+
+.reorder-feedback--incomplete p {
+    margin: 0;
+}
+
+.btn-check {
     margin-top: var(--space-md);
     padding: var(--space-sm) var(--space-lg);
     border-radius: var(--radius-md);
@@ -871,7 +902,7 @@ textarea.workbook-interaction {
     width: 100%;
 }
 
-.reorder-interaction .btn-check:hover {
+.btn-check:hover {
     background: var(--color-button-hover);
     transform: translateY(-1px);
     box-shadow: var(--shadow-medium);
@@ -889,6 +920,7 @@ textarea.workbook-interaction {
 .task-box {
     background: var(--color-taskbox-background);
     padding: var(--space-lg);
+    border-left: var(--space-sm) solid var(--color-taskbox-border);
     border-radius: var(--radius-sm);
     margin-bottom: var(--space-xl);
 }
@@ -934,26 +966,26 @@ textarea.workbook-interaction {
 }
 
 /* Styling für Listen innerhalb von instruction-labeled-pair body-Inhalten (Markdown) */
-.workbook-element.exercise-instruction .instruction-goal__body--html ul,
-.workbook-element.exercise-instruction .instruction-task__body--html ul,
-.workbook-element.exercise-instruction .instruction-hint__body--html ul,
-.workbook-element.exercise-instruction .instruction-safety__body--html ul {
+.workbook-element.exercise-instruction .instruction-goal__body ul,
+.workbook-element.exercise-instruction .instruction-task__body ul,
+.workbook-element.exercise-instruction .instruction-hint__body ul,
+.workbook-element.exercise-instruction .instruction-safety__body ul {
     margin: 0.5em 0;
     padding-left: 2rem;
 }
 
-.workbook-element.exercise-instruction .instruction-goal__body--html li,
-.workbook-element.exercise-instruction .instruction-task__body--html li,
-.workbook-element.exercise-instruction .instruction-hint__body--html li,
-.workbook-element.exercise-instruction .instruction-safety__body--html li {
+.workbook-element.exercise-instruction .instruction-goal__body li,
+.workbook-element.exercise-instruction .instruction-task__body li,
+.workbook-element.exercise-instruction .instruction-hint__body li,
+.workbook-element.exercise-instruction .instruction-safety__body li {
     margin-bottom: 0.3em;
     list-style-type: disc;
 }
 
-.workbook-element.exercise-instruction .instruction-goal__body--html p,
-.workbook-element.exercise-instruction .instruction-task__body--html p,
-.workbook-element.exercise-instruction .instruction-hint__body--html p,
-.workbook-element.exercise-instruction .instruction-safety__body--html p {
+.workbook-element.exercise-instruction .instruction-goal__body p,
+.workbook-element.exercise-instruction .instruction-task__body p,
+.workbook-element.exercise-instruction .instruction-hint__body p,
+.workbook-element.exercise-instruction .instruction-safety__body p {
     margin: 0.5em 0;
 }
 

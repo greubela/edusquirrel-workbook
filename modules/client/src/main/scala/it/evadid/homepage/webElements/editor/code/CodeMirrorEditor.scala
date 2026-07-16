@@ -1,7 +1,9 @@
-package it.evadid.homepage.webElements.editor.code.python
+package it.evadid.homepage.webElements.editor.code
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.homepage.webElements.HtmlAppElement
 import org.scalajs.dom
 import todomove.datastructures.web.font.AppFont
@@ -9,10 +11,11 @@ import todomove.datastructures.web.font.AppFont
 import scala.scalajs.js
 
 case class CodeMirrorEditor(
-                             content: Var[String],
-                             onUserInput: String => Unit = _ => (),
-                             editorFont: Signal[AppFont] = Val(AppFont("JetBrains Mono", 14))
-                           ) extends HtmlAppElement {
+  content: Var[String],
+  onUserInput: String => Unit = _ => (),
+  editorFont: Signal[AppFont] = Val(AppFont("JetBrains Mono", 14)),
+  language: ProgrammingLanguage = AppLanguage.Python
+) extends HtmlAppElement {
 
   import CodeMirrorEditor.*
 
@@ -46,6 +49,7 @@ case class CodeMirrorEditor(
               EditorConfig(
                 parent = container,
                 doc = initialValue,
+                language = languageToJs(language),
                 onDocChange = value =>
                   if (!updatingFromVar) {
                     updatingFromEditor = true
@@ -82,6 +86,14 @@ case class CodeMirrorEditor(
 
 object CodeMirrorEditor {
 
+  def languageToJs(language: ProgrammingLanguage): String =
+    language match {
+      case AppLanguage.Cpp => "cpp"
+      case AppLanguage.C => "c"
+      case AppLanguage.Python => "python"
+      case _ => "python"
+    }
+
   @js.native
   private trait CodeMirrorFacade extends js.Object {
     def createEditor(config: EditorConfig): CodeMirrorHandle = js.native
@@ -101,12 +113,12 @@ object CodeMirrorEditor {
   }
 
   final case class Diagnostic(
-      line: Int,
-      endLine: Option[Int] = None,
-      fromCh: Option[Int] = None,
-      toCh: Option[Int] = None,
-      message: String = "",
-      severity: String = "warning"
+    line: Int,
+    endLine: Option[Int] = None,
+    fromCh: Option[Int] = None,
+    toCh: Option[Int] = None,
+    message: String = "",
+    severity: String = "warning"
   ) {
     def toJs: js.Object =
       js.Dynamic.literal(
@@ -122,14 +134,21 @@ object CodeMirrorEditor {
   trait EditorConfig extends js.Object {
     var parent: dom.Element
     var doc: String
+    var language: String
     var onDocChange: js.Function1[String, Unit]
   }
 
   object EditorConfig {
-    def apply(parent: dom.Element, doc: String, onDocChange: String => Unit): EditorConfig = {
+    def apply(
+      parent: dom.Element,
+      doc: String,
+      onDocChange: String => Unit,
+      language: String = "python"
+    ): EditorConfig = {
       js.Dynamic.literal(
         parent = parent,
         doc = doc,
+        language = language,
         onDocChange = (value: String) => onDocChange(value)
       ).asInstanceOf[EditorConfig]
     }

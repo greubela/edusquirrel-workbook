@@ -6,6 +6,7 @@ import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.ImageElement.FileBasedImageElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, HintLabel, SafetyLabel, TaskLabel}
 import it.evadid.workbook.elements.interactionElements.basic.LabeledCheckboxInteraction
+import it.evadid.workbook.elements.interactionElements.codeTaskToggle.AdvancedCodeRequirement
 import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 import todomove.datastructures.web.file.FileFactory
@@ -135,7 +136,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     """// Sensor kurz aktivieren, messen, wieder ausschalten
       |digitalWrite(SENSOR_POWER_PIN, TODO_HIGH_LOW);
       |delay(TODO_DELAY_MS);
-      |int messwert = analogRead(TODO_SENSOR_PIN);
+      |int messwert = analogRead(SENSOR_PIN);
       |digitalWrite(SENSOR_POWER_PIN, TODO_HIGH_LOW);
       |
       |// Messwert im Serial Monitor ausgeben
@@ -149,7 +150,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       |// Sensor nur kurz aktivieren, messen, wieder ausschalten
       |digitalWrite(SENSOR_POWER_PIN, TODO_HIGH_LOW);
       |delay(TODO_DELAY_MS);
-      |int messwert = analogRead(TODO_SENSOR_PIN);
+      |int messwert = analogRead(SENSOR_PIN);
       |digitalWrite(SENSOR_POWER_PIN, TODO_HIGH_LOW);
       |
       |// Entscheide anhand des Grenzwerts zwischen trocken und feucht
@@ -162,13 +163,13 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
   private val pumpAdvancedCodeTemplate: String =
     """void loop() {
       |  // Schalte die Pumpe ein (Relais-Logik beachten)
-      |  digitalWrite(TODO_PIN, TODO_HIGH_LOW);
+      |  digitalWrite(PUMP_PIN, TODO_HIGH_LOW);
       |
       |  // Lass sie für die gewünschte Zeit laufen
       |  delay(TODO_GIESS_DAUER_MS);
       |
       |  // Schalte die Pumpe wieder aus
-      |  digitalWrite(TODO_PIN, TODO_HIGH_LOW);
+      |  digitalWrite(PUMP_PIN, TODO_HIGH_LOW);
       |}""".stripMargin
 
   private val combinedAdvancedCodeTemplate: String =
@@ -179,14 +180,14 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
       |  // 1) Messen
       |  digitalWrite(SENSOR_POWER_PIN, TODO_HIGH_LOW);
       |  delay(TODO_STABILISIERUNG_MS);
-      |  int messwert = analogRead(TODO_SENSOR_PIN);
+      |  int messwert = analogRead(SENSOR_PIN);
       |  digitalWrite(SENSOR_POWER_PIN, TODO_HIGH_LOW);
       |
       |  // 2) Entscheiden und handeln
       |  if (TODO_BEDINGUNG) {
-      |    digitalWrite(TODO_PUMP_PIN, TODO_HIGH_LOW);
+      |    digitalWrite(PUMP_PIN, TODO_HIGH_LOW);
       |    delay(TODO_GIESS_DAUER_MS);
-      |    digitalWrite(TODO_PUMP_PIN, TODO_HIGH_LOW);
+      |    digitalWrite(PUMP_PIN, TODO_HIGH_LOW);
       |  } else {
       |    Serial.println(TODO_FEUCHT_TEXT);
       |  }
@@ -352,7 +353,20 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         2 -> 3,
         3 -> 4,
         4 -> 5
-      )
+      ),
+      advancedRequirements = List(
+        AdvancedCodeRequirement(
+          List("digitalWrite(SENSOR_POWER_PIN, HIGH)", "digitalWrite(SENSOR_POWER_PIN, LOW)"),
+          LanguageMapContentId("PlantWorkshop/advHintSensorPower")
+        ),
+        AdvancedCodeRequirement("delay(", LanguageMapContentId("PlantWorkshop/advHintDelay")),
+        AdvancedCodeRequirement("analogRead", LanguageMapContentId("PlantWorkshop/advHintAnalogRead")),
+        AdvancedCodeRequirement(
+          List("Serial.print", "Serial.println"),
+          LanguageMapContentId("PlantWorkshop/advHintSerial")
+        )
+      ),
+      advancedSuccessMessage = "PlantWorkshop/advSuccessSensorRead"
     )
 
     val downloadContainer = container(
@@ -421,7 +435,13 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         LanguageMapContentId("PlantWorkshop/reorderHintPumpHigh"),
         LanguageMapContentId("PlantWorkshop/reorderHintDelay2000"),
         LanguageMapContentId("PlantWorkshop/reorderHintPumpLow")
-      )
+      ),
+      advancedRequirements = List(
+        AdvancedCodeRequirement("digitalWrite(PUMP_PIN, HIGH)", LanguageMapContentId("PlantWorkshop/advHintPumpOn")),
+        AdvancedCodeRequirement("delay(2000)", LanguageMapContentId("PlantWorkshop/advHintPumpDelay")),
+        AdvancedCodeRequirement("digitalWrite(PUMP_PIN, LOW)", LanguageMapContentId("PlantWorkshop/advHintPumpOff"))
+      ),
+      advancedSuccessMessage = "PlantWorkshop/advSuccessPump"
     )
 
     val wiringPhaseBContainer = container(
@@ -514,7 +534,19 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         6 -> 7,
         7 -> 8,
         8 -> 9
-      )
+      ),
+      advancedRequirements = List(
+        AdvancedCodeRequirement("feuchtigkeitsGrenze", LanguageMapContentId("PlantWorkshop/advHintThreshold")),
+        AdvancedCodeRequirement("delay(", LanguageMapContentId("PlantWorkshop/advHintDelay")),
+        AdvancedCodeRequirement("analogRead", LanguageMapContentId("PlantWorkshop/advHintAnalogRead")),
+        AdvancedCodeRequirement(
+          List("digitalWrite(SENSOR_POWER_PIN, HIGH)", "digitalWrite(SENSOR_POWER_PIN, LOW)"),
+          LanguageMapContentId("PlantWorkshop/advHintSensorPower")
+        ),
+        AdvancedCodeRequirement("if", LanguageMapContentId("PlantWorkshop/advHintIf")),
+        AdvancedCodeRequirement("Serial.println", LanguageMapContentId("PlantWorkshop/advHintSerial"))
+      ),
+      advancedSuccessMessage = "PlantWorkshop/advSuccessMoisture"
     )
 
     val moistureDownloadContainer = container(
@@ -607,7 +639,26 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         9 -> 10,
         10 -> 11,
         11 -> 12
-      )
+      ),
+      advancedRequirements = List(
+        AdvancedCodeRequirement("feuchtigkeitsGrenze", LanguageMapContentId("PlantWorkshop/advHintThreshold")),
+        AdvancedCodeRequirement("analogRead", LanguageMapContentId("PlantWorkshop/advHintAnalogRead")),
+        AdvancedCodeRequirement(
+          List("digitalWrite(SENSOR_POWER_PIN, HIGH)", "digitalWrite(SENSOR_POWER_PIN, LOW)"),
+          LanguageMapContentId("PlantWorkshop/advHintSensorPower")
+        ),
+        AdvancedCodeRequirement(
+          List("if", "messwert < feuchtigkeitsGrenze"),
+          LanguageMapContentId("PlantWorkshop/advHintCondition")
+        ),
+        AdvancedCodeRequirement(
+          List("digitalWrite(PUMP_PIN, HIGH)", "digitalWrite(PUMP_PIN, LOW)"),
+          LanguageMapContentId("PlantWorkshop/advHintPumpControl")
+        ),
+        AdvancedCodeRequirement("Serial.", LanguageMapContentId("PlantWorkshop/advHintSerial")),
+        AdvancedCodeRequirement("delay(10000)", LanguageMapContentId("PlantWorkshop/advHintLoopDelay"))
+      ),
+      advancedSuccessMessage = "PlantWorkshop/advSuccessCombined"
     )
 
     val combinedDownloadContainer = container(
@@ -661,22 +712,20 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
 
     val testChecklistContainer = container(
       "PlantWorkshop/section6TestChecklistTitle",
-      List(
-        instructionLabeledPair("PlantWorkshop/section6TestChecklistTitle", "PlantWorkshop/section6TestChecklistIntro", TaskLabel)
-      ) ++ testChecklistItems
+      testChecklistItems
     )
 
     val troubleshootingContainer = container(
       "PlantWorkshop/section6TroubleshootingTitle",
       List(
-        instructionLabeledPair("PlantWorkshop/section6TroubleshootingTitle", "PlantWorkshop/section6TroubleshootingText", HintLabel)
+        instructionMarkdown("PlantWorkshop/section6TroubleshootingText")
       )
     )
 
     val bonusContainer = container(
       "PlantWorkshop/section6BonusTitle",
       List(
-        instructionLabeledPair("PlantWorkshop/section6BonusTitle", "PlantWorkshop/section6BonusText", GoalLabel)
+        instructionMarkdown("PlantWorkshop/section6BonusText")
       )
     )
 

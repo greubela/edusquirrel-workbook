@@ -145,5 +145,22 @@
   "reorderHintFeuchtigkeitsGrenze": "Erstelle eine Ganzzahlvariable für die Feuchtigkeitsgrenze.",
   "reorderHintIfBlock": "Starte einen if-Block.",
   "reorderHintElseBlock": "Beende den if-Block und starte den else-Zweig.",
-  "reorderHintCloseBrace": "Schließe den Block."
+  "reorderHintCloseBrace": "Schließe den Block.",
+
+  "advHintSensorPower": "Sensor über SENSOR_POWER_PIN ein- und ausschalten",
+  "advHintDelay": "delay nach dem Einschalten fehlt",
+  "advHintAnalogRead": "analogRead() fehlt",
+  "advHintSerial": "Serial-Ausgabe fehlt",
+  "advHintThreshold": "feuchtigkeitsGrenze als Variable setzen",
+  "advHintIf": "if-else Bedingung fehlt",
+  "advHintCondition": "if-Bedingung mit messwert < feuchtigkeitsGrenze fehlt",
+  "advHintPumpOn": "Pumpe einschalten (HIGH)",
+  "advHintPumpOff": "Pumpe ausschalten (LOW)",
+  "advHintPumpDelay": "2 Sekunden warten (delay(2000))",
+  "advHintPumpControl": "Pumpensteuerung (HIGH/LOW) unvollständig",
+  "advHintLoopDelay": "Wartezeit delay(10000) fehlt",
+  "advSuccessSensorRead": "✅ Sehr gut! Sensor ein-/ausschalten, messen und Serial-Ausgabe sind vorhanden.",
+  "advSuccessMoisture": "✅ Sehr gut! Du hast alle wichtigen Teile: Grenzwert, Sensor lesen, if-else und Serial-Ausgabe.",
+  "advSuccessPump": "✅ Perfekt! Die Pumpe wird richtig gesteuert.",
+  "advSuccessCombined": "🎉 Hervorragend! Das System ist komplett: Grenzwert, Sensor, Bedingung, Pumpe und Wartezeit."
 }

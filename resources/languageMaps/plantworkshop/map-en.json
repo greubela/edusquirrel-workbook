@@ -159,5 +159,22 @@
   "reorderHintFeuchtigkeitsGrenze": "Create an integer variable for the moisture threshold.",
   "reorderHintIfBlock": "Start an if-block.",
   "reorderHintElseBlock": "End the if-block and start the else branch.",
-  "reorderHintCloseBrace": "Close the block."
+  "reorderHintCloseBrace": "Close the block.",
+
+  "advHintSensorPower": "Power the sensor on/off via SENSOR_POWER_PIN",
+  "advHintDelay": "delay after switching on is missing",
+  "advHintAnalogRead": "analogRead() is missing",
+  "advHintSerial": "Serial output is missing",
+  "advHintThreshold": "Set feuchtigkeitsGrenze as a variable",
+  "advHintIf": "if-else condition is missing",
+  "advHintCondition": "if condition with messwert < feuchtigkeitsGrenze is missing",
+  "advHintPumpOn": "Turn pump on (HIGH)",
+  "advHintPumpOff": "Turn pump off (LOW)",
+  "advHintPumpDelay": "Wait 2 seconds (delay(2000))",
+  "advHintPumpControl": "Pump control (HIGH/LOW) incomplete",
+  "advHintLoopDelay": "Wait delay(10000) is missing",
+  "advSuccessSensorRead": "✅ Very good! Sensor on/off, measurement and Serial output are present.",
+  "advSuccessMoisture": "✅ Very good! You have all important parts: threshold, sensor read, if-else and Serial output.",
+  "advSuccessPump": "✅ Perfect! The pump is controlled correctly.",
+  "advSuccessCombined": "🎉 Excellent! The system is complete: threshold, sensor, condition, pump and wait time."
 }
