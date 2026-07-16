@@ -12,6 +12,9 @@ import org.scalajs.dom
 import todomove.datastructures.web.font.AppFont
 
 import scala.scalajs.js
+/*
+
+todo: actually implement this..
 
 case class BeCodeEditor(
                          program: Var[BeProgram],
@@ -166,4 +169,4 @@ object BeCodeEditor {
         }
     }
   }
-}
+}*/
