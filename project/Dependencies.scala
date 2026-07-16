@@ -2,7 +2,6 @@ import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.linker.interface.ModuleKind
 import org.scalajs.linker.interface.OutputPatterns
-import org.jetbrains.sbt.structure.Configuration.Test
 import sbt._
 import Dependencies._
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
