@@ -1,11 +1,11 @@
-import sbt._
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.linker.interface.ModuleKind
 import org.scalajs.linker.interface.OutputPatterns
-import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
-import Dependencies._
 import org.jetbrains.sbt.structure.Configuration.Test
+import sbt._
+import Dependencies._
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
 object Dependencies {
 
@@ -13,7 +13,7 @@ object Dependencies {
     "com.lihaoyi" %%% "upickle" % "4.4.3",
     "com.lihaoyi" %%% "fastparse" % "3.1.1",
     "org.creativescala" %% "doodle" % "0.34.0",
-    "org.scalameta" %%% "munit" % "1.3.3" % Test,
+    "org.scalameta" %%% "munit" % "1.3.3" % sbt.Test,
   ))
 
   val jvmDependencies = Def.setting(Seq(
