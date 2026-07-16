@@ -66,3 +66,10 @@ dist/
 
 ### node
 node_modules/*
+
+# ai stuff
+.idea/*
+ai/*
+.proxyai/*
+META_INF/*
+src/*
