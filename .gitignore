@@ -72,4 +72,5 @@ node_modules/*
 ai/*
 .proxyai/*
 META_INF/*
+META-INF/*
 src/*
