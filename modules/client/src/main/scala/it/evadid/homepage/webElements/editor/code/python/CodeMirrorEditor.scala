@@ -1,8 +1,11 @@
 package it.evadid.homepage.webElements.editor.code.python
 
+import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
+import it.evadid.homepage.webElements.editor.config.CodeEditorConfig
 import org.scalajs.dom
 import todomove.datastructures.web.font.AppFont
 
@@ -12,7 +15,7 @@ case class CodeMirrorEditor(
                              content: Var[String],
                              onUserInput: String => Unit = _ => (),
                              editorFont: Signal[AppFont] = Val(AppFont("JetBrains Mono", 14))
-                           ) extends HtmlAppElement {
+                           ) extends SimpleWebEditor[String, CodeEditorConfig] {
 
   import CodeMirrorEditor.*
 
@@ -78,6 +81,10 @@ case class CodeMirrorEditor(
       }
     )
   }
+
+  override def underlyingVar: Var[String] = content
+
+  override def config: Val[CodeEditorConfig] = Val(CodeEditorConfig.defaultConfig)
 }
 
 object CodeMirrorEditor {

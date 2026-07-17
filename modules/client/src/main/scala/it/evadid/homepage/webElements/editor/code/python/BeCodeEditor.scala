@@ -1,8 +1,22 @@
 package it.evadid.homepage.webElements.editor.code.python
 
+import com.raquo.airstream.state.Var
+import com.raquo.laminar.api.L
+import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
+import it.evadid.homepage.webElements.editor.config.CodeEditorConfig
+import it.evadid.vm.BeProgram
+import it.evadid.vm.code.others.BeStartProgram
+import it.evadid.vm.parsing.python.PythonParser
+import org.scalajs.dom
+import todomove.datastructures.web.font.AppFont
+
+import scala.scalajs.js
+
 /*
 
-todo: actually implement this..
+todo: actually implement this.. */
 
 case class BeCodeEditor(
                          program: Var[BeProgram],
@@ -11,7 +25,7 @@ case class BeCodeEditor(
                          onParseError: Option[String] => Unit = _ => (),
                          onUserInput: String => Unit = _ => (),
                          editorFont: Signal[AppFont] = Val(AppFont("JetBrains Mono", 14))
-                       ) extends HtmlAppElement {
+                       ) extends SimpleWebEditor[BeProgram, CodeEditorConfig] {
 
   import BeCodeEditor.{facade, waitForFacade, CodeMirrorFacade, CodeMirrorHandle, EditorConfig}
 
@@ -97,6 +111,10 @@ case class BeCodeEditor(
       }
     )
   }
+
+  override def underlyingVar: Var[BeProgram] = program
+
+  override def config: Val[CodeEditorConfig] = Val(CodeEditorConfig.defaultConfig)
 }
 
 object BeCodeEditor {
@@ -157,4 +175,4 @@ object BeCodeEditor {
         }
     }
   }
-}*/
+}

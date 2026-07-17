@@ -1,16 +1,18 @@
 package it.evadid.homepage.webElements.editor
 
+import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{option as optionTag, *}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
-import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
+import it.evadid.homepage.webElements.editor.config.SelectorEditorConfig
 
 case class SimpleSelectorEditor[T](
-  forVar: Var[T],
-  options: List[T],
-  labels: List[LanguageMap[HumanLanguage]]
-) extends HtmlAppElement {
+                                    forVar: Var[T],
+                                    options: List[T],
+                                    labels: List[LanguageMap[HumanLanguage]]
+                                  ) extends SimpleWebEditor[T, SelectorEditorConfig] {
 
   require(
     options.length == labels.length,
@@ -50,14 +52,18 @@ case class SimpleSelectorEditor[T](
   )
 
   override def getDomElement(): L.Element = domElement
+
+  override def underlyingVar: Var[T] = forVar
+
+  override def config: Val[SelectorEditorConfig] = Val(SelectorEditorConfig.defaultConfig)
 }
 
 object SimpleSelectorEditor {
   def apply[T](
-    forVar: Var[T],
-    options: List[T],
-    labelGenerator: T => LanguageMap[HumanLanguage]
-  ): SimpleSelectorEditor[T] = {
+                forVar: Var[T],
+                options: List[T],
+                labelGenerator: T => LanguageMap[HumanLanguage]
+              ): SimpleSelectorEditor[T] = {
     SimpleSelectorEditor(forVar, options, options.map(labelGenerator))
   }
 }
