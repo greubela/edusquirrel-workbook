@@ -1,4 +1,4 @@
-package it.evadid.workbook.vm.parsing.`abstract`
+package it.evadid.vm.parsing.abstractions
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction}
@@ -10,10 +10,6 @@ object KnownStructures {
   private val knownFunctions: Map[String, BeDefineFunction] = Map()
 
   private val turtleClass: BeDefineClass = {
-
-
-
-
 
     /*
         inputs: List[BeDefineVariable],

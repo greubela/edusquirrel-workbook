@@ -5,8 +5,18 @@ import fastparse.NoWhitespace.*
 import it.evadid.vm.code.BeDefineStructure
 import it.evadid.vm.code.defining.KnownBeDefineStructures
 
+
 /** FastParse-based Python token scanner that maps every potential identifier/operator token to known definitions. */
 object PythonKnownDefinitionScanner {
+
+
+
+
+
+
+
+  /*
+
   private val SymbolOperators: List[String] = List(
     "**=", "//=", "<<=", ">>=", ":=", "->",
     "==", "!=", "<=", ">=", "//", "**", "<<", ">>", "&&", "||", "+=", "-=", "*=", "/=", "%=", "@=", "&=", "|=", "^=",
@@ -39,7 +49,7 @@ object PythonKnownDefinitionScanner {
     P((CharPred(ch => ch.isLetter || ch == '_') ~ CharsWhile(ch => ch.isLetterOrDigit || ch == '_', 0)).!)
 
   private def symbolOperatorChunk[$: P]: P[String] =
-    P(CharsWhile(ch => "+-*/%@<>=!&|^~".contains(ch), 1).!)
+    P(CharsWhile(ch => "+-*%/@<>=!&|^~".contains(ch), 1).!)
 
   private def comment[$: P]: P[Unit] =
     P("#" ~ CharsWhile(c => c != '\n' && c != '\r', 0))
@@ -72,10 +82,14 @@ object PythonKnownDefinitionScanner {
     builder.result()
   }
 
-  private def combineCompoundWordOperators(tokens: List[String]): List[String] =
+  private def combineCompoundWordOperators(tokens: List[String]): List[String] = {
     tokens.foldLeft(List.empty[String]) {
       case (init :+ "is", "not") => init :+ "is not"
       case (init :+ "not", "in") => init :+ "not in"
       case (acc, token) => acc :+ token
     }
+
+
+  }
+*/
 }
