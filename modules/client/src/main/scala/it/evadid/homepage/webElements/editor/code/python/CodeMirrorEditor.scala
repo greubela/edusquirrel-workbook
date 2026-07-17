@@ -24,7 +24,7 @@ case class CodeMirrorEditor(
   def currentDoc: Option[String] = handle.map(_.getDoc())
 
   def setDiagnostics(diagnostics: Seq[CodeMirrorEditor.Diagnostic]): Unit =
-    handle.foreach(_.setDiagnostics(js.Array(diagnostics.map(_.toJs)*)))
+    handle.foreach(_.setDiagnostics(js.Array(diagnostics.map(_.toJs) *)))
 
   def clearDiagnostics(): Unit = setDiagnostics(Nil)
 
@@ -101,13 +101,13 @@ object CodeMirrorEditor {
   }
 
   final case class Diagnostic(
-      line: Int,
-      endLine: Option[Int] = None,
-      fromCh: Option[Int] = None,
-      toCh: Option[Int] = None,
-      message: String = "",
-      severity: String = "warning"
-  ) {
+                               line: Int,
+                               endLine: Option[Int] = None,
+                               fromCh: Option[Int] = None,
+                               toCh: Option[Int] = None,
+                               message: String = "",
+                               severity: String = "warning"
+                             ) {
     def toJs: js.Object =
       js.Dynamic.literal(
         line = line,

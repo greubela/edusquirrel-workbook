@@ -10,7 +10,7 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement.ButtonConfig
 import it.evadid.homepage.webElements.editor.SimpleChatEditor.{ChatEditorConfig, defaultConfig}
-import it.evadid.homepage.webElements.editor.SimpleTextEditor.TextEditorConfig
+import it.evadid.homepage.webElements.editor.config.TextEditorConfig
 
 import java.time.LocalDateTime
 

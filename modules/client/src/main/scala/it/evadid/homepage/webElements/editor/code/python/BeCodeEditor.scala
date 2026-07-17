@@ -1,17 +1,5 @@
 package it.evadid.homepage.webElements.editor.code.python
 
-import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.core.datastructures.language.{HumanLanguage, ProgrammingLanguage}
-import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.vm.BeProgram
-import it.evadid.vm.code.others.BeStartProgram
-import it.evadid.vm.parsing.python.PythonParser
-import org.scalajs.dom
-import todomove.datastructures.web.font.AppFont
-
-import scala.scalajs.js
 /*
 
 todo: actually implement this..

@@ -12,7 +12,6 @@ out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 **/artifacts/**
-.proxyai/**
 
 ### Eclipse ###
 .apt_generated
@@ -74,3 +73,7 @@ ai/*
 META_INF/*
 META-INF/*
 src/*
+.proxyai*
+.proxyai/*
+.aider/*
+.aider*
