@@ -2,8 +2,8 @@ package it.evadid.vm.parsing.python.clean
 
 import fastparse.*
 import fastparse.NoWhitespace.*
-import it.evadid.core.parsing.PyAST
-import it.evadid.core.parsing.PyAST.*
+import it.evadid.vm.parsing.python.clean.PyAST
+import it.evadid.vm.parsing.python.clean.PyAST.*
 
 object Python313Parser {
 
@@ -34,7 +34,7 @@ object Python313Parser {
 
   def DOUBLESTAR[ctx: P]: P[Unit] = P("**")
 
-  def EQUAL[ctx: P]: P[Unit] = P("=" ~ !"=")
+  def EQUAL[ctx: P]: P[Unit] = ??? // P("=" ~ !"=")
 
   def RARROW[ctx: P]: P[Unit] = P("->")
 
@@ -45,79 +45,17 @@ object Python313Parser {
   // ==========================================
   // 2. Comprehensive Python Keywords Mapping
   // ==========================================
-  def DEF[ctx: P]: P[Unit] = P("def" ~~ !ID_CONTINUE)
 
-  def CLASS[ctx: P]: P[Unit] = P("class" ~~ !ID_CONTINUE)
 
-  def RETURN[ctx: P]: P[Unit] = P("return" ~~ !ID_CONTINUE)
+  def LAMBDA[ctx: P]: P[Unit] = ??? // P("lambda" ~~ !ID_CONTINUE)
 
-  def RAISE[ctx: P]: P[Unit] = P("raise" ~~ !ID_CONTINUE)
+  def NAME_OR_TYPE[ctx: P]: P[Unit] = ??? // P("type" ~~ !ID_CONTINUE)
 
-  def FROM[ctx: P]: P[Unit] = P("from" ~~ !ID_CONTINUE)
+  def NAME_OR_MATCH[ctx: P]: P[Unit] = ??? // P("match" ~~ !ID_CONTINUE)
 
-  def PASS[ctx: P]: P[Unit] = P("pass" ~~ !ID_CONTINUE)
+  def NAME_OR_CASE[ctx: P]: P[Unit] = ??? // P("case" ~~ !ID_CONTINUE)
 
-  def BREAK[ctx: P]: P[Unit] = P("break" ~~ !ID_CONTINUE)
-
-  def CONTINUE[ctx: P]: P[Unit] = P("continue" ~~ !ID_CONTINUE)
-
-  def ASYNC[ctx: P]: P[Unit] = P("async" ~~ !ID_CONTINUE)
-
-  def GLOBAL[ctx: P]: P[Unit] = P("global" ~~ !ID_CONTINUE)
-
-  def NONLOCAL[ctx: P]: P[Unit] = P("nonlocal" ~~ !ID_CONTINUE)
-
-  def DEL[ctx: P]: P[Unit] = P("del" ~~ !ID_CONTINUE)
-
-  def ASSERT[ctx: P]: P[Unit] = P("assert" ~~ !ID_CONTINUE)
-
-  def IMPORT[ctx: P]: P[Unit] = P("import" ~~ !ID_CONTINUE)
-
-  def AS[ctx: P]: P[Unit] = P("as" ~~ !ID_CONTINUE)
-
-  def IF[ctx: P]: P[Unit] = P("if" ~~ !ID_CONTINUE)
-
-  def ELIF[ctx: P]: P[Unit] = P("elif" ~~ !ID_CONTINUE)
-
-  def ELSE[ctx: P]: P[Unit] = P("else" ~~ !ID_CONTINUE)
-
-  def WHILE[ctx: P]: P[Unit] = P("while" ~~ !ID_CONTINUE)
-
-  def FOR[ctx: P]: P[Unit] = P("for" ~~ !ID_CONTINUE)
-
-  def IN[ctx: P]: P[Unit] = P("in" ~~ !ID_CONTINUE)
-
-  def WITH[ctx: P]: P[Unit] = P("with" ~~ !ID_CONTINUE)
-
-  def TRY[ctx: P]: P[Unit] = P("try" ~~ !ID_CONTINUE)
-
-  def EXCEPT[ctx: P]: P[Unit] = P("except" ~~ !ID_CONTINUE)
-
-  def FINALLY[ctx: P]: P[Unit] = P("finally" ~~ !ID_CONTINUE)
-
-  def FALSE[ctx: P]: P[Unit] = P("False" ~~ !ID_CONTINUE)
-
-  def NONE[ctx: P]: P[Unit] = P("None" ~~ !ID_CONTINUE)
-
-  def TRUE[ctx: P]: P[Unit] = P("True" ~~ !ID_CONTINUE)
-
-  def AND[ctx: P]: P[Unit] = P("and" ~~ !ID_CONTINUE)
-
-  def OR[ctx: P]: P[Unit] = P("or" ~~ !ID_CONTINUE)
-
-  def NOT[ctx: P]: P[Unit] = P("not" ~~ !ID_CONTINUE)
-
-  def IS[ctx: P]: P[Unit] = P("is" ~~ !ID_CONTINUE)
-
-  def LAMBDA[ctx: P]: P[Unit] = P("lambda" ~~ !ID_CONTINUE)
-
-  def NAME_OR_TYPE[ctx: P]: P[Unit] = P("type" ~~ !ID_CONTINUE)
-
-  def NAME_OR_MATCH[ctx: P]: P[Unit] = P("match" ~~ !ID_CONTINUE)
-
-  def NAME_OR_CASE[ctx: P]: P[Unit] = P("case" ~~ !ID_CONTINUE)
-
-  def NAME_OR_WILDCARD[ctx: P]: P[Unit] = P("_" ~~ !ID_CONTINUE)
+  def NAME_OR_WILDCARD[ctx: P]: P[Unit] = ??? // P("_" ~~ !ID_CONTINUE)
 
   // ==========================================
   // 3. Structural Tokens & Whitespace Mapping
