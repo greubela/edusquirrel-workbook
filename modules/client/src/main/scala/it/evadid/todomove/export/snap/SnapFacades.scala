@@ -104,6 +104,8 @@ class SymbolMorph(name0: String = js.native, size0: Double = js.native, color0: 
 @JSGlobal("AlignmentMorph")
 class AlignmentMorph(orientation: String = js.native, padding: Double = js.native) extends Morph
 
+
+
 // blocks.js hierarchy -------------------------------------------------------
 
 @js.native
