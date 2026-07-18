@@ -2,10 +2,12 @@ package it.evadid.vm.parsing.python.clean
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.vm.parsing.abstractions.GenericAST
+import it.evadid.vm.parsing.abstractions.GenericAST.NamedElement
 
 sealed trait PyAST extends GenericAST
 
 object PyAST {
+
 
   case class IndentState(var currentLevel: Int = 0)
 
@@ -22,6 +24,7 @@ object PyAST {
 
   case class PyExecutionBlock(statements: Seq[PyStatement]) extends PyAST {
     def withAdded(other: Seq[PyStatement]): PyExecutionBlock = PyExecutionBlock(statements ++ other)
+
     override def getChildren(): Seq[GenericAST] = statements
   }
 
@@ -42,9 +45,13 @@ object PyAST {
 
   case object PyEmptyStatement extends PyStatement
 
-  case class PyImportStatement(moduleName: String) extends PyStatement
+  case class PyImportStatement(moduleName: String) extends PyStatement with NamedElement {
+    override def name: String = moduleName
+  }
 
-  case class PyImportFromStatement(moduleName: String, imports: List[PyTarget], importAll: Boolean) extends PyStatement
+  case class PyImportFromStatement(moduleName: String, imports: List[PyTarget], importAll: Boolean) extends PyStatement with NamedElement {
+    override def name: String = moduleName
+  }
 
   case class PyRaiseStatement(raiseDirectly: Option[PyExpression], raiseFrom: Option[PyExpression]) extends PyStatement {
     override def getChildren(): Seq[GenericAST] = raiseDirectly.toList ++ raiseFrom.toList
@@ -53,7 +60,6 @@ object PyAST {
   case class PyReturnStatement(expr: Option[PyExpression]) extends PyStatement {
     override def getChildren(): Seq[GenericAST] = expr.toList
   }
-
 
   // Basic Control Structures
   case class PyIfStatement(condition: PyExpression, thenBlock: PyExecutionBlock, elseBlock: PyExecutionBlock) extends PyStatement {
@@ -93,7 +99,7 @@ object PyAST {
 
   sealed trait PyExpression extends PyStatement
 
-  case class NamedExpression(name: String, expression: PyExpression) extends PyExpression {
+  case class NamedExpression(name: String, expression: PyExpression) extends PyExpression with NamedElement {
     override def getChildren(): Seq[GenericAST] = List(expression)
   }
 
@@ -112,31 +118,40 @@ object PyAST {
 
   // Defs
 
-  case class PyFunctionCall(name: PyTarget, parameterValues: List[PyExpression]) extends PyExpression {
+  case class PyFunctionCall(target: PyTarget, parameterValues: List[PyExpression]) extends PyExpression with NamedElement {
     override def getChildren(): Seq[GenericAST] = parameterValues
+
+    override def name: String = target.name
   }
 
-  case class PyFunctionDef(name: String, parameters: List[PyAssignment], block: PyExecutionBlock, isAsync: Boolean) extends PyStatement {
+  case class PyFunctionDef(name: String, parameters: List[PyAssignment], block: PyExecutionBlock, isAsync: Boolean) extends PyStatement with NamedElement {
     override def getChildren(): Seq[GenericAST] = parameters ++ List(block)
   }
 
-  case class PyClassDef(name: String, parameters: List[PyAssignment], block: PyExecutionBlock, isAsync: Boolean) extends PyStatement {
+  case class PyClassDef(name: String, parameters: List[PyAssignment], block: PyExecutionBlock, isAsync: Boolean) extends PyStatement with NamedElement {
     override def getChildren(): Seq[GenericAST] = parameters ++ List(block)
   }
 
-  case class PyOperationBinary(left: PyExpression, op: String, right: PyExpression) extends PyExpression {
+  case class PyOperationBinary(left: PyExpression, op: String, right: PyExpression) extends PyExpression with NamedElement {
     override def getChildren(): Seq[GenericAST] = List(left, right)
+
+    override def name: String = op
   }
 
-  case class PyOperationUnary(op: String, operand: PyExpression) extends PyExpression{
-    override def getChildren(): Seq[GenericAST] = List(operand)}
+  case class PyOperationUnary(op: String, operand: PyExpression) extends PyExpression with NamedElement {
+    override def getChildren(): Seq[GenericAST] = List(operand)
+
+    override def name: String = op
+  }
 
   // Atomar
 
   sealed trait PyAtomar extends PyExpression
 
-  case class PyTarget(name: String, locationString: List[String] = List(), sliceExpr: Option[PyExpression] = None, typeHint: Option[PythonType] = None) extends PyAtomar {
+  case class PyTarget(identifier: String, locationString: List[String] = List(), sliceExpr: Option[PyExpression] = None, typeHint: Option[PythonType] = None) extends PyAtomar with NamedElement {
     override def getChildren(): Seq[GenericAST] = sliceExpr.toList
+
+    override def name: String = locationString.mkString("", ".", ".") + identifier // without slice for now
   }
 
   case class PyLiteral[T](literalAsString: String, pythonTyp: PythonType, scalaValue: T, serializer: Serializer[T]) extends PyAtomar
@@ -208,7 +223,7 @@ object PyAST {
         |
         |""".stripMargin
 
-    val res =  Python313Parser.parse(example2)
+    val res = Python313Parser.parse(example2)
 
     println(res)
 

@@ -4,6 +4,10 @@ import it.evadid.vm.parsing.abstractions.GenericAST.GenericASTListener
 
 trait GenericAST {
 
+
+
+
+
   def traversePreOrderWithListener(listener: GenericASTListener): Unit = {
     listener.onNodeVisited(this)
     getChildren().foreach(_.traversePreOrderWithListener(listener))
@@ -14,6 +18,10 @@ trait GenericAST {
 }
 
 object GenericAST {
+
+  trait NamedElement {
+    def name: String
+  }
 
 
   trait GenericASTListener {
