@@ -34,8 +34,8 @@ class TestSimplePythonParser extends FunSuite {
     val funccall = parseOne("func(int(3)+3)").asInstanceOf[PyFunctionCall]
 
     assertEquals(funccall.target.name, "func")
-    assertEquals(funccall.target.locationString, List(""))
-    assertEquals(funccall.parameterValues.size, 2)
+    assertEquals(funccall.target.locationString, List())
+    assertEquals(funccall.parameterValues.size, 1)
   }
 
 }

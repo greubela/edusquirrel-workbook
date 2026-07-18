@@ -36,6 +36,18 @@ object JavaType {
 
   sealed class JAVA_ANY extends JavaType[Any]("Object", Serializer.parseAnyAsUnderlyingString, Serializer.parseAnyAsUnderlyingString)
 
+  sealed class JAVA_LIST[Element](val elementType: JavaType[Element]) extends JavaType[List[Element]](
+    s"List<${elementType.typenameInCode}>",
+    JavaCollectionSerializers.collectionSerializer(elementType.serializerJavaValue, "List.of(", ")"),
+    JavaCollectionSerializers.collectionSerializer(elementType.serializerScalaValue, "List(", ")")
+  )
+
+  sealed class JAVA_ARRAY[Element](val elementType: JavaType[Element]) extends JavaType[List[Element]](
+    s"${elementType.typenameInCode}[]",
+    JavaCollectionSerializers.collectionSerializer(elementType.serializerJavaValue, "{", "}"),
+    JavaCollectionSerializers.collectionSerializer(elementType.serializerScalaValue, "List(", ")")
+  )
+
 
   sealed class JAVA_UNPARSABLE_TYPE(str: String) extends JavaType[Any](str, Serializer.parseAnyAsUnderlyingString, Serializer.parseAnyAsUnderlyingString)
 

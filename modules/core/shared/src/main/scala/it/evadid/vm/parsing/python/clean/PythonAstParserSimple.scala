@@ -182,13 +182,10 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   // 7. EXPRESSION TYPES
   // ==========================================
 
-  def expression[ctx: P]: P[PyExpression] = function_call | named_expression | disjunction
+  def expression[ctx: P]: P[PyExpression] = named_expression | disjunction
 
   def named_expression[ctx: P]: P[PyExpression] = P(target() ~~ SPACES.? ~~ COLONEQUAL ~~ SPACES.? ~~ expression)
     .map { case (name: PyTarget, expr: PyExpression) => NamedExpression(name.name, expr) }
-
-  def function_call[ctx: P]: P[PyExpression] = P(target() ~~ SPACES.? ~~ LPAR ~~/ SPACES.? ~~ argument_expressions.? ~~ SPACES.? ~~ RPAR)
-    .map { case (func: PyTarget, args: Option[Seq[PyExpression]]) => PyFunctionCall(func, args.getOrElse(List()).toList) }
 
   // ==========================================
   // 8. INDIVIDUAL EXPRESSIONS
@@ -232,19 +229,33 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   def parenthesizedExpression[ctx: P]: P[PyExpression] =
     P(LPAR ~~ SPACES.? ~~ expression ~~ SPACES.? ~~ RPAR)
 
-  def listLiteral[ctx: P]: P[PyListLiteral] =
-    P(LSQB ~~ SPACES.? ~~ expressionList.? ~~ SPACES.? ~~ RSQB)
-      .map(elements => PyListLiteral(elements.getOrElse(List()).toList))
-
-  def tupleLiteral[ctx: P]: P[PyTupleLiteral] =
-    P(LPAR ~~ SPACES.? ~~ expression ~~ SPACES.? ~~ COMMA ~~ SPACES.? ~~ expressionList.? ~~ SPACES.? ~~ RPAR)
-      .map { case (head, tail) => PyTupleLiteral((head +: tail.getOrElse(List())).toList) }
-
   // ==========================================
   // 8. ATOMAR SEQUENCES
   // ==========================================
 
-  def primary[ctx: P]: P[PyExpression] = P(listLiteral | tupleLiteral | parenthesizedExpression | target() | literal)
+  def primary[ctx: P]: P[PyExpression] = P(atom ~~ trailer.rep).map { case (base, trailers) =>
+    trailers.foldLeft(base) { case (receiver, applyTrailer) => applyTrailer(receiver) }
+  }
+
+  def atom[ctx: P]: P[PyExpression] = P(listLiteral | tupleLiteral | dictLiteral | setLiteral | parenthesizedExpression | targetAtom | literal)
+
+  private def trailer[ctx: P]: P[PyExpression => PyExpression] = P(attributeTrailer | callTrailer | subscriptTrailer)
+
+  private def attributeTrailer[ctx: P]: P[PyExpression => PyExpression] =
+    P(SPACES.? ~~ DOT ~~ SPACES.? ~~ NAME).map(name => receiver => PyAttributeAccess(receiver, name))
+
+  private def callTrailer[ctx: P]: P[PyExpression => PyExpression] =
+    P(SPACES.? ~~ LPAR ~~/ SPACES.? ~~ argument_expressions.? ~~ SPACES.? ~~ RPAR).map { args => receiver =>
+      receiver match {
+        case target: PyTarget => PyFunctionCall(target, args.getOrElse(List()).toList)
+        case callee => PyCallExpression(callee, args.getOrElse(List()).toList)
+      }
+    }
+
+  private def subscriptTrailer[ctx: P]: P[PyExpression => PyExpression] =
+    P(SPACES.? ~~ LSQB ~~ SPACES.? ~~ expressionList ~~ SPACES.? ~~ RSQB).map(indices => receiver => PySubscript(receiver, indices.toList))
+
+  private def targetAtom[ctx: P]: P[PyTarget] = NAME.map(PyTarget(_))
 
   def target[ctx: P](knownContext: List[String] = List()): P[PyTarget] = {
     identifierWithTypeHint
@@ -256,12 +267,12 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   }
 
   def identifierWithSlice[ctx: P]: P[PyTarget] = {
-    P(identifier() ~~ SPACES.? ~~ LSQB ~~ SPACES.? ~~ expression ~~ SPACES.? ~~ RSQB).map { case (target, sliceExpr) => PyTarget(target.name, target.locationString, Some(sliceExpr), target.typeHint) }
+    P(identifier() ~~ SPACES.? ~~ LSQB ~~ SPACES.? ~~ expression ~~ SPACES.? ~~ RSQB).map { case (target, sliceExpr) => PyTarget(target.identifier, target.locationString, Some(sliceExpr), target.typeHint) }
       | identifier()
   }
 
   def identifier[ctx: P](knownContext: List[String] = List()): P[PyTarget] = {
-    P(NAME ~~ SPACES.? ~~ DOT ~~ SPACES.? ~~ identifier(knownContext)).map { case (name: String, target: PyTarget) => PyTarget(target.name, List(name) ++ target.locationString, target.sliceExpr, target.typeHint) }
+    P(NAME ~~ SPACES.? ~~ DOT ~~ SPACES.? ~~ identifier(knownContext)).map { case (name: String, target: PyTarget) => PyTarget(target.identifier, List(name) ++ target.locationString, target.sliceExpr, target.typeHint) }
       | NAME.map(PyTarget(_))
   }
 
@@ -270,6 +281,69 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   // 9. Value Literals
   // ==========================================
 
+
+  private def expressionLiteralValue(expr: PyExpression): String = expr match {
+    case literal: PythonLiteral[?] => literal.literalValue
+    case target: PyTarget => target.name
+    case other => other.toString
+  }
+
+  private def collectionLiteralValue(open: String, expressions: List[PyExpression], close: String): String =
+    expressions.map(expressionLiteralValue).mkString(open, ", ", close)
+
+  private def dictLiteralValue(entries: List[(PyExpression, PyExpression)]): String =
+    entries.map { case (key, value) => s"${expressionLiteralValue(key)}: ${expressionLiteralValue(value)}" }.mkString("{", ", ", "}")
+
+  def listLiteral[ctx: P]: P[PythonLiteral[?]] =
+    P(LSQB ~~ SPACES.? ~~ expressionList.? ~~ SPACES.? ~~ RSQB)
+      .map { elements =>
+        val values = elements.getOrElse(List()).toList
+        PythonLiteral(collectionLiteralValue("[", values, "]"), PYTHON_LIST(commonExpressionType(values)))
+      }
+
+  def tupleLiteral[ctx: P]: P[PythonLiteral[?]] =
+    P(LPAR ~~ SPACES.? ~~ expression ~~ SPACES.? ~~ COMMA ~~ SPACES.? ~~ expressionList.? ~~ SPACES.? ~~ RPAR)
+      .map { case (head, tail) =>
+        val values = (head +: tail.getOrElse(List())).toList
+        PythonLiteral(collectionLiteralValue("(", values, ")"), PYTHON_LIST(commonExpressionType(values)))
+      }
+
+  private def dictEntry[ctx: P]: P[(PyExpression, PyExpression)] =
+    P(expression ~~ SPACES.? ~~ COLON ~~ SPACES.? ~~ expression)
+
+  def dictLiteral[ctx: P]: P[PythonLiteral[?]] =
+    P(LBRACE ~~ SPACES.? ~~ dictEntry.rep(sep = P(SPACES.? ~~ COMMA ~~ SPACES.?)) ~~ (SPACES.? ~~ COMMA).? ~~ SPACES.? ~~ RBRACE)
+      .map { entries =>
+        val entryList = entries.toList
+        PythonLiteral(
+          dictLiteralValue(entryList),
+          PYTHON_DICT(
+            commonExpressionType(entryList.map(_._1)),
+            commonExpressionType(entryList.map(_._2))
+          )
+        )
+      }
+
+  def setLiteral[ctx: P]: P[PythonLiteral[?]] =
+    P(LBRACE ~~ SPACES.? ~~ expressionList ~~ SPACES.? ~~ RBRACE)
+      .map { elements =>
+        val values = elements.toList
+        PythonLiteral(collectionLiteralValue("{", values, "}"), PYTHON_SET(commonExpressionType(values)))
+      }
+
+  private def expressionType(expr: PyExpression): Option[PythonType[?]] = expr match {
+    case literal: PythonLiteral[?] => Some(literal.literalType)
+    case target: PyTarget => target.typeHint
+    case _ => None
+  }
+
+  private def commonExpressionType(expressions: List[PyExpression]): PythonType[Any] = {
+    val expressionTypes = expressions.flatMap(expressionType)
+    expressionTypes.headOption
+      .filter(first => expressionTypes.size == expressions.size && expressionTypes.forall(_.typenameInCode == first.typenameInCode))
+      .getOrElse(PYTHON_ANY())
+      .asInstanceOf[PythonType[Any]]
+  }
 
   def decinteger[ctx: P]: P[PythonLiteral[BigInt]] = P((nonzero_digit ~~ (P("_").? ~~ digit).rep | P("0").rep(1, sep = P("_").?)).!).map(PYTHON_INTEGER().createLiteralUnsafe)
 
@@ -304,14 +378,22 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   // 10. Type Literals
   // ==========================================
 
+  def collection_type[ctx: P]: P[PythonType[?]] = {
+    P("list" ~~ LSQB ~~ SPACES.? ~~ expression_type ~~ SPACES.? ~~ RSQB).map(PYTHON_LIST(_))
+      | P("array" ~~ LSQB ~~ SPACES.? ~~ expression_type ~~ SPACES.? ~~ RSQB).map(PYTHON_ARRAY(_))
+      | P("set" ~~ LSQB ~~ SPACES.? ~~ expression_type ~~ SPACES.? ~~ RSQB).map(PYTHON_SET(_))
+      | P("dict" ~~ LSQB ~~ SPACES.? ~~ expression_type ~~ SPACES.? ~~ COMMA ~~ SPACES.? ~~ expression_type ~~ SPACES.? ~~ RSQB).map { case (keyType, valueType) => PYTHON_DICT(keyType, valueType) }
+  }
+
   def atomic_type[ctx: P]: P[PythonType[?]] = {
-    P("bool").!.map(_ => PYTHON_BOOL())
+    P(collection_type
+      | P("bool").!.map(_ => PYTHON_BOOL())
       | P("Any").!.map(_ => PYTHON_ANY())
       // | P("function").!.map(_ => PYTHON_FUNCTION)
       | P("str").!.map(_ => PYTHON_STRING())
       | P("int").!.map(_ => PYTHON_INTEGER())
       | P("float").!.map(_ => PYTHON_FLOAT())
-      | NAME.map(str => PYTHON_UNPARSABLE_TYPE(str))
+      | NAME.map(str => PYTHON_UNPARSABLE_TYPE(str)))
   }
 
   def expression_type[ctx: P]: P[PythonType[?]] = {
