@@ -104,6 +104,17 @@ class JavaParserTest extends FunSuite {
         |}
         |""".stripMargin
 
+    val parsed = JavaParser.parse(source)
+    assert(parsed.isRight, parsed.left.toOption.getOrElse(""))
+
+    val method = parsed.toOption.get.statements.collectFirst { case StatementWithLineNumber(c: JavaClassDef, _) => c }
+      .flatMap(_.body.statements.collectFirst { case m: JavaMethodDef => m }).get
+
+    assert(method.body.statements.exists(_.isInstanceOf[JavaForStatement]))
+    assert(method.body.statements.exists(_.isInstanceOf[JavaWhileStatement]))
+    assert(method.body.statements.exists(_.isInstanceOf[JavaTryStatement]))
+  }
+
   test("parses chained Java call, attribute, and subscript trailers") {
     val parsed = JavaParser.parse("factory().create(1).items[0];")
     assert(parsed.isRight, parsed.left.toOption.getOrElse(""))
