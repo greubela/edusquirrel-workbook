@@ -136,6 +136,7 @@ class BlockMorph() extends SyntaxElementMorph:
   var category: String = js.native
   var comment: CommentMorph | Null = js.native
   def setSpec(spec: String): Unit = js.native
+  def fixBlockColor(nearestBlock: BlockMorph | Null = js.native, isForced: Boolean = js.native): Unit = js.native
   def abstractBlockSpec(): String = js.native
   def parts(): js.Array[Morph] = js.native
   def scriptTarget(noError: Boolean = js.native): js.Any = js.native
