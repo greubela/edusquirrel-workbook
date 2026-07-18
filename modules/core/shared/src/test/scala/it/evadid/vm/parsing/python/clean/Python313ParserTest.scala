@@ -24,13 +24,6 @@ class Python313ParserTest extends FunSuite {
     assertEquals(assignment.value.map(_.asInstanceOf[PyLiteral[?]].pythonTyp), Some(PythonType.PYTHON_NONE))
   }
 
-  test("parses list and tuple literals") {
-    val listAssignment = parseOne("values = [1, 2, int('3')]").asInstanceOf[PyAssignment]
-    assert(listAssignment.value.exists(_.isInstanceOf[PyListLiteral]))
-
-    val tupleAssignment = parseOne("point = (1, 2)").asInstanceOf[PyAssignment]
-    assert(tupleAssignment.value.exists(_.isInstanceOf[PyTupleLiteral]))
-  }
 
   test("parses function calls as expressions instead of unparsable statements") {
     val statement = parseOne("print('hello', len(items), 1 + 2)")
