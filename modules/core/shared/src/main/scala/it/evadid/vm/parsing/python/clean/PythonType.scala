@@ -46,6 +46,30 @@ object PythonType {
 
   sealed class PYTHON_NONE extends PythonTypeImpl[Option[Unit]]("None", Serializer.noneParser(), Serializer.noneParser())
 
+  sealed class PYTHON_LIST[Element](val elementType: PythonType[Element]) extends PythonTypeImpl[List[Element]](
+    s"list[${elementType.typeStringInPython}]",
+    PythonCollectionSerializers.collectionSerializer(elementType.serializerPythonValue, "[", "]"),
+    PythonCollectionSerializers.collectionSerializer(elementType.serializerScalaValue, "List(", ")")
+  )
+
+  sealed class PYTHON_ARRAY[Element](val elementType: PythonType[Element]) extends PythonTypeImpl[List[Element]](
+    s"array[${elementType.typeStringInPython}]",
+    PythonCollectionSerializers.collectionSerializer(elementType.serializerPythonValue, "[", "]"),
+    PythonCollectionSerializers.collectionSerializer(elementType.serializerScalaValue, "List(", ")")
+  )
+
+  sealed class PYTHON_SET[Element](val elementType: PythonType[Element]) extends PythonTypeImpl[Set[Element]](
+    s"set[${elementType.typeStringInPython}]",
+    PythonCollectionSerializers.setSerializer(elementType.serializerPythonValue),
+    PythonCollectionSerializers.setSerializer(elementType.serializerScalaValue)
+  )
+
+  sealed class PYTHON_DICT[Key, Value](val keyType: PythonType[Key], val valueType: PythonType[Value]) extends PythonTypeImpl[Map[Key, Value]](
+    s"dict[${keyType.typeStringInPython}, ${valueType.typeStringInPython}]",
+    PythonCollectionSerializers.dictSerializer(keyType.serializerPythonValue, valueType.serializerPythonValue),
+    PythonCollectionSerializers.dictSerializer(keyType.serializerScalaValue, valueType.serializerScalaValue)
+  )
+
   case class PYTHON_UNION_TYPE[ScalaTypeA, ScalaTypeB](a: PythonType[ScalaTypeA], b: PythonType[ScalaTypeB]) extends PythonType[Either[ScalaTypeA, ScalaTypeB]] {
 
     override def typeStringInPython: String = a.typeStringInPython + "|" + b.typeStringInPython

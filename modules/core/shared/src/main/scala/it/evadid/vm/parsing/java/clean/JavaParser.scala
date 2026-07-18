@@ -170,9 +170,31 @@ object JavaParser extends GenericAstScanner[JavaAST] {
   // 8. ATOMAR SEQUENCES
   // ==========================================
 
-  def primary[$: P]: P[JavaExpression] = P(newExpression | functionCall | literal | parenthesized | target)
+  def primary[$: P]: P[JavaExpression] = P(atom ~ trailer.rep).map { case (base, trailers) =>
+    trailers.foldLeft(base) { case (receiver, applyTrailer) => applyTrailer(receiver) }
+  }
+
+  def atom[$: P]: P[JavaExpression] = P(newExpression | literal | parenthesized | targetAtom)
 
   def parenthesized[$: P]: P[JavaExpression] = P(LPAR ~ ws ~ expression ~ ws ~ RPAR)
+
+  private def trailer[$: P]: P[JavaExpression => JavaExpression] = P(attributeTrailer | callTrailer | subscriptTrailer)
+
+  private def attributeTrailer[$: P]: P[JavaExpression => JavaExpression] =
+    P(ws ~ DOT ~ ws ~ NAME).map(name => receiver => JavaAttributeAccess(receiver, name))
+
+  private def callTrailer[$: P]: P[JavaExpression => JavaExpression] =
+    P(ws ~ LPAR ~ ws ~ arguments.? ~ ws ~ RPAR).map { args => receiver =>
+      receiver match {
+        case target: JavaTarget => JavaFunctionCall(target, args.getOrElse(Seq.empty))
+        case callee => JavaCallExpression(callee, args.getOrElse(Seq.empty))
+      }
+    }
+
+  private def subscriptTrailer[$: P]: P[JavaExpression => JavaExpression] =
+    P(ws ~ LSQB ~ ws ~ expression ~ ws ~ RSQB).map(index => receiver => JavaSubscript(receiver, Seq(index)))
+
+  private def targetAtom[$: P]: P[JavaTarget] = NAME.map(JavaTarget(_))
 
   def functionCall[$: P]: P[JavaExpression] = P(target ~ ws ~ LPAR ~ ws ~ arguments.? ~ ws ~ RPAR).map {
     case (func, args) => JavaFunctionCall(func, args.getOrElse(Seq.empty))
@@ -202,7 +224,16 @@ object JavaParser extends GenericAstScanner[JavaAST] {
   // 10. Type Literals
   // ==========================================
 
-  def javaType[$: P]: P[JavaType[?]] = P(
+  def javaType[$: P]: P[JavaType[?]] = P(parameterizedOrBaseType ~ (ws ~ "[".! ~ ws ~ "]").rep).map { case (base, arraySuffixes: Seq[String]) =>
+    arraySuffixes.foldLeft(base) { case (elementType, _) => JAVA_ARRAY(elementType.asInstanceOf[JavaType[Any]]) }
+  }
+
+  private def parameterizedOrBaseType[$: P]: P[JavaType[?]] = P(listType | baseJavaType)
+
+  private def listType[$: P]: P[JavaType[?]] =
+    P(("List" | "java.util.List") ~ ws ~ LESS ~ ws ~ javaType ~ ws ~ GREATER).map(elementType => JAVA_LIST(elementType.asInstanceOf[JavaType[Any]]))
+
+  private def baseJavaType[$: P]: P[JavaType[?]] = P(
     keyword("boolean").map(_ => JAVA_BOOL()) |
       keyword("byte").map(_ => JAVA_INTEGER()) |
       keyword("short").map(_ => JAVA_INTEGER()) |
@@ -210,6 +241,7 @@ object JavaParser extends GenericAstScanner[JavaAST] {
       keyword("long").map(_ => JAVA_INTEGER()) |
       keyword("float").map(_ => JAVA_FLOAT()) |
       keyword("double").map(_ => JAVA_FLOAT()) |
+      keyword("String").map(_ => JAVA_STRING()) |
       keyword("void").map(_ => JAVA_UNPARSABLE_TYPE("void")) |
       qualifiedName.map(JAVA_UNPARSABLE_TYPE(_))
   )

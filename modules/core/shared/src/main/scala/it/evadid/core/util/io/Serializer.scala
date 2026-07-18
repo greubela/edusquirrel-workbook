@@ -66,13 +66,18 @@ object Serializer {
 
   def stringLiteralIO(parseEverything: Boolean = false): Serializer[String] = new Serializer[String] {
     override def serialize(obj: String): String = {
-      if (obj.startsWith("\"\"\"") && obj.endsWith("\"\"\"") && obj.length >= 6) obj.substring(3, obj.length - 6)
-      else if (obj.startsWith("\"") && obj.endsWith("\"")) obj.substring(1, obj.length - 2)
+      if ((obj.startsWith("\"") && obj.endsWith("\"")) || (obj.startsWith("'") && obj.endsWith("'"))) obj
       else if (parseEverything) obj
-      else ???
+      else s"\"${obj}\""
     }
 
-    override def deserialize(serialized: String): String = s"\"${serialized}\""
+    override def deserialize(serialized: String): String = {
+      val trimmed = serialized.trim
+      if (trimmed.startsWith("\"\"\"") && trimmed.endsWith("\"\"\"") && trimmed.length >= 6) trimmed.substring(3, trimmed.length - 3)
+      else if (((trimmed.startsWith("\"") && trimmed.endsWith("\"")) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) && trimmed.length >= 2) trimmed.substring(1, trimmed.length - 1)
+      else if (parseEverything) trimmed
+      else ???
+    }
   }
 
   val stringIO: Serializer[String] = new Serializer[String] {
