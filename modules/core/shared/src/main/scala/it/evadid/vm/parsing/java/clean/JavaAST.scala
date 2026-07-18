@@ -6,16 +6,25 @@ sealed trait JavaAST extends GenericAST
 
 object JavaAST {
 
-  case class JavaProgram(statements: Seq[StatementWithLineNumber]) extends JavaAST
-  case class StatementWithLineNumber(statement: JavaStatement, lineNumber: Int) extends JavaAST
-  case class JavaExecutionBlock(statements: Seq[JavaStatement]) extends JavaAST
+  case class JavaProgram(statements: Seq[StatementWithLineNumber]) extends JavaAST {
+    override def getChildren(): Seq[GenericAST] = statements
+  }
+
+  case class StatementWithLineNumber(statement: JavaStatement, lineNumber: Int) extends JavaAST{
+    override def getChildren(): Seq[GenericAST] = List(statement)
+  }
+  case class JavaExecutionBlock(statements: Seq[JavaStatement]) extends JavaAST{
+    override def getChildren(): Seq[GenericAST] = statements
+  }
 
   sealed trait JavaStatement extends JavaAST
   case class JavaUnparsableStatement(source: String) extends JavaStatement
   case object JavaEmptyStatement extends JavaStatement
   case class JavaImportStatement(name: String, isStatic: Boolean, importAll: Boolean) extends JavaStatement
   case class JavaPackageStatement(name: String) extends JavaStatement
-  case class JavaReturnStatement(expression: Option[JavaExpression]) extends JavaStatement
+  case class JavaReturnStatement(expression: Option[JavaExpression]) extends JavaStatement{
+    override def getChildren(): Seq[GenericAST] = expression.toList
+  }
   case class JavaThrowStatement(expression: JavaExpression) extends JavaStatement
   case object JavaBreakStatement extends JavaStatement
   case object JavaContinueStatement extends JavaStatement
