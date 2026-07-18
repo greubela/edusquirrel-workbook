@@ -228,6 +228,18 @@ object CodeLexer {
 
   def SPACES[ctx: P]: P[Unit] = P((WS | COMMENT).rep)
 
+  // ==========================================
+  // 6. String Literals
+  // ==========================================
+
+  def STRING[ctx: P]: P[String] = P(tripleQuotedString | quotedString).!
+
+  private def tripleQuotedString[ctx: P]: P[Unit] =
+    P("\"\"\"" ~ (!"\"\"\"" ~ AnyChar).rep ~ "\"\"\"".?) | P("'''" ~ (!"'''" ~ AnyChar).rep ~ "'''".?)
+
+  private def quotedString[ctx: P]: P[Unit] =
+    P(("\"" ~ (("\\" ~ AnyChar) | (!"\"" ~ AnyChar)).rep ~ "\"".?) | ("'" ~ (("\\" ~ AnyChar) | (!"'" ~ AnyChar)).rep ~ "'".?))
+
 
 
   // ==========================================

@@ -44,7 +44,10 @@ object LiteralParser {
     .map(str => enrichLiteral(str, PythonType.PYTHON_BOOL, Serializer.pythonBooleanIO))
 
 
-  def literal[ctx: P]: P[PyLiteral[?]] =   NUMBER | TRUE | FALSE
+  def literal[ctx: P]: P[PyLiteral[?]] =   NUMBER | TRUE | FALSE | STRING_LITERAL
+
+  def STRING_LITERAL[ctx: P]: P[PyLiteral[String]] = P(STRING).!
+    .map(str => enrichLiteral(str, PythonType.PYTHON_STRING, Serializer.stringIO))
 
 
 }
