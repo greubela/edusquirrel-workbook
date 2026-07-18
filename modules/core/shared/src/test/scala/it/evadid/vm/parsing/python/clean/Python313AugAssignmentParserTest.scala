@@ -29,4 +29,13 @@ class Python313AugAssignmentParserTest extends FunSuite {
     assertEquals(assignment.augOperator, "//=")
     assertEquals(assignment.expression.asInstanceOf[PythonLiteral[?]].literalValue, "2")
   }
+
+  test("parses a function with a nested expr as parameter") {
+    val funccall = parseOne("func(int(3)+3)").asInstanceOf[PyFunctionCall]
+
+    assertEquals(funccall.target.name, "func")
+    assertEquals(funccall.target.locationString, List(""))
+    assertEquals(funccall.parameterValues.size, 2)
+  }
+
 }

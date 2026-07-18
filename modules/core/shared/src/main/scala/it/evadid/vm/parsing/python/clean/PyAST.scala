@@ -227,7 +227,7 @@ object PyAST {
         |
         |turtle.forward(100   + 50 )
         |turtle.left(120)
-        |turtle.forward(x - int(y))
+        |turtle.forward(x - int(y) )
         |turtle.right(50)
         |
         |""".stripMargin
@@ -235,7 +235,8 @@ object PyAST {
 
     val example2: String =
       """
-        |100 + 20
+        |turtle.forward( int(y) + 1 )
+        |func( int (2) )
         |
         |""".stripMargin
 
