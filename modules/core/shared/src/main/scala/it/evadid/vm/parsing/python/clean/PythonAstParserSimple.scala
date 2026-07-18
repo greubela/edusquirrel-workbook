@@ -194,59 +194,57 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   // 8. INDIVIDUAL EXPRESSIONS
   // ==========================================
 
-  def disjunction[ctx: P]: P[PyExpression] = conjunction |
-    P(conjunction ~ SPACES ~ OR ~ SPACES ~ disjunction).map { case (left: PyExpression, right: PyExpression) => PyOperationBinary(left, "or", right) }
+  private def binaryLeft[ctx: P](next: => P[PyExpression], op: => P[String]): P[PyExpression] =
+    P(next ~ (SPACES.? ~ op ~ SPACES.? ~ next).rep).map { case (first, rest) =>
+      rest.foldLeft(first) { case (left, (operator, right)) => PyOperationBinary(left, operator, right) }
+    }
 
-  def conjunction[ctx: P]: P[PyExpression] = inversion |
-    P(inversion ~ SPACES ~ AND ~ SPACES ~ conjunction).map { case (left: PyExpression, right: PyExpression) => PyOperationBinary(left, "and", right) }
+  def disjunction[ctx: P]: P[PyExpression] = binaryLeft(conjunction, OR.!)
+
+  def conjunction[ctx: P]: P[PyExpression] = binaryLeft(inversion, AND.!)
 
   def inversion[ctx: P]: P[PyExpression] = comparison |
     P(NOT ~ SPACES.? ~ inversion).map(PyOperationUnary("not", _))
 
-  def comparison[ctx: P]: P[PyExpression] = bitwise_or |
-    P(bitwise_or ~ SPACES.? ~ COMPAREOP ~ SPACES.? ~ comparison).map { case (left: PyExpression, operator: String, right: PyExpression) => PyOperationBinary(left, operator, right) }
+  def comparison[ctx: P]: P[PyExpression] = binaryLeft(bitwise_or, COMPAREOP)
 
-  def bitwise_or[ctx: P]: P[PyExpression] = bitwise_xor |
-    P(bitwise_xor ~ SPACES.? ~ VBAR ~ SPACES.? ~ bitwise_or).map { case (left: PyExpression, right: PyExpression) => PyOperationBinary(left, "|", right) }
+  def bitwise_or[ctx: P]: P[PyExpression] = binaryLeft(bitwise_xor, VBAR.!)
 
-  def bitwise_xor[ctx: P]: P[PyExpression] = bitwise_and |
-    P(bitwise_and ~ SPACES.? ~ CIRCUMFLEX ~ SPACES.? ~ bitwise_xor).map { case (left: PyExpression, right: PyExpression) => PyOperationBinary(left, "^", right) }
+  def bitwise_xor[ctx: P]: P[PyExpression] = binaryLeft(bitwise_and, CIRCUMFLEX.!)
 
-  def bitwise_and[ctx: P]: P[PyExpression] = shift_expr |
-    P(shift_expr ~ SPACES.? ~ AMPER ~ SPACES.? ~ bitwise_and).map { case (left: PyExpression, right: PyExpression) => PyOperationBinary(left, "&", right) }
+  def bitwise_and[ctx: P]: P[PyExpression] = binaryLeft(shift_expr, AMPER.!)
 
-  def shift_expr[ctx: P]: P[PyExpression] = sum |
-    P(sum ~ SPACES.? ~ SHIFTOP ~ SPACES.? ~ shift_expr).map(PyOperationBinary(_, _, _))
+  def shift_expr[ctx: P]: P[PyExpression] = binaryLeft(sum, SHIFTOP)
 
-  def sum[ctx: P]: P[PyExpression] = term
-    | P(term ~ SPACES.? ~ PLUS ~ SPACES.? ~ sum).map(PyOperationBinary(_, "+", _))
-    | P(term ~ SPACES.? ~ MINUS ~ SPACES.? ~ sum).map(PyOperationBinary(_, "-", _))
+  def sum[ctx: P]: P[PyExpression] = binaryLeft(term, PLUS.! | MINUS.!)
 
-  def term[ctx: P]: P[PyExpression] = factor |
-    P(factor ~ SPACES.? ~ MULTLIKEOP ~ SPACES.? ~ term).map(PyOperationBinary(_, _, _))
+  def term[ctx: P]: P[PyExpression] = binaryLeft(factor, MULTLIKEOP)
 
-  def factor[ctx: P]: P[PyExpression] = power |
-    P(UNARYPREFIX ~ SPACES.? ~ factor).map(PyOperationUnary(_, _))
+  def factor[ctx: P]: P[PyExpression] =
+    P(UNARYPREFIX ~ SPACES.? ~ factor).map(PyOperationUnary(_, _)) | power
 
-  def power[ctx: P]: P[PyExpression] = primary |
-    P(primary ~ SPACES.? ~ DOUBLESTAR ~ SPACES ~ factor).map(PyOperationBinary(_, "**", _))
+  def power[ctx: P]: P[PyExpression] =
+    P(primary ~ (SPACES.? ~ DOUBLESTAR.! ~ SPACES.? ~ factor).?).map {
+      case (base, Some((operator, exponent))) => PyOperationBinary(base, operator, exponent)
+      case (base, None) => base
+    }
 
   def parenthesizedExpression[ctx: P]: P[PyExpression] =
     P(LPAR ~~ SPACES.? ~~ expression ~~ SPACES.? ~~ RPAR)
 
-  /* def listLiteral[ctx: P]: P[PyListLiteral] =
-     P(LSQB ~~ SPACES.? ~~ expressionList.? ~~ SPACES.? ~~ RSQB)
-       .map(elements => PyListLiteral(elements.getOrElse(List()).toList))
+  def listLiteral[ctx: P]: P[PyListLiteral] =
+    P(LSQB ~~ SPACES.? ~~ expressionList.? ~~ SPACES.? ~~ RSQB)
+      .map(elements => PyListLiteral(elements.getOrElse(List()).toList))
 
-   def tupleLiteral[ctx: P]: P[PyTupleLiteral] =
-     P(LPAR ~~ SPACES.? ~~ expression ~~ SPACES.? ~~ COMMA ~~ SPACES.? ~~ expressionList.? ~~ SPACES.? ~~ RPAR)
-       .map { case (head, tail) => PyTupleLiteral((head +: tail.getOrElse(List())).toList) }*/
+  def tupleLiteral[ctx: P]: P[PyTupleLiteral] =
+    P(LPAR ~~ SPACES.? ~~ expression ~~ SPACES.? ~~ COMMA ~~ SPACES.? ~~ expressionList.? ~~ SPACES.? ~~ RPAR)
+      .map { case (head, tail) => PyTupleLiteral((head +: tail.getOrElse(List())).toList) }
 
   // ==========================================
   // 8. ATOMAR SEQUENCES
   // ==========================================
 
-  def primary[ctx: P]: P[PyExpression] = P(parenthesizedExpression | target() | literal) // | listLiteral | tupleLiteral)
+  def primary[ctx: P]: P[PyExpression] = P(listLiteral | tupleLiteral | parenthesizedExpression | target() | literal)
 
   def target[ctx: P](knownContext: List[String] = List()): P[PyTarget] = {
     identifierWithTypeHint

@@ -155,7 +155,7 @@ object PyAST {
   case class PyTarget(identifier: String, locationString: List[String] = List(), sliceExpr: Option[PyExpression] = None, typeHint: Option[PythonType[?]] = None) extends PyAtomar with NamedElement {
     override def getChildren(): Seq[GenericAST] = sliceExpr.toList
 
-    override def name: String = locationString.mkString("", ".", ".") + identifier // without slice for now
+    override def name: String = (locationString :+ identifier).mkString(".") // without slice for now
   }
 
 
@@ -172,15 +172,13 @@ object PyAST {
     override def literalType: PythonType[T] = pythonTyp
   }*/
 
-  /*
-  Todo: Adjust to PyLiteral
   case class PyListLiteral(elements: List[PyExpression]) extends PyAtomar {
     override def getChildren(): Seq[GenericAST] = elements
   }
 
   case class PyTupleLiteral(elements: List[PyExpression]) extends PyAtomar {
     override def getChildren(): Seq[GenericAST] = elements
-  }*/
+  }
 
   def main(args: Array[String]): Unit = {
     println("hai!")

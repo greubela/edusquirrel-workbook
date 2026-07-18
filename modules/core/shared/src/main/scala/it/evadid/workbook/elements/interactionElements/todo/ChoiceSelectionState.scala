@@ -1,7 +1,6 @@
-package it.evadid.workbook.elements.interactionElements.todo
+package it.evadid.workbook.elements.interactionElements.basic
 
 
-/*
 import it.evadid.core.util.io.Serializer
 import upickle.default.{ReadWriter, macroRW}
 
@@ -30,4 +29,3 @@ object ChoiceSelectionState {
   private given ReadWriter[ChoiceSelectionState] = macroRW
   val serializer: Serializer[ChoiceSelectionState] = Serializer.fromUpickleJson(summon[ReadWriter[ChoiceSelectionState]])
 }
-*/
