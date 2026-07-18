@@ -107,9 +107,10 @@ object PyAST {
 
   sealed trait PyAssignment extends PyStatement {
     def target: PyTarget
+    def value: Option[PyExpression] = None
   }
 
-  case class PySimpleAssignment(target: PyTarget, value: Option[PyExpression]) extends PyAssignment {
+  case class PySimpleAssignment(target: PyTarget, override val value: Option[PyExpression]) extends PyAssignment {
     override def getChildren(): Seq[GenericAST] = value.toList ++ List(target)
   }
 
@@ -155,7 +156,7 @@ object PyAST {
   case class PyTarget(identifier: String, locationString: List[String] = List(), sliceExpr: Option[PyExpression] = None, typeHint: Option[PythonType[?]] = None) extends PyAtomar with NamedElement {
     override def getChildren(): Seq[GenericAST] = sliceExpr.toList
 
-    override def name: String = (locationString :+ identifier).mkString(".") // without slice for now
+    override def name: String = locationString.mkString("", ".", ".") + identifier // without slice for now
   }
 
 
@@ -172,6 +173,7 @@ object PyAST {
     override def literalType: PythonType[T] = pythonTyp
   }*/
 
+  // Todo: Adjust to PyLiteral
   case class PyListLiteral(elements: List[PyExpression]) extends PyAtomar {
     override def getChildren(): Seq[GenericAST] = elements
   }
@@ -182,7 +184,7 @@ object PyAST {
 
   def main(args: Array[String]): Unit = {
     println("hai!")
-    val exampleToScan: String = {
+    val example1: String = {
       """
         |import turtle
         |import turtle2
@@ -223,7 +225,7 @@ object PyAST {
         |int("4")
         |
         |
-        |turtle.forward(100+50)
+        |turtle.forward(100   + 50 )
         |turtle.left(120)
         |turtle.forward(x - int(y))
         |turtle.right(50)
@@ -233,12 +235,7 @@ object PyAST {
 
     val example2: String =
       """
-        |
-        |d = 3
-        |
-        |my.func (  hai  , x := 3)
-        |
-        |x+=2
+        |100 + 20
         |
         |""".stripMargin
 
