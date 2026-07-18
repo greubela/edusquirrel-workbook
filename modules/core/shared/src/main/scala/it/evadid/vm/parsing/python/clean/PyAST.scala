@@ -67,6 +67,8 @@ object PyAST {
 
   sealed trait PyExpression extends PyStatement
 
+  case class NamedExpression(name: String, expression: PyExpression) extends PyExpression
+
   case class PyTypeDefExpression() extends PyExpression
 
   case class PyAssignment(target: PyTarget, value: Option[PyExpression]) extends PyStatement
@@ -77,6 +79,8 @@ object PyAST {
 
 
   // Defs
+
+  case class PyFunctionCall(name: PyTarget, parameterValues: List[PyExpression]) extends PyExpression
 
   case class PyFunctionDef(name: String, parameters: List[PyAssignment], block: PyExecutionBlock, isAsync: Boolean) extends PyStatement
 
@@ -122,6 +126,17 @@ object PyAST {
         |x = 50
         |y: str = "30"
         |x: int = 20
+        |
+        |(abc: int) = 3
+        |
+        |a.func(b)
+        |
+        |func(hai)
+        |
+        |str(3)
+        |int("4")
+        |
+        |
         |turtle.forward(100+50)
         |turtle.left(120)
         |turtle.forward(x - int(y))
@@ -130,7 +145,18 @@ object PyAST {
         |""".stripMargin
     }
 
-    val res =  Python313Parser.parse(exampleToScan)
+    val example2: String =
+      """
+        |
+        |d = 3
+        |
+        |func (hai)
+        |
+        |x = 2
+        |
+        |""".stripMargin
+
+    val res =  Python313Parser.parse(example2)
 
     println(res)
 

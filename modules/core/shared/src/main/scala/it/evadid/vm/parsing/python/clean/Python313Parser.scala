@@ -42,7 +42,7 @@ object Python313Parser {
   def emptyLine[ctx: P]: P[PyStatement] = P(SPACES.? ~~ NEWLINE).map(_ => PyEmptyStatement)
 
   def indentedStatement[ctx: P](innerState: IndentState): P[Seq[PyStatement]] = {
-    P(checkIndent(innerState).! ~~ statement(innerState) ~~ SPACES.? ~~ NEWLINE.?).map { case (indent: String, stmt: Seq[PyStatement]) => stmt }
+    P(checkIndent(innerState).! ~~ statement(innerState) ~~ SPACES.? ~~ NEWLINE).map { case (indent: String, stmt: Seq[PyStatement]) => stmt }
       | P(checkIndent(innerState).! ~~ PASS ~~ SPACES.? ~~ NEWLINE).map(_ => List())
       | emptyLine.map(Seq(_))
   }

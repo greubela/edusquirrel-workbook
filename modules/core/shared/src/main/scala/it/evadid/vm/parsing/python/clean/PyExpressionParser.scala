@@ -6,6 +6,7 @@ import it.evadid.vm.parsing.generic.LiteralParser.literal
 import it.evadid.vm.parsing.python.clean.PyAST.*
 import it.evadid.vm.parsing.python.clean.Python313Parser.*
 import fastparse.NoWhitespace._
+
 object PyExpressionParser {
 
 
@@ -30,7 +31,10 @@ object PyExpressionParser {
     else PyOperationBinary(first, operator, binaryFromList(operator, other.head, other.tail))
   }
 
-  def expression[ctx: P]: P[PyExpression] = disjunction
+  def named_expression[ctx: P]: P[PyExpression] = P(target() ~~ SPACES.? ~~ COLONEQUAL ~~ SPACES.? ~~ expression)
+    .map { case (name: PyTarget, expr: PyExpression) => NamedExpression(name.name, expr) }
+
+  def expression[ctx: P]: P[PyExpression] = function_call | named_expression | disjunction
 
   def disjunction[ctx: P]: P[PyExpression] = conjunction |
     P(conjunction ~ SPACES ~ OR ~ SPACES ~ disjunction).map { case (left: PyExpression, right: PyExpression) => PyOperationBinary(left, "or", right) }
@@ -69,9 +73,12 @@ object PyExpressionParser {
   def power[ctx: P]: P[PyExpression] = primary |
     P(primary ~ SPACES.? ~ DOUBLESTAR ~ SPACES ~ factor).map(PyOperationBinary(_, "**", _))
 
-  def primary[ctx: P]: P[PyAtomar] = P(target(List()) | literal)
+  def primary[ctx: P]: P[PyAtomar] = P(target() | literal)
 
+  def arguments[ctx: P]: P[Seq[PyExpression]] = P(expression.rep(sep = P(SPACES.? ~ COMMA ~ SPACES.?)))
 
+  def function_call[ctx: P]: P[PyExpression] = P(target() ~~ SPACES.? ~~ LPAR ~~/ SPACES.? ~~ arguments.? ~~ SPACES.? ~~ RPAR)
+    .map { case (func: PyTarget, args: Option[Seq[PyExpression]]) => PyFunctionCall(func, args.getOrElse(List()).toList) }
 
 }
 
