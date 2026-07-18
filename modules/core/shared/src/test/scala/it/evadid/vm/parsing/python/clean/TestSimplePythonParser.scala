@@ -3,7 +3,7 @@ package it.evadid.vm.parsing.python.clean
 import it.evadid.vm.parsing.python.clean.PyAST.*
 import munit.FunSuite
 
-class Python313AugAssignmentParserTest extends FunSuite {
+class TestSimplePythonParser extends FunSuite {
 
   private def parseOne(code: String): PyStatement = {
     val parsed = PythonAstParserSimple.parse(code)
