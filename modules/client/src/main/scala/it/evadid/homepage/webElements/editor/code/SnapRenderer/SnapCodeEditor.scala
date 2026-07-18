@@ -57,25 +57,19 @@ object SnapCodeEditor {
   private val CanvasWidth = 900
   private val CanvasHeight = 520
   private val Padding = 24.0
-  private val BlockHeight = 32.0
   private val BlockGap = 8.0
   private val Indent = 28.0
-  private val CornerRadius = 8.0
-  private val Font = "14px sans-serif"
-  private val MonospaceFont = "13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
   private val DisplayConfig = CodeRepresentationConfig(Python, English, skipUnparsable = false)
 
   private object Colors {
     val Workspace = "#f6f8fa"
-    val Block = "#4f67c9"
-    val Hat = "#2da44e"
-    val Reporter = "#d29922"
-    val Text = "#ffffff"
-    val Shadow = "rgba(27,31,36,0.18)"
     val Empty = "#8c959f"
   }
 
-  private final case class RenderLine(label: String, depth: Int, color: String, isReporter: Boolean = false)
+  private enum BlockShape:
+    case Hat, Command, Reporter
+
+  private final case class RenderLine(label: String, depth: Int, shape: BlockShape)
 
   private final class MountedProgramBlockRenderer(host: dom.HTMLElement, canvas: dom.HTMLCanvasElement, program: Var[BeProgram]) {
     private val context = canvas.getContext("2d").asInstanceOf[CanvasRenderingContext2D]
@@ -132,40 +126,43 @@ object SnapCodeEditor {
 
       val lines = expressionToLines(value.fullProgram, 0)
       if (lines.isEmpty) drawEmptyProgram()
-      else lines.zipWithIndex.foreach { case (line, index) => drawLine(line, Padding + index * (BlockHeight + BlockGap)) }
+      else {
+        var y = Padding
+        lines.foreach { line =>
+          y += drawSnapBlock(line, y) + BlockGap
+        }
+      }
     }
 
     private def drawEmptyProgram(): Unit = {
-      context.font = Font
+      context.font = "14px sans-serif"
       context.fillStyle = Colors.Empty
       context.fillText("No blocks yet", Padding, Padding + 20)
     }
 
-    private def drawLine(line: RenderLine, y: Double): Unit = {
+    /** Ask Snap! to lay out and rasterize the actual Morph. Scala.js only owns
+      * the destination canvas, positioning and redraw lifecycle.
+      */
+    private def drawSnapBlock(line: RenderLine, y: Double): Double = {
       val x = Padding + line.depth * Indent
-      context.font = if (line.isReporter) MonospaceFont else Font
-      val textWidth = context.measureText(line.label).width
-      val width = math.max(140.0, textWidth + 28.0)
-      drawRoundedRect(x + 2, y + 3, width, BlockHeight, CornerRadius, Colors.Shadow)
-      drawRoundedRect(x, y, width, BlockHeight, if (line.isReporter) 16.0 else CornerRadius, line.color)
-      context.fillStyle = Colors.Text
-      context.fillText(line.label, x + 14, y + 21)
-    }
-
-    private def drawRoundedRect(x: Double, y: Double, width: Double, height: Double, radius: Double, color: String): Unit = {
-      context.beginPath()
-      context.moveTo(x + radius, y)
-      context.lineTo(x + width - radius, y)
-      context.quadraticCurveTo(x + width, y, x + width, y + radius)
-      context.lineTo(x + width, y + height - radius)
-      context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height)
-      context.lineTo(x + radius, y + height)
-      context.quadraticCurveTo(x, y + height, x, y + height - radius)
-      context.lineTo(x, y + radius)
-      context.quadraticCurveTo(x, y, x + radius, y)
-      context.closePath()
-      context.fillStyle = color
-      context.fill()
+      val block: BlockMorph = line.shape match {
+        case BlockShape.Hat => new HatBlockMorph()
+        case BlockShape.Command => new CommandBlockMorph()
+        case BlockShape.Reporter => new ReporterBlockMorph(false)
+      }
+      block.category = line.shape match {
+        case BlockShape.Reporter => "operators"
+        case _ => "control"
+      }
+      // Percent signs have syntactic meaning in Snap block specs. Doubling
+      // preserves source-code percent signs as literal label text.
+      block.setSpec(line.label.replace("%", "%%"))
+      block.fixBlockColor(null, true)
+      block.fixLayout()
+      block.rerender()
+      val image = block.fullImage()
+      context.drawImage(image, x, y)
+      image.height.toDouble
     }
 
     private def normalizeCanvasStyle(): Unit = {
@@ -184,12 +181,13 @@ object SnapCodeEditor {
   }
 
   private def expressionToLines(expression: BeExpression, depth: Int): List[RenderLine] = expression match {
-    case BeStartProgram(Some(sequence)) => RenderLine("when program starts", depth, Colors.Hat) :: expressionToLines(sequence, depth + 1)
+    case BeStartProgram(Some(sequence)) => RenderLine("when program starts", depth, BlockShape.Hat) :: expressionToLines(sequence, depth + 1)
     case BeStartProgram(None) => Nil
     case BeSequence(body, _) => body.flatMap(expressionToLines(_, depth))
     case other =>
       val hasSideEffects = other.staticInformationExpression.hasSideEffects
-      val ownLine = RenderLine(singleLineLabel(other), depth, if (hasSideEffects) Colors.Block else Colors.Reporter, !hasSideEffects)
+      val shape = if (hasSideEffects) BlockShape.Command else BlockShape.Reporter
+      val ownLine = RenderLine(singleLineLabel(other), depth, shape)
       val childLines = other.getChildren(withExtensions = false, it.evadid.vm.types.BeScope.GlobalScope()).collect {
         case it.evadid.vm.code.tree.BeExpressionReference(_, childExpression) => childExpression
       }.flatMap(expressionToLines(_, depth + 1))
