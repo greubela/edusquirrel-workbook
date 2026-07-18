@@ -4,6 +4,39 @@ import it.evadid.vm.parsing.java.clean.JavaAST.*
 import munit.FunSuite
 
 class JavaParserTest extends FunSuite {
+  test("Java AST nodes expose child nodes for traversal") {
+    val target = JavaTarget("values", sliceExpr = Some(JavaLiteral("0", JavaType.JAVA_INT)))
+    val assignment = JavaAssignment(
+      target,
+      JavaOperationBinary(JavaLiteral("1", JavaType.JAVA_INT), "+", JavaLiteral("2", JavaType.JAVA_INT))
+    )
+    assertEquals(assignment.getChildren(), Seq(target, assignment.value))
+
+    val method = JavaMethodDef(
+      name = "run",
+      modifiers = Seq("public"),
+      returnType = Some(JavaType.JAVA_VOID),
+      parameters = Seq(JavaVariableDeclaration("count", JavaType.JAVA_INT, None)),
+      body = JavaExecutionBlock(Seq(assignment))
+    )
+    assertEquals(method.getChildren(), method.parameters ++ Seq(method.body))
+
+    val tryStatement = JavaTryStatement(
+      body = JavaExecutionBlock(Seq(JavaFunctionCall(JavaTarget("risky"), Seq.empty))),
+      catches = Seq(
+        JavaCatchClause(
+          JavaVariableDeclaration("ex", JavaType.JAVA_CLASS("Exception"), None),
+          JavaExecutionBlock(Seq(JavaThrowStatement(JavaTarget("ex"))))
+        )
+      ),
+      finallyBlock = Some(JavaExecutionBlock(Seq(JavaFunctionCall(JavaTarget("cleanup"), Seq.empty))))
+    )
+    assertEquals(
+      tryStatement.getChildren(),
+      Seq(tryStatement.body) ++ tryStatement.catches ++ tryStatement.finallyBlock.toList
+    )
+  }
+
   test("parses Java programs into clean AST statements") {
     val source =
       """
