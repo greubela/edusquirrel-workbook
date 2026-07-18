@@ -1,11 +1,145 @@
 package it.evadid.vm.parsing.python.clean
 
-import upickle.default.{ReadWriter, macroRW}
+import it.evadid.core.util.io.Serializer
 
-sealed trait PyAST
+sealed trait PyAST {
+
+}
 
 object PyAST {
-  implicit val rw: ReadWriter[PyAST] = macroRW
+
+  case class IndentState(var currentLevel: Int = 0)
+
+  // ==========================================
+  // PROGRAM
+  // ==========================================
+  case class PyProgram(statements: Seq[StatementWithLineNumber]) extends PyAST
+
+  case class StatementWithLineNumber(statement: PyStatement, lineNumber: Int) extends PyAST
+
+  case class PyExecutionBlock(statements: Seq[PyStatement]) extends PyAST {
+    def withAdded(other: Seq[PyStatement]): PyExecutionBlock = PyExecutionBlock(statements ++ other)
+  }
+
+  // ==========================================
+  // STATEMENTS
+  // ==========================================
+  sealed trait PyStatement extends PyAST
+
+  case class PyUnparsableStatement(str: String) extends PyStatement
+
+  val passBlock: PyExecutionBlock = PyExecutionBlock(List())
+
+  case object PyPassStatement extends PyStatement
+
+  case object PyEmptyStatement extends PyStatement
+
+  case class PyImportStatement(moduleName: String) extends PyStatement
+
+  case class PyImportFromStatement(moduleName: String, imports: List[PyTarget], importAll: Boolean) extends PyStatement
+
+  case class PyRaiseStatement(raiseDirectly: Option[PyExpression], raiseFrom: Option[PyExpression]) extends PyStatement
+
+  case class PyReturnStatement(expr: Option[PyExpression]) extends PyStatement
+
+
+  // Basic Control Structures
+  case class PyIfStatement(condition: PyExpression, thenBlock: PyExecutionBlock, elseBlock: PyExecutionBlock) extends PyStatement
+
+  case class PyWhileStatement(condition: PyExpression, bodyBlock: PyExecutionBlock, elseBlock: Option[PyExecutionBlock]) extends PyStatement
+
+  case class PyForStatement(elementExpression: PyExpression, inExpression: PyExpression, bodyBlock: PyExecutionBlock, elseBlock: Option[PyExecutionBlock], isAsync: Boolean) extends PyStatement
+
+  // Exception Handling
+  case class PyTryStatement(body: PyExecutionBlock, exceptStatements: List[PyExceptClause], elseBlock: Option[PyExecutionBlock]) extends PyStatement
+
+  sealed trait PyExceptClause {
+    def body: PyExecutionBlock
+  }
+
+  case class PyExceptClauseBasic(expression: Option[PyExpression], name: Option[String], body: PyExecutionBlock) extends PyExceptClause
+
+  case class PyExceptClauseStar(expression: PyExpression, name: Option[String], body: PyExecutionBlock) extends PyExceptClause
+
+  case class PyExceptClauseFinally(body: PyExecutionBlock) extends PyExceptClause
+
+  // Expressions
+
+  sealed trait PyExpression extends PyStatement
+
+  case class PyTypeDefExpression() extends PyExpression
+
+  case class PyAssignment(target: PyTarget, value: Option[PyExpression]) extends PyStatement
+
+  case class PyAugAssignment(target: PyTarget, augOperator: String, expression: PyExpression) extends PyStatement
+
+  // Targets
+
+
+  // Defs
+
+  case class PyFunctionDef(name: String, parameters: List[PyAssignment], block: PyExecutionBlock, isAsync: Boolean) extends PyStatement
+
+  case class PyClassDef(name: String, parameters: List[PyAssignment], block: PyExecutionBlock, isAsync: Boolean) extends PyStatement
+
+
+  case class PyOperationBinary(left: PyExpression, op: String, right: PyExpression) extends PyExpression
+
+  case class PyOperationUnary(op: String, operand: PyExpression) extends PyExpression
+
+  // Atomar
+
+  sealed trait PyAtomar extends PyExpression
+
+  case class PyTarget(name: String, locationString: List[String] = List(), sliceExpr: Option[PyExpression] = None, typeHint: Option[PythonType] = None) extends PyAtomar
+
+  case class PyLiteral[T](literalAsString: String, pythonTyp: PythonType, scalaValue: T, serializer: Serializer[T]) extends PyAtomar
+
+  def main(args: Array[String]): Unit = {
+    println("hai!")
+    val exampleToScan: String = {
+      """
+        |import turtle
+        |import turtle2
+        |from aturtle3 import *
+        |from bturtle4 import turtle1
+        |from cturtle5 import turtle2, turtle3,t4,t5     , t7
+        |
+        |a1 = 1
+        |a2:int=1
+        |a3 :int=1
+        |a4: int=1
+        |a5 : int=1
+        |a6 : int =1
+        |a7 : int = 1
+        |x:int=1
+        |x[0] = 1
+        |x[0]
+        |a.x = 1
+        |a.x : int = 2
+        |a.x[3] = 3
+        |a.x[4]: int = 5
+        |x = 50
+        |y: str = "30"
+        |x: int = 20
+        |turtle.forward(100+50)
+        |turtle.left(120)
+        |turtle.forward(x - int(y))
+        |turtle.right(50)
+        |
+        |""".stripMargin
+    }
+
+    val res =  Python313Parser.parse(exampleToScan)
+
+    println(res)
+
+    println(res.right.get.statements.mkString("\n"))
+
+  }
+
+
+  /*
 
   // Core Program Structure
   case class Module(statements: Seq[PyAST]) extends PyAST
@@ -35,8 +169,7 @@ object PyAST {
   // Operators & Precedence Expressions Tree
   case class Name(id: String) extends PyAST
   case class Constant(value: String, kind: String) extends PyAST // kind: "int", "float", "str", "bool", "none"
-  case class BinOp(left: PyAST, op: String, right: PyAST) extends PyAST
-  case class UnaryOp(op: String, operand: PyAST) extends PyAST
+
   case class BoolOp(op: String, values: Seq[PyAST]) extends PyAST
   case class Compare(left: PyAST, ops: Seq[String], comparators: Seq[PyAST]) extends PyAST
   case class NamedExpr(target: PyAST, value: PyAST) extends PyAST
@@ -70,52 +203,6 @@ object PyAST {
   // Modules Handling
   case class Import(names: Seq[String]) extends PyAST
   case class ImportFrom(module: String, names: Seq[String]) extends PyAST
+ */
 
-  // Macro Engine Generation Schema mappings
-  implicit val modRW: ReadWriter[Module] = macroRW
-  implicit val funcRW: ReadWriter[FunctionDef] = macroRW
-  implicit val clsRW: ReadWriter[ClassDef] = macroRW
-  implicit val ifRW: ReadWriter[If] = macroRW
-  implicit val whileRW: ReadWriter[While] = macroRW
-  implicit val forRW: ReadWriter[For] = macroRW
-  implicit val withRW: ReadWriter[With] = macroRW
-  implicit val withItemRW: ReadWriter[WithItem] = macroRW
-  implicit val tryRW: ReadWriter[Try] = macroRW
-  implicit val handlerRW: ReadWriter[ExceptHandler] = macroRW
-  implicit val matchRW: ReadWriter[MatchStatement] = macroRW
-  implicit val caseRW: ReadWriter[MatchCase] = macroRW
-  implicit val pParamRW: ReadWriter[PyParam] = macroRW
-  implicit val aliasRW: ReadWriter[TypeAlias] = macroRW
-  implicit val assignRW: ReadWriter[Assign] = macroRW
-  implicit val nameRW: ReadWriter[Name] = macroRW
-  implicit val constRW: ReadWriter[Constant] = macroRW
-  implicit val binOpRW: ReadWriter[BinOp] = macroRW
-  implicit val unOpRW: ReadWriter[UnaryOp] = macroRW
-  implicit val boolOpRW: ReadWriter[BoolOp] = macroRW
-  implicit val compRW: ReadWriter[Compare] = macroRW
-  implicit val namedExprRW: ReadWriter[NamedExpr] = macroRW
-  implicit val callRW: ReadWriter[Call] = macroRW
-  implicit val kwArgRW: ReadWriter[KeywordArg] = macroRW
-  implicit val attrRW: ReadWriter[Attribute] = macroRW
-  implicit val subRW: ReadWriter[Subscript] = macroRW
-  implicit val sliceRW: ReadWriter[Slice] = macroRW
-  implicit val listRW: ReadWriter[PyList] = macroRW
-  implicit val tupleRW: ReadWriter[PyTuple] = macroRW
-  implicit val setRW: ReadWriter[PySet] = macroRW
-  implicit val dictRW: ReadWriter[PyDict] = macroRW
-  implicit val lCompRW: ReadWriter[ListComp] = macroRW
-  implicit val dCompRW: ReadWriter[DictComp] = macroRW
-  implicit val sCompRW: ReadWriter[SetComp] = macroRW
-  implicit val genExpRW: ReadWriter[GeneratorExp] = macroRW
-  implicit val compDefRW: ReadWriter[Comprehension] = macroRW
-  implicit val retRW: ReadWriter[Return] = macroRW
-  implicit val raiseRW: ReadWriter[Raise] = macroRW
-  implicit val delRW: ReadWriter[Delete] = macroRW
-  implicit val assertRW: ReadWriter[Assert] = macroRW
-  implicit val exprRW: ReadWriter[ExprStmt] = macroRW
-  implicit val passRW: ReadWriter[Pass] = macroRW
-  implicit val breakRW: ReadWriter[Break] = macroRW
-  implicit val contRW: ReadWriter[Continue] = macroRW
-  implicit val impRW: ReadWriter[Import] = macroRW
-  implicit val impFromRW: ReadWriter[ImportFrom] = macroRW
 }
