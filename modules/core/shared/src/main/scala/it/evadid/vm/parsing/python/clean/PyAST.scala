@@ -32,6 +32,10 @@ object PyAST {
 
   case object PyPassStatement extends PyStatement
 
+  case object PyBreakStatement extends PyStatement
+
+  case object PyContinueStatement extends PyStatement
+
   case object PyEmptyStatement extends PyStatement
 
   case class PyImportStatement(moduleName: String) extends PyStatement
@@ -98,6 +102,10 @@ object PyAST {
   case class PyTarget(name: String, locationString: List[String] = List(), sliceExpr: Option[PyExpression] = None, typeHint: Option[PythonType] = None) extends PyAtomar
 
   case class PyLiteral[T](literalAsString: String, pythonTyp: PythonType, scalaValue: T, serializer: Serializer[T]) extends PyAtomar
+
+  case class PyListLiteral(elements: List[PyExpression]) extends PyAtomar
+
+  case class PyTupleLiteral(elements: List[PyExpression]) extends PyAtomar
 
   def main(args: Array[String]): Unit = {
     println("hai!")

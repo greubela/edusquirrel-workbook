@@ -28,7 +28,7 @@ object Python313Parser {
   // ==========================================
 
   def parse(pythonCode: String): Either[String, PyProgram] = {
-    fastparse.parse(pythonCode.trim, c => py_program(using c)) match {
+    fastparse.parse(pythonCode.trim + "\n", c => py_program(using c)) match {
       case Parsed.Success(astModule, _) => Right(astModule)
       case f: Parsed.Failure => Left(s"Python Parsing Error: ${f.trace().longAggregateMsg}")
     }
@@ -74,6 +74,8 @@ object Python313Parser {
   def simple_stmt[ctx: P](state: IndentState): P[PyStatement] = P(
     import_stmt | assignment | emptyLine
       | P(PASS).map(_ => PyPassStatement)
+      | P(BREAK).map(_ => PyBreakStatement)
+      | P(CONTINUE).map(_ => PyContinueStatement)
       | P(RETURN ~ (expression).?).map { expr => PyReturnStatement(expr) }
       | P(RAISE ~ (expression).? ~ (FROM ~ expression).?).map { case (e, f) => PyRaiseStatement(e, f) }
       | expression

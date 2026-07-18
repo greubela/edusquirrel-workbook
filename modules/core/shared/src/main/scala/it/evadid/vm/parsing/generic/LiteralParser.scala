@@ -43,8 +43,10 @@ object LiteralParser {
   def TRUE[ctx: P]: P[PyLiteral[Boolean]] = P("True" ~~ !ID_CONTINUE).!
     .map(str => enrichLiteral(str, PythonType.PYTHON_BOOL, Serializer.pythonBooleanIO))
 
+  def NONE_LITERAL[ctx: P]: P[PyLiteral[Option[String]]] = P(NONE.!)
+    .map(str => enrichLiteral(str, PythonType.PYTHON_NONE, Serializer.stringOptionIO))
 
-  def literal[ctx: P]: P[PyLiteral[?]] =   NUMBER | TRUE | FALSE | STRING_LITERAL
+  def literal[ctx: P]: P[PyLiteral[?]] = NUMBER | TRUE | FALSE | NONE_LITERAL | STRING_LITERAL
 
   def STRING_LITERAL[ctx: P]: P[PyLiteral[String]] = P(STRING).!
     .map(str => enrichLiteral(str, PythonType.PYTHON_STRING, Serializer.stringIO))
