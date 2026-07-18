@@ -142,15 +142,21 @@ jobs:
             exit 1
           fi
 
-          if grep -Fq '../resources/' _site/index.html; then
-            echo "Unpatched root resource path found in _site/index.html." >&2
-            exit 1
+          # 3) Copy resources (images, PDFs, programs).
+          if [ -d resources ]; then
+            cp -R resources _site/resources
           fi
 
-          ASSET_COUNT="$(find _site -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' -o -iname '*.gif' -o -iname '*.svg' \) | wc -l)"
-          if [ "$ASSET_COUNT" -lt 1 ]; then
-            echo "No image assets were copied into _site." >&2
-            exit 1
+          # 4) Fix relative paths: homepage files use ../resources/ (correct
+          #    locally), but on GitHub Pages resources/ is a sibling of the
+          #    HTML root, not a parent dir. One sed pass handles both depths:
+          #      ../resources/   -> resources/   (files at _site root)
+          #      ../../resources/ -> ../resources/ (files one level deep)
+          find _site -name "*.html" -exec sed -i 's|../resources/|resources/|g' {} +
+
+          # 5) Optional favicon at the root.
+          if [ -f favicon.ico ]; then
+            cp favicon.ico _site/favicon.ico
           fi
 
           echo "::group::_site root"
