@@ -15,7 +15,6 @@ trait GenericAST {
   }
 
   def getChildren(): Seq[GenericAST] = Seq()
-
 }
 
 object GenericAST {
@@ -24,13 +23,9 @@ object GenericAST {
     def name: String
   }
 
-
   trait GenericASTListener {
-
     def onNodeVisited(node: GenericAST): Unit = {
-
     }
-
 
   }
 

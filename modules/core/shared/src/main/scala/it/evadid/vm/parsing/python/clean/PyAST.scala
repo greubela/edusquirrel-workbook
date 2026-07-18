@@ -51,6 +51,7 @@ object PyAST {
 
   case class PyImportFromStatement(moduleName: String, imports: List[PyTarget], importAll: Boolean) extends PyStatement with NamedElement {
     override def name: String = moduleName
+    override def getChildren(): Seq[GenericAST] = imports
   }
 
   case class PyRaiseStatement(raiseDirectly: Option[PyExpression], raiseFrom: Option[PyExpression]) extends PyStatement {
@@ -105,12 +106,16 @@ object PyAST {
 
   case class PyTypeDefExpression() extends PyExpression
 
-  case class PyAssignment(target: PyTarget, value: Option[PyExpression]) extends PyStatement {
-    override def getChildren(): Seq[GenericAST] = value.toList
+  sealed trait PyAssignment extends PyStatement {
+    def target: PyTarget
   }
 
-  case class PyAugAssignment(target: PyTarget, augOperator: String, expression: PyExpression) extends PyStatement {
-    override def getChildren(): Seq[GenericAST] = List(expression)
+  case class PySimpleAssignment(target: PyTarget, value: Option[PyExpression]) extends PyAssignment {
+    override def getChildren(): Seq[GenericAST] = value.toList ++ List(target)
+  }
+
+  case class PyAugAssignment(target: PyTarget, augOperator: String, expression: PyExpression) extends PyAssignment {
+    override def getChildren(): Seq[GenericAST] = List(expression) ++ List(target)
   }
 
   // Targets
@@ -119,7 +124,7 @@ object PyAST {
   // Defs
 
   case class PyFunctionCall(target: PyTarget, parameterValues: List[PyExpression]) extends PyExpression with NamedElement {
-    override def getChildren(): Seq[GenericAST] = parameterValues
+    override def getChildren(): Seq[GenericAST] = parameterValues ++ List(target)
 
     override def name: String = target.name
   }

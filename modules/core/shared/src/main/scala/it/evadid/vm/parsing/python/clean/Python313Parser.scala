@@ -5,7 +5,7 @@ import it.evadid.vm.parsing.generic.CodeLexer.*
 import it.evadid.vm.parsing.python.clean.PyAST.*
 import it.evadid.vm.parsing.python.clean.PyExpressionParser.*
 import it.evadid.vm.parsing.python.clean.PythonType.expression_type
-import fastparse.NoWhitespace._
+import fastparse.NoWhitespace.*
 
 object Python313Parser {
 
@@ -72,7 +72,7 @@ object Python313Parser {
 
 
   def simple_stmt[ctx: P](state: IndentState): P[PyStatement] = P(
-    import_stmt | augAssignment | simpleAssignment | emptyLine
+    import_stmt | assignment | emptyLine
       | P(PASS).map(_ => PyPassStatement)
       | P(BREAK).map(_ => PyBreakStatement)
       | P(CONTINUE).map(_ => PyContinueStatement)
@@ -140,18 +140,15 @@ object Python313Parser {
 
   // DEFINITIONS
 
-  def augAssignment[ctx: P]: P[PyAugAssignment] = P(
+  def augAssignment[ctx: P]: P[PyAssignment] = P(
     target() ~~ SPACES.? ~~ AUGASSIGN ~~ SPACES.? ~~ expression
   ).map { case (target: PyTarget, operator: String, expr: PyExpression) => PyAugAssignment(target, operator, expr) }
 
   def simpleAssignment[ctx: P]: P[PyAssignment] = P(
     target() ~~ SPACES.? ~~ ASSIGN ~~ SPACES.? ~~ expression
-  ).map { case (target: PyTarget, expr: PyExpression) => PyAssignment(target, Some(expr)) }
+  ).map { case (target: PyTarget, expr: PyExpression) => PySimpleAssignment(target, Some(expr)) }
 
-  def assignment[ctx: P]: P[PyAssignment] = P(
-    P(target() ~~ SPACES.? ~~ (ASSIGN ~~ SPACES.? ~~ expression).?).map { case (target: PyTarget, expr: Option[PyExpression]) => PyAssignment(target, expr) }
-    // | P(targetList ~~ (SPACES.? ~~ ASSIGN ~~ SPACES.? ~~ expression).?).map { case (targets: Seq[PyTarget], expr: Option[PyExpression]) => ??? }
-  )
+  def assignment[ctx: P]: P[PyAssignment] = simpleAssignment | augAssignment
 
   def targetList[ctx: P]: P[Seq[PyTarget]] = P((target(List()).rep(sep = P(SPACES.? ~ COMMA ~ SPACES.?))) | LPAR ~ targetList ~ RPAR)
 
