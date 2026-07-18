@@ -1,13 +1,13 @@
 package it.evadid.vm.parsing.python.clean
 
-import it.evadid.vm.parsing.abstractions.CodeIdentifierScanResult
-import it.evadid.vm.parsing.abstractions.pipeline.IdentifierScanner
+import it.evadid.vm.parsing.generic.abstractions.CodeIdentifierScanResult
+import it.evadid.vm.parsing.generic.abstractions.pipeline.IdentifierScanner
+/*
+object PythonIdentifierScanner extends IdentifierScanner[?, ?, ?, ?, ?]{
 
-object PythonIdentifierScanner extends IdentifierScanner{
 
 
-
-  def scanPythonCodeForIdentifier(pythonString: String): CodeIdentifierScanResult = ???
+  def scanPythonCodeForIdentifier(pythonString: String): CodeIdentifierScanResult[?, ?, ?, ?] = ???
 
 
   val exampleToScan =
@@ -32,3 +32,4 @@ object PythonIdentifierScanner extends IdentifierScanner{
 
 
 }
+*/

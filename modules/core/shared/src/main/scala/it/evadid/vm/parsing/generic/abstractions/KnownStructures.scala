@@ -1,4 +1,4 @@
-package it.evadid.vm.parsing.abstractions
+package it.evadid.vm.parsing.generic.abstractions
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction}

@@ -8,7 +8,7 @@ import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElem
 
 case class ProgrammingExercise(override val id: String, testSuite: Option[BeTestSuite] = None) extends WorkbookInteractionElement[BeProgram] {
 
-  override val defaultValue: BeProgram = BeProgram.empty
+  override val defaultValue: BeProgram = BeProgram.miniProgram()
   override val serializer: Serializer[BeProgram] = new Serializer[BeProgram]() {
     override def serialize(obj: BeProgram): String = obj.fullProgram.expressionIO.toStringInLanguage(Python, English, false)
 

@@ -11,7 +11,6 @@ object JavaLexer {
   def LINE_COMMENT[$: P]: P[Unit] = P("//" ~ CharsWhile(ch => ch != '\n' && ch != '\r', 0))
   def BLOCK_COMMENT[$: P]: P[Unit] = P("/*" ~ (!"*/" ~ AnyChar).rep ~ "*/".?)
   def WS[$: P]: P[Unit] = P(CharIn(" \t\r\n\f").rep(1))
-  def SPACES[$: P]: P[Unit] = P((WS | LINE_COMMENT | BLOCK_COMMENT).rep)
 
   def ID_START[$: P]: P[Unit] = P(CharIn("a-zA-Z_") | "$" )
   def ID_CONTINUE[$: P]: P[Unit] = P(CharIn("a-zA-Z0-9_") | "$" )
