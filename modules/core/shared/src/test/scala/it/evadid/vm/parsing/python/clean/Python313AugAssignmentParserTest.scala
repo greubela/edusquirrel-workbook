@@ -18,15 +18,15 @@ class Python313AugAssignmentParserTest extends FunSuite {
 
     assertEquals(assignment.target.name, "total")
     assertEquals(assignment.augOperator, "+=")
-    assertEquals(assignment.expression.asInstanceOf[PythonLiteral[?]].literalAsString, "1")
+    assertEquals(assignment.expression.asInstanceOf[PythonLiteral[?]].literalValue, "1")
   }
 
   test("parses PyAugAssignment for attribute targets and multi-character operators") {
     val assignment = parseOne("bucket.count //= 2").asInstanceOf[PyAugAssignment]
 
-    assertEquals(assignment.target.name, "count")
+    assertEquals(assignment.target.name, "bucket.count")
     assertEquals(assignment.target.locationString, List("bucket"))
     assertEquals(assignment.augOperator, "//=")
-    assertEquals(assignment.expression.asInstanceOf[PythonLiteral[?]].literalAsString, "2")
+    assertEquals(assignment.expression.asInstanceOf[PythonLiteral[?]].literalValue, "2")
   }
 }

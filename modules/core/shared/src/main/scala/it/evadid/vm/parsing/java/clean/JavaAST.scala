@@ -117,7 +117,7 @@ object JavaAST {
     override def getChildren(): Seq[GenericAST] = sliceExpr.toList
   }
 
-  case class JavaLiteral[T](literalValue: String, literalType: JavaType[T]) extends GenericAstLiteral[T, JavaType[T], JavaLiteral[T]] {
+  case class JavaLiteral[T](literalValue: String, literalType: JavaType[T]) extends JavaAtomar with GenericAstLiteral[T, JavaType[T], JavaLiteral[T]] {
 
   }
 }

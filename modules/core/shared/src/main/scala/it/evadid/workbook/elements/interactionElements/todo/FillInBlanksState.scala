@@ -1,7 +1,6 @@
-package it.evadid.workbook.elements.interactionElements.todo
+package it.evadid.workbook.elements.interactionElements.basic
 
 
-/*
 import it.evadid.core.util.io.Serializer
 import upickle.default.{ReadWriter, macroRW}
 
@@ -20,4 +19,3 @@ object FillInBlanksState {
   private given ReadWriter[FillInBlanksState] = macroRW
   val serializer: Serializer[FillInBlanksState] = Serializer.fromUpickleJson(summon[ReadWriter[FillInBlanksState]])
 }
-*/
