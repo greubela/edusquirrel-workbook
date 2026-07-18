@@ -82,6 +82,27 @@ class JavaParserTest extends FunSuite {
     assertEquals(declarations.map(_.javaType.typenameInCode), Seq("List<String>", "int[]"))
     assert(declarations.head.javaType.isInstanceOf[JavaType[?]], "expected List type to be a JavaType")
   }
+  test("parses for, while, try/catch/finally, and assignments".ignore) {
+    val source =
+      """
+        |class Example {
+        |  void run() {
+        |    for (int i = 0; i < 3; i = i + 1) {
+        |      total += i;
+        |    }
+        |    while (total < 10) {
+        |      total = total + 1;
+        |    }
+        |    try {
+        |      risky();
+        |    } catch (Exception ex) {
+        |      throw ex;
+        |    } finally {
+        |      cleanup();
+        |    }
+        |  }
+        |}
+        |""".stripMargin
 
   test("parses chained Java call, attribute, and subscript trailers") {
     val parsed = JavaParser.parse("factory().create(1).items[0];")
