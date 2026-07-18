@@ -1,6 +1,8 @@
 package it.evadid.todomove.`export`.snap
 
+import it.evadid.homepage.webElements.editor.code.SnapRenderer.{BlockLabelMorph, BlockSymbolMorph, BooleanSlotMorph, CSlotMorph, ColorSlotMorph, CommandBlockMorph, CommentMorph, InputMorph, InputSlotMorph, MultiArgMorph, ReporterBlockMorph, ReporterSlotMorph, RingReporterSlotMorph, ScriptsMorph, SnapAttachTarget, SnapBlock, SnapCanvas, SnapColor}
 import munit.FunSuite
+
 import scala.scalajs.js
 
 class SnapFacadeCompileSpec extends FunSuite:

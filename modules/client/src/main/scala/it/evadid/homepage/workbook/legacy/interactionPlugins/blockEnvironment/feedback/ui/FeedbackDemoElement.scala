@@ -214,7 +214,7 @@ object FeedbackDemoElement:
   /** Extracts identifiers from Python source and classifies them.
    *  - Function name after `def`: "fd-token-def"  (yellowish, like cm-def)
    *  - Parameters, assigned vars, for-targets: "fd-token-var"  (light blue, like cm-variableName)
-   *  Only non-keyword, multi-char names are included to avoid noise.
+   *    Only non-keyword, multi-char names are included to avoid noise.
    */
   private def extractCodeSymbols(python: String): Map[String, String] =
     if python == null || python.trim.isEmpty then Map.empty
@@ -248,16 +248,16 @@ object FeedbackDemoElement:
       result.toMap
 
   /** Splits `text` into a sequence of spans. Tokens matching a code symbol get
-   *  a highlight class; the rest are plain unstyled spans. */
+   * a highlight class; the rest are plain unstyled spans. */
   private def highlightText(text: String, symbols: Map[String, String]): Seq[HtmlElement] =
     if symbols.isEmpty then Seq(span(text))
     else
       // Sort longest-first so "rotate_list" matches before "rotate"
       val sorted = symbols.keys.toSeq.sortBy(-_.length)
       val pattern = sorted.map(k => "\\b" + scala.util.matching.Regex.quote(k) + "\\b").mkString("|")
-      val regex   = pattern.r
-      val result  = scala.collection.mutable.ArrayBuffer.empty[HtmlElement]
-      var last    = 0
+      val regex = pattern.r
+      val result = scala.collection.mutable.ArrayBuffer.empty[HtmlElement]
+      var last = 0
       for m <- regex.findAllMatchIn(text) do
         if m.start > last then result += span(text.substring(last, m.start))
         result += span(cls := symbols.getOrElse(m.matched, "fd-token-var"), m.matched)
@@ -283,7 +283,8 @@ object FeedbackDemoElement:
     val showEditorVar = Var(true)
     lazy val pythonEditor: CodeMirrorEditor = CodeMirrorEditor(
       pythonCodeVar,
-      onUserInput = _ => pythonEditor.clearDiagnostics()
+      onUserInput = _ => pythonEditor.clearDiagnostics(),
+      language = Python
     )
 
     def tx(lang: HumanLanguage, en: String, de: String): String =
@@ -304,7 +305,7 @@ object FeedbackDemoElement:
     val feedbackVar = Var(Option.empty[UltrichsNewCoolFeedback])
     val eventLogVar = Var(Vector.empty[String])
 
-    val typedTextVar  = Var("")
+    val typedTextVar = Var("")
     val typingDoneVar = Var(true)
     var typingHandle: Option[SetIntervalHandle] = None
 
@@ -340,35 +341,35 @@ object FeedbackDemoElement:
         case None => null.asInstanceOf[js.Any]
         case Some(fb) =>
           js.Dynamic.literal(
-            summary        = fb.summary,
-            displayHints   = js.Array(fb.displayHints*),
-            displayTests   = js.Array(fb.displayTests.map { t =>
+            summary = fb.summary,
+            displayHints = js.Array(fb.displayHints *),
+            displayTests = js.Array(fb.displayTests.map { t =>
               val ea: js.Any = t.expectedActual.fold(null.asInstanceOf[js.Any]) { ea =>
                 js.Dynamic.literal(
                   expectedLabel = ea.expectedLabel,
-                  expected      = ea.expected,
-                  actualLabel   = ea.actualLabel,
-                  actual        = ea.actual
+                  expected = ea.expected,
+                  actualLabel = ea.actualLabel,
+                  actual = ea.actual
                 )
               }
               js.Dynamic.literal(name = t.name, passed = t.passed, message = t.message, ea = ea)
-            }*),
+            } *),
             allTestsPassed = fb.allTestsPassed,
-            rawPython      = fb.rawPython,
-            status         = fb.status.toString,
+            rawPython = fb.rawPython,
+            status = fb.status.toString,
             normalizedScore = fb.normalizedScore
           )
       val state = JSON.stringify(js.Dynamic.literal(
-        exerciseId   = selectedExerciseIdVar.now(),
-        language     = selectedLanguageVar.now().toString,
-        code         = pythonCodeVar.now(),
-        eventLog     = js.Array(eventLogVar.now()*),
+        exerciseId = selectedExerciseIdVar.now(),
+        language = selectedLanguageVar.now().toString,
+        code = pythonCodeVar.now(),
+        eventLog = js.Array(eventLogVar.now() *),
         showFeedback = showFeedbackVar.now(),
-        showTests    = showTestsVar.now(),
+        showTests = showTestsVar.now(),
         showEventLog = showEventLogVar.now(),
-        showDebug    = showDebugVar.now(),
-        error        = errorVar.now().orNull,
-        feedback     = fbJson
+        showDebug = showDebugVar.now(),
+        error = errorVar.now().orNull,
+        feedback = fbJson
       ))
       dom.window.sessionStorage.setItem(SS_KEY, state)
 
@@ -407,28 +408,28 @@ object FeedbackDemoElement:
                   val eaD = eaRaw.asInstanceOf[js.Dynamic]
                   Some(BlockFeedbackTestResultFormatter.ExpectedActual(
                     expectedLabel = eaD.expectedLabel.asInstanceOf[String],
-                    expected      = eaD.expected.asInstanceOf[String],
-                    actualLabel   = eaD.actualLabel.asInstanceOf[String],
-                    actual        = eaD.actual.asInstanceOf[String]
+                    expected = eaD.expected.asInstanceOf[String],
+                    actualLabel = eaD.actualLabel.asInstanceOf[String],
+                    actual = eaD.actual.asInstanceOf[String]
                   ))
               FeedbackTestDisplay(
-                name          = td.name.asInstanceOf[String],
-                passed        = td.passed.asInstanceOf[Boolean],
-                message       = td.message.asInstanceOf[String],
+                name = td.name.asInstanceOf[String],
+                passed = td.passed.asInstanceOf[Boolean],
+                message = td.message.asInstanceOf[String],
                 expectedActual = ea
               )
             }
             val statusStr = fbD.status.asInstanceOf[String]
             val status = FeedbackStatus.values.find(_.toString == statusStr).getOrElse(FeedbackStatus.FINISHED)
             feedbackVar.set(Some(UltrichsNewCoolFeedback(
-              summary        = fbD.summary.asInstanceOf[String],
-              tests          = Seq.empty,
-              generalHints   = Seq.empty,
-              displayHints   = displayHints,
-              displayTests   = displayTests,
+              summary = fbD.summary.asInstanceOf[String],
+              tests = Seq.empty,
+              generalHints = Seq.empty,
+              displayHints = displayHints,
+              displayTests = displayTests,
               allTestsPassed = fbD.allTestsPassed.asInstanceOf[Boolean],
-              rawPython      = fbD.rawPython.asInstanceOf[String],
-              status         = status,
+              rawPython = fbD.rawPython.asInstanceOf[String],
+              status = status,
               normalizedScore = fbD.normalizedScore.asInstanceOf[Double]
             )))
             typingDoneVar.set(true)
@@ -526,8 +527,8 @@ object FeedbackDemoElement:
             logEvent("Feedback generated")
             saveSession()
             val primary = feedbackMessage(feedback).trim
-            val hints   = feedbackHints(feedback).map(_.trim).filter(_.nonEmpty).distinct
-            val items   =
+            val hints = feedbackHints(feedback).map(_.trim).filter(_.nonEmpty).distinct
+            val items =
               if hints.isEmpty then Seq(primary)
               else if hints.contains(primary) then hints
               else primary +: hints
@@ -563,6 +564,7 @@ object FeedbackDemoElement:
         if showCursor then p(cursorNode) else div(cls := "fd-empty", "No feedback")
       else
         val lines = normalized.split("\n", -1).toSeq.map(_.trim).filter(_.nonEmpty)
+
         def isStepLine(line: String): Boolean =
           line.matches("^\\d+\\.\\s+.+") || line.startsWith("-")
 
@@ -576,17 +578,17 @@ object FeedbackDemoElement:
           val steps = lines.filter(isStepLine).map(stripStep)
           val lastIdx = steps.length - 1
           div(
-            if intro.nonEmpty then p(highlightText(intro, codeSymbols)*) else emptyNode,
+            if intro.nonEmpty then p(highlightText(intro, codeSymbols) *) else emptyNode,
             ol(steps.zipWithIndex.map { case (step, i) =>
               val segs = highlightText(step, codeSymbols)
-              if showCursor && i == lastIdx then li((segs :+ cursorNode)*)
-              else li(segs*)
+              if showCursor && i == lastIdx then li((segs :+ cursorNode) *)
+              else li(segs *)
             })
           )
         else
           val segs = highlightText(normalized, codeSymbols)
-          if showCursor then p((segs :+ cursorNode)*)
-          else p(segs*)
+          if showCursor then p((segs :+ cursorNode) *)
+          else p(segs *)
 
     def statusLabel: String =
       if isRunningVar.now() then "Evaluating\u2026" else "ready"
@@ -661,8 +663,8 @@ object FeedbackDemoElement:
             s"aiHintAdded=${d.aiHintAdded}",
             s"llmRewriteCount=${d.llmRewriteCount}" +
               (if d.llmLastGateReasons.nonEmpty then s" (lastIssues: ${d.llmLastGateReasons.mkString(", ")})"
-               else if d.llmRewriteCount > 0 then " (passed after rewrite)"
-               else ""),
+              else if d.llmRewriteCount > 0 then " (passed after rewrite)"
+              else ""),
             s"functionNameMismatch=${if d.functionNameMismatch.isEmpty then "none" else d.functionNameMismatch.mkString(", ")}",
             s"planHintsCount=${d.planHintsCount}",
             s"ruleHintsCount=${d.ruleHintsCount}",
@@ -773,10 +775,10 @@ object FeedbackDemoElement:
                   cls := "fd-card",
                   div(
                     cls := "fd-card-header",
-                  h3(cls := "fd-card-title", child.text <-- tSig("Event log", "Ereignisprotokoll"))
-                ),
-                child <-- eventLogVar.signal.combineWith(selectedLanguageVar.signal).map { (lines, lang) =>
-                  if lines.isEmpty then div(cls := "fd-empty", tx(lang, "No events yet", "Noch keine Ereignisse"))
+                    h3(cls := "fd-card-title", child.text <-- tSig("Event log", "Ereignisprotokoll"))
+                  ),
+                  child <-- eventLogVar.signal.combineWith(selectedLanguageVar.signal).map { (lines, lang) =>
+                    if lines.isEmpty then div(cls := "fd-empty", tx(lang, "No events yet", "Noch keine Ereignisse"))
                     else div(cls := "fd-event-log", lines.map(line => span(line)))
                   }
                 )
@@ -911,15 +913,15 @@ object FeedbackDemoElement:
       },
       // Persist session on every state change
       selectedExerciseIdVar.signal --> { _ => saveSession() },
-      selectedLanguageVar.signal   --> { _ => saveSession() },
-      pythonCodeVar.signal         --> { _ => saveSession() },
-      eventLogVar.signal           --> { _ => saveSession() },
-      feedbackVar.signal           --> { _ => saveSession() },
-      errorVar.signal              --> { _ => saveSession() },
-      showFeedbackVar.signal       --> { _ => saveSession() },
-      showTestsVar.signal          --> { _ => saveSession() },
-      showEventLogVar.signal       --> { _ => saveSession() },
-      showDebugVar.signal          --> { _ => saveSession() },
+      selectedLanguageVar.signal --> { _ => saveSession() },
+      pythonCodeVar.signal --> { _ => saveSession() },
+      eventLogVar.signal --> { _ => saveSession() },
+      feedbackVar.signal --> { _ => saveSession() },
+      errorVar.signal --> { _ => saveSession() },
+      showFeedbackVar.signal --> { _ => saveSession() },
+      showTestsVar.signal --> { _ => saveSession() },
+      showEventLogVar.signal --> { _ => saveSession() },
+      showDebugVar.signal --> { _ => saveSession() },
       selectedExerciseIdVar.signal.changes --> { id =>
         pythonCodeVar.set(sampleCodeFor(id))
         errorVar.set(None)
@@ -930,4 +932,4 @@ object FeedbackDemoElement:
       onMountCallback { _ =>
         // Force-save on every navigation away from this page
         dom.window.addEventListener("pagehide", (_: dom.Event) => saveSession())
-      }    )
+      })

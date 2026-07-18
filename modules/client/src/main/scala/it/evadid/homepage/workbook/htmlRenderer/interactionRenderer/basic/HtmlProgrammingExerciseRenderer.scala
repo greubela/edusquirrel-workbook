@@ -7,9 +7,9 @@ import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.editor.code.EvaCodeEditor
+import it.evadid.homepage.webElements.editor.code.SnapRenderer.BeProgramSnapRenderer
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
-import it.evadid.todomove.`export`.snap.BeProgramSnapRenderer
 import it.evadid.vm.BeProgram
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExercise
 import it.evadid.workbook.interaction.sync.UpdateImportance

@@ -1,11 +1,10 @@
-package it.evadid.homepage.webElements.editor.code.python
+package it.evadid.homepage.webElements.editor.code
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
-import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
-import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.core.datastructures.language.AppLanguage.{ProgrammingLanguage, Python}
 import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
 import it.evadid.homepage.webElements.editor.config.CodeEditorConfig
 import org.scalajs.dom
@@ -16,7 +15,8 @@ import scala.scalajs.js
 case class CodeMirrorEditor(
                              content: Var[String],
                              onUserInput: String => Unit = _ => (),
-                             editorFont: Signal[AppFont] = Val(AppFont("JetBrains Mono", 14))
+                             editorFont: Signal[AppFont] = Val(AppFont("JetBrains Mono", 14)),
+                             language: ProgrammingLanguage = Python
                            ) extends SimpleWebEditor[String, CodeEditorConfig] {
 
   import CodeMirrorEditor.*
@@ -119,13 +119,13 @@ object CodeMirrorEditor {
   }
 
   final case class Diagnostic(
-    line: Int,
-    endLine: Option[Int] = None,
-    fromCh: Option[Int] = None,
-    toCh: Option[Int] = None,
-    message: String = "",
-    severity: String = "warning"
-  ) {
+                               line: Int,
+                               endLine: Option[Int] = None,
+                               fromCh: Option[Int] = None,
+                               toCh: Option[Int] = None,
+                               message: String = "",
+                               severity: String = "warning"
+                             ) {
     def toJs: js.Object =
       js.Dynamic.literal(
         line = line,
@@ -146,11 +146,11 @@ object CodeMirrorEditor {
 
   object EditorConfig {
     def apply(
-      parent: dom.Element,
-      doc: String,
-      onDocChange: String => Unit,
-      language: String = "python"
-    ): EditorConfig = {
+               parent: dom.Element,
+               doc: String,
+               onDocChange: String => Unit,
+               language: String = "python"
+             ): EditorConfig = {
       js.Dynamic.literal(
         parent = parent,
         doc = doc,

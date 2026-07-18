@@ -92,7 +92,8 @@ case class HtmlBeProgramEditor(
   private val pythonEditor: HtmlAppElement =
     CodeMirrorEditor(
       strVar,
-      onUserInput = _ => textDirtyVar.set(true)
+      onUserInput = _ => textDirtyVar.set(true),
+      language = Python
     )
 
   private val pythonViewTab = HtmlTab(

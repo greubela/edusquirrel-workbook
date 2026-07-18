@@ -32,7 +32,7 @@ case class HtmlWorkbookDomElement(fullInfo: FullInfo) extends HtmlAppElement {
           } else if (!isOpen && nativeDialog.open) {
             nativeDialog.close()
           }
-        }(ctx.owner)
+        }(using ctx.owner)
       },
       div(
         cls("fullscreen-content-container"),
