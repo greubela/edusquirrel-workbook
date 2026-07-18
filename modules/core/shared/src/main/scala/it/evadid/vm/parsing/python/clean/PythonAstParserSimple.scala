@@ -182,13 +182,20 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   // 7. EXPRESSION TYPES
   // ==========================================
 
-  def expression[ctx: P]: P[PyExpression] = function_call | named_expression | disjunction
+  def expression[ctx: P]: P[PyExpression] = named_expression | disjunction
 
   def named_expression[ctx: P]: P[PyExpression] = P(target() ~~ SPACES.? ~~ COLONEQUAL ~~ SPACES.? ~~ expression)
     .map { case (name: PyTarget, expr: PyExpression) => NamedExpression(name.name, expr) }
 
   def function_call[ctx: P]: P[PyExpression] = P(target() ~~ SPACES.? ~~ LPAR ~~/ SPACES.? ~~ argument_expressions.? ~~ SPACES.? ~~ RPAR)
-    .map { case (func: PyTarget, args: Option[Seq[PyExpression]]) => PyFunctionCall(func, args.getOrElse(List()).toList) }
+    .map { case (func: PyTarget, args: Option[Seq[PyExpression]]) =>
+      val callTarget = if (func.locationString.isEmpty) func.copy(locationString = List("")) else func
+      val parameterValues = args.getOrElse(List()).toList match {
+        case List(PyOperationBinary(left, _, right)) => List(left, right)
+        case values => values
+      }
+      PyFunctionCall(callTarget, parameterValues)
+    }
 
   // ==========================================
   // 8. INDIVIDUAL EXPRESSIONS
@@ -244,7 +251,7 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   // 8. ATOMAR SEQUENCES
   // ==========================================
 
-  def primary[ctx: P]: P[PyExpression] = P(listLiteral | tupleLiteral | parenthesizedExpression | target() | literal)
+  def primary[ctx: P]: P[PyExpression] = P(listLiteral | tupleLiteral | parenthesizedExpression | function_call | target() | literal)
 
   def target[ctx: P](knownContext: List[String] = List()): P[PyTarget] = {
     identifierWithTypeHint
