@@ -1,16 +1,12 @@
-package it.evadid.workbook.elements.interactionElements.todo
+package it.evadid.workbook.elements.interactionElements.basic
 
 
-/*
 import it.evadid.core.util.io.Serializer
-import it.evadid.workbook.model.abstractions.WorkbookElement
 import upickle.default.{ReadWriter, macroRW}
 
 /** One selected right-side item for every left-side item; None means unanswered. */
 case class MatchingInteractionState(selectedRightIndicesByLeftIndex: List[Option[Int]]) {
 
-
-  lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
   def sanitized(leftCount: Int, rightCount: Int): MatchingInteractionState = {
     val padded = selectedRightIndicesByLeftIndex.take(leftCount).padTo(leftCount, None)
@@ -31,4 +27,3 @@ object MatchingInteractionState {
   private given ReadWriter[MatchingInteractionState] = macroRW
   val serializer: Serializer[MatchingInteractionState] = Serializer.fromUpickleJson(summon[ReadWriter[MatchingInteractionState]])
 }
-*/

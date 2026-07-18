@@ -1,39 +1,57 @@
 package it.evadid.vm.parsing.java.clean
 
-import fastparse.*
-import fastparse.NoWhitespace.*
-import it.evadid.vm.parsing.java.clean.JavaLexer.*
+import fastparse.{P, *}
+import it.evadid.core.util.io.Serializer
+import it.evadid.vm.parsing.generic.CodeLexer.*
+import it.evadid.vm.parsing.generic.abstractions.GenericAST.*
+import it.evadid.vm.parsing.java.clean.JavaAST.JavaLiteral
 
-sealed trait JavaType { def javaRepresentation: String }
+
+private abstract class JavaType[ScalaType](
+                                            typeStringInJava: String,
+                                            val serializerJavaValue: Serializer[ScalaType],
+                                            override val serializerScalaValue: Serializer[ScalaType]
+                                          ) extends GenericAstType[ScalaType, JavaType[ScalaType], JavaLiteral[ScalaType]] {
+  override val serializeTargetLanguageValue: Serializer[ScalaType] = serializerJavaValue
+  override val typenameInCode: String = typeStringInJava
+
+  override protected def handleLiteralCreation(literalString: String): JavaLiteral[ScalaType] = JavaLiteral(literalString, this)
+}
 
 object JavaType {
-  case object JAVA_INT extends JavaType { val javaRepresentation = "int" }
-  case object JAVA_LONG extends JavaType { val javaRepresentation = "long" }
-  case object JAVA_DOUBLE extends JavaType { val javaRepresentation = "double" }
-  case object JAVA_FLOAT extends JavaType { val javaRepresentation = "float" }
-  case object JAVA_BOOLEAN extends JavaType { val javaRepresentation = "boolean" }
-  case object JAVA_CHAR extends JavaType { val javaRepresentation = "char" }
-  case object JAVA_STRING extends JavaType { val javaRepresentation = "String" }
-  case object JAVA_VOID extends JavaType { val javaRepresentation = "void" }
-  case class JAVA_CLASS(name: String) extends JavaType { val javaRepresentation = name }
-  case class JAVA_ARRAY(elementType: JavaType) extends JavaType { val javaRepresentation = elementType.javaRepresentation + "[]" }
-  case class JAVA_GENERIC(base: JavaType, typeArguments: Seq[JavaType]) extends JavaType {
-    val javaRepresentation = s"${base.javaRepresentation}<${typeArguments.map(_.javaRepresentation).mkString(", ")}>"
-  }
 
-  def javaType[$: P]: P[JavaType] = P(baseType ~ (SPACES.? ~ LSQB ~ SPACES.? ~ RSQB).!.rep).map {
-    case (base, arrays) => arrays.foldLeft(base)((acc, _) => JAVA_ARRAY(acc))
-  }
+  sealed class JAVA_INTEGER extends JavaType[BigInt]("int", Serializer.intDecimalIO, Serializer.intDecimalIO) with GenericNumericalInteger
 
-  private def baseType[$: P]: P[JavaType] = P(namedType ~ (SPACES.? ~ LESS ~ SPACES.? ~ javaType.rep(1, sep = SPACES.? ~ COMMA ~ SPACES.?) ~ SPACES.? ~ GREATER).?).map {
-    case (base, Some(args)) => JAVA_GENERIC(base, args)
-    case (base, None) => base
-  }
+  sealed class JAVA_INTEGER_HEX extends JavaType[BigInt]("int", Serializer.intHexIO, Serializer.intHexIO) with GenericNumericalInteger
 
-  private def namedType[$: P]: P[JavaType] = P(
-    StringIn("boolean", "double", "float", "long", "int", "char", "void").!.map {
-      case "boolean" => JAVA_BOOLEAN; case "double" => JAVA_DOUBLE; case "float" => JAVA_FLOAT; case "long" => JAVA_LONG
-      case "int" => JAVA_INT; case "char" => JAVA_CHAR; case _ => JAVA_VOID
-    } | P("String" ~ !ID_CONTINUE).map(_ => JAVA_STRING) | qualifiedName.map(JAVA_CLASS(_))
+  sealed class JAVA_INTEGER_OCT extends JavaType[BigInt]("int", Serializer.intOctalIO, Serializer.intOctalIO) with GenericNumericalInteger
+
+  sealed class JAVA_INTEGER_BIN extends JavaType[BigInt]("int", Serializer.intBinaryIO, Serializer.intBinaryIO) with GenericNumericalInteger
+
+  sealed class JAVA_FLOAT extends JavaType[Double]("double", Serializer.floatIO, Serializer.floatIO) with GenericNumericalFractional
+
+  sealed class JAVA_STRING extends JavaType[String]("String", Serializer.stringLiteralIO(), Serializer.stringLiteralIO())
+
+  sealed class JAVA_BOOL extends JavaType[Boolean]("boolean", Serializer.booleanIO, Serializer.booleanIO)
+
+  sealed class JAVA_ANY extends JavaType[Any]("Object", Serializer.parseAnyAsUnderlyingString, Serializer.parseAnyAsUnderlyingString)
+
+  sealed class JAVA_LIST[Element](val elementType: JavaType[Element]) extends JavaType[List[Element]](
+    s"List<${elementType.typenameInCode}>",
+    JavaCollectionSerializers.collectionSerializer(elementType.serializerJavaValue, "List.of(", ")"),
+    JavaCollectionSerializers.collectionSerializer(elementType.serializerScalaValue, "List(", ")")
   )
+
+  sealed class JAVA_ARRAY[Element](val elementType: JavaType[Element]) extends JavaType[List[Element]](
+    s"${elementType.typenameInCode}[]",
+    JavaCollectionSerializers.collectionSerializer(elementType.serializerJavaValue, "{", "}"),
+    JavaCollectionSerializers.collectionSerializer(elementType.serializerScalaValue, "List(", ")")
+  )
+
+
+  sealed class JAVA_UNPARSABLE_TYPE(str: String) extends JavaType[Any](str, Serializer.parseAnyAsUnderlyingString, Serializer.parseAnyAsUnderlyingString)
+
+
+
+
 }

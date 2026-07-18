@@ -7,6 +7,7 @@ import it.evadid.vm.parsing.java.clean.JavaLexer.*
 import it.evadid.vm.parsing.java.clean.JavaType.*
 
 object JavaExpressionParser {
+  /*
   def expression[$: P]: P[JavaExpression] = P(assignmentExpression | logicalOr)
   def assignmentExpression[$: P]: P[JavaExpression] = P(target ~ SPACES.? ~ operator("+=", "-=", "*=", "/=", "%=", "=") ~ SPACES.? ~ expression).map(JavaAssignmentExpression(_, _, _))
   def logicalOr[$: P]: P[JavaExpression] = binary(logicalAnd, "||")
@@ -42,4 +43,5 @@ object JavaExpressionParser {
       P(keyword("true") | keyword("false")).!.map(JavaLiteral(_, JAVA_BOOLEAN)) |
       P(keyword("null")).!.map(JavaLiteral(_, JAVA_CLASS("null")))
   )
+  */
 }

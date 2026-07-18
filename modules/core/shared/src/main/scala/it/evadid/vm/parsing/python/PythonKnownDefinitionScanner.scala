@@ -9,14 +9,6 @@ import it.evadid.vm.code.defining.KnownBeDefineStructures
 /** FastParse-based Python token scanner that maps every potential identifier/operator token to known definitions. */
 object PythonKnownDefinitionScanner {
 
-
-
-
-
-
-
-  /*
-
   private val SymbolOperators: List[String] = List(
     "**=", "//=", "<<=", ">>=", ":=", "->",
     "==", "!=", "<=", ">=", "//", "**", "<<", ">>", "&&", "||", "+=", "-=", "*=", "/=", "%=", "@=", "&=", "|=", "^=",
@@ -91,5 +83,4 @@ object PythonKnownDefinitionScanner {
 
 
   }
-*/
 }
