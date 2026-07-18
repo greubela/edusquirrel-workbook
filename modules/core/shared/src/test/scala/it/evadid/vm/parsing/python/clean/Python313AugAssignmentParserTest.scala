@@ -6,7 +6,7 @@ import munit.FunSuite
 class Python313AugAssignmentParserTest extends FunSuite {
 
   private def parseOne(code: String): PyStatement = {
-    val parsed = Python313Parser.parse(code)
+    val parsed = PythonAstParserSimple.parse(code)
     assert(parsed.isRight, parsed.left.getOrElse("parser returned Left"))
     val statements = parsed.toOption.get.statements.map(_.statement).filterNot(_ == PyEmptyStatement)
     assertEquals(statements.size, 1)
@@ -18,7 +18,7 @@ class Python313AugAssignmentParserTest extends FunSuite {
 
     assertEquals(assignment.target.name, "total")
     assertEquals(assignment.augOperator, "+=")
-    assertEquals(assignment.expression.asInstanceOf[PyLiteral[?]].literalAsString, "1")
+    assertEquals(assignment.expression.asInstanceOf[PythonLiteral[?]].literalAsString, "1")
   }
 
   test("parses PyAugAssignment for attribute targets and multi-character operators") {
@@ -27,6 +27,6 @@ class Python313AugAssignmentParserTest extends FunSuite {
     assertEquals(assignment.target.name, "count")
     assertEquals(assignment.target.locationString, List("bucket"))
     assertEquals(assignment.augOperator, "//=")
-    assertEquals(assignment.expression.asInstanceOf[PyLiteral[?]].literalAsString, "2")
+    assertEquals(assignment.expression.asInstanceOf[PythonLiteral[?]].literalAsString, "2")
   }
 }

@@ -1,6 +1,8 @@
 package it.evadid.vm.parsing.java.clean
 
-import it.evadid.vm.parsing.abstractions.GenericAST
+import it.evadid.vm.parsing.generic.abstractions.GenericAST
+import it.evadid.vm.parsing.generic.abstractions.GenericAST.GenericAstLiteral
+import it.evadid.vm.parsing.python.clean.PythonType
 
 sealed trait JavaAST extends GenericAST
 
@@ -63,8 +65,8 @@ object JavaAST {
   case class JavaClassDef(
       name: String,
       modifiers: Seq[String],
-      extendsType: Option[JavaType],
-      implementsTypes: Seq[JavaType],
+      extendsType: Option[JavaType[?]],
+      implementsTypes: Seq[JavaType[?]],
       body: JavaExecutionBlock
   ) extends JavaStatement {
     override def getChildren(): Seq[GenericAST] = Seq(body)
@@ -72,7 +74,7 @@ object JavaAST {
   case class JavaMethodDef(
       name: String,
       modifiers: Seq[String],
-      returnType: Option[JavaType],
+      returnType: Option[JavaType[?]],
       parameters: Seq[JavaVariableDeclaration],
       body: JavaExecutionBlock
   ) extends JavaStatement {
@@ -80,7 +82,7 @@ object JavaAST {
   }
   case class JavaVariableDeclaration(
       name: String,
-      javaType: JavaType,
+      javaType: JavaType[?],
       value: Option[JavaExpression],
       modifiers: Seq[String] = Seq.empty
   ) extends JavaStatement {
@@ -97,7 +99,7 @@ object JavaAST {
   case class JavaFunctionCall(name: JavaTarget, arguments: Seq[JavaExpression]) extends JavaExpression {
     override def getChildren(): Seq[GenericAST] = Seq(name) ++ arguments
   }
-  case class JavaNewExpression(javaType: JavaType, arguments: Seq[JavaExpression]) extends JavaExpression {
+  case class JavaNewExpression(javaType: JavaType[?], arguments: Seq[JavaExpression]) extends JavaExpression {
     override def getChildren(): Seq[GenericAST] = arguments
   }
   case class JavaAssignmentExpression(target: JavaTarget, operator: String, value: JavaExpression) extends JavaExpression {
@@ -114,5 +116,8 @@ object JavaAST {
   case class JavaTarget(name: String, locationString: Seq[String] = Seq.empty, sliceExpr: Option[JavaExpression] = None) extends JavaAtomar {
     override def getChildren(): Seq[GenericAST] = sliceExpr.toList
   }
-  case class JavaLiteral(literalAsString: String, javaType: JavaType) extends JavaAtomar
+
+  case class JavaLiteral[T](literalValue: String, literalType: JavaType[T]) extends GenericAstLiteral[T, JavaType[T], JavaLiteral[T]] {
+
+  }
 }

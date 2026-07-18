@@ -6,7 +6,7 @@ import munit.FunSuite
 class Python313ParserTest extends FunSuite {
 
   private def parseOne(code: String): PyStatement = {
-    val parsed = Python313Parser.parse(code)
+    val parsed = PythonAstParserSimple.parse(code)
     assert(parsed.isRight, parsed.left.getOrElse("parser returned Left"))
     val statements = parsed.toOption.get.statements.map(_.statement).filterNot(_ == PyEmptyStatement)
     assertEquals(statements.size, 1)
@@ -21,7 +21,7 @@ class Python313ParserTest extends FunSuite {
 
   test("parses None as a literal") {
     val assignment = parseOne("value = None").asInstanceOf[PyAssignment]
-    assertEquals(assignment.value.map(_.asInstanceOf[PyLiteral[?]].pythonTyp), Some(PythonType.PYTHON_NONE))
+    assertEquals(assignment.value.map(_.asInstanceOf[PythonLiteral[?]].pythonTyp), Some(PythonType.PYTHON_NONE))
   }
 
   test("parses list and tuple literals") {

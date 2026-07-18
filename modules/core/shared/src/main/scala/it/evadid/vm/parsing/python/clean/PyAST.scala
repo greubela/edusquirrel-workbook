@@ -1,8 +1,7 @@
 package it.evadid.vm.parsing.python.clean
 
-import it.evadid.core.util.io.Serializer
-import it.evadid.vm.parsing.abstractions.GenericAST
-import it.evadid.vm.parsing.abstractions.GenericAST.NamedElement
+import it.evadid.vm.parsing.generic.abstractions.GenericAST
+import it.evadid.vm.parsing.generic.abstractions.GenericAST.{GenericAstLiteral, NamedElement}
 
 sealed trait PyAST extends GenericAST
 
@@ -50,6 +49,7 @@ object PyAST {
 
   case class PyImportFromStatement(moduleName: String, imports: List[PyTarget], importAll: Boolean) extends PyStatement with NamedElement {
     override def name: String = moduleName
+
     override def getChildren(): Seq[GenericAST] = imports
   }
 
@@ -97,7 +97,7 @@ object PyAST {
 
   // Expressions
 
-  sealed trait PyExpression extends PyStatement
+  trait PyExpression extends PyStatement
 
   case class NamedExpression(name: String, expression: PyExpression) extends PyExpression with NamedElement {
     override def getChildren(): Seq[GenericAST] = List(expression)
@@ -152,13 +152,25 @@ object PyAST {
 
   sealed trait PyAtomar extends PyExpression
 
-  case class PyTarget(identifier: String, locationString: List[String] = List(), sliceExpr: Option[PyExpression] = None, typeHint: Option[PythonType] = None) extends PyAtomar with NamedElement {
+  case class PyTarget(identifier: String, locationString: List[String] = List(), sliceExpr: Option[PyExpression] = None, typeHint: Option[PythonType[?]] = None) extends PyAtomar with NamedElement {
     override def getChildren(): Seq[GenericAST] = sliceExpr.toList
 
     override def name: String = locationString.mkString("", ".", ".") + identifier // without slice for now
   }
 
-  case class PyLiteral[T](literalAsString: String, pythonTyp: PythonType, scalaValue: T, serializer: Serializer[T]) extends PyAtomar
+
+  case class PythonLiteral[ScalaType](val literalValue: String, literalType: PythonType[ScalaType]) extends GenericAstLiteral[ScalaType, PythonType[ScalaType], PythonLiteral[ScalaType]] with PyExpression {
+
+  }
+
+
+  //type PyLiteral[T] = GenericAstLiteral[T, TargetType] forSome { type TargetType <: PythonType[T, TargetType] }
+
+  /*case class PyLiteral[T](literalAsString: String, pythonTyp: PythonType[T]) extends PyAtomar with GenericAstLiteral[T, PythonType[T]] {
+    override def literalValue: String = literalAsString
+
+    override def literalType: PythonType[T] = pythonTyp
+  }*/
 
   /*
   Todo: Adjust to PyLiteral
@@ -198,6 +210,11 @@ object PyAST {
         |y: str = "30"
         |x: int = 20
         |
+        |x += 1
+        |x+=1
+        |x=+1
+        |x=-1
+        |
         |(abc: int) = 3
         |
         |a.func(b)
@@ -221,17 +238,18 @@ object PyAST {
         |
         |d = 3
         |
-        |func (hai)
+        |my.func (  hai  , x := 3)
         |
-        |x = 2
+        |x+=2
         |
         |""".stripMargin
 
-    val res = Python313Parser.parse(example2)
+    val res = PythonAstParserSimple.parse(example2)
 
     println(res)
 
     println(res.right.get.statements.mkString("\n"))
+
   }
 
 }
