@@ -1,6 +1,7 @@
 package it.evadid.vm.parsing.java.clean
 
-import it.evadid.vm.parsing.java.clean.JavaAST.*
+import it.evadid.vm.parsing.java.clean.model.JavaAST.*
+import it.evadid.vm.parsing.java.clean.model.JavaType
 import munit.FunSuite
 
 class JavaParserTest extends FunSuite {

@@ -2,7 +2,7 @@ package it.evadid.vm.parsing.python.clean
 
 import it.evadid.vm.parsing.generic.abstractions.CodeIdentifierScanResult
 import it.evadid.vm.parsing.generic.abstractions.pipeline.IdentifierScanner
-/*
+
 object PythonIdentifierScanner extends IdentifierScanner[?, ?, ?, ?, ?]{
 
 
@@ -32,4 +32,3 @@ object PythonIdentifierScanner extends IdentifierScanner[?, ?, ?, ?, ?]{
 
 
 }
-*/

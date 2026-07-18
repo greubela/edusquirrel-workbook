@@ -1,4 +1,4 @@
-package it.evadid.vm.parsing.java.clean
+package it.evadid.vm.parsing.java.clean.model
 
 import it.evadid.core.util.io.Serializer
 

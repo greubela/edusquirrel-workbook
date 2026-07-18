@@ -3,9 +3,10 @@ package it.evadid.vm.parsing.java.clean
 import fastparse.*
 import fastparse.NoWhitespace.*
 import it.evadid.vm.parsing.generic.abstractions.pipeline.GenericAstScanner
-import it.evadid.vm.parsing.java.clean.JavaAST.*
+import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.JavaLexer.*
-import it.evadid.vm.parsing.java.clean.JavaType.*
+import it.evadid.vm.parsing.java.clean.model.JavaType.*
+import it.evadid.vm.parsing.java.clean.model.{JavaAST, JavaType}
 
 object JavaParser extends GenericAstScanner[JavaAST] {
 
@@ -112,7 +113,7 @@ object JavaParser extends GenericAstScanner[JavaAST] {
     P(variableDeclarationNoSemi ~ ws ~ SEMI)
 
   def variableDeclarationNoSemi[$: P]: P[JavaVariableDeclaration] =
-    P(modifiers ~ javaType ~ ws1 ~ NAME ~ (ws ~ ASSIGN ~ ws ~ expression).?).map { case (mods, typ, name, value) => JavaVariableDeclaration(name, typ, value, mods) }
+    P(modifiers ~ javaType ~ ws1 ~ NAME ~ (ws ~ ASSIGN ~ ws ~ expression).?).map { case (mods: Seq[String], typ: JavaType[?], name: String, value: Option[JavaExpression]) => JavaVariableDeclaration(name, typ, value, mods) }
 
   def parameter[$: P]: P[JavaVariableDeclaration] =
     P(modifiers ~ javaType ~ ws1 ~ NAME).map { case (mods, typ, name) => JavaVariableDeclaration(name, typ, None, mods) }

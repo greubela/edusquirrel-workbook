@@ -1,4 +1,4 @@
-package it.evadid.vm.parsing.java.clean
+package it.evadid.vm.parsing.java.clean.model
 
 import it.evadid.vm.parsing.generic.abstractions.GenericAST
 import it.evadid.vm.parsing.generic.abstractions.GenericAST.GenericAstLiteral

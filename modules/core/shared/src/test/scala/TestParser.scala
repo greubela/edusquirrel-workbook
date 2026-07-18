@@ -1,5 +1,5 @@
 import it.evadid.vm.parsing.python.clean.PythonAstParserSimple
-import it.evadid.vm.parsing.python.clean.PyAST.*
+import it.evadid.vm.parsing.python.clean.model.PyAST.*
 
 object TestParser {
   def main(args: Array[String]): Unit = {

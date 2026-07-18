@@ -1,8 +1,8 @@
-package it.evadid.vm.parsing.python.clean
+package it.evadid.vm.parsing.python.clean.model
 
 import it.evadid.vm.parsing.generic.abstractions.GenericAST
 import it.evadid.vm.parsing.generic.abstractions.GenericAST.{GenericAstLiteral, NamedElement}
-import it.evadid.vm.parsing.python.clean.PythonType.*
+import it.evadid.vm.parsing.python.clean.PythonAstParserSimple
 
 sealed trait PyAST extends GenericAST
 
@@ -53,13 +53,19 @@ object PyAST {
   /** A blank source line with no semantic statement. */
   case object PyEmptyStatement extends PyStatement
 
-  /** A direct import statement, e.g. `import turtle`. */
-  case class PyImportStatement(moduleName: String) extends PyStatement with NamedElement {
+
+
+  sealed trait PythonImportStatement extends PyStatement with NamedElement {
+    def moduleName: String
     override def name: String = moduleName
   }
 
+  /** A direct import statement, e.g. `import turtle`. */
+  case class PyPlainImportStatement(moduleName: String) extends PythonImportStatement {
+  }
+
   /** A from-import statement, e.g. `from math import sin` or `from math import *`. */
-  case class PyImportFromStatement(moduleName: String, imports: List[PyTarget], importAll: Boolean) extends PyStatement with NamedElement {
+  case class PyImportFromStatement(moduleName: String, imports: List[PyTarget], importAll: Boolean) extends PythonImportStatement {
     override def name: String = moduleName
 
     override def getChildren(): Seq[GenericAST] = imports
@@ -124,6 +130,9 @@ object PyAST {
   case class NamedExpression(name: String, expression: PyExpression) extends PyExpression with NamedElement {
     override def getChildren(): Seq[GenericAST] = List(expression)
   }
+
+
+
 
   /** A placeholder for type-definition expressions, e.g. future support for `type Alias = int`. */
   case class PyTypeDefExpression() extends PyExpression
@@ -199,6 +208,7 @@ object PyAST {
 
   sealed trait PyAtomar extends PyExpression
 
+
   /** An identifier-like target, e.g. `x`, `obj.field`, or `items[0]` in assignments. */
   case class PyTarget(identifier: String, locationString: List[String] = List(), sliceExpr: Option[PyExpression] = None, typeHint: Option[PythonType[?]] = None) extends PyAtomar with NamedElement {
     override def getChildren(): Seq[GenericAST] = sliceExpr.toList
@@ -271,7 +281,7 @@ object PyAST {
         |
         |""".stripMargin
 
-    val res = PythonAstParserSimple.parse(example2)
+    val res = PythonAstParserSimple.parse(example1)
 
     println(res)
 
