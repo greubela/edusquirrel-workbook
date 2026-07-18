@@ -156,7 +156,7 @@ object PyAST {
   case class PyTarget(identifier: String, locationString: List[String] = List(), sliceExpr: Option[PyExpression] = None, typeHint: Option[PythonType[?]] = None) extends PyAtomar with NamedElement {
     override def getChildren(): Seq[GenericAST] = sliceExpr.toList
 
-    override def name: String = locationString.mkString("", ".", ".") + identifier // without slice for now
+    override def name: String = (locationString.filter(_.nonEmpty) :+ identifier).mkString(".") // without slice for now
   }
 
 
