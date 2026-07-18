@@ -5,7 +5,7 @@ import it.evadid.vm.parsing.generic.abstractions.GenericAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaAST.JavaLiteral
 
 
-private abstract class JavaType[ScalaType](
+abstract class JavaType[ScalaType](
                                             typeStringInJava: String,
                                             val serializerJavaValue: Serializer[ScalaType],
                                             override val serializerScalaValue: Serializer[ScalaType]
