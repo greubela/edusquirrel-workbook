@@ -19,7 +19,7 @@
             <option value="$PROJECT_DIR$/project" />
           </set>
         </option>
-        <option name="sbtVersion" value="1.12.12" />
+        <option name="sbtVersion" value="1.9.9" />
         <option name="useSbtShellForBuild" value="true" />
         <option name="useSbtShellForImport" value="true" />
       </SbtProjectSettings>

@@ -1,21 +1,23 @@
-package it.evadid.homepage.webElements.editor.code
+package it.evadid.homepage.webElements.editor.code.python
 
+import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
+import it.evadid.homepage.webElements.editor.config.CodeEditorConfig
 import org.scalajs.dom
 import todomove.datastructures.web.font.AppFont
 
 import scala.scalajs.js
 
 case class CodeMirrorEditor(
-  content: Var[String],
-  onUserInput: String => Unit = _ => (),
-  editorFont: Signal[AppFont] = Val(AppFont("JetBrains Mono", 14)),
-  language: ProgrammingLanguage = AppLanguage.Python
-) extends HtmlAppElement {
+                             content: Var[String],
+                             onUserInput: String => Unit = _ => (),
+                             editorFont: Signal[AppFont] = Val(AppFont("JetBrains Mono", 14))
+                           ) extends SimpleWebEditor[String, CodeEditorConfig] {
 
   import CodeMirrorEditor.*
 
@@ -27,7 +29,7 @@ case class CodeMirrorEditor(
   def currentDoc: Option[String] = handle.map(_.getDoc())
 
   def setDiagnostics(diagnostics: Seq[CodeMirrorEditor.Diagnostic]): Unit =
-    handle.foreach(_.setDiagnostics(js.Array(diagnostics.map(_.toJs)*)))
+    handle.foreach(_.setDiagnostics(js.Array(diagnostics.map(_.toJs) *)))
 
   def clearDiagnostics(): Unit = setDiagnostics(Nil)
 
@@ -82,6 +84,10 @@ case class CodeMirrorEditor(
       }
     )
   }
+
+  override def underlyingVar: Var[String] = content
+
+  override def config: Val[CodeEditorConfig] = Val(CodeEditorConfig.defaultConfig)
 }
 
 object CodeMirrorEditor {

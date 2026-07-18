@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.editor
 
+import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.chat.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
@@ -10,7 +11,9 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement.ButtonConfig
 import it.evadid.homepage.webElements.editor.SimpleChatEditor.{ChatEditorConfig, defaultConfig}
-import it.evadid.homepage.webElements.editor.SimpleTextEditor.TextEditorConfig
+import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
+import it.evadid.homepage.webElements.editor.abstractions.WebEditorConfig
+import it.evadid.homepage.webElements.editor.config.TextEditorConfig
 
 import java.time.LocalDateTime
 
@@ -19,14 +22,18 @@ object SimpleChatEditor {
 
   val drawUsersRight: Message => Boolean = _.author.role == SenderRole.USER
 
-  case class ChatEditorConfig(drawRight: Message => Boolean)
+  case class ChatEditorConfig(drawRight: Message => Boolean) extends WebEditorConfig {
+
+    protected def additionalCssClasses: List[String] = List("chat-editor")
+
+  }
 
   val defaultConfig: ChatEditorConfig = ChatEditorConfig(drawUsersRight)
 
 }
 
 //todo: to State[Var]... aber problematisch mit listener. später (:
-case class SimpleChatEditor(interactionVar: State[MessengerModel], messageInputState: State[String], onUserAddedMessage: MessengerModel => Any, config: ChatEditorConfig = defaultConfig) extends HtmlAppElement {
+case class SimpleChatEditor(interactionVar: State[MessengerModel], messageInputState: State[String], onUserAddedMessage: MessengerModel => Any, editorConfig: ChatEditorConfig = defaultConfig) extends SimpleWebEditor[MessengerModel, ChatEditorConfig] {
 
   private val messageInput = messageInputState.toAirstreamVar
 
@@ -40,7 +47,7 @@ case class SimpleChatEditor(interactionVar: State[MessengerModel], messageInputS
 
   private lazy val sendButton: HtmlAppElement = HtmlButtonElement.withTextLabel("basic/messengerEditorSendMessageButton", _ => sendCurrentMessage(), ButtonConfig(true, List("messenger-send-button")))
   private lazy val textEditorConfig: TextEditorConfig = TextEditorConfig(false, 2, 80, LanguageMapContentId("basic/messengerEditorInputPlaceholder"), List("messenger-input"))
-  private lazy val inputEditor: SimpleTextEditor = SimpleTextEditor(messageInput, Var(textEditorConfig))
+  private lazy val inputEditor: SimpleTextEditor = SimpleTextEditor(messageInput, Val(textEditorConfig))
 
   private lazy val inputArea: Element = {
     div(
@@ -59,7 +66,7 @@ onKeyDown.filter(ev => ev.key == "Enter" && !ev.shiftKey) --> { ev =>
     */
 
   private def renderMessage(message: Message): Element = try {
-    val cssStrPosition = if (config.drawRight(message)) "message-position-left" else "message-position-right"
+    val cssStrPosition = if (editorConfig.drawRight(message)) "message-position-left" else "message-position-right"
     val cssStrRole = s"message-author-role-${message.author.role}"
 
     div(
@@ -86,6 +93,10 @@ onKeyDown.filter(ev => ev.key == "Enter" && !ev.shiftKey) --> { ev =>
   }
 
   override def getDomElement(): Element = domElement
+
+  override def underlyingVar: Var[MessengerModel] = interactionVar.toAirstreamVar
+
+  override def config: Val[ChatEditorConfig] = Val(editorConfig)
 
   private def sendCurrentMessage(): Unit = {
     val trimmed = messageInput.now().trim

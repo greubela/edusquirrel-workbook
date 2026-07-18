@@ -1,4 +1,7 @@
-/* TEXT EDITOR */
+@import url("../generic/colors.css");
+@import url("../generic/dimensions.css");
+
+/* TEXT EDITOR  */
 
 .simple-text-editor-textarea {
     resize: none;
