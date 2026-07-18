@@ -72,7 +72,7 @@ object Python313Parser {
 
 
   def simple_stmt[ctx: P](state: IndentState): P[PyStatement] = P(
-    import_stmt | assignment | emptyLine
+    import_stmt | augAssignment | simpleAssignment | emptyLine
       | P(PASS).map(_ => PyPassStatement)
       | P(BREAK).map(_ => PyBreakStatement)
       | P(CONTINUE).map(_ => PyContinueStatement)
@@ -139,6 +139,14 @@ object Python313Parser {
         }
 
   // DEFINITIONS
+
+  def augAssignment[ctx: P]: P[PyAugAssignment] = P(
+    target() ~~ SPACES.? ~~ AUGASSIGN ~~ SPACES.? ~~ expression
+  ).map { case (target: PyTarget, operator: String, expr: PyExpression) => PyAugAssignment(target, operator, expr) }
+
+  def simpleAssignment[ctx: P]: P[PyAssignment] = P(
+    target() ~~ SPACES.? ~~ ASSIGN ~~ SPACES.? ~~ expression
+  ).map { case (target: PyTarget, expr: PyExpression) => PyAssignment(target, Some(expr)) }
 
   def assignment[ctx: P]: P[PyAssignment] = P(
     P(target() ~~ SPACES.? ~~ (ASSIGN ~~ SPACES.? ~~ expression).?).map { case (target: PyTarget, expr: Option[PyExpression]) => PyAssignment(target, expr) }
