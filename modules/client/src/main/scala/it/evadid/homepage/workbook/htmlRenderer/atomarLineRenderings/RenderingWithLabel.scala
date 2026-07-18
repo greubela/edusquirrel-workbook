@@ -6,15 +6,12 @@ import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.WorkbookLabel
 
 
-// Special
 case class RenderingWithLabel(workbookElement: WorkbookElement, containedElement: AtomarLineRendering, label: WorkbookLabel) extends AtomarLineRendering {
-
-  override lazy val render: Element = div("todo!") //RenderingLine(workbookElement, elementsWithoutContainer, "labeled_container").render
 
   private lazy val cssLabel: String = label.labelType.associatedCssString
 
   lazy val elementsWithoutContainer: DomElementCollection = {
-    val list = List(
+    List(
       h3(
         cls := s"${cssLabel}__title labeled_container_label",
         text <-- laminarHelper.plaintextStringSignal(label.contentId)
@@ -24,7 +21,11 @@ case class RenderingWithLabel(workbookElement: WorkbookElement, containedElement
         children <-- containedElement.elementsWithoutContainer.allElementsSignal
       )
     )
-    list
   }
+
+  private lazy val lineRendering: RenderingWorkbookElementLine =
+    RenderingWorkbookElementLine(workbookElement, elementsWithoutContainer, s"$cssLabel exercise-instruction")
+
+  override lazy val render: Element = lineRendering.render
 }
 

@@ -3,59 +3,35 @@ package it.evadid.homepage.webElements.editor.code.python
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
 import it.evadid.homepage.webElements.editor.config.CodeEditorConfig
-import it.evadid.vm.BeProgram
-import it.evadid.vm.code.others.BeStartProgram
-import it.evadid.vm.parsing.python.PythonParser
 import org.scalajs.dom
 import todomove.datastructures.web.font.AppFont
 
 import scala.scalajs.js
 
-/*
+case class CodeMirrorEditor(
+                             content: Var[String],
+                             onUserInput: String => Unit = _ => (),
+                             editorFont: Signal[AppFont] = Val(AppFont("JetBrains Mono", 14))
+                           ) extends SimpleWebEditor[String, CodeEditorConfig] {
 
-todo: actually implement this.. */
+  import CodeMirrorEditor.*
 
-case class BeCodeEditor(
-                         program: Var[BeProgram],
-                         programmingLanguage: ProgrammingLanguage = Python,
-                         humanLanguage: HumanLanguage = English,
-                         onParseError: Option[String] => Unit = _ => (),
-                         onUserInput: String => Unit = _ => (),
-                         editorFont: Signal[AppFont] = Val(AppFont("JetBrains Mono", 14))
-                       ) extends SimpleWebEditor[BeProgram, CodeEditorConfig] {
+  private var handle: Option[CodeMirrorHandle] = None
+  private var updatingFromEditor: Boolean = false
 
-  import BeCodeEditor.{facade, waitForFacade, CodeMirrorFacade, CodeMirrorHandle, EditorConfig}
+  def focus(): Unit = handle.foreach(_.focus())
 
-  private val strVar: Var[String] = Var(initProgramString())
-  private var textDirty: Boolean = false
-  private var editorHandle: Option[CodeMirrorHandle] = None
-  private var updatingFromVar: Boolean = false
-
-  private def initProgramString(): String =
-    program.now().fullProgram.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable = false)
-
-  def focus(): Unit = editorHandle.foreach(_.focus())
+  def currentDoc: Option[String] = handle.map(_.getDoc())
 
   def setDiagnostics(diagnostics: Seq[CodeMirrorEditor.Diagnostic]): Unit =
-    editorHandle.foreach(_.setDiagnostics(js.Array(diagnostics.map(_.toJs)*)))
+    handle.foreach(_.setDiagnostics(js.Array(diagnostics.map(_.toJs) *)))
 
   def clearDiagnostics(): Unit = setDiagnostics(Nil)
-
-  def syncTextToProgram(): Unit = {
-    val raw = strVar.now()
-    textDirty = false
-    try {
-      val parsedSequence = PythonParser.parsePython(raw)
-      program.set(BeProgram(BeStartProgram(parsedSequence)))
-      onParseError(None)
-    } catch {
-      case e: Exception =>
-        onParseError(Some(e.getMessage))
-    }
-  }
 
   override def getDomElement(): L.Element = {
     div(
@@ -67,35 +43,32 @@ case class BeCodeEditor(
         waitForFacade {
           case Some(cmFacade) =>
             val container = ctx.thisNode.ref
-            val initialValue = strVar.now()
+            val initialValue = content.now()
 
-            var updatingFromEditor: Boolean = false
+            var updatingFromVar = false
 
-            val handle = cmFacade.createEditor(
+            val createdHandle = cmFacade.createEditor(
               EditorConfig(
                 parent = container,
                 doc = initialValue,
+                language = languageToJs(language),
                 onDocChange = value =>
                   if (!updatingFromVar) {
                     updatingFromEditor = true
-                    textDirty = true
-                    strVar.set(value)
+                    content.writer.onNext(value)
                     onUserInput(value)
                     updatingFromEditor = false
                   }
               )
             )
 
-            editorHandle = Some(handle)
+            handle = Some(createdHandle)
 
-            // BeProgram -> String: when program Var changes externally, update editor
-            program.signal.foreach { newProg =>
-              if (!textDirty) {
-                val newText = newProg.fullProgram.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable = false)
-                if (handle.getDoc() != newText) {
+            content.signal.foreach { value =>
+              handle.foreach { editorHandle =>
+                if (!updatingFromEditor && editorHandle.getDoc() != value) {
                   updatingFromVar = true
-                  handle.setDoc(newText)
-                  strVar.set(newText)
+                  editorHandle.setDoc(value)
                   updatingFromVar = false
                 }
               }
@@ -106,18 +79,26 @@ case class BeCodeEditor(
         }
       },
       onUnmountCallback { _ =>
-        editorHandle.foreach(_.destroy())
-        editorHandle = None
+        handle.foreach(_.destroy())
+        handle = None
       }
     )
   }
 
-  override def underlyingVar: Var[BeProgram] = program
+  override def underlyingVar: Var[String] = content
 
   override def config: Val[CodeEditorConfig] = Val(CodeEditorConfig.defaultConfig)
 }
 
-object BeCodeEditor {
+object CodeMirrorEditor {
+
+  def languageToJs(language: ProgrammingLanguage): String =
+    language match {
+      case AppLanguage.Cpp => "cpp"
+      case AppLanguage.C => "c"
+      case AppLanguage.Python => "python"
+      case _ => "python"
+    }
 
   @js.native
   private trait CodeMirrorFacade extends js.Object {
@@ -125,25 +106,55 @@ object BeCodeEditor {
   }
 
   @js.native
-  private trait CodeMirrorHandle extends js.Object {
+  trait CodeMirrorHandle extends js.Object {
     def setDoc(value: String): Unit = js.native
+
     def getDoc(): String = js.native
+
     def setDiagnostics(diagnostics: js.Array[js.Object]): Unit = js.native
+
     def focus(): Unit = js.native
+
     def destroy(): Unit = js.native
   }
 
-  private trait EditorConfig extends js.Object {
+  final case class Diagnostic(
+    line: Int,
+    endLine: Option[Int] = None,
+    fromCh: Option[Int] = None,
+    toCh: Option[Int] = None,
+    message: String = "",
+    severity: String = "warning"
+  ) {
+    def toJs: js.Object =
+      js.Dynamic.literal(
+        line = line,
+        endLine = endLine.getOrElse(line),
+        fromCh = fromCh.fold[js.Any](js.undefined)(identity),
+        toCh = toCh.fold[js.Any](js.undefined)(identity),
+        message = message,
+        severity = severity
+      ).asInstanceOf[js.Object]
+  }
+
+  trait EditorConfig extends js.Object {
     var parent: dom.Element
     var doc: String
+    var language: String
     var onDocChange: js.Function1[String, Unit]
   }
 
-  private object EditorConfig {
-    def apply(parent: dom.Element, doc: String, onDocChange: String => Unit): EditorConfig = {
+  object EditorConfig {
+    def apply(
+      parent: dom.Element,
+      doc: String,
+      onDocChange: String => Unit,
+      language: String = "python"
+    ): EditorConfig = {
       js.Dynamic.literal(
         parent = parent,
         doc = doc,
+        language = language,
         onDocChange = (value: String) => onDocChange(value)
       ).asInstanceOf[EditorConfig]
     }

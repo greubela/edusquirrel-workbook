@@ -1,10 +1,10 @@
+import sbt._
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.linker.interface.ModuleKind
 import org.scalajs.linker.interface.OutputPatterns
-import sbt._
-import Dependencies._
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
+import Dependencies._
 
 object Dependencies {
 

@@ -6,7 +6,8 @@ import {
   drawSelection,
   highlightActiveLine,
   lineNumbers,
-  highlightActiveLineGutter
+  highlightActiveLineGutter,
+  ViewPlugin
 } from "https://esm.sh/@codemirror/view@6.38.6?deps=@codemirror/state@6.5.2";
 import {defaultKeymap, history, historyKeymap, indentLess, indentMore} from "https://esm.sh/@codemirror/commands@6.8.1?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3";
 import {
@@ -16,10 +17,12 @@ import {
   indentUnit,
   indentOnInput,
   syntaxHighlighting,
-  defaultHighlightStyle
+  defaultHighlightStyle,
+  syntaxTree
 } from "https://esm.sh/@codemirror/language@6.11.3?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6";
 import {highlightSelectionMatches, searchKeymap} from "https://esm.sh/@codemirror/search@6.5.11?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6";
 import {python} from "https://esm.sh/@codemirror/lang-python@6.2.1?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3,@codemirror/autocomplete@6.18.4";
+import {cpp} from "https://esm.sh/@codemirror/lang-cpp@6.0.2?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3";
 import {oneDark} from "https://esm.sh/@codemirror/theme-one-dark@6.1.3?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3";
 import {indentationMarkers} from "https://esm.sh/@replit/codemirror-indentation-markers@6.5.3?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3";
 
@@ -231,10 +234,156 @@ const editorTheme = EditorView.theme({
   ".cm-indent-markers": {
     "--indent-marker-bg-color":     "var(--cm-indent-color,        rgba(255,255,255,0.10))",
     "--indent-marker-active-bg-color": "var(--cm-indent-active-color, rgba(255,255,255,0.28))"
+  },
+  ".cm-todo-token": {
+    color: "var(--color-accent-error) !important",
+    fontWeight: "700"
+  },
+  ".cm-todo-token *": {
+    color: "var(--color-accent-error) !important",
+    fontWeight: "700"
+  },
+  /* Identifier/variable names and brackets without TODO */
+  ".cm-plain-name": {
+    color: "var(--color-text-inverse) !important"
+  },
+  ".cm-plain-name *": {
+    color: "var(--color-text-inverse) !important"
+  },
+  /* Keep comments grey (oneDark stone) even if other overrides compete */
+  ".cm-comment": {
+    color: "var(--color-gray-7) !important",
+    fontStyle: "italic"
+  },
+  ".cm-comment *": {
+    color: "var(--color-gray-7) !important"
+  },
+  /* Calls / member access / Arduino constants — light blue instead of oneDark coral red */
+  ".cm-accent-name": {
+    color: "var(--color-blue-1) !important"
+  },
+  ".cm-accent-name *": {
+    color: "var(--color-blue-1) !important"
   }
 });
 
-const baseExtensions = [
+/** Keywords that must keep their oneDark keyword colors. */
+const RESERVED_IDENTIFIERS = new Set([
+  "if", "else", "elif", "for", "while", "do", "switch", "case", "default", "break", "continue", "return",
+  "int", "void", "char", "float", "double", "long", "short", "bool", "boolean", "byte", "word", "string",
+  "const", "static", "unsigned", "signed", "struct", "class", "public", "private", "protected",
+  "true", "false", "True", "False", "NULL", "nullptr", "None", "sizeof", "typedef", "enum", "volatile",
+  "def", "import", "from", "as", "pass", "and", "or", "not", "in", "is", "with", "try", "except",
+  "finally", "raise", "yield", "lambda", "global", "nonlocal", "assert", "async", "await",
+  "self", "cls", "new", "delete", "this", "using", "namespace", "template", "typename", "virtual",
+  "override", "inline", "extern", "auto", "include", "define", "ifdef", "ifndef", "endif"
+]);
+
+/** Arduino / API constants that should read as purple accents, not coral red. */
+const ACCENT_IDENTIFIERS = new Set([
+  "HIGH", "LOW", "INPUT", "OUTPUT", "INPUT_PULLUP", "LED_BUILTIN"
+]);
+
+const IDENTIFIER_PATTERN = /\b[A-Za-z_][A-Za-z0-9_]*\b/g;
+const BRACKET_PATTERN = /[{}[\]()]/g;
+
+const nextNonSpaceChar = (doc, pos) => {
+  const slice = doc.sliceString(pos, Math.min(pos + 32, doc.length));
+  const match = /^\s*(.)/.exec(slice);
+  return match ? match[1] : "";
+};
+
+const isInCommentOrString = (state, pos) => {
+  let node = syntaxTree(state).resolveInner(pos, -1);
+  for (let cur = node; cur; cur = cur.parent) {
+    const name = cur.name;
+    if (
+      name === "LineComment" ||
+      name === "BlockComment" ||
+      name === "Comment" ||
+      name === "String" ||
+      name === "CharLiteral" ||
+      name.includes("Comment") ||
+      name.includes("String")
+    ) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const buildIdentifierDecorations = (view) => {
+  const ranges = [];
+  const doc = view.state.doc;
+  const state = view.state;
+  for (const {from, to} of view.visibleRanges) {
+    const text = doc.sliceString(from, to);
+
+    IDENTIFIER_PATTERN.lastIndex = 0;
+    let match;
+    while ((match = IDENTIFIER_PATTERN.exec(text)) !== null) {
+      const word = match[0];
+      if (RESERVED_IDENTIFIERS.has(word)) {
+        continue;
+      }
+      const start = from + match.index;
+      const end = start + word.length;
+      if (isInCommentOrString(state, start)) {
+        continue;
+      }
+      const isTodo = word.includes("TODO");
+      const nextChar = nextNonSpaceChar(doc, end);
+      const isCallOrMember = nextChar === "(" || nextChar === ".";
+      const isAccentConstant = ACCENT_IDENTIFIERS.has(word);
+
+      if (isTodo) {
+        ranges.push(Decoration.mark({class: "cm-todo-token"}).range(start, end));
+        continue;
+      }
+
+      if (isCallOrMember || isAccentConstant) {
+        ranges.push(Decoration.mark({class: "cm-accent-name"}).range(start, end));
+        continue;
+      }
+
+      ranges.push(Decoration.mark({class: "cm-plain-name"}).range(start, end));
+    }
+
+    BRACKET_PATTERN.lastIndex = 0;
+    while ((match = BRACKET_PATTERN.exec(text)) !== null) {
+      const start = from + match.index;
+      if (isInCommentOrString(state, start)) {
+        continue;
+      }
+      ranges.push(Decoration.mark({class: "cm-plain-name"}).range(start, start + 1));
+    }
+  }
+  return Decoration.set(ranges, true);
+};
+
+const identifierHighlightPlugin = ViewPlugin.fromClass(class {
+  constructor(view) {
+    this.decorations = buildIdentifierDecorations(view);
+  }
+
+  update(update) {
+    if (update.docChanged || update.viewportChanged) {
+      this.decorations = buildIdentifierDecorations(update.view);
+    }
+  }
+}, {
+  decorations: (value) => value.decorations
+});
+
+const languageExtension = (language) => {
+  const normalized = String(language ?? "python").toLowerCase();
+  if (normalized === "cpp" || normalized === "c" || normalized === "c++") {
+    return cpp();
+  }
+  return python();
+};
+
+const sharedExtensions = [
   EditorState.tabSize.of(4),
   indentUnit.of(INDENT_SPACES),
   lineNumbers(),
@@ -251,7 +400,6 @@ const baseExtensions = [
     highlightActiveBlock: true,
     hideFirstIndent: false
   }),
-  python(),
   syntaxHighlighting(defaultHighlightStyle, {fallback: true}),
   oneDark,
   keymap.of([
@@ -263,17 +411,19 @@ const baseExtensions = [
   ]),
   diagnosticField,
   diagnosticTheme,
-  editorTheme
+  editorTheme,
+  identifierHighlightPlugin
 ];
 
 const codeMirrorFacade = {
-  createEditor: ({parent, doc = "", onDocChange}) => {
+  createEditor: ({parent, doc = "", onDocChange, language = "python"}) => {
     let isProgrammaticUpdate = false;
 
     const state = EditorState.create({
       doc: replaceTabsWithSpaces(doc),
       extensions: [
-        ...baseExtensions,
+        ...sharedExtensions,
+        languageExtension(language),
         EditorView.updateListener.of((update) => {
           if (update.docChanged && !isProgrammaticUpdate && typeof onDocChange === "function") {
             onDocChange(update.state.doc.toString());

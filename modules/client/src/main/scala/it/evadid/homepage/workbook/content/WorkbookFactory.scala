@@ -10,7 +10,14 @@ import it.evadid.workbook.elements.displayElements.ImageElement.FileBasedImageEl
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{LabelType, WorkbookLabel}
 import it.evadid.workbook.elements.displayElements.*
 import it.evadid.workbook.elements.interactionElements.basic.*
+import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{
+  AdvancedCodeRequirement,
+  CodeTaskToggleInteraction,
+  SketchDownloadInteraction
+}
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
+import it.evadid.workbook.elements.interactionElements.sortingExercise.{SortingInteraction, SortingItem}
+import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
 import it.evadid.workbook.elements.structureElements.*
 import todomove.datastructures.web.file.FileFactory
 
@@ -90,9 +97,15 @@ trait WorkbookFactory {
   }
 
   protected def labeledInstruction(titleMapId: String, bodyMapId: String, labelType: LabelType): LabeledWorkbookElement[WorkbookElement] = {
-    val instruction: WorkbookElement = instructionHtml(bodyMapId)
+    val instruction: WorkbookElement = instructionMarkdown(bodyMapId)
     LabeledWorkbookElement[WorkbookElement](instruction, WorkbookLabel(LanguageMapContentId(titleMapId), labelType))
   }
+
+  protected def instructionLabeledPair(titleMapId: String, bodyMapId: String, labelType: LabelType): LabeledWorkbookElement[WorkbookElement] =
+    labeledInstruction(titleMapId, bodyMapId, labelType)
+
+  protected def instructionCollapsibleHint(titleMapId: String, bodyMapId: String, initiallyCollapsed: Boolean = true): CollapsibleInstructionElement =
+    CollapsibleInstructionElement(LanguageMapContentId(titleMapId), LanguageMapContentId(bodyMapId), initiallyCollapsed)
 
   def image(imageName: String, imgType: String = "png"): ImageElement = {
     val fileDesc: FileDescription = FileFactory.relativeToResourceFolder("workbookresources/embroidery/images/" + imageName + "." + imgType)
@@ -123,8 +136,77 @@ trait WorkbookFactory {
                              programmingLanguage: ProgrammingLanguage,
                              hints: List[LanguageMapContentId] = List.empty,
                              orderConstraints: List[(Int, Int)] = Nil
-                           ): ReorderInteraction[String] = {
+                           ): ReorderInteraction.ReorderCodeInteraction = {
     ReorderInteraction.ReorderCodeInteraction(baseId, snippets, programmingLanguage, hints = hints, orderConstraints = orderConstraints)
+  }
+
+  protected def codeTaskToggle(
+                                reorderId: String,
+                                snippets: List[String],
+                                codeEditorTitle: String,
+                                advancedCodeTemplate: String,
+                                hints: List[LanguageMapContentId] = List.empty,
+                                orderConstraints: List[(Int, Int)] = Nil,
+                                advancedRequirements: List[AdvancedCodeRequirement] = Nil,
+                                advancedSuccessMessage: String = "basic/advancedCodeFeedbackSuccess"
+                              ): CodeTaskToggleInteraction = {
+    CodeTaskToggleInteraction(
+      nextId(reorderId + "-toggle"),
+      codeReorder(reorderId, snippets, AppLanguage.C, hints, orderConstraints),
+      LanguageMapContentId(codeEditorTitle),
+      advancedCodeTemplate,
+      advancedRequirements,
+      LanguageMapContentId(advancedSuccessMessage)
+    )
+  }
+
+  protected def sketchDownload(
+                                buttonLabelKey: String,
+                                sketchContent: String,
+                                filename: String,
+                                id: String,
+                                unlockWhenReorderCorrect: String
+                              ): SketchDownloadInteraction = {
+    SketchDownloadInteraction(
+      nextId(id),
+      LanguageMapContentId(buttonLabelKey),
+      filename,
+      sketchContent,
+      unlockWhenReorderCorrect
+    )
+  }
+
+  protected def sortingExercise(
+    id: String,
+    fieldKeys: List[String],
+    items: List[(String, Int, String)]
+  ): SortingInteraction = {
+    SortingInteraction(
+      id = id,
+      fields = fieldKeys.map(LanguageMapContentId.apply),
+      items = items.map { case (labelKey, correctFieldIndex, errorKey) =>
+        SortingItem(LanguageMapContentId(labelKey), correctFieldIndex, LanguageMapContentId(errorKey))
+      }
+    )
+  }
+
+  protected def sortingReasonExercise(
+    id: String,
+    fieldKeys: List[String],
+    items: List[(String, Int, String, String)]
+  ): SortingReasonInteraction = {
+    SortingReasonInteraction(
+      id = id,
+      fields = fieldKeys.map(LanguageMapContentId.apply),
+      items = items.map { case (labelKey, correctFieldIndex, errorKey, reasonPromptKey) =>
+        SortingReasonItem(
+          LanguageMapContentId(labelKey),
+          correctFieldIndex,
+          LanguageMapContentId(errorKey),
+          LanguageMapContentId(reasonPromptKey)
+        )
+      }
+    )
   }
 
 

@@ -21,14 +21,8 @@ case class HtmlWorkbookDomElement(fullInfo: FullInfo) extends HtmlAppElement {
   private lazy val dialogElement: Element = {
     dialogTag(
       cls := "fullscreen-overlay-dialog",
-      onCloseDialog --> (_ => {
-        println("onCloseDialogCalled!")
-        fullInfo.displayControl.closeFullscreen()
-      }),
-      laminarHelper.onClickedOutside(_ => {
-        println("clicked outside of dialog!")
-        fullInfo.displayControl.closeFullscreen()
-      }),
+      onCloseDialog --> (_ => fullInfo.displayControl.closeFullscreen()),
+      laminarHelper.onClickedOutside(_ => fullInfo.displayControl.closeFullscreen()),
       onMountCallback { ctx =>
         val nativeDialog = ctx.thisNode.ref.asInstanceOf[dom.html.Dialog]
 

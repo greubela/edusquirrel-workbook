@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.diagnosis
 
-import it.evadid.homepage.webElements.editor.code.python.CodeMirrorEditor
+import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
 import it.evadid.vm.code.BeExpression
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import it.evadid.vm.code.tree.BeExpressionReference

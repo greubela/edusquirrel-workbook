@@ -33,7 +33,7 @@ case class LaminarRenderHelper() {
 
   def onClickedOutside(onClickedOutside: MouseEvent => Unit): Modifier[HtmlElement] = {
     onClick --> { (event: MouseEvent) =>
-      val dialog = event.target.asInstanceOf[dom.html.Element]
+      val dialog = event.currentTarget.asInstanceOf[dom.html.Element]
       val rect = dialog.getBoundingClientRect()
       val clickedOutside = event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom
       if (clickedOutside) onClickedOutside(event)

@@ -118,6 +118,52 @@
     --color-background-colored-correct: var(--color-green-2);
     --color-background-colored-incorrect: var(--color-red-2);
 
+    /* Workbook aliases */
+    --color-ink: var(--textcolor-regular);
+    --color-accent-strong: var(--color-blue-6);
+    --color-accent-primary: var(--color-blue-5);
+    --color-accent-active: var(--color-blue-4);
+    --color-accent-success: var(--color-green-5);
+    --color-accent-error: var(--color-red-5);
+    --color-border-soft: var(--color-gray-3);
+    --color-border: var(--color-gray-3);
+    --color-surface-base: var(--color-background-workarea-interactible);
+    --color-surface-muted: var(--color-gray-0);
+    --color-surface: var(--color-surface-base);
+    --color-surface-subtle: var(--color-gray-1);
+    --color-text-muted-light: var(--color-gray-7);
+    --color-text-primary: var(--textcolor-regular);
+    --color-text-secondary: var(--color-gray-10);
+    --color-text-inverse: var(--color-surface-base);
+    --color-focus: var(--color-accent-primary);
+    --color-focus-ring: rgba(37, 99, 235, 0.2);
+    --color-interaction-background: var(--color-surface-base);
+    --color-button-background: var(--color-surface-muted);
+    --color-button-hover: var(--color-surface-base);
+    --color-button-border: var(--color-border-soft);
+    --color-container-border-passive: var(--color-border-soft);
+    --color-container-border-inactive: var(--color-blue-6);
+    --color-container-border-active: var(--color-blue-4);
+    --color-container-accent: var(--color-blue-6);
+    --color-outline-blue-soft: var(--color-blue-1);
+    --color-code-background: var(--color-gray-14);
+    --color-code-text: var(--color-blue-2);
+    --color-code-font: 'Consolas', 'Monaco', monospace;
+    --color-code-size: 14px;
+    --color-tooltip-background: var(--color-surface-base);
+    --color-tooltip-text: var(--color-ink);
+    --color-tooltip-border: var(--color-border-soft);
+    --color-tooltip-shadow: rgba(24, 35, 51, 0.15);
+    --color-taskbox-background: var(--color-background-workarea-display);
+    --color-taskbox-border: var(--color-blue-4);
+    --color-taskbox-btn-active: var(--color-blue-4);
+    --color-taskbox-btn-active-hover: var(--color-blue-6);
+    --color-taskbox-btn-text: var(--color-blue-4);
+    --color-taskbox-btn-bg: var(--color-surface-base);
+    --interaction-border: 2px solid var(--color-accent-active);
+    --interaction-highlight-transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    --font-family-base: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
     /* ASSOCIATED ROLES */
 
     --color-role-system: var(--color-green-2);

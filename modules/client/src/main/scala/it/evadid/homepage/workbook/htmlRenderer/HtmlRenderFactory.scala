@@ -9,15 +9,23 @@ import it.evadid.homepage.webElements.basic.HtmlImageElement
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
 import it.evadid.homepage.workbook.htmlRenderer.displayRenderer.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.*
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle.{HtmlCodeTaskToggleRenderer, HtmlSketchDownloadRenderer}
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.reorderExercise.HtmlReorderInteractionRenderer
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingExercise.HtmlSortingInteractionRenderer
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingReasonExercise.HtmlSortingReasonInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.{HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRenderer}
 import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.{HtmlExerciseContainerRenderer, HtmlWorkbookRenderer}
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.*
 import it.evadid.workbook.elements.interactionElements.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, TextInteraction}
+import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExercise
+import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.slideshow.Slideshow
+import it.evadid.workbook.elements.interactionElements.sortingExercise.SortingInteraction
+import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.SortingReasonInteraction
 import it.evadid.workbook.elements.structureElements.{ExerciseContainer, Workbook}
 import org.scalajs.dom.HTMLDivElement
 
@@ -87,12 +95,18 @@ object HtmlRenderFactory {
     anyElement match {
       case c: DisplayLangMapContent => HtmlDisplayLangMapContentRenderer.renderWorkbookElement(c)
       case b: LabeledWorkbookElement[?] => HtmlLabeledWorkbookElementRenderer(b).renderWorkbookElement(b)
+      case c: CollapsibleInstructionElement => HtmlCollapsibleInstructionRenderer.renderWorkbookElement(c)
       case i: ImageElement => HtmlProxyAppElementRenderer.renderWorkbookElement(i, HtmlImageElement(i))
 
       // interactions
       case i: TextInteraction => HtmlSimpleTextInteractionRenderer.renderWorkbookElement(i)
       case i: LabeledCheckboxInteraction => HtmlBasicCheckboxRenderer.renderWorkbookElement(i)
       case i: LabeledNumberInteraction => HtmlBasicNumberRenderer.renderWorkbookElement(i)
+      case s: SortingInteraction => HtmlSortingInteractionRenderer.renderWorkbookElement(s)
+      case s: SortingReasonInteraction => HtmlSortingReasonInteractionRenderer.renderWorkbookElement(s)
+      case r: ReorderInteraction[?] => HtmlReorderInteractionRenderer.renderWorkbookElement(r)
+      case c: CodeTaskToggleInteraction => HtmlCodeTaskToggleRenderer.renderWorkbookElement(c)
+      case d: SketchDownloadInteraction => HtmlSketchDownloadRenderer.renderWorkbookElement(d)
       /*case i: ChoiceSelectionInteraction => HtmlChoiceSelectionRenderer.renderWorkbookElement(i)
       case i: MatchingInteraction => HtmlMatchingInteractionRenderer.renderWorkbookElement(i)
       case i: CategorizationInteraction => HtmlCategorizationInteractionRenderer.renderWorkbookElement(i)
@@ -116,7 +130,3 @@ object HtmlRenderFactory {
   }
 
 }
-
-
-
-
