@@ -8,7 +8,6 @@ sealed trait PyAST extends GenericAST
 
 object PyAST {
 
-
   case class IndentState(var currentLevel: Int = 0)
 
   // ==========================================
