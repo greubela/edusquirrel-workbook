@@ -1,6 +1,7 @@
-package it.evadid.todomove.`export`.snap
+package it.evadid.homepage.webElements.editor.code.SnapRenderer
 
 import org.scalajs.dom
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation.*
 

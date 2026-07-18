@@ -6,13 +6,9 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.canvas.WebCanvas
 import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.data.PythonExecutionRequest
 import todomove.`export`.workers.PyodideWorkerClient
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.scalajs.js
-import scala.scalajs.js.JSConverters.*
 
 case class TurtleExerciseDemo() extends HtmlAppElement {
 
