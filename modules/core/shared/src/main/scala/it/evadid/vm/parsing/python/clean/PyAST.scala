@@ -1,10 +1,9 @@
 package it.evadid.vm.parsing.python.clean
 
 import it.evadid.core.util.io.Serializer
+import it.evadid.vm.parsing.abstractions.GenericAST
 
-sealed trait PyAST {
-
-}
+sealed trait PyAST extends GenericAST
 
 object PyAST {
 
@@ -13,12 +12,17 @@ object PyAST {
   // ==========================================
   // PROGRAM
   // ==========================================
-  case class PyProgram(statements: Seq[StatementWithLineNumber]) extends PyAST
+  case class PyProgram(statements: Seq[StatementWithLineNumber]) extends PyAST {
+    override def getChildren(): Seq[GenericAST] = statements
+  }
 
-  case class StatementWithLineNumber(statement: PyStatement, lineNumber: Int) extends PyAST
+  case class StatementWithLineNumber(statement: PyStatement, lineNumber: Int) extends PyAST {
+    override def getChildren(): Seq[GenericAST] = Seq(statement)
+  }
 
   case class PyExecutionBlock(statements: Seq[PyStatement]) extends PyAST {
     def withAdded(other: Seq[PyStatement]): PyExecutionBlock = PyExecutionBlock(statements ++ other)
+    override def getChildren(): Seq[GenericAST] = statements
   }
 
   // ==========================================
@@ -42,70 +46,110 @@ object PyAST {
 
   case class PyImportFromStatement(moduleName: String, imports: List[PyTarget], importAll: Boolean) extends PyStatement
 
-  case class PyRaiseStatement(raiseDirectly: Option[PyExpression], raiseFrom: Option[PyExpression]) extends PyStatement
+  case class PyRaiseStatement(raiseDirectly: Option[PyExpression], raiseFrom: Option[PyExpression]) extends PyStatement {
+    override def getChildren(): Seq[GenericAST] = raiseDirectly.toList ++ raiseFrom.toList
+  }
 
-  case class PyReturnStatement(expr: Option[PyExpression]) extends PyStatement
+  case class PyReturnStatement(expr: Option[PyExpression]) extends PyStatement {
+    override def getChildren(): Seq[GenericAST] = expr.toList
+  }
 
 
   // Basic Control Structures
-  case class PyIfStatement(condition: PyExpression, thenBlock: PyExecutionBlock, elseBlock: PyExecutionBlock) extends PyStatement
+  case class PyIfStatement(condition: PyExpression, thenBlock: PyExecutionBlock, elseBlock: PyExecutionBlock) extends PyStatement {
+    override def getChildren(): Seq[GenericAST] = List(condition, thenBlock, elseBlock)
+  }
 
-  case class PyWhileStatement(condition: PyExpression, bodyBlock: PyExecutionBlock, elseBlock: Option[PyExecutionBlock]) extends PyStatement
+  case class PyWhileStatement(condition: PyExpression, bodyBlock: PyExecutionBlock, elseBlock: Option[PyExecutionBlock]) extends PyStatement {
+    override def getChildren(): Seq[GenericAST] = List(condition, bodyBlock) ++ elseBlock.toList
+  }
 
-  case class PyForStatement(elementExpression: PyExpression, inExpression: PyExpression, bodyBlock: PyExecutionBlock, elseBlock: Option[PyExecutionBlock], isAsync: Boolean) extends PyStatement
+  case class PyForStatement(elementExpression: PyExpression, inExpression: PyExpression, bodyBlock: PyExecutionBlock, elseBlock: Option[PyExecutionBlock], isAsync: Boolean) extends PyStatement {
+    override def getChildren(): Seq[GenericAST] = List(elementExpression, inExpression, bodyBlock) ++ elseBlock.toList
+  }
 
   // Exception Handling
-  case class PyTryStatement(body: PyExecutionBlock, exceptStatements: List[PyExceptClause], elseBlock: Option[PyExecutionBlock]) extends PyStatement
+  case class PyTryStatement(body: PyExecutionBlock, exceptStatements: List[PyExceptClause], elseBlock: Option[PyExecutionBlock]) extends PyStatement {
+    override def getChildren(): Seq[GenericAST] = List(body) ++ exceptStatements ++ elseBlock.toList
+  }
 
-  sealed trait PyExceptClause {
+  sealed trait PyExceptClause extends PyStatement {
     def body: PyExecutionBlock
   }
 
-  case class PyExceptClauseBasic(expression: Option[PyExpression], name: Option[String], body: PyExecutionBlock) extends PyExceptClause
+  case class PyExceptClauseBasic(expression: Option[PyExpression], name: Option[String], body: PyExecutionBlock) extends PyExceptClause {
+    override def getChildren(): Seq[GenericAST] = expression.toList ++ List(body)
+  }
 
-  case class PyExceptClauseStar(expression: PyExpression, name: Option[String], body: PyExecutionBlock) extends PyExceptClause
+  case class PyExceptClauseStar(expression: PyExpression, name: Option[String], body: PyExecutionBlock) extends PyExceptClause {
+    override def getChildren(): Seq[GenericAST] = List(expression, body)
+  }
 
-  case class PyExceptClauseFinally(body: PyExecutionBlock) extends PyExceptClause
+  case class PyExceptClauseFinally(body: PyExecutionBlock) extends PyExceptClause {
+    override def getChildren(): Seq[GenericAST] = List(body)
+  }
 
   // Expressions
 
   sealed trait PyExpression extends PyStatement
 
-  case class NamedExpression(name: String, expression: PyExpression) extends PyExpression
+  case class NamedExpression(name: String, expression: PyExpression) extends PyExpression {
+    override def getChildren(): Seq[GenericAST] = List(expression)
+  }
 
   case class PyTypeDefExpression() extends PyExpression
 
-  case class PyAssignment(target: PyTarget, value: Option[PyExpression]) extends PyStatement
+  case class PyAssignment(target: PyTarget, value: Option[PyExpression]) extends PyStatement {
+    override def getChildren(): Seq[GenericAST] = value.toList
+  }
 
-  case class PyAugAssignment(target: PyTarget, augOperator: String, expression: PyExpression) extends PyStatement
+  case class PyAugAssignment(target: PyTarget, augOperator: String, expression: PyExpression) extends PyStatement {
+    override def getChildren(): Seq[GenericAST] = List(expression)
+  }
 
   // Targets
 
 
   // Defs
 
-  case class PyFunctionCall(name: PyTarget, parameterValues: List[PyExpression]) extends PyExpression
+  case class PyFunctionCall(name: PyTarget, parameterValues: List[PyExpression]) extends PyExpression {
+    override def getChildren(): Seq[GenericAST] = parameterValues
+  }
 
-  case class PyFunctionDef(name: String, parameters: List[PyAssignment], block: PyExecutionBlock, isAsync: Boolean) extends PyStatement
+  case class PyFunctionDef(name: String, parameters: List[PyAssignment], block: PyExecutionBlock, isAsync: Boolean) extends PyStatement {
+    override def getChildren(): Seq[GenericAST] = parameters ++ List(block)
+  }
 
-  case class PyClassDef(name: String, parameters: List[PyAssignment], block: PyExecutionBlock, isAsync: Boolean) extends PyStatement
+  case class PyClassDef(name: String, parameters: List[PyAssignment], block: PyExecutionBlock, isAsync: Boolean) extends PyStatement {
+    override def getChildren(): Seq[GenericAST] = parameters ++ List(block)
+  }
 
+  case class PyOperationBinary(left: PyExpression, op: String, right: PyExpression) extends PyExpression {
+    override def getChildren(): Seq[GenericAST] = List(left, right)
+  }
 
-  case class PyOperationBinary(left: PyExpression, op: String, right: PyExpression) extends PyExpression
-
-  case class PyOperationUnary(op: String, operand: PyExpression) extends PyExpression
+  case class PyOperationUnary(op: String, operand: PyExpression) extends PyExpression{
+    override def getChildren(): Seq[GenericAST] = List(operand)}
 
   // Atomar
 
   sealed trait PyAtomar extends PyExpression
 
-  case class PyTarget(name: String, locationString: List[String] = List(), sliceExpr: Option[PyExpression] = None, typeHint: Option[PythonType] = None) extends PyAtomar
+  case class PyTarget(name: String, locationString: List[String] = List(), sliceExpr: Option[PyExpression] = None, typeHint: Option[PythonType] = None) extends PyAtomar {
+    override def getChildren(): Seq[GenericAST] = sliceExpr.toList
+  }
 
   case class PyLiteral[T](literalAsString: String, pythonTyp: PythonType, scalaValue: T, serializer: Serializer[T]) extends PyAtomar
 
-  case class PyListLiteral(elements: List[PyExpression]) extends PyAtomar
+  /*
+  Todo: Adjust to PyLiteral
+  case class PyListLiteral(elements: List[PyExpression]) extends PyAtomar {
+    override def getChildren(): Seq[GenericAST] = elements
+  }
 
-  case class PyTupleLiteral(elements: List[PyExpression]) extends PyAtomar
+  case class PyTupleLiteral(elements: List[PyExpression]) extends PyAtomar {
+    override def getChildren(): Seq[GenericAST] = elements
+  }*/
 
   def main(args: Array[String]): Unit = {
     println("hai!")

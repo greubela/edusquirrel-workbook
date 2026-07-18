@@ -1,8 +1,11 @@
 package it.evadid.vm.parsing.java.clean
 
-sealed trait JavaAST
+import it.evadid.vm.parsing.abstractions.GenericAST
+
+sealed trait JavaAST extends GenericAST
 
 object JavaAST {
+
   case class JavaProgram(statements: Seq[StatementWithLineNumber]) extends JavaAST
   case class StatementWithLineNumber(statement: JavaStatement, lineNumber: Int) extends JavaAST
   case class JavaExecutionBlock(statements: Seq[JavaStatement]) extends JavaAST

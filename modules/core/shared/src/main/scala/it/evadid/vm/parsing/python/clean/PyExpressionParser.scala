@@ -73,7 +73,7 @@ object PyExpressionParser {
   def power[ctx: P]: P[PyExpression] = primary |
     P(primary ~ SPACES.? ~ DOUBLESTAR ~ SPACES ~ factor).map(PyOperationBinary(_, "**", _))
 
-  def primary[ctx: P]: P[PyExpression] = P(parenthesizedExpression | listLiteral | tupleLiteral | target() | literal)
+  def primary[ctx: P]: P[PyExpression] = P(parenthesizedExpression | target() | literal ) // | listLiteral | tupleLiteral)
 
   def arguments[ctx: P]: P[Seq[PyExpression]] = P(expression.rep(sep = P(SPACES.? ~ COMMA ~ SPACES.?)))
 
@@ -83,13 +83,13 @@ object PyExpressionParser {
   def expressionList[ctx: P]: P[Seq[PyExpression]] =
     P(expression.rep(sep = P(SPACES.? ~~ COMMA ~~ SPACES.?)) ~~ (SPACES.? ~~ COMMA).?)
 
-  def listLiteral[ctx: P]: P[PyListLiteral] =
+ /* def listLiteral[ctx: P]: P[PyListLiteral] =
     P(LSQB ~~ SPACES.? ~~ expressionList.? ~~ SPACES.? ~~ RSQB)
       .map(elements => PyListLiteral(elements.getOrElse(List()).toList))
 
   def tupleLiteral[ctx: P]: P[PyTupleLiteral] =
     P(LPAR ~~ SPACES.? ~~ expression ~~ SPACES.? ~~ COMMA ~~ SPACES.? ~~ expressionList.? ~~ SPACES.? ~~ RPAR)
-      .map { case (head, tail) => PyTupleLiteral((head +: tail.getOrElse(List())).toList) }
+      .map { case (head, tail) => PyTupleLiteral((head +: tail.getOrElse(List())).toList) }*/
 
   def parenthesizedExpression[ctx: P]: P[PyExpression] =
     P(LPAR ~~ SPACES.? ~~ expression ~~ SPACES.? ~~ RPAR)
