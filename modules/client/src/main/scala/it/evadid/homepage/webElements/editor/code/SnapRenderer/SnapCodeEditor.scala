@@ -31,6 +31,7 @@ case class SnapCodeEditor(program: Var[BeProgram]) extends HtmlAppElement {
       width := "100%",
       canvasTag(
         cls := "be-program-snap-renderer__canvas",
+        aria.label := "Block program preview",
         widthAttr := CanvasWidth,
         heightAttr := CanvasHeight,
         display.block,
@@ -106,7 +107,10 @@ object SnapCodeEditor {
 
     private def resizeCanvasIfNeeded(): Boolean = {
       val rect = host.getBoundingClientRect()
-      val cssWidth = math.max(CanvasWidth.toDouble, rect.width)
+      // The drawing coordinate system must match the displayed width. Keeping
+      // a 900px backing coordinate system inside a narrower workbook card made
+      // both blocks and text appear unexpectedly tiny.
+      val cssWidth = if (rect.width > 0) rect.width else CanvasWidth.toDouble
       val dpr = math.max(1.0, dom.window.devicePixelRatio)
       val changed = cssWidth != lastCssWidth || dpr != lastDpr || canvas.width == 0 || canvas.height == 0
       if (changed) {
