@@ -1,5 +1,6 @@
 package interactionPlugins.blockEnvironment.feedback.ai
 
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ai.{PromptTemplates, QualityGate}
 import munit.FunSuite
 
 final class QualityGateSpec extends FunSuite {

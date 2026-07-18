@@ -1,6 +1,7 @@
 package it.evadid.worker
 
 import it.evadid.distribution.command.*
+import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoUntyped
 import org.scalajs.dom
 import upickle.ReadWriter
 import upickle.default.*
@@ -16,7 +17,7 @@ object WebWorkerBackendServer {
       m => ujson.Obj.from(m.view.mapValues(ujson.Str(_))),
       json => json.obj.view.map { case (k, v) => k -> v.str }.toMap
     )
-
+/*
   def onExecuteCommandReceived(rawCommand: String): ExecutionInfo = {
     val executionCommand = ExecutionCommand.fromJson(rawCommand)
     val now = LocalDateTime.now()
@@ -25,11 +26,7 @@ object WebWorkerBackendServer {
       stdOut = s"Worker executed command '${executionCommand.name}'",
       stdErr = ""
     )
-    ExecutionInfo(
-      command = executionCommand,
-      result = Success(result),
-      meta = Some(ExecutionHistory(now, now, now, now))
-    )
+    ExecutionInfoUntyped(executionCommand,result,ExecutionHistory(now, now, now, now)    )
   }
 
   private def handleMessage(rawPayload: String): String = {
@@ -37,22 +34,20 @@ object WebWorkerBackendServer {
     val requestId = payload.getOrElse("requestId", throw new IllegalArgumentException("Missing requestId"))
     val rawCommand = payload.getOrElse("command", throw new IllegalArgumentException("Missing command"))
 
-    val executionInfo = Try(onExecuteCommandReceived(rawCommand)).fold(
-      exception => ExecutionInfo(
-        command = ExecutionCommand("invalid", Map.empty),
-        result = scala.util.Failure(exception),
-        meta = None
-      ),
-      identity
-    )
+    val executionInfoStr: Option[String] = try{
+      Some(onExecuteCommandReceived(rawCommand).toJson)
+    } catch {
+      case e: Exception => None
+    }
 
     write(Map(
       "requestId" -> requestId,
-      "executionInfo" -> executionInfo.toJson
+      "executionInfo" -> executionInfoStr.getOrElse("[error!]")
     ))(using mapRW)
   }
-
+*/
   def main(args: Array[String]): Unit = {
+  /*
     dom.DedicatedWorkerGlobalScope.self.onmessage = (event: dom.MessageEvent) => {
       event.data match {
         case text: String =>
@@ -68,5 +63,7 @@ object WebWorkerBackendServer {
             )))
       }
     }
+	*/
   }
+  
 }

@@ -1,55 +1,9 @@
-import sbtassembly.AssemblyPlugin.autoImport.*
-import Dependencies.*
+import Dependencies.{*, coreDependencies, jvmDependencies}
 import org.scalajs.jsenv.nodejs.NodeJSEnv
+import Dependencies.*
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.*
-import sbtcrossproject.CrossPlugin.autoImport.*
-import scalajscrossproject.ScalaJSCrossPlugin.autoImport.*
-import sbtcrossproject.CrossPlugin.autoImport.*
-
-lazy val buildClientFast = taskKey[Unit]("Build client as fast as possible")
-buildClientFast := Def.sequential(
-  client / Compile / fastLinkJS,
-  Def.taskDyn {
-    val clientFastOutput = (client / Compile / fastLinkJS / scalaJSLinkedFile).value.data
-    val root = (ThisBuild / baseDirectory).value
-    Build.moveClientFiles(root, clientFastOutput, false, "fast", "client.js")
-  }
-).value
-
-lazy val buildWorkerFast = taskKey[Unit]("Build worker as fast as possible")
-buildWorkerFast := Def.sequential(
-  worker / Compile / fastLinkJS,
-  Def.taskDyn {
-    val workerFastOutput = (worker / Compile / fastLinkJS / scalaJSLinkedFile).value.data
-    val root = (ThisBuild / baseDirectory).value
-    Build.moveClientFiles(root, workerFastOutput, false, "fast", "backend-worker.js")
-  }
-).value
-
-lazy val deployAll = taskKey[Unit]("Builds and deploys server + client")
-deployAll := {
-  Def.sequential(
-    client / Compile / fullLinkJS,
-    worker / Compile / fullLinkJS,
-    Def.taskDyn {
-      val clientOutput = (client / Compile / fullLinkJS / scalaJSLinkedFile).value.data
-      val workerOutput = (worker / Compile / fullLinkJS / scalaJSLinkedFile).value.data
-      val base = (ThisBuild / baseDirectory).value
-      Def.sequential(
-        Build.moveClientFiles(base, clientOutput, true, "full", "client.js"),
-        Build.moveClientFiles(base, workerOutput, true, "full", "backend-worker.js")
-      )
-    },
-  ).value
-
-  Build.buildServer(server, "server.jar", true).value
-}
-
-lazy val buildServerFast = taskKey[Unit]("Builds a server")
-buildServerFast := {
-  Build.buildServer(server, "server.jar", true).value
-}
-
+import BuildArchitecture.*
+import BuildCommands.*
 
 lazy val root = (project in file("."))
   .settings(Settings.globalSettings)
@@ -58,6 +12,7 @@ lazy val root = (project in file("."))
     name := "edusquirrel-workbook",
     publish / skip := true
   )
+  .settings(buildCommandSettings(workbookArtifactArchitecture(client, worker, server)))
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Full)
@@ -83,11 +38,22 @@ lazy val server = (project in file("./modules/server"))
     assembly / mainClass := Some("it.evadid.server.BackendServer"),
     assembly / assemblyJarName := "server.jar",
     assembly / assemblyMergeStrategy := {
-      case PathList("META-INF", "versions", _*) => MergeStrategy.discard
+      case PathList("module-info.class") => MergeStrategy.discard
+        // JavaFX / Gluon native-image metadata; conflicts across javafx-* jars
+      case PathList("META-INF", "substrate", "config", _*) => MergeStrategy.discard
       case PathList("META-INF", "io.netty.versions.properties") => MergeStrategy.first
+      case PathList("google", "protobuf", file) if file.endsWith(".proto") => MergeStrategy.first
+
+      case PathList("META-INF", "substrate", "config", _*) => MergeStrategy.first
+
+      case PathList("META-INF", "versions", _*) => MergeStrategy.discard
       case x => (assembly / assemblyMergeStrategy).value(x)
+
     },
-    libraryDependencies ++= (coreDependencies.value ++ jvmDependencies.value)
+    libraryDependencies ++= (coreDependencies.value ++ jvmDependencies.value ++ Seq(
+      "com.mysql" % "mysql-connector-j" % "9.7.0",
+      "org.eclipse.angus" % "jakarta.mail" % "2.0.3"
+    ))
   )
 
 lazy val client = (project in file("./modules/client"))
@@ -97,6 +63,7 @@ lazy val client = (project in file("./modules/client"))
   .settings(
     name := "client",
     scalaJSUseMainModuleInitializer := true,
+    Compile / mainClass := Some("mainApp"),
     Test / jsEnv := new NodeJSEnv(),
     libraryDependencies ++= (coreDependencies.value ++ jsDependencies.value)
   )
@@ -112,5 +79,4 @@ lazy val worker = (project in file("./modules/worker"))
     Test / jsEnv := new NodeJSEnv(),
     libraryDependencies ++= (coreDependencies.value ++ jsDependencies.value)
   )
-
 

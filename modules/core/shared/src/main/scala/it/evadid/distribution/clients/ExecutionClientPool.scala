@@ -1,60 +1,67 @@
 package it.evadid.distribution.clients
 
-import it.evadid.distribution.clients.*
-import it.evadid.util.Logger
 import it.evadid.distribution.command.*
+import it.evadid.distribution.formats.ExecutionClientResponse
+import it.evadid.util.logging.Logger
+
 import java.time.LocalDateTime
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.*
+import scala.util.{Failure, Success}
 
 case class ExecutionClientPool(clients: List[ExecutionClient]) extends ExecutionClient {
 
   def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = clients.exists(_.canExecuteCommand(executionCommand))
 
-  def handleExecution(executionCommand: ExecutionCommand, logger: Logger = Logger()): Future[ExecutionInfo] = tryAllHandlersAfterEachOtherInOrder(executionCommand, logger)
-
-  private def tryWithHandler(handler: ExecutionClient, command: ExecutionCommand, logger: Logger): Future[ExecutionInfo] = handler.handleExecution(command, logger)
-
-  def buildExceptionStack(lastMsg: String, exceptions: List[Throwable]): Exception = {
-    if (exceptions.isEmpty) {
-      new Exception(lastMsg)
-    }
-    else {
-      val priorException = buildExceptionStack(exceptions.head.getMessage, exceptions.tail)
-      new Exception(lastMsg, priorException)
-    }
-  }
-
-  private def tryExecutionWithHandlers(handlers: List[ExecutionClient], command: ExecutionCommand, promiseToFulfill: Promise[ExecutionInfo], priorFailures: List[Throwable], logger: Logger): Unit = {
-    if (handlers.isEmpty) {
-      val errorStr: String = s"ExecutionClientPool: no handler for command ${command.name} available (${priorFailures.size} attempts: ${priorFailures.size})"
-      logger.logError(errorStr)
-      logger.logError(priorFailures.map(_.getMessage).mkString("\n    ", "\n    ", "\n"))
-      promiseToFulfill.failure(buildExceptionStack(errorStr, priorFailures))
-    } else {
-      handlers.head.handleExecution(command, logger)
-        .onComplete(futRes =>
-          if (futRes.isSuccess) promiseToFulfill.success(futRes.get)
-          else {
-            logger.logError(s"ExecutionClientPool: failed to execute command ${command.name} with handler ${handlers.head.getClass.getName}")
-            tryExecutionWithHandlers(handlers.tail, command, promiseToFulfill, priorFailures ++ List(futRes.failed.get), logger)
-          })(using ExecutionContext.global)
-    }
-  }
-
-  private def executeWithHandlers(handlers: List[ExecutionClient], executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionInfo] = {
-    val timeExecutionRequested: LocalDateTime = LocalDateTime.now()
-    val resultPromise = Promise[ExecutionInfo]()
-    tryExecutionWithHandlers(handlers, executionCommand, resultPromise, List(), logger)
-    resultPromise.future.map(info => info.fixTime(timeExecutionRequested, info.meta.map(_.timestampCommandReceived).getOrElse(timeExecutionRequested)))(using ExecutionContext.global)
+  private def failFuture(logger: Logger, msg: String, cause: Option[Throwable] = None): Future[ExecutionClientResponse] = {
+    val err = if (cause.nonEmpty) SerializedException(msg + " (reason: " + cause.get.getMessage + ")", cause) else SerializedException(msg)
+    logger.logError(err.getMessage)
+    if (cause.nonEmpty) logger.logError(cause.get.getMessage + "\n" + cause.get.getStackTrace.mkString("\n"))
+    throw err
   }
 
   private def allThatCanExecute(executionCommand: ExecutionCommand): List[ExecutionClient] = clients.filter(_.canExecuteCommand(executionCommand))
 
-  def tryAllHandlersAfterEachOtherInOrder(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionInfo] = {
+  override def allUnderlyingClients: List[ExecutionClient] = clients
+
+  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionClientResponse] = {
+    val timestampReceived: LocalDateTime = LocalDateTime.now()
     val allHandlers = allThatCanExecute(executionCommand)
-    executeWithHandlers(allHandlers, executionCommand, logger)
+    tryExecutionWithHandlers(timestampReceived, allHandlers, executionCommand, None, logger)
+      .map(response => response.copy(timestampReceived = timestampReceived))(using ExecutionContext.global)
   }
 
-  override def allUnderlyingClients: List[ExecutionClient] = clients
+  private def tryExecutionWithHandlers(
+                                        timestampReceived: LocalDateTime,
+                                        handlers: List[ExecutionClient],
+                                        command: ExecutionCommand,
+                                        failures: Option[SerializedException],
+                                        logger: Logger
+                                      ): Future[ExecutionClientResponse] = {
+    if (handlers.isEmpty && failures.isEmpty) {
+      failFuture(logger, s"ExecutionClientPool: no handler for command ${command.name} registered!", failures)
+    } else if (handlers.isEmpty && failures.nonEmpty) {
+      val msg = s"ExecutionClientPool: all handlers for command ${command.name} failed! See logs or cause(s) for reasons."
+      val newFailure: SerializedException = failures.get.asCauseOf(new Exception(msg, failures.get))
+      failFuture(logger, s"ExecutionClientPool: all handlers for command ${command.name} failed! See logs or cause(s) for reasons.)", Some(newFailure))
+    } else {
+      val timestampStarted: LocalDateTime = LocalDateTime.now()
+      logger.logInfo("Tried execution with handler " + handlers.head + " at " + timestampStarted + " (prior failures: " + failures.map(_.getMessage).getOrElse("none") + ")")
+      handlers.head.handleExecutionRaw(command, logger)
+        .map(resMap => {
+          val timestampFinished: LocalDateTime = LocalDateTime.now()
+          logger.logInfo("ExecutionClientPool: execution succeeded with handler " + handlers.head + " at " + timestampFinished)
+          ExecutionClientResponse(timestampReceived, timestampStarted, timestampFinished, Right(resMap), Some(command), logger.getOut(), logger.getErr())
+        })(using ExecutionContext.global)
+        .transformWith {
+          case Success(exCliRes) => Future.successful(exCliRes)
+          case Failure(err) => {
+            val msg = s"Execution Client ${handlers.head} failed execution at ${LocalDateTime.now()}, trying next handler!"
+            logger.logError(msg + "\n" + err.getMessage + "\n" + err.getStackTrace.mkString("\n"))
+            val newFailure: SerializedException = if (failures.isEmpty) SerializedException(err) else failures.get.asCauseOf(Exception(msg))
+            tryExecutionWithHandlers(timestampReceived, handlers.tail, command, Some(newFailure), logger)
+          }
+        }
+    }
+  }
 
 }

@@ -1,0 +1,12 @@
+{
+  "dataLoadingMap": "[veriler yükleniyor]",
+  "imageLoadingMap": "[görsel yükleniyor]",
+  "noSectionSelected": "[bölüm seçilmedi]",
+  "previousSection": "← Önceki bölüm",
+  "nextSection": "Sonraki bölüm →",
+  "checkSolution": "Çözümü kontrol et",
+  "beginnerMode": "Başlangıç",
+  "advancedMode": "İleri",
+  "reorderFeedbackSuccess": "✅ Çok iyi! Sıralama doğru.",
+  "reorderFeedbackWrongOrder": "⚠️ Yaklaştın! Mantık henüz tam olarak doğru değil. Hangi adımların diğerlerinden önce gelmesi gerektiğini kontrol et."
+}

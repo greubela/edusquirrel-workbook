@@ -1,10 +1,10 @@
 package interactionPlugins.programmingExercise.pythonExercise.pyodide
 
-import `export`.workers.PyodideWorkerClient
 import munit.FunSuite
 
 import scala.scalajs.js
-import interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.CallbackOp
+import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.CallbackOp
+import todomove.`export`.workers.PyodideWorkerClient
 
 class PyodideWorkerClientTurtleDecodeSpec extends FunSuite {
 

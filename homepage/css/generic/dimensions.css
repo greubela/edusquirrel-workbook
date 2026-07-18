@@ -1,0 +1,31 @@
+:root{
+    --workarea-width: min(100%, 980px);
+
+    --space-xs: 3px;
+    --space-sm: 5px;
+    --space-md: 10px;
+    --space-lg: 14px;
+    --space-xl: 28px;
+    --space-2xl: 42px;
+    --space-3xl: 56px;
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+
+
+    --space-borders: var(--space-xs);
+    --space-element-left: var(--space-lg);
+
+    --interaction-info-content-width: calc(var(--info-icons-dimension));
+    --interaction-info-total-width: calc(var(--info-icons-dimension) + 2 * var(--space-element-left));
+    --info-icons-dimension: calc(var(--space-element-left) * 2);
+    --info-icons-height-cloud: calc(var(--space-element-left) * 2 * 4 / 5);
+
+    --messenger-avatar-dimension: calc(var(--info-icons-dimension) * 2);
+
+    --shadow-soft: 0 4px 16px rgba(24, 35, 51, 0.10);
+    --shadow-button: 0 4px 12px -6px rgba(24, 35, 51, 0.35);
+    --shadow-medium: 0 8px 28px -8px rgba(24, 35, 51, 0.18);
+    --shadow-focus: 0 0 0 3px var(--color-focus-ring);
+}

@@ -1,0 +1,13 @@
+{
+  "dataLoadingMap": "[data indlæses]",
+  "imageLoadingMap": "[billedet indlæses]",
+  "noSectionSelected": "[intet afsnit valgt]",
+  "previousSection": "← Forrige afsnit",
+  "nextSection": "Næste afsnit →",
+  "checkSolution": "Tjek løsning",
+  "beginnerMode": "Begynder",
+  "advancedMode": "Avanceret",
+  "reorderFeedbackSuccess": "✅ Meget godt! Rækkefølgen er korrekt.",
+  "reorderFeedbackWrongOrder": "⚠️ Tæt på! Logikken er ikke helt rigtig endnu. Tjek hvilke trin der skal komme før andre.",
+  "noUserLoggedIn": "[Ikke Nogen]"
+}

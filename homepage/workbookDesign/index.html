@@ -5,32 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Workbook for Squirrels</title>
 
+    <!-- CSP: allow local proxy calls + Pyodide/WASM + CDN scripts used by the demo. -->
     <meta http-equiv="Content-Security-Policy"
           content="
           img-src 'self' data: blob:;
-            default-src 'self';
-             connect-src 'self' http://localhost:8787 http://localhost:8000 http://127.0.0.1:8000 https://cdn.jsdelivr.net https://ypcgzj23.trafficplex.cloud;
+            default-src 'self' http://localhost:9000;
+             connect-src 'self' https://api.mismatcheta.org http://localhost:8000 http://localhost:9000 http://127.0.0.1:8000 http://localhost:9000 http://127.0.0.1:9000 https://cdn.jsdelivr.net https://ypcgzj23.trafficplex.cloud;
               script-src 'self' https://esm.sh https://unpkg.com https://cdn.jsdelivr.net 'wasm-unsafe-eval';
                style-src 'self' 'unsafe-inline' https://unpkg.com;">
 
+    <!-- Styles -->
+    <link rel="stylesheet" href="../css/custom-elements.css">
+    <link rel="stylesheet" href="../css/workbook/workbook-structure.css">
+    <link rel="stylesheet" href="../css/workbook/workbook-header.css">
+    <link rel="stylesheet" href="../css/workbook/workbook-interactions.css">
+
+
+
+    <!-- Styles old -->
+    <link rel="stylesheet" href="../css/old/messenger.css">
+    <link rel="stylesheet" href="../css/old/blockEditor.css">
+    <link rel="stylesheet" href="../css/old/dropdown.css">
+
     <!-- Dependencies -->
-    <script src="https://unpkg.com/algebrite@1.4.0/dist/algebrite.bundle-for-browser.js"></script>
+    <!-- <script src="https://unpkg.com/algebrite@1.4.0/dist/algebrite.bundle-for-browser.js"></script>-->
     <script src="../../resources/programs/20260212TurtleStitch/fullturtle.js"></script>
-    <script type="module" src="../js/CodeMirrorLoader.js"></script>
 
-    <link rel="stylesheet" href="../css/messenger.css">
-    <link rel="stylesheet" href="../css/fullscreen.css">
-    <link rel="stylesheet" href="../css/blockEditor.css">
-    <link rel="stylesheet" href="../css/workbook.css">
-
-    <script>window.EDUSQUIRREL_APP_AS_MODULE = true;</script>
     <script src="../js/app-loader.js"></script>
 
 </head>
 <body>
 <div id="app">
     <div class="container">
-        <div id="workbookEmbroidery">
+        <div id="workbookTest">
 
 
         </div>

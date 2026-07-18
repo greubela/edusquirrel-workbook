@@ -1,5 +1,6 @@
 package it.evadid.core.datastructures.state
 
+import it.evadid.core.datastructures.state.observable.ObserverDerivationLogic
 import munit.FunSuite
 
 import java.util.concurrent.atomic.AtomicInteger

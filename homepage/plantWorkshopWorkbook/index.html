@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Workshop Workbook</title>
+
+    <!-- CSP: allow local proxy calls + Pyodide/WASM + CDN scripts used by the demo. -->
+    <meta http-equiv="Content-Security-Policy"
+          content="
+          img-src 'self' data: blob:;
+            default-src 'self';
+             connect-src 'self' http://localhost:8787 http://localhost:8000 http://127.0.0.1:8000 https://cdn.jsdelivr.net https://ypcgzj23.trafficplex.cloud;
+              script-src 'self' https://esm.sh https://unpkg.com https://cdn.jsdelivr.net 'wasm-unsafe-eval';
+               style-src 'self' 'unsafe-inline' https://unpkg.com;">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="../css/custom-elements.css">
+    <link rel="stylesheet" href="../css/workbook/workbook-structure.css">
+    <link rel="stylesheet" href="../css/workbook/workbook-header.css">
+    <link rel="stylesheet" href="../css/workbook/workbook-interactions.css">
+
+    <!-- Styles old -->
+    <link rel="stylesheet" href="../css/old/messenger.css">
+    <link rel="stylesheet" href="../css/old/blockEditor.css">
+
+    <script type="module" src="../js/CodeMirrorLoader.js"></script>
+    <script src="../js/app-loader.js"></script>
+
+</head>
+<body>
+<div id="app">
+    <div class="container">
+        <div id="workbookPlantWorkshop"></div>
+    </div>
+</div>
+</body>
+</html>

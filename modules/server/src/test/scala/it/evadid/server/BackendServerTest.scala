@@ -1,24 +1,19 @@
 package it.evadid.server
 
-import it.evadid.distribution.ExecutionCommand
+import it.evadid.distribution.command.ExecutionCommand
+import it.evadid.util.logging.BasicLogger
 import munit.FunSuite
-import upickle.default.write
+
+import java.time.LocalDateTime
+import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
 
 class BackendServerTest extends FunSuite {
-
-  test("onExecuteCommandReceived executes valid command".ignore) {
-    val command = ExecutionCommand("build", Map("target" -> "test"))
-
-    val result = BackendServer.onExecuteCommandReceived(write(command))
-
-    assertEquals(result.command.name, "build")
-    assert(result.result.isSuccess)
-  }
-
-  test("onExecuteCommandReceived rejects empty command name") {
+  test("BackendCommandHandler rejects empty command name") {
     val command = ExecutionCommand("   ", Map.empty)
+
     intercept[IllegalArgumentException] {
-      BackendServer.onExecuteCommandReceived(write(command))
+      Await.result(BackendCommandHandler.handleExecution(LocalDateTime.parse("2026-01-01T08:00:00"), command, BasicLogger()), 5.seconds)
     }
   }
 }

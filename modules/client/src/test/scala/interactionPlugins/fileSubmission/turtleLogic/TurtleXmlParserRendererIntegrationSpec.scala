@@ -1,5 +1,6 @@
-package interactionPlugins.fileSubmission.turtleLogic
+package it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleLogic
 
+import interactionPlugins.fileSubmission.turtleLogic.TurtleXmlTestSamples
 import munit.FunSuite
 
 class TurtleXmlParserRendererIntegrationSpec extends FunSuite {

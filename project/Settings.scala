@@ -9,7 +9,7 @@ object Settings {
     target := (ThisBuild / baseDirectory).value / "target" / thisProject.value.id,
     organization := "it.evadid",
     version := "0.1",
-    scalaVersion := "3.8.3"
+    scalaVersion := "3.8.4"
   )
 
   lazy val jsSettings = Seq(

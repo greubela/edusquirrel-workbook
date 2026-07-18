@@ -1,0 +1,12 @@
+{
+  "dataLoadingMap": "[завантаження даних]",
+  "imageLoadingMap": "[завантаження зображення]",
+  "noSectionSelected": "[не вибрано розділ]",
+  "previousSection": "← Попередній розділ",
+  "nextSection": "Наступний розділ →",
+  "checkSolution": "Перевірити рішення",
+  "beginnerMode": "Початківець",
+  "advancedMode": "Просунутий",
+  "reorderFeedbackSuccess": "✅ Дуже добре! Порядок правильний.",
+  "reorderFeedbackWrongOrder": "⚠️ Майже! Логіка ще не зовсім правильна. Перевір, які кроки мають бути перед іншими."
+}
