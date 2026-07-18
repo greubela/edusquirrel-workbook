@@ -3,5 +3,8 @@
   "section1Title": "Das ist Abschnitt 1.",
   "exerciseTitle": "Das ist der Titel.",
   "writeText1": "Schreibe einen Text!",
-  "writeText2": "Schreibe noch einen Text!"
+  "writeText2": "Schreibe noch einen Text!",
+  "sec1cont1": "Test 1",
+  "openeditor": "Open CodeMirror Editor",
+  "canvas": "Snap! Canvas here (?)"
 }
