@@ -18,8 +18,10 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   private var frameHandle = 0
   private var cyclesRunning = false
   private var projectXmlChangedCallback: String => Unit = _ => ()
-  private var observedProjectVersion = 0.0
   private var lastProjectXml: Option[String] = None
+  private var lastProjectXmlCheckAt = 0.0
+
+  private val ProjectXmlCheckIntervalMs = 250.0
 
   override def mount(owner: Owner): Unit =
     ()
@@ -34,6 +36,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       world.worldCanvas eq canvas,
       "WorldMorph did not retain the mounted editor canvas used to register input listeners"
     )
+    keepKeyboardHandlerInEditor(world, canvas)
     val ide = createEditor(world, initProgram)
     layoutEditor(world, ide, canvas)
     initializeProjectChangeTracking(ide)
@@ -112,6 +115,18 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     canvas.style.pointerEvents = "auto"
     canvas.style.setProperty("touch-action", "none")
 
+  private def keepKeyboardHandlerInEditor(world: WorldMorph, canvas: Canvas): Unit =
+    // Morphic creates one hidden textarea on document.body and focuses it when
+    // an input slot is edited. A modal <dialog> makes body siblings inert, so
+    // mouse events still reach the canvas but the textarea cannot receive keys.
+    // Moving the shared handler below the mounted canvas keeps it in the same
+    // focus scope without changing Morphic's keyboard/IME event pipeline.
+    Option(canvas.parentElement).foreach(_.appendChild(world.keyboardHandler))
+    world.keyboardHandler.setAttribute("aria-hidden", "true")
+    world.keyboardHandler.tabIndex = -1
+    world.keyboardHandler.style.pointerEvents = "none"
+    world.keyboardHandler.style.opacity = "0"
+
   override def startWorldCycles(): Unit =
     if !cyclesRunning && editorWorld.nonEmpty then
       cyclesRunning = true
@@ -129,27 +144,26 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     if cyclesRunning then
       editorWorld.foreach(_.doOneCycle())
       frameHandle = dom.window.requestAnimationFrame(_ => tickEditor())
-      editor.foreach(notifyIfProjectXmlChanged)
+      val now = dom.window.performance.now()
+      if now - lastProjectXmlCheckAt >= ProjectXmlCheckIntervalMs then
+        lastProjectXmlCheckAt = now
+        editor.foreach(notifyIfProjectXmlChanged)
 
   private def initializeProjectChangeTracking(ide: IDEMorph): Unit =
-    observedProjectVersion = ide.version
     lastProjectXml = Some(ide.getProjectXML())
+    lastProjectXmlCheckAt = dom.window.performance.now()
 
   /**
-   * Snap updates IDE_Morph.version from recordUnsavedChanges(), its central
-   * user-edit notification path. Comparing that number each world cycle is
-   * constant-time; the comparatively expensive XML serialization only happens
-   * after Snap reports an edit. Comparing the result also filters notifications
-   * such as selection changes that do not alter the persisted project.
+   * Compare the persisted project itself rather than IDE_Morph.version. That
+   * value is only updated on Snap edit paths which call recordUnsavedChanges,
+   * and therefore is not a reliable content revision. Polling is throttled so
+   * serialization does not happen on every animation frame.
    */
   private def notifyIfProjectXmlChanged(ide: IDEMorph): Unit =
-    if ide.version != observedProjectVersion then
-      observedProjectVersion = ide.version
-      val xml = ide.getProjectXML()
-      if !lastProjectXml.contains(xml) then
-        lastProjectXml = Some(xml)
-        projectXmlChangedCallback(xml)
-        //println("turtle xml changed!!")
+    val xml = ide.getProjectXML()
+    if !lastProjectXml.contains(xml) then
+      lastProjectXml = Some(xml)
+      projectXmlChangedCallback(xml)
 
   private def stopEditorSession(): Unit =
     pauseWorldCycles()
@@ -157,8 +171,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     editorWorld.foreach(_.destroy())
     editor = None
     editorWorld = None
-    observedProjectVersion = 0.0
     lastProjectXml = None
+    lastProjectXmlCheckAt = 0.0
 
   override def destroy(): Unit =
     stopEditorSession()

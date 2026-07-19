@@ -80,6 +80,8 @@ class Morph() extends js.Object:
 class WorldMorph(canvas0: dom.HTMLCanvasElement, fillPage: Boolean = js.native) extends Morph:
   /** The canvas to which Morphic attaches its input listeners. */
   var worldCanvas: dom.HTMLCanvasElement = js.native
+  /** Hidden textarea through which Morphic receives keyboard and IME input. */
+  var keyboardHandler: dom.HTMLTextAreaElement = js.native
   def doOneCycle(): Unit = js.native
 
 @js.native
