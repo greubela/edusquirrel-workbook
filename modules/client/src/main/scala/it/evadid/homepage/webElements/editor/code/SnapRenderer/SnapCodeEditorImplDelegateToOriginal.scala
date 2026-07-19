@@ -9,6 +9,7 @@ import org.scalajs.dom.CanvasRenderingContext2D
 import org.scalajs.dom.html.Canvas
 
 import scala.scalajs.js
+import scala.scalajs.js.JSConverters.*
 
 /** A retained Snap/Morphic session for the interactive editor and exact previews. */
 final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
@@ -20,6 +21,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   private var projectXmlChangedCallback: String => Unit = _ => ()
   private var lastProjectXml: Option[String] = None
   private var lastProjectXmlCheckAt = 0.0
+  private var originalBlockTemplates: Option[js.Any] = None
 
   private val ProjectXmlCheckIntervalMs = 250.0
 
@@ -37,7 +39,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       "WorldMorph did not retain the mounted editor canvas used to register input listeners"
     )
     keepKeyboardHandlerInEditor(world, canvas)
-    val ide = createEditor(world, initProgram)
+    val ide = createEditor(world, initProgram, config)
     layoutEditor(world, ide, canvas)
     initializeProjectChangeTracking(ide)
 
@@ -52,7 +54,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     sourceCanvas.height = config.CanvasHeight
 
     val world = new WorldMorph(sourceCanvas, false)
-    val ide = createEditor(world, program)
+    val ide = createEditor(world, program, config)
     layoutEditor(world, ide, sourceCanvas)
     runStartupCycles(world)
 
@@ -73,16 +75,83 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     ide.destroy()
     world.destroy()
 
-  private def createEditor(world: WorldMorph, program: BeProgram): IDEMorph =
+  private def createEditor(world: WorldMorph, program: BeProgram, config: SnapCodeEditorConfig): IDEMorph =
     val ide = new IDEMorph(js.Dynamic.literal(
       noAutoFill = true,
       noCloud = true,
       noExitWarning = true,
-      preserveTitle = true
+      preserveTitle = true,
+      hideControls = !config.parts.headline,
+      hideCategories = !config.parts.libraryCategories,
+      noSprites = !config.parts.stage,
+      noSpriteEdits = !config.parts.spriteControls,
+      noPalette = !config.parts.library,
+      noOwnBlocks = config.libraryTabs.nonEmpty,
+      eduLibraryTabs = config.libraryTabs.map(_.name).toJSArray
     ))
     ide.openIn(world)
     ide.rawOpenProjectString(TurtleFileSubmission.serializeFromBeExpression(program.fullProgram))
+    if config.libraryTabs.nonEmpty then installLibraries(config.libraryTabs, ide)
     ide
+
+  /** Replace this editor instance's primitive provider, rather than mutating
+    * SpriteMorph.prototype. Multiple editors can therefore use different
+    * exercise libraries on the same page.
+    */
+  private def installLibraries(libraries: List[LibraryTab], ide: IDEMorph): Unit =
+    require(libraries.map(_.name).distinct.size == libraries.size, "Snap library tab names must be unique")
+    require(libraries.forall(_.name.nonEmpty), "Snap library tab names must not be empty")
+    val sprite = ide.currentSprite
+    originalBlockTemplates = Some(sprite.asInstanceOf[js.Dynamic].selectDynamic("blockTemplates"))
+    val blockTemplates: js.Function2[String, Boolean, js.Array[BlockMorph]] =
+      (category: String, _: Boolean) => libraries.find(_.name == category).toList.flatMap(_.selectableElements).map { data =>
+        val block = Option(sprite.blockForSelector(data.id, true)).getOrElse(
+          throw new IllegalArgumentException(s"Unknown Snap block selector '${data.id}'")
+        )
+        block.isDraggable = false
+        block.isTemplate = true
+        if data.snap_description_line.nonEmpty then
+          block.setSpec(descriptionWithNativeInputs(data.snap_description_line, block.blockSpec))
+        block
+      }.toJSArray
+
+    sprite.asInstanceOf[js.Dynamic].updateDynamic("blockTemplates")(blockTemplates)
+    sprite.asInstanceOf[js.Dynamic].updateDynamic("primitivesCache")(js.Dictionary.empty[js.Any])
+    sprite.paletteCache = js.Dictionary.empty
+    ide.refreshPalette(true)
+
+  override def removeAllLibraries(includeDefaultLibraries: Boolean): Unit =
+    editor.foreach { ideMorph =>
+      val sprite = ideMorph.currentSprite
+      val original = originalBlockTemplates.getOrElse {
+        val templates = sprite.asInstanceOf[js.Dynamic].selectDynamic("blockTemplates")
+        originalBlockTemplates = Some(templates)
+        templates
+      }
+      val templates = if includeDefaultLibraries then
+        ((_: String, _: Boolean) => js.Array[BlockMorph]()).asInstanceOf[js.Function2[String, Boolean, js.Array[BlockMorph]]]
+      else original
+      sprite.asInstanceOf[js.Dynamic].updateDynamic("blockTemplates")(templates)
+      sprite.asInstanceOf[js.Dynamic].updateDynamic("primitivesCache")(js.Dictionary.empty[js.Any])
+      sprite.paletteCache = js.Dictionary.empty
+      val ideConfig = ideMorph.asInstanceOf[js.Dynamic].selectDynamic("config")
+      ideConfig.updateDynamic("eduLibraryTabs")(js.Array())
+      ideConfig.updateDynamic("eduEmptyLibrary")(includeDefaultLibraries)
+      ideMorph.asInstanceOf[js.Dynamic].updateDynamic("currentCategory")("motion")
+      ideMorph.createCategories()
+      ideMorph.refreshPalette(true)
+    }
+    if !includeDefaultLibraries then originalBlockTemplates = None
+
+  /** `_` is deliberately only presentation syntax. The selector's native
+    * placeholders remain authoritative for numeric, boolean and nested inputs.
+    */
+  private def descriptionWithNativeInputs(description: String, nativeSpec: String): String =
+    val placeholders = "%[^ ]+".r.findAllIn(nativeSpec).toList.iterator
+    description.foldLeft(new StringBuilder) { (result, character) =>
+      if character == '_' && placeholders.hasNext then result.append(placeholders.next())
+      else result.append(character)
+    }.result()
 
   private def layoutEditor(world: WorldMorph, ide: IDEMorph, canvas: Canvas): Unit =
     world.setExtent(new SnapPoint(canvas.width.toDouble, canvas.height.toDouble))
@@ -173,6 +242,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     editorWorld = None
     lastProjectXml = None
     lastProjectXmlCheckAt = 0.0
+    originalBlockTemplates = None
 
   override def destroy(): Unit =
     stopEditorSession()
