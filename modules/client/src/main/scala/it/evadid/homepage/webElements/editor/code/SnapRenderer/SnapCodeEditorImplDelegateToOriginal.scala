@@ -11,7 +11,7 @@ import org.scalajs.dom.html.Canvas
 import scala.scalajs.js
 
 /** A retained Snap/Morphic session for the interactive editor and exact previews. */
-final class MountedProgramBlockRenderer() extends SnapCodeEditorImpl:
+final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
 
   private var editorWorld: Option[WorldMorph] = None
   private var editor: Option[IDEMorph] = None
