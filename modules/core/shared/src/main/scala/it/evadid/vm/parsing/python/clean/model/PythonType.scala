@@ -1,11 +1,11 @@
-package it.evadid.vm.parsing.python.clean
+package it.evadid.vm.parsing.python.clean.model
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.vm.parsing.generic.abstractions.GenericAST.*
-import it.evadid.vm.parsing.python.clean.PyAST.{PyExpression, PythonLiteral}
+import it.evadid.vm.parsing.python.clean.model.PyAST.{PyExpression, PythonLiteral}
 
 
-private sealed trait PythonType[ScalaType] extends GenericAstType[ScalaType, PythonType[ScalaType], PythonLiteral[ScalaType]] with PyExpression {
+sealed trait PythonType[ScalaType] extends GenericAstType[ScalaType, PythonType[ScalaType], PythonLiteral[ScalaType]] with PyExpression {
   def typeStringInPython: String
 
   def serializerPythonValue: Serializer[ScalaType]

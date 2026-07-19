@@ -1,6 +1,6 @@
 package it.evadid.vm.parsing.python.clean
 
-import it.evadid.vm.parsing.python.clean.PyAST.*
+import it.evadid.vm.parsing.python.clean.model.PyAST.*
 import munit.FunSuite
 
 class TestSimplePythonParser extends FunSuite {

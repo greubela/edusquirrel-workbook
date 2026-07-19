@@ -1,4 +1,4 @@
-package it.evadid.vm.parsing.python.clean
+package it.evadid.vm.parsing.python.clean.model
 
 import it.evadid.core.util.io.Serializer
 

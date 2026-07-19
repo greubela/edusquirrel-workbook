@@ -4,8 +4,9 @@ import fastparse.*
 import fastparse.NoWhitespace.*
 import it.evadid.vm.parsing.generic.CodeLexer.*
 import it.evadid.vm.parsing.generic.abstractions.pipeline.GenericAstScanner
-import it.evadid.vm.parsing.python.clean.PyAST.*
-import it.evadid.vm.parsing.python.clean.PythonType.*
+import it.evadid.vm.parsing.python.clean.model.PyAST.*
+import it.evadid.vm.parsing.python.clean.model.PythonType.*
+import it.evadid.vm.parsing.python.clean.model.*
 
 object PythonAstParserSimple extends GenericAstScanner[PyAST] {
 
@@ -108,7 +109,7 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   def import_stmt[ctx: P]: P[PyStatement] = {
     P(FROM ~~ SPACES ~~ NAME ~~ SPACES ~~ IMPORT ~~ SPACES.? ~~ STAR).map { case (name: String) => PyImportFromStatement(name, List(), true) }
       | P(FROM ~~ SPACES ~~ NAME ~~ SPACES ~~ IMPORT ~~ SPACES ~~ targetList).map { case (name, list) => PyImportFromStatement(name, list.toList, false) }
-      | P(IMPORT ~~ SPACES ~~ NAME).map { case (moduleName) => PyImportStatement(moduleName) }
+      | P(IMPORT ~~ SPACES ~~ NAME).map { case (moduleName) => PyPlainImportStatement(moduleName) }
   }
 
   // ==========================================

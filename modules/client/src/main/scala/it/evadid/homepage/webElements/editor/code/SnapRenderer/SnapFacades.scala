@@ -82,6 +82,12 @@ class WorldMorph(canvas0: dom.HTMLCanvasElement, fillPage: Boolean = js.native) 
   def doOneCycle(): Unit = js.native
 
 @js.native
+@JSGlobal("IDE_Morph")
+class IDEMorph(config: js.Object = js.native) extends Morph:
+  def openIn(world: WorldMorph): Unit = js.native
+  def loadProjectXML(projectXML: String): Unit = js.native
+
+@js.native
 @JSGlobal("BoxMorph")
 class BoxMorph(edge: Double = js.native, border: Double = js.native, borderColor: SnapColor = js.native) extends Morph
 
@@ -136,6 +142,7 @@ class BlockMorph() extends SyntaxElementMorph:
   var category: String = js.native
   var comment: CommentMorph | Null = js.native
   def setSpec(spec: String): Unit = js.native
+  def fixBlockColor(nearestBlock: BlockMorph | Null = js.native, isForced: Boolean = js.native): Unit = js.native
   def abstractBlockSpec(): String = js.native
   def parts(): js.Array[Morph] = js.native
   def scriptTarget(noError: Boolean = js.native): js.Any = js.native

@@ -98,6 +98,44 @@ class SvgPathRoundTripSuite extends FunSuite {
     assertBuilderRoundTrip(builder)
   }
 
+  test("Snap command outline keeps canonical representation after round trip") {
+    val bounds = Bounds(Point(0.0, 0.0), Dimension(180.0, 42.0))
+    assertBuilderRoundTrip(TestShapeFactoryAccess.snapCommand(bounds))
+  }
+
+  test("Snap reporter outlines keep canonical representation after round trip") {
+    val bounds = Bounds(Point(4.0, 7.0), Dimension(150.0, 30.0))
+    assertBuilderRoundTrip(TestShapeFactoryAccess.snapReporter(bounds, predicate = false))
+    assertBuilderRoundTrip(TestShapeFactoryAccess.snapReporter(bounds, predicate = true))
+  }
+
+  test("Snap command outline includes C-slot geometry") {
+    val bounds = Bounds(Point(0.0, 0.0), Dimension(210.0, 100.0))
+    val slot = Bounds(Point(18.0, 30.0), Dimension(180.0, 38.0))
+    val path = TestShapeFactoryAccess.snapCommand(bounds, List(slot))
+    assertBuilderRoundTrip(path)
+    assert(path.toSvgPathD.contains("A 3,3 0 0,0"), path.toSvgPathD)
+    assert(path.pathPoints.exists(point => math.abs(point.y - 68.0) < 0.000001), path.toSvgPathD)
+  }
+
+  test("Snap if-else outline supports two C slots") {
+    val bounds = Bounds(Point(0.0, 0.0), Dimension(240.0, 160.0))
+    val ifSlot = Bounds(Point(18.0, 30.0), Dimension(210.0, 42.0))
+    val elseSlot = Bounds(Point(18.0, 88.0), Dimension(210.0, 42.0))
+    val path = TestShapeFactoryAccess.snapCShape(bounds, List(ifSlot, elseSlot))
+    assertBuilderRoundTrip(path)
+    val anticlockwiseSlotArcs = "A 3,3 0 0,0".r.findAllIn(path.toSvgPathD).length
+    assertEquals(anticlockwiseSlotArcs, 6)
+  }
+
+  test("Snap hat uses the original circular arc and cubic crown") {
+    val bounds = Bounds(Point(0.0, 0.0), Dimension(180.0, 48.0))
+    val path = TestShapeFactoryAccess.snapHat(bounds)
+    assertBuilderRoundTrip(path)
+    assert(path.toSvgPathD.contains("A 57.041666666666664,57.041666666666664"), path.toSvgPathD)
+    assert(path.toSvgPathD.contains("C 70 0 70 12 119 12"), path.toSvgPathD)
+  }
+
   test("data arrow left from decoration factory keeps canonical representation after round trip") {
     val config = BeRenderingConfig.default()
     val decorationFactory = DecorationFactory[Double](config)
