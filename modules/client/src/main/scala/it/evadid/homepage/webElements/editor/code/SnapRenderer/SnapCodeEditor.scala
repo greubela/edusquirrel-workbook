@@ -91,6 +91,15 @@ object SnapCodeEditor {
 
     def mount(ctx: Owner): Unit
 
+    /** Start driving the Morphic world. Snap controls only become responsive while cycles run. */
+    def startWorldCycles(): Unit
+
+    /** Pause Morphic updates without destroying the mounted editor. */
+    def pauseWorldCycles(): Unit
+
+    /** Register a listener for XML changes caused by edits in the mounted Snap project. */
+    def onProjectXmlChanged(callback: String => Unit): Unit
+
     def destroy(): Unit
   }
 

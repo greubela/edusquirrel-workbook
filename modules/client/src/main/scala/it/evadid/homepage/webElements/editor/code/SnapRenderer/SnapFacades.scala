@@ -85,7 +85,9 @@ class WorldMorph(canvas0: dom.HTMLCanvasElement, fillPage: Boolean = js.native) 
 @JSGlobal("IDE_Morph")
 class IDEMorph(config: js.Object = js.native) extends Morph:
   var currentSprite: SpriteMorph = js.native
+  var version: Double = js.native
   def openIn(world: WorldMorph): Unit = js.native
+  def getProjectXML(): String = js.native
   def loadProjectXML(projectXML: String): Unit = js.native
   def rawOpenProjectString(projectXML: String): Unit = js.native
 
@@ -186,6 +188,7 @@ class RingMorph() extends ReporterBlockMorph:
 class ScriptsMorph() extends Morph:
   def scriptTarget(): js.Any = js.native
   def cleanUp(): Unit = js.native
+  def scriptsPicture(): js.UndefOr[dom.HTMLCanvasElement] = js.native
 
 @js.native
 @JSGlobal("ArgMorph")
