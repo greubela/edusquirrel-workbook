@@ -1,0 +1,371 @@
+Snap! Functionality Overview
+============================
+
+Purpose
+-------
+This file maps the interaction and layout behavior of the original Snap!/Morphic
+editor to the vendored source used by this project. It is intended to guide the
+incremental replacement of high-level Morphic infrastructure with Scala.js and,
+ultimately, SVG rendering.
+
+All line numbers below refer to the repository's currently vendored sources:
+
+  resources/programs/20260212TurtleStitch/turtlestitchsrc/blocks.js
+  resources/programs/20260212TurtleStitch/turtlestitchsrc/morphic.js
+  resources/programs/20260212TurtleStitch/turtlestitchsrc/widgets.js
+
+Line numbers can move if that vendor snapshot is replaced. Search for the named
+prototype method rather than relying on a line number alone.
+
+The original outline excerpts and source references in
+
+todomove/webElementsOld/webElements/svg/shapes/SnapShapeFactory.scala
+
+must remain there. This overview supplements those local references; it does not
+replace them.
+
+
+1. Browser event orchestration
+------------------------------
+The original editor uses WorldMorph and HandMorph as its high-level browser event
+and pointer-dispatch system.
+
+World and event registration:
+
+* WorldMorph constructor — morphic.js:12012
+* WorldMorph.prototype.initEventListeners — morphic.js:12338
+  Registers mouse, touch, wheel, drag/drop, resize, and context-menu related
+  browser listeners. Mouse and touch events are forwarded to the world's hand.
+* WorldMorph.prototype.doOneCycle — morphic.js:12141
+  Runs scheduled stepping/animation work and redraws damaged canvas regions.
+
+Pointer targeting and dispatch:
+
+* HandMorph constructor — morphic.js:11187
+* HandMorph.prototype.morphAtPointer — morphic.js:11283
+  Finds the front-most visible morph under the pointer.
+* HandMorph.prototype.allMorphsAtPointer — morphic.js:11287
+  Produces the complete hit stack when dispatch or drop-target lookup needs it.
+* HandMorph.prototype.dropTargetFor — morphic.js:11306
+  Walks possible owners under the pointer and asks wantsDropOf whether a carried
+  morph is accepted.
+* HandMorph.prototype.processMouseDown — morphic.js:11393
+  Identifies the clicked morph, remembers press state, and dispatches the proper
+  mouseDown event.
+* HandMorph.prototype.processMouseUp — morphic.js:11502
+  Completes clicks or drops and clears press/drag state.
+* HandMorph.prototype.processMouseMove — morphic.js:11563
+  Updates the pointer position, hover transitions, drag threshold, and carried
+  morph position.
+* HandMorph.prototype.processTouchStart — morphic.js:11458
+* HandMorph.prototype.processTouchMove — morphic.js:11481
+* HandMorph.prototype.processTouchEnd — morphic.js:11495
+
+Current Scala.js limitation:
+SnapCodeEditor creates detached block morphs and calls fullImage(). It does not
+retain a WorldMorph/HandMorph tree. Consequently none of the original hit testing,
+pointer dispatch, keyboard focus, menus, or dragging described here is active in
+the rasterized preview automatically.
+
+
+2. Keyboard focus and text editing
+----------------------------------
+Snap uses a hidden HTML textarea as the browser input bridge, but keeps selection,
+cursor, and edit ownership in Morphic objects.
+
+* WorldMorph.prototype.initKeyboardHandler — morphic.js:12227
+  Creates or reuses textarea#morphic_keyboard and installs keydown, keyup,
+  keypress, and input listeners. Events are forwarded to world.keyboardFocus.
+* WorldMorph.prototype.edit — morphic.js:12811
+  Focuses the world canvas and hidden textarea, creates a CursorMorph, assigns
+  keyboardFocus, and inserts the cursor beside the edited StringMorph.
+* WorldMorph.prototype.stopEditing — shortly after WorldMorph.edit
+  Commits reactToEdit, destroys the cursor, and clears keyboard focus.
+* CursorMorph constructor — morphic.js:5663
+* CursorMorph.prototype.processKeyDown — morphic.js:5717
+  Handles Enter, Escape, Tab/back-tab, arrows, and editor shortcuts.
+* CursorMorph.prototype.processKeyUp — morphic.js:5775
+  Synchronizes selection and cursor position from the hidden textarea.
+* CursorMorph.prototype.processInput — morphic.js:5797
+  Copies changed textarea content into the target text morph and reruns layout.
+* StringMorph.prototype.edit — morphic.js:8977
+* StringMorph.prototype.mouseDownLeft — morphic.js:9029
+* StringMorph.prototype.mouseClickLeft — morphic.js:9055
+
+Editable parameter text is normally a StringMorph owned by an InputSlotMorph.
+Clicking the slot ultimately invokes StringMorph.edit, which expects a containing
+WorldMorph to own keyboard focus.
+
+
+3. Parameter values and editable input slots
+--------------------------------------------
+Construction and mutation:
+
+* InputSlotMorph constructor — blocks.js:11003
+* InputSlotMorph.prototype.setContents — blocks.js:11075
+  Programmatic value replacement; creates/updates the displayed contents morph.
+* InputSlotMorph.prototype.userSetContents — blocks.js:11143
+  Applies a user choice and triggers the corresponding user-edit behavior.
+* InputSlotMorph.prototype.fixLayout — blocks.js:12147
+  Positions and sizes the text contents and optional dropdown arrow.
+
+Click/edit behavior:
+
+* InputSlotMorph.prototype.mouseDownLeft — blocks.js:12237
+  Starts direct editing unless the slot is read-only, symbolic, or its dropdown
+  arrow is the target.
+* InputSlotMorph.prototype.mouseClickLeft — blocks.js:12246
+  Opens a dropdown for arrow/read-only slots; otherwise edits contents().
+* InputSlotMorph.prototype.reactToKeystroke — blocks.js:12256
+* InputSlotMorph.prototype.reactToEdit — blocks.js:12266
+  Clears selection, records the user edit through the script target, and fires
+  custom-block slot-edit events where applicable.
+* ArgMorph.prototype.setContents — blocks.js:9776
+* ArgMorph.prototype.justDropped — blocks.js:9783
+* ArgMorph.prototype.fixLayout — blocks.js:9849
+
+Replacing parameters with nested reporter blocks:
+
+* SyntaxElementMorph.prototype.replaceInput — blocks.js:1497
+  Replaces a slot child, maintains parentage, preserves nested reporters where
+  needed, updates script ownership, and propagates layout.
+* SyntaxElementMorph.prototype.revertToDefaultInput — blocks.js:1557
+* SyntaxElementMorph.prototype.revertToEmptyInput — blocks.js:1591
+  Restore a normal/default slot when an inserted reporter is removed.
+
+Important current behavior:
+SnapCodeEditor passes line.label.replace("%", "%%") to setSpec. The doubled
+percent signs are literal text, so Snap does not construct interactive %n, %s,
+%b, command, reporter, or variadic parameter morphs for that preview. An
+interactive editor needs a structured block specification or direct slot-child
+construction instead of an escaped source-code label.
+
+
+4. Parameter popups and specialized controls
+--------------------------------------------
+Ordinary dropdown slots:
+
+* InputSlotMorph.prototype.dropDownMenu — blocks.js:11162
+  Resolves a static choice dictionary or dynamic menu and opens it.
+* InputSlotMorph.prototype.menuFromDict — blocks.js:11181
+  Translates choice dictionaries into MenuMorph entries/actions.
+* InputSlotMorph.prototype.dynamicMenu — blocks.js:11331
+  Produces choices based on current receiver/project state.
+* Specialized choice-provider methods — blocks.js:11403-12127
+* InputSlotMorph.prototype.setChoices — blocks.js:12128
+
+Popup implementation:
+
+* MenuMorph constructor — morphic.js:7966
+* MenuMorph.prototype.addItem — morphic.js:8017
+* MenuMorph.prototype.popup — morphic.js:8250
+  Builds menu item layout, inserts the menu into the world, constrains it to the
+  visible world, and manages active-menu focus.
+* MenuMorph.prototype.popUpAtHand — morphic.js:8293
+* MenuMorph.prototype.popUpCenteredAtHand — morphic.js:8298
+* MenuMorph.prototype.popUpCenteredInWorld — morphic.js:8310
+* MenuItemMorph.prototype.mouseClickLeft — morphic.js:10194
+
+These are Morphic popup trees, not native HTML select elements. Their position is
+computed from world bounds, target/hand position, and menu dimensions.
+
+Special parameter types:
+
+* BooleanSlotMorph.prototype.setContents — blocks.js:13052
+* BooleanSlotMorph.prototype.mouseClickLeft — blocks.js:13125
+  Toggles/cycles the Boolean value rather than entering ordinary text editing.
+* BooleanSlotMorph.prototype.fixLayout — blocks.js:13212
+* ColorSlotMorph.prototype.setContents — blocks.js:13813
+* ColorSlotMorph.prototype.mouseClickLeft — blocks.js:13873
+  Opens Snap's color selection UI.
+* ColorSlotMorph.prototype.fixLayout — blocks.js:13885
+* ColorPaletteMorph.prototype.mouseDownLeft — morphic.js:5462
+* ColorPickerMorph.prototype.fixLayout — morphic.js:5577
+* MultiArgMorph.prototype.addInput — blocks.js:14610
+* MultiArgMorph.prototype.removeInput — blocks.js:14697
+* MultiArgMorph.prototype.mouseClickLeft — blocks.js:14819
+  Handles expansion/contraction controls for variadic parameters.
+* MultiArgMorph.prototype.fixLayout — blocks.js:14413
+* InputFieldMorph.prototype.dropDownMenu — widgets.js:3214
+* InputFieldMorph.prototype.mouseClickLeft — widgets.js:3300
+
+
+5. Dragging, dropping, snapping, and insertion
+----------------------------------------------
+Generic carrying and dropping:
+
+* HandMorph.prototype.grab — morphic.js:11314
+  Detaches or copies the selected morph, calls prepareToBeGrabbed, and attaches
+  it to the hand.
+* HandMorph.prototype.drop — morphic.js:11345
+  Finds a compatible drop owner, invokes reactToDropOf, and releases the morph.
+* Morph.prototype.wantsDropOf — morphic.js:4145
+  Generic acceptance hook overridden by scripts, blocks, frames, and slots.
+* FrameMorph.prototype.reactToDropOf — morphic.js:10415
+* FrameMorph.prototype.reactToGrabOf — morphic.js:10419
+
+Block-level hooks:
+
+* BlockMorph.prototype.mouseDownLeft — blocks.js:5952
+* BlockMorph.prototype.wantsDropOf — blocks.js:5972
+* BlockMorph.prototype.reactToDropOf — blocks.js:5980
+* BlockMorph.prototype.prepareToBeGrabbed — blocks.js:6008
+* BlockMorph.prototype.justDropped — blocks.js:6029
+* BlockMorph.prototype.snap — blocks.js:6092
+
+Command-stack attachment and insertion:
+
+* CommandBlockMorph.prototype.nextBlock — blocks.js:6427
+  Gets or inserts a following command and positions it beneath the current block
+  using Snap's shared-corner overlap.
+* CommandBlockMorph.prototype.attachTargets — blocks.js:6495
+  Generates compatible top, bottom, and command/C-slot attachment points.
+* CommandBlockMorph.prototype.closestAttachTarget — blocks.js:6557
+  Chooses the nearest valid target inside Snap's attachment threshold.
+* CommandBlockMorph.prototype.snap — blocks.js:6614
+  Inserts the carried block/stack and reconnects displaced commands.
+* CommandBlockMorph.prototype.prepareToBeGrabbed — blocks.js:6708
+  Disconnects a command or substack while preserving the old stack.
+
+Reporter insertion into parameter slots:
+
+* ReporterBlockMorph.prototype.snap — blocks.js:7535
+  Replaces a compatible input/reporter slot with the dragged reporter.
+* ReporterBlockMorph.prototype.prepareToBeGrabbed — blocks.js:7602
+  Restores the original/default input when a reporter is removed.
+* ReporterBlockMorph.prototype.mouseClickLeft — blocks.js:7693
+
+Slot attachment:
+
+* CommandSlotMorph.prototype.attachTargets — blocks.js:9982
+* CommandSlotMorph.prototype.fixLayout — blocks.js:9995
+* TemplateSlotMorph.prototype.wantsDropOf — blocks.js:12905
+* TemplateSlotMorph.prototype.reactToDropOf — blocks.js:12909
+* RingReporterSlotMorph.prototype.attachTargets — blocks.js:15666
+
+Scripts-area participation:
+
+* ScriptsMorph constructor — blocks.js:8489
+* ScriptsMorph.prototype.wantsDropOf — blocks.js:9469
+* ScriptsMorph.prototype.reactToDropOf — blocks.js:9479
+  Accepts detached blocks/stacks and completes drop/snap handling.
+* ScriptsMorph.prototype.cleanUp — blocks.js:8984
+  Repositions top-level scripts into a regular arrangement.
+* ScriptsMorph.prototype.cleanUpMargin — blocks.js:8480
+* ScriptsMorph.prototype.cleanUpSpacing — blocks.js:8481
+
+Complete insertion chain:
+
+1. HandMorph.processMouseDown identifies a draggable morph.
+2. Pointer movement crosses the drag threshold and HandMorph.grab runs.
+3. The morph follows HandMorph during processMouseMove.
+4. attachTargets/closestAttachTarget calculate compatible insertion points.
+5. HandMorph.drop resolves an owner whose wantsDropOf accepts the morph.
+6. Command snap reconnects stacks, or reporter snap calls replaceInput.
+7. Parent fixLayout methods propagate changed positions and dimensions.
+8. changed/fullChanged schedule the damaged region for the next world cycle.
+
+
+6. Block specifications and child creation
+------------------------------------------
+Snap block specs are not merely labels. Percent tokens construct child input,
+symbol, command-slot, reporter-slot, and variadic morphs.
+
+* SyntaxElementMorph.prototype.labelParts — blocks.js:309
+  Maps percent-token names to constructors and special label elements.
+* SyntaxElementMorph.prototype.labelPart — blocks.js:1887
+  Constructs a child morph for a parsed spec token.
+* BlockMorph.prototype.parseSpec — blocks.js:3163
+* BlockMorph.prototype.setSpec — blocks.js:3199
+  Destroys old label parts, parses the specification, creates children, applies
+  input options, fixes layouts/colors, and rerenders the block.
+
+This spec-to-child stage must be represented explicitly in an SVG editor because
+it determines not only text but also the interactive hit targets and nested
+layout structure.
+
+
+7. Positioning and size orchestration
+-------------------------------------
+Base Morph geometry:
+
+* Morph.prototype.setPosition — morphic.js:3478
+* Morph.prototype.setExtent — morphic.js:3586
+* Morph.prototype.fixLayout — morphic.js:3643
+  Base layout hook; specialized morph classes override it.
+* Morph.prototype.rerender — morphic.js:3901
+* Morph.prototype.changed — morphic.js:3906
+* Morph.prototype.fullChanged — morphic.js:3916
+  Connect geometry/appearance mutations to the world's damaged-region redraw.
+
+Shared block metrics:
+
+* SyntaxElementMorph.prototype.setScale — blocks.js:264
+  Defines corner, rounding, edge, inset, dent, hatHeight, hatWidth, fonts, and
+  padding. The default setScale(1) call is at blocks.js:303.
+
+Primary block layout:
+
+* SyntaxElementMorph.prototype.fixLayout — blocks.js:2165
+  This is Snap's central block layout routine. It measures label and input
+  children, wraps rows, applies padding/minimum widths, accounts for hats and
+  C-slots, positions every child, and sets final block bounds.
+* BlockMorph.prototype.setSpec — blocks.js:3199
+  Builds label/input children and invokes their layout plus block layout.
+* BlockMorph.prototype.fixBlockColor — blocks.js:5639
+  Propagates category and zebra colors after nesting changes.
+
+Stacks and nested content:
+
+* CommandBlockMorph.prototype.nextBlock — blocks.js:6427
+  Positions the next command at the current bottom with Snap's overlap.
+* CommandSlotMorph.prototype.fixLayout — blocks.js:9995
+* CSlotMorph.prototype.fixLayout — blocks.js:10589
+  Sizes a C-slot from its nested command stack and then updates the enclosing
+  block's layout.
+* InputSlotMorph.prototype.fixLayout — blocks.js:12147
+* BooleanSlotMorph.prototype.fixLayout — blocks.js:13212
+* ColorSlotMorph.prototype.fixLayout — blocks.js:13885
+* MultiArgMorph.prototype.fixLayout — blocks.js:14413
+* ArgLabelMorph.prototype.fixLayout — blocks.js:15062
+* ReporterSlotMorph.prototype.fixLayout — blocks.js:15580
+* RingReporterSlotMorph.prototype.fixLayout — blocks.js:15696
+
+Top-level scripts:
+
+* ScriptsMorph.prototype.cleanUp — blocks.js:8984
+  Arranges independent scripts using cleanUpMargin and cleanUpSpacing.
+* FrameMorph.prototype.adjustBounds — morphic.js:10382
+  ScriptsMorph inherits the frame/content behavior used to expand its bounds to
+  contain children. Calls from ScriptsMorph occur at blocks.js:8538, 9006, and
+  9484.
+
+Redraw orchestration:
+
+* WorldMorph.prototype.doOneCycle — morphic.js:12141
+  Runs scheduled work and redraws changed canvas regions.
+* Morph.changed/fullChanged — morphic.js:3906/3916
+  Record damaged bounds rather than redrawing the entire world immediately.
+
+SnapShapeFactory reproduces outline geometry only. It does not measure labels,
+wrap rows, size inputs, measure nested C-slot stacks, position attached command
+stacks, or arrange top-level scripts. Exact SVG composition must port those
+layout rules or consume the final bounds produced by retained Snap morphs.
+
+
+8. Intended Scala.js/SVG migration boundary
+-------------------------------------------
+The long-term editor should preserve behavioral rules while replacing global
+Morphic infrastructure:
+
+* Keep/port low-level command, reporter, hat, and C-slot geometry.
+* Keep the rules embodied by setSpec/labelPart, replaceInput, attachTargets,
+  closestAttachTarget, snap, and the relevant fixLayout methods.
+* Replace WorldMorph, HandMorph, damaged-region canvas redraw, and hidden-textarea
+  focus ownership with Scala.js controllers and native SVG/DOM event targets.
+* Represent every slot and nested block as retained structured data so it can be
+  focused, hit-tested, dragged, inserted, and serialized without pixel probing.
+* Use native SVG groups and paths for rendering, and browser focus/pointer events
+  for interaction.
+* Keep source method names and vendor line references both here and alongside the
+  exact shape translations in SnapShapeFactory.
