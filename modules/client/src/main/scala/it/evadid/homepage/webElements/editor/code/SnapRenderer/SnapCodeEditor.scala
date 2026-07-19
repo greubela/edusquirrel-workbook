@@ -5,6 +5,7 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.SnapRenderer.SnapCodeEditor.SnapCodeEditorImpl
+import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.TurtleFileSubmission
 import it.evadid.vm.BeProgram
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
@@ -33,6 +34,7 @@ case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig,
         onMountCallback { ctx =>
           val canvas = ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]
           impl.mount(ctx.owner)
+          impl.onProjectXmlChanged(xml => program.set(TurtleFileSubmission.parseToBeProgram(xml)))
           impl.renderEditorInto(program.now(), canvas, config)
         }
       ),
