@@ -107,18 +107,10 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       noAutoFill = true,
       noCloud = true,
       noExitWarning = true,
-      preserveTitle = true,
-      hideControls = !config.parts.headline,
-      hideCategories = !config.parts.libraryCategories,
-      noSprites = !config.parts.stage,
-      noSpriteEdits = !config.parts.spriteControls,
-      noPalette = !config.parts.library,
-      noOwnBlocks = config.libraryTabs.nonEmpty,
-      eduLibraryTabs = config.libraryTabs.map(_.name).toJSArray
+      preserveTitle = true
     ))
     ide.openIn(world)
     ide.rawOpenProjectString(TurtleFileSubmission.serializeFromBeExpression(program.fullProgram))
-    if config.libraryTabs.nonEmpty then installLibraries(config.libraryTabs, ide)
     ide
 
   /** Replace this editor instance's primitive provider, rather than mutating
