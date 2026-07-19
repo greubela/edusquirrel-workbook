@@ -10,13 +10,29 @@ trait DrawingRoutine[T: Fractional] {
 
   def renderPath(logger: Logger, absolutePosition: Point[T], dimension: Dimension[T], alignIfMisfit: AlignmentInParent): SvgPath = {
     val targetDimension: Dimension[T] =
-      if (shouldConformToDrawingRatio.isEmpty || alignIfMisfit != AlignmentInParent.DistortionAlignment) dimension
+      if (shouldConformToDrawingRatio.isEmpty || alignIfMisfit == AlignmentInParent.DistortionAlignment) dimension
       else shouldConformToDrawingRatio.get.withSameRatioAndMaxSizeWithin(dimension)
 
-    val builder = SvgPathBuilder.immutableBuilder[T](absolutePosition)
-    val res = appendPathToBuilder(logger, builder, targetDimension)
-    val svg = BuilderBasedSvgPath[T](dimension, builder)
-    svg
+    val N = summon[Fractional[T]]
+    import N.*
+    val offset = alignIfMisfit match {
+      case position: AlignmentInParent.PositionInParent =>
+        val x = position.horizontal match {
+          case AlignmentInParent.HorizontalAlignment.Left => fromInt(0)
+          case AlignmentInParent.HorizontalAlignment.Center => (dimension.width - targetDimension.width) / fromInt(2)
+          case AlignmentInParent.HorizontalAlignment.Right => dimension.width - targetDimension.width
+        }
+        val y = position.vertical match {
+          case AlignmentInParent.VerticalAlignment.Top => fromInt(0)
+          case AlignmentInParent.VerticalAlignment.Middle => (dimension.height - targetDimension.height) / fromInt(2)
+          case AlignmentInParent.VerticalAlignment.Bottom => dimension.height - targetDimension.height
+        }
+        Dimension(x, y)
+      case AlignmentInParent.DistortionAlignment => Dimension(fromInt(0), fromInt(0))
+    }
+    val builder = SvgPathBuilder.immutableBuilder[T](absolutePosition.moveWithDimension(offset))
+    val result = appendPathToBuilder(logger, builder, targetDimension)
+    BuilderBasedSvgPath[T](targetDimension, result)
   }
 
   def appendPathToBuilder(logger: Logger, builder: SvgPathBuilder[T], targetDimension: Dimension[T]): SvgPathBuilder[T]

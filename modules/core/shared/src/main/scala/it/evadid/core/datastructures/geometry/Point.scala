@@ -40,12 +40,10 @@ object Point {
   def doubleToT[T: Fractional](doubleValue: Double, divideBy: Int = 1, maxDiv: Int = 10000000): T = {
     val N = summon[Fractional[T]]
     import N.*
-
-    val asInt = doubleValue.toInt
-    val diffToInt: Double = doubleValue - doubleValue.toInt
-    if (diffToInt > 1 || diffToInt < 1) throw IllegalArgumentException(s"Double ${doubleValue} cannot be converted to [T] because it is too large for an int!")
-    else if (diffToInt == 0 || divideBy >= maxDiv) fromInt(asInt) / fromInt(divideBy)
-    else doubleToT(doubleValue / 10.0, divideBy * 10, maxDiv)
+    N.parseString(doubleValue.toString).getOrElse {
+      val scale = math.min(maxDiv, 1000000)
+      fromInt((doubleValue * scale).round.toInt) / fromInt(scale)
+    }
   }
 
 }
