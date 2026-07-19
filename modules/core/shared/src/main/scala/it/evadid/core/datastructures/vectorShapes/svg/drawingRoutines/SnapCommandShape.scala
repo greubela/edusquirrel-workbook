@@ -1,8 +1,9 @@
 package it.evadid.core.datastructures.vectorShapes.svg.drawingRoutines
 
-import it.evadid.core.datastructures.geometry.Dimension
+import it.evadid.core.datastructures.geometry.{AspectRatio, Dimension}
 import it.evadid.core.datastructures.vectorShapes.abstractions.DrawingRoutine.DrawingRoutineRelativeToMaxDim
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderRelativeCoords
+import it.evadid.util.logging.Logger
 
 /** Snap!'s command-block outline, normalized to the requested drawing bounds.
   *
@@ -14,9 +15,11 @@ import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderRelativeCoor
   * Vendored at `resources/programs/20260212TurtleStitch/turtlestitchsrc/blocks.js`.
   */
 case class SnapCommandShape[T: Fractional]() extends DrawingRoutineRelativeToMaxDim[T] {
-  override def draw(builder: SvgPathBuilderRelativeCoords[T]): SvgPathBuilderRelativeCoords[T] =
+
+  override def draw(logger: Logger, builder: SvgPathBuilderRelativeCoords[T]): SvgPathBuilderRelativeCoords[T] =
     builder.moveToRel(3, 0).lineToRel(9, 0).lineToRel(3, 8).lineToRel(8, 0).lineToRel(3, -8).lineToRel(71, 0)
       .lineToRel(3, 8).lineToRel(0, 84).lineToRel(-3, 8).lineToRel(-71, 0)
       .lineToRel(-3, -8).lineToRel(-8, 0).lineToRel(-3, 8).lineToRel(-9, 0).lineToRel(-3, -8).lineToRel(0, -84)
-  override def onlyNonDistortedIfDimensionRatio: Option[Dimension[Double]] = None
+
+  override def hasDesiredAspectRatio: Option[AspectRatio] = None
 }

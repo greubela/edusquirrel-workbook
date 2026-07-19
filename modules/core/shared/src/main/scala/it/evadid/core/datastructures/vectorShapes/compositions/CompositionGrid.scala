@@ -1,6 +1,6 @@
 package it.evadid.core.datastructures.vectorShapes.compositions
 
-import it.evadid.core.datastructures.geometry.{Dimension, Point}
+import it.evadid.core.datastructures.geometry.{AspectRatio, Dimension, Point}
 import it.evadid.core.datastructures.matrix.Matrix
 import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeCompositeControl.*
 import it.evadid.core.datastructures.vectorShapes.abstractions.{AlignmentInParent, AppShapeCompositeControl}
@@ -37,14 +37,16 @@ case class CompositionGrid[T: Fractional](alignments: Matrix[AlignmentInParent])
 
   override def calculateChildrenPositions(children: List[AppCompositionDimensioned[T]], myRenderingSize: RenderingDimension[T], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): List[AppCompositionPositioned[T]] = {
     val N = summon[Fractional[T]]
-    val (widths, heights) = tracks(children.map(_.renderingDimension.fullDimension))
+    val (widths, heights) = tracks(children.map(_.adjustedRenderingSize.fullDimension))
     children.zipWithIndex.map { case (child, index) =>
       val row = index / alignments.dim.cols
       val col = index % alignments.dim.cols
-      val cellOffset = calculateOffset(Dimension(widths(col), heights(row)), child.renderingDimension.fullDimension, alignments.elements(index))
+      val cellOffset = calculateOffset(Dimension(widths(col), heights(row)), child.adjustedRenderingSize.fullDimension, alignments.elements(index))
       val x = N.plus(widths.take(col).foldLeft(N.fromInt(0))(N.plus), N.times(renderingConfig.gapBetweenConsecutiveShapes.width, N.fromInt(col)))
       val y = N.plus(heights.take(row).foldLeft(N.fromInt(0))(N.plus), N.times(renderingConfig.gapBetweenConsecutiveShapes.height, N.fromInt(row)))
       positionChild(child, Point(N.plus(x, cellOffset.x), N.plus(y, cellOffset.y)))
     }
   }
+
+  override def desiredAspectRatioAndAlignment: Option[(AspectRatio, AlignmentInParent)] = None
 }

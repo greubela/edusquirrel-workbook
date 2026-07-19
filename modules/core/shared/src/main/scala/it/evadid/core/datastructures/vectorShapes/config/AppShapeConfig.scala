@@ -3,13 +3,15 @@ package it.evadid.core.datastructures.vectorShapes.config
 import it.evadid.core.datastructures.color.{AppColor, RGBColor}
 import it.evadid.core.datastructures.geometry.Dimension
 
-trait AppShapeConfig[T : Fractional] {
+trait AppShapeConfig[T: Fractional] {
 
   def renderingConfig: AppShapeRenderingConfig[T]
 
   def useCustomPadding: Option[Dimension[T]]
 
- // def useCustomMargin: Option[Dimension[T]]
+  def paddingToUse: Dimension[T] = useCustomPadding.getOrElse(renderingConfig.defaultPadding)
+
+  // def useCustomMargin: Option[Dimension[T]]
 
 
   def colorStroke: AppColor

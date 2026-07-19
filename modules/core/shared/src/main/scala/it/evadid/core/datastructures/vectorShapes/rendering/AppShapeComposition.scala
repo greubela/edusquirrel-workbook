@@ -6,10 +6,10 @@ import it.evadid.core.datastructures.vectorShapes.config.{AppShapeConfig, AppSha
 import it.evadid.core.datastructures.vectorShapes.rendering.AppShapeComposition.{AppCompositionMeasured, AppCompositionRendered, RenderingDimension}
 
 /** A tree node which lays out its children through a [[AppShapeCompositeControl]].
-  *
-  * Rendering proceeds recursively through measurement, dimensioning, relative
-  * positioning, and finally conversion to absolute bounds.
-  */
+ *
+ * Rendering proceeds recursively through measurement, dimensioning, relative
+ * positioning, and finally conversion to absolute bounds.
+ */
 case class AppShapeComposition[T: Fractional](
                                                compositeControl: AppShapeCompositeControl[T],
                                                compositionConfig: AppShapeConfig[T],
@@ -29,7 +29,7 @@ case class AppShapeComposition[T: Fractional](
     this.
       withMinimumDimension(renderingConfig)
       .withTargetDimension(myDimension)
-      .withOffsets(Point.fromIntPoint(0, 0))
+      .withOffset(Point.fromIntPoint(0, 0))
       .asRendered(targetBounds.startPoint)
   }
 
@@ -41,17 +41,23 @@ object AppShapeComposition {
   /** A composition tree whose minimum dimensions have been calculated bottom-up. */
   case class AppCompositionMeasured[T: Fractional](children: List[AppCompositionMeasured[T]], composition: AppShapeComposition[T], minimumDimension: RenderingDimension[T], renderingConfig: AppShapeRenderingConfig[T]) {
     def withTargetDimension(renderingSize: RenderingDimension[T]): AppCompositionDimensioned[T] = {
-      val childrenDimensioned = composition.compositeControl.calculateChildrenDimensions(children, renderingSize, composition.compositionConfig, renderingConfig)
-      //val myDimension = composition.compositeControl.calculateMyDimension(childrenDimensioned, renderingSize, composition.compositionConfig, renderingConfig)
-      AppCompositionDimensioned(childrenDimensioned, this, renderingSize)
+
+      val relativeBoundsRaw = AppShapeCompositeControl.calculateRelativeBounds(renderingSize.rawDimension, composition.compositeControl.desiredAspectRatioAndAlignment)
+      val adjustedRenderingSize = RenderingDimension.fromRawDimensionAndConfig(relativeBoundsRaw.dimension, composition.compositionConfig, renderingConfig)
+      val childrenDimensioned = composition.compositeControl.calculateChildrenDimensions(children, adjustedRenderingSize, composition.compositionConfig, renderingConfig)
+      AppCompositionDimensioned(childrenDimensioned, this, relativeBoundsRaw)
     }
   }
 
   /** A measured composition whose node and descendants have concrete dimensions. */
-  case class AppCompositionDimensioned[T: Fractional](children: List[AppCompositionDimensioned[T]], compositionMeasurd: AppCompositionMeasured[T], renderingDimension: RenderingDimension[T]) {
-    def withOffsets(myRelativeOffsetInParent: Point[T]): AppCompositionPositioned[T] = {
-      val childrenPositioned = compositionMeasurd.composition.compositeControl.calculateChildrenPositions(children, renderingDimension, compositionMeasurd.composition.compositionConfig, compositionMeasurd.renderingConfig)
-      AppCompositionPositioned(childrenPositioned, this, renderingDimension.fullDimension.withOffset(myRelativeOffsetInParent))
+  case class AppCompositionDimensioned[T: Fractional](children: List[AppCompositionDimensioned[T]], compositionMeasurd: AppCompositionMeasured[T], relativeBoundsRaw: RelativeBounds[T]) {
+
+    lazy val adjustedRenderingSize: RenderingDimension[T] = RenderingDimension.fromRawDimensionAndConfig(relativeBoundsRaw.dimension, compositionMeasurd.composition.compositionConfig, compositionMeasurd.renderingConfig)
+
+    def withOffset(offsetCalculatedFromParent: Point[T]): AppCompositionPositioned[T] = {
+      lazy val myFullOffset: Point[T] = compositionMeasurd.composition.compositionConfig.paddingToUse.asPoint + relativeBoundsRaw.offsetInParents + offsetCalculatedFromParent
+      val childrenPositioned = compositionMeasurd.composition.compositeControl.calculateChildrenPositions(children, adjustedRenderingSize, compositionMeasurd.composition.compositionConfig, compositionMeasurd.renderingConfig)
+      AppCompositionPositioned(childrenPositioned, this, adjustedRenderingSize.fullDimension.withOffset(myFullOffset))
     }
   }
 

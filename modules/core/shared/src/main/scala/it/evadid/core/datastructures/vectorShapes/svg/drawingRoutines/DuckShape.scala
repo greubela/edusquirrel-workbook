@@ -1,14 +1,14 @@
 package it.evadid.core.datastructures.vectorShapes.svg.drawingRoutines
 
-import it.evadid.core.datastructures.geometry.Dimension
+import it.evadid.core.datastructures.geometry.{AspectRatio, Dimension}
 import it.evadid.core.datastructures.vectorShapes.abstractions.DrawingRoutine.DrawingRoutineRelativeToMaxDim
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderRelativeCoords
+import it.evadid.util.logging.Logger
 
 case class DuckShape[T: Fractional]() extends DrawingRoutineRelativeToMaxDim[T] {
 
-  override def onlyNonDistortedIfDimensionRatio: Option[Dimension[Double]] = Some(Dimension[Double](125, 50))
 
-  override def draw(builder: SvgPathBuilderRelativeCoords[T]): SvgPathBuilderRelativeCoords[T] = {
+  override def draw(logger: Logger, builder: SvgPathBuilderRelativeCoords[T]): SvgPathBuilderRelativeCoords[T] =  {
 
     builder
       .moveToRel(15, 25)
@@ -37,4 +37,6 @@ case class DuckShape[T: Fractional]() extends DrawingRoutineRelativeToMaxDim[T] 
   }
 
 
+
+  override def hasDesiredAspectRatio: Option[AspectRatio] = Some(AspectRatio(125, 50))
 }

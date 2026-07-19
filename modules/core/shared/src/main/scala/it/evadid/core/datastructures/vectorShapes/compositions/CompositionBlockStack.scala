@@ -1,5 +1,6 @@
 package it.evadid.core.datastructures.vectorShapes.compositions
 
+import it.evadid.core.datastructures.geometry.AspectRatio
 import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeCompositeControl.*
 import it.evadid.core.datastructures.vectorShapes.abstractions.{AlignmentInParent, AppShapeCompositeControl}
 import it.evadid.core.datastructures.vectorShapes.config.{AppShapeConfig, AppShapeRenderingConfig}
@@ -15,6 +16,8 @@ case class CompositionBlockStack[T: Fractional](alignment: AlignmentInParent) ex
     dimensionChildrenAtMinimum(children)
 
   override def calculateChildrenPositions(children: List[AppCompositionDimensioned[T]], myRenderingSize: RenderingDimension[T], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): List[AppCompositionPositioned[T]] = {
-    children.map(positionAligned(_, myRenderingSize.rawDimension, alignment))
+    children.map(curChild => positionAligned(curChild, myRenderingSize.rawDimension, alignment))
   }
+
+  override def desiredAspectRatioAndAlignment: Option[(AspectRatio, AlignmentInParent)] = None
 }

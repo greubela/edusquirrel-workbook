@@ -1,12 +1,15 @@
 package it.evadid.core.datastructures.vectorShapes.abstractions
 
-import it.evadid.core.datastructures.geometry.{Dimension, Point, RelativeBounds}
-import it.evadid.core.datastructures.vectorShapes.abstractions.AlignmentInParent.{HorizontalAlignment, PositionInParent, VerticalAlignment}
+import it.evadid.core.datastructures.geometry.{AspectRatio, Dimension, Point, RelativeBounds}
+import it.evadid.core.datastructures.vectorShapes.abstractions.AlignmentInParent.{DistortionAlignment, HorizontalAlignment, PositionInParent, VerticalAlignment}
 import it.evadid.core.datastructures.vectorShapes.config.{AppShapeConfig, AppShapeRenderingConfig}
 import it.evadid.core.datastructures.vectorShapes.rendering.AppShapeComposition.{AppCompositionDimensioned, AppCompositionMeasured, AppCompositionPositioned, RenderingDimension}
 
 
 trait AppShapeCompositeControl[T: Fractional] {
+
+  def desiredAspectRatioAndAlignment: Option[(AspectRatio, AlignmentInParent)]
+
   def calculateMyMinimumDimension(childrenDimensions: List[AppCompositionMeasured[T]], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): RenderingDimension[T]
 
   def calculateChildrenDimensions(children: List[AppCompositionMeasured[T]], myRenderingSize: RenderingDimension[T], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): List[AppCompositionDimensioned[T]]
@@ -16,6 +19,8 @@ trait AppShapeCompositeControl[T: Fractional] {
 }
 
 object AppShapeCompositeControl {
+
+  case class ResizingBehavior()
 
   def zeroDimension[T: Fractional]: Dimension[T] = {
     val zero = summon[Fractional[T]].fromInt(0)
@@ -36,15 +41,27 @@ object AppShapeCompositeControl {
     children.map(child => child.withTargetDimension(child.minimumDimension))
 
   def positionChild[T: Fractional](child: AppCompositionDimensioned[T], offset: Point[T]): AppCompositionPositioned[T] =
-    child.withOffsets(offset)
+    child.withOffset(offset)
 
   def positionAligned[T: Fractional](child: AppCompositionDimensioned[T], container: Dimension[T], alignment: AlignmentInParent): AppCompositionPositioned[T] =
-    positionChild(child, calculateOffset(container, child.renderingDimension.fullDimension, alignment))
+    positionChild(child, calculateOffset(container, child.adjustedRenderingSize.fullDimension, alignment))
+
+
+  def calculateRelativeBounds[T: Fractional](targetDimension: Dimension[T], desiredAspectRatioAndAlignment: Option[(AspectRatio, AlignmentInParent)]): RelativeBounds[T] = {
+    val useDimension: Dimension[T] = calculateAdjustedDimension(targetDimension, desiredAspectRatioAndAlignment)
+    val offset: Point[T] = calculateOffset(targetDimension, useDimension, desiredAspectRatioAndAlignment.map(_._2).getOrElse(DistortionAlignment))
+    RelativeBounds(offset, useDimension)
+  }
 
   def calculateRelativeBounds[T: Fractional](targetDimension: Dimension[T], desiredDimension: Option[Dimension[T]], alignIfMisfit: AlignmentInParent, scaleDesiredToFit: Boolean = false): RelativeBounds[T] = {
     val useDimension: Dimension[T] = calculateAdjustedDimension(targetDimension, desiredDimension, alignIfMisfit, scaleDesiredToFit)
     val offset: Point[T] = calculateOffset(targetDimension, useDimension, alignIfMisfit)
     RelativeBounds(offset, useDimension)
+  }
+
+  def calculateAdjustedDimension[T: Fractional](targetDimension: Dimension[T], desiredAspectRatioAndAlignment: Option[(AspectRatio, AlignmentInParent)]): Dimension[T] = {
+    if (desiredAspectRatioAndAlignment.isEmpty || desiredAspectRatioAndAlignment.get._2 == AlignmentInParent.DistortionAlignment) targetDimension
+    else Dimension.fromRatioAndMaxDimension(desiredAspectRatioAndAlignment.get._1, targetDimension)
   }
 
   def calculateAdjustedDimension[T: Fractional](targetDimension: Dimension[T], desiredDimension: Option[Dimension[T]], alignIfMisfit: AlignmentInParent, scaleDesiredToFit: Boolean = false): Dimension[T] = {

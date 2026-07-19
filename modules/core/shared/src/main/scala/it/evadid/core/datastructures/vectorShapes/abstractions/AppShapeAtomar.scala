@@ -1,6 +1,6 @@
 package it.evadid.core.datastructures.vectorShapes.abstractions
 
-import it.evadid.core.datastructures.geometry.{Bounds, Dimension}
+import it.evadid.core.datastructures.geometry.{AspectRatio, Bounds, Dimension}
 import it.evadid.core.datastructures.vectorShapes.config.{AppShapeConfig, AppShapeRenderingConfig}
 import it.evadid.core.datastructures.vectorShapes.rendering.AppShapeConfigured
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPath
@@ -15,7 +15,9 @@ trait AppShapeAtomar[T: Fractional] {
 
   def withConfig(config: AppShapeConfig[T]): AppShapeConfigured[T] = AppShapeConfigured[T](this, config)
 
-  def renderPath(logger: Logger, bounds: Bounds[T], alignIfMisfit: AlignmentInParent): SvgPath
+  def renderPath(logger: Logger, bounds: Bounds[T]): SvgPath
+
+  def hasDesiredAspectRatio: Option[AspectRatio]
 
 }
 

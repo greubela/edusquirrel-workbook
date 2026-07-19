@@ -1,6 +1,6 @@
 package it.evadid.core.datastructures.vectorShapes.compositions
 
-import it.evadid.core.datastructures.geometry.{Dimension, Point}
+import it.evadid.core.datastructures.geometry.{AspectRatio, Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeCompositeControl.*
 import it.evadid.core.datastructures.vectorShapes.abstractions.{AlignmentInParent, AppShapeCompositeControl}
 import it.evadid.core.datastructures.vectorShapes.config.{AppShapeConfig, AppShapeRenderingConfig}
@@ -23,10 +23,12 @@ case class CompositionVBox[T: Fractional](alignment: AlignmentInParent) extends 
     val N = summon[Fractional[T]]
     var y = N.fromInt(0)
     children.map { child =>
-      val aligned = calculateOffset(myRenderingSize.rawDimension, child.renderingDimension.fullDimension, alignment)
+      val aligned = calculateOffset(myRenderingSize.rawDimension, child.adjustedRenderingSize.fullDimension, alignment)
       val positioned = positionChild(child, Point(aligned.x, y))
-      y = N.plus(N.plus(y, child.renderingDimension.fullDimension.height), renderingConfig.gapBetweenConsecutiveShapes.height)
+      y = N.plus(N.plus(y, child.adjustedRenderingSize.fullDimension.height), renderingConfig.gapBetweenConsecutiveShapes.height)
       positioned
     }
   }
+
+  override def desiredAspectRatioAndAlignment: Option[(AspectRatio, AlignmentInParent)] = None
 }

@@ -1,8 +1,9 @@
 package it.evadid.core.datastructures.vectorShapes.svg.drawingRoutines
 
-import it.evadid.core.datastructures.geometry.Dimension
+import it.evadid.core.datastructures.geometry.{AspectRatio, Dimension}
 import it.evadid.core.datastructures.vectorShapes.abstractions.DrawingRoutine.DrawingRoutineRelativeToMaxDim
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderRelativeCoords
+import it.evadid.util.logging.Logger
 
 /** Snap!'s oval reporter outline, normalized to the requested drawing bounds.
   *
@@ -14,9 +15,11 @@ import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderRelativeCoor
   * Vendored at `resources/programs/20260212TurtleStitch/turtlestitchsrc/blocks.js`.
   */
 case class SnapReporterShape[T: Fractional]() extends DrawingRoutineRelativeToMaxDim[T] {
-  override def draw(builder: SvgPathBuilderRelativeCoords[T]): SvgPathBuilderRelativeCoords[T] =
+
+  override def draw(logger: Logger, builder: SvgPathBuilderRelativeCoords[T]): SvgPathBuilderRelativeCoords[T] =
     builder.moveToRel(0, 50).quadraticBezierWithRel(0, -50, 15, -50).lineToRel(70, 0)
       .quadraticBezierWithRel(15, 0, 15, 50).quadraticBezierWithRel(0, 50, -15, 50)
       .lineToRel(-70, 0).quadraticBezierWithRel(-15, 0, -15, -50)
-  override def onlyNonDistortedIfDimensionRatio: Option[Dimension[Double]] = None
+
+  override def hasDesiredAspectRatio: Option[AspectRatio] = None
 }
