@@ -3,6 +3,7 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.p
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.canvas.SvgCanvas
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeTreeDropTarget
 import it.evadid.vm.BeProgram

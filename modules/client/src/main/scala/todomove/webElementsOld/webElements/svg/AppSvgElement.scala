@@ -9,7 +9,7 @@ import com.raquo.laminar.nodes.ReactiveHtmlElement
 import scala.math.BigDecimal.RoundingMode
 import com.raquo.laminar.keys.{StyleProp, SvgAttr}
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
-import todomove.datastructures.web.font.AppFont
+import it.evadid.core.datastructures.font.AppFont
 import todomove.webElementsOld.webElements.svg.atomarElements.{AppCircleSvgElement, AppPathSvgElement, AppRectangleSvgElement, AppTextSvgElement}
 import todomove.webElementsOld.webElements.svg.compositeElements.{AppDecoratedSvgElement, AppGroupSvgElement}
 

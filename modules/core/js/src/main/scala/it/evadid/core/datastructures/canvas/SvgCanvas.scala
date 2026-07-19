@@ -1,16 +1,15 @@
-package it.evadid.homepage.webElements.canvas
+package it.evadid.core.datastructures.canvas
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.modifiers.KeySetter.SvgAttrSetter
 import it.evadid.core.datastructures.color.{AppColor, RGBColor}
 import it.evadid.core.datastructures.file.*
-import todomove.datastructures.web.file.FullImage
-import todomove.datastructures.web.font.AppFont
+import it.evadid.core.datastructures.font.AppFont
 
 class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
 
-  override def getDomElement(): Element = canvasElement
+  def getDomElement(): Element = canvasElement
 
   private val elements: Var[List[Element]] = Var(List())
 
@@ -213,14 +212,14 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
     elements.update(_ :+ newCircle)
   }
 
-  override def drawImage(x: Double, y: Double, width: Double, height: Double, img: FullImage, alphaUpTo255: Double = 255): Unit = {
+  override def drawImage(x: Double, y: Double, width: Double, height: Double, image: AppImage, alphaUpTo255: Double = 255): Unit = {
     val newImg = svg.image(
       svg.x := "" + x,
       svg.y := "" + y,
       svg.width := "" + width,
       svg.height := "" + height,
       //svg.href := "data:image/" + img.fileInfo.fileType + ";base64," + img.base64String,
-      svg.href := img.imageSourceString,
+      svg.href := image.imageSourceString,
       svg.opacity := s"${alphaUpTo255 / 255.0}",
       svg.preserveAspectRatio := "none"
     )

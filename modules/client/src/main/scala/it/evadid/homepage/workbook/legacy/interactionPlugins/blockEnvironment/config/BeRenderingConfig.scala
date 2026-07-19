@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.color.{AppColorPalette, RGBYColorPalette}
 import it.evadid.core.datastructures.geometry.Dimension
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
-import todomove.datastructures.web.font.AppFont
+import it.evadid.core.datastructures.font.AppFont
 import todomove.webElementsOld.webElements.svg.builder.controlFlow.path.SegmentType
 import todomove.webElementsOld.webElements.svg.shapes.{BeShapeAmendFactory, ShapeAmends}
 
