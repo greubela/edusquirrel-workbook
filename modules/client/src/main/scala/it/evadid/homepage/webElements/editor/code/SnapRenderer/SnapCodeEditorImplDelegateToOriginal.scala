@@ -41,6 +41,12 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     keepKeyboardHandlerInEditor(world, canvas)
     val ide = createEditor(world, initProgram, config)
     layoutEditor(world, ide, canvas)
+    // Palette construction calls fixLayout. Install custom templates only
+    // after the noAutoFill IDE has a real extent; doing it while its extent is
+    // still zero leaves both the palette and scripts pane with empty bounds.
+    if config.libraryTabs.nonEmpty then
+      installLibraries(config.libraryTabs, ide)
+      layoutEditor(world, ide, canvas)
     initializeProjectChangeTracking(ide)
 
     editorWorld = Some(world)
@@ -54,7 +60,10 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     sourceCanvas.height = config.CanvasHeight
 
     val world = new WorldMorph(sourceCanvas, false)
-    val ide = createEditor(world, program, config)
+    // A preview is an image of the scripts themselves, not another configured
+    // IDE. Pane-hiding and palette settings can otherwise collapse the source
+    // ScriptsMorph before scriptsPicture() takes its snapshot.
+    val ide = createPreviewEditor(world, program)
     layoutEditor(world, ide, sourceCanvas)
     runStartupCycles(world)
 
@@ -76,6 +85,24 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     world.destroy()
 
   private def createEditor(world: WorldMorph, program: BeProgram, config: SnapCodeEditorConfig): IDEMorph =
+    val ide = new IDEMorph(js.Dynamic.literal(
+      noAutoFill = true,
+      noCloud = true,
+      noExitWarning = true,
+      preserveTitle = true,
+      hideControls = !config.parts.headline,
+      hideCategories = !config.parts.libraryCategories,
+      noSprites = !config.parts.stage,
+      noSpriteEdits = !config.parts.spriteControls,
+      noPalette = !config.parts.library,
+      noOwnBlocks = config.libraryTabs.nonEmpty,
+      eduLibraryTabs = config.libraryTabs.map(_.name).toJSArray
+    ))
+    ide.openIn(world)
+    ide.rawOpenProjectString(TurtleFileSubmission.serializeFromBeExpression(program.fullProgram))
+    ide
+
+  private def createPreviewEditor(world: WorldMorph, program: BeProgram): IDEMorph =
     val ide = new IDEMorph(js.Dynamic.literal(
       noAutoFill = true,
       noCloud = true,
