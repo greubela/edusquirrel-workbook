@@ -122,9 +122,13 @@ final class MountedProgramBlockRenderer() extends BeProgramSnapRenderer {
       val resized = resizeCanvasIfNeeded(program, context, canvas, config)
       if (dirty || resized) {
         drawProgram(program, context, canvas, config)
+        CanvasVisibility.warnIfUnexpectedlyEmpty(this, program, canvas)
         dirty = false
       }
-      frameHandle = dom.window.requestAnimationFrame(_ => drawProgram(program, context, canvas, config))
+      frameHandle = dom.window.requestAnimationFrame { _ =>
+        drawProgram(program, context, canvas, config)
+        CanvasVisibility.warnIfUnexpectedlyEmpty(this, program, canvas)
+      }
     }
   }
 

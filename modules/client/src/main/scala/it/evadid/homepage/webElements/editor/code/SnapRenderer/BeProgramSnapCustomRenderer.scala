@@ -35,7 +35,7 @@ class BeProgramSnapCustomRenderer extends BeProgramSnapRenderer {
     scripts.changed()
     world.changed()
     world.doOneCycle()
-    world
+    CanvasVisibility.warnIfUnexpectedlyEmpty(this, program, canvas)
 
   private def blockMorphsFor(program: BeProgram): List[BlockMorph] =
     expressionsFor(program.fullProgram).map(blockForExpression)
