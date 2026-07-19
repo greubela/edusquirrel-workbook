@@ -1,6 +1,6 @@
 package it.evadid.todomove.`export`.snap
 
-import it.evadid.homepage.webElements.editor.code.SnapRenderer.{BlockLabelMorph, BlockSymbolMorph, BooleanSlotMorph, CSlotMorph, ColorSlotMorph, CommandBlockMorph, CommentMorph, InputMorph, InputSlotMorph, MultiArgMorph, ReporterBlockMorph, ReporterSlotMorph, RingReporterSlotMorph, ScriptsMorph, SnapAttachTarget, SnapBlock, SnapCanvas, SnapColor}
+import it.evadid.homepage.webElements.editor.code.SnapRenderer.{BlockLabelMorph, BlockSymbolMorph, BooleanSlotMorph, CSlotMorph, ColorSlotMorph, CommandBlockMorph, CommentMorph, IDEMorph, InputMorph, InputSlotMorph, MultiArgMorph, ReporterBlockMorph, ReporterSlotMorph, RingReporterSlotMorph, ScriptsMorph, SnapAttachTarget, SnapBlock, SnapCanvas, SnapColor, WorldMorph}
 import munit.FunSuite
 
 import scala.scalajs.js
@@ -43,3 +43,10 @@ class SnapFacadeCompileSpec extends FunSuite:
     assert(buildSymbol != null)
     assert(buildComment != null)
     assertEquals(attachTargets.length, 0)
+
+  test("IDE facade exposes the canonical project XML loading API"):
+    val configureEditor: (IDEMorph, WorldMorph, String) => Unit = (editor, world, xml) =>
+      editor.openIn(world)
+      editor.loadProjectXML(xml)
+
+    assert(configureEditor != null)
