@@ -5,6 +5,7 @@ import it.evadid.core.datastructures.vectorShapes.config.{AppShapeConfig, AppSha
 import it.evadid.core.datastructures.vectorShapes.rendering.AppShapeComposition.RenderingDimension
 import it.evadid.core.datastructures.vectorShapes.rendering.{AppShapeComposition, AppShapeConfigured}
 
+/** Leaf composition control that obtains its minimum size from one configured atomic shape. */
 case class CompositionSingleElement[T: Fractional](atomar: AppShapeConfigured[T]) extends AppShapeCompositeControl[T] {
 
   override def calculateMyMinimumDimension(childrenDimensions: List[AppShapeComposition.AppCompositionMeasured[T]], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): AppShapeComposition.RenderingDimension[T] = {

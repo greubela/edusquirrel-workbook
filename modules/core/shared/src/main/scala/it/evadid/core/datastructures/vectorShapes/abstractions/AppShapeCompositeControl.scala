@@ -7,20 +7,6 @@ import it.evadid.core.datastructures.vectorShapes.rendering.AppShapeComposition.
 
 
 trait AppShapeCompositeControl[T: Fractional] {
-
-  def zeroDimension[T: Fractional]: Dimension[T] = {
-    val zero = summon[Fractional[T]].fromInt(0)
-    Dimension(zero, zero)
-  }
-
-  def maxDimension[T: Fractional](children: List[Dimension[T]]): Dimension[T] = {
-    val N = summon[Fractional[T]]
-    children.foldLeft(zeroDimension[T]) { (current, dim) =>
-      Dimension(N.max(current.width, dim.width), N.max(current.height, dim.height))
-    }
-  }
-
-
   def calculateMyMinimumDimension(childrenDimensions: List[AppCompositionMeasured[T]], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): RenderingDimension[T]
 
   def calculateChildrenDimensions(children: List[AppCompositionMeasured[T]], myRenderingSize: RenderingDimension[T], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): List[AppCompositionDimensioned[T]]
@@ -31,8 +17,32 @@ trait AppShapeCompositeControl[T: Fractional] {
 
 object AppShapeCompositeControl {
 
+  def zeroDimension[T: Fractional]: Dimension[T] = {
+    val zero = summon[Fractional[T]].fromInt(0)
+    Dimension(zero, zero)
+  }
+
+  def maxDimension[T: Fractional](dimensions: Iterable[Dimension[T]]): Dimension[T] = {
+    val N = summon[Fractional[T]]
+    dimensions.foldLeft(zeroDimension[T]) { (current, dimension) =>
+      Dimension(N.max(current.width, dimension.width), N.max(current.height, dimension.height))
+    }
+  }
+
+  def minimumRenderingDimension[T: Fractional](children: Iterable[AppCompositionMeasured[T]]): Dimension[T] =
+    maxDimension(children.map(_.minimumDimension.fullDimension))
+
+  def dimensionChildrenAtMinimum[T: Fractional](children: List[AppCompositionMeasured[T]]): List[AppCompositionDimensioned[T]] =
+    children.map(child => child.withTargetDimension(child.minimumDimension))
+
+  def positionChild[T: Fractional](child: AppCompositionDimensioned[T], offset: Point[T]): AppCompositionPositioned[T] =
+    child.withOffsets(offset)
+
+  def positionAligned[T: Fractional](child: AppCompositionDimensioned[T], container: Dimension[T], alignment: AlignmentInParent): AppCompositionPositioned[T] =
+    positionChild(child, calculateOffset(container, child.renderingDimension.fullDimension, alignment))
+
   def calculateRelativeBounds[T: Fractional](targetDimension: Dimension[T], desiredDimension: Option[Dimension[T]], alignIfMisfit: AlignmentInParent, scaleDesiredToFit: Boolean = false): RelativeBounds[T] = {
-    val useDimension: Dimension[T] = calculateAdjustedDimension(targetDimension, desiredDimension, alignIfMisfit)
+    val useDimension: Dimension[T] = calculateAdjustedDimension(targetDimension, desiredDimension, alignIfMisfit, scaleDesiredToFit)
     val offset: Point[T] = calculateOffset(targetDimension, useDimension, alignIfMisfit)
     RelativeBounds(offset, useDimension)
   }
@@ -66,7 +76,6 @@ object AppShapeCompositeControl {
   }
 
 }
-
 
 
 
