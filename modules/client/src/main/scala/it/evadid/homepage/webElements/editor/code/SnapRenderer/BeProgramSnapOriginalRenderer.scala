@@ -30,7 +30,12 @@ class BeProgramSnapOriginalRenderer() extends BeProgramSnapRenderer {
     ))
 
     editor.openIn(world)
-    editor.loadProjectXML(TurtleFileSubmission.serializeFromBeExpression(program.fullProgram))
+    // loadProjectXML delegates to openProjectString, which spreads loading over
+    // IDE_Morph.nextSteps. A fixed number of world cycles is not a reliable way
+    // to wait for that queue and used to leave this preview showing the canvas
+    // background only. The original Snap code uses rawOpenProjectString for the
+    // synchronous part of that operation, so use it before doing final layout.
+    editor.rawOpenProjectString(TurtleFileSubmission.serializeFromBeExpression(program.fullProgram))
 
     // Snap's normal entry point is a full-page application and can overwrite
     // the host canvas' inline layout. Restore the embedding contract before
@@ -40,6 +45,7 @@ class BeProgramSnapOriginalRenderer() extends BeProgramSnapRenderer {
     world.doOneCycle()
     world.doOneCycle()
     world.doOneCycle()
+    CanvasVisibility.warnIfUnexpectedlyEmpty(this, program, canvas)
 
   private def restoreEmbeddedCanvas(
                                      canvas: Canvas,
@@ -62,4 +68,3 @@ class BeProgramSnapOriginalRenderer() extends BeProgramSnapRenderer {
 
   override def destroy(): Unit = {}
 }
-
