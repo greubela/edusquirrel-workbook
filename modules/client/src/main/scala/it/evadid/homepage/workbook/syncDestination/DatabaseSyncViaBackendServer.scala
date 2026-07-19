@@ -55,4 +55,5 @@ case class DatabaseSyncViaBackendServer(dbName: String, hasKeyTable: Boolean) ex
     exInfoFut.map(_.resultTyped.result)(using ec)
   }
 
+  override def isLocal: Boolean = false
 }

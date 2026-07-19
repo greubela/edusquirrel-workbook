@@ -10,7 +10,6 @@ case class Matrix[T](dim: MatrixDimension, elements: List[T]) {
 
   assert(dim.rows * dim.cols == elements.length, "rows*cols must match the amount of tiles but " + dim.rows + " * " + dim.cols + " != " + elements.length)
 
-
   //private val mutableElements = elements.toBuffer // performance for get method (faster than list lookup)
 
 

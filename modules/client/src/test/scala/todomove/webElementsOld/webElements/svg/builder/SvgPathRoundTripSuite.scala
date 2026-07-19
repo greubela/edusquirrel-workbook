@@ -2,8 +2,9 @@ package todomove.webElementsOld.webElements.svg.builder
 
 import todomove.webElementsOld.webElements.svg.shapes.{DecorationFactory, TestShapeFactoryAccess}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import todomove.webElementsOld.webElements.svg.builder.SvgPathBuilderCommand.MoveAbs
+import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.MoveAbs
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
+import it.evadid.core.datastructures.vectorShapes.svg.{SvgPathBuilder, SvgPathBuilderImmutable, SvgPathParser}
 import munit.FunSuite
 
 class SvgPathRoundTripSuite extends FunSuite {

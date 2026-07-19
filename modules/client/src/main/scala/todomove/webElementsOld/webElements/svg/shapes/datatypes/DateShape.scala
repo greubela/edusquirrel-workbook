@@ -2,9 +2,9 @@ package todomove.webElementsOld.webElements.svg.shapes.datatypes
 
 import todomove.webElementsOld.webElements.svg.shapes.BeShape.{BeShapeAtomic, BeShapeContainerable, BeShapePathBased}
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
+import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import todomove.webElementsOld.webElements.svg.AppSvgElement
-import todomove.webElementsOld.webElements.svg.builder.SvgPathBuilder
 import todomove.webElementsOld.webElements.svg.shapes.ShapeFactory
 
 object DateShape extends BeShapePathBased {

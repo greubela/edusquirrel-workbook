@@ -1,19 +1,19 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering
 
 import com.raquo.laminar.api.L
-import ControlFlowOverlayBuilder.*
 import it.evadid.core.datastructures.geometry.{Dimension, Point}
+import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
-import todomove.webElementsOld.webElements.svg.builder.SvgPathBuilder
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.*
 import todomove.webElementsOld.webElements.svg.shapes.composite.{BoxManualPositioning, ManualPositionElement}
 import todomove.webElementsOld.webElements.svg.shapes.{BeShape, BeShapeDecoration}
 
 import scala.collection.mutable
 
 case class ControlFlowOverlayBuilder(paths: List[ControlFlowPath], overlaysWithCenter: List[(BeShapeDecoration, Point[Double])], relativeOffsetInParent: Point[Double] = Point(0, 0)) {
-  
+
   def firstOpenPath: ControlFlowPath = firstOpen._1
+
   def secondOpenPath: ControlFlowPath = secondOpen._1
 
   lazy val allOpenPaths: List[(ControlFlowPath, Int)] = paths.zipWithIndex.filter(_._1.curStatus == PathStatus.OPEN)
@@ -76,7 +76,7 @@ case class ControlFlowOverlayBuilder(paths: List[ControlFlowPath], overlaysWithC
     val allPathShapes = mutable.ListBuffer[BeShape]()
     for (curPath <- paths) {
       for (curSegment <- curPath.segments) {
-        allPathShapes += curSegment.curPath.toFixedDimensionShape.addAmends(curSegment.pathAmends)
+        allPathShapes += SvgBridge.toFixedDimensionShape(curSegment.curPath).addAmends(curSegment.pathAmends)
       }
     }
     allPathShapes.toList.map(curPath => ManualPositionElement(curPath, Point[Double](0, 0), curPath.displaySize(config)))
@@ -120,12 +120,12 @@ object ControlFlowOverlayBuilder {
     }
 
     def changeLastPathBuilder(func: SvgPathBuilder[Double] => SvgPathBuilder[Double]): ControlFlowPath = {
-      if(segments.isEmpty) throw new RuntimeException(s"ControlFlowPath::changeLastPathBuilder, tried to change last segment of empty path: $this")
+      if (segments.isEmpty) throw new RuntimeException(s"ControlFlowPath::changeLastPathBuilder, tried to change last segment of empty path: $this")
       ControlFlowPath(PathStatus.HANDLED, segments.init :+ lastSegment.copy(curPath = func(lastSegment.curPath)))
     }
 
     def changeLastPathSegment(func: PathSegment => PathSegment): ControlFlowPath = {
-      if(segments.isEmpty) throw new RuntimeException(s"ControlFlowPath::changeLastPathSegment, tried to change last segment of empty path: $this")
+      if (segments.isEmpty) throw new RuntimeException(s"ControlFlowPath::changeLastPathSegment, tried to change last segment of empty path: $this")
       ControlFlowPath(PathStatus.HANDLED, segments.init ++ List(func(lastSegment)))
     }
 

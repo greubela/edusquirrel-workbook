@@ -1,8 +1,7 @@
-package todomove.webElementsOld.webElements.svg
+package it.evadid.core.datastructures.vectorShapes.svg
 
-import TurtlePathBuilder.{TurtleCommand, TurtleState}
 import it.evadid.core.datastructures.geometry.Point
-import todomove.webElementsOld.webElements.svg.builder.{SvgPathBuilder, SvgPathBuilderCommand, SvgPathBuilderImmutable}
+import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.{TurtleCommand, TurtleState}
 
 case class TurtlePathBuilder[T: Fractional](
                                              startPoint: Point[T],

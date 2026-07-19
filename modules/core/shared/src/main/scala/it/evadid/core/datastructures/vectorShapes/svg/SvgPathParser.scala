@@ -1,6 +1,5 @@
-package todomove.webElementsOld.webElements.svg.builder
+package it.evadid.core.datastructures.vectorShapes.svg
 
-import SvgPathBuilderCommand.*
 import it.evadid.core.datastructures.geometry.{Dimension, Point}
 
 // SvgPathParser.scala

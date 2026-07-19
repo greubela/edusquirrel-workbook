@@ -1,16 +1,12 @@
-package todomove.webElementsOld.webElements.svg.builder
+package it.evadid.core.datastructures.vectorShapes.svg
 
-import todomove.webElementsOld.webElements.svg.atomarElements.*
-
-import scala.collection.mutable
-import todomove.webElementsOld.webElements.svg.builder.*
-import SvgPathBuilderCommand.*
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
-import todomove.webElementsOld.webElements.svg.atomarElements.{AppLineSvgElement, AppPathSvgElement}
 
 import scala.collection.mutable
 
 case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Point[T]) extends SvgPathBuilder[T] {
+
+  private case class ControlLine[T](start: Point[T], end: Point[T])
 
   private val N = summon[Fractional[T]]
 
@@ -24,8 +20,9 @@ case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Poin
   def current: Point[T] = cornerPoints.last
 
   def pathPoints: List[Point[T]] = cornerPoints.toList
+
   private val cornerPoints = mutable.ListBuffer[Point[T]](absStartPoint)
-  private val controlLines = mutable.ListBuffer[AppLineSvgElement[T]]()
+  private val controlLines = mutable.ListBuffer[ControlLine[T]]()
 
   // --- Helpers ---------------------------------------------------------------
 
@@ -88,9 +85,9 @@ case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Poin
   def cubicBezierToAbs(controlPointStart: Point[T],
                        controlPointEnd: Point[T],
                        endPoint: Point[T]): this.type = {
-    controlLines += AppLineSvgElement[T](cornerPoints.last, controlPointStart)
+    controlLines += ControlLine[T](cornerPoints.last, controlPointStart)
     cornerPoints += endPoint
-    controlLines += AppLineSvgElement[T](cornerPoints.last, controlPointEnd)
+    controlLines += ControlLine[T](cornerPoints.last, controlPointEnd)
 
     append(s" C ${pointStr(controlPointStart)} ${pointStr(controlPointEnd)} ${pointStr(endPoint)}")
   }
@@ -107,9 +104,9 @@ case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Poin
 
   /** Q: absolute quadratic Bézier */
   def quadraticBezierToAbs(controlPoint: Point[T], endPoint: Point[T]): this.type = {
-    controlLines += AppLineSvgElement[T](cornerPoints.last, controlPoint)
+    controlLines += ControlLine[T](cornerPoints.last, controlPoint)
     cornerPoints += endPoint
-    controlLines += AppLineSvgElement[T](cornerPoints.last, controlPoint)
+    controlLines += ControlLine[T](cornerPoints.last, controlPoint)
     append(s" Q ${pointStr(controlPoint)} ${pointStr(endPoint)}")
   }
 
@@ -152,13 +149,13 @@ case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Poin
   }
 
   def addCenteredCircle(radius: T): this.type = {
-    controlLines += AppLineSvgElement[T](current, new Point[T](current.x + radius, current.y))
+    controlLines += ControlLine[T](current, new Point[T](current.x + radius, current.y))
     val dia = radius * fromInt(2)
     this
       .moveToRel(new Dimension[T](-radius, fromInt(0)))
       .arcToRel(radius, radius, fromInt(0), largeArc = true, sweep = false, Dimension(dia, fromInt(0)))
       .arcToRel(radius, radius, fromInt(0), largeArc = true, sweep = false, Dimension(-dia, fromInt(0)))
-     // .closePath()
+      // .closePath()
       .moveToRel(new Dimension[T](radius, fromInt(0)))
   }
 
@@ -181,8 +178,7 @@ case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Poin
       .lineToRel(Dimension(segmentWidth, fromInt(0)))
   }
 
-  def toAppSvgElement(): AppPathSvgElement[T] =
-    AppPathSvgElement[T](pathD.toString(), cornerPoints.toList, controlLines.toList)
+  //def toAppSvgElement(): AppPathSvgElement[T] =   AppPathSvgElement[T](pathD.toString(), cornerPoints.toList, controlLines.toList)
 
 
   def moveWholePath(dimension: Dimension[T]): SvgPathBuilder[T] = ???

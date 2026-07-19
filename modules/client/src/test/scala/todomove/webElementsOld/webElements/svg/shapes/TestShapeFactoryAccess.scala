@@ -1,7 +1,7 @@
 package todomove.webElementsOld.webElements.svg.shapes
 
-import todomove.webElementsOld.webElements.svg.builder.SvgPathBuilder
 import it.evadid.core.datastructures.geometry.Bounds
+import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 
 /**
   * Test-only accessors for invoking [[ShapeFactory]] helpers that are package-private.

@@ -2,8 +2,8 @@ package todomove.webElementsOld.webElements.svg.shapes.decorations
 
 import com.raquo.laminar.api.L
 import it.evadid.core.datastructures.geometry.{Dimension, Point}
+import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import todomove.webElementsOld.webElements.svg.builder.SvgPathBuilder
 import todomove.webElementsOld.webElements.svg.shapes.BeShapeDecoration
 
 case class PathCrossOverlay() extends BeShapeDecoration {

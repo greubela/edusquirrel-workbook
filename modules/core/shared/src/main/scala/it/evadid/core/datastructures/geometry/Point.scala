@@ -28,3 +28,24 @@ final case class Point[T: Fractional](x: T, y: T) {
 
 }
 
+object Point {
+
+
+  def intToT[T: Fractional](intValue: Int): T = {
+    val N = summon[Fractional[T]]
+    import N.*
+    fromInt(intValue)
+  }
+
+  def doubleToT[T: Fractional](doubleValue: Double, divideBy: Int = 1, maxDiv: Int = 10000000): T = {
+    val N = summon[Fractional[T]]
+    import N.*
+
+    val asInt = doubleValue.toInt
+    val diffToInt: Double = doubleValue - doubleValue.toInt
+    if (diffToInt > 1 || diffToInt < 1) throw IllegalArgumentException(s"Double ${doubleValue} cannot be converted to [T] because it is too large for an int!")
+    else if (diffToInt == 0 || divideBy >= maxDiv) fromInt(asInt) / fromInt(divideBy)
+    else doubleToT(doubleValue / 10.0, divideBy * 10, maxDiv)
+  }
+
+}

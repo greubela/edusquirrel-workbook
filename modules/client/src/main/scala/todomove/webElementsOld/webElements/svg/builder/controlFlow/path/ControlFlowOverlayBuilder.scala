@@ -4,8 +4,9 @@ import todomove.webElementsOld.webElements.svg.builder.controlFlow.*
 import todomove.webElementsOld.webElements.svg.shapes.composite.*
 import todomove.webElementsOld.webElements.svg.shapes.*
 import it.evadid.core.datastructures.geometry.{Dimension, Point}
+import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import todomove.webElementsOld.webElements.svg.builder.SvgPathBuilder
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.SvgBridge
 import todomove.webElementsOld.webElements.svg.builder.controlFlow.ControlFlowOverlayElement
 import todomove.webElementsOld.webElements.svg.shapes.composite.{BoxManualPositioning, ManualPositionElement}
 import todomove.webElementsOld.webElements.svg.shapes.{BeShape, BeShapeDecoration}
@@ -155,7 +156,7 @@ case class ControlFlowPathOverlay(pathStack: List[ControlFlowPath], overlaysWith
     val allPathShapes = mutable.ListBuffer[BeShape]()
     for (curPath <- pathStack) {
       for (curSegment <- curPath.segments) {
-        val shape = curSegment.curPath.toFixedDimensionShape
+        val shape = SvgBridge.toFixedDimensionShape(curSegment.curPath)
         val amended = shape.addAmends(config.controlFlowAmendMap(curSegment.segmentType))
         allPathShapes += amended
       }

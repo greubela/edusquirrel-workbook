@@ -6,9 +6,9 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.svg
 import it.evadid.core.datastructures.color.RGBColor
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
+import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import todomove.webElementsOld.webElements.svg.AppSvgElement
-import todomove.webElementsOld.webElements.svg.builder.SvgPathBuilder
 import todomove.webElementsOld.webElements.svg.shapes.ShapeFactory
 
 object LiteralShape extends BeShapePathBased {
