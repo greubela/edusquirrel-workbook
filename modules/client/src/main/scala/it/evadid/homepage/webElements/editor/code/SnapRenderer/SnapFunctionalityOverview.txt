@@ -369,3 +369,84 @@ Morphic infrastructure:
   for interaction.
 * Keep source method names and vendor line references both here and alongside the
   exact shape translations in SnapShapeFactory.
+
+
+9. Why the embedded full editor was distorted
+----------------------------------------------
+There are two coordinate systems involved in an HTML canvas:
+
+* canvas.width/canvas.height define the bitmap and Morphic world coordinates;
+* the CSS content box defines the size at which that bitmap is displayed.
+
+SnapCodeEditor gives the canvas a nominal 900 x 520 backing store while CSS makes
+its width 100 percent of the workbook column and keeps its height at 520 pixels.
+When that column is narrower than 900 pixels, the browser scales only the
+horizontal axis. Snap's geometry is internally correct, but the final bitmap is
+visibly squeezed. This distortion is outside Snap; no WorldMorph layout call can
+repair a non-uniform browser scale.
+
+MountedProgramBlockRenderer measures getBoundingClientRect before creating an
+interactive world and gives the backing store that displayed width and height.
+Consequently one Morphic coordinate maps to one displayed CSS pixel (apart from
+rounding), and IDE_Morph.fixLayout lays the editor out for the actual available
+rectangle. A future high-DPI version may multiply both backing dimensions by the
+same devicePixelRatio, but must also give Morphic a matching logical transform;
+multiplying only one dimension would reintroduce distortion.
+
+There is a second, separate compact-layout problem. IDE_Morph.fixLayout in
+gui.js:2740 positions every pane from the IDE bounds. In normal mode it reserves
+the palette width, the fixed-size stage, padding, tabs, sprite bar, corral, and
+scripts editor. At workbook-card widths those panes can become narrow or clipped.
+That is not geometric distortion. It is the desktop IDE being asked to fit into
+a size for which its pane layout was not designed. Relevant calculations are:
+
+* palette position and extent — gui.js:2774-2783;
+* stage scale and right alignment — gui.js:2800-2860;
+* sprite bar width between palette and stage — gui.js:2863-2881;
+* scripts/costumes/sounds editor extent — gui.js:2885-2907;
+* world resize handling — IDE_Morph.reactToWorldResize, gui.js:3109.
+
+
+10. Palette and Scripts are retained subtrees, not independent canvases
+--------------------------------------------------------------------------
+IDE_Morph.buildPanes creates the palette and sprite editor as children of one IDE
+tree. IDE_Morph.createPalette (gui.js:1959) obtains a ScrollFrameMorph from the
+current sprite and adds it to the IDE. IDE_Morph.createSpriteEditor
+(gui.js:2357) wraps currentSprite.scripts in another ScrollFrameMorph and also
+adds it to the same IDE. Their positions are absolute world coordinates assigned
+by IDE_Morph.fixLayout. Both use the same WorldMorph, HandMorph, damage list,
+keyboard focus, and drag/drop ownership chain.
+
+Rendering the two areas into dedicated visible canvases is possible, but not by
+attaching one Morph to two WorldMorphs. A Morph has one parent and world(), input
+dispatch, popup placement, dragging, and changed()/fullChanged() all depend on
+that ownership chain. Two practical structures are described in
+SnapReimplementatonApproaches.txt:
+
+* keep one authoritative off-screen Snap world and copy exact, unscaled palette
+  and scripts rectangles into two presentation canvases; or
+* retain/reimplement the relevant Morphic trees as two native Scala.js views.
+
+The first preserves pixels exactly but requires coordinate-translated event
+forwarding and special handling for a dragged block crossing between canvases.
+The second is the cleaner interactive architecture but requires porting the
+layout and interaction rules rather than merely copying pixels.
+
+
+11. The main Morphic tick and why controls need it
+--------------------------------------------------
+The examples at the top of morphic.js show the intended lifecycle: construct a
+WorldMorph, then recursively schedule requestAnimationFrame and invoke
+world.doOneCycle() on every frame. WorldMorph.doOneCycle (morphic.js:12220) runs:
+
+1. stepFrame(), which advances scheduled nextSteps and stepping morphs;
+2. stepAnimations();
+3. updateBroken(), which redraws damaged rectangles.
+
+Calling doOneCycle a fixed number of times is sufficient only for a static
+snapshot whose queued work is known. A functioning editor must retain its world
+and run the requestAnimationFrame loop for its entire mounted lifetime. The
+WorldMorph constructor installs pointer, touch, keyboard, wheel, and resize
+listeners on its canvas; destroy/unmount must cancel the animation frame and
+remove or neutralize those listeners. More lifecycle detail and Scala.js
+pseudocode are in SnapReimplementatonApproaches.txt.
