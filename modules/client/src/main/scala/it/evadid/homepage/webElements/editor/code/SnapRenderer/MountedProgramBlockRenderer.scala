@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.SnapRenderer
 
 import com.raquo.airstream.ownership.Owner
+import it.evadid.homepage.webElements.editor.code.SnapRenderer.SnapCodeEditor.SnapCodeEditorImpl
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.TurtleFileSubmission
 import it.evadid.vm.BeProgram
 import org.scalajs.dom
@@ -10,7 +11,7 @@ import org.scalajs.dom.html.Canvas
 import scala.scalajs.js
 
 /** A retained Snap/Morphic session for the interactive editor and exact previews. */
-final class MountedProgramBlockRenderer() extends BeProgramSnapRenderer:
+final class MountedProgramBlockRenderer() extends SnapCodeEditorImpl:
 
   private var editorWorld: Option[WorldMorph] = None
   private var editor: Option[IDEMorph] = None

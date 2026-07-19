@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.SnapRenderer
 
 import it.evadid.homepage.control.info.HomepageLoggerInfo
+import it.evadid.homepage.webElements.editor.code.SnapRenderer.SnapCodeEditor.SnapCodeEditorImpl
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
@@ -10,12 +11,13 @@ import org.scalajs.dom.html.Canvas
 
 import scala.collection.mutable
 
+
 /** Observes renderer output without modifying it. */
 private[SnapRenderer] object CanvasVisibility:
 
   private val EmptyCanvasColorLimit = 3
 
-  def warnIfUnexpectedlyEmpty(renderer: BeProgramSnapRenderer, program: BeProgram, canvas: Canvas): Unit =
+  def warnIfUnexpectedlyEmpty(renderer: SnapCodeEditorImpl, program: BeProgram, canvas: Canvas): Unit =
     if hasExpressions(program.fullProgram) && uniqueColorCount(canvas, EmptyCanvasColorLimit + 1) <= EmptyCanvasColorLimit then
       HomepageLoggerInfo.singleton.uiAndDomLogger.logWarn(
         s"${renderer.getClass.getSimpleName} rendered a program with expressions through Snap, " +
