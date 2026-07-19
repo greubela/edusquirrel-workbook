@@ -28,7 +28,7 @@ case class RemoteSyncDataCache[K, D](config: RemoteCacheConfig[K, D], lastCacheU
         val msg1: String = s"Need to write ${elementsToWrite.size} elements (${writeRequested.size} total requests): elements out of sync."
         val msg2: String = s"Cache Time ${InfoUtil.datetimeFormattedForLog(lastCacheUpdate)} / latest element time ${InfoUtil.datetimeFormattedForLog(lastToWrite)}}"
         config.syncLogger.log(msg1 + " " + msg2, INFO, Some(true))
-        config.writer.writeAll(mapToWrite)
+        config.writer.writeAll(config.syncLogger, mapToWrite)
       }
     }
   }
@@ -108,7 +108,7 @@ case class RemoteSyncDataCache[K, D](config: RemoteCacheConfig[K, D], lastCacheU
   }
 
   private def executeFetch(): Future[RemoteSyncDataCache[K, D]] = syncLock.synchronized {
-    val futSet: Future[FetchResponse[K, D]] = config.reader.fetchAll()
+    val futSet: Future[FetchResponse[K, D]] = config.reader.fetchAll(config.syncLogger)
 
     val futRes: Future[RemoteSyncDataCache[K, D]] = futSet.map(res => {
       this.addAll(res.fetchedValues, res.timestampFetchResponse)
@@ -136,15 +136,15 @@ object RemoteSyncDataCache {
   }
 
   trait RemoteDataReader[K, D] {
-    def fetchByKey(key: K): Future[FetchResponse[K, D]]
+    def fetchByKey(logger: SyncLogger, key: K): Future[FetchResponse[K, D]]
 
-    def fetchAll(): Future[FetchResponse[K, D]]
+    def fetchAll(logger: SyncLogger): Future[FetchResponse[K, D]]
   }
 
   trait RemoteDataWriter[K, D] {
-    def writeForKey(key: K, dataValue: D): Future[SyncSuccess]
+    def writeForKey(logger: SyncLogger, key: K, dataValue: D): Future[SyncSuccess]
 
-    def writeAll(map: Map[K, D]): Future[SyncSuccess]
+    def writeAll(logger: SyncLogger, map: Map[K, D]): Future[SyncSuccess]
   }
 
 

@@ -4,6 +4,7 @@ import it.evadid.workbook.interaction.variable.InteractionVariableHistorySeriali
 import SyncFormatter.InteractionSyncRequest
 import SyncInformation.SyncSuccess
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.FetchResponse
+import it.evadid.util.logging.derived.SyncLogger
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -17,15 +18,15 @@ trait SyncDestination {
 
   def isLocal: Boolean
 
-  def fetchAll(context: UsageContext, formatter: SyncFormatter): Future[FetchResponse[SyncContext, InteractionVariableHistorySerialized]]
+  def fetchAll(logger: SyncLogger, context: UsageContext, formatter: SyncFormatter): Future[FetchResponse[SyncContext, InteractionVariableHistorySerialized]]
 
-  def storeTo(context: SyncContext, request: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncSuccess]
+  def storeTo(logger: SyncLogger, context: SyncContext, request: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncSuccess]
 
-  def fetchFrom(context: SyncContext, formatter: SyncFormatter)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, InteractionVariableHistorySerialized]] = fetchAll(context.toUsageContext, formatter)
+  def fetchFrom(logger: SyncLogger, context: SyncContext, formatter: SyncFormatter)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, InteractionVariableHistorySerialized]] = fetchAll(logger, context.toUsageContext, formatter)
 
-  def clearValues(context: SyncContext): Future[SyncSuccess]
+  def clearValues(logger: SyncLogger, context: SyncContext): Future[SyncSuccess]
 
-  def clearAllValues(context: UsageContext): Future[SyncSuccess]
+  def clearAllValues(logger: SyncLogger, context: UsageContext): Future[SyncSuccess]
 
 }
 

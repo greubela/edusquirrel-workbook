@@ -7,6 +7,7 @@ import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoTyped
 import it.evadid.distribution.commandTypes.SQLCommands
 import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
+import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
 import it.evadid.workbook.interaction.sync.{SyncContext, SyncDestination, SyncFormatter, UsageContext}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
@@ -22,17 +23,17 @@ case class DatabaseSyncViaBackendServer(dbName: String, hasKeyTable: Boolean) ex
 
   private given ec: ExecutionContext = ExecutionContext.global
 
-  override def storeTo(context: SyncContext, history: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncSuccess] = {
+  override def storeTo(logger: SyncLogger, context: SyncContext, history: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncSuccess] = {
     val dbRequest = StoreToDbRequest(context, history, dbName, hasKeyTable)
     val exInfo: Future[ExecutionInfoTyped[SyncSuccess]] = SQLCommands.StoreToDbCommand.sendCommandTo(backend, dbRequest)
     exInfo.map(exInfo => exInfo.resultTyped.result)(using ec)
   }
 
-  def toFetchResponse(executionInfoTyped: ExecutionInfoTyped[DbFetchResponse]): FetchResponse[SyncContext, InteractionVariableHistorySerialized] = {
+  private def toFetchResponse(executionInfoTyped: ExecutionInfoTyped[DbFetchResponse]): FetchResponse[SyncContext, InteractionVariableHistorySerialized] = {
     FetchResponse.fromMap[SyncContext, InteractionVariableHistorySerialized](executionInfoTyped.history.timestampExecutionFinished, executionInfoTyped.resultTyped.result.fetchedElements, _.lastStateOption.map(_.timestamp))
   }
 
-  override def fetchAll(context: UsageContext, formatter: SyncFormatter): Future[RemoteSyncDataCache.FetchResponse[SyncContext, InteractionVariableHistorySerialized]] = {
+  override def fetchAll(logger: SyncLogger, context: UsageContext, formatter: SyncFormatter): Future[RemoteSyncDataCache.FetchResponse[SyncContext, InteractionVariableHistorySerialized]] = {
     val request = SQLCommands.FetchAllFromDbRequest(context, dbName, None, hasKeyTable)
     val exInfoFut: Future[ExecutionInfoTyped[DbFetchResponse]] = SQLCommands.fetchFromDbCommand.sendCommandTo(backend, request)
     exInfoFut.map(toFetchResponse)
@@ -41,11 +42,11 @@ case class DatabaseSyncViaBackendServer(dbName: String, hasKeyTable: Boolean) ex
 
   override def shouldBePersistant(): Boolean = true
 
-  override def clearAllValues(context: UsageContext): Future[SyncSuccess] = {
+  override def clearAllValues(logger: SyncLogger, context: UsageContext): Future[SyncSuccess] = {
     clearValues(context, None)
   }
 
-  override def clearValues(context: SyncContext): Future[SyncSuccess] = {
+  override def clearValues(logger: SyncLogger, context: SyncContext): Future[SyncSuccess] = {
     clearValues(context.toUsageContext, Some(context.keyForSerialisation))
   }
 

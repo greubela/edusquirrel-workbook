@@ -149,6 +149,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       if !lastProjectXml.contains(xml) then
         lastProjectXml = Some(xml)
         projectXmlChangedCallback(xml)
+        //println("turtle xml changed!!")
 
   private def stopEditorSession(): Unit =
     pauseWorldCycles()

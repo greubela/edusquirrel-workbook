@@ -4,7 +4,6 @@ import it.evadid.core.datastructures.storage.RemoteCacheCollection.{CacheCollect
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.SyncLogger
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
@@ -69,7 +68,7 @@ case class RemoteCacheCollection[K, D, CK <: CacheKey[K, D]](baseLogger: SyncLog
 
     Future.traverse(remoteCaches.iterator)((cacheKey, cache) => {
       val toWrite = func(cacheKey)
-      if(toWrite.isEmpty) Future.successful(cacheKey -> cache)
+      if (toWrite.isEmpty) Future.successful(cacheKey -> cache)
       else {
         val ensureCacheUntil = toWrite.map(_.timestampDataCreated).max
         cache.writeIfNecessary(toWrite).transformWith {
