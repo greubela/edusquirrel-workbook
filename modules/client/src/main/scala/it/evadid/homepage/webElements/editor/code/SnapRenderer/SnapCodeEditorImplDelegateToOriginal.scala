@@ -21,7 +21,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   private var lastProjectXml: Option[String] = None
   private var lastProjectXmlCheckAt = 0.0
 
-  private val ProjectXmlCheckIntervalMs = 250.0
+  private val ProjectXmlCheckIntervalMs = 500.0
 
   override def mount(owner: Owner): Unit =
     ()
@@ -47,6 +47,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     CanvasVisibility.warnIfUnexpectedlyEmpty(this, initProgram, canvas)
 
   override def renderPreviewInto(program: BeProgram, canvas: Canvas, config: SnapCodeEditorConfig): Unit =
+    editor.foreach(checkWhetherProgramXmlChanged)
     val sourceCanvas = dom.document.createElement("canvas").asInstanceOf[Canvas]
     sourceCanvas.width = config.CanvasWidth
     sourceCanvas.height = config.CanvasHeight
@@ -137,7 +138,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     if frameHandle != 0 then dom.window.cancelAnimationFrame(frameHandle)
     frameHandle = 0
 
-  override def onProjectXmlChanged(callback: String => Unit): Unit =
+  override def setOnProjectXmlChangedListener(callback: String => Unit): Unit =
     projectXmlChangedCallback = callback
 
   private def tickEditor(): Unit =
@@ -147,7 +148,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       val now = dom.window.performance.now()
       if now - lastProjectXmlCheckAt >= ProjectXmlCheckIntervalMs then
         lastProjectXmlCheckAt = now
-        editor.foreach(notifyIfProjectXmlChanged)
+        editor.foreach(checkWhetherProgramXmlChanged)
 
   private def initializeProjectChangeTracking(ide: IDEMorph): Unit =
     lastProjectXml = Some(ide.getProjectXML())
@@ -159,13 +160,15 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
    * and therefore is not a reliable content revision. Polling is throttled so
    * serialization does not happen on every animation frame.
    */
-  private def notifyIfProjectXmlChanged(ide: IDEMorph): Unit =
+  private def checkWhetherProgramXmlChanged(ide: IDEMorph): Unit =
     val xml = ide.getProjectXML()
     if !lastProjectXml.contains(xml) then
       lastProjectXml = Some(xml)
+      println("Snap! code changed!")
       projectXmlChangedCallback(xml)
 
   private def stopEditorSession(): Unit =
+    editor.foreach(checkWhetherProgramXmlChanged)
     pauseWorldCycles()
     editor.foreach(_.destroy())
     editorWorld.foreach(_.destroy())
