@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.file.*
 import it.evadid.homepage.util.web.{DownloadHelper, JsHelpers}
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 
-sealed trait FullImage {
+sealed trait FullImage extends it.evadid.core.datastructures.canvas.AppImage {
 
   def imageSourceString: String
 

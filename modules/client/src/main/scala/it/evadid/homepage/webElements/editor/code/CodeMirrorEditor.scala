@@ -8,7 +8,7 @@ import it.evadid.core.datastructures.language.AppLanguage.{ProgrammingLanguage, 
 import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
 import it.evadid.homepage.webElements.editor.config.CodeEditorConfig
 import org.scalajs.dom
-import todomove.datastructures.web.font.AppFont
+import it.evadid.core.datastructures.font.AppFont
 
 import scala.scalajs.js
 
