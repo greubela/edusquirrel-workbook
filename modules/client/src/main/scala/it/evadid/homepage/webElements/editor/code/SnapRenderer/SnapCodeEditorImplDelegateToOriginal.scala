@@ -29,6 +29,17 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     ()
 
   override def renderEditorInto(initProgram: BeProgram, canvas: Canvas, config: SnapCodeEditorConfig): Unit =
+    // Laminar mounts the same lazy editor element again whenever the fullscreen
+    // dialog is reopened. Keep the WorldMorph which already owns this canvas:
+    // constructing another world would add a second set of DOM listeners and
+    // leave the older (now visually obscured) world handling the input.
+    editorWorld match
+      case Some(world) if world.worldCanvas eq canvas =>
+        keepKeyboardHandlerInEditor(world, canvas)
+        startWorldCycles()
+        return
+      case _ => ()
+
     stopEditorSession()
     require(canvas.isConnected, "Snap's interactive canvas must be mounted before WorldMorph is created")
     sizeEditorCanvas(canvas, config)

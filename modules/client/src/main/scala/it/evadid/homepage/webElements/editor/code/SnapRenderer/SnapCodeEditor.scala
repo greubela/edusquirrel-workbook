@@ -39,9 +39,10 @@ case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig,
         }
       ),
       onUnmountCallback { _ =>
-        // The interactive canvas exclusively owns the retained Morphic world.
-        // Destroy it only when this editor host leaves the dialog.
-        impl.destroy()
+        // The dialog reuses this lazy DOM element. Keep its WorldMorph and DOM
+        // event listeners intact between openings; only stop animation work
+        // while the canvas is detached.
+        impl.pauseWorldCycles()
       }
     )
   }
