@@ -1,0 +1,169 @@
+Snap Renderer Reimplementation Approaches
+=========================================
+
+Purpose
+-------
+This document translates the findings in SnapFunctionalityOverview.txt into
+implementation structures for the Scala.js workbook. The non-negotiable visual
+rule is the one documented on BeProgramSnapRenderer: use Snap's exact Morphic
+output, or show nothing. Do not replace failed Snap output with approximate
+shapes.
+
+
+1. BeProgramSnapRenderer contract
+---------------------------------
+The renderer has two entry points for the two distinct lifecycles:
+
+  def renderEditorInto(
+      initProgram: BeProgram,
+      canvas: Canvas,
+      config: SnapCodeEditorConfig
+  ): Unit
+
+  def renderPreviewInto(
+      program: BeProgram,
+      canvas: Canvas,
+      config: SnapCodeEditorConfig
+  ): Unit
+
+renderEditorInto owns a retained WorldMorph/IDE_Morph session and a continuous
+frame loop. renderPreviewInto creates a short-lived real editor, rasterizes its
+ScriptsMorph with fullImage(), and copies that exact image without scaling into a
+tightly-sized destination canvas. mount(owner) prepares lifecycle state;
+destroy() cancels the interactive frame loop and destroys retained Morphs.
+
+MountedProgramBlockRenderer implements both paths. SnapCodeEditor currently uses
+renderPreviewInto for the workbook card. BeProgramSnapOriginalRenderer and
+BeProgramSnapCustomRenderer deliberately provide explicit not-implemented stubs
+until they can meet the same fidelity and lifecycle contract.
+
+
+2. Approach A: one authoritative off-screen Morphic world
+---------------------------------------------------------
+This is the shortest route to pixel-identical Snap rendering.
+
+Structure:
+
+1. Create an off-screen canvas large enough for Snap's normal desktop layout.
+2. Create exactly one WorldMorph and one IDE_Morph on that canvas.
+3. Load the serialized project synchronously with rawOpenProjectString.
+4. Retain references to editor.palette and editor.spriteEditor. The scripts
+   content is currentSprite.scripts inside spriteEditor's ScrollFrameMorph.
+5. After each world tick, obtain each subtree's fullBounds in world coordinates.
+6. Copy the corresponding source rectangle from the world canvas to the target
+   palette or scripts canvas with drawImage(source, sx, sy, sw, sh, 0, 0, sw,
+   sh). Keep source and destination extents equal; do not stretch to fit.
+
+Advantages:
+
+* all block outlines, fonts, zebra coloring, slots, scrolling, and texture pixels
+  come directly from Snap;
+* Snap remains the source of layout and behavior;
+* the two workbook canvases may be placed independently.
+
+Limitations:
+
+* the visible canvases are mirrors, not the WorldMorph event canvas;
+* browser events must be translated from destination-local coordinates to the
+  corresponding world rectangle and forwarded to the authoritative canvas/hand;
+* popup menus may extend outside the mirrored rectangle;
+* dragging from palette to scripts crosses two presentation canvases, while
+  Snap's HandMorph expects one continuous world coordinate space;
+* accessibility remains canvas-based.
+
+For cross-panel dragging, define a stable virtual-world placement for both source
+rectangles. Pointer events on either canvas are converted to that virtual point.
+Capture the pointer at drag start so moves and the final pointerup continue to be
+forwarded even while the physical pointer crosses the DOM gap. After each event,
+tick the world and refresh both mirrors. Never independently move or reparent the
+palette/scripts Morphs just to match their DOM positions.
+
+
+3. Approach B: two clipped views of one visible world canvas
+------------------------------------------------------------
+A single real WorldMorph canvas can be placed behind two CSS viewports that clip
+different regions. This preserves native event delivery better than copied
+canvases, but one HTML canvas cannot appear in two unrelated DOM locations.
+CSS transforms, duplicated bitmap presentation, or an overlay event layer are
+still required. This approach is useful only when the panels are adjacent and
+can share one larger positioned surface. It does not satisfy truly independent
+canvas placement cleanly.
+
+
+4. Approach C: native Scala.js retained views
+---------------------------------------------
+Create separate palette and scripts SVG/canvas views backed by one Scala model.
+Port Snap's exact geometry and behavior rather than approximating it. Required
+areas include:
+
+* SyntaxElementMorph.labelParts/setSpec and all input-slot constructors;
+* SyntaxElementMorph.fixLayout and the specialized slot/C-slot layouts;
+* CommandBlockMorph and ReporterBlockMorph attach/snap rules;
+* ScriptsMorph drop ownership, cleanup, and scrolling;
+* palette category construction and block templates;
+* shared drag state, focus, menus, and serialization.
+
+This gives proper DOM separation, accessibility options, and direct Scala.js
+control, but is a substantial reimplementation. Visual regression tests against
+Snap-rendered reference canvases are mandatory. Compare at devicePixelRatio 1,
+fixed fonts, fixed Morphic preferences, and exact source/destination sizes.
+
+
+5. Running the interactive Morphic lifecycle from Scala.js
+----------------------------------------------------------
+The session must retain the WorldMorph and the animation-frame handle. Equivalent
+Scala.js structure:
+
+  private var world: Option[WorldMorph] = None
+  private var frameHandle = 0
+  private var destroyed = false
+
+  private def tick(): Unit =
+    if !destroyed then
+      world.foreach(_.doOneCycle())
+      refreshPresentationCanvases()
+      frameHandle = dom.window.requestAnimationFrame(_ => tick())
+
+  def mount(canvas: Canvas): Unit =
+    destroyed = false
+    world = Some(new WorldMorph(canvas, false))
+    frameHandle = dom.window.requestAnimationFrame(_ => tick())
+
+  def destroy(): Unit =
+    destroyed = true
+    if frameHandle != 0 then dom.window.cancelAnimationFrame(frameHandle)
+    frameHandle = 0
+    world = None
+
+Important details:
+
+* Start the loop only after the canvas is connected and has final backing/CSS
+  dimensions. A resize must update both dimensions proportionally, update world
+  and IDE extents, call fixLayout/fullChanged, and let the next tick redraw.
+* Keep one loop per authoritative world, not one loop per presentation canvas.
+* loadProjectXML/openProjectString enqueue IDE nextSteps; either let the retained
+  loop drain them and use its completion callback, or use rawOpenProjectString
+  synchronously before final layout.
+* WorldMorph installs event listeners and a hidden keyboard textarea. Repeatedly
+  constructing worlds for renders leaks handlers and splits keyboard ownership.
+  Construct once per mount and release the session on unmount.
+* changed/fullChanged only mark damage. A tick is required before copied output
+  reflects the change.
+* HandMorph drag/drop, hover, autoscroll, menus, CursorMorph editing, animations,
+  and IDE nextSteps all require continuing ticks; a few startup cycles cannot
+  support controls.
+
+
+6. Recommended sequence
+-----------------------
+1. First keep the current original renderer but make backing and CSS dimensions
+   agree, eliminating non-uniform scaling.
+2. Keep the MountedProgramBlockRenderer retained world and continuous ticks as
+   the sole interactive editor session.
+3. Add a fullscreen host which calls renderEditorInto; keep the workbook card on
+   renderPreviewInto.
+4. Mirror exact, unscaled palette and scripts regions and add pointer-coordinate
+   forwarding plus pointer capture.
+5. Validate menus, scrolling, slot editing, palette-to-scripts dragging, and
+   resize behavior.
+6. Only then decide whether the maintenance cost justifies Approach C.

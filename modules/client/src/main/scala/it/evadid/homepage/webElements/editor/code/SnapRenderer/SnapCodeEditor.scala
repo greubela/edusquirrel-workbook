@@ -18,24 +18,22 @@ case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig,
       overflow.hidden,
       border := "1px solid #d0d7de",
       borderRadius := "10px",
-      backgroundColor := "yellow",
-      minHeight := s"${config.CanvasHeight}px",
-      width := "100%",
+      backgroundColor := config.ColorWorkspace,
+      width := "fit-content",
+      maxWidth := "100%",
       canvasTag(
         cls := "be-program-snap-renderer__canvas",
         aria.label := "Block program preview",
         widthAttr := config.CanvasWidth,
         heightAttr := config.CanvasHeight,
-        display.block,
-        width := "100%",
-        height := s"${config.CanvasHeight}px"
+        display.block
       ),
       onMountCallback { ctx =>
         val host = ctx.thisNode.ref
         val canvas = host.querySelector("canvas").asInstanceOf[dom.HTMLCanvasElement]
-        val curRenderer = Some(rendererFactory())
+        curRenderer = Some(rendererFactory())
         curRenderer.foreach(_.mount(ctx.owner))
-        curRenderer.foreach(_.renderInto(program.now(), canvas, config))
+        curRenderer.foreach(_.renderPreviewInto(program.now(), canvas, config))
       },
       onUnmountCallback { _ =>
         curRenderer.foreach(_.destroy())

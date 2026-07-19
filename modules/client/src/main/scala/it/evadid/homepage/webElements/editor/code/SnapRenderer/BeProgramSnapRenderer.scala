@@ -20,7 +20,11 @@ import org.scalajs.dom.html.Canvas
  */
 trait BeProgramSnapRenderer() {
 
-  def renderInto(program: BeProgram, canvas: Canvas, config: SnapCodeEditorConfig): Unit
+  /** Mount the complete interactive Snap editor and keep its Morphic world ticking. */
+  def renderEditorInto(initProgram: BeProgram, canvas: Canvas, config: SnapCodeEditorConfig): Unit
+
+  /** Render only the scripts as a static, tightly-sized preview. */
+  def renderPreviewInto(program: BeProgram, canvas: Canvas, config: SnapCodeEditorConfig): Unit
 
   def mount(ctx: Owner): Unit
 
@@ -29,6 +33,6 @@ trait BeProgramSnapRenderer() {
 
 object BeProgramSnapRenderer {
 
-  def defaultFactory(): BeProgramSnapRenderer = BeProgramSnapOriginalRenderer()
+  def defaultFactory(): BeProgramSnapRenderer = MountedProgramBlockRenderer()
 
 }
