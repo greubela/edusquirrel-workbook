@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.SnapRenderer
 
+import com.raquo.airstream.ownership.Owner
 import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.BeExpression
@@ -13,7 +14,7 @@ class BeProgramSnapCustomRenderer extends BeProgramSnapRenderer {
   private val FirstBlockY = 20.0
   private val BlockGap = 8.0
 
-  override def renderInto(program: BeProgram, canvas: Canvas): Unit =
+  override def renderInto(program: BeProgram, canvas: Canvas, config: SnapCodeEditorConfig): Unit =
 
     val world: WorldMorph = WorldMorph(canvas)
     val scripts: ScriptsMorph = ScriptsMorph()
@@ -57,4 +58,7 @@ class BeProgramSnapCustomRenderer extends BeProgramSnapRenderer {
     if source.nonEmpty then source.replace("%", "%%") else expression.getClass.getSimpleName
 
 
+  override def mount(ctx: Owner): Unit = {}
+
+  override def destroy(): Unit = {}
 }
