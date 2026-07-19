@@ -82,6 +82,12 @@ class WorldMorph(canvas0: dom.HTMLCanvasElement, fillPage: Boolean = js.native) 
   def doOneCycle(): Unit = js.native
 
 @js.native
+@JSGlobal("IDE_Morph")
+class IDEMorph(config: js.Object = js.native) extends Morph:
+  def openIn(world: WorldMorph): Unit = js.native
+  def loadProjectXML(projectXML: String): Unit = js.native
+
+@js.native
 @JSGlobal("BoxMorph")
 class BoxMorph(edge: Double = js.native, border: Double = js.native, borderColor: SnapColor = js.native) extends Morph
 
