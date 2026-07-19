@@ -1,6 +1,6 @@
 package it.evadid.core.datastructures.vectorShapes.atomar
 
-import it.evadid.core.datastructures.geometry.{Dimension, Point}
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.abstractions.{AlignmentInParent, AppShapeAtomar, DrawingRoutine}
 import it.evadid.core.datastructures.vectorShapes.config.AppShapeRenderingConfig
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPath
@@ -13,7 +13,8 @@ case class AppShapAtomarByDrawingRoutine[T: Fractional](minWidth: Dimension[T], 
    */
   override def calculateRawMinimumSize(renderingConfig: AppShapeRenderingConfig[T]): Dimension[T] = minWidth
 
-  override def renderPath(logger: Logger, absolutePosition: Point[T], dimension: Dimension[T], alignIfMisfit: AlignmentInParent): SvgPath = drawingRoutine.renderPath(logger, absolutePosition, dimension, alignIfMisfit)
+  override def renderPath(logger: Logger, bounds: Bounds[T], alignIfMisfit: AlignmentInParent): SvgPath =
+    drawingRoutine.renderPath(logger, bounds, alignIfMisfit)
 }
 
 object AppShapAtomarByDrawingRoutine {

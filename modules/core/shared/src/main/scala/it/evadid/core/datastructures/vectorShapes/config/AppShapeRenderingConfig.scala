@@ -16,6 +16,7 @@ case class AppShapeRenderingConfig[
    colorPalette: RGBYColorPalette,
 
    defaultPadding: Dimension[T],
+   defaultGapBetweenElements: Dimension[T],
   // defaultMargin: Dimension[T],
 
    gapBetweenConsecutiveShapes: Dimension[T],

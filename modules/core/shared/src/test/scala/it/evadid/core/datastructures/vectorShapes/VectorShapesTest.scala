@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.vectorShapes.abstractions.AlignmentInParent
 import it.evadid.core.datastructures.vectorShapes.compositions.{CompositionHBox, CompositionVBox}
 import it.evadid.core.datastructures.vectorShapes.config.{AppShapeConfig, AppShapeRenderingConfig}
-import it.evadid.core.datastructures.vectorShapes.rendering.{AppCompositionDimensioned, AppShapeComposition}
+import it.evadid.core.datastructures.vectorShapes.rendering.{AppShapeRelativePositioned, AppShapeComposition}
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPath
 import it.evadid.core.datastructures.vectorShapes.svg.drawingRoutines.*
 import it.evadid.util.logging.BasicLogger
@@ -23,9 +23,9 @@ class VectorShapesTest extends FunSuite {
   private val renderingConfig = AppShapeRenderingConfig[Double](BasicLogger(), "test", AppLanguage.English, palette, Dimension(0, 0), Dimension(3, 4))
   private val shapeConfig = AppShapeConfig.EvaShapeConfigDefault(renderingConfig)
 
-  private def dimensioned(width: Double, height: Double): AppCompositionDimensioned[Double] = {
+  private def dimensioned(width: Double, height: Double): AppShapeRelativePositioned[Double] = {
     val composition = AppShapeComposition(CompositionHBox[Double](AlignmentInParent.TopLeft), shapeConfig, Nil)
-    AppCompositionDimensioned(composition, shapeConfig, renderingConfig, Dimension(width, height))
+    AppShapeRelativePositioned(composition, shapeConfig, renderingConfig, Dimension(width, height))
   }
 
   test("relative rectangle uses width for x and height for y") {

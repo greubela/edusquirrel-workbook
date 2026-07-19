@@ -8,6 +8,6 @@ import it.evadid.core.datastructures.vectorShapes.compositions.CompositionSingle
 case class AppShapeConfigured[T: Fractional](shape: AppShapeAtomar[T], shapeConfig: AppShapeConfig[T]) {
 
   def toOneElementComposition: AppShapeComposition[T] =
-    AppShapeComposition(CompositionSingleElement[T](), shapeConfig, Nil)
+    AppShapeComposition(CompositionSingleElement[T](this), shapeConfig, List())
 
 }

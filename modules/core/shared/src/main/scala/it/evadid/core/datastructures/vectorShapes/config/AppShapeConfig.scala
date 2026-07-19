@@ -11,6 +11,7 @@ trait AppShapeConfig[T : Fractional] {
 
  // def useCustomMargin: Option[Dimension[T]]
 
+
   def colorStroke: AppColor
 
   def colorFill: AppColor

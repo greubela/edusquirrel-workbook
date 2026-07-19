@@ -31,6 +31,14 @@ final case class Point[T: Fractional](x: T, y: T) {
 object Point {
 
 
+  def fromIntPoint[T: Fractional](x: Int, y: Int): Point[T] = {
+    Point[T](intToT(x), intToT(y))
+  }
+
+  def fromDoublePoint[T: Fractional](x: Double, y: Int): Point[T] = {
+    Point[T](doubleToT(x), doubleToT(y))
+  }
+
   def intToT[T: Fractional](intValue: Int): T = {
     val N = summon[Fractional[T]]
     import N.*

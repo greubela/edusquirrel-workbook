@@ -1,6 +1,6 @@
 package it.evadid.core.datastructures.vectorShapes.svg
 
-import it.evadid.core.datastructures.geometry.Dimension
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension, RelativeBounds}
 
 sealed trait SvgPath {
   def svgPathDString: String
@@ -8,9 +8,9 @@ sealed trait SvgPath {
 
 object SvgPath {
 
-  def fromRenderingRoutine[T](dimension: Dimension[T], factory: Dimension[T] => SvgPathBuilder[T]): SvgPath = BuilderBasedSvgPath[T](dimension, factory(dimension))
+  //def fromRenderingRoutine[T](dimension: Dimension[T], factory: Dimension[T] => SvgPathBuilder[T]): SvgPath = BuilderBasedSvgPath[T](dimension, factory(dimension))
 
-  case class BuilderBasedSvgPath[T](desiredDimension: Dimension[T], pathBuilder: SvgPathBuilder[T]) extends SvgPath {
+  case class BuilderBasedSvgPath[T](bounds: Bounds[T], boundsUsed: RelativeBounds[T], pathBuilder: SvgPathBuilder[T]) extends SvgPath {
     override def svgPathDString: String = pathBuilder.toSvgPathD
   }
 

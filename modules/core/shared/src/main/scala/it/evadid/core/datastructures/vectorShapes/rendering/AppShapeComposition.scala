@@ -1,32 +1,84 @@
 package it.evadid.core.datastructures.vectorShapes.rendering
 
-import it.evadid.core.datastructures.geometry.Dimension
+import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point, RelativeBounds}
 import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeCompositeControl
 import it.evadid.core.datastructures.vectorShapes.config.{AppShapeConfig, AppShapeRenderingConfig}
+import it.evadid.core.datastructures.vectorShapes.rendering.AppShapeComposition.{AppCompositionMeasured, AppCompositionRendered, RenderingDimension}
 
-case class AppShapeComposition[T: Fractional](compositeControl: AppShapeCompositeControl[T], compositionConfig: AppShapeConfig[T], childrenInRenderingOrder: List[AppShapeComposition[T]]) {
+case class AppShapeComposition[T: Fractional](
+                                               compositeControl: AppShapeCompositeControl[T],
+                                               compositionConfig: AppShapeConfig[T],
+                                               childrenInRenderingOrder: List[AppShapeComposition[T]]
+                                             ) {
 
-  private def applyPaddingAndMargins(renderingConfig: AppShapeRenderingConfig[T], rawDimension: Dimension[T]): Dimension[T] = {
-    val padding: Dimension[T] = compositionConfig.useCustomPadding.getOrElse(renderingConfig.defaultPadding)
-    // val margin = shapeConfig.useCustomMargin.getOrElse(renderingConfig.defaultMargin)
-    rawDimension.increaseSize(padding) //.increaseSize(margin)
+  def withMinimumDimension(renderingConfig: AppShapeRenderingConfig[T]): AppCompositionMeasured[T] = {
+    val childrenMeasured = childrenInRenderingOrder.map(_.withMinimumDimension(renderingConfig))
+    val minimumDimension = compositeControl.calculateMyMinimumDimension(childrenMeasured, compositionConfig, renderingConfig)
+    AppCompositionMeasured(childrenMeasured, this, minimumDimension, renderingConfig)
   }
 
-  private def minimumDimensions(renderingConfig: AppShapeRenderingConfig[T]): (List[AppCompositionDimensioned[T]], Dimension[T]) = {
-    val childrenDimensioned = childrenInRenderingOrder.map(_.withMinimumDimension(renderingConfig))
-    val myRawDimension = compositeControl.dimensionControl.calculateRawMinimumDimension(renderingConfig, childrenDimensioned)
-    (childrenDimensioned, myRawDimension)
+  def renderComposition(renderingConfig: AppShapeRenderingConfig[T], targetBounds: Bounds[T]): AppCompositionRendered[T] = {
+
+    val myDimension = RenderingDimension.fromFullDimensionAndConfig(targetBounds.dimension, compositionConfig, renderingConfig)
+
+    this.
+      withMinimumDimension(renderingConfig)
+      .withTargetDimension(myDimension)
+      .withOffsets(Point.fromIntPoint(0, 0))
+      .asRendered(targetBounds.startPoint)
   }
 
-  def withMinimumDimension(renderingConfig: AppShapeRenderingConfig[T]): AppCompositionDimensioned[T] = {
-    val minDimRaw = minimumDimensions(renderingConfig)._2
-    val adjusted = applyPaddingAndMargins(renderingConfig, minDimRaw)
-    AppCompositionDimensioned[T](this, compositionConfig, renderingConfig, adjusted)
+
+}
+
+object AppShapeComposition {
+
+  case class AppCompositionMeasured[T: Fractional](children: List[AppCompositionMeasured[T]], composition: AppShapeComposition[T], minimumDimension: RenderingDimension[T], renderingConfig: AppShapeRenderingConfig[T]) {
+    def withTargetDimension(renderingSize: RenderingDimension[T]): AppCompositionDimensioned[T] = {
+      val childrenDimensioned = composition.compositeControl.calculateChildrenDimensions(children, renderingSize, composition.compositionConfig, renderingConfig)
+      //val myDimension = composition.compositeControl.calculateMyDimension(childrenDimensioned, renderingSize, composition.compositionConfig, renderingConfig)
+      AppCompositionDimensioned(childrenDimensioned, this, renderingSize)
+    }
   }
 
-  def withGivenDimension(renderingConfig: AppShapeRenderingConfig[T], fitInto: Dimension[T]): AppCompositionDimensioned[T] = {
-    val minimum = withMinimumDimension(renderingConfig).compositionDimension
-    AppCompositionDimensioned(this, compositionConfig, renderingConfig, fitInto.ensureAtLeastAsBigAs(minimum))
+  case class AppCompositionDimensioned[T: Fractional](children: List[AppCompositionDimensioned[T]], compositionMeasurd: AppCompositionMeasured[T], renderingDimension: RenderingDimension[T]) {
+    def withOffsets(myRelativeOffsetInParent: Point[T]): AppCompositionPositioned[T] = {
+      val childrenPositioned = compositionMeasurd.composition.compositeControl.calculateChildrenPositions(children, renderingDimension, compositionMeasurd.composition.compositionConfig, compositionMeasurd.renderingConfig)
+      AppCompositionPositioned(childrenPositioned, this, renderingDimension.fullDimension.withOffset(myRelativeOffsetInParent))
+    }
   }
 
+  case class AppCompositionPositioned[T: Fractional](children: List[AppCompositionPositioned[T]], compositionDimensioned: AppCompositionDimensioned[T], relativeBounds: RelativeBounds[T]) {
+    def asRendered(myAbsoluteStartingPoint: Point[T]): AppCompositionRendered[T] = {
+      val childrenRendered = children.map(curChild => curChild.asRendered(myAbsoluteStartingPoint + curChild.relativeBounds.offsetInParents))
+      AppCompositionRendered(childrenRendered, this, relativeBounds.toAbsoluteBounds(myAbsoluteStartingPoint))
+    }
+  }
+
+
+  case class AppCompositionRendered[T: Fractional](
+                                                    children: List[AppCompositionRendered[T]],
+                                                    compositionPositioned: AppCompositionPositioned[T],
+                                                    myBounds: Bounds[T],
+                                                  ) {
+
+  }
+
+
+  case class RenderingDimension[T: Fractional](rawDimension: Dimension[T], fullDimension: Dimension[T])
+
+  object RenderingDimension {
+    def fromRawDimensionAndConfig[T: Fractional](rawDimension: Dimension[T], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): RenderingDimension[T] = {
+      val padding: Dimension[T] = compositionConfig.useCustomPadding.getOrElse(renderingConfig.defaultPadding)
+      // val margin = shapeConfig.useCustomMargin.getOrElse(renderingConfig.defaultMargin)
+      val full = rawDimension.increaseSize(padding) //.increaseSize(margin)
+      RenderingDimension(rawDimension, full)
+    }
+
+    def fromFullDimensionAndConfig[T: Fractional](rawDimension: Dimension[T], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): RenderingDimension[T] = {
+      val padding: Dimension[T] = compositionConfig.useCustomPadding.getOrElse(renderingConfig.defaultPadding)
+      val full = rawDimension.decreaseSize(padding)
+      RenderingDimension(rawDimension, full)
+    }
+  }
 }
