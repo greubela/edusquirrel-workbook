@@ -1,42 +1,32 @@
 package it.evadid.core.datastructures.vectorShapes.compositions
 
+import it.evadid.core.datastructures.geometry.{Dimension, Point}
+import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeCompositeControl.*
 import it.evadid.core.datastructures.vectorShapes.abstractions.{AlignmentInParent, AppShapeCompositeControl}
 import it.evadid.core.datastructures.vectorShapes.config.{AppShapeConfig, AppShapeRenderingConfig}
-import it.evadid.core.datastructures.vectorShapes.rendering.AppShapeComposition
+import it.evadid.core.datastructures.vectorShapes.rendering.AppShapeComposition.{AppCompositionDimensioned, AppCompositionMeasured, AppCompositionPositioned, RenderingDimension}
 
+/** Arranges children from left to right, separated by the configured horizontal gap. */
 case class CompositionHBox[T: Fractional](alignment: AlignmentInParent) extends AppShapeCompositeControl[T] {
-  /*
-    override def dimensionControl: CompositeDimensionControl[T] = new CompositeDimensionControl[T]() {
-      override def calculateRawMinimumDimension(renderingConfig: AppShapeRenderingConfig[T], minimumDimensionedChildren: List[AppShapeRelativePositioned[T]]): Dimension[T] = {
-        val N = summon[Fractional[T]]
-        import N.*
-        val gapCount = N.fromInt(math.max(0, minimumDimensionedChildren.size - 1))
-        Dimension(N.plus(minimumDimensionedChildren.map(_.compositionDimension.width).foldLeft(N.fromInt(0))(N.plus), N.times(renderingConfig.gapBetweenConsecutiveShapes.width, gapCount)),
-          minimumDimensionedChildren.map(_.compositionDimension.height).foldLeft(N.fromInt(0))(N.max))
-      }
-      override def resizeChildrenBasedOnRequestedDimension(renderingConfig: AppShapeRenderingConfig[T], minimumDimensionedChildren: List[AppShapeRelativePositioned[T]], myRequestedSize: Dimension[T]): List[AppShapeRelativePositioned[T]] = minimumDimensionedChildren
+  override def calculateMyMinimumDimension(children: List[AppCompositionMeasured[T]], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): RenderingDimension[T] = {
+    val N = summon[Fractional[T]]
+    val gapWidth = N.times(renderingConfig.gapBetweenConsecutiveShapes.width, N.fromInt(math.max(0, children.size - 1)))
+    val raw = Dimension(N.plus(children.map(_.minimumDimension.fullDimension.width).foldLeft(N.fromInt(0))(N.plus), gapWidth),
+      children.map(_.minimumDimension.fullDimension.height).foldLeft(N.fromInt(0))(N.max))
+    RenderingDimension.fromRawDimensionAndConfig(raw, compositionConfig, renderingConfig)
+  }
+
+  override def calculateChildrenDimensions(children: List[AppCompositionMeasured[T]], myRenderingSize: RenderingDimension[T], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): List[AppCompositionDimensioned[T]] =
+    dimensionChildrenAtMinimum(children)
+
+  override def calculateChildrenPositions(children: List[AppCompositionDimensioned[T]], myRenderingSize: RenderingDimension[T], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): List[AppCompositionPositioned[T]] = {
+    val N = summon[Fractional[T]]
+    var x = N.fromInt(0)
+    children.map { child =>
+      val aligned = calculateOffset(myRenderingSize.rawDimension, child.renderingDimension.fullDimension, alignment)
+      val positioned = positionChild(child, Point(x, aligned.y))
+      x = N.plus(N.plus(x, child.renderingDimension.fullDimension.width), renderingConfig.gapBetweenConsecutiveShapes.width)
+      positioned
     }
-
-    override def positionControl: CompositePositionControl[T] = new CompositePositionControl[T]() {
-      override def calculateChildrenOffsets(renderingConfig: AppShapeRenderingConfig[T], actualDimensionedChildren: List[AppShapeRelativePositioned[T]]): List[AppCompositionRendered[T]] = {
-        val N = summon[Fractional[T]]
-        import N.*
-        val container = CompositionLayout.maxDimension(actualDimensionedChildren)
-        var x = N.fromInt(0)
-        actualDimensionedChildren.map { child =>
-          val aligned = CompositionLayout.alignedOffset(container, child.compositionDimension, alignment)
-          val result = CompositionLayout.rendered(child, Point(x, aligned.y))
-          x = N.plus(N.plus(x, child.compositionDimension.width), renderingConfig.gapBetweenConsecutiveShapes.width)
-          result
-        }
-      }
-    }
-    */
-
-
-  override def calculateMyMinimumDimension(childrenDimensions: List[AppShapeComposition.AppCompositionMeasured[T]], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): AppShapeComposition.RenderingDimension[T] = ???
-
-  override def calculateChildrenDimensions(children: List[AppShapeComposition.AppCompositionMeasured[T]], myRenderingSize: AppShapeComposition.RenderingDimension[T], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): List[AppShapeComposition.AppCompositionDimensioned[T]] = ???
-
-  override def calculateChildrenPositions(children: List[AppShapeComposition.AppCompositionDimensioned[T]], myRenderingSize: AppShapeComposition.RenderingDimension[T], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): List[AppShapeComposition.AppCompositionPositioned[T]] = ???
+  }
 }

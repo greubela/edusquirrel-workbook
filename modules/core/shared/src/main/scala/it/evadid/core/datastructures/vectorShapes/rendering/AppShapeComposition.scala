@@ -5,6 +5,11 @@ import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeComposite
 import it.evadid.core.datastructures.vectorShapes.config.{AppShapeConfig, AppShapeRenderingConfig}
 import it.evadid.core.datastructures.vectorShapes.rendering.AppShapeComposition.{AppCompositionMeasured, AppCompositionRendered, RenderingDimension}
 
+/** A tree node which lays out its children through a [[AppShapeCompositeControl]].
+  *
+  * Rendering proceeds recursively through measurement, dimensioning, relative
+  * positioning, and finally conversion to absolute bounds.
+  */
 case class AppShapeComposition[T: Fractional](
                                                compositeControl: AppShapeCompositeControl[T],
                                                compositionConfig: AppShapeConfig[T],
@@ -33,6 +38,7 @@ case class AppShapeComposition[T: Fractional](
 
 object AppShapeComposition {
 
+  /** A composition tree whose minimum dimensions have been calculated bottom-up. */
   case class AppCompositionMeasured[T: Fractional](children: List[AppCompositionMeasured[T]], composition: AppShapeComposition[T], minimumDimension: RenderingDimension[T], renderingConfig: AppShapeRenderingConfig[T]) {
     def withTargetDimension(renderingSize: RenderingDimension[T]): AppCompositionDimensioned[T] = {
       val childrenDimensioned = composition.compositeControl.calculateChildrenDimensions(children, renderingSize, composition.compositionConfig, renderingConfig)
@@ -41,6 +47,7 @@ object AppShapeComposition {
     }
   }
 
+  /** A measured composition whose node and descendants have concrete dimensions. */
   case class AppCompositionDimensioned[T: Fractional](children: List[AppCompositionDimensioned[T]], compositionMeasurd: AppCompositionMeasured[T], renderingDimension: RenderingDimension[T]) {
     def withOffsets(myRelativeOffsetInParent: Point[T]): AppCompositionPositioned[T] = {
       val childrenPositioned = compositionMeasurd.composition.compositeControl.calculateChildrenPositions(children, renderingDimension, compositionMeasurd.composition.compositionConfig, compositionMeasurd.renderingConfig)
@@ -48,6 +55,7 @@ object AppShapeComposition {
     }
   }
 
+  /** A dimensioned composition with bounds relative to its parent. */
   case class AppCompositionPositioned[T: Fractional](children: List[AppCompositionPositioned[T]], compositionDimensioned: AppCompositionDimensioned[T], relativeBounds: RelativeBounds[T]) {
     def asRendered(myAbsoluteStartingPoint: Point[T]): AppCompositionRendered[T] = {
       val childrenRendered = children.map(curChild => curChild.asRendered(myAbsoluteStartingPoint + curChild.relativeBounds.offsetInParents))
@@ -56,6 +64,7 @@ object AppShapeComposition {
   }
 
 
+  /** A fully laid-out composition with absolute bounds ready for drawing. */
   case class AppCompositionRendered[T: Fractional](
                                                     children: List[AppCompositionRendered[T]],
                                                     compositionPositioned: AppCompositionPositioned[T],
@@ -65,6 +74,7 @@ object AppShapeComposition {
   }
 
 
+  /** Stores a content dimension and its corresponding padding-inclusive dimension. */
   case class RenderingDimension[T: Fractional](rawDimension: Dimension[T], fullDimension: Dimension[T])
 
   object RenderingDimension {
@@ -75,10 +85,9 @@ object AppShapeComposition {
       RenderingDimension(rawDimension, full)
     }
 
-    def fromFullDimensionAndConfig[T: Fractional](rawDimension: Dimension[T], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): RenderingDimension[T] = {
+    def fromFullDimensionAndConfig[T: Fractional](fullDimension: Dimension[T], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): RenderingDimension[T] = {
       val padding: Dimension[T] = compositionConfig.useCustomPadding.getOrElse(renderingConfig.defaultPadding)
-      val full = rawDimension.decreaseSize(padding)
-      RenderingDimension(rawDimension, full)
+      RenderingDimension(fullDimension.decreaseSize(padding), fullDimension)
     }
   }
 }
