@@ -1,4 +1,4 @@
-package it.evadid.homepage.webElements.canvas
+package it.evadid.core.datastructures.canvas
 
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
@@ -7,8 +7,7 @@ import it.evadid.core.datastructures.file.*
 import org.scalajs.dom
 import org.scalajs.dom.CanvasRenderingContext2D
 import org.scalajs.dom.html.Canvas
-import todomove.datastructures.web.file.FullImage
-import todomove.datastructures.web.font.AppFont
+import it.evadid.core.datastructures.font.AppFont
 
 import scala.scalajs.js.JSConverters.*
 class WebCanvas(canvas: ReactiveHtmlElement[Canvas], width: Int, height: Int) extends AppCanvas[ReactiveHtmlElement[Canvas]] {
@@ -129,12 +128,14 @@ class WebCanvas(canvas: ReactiveHtmlElement[Canvas], width: Int, height: Int) ex
     ctx.fill()
   }
 
-  override def drawImage(x: Double, y: Double, width: Double, height: Double, img: FullImage, alphaUpTp255: Double = 255): Unit = {
+  override def drawImage(x: Double, y: Double, width: Double, height: Double, image: AppImage, alphaUpTp255: Double = 255): Unit = {
 
     if (alphaUpTp255 >= 0 && alphaUpTp255 <= 255) ctx.globalAlpha = alphaUpTp255 / 255.0
     else ctx.globalAlpha = 1.0
     //if (width > 0 && height > 0) {
-    ctx.drawImage(img.newDomImage.ref, x, y, width, height)
+    val imageElement = dom.document.createElement("img").asInstanceOf[dom.html.Image]
+    imageElement.src = image.imageSourceString
+    ctx.drawImage(imageElement, x, y, width, height)
     //} else {
     //ctx.drawImage(img.domImage, x, y)
     //}

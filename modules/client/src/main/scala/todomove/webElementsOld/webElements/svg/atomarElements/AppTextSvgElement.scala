@@ -3,7 +3,7 @@ package todomove.webElementsOld.webElements.svg.atomarElements
 import com.raquo.laminar.api.L.{Signal, seqToModifier, svg, textToTextNode}
 import com.raquo.laminar.api.{L, textToTextNode}
 import it.evadid.core.datastructures.geometry.Bounds
-import todomove.datastructures.web.font.AppFont
+import it.evadid.core.datastructures.font.AppFont
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 
 case class AppTextSvgElement[T: Fractional](displayText: String, pBounds: Bounds[T], font: AppFont,
