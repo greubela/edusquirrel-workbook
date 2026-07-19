@@ -93,11 +93,15 @@ class IDEMorph(config: js.Object = js.native) extends Morph:
   def getProjectXML(): String = js.native
   def loadProjectXML(projectXML: String): Unit = js.native
   def rawOpenProjectString(projectXML: String): Unit = js.native
+  def refreshPalette(shouldIgnorePosition: Boolean = js.native): Unit = js.native
+  def createCategories(): Unit = js.native
 
 @js.native
 @JSGlobal("SpriteMorph")
 class SpriteMorph() extends Morph:
   var scripts: ScriptsMorph = js.native
+  var paletteCache: js.Dictionary[js.Any] = js.native
+  def blockForSelector(selector: String, setDefaults: Boolean = js.native): BlockMorph | Null = js.native
 
 @js.native
 @JSGlobal("BoxMorph")

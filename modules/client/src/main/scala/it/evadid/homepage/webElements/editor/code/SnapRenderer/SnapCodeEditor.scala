@@ -74,6 +74,10 @@ case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig,
     editorCanvas
   }
 
+  /** Drop custom tabs, optionally removing Snap's default library as well. */
+  def removeAllLibraries(includeDefaultLibraries: Boolean = false): Unit =
+    impl.removeAllLibraries(includeDefaultLibraries)
+
 }
 
 object SnapCodeEditor {
@@ -100,6 +104,9 @@ object SnapCodeEditor {
 
     /** Register a listener for XML changes caused by edits in the mounted Snap project. */
     def onProjectXmlChanged(callback: String => Unit): Unit
+
+    /** Remove custom tabs and, when requested, Snap's standard library too. */
+    def removeAllLibraries(includeDefaultLibraries: Boolean = false): Unit
 
     def destroy(): Unit
   }
