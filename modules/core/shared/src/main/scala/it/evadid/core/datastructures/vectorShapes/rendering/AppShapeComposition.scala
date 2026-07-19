@@ -24,7 +24,9 @@ case class AppShapeComposition[T: Fractional](compositeControl: AppShapeComposit
     AppCompositionDimensioned[T](this, compositionConfig, renderingConfig, adjusted)
   }
 
-  def withGivenDimension(renderingConfig: AppShapeRenderingConfig[T], fitInto: Dimension[T]): AppCompositionDimensioned[T] = ???
+  def withGivenDimension(renderingConfig: AppShapeRenderingConfig[T], fitInto: Dimension[T]): AppCompositionDimensioned[T] = {
+    val minimum = withMinimumDimension(renderingConfig).compositionDimension
+    AppCompositionDimensioned(this, compositionConfig, renderingConfig, fitInto.ensureAtLeastAsBigAs(minimum))
+  }
 
 }
-

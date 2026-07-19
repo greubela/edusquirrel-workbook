@@ -14,11 +14,10 @@ case class SvgPathBuilderRelativeCoords[T: Fractional](logger: Logger, baseBuild
   def intToT(intValue: Int): T = fromInt(intValue)
 
   def doubleToT(doubleValue: Double, divideBy: Int = 1, maxDiv: Int = 10000000): T = {
-    val asInt = doubleValue.toInt
-    val diffToInt: Double = doubleValue - doubleValue.toInt
-    if (diffToInt > 1 || diffToInt < 1) throw IllegalArgumentException(s"Double ${doubleValue} cannot be converted to [T] because it is too large for an int!")
-    else if (diffToInt == 0 || divideBy >= maxDiv) fromInt(asInt) / fromInt(divideBy)
-    else doubleToT(doubleValue / 10.0, divideBy * 10, maxDiv)
+    N.parseString(doubleValue.toString).getOrElse {
+      val scale = math.min(maxDiv, 1000000)
+      fromInt((doubleValue * scale).round.toInt) / fromInt(scale)
+    }
   }
 
   def percTransX(percentageOfWidthMax100: Double): T = doubleToT(percentageOfWidthMax100) / hundred * maxWidth
@@ -44,12 +43,12 @@ case class SvgPathBuilderRelativeCoords[T: Fractional](logger: Logger, baseBuild
 
   def moveToRel(relativeXCoordMax100: Double, relativeYCoordMax100: Double): SvgPathBuilderRelativeCoords[T] = {
     checkDim(relativeXCoordMax100, relativeYCoordMax100)
-    update(_.moveToRel(percTransDim(relativeYCoordMax100, relativeYCoordMax100)))
+    update(_.moveToRel(percTransDim(relativeXCoordMax100, relativeYCoordMax100)))
   }
 
   def lineToRel(relativeXCoordMax100: Double, relativeYCoordMax100: Double): SvgPathBuilderRelativeCoords[T] = {
     checkDim(relativeXCoordMax100, relativeYCoordMax100)
-    update(_.lineToRel(percTransDim(relativeYCoordMax100, relativeYCoordMax100)))
+    update(_.lineToRel(percTransDim(relativeXCoordMax100, relativeYCoordMax100)))
   }
 
   def cubicBezierToRel(rControlStartX: Double, rControlStartY: Double, rControlEndX: Double, rControlEndY: Double, rEndPointX: Double, rEndPointY: Double): SvgPathBuilderRelativeCoords[T] = {

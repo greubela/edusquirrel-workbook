@@ -181,6 +181,9 @@ case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Poin
   //def toAppSvgElement(): AppPathSvgElement[T] =   AppPathSvgElement[T](pathD.toString(), cornerPoints.toList, controlLines.toList)
 
 
-  def moveWholePath(dimension: Dimension[T]): SvgPathBuilder[T] = ???
+  def moveWholePath(dimension: Dimension[T]): SvgPathBuilder[T] =
+    // TODO: retain typed path commands (rather than only the serialized pathD)
+    // so absolute points can be translated without parsing T values back from text.
+    throw new UnsupportedOperationException("moveWholePath requires typed command storage in SvgPathBuilderMutable")
 
 }

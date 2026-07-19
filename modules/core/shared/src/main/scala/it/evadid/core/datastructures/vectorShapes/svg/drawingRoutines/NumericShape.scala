@@ -4,10 +4,8 @@ import it.evadid.core.datastructures.geometry.Dimension
 import it.evadid.core.datastructures.vectorShapes.abstractions.DrawingRoutine.DrawingRoutineRelativeToMaxDim
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderRelativeCoords
 
-case class RectangleShape[T: Fractional]() extends DrawingRoutineRelativeToMaxDim[T]{
-
+case class NumericShape[T: Fractional]() extends DrawingRoutineRelativeToMaxDim[T] {
   override def draw(builder: SvgPathBuilderRelativeCoords[T]): SvgPathBuilderRelativeCoords[T] =
-    builder.lineToRel(100, 0).lineToRel(0, 100).lineToRel(-100, 0).lineToRel(0, -100)
-
+    builder.moveToRel(10, 0).quadraticBezierWithRel(-20, 50, 0, 100).lineToRel(80, 0).quadraticBezierWithRel(20, -50, 0, -100)
   override def onlyNonDistortedIfDimensionRatio: Option[Dimension[Double]] = None
 }

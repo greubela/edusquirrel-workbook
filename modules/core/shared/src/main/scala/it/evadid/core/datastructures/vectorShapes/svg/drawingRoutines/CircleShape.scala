@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.geometry.Dimension
 import it.evadid.core.datastructures.vectorShapes.abstractions.DrawingRoutine.DrawingRoutineRelativeToMaxDim
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderRelativeCoords
 
-case class CircleShape[T: Fractional]() extends DrawingRoutineRelativeToMaxDim {
+case class CircleShape[T: Fractional]() extends DrawingRoutineRelativeToMaxDim[T] {
 
   override def draw(builder: SvgPathBuilderRelativeCoords[T]): SvgPathBuilderRelativeCoords[T] = {
     builder.
