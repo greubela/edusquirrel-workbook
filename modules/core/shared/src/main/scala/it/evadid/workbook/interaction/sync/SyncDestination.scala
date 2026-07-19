@@ -15,6 +15,8 @@ trait SyncDestination {
 
   def shouldBePersistant(): Boolean
 
+  def isLocal: Boolean
+
   def fetchAll(context: UsageContext, formatter: SyncFormatter): Future[FetchResponse[SyncContext, InteractionVariableHistorySerialized]]
 
   def storeTo(context: SyncContext, request: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncSuccess]

@@ -3,8 +3,7 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercis
 import scala.scalajs.js
 import PyodideBackends.*
 import it.evadid.core.datastructures.geometry.Point
-import todomove.webElementsOld.webElements.svg.TurtlePathBuilder
-import todomove.webElementsOld.webElements.svg.builder.SvgPathBuilderCommand
+import it.evadid.core.datastructures.vectorShapes.svg.{SvgPathBuilderCommand, TurtlePathBuilder}
 
 object PyodideBackends {
 

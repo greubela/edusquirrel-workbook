@@ -1,11 +1,10 @@
 package todomove.`export`.modules
 
-import todomove.webElementsOld.webElements.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.core.datastructures.geometry.{Dimension, Point}
+import it.evadid.core.datastructures.vectorShapes.svg.{SvgPathBuilderCommand, TurtlePathBuilder}
 import it.evadid.homepage.util.web.JsHelpers
-import todomove.webElementsOld.webElements.svg.TurtlePathBuilder
-import todomove.webElementsOld.webElements.svg.builder.SvgPathBuilderCommand
-import todomove.webElementsOld.webElements.svg.builder.SvgPathBuilderCommand.*
+import SvgPathBuilderCommand.*
 
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*

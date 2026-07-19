@@ -1,8 +1,8 @@
 package todomove.webElementsOld.webElements.svg.shapes
 
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
+import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import todomove.webElementsOld.webElements.svg.builder.SvgPathBuilder
 
 
 case class DecorationFactory[T: Fractional](renderingConfig: BeRenderingConfig) {

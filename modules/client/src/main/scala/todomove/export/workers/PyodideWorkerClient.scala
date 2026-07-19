@@ -1,15 +1,14 @@
 package todomove.`export`.workers
 
-import todomove.webElementsOld.webElements.svg.TurtlePathBuilder.{TurtleCommand, TurtleState}
+import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.{TurtleCommand, TurtleState}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.*
 import it.evadid.core.datastructures.geometry.{Dimension, Point}
+import it.evadid.core.datastructures.vectorShapes.svg.{SvgPathBuilderCommand, TurtlePathBuilder}
 import it.evadid.homepage.util.web.{JsHelpers, WorkerProtocolHelpers, WorkerRequestTracker}
 import it.evadid.homepage.util.web.JsHelpers.*
-import todomove.webElementsOld.webElements.svg.builder.SvgPathBuilderCommand.*
+import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
 import org.scalajs.dom
 import todomove.`export`.modules.TurtleSingleton
-import todomove.webElementsOld.webElements.svg.TurtlePathBuilder
-import todomove.webElementsOld.webElements.svg.builder.SvgPathBuilderCommand
 
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue

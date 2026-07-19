@@ -1,7 +1,7 @@
 package todomove.webElementsOld.webElements.svg.shapes
 
 import it.evadid.core.datastructures.geometry.{Bounds, Point}
-import todomove.webElementsOld.webElements.svg.builder.SvgPathBuilder
+import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 
 /** SVG translations of Snap!'s canonical block-outline algorithms.
   *

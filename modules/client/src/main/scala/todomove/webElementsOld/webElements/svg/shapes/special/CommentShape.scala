@@ -2,8 +2,8 @@ package todomove.webElementsOld.webElements.svg.shapes.special
 
 import todomove.webElementsOld.webElements.svg.shapes.BeShape.BeShapePathBased
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension}
+import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import todomove.webElementsOld.webElements.svg.builder.SvgPathBuilder
 import todomove.webElementsOld.webElements.svg.shapes.ShapeFactory
 
 case class CommentShape() extends BeShapePathBased {

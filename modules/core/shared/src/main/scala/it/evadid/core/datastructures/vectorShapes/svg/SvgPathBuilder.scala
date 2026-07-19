@@ -1,11 +1,7 @@
-package todomove.webElementsOld.webElements.svg.builder
+package it.evadid.core.datastructures.vectorShapes.svg
 
-import SvgPathBuilderCommand.*
-import todomove.webElementsOld.webElements.svg.shapes.BeShape.BeShapeAtomic
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import todomove.webElementsOld.webElements.svg.AppSvgElement
-import todomove.webElementsOld.webElements.svg.atomarElements.AppPathSvgElement
+import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
 
 trait SvgPathBuilder[T: Fractional] {
 
@@ -103,7 +99,6 @@ trait SvgPathBuilder[T: Fractional] {
 
   def drawBoundRectangle(bounds: Bounds[T]): SvgPathBuilder[T]
 
-
   def addCommandBracketDown(segmentWidth: T, destHeight: T): SvgPathBuilder[T] = {
     // width: 4/5*segmentWidth
     val N = summon[Fractional[T]]
@@ -133,21 +128,6 @@ trait SvgPathBuilder[T: Fractional] {
   // whole-shape transform
   def moveWholePath(dimension: Dimension[T]): SvgPathBuilder[T]
 
-  private lazy val renderDirectly: AppSvgElement = {
-    //val controlLines = absoluteCommands.flatMap(_.controlPointsAbsolute) // todo: fix to re-introduce control lines
-    AppPathSvgElement[T](toSvgPathD, pathPoints, List())
-  }
-
-  def toFixedDimensionShape: BeShapeAtomic = new BeShapeAtomic {
-    override def displaySize(rendererConfig: BeRenderingConfig): Dimension[Double] = {
-      requiresDimension.toDouble
-    }
-
-    override def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
-      //moveWholePath(Dimension(fromDouble(bounds.startPoint.x), fromDouble(bounds.startPoint.y))).
-      renderDirectly
-    }
-  }
 
 }
 

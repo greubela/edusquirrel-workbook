@@ -3,9 +3,9 @@ package todomove.webElementsOld.webElements.svg.shapes.controlflow.doubleWidth
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.{ControlFlowPath, PathSegment}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.PathStatus.*
 import it.evadid.core.datastructures.geometry.{Dimension, Point}
+import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
-import todomove.webElementsOld.webElements.svg.builder.SvgPathBuilder
 import todomove.webElementsOld.webElements.svg.shapes.BeShape
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
 import todomove.webElementsOld.webElements.svg.shapes.decorations.PathUnionOverlay

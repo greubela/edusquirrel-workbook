@@ -68,4 +68,6 @@ object LocalStorageSync extends SyncDestination {
     val res = FetchResponse.fromMap[SyncContext, InteractionVariableHistorySerialized](time.LocalDateTime.now(), resMap, _.lastStateOption.map(_.timestamp))
     Future.successful(res)
   }
+
+  override def isLocal: Boolean = true
 }

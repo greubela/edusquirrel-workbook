@@ -1,8 +1,7 @@
-package todomove.webElementsOld.webElements.svg.builder
+package it.evadid.core.datastructures.vectorShapes.svg
 
-import todomove.webElementsOld.webElements.svg.builder.*
-import SvgPathBuilderCommand.*
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
+import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
 
 import scala.collection.mutable
 

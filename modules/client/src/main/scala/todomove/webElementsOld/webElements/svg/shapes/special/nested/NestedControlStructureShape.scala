@@ -2,9 +2,10 @@ package todomove.webElementsOld.webElements.svg.shapes.special.nested
 
 import todomove.webElementsOld.webElements.svg.shapes.BeShape.BeShapeComposite
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
+import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.SvgBridge
 import todomove.webElementsOld.webElements.svg.AppSvgElement
-import todomove.webElementsOld.webElements.svg.builder.SvgPathBuilder
 import todomove.webElementsOld.webElements.svg.compositeElements.AppDecoratedSvgElement
 import todomove.webElementsOld.webElements.svg.shapes.composite.{BoxManualPositioning, ManualPositionElement}
 import todomove.webElementsOld.webElements.svg.shapes.{BeShape, ControlFlowAndExpressionShape, ControlFlowShape}
@@ -133,7 +134,7 @@ trait NestedControlStructureShape extends BeShapeComposite with ControlFlowAndEx
 
   def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
     val childrenBox = createChildrenBox(rendererConfig).render(rendererConfig, bounds)
-    val background = drawBackground(rendererConfig, bounds).toFixedDimensionShape.addAmends(rendererConfig.amendFactory.defaultControlFlowBackgroundAmend).render(rendererConfig, bounds)
+    val background =  SvgBridge.toFixedDimensionShape(drawBackground(rendererConfig, bounds)).addAmends(rendererConfig.amendFactory.defaultControlFlowBackgroundAmend).render(rendererConfig, bounds)
 
     AppDecoratedSvgElement(background, List(childrenBox), List())
   }

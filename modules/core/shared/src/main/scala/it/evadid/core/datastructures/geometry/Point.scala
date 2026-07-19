@@ -28,3 +28,22 @@ final case class Point[T: Fractional](x: T, y: T) {
 
 }
 
+object Point {
+
+
+  def intToT[T: Fractional](intValue: Int): T = {
+    val N = summon[Fractional[T]]
+    import N.*
+    fromInt(intValue)
+  }
+
+  def doubleToT[T: Fractional](doubleValue: Double, divideBy: Int = 1, maxDiv: Int = 10000000): T = {
+    val N = summon[Fractional[T]]
+    import N.*
+    N.parseString(doubleValue.toString).getOrElse {
+      val scale = math.min(maxDiv, 1000000)
+      fromInt((doubleValue * scale).round.toInt) / fromInt(scale)
+    }
+  }
+
+}

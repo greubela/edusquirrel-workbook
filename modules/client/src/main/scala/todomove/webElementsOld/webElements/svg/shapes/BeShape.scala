@@ -4,11 +4,11 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.Signal
 import BeShape.BeShapeContainerable
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
+import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.{ControlFlowOverlayBuilder, SvgBridge}
 import todomove.webElementsOld.webElements.svg.AppSvgElement
-import todomove.webElementsOld.webElements.svg.builder.SvgPathBuilder
 import todomove.webElementsOld.webElements.svg.compositeElements.AppGroupSvgElement
 import todomove.webElementsOld.webElements.svg.shapes.datatypes.{DuckShape, RectangleShape, UnitShape}
 
@@ -75,7 +75,7 @@ trait BeShapeDecoration extends BeShape {
   def getOverlayPath(rendererConfig: BeRenderingConfig, centeredAt: Point[Double]): SvgPathBuilder[Double]
 
   def render(rendererConfig: BeRenderingConfig, centerPoint: Point[Double]): AppSvgElement = {
-    getOverlayPath(rendererConfig, centerPoint).toFixedDimensionShape.addAmends(getAmends(rendererConfig)).render(rendererConfig, Bounds(centerPoint, displaySize(rendererConfig)))
+    SvgBridge.toFixedDimensionShape(getOverlayPath(rendererConfig, centerPoint)).addAmends(getAmends(rendererConfig)).render(rendererConfig, Bounds(centerPoint, displaySize(rendererConfig)))
   }
 
   override def render(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
@@ -128,7 +128,7 @@ object BeShape {
     }
 
     def render(config: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = {
-      getPathBuilder(config, bounds).toFixedDimensionShape.render(config, bounds)
+      SvgBridge.toFixedDimensionShape(getPathBuilder(config, bounds)).render(config, bounds)
     }
 
 

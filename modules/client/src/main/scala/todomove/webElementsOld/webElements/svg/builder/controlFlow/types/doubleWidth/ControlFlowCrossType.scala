@@ -2,8 +2,8 @@ package todomove.webElementsOld.webElements.svg.builder.controlFlow.types.double
 
 import todomove.webElementsOld.webElements.svg.shapes.BeShape.BeShapeContainerable
 import it.evadid.core.datastructures.geometry.Dimension
+import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import todomove.webElementsOld.webElements.svg.builder.SvgPathBuilder
 import todomove.webElementsOld.webElements.svg.builder.controlFlow.path.{ControlFlowPath, ControlFlowPathOverlay, ControlFlowPathSegment, PathStatus, PathType, SegmentType}
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
 

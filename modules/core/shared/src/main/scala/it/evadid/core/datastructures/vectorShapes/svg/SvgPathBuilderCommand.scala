@@ -1,8 +1,7 @@
-package todomove.webElementsOld.webElements.svg.builder
+package it.evadid.core.datastructures.vectorShapes.svg
 
-import SvgPathBuilderCommand.{AbsoluteCommand, RelativeCommand}
 import it.evadid.core.datastructures.geometry.{Dimension, Point}
-import todomove.webElementsOld.webElements.svg.atomarElements.AppLineSvgElement
+import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.{AbsoluteCommand, RelativeCommand}
 
 trait SvgPathBuilderCommand[T: Fractional] {
 
@@ -221,7 +220,6 @@ object SvgPathBuilderCommand {
                                  ) extends AbsoluteCommand[T] {
     def getPathDString(): String = {
       val N = summon[Fractional[T]]
-      import N.*
       s" A ${num(N.toDouble(rx))},${num(N.toDouble(ry))} ${num(N.toDouble(xAxisRotationDeg))} ${flag(largeArc)},${flag(sweep)} ${pt(end)}"
     }
 
