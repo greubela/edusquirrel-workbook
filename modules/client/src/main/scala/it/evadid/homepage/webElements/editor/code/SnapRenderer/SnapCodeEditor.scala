@@ -83,7 +83,7 @@ case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig,
 object SnapCodeEditor {
 
   def apply(program: Var[BeProgram]): SnapCodeEditor = {
-    SnapCodeEditor(program, SnapCodeEditorConfig(), SnapCodeEditorImplDelegateToOriginal())
+    SnapCodeEditor(program, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal())
   }
 
   trait SnapCodeEditorImpl {
