@@ -26,15 +26,19 @@ case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig,
         aria.label := "Block program editor",
         widthAttr := config.CanvasWidth,
         heightAttr := config.CanvasHeight,
-        display.block
+        display.block,
+        // Construct WorldMorph from the canvas' own mount callback. Besides
+        // avoiding an ambiguous descendant query, this guarantees that Snap
+        // installs its listeners only after this exact canvas is connected.
+        onMountCallback { ctx =>
+          val canvas = ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]
+          impl.mount(ctx.owner)
+          impl.renderEditorInto(program.now(), canvas, config)
+        }
       ),
-      onMountCallback { ctx =>
-        val host = ctx.thisNode.ref
-        val canvas = host.querySelector("canvas").asInstanceOf[dom.HTMLCanvasElement]
-        impl.mount(ctx.owner)
-        impl.renderEditorInto(program.now(), canvas, config)
-      },
       onUnmountCallback { _ =>
+        // The interactive canvas exclusively owns the retained Morphic world.
+        // Destroy it only when this editor host leaves the dialog.
         impl.destroy()
       }
     )
@@ -55,17 +59,12 @@ case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig,
         aria.label := "Block program preview",
         widthAttr := config.CanvasWidth,
         heightAttr := config.CanvasHeight,
-        display.block
-      ),
-      onMountCallback { ctx =>
-        val host = ctx.thisNode.ref
-        val canvas = host.querySelector("canvas").asInstanceOf[dom.HTMLCanvasElement]
-        impl.mount(ctx.owner)
-        impl.renderPreviewInto(program.now(), canvas, config)
-      },
-      onUnmountCallback { _ =>
-        impl.destroy()
-      }
+        display.block,
+        onMountCallback { ctx =>
+          val canvas = ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]
+          impl.renderPreviewInto(program.now(), canvas, config)
+        }
+      )
     )
   }
 

@@ -26,9 +26,14 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
 
   override def renderEditorInto(initProgram: BeProgram, canvas: Canvas, config: SnapCodeEditorConfig): Unit =
     stopEditorSession()
+    require(canvas.isConnected, "Snap's interactive canvas must be mounted before WorldMorph is created")
     sizeEditorCanvas(canvas, config)
 
     val world = new WorldMorph(canvas, false)
+    require(
+      world.worldCanvas eq canvas,
+      "WorldMorph did not retain the mounted editor canvas used to register input listeners"
+    )
     val ide = createEditor(world, initProgram)
     layoutEditor(world, ide, canvas)
     initializeProjectChangeTracking(ide)
@@ -99,6 +104,13 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     canvas.style.height = s"${canvas.height}px"
     canvas.style.position = "relative"
     canvas.style.display = "block"
+    // WorldMorph registers mouse/touch listeners synchronously in its
+    // constructor. Make this exact mounted canvas an explicit input target;
+    // creating or copying a second canvas would only copy pixels, not those
+    // listeners or the Morphic world behind them.
+    canvas.tabIndex = 0
+    canvas.style.pointerEvents = "auto"
+    canvas.style.setProperty("touch-action", "none")
 
   override def startWorldCycles(): Unit =
     if !cyclesRunning && editorWorld.nonEmpty then

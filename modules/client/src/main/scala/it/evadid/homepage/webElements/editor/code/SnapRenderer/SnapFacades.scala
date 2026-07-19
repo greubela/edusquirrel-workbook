@@ -78,7 +78,8 @@ class Morph() extends js.Object:
 @js.native
 @JSGlobal("WorldMorph")
 class WorldMorph(canvas0: dom.HTMLCanvasElement, fillPage: Boolean = js.native) extends Morph:
-  var canvas: dom.HTMLCanvasElement = js.native
+  /** The canvas to which Morphic attaches its input listeners. */
+  var worldCanvas: dom.HTMLCanvasElement = js.native
   def doOneCycle(): Unit = js.native
 
 @js.native

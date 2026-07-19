@@ -19,6 +19,10 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     val editor: SnapCodeEditor = SnapCodeEditor(boundVar)
 
     def buttonPressed(): Unit = {
+      // setFullscreen only publishes the editor here. HtmlWorkbookDomElement
+      // then inserts editor.getDomElement() into the already-mounted dialog;
+      // SnapCodeEditor creates WorldMorph from the canvas' subsequent mount
+      // callback, never during this button event or while it is detached.
       fullInfo.displayControl.setFullscreen(editor)
     }
 
