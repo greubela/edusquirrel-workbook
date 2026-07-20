@@ -3,120 +3,52 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
+import it.evadid.core.datastructures.state.State
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.SnapCodeEditorImpl
+import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig.SnapCodeEditorConfig
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.TurtleFileSubmission
 import it.evadid.vm.BeProgram
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
 
-case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig, impl: SnapCodeEditorImpl)
-    extends HtmlAppElement with FullscreenLifecycle {
 
-  /**
-   * The interactive session is deliberately scoped to one DOM mount:
-   *
-   *   Unmounted --canvas mounts--> Mounted --canvas unmounts--> Unmounted
-   *
-   * A mount creates exactly one WorldMorph/IDE pair. An unmount destroys that
-   * pair (and first persists its XML). Reopening the dialog mounts the same
-   * Laminar element, but creates a fresh Snap session from `program`. Merely
-   * opening/closing fullscreen only starts/stops cycles; it never constructs a
-   * world. Keeping a detached world or forwarding input from a mirror canvas
-   * would retain document listeners, focus state, pointer capture and popup
-   * coordinates, making it both more complex and less reliable than recreation.
-   */
-  private enum EditorMount:
-    case Unmounted
-    case Mounted(canvas: dom.HTMLCanvasElement)
+case class SnapCodeEditor(program: Var[BeProgram], config: Var[SnapCodeEditorConfig]) extends HtmlAppElement {
 
-  private var editorMount: EditorMount = EditorMount.Unmounted
-  private var fullscreenOpen = false
+  case class ActiveEditorMount(canvas: dom.HTMLCanvasElement, editorImpl: SnapCodeEditorImpl)
 
-  lazy val editorCanvas: L.Element = {
+  private val activeMount: State[Option[ActiveEditorMount]] = State(None)
+
+  private def onMounted(canvas: dom.HTMLCanvasElement): Unit = {
+    /*editorMount match
+      case EditorMount.Unmounted =>
+        impl.setOnProjectXmlChangedListener(xml => program.set(TurtleFileSubmission.parseToBeProgram(xml)))
+        impl.renderEditorInto(program.now(), canvas, config)
+        editorMount = EditorMount.Mounted(canvas)
+        if fullscreenOpen then impl.startWorldCycles()
+      case EditorMount.Mounted(mountedCanvas) =>
+        require(mountedCanvas eq canvas, "SnapCodeEditor cannot be mounted on two canvases at once")*/
+  }
+
+  private def onUnmounted(canvas: dom.HTMLCanvasElement): Unit = {
+    /*editorMount match
+      case EditorMount.Mounted(_) =>
+        impl.destroy()
+        editorMount = EditorMount.Unmounted
+      case EditorMount.Unmounted => ()*/
+  }
+
+  private def createCanvasAndEditor(curConfig: SnapCodeEditorConfig): L.Element = {
     div(
-      cls := "be-program-snap-renderer",
-      position.relative,
-      overflow.hidden,
-      border := "1px solid #d0d7de",
-      borderRadius := "10px",
-      backgroundColor := config.visuals.ColorWorkspace,
-      width := "fit-content",
-      maxWidth := "100%",
+      cls := "snap-code-editor",
       canvasTag(
-        cls := "be-program-snap-renderer__canvas",
         aria.label := "Block program editor",
-        widthAttr := config.visuals.CanvasWidth,
-        heightAttr := config.visuals.CanvasHeight,
-        display.block,
-        // Construct WorldMorph from the canvas' own mount callback. Besides
-        // avoiding an ambiguous descendant query, this guarantees that Snap
-        // installs its listeners only after this exact canvas is connected.
-        onMountCallback { ctx =>
-          val canvas = ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]
-          editorMount match
-            case EditorMount.Unmounted =>
-              impl.setOnProjectXmlChangedListener(xml => program.set(TurtleFileSubmission.parseToBeProgram(xml)))
-              impl.renderEditorInto(program.now(), canvas, config)
-              editorMount = EditorMount.Mounted(canvas)
-              if fullscreenOpen then impl.startWorldCycles()
-            case EditorMount.Mounted(mountedCanvas) =>
-              require(mountedCanvas eq canvas, "SnapCodeEditor cannot be mounted on two canvases at once")
-        }
-      ),
-      onUnmountCallback { _ =>
-        editorMount match
-          case EditorMount.Mounted(_) =>
-            impl.destroy()
-            editorMount = EditorMount.Unmounted
-          case EditorMount.Unmounted => ()
-      }
-    )
+        widthAttr <-- config.signal.map(_.visuals.CanvasWidth),
+        heightAttr <-- config.signal.map(_.visuals.CanvasHeight),
+        onMountCallback { ctx => onMounted(ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]) },
+        onUnmountCallback { ctx => onUnmounted(ctx.ref) }
+      ))
   }
-
-  lazy val previewCanvas: L.Element = {
-    div(
-      cls := "be-program-snap-renderer",
-      position.relative,
-      overflow.hidden,
-      border := "1px solid #d0d7de",
-      borderRadius := "10px",
-      backgroundColor := config.visuals.ColorWorkspace,
-      width := "fit-content",
-      maxWidth := "100%",
-      canvasTag(
-        cls := "be-program-snap-renderer__canvas",
-        aria.label := "Block program preview",
-        widthAttr := config.visuals.CanvasWidth,
-        heightAttr := config.visuals.CanvasHeight,
-        display.block,
-        onMountCallback { ctx =>
-          val canvas = ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]
-          impl.renderPreviewInto(program.now(), canvas, config)
-        }
-      )
-    )
-  }
-
-  override def getDomElement(): L.Element = {
-    editorCanvas
-  }
-
-  /** Drop custom tabs, optionally removing Snap's default library as well. */
-  def removeAllLibraries(includeDefaultLibraries: Boolean = false): Unit =
-    impl.removeAllLibraries(includeDefaultLibraries)
-
-  override def onFullscreenOpen(): Unit =
-    fullscreenOpen = true
-    editorMount match
-      case EditorMount.Mounted(_) => impl.startWorldCycles()
-      case EditorMount.Unmounted => ()
-
-  override def onFullscreenClose(): Unit =
-    fullscreenOpen = false
-    editorMount match
-      case EditorMount.Mounted(_) => impl.pauseWorldCycles()
-      case EditorMount.Unmounted => ()
 
 }
 

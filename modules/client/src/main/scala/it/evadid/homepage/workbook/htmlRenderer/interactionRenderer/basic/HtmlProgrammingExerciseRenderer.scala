@@ -16,13 +16,14 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
   override protected def createRendering(workbookElement: ProgrammingExercise): AtomarLineRendering = {
     val boundVar: Var[BeProgram] = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl, UpdateImportance.MAJOR).toAirstreamVar
     //val editor = EvaCodeEditor(State(workbookElement.interactionVariable.currentValue))
-    val editor: SnapCodeEditor = SnapCodeEditor(boundVar)
 
     def buttonPressed(): Unit = {
       // setFullscreen only publishes the editor here. HtmlWorkbookDomElement
       // then inserts editor.getDomElement() into the already-mounted dialog;
       // SnapCodeEditor creates WorldMorph from the canvas' subsequent mount
       // callback, never during this button event or while it is detached.
+
+      val editor: SnapCodeEditor = SnapCodeEditor(boundVar)
       editor.onFullscreenOpen()
       fullInfo.displayControl.setFullscreen(editor, () => editor.onFullscreenClose())
     }
