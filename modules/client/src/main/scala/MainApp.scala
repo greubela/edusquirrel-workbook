@@ -1,9 +1,10 @@
 
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.control.singletons.{FileStore, HtmlFullWorkbookApp}
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.workbook.content.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
 import it.evadid.homepage.workbook.legacy.plantworkshop.PlantWorkshopApp
+import it.evadid.util.FetchFromRemote
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import org.scalajs.dom
@@ -22,16 +23,16 @@ private def load(containerId: String): Unit = {
     case "plantWorkshopApp" =>
       PlantWorkshopApp.appElement
     case "workbookEmbroidery" =>
-      HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreateEmbroideryWorkbook(HtmlFullWorkbookApp.fullInfo))
+      HtmlFullWorkbookApp.fullInfo.usageControl.changeWorkbook(CreateEmbroideryWorkbook(HtmlFullWorkbookApp.fullInfo))
       HtmlFullWorkbookApp.getDomElement()
     case "workbookTest" =>
-      HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreateTestWorkbook(HtmlFullWorkbookApp.fullInfo))
+      HtmlFullWorkbookApp.fullInfo.usageControl.changeWorkbook(CreateTestWorkbook(HtmlFullWorkbookApp.fullInfo))
       HtmlFullWorkbookApp.getDomElement()
     case "workbookPlantWorkshop" =>
-      HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreatePlantworkshopWorkbook(HtmlFullWorkbookApp.fullInfo))
+      HtmlFullWorkbookApp.fullInfo.usageControl.changeWorkbook(CreatePlantworkshopWorkbook(HtmlFullWorkbookApp.fullInfo))
       HtmlFullWorkbookApp.getDomElement()
     case "workbookCompression" =>
-      HtmlFullWorkbookApp.fullInfo.control.changeWorkbook(CreateCompressionWorkbook(HtmlFullWorkbookApp.fullInfo))
+      HtmlFullWorkbookApp.fullInfo.usageControl.changeWorkbook(CreateCompressionWorkbook(HtmlFullWorkbookApp.fullInfo))
       HtmlFullWorkbookApp.getDomElement()
     case "feedbackDemoRoot" =>
       FeedbackDemoElement.element()
@@ -51,8 +52,9 @@ private def initWorkbookOnlyAfterDependenciesLoaded: Boolean = {
 }
 
 private def testCalculations(): Unit = {
-  FileStore(Logger.withNameAndPrefixes(Some("MainAppLogger"), PrintToStdLogger.printEverything)).fetchUrl("https://ypcgzj23.trafficplex.cloud/health").onComplete {
-    case Success(res) => println("Backend Health check: " + new String(res))
+
+  HtmlFullWorkbookApp.fullInfo.contentControl.fileFactory.onBackendServer("/health").loadData().onComplete {
+    case Success(res) => println("Backend Health check: " + new String(res.fileDataAsUtf8String))
     case Failure(err) => println("Backend Health error: " + err.getMessage)
   }(using ExecutionContext.global)
 
@@ -68,7 +70,7 @@ def mainApp(): Unit = {
     if (canLoad.isEmpty) println("Found no container to load a workbook into. Tried: " + tryToLoad.mkString(", "))
     if (canLoad.size > 1) println("Found more than one workbook to load: " + canLoad.mkString(", "))
     if (canLoad.nonEmpty) {
-      val loadBasicsFut: Future[?] = HtmlFullWorkbookApp.fullInfo.signals.contentStorage.ensureDefaultLoaded()
+      val loadBasicsFut: Future[?] = HtmlFullWorkbookApp.fullInfo.contentControl.ensureDefaultLanguageSourcesLoaded()
       loadBasicsFut.onComplete {
         case Success(_) => println("finished loading!")
         case Failure(err) => err.printStackTrace()

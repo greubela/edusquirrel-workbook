@@ -23,7 +23,7 @@ case class ParsedTriples(regularTriples: Set[LanguageMapEntry[HumanLanguage]], u
       val universalValue: Option[String] = universal.get(curKey).flatMap(_.headOption).map(_.value)
       val languageMap: LanguageMap[HumanLanguage] =
         if (regularMap.isEmpty && universalValue.isEmpty) LanguageMap.emptyMap() // this should be impossible because of key iteration -> no warning
-        else if (regularMap.isEmpty) LanguageMap.universalMap(universalValue.getOrElse("[WorkbookContentStorage::createLanguageMaps... this should never be visible]"))
+        else if (regularMap.isEmpty) LanguageMap.universalMap(universalValue.getOrElse("[WorkbookContentControl::createLanguageMaps... this should never be visible]"))
         else if (universalValue.isEmpty) LanguageMap.mapBasedLanguageMap(regularMap)
         else LanguageMap.mapBasedLanguageMap(regularMap).withFallback(LanguageMap.universalMap(universalValue.get))
       LanguageMapWithId(curKey, languageMap)

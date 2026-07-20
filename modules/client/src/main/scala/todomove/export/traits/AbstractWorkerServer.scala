@@ -2,7 +2,8 @@ package todomove.`export`.traits
 
 import WorkerTraits.*
 import it.evadid.homepage.util.web
-import it.evadid.homepage.util.web.JsHelpers
+import it.evadid.util
+import it.evadid.util.JsHelpers
 import org.scalajs.dom
 import org.scalajs.dom.OffscreenCanvas
 
@@ -58,7 +59,7 @@ abstract class AbstractWorkerServer(
   private def receivedInit(msg: js.Dynamic): Unit = {
 
     val paramsRaw = msg.params.asInstanceOf[js.UndefOr[js.Any]].map(_.asInstanceOf[js.Any]).getOrElse(js.Dictionary.empty[String])
-    val params = web.JsHelpers.readStringMap(paramsRaw)
+    val params = util.JsHelpers.readStringMap(paramsRaw)
     val canvas: Option[OffscreenCanvas] = JsHelpers.parseOrEmpty[OffscreenCanvas](msg.canvas)
 
     triggerInit(params, canvas).onComplete {
@@ -84,7 +85,7 @@ abstract class AbstractWorkerServer(
     val requestId = msg.id.asInstanceOf[String]
     val commandName = msg.name.asInstanceOf[String]
     val paramsRaw = msg.params.asInstanceOf[js.UndefOr[js.Any]].map(_.asInstanceOf[js.Any]).getOrElse(js.Dictionary.empty[String])
-    val params = web.JsHelpers.readStringMap(paramsRaw)
+    val params = util.JsHelpers.readStringMap(paramsRaw)
 
     val canvas: Option[OffscreenCanvas] = JsHelpers.parseOrEmpty[OffscreenCanvas](msg.canvas)
     val timestampReceived = java.time.LocalDateTime.now()

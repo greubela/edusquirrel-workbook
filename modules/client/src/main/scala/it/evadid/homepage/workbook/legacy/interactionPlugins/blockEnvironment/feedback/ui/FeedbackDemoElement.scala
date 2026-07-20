@@ -3,7 +3,7 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.f
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.control.singletons.BackendServerConfig
+import it.evadid.homepage.control.singletons.*
 import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.BlockFeedbackTestResultFormatter
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ai.CommandLlmClient
@@ -26,7 +26,7 @@ import scala.util.{Failure, Success}
 
 object FeedbackDemoElement:
 
-  private lazy val demoLlmClient = CommandLlmClient(BackendServerConfig.executor)
+  private lazy val demoLlmClient = CommandLlmClient(HtmlFullWorkbookApp.fullInfo.defaults.defaultBackend.executor)
 
   private val defaultLanguage: HumanLanguage = AppLanguage.English
 

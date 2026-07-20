@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ScalaSbtSettings">
-    <option name="customVMPath" value="$USER_HOME$/.jdks/openjdk-23.0.1" />
     <option name="linkedExternalProjectsSettings">
       <SbtProjectSettings>
         <option name="converterVersion" value="2" />
-        <option name="enableDebugSbtShell" value="true" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="modules">
           <set>
@@ -20,10 +18,7 @@
           </set>
         </option>
         <option name="sbtVersion" value="1.9.9" />
-        <option name="useSbtShellForBuild" value="true" />
-        <option name="useSbtShellForImport" value="true" />
       </SbtProjectSettings>
     </option>
-    <option name="maximumHeapSize" value="5500" />
   </component>
 </project>

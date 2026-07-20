@@ -35,3 +35,4 @@ trait RemoteExecutionClient extends ExecutionClient {
     }(using ExecutionContext.global)
   }
 }
+

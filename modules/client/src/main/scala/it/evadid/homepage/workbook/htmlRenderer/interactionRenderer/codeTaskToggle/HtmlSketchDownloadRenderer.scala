@@ -2,7 +2,6 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskTog
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
-import it.evadid.homepage.control.singletons.FileStore
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.SketchDownloadInteraction
@@ -31,7 +30,7 @@ object HtmlSketchDownloadRenderer extends LineBasedRenderingFactory[SketchDownlo
         cls := "btn-primary",
         disabled <-- enabledSignal.map(enabled => !enabled),
         text <-- laminarHelper.plaintextStringSignal(download.buttonLabel),
-        onClick --> { _ => fullInfo.fileStore.downloadFile(download.filename, download.sketchContent) }
+        onClick --> { _ => fullInfo.contentControl.downloadToDisc.downloadFile(download.filename, download.sketchContent) }
       )
     )
 

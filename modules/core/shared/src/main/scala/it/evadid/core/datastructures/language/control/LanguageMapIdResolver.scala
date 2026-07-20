@@ -1,6 +1,7 @@
-package it.evadid.core.datastructures.language
+package it.evadid.core.datastructures.language.control
 
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage}
+import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.state.observable.ObservableValue
 
 import scala.concurrent.{ExecutionContext, Future}

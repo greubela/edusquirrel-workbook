@@ -4,7 +4,6 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
-import it.evadid.homepage.control.singletons.FileStore
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle.HtmlSketchDownloadRenderer.fullInfo
@@ -79,7 +78,7 @@ case class HtmlEditorConfigPanel(editorState: EditorState) extends HtmlAppElemen
     rootNode.unmount()
 
     if (svgContent.nonEmpty) {
-      fullInfo.fileStore.downloadSvg(
+      fullInfo.contentControl.downloadToDisc.downloadSvg(
         desiredFilename = s"be-program-${System.currentTimeMillis()}.svg",
         svgContent = svgContent
       )

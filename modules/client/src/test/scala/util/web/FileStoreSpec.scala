@@ -1,6 +1,5 @@
 package util.web
 
-import it.evadid.homepage.control.singletons.FileStore
 import munit.FunSuite
 import org.scalajs.dom
 
@@ -13,14 +12,14 @@ class FileStoreSpec extends FunSuite {
 
   test("downloadFile(content) smoke test") {
     if (hasDomRuntime) {
-      FileStore.downloadFile("smoke.txt", "hello")
+      HomepageFileStore.downloadFile("smoke.txt", "hello")
     }
     assert(true)
   }
 
   test("downloadFromUrl smoke test") {
     if (hasDomRuntime) {
-      FileStore.downloadFromUrl("source.txt", new dom.URL("https://example.com/source.txt"))
+      HomepageFileStore.downloadFromUrl("source.txt", new dom.URL("https://example.com/source.txt"))
     }
     assert(true)
   }

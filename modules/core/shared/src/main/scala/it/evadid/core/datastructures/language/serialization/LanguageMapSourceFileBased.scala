@@ -19,7 +19,10 @@ trait LanguageMapSourceFileBased[T <: AppLanguage](
                                                     fileDescription: FileDescription,
                                                     val associatedLanguageMapName: String,
                                                     val associatedLanguage: T,
+                                                    val ec: ExecutionContext
                                                   ) extends LanguageMapInputSource {
+
+  given ExecutionContext = ec
 
   def loadAllTriples(logger: Logger): Future[ParsedTriples] = {
     loadKeyValuePairs(logger).map(contentAsMap =>
@@ -32,23 +35,23 @@ trait LanguageMapSourceFileBased[T <: AppLanguage](
           case o: SpecialLanguage => ParsedTriples(Set(), entries.map(_.asInstanceOf[LanguageMapEntry[SpecialLanguage]]))
           case _ => throw new IllegalStateException(s"LanguageMapSourceFileBased:: associated language is neither Human or Special: ${associatedLanguage}")
         }
-      )(using ExecutionContext.global)
+      )
       .recover {
         case (e: Exception) => logger.logExceptionWarn(s"ignoring input source ${associatedLanguageMapName}/${associatedLanguage} (error while reading)", e)
           ParsedTriples(Set(), Set())
 
-      }(using ExecutionContext.global)
+      }
   }
 
   def loadKeyValuePairs(logger: Logger): Future[Map[String, String]] = {
     fileDescription.loadData()
       .map(loadedFile => {
         tryParseKeyValuePairs(logger, loadedFile)
-      })(ExecutionContext.global)
+      })
       .recover { case (e: Exception) =>
         logger.logExceptionInfo(s"Ignore content of '${fileDescription.filenameWithoutExtension}' as could not fetch file", "A LanguageMapFileBasedSource does not need to exist ", e)
         Map[String, String]()
-      }(ExecutionContext.global)
+      }
   }
 
   private def tryParseKeyValuePairs(logger: Logger, loadedFile: LoadedFile): Map[String, String] = try {
@@ -69,7 +72,8 @@ object LanguageMapSourceFileBased {
   def apply[T <: AppLanguage](info: LanguageMapFileBasedSourceInfo[T], parser: (Logger, LoadedFile) => Map[String, String]): LanguageMapSourceFileBased[T] = new LanguageMapSourceFileBased[T](
     info.fileDescription,
     info.associatedLanguageMapName,
-    info.associatedLanguage
+    info.associatedLanguage,
+    info.ec
   ) {
     override def parseKeyValuePairs(logger: Logger, loadedFile: LoadedFile): Map[String, String] = parser(logger, loadedFile)
   }

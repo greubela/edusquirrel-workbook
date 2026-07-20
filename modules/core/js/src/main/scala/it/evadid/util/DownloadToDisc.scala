@@ -1,21 +1,24 @@
-package it.evadid
+package it.evadid.util
 
+import it.evadid.core.datastructures.file.{FileDescription, LoadedFile}
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import org.scalajs.dom
-import org.scalajs.dom.{Blob, URL}
+import org.scalajs.dom.{Blob, File, URL}
 
+import scala.concurrent.Future
 import scala.scalajs.js
 import scala.scalajs.js.typedarray.Uint8Array
-
 
 object DownloadToDisc {
   val instance = DownloadToDisc(Logger.withNameAndPrefixes(Some("DownloadToDiskSingletonLogger"), PrintToStdLogger.printWarnAndError))
 }
 
-
 case class DownloadToDisc(logger: Logger) {
+    
 
+  
+  
   private def triggerDownload(url: String, filename: String): Unit = {
     val anchor = dom.document.createElement("a").asInstanceOf[dom.html.Anchor]
     anchor.href = url

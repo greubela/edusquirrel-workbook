@@ -49,7 +49,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
       updateInfoWithoutContextChange(curInfo => curInfo.copy(workbookInfo = newInfo))
       //cacheControl.fetchAndStore(interactions.map(_.interactionVariable))
     } else {
-      fullInfo.loggerSystemInfo.workbookControlLogger.logWarn("[WARN] ignore updated workbook config because there is no workbook loaded!")
+      fullInfo.loggerSystemInfo.contentControlLogger.logWarn("[WARN] ignore updated workbook config because there is no workbook loaded!")
     }
 
   }

@@ -1,5 +1,5 @@
 package it.evadid.core.datastructures.language
-
+/*
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 
@@ -11,3 +11,4 @@ object TranslationMaps {
   ))
 
 }
+*/

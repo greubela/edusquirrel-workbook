@@ -7,7 +7,7 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
 import it.evadid.workbook.abstractions.WorkbookElement
 
-case class HtmlWorkbookElement[W <: WorkbookElement, A <: HtmlAppElement](fullInfo: FullInfo, workbookElement: W, rendering: A) extends HtmlAppElement {
+case class HtmlWorkbookElement[W <: WorkbookElement, A <: HtmlAppElement](workbookElement: W, rendering: A) extends HtmlAppElement {
   override def getDomElement(): Element = rendering.getDomElement()
 }
 

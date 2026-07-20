@@ -5,7 +5,7 @@ import WorkerTraits.WorkerState.WORKER_READY
 import com.raquo.airstream.state.StrictSignal
 import com.raquo.laminar.api.L.Var
 import it.evadid.homepage.util.IdHelper
-import it.evadid.homepage.util.web.JsHelpers
+import it.evadid.util.JsHelpers
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
 

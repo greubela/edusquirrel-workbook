@@ -12,7 +12,7 @@ private case class SectionSelectionLine(workbook: Workbook) extends HtmlAppEleme
   private def sections: List[WorkbookSection] = workbook.sections
 
   private def selectSection(section: WorkbookSection): Unit = {
-    fullInfo.control.updateWorkbookConfig(_.copy(activeSection = Some(section)))
+    fullInfo.usageControl.updateWorkbookConfig(_.copy(activeSection = Some(section)))
   }
 
   private def isSectionActiveSignal(section: WorkbookSection): Signal[Boolean] = {

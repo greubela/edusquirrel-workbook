@@ -5,9 +5,9 @@ import it.evadid.util.logging.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
 
-case class LanguageMapCollectionSource(inputSources: Set[LanguageMapInputSource]) extends LanguageMapInputSource {
+case class LanguageMapCollectionSource(inputSources: Set[LanguageMapInputSource], ec: ExecutionContext) extends LanguageMapInputSource {
 
-  given ExecutionContext = ExecutionContext.global
+  given ExecutionContext = ec
 
   def loadTriples(logger: Logger, source: LanguageMapInputSource): Future[ParsedTriples] = {
     source.loadAllTriples(logger).recover {

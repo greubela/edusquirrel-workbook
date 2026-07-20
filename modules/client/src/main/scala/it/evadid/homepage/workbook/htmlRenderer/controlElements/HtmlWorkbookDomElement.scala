@@ -7,7 +7,7 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.HtmlWorkbookRenderer
 import org.scalajs.dom
 
-case class HtmlWorkbookDomElement(fullInfo: FullInfo) extends HtmlAppElement {
+case class HtmlWorkbookDomElement() extends HtmlAppElement {
 
   private lazy val workbookDomSignal: Signal[Element] = fullInfo.signals.workbook.mapLazy {
     case Some(workbookInfo) => HtmlWorkbookRenderer.renderAppElement(workbookInfo.loadedWorkbook).getDomElement()

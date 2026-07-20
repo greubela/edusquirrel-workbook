@@ -5,10 +5,8 @@ import it.evadid.homepage.control.model.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.HtmlWorkbookDomElement
 
-object HtmlFullWorkbookApp extends HtmlAppElement {
-
-
-
+object HtmlFullWorkbookApp {
+  
   private lazy val defaults: HomepageDefaults = HomepageDefaults()
 
   private lazy val initHomepageInfo = HomepageInfo(
@@ -22,15 +20,15 @@ object HtmlFullWorkbookApp extends HtmlAppElement {
   lazy val fullInfo: FullInfo = {
     val res = FullInfo(defaults, initHomepageInfo)
     if (res.current.userInfo.isEmpty) {
-      res.control.changeUser(Some(defaults.defaultUser))
+      res.usageControl.changeUser(Some(defaults.defaultUser))
     }
     res
   }
 
 
-  private val domElement: Element = HtmlWorkbookDomElement(fullInfo).getDomElement()
+  private lazy val domElement: Element = HtmlWorkbookDomElement().getDomElement()
 
-  override def getDomElement(): Element = domElement
+  def getDomElement(): Element = domElement
 }
 
 

@@ -27,7 +27,7 @@ object HtmlWorkbookRenderer extends HtmlRenderFactory[Workbook] {
         )
       )
     )
-    HtmlWorkbookElement[Workbook, HtmlAppElement](fullInfo, workbook, HtmlAppElement(dom))
+    HtmlWorkbookElement[Workbook, HtmlAppElement](workbook, HtmlAppElement(dom))
   }
 
   /*
@@ -51,8 +51,8 @@ object HtmlWorkbookRenderer extends HtmlRenderFactory[Workbook] {
     val prevSection: Option[WorkbookSection] = if (sectionIndex > 0) Some(workbook.sections(sectionIndex - 1)) else None
     val nextSection: Option[WorkbookSection] = if (sectionIndex < workbook.sections.size - 1) Some(workbook.sections(sectionIndex + 1)) else None
 
-    val buttonPrev: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/previousSection", _ => fullInfo.control.updateWorkbookConfig(_.copy(activeSection = prevSection)), ButtonConfig(prevSection.nonEmpty, List()))
-    val buttonNext: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/nextSection", _ => fullInfo.control.updateWorkbookConfig(_.copy(activeSection = nextSection)), ButtonConfig(nextSection.nonEmpty, List()))
+    val buttonPrev: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/previousSection", _ => fullInfo.usageControl.updateWorkbookConfig(_.copy(activeSection = prevSection)), ButtonConfig(prevSection.nonEmpty, List()))
+    val buttonNext: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/nextSection", _ => fullInfo.usageControl.updateWorkbookConfig(_.copy(activeSection = nextSection)), ButtonConfig(nextSection.nonEmpty, List()))
 
     List(
       div(

@@ -1,7 +1,6 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin
 
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.core.datastructures.language.TranslationMaps
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.async.AsyncData
 import it.evadid.core.datastructures.state.observable.ObservableValue

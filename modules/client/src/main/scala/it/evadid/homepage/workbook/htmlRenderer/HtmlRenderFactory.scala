@@ -55,7 +55,7 @@ object HtmlRenderFactory {
       renderWorkbookElement(workbookElement).asInstanceOf[HtmlWorkbookElement[T, HtmlAppElement]]
 
     def renderWorkbookElement(workbookElement: T): HtmlWorkbookElement[WorkbookElement, AtomarLineRendering] = {
-      HtmlWorkbookElement[WorkbookElement, AtomarLineRendering](fullInfo, workbookElement, createRendering(workbookElement))
+      HtmlWorkbookElement[WorkbookElement, AtomarLineRendering](workbookElement, createRendering(workbookElement))
     }
 
     protected def createRendering(workbookElement: T): AtomarLineRendering
@@ -64,7 +64,7 @@ object HtmlRenderFactory {
   private def createPlaceholderElement[T <: WorkbookElement](workbookElement: T): HtmlWorkbookElement[T, AtomarLineRendering] = {
     val dom: ReactiveHtmlElement[HTMLDivElement] = div("HtmlRenderFactory::renderWorkbookElement cannot yet render objects of type '" + workbookElement.getClass.getName + "'!")
     val rl: AtomarLineRendering = AtomarLineRendering.basicLine(workbookElement, dom)
-    HtmlWorkbookElement[T, AtomarLineRendering](HtmlFullWorkbookApp.fullInfo, workbookElement, rl)
+    HtmlWorkbookElement[T, AtomarLineRendering](workbookElement, rl)
 
   }
 

@@ -4,9 +4,10 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.{TurtleC
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.*
 import it.evadid.core.datastructures.geometry.{Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.{SvgPathBuilderCommand, TurtlePathBuilder}
-import it.evadid.homepage.util.web.{JsHelpers, WorkerProtocolHelpers, WorkerRequestTracker}
-import it.evadid.homepage.util.web.JsHelpers.*
+import it.evadid.homepage.util.web.{WorkerProtocolHelpers, WorkerRequestTracker}
+import it.evadid.util.JsHelpers.*
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
+import it.evadid.util.JsHelpers
 import org.scalajs.dom
 import todomove.`export`.modules.TurtleSingleton
 

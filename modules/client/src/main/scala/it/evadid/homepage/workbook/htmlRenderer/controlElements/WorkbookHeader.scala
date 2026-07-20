@@ -38,7 +38,7 @@ case class WorkbookHeader(workbook: Workbook) extends HtmlAppElement {
 
   private def createDomToggleButton(): Element = div(
     cls := "workbook-header-toggle",
-    onClick --> { _ => fullInfo.control.changeDisplay(displayInfo => displayInfo.copy(collapsedNavigation = !displayInfo.collapsedNavigation)) },
+    onClick --> { _ => fullInfo.usageControl.changeDisplay(displayInfo => displayInfo.copy(collapsedNavigation = !displayInfo.collapsedNavigation)) },
     span(
       child <-- collapsedSignal.map { c =>
         if (c) span(text <-- laminarHelper.plaintextStringSignal("basic/showHeader"))

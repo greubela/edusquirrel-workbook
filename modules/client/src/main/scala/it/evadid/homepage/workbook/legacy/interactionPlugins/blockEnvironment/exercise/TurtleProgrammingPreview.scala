@@ -10,7 +10,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.pr
 import it.evadid.vm.BeProgram
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 
-case class TurtleProgrammingPreview(fullInfo: FullInfo, editorState: EditorState, expectedSvgResult: AppSvgElement) extends HtmlAppElement {
+case class TurtleProgrammingPreview( editorState: EditorState, expectedSvgResult: AppSvgElement) extends HtmlAppElement {
 
   private val renderedSvg: SvgElement = {
     val expectedElement = expectedSvgResult

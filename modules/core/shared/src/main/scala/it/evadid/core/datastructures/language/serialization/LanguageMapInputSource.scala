@@ -1,14 +1,14 @@
 package it.evadid.core.datastructures.language.serialization
 
+import fs2.data.csv.lowlevel
+import fs2.{Fallible, Stream}
 import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.serialization.abstractions.ParsedTriples
 import it.evadid.util.logging.Logger
-import fs2.{Fallible, Stream}
-import fs2.data.csv.lowlevel
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 trait LanguageMapInputSource {
 
@@ -22,18 +22,19 @@ object LanguageMapInputSource {
   (
     fileDescription: FileDescription,
     associatedLanguageMapName: String,
-    associatedLanguage: T
+    associatedLanguage: T,
+    ec: ExecutionContext
   )
 
-  def forEvaLanguageMapFiles(directoryNames: Set[EvaDirectorySource]): LanguageMapCollectionSource = {
+  def forEvaLanguageMapFiles(directoryNames: Set[EvaDirectorySource])(implicit ec: ExecutionContext): LanguageMapCollectionSource = {
     lazy val evaLanguageFileInfo: Set[(EvaDirectorySource, (String, HumanLanguage))] = for {
       a <- directoryNames
       b <- languageByEvaFileSuffix.toList
     } yield (a, b)
-    val evaLanguageFiles: Set[LanguageMapSourceFileBased[HumanLanguage]] = evaLanguageFileInfo.flatMap(tup => buildEvaReader[HumanLanguage](tup._1, tup._2._2, tup._2._1))
-    lazy val evaUniversalFiles: Set[LanguageMapSourceFileBased[SpecialLanguage]] = directoryNames.flatMap(curFile => buildEvaReader[SpecialLanguage](curFile, UniversalLanguage, "universal"))
+    val evaLanguageFiles: Set[LanguageMapSourceFileBased[HumanLanguage]] = evaLanguageFileInfo.flatMap(tup => buildEvaReader[HumanLanguage](tup._1, tup._2._2, tup._2._1, ec))
+    lazy val evaUniversalFiles: Set[LanguageMapSourceFileBased[SpecialLanguage]] = directoryNames.flatMap(curFile => buildEvaReader[SpecialLanguage](curFile, UniversalLanguage, "universal", ec))
     val res: Set[LanguageMapInputSource] = (evaLanguageFiles ++ evaUniversalFiles).toSet
-    LanguageMapCollectionSource(res)
+    LanguageMapCollectionSource(res, ec)
   }
 
 
@@ -50,8 +51,8 @@ object LanguageMapInputSource {
     "es" -> Spanish
   )
 
-  private def buildEvaReader[T <: AppLanguage](source: EvaDirectorySource, language: T, languageSuffix: String): Option[LanguageMapSourceFileBased[T]] = {
-    val infoOp = source.dirFileDescription.getChildrenFile(s"map-${languageSuffix}.json").map(LanguageMapFileBasedSourceInfo[T](_, source.languageMapName, language))
+  private def buildEvaReader[T <: AppLanguage](source: EvaDirectorySource, language: T, languageSuffix: String, ec: ExecutionContext): Option[LanguageMapSourceFileBased[T]] = {
+    val infoOp = source.dirFileDescription.getChildrenFile(s"map-${languageSuffix}.json").map(LanguageMapFileBasedSourceInfo[T](_, source.languageMapName, language, ec))
     infoOp.flatMap(info => LanguageMapSourceFileBased.forEvaFile[T](info))
   }
 
