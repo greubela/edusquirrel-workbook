@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ScalaCompilerConfiguration">
     <option name="separateProdTestSources" value="true" />
-    <profile name="sbt 1" modules="edusquirrel-workbook,edusquirrel-workbook.client,edusquirrel-workbook.core.coreJS,edusquirrel-workbook.core.coreJVM,edusquirrel-workbook.core.coreJVM.main,edusquirrel-workbook.core.coreJVM.main~1,edusquirrel-workbook.core.coreJVM.test,edusquirrel-workbook.core.coreJVM.test~1,edusquirrel-workbook.main,edusquirrel-workbook.main~1,edusquirrel-workbook.server,edusquirrel-workbook.server.main,edusquirrel-workbook.server.main~1,edusquirrel-workbook.server.test,edusquirrel-workbook.server.test~1,edusquirrel-workbook.test,edusquirrel-workbook.test~1,edusquirrel-workbook.worker,edusquirrel-workbook_5455,edusquirrel-workbook_5455.main,edusquirrel-workbook_5455.test,main,main.main,main.test" />
-    <profile name="sbt 2" modules="edusquirrel-workbook.client.main,edusquirrel-workbook.client.main~1,edusquirrel-workbook.client.test,edusquirrel-workbook.client.test~1,edusquirrel-workbook.core.coreJS.main,edusquirrel-workbook.core.coreJS.main~1,edusquirrel-workbook.core.coreJS.test,edusquirrel-workbook.core.coreJS.test~1,edusquirrel-workbook.worker.main,edusquirrel-workbook.worker.main~1,edusquirrel-workbook.worker.test,edusquirrel-workbook.worker.test~1">
+    <profile name="sbt 1" modules="edusquirrel-workbook,edusquirrel-workbook.client,edusquirrel-workbook.core.coreJS,edusquirrel-workbook.core.coreJVM,edusquirrel-workbook.core.coreJVM.main,edusquirrel-workbook.core.coreJVM.test,edusquirrel-workbook.main,edusquirrel-workbook.server,edusquirrel-workbook.server.main,edusquirrel-workbook.server.test,edusquirrel-workbook.test,edusquirrel-workbook.worker,edusquirrel-workbook_1093,edusquirrel-workbook_1093.main,edusquirrel-workbook_1093.test" />
+    <profile name="sbt 2" modules="edusquirrel-workbook.client.main,edusquirrel-workbook.client.test,edusquirrel-workbook.core.coreJS.main,edusquirrel-workbook.core.coreJS.test,edusquirrel-workbook.worker.main,edusquirrel-workbook.worker.test">
       <parameters>
         <parameter value="-scalajs" />
       </parameters>

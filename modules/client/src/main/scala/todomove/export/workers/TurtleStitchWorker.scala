@@ -2,7 +2,7 @@ package todomove.`export`.workers
 
 import org.scalajs.dom
 import it.evadid.homepage.util.web.{WorkerProtocolHelpers, WorkerRequestTracker}
-import it.evadid.homepage.util.web.JsHelpers.*
+import it.evadid.util.JsHelpers.*
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js

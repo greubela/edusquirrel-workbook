@@ -41,7 +41,7 @@ object HtmlExerciseContainerRenderer extends HtmlRenderFactory[ExerciseContainer
   override def renderAppElement(workbookElement: ExerciseContainer): HtmlWorkbookElement[ExerciseContainer, HtmlAppElement] = {
 
     val appElement = HtmlAppElement(createDomElement(workbookElement))
-    HtmlWorkbookElement[ExerciseContainer, HtmlAppElement](fullInfo, workbookElement, appElement)
+    HtmlWorkbookElement[ExerciseContainer, HtmlAppElement](workbookElement, appElement)
 
   }
 }

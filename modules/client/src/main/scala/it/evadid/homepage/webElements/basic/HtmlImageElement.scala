@@ -7,11 +7,12 @@ import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState, AsyncState, AsyncValue}
+import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.webElements.*
 import it.evadid.workbook.elements.displayElements.ImageElement
 import todomove.datastructures.web.file.FullImage.*
-import todomove.datastructures.web.file.{FileFactory, FullImage}
+import todomove.datastructures.web.file.FullImage
 
 import scala.concurrent.ExecutionContext
 
@@ -28,7 +29,7 @@ case class HtmlImageElement(imageSignal: AsyncData[Nothing, FullImage], underlyi
   }
 
   private def renderImageFailed(cause: Throwable): Element = {
-    //val map = WorkbookContentStorage.languageMapImageError(underlyingImage, cause)
+    //val map = WorkbookContentControl.languageMapImageError(underlyingImage, cause)
     //div("Image loading failed: " + cause.getMessage)
     div(text <-- stringSignal(LanguageMapContentId("basic/missingContent")))
   }
@@ -46,18 +47,17 @@ case class HtmlImageElement(imageSignal: AsyncData[Nothing, FullImage], underlyi
 
 object HtmlImageElement {
 
-  private val fileStore = HtmlFullWorkbookApp.fullInfo.technical.fileStore
   private val signals = HtmlFullWorkbookApp.fullInfo.signals
 
-  private def getImageSignal(image: ImageElement): AsyncData[Nothing, FullImage] = {
+  private def getImageSignal(fullInfo: FullInfo, image: ImageElement): AsyncData[Nothing, FullImage] = {
     val fileSignal: AsyncData[Nothing, LoadedFile] = image.match {
       case ImageElement.FileBasedImageElement(fileDescription) =>
-        val obs = fileStore.loadIntoVariable(fileDescription)(using ExecutionContext.global).observeAllStates
+        val obs = AsyncData.forFuture(fileDescription.loadData()).observeAllStates
         AsyncState(obs)
       case i@ImageElement.LanguageMapBasedImageElement(languageMapContentId, copyrightInfo, howToResolveUrl) =>
         val srcSignal: Signal[String] = signals.stringFromLanguageMapId(languageMapContentId)
-        val srcFile: Signal[FileDescription] = srcSignal.map(FileFactory.resolve(howToResolveUrl, _))
-        val res = srcFile.mapAsync(fileDesc => fileStore.loadAsFuture(fileDesc)(using ExecutionContext.global))(using ExecutionContext.global)
+        val srcFile: Signal[FileDescription] = srcSignal.map(fullInfo.contentControl.fileFactory.resolveFromTypeAndLanguageMapContent(howToResolveUrl, _))
+        val res = srcFile.mapAsync(_.loadData())(using ExecutionContext.global)
         res
     }
     fileSignal.map(loadedFile => LoadedFileImage(loadedFile))
@@ -76,7 +76,7 @@ object HtmlImageElement {
   }
 
   def apply(imageElement: ImageElement): HtmlImageElement = {
-    HtmlImageElement(getImageSignal(imageElement), Some(imageElement))
+    HtmlImageElement(getImageSignal(HtmlFullWorkbookApp.fullInfo, imageElement), Some(imageElement))
   }
 
 }

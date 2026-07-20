@@ -9,7 +9,6 @@ import it.evadid.workbook.elements.interactionElements.basic.LabeledCheckboxInte
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.AdvancedCodeRequirement
 import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
-import todomove.datastructures.web.file.FileFactory
 
 case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 
@@ -50,7 +49,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
 
   private def wiringSlideImage(slideIndex: Int): FileBasedImageElement =
     FileBasedImageElement(
-      FileFactory.relativeToResourceFolder(s"img/plantworkshop/schaltkreis/Plant conv $slideIndex.png")
+      fullInfo.contentControl.fileFactory.relativeToResourceFolder(s"img/plantworkshop/schaltkreis/Plant conv $slideIndex.png")
     )
 
   private def buildWiringPanel(i: Int): SlideshowPanel = {

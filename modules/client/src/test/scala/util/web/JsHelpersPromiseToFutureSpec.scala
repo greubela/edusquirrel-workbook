@@ -1,7 +1,6 @@
 package util.web
 
-import it.evadid.homepage.util.web.JsHelpers
-
+import it.evadid.util.JsHelpers
 import munit.FunSuite
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js

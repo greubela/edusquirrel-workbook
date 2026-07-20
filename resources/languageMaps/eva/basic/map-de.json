@@ -38,5 +38,6 @@
   "sortingReasonConfirm": "Begründung bestätigen",
   "noUserLoggedIn": "[Niemand]",
   "showHeader": "Navigation einblenden",
-  "hideHeader": "Navigation ausblenden"
+  "hideHeader": "Navigation ausblenden",
+  "openeditor": "Snap Editor öffnen :)"
 }

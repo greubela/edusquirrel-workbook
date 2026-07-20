@@ -4,15 +4,15 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.elements.structureElements.Workbook
-import todomove.datastructures.web.file.FileFactory
 
 private case class LanguageSelectionLine(workbook: Workbook) extends HtmlAppElement {
 
   private def createDomForLanguageSelectionFlag(currentLanguage: HumanLanguage): Element = div(
-    onClick --> { _ => fullInfo.control.changeLanguage(currentLanguage) },
+    onClick --> { _ => fullInfo.usageControl.changeLanguage(currentLanguage) },
     LanguageSelectionLine.flagImgMap(30)(currentLanguage)
   )
 
@@ -40,7 +40,7 @@ object LanguageSelectionLine {
 
   private def esFlag(width: Double): Element = {
     img(
-      src := FileFactory.relativeToResourceFolder("/img/flags/esFlag.svg").fullPath,
+      src := HtmlFullWorkbookApp.fullInfo.contentControl.fileFactory.relativeToResourceFolder("/img/flags/esFlag.svg").asUrlString,
       styleAttr := s"width:${width}px; height:${width / 3 * 2}px;",
     )
   }

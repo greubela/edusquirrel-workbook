@@ -1,7 +1,7 @@
-package it.evadid.homepage.webElements.editor.code.SnapRenderer
+package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.homepage.control.info.HomepageLoggerInfo
-import it.evadid.homepage.webElements.editor.code.SnapRenderer.SnapCodeEditor.SnapCodeEditorImpl
+import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.SnapCodeEditorImpl
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
@@ -13,7 +13,7 @@ import scala.collection.mutable
 
 
 /** Observes renderer output without modifying it. */
-private[SnapRenderer] object CanvasVisibility:
+private[SnapEditor] object CanvasVisibility:
 
   private val EmptyCanvasColorLimit = 3
 

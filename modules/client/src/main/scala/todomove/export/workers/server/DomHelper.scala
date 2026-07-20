@@ -1,6 +1,6 @@
 package todomove.`export`.workers.server
 
-import it.evadid.homepage.util.web.JsHelpers
+import it.evadid.util.JsHelpers
 import org.scalajs.dom
 
 import scala.concurrent.Future

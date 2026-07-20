@@ -19,7 +19,6 @@ import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderIn
 import it.evadid.workbook.elements.interactionElements.sortingExercise.{SortingInteraction, SortingItem}
 import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
 import it.evadid.workbook.elements.structureElements.*
-import todomove.datastructures.web.file.FileFactory
 
 trait WorkbookFactory {
 
@@ -108,7 +107,7 @@ trait WorkbookFactory {
     CollapsibleInstructionElement(LanguageMapContentId(titleMapId), LanguageMapContentId(bodyMapId), initiallyCollapsed)
 
   def image(imageName: String, imgType: String = "png"): ImageElement = {
-    val fileDesc: FileDescription = FileFactory.relativeToResourceFolder("workbookresources/embroidery/images/" + imageName + "." + imgType)
+    val fileDesc: FileDescription = fullInfo.contentControl.fileFactory.relativeToResourceFolder("workbookresources/embroidery/images/" + imageName + "." + imgType)
     image(fileDesc)
   }
 

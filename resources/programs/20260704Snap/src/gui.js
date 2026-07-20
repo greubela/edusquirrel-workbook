@@ -328,6 +328,9 @@ IDE_Morph.prototype.init = function (config) {
     this.currentSprite = this.scene.addDefaultSprite();
     this.sprites = this.scene.sprites;
     this.currentCategory = this.scene.unifiedPalette ? 'unified' : 'motion';
+    if (config.eduLibraryTabs && config.eduLibraryTabs.length) {
+        this.currentCategory = config.eduLibraryTabs[0];
+    }
     this.currentTab = 'scripts';
 
     // logoURL is disabled because the image data is hard-copied
@@ -1763,7 +1766,8 @@ IDE_Morph.prototype.createCategories = function () {
             colors = [
                 myself.frameColor,
                 myself.frameColor.darker(IDE_Morph.prototype.isBright ? 5 : 50),
-                SpriteMorph.prototype.blockColor[category]
+                SpriteMorph.prototype.blockColor[category] ||
+                    SpriteMorph.prototype.blockColor.other
             ],
             button;
 
@@ -1920,6 +1924,12 @@ IDE_Morph.prototype.createCategories = function () {
 
 IDE_Morph.prototype.primitiveCategories = function () {
     // answer an array of categories for primitive blocks to be displayed
+    if (this.config.eduEmptyLibrary) {
+        return [];
+    }
+    if (this.config.eduLibraryTabs && this.config.eduLibraryTabs.length) {
+        return this.config.eduLibraryTabs.slice();
+    }
     // as buttons. By default these are all the usual ones, e.g. motion, looks
     // etc. but if the "hideEmptyCategories" setting is active only categories
     // that are populated with at least one block in at least one agent (sprite

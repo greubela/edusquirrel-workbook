@@ -9,7 +9,7 @@ import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import org.scalajs.dom.{SVGLinearGradientElement, SVGSVGElement}
 
-case class HtmlGptGrader(fullInfo: FullInfo, textInteraction: WorkbookInteractionElement[String]) extends HtmlAppElement {
+case class HtmlGptGrader(textInteraction: WorkbookInteractionElement[String]) extends HtmlAppElement {
 
   private val submitButton = HtmlButtonElement.withSvgContent(HtmlGptGrader.gradingButtonSvg, event => {
 

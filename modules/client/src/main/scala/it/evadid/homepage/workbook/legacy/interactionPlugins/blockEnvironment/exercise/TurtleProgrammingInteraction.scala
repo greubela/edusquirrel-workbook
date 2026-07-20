@@ -51,7 +51,7 @@ case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expected
     fullInfo.displayControl.setFullscreen(fullscreenEditor)
   }
 
-  private val programmingView = TurtleProgrammingPreview(fullInfo, editorState, expectedSvgResult)
+  private val programmingView = TurtleProgrammingPreview(editorState, expectedSvgResult)
 
   private val domElement: Element =
     div(

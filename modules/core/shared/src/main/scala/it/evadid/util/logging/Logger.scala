@@ -34,6 +34,16 @@ trait Logger {
        | """.stripMargin
   )
 
+  def logExceptionInfo(msgRecover: String, expectedBecause: String, exception: Throwable): Unit = logInfo(
+    s"""
+       |Recovered from expected exception by: $msgRecover
+       |    Exception was expected because: ${expectedBecause}
+       |    Exception message: ${exception.getMessage}
+       |    Exception StackTrace:
+       |    ${exception.getStackTrace.mkString("\n    ")}
+       |
+       | """.stripMargin
+  )
 
   def logExceptionWarn(msgRecover: String, exception: Throwable): Unit = logWarn(
     s"""

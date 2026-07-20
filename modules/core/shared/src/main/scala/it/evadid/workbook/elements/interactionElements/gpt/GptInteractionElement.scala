@@ -3,7 +3,8 @@ package it.evadid.workbook.elements.interactionElements.gpt
 import it.evadid.core.datastructures.chat.{MessengerModel, Person}
 import it.evadid.core.datastructures.chat.SenderRole.USER
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
-import it.evadid.core.datastructures.language.{LanguageMapContentId, LanguageMapIdResolver}
+import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
 import it.evadid.core.datastructures.user.User
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement, WorkbookInteractionElement}

@@ -18,7 +18,7 @@ case class UserDropdownMenu() extends HtmlAppElement {
   private def closeMenu(): Unit = isOpen.set(false)
 
   private def switchUser(user: Option[AllUserInfo]): Unit = {
-    fullInfo.control.changeUser(user)
+    fullInfo.usageControl.changeUser(user)
     closeMenu()
   }
 

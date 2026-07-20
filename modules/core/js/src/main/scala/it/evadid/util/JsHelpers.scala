@@ -1,4 +1,4 @@
-package it.evadid.homepage.util.web
+package it.evadid.util
 
 import com.raquo.laminar.api.L.i
 import org.scalajs.dom
@@ -26,11 +26,7 @@ object JsHelpers {
 
     def unsafeFromJsToScala(in: TYPE_JS): TYPE_SCALA = fromJsToScala(in).get
   }
-
-
-
-
-
+  
 
   val stringMapHelper: ConvertScalaAndJs[Map[String, String], js.Any] = new ConvertScalaAndJs[Map[String, String], js.Any] {
     override def fromScalaToJs(in: Map[String, String]): js.Any = js.Dictionary(in.toSeq *)

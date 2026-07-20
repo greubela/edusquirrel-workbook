@@ -29,7 +29,6 @@ object IoSerialization {
       .toList
 
     res.getOrElse(List.empty[List[String]])
-
   }
   
   

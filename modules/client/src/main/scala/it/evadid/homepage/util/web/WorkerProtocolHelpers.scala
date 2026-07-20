@@ -4,7 +4,7 @@ import org.scalajs.dom
 
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.js
-import JsHelpers.*
+import it.evadid.util.JsHelpers.*
 
 final class WorkerRequestTracker {
   private var nextId = 1

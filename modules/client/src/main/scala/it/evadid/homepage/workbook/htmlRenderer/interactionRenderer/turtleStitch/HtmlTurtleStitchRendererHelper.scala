@@ -9,9 +9,9 @@ import it.evadid.core.datastructures.state.async.AsyncData
 import it.evadid.core.util.InfoUtil
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
-import it.evadid.homepage.util.web.DownloadHelper
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle.HtmlSketchDownloadRenderer.fullInfo
 import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchWorkerFacade
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.elements.interactionElements.TurtleStitch.TurtleStitchProjectState
@@ -38,8 +38,8 @@ object HtmlTurtleStitchRendererHelper {
   def renderDownloadButton(label: LanguageMapContentId, projectFromFile: FileDescription): Element = {
     val desiredFilename: String = "TurtleStitch_" + InfoUtil.datetimeFormattedForFilenames() + "_" + projectFromFile.filenameWithExtension
     HtmlButtonElement.withTextLabel(label, event =>
-      fullInfo.technical.fileStore.loadAsFuture(projectFromFile).onComplete {
-        case Success(projectData) => DownloadHelper.downloadFile(desiredFilename, projectData.data)
+      projectFromFile.loadData().onComplete {
+        case Success(projectData) => fullInfo.contentControl.downloadToDisc.downloadFile(desiredFilename, projectData.data)
         case Failure(err) => println("HtmlExploreTurtleStitchExploreProjectRenderer::downloadButton error: " + err.getMessage)
       }(using ExecutionContext.global), HtmlButtonElement.stdConfig).getDomElement()
 
@@ -49,7 +49,7 @@ object HtmlTurtleStitchRendererHelper {
     val desiredFilename: String = "TurtleStitch_" + InfoUtil.datetimeFormattedForFilenames() + "_" + workbookInteraction.id + ".xml"
     HtmlButtonElement.withTextLabel(label, event =>
       workbookInteraction.interactionVariable.currentValue.programXml.foreach(f = currentXml => {
-        DownloadHelper.downloadFile(desiredFilename, currentXml)
+        fullInfo.contentControl.downloadToDisc.downloadFile(desiredFilename, currentXml)
       }), HtmlButtonElement.stdConfig).getDomElement()
   }
 
@@ -72,7 +72,7 @@ object HtmlTurtleStitchRendererHelper {
   }
 
   def renderProjectPreviewImage(fileDescription: FileDescription): Element = {
-    val xmlSignal: AsyncData[Nothing, String] = fullInfo.technical.fileStore.loadIntoVariable(fileDescription)(using ExecutionContext.global).map(_.fileDataAsUtf8String)
+    val xmlSignal: AsyncData[Nothing, String] = AsyncData.forFuture(fileDescription.loadData()).map(_.fileDataAsUtf8String)
     renderProjectCodePreviewWithAsyncXml(xmlSignal)
   }
 

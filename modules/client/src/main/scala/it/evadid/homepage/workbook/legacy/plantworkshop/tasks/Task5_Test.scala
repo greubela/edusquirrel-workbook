@@ -1,7 +1,7 @@
 package it.evadid.homepage.workbook.legacy.plantworkshop.tasks
 
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.util.web.DownloadHelper
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import org.scalajs.dom
 
 /** Final test and export. */
@@ -83,7 +83,7 @@ object Task5_Test {
 
   private def downloadArduinoSketch(): Unit = {
     val code = buildFinalArduinoSketch()
-    DownloadHelper.downloadFile("plantworkshop.ino", code)
+    HtmlFullWorkbookApp.fullInfo.contentControl.downloadToDisc.downloadFile("plantworkshop.ino", code)
   }
 
   def render(): HtmlElement = {

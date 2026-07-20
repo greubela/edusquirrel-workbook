@@ -1,16 +1,17 @@
-package it.evadid.homepage.webElements.editor.code.SnapRenderer
+package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.editor.code.SnapRenderer.SnapCodeEditor.SnapCodeEditorImpl
+import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.SnapCodeEditorImpl
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.TurtleFileSubmission
 import it.evadid.vm.BeProgram
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
 
-case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig, impl: SnapCodeEditorImpl) extends HtmlAppElement {
+case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig, impl: SnapCodeEditorImpl)
+    extends HtmlAppElement with FullscreenLifecycle {
 
   lazy val editorCanvas: L.Element = {
     div(
@@ -19,14 +20,14 @@ case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig,
       overflow.hidden,
       border := "1px solid #d0d7de",
       borderRadius := "10px",
-      backgroundColor := config.ColorWorkspace,
+      backgroundColor := config.visuals.ColorWorkspace,
       width := "fit-content",
       maxWidth := "100%",
       canvasTag(
         cls := "be-program-snap-renderer__canvas",
         aria.label := "Block program editor",
-        widthAttr := config.CanvasWidth,
-        heightAttr := config.CanvasHeight,
+        widthAttr := config.visuals.CanvasWidth,
+        heightAttr := config.visuals.CanvasHeight,
         display.block,
         // Construct WorldMorph from the canvas' own mount callback. Besides
         // avoiding an ambiguous descendant query, this guarantees that Snap
@@ -39,9 +40,10 @@ case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig,
         }
       ),
       onUnmountCallback { _ =>
-        // The interactive canvas exclusively owns the retained Morphic world.
-        // Destroy it only when this editor host leaves the dialog.
-        impl.destroy()
+        // The dialog reuses this lazy DOM element. Keep its WorldMorph and DOM
+        // event listeners intact between openings; only stop animation work
+        // while the canvas is detached.
+        impl.pauseWorldCycles()
       }
     )
   }
@@ -53,14 +55,14 @@ case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig,
       overflow.hidden,
       border := "1px solid #d0d7de",
       borderRadius := "10px",
-      backgroundColor := config.ColorWorkspace,
+      backgroundColor := config.visuals.ColorWorkspace,
       width := "fit-content",
       maxWidth := "100%",
       canvasTag(
         cls := "be-program-snap-renderer__canvas",
         aria.label := "Block program preview",
-        widthAttr := config.CanvasWidth,
-        heightAttr := config.CanvasHeight,
+        widthAttr := config.visuals.CanvasWidth,
+        heightAttr := config.visuals.CanvasHeight,
         display.block,
         onMountCallback { ctx =>
           val canvas = ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]
@@ -74,12 +76,20 @@ case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig,
     editorCanvas
   }
 
+  /** Drop custom tabs, optionally removing Snap's default library as well. */
+  def removeAllLibraries(includeDefaultLibraries: Boolean = false): Unit =
+    impl.removeAllLibraries(includeDefaultLibraries)
+
+  override def onFullscreenOpen(): Unit = impl.startWorldCycles()
+
+  override def onFullscreenClose(): Unit = impl.pauseWorldCycles()
+
 }
 
 object SnapCodeEditor {
 
   def apply(program: Var[BeProgram]): SnapCodeEditor = {
-    SnapCodeEditor(program, SnapCodeEditorConfig(), SnapCodeEditorImplDelegateToOriginal())
+    SnapCodeEditor(program, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal())
   }
 
   trait SnapCodeEditorImpl {
@@ -100,6 +110,9 @@ object SnapCodeEditor {
 
     /** Register a listener for XML changes caused by edits in the mounted Snap project. */
     def setOnProjectXmlChangedListener(callback: String => Unit): Unit
+
+    /** Remove custom tabs and, when requested, Snap's standard library too. */
+    def removeAllLibraries(includeDefaultLibraries: Boolean = false): Unit
 
     def destroy(): Unit
   }

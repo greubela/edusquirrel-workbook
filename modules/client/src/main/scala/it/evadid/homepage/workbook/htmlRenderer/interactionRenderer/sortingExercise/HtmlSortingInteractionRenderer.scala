@@ -28,7 +28,7 @@ object HtmlSortingInteractionRenderer extends LineBasedRenderingFactory[SortingI
           cls := "sorting-interaction__controls",
           HtmlButtonElement.withTextLabel(
             interaction.openButtonLabel,
-            _ => fullInfo.displayControl.setFullscreen(HtmlSortingExerciseFullscreenElement(interaction, fullInfo)),
+            _ => fullInfo.displayControl.setFullscreen(HtmlSortingExerciseFullscreenElement(interaction)),
             HtmlButtonElement.stdConfig
           ).getDomElement(),
           span(

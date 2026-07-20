@@ -7,7 +7,7 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.HtmlWorkbookRenderer
 import org.scalajs.dom
 
-case class HtmlWorkbookDomElement(fullInfo: FullInfo) extends HtmlAppElement {
+case class HtmlWorkbookDomElement() extends HtmlAppElement {
 
   private lazy val workbookDomSignal: Signal[Element] = fullInfo.signals.workbook.mapLazy {
     case Some(workbookInfo) => HtmlWorkbookRenderer.renderAppElement(workbookInfo.loadedWorkbook).getDomElement()
@@ -15,6 +15,15 @@ case class HtmlWorkbookDomElement(fullInfo: FullInfo) extends HtmlAppElement {
   }
 
   private lazy val fullscreenActiveElementSignal: Signal[Option[HtmlAppElement]] = fullInfo.signals.currentDisplayInfo.map(_.fullscreenElement)
+
+  // Closing the native dialog must not remove its content. In particular,
+  // Morphic binds input directly to its canvas and cannot safely be recreated
+  // on every open. Retain the last child while the dialog itself is closed;
+  // selecting a different fullscreen element still replaces and unmounts it.
+  private lazy val retainedFullscreenElementSignal: Signal[Option[HtmlAppElement]] =
+    fullscreenActiveElementSignal
+      .scanLeft(identity[Option[HtmlAppElement]])((retained, active) => active.orElse(retained))
+      .distinct
 
   private val onCloseDialog = new EventProp[dom.Event]("close")
 
@@ -36,7 +45,7 @@ case class HtmlWorkbookDomElement(fullInfo: FullInfo) extends HtmlAppElement {
       },
       div(
         cls("fullscreen-content-container"),
-        child <-- fullscreenActiveElementSignal.map(_.map(_.getDomElement()).getOrElse(span("nothing to see here :)")))
+        child <-- retainedFullscreenElementSignal.map(_.map(_.getDomElement()).getOrElse(span("nothing to see here :)")))
       )
     )
   }

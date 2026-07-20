@@ -7,7 +7,6 @@ import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.interactionElements.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
-import todomove.datastructures.web.file.FileFactory
 
 case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 
@@ -32,13 +31,13 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
   }
 
   private def createExploreExerciseDownloadInteraction(filename: String): WorkbookElement = {
-    val fileDesc = FileFactory.relativeToResourceFolder("workbookresources/embroidery/existingProjects/" + filename + ".xml")
+    val fileDesc = fullInfo.contentControl.fileFactory.relativeToResourceFolder("workbookresources/embroidery/existingProjects/" + filename + ".xml")
     //TurtleStitchExploreProjectExercise.createElementLine(fullInfo, fileDesc)
     TurtleStitchExploreProjectElement(fileDesc)
   }
 
   private def createRecreateShapeUploadInteraction(imageName: String): WorkbookElement = {
-    val fileDesc = FileFactory.relativeToResourceFolder("workbookresources/embroidery/desiredShapes/" + imageName + ".png")
+    val fileDesc = fullInfo.contentControl.fileFactory.relativeToResourceFolder("workbookresources/embroidery/desiredShapes/" + imageName + ".png")
     //val imgElement = HtmlImageElement(fileDesc, fullInfo)
     //TurtleStitchRecreateShapeExercise.createInteractionElement(fullInfo, nextId("recreateShape"), imgElement)
     TurtleStitchRecreateShapeInteraction(nextId("recreateShape"), fileDesc)

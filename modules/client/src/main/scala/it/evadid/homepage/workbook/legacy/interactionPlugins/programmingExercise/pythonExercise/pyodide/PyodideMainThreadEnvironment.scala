@@ -1,8 +1,8 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide
 
 import PyodideBackends.*
-import it.evadid.homepage.util.web.JsHelpers.promiseToFuture
-import it.evadid.homepage.util.web.JsHelpers.{anyToSeq, javascriptErrorMessage}
+import it.evadid.util.JsHelpers.promiseToFuture
+import it.evadid.util.JsHelpers.{anyToSeq, javascriptErrorMessage}
 
 import scala.collection.mutable
 import scala.concurrent.Future

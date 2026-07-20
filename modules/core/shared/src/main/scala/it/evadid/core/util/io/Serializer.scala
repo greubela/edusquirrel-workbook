@@ -31,6 +31,8 @@ trait Serializer[T] extends TypeConverter[T, String] {
 
 object Serializer {
 
+
+
   def noneParser(noneLiteral: Option[String] = Some("None")): Serializer[Option[Unit]] = Serializer.singletonSerializer[Option[Unit]](None, noneLiteral)
 
   def singletonSerializer[T](singletonObject: T, singletonString: Option[String] = None): Serializer[T] = new Serializer[T] {

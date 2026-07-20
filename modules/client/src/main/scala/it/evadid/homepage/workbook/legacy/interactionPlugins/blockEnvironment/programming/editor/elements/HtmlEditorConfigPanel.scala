@@ -4,10 +4,9 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
-import it.evadid.homepage.util.web.DownloadHelper
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.*
-
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle.HtmlSketchDownloadRenderer.fullInfo
 import todomove.webElementsOld.webElements.genericHtmlElements.editor.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeTreeControllerConfig, BeTreeDisplayConfig, ControlFlowDisplay}
 import org.scalajs.dom
@@ -79,7 +78,7 @@ case class HtmlEditorConfigPanel(editorState: EditorState) extends HtmlAppElemen
     rootNode.unmount()
 
     if (svgContent.nonEmpty) {
-      DownloadHelper.downloadSvg(
+      fullInfo.contentControl.downloadToDisc.downloadSvg(
         desiredFilename = s"be-program-${System.currentTimeMillis()}.svg",
         svgContent = svgContent
       )

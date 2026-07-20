@@ -16,8 +16,7 @@ import org.scalajs.dom.DragEvent
 import scala.scalajs.js.timers.{SetTimeoutHandle, clearTimeout, setTimeout}
 
 case class HtmlSortingReasonExerciseFullscreenElement(
-  interaction: SortingReasonInteraction,
-  fullInfo: FullInfo
+  interaction: SortingReasonInteraction
 ) extends HtmlAppElement with FullscreenLifecycle {
 
   private val itemCount = interaction.items.size

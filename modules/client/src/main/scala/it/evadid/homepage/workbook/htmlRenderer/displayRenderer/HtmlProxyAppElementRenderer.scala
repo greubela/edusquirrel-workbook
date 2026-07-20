@@ -9,7 +9,7 @@ import it.evadid.workbook.abstractions.WorkbookElement
 object HtmlProxyAppElementRenderer {
 
   def renderWorkbookElement[T <: WorkbookElement](anyElement: T, appElement: HtmlAppElement): HtmlWorkbookElement[T, AtomarLineRendering] = {
-    HtmlWorkbookElement(HtmlFullWorkbookApp.fullInfo, anyElement, AtomarLineRendering.basicLine(anyElement, appElement.getDomElement()))
+    HtmlWorkbookElement( anyElement, AtomarLineRendering.basicLine(anyElement, appElement.getDomElement()))
   }
 
 
