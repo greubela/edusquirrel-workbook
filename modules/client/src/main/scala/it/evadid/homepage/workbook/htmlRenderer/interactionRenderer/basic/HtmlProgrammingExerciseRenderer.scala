@@ -23,7 +23,8 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       // then inserts editor.getDomElement() into the already-mounted dialog;
       // SnapCodeEditor creates WorldMorph from the canvas' subsequent mount
       // callback, never during this button event or while it is detached.
-      fullInfo.displayControl.setFullscreen(editor)
+      editor.onFullscreenOpen()
+      fullInfo.displayControl.setFullscreen(editor, () => editor.onFullscreenClose())
     }
 
     val button: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/OpenEditor", event => buttonPressed())
