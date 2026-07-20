@@ -3,10 +3,11 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitc
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.homepage.control.singletons.FileStore
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
-import it.evadid.homepage.util.web.DownloadHelper
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle.HtmlSketchDownloadRenderer.fullInfo
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.elements.interactionElements.TurtleStitch.TurtleStitchProjectState
 import it.evadid.workbook.interaction.sync.UpdateImportance
@@ -41,7 +42,7 @@ private[turtleStitch] case class HtmlTurtleStitchFileUploadCard(workbookInteract
   }
 
   private def onNewFileSelected(file: File): Unit = {
-    val fileFut: Future[Array[Byte]] = DownloadHelper.fetchFile(file)
+    val fileFut: Future[Array[Byte]] = fullInfo.fileStore.fetchFile(file)
 
     fileFut.onComplete {
       case Success(data) => onFileReadSuccessfully(data)

@@ -3,7 +3,8 @@ package todomove.datastructures.web.file
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.file.*
-import it.evadid.homepage.util.web.{DownloadHelper, JsHelpers}
+import it.evadid.homepage.control.singletons.FileStore
+import it.evadid.homepage.util.web.JsHelpers
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 
 sealed trait FullImage extends it.evadid.core.datastructures.canvas.AppImage {
@@ -27,12 +28,12 @@ object FullImage {
 
     override def imageSourceString: String = dataSource
 
-    override def download(): Unit = DownloadHelper.downloadFile(s"unknown.$fileFormat", dataSource)
+    override def download(): Unit = FileStore.downloadFile(s"unknown.$fileFormat", dataSource)
   }
 
   case class LoadedFileImage(loadedFile: LoadedFile) extends FullImage {
 
-    def download(): Unit = DownloadHelper.downloadFile(loadedFile.description.filenameWithExtension, loadedFile.data)
+    def download(): Unit = FileStore.downloadFile(loadedFile.description.filenameWithExtension, loadedFile.data)
 
     override lazy val imageSourceString: String = {
       val b64str = JsHelpers.byteArrayToBase64String(loadedFile.data)

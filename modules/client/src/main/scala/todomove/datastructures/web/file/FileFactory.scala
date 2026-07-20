@@ -2,9 +2,9 @@ package todomove.datastructures.web.file
 
 import it.evadid.core.datastructures.file.CopyrightInfo.unknownCopyrightInfo
 import it.evadid.core.datastructures.file.{CopyrightInfo, FileDescription, LoadedFile}
-import it.evadid.homepage.util.web.DownloadHelper
+import it.evadid.homepage.control.singletons.FileStore
 import it.evadid.workbook.abstractions.TypeOfTextDisplay
-import TypeOfTextDisplay.URL_TYPE
+import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_TYPE
 import org.scalajs.dom
 import org.scalajs.dom.{File, URL}
 
@@ -12,19 +12,25 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object FileFactory {
 
-  private case class InternetResourceFileDescription(url: URL, serverLocationDir: String, filenameWithoutExtension: String, extension: Option[String], copyrightInfo: CopyrightInfo) extends FileDescription {
-    val location: Option[String] = Some(serverLocationDir)
+  private case class InternetResourceFileDescription(url: URL, filenameWithoutExtension: String, extension: Option[String], copyrightInfo: CopyrightInfo) extends FileDescription {
+
     override val toString: String = "InternetResourceFileDescription(" + fullPath + ")"
 
-    def loadData(): Future[LoadedFile] = DownloadHelper.fetchUrl(url.href).map(data => LoadedFile(this, data))(using ExecutionContext.global)
+    def loadData(): Future[LoadedFile] = FileStore.fetchUrl(url.href).map(data => LoadedFile(this, data))(using ExecutionContext.global)
+
+    override def getChildrenFile(childName: String, cCopyrightInfo: CopyrightInfo): Option[FileDescription] = if (extension.nonEmpty) None else {
+      val (cFilePath, cNameWithoutExtension, cExtension) = FileDescription.nameParts(childName)
+      Some(InternetResourceFileDescription(URL(url.href + "/" + childName), cNameWithoutExtension, cExtension, cCopyrightInfo))
+    }
   }
 
   private case class UploadedResourceFileDescription(file: File, filenameWithoutExtension: String, extension: Option[String], copyrightInfo: CopyrightInfo) extends FileDescription {
     val location: Option[String] = None
     override val toString: String = "UploadedResourceFileDescription(" + fullPath + ")"
 
-    def loadData(): Future[LoadedFile] = DownloadHelper.fetchFile(file).map(data => LoadedFile(this, data))(using ExecutionContext.global)
+    def loadData(): Future[LoadedFile] = FileStore.fetchFile(file).map(data => LoadedFile(this, data))(using ExecutionContext.global)
 
+    override def getChildrenFile(childName: String, cCopyrightInfo: CopyrightInfo): Option[FileDescription] = None
   }
 
 
@@ -45,8 +51,8 @@ object FileFactory {
   }
 
   def fromUrl(url: URL, copyrightInfo: CopyrightInfo = unknownCopyrightInfo): FileDescription = {
-    val parts = FileDescription.nameParts(url.href)
-    InternetResourceFileDescription(url, parts._1, parts._2, parts._3, copyrightInfo)
+    val (filePath, nameWithoutExtension, extension) = FileDescription.nameParts(url.href)
+    InternetResourceFileDescription(url, nameWithoutExtension, extension, copyrightInfo)
   }
 
   def relativeToArtifactsFolder(pathRelativeToResourceFolder: String, copyrightInfo: CopyrightInfo = unknownCopyrightInfo): FileDescription = {

@@ -55,7 +55,7 @@ case class ExecutionClientResponse(
 
 object ExecutionClientResponse {
 
-  private val serializerMapJson: Serializer[Map[String, String]] = DefaultSerializer.serializerStringMap
+  private val serializerMapJson: Serializer[Map[String, String]] = DefaultSerializer.serializerJsonStringMap
 
   private def failWith(logger: Logger, msg: String): Any = {
     logger.logWarn(msg)

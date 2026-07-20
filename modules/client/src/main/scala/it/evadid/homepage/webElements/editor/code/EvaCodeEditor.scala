@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
-import it.evadid.homepage.webElements.editor.code.SnapRenderer.SnapCodeEditor
+import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
 import it.evadid.vm.BeProgram
 
 case class EvaCodeEditor(state: State[BeProgram]) extends HtmlAppElement {

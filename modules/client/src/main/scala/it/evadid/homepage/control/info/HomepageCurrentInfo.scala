@@ -25,7 +25,7 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
 
   def workbookUserData: Option[WorkbookUserDataAnalyzer] = fullInfo.synchronized {
     if (userInfo.isEmpty || workbookInfo.isEmpty) None
-    else Some(WorkbookUserDataAnalyzer(fullInfo.loggerSystemInfo.workbookControlLogger, fullInfo.technical, userInfo.get, workbookInfo.get))
+    else Some(WorkbookUserDataAnalyzer(fullInfo.loggerSystemInfo.workbookControlLogger, fullInfo.fileStore, userInfo.get, workbookInfo.get))
   }
 
   def userInfo: Option[AllUserInfo] = fullInfo.synchronized {

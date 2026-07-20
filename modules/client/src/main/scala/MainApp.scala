@@ -1,10 +1,11 @@
 
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
-import it.evadid.homepage.util.web.DownloadHelper
+import it.evadid.homepage.control.singletons.{FileStore, HtmlFullWorkbookApp}
 import it.evadid.homepage.workbook.content.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
 import it.evadid.homepage.workbook.legacy.plantworkshop.PlantWorkshopApp
+import it.evadid.util.logging.Logger
+import it.evadid.util.logging.derived.PrintToStdLogger
 import org.scalajs.dom
 
 import scala.concurrent.*
@@ -50,14 +51,10 @@ private def initWorkbookOnlyAfterDependenciesLoaded: Boolean = {
 }
 
 private def testCalculations(): Unit = {
-
-  //println("testing some calculations atm :)")
-
-  DownloadHelper.fetchUrl("https://ypcgzj23.trafficplex.cloud/health").onComplete {
+  FileStore(Logger.withNameAndPrefixes(Some("MainAppLogger"), PrintToStdLogger.printEverything)).fetchUrl("https://ypcgzj23.trafficplex.cloud/health").onComplete {
     case Success(res) => println("Backend Health check: " + new String(res))
     case Failure(err) => println("Backend Health error: " + err.getMessage)
   }(using ExecutionContext.global)
-
 
 }
 

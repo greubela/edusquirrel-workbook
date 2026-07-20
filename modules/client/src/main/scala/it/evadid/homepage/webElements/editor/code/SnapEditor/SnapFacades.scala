@@ -1,4 +1,4 @@
-package it.evadid.homepage.webElements.editor.code.SnapRenderer
+package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import org.scalajs.dom
 

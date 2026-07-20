@@ -1,7 +1,7 @@
-package it.evadid.homepage.webElements.editor.code.SnapRenderer
+package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import com.raquo.airstream.ownership.Owner
-import it.evadid.homepage.webElements.editor.code.SnapRenderer.SnapCodeEditor.SnapCodeEditorImpl
+import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.SnapCodeEditorImpl
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.TurtleFileSubmission
 import it.evadid.vm.BeProgram
 import org.scalajs.dom
@@ -67,8 +67,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
 
   override def renderPreviewInto(program: BeProgram, canvas: Canvas, config: SnapCodeEditorConfig): Unit =
     val sourceCanvas = dom.document.createElement("canvas").asInstanceOf[Canvas]
-    sourceCanvas.width = config.CanvasWidth
-    sourceCanvas.height = config.CanvasHeight
+    sourceCanvas.width = config.visuals.CanvasWidth
+    sourceCanvas.height = config.visuals.CanvasHeight
 
     val world = new WorldMorph(sourceCanvas, false)
     // A preview is an image of the scripts themselves, not another configured
@@ -105,7 +105,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       hideCategories = !config.parts.libraryCategories,
       noSprites = !config.parts.stage,
       noSpriteEdits = !config.parts.spriteControls,
-      noPalette = !config.parts.library,
+      noPalette = !config.parts.palette,
       noOwnBlocks = config.libraryTabs.nonEmpty,
       eduLibraryTabs = config.libraryTabs.map(_.name).toJSArray
     ))
@@ -200,8 +200,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     // Keep the CSS and bitmap coordinate systems identical. Reading the canvas'
     // flex-scaled bounding box here produced independent X/Y scale factors in
     // the fullscreen dialog and made Morphic controls visibly distorted.
-    canvas.width = math.max(1, config.CanvasWidth)
-    canvas.height = math.max(1, config.CanvasHeight)
+    canvas.width = math.max(1, config.visuals.CanvasWidth)
+    canvas.height = math.max(1, config.visuals.CanvasHeight)
     canvas.style.width = s"${canvas.width}px"
     canvas.style.height = s"${canvas.height}px"
     canvas.style.position = "relative"

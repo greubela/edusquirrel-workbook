@@ -1,16 +1,35 @@
 package it.evadid.homepage.control.singletons
 
+import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.language.serialization.LanguageMapInputSource
+import it.evadid.core.datastructures.language.serialization.LanguageMapInputSource.EvaDirectorySource
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServer, LocalStorageSync}
-import it.evadid.workbook.interaction.sync.{SyncFormatter, SyncInformation, SyncStrategy}
 import it.evadid.workbook.interaction.sync.SyncStrategy.SYNC_MAJOR
+import it.evadid.workbook.interaction.sync.{SyncFormatter, SyncInformation, SyncStrategy}
+import todomove.datastructures.web.file.FileFactory
 
 import scala.util.Random
 
 case class HomepageDefaults() {
+
+  /* LANGUAGE MAP INPUT SOURCES */
+
+  lazy val snapFiles: Set[FileDescription] = Set(
+    FileFactory.relativeToResourceFolder(s"programs/20260704Snap/locale/lang-de.js"),
+    FileFactory.relativeToResourceFolder(s"programs/20260704Snap/locale/lang-en.js"),
+  )
+
+  private def evaLangDir(dirName: String): EvaDirectorySource = EvaDirectorySource(dirName, FileFactory.relativeToResourceFolder(s"/languageMaps/eva/${dirName}"))
+
+  lazy val defaultInputSources: Set[LanguageMapInputSource] = Set(
+    LanguageMapInputSource.forEvaLanguageMapFiles(Set(
+      "basic", "entitynames", "turtlestitch", "blockeditor", "embroideryworkbook", "testworkbook", "plantworkshop", "prompts", "compressionworkbook"
+    ).map(evaLangDir)))
+
   lazy val availableLanguages: List[HumanLanguage] = List(AppLanguage.German, AppLanguage.English)
 
   lazy val defaultLanguage: HumanLanguage = AppLanguage.German

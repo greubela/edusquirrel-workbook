@@ -46,18 +46,18 @@ case class HtmlImageElement(imageSignal: AsyncData[Nothing, FullImage], underlyi
 
 object HtmlImageElement {
 
-  private val fileStore = HtmlFullWorkbookApp.fullInfo.technical.fileStore
+  private val fileStore = HtmlFullWorkbookApp.fullInfo.fileStore
   private val signals = HtmlFullWorkbookApp.fullInfo.signals
 
   private def getImageSignal(image: ImageElement): AsyncData[Nothing, FullImage] = {
     val fileSignal: AsyncData[Nothing, LoadedFile] = image.match {
       case ImageElement.FileBasedImageElement(fileDescription) =>
-        val obs = fileStore.loadIntoVariable(fileDescription)(using ExecutionContext.global).observeAllStates
+        val obs = fileStore.cache.loadIntoVariable(fileDescription)(using ExecutionContext.global).observeAllStates
         AsyncState(obs)
       case i@ImageElement.LanguageMapBasedImageElement(languageMapContentId, copyrightInfo, howToResolveUrl) =>
         val srcSignal: Signal[String] = signals.stringFromLanguageMapId(languageMapContentId)
         val srcFile: Signal[FileDescription] = srcSignal.map(FileFactory.resolve(howToResolveUrl, _))
-        val res = srcFile.mapAsync(fileDesc => fileStore.loadAsFuture(fileDesc)(using ExecutionContext.global))(using ExecutionContext.global)
+        val res = srcFile.mapAsync(fileDesc => fileStore.cache.loadAsFuture(fileDesc)(using ExecutionContext.global))(using ExecutionContext.global)
         res
     }
     fileSignal.map(loadedFile => LoadedFileImage(loadedFile))

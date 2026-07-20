@@ -1,6 +1,6 @@
 package it.evadid.todomove.`export`.snap
 
-import it.evadid.homepage.webElements.editor.code.SnapRenderer.{BlockLabelMorph, BlockSymbolMorph, BooleanSlotMorph, CSlotMorph, ColorSlotMorph, CommandBlockMorph, CommentMorph, IDEMorph, InputMorph, InputSlotMorph, MultiArgMorph, ReporterBlockMorph, ReporterSlotMorph, RingReporterSlotMorph, ScriptsMorph, SnapAttachTarget, SnapBlock, SnapCanvas, SnapColor, WorldMorph}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.{BlockLabelMorph, BlockSymbolMorph, BooleanSlotMorph, CSlotMorph, ColorSlotMorph, CommandBlockMorph, CommentMorph, IDEMorph, InputMorph, InputSlotMorph, MultiArgMorph, ReporterBlockMorph, ReporterSlotMorph, RingReporterSlotMorph, ScriptsMorph, SnapAttachTarget, SnapBlock, SnapCanvas, SnapColor, WorldMorph}
 import munit.FunSuite
 
 import scala.scalajs.js

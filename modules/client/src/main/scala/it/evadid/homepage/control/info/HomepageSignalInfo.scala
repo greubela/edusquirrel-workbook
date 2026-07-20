@@ -15,7 +15,7 @@ import scala.concurrent.*
 
 case class HomepageSignalInfo(fullInfo: FullInfo) {
 
-  lazy val contentStorage: WorkbookContentStorage = WorkbookContentStorage(fullInfo.loggerSystemInfo.contentStorageLogger, fullInfo.technical.fileStore)
+  lazy val contentStorage: WorkbookContentStorage = WorkbookContentStorage(fullInfo.loggerSystemInfo.contentStorageLogger)
 
   lazy val langMapIdResolver: LanguageMapIdResolver = new LanguageMapIdResolver(fullInfo.signals.currentLanguage.toObservableValue) {
     override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[AppLanguage.HumanLanguage]] = {

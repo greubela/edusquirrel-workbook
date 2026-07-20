@@ -5,10 +5,9 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.user.User
 import it.evadid.core.util.io.serializer.DefaultSerializer
-import it.evadid.homepage.control.change.TechnicalControl
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.model.AllWorkbookInfo.*
-import it.evadid.homepage.util.web.DownloadHelper
+import it.evadid.homepage.control.singletons.FileStore
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.interaction.sync.UpdateImportance
@@ -18,7 +17,7 @@ import upickle.default.ReadWriter.join
 import java.time.LocalDateTime
 import scala.concurrent.ExecutionContext
 
-case class WorkbookUserDataAnalyzer(logger: Logger, technical: TechnicalControl, userInfo: AllUserInfo, workbookInfo: AllWorkbookInfo) {
+case class WorkbookUserDataAnalyzer(logger: Logger, fileStore: FileStore, userInfo: AllUserInfo, workbookInfo: AllWorkbookInfo) {
 
   private given ldt: upickle.ReadWriter[LocalDateTime] = DefaultSerializer.serializerLocalDateTimeString.uPickleReadWrite
 
@@ -57,7 +56,7 @@ case class WorkbookUserDataAnalyzer(logger: Logger, technical: TechnicalControl,
     val data = SessionData(userInfo.user, history, workbookInfo.getMetadata(), System.currentTimeMillis())
     val str = upickle.default.write(data)
     val name = s"${data.currentUserInfo.personId}-${data.metadata.workbookId}-${data.epochTimestampMillis}.json"
-    DownloadHelper.downloadFile(name, str)
+    fileStore.downloadFile(name, str)
   }
 
   private def tryToLoad(sessionData: SessionData): Unit = {
@@ -73,7 +72,7 @@ case class WorkbookUserDataAnalyzer(logger: Logger, technical: TechnicalControl,
 
   def upload(file: FileDescription): Unit = {
     logger.logInfo(s"WorkbookUserDataAnalyzer: Trying to load prior session data based on file ${file.fullPath}!")
-    technical.fileStore.loadAsFuture(file)(using ExecutionContext.global).foreach(loadedFile => {
+    fileStore.cache.loadAsFuture(file)(using ExecutionContext.global).foreach(loadedFile => {
       val str = loadedFile.fileDataAsUtf8String
       val data: SessionData = upickle.default.read(str)
       tryToLoad(data)

@@ -1,10 +1,10 @@
-package it.evadid.homepage.webElements.editor.code.SnapRenderer
+package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
-import it.evadid.homepage.webElements.editor.code.SnapRenderer.SnapCodeEditor.SnapCodeEditorImpl
+import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.SnapCodeEditorImpl
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.TurtleFileSubmission
 import it.evadid.vm.BeProgram
 import org.scalajs.dom
@@ -20,14 +20,14 @@ case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig,
       overflow.hidden,
       border := "1px solid #d0d7de",
       borderRadius := "10px",
-      backgroundColor := config.ColorWorkspace,
+      backgroundColor := config.visuals.ColorWorkspace,
       width := "fit-content",
       maxWidth := "100%",
       canvasTag(
         cls := "be-program-snap-renderer__canvas",
         aria.label := "Block program editor",
-        widthAttr := config.CanvasWidth,
-        heightAttr := config.CanvasHeight,
+        widthAttr := config.visuals.CanvasWidth,
+        heightAttr := config.visuals.CanvasHeight,
         display.block,
         // Construct WorldMorph from the canvas' own mount callback. Besides
         // avoiding an ambiguous descendant query, this guarantees that Snap
@@ -55,14 +55,14 @@ case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig,
       overflow.hidden,
       border := "1px solid #d0d7de",
       borderRadius := "10px",
-      backgroundColor := config.ColorWorkspace,
+      backgroundColor := config.visuals.ColorWorkspace,
       width := "fit-content",
       maxWidth := "100%",
       canvasTag(
         cls := "be-program-snap-renderer__canvas",
         aria.label := "Block program preview",
-        widthAttr := config.CanvasWidth,
-        heightAttr := config.CanvasHeight,
+        widthAttr := config.visuals.CanvasWidth,
+        heightAttr := config.visuals.CanvasHeight,
         display.block,
         onMountCallback { ctx =>
           val canvas = ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]
