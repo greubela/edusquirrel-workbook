@@ -17,23 +17,26 @@ import scala.util.Random
 case class HomepageDefaults() {
 
   /* LANGUAGE MAP INPUT SOURCES */
-    
-  lazy val loadLanguageMapDirs: Set[String] = Set("basic", "entitynames", "turtlestitch", "blockeditor", "embroideryworkbook", "testworkbook", "plantworkshop", "prompts", "compressionworkbook")
-  
+
+  lazy val loadLanguageMapDirs: Set[String] = Set(
+    "basic",
+    //"entitynames", "turtlestitch", "blockeditor", "embroideryworkbook", "testworkbook", "plantworkshop", "prompts", "compressionworkbook"
+  )
+
   lazy val availableLanguages: List[HumanLanguage] = List(AppLanguage.German, AppLanguage.English)
 
   lazy val defaultLanguage: HumanLanguage = AppLanguage.German
 
   lazy val defaultBackend: RemoteExecutionConfig = RemoteExecutionConfig("ypcgzj23.trafficplex.cloud", 443)
-  
+
   lazy val defaultSyncLocation: List[SyncInformation] = List(
     SyncInformation(LocalStorageSync, SyncStrategy.SYNC_LAST, SyncFormatter.serializeHistory),
     SyncInformation(DatabaseSyncViaBackendServer("db_332371_12", true), SYNC_MAJOR, SyncFormatter.RichInteractionVariableFormatter()),
     SyncInformation(DatabaseSyncViaBackendServer("db_332371_12", false), SYNC_MAJOR, SyncFormatter.RichInteractionVariableFormatter()),
   )
-  
-  
-  
+
+
+
 
   lazy val defaultDisplay: AllDisplayInfo = AllDisplayInfo(false, None)
 

@@ -12,6 +12,7 @@ import it.evadid.util.logging.Logger
 
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.*
 
 trait LanguageMapSourceFileBased[T <: AppLanguage](
                                                     fileDescription: FileDescription,
@@ -22,44 +23,53 @@ trait LanguageMapSourceFileBased[T <: AppLanguage](
 
   given ExecutionContext = ec
 
+  private def transformTriple(logger: Logger, key: String, value: String): Option[LanguageMapEntry[T]] = try {
+    //logger.logInfo(s"${logName} is transforming triple: ${key} -> ${value}")
+    Some(LanguageMapEntry[T](LanguageMapContentId(associatedLanguageMapName, key), associatedLanguage, value))
+  } catch case (e: Throwable) => {
+    logger.logWarn(s"${logName} is ignoring triple: ${key} -> ${value} + (${e.getMessage})")
+    None
+  }
+
+  private lazy val logName = s"LanguageMapSourceFileBased(${fileDescription.filenameWithExtension}: ${associatedLanguageMapName}/${associatedLanguage}"
+
   def loadAllTriples(logger: Logger): Future[ParsedTriples] = {
-    logger.logInfo(s"Loading all triples for ${fileDescription.asUrlString}")
-    loadKeyValuePairs(logger).map(contentAsMap =>
-        logger.logInfo(s"successfully read ${contentAsMap.size} entries from ${associatedLanguageMapName}/${associatedLanguage} (now transforming them to ParsedTriples)")
-        val entries: Set[LanguageMapEntry[T]] = contentAsMap.toList.map((key, value) => {
-          LanguageMapEntry[T](LanguageMapContentId(associatedLanguageMapName, key), associatedLanguage, value)
-        }).toSet
-        associatedLanguage.match {
-          case t: HumanLanguage => ParsedTriples(entries.map(_.asInstanceOf[LanguageMapEntry[HumanLanguage]]), Set())
-          case o: SpecialLanguage => ParsedTriples(Set(), entries.map(_.asInstanceOf[LanguageMapEntry[SpecialLanguage]]))
-          case _ => throw new IllegalStateException(s"LanguageMapSourceFileBased:: associated language is neither Human or Special: ${associatedLanguage}")
+    logger.logInfo(s"Started loading all triples for ${logName}")
+
+    fileDescription.loadData().transform {
+      case Success(loadedFile) =>
+        logger.logInfo(s"Successfully loaded file for ${logName} ")
+        if (loadedFile.fileDataAsUtf8String.trim.isEmpty) Success(Map[String, String]()) else Try {
+          parseKeyValuePairs(logger, loadedFile)
         }
-      )
-      .recover {
-        case (e: Exception) => logger.logExceptionWarn(s"ignoring input source ${associatedLanguageMapName}/${associatedLanguage} (error while reading)", e)
-          ParsedTriples(Set(), Set())
-
+      case Failure(e: Exception) =>
+        logger.logExceptionInfo(s"Could not fetch ${logName} because of IO Error: ${e.getMessage}", "A LanguageMapFileBasedSource does not need to exist ", e)
+        Success(Map[String, String]())
+    }.transform {
+      case Success(contentAsMap) =>
+        logger.logInfo(s"Arriving at Parsing Key Value Paris for ${logName}: ${contentAsMap}")
+        val entries: Set[LanguageMapEntry[T]] = contentAsMap.toList.flatMap((key, value) => transformTriple(logger, key, value)).toSet
+        logger.logInfo(s"successfully read ${contentAsMap.size} entries from ${associatedLanguageMapName}/${associatedLanguage} (and transformed them into ${entries.size} entries)")
+        associatedLanguage.match {
+          case t: HumanLanguage => Success(ParsedTriples(entries.map(_.asInstanceOf[LanguageMapEntry[HumanLanguage]]), Set()))
+          case o: SpecialLanguage => Success(ParsedTriples(Set(), entries.map(_.asInstanceOf[LanguageMapEntry[SpecialLanguage]])))
+          case _ => Failure(IllegalStateException(s"LanguageMapSourceFileBased:: associated language is neither Human or Special: ${associatedLanguage}"))
+        }
+      case Failure(err) =>
+        logger.logExceptionWarn(s"[this should not happen #1 at ${logName}]: ${err.getMessage}", err)
+        Success(ParsedTriples(Set(), Set()))
+    }.transform {
+      case Success(triples) => {
+        logger.logInfo(s"Successfully read ${triples.regularTriples.size} regular and ${triples.universalTriples.size} universal triples!")
+        Success(triples)
       }
-  }
-
-  def loadKeyValuePairs(logger: Logger): Future[Map[String, String]] = {
-    fileDescription.loadData()
-      .map(loadedFile => {
-        tryParseKeyValuePairs(logger, loadedFile)
-      })
-      .recover { case (e: Exception) =>
-       // logger.logExceptionInfo(s"Ignore content of '${fileDescription.structure.filenameWithoutExtension}' as could not fetch file", "A LanguageMapFileBasedSource does not need to exist ", e)
-        Map[String, String]()
+      case Failure(err) => {
+        logger.logExceptionWarn(s"[this should not happen #2 at ${logName}]: ${err.getMessage}", err)
+        Success(ParsedTriples(Set(), Set()))
       }
+    }
   }
 
-  private def tryParseKeyValuePairs(logger: Logger, loadedFile: LoadedFile): Map[String, String] = try {
-    if (loadedFile.fileDataAsUtf8String.trim.nonEmpty) parseKeyValuePairs(logger, loadedFile)
-    else Map[String, String]()
-  } catch case (e: Exception) => {
-    logger.logExceptionWarn(s"ignoring content of file ${loadedFile.description.filenameWithExtension} because of an error during parsing", e)
-    Map[String, String]()
-  }
 
   def parseKeyValuePairs(logger: Logger, file: LoadedFile): Map[String, String]
 
@@ -87,6 +97,20 @@ object LanguageMapSourceFileBased {
     }
   }
 
+  def forSnapFile[T <: AppLanguage](info: LanguageMapFileBasedSourceInfo[T], mapKeys: String => String): Option[LanguageMapSourceFileBased[T]] = {
+    Some(LanguageMapSourceFileBased(info, (a, b) => parseSnapJS(a, b, mapKeys)))
+  }
+
+  private def parseSnapJS(logger: Logger, loadedFile: LoadedFile, mapKeys: String => String): Map[String, String] = try {
+    val linesNonEmpty = loadedFile.fileDataAsUtf8String.split("\n").filter(_.nonEmpty)
+    val adjusted = linesNonEmpty.slice(1, linesNonEmpty.size - 1).mkString("{", "\n", "}")
+    val parsed = parseJson(logger, adjusted)
+    parsed.toList.map((key, value) => mapKeys(key) -> value).toMap
+  } catch case (e: Exception) => {
+    logger.logExceptionWarn("error while parsing snap js file", e)
+    Map[String, String]()
+  }
+
   private def parseCsvFs2(content: String): List[List[String]] = {
     val res: Either[Throwable, List[List[String]]] = Stream
       .emit(content)
@@ -111,6 +135,11 @@ object LanguageMapSourceFileBased {
     })
     logger.logWarn(s"LanguageMapSourceFileBased ignored ${failed.size} entries from file ${loadedFile.description.filenameWithExtension} as they could not be parsed!")
     res.toMap
+  }
+
+  private def parseJson(logger: Logger, content: String): Map[String, String] = {
+    val res = DefaultSerializer.serializerJsonStringMap.deserialize(content)
+    res
   }
 
   private def parseJson(logger: Logger, loadedFile: LoadedFile): Map[String, String] = {

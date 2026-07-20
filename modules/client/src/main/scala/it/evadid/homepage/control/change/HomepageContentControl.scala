@@ -2,27 +2,21 @@ package it.evadid.homepage.control.change
 
 import it.evadid.core.datastructures.file.*
 import it.evadid.core.datastructures.file.CopyrightInfo.unknownCopyrightInfo
-import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.control.LanguageMapStorageControl
-import it.evadid.core.datastructures.language.serialization.LanguageMapInputSource.EvaDirectorySource
-import it.evadid.core.datastructures.language.serialization.{LanguageMapCollectionSource, LanguageMapInputSource}
-import it.evadid.core.datastructures.state.State
-import it.evadid.core.datastructures.state.observable.ObservableValue
-import it.evadid.core.datastructures.storage.AsyncDataCache
+import it.evadid.core.datastructures.language.serialization.{LanguageMapInputSource, LanguageMapSourceFileBased}
+import it.evadid.core.datastructures.language.serialization.LanguageMapInputSource.{EvaDirectorySource, LanguageMapFileBasedSourceInfo}
 import it.evadid.homepage.control.change.HomepageContentControl.HomepageFileFactory
 import it.evadid.homepage.control.model.FullInfo
-import it.evadid.homepage.control.singletons.{ HtmlFullWorkbookApp}
-import it.evadid.util.FileFactory.{InternetResourceFileDescription, UploadedResourceFileDescription}
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.util.logging.Logger
 import it.evadid.util.{DownloadToDisc, FetchFromRemote, FileFactory, PostToRemote}
 import it.evadid.workbook.abstractions.TypeOfTextDisplay
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_TYPE
 import org.scalajs.dom
-import org.scalajs.dom.{File, URL}
+import org.scalajs.dom.URL
 
 import scala.concurrent.*
-import scala.util.{Failure, Success}
 
 case class HomepageContentControl(fullInfo: FullInfo, contentControlLogger: Logger, fileStorageLogger: Logger) {
 
@@ -37,16 +31,17 @@ case class HomepageContentControl(fullInfo: FullInfo, contentControlLogger: Logg
   private[control] val fetchFromRemote: FetchFromRemote = FetchFromRemote(fileStorageLogger, ExecutionContext.global)
 
   def ensureDefaultLanguageSourcesLoaded(): Future[?] = {
-    val snapFiles: Set[FileDescription] = Set(
-      fileFactory.relativeToResourceFolder(s"programs/20260704Snap/locale/lang-de.js"),
-      fileFactory.relativeToResourceFolder(s"programs/20260704Snap/locale/lang-en.js"),
-    )
+    val snapFiles: Set[LanguageMapInputSource] = Set(
+      //LanguageMapFileBasedSourceInfo[HumanLanguage](fileFactory.relativeToResourceFolder(s"programs/20260704Snap/locale/lang-en.js"), "originalSnap", English, ec),
+      LanguageMapFileBasedSourceInfo[HumanLanguage](fileFactory.relativeToResourceFolder(s"programs/20260704Snap/locale/lang-de.js"), "originalSnap", German, ec),
+    ).flatMap(LanguageMapSourceFileBased.forSnapFile(_, str => str))
 
     def evaLangDir(dirName: String): EvaDirectorySource = EvaDirectorySource(dirName, fileFactory.relativeToResourceFolder(s"/languageMaps/eva/${dirName}"))
 
     val defaultEvaFiles: Set[LanguageMapInputSource] = Set(
       LanguageMapInputSource.forEvaLanguageMapFiles(fullInfo.defaults.loadLanguageMapDirs.map(evaLangDir))
     )
+    languageStorage.ensureLanguageSourcesLoaded(snapFiles)
     languageStorage.ensureLanguageSourcesLoaded(defaultEvaFiles)
   }
 
@@ -84,7 +79,7 @@ object HomepageContentControl {
     }
 
     def onBackendServer(pathRelativeToBackendServer: String): FileDescription = {
-      val toAdd = if(pathRelativeToBackendServer.startsWith("/")) pathRelativeToBackendServer else "/" + pathRelativeToBackendServer
+      val toAdd = if (pathRelativeToBackendServer.startsWith("/")) pathRelativeToBackendServer else "/" + pathRelativeToBackendServer
       val urlStr = "https://" + fullInfo.defaults.defaultBackend.backendDomain + toAdd
       fromUrl(URL(urlStr))
     }

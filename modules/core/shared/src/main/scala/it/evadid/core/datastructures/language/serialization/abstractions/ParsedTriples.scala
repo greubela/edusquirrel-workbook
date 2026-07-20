@@ -13,8 +13,7 @@ case class ParsedTriples(regularTriples: Set[LanguageMapEntry[HumanLanguage]], u
 
   lazy override val toString: String = s"ParsedTriples($size triples: ${regularTriples.size} regular + ${universalTriples.size} universal)"
 
-
-  def createMapsFromTriples(logger: Logger): Set[LanguageMapWithId] = {
+  def createMapsFromTriples(logger: Logger): Set[LanguageMapWithId] = try{
     val resMap: Map[LanguageMapContentId, Set[LanguageMapEntry[HumanLanguage]]] = regularTriples.groupBy(_.contentId)
     val universal: Map[LanguageMapContentId, Set[LanguageMapEntry[SpecialLanguage]]] = universalTriples.groupBy(_.contentId)
 
@@ -31,6 +30,9 @@ case class ParsedTriples(regularTriples: Set[LanguageMapEntry[HumanLanguage]], u
 
     logger.logInfo(s"Created ${resMaps.size} language maps for the ids: ${resMaps.map(_.contentId).mkString}. Fewest language entries: ${resMaps.minByOption(_.languageMap.availableLanguages.size).map(_.contentId)}")
     resMaps
+  }catch case (e: Exception) => {
+    logger.logException(e)
+    throw e
   }
 
 

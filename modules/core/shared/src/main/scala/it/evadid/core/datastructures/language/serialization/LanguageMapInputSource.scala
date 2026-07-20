@@ -18,6 +18,8 @@ trait LanguageMapInputSource {
 
 object LanguageMapInputSource {
 
+
+  
   case class LanguageMapFileBasedSourceInfo[T <: AppLanguage]
   (
     fileDescription: FileDescription,
