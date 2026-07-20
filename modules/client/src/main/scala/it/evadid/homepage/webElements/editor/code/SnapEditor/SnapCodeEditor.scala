@@ -35,7 +35,7 @@ case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig,
         onMountCallback { ctx =>
           val canvas = ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]
           impl.mount(ctx.owner)
-          impl.onProjectXmlChanged(xml => program.set(TurtleFileSubmission.parseToBeProgram(xml)))
+          impl.setOnProjectXmlChangedListener(xml => program.set(TurtleFileSubmission.parseToBeProgram(xml)))
           impl.renderEditorInto(program.now(), canvas, config)
         }
       ),
@@ -109,7 +109,7 @@ object SnapCodeEditor {
     def pauseWorldCycles(): Unit
 
     /** Register a listener for XML changes caused by edits in the mounted Snap project. */
-    def onProjectXmlChanged(callback: String => Unit): Unit
+    def setOnProjectXmlChangedListener(callback: String => Unit): Unit
 
     /** Remove custom tabs and, when requested, Snap's standard library too. */
     def removeAllLibraries(includeDefaultLibraries: Boolean = false): Unit
