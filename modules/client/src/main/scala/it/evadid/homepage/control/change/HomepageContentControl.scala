@@ -24,7 +24,7 @@ import org.scalajs.dom.{File, URL}
 import scala.concurrent.*
 import scala.util.{Failure, Success}
 
-case class HomepageContentControl(fullInfo: FullInfo, contentControlLogger: Logger) {
+case class HomepageContentControl(fullInfo: FullInfo, contentControlLogger: Logger, fileStorageLogger: Logger) {
 
   private given ec: ExecutionContext = ExecutionContext.global
 
@@ -34,7 +34,7 @@ case class HomepageContentControl(fullInfo: FullInfo, contentControlLogger: Logg
   lazy val postToRemote: PostToRemote = PostToRemote(contentControlLogger)
   lazy val fileFactory: HomepageFileFactory = HomepageFileFactory(fullInfo, fetchFromRemote)
 
-  private[control] val fetchFromRemote: FetchFromRemote = FetchFromRemote(contentControlLogger, ExecutionContext.global)
+  private[control] val fetchFromRemote: FetchFromRemote = FetchFromRemote(fileStorageLogger, ExecutionContext.global)
 
   def ensureDefaultLanguageSourcesLoaded(): Future[?] = {
     val snapFiles: Set[FileDescription] = Set(
@@ -47,9 +47,6 @@ case class HomepageContentControl(fullInfo: FullInfo, contentControlLogger: Logg
     val defaultEvaFiles: Set[LanguageMapInputSource] = Set(
       LanguageMapInputSource.forEvaLanguageMapFiles(fullInfo.defaults.loadLanguageMapDirs.map(evaLangDir))
     )
-
-    println("[UGLY HOMEPAGECONTENTCONTROL: defaultEvaFiles Calculated: " + defaultEvaFiles.size + " (first: " + defaultEvaFiles.headOption + ")")
-
     languageStorage.ensureLanguageSourcesLoaded(defaultEvaFiles)
   }
 

@@ -35,6 +35,6 @@ case class FullInfo(
 
   lazy val displayControl: DisplayControl = DisplayControl(this)
 
-  lazy val contentControl: HomepageContentControl = HomepageContentControl(this, loggerSystemInfo.contentStorageLogger)
+  lazy val contentControl: HomepageContentControl = HomepageContentControl(this, loggerSystemInfo.contentStorageLogger, loggerSystemInfo.fileDataStorageLogger)
 
 }

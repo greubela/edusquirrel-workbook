@@ -48,7 +48,7 @@ trait LanguageMapSourceFileBased[T <: AppLanguage](
         tryParseKeyValuePairs(logger, loadedFile)
       })
       .recover { case (e: Exception) =>
-        logger.logExceptionInfo(s"Ignore content of '${fileDescription.structure.filenameWithoutExtension}' as could not fetch file", "A LanguageMapFileBasedSource does not need to exist ", e)
+       // logger.logExceptionInfo(s"Ignore content of '${fileDescription.structure.filenameWithoutExtension}' as could not fetch file", "A LanguageMapFileBasedSource does not need to exist ", e)
         Map[String, String]()
       }
   }

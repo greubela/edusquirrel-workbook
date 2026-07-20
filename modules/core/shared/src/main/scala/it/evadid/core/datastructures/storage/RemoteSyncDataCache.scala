@@ -85,7 +85,6 @@ case class RemoteSyncDataCache[K, D](config: RemoteCacheConfig[K, D], lastCacheU
   def tryEnsureCacheIsAtLeastThisRecent(maxAge: LocalDateTime): Future[RemoteSyncDataCache[K, D]] = syncLock.synchronized {
     ensureCacheIsAtLeastThisRecent(maxAge).recover {
       case err: Throwable =>
-        println(s"[UGLY ERR] ${err.getMessage}")
         config.syncLogger.logExceptionWarn("Ignoring that ensureCacheIsAtLeastThisRecent failed because of", err)
         this
     }
@@ -93,15 +92,15 @@ case class RemoteSyncDataCache[K, D](config: RemoteCacheConfig[K, D], lastCacheU
 
   def ensureCacheIsAtLeastThisRecent(maxAge: LocalDateTime): Future[RemoteSyncDataCache[K, D]] = syncLock.synchronized {
     if (lastCacheUpdate.isEmpty) {
-      println(s"Cache was never updated, requesting fetch!")
+      //println(s"Cache was never updated, requesting fetch!")
       config.syncLogger.log("Cache was never updated, requesting fetch!", INFO, Some(false))
       executeFetch()
     } else if (lastCacheUpdate.get.isBefore(maxAge)) {
-      println(s"Cache is outdated (last request${lastCacheUpdate.get} < ${maxAge}), requesting fetch!")
+      //println(s"Cache is outdated (last request${lastCacheUpdate.get} < ${maxAge}), requesting fetch!")
       config.syncLogger.log(s"Cache is outdated (last request${lastCacheUpdate.get} < ${maxAge}), requesting fetch!", INFO, Some(false))
       executeFetch()
     } else {
-      println(s"No need to update cache, is still fresh enough (last request ${lastCacheUpdate.get} >= ${maxAge}")
+      //println(s"No need to update cache, is still fresh enough (last request ${lastCacheUpdate.get} >= ${maxAge}")
       config.syncLogger.log(s"No need to update cache, is still fresh enough (last request ${lastCacheUpdate.get} >= ${maxAge}", INFO, Some(false))
       Future.successful(this)
     }

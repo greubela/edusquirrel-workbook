@@ -29,8 +29,10 @@ case class LanguageMapStorageControl(contentControlLogger: Logger, ec: Execution
   }
 
   def ensureLanguageSourcesLoaded(newSources: IterableOnce[LanguageMapInputSource]): Future[?] = {
-    val loadSources = languageStorage.now().loadedSources.diff(newSources.iterator.toSet)
+    val loadSources = newSources.iterator.toSet.diff(languageStorage.now().loadedSources)
     val resPromise: Promise[Unit] = Promise[Unit]()
+
+    contentControlLogger.logInfo(s"Fetching ${loadSources} / ${newSources} (other did already exist)")
 
     LanguageMapCollectionSource(loadSources, ec).loadAllTriples(contentControlLogger).onComplete {
       case Success(triples) => {
