@@ -26,11 +26,30 @@ The renderer has two entry points for the two distinct lifecycles:
       config: SnapCodeEditorConfig
   ): Unit
 
-renderEditorInto owns a retained WorldMorph/IDE_Morph session and a continuous
-frame loop. renderPreviewInto creates a short-lived real editor, rasterizes its
+renderEditorInto owns a WorldMorph/IDE_Morph session for exactly one connected
+canvas mount. renderPreviewInto creates a short-lived real editor, rasterizes its
 ScriptsMorph with fullImage(), and copies that exact image without scaling into a
-tightly-sized destination canvas. mount(owner) prepares lifecycle state;
-destroy() cancels the interactive frame loop and destroys retained Morphs.
+tightly-sized destination canvas. destroy() persists pending project XML,
+cancels the interactive frame loop, and destroys all retained Morphs.
+
+The interactive lifecycle is:
+
+* fullscreen open records intent to run, but does not create anything;
+* canvas mount creates one session from the current BeProgram and starts it when
+  fullscreen is open;
+* fullscreen close pauses the session immediately;
+* canvas unmount always destroys the session and its DOM listeners;
+* a later mount creates a fresh session from the program saved during destroy;
+* the close callback passed to setFullscreen pauses the editor exactly once when
+  the view is closed or replaced, so at most one fullscreen loop is active.
+
+An off-screen authoritative canvas with a visible forwarding canvas was
+rejected for the fullscreen editor. It would need to reproduce pointer capture,
+coordinate transforms, keyboard/IME focus, drag paths, wheel events and popup
+placement. Keeping Snap's real event canvas mounted is simpler, but the current
+dialog removes its child on close; retaining a detached world would leak Snap's
+document-level state. Deterministic destroy/recreate at that ownership boundary
+is therefore the smallest reliable model.
 
 MountedProgramBlockRenderer implements both paths. SnapCodeEditor currently uses
 renderPreviewInto for the workbook card. BeProgramSnapOriginalRenderer and
@@ -145,8 +164,8 @@ Important details:
   loop drain them and use its completion callback, or use rawOpenProjectString
   synchronously before final layout.
 * WorldMorph installs event listeners and a hidden keyboard textarea. Repeatedly
-  constructing worlds for renders leaks handlers and splits keyboard ownership.
-  Construct once per mount and release the session on unmount.
+  constructing worlds during one mount leaks handlers and splits keyboard
+  ownership. Construct once per mount and destroy the session on unmount.
 * changed/fullChanged only mark damage. A tick is required before copied output
   reflects the change.
 * HandMorph drag/drop, hover, autoscroll, menus, CursorMorph editing, animations,

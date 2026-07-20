@@ -1,6 +1,5 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
-import com.raquo.airstream.ownership.Owner
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.SnapCodeEditorImpl
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.TurtleFileSubmission
 import it.evadid.vm.BeProgram
@@ -25,21 +24,10 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
 
   private val ProjectXmlCheckIntervalMs = 500.0
 
-  override def mount(owner: Owner): Unit =
-    ()
-
   override def renderEditorInto(initProgram: BeProgram, canvas: Canvas, config: SnapCodeEditorConfig): Unit =
-    // Laminar mounts the same lazy editor element again whenever the fullscreen
-    // dialog is reopened. Keep the WorldMorph which already owns this canvas:
-    // constructing another world would add a second set of DOM listeners and
-    // leave the older (now visually obscured) world handling the input.
-    editorWorld match
-      case Some(world) if world.worldCanvas eq canvas =>
-        keepKeyboardHandlerInEditor(world, canvas)
-        startWorldCycles()
-        return
-      case _ => ()
-
+    // A second call without destroy is a programming error: two WorldMorphs
+    // would install competing listeners. SnapCodeEditor owns recreation.
+    require(editorWorld.isEmpty && editor.isEmpty, "Snap editor session is already mounted")
     stopEditorSession()
     require(canvas.isConnected, "Snap's interactive canvas must be mounted before WorldMorph is created")
     sizeEditorCanvas(canvas, config)
@@ -62,7 +50,6 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
 
     editorWorld = Some(world)
     editor = Some(ide)
-    startWorldCycles()
     CanvasVisibility.warnIfUnexpectedlyEmpty(this, initProgram, canvas)
 
   override def renderPreviewInto(program: BeProgram, canvas: Canvas, config: SnapCodeEditorConfig): Unit =

@@ -13,6 +13,26 @@ import org.scalajs.dom.html.Canvas
 case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig, impl: SnapCodeEditorImpl)
     extends HtmlAppElement with FullscreenLifecycle {
 
+  /**
+   * The interactive session is deliberately scoped to one DOM mount:
+   *
+   *   Unmounted --canvas mounts--> Mounted --canvas unmounts--> Unmounted
+   *
+   * A mount creates exactly one WorldMorph/IDE pair. An unmount destroys that
+   * pair (and first persists its XML). Reopening the dialog mounts the same
+   * Laminar element, but creates a fresh Snap session from `program`. Merely
+   * opening/closing fullscreen only starts/stops cycles; it never constructs a
+   * world. Keeping a detached world or forwarding input from a mirror canvas
+   * would retain document listeners, focus state, pointer capture and popup
+   * coordinates, making it both more complex and less reliable than recreation.
+   */
+  private enum EditorMount:
+    case Unmounted
+    case Mounted(canvas: dom.HTMLCanvasElement)
+
+  private var editorMount: EditorMount = EditorMount.Unmounted
+  private var fullscreenOpen = false
+
   lazy val editorCanvas: L.Element = {
     div(
       cls := "be-program-snap-renderer",
@@ -34,16 +54,22 @@ case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig,
         // installs its listeners only after this exact canvas is connected.
         onMountCallback { ctx =>
           val canvas = ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]
-          impl.mount(ctx.owner)
-          impl.setOnProjectXmlChangedListener(xml => program.set(TurtleFileSubmission.parseToBeProgram(xml)))
-          impl.renderEditorInto(program.now(), canvas, config)
+          editorMount match
+            case EditorMount.Unmounted =>
+              impl.setOnProjectXmlChangedListener(xml => program.set(TurtleFileSubmission.parseToBeProgram(xml)))
+              impl.renderEditorInto(program.now(), canvas, config)
+              editorMount = EditorMount.Mounted(canvas)
+              if fullscreenOpen then impl.startWorldCycles()
+            case EditorMount.Mounted(mountedCanvas) =>
+              require(mountedCanvas eq canvas, "SnapCodeEditor cannot be mounted on two canvases at once")
         }
       ),
       onUnmountCallback { _ =>
-        // The dialog reuses this lazy DOM element. Keep its WorldMorph and DOM
-        // event listeners intact between openings; only stop animation work
-        // while the canvas is detached.
-        impl.pauseWorldCycles()
+        editorMount match
+          case EditorMount.Mounted(_) =>
+            impl.destroy()
+            editorMount = EditorMount.Unmounted
+          case EditorMount.Unmounted => ()
       }
     )
   }
@@ -80,9 +106,17 @@ case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig,
   def removeAllLibraries(includeDefaultLibraries: Boolean = false): Unit =
     impl.removeAllLibraries(includeDefaultLibraries)
 
-  override def onFullscreenOpen(): Unit = impl.startWorldCycles()
+  override def onFullscreenOpen(): Unit =
+    fullscreenOpen = true
+    editorMount match
+      case EditorMount.Mounted(_) => impl.startWorldCycles()
+      case EditorMount.Unmounted => ()
 
-  override def onFullscreenClose(): Unit = impl.pauseWorldCycles()
+  override def onFullscreenClose(): Unit =
+    fullscreenOpen = false
+    editorMount match
+      case EditorMount.Mounted(_) => impl.pauseWorldCycles()
+      case EditorMount.Unmounted => ()
 
 }
 
@@ -99,8 +133,6 @@ object SnapCodeEditor {
 
     /** Render only the scripts as a static, tightly-sized preview. */
     def renderPreviewInto(program: BeProgram, canvas: Canvas, config: SnapCodeEditorConfig): Unit
-
-    def mount(ctx: Owner): Unit
 
     /** Start driving the Morphic world. Snap controls only become responsive while cycles run. */
     def startWorldCycles(): Unit
