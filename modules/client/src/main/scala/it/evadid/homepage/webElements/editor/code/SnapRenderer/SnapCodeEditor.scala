@@ -3,14 +3,15 @@ package it.evadid.homepage.webElements.editor.code.SnapRenderer
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.homepage.webElements.editor.code.SnapRenderer.SnapCodeEditor.SnapCodeEditorImpl
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.TurtleFileSubmission
 import it.evadid.vm.BeProgram
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
 
-case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig, impl: SnapCodeEditorImpl) extends HtmlAppElement {
+case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig, impl: SnapCodeEditorImpl)
+    extends HtmlAppElement with FullscreenLifecycle {
 
   lazy val editorCanvas: L.Element = {
     div(
@@ -39,8 +40,8 @@ case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig,
         }
       ),
       onUnmountCallback { _ =>
-        // The interactive canvas exclusively owns the retained Morphic world.
-        // Destroy it only when this editor host leaves the dialog.
+        // This now means that another fullscreen element replaced the retained
+        // editor, rather than that the dialog was merely closed.
         impl.destroy()
       }
     )
@@ -77,6 +78,10 @@ case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig,
   /** Drop custom tabs, optionally removing Snap's default library as well. */
   def removeAllLibraries(includeDefaultLibraries: Boolean = false): Unit =
     impl.removeAllLibraries(includeDefaultLibraries)
+
+  override def onFullscreenOpen(): Unit = impl.startWorldCycles()
+
+  override def onFullscreenClose(): Unit = impl.pauseWorldCycles()
 
 }
 
