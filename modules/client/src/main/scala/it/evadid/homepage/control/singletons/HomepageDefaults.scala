@@ -18,6 +18,7 @@ case class HomepageDefaults() {
 
   /* LANGUAGE MAP INPUT SOURCES */
 
+
   lazy val loadLanguageMapDirs: Set[String] = Set(
     "basic", "entitynames", "turtlestitch", "blockeditor", "embroideryworkbook", "testworkbook", "plantworkshop", "prompts", "compressionworkbook"
   )

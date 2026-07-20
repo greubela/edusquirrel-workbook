@@ -32,8 +32,9 @@ case class HomepageContentControl(fullInfo: FullInfo, contentControlLogger: Logg
 
   def ensureDefaultLanguageSourcesLoaded(): Future[?] = {
     val snapFiles: Set[LanguageMapInputSource] = Set(
-      //LanguageMapFileBasedSourceInfo[HumanLanguage](fileFactory.relativeToResourceFolder(s"programs/20260704Snap/locale/lang-en.js"), "originalSnap", English, ec),
       LanguageMapFileBasedSourceInfo[HumanLanguage](fileFactory.relativeToResourceFolder(s"programs/20260704Snap/locale/lang-de.js"), "originalSnap", German, ec),
+      LanguageMapFileBasedSourceInfo[HumanLanguage](fileFactory.relativeToResourceFolder(s"programs/20260704Snap/locale/lang-dk.js"), "originalSnap", Danish, ec)
+      //LanguageMapFileBasedSourceInfo[HumanLanguage](fileFactory.relativeToResourceFolder(s"programs/20260704Snap/locale/lang-en.js"), "originalSnap", English, ec),
     ).flatMap(LanguageMapSourceFileBased.forSnapFile(_, str => str))
 
     def evaLangDir(dirName: String): EvaDirectorySource = EvaDirectorySource(dirName, fileFactory.relativeToResourceFolder(s"/languageMaps/eva/${dirName}"))
