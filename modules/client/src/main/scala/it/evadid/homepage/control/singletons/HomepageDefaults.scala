@@ -19,8 +19,7 @@ case class HomepageDefaults() {
   /* LANGUAGE MAP INPUT SOURCES */
 
   lazy val loadLanguageMapDirs: Set[String] = Set(
-    "basic",
-    //"entitynames", "turtlestitch", "blockeditor", "embroideryworkbook", "testworkbook", "plantworkshop", "prompts", "compressionworkbook"
+    "basic", "entitynames", "turtlestitch", "blockeditor", "embroideryworkbook", "testworkbook", "plantworkshop", "prompts", "compressionworkbook"
   )
 
   lazy val availableLanguages: List[HumanLanguage] = List(AppLanguage.German, AppLanguage.English)
