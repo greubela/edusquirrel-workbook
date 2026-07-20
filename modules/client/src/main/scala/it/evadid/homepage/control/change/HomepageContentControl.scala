@@ -47,6 +47,9 @@ case class HomepageContentControl(fullInfo: FullInfo, contentControlLogger: Logg
     val defaultEvaFiles: Set[LanguageMapInputSource] = Set(
       LanguageMapInputSource.forEvaLanguageMapFiles(fullInfo.defaults.loadLanguageMapDirs.map(evaLangDir))
     )
+
+    println("[UGLY HOMEPAGECONTENTCONTROL: defaultEvaFiles Calculated: " + defaultEvaFiles.size + " (first: " + defaultEvaFiles.headOption + ")")
+
     languageStorage.ensureLanguageSourcesLoaded(defaultEvaFiles)
   }
 
@@ -82,13 +85,13 @@ object HomepageContentControl {
         case TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES(workbookRoot) => fromUrl(URL(workbookRoot.asUrlString + "/" + src))
       }
     }
-    
+
     def onBackendServer(pathRelativeToBackendServer: String): FileDescription = {
       val toAdd = if(pathRelativeToBackendServer.startsWith("/")) pathRelativeToBackendServer else "/" + pathRelativeToBackendServer
-      val urlStr = "https://" + fullInfo.defaults.defaultBackend.backendDomain + toAdd 
+      val urlStr = "https://" + fullInfo.defaults.defaultBackend.backendDomain + toAdd
       fromUrl(URL(urlStr))
     }
-    
+
   }
 
 

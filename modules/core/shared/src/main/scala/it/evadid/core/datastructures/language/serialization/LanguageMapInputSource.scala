@@ -52,8 +52,12 @@ object LanguageMapInputSource {
   )
 
   private def buildEvaReader[T <: AppLanguage](source: EvaDirectorySource, language: T, languageSuffix: String, ec: ExecutionContext): Option[LanguageMapSourceFileBased[T]] = {
+
     val infoOp = source.dirFileDescription.getChildrenFile(s"map-${languageSuffix}.json").map(LanguageMapFileBasedSourceInfo[T](_, source.languageMapName, language, ec))
-    infoOp.flatMap(info => LanguageMapSourceFileBased.forEvaFile[T](info))
+    val res = infoOp.flatMap(info => LanguageMapSourceFileBased.forEvaFile[T](info))
+    println("[UGLY LANGUAGEMAPINPUTSOURCE] " + source + ", " + language + ", " + languageSuffix + ", " + infoOp + " ---> res: " + res)
+    res
+
   }
 
 

@@ -1,5 +1,6 @@
 package it.evadid.core.datastructures.language.serialization
 
+import fs2.data.csv.lowlevel
 import fs2.{Fallible, Stream}
 import it.evadid.core.datastructures.file.{FileDescription, LoadedFile}
 import it.evadid.core.datastructures.language.AppLanguage.*
@@ -12,9 +13,6 @@ import it.evadid.util.logging.Logger
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 
-import fs2.{Fallible, Stream}
-import fs2.data.csv.lowlevel
-
 trait LanguageMapSourceFileBased[T <: AppLanguage](
                                                     fileDescription: FileDescription,
                                                     val associatedLanguageMapName: String,
@@ -25,6 +23,7 @@ trait LanguageMapSourceFileBased[T <: AppLanguage](
   given ExecutionContext = ec
 
   def loadAllTriples(logger: Logger): Future[ParsedTriples] = {
+    logger.logInfo(s"Loading all triples for ${fileDescription.asUrlString}")
     loadKeyValuePairs(logger).map(contentAsMap =>
         logger.logInfo(s"successfully read ${contentAsMap.size} entries from ${associatedLanguageMapName}/${associatedLanguage} (now transforming them to ParsedTriples)")
         val entries: Set[LanguageMapEntry[T]] = contentAsMap.toList.map((key, value) => {
@@ -80,8 +79,7 @@ object LanguageMapSourceFileBased {
 
   def forEvaFile[T <: AppLanguage](info: LanguageMapFileBasedSourceInfo[T]): Option[LanguageMapSourceFileBased[T]] = {
     val e = info.fileDescription.structure.extensionOrEmpty.toLowerCase
-    if (e.isEmpty) None
-    else if (e == "csv") Some(apply(info, parseCsv))
+    if (e == "csv") Some(apply(info, parseCsv))
     else if (e == "json") Some(apply(info, parseJson))
     else {
       println(s"[UGLY WARN LanguageMapSourceFileBased] file extension of an eva file should be json or csv (but was '${e}')")
