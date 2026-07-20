@@ -13,7 +13,7 @@ case class LanguageMapContentId(val languageMapId: String, val entryKey: String)
 object LanguageMapContentId {
 
   def apply(languageMapId: String, entryKey: String): LanguageMapContentId =
-    new LanguageMapContentId(languageMapId.toLowerCase, entryKey.toLowerCase)
+    new LanguageMapContentId(languageMapId.toLowerCase.trim, entryKey.toLowerCase.trim)
 
   def apply(fullId: String): LanguageMapContentId = {
     val parts = fullId.split("/")
