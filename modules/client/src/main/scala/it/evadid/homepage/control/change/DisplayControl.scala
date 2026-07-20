@@ -14,6 +14,10 @@ case class DisplayControl(fullInfo: FullInfo) {
   }
 
   def setFullscreen(element: HtmlAppElement): Unit = {
+    element match {
+      case lifecycle: FullscreenLifecycle => lifecycle.onFullscreenOpen()
+      case _ => ()
+    }
     updateDisplay(_.copy(fullscreenElement = Some(element)))
   }
 
