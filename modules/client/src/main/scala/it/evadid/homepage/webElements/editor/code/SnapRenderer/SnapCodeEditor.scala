@@ -40,9 +40,10 @@ case class SnapCodeEditor(program: Var[BeProgram], config: SnapCodeEditorConfig,
         }
       ),
       onUnmountCallback { _ =>
-        // This now means that another fullscreen element replaced the retained
-        // editor, rather than that the dialog was merely closed.
-        impl.destroy()
+        // The dialog reuses this lazy DOM element. Keep its WorldMorph and DOM
+        // event listeners intact between openings; only stop animation work
+        // while the canvas is detached.
+        impl.pauseWorldCycles()
       }
     )
   }
