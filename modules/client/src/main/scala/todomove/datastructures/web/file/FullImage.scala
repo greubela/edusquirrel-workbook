@@ -36,7 +36,7 @@ object FullImage {
 
     override lazy val imageSourceString: String = {
       val b64str = JsHelpers.byteArrayToBase64String(loadedFile.data)
-      "data:image/" + loadedFile.description.extensionOrEmpty + ";base64, " + b64str
+      "data:image/" + loadedFile.description.structure.extensionOrEmpty + ";base64, " + b64str
     }
   }
 

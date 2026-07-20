@@ -49,7 +49,7 @@ trait LanguageMapSourceFileBased[T <: AppLanguage](
         tryParseKeyValuePairs(logger, loadedFile)
       })
       .recover { case (e: Exception) =>
-        logger.logExceptionInfo(s"Ignore content of '${fileDescription.filenameWithoutExtension}' as could not fetch file", "A LanguageMapFileBasedSource does not need to exist ", e)
+        logger.logExceptionInfo(s"Ignore content of '${fileDescription.structure.filenameWithoutExtension}' as could not fetch file", "A LanguageMapFileBasedSource does not need to exist ", e)
         Map[String, String]()
       }
   }
@@ -79,7 +79,7 @@ object LanguageMapSourceFileBased {
   }
 
   def forEvaFile[T <: AppLanguage](info: LanguageMapFileBasedSourceInfo[T]): Option[LanguageMapSourceFileBased[T]] = {
-    val e = info.fileDescription.extensionOrEmpty.trim.toLowerCase
+    val e = info.fileDescription.structure.extensionOrEmpty.toLowerCase
     if (e.isEmpty) None
     else if (e == "csv") Some(apply(info, parseCsv))
     else if (e == "json") Some(apply(info, parseJson))
@@ -121,13 +121,13 @@ object LanguageMapSourceFileBased {
   }
 
   private def parseContent(logger: Logger, file: LoadedFile): Map[String, String] = try {
-    val extension = file.description.extensionOrEmpty.toLowerCase
+    val extension = file.description.structure.extension.getOrElse("").toLowerCase
     val content = file.fileDataAsUtf8String
     if (extension.toLowerCase == "json") parseJson(logger, file)
     else if (extension.toLowerCase == "csv") parseCsv(logger, file)
     else Map[String, String]()
   } catch case e: Throwable => {
-    logger.logExceptionWarn(s"ignoring content of file ${file.description.fullPath} after exception", e)
+    logger.logExceptionWarn(s"ignoring content of file ${file.description.asUrlString} after exception", e)
     Map[String, String]()
   }
 

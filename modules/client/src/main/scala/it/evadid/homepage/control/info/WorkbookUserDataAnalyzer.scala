@@ -72,7 +72,7 @@ case class WorkbookUserDataAnalyzer(logger: Logger, downloadToDisc: DownloadToDi
   }
 
   def upload(file: FileDescription): Unit = {
-    logger.logInfo(s"WorkbookUserDataAnalyzer: Trying to load prior session data based on file ${file.fullPath}!")
+    logger.logInfo(s"WorkbookUserDataAnalyzer: Trying to load prior session data based on file ${file.asUrlString}!")
     file.loadData().foreach(loadedFile => {
       val str = loadedFile.fileDataAsUtf8String
       val data: SessionData = upickle.default.read(str)

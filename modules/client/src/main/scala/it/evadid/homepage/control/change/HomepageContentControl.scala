@@ -79,7 +79,7 @@ object HomepageContentControl {
     def resolveFromTypeAndLanguageMapContent(howToResolveUrl: URL_TYPE, src: String): FileDescription = {
       howToResolveUrl.match {
         case TypeOfTextDisplay.URL_RELATIVE_TO_GLOBAL_RESOURCES => relativeToResourceFolder(src)
-        case TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES(workbookRoot) => fromUrl(URL(workbookRoot.fullPath + "/" + src))
+        case TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES(workbookRoot) => fromUrl(URL(workbookRoot.asUrlString + "/" + src))
       }
     }
     

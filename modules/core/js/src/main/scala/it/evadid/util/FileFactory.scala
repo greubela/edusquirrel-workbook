@@ -14,28 +14,31 @@ object FileFactory {
 
   lazy val singleton: FileFactory = FileFactory(FetchFromRemote.singleton)
 
-  private[util] case class InternetResourceFileDescription(url: URL, filenameWithoutExtension: String, extension: Option[String], copyrightInfo: CopyrightInfo, downloader: FetchFromRemote) extends FileDescription {
+  private[util] case class InternetResourceFileDescription(url: URL, copyrightInfo: CopyrightInfo, downloader: FetchFromRemote) extends FileDescription {
 
-    override val toString: String = "InternetResourceFileDescription(" + fullPath + ")"
+    override val toString: String = "InternetResourceFileDescription(" + url.href + ")"
 
     def loadData(): Future[LoadedFile] = {
       downloader.fetch(this)
       //HomepageFileStore.fetchUrl(url.href).map(data => LoadedFile(this, data))(using ExecutionContext.global)
     }
 
-    override def getChildrenFile(childName: String, cCopyrightInfo: CopyrightInfo): Option[FileDescription] = if (extension.nonEmpty) None else {
-      val (cFilePath, cNameWithoutExtension, cExtension) = FileDescription.nameParts(childName)
-      Some(InternetResourceFileDescription(URL(url.href + "/" + childName), cNameWithoutExtension, cExtension, cCopyrightInfo, downloader))
+    override def getChildrenFile(childName: String, cCopyrightInfo: CopyrightInfo): Option[FileDescription] = if (structure.extension.nonEmpty) None else {
+      Some(InternetResourceFileDescription(URL(url.href + "/" + childName), cCopyrightInfo, downloader))
     }
+
+    override def asUrlString: String = url.href
+
   }
 
-  private[util] case class UploadedResourceFileDescription(file: File, filenameWithoutExtension: String, extension: Option[String], copyrightInfo: CopyrightInfo, downloader: FetchFromRemote) extends FileDescription {
+  private[util] case class UploadedResourceFileDescription(file: File, copyrightInfo: CopyrightInfo, downloader: FetchFromRemote) extends FileDescription {
     val location: Option[String] = None
-    override val toString: String = "UploadedResourceFileDescription(" + fullPath + ")"
+    override val toString: String = "UploadedResourceFileDescription(" + file.name + ")"
 
     def loadData(): Future[LoadedFile] = downloader.fetch(this) //.fetchFile(file).map(data => LoadedFile(this, data))(using ExecutionContext.global)
 
     override def getChildrenFile(childName: String, cCopyrightInfo: CopyrightInfo): Option[FileDescription] = None
+    override def asUrlString: String = file.name
   }
 
 }
@@ -43,14 +46,11 @@ object FileFactory {
 class FileFactory(downloader: FetchFromRemote) {
   
   def fromFile(file: File, copyrightInfo: CopyrightInfo = unknownCopyrightInfo): FileDescription = {
-    println("file: " + file.name)
-    val parts = FileDescription.nameParts(file.name)
-    UploadedResourceFileDescription(file, parts._2, parts._3, copyrightInfo, downloader)
+    UploadedResourceFileDescription(file, copyrightInfo, downloader)
   }
 
   def fromUrl(url: URL, copyrightInfo: CopyrightInfo = unknownCopyrightInfo): FileDescription = {
-    val (filePath, nameWithoutExtension, extension) = FileDescription.nameParts(url.href)
-    InternetResourceFileDescription(url, nameWithoutExtension, extension, copyrightInfo, downloader)
+    InternetResourceFileDescription(url, copyrightInfo, downloader)
   }
 
 }
