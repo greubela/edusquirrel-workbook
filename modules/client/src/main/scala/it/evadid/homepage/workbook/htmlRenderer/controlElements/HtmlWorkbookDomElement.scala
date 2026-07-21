@@ -30,6 +30,7 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   private lazy val dialogElement: Element = {
     dialogTag(
       cls := "fullscreen-overlay-dialog",
+      position.relative,
       onCloseDialog --> (_ => fullInfo.displayControl.closeFullscreen()),
       laminarHelper.onClickedOutside(_ => fullInfo.displayControl.closeFullscreen()),
       onMountCallback { ctx =>
@@ -46,6 +47,14 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
       div(
         cls("fullscreen-content-container"),
         child <-- retainedFullscreenElementSignal.map(_.map(_.getDomElement()).getOrElse(span("nothing to see here :)")))
+      ),
+      button(
+        typ := "button",
+        cls := "fullscreen-close-button",
+        aria.label := "Exit full screen",
+        title := "Exit full screen",
+        "×",
+        onClick --> (_ => fullInfo.displayControl.closeFullscreen())
       )
     )
   }
