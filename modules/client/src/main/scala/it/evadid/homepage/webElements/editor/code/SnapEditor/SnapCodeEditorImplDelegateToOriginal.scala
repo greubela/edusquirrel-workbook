@@ -22,6 +22,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   private var lastProjectXml: Option[String] = None
   private var lastProjectXmlCheckAt = 0.0
   private var originalBlockTemplates: Option[js.Any] = None
+  private var installedCustomCategoryNames: List[String] = Nil
 
   private val ProjectXmlCheckIntervalMs = 500.0
 
@@ -36,6 +37,10 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     editorWorld match
       case Some(world) if world.worldCanvas eq canvas =>
         keepKeyboardHandlerInEditor(world, canvas)
+        editor.foreach { ide =>
+          layoutEditor(world, ide, canvas)
+          ide.refreshPalette(true)
+        }
         startWorldCycles()
         return
       case _ => ()
@@ -97,6 +102,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     world.destroy()
 
   private def createEditor(world: WorldMorph, program: BeProgram, config: SnapCodeEditorConfig): IDEMorph =
+    val hasLibraryTabs = config.libraryTabs.nonEmpty
     val ide = new IDEMorph(js.Dynamic.literal(
       noAutoFill = true,
       noCloud = true,
@@ -107,7 +113,9 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       noSprites = !config.parts.stage,
       noSpriteEdits = !config.parts.spriteControls,
       noPalette = !config.parts.palette,
-      noOwnBlocks = config.libraryTabs.nonEmpty,
+      noOwnBlocks = hasLibraryTabs,
+      // Hide built-in categories; exercise tabs via customCategories in installLibraries.
+      noDefaultCat = hasLibraryTabs,
       eduLibraryTabs = config.libraryTabs.map(_.name).toJSArray
     ))
     ide.openIn(world)
@@ -126,7 +134,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     ide
 
   /** Replace this editor instance's primitive provider, rather than mutating
-    * SpriteMorph.prototype. Multiple editors can therefore use different
+    * SpriteMorph.prototype.blockTemplates globally. Multiple editors can therefore use different
     * exercise libraries on the same page.
     */
   private def installLibraries(libraries: List[LibraryTab], ide: IDEMorph): Unit =
@@ -134,22 +142,70 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     require(libraries.forall(_.name.nonEmpty), "Snap library tab names must not be empty")
     val sprite = ide.currentSprite
     originalBlockTemplates = Some(sprite.asInstanceOf[js.Dynamic].selectDynamic("blockTemplates"))
-    val blockTemplates: js.Function2[String, Boolean, js.Array[BlockMorph]] =
-      (category: String, _: Boolean) => libraries.find(_.name == category).toList.flatMap(_.selectableElements).map { data =>
-        val block = Option(sprite.blockForSelector(data.id, true)).getOrElse(
-          throw new IllegalArgumentException(s"Unknown Snap block selector '${data.id}'")
-        )
-        block.isDraggable = false
-        block.isTemplate = true
-        if data.snap_description_line.nonEmpty then
-          block.setSpec(descriptionWithNativeInputs(data.snap_description_line, block.blockSpec))
-        block
-      }.toJSArray
+
+    clearInstalledCustomCategories()
+    ide.asInstanceOf[js.Dynamic].updateDynamic("currentCategory")(libraries.head.name)
+
+    ensurePrimitiveSelectors(libraries.flatMap(_.selectableElements.map(_.id)))
+
+    // Snap calls blockTemplates(category) or blockTemplates(category, forSearch).
+    // Exercise-only: only library tab names return blocks; everything else is empty.
+    val blockTemplates: js.Function2[String, js.UndefOr[Boolean], js.Array[BlockMorph]] =
+      (category: String, _: js.UndefOr[Boolean]) =>
+        libraries.find(_.name == category).toList.flatMap(_.selectableElements).flatMap { data =>
+          createTemplateBlock(data) match
+            case Some(block) => List(block)
+            case None =>
+              println(s"Snap library: skipping unknown block selector '${data.id}'")
+              Nil
+        }.toJSArray
 
     sprite.asInstanceOf[js.Dynamic].updateDynamic("blockTemplates")(blockTemplates)
     sprite.asInstanceOf[js.Dynamic].updateDynamic("primitivesCache")(js.Dictionary.empty[js.Any])
     sprite.paletteCache = js.Dictionary.empty
+    registerCustomCategoryTabs(libraries)
+    ide.createCategories()
     ide.refreshPalette(true)
+
+  private def spriteMorphPrototype: js.Dynamic =
+    js.Dynamic.global
+      .selectDynamic("SpriteMorph")
+      .selectDynamic("prototype")
+
+  /** If configured selectors are missing from the live primitives table (e.g. after
+    * a scene replaced SpriteMorph.prototype.blocks), restore the full table.
+    */
+  private def ensurePrimitiveSelectors(ids: List[String]): Unit =
+    val proto = spriteMorphPrototype
+    val blocks = proto.selectDynamic("blocks")
+    val missing = ids.filter { id =>
+      val info = blocks.selectDynamic(id)
+      js.isUndefined(info) || info == null
+    }
+    if missing.nonEmpty then
+      proto.applyDynamic("initBlocks")()
+
+  /** Mirror Snap's palette `block()` helper with explicit `this` = prototype. */
+  private def createTemplateBlock(data: LibraryBlock): Option[BlockMorph] =
+    val proto = spriteMorphPrototype
+    def invoke(): js.Dynamic =
+      proto.selectDynamic("blockForSelector").call(proto, data.id, true)
+
+    var raw = invoke()
+    if js.isUndefined(raw) || raw == null then
+      // One retry after restoring primitives (scene load may have left a thin table).
+      proto.applyDynamic("initBlocks")()
+      raw = invoke()
+    if js.isUndefined(raw) || raw == null then None
+    else
+      val block = raw.asInstanceOf[BlockMorph]
+      block.isDraggable = false
+      block.isTemplate = true
+      if data.snap_description_line.nonEmpty then
+        val spec = block.asInstanceOf[js.Dynamic].selectDynamic("blockSpec")
+        val specStr = if js.isUndefined(spec) || spec == null then "" else spec.toString
+        block.setSpec(descriptionWithNativeInputs(data.snap_description_line, specStr))
+      Some(block)
 
   override def removeAllLibraries(includeDefaultLibraries: Boolean): Unit =
     editor.foreach { ideMorph =>
@@ -160,19 +216,37 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
         templates
       }
       val templates = if includeDefaultLibraries then
-        ((_: String, _: Boolean) => js.Array[BlockMorph]()).asInstanceOf[js.Function2[String, Boolean, js.Array[BlockMorph]]]
+        ((_: String, _: js.UndefOr[Boolean]) => js.Array[BlockMorph]())
+          .asInstanceOf[js.Function2[String, js.UndefOr[Boolean], js.Array[BlockMorph]]]
       else original
       sprite.asInstanceOf[js.Dynamic].updateDynamic("blockTemplates")(templates)
       sprite.asInstanceOf[js.Dynamic].updateDynamic("primitivesCache")(js.Dictionary.empty[js.Any])
       sprite.paletteCache = js.Dictionary.empty
+      clearInstalledCustomCategories()
       val ideConfig = ideMorph.asInstanceOf[js.Dynamic].selectDynamic("config")
       ideConfig.updateDynamic("eduLibraryTabs")(js.Array())
       ideConfig.updateDynamic("eduEmptyLibrary")(includeDefaultLibraries)
+      ideConfig.updateDynamic("noDefaultCat")(false)
       ideMorph.asInstanceOf[js.Dynamic].updateDynamic("currentCategory")("motion")
       ideMorph.createCategories()
       ideMorph.refreshPalette(true)
     }
     if !includeDefaultLibraries then originalBlockTemplates = None
+
+  private def spriteMorphCustomCategories: js.Dynamic =
+    spriteMorphPrototype.selectDynamic("customCategories")
+
+  /** Register exercise tabs on TurtleStitch's customCategories Map (name → Color). */
+  private def registerCustomCategoryTabs(libraries: List[LibraryTab]): Unit =
+    val color = spriteMorphPrototype.selectDynamic("blockColor").selectDynamic("other")
+    val customCategories = spriteMorphCustomCategories
+    libraries.foreach(tab => customCategories.applyDynamic("set")(tab.name, color))
+    installedCustomCategoryNames = libraries.map(_.name)
+
+  private def clearInstalledCustomCategories(): Unit =
+    val customCategories = spriteMorphCustomCategories
+    installedCustomCategoryNames.foreach(name => customCategories.applyDynamic("delete")(name))
+    installedCustomCategoryNames = Nil
 
   /** `_` is deliberately only presentation syntax. The selector's native
     * placeholders remain authoritative for numeric, boolean and nested inputs.
@@ -269,6 +343,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   private def stopEditorSession(): Unit =
     editor.foreach(checkWhetherProgramXmlChanged)
     pauseWorldCycles()
+    clearInstalledCustomCategories()
     editor.foreach(_.destroy())
     editorWorld.foreach(_.destroy())
     editor = None
