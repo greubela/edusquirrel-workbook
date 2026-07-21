@@ -4,6 +4,7 @@ target/
 !**/src/test/**/target/
 
 ### IntelliJ IDEA ###
+.idea\*
 .idea/*
 *.iws
 *.iml
@@ -67,7 +68,6 @@ dist/
 node_modules/*
 
 # ai stuff
-.idea/*
 ai/*
 .proxyai/*
 META_INF/*
