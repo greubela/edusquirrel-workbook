@@ -39,5 +39,9 @@
   "noUserLoggedIn": "[Niemand]",
   "showHeader": "Navigation einblenden",
   "hideHeader": "Navigation ausblenden",
-  "openeditor": "Snap Editor öffnen :)"
+  "openeditor": "Snap Editor öffnen :)",
+  "syncInfoTooltipPartial": "Synchronisiert zu _ / _ Quellen",
+  "syncInfoTooltipFull": "Synchronisiert zu allen _ Quellen",
+  "syncInfoTooltipDisabled": "Synchronisation deaktiviert",
+  "syncInfoTooltipWarning": "Synchronisiert zu keiner der_ Quellen"
 }

@@ -27,31 +27,20 @@ case class AsyncFuture[F, S](underlying: Future[Either[FailureInfo[F], S]]) exte
         case Success(value) => res.success(Right(value))
         case Failure(error) => fail("AsyncFuture failed because of future error: " + error.getMessage, error, None)
       }(using ExecutionContext.global)
-      case AsyncDataFailed(err, data) => fail("AsyncFcn could not be executed because underlying value was error: " + err.msg, err, data)
+      case AsyncDataFailed(err, data) => fail("AsyncFunction could not be executed because underlying value was error: " + err.msg, err, data)
     }
 
     AsyncFuture(res.future)
   }
 
+  val futureFirstState: Future[AsyncDataStateFinished[F, S]] = underlying.map {
+    case Left(failureInfo) => AsyncDataFailed[F, S](failureInfo.error)
+    case Right(value) => AsyncDataSuccess[F, S](value)
+  }(using ExecutionContext.global)
+
   override lazy val observeAllStates: ObservableValue[AsyncDataState[F, S]] = {
     val res = ObservableValueImpl[AsyncDataState[F, S]](Some(AsyncDataLoading[F, S]()))
-    // Important: don't use `futureFirstState`/`withFinishedFirstState` here.
-    // `futureFirstState` depends on `observeLoadedStates`, which depends on `observeAllStates`,
-    // so using it during `observeAllStates` initialization creates a lazy init cycle.
-    underlying.onComplete {
-      case Success(Right(value)) =>
-        res.onNewValueArrived(Success(AsyncDataSuccess[F, S](value)))
-      case Success(Left(failureInfo)) =>
-        res.onNewValueArrived(
-          Success(AsyncDataFailed[F, S](failureInfo.error, failureInfo.data))
-        )
-      case Failure(exception) =>
-        val err: Throwable = Exception(
-          "AsyncFuture failed because of future error: " + exception.getMessage,
-          exception
-        )
-        res.onNewValueArrived(Success(AsyncDataFailed[F, S](SerializedException(err), None)))
-    }
+    withFinishedFirstState(state => res.onNewValueArrived(Success(state)))
     res
   }
 

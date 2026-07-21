@@ -38,5 +38,9 @@
   "sortingReasonConfirm": "Confirm reasoning",
   "noUserLoggedIn": "[Nobody]",
   "showHeader": "Show Navigation",
-  "hideHeader": "Hide Navigation"
+  "hideHeader": "Hide Navigation",
+  "syncInfoTooltipPartial": "Synced to  _ / _ Sources",
+  "syncInfoTooltipFull": "Synced to all _ Sources",
+  "syncInfoTooltipDisabled": "No Sync configured",
+  "syncInfoTooltipWarning": "Synced to none of the _ sources"
 }

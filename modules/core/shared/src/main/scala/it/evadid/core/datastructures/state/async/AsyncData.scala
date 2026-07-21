@@ -28,7 +28,7 @@ trait AsyncData[F, S] {
     case _ => None
   }
 
-  lazy val futureFirstState: Future[AsyncDataStateFinished[F, S]] = observeLoadedStates.currentValueOrWaitForUpdate
+  val futureFirstState: Future[AsyncDataStateFinished[F, S]]
 
   lazy val futureFirstValue: Future[S] = futureFirstState.map {
     case AsyncDataSuccess(value) => value
