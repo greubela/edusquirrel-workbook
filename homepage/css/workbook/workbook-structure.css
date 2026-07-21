@@ -2,6 +2,7 @@
    Add new semantic tokens in colors.css and reference them via var(--...). */
 @import url("../generic/colors.css");
 @import url("../generic/dimensions.css");
+@import url("../fullscreen.css");
 
 
 /* MAIN */
