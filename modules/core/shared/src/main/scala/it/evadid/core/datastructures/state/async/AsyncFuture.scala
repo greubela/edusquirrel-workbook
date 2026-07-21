@@ -1,5 +1,6 @@
 package it.evadid.core.datastructures.state.async
 
+import it.evadid.distribution.command.SerializedException
 import it.evadid.core.datastructures.state.observable.{ObservableValue, ObservableValueImpl}
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 
@@ -34,7 +35,23 @@ case class AsyncFuture[F, S](underlying: Future[Either[FailureInfo[F], S]]) exte
 
   override lazy val observeAllStates: ObservableValue[AsyncDataState[F, S]] = {
     val res = ObservableValueImpl[AsyncDataState[F, S]](Some(AsyncDataLoading[F, S]()))
-    withFinishedFirstState(state => res.onNewValueArrived(Success(state)))
+    // Important: don't use `futureFirstState`/`withFinishedFirstState` here.
+    // `futureFirstState` depends on `observeLoadedStates`, which depends on `observeAllStates`,
+    // so using it during `observeAllStates` initialization creates a lazy init cycle.
+    underlying.onComplete {
+      case Success(Right(value)) =>
+        res.onNewValueArrived(Success(AsyncDataSuccess[F, S](value)))
+      case Success(Left(failureInfo)) =>
+        res.onNewValueArrived(
+          Success(AsyncDataFailed[F, S](failureInfo.error, failureInfo.data))
+        )
+      case Failure(exception) =>
+        val err: Throwable = Exception(
+          "AsyncFuture failed because of future error: " + exception.getMessage,
+          exception
+        )
+        res.onNewValueArrived(Success(AsyncDataFailed[F, S](SerializedException(err), None)))
+    }
     res
   }
 
