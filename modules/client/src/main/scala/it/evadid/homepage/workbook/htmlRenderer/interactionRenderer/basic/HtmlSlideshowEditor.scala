@@ -110,14 +110,17 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
       ),
       navigation,
       div(
-        cls := "slide-deck-description",
-        markdownContent(panel.titleLabel)
-      ),
-      div(
-        cls := "slide-deck-text",
+        cls := "slide-deck-text one-column",
         div(
-          cls := "slide-deck-text-body",
-          markdownContent(panel.description)
+          cls := "slide-deck-column",
+          div(
+            cls := "slide-deck-column-title",
+            markdownContent(panel.titleLabel)
+          ),
+          div(
+            cls := "slide-deck-column-body",
+            markdownContent(panel.description)
+          )
         )
       )
     )
