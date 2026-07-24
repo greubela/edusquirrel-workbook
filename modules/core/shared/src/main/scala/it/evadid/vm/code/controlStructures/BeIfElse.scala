@@ -49,7 +49,7 @@ case class BeIfElse(
 
   override def expressionIO: BeExpressionIO = new BeExpressionIO {
 
-    override def toExpressionLines(myScope: BeScope, myStack: List[ControlFlowType]): BeCodeLines = {
+    /*override def toExpressionLines(myScope: BeScope, myStack: List[ControlFlowType]): BeCodeLines = {
       // BeExpressionLine (nr, expr, role, scope, cfStack)
       /*
             val condScope = InSequenceScope(condition, myScope)
@@ -70,7 +70,7 @@ case class BeIfElse(
               .appendNewLines(thenLines)
       */
       ???
-    }
+    }*/
 
     override def toStringWithConfig(config: CodeRepresentationConfig): String = {
       import config.*

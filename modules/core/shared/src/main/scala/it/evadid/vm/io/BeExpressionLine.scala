@@ -2,7 +2,39 @@ package it.evadid.vm.io
 
 import it.evadid.vm.code.BeExpression
 import it.evadid.vm.controlflow.ControlFlowType
-import it.evadid.vm.types.{BeChildRole, BeScope}
+import it.evadid.vm.types.{BeChildRole, BeInfo, BeScope}
+
+
+case class ControlFlowInfo
+(
+  controlFlowParentElements: List[ControlFlowType], controlFlowThisElement: ControlFlowType,
+) {
+
+  def createInfoForNextLine(controlFlowNextLineExpression: ControlFlowType): ControlFlowInfo = {
+    val newParents = controlFlowThisElement.calculateChildrenControlFlowStack(this)
+    ControlFlowInfo(newParents, controlFlowNextLineExpression)
+  }
+
+}
+
+case class BeExpressionCodeLine
+(
+  lineNr: Int,
+  controlFlowInfo: ControlFlowInfo,
+  expressionInfo: Option[LineExpressionInfo],
+  staticInfo: LineStaticInfo
+)
+
+case class LineExpressionInfo
+(
+  expression: BeExpression,
+  scope: BeScope
+)
+
+case class LineStaticInfo
+(
+  infos: List[BeInfo]
+)
 
 trait BeCodeLine {
   val lineNr: Int
@@ -49,6 +81,6 @@ case class BeExpressionLine(
   private def changeStackToBeWithin(cft: ControlFlowType): BeCodeLine = {
     this.copy(controlFlowStack = List(cft) ++ controlFlowStack)
   }
-  
+
 }
 

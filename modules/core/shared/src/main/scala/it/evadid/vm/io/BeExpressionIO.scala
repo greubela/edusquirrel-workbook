@@ -13,7 +13,9 @@ trait BeExpressionIO {
   def toStringInLanguage(programmingLanguage: ProgrammingLanguage, humanLanguage: HumanLanguage, skipUnparsable: Boolean = false): String =
     toStringWithConfig(CodeRepresentationConfig(programmingLanguage, humanLanguage, NamingStyle.SnakeCase, skipUnparsable))
 
-  def toExpressionLines(myScope: BeScope, myStack: List[ControlFlowType]): BeCodeLines = ???
+  // def toExpressionLines(myScope: BeScope, myStack: List[ControlFlowType]): BeCodeLines = ???
 
+  // todo 
+  def toExpressionLines(myScope: BeScope, priorLines: BeExpressionCodeLine): List[BeExpressionCodeLine] = ???
 
 }

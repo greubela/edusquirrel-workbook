@@ -10,7 +10,6 @@ import it.evadid.vm.code.BeExpression
 
 object VmToSvg {
 
-
   def renderBeExpression(logger: Logger, expression: BeExpression): AppShapeElement[Double] = {
 
     logger.logWarn("VmToSvg::not correctly implemented yet!")
@@ -22,6 +21,7 @@ object VmToSvg {
     val atomar = AppShapeDrawingRoutineElement[Double](routine, shapeConfig, minDim)
     atomar
   }
+
 
 
 }
