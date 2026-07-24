@@ -3,10 +3,13 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
+import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, VmToSvg}
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
+import it.evadid.util.logging.Logger
+import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.vm.BeProgram
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExercise
 import it.evadid.workbook.interaction.sync.UpdateImportance
@@ -29,16 +32,21 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     val button: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/OpenEditor", event => buttonPressed())
     val buttonCard = ElementCard(LanguageMapContentId("basic/openEditor"), button.getDomElement())
 
-    // Keep the canvas mounted while the program changes. The Scala.js renderer
-    // owns sizing, high-DPI scaling and redraw scheduling; replacing the canvas
-    // on every update used to create a new Morphic world each time and left its
-    // internally-positioned canvas as a tiny strip in the upper-left corner.
-    val canvasCard = ElementCard(
+
+    // preview based on the Editor (probably should be removed as it makes the editor way more complex -> instead just a second editor with a non-interactible config)
+     val canvasCard = ElementCard(
       LanguageMapContentId("basic/canvas"),
       editor.previewCanvas
     )
 
-    AtomarLineRendering.cardLine(workbookElement, List(buttonCard, canvasCard))
+    // static preview based on the custom display engine (not working yet, for test purposes)
+    val shapeLogger = Logger.withNameAndPrefixes(Some("HtmlProgrammingExerciseRenderer::ShapeRenderingLogger"), PrintToStdLogger.printEverything)
+    val staticRendering = ElementCard(
+      LanguageMapContentId("basic/staticPreviewProgram"),
+      SvgLaminarRenderer.render(shapeLogger, VmToSvg.renderBeExpression(shapeLogger, boundVar.now().fullProgram))
+    )
+
+    AtomarLineRendering.cardLine(workbookElement, List(buttonCard, staticRendering, canvasCard))
   }
 
 

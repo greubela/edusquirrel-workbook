@@ -1,18 +1,17 @@
 package it.evadid.core.datastructures.vectorShapes.config
 
 import it.evadid.core.datastructures.color.{AppColor, RGBColor}
+import it.evadid.core.datastructures.font.AppFont
 import it.evadid.core.datastructures.geometry.Dimension
 
-trait AppShapeConfig[T: Fractional] {
+trait AppShapeElementConfig[T: Fractional] {
 
-  def renderingConfig: AppShapeRenderingConfig[T]
 
   def useCustomPadding: Option[Dimension[T]]
 
-  def paddingToUse: Dimension[T] = useCustomPadding.getOrElse(renderingConfig.defaultPadding)
-
   // def useCustomMargin: Option[Dimension[T]]
 
+  def font: AppFont
 
   def colorStroke: AppColor
 
@@ -26,11 +25,9 @@ trait AppShapeConfig[T: Fractional] {
 }
 
 
-object AppShapeConfig {
+object AppShapeElementConfig {
 
-
-  def EvaShapeConfigDefault[T: Fractional](pRenderingConfig: AppShapeRenderingConfig[T]): AppShapeConfig[T] = new AppShapeConfig[T]() {
-
+  def EvaShapeConfigDefault[T: Fractional]: AppShapeElementConfig[T] = new AppShapeElementConfig[T]() {
     override def colorStroke: AppColor = RGBColor.red
 
     override def colorFill: AppColor = RGBColor.red
@@ -39,9 +36,9 @@ object AppShapeConfig {
 
     override def onMouseClicked(leftButton: Boolean): Unit = {}
 
-    override def renderingConfig: AppShapeRenderingConfig[T] = pRenderingConfig
-
     override def useCustomPadding: Option[Dimension[T]] = None
+
+    override def font: AppFont = AppFont.AnonymousPro
   }
 
 

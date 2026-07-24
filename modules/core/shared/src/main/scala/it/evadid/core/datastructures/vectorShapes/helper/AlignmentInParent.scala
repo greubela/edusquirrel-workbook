@@ -1,7 +1,7 @@
-package it.evadid.core.datastructures.vectorShapes.abstractions
+package it.evadid.core.datastructures.vectorShapes.helper
 
-import it.evadid.core.datastructures.vectorShapes.abstractions.AlignmentInParent.HorizontalAlignment.*
-import it.evadid.core.datastructures.vectorShapes.abstractions.AlignmentInParent.VerticalAlignment.*
+import it.evadid.core.datastructures.vectorShapes.helper.AlignmentInParent.VerticalAlignment.*
+import it.evadid.core.datastructures.vectorShapes.helper.AlignmentInParent.HorizontalAlignment.*
 
 sealed trait AlignmentInParent
 

@@ -7,7 +7,6 @@ import it.evadid.util.logging.Logger
 
 trait DrawingRoutine[T: Fractional] {
 
-
   def renderPath(logger: Logger, bounds: Bounds[T]): SvgPath = {
     val builder = SvgPathBuilder.immutableBuilder[T](bounds.startPoint)
     val result = appendPathToBuilder(logger, builder, bounds.dimension)

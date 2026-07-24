@@ -4,9 +4,9 @@ import munit.FunSuite
 import it.evadid.core.datastructures.color.{AppColor, RGBYColorPalette}
 import it.evadid.core.datastructures.geometry.{Dimension, Point}
 import it.evadid.core.datastructures.language.AppLanguage
-import it.evadid.core.datastructures.vectorShapes.abstractions.AlignmentInParent
 import it.evadid.core.datastructures.vectorShapes.compositions.{CompositionHBox, CompositionVBox}
-import it.evadid.core.datastructures.vectorShapes.config.{AppShapeConfig, AppShapeRenderingConfig}
+import it.evadid.core.datastructures.vectorShapes.config.{AppShapeElementConfig, AppShapeRenderingConfig}
+import it.evadid.core.datastructures.vectorShapes.helper.AlignmentInParent
 import it.evadid.core.datastructures.vectorShapes.rendering.{AppShapeRelativePositioned, AppShapeComposition}
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPath
 import it.evadid.core.datastructures.vectorShapes.svg.drawingRoutines.*
@@ -21,7 +21,7 @@ class VectorShapesTest extends FunSuite {
     override def yellows: List[AppColor] = Nil
   }
   private val renderingConfig = AppShapeRenderingConfig[Double](BasicLogger(), "test", AppLanguage.English, palette, Dimension(0, 0), Dimension(3, 4))
-  private val shapeConfig = AppShapeConfig.EvaShapeConfigDefault(renderingConfig)
+  private val shapeConfig = AppShapeElementConfig.EvaShapeConfigDefault(renderingConfig)
 
   private def dimensioned(width: Double, height: Double): AppShapeRelativePositioned[Double] = {
     val composition = AppShapeComposition(CompositionHBox[Double](AlignmentInParent.TopLeft), shapeConfig, Nil)

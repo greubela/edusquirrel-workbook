@@ -1,10 +1,5 @@
 package it.evadid.core.datastructures.vectorShapes.compositions
 
-import it.evadid.core.datastructures.geometry.AspectRatio
-import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeCompositeControl.*
-import it.evadid.core.datastructures.vectorShapes.abstractions.{AlignmentInParent, AppShapeAtomar, AppShapeCompositeControl}
-import it.evadid.core.datastructures.vectorShapes.config.{AppShapeConfig, AppShapeRenderingConfig}
-import it.evadid.core.datastructures.vectorShapes.rendering.AppShapeComposition.{AppCompositionDimensioned, AppCompositionMeasured, AppCompositionPositioned, RenderingDimension}
 /*
 /** Overlays the first child around the second; the shape references describe the intended pair. */
 case class CompositionFirstAroundSecond[T: Fractional](alignment: AlignmentInParent, outerShape: AppShapeAtomar[T], innerShape: AppShapeAtomar[T]) extends AppShapeCompositeControl[T] {

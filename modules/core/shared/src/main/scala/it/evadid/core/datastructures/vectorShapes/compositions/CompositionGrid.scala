@@ -2,10 +2,11 @@ package it.evadid.core.datastructures.vectorShapes.compositions
 
 import it.evadid.core.datastructures.geometry.{AspectRatio, Dimension, Point}
 import it.evadid.core.datastructures.matrix.Matrix
+import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeCompositeControl
 import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeCompositeControl.*
-import it.evadid.core.datastructures.vectorShapes.abstractions.{AlignmentInParent, AppShapeCompositeControl}
-import it.evadid.core.datastructures.vectorShapes.config.{AppShapeConfig, AppShapeRenderingConfig}
-import it.evadid.core.datastructures.vectorShapes.rendering.AppShapeComposition.{AppCompositionDimensioned, AppCompositionMeasured, AppCompositionPositioned, RenderingDimension}
+import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeElement.{AppElementDimensioned, AppElementMeasured, AppElementPositioned}
+import it.evadid.core.datastructures.vectorShapes.config.{AppShapeElementConfig, AppShapeRenderingConfig}
+import it.evadid.core.datastructures.vectorShapes.helper.{AlignmentInParent, RenderingDimension}
 
 /** Arranges one child per row-major grid cell using each cell's alignment. */
 case class CompositionGrid[T: Fractional](alignments: Matrix[AlignmentInParent]) extends AppShapeCompositeControl[T] {
@@ -22,7 +23,7 @@ case class CompositionGrid[T: Fractional](alignments: Matrix[AlignmentInParent])
     (widths, heights)
   }
 
-  override def calculateMyMinimumDimension(children: List[AppCompositionMeasured[T]], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): RenderingDimension[T] = {
+  override def calculateMyMinimumDimension(children: List[AppElementMeasured[T]], compositionConfig: AppShapeElementConfig[T], renderingConfig: AppShapeRenderingConfig[T]): RenderingDimension[T] = {
     val N = summon[Fractional[T]]
     val (widths, heights) = tracks(children.map(_.minimumDimension.fullDimension))
     val gaps = renderingConfig.gapBetweenConsecutiveShapes
@@ -32,10 +33,10 @@ case class CompositionGrid[T: Fractional](alignments: Matrix[AlignmentInParent])
     RenderingDimension.fromRawDimensionAndConfig(raw, compositionConfig, renderingConfig)
   }
 
-  override def calculateChildrenDimensions(children: List[AppCompositionMeasured[T]], myRenderingSize: RenderingDimension[T], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): List[AppCompositionDimensioned[T]] =
+  override def calculateChildrenDimensions(children: List[AppElementMeasured[T]], myRenderingSize: RenderingDimension[T], compositionConfig: AppShapeElementConfig[T], renderingConfig: AppShapeRenderingConfig[T]): List[AppElementDimensioned[T]] =
     dimensionChildrenAtMinimum(children)
 
-  override def calculateChildrenPositions(children: List[AppCompositionDimensioned[T]], myRenderingSize: RenderingDimension[T], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): List[AppCompositionPositioned[T]] = {
+  override def calculateChildrenPositions(children: List[AppElementDimensioned[T]], myRenderingSize: RenderingDimension[T], compositionConfig: AppShapeElementConfig[T], renderingConfig: AppShapeRenderingConfig[T]): List[AppElementPositioned[T]] = {
     val N = summon[Fractional[T]]
     val (widths, heights) = tracks(children.map(_.adjustedRenderingSize.fullDimension))
     children.zipWithIndex.map { case (child, index) =>
