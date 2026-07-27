@@ -6,16 +6,21 @@ import it.evadid.vm.BeProgram
 import it.evadid.vm.test.BeTestSuite
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 
-case class ProgrammingExercise(override val id: String, testSuite: Option[BeTestSuite] = None) extends WorkbookInteractionElement[BeProgram] {
+import scala.util.Try
+
+case class ProgrammingExercise(override val id: String, testSuite: Option[BeTestSuite] = None)
+    extends WorkbookInteractionElement[BeProgram] {
 
   override val defaultValue: BeProgram = BeProgram.miniProgram()
-  override val serializer: Serializer[BeProgram] = new Serializer[BeProgram]() {
-    override def serialize(obj: BeProgram): String = obj.fullProgram.expressionIO.toStringInLanguage(Python, English, false)
 
-    override def deserialize(str: String): BeProgram = {
-      println("ProgrammingExercise::deserialize does not work yet!")
-      BeProgram.empty
-    }
+  override val serializer: Serializer[BeProgram] = new Serializer[BeProgram] {
+    override def serialize(obj: BeProgram): String =
+      obj.fullProgram.expressionIO.toStringInLanguage(Python, English, false)
+
+    override def deserialize(str: String): BeProgram =
+      if Option(str).forall(_.trim.isEmpty) then defaultValue
+      else Try(BeProgram.fromPythonString(str)).getOrElse(defaultValue)
   }
+
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 }

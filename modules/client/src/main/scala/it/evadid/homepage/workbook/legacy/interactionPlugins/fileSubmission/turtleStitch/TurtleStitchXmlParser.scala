@@ -2,6 +2,8 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.tur
 
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.NodeDomSupport
 import org.scalajs.dom
+
+import scala.collection.mutable.ListBuffer
 import scala.scalajs.js
 
 object TurtleStitchXmlParser {
@@ -16,25 +18,40 @@ object TurtleStitchXmlParser {
   final case class ParseResult(document: Option[XmlDocument], fallbackReason: Option[String] = None)
 
   def parse(xml: String): ParseResult = {
-    scala.util.Try {
-      NodeDomSupport.parseXml(xml) match {
-        case Some(document) =>
-          val rootNode = Option(document.getElementsByTagName("project").item(0))
-            .orElse(Option(document.documentElement).filter(_.nodeName == "project"))
-          ParseResult(rootNode.map(node => XmlDocument(fromDom(node))))
-        case None =>
-          ParseResult(parseStringFallback(xml), Some("DOM parser is unavailable in this runtime"))
-      }
-    }.recover { case error =>
-      ParseResult(parseStringFallback(xml), Some(s"DOM parsing failed (${error.getClass.getSimpleName}); using string parser"))
-    }.getOrElse(ParseResult(None, Some("XML parsing failed")))
+    // Prefer string parse for Snap block projects — DOM walking crashes on live getProjectXML.
+    if xml.contains("<block") || xml.contains("<custom-block") then
+      ParseResult(parseStringFallback(xml), None)
+    else
+      scala.util.Try {
+        NodeDomSupport.parseXml(xml) match {
+          case Some(document) =>
+            val rootNode = Option(document.getElementsByTagName("project").item(0))
+              .orElse(Option(document.documentElement).filter(_.nodeName == "project"))
+            rootNode match
+              case Some(node) =>
+                ParseResult(Some(XmlDocument(fromDom(node))))
+              case None =>
+                ParseResult(parseStringFallback(xml), Some("DOM document had no <project>; using string parser"))
+          case None =>
+            ParseResult(parseStringFallback(xml), Some("DOM parser is unavailable in this runtime"))
+        }
+      }.recover { case error =>
+        ParseResult(
+          parseStringFallback(xml),
+          Some(s"DOM parsing failed (${error.getClass.getSimpleName}); using string parser")
+        )
+      }.getOrElse(ParseResult(None, Some("XML parsing failed")))
   }
+
+  /** String-only parse used when the DOM/model path yields no callable blocks. */
+  def parseStringOnly(xml: String): Option[XmlDocument] =
+    parseStringFallback(xml)
 
   private def fromDom(node: dom.Node): XmlElement =
     XmlElement(
-      name = node.nodeName,
+      name = Option(node.nodeName).getOrElse(""),
       attrs = attrs(node),
-      text = node.textContent.trim,
+      text = Option(node.textContent).getOrElse("").trim,
       children = children(node).map(fromDom)
     )
 
@@ -47,18 +64,22 @@ object TurtleStitchXmlParser {
         val attrNode = attributes.selectDynamic("item")(index)
         if (js.isUndefined(attrNode) || attrNode == null) None
         else {
-          val name = attrNode.selectDynamic("name").toString
-          val value = attrNode.selectDynamic("value").toString
+          val name = Option(attrNode.selectDynamic("name")).map(_.toString).getOrElse("")
+          val value = Option(attrNode.selectDynamic("value")).map(_.toString).getOrElse("")
           Option.when(name.nonEmpty)(name -> value)
         }
       }.toMap
     }
   }
 
-  private def children(parent: dom.Node): List[dom.Node] =
-    (0 until parent.childNodes.length).toList
-      .flatMap(index => Option(parent.childNodes.item(index)))
-      .filter(isElementNode)
+  private def children(parent: dom.Node): List[dom.Node] = {
+    val childNodes = parent.childNodes
+    if childNodes == null then Nil
+    else
+      (0 until childNodes.length).toList
+        .flatMap(index => Option(childNodes.item(index)))
+        .filter(isElementNode)
+  }
 
   private val ElementNodeType = 1
 
@@ -76,16 +97,17 @@ object TurtleStitchXmlParser {
     val stageAttrs = attrsFromString(xml, "stage")
     val spritesAttrs = attrsFromString(xml, "sprites")
     val spriteAttrs = attrsFromString(xml, "sprite")
+    val scriptElements = parseScriptsFromString(preferredScriptsXml(xml))
 
     XmlDocument(XmlElement("project", projectAttrs, children = List(
       XmlElement("notes", text = textTag(xml, "notes").getOrElse("")),
-      XmlElement("scenes", spritesAttrs ++ attrsFromString(xml, "scenes"), children = List(
+      XmlElement("scenes", attrsFromString(xml, "scenes"), children = List(
         XmlElement("scene", sceneAttrs, children = List(
           XmlElement("stage", stageAttrs, children = List(
             textTag(xml, "pentrails").map(value => XmlElement("pentrails", text = value)).toList,
-            List(XmlElement("scripts", children = parseScriptsFromString(xml))),
+            List(XmlElement("scripts")),
             List(XmlElement("sprites", spritesAttrs, children = List(
-              XmlElement("sprite", spriteAttrs, children = List(XmlElement("scripts", children = parseScriptsFromString(xml))))
+              XmlElement("sprite", spriteAttrs, children = List(XmlElement("scripts", children = scriptElements)))
             )))
           ).flatten)
         ))
@@ -93,22 +115,144 @@ object TurtleStitchXmlParser {
     )))
   }.toOption
 
-  private def parseScriptsFromString(xml: String): List[XmlElement] = {
-    val scriptPattern = """(?s)<script[^>]*>(.*?)</script>""".r
-    scriptPattern.findAllMatchIn(xml).toList.map { m =>
-      XmlElement("script", children = parseBlocksFromString(m.group(1)))
-    }
+  /**
+   * Prefer sprite `<scripts>` that contain blocks (stage often has an empty `<scripts>` first).
+   */
+  private def preferredScriptsXml(xml: String): String =
+    findFirstTagInnerAnywhere(xml, "sprites")
+      .flatMap { sprites =>
+        findFirstTagInnerAnywhere(sprites, "sprite")
+          .flatMap(sprite => findFirstTagInnerAnywhere(sprite, "scripts").filter(_.contains("<block")))
+          .orElse(findFirstTagInnerAnywhere(sprites, "scripts").filter(_.contains("<block")))
+      }
+      // Never fall back to the first (often empty) stage <scripts></scripts>.
+      .orElse(findAllTagInnersAnywhere(xml, "scripts").find(_.contains("<block")))
+      .getOrElse(xml)
+
+  private def findAllTagInnersAnywhere(xml: String, tag: String): List[String] = {
+    val open = s"<$tag"
+    val close = s"</$tag>"
+    val out = ListBuffer.empty[String]
+    var i = 0
+    while i < xml.length do
+      val start = xml.indexOf(open, i)
+      if start < 0 then return out.toList
+      val afterTag = start + open.length
+      if afterTag < xml.length && !isTagNameEnd(xml.charAt(afterTag)) then
+        i = afterTag
+      else
+        val gt = xml.indexOf('>', afterTag)
+        if gt < 0 then return out.toList
+        val rawAttrs = xml.substring(afterTag, gt).trim
+        if rawAttrs.endsWith("/") then
+          out += ""
+          i = gt + 1
+        else
+          val innerStart = gt + 1
+          val innerEnd = findMatchingClose(xml, innerStart, open, close)
+          if innerEnd < 0 then return out.toList
+          out += xml.substring(innerStart, innerEnd)
+          i = innerEnd + close.length
+    out.toList
   }
 
-  private def parseBlocksFromString(xml: String): List[XmlElement] = {
-    val normalizedXml = """<block\s+([^>]*)/>""".r.replaceAllIn(xml, m => s"<block ${m.group(1)}></block>")
-    val blockPattern = """(?s)<block\s+([^>]*)>(.*?)</block>""".r
-    blockPattern.findAllMatchIn(normalizedXml).toList.map { m =>
-      val body = m.group(2)
-      val literals = """(?s)<l>\s*(.*?)\s*</l>""".r.findAllMatchIn(body).toList.map(mm => XmlElement("l", text = mm.group(1).trim))
-      val nestedScript = """(?s)<script>(.*?)</script>""".r.findFirstMatchIn(body).map(mm => XmlElement("script", children = parseBlocksFromString(mm.group(1)))).toList
-      XmlElement("block", attrsFromAttrText(m.group(1)), children = literals ++ nestedScript)
+  /** First `<tag>...</tag>` inner text anywhere in `xml` (not only top-level). */
+  private def findFirstTagInnerAnywhere(xml: String, tag: String): Option[String] = {
+    val open = s"<$tag"
+    val close = s"</$tag>"
+    var i = 0
+    while i < xml.length do
+      val start = xml.indexOf(open, i)
+      if start < 0 then return None
+      val afterTag = start + open.length
+      if afterTag < xml.length && !isTagNameEnd(xml.charAt(afterTag)) then
+        i = afterTag
+      else
+        val gt = xml.indexOf('>', afterTag)
+        if gt < 0 then return None
+        val rawAttrs = xml.substring(afterTag, gt).trim
+        if rawAttrs.endsWith("/") then return Some("")
+        val innerStart = gt + 1
+        val innerEnd = findMatchingClose(xml, innerStart, open, close)
+        if innerEnd < 0 then return None
+        return Some(xml.substring(innerStart, innerEnd))
+    None
+  }
+
+  private def parseScriptsFromString(xml: String): List[XmlElement] =
+    topLevelTaggedSections(xml, "script").map { case (attrs, body) =>
+      XmlElement("script", attrsFromAttrText(attrs), children = parseBlocksFromString(body))
     }
+
+  private def parseBlocksFromString(xml: String): List[XmlElement] =
+    topLevelTaggedSections(xml, "block").map { case (attrs, body) =>
+      XmlElement("block", attrsFromAttrText(attrs), children = parseBlockInputChildren(body))
+    }
+
+  /** Top-level inputs of a block body (`<l>`, nested `<block>`, `<script>`). */
+  private def parseBlockInputChildren(body: String): List[XmlElement] = {
+    val literals = topLevelTaggedSections(body, "l").map { case (_, litBody) =>
+      XmlElement("l", text = litBody.trim)
+    }
+    val nestedBlocks = topLevelTaggedSections(body, "block").map { case (blockAttrs, blockBody) =>
+      XmlElement("block", attrsFromAttrText(blockAttrs), children = parseBlockInputChildren(blockBody))
+    }
+    val nestedScripts = topLevelTaggedSections(body, "script").map { case (scriptAttrs, scriptBody) =>
+      XmlElement("script", attrsFromAttrText(scriptAttrs), children = parseBlocksFromString(scriptBody))
+    }
+    literals ++ nestedBlocks ++ nestedScripts
+  }
+
+  /**
+   * Depth-aware split into top-level `<tag ...>inner</tag>` / self-closing sections.
+   * Avoids nested-regex breakage on Snap script/block trees.
+   */
+  private def topLevelTaggedSections(xml: String, tag: String): List[(String, String)] = {
+    val open = s"<$tag"
+    val close = s"</$tag>"
+    val out = ListBuffer.empty[(String, String)]
+    var i = 0
+    while i < xml.length do
+      val start = xml.indexOf(open, i)
+      if start < 0 then return out.toList
+      val afterTag = start + open.length
+      if afterTag < xml.length && !isTagNameEnd(xml.charAt(afterTag)) then
+        i = afterTag
+      else
+        val gt = xml.indexOf('>', afterTag)
+        if gt < 0 then return out.toList
+        val rawAttrs = xml.substring(afterTag, gt).trim
+        if rawAttrs.endsWith("/") then
+          out += ((rawAttrs.stripSuffix("/").trim, ""))
+          i = gt + 1
+        else
+          val innerStart = gt + 1
+          val innerEnd = findMatchingClose(xml, innerStart, open, close)
+          if innerEnd < 0 then return out.toList
+          out += ((rawAttrs, xml.substring(innerStart, innerEnd)))
+          i = innerEnd + close.length
+    out.toList
+  }
+
+  private def isTagNameEnd(ch: Char): Boolean =
+    ch.isWhitespace || ch == '>' || ch == '/'
+
+  private def findMatchingClose(xml: String, from: Int, open: String, close: String): Int = {
+    var depth = 1
+    var i = from
+    while i < xml.length && depth > 0 do
+      val nextOpen = xml.indexOf(open, i)
+      val nextClose = xml.indexOf(close, i)
+      if nextClose < 0 then return -1
+      if nextOpen >= 0 && nextOpen < nextClose then
+        val after = nextOpen + open.length
+        if after < xml.length && isTagNameEnd(xml.charAt(after)) then depth += 1
+        i = math.max(after, nextOpen + 1)
+      else
+        depth -= 1
+        if depth == 0 then return nextClose
+        i = nextClose + close.length
+    -1
   }
 
   private def attrsFromString(xml: String, tag: String): Map[String, String] =

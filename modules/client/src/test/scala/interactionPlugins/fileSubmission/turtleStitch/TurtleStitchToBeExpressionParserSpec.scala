@@ -38,4 +38,11 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(parseAttempt.isSuccess)
     assert(parseAttempt.get.isInstanceOf[BeStartProgram])
   }
+
+  test("simple_forward XML yields callable function calls") {
+    val expression = TurtleFileSubmission.parseToBeExpression(simpleForwardXml)
+    val body = expression.asInstanceOf[BeStartProgram].startSequence.toList.flatMap(_.body)
+    assert(body.exists(_.isInstanceOf[BeFunctionCall]), clue = s"expected calls, got: $body")
+    assertEquals(body.count(_.isInstanceOf[BeFunctionCall]), 2)
+  }
 }

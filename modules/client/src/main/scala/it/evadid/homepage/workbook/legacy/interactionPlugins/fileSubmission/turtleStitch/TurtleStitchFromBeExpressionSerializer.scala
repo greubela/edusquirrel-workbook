@@ -66,7 +66,8 @@ object TurtleStitchFromBeExpressionSerializer {
   }
 
   private def selectorOf(call: BeFunctionCall): String =
-    call.funcDef.functionTypeInfo.displayName.getNameIn(AppLanguage.English, NamingStyle.SnakeCase).trim
+    // Snap block selectors are camelCase identifiers (receiveGo, gotoXY, …).
+    call.funcDef.functionTypeInfo.displayName.getNameIn(AppLanguage.English, NamingStyle.CamelCase).trim
 
   private def orderedArgs(call: BeFunctionCall): List[BeExpression] =
     call.funcDef.inputs.flatMap(variable => call.parameterValueMap.get(variable))

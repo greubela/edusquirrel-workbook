@@ -1789,9 +1789,43 @@ IDE_Morph.prototype.createCategories = function () {
             l = myself.categories.left(),
             t = myself.categories.top(),
             scroller,
+            visibleButtons,
+            bottomMost,
             row,
             col,
             i;
+
+        // TurtleStitch adds built-ins beyond Snap's classic 8 (e.g. embroidery).
+        // noDefaultCat must hide every non-custom button, not only children[0..7],
+        // otherwise a leftover narrow built-in sits above the exercise tabs and
+        // the height formula (based on customCategories.size) clips later tabs.
+        if (shift) {
+            myself.categories.buttons.forEach(button => {
+                if (!SpriteMorph.prototype.customCategories.has(button.category)) {
+                    button.hide();
+                }
+            });
+            visibleButtons = myself.categories.buttons.filter(each =>
+                each.isVisible
+            );
+            visibleButtons.forEach((button, idx) => {
+                button.setPosition(new Point(
+                    l + border,
+                    t + border + idx * (button.height() + yPadding)
+                ));
+            });
+            if (visibleButtons.length) {
+                bottomMost = Math.max(
+                    ...visibleButtons.map(each => each.bottom())
+                );
+                myself.categories.setHeight(
+                    Math.max(border * 2, bottomMost - t + border)
+                );
+            } else {
+                myself.categories.setHeight(border * 2);
+            }
+            return;
+        }
 
         myself.categories.children.forEach((button, i) => {
             row = i < 8 ? i % 4 : i - 4;

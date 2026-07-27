@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import com.raquo.airstream.ownership.Owner
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.SnapCodeEditorImpl
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.TurtleFileSubmission
+import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchFromBeExpressionSerializer
 import it.evadid.vm.BeProgram
 import org.scalajs.dom
 import org.scalajs.dom.CanvasRenderingContext2D
@@ -16,15 +16,23 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
 
   private var editorWorld: Option[WorldMorph] = None
   private var editor: Option[IDEMorph] = None
+  private var mountedCanvas: Option[Canvas] = None
+  private var mountedConfig: Option[SnapCodeEditorConfig] = None
+  private var resizeObserver: Option[dom.ResizeObserver] = None
+  private var fitRafHandle = 0
+  private var fitDebounceHandle = 0
   private var frameHandle = 0
   private var cyclesRunning = false
   private var projectXmlChangedCallback: String => Unit = _ => ()
   private var lastProjectXml: Option[String] = None
+  /** Last BeProgram→XML string applied via load/create (for no-op detection). */
+  private var lastLoadedFromBeProgramXml: Option[String] = None
   private var lastProjectXmlCheckAt = 0.0
   private var originalBlockTemplates: Option[js.Any] = None
   private var installedCustomCategoryNames: List[String] = Nil
 
   private val ProjectXmlCheckIntervalMs = 500.0
+  private val FitDebounceMs = 32.0
 
   override def mount(owner: Owner): Unit =
     ()
@@ -34,18 +42,26 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     // dialog is reopened. Keep the WorldMorph which already owns this canvas:
     // constructing another world would add a second set of DOM listeners and
     // leave the older (now visually obscured) world handling the input.
+    mountedCanvas = Some(canvas)
+    mountedConfig = Some(config)
     editorWorld match
       case Some(world) if world.worldCanvas eq canvas =>
         keepKeyboardHandlerInEditor(world, canvas)
+        sizeEditorCanvas(canvas, config)
+        loadProgramIfChanged(initProgram)
         editor.foreach { ide =>
           layoutEditor(world, ide, canvas)
           ide.refreshPalette(true)
         }
+        installResizeObserver(canvas)
         startWorldCycles()
+        scheduleFitAfterLayout()
         return
       case _ => ()
 
     stopEditorSession()
+    mountedCanvas = Some(canvas)
+    mountedConfig = Some(config)
     require(canvas.isConnected, "Snap's interactive canvas must be mounted before WorldMorph is created")
     sizeEditorCanvas(canvas, config)
 
@@ -64,14 +80,21 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       installLibraries(config.libraryTabs, ide)
       layoutEditor(world, ide, canvas)
     initializeProjectChangeTracking(ide)
+    // Align with Snap's normalized XML so external program restores do not
+    // immediately rawOpenProjectString again and wipe exercise libraries.
+    val seededXml = toSnapXml(initProgram)
+    lastLoadedFromBeProgramXml = Some(seededXml)
+    lastProjectXml = Some(ide.getProjectXML())
 
     editorWorld = Some(world)
     editor = Some(ide)
+    installResizeObserver(canvas)
     startWorldCycles()
+    // Dialog layout may settle one frame after mount; refit once parent has real size.
+    scheduleFitAfterLayout()
     CanvasVisibility.warnIfUnexpectedlyEmpty(this, initProgram, canvas)
 
   override def renderPreviewInto(program: BeProgram, canvas: Canvas, config: SnapCodeEditorConfig): Unit =
-    editor.foreach(checkWhetherProgramXmlChanged)
     val sourceCanvas = dom.document.createElement("canvas").asInstanceOf[Canvas]
     sourceCanvas.width = config.visuals.CanvasWidth
     sourceCanvas.height = config.visuals.CanvasHeight
@@ -101,6 +124,50 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     ide.destroy()
     world.destroy()
 
+  override def loadProgramIfChanged(program: BeProgram): Unit =
+    applyProgramToEditor(program, force = false)
+
+  /** Always re-open from BeProgram (used on fullscreen open). */
+  override def forceLoadProgram(program: BeProgram): Unit =
+    applyProgramToEditor(program, force = true)
+
+  private def applyProgramToEditor(program: BeProgram, force: Boolean): Unit =
+    val xml = toSnapXml(program)
+    editor match
+      case Some(ide) =>
+        // Skip only non-forced sync echoes of the same BeProgram→XML.
+        // Force on fullscreen open: acknowledge does not rawOpen, so a skip
+        // would leave Snap on the previous rawOpen'd project.
+        if !force && lastLoadedFromBeProgramXml.contains(xml) then
+          return
+        ide.rawOpenProjectString(xml)
+        lastLoadedFromBeProgramXml = Some(xml)
+        lastProjectXml = Some(ide.getProjectXML())
+        lastProjectXmlCheckAt = dom.window.performance.now()
+        reinstallConfiguredLibraries(ide)
+        (editorWorld, mountedCanvas) match
+          case (Some(world), Some(canvas)) =>
+            layoutEditor(world, ide, canvas)
+            ide.refreshPalette(true)
+          case _ =>
+            ide.fixLayout()
+            ide.fullChanged()
+      case None => ()
+
+  override def acknowledgeProgramFromEditor(program: BeProgram): Unit =
+    lastLoadedFromBeProgramXml = Some(toSnapXml(program))
+
+  override def flushPendingProjectChanges(): Unit =
+    editor.foreach(checkWhetherProgramXmlChanged)
+
+  private def toSnapXml(program: BeProgram): String =
+    TurtleStitchFromBeExpressionSerializer.toXml(program.fullProgram)
+
+  private def reinstallConfiguredLibraries(ide: IDEMorph): Unit =
+    mountedConfig.filter(_.libraryTabs.nonEmpty).foreach { config =>
+      installLibraries(config.libraryTabs, ide)
+    }
+
   private def createEditor(world: WorldMorph, program: BeProgram, config: SnapCodeEditorConfig): IDEMorph =
     val hasLibraryTabs = config.libraryTabs.nonEmpty
     val ide = new IDEMorph(js.Dynamic.literal(
@@ -119,7 +186,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       eduLibraryTabs = config.libraryTabs.map(_.name).toJSArray
     ))
     ide.openIn(world)
-    ide.rawOpenProjectString(TurtleFileSubmission.serializeFromBeExpression(program.fullProgram))
+    ide.rawOpenProjectString(toSnapXml(program))
     ide
 
   private def createPreviewEditor(world: WorldMorph, program: BeProgram): IDEMorph =
@@ -130,7 +197,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       preserveTitle = true
     ))
     ide.openIn(world)
-    ide.rawOpenProjectString(TurtleFileSubmission.serializeFromBeExpression(program.fullProgram))
+    ide.rawOpenProjectString(toSnapXml(program))
     ide
 
   /** Replace this editor instance's primitive provider, rather than mutating
@@ -262,8 +329,10 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     world.setExtent(new SnapPoint(canvas.width.toDouble, canvas.height.toDouble))
     ide.setExtent(world.extent())
     ide.fixLayout()
+    // Canvas bitmap clears on width/height assignment; damage the full world so
+    // the next cycles repaint everything instead of leaving a blank surface.
     ide.fullChanged()
-    world.changed()
+    world.fullChanged()
     runStartupCycles(world)
 
   private def runStartupCycles(world: WorldMorph): Unit =
@@ -271,14 +340,23 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     world.doOneCycle()
     world.doOneCycle()
 
-  private def sizeEditorCanvas(canvas: Canvas, config: SnapCodeEditorConfig): Unit =
-    // Keep the CSS and bitmap coordinate systems identical. Reading the canvas'
-    // flex-scaled bounding box here produced independent X/Y scale factors in
-    // the fullscreen dialog and made Morphic controls visibly distorted.
-    canvas.width = math.max(1, config.visuals.CanvasWidth)
-    canvas.height = math.max(1, config.visuals.CanvasHeight)
-    canvas.style.width = s"${canvas.width}px"
-    canvas.style.height = s"${canvas.height}px"
+  /** @return true when the canvas bitmap size changed (which clears pixels). */
+  private def sizeEditorCanvas(canvas: Canvas, config: SnapCodeEditorConfig): Boolean =
+    // Keep the CSS and bitmap coordinate systems identical. CSS-only scaling in
+    // the fullscreen dialog produced independent X/Y factors and distorted hits.
+    val parent = Option(canvas.parentElement)
+    val parentWidth = parent.map(_.clientWidth).getOrElse(0)
+    val parentHeight = parent.map(_.clientHeight).getOrElse(0)
+    val width = math.max(1, if parentWidth > 0 then parentWidth else config.visuals.CanvasWidth)
+    val height = math.max(1, if parentHeight > 0 then parentHeight else config.visuals.CanvasHeight)
+    // Assigning canvas.width/height always clears the bitmap — even when the
+    // numeric value is unchanged — which left a blank IDE until the next click.
+    val bitmapChanged = canvas.width != width || canvas.height != height
+    if bitmapChanged then
+      canvas.width = width
+      canvas.height = height
+    canvas.style.width = s"${width}px"
+    canvas.style.height = s"${height}px"
     canvas.style.position = "relative"
     canvas.style.display = "block"
     // WorldMorph registers mouse/touch listeners synchronously in its
@@ -288,6 +366,58 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     canvas.tabIndex = 0
     canvas.style.pointerEvents = "auto"
     canvas.style.setProperty("touch-action", "none")
+    bitmapChanged
+
+  override def fitEditorToContainer(): Unit =
+    applyContainerSize(relayoutIfChanged = true)
+    scheduleFitAfterLayout()
+
+  private def applyContainerSize(relayoutIfChanged: Boolean): Unit =
+    (mountedCanvas, mountedConfig) match
+      case (Some(canvas), Some(config)) if canvas.isConnected =>
+        val bitmapChanged = sizeEditorCanvas(canvas, config)
+        if relayoutIfChanged && bitmapChanged then
+          (editorWorld, editor) match
+            case (Some(world), Some(ide)) => layoutEditor(world, ide, canvas)
+            case _ => ()
+      case _ => ()
+
+  private def scheduleFitAfterLayout(): Unit =
+    if fitRafHandle != 0 then
+      dom.window.cancelAnimationFrame(fitRafHandle)
+    fitRafHandle = dom.window.requestAnimationFrame { _ =>
+      fitRafHandle = 0
+      applyContainerSize(relayoutIfChanged = true)
+    }
+
+  private def requestDebouncedFit(): Unit =
+    if fitDebounceHandle != 0 then
+      dom.window.clearTimeout(fitDebounceHandle)
+    fitDebounceHandle = dom.window.setTimeout(() => {
+      fitDebounceHandle = 0
+      applyContainerSize(relayoutIfChanged = true)
+    }, FitDebounceMs)
+
+  private def installResizeObserver(canvas: Canvas): Unit =
+    disconnectResizeObserver()
+    Option(canvas.parentElement).foreach { parent =>
+      val callback: js.Function0[Unit] = () => requestDebouncedFit()
+      val observer = js.Dynamic
+        .newInstance(js.Dynamic.global.ResizeObserver)(callback)
+        .asInstanceOf[dom.ResizeObserver]
+      observer.observe(parent)
+      resizeObserver = Some(observer)
+    }
+
+  private def disconnectResizeObserver(): Unit =
+    resizeObserver.foreach(_.disconnect())
+    resizeObserver = None
+    if fitRafHandle != 0 then
+      dom.window.cancelAnimationFrame(fitRafHandle)
+      fitRafHandle = 0
+    if fitDebounceHandle != 0 then
+      dom.window.clearTimeout(fitDebounceHandle)
+      fitDebounceHandle = 0
 
   private def keepKeyboardHandlerInEditor(world: WorldMorph, canvas: Canvas): Unit =
     // Morphic creates one hidden textarea on document.body and focuses it when
@@ -307,6 +437,9 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       tickEditor()
 
   override def pauseWorldCycles(): Unit =
+    // Always flush before stopping the poll loop so close/unmount cannot drop
+    // edits that happened since the last 500ms check.
+    flushPendingProjectChanges()
     cyclesRunning = false
     if frameHandle != 0 then dom.window.cancelAnimationFrame(frameHandle)
     frameHandle = 0
@@ -343,12 +476,16 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   private def stopEditorSession(): Unit =
     editor.foreach(checkWhetherProgramXmlChanged)
     pauseWorldCycles()
+    disconnectResizeObserver()
     clearInstalledCustomCategories()
     editor.foreach(_.destroy())
     editorWorld.foreach(_.destroy())
     editor = None
     editorWorld = None
+    mountedCanvas = None
+    mountedConfig = None
     lastProjectXml = None
+    lastLoadedFromBeProgramXml = None
     lastProjectXmlCheckAt = 0.0
     originalBlockTemplates = None
 
