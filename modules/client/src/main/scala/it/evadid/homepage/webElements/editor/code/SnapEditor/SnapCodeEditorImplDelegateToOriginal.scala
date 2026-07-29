@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 import com.raquo.airstream.ownership.Owner
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.SnapCodeEditorImpl
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchFromBeExpressionSerializer
-import it.evadid.vm.BeProgram
+import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExerciseState
 import org.scalajs.dom
 import org.scalajs.dom.CanvasRenderingContext2D
 import org.scalajs.dom.html.Canvas
@@ -25,7 +25,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   private var cyclesRunning = false
   private var projectXmlChangedCallback: String => Unit = _ => ()
   private var lastProjectXml: Option[String] = None
-  /** Last BeProgram→XML string applied via load/create (for no-op detection). */
+  /** Last state→XML string applied via load/create (for no-op detection). */
   private var lastLoadedFromBeProgramXml: Option[String] = None
   private var lastProjectXmlCheckAt = 0.0
   private var originalBlockTemplates: Option[js.Any] = None
@@ -37,7 +37,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   override def mount(owner: Owner): Unit =
     ()
 
-  override def renderEditorInto(initProgram: BeProgram, canvas: Canvas, config: SnapCodeEditorConfig): Unit =
+  override def renderEditorInto(initState: ProgrammingExerciseState, canvas: Canvas, config: SnapCodeEditorConfig): Unit =
     // Laminar mounts the same lazy editor element again whenever the fullscreen
     // dialog is reopened. Keep the WorldMorph which already owns this canvas:
     // constructing another world would add a second set of DOM listeners and
@@ -48,7 +48,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       case Some(world) if world.worldCanvas eq canvas =>
         keepKeyboardHandlerInEditor(world, canvas)
         sizeEditorCanvas(canvas, config)
-        loadProgramIfChanged(initProgram)
+        loadProgramIfChanged(initState)
         editor.foreach { ide =>
           layoutEditor(world, ide, canvas)
           ide.refreshPalette(true)
@@ -71,7 +71,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       "WorldMorph did not retain the mounted editor canvas used to register input listeners"
     )
     keepKeyboardHandlerInEditor(world, canvas)
-    val ide = createEditor(world, initProgram, config)
+    val ide = createEditor(world, initState, config)
     layoutEditor(world, ide, canvas)
     // Palette construction calls fixLayout. Install custom templates only
     // after the noAutoFill IDE has a real extent; doing it while its extent is
@@ -82,7 +82,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     initializeProjectChangeTracking(ide)
     // Align with Snap's normalized XML so external program restores do not
     // immediately rawOpenProjectString again and wipe exercise libraries.
-    val seededXml = toSnapXml(initProgram)
+    val seededXml = toSnapXml(initState)
     lastLoadedFromBeProgramXml = Some(seededXml)
     lastProjectXml = Some(ide.getProjectXML())
 
@@ -92,9 +92,9 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     startWorldCycles()
     // Dialog layout may settle one frame after mount; refit once parent has real size.
     scheduleFitAfterLayout()
-    CanvasVisibility.warnIfUnexpectedlyEmpty(this, initProgram, canvas)
+    CanvasVisibility.warnIfUnexpectedlyEmpty(this, initState.program, canvas)
 
-  override def renderPreviewInto(program: BeProgram, canvas: Canvas, config: SnapCodeEditorConfig): Unit =
+  override def renderPreviewInto(state: ProgrammingExerciseState, canvas: Canvas, config: SnapCodeEditorConfig): Unit =
     val sourceCanvas = dom.document.createElement("canvas").asInstanceOf[Canvas]
     sourceCanvas.width = config.visuals.CanvasWidth
     sourceCanvas.height = config.visuals.CanvasHeight
@@ -103,7 +103,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     // A preview is an image of the scripts themselves, not another configured
     // IDE. Pane-hiding and palette settings can otherwise collapse the source
     // ScriptsMorph before scriptsPicture() takes its snapshot.
-    val ide = createPreviewEditor(world, program)
+    val ide = createPreviewEditor(world, state)
     layoutEditor(world, ide, sourceCanvas)
     runStartupCycles(world)
 
@@ -119,23 +119,23 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     canvas.style.width = s"${canvas.width}px"
     canvas.style.height = s"${canvas.height}px"
     canvas.getContext("2d").asInstanceOf[CanvasRenderingContext2D].drawImage(scriptsImage, 0, 0)
-    CanvasVisibility.warnIfUnexpectedlyEmpty(this, program, canvas)
+    CanvasVisibility.warnIfUnexpectedlyEmpty(this, state.program, canvas)
 
     ide.destroy()
     world.destroy()
 
-  override def loadProgramIfChanged(program: BeProgram): Unit =
-    applyProgramToEditor(program, force = false)
+  override def loadProgramIfChanged(state: ProgrammingExerciseState): Unit =
+    applyProgramToEditor(state, force = false)
 
-  /** Always re-open from BeProgram (used on fullscreen open). */
-  override def forceLoadProgram(program: BeProgram): Unit =
-    applyProgramToEditor(program, force = true)
+  /** Always re-open from state (used on fullscreen open). */
+  override def forceLoadProgram(state: ProgrammingExerciseState): Unit =
+    applyProgramToEditor(state, force = true)
 
-  private def applyProgramToEditor(program: BeProgram, force: Boolean): Unit =
-    val xml = toSnapXml(program)
+  private def applyProgramToEditor(state: ProgrammingExerciseState, force: Boolean): Unit =
+    val xml = toSnapXml(state)
     editor match
       case Some(ide) =>
-        // Skip only non-forced sync echoes of the same BeProgram→XML.
+        // Skip only non-forced sync echoes of the same state→XML.
         // Force on fullscreen open: acknowledge does not rawOpen, so a skip
         // would leave Snap on the previous rawOpen'd project.
         if !force && lastLoadedFromBeProgramXml.contains(xml) then
@@ -154,21 +154,21 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
             ide.fullChanged()
       case None => ()
 
-  override def acknowledgeProgramFromEditor(program: BeProgram): Unit =
-    lastLoadedFromBeProgramXml = Some(toSnapXml(program))
+  override def acknowledgeProgramFromEditor(state: ProgrammingExerciseState): Unit =
+    lastLoadedFromBeProgramXml = Some(toSnapXml(state))
 
   override def flushPendingProjectChanges(): Unit =
     editor.foreach(checkWhetherProgramXmlChanged)
 
-  private def toSnapXml(program: BeProgram): String =
-    TurtleStitchFromBeExpressionSerializer.toXml(program.fullProgram)
+  private def toSnapXml(state: ProgrammingExerciseState): String =
+    TurtleStitchFromBeExpressionSerializer.toXml(state.program.fullProgram, canvasLayout = state.canvasLayout)
 
   private def reinstallConfiguredLibraries(ide: IDEMorph): Unit =
     mountedConfig.filter(_.libraryTabs.nonEmpty).foreach { config =>
       installLibraries(config.libraryTabs, ide)
     }
 
-  private def createEditor(world: WorldMorph, program: BeProgram, config: SnapCodeEditorConfig): IDEMorph =
+  private def createEditor(world: WorldMorph, state: ProgrammingExerciseState, config: SnapCodeEditorConfig): IDEMorph =
     val hasLibraryTabs = config.libraryTabs.nonEmpty
     val ide = new IDEMorph(js.Dynamic.literal(
       noAutoFill = true,
@@ -186,10 +186,10 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       eduLibraryTabs = config.libraryTabs.map(_.name).toJSArray
     ))
     ide.openIn(world)
-    ide.rawOpenProjectString(toSnapXml(program))
+    ide.rawOpenProjectString(toSnapXml(state))
     ide
 
-  private def createPreviewEditor(world: WorldMorph, program: BeProgram): IDEMorph =
+  private def createPreviewEditor(world: WorldMorph, state: ProgrammingExerciseState): IDEMorph =
     val ide = new IDEMorph(js.Dynamic.literal(
       noAutoFill = true,
       noCloud = true,
@@ -197,7 +197,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       preserveTitle = true
     ))
     ide.openIn(world)
-    ide.rawOpenProjectString(toSnapXml(program))
+    ide.rawOpenProjectString(toSnapXml(state))
     ide
 
   /** Replace this editor instance's primitive provider, rather than mutating

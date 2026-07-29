@@ -8,10 +8,13 @@ import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
+import it.evadid.workbook.elements.interactionElements.programming.{SnapCanvasLayout, SnapCanvasScript}
 
 import scala.collection.mutable.ListBuffer
 
 object TurtleStitchToBeExpressionParser {
+
+  final case class ParseWithLayout(expression: BeExpression, canvasLayout: SnapCanvasLayout)
 
   private val OperatorSymbols = Set(
     "+", "-", "*", "/", "//", "%", "**",
@@ -21,24 +24,30 @@ object TurtleStitchToBeExpressionParser {
 
   private case class Signature(name: String, arity: Int, isOperator: Boolean)
   private case class PhaseOneResult(orderedDefinitions: List[BeDefineFunction], definitionBySignature: Map[Signature, BeDefineFunction])
+  private case class ScriptParse(calls: List[BeExpression], layout: SnapCanvasScript)
 
-  def parseProject(project: Project): BeExpression = {
+  def parseProject(project: Project): BeExpression =
+    parseProjectWithLayout(project).expression
+
+  def parseProjectWithLayout(project: Project): ParseWithLayout = {
     scala.util.Try {
       val phaseOne = buildDefinitions(project)
-      // Only keep calls in the program body. Definitions are already attached to
-      // each BeFunctionCall; putting BeDefineFunction nodes in the body makes
-      // Python persistence noisy and can yield Snap previews with no scripts.
-      val phaseTwoExpressions = parsePhaseTwo(project, phaseOne)
-      BeStartProgram(BeSequence.optionalBody(phaseTwoExpressions))
-    }.getOrElse(BeStartProgram(BeSequence.optionalBody(Nil)))
+      val scriptParses = parsePhaseTwoScripts(project, phaseOne)
+      val calls = scriptParses.flatMap(_.calls)
+      val layout = SnapCanvasLayout(scriptParses.map(_.layout).filter(_.callCount > 0))
+      ParseWithLayout(BeStartProgram(BeSequence.optionalBody(calls)), layout)
+    }.getOrElse(ParseWithLayout(BeStartProgram(BeSequence.optionalBody(Nil)), SnapCanvasLayout.empty))
   }
 
-  def parseXml(xml: String): BeExpression = {
-    val primary = parseProject(TurtleStitchXmlLoader.load(xml))
-    if hasCallableBlocks(primary) || !xml.contains("<block") then primary
+  def parseXml(xml: String): BeExpression =
+    parseXmlWithLayout(xml).expression
+
+  def parseXmlWithLayout(xml: String): ParseWithLayout = {
+    val primary = parseProjectWithLayout(TurtleStitchXmlLoader.load(xml))
+    if hasCallableBlocks(primary.expression) || !xml.contains("<block") then primary
     else
-      val recovered = recoverCallableBlocksFromXml(xml)
-      if hasCallableBlocks(recovered) then recovered else primary
+      val recovered = recoverCallableBlocksFromXmlWithLayout(xml)
+      if hasCallableBlocks(recovered.expression) then recovered else primary
   }
 
   def hasCallableBlocks(expression: BeExpression): Boolean =
@@ -52,14 +61,31 @@ object TurtleStitchToBeExpressionParser {
   /**
    * Depth-aware recovery when the model path yields no calls (common for live Snap XML).
    */
-  private def recoverCallableBlocksFromXml(xml: String): BeExpression = {
-    val scriptBodies = scriptBodiesPreferringSprite(xml)
-    val bodies = if scriptBodies.nonEmpty then scriptBodies else List(xml)
-    val calls = bodies.flatMap(topLevelBlocks).flatMap(blockToCall)
-    BeStartProgram(BeSequence.optionalBody(calls))
+  private def recoverCallableBlocksFromXml(xml: String): BeExpression =
+    recoverCallableBlocksFromXmlWithLayout(xml).expression
+
+  private def recoverCallableBlocksFromXmlWithLayout(xml: String): ParseWithLayout = {
+    val scripts = topLevelScriptsPreferringSprite(xml)
+    if scripts.isEmpty then
+      val calls = topLevelBlocks(xml).flatMap(blockToCall)
+      ParseWithLayout(
+        BeStartProgram(BeSequence.optionalBody(calls)),
+        if calls.isEmpty then SnapCanvasLayout.empty
+        else SnapCanvasLayout.single(callCount = calls.size)
+      )
+    else
+      val scriptParses = scripts.map { case (attrs, body) =>
+        val calls = topLevelBlocks(body).flatMap(blockToCall)
+        ScriptParse(calls, layoutFromAttrs(attrs, calls.size))
+      }
+      val calls = scriptParses.flatMap(_.calls)
+      ParseWithLayout(
+        BeStartProgram(BeSequence.optionalBody(calls)),
+        SnapCanvasLayout(scriptParses.map(_.layout).filter(_.callCount > 0))
+      )
   }
 
-  private def scriptBodiesPreferringSprite(xml: String): List[String] = {
+  private def topLevelScriptsPreferringSprite(xml: String): List[(String, String)] = {
     val fromSprites =
       findTagInnerAnywhere(xml, "sprites").toList.flatMap { sprites =>
         findTagInnerAnywhere(sprites, "sprite").toList.flatMap { sprite =>
@@ -69,8 +95,17 @@ object TurtleStitchToBeExpressionParser {
     val sections =
       if fromSprites.exists(_.contains("<block")) then fromSprites.filter(_.contains("<block"))
       else findAllTagInnersAnywhere(xml, "scripts").filter(_.contains("<block"))
-    sections.flatMap(section => topLevelTaggedSections(section, "script").map(_._2))
+    sections.flatMap(section => topLevelTaggedSections(section, "script"))
   }
+
+  private def layoutFromAttrs(attrs: String, callCount: Int): SnapCanvasScript = {
+    val x = attrDouble(attrs, "x").map(_.round.toInt).getOrElse(156)
+    val y = attrDouble(attrs, "y").map(_.round.toInt).getOrElse(66)
+    SnapCanvasScript(x, y, callCount)
+  }
+
+  private def attrDouble(attrs: String, name: String): Option[Double] =
+    raw"""\b$name="([^"]*)"""".r.findFirstMatchIn(attrs).flatMap(m => scala.util.Try(m.group(1).toDouble).toOption)
 
   private def topLevelBlocks(scriptBody: String): List[(String, String)] =
     topLevelTaggedSections(scriptBody, "block")
@@ -193,16 +228,21 @@ object TurtleStitchToBeExpressionParser {
     PhaseOneResult(defs, signatures.zip(defs).toMap)
   }
 
-  private def parsePhaseTwo(project: Project, phaseOne: PhaseOneResult): List[BeExpression] = {
+  private def parsePhaseTwoScripts(project: Project, phaseOne: PhaseOneResult): List[ScriptParse] = {
     project.scenes.toList.flatMap { scene =>
-      val stageCalls = parseScripts(scene.stage.scripts, phaseOne)
-      val spriteCalls = scene.stage.sprites.toList.flatMap(sprite => parseScripts(sprite.scripts, phaseOne))
-      stageCalls ++ spriteCalls
+      val stage = parseScriptsWithLayout(scene.stage.scripts, phaseOne)
+      val sprites = scene.stage.sprites.toList.flatMap(sprite => parseScriptsWithLayout(sprite.scripts, phaseOne))
+      stage ++ sprites
     }
   }
 
-  private def parseScripts(scripts: Vector[Script], phaseOne: PhaseOneResult): List[BeExpression] =
-    scripts.toList.flatMap(script => script.blocks.toList.flatMap(block => parseBlock(block, phaseOne)))
+  private def parseScriptsWithLayout(scripts: Vector[Script], phaseOne: PhaseOneResult): List[ScriptParse] =
+    scripts.toList.map { script =>
+      val calls = script.blocks.toList.flatMap(block => parseBlock(block, phaseOne))
+      val x = script.x.map(_.round.toInt).getOrElse(156)
+      val y = script.y.map(_.round.toInt).getOrElse(66)
+      ScriptParse(calls, SnapCanvasScript(x, y, calls.size))
+    }
 
   private def parseBlock(block: BlockLike, phaseOne: PhaseOneResult): Option[BeExpression] = {
     val signature = signatureOf(block)
