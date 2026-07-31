@@ -2,10 +2,12 @@ package it.evadid.vm.code.errors
 
 import it.evadid.core.datastructures.language.*
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.io.BeExpressionStructureInfo
+import it.evadid.vm.code.tree.BeExpressionNode
+import it.evadid.vm.controlflow.ControlFlowType.ControlFlowDown
+import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.naming.CodeRepresentationConfig
 import it.evadid.vm.static.BeExpressionStaticInformation
-import it.evadid.vm.types.{BeDataType, BeInfo}
+import it.evadid.vm.types.*
 
 case class BeExpressionUnparsable(originalSource: String, message: String) extends BeExpression {
 
@@ -14,6 +16,12 @@ case class BeExpressionUnparsable(originalSource: String, message: String) exten
     override def staticType: BeDataType = BeDataType.Error
 
     override def syntaxErrors: Seq[BeInfo] = List(BeInfo(LanguageMap.universalMap(message), BeInfo.SyntaxError.UnparsableBlock))
+  }
+
+  override lazy val structureInfo: BeExpressionStructureInfo[?] = new BeExpressionStructureInfo[BeExpressionUnparsable](this) {
+    override def withReplacedChildren(newChildren: Map[BeChildRole, BeExpression]): BeExpressionUnparsable = BeExpressionUnparsable.this
+    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown, myInfo)
+    override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] = Seq.empty
   }
 
 

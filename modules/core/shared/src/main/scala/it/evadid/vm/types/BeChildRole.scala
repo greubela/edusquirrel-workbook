@@ -35,6 +35,14 @@ object BeChildRole {
 
   case object ConditionInControlStructure extends BeChildExpressionRole
 
+  case class AttributeInClass(nr: Int) extends BeChildExpressionRole {
+    override def withIncrementedNrOrThis: BeChildRole = AttributeInClass(nr + 1)
+  }
+
+  case class MethodInClass(nr: Int) extends BeChildExpressionRole {
+    override def withIncrementedNrOrThis: BeChildRole = MethodInClass(nr + 1)
+  }
+
 
   /* DATA ROLES */
   sealed trait BeChildDataRole extends BeChildRole

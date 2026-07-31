@@ -3,7 +3,8 @@ package it.evadid.vm.code.others
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.tree.{BeExpressionNode, BeExpressionReference}
-import it.evadid.vm.io.BeExpressionStructureInfo
+import it.evadid.vm.controlflow.ControlFlowType.ControlFlowDown
+import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.naming.CodeRepresentationConfig
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.BeChildRole.BodySequence
@@ -15,6 +16,20 @@ case class BeStartProgram(startSequence: Option[BeSequence]) extends BeExpressio
 
   override lazy val staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation {
 
+  }
+
+  override lazy val structureInfo: BeExpressionStructureInfo[?] = new BeExpressionStructureInfo[BeStartProgram](this) {
+    override def withReplacedChildren(newChildren: Map[BeChildRole, BeExpression]): BeStartProgram = {
+      val replacement = newChildren.get(BodySequence(0)).collect { case sequence: BeSequence => sequence }
+      copy(startSequence = replacement.orElse(startSequence))
+    }
+
+    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] =
+      startSequence.map(_ => getChildrenAsReference(myInfo.myScope).head.toSegment(Some(ControlFlowDown))).toSeq
+
+    override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] = startSequence.map(sequence =>
+      BeExpressionReference(BeChildInfo(BodySequence(0), InSequenceScope(sequence, myScope)), sequence)
+    ).toSeq
   }
 
 /*
