@@ -24,7 +24,7 @@ case class BeStartProgram(startSequence: Option[BeSequence]) extends BeExpressio
   override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = startSequence.map(seq =>
     BeExpressionReference(BeChildInfo(BodySequence(0), InSequenceScope(seq, parentScope)), seq)
   ).toList*/
-
+/*
   override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
     val newSequence = newChildren.collectFirst {
       case (BodySequence(0), seq: BeSequence) => seq
@@ -32,7 +32,7 @@ case class BeStartProgram(startSequence: Option[BeSequence]) extends BeExpressio
 
     copy(startSequence = newSequence.orElse(startSequence))
   }
-
+*/
 }
 
 object BeStartProgram {

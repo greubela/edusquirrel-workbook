@@ -57,12 +57,13 @@ case class BeDefineFunction(
     )
   }*/
 
+  /*
   override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
     newChildren.collectFirst {
       case (BodySequence(0), expr) => expr
     }.map(replacement => copy(body = replacement.asInstanceOf[BeSequence])).getOrElse(BeDefineFunction.this)
   }
-
+*/
 }
 
 object BeDefineFunction {
