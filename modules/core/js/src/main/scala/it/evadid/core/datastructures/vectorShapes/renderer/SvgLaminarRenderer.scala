@@ -31,6 +31,8 @@ object SvgLaminarRenderer extends SvgRenderer[Double, ReactiveSvgElement[SVGSVGE
         a.match {
           case dr@AppShapeDrawingRoutineElement(routine, elementConfig, minSize) => {
             svg.path(
+              svg.x := "0",
+              svg.y := "0",
               svg.fill := elementConfig.colorFill.toWebColor.webStyleHexString,
               svg.stroke := elementConfig.colorStroke.toWebColor.webStyleHexString,
               svg.d := dr.renderPath(logger, shape.myBounds).svgPathDString
@@ -38,6 +40,8 @@ object SvgLaminarRenderer extends SvgRenderer[Double, ReactiveSvgElement[SVGSVGE
           }
           case AppShapeTextElement(text, elementConfig) => {
             svg.text(
+              svg.x := "" + shape.myBounds.startPoint.x,
+              svg.y := "" + shape.myBounds.startPoint.y,
               svg.fill := elementConfig.colorFill.toWebColor.webStyleHexString,
               svg.stroke := elementConfig.colorStroke.toWebColor.webStyleHexString,
               svg.fontSize := elementConfig.font.sizeInPx + "px",
