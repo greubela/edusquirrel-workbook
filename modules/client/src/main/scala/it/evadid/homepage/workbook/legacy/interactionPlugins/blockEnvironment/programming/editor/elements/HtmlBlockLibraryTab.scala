@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.vm.BeProgram
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.*
 import it.evadid.vm.code.usage.BeUseValue
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}

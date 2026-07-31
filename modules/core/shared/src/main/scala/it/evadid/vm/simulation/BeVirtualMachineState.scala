@@ -1,6 +1,6 @@
 package it.evadid.vm.simulation
 
-import it.evadid.vm.code.BeDefineStructure
+import it.evadid.vm.code.abstractions.BeDefineStructure
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.types.{BeDataValue, BeScope}
 

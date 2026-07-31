@@ -9,7 +9,7 @@ import it.evadid.core.datastructures.language.LanguageMap
 import scala.collection.mutable
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeSingleLineComment}
 import it.evadid.vm.code.usage.BeAssignVariable
 import it.evadid.vm.types.BeDataType

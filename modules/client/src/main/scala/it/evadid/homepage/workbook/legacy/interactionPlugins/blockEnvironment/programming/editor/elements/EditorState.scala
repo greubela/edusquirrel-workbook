@@ -7,7 +7,7 @@ import com.raquo.laminar.api.L.Signal
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.BeTreeDropTarget
 import it.evadid.vm.BeProgram
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 
 case class EditorState(
                         treeToEdit: Var[BeProgram],

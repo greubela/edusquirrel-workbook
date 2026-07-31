@@ -1,7 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 
 object SnapExpressionBridge {
 

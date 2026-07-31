@@ -10,7 +10,7 @@ case class ProgrammingExercise(override val id: String, testSuite: Option[BeTest
 
   override val defaultValue: BeProgram = BeProgram.miniProgram()
   override val serializer: Serializer[BeProgram] = new Serializer[BeProgram]() {
-    override def serialize(obj: BeProgram): String = obj.fullProgram.expressionIO.toStringInLanguage(Python, English, false)
+    override def serialize(obj: BeProgram): String = obj.fullProgram.structureInfo.toStringInLanguage(Python, English, false)
 
     override def deserialize(str: String): BeProgram = {
       println("ProgrammingExercise::deserialize does not work yet!")

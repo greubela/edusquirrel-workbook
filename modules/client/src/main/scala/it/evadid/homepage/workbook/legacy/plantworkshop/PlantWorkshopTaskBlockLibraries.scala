@@ -1,7 +1,7 @@
 package it.evadid.homepage.workbook.legacy.plantworkshop
 
 import it.evadid.vm.BeProgram
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.{BeIfElse, BeSequence}
 import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.others.BeStartProgram

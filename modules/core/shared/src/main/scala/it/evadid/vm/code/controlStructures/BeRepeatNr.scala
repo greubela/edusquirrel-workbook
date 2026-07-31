@@ -1,21 +1,20 @@
 package it.evadid.vm.code.controlStructures
 
-import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
-import it.evadid.core.util.CodeStringBuilder
+import it.evadid.vm.code.abstractions.{BeControlStructure, BeExpression}
 import it.evadid.vm.code.tree.{BeExpressionNode, BeExpressionReference}
-import it.evadid.vm.code.{BeControlStructure, BeExpression}
-import it.evadid.vm.io.BeExpressionIO
-import it.evadid.vm.naming.CodeRepresentationConfig
+import it.evadid.vm.controlflow.ControlFlowType.{ControlFlowUp, RepeatBranch}
+import it.evadid.vm.io.BeSegmentedCodeElement.BeControlFlowLine
+import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.static.BeExpressionStaticInformation
-import it.evadid.vm.types.BeScope.InSequenceScope
 import it.evadid.vm.types.*
+import it.evadid.vm.types.BeScope.InSequenceScope
 
 case class BeRepeatNr(amount: Int, body: BeSequence) extends BeControlStructure {
 
-  override def allPossibleBodies: List[BeExpression] = List(body)
+  override def allPossibleBodies: Seq[BeExpression] = List(body)
 
-  override def staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation() {
+  override lazy val staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation() {
 
     override def syntaxErrors: Seq[BeInfo] = {
       if (amount < 0) List(BeInfo(LanguageMap.universalMap("repeat count must be zero or positive"), BeInfo.SyntaxError.InvalidLiteralValue))
@@ -25,85 +24,25 @@ case class BeRepeatNr(amount: Int, body: BeSequence) extends BeControlStructure 
 
   }
 
-  override def expressionIO: BeExpressionIO = new BeExpressionIO() {
+  override lazy val structureInfo: BeExpressionStructureInfo[?] = new BeExpressionStructureInfo(this) {
 
-    override def toStringWithConfig(config: CodeRepresentationConfig): String = {
-      import config.*
+    override def getChildrenAndExtension(myScope: BeScope): List[BeExpressionNode] =
+      List(BeExpressionReference(BeChildInfo(BeChildRole.BodySequence(0), InSequenceScope(body, myScope)), body))
 
-      val bodyString = body.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable)
-
-      programmingLanguage match {
-        case Python => {
-          CodeStringBuilder().appendNextLine(s"for _ in range($amount):")
-            .changeIntLevel(1)
-            .appendAsLines(bodyString)
-            .toString
-        }
-        case Java => {
-          CodeStringBuilder().appendNextLine(s"for(int TECHNICAL_HELPER_VARIABLE = 0; TECHNICAL_HELPER_VARIABLE < $amount; TECHNICAL_HELPER_VARIABLE++){")
-            .changeIntLevel(1)
-            .appendAsLines(bodyString)
-            .changeIntLevel(-1)
-            .appendNextLine("}")
-            .toString
-        }
-        case Cpp => {
-          CodeStringBuilder().appendNextLine(s"for(int be_index = 0; be_index < $amount; be_index++){")
-            .changeIntLevel(1)
-            .appendAsLines(bodyString)
-            .changeIntLevel(-1)
-            .appendNextLine("}")
-            .toString
-        }
-        case JavaScript => {
-          CodeStringBuilder().appendNextLine(s"for (let be_index = 0; be_index < $amount; be_index++) {")
-            .changeIntLevel(1)
-            .appendAsLines(bodyString)
-            .changeIntLevel(-1)
-            .appendNextLine("}")
-            .toString
-        }
-        case Rust => {
-          CodeStringBuilder().appendNextLine(s"for _ in 0..$amount {")
-            .changeIntLevel(1)
-            .appendAsLines(bodyString)
-            .changeIntLevel(-1)
-            .appendNextLine("}")
-            .toString
-        }
-        case Lisp => {
-          CodeStringBuilder().appendNextLine(s"(dotimes (be-index $amount)")
-            .changeIntLevel(1)
-            .appendAsLines(bodyString)
-            .changeIntLevel(-1)
-            .appendNextLine(")")
-            .toString
-        }
-        case _ => {
-          CodeStringBuilder().appendNextLine(s"REPEAT/NR(")
-            .changeIntLevel(1)
-            .appendNextLine(s"$amount,")
-            .appendAsLines(bodyString)
-            .changeIntLevel(-1)
-            .appendNextLine(")")
-            .toString
-        }
-      }
+    override def withReplacedChildren(newChildren: Map[BeChildRole, BeExpression]): BeRepeatNr = {
+      val newBody = newChildren.collectFirst {
+        case (BeChildRole.BodySequence(0), seq: BeSequence) => seq
+      }.getOrElse(body)
+      copy(body = newBody)
     }
 
+    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = {
+      List(
+        BeControlFlowLine(RepeatBranch),
+        getChildrenAsReference(myInfo.myScope).head.toSegment(Some(ControlFlowUp))
+      )
+    }
 
   }
 
-
-  override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = List(
-    BeExpressionReference(BeChildPosition(BeChildRole.BodySequence(0), InSequenceScope(body, parentScope)), body)
-  )
-
-  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
-    val newBody = newChildren.collectFirst {
-      case (BeChildRole.BodySequence(0), seq: BeSequence) => seq
-    }.getOrElse(body)
-
-    copy(body = newBody)
-  }
 }

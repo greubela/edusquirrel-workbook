@@ -2,7 +2,7 @@ package it.evadid.vm.parsing.python
 
 import fastparse.*
 import fastparse.NoWhitespace.*
-import it.evadid.vm.code.BeDefineStructure
+import it.evadid.vm.code.abstractions.BeDefineStructure
 import it.evadid.vm.code.defining.KnownBeDefineStructures
 
 

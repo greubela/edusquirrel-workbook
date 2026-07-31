@@ -1,6 +1,6 @@
 package it.evadid.vm.naming
 
-import it.evadid.vm.code.BeDefineStructure
+import it.evadid.vm.code.abstractions.BeDefineStructure
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction}
 import it.evadid.vm.code.usage.BeFunctionCall
 

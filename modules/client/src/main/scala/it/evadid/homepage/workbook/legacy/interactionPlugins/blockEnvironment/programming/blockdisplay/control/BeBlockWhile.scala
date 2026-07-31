@@ -25,9 +25,9 @@ case class BeBlockWhile(whileExpr: BeWhile) extends BeBlock {
 
     val resultList: List[((BeExpressionNode, BeBlock), ControlFlowAndExpressionShape)] = childResults.toList
 
-    val conditionChildOp = resultList.find(_._1._1.childPosition.roleInParent == ConditionInControlStructure)
+    val conditionChildOp = resultList.find(_._1._1.childInfo.myRoleInParent == ConditionInControlStructure)
     val condition: BeShape = conditionChildOp.get._2.expressionShapeOrEverything
-    val bodyShapes: List[BeShape] = resultList.filter(_._1._1.childPosition.roleInParent == BodySequence(0)).map(_._2)
+    val bodyShapes: List[BeShape] = resultList.filter(_._1._1.childInfo.myRoleInParent == BodySequence(0)).map(_._2)
 
     new NestedControlStructureShape {
 
@@ -47,8 +47,8 @@ case class BeBlockWhile(whileExpr: BeWhile) extends BeBlock {
   override def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
 
 
-    val condExpr = renderedChildren.find(_._1.childPosition.roleInParent == ConditionInControlStructure)
-    val bodyExpr = renderedChildren.find(_._1.childPosition.roleInParent == BodySequence(0))
+    val condExpr = renderedChildren.find(_._1.childInfo.myRoleInParent == ConditionInControlStructure)
+    val bodyExpr = renderedChildren.find(_._1.childInfo.myRoleInParent == BodySequence(0))
 
     assert(bodyExpr.nonEmpty && bodyExpr.nonEmpty, "while MUST have cond/body, but: " + bodyExpr.nonEmpty + "/" + bodyExpr.nonEmpty)
 

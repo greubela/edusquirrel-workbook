@@ -1,45 +1,82 @@
 package it.evadid.vm.io
 
-import it.evadid.vm.code.BeExpression
-import it.evadid.vm.controlflow.ControlFlowType
-import it.evadid.vm.types.*
+/*
 
-case class BeCodeLines(lines: List[BeCodeLine]) extends Iterable[BeCodeLine] {
+object BeCodeLines {
 
-  def map(func: BeCodeLine => BeCodeLine): BeCodeLines = {
-    BeCodeLines(lines.map(func))
+  trait BeCodeLinesElement {
+    def allExpressionLines: Seq[BeExpressionCodeLine]
+
+    def allLines: Seq[BeCodeLine]
+
+    def withUpdatedCodeLines(func: Int => Int): BeCodeLinesElement
   }
 
-  def appendNewLines(newLines: BeCodeLines): BeCodeLines = {
-    BeCodeLines(lines ++ newLines.lines.map(_.changeLineNr(_ + lines.size)))
+  object BeCodeSegment {
+    def tmpEmpty(ref: BeExpressionReference, parentStack: Seq[ControlFlowType]): BeCodeSegment = BeCodeSegment(myInfo, associatedExpression, parentStack)
   }
 
-  def appendNewLines(newLines: List[BeCodeLine]): BeCodeLines = {
-    appendNewLines(BeCodeLines(newLines))
+
+  def toSegmentOrLine: Either[BeCodeSegment, BeCodeLine] = {
+
   }
 
-  def appendNewLine(newLine: BeCodeLine): BeCodeLines = {
-    appendNewLines(List(newLine))
-  }
 
-  def appendNewLine(lineExpression: BeExpression, lineRole: BeChildRole, scope: BeScope, controlFlowStack: List[ControlFlowType]): BeCodeLines = {
-    val newLine = BeExpressionLine(lines.size, lineExpression, lineRole, scope, controlFlowStack)
-    appendNewLine(newLine)
-  }
+  case class BeCodeSegment(
+                            ref: BeExpressionReference,
+                            myChildren: Seq[BeCodeLinesElement] = List()
+                          ) extends BeCodeLinesElement {
+    lazy val nextLineNr: Int = myChildren.flatMap(_.allLines.map(_.lineNr)).maxOption.getOrElse(0) + 1
 
-  def tryContinueWithLine(lineExpression: BeExpression, newRole: BeChildRole): BeCodeLines = {
-    lines.lastOption.match {
-      case Some(last) => {
-        val newLine = BeExpressionLine(lines.size, lineExpression, newRole, last.scope, last.controlFlowStack)
-        appendNewLine(newLine)
-      }
-      case None => {
-        println("[WARN] try Continue line on empty BeCodeLines. Ignoring expression: " + lineExpression)
-        this
-      }
+    private def typeToInfo(cfType: ControlFlowType): ControlFlowInfo = ControlFlowInfo(cfStack, cfType)
+
+    override def allExpressionLines: Seq[BeExpressionCodeLine] = myChildren.flatMap(_.allExpressionLines)
+
+    override def allLines: Seq[BeCodeLine] = myChildren.flatMap(_.allLines)
+
+    def withAppendedNewLine(codeLine: BeCodeLine): BeCodeSegment = {
+      this.copy(myChildren = myChildren ++ List(codeLine))
     }
 
+    def withAppendedControlFlowLine(cfType: ControlFlowType): BeCodeSegment = {
+      withAppendedNewLine(BeControlFlowLine(nextLineNr, typeToInfo(cfType)))
+    }
+
+    def withAppendedExpressionLine(expression: BeExpression, exprChildInfo: BeChildInfo, exprCfType: ControlFlowType): BeCodeSegment = {
+      withAppendedNewLine(BeExpressionCodeLine(nextLineNr, typeToInfo(exprCfType), expression, myInfo))
+    }
+
+    def withSegmentAutoAdjust(segment: BeCodeSegment): BeCodeSegment = {
+      val fixedLines = segment.withUpdatedCodeLines(_ - segment.nextLineNr + nextLineNr)
+      val fixedStack = segment.
+        this.copy(myChildren = myChildren ++ List(withFixedLineNrs))
+    }
+
+    def withUpdatedCodeLines(func: Int => Int): BeCodeLinesElement = {
+      this.copy(myChildren = myChildren.map(_.withUpdatedCodeLines(func)))
+    }
+
+  }
+}
+
+/*
+case class BeCodeLines(logger: Logger, segments: List[BeCodeLinesElement]) extends Iterable[BeCodeLine] {
+
+  def appendWithBlock(newLines: BeExpressionCodeLines): BeExpressionCodeLines = {
+    var res = ensureStartLine
+    for (cur <- newLines) res = res.appendWithLast(_.asNextLine(cur))
+    res
+  }
+
+  def appendWithLine(newLine: BeCodeLine): BeExpressionCodeLines = {
+    ensureStartLine.appendWithLast(_.asNextLine(newLine))
+  }
+
+  def appendWithLast(func: BeCodeLine => BeCodeLine): BeExpressionCodeLines = {
+    ensureStartLine.copy(lines = lines ++ List(func(lines.last)))
   }
 
   override def iterator: Iterator[BeCodeLine] = lines.iterator
 }
+*/
+*/

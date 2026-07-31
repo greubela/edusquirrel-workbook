@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.vm.code.tree.BeExtensionPoint
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
 //import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.others.BeStartProgram

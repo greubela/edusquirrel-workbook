@@ -14,9 +14,9 @@ object BeChildRole {
   case object NoRole extends BeChildRole
 
   /* CONTROL FLOW ROLES */
-  sealed trait BeChildControlFlowRole extends BeChildRole
+ // sealed trait BeChildControlFlowRole extends BeChildRole
 
-  case object IfElseBranch extends BeChildControlFlowRole
+ // case object IfElseBranch extends BeChildControlFlowRole
 
   /* SEQUENCE ROLES */
   sealed trait BeChildSequenceRole extends BeChildRole
@@ -43,8 +43,8 @@ object BeChildRole {
     override def withIncrementedNrOrThis: BeChildRole = FunctionParameter(nr + 1)
   }
 
-  case class FunctionReturnValue(nr: Int) extends BeChildDataRole {
-    override def withIncrementedNrOrThis: BeChildRole = FunctionReturnValue(nr + 1)
+  case class ReturnValue(nr: Int) extends BeChildDataRole {
+    override def withIncrementedNrOrThis: BeChildRole = ReturnValue(nr + 1)
   }
 
   case class ValueForVariable(associatedVariable: BeDefineVariable) extends BeChildDataRole

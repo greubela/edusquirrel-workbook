@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.vectorShapes.atomar.AppShapeDrawingRoutineE
 import it.evadid.core.datastructures.vectorShapes.config.AppShapeElementConfig
 import it.evadid.core.datastructures.vectorShapes.svg.drawingRoutines.DuckShape
 import it.evadid.util.logging.Logger
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 
 object VmToSvg {
 
