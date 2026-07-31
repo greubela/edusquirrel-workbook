@@ -24,16 +24,7 @@ case class BeDefineVariable(
     override def hasSideEffects: Boolean = true
   }
 
-  override lazy val structureInfo: BeExpressionStructureInfo[?] = new BeExpressionStructureInfo[BeDefineVariable](this) {
-    override def withReplacedChildren(newChildren: Map[BeChildRole, BeExpression]): BeDefineVariable =
-      newChildren.get(BeChildRole.ValueForVariable(BeDefineVariable.this)).map(value => copy(initValue = Some(value))).getOrElse(BeDefineVariable.this)
-
-    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown, myInfo)
-
-    override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] =
-      initValue.map(value => BeExpressionReference(BeChildInfo(BeChildRole.ValueForVariable(BeDefineVariable.this), myScope), value)).toSeq
-  }
-
+  override lazy val structureInfo: BeExpressionStructureInfo[?] = ???
 
   override val toString: String = "BeDefineVariable(" + name.toString + ": " + staticInformationExpression.staticType.toString + ")"
 

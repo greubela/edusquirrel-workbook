@@ -18,19 +18,7 @@ case class BeStartProgram(startSequence: Option[BeSequence]) extends BeExpressio
 
   }
 
-  override lazy val structureInfo: BeExpressionStructureInfo[?] = new BeExpressionStructureInfo[BeStartProgram](this) {
-    override def withReplacedChildren(newChildren: Map[BeChildRole, BeExpression]): BeStartProgram = {
-      val replacement = newChildren.get(BodySequence(0)).collect { case sequence: BeSequence => sequence }
-      copy(startSequence = replacement.orElse(startSequence))
-    }
-
-    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] =
-      startSequence.map(_ => getChildrenAsReference(myInfo.myScope).head.toSegment(Some(ControlFlowDown))).toSeq
-
-    override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] = startSequence.map(sequence =>
-      BeExpressionReference(BeChildInfo(BodySequence(0), InSequenceScope(sequence, myScope)), sequence)
-    ).toSeq
-  }
+  override lazy val structureInfo: BeExpressionStructureInfo[?] = ???
 
 /*
   override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] = startSequence.map(seq =>

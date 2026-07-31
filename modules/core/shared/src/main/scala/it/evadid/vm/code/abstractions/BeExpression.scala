@@ -80,7 +80,7 @@ trait BeExpression {
 
   }
 
-  def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = this
+  //def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = this
 
 
 }

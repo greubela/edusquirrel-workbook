@@ -2,7 +2,7 @@ package it.evadid.vm.code.controlStructures
 
 import it.evadid.vm.code.abstractions.{BeControlStructure, BeExpression}
 import it.evadid.vm.code.tree.{BeExpressionNode, BeExpressionReference}
-import it.evadid.vm.controlflow.ControlFlowType.{ControlFlowUp, RepeatBranch}
+import it.evadid.vm.controlflow.ControlFlowType.{ControlFlowUp, RepeatBranch, RepeatUnion}
 import it.evadid.vm.io.BeSegmentedCodeElement.BeControlFlowLine
 import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.simulation.*
@@ -31,7 +31,8 @@ case class BeWhile(
 
     override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = List(
       BeControlFlowLine(RepeatBranch),
-      getChildrenAsReference(myInfo.myScope).head.toSegment(Some(ControlFlowUp))
+      getChildrenAsReference(myInfo.myScope).head.toSegment(Some(ControlFlowUp)),
+      BeControlFlowLine(RepeatUnion)
     )
 
     override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] = List(

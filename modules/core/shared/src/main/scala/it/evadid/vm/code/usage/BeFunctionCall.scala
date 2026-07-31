@@ -31,11 +31,14 @@ case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDe
 
   override lazy val structureInfo: BeExpressionStructureInfo[?] = new BeExpressionStructureInfo[BeFunctionCall](this) {
     override def withReplacedChildren(newChildren: Map[BeChildRole, BeExpression]): BeFunctionCall = {
-      val updatedMap = newChildren.foldLeft(parameterValueMap) {
-        case (values, (FunctionParameter(index), expression)) => funcDef.inputs.lift(index).map(values.updated(_, expression)).getOrElse(values)
-        case (values, _) => values
+      val replacements = newChildren.collect { case (FunctionParameter(nr), expr) => nr -> expr }
+      if (replacements.isEmpty) BeFunctionCall.this
+      else {
+        val updatedMap = replacements.foldLeft(parameterValueMap) { case (acc, (nr, expr)) =>
+          funcDef.inputs.lift(nr).map(parameter => acc.updated(parameter, expr)).getOrElse(acc)
+        }
+        copy(parameterValueMap = updatedMap)
       }
-      copy(parameterValueMap = updatedMap)
     }
 
     override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown, myInfo)
@@ -52,15 +55,7 @@ case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDe
     })
   }*/
 
-  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
-    val replacements = newChildren.collect { case (FunctionParameter(nr), expr) => nr -> expr }
-    if (replacements.isEmpty) BeFunctionCall.this
-    else {
-      val updatedMap = replacements.foldLeft(parameterValueMap) { case (acc, (nr, expr)) =>
-        funcDef.inputs.lift(nr).map(parameter => acc.updated(parameter, expr)).getOrElse(acc)
-      }
-      copy(parameterValueMap = updatedMap)
-    }
-  }
+
+
 
 }

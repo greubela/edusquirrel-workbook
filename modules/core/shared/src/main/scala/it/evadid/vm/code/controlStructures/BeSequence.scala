@@ -31,7 +31,6 @@ case class BeSequence(body: Seq[BeExpression], sequenceInfo: BeSequenceInfo) ext
       (stateBeforeExecution, BeDataValueUnit())
   }
 
-
   override lazy val structureInfo: BeExpressionStructureInfo[?] = new BeExpressionStructureInfo[BeSequence](this) {
 
     override def withReplacedChildren(newChildren: Map[BeChildRole, BeExpression]): BeSequence = {
