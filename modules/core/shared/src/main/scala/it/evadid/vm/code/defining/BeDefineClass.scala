@@ -4,10 +4,12 @@ import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.abstractions.{BeDefineStructure, BeExpression}
-import it.evadid.vm.io.BeExpressionStructureInfo
+import it.evadid.vm.code.tree.{BeExpressionNode, BeExpressionReference}
+import it.evadid.vm.controlflow.ControlFlowType.ControlFlowDown
+import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.naming.{BeEntityName, CodeRepresentationConfig}
 import it.evadid.vm.static.BeExpressionStaticInformation
-import it.evadid.vm.types.{BeDataType, BeInfo}
+import it.evadid.vm.types.*
 
 case class BeDefineClass(
                           name: BeEntityName,
@@ -32,6 +34,35 @@ case class BeDefineClass(
 
     override def hasSideEffects: Boolean = true
 
+  }
+
+  override lazy val structureInfo: BeExpressionStructureInfo[?] = new BeExpressionStructureInfo[BeDefineClass](this) {
+    override def withReplacedChildren(newChildren: Map[BeChildRole, BeExpression]): BeDefineClass = {
+      copy(
+        attributes = attributes.zipWithIndex.map { (attribute, index) =>
+          newChildren.get(BeChildRole.AttributeInClass(index)).collect {
+            case replacement: BeDefineVariable => replacement
+          }.getOrElse(attribute)
+        },
+        methods = methods.zipWithIndex.map { (method, index) =>
+          newChildren.get(BeChildRole.MethodInClass(index)).collect {
+            case replacement: BeDefineFunction => replacement
+          }.getOrElse(method)
+        }
+      )
+    }
+
+    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown, myInfo)
+
+    override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] = {
+      val attributeChildren = attributes.zipWithIndex.map((attribute, index) =>
+        BeExpressionReference(BeChildInfo(BeChildRole.AttributeInClass(index), myScope), attribute)
+      )
+      val methodChildren = methods.zipWithIndex.map((method, index) =>
+        BeExpressionReference(BeChildInfo(BeChildRole.MethodInClass(index), myScope), method)
+      )
+      attributeChildren ++ methodChildren
+    }
   }
 
 

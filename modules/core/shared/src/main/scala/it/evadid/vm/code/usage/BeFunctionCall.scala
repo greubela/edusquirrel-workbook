@@ -6,7 +6,8 @@ import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.defining.BeDefineFunction.Operator
 import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.tree.{BeExpressionNode, BeExpressionReference}
-import it.evadid.vm.io.BeExpressionStructureInfo
+import it.evadid.vm.controlflow.ControlFlowType.ControlFlowDown
+import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.naming.CodeRepresentationConfig
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.BeChildRole.FunctionParameter
@@ -26,6 +27,22 @@ case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDe
     })
 
     override def hasSideEffects: Boolean = false
+  }
+
+  override lazy val structureInfo: BeExpressionStructureInfo[?] = new BeExpressionStructureInfo[BeFunctionCall](this) {
+    override def withReplacedChildren(newChildren: Map[BeChildRole, BeExpression]): BeFunctionCall = {
+      val updatedMap = newChildren.foldLeft(parameterValueMap) {
+        case (values, (FunctionParameter(index), expression)) => funcDef.inputs.lift(index).map(values.updated(_, expression)).getOrElse(values)
+        case (values, _) => values
+      }
+      copy(parameterValueMap = updatedMap)
+    }
+
+    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown, myInfo)
+
+    override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] = parameterWithValues.zipWithIndex.collect {
+      case ((_, Some(value)), index) => BeExpressionReference(BeChildInfo(FunctionParameter(index), myScope), value)
+    }
   }
 
 

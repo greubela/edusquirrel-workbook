@@ -1,9 +1,15 @@
 package it.evadid.vm.code.controlStructures
 
 import it.evadid.vm.code.abstractions.{BeControlStructure, BeExpression}
+import it.evadid.vm.code.tree.{BeExpressionNode, BeExpressionReference}
+import it.evadid.vm.controlflow.ControlFlowType.{ControlFlowUp, RepeatBranch}
+import it.evadid.vm.io.BeSegmentedCodeElement.BeControlFlowLine
+import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.simulation.*
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
+import it.evadid.vm.types.BeChildRole.ConditionInControlStructure
+import it.evadid.vm.types.BeScope.InSequenceScope
 
 case class BeWhile(
                     condition: BeSequence,
@@ -14,6 +20,24 @@ case class BeWhile(
 
   override lazy val staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation {
     override def syntaxErrors: Seq[BeInfo] = BeInfo.typeMismatchInfo("while condition", BeDataType.Boolean, condition.staticInformationExpression.staticType).toList
+  }
+
+  override lazy val structureInfo: BeExpressionStructureInfo[?] = new BeExpressionStructureInfo[BeWhile](this) {
+    override def withReplacedChildren(newChildren: Map[BeChildRole, BeExpression]): BeWhile = {
+      val newCondition = newChildren.get(ConditionInControlStructure).collect { case sequence: BeSequence => sequence }.getOrElse(condition)
+      val newBody = newChildren.get(BeChildRole.BodySequence(0)).collect { case sequence: BeSequence => sequence }.getOrElse(body)
+      copy(condition = newCondition, body = newBody)
+    }
+
+    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = List(
+      BeControlFlowLine(RepeatBranch),
+      getChildrenAsReference(myInfo.myScope).head.toSegment(Some(ControlFlowUp))
+    )
+
+    override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] = List(
+      BeExpressionReference(BeChildInfo(ConditionInControlStructure, InSequenceScope(condition, myScope)), condition),
+      BeExpressionReference(BeChildInfo(BeChildRole.BodySequence(0), InSequenceScope(body, myScope)), body)
+    )
   }
 
 

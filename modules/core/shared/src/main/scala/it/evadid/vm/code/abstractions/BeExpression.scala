@@ -16,7 +16,7 @@ trait BeExpression {
     new BeExpressionStaticInformation() {}
   }
 
-  lazy val structureInfo: BeExpressionStructureInfo[?] = ???
+  lazy val structureInfo: BeExpressionStructureInfo[?]
 
   def expressionExecutor(simulatorConfig: BeSimulatorConfig, stateBeforeExecution: BeSimulatorState): BeExpressionExecutor = {
     println("[WARN] Execution support is not implemented for " + getClass.getSimpleName + " (defaulting to NoOp)")
