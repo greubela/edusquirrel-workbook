@@ -6,7 +6,6 @@ import it.evadid.core.datastructures.geometry.Dimension
 
 trait AppShapeElementConfig[T: Fractional] {
 
-
   def useCustomPadding: Option[Dimension[T]]
 
   // def useCustomMargin: Option[Dimension[T]]
@@ -34,7 +33,9 @@ object AppShapeElementConfig {
 
     override def colorFont: AppColor = RGBColor.yellow
 
-    override def onMouseClicked(leftButton: Boolean): Unit = {}
+    override def onMouseClicked(leftButton: Boolean): Unit = {
+      println(s"AppShapeElementConfig::onMouseClicked(left=${leftButton})")
+    }
 
     override def useCustomPadding: Option[Dimension[T]] = None
 

@@ -26,5 +26,5 @@ case class AppShapeDrawingRoutineElement[T: Fractional]
 
   override def elementConfig: AppShapeElementConfig[T] = config
 
-  override def renderPath(logger: Logger, bounds: Bounds[T]): SvgPath = routine.renderPath(logger, bounds)
+  def renderPath(logger: Logger, bounds: Bounds[T]): SvgPath = routine.renderPath(logger, bounds)
 }

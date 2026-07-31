@@ -19,6 +19,11 @@ sealed trait AppShapeElement[T: Fractional] {
     AppElementMeasured(childrenMeasured, this, minimumDimension, renderingConfig)
   }
 
+  def renderWithMinimumDimension(renderingConfig: AppShapeRenderingConfig[T]): AppElementRendered[T] = {
+    val minDim = withMinimumDimension(renderingConfig).minimumDimension.fullDimension
+    renderComposition(renderingConfig, Point.fromIntPoint(0, 0).withDimension(minDim))
+  }
+
   def renderComposition(renderingConfig: AppShapeRenderingConfig[T], targetBounds: Bounds[T]): AppElementRendered[T] = {
     val myDimension = RenderingDimension.fromFullDimensionAndConfig(targetBounds.dimension, elementConfig, renderingConfig)
     this.
@@ -36,7 +41,7 @@ object AppShapeElement {
 
   trait AppShapeAtomar[T: Fractional] extends AppShapeElement[T] {
 
-    def renderPath(logger: Logger, bounds: Bounds[T]): SvgPath
+  //  def renderPath(logger: Logger, bounds: Bounds[T]): SvgPath
 
     def desiredAspectRatioAndAlignment: Option[(AspectRatio, AlignmentInParent)]
 
@@ -62,13 +67,14 @@ object AppShapeElement {
 
   }
 
-  trait AppShapeComposition[T: Fractional](
+  case class AppShapeComposition[T: Fractional](
                                             compositeControl: AppShapeCompositeControl[T],
                                             compositionConfig: AppShapeElementConfig[T],
                                             childrenInRenderingOrder: List[AppShapeElement[T]]
                                           ) extends AppShapeElement[T] {
 
 
+    override def elementConfig: AppShapeElementConfig[T] = compositionConfig
   }
 
   /** A composition tree whose minimum dimensions have been calculated bottom-up. */
@@ -109,7 +115,9 @@ object AppShapeElement {
                                                 compositionPositioned: AppElementPositioned[T],
                                                 myBounds: Bounds[T],
                                               ) {
+    def elementConfig: AppShapeElementConfig[T] = compositionPositioned.compositionDimensioned.compositionMeasurd.baseElement.elementConfig
 
+    def baseElement: AppShapeElement[T] = compositionPositioned.compositionDimensioned.compositionMeasurd.baseElement
   }
 
 
