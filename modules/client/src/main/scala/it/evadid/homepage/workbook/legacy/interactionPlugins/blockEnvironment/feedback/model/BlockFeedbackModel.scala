@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config.BlockFeedbackConfig
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 
 /**
  * Metadata for a feedback invocation (exercise ID, user ID, etc.).
@@ -37,7 +37,7 @@ final case class BlockFeedbackRequest(
     def pythonSource: String =
         pythonSourceOverride
           .map(_.replace("\r\n", "\n"))
-                    .getOrElse(studentCodePython.expressionIO.toStringInLanguage(AppLanguage.Python, preferredHumanLanguage, true))
+                    .getOrElse(studentCodePython.structureInfo.toStringInLanguage(AppLanguage.Python, preferredHumanLanguage, true))
 }
 
 /** Alias: internally we use the same type as the UI direction. */

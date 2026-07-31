@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
 import it.evadid.vm.BeProgram
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.naming.CodeRepresentationConfig
 import it.evadid.vm.types.BeDataType
 

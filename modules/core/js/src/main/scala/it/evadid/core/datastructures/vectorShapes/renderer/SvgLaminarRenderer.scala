@@ -4,35 +4,66 @@ package it.evadid.core.datastructures.vectorShapes.renderer
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeElement
+import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeElement.{AppElementRendered, AppShapeAtomar, AppShapeComposition}
+import it.evadid.core.datastructures.vectorShapes.atomar.{AppShapeDrawingRoutineElement, AppShapeTextElement}
+import it.evadid.core.datastructures.vectorShapes.config.AppShapeRenderingConfig
 import it.evadid.util.logging.Logger
 import org.scalajs.dom.SVGSVGElement
 
 object SvgLaminarRenderer extends SvgRenderer[Double, ReactiveSvgElement[SVGSVGElement]] {
 
-  def render(): ReactiveSvgElement[SVGSVGElement] = {
+  def renderSvgImage(logger: Logger, shape: AppElementRendered[Double]): ReactiveSvgElement[SVGSVGElement] = {
     svg.svg(
-      svg.cls := "button-show-scaffolder",
-      svg.width := "50px",
-      svg.height := "50px",
-      svg.viewBox := "0 0 24 24",
-      svg.path(
-        svg.cls := "button-fill",
-        svg.d := "M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
-        //svg.d := "M17 9A5 5 0 0 0 7 9a1 1 0 0 0 2 0 3 3 0 1 1 3 3 1 1 0 0 0-1 1v2a1 1 0 0 0 2 0v-1.1A5 5 0 0 0 17 9z"
-      ),
-      svg.path(
-        svg.d := "M10.5 8.67709C10.8665 8.26188 11.4027 8 12 8C13.1046 8 14 8.89543 14 10C14 10.9337 13.3601 11.718 12.4949 11.9383C12.2273 12.0064 12 12.2239 12 12.5V12.5V13",
-        svg.strokeLineCap := "round",
-        svg.strokeLineJoin := "round"),
-      svg.path(
-        svg.d := "M12 16H12.01",
-        svg.strokeLineCap := "round",
-        svg.strokeLineJoin := "round")
+      svg.width := s"${shape.myBounds.dimension.width}",
+      svg.height := s"${shape.myBounds.dimension.height}",
+      svg.viewBox := s"${shape.myBounds.startPoint.x} ${shape.myBounds.startPoint.y} ${shape.myBounds.dimension.width} ${shape.myBounds.dimension.height}",
+      svg.fill := shape.elementConfig.colorFill.toWebColor.webStyleHexString,
+      svg.stroke := shape.elementConfig.colorStroke.toWebColor.webStyleHexString,
+      onClick --> { event => shape.elementConfig.onMouseClicked(event.button == 1) },
+      renderElementAsSvg(logger, shape)
     )
+  }
+
+  def renderElementAsSvg(logger: Logger, shape: AppElementRendered[Double]): ReactiveSvgElement[?] = {
+
+    shape.baseElement.match {
+      case a: AppShapeAtomar[Double] => {
+        a.match {
+          case dr@AppShapeDrawingRoutineElement(routine, elementConfig, minSize) => {
+            svg.path(
+              svg.x := "0",
+              svg.y := "0",
+              svg.fill := elementConfig.colorFill.toWebColor.webStyleHexString,
+              svg.stroke := elementConfig.colorStroke.toWebColor.webStyleHexString,
+              svg.d := dr.renderPath(logger, shape.myBounds).svgPathDString
+            )
+          }
+          case AppShapeTextElement(text, elementConfig) => {
+            svg.text(
+              svg.x := "" + shape.myBounds.startPoint.x,
+              svg.y := "" + shape.myBounds.startPoint.y,
+              svg.fill := elementConfig.colorFill.toWebColor.webStyleHexString,
+              svg.stroke := elementConfig.colorStroke.toWebColor.webStyleHexString,
+              svg.fontSize := elementConfig.font.sizeInPx + "px",
+              svg.fontFamily := elementConfig.font.name,
+              text
+            )
+          }
+        }
+      }
+      case c: AppShapeComposition[Double] => {
+        svg.g(
+          shape.children.map(renderElementAsSvg(logger, _))
+        )
+      }
+    }
   }
 
   override def render(logger: Logger, input: AppShapeElement[Double]): ReactiveSvgElement[SVGSVGElement] = {
     logger.logWarn("SvgLaminarRenderer::not correctly implemented yet!")
-    render()
+    val rendered: AppShapeElement.AppElementRendered[Double] = input.renderWithMinimumDimension(AppShapeRenderingConfig.defaultDouble)
+    val res = renderSvgImage(logger, rendered)
+    println("res: " + res.ref)
+    res
   }
 }

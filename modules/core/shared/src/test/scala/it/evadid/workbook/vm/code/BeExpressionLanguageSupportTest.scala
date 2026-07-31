@@ -3,7 +3,7 @@ package it.evadid.workbook.vm.code
 import it.evadid.vm.code.defining.BeDefineFunction.functionInfo
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
@@ -60,15 +60,15 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   test("all BeExpression subclasses render for Python, Java, Lisp, and C++") {
     allExpressions.foreach { expr =>
       targetLanguages.foreach { language =>
-        val rendered = expr.expressionIO.toStringInLanguage(language, humanLanguage)
+        val rendered = expr.structureInfo.toStringInLanguage(language, humanLanguage)
         assert(rendered.trim.nonEmpty, s"${expr.getClass.getSimpleName} should render non-empty for ${language.name}")
       }
     }
   }
 
   test("Python rendering includes type hints for variable and function signatures") {
-    val renderedVariable = xVar.expressionIO.toStringInLanguage(Python, humanLanguage)
-    val renderedFunction = function.expressionIO.toStringInLanguage(Python, humanLanguage)
+    val renderedVariable = xVar.structureInfo.toStringInLanguage(Python, humanLanguage)
+    val renderedFunction = function.structureInfo.toStringInLanguage(Python, humanLanguage)
 
     assert(renderedVariable.contains(":"), s"Expected Python variable hint in: $renderedVariable")
     assert(renderedFunction.contains("def add("), clues(renderedFunction))
@@ -88,7 +88,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       )
     ))
 
-    val rendered = scripted.expressionIO.toStringInLanguage(Python, humanLanguage)
+    val rendered = scripted.structureInfo.toStringInLanguage(Python, humanLanguage)
 
     val expected =
       """x: int = 1
@@ -123,7 +123,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         |}
         |""".stripMargin
 
-    assertEquals(scripted.expressionIO.toStringInLanguage(Java, humanLanguage).trim, expected.trim)
+    assertEquals(scripted.structureInfo.toStringInLanguage(Java, humanLanguage).trim, expected.trim)
   }
 
   test("Lisp sequence rendering matches expected string exactly") {
@@ -155,7 +155,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         |    )
         |)""".stripMargin
 
-    assertEquals(scripted.expressionIO.toStringInLanguage(Lisp, humanLanguage), expected)
+    assertEquals(scripted.structureInfo.toStringInLanguage(Lisp, humanLanguage), expected)
   }
 
   test("C++ sequence rendering matches expected string ignoring surrounding whitespace") {
@@ -179,6 +179,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         |}
         |""".stripMargin
 
-    assertEquals(scripted.expressionIO.toStringInLanguage(Cpp, humanLanguage).trim, expected.trim)
+    assertEquals(scripted.structureInfo.toStringInLanguage(Cpp, humanLanguage).trim, expected.trim)
   }
 }

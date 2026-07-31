@@ -25,10 +25,10 @@ case class BeBlockIfElse(expr: BeIfElse) extends BeBlock {
 
     val resultList: List[((BeExpressionNode, BeBlock), ControlFlowAndExpressionShape)] = childResults.toList
 
-    val conditionChildOp = resultList.find(_._1._1.childPosition.roleInParent == ConditionInControlStructure)
+    val conditionChildOp = resultList.find(_._1._1.childInfo.myRoleInParent == ConditionInControlStructure)
     val condition: BeShape = conditionChildOp.get._2.expressionShapeOrEverything
-    val thenShapes: List[BeShape] = resultList.filter(_._1._1.childPosition.roleInParent == BodySequence(0)).map(_._2)
-    val elseShapes: List[BeShape] = resultList.filter(_._1._1.childPosition.roleInParent == BodySequence(1)).map(_._2)
+    val thenShapes: List[BeShape] = resultList.filter(_._1._1.childInfo.myRoleInParent == BodySequence(0)).map(_._2)
+    val elseShapes: List[BeShape] = resultList.filter(_._1._1.childInfo.myRoleInParent == BodySequence(1)).map(_._2)
 
     new NestedControlStructureShape {
 
@@ -49,9 +49,9 @@ case class BeBlockIfElse(expr: BeIfElse) extends BeBlock {
 
     var res = NestedBlockRenderer.empty()
 
-    val condExpr = renderedChildren.find(_._1.childPosition.roleInParent == ConditionInControlStructure)
-    val thenExpr = renderedChildren.find(_._1.childPosition.roleInParent == BodySequence(0))
-    val elseExpr = renderedChildren.find(_._1.childPosition.roleInParent == BodySequence(1))
+    val condExpr = renderedChildren.find(_._1.childInfo.myRoleInParent == ConditionInControlStructure)
+    val thenExpr = renderedChildren.find(_._1.childInfo.myRoleInParent == BodySequence(0))
+    val elseExpr = renderedChildren.find(_._1.childInfo.myRoleInParent == BodySequence(1))
 
     assert(condExpr.nonEmpty && thenExpr.nonEmpty && elseExpr.nonEmpty, "if/else MUST have cond/then/else, but: " + condExpr.nonEmpty + "/" + thenExpr.nonEmpty + "/" + elseExpr.nonEmpty)
 

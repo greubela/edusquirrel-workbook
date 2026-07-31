@@ -1,6 +1,6 @@
 package it.evadid.vm.simulation
 
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.types.BeDataValue
 
 import scala.collection.mutable
@@ -20,7 +20,7 @@ abstract class BeExpressionExecutor(simulatorConfig: BeSimulatorConfig, initSimu
     executeThisBlockInSimulatorAndGetValue(curSimState, childrenResults)
   }
 
-  protected def executeChildrenInSimulatorAndGetValue(simulatorState: BeSimulatorState): List[(BeSimulatorState, BeDataValue)] = {
+  protected def executeChildrenInSimulatorAndGetValue(simulatorState: BeSimulatorState): Seq[(BeSimulatorState, BeDataValue)] = {
     val childrenResultBuffer: mutable.ListBuffer[(BeSimulatorState, BeDataValue)] = mutable.ListBuffer()
 
     for (curChild <- childExpressionsToExecute(simulatorState)) {
@@ -31,11 +31,11 @@ abstract class BeExpressionExecutor(simulatorConfig: BeSimulatorConfig, initSimu
     childrenResultBuffer.toList
   }
   
-  protected def childExpressionsToExecute(stateBeforeExecution: BeSimulatorState): List[BeExpression] 
+  protected def childExpressionsToExecute(stateBeforeExecution: BeSimulatorState): Seq[BeExpression]
 
-  protected def applySideEffectsOfThisBlock(stateBeforeExecution: BeSimulatorState, childrenResults: List[(BeSimulatorState, BeDataValue)]): BeSimulatorState
+  protected def applySideEffectsOfThisBlock(stateBeforeExecution: BeSimulatorState, childrenResults: Seq[(BeSimulatorState, BeDataValue)]): BeSimulatorState
 
-  protected def executeThisBlockInSimulatorAndGetValue(stateBeforeExecution: BeSimulatorState, childrenResults: List[(BeSimulatorState, BeDataValue)]): (BeSimulatorState, BeDataValue)
+  protected def executeThisBlockInSimulatorAndGetValue(stateBeforeExecution: BeSimulatorState, childrenResults: Seq[(BeSimulatorState, BeDataValue)]): (BeSimulatorState, BeDataValue)
 
 
 }

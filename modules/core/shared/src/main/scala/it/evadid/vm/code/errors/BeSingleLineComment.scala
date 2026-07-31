@@ -2,34 +2,19 @@ package it.evadid.vm.code.errors
 
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.vm.code.BeExpression
-import it.evadid.vm.io.BeExpressionIO
+import it.evadid.vm.code.abstractions.BeExpression
+import it.evadid.vm.code.tree.BeExpressionNode
+import it.evadid.vm.controlflow.ControlFlowType.ControlFlowDown
+import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.naming.CodeRepresentationConfig
 import it.evadid.vm.static.BeExpressionStaticInformation
+import it.evadid.vm.types.*
 
 case class BeSingleLineComment(commentStr: LanguageMap[HumanLanguage]) extends BeExpression {
 
-
-  override def staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation() {
-
+  override lazy val structureInfo: BeExpressionStructureInfo[?] = new BeExpressionStructureInfo[BeSingleLineComment](this) {
+    override def withReplacedChildren(newChildren: Map[BeChildRole, BeExpression]): BeSingleLineComment = BeSingleLineComment.this
+    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown, myInfo)
+    override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] = Seq.empty
   }
-
-  override def expressionIO: BeExpressionIO = new BeExpressionIO() {
-    override def toStringWithConfig(config: CodeRepresentationConfig): String = {
-      val comment = commentStr.getInLanguage(config.humanLanguage)
-      if (comment.contains("\n")) comment.replaceAll("\n", " ") else comment
-      config.programmingLanguage match {
-        case Python => s"# $comment"
-        case Java => s"// $comment"
-        case Cpp => s"// $comment"
-        case Lisp => s"; $comment"
-        case JavaScript => s"// $comment"
-        case BlockDisplay => s"// $comment"
-        case _ => s"// $comment"
-      }
-    }
-
-  }
-
-
 }

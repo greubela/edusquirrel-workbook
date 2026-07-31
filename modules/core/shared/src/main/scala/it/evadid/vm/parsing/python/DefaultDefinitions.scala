@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.language.LanguageMap
 
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.BeDataType

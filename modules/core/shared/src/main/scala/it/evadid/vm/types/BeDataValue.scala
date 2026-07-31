@@ -7,11 +7,9 @@ import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.code.defining.BeDefineVariable
 
-trait BeDataValue {
+sealed trait BeDataValue {
 
   def currentType: BeDataType
-
-  def displayAsString: String
   
 }
 
@@ -27,7 +25,6 @@ case class BeUseValueReference(variable: BeDefineVariable) extends BeDataValue {
 
   override def currentType: BeDataType = variable.variableType
 
-  override def displayAsString: String = variable.name.universalInterpretation()
 }
 
 case class BeDataValueLiteral(literalString: String) extends BeDataValue {

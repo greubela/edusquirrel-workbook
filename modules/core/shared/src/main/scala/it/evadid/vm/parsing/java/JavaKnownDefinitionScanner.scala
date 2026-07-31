@@ -2,7 +2,7 @@ package it.evadid.vm.parsing.java
 
 import fastparse.*
 import fastparse.NoWhitespace.*
-import it.evadid.vm.code.BeDefineStructure
+import it.evadid.vm.code.abstractions.BeDefineStructure
 import it.evadid.vm.code.defining.KnownBeDefineStructures
 
 /** FastParse-based Java token scanner that maps every potential identifier/operator token to known definitions. */

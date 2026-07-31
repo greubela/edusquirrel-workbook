@@ -1,6 +1,6 @@
 package it.evadid.vm.parsing.python
 
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 
 import scala.collection.mutable.ListBuffer

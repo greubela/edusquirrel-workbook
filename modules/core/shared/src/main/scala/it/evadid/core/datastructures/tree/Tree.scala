@@ -1,7 +1,7 @@
 package it.evadid.core.datastructures.tree
 
 import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreePosition
-import it.evadid.core.util.{CodeStringBuilder, FunctionalUtility}
+import it.evadid.core.util.{CodeStringBuilderMutable, FunctionalUtility}
 
 import scala.collection.mutable
 
@@ -47,7 +47,7 @@ trait Tree[P <: TreePosition, D] {
   def size: Int = if (isEmpty) 0 else entries.size
 
   private def levelString: String = {
-    val builder = CodeStringBuilder()
+    val builder = CodeStringBuilderMutable()
     foreach((pos, data) => builder.setIntLevel(pos.level).appendNextLine(data.toString), false)
     builder.toString
   }

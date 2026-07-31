@@ -4,14 +4,14 @@ import it.evadid.vm.types.BeChildRole.ConditionInControlStructure
 import it.evadid.vm.types.BeScope.GlobalScope
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
 import it.evadid.vm.code.defining.BeDefineVariable
 import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.tree.BeExpressionReference
 import it.evadid.vm.code.usage.{BeAssignVariable, BeUseValue}
 import it.evadid.vm.naming.NamingStyle
-import it.evadid.vm.types.{BeChildPosition, BeInfo, BeUseValueReference}
+import it.evadid.vm.types.{BeChildInfo, BeInfo, BeUseValueReference}
 
 import scala.collection.mutable
 
@@ -90,13 +90,13 @@ object VmStaticRules {
     buffer.toList
   }
 
-  private def directChildren(expr: BeExpression): List[BeExpression] =
-    expr
+  private def directChildren(expr: BeExpression): Seq[BeExpression] =
+    expr.structureInfo
       .getChildren(withExtensions = false, GlobalScope())
       .collect { case BeExpressionReference(_, childExpr) => childExpr }
 
-  private def directChildrenWithPos(expr: BeExpression): List[(BeChildPosition, BeExpression)] =
-    expr
+  private def directChildrenWithPos(expr: BeExpression): Seq[(BeChildInfo, BeExpression)] =
+    expr.structureInfo
       .getChildren(withExtensions = false, GlobalScope())
       .collect { case BeExpressionReference(pos, childExpr) => (pos, childExpr) }
 
@@ -171,7 +171,7 @@ object VmStaticRules {
       else
         children
           .map { case (pos, childExpr) =>
-            val childInCondition = inCondition || (pos.roleInParent == ConditionInControlStructure)
+            val childInCondition = inCondition || (pos.myRoleInParent == ConditionInControlStructure)
             loop(childExpr, depth1, childInCondition)
           }
           .max
