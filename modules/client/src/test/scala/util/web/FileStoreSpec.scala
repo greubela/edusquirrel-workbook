@@ -1,5 +1,6 @@
 package util.web
 
+import it.evadid.util.DownloadToDisc
 import munit.FunSuite
 import org.scalajs.dom
 
@@ -12,14 +13,14 @@ class FileStoreSpec extends FunSuite {
 
   test("downloadFile(content) smoke test") {
     if (hasDomRuntime) {
-      HomepageFileStore.downloadFile("smoke.txt", "hello")
+      DownloadToDisc.instance.downloadFile("smoke.txt", "hello")
     }
     assert(true)
   }
 
   test("downloadFromUrl smoke test") {
     if (hasDomRuntime) {
-      HomepageFileStore.downloadFromUrl("source.txt", new dom.URL("https://example.com/source.txt"))
+      DownloadToDisc.instance.downloadFromUrl("source.txt", new dom.URL("https://example.com/source.txt"))
     }
     assert(true)
   }
