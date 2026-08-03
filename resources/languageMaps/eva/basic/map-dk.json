@@ -9,5 +9,9 @@
   "advancedMode": "Avanceret",
   "reorderFeedbackSuccess": "✅ Meget godt! Rækkefølgen er korrekt.",
   "reorderFeedbackWrongOrder": "⚠️ Tæt på! Logikken er ikke helt rigtig endnu. Tjek hvilke trin der skal komme før andre.",
-  "noUserLoggedIn": "[Ikke Nogen]"
+  "noUserLoggedIn": "[Ikke Nogen]",
+  "openEditor": "Åbn editor",
+  "canvas": "Dit program",
+  "runProgram": "Kør",
+  "turtleOutput": "Skildpadde-output"
 }

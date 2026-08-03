@@ -232,6 +232,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     sprite.paletteCache = js.Dictionary.empty
     registerCustomCategoryTabs(libraries)
     ide.createCategories()
+    enlargeCategoryTabButtons(ide)
     ide.refreshPalette(true)
 
   private def spriteMorphPrototype: js.Dynamic =
@@ -303,17 +304,68 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   private def spriteMorphCustomCategories: js.Dynamic =
     spriteMorphPrototype.selectDynamic("customCategories")
 
-  /** Register exercise tabs on TurtleStitch's customCategories Map (name → Color). */
+  /** Register exercise tabs on Snap's customCategories Map (name → Color). */
   private def registerCustomCategoryTabs(libraries: List[LibraryTab]): Unit =
-    val color = spriteMorphPrototype.selectDynamic("blockColor").selectDynamic("other")
     val customCategories = spriteMorphCustomCategories
-    libraries.foreach(tab => customCategories.applyDynamic("set")(tab.name, color))
+    val blockColor = spriteMorphPrototype.selectDynamic("blockColor")
+    libraries.foreach { tab =>
+      val resolved = blockColor.selectDynamic(tab.color.snapKey)
+      val color =
+        if js.isUndefined(resolved) || resolved == null then blockColor.selectDynamic("other")
+        else resolved
+      customCategories.applyDynamic("set")(tab.name, color)
+      // eduLibraryTabs also look up colors via blockColor[name] for prim-category buttons.
+      blockColor.updateDynamic(tab.name)(color)
+    }
     installedCustomCategoryNames = libraries.map(_.name)
 
   private def clearInstalledCustomCategories(): Unit =
     val customCategories = spriteMorphCustomCategories
-    installedCustomCategoryNames.foreach(name => customCategories.applyDynamic("delete")(name))
+    val blockColor = spriteMorphPrototype.selectDynamic("blockColor")
+    installedCustomCategoryNames.foreach { name =>
+      customCategories.applyDynamic("delete")(name)
+      js.Dynamic.global.Reflect.applyDynamic("deleteProperty")(blockColor, name)
+    }
     installedCustomCategoryNames = Nil
+
+  /** Make visible category tabs taller and restack them after Snap's default layout. */
+  private def enlargeCategoryTabButtons(ide: IDEMorph): Unit =
+    val categories = ide.asInstanceOf[js.Dynamic].selectDynamic("categories")
+    if js.isUndefined(categories) || categories == null then return
+    val buttons = categories.selectDynamic("buttons").asInstanceOf[js.UndefOr[js.Array[js.Dynamic]]]
+      .toOption
+      .getOrElse(js.Array())
+    val visible = buttons.filter { button =>
+      button.selectDynamic("isVisible").asInstanceOf[Boolean]
+    }
+    if visible.isEmpty then return
+
+    val yPadding = 4.0
+    val border = 3.0
+    val first = visible(0)
+    val left = first.applyDynamic("left")().asInstanceOf[Double]
+    var top = first.applyDynamic("top")().asInstanceOf[Double]
+
+    visible.foreach { button =>
+      button.updateDynamic("padding")(8)
+      // Drop Snap's default label shadow — it fights colored category tabs.
+      button.updateDynamic("labelShadowOffset")(new SnapPoint(0, 0))
+      button.updateDynamic("labelShadowColor")(new SnapColor(0, 0, 0, 0))
+      val label = button.selectDynamic("label")
+      if !js.isUndefined(label) && label != null then
+        val fontSize = label.selectDynamic("fontSize")
+        if !js.isUndefined(fontSize) && fontSize != null then
+          label.updateDynamic("fontSize")(fontSize.asInstanceOf[Double] + 2.0)
+        if label.selectDynamic("fixLayout").asInstanceOf[js.UndefOr[js.Function0[Unit]]].isDefined then
+          label.applyDynamic("fixLayout")()
+      button.applyDynamic("fixLayout")()
+      button.applyDynamic("refresh")()
+      button.applyDynamic("setPosition")(new SnapPoint(left, top))
+      val height = button.applyDynamic("height")().asInstanceOf[Double]
+      top += height + yPadding
+    }
+
+    categories.applyDynamic("setHeight")(top - categories.applyDynamic("top")().asInstanceOf[Double] + border)
 
   /** `_` is deliberately only presentation syntax. The selector's native
     * placeholders remain authoritative for numeric, boolean and nested inputs.

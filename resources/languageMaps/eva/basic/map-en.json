@@ -38,5 +38,9 @@
   "sortingReasonConfirm": "Confirm reasoning",
   "noUserLoggedIn": "[Nobody]",
   "showHeader": "Show Navigation",
-  "hideHeader": "Hide Navigation"
+  "hideHeader": "Hide Navigation",
+  "openEditor": "Open Editor",
+  "canvas": "Your program",
+  "runProgram": "Run",
+  "turtleOutput": "Turtle output"
 }

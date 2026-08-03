@@ -16,9 +16,29 @@ import it.evadid.vm.types.BeDataType
  */
 case class LibraryBlock(id: String, snap_description_line: String, associatedExpression: BeExpression)
 
+/** Named Snap palette color role; resolves via `SpriteMorph.prototype.blockColor`. */
+enum SnapCategoryColor(val snapKey: String):
+  case Motion    extends SnapCategoryColor("motion")
+  case Looks     extends SnapCategoryColor("looks")
+  case Sound     extends SnapCategoryColor("sound")
+  case Pen       extends SnapCategoryColor("pen")
+  case Control   extends SnapCategoryColor("control")
+  case Sensing   extends SnapCategoryColor("sensing")
+  case Operators extends SnapCategoryColor("operators")
+  case Variables extends SnapCategoryColor("variables")
+  case Lists     extends SnapCategoryColor("lists")
+  case Other     extends SnapCategoryColor("other")
+
 /** One named, ordered and allow-listed palette tab. An empty tab is valid.
+ *
+ * `color` is a Snap built-in category role (resolved at runtime from blockColor).
  */
-case class LibraryTab(id: String, name: String, selectableElements: List[LibraryBlock])
+case class LibraryTab(
+    id: String,
+    name: String,
+    selectableElements: List[LibraryBlock],
+    color: SnapCategoryColor = SnapCategoryColor.Other
+)
 
 /** Visibility of the independently configurable parts of the embedded IDE.
  *
@@ -65,17 +85,25 @@ object SnapCodeEditorConfig:
       spriteControls = false
     ),
     libraryTabs = List(
-      LibraryTab("id-1","One block", List(
-        LibraryBlock("forward", "turtle.forward(_)", simpleFunc("forward1", "par1"))
-      )),
-      LibraryTab("id-2","Three blocks", List(
-        LibraryBlock("turn", "dummy turn _", simpleFunc("forward2", "par2")),
-        LibraryBlock("gotoXY", "dummy position _ _", simpleFunc("forward3", "par3")),
-        LibraryBlock("clear", "dummy clear", simpleFunc("forward4", "par4"))
-      ))
+      LibraryTab("id-1", "One block", List(
+        // Empty description → keep Snap's native blockSpec (matches reload-from-XML labels).
+        LibraryBlock("forward", "", simpleFunc("forward1", "par1"))
+      ), color = SnapCategoryColor.Motion),
+      LibraryTab("id-2", "Three blocks", List(
+        LibraryBlock("turn", "", simpleFunc("forward2", "par2")),
+        LibraryBlock("gotoXY", "", simpleFunc("forward3", "par3")),
+        LibraryBlock("clear", "", simpleFunc("forward4", "par4"))
+      ), color = SnapCategoryColor.Control),
+      LibraryTab("drawing", "drawing", List(
+        LibraryBlock("down", "", noArgFunc("down")),
+        LibraryBlock("up", "", noArgFunc("up"))
+      ), color = SnapCategoryColor.Pen)
     )
   )
 
   private def simpleFunc(name: String, par: String): BeExpression = {
     BeProgram.createSimpleFunc(name, List(par), List(BeDataType.Numeric), List("1000"), None).fullProgram
   }
+
+  private def noArgFunc(name: String): BeExpression =
+    BeProgram.createSimpleFunc(name, Nil, Nil, Nil, None).fullProgram

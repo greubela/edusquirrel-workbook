@@ -39,5 +39,8 @@
   "noUserLoggedIn": "[Niemand]",
   "showHeader": "Navigation einblenden",
   "hideHeader": "Navigation ausblenden",
-  "openeditor": "Snap Editor öffnen :)"
+  "openEditor": "Editor öffnen",
+  "canvas": "Dein Programm",
+  "runProgram": "Ausführen",
+  "turtleOutput": "Turtle-Ausgabe"
 }

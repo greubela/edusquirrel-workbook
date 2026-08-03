@@ -85,6 +85,8 @@ case class SnapCodeEditor(
           bindProgramObservers(ctx.owner)
         }
       ),
+      // FEATURE: SnapPythonPopup — remove this child (+ SnapPythonPopup.scala + CSS) to drop the button.
+      SnapPythonPopup.chrome(state, () => impl.flushPendingProjectChanges()),
       onUnmountCallback { _ =>
         // The dialog reuses this lazy DOM element. Keep its WorldMorph and DOM
         // event listeners intact between openings; only stop animation work

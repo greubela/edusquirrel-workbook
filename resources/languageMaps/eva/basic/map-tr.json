@@ -8,5 +8,9 @@
   "beginnerMode": "Başlangıç",
   "advancedMode": "İleri",
   "reorderFeedbackSuccess": "✅ Çok iyi! Sıralama doğru.",
-  "reorderFeedbackWrongOrder": "⚠️ Yaklaştın! Mantık henüz tam olarak doğru değil. Hangi adımların diğerlerinden önce gelmesi gerektiğini kontrol et."
+  "reorderFeedbackWrongOrder": "⚠️ Yaklaştın! Mantık henüz tam olarak doğru değil. Hangi adımların diğerlerinden önce gelmesi gerektiğini kontrol et.",
+  "openEditor": "Editörü aç",
+  "canvas": "Programın",
+  "runProgram": "Çalıştır",
+  "turtleOutput": "Kaplumbağa çıktısı"
 }

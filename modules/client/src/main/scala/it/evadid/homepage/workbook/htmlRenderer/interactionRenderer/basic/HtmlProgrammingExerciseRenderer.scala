@@ -3,12 +3,16 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.ExecutionMethod
-import it.evadid.homepage.webElements.basic.HtmlButtonElement
+import it.evadid.core.datastructures.state.async.AsyncData
+import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
+import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchFromBeExpressionSerializer
+import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchWorkerFacade
 import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExercise, ProgrammingExerciseState}
 import it.evadid.workbook.interaction.sync.UpdateImportance
+import todomove.datastructures.web.file.FullImage
 
 case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[ProgrammingExercise] {
 
@@ -45,6 +49,42 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     val buttonCard = ElementCard(LanguageMapContentId("basic/openEditor"), button.getDomElement())
     val canvasCard = ElementCard(LanguageMapContentId("basic/canvas"), editor.previewCanvas)
 
-    AtomarLineRendering.cardLine(workbookElement, List(buttonCard, canvasCard))
+    // Run → TurtleStitchWorker.simulateGreenFlag → stage PNG
+    val stageImageVar: Var[Option[AsyncData[Nothing, FullImage]]] = Var(None)
+
+    def runProgram(): Unit = {
+      val state = boundVar.now()
+      val xml = TurtleStitchFromBeExpressionSerializer.toXml(
+        state.program.fullProgram,
+        canvasLayout = state.canvasLayout
+      )
+      stageImageVar.set(Some(TurtleStitchWorkerFacade.getExecutedStageSnapshotDataSrc(xml)))
+    }
+
+    val runButton: HtmlButtonElement =
+      HtmlButtonElement.withTextLabel("basic/runProgram", _ => runProgram())
+
+    val stageOutput: Element = div(
+      cls := "prog-ex-stage-output",
+      child <-- stageImageVar.signal.map {
+        case None =>
+          div(cls := "prog-ex-stage-output__placeholder")
+        case Some(asyncImg) =>
+          div(
+            cls := "preview-card",
+            div(
+              cls := "preview-content",
+              HtmlImageElement(asyncImg).getDomElement()
+            )
+          )
+      }
+    )
+
+    val runCard = ElementCard(
+      LanguageMapContentId("basic/turtleOutput"),
+      List(runButton.getDomElement(), stageOutput)
+    )
+
+    AtomarLineRendering.cardLine(workbookElement, List(buttonCard, canvasCard, runCard))
   }
 }

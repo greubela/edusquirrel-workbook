@@ -253,6 +253,84 @@
     font-weight: 600;
 }
 
+/* ========== FEATURE: SnapPythonPopup (BEGIN) ==========
+ * Removable with SnapPythonPopup.scala + SnapCodeEditor chrome child.
+ * Reuses .sorting-error-popup layout; only Snap-specific bits live here.
+ */
+.snap-python-button {
+    position: absolute;
+    bottom: var(--space-md);
+    left: var(--space-md);
+    z-index: 8;
+    border: 1px solid var(--color-button-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-button-background);
+    color: var(--color-text-primary);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.snap-python-button:hover,
+.snap-python-button:focus-visible {
+    background: var(--color-button-hover);
+}
+
+.snap-python-popup.is-visible {
+    z-index: 9;
+}
+
+.snap-python-popup__content {
+    width: min(42rem, calc(100% - 2 * var(--space-md)));
+    max-height: min(70vh, 32rem);
+    text-align: left;
+}
+
+.snap-python-popup__scripts {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    overflow: auto;
+    min-height: 0;
+}
+
+.snap-python-popup__script-label {
+    margin-bottom: var(--space-xs);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+}
+
+.snap-python-popup__code {
+    margin: 0;
+    padding: var(--space-md) var(--space-lg);
+    overflow: auto;
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-muted);
+    color: var(--color-text-primary);
+    font-family: var(--color-code-font);
+    font-size: var(--color-code-size);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+/* ========== FEATURE: SnapPythonPopup (END) ========== */
+
+/* ProgrammingExercise stage output (Run → simulateGreenFlag PNG) */
+.prog-ex-stage-output {
+    margin-top: var(--space-md);
+    max-width: 100%;
+}
+
+.prog-ex-stage-output__placeholder {
+    min-height: var(--space-lg);
+}
+
+.prog-ex-stage-output .preview-card,
+.prog-ex-stage-output .preview-content img {
+    max-width: 100%;
+    height: auto;
+}
+
 .sorting-reason-form {
     margin-bottom: var(--space-lg);
     padding: var(--space-lg);
