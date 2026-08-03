@@ -1,4 +1,4 @@
-documentatiopackage it.evadid.homepage.webElements.editor.code.SnapEditor
+package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import com.raquo.airstream.ownership.Owner
 import com.raquo.airstream.state.Var
