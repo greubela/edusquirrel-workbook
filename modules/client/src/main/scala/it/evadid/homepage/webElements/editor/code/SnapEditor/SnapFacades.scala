@@ -82,7 +82,11 @@ class WorldMorph(canvas0: dom.HTMLCanvasElement, fillPage: Boolean = js.native) 
   var worldCanvas: dom.HTMLCanvasElement = js.native
   /** Hidden textarea through which Morphic receives keyboard and IME input. */
   var keyboardHandler: dom.HTMLTextAreaElement = js.native
+  /** Active text cursor while editing an input slot; null when not typing. */
+  var cursor: js.Any | Null = js.native
   def doOneCycle(): Unit = js.native
+  /** Commit the active text cursor (writes textarea into the target morph). */
+  def stopEditing(): Unit = js.native
 
 @js.native
 @JSGlobal("IDE_Morph")

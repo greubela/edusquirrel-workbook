@@ -253,10 +253,23 @@ class PythonParser(
   private def parseFunctionCall(source: String, context: ParseContext): Option[BeExpression] = {
     ParsingUtils.findTopLevelCall(source).map { case (rawName, argsSource) =>
       val name = rawName.trim
-      val arguments = ParsingUtils.splitTopLevelArguments(argsSource).map(_.trim).filter(_.nonEmpty).map(arg => parseExpression(arg, context))
+      val arguments = ParsingUtils.splitTopLevelArguments(argsSource).map(_.trim).filter(_.nonEmpty).map { arg =>
+        parseExpression(stripKeywordArgument(arg), context)
+      }
       val function = context.ensureFunctionArity(name, context.resolveFunction(name, arguments.length), arguments.length)
       BeFunctionCall(function, function.inputs.zip(arguments).toMap)
     }
+  }
+
+  /** Accept legacy/printer form `name = value` as a positional call argument. */
+  private def stripKeywordArgument(arg: String): String = {
+    val eq = arg.indexOf('=')
+    if eq <= 0 then arg
+    else
+      val left = arg.substring(0, eq).trim
+      val right = arg.substring(eq + 1).trim
+      if IdentifierPattern.matches(left) && right.nonEmpty && !arg.substring(eq).startsWith("==") then right
+      else arg
   }
 
   private def parseLiteralExpression(source: String, context: ParseContext): Option[BeExpression] = source match {

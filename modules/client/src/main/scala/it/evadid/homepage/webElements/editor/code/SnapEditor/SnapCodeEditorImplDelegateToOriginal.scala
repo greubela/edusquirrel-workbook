@@ -95,6 +95,11 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     CanvasVisibility.warnIfUnexpectedlyEmpty(this, initState.program, canvas)
 
   override def renderPreviewInto(state: ProgrammingExerciseState, canvas: Canvas, config: SnapCodeEditorConfig): Unit =
+    // Preview creates a temporary WorldMorph that resets Morphic's shared
+    // #morphic_keyboard textarea. Skip while the live editor world is ticking
+    // so mid-edit keystrokes are not wiped / overwritten.
+    if cyclesRunning then return
+
     val sourceCanvas = dom.document.createElement("canvas").asInstanceOf[Canvas]
     sourceCanvas.width = config.visuals.CanvasWidth
     sourceCanvas.height = config.visuals.CanvasHeight
@@ -140,6 +145,9 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
         // would leave Snap on the previous rawOpen'd project.
         if !force && lastLoadedFromBeProgramXml.contains(xml) then
           return
+        // Never rawOpen over an active text cursor — that destroys the slot mid-edit.
+        if !force && isTextEditing then
+          return
         ide.rawOpenProjectString(xml)
         lastLoadedFromBeProgramXml = Some(xml)
         lastProjectXml = Some(ide.getProjectXML())
@@ -158,7 +166,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     lastLoadedFromBeProgramXml = Some(toSnapXml(state))
 
   override def flushPendingProjectChanges(): Unit =
-    editor.foreach(checkWhetherProgramXmlChanged)
+    // Force: flush on close / popup must capture in-progress slot text.
+    editor.foreach(checkWhetherProgramXmlChanged(_, allowDuringEdit = true))
 
   private def toSnapXml(state: ProgrammingExerciseState): String =
     TurtleStitchFromBeExpressionSerializer.toXml(state.program.fullProgram, canvasLayout = state.canvasLayout)
@@ -506,7 +515,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       val now = dom.window.performance.now()
       if now - lastProjectXmlCheckAt >= ProjectXmlCheckIntervalMs then
         lastProjectXmlCheckAt = now
-        editor.foreach(checkWhetherProgramXmlChanged)
+        editor.foreach(checkWhetherProgramXmlChanged(_))
 
   private def initializeProjectChangeTracking(ide: IDEMorph): Unit =
     lastProjectXml = Some(ide.getProjectXML())
@@ -517,16 +526,28 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
    * value is only updated on Snap edit paths which call recordUnsavedChanges,
    * and therefore is not a reliable content revision. Polling is throttled so
    * serialization does not happen on every animation frame.
+   *
+   * While a text cursor is active, skip publish so mid-digit slot edits do not
+   * rebuild preview / clear Morphic's shared keyboard. After blur, the next
+   * poll (or an explicit flush) publishes the committed value.
    */
-  private def checkWhetherProgramXmlChanged(ide: IDEMorph): Unit =
+  private def checkWhetherProgramXmlChanged(ide: IDEMorph, allowDuringEdit: Boolean = false): Unit =
+    if !allowDuringEdit && isTextEditing then return
+    // Commit in-progress slot text before serializing (needed for flush-on-close).
+    if allowDuringEdit && isTextEditing then
+      editorWorld.foreach(_.stopEditing())
     val xml = ide.getProjectXML()
     if !lastProjectXml.contains(xml) then
       lastProjectXml = Some(xml)
       println("Snap! code changed!")
       projectXmlChangedCallback(xml)
 
+  /** True while Morphic has an active CursorMorph for an input slot. */
+  private def isTextEditing: Boolean =
+    editorWorld.exists(world => world.cursor != null)
+
   private def stopEditorSession(): Unit =
-    editor.foreach(checkWhetherProgramXmlChanged)
+    editor.foreach(checkWhetherProgramXmlChanged(_, allowDuringEdit = true))
     pauseWorldCycles()
     disconnectResizeObserver()
     clearInstalledCustomCategories()

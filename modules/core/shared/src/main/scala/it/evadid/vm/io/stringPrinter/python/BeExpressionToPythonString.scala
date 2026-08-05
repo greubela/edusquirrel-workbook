@@ -12,7 +12,9 @@ case class BeExpressionToPythonString
   ) {
 
   override protected def assignToFunctionPar(parName: String, parType: String, parValue: BeExpression): String = {
-    parName + " = " + forExpression(parValue)
+    // Positional call args (same as Java). Named "par = value" is not parsed by
+    // PythonParser.parseFunctionCall and would drop Snap slot literals on reload.
+    forExpression(parValue)
   }
 
   override protected def assignToDefinedVar(varName: String, varType: String, varValue: BeExpression): String = {
