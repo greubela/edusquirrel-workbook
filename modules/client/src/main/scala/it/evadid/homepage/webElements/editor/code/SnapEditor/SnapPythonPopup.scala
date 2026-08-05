@@ -4,7 +4,7 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.BeFunctionCall
@@ -123,9 +123,9 @@ object SnapPythonPopup {
 
   private def topLevelCalls(expression: BeExpression): List[BeFunctionCall] =
     expression match
-      case BeStartProgram(Some(sequence)) => sequence.body.collect { case c: BeFunctionCall => c }
+      case BeStartProgram(Some(sequence)) => sequence.body.collect { case c: BeFunctionCall => c }.toList
       case BeStartProgram(None) => Nil
-      case seq: BeSequence => seq.body.collect { case c: BeFunctionCall => c }
+      case seq: BeSequence => seq.body.collect { case c: BeFunctionCall => c }.toList
       case call: BeFunctionCall => List(call)
       case _ => Nil
 
@@ -148,7 +148,7 @@ object SnapPythonPopup {
     if calls.isEmpty then ""
     else
       BeStartProgram(BeSequence.optionalBody(calls))
-        .expressionIO
+        .structureInfo
         .toStringInLanguage(Python, English, false)
         .trim
 }

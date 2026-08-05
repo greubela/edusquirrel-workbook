@@ -1,38 +1,29 @@
 package it.evadid.vm.code.others
 
-import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.tree.{BeExpressionNode, BeExpressionReference}
-import it.evadid.vm.io.BeExpressionIO
-import it.evadid.vm.naming.CodeRepresentationConfig
-import it.evadid.vm.types.BeChildRole.ExpressionInSequence
+import it.evadid.vm.controlflow.ControlFlowType.ControlFlowJump
+import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.types.*
+import it.evadid.vm.types.BeChildRole.ReturnValue
 
 case class BeReturn(value: Option[BeExpression]) extends BeExpression {
 
-  override def expressionIO: BeExpressionIO = new BeExpressionIO {
-    override def toStringWithConfig(config: CodeRepresentationConfig): String = {
-      import config.*
-      val valueString = value.map(_.expressionIO.toStringInLanguage(programmingLanguage, humanLanguage, skipUnparsable).replaceAll("\n", " "))
-      val base = valueString match {
-        case Some(text) if text.nonEmpty => s"return $text"
-        case _ => "return"
+  override lazy val structureInfo: BeExpressionStructureInfo[?] =
+    new BeExpressionStructureInfo[BeReturn](this) {
+
+      override def withReplacedChildren(newChildren: Map[BeChildRole, BeExpression]): BeReturn = {
+        val replacement = newChildren.collectFirst { case (ReturnValue(_), expr) => expr }
+        replacement.map(expr => BeReturn.this.copy(value = Some(expr))).getOrElse(BeReturn.this)
       }
 
-      programmingLanguage match {
-        case Python => base
-        case Java | JavaScript | Rust | Cpp => if (base.endsWith(";")) base else base + ";"
-        case _ => base
+      override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = {
+        asExpressionLine(ControlFlowJump, myInfo)
+      }
+
+      override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] = {
+        if (value.isEmpty) List() else
+          List(BeExpressionReference(BeChildInfo(ReturnValue(0), myScope), value.get))
       }
     }
-  }
-
-  override def getChildren(withExtensions: Boolean, parentScope: BeScope): List[BeExpressionNode] =
-    value.map(expr => BeExpressionReference(BeChildPosition(ExpressionInSequence(0), parentScope), expr)).toList
-
-
-  override def withReplacedChildren(newChildren: List[(BeChildRole, BeExpression)]): BeExpression = {
-    val replacement = newChildren.collectFirst { case (ExpressionInSequence(_), expr) => expr }
-    replacement.map(expr => copy(value = Some(expr))).getOrElse(this)
-  }
 }

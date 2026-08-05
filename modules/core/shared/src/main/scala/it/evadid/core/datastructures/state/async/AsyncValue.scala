@@ -3,6 +3,7 @@ package it.evadid.core.datastructures.state.async
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.datastructures.state.observable.{ConstantValueObservable, ObservableValue}
 
+import scala.concurrent.Future
 import scala.util.Try
 
 case class AsyncValue[F, S](underlyingState: AsyncDataStateFinished[F, S]) extends AsyncData[F, S] {
@@ -10,6 +11,8 @@ case class AsyncValue[F, S](underlyingState: AsyncDataStateFinished[F, S]) exten
   override lazy val observeAllStates: ObservableValue[AsyncDataState[F, S]] = ConstantValueObservable(underlyingState)
 
   override def stateNow(): AsyncDataState[F, S] = underlyingState
+
+  override val futureFirstState: Future[AsyncDataStateFinished[F, S]] = Future.successful(underlyingState)
 }
 
 object AsyncValue {

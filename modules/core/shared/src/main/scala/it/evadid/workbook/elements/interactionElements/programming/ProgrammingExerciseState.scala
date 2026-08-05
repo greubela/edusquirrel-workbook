@@ -20,7 +20,7 @@ object ProgrammingExerciseState {
     fromProgram(BeProgram.miniProgram())
 
   def pythonOf(state: ProgrammingExerciseState): String =
-    state.program.fullProgram.expressionIO.toStringInLanguage(Python, English, false)
+    state.program.fullProgram.structureInfo.toStringInLanguage(Python, English, false)
 
   /** Stable fingerprint including layout (positions / script splits). */
   def fingerprint(state: ProgrammingExerciseState): String =

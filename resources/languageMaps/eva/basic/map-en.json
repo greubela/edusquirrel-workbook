@@ -42,5 +42,10 @@
   "openEditor": "Open Editor",
   "canvas": "Your program",
   "runProgram": "Run",
-  "turtleOutput": "Turtle output"
+  "turtleOutput": "Turtle output",
+  "staticPreviewProgram": "Static preview",
+  "syncInfoTooltipPartial": "Synced to  _ / _ Sources",
+  "syncInfoTooltipFull": "Synced to all _ Sources",
+  "syncInfoTooltipDisabled": "No Sync configured",
+  "syncInfoTooltipWarning": "Synced to none of the _ sources"
 }

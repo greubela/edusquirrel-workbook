@@ -26,7 +26,7 @@ object ProgrammingExercise {
   /** Composite persist format: layout JSON + Python body. Legacy = pure Python. */
   object StateSerializer extends Serializer[ProgrammingExerciseState] {
     override def serialize(obj: ProgrammingExerciseState): String = {
-      val python = obj.program.fullProgram.expressionIO.toStringInLanguage(Python, English, false)
+      val python = obj.program.fullProgram.structureInfo.toStringInLanguage(Python, English, false)
       if obj.canvasLayout.isEmpty then python
       else s"$LayoutHeader\n${obj.canvasLayout.toJson}\n$Separator\n$python"
     }

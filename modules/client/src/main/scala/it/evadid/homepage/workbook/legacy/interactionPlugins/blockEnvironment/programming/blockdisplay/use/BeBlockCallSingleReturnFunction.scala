@@ -24,8 +24,8 @@ case class BeBlockCallSingleReturnFunction(
   override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
 
     val parameterChildrenInOrder: List[BeShape] = childrenShapes
-      .filter(_._1.childPosition.roleInParent.isInstanceOf[FunctionParameter])
-      .sortBy(_._1.childPosition.roleInParent.asInstanceOf[FunctionParameter].nr)
+      .filter(_._1.childInfo.myRoleInParent.isInstanceOf[FunctionParameter])
+      .sortBy(_._1.childInfo.myRoleInParent.asInstanceOf[FunctionParameter].nr)
       .map(_._2)
 
     val nameShape = TextShape(function.funcDef.functionTypeInfo.displayName.asLanguageMap(NamingStyle.SnakeCase))

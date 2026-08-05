@@ -4,7 +4,7 @@ import it.evadid.vm.types.BeChildRole.ValueInAssignment
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.data.{BeBlockDefineVariable, BeBlockUseValue}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlock, BeBlockSingleShape, RenderingInformation}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.NestedBlockRenderer
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.defining.BeDefineVariable
 import it.evadid.vm.code.tree.BeExpressionNode
 import it.evadid.vm.code.usage.BeUseValue
@@ -28,7 +28,7 @@ object BeBlockAssignValue {
   private case class BeBlockAssignValueFromExpression(variable: BeDefineVariable, value: BeExpression) extends BeBlockSingleShape {
 
     override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
-      val valueShape: BeShape = childrenShapes.find(_._1.childPosition.roleInParent == ValueInAssignment).get._2
+      val valueShape: BeShape = childrenShapes.find(_._1.childInfo.myRoleInParent == ValueInAssignment).get._2
       val assignShape: BeShape = BeBlockAssignValue.BeBlockAssignValueFromShape(variable, valueShape).renderShape(List(), renderingInformation)._2
 
       val shapeRes = ShapeAroundShape(UnitShape, assignShape)

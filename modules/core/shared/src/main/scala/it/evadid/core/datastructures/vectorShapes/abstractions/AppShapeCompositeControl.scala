@@ -1,20 +1,21 @@
 package it.evadid.core.datastructures.vectorShapes.abstractions
 
 import it.evadid.core.datastructures.geometry.{AspectRatio, Dimension, Point, RelativeBounds}
-import it.evadid.core.datastructures.vectorShapes.abstractions.AlignmentInParent.{DistortionAlignment, HorizontalAlignment, PositionInParent, VerticalAlignment}
-import it.evadid.core.datastructures.vectorShapes.config.{AppShapeConfig, AppShapeRenderingConfig}
-import it.evadid.core.datastructures.vectorShapes.rendering.AppShapeComposition.{AppCompositionDimensioned, AppCompositionMeasured, AppCompositionPositioned, RenderingDimension}
+import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeElement.{AppElementDimensioned, AppElementMeasured, AppElementPositioned}
+import it.evadid.core.datastructures.vectorShapes.config.{AppShapeElementConfig, AppShapeRenderingConfig}
+import it.evadid.core.datastructures.vectorShapes.helper.AlignmentInParent.{DistortionAlignment, HorizontalAlignment, PositionInParent, VerticalAlignment}
+import it.evadid.core.datastructures.vectorShapes.helper.{AlignmentInParent, RenderingDimension}
 
 
 trait AppShapeCompositeControl[T: Fractional] {
 
   def desiredAspectRatioAndAlignment: Option[(AspectRatio, AlignmentInParent)]
 
-  def calculateMyMinimumDimension(childrenDimensions: List[AppCompositionMeasured[T]], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): RenderingDimension[T]
+  def calculateMyMinimumDimension(childrenDimensions: List[AppElementMeasured[T]], compositionConfig: AppShapeElementConfig[T], renderingConfig: AppShapeRenderingConfig[T]): RenderingDimension[T]
 
-  def calculateChildrenDimensions(children: List[AppCompositionMeasured[T]], myRenderingSize: RenderingDimension[T], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): List[AppCompositionDimensioned[T]]
+  def calculateChildrenDimensions(children: List[AppElementMeasured[T]], myRenderingSize: RenderingDimension[T], compositionConfig: AppShapeElementConfig[T], renderingConfig: AppShapeRenderingConfig[T]): List[AppElementDimensioned[T]]
 
-  def calculateChildrenPositions(children: List[AppCompositionDimensioned[T]], myRenderingSize: RenderingDimension[T], compositionConfig: AppShapeConfig[T], renderingConfig: AppShapeRenderingConfig[T]): List[AppCompositionPositioned[T]]
+  def calculateChildrenPositions(children: List[AppElementDimensioned[T]], myRenderingSize: RenderingDimension[T], compositionConfig: AppShapeElementConfig[T], renderingConfig: AppShapeRenderingConfig[T]): List[AppElementPositioned[T]]
 
 }
 
@@ -34,16 +35,16 @@ object AppShapeCompositeControl {
     }
   }
 
-  def minimumRenderingDimension[T: Fractional](children: Iterable[AppCompositionMeasured[T]]): Dimension[T] =
+  def minimumRenderingDimension[T: Fractional](children: Iterable[AppElementMeasured[T]]): Dimension[T] =
     maxDimension(children.map(_.minimumDimension.fullDimension))
 
-  def dimensionChildrenAtMinimum[T: Fractional](children: List[AppCompositionMeasured[T]]): List[AppCompositionDimensioned[T]] =
+  def dimensionChildrenAtMinimum[T: Fractional](children: List[AppElementMeasured[T]]): List[AppElementDimensioned[T]] =
     children.map(child => child.withTargetDimension(child.minimumDimension))
 
-  def positionChild[T: Fractional](child: AppCompositionDimensioned[T], offset: Point[T]): AppCompositionPositioned[T] =
+  def positionChild[T: Fractional](child: AppElementDimensioned[T], offset: Point[T]): AppElementPositioned[T] =
     child.withOffset(offset)
 
-  def positionAligned[T: Fractional](child: AppCompositionDimensioned[T], container: Dimension[T], alignment: AlignmentInParent): AppCompositionPositioned[T] =
+  def positionAligned[T: Fractional](child: AppElementDimensioned[T], container: Dimension[T], alignment: AlignmentInParent): AppElementPositioned[T] =
     positionChild(child, calculateOffset(container, child.adjustedRenderingSize.fullDimension, alignment))
 
 

@@ -1,7 +1,7 @@
 package it.evadid.vm.code.defining
 
 import it.evadid.vm.code.controlStructures.BeSequence
-import it.evadid.vm.code.{BeDefineStructure, BeExpression}
+import it.evadid.vm.code.abstractions.{BeDefineStructure, BeExpression}
 import it.evadid.vm.naming.{BeEntityName, KnownBeEntityNames}
 import it.evadid.vm.types.BeDataType
 import it.evadid.vm.types.BeDataType.{AnyType, Boolean as BooleanType, Int as IntType, Numeric as NumericType, String as StringType, Unit as UnitType}

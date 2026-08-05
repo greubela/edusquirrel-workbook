@@ -4,15 +4,14 @@ target/
 !**/src/test/**/target/
 
 ### IntelliJ IDEA ###
-.idea\*
-.idea/*
+.idea/
 *.iws
 *.iml
 *.ipr
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
-**/artifacts/**
+artifacts/*
 
 ### Eclipse ###
 .apt_generated
@@ -73,7 +72,9 @@ ai/*
 META_INF/*
 META-INF/*
 src/*
-.proxyai*
-.proxyai/*
-.aider/*
+.proxyai/
+.aider/
 .aider*
+.cursor/
+node_modules/
+src/main/main/

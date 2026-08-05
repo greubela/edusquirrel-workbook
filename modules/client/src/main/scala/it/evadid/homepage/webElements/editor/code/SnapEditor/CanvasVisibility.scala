@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 import it.evadid.homepage.control.info.HomepageLoggerInfo
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.SnapCodeEditorImpl
 import it.evadid.vm.BeProgram
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.BeFunctionCall

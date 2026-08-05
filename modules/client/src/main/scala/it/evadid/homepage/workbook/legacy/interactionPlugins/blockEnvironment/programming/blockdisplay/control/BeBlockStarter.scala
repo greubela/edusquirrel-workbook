@@ -25,7 +25,7 @@ case class BeBlockStarter(
                            ): ControlFlowAndExpressionShape = {
 
     val resultList: List[((BeExpressionNode, BeBlock), ControlFlowAndExpressionShape)] = childResults.toList
-    val bodyShapes: List[BeShape] = resultList.filter(_._1._1.childPosition.roleInParent == BodySequence(0)).map(_._2)
+    val bodyShapes: List[BeShape] = resultList.filter(_._1._1.childInfo.myRoleInParent == BodySequence(0)).map(_._2)
 
     
     val starter = ControlFlowProgramStarter()

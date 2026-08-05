@@ -4,12 +4,15 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.ExecutionMethod
 import it.evadid.core.datastructures.state.async.AsyncData
+import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, VmToSvg}
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchFromBeExpressionSerializer
 import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchWorkerFacade
+import it.evadid.util.logging.Logger
+import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExercise, ProgrammingExerciseState}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import todomove.datastructures.web.file.FullImage
@@ -49,6 +52,19 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     val buttonCard = ElementCard(LanguageMapContentId("basic/openEditor"), button.getDomElement())
     val canvasCard = ElementCard(LanguageMapContentId("basic/canvas"), editor.previewCanvas)
 
+    // static preview based on the custom display engine (not working yet, for test purposes)
+    val shapeLogger = Logger.withNameAndPrefixes(
+      Some("HtmlProgrammingExerciseRenderer::ShapeRenderingLogger"),
+      PrintToStdLogger.printEverything
+    )
+    val staticRendering = ElementCard(
+      LanguageMapContentId("basic/staticPreviewProgram"),
+      SvgLaminarRenderer.render(
+        shapeLogger,
+        VmToSvg.renderBeExpression(shapeLogger, boundVar.now().program.fullProgram)
+      )
+    )
+
     // Run → TurtleStitchWorker.simulateGreenFlag → stage PNG
     val stageImageVar: Var[Option[AsyncData[Nothing, FullImage]]] = Var(None)
 
@@ -85,6 +101,6 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       List(runButton.getDomElement(), stageOutput)
     )
 
-    AtomarLineRendering.cardLine(workbookElement, List(buttonCard, canvasCard, runCard))
+    AtomarLineRendering.cardLine(workbookElement, List(buttonCard, staticRendering, canvasCard, runCard))
   }
 }

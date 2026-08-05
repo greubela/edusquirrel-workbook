@@ -27,8 +27,8 @@ case class BeBlockSequence(sequence: BeSequence) extends BeBlock {
     val resultList: List[((BeExpressionNode, BeBlock), ControlFlowAndExpressionShape)] = childResults.toList
 
     val bodyChildrenInOrder = resultList
-      .filter(_._1._1.childPosition.roleInParent.isInstanceOf[ExpressionInSequence])
-      .sortBy(_._1._1.childPosition.roleInParent.asInstanceOf[ExpressionInSequence].nr)
+      .filter(_._1._1.childInfo.myRoleInParent.isInstanceOf[ExpressionInSequence])
+      .sortBy(_._1._1.childInfo.myRoleInParent.asInstanceOf[ExpressionInSequence].nr)
 
     val onlyControlFlow = bodyChildrenInOrder.map(_._2).flatMap(curShape => curShape.onlyControlFlowShape)
     val onlyExpressions = bodyChildrenInOrder.map(_._2).flatMap(curShape => curShape.onlyExpressionShape)
@@ -94,8 +94,8 @@ case class BeBlockSequence(sequence: BeSequence) extends BeBlock {
   def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
 
     val bodyChildrenInOrder = renderedChildren
-      .filter(_._1.childPosition.roleInParent.isInstanceOf[ExpressionInSequence])
-      .sortBy(_._1.childPosition.roleInParent.asInstanceOf[ExpressionInSequence].nr)
+      .filter(_._1.childInfo.myRoleInParent.isInstanceOf[ExpressionInSequence])
+      .sortBy(_._1.childInfo.myRoleInParent.asInstanceOf[ExpressionInSequence].nr)
 
     var res = NestedBlockRenderer.empty()
     for (child <- bodyChildrenInOrder) {

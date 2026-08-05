@@ -7,6 +7,7 @@ import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState, AsyncState, AsyncValue}
+import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.webElements.*
@@ -40,9 +41,10 @@ case class HtmlImageElement(imageSignal: AsyncData[Nothing, FullImage], underlyi
     case AsyncDataFailed(cause, data) => renderImageFailed(cause)
   }
 
-  def getDomSignal: Signal[Element] = imageSignal.toStateSignal.map(render)
+  private val domSignal: Signal[Element] = imageSignal.toStateSignal.map(render)
+  def getDomSignal: Signal[Element] = domSignal
 
-  override def getDomElement(): Element = div(child <-- getDomSignal)
+  override def getDomElement(): Element = div(child <-- domSignal)
 }
 
 object HtmlImageElement {
@@ -52,8 +54,7 @@ object HtmlImageElement {
   private def getImageSignal(fullInfo: FullInfo, image: ImageElement): AsyncData[Nothing, FullImage] = {
     val fileSignal: AsyncData[Nothing, LoadedFile] = image.match {
       case ImageElement.FileBasedImageElement(fileDescription) =>
-        val obs = AsyncData.forFuture(fileDescription.loadData()).observeAllStates
-        AsyncState(obs)
+        AsyncData.forFuture(fileDescription.loadData()).observeAllStates
       case i@ImageElement.LanguageMapBasedImageElement(languageMapContentId, copyrightInfo, howToResolveUrl) =>
         val srcSignal: Signal[String] = signals.stringFromLanguageMapId(languageMapContentId)
         val srcFile: Signal[FileDescription] = srcSignal.map(fullInfo.contentControl.fileFactory.resolveFromTypeAndLanguageMapContent(howToResolveUrl, _))

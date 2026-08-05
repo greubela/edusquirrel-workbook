@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.language.LanguageMap
 
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeSingleLineComment}
@@ -124,7 +124,7 @@ object PythonClassParser {
       val parsedMethods = methodsBuffer.toList
 
       val classNameMap = LanguageMap.universalMap[HumanLanguage](name)
-      val classPlaceholder = BeDefineClass(classNameMap, attributes, Nil, ignoredBodyExpressions.toList)
+      val classPlaceholder = BeDefineClass(classNameMap, attributes, Nil)
       val methodInstances = parsedMethods.map { methodResult =>
         methodResult.template.copy(
           functionTypeInfo = BeDefineFunction.BeFunctionTypeInfo(

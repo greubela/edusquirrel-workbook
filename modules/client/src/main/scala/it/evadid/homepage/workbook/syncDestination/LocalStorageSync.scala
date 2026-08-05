@@ -60,7 +60,8 @@ object LocalStorageSync extends SyncDestination {
   }
 
   private def transformBack(logger: SyncLogger, formatter: SyncFormatter, browserKey: String, browserValue: String): Option[(SyncContext, InteractionVariableHistorySerialized)] = try {
-    Some(contextToBrowserKeySerializer.deserialize(browserKey) -> formatter.deserialize(browserValue))
+    if (!browserKey.startsWith("{")) None else
+      Some(contextToBrowserKeySerializer.deserialize(browserKey) -> formatter.deserialize(browserValue))
   } catch case (e: Exception) => {
     logger.log(s"LocalStorageSync: Ignore tuple (${browserKey}, ${browserValue}) because it was unparsable: ${e.getMessage}", WARN, Option(false))
     None

@@ -68,12 +68,12 @@ object DefaultSerializer {
 
   private[serializer] given rwPerson: ReadWriter[Person] = new Serializer[Person] {
     override def serialize(obj: Person): String = {
-      println(s"ReadWriter::Person, serializing${obj}")
+      //println(s"ReadWriter::Person, serializing${obj}")
       write(obj.toSerializable)(using rwBasicPerson)
     }
 
     override def deserialize(str: String): Person = {
-      println(s"ReadWriter::Person, deserializing${str}")
+      //println(s"ReadWriter::Person, deserializing${str}")
       read(str)(using rwBasicPerson)
     }
   }.uPickleReadWrite

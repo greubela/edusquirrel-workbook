@@ -1,4 +1,4 @@
-package it.evadid.vm.code
+package it.evadid.vm.code.abstractions
 
 import it.evadid.vm.code.defining.*
 

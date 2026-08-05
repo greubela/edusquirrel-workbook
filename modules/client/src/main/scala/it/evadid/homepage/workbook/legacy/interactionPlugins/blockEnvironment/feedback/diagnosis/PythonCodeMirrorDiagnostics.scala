@@ -1,10 +1,10 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.diagnosis
 
 import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
-import it.evadid.vm.code.BeExpression
+import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import it.evadid.vm.code.tree.BeExpressionReference
-import it.evadid.vm.types.BeChildPosition
+import it.evadid.vm.types.BeChildInfo
 import it.evadid.vm.types.BeChildRole.NoRole
 import it.evadid.vm.types.BeScope.GlobalScope
 
@@ -17,7 +17,7 @@ object PythonCodeMirrorDiagnostics:
 
   def forProgram(program: BeExpression, rawPython: String): Seq[CodeMirrorEditor.Diagnostic] =
     val tree =
-      program.recToTree(withExtensions = false, BeChildPosition(NoRole, GlobalScope()))
+      program.recToTree(withExtensions = false, BeChildInfo(NoRole, GlobalScope()))
 
     val problems =
       tree.values.toSeq.collect {

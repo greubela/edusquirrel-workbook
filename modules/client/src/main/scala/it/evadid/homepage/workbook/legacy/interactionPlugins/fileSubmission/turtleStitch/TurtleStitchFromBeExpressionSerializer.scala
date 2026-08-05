@@ -1,11 +1,12 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch
 
 import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
-import it.evadid.vm.code.{BeExpression, defining}
+import it.evadid.vm.code.defining
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
 import it.evadid.vm.types.BeDataValueLiteral
 import it.evadid.workbook.elements.interactionElements.programming.{SnapCanvasLayout, SnapCanvasScript}
@@ -37,7 +38,7 @@ object TurtleStitchFromBeExpressionSerializer {
       case other => List(other)
     }
 
-    val calls = body.collect { case call: BeFunctionCall => call }
+    val calls = body.collect { case call: BeFunctionCall => call }.toList
     if (calls.isEmpty) Nil
     else if layout.isEmpty || !layoutMatches(layout, calls.size) then
       // Legacy / inconsistent layout: one script, inject receiveGo if missing.

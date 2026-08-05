@@ -17,7 +17,7 @@ import todomove.webElementsOld.webElements.svg.shapes.datatypes.LiteralShape
 case class BeBlockUseValue(valueUsage: BeUseValue) extends BeBlockSingleShape {
   
   override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
-    val textShape = TextShape(LanguageMap.universalMap(valueUsage.expressionIO.toStringInLanguage(BlockDisplay, English)))
+    val textShape = TextShape(LanguageMap.universalMap(valueUsage.structureInfo.toStringInLanguage(BlockDisplay, English)))
 
     val (outerShape, amends): (BeShapeContainerable, Seq[L.Modifier[L.SvgElement]]) = valueUsage.value match {
       case BeDataValueLiteral(literalStr) => {

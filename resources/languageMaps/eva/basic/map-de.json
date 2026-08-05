@@ -39,8 +39,13 @@
   "noUserLoggedIn": "[Niemand]",
   "showHeader": "Navigation einblenden",
   "hideHeader": "Navigation ausblenden",
-  "openEditor": "Editor öffnen",
   "canvas": "Dein Programm",
   "runProgram": "Ausführen",
-  "turtleOutput": "Turtle-Ausgabe"
+  "turtleOutput": "Turtle-Ausgabe",
+  "staticPreviewProgram": "Statische Vorschau",
+  "openEditor": "Snap Editor öffnen :)",
+  "syncInfoTooltipPartial": "Synchronisiert zu _ / _ Quellen",
+  "syncInfoTooltipFull": "Synchronisiert zu allen _ Quellen",
+  "syncInfoTooltipDisabled": "Synchronisation deaktiviert",
+  "syncInfoTooltipWarning": "Synchronisiert zu keiner der_ Quellen"
 }

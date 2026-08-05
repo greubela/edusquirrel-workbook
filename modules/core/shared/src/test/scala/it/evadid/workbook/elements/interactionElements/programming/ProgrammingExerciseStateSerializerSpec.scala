@@ -7,7 +7,7 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
 
   test("legacy pure python deserializes with empty layout") {
     val program = BeProgram.miniProgram()
-    val python = program.fullProgram.expressionIO.toStringInLanguage(
+    val python = program.fullProgram.structureInfo.toStringInLanguage(
       it.evadid.core.datastructures.language.AppLanguage.Python,
       it.evadid.core.datastructures.language.AppLanguage.English,
       false

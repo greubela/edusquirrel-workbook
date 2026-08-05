@@ -8,6 +8,8 @@ import scala.util.Try
 
 
 sealed trait AsyncDataState[F, S] {
+
+
   val loadingSince: Option[LocalDateTime] = None
   val value: Option[S] = None
   val failure: Option[FailureInfo[F]] = None
