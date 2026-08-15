@@ -4,18 +4,18 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
-import it.evadid.vm.code.abstractions.BeExpression
+import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.BeFunctionCall
 import it.evadid.workbook.elements.interactionElements.programming.{
   ProgrammingExerciseState,
-  SnapCanvasLayout,
-  SnapCanvasScript
+  SnapCanvasScript,
+  SnapTurtlePythonBridge
 }
 
 /**
- * FEATURE: Snap "Show Python" popup (debug / demo overlay on the fullscreen editor).
+ * FEATURE: Snap editable Python overlay (dual-mode with blocks).
  *
  * Removable as a unit:
  *  1. Delete this file (`SnapPythonPopup.scala`)
@@ -27,43 +27,79 @@ import it.evadid.workbook.elements.interactionElements.programming.{
  * Overlay/panel chrome reuses `.sorting-error-popup` styles; only Snap-specific
  * button/code rules live in the FEATURE CSS block.
  *
- * Does not affect BeProgram persistence, layout sidecar, or Snap sync.
+ * Apply path: parse + turtle-subset check + layout reconcile → ProgrammingExerciseState.
  */
 object SnapPythonPopup {
 
   /** One Snap top-level script rendered as Python (plus canvas position). */
   final case class ScriptView(index: Int, x: Int, y: Int, python: String)
 
+  /** Example signatures for the turtle allow-list (Python snake_case). */
+  private val SupportedFunctionExamples: List[String] =
+    SnapTurtlePythonBridge.Primitives.map(_.example)
+
   /**
-   * Button + overlay chrome for `SnapCodeEditor.editorCanvas`.
+   * Button + editable overlay chrome for `SnapCodeEditor.editorCanvas`.
    * @param state live exercise state (program + canvas layout)
    * @param flushPending call before reading state so Snap XML edits are published
+   * @param onStateEdited persist / sync callback used for block edits and Python apply
    */
-  def chrome(state: Var[ProgrammingExerciseState], flushPending: () => Unit): L.Element = {
+  def chrome(
+      state: Var[ProgrammingExerciseState],
+      flushPending: () => Unit,
+      onStateEdited: ProgrammingExerciseState => Unit
+  ): L.Element = {
     val showPopup: Var[Boolean] = Var(false)
-    val scripts: Var[List[ScriptView]] = Var(Nil)
+    val textVar: Var[String] = Var("")
+    val textDirty: Var[Boolean] = Var(false)
+    val warningVar: Var[Option[String]] = Var(None)
+    val scriptHints: Var[List[ScriptView]] = Var(Nil)
+
+    def loadFromState(): Unit =
+      flushPending()
+      val current = state.now()
+      textVar.set(ProgrammingExerciseState.pythonOf(current).trim)
+      scriptHints.set(scriptsOf(current))
+      textDirty.set(false)
+      warningVar.set(None)
 
     def open(): Unit =
-      flushPending()
-      scripts.set(scriptsOf(state.now()))
+      loadFromState()
       showPopup.set(true)
 
     def close(): Unit =
       showPopup.set(false)
 
+    def applyPython(): Unit = {
+      SnapTurtlePythonBridge.applyPython(textVar.now(), state.now()) match
+        case Left(message) =>
+          warningVar.set(Some(message))
+        case Right(next) =>
+          textDirty.set(false)
+          warningVar.set(None)
+          onStateEdited(next)
+          scriptHints.set(scriptsOf(next))
+          textVar.set(ProgrammingExerciseState.pythonOf(next).trim)
+    }
+
+    val pythonEditor: CodeMirrorEditor =
+      CodeMirrorEditor(
+        textVar,
+        onUserInput = _ => textDirty.set(true),
+        language = Python
+      )
+
     div(
-      // FEATURE: SnapPythonPopup — root is a positioning context sibling of the canvas chrome.
       button(
         typ := "button",
         cls := "snap-python-button",
-        "Show Python",
+        "Edit Python",
         onClick --> { ev =>
           ev.stopPropagation()
           open()
         }
       ),
       div(
-        // Reuse sorting-error-popup overlay/panel styles; keep snap-python-* for code layout.
         cls := "sorting-error-popup snap-python-popup",
         cls.toggle("is-visible") <-- showPopup.signal,
         onClick --> { ev =>
@@ -76,30 +112,72 @@ object SnapPythonPopup {
           onClick --> (_.stopPropagation()),
           h3("Python"),
           div(
-            cls := "snap-python-popup__scripts",
-            children <-- scripts.signal.map { views =>
-              if views.isEmpty then
-                List(pre(cls := "snap-python-popup__code", "(empty program)"))
+            cls := "snap-python-popup__overview",
+            div(
+              cls := "snap-python-popup__overview-title",
+              "Supported functions"
+            ),
+            p(
+              cls := "snap-python-popup__overview-note",
+              "Only these Python calls convert to blocks. Other Python is rejected on Apply."
+            ),
+            ul(
+              cls := "snap-python-popup__overview-list",
+              SupportedFunctionExamples.map(example => li(code(example)))
+            )
+          ),
+          div(
+            cls := "snap-python-popup__script-hints",
+            children <-- scriptHints.signal.map { views =>
+              if views.isEmpty then Nil
               else
                 views.map { script =>
                   div(
-                    div(
-                      cls := "snap-python-popup__script-label",
-                      s"Script ${script.index} @ (${script.x}, ${script.y})"
-                    ),
-                    pre(cls := "snap-python-popup__code", script.python)
+                    cls := "snap-python-popup__script-label",
+                    s"Script ${script.index} @ (${script.x}, ${script.y})"
                   )
                 }
             }
           ),
-          button(
-            typ := "button",
-            cls := "sorting-error-popup__button",
-            "Close",
-            onClick --> { ev =>
-              ev.stopPropagation()
-              close()
-            }
+          child <-- warningVar.signal.map {
+            case Some(msg) if msg.nonEmpty =>
+              div(cls := "snap-python-popup__warning", msg)
+            case _ =>
+              emptyNode
+          },
+          div(
+            cls := "snap-python-popup__editor",
+            pythonEditor.getDomElement()
+          ),
+          div(
+            cls := "snap-python-popup__actions",
+            button(
+              typ := "button",
+              cls := "sorting-error-popup__button",
+              "Apply to blocks",
+              onClick --> { ev =>
+                ev.stopPropagation()
+                applyPython()
+              }
+            ),
+            button(
+              typ := "button",
+              cls := "sorting-error-popup__button snap-python-popup__reload",
+              "Reload from blocks",
+              onClick --> { ev =>
+                ev.stopPropagation()
+                loadFromState()
+              }
+            ),
+            button(
+              typ := "button",
+              cls := "sorting-error-popup__button",
+              "Close",
+              onClick --> { ev =>
+                ev.stopPropagation()
+                close()
+              }
+            )
           )
         )
       )
@@ -108,11 +186,11 @@ object SnapPythonPopup {
 
   /** Partition flat BeProgram calls by canvas layout; used by the popup (and its tests). */
   def scriptsOf(state: ProgrammingExerciseState): List[ScriptView] = {
-    val calls = topLevelCalls(state.program.fullProgram)
+    val calls = SnapTurtlePythonBridge.topLevelCalls(state.program.fullProgram)
     if calls.isEmpty then Nil
     else
       val chunks =
-        if state.canvasLayout.isEmpty || !layoutMatches(state.canvasLayout, calls.size) then
+        if state.canvasLayout.isEmpty || !SnapTurtlePythonBridge.layoutMatches(state.canvasLayout, calls.size) then
           List((156, 66, calls))
         else
           splitByLayout(calls, state.canvasLayout.scripts)
@@ -120,17 +198,6 @@ object SnapPythonPopup {
         ScriptView(idx + 1, x, y, renderCalls(chunk))
       }
   }
-
-  private def topLevelCalls(expression: BeExpression): List[BeFunctionCall] =
-    expression match
-      case BeStartProgram(Some(sequence)) => sequence.body.collect { case c: BeFunctionCall => c }.toList
-      case BeStartProgram(None) => Nil
-      case seq: BeSequence => seq.body.collect { case c: BeFunctionCall => c }.toList
-      case call: BeFunctionCall => List(call)
-      case _ => Nil
-
-  private def layoutMatches(layout: SnapCanvasLayout, totalCalls: Int): Boolean =
-    layout.scripts.map(_.callCount).sum == totalCalls && layout.scripts.forall(_.callCount > 0)
 
   private def splitByLayout(
       calls: List[BeFunctionCall],

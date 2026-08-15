@@ -22,6 +22,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   private var fitRafHandle = 0
   private var fitDebounceHandle = 0
   private var frameHandle = 0
+  private var stageMirrorRafHandle = 0
+  private var stageMirrorIdleFrames = 0
   private var cyclesRunning = false
   private var projectXmlChangedCallback: String => Unit = _ => ()
   private var lastProjectXml: Option[String] = None
@@ -33,6 +35,12 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
 
   private val ProjectXmlCheckIntervalMs = 500.0
   private val FitDebounceMs = 32.0
+  /** Extra mirror frames after processes go idle so pen trails settle. */
+  private val StageMirrorIdleSettleFrames = 8
+  /** Visible-step delay while mirroring green-flag (Snap Process.flashTime seconds). */
+  private val GreenFlagStepSeconds = 0.05
+  private var savedFlashTime: Option[Double] = None
+  private var savedSingleStepping: Option[Boolean] = None
 
   override def mount(owner: Owner): Unit =
     ()
@@ -501,9 +509,85 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     // Always flush before stopping the poll loop so close/unmount cannot drop
     // edits that happened since the last 500ms check.
     flushPendingProjectChanges()
+    stopGreenFlagOnStage()
     cyclesRunning = false
     if frameHandle != 0 then dom.window.cancelAnimationFrame(frameHandle)
     frameHandle = 0
+
+  override def runGreenFlagOnStage(mirrorTarget: Canvas): Unit =
+    editor match
+      case None => ()
+      case Some(ide) =>
+        stopGreenFlagOnStage()
+        val stage = ide.stage
+        if stage == null then return
+        // Scratch-paced yields (not turbo / fast-track).
+        stage.isFastTracked = false
+        enableGreenFlagStepping()
+        try ide.stopAllScripts()
+        catch case _: Throwable => ()
+        try stage.clearPenTrails()
+        catch case _: Throwable => ()
+        try ide.runScripts()
+        catch
+          case _: Throwable =>
+            restoreGreenFlagStepping()
+            return
+        stageMirrorIdleFrames = 0
+        mirrorStageTo(stage, mirrorTarget)
+        def tick(_ts: Double): Unit =
+          mirrorStageTo(stage, mirrorTarget)
+          val running =
+            try stage.threads.processes.length > 0
+            catch case _: Throwable => false
+          if running then stageMirrorIdleFrames = 0
+          else stageMirrorIdleFrames += 1
+          if stageMirrorIdleFrames < StageMirrorIdleSettleFrames then
+            stageMirrorRafHandle = dom.window.requestAnimationFrame(ts => tick(ts))
+          else
+            stageMirrorRafHandle = 0
+            mirrorStageTo(stage, mirrorTarget)
+            restoreGreenFlagStepping()
+        stageMirrorRafHandle = dom.window.requestAnimationFrame(ts => tick(ts))
+
+  override def stopGreenFlagOnStage(): Unit =
+    if stageMirrorRafHandle != 0 then
+      dom.window.cancelAnimationFrame(stageMirrorRafHandle)
+      stageMirrorRafHandle = 0
+    stageMirrorIdleFrames = 0
+    editor.foreach { ide =>
+      try ide.stopAllScripts()
+      catch case _: Throwable => ()
+    }
+    restoreGreenFlagStepping()
+
+  /** Snap visible stepping: pause ~GreenFlagStepSeconds between blocks. */
+  private def enableGreenFlagStepping(): Unit =
+    val proto = js.Dynamic.global.Process.selectDynamic("prototype")
+    if savedFlashTime.isEmpty then
+      savedFlashTime = Some(proto.selectDynamic("flashTime").asInstanceOf[Double])
+    if savedSingleStepping.isEmpty then
+      savedSingleStepping = Some(proto.selectDynamic("enableSingleStepping").asInstanceOf[Boolean])
+    proto.updateDynamic("flashTime")(GreenFlagStepSeconds)
+    proto.updateDynamic("enableSingleStepping")(true)
+
+  private def restoreGreenFlagStepping(): Unit =
+    val proto = js.Dynamic.global.Process.selectDynamic("prototype")
+    savedFlashTime.foreach(proto.updateDynamic("flashTime")(_))
+    savedSingleStepping.foreach(proto.updateDynamic("enableSingleStepping")(_))
+    savedFlashTime = None
+    savedSingleStepping = None
+
+  private def mirrorStageTo(stage: StageMorph, target: Canvas): Unit =
+    try
+      val src = stage.fullImage()
+      if src == null then return
+      if target.width != src.width then target.width = src.width
+      if target.height != src.height then target.height = src.height
+      val ctx = target.getContext("2d").asInstanceOf[CanvasRenderingContext2D]
+      ctx.clearRect(0, 0, target.width.toDouble, target.height.toDouble)
+      ctx.drawImage(src, 0, 0)
+    catch case _: Throwable => ()
 
   override def setOnProjectXmlChangedListener(callback: String => Unit): Unit =
     projectXmlChangedCallback = callback

@@ -92,7 +92,8 @@ object SnapCodeEditorConfig:
       LibraryTab("id-2", "Three blocks", List(
         LibraryBlock("turn", "", simpleFunc("forward2", "par2")),
         LibraryBlock("gotoXY", "", simpleFunc("forward3", "par3")),
-        LibraryBlock("clear", "", simpleFunc("forward4", "par4"))
+        LibraryBlock("clear", "", simpleFunc("forward4", "par4")),
+        LibraryBlock("setHeading", "", simpleFunc("setHeading", "par5"))
       ), color = SnapCategoryColor.Control),
       LibraryTab("drawing", "drawing", List(
         LibraryBlock("down", "", noArgFunc("down")),

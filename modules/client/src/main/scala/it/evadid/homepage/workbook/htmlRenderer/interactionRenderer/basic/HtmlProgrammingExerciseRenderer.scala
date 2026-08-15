@@ -6,11 +6,9 @@ import it.evadid.core.datastructures.state.ExecutionMethod
 import it.evadid.core.datastructures.state.async.AsyncData
 import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, VmToSvg}
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
-import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
+import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditor, SnapTurtleStage}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchFromBeExpressionSerializer
-import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchWorkerFacade
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExercise, ProgrammingExerciseState}
@@ -68,14 +66,8 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     // Run → TurtleStitchWorker.simulateGreenFlag → stage PNG
     val stageImageVar: Var[Option[AsyncData[Nothing, FullImage]]] = Var(None)
 
-    def runProgram(): Unit = {
-      val state = boundVar.now()
-      val xml = TurtleStitchFromBeExpressionSerializer.toXml(
-        state.program.fullProgram,
-        canvasLayout = state.canvasLayout
-      )
-      stageImageVar.set(Some(TurtleStitchWorkerFacade.getExecutedStageSnapshotDataSrc(xml)))
-    }
+    def runProgram(): Unit =
+      stageImageVar.set(Some(SnapTurtleStage.run(boundVar.now())))
 
     val runButton: HtmlButtonElement =
       HtmlButtonElement.withTextLabel("basic/runProgram", _ => runProgram())

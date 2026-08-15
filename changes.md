@@ -156,10 +156,74 @@ Page Reload
 | Datei | Strukturelle Rolle |
 |-------|-------------------|
 | `ProgrammingExercise.scala` / `ProgrammingExerciseState.scala` / `SnapCanvasLayout.scala` | Composite Persist + State |
-| `HtmlProgrammingExerciseRenderer.scala` | Fingerprint-Bindung + Persist-Callback |
-| `SnapCodeEditor.scala` | Fingerprint-Echo-Skip, Fullscreen force-load |
-| `SnapCodeEditorImplDelegateToOriginal.scala` | `force`/`acknowledge` inkl. Layout→XML |
+| `HtmlProgrammingExerciseRenderer.scala` | Fingerprint-Bindung + Persist-Callback; Run-Card → `SnapTurtleStage.run` |
+| `SnapCodeEditor.scala` | Fingerprint-Echo-Skip, Fullscreen force-load; Fullscreen-Shell + Turtle-Panel |
+| `SnapCodeEditorImplDelegateToOriginal.scala` | `force`/`acknowledge` inkl. Layout→XML; live Green-Flag + Stage-Mirror |
 | `TurtleStitchXmlParser.scala` | string-first Parse für Block-Projekte |
 | `TurtleStitchXmlLoader.scala` | Retry + Validation |
 | `TurtleStitchToBeExpressionParser.scala` | Call-only Body + Recovery + Layout |
 | `TurtleStitchFromBeExpressionSerializer.scala` | Multi-Script XML aus Layout |
+| `SnapTurtlePythonBridge.scala` | Turtle-Subset Python apply + Layout-Reconcile |
+| `SnapPythonPopup.scala` | Editierbares Python (Apply → Bridge → State) |
+
+---
+
+## 7. Fullscreen Turtle Panel + Execute
+
+Rechts neben dem Snap-Canvas im Fullscreen: Turtle-Ausgabe mit Ausführen-Button. Die Workbook-Run-Card bleibt (finales PNG über Worker).
+
+### UI
+
+- `SnapCodeEditor.getDomElement()` → Flex-Shell `.be-program-snap-fullscreen` (Snap links, Panel rechts)
+- `SnapTurtleStagePanel.chrome` — Titel (`basic/turtleOutput`), Run (`basic/runProgram`), Mirror-Canvas
+- CSS: `workbook-structure.css` (Shell), `workbook-interactions.css` (`FEATURE: SnapTurtleStagePanel`)
+
+### Zwei Run-Pfade
+
+| Pfad | Mechanismus | UX |
+|------|-------------|-----|
+| Workbook Run-Card | `SnapTurtleStage.run` → Worker `simulateGreenFlag` → ein PNG | Sofortiges Endergebnis |
+| Fullscreen Execute | Live-IDE `runScripts` + RAF-Mirror von `stage.fullImage()` | Scratch-artige Animation |
+
+Fullscreen-Taktung: Snap Visible Stepping mit `flashTime = 0.05` s pro Block (nach Run/Stop wiederhergestellt).
+
+Vor Execute: `flushPendingProjectChanges`, damit Slot-Text mitgenommen wird.
+
+### Palette
+
+- Tab **Three blocks**: zusätzlich `setHeading` (point in direction / Blickwinkel)
+
+### Dateien (Turtle)
+
+| Datei | Rolle |
+|-------|--------|
+| `SnapTurtleStage.scala` | Shared Worker-PNG-Helper (nur Run-Card) |
+| `SnapTurtleStagePanel.scala` | Fullscreen-Panel-Chrome + Callbacks |
+| `SnapCodeEditor.scala` | Shell-Verdrahtung |
+| `SnapCodeEditorImplDelegateToOriginal.scala` | `runGreenFlagOnStage` / `stopGreenFlagOnStage` + Stepping |
+| `SnapFacades.scala` | `StageMorph`, `runScripts`, `stopAllScripts`, … |
+| `SnapCodeEditorConfig.scala` | `setHeading` in Three blocks |
+| `HtmlProgrammingExerciseRenderer.scala` | Card nutzt `SnapTurtleStage.run` |
+
+---
+
+## 8. Dual-Mode: Python ↔ Blocks (Turtle-Subset)
+
+Editierbares Python im Fullscreen (`Edit Python` Overlay) schreibt über denselben `onStateEdited`-Pfad wie Snap zurück.
+
+### Bridge (`SnapTurtlePythonBridge`)
+
+- Allow-List (Python snake_case): `receive_go`, `forward`, `turn`, `goto_x_y`, `clear`, `set_heading`, `down`, `up` (Snap: `receiveGo`, `gotoXY`, `setHeading`, …)
+- Reject: Assignments, `if`/`while`, Comments, Unsupported/Unparsable (Warnung, Blocks bleiben)
+- Layout: wenn `sum(callCount)` gleich bleibt → Layout behalten; sonst `SnapCanvasLayout.single`
+- Leeres Python → leeres Layout
+
+### UI
+
+- CodeMirror im Overlay; **Apply to blocks** / **Reload from blocks** / Close
+- Apply parst den aktuellen Text; Reload holt erneut von den Blocks (nach Flush)
+- Nach Apply: `onStateEdited` → Fingerprint-Sync lädt Snap neu
+
+### Später (nicht MVP)
+
+Mapping von `doRepeat`/`doIf` ↔ Python-Kontrollstrukturen und größere Allow-List.

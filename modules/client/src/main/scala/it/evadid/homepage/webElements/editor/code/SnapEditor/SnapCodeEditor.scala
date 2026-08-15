@@ -86,7 +86,7 @@ case class SnapCodeEditor(
         }
       ),
       // FEATURE: SnapPythonPopup — remove this child (+ SnapPythonPopup.scala + CSS) to drop the button.
-      SnapPythonPopup.chrome(state, () => impl.flushPendingProjectChanges()),
+      SnapPythonPopup.chrome(state, () => impl.flushPendingProjectChanges(), onStateEdited),
       onUnmountCallback { _ =>
         // The dialog reuses this lazy DOM element. Keep its WorldMorph and DOM
         // event listeners intact between openings; only stop animation work
@@ -130,9 +130,16 @@ case class SnapCodeEditor(
     )
   }
 
-  override def getDomElement(): L.Element = {
-    editorCanvas
-  }
+  override def getDomElement(): L.Element =
+    div(
+      cls := "be-program-snap-fullscreen",
+      editorCanvas,
+      SnapTurtleStagePanel.chrome(
+        flushPending = () => impl.flushPendingProjectChanges(),
+        runOnStage = canvas => impl.runGreenFlagOnStage(canvas),
+        stopRun = () => impl.stopGreenFlagOnStage()
+      )
+    )
 
   /** Drop custom tabs, optionally removing Snap's default library as well. */
   def removeAllLibraries(includeDefaultLibraries: Boolean = false): Unit =
@@ -185,6 +192,15 @@ object SnapCodeEditor {
 
     /** Pause Morphic updates without destroying the mounted editor. */
     def pauseWorldCycles(): Unit
+
+    /**
+     * Green-flag the live (hidden) Snap stage and mirror frames onto `mirrorTarget`
+     * so turtle motion animates Scratch-style in the fullscreen panel.
+     */
+    def runGreenFlagOnStage(mirrorTarget: Canvas): Unit
+
+    /** Stop green-flag processes and cancel stage mirroring. */
+    def stopGreenFlagOnStage(): Unit
 
     /** Match canvas bitmap+CSS to the fullscreen parent and relayout Morphic. */
     def fitEditorToContainer(): Unit

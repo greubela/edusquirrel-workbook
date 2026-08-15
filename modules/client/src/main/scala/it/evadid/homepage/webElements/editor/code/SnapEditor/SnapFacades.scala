@@ -89,9 +89,22 @@ class WorldMorph(canvas0: dom.HTMLCanvasElement, fillPage: Boolean = js.native) 
   def stopEditing(): Unit = js.native
 
 @js.native
+@JSGlobal("ThreadManager")
+class ThreadManager() extends js.Object:
+  var processes: js.Array[js.Any] = js.native
+
+@js.native
+@JSGlobal("StageMorph")
+class StageMorph() extends Morph:
+  var threads: ThreadManager = js.native
+  var isFastTracked: Boolean = js.native
+  def clearPenTrails(): Unit = js.native
+
+@js.native
 @JSGlobal("IDE_Morph")
 class IDEMorph(config: js.Object = js.native) extends Morph:
   var currentSprite: SpriteMorph = js.native
+  var stage: StageMorph = js.native
   var version: Double = js.native
   def openIn(world: WorldMorph): Unit = js.native
   def getProjectXML(): String = js.native
@@ -99,6 +112,8 @@ class IDEMorph(config: js.Object = js.native) extends Morph:
   def rawOpenProjectString(projectXML: String): Unit = js.native
   def refreshPalette(shouldIgnorePosition: Boolean = js.native): Unit = js.native
   def createCategories(): Unit = js.native
+  def runScripts(): Unit = js.native
+  def stopAllScripts(): Unit = js.native
 
 @js.native
 @JSGlobal("SpriteMorph")

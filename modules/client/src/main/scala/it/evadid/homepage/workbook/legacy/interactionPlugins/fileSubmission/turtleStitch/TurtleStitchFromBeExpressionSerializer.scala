@@ -1,15 +1,18 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch
 
-import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.code.defining
-import it.evadid.vm.naming.{BeEntityName, NamingStyle}
+import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.BeDataValueLiteral
-import it.evadid.workbook.elements.interactionElements.programming.{SnapCanvasLayout, SnapCanvasScript}
+import it.evadid.workbook.elements.interactionElements.programming.{
+  SnapCanvasLayout,
+  SnapCanvasScript,
+  SnapTurtlePythonBridge
+}
 
 object TurtleStitchFromBeExpressionSerializer {
 
@@ -61,7 +64,8 @@ object TurtleStitchFromBeExpressionSerializer {
     }
   }
 
-  private def isReceiveGo(call: BeFunctionCall): Boolean = selectorOf(call) == "receiveGo"
+  private def isReceiveGo(call: BeFunctionCall): Boolean =
+    SnapTurtlePythonBridge.snapSelectorOf(call) == "receiveGo"
 
   private def createReceiveGoCall(): BeFunctionCall = {
     val define = BeDefineFunction(
@@ -81,16 +85,12 @@ object TurtleStitchFromBeExpressionSerializer {
   }
 
   private def renderCall(call: BeFunctionCall): String = {
-    val selector = selectorOf(call)
+    val selector = SnapTurtlePythonBridge.snapSelectorOf(call)
     val arguments = orderedArgs(call)
 
     val inputXml = arguments.map(renderArgument).mkString
     s"<block s=\"$selector\">$inputXml</block>"
   }
-
-  private def selectorOf(call: BeFunctionCall): String =
-    // Snap block selectors are camelCase identifiers (receiveGo, gotoXY, …).
-    call.funcDef.functionTypeInfo.displayName.getNameIn(AppLanguage.English, NamingStyle.CamelCase).trim
 
   private def orderedArgs(call: BeFunctionCall): List[BeExpression] =
     call.funcDef.inputs.flatMap(variable => call.parameterValueMap.get(variable))
