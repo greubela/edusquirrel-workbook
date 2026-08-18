@@ -31,6 +31,7 @@ object PythonStatementParser {
   private val FunctionPattern = """^def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*)\)\s*(?:->\s*([^:]+))?:$""".r
   private val WhilePattern = """^while\s+(.+):$""".r
   private val IfPattern = """^if\s+(.+):$""".r
+  private val ForRangePattern = """^for\s+_\s+in\s+range\((\d+)\):$""".r
   private val AssignmentPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)\s*(.+)$""".r
 
   final case class StatementApi(
@@ -38,6 +39,7 @@ object PythonStatementParser {
                                  parseClass: (Vector[ParsedLine], Int, Int, String, Option[String], ParseContext) => ClassParseResult,
                                  parseFunction: (Vector[ParsedLine], Int, Int, String, String, Option[String], ParseContext) => NodeWithNext,
                                  parseWhile: (Vector[ParsedLine], Int, Int, String, ParseContext) => NodeWithNext,
+                                 parseRepeat: (Vector[ParsedLine], Int, Int, Int, ParseContext) => NodeWithNext,
                                  parseIf: (Vector[ParsedLine], Int, Int, String, ParseContext) => NodeWithNext,
                                  parseReturn: (String, ParseContext) => BeExpression,
                                  parseExpression: (String, ParseContext) => BeExpression,
@@ -115,6 +117,13 @@ object PythonStatementParser {
         case WhilePattern(parsedConditionSource) => parsedConditionSource
         case _ => throw new IllegalArgumentException(s"Invalid while statement: '${ctx.trimmed}'")
       val result = api.parseWhile(ctx.lines, ctx.index, ctx.indent, conditionSource, ctx.context)
+      DispatchOutcome(List(result.expression), result.nextIndex)
+    }),
+    DispatchRule(_.matches(ForRangePattern.regex), ctx => {
+      val amount = ctx.trimmed match
+        case ForRangePattern(parsedAmount) => parsedAmount.toInt
+        case _ => throw new IllegalArgumentException(s"Invalid for-range statement: '${ctx.trimmed}'")
+      val result = api.parseRepeat(ctx.lines, ctx.index, ctx.indent, amount, ctx.context)
       DispatchOutcome(List(result.expression), result.nextIndex)
     }),
     DispatchRule(_.matches(IfPattern.regex), ctx => {

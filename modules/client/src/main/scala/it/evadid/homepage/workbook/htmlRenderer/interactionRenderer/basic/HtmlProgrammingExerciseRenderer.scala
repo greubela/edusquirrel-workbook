@@ -6,12 +6,12 @@ import it.evadid.core.datastructures.state.ExecutionMethod
 import it.evadid.core.datastructures.state.async.AsyncData
 import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, VmToSvg}
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
-import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditor, SnapTurtleStage}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditor, SnapCodeEditorConfig, SnapTurtleStage}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExercise, ProgrammingExerciseState}
+import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingExercise, ProgrammingExerciseState}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import todomove.datastructures.web.file.FullImage
 
@@ -41,7 +41,11 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       interaction.setStateFromUserInteraction(fullInfo.syncControl, next, UpdateImportance.MAJOR)
     }
 
-    val editor: SnapCodeEditor = SnapCodeEditor(boundVar, onStateEdited = persistFromEditor)
+    val editorConfig: SnapCodeEditorConfig = workbookElement.editorPalette match
+      case ProgrammingEditorPalette.Default => SnapCodeEditorConfig.Testing
+      case ProgrammingEditorPalette.PythonCompatibleSnap => SnapCodeEditorConfig.PythonCompatibleTesting
+
+    val editor: SnapCodeEditor = SnapCodeEditor(boundVar, editorConfig, onStateEdited = persistFromEditor)
 
     def buttonPressed(): Unit =
       fullInfo.displayControl.setFullscreen(editor)

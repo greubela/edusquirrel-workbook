@@ -2,6 +2,8 @@ package it.evadid.vm.io.stringPrinter.python
 
 import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, Python}
 import it.evadid.vm.code.abstractions.BeExpression
+import it.evadid.vm.code.defining.BeDefineFunction
+import it.evadid.vm.code.usage.BeFunctionCall
 import it.evadid.vm.io.stringPrinter.GenericJavaLikeStringPrinter
 import it.evadid.vm.io.stringPrinter.GenericJavaLikeStringPrinter.PythonSeparation
 
@@ -10,6 +12,33 @@ case class BeExpressionToPythonString
   extends GenericJavaLikeStringPrinter(
     Python, language, PythonSeparation(), skipUnparsable
   ) {
+
+  override def forOther(other: BeExpression): String = other match {
+    case call: BeFunctionCall if isOperatorCall(call) =>
+      formatOperatorCall(call)
+    case _ =>
+      super.forOther(other)
+  }
+
+  private def isOperatorCall(call: BeFunctionCall): Boolean =
+    call.funcDef.functionTypeInfo.funcType match
+      case BeDefineFunction.Operator(_) => true
+      case _ => false
+
+  private def formatOperatorCall(call: BeFunctionCall): String = {
+    val symbol = call.funcDef.functionTypeInfo.displayName.universalInterpretation()
+    val args = call.funcDef.inputs.flatMap(variable => call.parameterValueMap.get(variable)).map(forExpression)
+    symbol match {
+      case "not" =>
+        s"not ${args.headOption.getOrElse("")}"
+      case _ if args.size >= 2 =>
+        args.mkString(s" $symbol ")
+      case _ if args.size == 1 =>
+        s"$symbol${args.head}"
+      case _ =>
+        super.forOther(call)
+    }
+  }
 
   override protected def assignToFunctionPar(parName: String, parType: String, parValue: BeExpression): String = {
     // Positional call args (same as Java). Named "par = value" is not parsed by
@@ -31,7 +60,9 @@ case class BeExpressionToPythonString
   }
 
   override protected def fixedRepetitionLine(amount: Int): String = {
-    s"for _ in repeat(${amount}):"
+    s"for _ in range(${amount}):"
   }
+
+  override protected def repetitionParsingHint(amount: Int): String = ""
 
 }

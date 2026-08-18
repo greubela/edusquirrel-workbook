@@ -280,19 +280,14 @@
 }
 
 .snap-python-popup__content {
-    width: min(42rem, calc(100% - 2 * var(--space-md)));
-    max-height: min(80vh, 40rem);
+    width: min(64rem, calc(100% - 2 * var(--space-md)));
+    max-height: calc(100% - 2 * var(--space-md));
+    padding: var(--space-md);
     text-align: left;
     display: flex;
     flex-direction: column;
-    gap: var(--space-md);
-}
-
-.snap-python-popup__scripts {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-md);
-    overflow: auto;
+    gap: var(--space-sm);
+    overflow: hidden;
     min-height: 0;
 }
 
@@ -301,6 +296,9 @@
     border: 1px solid var(--color-border-soft);
     border-radius: var(--radius-sm);
     background: var(--color-surface-muted);
+    max-height: 9rem;
+    overflow: auto;
+    flex-shrink: 0;
 }
 
 .snap-python-popup__overview-title {
@@ -331,6 +329,11 @@
     font-size: var(--color-code-size);
 }
 
+.snap-python-popup__overview-list .cm-receive-go {
+    color: var(--color-green-6);
+    font-weight: 700;
+}
+
 .snap-python-popup__script-hints {
     display: flex;
     flex-direction: column;
@@ -354,16 +357,31 @@
 }
 
 .snap-python-popup__editor {
-    min-height: 12rem;
-    max-height: min(40vh, 18rem);
+    flex: 1 1 auto;
+    min-height: 10rem;
+    max-height: none;
+    height: auto;
     overflow: auto;
     border: 1px solid var(--color-border-soft);
     border-radius: var(--radius-sm);
     background: var(--color-surface-muted);
 }
 
-.snap-python-popup__editor .code-mirror-editor {
-    min-height: 12rem;
+.snap-python-popup__editor .code-mirror-editor,
+.snap-python-popup__editor .code-mirror-editor .cm-editor,
+.snap-python-popup__editor .code-mirror-editor .cm-scroller {
+    min-height: 10rem;
+    height: 100%;
+}
+
+.snap-python-popup__editor .code-mirror-editor__fallback {
+    min-height: 10rem;
+    height: 100%;
+}
+
+.snap-python-popup .cm-receive-go {
+    color: var(--color-green-2) !important;
+    font-weight: 700;
 }
 
 .snap-python-popup__actions {
@@ -371,6 +389,7 @@
     flex-wrap: wrap;
     gap: var(--space-sm);
     align-items: center;
+    flex-shrink: 0;
 }
 
 .snap-python-popup__actions .sorting-error-popup__button {

@@ -54,6 +54,10 @@ abstract class GenericJavaLikeStringPrinter(
 
   protected def fixedRepetitionLine(amount: Int): String
 
+  /** Optional trailing parse hint after a fixed-count repeat line; empty for idiomatic Python. */
+  protected def repetitionParsingHint(amount: Int): String =
+    sepLogic.startSingleLineComment + "EvaParsingHint(BeRepeatNr)"
+
   protected def forStatement(expr: BeExpression): String = {
     forExpression(expr) + sepLogic.endLineWith
   }
@@ -151,7 +155,7 @@ abstract class GenericJavaLikeStringPrinter(
     }
     case BeRepeatNr(amount, body) => {
       CodeStringBuilderMutable()
-        .appendNextLine(fixedRepetitionLine(amount) + sepLogic.startSingleLineComment + "EvaParsingHint(BeRepeatNr)")
+        .appendNextLine(fixedRepetitionLine(amount) + repetitionParsingHint(amount))
         .changeIntLevel(1)
         .appendAsLines(forExpression(body))
         .changeIntLevel(-1)

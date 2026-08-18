@@ -264,6 +264,15 @@ const editorTheme = EditorView.theme({
   },
   ".cm-accent-name *": {
     color: "var(--color-blue-1) !important"
+  },
+  /* Hat / green-flag call: start of a new Snap script. */
+  ".cm-receive-go": {
+    color: "var(--color-green-2) !important",
+    fontWeight: "700"
+  },
+  ".cm-receive-go *": {
+    color: "var(--color-green-2) !important",
+    fontWeight: "700"
   }
 });
 
@@ -338,6 +347,11 @@ const buildIdentifierDecorations = (view) => {
 
       if (isTodo) {
         ranges.push(Decoration.mark({class: "cm-todo-token"}).range(start, end));
+        continue;
+      }
+
+      if (word === "receive_go" && nextChar === "(") {
+        ranges.push(Decoration.mark({class: "cm-receive-go"}).range(start, end));
         continue;
       }
 

@@ -10,7 +10,7 @@ import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.BeFunctionCall
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExercise, ProgrammingExerciseState}
+import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExercise, ProgrammingExerciseState, SnapCanvasLayout, SnapTurtlePythonBridge}
 import munit.FunSuite
 
 class TurtleStitchToBeExpressionParserSpec extends FunSuite {
@@ -88,5 +88,157 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
       restored.canvasLayout
     )
     assertEquals("""<script x="[^"]+" y="[^"]+">""".r.findAllIn(xmlOut).size, 2)
+  }
+
+  test("doRepeat XML parses to BeRepeatNr and roundtrips") {
+    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xmlWithRepeatNoPentrails)
+    val body = parsed.expression.asInstanceOf[BeStartProgram].startSequence.toList.flatMap(_.body)
+    assert(body.exists(_.isInstanceOf[it.evadid.vm.code.controlStructures.BeRepeatNr]), clue = body)
+    val xmlOut = TurtleStitchFromBeExpressionSerializer.toXml(parsed.expression, "repeat", parsed.canvasLayout)
+    assert(xmlOut.contains("""s="doRepeat""""), clue = xmlOut)
+    assert(xmlOut.contains("""<l>10</l>"""), clue = xmlOut)
+    assert(xmlOut.contains("""s="forward""""), clue = xmlOut)
+  }
+
+  test("doIfElse XML roundtrips through serializer") {
+    val xml =
+      """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doIfElse"><block s="reportTrue"></block><script><block s="forward"><l>12</l></block></script><script><block s="turn"><l>30</l></block></script></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
+    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val body = parsed.expression.asInstanceOf[BeStartProgram].startSequence.toList.flatMap(_.body)
+    assert(body.exists(_.isInstanceOf[it.evadid.vm.code.controlStructures.BeIfElse]), clue = body)
+    val xmlOut = TurtleStitchFromBeExpressionSerializer.toXml(parsed.expression, "ifelse", parsed.canvasLayout)
+    assert(xmlOut.contains("""s="doIfElse""""), clue = xmlOut)
+    assert(xmlOut.contains("""s="reportTrue""""), clue = xmlOut)
+  }
+
+  test("doIf with variable reporter in equals prints python if test == 1") {
+    val xml =
+      """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doIf"><block s="reportVariadicEquals"><list><block var="test"/><l>1</l></list></block><script><block s="doRepeat"><l>10</l><script><block s="forward"><l>10</l></block><block s="turn"><l>18</l></block></script></block></script><list></list></block></script></scripts></sprite></sprites></stage><variables><variable name="test"></variable></variables></scene></scenes></project>"""
+    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    assert(
+      TurtleStitchToBeExpressionParser.hasSupportedStatements(parsed.expression),
+      clue = parsed.expression
+    )
+    val python = ProgrammingExerciseState.pythonOf(ProgrammingExerciseState(BeProgram(parsed.expression), parsed.canvasLayout))
+    assert(python.contains("if test == 1:"), clue = python)
+    assert(python.contains("for _ in range(10):"), clue = python)
+    assert(python.contains("forward(10)"), clue = python)
+    assert(python.contains("turn(18)"), clue = python)
+    assert(!python.contains("do_if"), clue = python)
+    assert(!python.contains("report_variadic_equals"), clue = python)
+    val xmlOut = TurtleStitchFromBeExpressionSerializer.toXml(parsed.expression, "equals-var", parsed.canvasLayout)
+    assert(xmlOut.contains("""s="reportVariadicEquals""""), clue = xmlOut)
+    assert(xmlOut.contains("""<block var="test"/>"""), clue = xmlOut)
+    val applied = SnapTurtlePythonBridge.applyPython(python, ProgrammingExerciseState.mini.copy(canvasLayout = SnapCanvasLayout.empty))
+    assert(applied.isRight, clue = applied)
+    val reXml = TurtleStitchFromBeExpressionSerializer.toXml(
+      applied.toOption.get.program.fullProgram,
+      "reapplied",
+      applied.toOption.get.canvasLayout
+    )
+    assert(reXml.contains("""s="reportVariadicEquals""""), clue = reXml)
+    assert(reXml.contains("""<block var="test"/>"""), clue = reXml)
+  }
+
+  test("reportVariadicLessThan in doIf prints infix comparison python") {
+    val xml =
+      """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doIf"><block s="reportVariadicLessThan"><list><l>1</l><l>2</l></list></block><script><block s="forward"><l>10</l></block></script></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
+    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val state = ProgrammingExerciseState(BeProgram(parsed.expression), parsed.canvasLayout)
+    val python = ProgrammingExerciseState.pythonOf(state)
+    assert(python.contains("if 1 < 2:"), clue = python)
+    assert(!python.contains("<("), clue = python)
+  }
+
+  test("printed repeat python reapplies without comment rejection") {
+    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xmlWithRepeatNoPentrails)
+    val state = ProgrammingExerciseState(BeProgram(parsed.expression), parsed.canvasLayout)
+    val python = ProgrammingExerciseState.pythonOf(state)
+    assert(python.contains("for _ in range(10):"), clue = python)
+    val applied = SnapTurtlePythonBridge.applyPython(python, ProgrammingExerciseState.mini.copy(canvasLayout = SnapCanvasLayout.empty))
+    assert(applied.isRight, clue = applied)
+  }
+
+  test("doSetVar XML roundtrips to python assignment and back to Snap") {
+    val xml =
+      """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doSetVar"><l>steps</l><l>10</l></block></script></scripts></sprite></sprites></stage><variables><variable name="steps"></variable></variables></scene></scenes></project>"""
+    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val state = ProgrammingExerciseState(BeProgram(parsed.expression), parsed.canvasLayout)
+    val python = ProgrammingExerciseState.pythonOf(state)
+    assert(python.contains("steps = 10"), clue = python)
+    val xmlOut = TurtleStitchFromBeExpressionSerializer.toXml(parsed.expression, "vars", parsed.canvasLayout)
+    assert(xmlOut.contains("""s="doSetVar""""), clue = xmlOut)
+    assert(xmlOut.contains("""<l>steps</l>"""), clue = xmlOut)
+    assert(xmlOut.contains("""<variable name="steps">"""), clue = xmlOut)
+    val applied = SnapTurtlePythonBridge.applyPython(python, ProgrammingExerciseState.mini.copy(canvasLayout = SnapCanvasLayout.empty))
+    assert(applied.isRight, clue = applied)
+  }
+
+  test("doChangeVar and nested variable reporter roundtrip") {
+    val xml =
+      """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doSetVar"><l>steps</l><l>1</l></block><block s="doChangeVar"><l>steps</l><l>2</l></block><block s="doIf"><block s="reportVariadicLessThan"><list><block var="steps"/><l>10</l></list></block><script><block s="forward"><block var="steps"/></block></script></block></script></scripts></sprite></sprites></stage><variables><variable name="steps"></variable></variables></scene></scenes></project>"""
+    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val state = ProgrammingExerciseState(BeProgram(parsed.expression), parsed.canvasLayout)
+    val python = ProgrammingExerciseState.pythonOf(state)
+    assert(python.contains("steps = 1"), clue = python)
+    assert(python.contains("steps = steps + 2"), clue = python)
+    assert(python.contains("if steps < 10:"), clue = python)
+    assert(python.contains("forward(steps)"), clue = python)
+    val xmlOut = TurtleStitchFromBeExpressionSerializer.toXml(parsed.expression, "vars", parsed.canvasLayout)
+    assert(xmlOut.contains("""s="doChangeVar""""), clue = xmlOut)
+    assert(xmlOut.contains("""<block var="steps"/>"""), clue = xmlOut)
+    val applied = SnapTurtlePythonBridge.applyPython(python, ProgrammingExerciseState.mini.copy(canvasLayout = SnapCanvasLayout.empty))
+    assert(applied.isRight, clue = applied)
+    val reXml = TurtleStitchFromBeExpressionSerializer.toXml(
+      applied.toOption.get.program.fullProgram,
+      "reapplied",
+      applied.toOption.get.canvasLayout
+    )
+    assert(reXml.contains("""s="doChangeVar""""), clue = reXml)
+    assert(reXml.contains("""<variable name="steps">"""), clue = reXml)
+  }
+
+  test("mixed palette blocks roundtrip Snap XML to python and back to Snap") {
+    val xml =
+      """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="down"></block><block s="doSetVar"><l>steps</l><l>10</l></block><block s="doRepeat"><l>4</l><script><block s="forward"><l>50</l></block><block s="turn"><l>90</l></block></script></block><block s="doIfElse"><block s="reportVariadicLessThan"><list><block var="steps"/><l>20</l></list></block><script><block s="gotoXY"><l>10</l><l>20</l></block></script><script><block s="setHeading"><l>90</l></block></script></block><block s="doUntil"><block s="reportFalse"></block><script><block s="up"></block></script></block><block s="clear"></block></script></scripts></sprite></sprites></stage><variables><variable name="steps"></variable></variables></scene></scenes></project>"""
+    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    assert(
+      TurtleStitchToBeExpressionParser.hasSupportedStatements(parsed.expression),
+      clue = parsed.expression
+    )
+
+    val state = ProgrammingExerciseState(BeProgram(parsed.expression), parsed.canvasLayout)
+    val python = ProgrammingExerciseState.pythonOf(state)
+    assert(python.contains("steps = 10"), clue = python)
+    assert(python.contains("for _ in range(4):"), clue = python)
+    assert(python.contains("forward(50)"), clue = python)
+    assert(python.contains("turn(90)"), clue = python)
+    assert(python.contains("if steps < 20:"), clue = python)
+    assert(python.contains("goto_x_y(10, 20)"), clue = python)
+    assert(python.contains("set_heading(90)"), clue = python)
+    assert(python.contains("while True:"), clue = python)
+    assert(python.contains("down()"), clue = python)
+    assert(python.contains("up()"), clue = python)
+    assert(python.contains("clear()"), clue = python)
+
+    val applied = SnapTurtlePythonBridge.applyPython(
+      python,
+      ProgrammingExerciseState.mini.copy(canvasLayout = SnapCanvasLayout.empty)
+    )
+    assert(applied.isRight, clue = applied)
+
+    val reapplied = applied.toOption.get
+    val reXml = TurtleStitchFromBeExpressionSerializer.toXml(
+      reapplied.program.fullProgram,
+      "mixed-palette",
+      reapplied.canvasLayout
+    )
+    assert(reXml.contains("""s="doRepeat""""), clue = reXml)
+    assert(reXml.contains("""s="doIfElse""""), clue = reXml)
+    assert(reXml.contains("""s="doUntil""""), clue = reXml)
+    assert(reXml.contains("""s="gotoXY""""), clue = reXml)
+    assert(reXml.contains("""s="setHeading""""), clue = reXml)
+    assert(reXml.contains("""s="doSetVar""""), clue = reXml)
+    assert(reXml.contains("""s="clear""""), clue = reXml)
   }
 }

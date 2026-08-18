@@ -230,27 +230,104 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     clearInstalledCustomCategories()
     ide.asInstanceOf[js.Dynamic].updateDynamic("currentCategory")(libraries.head.name)
 
+    if libraries.exists(_.useNativeCategory) then
+      spriteMorphPrototype.applyDynamic("initBlocks")()
     ensurePrimitiveSelectors(libraries.flatMap(_.selectableElements.map(_.id)))
 
     // Snap calls blockTemplates(category) or blockTemplates(category, forSearch).
     // Exercise-only: only library tab names return blocks; everything else is empty.
-    val blockTemplates: js.Function2[String, js.UndefOr[Boolean], js.Array[BlockMorph]] =
-      (category: String, _: js.UndefOr[Boolean]) =>
-        libraries.find(_.name == category).toList.flatMap(_.selectableElements).flatMap { data =>
-          createTemplateBlock(data) match
-            case Some(block) => List(block)
-            case None =>
-              println(s"Snap library: skipping unknown block selector '${data.id}'")
-              Nil
+    val blockTemplates: js.Function2[String, js.UndefOr[Boolean], js.Array[js.Any]] =
+      (category: String, forSearch: js.UndefOr[Boolean]) =>
+        libraries.find(_.name == category).toList.flatMap { tab =>
+          if tab.useNativeCategory then nativeCategoryPaletteItems(ide, tab.color.snapKey, forSearch)
+          else
+            val controls =
+              if tab.includeVariableControls then nativeVariablePaletteItems(ide) else Nil
+            val blocks = tab.selectableElements.flatMap { data =>
+              createTemplateBlock(data) match
+                case Some(block) => List(block)
+                case None =>
+                  println(s"Snap library: skipping unknown block selector '${data.id}'")
+                  Nil
+            }
+            controls ++ blocks
         }.toJSArray
 
     sprite.asInstanceOf[js.Dynamic].updateDynamic("blockTemplates")(blockTemplates)
     sprite.asInstanceOf[js.Dynamic].updateDynamic("primitivesCache")(js.Dictionary.empty[js.Any])
     sprite.paletteCache = js.Dictionary.empty
+    wrapFlushBlocksCacheForVariableTabs(ide, libraries.filter(needsVariablePaletteFlush).map(_.name))
     registerCustomCategoryTabs(libraries)
     ide.createCategories()
     enlargeCategoryTabButtons(ide)
     ide.refreshPalette(true)
+
+  private def needsVariablePaletteFlush(tab: LibraryTab): Boolean =
+    tab.includeVariableControls || (tab.useNativeCategory && tab.color == SnapCategoryColor.Variables)
+
+  private def nativeCategoryPaletteItems(
+      ide: IDEMorph,
+      snapKey: String,
+      forSearch: js.UndefOr[Boolean]
+  ): List[js.Any] = {
+    val sprite = ide.currentSprite.asInstanceOf[js.Dynamic]
+    val proto = spriteMorphPrototype
+    val templates = proto.selectDynamic("blockTemplates")
+    val raw =
+      if forSearch.isDefined then templates.call(sprite, snapKey, forSearch)
+      else templates.call(sprite, snapKey)
+    if js.isUndefined(raw) || raw == null then Nil
+    else raw.asInstanceOf[js.Array[js.Any]].toList
+  }
+
+  private def nativeVariablePaletteItems(ide: IDEMorph): List[js.Any] = {
+    val sprite = ide.currentSprite.asInstanceOf[js.Dynamic]
+    val items = scala.collection.mutable.ListBuffer.empty[js.Any]
+    val makeBtn = sprite.applyDynamic("makeVariableButton")()
+    if !js.isUndefined(makeBtn) && makeBtn != null then items += makeBtn
+
+    val deletable = sprite.applyDynamic("deletableVariableNames")()
+    val deletableCount =
+      if js.isUndefined(deletable) || deletable == null then 0
+      else deletable.asInstanceOf[js.Array[js.Any]].length
+    if deletableCount > 0 then
+      val delBtn = sprite.applyDynamic("deleteVariableButton")()
+      if !js.isUndefined(delBtn) && delBtn != null then items += delBtn
+
+    val namesDyn = sprite.applyDynamic("allGlobalVariableNames")(true)
+    val names =
+      if js.isUndefined(namesDyn) || namesDyn == null then js.Array[String]()
+      else namesDyn.asInstanceOf[js.Array[String]]
+    names.foreach { name =>
+      val blockDyn = sprite.applyDynamic("variableBlock")(name)
+      if !js.isUndefined(blockDyn) && blockDyn != null then
+        val block = blockDyn.asInstanceOf[BlockMorph]
+        block.isDraggable = false
+        block.isTemplate = true
+        items += block
+    }
+    items.toList
+  }
+
+  /** Native create/delete flushes the built-in `variables` cache; also flush exercise tab names. */
+  private def wrapFlushBlocksCacheForVariableTabs(ide: IDEMorph, tabNames: List[String]): Unit =
+    if tabNames.isEmpty then return
+    val dyn = ide.asInstanceOf[js.Dynamic]
+    val stored = dyn.selectDynamic("__eduOriginalFlushBlocksCache")
+    val original =
+      if !js.isUndefined(stored) && stored != null then stored
+      else
+        val orig = dyn.selectDynamic("flushBlocksCache")
+        dyn.updateDynamic("__eduOriginalFlushBlocksCache")(orig)
+        orig
+    val extra = tabNames.toJSArray
+    val wrapped: js.Function1[js.UndefOr[String], Unit] = (category: js.UndefOr[String]) => {
+      original.call(dyn, category)
+      val cat = category.toOption.filter(_.nonEmpty)
+      if cat.isEmpty || cat.contains("variables") || cat.contains("lists") then
+        extra.foreach { name => original.call(dyn, name) }
+    }
+    dyn.updateDynamic("flushBlocksCache")(wrapped)
 
   private def spriteMorphPrototype: js.Dynamic =
     js.Dynamic.global

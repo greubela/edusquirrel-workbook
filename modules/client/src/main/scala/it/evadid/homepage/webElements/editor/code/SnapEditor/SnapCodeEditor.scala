@@ -43,7 +43,7 @@ case class SnapCodeEditor(
     val next = ProgrammingExerciseState(BeProgram(parsed.expression), parsed.canvasLayout)
     val nextFingerprint = stateFingerprint(next)
     val currentFingerprint = stateFingerprint(state.now())
-    if !TurtleStitchToBeExpressionParser.hasCallableBlocks(next.program.fullProgram) then return
+    if !TurtleStitchToBeExpressionParser.hasSupportedStatements(next.program.fullProgram) then return
     if nextFingerprint == currentFingerprint then
       impl.acknowledgeProgramFromEditor(next)
       return
@@ -158,6 +158,13 @@ case class SnapCodeEditor(
 }
 
 object SnapCodeEditor {
+
+  def apply(
+      state: Var[ProgrammingExerciseState],
+      config: SnapCodeEditorConfig,
+      onStateEdited: ProgrammingExerciseState => Unit
+  ): SnapCodeEditor =
+    SnapCodeEditor(state, config, SnapCodeEditorImplDelegateToOriginal(), onStateEdited)
 
   def apply(state: Var[ProgrammingExerciseState]): SnapCodeEditor =
     SnapCodeEditor(state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal())

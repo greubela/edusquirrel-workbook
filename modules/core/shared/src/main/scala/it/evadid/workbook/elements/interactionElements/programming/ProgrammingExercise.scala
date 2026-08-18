@@ -8,8 +8,11 @@ import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElem
 
 import scala.util.Try
 
-case class ProgrammingExercise(override val id: String, testSuite: Option[BeTestSuite] = None)
-    extends WorkbookInteractionElement[ProgrammingExerciseState] {
+case class ProgrammingExercise(
+    override val id: String,
+    testSuite: Option[BeTestSuite] = None,
+    editorPalette: ProgrammingEditorPalette = ProgrammingEditorPalette.Default
+) extends WorkbookInteractionElement[ProgrammingExerciseState] {
 
   override val defaultValue: ProgrammingExerciseState = ProgrammingExerciseState.mini
 

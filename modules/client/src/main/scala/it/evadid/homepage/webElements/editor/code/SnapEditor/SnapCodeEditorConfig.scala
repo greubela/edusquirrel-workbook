@@ -1,10 +1,8 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
-import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.naming.CodeRepresentationConfig
-import it.evadid.vm.types.BeDataType
 
 /** A primitive in the Snap palette.
  *
@@ -32,12 +30,16 @@ enum SnapCategoryColor(val snapKey: String):
 /** One named, ordered and allow-listed palette tab. An empty tab is valid.
  *
  * `color` is a Snap built-in category role (resolved at runtime from blockColor).
+ * When `useNativeCategory` is true, the tab shows Snap's native blocks for that
+ * color role instead of `selectableElements`.
  */
 case class LibraryTab(
     id: String,
     name: String,
     selectableElements: List[LibraryBlock],
-    color: SnapCategoryColor = SnapCategoryColor.Other
+    color: SnapCategoryColor = SnapCategoryColor.Other,
+    includeVariableControls: Boolean = false,
+    useNativeCategory: Boolean = false
 )
 
 /** Visibility of the independently configurable parts of the embedded IDE.
@@ -75,6 +77,18 @@ case class SnapCodeEditorConfig(
                                )
 
 object SnapCodeEditorConfig:
+  /** Snap's default palette buttons (lists/other live inside Variables). */
+  val StandardSnapCategories: List[LibraryTab] = List(
+    nativeTab("motion", "Motion", SnapCategoryColor.Motion),
+    nativeTab("looks", "Looks", SnapCategoryColor.Looks),
+    nativeTab("sound", "Sound", SnapCategoryColor.Sound),
+    nativeTab("pen", "Pen", SnapCategoryColor.Pen),
+    nativeTab("control", "Control", SnapCategoryColor.Control),
+    nativeTab("sensing", "Sensing", SnapCategoryColor.Sensing),
+    nativeTab("operators", "Operators", SnapCategoryColor.Operators),
+    nativeTab("variables", "Variables", SnapCategoryColor.Variables)
+  )
+
   /** Minimal configuration used by integration tests and manual smoke tests. */
   val Testing: SnapCodeEditorConfig = SnapCodeEditorConfig(
     parts = SnapEditorParts(
@@ -84,27 +98,89 @@ object SnapCodeEditorConfig:
       stage = false,
       spriteControls = false
     ),
-    libraryTabs = List(
-      LibraryTab("id-1", "One block", List(
-        // Empty description → keep Snap's native blockSpec (matches reload-from-XML labels).
-        LibraryBlock("forward", "", simpleFunc("forward1", "par1"))
-      ), color = SnapCategoryColor.Motion),
-      LibraryTab("id-2", "Three blocks", List(
-        LibraryBlock("turn", "", simpleFunc("forward2", "par2")),
-        LibraryBlock("gotoXY", "", simpleFunc("forward3", "par3")),
-        LibraryBlock("clear", "", simpleFunc("forward4", "par4")),
-        LibraryBlock("setHeading", "", simpleFunc("setHeading", "par5"))
-      ), color = SnapCategoryColor.Control),
-      LibraryTab("drawing", "drawing", List(
-        LibraryBlock("down", "", noArgFunc("down")),
-        LibraryBlock("up", "", noArgFunc("up"))
-      ), color = SnapCategoryColor.Pen)
+    libraryTabs = SnapCodeEditorConfig.StandardSnapCategories
+  )
+
+  /** Explicit palette limited to blocks with full Snap ↔ BeExpression ↔ Python support. */
+  val PythonCompatibleSnapCategories: List[LibraryTab] = List(
+    LibraryTab(
+      id = "motion",
+      name = "Motion",
+      selectableElements = List(
+        block("forward"),
+        block("turn"),
+        block("gotoXY"),
+        block("setHeading")
+      ),
+      color = SnapCategoryColor.Motion
+    ),
+    LibraryTab(
+      id = "pen",
+      name = "Pen",
+      selectableElements = List(
+        block("clear"),
+        block("down"),
+        block("up")
+      ),
+      color = SnapCategoryColor.Pen
+    ),
+    LibraryTab(
+      id = "control",
+      name = "Control",
+      selectableElements = List(
+        block("receiveGo"),
+        block("doRepeat"),
+        block("doIf"),
+        block("doIfElse"),
+        block("doUntil")
+      ),
+      color = SnapCategoryColor.Control
+    ),
+    LibraryTab(
+      id = "operators",
+      name = "Operators",
+      selectableElements = List(
+        block("reportTrue"),
+        block("reportFalse"),
+        block("reportVariadicLessThan"),
+        block("reportVariadicGreaterThan"),
+        block("reportVariadicEquals"),
+        block("reportVariadicAnd"),
+        block("reportVariadicOr"),
+        block("reportNot")
+      ),
+      color = SnapCategoryColor.Operators
+    ),
+    LibraryTab(
+      id = "variables",
+      name = "Variables",
+      selectableElements = List(
+        block("doSetVar"),
+        block("doChangeVar")
+      ),
+      color = SnapCategoryColor.Variables,
+      includeVariableControls = true
     )
   )
 
-  private def simpleFunc(name: String, par: String): BeExpression = {
-    BeProgram.createSimpleFunc(name, List(par), List(BeDataType.Numeric), List("1000"), None).fullProgram
-  }
+  /** Test-workbook editor config with a Python-safe Snap palette only. */
+  val PythonCompatibleTesting: SnapCodeEditorConfig = SnapCodeEditorConfig(
+    parts = Testing.parts,
+    libraryTabs = PythonCompatibleSnapCategories
+  )
 
-  private def noArgFunc(name: String): BeExpression =
-    BeProgram.createSimpleFunc(name, Nil, Nil, Nil, None).fullProgram
+  /** All Snap selectors exposed by [[PythonCompatibleSnapCategories]]. */
+  def pythonCompatibleBlockSelectors: Set[String] =
+    PythonCompatibleSnapCategories.flatMap(_.selectableElements.map(_.id)).toSet
+
+  private def block(id: String, snapDescriptionLine: String = ""): LibraryBlock =
+    LibraryBlock(id, snapDescriptionLine, BeExpression.pass)
+
+  private def nativeTab(id: String, name: String, color: SnapCategoryColor): LibraryTab =
+    LibraryTab(
+      id = id,
+      name = name,
+      selectableElements = Nil,
+      color = color,
+      useNativeCategory = true
+    )

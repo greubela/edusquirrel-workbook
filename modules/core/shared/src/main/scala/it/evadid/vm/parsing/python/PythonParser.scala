@@ -9,7 +9,7 @@ import it.evadid.vm.types.BeDataType.{AnyType, BeUnionAllowedTypes}
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.code.controlStructures.{BeIfElse, BeSequence, BeWhile}
+import it.evadid.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import it.evadid.vm.code.others.BeReturn
@@ -53,6 +53,7 @@ class PythonParser(
       parseClass = parseClass,
       parseFunction = parseFunction,
       parseWhile = parseWhile,
+      parseRepeat = parseRepeat,
       parseIf = parseIf,
       parseReturn = parseReturn,
       parseExpression = parseExpression,
@@ -152,6 +153,17 @@ class PythonParser(
       val conditionSequence = BeSequence.conditionalBody(List(conditionExpr))
       val bodySequence = BeSequence.optionalBody(bodyBlock.expressions)
       NodeWithNext(BeWhile(conditionSequence, bodySequence), bodyBlock.nextIndex)
+    }
+  }
+
+  private def parseRepeat(lines: Vector[ParsedLine], headerIndex: Int, indent: Int, amount: Int, context: ParseContext): NodeWithNext = {
+    val computedIndent = findBodyIndent(lines, headerIndex + 1, indent)
+    if (computedIndent <= indent) {
+      NodeWithNext(BeExpressionUnparsable(lines(headerIndex).content.trim, "Missing body for for loop"), headerIndex + 1)
+    } else {
+      val bodyBlock = parseBlock(lines, headerIndex + 1, computedIndent, context)
+      val bodySequence = BeSequence.optionalBody(bodyBlock.expressions)
+      NodeWithNext(BeRepeatNr(amount, bodySequence), bodyBlock.nextIndex)
     }
   }
 

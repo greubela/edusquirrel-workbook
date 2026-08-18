@@ -40,15 +40,85 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
 
   test("applyPython rejects unsupported constructs") {
     val result = SnapTurtlePythonBridge.applyPython(
-      """i = 1
-        |while i < 3:
-        |    i = i + 1
+      """x = 1 * 2
         |forward(10)
         |""".stripMargin,
       previousEmpty
     )
     assert(result.isLeft, clue = result)
     assert(result.swap.toOption.get.toLowerCase.contains("unsupported"), clue = result)
+  }
+
+  test("applyPython accepts assignments and variable conditions") {
+    val result = SnapTurtlePythonBridge.applyPython(
+      """i = 1
+        |while i < 3:
+        |    i = i + 1
+        |forward(i)
+        |""".stripMargin,
+      previousEmpty
+    )
+    assert(result.isRight, clue = result)
+    val python = ProgrammingExerciseState.pythonOf(result.toOption.get)
+    assert(python.contains("i = 1"), clue = python)
+    assert(python.contains("while i < 3:"), clue = python)
+    assert(python.contains("i = i + 1"), clue = python)
+    assert(python.contains("forward(i)"), clue = python)
+  }
+
+  test("applyPython rejects arithmetic outside change-variable pattern") {
+    val result = SnapTurtlePythonBridge.applyPython("i = 1 * 2", previousEmpty)
+    assert(result.isLeft, clue = result)
+  }
+
+  test("applyPython accepts augmented assignment as change pattern") {
+    val result = SnapTurtlePythonBridge.applyPython(
+      """steps = 1
+        |steps += 2
+        |""".stripMargin,
+      previousEmpty
+    )
+    assert(result.isRight, clue = result)
+    val python = ProgrammingExerciseState.pythonOf(result.toOption.get)
+    assert(python.contains("steps = 1"), clue = python)
+    assert(python.contains("steps = steps + 2"), clue = python)
+  }
+
+  test("applyPython accepts control-flow subset") {
+    val result = SnapTurtlePythonBridge.applyPython(
+      """receive_go()
+        |for _ in range(2):
+        |    forward(10)
+        |while not True:
+        |    turn(90)
+        |if False:
+        |    clear()
+        |else:
+        |    up()
+        |""".stripMargin,
+      previousEmpty
+    )
+    assert(result.isRight, clue = result)
+    val statements = SnapTurtlePythonBridge.topLevelStatements(result.toOption.get.program.fullProgram)
+    assert(statements.exists(_.isInstanceOf[it.evadid.vm.code.controlStructures.BeRepeatNr]))
+    assert(statements.exists(_.isInstanceOf[it.evadid.vm.code.controlStructures.BeWhile]))
+    assert(statements.exists(_.isInstanceOf[it.evadid.vm.code.controlStructures.BeIfElse]))
+  }
+
+  test("comparison conditions print as infix python") {
+    val result = SnapTurtlePythonBridge.applyPython(
+      """if 1 < 2:
+        |    forward(10)
+        |while 3 > 1:
+        |    turn(90)
+        |""".stripMargin,
+      previousEmpty
+    )
+    assert(result.isRight, clue = result)
+    val python = ProgrammingExerciseState.pythonOf(result.toOption.get)
+    assert(python.contains("if 1 < 2:"), clue = python)
+    assert(python.contains("while 3 > 1:"), clue = python)
+    assert(!python.contains("<("), clue = python)
   }
 
   test("reconcileLayout preserves partitions when callCount matches") {
@@ -110,5 +180,39 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
       SnapTurtlePythonBridge.topLevelCalls(restored.program.fullProgram).map(SnapTurtlePythonBridge.callName),
       List("forward")
     )
+  }
+
+  test("applyPython accepts full python-compatible palette program") {
+    val result = SnapTurtlePythonBridge.applyPython(
+      """receive_go()
+        |down()
+        |steps = 10
+        |for _ in range(4):
+        |    forward(50)
+        |    turn(90)
+        |if steps < 20:
+        |    goto_x_y(10, 20)
+        |else:
+        |    set_heading(90)
+        |while not False:
+        |    up()
+        |clear()
+        |""".stripMargin,
+      previousEmpty
+    )
+    assert(result.isRight, clue = result)
+    val python = ProgrammingExerciseState.pythonOf(result.toOption.get)
+    assert(python.contains("receive_go()"), clue = python)
+    assert(python.contains("down()"), clue = python)
+    assert(python.contains("steps = 10"), clue = python)
+    assert(python.contains("for _ in range(4):"), clue = python)
+    assert(python.contains("forward(50)"), clue = python)
+    assert(python.contains("turn(90)"), clue = python)
+    assert(python.contains("if steps < 20:"), clue = python)
+    assert(python.contains("goto_x_y(10, 20)"), clue = python)
+    assert(python.contains("set_heading(90)"), clue = python)
+    assert(python.contains("while not False:"), clue = python)
+    assert(python.contains("up()"), clue = python)
+    assert(python.contains("clear()"), clue = python)
   }
 }

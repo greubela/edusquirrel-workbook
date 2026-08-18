@@ -189,18 +189,63 @@ object TurtleStitchXmlParser {
       XmlElement("block", attrsFromAttrText(attrs), children = parseBlockInputChildren(body))
     }
 
-  /** Top-level inputs of a block body (`<l>`, nested `<block>`, `<script>`). */
-  private def parseBlockInputChildren(body: String): List[XmlElement] = {
-    val literals = topLevelTaggedSections(body, "l").map { case (_, litBody) =>
-      XmlElement("l", text = litBody.trim)
+  /** Top-level block inputs in document order (`<l>`, `<block>`, `<script>`, `<list>`, `<bool>`). */
+  private def parseBlockInputChildren(body: String): List[XmlElement] =
+    parseOrderedBlockInputChildren(body)
+
+  private def parseOrderedBlockInputChildren(body: String): List[XmlElement] = {
+    val out = ListBuffer.empty[XmlElement]
+    var i = 0
+    while i < body.length do
+      findNextInputTag(body, i) match
+        case None => return out.toList
+        case Some((start, tag, open, close)) =>
+          val afterTag = start + open.length
+          val gt = body.indexOf('>', afterTag)
+          if gt < 0 then return out.toList
+          val rawAttrs = body.substring(afterTag, gt).trim
+          if rawAttrs.endsWith("/") then
+            tag match
+              case "block" =>
+                out += XmlElement("block", attrsFromAttrText(rawAttrs.stripSuffix("/").trim))
+              case _ => ()
+            i = gt + 1
+          else
+            val innerStart = gt + 1
+            val innerEnd = findMatchingClose(body, innerStart, open, close)
+            if innerEnd < 0 then return out.toList
+            val inner = body.substring(innerStart, innerEnd)
+            tag match
+              case "l" =>
+                out += XmlElement("l", text = inner.trim)
+              case "bool" =>
+                out += XmlElement("bool", text = inner.trim)
+              case "script" =>
+                out += XmlElement("script", attrsFromAttrText(rawAttrs), children = parseBlocksFromString(inner))
+              case "block" =>
+                out += XmlElement(
+                  "block",
+                  attrsFromAttrText(rawAttrs),
+                  children = parseOrderedBlockInputChildren(inner)
+                )
+              case "list" =>
+                out += XmlElement("list", children = parseOrderedBlockInputChildren(inner))
+              case _ => ()
+            i = innerEnd + close.length
+    out.toList
+  }
+
+  private def findNextInputTag(xml: String, from: Int): Option[(Int, String, String, String)] = {
+    val candidates = List("l", "bool", "script", "block", "list").flatMap { tag =>
+      val open = s"<$tag"
+      val idx = xml.indexOf(open, from)
+      if idx < 0 then None
+      else
+        val afterTag = idx + open.length
+        if afterTag < xml.length && !isTagNameEnd(xml.charAt(afterTag)) then None
+        else Some((idx, tag, open, s"</$tag>"))
     }
-    val nestedBlocks = topLevelTaggedSections(body, "block").map { case (blockAttrs, blockBody) =>
-      XmlElement("block", attrsFromAttrText(blockAttrs), children = parseBlockInputChildren(blockBody))
-    }
-    val nestedScripts = topLevelTaggedSections(body, "script").map { case (scriptAttrs, scriptBody) =>
-      XmlElement("script", attrsFromAttrText(scriptAttrs), children = parseBlocksFromString(scriptBody))
-    }
-    literals ++ nestedBlocks ++ nestedScripts
+    candidates.minByOption(_._1)
   }
 
   /**
@@ -246,8 +291,13 @@ object TurtleStitchXmlParser {
       if nextClose < 0 then return -1
       if nextOpen >= 0 && nextOpen < nextClose then
         val after = nextOpen + open.length
-        if after < xml.length && isTagNameEnd(xml.charAt(after)) then depth += 1
-        i = math.max(after, nextOpen + 1)
+        if after < xml.length && isTagNameEnd(xml.charAt(after)) then
+          val gt = xml.indexOf('>', after)
+          val selfClosing = gt >= 0 && xml.substring(after, gt + 1).contains("/")
+          if !selfClosing then depth += 1
+          i = if gt >= 0 then gt + 1 else math.max(after, nextOpen + 1)
+        else
+          i = math.max(after, nextOpen + 1)
       else
         depth -= 1
         if depth == 0 then return nextClose
