@@ -1,7 +1,7 @@
 {
   "workbookTitle": "Test Workbook",
-  "section1Title": "Section 1.",
-  "exerciseTitle": "this is the title.",
+  "sec1": "Section 0",
+  "exerciseTitle": "this is the title",
   "writeText1": "Write a text!",
   "writeText2": "Write another text!",
   "sec1cont1": "Test 1",

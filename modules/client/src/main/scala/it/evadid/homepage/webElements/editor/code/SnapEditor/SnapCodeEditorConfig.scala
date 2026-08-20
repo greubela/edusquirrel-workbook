@@ -168,8 +168,40 @@ object SnapCodeEditorConfig:
     libraryTabs = PythonCompatibleSnapCategories
   )
 
-  /** Selectors for the beginner turtle circle exercise (subset of Python-compatible). */
-  private val BeginnerTurtleSelectors: Set[String] = Set(
+  /** One tab with blocks from any Snap categories (native block colors unchanged). */
+  def mixedTab(
+      id: String,
+      name: String,
+      blocks: List[LibraryBlock],
+      color: SnapCategoryColor = SnapCategoryColor.Other,
+      includeVariableControls: Boolean = false
+  ): LibraryTab =
+    LibraryTab(
+      id = id,
+      name = name,
+      selectableElements = blocks,
+      color = color,
+      includeVariableControls = includeVariableControls,
+      useNativeCategory = false
+    )
+
+  /** Flatten several tabs into one mixed tab (block order preserved). */
+  def flattenToMixedTab(
+      id: String,
+      name: String,
+      tabs: List[LibraryTab],
+      color: SnapCategoryColor = SnapCategoryColor.Other
+  ): LibraryTab =
+    mixedTab(
+      id = id,
+      name = name,
+      blocks = tabs.flatMap(_.selectableElements),
+      color = color,
+      includeVariableControls = tabs.exists(_.includeVariableControls)
+    )
+
+  /** Pedagogical order for the beginner turtle circle exercise. */
+  private val BeginnerTurtleBlockOrder: List[String] = List(
     "receiveGo",
     "doRepeat",
     "forward",
@@ -181,20 +213,30 @@ object SnapCodeEditorConfig:
     "down"
   )
 
-  /** Motion / Pen / Control tabs filtered to the beginner turtle allow-list. */
-  val BeginnerTurtleCategories: List[LibraryTab] =
-    PythonCompatibleSnapCategories
-      .map(tab =>
-        tab.copy(
-          selectableElements = tab.selectableElements.filter(b => BeginnerTurtleSelectors.contains(b.id)),
-          includeVariableControls = false
-        )
+  private val BeginnerTurtleSelectors: Set[String] = BeginnerTurtleBlockOrder.toSet
+
+  /** Single mixed tab with the beginner turtle allow-list. */
+  val BeginnerTurtleCategories: List[LibraryTab] = {
+    val byId = PythonCompatibleSnapCategories
+      .flatMap(_.selectableElements)
+      .filter(b => BeginnerTurtleSelectors.contains(b.id))
+      .map(b => b.id -> b)
+      .toMap
+    val blocks = BeginnerTurtleBlockOrder.flatMap(byId.get)
+    List(
+      mixedTab(
+        id = "blocks",
+        name = "Blocks",
+        blocks = blocks,
+        color = SnapCategoryColor.Other,
+        includeVariableControls = false
       )
-      .filter(_.selectableElements.nonEmpty)
+    )
+  }
 
   /** Editor config for beginner turtle exercises (circle, etc.). */
   val BeginnerTurtleTesting: SnapCodeEditorConfig = SnapCodeEditorConfig(
-    parts = Testing.parts,
+    parts = Testing.parts.copy(libraryCategories = false),
     libraryTabs = BeginnerTurtleCategories
   )
 
