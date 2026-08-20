@@ -23,6 +23,7 @@ case class CodeMirrorEditor(
 
   private var handle: Option[CodeMirrorHandle] = None
   private var updatingFromEditor: Boolean = false
+  private val useTextareaFallback: Var[Boolean] = Var(false)
 
   def focus(): Unit = handle.foreach(_.focus())
 
@@ -39,9 +40,22 @@ case class CodeMirrorEditor(
       styleAttr <-- editorFont.map(font =>
         s"--code-font-family: '${font.name}', 'Fira Code', 'JetBrains Mono', monospace; --code-font-size: ${font.sizeInPx}px;"
       ),
+      textArea(
+        cls := "code-mirror-editor__fallback",
+        display <-- useTextareaFallback.signal.map(if _ then "block" else "none"),
+        width := "100%",
+        minHeight := "12rem",
+        boxSizing.borderBox,
+        value <-- content.signal,
+        onInput.mapToValue --> { value =>
+          content.writer.onNext(value)
+          onUserInput(value)
+        }
+      ),
       onMountCallback { ctx =>
         waitForFacade {
           case Some(cmFacade) =>
+            useTextareaFallback.set(false)
             val container = ctx.thisNode.ref
             val initialValue = content.now()
 
@@ -75,7 +89,13 @@ case class CodeMirrorEditor(
             }(using ctx.owner)
 
           case None =>
-            dom.console.error("CodeMirror facade is not available on window.EduSquirrelCodeMirror")
+            // Some workbook entry pages do not load CodeMirrorLoader.js. Keep
+            // the editor usable and, crucially, do not fail the fullscreen
+            // Laminar mount just because this optional enhancement is absent.
+            useTextareaFallback.set(true)
+            dom.console.warn(
+              "CodeMirror facade is not available; using a textarea fallback"
+            )
         }
       },
       onUnmountCallback { _ =>
@@ -161,7 +181,10 @@ object CodeMirrorEditor {
   }
 
   private def facade: Option[CodeMirrorFacade] = {
-    val maybeFacade = js.Dynamic.global.selectDynamic("EduSquirrelCodeMirror")
+    // Access through `window[...]`: a direct global lookup can compile to an
+    // identifier reference and throw ReferenceError when the loader is absent.
+    val maybeFacade =
+      dom.window.asInstanceOf[js.Dynamic].selectDynamic("EduSquirrelCodeMirror")
     if (js.isUndefined(maybeFacade) || maybeFacade == null) None
     else Some(maybeFacade.asInstanceOf[CodeMirrorFacade])
   }
@@ -171,7 +194,8 @@ object CodeMirrorEditor {
       case some@Some(_) =>
         callback(some)
       case None =>
-        val readyPromise = js.Dynamic.global.selectDynamic("EduSquirrelCodeMirrorReady")
+        val readyPromise =
+          dom.window.asInstanceOf[js.Dynamic].selectDynamic("EduSquirrelCodeMirrorReady")
         if (js.isUndefined(readyPromise) || readyPromise == null) {
           callback(None)
         } else {

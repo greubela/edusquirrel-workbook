@@ -253,6 +253,277 @@
     font-weight: 600;
 }
 
+/* ========== FEATURE: SnapPythonPopup (BEGIN) ==========
+ * Removable with SnapPythonPopup.scala + SnapCodeEditor chrome child.
+ * Reuses .sorting-error-popup layout; only Snap-specific bits live here.
+ */
+.snap-editor-toolbar {
+    position: absolute;
+    bottom: var(--space-md);
+    right: var(--space-md);
+    z-index: 8;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm);
+    max-width: calc(100% - 2 * var(--space-md));
+}
+
+.snap-editor-toolbar__speed {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    margin: 0;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--color-button-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-button-background);
+    color: var(--color-text-primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.snap-editor-toolbar__speed-label {
+    white-space: nowrap;
+}
+
+.snap-editor-toolbar__speed-input {
+    width: 4.5rem;
+    margin: 0;
+    padding: 0.15rem 0.35rem;
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-muted);
+    color: var(--color-text-primary);
+    font: inherit;
+}
+
+.snap-python-button {
+    position: static;
+    border: 1px solid var(--color-button-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-button-background);
+    color: var(--color-text-primary);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.snap-python-button:hover,
+.snap-python-button:focus-visible {
+    background: var(--color-button-hover);
+}
+
+.snap-python-popup.is-visible {
+    z-index: 9;
+}
+
+.snap-python-popup__content {
+    width: calc(80% - 2 * var(--space-md));
+    max-width: none;
+    max-height: calc(100% - 2 * var(--space-md));
+    padding: var(--space-md);
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    overflow: hidden;
+    min-height: 0;
+}
+
+.snap-python-popup__overview {
+    padding: var(--space-sm) var(--space-md);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-muted);
+    flex-shrink: 0;
+}
+
+.snap-python-popup__overview[open] {
+    max-height: 12rem;
+    overflow: auto;
+}
+
+.snap-python-popup__overview-title {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    list-style: none;
+}
+
+.snap-python-popup__overview-title::-webkit-details-marker {
+    display: none;
+}
+
+.snap-python-popup__overview-title::before {
+    content: "▸ ";
+    display: inline-block;
+    width: 0.9em;
+}
+
+.snap-python-popup__overview[open] > .snap-python-popup__overview-title::before {
+    content: "▾ ";
+}
+
+.snap-python-popup__overview-note {
+    margin: var(--space-sm) 0;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+}
+
+.snap-python-popup__overview-list {
+    margin: 0;
+    padding-left: 1.1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    gap: var(--space-xs) var(--space-md);
+    font-size: 0.8rem;
+    color: var(--color-text-primary);
+}
+
+.snap-python-popup__overview-list code {
+    font-family: var(--color-code-font);
+    font-size: var(--color-code-size);
+    white-space: pre-wrap;
+}
+
+.snap-python-popup__overview-list .cm-keyword {
+    color: var(--color-blue-7);
+    font-weight: 600;
+}
+
+.snap-python-popup__overview-list .cm-accent-name {
+    color: var(--color-blue-6);
+    font-weight: 600;
+}
+
+.snap-python-popup__overview-list .cm-plain-name {
+    color: var(--color-text-primary);
+}
+
+.snap-python-popup__overview-list .cm-receive-go {
+    color: var(--color-green-6);
+    font-weight: 700;
+}
+
+.snap-python-popup__script-hints {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.snap-python-popup__script-label {
+    margin-bottom: 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+}
+
+.snap-python-popup__warning {
+    padding: var(--space-sm) var(--space-md);
+    border: 1px solid var(--color-outline-blue-soft);
+    border-radius: var(--radius-sm);
+    background: var(--color-background-colored);
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+}
+
+.snap-python-popup__editor {
+    flex: 1 1 auto;
+    min-height: 10rem;
+    max-height: none;
+    height: auto;
+    overflow: auto;
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-muted);
+}
+
+.snap-python-popup__editor .code-mirror-editor,
+.snap-python-popup__editor .code-mirror-editor .cm-editor,
+.snap-python-popup__editor .code-mirror-editor .cm-scroller {
+    min-height: 10rem;
+    height: 100%;
+}
+
+.snap-python-popup__editor .code-mirror-editor__fallback {
+    min-height: 10rem;
+    height: 100%;
+}
+
+.snap-python-popup .cm-receive-go {
+    color: var(--color-green-2) !important;
+    font-weight: 700;
+}
+
+.snap-python-popup__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.snap-python-popup__actions .sorting-error-popup__button {
+    margin-top: 0;
+}
+/* ========== FEATURE: SnapPythonPopup (END) ========== */
+
+/* ProgrammingExercise stage output (Run → simulateGreenFlag PNG) */
+.prog-ex-stage-output {
+    margin-top: var(--space-md);
+    max-width: 100%;
+}
+
+.prog-ex-stage-output__placeholder {
+    min-height: var(--space-lg);
+}
+
+.prog-ex-stage-output .preview-card,
+.prog-ex-stage-output .preview-content img {
+    max-width: 100%;
+    height: auto;
+}
+.be-program-snap-fullscreen__turtle {
+    flex: 0 0 30%;
+    min-width: 16rem;
+    max-width: 28rem;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    overflow: auto;
+    box-sizing: border-box;
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-muted);
+}
+
+.be-program-snap-fullscreen__turtle-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.be-program-snap-fullscreen__turtle .prog-ex-stage-output {
+    margin-top: 0;
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow: auto;
+}
+
+.be-program-snap-fullscreen__turtle-stage {
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-sm);
+    background: var(--color-background-workarea-display);
+}
+
 .sorting-reason-form {
     margin-bottom: var(--space-lg);
     padding: var(--space-lg);

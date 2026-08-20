@@ -1,9 +1,55 @@
 package interactionPlugins.fileSubmission.turtleStitch
 
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchXmlLoader
+import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.{
+  TurtleStitchToBeExpressionParser,
+  TurtleStitchXmlLoader
+}
+import it.evadid.workbook.elements.interactionElements.programming.SnapTurtlePythonBridge
 import munit.FunSuite
+import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchProgramModel.*
 
 class TurtleStitchXmlLoaderSpec extends FunSuite {
+
+  private val comparisonWithVariableXml =
+    """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doIf"><block s="reportVariadicLessThan"><list><block var="steps"/><l>10</l></list></block><script><block s="forward"><l>1</l></block></script></block></script></scripts></sprite></sprites></stage><variables><variable name="steps"></variable></variables></scene></scenes></project>"""
+
+  test("load keeps list inputs on variadic operator blocks") {
+    val project = TurtleStitchXmlLoader.load(comparisonWithVariableXml)
+    val sprite = project.scenes.head.stage.sprites.head
+    val doIf = sprite.scripts.head.blocks(1).asInstanceOf[PrimitiveBlock]
+    val lessThan = doIf.inputs.collectFirst { case NestedBlock(value) => value }.get.asInstanceOf[PrimitiveBlock]
+
+    assertEquals(lessThan.selector, Some("reportVariadicLessThan"))
+    assertEquals(lessThan.inputs.length, 1)
+
+    val listInput = lessThan.inputs.head.asInstanceOf[ListLiteral]
+    assertEquals(listInput.items.length, 2)
+    assertEquals(listInput.items.head.asInstanceOf[NestedBlock].value.asInstanceOf[PrimitiveBlock].variable, Some("steps"))
+    assertEquals(listInput.items(1).asInstanceOf[Literal].value, "10")
+  }
+
+  test("model path renders variable equals as infix python") {
+    val xml =
+      """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doIf"><block s="reportVariadicEquals"><list><block var="test"/><l>1</l></list></block><script><block s="doRepeat"><l>10</l><script><block s="forward"><l>10</l></block><block s="turn"><l>18</l></block></script></block></script><list></list></block></script></scripts></sprite></sprites></stage><variables><variable name="test"></variable></variables></scene></scenes></project>"""
+    val project = TurtleStitchXmlLoader.load(xml)
+    val sprite = project.scenes.head.stage.sprites.head
+    val doIf = sprite.scripts.head.blocks(1).asInstanceOf[PrimitiveBlock]
+    val equals = doIf.inputs.collectFirst { case NestedBlock(value) => value }.get.asInstanceOf[PrimitiveBlock]
+    assertEquals(equals.selector, Some("reportVariadicEquals"))
+    val listInput = equals.inputs.head.asInstanceOf[ListLiteral]
+    assertEquals(listInput.items.head.asInstanceOf[NestedBlock].value.asInstanceOf[PrimitiveBlock].variable, Some("test"))
+
+    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val python = SnapTurtlePythonBridge.printedPython(parsed.expression)
+    assert(python.contains("if test == 1:"), clue = python)
+  }
+
+  test("model path renders variable comparisons as infix python") {
+    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(comparisonWithVariableXml)
+    val python = SnapTurtlePythonBridge.printedPython(parsed.expression)
+    assert(python.contains("if steps < 10:"), clue = python)
+    assert(!python.contains("<("), clue = python)
+  }
 
   test("load parses simple_forward project XML without crashing".ignore) {
     val xml =

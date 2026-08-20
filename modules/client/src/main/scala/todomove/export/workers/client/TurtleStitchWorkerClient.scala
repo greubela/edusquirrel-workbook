@@ -33,6 +33,10 @@ case class TurtleStitchWorkerClient(canvas: Canvas) {
   def snapshotGreenFlagProgramsPngDataUrl(xml_content: String, language: String = "en"): Future[String] =
     afterPreheat(worker.calcProgramPng(xml_content, language))
 
+  /** Executed-stage snapshot after reset + single green-flag run (PNG data URL). */
+  def simulateGreenFlagPngDataUrl(xml_content: String, language: String = "en"): Future[String] =
+    afterPreheat(worker.simulateGreenFlag(xml_content, language))
+
   def getGreenFlagAsLispCode(xml_content: String, language: String): Future[String] =
     afterPreheat(worker.getGreenFlagAsLispCode(xml_content, language))
 

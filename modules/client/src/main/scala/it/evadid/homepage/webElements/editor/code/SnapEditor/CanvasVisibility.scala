@@ -2,10 +2,6 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.homepage.control.info.HomepageLoggerInfo
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.SnapCodeEditorImpl
-import it.evadid.vm.BeProgram
-import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.code.controlStructures.BeSequence
-import it.evadid.vm.code.others.BeStartProgram
 import org.scalajs.dom.CanvasRenderingContext2D
 import org.scalajs.dom.html.Canvas
 
@@ -17,17 +13,15 @@ private[SnapEditor] object CanvasVisibility:
 
   private val EmptyCanvasColorLimit = 3
 
-  def warnIfUnexpectedlyEmpty(renderer: SnapCodeEditorImpl, program: BeProgram, canvas: Canvas): Unit =
-    if hasExpressions(program.fullProgram) && uniqueColorCount(canvas, EmptyCanvasColorLimit + 1) <= EmptyCanvasColorLimit then
+  def warnIfUnexpectedlyEmpty(renderer: SnapCodeEditorImpl, snapXml: String, canvas: Canvas): Unit =
+    if looksLikeProgramWithBlocks(snapXml) && uniqueColorCount(canvas, EmptyCanvasColorLimit + 1) <= EmptyCanvasColorLimit then
       HomepageLoggerInfo.singleton.uiAndDomLogger.logWarn(
-        s"${renderer.getClass.getSimpleName} rendered a program with expressions through Snap, " +
+        s"${renderer.getClass.getSimpleName} rendered a Snap project with blocks, " +
           s"but the resulting canvas has at most $EmptyCanvasColorLimit unique colors and appears empty."
       )
 
-  private def hasExpressions(expression: BeExpression): Boolean = expression match
-    case BeStartProgram(sequence) => sequence.exists(hasExpressions)
-    case BeSequence(body, _) => body.exists(hasExpressions)
-    case _ => true
+  private def looksLikeProgramWithBlocks(snapXml: String): Boolean =
+    snapXml.contains("<block")
 
   private def uniqueColorCount(canvas: Canvas, stopAfter: Int): Int =
     val context = canvas.getContext("2d").asInstanceOf[CanvasRenderingContext2D]

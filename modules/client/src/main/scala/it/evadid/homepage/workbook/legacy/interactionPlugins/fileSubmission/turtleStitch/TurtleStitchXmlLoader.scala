@@ -14,7 +14,17 @@ object TurtleStitchXmlLoader {
   private var domUnavailableWarned = false
 
   def load(xml: String): Project = {
-    val parseResult = TurtleStitchXmlParser.parse(xml)
+    val fromPrimary = projectFromParseResult(TurtleStitchXmlParser.parse(xml))
+    if projectHasBlocks(fromPrimary) || !xml.contains("<block") then fromPrimary
+    else
+      TurtleStitchXmlParser
+        .parseStringOnly(xml)
+        .map(TurtleStitchModelMapper.toProject)
+        .filter(projectHasBlocks)
+        .getOrElse(fromPrimary)
+  }
+
+  private def projectFromParseResult(parseResult: TurtleStitchXmlParser.ParseResult): Project = {
     parseResult.fallbackReason.foreach { reason =>
       if (reason.contains("DOM parser is unavailable")) {
         if (!domUnavailableWarned) {
@@ -33,6 +43,12 @@ object TurtleStitchXmlLoader {
       case None => TurtleStitchModelMapper.EmptyProject
     }
   }
+
+  private def projectHasBlocks(project: Project): Boolean =
+    project.scenes.exists { scene =>
+      scene.stage.scripts.exists(_.blocks.nonEmpty) ||
+        scene.stage.sprites.exists(_.scripts.exists(_.blocks.nonEmpty))
+    }
 
   private def warnFallback(reason: String): Unit = {
     scala.util.Try {

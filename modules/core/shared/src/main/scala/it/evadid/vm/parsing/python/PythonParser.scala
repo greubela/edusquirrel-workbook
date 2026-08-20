@@ -9,7 +9,7 @@ import it.evadid.vm.types.BeDataType.{AnyType, BeUnionAllowedTypes}
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.code.controlStructures.{BeIfElse, BeSequence, BeWhile}
+import it.evadid.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import it.evadid.vm.code.others.BeReturn
@@ -53,6 +53,7 @@ class PythonParser(
       parseClass = parseClass,
       parseFunction = parseFunction,
       parseWhile = parseWhile,
+      parseRepeat = parseRepeat,
       parseIf = parseIf,
       parseReturn = parseReturn,
       parseExpression = parseExpression,
@@ -155,6 +156,17 @@ class PythonParser(
     }
   }
 
+  private def parseRepeat(lines: Vector[ParsedLine], headerIndex: Int, indent: Int, amount: Int, context: ParseContext): NodeWithNext = {
+    val computedIndent = findBodyIndent(lines, headerIndex + 1, indent)
+    if (computedIndent <= indent) {
+      NodeWithNext(BeExpressionUnparsable(lines(headerIndex).content.trim, "Missing body for for loop"), headerIndex + 1)
+    } else {
+      val bodyBlock = parseBlock(lines, headerIndex + 1, computedIndent, context)
+      val bodySequence = BeSequence.optionalBody(bodyBlock.expressions)
+      NodeWithNext(BeRepeatNr(amount, bodySequence), bodyBlock.nextIndex)
+    }
+  }
+
   private def parseIf(lines: Vector[ParsedLine], headerIndex: Int, indent: Int, conditionSource: String, context: ParseContext): NodeWithNext = {
     val conditionExpr = parseExpression(conditionSource.trim, context)
     val computedIndent = findBodyIndent(lines, headerIndex + 1, indent)
@@ -253,10 +265,23 @@ class PythonParser(
   private def parseFunctionCall(source: String, context: ParseContext): Option[BeExpression] = {
     ParsingUtils.findTopLevelCall(source).map { case (rawName, argsSource) =>
       val name = rawName.trim
-      val arguments = ParsingUtils.splitTopLevelArguments(argsSource).map(_.trim).filter(_.nonEmpty).map(arg => parseExpression(arg, context))
+      val arguments = ParsingUtils.splitTopLevelArguments(argsSource).map(_.trim).filter(_.nonEmpty).map { arg =>
+        parseExpression(stripKeywordArgument(arg), context)
+      }
       val function = context.ensureFunctionArity(name, context.resolveFunction(name, arguments.length), arguments.length)
       BeFunctionCall(function, function.inputs.zip(arguments).toMap)
     }
+  }
+
+  /** Accept legacy/printer form `name = value` as a positional call argument. */
+  private def stripKeywordArgument(arg: String): String = {
+    val eq = arg.indexOf('=')
+    if eq <= 0 then arg
+    else
+      val left = arg.substring(0, eq).trim
+      val right = arg.substring(eq + 1).trim
+      if IdentifierPattern.matches(left) && right.nonEmpty && !arg.substring(eq).startsWith("==") then right
+      else arg
   }
 
   private def parseLiteralExpression(source: String, context: ParseContext): Option[BeExpression] = source match {

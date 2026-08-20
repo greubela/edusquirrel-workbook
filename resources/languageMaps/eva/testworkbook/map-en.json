@@ -1,8 +1,17 @@
 {
   "workbookTitle": "Test Workbook",
-  "section1Title": "This is section 1.",
+  "section1Title": "Section 1.",
   "exerciseTitle": "this is the title.",
   "writeText1": "Write a text!",
   "writeText2": "Write another text!",
-  "sec1cont1" : "Test 1"
+  "sec1cont1": "Test 1",
+  "goalTitle": "Learning goal",
+  "instructionTitle": "Task",
+  "hintTitle": "Hint",
+  "section2Title": "Draw a circle",
+  "section2Subtitle1": "Drawing a circle",
+  "section2Subtitle2": "Editor",
+  "section2GoalText": "You draw a circle with the turtle.",
+  "section2InstructionText": "Write a program that draws a circle. Use a loop: the turtle repeatedly moves a short distance forward and turns a little.",
+  "section2HintText": "A circle is made of many small edges. Put the pen **down**, start with **Start**, and repeat e.g. 36 times: **forward** and **turn**. The smaller the turn angle, the rounder the circle."
 }

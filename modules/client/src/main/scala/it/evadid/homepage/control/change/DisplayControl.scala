@@ -14,11 +14,12 @@ case class DisplayControl(fullInfo: FullInfo) {
   }
 
   def setFullscreen(element: HtmlAppElement): Unit = {
+    updateDisplay(_.copy(fullscreenElement = Some(element)))
+    // Open callback after state update so retained editors can measure the dialog.
     element match {
       case lifecycle: FullscreenLifecycle => lifecycle.onFullscreenOpen()
       case _ => ()
     }
-    updateDisplay(_.copy(fullscreenElement = Some(element)))
   }
 
   def updateDisplay(func: AllDisplayInfo => AllDisplayInfo): Unit = {

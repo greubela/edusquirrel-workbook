@@ -1,10 +1,19 @@
 {
   "workbookTitle": "Beispielheft",
-  "section1Title": "Das ist Abschnitt 1.",
+  "section1Title": "Abschnitt 1.",
   "exerciseTitle": "Das ist der Titel.",
   "writeText1": "Schreibe einen Text!",
   "writeText2": "Schreibe noch einen Text!",
   "sec1cont1": "Test 1",
   "openeditor": "Open CodeMirror Editor",
-  "canvas": "Snap! Canvas here (?)"
+  "canvas": "Snap! Canvas here (?)",
+  "goalTitle": "Lernziel",
+  "instructionTitle": "Aufgabe",
+  "hintTitle": "Hinweis",
+  "section2Title": "Kreis zeichnen",
+  "section2Subtitle1": "Einen Kreis zeichnen",
+  "section2Subtitle2": "Editor",
+  "section2GoalText": "Ihr zeichnet mit der Schildkröte einen Kreis.",
+  "section2InstructionText": "Schreibt ein Programm, das einen Kreis zeichnet. Nutzt dazu eine Wiederholung: die Schildkröte geht jeweils ein kleines Stück vorwärts und dreht sich ein wenig.",
+  "section2HintText": "Ein Kreis entsteht aus vielen kleinen Kanten. Setzt den Stift mit **down** auf, startet mit **Start**, und wiederholt z. B. 36-mal: **forward** und **turn**. Je kleiner der Drehwinkel, desto runder der Kreis."
 }
