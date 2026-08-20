@@ -140,8 +140,7 @@ object SnapCodeEditorConfig:
       id = "operators",
       name = "Operators",
       selectableElements = List(
-        block("reportTrue"),
-        block("reportFalse"),
+        block("reportBoolean"),
         block("reportVariadicLessThan"),
         block("reportVariadicGreaterThan"),
         block("reportVariadicEquals"),

@@ -318,7 +318,8 @@
 }
 
 .snap-python-popup__content {
-    width: min(64rem, calc(100% - 2 * var(--space-md)));
+    width: calc(80% - 2 * var(--space-md));
+    max-width: none;
     max-height: calc(100% - 2 * var(--space-md));
     padding: var(--space-md);
     text-align: left;
@@ -334,20 +335,39 @@
     border: 1px solid var(--color-border-soft);
     border-radius: var(--radius-sm);
     background: var(--color-surface-muted);
-    max-height: 9rem;
-    overflow: auto;
     flex-shrink: 0;
 }
 
+.snap-python-popup__overview[open] {
+    max-height: 12rem;
+    overflow: auto;
+}
+
 .snap-python-popup__overview-title {
-    margin: 0 0 var(--space-xs);
+    margin: 0;
     font-size: 0.85rem;
     font-weight: 600;
     color: var(--color-text-primary);
+    cursor: pointer;
+    list-style: none;
+}
+
+.snap-python-popup__overview-title::-webkit-details-marker {
+    display: none;
+}
+
+.snap-python-popup__overview-title::before {
+    content: "▸ ";
+    display: inline-block;
+    width: 0.9em;
+}
+
+.snap-python-popup__overview[open] > .snap-python-popup__overview-title::before {
+    content: "▾ ";
 }
 
 .snap-python-popup__overview-note {
-    margin: 0 0 var(--space-sm);
+    margin: var(--space-sm) 0;
     font-size: 0.8rem;
     color: var(--color-text-secondary);
 }
@@ -356,7 +376,7 @@
     margin: 0;
     padding-left: 1.1rem;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
     gap: var(--space-xs) var(--space-md);
     font-size: 0.8rem;
     color: var(--color-text-primary);
@@ -365,6 +385,21 @@
 .snap-python-popup__overview-list code {
     font-family: var(--color-code-font);
     font-size: var(--color-code-size);
+    white-space: pre-wrap;
+}
+
+.snap-python-popup__overview-list .cm-keyword {
+    color: var(--color-blue-7);
+    font-weight: 600;
+}
+
+.snap-python-popup__overview-list .cm-accent-name {
+    color: var(--color-blue-6);
+    font-weight: 600;
+}
+
+.snap-python-popup__overview-list .cm-plain-name {
+    color: var(--color-text-primary);
 }
 
 .snap-python-popup__overview-list .cm-receive-go {

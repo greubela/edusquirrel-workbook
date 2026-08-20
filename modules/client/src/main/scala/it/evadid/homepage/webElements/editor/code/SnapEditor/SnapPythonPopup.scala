@@ -41,6 +41,47 @@ object SnapPythonPopup {
       SnapTurtlePythonBridge.ControlFlowExamples ++
       SnapTurtlePythonBridge.VariableExamples
 
+  private val OverviewKeywords: Set[String] = Set(
+    "if", "else", "elif", "for", "while", "not", "and", "or", "in",
+    "True", "False", "None", "pass", "def", "return"
+  )
+
+  /** Tokenize a short Python snippet with the same highlight classes as CodeMirror. */
+  private def highlightedExample(example: String): HtmlElement = {
+    val children = List.newBuilder[Modifier[HtmlElement]]
+    var i = 0
+    while i < example.length do
+      val ch = example.charAt(i)
+      if ch.isLetter || ch == '_' then
+        var end = i + 1
+        while end < example.length && {
+            val c = example.charAt(end)
+            c.isLetterOrDigit || c == '_'
+          }
+        do end += 1
+        val word = example.substring(i, end)
+        val nextNonSpace =
+          example.substring(end).dropWhile(_.isWhitespace).headOption.map(_.toString).getOrElse("")
+        val isCall = nextNonSpace == "("
+        val tokenClass =
+          if OverviewKeywords.contains(word) then "cm-keyword"
+          else if word == "receive_go" && isCall then "cm-receive-go"
+          else if isCall then "cm-accent-name"
+          else "cm-plain-name"
+        children += span(cls := tokenClass, word)
+        i = end
+      else
+        var end = i + 1
+        while end < example.length && {
+            val c = example.charAt(end)
+            !(c.isLetter || c == '_')
+          }
+        do end += 1
+        children += span(example.substring(i, end))
+        i = end
+    code(children.result()*)
+  }
+
   /**
    * Bottom-right toolbar + editable overlay chrome for `SnapCodeEditor.editorCanvas`.
    * @param state live exercise state (canonical Snap XML)
@@ -153,9 +194,9 @@ object SnapPythonPopup {
           cls := "sorting-error-popup__content snap-python-popup__content",
           onClick --> (_.stopPropagation()),
           h3("Python"),
-          div(
+          detailsTag(
             cls := "snap-python-popup__overview",
-            div(
+            summaryTag(
               cls := "snap-python-popup__overview-title",
               "Supported functions"
             ),
@@ -166,12 +207,7 @@ object SnapPythonPopup {
             ul(
               cls := "snap-python-popup__overview-list",
               SupportedFunctionExamples.map { example =>
-                li(
-                  if example.startsWith("receive_go") then
-                    code(cls := "cm-receive-go", example)
-                  else
-                    code(example)
-                )
+                li(highlightedExample(example))
               }
             )
           ),

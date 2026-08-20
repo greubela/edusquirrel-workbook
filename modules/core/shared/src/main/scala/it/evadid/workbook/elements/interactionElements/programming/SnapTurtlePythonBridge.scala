@@ -40,15 +40,15 @@ object SnapTurtlePythonBridge {
   )
 
   val ControlFlowExamples: List[String] = List(
-    "if True:\n    forward(10)\nelse:\n    turn(90)",
-    "while not True:\n    forward(5)",
-    "for _ in range(4):\n    turn(90)"
+    "if condition:\n    ...\nelse:\n    ...",
+    "while not condition:\n    ...",
+    "for _ in range(n):\n    ..."
   )
 
   val VariableExamples: List[String] = List(
-    "steps = 10",
-    "steps = steps + 1",
-    "if steps < 10:\n    forward(steps)"
+    "steps = x",
+    "steps = steps + n",
+    "if steps < n:\n    forward(steps)"
   )
 
   /** Python / SnakeCase names accepted for seamless block roundtrips. */

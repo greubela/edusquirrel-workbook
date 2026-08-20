@@ -12,6 +12,7 @@ class SnapCodeEditorConfigSpec extends FunSuite {
       Set(
         "reportTrue",
         "reportFalse",
+        "reportBoolean",
         "reportVariadicLessThan",
         "reportVariadicGreaterThan",
         "reportVariadicEquals",
@@ -64,8 +65,7 @@ class SnapCodeEditorConfigSpec extends FunSuite {
         "doIf",
         "doIfElse",
         "doUntil",
-        "reportTrue",
-        "reportFalse",
+        "reportBoolean",
         "reportVariadicLessThan",
         "reportVariadicGreaterThan",
         "reportVariadicEquals",
