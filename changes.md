@@ -188,7 +188,7 @@ Dazu kommen neue Language-Map-Keys (`openEditor`, `canvas`, `runProgram`, `turtl
 
 ---
 
-## 8. Ausführung: zwei bewusst getrennte Pfade
+## 8. zwei getrennte Ausführungsmöglichkeiten
 
 | Pfad | Mechanismus | Zweck |
 |------|-------------|-------|
@@ -205,8 +205,6 @@ die Animation aber zwingend die IDE braucht.
 - **Nur ein Subset ist Python-roundtrip-fähig.** Kommentare, Snap-`elseif`-Ketten, Arithmetik
   außerhalb `x = x + n` und alle übrigen nativen Snap-Blöcke bleiben im XML erhalten, blockieren
   aber Python-Apply.
-- **Nur globale Variablen** laufen durch die Python-Ableitung. Sprite-lokale Variablen und Listen
-  bleiben im XML, nicht im AST, es gibt ja auch gar keine Auswahl zwischen Sprites -> vielleicht nur globale Variablen anbieten?
 - **Lose Blöcke** sind im XML echte `<script>`-Stacks und überleben Speichern/Reload. Im
   abgeleiteten `BeProgram` sind sie weiterhin eine flache Statement-Liste, 
   TODO: am Besten den Nutzer beim Schließen darauf hinweisen und dann lose Blöcke beim Schließen entfernen oder andere Lösung finden
