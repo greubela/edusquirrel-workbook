@@ -287,16 +287,15 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   private def nativeVariablePaletteItems(ide: IDEMorph): List[js.Any] = {
     val sprite = ide.currentSprite.asInstanceOf[js.Dynamic]
     val items = scala.collection.mutable.ListBuffer.empty[js.Any]
-    val makeBtn = sprite.applyDynamic("makeVariableButton")()
-    if !js.isUndefined(makeBtn) && makeBtn != null then items += makeBtn
+    // No sprite corral in this editor — always create globals (skip Snap's local/global dialog).
+    items += makeGlobalVariableButton(sprite)
 
     val deletable = sprite.applyDynamic("deletableVariableNames")()
     val deletableCount =
       if js.isUndefined(deletable) || deletable == null then 0
       else deletable.asInstanceOf[js.Array[js.Any]].length
     if deletableCount > 0 then
-      val delBtn = sprite.applyDynamic("deleteVariableButton")()
-      if !js.isUndefined(delBtn) && delBtn != null then items += delBtn
+      items += makeDeleteVariableButton(sprite)
 
     val namesDyn = sprite.applyDynamic("allGlobalVariableNames")(true)
     val names =
@@ -311,6 +310,86 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
         items += block
     }
     items.toList
+  }
+
+  /** "Make a variable" that always adds a global (no "for this sprite only" choice). */
+  private def makeGlobalVariableButton(sprite: js.Dynamic): js.Any = {
+    val PushButtonMorph = js.Dynamic.global.PushButtonMorph
+    val DialogBoxMorph = js.Dynamic.global.DialogBoxMorph
+    val BlockMorph = js.Dynamic.global.BlockMorph
+    val IDE_Morph = js.Dynamic.global.IDE_Morph
+
+    val onConfirm: js.Function1[js.UndefOr[String], Unit] = (rawName: js.UndefOr[String]) => {
+      val name = rawName.toOption.map(_.trim).filter(_.nonEmpty)
+      name.foreach { varName =>
+        sprite.applyDynamic("addVariable")(varName, true)
+        sprite.applyDynamic("toggleVariableWatcher")(varName, true)
+        val ide = sprite.applyDynamic("parentThatIsA")(IDE_Morph)
+        if !js.isUndefined(ide) && ide != null then
+          ide.applyDynamic("flushBlocksCache")("variables")
+          ide.applyDynamic("refreshPalette")()
+        sprite.applyDynamic("recordUserEdit")("palette", "variable", "global", "new", varName)
+      }
+    }
+
+    val button = js.Dynamic.newInstance(PushButtonMorph)(
+      null,
+      (() => {
+        val dialog = js.Dynamic.newInstance(DialogBoxMorph)(null, onConfirm, sprite)
+        dialog.applyDynamic("prompt")("Variable name", null, sprite.applyDynamic("world")())
+        (): Unit
+      }): js.Function0[Unit],
+      "Make a variable"
+    )
+    button.updateDynamic("userMenu")(sprite.selectDynamic("helpMenu"))
+    button.updateDynamic("selector")("addVariable")
+    button.updateDynamic("showHelp")(BlockMorph.selectDynamic("prototype").selectDynamic("showHelp"))
+    button
+  }
+
+  /** "Delete a variable" with a Yes/No confirm after picking a name. */
+  private def makeDeleteVariableButton(sprite: js.Dynamic): js.Any = {
+    val PushButtonMorph = js.Dynamic.global.PushButtonMorph
+    val MenuMorph = js.Dynamic.global.MenuMorph
+    val DialogBoxMorph = js.Dynamic.global.DialogBoxMorph
+    val BlockMorph = js.Dynamic.global.BlockMorph
+
+    def confirmAndDelete(varName: String): Unit = {
+      val onYes: js.Function1[js.Any, Unit] = (_: js.Any) => {
+        // Globals only in this editor (see makeGlobalVariableButton).
+        sprite.applyDynamic("deleteVariable")(varName, true)
+        (): Unit
+      }
+      val dialog = js.Dynamic.newInstance(DialogBoxMorph)(null, onYes)
+      dialog.applyDynamic("askYesNo")(
+        "Delete variable",
+        s"""Delete variable "$varName"?""",
+        sprite.applyDynamic("world")()
+      )
+    }
+
+    val onPick: js.Function1[js.UndefOr[String], Unit] = (rawName: js.UndefOr[String]) => {
+      rawName.toOption.map(_.trim).filter(_.nonEmpty).foreach(confirmAndDelete)
+    }
+
+    val button = js.Dynamic.newInstance(PushButtonMorph)(
+      null,
+      (() => {
+        val menu = js.Dynamic.newInstance(MenuMorph)(onPick, null, sprite)
+        val names = sprite.applyDynamic("deletableVariableNames")()
+        if !js.isUndefined(names) && names != null then
+          names.asInstanceOf[js.Array[String]].foreach { name =>
+            menu.applyDynamic("addItem")(name, name, null, null, null, null, null, null, true)
+          }
+        menu.applyDynamic("popUpAtHand")(sprite.applyDynamic("world")())
+        (): Unit
+      }): js.Function0[Unit],
+      "Delete a variable"
+    )
+    button.updateDynamic("userMenu")(sprite.selectDynamic("helpMenu"))
+    button.updateDynamic("selector")("deleteVariable")
+    button.updateDynamic("showHelp")(BlockMorph.selectDynamic("prototype").selectDynamic("showHelp"))
+    button
   }
 
   /** Native create/delete flushes the built-in `variables` cache; also flush exercise tab names. */

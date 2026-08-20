@@ -156,6 +156,9 @@ case class SnapCodeEditor(
     impl.flushPendingProjectChanges()
     impl.pauseWorldCycles()
 
+  /** Snap editing should only exit via the explicit close control. */
+  override def dismissOnOutsideClick: Boolean = false
+
 }
 
 object SnapCodeEditor {

@@ -3,7 +3,7 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.keys.EventProp
 import it.evadid.homepage.control.model.FullInfo
-import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.HtmlWorkbookRenderer
 import org.scalajs.dom
 
@@ -26,13 +26,25 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
       .distinct
 
   private val onCloseDialog = new EventProp[dom.Event]("close")
+  private val onCancelDialog = new EventProp[dom.Event]("cancel")
+
+  private def currentAllowsOutsideDismiss: Boolean =
+    fullInfo.signals.currentDisplayInfo.now().fullscreenElement match
+      case Some(lifecycle: FullscreenLifecycle) => lifecycle.dismissOnOutsideClick
+      case _ => true
 
   private lazy val dialogElement: Element = {
     dialogTag(
       cls := "fullscreen-overlay-dialog",
       position.relative,
       onCloseDialog --> (_ => fullInfo.displayControl.closeFullscreen()),
-      laminarHelper.onClickedOutside(_ => fullInfo.displayControl.closeFullscreen()),
+      // Light-dismiss (backdrop) of <dialog> — skip for editors that opt out.
+      onCancelDialog --> { ev =>
+        if !currentAllowsOutsideDismiss then ev.preventDefault()
+      },
+      laminarHelper.onClickedOutside { _ =>
+        if currentAllowsOutsideDismiss then fullInfo.displayControl.closeFullscreen()
+      },
       onMountCallback { ctx =>
         val nativeDialog = ctx.thisNode.ref.asInstanceOf[dom.html.Dialog]
 
