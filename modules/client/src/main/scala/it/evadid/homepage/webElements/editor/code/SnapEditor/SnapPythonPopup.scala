@@ -27,7 +27,8 @@ import it.evadid.workbook.elements.interactionElements.programming.{
  * Overlay/panel chrome reuses `.sorting-error-popup` styles; only Snap-specific
  * button/code rules live in the FEATURE CSS block.
  *
- * Apply path: parse + turtle-subset check + layout reconcile → ProgrammingExerciseState.
+ * Apply path: parse + turtle-subset check → Snap XML. Apply is disabled when
+ * the current project contains blocks outside the Python-compatible allow-list.
  */
 object SnapPythonPopup {
 
@@ -42,7 +43,7 @@ object SnapPythonPopup {
 
   /**
    * Button + editable overlay chrome for `SnapCodeEditor.editorCanvas`.
-   * @param state live exercise state (program + canvas layout)
+   * @param state live exercise state (canonical Snap XML)
    * @param flushPending call before reading state so Snap XML edits are published
    * @param onStateEdited persist / sync callback used for block edits and Python apply
    */
@@ -55,15 +56,18 @@ object SnapPythonPopup {
     val textVar: Var[String] = Var("")
     val textDirty: Var[Boolean] = Var(false)
     val warningVar: Var[Option[String]] = Var(None)
+    val applyAllowed: Var[Boolean] = Var(true)
     val scriptHints: Var[List[ScriptView]] = Var(Nil)
 
     def loadFromState(): Unit =
       flushPending()
       val current = state.now()
-      textVar.set(ProgrammingExerciseState.pythonOf(current).trim)
+      val derived = SnapProgramDerivation.fromState(current)
+      textVar.set(derived.python.trim)
       scriptHints.set(scriptsOf(current))
       textDirty.set(false)
-      warningVar.set(None)
+      applyAllowed.set(derived.pythonCompatible)
+      warningVar.set(derived.applyBlockedMessage)
 
     def open(): Unit =
       loadFromState()
@@ -73,7 +77,10 @@ object SnapPythonPopup {
       showPopup.set(false)
 
     def applyPython(): Unit = {
-      SnapTurtlePythonBridge.applyPython(textVar.now(), state.now()) match
+      if !applyAllowed.now() then return
+      val current = state.now()
+      val derived = SnapProgramDerivation.fromState(current)
+      SnapTurtlePythonBridge.applyPython(textVar.now(), derived.canvasLayout) match
         case Left(message) =>
           warningVar.set(Some(message))
         case Right(next) =>
@@ -81,7 +88,9 @@ object SnapPythonPopup {
           warningVar.set(None)
           onStateEdited(next)
           scriptHints.set(scriptsOf(next))
-          textVar.set(ProgrammingExerciseState.pythonOf(next).trim)
+          val nextDerived = SnapProgramDerivation.fromState(next)
+          textVar.set(nextDerived.python.trim)
+          applyAllowed.set(nextDerived.pythonCompatible)
     }
 
     val pythonEditor: CodeMirrorEditor =
@@ -121,7 +130,7 @@ object SnapPythonPopup {
             ),
             p(
               cls := "snap-python-popup__overview-note",
-              "Only these Python calls convert to blocks. Other Python is rejected on Apply."
+              "Only these Python calls convert to blocks. Other Python is rejected on Apply. Apply is disabled when the project contains unsupported Snap blocks."
             ),
             ul(
               cls := "snap-python-popup__overview-list",
@@ -163,6 +172,7 @@ object SnapPythonPopup {
             button(
               typ := "button",
               cls := "sorting-error-popup__button",
+              disabled <-- applyAllowed.signal.map(allowed => !allowed),
               "Apply to blocks",
               onClick --> { ev =>
                 ev.stopPropagation()
@@ -193,16 +203,18 @@ object SnapPythonPopup {
     )
   }
 
-  /** Partition top-level BeProgram statements by canvas layout; used by the popup (and its tests). */
+  /** Partition top-level BeProgram statements by derived canvas layout. */
   def scriptsOf(state: ProgrammingExerciseState): List[ScriptView] = {
-    val statements = SnapTurtlePythonBridge.topLevelStatements(state.program.fullProgram)
+    val derived = SnapProgramDerivation.fromState(state)
+    val statements = SnapTurtlePythonBridge.topLevelStatements(derived.program.fullProgram)
     if statements.isEmpty then Nil
     else
       val chunks =
-        if state.canvasLayout.isEmpty || !SnapTurtlePythonBridge.layoutMatches(state.canvasLayout, statements.size) then
+        if derived.canvasLayout.isEmpty ||
+            !SnapTurtlePythonBridge.layoutMatches(derived.canvasLayout, statements.size) then
           List((156, 66, statements))
         else
-          splitByLayout(statements, state.canvasLayout.scripts)
+          splitByLayout(statements, derived.canvasLayout.scripts)
       chunks.zipWithIndex.map { case ((x, y, chunk), idx) =>
         ScriptView(idx + 1, x, y, renderStatements(chunk))
       }

@@ -14,7 +14,7 @@ import scala.util.Try
 class TurtleFileSubmissionSpec extends FunSuite {
 
   private val tinyPngDataUrl =
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO8B5hoAAAAASUVORK5CYII="
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg=="
 
   private val xmlWithPentrails =
     s"""<project name=\"test1\" app=\"TurtleStitch 2.11, http://www.turtlestitch.org\" version=\"2\">

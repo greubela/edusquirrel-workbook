@@ -4,8 +4,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turt
   TurtleStitchToBeExpressionParser,
   TurtleStitchXmlLoader
 }
-import it.evadid.vm.BeProgram
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExerciseState
+import it.evadid.workbook.elements.interactionElements.programming.SnapTurtlePythonBridge
 import munit.FunSuite
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchProgramModel.*
 
@@ -41,13 +40,13 @@ class TurtleStitchXmlLoaderSpec extends FunSuite {
     assertEquals(listInput.items.head.asInstanceOf[NestedBlock].value.asInstanceOf[PrimitiveBlock].variable, Some("test"))
 
     val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
-    val python = ProgrammingExerciseState.pythonOf(ProgrammingExerciseState(BeProgram(parsed.expression), parsed.canvasLayout))
+    val python = SnapTurtlePythonBridge.printedPython(parsed.expression)
     assert(python.contains("if test == 1:"), clue = python)
   }
 
   test("model path renders variable comparisons as infix python") {
     val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(comparisonWithVariableXml)
-    val python = ProgrammingExerciseState.pythonOf(ProgrammingExerciseState(BeProgram(parsed.expression), parsed.canvasLayout))
+    val python = SnapTurtlePythonBridge.printedPython(parsed.expression)
     assert(python.contains("if steps < 10:"), clue = python)
     assert(!python.contains("<("), clue = python)
   }

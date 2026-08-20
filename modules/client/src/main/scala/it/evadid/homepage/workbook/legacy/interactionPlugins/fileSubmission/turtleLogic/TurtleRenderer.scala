@@ -8,8 +8,9 @@ import scala.scalajs.js
 
 object TurtleRenderer {
 
-  private val TransparentPngDataUrl =
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO8B5hoAAAAASUVORK5CYII="
+  // Verified 1x1 transparent PNG (valid IDAT CRC).
+  val transparentPngDataUrl =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg=="
 
   case class Segment(x1: Double, y1: Double, x2: Double, y2: Double)
 
@@ -109,14 +110,14 @@ object TurtleRenderer {
 
   private def renderSegments(segments: List[Segment]): String = {
     val maybeDocument = scala.util.Try(dom.document).toOption
-    if (maybeDocument.isEmpty || maybeDocument.get == null) return TransparentPngDataUrl
+    if (maybeDocument.isEmpty || maybeDocument.get == null) return transparentPngDataUrl
 
     val canvas = maybeDocument.get.createElement("canvas").asInstanceOf[html.Canvas]
     canvas.width = 512
     canvas.height = 512
 
     val rawContext = canvas.getContext("2d")
-    if (rawContext == null) return TransparentPngDataUrl
+    if (rawContext == null) return transparentPngDataUrl
 
     val ctx = rawContext.asInstanceOf[dom.CanvasRenderingContext2D]
     ctx.fillStyle = "white"

@@ -1,7 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.core.datastructures.state.async.AsyncData
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchFromBeExpressionSerializer
 import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchWorkerFacade
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExerciseState
 import todomove.datastructures.web.file.FullImage
@@ -15,11 +14,6 @@ import todomove.datastructures.web.file.FullImage
  */
 object SnapTurtleStage {
 
-  def run(state: ProgrammingExerciseState): AsyncData[Nothing, FullImage] = {
-    val xml = TurtleStitchFromBeExpressionSerializer.toXml(
-      state.program.fullProgram,
-      canvasLayout = state.canvasLayout
-    )
-    TurtleStitchWorkerFacade.getExecutedStageSnapshotDataSrc(xml)
-  }
+  def run(state: ProgrammingExerciseState): AsyncData[Nothing, FullImage] =
+    TurtleStitchWorkerFacade.getExecutedStageSnapshotDataSrc(state.snapXml)
 }

@@ -29,7 +29,7 @@ object XmlFactory {
     scriptBody =
       """<block s="receiveGo"></block>
         |<block s="forward"><l>100</l></block>""".stripMargin,
-    pentrails = Some("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO8B5hoAAAAASUVORK5CYII=")
+    pentrails = Some("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg==")
   )
 
   val test2: String = project(

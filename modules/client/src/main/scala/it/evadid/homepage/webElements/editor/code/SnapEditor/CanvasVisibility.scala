@@ -2,11 +2,6 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.homepage.control.info.HomepageLoggerInfo
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.SnapCodeEditorImpl
-import it.evadid.vm.BeProgram
-import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.code.controlStructures.BeSequence
-import it.evadid.vm.code.others.BeStartProgram
-import it.evadid.vm.code.usage.BeFunctionCall
 import org.scalajs.dom.CanvasRenderingContext2D
 import org.scalajs.dom.html.Canvas
 
@@ -18,23 +13,15 @@ private[SnapEditor] object CanvasVisibility:
 
   private val EmptyCanvasColorLimit = 3
 
-  def warnIfUnexpectedlyEmpty(renderer: SnapCodeEditorImpl, program: BeProgram, canvas: Canvas): Unit =
-    if looksLikeProgramWithBlocks(program) && uniqueColorCount(canvas, EmptyCanvasColorLimit + 1) <= EmptyCanvasColorLimit then
+  def warnIfUnexpectedlyEmpty(renderer: SnapCodeEditorImpl, snapXml: String, canvas: Canvas): Unit =
+    if looksLikeProgramWithBlocks(snapXml) && uniqueColorCount(canvas, EmptyCanvasColorLimit + 1) <= EmptyCanvasColorLimit then
       HomepageLoggerInfo.singleton.uiAndDomLogger.logWarn(
-        s"${renderer.getClass.getSimpleName} rendered a BeProgram with callable blocks, " +
+        s"${renderer.getClass.getSimpleName} rendered a Snap project with blocks, " +
           s"but the resulting canvas has at most $EmptyCanvasColorLimit unique colors and appears empty."
       )
 
-  private def looksLikeProgramWithBlocks(program: BeProgram): Boolean =
-    program != BeProgram.empty && containsFunctionCall(program.fullProgram)
-
-  private def containsFunctionCall(expression: BeExpression): Boolean =
-    expression match
-      case _: BeFunctionCall => true
-      case BeStartProgram(Some(sequence)) => sequence.body.exists(containsFunctionCall)
-      case BeStartProgram(None) => false
-      case sequence: BeSequence => sequence.body.exists(containsFunctionCall)
-      case _ => false
+  private def looksLikeProgramWithBlocks(snapXml: String): Boolean =
+    snapXml.contains("<block")
 
   private def uniqueColorCount(canvas: Canvas, stopAfter: Int): Int =
     val context = canvas.getContext("2d").asInstanceOf[CanvasRenderingContext2D]

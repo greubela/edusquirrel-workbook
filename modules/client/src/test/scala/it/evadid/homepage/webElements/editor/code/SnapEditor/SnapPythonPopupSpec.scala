@@ -21,7 +21,7 @@ class SnapPythonPopupSpec extends FunSuite {
         SnapCanvasScript(200, 150, 1)
       )
     )
-    val scripts = SnapPythonPopup.scriptsOf(ProgrammingExerciseState(program, layout))
+    val scripts = SnapPythonPopup.scriptsOf(ProgrammingExerciseState.fromProgram(program, layout))
     assertEquals(scripts.size, 2)
     assertEquals(scripts(0).x, 70)
     assertEquals(scripts(1).x, 200)

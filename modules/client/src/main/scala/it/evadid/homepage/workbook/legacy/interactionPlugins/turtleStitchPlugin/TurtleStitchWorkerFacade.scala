@@ -26,7 +26,7 @@ object TurtleStitchWorkerFacade {
       val (xml, language) = in
       //calcPngDataSrcWithQueuedWorker(xml, language)(using ec)
       basicCacheLogger.logWarn("TurtleStitchWorkerFacade::programPngDataSrcStorage - still using non-parallel rendering.")
-      if (xml.strip.isEmpty || !xml.contains("TurtleStitch") || !xml.contains("scripts")) Future.successful(EMPTY_PNG_DATA_URL)
+      if (xml.strip.isEmpty || !xml.contains("scripts")) Future.successful(emptyPngDataUrl)
       else TurtleStitchEditor.withSingletonEditor(_.calcProgramSvg(xml, turtleLang(language)).toFuture)(using ec)
     }
 
@@ -63,7 +63,7 @@ object TurtleStitchWorkerFacade {
 
   private lazy val stagePngDataSrcStorage: AsyncDataCache[String, String] = new AsyncDataCache[String, String](stagePngLogger) {
     protected def executeLoading(xml: String)(ec: ExecutionContext): Future[String] = {
-      if (xml.strip.isEmpty || !xml.contains("TurtleStitch")) Future.successful(EMPTY_PNG_DATA_URL)
+      if (xml.strip.isEmpty || !xml.contains("<project")) Future.successful(emptyPngDataUrl)
       else simulateStageWithQueuedWorker(xml)(using ec)
     }
 
@@ -87,8 +87,10 @@ object TurtleStitchWorkerFacade {
       .map(png => DataSourceImage(png, "png"))
   }
 
-  private val EMPTY_PNG_DATA_URL: String =
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII="
+  // Verified 1x1 transparent PNG. Some previous variants shipped with invalid IDAT CRC,
+  // which browsers may reject with "Image corrupt or truncated.".
+  val emptyPngDataUrl: String =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg=="
 
   private var worker: TurtleStitchWorker = new TurtleStitchWorker()
   private val queueLock = new AnyRef

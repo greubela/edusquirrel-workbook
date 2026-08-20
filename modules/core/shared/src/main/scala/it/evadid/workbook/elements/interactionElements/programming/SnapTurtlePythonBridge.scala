@@ -1,18 +1,18 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
 import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
-import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.BeFunctionCall
 import it.evadid.vm.naming.NamingStyle
 
 /**
- * Turtle-subset Python ↔ ProgrammingExerciseState bridge for dual-mode Snap editing.
+ * Turtle-subset Python ↔ Snap XML bridge for dual-mode editing.
  *
  * Python uses snake_case (`goto_x_y`); Snap selectors stay camelCase (`gotoXY`).
- * Layout is preserved when total top-level statement counts still match the sidecar partitions.
+ * Successful apply writes Snap project XML. Layout is preserved when the caller
+ * supplies matching previous script partitions.
  */
 object SnapTurtlePythonBridge {
 
@@ -53,31 +53,51 @@ object SnapTurtlePythonBridge {
   /** Python / SnakeCase names accepted for seamless block roundtrips. */
   val AllowedPythonNames: Set[String] = Primitives.map(_.pythonName).toSet
 
-  /** @deprecated Use [[AllowedPythonNames]]; kept for older call sites. */
-  val AllowedCallNames: Set[String] = AllowedPythonNames
+  val AllowedSnapSelectors: Set[String] =
+    Primitives.map(_.snapSelector).toSet ++
+      SnapControlFlow.ControlSelectors ++
+      SnapControlFlow.VariableSelectors ++
+      SnapControlFlow.ConditionSelectors
 
   private val snapSelectorByPythonName: Map[String, String] =
     Primitives.map(p => p.pythonName -> p.snapSelector).toMap
 
+  private val BlockSelectorPattern = """<block\b[^>]*\bs="([^"]+)"""".r
+
   /**
-   * Parse Python, validate the turtle subset, and reconcile canvas layout.
-   * @return Right(new state) or Left(user-facing error message)
+   * Parse Python, validate the turtle subset, and write Snap XML.
+   * @param previousLayout derived script partitions from the current XML, if known
    */
   def applyPython(
       source: String,
-      previous: ProgrammingExerciseState
+      previousLayout: SnapCanvasLayout = SnapCanvasLayout.empty
   ): Either[String, ProgrammingExerciseState] =
     try
       val program = BeProgram.fromPythonString(source)
       validateSubset(program.fullProgram) match
         case Left(message) => Left(message)
         case Right(statements) =>
-          val layout = reconcileLayout(previous.canvasLayout, statements.size)
-          Right(ProgrammingExerciseState(program, layout))
+          if statements.isEmpty then Right(ProgrammingExerciseState.empty)
+          else
+            val layout = reconcileLayout(previousLayout, statements.size)
+            Right(ProgrammingExerciseState.fromProgram(program, layout))
     catch
       case e: Throwable =>
         val detail = Option(e.getMessage).filter(_.nonEmpty).getOrElse(e.getClass.getSimpleName)
         Left(s"Parse error; keeping existing blocks. ($detail)")
+
+  def printedPython(expression: BeExpression): String =
+    expression.structureInfo.toStringInLanguage(Python, English, false)
+
+  /** Snap selectors in `xml` that are outside the Python-compatible allow-list. */
+  def unsupportedSnapSelectors(xml: String): List[String] = {
+    val fromBlocks = BlockSelectorPattern.findAllMatchIn(xml).map(_.group(1)).toList
+    val customs = if xml.contains("<custom-block") then List("custom-block") else Nil
+    (fromBlocks.filterNot(AllowedSnapSelectors.contains) ++ customs).distinct
+  }
+
+  def isPythonCompatibleXml(xml: String): Boolean =
+    unsupportedSnapSelectors(xml).isEmpty
 
   /** Keep previous script partitions/positions when statement counts still match; else single script. */
   def reconcileLayout(previous: SnapCanvasLayout, statementCount: Int): SnapCanvasLayout =
@@ -93,9 +113,6 @@ object SnapTurtlePythonBridge {
   def topLevelStatements(expression: BeExpression): List[BeExpression] =
     SnapControlFlow.topLevelStatements(expression)
 
-  def topLevelCalls(expression: BeExpression): List[BeFunctionCall] =
-    topLevelStatements(expression).collect { case c: BeFunctionCall => c }
-
   /** Python / SnakeCase name used in printed code and allow-list checks. */
   def pythonName(call: BeFunctionCall): String =
     call.funcDef.functionTypeInfo.displayName
@@ -105,9 +122,6 @@ object SnapTurtlePythonBridge {
   /** Snap `<block s>` selector for this call (maps Python snake_case → Snap id). */
   def snapSelectorOf(call: BeFunctionCall): String =
     snapSelectorByPythonName.getOrElse(pythonName(call), pythonName(call))
-
-  /** @deprecated Use [[pythonName]]. */
-  def callName(call: BeFunctionCall): String = pythonName(call)
 
   /**
    * Accept only allow-listed top-level statements (comments / unsupported rejected).

@@ -24,7 +24,6 @@ enum SnapCategoryColor(val snapKey: String):
   case Sensing   extends SnapCategoryColor("sensing")
   case Operators extends SnapCategoryColor("operators")
   case Variables extends SnapCategoryColor("variables")
-  case Lists     extends SnapCategoryColor("lists")
   case Other     extends SnapCategoryColor("other")
 
 /** One named, ordered and allow-listed palette tab. An empty tab is valid.

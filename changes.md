@@ -7,91 +7,71 @@ Der Snap-Editor existierte schon: `SnapCodeEditor` mountet eine eingebettete
 TurtleStitch/Snap!-IDE in ein Canvas und kann ein `BeProgram` als Blöcke darstellen.
 Nicht vorhanden war alles darum herum:
 
-- `ProgrammingExercise.deserialize` gab `println("does not work yet!")` aus — nichts wurde
+- `ProgrammingExercise.deserialize` gab `println("does not work yet!")` aus, nichts wurde
   über einen Reload hinweg gespeichert.
-- Die Palette war eine Demo mit drei Fantasie-Tabs („One block“, „Three blocks“, „drawing“).
+- Die Palette war eine Demo mit drei Tabs („One block“, „Three blocks“, „drawing“).
 - Es gab keinen Weg von den Blöcken zu Python und zurück.
 - Das Programm ließ sich nicht ausführen.
-- `BeStartProgram.structureInfo` war `???`, das Drucken eines Programms flog also auf.
-
-Der Branch macht daraus eine benutzbare Programmier-Interaktion.
 
 ---
 
-## Die eine zentrale Designentscheidung
+## zentrale Designentscheidung
 
-**`BeProgram` bleibt Source of Truth. Snap-XML ist nur Transportformat an der Editor-Grenze.
-Canvas-Positionen liegen als Sidecar daneben. Persistiert wird Python-Text.**
+**Snap-XML ist Source of Truth für den Editorzustand. `BeProgram` und Python sind abgeleitete
+Sichten für Tests, Feedback und das Python-Overlay.**
 
 ```
-Snap-IDE (Projekt-XML)
-   │  TurtleStitchXmlParser / XmlLoader          XML → Modell
-   │  TurtleStitchToBeExpressionParser           Modell → BeExpression (+ Layout)
+Snap-IDE
+   │  getProjectXML / rawOpenProjectString
    ▼
-ProgrammingExerciseState(program: BeProgram, canvasLayout: SnapCanvasLayout)
-   │  BeExpressionToPythonString / PythonParser  AST ↔ Python-Text
+ProgrammingExerciseState(snapXml)
+   │  persist SNAP_XML_V1
    ▼
-LocalStorage / Sync   (Python-Text + Layout-Header)
+LocalStorage / Sync
    │
-   ▼
-TurtleStitchFromBeExpressionSerializer          BeExpression + Layout → XML → Snap-IDE
+   ├─ TurtleStitchWorker (Ausführung direkt mit XML)
+   └─ TurtleStitchToBeExpressionParser → BeProgram → Python / Tests / Vorschau
 ```
 
-Die naheliegende Alternative wäre gewesen, einfach das Snap-XML zu persistieren. Dagegen sprach:
-Das XML ist ein fremdes, breites Format, das wir weder validieren noch mit Tests, Feedback oder
-dem restlichen Workbook-Stack verbinden können. Alles, was der Rest des Systems über
-Programme weiß, hängt an `BeProgram`. Der Preis dieser Entscheidung ist die Übersetzungsschicht,
-die den größten Teil dieses Branches ausmacht.
+Live-Edits speichern `ide.getProjectXML()` unverändert. Damit bleiben auch Blöcke erhalten, die
+der Python-Roundtrip nicht kennt. `BeProgram` wird nur noch dort gebaut, wo das Workbook Semantik
+braucht.
 
-Zweite Entscheidung derselben Familie: **Canvas-Layout gehört nicht in den AST.** Snap speichert
-jeden Stack auf dem Canvas als eigenes `<script x y>`. Diese Information ist reine UI-Metadatik.
-Sie als Fake-Kommentare in den AST zu schreiben wäre möglich gewesen, hätte aber jedes
-AST-Konsument (Tests, Feedback, Printer) mit Snap-Wissen verschmutzt. Stattdessen: Sidecar.
+Alte Python-Payloads werden beim Laden einmalig nach XML migriert
+(`BeProgram.fromPythonString` + `SnapProjectXml`). Canvas-Positionen leben in `<script x y>`.
 
 ---
 
-## 1. Persistenz: Composite-Format
+## 1. Persistenz: versioniertes Snap-XML
 
-`ProgrammingExercise` ist jetzt `WorkbookInteractionElement[ProgrammingExerciseState]` statt
-`[BeProgram]`. Der State ist `(program, canvasLayout)`.
+`ProgrammingExercise` ist `WorkbookInteractionElement[ProgrammingExerciseState]` mit
+`snapXml: String`.
 
-Serialisiert wird ein Composite aus Layout-JSON und Python-Body:
+Serialisiert wird:
 
 ```
-SNAP_LAYOUT_V1
-[{"x":70,"y":80,"callCount":2},{"x":200,"y":150,"callCount":1}]
----
-receive_go()
-forward(100)
+SNAP_XML_V1
+<project …>…</project>
 ```
 
-**Warum so:** Payloads ohne Header bleiben reines, lesbares Python und funktionieren als
-Legacy-Format weiter. Das Layout ist optional — wer kein Layout hat, bekommt ein Skript, wie
-vorher. `callCount` partitioniert die flache Statement-Liste des `BeProgram` wieder in die
-einzelnen Snap-Skripte, inklusive loser Blöcke, die nicht am Hauptskript hängen.
-
-Der Name `callCount` ist inzwischen irreführend — das Feld zählt Top-Level-**Statements**
-(ein `doRepeat` mit fünf Calls darin ist `1`). Umbenennen würde das Persistenzformat brechen.
+Beim Lesen werden weiterhin akzeptiert: `SNAP_XML_V1`, rohes `<project>`-XML und reines Python.
+Geschrieben wird nur noch XML.
 
 ---
 
-## 2. Change-Detection über Fingerprints statt `equals`
+## 2. Wann gilt ein Programm als geändert?
 
-`BeProgram.equals` ist für getrennt gebaute ASTs unzuverlässig: Teile der AST-Datenstruktur
-halten **Funktionen als Felder** (z. B. `BeDataTypeAtomic` mit `String => ...`). Funktionswerte
-haben in Scala.js keine strukturelle Equality, zwei logisch identische Programme sind also
-ungleich.
+Der Editor schreibt in beide Richtungen: User ändert Blöcke → XML wird persistiert → der State
+aktualisiert sich. Ohne Vergleich würde derselbe State den Editor sofort wieder neu laden
+(Edit → speichern → Reload → Edit-Event).
 
-Deshalb vergleicht der ganze Branch über `ProgrammingExerciseState.fingerprint` =
-Python-Body + Layout-JSON. Genutzt an zwei Stellen:
+Deshalb gelten zwei Zustände als gleich, wenn ihr XML-String gleich ist
+(`ProgrammingExerciseState.fingerprint`). Eigene Speichervorgänge werden so nicht als fremde
+Updates behandelt. Ein Restore aus Sync/LocalStorage hat einen anderen String und wird geladen.
 
-- `HtmlProgrammingExerciseRenderer` — nur bei geändertem Fingerprint in die `Var` schreiben bzw.
-  persistieren.
-- `SnapCodeEditor` — unterscheiden, ob ein `Var`-Update ein Echo der eigenen Snap-Edits ist oder
-  eine echte externe Änderung (Sync-Restore).
-
-Ohne diese Unterscheidung entsteht entweder eine Reload-Schleife (Snap-Edit → State → Observer →
-Snap neu laden → Edit-Event → …) oder verworfene Schreibvorgänge.
+Das XML wird dafür nicht über den AST umgeschrieben und neu serialisiert, sonst gingen unbekannte
+Blöcke verloren (die aber eigentlich aktuell gar nicht auftreten können sollten). 
+Snap darf das XML beim ersten Öffnen umsortieren; gespeichert wird danach das von Snap gelieferte XML.
 
 ---
 
@@ -99,13 +79,17 @@ Snap neu laden → Edit-Event → …) oder verworfene Schreibvorgänge.
 
 ### 3.1 XML-Parsing: string-first
 
-`TurtleStitchXmlParser` nimmt bei typischen Blockprojekten **zuerst den String-Parser**, nicht den
-DOM-Walk. Grund: live aus der IDE geholtes `getProjectXML` bringt den DOM-Pfad in dieser Runtime
-regelmäßig zum Absturz. DOM bleibt Fallback, und `TurtleStitchXmlLoader` versucht es zusätzlich
-noch einmal mit erzwungenem String-Pfad, wenn das Ergebnis leer ist, das XML aber `<block`
-enthält.
+Für die Python- und AST-Ansicht muss das Snap-XML gelesen werden. Dafür existieren ein DOM-basierter und ein direkter textbasierter Parser. Da der DOM-Pfad bei XML aus der laufenden Snap-IDE teilweise abstürzt oder keine Blöcke findet, wird für Blockprojekte bevorzugt der textbasierte Parser verwendet. Die Persistenz ist davon nicht betroffen, gespeichert wird das ursprüngliche XML.
 
-Das ist unschön, aber der String-Parser ist inzwischen der verlässlichere Pfad.
+Der String-Parser ist inzwischen der verlässlichere Pfad, auch wenn das vielleicht unschön ist(?)
+
+Beide Parser-Pfade liegen in:
+
+`modules/client/src/main/scala/it/evadid/homepage/workbook/legacy/interactionPlugins/fileSubmission/turtleStitch/TurtleStitchXmlParser.scala`
+
+Die Auswahl und der erneute String-Parser-Versuch passieren in:
+
+`modules/client/src/main/scala/it/evadid/homepage/workbook/legacy/interactionPlugins/fileSubmission/turtleStitch/TurtleStitchXmlLoader.scala`
 
 ### 3.2 Was übersetzt wird
 
@@ -123,36 +107,19 @@ Snap-Grenze und wird beim Zurückschreiben wieder eingekürzt, damit `while not 
 landet und nicht als `doUntil not not X`. Analog erkennt der Serializer das Muster `x = x + n`
 und macht daraus wieder einen `doChangeVar`-Block statt eines `doSetVar` mit Additions-Reporter.
 
-### 3.3 `SnapControlFlow` als geteilte Mitte
+### 3.3 `SnapControlFlow`
 
-Parser, Serializer und die Python-Bridge brauchen **dieselbe** Antwort auf „welche Konstrukte sind
-erlaubt und wie sehen sie im AST aus“. Vorher lag das verstreut. Jetzt liegt es in
-`SnapControlFlow` (Core, shared): Selector-Mengen, Operator-Mapping in beide Richtungen,
-rekursive Validierung, `invertCondition`, `changeVarAmount` — und der `VariableInterner`.
-
-Der Interner ist nicht optional: Ohne ihn erzeugen `doSetVar x` und ein späterer Lesezugriff auf
-`x` zwei verschiedene `BeDefineVariable`-Instanzen, und der Serializer verliert die Verbindung.
-Er nutzt bewusst `BeEntityName.fromLiteral` statt `fromCodeString`, weil letzteres Namen
-normalisiert und Snap den umbenannten Namen beim Zurückladen nicht wiedererkennt.
-
-**Wenn du nur eine Datei aus diesem Layer lesen willst, dann diese.**
+`SnapControlFlow` bündelt die gemeinsamen Übersetzungs- und Validierungsregeln für Kontrollstrukturen, Variablen und Operatoren. So verwenden XML-Parser und Python-Bridge dieselben Regeln. `SnapProjectXml` erzeugt nur bei der Migration alter Python-Programme und beim Anwenden von Python neues Snap-XML. Änderungen im Blockeditor speichern dagegen direkt das von Snap erzeugte XML.
 
 ---
 
-## 4. Python als zweite Sicht auf dasselbe Programm
+## 4. Python als abgeleitete Ansicht
 
-Im Fullscreen gibt es ein Overlay mit editierbarem Python. „Apply to blocks“ parst den Text und
-schreibt über denselben `onStateEdited`-Pfad zurück wie die Blöcke selbst. Damit sind Blöcke und
-Python zwei gleichberechtigte Sichten auf ein `BeProgram`, nicht Quelle und generierte Ausgabe.
-
-`SnapTurtlePythonBridge` ist der Eingang dieses Pfades: Python-Text → `BeProgram` → Validierung
-gegen das Subset → State. Wird etwas Nicht-Unterstütztes gefunden, gibt es eine Meldung und die
-Blöcke bleiben unverändert stehen — kein teilweiser Apply.
-
-Damit dieser Roundtrip überhaupt möglich ist, mussten Printer und Parser der VM angepasst werden
-(siehe Abschnitt 7): Operatoren infix drucken, `for _ in range(n)` statt `for _ in repeat(n)`,
-und der `EvaParsingHint`-Kommentar entfällt in Python, weil die Bridge Kommentare ablehnt und
-gedrucktes Repeat-Python sich sonst nicht selbst wieder anwenden ließe.
+Im Fullscreen gibt es ein Overlay mit editierbarem Python. Laden geht XML → AST → Printer
+(`SnapProgramDerivation`). „Apply to blocks“ parst den Text, prüft das Subset und schreibt neues
+Snap-XML. Enthält das aktuelle XML nicht übersetzbare Blöcke, zeigt das Overlay den ableitbaren
+Stand mit Warnung und **deaktiviert Apply**, damit kein vollständiges Snap-Projekt durch ein
+verlustbehaftetes Subset ersetzt wird.
 
 ---
 
@@ -174,12 +141,10 @@ Ausgewählt wird das **pro Übung**, über ein Core-Enum `ProgrammingEditorPalet
 (`Default` | `PythonCompatibleSnap`) an `ProgrammingExercise`. Der Renderer übersetzt es in eine
 `SnapCodeEditorConfig`.
 
-**Warum als Enum im Core und nicht als Config im Client:** Welche Blöcke eine Aufgabe anbietet, ist
-eine didaktische Eigenschaft der Aufgabe und gehört ins Workbook-Modell. Die konkrete
-Snap-Konfiguration bleibt Client-Detail.
+Warum die Zweiteilung? 
 
-Die Zweiteilung ist ehrlich gemeint: Die native Palette bietet mehr Blöcke, aber nur das Subset aus
-Abschnitt 3.2 überlebt den Python-Roundtrip. Aufgaben, bei denen der Roundtrip zählt, nehmen die
+Die native Palette bietet mehr Blöcke, aber nur das Subset aus
+Abschnitt 3.2 überlebt den Python-Roundtrip (aktuell). Aufgaben, bei denen der Roundtrip genutzt werden soll, nehmen die
 eingeschränkte Palette.
 
 ---
@@ -198,23 +163,20 @@ deshalb vier explizit getrennte Operationen:
 | `flushPendingProjectChanges` | Ausstehende Edits sofort publizieren (vor Ausführen, vor Unmount) |
 
 Dazu: Die Observer hängen an `state.signal.changes`, nicht am Initialwert, weil beim Mount ohnehin
-schon geladen wird. Der Editor wird zwischen Fullscreen-Öffnungen **behalten** statt neu gebaut
-(nur die Morphic-Cycles pausieren), weil ein Neuaufbau der Snap-Welt teuer ist und Zustand verliert.
+schon geladen wird. Der Editor wird zwischen Fullscreen-Öffnungen behalten statt neu gebaut
+(nur die Morphic-Cycles pausieren).
 
 ---
 
 ## 7. Eingriffe außerhalb des Snap-Editors
 
 Das ist der Teil, der bei einem Merge nach `main` Aufmerksamkeit braucht, weil er geteilten Code
-betrifft:
+betrifft (mergen habe ich schon zu einem Großteil gemacht, aber trotzdem relevant):
 
 | Ort | Änderung | Warum |
 |-----|----------|-------|
 | `BeStartProgram` | `structureInfo` war `???`, ist jetzt implementiert (`withReplacedChildren`, `toJavaStyleLines`, `getChildrenAndExtension`) | Ohne das lässt sich ein Programm gar nicht drucken |
-| `BeExpressionToPythonString` | Operator-Calls werden **infix** gedruckt (`a < b` statt `<(a, b)`); `for _ in repeat(n)` → `for _ in range(n)` | Vorher war die Ausgabe kein gültiges Python |
-| `GenericJavaLikeStringPrinter` | Neuer Hook `repetitionParsingHint`, Default unverändert, Python überschreibt auf leer | Python braucht den `EvaParsingHint`-Kommentar nicht mehr; Java & Co. bleiben gleich |
-| `PythonParser` / `PythonStatementParser` | Neue Regel `for _ in range(n):` → `BeRepeatNr` | Ersatz für den entfallenen Parsing-Hint |
-| `DisplayControl.setFullscreen` | State-Update jetzt **vor** dem Lifecycle-Callback | Ein behaltener Editor muss den Dialog ausmessen können, den es sonst noch nicht gibt |
+| `BeExpressionToPythonString` | Operator-Calls werden anders gedruckt (`a < b` statt `<(a, b)`); `for _ in repeat(n)` → `for _ in range(n)` | Vorher war die Ausgabe kein gültiges Python (zumindest nach meinem Wissen) |
 | `TurtleStitchWorkerFacade` | Auskommentierter Worker-Code reaktiviert, plus `getExecutedStageSnapshotDataSrc` über `simulateGreenFlag` | Für die Ausführung (Abschnitt 8) |
 | `turtlestitchsrc/gui.js` | Patch in `IDE_Morph.prototype.createCategories` | TurtleStitch hat mehr als Snaps acht Standardkategorien; `noDefaultCat` versteckte nur `children[0..7]`, der Rest blieb sichtbar und die Höhenformel schnitt eigene Tabs ab |
 
@@ -222,7 +184,7 @@ Der `gui.js`-Patch ist eine Änderung an vendored Fremdcode und muss bei einem T
 neu angewendet werden.
 
 Dazu kommen neue Language-Map-Keys (`openEditor`, `canvas`, `runProgram`, `turtleOutput`,
-`staticPreviewProgram`) in allen Sprachen.
+`staticPreviewProgram`) in allen Sprachen, auch wenn die Blöcke bisher nur auf Englisch sind.
 
 ---
 
@@ -230,23 +192,21 @@ Dazu kommen neue Language-Map-Keys (`openEditor`, `canvas`, `runProgram`, `turtl
 
 | Pfad | Mechanismus | Zweck |
 |------|-------------|-------|
-| Run-Card im Workbook | `TurtleStitchWorker.simulateGreenFlag` im Worker → ein PNG | Endergebnis, ohne die IDE zu brauchen |
+| Run-Card im Workbook | gespeichertes `snapXml` → `TurtleStitchWorker.simulateGreenFlag` | Endergebnis, ohne die IDE zu brauchen |
 | Execute im Fullscreen | Live-IDE `runScripts` + Frame-Mirror der Stage | Scratch-artige Animation beim Nachvollziehen |
 
 Getrennt, weil die Karte auch ohne geöffneten Editor funktionieren muss (der Worker kennt nur XML),
-die Animation aber zwingend die lebende IDE braucht.
+die Animation aber zwingend die IDE braucht.
 
 ---
 
-## 9. Bewusste Grenzen und offene Punkte
+## 9. Einschränkungen / offene Punkte
 
-- **Nur ein Subset ist roundtrip-fähig.** Kommentare, Snap-`elseif`-Ketten, Arithmetik außerhalb
-  `x = x + n`, negative oder nicht-ganzzahlige Repeat-Zähler und alle übrigen nativen Snap-Blöcke
-  werden beim Python-Apply abgelehnt.
-- **Nur globale Variablen.** Sprite-lokale Variablen und Listen laufen nicht durch.
-- **Lose Blöcke** — offene Designfrage. Sie werden über `SnapCanvasLayout` positionsgetreu
-  gespeichert, sind im `BeProgram` aber nicht vom vorhergehenden Skript trennbar. Alternativen:
-  beim Speichern verwerfen, oder das Layout um echte Skriptgrenzen erweitern.
-- **`callCount` heißt falsch** (siehe Abschnitt 1) und bleibt vorerst so, weil der Name im
-  persistierten JSON steht.
-- **String-first XML-Parsing** ist ein Workaround für DOM-Abstürze, keine saubere Lösung.
+- **Nur ein Subset ist Python-roundtrip-fähig.** Kommentare, Snap-`elseif`-Ketten, Arithmetik
+  außerhalb `x = x + n` und alle übrigen nativen Snap-Blöcke bleiben im XML erhalten, blockieren
+  aber Python-Apply.
+- **Nur globale Variablen** laufen durch die Python-Ableitung. Sprite-lokale Variablen und Listen
+  bleiben im XML, nicht im AST, es gibt ja auch gar keine Auswahl zwischen Sprites -> vielleicht nur globale Variablen anbieten?
+- **Lose Blöcke** sind im XML echte `<script>`-Stacks und überleben Speichern/Reload. Im
+  abgeleiteten `BeProgram` sind sie weiterhin eine flache Statement-Liste, 
+  TODO: am Besten den Nutzer beim Schließen darauf hinweisen und dann lose Blöcke beim Schließen entfernen oder andere Lösung finden

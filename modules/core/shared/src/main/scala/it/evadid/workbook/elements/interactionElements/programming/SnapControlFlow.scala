@@ -20,6 +20,18 @@ object SnapControlFlow {
 
   val VariableSelectors: Set[String] = Set("doSetVar", "doChangeVar", "reportGetVar")
 
+  val ConditionSelectors: Set[String] = Set(
+    "reportTrue",
+    "reportFalse",
+    "reportBoolean",
+    "reportNot",
+    "reportVariadicLessThan",
+    "reportVariadicGreaterThan",
+    "reportVariadicEquals",
+    "reportVariadicAnd",
+    "reportVariadicOr"
+  )
+
   final class VariableInterner {
     private val byName = scala.collection.mutable.LinkedHashMap.empty[String, BeDefineVariable]
 
@@ -138,7 +150,7 @@ object SnapControlFlow {
         operatorCall("not", List(other))
 
   def isSnapConditionReporter(selector: String): Boolean =
-    SnapReporterToOperator.contains(selector)
+    ConditionSelectors.contains(selector)
 
   def conditionFromSnapReporter(call: BeFunctionCall): BeExpression = {
     val selector = functionSelector(call)
@@ -240,10 +252,6 @@ object SnapControlFlow {
     walk(expression)
     names.toList.filter(_.nonEmpty)
   }
-
-  def isOpaqueSnapReporter(call: BeFunctionCall): Boolean =
-    val selector = functionSelector(call)
-    selector.startsWith("report") && !SnapReporterToOperator.contains(selector)
 
   def functionSelector(call: BeFunctionCall): String =
     call.funcDef.functionTypeInfo.displayName.getNameIn(English, NamingStyle.CamelCase)

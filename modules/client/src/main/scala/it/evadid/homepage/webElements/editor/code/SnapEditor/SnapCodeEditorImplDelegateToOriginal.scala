@@ -2,7 +2,6 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import com.raquo.airstream.ownership.Owner
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.SnapCodeEditorImpl
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchFromBeExpressionSerializer
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExerciseState
 import org.scalajs.dom
 import org.scalajs.dom.CanvasRenderingContext2D
@@ -27,8 +26,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   private var cyclesRunning = false
   private var projectXmlChangedCallback: String => Unit = _ => ()
   private var lastProjectXml: Option[String] = None
-  /** Last state→XML string applied via load/create (for no-op detection). */
-  private var lastLoadedFromBeProgramXml: Option[String] = None
+  /** Last canonical XML loaded into the IDE (for no-op detection). */
+  private var lastLoadedXml: Option[String] = None
   private var lastProjectXmlCheckAt = 0.0
   private var originalBlockTemplates: Option[js.Any] = None
   private var installedCustomCategoryNames: List[String] = Nil
@@ -90,8 +89,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     initializeProjectChangeTracking(ide)
     // Align with Snap's normalized XML so external program restores do not
     // immediately rawOpenProjectString again and wipe exercise libraries.
-    val seededXml = toSnapXml(initState)
-    lastLoadedFromBeProgramXml = Some(seededXml)
+    val seededXml = canonicalXml(initState)
+    lastLoadedXml = Some(seededXml)
     lastProjectXml = Some(ide.getProjectXML())
 
     editorWorld = Some(world)
@@ -100,7 +99,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     startWorldCycles()
     // Dialog layout may settle one frame after mount; refit once parent has real size.
     scheduleFitAfterLayout()
-    CanvasVisibility.warnIfUnexpectedlyEmpty(this, initState.program, canvas)
+    CanvasVisibility.warnIfUnexpectedlyEmpty(this, initState.snapXml, canvas)
 
   override def renderPreviewInto(state: ProgrammingExerciseState, canvas: Canvas, config: SnapCodeEditorConfig): Unit =
     // Preview creates a temporary WorldMorph that resets Morphic's shared
@@ -132,7 +131,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     canvas.style.width = s"${canvas.width}px"
     canvas.style.height = s"${canvas.height}px"
     canvas.getContext("2d").asInstanceOf[CanvasRenderingContext2D].drawImage(scriptsImage, 0, 0)
-    CanvasVisibility.warnIfUnexpectedlyEmpty(this, state.program, canvas)
+    CanvasVisibility.warnIfUnexpectedlyEmpty(this, state.snapXml, canvas)
 
     ide.destroy()
     world.destroy()
@@ -145,19 +144,19 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     applyProgramToEditor(state, force = true)
 
   private def applyProgramToEditor(state: ProgrammingExerciseState, force: Boolean): Unit =
-    val xml = toSnapXml(state)
+    val xml = canonicalXml(state)
     editor match
       case Some(ide) =>
-        // Skip only non-forced sync echoes of the same state→XML.
+        // Skip only non-forced sync echoes of the same stored XML.
         // Force on fullscreen open: acknowledge does not rawOpen, so a skip
         // would leave Snap on the previous rawOpen'd project.
-        if !force && lastLoadedFromBeProgramXml.contains(xml) then
+        if !force && lastLoadedXml.contains(xml) then
           return
         // Never rawOpen over an active text cursor — that destroys the slot mid-edit.
         if !force && isTextEditing then
           return
         ide.rawOpenProjectString(xml)
-        lastLoadedFromBeProgramXml = Some(xml)
+        lastLoadedXml = Some(xml)
         lastProjectXml = Some(ide.getProjectXML())
         lastProjectXmlCheckAt = dom.window.performance.now()
         reinstallConfiguredLibraries(ide)
@@ -171,14 +170,14 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       case None => ()
 
   override def acknowledgeProgramFromEditor(state: ProgrammingExerciseState): Unit =
-    lastLoadedFromBeProgramXml = Some(toSnapXml(state))
+    lastLoadedXml = Some(canonicalXml(state))
 
   override def flushPendingProjectChanges(): Unit =
     // Force: flush on close / popup must capture in-progress slot text.
     editor.foreach(checkWhetherProgramXmlChanged(_, allowDuringEdit = true))
 
-  private def toSnapXml(state: ProgrammingExerciseState): String =
-    TurtleStitchFromBeExpressionSerializer.toXml(state.program.fullProgram, canvasLayout = state.canvasLayout)
+  private def canonicalXml(state: ProgrammingExerciseState): String =
+    state.snapXml
 
   private def reinstallConfiguredLibraries(ide: IDEMorph): Unit =
     mountedConfig.filter(_.libraryTabs.nonEmpty).foreach { config =>
@@ -203,7 +202,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       eduLibraryTabs = config.libraryTabs.map(_.name).toJSArray
     ))
     ide.openIn(world)
-    ide.rawOpenProjectString(toSnapXml(state))
+    ide.rawOpenProjectString(canonicalXml(state))
     ide
 
   private def createPreviewEditor(world: WorldMorph, state: ProgrammingExerciseState): IDEMorph =
@@ -214,7 +213,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       preserveTitle = true
     ))
     ide.openIn(world)
-    ide.rawOpenProjectString(toSnapXml(state))
+    ide.rawOpenProjectString(canonicalXml(state))
     ide
 
   /** Replace this editor instance's primitive provider, rather than mutating
@@ -592,15 +591,21 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     frameHandle = 0
 
   override def runGreenFlagOnStage(mirrorTarget: Canvas): Unit =
+    // Execute can be pressed after reopen/unmount cycles; ensure Morphic is ticking.
+    startWorldCycles()
     editor match
       case None => ()
       case Some(ide) =>
         stopGreenFlagOnStage()
         val stage = ide.stage
         if stage == null then return
-        // Scratch-paced yields (not turbo / fast-track).
-        stage.isFastTracked = false
-        enableGreenFlagStepping()
+        // Scratch-paced yields (not turbo / fast-track). Guard runtime-dependent
+        // Process globals so a missing symbol cannot abort Execute silently.
+        try
+          stage.isFastTracked = false
+          enableGreenFlagStepping()
+        catch
+          case _: Throwable => ()
         try ide.stopAllScripts()
         catch case _: Throwable => ()
         try stage.clearPenTrails()
@@ -664,7 +669,9 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       val ctx = target.getContext("2d").asInstanceOf[CanvasRenderingContext2D]
       ctx.clearRect(0, 0, target.width.toDouble, target.height.toDouble)
       ctx.drawImage(src, 0, 0)
-    catch case _: Throwable => ()
+    catch
+      case error: Throwable =>
+        println(s"Snap Execute stage mirror failed: ${Option(error.getMessage).getOrElse(error.getClass.getSimpleName)}")
 
   override def setOnProjectXmlChangedListener(callback: String => Unit): Unit =
     projectXmlChangedCallback = callback
@@ -719,7 +726,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     mountedCanvas = None
     mountedConfig = None
     lastProjectXml = None
-    lastLoadedFromBeProgramXml = None
+    lastLoadedXml = None
     lastProjectXmlCheckAt = 0.0
     originalBlockTemplates = None
 

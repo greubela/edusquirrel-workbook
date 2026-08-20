@@ -6,8 +6,6 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.SnapCodeEditorImpl
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchToBeExpressionParser
-import it.evadid.vm.BeProgram
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExerciseState
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
@@ -39,11 +37,9 @@ case class SnapCodeEditor(
     }(using owner)
 
   private def publishProgramFromSnapXml(xml: String): Unit =
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
-    val next = ProgrammingExerciseState(BeProgram(parsed.expression), parsed.canvasLayout)
+    val next = ProgrammingExerciseState(xml)
     val nextFingerprint = stateFingerprint(next)
     val currentFingerprint = stateFingerprint(state.now())
-    if !TurtleStitchToBeExpressionParser.hasSupportedStatements(next.program.fullProgram) then return
     if nextFingerprint == currentFingerprint then
       impl.acknowledgeProgramFromEditor(next)
       return

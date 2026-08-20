@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.state.ExecutionMethod
 import it.evadid.core.datastructures.state.async.AsyncData
 import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, VmToSvg}
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
-import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditor, SnapCodeEditorConfig, SnapTurtleStage}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditor, SnapCodeEditorConfig, SnapProgramDerivation, SnapTurtleStage}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.util.logging.Logger
@@ -19,7 +19,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
 
   override protected def createRendering(workbookElement: ProgrammingExercise): AtomarLineRendering = {
     val interaction = workbookElement.interactionVariable
-    // Fingerprint-based binding: BeProgram.equals is unreliable (function-typed AST fields).
+    // Fingerprint-based binding on canonical Snap XML.
     val boundVar: Var[ProgrammingExerciseState] = Var(interaction.currentValue)
     var lastFingerprint: String = ProgrammingExerciseState.fingerprint(interaction.currentValue)
 
@@ -63,7 +63,10 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       LanguageMapContentId("basic/staticPreviewProgram"),
       SvgLaminarRenderer.render(
         shapeLogger,
-        VmToSvg.renderBeExpression(shapeLogger, boundVar.now().program.fullProgram)
+        VmToSvg.renderBeExpression(
+          shapeLogger,
+          SnapProgramDerivation.fromState(boundVar.now()).program.fullProgram
+        )
       )
     )
 

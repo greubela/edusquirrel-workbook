@@ -68,9 +68,6 @@ object TurtleStitchToBeExpressionParser {
       if hasSupportedStatements(recovered.expression) then recovered else primary
   }
 
-  def hasCallableBlocks(expression: BeExpression): Boolean =
-    hasSupportedStatements(expression)
-
   def hasSupportedStatements(expression: BeExpression): Boolean =
     SnapTurtlePythonBridge.hasSupportedStatements(expression)
 

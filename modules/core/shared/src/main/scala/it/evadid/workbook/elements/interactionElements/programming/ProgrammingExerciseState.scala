@@ -1,28 +1,29 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
-import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
 import it.evadid.vm.BeProgram
 
 /**
- * Interaction state for ProgrammingExercise: program semantics + Snap canvas layout.
- * Layout is a sidecar so BeProgram stays a pure AST (no comment markers).
+ * Interaction state for ProgrammingExercise.
+ *
+ * Canonical field is Snap project XML. BeProgram, Python, and canvas layout are
+ * derived views produced at consumer boundaries.
  */
-final case class ProgrammingExerciseState(
-    program: BeProgram,
-    canvasLayout: SnapCanvasLayout = SnapCanvasLayout.empty
-)
+final case class ProgrammingExerciseState(snapXml: String)
 
 object ProgrammingExerciseState {
-  def fromProgram(program: BeProgram): ProgrammingExerciseState =
-    ProgrammingExerciseState(program, SnapCanvasLayout.empty)
+  def fromProgram(
+      program: BeProgram,
+      canvasLayout: SnapCanvasLayout = SnapCanvasLayout.empty
+  ): ProgrammingExerciseState =
+    ProgrammingExerciseState(SnapProjectXml.toXml(program.fullProgram, canvasLayout = canvasLayout))
 
   def mini: ProgrammingExerciseState =
-    fromProgram(BeProgram.miniProgram())
+    ProgrammingExerciseState(SnapProjectXml.mini)
 
-  def pythonOf(state: ProgrammingExerciseState): String =
-    state.program.fullProgram.structureInfo.toStringInLanguage(Python, English, false)
+  def empty: ProgrammingExerciseState =
+    ProgrammingExerciseState(SnapProjectXml.empty)
 
-  /** Stable fingerprint including layout (positions / script splits). */
+  /** Exact stored XML; Snap may normalize attribute order after the first open. */
   def fingerprint(state: ProgrammingExerciseState): String =
-    s"${pythonOf(state)}\n${state.canvasLayout.fingerprint}"
+    state.snapXml
 }

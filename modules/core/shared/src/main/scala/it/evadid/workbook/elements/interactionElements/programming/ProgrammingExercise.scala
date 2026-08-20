@@ -1,6 +1,5 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
-import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
 import it.evadid.core.util.io.Serializer
 import it.evadid.vm.BeProgram
 import it.evadid.vm.test.BeTestSuite
@@ -23,44 +22,37 @@ case class ProgrammingExercise(
 
 object ProgrammingExercise {
 
-  private val LayoutHeader = "SNAP_LAYOUT_V1"
-  private val Separator = "---"
+  val XmlHeader = "SNAP_XML_V1"
 
-  /** Composite persist format: layout JSON + Python body. Legacy = pure Python. */
+  /** Canonical persist format: versioned Snap project XML. Legacy Python migrates on read. */
   object StateSerializer extends Serializer[ProgrammingExerciseState] {
-    override def serialize(obj: ProgrammingExerciseState): String = {
-      val python = obj.program.fullProgram.structureInfo.toStringInLanguage(Python, English, false)
-      if obj.canvasLayout.isEmpty then python
-      else s"$LayoutHeader\n${obj.canvasLayout.toJson}\n$Separator\n$python"
-    }
+    override def serialize(obj: ProgrammingExerciseState): String =
+      s"$XmlHeader\n${obj.snapXml}"
 
     override def deserialize(str: String): ProgrammingExerciseState = {
       if Option(str).forall(_.trim.isEmpty) then ProgrammingExerciseState.mini
-      else parseComposite(str).getOrElse(ProgrammingExerciseState.mini)
+      else parseStored(str).getOrElse(ProgrammingExerciseState.mini)
     }
 
-    private def parseComposite(str: String): Option[ProgrammingExerciseState] = {
+    private def parseStored(str: String): Option[ProgrammingExerciseState] = {
       val trimmed = str.trim
-      if trimmed.startsWith(LayoutHeader) then
-        val rest = trimmed.drop(LayoutHeader.length).stripLeading
-        val sepIdx = rest.indexOf(s"\n$Separator\n")
-        if sepIdx < 0 then None
-        else
-          val layoutJson = rest.substring(0, sepIdx).trim
-          val python = rest.substring(sepIdx + Separator.length + 2).stripLeading
-          Some(
-            ProgrammingExerciseState(
-              program = Try(BeProgram.fromPythonString(python)).getOrElse(BeProgram.miniProgram()),
-              canvasLayout = SnapCanvasLayout.fromJson(layoutJson)
-            )
-          )
+      if trimmed.startsWith(XmlHeader) then
+        val xml = trimmed.drop(XmlHeader.length).stripLeading
+        if xml.isEmpty then Some(ProgrammingExerciseState.mini)
+        else Some(ProgrammingExerciseState(xml))
+      else if looksLikeProjectXml(trimmed) then
+        Some(ProgrammingExerciseState(trimmed))
       else
-        Some(
-          ProgrammingExerciseState(
-            program = Try(BeProgram.fromPythonString(trimmed)).getOrElse(BeProgram.miniProgram()),
-            canvasLayout = SnapCanvasLayout.empty
-          )
-        )
+        Some(migratePython(trimmed))
     }
+
+    private def migratePython(python: String): ProgrammingExerciseState = {
+      val program = Try(BeProgram.fromPythonString(python)).getOrElse(BeProgram.miniProgram())
+      ProgrammingExerciseState.fromProgram(program)
+    }
+
+    private def looksLikeProjectXml(trimmed: String): Boolean =
+      trimmed.startsWith("<") &&
+        (trimmed.contains("<project") || trimmed.startsWith("<?xml"))
   }
 }
