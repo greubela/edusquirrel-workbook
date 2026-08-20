@@ -99,6 +99,7 @@ class StageMorph() extends Morph:
   var threads: ThreadManager = js.native
   var isFastTracked: Boolean = js.native
   def clearPenTrails(): Unit = js.native
+  def penTrails(): dom.HTMLCanvasElement = js.native
 
 @js.native
 @JSGlobal("IDE_Morph")

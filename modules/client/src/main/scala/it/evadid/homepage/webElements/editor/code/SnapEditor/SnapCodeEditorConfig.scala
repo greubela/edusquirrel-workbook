@@ -168,9 +168,43 @@ object SnapCodeEditorConfig:
     libraryTabs = PythonCompatibleSnapCategories
   )
 
+  /** Selectors for the beginner turtle circle exercise (subset of Python-compatible). */
+  private val BeginnerTurtleSelectors: Set[String] = Set(
+    "receiveGo",
+    "doRepeat",
+    "forward",
+    "turn",
+    "gotoXY",
+    "setHeading",
+    "clear",
+    "up",
+    "down"
+  )
+
+  /** Motion / Pen / Control tabs filtered to the beginner turtle allow-list. */
+  val BeginnerTurtleCategories: List[LibraryTab] =
+    PythonCompatibleSnapCategories
+      .map(tab =>
+        tab.copy(
+          selectableElements = tab.selectableElements.filter(b => BeginnerTurtleSelectors.contains(b.id)),
+          includeVariableControls = false
+        )
+      )
+      .filter(_.selectableElements.nonEmpty)
+
+  /** Editor config for beginner turtle exercises (circle, etc.). */
+  val BeginnerTurtleTesting: SnapCodeEditorConfig = SnapCodeEditorConfig(
+    parts = Testing.parts,
+    libraryTabs = BeginnerTurtleCategories
+  )
+
   /** All Snap selectors exposed by [[PythonCompatibleSnapCategories]]. */
   def pythonCompatibleBlockSelectors: Set[String] =
     PythonCompatibleSnapCategories.flatMap(_.selectableElements.map(_.id)).toSet
+
+  /** All Snap selectors exposed by [[BeginnerTurtleCategories]]. */
+  def beginnerTurtleBlockSelectors: Set[String] =
+    BeginnerTurtleCategories.flatMap(_.selectableElements.map(_.id)).toSet
 
   private def block(id: String, snapDescriptionLine: String = ""): LibraryBlock =
     LibraryBlock(id, snapDescriptionLine, BeExpression.pass)

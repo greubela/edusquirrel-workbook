@@ -36,8 +36,13 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   private val FitDebounceMs = 32.0
   /** Extra mirror frames after processes go idle so pen trails settle. */
   private val StageMirrorIdleSettleFrames = 8
-  /** Visible-step delay while mirroring green-flag (Snap Process.flashTime seconds). */
-  private val GreenFlagStepSeconds = 0.05
+  /** Mirror at most this often; fullImage() is too expensive for every rAF. */
+  private val StageMirrorMinIntervalMs = 33.0
+  /** Default visible-step delay between blocks (ms). */
+  private val DefaultGreenFlagStepMs = 20.0
+  /** Current pause between blocks during Execute (ms, >= 0). */
+  private var greenFlagStepMs: Double = DefaultGreenFlagStepMs
+  private var lastStageMirrorAt = 0.0
   private var savedFlashTime: Option[Double] = None
   private var savedSingleStepping: Option[Boolean] = None
 
@@ -599,8 +604,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
         stopGreenFlagOnStage()
         val stage = ide.stage
         if stage == null then return
-        // Scratch-paced yields (not turbo / fast-track). Guard runtime-dependent
-        // Process globals so a missing symbol cannot abort Execute silently.
+        // Scratch-paced yields (not turbo). Pause per block from greenFlagStepMs.
         try
           stage.isFastTracked = false
           enableGreenFlagStepping()
@@ -616,19 +620,20 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
             restoreGreenFlagStepping()
             return
         stageMirrorIdleFrames = 0
-        mirrorStageTo(stage, mirrorTarget)
-        def tick(_ts: Double): Unit =
-          mirrorStageTo(stage, mirrorTarget)
+        lastStageMirrorAt = 0.0
+        mirrorStageTo(stage, mirrorTarget, force = true)
+        def tick(ts: Double): Unit =
+          mirrorStageTo(stage, mirrorTarget, force = false, nowMs = ts)
           val running =
             try stage.threads.processes.length > 0
             catch case _: Throwable => false
           if running then stageMirrorIdleFrames = 0
           else stageMirrorIdleFrames += 1
           if stageMirrorIdleFrames < StageMirrorIdleSettleFrames then
-            stageMirrorRafHandle = dom.window.requestAnimationFrame(ts => tick(ts))
+            stageMirrorRafHandle = dom.window.requestAnimationFrame(t => tick(t))
           else
             stageMirrorRafHandle = 0
-            mirrorStageTo(stage, mirrorTarget)
+            mirrorStageTo(stage, mirrorTarget, force = true, nowMs = ts)
             restoreGreenFlagStepping()
         stageMirrorRafHandle = dom.window.requestAnimationFrame(ts => tick(ts))
 
@@ -643,15 +648,22 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     }
     restoreGreenFlagStepping()
 
-  /** Snap visible stepping: pause ~GreenFlagStepSeconds between blocks. */
+  override def setGreenFlagStepMs(ms: Double): Unit =
+    greenFlagStepMs = math.max(0.0, ms)
+
+  /** Snap visible stepping: pause `greenFlagStepMs` between blocks (0 = no step delay). */
   private def enableGreenFlagStepping(): Unit =
     val proto = js.Dynamic.global.Process.selectDynamic("prototype")
     if savedFlashTime.isEmpty then
       savedFlashTime = Some(proto.selectDynamic("flashTime").asInstanceOf[Double])
     if savedSingleStepping.isEmpty then
       savedSingleStepping = Some(proto.selectDynamic("enableSingleStepping").asInstanceOf[Boolean])
-    proto.updateDynamic("flashTime")(GreenFlagStepSeconds)
-    proto.updateDynamic("enableSingleStepping")(true)
+    if greenFlagStepMs <= 0 then
+      proto.updateDynamic("flashTime")(0)
+      proto.updateDynamic("enableSingleStepping")(false)
+    else
+      proto.updateDynamic("flashTime")(greenFlagStepMs / 1000.0)
+      proto.updateDynamic("enableSingleStepping")(true)
 
   private def restoreGreenFlagStepping(): Unit =
     val proto = js.Dynamic.global.Process.selectDynamic("prototype")
@@ -660,8 +672,21 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     savedFlashTime = None
     savedSingleStepping = None
 
-  private def mirrorStageTo(stage: StageMorph, target: Canvas): Unit =
+  /**
+   * Copy the live stage onto the turtle panel. Prefer pen-trails during the
+   * animation (cheap blit); use Morph.fullImage() only for forced frames so the
+   * final frame includes costumes/sprites.
+   */
+  private def mirrorStageTo(
+      stage: StageMorph,
+      target: Canvas,
+      force: Boolean,
+      nowMs: Double = dom.window.performance.now()
+  ): Unit =
+    if !force && nowMs - lastStageMirrorAt < StageMirrorMinIntervalMs then return
+    lastStageMirrorAt = nowMs
     try
+      if !force && mirrorPenTrails(stage, target) then return
       val src = stage.fullImage()
       if src == null then return
       if target.width != src.width then target.width = src.width
@@ -673,6 +698,24 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       case error: Throwable =>
         println(s"Snap Execute stage mirror failed: ${Option(error.getMessage).getOrElse(error.getClass.getSimpleName)}")
 
+  /** Fast path: blit the trails canvas only (main visual for turtle programs). */
+  private def mirrorPenTrails(stage: StageMorph, target: Canvas): Boolean =
+    try
+      val trails = stage.penTrails()
+      if trails == null then return false
+      val w = trails.width
+      val h = trails.height
+      if w <= 0 || h <= 0 then return false
+      if target.width != w then target.width = w
+      if target.height != h then target.height = h
+      val ctx = target.getContext("2d").asInstanceOf[CanvasRenderingContext2D]
+      ctx.fillStyle = "#ffffff"
+      ctx.fillRect(0, 0, w.toDouble, h.toDouble)
+      ctx.drawImage(trails, 0, 0)
+      true
+    catch
+      case _: Throwable => false
+
   override def setOnProjectXmlChangedListener(callback: String => Unit): Unit =
     projectXmlChangedCallback = callback
 
@@ -680,6 +723,9 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     if cyclesRunning then
       editorWorld.foreach(_.doOneCycle())
       frameHandle = dom.window.requestAnimationFrame(_ => tickEditor())
+      // Skip XML serialization while Execute is mirroring — getProjectXML is heavy
+      // and competes with Morphic + stage blit for main-thread time.
+      if stageMirrorRafHandle != 0 then return
       val now = dom.window.performance.now()
       if now - lastProjectXmlCheckAt >= ProjectXmlCheckIntervalMs then
         lastProjectXmlCheckAt = now

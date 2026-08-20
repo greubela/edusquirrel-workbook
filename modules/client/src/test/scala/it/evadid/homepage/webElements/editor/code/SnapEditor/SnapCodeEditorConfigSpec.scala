@@ -87,4 +87,41 @@ class SnapCodeEditorConfigSpec extends FunSuite {
     val variablesTab = SnapCodeEditorConfig.PythonCompatibleSnapCategories.find(_.name == "Variables").get
     assert(variablesTab.includeVariableControls)
   }
+
+  test("BeginnerTurtleCategories lists Motion, Pen, Control only") {
+    val tabs = SnapCodeEditorConfig.BeginnerTurtleCategories
+    assertEquals(tabs.map(_.name), List("Motion", "Pen", "Control"))
+    assertEquals(tabs.map(_.color), List(
+      SnapCategoryColor.Motion,
+      SnapCategoryColor.Pen,
+      SnapCategoryColor.Control
+    ))
+    assert(tabs.forall(!_.useNativeCategory))
+    assert(tabs.forall(!_.includeVariableControls))
+  }
+
+  test("BeginnerTurtleCategories exposes exactly the nine beginner selectors") {
+    val selectors = SnapCodeEditorConfig.beginnerTurtleBlockSelectors
+    assertEquals(
+      selectors,
+      Set(
+        "forward",
+        "turn",
+        "gotoXY",
+        "setHeading",
+        "clear",
+        "down",
+        "up",
+        "receiveGo",
+        "doRepeat"
+      )
+    )
+    assert(selectors.subsetOf(SnapCodeEditorConfig.pythonCompatibleBlockSelectors))
+  }
+
+  test("BeginnerTurtleTesting wires the filtered palette into the editor config") {
+    val config = SnapCodeEditorConfig.BeginnerTurtleTesting
+    assertEquals(config.libraryTabs, SnapCodeEditorConfig.BeginnerTurtleCategories)
+    assertEquals(config.parts, SnapCodeEditorConfig.Testing.parts)
+  }
 }

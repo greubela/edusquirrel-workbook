@@ -81,8 +81,13 @@ case class SnapCodeEditor(
           bindProgramObservers(ctx.owner)
         }
       ),
-      // FEATURE: SnapPythonPopup — remove this child (+ SnapPythonPopup.scala + CSS) to drop the button.
-      SnapPythonPopup.chrome(state, () => impl.flushPendingProjectChanges(), onStateEdited),
+      // FEATURE: SnapPythonPopup — remove this child (+ SnapPythonPopup.scala + CSS) to drop the toolbar.
+      SnapPythonPopup.chrome(
+        state,
+        () => impl.flushPendingProjectChanges(),
+        onStateEdited,
+        setExecutionStepMs = ms => impl.setGreenFlagStepMs(ms)
+      ),
       onUnmountCallback { _ =>
         // The dialog reuses this lazy DOM element. Keep its WorldMorph and DOM
         // event listeners intact between openings; only stop animation work
@@ -204,6 +209,9 @@ object SnapCodeEditor {
 
     /** Stop green-flag processes and cancel stage mirroring. */
     def stopGreenFlagOnStage(): Unit
+
+    /** Pause between blocks during Execute, in milliseconds (>= 0). */
+    def setGreenFlagStepMs(ms: Double): Unit
 
     /** Match canvas bitmap+CSS to the fullscreen parent and relayout Morphic. */
     def fitEditorToContainer(): Unit

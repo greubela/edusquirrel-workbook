@@ -25,7 +25,7 @@ import it.evadid.workbook.elements.interactionElements.programming.{
  *  4. Delete `SnapPythonPopupSpec` if present
  *
  * Overlay/panel chrome reuses `.sorting-error-popup` styles; only Snap-specific
- * button/code rules live in the FEATURE CSS block.
+ * toolbar/button/code rules live in the FEATURE CSS block.
  *
  * Apply path: parse + turtle-subset check → Snap XML. Apply is disabled when
  * the current project contains blocks outside the Python-compatible allow-list.
@@ -42,15 +42,17 @@ object SnapPythonPopup {
       SnapTurtlePythonBridge.VariableExamples
 
   /**
-   * Button + editable overlay chrome for `SnapCodeEditor.editorCanvas`.
+   * Bottom-right toolbar + editable overlay chrome for `SnapCodeEditor.editorCanvas`.
    * @param state live exercise state (canonical Snap XML)
    * @param flushPending call before reading state so Snap XML edits are published
    * @param onStateEdited persist / sync callback used for block edits and Python apply
+   * @param setExecutionStepMs apply Execute pause between blocks (ms, >= 0)
    */
   def chrome(
       state: Var[ProgrammingExerciseState],
       flushPending: () => Unit,
-      onStateEdited: ProgrammingExerciseState => Unit
+      onStateEdited: ProgrammingExerciseState => Unit,
+      setExecutionStepMs: Double => Unit = _ => ()
   ): L.Element = {
     val showPopup: Var[Boolean] = Var(false)
     val textVar: Var[String] = Var("")
@@ -58,6 +60,7 @@ object SnapPythonPopup {
     val warningVar: Var[Option[String]] = Var(None)
     val applyAllowed: Var[Boolean] = Var(true)
     val scriptHints: Var[List[ScriptView]] = Var(Nil)
+    val stepMsVar: Var[String] = Var("20")
 
     def loadFromState(): Unit =
       flushPending()
@@ -93,6 +96,14 @@ object SnapPythonPopup {
           applyAllowed.set(nextDerived.pythonCompatible)
     }
 
+    def applyStepMsFromInput(raw: String): Unit =
+      raw.trim.toDoubleOption match
+        case Some(ms) if ms >= 0 && !ms.isNaN && !ms.isInfinity =>
+          stepMsVar.set(raw.trim)
+          setExecutionStepMs(ms)
+        case _ =>
+          ()
+
     val pythonEditor: CodeMirrorEditor =
       CodeMirrorEditor(
         textVar,
@@ -101,14 +112,34 @@ object SnapPythonPopup {
       )
 
     div(
-      button(
-        typ := "button",
-        cls := "snap-python-button",
-        "Edit Python",
-        onClick --> { ev =>
-          ev.stopPropagation()
-          open()
-        }
+      div(
+        cls := "snap-editor-toolbar",
+        label(
+          cls := "snap-editor-toolbar__speed",
+          span(cls := "snap-editor-toolbar__speed-label", "Speed (ms)"),
+          input(
+            typ := "number",
+            cls := "snap-editor-toolbar__speed-input",
+            minAttr := "0",
+            stepAttr := "1",
+            controlled(
+              value <-- stepMsVar.signal,
+              onInput.mapToValue --> { raw =>
+                stepMsVar.set(raw)
+                applyStepMsFromInput(raw)
+              }
+            )
+          )
+        ),
+        button(
+          typ := "button",
+          cls := "snap-python-button",
+          "Edit Python",
+          onClick --> { ev =>
+            ev.stopPropagation()
+            open()
+          }
+        )
       ),
       div(
         cls := "sorting-error-popup snap-python-popup",

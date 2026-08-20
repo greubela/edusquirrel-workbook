@@ -19,6 +19,9 @@ import org.scalajs.dom.html.Canvas
  *     `homepage/css/workbook/workbook-interactions.css` (and fullscreen shell rules
  *     in `workbook-structure.css` if unused)
  *  4. Remove `runGreenFlagOnStage` / `stopGreenFlagOnStage` from the Snap impl if unused
+ *
+ * Execute uses Scratch frame yields with a configurable pause per block
+ * (toolbar Speed ms → Process.flashTime) so loops stay watchable.
  */
 object SnapTurtleStagePanel {
 

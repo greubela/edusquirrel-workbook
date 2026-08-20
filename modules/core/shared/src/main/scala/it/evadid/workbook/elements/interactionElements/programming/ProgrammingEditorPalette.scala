@@ -6,3 +6,5 @@ enum ProgrammingEditorPalette:
   case Default
   /** Explicit allow-list aligned with Snap ↔ Python roundtrip support. */
   case PythonCompatibleSnap
+  /** Beginner turtle subset: start, repeat, motion, and pen only. */
+  case BeginnerTurtle
