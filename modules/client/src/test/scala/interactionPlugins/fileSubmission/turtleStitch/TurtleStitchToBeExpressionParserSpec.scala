@@ -214,16 +214,28 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(reXml.contains("""s="clear""""), clue = reXml)
   }
 
-  test("unsupported wait block stays in stored xml and blocks python apply") {
+  test("doWait block roundtrips Snap XML to python and back to Snap") {
     val xml =
-      """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script x="70" y="80"><block s="receiveGo"></block><block s="wait"><l>1</l></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
+      """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script x="70" y="80"><block s="receiveGo"></block><block s="doWait"><l>1</l></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
     val stored = ProgrammingExercise.StateSerializer.serialize(ProgrammingExerciseState(xml))
     val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
-    assert(restored.snapXml.contains("""s="wait""""), clue = restored.snapXml)
+    assert(restored.snapXml.contains("""s="doWait""""), clue = restored.snapXml)
+
+    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    assert(
+      TurtleStitchToBeExpressionParser.hasSupportedStatements(parsed.expression),
+      clue = parsed.expression
+    )
+    val python = SnapTurtlePythonBridge.printedPython(parsed.expression)
+    assert(python.contains("do_wait(1)"), clue = python)
+
     val derived = it.evadid.homepage.webElements.editor.code.SnapEditor.SnapProgramDerivation.fromXml(xml)
-    assert(!derived.pythonCompatible, clue = derived)
-    assert(derived.unsupportedSelectors.contains("wait"), clue = derived.unsupportedSelectors)
-    assert(derived.applyBlockedMessage.exists(_.contains("wait")), clue = derived.applyBlockedMessage)
+    assert(derived.pythonCompatible, clue = derived)
+    assert(!derived.unsupportedSelectors.contains("doWait"), clue = derived.unsupportedSelectors)
+
+    val applied = SnapTurtlePythonBridge.applyPython(python)
+    assert(applied.isRight, clue = applied)
+    assert(applied.toOption.get.snapXml.contains("""s="doWait""""), clue = applied.toOption.get.snapXml)
   }
 }
 

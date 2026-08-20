@@ -128,6 +128,7 @@ object SnapCodeEditorConfig:
       name = "Control",
       selectableElements = List(
         block("receiveGo"),
+        block("doWait"),
         block("doRepeat"),
         block("doIf"),
         block("doIfElse"),

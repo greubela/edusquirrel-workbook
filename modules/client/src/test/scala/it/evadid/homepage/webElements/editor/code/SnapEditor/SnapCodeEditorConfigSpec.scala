@@ -59,6 +59,7 @@ class SnapCodeEditorConfigSpec extends FunSuite {
         "down",
         "up",
         "receiveGo",
+        "doWait",
         "doRepeat",
         "doIf",
         "doIfElse",

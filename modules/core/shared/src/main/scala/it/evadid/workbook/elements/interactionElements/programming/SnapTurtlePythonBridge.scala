@@ -29,6 +29,7 @@ object SnapTurtlePythonBridge {
    */
   val Primitives: List[TurtlePrimitive] = List(
     TurtlePrimitive("receive_go", "receiveGo", "receive_go()"),
+    TurtlePrimitive("do_wait", "doWait", "do_wait(seconds)"),
     TurtlePrimitive("forward", "forward", "forward(steps)"),
     TurtlePrimitive("turn", "turn", "turn(degrees)"),
     TurtlePrimitive("goto_x_y", "gotoXY", "goto_x_y(x, y)"),

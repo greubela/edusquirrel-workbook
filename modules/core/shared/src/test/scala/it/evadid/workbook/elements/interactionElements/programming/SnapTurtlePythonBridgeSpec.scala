@@ -182,6 +182,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
   test("applyPython accepts full python-compatible palette program") {
     val source =
       """receive_go()
+        |do_wait(1)
         |down()
         |steps = 10
         |for _ in range(4):
@@ -199,6 +200,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     assert(result.isRight, clue = result)
     val python = SnapTurtlePythonBridge.printedPython(BeProgram.fromPythonString(source).fullProgram)
     assert(python.contains("receive_go()"), clue = python)
+    assert(python.contains("do_wait(1)"), clue = python)
     assert(python.contains("down()"), clue = python)
     assert(python.contains("steps = 10"), clue = python)
     assert(python.contains("for _ in range(4):"), clue = python)
@@ -211,6 +213,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     assert(python.contains("up()"), clue = python)
     assert(python.contains("clear()"), clue = python)
     val xml = result.toOption.get.snapXml
+    assert(xml.contains("""s="doWait""""), clue = xml)
     assert(xml.contains("""s="doRepeat""""), clue = xml)
     assert(xml.contains("""s="doIfElse""""), clue = xml)
     assert(xml.contains("""s="doUntil""""), clue = xml)
