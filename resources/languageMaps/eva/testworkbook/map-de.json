@@ -1,7 +1,7 @@
 {
   "workbookTitle": "Beispielheft",
-  "section1Title": "Abschnitt 1.",
-  "exerciseTitle": "Das ist der Titel.",
+  "sec1": "Abschnitt 0",
+  "exerciseTitle": "Das ist der Titel",
   "writeText1": "Schreibe einen Text!",
   "writeText2": "Schreibe noch einen Text!",
   "sec1cont1": "Test 1",
