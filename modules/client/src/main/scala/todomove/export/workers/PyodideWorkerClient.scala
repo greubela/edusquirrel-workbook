@@ -260,7 +260,7 @@ object PyodideWorkerClient {
 
    def parseTurtleState[T: Fractional](value: js.Any): TurtleState[T] = {
     val dyn = value.asInstanceOf[js.Dynamic]
-    TurtleState[T](
+    TurtleState.initial[T](
       x = readNumberField[T](dyn, TurtleFieldKeys.X),
       y = readNumberField[T](dyn, TurtleFieldKeys.Y),
       headingDeg = readNumberField[T](dyn, TurtleFieldKeys.HeadingDeg),

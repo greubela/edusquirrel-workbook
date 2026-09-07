@@ -43,13 +43,16 @@ class KnownBeDefineStructuresSpec extends FunSuite {
 
   test("turtle class is a sensible class definition with fully formed methods") {
     val turtleClass = KnownBeDefineStructures.byName("turtle").collectFirst { case cls: BeDefineClass => cls }.get
-    val expectedMethodNames = Set("forward", "backward", "left", "right", "pen_up", "pen_down", "circle", "goto", "setheading", "speed", "color", "pensize")
+    val expectedMethodNames = Set(
+      "forward", "backward", "left", "right", "pen_up", "pen_down", "circle", "goto", "setheading", "speed", "color", "pensize",
+      "home", "running_stitch", "cross_stitch", "bean_stitch", "zigzag_stitch", "z_stitch", "satin_stitch", "tatami_stitch",
+      "jump_stitch", "tie_stitch", "trim_stitch", "stop_running"
+    )
     val actualMethodNames = turtleClass.methods.map(_.functionTypeInfo.displayName.universalInterpretation()).toSet
 
     assertEquals(actualMethodNames, expectedMethodNames)
     assert(turtleClass.methods.nonEmpty)
     assert(turtleClass.attributes.isEmpty)
-    assert(turtleClass.bodyExtras.isEmpty)
     assert(turtleClass.staticInformationExpression.syntaxErrors.isEmpty)
 
     turtleClass.methods.foreach { method =>

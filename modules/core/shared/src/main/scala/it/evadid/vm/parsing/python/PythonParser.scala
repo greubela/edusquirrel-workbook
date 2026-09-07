@@ -9,7 +9,7 @@ import it.evadid.vm.types.BeDataType.{AnyType, BeUnionAllowedTypes}
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
+import it.evadid.vm.code.controlStructures.{BeFor, BeIfElse, BeRepeatNr, BeSequence, BeWhile}
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import it.evadid.vm.code.others.BeReturn
@@ -54,6 +54,7 @@ class PythonParser(
       parseFunction = parseFunction,
       parseWhile = parseWhile,
       parseRepeat = parseRepeat,
+      parseFor = parseFor,
       parseIf = parseIf,
       parseReturn = parseReturn,
       parseExpression = parseExpression,
@@ -164,6 +165,64 @@ class PythonParser(
       val bodyBlock = parseBlock(lines, headerIndex + 1, computedIndent, context)
       val bodySequence = BeSequence.optionalBody(bodyBlock.expressions)
       NodeWithNext(BeRepeatNr(amount, bodySequence), bodyBlock.nextIndex)
+    }
+  }
+
+  private def parseFor(
+      lines: Vector[ParsedLine],
+      headerIndex: Int,
+      indent: Int,
+      varName: String,
+      rangeSource: String,
+      context: ParseContext
+  ): NodeWithNext = {
+    val computedIndent = findBodyIndent(lines, headerIndex + 1, indent)
+    if (computedIndent <= indent) {
+      NodeWithNext(BeExpressionUnparsable(lines(headerIndex).content.trim, "Missing body for for loop"), headerIndex + 1)
+    } else {
+      val (startExpr, endExpr) = parseRangeBounds(rangeSource, context)
+      val variable = context.defineVariable(varName, mapType(Some("int")))
+      val bodyBlock = parseBlock(lines, headerIndex + 1, computedIndent, context)
+      val bodySequence = BeSequence.optionalBody(bodyBlock.expressions)
+      NodeWithNext(BeFor(variable, startExpr, endExpr, bodySequence), bodyBlock.nextIndex)
+    }
+  }
+
+  /** Snap `doFor` is inclusive; Python `range(start, stop)` is exclusive. */
+  private def parseRangeBounds(rangeSource: String, context: ParseContext): (BeExpression, BeExpression) = {
+    val parts = ParsingUtils.splitTopLevelArguments(rangeSource).map(_.trim).filter(_.nonEmpty)
+    parts match {
+      case List(stop) =>
+        (BeUseValue(BeDataValueLiteral("0"), None), exclusiveStopToInclusiveEnd(stop, context))
+      case List(start, stop) =>
+        (parseExpression(start, context), exclusiveStopToInclusiveEnd(stop, context))
+      case List(start, stop, _step) =>
+        (parseExpression(start, context), exclusiveStopToInclusiveEnd(stop, context))
+      case _ =>
+        (BeUseValue(BeDataValueLiteral("0"), None), BeUseValue(BeDataValueLiteral("0"), None))
+    }
+  }
+
+  private def exclusiveStopToInclusiveEnd(stopSource: String, context: ParseContext): BeExpression = {
+    val trimmed = stopSource.trim
+    val plusOne = """^(.+?)\s*\+\s*1$""".r
+    trimmed match {
+      case plusOne(inner) =>
+        parseExpression(inner.trim, context)
+      case _ =>
+        scala.util.Try(trimmed.toInt).toOption match {
+          case Some(n) =>
+            BeUseValue(BeDataValueLiteral((n - 1).toString), None)
+          case None =>
+            val stopExpr = parseExpression(trimmed, context)
+            val one = BeUseValue(BeDataValueLiteral("1"), None)
+            val params = List(
+              BeDefineVariable(BeEntityName.fromCodeString("arg0"), BeDataType.AnyType),
+              BeDefineVariable(BeEntityName.fromCodeString("arg1"), BeDataType.AnyType)
+            )
+            val define = BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.operatorInfo("-", 1))
+            BeFunctionCall(define, Map(params.head -> stopExpr, params(1) -> one))
+        }
     }
   }
 

@@ -3,7 +3,7 @@ package it.evadid.vm.io.stringPrinter
 import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, ProgrammingLanguage}
 import it.evadid.core.util.CodeStringBuilderMutable
 import it.evadid.vm.code.abstractions.{BeControlStructure, BeDefineStructure, BeExpression}
-import it.evadid.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
+import it.evadid.vm.code.controlStructures.{BeFor, BeIfElse, BeRepeatNr, BeSequence, BeWhile}
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
 import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
@@ -52,11 +52,20 @@ abstract class GenericJavaLikeStringPrinter(
 
   protected def defineFunctionLine(nameStr: String, parStr: String, outputTypeStr: String): String
 
+  protected def formatFunctionParameters(inputs: List[BeDefineVariable]): String =
+    inputs.map(forExpression).map(_.replace("\n", "")).mkString("(", ", ", ")")
+
   protected def fixedRepetitionLine(amount: Int): String
+
+  protected def namedRangeLine(varName: String, start: String, end: String): String =
+    s"for(int $varName = $start; $varName <= $end; $varName++)${sepLogic.startBlockWith}"
 
   /** Optional trailing parse hint after a fixed-count repeat line; empty for idiomatic Python. */
   protected def repetitionParsingHint(amount: Int): String =
     sepLogic.startSingleLineComment + "EvaParsingHint(BeRepeatNr)"
+
+  /** Printed when a function body would otherwise be empty. Python overrides this with `pass`. */
+  protected def emptyFunctionBody: String = ""
 
   protected def forStatement(expr: BeExpression): String = {
     forExpression(expr) + sepLogic.endLineWith
@@ -116,13 +125,15 @@ abstract class GenericJavaLikeStringPrinter(
       if (functionTypeInfo.isNamed.isEmpty) ???
       else {
         val name = NameInfo(functionTypeInfo.isNamed.get)
-        val par = inputs.map(forExpression).map(_.replace("\n", "")).mkString("(", ", ", ")")
+        val par = formatFunctionParameters(inputs)
         val outTypeStr = outputs.map(_.variableType.formatTypeForDisplay.getInLanguage(progLang)).getOrElse(BeDataType.Unit.formatTypeForDisplay.getInLanguage(progLang))
+        val renderedBody = forExpression(body)
+        val bodyText = if renderedBody.trim.isEmpty then emptyFunctionBody else renderedBody
         CodeStringBuilderMutable()
           // .appendNextLine(s"def ${name.inCurLanguage}${par} -> ${outTypeStr}: ${name.associatedComment}")
           .appendNextLine(defineFunctionLine(name.inCurLanguage, par, outTypeStr))
           .changeIntLevel(1)
-          .appendAsLines(forExpression(body))
+          .appendAsLines(bodyText)
           .appendNextLine(sepLogic.endBlockWith)
           .toString
       }
@@ -156,6 +167,18 @@ abstract class GenericJavaLikeStringPrinter(
     case BeRepeatNr(amount, body) => {
       CodeStringBuilderMutable()
         .appendNextLine(fixedRepetitionLine(amount) + repetitionParsingHint(amount))
+        .changeIntLevel(1)
+        .appendAsLines(forExpression(body))
+        .changeIntLevel(-1)
+        .appendNextLine(sepLogic.endBlockWith)
+        .toString
+    }
+    case BeFor(variable, start, end, body) => {
+      val varName = NameInfo(variable.name).inCurLanguage
+      val startStr = forExpression(start).replaceAll("\n", "").trim
+      val endStr = forExpression(end).replaceAll("\n", "").trim
+      CodeStringBuilderMutable()
+        .appendNextLine(namedRangeLine(varName, startStr, endStr))
         .changeIntLevel(1)
         .appendAsLines(forExpression(body))
         .changeIntLevel(-1)

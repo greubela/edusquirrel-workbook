@@ -1,33 +1,18 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.workbook.elements.interactionElements.programming.{SnapControlFlow, SnapTurtlePythonBridge}
+import it.evadid.workbook.elements.interactionElements.programming.SnapPaletteCatalog
 import munit.FunSuite
 
 class SnapCodeEditorConfigSpec extends FunSuite {
 
-  private val allowedSelectors: Set[String] =
-    SnapTurtlePythonBridge.Primitives.map(_.snapSelector).toSet ++
-      SnapControlFlow.ControlSelectors ++
-      SnapControlFlow.VariableSelectors.filter(_ != "reportGetVar") ++
-      Set(
-        "reportTrue",
-        "reportFalse",
-        "reportBoolean",
-        "reportVariadicLessThan",
-        "reportVariadicGreaterThan",
-        "reportVariadicEquals",
-        "reportVariadicAnd",
-        "reportVariadicOr",
-        "reportNot"
-      )
-
   test("PythonCompatibleSnapCategories lists only Python-safe tabs in order") {
     val tabs = SnapCodeEditorConfig.PythonCompatibleSnapCategories
-    assertEquals(tabs.map(_.name), List("Motion", "Pen", "Control", "Operators", "Variables"))
+    assertEquals(tabs.map(_.name), List("Motion", "Pen", "Embroidery", "Control", "Operators", "Variables"))
     assertEquals(tabs.map(_.color), List(
       SnapCategoryColor.Motion,
       SnapCategoryColor.Pen,
+      SnapCategoryColor.Embroidery,
       SnapCategoryColor.Control,
       SnapCategoryColor.Operators,
       SnapCategoryColor.Variables
@@ -37,7 +22,7 @@ class SnapCodeEditorConfigSpec extends FunSuite {
   test("PythonCompatibleSnapCategories uses explicit block lists, not native categories") {
     val tabs = SnapCodeEditorConfig.PythonCompatibleSnapCategories
     assert(tabs.forall(!_.useNativeCategory))
-    assert(tabs.forall(_.selectableElements.nonEmpty))
+    assert(tabs.forall(tab => tab.selectableElements.nonEmpty || tab.includeMakeBlockButton || tab.includeVariableControls))
   }
 
   test("PythonCompatibleSnapCategories excludes unsupported native categories") {
@@ -47,36 +32,22 @@ class SnapCodeEditorConfigSpec extends FunSuite {
     assert(!tabNames.contains("Sensing"))
   }
 
-  test("PythonCompatibleSnapCategories exposes only allow-listed block selectors") {
-    val selectors = SnapCodeEditorConfig.pythonCompatibleBlockSelectors
-    assert(selectors.subsetOf(allowedSelectors), clue = selectors.diff(allowedSelectors))
+  test("PythonCompatibleSnapCategories is derived from SnapPaletteCatalog") {
+    val tabs = SnapCodeEditorConfig.PythonCompatibleSnapCategories
     assertEquals(
-      selectors,
-      Set(
-        "forward",
-        "turn",
-        "gotoXY",
-        "setHeading",
-        "clear",
-        "down",
-        "up",
-        "receiveGo",
-        "doWait",
-        "doRepeat",
-        "doIf",
-        "doIfElse",
-        "doUntil",
-        "reportBoolean",
-        "reportVariadicLessThan",
-        "reportVariadicGreaterThan",
-        "reportVariadicEquals",
-        "reportVariadicAnd",
-        "reportVariadicOr",
-        "reportNot",
-        "doSetVar",
-        "doChangeVar"
-      )
+      tabs.map(_.selectableElements.map(_.id)),
+      SnapPaletteCatalog.TabOrder.map(SnapPaletteCatalog.selectorsForTab)
     )
+    assertEquals(SnapCodeEditorConfig.pythonCompatibleBlockSelectors, SnapPaletteCatalog.pythonCompatibleSelectorSet)
+    val selectors = SnapCodeEditorConfig.pythonCompatibleBlockSelectors
+    assert(selectors.contains("turnLeft"))
+    assert(selectors.contains("setColor"))
+    assert(selectors.contains("runningStitch"))
+    assert(selectors.contains("doFor"))
+    assert(selectors.contains("reportVariadicSum"))
+    assert(selectors.contains("circle"))
+    assert(selectors.contains("home"))
+    assert(selectors.contains("backward"))
   }
 
   test("PythonCompatibleTesting wires the filtered palette into the editor config") {
@@ -85,9 +56,16 @@ class SnapCodeEditorConfigSpec extends FunSuite {
     assertEquals(config.parts, SnapCodeEditorConfig.Testing.parts)
   }
 
-  test("Variables tab enables Snap variable controls") {
+  test("EmbroideryTesting uses the python-compatible palette including stitches") {
+    val config = SnapCodeEditorConfig.EmbroideryTesting
+    assertEquals(config.libraryTabs, SnapCodeEditorConfig.PythonCompatibleSnapCategories)
+    assert(SnapCodeEditorConfig.pythonCompatibleBlockSelectors.contains("runningStitch"))
+  }
+
+  test("Variables tab enables Snap variable controls and make-block") {
     val variablesTab = SnapCodeEditorConfig.PythonCompatibleSnapCategories.find(_.name == "Variables").get
     assert(variablesTab.includeVariableControls)
+    assert(variablesTab.includeMakeBlockButton)
   }
 
   test("mixedTab builds a non-native tab with the given blocks") {
@@ -113,6 +91,7 @@ class SnapCodeEditorConfigSpec extends FunSuite {
       motion.selectableElements.map(_.id) ++ variables.selectableElements.map(_.id)
     )
     assert(flat.includeVariableControls)
+    assert(flat.includeMakeBlockButton)
     assert(!flat.useNativeCategory)
   }
 

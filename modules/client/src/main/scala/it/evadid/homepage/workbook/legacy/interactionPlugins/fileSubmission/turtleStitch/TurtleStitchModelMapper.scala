@@ -174,9 +174,16 @@ object TurtleStitchModelMapper {
       translations = parseTagMap(firstChild(node, "translations")),
       inputs = childrenNamed(firstChild(node, "inputs"), "input").map(parseBlockInputDefinition).toVector,
       variables = childrenNamed(firstChild(node, "variables"), "variable").flatMap(attr(_, "name")).toVector,
-      body = parseScripts(firstChild(node, "scripts")),
+      body = parseCustomBlockBody(node),
       comment = firstChild(node, "comment").map(parseComment)
     )
+
+  /** Snap stores the executed body as a direct `<script>` child; `<scripts>` holds editor orphans. */
+  private def parseCustomBlockBody(node: TurtleStitchXmlParser.XmlElement): Vector[Script] = {
+    val direct = firstChild(node, "script").map(parseScript).toVector
+    if direct.nonEmpty then direct
+    else parseScripts(firstChild(node, "scripts"))
+  }
 
   private def parseBlockInputDefinition(node: TurtleStitchXmlParser.XmlElement): BlockInputDefinition =
     BlockInputDefinition(

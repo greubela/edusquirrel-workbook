@@ -36,10 +36,13 @@ object SnapPythonPopup {
   final case class ScriptView(index: Int, x: Int, y: Int, python: String)
 
   /** Example signatures for the turtle allow-list (Python snake_case). */
-  private val SupportedFunctionExamples: List[String] =
+  val OverviewExamples: List[String] =
     SnapTurtlePythonBridge.Primitives.map(_.example) ++
       SnapTurtlePythonBridge.ControlFlowExamples ++
-      SnapTurtlePythonBridge.VariableExamples
+      SnapTurtlePythonBridge.VariableExamples ++
+      SnapTurtlePythonBridge.UserFunctionExamples
+
+  private val SupportedFunctionExamples: List[String] = OverviewExamples
 
   private val OverviewKeywords: Set[String] = Set(
     "if", "else", "elif", "for", "while", "not", "and", "or", "in",
@@ -198,7 +201,7 @@ object SnapPythonPopup {
             ),
             p(
               cls := "snap-python-popup__overview-note",
-              "Only these Python calls convert to blocks. Other Python is rejected on Apply. Apply is disabled when the project contains unsupported Snap blocks."
+              "Turtle-subset calls and `def` user functions convert to blocks. Other Python is rejected on Apply. Apply is disabled when the project contains unsupported Snap blocks."
             ),
             ul(
               cls := "snap-python-popup__overview-list",

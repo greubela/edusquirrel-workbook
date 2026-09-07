@@ -28,4 +28,8 @@ class SnapPythonPopupSpec extends FunSuite {
     assert(scripts(0).python.nonEmpty)
     assert(scripts(1).python.nonEmpty)
   }
+
+  test("overview examples include def user functions") {
+    assert(SnapPythonPopup.OverviewExamples.exists(_.contains("def ")), clue = SnapPythonPopup.OverviewExamples)
+  }
 }

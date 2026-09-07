@@ -37,7 +37,20 @@ case class BeDefineFunction(
     override def hasSideEffects: Boolean = true
   }
 
-  override lazy val structureInfo: BeExpressionStructureInfo[?] = ???
+  override lazy val structureInfo: BeExpressionStructureInfo[?] = new BeExpressionStructureInfo[BeDefineFunction](this) {
+    override def withReplacedChildren(newChildren: Map[BeChildRole, BeExpression]): BeDefineFunction = {
+      val newBody = newChildren.collectFirst {
+        case (BeChildRole.BodySequence(0), seq: BeSequence) => seq
+      }.getOrElse(body)
+      copy(body = newBody)
+    }
+
+    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] =
+      asExpressionLine(ControlFlowDown, myInfo)
+
+    override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] =
+      List(BeExpressionReference(BeChildInfo(BeChildRole.BodySequence(0), InSequenceScope(body, myScope)), body))
+  }
 
 
 

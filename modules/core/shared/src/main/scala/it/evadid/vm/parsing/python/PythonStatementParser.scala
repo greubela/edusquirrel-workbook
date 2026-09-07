@@ -32,6 +32,7 @@ object PythonStatementParser {
   private val WhilePattern = """^while\s+(.+):$""".r
   private val IfPattern = """^if\s+(.+):$""".r
   private val ForRangePattern = """^for\s+_\s+in\s+range\((\d+)\):$""".r
+  private val ForNamedRangePattern = """^for\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+range\((.+)\):$""".r
   private val AssignmentPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)\s*(.+)$""".r
 
   final case class StatementApi(
@@ -40,6 +41,7 @@ object PythonStatementParser {
                                  parseFunction: (Vector[ParsedLine], Int, Int, String, String, Option[String], ParseContext) => NodeWithNext,
                                  parseWhile: (Vector[ParsedLine], Int, Int, String, ParseContext) => NodeWithNext,
                                  parseRepeat: (Vector[ParsedLine], Int, Int, Int, ParseContext) => NodeWithNext,
+                                 parseFor: (Vector[ParsedLine], Int, Int, String, String, ParseContext) => NodeWithNext,
                                  parseIf: (Vector[ParsedLine], Int, Int, String, ParseContext) => NodeWithNext,
                                  parseReturn: (String, ParseContext) => BeExpression,
                                  parseExpression: (String, ParseContext) => BeExpression,
@@ -126,6 +128,13 @@ object PythonStatementParser {
       val result = api.parseRepeat(ctx.lines, ctx.index, ctx.indent, amount, ctx.context)
       DispatchOutcome(List(result.expression), result.nextIndex)
     }),
+    DispatchRule(_.matches(ForNamedRangePattern.regex), ctx => {
+      val (varName, rangeSource) = ctx.trimmed match
+        case ForNamedRangePattern(parsedName, parsedRange) => (parsedName, parsedRange)
+        case _ => throw new IllegalArgumentException(s"Invalid named for-range statement: '${ctx.trimmed}'")
+      val result = api.parseFor(ctx.lines, ctx.index, ctx.indent, varName, rangeSource, ctx.context)
+      DispatchOutcome(List(result.expression), result.nextIndex)
+    }),
     DispatchRule(_.matches(IfPattern.regex), ctx => {
       val conditionSource = ctx.trimmed match
         case IfPattern(parsedConditionSource) => parsedConditionSource
@@ -137,7 +146,7 @@ object PythonStatementParser {
       val (rawBlock, nextIndex) = api.collectTryExceptBlock(ctx.lines, ctx.index, ctx.indent)
       DispatchOutcome(List(BeExpressionUnparsable(rawBlock, "try/except statements are currently unsupported")), nextIndex)
     }),
-    DispatchRule(_.startsWith("return"), ctx => DispatchOutcome(List(api.parseReturn(ctx.trimmed, ctx.context)), ctx.index + 1)),
+    DispatchRule(ParsingUtils.startsWithKeyword(_, "return"), ctx => DispatchOutcome(List(api.parseReturn(ctx.trimmed, ctx.context)), ctx.index + 1)),
     DispatchRule(_ == "pass", ctx => DispatchOutcome(List(BeExpression.pass), ctx.index + 1)),
     DispatchRule(_.matches(AssignmentPattern.regex), ctx => {
       val (name, valueStr) = ctx.trimmed match
@@ -147,7 +156,8 @@ object PythonStatementParser {
       val variable = ctx.context.assignVariable(name, api.inferType(valueExpr))
       DispatchOutcome(List(BeAssignVariable(variable, valueExpr)), ctx.index + 1)
     }),
-    DispatchRule(_.startsWith("while"), ctx => DispatchOutcome(List(BeExpressionUnparsable(ctx.trimmed, "While statements must end with ':'")), ctx.index + 1)),
-    DispatchRule(_.startsWith("if"), ctx => DispatchOutcome(List(BeExpressionUnparsable(ctx.trimmed, "If statements must end with ':'")), ctx.index + 1))
+    DispatchRule(ParsingUtils.startsWithKeyword(_, "while"), ctx => DispatchOutcome(List(BeExpressionUnparsable(ctx.trimmed, "While statements must end with ':'")), ctx.index + 1)),
+    DispatchRule(ParsingUtils.startsWithKeyword(_, "if"), ctx => DispatchOutcome(List(BeExpressionUnparsable(ctx.trimmed, "If statements must end with ':'")), ctx.index + 1)),
+    DispatchRule(ParsingUtils.startsWithKeyword(_, "for"), ctx => DispatchOutcome(List(BeExpressionUnparsable(ctx.trimmed, "For statements must use range(...)")), ctx.index + 1))
   )
 }

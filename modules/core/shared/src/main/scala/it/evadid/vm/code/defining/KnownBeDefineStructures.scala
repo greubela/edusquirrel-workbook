@@ -46,7 +46,19 @@ object KnownBeDefineStructures {
     ("setheading", List("angle" -> NumericType), Some(UnitType)),
     ("speed", List("value" -> NumericType), Some(UnitType)),
     ("color", List("value" -> StringType), Some(UnitType)),
-    ("pensize", List("width" -> NumericType), Some(UnitType))
+    ("pensize", List("width" -> NumericType), Some(UnitType)),
+    ("home", Nil, Some(UnitType)),
+    ("runningStitch", List("steps" -> NumericType), Some(UnitType)),
+    ("crossStitch", List("width" -> NumericType, "height" -> NumericType, "center" -> BooleanType), Some(UnitType)),
+    ("beanStitch", List("length" -> NumericType), Some(UnitType)),
+    ("zigzagStitch", List("density" -> NumericType, "width" -> NumericType, "center" -> BooleanType), Some(UnitType)),
+    ("ZStitch", List("density" -> NumericType, "width" -> NumericType, "center" -> BooleanType), Some(UnitType)),
+    ("satinStitch", List("width" -> NumericType, "center" -> BooleanType), Some(UnitType)),
+    ("tatamiStitch", List("width" -> NumericType, "interval" -> NumericType, "center" -> BooleanType), Some(UnitType)),
+    ("jumpStitch", List("enabled" -> BooleanType), Some(UnitType)),
+    ("tieStitch", Nil, Some(UnitType)),
+    ("trimStitch", Nil, Some(UnitType)),
+    ("stopRunning", Nil, Some(UnitType))
   )
 
   lazy val classes: List[BeDefineClass] = List(
