@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title></title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="container hero-inner">
+      <div>
+        <p class="overline" data-lang="header.overline"></p>
+        <h1 data-lang="header.title"></h1>
+      </div>
+      <button class="nav-toggle" id="navToggle" type="button" data-lang="nav.toggle"></button>
+    </div>
+  </header>
+
+  <div class="page">
+    <aside class="side-nav" id="sideNav">
+      <nav data-lang-attr="aria-label:nav.contentAriaLabel">
+        <p class="nav-title" data-lang="nav.title"></p>
+        <a href="#intro" class="nav-link is-active" aria-current="page" data-lang="nav.intro"></a>
+        <a href="#section0" class="nav-link" data-lang="nav.section0"></a>
+        <a href="#lossless" class="nav-link" data-lang="nav.lossless"></a>
+        <a href="#lossless-optional" class="nav-link" data-lang="nav.losslessOptional"></a>
+        <a href="#lossy" class="nav-link" data-lang="nav.lossy"></a>
+        <a href="#filetypes" class="nav-link" data-lang="nav.filetypes"></a>
+        <a href="#final" class="nav-link" data-lang="nav.final"></a>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <section class="panel is-active" id="intro">
+        <h2 data-lang="intro.heading"></h2>
+        <div class="section-task">
+          <div class="narrative-block">
+            <span class="narrative-block-icon" aria-hidden="true">📖</span>
+            <div class="narrative-block-body">
+              <p data-lang="intro.scenario"></p>
+              <blockquote class="task-quote" data-lang="intro.scenarioQuote"></blockquote>
+            </div>
+          </div>
+          <p data-lang="intro.ethicsIntro"></p>
+          <p data-lang="intro.ethicsQuestion"></p>
+          <form id="ethics-form" class="ethics-form">
+            <label><input type="radio" name="ethics-choice" value="yes"> <span data-lang="intro.ethicsYes"></span></label>
+            <label><input type="radio" name="ethics-choice" value="no"> <span data-lang="intro.ethicsNo"></span></label>
+            <label><input type="radio" name="ethics-choice" value="maybe"> <span data-lang="intro.ethicsMaybe"></span></label>
+          </form>
+          <div id="ethics-followup-wrap" hidden>
+            <p id="ethics-followup-label" class="assumption-task"></p>
+            <textarea class="assumption-textarea" id="answer-intro-ethics"
+                      data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          </div>
+        </div>
+        <div class="section-task">
+          <p data-lang="intro.technicalQuestion"></p>
+          <p data-lang="intro.answerTask"></p>
+          <textarea class="assumption-textarea" id="answer-intro"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+        </div>
+      </section>
+
+      <section class="panel" id="section0" hidden>
+        <h2 data-lang="section0.heading"></h2>
+        <p class="section-frame task-intro" data-lang="section0.sectionOpener"></p>
+        <div class="section-task">
+          <div class="narrative-block">
+            <span class="narrative-block-icon" aria-hidden="true">📖</span>
+            <div class="narrative-block-body">
+              <p data-lang="section0.snowdenIntro"></p>
+              <details class="article" open>
+                <summary data-lang="section0.articleSummary"></summary>
+                <div class="article-body">
+                  <p data-lang="section0.article.p1"></p>
+                  <p data-lang="section0.article.p2"></p>
+                  <p data-lang="section0.article.p3"></p>
+                  <p class="source">
+                    <span data-lang="section0.article.sourceLabel"></span>
+                    <a href="https://futurezone.at/netzpolitik/edward-snowden-schmuggelte-daten-mit-zauberwuerfeln-raus/400605791" target="_blank" rel="noreferrer" data-lang="section0.article.sourceLink"></a>
+                  </p>
+                </div>
+              </details>
+              <details class="article quote-box" open>
+                <summary data-lang="section0.quoteSummary"></summary>
+                <div class="article-body">
+                  <p data-lang="section0.article.p4"></p>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+        <p data-lang="section0.bridgeGoal"></p>
+        <div class="section-task">
+          <p class="task-title" data-lang="section0.task1.title"></p>
+          <div class="intro-task-grid">
+            <div>
+              <p data-lang="section0.taskText"></p>
+              <div class="intro-calc">
+                <label for="bitrateInput" data-lang="section0.inputBitrateLabel"></label>
+                <input id="bitrateInput" type="number" min="0" step="0.1" data-lang-attr="placeholder:section0.inputBitratePlaceholder">
+
+                <label for="durationInput" data-lang="section0.inputDurationLabel"></label>
+                <input id="durationInput" type="number" min="0" step="0.1" data-lang-attr="placeholder:section0.inputDurationPlaceholder">
+
+                <button id="introCalcBtn" type="button" data-lang="section0.calcButton"></button>
+              </div>
+              <p id="introCalcResult" class="intro-result" aria-live="polite"></p>
+              <div class="sd-card-bar" data-lang-attr="aria-label:section0.sdCardAriaLabel">
+                <div id="sdCardBarFill" class="sd-card-bar-fill"></div>
+                <span id="sdCardBarText" class="sd-card-bar-text"></span>
+              </div>
+            </div>
+
+            <aside class="rate-info">
+              <p class="rate-info-title" data-lang="section0.ratesTitle"></p>
+              <p data-lang="section0.rates720pLow"></p>
+              <p data-lang="section0.rates720pHigh"></p>
+              <p data-lang="section0.rates720pStandard"></p>
+              <p data-lang="section0.rates4kLow"></p>
+              <p data-lang="section0.rates4kHigh"></p>
+              <p data-lang="section0.rates4kStandard"></p>
+            </aside>
+          </div>
+        </div>
+        <div class="section-task">
+          <p class="task-title" data-lang="section0.task2.title"></p>
+          <div class="intro-task-grid">
+            <div>
+              <p data-lang="section0.photoTaskText"></p>
+              <div class="intro-calc">
+                <label for="photoSizeInput" data-lang="section0.inputPhotoSizeLabel"></label>
+                <input id="photoSizeInput" type="number" min="0" step="0.1" data-lang-attr="placeholder:section0.inputPhotoSizePlaceholder">
+                <button id="photoCalcBtn" type="button" data-lang="section0.photoCalcButton"></button>
+              </div>
+              <p id="photoCalcResult" class="intro-result" aria-live="polite"></p>
+            </div>
+            <aside class="rate-info">
+              <p class="rate-info-title" data-lang="section0.photoRatesTitle"></p>
+              <p data-lang="section0.photoRatesPhone"></p>
+              <p data-lang="section0.photoRatesCamera"></p>
+              <p data-lang="section0.photoRatesRaw"></p>
+            </aside>
+          </div>
+        </div>
+        <div class="section-task">
+          <p class="task-title" data-lang="section0.task3.title"></p>
+          <p class="intro-result" data-lang="section0.snowdenContrast"></p>
+          <p class="assumption-task" data-lang="section0.reflectionTask"></p>
+          <div class="help-row">
+            <button class="help-toggle" type="button"
+                    data-lang="common.showHint"
+                    aria-controls="hint-section0-reflection"
+                    aria-expanded="false"></button>
+            <div id="hint-section0-reflection" class="help-box" hidden>
+              <p data-lang="section0.reflectionHint"></p>
+            </div>
+          </div>
+          <textarea class="assumption-textarea" id="answer-section0-reflection"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+        </div>
+      </section>
+
+      <section class="panel" id="lossless" hidden>
+        <h2 data-lang="lossless.heading"></h2>
+        <p class="section-frame task-intro" data-lang="lossless.sectionOpener"></p>
+
+        <p class="rle-einstieg-pattern" data-lang="lossless.einstiegPattern"></p>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="lossless.task1.title"></p>
+          <p data-lang="lossless.task1.question"></p>
+          <div class="help-row">
+            <button class="help-toggle" type="button"
+                    data-lang="common.showHint"
+                    aria-controls="hint-s1-1"
+                    aria-expanded="false"></button>
+            <div id="hint-s1-1" class="help-box" hidden>
+              <p data-lang="lossless.task1.hint"></p>
+            </div>
+          </div>
+          <textarea class="assumption-textarea" id="answer-s1-1"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+        </div>
+        <p data-lang="lossless.afterTask1"></p>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="lossless.task2.title"></p>
+          <p class="task-intro" data-lang="lossless.task2.intro"></p>
+          <div class="task-challenges">
+            <p class="task-challenges-title" data-lang="common.challengeTitle"></p>
+            <p data-lang="lossless.task2.challengesIntro"></p>
+            <ul>
+              <li data-lang="lossless.task2.challenge1"></li>
+              <li data-lang="lossless.task2.challenge2"></li>
+              <li data-lang="lossless.task2.challenge3"></li>
+            </ul>
+          </div>
+          <div class="widget-shell">
+            <div class="widget-shell-body">
+              <div class="widget-placeholder" id="widget-s1-rle"
+                   data-lang="lossless.task2.widgetPlaceholder"></div>
+            </div>
+          </div>
+          <p data-lang="lossless.task2.a.text"></p>
+          <textarea class="assumption-textarea" id="answer-s1-2a"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <p data-lang="lossless.task2.b.text"></p>
+          <textarea class="assumption-textarea assumption-textarea--code" id="answer-s1-2b"
+                    data-answer-skeleton="lossless.task2.b.skeleton"
+                    autocomplete="off" spellcheck="false"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+        </div>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="lossless.task3.title"></p>
+          <p class="task-intro" data-lang="lossless.task3.intro"></p>
+          <div class="widget-placeholder" id="widget-s1-rle-text"></div>
+          <p data-lang="lossless.task3.a.text"></p>
+          <textarea class="assumption-textarea" id="answer-s1-3a"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <p data-lang="lossless.task3.b.text"></p>
+          <textarea class="assumption-textarea" id="answer-s1-3b"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <p data-lang="lossless.task3.dictFraming"></p>
+          <hr class="widget-divider">
+          <div class="widget-placeholder" id="widget-s1-dict"
+               data-lang="lossless.task3.widgetPlaceholder"></div>
+          <hr class="widget-divider">
+          <p data-lang="lossless.task3.c.text"></p>
+          <textarea class="assumption-textarea assumption-textarea--code" id="answer-s1-3c"
+                    data-answer-skeleton="lossless.task3.c.skeleton"
+                    autocomplete="off" spellcheck="false"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+        </div>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="lossless.task4.title"></p>
+          <p class="task-intro" data-lang="lossless.task4.intro"></p>
+          <blockquote class="task-quote" data-lang="lossless.task4.quotePlain"></blockquote>
+          <blockquote class="task-quote" data-lang="lossless.task4.quoteEncrypted"></blockquote>
+          <p data-lang="lossless.task4.a.text"></p>
+          <textarea class="assumption-textarea" id="answer-s1-4a"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+        </div>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="lossless.closing.title"></p>
+          <p class="task-intro" data-lang="lossless.closing.intro"></p>
+          <p data-lang="lossless.closing.text"></p>
+          <div class="widget-shell">
+            <div class="widget-shell-body">
+              <div class="widget-placeholder" id="widget-s1-efficiency"
+                   data-lang="lossless.closing.widgetPlaceholder"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="lossless-optional" hidden>
+        <h2 data-lang="losslessOptional.heading"></h2>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="losslessOptional.task1.title"></p>
+          <p class="task-intro" data-lang="losslessOptional.task1.intro"></p>
+          <p data-lang="losslessOptional.task1.a.text"></p>
+          <textarea class="assumption-textarea" id="answer-s1opt-1a"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <p data-lang="losslessOptional.task1.b.text"></p>
+          <textarea class="assumption-textarea" id="answer-s1opt-1b"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <div class="help-row">
+            <button class="help-toggle" type="button"
+                    data-lang="common.showHint"
+                    aria-controls="hint-s1opt-1"
+                    aria-expanded="false"></button>
+            <div id="hint-s1opt-1" class="help-box" hidden>
+              <p data-lang="losslessOptional.task1.hint"></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="losslessOptional.task2.title"></p>
+          <p class="task-intro" data-lang="losslessOptional.task2.intro"></p>
+          <blockquote class="task-quote" data-lang="losslessOptional.task2.quotePlain"></blockquote>
+          <blockquote class="task-quote" data-lang="losslessOptional.task2.quoteCaesar"></blockquote>
+          <blockquote class="task-quote" data-lang="losslessOptional.task2.quoteEncrypted"></blockquote>
+          <p data-lang="losslessOptional.task2.a.text"></p>
+          <textarea class="assumption-textarea" id="answer-s1opt-2a"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <p data-lang="losslessOptional.task2.b.text"></p>
+          <textarea class="assumption-textarea" id="answer-s1opt-2b"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <div class="help-row">
+            <button class="help-toggle" type="button"
+                    data-lang="common.showHint"
+                    aria-controls="hint-s1opt-2"
+                    aria-expanded="false"></button>
+            <div id="hint-s1opt-2" class="help-box" hidden>
+              <p data-lang="losslessOptional.task2.hint"></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="losslessOptional.closing.title"></p>
+          <p data-lang="losslessOptional.closing.a.text"></p>
+          <textarea class="assumption-textarea" id="answer-s1opt-closing-a"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <p data-lang="losslessOptional.closing.b.text"></p>
+          <textarea class="assumption-textarea" id="answer-s1opt-closing-b"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <div class="help-row">
+            <button class="help-toggle" type="button"
+                    data-lang="common.showHint"
+                    aria-controls="hint-s1opt-closing"
+                    aria-expanded="false"></button>
+            <div id="hint-s1opt-closing" class="help-box" hidden>
+              <p data-lang="losslessOptional.closing.hint"></p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="lossy" hidden>
+        <h2 data-lang="lossy.heading"></h2>
+        <p class="section-frame task-intro" data-lang="lossy.sectionOpener"></p>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="lossy.task1.title"></p>
+          <p class="task-intro" data-lang="lossy.task1.intro"></p>
+          <div class="widget-placeholder" id="widget-s2-bitflip"
+               data-lang="lossy.task1.widgetPlaceholder"></div>
+          <p data-lang="lossy.task1.a.text"></p>
+          <textarea class="assumption-textarea" id="answer-s2-einstieg"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+        </div>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="lossy.task2.title"></p>
+          <p class="task-intro" data-lang="lossy.task2.intro"></p>
+          <div id="widget-s2-jpeg-slideshow" class="widget-placeholder" style="margin:0.75rem 0"></div>
+        </div>
+
+        <p data-lang="lossy.afterTask1"></p>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="lossy.task3.title"></p>
+          <p class="task-intro" data-lang="lossy.task3.intro"></p>
+          <div class="task-challenges">
+            <p class="task-challenges-title" data-lang="common.challengeTitle"></p>
+            <p data-lang="lossy.task3.challengesIntro"></p>
+            <ul>
+              <li data-lang="lossy.task3.challenge1"></li>
+              <li data-lang="lossy.task3.challenge2"></li>
+              <li data-lang="lossy.task3.challenge3"></li>
+            </ul>
+          </div>
+          <div class="widget-shell">
+            <div class="widget-shell-body">
+              <div class="widget-placeholder" id="widget-s2-blockavg"
+                   data-lang="lossy.task3.widgetPlaceholder"></div>
+            </div>
+          </div>
+          <p data-lang="lossy.task3.a.text"></p>
+          <textarea class="assumption-textarea" id="answer-s2-2a"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <p data-lang="lossy.task3.b.text"></p>
+          <textarea class="assumption-textarea" id="answer-s2-2b"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+        </div>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="lossy.task4.title"></p>
+          <p class="task-intro" data-lang="lossy.task4.intro"></p>
+          <div class="widget-placeholder" id="widget-s2-blocksize"
+               data-lang="lossy.task4.widgetPlaceholder"></div>
+          <p data-lang="lossy.task4.a.text"></p>
+          <textarea class="assumption-textarea" id="answer-s2-3a"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <p data-lang="lossy.task4.b.text"></p>
+          <textarea class="assumption-textarea" id="answer-s2-3b"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+        </div>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="lossy.task5.title"></p>
+          <p class="task-intro" data-lang="lossy.task5.intro"></p>
+          <p data-lang="lossy.task5.a.text"></p>
+          <div class="help-row">
+            <button class="help-toggle" type="button"
+                    data-lang="common.showHint"
+                    aria-controls="hint-s2-4a"
+                    aria-expanded="false"></button>
+            <div id="hint-s2-4a" class="help-box" hidden>
+              <p data-lang="lossy.task5.a.hint"></p>
+            </div>
+          </div>
+          <textarea class="assumption-textarea" id="answer-s2-4a"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <p data-lang="lossy.task5.b.text"></p>
+          <div class="widget-shell">
+            <div class="widget-shell-body">
+              <div class="widget-placeholder" id="widget-s2-text-vs-jpeg"
+                   data-lang="lossy.task5.widgetPlaceholder"></div>
+            </div>
+          </div>
+          <div class="help-row">
+            <button class="help-toggle" type="button"
+                    data-lang="common.showHint"
+                    aria-controls="hint-s2-4b"
+                    aria-expanded="false"></button>
+            <div id="hint-s2-4b" class="help-box" hidden>
+              <p data-lang="lossy.task5.b.hint"></p>
+            </div>
+          </div>
+          <textarea class="assumption-textarea" id="answer-s2-4b"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+        </div>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="lossy.closing.title"></p>
+          <p class="task-intro" data-lang="lossy.closing.intro"></p>
+          <p data-lang="lossy.closing.a.text"></p>
+          <div class="widget-shell">
+            <div class="widget-shell-body">
+              <div class="widget-placeholder" id="widget-s2-lossy-closing"
+                   data-lang="lossy.closing.widgetPlaceholder"></div>
+            </div>
+          </div>
+          <p data-lang="lossy.closing.b.text"></p>
+          <p data-lang="lossy.closing.b.s1"></p>
+          <textarea class="assumption-textarea" id="answer-s2-cb-s1"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <p data-lang="lossy.closing.b.s2"></p>
+          <textarea class="assumption-textarea" id="answer-s2-cb-s2"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <p data-lang="lossy.closing.b.s3"></p>
+          <textarea class="assumption-textarea" id="answer-s2-cb-s3"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+        </div>
+      </section>
+
+      <section class="panel" id="filetypes" hidden>
+        <h2 data-lang="filetypes.heading"></h2>
+        <p class="section-frame task-intro" data-lang="filetypes.sectionOpener"></p>
+
+        <p data-lang="filetypes.intro.p1"></p>
+        <p data-lang="filetypes.intro.p2"></p>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="filetypes.task1.title"></p>
+          <p data-lang="filetypes.task1.intro"></p>
+          <div class="widget-placeholder" id="widget-s3-fileinspector"
+               data-lang="filetypes.task1.widgetPlaceholder"></div>
+          <p data-lang="filetypes.task1.a.text"></p>
+          <textarea class="assumption-textarea" id="answer-s3-1a"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <p data-lang="filetypes.task1.b.text"></p>
+          <textarea class="assumption-textarea" id="answer-s3-1b"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <p data-lang="filetypes.task1.c.text"></p>
+          <div class="help-row">
+            <button class="help-toggle" type="button"
+                    data-lang="common.showHint"
+                    aria-controls="hint-s3-1c"
+                    aria-expanded="false"></button>
+            <div id="hint-s3-1c" class="help-box" hidden>
+              <p data-lang="filetypes.task1.c.hint"></p>
+            </div>
+          </div>
+          <textarea class="assumption-textarea" id="answer-s3-1c"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+        </div>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="filetypes.task2.title"></p>
+          <p data-lang="filetypes.task2.intro"></p>
+          <p data-lang="filetypes.task2.a.text"></p>
+          <textarea class="assumption-textarea" id="answer-s3-2a"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <p data-lang="filetypes.task2.c.text"></p>
+          <div class="help-row">
+            <button class="help-toggle" type="button"
+                    data-lang="common.showHint"
+                    aria-controls="hint-s3-2c"
+                    aria-expanded="false"></button>
+            <div id="hint-s3-2c" class="help-box" hidden>
+              <p data-lang="filetypes.task2.c.hint"></p>
+            </div>
+          </div>
+          <textarea class="assumption-textarea" id="answer-s3-2c"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+        </div>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="filetypes.task3.title"></p>
+          <p class="task-intro" data-lang="filetypes.task3.intro"></p>
+          <p data-lang="filetypes.task3.a.text"></p>
+          <textarea class="assumption-textarea" id="answer-s3-3a"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+        </div>
+
+        <details class="section-task">
+          <summary class="task-title" data-lang="filetypes.task3optional.title"></summary>
+          <p data-lang="filetypes.task3optional.intro"></p>
+          <p data-lang="filetypes.task3optional.b.text"></p>
+          <textarea class="assumption-textarea" id="answer-s3-3b"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <details class="format-info-details">
+            <summary data-lang="filetypes.task3optional.formatsSummary"></summary>
+            <dl class="format-detail-list">
+            <dt data-lang="filetypes.task3optional.formats.txt.title"></dt>
+            <dd data-lang="filetypes.task3optional.formats.txt.text"></dd>
+            <dt data-lang="filetypes.task3optional.formats.docx.title"></dt>
+            <dd data-lang="filetypes.task3optional.formats.docx.text"></dd>
+            <dt data-lang="filetypes.task3optional.formats.csv.title"></dt>
+            <dd data-lang="filetypes.task3optional.formats.csv.text"></dd>
+            <dt data-lang="filetypes.task3optional.formats.accdb.title"></dt>
+            <dd data-lang="filetypes.task3optional.formats.accdb.text"></dd>
+            <dt data-lang="filetypes.task3optional.formats.png.title"></dt>
+            <dd data-lang="filetypes.task3optional.formats.png.text"></dd>
+            <dt data-lang="filetypes.task3optional.formats.psd.title"></dt>
+            <dd data-lang="filetypes.task3optional.formats.psd.text"></dd>
+            </dl>
+          </details>
+          <p data-lang="filetypes.task3optional.psdQuestion"></p>
+          <textarea class="assumption-textarea" id="answer-s3-3opt"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+        </details>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="filetypes.task4.title"></p>
+          <p data-lang="filetypes.task4.intro"></p>
+          <p data-lang="filetypes.task4.a.text"></p>
+          <textarea class="assumption-textarea" id="answer-s3-4a"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <div class="widget-placeholder" id="widget-s3-zip"
+               data-lang="filetypes.task4.widgetPlaceholder"></div>
+          <p data-lang="filetypes.task4.b.text"></p>
+          <textarea class="assumption-textarea" id="answer-s3-4b"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <p data-lang="filetypes.task4.c.text"></p>
+          <textarea class="assumption-textarea" id="answer-s3-4c"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+        </div>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="filetypes.closing.title"></p>
+          <p data-lang="filetypes.closing.a.text"></p>
+          <textarea class="assumption-textarea" id="answer-s3-ca"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <p data-lang="filetypes.closing.b.text"></p>
+          <p data-lang="filetypes.closing.b.t1"></p>
+          <textarea class="assumption-textarea" id="answer-s3-cb-t1"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <p data-lang="filetypes.closing.b.t2"></p>
+          <textarea class="assumption-textarea" id="answer-s3-cb-t2"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+          <p data-lang="filetypes.closing.b.t3"></p>
+          <textarea class="assumption-textarea" id="answer-s3-cb-t3"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+        </div>
+      </section>
+
+      <section class="panel" id="final" hidden>
+        <h2 data-lang="final.heading"></h2>
+        <p class="section-frame task-intro" data-lang="final.sectionOpener"></p>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="final.task1.title"></p>
+          <p data-lang="final.task1.note"></p>
+          <div class="widget-placeholder" id="widget-s4-filesystem"
+               data-lang="final.task1.widgetPlaceholder"></div>
+          <p data-lang="final.task1.a.text"></p>
+          <div class="fss-scenario" data-scenario="s0">
+            <button type="button" class="fss-scenario-open" data-lang="final.task1.a.s0"></button>
+            <div class="widget-shell">
+              <div class="widget-shell-body">
+                <div class="widget-placeholder" id="widget-s4-sim-s0"
+                     data-lang="final.task1.simPlaceholder"></div>
+              </div>
+            </div>
+          </div>
+          <div class="fss-scenario" data-scenario="s1">
+            <button type="button" class="fss-scenario-open" data-lang="final.task1.a.s1"></button>
+            <div class="widget-shell">
+              <div class="widget-shell-body">
+                <div class="widget-placeholder" id="widget-s4-sim-s1"
+                     data-lang="final.task1.simPlaceholder"></div>
+              </div>
+            </div>
+          </div>
+          <div class="fss-scenario" data-scenario="s2">
+            <button type="button" class="fss-scenario-open" data-lang="final.task1.a.s2"></button>
+            <div class="widget-shell">
+              <div class="widget-shell-body">
+                <div class="widget-placeholder" id="widget-s4-sim-s2"
+                     data-lang="final.task1.simPlaceholder"></div>
+              </div>
+            </div>
+          </div>
+          <div class="fss-scenario" data-scenario="s3">
+            <button type="button" class="fss-scenario-open" data-lang="final.task1.a.s3"></button>
+            <div class="widget-shell">
+              <div class="widget-shell-body">
+                <div class="widget-placeholder" id="widget-s4-sim-s3"
+                     data-lang="final.task1.simPlaceholder"></div>
+              </div>
+            </div>
+          </div>
+          <p data-lang="final.task1.b.text"></p>
+          <p class="reflection-compare-label" data-lang="final.task1.b.thenLabel"></p>
+          <blockquote class="reflection-compare" id="reflection-compare-intro"></blockquote>
+          <p class="reflection-compare-label" data-lang="final.task1.b.nowLabel"></p>
+          <textarea class="assumption-textarea" id="answer-s4-1b"
+                    data-lang-attr="placeholder:common.answerPlaceholder"></textarea>
+        </div>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="final.closing.title"></p>
+          <div class="reflection-list">
+            <div class="reflection-item">
+              <p class="reflection-statement" data-lang="final.closing.q1"></p>
+              <form class="ethics-form" id="reflection-form-1">
+                <label><input type="radio" name="reflection-1" value="agree"> <span data-lang="final.closing.agree"></span></label>
+                <label><input type="radio" name="reflection-1" value="disagree"> <span data-lang="final.closing.disagree"></span></label>
+              </form>
+            </div>
+            <div class="reflection-item">
+              <p class="reflection-statement" data-lang="final.closing.q2"></p>
+              <form class="ethics-form" id="reflection-form-2">
+                <label><input type="radio" name="reflection-2" value="agree"> <span data-lang="final.closing.agree"></span></label>
+                <label><input type="radio" name="reflection-2" value="disagree"> <span data-lang="final.closing.disagree"></span></label>
+              </form>
+            </div>
+            <div class="reflection-item">
+              <p class="reflection-statement" data-lang="final.closing.q3"></p>
+              <form class="ethics-form" id="reflection-form-3">
+                <label><input type="radio" name="reflection-3" value="agree"> <span data-lang="final.closing.agree"></span></label>
+                <label><input type="radio" name="reflection-3" value="disagree"> <span data-lang="final.closing.disagree"></span></label>
+              </form>
+            </div>
+            <div class="reflection-item">
+              <p class="reflection-statement" data-lang="final.closing.q4"></p>
+              <form class="ethics-form" id="reflection-form-4">
+                <label><input type="radio" name="reflection-4" value="agree"> <span data-lang="final.closing.agree"></span></label>
+                <label><input type="radio" name="reflection-4" value="disagree"> <span data-lang="final.closing.disagree"></span></label>
+              </form>
+            </div>
+            <div class="reflection-item">
+              <p class="reflection-statement" data-lang="final.closing.q5"></p>
+              <form class="ethics-form" id="reflection-form-5">
+                <label><input type="radio" name="reflection-5" value="agree"> <span data-lang="final.closing.agree"></span></label>
+                <label><input type="radio" name="reflection-5" value="disagree"> <span data-lang="final.closing.disagree"></span></label>
+              </form>
+            </div>
+            <div class="reflection-item">
+              <p class="reflection-statement" data-lang="final.closing.q6"></p>
+              <form class="ethics-form" id="reflection-form-6">
+                <label><input type="radio" name="reflection-6" value="agree"> <span data-lang="final.closing.agree"></span></label>
+                <label><input type="radio" name="reflection-6" value="disagree"> <span data-lang="final.closing.disagree"></span></label>
+              </form>
+            </div>
+            <div class="reflection-item">
+              <p class="reflection-statement" data-lang="final.closing.q7"></p>
+              <form class="ethics-form" id="reflection-form-7">
+                <label><input type="radio" name="reflection-7" value="agree"> <span data-lang="final.closing.agree"></span></label>
+                <label><input type="radio" name="reflection-7" value="disagree"> <span data-lang="final.closing.disagree"></span></label>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-task">
+          <p class="task-title" data-lang="final.plenum.title"></p>
+          <p data-lang="final.plenum.note"></p>
+          <ul class="plenum-list">
+            <li data-lang="final.plenum.q1"></li>
+            <li data-lang="final.plenum.q2"></li>
+            <li data-lang="final.plenum.q3"></li>
+          </ul>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <p data-lang="footer.text"></p>
+    </div>
+  </footer>
+
+  <script src="lang/de.js"></script>
+  <script src="lang/widgets_de.js"></script>
+  <script src="img/katze-data.js"></script>
+  <script src="js/lang.js"></script>
+  <script src="js/navigation.js"></script>
+  <script src="js/intro.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/section0.js"></script>
+  <script src="js/widget-fullscreen.js"></script>
+  <script src="js/challenge.js"></script>
+  <script src="js/step-slideshow.js"></script>
+  <script src="js/jpeg-intro-slideshow.js"></script>
+  <script src="js/reflection.js"></script>
+  <script src="js/widgets/sort-widget.js"></script>
+  <script src="js/widgets/bitflip.js"></script>
+  <script src="js/widgets/rle.js"></script>
+  <script src="js/widgets/rle-text.js"></script>
+  <script src="js/widgets/dict.js"></script>
+  <script src="js/widgets/block-avg.js"></script>
+  <script src="js/widgets/block-size.js"></script>
+  <script src="js/material/s2-task5-data.js"></script>
+  <script src="js/widgets/text-vs-jpeg.js"></script>
+  <script src="js/widgets/file-inspector.js"></script>
+  <script src="js/widgets/zip-archive.js"></script>
+  <script src="js/material/s4-scenarios.js"></script>
+  <script src="js/widgets/filesystem.js"></script>
+  <script src="js/widgets/filesystem-simulator.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
