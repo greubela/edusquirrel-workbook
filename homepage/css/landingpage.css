@@ -1,3 +1,6 @@
+@import url("./generic/colors.css");
+@import url("./generic/dimensions.css");
+
 :root {
   font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
   color: #1f2933;
@@ -21,13 +24,14 @@ body {
 }
 
 .landing-container {
-  background: #ffffff;
   border-radius: 18px;
   box-shadow: 0 30px 60px rgba(15, 23, 42, 0.15);
-  width: min(960px, 100%);
   display: grid;
   gap: 1.5rem;
   padding: 2.5rem;
+
+  max-width: var(--workarea-width);
+  background-color: var(--color-background-workarea-display);
 }
 
 .headline-row {
@@ -64,7 +68,7 @@ body {
 
 .workbook-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 1.5rem;
 }
 
