@@ -30,7 +30,7 @@ body {
   gap: 1.5rem;
   padding: 2.5rem;
 
-  max-width: var(--workarea-width);
+  width: var(--workarea-width);
   background-color: var(--color-background-workarea-display);
 }
 
