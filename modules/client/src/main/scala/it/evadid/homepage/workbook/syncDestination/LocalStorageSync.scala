@@ -17,6 +17,8 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object LocalStorageSync extends SyncDestination {
 
+  private val historyKeyPrefix = "synced-variable"
+
   private val ec: ExecutionContext = ExecutionContext.global
 
   private val storage: Storage = dom.window.localStorage
@@ -26,7 +28,7 @@ object LocalStorageSync extends SyncDestination {
   override def storeTo(logger: SyncLogger, context: SyncContext, history: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncInformation.SyncSuccess] = Future {
     try {
       val value: String = formatter.serialize(context, history)
-      val serializedKey: String = contextToBrowserKeySerializer.serialize(context)
+      val serializedKey: String = historyKeyPrefix + contextToBrowserKeySerializer.serialize(context)
       //println(s"###################### [DEBUG] storing to local storage: $serializedKey -> $value")
       storage.setItem(serializedKey.toString, value.toString)
       SyncSuccess(1, 0, 0, LocalDateTime.now())
@@ -36,11 +38,6 @@ object LocalStorageSync extends SyncDestination {
       throw e
     }
   }(using ec)
-
-
-  /*override def fetchAll(context: UsageContext): Future[Map[SyncContext, InteractionVariableHistorySerialized]] = Future {
-
-  }(using ec)*/
 
   override def shouldBePersistant(): Boolean = false
 
@@ -60,8 +57,10 @@ object LocalStorageSync extends SyncDestination {
   }
 
   private def transformBack(logger: SyncLogger, formatter: SyncFormatter, browserKey: String, browserValue: String): Option[(SyncContext, InteractionVariableHistorySerialized)] = try {
-    if (!browserKey.startsWith("{")) None else
-      Some(contextToBrowserKeySerializer.deserialize(browserKey) -> formatter.deserialize(browserValue))
+    if (!browserKey.startsWith(historyKeyPrefix)) None else {
+      val browserKeyWithoutPrefix = browserKey.substring(historyKeyPrefix.length, browserKey.length)
+      Some(contextToBrowserKeySerializer.deserialize(browserKeyWithoutPrefix) -> formatter.deserialize(browserValue))
+    }
   } catch case (e: Exception) => {
     logger.log(s"LocalStorageSync: Ignore tuple (${browserKey}, ${browserValue}) because it was unparsable: ${e.getMessage}", WARN, Option(false))
     None

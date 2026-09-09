@@ -32,15 +32,13 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
     now().userInfo
   }
 
-
   def allAvailableInteractions: List[WorkbookInteractionElement[?]] = fullInfo.synchronized {
     val default = List()
     now().workbookInfo.map(_.loadedWorkbook.allContainedInteractions).getOrElse(default)
   }
 
   def allAvailableLanguages: List[HumanLanguage] = fullInfo.synchronized {
-    val default = now().homepageDefaults.availableLanguages
-    now().workbookInfo.map(_.loadedWorkbook.availableLanguages).getOrElse(default)
+    now().workbookInfo.map(_.loadedWorkbook.availableLanguages).getOrElse(List())
   }
 
 }

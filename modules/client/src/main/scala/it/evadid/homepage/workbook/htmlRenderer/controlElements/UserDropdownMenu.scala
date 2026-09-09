@@ -3,6 +3,7 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.homepage.control.model.{AllUserInfo, FullInfo}
+import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlDropdownMenu
@@ -28,7 +29,7 @@ case class UserDropdownMenu() extends HtmlAppElement {
   )
 
   private val menu: HtmlDropdownMenu = HtmlDropdownMenu(isOpen,
-    createDefaultMenu() ++ createSessionMenu() ++ createDemoMenu()
+    createDefaultMenu() ++ createSessionMenu() //++ createDemoMenu()
   )
 
   private def createDefaultMenu(): List[HtmlAppElement] = List()
@@ -40,13 +41,12 @@ case class UserDropdownMenu() extends HtmlAppElement {
   )
 
 
-  private def createDemoMenu(): List[HtmlAppElement] = {
+  /*private def createDemoMenu(): List[HtmlAppElement] = {
     List(
       HtmlDropdownMenu.menuLabel(laminarHelper.plaintextStringSignal("basic/switchUser"))
     ) ++
-      fullInfo.defaults.selectableUsers.map(user => HtmlDropdownMenu.menuItem(Var(user.user.name).signal, _ => switchUser(Some(user))))
-
-  }
+      HomepageDefaults.selectableUsers.map(user => HtmlDropdownMenu.menuItem(Var(user.user.name).signal, _ => switchUser(Some(user))))
+  }*/
 
   private val domElement: Element = div(
     cls := "workbook-user-menu",

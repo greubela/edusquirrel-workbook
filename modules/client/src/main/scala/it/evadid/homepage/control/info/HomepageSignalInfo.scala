@@ -6,7 +6,6 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.control.{LanguageMapIdResolver, LanguageMapStorage}
 import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.core.datastructures.state.observable.ObservableValue
-import it.evadid.homepage.control.change.HomepageContentControl
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.elements.structureElements.WorkbookSection
 import it.evadid.workbook.interaction.sync.SyncInformation.SyncInformationWithContext
@@ -17,7 +16,12 @@ import scala.concurrent.*
 case class HomepageSignalInfo(fullInfo: FullInfo) {
 
 
-  lazy val idResolver: LanguageMapIdResolver = fullInfo.contentControl.languageStorage.langMapIdResolver(currentLanguage.toObservableValue)
+  lazy val idResolver: LanguageMapIdResolver = new LanguageMapIdResolver(currentLanguage.toObservableValue) {
+    override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[AppLanguage.HumanLanguage]] = Future {
+      fullInfo.homepageInfoState.now().languageMapStore.languageMaps(id)
+    }(using ExecutionContext.global)
+  }
+
 
   private lazy val baseSignal: StrictSignal[HomepageInfo] = {
     fullInfo.homepageInfoState.signal
@@ -53,16 +57,15 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
   }
 
   lazy val availableLanguages: StrictSignal[List[HumanLanguage]] = {
-    val default = fullInfo.homepageInfoState.now().homepageDefaults.availableLanguages
-    baseSignal.mapLazy(_.workbookInfo.map(_.loadedWorkbook.availableLanguages).getOrElse(default))
+    baseSignal.mapLazy(_.workbookInfo.map(_.loadedWorkbook.availableLanguages).getOrElse(List()))
   }
 
   lazy val currentLanguage: StrictSignal[HumanLanguage] = {
     baseSignal.mapLazy(_.currentLanguage)
   }
 
-  def getLanguageMapIfLoaded(languageMapId: LanguageMapContentId): Option[LanguageMap[HumanLanguage]] =
-    fullInfo.contentControl.languageStorage.getLanguageMapIfLoaded(languageMapId)
+  /*def getLanguageMapIfLoaded(languageMapId: LanguageMapContentId): Option[LanguageMap[HumanLanguage]] =
+    fullInfo.contentControl.languageStorage.getLanguageMapIfLoaded(languageMapId)*/
 
 
   def ensuredLanguageMapSignal(languageMapId: LanguageMapContentId): StrictSignal[LanguageMap[HumanLanguage]] = {
@@ -73,15 +76,8 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
 
 
   def ensuredLanguageMap(languageMapId: LanguageMapContentId): ObservableValue[LanguageMap[HumanLanguage]] = {
-
-    fullInfo.contentControl.languageStorage.languageMapObservable(languageMapId).deriveValue(_.getOrElse(LanguageMapStorage.languageMapLoading(languageMapId)))
-
-    /*val languageMapOpFromId: AsyncData[Nothing, LanguageMap[HumanLanguage]] = contentStorage.asStorage.loadIntoVariable(languageMapId)(using ExecutionContext.global)
-    languageMapOpFromId.toStateSignal.mapLazy {
-      case AsyncDataLoading() => .languageMapLoading(languageMapId)
-      case AsyncDataSuccess(map) => map
-      case AsyncDataFailed(cause, data) => WorkbookContentControl.languageMapError(languageMapId, cause)
-    }*/
+    val signal = fullInfo.homepageInfoState.signal.map(_.languageMapStore.languageMaps.getOrElse(languageMapId, LanguageMapStorage.languageMapLoading(languageMapId)))
+    signal.toObservableValue
   }
 
   def stringFromLanguageMap(languageMap: LanguageMap[HumanLanguage]): StrictSignal[String] = {

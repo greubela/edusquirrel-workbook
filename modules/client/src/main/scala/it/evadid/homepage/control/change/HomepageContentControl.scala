@@ -3,12 +3,11 @@ package it.evadid.homepage.control.change
 import it.evadid.core.datastructures.file.*
 import it.evadid.core.datastructures.file.CopyrightInfo.unknownCopyrightInfo
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.core.datastructures.language.control.LanguageMapStorageControl
 import it.evadid.core.datastructures.language.serialization.{LanguageMapInputSource, LanguageMapSourceFileBased}
 import it.evadid.core.datastructures.language.serialization.LanguageMapInputSource.{EvaDirectorySource, LanguageMapFileBasedSourceInfo}
 import it.evadid.homepage.control.change.HomepageContentControl.HomepageFileFactory
 import it.evadid.homepage.control.model.FullInfo
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
+import it.evadid.homepage.control.singletons.{HomepageDefaults, HtmlFullWorkbookApp}
 import it.evadid.util.logging.Logger
 import it.evadid.util.{DownloadToDisc, FetchFromRemote, FileFactory, PostToRemote}
 import it.evadid.workbook.abstractions.TypeOfTextDisplay
@@ -22,7 +21,7 @@ case class HomepageContentControl(fullInfo: FullInfo, contentControlLogger: Logg
 
   private given ec: ExecutionContext = ExecutionContext.global
 
-  lazy val languageStorage: LanguageMapStorageControl = LanguageMapStorageControl(contentControlLogger, ec)
+  lazy val languageStorage: LanguageMapStorageControl = LanguageMapStorageControl(fullInfo, contentControlLogger, ec)
 
   lazy val downloadToDisc: DownloadToDisc = DownloadToDisc(contentControlLogger)
   lazy val postToRemote: PostToRemote = PostToRemote(contentControlLogger)
@@ -30,25 +29,7 @@ case class HomepageContentControl(fullInfo: FullInfo, contentControlLogger: Logg
 
   private[control] val fetchFromRemote: FetchFromRemote = FetchFromRemote(fileStorageLogger, ExecutionContext.global)
 
-  def ensureDefaultLanguageSourcesLoaded(): Future[?] = {
-    val snapFiles: Set[LanguageMapInputSource] = Set(
-      LanguageMapFileBasedSourceInfo[HumanLanguage](fileFactory.relativeToResourceFolder(s"programs/20260704Snap/locale/lang-de.js"), "originalSnap", German, ec),
-      LanguageMapFileBasedSourceInfo[HumanLanguage](fileFactory.relativeToResourceFolder(s"programs/20260704Snap/locale/lang-dk.js"), "originalSnap", Danish, ec)
-      //LanguageMapFileBasedSourceInfo[HumanLanguage](fileFactory.relativeToResourceFolder(s"programs/20260704Snap/locale/lang-en.js"), "originalSnap", English, ec),
-    ).flatMap(LanguageMapSourceFileBased.forSnapFile(_, str => str))
-
-    def evaLangDir(dirName: String): EvaDirectorySource = EvaDirectorySource(dirName, fileFactory.relativeToResourceFolder(s"/languageMaps/eva/${dirName}"))
-
-    val defaultEvaFiles: Set[LanguageMapInputSource] = Set(
-      LanguageMapInputSource.forEvaLanguageMapFiles(fullInfo.defaults.loadLanguageMapDirs.map(evaLangDir))
-    )
-    languageStorage.ensureLanguageSourcesLoaded(snapFiles)
-    languageStorage.ensureLanguageSourcesLoaded(defaultEvaFiles)
-  }
-
-
 }
-
 
 object HomepageContentControl {
 
