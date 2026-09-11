@@ -299,12 +299,13 @@ object BlockFeedbackFeedbackBuilder:
         rawPython,
         outcome.tests,
         outcome.normalizedScore,
-        outcome.runStatus,
+        if outcome.runtimeError.nonEmpty then Some(PythonRunStatus.RuntimeError) else outcome.runStatus,
         request.config.enableUnitTests
       )
     val summary = sanitizeStudentMessage(buildSummary(outcome.tests, normalizedScore, request.humanLanguage))
 
-    val allTestsPassed = request.config.enableUnitTests && outcome.tests.nonEmpty && outcome.tests.forall(_.passed)
+    val allTestsPassed = request.config.enableUnitTests && outcome.tests.nonEmpty && outcome.tests.forall(_.passed) &&
+      outcome.runStatus.contains(PythonRunStatus.Success) && outcome.runtimeError.isEmpty
     val orphanedDefs = if request.config.isScriptExercise then detectOrphanedDefs(rawPython) else Seq.empty
     val hintsRaw =
       if hints0.nonEmpty then hints0
@@ -389,12 +390,10 @@ object BlockFeedbackFeedbackBuilder:
   ): String =
     val isGerman = humanLanguage == AppLanguage.German
     val baseline =
-      if isGerman then "Dein Code funktioniert korrekt. Alle Tests sind grün."
-      else "Your code works correctly. All tests pass."
+      if isGerman then "Gut gemacht! Du hast die Aufgabe gelöst."
+      else "Nice work! You've solved the exercise."
     val allIssues = deadCodeIssues ++ perfSuggestions ++ styleSuggestions
-    if allIssues.isEmpty then
-      if isGerman then baseline + " Saubere, gut lesbare Lösung."
-      else baseline + " Clean, well-written solution."
+    if allIssues.isEmpty then baseline
     else
       val improvements = scala.collection.mutable.ListBuffer[String]()
       deadCodeIssues.headOption.foreach { issue =>
@@ -502,7 +501,7 @@ object BlockFeedbackFeedbackBuilder:
         else math.max(0.0, math.min(1.0, tests.count(_.passed).toDouble / tests.size))
       )
       val status = runtimeStatus match
-        case Some(PythonRunStatus.Success) if score >= 1.0 => FeedbackStatus.FINISHED
+        case Some(PythonRunStatus.Success) if tests.nonEmpty && tests.forall(_.passed) && score >= 1.0 => FeedbackStatus.FINISHED
         case Some(PythonRunStatus.RuntimeError)            => FeedbackStatus.IN_PROGRESS
         case Some(PythonRunStatus.Success)                 => FeedbackStatus.IN_PROGRESS
         case Some(PythonRunStatus.Failed)                  => FeedbackStatus.IN_PROGRESS

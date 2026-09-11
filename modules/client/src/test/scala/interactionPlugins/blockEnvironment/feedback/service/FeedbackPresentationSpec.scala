@@ -7,6 +7,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.fe
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.rules.{RuleResult, RuleSeverity}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime.PythonRunStatus
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.service.{BlockFeedbackFeedbackBuilder, BlockFeedbackTestPlan}
+import it.evadid.homepage.workbook.legacy.model.feedback.FeedbackStatus
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.parsing.python.PythonParser
 import munit.FunSuite
@@ -84,4 +85,38 @@ final class FeedbackPresentationSpec extends FunSuite:
     val advice = "Check your comparison.\n\n- Change < to >.\n- Run the examples again."
     val feedback = BlockFeedbackFeedbackBuilder.buildFeedback(request(), plan.copy(derivedHints = Seq(advice)), success, Nil, Nil)
     assertEquals(feedback.displayHints, Seq("Check your comparison.\n\n1. Change < to >.\n2. Run the examples again."))
+  }
+
+  Seq(
+    AppLanguage.German -> "Gut gemacht! Du hast die Aufgabe gelöst.",
+    AppLanguage.English -> "Nice work! You've solved the exercise."
+  ).foreach { case (language, expected) =>
+    test(s"successful feedback addresses the learner without claiming untested code quality: $language") {
+      val feedback = BlockFeedbackFeedbackBuilder.buildFeedback(request(language), plan, success, Nil, Nil)
+      assertEquals(feedback.displayHints, Seq(expected))
+      assert(feedback.allTestsPassed)
+      assertEquals(feedback.status, FeedbackStatus.FINISHED)
+    }
+  }
+
+  test("passing test rows do not hide a runtime error") {
+    val outcome = success.copy(runtimeError = Some("Execution stopped unexpectedly."))
+    val feedback = BlockFeedbackFeedbackBuilder.buildFeedback(request(), plan, outcome, Nil, Nil)
+    assert(!feedback.allTestsPassed)
+    assertEquals(feedback.status, FeedbackStatus.IN_PROGRESS)
+    assert(!feedback.displayHints.mkString("\n").contains("Nice work"))
+  }
+
+  test("a failed runtime cannot produce a success message from passing test rows") {
+    val feedback = BlockFeedbackFeedbackBuilder.buildFeedback(request(), plan, success.copy(runStatus = Some(PythonRunStatus.RuntimeError)), Nil, Nil)
+    assert(!feedback.allTestsPassed)
+    assertEquals(feedback.status, FeedbackStatus.IN_PROGRESS)
+    assert(!feedback.displayHints.mkString("\n").contains("Nice work"))
+  }
+
+  test("no executed tests cannot produce success") {
+    val feedback = BlockFeedbackFeedbackBuilder.buildFeedback(request(), plan, success.copy(tests = Nil), Nil, Nil)
+    assert(!feedback.allTestsPassed)
+    assertEquals(feedback.status, FeedbackStatus.IN_PROGRESS)
+    assert(!feedback.displayHints.mkString("\n").contains("Nice work"))
   }
