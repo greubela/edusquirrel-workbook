@@ -15,7 +15,6 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.fe
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.service.BlockFeedbackService
 import it.evadid.homepage.workbook.legacy.model.feedback.FeedbackStatus
 import it.evadid.vm.code.others.BeStartProgram
-import it.evadid.vm.parsing.python.PythonParser
 import org.scalajs.dom
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -360,6 +359,7 @@ object FeedbackDemoElement:
             normalizedScore = fb.normalizedScore
           )
       val state = JSON.stringify(js.Dynamic.literal(
+        feedbackVersion = 1,
         exerciseId = selectedExerciseIdVar.now(),
         language = selectedLanguageVar.now().toString,
         code = pythonCodeVar.now(),
@@ -397,7 +397,8 @@ object FeedbackDemoElement:
           if !js.isUndefined(err) && err != null then
             errorVar.set(Some(err.asInstanceOf[String]))
           val fbRaw = s.feedback
-          if !js.isUndefined(fbRaw) && fbRaw != null then
+          if !js.isUndefined(fbRaw) && fbRaw != null &&
+              js.typeOf(s.feedbackVersion) == "number" && s.feedbackVersion.asInstanceOf[Int] == 1 then
             val fbD = fbRaw.asInstanceOf[js.Dynamic]
             val displayHints = fbD.displayHints.asInstanceOf[js.Array[String]].toSeq
             val displayTests = fbD.displayTests.asInstanceOf[js.Array[js.Dynamic]].toSeq.map { td =>
@@ -482,29 +483,11 @@ object FeedbackDemoElement:
       pythonEditor.clearDiagnostics()
       logEvent("Run feedback started")
 
-      val (programExpr, parserDiagnostics) =
-        try
-          val parsed = PythonParser.parsePython(pythonCodeVar.now())
-          val program = BeStartProgram(parsed)
-          val diagnostics = PythonCodeMirrorDiagnostics.forProgram(program, pythonCodeVar.now())
-          if diagnostics.nonEmpty then
-            pythonEditor.setDiagnostics(diagnostics)
-          program -> diagnostics
-        catch
-          case t: Throwable =>
-            isRunningVar.set(false)
-            errorVar.set(Option(t.getMessage).filter(_.nonEmpty).orElse(Some(t.toString)))
-            PythonCodeMirrorDiagnostics
-              .forRuntimeMessage(Option(t.getMessage).getOrElse(t.toString))
-              .foreach(d => pythonEditor.setDiagnostics(Seq(d)))
-            logEvent("Parse failed: " + Option(t.getMessage).getOrElse(t.toString))
-            return
-
       val req =
         BlockFeedbackService
           .requestForExerciseId(
             exerciseId = selectedExerciseIdVar.now(),
-            studentProgram = programExpr,
+            studentProgram = BeStartProgram(),
             submissionNr = 1,
             humanLanguage = selectedLanguageVar.now()
           )
@@ -522,7 +505,7 @@ object FeedbackDemoElement:
                 .flatMap(PythonCodeMirrorDiagnostics.forRuntimeMessage)
                 .toSeq
             val allDiagnostics =
-              PythonCodeMirrorDiagnostics.deduplicate(parserDiagnostics ++ runtimeDiagnostics)
+              PythonCodeMirrorDiagnostics.deduplicate(runtimeDiagnostics)
             pythonEditor.setDiagnostics(allDiagnostics)
             logEvent("Feedback generated")
             saveSession()
@@ -538,7 +521,7 @@ object FeedbackDemoElement:
             errorVar.set(Option(ex.getMessage).filter(_.nonEmpty).orElse(Some(ex.toString)))
             val runtimeDiagnostics =
               PythonCodeMirrorDiagnostics.forRuntimeMessage(Option(ex.getMessage).getOrElse(ex.toString)).toSeq
-            pythonEditor.setDiagnostics(PythonCodeMirrorDiagnostics.deduplicate(parserDiagnostics ++ runtimeDiagnostics))
+            pythonEditor.setDiagnostics(PythonCodeMirrorDiagnostics.deduplicate(runtimeDiagnostics))
             logEvent("Feedback failed: " + Option(ex.getMessage).getOrElse(ex.toString))
             saveSession()
         }

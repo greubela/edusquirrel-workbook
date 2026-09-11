@@ -139,16 +139,11 @@ object BlockFeedbackService:
       if effectiveRequest.config.enablePythonStaticChecks then
         PythonStaticRules.runAll(rawPython, effectiveRequest.humanLanguage)
       else Nil
-    val vmRules0 =
-      if effectiveRequest.config.enableVmStaticChecks then
+    // Imported text Python is not a complete VM model.
+    val vmRules =
+      if effectiveRequest.config.enableVmStaticChecks && effectiveRequest.pythonSourceOverride.isEmpty then
         VmStaticRules.runAll(effectiveRequest.studentCodePython, effectiveRequest.humanLanguage)
       else Nil
-
-    // VM_MAX_NESTING is too noisy in pythonSourceOverride runs (Feedback Demo)
-    val vmRules =
-      if effectiveRequest.pythonSourceOverride.isDefined then
-        vmRules0.filterNot(_.id == "VM_MAX_NESTING")
-      else vmRules0
 
     val runtimeOutcomeFuture =
       if rawPython.trim.isEmpty then

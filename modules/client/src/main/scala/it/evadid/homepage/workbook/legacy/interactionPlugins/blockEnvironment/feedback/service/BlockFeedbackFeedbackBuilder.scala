@@ -292,7 +292,7 @@ object BlockFeedbackFeedbackBuilder:
         runtimeError = outcome.runtimeError,
         planHints = plan.derivedHints,
         pythonRules = pythonRules,
-        vmRules = vmRules,
+        vmRules = if request.pythonSourceOverride.isDefined then Seq.empty else vmRules,
         humanLanguage = request.humanLanguage
       )
     val (normalizedScore, status) =
