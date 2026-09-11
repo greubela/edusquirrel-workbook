@@ -35,8 +35,7 @@ object BlockFeedbackFeedbackBuilder:
         .mkString("\n")
 
     numbered
-      .replaceAll("\\s{2,}", " ")
-      .replaceAll("\\n\\s+", "\n")
+      .replaceAll("[ \\t]{2,}", " ")
       .trim
 
   private def looksSmallBounded(exerciseText: String): Boolean =

@@ -20,6 +20,11 @@ object QualityGate {
    */
   val maxRewriteAttempts: Int = 3
 
+  private val StepLine = """^(?:\d+[.)]|[-*•])\s+(.+)$""".r
+
+  private def stepContent(line: String): Option[String] =
+    StepLine.findFirstMatchIn(line.trim).map(_.group(1))
+
   /**
    * If true (default), the last attempt's best-effort-repaired text is passed through
    * to the student even when QualityGate still finds violations after all retries.
@@ -110,7 +115,7 @@ object QualityGate {
           if parts.length == 2 then (parts(0).trim, parts(1).trim)
           else ("?", constraints.minSteps.toString)
         s"Your response has only $have numbered step(s) but needs at least $need. " +
-        s"Add more concrete, actionable steps until you reach $need."
+        "Present the evidenced correction as numbered steps. Do not invent additional requirements."
 
       case r if r.startsWith("too_many_steps(") =>
         val inner = r.stripPrefix("too_many_steps(").stripSuffix(")")
@@ -234,8 +239,7 @@ $originalPrompt
       if constraints.requireMentionedTestName then ensureMentionedTestName(shortened, requiredTestNames)
       else shortened
 
-    val ensuredSteps = ensureStepCount(ensuredTest, constraints, requiredTestNames)
-    ensuredSteps.trim
+    ensuredTest.trim
   }
 
   private def redactCodeBlocks(text: String): String = {
@@ -283,22 +287,7 @@ $originalPrompt
   }
 
   private def shortenPreservingSteps(text: String, constraints: PromptTemplates.OutputConstraints): String = {
-    {
-    // Prefer a clean student-facing structure:
-    // - one short intro sentence (if present), otherwise insert a neutral intro
-    // - 2–4 numbered/bullet steps
-    // This removes filler like "Follow these steps:" and drops extra sections.
     val rawLines = text.replace("\r\n", "\n").split("\n", -1).toSeq.map(_.trim).filter(_.nonEmpty)
-
-    def isStepLine(line: String): Boolean =
-      (line.length >= 2 && line.charAt(0).isDigit && line.contains(".")) || line.startsWith("-")
-
-    def normalizeStepLine(line: String, stepNr: Int): String = {
-      val t = line.trim
-      if t.startsWith("-") then s"$stepNr. " + t.drop(1).trim
-      else if t.length >= 2 && t.charAt(0).isDigit && t.contains(".") then t
-      else s"$stepNr. $t"
-    }
 
     def isMetaLine(line: String): Boolean = {
       val t = line.trim.toLowerCase
@@ -313,23 +302,10 @@ $originalPrompt
       t.startsWith("summary")
     }
 
-    def looksGerman(lines: Seq[String]): Boolean = {
-      val joined = lines.mkString(" ").toLowerCase
-      joined.contains(" du ") || joined.contains(" dein ") || joined.contains(" deine ") ||
-      joined.contains(" prüf") || joined.contains(" schau") || joined.contains(" schritte") ||
-      joined.contains(" erwart") || joined.contains(" liefert") || joined.contains(" funktioniert")
-    }
-
-    def defaultIntro(steps: Seq[String]): String =
-      if looksGerman(rawLines) then "So kannst du es eingrenzen:"
-      else ""
-
-    // Keep steps; remove pure meta lines from non-step content.
-    val stepLines0 = rawLines.filter(isStepLine).take(constraints.maxSteps)
-    if stepLines0.isEmpty then text
+    val firstStep = rawLines.indexWhere(line => stepContent(line).isDefined)
+    if firstStep < 0 then text
     else {
-      val introCandidates = rawLines.filterNot(isStepLine).filterNot(isMetaLine)
-      val intro0raw = introCandidates.headOption.getOrElse(defaultIntro(stepLines0))
+      val intro0raw = rawLines.take(firstStep).filterNot(isMetaLine).mkString(" ")
       // Strip trailing "Hier sind die Schritte / Follow these steps" suffix that LLMs
       // append to an otherwise useful intro sentence – the numbered steps follow, so
       // the preamble is redundant and would look odd after the normalization.
@@ -340,16 +316,16 @@ $originalPrompt
         .replaceFirst("(?i)[:\\s]*follow these steps[^.]*$", "")
         .replaceFirst("(?i)[:\\s]*here are (a few|some|the) steps[^.]*$", "")
         .trim
-        .stripSuffix(":")
-        .stripSuffix(".")
-        .trim
 
-      // Keep the intro short so truncation does not delete the actual steps.
-      val introBudget = math.max(6, math.min(12, constraints.maxWords / 3))
-      val intro = truncateToMaxWords(intro0.replace("\n", " ").trim, introBudget)
-      val stepLines = stepLines0.zipWithIndex.map { case (l, idx) => normalizeStepLine(l, idx + 1) }
-      (if intro.nonEmpty then Seq(intro) ++ stepLines else stepLines).mkString("\n")
-    }
+      val steps = scala.collection.mutable.ArrayBuffer.empty[String]
+      rawLines.drop(firstStep).filterNot(isMetaLine).foreach { line =>
+        stepContent(line) match
+          case Some(content) => steps += content
+          case None if steps.nonEmpty => steps(steps.size - 1) = steps.last + " " + line
+          case _ => ()
+      }
+      val numbered = steps.take(constraints.maxSteps).zipWithIndex.map { case (step, idx) => s"${idx + 1}. $step" }
+      (Seq(intro0).filter(_.nonEmpty) ++ numbered).mkString("\n")
     }
   }
 
@@ -375,43 +351,6 @@ $originalPrompt
                 case _ => Seq(testName)
             fixed.mkString("\n").trim
           }
-    }
-  }
-
-  private def ensureStepCount(
-    text: String,
-    constraints: PromptTemplates.OutputConstraints,
-    requiredTestNames: Seq[String]
-  ): String = {
-    val current = countStepLines(text)
-    if current >= constraints.minSteps && current <= constraints.maxSteps then text
-    else {
-      val base =
-        if current > constraints.maxSteps then shortenPreservingSteps(text, constraints)
-        else text
-
-      val afterShorten = base.replace("\r\n", "\n")
-      val missing = math.max(0, constraints.minSteps - countStepLines(afterShorten))
-      if missing == 0 then afterShorten
-      else {
-        val testNameOpt = requiredTestNames.find(_.nonEmpty)
-        val existing = countStepLines(afterShorten)
-        val genericSteps = (1 to missing).map { i =>
-          val stepNr = existing + i
-          val tn = testNameOpt.getOrElse(if constraints.isGerman then "den fehlschlagenden Fall" else "the failing case")
-          if constraints.isGerman then
-            i match
-              case 1 => s"$stepNr. Schau dir an, was dein Code für $tn zurückgibt, und vergleiche es mit dem erwarteten Ergebnis."
-              case 2 => s"$stepNr. Identifiziere die genaue Bedingung, bei der deine Aktualisierungslogik das Zwischenergebnis ändern sollte."
-              case _ => s"$stepNr. Probiere ein kleines Gegenbeispiel und verfolge die Variablenwerte Schritt für Schritt."
-          else
-            i match
-              case 1 => s"$stepNr. Re-run $tn and confirm observed vs expected behavior."
-              case 2 => s"$stepNr. Identify the exact condition where your update logic should change the running result."
-              case _ => s"$stepNr. Try a tiny counterexample and trace the variable updates."
-        }
-        (afterShorten.trim + "\n" + genericSteps.mkString("\n")).trim
-      }
     }
   }
 
@@ -479,7 +418,7 @@ $originalPrompt
         if constraints.forbidChitchat then
           strippedGreeting.filterNot { line =>
             val t = line.trim.toLowerCase
-            val isStepLine = (t.length >= 2 && t.charAt(0).isDigit && t.contains(".")) || t.startsWith("-")
+            val isStepLine = stepContent(t).isDefined
             // These phrases are banned even inside numbered step lines, because telling
             // the student to manually test/verify/confirm their function is always useless:
             // the system already runs all tests for them.
@@ -773,12 +712,8 @@ $originalPrompt
   private def wordCount(text: String): Int =
     text.split("\\s+").count(_.nonEmpty)
 
-  private def truncateToMaxWords(text: String, maxWords: Int): String = text
-
   private def countStepLines(text: String): Int = {
     val lines = text.replace("\r\n", "\n").split("\n", -1).toSeq.map(_.trim).filter(_.nonEmpty)
-    lines.count { line =>
-      (line.length >= 2 && line.charAt(0).isDigit && line.contains(".")) || line.startsWith("-")
-    }
+    lines.count(line => stepContent(line).isDefined)
   }
 }

@@ -56,3 +56,19 @@ final class PythonSourceFeedbackSpec extends FunSuite:
       assert(feedback.debug.get.ruleHintsCount > 0)
     }
   }
+
+  test("the word limit preserves a complete explanation and first numbered step") {
+    val first = "The comparison is reversed.\n\n1. Update the maximum when the next value is larger."
+    val text = first + "\n2. Keep the saved value otherwise."
+    assertEquals(BlockFeedbackService.limitFeedbackWords(text, 5), first)
+  }
+
+  test("short feedback retains numbering and blank lines unchanged") {
+    val text = "Check the comparison.\n\n1. Update only for larger values.\n2. Keep the saved value otherwise."
+    assertEquals(BlockFeedbackService.limitFeedbackWords(text, 40), text)
+  }
+
+  test("the word limit removes only complete subsequent steps") {
+    val text = "Check the comparison.\n1. Save larger values.\n2. Keep smaller values unchanged."
+    assertEquals(BlockFeedbackService.limitFeedbackWords(text, 10), "Check the comparison.\n1. Save larger values.")
+  }

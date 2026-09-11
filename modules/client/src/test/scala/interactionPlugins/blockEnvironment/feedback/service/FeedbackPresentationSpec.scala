@@ -68,3 +68,20 @@ final class FeedbackPresentationSpec extends FunSuite:
     val feedback = BlockFeedbackFeedbackBuilder.buildFeedback(nativeRequest, plan, success, Nil, Seq(warning))
     assert(feedback.displayHints.exists(_.contains(warning.message)))
   }
+
+  test("failed maximum keeps the tutor explanation and numbered next steps") {
+    val advice = "Your function currently returns the smallest value.\n\n1. Change the comparison from < to >.\n2. Try your code again with the supplied examples."
+    val failed = success.copy(tests = Seq(passedTest.copy(passed = false, actual = "1")), normalizedScore = Some(0.0))
+    val feedback = BlockFeedbackFeedbackBuilder.buildFeedback(
+      request().copy(pythonSourceOverride = Some(maximumSource.replace("x > m", "x < m"))),
+      plan.copy(derivedHints = Seq(advice)), failed, Nil, vmWarnings
+    )
+    assertEquals(feedback.displayHints, Seq(advice))
+    assert(!feedback.allTestsPassed)
+  }
+
+  test("bullet suggestions remain separate numbered steps") {
+    val advice = "Check your comparison.\n\n- Change < to >.\n- Run the examples again."
+    val feedback = BlockFeedbackFeedbackBuilder.buildFeedback(request(), plan.copy(derivedHints = Seq(advice)), success, Nil, Nil)
+    assertEquals(feedback.displayHints, Seq("Check your comparison.\n\n1. Change < to >.\n2. Run the examples again."))
+  }

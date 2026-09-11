@@ -22,9 +22,9 @@ object PromptTemplates {
   private object IssueModule {
     private val Default: IssueModule = (humanLanguage, _) =>
       if humanLanguage == AppLanguage.German then
-        Seq("Fokus: konkrete Ursache eingrenzen und 2–4 passende Schritte nennen.")
+        Seq("Fokus: konkrete Ursache eingrenzen und 1–4 belegte Schritte nennen. Ein passender Schritt genügt.")
       else
-        Seq("Focus: narrow down the concrete cause and give 2–4 matching steps.")
+        Seq("Focus: narrow down the concrete cause and give 1–4 evidenced steps. One relevant step is enough.")
 
     private val FormatOutput: IssueModule = (humanLanguage, signals) =>
       if humanLanguage == AppLanguage.German then
@@ -307,7 +307,6 @@ object PromptTemplates {
     val primaryTestName = testNames.headOption
 
     val functionNameHint = extractFunctionNameHint(signals, testNames)
-    val singleClearIssue = diagnosis.secondaryIssues.isEmpty && failedTests.size <= 1
     val baseConstraints = OutputConstraints(
       maxWords = 80,
       requireMentionedTestName = false,
@@ -317,19 +316,8 @@ object PromptTemplates {
       forbidChitchat = true,
       forbidProvidingFullSolution = true,
       isGerman = isGerman(humanLanguage),
-      minSteps =
-        if allTestsPassed then 0
-        else if singleClearIssue then 1
-        else 2,
-      maxSteps =
-        if allTestsPassed then 2
-        else if singleClearIssue then 2
-        else
-          decision.primaryIssue match {
-            case DecisionLayer.IssueType.COMPILE_ERROR => 3
-            case DecisionLayer.IssueType.PERFORMANCE   => 3
-            case _                                     => 2
-          },
+      minSteps = if allTestsPassed then 0 else 1,
+      maxSteps = if allTestsPassed then 2 else 4,
       issueTypeHint = Some(decision.primaryIssue)
     )
 
@@ -499,14 +487,14 @@ object PromptTemplates {
 
     val stepRuleDE =
       if constraints.minSteps <= 0 then
-        "- Wenn es nur einen klaren Punkt gibt, antworte kurz und direkt (ein kurzer Absatz oder maximal 1–2 nummerierte Schritte)."
+        "- Bestätige das richtige Ergebnis kurz und direkt. Erfinde keine Korrekturschritte für eine bestandene Lösung."
       else
-        s"- Gib ${constraints.minSteps}–${constraints.maxSteps} konkrete Schritte (als nummerierte Liste)."
+        s"- Gib ${constraints.minSteps}–${constraints.maxSteps} belegte Schritte als nummerierte Liste (1., 2., ...). Ein konkreter Schritt genügt; ergänze keine Schritte nur für die Anzahl."
     val stepRuleEN =
       if constraints.minSteps <= 0 then
-        "- If there is only one clear point, answer briefly and directly (one short paragraph or at most 1–2 numbered steps)."
+        "- Acknowledge the correct result briefly and directly. Do not invent corrective steps for a passing solution."
       else
-        s"- Provide ${constraints.minSteps}–${constraints.maxSteps} concrete steps (numbered list)."
+        s"- Provide ${constraints.minSteps}–${constraints.maxSteps} evidenced steps as a numbered list (1., 2., ...). One concrete step is enough; do not add steps just to reach a count."
 
     val passModeRuleDE =
       if allTestsPassed then
@@ -518,7 +506,7 @@ object PromptTemplates {
       else ""
 
     val instruction =
-      val focus = IssueModule.forIssue(decision.primaryIssue).focusLines(humanLanguage, signals).mkString("\n")
+      val focus = if allTestsPassed then "" else IssueModule.forIssue(decision.primaryIssue).focusLines(humanLanguage, signals).mkString("\n")
       if isGerman(humanLanguage) then
         s"""Du bist ein Tutor. Gib eine kurze, konkrete Hilfestellung.$scriptNoteDE
            |
@@ -526,7 +514,7 @@ object PromptTemplates {
            |- Schreibe wie eine echte Chat-Antwort (direkt, ruhig, hilfreich).
           |- Sprich die Person direkt an ("du").
            |- Kein Gruß, kein Smalltalk, keine Floskeln am Ende.
-           |- Kein Markdown/Formatierung, keine Backticks.
+           |- Keine Markdown-Dekoration oder Backticks; nummerierte Listen sind erlaubt.
            |- Keine Überschriften wie „Feedback:“ oder „Schritte:“; einfach normaler Text.
            |
            |Zwingende Regeln:
@@ -535,6 +523,7 @@ object PromptTemplates {
           |- Verwende NIEMALS Formulierungen wie „Der Test erwartet …", „die Tests erwarten …" oder ähnliche testzentrierte Sprache. Formuliere stattdessen direkt aus Sicht des Verhaltens: was der Code aktuell tut und was er stattdessen tun soll (z.B. $perspectiveExampleDE).
           |- Erwähne AUSSCHLIESSLICH Probleme, die im bereitgestellten Code-Ausschnitt direkt sichtbar ODER durch die Fehlermeldung/Testergebnisse eindeutig belegt sind. Nenne KEINE allgemeinen Hygiene-Hinweise zu Einrückung, Klammern, Anführungszeichen oder Syntaxdetails, wenn der konkrete Fehler das nicht zeigt.
            |$stepRuleDE
+           |- Erfinde keine zusätzlichen Anforderungen wie Leerlistenbehandlung, None-Prüfungen oder Typvalidierung. Aufgabenstellung und tatsächliche Fehler haben Vorrang vor allgemeinen Diagnosevorschlägen.
            |- Keine Lösung ausformulieren, kein vollständiger Code, keine Codeblöcke.
           |- Schritte müssen zum konkreten Verhalten passen (keine generischen Tipps).
            |- Nenne Begriffe wie „Dictionary", „Set", „verschachtelte Schleifen" oder ähnliche Strukturhinweise NUR, wenn diese Strukturen im sichtbaren Code wirklich vorhanden sind.
@@ -584,7 +573,7 @@ object PromptTemplates {
            |- Write like a real chat reply (direct, calm, helpful).
             |- Address the student directly ("you").
            |- No greeting, no small talk, no motivational closing.
-           |- No Markdown/formatting, no backticks.
+           |- No Markdown decoration or backticks; numbered lists are allowed.
            |- No headings like “Feedback:” or “Steps:”; just normal text.
            |
            |Hard rules:
@@ -593,6 +582,7 @@ object PromptTemplates {
             |- NEVER write "the test expects", "the tests expect", or any test-centric phrasing. Describe directly from the behavior's perspective: what the code currently does and what it should do instead (e.g., $perspectiveExampleEN).
             |- ONLY mention issues that are directly visible in the code snippet OR directly evidenced by the runtime error / failing cases. Do NOT list generic hygiene tips (indentation consistency, bracket matching, parentheses, quote matching) unless the error message or code explicitly shows that specific issue.
            |$stepRuleEN
+           |- Do not invent extra requirements such as empty-list handling, None checks, or type validation. The exercise statement and actual failures take precedence over generic diagnosis suggestions.
            |- Do not provide the full solution, no full code, no code blocks.
             |- Steps must match the observed behavior (avoid generic advice).
            |- Mention terms like "dictionary", "set", "nested loops", or similar structural advice ONLY if those structures are actually visible in the provided code.
