@@ -1,13 +1,11 @@
 package it.evadid.homepage.control.startup
 
-import it.evadid.core.datastructures.user.User
+import com.raquo.laminar.api.L.*
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.workbook.content.{CreateCompressionWorkbook, CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, CreateTestWorkbook}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
 import it.evadid.homepage.workbook.legacy.plantworkshop.PlantWorkshopApp
-import it.evadid.workbook.elements.structureElements.Workbook
 import org.scalajs.dom
-import com.raquo.laminar.api.L.*
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.scalajs.js
@@ -16,6 +14,9 @@ import scala.util.{Failure, Success}
 object HomepageStartupLogic {
 
   def initHomepage(): Unit = {
+    val fullInfo = HtmlFullWorkbookApp.fullInfo
+    val logger = fullInfo.loggerSystemInfo.contentControlLogger
+    HomepageUserLogic.userStartupLogic(logger, fullInfo)
     mainApp()
   }
 
@@ -96,6 +97,8 @@ object HomepageStartupLogic {
       case Success(res) => println("Backend Health check: " + new String(res.fileDataAsUtf8String))
       case Failure(err) => println("Backend Health error: " + err.getMessage)
     }(using ExecutionContext.global)
+
+    println("uuid: " + java.util.UUID.randomUUID())
 
   }
 

@@ -1,9 +1,10 @@
 package it.evadid.core.util.io.serializer
 
 import it.evadid.core.datastructures.chat.*
-import it.evadid.core.datastructures.chat.Person.{BasicPerson, SerializablePerson}
+import it.evadid.core.datastructures.chat.Person.SerializablePerson
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
+import it.evadid.core.datastructures.user.*
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.*
 import it.evadid.distribution.command.ExecutionInfo.*
@@ -12,9 +13,9 @@ import it.evadid.distribution.command.SerializedException.SimpleStackTraceElemen
 import it.evadid.distribution.commandTypes.LLMCommands.*
 import it.evadid.distribution.commandTypes.MailCommands.{SendMailRequest, SendMailResponse}
 import it.evadid.distribution.commandTypes.SQLCommands.*
-import it.evadid.workbook.interaction.sync.{SyncContext, UpdateImportance, UsageContext}
 import it.evadid.workbook.interaction.sync.SyncFormatter.InteractionSyncRequest
 import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.interaction.sync.{SyncContext, UpdateImportance, UsageContext}
 import it.evadid.workbook.interaction.variable.{InteractionVariableHistorySerialized, InteractionVariableStateSerialized}
 import upickle.ReadWriter
 import upickle.default.*
@@ -23,6 +24,7 @@ import java.time.LocalDateTime
 import scala.util.*
 
 object DefaultSerializer {
+
 
   private[serializer] given ReadWriter[LanguageMap[HumanLanguage]] =
     upickle.default.readwriter[String].bimap[LanguageMap[HumanLanguage]](
@@ -118,6 +120,8 @@ object DefaultSerializer {
   private[serializer] given sendMailRes: ReadWriter[SendMailResponse] = macroRW
 
 
+
+
   lazy val serializerLocalDateTimeString: Serializer[LocalDateTime] = Serializer.fromUpickleJson[LocalDateTime](ldt)
 
   lazy val serializeExecutionCommandJson: Serializer[ExecutionCommand] = new Serializer[ExecutionCommand] {
@@ -157,6 +161,7 @@ object DefaultSerializer {
   lazy val serializerExceptionS: Serializer[SerializedException] = Serializer.fromUpickleJson(errSer)
   lazy val serializerException: Serializer[Throwable] = new Serializer[Throwable] {
     override def serialize(obj: Throwable): String = serializerExceptionS.serialize(SerializedException(obj))
+
     override def deserialize(str: String): Throwable = serializerExceptionS.deserialize(str)
   }
 

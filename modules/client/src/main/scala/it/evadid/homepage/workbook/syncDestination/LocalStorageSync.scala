@@ -3,6 +3,7 @@ package it.evadid.homepage.workbook.syncDestination
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.FetchResponse
 import it.evadid.core.util.io.Serializer
+import it.evadid.util.logging.Logger
 import it.evadid.util.logging.LoggingLevel.WARN
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.*
@@ -66,6 +67,7 @@ object LocalStorageSync extends SyncDestination {
     None
   }
 
+
   override def fetchAll(logger: SyncLogger, context: UsageContext, formatter: SyncFormatter): Future[RemoteSyncDataCache.FetchResponse[SyncContext, InteractionVariableHistorySerialized]] = {
     val resMap: Map[SyncContext, InteractionVariableHistorySerialized] = (0 until storage.length).flatMap(i =>
       val browserKey = storage.key(i)
@@ -78,4 +80,18 @@ object LocalStorageSync extends SyncDestination {
   }
 
   override def isLocal: Boolean = true
+
+  def fetchAllRaw(logger: Logger): Map[String, String] = {
+    (0 until storage.length).map(i =>
+      val browserKey = storage.key(i)
+      val browserValue = storage.getItem(browserKey)
+      browserKey -> browserValue
+    ).toMap
+  }
+
+  def storeRaw(logger: Logger, key: String, value: String): Unit = {
+    storage.setItem(key.toString, value.toString)
+  }
+
+
 }
