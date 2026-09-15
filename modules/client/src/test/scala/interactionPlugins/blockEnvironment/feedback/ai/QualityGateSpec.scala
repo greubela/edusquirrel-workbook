@@ -1,6 +1,10 @@
 package interactionPlugins.blockEnvironment.feedback.ai
 
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ai.{PromptTemplates, QualityGate}
+import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.diagnosis.{Diagnosis, DiagnosisCategory, TaskProfile}
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ml.{BlockFeedbackSignals, DecisionLayer}
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{PythonRuntimeOutcome, PythonTestResult}
 import munit.FunSuite
 
 final class QualityGateSpec extends FunSuite {
@@ -189,5 +193,86 @@ final class QualityGateSpec extends FunSuite {
       !result.reasons.contains("unsupported_structure_hint"),
       s"Set advice should be allowed when source uses set(). Reasons: ${result.reasons}"
     )
+  }
+
+  test("one evidenced correction stays numbered without padding") {
+    val text = "Your comparison selects the smaller value.\n1. Change the comparison direction."
+    val result = QualityGate.enforce(text, baseConstraints.copy(minSteps = 1, maxSteps = 4), Nil)
+    assert(result.passed, result.reasons.mkString(", "))
+    assertEquals(result.finalText, text)
+  }
+
+  test("numbered and bulleted steps are renumbered consecutively") {
+    val text = "Check the updates.\n4) Adjust the initial value.\n8. Move the return.\n* Keep the update inside the loop.\n• Use the updated result."
+    val result = QualityGate.enforce(text, baseConstraints.copy(minSteps = 1, maxSteps = 4), Nil)
+    assertEquals(result.finalText,
+      "Check the updates.\n1. Adjust the initial value.\n2. Move the return.\n3. Keep the update inside the loop.\n4. Use the updated result.")
+  }
+
+  test("wrapped steps retain their continuation lines") {
+    val text = "Your function returns too early.\n1. Move the return statement\n   after the loop finishes.\n2. Keep updating the result\n   inside the loop."
+    val result = QualityGate.enforce(text, baseConstraints, Nil)
+    assertEquals(result.finalText,
+      "Your function returns too early.\n1. Move the return statement after the loop finishes.\n2. Keep updating the result inside the loop.")
+  }
+
+  test("decimal and negative observations are not steps") {
+    val text = "3.14 is the current result.\n-5 is the required result.\n1) Correct the calculation."
+    val result = QualityGate.enforce(text, baseConstraints.copy(minSteps = 1), Nil)
+    assertEquals(result.finalText,
+      "3.14 is the current result. -5 is the required result.\n1. Correct the calculation.")
+  }
+
+  test("missing numbered corrections request a rewrite without inventing steps") {
+    val text = "Your comparison selects the smaller value."
+    val result = QualityGate.enforce(text, baseConstraints.copy(minSteps = 1), Nil)
+    assert(!result.passed)
+    assert(result.reasons.contains("too_few_steps(0<1)"))
+    assertEquals(result.finalText, text)
+  }
+
+  test("complete explanatory sentences are preserved") {
+    val text = "Your function updates the result when it finds a smaller value.\nThat is why the largest value is lost.\n1. Change the comparison direction."
+    val result = QualityGate.enforce(text, baseConstraints.copy(minSteps = 1, maxWords = 12), Nil)
+    assertEquals(result.finalText,
+      "Your function updates the result when it finds a smaller value. That is why the largest value is lost.\n1. Change the comparison direction.")
+  }
+
+  test("excess steps are dropped as complete items with their continuations") {
+    val text = "Start with these corrections.\n1. Keep this correction.\n   Keep its explanation.\n2. Drop this correction.\n   Drop its explanation."
+    val result = QualityGate.enforce(text, baseConstraints.copy(minSteps = 1, maxSteps = 1), Nil)
+    assertEquals(result.finalText,
+      "Start with these corrections.\n1. Keep this correction. Keep its explanation.")
+  }
+
+  test("passing feedback does not acquire corrective steps") {
+    val text = "Nicely done, your solution gives the expected results for these examples."
+    val result = QualityGate.enforce(text, baseConstraints.copy(minSteps = 0), Nil)
+    assert(result.passed, result.reasons.mkString(", "))
+    assertEquals(result.finalText, text)
+  }
+
+  test("failure prompts require one numbered correction in both languages, success requires none") {
+    for
+      language <- Seq(AppLanguage.English, AppLanguage.German)
+      passed <- Seq(false, true)
+    do
+      val tests = Seq("positive", "mixed", "negative").map(name =>
+        PythonTestResult(name, passed, "9", if passed then "9" else "1", None))
+      val signals = BlockFeedbackSignals(
+        rawPython = simpleSource, pythonRules = Nil, vmRules = Nil,
+        runtimeOutcome = PythonRuntimeOutcome.empty.copy(tests = tests),
+        linesOfCode = 6, nonEmptyLineCount = 6, commentLineCount = 0, blankLineCount = 0,
+        printCount = 0, stdoutLineCount = 0, stderrLineCount = 0)
+      val decision = DecisionLayer.heuristicRoute(signals)
+      val diagnosis = Diagnosis(DiagnosisCategory.Logic, decision.primaryIssue, Nil,
+        decision.severity, decision.confidence, Nil, Nil, TaskProfile.Empty, Nil)
+      val prompt = PromptTemplates.buildPrompt(signals, diagnosis, decision, language,
+        tests.map(_.name), "Return the maximum value in the list.", simpleSource)
+      assertEquals(prompt.constraints.minSteps, if passed then 0 else 1)
+      assertEquals(prompt.constraints.maxSteps, if passed then 2 else 4)
+      val evidenceRule = if language == AppLanguage.German then "Erfinde keine zusätzlichen Anforderungen" else "Do not invent extra requirements"
+      assert(prompt.prompt.contains(evidenceRule))
+      if !passed then assert(prompt.prompt.contains("(1., 2., ...)"))
   }
 }
