@@ -1,4 +1,4 @@
-import {EditorState, StateEffect, StateField} from "https://esm.sh/@codemirror/state@6.5.2";
+import {Compartment, EditorState, StateEffect, StateField} from "https://esm.sh/@codemirror/state@6.5.2";
 import {
   EditorView,
   Decoration,
@@ -415,7 +415,6 @@ const sharedExtensions = [
     hideFirstIndent: false
   }),
   syntaxHighlighting(defaultHighlightStyle, {fallback: true}),
-  oneDark,
   keymap.of([
     {key: "Tab", run: indentWithSpaces, shift: indentLess},
     ...defaultKeymap,
@@ -432,11 +431,15 @@ const sharedExtensions = [
 const codeMirrorFacade = {
   createEditor: ({parent, doc = "", onDocChange, language = "python"}) => {
     let isProgrammaticUpdate = false;
+    const theme = new Compartment();
+    const followsPageTheme = Boolean(parent.closest(".fd-page"));
+    const currentTheme = () => followsPageTheme && document.documentElement.dataset.theme === "light" ? [] : oneDark;
 
     const state = EditorState.create({
       doc: replaceTabsWithSpaces(doc),
       extensions: [
         ...sharedExtensions,
+        theme.of(currentTheme()),
         languageExtension(language),
         EditorView.updateListener.of((update) => {
           if (update.docChanged && !isProgrammaticUpdate && typeof onDocChange === "function") {
@@ -447,6 +450,10 @@ const codeMirrorFacade = {
     });
 
     const view = new EditorView({state, parent});
+    const themeObserver = followsPageTheme ? new MutationObserver(() => {
+      view.dispatch({effects: theme.reconfigure(currentTheme())});
+    }) : null;
+    themeObserver?.observe(document.documentElement, {attributes: true, attributeFilter: ["data-theme"]});
 
     return {
       setDoc(newDoc) {
@@ -477,6 +484,7 @@ const codeMirrorFacade = {
         view.focus();
       },
       destroy() {
+        themeObserver?.disconnect();
         view.destroy();
       }
     };
