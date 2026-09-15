@@ -1,22 +1,22 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
-import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
+import it.evadid.vm.code.controlStructures.{BeFor, BeIfElse, BeRepeatNr, BeSequence, BeWhile}
 import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
+import it.evadid.workbook.elements.interactionElements.programming.SnapTurtleCatalog.SnapInputKind
 
 /**
  * Shared helpers for Snap control-flow blocks ↔ BeProgram AST mapping.
  */
 object SnapControlFlow {
 
-  val ControlSelectors: Set[String] = Set("doRepeat", "doIf", "doIfElse", "doUntil")
+  val ControlSelectors: Set[String] = Set("doRepeat", "doIf", "doIfElse", "doUntil", "doFor")
 
   val VariableSelectors: Set[String] = Set("doSetVar", "doChangeVar", "reportGetVar")
 
@@ -29,7 +29,17 @@ object SnapControlFlow {
     "reportVariadicGreaterThan",
     "reportVariadicEquals",
     "reportVariadicAnd",
-    "reportVariadicOr"
+    "reportVariadicOr",
+    "reportVariadicLessThanOrEquals",
+    "reportVariadicGreaterThanOrEquals",
+    "reportVariadicNotEquals"
+  )
+
+  val ArithmeticSelectors: Set[String] = Set(
+    "reportVariadicSum",
+    "reportDifference",
+    "reportVariadicProduct",
+    "reportQuotient"
   )
 
   final class VariableInterner {
@@ -57,19 +67,35 @@ object SnapControlFlow {
     }
   }
 
-  private val SupportedOperators: Set[String] = Set("<", ">", "==", "and", "or", "not")
+  private val SupportedOperators: Set[String] = Set(
+    "<", ">", "==", "and", "or", "not",
+    "+", "-", "*", "/",
+    "<=", ">=", "!="
+  )
 
-  private val OperatorToSnapReporter: Map[String, String] = Map(
-    "<" -> "reportVariadicLessThan",
-    ">" -> "reportVariadicGreaterThan",
-    "==" -> "reportVariadicEquals",
-    "and" -> "reportVariadicAnd",
-    "or" -> "reportVariadicOr",
-    "not" -> "reportNot"
+  enum SnapReporterKind:
+    case Variadic, Binary, Unary, Literal
+
+  final case class SnapReporter(selector: String, kind: SnapReporterKind)
+
+  val OperatorToSnapReporter: Map[String, SnapReporter] = Map(
+    "<" -> SnapReporter("reportVariadicLessThan", SnapReporterKind.Variadic),
+    ">" -> SnapReporter("reportVariadicGreaterThan", SnapReporterKind.Variadic),
+    "==" -> SnapReporter("reportVariadicEquals", SnapReporterKind.Variadic),
+    "<=" -> SnapReporter("reportVariadicLessThanOrEquals", SnapReporterKind.Variadic),
+    ">=" -> SnapReporter("reportVariadicGreaterThanOrEquals", SnapReporterKind.Variadic),
+    "!=" -> SnapReporter("reportVariadicNotEquals", SnapReporterKind.Variadic),
+    "and" -> SnapReporter("reportVariadicAnd", SnapReporterKind.Variadic),
+    "or" -> SnapReporter("reportVariadicOr", SnapReporterKind.Variadic),
+    "not" -> SnapReporter("reportNot", SnapReporterKind.Unary),
+    "+" -> SnapReporter("reportVariadicSum", SnapReporterKind.Variadic),
+    "-" -> SnapReporter("reportDifference", SnapReporterKind.Binary),
+    "*" -> SnapReporter("reportVariadicProduct", SnapReporterKind.Variadic),
+    "/" -> SnapReporter("reportQuotient", SnapReporterKind.Binary)
   )
 
   private val SnapReporterToOperator: Map[String, String] =
-    OperatorToSnapReporter.map { case (op, snap) => snap -> op } ++ Map(
+    OperatorToSnapReporter.map { case (op, snap) => snap.selector -> op } ++ Map(
       "reportTrue" -> "true",
       "reportFalse" -> "false",
       "reportBoolean" -> "boolean"
@@ -83,52 +109,77 @@ object SnapControlFlow {
       case other => List(other)
 
   def hasSupportedStatements(expression: BeExpression): Boolean =
-    topLevelStatements(expression).exists(containsSupportedStatement)
+    hasSupportedStatements(expression, Map.empty)
+
+  def hasSupportedStatements(expression: BeExpression, userFunctions: Map[String, Int]): Boolean =
+    topLevelStatements(expression).exists(containsSupportedStatement(_, userFunctions))
 
   def containsSupportedStatement(expression: BeExpression): Boolean =
+    containsSupportedStatement(expression, Map.empty)
+
+  def containsSupportedStatement(expression: BeExpression, userFunctions: Map[String, Int]): Boolean =
     expression match
       case call: BeFunctionCall =>
-        SnapTurtlePythonBridge.AllowedPythonNames.contains(SnapTurtlePythonBridge.pythonName(call)) &&
-          orderedArgs(call).forall(isSupportedValue)
+        callProblems(call, userFunctions).isEmpty
       case assign: BeAssignVariable =>
         isSupportedAssignment(assign)
       case ifElse: BeIfElse =>
         isSupportedConditionSequence(ifElse.condition) &&
-          bodyHasSupported(ifElse.thenBody) &&
-          bodyHasSupported(ifElse.elseBody)
+          bodyHasSupported(ifElse.thenBody, userFunctions) &&
+          bodyHasSupported(ifElse.elseBody, userFunctions)
       case whileExpr: BeWhile =>
         isSupportedConditionSequence(whileExpr.condition) &&
-          bodyHasSupported(whileExpr.body)
+          bodyHasSupported(whileExpr.body, userFunctions)
       case repeat: BeRepeatNr =>
-        repeat.amount >= 0 && bodyHasSupported(repeat.body)
+        repeat.amount >= 0 && bodyHasSupported(repeat.body, userFunctions)
+      case forExpr: BeFor =>
+        isSupportedValue(forExpr.start) &&
+          isSupportedValue(forExpr.end) &&
+          bodyHasSupported(forExpr.body, userFunctions)
+      case defn: BeDefineFunction =>
+        bodyHasSupported(defn.body, userFunctions)
+      case seq: BeSequence =>
+        isPassSequence(seq) || seq.body.forall(containsSupportedStatement(_, userFunctions))
       case _ => false
 
   def validateStatements(expressions: List[BeExpression]): Either[String, List[BeExpression]] =
+    validateStatements(expressions, Map.empty)
+
+  def validateStatements(expressions: List[BeExpression], userFunctions: Map[String, Int]): Either[String, List[BeExpression]] =
     if expressions.isEmpty then Right(Nil)
     else
-      val problems = expressions.flatMap(describeUnsupportedStatement)
+      val problems = expressions.flatMap(describeUnsupportedStatement(_, userFunctions))
       if problems.nonEmpty then Left("Unsupported for blocks: " + problems.take(3).mkString(" | "))
       else Right(expressions)
 
   def describeUnsupportedStatement(expression: BeExpression): Option[String] =
+    describeUnsupportedStatement(expression, Map.empty)
+
+  def describeUnsupportedStatement(expression: BeExpression, userFunctions: Map[String, Int]): Option[String] =
     expression match
       case call: BeFunctionCall =>
-        val name = SnapTurtlePythonBridge.pythonName(call)
-        if SnapTurtlePythonBridge.AllowedPythonNames.contains(name) &&
-            orderedArgs(call).forall(isSupportedValue) then None
-        else Some(s"$name(...)")
+        callProblems(call, userFunctions)
       case assign: BeAssignVariable =>
         if isSupportedAssignment(assign) then None
         else Some(s"${variableName(assign.target)} = ...")
       case ifElse: BeIfElse =>
         conditionProblems(ifElse.condition)
-          .orElse(bodyProblems(ifElse.thenBody))
-          .orElse(bodyProblems(ifElse.elseBody))
+          .orElse(bodyProblems(ifElse.thenBody, userFunctions))
+          .orElse(bodyProblems(ifElse.elseBody, userFunctions))
       case whileExpr: BeWhile =>
-        conditionProblems(whileExpr.condition).orElse(bodyProblems(whileExpr.body))
+        conditionProblems(whileExpr.condition).orElse(bodyProblems(whileExpr.body, userFunctions))
       case repeat: BeRepeatNr =>
         if repeat.amount < 0 then Some("negative repeat count")
-        else bodyProblems(repeat.body)
+        else bodyProblems(repeat.body, userFunctions)
+      case forExpr: BeFor =>
+        if !isSupportedValue(forExpr.start) || !isSupportedValue(forExpr.end) then Some("for range")
+        else bodyProblems(forExpr.body, userFunctions)
+      case defn: BeDefineFunction =>
+        bodyProblems(defn.body, userFunctions)
+      case seq: BeSequence if isPassSequence(seq) =>
+        None
+      case seq: BeSequence =>
+        seq.body.flatMap(describeUnsupportedStatement(_, userFunctions)).headOption
       case _: BeSingleLineComment =>
         Some("comments are not mapped to Snap blocks")
       case u: BeExpressionUnsupported =>
@@ -152,6 +203,9 @@ object SnapControlFlow {
   def isSnapConditionReporter(selector: String): Boolean =
     ConditionSelectors.contains(selector)
 
+  def isSnapValueReporter(selector: String): Boolean =
+    ConditionSelectors.contains(selector) || ArithmeticSelectors.contains(selector)
+
   def conditionFromSnapReporter(call: BeFunctionCall): BeExpression = {
     val selector = functionSelector(call)
     selector match
@@ -170,7 +224,7 @@ object SnapControlFlow {
           case innerCall: BeFunctionCall => conditionFromSnapReporter(innerCall)
           case other => other
         operatorCall("not", List(parsedInner))
-      case snap if SnapReporterToOperator.contains(snap) && snap.startsWith("reportVariadic") =>
+      case snap if SnapReporterToOperator.contains(snap) =>
         val op = SnapReporterToOperator(snap)
         val args = orderedArgs(call)
         operatorCall(op, args)
@@ -188,7 +242,7 @@ object SnapControlFlow {
           case BeDefineFunction.Operator(_) =>
             val op = operatorSymbol(call)
             SupportedOperators.contains(op) &&
-              orderedArgs(call).forall(isSupportedCondition)
+              orderedArgs(call).forall(arg => isSupportedCondition(arg) || isSupportedValue(arg))
           case _ =>
             false
       case _ => false
@@ -197,6 +251,14 @@ object SnapControlFlow {
     expression match
       case BeUseValue(BeDataValueLiteral(_), _) => true
       case BeUseValue(BeUseValueReference(_), _) => true
+      case call: BeFunctionCall =>
+        call.funcDef.functionTypeInfo.funcType match
+          case BeDefineFunction.Operator(_) =>
+            val op = operatorSymbol(call)
+            Set("+", "-", "*", "/", "<", ">", "==", "<=", ">=", "!=", "and", "or", "not").contains(op) &&
+              orderedArgs(call).forall(isSupportedValue)
+          case _ =>
+            false
       case _ => false
 
   def isSupportedAssignment(assign: BeAssignVariable): Boolean =
@@ -244,6 +306,14 @@ object SnapControlFlow {
         whileExpr.body.body.foreach(walk)
       case repeat: BeRepeatNr =>
         repeat.body.body.foreach(walk)
+      case forExpr: BeFor =>
+        names += variableName(forExpr.variable)
+        walk(forExpr.start)
+        walk(forExpr.end)
+        forExpr.body.body.foreach(walk)
+      case defn: BeDefineFunction =>
+        defn.inputs.foreach(input => names += variableName(input))
+        walk(defn.body)
       case seq: BeSequence =>
         seq.body.foreach(walk)
       case BeStartProgram(Some(seq)) =>
@@ -278,11 +348,51 @@ object SnapControlFlow {
   def literalInt(value: String): Option[Int] =
     scala.util.Try(value.trim.toDouble.round.toInt).toOption.filter(_ >= 0)
 
-  private def bodyHasSupported(sequence: BeSequence): Boolean =
-    sequence.body.forall(containsSupportedStatement)
+  def isOperatorCall(call: BeFunctionCall): Boolean =
+    call.funcDef.functionTypeInfo.funcType match
+      case BeDefineFunction.Operator(_) => true
+      case _ => false
 
-  private def bodyProblems(sequence: BeSequence): Option[String] =
-    sequence.body.flatMap(describeUnsupportedStatement).headOption
+  private def callProblems(call: BeFunctionCall, userFunctions: Map[String, Int]): Option[String] = {
+    if isOperatorCall(call) then Some(s"${SnapTurtlePythonBridge.pythonName(call)}(...)")
+    else
+      val name = SnapTurtlePythonBridge.pythonName(call)
+      val args = orderedArgs(call)
+      SnapTurtleCatalog.primitiveByPythonName.get(name) match
+        case Some(primitive) =>
+          SnapTurtleCatalog.validateCallArity(name, args.size).orElse {
+            val invalidSlot = args.zip(primitive.inputKinds).find { (arg, kind) =>
+              !SnapInputCodec.isValidForKind(kind, arg)
+            }
+            invalidSlot match
+              case Some((_, SnapInputKind.Color)) => Some(s"$name has an unsupported color")
+              case Some(_) => Some(s"$name(...)")
+              case None => None
+          }
+        case None =>
+          userFunctions.get(name) match
+            case Some(expected) if expected != args.size =>
+              Some(s"$name expects $expected argument(s), got ${args.size}")
+            case Some(_) if args.forall(isSupportedValue) =>
+              None
+            case Some(_) =>
+              Some(s"$name(...)")
+            case None =>
+              Some(s"$name(...)")
+  }
+
+  private def bodyHasSupported(sequence: BeSequence, userFunctions: Map[String, Int] = Map.empty): Boolean =
+    isPassSequence(sequence) || sequence.body.forall(containsSupportedStatement(_, userFunctions))
+
+  private def bodyProblems(sequence: BeSequence, userFunctions: Map[String, Int] = Map.empty): Option[String] =
+    if isPassSequence(sequence) then None
+    else sequence.body.flatMap(describeUnsupportedStatement(_, userFunctions)).headOption
+
+  private def isPassSequence(sequence: BeSequence): Boolean =
+    sequence.body.isEmpty || sequence.body.forall {
+      case nested: BeSequence => isPassSequence(nested)
+      case _ => false
+    }
 
   private def isSupportedConditionSequence(sequence: BeSequence): Boolean =
     sequence.body.forall(isSupportedCondition)

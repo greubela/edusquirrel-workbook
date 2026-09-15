@@ -3,6 +3,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.naming.CodeRepresentationConfig
+import it.evadid.workbook.elements.interactionElements.programming.{SnapPaletteCatalog, SnapTurtleCatalog}
 
 /** A primitive in the Snap palette.
  *
@@ -25,6 +26,7 @@ enum SnapCategoryColor(val snapKey: String):
   case Operators extends SnapCategoryColor("operators")
   case Variables extends SnapCategoryColor("variables")
   case Other     extends SnapCategoryColor("other")
+  case Embroidery extends SnapCategoryColor("embroidery")
 
 /** One named, ordered and allow-listed palette tab. An empty tab is valid.
  *
@@ -38,6 +40,7 @@ case class LibraryTab(
     selectableElements: List[LibraryBlock],
     color: SnapCategoryColor = SnapCategoryColor.Other,
     includeVariableControls: Boolean = false,
+    includeMakeBlockButton: Boolean = false,
     useNativeCategory: Boolean = false
 )
 
@@ -101,66 +104,18 @@ object SnapCodeEditorConfig:
   )
 
   /** Explicit palette limited to blocks with full Snap ↔ BeExpression ↔ Python support. */
-  val PythonCompatibleSnapCategories: List[LibraryTab] = List(
-    LibraryTab(
-      id = "motion",
-      name = "Motion",
-      selectableElements = List(
-        block("forward"),
-        block("turn"),
-        block("gotoXY"),
-        block("setHeading")
-      ),
-      color = SnapCategoryColor.Motion
-    ),
-    LibraryTab(
-      id = "pen",
-      name = "Pen",
-      selectableElements = List(
-        block("clear"),
-        block("down"),
-        block("up")
-      ),
-      color = SnapCategoryColor.Pen
-    ),
-    LibraryTab(
-      id = "control",
-      name = "Control",
-      selectableElements = List(
-        block("receiveGo"),
-        block("doWait"),
-        block("doRepeat"),
-        block("doIf"),
-        block("doIfElse"),
-        block("doUntil")
-      ),
-      color = SnapCategoryColor.Control
-    ),
-    LibraryTab(
-      id = "operators",
-      name = "Operators",
-      selectableElements = List(
-        block("reportBoolean"),
-        block("reportVariadicLessThan"),
-        block("reportVariadicGreaterThan"),
-        block("reportVariadicEquals"),
-        block("reportVariadicAnd"),
-        block("reportVariadicOr"),
-        block("reportNot")
-      ),
-      color = SnapCategoryColor.Operators
-    ),
-    LibraryTab(
-      id = "variables",
-      name = "Variables",
-      selectableElements = List(
-        block("doSetVar"),
-        block("doChangeVar")
-      ),
-      color = SnapCategoryColor.Variables,
-      includeVariableControls = true
-    )
-  )
+  val PythonCompatibleSnapCategories: List[LibraryTab] =
+    SnapPaletteCatalog.TabOrder.map { tab =>
+      val selectors = SnapPaletteCatalog.selectorsForTab(tab)
+      LibraryTab(
+        id = tab.toString.toLowerCase,
+        name = tab.toString,
+        selectableElements = selectors.map(block(_)),
+        color = paletteColor(tab),
+        includeVariableControls = tab == SnapTurtleCatalog.PaletteTab.Variables,
+        includeMakeBlockButton = tab == SnapTurtleCatalog.PaletteTab.Variables
+      )
+    }
 
   /** Test-workbook editor config with a Python-safe Snap palette only. */
   val PythonCompatibleTesting: SnapCodeEditorConfig = SnapCodeEditorConfig(
@@ -168,13 +123,17 @@ object SnapCodeEditorConfig:
     libraryTabs = PythonCompatibleSnapCategories
   )
 
+  /** Same Python-safe palette plus embroidery blocks (already included above). */
+  val EmbroideryTesting: SnapCodeEditorConfig = PythonCompatibleTesting
+
   /** One tab with blocks from any Snap categories (native block colors unchanged). */
   def mixedTab(
       id: String,
       name: String,
       blocks: List[LibraryBlock],
       color: SnapCategoryColor = SnapCategoryColor.Other,
-      includeVariableControls: Boolean = false
+      includeVariableControls: Boolean = false,
+      includeMakeBlockButton: Boolean = false
   ): LibraryTab =
     LibraryTab(
       id = id,
@@ -182,6 +141,7 @@ object SnapCodeEditorConfig:
       selectableElements = blocks,
       color = color,
       includeVariableControls = includeVariableControls,
+      includeMakeBlockButton = includeMakeBlockButton,
       useNativeCategory = false
     )
 
@@ -197,7 +157,8 @@ object SnapCodeEditorConfig:
       name = name,
       blocks = tabs.flatMap(_.selectableElements),
       color = color,
-      includeVariableControls = tabs.exists(_.includeVariableControls)
+      includeVariableControls = tabs.exists(_.includeVariableControls),
+      includeMakeBlockButton = tabs.exists(_.includeMakeBlockButton)
     )
 
   /** Pedagogical order for the beginner turtle circle exercise. */
@@ -250,6 +211,16 @@ object SnapCodeEditorConfig:
 
   private def block(id: String, snapDescriptionLine: String = ""): LibraryBlock =
     LibraryBlock(id, snapDescriptionLine, BeExpression.pass)
+
+  private def paletteColor(tab: SnapTurtleCatalog.PaletteTab): SnapCategoryColor =
+    tab match
+      case SnapTurtleCatalog.PaletteTab.Motion => SnapCategoryColor.Motion
+      case SnapTurtleCatalog.PaletteTab.Pen => SnapCategoryColor.Pen
+      case SnapTurtleCatalog.PaletteTab.Embroidery => SnapCategoryColor.Embroidery
+      case SnapTurtleCatalog.PaletteTab.Control => SnapCategoryColor.Control
+      case SnapTurtleCatalog.PaletteTab.Operators => SnapCategoryColor.Operators
+      case SnapTurtleCatalog.PaletteTab.Variables => SnapCategoryColor.Variables
+      case SnapTurtleCatalog.PaletteTab.Other => SnapCategoryColor.Other
 
   private def nativeTab(id: String, name: String, color: SnapCategoryColor): LibraryTab =
     LibraryTab(

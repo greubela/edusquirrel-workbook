@@ -17,8 +17,9 @@ object SvgLaminarRenderer extends SvgRenderer[Double, ReactiveSvgElement[SVGSVGE
       svg.width := s"${shape.myBounds.dimension.width}",
       svg.height := s"${shape.myBounds.dimension.height}",
       svg.viewBox := s"${shape.myBounds.startPoint.x} ${shape.myBounds.startPoint.y} ${shape.myBounds.dimension.width} ${shape.myBounds.dimension.height}",
-      svg.fill := shape.elementConfig.colorFill.toWebColor.webStyleHexString,
+      svg.fill := (if shape.elementConfig.fillEnabled then shape.elementConfig.colorFill.toWebColor.webStyleHexString else "none"),
       svg.stroke := shape.elementConfig.colorStroke.toWebColor.webStyleHexString,
+      svg.strokeWidth := shape.elementConfig.strokeWidth.toString,
       onClick --> { event => shape.elementConfig.onMouseClicked(event.button == 1) },
       renderElementAsSvg(logger, shape)
     )
@@ -33,8 +34,9 @@ object SvgLaminarRenderer extends SvgRenderer[Double, ReactiveSvgElement[SVGSVGE
             svg.path(
               svg.x := "0",
               svg.y := "0",
-              svg.fill := elementConfig.colorFill.toWebColor.webStyleHexString,
+              svg.fill := (if elementConfig.fillEnabled then elementConfig.colorFill.toWebColor.webStyleHexString else "none"),
               svg.stroke := elementConfig.colorStroke.toWebColor.webStyleHexString,
+              svg.strokeWidth := elementConfig.strokeWidth.toString,
               svg.d := dr.renderPath(logger, shape.myBounds).svgPathDString
             )
           }

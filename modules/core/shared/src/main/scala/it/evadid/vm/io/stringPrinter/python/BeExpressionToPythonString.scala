@@ -2,10 +2,11 @@ package it.evadid.vm.io.stringPrinter.python
 
 import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, Python}
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.code.defining.BeDefineFunction
+import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.usage.BeFunctionCall
 import it.evadid.vm.io.stringPrinter.GenericJavaLikeStringPrinter
 import it.evadid.vm.io.stringPrinter.GenericJavaLikeStringPrinter.PythonSeparation
+import it.evadid.vm.naming.NamingStyle
 
 case class BeExpressionToPythonString
 (language: HumanLanguage, skipUnparsable: Boolean)
@@ -56,13 +57,21 @@ case class BeExpressionToPythonString
   }
 
   override protected def defineFunctionLine(nameStr: String, parStr: String, outputTypeStr: String): String = {
-    s"def ${nameStr}${parStr} -> $outputTypeStr :"
+    s"def ${nameStr}${parStr}:"
   }
+
+  override protected def formatFunctionParameters(inputs: List[BeDefineVariable]): String =
+    inputs.map(_.name.getNameIn(language, NamingStyle.SnakeCase)).mkString("(", ", ", ")")
 
   override protected def fixedRepetitionLine(amount: Int): String = {
     s"for _ in range(${amount}):"
   }
 
+  override protected def namedRangeLine(varName: String, start: String, end: String): String =
+    s"for $varName in range($start, $end + 1):"
+
   override protected def repetitionParsingHint(amount: Int): String = ""
+
+  override protected def emptyFunctionBody: String = "pass"
 
 }

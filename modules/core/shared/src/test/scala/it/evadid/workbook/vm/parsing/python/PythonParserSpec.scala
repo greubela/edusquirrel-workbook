@@ -729,13 +729,18 @@ class PythonParserSpec extends FunSuite {
   }
 
   test("distinguish unsupported and unparsable inputs") {
-    val unsupportedSource =
-      """for i in range(3):
-        |    pass
-        |""".stripMargin
+    val unsupportedSource = "foo[0]"
     val unsupportedResult = PythonParser.parsePythonWithDetails(unsupportedSource)
     val unsupportedExpressions = unsupportedResult.codeExpression.asInstanceOf[BeSequence].body
     assert(unsupportedExpressions.exists(_.isInstanceOf[BeExpressionUnsupported]))
+
+    val namedForSource =
+      """for i in range(3):
+        |    pass
+        |""".stripMargin
+    val namedForResult = PythonParser.parsePythonWithDetails(namedForSource)
+    val namedForExpressions = namedForResult.codeExpression.asInstanceOf[BeSequence].body
+    assert(namedForExpressions.exists(_.isInstanceOf[it.evadid.vm.code.controlStructures.BeFor]))
 
     val supportedIfSource =
       """if True:

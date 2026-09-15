@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import com.raquo.airstream.ownership.Owner
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.SnapCodeEditorImpl
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExerciseState
+import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExerciseState, SnapTurtleCatalog}
 import org.scalajs.dom
 import org.scalajs.dom.CanvasRenderingContext2D
 import org.scalajs.dom.html.Canvas
@@ -160,6 +160,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
         // Never rawOpen over an active text cursor — that destroys the slot mid-edit.
         if !force && isTextEditing then
           return
+        ensureExerciseCategoriesBeforeLoad()
         ide.rawOpenProjectString(xml)
         lastLoadedXml = Some(xml)
         lastProjectXml = Some(ide.getProjectXML())
@@ -189,6 +190,12 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       installLibraries(config.libraryTabs, ide)
     }
 
+  /** Snap obsolete's custom calls whose category is missing from allCategories at load time. */
+  private def ensureExerciseCategoriesBeforeLoad(): Unit =
+    mountedConfig.filter(_.libraryTabs.nonEmpty).foreach { config =>
+      registerCustomCategoryTabs(config.libraryTabs)
+    }
+
   private def createEditor(world: WorldMorph, state: ProgrammingExerciseState, config: SnapCodeEditorConfig): IDEMorph =
     val hasLibraryTabs = config.libraryTabs.nonEmpty
     val ide = new IDEMorph(js.Dynamic.literal(
@@ -207,6 +214,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       eduLibraryTabs = config.libraryTabs.map(_.name).toJSArray
     ))
     ide.openIn(world)
+    if hasLibraryTabs then
+      registerCustomCategoryTabs(config.libraryTabs)
     ide.rawOpenProjectString(canonicalXml(state))
     ide
 
@@ -237,6 +246,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     if libraries.exists(_.useNativeCategory) then
       spriteMorphPrototype.applyDynamic("initBlocks")()
     ensurePrimitiveSelectors(libraries.flatMap(_.selectableElements.map(_.id)))
+    injectExtraPrimitives()
 
     // Snap calls blockTemplates(category) or blockTemplates(category, forSearch).
     // Exercise-only: only library tab names return blocks; everything else is empty.
@@ -246,7 +256,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
           if tab.useNativeCategory then nativeCategoryPaletteItems(ide, tab.color.snapKey, forSearch)
           else
             val controls =
-              if tab.includeVariableControls then nativeVariablePaletteItems(ide) else Nil
+              (if tab.includeVariableControls then nativeVariablePaletteItems(ide) else Nil) ++
+                (if tab.includeMakeBlockButton then nativeMakeBlockButton(ide) else Nil)
             val blocks = tab.selectableElements.flatMap { data =>
               createTemplateBlock(data) match
                 case Some(block) => List(block)
@@ -261,6 +272,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     sprite.asInstanceOf[js.Dynamic].updateDynamic("primitivesCache")(js.Dictionary.empty[js.Any])
     sprite.paletteCache = js.Dictionary.empty
     wrapFlushBlocksCacheForVariableTabs(ide, libraries.filter(needsVariablePaletteFlush).map(_.name))
+    wrapCustomBlockEditMenus()
     registerCustomCategoryTabs(libraries)
     ide.createCategories()
     enlargeCategoryTabButtons(ide)
@@ -412,6 +424,58 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     }
     dyn.updateDynamic("flushBlocksCache")(wrapped)
 
+  /**
+   * `noOwnBlocks` hides Make-a-Block / Make-a-Category, but Snap also strips
+   * custom-block edit/delete from the context menu. Temporarily clear the flag
+   * during `userMenu` so those items return without restoring palette create UI.
+   */
+  private def wrapCustomBlockEditMenus(): Unit = {
+    wrapCustomBlockUserMenu(js.Dynamic.global.CustomCommandBlockMorph)
+    val commandCtor = js.Dynamic.global.CustomCommandBlockMorph
+    if js.isUndefined(commandCtor) || commandCtor == null then return
+    val commandProto = commandCtor.selectDynamic("prototype")
+    if js.isUndefined(commandProto) || commandProto == null then return
+    val menu = commandProto.selectDynamic("userMenu")
+    if js.isUndefined(menu) || menu == null then return
+    val reporter = js.Dynamic.global.CustomReporterBlockMorph
+    if !js.isUndefined(reporter) && reporter != null then
+      reporter.selectDynamic("prototype").updateDynamic("userMenu")(menu)
+    val hat = js.Dynamic.global.CustomHatBlockMorph
+    if !js.isUndefined(hat) && hat != null then
+      hat.selectDynamic("prototype").updateDynamic("userMenu")(menu)
+  }
+
+  private def wrapCustomBlockUserMenu(ctor: js.Dynamic): Unit = {
+    if js.isUndefined(ctor) || ctor == null then return
+    val proto = ctor.selectDynamic("prototype")
+    if js.isUndefined(proto) || proto == null then return
+    val stored = proto.selectDynamic("__eduOriginalUserMenu")
+    val original =
+      if !js.isUndefined(stored) && stored != null then stored
+      else
+        val orig = proto.selectDynamic("userMenu")
+        if js.isUndefined(orig) || orig == null then null.asInstanceOf[js.Dynamic]
+        else
+          proto.updateDynamic("__eduOriginalUserMenu")(orig)
+          orig
+    if original == null || js.isUndefined(original) then return
+    val wrapped: js.ThisFunction0[js.Dynamic, js.Any] = (self: js.Dynamic) => {
+      val ide = self.applyDynamic("parentThatIsA")(js.Dynamic.global.IDE_Morph)
+      val config =
+        if js.isUndefined(ide) || ide == null then null.asInstanceOf[js.Dynamic]
+        else ide.selectDynamic("config")
+      val hadNoOwnBlocks =
+        config != null && !js.isUndefined(config) && {
+          val flag = config.selectDynamic("noOwnBlocks")
+          !js.isUndefined(flag) && flag != null && flag.asInstanceOf[Boolean]
+        }
+      if hadNoOwnBlocks then config.updateDynamic("noOwnBlocks")(false)
+      try original.applyDynamic("call")(self)
+      finally if hadNoOwnBlocks then config.updateDynamic("noOwnBlocks")(true)
+    }
+    proto.updateDynamic("userMenu")(wrapped)
+  }
+
   private def spriteMorphPrototype: js.Dynamic =
     js.Dynamic.global
       .selectDynamic("SpriteMorph")
@@ -429,6 +493,43 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     }
     if missing.nonEmpty then
       proto.applyDynamic("initBlocks")()
+    injectExtraPrimitives()
+
+  /** TurtleStitch embroidery / circle / home / backward specs are not in vanilla Snap. */
+  private def injectExtraPrimitives(): Unit =
+    val proto = spriteMorphPrototype
+    val blocks = proto.selectDynamic("blocks")
+    val blockColor = proto.selectDynamic("blockColor")
+    val Color = js.Dynamic.global.Color
+    val embroideryColor = blockColor.selectDynamic("embroidery")
+    if js.isUndefined(embroideryColor) || embroideryColor == null then
+      blockColor.updateDynamic("embroidery")(js.Dynamic.newInstance(Color)(0, 120, 0))
+    SnapTurtleCatalog.ExtraPrimitives.foreach { primitive =>
+      primitive.extraSpec.foreach { spec =>
+        val obj = js.Dynamic.literal()
+        obj.updateDynamic("type")("command")
+        obj.updateDynamic("category")(spec.category)
+        obj.updateDynamic("spec")(spec.spec)
+        obj.updateDynamic("only")(js.Dynamic.global.SpriteMorph)
+        if spec.defaults.nonEmpty then
+          val defaults = spec.defaults.map {
+            case b: Boolean => b
+            case n: Int => n
+            case n: Long => n.toInt
+            case n: Double => n
+            case other => other.toString
+          }.toJSArray
+          obj.updateDynamic("defaults")(defaults)
+        blocks.updateDynamic(primitive.snapSelector)(obj)
+      }
+    }
+
+  private def nativeMakeBlockButton(ide: IDEMorph): List[js.Any] = {
+    val sprite = ide.currentSprite.asInstanceOf[js.Dynamic]
+    val button = sprite.applyDynamic("makeBlockButton")("other")
+    if js.isUndefined(button) || button == null then Nil
+    else List(button.asInstanceOf[js.Any])
+  }
 
   /** Mirror Snap's palette `block()` helper with explicit `this` = prototype. */
   private def createTemplateBlock(data: LibraryBlock): Option[BlockMorph] =
@@ -438,8 +539,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
 
     var raw = invoke()
     if js.isUndefined(raw) || raw == null then
-      // One retry after restoring primitives (scene load may have left a thin table).
       proto.applyDynamic("initBlocks")()
+      injectExtraPrimitives()
       raw = invoke()
     if js.isUndefined(raw) || raw == null then None
     else

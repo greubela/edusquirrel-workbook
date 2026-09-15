@@ -103,7 +103,7 @@ object PythonClassParser {
                 val ifResult = api.parseIf(lines, index, bodyIndent, conditionSource, isolatedContext)
                 ignoredBodyExpressions += ifResult.expression
                 index = ifResult.nextIndex
-              case _ if trimmed.startsWith("return") =>
+              case _ if ParsingUtils.startsWithKeyword(trimmed, "return") =>
                 val isolatedContext = new ParseContext(context.snapshotStructures)
                 ignoredBodyExpressions += api.parseReturn(trimmed, isolatedContext)
                 index += 1

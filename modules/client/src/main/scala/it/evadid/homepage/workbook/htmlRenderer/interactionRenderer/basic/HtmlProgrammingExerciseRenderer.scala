@@ -45,6 +45,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       case ProgrammingEditorPalette.Default => SnapCodeEditorConfig.Testing
       case ProgrammingEditorPalette.PythonCompatibleSnap => SnapCodeEditorConfig.PythonCompatibleTesting
       case ProgrammingEditorPalette.BeginnerTurtle => SnapCodeEditorConfig.BeginnerTurtleTesting
+      case ProgrammingEditorPalette.Embroidery => SnapCodeEditorConfig.EmbroideryTesting
 
     val editor: SnapCodeEditor = SnapCodeEditor(boundVar, editorConfig, onStateEdited = persistFromEditor)
 

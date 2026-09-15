@@ -8,3 +8,5 @@ enum ProgrammingEditorPalette:
   case PythonCompatibleSnap
   /** Beginner turtle subset: start, repeat, motion, and pen only. */
   case BeginnerTurtle
+  /** Embroidery workbook palette (Python-compatible plus stitch blocks). */
+  case Embroidery

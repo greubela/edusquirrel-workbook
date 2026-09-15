@@ -9,6 +9,18 @@ object ParsingUtils {
 
   private val CallNamePattern = """^[A-Za-z_][A-Za-z0-9_\.]*$""".r
 
+  def isIdentifierChar(ch: Char): Boolean =
+    ch.isLetterOrDigit || ch == '_'
+
+  /** True when `source` starts with `keyword` as a whole word (`for` does not match `forward`). */
+  def startsWithKeyword(source: String, keyword: String): Boolean = {
+    val trimmed = source.trim
+    trimmed.startsWith(keyword) && {
+      val rest = trimmed.drop(keyword.length)
+      rest.isEmpty || !isIdentifierChar(rest.head)
+    }
+  }
+
   def stripTrailingWhitespace(value: String): String =
     value.reverse.dropWhile(_.isWhitespace).reverse
 

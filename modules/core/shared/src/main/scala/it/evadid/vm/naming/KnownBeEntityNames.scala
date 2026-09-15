@@ -53,7 +53,19 @@ object KnownBeEntityNames {
     BeEntityName.fromUniversalNameInParts("setheading"),
     BeEntityName.fromUniversalNameInParts("speed"),
     BeEntityName.fromUniversalNameInParts("color"),
-    BeEntityName.fromUniversalNameInParts("pensize")
+    BeEntityName.fromUniversalNameInParts("pensize"),
+    BeEntityName.fromUniversalNameInParts("home"),
+    BeEntityName.fromUniversalNameInParts("runningStitch"),
+    BeEntityName.fromUniversalNameInParts("crossStitch"),
+    BeEntityName.fromUniversalNameInParts("beanStitch"),
+    BeEntityName.fromUniversalNameInParts("zigzagStitch"),
+    BeEntityName.fromUniversalNameInParts("ZStitch"),
+    BeEntityName.fromUniversalNameInParts("satinStitch"),
+    BeEntityName.fromUniversalNameInParts("tatamiStitch"),
+    BeEntityName.fromUniversalNameInParts("jumpStitch"),
+    BeEntityName.fromUniversalNameInParts("tieStitch"),
+    BeEntityName.fromUniversalNameInParts("trimStitch"),
+    BeEntityName.fromUniversalNameInParts("stopRunning")
   )
 
   val operatorNames: List[BeEntityName] = List(
@@ -77,7 +89,26 @@ object KnownBeEntityNames {
     "long" -> "integer",
     "short" -> "integer",
     "byte" -> "integer",
-    "char" -> "string"
+    "char" -> "string",
+    "penup" -> "penUp",
+    "pendown" -> "penDown",
+    "pen_up" -> "penUp",
+    "pen_down" -> "penDown",
+    "fd" -> "forward",
+    "back" -> "backward",
+    "bk" -> "backward",
+    "rt" -> "right",
+    "turn" -> "right",
+    "lt" -> "left",
+    "turn_left" -> "left",
+    "goto_x_y" -> "goto",
+    "setpos" -> "goto",
+    "setposition" -> "goto",
+    "seth" -> "setheading",
+    "set_heading" -> "setheading",
+    "pu" -> "penUp",
+    "pd" -> "penDown",
+    "pencolor" -> "color"
   )
 
   private val supportedStyles = List(NamingStyle.SnakeCase, NamingStyle.CamelCase)

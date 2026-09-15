@@ -18,6 +18,10 @@ trait AppShapeElementConfig[T: Fractional] {
 
   def colorFont: AppColor
 
+  def strokeWidth: T = summon[Fractional[T]].fromInt(1)
+
+  def fillEnabled: Boolean = true
+
   def onMouseClicked(leftButton: Boolean): Unit
 
 
@@ -42,6 +46,23 @@ object AppShapeElementConfig {
     override def font: AppFont = AppFont.AnonymousPro
   }
 
+  def turtleSegment[T: Fractional](stroke: AppColor, width: T): AppShapeElementConfig[T] = new AppShapeElementConfig[T]() {
+    override def colorStroke: AppColor = stroke
+
+    override def colorFill: AppColor = RGBColor.transparent
+
+    override def colorFont: AppColor = RGBColor.black
+
+    override def strokeWidth: T = width
+
+    override def fillEnabled: Boolean = false
+
+    override def onMouseClicked(leftButton: Boolean): Unit = ()
+
+    override def useCustomPadding: Option[Dimension[T]] = None
+
+    override def font: AppFont = AppFont.AnonymousPro
+  }
 
 }
 
