@@ -39,6 +39,23 @@ object FeedbackDemoElement:
         .filter(diagnostic => diagnostic.line <= lineCount)
         .take(1).toSeq
 
+  private[feedback] def restoredDiagnostics(feedback: js.Dynamic): Seq[CodeMirrorEditor.Diagnostic] =
+    if feedback == null || js.typeOf(feedback) != "object" ||
+        js.typeOf(feedback.rawPython) != "string" || js.typeOf(feedback.allTestsPassed) != "boolean" ||
+        feedback.allTestsPassed.asInstanceOf[Boolean] || !js.Array.isArray(feedback.editorDiagnostics) then Nil
+    else
+      val lineCount = feedback.rawPython.asInstanceOf[String].count(_ == '\n') + 1
+      feedback.editorDiagnostics.asInstanceOf[js.Array[js.Dynamic]].iterator.flatMap { value =>
+        if value == null || js.typeOf(value) != "object" ||
+            js.typeOf(value.line) != "number" || js.typeOf(value.message) != "string" then None
+        else
+          val line = value.line.asInstanceOf[Double]
+          val message = value.message.asInstanceOf[String]
+          if line >= 1 && line <= lineCount && line == math.floor(line) && message.trim.nonEmpty then
+            Some(CodeMirrorEditor.Diagnostic(line = line.toInt, message = message, severity = "error"))
+          else None
+      }.take(1).toSeq
+
   private[feedback] def canRestoreFeedback(state: js.Dynamic): Boolean =
     if js.isUndefined(state) || state == null then return false
     val feedback = state.feedback
@@ -329,6 +346,11 @@ object FeedbackDemoElement:
     val eventLogVar = Var(Vector.empty[String])
     val submissions = new FeedbackSubmissionTracker
     var feedbackContext = Option.empty[(String, String)]
+    var editorDiagnostics = Seq.empty[CodeMirrorEditor.Diagnostic]
+
+    def setEditorDiagnostics(diagnostics: Seq[CodeMirrorEditor.Diagnostic]): Unit =
+      editorDiagnostics = diagnostics
+      pythonEditor.setDiagnostics(diagnostics)
 
     def currentContext: (String, String) =
       selectedExerciseIdVar.now() -> selectedLanguageVar.now().toString
@@ -345,9 +367,9 @@ object FeedbackDemoElement:
 
     def clearFeedback(): Unit =
       feedbackContext = None
+      setEditorDiagnostics(Nil)
       feedbackVar.set(None)
       errorVar.set(None)
-      pythonEditor.clearDiagnostics()
       stopTyping()
 
     def invalidateFeedback(): Unit =
@@ -406,7 +428,10 @@ object FeedbackDemoElement:
             allTestsPassed = fb.allTestsPassed,
             rawPython = fb.rawPython,
             status = fb.status.toString,
-            normalizedScore = fb.normalizedScore
+            normalizedScore = fb.normalizedScore,
+            editorDiagnostics = js.Array(editorDiagnostics.map { diagnostic =>
+              js.Dynamic.literal(line = diagnostic.line, message = diagnostic.message)
+            } *)
           )
       val state = JSON.stringify(js.Dynamic.literal(
         feedbackVersion = 2,
@@ -473,6 +498,7 @@ object FeedbackDemoElement:
             val statusStr = fbD.status.asInstanceOf[String]
             val status = FeedbackStatus.values.find(_.toString == statusStr).getOrElse(FeedbackStatus.FINISHED)
             feedbackContext = Some(currentContext)
+            setEditorDiagnostics(restoredDiagnostics(fbD))
             feedbackVar.set(Some(UltrichsNewCoolFeedback(
               summary = fbD.summary.asInstanceOf[String],
               tests = Seq.empty,
@@ -554,8 +580,8 @@ object FeedbackDemoElement:
             if isCurrent then result match
               case Success(feedback) =>
                 feedbackContext = Some(context)
+                setEditorDiagnostics(diagnosticsFor(feedback))
                 feedbackVar.set(Some(feedback))
-                pythonEditor.setDiagnostics(diagnosticsFor(feedback))
                 logEvent("Feedback generated")
                 saveSession()
                 val primary = feedbackMessage(feedback).trim
@@ -570,7 +596,7 @@ object FeedbackDemoElement:
                 val runtimeDiagnostics =
                   PythonCodeMirrorDiagnostics.forRuntimeMessage(Option(ex.getMessage).getOrElse(ex.toString))
                     .filter(_.line <= pythonCodeVar.now().count(_ == '\n') + 1).toSeq
-                pythonEditor.setDiagnostics(PythonCodeMirrorDiagnostics.deduplicate(runtimeDiagnostics))
+                setEditorDiagnostics(PythonCodeMirrorDiagnostics.deduplicate(runtimeDiagnostics))
                 logEvent("Feedback failed: " + Option(ex.getMessage).getOrElse(ex.toString))
                 saveSession()
           }
