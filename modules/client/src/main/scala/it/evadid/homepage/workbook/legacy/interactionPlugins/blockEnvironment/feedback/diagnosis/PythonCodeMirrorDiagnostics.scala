@@ -12,8 +12,11 @@ object PythonCodeMirrorDiagnostics:
 
   final case class SourceProblem(originalSource: String, message: String, severity: String)
 
-  private val FramePattern = """(?i)File\s+"([^"]+)",\s+line\s+(\d+)""".r
-  private val LinePattern = """(?i)\bline\s+(\d+)\b""".r
+  private val FramePattern = """^\s+File "([^"]+)", line (\d+)(?:, in .*)?$""".r
+  private val ChainSeparators = Set(
+    "During handling of the above exception, another exception occurred:",
+    "The above exception was the direct cause of the following exception:"
+  )
 
   def forProgram(program: BeExpression, rawPython: String): Seq[CodeMirrorEditor.Diagnostic] =
     val tree =
@@ -30,43 +33,15 @@ object PythonCodeMirrorDiagnostics:
     deduplicate(problems.flatMap(problemToDiagnostic(_, rawPython)))
 
   def forRuntimeMessage(message: String): Option[CodeMirrorEditor.Diagnostic] =
-    val normalized = Option(message).getOrElse("").replace("\r\n", "\n")
-    val frames =
-      FramePattern
-        .findAllMatchIn(normalized)
-        .flatMap(m => m.group(2).toIntOption.map(lineNr => m.group(1) -> lineNr))
-        .toSeq
-
-    val studentSourceFrameLine =
-      frames
-        .collect {
-          case ("<student-source>", lineNr) => lineNr
-        }
-        .lastOption
-
-    val dynamicStringFrameLine =
-      frames
-        .collect {
-          case ("<string>", lineNr) => lineNr
-        }
-        .lastOption
-
-    val fallbackLine =
-      if frames.nonEmpty then None
-      else
-        LinePattern
-          .findFirstMatchIn(normalized)
-          .flatMap(m => m.group(1).toIntOption)
-
-    studentSourceFrameLine
-      .orElse(dynamicStringFrameLine)
-      .orElse(fallbackLine)
-      .map { lineNr =>
-        CodeMirrorEditor.Diagnostic(
-          line = math.max(1, lineNr),
-          message = tracebackHeadline(normalized),
-          severity = "error"
-        )
+    val lines = Option(message).getOrElse("").replace("\r\n", "\n").linesIterator.toVector
+    val block = lines.drop(lines.lastIndexWhere(ChainSeparators.contains) + 1)
+    val headlineIndex = block.indexWhere(isExceptionHeadline)
+    if headlineIndex < 0 then None
+    else
+      block.take(headlineIndex).collect {
+        case FramePattern("<student-source>", line) => line.toIntOption.filter(_ > 0)
+      }.flatten.lastOption.map { lineNr =>
+        CodeMirrorEditor.Diagnostic(line = lineNr, message = block(headlineIndex), severity = "error")
       }
 
   def deduplicate(diagnostics: Seq[CodeMirrorEditor.Diagnostic]): Seq[CodeMirrorEditor.Diagnostic] =
@@ -105,40 +80,8 @@ object PythonCodeMirrorDiagnostics:
           )
         }
 
-  private def tracebackHeadline(normalized: String): String =
-    val lines =
-      normalized
-        .linesIterator
-        .map(_.trim)
-        .filter(_.nonEmpty)
-        .toSeq
-
-    lines
-      .find(line => line.contains("SyntaxError") || line.contains("IndentationError"))
-      .orElse(lines.reverse.find(isExceptionHeadline))
-      .orElse(lines.reverse.find(isUsefulTracebackLine))
-      .getOrElse("Python could not execute this line.")
-
   private def isExceptionHeadline(line: String): Boolean =
     val name = line.takeWhile(ch => ch.isLetterOrDigit || ch == '_' || ch == '.')
     val suffix = line.drop(name.length)
-    val simpleName = name.split("\\.").lastOption.getOrElse(name)
-    name.nonEmpty &&
-      (suffix.isEmpty || suffix.startsWith(":")) &&
-      (
-        simpleName.endsWith("Error") ||
-          simpleName.endsWith("Exception") ||
-          simpleName.endsWith("Warning") ||
-          simpleName == "KeyboardInterrupt" ||
-          simpleName == "SystemExit" ||
-          simpleName == "StopIteration" ||
-          simpleName == "StopAsyncIteration" ||
-          simpleName == "GeneratorExit"
-      )
-
-  private def isUsefulTracebackLine(line: String): Boolean =
-    !line.startsWith("Traceback") &&
-      !line.startsWith("File ") &&
-      !line.startsWith("During handling of the above exception") &&
-      !line.startsWith("The above exception was the direct cause") &&
-      !line.matches("""\^+""")
+    name.headOption.exists(ch => ch.isLetter || ch == '_') &&
+      (suffix.isEmpty || suffix.startsWith(":"))

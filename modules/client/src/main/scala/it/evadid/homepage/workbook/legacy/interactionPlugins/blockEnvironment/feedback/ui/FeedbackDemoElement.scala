@@ -29,6 +29,16 @@ object FeedbackDemoElement:
 
   private val defaultLanguage: HumanLanguage = AppLanguage.English
 
+  private[feedback] def diagnosticsFor(feedback: UltrichsNewCoolFeedback): Seq[CodeMirrorEditor.Diagnostic] =
+    if feedback.allTestsPassed then Nil
+    else
+      val messages = feedback.debug.flatMap(_.rawRuntimeError).iterator ++
+        feedback.tests.iterator.filterNot(_.passed).map(_.actual)
+      val lineCount = feedback.rawPython.count(_ == '\n') + 1
+      messages.flatMap(PythonCodeMirrorDiagnostics.forRuntimeMessage)
+        .filter(diagnostic => diagnostic.line <= lineCount)
+        .take(1).toSeq
+
   private[feedback] def canRestoreFeedback(state: js.Dynamic): Boolean =
     if js.isUndefined(state) || state == null then return false
     val feedback = state.feedback
@@ -545,14 +555,7 @@ object FeedbackDemoElement:
               case Success(feedback) =>
                 feedbackContext = Some(context)
                 feedbackVar.set(Some(feedback))
-                val runtimeDiagnostics =
-                  feedback.debug
-                    .flatMap(_.rawRuntimeError)
-                    .flatMap(PythonCodeMirrorDiagnostics.forRuntimeMessage)
-                    .toSeq
-                val allDiagnostics =
-                  PythonCodeMirrorDiagnostics.deduplicate(runtimeDiagnostics)
-                pythonEditor.setDiagnostics(allDiagnostics)
+                pythonEditor.setDiagnostics(diagnosticsFor(feedback))
                 logEvent("Feedback generated")
                 saveSession()
                 val primary = feedbackMessage(feedback).trim
@@ -565,7 +568,8 @@ object FeedbackDemoElement:
               case Failure(ex) =>
                 errorVar.set(Option(ex.getMessage).filter(_.nonEmpty).orElse(Some(ex.toString)))
                 val runtimeDiagnostics =
-                  PythonCodeMirrorDiagnostics.forRuntimeMessage(Option(ex.getMessage).getOrElse(ex.toString)).toSeq
+                  PythonCodeMirrorDiagnostics.forRuntimeMessage(Option(ex.getMessage).getOrElse(ex.toString))
+                    .filter(_.line <= pythonCodeVar.now().count(_ == '\n') + 1).toSeq
                 pythonEditor.setDiagnostics(PythonCodeMirrorDiagnostics.deduplicate(runtimeDiagnostics))
                 logEvent("Feedback failed: " + Option(ex.getMessage).getOrElse(ex.toString))
                 saveSession()
