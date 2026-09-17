@@ -6,7 +6,7 @@ import it.evadid.workbook.interaction.variable.{InteractionVariableHistorySerial
 
 import java.time.LocalDateTime
 
-sealed trait SyncFormatter2 extends {
+sealed trait SyncFormatter2 {
   // todo
 
   private val keyFormatter: Serializer[String] = ???
