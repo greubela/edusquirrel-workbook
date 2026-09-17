@@ -2,6 +2,7 @@ package it.evadid.homepage.control.change
 
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.control.model.*
+import it.evadid.homepage.control.startup.HomepageUserLogic
 import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 
@@ -18,7 +19,6 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   }
 
   def updateInfoWithContextChange(func: HomepageInfo => HomepageInfo): Future[?] = fullInfo.synchronized {
-
     fullInfo.syncControl
       .storeAndReset(interactions.map(_.interactionVariable))
       .flatMap(_ => {
@@ -55,7 +55,9 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   }
 
   def changeUser(userInfo: Option[AllUserInfo]): Unit = fullInfo.synchronized {
+    HomepageUserLogic.removeUserFromLocalStorage()
     updateInfoWithContextChange(_.copy(userInfo = userInfo))
+
   }
 
   def changeLanguage(language: HumanLanguage): Unit = fullInfo.synchronized {

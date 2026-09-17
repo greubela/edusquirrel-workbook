@@ -26,6 +26,8 @@ object LocalStorageSync extends SyncDestination {
 
   private val contextToBrowserKeySerializer: Serializer[SyncContext] = SyncContext.serializer
 
+
+
   override def storeTo(logger: SyncLogger, context: SyncContext, history: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncInformation.SyncSuccess] = Future {
     try {
       val value: String = formatter.serialize(context, history)
@@ -50,6 +52,10 @@ object LocalStorageSync extends SyncDestination {
   override def clearValues(logger: SyncLogger, context: SyncContext): Future[SyncSuccess] = Future {
     resetCompleteStorage()
   }(using ec)
+
+  def removeKey(key: String): Unit = {
+    dom.window.localStorage.removeItem(key)
+  }
 
   def resetCompleteStorage(): SyncSuccess = {
     println("[UGLY WARN IN LOCALSTORAGESYNC] clearing all local storage!")

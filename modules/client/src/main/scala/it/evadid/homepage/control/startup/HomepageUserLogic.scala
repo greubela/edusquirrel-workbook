@@ -53,6 +53,10 @@ object HomepageUserLogic {
     createNewUser(logger, name, mail)
   }
 
+  def removeUserFromLocalStorage(): Unit = {
+    LocalStorageSync.removeKey( allUserInfoStorageKey)
+  }
+
   def userStartupLogic(logger: Logger, fullInfo: FullInfo): AllUserInfo = {
     val user = tryLoadExistingUser(logger).getOrElse(createNewUser(logger))
     val serialized = serializer.serialize(user)
