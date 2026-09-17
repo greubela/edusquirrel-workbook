@@ -50,5 +50,6 @@
   "syncInfoTooltipWarning": "Synced to none of the _ sources",
   "TextEditorPlaceholder": "Insert Text here",
   "MessengerEditorSendMessageButton": "Send",
-  "MessengerEditorInputPlaceholder": "Type Question here"
+  "messengerEditorInputPlaceholder": "Type Question here",
+  "a": "B"
 }

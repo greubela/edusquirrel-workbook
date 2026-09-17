@@ -50,7 +50,7 @@ dialog{
     max-width: 95vw;
     max-height: 95vh;
     background-color: var(--color-background-workarea-display);
-    overflow: hidden;
+    overflow: scroll;
     display: flex;
     flex-direction: column;
     border-radius: var(--radius-md);
