@@ -12,7 +12,6 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
 import scala.scalajs.js.JSON
-import scala.util.Try
 
 object PythonRuntimeService {
 
@@ -73,8 +72,8 @@ object PythonRuntimeService {
     case None =>
       val client = new PyodideWorkerClient(workerUrl)
       workerOpt = Some(client)
-      val markReady: Try[Any] => Unit = _ => readyPromise.trySuccess(())
-      client.run("pass").onComplete(markReady)
+      val readiness = readyPromise
+      client.run("pass").foreach(_ => readiness.trySuccess(()))
       client
   }
 

@@ -118,6 +118,7 @@ async function handleAddCallbacks(id, payload) {
 }
 
 async function handleReset(id) {
+    await pyodideReady;
     await recreatePyodide();
     ok(id);
 }
@@ -158,7 +159,7 @@ async function handleRun(id, payload) {
     });
 }
 
-self.onmessage = async event => {
+async function handleMessage(event) {
     const { id, kind, payload } = event.data;
 
     try {
@@ -229,4 +230,11 @@ self.onmessage = async event => {
     } catch (e) {
         fail(id, e);
     }
+}
+
+let requestQueue = Promise.resolve();
+
+self.onmessage = event => {
+    requestQueue = requestQueue.then(() => handleMessage(event));
+    return requestQueue;
 };
