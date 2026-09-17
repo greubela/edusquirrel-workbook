@@ -55,7 +55,6 @@ trait SyncControl {
 
   def ensureCachesContainLastElementsToWrite(variables: List[InteractionVariable[?]]): Future[?]
 
-
 }
 
 

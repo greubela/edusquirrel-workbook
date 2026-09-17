@@ -13,7 +13,7 @@ import it.evadid.util.{DownloadToDisc, FetchFromRemote, FileFactory, PostToRemot
 import it.evadid.workbook.abstractions.TypeOfTextDisplay
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_TYPE
 import org.scalajs.dom
-import org.scalajs.dom.URL
+import org.scalajs.dom.{File, URL}
 
 import scala.concurrent.*
 
@@ -34,6 +34,7 @@ case class HomepageContentControl(fullInfo: FullInfo, contentControlLogger: Logg
 object HomepageContentControl {
 
   case class HomepageFileFactory(fullInfo: FullInfo, ffr: FetchFromRemote) extends FileFactory(ffr) {
+
     def relativeToArtifactsFolder(pathRelativeToResourceFolder: String, copyrightInfo: CopyrightInfo = unknownCopyrightInfo): FileDescription = {
       val str = if (pathRelativeToResourceFolder.startsWith("/")) pathRelativeToResourceFolder.substring(1) else pathRelativeToResourceFolder
       val url = new URL(s"../../artifacts/" + str, dom.window.location.href)
@@ -65,7 +66,6 @@ object HomepageContentControl {
       val urlStr = "https://" + fullInfo.defaults.defaultBackend.backendDomain + toAdd
       fromUrl(URL(urlStr))
     }
-
   }
 
 

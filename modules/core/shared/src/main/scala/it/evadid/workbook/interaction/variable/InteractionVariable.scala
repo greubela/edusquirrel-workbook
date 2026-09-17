@@ -67,6 +67,7 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteractionElem
     innerState.update(func)
   }
 
+
   def executeLoad(syncControl: SyncControl): Unit = this.synchronized {
     val toAdd: Set[InteractionVariableState[T]] = syncControl.createCurrentReport(this).allStatesEverywhere
     innerState.update(_.withAddedEvents(toAdd))

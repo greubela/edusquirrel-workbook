@@ -55,7 +55,9 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   }
 
   def changeUser(userInfo: Option[AllUserInfo]): Unit = fullInfo.synchronized {
-    updateInfoWithContextChange(_.copy(userInfo = userInfo))
+    if (userInfo != fullInfo.homepageInfoNow().userInfo) {
+      updateInfoWithContextChange(_.copy(userInfo = userInfo))
+    }
   }
 
   def changeLanguage(language: HumanLanguage): Unit = fullInfo.synchronized {

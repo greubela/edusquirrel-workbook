@@ -4,21 +4,25 @@ import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.user.User
+import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.homepage.control.change.HomepageContentControl
+import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer.SessionData
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.model.AllWorkbookInfo.*
+import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.util.DownloadToDisc
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interaction.sync.{SyncInformation, UpdateImportance}
 import it.evadid.workbook.interaction.variable.{InteractionVariableHistorySerialized, InteractionVariableStateSerialized}
 import upickle.default.ReadWriter.join
+import upickle.default.macroRW
 
 import java.time.LocalDateTime
 import scala.concurrent.ExecutionContext
 
-case class WorkbookUserDataAnalyzer(logger: Logger, downloadToDisc: DownloadToDisc, userInfo: AllUserInfo, workbookInfo: AllWorkbookInfo) {
+object WorkbookUserDataAnalyzer {
 
   private given ldt: upickle.ReadWriter[LocalDateTime] = DefaultSerializer.serializerLocalDateTimeString.uPickleReadWrite
 
@@ -36,10 +40,17 @@ case class WorkbookUserDataAnalyzer(logger: Logger, downloadToDisc: DownloadToDi
 
   private given hiRW: upickle.ReadWriter[InteractionVariableHistorySerialized] = upickle.macroRW
 
+
   private given li2RW: upickle.ReadWriter[List[InteractionVariableStateSerialized]] =
     upickle.readwriter[Seq[InteractionVariableStateSerialized]].bimap[List[InteractionVariableStateSerialized]](identity, _.toList)
 
   private given usRW: upickle.ReadWriter[User] = upickle.macroRW
+
+  private given syncInfoRW: upickle.ReadWriter[SyncInformation] = HomepageDefaults.defaultSyncLocationSerializer.uPickleReadWrite
+
+  private given userConfigRW: upickle.ReadWriter[UserConfig] = upickle.macroRW
+
+  private given usiRW: upickle.ReadWriter[AllUserInfo] = upickle.macroRW
 
   private given cidRW: upickle.ReadWriter[LanguageMapContentId] = upickle.macroRW
 
@@ -47,39 +58,37 @@ case class WorkbookUserDataAnalyzer(logger: Logger, downloadToDisc: DownloadToDi
 
   private given seRW: upickle.ReadWriter[SessionData] = upickle.macroRW
 
-  private case class SessionData(currentUserInfo: User, interactionHistory: Map[String, InteractionVariableHistorySerialized], metadata: WorkbookMetadata, epochTimestampMillis: Long)
+  val serializerSessionData: Serializer[SessionData] = Serializer.fromUpickleJson(seRW)
+
+  case class SessionData(currentUserInfo: AllUserInfo, interactionHistory: Map[String, InteractionVariableHistorySerialized], metadata: WorkbookMetadata, epochTimestampMillis: Long)
+
+}
+
+case class WorkbookUserDataAnalyzer(logger: Logger, downloadToDisc: DownloadToDisc, userInfo: AllUserInfo, workbookInfo: AllWorkbookInfo) {
 
   def downloadAllData(): Unit = {
-
     logger.logInfo("WorkbookUserDataAnalyzer: now downloading all session data!")
     val allInteractions: List[WorkbookInteractionElement[?]] = workbookInfo.loadedWorkbook.allContainedInteractions
     val history: Map[String, InteractionVariableHistorySerialized] = allInteractions.map(interaction => interaction.interactionVariable.keyForSerialization -> interaction.interactionVariable.serializedHistory).toMap
-    val data = SessionData(userInfo.user, history, workbookInfo.getMetadata(), System.currentTimeMillis())
+    val data = SessionData(userInfo, history, workbookInfo.getMetadata(), System.currentTimeMillis())
     val str = upickle.default.write(data)
-    val name = s"${data.currentUserInfo.personId}-${data.metadata.workbookId}-${data.epochTimestampMillis}.json"
+    val name = s"${data.currentUserInfo}-${data.metadata.workbookId}-${data.epochTimestampMillis}.json"
     downloadToDisc.downloadFile(name, str)
   }
 
-  private def tryToLoad(sessionData: SessionData): Unit = {
-    logger.logInfo("WorkbookUserDataAnalyzer: now trying to load prio session data!")
-    if (sessionData.currentUserInfo.personId == userInfo.user.personId) {
-      workbookInfo.loadedWorkbook.allContainedInteractions.foreach(curInteraction => {
-        sessionData.interactionHistory.foreach(historyTup => if (historyTup._1 == curInteraction.interactionVariable.keyForSerialization) {
-          curInteraction.interactionVariable.updateHistory(_.withAddedEvents(historyTup._2, curInteraction.serializer))
-        })
-      })
-    }
-  }
 
-  def upload(file: FileDescription): Unit = {
+
+/*
+  private def upload(file: FileDescription): Unit = {
     logger.logInfo(s"WorkbookUserDataAnalyzer: Trying to load prior session data based on file ${file.asUrlString}!")
     file.loadData().foreach(loadedFile => {
       val str = loadedFile.fileDataAsUtf8String
       val data: SessionData = upickle.default.read(str)
+
       tryToLoad(data)
     })(using ExecutionContext.global)
   }
-
+*/
 
 }
 
