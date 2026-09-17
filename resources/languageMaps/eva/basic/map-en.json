@@ -47,5 +47,8 @@
   "syncInfoTooltipPartial": "Synced to  _ / _ Sources",
   "syncInfoTooltipFull": "Synced to all _ Sources",
   "syncInfoTooltipDisabled": "No Sync configured",
-  "syncInfoTooltipWarning": "Synced to none of the _ sources"
+  "syncInfoTooltipWarning": "Synced to none of the _ sources",
+  "TextEditorPlaceholder": "Insert Text here",
+  "MessengerEditorSendMessageButton": "Send",
+  "MessengerEditorInputPlaceholder": "Type Question here"
 }
