@@ -10,7 +10,7 @@
   "settings": "Einstellungen",
   "logout": "Abmelden",
   "switchUser": "Benutzer wechseln",
-  "workbookfooterprivacyinfo": "Datenschutzhinweis (Testbetrieb): Sämtliche Interaktionen werden lokal im Browser sowie in zwei Datenbanken der HU Berlin gespeichert! Nutze diese Arbeitshefte noch nicht mit Minderjährigen! Kontakt: LS Informatik und Gesellschaft, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin)",
+  "workbookfooterprivacyinfo": "Datenschutzhinweis (Testbetrieb): Sämtliche Interaktionen werden lokal im Browser sowie in zwei Datenbanken der HU Berlin gespeichert! Dies kann noch nicht deaktiviert werden. Nutze diese Arbeitshefte daher noch nicht mit Minderjährigen! Kontakt: LS Informatik und Gesellschaft, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin)",
   "previousSection": "← Vorheriger Abschnitt",
   "nextSection": "Nächster Abschnitt →",
   "checkSolution": "Lösung prüfen",

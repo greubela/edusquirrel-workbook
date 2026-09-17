@@ -19,7 +19,7 @@ object SendMailCommand {
                                              )
 
   private def requiredEnv(name: String, envProvider: String => Option[String]): String =
-    envProvider(name).map(_.trim).filter(_.nonEmpty).getOrElse(throw new IllegalStateException(s"$name is not configured"))
+    envProvider(name).map(_.trim).filter(_.nonEmpty).getOrElse(throw new IllegalStateException(s"required env property $name is not configured"))
 
   private[server] def readMailConfig(envProvider: String => Option[String]): MailConfig =
     MailConfig(
@@ -36,6 +36,7 @@ object SendMailCommand {
     val props = new Properties()
     props.put("mail.smtp.auth", "true")
     props.put("mail.smtp.starttls.enable", "true")
+    props.put("mail.smtp.starttls.required", "true")
     props.put("mail.smtp.host", config.host)
     props.put("mail.smtp.port", config.port)
 

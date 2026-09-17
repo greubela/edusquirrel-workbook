@@ -1,6 +1,7 @@
 package it.evadid.homepage.control.change
 
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.startup.HomepageUserLogic
 import it.evadid.homepage.workbook.content.WorkbookFactory

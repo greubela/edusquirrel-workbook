@@ -1,10 +1,12 @@
 package it.evadid.homepage.control.singletons
 
+import it.evadid.core.datastructures.user.UserConfig
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.clients.RemoteExecutionConfig
 import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServer, LocalStorageSync}
 import it.evadid.workbook.interaction.sync.SyncStrategy.SYNC_MAJOR
 import it.evadid.workbook.interaction.sync.{SyncFormatter, SyncInformation, SyncStrategy}
+import upickle.{ReadWriter, macroRW}
 
 import scala.util.Random
 
@@ -18,7 +20,8 @@ object HomepageDefaults {
     "db2" -> SyncInformation(DatabaseSyncViaBackendServer("db_332371_12", false), SYNC_MAJOR, SyncFormatter.RichInteractionVariableFormatter())
   )
 
-  lazy val defaultSyncLocationSerializer: Serializer[SyncInformation] = new Serializer[SyncInformation] {
+
+  private lazy val defaultSyncLocationSerializer: Serializer[SyncInformation] = new Serializer[SyncInformation] {
     override def serialize(obj: SyncInformation): String = {
       defaultSyncLocations.find(_._2 == obj).map(_._1).getOrElse("unknown")
     }
@@ -28,6 +31,11 @@ object HomepageDefaults {
       defaultSyncLocations.find(_._1 == str).map(_._2).getOrElse(default)
     }
   }
+
+  private given ReadWriter[SyncInformation] = defaultSyncLocationSerializer.uPickleReadWrite
+
+  private given ucRW: ReadWriter[UserConfig] = macroRW
+
 }
 
 case class HomepageDefaults() {
@@ -48,6 +56,8 @@ case class HomepageDefaults() {
 
   lazy val defaultUser: AllUserInfo = selectableUsers.head
 */
+
+  lazy val defaultSerializerUserConfig: Serializer[UserConfig] = Serializer.fromUpickleJson(HomepageDefaults.ucRW)
 
   lazy val defaultBackend: RemoteExecutionConfig = RemoteExecutionConfig("ypcgzj23.trafficplex.cloud", 443)
 

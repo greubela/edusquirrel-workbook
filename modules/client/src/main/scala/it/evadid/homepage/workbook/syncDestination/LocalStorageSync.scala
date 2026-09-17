@@ -2,6 +2,7 @@ package it.evadid.homepage.workbook.syncDestination
 
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.FetchResponse
+import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.core.util.io.Serializer
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.LoggingLevel.WARN
@@ -28,7 +29,7 @@ object LocalStorageSync extends SyncDestination {
 
 
 
-  override def storeTo(logger: SyncLogger, context: SyncContext, history: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncInformation.SyncSuccess] = Future {
+  override def storeTo(logger: SyncLogger, currentUser: Option[AllUserInfo], context: SyncContext, history: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncInformation.SyncSuccess] = Future {
     try {
       val value: String = formatter.serialize(context, history)
       val serializedKey: String = historyKeyPrefix + contextToBrowserKeySerializer.serialize(context)
@@ -44,12 +45,12 @@ object LocalStorageSync extends SyncDestination {
 
   override def shouldBePersistant(): Boolean = false
 
-  override def clearAllValues(logger: SyncLogger, context: UsageContext): Future[SyncSuccess] = Future {
+  override def clearAllValues(logger: SyncLogger, currentUser: Option[AllUserInfo], context: UsageContext): Future[SyncSuccess] = Future {
     resetCompleteStorage()
   }(using ec)
 
 
-  override def clearValues(logger: SyncLogger, context: SyncContext): Future[SyncSuccess] = Future {
+  override def clearValues(logger: SyncLogger, currentUser: Option[AllUserInfo], context: SyncContext): Future[SyncSuccess] = Future {
     resetCompleteStorage()
   }(using ec)
 
@@ -74,7 +75,7 @@ object LocalStorageSync extends SyncDestination {
   }
 
 
-  override def fetchAll(logger: SyncLogger, context: UsageContext, formatter: SyncFormatter): Future[RemoteSyncDataCache.FetchResponse[SyncContext, InteractionVariableHistorySerialized]] = {
+  override def fetchAll(logger: SyncLogger, currentUser: Option[AllUserInfo], context: UsageContext, formatter: SyncFormatter): Future[RemoteSyncDataCache.FetchResponse[SyncContext, InteractionVariableHistorySerialized]] = {
     val resMap: Map[SyncContext, InteractionVariableHistorySerialized] = (0 until storage.length).flatMap(i =>
       val browserKey = storage.key(i)
       val browserValue = storage.getItem(browserKey)

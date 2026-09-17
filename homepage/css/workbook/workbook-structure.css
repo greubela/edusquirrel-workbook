@@ -226,7 +226,8 @@ dialog{
 .workbook-footer {
     position: sticky;
     bottom: 0;
-    background: var(--color-background-neutral-accented);
+   /* background: var(--color-background-neutral-accented); regular */
+    background: orange;
     font-size: 0.75rem;
     width: 100%;
 }

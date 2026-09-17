@@ -1,6 +1,7 @@
 package it.evadid.core.datastructures.storage
 
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
+import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.core.util.InfoUtil
 import it.evadid.util.logging.LoggingLevel.INFO
 import it.evadid.util.logging.derived.SyncLogger

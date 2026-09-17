@@ -4,16 +4,13 @@ import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.file.{CopyrightInfo, LoadedFile}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
+import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer
-import it.evadid.homepage.control.model.{AllUserInfo, FullInfo}
-import it.evadid.homepage.control.singletons.{HomepageDefaults, HtmlFullWorkbookApp}
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlDropdownMenu
 import it.evadid.homepage.workbook.syncDestination.LocalStorageSync
 import org.scalajs.dom.{File, HTMLInputElement}
 
-import javax.naming.ldap.ControlFactory
 import scala.concurrent.ExecutionContext
 
 case class UserDropdownMenu() extends HtmlAppElement {

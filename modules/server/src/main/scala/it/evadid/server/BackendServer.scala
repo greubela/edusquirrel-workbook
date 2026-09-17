@@ -32,7 +32,7 @@ object BackendServer {
     ExecutionClientResponse(commandReceived, commandReceived, msg, cause, command, logger.getOut(), logger.getErr())
   }
 
-  private def handleExecuteCommand(bodyOption: Option[String]): Future[ExecutionClientResponse] = {
+  private def handleExecuteCommand(bodyOption: Option[String], remoteAddress: Option[String]): Future[ExecutionClientResponse] = {
     val commandReceived: LocalDateTime = LocalDateTime.now()
     val backendLogger: Logger = Logger.withNameAndPrefixes(Some(s"BackendServerLogger(Request@${commandReceived.toString})"), PrintToStdLogger.printEverything)
 
@@ -40,10 +40,11 @@ object BackendServer {
       Future.successful(fail(commandReceived, "No Request Body Found", None, None, backendLogger))
     else ExecutionCommand.tryParse(bodyOption.get).match {
       case Failure(err) => Future.successful(fail(commandReceived, "Could not parse ExecutionCommand", Some(SerializedException(err)), None, backendLogger))
-      case Success(command) => BackendCommandHandler.handleExecution(commandReceived, command, backendLogger)
-        .recover{err => {
-        fail(commandReceived, "Could not handle ExecutionCommand: " + err.getMessage, Some(SerializedException(err)), Some(command), backendLogger)
-      }}
+      case Success(command) => BackendCommandHandler.handleExecution(commandReceived, command, remoteAddress.getOrElse("[unknown]"), backendLogger)
+        .recover { err => {
+          fail(commandReceived, "Could not handle ExecutionCommand: " + err.getMessage, Some(SerializedException(err)), Some(command), backendLogger)
+        }
+        }
     }
   }
 
@@ -60,8 +61,8 @@ object BackendServer {
       case POST(p"/executeCommand") =>
         action.async { request =>
           val bodyAsText = request.body.asText.orElse(request.body.asJson.map(_.toString))
-
-          handleExecuteCommand(bodyAsText).map {
+          val remoteAddress = request.connection.remoteAddressString
+          handleExecuteCommand(bodyAsText, Option(remoteAddress)).map {
             (response: ExecutionClientResponse) => {
               val (status, responseBody) = response.sendFormat
               Status(status)(responseBody).as("application/json")

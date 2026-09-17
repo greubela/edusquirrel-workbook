@@ -1,7 +1,10 @@
 package it.evadid.homepage.control.startup
 
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
+import it.evadid.distribution.commandTypes.MailCommands
+import it.evadid.distribution.commandTypes.MailCommands.SendMailRequest
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
+import it.evadid.homepage.control.singletons.{HomepageDefaults, HtmlFullWorkbookApp}
 import it.evadid.homepage.workbook.content.{CreateCompressionWorkbook, CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, CreateTestWorkbook}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
 import it.evadid.homepage.workbook.legacy.plantworkshop.PlantWorkshopApp
@@ -99,6 +102,12 @@ object HomepageStartupLogic {
     }(using ExecutionContext.global)
 
     println("uuid: " + java.util.UUID.randomUUID())
+
+    /*
+    val testMail = SendMailRequest("andre.greubel@hu-berlin.de", "This is a test mail :)", "This is the mail body!")
+    val mailRes = MailCommands.sendMailCommand.sendCommandTo(fullInfo.defaults.defaultBackend.executor, testMail, Some(fullInfo.loggerSystemInfo.debugFuncLogger))
+    mailRes.onComplete(res => println("[UGLY PRINTLN HOMEPAGESTARTUPLOGIC] res of mail cmd: " + mailRes))
+*/
 
   }
 

@@ -1,12 +1,12 @@
 package it.evadid.distribution.commandTypes
 
+import it.evadid.core.datastructures.user.User.UserToken
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.ExecutionCommandFactory
-import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoTyped
+import it.evadid.workbook.interaction.sync.SyncFormatter.RichInteractionVariableFormatter
+import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
 import it.evadid.workbook.interaction.sync.{SyncContext, UsageContext}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
-import it.evadid.workbook.interaction.sync.SyncFormatter.{InteractionSyncRequest, RichInteractionVariableFormatter}
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
 
 object SQLCommands {
 
@@ -24,7 +24,8 @@ object SQLCommands {
                                syncContext: SyncContext,
                                historySerialized: InteractionVariableHistorySerialized,
                                databaseName: String,
-                               hasDatabaseKeyColumn: Boolean
+                               hasDatabaseKeyColumn: Boolean,
+                               userToken: Option[UserToken]
                              ) extends DbRequest {
 
     lazy val usageContext: UsageContext = syncContext.toUsageContext
@@ -36,7 +37,8 @@ object SQLCommands {
                                     usageContext: UsageContext,
                                     databaseName: String,
                                     mayLimitToKey: Option[String],
-                                    hasDatabaseKeyColumn: Boolean
+                                    hasDatabaseKeyColumn: Boolean,
+                                    userToken: Option[UserToken]
                                   ) extends DbRequest
 
 
@@ -44,14 +46,13 @@ object SQLCommands {
                                 usageContext: UsageContext,
                                 limitToKey: Option[String],
                                 databaseName: String,
-                                hasDatabaseKeyColumn: Boolean
+                                hasDatabaseKeyColumn: Boolean,
+                                userToken: Option[UserToken]
                               ) extends DbRequest {
   }
 
 
   case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionVariableHistorySerialized]) {
-
-
 
 
   }

@@ -6,6 +6,7 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.control.{LanguageMapIdResolver, LanguageMapStorage}
 import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.core.datastructures.state.observable.ObservableValue
+import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.elements.structureElements.WorkbookSection
 import it.evadid.workbook.interaction.sync.SyncInformation.SyncInformationWithContext
@@ -48,7 +49,7 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
 
   lazy val currentSyncDestinations: StrictSignal[List[SyncInformationWithContext]] = {
     baseSignal.mapLazy(homepageInfo => {
-      homepageInfo.userInfo.map(_.config.syncDestinations.map(_.forContext(homepageInfo.toContext))).getOrElse(List())
+      homepageInfo.userInfo.map(curUserInfo => curUserInfo.config.syncDestinations.map(_.forContext(homepageInfo.toContext, Option(curUserInfo)))).getOrElse(List())
     })
   }
 

@@ -3,7 +3,8 @@ package it.evadid.homepage.control.info
 import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
-import it.evadid.core.datastructures.user.User
+import it.evadid.core.datastructures.user.User.UserToken
+import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig}
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.homepage.control.change.HomepageContentControl
@@ -11,6 +12,7 @@ import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer.SessionData
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.model.AllWorkbookInfo.*
 import it.evadid.homepage.control.singletons.HomepageDefaults
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.util.DownloadToDisc
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
@@ -44,11 +46,11 @@ object WorkbookUserDataAnalyzer {
   private given li2RW: upickle.ReadWriter[List[InteractionVariableStateSerialized]] =
     upickle.readwriter[Seq[InteractionVariableStateSerialized]].bimap[List[InteractionVariableStateSerialized]](identity, _.toList)
 
+  private given ustRW: upickle.ReadWriter[UserToken] = upickle.macroRW
   private given usRW: upickle.ReadWriter[User] = upickle.macroRW
 
-  private given syncInfoRW: upickle.ReadWriter[SyncInformation] = HomepageDefaults.defaultSyncLocationSerializer.uPickleReadWrite
 
-  private given userConfigRW: upickle.ReadWriter[UserConfig] = upickle.macroRW
+  private given userConfigRW: upickle.ReadWriter[UserConfig] = fullInfo.defaults.defaultSerializerUserConfig.uPickleReadWrite
 
   private given usiRW: upickle.ReadWriter[AllUserInfo] = upickle.macroRW
 
@@ -61,6 +63,7 @@ object WorkbookUserDataAnalyzer {
   val serializerSessionData: Serializer[SessionData] = Serializer.fromUpickleJson(seRW)
 
   case class SessionData(currentUserInfo: AllUserInfo, interactionHistory: Map[String, InteractionVariableHistorySerialized], metadata: WorkbookMetadata, epochTimestampMillis: Long)
+
 
 }
 

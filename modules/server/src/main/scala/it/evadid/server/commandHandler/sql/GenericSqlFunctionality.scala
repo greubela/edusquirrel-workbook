@@ -1,17 +1,18 @@
 package it.evadid.server.commandHandler.sql
 
+import it.evadid.server.commandHandler.sql.sync.RichDatabaseEntry
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.interaction.sync.UsageContext
 import it.evadid.workbook.interaction.sync.SyncFormatter.RichInteractionVariableFormatter
+import it.evadid.workbook.interaction.sync.UsageContext
 
 import java.sql.*
+import java.time.format.DateTimeFormatter
+import java.time.{LocalDate, LocalDateTime}
 import scala.collection.mutable
 
 private[sql] case class GenericSqlFunctionality(
                                                  connection: Connection,
-                                                 usageContext: UsageContext,
-                                                 logger: Logger,
-                                                 formatter: RichInteractionVariableFormatter
+                                                 logger: Logger
                                                ) {
 
 
@@ -26,18 +27,29 @@ private[sql] case class GenericSqlFunctionality(
     }
   }
 
-  def executeQuery(preparedStatement: PreparedStatement, fieldsToRead: List[String]): List[RichDatabaseEntry] = {
+  def executeQuery(preparedStatement: PreparedStatement, fieldsToRead: List[String]): List[List[String]] = {
     logger.logInfo("Executing query: " + preparedStatement.toString)
     try {
       val rs = preparedStatement.executeQuery()
       logger.logInfo("Query executed successfully")
-      val asList = readAll(rs, fieldsToRead)
-      convertAll(asList, tup => RichDatabaseEntry(usageContext, formatter, tup))
+      val asList: List[List[String]] = readAll(rs, fieldsToRead)
+      asList
     } catch case e: Exception => {
       preparedStatement.close()
       logger.logError(s"Error fetching from database: ${e.getMessage}")
       throw e
     }
+  }
+
+  def parseDatabaseTimestamp(databaseTimestampString: String): LocalDateTime = {
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+    val localDateTime: LocalDateTime = LocalDateTime.parse(databaseTimestampString, formatter)
+    localDateTime
+  }
+
+  def executeSyncQuere(preparedStatement: PreparedStatement, fieldsToRead: List[String], usageContext: UsageContext, formatter: RichInteractionVariableFormatter): List[RichDatabaseEntry] = {
+    val asList = executeQuery(preparedStatement, fieldsToRead)
+    convertAll(asList, tup => RichDatabaseEntry(usageContext, formatter, tup))
   }
 
   private def readOne(resultSet: ResultSet, fields: List[String]): Option[List[String]] = try {

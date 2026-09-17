@@ -10,7 +10,7 @@
   "settings": "Settings",
   "logout": "Log out",
   "switchUser": "Switch user",
-  "workbookfooterprivacyinfo": "Privacy information (demo system): All your interactions are stored within your local browser, as well as two databases of Humboldt University. Do not use this page for learning (for now)! Contact: Chair Computer Science and Society, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin, Germany)",
+  "workbookfooterprivacyinfo": "Privacy information (demo system): All your interactions are stored within your local browser, as well as two databases of Humboldt University. This cannot be disabled yet. Thus, do not use this page for learning with minors (for now)! Contact: Chair Computer Science and Society, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin, Germany)",
   "previousSection": "← Previous section",
   "nextSection": "Next section →",
   "checkSolution": "Check solution",
