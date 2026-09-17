@@ -7,6 +7,7 @@ import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlDropdownMenu
+import it.evadid.homepage.workbook.syncDestination.LocalStorageSync
 
 import javax.naming.ldap.ControlFactory
 
@@ -37,7 +38,10 @@ case class UserDropdownMenu() extends HtmlAppElement {
   private def createSessionMenu(): List[HtmlAppElement] = List(
     HtmlDropdownMenu.menuLabel(userNameOrNobodySignal),
     HtmlDropdownMenu.menuItem("basic/downloadEverything", _ => fullInfo.current.workbookUserData.foreach(_.downloadAllData())),
-    HtmlDropdownMenu.menuItem("basic/logout", _ => switchUser(None))
+    HtmlDropdownMenu.menuItem("basic/logout", _ => {
+      switchUser(None)
+      LocalStorageSync.resetCompleteStorage()
+    })
   )
 
 

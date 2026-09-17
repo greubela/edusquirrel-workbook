@@ -55,9 +55,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   }
 
   def changeUser(userInfo: Option[AllUserInfo]): Unit = fullInfo.synchronized {
-    HomepageUserLogic.removeUserFromLocalStorage()
     updateInfoWithContextChange(_.copy(userInfo = userInfo))
-
   }
 
   def changeLanguage(language: HumanLanguage): Unit = fullInfo.synchronized {
