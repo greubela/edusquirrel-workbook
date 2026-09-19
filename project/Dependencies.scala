@@ -17,9 +17,10 @@ object Dependencies {
   ))
 
   val jvmDependencies = Def.setting(Seq(
-    "org.playframework" %% "play-netty-server" % "3.0.10",
-    "org.playframework" %% "play-json" % "3.0.4",
-    "org.scalafx" %% "scalafx" % "24.0.0-R35",
+    "org.playframework" %% "play-netty-server" % "3.0.11",
+    "org.playframework" %% "play-json" % "3.0.6",
+    "com.github.jwt-scala" %% "jwt-play-json" % "11.0.4",
+    // "org.scalafx" %% "scalafx" % "24.0.0-R35",
   ))
 
   val jsDependencies = Def.setting(Seq(
