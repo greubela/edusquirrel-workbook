@@ -5,7 +5,8 @@ import it.evadid.core.datastructures.chat.Person.SerializablePerson
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.core.datastructures.user.User.UserToken
-import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig}
+import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
+import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig, UserTokenInfo}
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.*
 import it.evadid.distribution.command.ExecutionInfo.*
@@ -22,6 +23,7 @@ import it.evadid.workbook.interaction.variable.{InteractionVariableHistorySerial
 import upickle.ReadWriter
 import upickle.default.*
 
+import java.net.InetAddress
 import java.time.LocalDateTime
 import scala.util.*
 
@@ -83,8 +85,15 @@ object DefaultSerializer {
   }.uPickleReadWrite
 
 
+  private given ReadWriter[InetAddress] = new Serializer[InetAddress]{
+    override def serialize(obj: InetAddress): String = obj.getCanonicalHostName
+    override def deserialize(str: String): InetAddress = InetAddress.getByName(str)
+  }.uPickleReadWrite
+
   private given ReadWriter[User] = macroRW
   private given ReadWriter[UserToken] = macroRW
+  private given uti: ReadWriter[UserTokenInfo] = macroRW
+  private given suti: ReadWriter[SignedToken] = macroRW
 
   private[serializer] given rwMessage: ReadWriter[Message] = macroRW
 
@@ -182,6 +191,8 @@ object DefaultSerializer {
   lazy val serializerUpsertAccountRequest: Serializer[UpsertAccountRequest] = Serializer.fromUpickleJson[UpsertAccountRequest](upsertAccReqRW)
   lazy val serializerUpsertAccountResponse: Serializer[UpsertAccountResponse] = Serializer.fromUpickleJson[UpsertAccountResponse](upsertAccResRW)
 
+  lazy val serializerUserTokenInfo: Serializer[UserTokenInfo] = Serializer.fromUpickleJson(uti)
+  lazy val serializerSignedUserTokenInfo: Serializer[SignedToken] = Serializer.fromUpickleJson(suti)
 
   lazy val serializerStringJson: Serializer[String] = Serializer.stringIO
   lazy val serializerExceptionS: Serializer[SerializedException] = Serializer.fromUpickleJson(errSer)
