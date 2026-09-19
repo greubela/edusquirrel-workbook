@@ -14,6 +14,7 @@ import it.evadid.server.commandHandler.sql.sync.{DeleteInDatabase, FetchFromData
 import it.evadid.server.commandHandler.sql.{DatabaseConfig, SqlLogCommands, SqlUserCommands}
 import it.evadid.util.logging.Logger
 
+import java.net.InetAddress
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -90,7 +91,7 @@ object BackendCommandHandler {
     }
   }
 
-  def handleExecution(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, remoteAddress: String, logger: Logger): Future[ExecutionClientResponse] = {
+  def handleExecution(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, remoteAddress: InetAddress, logger: Logger): Future[ExecutionClientResponse] = {
     logger.logInfo(s"[server] Received command: ${executionCommand.name} with params keys: ${executionCommand.params.keys}")
     SqlLogCommands.handleLog(commandReceived, executionCommand, remoteAddress, logger)
 

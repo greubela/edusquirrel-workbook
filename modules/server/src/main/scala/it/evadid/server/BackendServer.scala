@@ -1,6 +1,6 @@
 package it.evadid.server
 
-import it.evadid.core.datastructures.state.async.AsyncDataState.*
+import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.*
 import it.evadid.distribution.formats.ExecutionClientResponse
@@ -12,9 +12,9 @@ import play.api.mvc.*
 import play.api.mvc.Results.*
 import play.api.routing.sird.*
 import play.core.server.{NettyServer, ServerConfig}
-import upickle.default.write
 
 import java.io.{PrintWriter, StringWriter}
+import java.net.InetAddress
 import java.time.LocalDateTime
 import scala.concurrent.*
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -32,7 +32,7 @@ object BackendServer {
     ExecutionClientResponse(commandReceived, commandReceived, msg, cause, command, logger.getOut(), logger.getErr())
   }
 
-  private def handleExecuteCommand(bodyOption: Option[String], remoteAddress: Option[String]): Future[ExecutionClientResponse] = {
+  private def handleExecuteCommand(bodyOption: Option[String], token: Option[SignedToken], remoteAddress: InetAddress): Future[ExecutionClientResponse] = {
     val commandReceived: LocalDateTime = LocalDateTime.now()
     val backendLogger: Logger = Logger.withNameAndPrefixes(Some(s"BackendServerLogger(Request@${commandReceived.toString})"), PrintToStdLogger.printEverything)
 
@@ -40,7 +40,7 @@ object BackendServer {
       Future.successful(fail(commandReceived, "No Request Body Found", None, None, backendLogger))
     else ExecutionCommand.tryParse(bodyOption.get).match {
       case Failure(err) => Future.successful(fail(commandReceived, "Could not parse ExecutionCommand", Some(SerializedException(err)), None, backendLogger))
-      case Success(command) => BackendCommandHandler.handleExecution(commandReceived, command, remoteAddress.getOrElse("[unknown]"), backendLogger)
+      case Success(command) => BackendCommandHandler.handleExecution(commandReceived, command, remoteAddress, backendLogger)
         .recover { err => {
           fail(commandReceived, "Could not handle ExecutionCommand: " + err.getMessage, Some(SerializedException(err)), Some(command), backendLogger)
         }
@@ -56,13 +56,26 @@ object BackendServer {
     "relevant api model" -> JvmUtils.env("OPENAI_MODEL").getOrElse("[unknown]")
   ).toString()
 
+
   private def buildApiRouter(action: DefaultActionBuilder): PartialFunction[RequestHeader, Handler] = {
     {
+
+      /*case POST(p"/login") => action.async { request =>
+        val bodyAsText = request.body.asText.orElse(request.body.asJson.map(_.toString))
+        val remoteAddress = request.connection.remoteAddress
+        val handleRes = handleLogin(bodyAsText.getOrElse(""), remoteAddress)
+        val res: Future[Result] = handleRes.map {
+          case Left(err) => Status(401)(err.toJson).as("application/json")
+          case Right(token) => Status(200)(token.toJson).as("application/json")
+        }.recover {
+          err => Status(500)(SerializedException(err).toJson).as("application/json")
+        }
+        res
+      }*/
       case POST(p"/executeCommand") =>
         action.async { request =>
           val bodyAsText = request.body.asText.orElse(request.body.asJson.map(_.toString))
-          val remoteAddress = request.connection.remoteAddressString
-          handleExecuteCommand(bodyAsText, Option(remoteAddress)).map {
+          handleExecuteCommand(bodyAsText, AuthHandling.findAuthCookie(request.cookies), request.connection.remoteAddress).map {
             (response: ExecutionClientResponse) => {
               val (status, responseBody) = response.sendFormat
               Status(status)(responseBody).as("application/json")

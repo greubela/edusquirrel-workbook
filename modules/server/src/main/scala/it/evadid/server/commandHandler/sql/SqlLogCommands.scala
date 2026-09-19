@@ -4,12 +4,13 @@ import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
 
+import java.net.InetAddress
 import java.sql.{Connection, Timestamp}
 import java.time.LocalDateTime
 
 object SqlLogCommands {
 
-  def handleLog(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, remoteAddress: String, logger: Logger): Unit = {
+  def handleLog(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, remoteAddress: InetAddress, logger: Logger): Unit = {
     val config = DatabaseConfig.readFromEnv()
     val connection = config.newConnection()
     val control = SqlLogCommands(connection, logger)
@@ -26,8 +27,8 @@ class SqlLogCommands(
 
   private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(connection, logger)
 
-  def logCommand(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, remoteAddress: String, logger: Logger): SyncSuccess = {
-    val storeOrigin: String = remoteAddress
+  def logCommand(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, remoteAddress: InetAddress, logger: Logger): SyncSuccess = {
+    val storeOrigin: String = remoteAddress.getCanonicalHostName
     val storeTimestamp: Timestamp = Timestamp.valueOf(commandReceived)
     val storeType: String = executionCommand.name
     val storePayload: String = executionCommand.toJson
