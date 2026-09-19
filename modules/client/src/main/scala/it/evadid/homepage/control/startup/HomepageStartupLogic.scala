@@ -1,13 +1,11 @@
 package it.evadid.homepage.control.startup
 
 import com.raquo.laminar.api.L.*
-import it.evadid.distribution.commandTypes.MailCommands
-import it.evadid.distribution.commandTypes.MailCommands.SendMailRequest
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
-import it.evadid.homepage.control.singletons.{HomepageDefaults, HtmlFullWorkbookApp}
+import it.evadid.distribution.command.SerializedException
+import it.evadid.homepage.control.model.AllWorkbookInfo
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.workbook.content.{CreateCompressionWorkbook, CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, CreateTestWorkbook}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
-import it.evadid.homepage.workbook.legacy.plantworkshop.PlantWorkshopApp
+import it.evadid.util.logging.Logger
 import org.scalajs.dom
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
@@ -16,78 +14,58 @@ import scala.util.{Failure, Success}
 
 object HomepageStartupLogic {
 
-  def initHomepage(): Unit = {
-    val fullInfo = HtmlFullWorkbookApp.fullInfo
-    val logger = fullInfo.loggerSystemInfo.contentControlLogger
-    HomepageUserLogic.userStartupLogic(logger, fullInfo)
-    mainApp()
-  }
-
-  /*
-  def onStartup(userFromLocalStorage: Option[User], workbook: Option[Workbook], domElement: Option[Element]): Unit = {
-
-  }
-
-  private lazy val containerWorkbookMap: Map[String, Workbook] = Map(
-  )
-  */
-
-  def mainApp(): Unit = {
-    val canLoad: List[String] = tryToLoad.flatMap(id => if (dom.document.getElementById(id) != null) Some(id) else None)
-    if (canLoad.isEmpty) println("Found no container to load a workbook into. Tried: " + tryToLoad.mkString(", "))
-    if (canLoad.size > 1) println("Found more than one workbook to load: " + canLoad.mkString(", "))
-    if (canLoad.nonEmpty) {
-      val loadBasicsFut: Future[?] = HtmlFullWorkbookApp.fullInfo.contentControl.languageStorage.ensureDefaultLanguageSourcesLoaded()
-      loadBasicsFut.onComplete {
-        case Success(_) => println("finished loading!")
-        case Failure(err) => err.printStackTrace()
-      }(using ExecutionContext.global)
-
-      if (initWorkbookOnlyAfterDependenciesLoaded) {
-        loadBasicsFut.onComplete {
-          case Success(_) =>
-            load(canLoad.head)
-            testCalculations()
-          case Failure(_) => println("MainApp skipped workbook initialization because dependencies failed to load.")
-        }(using ExecutionContext.global)
-      } else {
-        load(canLoad.head)
-        testCalculations()
-      }
-    }
-  }
+  private given ExecutionContext = ExecutionContext.global
 
   private given ExecutionContextExecutor = ExecutionContext.global
 
-  private val tryToLoad: List[String] = List("plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "workbookCompression", "feedbackDemoRoot", "workbookTest")
+  private val tryToLoad: List[String] = List("landingPage", "loginPage", "plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "workbookCompression", "workbookTest")
+  private val canLoad: List[String] = tryToLoad.flatMap(id => if (dom.document.getElementById(id) != null) Some(id) else None)
 
-  private def load(containerId: String): Unit = {
-    println("loading workbook: " + containerId)
-    val domElement = containerId match {
-      case "plantWorkshopApp" =>
-        PlantWorkshopApp.appElement
-      case "workbookEmbroidery" =>
-        HtmlFullWorkbookApp.fullInfo.usageControl.changeWorkbook(CreateEmbroideryWorkbook(HtmlFullWorkbookApp.fullInfo))
-        HtmlFullWorkbookApp.getDomElement()
-      case "workbookTest" =>
-        HtmlFullWorkbookApp.fullInfo.usageControl.changeWorkbook(CreateTestWorkbook(HtmlFullWorkbookApp.fullInfo))
-        HtmlFullWorkbookApp.getDomElement()
-      case "workbookPlantWorkshop" =>
-        HtmlFullWorkbookApp.fullInfo.usageControl.changeWorkbook(CreatePlantworkshopWorkbook(HtmlFullWorkbookApp.fullInfo))
-        HtmlFullWorkbookApp.getDomElement()
-      case "workbookCompression" =>
-        HtmlFullWorkbookApp.fullInfo.usageControl.changeWorkbook(CreateCompressionWorkbook(HtmlFullWorkbookApp.fullInfo))
-        HtmlFullWorkbookApp.getDomElement()
-      case "feedbackDemoRoot" =>
-        FeedbackDemoElement.element()
+  def renderElementIntoApp(logger: Logger, domElement: Element): Unit = {
+    if (canLoad.isEmpty) {
+      logger.logException(SerializedException("Cannot load content, because there is no known container id to render it into :-("))
+      dom.document.body.appendChild(div(s"Content cannot be loaded, look at the console to find out more :-(").ref)
+    } else {
+      val container = dom.document.getElementById(canLoad.head)
+      container.children.foreach(container.removeChild(_))
+      if (dom.document.readyState == "loading") renderOnDomContentLoaded(container, domElement)
+      else render(container, domElement)
+    }
+  }
 
-      case other => div("Workbook '" + other + "' not available via MainApp::load!")
+  def initHomepage(): Unit = {
+    val fullInfo = HtmlFullWorkbookApp.fullInfo
+    val logger = fullInfo.loggerSystemInfo.contentControlLogger
+
+    val futureTestCalc = testCalculations().recover { err =>
+      logger.logExceptionWarn("testCalculations failed", err)
+    }
+    val futureLoadBasics = HtmlFullWorkbookApp.fullInfo.contentControl.languageStorage.ensureDefaultLanguageSourcesLoaded().recover { err =>
+      logger.logExceptionWarn("ignoring basics which should have been loaded", err)
+    }
+    val futureAutoLogin = fullInfo.usageControl.tryAutoLogin().recover { err =>
+      logger.logExceptionWarn("auto login was not possible!", err)
     }
 
-    val container = dom.document.getElementById(containerId)
+    for {
+      autoLoginRes <- futureAutoLogin
+      basicsLoaded <- futureLoadBasics
+      testCalc <- futureTestCalc
+    } {
 
-    if (dom.document.readyState == "loading") renderOnDomContentLoaded(container, domElement)
-    else render(container, domElement)
+      val workbook: Option[AllWorkbookInfo] = canLoad.headOption.flatMap(loadWorkbookById)
+      fullInfo.usageControl.changeWorkbook(workbook)
+
+      renderElementIntoApp(logger, HtmlFullWorkbookApp.getDomElement())
+    }
+  }
+
+  def loadWorkbookById(workbookId: String): Option[AllWorkbookInfo] = workbookId match {
+    case "workbookEmbroidery" => Some(CreateEmbroideryWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
+    case "workbookTest" => Some(CreateTestWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
+    case "workbookPlantWorkshop" => Some(CreatePlantworkshopWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
+    case "workbookCompression" => Some(CreateCompressionWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
+    case _ => None
   }
 
   private def initWorkbookOnlyAfterDependenciesLoaded: Boolean = {
@@ -95,7 +73,7 @@ object HomepageStartupLogic {
     if (js.isUndefined(configValue)) true else configValue.asInstanceOf[Boolean]
   }
 
-  private def testCalculations(): Unit = {
+  private def testCalculations(): Future[?] = Future {
     HtmlFullWorkbookApp.fullInfo.contentControl.fileFactory.onBackendServer("/health").loadData().onComplete {
       case Success(res) => println("Backend Health check: " + new String(res.fileDataAsUtf8String))
       case Failure(err) => println("Backend Health error: " + err.getMessage)
@@ -107,8 +85,9 @@ object HomepageStartupLogic {
     val testMail = SendMailRequest("andre.greubel@hu-berlin.de", "This is a test mail :)", "This is the mail body!")
     val mailRes = MailCommands.sendMailCommand.sendCommandTo(fullInfo.defaults.defaultBackend.executor, testMail, Some(fullInfo.loggerSystemInfo.debugFuncLogger))
     mailRes.onComplete(res => println("[UGLY PRINTLN HOMEPAGESTARTUPLOGIC] res of mail cmd: " + mailRes))
-*/
+  */
 
   }
-
 }
+
+

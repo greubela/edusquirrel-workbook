@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.chat.*
 import it.evadid.core.datastructures.chat.Person.SerializablePerson
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
-import it.evadid.core.datastructures.user.User.UserToken
+import it.evadid.core.datastructures.user.User.SingleAccessToken
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig, UserTokenInfo}
 import it.evadid.core.util.io.Serializer
@@ -90,10 +90,12 @@ object DefaultSerializer {
     override def deserialize(str: String): InetAddress = InetAddress.getByName(str)
   }.uPickleReadWrite
 
+  private given ReadWriter[SingleAccessToken] = macroRW
   private given ReadWriter[User] = macroRW
-  private given ReadWriter[UserToken] = macroRW
+
   private given uti: ReadWriter[UserTokenInfo] = macroRW
   private given suti: ReadWriter[SignedToken] = macroRW
+  private given ReadWriter[Either[SingleAccessToken, SignedToken]] = macroRW
 
   private[serializer] given rwMessage: ReadWriter[Message] = macroRW
 
@@ -136,9 +138,13 @@ object DefaultSerializer {
   private[serializer] given authResRW: ReadWriter[LoginResponse] = macroRW
 
 
-  private[serializer] given upsertAccReqRW: ReadWriter[UpsertAccountRequest] = macroRW
+  private[serializer] given upsertAccReqRW: ReadWriter[CreateAccountRequest] = macroRW
 
-  private[serializer] given upsertAccResRW: ReadWriter[UpsertAccountResponse] = macroRW
+  private[serializer] given upsertAccResRW: ReadWriter[CreateAccountResponse] = macroRW
+
+  private[serializer] given upsertAccReqRW2: ReadWriter[UpdateAccountRequest] = macroRW
+
+  private[serializer] given upsertAccResRW2: ReadWriter[UpdateAccountResponse] = macroRW
 
 
   private[serializer] given authMailReq: ReadWriter[AuthMailRequest] = macroRW
@@ -188,8 +194,11 @@ object DefaultSerializer {
   lazy val serializerVerifyAuthenticationRequest: Serializer[LoginRequest] = Serializer.fromUpickleJson[LoginRequest](authReqRW)
   lazy val serializerVerifyAuthenticationResponse: Serializer[LoginResponse] = Serializer.fromUpickleJson[LoginResponse](authResRW)
 
-  lazy val serializerUpsertAccountRequest: Serializer[UpsertAccountRequest] = Serializer.fromUpickleJson[UpsertAccountRequest](upsertAccReqRW)
-  lazy val serializerUpsertAccountResponse: Serializer[UpsertAccountResponse] = Serializer.fromUpickleJson[UpsertAccountResponse](upsertAccResRW)
+  lazy val serializerCreateAccountRequest: Serializer[CreateAccountRequest] = Serializer.fromUpickleJson[CreateAccountRequest](upsertAccReqRW)
+  lazy val serializerCreateAccountResponse: Serializer[CreateAccountResponse] = Serializer.fromUpickleJson[CreateAccountResponse](upsertAccResRW)
+
+  lazy val serializerUpdateAccountRequest: Serializer[UpdateAccountRequest] = Serializer.fromUpickleJson[UpdateAccountRequest](upsertAccReqRW2)
+  lazy val serializerUpdateAccountResponse: Serializer[UpdateAccountResponse] = Serializer.fromUpickleJson[UpdateAccountResponse](upsertAccResRW2)
 
   lazy val serializerUserTokenInfo: Serializer[UserTokenInfo] = Serializer.fromUpickleJson(uti)
   lazy val serializerSignedUserTokenInfo: Serializer[SignedToken] = Serializer.fromUpickleJson(suti)

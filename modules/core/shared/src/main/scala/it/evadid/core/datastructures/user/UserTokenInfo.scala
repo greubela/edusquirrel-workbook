@@ -7,13 +7,13 @@ import java.time.LocalDateTime
 
 object UserTokenInfo {
 
-  case class SignedToken(info: UserTokenInfo, signatureHex: String) {
+  case class SignedToken(info: UserTokenInfo, tokenStringWithSignature: String) {
     lazy val toJson: String = DefaultSerializer.serializerSignedUserTokenInfo.serialize(this)
   }
 
 }
 
-case class UserTokenInfo(user: User, createdAt: LocalDateTime, expiresAt: LocalDateTime, createdForAddress: InetAddress) {
+case class UserTokenInfo(user: User, createdAt: LocalDateTime, expiresAt: LocalDateTime) {
 
   lazy val toJson: String = DefaultSerializer.serializerUserTokenInfo.serialize(this)
 

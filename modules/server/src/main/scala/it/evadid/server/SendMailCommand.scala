@@ -56,7 +56,7 @@ object SendMailCommand {
 
     Transport.send(msg)
     logger.logInfo(s"mail sent to '${request.recipientMail}'")
-    SendMailResponse(sent = true)
+    SendMailResponse(None, sent = true)
   }
 
   def handleSendMailRequest(request: SendMailRequest, logger: Logger): Future[SendMailResponse] = Future {

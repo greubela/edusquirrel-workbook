@@ -1,5 +1,6 @@
 package it.evadid.distribution.commandTypes
 
+import it.evadid.core.datastructures.user.User
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.ExecutionCommandFactory
 
@@ -11,14 +12,13 @@ object MailCommands {
                               content: String
                             )
 
-  case class SendMailResponse(sent: Boolean)
+  case class SendMailResponse(associatedUser: Option[User], sent: Boolean)
 
   val sendMailCommand: ExecutionCommandFactory[SendMailRequest, SendMailResponse] = ExecutionCommandFactory(
     "send-mail-request",
     DefaultSerializer.serializerSendMailRequestJson,
     DefaultSerializer.serializerSendMailResponseJson
   )
-
 
 
 }

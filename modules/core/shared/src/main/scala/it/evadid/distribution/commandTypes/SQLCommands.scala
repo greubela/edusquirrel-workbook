@@ -1,6 +1,5 @@
 package it.evadid.distribution.commandTypes
 
-import it.evadid.core.datastructures.user.User.UserToken
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.ExecutionCommandFactory
 import it.evadid.workbook.interaction.sync.SyncFormatter.RichInteractionVariableFormatter
@@ -24,8 +23,7 @@ object SQLCommands {
                                syncContext: SyncContext,
                                historySerialized: InteractionVariableHistorySerialized,
                                databaseName: String,
-                               hasDatabaseKeyColumn: Boolean,
-                               userToken: Option[UserToken]
+                               hasDatabaseKeyColumn: Boolean
                              ) extends DbRequest {
 
     lazy val usageContext: UsageContext = syncContext.toUsageContext
@@ -37,8 +35,7 @@ object SQLCommands {
                                     usageContext: UsageContext,
                                     databaseName: String,
                                     mayLimitToKey: Option[String],
-                                    hasDatabaseKeyColumn: Boolean,
-                                    userToken: Option[UserToken]
+                                    hasDatabaseKeyColumn: Boolean
                                   ) extends DbRequest
 
 
@@ -46,8 +43,7 @@ object SQLCommands {
                                 usageContext: UsageContext,
                                 limitToKey: Option[String],
                                 databaseName: String,
-                                hasDatabaseKeyColumn: Boolean,
-                                userToken: Option[UserToken]
+                                hasDatabaseKeyColumn: Boolean
                               ) extends DbRequest {
   }
 

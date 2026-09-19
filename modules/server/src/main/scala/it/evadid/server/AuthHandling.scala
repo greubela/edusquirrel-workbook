@@ -3,16 +3,16 @@ package it.evadid.server
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.datastructures.user.{User, UserTokenInfo}
 import it.evadid.core.util.io.serializer.DefaultSerializer
+import it.evadid.server.commandHandler.sql.SqlUserCommands
 import it.evadid.util.JvmUtils
+import it.evadid.util.logging.Logger
+import pdi.jwt.*
+import play.api.libs.json.{Json, OFormat}
 import play.api.mvc.Cookies
-
-import pdi.jwt.JwtJson._
-
-import pdi.jwt._
-import play.api.libs.json.Json
 
 import java.net.InetAddress
 import java.time.{Clock, LocalDateTime}
+import scala.util.{Failure, Success}
 
 object AuthHandling {
 
@@ -20,23 +20,71 @@ object AuthHandling {
   implicit val clock: Clock = Clock.systemUTC
   val algo = JwtAlgorithm.HS256
 
-  def findAuthCookie(cookies: Cookies): Option[SignedToken] = {
-    val claimedAuth = cookies.filter(_.name == "auth_token").map(_.value)
-    val deserialized = DefaultSerializer.serializerSignedUserTokenInfo.tryDeserializeAll(claimedAuth)
-    deserialized.inputAfterOperation.headOption
+
+  def mayCreateAccount(requestedUser: User, logger: Logger): Boolean = {
+    val instance = SqlUserCommands.instance(logger)
+    val findMail = instance.findUserWithMail(requestedUser.mail)
+    val findId = instance.readUserInfoFromDb(requestedUser.id)
+    if (findMail.nonEmpty) {
+      logger.logWarn(s"Mail ${requestedUser.mail} already associated with users ${findMail.map(_.user.id).mkString(", ")}!")
+      false
+    } else if (findId.nonEmpty) {
+      logger.logWarn(s"Id ${requestedUser.id} already in use (associated with mail ${findId.head.user.mail})!")
+      false
+    } else {
+      true
+    }
   }
 
-  def isTokenValid(givenToken: SignedToken): Boolean = try {
-    val claim = givenToken.info.toJson
-    val res = JwtJson.decodeJson(givenToken.signatureHex, serverSecret, Seq(JwtAlgorithm.HS256))
+  def mayAccessIdBased(userIdRequester: String, userIdOwner: String): Boolean = {
+    userIdOwner == userIdOwner
+  }
 
-    false
-  } catch case e: Exception => false
+  def mayAccessMailBased(mailRequester: String, mailOwner: String): Boolean = {
+    mailRequester == mailOwner
+  }
 
 
-  def createToken(user: User, requestAddr: InetAddress): SignedToken = {
+  def findAuthCookies(cookies: Cookies): Seq[SignedToken] = {
+    val claimedAuth = cookies.filter(_.name == "auth_token").map(_.value)
+    val deserialized = DefaultSerializer.serializerSignedUserTokenInfo.tryDeserializeAll(claimedAuth)
+    deserialized.inputAfterOperation.toList
+  }
+
+  def isTokenValid(logger: Logger, givenToken: SignedToken): Boolean = {
+    JwtJson.decodeJson(givenToken.tokenStringWithSignature, serverSecret, Seq(JwtAlgorithm.HS256)) match {
+      case Success(jsonClaims) => try {
+        val parsedUserInfo = DefaultSerializer.serializerUserTokenInfo.deserialize(jsonClaims.toString)
+
+        if (parsedUserInfo.expiresAt.isBefore(LocalDateTime.now())) {
+          logger.logWarn(s"Dismissed token because it expired at ${parsedUserInfo.expiresAt}!")
+          false
+        }
+        else if (parsedUserInfo != givenToken.info) {
+          logger.logWarn("Dismissed token because claimed info does not match actual info")
+          false
+        }
+        else {
+          /*if (givenToken.info.createdForAddress != connectionRequestedFrom) {
+            logger.logInfo(s"Token was created at [${givenToken.info.createdForAddress}] but now used with [$connectionRequestedFrom] (this is acceptable)")
+          }*/
+          true
+        }
+      } catch {
+        case e: Exception =>
+          logger.logExceptionWarn("Dismissed token because of deserialization or logic error", e)
+          false
+      }
+      case Failure(exception) =>
+        logger.logExceptionWarn("Dismissed token because cryptographic signature verification failed", exception)
+        false
+    }
+  }
+
+
+  def createToken(user: User): SignedToken = {
     val now = LocalDateTime.now()
-    val tokenInfo = UserTokenInfo(user, now, now.plusYears(1), requestAddr)
+    val tokenInfo = UserTokenInfo(user, now, now.plusMinutes(30))
     val claim = tokenInfo.toJson
     val token = JwtJson.encode(claim, serverSecret, algo)
     SignedToken(tokenInfo, token)

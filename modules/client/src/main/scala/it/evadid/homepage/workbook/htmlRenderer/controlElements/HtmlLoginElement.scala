@@ -1,10 +1,17 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
 import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.PLAINTEXT
 
+import scala.concurrent.{Future, Promise}
+
 case class HtmlLoginElement() extends HtmlAppElement {
+
+  private val loginSucceededPromise: Promise[AllUserInfo] = Promise()
+
+  def loginSucceededFuture: Future[AllUserInfo] = loginSucceededPromise.future
 
   private val startWithAccount: Element = {
     div("Start with Account")

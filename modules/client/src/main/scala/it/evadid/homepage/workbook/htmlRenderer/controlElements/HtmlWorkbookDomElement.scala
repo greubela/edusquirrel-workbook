@@ -2,16 +2,22 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.keys.EventProp
-import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.HtmlWorkbookRenderer
 import org.scalajs.dom
 
 case class HtmlWorkbookDomElement() extends HtmlAppElement {
 
-  private lazy val workbookDomSignal: Signal[Element] = fullInfo.signals.workbook.mapLazy {
-    case Some(workbookInfo) => HtmlWorkbookRenderer.renderAppElement(workbookInfo.loadedWorkbook).getDomElement()
-    case None => div(text <-- laminarHelper.plaintextStringSignal("basic/noWorkbookLoaded"))
+  private lazy val workbookDomSignal: Signal[Element] = {
+    val workbookSignal = fullInfo.signals.workbook
+    val userSignal = fullInfo.signals.currentUserInfo
+    val watchSignal = workbookSignal.combineWith(userSignal)
+
+    watchSignal.map {
+      case (None, _) => HtmlSelectWorkbookElement().getDomElement()
+      case (_, None) => HtmlLoginElement().getDomElement()
+      case (Some(workbookInfo), Some(userInfo)) => HtmlWorkbookRenderer.renderAppElement(workbookInfo.loadedWorkbook).getDomElement()
+    }
   }
 
   private lazy val fullscreenActiveElementSignal: Signal[Option[HtmlAppElement]] = fullInfo.signals.currentDisplayInfo.map(_.fullscreenElement)

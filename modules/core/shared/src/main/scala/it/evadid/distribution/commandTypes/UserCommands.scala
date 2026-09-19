@@ -1,6 +1,7 @@
 package it.evadid.distribution.commandTypes
 
-import it.evadid.core.datastructures.user.User.UserToken
+import it.evadid.core.datastructures.user.User.SingleAccessToken
+import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig}
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
@@ -11,21 +12,13 @@ import scala.util.Try
 
 object UserCommands {
 
-  object LoginRequest {
-    def apply(loginCode: String): LoginRequest = if (loginCode.length > 52 && loginCode.charAt(50) == '#') {
-      LoginRequest(loginCode.substring(0, 50), loginCode.substring(51, loginCode.length))
-    } else LoginRequest("", "")
-  }
+  case class LoginRequest(userMail: String, accessToken: Either[SingleAccessToken, SignedToken])
 
-  case class LoginRequest(userId: String, userToken: String) {
-    val asCode: String = userToken + "#" + userId
-  }
+  case class LoginResponse(userKnown: Boolean, tokenValid: Boolean, user: Option[User], signedToken: Option[SignedToken], userConfigJson: Option[String]) {
+    def loginSucceeded: Boolean = userKnown && tokenValid && user.nonEmpty && signedToken.nonEmpty && userConfigJson.nonEmpty
 
-  case class LoginResponse(isUserKnown: Boolean, isTokenValid: Boolean, user: Option[User], serverToken: Option[UserToken], userConfigJson: Option[String]) {
-    def loginSucceeded: Boolean = isUserKnown && isTokenValid
-
-    def toInfo(userConfigSerializer: Serializer[UserConfig]): Option[AllUserInfo] = if(!loginSucceeded) None else Try {
-      AllUserInfo(user.get, serverToken.get, userConfigSerializer.deserialize(userConfigJson.get))
+    def toInfo(userConfigSerializer: Serializer[UserConfig]): Option[AllUserInfo] = if (!loginSucceeded) None else Try {
+      AllUserInfo(signedToken.get.info.user, signedToken, userConfigSerializer.deserialize(userConfigJson.get))
     }.toOption
   }
 
@@ -33,12 +26,20 @@ object UserCommands {
     "login-command", DefaultSerializer.serializerVerifyAuthenticationRequest, DefaultSerializer.serializerVerifyAuthenticationResponse
   )
 
-  case class UpsertAccountRequest(user: User, userToken: UserToken, userConfigJson: String)
+  case class UpdateAccountRequest(user: User, userConfigJson: String, token: SignedToken)
 
-  case class UpsertAccountResponse(accountCreated: Boolean, providedTokenValid: Boolean, userInfoUpdated: Boolean)
+  case class UpdateAccountResponse(accountChanged: Boolean, token: SignedToken)
 
-  val upsertAccountCommand: ExecutionCommandFactory[UpsertAccountRequest, UpsertAccountResponse] = ExecutionCommandFactory(
-    "upsert-account", DefaultSerializer.serializerUpsertAccountRequest, DefaultSerializer.serializerUpsertAccountResponse
+  val updateAccountCommand: ExecutionCommandFactory[UpdateAccountRequest, UpdateAccountResponse] = ExecutionCommandFactory(
+    "create-account", DefaultSerializer.serializerUpdateAccountRequest, DefaultSerializer.serializerUpdateAccountResponse
+  )
+
+  case class CreateAccountRequest(user: User, userConfigJson: String)
+
+  case class CreateAccountResponse(accountCreated: Boolean, token: Option[SignedToken])
+
+  val createAccountCommand: ExecutionCommandFactory[CreateAccountRequest, CreateAccountResponse] = ExecutionCommandFactory(
+    "create-account", DefaultSerializer.serializerCreateAccountRequest, DefaultSerializer.serializerCreateAccountResponse
   )
 
   case class AuthMailRequest(

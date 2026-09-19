@@ -1,9 +1,8 @@
 package it.evadid.core.datastructures.user
 
-import it.evadid.core.datastructures.user.User
-import it.evadid.core.datastructures.user.User.UserToken
+import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 
-case class AllUserInfo(user: User, token: UserToken, config: UserConfig) {
+case class AllUserInfo(user: User, token: Option[SignedToken], config: UserConfig) {
 
 }
 

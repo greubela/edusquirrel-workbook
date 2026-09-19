@@ -8,27 +8,37 @@ import java.util.HexFormat
 
 object User {
 
-  object UserToken {
+  /*object UserToken {
     val empty = UserToken("", LocalDateTime.now())
 
-    def generateSecureToken(): UserToken = {
-      val secureRandom = SecureRandom()
-      val bytes = new Array[Byte](100)
-      secureRandom.nextBytes(bytes)
-      val tokenStr = HexFormat.of.formatHex(bytes)
-      val expiresAt = LocalDateTime.now().plusYears(1)
-      UserToken(tokenStr, expiresAt)
-    }
+
 
   }
 
 
   case class UserToken(token: String, expires: LocalDateTime) {
     def toCode(user: User): String = token + "#" + user.id
+  }*/
+
+  case class SingleAccessToken(token: String, expires: LocalDateTime) {
+
   }
 
-  case class UserInDatabase(user: User, token: UserToken, configJson: String) {
-    val toCode: String = token.token + "#" + user.id
+  object SingleAccessToken {
+    def generateSecureToken(): SingleAccessToken = {
+      val secureRandom = SecureRandom()
+      val bytes = new Array[Byte](20)
+      secureRandom.nextBytes(bytes)
+      val tokenStr = HexFormat.of.formatHex(bytes)
+      val expiresAt = LocalDateTime.now().plusYears(1)
+      SingleAccessToken(tokenStr, expiresAt)
+    }
+    def apply(token: String): SingleAccessToken = SingleAccessToken(token, LocalDateTime.now())
+  }
+
+
+  case class UserInDatabase(user: User, configJson: String) {
+
   }
 
   def cleanUserName(name: String): String = {

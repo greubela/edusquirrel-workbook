@@ -1,18 +1,18 @@
 package it.evadid.server.commandHandler.sql
 
 import it.evadid.core.datastructures.user.User
-import it.evadid.core.datastructures.user.User.{UserInDatabase, UserToken}
+import it.evadid.core.datastructures.user.User.*
+import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.distribution.commandTypes.MailCommands.{SendMailRequest, SendMailResponse}
 import it.evadid.distribution.commandTypes.UserCommands.*
+import it.evadid.server.AuthHandling
 import it.evadid.server.SendMailCommand.sendMail
 import it.evadid.util.JvmUtils
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
 
-import java.security.SecureRandom
 import java.sql.{Connection, Timestamp}
 import java.time.LocalDateTime
-import java.util.HexFormat
 import scala.concurrent.{ExecutionContext, Future}
 
 object SqlUserCommands {
@@ -20,49 +20,87 @@ object SqlUserCommands {
   given ExecutionContext = ExecutionContext.global
 
   def requestAuthMail(authMailRequest: AuthMailRequest, logger: Logger): Future[SendMailResponse] = Future {
-    val connection = DatabaseConfig.readFromEnv().newConnection()
-    val control = SqlUserCommands(connection, logger)
-    val accounts = control.findUserWithMail(authMailRequest.userMail)
-    if (accounts.isEmpty) {
+
+    def accountNotFound(): SendMailResponse = {
       logger.logWarn(s"No Account for '${authMailRequest.userMail}' found in the database!")
       val infoMail = SendMailRequest(
         authMailRequest.userMail,
         "Versuchter Login für evadid.it",
         s"Guten Tag,\nJemand hat versucht, sich mit Ihrer Mailadresse bei evadid.it anzumelden. Dies hat nicht funktioniert, da Sie dort keinen Account besitzen. Die IP-Adresse des Versuches wurde auf unserem Server gespeichert. Weitere Schritte Ihrerseits sind nicht nötig!")
       sendMail(infoMail, logger, JvmUtils.env)
-      SendMailResponse(false)
-    } else if (accounts.size > 1) {
-      val mailRequest = SendMailRequest(
-        authMailRequest.userMail,
-        "Login Code für evadid.it",
-        s"Guten Tag,\nSie besitzen mehrere Accounts auf evadid.it. Die Login-Codes für ihre Accounts (einer pro Zeile) sind:\n\n${accounts.map(_.toCode).mkString("\n")}\n\nBitte geben Sie diese Codes nicht weiter!")
-      sendMail(mailRequest, logger, JvmUtils.env)
+      SendMailResponse(None, false)
+    }
+
+    def informationFound(account: User, token: SingleAccessToken): SendMailResponse = {
+      val mailRequest = SendMailRequest(authMailRequest.userMail, s"Code '${token.token} for Login to EvaDid.it", s"Guten Tag,\nIhr Login Code ist:\n\n${token.token}\n\n. Der Code ist gültig bis ${token.expires}. Bitte geben Sie diesen Code nicht weiter!")
+      val mailRes = sendMail(mailRequest, logger, JvmUtils.env)
+      SendMailResponse(Some(account), mailRes.sent)
+    }
+
+    val control = instance(logger)
+    val accounts = control.findUserWithMail(authMailRequest.userMail)
+    if (accounts.isEmpty) {
+      accountNotFound()
     } else {
-      val mailRequest = SendMailRequest(authMailRequest.userMail, "Login Code für evadid.it", s"Guten Tag,\nIhr Login Code ist:\n\n ${accounts.head.toCode}\n\nBitte geben Sie diesen Code nicht weiter!")
-      sendMail(mailRequest, logger, JvmUtils.env)
+      val account = accounts.head
+      val token = control.ensureAndGetUserTokenFromDb(account.user.id, logger)
+      if (token.isEmpty) accountNotFound()
+      else informationFound(account.user, token.get)
     }
   }
 
   def handleLoginCommand(loginRequest: LoginRequest, logger: Logger): Future[LoginResponse] = Future {
-    val connection = DatabaseConfig.readFromEnv().newConnection()
-    val control = SqlUserCommands(connection, logger)
-    control.requestLogin(loginRequest)
+    val ctrl = instance(logger)
+    val dbUser = ctrl.findUserWithMail(loginRequest.userMail).headOption
+    val user = dbUser.map(_.user)
+
+    loginRequest.accessToken.match{
+      case Left(singleUseToken) => {
+        if (user.isEmpty) {
+          LoginResponse(dbUser.isDefined, false, None, None, None)
+        } else {
+          val dbToken = ctrl.ensureAndGetUserTokenFromDb(user.head.id, logger)
+          if (dbToken.isEmpty || singleUseToken.token != dbToken.get.token || dbToken.get.expires.isBefore(LocalDateTime.now())) {
+            LoginResponse(dbUser.isDefined, false, user, None, None)
+          } else {
+            val token = AuthHandling.createToken(user.get)
+            LoginResponse(dbUser.isDefined, true, user, Some(token), dbUser.map(_.configJson))
+          }
+        }
+      }
+      case Right(signedToken) => {
+        if(!AuthHandling.isTokenValid(logger, signedToken)){
+          LoginResponse(dbUser.isDefined, false, user, None, None)
+        }else{
+          LoginResponse(dbUser.isDefined, true, user, Some(signedToken), dbUser.map(_.configJson))
+        }
+      }
+    }
+
   }
 
-  def handleUpsertAccountCommand(upsertAccountRequest: UpsertAccountRequest, logger: Logger): Future[UpsertAccountResponse] = Future {
+  def handleCreateAccountCommand(request: CreateAccountRequest, logger: Logger): Future[CreateAccountResponse] = Future {
+    if (AuthHandling.mayCreateAccount(request.user, logger)) {
+      instance(logger).upsertUser(request.user, request.userConfigJson)
+      val token = AuthHandling.createToken(request.user)
+      CreateAccountResponse(true, Some(token))
+    } else {
+      CreateAccountResponse(false, None)
+    }
+  }
+
+  def instance(logger: Logger): SqlUserCommands = {
     val connection = DatabaseConfig.readFromEnv().newConnection()
     val control = SqlUserCommands(connection, logger)
+    control
+  }
 
-    val loginResponse = control.requestLogin(LoginRequest(upsertAccountRequest.user.id, upsertAccountRequest.userToken.token))
-    if (loginResponse.loginSucceeded) {
-      val changes = control.upsertUser(upsertAccountRequest.user, upsertAccountRequest.userConfigJson)
-      UpsertAccountResponse(false, true, changes > 0)
-    } else if (!loginResponse.isUserKnown) {
-      val changes = control.upsertUser(upsertAccountRequest.user, upsertAccountRequest.userConfigJson)
-      UpsertAccountResponse(true, true, false)
-    } else {
-      UpsertAccountResponse(false, false, false)
-    }
+  def handleUpdateAccountCommand(request: UpdateAccountRequest, logger: Logger): Future[UpdateAccountResponse] = Future {
+    val connection = DatabaseConfig.readFromEnv().newConnection()
+    val control = SqlUserCommands(connection, logger)
+    val changes = control.upsertUser(request.user, request.userConfigJson)
+    val token = AuthHandling.createToken(request.user)
+    UpdateAccountResponse(changes > 0, token)
   }
 
 }
@@ -79,88 +117,86 @@ class SqlUserCommands(
   private def parseUser(userColumns: List[String]): Option[UserInDatabase] = {
     if (userColumns.isEmpty || userColumns.size < 6) None
     else {
-      val token = UserToken(userColumns(3), generic.parseDatabaseTimestamp(userColumns(4)))
       val user = User(userColumns(1), userColumns(0), userColumns(2))
-      val userConfigJson = userColumns(5)
-      Some(UserInDatabase(user, token, userConfigJson))
+      val userConfigJson = userColumns(3)
+      Some(UserInDatabase(user, userConfigJson))
     }
   }
 
+  def findAccessTokens(userId: String): Option[SingleAccessToken] = {
+    val sql =
+      s"""
+         |SELECT `userId`, `token`, `tokenExpires`
+         |FROM `loginTokens`
+         |WHERE `userId` = ?
+         |""".stripMargin
 
-  def requestLogin(loginRequest: LoginRequest): LoginResponse = {
-    val dbInfo = readUserInfoFromDb(loginRequest.userId)
-    if (dbInfo.isEmpty) {
-      logger.logWarn(s"No access granted: user ${loginRequest.userId} does not exist in database!")
-      LoginResponse(false, false, None, None, None)
-    }
-    else if (dbInfo.get.token.token != loginRequest.userToken) {
-      logger.logWarn("No access granted: token provided is not equal to token required!")
-      LoginResponse(true, false, None, None, None)
-    }
-    else if (dbInfo.get.token.expires.isBefore(LocalDateTime.now())) {
-      logger.logWarn(s"No access granted: user token expired at ${dbInfo.get.token.expires}")
-      ensureAndGetUserTokenFromDb(loginRequest.userId, logger)
-      LoginResponse(true, false, None, None, None)
-    }
-    else {
-      logger.logInfo("Login Suceeded!")
-      LoginResponse(true, true, Option(dbInfo.get.user), Option(dbInfo.get.token), Option(dbInfo.get.configJson))
-    }
+    val stmt = connection.prepareStatement(sql)
+    stmt.setString(1, userId)
+
+    val result: List[List[String]] = generic.executeQuery(stmt, List("id", "name", "mail", "config"))
+    result.map(userColumns => SingleAccessToken(userColumns(1), generic.parseDatabaseTimestamp(userColumns(2)))).headOption
   }
+
 
   def findUserWithMail(mail: String): List[UserInDatabase] = {
     val sql =
       s"""
-         |SELECT `id`, `name`, `mail`, `token`, `tokenExpires`, `config`
+         |SELECT `id`, `name`, `mail`, `config`
          |FROM `user`
          |WHERE `mail` = ?
          |""".stripMargin
 
     val stmt = connection.prepareStatement(sql)
     stmt.setString(1, mail)
-    val result: List[List[String]] = generic.executeQuery(stmt, List("id", "name", "mail", "token", "tokenExpires", "config"))
+    val result: List[List[String]] = generic.executeQuery(stmt, List("id", "name", "mail", "config"))
     result.flatMap(parseUser)
   }
 
   def readUserInfoFromDb(userId: String): Option[UserInDatabase] = {
     val sql =
       s"""
-         |SELECT `id`, `name`, `mail`, `token`, `tokenExpires`, `config`
+         |SELECT `id`, `name`, `mail`, `config`
          |FROM `user`
          |WHERE `id` = ?
          |""".stripMargin
 
     val stmt = connection.prepareStatement(sql)
     stmt.setString(1, userId)
-    val result: List[List[String]] = generic.executeQuery(stmt, List("id", "name", "mail", "token", "tokenExpires", "config"))
+    val result: List[List[String]] = generic.executeQuery(stmt, List("id", "name", "mail", "config"))
     result.flatMap(parseUser).headOption
   }
 
-  def ensureAndGetUserTokenFromDb(userId: String, logger: Logger): Option[UserToken] = {
+  def ensureAndGetUserTokenFromDb(userId: String, logger: Logger): Option[SingleAccessToken] = {
+
+    def createNewToken(reason: String): Option[SingleAccessToken] = {
+      val token = SingleAccessToken.generateSecureToken()
+      upsertToken(userId, token)
+      logger.logInfo(s"Created new token (${reason}) for user " + userId + " (expires at " + token.expires + ")")
+      Some(token)
+    }
+
     val userInDb = readUserInfoFromDb(userId)
-    if (userInDb.nonEmpty) {
-      if (userInDb.get.token.expires.isAfter(LocalDateTime.now())) {
-        logger.logInfo("Current Token is still valid, not changing!")
-        Some(userInDb.get.token)
-      }
-      else {
-        val token = UserToken.generateSecureToken()
-        upsertToken(userInDb.get.user.id, token)
-        logger.logInfo("Created new token for user " + userId + " (expires at " + token.expires + ")")
-        Some(token)
-      }
-    } else {
+    val token = findAccessTokens(userId)
+    if (userInDb.isEmpty) {
       logger.logWarn("Cannot ensure token since user is unknown!")
       None
+    } else if (token.isEmpty) {
+      createNewToken("none existed")
+    }
+    else if (token.get.expires.isBefore(LocalDateTime.now())) {
+      createNewToken(s"old expired at ${token.get.expires}")
+    }
+    else {
+      token
     }
   }
 
 
-
-  def upsertToken(userId: String, token: UserToken): SyncSuccess = {
+  def upsertToken(userId: String, token: SingleAccessToken): SyncSuccess = {
     val sql =
       s"""
-         |INSERT INTO `user` (`id`, `token`, `tokenExpires`)
+         |INSERT INTO `loginTokens` (`userId`, `token`, `tokenExpires`)
          |VALUES (?, ?, ?)
          |ON DUPLICATE KEY UPDATE
          |  `token` = VALUES(`token`),

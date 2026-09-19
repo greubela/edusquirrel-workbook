@@ -1,28 +1,23 @@
 package it.evadid.homepage.control.info
 
-import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
-import it.evadid.core.datastructures.user.User.UserToken
+import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig}
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
-import it.evadid.homepage.control.change.HomepageContentControl
 import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer.SessionData
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.model.AllWorkbookInfo.*
-import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.util.DownloadToDisc
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
-import it.evadid.workbook.interaction.sync.{SyncInformation, UpdateImportance}
+import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.interaction.variable.{InteractionVariableHistorySerialized, InteractionVariableStateSerialized}
 import upickle.default.ReadWriter.join
-import upickle.default.macroRW
 
 import java.time.LocalDateTime
-import scala.concurrent.ExecutionContext
 
 object WorkbookUserDataAnalyzer {
 
@@ -42,13 +37,12 @@ object WorkbookUserDataAnalyzer {
 
   private given hiRW: upickle.ReadWriter[InteractionVariableHistorySerialized] = upickle.macroRW
 
-
   private given li2RW: upickle.ReadWriter[List[InteractionVariableStateSerialized]] =
     upickle.readwriter[Seq[InteractionVariableStateSerialized]].bimap[List[InteractionVariableStateSerialized]](identity, _.toList)
 
-  private given ustRW: upickle.ReadWriter[UserToken] = upickle.macroRW
-  private given usRW: upickle.ReadWriter[User] = upickle.macroRW
+  private given ustRW: upickle.ReadWriter[SignedToken] = DefaultSerializer.serializerSignedUserTokenInfo.uPickleReadWrite
 
+  private given usRW: upickle.ReadWriter[User] = upickle.macroRW
 
   private given userConfigRW: upickle.ReadWriter[UserConfig] = fullInfo.defaults.defaultSerializerUserConfig.uPickleReadWrite
 
@@ -81,17 +75,17 @@ case class WorkbookUserDataAnalyzer(logger: Logger, downloadToDisc: DownloadToDi
 
 
 
-/*
-  private def upload(file: FileDescription): Unit = {
-    logger.logInfo(s"WorkbookUserDataAnalyzer: Trying to load prior session data based on file ${file.asUrlString}!")
-    file.loadData().foreach(loadedFile => {
-      val str = loadedFile.fileDataAsUtf8String
-      val data: SessionData = upickle.default.read(str)
+  /*
+    private def upload(file: FileDescription): Unit = {
+      logger.logInfo(s"WorkbookUserDataAnalyzer: Trying to load prior session data based on file ${file.asUrlString}!")
+      file.loadData().foreach(loadedFile => {
+        val str = loadedFile.fileDataAsUtf8String
+        val data: SessionData = upickle.default.read(str)
 
-      tryToLoad(data)
-    })(using ExecutionContext.global)
-  }
-*/
+        tryToLoad(data)
+      })(using ExecutionContext.global)
+    }
+  */
 
 }
 
