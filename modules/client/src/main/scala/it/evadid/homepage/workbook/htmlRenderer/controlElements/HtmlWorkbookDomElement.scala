@@ -6,7 +6,9 @@ import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.control.model.AllWorkbookInfo
+import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
+import it.evadid.workbook.abstractions.TypeOfTextDisplay.PLAINTEXT_UNDERSCORE_REPLACABLE
 import org.scalajs.dom
 import org.scalajs.dom.HTMLDivElement
 
@@ -47,6 +49,19 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   private def collapsedSignal: Signal[Boolean] = fullInfo.signals.display.map(_.collapsedNavigation)
 
 
+  lazy val privacyFooterStringSignal: Signal[String] = {
+    fullInfo.signals.user.flatMapSwitch(allUserInfoOp => {
+      if (allUserInfoOp.isEmpty) laminarHelper.plaintextStringSignal("login/privacyFooterNoLogin")
+      else if (!allUserInfoOp.get.config.isOnlineAccount) laminarHelper.plaintextStringSignal("login/privacyFooterLocalLogin")
+      else {
+        val syncDest = allUserInfoOp.get.config.syncDestinations
+        val syncDestStr = syncDest.map(HomepageDefaults.defaultSyncLocationSerializer.serialize)
+        laminarHelper.contentIdStringSignal(LanguageMapContentId("login/privacyFooterOnlineLogin"), PLAINTEXT_UNDERSCORE_REPLACABLE, List(syncDest.size.toString, syncDestStr.mkString("(", ", ", ")")))
+      }
+    })
+
+  }
+
   private def createDomElement(bodyDom: Element): List[Element] = List(
     div(
       cls := "workbook-header",
@@ -57,7 +72,7 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
       cls := "workbook-footer",
       div(
         cls := "workbook-footer-content",
-        span(text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId("basic/workbookfooterprivacyinfo")))
+        span(text <-- privacyFooterStringSignal)
       )
     )
   )
@@ -93,7 +108,7 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
     if (user.isEmpty) {
       div(
         cls := "workbook-title-line",
-        h1(text <-- laminarHelper.plaintextStringSignal("basic/titleLoginPage")),
+        h1(text <-- laminarHelper.plaintextStringSignal("login/titleLoginPage")),
       )
     }
     else if (workbook.isEmpty)

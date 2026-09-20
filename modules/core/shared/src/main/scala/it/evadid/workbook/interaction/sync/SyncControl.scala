@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.storage.RemoteSyncDataCache.SyncStatus
 import it.evadid.core.util.io.Serializer
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.SyncControl.InteractionVariableSyncReport
-import it.evadid.workbook.interaction.sync.SyncInformation.{SyncInformationWithContext, SyncSuccess}
+import it.evadid.workbook.interaction.sync.SyncInformation.SyncInformationWithContext
 import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableHistorySerialized, InteractionVariableState}
 
 import java.time.LocalDateTime

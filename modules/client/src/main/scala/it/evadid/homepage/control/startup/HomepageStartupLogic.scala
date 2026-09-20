@@ -37,24 +37,24 @@ object HomepageStartupLogic {
     val fullInfo = HtmlFullWorkbookApp.fullInfo
     val logger = fullInfo.loggerSystemInfo.contentControlLogger
 
-    val futureTestCalc = testCalculations().recover { err =>
-      logger.logExceptionWarn("testCalculations failed", err)
-    }
     val futureLoadBasics = HtmlFullWorkbookApp.fullInfo.contentControl.languageStorage.ensureDefaultLanguageSourcesLoaded().recover { err =>
       logger.logExceptionWarn("ignoring basics which should have been loaded", err)
     }
-    val futureAutoLogin = fullInfo.usageControl.tryAutoLogin().recover { err =>
-      logger.logWarn(s"auto login was not possible: ${err.getMessage}")
-    }
 
     for {
-      autoLoginRes <- futureAutoLogin
       basicsLoaded <- futureLoadBasics
-      testCalc <- futureTestCalc
     } {
 
       val workbook: Option[AllWorkbookInfo] = canLoad.headOption.flatMap(loadWorkbookById)
       fullInfo.usageControl.changeWorkbook(workbook)
+
+      val futureTestCalc = testCalculations().recover { err =>
+        logger.logExceptionWarn("testCalculations failed", err)
+      }
+
+      val futureAutoLogin = fullInfo.usageControl.tryAutoLogin().recover { err =>
+        logger.logWarn(s"auto login was not possible: ${err.getMessage}")
+      }
 
       renderElementIntoApp(logger, HtmlFullWorkbookApp.getDomElement())
     }

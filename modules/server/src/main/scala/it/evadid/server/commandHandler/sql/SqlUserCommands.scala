@@ -32,7 +32,7 @@ object SqlUserCommands {
     }
 
     def informationFound(account: User, token: SingleAccessToken): SendMailResponse = {
-      val mailRequest = SendMailRequest(authMailRequest.userMail, s"Code '${token.token} for Login to EvaDid.it", s"Guten Tag,\nIhr Login Code ist:\n\n${token.token}\n\n. Der Code ist gültig bis ${token.expires}. Bitte geben Sie diesen Code nicht weiter!")
+      val mailRequest = SendMailRequest(authMailRequest.userMail, s"Code '${token.token} for Login to EvaDid.it", s"Guten Tag,\nIhr Login Code ist:\n\n${token.token}\n\nDer Code ist gültig bis ${token.expires}. Bitte geben Sie diesen Code nicht weiter!")
       val mailRes = sendMail(mailRequest, logger, JvmUtils.env)
       SendMailResponse(Some(account), mailRes.sent)
     }

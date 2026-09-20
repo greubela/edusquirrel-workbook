@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.file.LoadedFile
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.user.User.SingleAccessToken
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
-import it.evadid.core.datastructures.user.{AllUserInfo, User}
+import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig}
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoTyped
@@ -12,6 +12,7 @@ import it.evadid.distribution.command.SerializedException
 import it.evadid.distribution.commandTypes.UserCommands
 import it.evadid.distribution.commandTypes.UserCommands.{AuthMailRequest, CreateAccountRequest, LoginRequest, LoginResponse}
 import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer
+import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer.SessionData
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.homepage.workbook.content.WorkbookFactory
@@ -35,15 +36,11 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     updateInfoWithoutContextChange((curInfo: HomepageInfo) => curInfo.copy(displayInfo = func(curInfo.displayInfo)))
   }
 
-  def updateInfoWithContextChange(func: HomepageInfo => HomepageInfo): Future[?] = fullInfo.synchronized {
-    fullInfo.syncControl
-      .storeAndReset(interactions.map(_.interactionVariable))
-      .flatMap(_ => {
-        fullInfo.homepageInfoState.update(func)
-        fullInfo.syncControl.ensureFetchAndLoad(interactions.map(_.interactionVariable))
-      })
+  /*def updateInfoWithContextChange(func: HomepageInfo => HomepageInfo): Future[?] = fullInfo.synchronized {
 
-  }
+
+  }*/
+
 
   private[change] def updateInfoWithoutContextChange(func: HomepageInfo => HomepageInfo): Future[?] = fullInfo.synchronized {
     fullInfo.syncControl.ensureFetchAndLoad(interactions.map(_.interactionVariable)).map(_ => {
@@ -58,7 +55,11 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   def changeWorkbook(newWorkbook: Option[AllWorkbookInfo]): Unit = fullInfo.synchronized {
     //saveAndResetAllInfo()
     if (fullInfo.homepageInfoNow().workbookInfo != newWorkbook) {
-      updateInfoWithContextChange(_.copy(workbookInfo = newWorkbook))
+      //updateInfoWithContextChange(_.copy(workbookInfo = newWorkbook))
+      fullInfo.homepageInfoState.update(_.copy(workbookInfo = newWorkbook))
+      if (newWorkbook.isEmpty) Future.successful(()) else {
+        fullInfo.syncControl.ensureFetchAndLoad(interactions.map(_.interactionVariable))
+      }
     }
   }
 
@@ -77,12 +78,12 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   private val allUserInfoStorageKey: String = "edusquirrel-alluserinfo"
   private val serializer: Serializer[AllUserInfo] = DefaultSerializer.serializerAllUserInfo(HomepageDefaults.defaultSerializerUserConfig)
 
-  private def tryParsingExistingUser(): Option[AllUserInfo] = {
+  def tryParsingExistingUser(): Option[AllUserInfo] = {
     val value: Option[String] = LocalStorageSync.fetchAllRaw(logger).get(allUserInfoStorageKey)
     serializer.tryDeserializeAll(value).inputAfterOperation.headOption
   }
 
-  private def tryServerLoginWith(userMail: String, token: Either[SingleAccessToken, SignedToken]): Future[Unit] = {
+  private def tryServerLoginWith(userMail: String, token: Either[SingleAccessToken, SignedToken]): Future[?] = {
     val loginReq = LoginRequest(userMail, token)
     val backend = token.match {
       case Left(sat) => fullInfo.defaults.backendExecutor
@@ -97,22 +98,23 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
           removeUserFromLocalStorage()
           throw SerializedException(s"Local Login failed: user ${userMail} is not known on the server!")
         } else if (!loginResponse.tokenValid) {
-          UserCommands.authMailCommand.sendCommandTo(fullInfo.defaults.backendExecutor, AuthMailRequest(userMail))
+          UserCommands.authMailCommand.sendCommandTo(backend, AuthMailRequest(userMail))
           throw SerializedException(s"Local Login failed: invalid token for user ${userMail}, requested SingleAccessToken!")
         } else if (userInfoOp.isEmpty) {
           removeUserFromLocalStorage()
-          throw SerializedException("Login failed for unknown reasons!")
+          throw SerializedException(s"Login failed for unknown reasons (loginResponse: ${loginResponse}!")
         } else {
+          logger.logInfo(s"Successfully logged in for ${userInfoOp.get.user}")
           changeUser(userInfoOp)
         }
     }.recover { err => logger.logExceptionWarn("login attempt failed", err) }
   }
 
   def removeUserFromLocalStorage(): Unit = {
-    LocalStorageSync.removeKey(allUserInfoStorageKey)
+    LocalStorageSync.instance.removeKey(allUserInfoStorageKey)
   }
 
-  def tryLoginWith(mail: String, singleAccessToken: SingleAccessToken): Future[Unit] = {
+  def tryLoginWith(mail: String, singleAccessToken: SingleAccessToken): Future[?] = {
     tryServerLoginWith(mail, Left(singleAccessToken))
   }
 
@@ -121,23 +123,30 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     logger.logInfo("WorkbookUserDataAnalyzer: now trying to load prio session data!")
 
     val sessionData = WorkbookUserDataAnalyzer.serializerSessionData.deserialize(loadedFile.fileDataAsUtf8String)
-    changeUser(Some(sessionData.currentUserInfo))
+    if (fullInfo.current.userInfo.isEmpty) {
+      changeUser(Some(sessionData.currentUserInfo))
+    }
 
     sessionData.interactionHistory.foreachEntry((varId, serHist) => {
-      fullInfo.homepageInfoNow().workbookInfo.foreach(curInfo => {
-        curInfo.loadedWorkbook.allContainedInteractions.map(_.interactionVariable).foreach(curInteraction => {
-          if (curInteraction.keyForSerialization == varId) {
-            curInteraction.updateHistory(_.withAddedEvents(serHist, curInteraction.underlyingInteraction.serializer))
-          }
-        })
+      interactions.map(_.interactionVariable).foreach(curInteraction => {
+        if (curInteraction.keyForSerialization == varId) {
+          curInteraction.updateHistory(_.withAddedEvents(serHist, curInteraction.underlyingInteraction.serializer))
+        }
       })
     })
   }
 
+  def tryLocalRegistration(): Future[Unit] = {
+    val userConfig = UserConfig(HomepageDefaults.useDefaultLocalSyncLocations, false)
+    val user = AllUserInfo.createNewUser("Anonymous", "no-reply.evadid.it", userConfig)
+    changeUser(Some(user))
+    Future.successful(())
+  }
 
-  def tryRegistration(name: String, email: String): Future[Unit] = {
+  def tryOnlineRegistration(name: String, email: String): Future[Unit] = {
     if (!User.isEmail(email)) Future.failed(SerializedException(s"Invalid mail format: ${email}")) else {
-      val user = AllUserInfo.createNewUser(name, email, HomepageDefaults.defaultSyncLocation)
+      val userConfig = UserConfig(HomepageDefaults.useDefaultOnlineSyncLocations, true)
+      val user = AllUserInfo.createNewUser(name, email, userConfig)
       val configJson = HomepageDefaults.defaultSerializerUserConfig.serialize(user.config)
       val createAccFuture: Future[ExecutionInfoTyped[UserCommands.CreateAccountResponse]] = UserCommands.createAccountCommand.sendCommandTo(fullInfo.defaults.backendExecutor, CreateAccountRequest(user.user, configJson))
       createAccFuture.transform {
@@ -159,12 +168,15 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     }
   }
 
-  def tryAutoLogin(): Future[Unit] = {
+  def tryAutoLogin(): Future[?] = {
     val localUser = tryParsingExistingUser()
-    if (localUser.isEmpty || localUser.get.token.isEmpty) {
+    if (localUser.isEmpty) {
       Future.failed[Unit](SerializedException("No local user with token stored to try auto login with!"))
+    } else if (localUser.get.config.isOnlineAccount) {
+      if (localUser.get.token.isEmpty) Future.failed(SerializedException("Local user is an online account but has no token!"))
+      else tryServerLoginWith(localUser.get.user.mail, Right(localUser.get.token.get))
     } else {
-      tryServerLoginWith(localUser.get.user.mail, Right(localUser.get.token.get))
+      changeUser(localUser)
     }
   }
 
@@ -173,28 +185,43 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     val safeToken = js.URIUtils.encodeURIComponent(rawToken)
   }
 
-  def changeUser(newUserInfo: Option[AllUserInfo]): Unit = fullInfo.synchronized {
-    val oldUser = fullInfo.homepageInfoNow().userInfo
-    logger.logInfo(s"Change User: ${oldUser.map(_.user.mail).getOrElse("none")} -> ${newUserInfo.map(_.user.mail).getOrElse("none")}")
-    if (newUserInfo != fullInfo.homepageInfoNow().userInfo) {
-      LocalStorageSync.removeKey(allUserInfoStorageKey)
+  def changeUser(newUserInfo: Option[AllUserInfo]): Future[?] = fullInfo.synchronized {
+
+    def actuallySetNewUser(): Unit = try {
+      LocalStorageSync.instance.removeKey(allUserInfoStorageKey)
       if (newUserInfo.isDefined) {
         val allUserInfo = newUserInfo.get
-        logger.logInfo(s"Loading user ${allUserInfo.user.id} (${allUserInfo.user.name}: ${allUserInfo.user.mail}")
+        logger.logInfo(s"Loading user ${allUserInfo.toString}")
         val serialized = serializer.serialize(allUserInfo)
         LocalStorageSync.storeRaw(logger, allUserInfoStorageKey, serialized)
-      } else if (oldUser.isDefined) {
-        logger.logInfo(s"Logged out user ${oldUser.get.user.id} (${oldUser.get.user.name}: ${oldUser.get.user.mail}")
       }
+      fullInfo.homepageInfoState.update(_.copy(userInfo = newUserInfo))
+    } catch case (err: Throwable) => logger.logException(err)
 
-      updateInfoWithContextChange(_.copy(userInfo = newUserInfo))
+    val oldUser = fullInfo.homepageInfoNow().userInfo
+    logger.logInfo(s"Change User: ${oldUser.map(_.user.mail).getOrElse("none")} -> ${newUserInfo.map(_.user.mail).getOrElse("none")}")
+
+    if (newUserInfo == oldUser) Future.successful(()) else {
+      val waitFor: Future[?] = if (oldUser.isEmpty) Future.successful(()) else {
+        // download all?
+        fullInfo.syncControl.storeAndReset(interactions.map(_.interactionVariable)).recover {
+          err => logger.logExceptionWarn("Ignore Store and Reset!", err)
+        }
+      }
+      waitFor.flatMap(res => {
+        actuallySetNewUser()
+        if (newUserInfo.isEmpty || fullInfo.current.workbookInfo.isEmpty) Future.successful(()) else {
+          fullInfo.syncControl.ensureFetchAndLoad(interactions.map(_.interactionVariable))
+        }
+      }).recover {
+        err => logger.logExceptionWarn("Ignore Fetch and Load!", err)
+      }
     }
   }
 
   def changeLanguage(language: HumanLanguage): Unit = fullInfo.synchronized {
     fullInfo.homepageInfoState.update(_.copy(currentLanguage = language))
   }
-
 
 }
 

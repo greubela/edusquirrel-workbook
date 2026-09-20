@@ -1,0 +1,25 @@
+{
+  "titleLoginRegister": "Registrierung",
+  "titleLoginContinue": "Weitermachen",
+  "titleLoginStartOnline": "Online Registrierung",
+  "titleLoginStartLocal": "Lokaler Account",
+  "titleLoginContinueOnline": "Online Anmelden",
+  "titleLoginContinueLocal": "Fortschrittsdatei Hochladen",
+  "buttonLocalLogin": "Lokale Nutzung Starten",
+  "buttonLocalUpload": "Hochladen",
+  "buttonRequestToken": "Login-Token an Mail senden",
+  "buttonRequestLogin": "Login mit Mail und Token",
+  "buttonRequestRegistration": "Registrieren",
+  "insertTokenPlaceholder": "Login Token hierher kopieren",
+  "titleLoginPage": "Login Seite",
+  "onlineBenefit1": "✓ Online Backup des Fortschittes",
+  "onlineBenefit2": "✓ Zugriff auf einige LLM-Funktionen",
+  "onlineBenefit3": "✓ Fortschritt mit Lehrkraft teilen",
+  "localBenefit1": "✓ Daten verlassen Gerät nicht",
+  "localBenefit2": "✗ Kein Zugriff auf LLM-Feedback",
+  "localBenefit3": "✗ Kein Backup Kein Mitleid",
+
+  "privacyFooterNoLogin": "Datenschutzhinweis: Sie sind nicht eingeloggt, es werden keine Daten über Sie oder Ihre Nutzung gespeichert. Diese Seite benutzt keine Third-Party-Cookies. Kontakt: LS Informatik und Gesellschaft, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin)",
+  "privacyFooterLocalLogin": "Datenschutzhinweis: Sie nutzen gerade einen lokalen Account und ihre Interaktionen werden ausschließlich lokal im Browser. Diese Seite benutzt keine Third-Party-Cookies. Kontakt: LS Informatik und Gesellschaft, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin)",
+  "privacyFooterOnlineLogin": "Datenschutzhinweis: Sie nutzen gerade einen Online-Account und ihre Interaktionen werden an _ Stellen _ gespeichert. Wenn Sie das nicht möchten, benutzen Sie bitte einen lokalen Account. Diese Seite benutzt keine Third-Party-Cookies.Kontakt: LS Informatik und Gesellschaft, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin)"
+}
