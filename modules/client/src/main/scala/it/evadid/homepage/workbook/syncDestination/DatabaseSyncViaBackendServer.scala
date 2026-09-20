@@ -19,7 +19,7 @@ case class DatabaseSyncViaBackendServer(dbName: String, hasKeyTable: Boolean) ex
 
   override val toString: String = "DatabaseSyncViaBackendServer(" + dbName + ", " + hasKeyTable + ")"
 
-  private lazy val backend: ExecutionClient = HtmlFullWorkbookApp.fullInfo.defaults.defaultBackend.executor
+  private def backend: ExecutionClient = HtmlFullWorkbookApp.fullInfo.defaults.backendExecutor
 
   private given ec: ExecutionContext = ExecutionContext.global
 

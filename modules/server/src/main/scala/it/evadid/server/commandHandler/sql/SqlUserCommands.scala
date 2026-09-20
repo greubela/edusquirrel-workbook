@@ -39,6 +39,7 @@ object SqlUserCommands {
 
     val control = instance(logger)
     val accounts = control.findUserWithMail(authMailRequest.userMail)
+    logger.logInfo(s"Accounts found for mail ${authMailRequest.userMail}: " + accounts)
     if (accounts.isEmpty) {
       accountNotFound()
     } else {
@@ -60,7 +61,14 @@ object SqlUserCommands {
           LoginResponse(dbUser.isDefined, false, None, None, None)
         } else {
           val dbToken = ctrl.ensureAndGetUserTokenFromDb(user.head.id, logger)
-          if (dbToken.isEmpty || singleUseToken.token != dbToken.get.token || dbToken.get.expires.isBefore(LocalDateTime.now())) {
+          if (dbToken.isEmpty) {
+            logger.logWarn(s"Dismissing Token: Not Existing in Database!")
+            LoginResponse(dbUser.isDefined, false, user, None, None)
+          }else if(singleUseToken.token != dbToken.get.token){
+            logger.logWarn("Dismissing Token: Token Invalid!")
+            LoginResponse(dbUser.isDefined, false, user, None, None)
+          }else if(dbToken.get.expires.isBefore(LocalDateTime.now())){
+            logger.logWarn(s"Dismissing Token: Token was expired (expired at ${dbToken.get.expires})!")
             LoginResponse(dbUser.isDefined, false, user, None, None)
           } else {
             val token = AuthHandling.createToken(user.get)
@@ -115,7 +123,7 @@ class SqlUserCommands(
 
 
   private def parseUser(userColumns: List[String]): Option[UserInDatabase] = {
-    if (userColumns.isEmpty || userColumns.size < 6) None
+    if (userColumns.isEmpty || userColumns.size < 4) None
     else {
       val user = User(userColumns(1), userColumns(0), userColumns(2))
       val userConfigJson = userColumns(3)
@@ -134,7 +142,7 @@ class SqlUserCommands(
     val stmt = connection.prepareStatement(sql)
     stmt.setString(1, userId)
 
-    val result: List[List[String]] = generic.executeQuery(stmt, List("id", "name", "mail", "config"))
+    val result: List[List[String]] = generic.executeQuery(stmt, List("userId", "token", "tokenExpires"))
     result.map(userColumns => SingleAccessToken(userColumns(1), generic.parseDatabaseTimestamp(userColumns(2)))).headOption
   }
 
@@ -148,7 +156,7 @@ class SqlUserCommands(
          |""".stripMargin
 
     val stmt = connection.prepareStatement(sql)
-    stmt.setString(1, mail)
+    stmt.setString(1, mail.toLowerCase)
     val result: List[List[String]] = generic.executeQuery(stmt, List("id", "name", "mail", "config"))
     result.flatMap(parseUser)
   }
@@ -226,7 +234,7 @@ class SqlUserCommands(
     val stmt = connection.prepareStatement(sql)
     stmt.setString(1, user.id)
     stmt.setString(2, user.name)
-    stmt.setString(3, user.mail)
+    stmt.setString(3, user.mail.toLowerCase)
     stmt.setString(4, userConfigJson)
 
     generic.executeUpdate(stmt)

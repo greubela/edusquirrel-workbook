@@ -53,12 +53,12 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
     })
   }
 
-  lazy val currentUserInfo: StrictSignal[Option[AllUserInfo]] = {
+  lazy val user: StrictSignal[Option[AllUserInfo]] = {
     baseSignal.mapLazy(_.userInfo)
   }
 
   lazy val availableLanguages: StrictSignal[List[HumanLanguage]] = {
-    baseSignal.mapLazy(_.workbookInfo.map(_.loadedWorkbook.availableLanguages).getOrElse(List()))
+    baseSignal.mapLazy(_.workbookInfo.map(_.loadedWorkbook.availableLanguages).getOrElse(fullInfo.defaults.defaultLanguagesAvailable))
   }
 
   lazy val currentLanguage: StrictSignal[HumanLanguage] = {

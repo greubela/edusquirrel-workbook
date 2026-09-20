@@ -85,17 +85,49 @@ object DefaultSerializer {
   }.uPickleReadWrite
 
 
-  private given ReadWriter[InetAddress] = new Serializer[InetAddress]{
+  private given ReadWriter[InetAddress] = new Serializer[InetAddress] {
     override def serialize(obj: InetAddress): String = obj.getCanonicalHostName
+
     override def deserialize(str: String): InetAddress = InetAddress.getByName(str)
   }.uPickleReadWrite
 
-  private given ReadWriter[SingleAccessToken] = macroRW
-  private given ReadWriter[User] = macroRW
+  private given sat: ReadWriter[SingleAccessToken] = macroRW
+
+  private given use: ReadWriter[User] = macroRW
 
   private given uti: ReadWriter[UserTokenInfo] = macroRW
+
   private given suti: ReadWriter[SignedToken] = macroRW
-  private given ReadWriter[Either[SingleAccessToken, SignedToken]] = macroRW
+
+  private given ReadWriter[Either[SingleAccessToken, SignedToken]] = new Serializer[Either[SingleAccessToken, SignedToken]]() {
+    val serializerSat: Serializer[SingleAccessToken] = Serializer.fromUpickleJson(sat)
+    val serializerSig: Serializer[SignedToken] = Serializer.fromUpickleJson(suti)
+
+    override def serialize(obj: Either[SingleAccessToken, SignedToken]): String = obj.match {
+      case Left(singleAccessToken) => "Left(" + serializerSat.serialize(singleAccessToken) + ")"
+      case Right(signedToken: SignedToken) => "Right(" + serializerSig.serialize(signedToken) + ")"
+    }
+
+    override def deserialize(str: String): Either[SingleAccessToken, SignedToken] = {
+      if (!str.endsWith(")")) {
+        throw new IllegalArgumentException("Serializer[Either[SingleAccessToken,SignedToken]]: str does not end with ')'!")
+      } else {
+        val cleaned: String =
+          if (str.startsWith("Left(")) str.substring("Left(".length, str.length - 1)
+          else if (str.startsWith("Right(")) str.substring("Right(".length, str.length - 1)
+          else throw new IllegalArgumentException(s"Serializer[Either[SingleAccessToken,SignedToken]]: '${str}' does neither start with 'Left(' nor 'Right('!")
+        println(s"### Default Serializer for Token Either, deserializing '${cleaned}'")
+        try {
+          if (str.startsWith("Left(")) Left(serializerSat.deserialize(cleaned))
+          else if (str.startsWith("Right(")) Right(serializerSig.deserialize(cleaned))
+          else throw new IllegalArgumentException(s"String '${cleaned}' is not an instance of Either[SingleAccessToken,SignedToken]'!")
+        } catch case e: Throwable => {
+          throw new IllegalArgumentException(s"String '${cleaned}' is not an instance of Either[SingleAccessToken,SignedToken]' (${e.getMessage}!")
+        }
+      }
+    }
+  }.uPickleReadWrite
+
 
   private[serializer] given rwMessage: ReadWriter[Message] = macroRW
 
@@ -218,7 +250,9 @@ object DefaultSerializer {
 
   def serializerAllUserInfo(serializerUserConfig: Serializer[UserConfig]): Serializer[AllUserInfo] = {
     given ucrw: ReadWriter[UserConfig] = serializerUserConfig.uPickleReadWrite
+
     given rw: ReadWriter[AllUserInfo] = macroRW
+
     Serializer.fromUpickleJson(rw)
   }
 

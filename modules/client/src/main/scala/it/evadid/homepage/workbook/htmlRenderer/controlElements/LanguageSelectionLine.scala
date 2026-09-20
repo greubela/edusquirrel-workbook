@@ -9,16 +9,17 @@ import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.elements.structureElements.Workbook
 
-private case class LanguageSelectionLine(workbook: Workbook) extends HtmlAppElement {
+private case class LanguageSelectionLine() extends HtmlAppElement {
 
   private def createDomForLanguageSelectionFlag(currentLanguage: HumanLanguage): Element = div(
     onClick --> { _ => fullInfo.usageControl.changeLanguage(currentLanguage) },
     LanguageSelectionLine.flagImgMap(30)(currentLanguage)
   )
 
+
   private val domElement = div(
     cls := "select-language-line",
-    children <-- Var(workbook.availableLanguages.map(createDomForLanguageSelectionFlag)).signal
+    children <-- fullInfo.signals.availableLanguages.map(_.map(createDomForLanguageSelectionFlag))
   )
 
   override def getDomElement(): L.Element = domElement

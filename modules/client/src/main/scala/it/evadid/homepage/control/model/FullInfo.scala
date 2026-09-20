@@ -12,7 +12,7 @@ case class FullInfo(
                    ) {
 
 
-  val defaults: HomepageDefaults = HomepageDefaults()
+  val defaults: HomepageDefaults = HomepageDefaults(this)
 
   private[control] val homepageInfoState: Var[HomepageInfo] = Var(defaultInfo)
 

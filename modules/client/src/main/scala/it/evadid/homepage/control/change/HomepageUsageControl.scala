@@ -1,22 +1,26 @@
 package it.evadid.homepage.control.change
 
+import it.evadid.core.datastructures.file.LoadedFile
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.core.datastructures.user.User.SingleAccessToken
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
+import it.evadid.core.datastructures.user.{AllUserInfo, User}
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoTyped
 import it.evadid.distribution.command.SerializedException
 import it.evadid.distribution.commandTypes.UserCommands
-import it.evadid.distribution.commandTypes.UserCommands.{AuthMailRequest, LoginRequest, LoginResponse}
+import it.evadid.distribution.commandTypes.UserCommands.{AuthMailRequest, CreateAccountRequest, LoginRequest, LoginResponse}
+import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer
 import it.evadid.homepage.control.model.*
+import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.homepage.workbook.syncDestination.LocalStorageSync
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 
 import scala.concurrent.*
-import scala.util.Success
+import scala.scalajs.js
+import scala.util.{Failure, Success}
 
 
 case class HomepageUsageControl(fullInfo: FullInfo) {
@@ -71,35 +75,88 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
 
   /* USER */
   private val allUserInfoStorageKey: String = "edusquirrel-alluserinfo"
-  private val serializer: Serializer[AllUserInfo] = DefaultSerializer.serializerAllUserInfo(fullInfo.defaults.defaultSerializerUserConfig)
+  private val serializer: Serializer[AllUserInfo] = DefaultSerializer.serializerAllUserInfo(HomepageDefaults.defaultSerializerUserConfig)
 
   private def tryParsingExistingUser(): Option[AllUserInfo] = {
     val value: Option[String] = LocalStorageSync.fetchAllRaw(logger).get(allUserInfoStorageKey)
-    value.map(serializer.deserialize)
+    serializer.tryDeserializeAll(value).inputAfterOperation.headOption
   }
 
-  def tryServerLoginWith(userMail: String, token: Either[SingleAccessToken, SignedToken]): Future[AllUserInfo] = {
+  private def tryServerLoginWith(userMail: String, token: Either[SingleAccessToken, SignedToken]): Future[Unit] = {
     val loginReq = LoginRequest(userMail, token)
-    val loginRes: Future[ExecutionInfoTyped[LoginResponse]] = UserCommands.loginCommand.sendCommandTo(fullInfo.defaults.defaultBackend.executor, loginReq)
+    val backend = token.match {
+      case Left(sat) => fullInfo.defaults.backendExecutor
+      case Right(sig) => fullInfo.defaults.backendExecutorWithCredentials(Some(sig))
+    }
+    val loginRes: Future[ExecutionInfoTyped[LoginResponse]] = UserCommands.loginCommand.sendCommandTo(backend, loginReq)
     loginRes.map {
       case (exInfo: ExecutionInfoTyped[LoginResponse]) =>
         val loginResponse = exInfo.resultTyped.result
-        val userInfo = loginResponse.toInfo(fullInfo.defaults.defaultSerializerUserConfig).get
+        val userInfoOp = loginResponse.toInfo(HomepageDefaults.defaultSerializerUserConfig)
         if (!loginResponse.userKnown) {
           removeUserFromLocalStorage()
           throw SerializedException(s"Local Login failed: user ${userMail} is not known on the server!")
         } else if (!loginResponse.tokenValid) {
-          UserCommands.authMailCommand.sendCommandTo(fullInfo.defaults.defaultBackend.executor, AuthMailRequest(userMail))
+          UserCommands.authMailCommand.sendCommandTo(fullInfo.defaults.backendExecutor, AuthMailRequest(userMail))
           throw SerializedException(s"Local Login failed: invalid token for user ${userMail}, requested SingleAccessToken!")
-        } else {
+        } else if (userInfoOp.isEmpty) {
           removeUserFromLocalStorage()
           throw SerializedException("Login failed for unknown reasons!")
+        } else {
+          changeUser(userInfoOp)
         }
-    }
+    }.recover { err => logger.logExceptionWarn("login attempt failed", err) }
   }
 
   def removeUserFromLocalStorage(): Unit = {
     LocalStorageSync.removeKey(allUserInfoStorageKey)
+  }
+
+  def tryLoginWith(mail: String, singleAccessToken: SingleAccessToken): Future[Unit] = {
+    tryServerLoginWith(mail, Left(singleAccessToken))
+  }
+
+  def tryContinueWithSessionFile(loadedFile: LoadedFile): Future[Unit] = Future {
+    val logger = fullInfo.loggerSystemInfo.uiAndDomLogger
+    logger.logInfo("WorkbookUserDataAnalyzer: now trying to load prio session data!")
+
+    val sessionData = WorkbookUserDataAnalyzer.serializerSessionData.deserialize(loadedFile.fileDataAsUtf8String)
+    changeUser(Some(sessionData.currentUserInfo))
+
+    sessionData.interactionHistory.foreachEntry((varId, serHist) => {
+      fullInfo.homepageInfoNow().workbookInfo.foreach(curInfo => {
+        curInfo.loadedWorkbook.allContainedInteractions.map(_.interactionVariable).foreach(curInteraction => {
+          if (curInteraction.keyForSerialization == varId) {
+            curInteraction.updateHistory(_.withAddedEvents(serHist, curInteraction.underlyingInteraction.serializer))
+          }
+        })
+      })
+    })
+  }
+
+
+  def tryRegistration(name: String, email: String): Future[Unit] = {
+    if (!User.isEmail(email)) Future.failed(SerializedException(s"Invalid mail format: ${email}")) else {
+      val user = AllUserInfo.createNewUser(name, email, HomepageDefaults.defaultSyncLocation)
+      val configJson = HomepageDefaults.defaultSerializerUserConfig.serialize(user.config)
+      val createAccFuture: Future[ExecutionInfoTyped[UserCommands.CreateAccountResponse]] = UserCommands.createAccountCommand.sendCommandTo(fullInfo.defaults.backendExecutor, CreateAccountRequest(user.user, configJson))
+      createAccFuture.transform {
+        case Success(exInfo) =>
+          val result = exInfo.resultTyped.result
+          if (!result.accountCreated || result.token.isEmpty) {
+            logger.logWarn(s"registration attempt ignored (account created: ${result.accountCreated} / token: ${result.token}")
+            Failure(SerializedException("could not create account, see logs!"))
+          }
+          else {
+            val aui = AllUserInfo(result.token.get.info.user, result.token, user.config)
+            changeUser(Some(aui))
+            Success(())
+          }
+        case Failure(err) =>
+          logger.logExceptionWarn(s"registration attempt ignored", err)
+          Failure(err)
+      }
+    }
   }
 
   def tryAutoLogin(): Future[Unit] = {
@@ -107,20 +164,30 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     if (localUser.isEmpty || localUser.get.token.isEmpty) {
       Future.failed[Unit](SerializedException("No local user with token stored to try auto login with!"))
     } else {
-      val futRes = tryServerLoginWith(localUser.get.user.mail, Right(localUser.get.token.get))
-      futRes.onComplete { case Success(allUserInfo: AllUserInfo) => changeUser(Some(allUserInfo)) }
-      futRes.map( _ => ())
+      tryServerLoginWith(localUser.get.user.mail, Right(localUser.get.token.get))
     }
   }
 
-  def changeUser(userInfo: Option[AllUserInfo]): Unit = fullInfo.synchronized {
-    if (userInfo != fullInfo.homepageInfoNow().userInfo) {
-      val allUserInfo = userInfo.get
-      logger.logInfo(s"Loading user ${allUserInfo.user.id} (${allUserInfo.user.name}: ${allUserInfo.user.mail}")
+  def storeUserLocally(allUserInfo: AllUserInfo): Unit = {
+    val rawToken = allUserInfo.token.get.toJson
+    val safeToken = js.URIUtils.encodeURIComponent(rawToken)
+  }
+
+  def changeUser(newUserInfo: Option[AllUserInfo]): Unit = fullInfo.synchronized {
+    val oldUser = fullInfo.homepageInfoNow().userInfo
+    logger.logInfo(s"Change User: ${oldUser.map(_.user.mail).getOrElse("none")} -> ${newUserInfo.map(_.user.mail).getOrElse("none")}")
+    if (newUserInfo != fullInfo.homepageInfoNow().userInfo) {
       LocalStorageSync.removeKey(allUserInfoStorageKey)
-      val serialized = serializer.serialize(allUserInfo)
-      LocalStorageSync.storeRaw(logger, allUserInfoStorageKey, serialized)
-      updateInfoWithContextChange(_.copy(userInfo = userInfo))
+      if (newUserInfo.isDefined) {
+        val allUserInfo = newUserInfo.get
+        logger.logInfo(s"Loading user ${allUserInfo.user.id} (${allUserInfo.user.name}: ${allUserInfo.user.mail}")
+        val serialized = serializer.serialize(allUserInfo)
+        LocalStorageSync.storeRaw(logger, allUserInfoStorageKey, serialized)
+      } else if (oldUser.isDefined) {
+        logger.logInfo(s"Logged out user ${oldUser.get.user.id} (${oldUser.get.user.name}: ${oldUser.get.user.mail}")
+      }
+
+      updateInfoWithContextChange(_.copy(userInfo = newUserInfo))
     }
   }
 

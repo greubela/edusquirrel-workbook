@@ -1,15 +1,16 @@
 package it.evadid.distribution.clients
 
+import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.distribution.command.*
-import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.util.logging.Logger
 import org.scalajs.dom
+import org.scalajs.dom.RequestCredentials
 import upickle.default.read
 
 import scala.concurrent.Future
-import scala.scalajs.js.JSON
+import scala.scalajs.js
 
-private case class JsRemoteExecutionClient(hostname: String, port: Int) extends RemoteExecutionClient {
+private case class JsRemoteExecutionClient(hostname: String, port: Int, token: Option[SignedToken]) extends RemoteExecutionClient {
 
   override protected def sendTo(logger: Logger, ip: String, port: Int, executionCommand: ExecutionCommand): Future[Map[String, String]] = {
     val commandJson = executionCommand.toJson
@@ -23,8 +24,12 @@ private case class JsRemoteExecutionClient(hostname: String, port: Int) extends 
       dest,
       new dom.RequestInit {
         method = dom.HttpMethod.POST
-        headers = JSON.parse("""{"Content-Type":"application/json"}""").asInstanceOf[dom.HeadersInit]
+        headers = js.Dictionary(
+          "Content-Type" -> "application/json",
+          SignedToken.cookieKey -> token.map(_.toJson).getOrElse("")
+        ).asInstanceOf[dom.HeadersInit]
         body = commandJson
+        credentials = RequestCredentials.include
       }
     ).toFuture.flatMap { response =>
       logger.logInfo("JsRemoteExecutionClient: sent request and waiting for a response")

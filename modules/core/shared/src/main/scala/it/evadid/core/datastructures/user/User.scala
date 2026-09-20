@@ -30,9 +30,10 @@ object User {
       val bytes = new Array[Byte](20)
       secureRandom.nextBytes(bytes)
       val tokenStr = HexFormat.of.formatHex(bytes)
-      val expiresAt = LocalDateTime.now().plusYears(1)
+      val expiresAt = LocalDateTime.now().plusMinutes(30)
       SingleAccessToken(tokenStr, expiresAt)
     }
+
     def apply(token: String): SingleAccessToken = SingleAccessToken(token, LocalDateTime.now())
   }
 
@@ -45,16 +46,24 @@ object User {
     name.trim.replaceAll("\\s", " ").split(" ").map(_.trim.toLowerCase.capitalize).mkString(" ")
   }
 
-  def createNewUser(firstName: String, lastName: String, mail: Option[String]): User = {
-    createNewUser(Some(firstName + " " + lastName), mail)
+  def createNewUser(firstName: String, lastName: String, mail: String): User = {
+    createNewUser(firstName + " " + lastName, mail)
   }
 
-  def createNewUser(name: Option[String], mail: Option[String]): User = {
+  def createNewUser(name: String, mail: String): User = {
     val id = java.util.UUID.randomUUID().toString
-    val user: User = User(name.map(cleanUserName).getOrElse(""), id, mail.getOrElse(""))
+    val user: User = User(cleanUserName(name), id, mail)
     user
   }
 
+  private val emailRegex = """^[a-zA-Z0-9\.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$""".r
+
+  def isEmail(mail: String): Boolean = mail match {
+    case null => false
+    case e if e.trim.isEmpty => false
+    case e if emailRegex.findFirstMatchIn(e.trim).isDefined => true
+    case _ => false
+  }
 
 }
 

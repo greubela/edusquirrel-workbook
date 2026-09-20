@@ -29,12 +29,19 @@ object BackendCommandHandler {
     ),
     LLMCommands.feedbackLlmCommandFactory.toLocalExecutionClient(
       (request: FeedbackLlmRequest, logger: Logger) => CompleteChatWithLLMCommand.handleFeedbackLlmRequest(request, logger)
-      //  (request: FeedbackLlmRequest, logger: Logger) =>         isProvidedUserTokenValid(request.user.id, request.userToken, logger)
     ),
 
+    // User
+    UserCommands.loginCommand.toLocalExecutionClient(
+      (request: LoginRequest, logger: Logger) => SqlUserCommands.handleLoginCommand(request, logger)
+    ),
     UserCommands.createAccountCommand.toLocalExecutionClient(
       (request: CreateAccountRequest, logger: Logger) => SqlUserCommands.handleCreateAccountCommand(request, logger)
     ),
+
+    UserCommands.authMailCommand.toLocalExecutionClient(
+      (request: AuthMailRequest, logger: Logger) => SqlUserCommands.requestAuthMail(request, logger),
+    )
   ))
 
 
@@ -70,35 +77,20 @@ object BackendCommandHandler {
       (request: SendMailRequest, logger: Logger) => AuthHandling.mayAccessMailBased(userToken.info.user.mail, request.recipientMail)
     ),
 
-    // User
-    UserCommands.loginCommand.toLocalExecutionClient(
-      (request: LoginRequest, logger: Logger) => SqlUserCommands.handleLoginCommand(request, logger)
-    ),
+
 
     UserCommands.updateAccountCommand.toLocalExecutionClient(
       (request: UpdateAccountRequest, logger: Logger) => SqlUserCommands.handleUpdateAccountCommand(request, logger),
       (request: UpdateAccountRequest, logger: Logger) => AuthHandling.mayAccessIdBased(userToken.info.user.id, request.user.id),
     ),
 
-    UserCommands.authMailCommand.toLocalExecutionClient(
-      (request: AuthMailRequest, logger: Logger) => SqlUserCommands.requestAuthMail(request, logger),
-      (request: AuthMailRequest, logger: Logger) => AuthHandling.mayAccessMailBased(userToken.info.user.mail, request.userMail)
-    )
   ))
 
-
-  /*def isProvidedUserTokenValid(userId: String, providedToken: Option[UserToken], logger: Logger): Boolean = {
-    if(providedToken.isEmpty) false
-    else {
-      val connection = DatabaseConfig.readFromEnv().newConnection()
-      SqlUserCommands(connection, logger).requestLogin(LoginRequest(userId, providedToken.get.token)).loginSucceeded
-    }
-  }*/
 
   def handleExecution(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken], remoteAddress: InetAddress, logger: Logger): Future[ExecutionClientResponse] = {
     logger.logInfo(s"[server] Received command: ${executionCommand.name} with params keys: ${executionCommand.params.keys}")
 
-    SqlLogCommands.handleLog(commandReceived, executionCommand, remoteAddress, logger)
+    SqlLogCommands.handleLog(commandReceived, executionCommand, verifiedToken, remoteAddress, logger)
 
     if (executionCommand.name.trim.isEmpty) {
       logger.logError("ExecutionCommand.name must not be empty")

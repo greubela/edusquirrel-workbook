@@ -2,23 +2,115 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.keys.EventProp
+import com.raquo.laminar.nodes.ReactiveHtmlElement
+import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.user.AllUserInfo
+import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
-import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.HtmlWorkbookRenderer
 import org.scalajs.dom
+import org.scalajs.dom.HTMLDivElement
 
 case class HtmlWorkbookDomElement() extends HtmlAppElement {
 
-  private lazy val workbookDomSignal: Signal[Element] = {
+  override def getDomElement(): Element = workbookDomElement
+
+  private lazy val domElement: ReactiveHtmlElement[HTMLDivElement] = workbookDomElement
+
+  private lazy val workbookDomElement: ReactiveHtmlElement[HTMLDivElement] = {
+    div(
+      cls := "workbook-app-shell",
+      dialogElement,
+      mainTag(
+        cls := "workbook-main", div(
+          cls := "it/evadid/homepage/workbook",
+          children <-- workbookBodyDomSignal.map(createDomElement)
+        )
+      )
+    )
+  }
+  // BODY
+
+  private lazy val workbookBodyDomSignal: Signal[Element] = {
     val workbookSignal = fullInfo.signals.workbook
-    val userSignal = fullInfo.signals.currentUserInfo
+    val userSignal = fullInfo.signals.user
     val watchSignal = workbookSignal.combineWith(userSignal)
 
     watchSignal.map {
-      case (None, _) => HtmlSelectWorkbookElement().getDomElement()
       case (_, None) => HtmlLoginElement().getDomElement()
-      case (Some(workbookInfo), Some(userInfo)) => HtmlWorkbookRenderer.renderAppElement(workbookInfo.loadedWorkbook).getDomElement()
+      case (None, _) => HtmlSelectWorkbookElement().getDomElement()
+      case (Some(workbookInfo), Some(userInfo)) => HtmlWorkbookBodyElement(workbookInfo, userInfo).getDomElement()
     }
   }
+
+  // HEADER AND FOOTER
+
+  private def collapsedSignal: Signal[Boolean] = fullInfo.signals.display.map(_.collapsedNavigation)
+
+
+  private def createDomElement(bodyDom: Element): List[Element] = List(
+    div(
+      cls := "workbook-header",
+      children <-- headerChildren
+    ),
+    bodyDom,
+    footerTag(
+      cls := "workbook-footer",
+      div(
+        cls := "workbook-footer-content",
+        span(text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId("basic/workbookfooterprivacyinfo")))
+      )
+    )
+  )
+
+
+  lazy val headerChildren: Signal[List[Element]] = {
+    fullInfo.signals.workbook.combineWith(fullInfo.signals.user, collapsedSignal).map(
+      (workbook, user, collapsed) => {
+        val always = List(
+          createTitleLine(workbook, user),
+          DropdownMenuControl(workbook, user).getDomElement(),
+        )
+        val section: List[Element] = if (collapsed || workbook.isEmpty || user.isEmpty) List() else List(SectionSelectionLine(workbook.get).getDomElement())
+        val language: List[Element] = if (collapsed) List() else List(LanguageSelectionLine().getDomElement())
+        always ++ language ++ section ++ List(createDomToggleButton())
+      })
+
+  }
+
+
+  private def createDomToggleButton(): Element = div(
+    cls := "workbook-header-toggle",
+    onClick --> { _ => fullInfo.usageControl.changeDisplay(displayInfo => displayInfo.copy(collapsedNavigation = !displayInfo.collapsedNavigation)) },
+    span(
+      child <-- collapsedSignal.map { c =>
+        if (c) span(text <-- laminarHelper.plaintextStringSignal("basic/showHeader"))
+        else span(text <-- laminarHelper.plaintextStringSignal("basic/hideHeader"))
+      }
+    )
+  )
+
+  private def createTitleLine(workbook: Option[AllWorkbookInfo], user: Option[AllUserInfo]): Element = {
+    if (user.isEmpty) {
+      div(
+        cls := "workbook-title-line",
+        h1(text <-- laminarHelper.plaintextStringSignal("basic/titleLoginPage")),
+      )
+    }
+    else if (workbook.isEmpty)
+      div(
+        cls := "workbook-title-line",
+        h1(text <-- laminarHelper.plaintextStringSignal("basic/titleWorkbookSelectionPage")),
+      )
+    else {
+      div(
+        cls := "workbook-title-line",
+        h1(text <-- laminarHelper.plaintextStringSignal(workbook.get.loadedWorkbook.workbookTitle)),
+      )
+    }
+  }
+
+  // FULLSCREEN STUFF
+
 
   private lazy val fullscreenActiveElementSignal: Signal[Option[HtmlAppElement]] = fullInfo.signals.currentDisplayInfo.map(_.fullscreenElement)
 
@@ -77,20 +169,6 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
     )
   }
 
-  private lazy val workbookDomElement: Element = {
-    div(
-      cls := "workbook-app-shell",
-      dialogElement,
-      mainElement
-    )
-  }
-
-  private lazy val mainElement: Element = mainTag(
-    cls := "workbook-main",
-    child <-- workbookDomSignal
-  )
-
-  override def getDomElement(): Element = workbookDomElement
 }
 
 

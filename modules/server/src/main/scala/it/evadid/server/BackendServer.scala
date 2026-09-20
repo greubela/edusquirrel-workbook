@@ -25,16 +25,18 @@ object BackendServer {
 
   private val serverStartedAt: LocalDateTime = LocalDateTime.now()
 
+
+
   def fail(commandReceived: LocalDateTime, msg: String, cause: Option[SerializedException], command: Option[ExecutionCommand], logger: Logger): ExecutionClientResponse = {
     logger.logError(msg)
     ExecutionClientResponse(commandReceived, commandReceived, msg, cause, command, logger.getOut(), logger.getErr())
   }
 
-  private def handleExecuteCommand(bodyOption: Option[String], cookies: Cookies, remoteAddress: InetAddress): Future[ExecutionClientResponse] = {
+  private def handleExecuteCommand(bodyOption: Option[String], cookies: Cookies, headers: Headers, remoteAddress: InetAddress): Future[ExecutionClientResponse] = {
     val commandReceived: LocalDateTime = LocalDateTime.now()
     val backendLogger: Logger = Logger.withNameAndPrefixes(Some(s"BackendServerLogger(Request@${commandReceived.toString})"), PrintToStdLogger.printEverything)
 
-    val verifiedToken = AuthHandling.findAuthCookies(cookies).find(AuthHandling.isTokenValid(backendLogger, _))
+    val verifiedToken = AuthHandling.findAuthCookies(cookies, headers).find(AuthHandling.isTokenValid(backendLogger, _))
 
     if (bodyOption.isEmpty || bodyOption.get.isEmpty)
       Future.successful(fail(commandReceived, "No Request Body Found", None, None, backendLogger))
@@ -57,45 +59,40 @@ object BackendServer {
   ).toString()
 
 
+  def fail(err: Throwable): Result = {
+    val stackWriter = StringWriter()
+    println("Internal Execution error: " + err.getMessage)
+    err.printStackTrace(PrintWriter(stackWriter))
+
+    InternalServerError(Json.obj(
+      "error" -> Option(err.getMessage).getOrElse(err.getClass.getName),
+      "errorDetailed" -> err.getLocalizedMessage,
+      "logErr" -> "missing",
+      "exceptionType" -> err.getClass.getName,
+      "stackTrace" -> stackWriter.toString
+    ).toString()).as("application/json")
+
+  }
+
   private def buildApiRouter(action: DefaultActionBuilder): PartialFunction[RequestHeader, Handler] = {
     {
-
-      /*case POST(p"/login") => action.async { request =>
-        val bodyAsText = request.body.asText.orElse(request.body.asJson.map(_.toString))
-        val remoteAddress = request.connection.remoteAddress
-        val handleRes = handleLogin(bodyAsText.getOrElse(""), remoteAddress)
-        val res: Future[Result] = handleRes.map {
-          case Left(err) => Status(401)(err.toJson).as("application/json")
-          case Right(token) => Status(200)(token.toJson).as("application/json")
-        }.recover {
-          err => Status(500)(SerializedException(err).toJson).as("application/json")
-        }
-        res
-      }*/
       case POST(p"/executeCommand") =>
         action.async { request =>
-          val bodyAsText = request.body.asText.orElse(request.body.asJson.map(_.toString))
-          val authInfo = AuthHandling.findAuthCookies(request.cookies)
-          handleExecuteCommand(bodyAsText, request.cookies, request.connection.remoteAddress).map {
-            (response: ExecutionClientResponse) => {
-              val (status, responseBody) = response.sendFormat
-              Status(status)(responseBody).as("application/json")
+          try {
+            val bodyAsText = request.body.asText.orElse(request.body.asJson.map(_.toString))
+            val authInfo = AuthHandling.findAuthCookies(request.cookies, request.headers)
+            handleExecuteCommand(bodyAsText, request.cookies, request.headers, request.connection.remoteAddress).map {
+              (response: ExecutionClientResponse) => {
+                val (status, responseBody) = response.sendFormat
+                Status(status)(responseBody).as("application/json")
+              }
+            }.recover {
+              case err => fail(err)
             }
-          }.recover {
-            case err =>
-              val stackWriter = StringWriter()
-              println("execution err: " + err.getMessage)
-              err.printStackTrace(PrintWriter(stackWriter))
+          } catch case err: Throwable => Future.successful(fail(err))
 
-              InternalServerError(Json.obj(
-                "error" -> Option(err.getMessage).getOrElse(err.getClass.getName),
-                "errorDetailed" -> err.getLocalizedMessage,
-                "logErr" -> "missing",
-                "exceptionType" -> err.getClass.getName,
-                "stackTrace" -> stackWriter.toString
-              ).toString()).as("application/json")
-          }
         }
+
 
       case GET(p"/health") =>
         action {

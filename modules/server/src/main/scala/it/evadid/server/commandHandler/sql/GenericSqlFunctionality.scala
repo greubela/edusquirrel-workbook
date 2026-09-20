@@ -6,8 +6,8 @@ import it.evadid.workbook.interaction.sync.SyncFormatter.RichInteractionVariable
 import it.evadid.workbook.interaction.sync.UsageContext
 
 import java.sql.*
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.time.{LocalDate, LocalDateTime}
 import scala.collection.mutable
 
 private[sql] case class GenericSqlFunctionality(
@@ -15,11 +15,12 @@ private[sql] case class GenericSqlFunctionality(
                                                  logger: Logger
                                                ) {
 
-
   def executeUpdate(statement: PreparedStatement): Int = {
-    logger.logInfo(s"Executing Update statement: ${statement.toString}")
     try {
-      statement.executeUpdate()
+      val res = statement.executeUpdate()
+      statement.clearParameters()
+      logger.logInfo(s"Executed Update statement: ${statement.toString}")
+      res
     } catch case e: Exception => {
       statement.close()
       logger.logError(s"Error updating database: ${e.getMessage}")
@@ -31,8 +32,8 @@ private[sql] case class GenericSqlFunctionality(
     logger.logInfo("Executing query: " + preparedStatement.toString)
     try {
       val rs = preparedStatement.executeQuery()
-      logger.logInfo("Query executed successfully")
       val asList: List[List[String]] = readAll(rs, fieldsToRead)
+      logger.logInfo(s"Query executed successfully, ${asList.size} results!")
       asList
     } catch case e: Exception => {
       preparedStatement.close()

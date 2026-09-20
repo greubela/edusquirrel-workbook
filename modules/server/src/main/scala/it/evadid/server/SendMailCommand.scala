@@ -31,7 +31,7 @@ object SendMailCommand {
 
   private[server] def sendMail(request: SendMailRequest, logger: Logger, envProvider: String => Option[String]): SendMailResponse = {
     val config = readMailConfig(envProvider)
-    logger.logInfo(s"sending mail to '${request.recipientMail}' with subject '${request.subject}' via ${config.host}:${config.port}")
+    logger.logInfo(s"sending mail to '${request.recipientMail}'")// with subject '${request.subject}' via ${config.host}:${config.port}")
 
     val props = new Properties()
     props.put("mail.smtp.auth", "true")

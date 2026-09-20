@@ -44,7 +44,7 @@ object HomepageStartupLogic {
       logger.logExceptionWarn("ignoring basics which should have been loaded", err)
     }
     val futureAutoLogin = fullInfo.usageControl.tryAutoLogin().recover { err =>
-      logger.logExceptionWarn("auto login was not possible!", err)
+      logger.logWarn(s"auto login was not possible: ${err.getMessage}")
     }
 
     for {

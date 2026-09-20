@@ -8,7 +8,7 @@ import it.evadid.util.JvmUtils
 import it.evadid.util.logging.Logger
 import pdi.jwt.*
 import play.api.libs.json.{Json, OFormat}
-import play.api.mvc.Cookies
+import play.api.mvc.{Cookies, Headers}
 
 import java.net.InetAddress
 import java.time.{Clock, LocalDateTime}
@@ -16,7 +16,7 @@ import scala.util.{Failure, Success}
 
 object AuthHandling {
 
-  val serverSecret: String = JvmUtils.env("SERVER_SECRET").get
+  val serverSecret: String = JvmUtils.env("SERVER_SECRET").getOrElse("")
   implicit val clock: Clock = Clock.systemUTC
   val algo = JwtAlgorithm.HS256
 
@@ -45,8 +45,9 @@ object AuthHandling {
   }
 
 
-  def findAuthCookies(cookies: Cookies): Seq[SignedToken] = {
-    val claimedAuth = cookies.filter(_.name == "auth_token").map(_.value)
+  def findAuthCookies(cookies: Cookies, headers: Headers): Seq[SignedToken] = {
+    val claimedAuth: Seq[String] = cookies.filter(_.name == SignedToken.cookieKey).map(_.value).toList ++ headers.toSimpleMap.get(SignedToken.cookieKey).toList
+    println("claimAuth: " + claimedAuth)
     val deserialized = DefaultSerializer.serializerSignedUserTokenInfo.tryDeserializeAll(claimedAuth)
     deserialized.inputAfterOperation.toList
   }
@@ -84,7 +85,7 @@ object AuthHandling {
 
   def createToken(user: User): SignedToken = {
     val now = LocalDateTime.now()
-    val tokenInfo = UserTokenInfo(user, now, now.plusMinutes(30))
+    val tokenInfo = UserTokenInfo(user, now, now.plusYears(1))
     val claim = tokenInfo.toJson
     val token = JwtJson.encode(claim, serverSecret, algo)
     SignedToken(tokenInfo, token)

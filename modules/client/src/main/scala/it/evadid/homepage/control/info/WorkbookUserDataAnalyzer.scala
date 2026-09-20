@@ -9,6 +9,7 @@ import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer.SessionData
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.model.AllWorkbookInfo.*
+import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.util.DownloadToDisc
 import it.evadid.util.logging.Logger
@@ -44,7 +45,7 @@ object WorkbookUserDataAnalyzer {
 
   private given usRW: upickle.ReadWriter[User] = upickle.macroRW
 
-  private given userConfigRW: upickle.ReadWriter[UserConfig] = fullInfo.defaults.defaultSerializerUserConfig.uPickleReadWrite
+  private given userConfigRW: upickle.ReadWriter[UserConfig] = HomepageDefaults.defaultSerializerUserConfig.uPickleReadWrite
 
   private given usiRW: upickle.ReadWriter[AllUserInfo] = upickle.macroRW
 

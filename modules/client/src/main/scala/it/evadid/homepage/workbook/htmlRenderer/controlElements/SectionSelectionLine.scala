@@ -2,14 +2,15 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 
 
-private case class SectionSelectionLine(workbook: Workbook) extends HtmlAppElement {
+private case class SectionSelectionLine(workbook: AllWorkbookInfo) extends HtmlAppElement {
 
-  private def sections: List[WorkbookSection] = workbook.sections
+  private def sections: List[WorkbookSection] = workbook.loadedWorkbook.sections
 
   private def selectSection(section: WorkbookSection): Unit = {
     fullInfo.usageControl.updateWorkbookConfig(_.copy(activeSection = Some(section)))

@@ -11,10 +11,12 @@ object UserTokenInfo {
     lazy val toJson: String = DefaultSerializer.serializerSignedUserTokenInfo.serialize(this)
   }
 
+  object SignedToken {
+    val cookieKey: String = "Authorization"
+  }
+
 }
 
 case class UserTokenInfo(user: User, createdAt: LocalDateTime, expiresAt: LocalDateTime) {
-
   lazy val toJson: String = DefaultSerializer.serializerUserTokenInfo.serialize(this)
-
 }

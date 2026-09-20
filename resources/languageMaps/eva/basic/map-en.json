@@ -10,7 +10,7 @@
   "settings": "Settings",
   "logout": "Log out",
   "switchUser": "Switch user",
-  "workbookfooterprivacyinfo": "Privacy information (demo system): All your interactions are stored within your local browser, as well as two databases of Humboldt University. This cannot be disabled yet. Thus, do not use this page for learning with minors (for now)! Contact: Chair Computer Science and Society, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin, Germany)",
+  "workbookfooterprivacyinfo": "Privacy information (demo system): when using an online account, all interactions are stored in an online database. Contact: Chair Computer Science and Society, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin, Germany)",
   "previousSection": "← Previous section",
   "nextSection": "Next section →",
   "checkSolution": "Check solution",
@@ -51,5 +51,17 @@
   "TextEditorPlaceholder": "Insert Text here",
   "MessengerEditorSendMessageButton": "Send",
   "messengerEditorInputPlaceholder": "Type Question here",
-  "a": "B"
+  "titleLoginRegister": "First Time? Register Here!",
+  "titleLoginContinue": "Continue Working Here!",
+  "titleLoginStartOnline": "Online Registration",
+  "titleLoginStartLocal": "Local Account",
+  "titleLoginContinueOnline": "Online Log In",
+  "titleLoginContinueLocal": "Upload Progress File",
+  "buttonRequestToken": "Send Login Token via Mail",
+  "buttonLocalLogin": "Start Using Locally",
+  "buttonRequestLogin": "Login with E-Mail and Token",
+  "buttonLocalUpload": "Upload Session Data",
+  "buttonRequestRegistration": "Register",
+  "insertTokenPlaceholder": "Paste Login Token Here",
+  "titleLoginPage": "Login Page"
 }
