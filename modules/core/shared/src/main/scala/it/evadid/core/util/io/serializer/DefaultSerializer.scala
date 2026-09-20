@@ -1,9 +1,12 @@
 package it.evadid.core.util.io.serializer
 
 import it.evadid.core.datastructures.chat.*
-import it.evadid.core.datastructures.chat.Person.{BasicPerson, SerializablePerson}
+import it.evadid.core.datastructures.chat.Person.SerializablePerson
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
+import it.evadid.core.datastructures.user.User.SingleAccessToken
+import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
+import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig, UserTokenInfo}
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.*
 import it.evadid.distribution.command.ExecutionInfo.*
@@ -12,17 +15,20 @@ import it.evadid.distribution.command.SerializedException.SimpleStackTraceElemen
 import it.evadid.distribution.commandTypes.LLMCommands.*
 import it.evadid.distribution.commandTypes.MailCommands.{SendMailRequest, SendMailResponse}
 import it.evadid.distribution.commandTypes.SQLCommands.*
-import it.evadid.workbook.interaction.sync.{SyncContext, UpdateImportance, UsageContext}
+import it.evadid.distribution.commandTypes.UserCommands.*
 import it.evadid.workbook.interaction.sync.SyncFormatter.InteractionSyncRequest
 import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.interaction.sync.{SyncContext, UpdateImportance, UsageContext}
 import it.evadid.workbook.interaction.variable.{InteractionVariableHistorySerialized, InteractionVariableStateSerialized}
 import upickle.ReadWriter
 import upickle.default.*
 
+import java.net.InetAddress
 import java.time.LocalDateTime
 import scala.util.*
 
 object DefaultSerializer {
+
 
   private[serializer] given ReadWriter[LanguageMap[HumanLanguage]] =
     upickle.default.readwriter[String].bimap[LanguageMap[HumanLanguage]](
@@ -78,6 +84,51 @@ object DefaultSerializer {
     }
   }.uPickleReadWrite
 
+
+  private given ReadWriter[InetAddress] = new Serializer[InetAddress] {
+    override def serialize(obj: InetAddress): String = obj.getCanonicalHostName
+
+    override def deserialize(str: String): InetAddress = InetAddress.getByName(str)
+  }.uPickleReadWrite
+
+  private given sat: ReadWriter[SingleAccessToken] = macroRW
+
+  private given use: ReadWriter[User] = macroRW
+
+  private given uti: ReadWriter[UserTokenInfo] = macroRW
+
+  private given suti: ReadWriter[SignedToken] = macroRW
+
+  private given ReadWriter[Either[SingleAccessToken, SignedToken]] = new Serializer[Either[SingleAccessToken, SignedToken]]() {
+    val serializerSat: Serializer[SingleAccessToken] = Serializer.fromUpickleJson(sat)
+    val serializerSig: Serializer[SignedToken] = Serializer.fromUpickleJson(suti)
+
+    override def serialize(obj: Either[SingleAccessToken, SignedToken]): String = obj.match {
+      case Left(singleAccessToken) => "Left(" + serializerSat.serialize(singleAccessToken) + ")"
+      case Right(signedToken: SignedToken) => "Right(" + serializerSig.serialize(signedToken) + ")"
+    }
+
+    override def deserialize(str: String): Either[SingleAccessToken, SignedToken] = {
+      if (!str.endsWith(")")) {
+        throw new IllegalArgumentException("Serializer[Either[SingleAccessToken,SignedToken]]: str does not end with ')'!")
+      } else {
+        val cleaned: String =
+          if (str.startsWith("Left(")) str.substring("Left(".length, str.length - 1)
+          else if (str.startsWith("Right(")) str.substring("Right(".length, str.length - 1)
+          else throw new IllegalArgumentException(s"Serializer[Either[SingleAccessToken,SignedToken]]: '${str}' does neither start with 'Left(' nor 'Right('!")
+        println(s"### Default Serializer for Token Either, deserializing '${cleaned}'")
+        try {
+          if (str.startsWith("Left(")) Left(serializerSat.deserialize(cleaned))
+          else if (str.startsWith("Right(")) Right(serializerSig.deserialize(cleaned))
+          else throw new IllegalArgumentException(s"String '${cleaned}' is not an instance of Either[SingleAccessToken,SignedToken]'!")
+        } catch case e: Throwable => {
+          throw new IllegalArgumentException(s"String '${cleaned}' is not an instance of Either[SingleAccessToken,SignedToken]' (${e.getMessage}!")
+        }
+      }
+    }
+  }.uPickleReadWrite
+
+
   private[serializer] given rwMessage: ReadWriter[Message] = macroRW
 
   private[serializer] given rwMessageModel: ReadWriter[MessengerModel] = macroRW
@@ -112,6 +163,23 @@ object DefaultSerializer {
   private[serializer] given dbfresreq: ReadWriter[DbFetchResponse] = macroRW
 
   private[serializer] given cdbreq: ReadWriter[DeleteInDbRequest] = macroRW
+
+
+  private[serializer] given authReqRW: ReadWriter[LoginRequest] = macroRW
+
+  private[serializer] given authResRW: ReadWriter[LoginResponse] = macroRW
+
+
+  private[serializer] given upsertAccReqRW: ReadWriter[CreateAccountRequest] = macroRW
+
+  private[serializer] given upsertAccResRW: ReadWriter[CreateAccountResponse] = macroRW
+
+  private[serializer] given upsertAccReqRW2: ReadWriter[UpdateAccountRequest] = macroRW
+
+  private[serializer] given upsertAccResRW2: ReadWriter[UpdateAccountResponse] = macroRW
+
+
+  private[serializer] given authMailReq: ReadWriter[AuthMailRequest] = macroRW
 
   private[serializer] given sendMailReq: ReadWriter[SendMailRequest] = macroRW
 
@@ -151,12 +219,27 @@ object DefaultSerializer {
   lazy val serializerDeleteInDbRequestJson: Serializer[DeleteInDbRequest] = Serializer.fromUpickleJson[DeleteInDbRequest](cdbreq)
   lazy val serializerSyncSuccess: Serializer[SyncSuccess] = Serializer.fromUpickleJson[SyncSuccess](dbresreq)
   lazy val serializerDbFetchResponse: Serializer[DbFetchResponse] = Serializer.fromUpickleJson[DbFetchResponse](dbfresreq)
+  lazy val serializerAuthMailRequestJson: Serializer[AuthMailRequest] = Serializer.fromUpickleJson[AuthMailRequest](authMailReq)
   lazy val serializerSendMailRequestJson: Serializer[SendMailRequest] = Serializer.fromUpickleJson[SendMailRequest](sendMailReq)
   lazy val serializerSendMailResponseJson: Serializer[SendMailResponse] = Serializer.fromUpickleJson[SendMailResponse](sendMailRes)
+
+  lazy val serializerVerifyAuthenticationRequest: Serializer[LoginRequest] = Serializer.fromUpickleJson[LoginRequest](authReqRW)
+  lazy val serializerVerifyAuthenticationResponse: Serializer[LoginResponse] = Serializer.fromUpickleJson[LoginResponse](authResRW)
+
+  lazy val serializerCreateAccountRequest: Serializer[CreateAccountRequest] = Serializer.fromUpickleJson[CreateAccountRequest](upsertAccReqRW)
+  lazy val serializerCreateAccountResponse: Serializer[CreateAccountResponse] = Serializer.fromUpickleJson[CreateAccountResponse](upsertAccResRW)
+
+  lazy val serializerUpdateAccountRequest: Serializer[UpdateAccountRequest] = Serializer.fromUpickleJson[UpdateAccountRequest](upsertAccReqRW2)
+  lazy val serializerUpdateAccountResponse: Serializer[UpdateAccountResponse] = Serializer.fromUpickleJson[UpdateAccountResponse](upsertAccResRW2)
+
+  lazy val serializerUserTokenInfo: Serializer[UserTokenInfo] = Serializer.fromUpickleJson(uti)
+  lazy val serializerSignedUserTokenInfo: Serializer[SignedToken] = Serializer.fromUpickleJson(suti)
+
   lazy val serializerStringJson: Serializer[String] = Serializer.stringIO
   lazy val serializerExceptionS: Serializer[SerializedException] = Serializer.fromUpickleJson(errSer)
   lazy val serializerException: Serializer[Throwable] = new Serializer[Throwable] {
     override def serialize(obj: Throwable): String = serializerExceptionS.serialize(SerializedException(obj))
+
     override def deserialize(str: String): Throwable = serializerExceptionS.deserialize(str)
   }
 
@@ -164,6 +247,15 @@ object DefaultSerializer {
   private given stringMapRW: ReadWriter[Map[String, String]] = readwriter[Map[String, String]].bimap[Map[String, String]](_.toMap, _.toMap)
 
   val serializerJsonStringMap: Serializer[Map[String, String]] = Serializer.fromUpickleJson(stringMapRW)
+
+  def serializerAllUserInfo(serializerUserConfig: Serializer[UserConfig]): Serializer[AllUserInfo] = {
+    given ucrw: ReadWriter[UserConfig] = serializerUserConfig.uPickleReadWrite
+
+    given rw: ReadWriter[AllUserInfo] = macroRW
+
+    Serializer.fromUpickleJson(rw)
+  }
+
 
   /*
 

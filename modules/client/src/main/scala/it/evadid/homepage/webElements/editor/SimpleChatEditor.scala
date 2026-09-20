@@ -46,7 +46,7 @@ case class SimpleChatEditor(interactionVar: State[MessengerModel], messageInputS
   }
 
   private lazy val sendButton: HtmlAppElement = HtmlButtonElement.withTextLabel("basic/messengerEditorSendMessageButton", _ => sendCurrentMessage(), ButtonConfig(true, List("messenger-send-button")))
-  private lazy val textEditorConfig: TextEditorConfig = TextEditorConfig(false, 2, 80, LanguageMapContentId("basic/messengerEditorInputPlaceholder"), List("messenger-input"))
+  private lazy val textEditorConfig: TextEditorConfig = TextEditorConfig(false, 2, 80, LanguageMapContentId("basic/messengereditorinputplaceholder"), List("messenger-input"))
   private lazy val inputEditor: SimpleTextEditor = SimpleTextEditor(messageInput, Val(textEditorConfig))
 
   private lazy val inputArea: Element = {

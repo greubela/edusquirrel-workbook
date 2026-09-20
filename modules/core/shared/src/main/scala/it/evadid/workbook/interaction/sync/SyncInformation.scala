@@ -2,6 +2,7 @@ package it.evadid.workbook.interaction.sync
 
 import it.evadid.core.datastructures.storage.RemoteCacheCollection.CacheKey
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
+import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.core.util.io.Serializer
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.SyncInformation.SyncInformationWithContext
@@ -12,7 +13,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 case class SyncInformation(syncSource: SyncDestination, syncStrategy: SyncStrategy, formatter: SyncFormatter) {
 
-  def forContext(context: UsageContext): SyncInformationWithContext = SyncInformationWithContext(syncSource, syncStrategy, formatter, context)
+  def forContext(context: UsageContext, currentUser: Option[AllUserInfo]): SyncInformationWithContext = SyncInformationWithContext(syncSource, syncStrategy, formatter, context, currentUser)
 
 }
 
@@ -49,7 +50,7 @@ object SyncInformation {
 
   }
 
-  case class SyncInformationWithContext(syncSource: SyncDestination, syncStrategy: SyncStrategy, formatter: SyncFormatter, usageContext: UsageContext) extends CacheKey[SyncContext, InteractionVariableHistorySerialized] {
+  case class SyncInformationWithContext(syncSource: SyncDestination, syncStrategy: SyncStrategy, formatter: SyncFormatter, usageContext: UsageContext, currentUser: Option[AllUserInfo]) extends CacheKey[SyncContext, InteractionVariableHistorySerialized] {
 
     private given ec: ExecutionContext = ExecutionContext.global
 
@@ -60,7 +61,7 @@ object SyncInformation {
     }
 
     def fetchAllFrom(logger: SyncLogger): Future[InteractionVariableFetchResponse] = try {
-      syncSource.fetchAll(logger, usageContext, formatter).map(response => {
+      syncSource.fetchAll(logger, currentUser, usageContext, formatter).map(response => {
         InteractionVariableFetchResponse(response.timestampFetchResponse, response.fetchedValues)
       })
     } catch case (e: Throwable) => {
@@ -94,7 +95,7 @@ object SyncInformation {
 
     lazy val writer: RemoteDataWriter[SyncContext, InteractionVariableHistorySerialized] = new RemoteDataWriter[SyncContext, InteractionVariableHistorySerialized]() {
       override def writeForKey(logger: SyncLogger, key: SyncContext, dataValue: InteractionVariableHistorySerialized): Future[SyncSuccess] = try {
-        syncSource.storeTo(logger, key, dataValue, formatter)
+        syncSource.storeTo(logger, currentUser, key, dataValue, formatter)
       } catch case (e: Throwable) => {
         logger.logExceptionWarn(s"Could not create future, ignoring write for key ${key} to ${syncSource.toString}", e)
         Future.failed(e)

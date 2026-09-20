@@ -34,7 +34,7 @@ dialog::backdrop {
     -webkit-backdrop-filter: blur(15px);
 }
 
-dialog{
+dialog {
     border: none;
     background: transparent;
     padding: 0;
@@ -50,7 +50,7 @@ dialog{
     max-width: 95vw;
     max-height: 95vh;
     background-color: var(--color-background-workarea-display);
-    overflow: hidden;
+    overflow: scroll;
     display: flex;
     flex-direction: column;
     border-radius: var(--radius-md);
@@ -78,6 +78,60 @@ dialog{
     flex: 1 1 auto;
     box-sizing: border-box;
 }
+
+/* Login Page */
+.container-login {
+    max-width: var(--workarea-width);
+    margin: 0 auto;
+    padding: var(--space-lg);
+    gap: var(--space-md);
+    /*overflow: hidden;*/
+    display: flex;
+    flex-direction: column;
+    font-size: 16px;
+    background-color: var(--color-background-workarea-display);
+    justify-content: center;
+}
+
+.container-login-section {
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.container-login-body {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    width: 100%;
+    gap: 5%;
+}
+
+.login-area {
+    max-width: 40%;
+    width: 40%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+
+    background: var(--color-background-workarea-display);
+}
+
+.title-login {
+    display: flex;
+    width: 100%;
+    justify-self: center;
+    justify-content: center;
+}
+
+.login-email-input
+.login-name-input {
+    width: 70%;
+}
+
+/* Workbook Selection Page */
 
 /* workbook structure */
 
@@ -179,6 +233,7 @@ dialog{
     width: 100%;
     height: 100%;
 }
+
 .interaction-element-content *:focus {
     border-color: inherit;
 }
@@ -220,13 +275,12 @@ dialog{
 }
 
 
-
-
 /* FOOTER */
 .workbook-footer {
     position: sticky;
     bottom: 0;
     background: var(--color-background-neutral-accented);
+    /*background: orange;*/
     font-size: 0.75rem;
     width: 100%;
 }
@@ -241,28 +295,6 @@ dialog{
     justify-content: center;
     text-align: center;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 /*
@@ -329,7 +361,6 @@ dialog{
 
 
 /* Workbook Elements — no left border on basic elements (only instructional boxes use colored strips) */
-
 
 
 /* Specific Elements */
@@ -659,7 +690,6 @@ button:disabled {
         grid-template-columns: 1fr;
     }
 }
-
 
 
 /* --- Editors --- */

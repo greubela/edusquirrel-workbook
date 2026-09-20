@@ -14,7 +14,7 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.reorderExerc
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingExercise.HtmlSortingInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingReasonExercise.HtmlSortingReasonInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.{HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRenderer}
-import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.{HtmlExerciseContainerRenderer, HtmlWorkbookRenderer}
+import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.{HtmlExerciseContainerRenderer, *}
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.*
 import it.evadid.workbook.elements.interactionElements.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
@@ -69,10 +69,6 @@ object HtmlRenderFactory {
   }
 
 
-  def renderWorkbook(workbook: Workbook): HtmlAppElement = {
-    HtmlWorkbookRenderer.renderAppElement(workbook)
-  }
-
   def render[T <: WorkbookElement](anyElement: T): HtmlWorkbookElement[WorkbookElement, HtmlAppElement] = {
     try {
       renderStructureElement(anyElement).asInstanceOf[HtmlWorkbookElement[WorkbookElement, HtmlAppElement]]
@@ -85,7 +81,6 @@ object HtmlRenderFactory {
   private def renderStructureElement[T <: WorkbookElement](anyElement: T): HtmlWorkbookElement[WorkbookElement, HtmlAppElement] = {
     anyElement.match {
       // structure
-      case w: Workbook => HtmlWorkbookRenderer.render(w)
       case c: ExerciseContainer => HtmlExerciseContainerRenderer.render(c)
       case _: T => ???
     }

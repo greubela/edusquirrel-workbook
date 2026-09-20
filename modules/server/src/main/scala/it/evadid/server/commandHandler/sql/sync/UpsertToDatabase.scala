@@ -1,11 +1,12 @@
-package it.evadid.server.commandHandler.sql
+package it.evadid.server.commandHandler.sql.sync
 
 import it.evadid.distribution.commandTypes.SQLCommands.StoreToDbRequest
+import it.evadid.server.commandHandler.sql.{DatabaseConfig, GenericSqlFunctionality}
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
 import it.evadid.workbook.interaction.sync.SyncFormatter.RichInteractionVariableFormatter
 import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
 import it.evadid.workbook.interaction.sync.UsageContext
+import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
 
 import java.sql.{Connection, Timestamp}
 import java.time.LocalDateTime
@@ -17,7 +18,7 @@ case class UpsertToDatabase(
                              formatter: RichInteractionVariableFormatter
                            ) {
 
-  private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(connection, usageContext, logger, formatter)
+  private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(connection, logger)
   private lazy val delete: DeleteInDatabase = new DeleteInDatabase(connection, usageContext, logger, formatter)
 
   def findMaxTimestamp(history: InteractionVariableHistorySerialized): Option[LocalDateTime] = {
@@ -86,7 +87,7 @@ object UpsertToDatabase {
 
   def handleRequest(request: StoreToDbRequest, logger: Logger): SyncSuccess =
     if (request.historySerialized.states.isEmpty) SyncSuccess(0, 0, 0, LocalDateTime.now()) else {
-      val config = DatabaseConfig.readFromEnv(request.databaseName)
+      val config = DatabaseConfig.readFromEnv(Some(request.databaseName))
       val connection = config.newConnection()
 
       val control = UpsertToDatabase(connection, request.usageContext, logger, request.formatter)

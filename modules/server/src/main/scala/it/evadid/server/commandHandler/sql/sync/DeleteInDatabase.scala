@@ -1,10 +1,11 @@
-package it.evadid.server.commandHandler.sql
+package it.evadid.server.commandHandler.sql.sync
 
 import it.evadid.distribution.commandTypes.SQLCommands.DeleteInDbRequest
+import it.evadid.server.commandHandler.sql.{DatabaseConfig, GenericSqlFunctionality}
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.interaction.sync.{SyncContext, UsageContext}
 import it.evadid.workbook.interaction.sync.SyncFormatter.RichInteractionVariableFormatter
 import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.interaction.sync.{SyncContext, UsageContext}
 
 import java.sql.{Connection, PreparedStatement}
 import java.time.LocalDateTime
@@ -16,7 +17,7 @@ case class DeleteInDatabase(
                              formatter: RichInteractionVariableFormatter
                            ) {
 
-  private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(connection, usageContext, logger, formatter)
+  private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(connection,  logger)
   private lazy val fetch: FetchFromDatabase = new FetchFromDatabase(connection, usageContext, logger, formatter)
 
   private def deleteEventsById(ids: Set[Long], tableName: String): SyncSuccess = {
@@ -90,7 +91,7 @@ case class DeleteInDatabase(
 object DeleteInDatabase {
 
   def handleRequest(request: DeleteInDbRequest, logger: Logger): SyncSuccess = {
-    val config = DatabaseConfig.readFromEnv(request.databaseName)
+    val config = DatabaseConfig.readFromEnv(Some(request.databaseName))
     val connection = config.newConnection()
 
     val control = DeleteInDatabase(connection, request.usageContext, logger, request.formatter)

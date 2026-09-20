@@ -4,6 +4,7 @@ import it.evadid.workbook.interaction.variable.InteractionVariableHistorySeriali
 import SyncFormatter.InteractionSyncRequest
 import SyncInformation.SyncSuccess
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.FetchResponse
+import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.util.logging.derived.SyncLogger
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -18,15 +19,15 @@ trait SyncDestination {
 
   def isLocal: Boolean
 
-  def fetchAll(logger: SyncLogger, context: UsageContext, formatter: SyncFormatter): Future[FetchResponse[SyncContext, InteractionVariableHistorySerialized]]
+  def fetchAll(logger: SyncLogger, currentUser: Option[AllUserInfo], context: UsageContext, formatter: SyncFormatter): Future[FetchResponse[SyncContext, InteractionVariableHistorySerialized]]
 
-  def storeTo(logger: SyncLogger, context: SyncContext, request: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncSuccess]
+  def storeTo(logger: SyncLogger, currentUser: Option[AllUserInfo], context: SyncContext, request: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncSuccess]
 
-  def fetchFrom(logger: SyncLogger, context: SyncContext, formatter: SyncFormatter)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, InteractionVariableHistorySerialized]] = fetchAll(logger, context.toUsageContext, formatter)
+  def fetchFrom(logger: SyncLogger, currentUser: Option[AllUserInfo], context: SyncContext, formatter: SyncFormatter)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, InteractionVariableHistorySerialized]] = fetchAll(logger, currentUser, context.toUsageContext, formatter)
 
-  def clearValues(logger: SyncLogger, context: SyncContext): Future[SyncSuccess]
+  def clearValues(logger: SyncLogger, currentUser: Option[AllUserInfo], context: SyncContext): Future[SyncSuccess]
 
-  def clearAllValues(logger: SyncLogger, context: UsageContext): Future[SyncSuccess]
+  def clearAllValues(logger: SyncLogger, currentUser: Option[AllUserInfo], context: UsageContext): Future[SyncSuccess]
 
 }
 

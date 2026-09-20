@@ -1,6 +1,7 @@
 package it.evadid.homepage.control.info
 
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.interaction.sync.{SyncInformation, UsageContext}
@@ -17,7 +18,7 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
   def currentSyncSources: List[SyncInformationWithContext] = fullInfo.synchronized {
     val curContext: UsageContext = fullInfo.homepageInfoState.now().toContext
     val syncInformation: List[SyncInformation] = userInfo.map(_.config.syncDestinations.toList).toList.flatten
-    val syncWithContext: List[SyncInformationWithContext] = syncInformation.map(_.forContext(fullInfo.current.currentHomepageContext))
+    val syncWithContext: List[SyncInformationWithContext] = syncInformation.map(_.forContext(fullInfo.current.currentHomepageContext, fullInfo.current.userInfo))
     syncWithContext
   }
 
@@ -32,15 +33,13 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
     now().userInfo
   }
 
-
   def allAvailableInteractions: List[WorkbookInteractionElement[?]] = fullInfo.synchronized {
     val default = List()
     now().workbookInfo.map(_.loadedWorkbook.allContainedInteractions).getOrElse(default)
   }
 
   def allAvailableLanguages: List[HumanLanguage] = fullInfo.synchronized {
-    val default = now().homepageDefaults.availableLanguages
-    now().workbookInfo.map(_.loadedWorkbook.availableLanguages).getOrElse(default)
+    now().workbookInfo.map(_.loadedWorkbook.availableLanguages).getOrElse(List())
   }
 
 }
