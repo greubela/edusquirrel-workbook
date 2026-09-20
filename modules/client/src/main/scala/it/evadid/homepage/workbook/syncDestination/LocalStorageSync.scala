@@ -2,7 +2,6 @@ package it.evadid.homepage.workbook.syncDestination
 
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.FetchResponse
-import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.core.util.io.Serializer
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.LoggingLevel.WARN
@@ -17,7 +16,26 @@ import java.time
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
-object LocalStorageSync extends SyncDestination {
+object LocalStorageSync {
+
+  val instance: LocalStorageSync = LocalStorageSync()
+
+  def storeRaw(logger: Logger, key: String, value: String): Unit = {
+    instance.storage.setItem(key.toString, value.toString)
+  }
+
+  def fetchAllRaw(logger: Logger): Map[String, String] = {
+    val storage: Storage = dom.window.localStorage
+    (0 until storage.length).map(i =>
+      val browserKey = storage.key(i)
+      val browserValue = storage.getItem(browserKey)
+      browserKey -> browserValue
+    ).toMap
+  }
+
+}
+
+case class LocalStorageSync(maxValueCharakterSize: Long = 100000) extends SyncDestination {
 
   private val historyKeyPrefix = "synced-variable"
 
@@ -27,11 +45,12 @@ object LocalStorageSync extends SyncDestination {
 
   private val contextToBrowserKeySerializer: Serializer[SyncContext] = SyncContext.serializer
 
-
-
-  override def storeTo(logger: SyncLogger, currentUser: Option[AllUserInfo], context: SyncContext, history: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncInformation.SyncSuccess] = Future {
+  override def storeTo(logger: SyncLogger, context: SyncContext, history: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncInformation.SyncSuccess] = Future {
     try {
       val value: String = formatter.serialize(context, history)
+      if (value.length > maxValueCharakterSize) {
+        throw new IllegalArgumentException(s"Value exceeds ${maxValueCharakterSize} characters (has ${value.length}). Will not save to LocalStorage!")
+      }
       val serializedKey: String = historyKeyPrefix + contextToBrowserKeySerializer.serialize(context)
       //println(s"###################### [DEBUG] storing to local storage: $serializedKey -> $value")
       storage.setItem(serializedKey.toString, value.toString)
@@ -45,12 +64,12 @@ object LocalStorageSync extends SyncDestination {
 
   override def shouldBePersistant(): Boolean = false
 
-  override def clearAllValues(logger: SyncLogger, currentUser: Option[AllUserInfo], context: UsageContext): Future[SyncSuccess] = Future {
+  override def clearAllValues(logger: SyncLogger, context: UsageContext): Future[SyncSuccess] = Future {
     resetCompleteStorage()
   }(using ec)
 
 
-  override def clearValues(logger: SyncLogger, currentUser: Option[AllUserInfo], context: SyncContext): Future[SyncSuccess] = Future {
+  override def clearValues(logger: SyncLogger, context: SyncContext): Future[SyncSuccess] = Future {
     resetCompleteStorage()
   }(using ec)
 
@@ -75,7 +94,7 @@ object LocalStorageSync extends SyncDestination {
   }
 
 
-  override def fetchAll(logger: SyncLogger, currentUser: Option[AllUserInfo], context: UsageContext, formatter: SyncFormatter): Future[RemoteSyncDataCache.FetchResponse[SyncContext, InteractionVariableHistorySerialized]] = {
+  override def fetchAll(logger: SyncLogger, context: UsageContext, formatter: SyncFormatter): Future[RemoteSyncDataCache.FetchResponse[SyncContext, InteractionVariableHistorySerialized]] = {
     val resMap: Map[SyncContext, InteractionVariableHistorySerialized] = (0 until storage.length).flatMap(i =>
       val browserKey = storage.key(i)
       val browserValue = storage.getItem(browserKey)
@@ -88,17 +107,6 @@ object LocalStorageSync extends SyncDestination {
 
   override def isLocal: Boolean = true
 
-  def fetchAllRaw(logger: Logger): Map[String, String] = {
-    (0 until storage.length).map(i =>
-      val browserKey = storage.key(i)
-      val browserValue = storage.getItem(browserKey)
-      browserKey -> browserValue
-    ).toMap
-  }
 
-  def storeRaw(logger: Logger, key: String, value: String): Unit = {
-    storage.setItem(key.toString, value.toString)
-  }
-
-
+  override def toString: String = s"LocalStorageSync(${maxValueCharakterSize})"
 }

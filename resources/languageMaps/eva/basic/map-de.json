@@ -10,7 +10,6 @@
   "settings": "Einstellungen",
   "logout": "Abmelden",
   "switchUser": "Benutzer wechseln",
-  "workbookfooterprivacyinfo": "Datenschutzhinweis: Bei Nutzung eines Online-Accounts werden alle Aufgaben-Interaktionen in einer Datenbank gespeichert! Kontakt: LS Informatik und Gesellschaft, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin)",
   "previousSection": "← Vorheriger Abschnitt",
   "nextSection": "Nächster Abschnitt →",
   "checkSolution": "Lösung prüfen",
@@ -50,18 +49,5 @@
   "syncInfoTooltipWarning": "Synchronisiert zu keiner der_ Quellen",
   "TextEditorPlaceholder": "Text hier eingeben",
   "MessengerEditorSendMessageButton": "Absenden",
-  "MessengerEditorInputPlaceholder": "Frage hier eingeben",
-  "titleLoginRegister": "Registrierung",
-  "titleLoginContinue": "Weitermachen",
-  "titleLoginStartOnline": "Online Registrierung",
-  "titleLoginStartLocal": "Lokaler Account",
-  "titleLoginContinueOnline": "Online Anmelden",
-  "titleLoginContinueLocal": "Fortschrittsdatei Hochladen",
-  "buttonLocalLogin": "Lokale Nutzung Starten",
-  "buttonLocalUpload": "Hochladen",
-  "buttonRequestToken": "Login-Token an Mail senden",
-  "buttonRequestLogin": "Login mit Mail und Token",
-  "buttonRequestRegistration": "Registrieren",
-  "insertTokenPlaceholder": "Login Token hierher kopieren",
-  "titleLoginPage": "Login Seite"
+  "MessengerEditorInputPlaceholder": "Frage hier eingeben"
 }

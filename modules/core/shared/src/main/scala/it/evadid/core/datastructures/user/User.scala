@@ -8,20 +8,7 @@ import java.util.HexFormat
 
 object User {
 
-  /*object UserToken {
-    val empty = UserToken("", LocalDateTime.now())
-
-
-
-  }
-
-
-  case class UserToken(token: String, expires: LocalDateTime) {
-    def toCode(user: User): String = token + "#" + user.id
-  }*/
-
   case class SingleAccessToken(token: String, expires: LocalDateTime) {
-
   }
 
   object SingleAccessToken {
@@ -37,9 +24,24 @@ object User {
     def apply(token: String): SingleAccessToken = SingleAccessToken(token, LocalDateTime.now())
   }
 
-
   case class UserInDatabase(user: User, configJson: String) {
 
+  }
+
+  def deriveNameFromMail(mail: String): Option[String] = {
+    val parts = mail.split("@")
+    if (parts.size < 2) None else {
+      val subSplitted = parts.head.split("[.-_]")
+      if (subSplitted.size < 2) None
+      else Some(subSplitted.map(_.toLowerCase.capitalize).mkString(" "))
+    }
+  }
+
+  def deriveHuMail(name: String): Option[String] = {
+    val cleaned = cleanUserName(name).toLowerCase
+    if (cleaned.split(" ").length < 2) None else {
+      Some(cleaned.replaceAll(" ", ".") + "@student.hu-berlin.de")
+    }
   }
 
   def cleanUserName(name: String): String = {
@@ -80,6 +82,10 @@ case class User(name: String, id: String, mail: String) extends Person {
   override def role: SenderRole = SenderRole.USER
 
   override def abbreviation: Option[String] = Some(initials)
+
+  override def toString: String = {
+    s"${name} (${mail}@${id}"
+  }
 
 }
 

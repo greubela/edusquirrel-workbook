@@ -1,5 +1,6 @@
 package it.evadid.workbook.interaction.sync
 
+import it.evadid.workbook.interaction.sync.UpdateImportance.{DEFAULT, MAJOR, MINOR}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 
 
@@ -21,6 +22,16 @@ object SyncStrategy {
     override def selectEventsToSync[T](history: InteractionVariableHistory[T]): InteractionVariableHistory[T] = history.map(_.filter(e => desired.contains(e.updateImportance)))
 
     override val toString: String = "SYNC_ONLY(" + desired.mkString(", ") + ")"
+  }
+
+  object SYNC_LAST_AND_MAJOR extends SyncStrategy {
+    override def selectEventsToSync[T](history: InteractionVariableHistory[T]): InteractionVariableHistory[T] = {
+      val lastEvent = history.events.filter(_.updateImportance != DEFAULT).maxByOption(_.timestamp)
+      val majorEvents = history.events.filter(_.updateImportance == MAJOR)
+      InteractionVariableHistory(majorEvents ++ lastEvent)
+    }
+
+    override val toString: String = "SYNC_LAST_AND_MAJOR"
   }
 
   object SYNC_LAST extends SyncStrategy {

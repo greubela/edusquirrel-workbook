@@ -6,22 +6,26 @@ import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.clients.{ExecutionClient, RemoteExecutionConfig}
 import it.evadid.homepage.control.model.FullInfo
-import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServer, LocalStorageSync}
-import it.evadid.workbook.interaction.sync.SyncStrategy.SYNC_MAJOR
-import it.evadid.workbook.interaction.sync.{SyncFormatter, SyncInformation, SyncStrategy}
+import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServer, LocalIndexedDbStorageSync, LocalStorageSync}
+import it.evadid.workbook.interaction.sync.SyncStrategy.{SYNC_LAST, SYNC_LAST_AND_MAJOR, SYNC_MAJOR}
+import it.evadid.workbook.interaction.sync.{SyncFormatter, SyncInformation}
 import upickle.{ReadWriter, macroRW}
 
 import scala.util.Random
 
 object HomepageDefaults {
 
+  private val localIndexStorage: SyncInformation = SyncInformation(LocalIndexedDbStorageSync.instance, SYNC_LAST_AND_MAJOR, SyncFormatter.RichInteractionVariableFormatter())
 
-  def defaultSyncLocation: List[SyncInformation] = defaultSyncLocations.map(_._2)
+  val useDefaultLocalSyncLocations: List[SyncInformation] = List(localIndexStorage)
+
+  def useDefaultOnlineSyncLocations: List[SyncInformation] = defaultSyncLocations.filter(_._1 != "localStorage").map(_._2)
 
   private lazy val defaultSyncLocations: List[(String, SyncInformation)] = List(
-    "local" -> SyncInformation(LocalStorageSync, SyncStrategy.SYNC_LAST, SyncFormatter.serializeHistory),
+    "localStorage" -> SyncInformation(LocalStorageSync(50000), SYNC_LAST, SyncFormatter.serializeHistory),
     "db1" -> SyncInformation(DatabaseSyncViaBackendServer("db_332371_12", true), SYNC_MAJOR, SyncFormatter.RichInteractionVariableFormatter()),
-    "db2" -> SyncInformation(DatabaseSyncViaBackendServer("db_332371_12", false), SYNC_MAJOR, SyncFormatter.RichInteractionVariableFormatter())
+    "db2" -> SyncInformation(DatabaseSyncViaBackendServer("db_332371_12", false), SYNC_MAJOR, SyncFormatter.RichInteractionVariableFormatter()),
+    "localIndexedDb" -> localIndexStorage
   )
 
   lazy val defaultSyncLocationSerializer: Serializer[SyncInformation] = new Serializer[SyncInformation] {
@@ -70,7 +74,12 @@ case class HomepageDefaults(fullInfo: FullInfo) {
 
   def backendExecutorWithCredentials(signedToken: Option[SignedToken]): ExecutionClient = defaultBackend.executor(signedToken)
 
-  def backendExecutor: ExecutionClient = backendExecutorWithCredentials(fullInfo.homepageInfoNow().userInfo.flatMap(_.token))
+  def backendExecutor: ExecutionClient = {
+    val fullInfoToken = fullInfo.homepageInfoNow().userInfo.flatMap(_.token)
+    val localStorageToken = fullInfo.usageControl.tryParsingExistingUser().flatMap(_.token)
+    val useToken: Option[SignedToken] = (fullInfoToken ++ localStorageToken).headOption
+    backendExecutorWithCredentials(useToken)
+  }
 
   private lazy val rnd: List[Int] = 1.to(3).map(_ => Random().nextInt(10000) + 10000).toList
   /*

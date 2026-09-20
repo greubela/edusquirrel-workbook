@@ -1,0 +1,25 @@
+{
+  "titleLoginRegister": "First Time? Register Here!",
+  "titleLoginContinue": "Continue Working Here!",
+  "titleLoginStartOnline": "Online Registration",
+  "titleLoginStartLocal": "Local Account",
+  "titleLoginContinueOnline": "Online Log In",
+  "titleLoginContinueLocal": "Upload Progress File",
+  "buttonRequestToken": "Send Login Token via Mail",
+  "buttonLocalLogin": "Start Using Locally",
+  "buttonRequestLogin": "Login with E-Mail and Token",
+  "buttonLocalUpload": "Upload Session Data",
+  "buttonRequestRegistration": "Register",
+  "insertTokenPlaceholder": "Paste Login Token Here",
+  "titleLoginPage": "Login Page",
+  "onlineBenefit1": "✓ Your process is backed up online",
+  "onlineBenefit2": "✓ Access to limited LLM functions",
+  "onlineBenefit3": "✓ Share progress with a teacher",
+  "localBenefit1": "✓ No data leaves your device",
+  "localBenefit2": "✗ No access to LLM feedback",
+  "localBenefit3": "✗Loose Progress not Downloaded",
+  "privacyFooterNoLogin": "Privacy Information: You are currently not logged in. There is no information stored about you or your usage. This website does not use any trackers or third-party cookies. Contact: Chair Computer Science and Society, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin, Germany)",
+  "privacyFooterLocalLogin": "Privacy Information: You are currently using a local account. All interactions are stored exclusively within your browser. This website does not use any trackers or third-party cookies. Contact: Chair Computer Science and Society, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin, Germany)",
+  "privacyFooterOnlineLogin": "Privacy Information: You are currently using an online account. Your interactions are stored in _ locations _. If you do not want this, use a local account instead. This website does not use any trackers or third-party cookies. Contact: Chair Computer Science and Society, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin, Germany)"
+
+}

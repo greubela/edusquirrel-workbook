@@ -2,24 +2,47 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
-import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.core.datastructures.user.User.SingleAccessToken
+import it.evadid.core.datastructures.user.{AllUserInfo, User}
 import it.evadid.distribution.commandTypes.UserCommands
 import it.evadid.distribution.commandTypes.UserCommands.AuthMailRequest
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
-import it.evadid.homepage.workbook.syncDestination.LocalStorageSync
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.interaction.sync.{SyncFormatter, SyncInformation, SyncStrategy}
 import org.scalajs.dom.HTMLInputElement
 
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 case class HtmlLoginElement() extends HtmlAppElement {
+
+  private given ExecutionContext = ExecutionContext.global
 
   private val logger: Logger = fullInfo.loggerSystemInfo.uiAndDomLogger
 
   private val loginSucceededPromise: Promise[AllUserInfo] = Promise()
+
+  private val nameVar: Var[String] = {
+    val default = fullInfo.usageControl.tryParsingExistingUser().map(_.user.name).getOrElse("Unknown User")
+    Var[String](default)
+  }
+  private val emailVar: Var[String] = {
+    val default = fullInfo.usageControl.tryParsingExistingUser().map(_.user.mail).getOrElse("unknown.user@student.hu-berlin.de")
+    Var[String](default)
+  }
+
+  nameVar.signal.foreach(newValue => {
+    val derived = User.deriveHuMail(newValue)
+    if (derived.isDefined && emailVar.now() != derived.get) {
+      emailVar.set(derived.get)
+    }
+  })(using unsafeWindowOwner)
+
+  emailVar.signal.foreach(newValue => {
+    val derived = User.deriveNameFromMail(newValue)
+    if (derived.isDefined && nameVar.now() != derived.get) {
+      nameVar.set(derived.get)
+    }
+  })(using unsafeWindowOwner)
 
   def loginSucceededFuture: Future[AllUserInfo] = loginSucceededPromise.future
 
@@ -46,34 +69,34 @@ case class HtmlLoginElement() extends HtmlAppElement {
       cls := "container-login",
       div(
         cls := "container-login-section section-register",
-        titleElement("basic/titleLoginRegister", 1),
+        titleElement("login/titleLoginRegister", 1),
         div(
           cls := "container-login-body",
           div(
             cls := "login-area",
-            titleElement("basic/titleLoginStartOnline", 2),
+            titleElement("login/titleLoginStartOnline", 2),
             onlineStartBody
           ),
           div(
             cls := "login-area",
-            titleElement("basic/titleLoginStartLocal", 2),
+            titleElement("login/titleLoginStartLocal", 2),
             localStartBody
           ),
         )
       ),
       div(
         cls := "container-login-section section-continue",
-        titleElement("basic/titleLoginContinue", 1),
+        titleElement("login/titleLoginContinue", 1),
         div(
           cls := "container-login-body",
           div(
             cls := "login-area",
-            titleElement("basic/titleLoginContinueOnline", 2),
+            titleElement("login/titleLoginContinueOnline", 2),
             onlineContinueBody
           ),
           div(
             cls := "login-area",
-            titleElement("basic/titleLoginContinueLocal", 2),
+            titleElement("login/titleLoginContinueLocal", 2),
             localContinueBody
           ),
         )
@@ -85,22 +108,16 @@ case class HtmlLoginElement() extends HtmlAppElement {
 
   private val onlineStartBody: List[Element] = {
 
-    val (nameInput, nameVar) = createTextInput("No Name", "basic/insertNamePlaceholder")
-    val (emailInput, emailVar) = createEmailInput()
-
-    def onRegistrationRequested(): Unit = {
-      fullInfo.usageControl.tryRegistration(nameVar.now(), emailVar.now())
-    }
-
-    List(
+    List[Element](
       ul(
-        li("✓ Your process is backed up online"),
-        li("✓ Access to limited LLM functions"),
-        li("✓ Share progress with a teacher")
+        li(text <-- laminarHelper.plaintextStringSignal("login/onlineBenefit1")),
+        li(text <-- laminarHelper.plaintextStringSignal("login/onlineBenefit2")),
+        li(text <-- laminarHelper.plaintextStringSignal("login/onlineBenefit3")),
       ),
-      nameInput,
-      emailInput,
-      HtmlButtonElement.withTextLabel("basic/buttonRequestRegistration", _ => onRegistrationRequested()).getDomElement()
+
+      createTextInput(nameVar, "login/insertNamePlaceholder"),
+      createEmailInput(emailVar, "login/enterMail"),
+      HtmlButtonElement.withTextLabel("login/buttonRequestRegistration", _ => fullInfo.usageControl.tryOnlineRegistration(nameVar.now(), emailVar.now())).getDomElement()
     )
   }
 
@@ -108,19 +125,13 @@ case class HtmlLoginElement() extends HtmlAppElement {
 
   private val localStartBody: List[Element] = {
 
-    def onLocalLoginRequested(): Unit = {
-      val onlyLocalSync = List(SyncInformation(LocalStorageSync, SyncStrategy.SYNC_LAST, SyncFormatter.serializeHistory))
-      val aui = AllUserInfo.createNewUser("Anonymous User", "no-reply@evadid.it", onlyLocalSync)
-      fullInfo.usageControl.changeUser(Some(aui))
-    }
-
     List(
       ul(
-        li("✓ No data leaves your device"),
-        li("✗ No access to LLM feedback"),
-        li("✗ Loose Progress not Downloaded"),
+        li(text <-- laminarHelper.plaintextStringSignal("login/localBenefit1")),
+        li(text <-- laminarHelper.plaintextStringSignal("login/localBenefit2")),
+        li(text <-- laminarHelper.plaintextStringSignal("login/localBenefit3")),
       ),
-      HtmlButtonElement.withTextLabel("basic/buttonLocalLogin", _ => onLocalLoginRequested()).getDomElement()
+      HtmlButtonElement.withTextLabel("login/buttonLocalLogin", _ => fullInfo.usageControl.tryLocalRegistration()).getDomElement()
     )
   }
 
@@ -130,20 +141,19 @@ case class HtmlLoginElement() extends HtmlAppElement {
 
     List(
       uploadInput,
-      HtmlButtonElement.withTextLabel("basic/buttonLocalUpload", _ => uploadInput.ref.click()).getDomElement()
+      HtmlButtonElement.withTextLabel("login/buttonLocalUpload", _ => uploadInput.ref.click()).getDomElement()
     )
   }
 
   private def createFileInput(): Element = {
     input(
-      label(text <-- laminarHelper.plaintextStringSignal("basic/uploadFile")),
+      label(text <-- laminarHelper.plaintextStringSignal("login/uploadFile")),
       typ := "file"
     )
   }
 
-  private def createTextInput(defaultValue: String, labelId: String): (Element, Var[String]) = {
-    val underlyingVar = Var[String](defaultValue)
-    val element = input(
+  private def createTextInput(underlyingVar: Var[String], labelId: String): Element = {
+    input(
       cls := "login-name-input",
       label(text <-- laminarHelper.plaintextStringSignal(labelId)),
       placeholder <-- laminarHelper.plaintextStringSignal(labelId),
@@ -153,17 +163,14 @@ case class HtmlLoginElement() extends HtmlAppElement {
         onInput.mapToValue --> underlyingVar.writer
       )
     )
-    val res = (element, underlyingVar)
-    res
   }
 
 
-  private def createEmailInput(): (Element, Var[String]) = {
-    val underlyingVar = Var[String]("test@student.hu-berlin.de")
-    val element = input(
+  private def createEmailInput(underlyingVar: Var[String], labelId: String): Element = {
+    input(
       cls := "login-email-input",
-      label(text <-- laminarHelper.plaintextStringSignal("basic/enterMail")),
-      placeholder <-- laminarHelper.plaintextStringSignal("basic/enterMail"),
+      label(text <-- laminarHelper.plaintextStringSignal(labelId)),
+      placeholder <-- laminarHelper.plaintextStringSignal(labelId),
       required := true,
       typ := "email",
       controlled(
@@ -171,14 +178,13 @@ case class HtmlLoginElement() extends HtmlAppElement {
         onInput.mapToValue --> underlyingVar.writer
       )
     )
-    (element, underlyingVar)
   }
 
 
   private val onlineContinueBody: List[Element] = {
 
-    val (emailInput, emailVar) = createEmailInput()
-    val (tokenInput, tokenVar) = createTextInput("", "basic/insertTokenPlaceholder")
+    val tokenVar = Var[String]("")
+    val tokenInput = createTextInput(tokenVar, "login/insertTokenPlaceholder")
 
     def onTokenRequested(): Unit = {
       val email = emailVar.now()
@@ -193,10 +199,10 @@ case class HtmlLoginElement() extends HtmlAppElement {
     }
 
     List(
-      emailInput,
-      HtmlButtonElement.withTextLabel("basic/buttonRequestToken", _ => onTokenRequested()).getDomElement(),
+      createEmailInput(emailVar, "login/enterMail"),
+      HtmlButtonElement.withTextLabel("login/buttonRequestToken", _ => onTokenRequested()).getDomElement(),
       tokenInput,
-      HtmlButtonElement.withTextLabel("basic/buttonRequestLogin", _ => onLoginRequested()).getDomElement()
+      HtmlButtonElement.withTextLabel("login/buttonRequestLogin", _ => onLoginRequested()).getDomElement()
     )
   }
 
