@@ -4,10 +4,15 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
+import it.evadid.workbook.elements.interactionElements.TurtleStitch.TurtleStitchRecreateShapeInteraction
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.{refRW, refRWL}
 import upickle.{ReadWriter, default, macroRW}
 
 object WorkbookElementFactory {
+
+  val knownFactories: Map[String, WorkbookElementFactory => WorkbookElement] = Map(
+    TurtleStitchRecreateShapeInteraction.getClass.getSimpleName -> TurtleStitchRecreateShapeInteraction.fromFactory
+  )
 
   val prefix = "WorkbookElementFactory"
 
