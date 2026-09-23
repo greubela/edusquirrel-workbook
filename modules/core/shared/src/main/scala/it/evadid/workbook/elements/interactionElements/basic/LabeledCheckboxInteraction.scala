@@ -16,3 +16,8 @@ case class LabeledCheckboxInteraction(override val elementId: String, checkboxLa
   override val toSerializableType: WorkbookElementFactory = toFactoryBase.withContentIdAdded("content", checkboxLabel)
 
 }
+
+object LabeledCheckboxInteraction {
+  def fromFactory(factory: WorkbookElementFactory): LabeledCheckboxInteraction =
+    LabeledCheckboxInteraction(factory.elementId, factory.getElementAsContentId("content"))
+}

@@ -11,8 +11,11 @@ trait SlideshowPanel extends WorkbookDisplayElement {
 }
 
 object SlideshowPanel {
+  object TwoColumnImagePanel { def fromFactory(f: WorkbookElementFactory): TwoColumnImagePanel = TwoColumnImagePanel(f.elementId, f.getElementAsSerializedElement("image").asInstanceOf[ImageElement], f.getElementAsContentId("leftLabel"), f.getElementAsContentId("rightLabel"), f.getElementAsContentId("leftBody"), f.getElementAsContentId("rightBody")) }
+  object ImageSlide { def fromFactory(f: WorkbookElementFactory): ImageSlide = ImageSlide(f.elementId, f.getElementAsSerializedElement("image").asInstanceOf[ImageElement], f.getElementAsContentId("titleLabel"), f.getElementAsContentId("description")) }
 
   case class TwoColumnImagePanel(
+                                  override val elementId: String,
                                   image: ImageElement,
                                   leftLabel: LanguageMapContentId,
                                   rightLabel: LanguageMapContentId,
@@ -20,19 +23,17 @@ object SlideshowPanel {
                                   rightBody: LanguageMapContentId
                                 ) extends SlideshowPanel {
 
-    override val elementId: String = ???
-
-    override def toSerializableType: WorkbookElementFactory = ???
+    override def toSerializableType: WorkbookElementFactory = toFactoryBase.withSerializedElementAdded("image", image)
+      .withContentIdAdded("leftLabel", leftLabel).withContentIdAdded("rightLabel", rightLabel).withContentIdAdded("leftBody", leftBody).withContentIdAdded("rightBody", rightBody)
   }
 
   case class ImageSlide(
+                         override val elementId: String,
                          image: ImageElement,
                          titleLabel: LanguageMapContentId,
                          description: LanguageMapContentId
                        ) extends SlideshowPanel {
-    override val elementId: String = ???
-
-    override def toSerializableType: WorkbookElementFactory = ???
+    override def toSerializableType: WorkbookElementFactory = toFactoryBase.withSerializedElementAdded("image", image).withContentIdAdded("titleLabel", titleLabel).withContentIdAdded("description", description)
   }
 
 

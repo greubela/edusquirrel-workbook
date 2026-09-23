@@ -19,5 +19,10 @@ case class WorkbookSection(
 
   override val elementId: String = sectionId
 
-  override def toSerializableType: WorkbookElementFactory = ???
+  override def toSerializableType: WorkbookElementFactory = toFactoryBase.withContentIdAdded("title", sectionTitle)
+    .withSerializedElementsAdded("content", sectionContent)
+    .withSerializedElementsAdded("required", sectionsRequiredBefore)
+    .withSerializedElementsAdded("recommended", sectionsRecommendedBefore)
 }
+
+object WorkbookSection { def fromFactory(f: WorkbookElementFactory): WorkbookSection = WorkbookSection(f.elementId, f.getElementAsContentId("title"), f.getElementAsSerializedElements("content"), f.getElementAsSerializedElements("required").map(_.asInstanceOf[WorkbookSection]), f.getElementAsSerializedElements("recommended").map(_.asInstanceOf[WorkbookSection])) }

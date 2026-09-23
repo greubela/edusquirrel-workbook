@@ -12,7 +12,7 @@ case class Slideshow(override val elementId: String, panels: List[SlideshowPanel
 
   override val serializerInteractionContent: Serializer[SlideshowState] = defaultValue.serializer()
 
-  override def toSerializableType: WorkbookElementFactory = ???
+  override def toSerializableType: WorkbookElementFactory = toFactoryBase.withSerializedElementsAdded("panels", panels)
 }
 
 /*
@@ -280,3 +280,4 @@ case class SlideDeckExercise(
   )
 }
 */
+object Slideshow { def fromFactory(f: WorkbookElementFactory): Slideshow = Slideshow(f.elementId, f.getElementAsSerializedElements("panels").map(_.asInstanceOf[SlideshowPanel])) }

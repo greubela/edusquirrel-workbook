@@ -6,8 +6,7 @@ import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookStructureElemen
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 
 object ExerciseContainer {
-
-
+  def fromFactory(f: WorkbookElementFactory): ExerciseContainer = ExerciseContainer(f.elementId, f.getElementAsContentId("title"), f.getElementAsSerializedElements("content"))
 }
 
 case class ExerciseContainer(override val elementId: String, containerTitle: LanguageMapContentId, containerContent: List[WorkbookElement]) extends WorkbookStructureElement[WorkbookElement] {
@@ -19,6 +18,6 @@ case class ExerciseContainer(override val elementId: String, containerTitle: Lan
   override def toSerializableType: WorkbookElementFactory = {
     toFactoryBase
       .withContentIdAdded("title", containerTitle)
-      .withElementsAdded("contentRefs", containerContent)
+      .withSerializedElementsAdded("content", containerContent)
   }
 }
