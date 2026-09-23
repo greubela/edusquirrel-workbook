@@ -13,6 +13,6 @@ case class LabeledCheckboxInteraction(override val elementId: String, checkboxLa
 
   override val serializerInteractionContent: Serializer[Boolean] = Serializer.booleanIO
 
-  override def toSerializableType: WorkbookElementFactory = super.toFactoryBase.withContentIdAdded("content", checkboxLabel)
+  override val toSerializableType: WorkbookElementFactory = toFactoryBase.withContentIdAdded("content", checkboxLabel)
 
 }

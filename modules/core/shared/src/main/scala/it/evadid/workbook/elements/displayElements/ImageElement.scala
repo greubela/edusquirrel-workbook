@@ -4,6 +4,7 @@ import it.evadid.core.datastructures.file.{CopyrightInfo, FileDescription}
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_TYPE
 import it.evadid.workbook.abstractions.WorkbookDisplayElement
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 
 sealed trait ImageElement extends WorkbookDisplayElement {
 
@@ -19,6 +20,9 @@ object ImageElement {
 
   case class FileBasedImageElement(location: FileDescription) extends ImageElement {
 
+    override val elementId: String = ???
+
+    override def toSerializableType: WorkbookElementFactory = ???
   }
 
   case class LanguageMapBasedImageElement(
@@ -28,6 +32,9 @@ object ImageElement {
                                          ) extends ImageElement {
 
 
+    override val elementId: String = ???
+
+    override def toSerializableType: WorkbookElementFactory = ???
   }
 
 }

@@ -27,6 +27,6 @@ case class TurtleStitchRecreateShapeInteraction(
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
-  override def toSerializableType: WorkbookElementFactory =
-    super.toFactoryBase.withElementAdded("filenameRelToResources", filenameRelToResources)
+  override val toSerializableType: WorkbookElementFactory =
+    toFactoryBase.withElementAdded("filenameRelToResources", filenameRelToResources)
 }

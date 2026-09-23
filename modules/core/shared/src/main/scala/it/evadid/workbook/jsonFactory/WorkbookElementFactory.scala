@@ -5,8 +5,8 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.interactionElements.TurtleStitch.TurtleStitchRecreateShapeInteraction
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory.{refRW, refRWL}
-import upickle.{ReadWriter, default, macroRW}
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory.{refRW, refRWL, *}
+import upickle.{ReadWriter, default, macroRW, readwriter}
 
 object WorkbookElementFactory {
 
@@ -37,11 +37,14 @@ object WorkbookElementFactory {
     }
   }*/
 
+  private given refRW: default.ReadWriter[WorkbookElementReference] = macroRW
+  //private given refRWL: default.ReadWriter[List[WorkbookElementReference]] = macroRW
 
-  private val refRW: default.ReadWriter[WorkbookElementReference] = macroRW
-  private val refRWL: default.ReadWriter[List[WorkbookElementReference]] = macroRW
+  private given refRWL: ReadWriter[List[WorkbookElementReference]] =
+    readwriter[List[WorkbookElementReference]].bimap[List[WorkbookElementReference]](_.toSeq, _.toList)
 
-  val facRW: default.ReadWriter[WorkbookElementFactory] = macroRW
+
+  given facRW: default.ReadWriter[WorkbookElementFactory] = macroRW
   val serializer: Serializer[WorkbookElementFactory] = Serializer.fromUpickleJson(facRW)
 }
 
@@ -81,11 +84,11 @@ case class WorkbookElementFactory(
   }
 
   def withReferenceAdded(key: String, workbookElement: WorkbookElementReference): WorkbookElementFactory = {
-    withElementAdded(key, workbookElement)(refRW)
+    withElementAdded(key, workbookElement)(using refRW)
   }
 
   def withReferencesAdded(key: String, workbookElement: Seq[WorkbookElementReference]): WorkbookElementFactory = {
-    withElementAdded(key, workbookElement.toList)(refRWL)
+    withElementAdded(key, workbookElement.toList)(using refRWL)
   }
 
 

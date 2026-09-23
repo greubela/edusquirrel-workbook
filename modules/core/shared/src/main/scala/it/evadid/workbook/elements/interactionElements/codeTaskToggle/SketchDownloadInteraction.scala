@@ -3,6 +3,7 @@ package it.evadid.workbook.elements.interactionElements.codeTaskToggle
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 
 case class SketchDownloadInteraction(
                                       override val elementId: String,
@@ -18,4 +19,5 @@ case class SketchDownloadInteraction(
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
+  override def toSerializableType: WorkbookElementFactory = ???
 }

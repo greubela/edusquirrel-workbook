@@ -13,26 +13,27 @@ import it.evadid.workbook.elements.interactionElements.basic.MessagingInteractio
 import it.evadid.workbook.elements.structureElements.Workbook
 import it.evadid.workbook.interaction.sync.SyncControl
 import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import upickle.default.{ReadWriter, macroRW}
 
 import scala.concurrent.*
 import scala.util.{Failure, Success}
 
 case class GptInteractionElement(
-                                  id: String,
+                                  override val elementId: String,
                                   underlyingTextInteraction: WorkbookInteractionElement[String],
                                   exerciseText: LanguageMapContentId,
                                   scaffoldingHints: List[LanguageMapContentId],
                                   gradingCriteria: List[LanguageMapContentId]
                                 ) extends WorkbookDisplayElement {
-  println("[WARN] creating messaging interaction for id '" + id + "' with no grading!")
+  println("[WARN] creating messaging interaction for id '" + elementId + "' with no grading!")
 
   private val allContentIds: Set[LanguageMapContentId] = scaffoldingHints.toSet ++ gradingCriteria.toSet ++ List(exerciseText)
-  private val scaffoldingInteraction: MessagingInteraction = MessagingInteraction(id + "_scaffoldingMessenger")
+  private val scaffoldingInteraction: MessagingInteraction = MessagingInteraction(elementId + "_scaffoldingMessenger")
   lazy val scaffoldingInteractionOp: Option[MessagingInteraction] = if (scaffoldingHints.nonEmpty) Some(scaffoldingInteraction) else None
   override lazy val childrenOfThisElement: List[WorkbookElement] = scaffoldingInteractionOp.toList
 
-  lazy val serialized: SerializedGptInteractionElement = SerializedGptInteractionElement.fromElement(this)
+//  lazy val serialized: SerializedGptInteractionElement = SerializedGptInteractionElement.fromElement(this)
 
   private given ExecutionContext = ExecutionContext.global
 
@@ -45,7 +46,7 @@ case class GptInteractionElement(
         if (map.keySet.size != allContentIds.size) syncControl.syncLogger.logWarn("Could not resolve all content ids. Resolved: " + map.keySet.mkString(", ") + " not: " + allContentIds.filter(!map.contains(_)).mkString(", "))
         Success(initScaffoldingIfEmpty(curUser, syncControl, map, lang))
       case Failure(err) =>
-        syncControl.syncLogger.logExceptionWarn(s"GptInteractionElement: failure while resolving language map strings for $id, init will be ignored now!", err)
+        syncControl.syncLogger.logExceptionWarn(s"GptInteractionElement: failure while resolving language map strings for $elementId, init will be ignored now!", err)
         Success(false)
     }
   }
@@ -59,12 +60,13 @@ case class GptInteractionElement(
       val curInput = underlyingTextInteraction.interactionVariable.currentValue
       val msg: MessengerModel = MessengerModel.getScaffoldingInitMessage(curUser, exText, curInput, scaffHints, resolvedLanguage)
       val msgSc: MessengerModelScaffolding = MessengerModelScaffolding(msg)
-      syncControl.syncLogger.logInfo(s"GptInteractionElement: setting scaffolding messenger for $id to init state (was empty before, now ${msgSc.messengerModel.messages.size} messages)")
+      syncControl.syncLogger.logInfo(s"GptInteractionElement: setting scaffolding messenger for $elementId to init state (was empty before, now ${msgSc.messengerModel.messages.size} messages)")
       scaffoldingInteraction.interactionVariable.setStateFromUserInteraction(syncControl, msgSc, MAJOR)
       msg.messages.exists(_.author.role == USER)
     }
 
 
+  override def toSerializableType: WorkbookElementFactory = ???
 }
 
 
@@ -106,7 +108,7 @@ case class SerializedGptInteractionElement(
   }
 
 }
-
+/*
 object SerializedGptInteractionElement {
 
   private given languageMapContentIdReadWriter: ReadWriter[LanguageMapContentId] =
@@ -116,11 +118,11 @@ object SerializedGptInteractionElement {
 
   def fromElement(element: GptInteractionElement): SerializedGptInteractionElement =
     SerializedGptInteractionElement(
-      element.id,
+      element.elementId,
       element.underlyingTextInteraction.elementId,
       element.exerciseText,
       element.scaffoldingHints,
       element.gradingCriteria
     )
 
-}
+}*/

@@ -4,6 +4,7 @@ import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 
 sealed trait ReorderInteraction[T] extends WorkbookInteractionElement[ReorderInteractionState[T]] {
   val elements: List[T]
@@ -28,6 +29,8 @@ object ReorderInteraction {
     }
     override val serializerInteractionContent: Serializer[ReorderInteractionState[String]] = defaultValue.serializer
     override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+
+    override def toSerializableType: WorkbookElementFactory = ???
   }
 
   case class ReorderMapIdInteraction(override val elementId: String, ids: List[LanguageMapContentId], seed: Long = 0) extends ReorderInteraction[LanguageMapContentId] {
@@ -40,6 +43,8 @@ object ReorderInteraction {
     override val serializerInteractionContent: Serializer[ReorderInteractionState[LanguageMapContentId]] = defaultValue.serializer
 
     override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+
+    override def toSerializableType: WorkbookElementFactory = ???
   }
 
 

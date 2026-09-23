@@ -4,6 +4,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 
 case class CodeTaskToggleInteraction(
                                       override val elementId: String,
@@ -25,4 +26,5 @@ case class CodeTaskToggleInteraction(
 
   override lazy val allContainedInteractions: List[WorkbookInteractionElement[?]] = List(this, reorder)
 
+  override def toSerializableType: WorkbookElementFactory = ???
 }

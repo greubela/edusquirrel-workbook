@@ -2,6 +2,7 @@ package it.evadid.workbook.elements.interactionElements.slideshow
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 
 case class Slideshow(override val elementId: String, panels: List[SlideshowPanel]) extends WorkbookInteractionElement[SlideshowState] {
 
@@ -11,6 +12,7 @@ case class Slideshow(override val elementId: String, panels: List[SlideshowPanel
 
   override val serializerInteractionContent: Serializer[SlideshowState] = defaultValue.serializer()
 
+  override def toSerializableType: WorkbookElementFactory = ???
 }
 
 /*

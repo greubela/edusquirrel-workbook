@@ -3,6 +3,7 @@ package it.evadid.workbook.elements.displayElements
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement}
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.WorkbookLabel
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 
 case class LabeledWorkbookElement[T <: WorkbookElement](
                                                          baseElement: WorkbookElement,
@@ -11,6 +12,9 @@ case class LabeledWorkbookElement[T <: WorkbookElement](
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List(baseElement)
 
+  override val elementId: String = ???
+
+  override def toSerializableType: WorkbookElementFactory = ???
 }
 
 object LabeledWorkbookElement {
