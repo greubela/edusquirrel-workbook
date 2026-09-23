@@ -4,6 +4,7 @@ import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.{WorkbookInteractionElement, WorkbookStructureElement, WorkbookStructuringType}
 import it.evadid.workbook.abstractions.WorkbookStructuringType.{EXERCISE_CONTAINER, WORKBOOK}
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 
 case class Workbook(
                      workbookId: String,
@@ -20,5 +21,8 @@ case class Workbook(
   lazy val allContainedInteractionsById: Map[String, WorkbookInteractionElement[?]] =
     allContainedInteractions.map(interaction => interaction.elementId -> interaction).toMap
 
+  override val elementId: String = workbookId
+
+  override def toSerializableType: WorkbookElementFactory = ???
 }
 

@@ -4,11 +4,9 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.WorkbookStructuringType.EXERCISE_CONTAINER
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookStructureElement, WorkbookStructuringType}
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
-import upickle.{default, macroRW}
 
 object ExerciseContainer {
 
-  val rw: default.ReadWriter[ExerciseContainer] = macroRW
 
 }
 

@@ -3,6 +3,7 @@ package it.evadid.workbook.elements.interactionElements.basic
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 
 /**
  * Describes the kind of numeric value a [[LabeledNumberInteraction]] edits.
@@ -27,4 +28,5 @@ case class LabeledNumberInteraction(
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
   override val serializerInteractionContent: Serializer[String] = Serializer.stringIO
 
+  override def toSerializableType: WorkbookElementFactory = ???
 }

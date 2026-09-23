@@ -4,6 +4,7 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.vm.BeProgram
 import it.evadid.vm.test.BeTestSuite
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 
 import scala.util.Try
 
@@ -18,6 +19,8 @@ case class ProgrammingExercise(
   override val serializerInteractionContent: Serializer[ProgrammingExerciseState] = ProgrammingExercise.StateSerializer
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+
+  override def toSerializableType: WorkbookElementFactory = ???
 }
 
 object ProgrammingExercise {

@@ -25,7 +25,7 @@ sealed trait WorkbookElement extends AutoSerializable[WorkbookElement, WorkbookE
   //def fromFactory(factoryVerifiedType: WorkbookElementFactory): WorkbookElement
 
 
-  protected lazy val toFactoryBase: WorkbookElementFactory = WorkbookElementFactory(
+  protected val toFactoryBase: WorkbookElementFactory = WorkbookElementFactory(
     elementId, this.getClass.getSimpleName, Map()
   )
 

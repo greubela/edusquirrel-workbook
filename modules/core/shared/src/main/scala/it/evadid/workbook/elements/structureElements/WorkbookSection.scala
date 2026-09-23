@@ -3,6 +3,7 @@ package it.evadid.workbook.elements.structureElements
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookStructureElement, WorkbookStructuringType}
 import it.evadid.workbook.abstractions.WorkbookStructuringType.SECTION
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 
 case class WorkbookSection(
                             sectionId: String,
@@ -16,4 +17,7 @@ case class WorkbookSection(
 
   override lazy val structureType: WorkbookStructuringType = SECTION
 
+  override val elementId: String = sectionId
+
+  override def toSerializableType: WorkbookElementFactory = ???
 }

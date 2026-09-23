@@ -3,6 +3,7 @@ package it.evadid.workbook.elements.interactionElements.sortingReasonExercise
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 
 case class SortingReasonInteraction(
                                      override val elementId: String,
@@ -17,6 +18,8 @@ case class SortingReasonInteraction(
   override val serializerInteractionContent: Serializer[SortingReasonInteractionState] = SortingReasonInteractionState.serializer
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+
+  override def toSerializableType: WorkbookElementFactory = ???
 }
 
 case class SortingReasonItem(
