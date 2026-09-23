@@ -1,6 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
 import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.file
 import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
@@ -35,7 +36,9 @@ object HtmlTurtleStitchRendererHelper {
   /*
   * Reusable Card Elements
    */
-  def renderDownloadButton(label: LanguageMapContentId, projectFromFile: FileDescription): Element = {
+  def renderDownloadButton(label: LanguageMapContentId, projectRelativeToResources: String): Element = {
+
+    val projectFromFile: file.FileDescription = fullInfo.contentControl.fileFactory.relativeToResourceFolder(projectRelativeToResources)
     val desiredFilename: String = "TurtleStitch_" + InfoUtil.datetimeFormattedForFilenames() + "_" + projectFromFile.filenameWithExtension
     HtmlButtonElement.withTextLabel(label, event =>
       projectFromFile.loadData().onComplete {
@@ -46,7 +49,7 @@ object HtmlTurtleStitchRendererHelper {
   }
 
   def renderDownloadButton(label: LanguageMapContentId, workbookInteraction: WorkbookInteractionElement[TurtleStitchProjectState]): Element = {
-    val desiredFilename: String = "TurtleStitch_" + InfoUtil.datetimeFormattedForFilenames() + "_" + workbookInteraction.id + ".xml"
+    val desiredFilename: String = "TurtleStitch_" + InfoUtil.datetimeFormattedForFilenames() + "_" + workbookInteraction.elementId + ".xml"
     HtmlButtonElement.withTextLabel(label, event =>
       workbookInteraction.interactionVariable.currentValue.programXml.foreach(f = currentXml => {
         fullInfo.contentControl.downloadToDisc.downloadFile(desiredFilename, currentXml)
@@ -71,7 +74,8 @@ object HtmlTurtleStitchRendererHelper {
     renderProjectCodePreviewWithAsyncXml(xmlSignal)
   }
 
-  def renderProjectPreviewImage(fileDescription: FileDescription): Element = {
+  def renderProjectPreviewImage(filenameRelToResources: String): Element = {
+    val fileDescription: FileDescription = fullInfo.contentControl.fileFactory.relativeToResourceFolder(filenameRelToResources)
     val xmlSignal: AsyncData[Nothing, String] = AsyncData.forFuture(fileDescription.loadData()).map(_.fileDataAsUtf8String)
     renderProjectCodePreviewWithAsyncXml(xmlSignal)
   }

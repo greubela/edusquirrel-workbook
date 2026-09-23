@@ -16,7 +16,7 @@ import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElem
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 
-case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expectedSvgResult: AppSvgElement) extends WorkbookInteractionElement[BeProgram] {
+case class TurtleProgrammingInteraction(fullInfo: FullInfo, elementId: String, expectedSvgResult: AppSvgElement) extends WorkbookInteractionElement[BeProgram] {
 
   val defaultValue: BeProgram = BeProgram(BeProgram.miniProgramExpression())
 
@@ -26,7 +26,7 @@ case class TurtleProgrammingInteraction(fullInfo: FullInfo, id: String, expected
     override def deserialize(str: String): BeProgram = BeProgram.fromPythonString(str)
   }
 
-  override val serializer: Serializer[BeProgram] = io
+  override val serializerInteractionContent: Serializer[BeProgram] = io
 
   private val boundVar: Var[BeProgram] = interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl,UpdateImportance.MAJOR).toAirstreamVar
 

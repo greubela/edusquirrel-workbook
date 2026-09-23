@@ -181,7 +181,7 @@ trait WorkbookFactory {
     items: List[(String, Int, String)]
   ): SortingInteraction = {
     SortingInteraction(
-      id = id,
+      elementId = id,
       fields = fieldKeys.map(LanguageMapContentId.apply),
       items = items.map { case (labelKey, correctFieldIndex, errorKey) =>
         SortingItem(LanguageMapContentId(labelKey), correctFieldIndex, LanguageMapContentId(errorKey))
@@ -195,7 +195,7 @@ trait WorkbookFactory {
     items: List[(String, Int, String, String)]
   ): SortingReasonInteraction = {
     SortingReasonInteraction(
-      id = id,
+      elementId = id,
       fields = fieldKeys.map(LanguageMapContentId.apply),
       items = items.map { case (labelKey, correctFieldIndex, errorKey, reasonPromptKey) =>
         SortingReasonItem(

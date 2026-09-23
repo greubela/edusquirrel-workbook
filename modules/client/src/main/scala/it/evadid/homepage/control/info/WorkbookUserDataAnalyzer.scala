@@ -3,10 +3,10 @@ package it.evadid.homepage.control.info
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
-import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig}
+import it.evadid.core.datastructures.user.*
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
-import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer.SessionData
+import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer.*
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.model.AllWorkbookInfo.*
 import it.evadid.homepage.control.singletons.HomepageDefaults
@@ -74,6 +74,16 @@ case class WorkbookUserDataAnalyzer(logger: Logger, downloadToDisc: DownloadToDi
     downloadToDisc.downloadFile(name, str)
   }
 
+  private def tryToLoad(sessionData: SessionData): Unit = {
+    logger.logInfo("WorkbookUserDataAnalyzer: now trying to load prio session data!")
+    if (sessionData.currentUserInfo.personId == userInfo.user.personId) {
+      workbookInfo.loadedWorkbook.allContainedInteractions.foreach(curInteraction => {
+        sessionData.interactionHistory.foreach(historyTup => if (historyTup._1 == curInteraction.interactionVariable.keyForSerialization) {
+          curInteraction.interactionVariable.updateHistory(_.withAddedEvents(historyTup._2, curInteraction.serializerInteractionContent))
+        })
+      })
+    }
+  }
 
 
   /*

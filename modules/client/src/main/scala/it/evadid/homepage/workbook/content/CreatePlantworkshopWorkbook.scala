@@ -378,7 +378,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
           sensorExploreSketch,
           "sensor-auslesen.ino",
           "download-sensor",
-          codeTask.reorder.id
+          codeTask.reorder.elementId
         )
       )
     )
@@ -461,7 +461,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
           pumpTestSketch,
           "pumpe-test.ino",
           "download-pump",
-          codeTask.reorder.id
+          codeTask.reorder.elementId
         )
       )
     )
@@ -558,7 +558,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
           moistureTestSketch,
           "feuchtigkeit-messen.ino",
           "download-moisture",
-          codeTask.reorder.id
+          codeTask.reorder.elementId
         )
       )
     )
@@ -670,7 +670,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
           combinedSketch,
           "plantworkshop.ino",
           "download-combined",
-          codeTask.reorder.id
+          codeTask.reorder.elementId
         )
       )
     )

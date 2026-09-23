@@ -8,11 +8,11 @@ import it.evadid.workbook.interaction.variable.InteractionVariableState.Interact
 
 import java.time.Duration
 
-case class TextInteraction(id: String) extends WorkbookInteractionElement[String] {
+case class TextInteraction(elementId: String) extends WorkbookInteractionElement[String] {
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
   override val defaultValue: String = ""
-  override val serializer: Serializer[String] = Serializer.stringIO
+  override val serializerInteractionContent: Serializer[String] = Serializer.stringIO
 
 }
 

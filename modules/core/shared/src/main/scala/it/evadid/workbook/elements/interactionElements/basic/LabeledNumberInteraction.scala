@@ -17,7 +17,7 @@ enum NumberType {
 }
 
 case class LabeledNumberInteraction(
-                                     override val id: String,
+                                     override val elementId: String,
                                      numberLabel: LanguageMapContentId,
                                      numberType: NumberType,
                                      override val defaultValue: String = "0",
@@ -25,6 +25,6 @@ case class LabeledNumberInteraction(
                                    ) extends WorkbookInteractionElement[String] {
 
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
-  override val serializer: Serializer[String] = Serializer.stringIO
+  override val serializerInteractionContent: Serializer[String] = Serializer.stringIO
 
 }

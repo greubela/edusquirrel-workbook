@@ -18,7 +18,7 @@ case class Workbook(
   override lazy val structureType: WorkbookStructuringType = WORKBOOK
 
   lazy val allContainedInteractionsById: Map[String, WorkbookInteractionElement[?]] =
-    allContainedInteractions.map(interaction => interaction.id -> interaction).toMap
+    allContainedInteractions.map(interaction => interaction.elementId -> interaction).toMap
 
 }
 

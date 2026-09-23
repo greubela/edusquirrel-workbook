@@ -8,13 +8,14 @@ import it.evadid.workbook.elements.interactionElements.TurtleStitch.TurtleStitch
 
 object HtmlTurtleStitchRecreateShapeRenderer extends LineBasedRenderingFactory[TurtleStitchRecreateShapeInteraction] {
 
-
   override protected def createRendering(workbookElement: TurtleStitchRecreateShapeInteraction): AtomarLineRendering = {
+
+    val imageToRecreate = fullInfo.contentControl.fileFactory.relativeToResourceFolder(workbookElement.filenameRelToResources)
 
     AtomarLineRendering.cardLine(workbookElement, List(
       ElementCard(
         LanguageMapContentId("TurtleStitch/showExpected"),
-        HtmlImageElement(workbookElement.imageToRecreate).getDomElement()
+        HtmlImageElement(imageToRecreate).getDomElement()
       ),
       ElementCard(
         LanguageMapContentId("TurtleStitch/uploadTitle"),
