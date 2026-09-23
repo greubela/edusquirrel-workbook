@@ -20,7 +20,6 @@ case class AppShapeDrawingRoutineElement[T: Fractional]
   }
 
   override def calculateMyRawDimension(): Dimension[T] = {
-    summon[Fractional[Double]]
     if (minSize.nonEmpty) minSize.get else Dimension.fromDouble[T](Dimension[Double](0, 0))
   }
 

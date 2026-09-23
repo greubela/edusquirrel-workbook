@@ -20,10 +20,12 @@ case class ProgrammingExercise(
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
-  override def toSerializableType: WorkbookElementFactory = ???
+  override def toSerializableType: WorkbookElementFactory = toFactoryBase
 }
 
 object ProgrammingExercise {
+
+  def fromFactory(factory: WorkbookElementFactory): ProgrammingExercise = ProgrammingExercise(factory.elementId)
 
   val XmlHeader = "SNAP_XML_V1"
 

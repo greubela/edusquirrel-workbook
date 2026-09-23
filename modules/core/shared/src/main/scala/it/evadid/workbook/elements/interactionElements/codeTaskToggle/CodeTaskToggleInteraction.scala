@@ -5,6 +5,7 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
+import upickle.default.{ReadWriter, macroRW}
 
 case class CodeTaskToggleInteraction(
                                       override val elementId: String,
@@ -26,5 +27,15 @@ case class CodeTaskToggleInteraction(
 
   override lazy val allContainedInteractions: List[WorkbookInteractionElement[?]] = List(this, reorder)
 
-  override def toSerializableType: WorkbookElementFactory = ???
+  override def toSerializableType: WorkbookElementFactory = toFactoryBase.withSerializedElementAdded("reorder", reorder)
+    .withContentIdAdded("codeEditorTitle", codeEditorTitle).withElementAdded("advancedCodeTemplate", advancedCodeTemplate)
+    .withElementAdded("advancedRequirements", advancedRequirements)(CodeTaskToggleInteraction.requirementsSerializer)
+    .withContentIdAdded("advancedSuccessMessage", advancedSuccessMessage)
+}
+
+object CodeTaskToggleInteraction {
+ private given contentIdRW: ReadWriter[LanguageMapContentId] = LanguageMapContentId.serializer.uPickleReadWrite
+ private given requirementRW: ReadWriter[AdvancedCodeRequirement] = macroRW
+ private val requirementsSerializer = Serializer.fromUpickleJson(summon[ReadWriter[List[AdvancedCodeRequirement]]])
+ def fromFactory(f: WorkbookElementFactory): CodeTaskToggleInteraction = CodeTaskToggleInteraction(f.elementId, f.getElementAsSerializedElement("reorder").asInstanceOf[ReorderInteraction.ReorderCodeInteraction], f.getElementAsContentId("codeEditorTitle"), f.getElementAsString("advancedCodeTemplate"), f.getElementAs("advancedRequirements")(requirementsSerializer), f.getElementAsContentId("advancedSuccessMessage"))
 }
