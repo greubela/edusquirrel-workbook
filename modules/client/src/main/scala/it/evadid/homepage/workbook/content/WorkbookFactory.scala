@@ -79,32 +79,32 @@ trait WorkbookFactory {
    */
 
   protected def instructionPlaintext(langIdContent: String): WorkbookElement =
-    DisplayLangMapContent(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.PLAINTEXT))
+    DisplayLangMapContent(nextId(), LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.PLAINTEXT))
 
   protected def instructionHtml(langIdContent: String): WorkbookElement =
-    DisplayLangMapContent(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.HTML))
+    DisplayLangMapContent(nextId(), LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.HTML))
   //HtmlInstructionElement.fromUnsafeHtmlLanguageMapId(fullInfo, textMapId)
 
   protected def instructionMarkdown(langIdContent: String): WorkbookElement =
-    DisplayLangMapContent(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN))
+    DisplayLangMapContent(nextId(), LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN))
   //HtmlInstructionElement.fromMarkdownLanguageMapId(fullInfo, textMapId)
 
   def image(imageLocation: FileDescription): ImageElement = {
-    FileBasedImageElement(imageLocation)
+    FileBasedImageElement(nextId(), imageLocation)
     //LangIdBasedContent(imageLocation.fullPath, LangIdBasedContent(TypeOfTextDisplay.URL, RoleInWorkbook.IMAGE))
     //pseudoElement(HtmlImageElement(imageLocation, fullInfo).getDomSignal)
   }
 
   protected def labeledInstruction(titleMapId: String, bodyMapId: String, labelType: LabelType): LabeledWorkbookElement[WorkbookElement] = {
     val instruction: WorkbookElement = instructionMarkdown(bodyMapId)
-    LabeledWorkbookElement[WorkbookElement](instruction, WorkbookLabel(LanguageMapContentId(titleMapId), labelType))
+    LabeledWorkbookElement[WorkbookElement](nextId(), instruction, WorkbookLabel(LanguageMapContentId(titleMapId), labelType))
   }
 
   protected def instructionLabeledPair(titleMapId: String, bodyMapId: String, labelType: LabelType): LabeledWorkbookElement[WorkbookElement] =
     labeledInstruction(titleMapId, bodyMapId, labelType)
 
   protected def instructionCollapsibleHint(titleMapId: String, bodyMapId: String, initiallyCollapsed: Boolean = true): CollapsibleInstructionElement =
-    CollapsibleInstructionElement(LanguageMapContentId(titleMapId), LanguageMapContentId(bodyMapId), initiallyCollapsed)
+    CollapsibleInstructionElement(nextId(), LanguageMapContentId(titleMapId), LanguageMapContentId(bodyMapId), initiallyCollapsed)
 
   def image(imageName: String, imgType: String = "png"): ImageElement = {
     val fileDesc: FileDescription = fullInfo.contentControl.fileFactory.relativeToResourceFolder("workbookresources/embroidery/images/" + imageName + "." + imgType)

@@ -28,5 +28,14 @@ case class LabeledNumberInteraction(
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
   override val serializerInteractionContent: Serializer[String] = Serializer.stringIO
 
-  override def toSerializableType: WorkbookElementFactory = ???
+  override def toSerializableType: WorkbookElementFactory =
+    toFactoryBase.withContentIdAdded("numberLabel", numberLabel)
+      .withElementAdded("numberType", numberType.toString)
+      .withElementAdded("defaultValue", defaultValue)
+      .withElementAdded("diff", diff.toString)
+}
+
+object LabeledNumberInteraction {
+  def fromFactory(factory: WorkbookElementFactory): LabeledNumberInteraction =
+    LabeledNumberInteraction(factory.elementId, factory.getElementAsContentId("numberLabel"), NumberType.valueOf(factory.getElementAsString("numberType")), factory.getElementAsString("defaultValue"), BigDecimal(factory.getElementAsString("diff")))
 }

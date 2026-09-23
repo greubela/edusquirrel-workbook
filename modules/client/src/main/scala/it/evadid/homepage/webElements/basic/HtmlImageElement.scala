@@ -53,9 +53,9 @@ object HtmlImageElement {
 
   private def getImageSignal(fullInfo: FullInfo, image: ImageElement): AsyncData[Nothing, FullImage] = {
     val fileSignal: AsyncData[Nothing, LoadedFile] = image.match {
-      case ImageElement.FileBasedImageElement(fileDescription) =>
+      case ImageElement.FileBasedImageElement(_, fileDescription) =>
         AsyncData.forFuture(fileDescription.loadData()).observeAllStates
-      case i@ImageElement.LanguageMapBasedImageElement(languageMapContentId, copyrightInfo, howToResolveUrl) =>
+      case i@ImageElement.LanguageMapBasedImageElement(_, languageMapContentId, copyrightInfo, howToResolveUrl) =>
         val srcSignal: Signal[String] = signals.stringFromLanguageMapId(languageMapContentId)
         val srcFile: Signal[FileDescription] = srcSignal.map(fullInfo.contentControl.fileFactory.resolveFromTypeAndLanguageMapContent(howToResolveUrl, _))
         val res = srcFile.mapAsync(_.loadData())(using ExecutionContext.global)
@@ -65,15 +65,14 @@ object HtmlImageElement {
   }
 
   def apply(fullImage: FullImage): HtmlImageElement = {
-    val imageContext: Option[ImageElement] = fullImage.match {
-      case LoadedFileImage(loadedFile) => Some(ImageElement.FileBasedImageElement(loadedFile.description))
-      case _ => None
-    }
-    HtmlImageElement(AsyncValue(fullImage), imageContext)
+    HtmlImageElement(AsyncValue(fullImage), None)
   }
 
   def apply(fileDescription: FileDescription): HtmlImageElement = {
-    HtmlImageElement(ImageElement.FileBasedImageElement(fileDescription))
+    HtmlImageElement(
+      AsyncData.forFuture(fileDescription.loadData()).observeAllStates.map(LoadedFileImage(_)),
+      None
+    )
   }
 
   def apply(imageElement: ImageElement): HtmlImageElement = {

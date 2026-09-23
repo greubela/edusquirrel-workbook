@@ -4,15 +4,52 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.interactionElements.TurtleStitch.TurtleStitchRecreateShapeInteraction
+import it.evadid.workbook.elements.displayElements.*
+import it.evadid.workbook.elements.interactionElements.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
+import it.evadid.workbook.elements.interactionElements.basic.*
+import it.evadid.workbook.elements.interactionElements.codeTaskToggle.*
+import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExercise
+import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
+import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
+import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
+import it.evadid.workbook.elements.interactionElements.sortingExercise.SortingInteraction
+import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.SortingReasonInteraction
+import it.evadid.workbook.elements.structureElements.*
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.{refRW, refRWL, *}
 import upickle.{ReadWriter, default, macroRW, readwriter}
 
 object WorkbookElementFactory {
 
   val knownFactories: Map[String, WorkbookElementFactory => WorkbookElement] = Map(
-    TurtleStitchRecreateShapeInteraction.getClass.getSimpleName -> TurtleStitchRecreateShapeInteraction.fromFactory
+    classOf[TurtleStitchRecreateShapeInteraction].getSimpleName -> TurtleStitchRecreateShapeInteraction.fromFactory,
+    classOf[TurtleStitchExploreProjectElement].getSimpleName -> TurtleStitchExploreProjectElement.fromFactory,
+    classOf[LabeledCheckboxInteraction].getSimpleName -> LabeledCheckboxInteraction.fromFactory,
+    classOf[LabeledNumberInteraction].getSimpleName -> LabeledNumberInteraction.fromFactory,
+    classOf[MessagingInteraction].getSimpleName -> MessagingInteraction.fromFactory,
+    classOf[TextInteraction].getSimpleName -> TextInteraction.fromFactory,
+    classOf[SketchDownloadInteraction].getSimpleName -> SketchDownloadInteraction.fromFactory,
+    classOf[CodeTaskToggleInteraction].getSimpleName -> CodeTaskToggleInteraction.fromFactory,
+    classOf[ReorderInteraction.ReorderCodeInteraction].getSimpleName -> ReorderInteraction.ReorderCodeInteraction.fromFactory,
+    classOf[ReorderInteraction.ReorderMapIdInteraction].getSimpleName -> ReorderInteraction.ReorderMapIdInteraction.fromFactory,
+    classOf[ProgrammingExercise].getSimpleName -> ProgrammingExercise.fromFactory,
+    classOf[GptInteractionElement].getSimpleName -> GptInteractionElement.fromFactory,
+    classOf[SortingInteraction].getSimpleName -> SortingInteraction.fromFactory,
+    classOf[SortingReasonInteraction].getSimpleName -> SortingReasonInteraction.fromFactory,
+    classOf[Slideshow].getSimpleName -> Slideshow.fromFactory,
+    classOf[SlideshowPanel.TwoColumnImagePanel].getSimpleName -> SlideshowPanel.TwoColumnImagePanel.fromFactory,
+    classOf[SlideshowPanel.ImageSlide].getSimpleName -> SlideshowPanel.ImageSlide.fromFactory,
+    classOf[DisplayLangMapContent].getSimpleName -> DisplayLangMapContent.fromFactory,
+    classOf[CollapsibleInstructionElement].getSimpleName -> CollapsibleInstructionElement.fromFactory,
+    classOf[ImageElement.FileBasedImageElement].getSimpleName -> ImageElement.FileBasedImageElement.fromFactory,
+    classOf[ImageElement.LanguageMapBasedImageElement].getSimpleName -> ImageElement.LanguageMapBasedImageElement.fromFactory,
+    classOf[LabeledWorkbookElement[?]].getSimpleName -> LabeledWorkbookElement.fromFactory,
+    classOf[ExerciseContainer].getSimpleName -> ExerciseContainer.fromFactory,
+    classOf[WorkbookSection].getSimpleName -> WorkbookSection.fromFactory,
+    classOf[Workbook].getSimpleName -> Workbook.fromFactory
   )
+
+  def materialize(factory: WorkbookElementFactory): WorkbookElement =
+    knownFactories.getOrElse(factory.elementType, throw SerializedException(s"Unknown workbook element type '${factory.elementType}'."))(factory)
 
   val prefix = "WorkbookElementFactory"
 
@@ -91,6 +128,12 @@ case class WorkbookElementFactory(
     withElementAdded(key, workbookElement.toList)(using refRWL)
   }
 
+  def withSerializedElementAdded(key: String, workbookElement: WorkbookElement): WorkbookElementFactory =
+    withElementAdded(key, workbookElement.toSerializableType)(WorkbookElementFactory.serializer)
+
+  def withSerializedElementsAdded(key: String, workbookElements: Seq[WorkbookElement]): WorkbookElementFactory =
+    withElementAdded(key, workbookElements.map(_.toSerializableType).toList)(Serializer.fromUpickleJson(summon[ReadWriter[List[WorkbookElementFactory]]]))
+
 
   def getElementAsString(elementKey: String): String = additionalElements(elementKey)
 
@@ -108,6 +151,12 @@ case class WorkbookElementFactory(
   def getElementAsContentId(elementKey: String): LanguageMapContentId = {
     getElementAs[LanguageMapContentId](elementKey)(LanguageMapContentId.serializer)
   }
+
+  def getElementAsSerializedElement(elementKey: String): WorkbookElement =
+    WorkbookElementFactory.materialize(getElementAs[WorkbookElementFactory](elementKey)(WorkbookElementFactory.serializer))
+
+  def getElementAsSerializedElements(elementKey: String): List[WorkbookElement] =
+    getElementAs[List[WorkbookElementFactory]](elementKey)(Serializer.fromUpickleJson(summon[ReadWriter[List[WorkbookElementFactory]]])).map(WorkbookElementFactory.materialize)
 
 
 }

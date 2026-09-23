@@ -48,14 +48,14 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
     instructionPlaintext(s"PlantWorkshop/$contextKey")
 
   private def wiringSlideImage(slideIndex: Int): FileBasedImageElement =
-    FileBasedImageElement(
+    FileBasedImageElement(nextId("wiring-image"),
       fullInfo.contentControl.fileFactory.relativeToResourceFolder(s"img/plantworkshop/schaltkreis/Plant conv $slideIndex.png")
     )
 
   private def buildWiringPanel(i: Int): SlideshowPanel = {
     val image = wiringSlideImage(i)
     if (i == 3 || i == 4 || i == 8) {
-      SlideshowPanel.TwoColumnImagePanel(
+      SlideshowPanel.TwoColumnImagePanel(nextId("wiring-panel"),
         image,
         LanguageMapContentId("PlantWorkshop/LLabel"),
         LanguageMapContentId("PlantWorkshop/RLabel"),
@@ -63,13 +63,13 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         LanguageMapContentId(s"PlantWorkshop/wiringSlideTextR${i}")
       )
     } else if (i == 5) {
-      SlideshowPanel.ImageSlide(
+      SlideshowPanel.ImageSlide(nextId("wiring-panel"),
         image,
         LanguageMapContentId("PlantWorkshop/wiringSlideCurrentStatus"),
         LanguageMapContentId(s"PlantWorkshop/wiringSlideText${i}")
       )
     } else {
-      SlideshowPanel.ImageSlide(
+      SlideshowPanel.ImageSlide(nextId("wiring-panel"),
         image,
         LanguageMapContentId("PlantWorkshop/wiringSlideHelp"),
         LanguageMapContentId(s"PlantWorkshop/wiringSlideText${i}")

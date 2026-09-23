@@ -66,7 +66,26 @@ case class GptInteractionElement(
     }
 
 
-  override def toSerializableType: WorkbookElementFactory = ???
+  override def toSerializableType: WorkbookElementFactory = toFactoryBase
+    .withSerializedElementAdded("underlyingTextInteraction", underlyingTextInteraction)
+    .withContentIdAdded("exerciseText", exerciseText)
+    .withElementAdded("scaffoldingHints", scaffoldingHints)(GptInteractionElement.contentIdsSerializer)
+    .withElementAdded("gradingCriteria", gradingCriteria)(GptInteractionElement.contentIdsSerializer)
+}
+
+
+object GptInteractionElement {
+  private given contentIdReadWriter: ReadWriter[LanguageMapContentId] = LanguageMapContentId.serializer.uPickleReadWrite
+  private val contentIdsSerializer = it.evadid.core.util.io.Serializer.fromUpickleJson(summon[ReadWriter[List[LanguageMapContentId]]])
+
+  def fromFactory(factory: WorkbookElementFactory): GptInteractionElement =
+    GptInteractionElement(
+      factory.elementId,
+      factory.getElementAsSerializedElement("underlyingTextInteraction").asInstanceOf[WorkbookInteractionElement[String]],
+      factory.getElementAsContentId("exerciseText"),
+      factory.getElementAs("scaffoldingHints")(contentIdsSerializer),
+      factory.getElementAs("gradingCriteria")(contentIdsSerializer)
+    )
 }
 
 
