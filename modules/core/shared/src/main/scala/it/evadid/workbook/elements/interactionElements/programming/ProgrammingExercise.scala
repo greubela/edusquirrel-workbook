@@ -8,14 +8,14 @@ import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElem
 import scala.util.Try
 
 case class ProgrammingExercise(
-    override val id: String,
-    testSuite: Option[BeTestSuite] = None,
-    editorPalette: ProgrammingEditorPalette = ProgrammingEditorPalette.Default
+                                override val elementId: String,
+                                testSuite: Option[BeTestSuite] = None,
+                                editorPalette: ProgrammingEditorPalette = ProgrammingEditorPalette.Default
 ) extends WorkbookInteractionElement[ProgrammingExerciseState] {
 
   override val defaultValue: ProgrammingExerciseState = ProgrammingExerciseState.mini
 
-  override val serializer: Serializer[ProgrammingExerciseState] = ProgrammingExercise.StateSerializer
+  override val serializerInteractionContent: Serializer[ProgrammingExerciseState] = ProgrammingExercise.StateSerializer
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 }

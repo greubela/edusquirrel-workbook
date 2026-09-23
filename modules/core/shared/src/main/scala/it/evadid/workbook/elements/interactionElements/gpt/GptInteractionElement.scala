@@ -117,7 +117,7 @@ object SerializedGptInteractionElement {
   def fromElement(element: GptInteractionElement): SerializedGptInteractionElement =
     SerializedGptInteractionElement(
       element.id,
-      element.underlyingTextInteraction.id,
+      element.underlyingTextInteraction.elementId,
       element.exerciseText,
       element.scaffoldingHints,
       element.gradingCriteria

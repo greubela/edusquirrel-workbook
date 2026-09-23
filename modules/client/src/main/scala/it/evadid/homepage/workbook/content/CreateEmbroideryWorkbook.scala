@@ -31,16 +31,17 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
   }
 
   private def createExploreExerciseDownloadInteraction(filename: String): WorkbookElement = {
-    val fileDesc = fullInfo.contentControl.fileFactory.relativeToResourceFolder("workbookresources/embroidery/existingProjects/" + filename + ".xml")
+    val fileRelToResources = "workbookresources/embroidery/existingProjects/" + filename + ".xml"
     //TurtleStitchExploreProjectExercise.createElementLine(fullInfo, fileDesc)
-    TurtleStitchExploreProjectElement(fileDesc)
+    TurtleStitchExploreProjectElement(fileRelToResources)
   }
 
   private def createRecreateShapeUploadInteraction(imageName: String): WorkbookElement = {
-    val fileDesc = fullInfo.contentControl.fileFactory.relativeToResourceFolder("workbookresources/embroidery/desiredShapes/" + imageName + ".png")
+    //val fileDesc = fullInfo.contentControl.fileFactory.relativeToResourceFolder("workbookresources/embroidery/desiredShapes/" + imageName + ".png")
+    val nameRelToResources = "workbookresources/embroidery/desiredShapes/" + imageName + ".png"
     //val imgElement = HtmlImageElement(fileDesc, fullInfo)
     //TurtleStitchRecreateShapeExercise.createInteractionElement(fullInfo, nextId("recreateShape"), imgElement)
-    TurtleStitchRecreateShapeInteraction(nextId("recreateShape"), fileDesc)
+    TurtleStitchRecreateShapeInteraction(nextId("recreateShape"), nameRelToResources)
   }
 
 

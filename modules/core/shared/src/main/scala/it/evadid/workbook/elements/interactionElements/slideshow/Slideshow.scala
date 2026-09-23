@@ -3,13 +3,13 @@ package it.evadid.workbook.elements.interactionElements.slideshow
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 
-case class Slideshow(override val id: String, panels: List[SlideshowPanel]) extends WorkbookInteractionElement[SlideshowState] {
+case class Slideshow(override val elementId: String, panels: List[SlideshowPanel]) extends WorkbookInteractionElement[SlideshowState] {
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = panels
 
   override val defaultValue = SlideshowState(panels, Set.empty)
 
-  override val serializer: Serializer[SlideshowState] = defaultValue.serializer()
+  override val serializerInteractionContent: Serializer[SlideshowState] = defaultValue.serializer()
 
 }
 

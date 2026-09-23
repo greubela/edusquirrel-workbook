@@ -7,14 +7,14 @@ import it.evadid.workbook.elements.interactionElements.basic.MessagingInteractio
 import upickle.ReadWriter
 import upickle.default.macroRW
 
-case class MessagingInteraction(override val id: String) extends WorkbookInteractionElement[MessengerModelScaffolding] {
+case class MessagingInteraction(override val elementId: String) extends WorkbookInteractionElement[MessengerModelScaffolding] {
 
 
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
   override val defaultValue: MessengerModelScaffolding = MessengerModelScaffolding(MessengerModel.empty)
 
-  override val serializer: Serializer[MessengerModelScaffolding] = mmsSer
+  override val serializerInteractionContent: Serializer[MessengerModelScaffolding] = mmsSer
 
 }
 

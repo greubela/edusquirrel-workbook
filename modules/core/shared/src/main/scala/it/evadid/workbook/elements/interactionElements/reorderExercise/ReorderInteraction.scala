@@ -13,7 +13,7 @@ object ReorderInteraction {
 
   
   case class ReorderCodeInteraction(
-                                     override val id: String,
+                                     override val elementId: String,
                                      lines: List[String],
                                      programmingLanguage: ProgrammingLanguage,
                                      seed: Long = 0,
@@ -26,18 +26,18 @@ object ReorderInteraction {
     override val defaultValue: ReorderInteractionState[String] = {
       ReorderInteractionState.initStateFromElementsAndSeed(lines, seed, Serializer.stringIO, ReorderType.CODELINES(programmingLanguage))
     }
-    override val serializer: Serializer[ReorderInteractionState[String]] = defaultValue.serializer
+    override val serializerInteractionContent: Serializer[ReorderInteractionState[String]] = defaultValue.serializer
     override lazy val childrenOfThisElement: List[WorkbookElement] = List()
   }
 
-  case class ReorderMapIdInteraction(override val id: String, ids: List[LanguageMapContentId], seed: Long = 0) extends ReorderInteraction[LanguageMapContentId] {
+  case class ReorderMapIdInteraction(override val elementId: String, ids: List[LanguageMapContentId], seed: Long = 0) extends ReorderInteraction[LanguageMapContentId] {
 
     val elements: List[LanguageMapContentId] = ids
 
     override val defaultValue: ReorderInteractionState[LanguageMapContentId] = {
       ReorderInteractionState.initStateFromElementsAndSeed(ids, seed, LanguageMapContentId.serializer, ReorderType.LANGUAGE_MAP_IDS)
     }
-    override val serializer: Serializer[ReorderInteractionState[LanguageMapContentId]] = defaultValue.serializer
+    override val serializerInteractionContent: Serializer[ReorderInteractionState[LanguageMapContentId]] = defaultValue.serializer
 
     override lazy val childrenOfThisElement: List[WorkbookElement] = List()
   }

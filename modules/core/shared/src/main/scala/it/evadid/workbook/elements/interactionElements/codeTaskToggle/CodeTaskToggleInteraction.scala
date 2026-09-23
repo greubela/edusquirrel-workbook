@@ -6,12 +6,12 @@ import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElem
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 
 case class CodeTaskToggleInteraction(
-  override val id: String,
-  reorder: ReorderInteraction.ReorderCodeInteraction,
-  codeEditorTitle: LanguageMapContentId,
-  advancedCodeTemplate: String,
-  advancedRequirements: List[AdvancedCodeRequirement] = Nil,
-  advancedSuccessMessage: LanguageMapContentId = LanguageMapContentId("basic/advancedCodeFeedbackSuccess")
+                                      override val elementId: String,
+                                      reorder: ReorderInteraction.ReorderCodeInteraction,
+                                      codeEditorTitle: LanguageMapContentId,
+                                      advancedCodeTemplate: String,
+                                      advancedRequirements: List[AdvancedCodeRequirement] = Nil,
+                                      advancedSuccessMessage: LanguageMapContentId = LanguageMapContentId("basic/advancedCodeFeedbackSuccess")
 ) extends WorkbookInteractionElement[CodeTaskToggleState] {
 
   override val defaultValue: CodeTaskToggleState = CodeTaskToggleState(
@@ -19,7 +19,7 @@ case class CodeTaskToggleInteraction(
     advancedCode = advancedCodeTemplate
   )
 
-  override val serializer: Serializer[CodeTaskToggleState] = CodeTaskToggleState.serializer
+  override val serializerInteractionContent: Serializer[CodeTaskToggleState] = CodeTaskToggleState.serializer
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List(reorder)
 
