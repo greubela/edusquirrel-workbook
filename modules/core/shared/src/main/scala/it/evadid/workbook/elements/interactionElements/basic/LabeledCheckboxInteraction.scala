@@ -16,14 +16,10 @@ case class LabeledCheckboxInteraction(
 
   override val serializerInteractionContent: Serializer[Boolean] = Serializer.booleanIO
 
-  override val toSerializableType: WorkbookElementSerializable = {
-    toFactoryBase
-      .withContentIdAdded("content", checkboxLabel)
-  }
+
 
 }
 
 object LabeledCheckboxInteraction {
-  def fromFactory(factory: WorkbookElementSerializable): LabeledCheckboxInteraction =
-    LabeledCheckboxInteraction(factory.elementId, factory.getElementAsContentId("content"))
+
 }

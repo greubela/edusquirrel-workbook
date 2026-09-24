@@ -3,6 +3,6 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.WorkbookDisplayElement
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 case class CollapsibleInstructionElement(override val elementId: String, titleLabel: LanguageMapContentId, bodyContent: LanguageMapContentId, initiallyCollapsed: Boolean = true) extends WorkbookDisplayElement {
- override def toSerializableType: WorkbookElementSerializable = toFactoryBase.withContentIdAdded("titleLabel", titleLabel).withContentIdAdded("bodyContent", bodyContent).withElementAdded("initiallyCollapsed", initiallyCollapsed.toString)
+
 }
 object CollapsibleInstructionElement { def fromFactory(f: WorkbookElementSerializable): CollapsibleInstructionElement = CollapsibleInstructionElement(f.elementId, f.getElementAsContentId("titleLabel"), f.getElementAsContentId("bodyContent"), f.getElementAsString("initiallyCollapsed").toBoolean) }

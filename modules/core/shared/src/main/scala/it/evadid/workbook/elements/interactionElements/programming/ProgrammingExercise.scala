@@ -20,7 +20,6 @@ case class ProgrammingExercise(
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
-  override def toSerializableType: WorkbookElementSerializable = toFactoryBase
 }
 
 object ProgrammingExercise {

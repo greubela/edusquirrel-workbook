@@ -21,21 +21,6 @@ object GptInteractionElement {
 
   private val contentIdsSerializer = it.evadid.core.util.io.Serializer.fromUpickleJson(summon[ReadWriter[List[LanguageMapContentId]]])
 
-  val factory: WorkbookElementFactory[GptInteractionElement] = new WorkbookElementFactory[GptInteractionElement] {
-    override def createFromSerialized(factory: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): GptInteractionElement = {
-      GptInteractionElement(
-        factory.elementId,
-        parsedElements(factory.getElementAsWorkbookReference("underlyingTextInteraction").referencedId).asInstanceOf[WorkbookInteractionElement[String]],
-        factory.getElementAsContentId("exerciseText"),
-        factory.getElementAs("scaffoldingHints")(contentIdsSerializer),
-        factory.getElementAs("gradingCriteria")(contentIdsSerializer)
-      )
-    }
-
-    override def requireIds(factory: WorkbookElementSerializable): List[String] = {
-      List(factory.getElementAsWorkbookReference("underlyingTextInteraction").referencedId)
-    }
-  }
 }
 
 case class GptInteractionElement(
@@ -84,13 +69,6 @@ case class GptInteractionElement(
       msg.messages.exists(_.author.role == USER)
     }
 
-  override def toSerializableType: WorkbookElementSerializable = toFactoryBase
-    .withElementAdded("underlyingTextInteraction", underlyingTextInteraction)
-    .withContentIdAdded("exerciseText", exerciseText)
-    .withElementAdded("scaffoldingHints", scaffoldingHints)(GptInteractionElement.contentIdsSerializer)
-    .withElementAdded("gradingCriteria", gradingCriteria)(GptInteractionElement.contentIdsSerializer)
-
-  override lazy val factoryMethod: WorkbookElementFactory[_ <: WorkbookElement] = GptInteractionElement.factory
 }
 
 

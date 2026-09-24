@@ -12,25 +12,22 @@ sealed trait WorkbookElement extends AutoSerializable[WorkbookElement, WorkbookE
 
   lazy val childrenOfThisElement: List[WorkbookElement]
 
-  lazy val allContainedInteractions: List[WorkbookInteractionElement[?]] = {
-    childrenOfThisElement.flatMap(_.allContainedInteractions) ++ WorkbookElement.this.match {
-      case i: WorkbookInteractionElement[?] => List(i)
-      case _ => List()
-    }
+
+  lazy val allContainedInteractions: List[WorkbookInteractionElement[?]] = allChildrenRec.flatMap {
+    case i: WorkbookInteractionElement[?] => List(i)
+    case _ => List()
   }
+
+  lazy val allChildrenRec: List[WorkbookElement] = List(this) ++ childrenOfThisElement.flatMap(_.allChildrenRec)
 
   lazy val serializer: Serializer[WorkbookElementSerializable] = WorkbookElementSerializable.serializer
 
 
-  lazy val factoryMethod: WorkbookElementFactory[? <: WorkbookElement] =
-    WorkbookElementSerializable.allKnownFactories(this.getClass.getSimpleName)
-
   //def fromFactory(factoryVerifiedType: WorkbookElementFactory): WorkbookElement
 
+  val associatedFactory: WorkbookElementFactory[? <: WorkbookElement] = ???
 
-  protected val toFactoryBase: WorkbookElementSerializable = WorkbookElementSerializable(
-    elementId, this.getClass.getSimpleName, Map()
-  )
+  lazy val toSerializableType: WorkbookElementSerializable = associatedFactory.toSerializableElementUnsafe(this)
 
 }
 

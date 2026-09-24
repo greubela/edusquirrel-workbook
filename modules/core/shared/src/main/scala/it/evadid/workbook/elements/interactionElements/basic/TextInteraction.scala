@@ -12,10 +12,10 @@ case class TextInteraction(override val elementId: String) extends WorkbookInter
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
   override val defaultValue: String = ""
   override val serializerInteractionContent: Serializer[String] = Serializer.stringIO
-  override def toSerializableType: WorkbookElementSerializable = toFactoryBase
 }
 object TextInteraction {
-  def fromFactory(factory: WorkbookElementSerializable): TextInteraction = TextInteraction(factory.elementId)
+
+
   def decideTextareaUpdateImportance(change: InteractionVariableStateChanged[String]): UpdateImportance =
     if (change.lastState.value == change.newState.value) TEMPORARY else {
       val lenNew = change.newState.value.length

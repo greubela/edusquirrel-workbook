@@ -10,14 +10,10 @@ case class TurtleStitchExploreProjectElement(
                                             ) extends WorkbookDisplayElement {
 
 
-  override val toSerializableType: WorkbookElementSerializable = {
-    toFactoryBase.withMapAdded(Map("projectPathRelToResources" -> projectPathRelToResources))
-  }
+
 }
 
 object TurtleStitchExploreProjectElement {
-  def fromFactory(factory: WorkbookElementSerializable): TurtleStitchExploreProjectElement = {
-    TurtleStitchExploreProjectElement(factory.elementId, factory.getElementAsString("projectPathRelToResources"))
-  }
+
 
 }
