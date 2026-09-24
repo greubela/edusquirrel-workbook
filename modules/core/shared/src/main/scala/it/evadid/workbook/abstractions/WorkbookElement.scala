@@ -3,7 +3,6 @@ package it.evadid.workbook.abstractions
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.util.io.{AutoSerializable, Serializer}
 import it.evadid.workbook.interaction.variable.InteractionVariable
-import it.evadid.workbook.jsonFactory.WorkbookElementSerializable.WorkbookElementFactory
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 
 sealed trait WorkbookElement extends AutoSerializable[WorkbookElement, WorkbookElementSerializable] {
@@ -23,7 +22,8 @@ sealed trait WorkbookElement extends AutoSerializable[WorkbookElement, WorkbookE
   lazy val serializer: Serializer[WorkbookElementSerializable] = WorkbookElementSerializable.serializer
 
 
-  val factoryMethod: WorkbookElementFactory[? <: WorkbookElement]
+  lazy val factoryMethod: WorkbookElementFactory[? <: WorkbookElement] =
+    WorkbookElementSerializable.allKnownFactories(this.getClass.getSimpleName)
 
   //def fromFactory(factoryVerifiedType: WorkbookElementFactory): WorkbookElement
 

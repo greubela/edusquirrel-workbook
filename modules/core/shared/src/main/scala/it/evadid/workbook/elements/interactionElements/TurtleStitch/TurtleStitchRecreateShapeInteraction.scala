@@ -3,14 +3,14 @@ package it.evadid.workbook.elements.interactionElements.TurtleStitch
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
-import it.evadid.workbook.jsonFactory.WorkbookElementSerializable.WorkbookElementFactory
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 
 object TurtleStitchRecreateShapeInteraction {
 
   val factory: WorkbookElementFactory[TurtleStitchRecreateShapeInteraction] = new WorkbookElementFactory[TurtleStitchRecreateShapeInteraction]() {
-    override def requireIds(): List[String] = List()
+    override def requireIds(factory: WorkbookElementSerializable): List[String] = List()
 
-    override def fromFactory(factory: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): TurtleStitchRecreateShapeInteraction = {
+    override def createFromSerialized(factory: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): TurtleStitchRecreateShapeInteraction = {
       TurtleStitchRecreateShapeInteraction(factory.elementId, factory.getElementAsString("filenameRelToResources"))
     }
   }
@@ -34,4 +34,6 @@ case class TurtleStitchRecreateShapeInteraction(
 
   override val toSerializableType: WorkbookElementSerializable =
     toFactoryBase.withElementAdded("filenameRelToResources", filenameRelToResources)
+
+  override lazy val factoryMethod: WorkbookElementFactory[TurtleStitchRecreateShapeInteraction] = TurtleStitchRecreateShapeInteraction.factory
 }
