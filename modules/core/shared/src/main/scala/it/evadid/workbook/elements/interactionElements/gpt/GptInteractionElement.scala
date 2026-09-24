@@ -25,7 +25,7 @@ object GptInteractionElement {
     override def createFromSerialized(factory: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): GptInteractionElement = {
       GptInteractionElement(
         factory.elementId,
-        factory.getElementAsWorkbookReference("underlyingTextInteraction").asInstanceOf[WorkbookInteractionElement[String]],
+        parsedElements(factory.getElementAsWorkbookReference("underlyingTextInteraction").referencedId).asInstanceOf[WorkbookInteractionElement[String]],
         factory.getElementAsContentId("exerciseText"),
         factory.getElementAs("scaffoldingHints")(contentIdsSerializer),
         factory.getElementAs("gradingCriteria")(contentIdsSerializer)
@@ -90,9 +90,7 @@ case class GptInteractionElement(
     .withElementAdded("scaffoldingHints", scaffoldingHints)(GptInteractionElement.contentIdsSerializer)
     .withElementAdded("gradingCriteria", gradingCriteria)(GptInteractionElement.contentIdsSerializer)
 
-  override val factoryMethod: WorkbookElementFactory[_ <: WorkbookElement] = GptInteractionElement.factory
+  override lazy val factoryMethod: WorkbookElementFactory[_ <: WorkbookElement] = GptInteractionElement.factory
 }
-
-
 
 
