@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 import upickle.default.{ReadWriter, macroRW}
 
 sealed trait ReorderInteraction[T] extends WorkbookInteractionElement[ReorderInteractionState[T]] { val elements: List[T] }
@@ -21,7 +21,7 @@ object ReorderInteraction {
     override lazy val childrenOfThisElement: List[WorkbookElement] = List()
     override def toSerializableType = toFactoryBase.withElementAdded("lines", lines)(strings).withElementAdded("programmingLanguage", programmingLanguage.name).withElementAdded("seed", seed.toString).withElementAdded("hints", hints)(contentIds).withElementAdded("orderConstraints", orderConstraints)(constraints)
   }
-  object ReorderCodeInteraction { def fromFactory(f: WorkbookElementFactory): ReorderCodeInteraction = ReorderCodeInteraction(f.elementId, f.getElementAs("lines")(strings), it.evadid.core.datastructures.language.AppLanguage.programmingLanguages.find(_.name == f.getElementAsString("programmingLanguage")).getOrElse(throw IllegalArgumentException("Unknown programming language")), f.getElementAsString("seed").toLong, f.getElementAs("hints")(contentIds), f.getElementAs("orderConstraints")(constraints)) }
+  object ReorderCodeInteraction { def fromFactory(f: WorkbookElementSerializable): ReorderCodeInteraction = ReorderCodeInteraction(f.elementId, f.getElementAs("lines")(strings), it.evadid.core.datastructures.language.AppLanguage.programmingLanguages.find(_.name == f.getElementAsString("programmingLanguage")).getOrElse(throw IllegalArgumentException("Unknown programming language")), f.getElementAsString("seed").toLong, f.getElementAs("hints")(contentIds), f.getElementAs("orderConstraints")(constraints)) }
 
   case class ReorderMapIdInteraction(override val elementId: String, ids: List[LanguageMapContentId], seed: Long = 0) extends ReorderInteraction[LanguageMapContentId] {
     override val elements = ids
@@ -30,5 +30,5 @@ object ReorderInteraction {
     override lazy val childrenOfThisElement: List[WorkbookElement] = List()
     override def toSerializableType = toFactoryBase.withElementAdded("ids", ids)(contentIds).withElementAdded("seed", seed.toString)
   }
-  object ReorderMapIdInteraction { def fromFactory(f: WorkbookElementFactory): ReorderMapIdInteraction = ReorderMapIdInteraction(f.elementId, f.getElementAs("ids")(contentIds), f.getElementAsString("seed").toLong) }
+  object ReorderMapIdInteraction { def fromFactory(f: WorkbookElementSerializable): ReorderMapIdInteraction = ReorderMapIdInteraction(f.elementId, f.getElementAs("ids")(contentIds), f.getElementAsString("seed").toLong) }
 }

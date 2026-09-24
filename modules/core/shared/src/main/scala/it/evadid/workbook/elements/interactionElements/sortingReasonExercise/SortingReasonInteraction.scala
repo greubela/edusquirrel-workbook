@@ -3,7 +3,7 @@ package it.evadid.workbook.elements.interactionElements.sortingReasonExercise
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 import upickle.default.{ReadWriter, macroRW}
 
 case class SortingReasonInteraction(
@@ -20,7 +20,7 @@ case class SortingReasonInteraction(
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
-  override def toSerializableType: WorkbookElementFactory = toFactoryBase.withElementAdded("fields", fields)(SortingReasonInteraction.contentIds).withElementAdded("items", items)(SortingReasonInteraction.itemsSerializer).withContentIdAdded("openButtonLabel", openButtonLabel)
+  override def toSerializableType: WorkbookElementSerializable = toFactoryBase.withElementAdded("fields", fields)(SortingReasonInteraction.contentIds).withElementAdded("items", items)(SortingReasonInteraction.itemsSerializer).withContentIdAdded("openButtonLabel", openButtonLabel)
 }
 
 case class SortingReasonItem(
@@ -35,5 +35,5 @@ object SortingReasonInteraction {
  private given itemRW: ReadWriter[SortingReasonItem] = macroRW
  private[sortingReasonExercise] val contentIds = Serializer.fromUpickleJson(summon[ReadWriter[List[LanguageMapContentId]]])
  private[sortingReasonExercise] val itemsSerializer = Serializer.fromUpickleJson(summon[ReadWriter[List[SortingReasonItem]]])
- def fromFactory(f: WorkbookElementFactory): SortingReasonInteraction = SortingReasonInteraction(f.elementId, f.getElementAs("fields")(contentIds), f.getElementAs("items")(itemsSerializer), f.getElementAsContentId("openButtonLabel"))
+ def fromFactory(f: WorkbookElementSerializable): SortingReasonInteraction = SortingReasonInteraction(f.elementId, f.getElementAs("fields")(contentIds), f.getElementAs("items")(itemsSerializer), f.getElementAsContentId("openButtonLabel"))
 }

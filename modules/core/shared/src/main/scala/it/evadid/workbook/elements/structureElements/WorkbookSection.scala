@@ -3,7 +3,7 @@ package it.evadid.workbook.elements.structureElements
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookStructureElement, WorkbookStructuringType}
 import it.evadid.workbook.abstractions.WorkbookStructuringType.SECTION
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 
 case class WorkbookSection(
                             sectionId: String,
@@ -19,10 +19,10 @@ case class WorkbookSection(
 
   override val elementId: String = sectionId
 
-  override def toSerializableType: WorkbookElementFactory = toFactoryBase.withContentIdAdded("title", sectionTitle)
+  override def toSerializableType: WorkbookElementSerializable = toFactoryBase.withContentIdAdded("title", sectionTitle)
     .withSerializedElementsAdded("content", sectionContent)
     .withSerializedElementsAdded("required", sectionsRequiredBefore)
     .withSerializedElementsAdded("recommended", sectionsRecommendedBefore)
 }
 
-object WorkbookSection { def fromFactory(f: WorkbookElementFactory): WorkbookSection = WorkbookSection(f.elementId, f.getElementAsContentId("title"), f.getElementAsSerializedElements("content"), f.getElementAsSerializedElements("required").map(_.asInstanceOf[WorkbookSection]), f.getElementAsSerializedElements("recommended").map(_.asInstanceOf[WorkbookSection])) }
+object WorkbookSection { def fromFactory(f: WorkbookElementSerializable): WorkbookSection = WorkbookSection(f.elementId, f.getElementAsContentId("title"), f.getElementAsSerializedElements("content"), f.getElementAsSerializedElements("required").map(_.asInstanceOf[WorkbookSection]), f.getElementAsSerializedElements("recommended").map(_.asInstanceOf[WorkbookSection])) }

@@ -3,9 +3,12 @@ package it.evadid.workbook.elements.interactionElements.basic
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 
-case class LabeledCheckboxInteraction(override val elementId: String, checkboxLabel: LanguageMapContentId) extends WorkbookInteractionElement[Boolean] {
+case class LabeledCheckboxInteraction(
+                                       override val elementId: String,
+                                       checkboxLabel: LanguageMapContentId
+                                     ) extends WorkbookInteractionElement[Boolean] {
 
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
@@ -13,11 +16,14 @@ case class LabeledCheckboxInteraction(override val elementId: String, checkboxLa
 
   override val serializerInteractionContent: Serializer[Boolean] = Serializer.booleanIO
 
-  override val toSerializableType: WorkbookElementFactory = toFactoryBase.withContentIdAdded("content", checkboxLabel)
+  override val toSerializableType: WorkbookElementSerializable = {
+    toFactoryBase
+      .withContentIdAdded("content", checkboxLabel)
+  }
 
 }
 
 object LabeledCheckboxInteraction {
-  def fromFactory(factory: WorkbookElementFactory): LabeledCheckboxInteraction =
+  def fromFactory(factory: WorkbookElementSerializable): LabeledCheckboxInteraction =
     LabeledCheckboxInteraction(factory.elementId, factory.getElementAsContentId("content"))
 }

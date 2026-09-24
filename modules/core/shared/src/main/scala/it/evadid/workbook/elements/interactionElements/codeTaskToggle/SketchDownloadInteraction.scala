@@ -3,7 +3,7 @@ package it.evadid.workbook.elements.interactionElements.codeTaskToggle
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 
 case class SketchDownloadInteraction(
                                       override val elementId: String,
@@ -19,9 +19,9 @@ case class SketchDownloadInteraction(
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
-  override def toSerializableType: WorkbookElementFactory = toFactoryBase
+  override def toSerializableType: WorkbookElementSerializable = toFactoryBase
     .withContentIdAdded("buttonLabel", buttonLabel).withElementAdded("filename", filename)
     .withElementAdded("sketchContent", sketchContent).withElementAdded("unlockWhenReorderCorrect", unlockWhenReorderCorrect)
 }
 
-object SketchDownloadInteraction { def fromFactory(f: WorkbookElementFactory): SketchDownloadInteraction = SketchDownloadInteraction(f.elementId, f.getElementAsContentId("buttonLabel"), f.getElementAsString("filename"), f.getElementAsString("sketchContent"), f.getElementAsString("unlockWhenReorderCorrect")) }
+object SketchDownloadInteraction { def fromFactory(f: WorkbookElementSerializable): SketchDownloadInteraction = SketchDownloadInteraction(f.elementId, f.getElementAsContentId("buttonLabel"), f.getElementAsString("filename"), f.getElementAsString("sketchContent"), f.getElementAsString("unlockWhenReorderCorrect")) }

@@ -1,7 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.TurtleStitch
 
 import it.evadid.workbook.abstractions.WorkbookDisplayElement
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 
 case class TurtleStitchExploreProjectElement(
                                               override val elementId: String,
@@ -10,13 +10,13 @@ case class TurtleStitchExploreProjectElement(
                                             ) extends WorkbookDisplayElement {
 
 
-  override val toSerializableType: WorkbookElementFactory = {
+  override val toSerializableType: WorkbookElementSerializable = {
     toFactoryBase.withMapAdded(Map("projectPathRelToResources" -> projectPathRelToResources))
   }
 }
 
 object TurtleStitchExploreProjectElement {
-  def fromFactory(factory: WorkbookElementFactory): TurtleStitchExploreProjectElement = {
+  def fromFactory(factory: WorkbookElementSerializable): TurtleStitchExploreProjectElement = {
     TurtleStitchExploreProjectElement(factory.elementId, factory.getElementAsString("projectPathRelToResources"))
   }
 

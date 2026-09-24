@@ -4,7 +4,7 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.vm.BeProgram
 import it.evadid.vm.test.BeTestSuite
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 
 import scala.util.Try
 
@@ -20,12 +20,12 @@ case class ProgrammingExercise(
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
-  override def toSerializableType: WorkbookElementFactory = toFactoryBase
+  override def toSerializableType: WorkbookElementSerializable = toFactoryBase
 }
 
 object ProgrammingExercise {
 
-  def fromFactory(factory: WorkbookElementFactory): ProgrammingExercise = ProgrammingExercise(factory.elementId)
+  def fromFactory(factory: WorkbookElementSerializable): ProgrammingExercise = ProgrammingExercise(factory.elementId)
 
   val XmlHeader = "SNAP_XML_V1"
 

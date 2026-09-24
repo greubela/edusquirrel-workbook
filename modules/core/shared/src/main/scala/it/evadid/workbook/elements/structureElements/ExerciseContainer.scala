@@ -3,10 +3,10 @@ package it.evadid.workbook.elements.structureElements
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.WorkbookStructuringType.EXERCISE_CONTAINER
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookStructureElement, WorkbookStructuringType}
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 
 object ExerciseContainer {
-  def fromFactory(f: WorkbookElementFactory): ExerciseContainer = ExerciseContainer(f.elementId, f.getElementAsContentId("title"), f.getElementAsSerializedElements("content"))
+  def fromFactory(f: WorkbookElementSerializable): ExerciseContainer = ExerciseContainer(f.elementId, f.getElementAsContentId("title"), f.getElementAsSerializedElements("content"))
 }
 
 case class ExerciseContainer(override val elementId: String, containerTitle: LanguageMapContentId, containerContent: List[WorkbookElement]) extends WorkbookStructureElement[WorkbookElement] {
@@ -15,7 +15,7 @@ case class ExerciseContainer(override val elementId: String, containerTitle: Lan
 
   override lazy val structureType: WorkbookStructuringType = EXERCISE_CONTAINER
 
-  override def toSerializableType: WorkbookElementFactory = {
+  override def toSerializableType: WorkbookElementSerializable = {
     toFactoryBase
       .withContentIdAdded("title", containerTitle)
       .withSerializedElementsAdded("content", containerContent)
