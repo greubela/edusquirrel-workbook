@@ -17,6 +17,7 @@ object ImageElement {
   def apply(elementId: String, languageMapContentId: LanguageMapContentId, copyrightInfo: CopyrightInfo, howToResolveUrl: URL_TYPE): ImageElement = LanguageMapBasedImageElement(elementId, languageMapContentId, copyrightInfo, howToResolveUrl)
 
   case class FileBasedImageElement(override val elementId: String, location: FileDescription) extends ImageElement {
+  override val associatedFactory = it.evadid.workbook.jsonFactory.WorkbookElementFactory.unsupported[this.type](this.getClass.getSimpleName)
 
      }
 
@@ -25,6 +26,7 @@ object ImageElement {
      }
 
   case class LanguageMapBasedImageElement(override val elementId: String, languageMapContentId: LanguageMapContentId, copyrightInfo: CopyrightInfo, howToResolveUrl: URL_TYPE) extends ImageElement {
+  override val associatedFactory = it.evadid.workbook.jsonFactory.WorkbookElementFactory.unsupported[this.type](this.getClass.getSimpleName)
 
      }
 

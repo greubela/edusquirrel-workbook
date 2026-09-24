@@ -11,6 +11,7 @@ case class WorkbookSection(
                             sectionsRequiredBefore: List[WorkbookSection] = List(),
                             sectionsRecommendedBefore: List[WorkbookSection] = List()
                           ) extends WorkbookStructureElement[WorkbookElement] {
+  override val associatedFactory = it.evadid.workbook.jsonFactory.WorkbookElementFactory.unsupported[this.type](this.getClass.getSimpleName)
 
   override val groupElements: List[WorkbookElement] = sectionContent
 

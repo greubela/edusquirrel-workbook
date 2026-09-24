@@ -13,6 +13,7 @@ case class ProgrammingExercise(
                                 testSuite: Option[BeTestSuite] = None,
                                 editorPalette: ProgrammingEditorPalette = ProgrammingEditorPalette.Default
 ) extends WorkbookInteractionElement[ProgrammingExerciseState] {
+  override val associatedFactory = it.evadid.workbook.jsonFactory.WorkbookElementFactory.unsupported[this.type](this.getClass.getSimpleName)
 
   override val defaultValue: ProgrammingExerciseState = ProgrammingExerciseState.mini
 

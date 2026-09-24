@@ -25,7 +25,7 @@ sealed trait WorkbookElement extends AutoSerializable[WorkbookElement, WorkbookE
 
   //def fromFactory(factoryVerifiedType: WorkbookElementFactory): WorkbookElement
 
-  val associatedFactory: WorkbookElementFactory[? <: WorkbookElement] = ???
+  val associatedFactory: WorkbookElementFactory[? <: WorkbookElement]
 
   lazy val toSerializableType: WorkbookElementSerializable = associatedFactory.toSerializableElementUnsafe(this)
 

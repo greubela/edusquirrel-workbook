@@ -14,6 +14,7 @@ case class TurtleStitchRecreateShapeInteraction(
                                                  override val elementId: String,
                                                  val filenameRelToResources: String
                                                ) extends WorkbookInteractionElement[TurtleStitchProjectState] {
+  override val associatedFactory = it.evadid.workbook.jsonFactory.WorkbookElementFactory.unsupported[this.type](this.getClass.getSimpleName)
 
   override val defaultValue: TurtleStitchProjectState = TurtleStitchProjectState.empty()
 

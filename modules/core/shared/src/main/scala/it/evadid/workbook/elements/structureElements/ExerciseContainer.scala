@@ -9,6 +9,7 @@ object ExerciseContainer {
   }
 
 case class ExerciseContainer(override val elementId: String, containerTitle: LanguageMapContentId, containerContent: List[WorkbookElement]) extends WorkbookStructureElement[WorkbookElement] {
+  override val associatedFactory = it.evadid.workbook.jsonFactory.WorkbookElementFactory.unsupported[this.type](this.getClass.getSimpleName)
 
   override val groupElements: List[WorkbookElement] = containerContent
 
