@@ -19,12 +19,19 @@ import scala.collection.mutable
 
 object WorkbookElementFactory {
 
+
   trait NoContentElementFactory[T <: WorkbookElement] extends SimpleWorkbookElementFactory[T] {
     override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: T): WorkbookElementSerializable = baseElement
 
     override def finishDeserialization(element: WorkbookElementSerializable): T = callConstructor(element.elementId)
 
     def callConstructor(elementId: String): T
+  }
+
+
+  def unsupportedFactory[T <: WorkbookElement](): WorkbookElementFactory[T] = new NoContentElementFactory[T]() {
+
+    override def callConstructor(elementId: String): T = ???
   }
 
   trait SingleContentElementFactory[T <: WorkbookElement] extends SimpleWorkbookElementFactory[T] {
