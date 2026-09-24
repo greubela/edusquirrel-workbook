@@ -5,6 +5,7 @@ import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElem
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 
 case class Slideshow(override val elementId: String, panels: List[SlideshowPanel]) extends WorkbookInteractionElement[SlideshowState] {
+  override val associatedFactory = it.evadid.workbook.jsonFactory.WorkbookElementFactory.unsupported[this.type](this.getClass.getSimpleName)
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = panels
 

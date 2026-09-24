@@ -8,6 +8,7 @@ case class TurtleStitchExploreProjectElement(
                                               projectPathRelToResources: String,
                                               //    projectToDownload: FileDescription
                                             ) extends WorkbookDisplayElement {
+  override val associatedFactory = it.evadid.workbook.jsonFactory.WorkbookElementFactory.unsupported[this.type](this.getClass.getSimpleName)
 
 
 

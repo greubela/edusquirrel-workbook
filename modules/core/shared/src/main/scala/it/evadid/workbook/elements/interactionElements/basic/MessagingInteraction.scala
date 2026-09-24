@@ -9,6 +9,7 @@ import upickle.ReadWriter
 import upickle.default.macroRW
 
 case class MessagingInteraction(override val elementId: String) extends WorkbookInteractionElement[MessengerModelScaffolding] {
+  override val associatedFactory = MessagingInteraction.factory
 
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
@@ -19,6 +20,8 @@ case class MessagingInteraction(override val elementId: String) extends Workbook
 }
 
 object MessagingInteraction {
+  val factory = it.evadid.workbook.jsonFactory.WorkbookElementFactory.simple[MessagingInteraction](e => WorkbookElementSerializable(e.elementId, classOf[MessagingInteraction].getSimpleName, Map()), f => MessagingInteraction(f.elementId))
+
 
 
   case class MessengerModelScaffolding(messengerModel: MessengerModel) {

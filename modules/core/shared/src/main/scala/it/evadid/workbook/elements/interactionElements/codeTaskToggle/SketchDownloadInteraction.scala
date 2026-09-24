@@ -12,6 +12,7 @@ case class SketchDownloadInteraction(
                                       sketchContent: String,
                                       unlockWhenReorderCorrect: String
 ) extends WorkbookInteractionElement[String] {
+  override val associatedFactory = SketchDownloadInteraction.factory
 
   override val defaultValue: String = ""
 
@@ -21,4 +22,5 @@ case class SketchDownloadInteraction(
 
 }
 
-object SketchDownloadInteraction { def fromFactory(f: WorkbookElementSerializable): SketchDownloadInteraction = SketchDownloadInteraction(f.elementId, f.getElementAsContentId("buttonLabel"), f.getElementAsString("filename"), f.getElementAsString("sketchContent"), f.getElementAsString("unlockWhenReorderCorrect")) }
+object SketchDownloadInteraction { val factory = it.evadid.workbook.jsonFactory.WorkbookElementFactory.simple[SketchDownloadInteraction](e => WorkbookElementSerializable(e.elementId, classOf[SketchDownloadInteraction].getSimpleName, Map()).withContentIdAdded("buttonLabel", e.buttonLabel).withElementAdded("filename", e.filename).withElementAdded("sketchContent", e.sketchContent).withElementAdded("unlockWhenReorderCorrect", e.unlockWhenReorderCorrect), fromFactory)
+ def fromFactory(f: WorkbookElementSerializable): SketchDownloadInteraction = SketchDownloadInteraction(f.elementId, f.getElementAsContentId("buttonLabel"), f.getElementAsString("filename"), f.getElementAsString("sketchContent"), f.getElementAsString("unlockWhenReorderCorrect")) }

@@ -9,6 +9,7 @@ case class LabeledCheckboxInteraction(
                                        override val elementId: String,
                                        checkboxLabel: LanguageMapContentId
                                      ) extends WorkbookInteractionElement[Boolean] {
+  override val associatedFactory = LabeledCheckboxInteraction.factory
 
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
@@ -21,5 +22,7 @@ case class LabeledCheckboxInteraction(
 }
 
 object LabeledCheckboxInteraction {
+  val factory = it.evadid.workbook.jsonFactory.WorkbookElementFactory.simple[LabeledCheckboxInteraction](e => WorkbookElementSerializable(e.elementId, classOf[LabeledCheckboxInteraction].getSimpleName, Map()).withContentIdAdded("content", e.checkboxLabel), f => LabeledCheckboxInteraction(f.elementId, f.getElementAsContentId("content")))
+
 
 }

@@ -12,6 +12,7 @@ case class SortingReasonInteraction(
                                      items: List[SortingReasonItem],
                                      openButtonLabel: LanguageMapContentId = LanguageMapContentId("basic/startSortingReasonActivity")
 ) extends WorkbookInteractionElement[SortingReasonInteractionState] {
+  override val associatedFactory = SortingReasonInteraction.factory
 
   override val defaultValue: SortingReasonInteractionState =
     SortingReasonInteractionState.initial(items.size)
@@ -34,4 +35,5 @@ object SortingReasonInteraction {
  private given itemRW: ReadWriter[SortingReasonItem] = macroRW
  private[sortingReasonExercise] val contentIds = Serializer.fromUpickleJson(summon[ReadWriter[List[LanguageMapContentId]]])
  private[sortingReasonExercise] val itemsSerializer = Serializer.fromUpickleJson(summon[ReadWriter[List[SortingReasonItem]]])
+ val factory = it.evadid.workbook.jsonFactory.WorkbookElementFactory.simple[SortingReasonInteraction](e => WorkbookElementSerializable(e.elementId, classOf[SortingReasonInteraction].getSimpleName, Map()).withElementAdded("fields", e.fields)(contentIds).withElementAdded("items", e.items)(itemsSerializer).withContentIdAdded("openButtonLabel", e.openButtonLabel), f => SortingReasonInteraction(f.elementId, f.getElementAs("fields")(contentIds), f.getElementAs("items")(itemsSerializer), f.getElementAsContentId("openButtonLabel")))
  }
