@@ -25,6 +25,7 @@ object SlideshowPanel {
                                   leftBody: LanguageMapContentId,
                                   rightBody: LanguageMapContentId
                                 ) extends SlideshowPanel {
+  override val associatedFactory = it.evadid.workbook.jsonFactory.WorkbookElementFactory.unsupported[this.type](this.getClass.getSimpleName)
 
     }
 
@@ -34,6 +35,7 @@ object SlideshowPanel {
                          titleLabel: LanguageMapContentId,
                          description: LanguageMapContentId
                        ) extends SlideshowPanel {
+  override val associatedFactory = it.evadid.workbook.jsonFactory.WorkbookElementFactory.unsupported[this.type](this.getClass.getSimpleName)
     }
 
 

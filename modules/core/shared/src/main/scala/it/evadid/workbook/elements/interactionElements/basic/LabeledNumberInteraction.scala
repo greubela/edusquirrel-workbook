@@ -8,6 +8,8 @@ import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 
 
 object LabeledNumberInteraction {
+  val factory = it.evadid.workbook.jsonFactory.WorkbookElementFactory.simple[LabeledNumberInteraction](e => WorkbookElementSerializable(e.elementId, classOf[LabeledNumberInteraction].getSimpleName, Map()).withContentIdAdded("numberLabel", e.numberLabel).withElementAdded("numberType", e.numberType.toString).withElementAdded("defaultValue", e.defaultValue), fromFactory)
+
   def fromFactory(factory: WorkbookElementSerializable): LabeledNumberInteraction = {
     LabeledNumberInteraction(
       factory.elementId,
@@ -38,6 +40,7 @@ case class LabeledNumberInteraction(
                                      numberType: NumberType,
                                      override val defaultValue: String = "0",
                                    ) extends WorkbookInteractionElement[String] {
+  override val associatedFactory = LabeledNumberInteraction.factory
 
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
   override val serializerInteractionContent: Serializer[String] = Serializer.stringIO

@@ -9,11 +9,14 @@ import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 import java.time.Duration
 
 case class TextInteraction(override val elementId: String) extends WorkbookInteractionElement[String] {
+  override val associatedFactory = TextInteraction.factory
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
   override val defaultValue: String = ""
   override val serializerInteractionContent: Serializer[String] = Serializer.stringIO
 }
 object TextInteraction {
+  val factory = it.evadid.workbook.jsonFactory.WorkbookElementFactory.simple[TextInteraction](e => WorkbookElementSerializable(e.elementId, classOf[TextInteraction].getSimpleName, Map()), f => TextInteraction(f.elementId))
+
 
 
   def decideTextareaUpdateImportance(change: InteractionVariableStateChanged[String]): UpdateImportance =

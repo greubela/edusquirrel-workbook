@@ -43,7 +43,7 @@ object Workbook {
 
     override def toSerializableElement(element: Workbook): WorkbookElementSerializable = {
       val allRequiredIds = element.allChildrenRec.flatMap(curEl => curEl.associatedFactory.idsRequiredForDeserialization(curEl.toSerializableType))
-      val requiredToSerialize = element.allChildrenRec.filter(curChild => allRequiredIds.contains(curChild))
+      val requiredToSerialize = element.allChildrenRec.filter(curChild => allRequiredIds.contains(curChild.elementId))
       toFactoryBase(element)
         .withContentIdAdded("title", element.workbookTitle)
         .withSerializationsAdded("serializedElements", requiredToSerialize.map(_.toSerializableType))

@@ -9,6 +9,9 @@ import upickle.{ReadWriter, default, macroRW, readwriter}
 
 object WorkbookElementSerializable {
 
+  def parse(element: WorkbookElementSerializable): WorkbookElement = WorkbookElementFactory.parse(element)
+  def parseAll(elements: List[WorkbookElementSerializable]): List[WorkbookElement] = WorkbookElementFactory.parseAll(elements)
+
   val prefix = "WorkbookElementFactory"
 
   private given refRW: default.ReadWriter[WorkbookElementReference] = macroRW
@@ -20,7 +23,7 @@ object WorkbookElementSerializable {
   private given facRW: default.ReadWriter[WorkbookElementSerializable] = macroRW
 
   given facRWL: default.ReadWriter[List[WorkbookElementSerializable]] =
-    readwriter[List[WorkbookElementSerializable]].bimap[List[WorkbookElementSerializable]](_.toSeq, _.toList)
+    readwriter[Seq[WorkbookElementSerializable]].bimap[List[WorkbookElementSerializable]](_.toSeq, _.toList)
 
   val serializer: Serializer[WorkbookElementSerializable] = Serializer.fromUpickleJson(facRW)
   val serializerL: Serializer[List[WorkbookElementSerializable]] = Serializer.fromUpickleJson(facRWL)
@@ -109,7 +112,7 @@ case class WorkbookElementSerializable(
   private def resolveReference[T <: WorkbookElement](ref: WorkbookElementReference, parsedElements: Map[String, WorkbookElement]): T = {
     val resolved: Option[WorkbookElement] = parsedElements.get(ref.referencedId)
     if (resolved.isEmpty) throw SerializedException(s"Cannot resolve required reference ${ref.referencedId} during construction!")
-    else if (resolved.get.isInstanceOf[T]) resolved.asInstanceOf[T]
+    else if (resolved.get.isInstanceOf[T]) resolved.get.asInstanceOf[T]
     else throw SerializedException(s"Expected Type of WorkbookElement ${ref.referencedId} did not match (was ${resolved.get.getClass.getSimpleName})!")
   }
 
