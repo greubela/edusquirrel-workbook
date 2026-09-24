@@ -3,7 +3,7 @@ package it.evadid.workbook.elements.interactionElements.slideshow
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement}
 import it.evadid.workbook.elements.displayElements.ImageElement
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 
 // Todo: Overwork Slideshow Panel so it uses generic WorkbookElement
 trait SlideshowPanel extends WorkbookDisplayElement {
@@ -11,8 +11,8 @@ trait SlideshowPanel extends WorkbookDisplayElement {
 }
 
 object SlideshowPanel {
-  object TwoColumnImagePanel { def fromFactory(f: WorkbookElementFactory): TwoColumnImagePanel = TwoColumnImagePanel(f.elementId, f.getElementAsSerializedElement("image").asInstanceOf[ImageElement], f.getElementAsContentId("leftLabel"), f.getElementAsContentId("rightLabel"), f.getElementAsContentId("leftBody"), f.getElementAsContentId("rightBody")) }
-  object ImageSlide { def fromFactory(f: WorkbookElementFactory): ImageSlide = ImageSlide(f.elementId, f.getElementAsSerializedElement("image").asInstanceOf[ImageElement], f.getElementAsContentId("titleLabel"), f.getElementAsContentId("description")) }
+  object TwoColumnImagePanel { def fromFactory(f: WorkbookElementSerializable): TwoColumnImagePanel = TwoColumnImagePanel(f.elementId, f.getElementAsSerializedElement("image").asInstanceOf[ImageElement], f.getElementAsContentId("leftLabel"), f.getElementAsContentId("rightLabel"), f.getElementAsContentId("leftBody"), f.getElementAsContentId("rightBody")) }
+  object ImageSlide { def fromFactory(f: WorkbookElementSerializable): ImageSlide = ImageSlide(f.elementId, f.getElementAsSerializedElement("image").asInstanceOf[ImageElement], f.getElementAsContentId("titleLabel"), f.getElementAsContentId("description")) }
 
   case class TwoColumnImagePanel(
                                   override val elementId: String,
@@ -23,7 +23,7 @@ object SlideshowPanel {
                                   rightBody: LanguageMapContentId
                                 ) extends SlideshowPanel {
 
-    override def toSerializableType: WorkbookElementFactory = toFactoryBase.withSerializedElementAdded("image", image)
+    override def toSerializableType: WorkbookElementSerializable = toFactoryBase.withSerializedElementAdded("image", image)
       .withContentIdAdded("leftLabel", leftLabel).withContentIdAdded("rightLabel", rightLabel).withContentIdAdded("leftBody", leftBody).withContentIdAdded("rightBody", rightBody)
   }
 
@@ -33,7 +33,7 @@ object SlideshowPanel {
                          titleLabel: LanguageMapContentId,
                          description: LanguageMapContentId
                        ) extends SlideshowPanel {
-    override def toSerializableType: WorkbookElementFactory = toFactoryBase.withSerializedElementAdded("image", image).withContentIdAdded("titleLabel", titleLabel).withContentIdAdded("description", description)
+    override def toSerializableType: WorkbookElementSerializable = toFactoryBase.withSerializedElementAdded("image", image).withContentIdAdded("titleLabel", titleLabel).withContentIdAdded("description", description)
   }
 
 

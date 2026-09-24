@@ -5,17 +5,17 @@ import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElem
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import UpdateImportance.{MAJOR, MINOR, TEMPORARY}
 import it.evadid.workbook.interaction.variable.InteractionVariableState.InteractionVariableStateChanged
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 import java.time.Duration
 
 case class TextInteraction(override val elementId: String) extends WorkbookInteractionElement[String] {
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
   override val defaultValue: String = ""
   override val serializerInteractionContent: Serializer[String] = Serializer.stringIO
-  override def toSerializableType: WorkbookElementFactory = toFactoryBase
+  override def toSerializableType: WorkbookElementSerializable = toFactoryBase
 }
 object TextInteraction {
-  def fromFactory(factory: WorkbookElementFactory): TextInteraction = TextInteraction(factory.elementId)
+  def fromFactory(factory: WorkbookElementSerializable): TextInteraction = TextInteraction(factory.elementId)
   def decideTextareaUpdateImportance(change: InteractionVariableStateChanged[String]): UpdateImportance =
     if (change.lastState.value == change.newState.value) TEMPORARY else {
       val lenNew = change.newState.value.length

@@ -9,10 +9,10 @@ import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{AdvancedC
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.sortingExercise.{SortingInteraction, SortingItem}
 import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 import munit.FunSuite
 
-class WorkbookElementFactoryRoundTripSpec extends FunSuite {
+class WorkbookElementSerializableRoundTripSpec extends FunSuite {
   private def content(id: String) = LanguageMapContentId(id)
 
   private val elements: List[WorkbookElement] = {
@@ -39,7 +39,7 @@ class WorkbookElementFactoryRoundTripSpec extends FunSuite {
   elements.foreach { element =>
     test(s"${element.elementId} round-trips through WorkbookElementFactory") {
       val serialized = element.toSerializableType
-      val roundTripped = WorkbookElementFactory.materialize(WorkbookElementFactory.serializer.deserialize(WorkbookElementFactory.serializer.serialize(serialized)))
+      val roundTripped = WorkbookElementSerializable.materialize(WorkbookElementSerializable.serializer.deserialize(WorkbookElementSerializable.serializer.serialize(serialized)))
       assertEquals(roundTripped, element)
     }
   }
