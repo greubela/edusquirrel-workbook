@@ -11,6 +11,13 @@ import scala.concurrent.Future
 sealed trait ImageElement extends WorkbookDisplayElement
 
 object ImageElement {
+  private case class UrlOnlyFileDescription(url: String) extends FileDescription {
+    override val copyrightInfo: CopyrightInfo = CopyrightInfo.unknownCopyrightInfo
+    override def asUrlString: String = url
+    override def loadData(): Future[LoadedFile] = Future.failed(UnsupportedOperationException(s"No loader available for $url"))
+    override def getChildrenFile(childName: String, cCopyrightInfo: CopyrightInfo): Option[FileDescription] = None
+  }
+
   def apply(elementId: String, fileDescription: FileDescription): ImageElement = FileBasedImageElement(elementId, fileDescription)
 
   def apply(elementId: String, languageMapContentId: LanguageMapContentId, copyrightInfo: CopyrightInfo, howToResolveUrl: URL_TYPE): ImageElement = LanguageMapBasedImageElement(elementId, languageMapContentId, copyrightInfo, howToResolveUrl)

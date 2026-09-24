@@ -9,6 +9,13 @@ import upickle.{ReadWriter, default, macroRW, readwriter}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent}
+import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
+import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
+import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
+import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
+import it.evadid.workbook.elements.interactionElements.sortingExercise.SortingInteraction
+import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.SortingReasonInteraction
 
 object WorkbookElementSerializable {
 
@@ -24,7 +31,7 @@ object WorkbookElementSerializable {
                         knownFactories: Map[String, WorkbookElementFactory[WorkbookElement]]
                       ): List[WorkbookElement] = {
     if (open.isEmpty) {
-      val notYetParsed = open.filter(el => !alreadyParsed.contains(el.elementId))
+      val notYetParsed = elementsInOrder.filter(el => !alreadyParsed.contains(el.elementId))
       if (notYetParsed.nonEmpty) throw SerializedException(s"Open is empty but ${notYetParsed} elements were not parsed yet (${notYetParsed.map(_.elementId)}")
       else elementsInOrder.map(el => alreadyParsed(el.elementId))
     } else {
@@ -32,7 +39,7 @@ object WorkbookElementSerializable {
       def tryParse(element: WorkbookElementSerializable): Option[WorkbookElement] = {
         val factory: Option[WorkbookElementFactory[WorkbookElement]] = knownFactories.get(element.elementType)
         if (factory.isEmpty) throw SerializedException(s"No factory known for WorkbookElement with type ${element.elementType}")
-        else if (factory.get.requireIds().exists(!alreadyParsed.keySet.contains(_))) None
+        else if (factory.get.requireIds(element).exists(!alreadyParsed.keySet.contains(_))) None
         else Some(factory.get.createFromSerialized(element, alreadyParsed))
       }
 
@@ -44,11 +51,31 @@ object WorkbookElementSerializable {
       })
 
       if (stillOpen.nonEmpty && newlyFinished.isEmpty) throw SerializedException(s"Iteration with no progress, likely because of a cyclic dependency, stop parsing! (still open: ${open.map(_.elementId)})")
-      else parseAll(elementsInOrder, stillOpen.toList, alreadyParsed, knownFactories)
+      else parseAll(elementsInOrder, stillOpen.toList, alreadyParsed ++ newlyFinished, knownFactories)
     }
   }
 
+  private def factory[T <: WorkbookElement](requiredIds: WorkbookElementSerializable => List[String] = _ => Nil)(create: (WorkbookElementSerializable, Map[String, WorkbookElement]) => T): WorkbookElementFactory[WorkbookElement] = new WorkbookElementFactory[WorkbookElement] {
+    override def requireIds(element: WorkbookElementSerializable): List[String] = requiredIds(element)
+    override def createFromSerialized(element: WorkbookElementSerializable, parsed: Map[String, WorkbookElement]): WorkbookElement = create(element, parsed)
+  }
+
   val allKnownFactories: Map[String, WorkbookElementFactory[WorkbookElement]] = Map(
+    classOf[TextInteraction].getSimpleName -> factory()((f, _) => TextInteraction.fromFactory(f)),
+    classOf[MessagingInteraction].getSimpleName -> factory()((f, _) => MessagingInteraction.fromFactory(f)),
+    classOf[LabeledCheckboxInteraction].getSimpleName -> factory()((f, _) => LabeledCheckboxInteraction.fromFactory(f)),
+    classOf[LabeledNumberInteraction].getSimpleName -> factory()((f, _) => LabeledNumberInteraction.fromFactory(f)),
+    classOf[SketchDownloadInteraction].getSimpleName -> factory()((f, _) => SketchDownloadInteraction.fromFactory(f)),
+    classOf[DisplayLangMapContent].getSimpleName -> factory()((f, _) => DisplayLangMapContent.fromFactory(f)),
+    classOf[CollapsibleInstructionElement].getSimpleName -> factory()((f, _) => CollapsibleInstructionElement.fromFactory(f)),
+    classOf[ReorderInteraction.ReorderCodeInteraction].getSimpleName -> factory()((f, _) => ReorderInteraction.ReorderCodeInteraction.fromFactory(f)),
+    classOf[ReorderInteraction.ReorderMapIdInteraction].getSimpleName -> factory()((f, _) => ReorderInteraction.ReorderMapIdInteraction.fromFactory(f)),
+    classOf[SortingInteraction].getSimpleName -> factory()((f, _) => SortingInteraction.fromFactory(f)),
+    classOf[SortingReasonInteraction].getSimpleName -> factory()((f, _) => SortingReasonInteraction.fromFactory(f)),
+    classOf[CodeTaskToggleInteraction].getSimpleName -> factory(f => List(f.getElementAsWorkbookReference("reorder").referencedId))((f, parsed) => CodeTaskToggleInteraction(f.elementId, parsed(f.getElementAsWorkbookReference("reorder").referencedId).asInstanceOf[ReorderInteraction.ReorderCodeInteraction], f.getElementAsContentId("codeEditorTitle"), f.getElementAsString("advancedCodeTemplate"), f.getElementAs("advancedRequirements")(CodeTaskToggleInteraction.requirementsSerializer), f.getElementAsContentId("advancedSuccessMessage"))),
+    classOf[GptInteractionElement].getSimpleName -> GptInteractionElement.factory.asInstanceOf[WorkbookElementFactory[WorkbookElement]]
+  )
+  /*Map(
     /* classOf[TurtleStitchRecreateShapeInteraction].getSimpleName -> TurtleStitchRecreateShapeInteraction.fromFactory,
      classOf[TurtleStitchExploreProjectElement].getSimpleName -> TurtleStitchExploreProjectElement.fromFactory,
      classOf[LabeledCheckboxInteraction].getSimpleName -> LabeledCheckboxInteraction.fromFactory,
@@ -75,7 +102,7 @@ object WorkbookElementSerializable {
      classOf[WorkbookSection].getSimpleName -> WorkbookSection.fromFactory,
      classOf[Workbook].getSimpleName -> Workbook.fromFactory
      */
-  )
+  )*/
 
   val prefix = "WorkbookElementFactory"
 
@@ -146,6 +173,9 @@ case class WorkbookElementSerializable(
     withReferencesAdded(key, workbookElements.map(_.asRef))
   }
 
+  def withSerializedElementAdded(key: String, workbookElement: WorkbookElement): WorkbookElementSerializable = withElementAdded(key, workbookElement)
+  def withSerializedElementsAdded(key: String, workbookElements: Seq[WorkbookElement]): WorkbookElementSerializable = withElementsAdded(key, workbookElements)
+
   def withElementAdded(key: String, workbookElement: WorkbookElement): WorkbookElementSerializable = {
     withReferenceAdded(key, workbookElement.asRef)
   }
@@ -197,6 +227,14 @@ case class WorkbookElementSerializable(
   def getElementsAsWorkbookReferences(elementKey: String): List[WorkbookElementReference] = {
     getOptionalElementAs[List[WorkbookElementReference]](elementKey, List())(serializerRL)
   }
+
+  @deprecated("Resolve references through WorkbookElementFactory", "")
+  def getElementAsSerializedElement(elementKey: String): WorkbookElement =
+    throw UnsupportedOperationException(s"Reference $elementKey must be resolved while parsing $elementId")
+
+  @deprecated("Resolve references through WorkbookElementFactory", "")
+  def getElementAsSerializedElements(elementKey: String): List[WorkbookElement] =
+    throw UnsupportedOperationException(s"References $elementKey must be resolved while parsing $elementId")
 
 
 }
