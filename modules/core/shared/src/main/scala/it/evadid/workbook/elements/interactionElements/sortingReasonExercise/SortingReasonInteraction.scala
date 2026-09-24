@@ -20,8 +20,7 @@ case class SortingReasonInteraction(
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
-  override def toSerializableType: WorkbookElementSerializable = toFactoryBase.withElementAdded("fields", fields)(SortingReasonInteraction.contentIds).withElementAdded("items", items)(SortingReasonInteraction.itemsSerializer).withContentIdAdded("openButtonLabel", openButtonLabel)
-}
+  }
 
 case class SortingReasonItem(
   label: LanguageMapContentId,
@@ -35,5 +34,4 @@ object SortingReasonInteraction {
  private given itemRW: ReadWriter[SortingReasonItem] = macroRW
  private[sortingReasonExercise] val contentIds = Serializer.fromUpickleJson(summon[ReadWriter[List[LanguageMapContentId]]])
  private[sortingReasonExercise] val itemsSerializer = Serializer.fromUpickleJson(summon[ReadWriter[List[SortingReasonItem]]])
- def fromFactory(f: WorkbookElementSerializable): SortingReasonInteraction = SortingReasonInteraction(f.elementId, f.getElementAs("fields")(contentIds), f.getElementAs("items")(itemsSerializer), f.getElementAsContentId("openButtonLabel"))
-}
+ }

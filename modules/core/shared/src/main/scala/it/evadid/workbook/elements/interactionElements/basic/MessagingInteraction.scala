@@ -16,12 +16,10 @@ case class MessagingInteraction(override val elementId: String) extends Workbook
 
   override val serializerInteractionContent: Serializer[MessengerModelScaffolding] = mmsSer
 
-  override def toSerializableType: WorkbookElementSerializable = toFactoryBase
 }
 
 object MessagingInteraction {
 
-  def fromFactory(factory: WorkbookElementSerializable): MessagingInteraction = MessagingInteraction(factory.elementId)
 
   case class MessengerModelScaffolding(messengerModel: MessengerModel) {
 

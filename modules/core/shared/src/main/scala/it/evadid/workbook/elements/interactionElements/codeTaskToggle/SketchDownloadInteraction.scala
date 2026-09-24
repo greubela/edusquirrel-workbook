@@ -19,9 +19,6 @@ case class SketchDownloadInteraction(
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
-  override def toSerializableType: WorkbookElementSerializable = toFactoryBase
-    .withContentIdAdded("buttonLabel", buttonLabel).withElementAdded("filename", filename)
-    .withElementAdded("sketchContent", sketchContent).withElementAdded("unlockWhenReorderCorrect", unlockWhenReorderCorrect)
 }
 
 object SketchDownloadInteraction { def fromFactory(f: WorkbookElementSerializable): SketchDownloadInteraction = SketchDownloadInteraction(f.elementId, f.getElementAsContentId("buttonLabel"), f.getElementAsString("filename"), f.getElementAsString("sketchContent"), f.getElementAsString("unlockWhenReorderCorrect")) }

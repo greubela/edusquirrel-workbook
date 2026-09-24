@@ -4,108 +4,12 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.jsonFactory.WorkbookElementSerializable.{refRW, refRWL, serializerR, serializerRL}
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable.{serializerL, serializerR, serializerRL}
 import upickle.{ReadWriter, default, macroRW, readwriter}
-
-import scala.annotation.tailrec
-import scala.collection.mutable
-import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent}
-import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
-import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
-import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
-import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
-import it.evadid.workbook.elements.interactionElements.sortingExercise.SortingInteraction
-import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.SortingReasonInteraction
 
 object WorkbookElementSerializable {
 
-  def parseAll(elementsInOrder: List[WorkbookElementSerializable]): List[WorkbookElement] = {
-    parseAll(elementsInOrder, elementsInOrder, Map(), allKnownFactories)
-  }
-
-  @tailrec
-  private def parseAll(
-                        elementsInOrder: List[WorkbookElementSerializable],
-                        open: List[WorkbookElementSerializable],
-                        alreadyParsed: Map[String, WorkbookElement],
-                        knownFactories: Map[String, WorkbookElementFactory[WorkbookElement]]
-                      ): List[WorkbookElement] = {
-    if (open.isEmpty) {
-      val notYetParsed = elementsInOrder.filter(el => !alreadyParsed.contains(el.elementId))
-      if (notYetParsed.nonEmpty) throw SerializedException(s"Open is empty but ${notYetParsed} elements were not parsed yet (${notYetParsed.map(_.elementId)}")
-      else elementsInOrder.map(el => alreadyParsed(el.elementId))
-    } else {
-
-      def tryParse(element: WorkbookElementSerializable): Option[WorkbookElement] = {
-        val factory: Option[WorkbookElementFactory[WorkbookElement]] = knownFactories.get(element.elementType)
-        if (factory.isEmpty) throw SerializedException(s"No factory known for WorkbookElement with type ${element.elementType}")
-        else if (factory.get.requireIds(element).exists(!alreadyParsed.keySet.contains(_))) None
-        else Some(factory.get.createFromSerialized(element, alreadyParsed))
-      }
-
-      val newlyFinished: mutable.HashMap[String, WorkbookElement] = mutable.HashMap[String, WorkbookElement]()
-      val stillOpen: mutable.ListBuffer[WorkbookElementSerializable] = mutable.ListBuffer()
-      open.foreach(curOpenElement => tryParse(curOpenElement) match {
-        case Some(workbookElement) => newlyFinished += curOpenElement.elementId -> workbookElement
-        case None => stillOpen += curOpenElement
-      })
-
-      if (stillOpen.nonEmpty && newlyFinished.isEmpty) throw SerializedException(s"Iteration with no progress, likely because of a cyclic dependency, stop parsing! (still open: ${open.map(_.elementId)})")
-      else parseAll(elementsInOrder, stillOpen.toList, alreadyParsed ++ newlyFinished, knownFactories)
-    }
-  }
-
-  private def factory[T <: WorkbookElement](requiredIds: WorkbookElementSerializable => List[String] = _ => Nil)(create: (WorkbookElementSerializable, Map[String, WorkbookElement]) => T): WorkbookElementFactory[WorkbookElement] = new WorkbookElementFactory[WorkbookElement] {
-    override def requireIds(element: WorkbookElementSerializable): List[String] = requiredIds(element)
-    override def createFromSerialized(element: WorkbookElementSerializable, parsed: Map[String, WorkbookElement]): WorkbookElement = create(element, parsed)
-  }
-
-  val allKnownFactories: Map[String, WorkbookElementFactory[WorkbookElement]] = Map(
-    classOf[TextInteraction].getSimpleName -> factory()((f, _) => TextInteraction.fromFactory(f)),
-    classOf[MessagingInteraction].getSimpleName -> factory()((f, _) => MessagingInteraction.fromFactory(f)),
-    classOf[LabeledCheckboxInteraction].getSimpleName -> factory()((f, _) => LabeledCheckboxInteraction.fromFactory(f)),
-    classOf[LabeledNumberInteraction].getSimpleName -> factory()((f, _) => LabeledNumberInteraction.fromFactory(f)),
-    classOf[SketchDownloadInteraction].getSimpleName -> factory()((f, _) => SketchDownloadInteraction.fromFactory(f)),
-    classOf[DisplayLangMapContent].getSimpleName -> factory()((f, _) => DisplayLangMapContent.fromFactory(f)),
-    classOf[CollapsibleInstructionElement].getSimpleName -> factory()((f, _) => CollapsibleInstructionElement.fromFactory(f)),
-    classOf[ReorderInteraction.ReorderCodeInteraction].getSimpleName -> factory()((f, _) => ReorderInteraction.ReorderCodeInteraction.fromFactory(f)),
-    classOf[ReorderInteraction.ReorderMapIdInteraction].getSimpleName -> factory()((f, _) => ReorderInteraction.ReorderMapIdInteraction.fromFactory(f)),
-    classOf[SortingInteraction].getSimpleName -> factory()((f, _) => SortingInteraction.fromFactory(f)),
-    classOf[SortingReasonInteraction].getSimpleName -> factory()((f, _) => SortingReasonInteraction.fromFactory(f)),
-    classOf[CodeTaskToggleInteraction].getSimpleName -> factory(f => List(f.getElementAsWorkbookReference("reorder").referencedId))((f, parsed) => CodeTaskToggleInteraction(f.elementId, parsed(f.getElementAsWorkbookReference("reorder").referencedId).asInstanceOf[ReorderInteraction.ReorderCodeInteraction], f.getElementAsContentId("codeEditorTitle"), f.getElementAsString("advancedCodeTemplate"), f.getElementAs("advancedRequirements")(CodeTaskToggleInteraction.requirementsSerializer), f.getElementAsContentId("advancedSuccessMessage"))),
-    classOf[GptInteractionElement].getSimpleName -> GptInteractionElement.factory.asInstanceOf[WorkbookElementFactory[WorkbookElement]]
-  )
-  /*Map(
-    /* classOf[TurtleStitchRecreateShapeInteraction].getSimpleName -> TurtleStitchRecreateShapeInteraction.fromFactory,
-     classOf[TurtleStitchExploreProjectElement].getSimpleName -> TurtleStitchExploreProjectElement.fromFactory,
-     classOf[LabeledCheckboxInteraction].getSimpleName -> LabeledCheckboxInteraction.fromFactory,
-     classOf[LabeledNumberInteraction].getSimpleName -> LabeledNumberInteraction.fromFactory,
-     classOf[MessagingInteraction].getSimpleName -> MessagingInteraction.fromFactory,
-     classOf[TextInteraction].getSimpleName -> TextInteraction.fromFactory,
-     classOf[SketchDownloadInteraction].getSimpleName -> SketchDownloadInteraction.fromFactory,
-     classOf[CodeTaskToggleInteraction].getSimpleName -> CodeTaskToggleInteraction.fromFactory,
-     classOf[ReorderInteraction.ReorderCodeInteraction].getSimpleName -> ReorderInteraction.ReorderCodeInteraction.fromFactory,
-     classOf[ReorderInteraction.ReorderMapIdInteraction].getSimpleName -> ReorderInteraction.ReorderMapIdInteraction.fromFactory,
-     classOf[ProgrammingExercise].getSimpleName -> ProgrammingExercise.fromFactory,
-     classOf[GptInteractionElement].getSimpleName -> GptInteractionElement.fromFactory,
-     classOf[SortingInteraction].getSimpleName -> SortingInteraction.fromFactory,
-     classOf[SortingReasonInteraction].getSimpleName -> SortingReasonInteraction.fromFactory,
-     classOf[Slideshow].getSimpleName -> Slideshow.fromFactory,
-     classOf[SlideshowPanel.TwoColumnImagePanel].getSimpleName -> SlideshowPanel.TwoColumnImagePanel.fromFactory,
-     classOf[SlideshowPanel.ImageSlide].getSimpleName -> SlideshowPanel.ImageSlide.fromFactory,
-     classOf[DisplayLangMapContent].getSimpleName -> DisplayLangMapContent.fromFactory,
-     classOf[CollapsibleInstructionElement].getSimpleName -> CollapsibleInstructionElement.fromFactory,
-     classOf[ImageElement.FileBasedImageElement].getSimpleName -> ImageElement.FileBasedImageElement.fromFactory,
-     classOf[ImageElement.LanguageMapBasedImageElement].getSimpleName -> ImageElement.LanguageMapBasedImageElement.fromFactory,
-     classOf[LabeledWorkbookElement[?]].getSimpleName -> LabeledWorkbookElement.fromFactory,
-     classOf[ExerciseContainer].getSimpleName -> ExerciseContainer.fromFactory,
-     classOf[WorkbookSection].getSimpleName -> WorkbookSection.fromFactory,
-     classOf[Workbook].getSimpleName -> Workbook.fromFactory
-     */
-  )*/
-
   val prefix = "WorkbookElementFactory"
-
 
   private given refRW: default.ReadWriter[WorkbookElementReference] = macroRW
   //private given refRWL: default.ReadWriter[List[WorkbookElementReference]] = macroRW
@@ -113,33 +17,17 @@ object WorkbookElementSerializable {
   private given refRWL: ReadWriter[List[WorkbookElementReference]] =
     readwriter[List[WorkbookElementReference]].bimap[List[WorkbookElementReference]](_.toSeq, _.toList)
 
-  given facRW: default.ReadWriter[WorkbookElementSerializable] = macroRW
+  private given facRW: default.ReadWriter[WorkbookElementSerializable] = macroRW
+
+  given facRWL: default.ReadWriter[List[WorkbookElementSerializable]] =
+    readwriter[List[WorkbookElementSerializable]].bimap[List[WorkbookElementSerializable]](_.toSeq, _.toList)
 
   val serializer: Serializer[WorkbookElementSerializable] = Serializer.fromUpickleJson(facRW)
+  val serializerL: Serializer[List[WorkbookElementSerializable]] = Serializer.fromUpickleJson(facRWL)
   val serializerR: Serializer[WorkbookElementReference] = Serializer.fromUpickleJson(refRW)
   val serializerRL: Serializer[List[WorkbookElementReference]] = Serializer.fromUpickleJson(refRWL)
 
 
-  /* val serializerPretty: Serializer[WorkbookElementFactory] = new Serializer[WorkbookElementFactory] {
-
-   override def serialize(obj: WorkbookElementFactory): String = {
-      val keyValuePairs = obj.additionalElements.toList.map(el => el._1 + " -> " + el._2)
-      val mapString = keyValuePairs.mkString(", ")
-      s"${prefix}(${obj.elementType},${obj.elementId}):${mapString})"
-    }
-
-    override def deserialize(str: String): WorkbookElementFactory = {
-      val trimmed = str.trim
-      if (trimmed.length <= prefix.length + 1 || !trimmed.startsWith(prefix) || !trimmed.endsWith(")"))
-        throw SerializedException(s"WorkbookElementFactory json should start with ${prefix}")
-      else {
-        val withoutPrefix = trimmed
-          .substring(0, trimmed.length - 1)
-          .substring(prefix.length + 1, trimmed.length - 2)
-
-      }
-    }
-  }*/
 }
 
 
@@ -169,23 +57,17 @@ case class WorkbookElementSerializable(
     withElementAdded(key, element)(LanguageMapContentId.serializer)
   }
 
-  def withElementsAdded(key: String, workbookElements: Seq[WorkbookElement]): WorkbookElementSerializable = {
-    withReferencesAdded(key, workbookElements.map(_.asRef))
-  }
 
-  def withSerializedElementAdded(key: String, workbookElement: WorkbookElement): WorkbookElementSerializable = withElementAdded(key, workbookElement)
-  def withSerializedElementsAdded(key: String, workbookElements: Seq[WorkbookElement]): WorkbookElementSerializable = withElementsAdded(key, workbookElements)
-
-  def withElementAdded(key: String, workbookElement: WorkbookElement): WorkbookElementSerializable = {
-    withReferenceAdded(key, workbookElement.asRef)
+  def withSerializationsAdded(key: String, workbookElements: Seq[WorkbookElementSerializable]): WorkbookElementSerializable = {
+    withElementAdded(key, workbookElements.toList)(serializerL)
   }
 
   def withReferenceAdded(key: String, workbookElement: WorkbookElementReference): WorkbookElementSerializable = {
-    withElementAdded(key, workbookElement)(using refRW)
+    withElementAdded(key, workbookElement)(serializerR)
   }
 
   def withReferencesAdded(key: String, workbookElement: Seq[WorkbookElementReference]): WorkbookElementSerializable = {
-    withElementAdded(key, workbookElement.toList)(using refRWL)
+    withElementAdded(key, workbookElement.toList)(serializerRL)
   }
 
   def getElementAsString(elementKey: String): String = additionalElements(elementKey)
@@ -216,8 +98,28 @@ case class WorkbookElementSerializable(
     }
   }
 
+  def getElementsAsSerializedElements(elementKey: String): List[WorkbookElementSerializable] = {
+    getOptionalElementAs[List[WorkbookElementSerializable]](elementKey, List())(serializerL)
+  }
+
   def getElementAsContentId(elementKey: String): LanguageMapContentId = {
     getElementAs[LanguageMapContentId](elementKey)(LanguageMapContentId.serializer)
+  }
+
+  private def resolveReference[T <: WorkbookElement](ref: WorkbookElementReference, parsedElements: Map[String, WorkbookElement]): T = {
+    val resolved: Option[WorkbookElement] = parsedElements.get(ref.referencedId)
+    if (resolved.isEmpty) throw SerializedException(s"Cannot resolve required reference ${ref.referencedId} during construction!")
+    else if (resolved.get.isInstanceOf[T]) resolved.asInstanceOf[T]
+    else throw SerializedException(s"Expected Type of WorkbookElement ${ref.referencedId} did not match (was ${resolved.get.getClass.getSimpleName})!")
+  }
+
+  def getAndResolveWorkbookElement[T <: WorkbookElement](elementKey: String, parsedElements: Map[String, WorkbookElement]): T = {
+    resolveReference(getElementAsWorkbookReference(elementKey), parsedElements)
+  }
+
+  def getAndResolveWorkbookElements[T <: WorkbookElement](elementKey: String, parsedElements: Map[String, WorkbookElement]): List[T] = {
+    val refs = getElementsAsWorkbookReferences(elementKey)
+    refs.map(curRef => resolveReference[T](curRef, parsedElements))
   }
 
   def getElementAsWorkbookReference(elementKey: String): WorkbookElementReference = {
@@ -227,14 +129,6 @@ case class WorkbookElementSerializable(
   def getElementsAsWorkbookReferences(elementKey: String): List[WorkbookElementReference] = {
     getOptionalElementAs[List[WorkbookElementReference]](elementKey, List())(serializerRL)
   }
-
-  @deprecated("Resolve references through WorkbookElementFactory", "")
-  def getElementAsSerializedElement(elementKey: String): WorkbookElement =
-    throw UnsupportedOperationException(s"Reference $elementKey must be resolved while parsing $elementId")
-
-  @deprecated("Resolve references through WorkbookElementFactory", "")
-  def getElementAsSerializedElements(elementKey: String): List[WorkbookElement] =
-    throw UnsupportedOperationException(s"References $elementKey must be resolved while parsing $elementId")
 
 
 }

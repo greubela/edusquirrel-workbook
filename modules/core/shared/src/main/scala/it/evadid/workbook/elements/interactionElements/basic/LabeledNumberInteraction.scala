@@ -42,10 +42,6 @@ case class LabeledNumberInteraction(
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
   override val serializerInteractionContent: Serializer[String] = Serializer.stringIO
 
-  override def toSerializableType: WorkbookElementSerializable =
-    toFactoryBase.withContentIdAdded("numberLabel", numberLabel)
-      .withElementAdded("numberType", numberType.toString)
-      .withElementAdded("defaultValue", defaultValue)
 }
 
 
