@@ -4,19 +4,11 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 
 
 object LabeledNumberInteraction {
-  val factory = it.evadid.workbook.jsonFactory.WorkbookElementFactory.simple[LabeledNumberInteraction](e => WorkbookElementSerializable(e.elementId, classOf[LabeledNumberInteraction].getSimpleName, Map()).withContentIdAdded("numberLabel", e.numberLabel).withElementAdded("numberType", e.numberType.toString).withElementAdded("defaultValue", e.defaultValue), fromFactory)
-
-  def fromFactory(factory: WorkbookElementSerializable): LabeledNumberInteraction = {
-    LabeledNumberInteraction(
-      factory.elementId,
-      factory.getElementAsContentId("numberLabel"),
-      NumberType.valueOf(factory.getOptionalElementAsString("numberType", "IntegerLike")),
-      factory.getOptionalElementAsString("defaultValue", "0"))
-  }
 
   /**
    * Describes the kind of numeric value a [[LabeledNumberInteraction]] edits.
@@ -31,6 +23,23 @@ object LabeledNumberInteraction {
   }
 
   case class NumberInteractionConfig(numberType: NumberType, defaultDiff: BigDecimal)
+
+  val factory: SimpleWorkbookElementFactory[LabeledNumberInteraction] = new SimpleWorkbookElementFactory[LabeledNumberInteraction]() {
+    override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: LabeledNumberInteraction): WorkbookElementSerializable = {
+      baseElement
+        .withContentIdAdded("numberLabel", infoElement.numberLabel)
+        .withElementAdded("numberType", infoElement.numberType.toString)
+        .withElementAdded("defaultNumber", infoElement.defaultValue)
+    }
+
+    override def finishDeserialization(element: WorkbookElementSerializable): LabeledNumberInteraction = {
+      LabeledNumberInteraction(element.elementId,
+        element.getElementAsContentId("numberLabel"),
+        NumberType.valueOf(element.getOptionalElementAsString("numberType", "IntegerLike")),
+        element.getOptionalElementAsString("defaultValue", "0")
+      )
+    }
+  }
 
 }
 

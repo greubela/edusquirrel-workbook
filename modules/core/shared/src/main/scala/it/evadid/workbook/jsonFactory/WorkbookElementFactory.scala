@@ -1,9 +1,9 @@
 package it.evadid.workbook.jsonFactory
 
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.structureElements.Workbook
 import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, LabeledWorkbookElement}
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
@@ -11,29 +11,79 @@ import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.sortingExercise.SortingInteraction
 import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.SortingReasonInteraction
+import it.evadid.workbook.elements.structureElements.Workbook
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 
 object WorkbookElementFactory {
 
-  def simple[T <: WorkbookElement](
-      serialize: T => WorkbookElementSerializable,
-      deserialize: WorkbookElementSerializable => T
-  ): WorkbookElementFactory[T] = new WorkbookElementFactory[T] {
-    override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set.empty
-    override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
-    override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): T = deserialize(element)
-    override def toSerializableElement(element: T): WorkbookElementSerializable = serialize(element)
+  trait NoContentElementFactory[T <: WorkbookElement] extends SimpleWorkbookElementFactory[T] {
+    override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: T): WorkbookElementSerializable = baseElement
+
+    override def finishDeserialization(element: WorkbookElementSerializable): T = callConstructor(element.elementId)
+
+    def callConstructor(elementId: String): T
   }
 
-  def unsupported[T <: WorkbookElement](elementName: String): WorkbookElementFactory[T] = new WorkbookElementFactory[T] {
-    private def fail = throw UnsupportedOperationException(s"$elementName does not support workbook serialization")
-    override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set.empty
-    override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
-    override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): T = fail
-    override def toSerializableElement(element: T): WorkbookElementSerializable = fail
+  trait SingleContentElementFactory[T <: WorkbookElement] extends SimpleWorkbookElementFactory[T] {
+
+    def readContent(infoElement: T): LanguageMapContentId
+
+    override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: T): WorkbookElementSerializable = {
+      baseElement.withContentIdAdded("content", readContent(infoElement))
+    }
+
+    override def finishDeserialization(element: WorkbookElementSerializable): T = {
+      finishDeserialization(element.elementId, element.getElementAsContentId("content"))
+    }
+
+    def finishDeserialization(elementId: String, content: LanguageMapContentId): T
+
+
   }
+
+  trait SimpleWorkbookElementFactory[T <: WorkbookElement] extends WorkbookElementFactory[T] {
+
+    override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set()
+
+    override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = List()
+
+    override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): T = finishDeserialization(element)
+
+    override def toSerializableElement(element: T): WorkbookElementSerializable = finishSerialization(toFactoryBase(element), element)
+
+    def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: T): WorkbookElementSerializable
+
+    def finishDeserialization(element: WorkbookElementSerializable): T
+  }
+
+  def simple[T <: WorkbookElement](
+                                    finishSerialization: WorkbookElementSerializable => WorkbookElementSerializable,
+                                    deserialize: WorkbookElementSerializable => T
+                                  ): WorkbookElementFactory[T] = new WorkbookElementFactory[T] {
+    override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set.empty
+
+    override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
+
+    override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): T = deserialize(element)
+
+    override def toSerializableElement(element: T): WorkbookElementSerializable = finishSerialization(toFactoryBase(element))
+  }
+
+
+  /*def unsupported[T <: WorkbookElement](elementName: String): WorkbookElementFactory[T] = new WorkbookElementFactory[T] {
+    private def fail = throw UnsupportedOperationException(s"$elementName does not support workbook serialization")
+
+    override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set.empty
+
+    override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
+
+    override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): T = fail
+
+    override def toSerializableElement(element: T): WorkbookElementSerializable = fail
+  }*/
 
   val workbookElementSerializer: Serializer[WorkbookElement] = new Serializer[WorkbookElement]() {
     override def serialize(obj: WorkbookElement): String = {

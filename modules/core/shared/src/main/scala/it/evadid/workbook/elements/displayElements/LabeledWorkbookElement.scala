@@ -7,10 +7,9 @@ import it.evadid.workbook.elements.structureElements.Workbook
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 
 case class LabeledWorkbookElement(override val elementId: String, baseElement: WorkbookElement, label: WorkbookLabel) extends WorkbookDisplayElement {
-  override lazy val childrenOfThisElement = List(baseElement)
+  override lazy val childrenOfThisElement: List[WorkbookElement] = List(baseElement)
 
-
-  override val associatedFactory: WorkbookElementFactory[_ <: WorkbookElement] = LabeledWorkbookElement.factory
+  override val associatedFactory: WorkbookElementFactory[? <: WorkbookElement] = LabeledWorkbookElement.factory
 }
 
 object LabeledWorkbookElement {
