@@ -130,7 +130,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     sessionData.interactionHistory.foreachEntry((varId, serHist) => {
       interactions.map(_.interactionVariable).foreach(curInteraction => {
         if (curInteraction.keyForSerialization == varId) {
-          curInteraction.updateHistory(_.withAddedEvents(serHist, curInteraction.underlyingInteraction.serializer))
+          curInteraction.updateHistory(_.withAddedEvents(serHist, curInteraction.underlyingInteraction.serializerInteractionContent))
         }
       })
     })

@@ -76,7 +76,7 @@ case class WorkbookUserDataAnalyzer(logger: Logger, downloadToDisc: DownloadToDi
 
   private def tryToLoad(sessionData: SessionData): Unit = {
     logger.logInfo("WorkbookUserDataAnalyzer: now trying to load prio session data!")
-    if (sessionData.currentUserInfo.personId == userInfo.user.personId) {
+    if (sessionData.currentUserInfo.user.id == userInfo.user.id) {
       workbookInfo.loadedWorkbook.allContainedInteractions.foreach(curInteraction => {
         sessionData.interactionHistory.foreach(historyTup => if (historyTup._1 == curInteraction.interactionVariable.keyForSerialization) {
           curInteraction.interactionVariable.updateHistory(_.withAddedEvents(historyTup._2, curInteraction.serializerInteractionContent))
@@ -99,4 +99,3 @@ case class WorkbookUserDataAnalyzer(logger: Logger, downloadToDisc: DownloadToDi
   */
 
 }
-

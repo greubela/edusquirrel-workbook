@@ -14,9 +14,13 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.pr
 import it.evadid.vm.BeProgram
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 
 case class TurtleProgrammingInteraction(fullInfo: FullInfo, elementId: String, expectedSvgResult: AppSvgElement) extends WorkbookInteractionElement[BeProgram] {
+  // TODO: This legacy element embeds the application controller and a rendered SVG object; migrate
+  // those runtime dependencies to serializable configuration before adding a real factory.
+  override val associatedFactory = WorkbookElementFactory.unsupportedFactory[TurtleProgrammingInteraction](getClass.getSimpleName)
 
   val defaultValue: BeProgram = BeProgram(BeProgram.miniProgramExpression())
 

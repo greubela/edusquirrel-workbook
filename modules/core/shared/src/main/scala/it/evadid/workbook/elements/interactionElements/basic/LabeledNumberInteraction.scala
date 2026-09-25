@@ -30,13 +30,15 @@ object LabeledNumberInteraction {
         .withContentIdAdded("numberLabel", infoElement.numberLabel)
         .withElementAdded("numberType", infoElement.numberType.toString)
         .withElementAdded("defaultNumber", infoElement.defaultValue)
+        .withElementAdded("defaultDiff", infoElement.diff.toString)
     }
 
     override def finishDeserialization(element: WorkbookElementSerializable): LabeledNumberInteraction = {
       LabeledNumberInteraction(element.elementId,
         element.getElementAsContentId("numberLabel"),
         NumberType.valueOf(element.getOptionalElementAsString("numberType", "IntegerLike")),
-        element.getOptionalElementAsString("defaultValue", "0")
+        element.getOptionalElementAsString("defaultNumber", "0"),
+        BigDecimal(element.getOptionalElementAsString("defaultDiff", "1"))
       )
     }
   }
@@ -48,6 +50,7 @@ case class LabeledNumberInteraction(
                                      numberLabel: LanguageMapContentId,
                                      numberType: NumberType,
                                      override val defaultValue: String = "0",
+                                     diff: BigDecimal = BigDecimal(1),
                                    ) extends WorkbookInteractionElement[String] {
   override val associatedFactory = LabeledNumberInteraction.factory
 
@@ -55,6 +58,3 @@ case class LabeledNumberInteraction(
   override val serializerInteractionContent: Serializer[String] = Serializer.stringIO
 
 }
-
-
-

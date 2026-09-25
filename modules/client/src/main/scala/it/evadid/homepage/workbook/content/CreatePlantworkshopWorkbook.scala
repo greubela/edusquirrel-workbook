@@ -1,6 +1,7 @@
 package it.evadid.homepage.workbook.content
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.ImageElement.FileBasedImageElement
@@ -10,7 +11,10 @@ import it.evadid.workbook.elements.interactionElements.codeTaskToggle.AdvancedCo
 import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 
-case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
+case class CreatePlantworkshopWorkbook(
+  override val fullInfo: FullInfo,
+  fileForResource: Option[String => FileDescription] = None
+) extends WorkbookFactory {
 
   override val workbookId: String = "PlantWorkshop" // todo: Lang map should automatically prefix this
 
@@ -49,7 +53,9 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
 
   private def wiringSlideImage(slideIndex: Int): FileBasedImageElement =
     FileBasedImageElement(nextId("wiring-image"),
-      fullInfo.contentControl.fileFactory.relativeToResourceFolder(s"img/plantworkshop/schaltkreis/Plant conv $slideIndex.png")
+      fileForResource
+        .map(_(s"img/plantworkshop/schaltkreis/Plant conv $slideIndex.png"))
+        .getOrElse(fullInfo.contentControl.fileFactory.relativeToResourceFolder(s"img/plantworkshop/schaltkreis/Plant conv $slideIndex.png"))
     )
 
   private def buildWiringPanel(i: Int): SlideshowPanel = {
