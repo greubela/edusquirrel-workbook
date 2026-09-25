@@ -32,8 +32,6 @@ object DefaultSerializer {
 
   private[serializer] given serLMID: ReadWriter[LanguageMapContentId] = serializerLangMapId.uPickleReadWrite
 
-  private[serializer] given serLMIDs: ReadWriter[List[LanguageMapContentId]] =
-    readwriter[Seq[LanguageMapContentId]].bimap[List[LanguageMapContentId]](_.toSeq, _.toList)
 
   private[serializer] given rwAL: ReadWriter[AppLanguage] =
     readwriter[String].bimap[AppLanguage](_.name, value => AppLanguage.allLanguages.find(_.name == value).get)
@@ -45,8 +43,6 @@ object DefaultSerializer {
 
     override def deserialize(str: String): LanguageMapContentId = LanguageMapContentId(str)
   })
-
-  val serializerLangMapIds: Serializer[List[LanguageMapContentId]] = Serializer.fromUpickleJson(serLMIDs)
 
   private[serializer] given ldt: ReadWriter[LocalDateTime] =
     upickle.default.readwriter[String].bimap[LocalDateTime](_.toString, LocalDateTime.parse)
@@ -169,9 +165,6 @@ object DefaultSerializer {
   private[serializer] given fdbreq: ReadWriter[FetchAllFromDbRequest] = macroRW
 
   private[serializer] given ReadWriter[InteractionVariableStateSerialized] = macroRW
-
-  private[serializer] given ReadWriter[Set[InteractionVariableStateSerialized]] =
-    readwriter[Seq[InteractionVariableStateSerialized]].bimap[Set[InteractionVariableStateSerialized]](_.toSeq, _.toSet)
 
   private[serializer] given ivhsRW: ReadWriter[InteractionVariableHistorySerialized] = macroRW
 

@@ -12,20 +12,28 @@ import it.evadid.workbook.elements.interactionElements.basic.MessagingInteractio
 import it.evadid.workbook.interaction.sync.SyncControl
 import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
-import upickle.default.ReadWriter
 
 import scala.concurrent.*
 import scala.util.{Failure, Success}
 
 object GptInteractionElement {
 
-  private val contentIdsSerializer = DefaultSerializer.serializerLangMapIds
-
   val factory: WorkbookElementFactory[GptInteractionElement] = new WorkbookElementFactory[GptInteractionElement] {
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable) = Set(element.getElementAsWorkbookReference("underlyingTextInteraction").referencedId)
+
     override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable) = Seq.empty
-    override def toSerializableElement(e: GptInteractionElement) = WorkbookElementSerializable(e.elementId, classOf[GptInteractionElement].getSimpleName, Map()).withReferenceAdded("underlyingTextInteraction", e.underlyingTextInteraction.asRef).withContentIdAdded("exerciseText", e.exerciseText).withElementAdded("scaffoldingHints", e.scaffoldingHints)(contentIdsSerializer).withElementAdded("gradingCriteria", e.gradingCriteria)(contentIdsSerializer)
-    override def fromSerializedElement(f: WorkbookElementSerializable, parsed: Map[String, WorkbookElement]) = GptInteractionElement(f.elementId, f.getAndResolveWorkbookElement[WorkbookInteractionElement[String]]("underlyingTextInteraction", parsed), f.getElementAsContentId("exerciseText"), f.getElementAs("scaffoldingHints")(contentIdsSerializer), f.getElementAs("gradingCriteria")(contentIdsSerializer))
+
+    override def toSerializableElement(e: GptInteractionElement) = {
+      WorkbookElementSerializable(e.elementId, classOf[GptInteractionElement].getSimpleName, Map()).withReferenceAdded("underlyingTextInteraction", e.underlyingTextInteraction.asRef).withContentIdAdded("exerciseText", e.exerciseText).withElementsAdded("scaffoldingHints", e.scaffoldingHints)(DefaultSerializer.serializerLangMapId).withElementsAdded("gradingCriteria", e.gradingCriteria)(DefaultSerializer.serializerLangMapId)
+    }
+
+    override def fromSerializedElement(f: WorkbookElementSerializable, parsed: Map[String, WorkbookElement]) = {
+      GptInteractionElement(f.elementId,
+        f.getAndResolveWorkbookElement[WorkbookInteractionElement[String]]("underlyingTextInteraction", parsed),
+        f.getElementAsContentId("exerciseText"),
+        f.getElements("scaffoldingHints")(DefaultSerializer.serializerLangMapId),
+        f.getElements("gradingCriteria")(DefaultSerializer.serializerLangMapId))
+    }
   }
 
 }
@@ -36,7 +44,7 @@ case class GptInteractionElement(
                                   exerciseText: LanguageMapContentId,
                                   scaffoldingHints: List[LanguageMapContentId],
                                   gradingCriteria: List[LanguageMapContentId]
-) extends WorkbookDisplayElement {
+                                ) extends WorkbookDisplayElement {
   override val associatedFactory = GptInteractionElement.factory
   println("[WARN] creating messaging interaction for id '" + elementId + "' with no grading!")
 

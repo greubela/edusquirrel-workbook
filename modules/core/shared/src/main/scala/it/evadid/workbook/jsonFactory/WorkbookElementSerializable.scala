@@ -61,7 +61,7 @@ case class WorkbookElementSerializable(
   }
 
   def withContentIdsAdded(key: String, element: List[LanguageMapContentId]): WorkbookElementSerializable = {
-    withElementAdded(key, element)(DefaultSerializer.serializerLangMapIds)
+    withElementsAdded(key, element)(DefaultSerializer.serializerLangMapId)
   }
 
   def withSerializationsAdded(key: String, workbookElements: Seq[WorkbookElementSerializable]): WorkbookElementSerializable = {
@@ -134,7 +134,7 @@ case class WorkbookElementSerializable(
   }
 
   def getElementAsContentIds(elementKey: String): List[LanguageMapContentId] = {
-    getOptionalElementAs[List[LanguageMapContentId]](elementKey, List())(DefaultSerializer.serializerLangMapIds)
+   getElements(elementKey)(DefaultSerializer.serializerLangMapId)
   }
 
   private def resolveReference[T <: WorkbookElement](ref: WorkbookElementReference, parsedElements: Map[String, WorkbookElement]): T = {
