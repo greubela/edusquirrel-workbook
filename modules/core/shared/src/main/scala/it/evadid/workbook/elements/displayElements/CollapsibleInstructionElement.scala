@@ -15,16 +15,16 @@ object CollapsibleInstructionElement {
 
     override def finishSerialization(baseElement: WorkbookElementSerializable, e: CollapsibleInstructionElement): WorkbookElementSerializable = {
       baseElement.
-        withContentIdAdded("titleLabel", e.titleLabel)
-        .withContentIdAdded("bodyContent", e.bodyContent)
+        withElementAddedAs("titleLabel", e.titleLabel)
+        .withElementAddedAs("bodyContent", e.bodyContent)
         .withElementAdded("initiallyCollapsed", e.initiallyCollapsed.toString)
     }
 
     override def finishDeserialization(f: WorkbookElementSerializable): CollapsibleInstructionElement = {
       CollapsibleInstructionElement(
         f.elementId,
-        f.getElementAsContentId("titleLabel"),
-        f.getElementAsContentId("bodyContent"),
+        f.getElementAs[LanguageMapContentId]("titleLabel"),
+        f.getElementAs[LanguageMapContentId]("bodyContent"),
         f.getElement("initiallyCollapsed").toBoolean)
     }
   }

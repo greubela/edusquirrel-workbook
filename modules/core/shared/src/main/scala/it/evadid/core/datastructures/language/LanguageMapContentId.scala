@@ -15,7 +15,13 @@ case class LanguageMapContentId(val languageMapId: String, val entryKey: String)
 
 object LanguageMapContentId {
 
-  given ReadWriter[LanguageMapContentId] = DefaultSerializer.serializerLangMapId.uPickleReadWrite
+  val serializerLangMapId: Serializer[LanguageMapContentId] = Serializer.constructorLikeSerializer("LangMapId", new Serializer[LanguageMapContentId]() {
+    override def serialize(obj: LanguageMapContentId): String = obj.fullId
+
+    override def deserialize(str: String): LanguageMapContentId = LanguageMapContentId(str)
+  })
+
+  given ReadWriter[LanguageMapContentId] = serializerLangMapId.uPickleReadWrite
 
 
   def apply(languageMapId: String, entryKey: String): LanguageMapContentId =

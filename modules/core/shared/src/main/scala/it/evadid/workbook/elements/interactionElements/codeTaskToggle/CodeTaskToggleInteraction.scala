@@ -2,10 +2,9 @@ package it.evadid.workbook.elements.interactionElements.codeTaskToggle
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
-import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 import upickle.default.{ReadWriter, macroRW}
 
 case class CodeTaskToggleInteraction(
@@ -32,13 +31,11 @@ case class CodeTaskToggleInteraction(
 }
 
 object CodeTaskToggleInteraction {
-  private given contentIdRW: ReadWriter[LanguageMapContentId] = DefaultSerializer.serializerLangMapId.uPickleReadWrite
-
   private given requirementRW: ReadWriter[AdvancedCodeRequirement] = macroRW
 
   private[workbook] val requirementsSerializer = Serializer.fromUpickleJson(summon[ReadWriter[List[AdvancedCodeRequirement]]])
   val factory: WorkbookElementFactory[CodeTaskToggleInteraction] = new WorkbookElementFactory[CodeTaskToggleInteraction] {
-    override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set(element.getElementAsWorkbookReference("reorder").referencedId)
+    override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set(element.getElementAs[WorkbookElementReference]("reorder").referencedId)
 
     override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable) = Seq.empty
 
@@ -48,19 +45,19 @@ object CodeTaskToggleInteraction {
         classOf[CodeTaskToggleInteraction].getSimpleName,
         Map())
         .withElementAddedAs("reorder", e.reorder.asRef)
-        .withContentIdAdded("codeEditorTitle", e.codeEditorTitle)
+        .withElementAddedAs[LanguageMapContentId]("codeEditorTitle", e.codeEditorTitle)
         .withElementAdded("advancedCodeTemplate", e.advancedCodeTemplate)
         .withElementsAddedAs("advancedRequirements", e.advancedRequirements)
-        .withContentIdAdded("advancedSuccessMessage", e.advancedSuccessMessage)
+        .withElementAddedAs("advancedSuccessMessage", e.advancedSuccessMessage)
     }
 
     override def fromSerializedElement(f: WorkbookElementSerializable, parsed: Map[String, WorkbookElement]) = {
       CodeTaskToggleInteraction(
         f.elementId,
         f.getAndResolveWorkbookElement[ReorderInteraction.ReorderCodeInteraction]("reorder", parsed),
-        f.getElementAsContentId("codeEditorTitle"), f.getElementAs("advancedCodeTemplate"),
+        f.getElementAs[LanguageMapContentId]("codeEditorTitle"), f.getElementAs("advancedCodeTemplate"),
         f.getElementsAs[AdvancedCodeRequirement]("advancedRequirements"),
-        f.getElementAsContentId("advancedSuccessMessage"))
+        f.getElementAs[LanguageMapContentId]("advancedSuccessMessage"))
     }
   }
 }

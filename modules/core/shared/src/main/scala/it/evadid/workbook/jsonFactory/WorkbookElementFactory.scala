@@ -48,11 +48,11 @@ object WorkbookElementFactory {
     def readContent(infoElement: T): LanguageMapContentId
 
     override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: T): WorkbookElementSerializable = {
-      baseElement.withContentIdAdded("content", readContent(infoElement))
+      baseElement.withElementAddedAs("content", readContent(infoElement))
     }
 
     override def finishDeserialization(element: WorkbookElementSerializable): T = {
-      finishDeserialization(element.elementId, element.getElementAsContentId("content"))
+      finishDeserialization(element.elementId, element.getElementAs[LanguageMapContentId]("content"))
     }
 
     def finishDeserialization(elementId: String, content: LanguageMapContentId): T

@@ -29,7 +29,7 @@ object ReorderInteraction {
 
       override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: ReorderCodeInteraction): WorkbookElementSerializable = {
         baseElement
-          .withContentIdsAdded("hints", infoElement.hints)
+          .withElementAddedAs("hints", infoElement.hints)
           .withElementAddedAs[AppLanguage]("programmingLanguage", infoElement.programmingLanguage.asInstanceOf[AppLanguage])
           .withElementAdded("seed", infoElement.seed.toString)
           .withElementsAdded("stringLines", infoElement.lines.toSeq)
@@ -42,7 +42,7 @@ object ReorderInteraction {
           element.getElementsAs("stringLines"),
           element.getElementAs[AppLanguage]("programmingLanguage").asInstanceOf[ProgrammingLanguage],
           element.getOptionalElementAs("seed", "0").toLongOption.getOrElse(0),
-          element.getElementAsContentIds("hints")
+          element.getElementsAs[LanguageMapContentId]("hints")
         )
       }
     }
@@ -51,7 +51,7 @@ object ReorderInteraction {
   case class ReorderMapIdInteraction(override val elementId: String, ids: List[LanguageMapContentId], seed: Long = 0) extends ReorderInteraction[LanguageMapContentId] {
     override val associatedFactory = ReorderMapIdInteraction.factory
     override val elements = ids
-    override val defaultValue = ReorderInteractionState.initStateFromElementsAndSeed(ids, seed, DefaultSerializer.serializerLangMapId, ReorderType.LANGUAGE_MAP_IDS)
+    override val defaultValue = ReorderInteractionState.initStateFromElementsAndSeed(ids, seed, LanguageMapContentId.serializerLangMapId, ReorderType.LANGUAGE_MAP_IDS)
     override val serializerInteractionContent = defaultValue.serializer
     override lazy val childrenOfThisElement: List[WorkbookElement] = List()
   }
@@ -61,14 +61,14 @@ object ReorderInteraction {
 
       override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: ReorderMapIdInteraction): WorkbookElementSerializable = {
         baseElement
-          .withContentIdsAdded("contentToReorder", infoElement.ids)
+          .withElementsAddedAs("contentToReorder", infoElement.ids)
           .withElementAdded("seed", infoElement.seed.toString)
       }
 
       override def finishDeserialization(element: WorkbookElementSerializable): ReorderMapIdInteraction = {
         ReorderMapIdInteraction(
           element.elementId,
-          element.getElementAsContentIds("contentToReorder"),
+          element.getElementsAs[LanguageMapContentId]("contentToReorder"),
           element.getOptionalElementAs("seed", "0").toLongOption.getOrElse(0))
       }
     }

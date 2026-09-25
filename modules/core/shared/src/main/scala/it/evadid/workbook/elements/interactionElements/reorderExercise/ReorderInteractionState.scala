@@ -110,10 +110,8 @@ object ReorderInteractionState {
 
   def forIds(ids: List[LanguageMapContentId], currentOrder: List[Int], correctOrder: List[Int]): ReorderInteractionState[LanguageMapContentId] = {
     //val ids = ids.map(LanguageMapContentId.apply)
-    ReorderInteractionState[LanguageMapContentId](ids, currentOrder, correctOrder, ReorderType.LANGUAGE_MAP_IDS, DefaultSerializer.serializerLangMapId)
+    ReorderInteractionState[LanguageMapContentId](ids, currentOrder, correctOrder, ReorderType.LANGUAGE_MAP_IDS, LanguageMapContentId.serializerLangMapId)
   }
-
-  private[reorderExercise] given lmci: ReadWriter[LanguageMapContentId] = DefaultSerializer.serializerLangMapId.uPickleReadWrite
 
   private[reorderExercise] given et: ReadWriter[ReorderType] = ReorderType.serializer.uPickleReadWrite
 

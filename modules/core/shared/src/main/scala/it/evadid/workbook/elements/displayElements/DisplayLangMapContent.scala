@@ -15,7 +15,7 @@ object DisplayLangMapContent {
   val factory: SimpleWorkbookElementFactory[DisplayLangMapContent] = new SimpleWorkbookElementFactory[DisplayLangMapContent]() {
     override def finishSerialization(baseElement: WorkbookElementSerializable, e: DisplayLangMapContent): WorkbookElementSerializable = {
       baseElement
-        .withContentIdAdded("content", e.content)
+        .withElementAddedAs("content", e.content)
         .withElementAddedAs[LangMapContentIdType]("contentType", e.contentType)(using summon[ReadWriter[LangMapContentIdType]])
     }
 
@@ -23,7 +23,7 @@ object DisplayLangMapContent {
 
       DisplayLangMapContent(
         f.elementId,
-        f.getElementAsContentId("content"),
+        f.getElementAs[LanguageMapContentId]("content"),
         f.getElementAs[LangMapContentIdType]("contentType")(using summon[ReadWriter[LangMapContentIdType]]))
     }
   }

@@ -283,7 +283,7 @@ case class SlideDeckExercise(
 object Slideshow {
   val factory: WorkbookElementFactory[Slideshow] = new WorkbookElementFactory[Slideshow] {
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] =
-      element.getElementsAsWorkbookReferences("panels").map(_.referencedId).toSet
+      element.getElementsAs[WorkbookElementReference]("panels").map(_.referencedId).toSet
 
     override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
 

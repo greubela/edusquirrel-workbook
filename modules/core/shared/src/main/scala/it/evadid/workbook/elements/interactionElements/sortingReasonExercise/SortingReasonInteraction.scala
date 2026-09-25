@@ -33,14 +33,13 @@ case class SortingReasonItem(
                             ) derives ReadWriter
 
 object SortingReasonInteraction {
-  private given contentIdRW: ReadWriter[LanguageMapContentId] = DefaultSerializer.serializerLangMapId.uPickleReadWrite;
 
     val factory = new SimpleWorkbookElementFactory[SortingReasonInteraction]() {
     override def finishSerialization(baseElement: WorkbookElementSerializable, e: SortingReasonInteraction): WorkbookElementSerializable = {
       baseElement
         .withElementsAddedAs[LanguageMapContentId]("fields", e.fields)
         .withElementsAddedAs[SortingReasonItem]("items", e.items)
-        .withContentIdAdded("openButtonLabel", e.openButtonLabel)
+        .withElementAddedAs[LanguageMapContentId]("openButtonLabel", e.openButtonLabel)
     }
 
     override def finishDeserialization(f: WorkbookElementSerializable): SortingReasonInteraction = {
@@ -48,7 +47,7 @@ object SortingReasonInteraction {
         f.elementId,
         f.getElementsAs[LanguageMapContentId]("fields"),
         f.getElementsAs[SortingReasonItem]("items"),
-        f.getElementAsContentId("openButtonLabel")
+        f.getElementAs[LanguageMapContentId]("openButtonLabel")
       )
 
     }

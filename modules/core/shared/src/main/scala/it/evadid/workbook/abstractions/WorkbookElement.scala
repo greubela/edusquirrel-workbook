@@ -7,8 +7,8 @@ import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementRe
 
 sealed trait WorkbookElement extends AutoSerializable[WorkbookElement, WorkbookElementSerializable] {
   val elementId: String
-
-  lazy val asRef = WorkbookElementReference(elementId, this.getClass.getSimpleName)
+  //  assert(elementId.matches("[a-zA-Z0-9.-]+"))
+  lazy val asRef = WorkbookElementReference(elementId, Option(this.getClass.getSimpleName))
 
   lazy val childrenOfThisElement: List[WorkbookElement]
   lazy val allContainedInteractions: List[WorkbookInteractionElement[?]] = allChildrenFullSubtree.flatMap {

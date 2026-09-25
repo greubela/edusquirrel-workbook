@@ -55,13 +55,7 @@ case class WorkbookElementSerializable(
 
   // Other
 
-  def withContentIdAdded(key: String, element: LanguageMapContentId): WorkbookElementSerializable = {
-    withElementAddedAs[LanguageMapContentId](key, element)(using DefaultSerializer.serializerLangMapId.uPickleReadWrite)
-  }
 
-  def withContentIdsAdded(key: String, element: List[LanguageMapContentId]): WorkbookElementSerializable = {
-    withElementsAddedAs(key, element)(using DefaultSerializer.serializerLangMapId.uPickleReadWrite)
-  }
 
   // Get Single
 
@@ -113,14 +107,6 @@ case class WorkbookElementSerializable(
   }*/
 
   // Other
-  def getElementAsContentId(elementKey: String): LanguageMapContentId = {
-    getElementAs[LanguageMapContentId](elementKey)(using DefaultSerializer.serializerLangMapId.uPickleReadWrite)
-  }
-
-  def getElementAsContentIds(elementKey: String): List[LanguageMapContentId] = {
-    getElementsAs(elementKey)(using DefaultSerializer.serializerLangMapId.uPickleReadWrite)
-  }
-
   private def resolveReference[T <: WorkbookElement](ref: WorkbookElementReference, parsedElements: Map[String, WorkbookElement]): T = {
     val resolved: Option[WorkbookElement] = parsedElements.get(ref.referencedId)
     if (resolved.isEmpty) throw SerializedException(s"Cannot resolve required reference ${ref.referencedId} during construction!")
@@ -129,20 +115,12 @@ case class WorkbookElementSerializable(
   }
 
   def getAndResolveWorkbookElement[T <: WorkbookElement](elementKey: String, parsedElements: Map[String, WorkbookElement]): T = {
-    resolveReference(getElementAsWorkbookReference(elementKey), parsedElements)
+    resolveReference(getElementAs[WorkbookElementReference](elementKey), parsedElements)
   }
 
   def getAndResolveWorkbookElements[T <: WorkbookElement](elementKey: String, parsedElements: Map[String, WorkbookElement]): List[T] = {
     val refs: List[WorkbookElementReference] = getElementsAs[WorkbookElementReference](elementKey)
     refs.map(curRef => resolveReference[T](curRef, parsedElements))
-  }
-
-  def getElementAsWorkbookReference(elementKey: String): WorkbookElementReference = {
-    getElementAs[WorkbookElementReference](elementKey)
-  }
-
-  def getElementsAsWorkbookReferences(elementKey: String): List[WorkbookElementReference] = {
-    getOptionalElementAs[Seq[WorkbookElementReference]](elementKey, List()).toList
   }
 
 

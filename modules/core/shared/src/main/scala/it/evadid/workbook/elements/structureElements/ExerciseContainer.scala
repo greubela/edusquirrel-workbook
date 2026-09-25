@@ -8,12 +8,12 @@ import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementRe
 object ExerciseContainer {
   val factory: WorkbookElementFactory[ExerciseContainer] = new WorkbookElementFactory[ExerciseContainer] {
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] =
-      element.getElementsAsWorkbookReferences("content").map(_.referencedId).toSet
+      element.getElementsAs[WorkbookElementReference]("content").map(_.referencedId).toSet
     override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
     override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): ExerciseContainer =
-      ExerciseContainer(element.elementId, element.getElementAsContentId("title"), element.getAndResolveWorkbookElements("content", parsedElements))
+      ExerciseContainer(element.elementId, element.getElementAs[LanguageMapContentId]("title"), element.getAndResolveWorkbookElements("content", parsedElements))
     override def toSerializableElement(element: ExerciseContainer): WorkbookElementSerializable =
-      toFactoryBase(element).withContentIdAdded("title", element.containerTitle).withElementsAddedAs[WorkbookElementReference]("content", element.containerContent.map(_.asRef))
+      toFactoryBase(element).withElementAddedAs("title", element.containerTitle).withElementsAddedAs[WorkbookElementReference]("content", element.containerContent.map(_.asRef))
   }
 }
 

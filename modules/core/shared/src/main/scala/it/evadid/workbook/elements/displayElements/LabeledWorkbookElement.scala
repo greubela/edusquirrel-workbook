@@ -18,7 +18,7 @@ object LabeledWorkbookElement {
 
   lazy val factory: WorkbookElementFactory[LabeledWorkbookElement[WorkbookElement]] = new WorkbookElementFactory[LabeledWorkbookElement[WorkbookElement]](){
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] =
-      Set(element.getElementAsWorkbookReference("baseElement").referencedId)
+      Set(element.getElementAs[WorkbookElementReference]("baseElement").referencedId)
 
     override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = List()
 

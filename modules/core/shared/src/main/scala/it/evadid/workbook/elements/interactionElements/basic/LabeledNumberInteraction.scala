@@ -27,14 +27,14 @@ object LabeledNumberInteraction {
   val factory: SimpleWorkbookElementFactory[LabeledNumberInteraction] = new SimpleWorkbookElementFactory[LabeledNumberInteraction]() {
     override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: LabeledNumberInteraction): WorkbookElementSerializable = {
       baseElement
-        .withContentIdAdded("numberLabel", infoElement.numberLabel)
+        .withElementAddedAs("numberLabel", infoElement.numberLabel)
         .withElementAdded("numberType", infoElement.numberType.toString)
         .withElementAdded("defaultNumber", infoElement.defaultValue)
     }
 
     override def finishDeserialization(element: WorkbookElementSerializable): LabeledNumberInteraction = {
       LabeledNumberInteraction(element.elementId,
-        element.getElementAsContentId("numberLabel"),
+        element.getElementAs[LanguageMapContentId]("numberLabel"),
         NumberType.valueOf(element.getOptionalElementAs("numberType", "IntegerLike")),
         element.getOptionalElementAs("defaultNumber", "0")
       )

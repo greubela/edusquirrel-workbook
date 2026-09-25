@@ -28,14 +28,14 @@ object SketchDownloadInteraction {
 
     override def finishSerialization(baseElement: WorkbookElementSerializable, e: SketchDownloadInteraction): WorkbookElementSerializable = {
       baseElement
-        .withContentIdAdded("buttonLabel", e.buttonLabel)
+        .withElementAddedAs("buttonLabel", e.buttonLabel)
         .withElementAdded("filename", e.filenameRelativeToWorkbookResources)
         .withElementAdded("sketchContent", e.sketchContent)
         .withElementAdded("unlockWhenReorderCorrect", e.unlockWhenReorderCorrect)
     }
 
     override def finishDeserialization(f: WorkbookElementSerializable): SketchDownloadInteraction = {
-      SketchDownloadInteraction(f.elementId, f.getElementAsContentId("buttonLabel"), f.getElementAs("filename"), f.getElementAs("sketchContent"), f.getElementAs("unlockWhenReorderCorrect"))
+      SketchDownloadInteraction(f.elementId, f.getElementAs[LanguageMapContentId]("buttonLabel"), f.getElementAs("filename"), f.getElementAs("sketchContent"), f.getElementAs("unlockWhenReorderCorrect"))
     }
   }
 

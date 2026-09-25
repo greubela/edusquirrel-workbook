@@ -30,20 +30,6 @@ import scala.util.*
 object DefaultSerializer {
 
 
-  given serLMID: ReadWriter[LanguageMapContentId] = serializerLangMapId.uPickleReadWrite
-
-
-  private[serializer] given rwAL: ReadWriter[AppLanguage] =
-    readwriter[String].bimap[AppLanguage](_.name, value => AppLanguage.allLanguages.find(_.name == value).get)
-
-  val serializerAppLanguage: Serializer[AppLanguage] = Serializer.fromUpickleJson(rwAL)
-
-  val serializerLangMapId: Serializer[LanguageMapContentId] = Serializer.constructorLikeSerializer("LangMapId", new Serializer[LanguageMapContentId]() {
-    override def serialize(obj: LanguageMapContentId): String = obj.fullId
-
-    override def deserialize(str: String): LanguageMapContentId = LanguageMapContentId(str)
-  })
-
   private[serializer] given ldt: ReadWriter[LocalDateTime] =
     upickle.default.readwriter[String].bimap[LocalDateTime](_.toString, LocalDateTime.parse)
 

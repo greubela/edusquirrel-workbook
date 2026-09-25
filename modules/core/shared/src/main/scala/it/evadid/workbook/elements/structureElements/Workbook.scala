@@ -36,14 +36,14 @@ object Workbook {
     }
 
     def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = {
-      element.getElementsAsWorkbookReferences("sections").map(curRef => curRef.referencedId).toSet
+      element.getElementsAs[WorkbookElementReference]("sections").map(curRef => curRef.referencedId).toSet
     }
 
     def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): Workbook = {
       val sections = element.getAndResolveWorkbookElements[WorkbookSection]("sections", parsedElements)
       Workbook(
         element.elementId,
-        element.getElementAsContentId("title"),
+        element.getElementAs[LanguageMapContentId]("title"),
         sections,
         element.getElementsAs[AppLanguage]("availableLanguages").map(_.asInstanceOf[HumanLanguage])
       )
@@ -54,7 +54,7 @@ object Workbook {
       val requiredToSerialize = element.allChildrenFullSubtree.filter(curChild => allRequiredIds.contains(curChild.elementId))
 
       toFactoryBase(element)
-        .withContentIdAdded("title", element.workbookTitle)
+        .withElementAddedAs("title", element.workbookTitle)
         .withElementsAdded("test", element.sections.map(_.sectionId))
         .withElementsAddedAs[AppLanguage]("availableLanguages", element.availableLanguages.map(_.asInstanceOf[AppLanguage]))
         .withElementsAddedAs[WorkbookElementSerializable]("serializedElements", requiredToSerialize.map(_.toSerializableType))(using WorkbookElementSerializable.serializer.uPickleReadWrite)

@@ -19,7 +19,7 @@ import scala.util.{Failure, Success}
 object GptInteractionElement {
 
   val factory: WorkbookElementFactory[GptInteractionElement] = new WorkbookElementFactory[GptInteractionElement] {
-    override def idsRequiredForDeserialization(element: WorkbookElementSerializable) = Set(element.getElementAsWorkbookReference("underlyingTextInteraction").referencedId)
+    override def idsRequiredForDeserialization(element: WorkbookElementSerializable) = Set(element.getElementAs[WorkbookElementReference]("underlyingTextInteraction").referencedId)
 
     override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable) = Seq.empty
 
@@ -29,17 +29,17 @@ object GptInteractionElement {
         classOf[GptInteractionElement].getSimpleName,
         Map()
       ).withElementAddedAs[WorkbookElementReference]("underlyingTextInteraction", e.underlyingTextInteraction.asRef)
-        .withContentIdAdded("exerciseText", e.exerciseText)
-        .withElementsAddedAs[LanguageMapContentId]("scaffoldingHints", e.scaffoldingHints)(using DefaultSerializer.serializerLangMapId.uPickleReadWrite)
-        .withElementsAddedAs[LanguageMapContentId]("gradingCriteria", e.gradingCriteria)(using DefaultSerializer.serializerLangMapId.uPickleReadWrite)
+        .withElementAddedAs("exerciseText", e.exerciseText)
+        .withElementsAddedAs[LanguageMapContentId]("scaffoldingHints", e.scaffoldingHints)
+        .withElementsAddedAs[LanguageMapContentId]("gradingCriteria", e.gradingCriteria)
     }
 
     override def fromSerializedElement(f: WorkbookElementSerializable, parsed: Map[String, WorkbookElement]) = {
       GptInteractionElement(f.elementId,
         f.getAndResolveWorkbookElement[WorkbookInteractionElement[String]]("underlyingTextInteraction", parsed),
-        f.getElementAsContentId("exerciseText"),
-        f.getElementsAs("scaffoldingHints")(using DefaultSerializer.serializerLangMapId.uPickleReadWrite),
-        f.getElementsAs("gradingCriteria")(using DefaultSerializer.serializerLangMapId.uPickleReadWrite))
+        f.getElementAs[LanguageMapContentId]("exerciseText"),
+        f.getElementsAs[LanguageMapContentId]("scaffoldingHints"),
+        f.getElementsAs[LanguageMapContentId]("gradingCriteria"))
     }
   }
 

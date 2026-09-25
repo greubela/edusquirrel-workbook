@@ -28,13 +28,13 @@ object ImageElement {
     val factory: WorkbookElementFactory[LanguageMapBasedImageElement] = new SimpleWorkbookElementFactory[LanguageMapBasedImageElement]() {
       override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: LanguageMapBasedImageElement): WorkbookElementSerializable = {
         baseElement
-          .withContentIdAdded("content", infoElement.languageMapContentId)
+          .withElementAddedAs("content", infoElement.languageMapContentId)
           .withElementAddedAs("howToResolveUrl", infoElement.howToResolveUrl.asInstanceOf[TypeOfTextDisplay])
       }
 
       override def finishDeserialization(element: WorkbookElementSerializable): LanguageMapBasedImageElement = {
         LanguageMapBasedImageElement(element.elementId,
-          element.getElementAsContentId("content"),
+          element.getElementAs[LanguageMapContentId]("content"),
           element.getElementAs[TypeOfTextDisplay]("howToResolveUrl").asInstanceOf[URL_TYPE])
       }
     }
