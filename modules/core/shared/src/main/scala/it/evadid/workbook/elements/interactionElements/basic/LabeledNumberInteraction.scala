@@ -35,8 +35,8 @@ object LabeledNumberInteraction {
     override def finishDeserialization(element: WorkbookElementSerializable): LabeledNumberInteraction = {
       LabeledNumberInteraction(element.elementId,
         element.getElementAsContentId("numberLabel"),
-        NumberType.valueOf(element.getOptionalElementAsString("numberType", "IntegerLike")),
-        element.getOptionalElementAsString("defaultNumber", "0")
+        NumberType.valueOf(element.getOptionalElementAs("numberType", "IntegerLike")),
+        element.getOptionalElementAs("defaultNumber", "0")
       )
     }
   }

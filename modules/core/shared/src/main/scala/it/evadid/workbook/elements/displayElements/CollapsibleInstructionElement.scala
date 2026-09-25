@@ -6,7 +6,7 @@ import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookEleme
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 
 case class CollapsibleInstructionElement(override val elementId: String, titleLabel: LanguageMapContentId, bodyContent: LanguageMapContentId, initiallyCollapsed: Boolean = true) extends WorkbookDisplayElement {
-  override val associatedFactory = CollapsibleInstructionElement.factory
+  override val associatedFactory: SimpleWorkbookElementFactory[CollapsibleInstructionElement] = CollapsibleInstructionElement.factory
 
 }
 
@@ -21,7 +21,11 @@ object CollapsibleInstructionElement {
     }
 
     override def finishDeserialization(f: WorkbookElementSerializable): CollapsibleInstructionElement = {
-      CollapsibleInstructionElement(f.elementId, f.getElementAsContentId("titleLabel"), f.getElementAsContentId("bodyContent"), f.getElementAsString("initiallyCollapsed").toBoolean)
+      CollapsibleInstructionElement(
+        f.elementId,
+        f.getElementAsContentId("titleLabel"),
+        f.getElementAsContentId("bodyContent"),
+        f.getElement("initiallyCollapsed").toBoolean)
     }
   }
 }

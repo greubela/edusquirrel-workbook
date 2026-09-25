@@ -1,7 +1,6 @@
 package it.evadid.workbook.elements.displayElements
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_TYPE
 import it.evadid.workbook.abstractions.{TypeOfTextDisplay, WorkbookDisplayElement}
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
@@ -30,13 +29,13 @@ object ImageElement {
       override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: LanguageMapBasedImageElement): WorkbookElementSerializable = {
         baseElement
           .withContentIdAdded("content", infoElement.languageMapContentId)
-          .withElementAdded("howToResolveUrl", infoElement.howToResolveUrl.asInstanceOf[TypeOfTextDisplay])(DefaultSerializer.serializerTextDisplay)
+          .withElementAddedAs("howToResolveUrl", infoElement.howToResolveUrl.asInstanceOf[TypeOfTextDisplay])
       }
 
       override def finishDeserialization(element: WorkbookElementSerializable): LanguageMapBasedImageElement = {
         LanguageMapBasedImageElement(element.elementId,
           element.getElementAsContentId("content"),
-          element.getElementAs("howToResolveUrl")(DefaultSerializer.serializerTextDisplay).asInstanceOf[URL_TYPE])
+          element.getElementAs[TypeOfTextDisplay]("howToResolveUrl").asInstanceOf[URL_TYPE])
       }
     }
   }

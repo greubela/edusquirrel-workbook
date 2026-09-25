@@ -30,7 +30,7 @@ import scala.util.*
 object DefaultSerializer {
 
 
-  private[serializer] given serLMID: ReadWriter[LanguageMapContentId] = serializerLangMapId.uPickleReadWrite
+  given serLMID: ReadWriter[LanguageMapContentId] = serializerLangMapId.uPickleReadWrite
 
 
   private[serializer] given rwAL: ReadWriter[AppLanguage] =

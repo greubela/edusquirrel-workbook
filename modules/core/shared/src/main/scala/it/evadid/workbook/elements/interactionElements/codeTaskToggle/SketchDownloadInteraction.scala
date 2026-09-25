@@ -35,7 +35,7 @@ object SketchDownloadInteraction {
     }
 
     override def finishDeserialization(f: WorkbookElementSerializable): SketchDownloadInteraction = {
-      SketchDownloadInteraction(f.elementId, f.getElementAsContentId("buttonLabel"), f.getElementAsString("filename"), f.getElementAsString("sketchContent"), f.getElementAsString("unlockWhenReorderCorrect"))
+      SketchDownloadInteraction(f.elementId, f.getElementAsContentId("buttonLabel"), f.getElementAs("filename"), f.getElementAs("sketchContent"), f.getElementAs("unlockWhenReorderCorrect"))
     }
   }
 

@@ -5,8 +5,8 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.jsonFactory.WorkbookElementSerializable.{serializerR}
-import upickle.{ReadWriter, default, macroRW, readwriter}
+import upickle.ReadWriter
+import upickle.default.*
 
 object WorkbookElementSerializable {
 
@@ -16,21 +16,9 @@ object WorkbookElementSerializable {
 
   val prefix = "WorkbookElementFactory"
 
-  private given refRW: default.ReadWriter[WorkbookElementReference] = macroRW
-  //private given refRWL: default.ReadWriter[List[WorkbookElementReference]] = macroRW
+  given rw: ReadWriter[WorkbookElementSerializable] = macroRW
 
-  private given refRWL: ReadWriter[List[WorkbookElementReference]] =
-    readwriter[List[WorkbookElementReference]].bimap[List[WorkbookElementReference]](_.toSeq, _.toList)
-
-  private given facRW: default.ReadWriter[WorkbookElementSerializable] = macroRW
-
-  given facRWL: default.ReadWriter[List[WorkbookElementSerializable]] =
-    readwriter[Seq[WorkbookElementSerializable]].bimap[List[WorkbookElementSerializable]](_.toSeq, _.toList)
-
-  val serializer: Serializer[WorkbookElementSerializable] = Serializer.fromUpickleJson(facRW)
-  val serializerR: Serializer[WorkbookElementReference] = Serializer.fromUpickleJson(refRW)
-
-
+  val serializer: Serializer[WorkbookElementSerializable] = Serializer.fromUpickleJson(rw)
 }
 
 
@@ -40,101 +28,97 @@ case class WorkbookElementSerializable(
                                         additionalElements: Map[String, String]
                                       ) {
 
+  // Single Object
   def withElementAdded(key: String, value: String): WorkbookElementSerializable = {
     withMapAdded(Map(key -> value))
   }
 
+  def withElementAddedAs[T](key: String, value: T)(implicit rw: ReadWriter[T]): WorkbookElementSerializable = {
+    withMapAdded(Map(key -> write(value)))
+  }
+
+  // Multiple Objects
+  def withElementsAdded(key: String, value: Seq[String]): WorkbookElementSerializable = {
+    val str = write(value)
+    withElementAdded(key, str)
+  }
+
+  def withElementsAddedAs[T](key: String, elements: List[T])(implicit rw: ReadWriter[T]): WorkbookElementSerializable = {
+    val strs = elements.map(el => write(el))
+    withElementsAdded(key, strs)
+  }
+
+  // Map
   def withMapAdded(map: Map[String, String]): WorkbookElementSerializable = {
     WorkbookElementSerializable(elementId, elementType, additionalElements ++ map)
   }
 
-  def withElementAdded[T](key: String, element: T)(implicit rw: ReadWriter[T]): WorkbookElementSerializable = {
-    withElementAdded(key, element)(Serializer.fromUpickleJson(rw))
-  }
-
-  def withElementAdded[T](key: String, element: T)(serializer: Serializer[T]): WorkbookElementSerializable = {
-    WorkbookElementSerializable(elementId, elementType, additionalElements ++ Map(key -> serializer.serialize(element)))
-  }
+  // Other
 
   def withContentIdAdded(key: String, element: LanguageMapContentId): WorkbookElementSerializable = {
-    withElementAdded(key, element)(DefaultSerializer.serializerLangMapId)
+    withElementAddedAs[LanguageMapContentId](key, element)(using DefaultSerializer.serializerLangMapId.uPickleReadWrite)
   }
 
   def withContentIdsAdded(key: String, element: List[LanguageMapContentId]): WorkbookElementSerializable = {
-    withElementsAdded(key, element)(DefaultSerializer.serializerLangMapId)
+    withElementsAddedAs(key, element)(using DefaultSerializer.serializerLangMapId.uPickleReadWrite)
   }
 
-  def withSerializationsAdded(key: String, workbookElements: Seq[WorkbookElementSerializable]): WorkbookElementSerializable = {
-    withElementAdded(key, workbookElements.toList)(summon[ReadWriter[Seq[WorkbookElementSerializable]]])
-  }
+  // Get Single
 
-  def withReferenceAdded(key: String, workbookElement: WorkbookElementReference): WorkbookElementSerializable = {
-    withElementAdded(key, workbookElement)(serializerR)
-  }
+  def getElement(elementKey: String): String = additionalElements(elementKey)
 
-  def withReferencesAdded(key: String, workbookElement: Seq[WorkbookElementReference]): WorkbookElementSerializable = {
-    withElementAdded(key, workbookElement)(summon[ReadWriter[Seq[WorkbookElementReference]]])
-  }
-
-  def withElementsAdded(key: String, value: Seq[String]): WorkbookElementSerializable = {
-    withElementAdded(key, value)(summon[ReadWriter[Seq[String]]])
-  }
-
-  def withElementsAdded[T](key: String, values: Seq[T])(serializer: Serializer[T]): WorkbookElementSerializable = {
-    withElementsAdded(key, values.map(serializer.serialize))
-  }
-
-  def getElements(elementKey: String): List[String] = {
-    val rw = summon[ReadWriter[List[String]]]
-    upickle.default.read[List[String]](getElementAsString(elementKey)).toList
-  }
-
-  def getElements[T](elementKey: String)(serializer: Serializer[T]): List[T] = {
-    getElements(elementKey).map(serializer.deserialize)
-  }
-
-  def getElementAsString(elementKey: String): String = additionalElements(elementKey)
-
-  def getOptionalElementAsString(elementKey: String, defaultValue: String): String = {
-    additionalElements.getOrElse(elementKey, defaultValue)
-  }
-
-  def getOptionalElementAs[T](elementKey: String, defaultValue: T)(implicit rw: ReadWriter[T]): T = {
-    getOptionalElementAs(elementKey, defaultValue)(Serializer.fromUpickleJson(rw))
-  }
-
-  def getOptionalElementAs[T](elementKey: String, defaultValue: T)(serializer: Serializer[T]): T = {
-    val elementValue = additionalElements.get(elementKey)
-    if (elementValue.isEmpty) {
-      defaultValue
-    } else try {
-      serializer.deserialize(elementValue.get)
-    } catch case (err: Throwable) => {
-      throw SerializedException(s"Error at deserializing key ${elementKey} from Element ${elementId} (value ${elementValue.get})", Some(err))
-    }
-  }
-
-  def getElementAs[T](elementKey: String)(serializer: Serializer[T]): T = {
+  def getElementAs[T](elementKey: String)(implicit rw: ReadWriter[T]): T = {
     val elementValue = additionalElements.get(elementKey)
     if (elementValue.isEmpty) {
       throw SerializedException(s"Key ${elementKey} not present in Element ${elementId}!")
     } else try {
-      serializer.deserialize(elementValue.get)
+      read(elementValue.get)
+    } catch case (err: Throwable) => {
+      throw SerializedException(s"Error at deserializing key ${elementKey} from Element ${elementId} (value ${elementValue.get})", Some(err))
+     }
+  }
+
+  /*def getElementAs[T](elementKey: String)(serializer: Serializer[T]): T = {
+    getElementAs(elementKey)(serializer.uPickleReadWrite)
+  }*/
+
+  def getOptionalElement(elementKey: String, defaultValue: String): String = {
+    additionalElements.getOrElse(elementKey, defaultValue)
+  }
+
+  def getOptionalElementAs[T](elementKey: String, defaultValue: T)(implicit rw: ReadWriter[T]): T = {
+    val elementValue = additionalElements.get(elementKey)
+    if (elementValue.isEmpty) {
+      defaultValue
+    } else try {
+      read(elementValue.get)
     } catch case (err: Throwable) => {
       throw SerializedException(s"Error at deserializing key ${elementKey} from Element ${elementId} (value ${elementValue.get})", Some(err))
     }
   }
 
-  def getElementsAsSerializedElements(elementKey: String): List[WorkbookElementSerializable] = {
-    getOptionalElementAs[Seq[WorkbookElementSerializable]](elementKey, List())(summon[ReadWriter[Seq[WorkbookElementSerializable]]]).toList
-  }
+  /*def getOptionalElementAs[T](elementKey: String, defaultValue: T)(serializer: Serializer[T]): T = {
 
+  }
+*/
+  // Get Multiple
+  def getElements(elementKey: String): List[String] = {
+    read[List[String]](additionalElements(elementKey))
+  }
+  def getElementsAs[T](elementKey: String)(implicit rw: ReadWriter[T]): List[T] = {
+    getElements(elementKey).map((el: String) => read(el))
+  }
+  /*def getElementsAs[T](elementKey: String)(serializer: Serializer[T]): List[T] = {
+    getElementsAs[T](elementKey)(serializer.uPickleReadWrite)
+  }*/
+
+  // Other
   def getElementAsContentId(elementKey: String): LanguageMapContentId = {
-    getElementAs[LanguageMapContentId](elementKey)(DefaultSerializer.serializerLangMapId)
+    getElementAs[LanguageMapContentId](elementKey)(using DefaultSerializer.serializerLangMapId.uPickleReadWrite)
   }
 
   def getElementAsContentIds(elementKey: String): List[LanguageMapContentId] = {
-   getElements(elementKey)(DefaultSerializer.serializerLangMapId)
+    getElementsAs(elementKey)(using DefaultSerializer.serializerLangMapId.uPickleReadWrite)
   }
 
   private def resolveReference[T <: WorkbookElement](ref: WorkbookElementReference, parsedElements: Map[String, WorkbookElement]): T = {
@@ -149,16 +133,16 @@ case class WorkbookElementSerializable(
   }
 
   def getAndResolveWorkbookElements[T <: WorkbookElement](elementKey: String, parsedElements: Map[String, WorkbookElement]): List[T] = {
-    val refs = getElementsAsWorkbookReferences(elementKey)
+    val refs: List[WorkbookElementReference] = getElementsAs[WorkbookElementReference](elementKey)
     refs.map(curRef => resolveReference[T](curRef, parsedElements))
   }
 
   def getElementAsWorkbookReference(elementKey: String): WorkbookElementReference = {
-    getElementAs[WorkbookElementReference](elementKey)(serializerR)
+    getElementAs[WorkbookElementReference](elementKey)
   }
 
   def getElementsAsWorkbookReferences(elementKey: String): List[WorkbookElementReference] = {
-    getOptionalElementAs[Seq[WorkbookElementReference]](elementKey, List())(summon[ReadWriter[Seq[WorkbookElementReference]]]).toList
+    getOptionalElementAs[Seq[WorkbookElementReference]](elementKey, List()).toList
   }
 
 

@@ -11,7 +11,7 @@ import it.evadid.workbook.elements.interactionElements.basic.MessagingInteractio
 import it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction.MessengerModelScaffolding
 import it.evadid.workbook.interaction.sync.SyncControl
 import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
-import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 
 import scala.concurrent.*
 import scala.util.{Failure, Success}
@@ -24,15 +24,22 @@ object GptInteractionElement {
     override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable) = Seq.empty
 
     override def toSerializableElement(e: GptInteractionElement) = {
-      WorkbookElementSerializable(e.elementId, classOf[GptInteractionElement].getSimpleName, Map()).withReferenceAdded("underlyingTextInteraction", e.underlyingTextInteraction.asRef).withContentIdAdded("exerciseText", e.exerciseText).withElementsAdded("scaffoldingHints", e.scaffoldingHints)(DefaultSerializer.serializerLangMapId).withElementsAdded("gradingCriteria", e.gradingCriteria)(DefaultSerializer.serializerLangMapId)
+      WorkbookElementSerializable(
+        e.elementId,
+        classOf[GptInteractionElement].getSimpleName,
+        Map()
+      ).withElementAddedAs[WorkbookElementReference]("underlyingTextInteraction", e.underlyingTextInteraction.asRef)
+        .withContentIdAdded("exerciseText", e.exerciseText)
+        .withElementsAddedAs[LanguageMapContentId]("scaffoldingHints", e.scaffoldingHints)(using DefaultSerializer.serializerLangMapId.uPickleReadWrite)
+        .withElementsAddedAs[LanguageMapContentId]("gradingCriteria", e.gradingCriteria)(using DefaultSerializer.serializerLangMapId.uPickleReadWrite)
     }
 
     override def fromSerializedElement(f: WorkbookElementSerializable, parsed: Map[String, WorkbookElement]) = {
       GptInteractionElement(f.elementId,
         f.getAndResolveWorkbookElement[WorkbookInteractionElement[String]]("underlyingTextInteraction", parsed),
         f.getElementAsContentId("exerciseText"),
-        f.getElements("scaffoldingHints")(DefaultSerializer.serializerLangMapId),
-        f.getElements("gradingCriteria")(DefaultSerializer.serializerLangMapId))
+        f.getElementsAs("scaffoldingHints")(using DefaultSerializer.serializerLangMapId.uPickleReadWrite),
+        f.getElementsAs("gradingCriteria")(using DefaultSerializer.serializerLangMapId.uPickleReadWrite))
     }
   }
 

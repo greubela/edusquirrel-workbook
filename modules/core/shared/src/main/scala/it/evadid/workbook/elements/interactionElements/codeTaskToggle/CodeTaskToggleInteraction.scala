@@ -42,8 +42,25 @@ object CodeTaskToggleInteraction {
 
     override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable) = Seq.empty
 
-    override def toSerializableElement(e: CodeTaskToggleInteraction) = WorkbookElementSerializable(e.elementId, classOf[CodeTaskToggleInteraction].getSimpleName, Map()).withReferenceAdded("reorder", e.reorder.asRef).withContentIdAdded("codeEditorTitle", e.codeEditorTitle).withElementAdded("advancedCodeTemplate", e.advancedCodeTemplate).withElementAdded("advancedRequirements", e.advancedRequirements)(requirementsSerializer).withContentIdAdded("advancedSuccessMessage", e.advancedSuccessMessage)
+    override def toSerializableElement(e: CodeTaskToggleInteraction) = {
+      WorkbookElementSerializable(
+        e.elementId,
+        classOf[CodeTaskToggleInteraction].getSimpleName,
+        Map())
+        .withElementAddedAs("reorder", e.reorder.asRef)
+        .withContentIdAdded("codeEditorTitle", e.codeEditorTitle)
+        .withElementAdded("advancedCodeTemplate", e.advancedCodeTemplate)
+        .withElementsAddedAs("advancedRequirements", e.advancedRequirements)
+        .withContentIdAdded("advancedSuccessMessage", e.advancedSuccessMessage)
+    }
 
-    override def fromSerializedElement(f: WorkbookElementSerializable, parsed: Map[String, WorkbookElement]) = CodeTaskToggleInteraction(f.elementId, f.getAndResolveWorkbookElement[ReorderInteraction.ReorderCodeInteraction]("reorder", parsed), f.getElementAsContentId("codeEditorTitle"), f.getElementAsString("advancedCodeTemplate"), f.getElementAs("advancedRequirements")(requirementsSerializer), f.getElementAsContentId("advancedSuccessMessage"))
+    override def fromSerializedElement(f: WorkbookElementSerializable, parsed: Map[String, WorkbookElement]) = {
+      CodeTaskToggleInteraction(
+        f.elementId,
+        f.getAndResolveWorkbookElement[ReorderInteraction.ReorderCodeInteraction]("reorder", parsed),
+        f.getElementAsContentId("codeEditorTitle"), f.getElementAs("advancedCodeTemplate"),
+        f.getElementsAs[AdvancedCodeRequirement]("advancedRequirements"),
+        f.getElementAsContentId("advancedSuccessMessage"))
+    }
   }
 }

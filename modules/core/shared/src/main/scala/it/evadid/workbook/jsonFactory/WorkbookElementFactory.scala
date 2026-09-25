@@ -75,7 +75,6 @@ object WorkbookElementFactory {
     def finishDeserialization(element: WorkbookElementSerializable): T
   }
 
-
   val workbookElementSerializer: Serializer[WorkbookElement] = new Serializer[WorkbookElement]() {
     override def serialize(obj: WorkbookElement): String = {
       WorkbookElementSerializable.serializer.serialize(obj.toSerializableType)

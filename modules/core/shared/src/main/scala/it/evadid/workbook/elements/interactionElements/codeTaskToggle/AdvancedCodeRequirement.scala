@@ -1,12 +1,13 @@
 package it.evadid.workbook.elements.interactionElements.codeTaskToggle
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
+import upickle.default.*
 
 /** A checklist item for advanced-mode free-text code: all `mustContain` fragments must appear. */
 case class AdvancedCodeRequirement(
   mustContain: List[String],
   missingHint: LanguageMapContentId
-)
+) derives ReadWriter
 
 object AdvancedCodeRequirement {
 

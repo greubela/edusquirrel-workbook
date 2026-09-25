@@ -2,10 +2,9 @@ package it.evadid.workbook.elements.structureElements
 
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
-import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.workbook.abstractions.WorkbookStructuringType.WORKBOOK
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement, WorkbookStructureElement, WorkbookStructuringType}
-import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 
 case class Workbook(
                      workbookId: String,
@@ -23,7 +22,7 @@ case class Workbook(
 
   override val elementId: String = workbookId
 
-  override val associatedFactory: WorkbookElementFactory[_ <: WorkbookElement] = Workbook.factory
+  override val associatedFactory: WorkbookElementFactory[? <: WorkbookElement] = Workbook.factory
 
 }
 
@@ -33,7 +32,7 @@ object Workbook {
 
   lazy val factory: WorkbookElementFactory[Workbook] = new WorkbookElementFactory[Workbook]() {
     override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = {
-      element.getElementsAsSerializedElements("serializedElements")
+      element.getElementsAs[WorkbookElementSerializable]("serializedElements")
     }
 
     def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = {
@@ -46,7 +45,7 @@ object Workbook {
         element.elementId,
         element.getElementAsContentId("title"),
         sections,
-        element.getElements("availableLanguages")(DefaultSerializer.serializerAppLanguage).map(_.asInstanceOf[HumanLanguage])
+        element.getElementsAs[AppLanguage]("availableLanguages").map(_.asInstanceOf[HumanLanguage])
       )
     }
 
@@ -56,10 +55,10 @@ object Workbook {
 
       toFactoryBase(element)
         .withContentIdAdded("title", element.workbookTitle)
-       // .withElementsAdded("test", element.sections.map(_.sectionId))
-        .withElementsAdded("availableLanguages", element.availableLanguages.map(_.asInstanceOf[AppLanguage]))(DefaultSerializer.serializerAppLanguage)
-        .withSerializationsAdded("serializedElements", requiredToSerialize.map(_.toSerializableType))
-        .withReferencesAdded("sections", element.sections.map(_.asRef))
+        .withElementsAdded("test", element.sections.map(_.sectionId))
+        .withElementsAddedAs[AppLanguage]("availableLanguages", element.availableLanguages.map(_.asInstanceOf[AppLanguage]))
+        .withElementsAddedAs[WorkbookElementSerializable]("serializedElements", requiredToSerialize.map(_.toSerializableType))(using WorkbookElementSerializable.serializer.uPickleReadWrite)
+        .withElementsAddedAs[WorkbookElementReference]("sections", element.sections.map(_.asRef))
     }
   }
 

@@ -6,33 +6,34 @@ import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
-import upickle.default.{ReadWriter, macroRW}
+import upickle.default.*
 
-case class SortingInteraction(override val elementId: String, fields: List[LanguageMapContentId], items: List[SortingItem], openButtonLabel: LanguageMapContentId = LanguageMapContentId("basic/startSortingActivity")) extends WorkbookInteractionElement[SortingInteractionState] {
+case class SortingInteraction(override val elementId: String, fields: List[LanguageMapContentId], items: List[SortingItem], openButtonLabel: LanguageMapContentId = LanguageMapContentId("basic/startSortingActivity")) extends WorkbookInteractionElement[SortingInteractionState] derives ReadWriter {
   override val associatedFactory = SortingInteraction.factory
   override val defaultValue = SortingInteractionState.initial(items.size);
-  override val serializerInteractionContent = SortingInteractionState.serializer;
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+  override val serializerInteractionContent: Serializer[SortingInteractionState] = Serializer.fromUpickleJson(SortingInteractionState.derived$ReadWriter)
 }
 
-case class SortingItem(label: LanguageMapContentId, correctFieldIndex: Int, wrongFeedback: LanguageMapContentId)
+case class SortingItem(label: LanguageMapContentId, correctFieldIndex: Int, wrongFeedback: LanguageMapContentId) derives ReadWriter
 
 object SortingInteraction {
   private given contentIdRW: ReadWriter[LanguageMapContentId] = DefaultSerializer.serializerLangMapId.uPickleReadWrite;
 
-  private given itemRW: ReadWriter[SortingItem] = macroRW;
-  private[sortingExercise] val contentIds = Serializer.fromUpickleJson(summon[ReadWriter[List[LanguageMapContentId]]]);
-  private[sortingExercise] val itemsSerializer = Serializer.fromUpickleJson(summon[ReadWriter[List[SortingItem]]]);
-  val factory = new SimpleWorkbookElementFactory[SortingInteraction](){
+  val factory = new SimpleWorkbookElementFactory[SortingInteraction]() {
     override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: SortingInteraction): WorkbookElementSerializable = {
       baseElement
-        .withElementAdded("fields", infoElement.fields)(contentIds)
-        .withElementAdded("items", infoElement.items)(itemsSerializer)
+        .withElementsAddedAs[LanguageMapContentId]("fields", infoElement.fields)(using contentIdRW)
+        .withElementsAddedAs("items", infoElement.items)
         .withContentIdAdded("openButtonLabel", infoElement.openButtonLabel)
     }
 
     override def finishDeserialization(f: WorkbookElementSerializable): SortingInteraction = {
-      SortingInteraction(f.elementId, f.getElementAs("fields")(contentIds), f.getElementAs("items")(itemsSerializer), f.getElementAsContentId("openButtonLabel"))
+      SortingInteraction(
+        f.elementId,
+        f.getElementsAs[LanguageMapContentId]("fields"),
+        f.getElementsAs[SortingItem]("items"),
+        f.getElementAsContentId("openButtonLabel"))
 
     }
   }

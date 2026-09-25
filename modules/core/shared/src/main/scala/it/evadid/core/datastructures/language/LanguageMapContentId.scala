@@ -1,8 +1,11 @@
 package it.evadid.core.datastructures.language
 
 import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.serializer.DefaultSerializer
+import upickle.ReadWriter
 
 case class LanguageMapContentId(val languageMapId: String, val entryKey: String) {
+
   assert(languageMapId.trim.toLowerCase == languageMapId, s"languageMapId must be lowercase, but was: $languageMapId!")
   assert(entryKey.trim.toLowerCase == entryKey, s"entryKey must be lowercase, but was: $entryKey!")
   val fullId: String = languageMapId.toLowerCase + "/" + entryKey.toLowerCase
@@ -11,6 +14,9 @@ case class LanguageMapContentId(val languageMapId: String, val entryKey: String)
 }
 
 object LanguageMapContentId {
+
+  given ReadWriter[LanguageMapContentId] = DefaultSerializer.serializerLangMapId.uPickleReadWrite
+
 
   def apply(languageMapId: String, entryKey: String): LanguageMapContentId =
     new LanguageMapContentId(languageMapId.toLowerCase.trim, entryKey.toLowerCase.trim)

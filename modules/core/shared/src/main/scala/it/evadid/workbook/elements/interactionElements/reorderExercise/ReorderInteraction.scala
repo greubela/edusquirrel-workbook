@@ -30,7 +30,7 @@ object ReorderInteraction {
       override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: ReorderCodeInteraction): WorkbookElementSerializable = {
         baseElement
           .withContentIdsAdded("hints", infoElement.hints)
-          .withElementAdded("programmingLanguage", infoElement.programmingLanguage.asInstanceOf[AppLanguage])(DefaultSerializer.serializerAppLanguage)
+          .withElementAddedAs[AppLanguage]("programmingLanguage", infoElement.programmingLanguage.asInstanceOf[AppLanguage])
           .withElementAdded("seed", infoElement.seed.toString)
           .withElementsAdded("stringLines", infoElement.lines.toSeq)
 
@@ -39,9 +39,9 @@ object ReorderInteraction {
       override def finishDeserialization(element: WorkbookElementSerializable): ReorderCodeInteraction = {
         ReorderCodeInteraction(
           element.elementId,
-          element.getElements("stringLines"),
-          element.getElementAs("programmingLanguage")(DefaultSerializer.serializerAppLanguage).asInstanceOf[ProgrammingLanguage],
-          element.getOptionalElementAsString("seed", "0").toLongOption.getOrElse(0),
+          element.getElementsAs("stringLines"),
+          element.getElementAs[AppLanguage]("programmingLanguage").asInstanceOf[ProgrammingLanguage],
+          element.getOptionalElementAs("seed", "0").toLongOption.getOrElse(0),
           element.getElementAsContentIds("hints")
         )
       }
@@ -69,7 +69,7 @@ object ReorderInteraction {
         ReorderMapIdInteraction(
           element.elementId,
           element.getElementAsContentIds("contentToReorder"),
-          element.getOptionalElementAsString("seed", "0").toLongOption.getOrElse(0))
+          element.getOptionalElementAs("seed", "0").toLongOption.getOrElse(0))
       }
     }
   }

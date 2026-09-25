@@ -3,7 +3,7 @@ package it.evadid.workbook.elements.structureElements
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.WorkbookStructuringType.SECTION
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookStructureElement, WorkbookStructuringType}
-import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 
 case class WorkbookSection(
                             sectionId: String,
@@ -46,8 +46,8 @@ object WorkbookSection {
     override def toSerializableElement(element: WorkbookSection): WorkbookElementSerializable =
       toFactoryBase(element)
         .withContentIdAdded("title", element.sectionTitle)
-        .withReferencesAdded("content", element.sectionContent.map(_.asRef))
-        .withReferencesAdded("requiredBefore", element.sectionsRequiredBefore.map(_.asRef))
-        .withReferencesAdded("recommendedBefore", element.sectionsRecommendedBefore.map(_.asRef))
+        .withElementsAddedAs[WorkbookElementReference]("content", element.sectionContent.map(_.asRef))
+        .withElementsAddedAs[WorkbookElementReference]("requiredBefore", element.sectionsRequiredBefore.map(_.asRef))
+        .withElementsAddedAs[WorkbookElementReference]("recommendedBefore", element.sectionsRecommendedBefore.map(_.asRef))
   }
 }

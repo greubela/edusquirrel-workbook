@@ -1,6 +1,9 @@
 package it.evadid.workbook.abstractions
 
-sealed trait TypeOfTextDisplay {
+import upickle.ReadWriter.*
+import upickle.default.*
+
+sealed trait TypeOfTextDisplay derives ReadWriter {
 
   def serializerName: String = this.getClass.getSimpleName
 
@@ -18,7 +21,7 @@ object TypeOfTextDisplay {
 
   case object MARKDOWN extends TypeOfTextDisplay
 
-  sealed trait URL_TYPE extends TypeOfTextDisplay
+  sealed trait URL_TYPE extends TypeOfTextDisplay derives ReadWriter
 
   case object URL_RELATIVE_TO_TECHNICAL_RESOURCES extends URL_TYPE
 

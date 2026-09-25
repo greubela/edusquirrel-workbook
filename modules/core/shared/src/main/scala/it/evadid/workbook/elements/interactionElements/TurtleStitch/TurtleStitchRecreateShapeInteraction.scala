@@ -14,7 +14,7 @@ object TurtleStitchRecreateShapeInteraction {
     }
 
     override def finishDeserialization(serialized: WorkbookElementSerializable): TurtleStitchRecreateShapeInteraction = {
-      TurtleStitchRecreateShapeInteraction(serialized.elementId, serialized.getElementAsString("filenameRelToResources"))
+      TurtleStitchRecreateShapeInteraction(serialized.elementId, serialized.getElementAs("filenameRelToResources"))
     }
   }
 }

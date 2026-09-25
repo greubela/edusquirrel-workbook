@@ -2,7 +2,7 @@ package it.evadid.workbook.elements.interactionElements.slideshow
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
-import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 
 case class Slideshow(override val elementId: String, panels: List[SlideshowPanel]) extends WorkbookInteractionElement[SlideshowState] {
   override val associatedFactory = Slideshow.factory
@@ -284,10 +284,14 @@ object Slideshow {
   val factory: WorkbookElementFactory[Slideshow] = new WorkbookElementFactory[Slideshow] {
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] =
       element.getElementsAsWorkbookReferences("panels").map(_.referencedId).toSet
+
     override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
+
     override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): Slideshow =
       Slideshow(element.elementId, element.getAndResolveWorkbookElements("panels", parsedElements))
+
     override def toSerializableElement(element: Slideshow): WorkbookElementSerializable =
-      toFactoryBase(element).withReferencesAdded("panels", element.panels.map(_.asRef))
+      toFactoryBase(element)
+        .withElementsAddedAs[WorkbookElementReference]("panels", element.panels.map(_.asRef))
   }
 }

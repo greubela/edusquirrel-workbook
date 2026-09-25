@@ -22,7 +22,7 @@ object TurtleStitchExploreProjectElement {
     }
 
     override def finishDeserialization(element: WorkbookElementSerializable): TurtleStitchExploreProjectElement = {
-      TurtleStitchExploreProjectElement(element.elementId, element.getElementAsString("projectPathRelToResources"))
+      TurtleStitchExploreProjectElement(element.elementId, element.getElementAs("projectPathRelToResources"))
     }
   }
 

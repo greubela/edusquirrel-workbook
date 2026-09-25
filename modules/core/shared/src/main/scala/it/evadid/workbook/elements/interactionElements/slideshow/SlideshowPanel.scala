@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.WorkbookDisplayElement
 import it.evadid.workbook.elements.displayElements.ImageElement
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 
 // Todo: Overwork Slideshow Panel so it uses generic WorkbookElement
 trait SlideshowPanel extends WorkbookDisplayElement {
@@ -19,7 +19,7 @@ object SlideshowPanel {
       override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): TwoColumnImagePanel =
         TwoColumnImagePanel(element.elementId, element.getAndResolveWorkbookElement("image", parsedElements), element.getElementAsContentId("leftLabel"), element.getElementAsContentId("rightLabel"), element.getElementAsContentId("leftBody"), element.getElementAsContentId("rightBody"))
       override def toSerializableElement(element: TwoColumnImagePanel): WorkbookElementSerializable =
-        toFactoryBase(element).withReferenceAdded("image", element.image.asRef).withContentIdAdded("leftLabel", element.leftLabel).withContentIdAdded("rightLabel", element.rightLabel).withContentIdAdded("leftBody", element.leftBody).withContentIdAdded("rightBody", element.rightBody)
+        toFactoryBase(element).withElementAddedAs[WorkbookElementReference]("image", element.image.asRef).withContentIdAdded("leftLabel", element.leftLabel).withContentIdAdded("rightLabel", element.rightLabel).withContentIdAdded("leftBody", element.leftBody).withContentIdAdded("rightBody", element.rightBody)
     }
     }
 
@@ -30,7 +30,7 @@ object SlideshowPanel {
       override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): ImageSlide =
         ImageSlide(element.elementId, element.getAndResolveWorkbookElement("image", parsedElements), element.getElementAsContentId("titleLabel"), element.getElementAsContentId("description"))
       override def toSerializableElement(element: ImageSlide): WorkbookElementSerializable =
-        toFactoryBase(element).withReferenceAdded("image", element.image.asRef).withContentIdAdded("titleLabel", element.titleLabel).withContentIdAdded("description", element.description)
+        toFactoryBase(element).withElementAddedAs("image", element.image.asRef).withContentIdAdded("titleLabel", element.titleLabel).withContentIdAdded("description", element.description)
     }
      }
 

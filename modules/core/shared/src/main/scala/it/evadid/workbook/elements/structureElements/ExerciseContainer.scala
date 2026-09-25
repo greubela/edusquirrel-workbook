@@ -3,7 +3,7 @@ package it.evadid.workbook.elements.structureElements
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.WorkbookStructuringType.EXERCISE_CONTAINER
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookStructureElement, WorkbookStructuringType}
-import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 
 object ExerciseContainer {
   val factory: WorkbookElementFactory[ExerciseContainer] = new WorkbookElementFactory[ExerciseContainer] {
@@ -13,7 +13,7 @@ object ExerciseContainer {
     override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): ExerciseContainer =
       ExerciseContainer(element.elementId, element.getElementAsContentId("title"), element.getAndResolveWorkbookElements("content", parsedElements))
     override def toSerializableElement(element: ExerciseContainer): WorkbookElementSerializable =
-      toFactoryBase(element).withContentIdAdded("title", element.containerTitle).withReferencesAdded("content", element.containerContent.map(_.asRef))
+      toFactoryBase(element).withContentIdAdded("title", element.containerTitle).withElementsAddedAs[WorkbookElementReference]("content", element.containerContent.map(_.asRef))
   }
 }
 

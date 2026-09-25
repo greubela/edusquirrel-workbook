@@ -1,7 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.sortingExercise
 
 import it.evadid.core.util.io.Serializer
-import upickle.default.{ReadWriter, macroRW}
+import upickle.default.*
 
 enum AssignmentResult {
   case Correct
@@ -15,7 +15,7 @@ case class SortingInteractionState(
   lastSessionErrorCount: Int = 0,
   /** Temporary wrong drop shown in a field before the item returns to the source list. */
   wrongPlacementPreview: Option[(Int, Int)] = None
-) {
+) derives ReadWriter {
 
   def sanitized(itemCount: Int, fieldCount: Int): SortingInteractionState = {
     val padded = placedFieldIndexByItem.take(itemCount).padTo(itemCount, None)
@@ -83,7 +83,4 @@ case class SortingInteractionState(
 object SortingInteractionState {
   def initial(itemCount: Int): SortingInteractionState =
     SortingInteractionState(List.fill(itemCount)(None))
-
-  private given ReadWriter[SortingInteractionState] = macroRW
-  val serializer: Serializer[SortingInteractionState] = Serializer.fromUpickleJson(summon[ReadWriter[SortingInteractionState]])
 }
