@@ -5,7 +5,7 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.jsonFactory.WorkbookElementSerializable.{serializerL, serializerR, serializerRL}
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable.{serializerR}
 import upickle.{ReadWriter, default, macroRW, readwriter}
 
 object WorkbookElementSerializable {
@@ -28,9 +28,7 @@ object WorkbookElementSerializable {
     readwriter[Seq[WorkbookElementSerializable]].bimap[List[WorkbookElementSerializable]](_.toSeq, _.toList)
 
   val serializer: Serializer[WorkbookElementSerializable] = Serializer.fromUpickleJson(facRW)
-  val serializerL: Serializer[List[WorkbookElementSerializable]] = Serializer.fromUpickleJson(facRWL)
   val serializerR: Serializer[WorkbookElementReference] = Serializer.fromUpickleJson(refRW)
-  val serializerRL: Serializer[List[WorkbookElementReference]] = Serializer.fromUpickleJson(refRWL)
 
 
 }
@@ -45,7 +43,6 @@ case class WorkbookElementSerializable(
   def withElementAdded(key: String, value: String): WorkbookElementSerializable = {
     withMapAdded(Map(key -> value))
   }
-
 
   def withMapAdded(map: Map[String, String]): WorkbookElementSerializable = {
     WorkbookElementSerializable(elementId, elementType, additionalElements ++ map)
@@ -68,7 +65,7 @@ case class WorkbookElementSerializable(
   }
 
   def withSerializationsAdded(key: String, workbookElements: Seq[WorkbookElementSerializable]): WorkbookElementSerializable = {
-    withElementAdded(key, workbookElements.toList)(serializerL)
+    withElementAdded(key, workbookElements.toList)(summon[ReadWriter[Seq[WorkbookElementSerializable]]])
   }
 
   def withReferenceAdded(key: String, workbookElement: WorkbookElementReference): WorkbookElementSerializable = {
@@ -76,11 +73,11 @@ case class WorkbookElementSerializable(
   }
 
   def withReferencesAdded(key: String, workbookElement: Seq[WorkbookElementReference]): WorkbookElementSerializable = {
-    withElementAdded(key, workbookElement.toList)(serializerRL)
+    withElementAdded(key, workbookElement)(summon[ReadWriter[Seq[WorkbookElementReference]]])
   }
 
   def withElementsAdded(key: String, value: Seq[String]): WorkbookElementSerializable = {
-    withElementAdded(key, value.toList)(DefaultSerializer.serializerStrings)
+    withElementAdded(key, value)(summon[ReadWriter[Seq[String]]])
   }
 
   def withElementsAdded[T](key: String, values: Seq[T])(serializer: Serializer[T]): WorkbookElementSerializable = {
@@ -88,7 +85,8 @@ case class WorkbookElementSerializable(
   }
 
   def getElements(elementKey: String): List[String] = {
-    DefaultSerializer.serializerStrings.deserialize(getElementAsString(elementKey)).toList
+    val rw = summon[ReadWriter[List[String]]]
+    upickle.default.read[List[String]](getElementAsString(elementKey)).toList
   }
 
   def getElements[T](elementKey: String)(serializer: Serializer[T]): List[T] = {
@@ -99,6 +97,10 @@ case class WorkbookElementSerializable(
 
   def getOptionalElementAsString(elementKey: String, defaultValue: String): String = {
     additionalElements.getOrElse(elementKey, defaultValue)
+  }
+
+  def getOptionalElementAs[T](elementKey: String, defaultValue: T)(implicit rw: ReadWriter[T]): T = {
+    getOptionalElementAs(elementKey, defaultValue)(Serializer.fromUpickleJson(rw))
   }
 
   def getOptionalElementAs[T](elementKey: String, defaultValue: T)(serializer: Serializer[T]): T = {
@@ -124,7 +126,7 @@ case class WorkbookElementSerializable(
   }
 
   def getElementsAsSerializedElements(elementKey: String): List[WorkbookElementSerializable] = {
-    getOptionalElementAs[List[WorkbookElementSerializable]](elementKey, List())(serializerL)
+    getOptionalElementAs[Seq[WorkbookElementSerializable]](elementKey, List())(summon[ReadWriter[Seq[WorkbookElementSerializable]]]).toList
   }
 
   def getElementAsContentId(elementKey: String): LanguageMapContentId = {
@@ -156,7 +158,7 @@ case class WorkbookElementSerializable(
   }
 
   def getElementsAsWorkbookReferences(elementKey: String): List[WorkbookElementReference] = {
-    getOptionalElementAs[List[WorkbookElementReference]](elementKey, List())(serializerRL)
+    getOptionalElementAs[Seq[WorkbookElementReference]](elementKey, List())(summon[ReadWriter[Seq[WorkbookElementReference]]]).toList
   }
 
 

@@ -10,9 +10,7 @@ trait AutoSerializable[MyBaseType <: AutoSerializable[MyBaseType, SerializableTy
 
   def createConverter(backFunc: SerializableType => MyBaseType): TypeConverter[MyBaseType, SerializableType] = {
     new TypeConverter[MyBaseType, SerializableType]() {
-
       override def convertToO(in: MyBaseType): SerializableType = in.toSerializableType
-
       override def convertToI(in: SerializableType): MyBaseType = backFunc(in)
     }
   }

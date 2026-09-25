@@ -46,6 +46,7 @@ object HomepageStartupLogic {
     } {
 
       val workbook: Option[AllWorkbookInfo] = canLoad.headOption.flatMap(loadWorkbookById)
+      workbook.foreach(workbook => print("Workbook: \n" + workbook.loadedWorkbook.toJson + "\n\n"))
       fullInfo.usageControl.changeWorkbook(workbook)
 
       val futureTestCalc = testCalculations().recover { err =>

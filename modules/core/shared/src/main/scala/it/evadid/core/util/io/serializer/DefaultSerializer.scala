@@ -38,17 +38,7 @@ object DefaultSerializer {
   private[serializer] given rwAL: ReadWriter[AppLanguage] =
     readwriter[String].bimap[AppLanguage](_.name, value => AppLanguage.allLanguages.find(_.name == value).get)
 
-  private[serializer] given rwALs: ReadWriter[List[AppLanguage]] =
-    readwriter[Seq[AppLanguage]].bimap[List[AppLanguage]](_.toSeq, _.toList)
-
-  private[serializer] given strs: ReadWriter[List[String]] =
-    readwriter[Seq[String]].bimap[List[String]](_.toSeq, _.toList)
-
-  val serializerStrings: Serializer[List[String]] = Serializer.fromUpickleJson(strs)
-
   val serializerAppLanguage: Serializer[AppLanguage] = Serializer.fromUpickleJson(rwAL)
-  val serializerAppLanguages: Serializer[List[AppLanguage]] = Serializer.fromUpickleJson(rwALs)
-
 
   val serializerLangMapId: Serializer[LanguageMapContentId] = Serializer.constructorLikeSerializer("LangMapId", new Serializer[LanguageMapContentId]() {
     override def serialize(obj: LanguageMapContentId): String = obj.fullId

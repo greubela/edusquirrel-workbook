@@ -11,17 +11,14 @@ sealed trait WorkbookElement extends AutoSerializable[WorkbookElement, WorkbookE
   lazy val asRef = WorkbookElementReference(elementId, this.getClass.getSimpleName)
 
   lazy val childrenOfThisElement: List[WorkbookElement]
-
-
-  lazy val allContainedInteractions: List[WorkbookInteractionElement[?]] = allChildrenInSubtree.flatMap {
+  lazy val allContainedInteractions: List[WorkbookInteractionElement[?]] = allChildrenFullSubtree.flatMap {
     case i: WorkbookInteractionElement[?] => List(i)
     case _ => List()
   }
 
-  lazy val allChildrenInSubtree: List[WorkbookElement] = List(this) ++ childrenOfThisElement.flatMap(_.allChildrenInSubtree)
+  lazy val allChildrenFullSubtree: List[WorkbookElement] = childrenOfThisElement ++ childrenOfThisElement.flatMap(_.allChildrenFullSubtree)
 
   lazy val serializer: Serializer[WorkbookElementSerializable] = WorkbookElementSerializable.serializer
-
 
   //def fromFactory(factoryVerifiedType: WorkbookElementFactory): WorkbookElement
 

@@ -51,11 +51,12 @@ object Workbook {
     }
 
     override def toSerializableElement(element: Workbook): WorkbookElementSerializable = {
-      val allRequiredIds = element.allChildrenInSubtree.flatMap(el => el.associatedFactory.idsRequiredForDeserialization(el.toSerializableType))
-      val requiredToSerialize = element.allChildrenInSubtree.filter(curChild => allRequiredIds.contains(curChild.elementId))
+      val allRequiredIds = element.allChildrenFullSubtree.flatMap(el => el.associatedFactory.idsRequiredForDeserialization(el.toSerializableType))
+      val requiredToSerialize = element.allChildrenFullSubtree.filter(curChild => allRequiredIds.contains(curChild.elementId))
 
       toFactoryBase(element)
         .withContentIdAdded("title", element.workbookTitle)
+       // .withElementsAdded("test", element.sections.map(_.sectionId))
         .withElementsAdded("availableLanguages", element.availableLanguages.map(_.asInstanceOf[AppLanguage]))(DefaultSerializer.serializerAppLanguage)
         .withSerializationsAdded("serializedElements", requiredToSerialize.map(_.toSerializableType))
         .withReferencesAdded("sections", element.sections.map(_.asRef))
