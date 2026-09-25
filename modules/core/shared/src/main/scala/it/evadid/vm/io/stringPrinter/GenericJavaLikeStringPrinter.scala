@@ -8,7 +8,7 @@ import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVari
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
 import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
-import it.evadid.vm.io.stringPrinter.GenericJavaLikeStringPrinter.SeparateStructures
+import it.evadid.vm.io.stringPrinter.GenericJavaLikeStringPrinter.{JavaSeparation, PythonSeparation, SeparateStructures}
 import it.evadid.vm.naming.NamingStyle.{CamelCase, SnakeCase}
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeDataValueUnit, BeUseValueReference}
@@ -68,7 +68,10 @@ abstract class GenericJavaLikeStringPrinter(
   protected def emptyFunctionBody: String = ""
 
   protected def forStatement(expr: BeExpression): String = {
-    forExpression(expr) + sepLogic.endLineWith
+    forExpression(expr) + (expr match {
+      case _: BeControlStructure | _: BeReturn | _: BeFunctionCall => ""
+      case _ => sepLogic.endLineWith
+    })
   }
 
 
@@ -134,6 +137,7 @@ abstract class GenericJavaLikeStringPrinter(
           .appendNextLine(defineFunctionLine(name.inCurLanguage, par, outTypeStr))
           .changeIntLevel(1)
           .appendAsLines(bodyText)
+          .changeIntLevel(-1)
           .appendNextLine(sepLogic.endBlockWith)
           .toString
       }
@@ -147,16 +151,23 @@ abstract class GenericJavaLikeStringPrinter(
 
   def forControlStructure(cs: BeControlStructure): String = cs.match {
     case BeIfElse(condition, thenBody, elseBody) => {
-      val conditionString = forExpression(condition).replaceAll("\n", "")
+      val conditionString = forExpression(condition).replaceAll("\n", "").stripSuffix(sepLogic.endLineWith)
+      val formattedCondition = sepLogic match {
+        case _: JavaSeparation => s"($conditionString)"
+        case _ => s" $conditionString"
+      }
       val res = CodeStringBuilderMutable()
-        .appendNextLine(s"if $conditionString${sepLogic.startBlockWith}")
+        .appendNextLine(s"if$formattedCondition${sepLogic.startBlockWith}")
         .changeIntLevel(1)
         .appendAsLines(forExpression(thenBody))
         .changeIntLevel(-1)
         .appendNextLine(sepLogic.endBlockWith)
       if (elseBody.body.nonEmpty) {
         res
-          .appendInLine(s"else${sepLogic.startBlockWith}")
+          .appendInLine(sepLogic match {
+            case _: PythonSeparation => s"else${sepLogic.startBlockWith}"
+            case _ => s" else ${sepLogic.startBlockWith}"
+          })
           .changeIntLevel(1)
           .appendAsLines(forExpression(elseBody))
           .changeIntLevel(-1)
@@ -186,14 +197,19 @@ abstract class GenericJavaLikeStringPrinter(
         .toString
     }
     case BeSequence(body, sequenceInfo) => {
-      CodeStringBuilderMutable()
+      val rendered = CodeStringBuilderMutable()
         .appendAllAsLines(body.map(forStatement))
         .toString
+      if (sepLogic.isInstanceOf[PythonSeparation] && levelIsTopLevel(rendered)) rendered + "\n" else rendered
     }
     case BeWhile(condition, body) => {
-      val conditionString = forExpression(condition).replaceAll("\n", "")
+      val conditionString = forExpression(condition).replaceAll("\n", "").stripSuffix(sepLogic.endLineWith)
+      val formattedCondition = sepLogic match {
+        case _: PythonSeparation => s" $conditionString"
+        case _ => s" ($conditionString) "
+      }
       CodeStringBuilderMutable()
-        .appendNextLine(s"while $conditionString${sepLogic.startBlockWith}")
+        .appendNextLine(s"while$formattedCondition${sepLogic.startBlockWith}")
         .changeIntLevel(1)
         .appendAsLines(forExpression(body))
         .changeIntLevel(-1)
@@ -202,6 +218,8 @@ abstract class GenericJavaLikeStringPrinter(
     }
     case _ => ???
   }
+
+  private def levelIsTopLevel(rendered: String): Boolean = rendered.nonEmpty && !rendered.startsWith(" ")
 
 }
 
@@ -238,6 +256,16 @@ object GenericJavaLikeStringPrinter {
 
     override def preferedDisplayStyle: NamingStyle = CamelCase
 
+    override def endLineWith: String = ";"
+  }
+
+  case class JavaScriptSeparation() extends SeparateStructures {
+    override def startBlockWith: String = "{"
+    override def endBlockWith: String = "}"
+    override def startSingleLineComment: String = "//"
+    override def startBlockComment: String = "/*"
+    override def endBlockComment: String = "*/"
+    override def preferedDisplayStyle: NamingStyle = SnakeCase
     override def endLineWith: String = ";"
   }
 

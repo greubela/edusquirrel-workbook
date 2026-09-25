@@ -6,7 +6,7 @@ import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.Workbo
 import it.evadid.workbook.elements.structureElements.Workbook
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 
-case class LabeledWorkbookElement(override val elementId: String, baseElement: WorkbookElement, label: WorkbookLabel) extends WorkbookDisplayElement {
+case class LabeledWorkbookElement[T <: WorkbookElement](override val elementId: String, baseElement: T, label: WorkbookLabel) extends WorkbookDisplayElement {
   override lazy val childrenOfThisElement: List[WorkbookElement] = List(baseElement)
 
   override val associatedFactory: WorkbookElementFactory[? <: WorkbookElement] = LabeledWorkbookElement.factory
@@ -14,20 +14,20 @@ case class LabeledWorkbookElement(override val elementId: String, baseElement: W
 
 object LabeledWorkbookElement {
 
-  lazy val factory: WorkbookElementFactory[LabeledWorkbookElement] = new WorkbookElementFactory[LabeledWorkbookElement](){
+  lazy val factory: WorkbookElementFactory[LabeledWorkbookElement[WorkbookElement]] = new WorkbookElementFactory[LabeledWorkbookElement[WorkbookElement]](){
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] =
       Set(element.getElementAsWorkbookReference("baseElement").referencedId)
 
     override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = List()
 
-    override def toSerializableElement(element: LabeledWorkbookElement): WorkbookElementSerializable = {
+    override def toSerializableElement(element: LabeledWorkbookElement[WorkbookElement]): WorkbookElementSerializable = {
       toFactoryBase(element)
         .withReferenceAdded("baseElement", element.baseElement.asRef)
         .withContentIdAdded("label", element.label.contentId)
         .withElementAdded("labelType", element.label.labelType.toString)
     }
 
-    override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): LabeledWorkbookElement = {
+    override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): LabeledWorkbookElement[WorkbookElement] = {
       val kind = element.getOptionalElementAsString("labelType", "HintLabel") match {
         case "SafetyLabel" => SafetyLabel;
         case "GoalLabel" => GoalLabel;

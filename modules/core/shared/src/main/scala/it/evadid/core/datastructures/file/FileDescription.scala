@@ -104,6 +104,16 @@ object FileDescription {
 
 }
 
+/** Portable file location used when a workbook is restored without a platform-specific downloader. */
+case class UrlFileDescription(asUrlString: String, copyrightInfo: CopyrightInfo) extends FileDescription {
+  override def loadData(): Future[LoadedFile] =
+    Future.failed(new UnsupportedOperationException("Loading a serialized URL requires a platform file factory"))
+
+  override def getChildrenFile(childName: String, cCopyrightInfo: CopyrightInfo): Option[FileDescription] =
+    if (structure.extension.nonEmpty) None
+    else Some(copy(asUrlString = s"${asUrlString.stripSuffix("/")}/$childName", copyrightInfo = cCopyrightInfo))
+}
+
 /*
   def domainAndDirNames(fullPath: String): (List[String], List[String]) = if (fullPath.trim.isEmpty) (List(), List()) else {
     //val withoutName: String = fullPath.substring(0, fullPath.length - filenameWithExtension.length - 1)

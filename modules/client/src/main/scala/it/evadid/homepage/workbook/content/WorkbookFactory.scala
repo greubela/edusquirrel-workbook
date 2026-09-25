@@ -10,6 +10,7 @@ import it.evadid.workbook.elements.displayElements.ImageElement.FileBasedImageEl
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{LabelType, WorkbookLabel}
 import it.evadid.workbook.elements.displayElements.*
 import it.evadid.workbook.elements.interactionElements.basic.*
+import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{
   AdvancedCodeRequirement,
   CodeTaskToggleInteraction,
@@ -71,7 +72,7 @@ trait WorkbookFactory {
   protected def container(langIdContainerLabel: String, elements: List[WorkbookElement]): WorkbookStructureElement[WorkbookElement] = {
     //val containerTitle = LangMapContentBasedElement(LanguageMapContentId(langIdContainerLabel), LangMapContentIdType(TypeOfTextDisplay.PLAINTEXT, RoleInWorkbook.CONTAINER_TITLE))
     //WorkbookElementGroup(List(containerTitle) ++ elements, Some(WorkbookGroupType.EXERCISE_CONTAINER))
-    ExerciseContainer(LanguageMapContentId(langIdContainerLabel), elements)
+    ExerciseContainer(nextId("container"), LanguageMapContentId(langIdContainerLabel), elements)
   }
 
   /*
@@ -97,7 +98,7 @@ trait WorkbookFactory {
 
   protected def labeledInstruction(titleMapId: String, bodyMapId: String, labelType: LabelType): LabeledWorkbookElement[WorkbookElement] = {
     val instruction: WorkbookElement = instructionMarkdown(bodyMapId)
-    LabeledWorkbookElement[WorkbookElement](nextId(), instruction, WorkbookLabel(LanguageMapContentId(titleMapId), labelType))
+    LabeledWorkbookElement(nextId(), instruction, WorkbookLabel(LanguageMapContentId(titleMapId), labelType))
   }
 
   protected def instructionLabeledPair(titleMapId: String, bodyMapId: String, labelType: LabelType): LabeledWorkbookElement[WorkbookElement] =

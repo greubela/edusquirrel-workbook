@@ -4,14 +4,17 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, LabeledWorkbookElement}
+import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, ImageElement, LabeledWorkbookElement}
+import it.evadid.workbook.elements.interactionElements.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
+import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExercise
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
+import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
 import it.evadid.workbook.elements.interactionElements.sortingExercise.SortingInteraction
 import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.SortingReasonInteraction
-import it.evadid.workbook.elements.structureElements.Workbook
+import it.evadid.workbook.elements.structureElements.{ExerciseContainer, Workbook, WorkbookSection}
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 
 import scala.annotation.tailrec
@@ -29,9 +32,14 @@ object WorkbookElementFactory {
   }
 
 
-  def unsupportedFactory[T <: WorkbookElement](): WorkbookElementFactory[T] = new NoContentElementFactory[T]() {
+  def unsupportedFactory[T <: WorkbookElement](elementName: String): WorkbookElementFactory[T] = new WorkbookElementFactory[T] {
+    private def unsupported(operation: String): Nothing =
+      throw new UnsupportedOperationException(s"$elementName does not support workbook $operation")
 
-    override def callConstructor(elementId: String): T = ???
+    override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set.empty
+    override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
+    override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): T = unsupported("deserialization")
+    override def toSerializableElement(element: T): WorkbookElementSerializable = unsupported("serialization")
   }
 
   trait SingleContentElementFactory[T <: WorkbookElement] extends SimpleWorkbookElementFactory[T] {
@@ -67,7 +75,7 @@ object WorkbookElementFactory {
   }
 
   def simple[T <: WorkbookElement](
-                                    finishSerialization: WorkbookElementSerializable => WorkbookElementSerializable,
+                                    serialize: T => WorkbookElementSerializable,
                                     deserialize: WorkbookElementSerializable => T
                                   ): WorkbookElementFactory[T] = new WorkbookElementFactory[T] {
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set.empty
@@ -76,21 +84,8 @@ object WorkbookElementFactory {
 
     override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): T = deserialize(element)
 
-    override def toSerializableElement(element: T): WorkbookElementSerializable = finishSerialization(toFactoryBase(element))
+    override def toSerializableElement(element: T): WorkbookElementSerializable = serialize(element)
   }
-
-
-  /*def unsupported[T <: WorkbookElement](elementName: String): WorkbookElementFactory[T] = new WorkbookElementFactory[T] {
-    private def fail = throw UnsupportedOperationException(s"$elementName does not support workbook serialization")
-
-    override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set.empty
-
-    override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
-
-    override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): T = fail
-
-    override def toSerializableElement(element: T): WorkbookElementSerializable = fail
-  }*/
 
   val workbookElementSerializer: Serializer[WorkbookElement] = new Serializer[WorkbookElement]() {
     override def serialize(obj: WorkbookElement): String = {
@@ -104,7 +99,7 @@ object WorkbookElementFactory {
 
   private lazy val knownFactoriesMap: Map[String, WorkbookElementFactory[? <: WorkbookElement]] = Map(
     classOf[Workbook].getSimpleName -> Workbook.factory,
-    classOf[LabeledWorkbookElement].getSimpleName -> LabeledWorkbookElement.factory,
+    classOf[LabeledWorkbookElement[?]].getSimpleName -> LabeledWorkbookElement.factory,
     classOf[CollapsibleInstructionElement].getSimpleName -> CollapsibleInstructionElement.factory,
     classOf[DisplayLangMapContent].getSimpleName -> DisplayLangMapContent.factory,
     classOf[TextInteraction].getSimpleName -> TextInteraction.factory,
@@ -117,7 +112,17 @@ object WorkbookElementFactory {
     classOf[ReorderInteraction.ReorderMapIdInteraction].getSimpleName -> ReorderInteraction.ReorderMapIdInteraction.factory,
     classOf[SortingInteraction].getSimpleName -> SortingInteraction.factory,
     classOf[SortingReasonInteraction].getSimpleName -> SortingReasonInteraction.factory,
-    classOf[GptInteractionElement].getSimpleName -> GptInteractionElement.factory
+    classOf[GptInteractionElement].getSimpleName -> GptInteractionElement.factory,
+    classOf[WorkbookSection].getSimpleName -> WorkbookSection.factory,
+    classOf[ExerciseContainer].getSimpleName -> ExerciseContainer.factory,
+    classOf[Slideshow].getSimpleName -> Slideshow.factory,
+    classOf[SlideshowPanel.TwoColumnImagePanel].getSimpleName -> SlideshowPanel.TwoColumnImagePanel.factory,
+    classOf[SlideshowPanel.ImageSlide].getSimpleName -> SlideshowPanel.ImageSlide.factory,
+    classOf[TurtleStitchExploreProjectElement].getSimpleName -> TurtleStitchExploreProjectElement.factory,
+    classOf[TurtleStitchRecreateShapeInteraction].getSimpleName -> TurtleStitchRecreateShapeInteraction.factory,
+    classOf[ProgrammingExercise].getSimpleName -> ProgrammingExercise.factory,
+    classOf[ImageElement.FileBasedImageElement].getSimpleName -> ImageElement.FileBasedImageElement.factory,
+    classOf[ImageElement.LanguageMapBasedImageElement].getSimpleName -> ImageElement.LanguageMapBasedImageElement.factory
   )
 
 
