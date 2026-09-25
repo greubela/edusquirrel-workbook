@@ -162,11 +162,11 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
         checklist("EmbroideryWorkbook/ConfirmSteps"),
 
         instructionHtml("EmbroideryWorkbook/S3E1I2"),
-        image("block_square"),
+        imageResources(LanguageMapContentId("EmbroideryWorkbook/fileBlockSquare")),
         checklist("EmbroideryWorkbook/ConfirmSteps"),
 
         instructionHtml("EmbroideryWorkbook/S3E1I3"),
-        image("block_usesquare"),
+        imageResources(LanguageMapContentId("EmbroideryWorkbook/fileBlockUseSquare")),
         checklist("EmbroideryWorkbook/ConfirmSteps"),
 
         instructionHtml("EmbroideryWorkbook/S3E1I4"),
@@ -184,10 +184,10 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
       container("EmbroideryWorkbook/S3E3Title", List(
 
         instructionHtml("EmbroideryWorkbook/S3E3I1"),
-        image("parameter_create"),
+        imageResources(LanguageMapContentId("EmbroideryWorkbook/fileParameterCreate")),
 
         instructionHtml("EmbroideryWorkbook/S3E3I2"),
-        image("parameter_name"),
+        imageResources(LanguageMapContentId("EmbroideryWorkbook/fileParameterName")),
 
         instructionHtml("EmbroideryWorkbook/S3E3I3"),
         createTextInput(),

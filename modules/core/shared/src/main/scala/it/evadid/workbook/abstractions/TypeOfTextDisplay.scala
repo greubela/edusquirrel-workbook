@@ -1,7 +1,5 @@
 package it.evadid.workbook.abstractions
 
-import it.evadid.core.datastructures.file.FileDescription
-
 sealed trait TypeOfTextDisplay {
 
   def serializerName: String = this.getClass.getSimpleName
@@ -10,7 +8,7 @@ sealed trait TypeOfTextDisplay {
 }
 
 object TypeOfTextDisplay {
-  val allElements: List[TypeOfTextDisplay] = List(PLAINTEXT_UNDERSCORE_REPLACABLE, PLAINTEXT, HTML, MARKDOWN, URL_RELATIVE_TO_RESOURCES, URL_ABSOLUTE)
+  val allElements: List[TypeOfTextDisplay] = List(PLAINTEXT_UNDERSCORE_REPLACABLE, PLAINTEXT, HTML, MARKDOWN, URL_RELATIVE_TO_TECHNICAL_RESOURCES, URL_RELATIVE_TO_WORKBOOK_RESOURCES, URL_ABSOLUTE)
 
   case object PLAINTEXT_UNDERSCORE_REPLACABLE extends TypeOfTextDisplay
 
@@ -22,7 +20,9 @@ object TypeOfTextDisplay {
 
   sealed trait URL_TYPE extends TypeOfTextDisplay
 
-  case object URL_RELATIVE_TO_RESOURCES extends URL_TYPE
+  case object URL_RELATIVE_TO_TECHNICAL_RESOURCES extends URL_TYPE
+
+  case object URL_RELATIVE_TO_WORKBOOK_RESOURCES extends URL_TYPE
 
   case object URL_ABSOLUTE extends URL_TYPE
 

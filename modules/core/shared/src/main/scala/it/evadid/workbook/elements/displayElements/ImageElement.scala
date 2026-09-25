@@ -30,18 +30,18 @@ object ImageElement {
       override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: LanguageMapBasedImageElement): WorkbookElementSerializable = {
         baseElement
           .withContentIdAdded("content", infoElement.languageMapContentId)
-          .withElementAdded("howToResolveUrl", infoElement.howToResolveUrl)(DefaultSerializer.serializerTextDisplay)
+          .withElementAdded("howToResolveUrl", infoElement.howToResolveUrl.asInstanceOf[TypeOfTextDisplay])(DefaultSerializer.serializerTextDisplay)
       }
 
       override def finishDeserialization(element: WorkbookElementSerializable): LanguageMapBasedImageElement = {
         LanguageMapBasedImageElement(element.elementId,
           element.getElementAsContentId("content"),
-          element.getElementAs("howToResolveUrl")(DefaultSerializer.serializerTextDisplay))
+          element.getElementAs("howToResolveUrl")(DefaultSerializer.serializerTextDisplay).asInstanceOf[URL_TYPE])
       }
     }
   }
 
-  case class LanguageMapBasedImageElement(override val elementId: String, languageMapContentId: LanguageMapContentId, howToResolveUrl: TypeOfTextDisplay) extends ImageElement {
+  case class LanguageMapBasedImageElement(override val elementId: String, languageMapContentId: LanguageMapContentId, howToResolveUrl: URL_TYPE) extends ImageElement {
     override val associatedFactory: WorkbookElementFactory[LanguageMapBasedImageElement] = LanguageMapBasedImageElement.factory
   }
 }

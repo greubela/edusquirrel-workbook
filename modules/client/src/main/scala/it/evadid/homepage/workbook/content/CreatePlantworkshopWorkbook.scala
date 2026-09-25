@@ -1,10 +1,12 @@
 package it.evadid.homepage.workbook.content
 
-import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.file.FileDescription
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.control.model.*
+import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.displayElements.ImageElement.FileBasedImageElement
+import it.evadid.workbook.elements.displayElements.ImageElement
+import it.evadid.workbook.elements.displayElements.ImageElement.LanguageMapBasedImageElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, HintLabel, SafetyLabel, TaskLabel}
 import it.evadid.workbook.elements.interactionElements.basic.LabeledCheckboxInteraction
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.AdvancedCodeRequirement
@@ -12,9 +14,9 @@ import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, Sli
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 
 case class CreatePlantworkshopWorkbook(
-  override val fullInfo: FullInfo,
-  fileForResource: Option[String => FileDescription] = None
-) extends WorkbookFactory {
+                                        override val fullInfo: FullInfo,
+                                        fileForResource: Option[String => FileDescription] = None
+                                      ) extends WorkbookFactory {
 
   override val workbookId: String = "PlantWorkshop" // todo: Lang map should automatically prefix this
 
@@ -48,15 +50,12 @@ case class CreatePlantworkshopWorkbook(
 
   override def createWorkbook: Workbook = workbook
 
-  private def missingElementPlaceholder(contextKey: String): WorkbookElement =
+  private def missingElementPlaceholder(contextKey: String): WorkbookElement = {
     instructionPlaintext(s"PlantWorkshop/$contextKey")
-
-  private def wiringSlideImage(slideIndex: Int): FileBasedImageElement =
-    FileBasedImageElement(nextId("wiring-image"),
-      fileForResource
-        .map(_(s"img/plantworkshop/schaltkreis/Plant conv $slideIndex.png"))
-        .getOrElse(fullInfo.contentControl.fileFactory.relativeToResourceFolder(s"img/plantworkshop/schaltkreis/Plant conv $slideIndex.png"))
-    )
+  }
+  def wiringSlideImage(slideIndex: Int): ImageElement = {
+    LanguageMapBasedImageElement(nextId(), LanguageMapContentId(s"PlantWorkshop/fileWiringSlide${slideIndex}"), URL_RELATIVE_TO_WORKBOOK_RESOURCES)
+  }
 
   private def buildWiringPanel(i: Int): SlideshowPanel = {
     val image = wiringSlideImage(i)

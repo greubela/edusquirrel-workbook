@@ -10,7 +10,7 @@ object HtmlTurtleStitchRecreateShapeRenderer extends LineBasedRenderingFactory[T
 
   override protected def createRendering(workbookElement: TurtleStitchRecreateShapeInteraction): AtomarLineRendering = {
 
-    val imageToRecreate = fullInfo.contentControl.fileFactory.relativeToResourceFolder(workbookElement.filenameRelToResources)
+    val imageToRecreate = fullInfo.contentControl.fileFactory.relativeToTechnicalResources(workbookElement.filenameRelToResources)
 
     AtomarLineRendering.cardLine(workbookElement, List(
       ElementCard(

@@ -11,7 +11,6 @@ case class TurtleStitchExploreProjectElement(
                                             ) extends WorkbookDisplayElement {
   override val associatedFactory: WorkbookElementFactory[TurtleStitchExploreProjectElement] = TurtleStitchExploreProjectElement.factory
 
-
 }
 
 object TurtleStitchExploreProjectElement {

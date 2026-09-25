@@ -38,7 +38,7 @@ object HtmlTurtleStitchRendererHelper {
    */
   def renderDownloadButton(label: LanguageMapContentId, projectRelativeToResources: String): Element = {
 
-    val projectFromFile: file.FileDescription = fullInfo.contentControl.fileFactory.relativeToResourceFolder(projectRelativeToResources)
+    val projectFromFile: file.FileDescription = fullInfo.contentControl.fileFactory.relativeToTechnicalResources(projectRelativeToResources)
     val desiredFilename: String = "TurtleStitch_" + InfoUtil.datetimeFormattedForFilenames() + "_" + projectFromFile.filenameWithExtension
     HtmlButtonElement.withTextLabel(label, event =>
       projectFromFile.loadData().onComplete {
@@ -75,7 +75,7 @@ object HtmlTurtleStitchRendererHelper {
   }
 
   def renderProjectPreviewImage(filenameRelToResources: String): Element = {
-    val fileDescription: FileDescription = fullInfo.contentControl.fileFactory.relativeToResourceFolder(filenameRelToResources)
+    val fileDescription: FileDescription = fullInfo.contentControl.fileFactory.relativeToTechnicalResources(filenameRelToResources)
     val xmlSignal: AsyncData[Nothing, String] = AsyncData.forFuture(fileDescription.loadData()).map(_.fileDataAsUtf8String)
     renderProjectCodePreviewWithAsyncXml(xmlSignal)
   }

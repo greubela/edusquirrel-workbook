@@ -1,21 +1,17 @@
 package it.evadid.homepage.workbook.content
 
 
-import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.control.model.*
-import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay, WorkbookElement, WorkbookInteractionElement, WorkbookStructureElement}
-import it.evadid.workbook.elements.displayElements.ImageElement.FileBasedImageElement
-import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{LabelType, WorkbookLabel}
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES
 import it.evadid.workbook.elements.displayElements.*
+import it.evadid.workbook.elements.displayElements.ImageElement.LanguageMapBasedImageElement
+import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{LabelType, WorkbookLabel}
 import it.evadid.workbook.elements.interactionElements.basic.*
 import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
-import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{
-  AdvancedCodeRequirement,
-  CodeTaskToggleInteraction,
-  SketchDownloadInteraction
-}
+import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{AdvancedCodeRequirement, CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.sortingExercise.{SortingInteraction, SortingItem}
 import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
@@ -90,10 +86,8 @@ trait WorkbookFactory {
     DisplayLangMapContent(nextId(), LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN))
   //HtmlInstructionElement.fromMarkdownLanguageMapId(fullInfo, textMapId)
 
-  def image(imageLocation: FileDescription): ImageElement = {
-    FileBasedImageElement(nextId(), imageLocation)
-    //LangIdBasedContent(imageLocation.fullPath, LangIdBasedContent(TypeOfTextDisplay.URL, RoleInWorkbook.IMAGE))
-    //pseudoElement(HtmlImageElement(imageLocation, fullInfo).getDomSignal)
+  def imageResources(idWithImageLocation: LanguageMapContentId): ImageElement = {
+    LanguageMapBasedImageElement(nextId("img"), idWithImageLocation, URL_RELATIVE_TO_WORKBOOK_RESOURCES)
   }
 
   protected def labeledInstruction(titleMapId: String, bodyMapId: String, labelType: LabelType): LabeledWorkbookElement[WorkbookElement] = {
@@ -107,10 +101,6 @@ trait WorkbookFactory {
   protected def instructionCollapsibleHint(titleMapId: String, bodyMapId: String, initiallyCollapsed: Boolean = true): CollapsibleInstructionElement =
     CollapsibleInstructionElement(nextId(), LanguageMapContentId(titleMapId), LanguageMapContentId(bodyMapId), initiallyCollapsed)
 
-  def image(imageName: String, imgType: String = "png"): ImageElement = {
-    val fileDesc: FileDescription = fullInfo.contentControl.fileFactory.relativeToResourceFolder("workbookresources/embroidery/images/" + imageName + "." + imgType)
-    image(fileDesc)
-  }
 
   protected def checklist(langIdCheckboxLabel: String, elementId: String = nextId()): WorkbookInteractionElement[Boolean] = {
     LabeledCheckboxInteraction(elementId, LanguageMapContentId(langIdCheckboxLabel))
@@ -177,10 +167,10 @@ trait WorkbookFactory {
   }
 
   protected def sortingExercise(
-    id: String,
-    fieldKeys: List[String],
-    items: List[(String, Int, String)]
-  ): SortingInteraction = {
+                                 id: String,
+                                 fieldKeys: List[String],
+                                 items: List[(String, Int, String)]
+                               ): SortingInteraction = {
     SortingInteraction(
       elementId = id,
       fields = fieldKeys.map(LanguageMapContentId.apply),
@@ -191,10 +181,10 @@ trait WorkbookFactory {
   }
 
   protected def sortingReasonExercise(
-    id: String,
-    fieldKeys: List[String],
-    items: List[(String, Int, String, String)]
-  ): SortingReasonInteraction = {
+                                       id: String,
+                                       fieldKeys: List[String],
+                                       items: List[(String, Int, String, String)]
+                                     ): SortingReasonInteraction = {
     SortingReasonInteraction(
       elementId = id,
       fields = fieldKeys.map(LanguageMapContentId.apply),

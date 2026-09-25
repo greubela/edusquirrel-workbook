@@ -52,9 +52,9 @@ object HtmlImageElement {
 
   private def getImageSignal(fullInfo: FullInfo, image: ImageElement): AsyncData[Nothing, FullImage] = {
     val fileSignal: AsyncData[Nothing, LoadedFile] = image.match {
-      case ImageElement.FileBasedImageElement(_, fileDescription) =>
-        AsyncData.forFuture(fileDescription.loadData()).observeAllStates
-      case i@ImageElement.LanguageMapBasedImageElement(_, languageMapContentId, copyrightInfo, howToResolveUrl) =>
+      /*case ImageElement.FileBasedImageElement(_, fileDescription) =>
+        AsyncData.forFuture(fileDescription.loadData()).observeAllStates*/
+      case i@ImageElement.LanguageMapBasedImageElement(elId, languageMapContentId, howToResolveUrl) =>
         val srcSignal: Signal[String] = signals.stringFromLanguageMapId(languageMapContentId)
         val srcFile: Signal[FileDescription] = srcSignal.map(fullInfo.contentControl.fileFactory.resolveFromTypeAndLanguageMapContent(howToResolveUrl, _))
         val res = srcFile.mapAsync(_.loadData())(using ExecutionContext.global)
