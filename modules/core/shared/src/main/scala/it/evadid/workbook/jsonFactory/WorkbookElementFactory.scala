@@ -4,6 +4,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
+import it.evadid.workbook.elements.displayElements.ImageElement.LanguageMapBasedImageElement
 import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, ImageElement, LabeledWorkbookElement}
 import it.evadid.workbook.elements.interactionElements.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
@@ -74,18 +75,6 @@ object WorkbookElementFactory {
     def finishDeserialization(element: WorkbookElementSerializable): T
   }
 
-  def simple[T <: WorkbookElement](
-                                    serialize: T => WorkbookElementSerializable,
-                                    deserialize: WorkbookElementSerializable => T
-                                  ): WorkbookElementFactory[T] = new WorkbookElementFactory[T] {
-    override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set.empty
-
-    override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
-
-    override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): T = deserialize(element)
-
-    override def toSerializableElement(element: T): WorkbookElementSerializable = serialize(element)
-  }
 
   val workbookElementSerializer: Serializer[WorkbookElement] = new Serializer[WorkbookElement]() {
     override def serialize(obj: WorkbookElement): String = {
@@ -121,8 +110,8 @@ object WorkbookElementFactory {
     classOf[TurtleStitchExploreProjectElement].getSimpleName -> TurtleStitchExploreProjectElement.factory,
     classOf[TurtleStitchRecreateShapeInteraction].getSimpleName -> TurtleStitchRecreateShapeInteraction.factory,
     classOf[ProgrammingExercise].getSimpleName -> ProgrammingExercise.factory,
-    classOf[ImageElement.FileBasedImageElement].getSimpleName -> ImageElement.FileBasedImageElement.factory,
-    classOf[ImageElement.LanguageMapBasedImageElement].getSimpleName -> ImageElement.LanguageMapBasedImageElement.factory
+  //  classOf[ImageElement.FileBasedImageElement].getSimpleName -> ImageElement.FileBasedImageElement.factory,
+    classOf[ImageElement.LanguageMapBasedImageElement].getSimpleName -> LanguageMapBasedImageElement.factory
   )
 
 

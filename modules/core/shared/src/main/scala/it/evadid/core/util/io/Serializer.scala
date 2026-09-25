@@ -38,6 +38,21 @@ object Serializer {
     override def deserialize(str: String): T = ???
   }*/
 
+  def constructorLikeSerializer[T](constructorName: String, base: Serializer[T]): Serializer[T] = new Serializer[T] {
+    override def serialize(obj: T): String = constructorName + "(" + base.serialize(obj) + ")"
+
+    override def deserialize(str: String): T = {
+      val trimmed = str.trim
+      if (trimmed.startsWith(constructorName + "(") && trimmed.endsWith(")")) {
+        val withoutEnd = trimmed.substring(0, str.length - 1)
+        val cleaned = withoutEnd.substring(constructorName.length + 1, withoutEnd.length)
+        base.deserialize(cleaned)
+      }else {
+        throw new IllegalArgumentException(s"ConstructorLikeSerializer for '${constructorName} cannot deserialize ${str}")
+      }
+    }
+  }
+
   def noneParser(noneLiteral: Option[String] = Some("None")): Serializer[Option[Unit]] = Serializer.singletonSerializer[Option[Unit]](None, noneLiteral)
 
   def singletonSerializer[T](singletonObject: T, singletonString: Option[String] = None): Serializer[T] = new Serializer[T] {

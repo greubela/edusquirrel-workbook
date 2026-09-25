@@ -28,7 +28,6 @@ case class HtmlImageElement(imageSignal: AsyncData[Nothing, FullImage], underlyi
   private def renderImageLoading(): Element = {
     div(text <-- stringSignal(LanguageMapContentId("basic/imageLoadingMap")))
   }
-
   private def renderImageFailed(cause: Throwable): Element = {
     //val map = WorkbookContentControl.languageMapImageError(underlyingImage, cause)
     //div("Image loading failed: " + cause.getMessage)

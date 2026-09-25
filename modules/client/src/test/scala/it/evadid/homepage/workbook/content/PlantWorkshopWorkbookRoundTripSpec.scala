@@ -19,7 +19,7 @@ class PlantWorkshopWorkbookRoundTripSpec extends FunSuite {
     assertEquals(restored.workbookTitle, original.workbookTitle)
     assertEquals(restored.availableLanguages, original.availableLanguages)
     assertEquals(restored.sections.map(_.sectionId), original.sections.map(_.sectionId))
-    assertEquals(restored.allChildrenRec.map(_.elementId), original.allChildrenRec.map(_.elementId))
+    assertEquals(restored.allChildrenInSubtree.map(_.elementId), original.allChildrenInSubtree.map(_.elementId))
     assertEquals(
       WorkbookElementFactory.workbookElementSerializer.serialize(restored),
       serialized

@@ -2,15 +2,21 @@ package it.evadid.workbook.elements.interactionElements.TurtleStitch
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 
 object TurtleStitchRecreateShapeInteraction {
-  val factory = WorkbookElementFactory.simple[TurtleStitchRecreateShapeInteraction](
-    element => WorkbookElementSerializable(element.elementId, classOf[TurtleStitchRecreateShapeInteraction].getSimpleName, Map())
-      .withElementAdded("filenameRelToResources", element.filenameRelToResources),
-    serialized => TurtleStitchRecreateShapeInteraction(serialized.elementId, serialized.getElementAsString("filenameRelToResources"))
-  )
+  val factory = new SimpleWorkbookElementFactory[TurtleStitchRecreateShapeInteraction]() {
+
+
+    override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: TurtleStitchRecreateShapeInteraction): WorkbookElementSerializable = {
+      baseElement.withElementAdded("filenameRelToResources", infoElement.filenameRelToResources)
+    }
+
+    override def finishDeserialization(serialized: WorkbookElementSerializable): TurtleStitchRecreateShapeInteraction = {
+      TurtleStitchRecreateShapeInteraction(serialized.elementId, serialized.getElementAsString("filenameRelToResources"))
+    }
+  }
 }
 
 case class TurtleStitchRecreateShapeInteraction(

@@ -21,16 +21,9 @@ object LanguageMapContentId {
     apply(parts(0), parts(1))
   }
 
-  def serializer: Serializer[LanguageMapContentId] = new Serializer[LanguageMapContentId] {
-    override def serialize(obj: LanguageMapContentId): String = s"ID(${obj.fullId})"
 
-    override def deserialize(str: String): LanguageMapContentId = {
-      if (str.startsWith("ID(") && str.endsWith(")")) {
-        apply(str.substring(3, str.length - 1))
-      } else {
-        throw new IllegalArgumentException("cannot parse id from: " + str)
-      }
-    }
-  }
+
+
+
 
 }

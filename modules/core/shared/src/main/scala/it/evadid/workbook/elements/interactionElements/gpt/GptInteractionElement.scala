@@ -5,6 +5,7 @@ import it.evadid.core.datastructures.chat.{MessengerModel, Person}
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
+import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction
 import it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction.MessengerModelScaffolding
@@ -17,9 +18,8 @@ import scala.concurrent.*
 import scala.util.{Failure, Success}
 
 object GptInteractionElement {
-  private given contentIdReadWriter: ReadWriter[LanguageMapContentId] = LanguageMapContentId.serializer.uPickleReadWrite
 
-  private val contentIdsSerializer = it.evadid.core.util.io.Serializer.fromUpickleJson(summon[ReadWriter[List[LanguageMapContentId]]])
+  private val contentIdsSerializer = DefaultSerializer.serializerLangMapIds
 
   val factory: WorkbookElementFactory[GptInteractionElement] = new WorkbookElementFactory[GptInteractionElement] {
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable) = Set(element.getElementAsWorkbookReference("underlyingTextInteraction").referencedId)

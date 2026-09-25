@@ -22,7 +22,7 @@ object LabeledNumberInteraction {
     case AlgebraicLike
   }
 
-  case class NumberInteractionConfig(numberType: NumberType, defaultDiff: BigDecimal)
+  case class NumberInteractionConfig(numberType: NumberType)
 
   val factory: SimpleWorkbookElementFactory[LabeledNumberInteraction] = new SimpleWorkbookElementFactory[LabeledNumberInteraction]() {
     override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: LabeledNumberInteraction): WorkbookElementSerializable = {
@@ -30,15 +30,13 @@ object LabeledNumberInteraction {
         .withContentIdAdded("numberLabel", infoElement.numberLabel)
         .withElementAdded("numberType", infoElement.numberType.toString)
         .withElementAdded("defaultNumber", infoElement.defaultValue)
-        .withElementAdded("defaultDiff", infoElement.diff.toString)
     }
 
     override def finishDeserialization(element: WorkbookElementSerializable): LabeledNumberInteraction = {
       LabeledNumberInteraction(element.elementId,
         element.getElementAsContentId("numberLabel"),
         NumberType.valueOf(element.getOptionalElementAsString("numberType", "IntegerLike")),
-        element.getOptionalElementAsString("defaultNumber", "0"),
-        BigDecimal(element.getOptionalElementAsString("defaultDiff", "1"))
+        element.getOptionalElementAsString("defaultNumber", "0")
       )
     }
   }

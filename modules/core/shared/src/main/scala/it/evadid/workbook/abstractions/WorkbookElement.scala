@@ -13,12 +13,12 @@ sealed trait WorkbookElement extends AutoSerializable[WorkbookElement, WorkbookE
   lazy val childrenOfThisElement: List[WorkbookElement]
 
 
-  lazy val allContainedInteractions: List[WorkbookInteractionElement[?]] = allChildrenRec.flatMap {
+  lazy val allContainedInteractions: List[WorkbookInteractionElement[?]] = allChildrenInSubtree.flatMap {
     case i: WorkbookInteractionElement[?] => List(i)
     case _ => List()
   }
 
-  lazy val allChildrenRec: List[WorkbookElement] = List(this) ++ childrenOfThisElement.flatMap(_.allChildrenRec)
+  lazy val allChildrenInSubtree: List[WorkbookElement] = List(this) ++ childrenOfThisElement.flatMap(_.allChildrenInSubtree)
 
   lazy val serializer: Serializer[WorkbookElementSerializable] = WorkbookElementSerializable.serializer
 

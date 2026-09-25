@@ -2,6 +2,7 @@ package it.evadid.workbook.jsonFactory
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable.{serializerL, serializerR, serializerRL}
@@ -10,6 +11,7 @@ import upickle.{ReadWriter, default, macroRW, readwriter}
 object WorkbookElementSerializable {
 
   def parse(element: WorkbookElementSerializable): WorkbookElement = WorkbookElementFactory.parse(element)
+
   def parseAll(elements: List[WorkbookElementSerializable]): List[WorkbookElement] = WorkbookElementFactory.parseAll(elements)
 
   val prefix = "WorkbookElementFactory"
@@ -44,6 +46,7 @@ case class WorkbookElementSerializable(
     withMapAdded(Map(key -> value))
   }
 
+
   def withMapAdded(map: Map[String, String]): WorkbookElementSerializable = {
     WorkbookElementSerializable(elementId, elementType, additionalElements ++ map)
   }
@@ -57,9 +60,12 @@ case class WorkbookElementSerializable(
   }
 
   def withContentIdAdded(key: String, element: LanguageMapContentId): WorkbookElementSerializable = {
-    withElementAdded(key, element)(LanguageMapContentId.serializer)
+    withElementAdded(key, element)(DefaultSerializer.serializerLangMapId)
   }
 
+  def withContentIdsAdded(key: String, element: List[LanguageMapContentId]): WorkbookElementSerializable = {
+    withElementAdded(key, element)(DefaultSerializer.serializerLangMapIds)
+  }
 
   def withSerializationsAdded(key: String, workbookElements: Seq[WorkbookElementSerializable]): WorkbookElementSerializable = {
     withElementAdded(key, workbookElements.toList)(serializerL)
@@ -71,6 +77,22 @@ case class WorkbookElementSerializable(
 
   def withReferencesAdded(key: String, workbookElement: Seq[WorkbookElementReference]): WorkbookElementSerializable = {
     withElementAdded(key, workbookElement.toList)(serializerRL)
+  }
+
+  def withElementsAdded(key: String, value: Seq[String]): WorkbookElementSerializable = {
+    withElementAdded(key, value.toList)(DefaultSerializer.serializerStrings)
+  }
+
+  def withElementsAdded[T](key: String, values: Seq[T])(serializer: Serializer[T]): WorkbookElementSerializable = {
+    withElementsAdded(key, values.map(serializer.serialize))
+  }
+
+  def getElements(elementKey: String): List[String] = {
+    DefaultSerializer.serializerStrings.deserialize(getElementAsString(elementKey)).toList
+  }
+
+  def getElements[T](elementKey: String)(serializer: Serializer[T]): List[T] = {
+    getElements(elementKey).map(serializer.deserialize)
   }
 
   def getElementAsString(elementKey: String): String = additionalElements(elementKey)
@@ -106,14 +128,18 @@ case class WorkbookElementSerializable(
   }
 
   def getElementAsContentId(elementKey: String): LanguageMapContentId = {
-    getElementAs[LanguageMapContentId](elementKey)(LanguageMapContentId.serializer)
+    getElementAs[LanguageMapContentId](elementKey)(DefaultSerializer.serializerLangMapId)
+  }
+
+  def getElementAsContentIds(elementKey: String): List[LanguageMapContentId] = {
+    getOptionalElementAs[List[LanguageMapContentId]](elementKey, List())(DefaultSerializer.serializerLangMapIds)
   }
 
   private def resolveReference[T <: WorkbookElement](ref: WorkbookElementReference, parsedElements: Map[String, WorkbookElement]): T = {
     val resolved: Option[WorkbookElement] = parsedElements.get(ref.referencedId)
     if (resolved.isEmpty) throw SerializedException(s"Cannot resolve required reference ${ref.referencedId} during construction!")
-    else if (resolved.get.isInstanceOf[T]) resolved.get.asInstanceOf[T]
-    else throw SerializedException(s"Expected Type of WorkbookElement ${ref.referencedId} did not match (was ${resolved.get.getClass.getSimpleName})!")
+    else try resolved.get.asInstanceOf[T]
+    catch case _ => throw SerializedException(s"Expected Type of WorkbookElement ${ref.referencedId} did not match (was ${resolved.get.getClass.getSimpleName})!")
   }
 
   def getAndResolveWorkbookElement[T <: WorkbookElement](elementKey: String, parsedElements: Map[String, WorkbookElement]): T = {

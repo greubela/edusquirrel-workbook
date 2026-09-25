@@ -13,6 +13,8 @@ case class CopyrightInfo(licenceInfo: LicenceInfo, authorInfo: AuthorInfo) {
 
 object CopyrightInfo {
 
+
+
   sealed trait LicenceInfo(val licenceName: String, val licenceDescription: LanguageMap[HumanLanguage])
 
   case object UnknownLicence extends LicenceInfo("Unknown Licence", LanguageMap.universalMap("[Unknown Licence]"))

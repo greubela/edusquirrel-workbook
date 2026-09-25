@@ -5,7 +5,9 @@ import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElem
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import UpdateImportance.{MAJOR, MINOR, TEMPORARY}
 import it.evadid.workbook.interaction.variable.InteractionVariableState.InteractionVariableStateChanged
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory.{NoContentElementFactory, SimpleWorkbookElementFactory}
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
+
 import java.time.Duration
 
 case class TextInteraction(override val elementId: String) extends WorkbookInteractionElement[String] {
@@ -15,7 +17,9 @@ case class TextInteraction(override val elementId: String) extends WorkbookInter
   override val serializerInteractionContent: Serializer[String] = Serializer.stringIO
 }
 object TextInteraction {
-  val factory = it.evadid.workbook.jsonFactory.WorkbookElementFactory.simple[TextInteraction](e => WorkbookElementSerializable(e.elementId, classOf[TextInteraction].getSimpleName, Map()), f => TextInteraction(f.elementId))
+  val factory: NoContentElementFactory[TextInteraction] = new NoContentElementFactory[TextInteraction]() {
+    override def callConstructor(elementId: String): TextInteraction = TextInteraction(elementId)
+  }
 
 
 
