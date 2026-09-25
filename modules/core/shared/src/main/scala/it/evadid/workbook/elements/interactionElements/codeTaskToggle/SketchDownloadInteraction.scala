@@ -9,7 +9,7 @@ import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 case class SketchDownloadInteraction(
                                       override val elementId: String,
                                       buttonLabel: LanguageMapContentId,
-                                      filename: String,
+                                      filenameRelativeToWorkbookResources: String,
                                       sketchContent: String,
                                       unlockWhenReorderCorrect: String
                                     ) extends WorkbookInteractionElement[String] {
@@ -29,7 +29,7 @@ object SketchDownloadInteraction {
     override def finishSerialization(baseElement: WorkbookElementSerializable, e: SketchDownloadInteraction): WorkbookElementSerializable = {
       baseElement
         .withContentIdAdded("buttonLabel", e.buttonLabel)
-        .withElementAdded("filename", e.filename)
+        .withElementAdded("filename", e.filenameRelativeToWorkbookResources)
         .withElementAdded("sketchContent", e.sketchContent)
         .withElementAdded("unlockWhenReorderCorrect", e.unlockWhenReorderCorrect)
     }

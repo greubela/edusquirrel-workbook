@@ -42,7 +42,7 @@ object HomepageContentControl {
     }
 
     def relativeToTechnicalResources(pathRelativeToResourceFolder: String, copyrightInfo: CopyrightInfo = unknownCopyrightInfo): FileDescription = {
-      relativeToLocalDir("../../resources", pathRelativeToResourceFolder, copyrightInfo)
+      relativeToLocalDir("../../resources/", pathRelativeToResourceFolder, copyrightInfo)
     }
 
     def asDirectoryRelativeToResources(pathRelativeToResourceFolder: String, copyrightInfo: CopyrightInfo = unknownCopyrightInfo): FileDescription = {
@@ -55,7 +55,7 @@ object HomepageContentControl {
     def resolveFromTypeAndLanguageMapContent(howToResolveUrl: TypeOfTextDisplay, src: String): FileDescription = {
       howToResolveUrl.match {
         case TypeOfTextDisplay.URL_RELATIVE_TO_TECHNICAL_RESOURCES => relativeToTechnicalResources(src)
-        case URL_RELATIVE_TO_WORKBOOK_RESOURCES => relativeToTechnicalResources("workbookresources/" + src)
+        case URL_RELATIVE_TO_WORKBOOK_RESOURCES => relativeToTechnicalResources("/workbookresources/" + src)
         case TypeOfTextDisplay.URL_ABSOLUTE => fromUrl(URL(src))
         case _ => throw new IllegalArgumentException(s"URL cannot be resolved with type ${howToResolveUrl}")
       }
