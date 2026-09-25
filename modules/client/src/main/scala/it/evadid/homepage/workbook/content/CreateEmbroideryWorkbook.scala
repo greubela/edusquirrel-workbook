@@ -91,7 +91,7 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
 
   private lazy val secondSection: WorkbookSection = {
 
-    val gptText1 = createTextInput("EmbroideryWorkbook/moreCornersTextExTextInput")
+    val gptText1 = createTextInput("gpt-ex-1")
 
     section(
       "Section2",

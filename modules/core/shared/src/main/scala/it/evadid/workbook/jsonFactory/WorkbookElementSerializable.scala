@@ -1,8 +1,6 @@
 package it.evadid.workbook.jsonFactory
 
-import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
 import upickle.ReadWriter
@@ -25,51 +23,47 @@ object WorkbookElementSerializable {
 case class WorkbookElementSerializable(
                                         elementId: String,
                                         elementType: String,
-                                        additionalElements: Map[String, String]
+                                        additionalElements: Map[String, ujson.Value]
                                       ) {
 
   // Single Object
   def withElementAdded(key: String, value: String): WorkbookElementSerializable = {
-    withMapAdded(Map(key -> value))
+    withMapAdded(Map(key -> writeJs[String](value)))
   }
 
   def withElementAddedAs[T](key: String, value: T)(implicit rw: ReadWriter[T]): WorkbookElementSerializable = {
-    withMapAdded(Map(key -> write(value)))
+    withMapAdded(Map(key -> writeJs[T](value)))
   }
 
   // Multiple Objects
   def withElementsAdded(key: String, value: Seq[String]): WorkbookElementSerializable = {
-    val str = write(value)
-    withElementAdded(key, str)
+    withMapAdded(Map(key -> writeJs[List[String]](value.toList)))
   }
 
-  def withElementsAddedAs[T](key: String, elements: List[T])(implicit rw: ReadWriter[T]): WorkbookElementSerializable = {
-    val strs = elements.map(el => write(el))
-    withElementsAdded(key, strs)
+  def withElementsAddedAs[T](key: String, elements: Seq[T])(implicit rw: ReadWriter[T]): WorkbookElementSerializable = {
+    withMapAdded(Map(key -> writeJs[List[T]](elements.toList)))
   }
 
   // Map
-  def withMapAdded(map: Map[String, String]): WorkbookElementSerializable = {
+  def withMapAdded(map: Map[String, ujson.Value]): WorkbookElementSerializable = {
     WorkbookElementSerializable(elementId, elementType, additionalElements ++ map)
   }
 
   // Other
 
-
-
   // Get Single
 
-  def getElement(elementKey: String): String = additionalElements(elementKey)
+  def getElement(elementKey: String): String = additionalElements(elementKey).str
 
   def getElementAs[T](elementKey: String)(implicit rw: ReadWriter[T]): T = {
     val elementValue = additionalElements.get(elementKey)
     if (elementValue.isEmpty) {
-      throw SerializedException(s"Key ${elementKey} not present in Element ${elementId}!")
+      throw SerializedException(s"Key $elementKey not present in Element ${elementId}!")
     } else try {
       read(elementValue.get)
     } catch case (err: Throwable) => {
-      throw SerializedException(s"Error at deserializing key ${elementKey} from Element ${elementId} (value ${elementValue.get})", Some(err))
-     }
+      throw SerializedException(s"Error at deserializing key $elementKey from Element ${elementId} (value ${elementValue.get})", Some(err))
+    }
   }
 
   /*def getElementAs[T](elementKey: String)(serializer: Serializer[T]): T = {
@@ -77,7 +71,7 @@ case class WorkbookElementSerializable(
   }*/
 
   def getOptionalElement(elementKey: String, defaultValue: String): String = {
-    additionalElements.getOrElse(elementKey, defaultValue)
+    additionalElements.get(elementKey).map(_.str).getOrElse(defaultValue)
   }
 
   def getOptionalElementAs[T](elementKey: String, defaultValue: T)(implicit rw: ReadWriter[T]): T = {
@@ -87,23 +81,20 @@ case class WorkbookElementSerializable(
     } else try {
       read(elementValue.get)
     } catch case (err: Throwable) => {
-      throw SerializedException(s"Error at deserializing key ${elementKey} from Element ${elementId} (value ${elementValue.get})", Some(err))
+      throw SerializedException(s"Error at deserializing key $elementKey from Element $elementId (value ${elementValue.get})", Some(err))
     }
   }
 
-  /*def getOptionalElementAs[T](elementKey: String, defaultValue: T)(serializer: Serializer[T]): T = {
-
-  }
-*/
   // Get Multiple
   def getElements(elementKey: String): List[String] = {
     read[List[String]](additionalElements(elementKey))
   }
+
   def getElementsAs[T](elementKey: String)(implicit rw: ReadWriter[T]): List[T] = {
-    getElements(elementKey).map((el: String) => read(el))
+    read[List[T]](additionalElements(elementKey))
   }
   /*def getElementsAs[T](elementKey: String)(serializer: Serializer[T]): List[T] = {
-    getElementsAs[T](elementKey)(serializer.uPickleReadWrite)
+      getElementsAs[T](elementKey)(serializer.uPickleReadWrite)
   }*/
 
   // Other

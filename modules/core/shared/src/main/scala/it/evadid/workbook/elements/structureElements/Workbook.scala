@@ -57,7 +57,7 @@ object Workbook {
         .withElementAddedAs("title", element.workbookTitle)
         .withElementsAdded("test", element.sections.map(_.sectionId))
         .withElementsAddedAs[AppLanguage]("availableLanguages", element.availableLanguages.map(_.asInstanceOf[AppLanguage]))
-        .withElementsAddedAs[WorkbookElementSerializable]("serializedElements", requiredToSerialize.map(_.toSerializableType))(using WorkbookElementSerializable.serializer.uPickleReadWrite)
+        .withElementsAddedAs[WorkbookElementSerializable]("serializedElements", requiredToSerialize.map(_.toSerializableType))
         .withElementsAddedAs[WorkbookElementReference]("sections", element.sections.map(_.asRef))
     }
   }
