@@ -3,6 +3,7 @@ package it.evadid.workbook.elements.interactionElements.slideshow
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement}
 import it.evadid.workbook.elements.displayElements.ImageElement
+import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 
 // Todo: Overwork Slideshow Panel so it uses generic WorkbookElement
 trait SlideshowPanel extends WorkbookDisplayElement {
@@ -10,22 +11,56 @@ trait SlideshowPanel extends WorkbookDisplayElement {
 }
 
 object SlideshowPanel {
+  object TwoColumnImagePanel {
+    val factory: WorkbookElementFactory[TwoColumnImagePanel] = new WorkbookElementFactory[TwoColumnImagePanel] {
+      override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set(element.getElementAs[WorkbookElementReference]("image").referencedId)
+
+      override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
+
+      override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): TwoColumnImagePanel =
+        TwoColumnImagePanel(element.elementId, element.getAndResolveWorkbookElement("image", parsedElements), element.getElementAs[LanguageMapContentId]("leftLabel"), element.getElementAs[LanguageMapContentId]("rightLabel"), element.getElementAs[LanguageMapContentId]("leftBody"), element.getElementAs[LanguageMapContentId]("rightBody"))
+
+      override def toSerializableElement(element: TwoColumnImagePanel): WorkbookElementSerializable =
+        toFactoryBase(element).withElementAddedAs[WorkbookElementReference]("image", element.image.asRef).withElementAddedAs("leftLabel", element.leftLabel).withElementAddedAs("rightLabel", element.rightLabel).withElementAddedAs("leftBody", element.leftBody).withElementAddedAs("rightBody", element.rightBody)
+    }
+  }
+
+  object ImageSlide {
+    val factory: WorkbookElementFactory[ImageSlide] = new WorkbookElementFactory[ImageSlide] {
+      override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set(element.getElementAs[WorkbookElementReference]("image").referencedId)
+
+      override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
+
+      override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): ImageSlide =
+        ImageSlide(element.elementId, element.getAndResolveWorkbookElement("image", parsedElements), element.getElementAs[LanguageMapContentId]("titleLabel"), element.getElementAs[LanguageMapContentId]("description"))
+
+      override def toSerializableElement(element: ImageSlide): WorkbookElementSerializable =
+        toFactoryBase(element).withElementAddedAs("image", element.image.asRef).withElementAddedAs("titleLabel", element.titleLabel).withElementAddedAs("description", element.description)
+    }
+  }
 
   case class TwoColumnImagePanel(
+                                  override val elementId: String,
                                   image: ImageElement,
                                   leftLabel: LanguageMapContentId,
                                   rightLabel: LanguageMapContentId,
                                   leftBody: LanguageMapContentId,
                                   rightBody: LanguageMapContentId
                                 ) extends SlideshowPanel {
+    override val associatedFactory = TwoColumnImagePanel.factory
+    override lazy val childrenOfThisElement: List[WorkbookElement] = List(image)
 
   }
 
   case class ImageSlide(
+                         override val elementId: String,
                          image: ImageElement,
                          titleLabel: LanguageMapContentId,
                          description: LanguageMapContentId
-                       ) extends SlideshowPanel
+                       ) extends SlideshowPanel {
+    override val associatedFactory = ImageSlide.factory
+    override lazy val childrenOfThisElement: List[WorkbookElement] = List(image)
+  }
 
 
 }

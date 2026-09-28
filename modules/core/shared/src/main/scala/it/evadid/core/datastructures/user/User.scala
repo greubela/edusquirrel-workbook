@@ -1,6 +1,9 @@
 package it.evadid.core.datastructures.user
 
 import it.evadid.core.datastructures.chat.{Person, SenderRole}
+import upickle.default.*
+
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 
 import java.security.SecureRandom
 import java.time.LocalDateTime
@@ -8,7 +11,19 @@ import java.util.HexFormat
 
 object User {
 
-  case class SingleAccessToken(token: String, expires: LocalDateTime) {
+  val AndreGreubel = User(
+    "Andre Greubel",
+    "user-andre",
+    "andre.greubel@hu-berlin.de"
+  )
+
+  val YanneckDimitrov = User(
+    "Yanneck Dimitrov",
+    "user-yanneck",
+    "dimitrya@hu-berlin.de"
+  )
+
+  case class SingleAccessToken(token: String, expires: LocalDateTime) derives ReadWriter {
   }
 
   object SingleAccessToken {
@@ -24,7 +39,7 @@ object User {
     def apply(token: String): SingleAccessToken = SingleAccessToken(token, LocalDateTime.now())
   }
 
-  case class UserInDatabase(user: User, configJson: String) {
+  case class UserInDatabase(user: User, configJson: String) derives ReadWriter {
 
   }
 
@@ -69,7 +84,7 @@ object User {
 
 }
 
-case class User(name: String, id: String, mail: String) extends Person {
+case class User(name: String, id: String, mail: String) extends Person derives ReadWriter {
 
   def initials: String = {
     val parts = name.trim.split("\\s+").filter(_.nonEmpty).toList

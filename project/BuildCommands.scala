@@ -4,6 +4,7 @@ import sbt.Keys.*
 import sbtassembly.AssemblyPlugin.autoImport.*
 
 import java.security.MessageDigest
+import java.io.BufferedInputStream
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -109,8 +110,16 @@ object BuildCommands {
 
   private def sha256(file: File): String = {
     val digest = MessageDigest.getInstance("SHA-256")
-    val bytes = IO.readBytes(file)
-    digest.digest(bytes).map("%02x".format(_)).mkString
+    val input = new BufferedInputStream(new java.io.FileInputStream(file))
+    val buffer = new Array[Byte](64 * 1024)
+    try {
+      var read = input.read(buffer)
+      while (read >= 0) {
+        if (read > 0) digest.update(buffer, 0, read)
+        read = input.read(buffer)
+      }
+    } finally input.close()
+    digest.digest().map("%02x".format(_)).mkString
   }
 
   private def historyFileName(moduleName: String, distFileName: String, hash: String): String = {

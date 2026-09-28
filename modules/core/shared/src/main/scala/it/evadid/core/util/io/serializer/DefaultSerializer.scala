@@ -2,8 +2,7 @@ package it.evadid.core.util.io.serializer
 
 import it.evadid.core.datastructures.chat.*
 import it.evadid.core.datastructures.chat.Person.SerializablePerson
-import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
-import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
+import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.user.User.SingleAccessToken
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig, UserTokenInfo}
@@ -16,6 +15,7 @@ import it.evadid.distribution.commandTypes.LLMCommands.*
 import it.evadid.distribution.commandTypes.MailCommands.{SendMailRequest, SendMailResponse}
 import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.distribution.commandTypes.UserCommands.*
+import it.evadid.workbook.abstractions.TypeOfTextDisplay
 import it.evadid.workbook.interaction.sync.SyncFormatter.InteractionSyncRequest
 import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
 import it.evadid.workbook.interaction.sync.{SyncContext, UpdateImportance, UsageContext}
@@ -30,13 +30,7 @@ import scala.util.*
 object DefaultSerializer {
 
 
-  private[serializer] given ReadWriter[LanguageMap[HumanLanguage]] =
-    upickle.default.readwriter[String].bimap[LanguageMap[HumanLanguage]](
-      _.getInLanguage(AppLanguage.default()),
-      value => LanguageMap.universalMap(value)
-    )
-
-  private[serializer] given ldt: ReadWriter[LocalDateTime] =
+  given ldt: ReadWriter[LocalDateTime] =
     upickle.default.readwriter[String].bimap[LocalDateTime](_.toString, LocalDateTime.parse)
 
   private[serializer] given [T: ReadWriter]: ReadWriter[Try[T]] =
@@ -69,6 +63,11 @@ object DefaultSerializer {
   private[serializer] given rw5: upickle.default.ReadWriter[ExecutionInfoUntyped] = macroRW[ExecutionInfoUntyped]
 
   private[serializer] given rwRole: ReadWriter[SenderRole] = readwriter[String].bimap[SenderRole](_.showName, str => SenderRole.allRoles.find(_.showName == str).getOrElse(throw new RuntimeException(s"Unknown role: $str")))
+
+  private[serializer] given rwTypeTextDisplay: ReadWriter[TypeOfTextDisplay] =
+    readwriter[String].bimap[TypeOfTextDisplay](_.serializerName, str => TypeOfTextDisplay.allElements.find(_.serializerName == str).getOrElse(throw new RuntimeException(s"Unknown type of text display: $str")))
+
+  val serializerTextDisplay: Serializer[TypeOfTextDisplay] = Serializer.fromUpickleJson(rwTypeTextDisplay)
 
   private[serializer] given rwBasicPerson: ReadWriter[SerializablePerson] = macroRW
 
@@ -152,9 +151,6 @@ object DefaultSerializer {
   private[serializer] given fdbreq: ReadWriter[FetchAllFromDbRequest] = macroRW
 
   private[serializer] given ReadWriter[InteractionVariableStateSerialized] = macroRW
-
-  private[serializer] given ReadWriter[Set[InteractionVariableStateSerialized]] =
-    readwriter[Seq[InteractionVariableStateSerialized]].bimap[Set[InteractionVariableStateSerialized]](_.toSeq, _.toSet)
 
   private[serializer] given ivhsRW: ReadWriter[InteractionVariableHistorySerialized] = macroRW
 

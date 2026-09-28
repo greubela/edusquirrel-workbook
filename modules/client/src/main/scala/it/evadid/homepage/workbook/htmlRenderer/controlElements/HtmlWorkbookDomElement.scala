@@ -119,7 +119,7 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
     else {
       div(
         cls := "workbook-title-line",
-        h1(text <-- laminarHelper.plaintextStringSignal(workbook.get.loadedWorkbook.workbookTitle)),
+        h1(text <-- laminarHelper.plaintextStringSignal(workbook.get.loadedWorkbook.metadata.workbookTitle)),
       )
     }
   }

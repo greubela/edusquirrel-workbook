@@ -41,7 +41,7 @@ object LanguageSelectionLine {
 
   private def esFlag(width: Double): Element = {
     img(
-      src := HtmlFullWorkbookApp.fullInfo.contentControl.fileFactory.relativeToResourceFolder("/img/flags/esFlag.svg").asUrlString,
+      src := HtmlFullWorkbookApp.fullInfo.contentControl.fileFactory.relativeToTechnicalResources("/img/flags/esFlag.svg").asUrlString,
       styleAttr := s"width:${width}px; height:${width / 3 * 2}px;",
     )
   }

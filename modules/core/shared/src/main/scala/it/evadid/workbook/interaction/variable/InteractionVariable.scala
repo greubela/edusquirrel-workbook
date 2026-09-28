@@ -21,7 +21,7 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteractionElem
 
   //  val fallbackLogger: SyncLogger = SyncLogger(Logger.withNameAndPrefixes(Some(s"InteractionVariableFallbackLogger(${keyForSerialization})"), PrintToStdLogger.printEverything))
 
-  val keyForSerialization: String = underlyingInteraction.id + "_history"
+  val keyForSerialization: String = underlyingInteraction.elementId + "_history"
 
   lazy val observableState: ObservableValue[InteractionVariableHistory[T]] = innerState.observable
 
@@ -56,7 +56,7 @@ case class InteractionVariable[T](underlyingInteraction: WorkbookInteractionElem
   }
 
   def serializedHistory: InteractionVariableHistorySerialized = this.synchronized {
-    innerState.now().serialized(underlyingInteraction.serializer)
+    innerState.now().serialized(underlyingInteraction.serializerInteractionContent)
   }
 
   def currentValue: T = this.synchronized {

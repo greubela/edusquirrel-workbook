@@ -79,7 +79,7 @@ object SyncInformation {
     }
 
     def dataToStore[T](variable: InteractionVariable[T]): List[DataEntryToWriteToServer[SyncContext, InteractionVariableHistorySerialized]] = {
-      val historySerialized = variable.history.serializedWithStrategy(syncStrategy, variable.underlyingInteraction.serializer)
+      val historySerialized = variable.history.serializedWithStrategy(syncStrategy, variable.underlyingInteraction.serializerInteractionContent)
       val syncContext = usageContext.toSyncContext(variable.keyForSerialization)
       if (historySerialized.states.isEmpty) List()
       else List(DataEntryToWriteToServer(syncContext, historySerialized, historySerialized.lastStateOption.map(_.timestamp).get))

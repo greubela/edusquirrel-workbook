@@ -3,8 +3,9 @@ package it.evadid.workbook.elements.interactionElements.reorderExercise
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.core.util.io.Serializer
+import upickle.default.*
 
-sealed trait ReorderType {
+sealed trait ReorderType derives ReadWriter{
 
 }
 

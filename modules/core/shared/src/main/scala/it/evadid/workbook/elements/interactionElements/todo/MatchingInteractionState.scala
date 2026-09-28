@@ -1,5 +1,4 @@
-package it.evadid.workbook.elements.interactionElements.basic
-
+package it.evadid.workbook.elements.interactionElements.todo
 
 import it.evadid.core.util.io.Serializer
 import upickle.default.{ReadWriter, macroRW}

@@ -90,8 +90,17 @@ object SnapTurtlePythonBridge {
         val detail = Option(e.getMessage).filter(_.nonEmpty).getOrElse(e.getClass.getSimpleName)
         Left(s"Parse error; keeping existing blocks. ($detail)")
 
-  def printedPython(expression: BeExpression): String =
-    expression.structureInfo.toStringInLanguage(Python, English, false)
+  def printedPython(expression: BeExpression): String = {
+    val rendered = expression.structureInfo.toStringInLanguage(Python, English, false)
+    rendered.linesIterator.map { line =>
+      if (line.trim.startsWith("def "))
+        line
+          .replaceAll("([A-Za-z_][A-Za-z0-9_]*)\\s*:\\s*[^,\\)]+", "$1")
+          .replaceAll("\\)\\s*->\\s*[^:]+:", "):")
+      else
+        line.replaceFirst("^(\\s*[A-Za-z_][A-Za-z0-9_]*)\\s*:\\s*[^=\\n]+\\s*=\\s*", "$1 = ")
+    }.mkString("\n") + (if (rendered.endsWith("\n")) "\n" else "")
+  }
 
   def isScriptStatement(expression: BeExpression): Boolean =
     expression match

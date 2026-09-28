@@ -1,16 +1,24 @@
 package it.evadid.homepage.workbook.content
 
+import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.*
+import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.displayElements.ImageElement.FileBasedImageElement
+import it.evadid.workbook.elements.displayElements.ImageElement
+import it.evadid.workbook.elements.displayElements.ImageElement.LanguageMapBasedImageElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, HintLabel, SafetyLabel, TaskLabel}
 import it.evadid.workbook.elements.interactionElements.basic.LabeledCheckboxInteraction
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.AdvancedCodeRequirement
 import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
+import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 
-case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
+case class CreatePlantworkshopWorkbook(
+                                        override val fullInfo: FullInfo,
+                                        fileForResource: Option[String => FileDescription] = None
+                                      ) extends WorkbookFactory {
 
   override val workbookId: String = "PlantWorkshop" // todo: Lang map should automatically prefix this
 
@@ -36,26 +44,30 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
 
     Workbook(
       workbookId,
-      LanguageMapContentId("PlantWorkshop/workbookTitle"),
-      sections,
-      availableLanguages
+      WorkbookMetadata(
+        User.YanneckDimitrov,
+        Set(),
+        LanguageMapContentId("PlantWorkshop/workbookTitle"),
+        availableLanguages
+      ),
+      sections
     )
   }
 
   override def createWorkbook: Workbook = workbook
 
-  private def missingElementPlaceholder(contextKey: String): WorkbookElement =
+  private def missingElementPlaceholder(contextKey: String): WorkbookElement = {
     instructionPlaintext(s"PlantWorkshop/$contextKey")
+  }
 
-  private def wiringSlideImage(slideIndex: Int): FileBasedImageElement =
-    FileBasedImageElement(
-      fullInfo.contentControl.fileFactory.relativeToResourceFolder(s"img/plantworkshop/schaltkreis/Plant conv $slideIndex.png")
-    )
+  def wiringSlideImage(slideIndex: Int): ImageElement = {
+    LanguageMapBasedImageElement(nextId(), LanguageMapContentId(s"PlantWorkshop/fileWiringSlide${slideIndex}"), URL_RELATIVE_TO_WORKBOOK_RESOURCES)
+  }
 
   private def buildWiringPanel(i: Int): SlideshowPanel = {
     val image = wiringSlideImage(i)
     if (i == 3 || i == 4 || i == 8) {
-      SlideshowPanel.TwoColumnImagePanel(
+      SlideshowPanel.TwoColumnImagePanel(nextId("wiring-panel"),
         image,
         LanguageMapContentId("PlantWorkshop/LLabel"),
         LanguageMapContentId("PlantWorkshop/RLabel"),
@@ -63,13 +75,13 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
         LanguageMapContentId(s"PlantWorkshop/wiringSlideTextR${i}")
       )
     } else if (i == 5) {
-      SlideshowPanel.ImageSlide(
+      SlideshowPanel.ImageSlide(nextId("wiring-panel"),
         image,
         LanguageMapContentId("PlantWorkshop/wiringSlideCurrentStatus"),
         LanguageMapContentId(s"PlantWorkshop/wiringSlideText${i}")
       )
     } else {
-      SlideshowPanel.ImageSlide(
+      SlideshowPanel.ImageSlide(nextId("wiring-panel"),
         image,
         LanguageMapContentId("PlantWorkshop/wiringSlideHelp"),
         LanguageMapContentId(s"PlantWorkshop/wiringSlideText${i}")
@@ -378,7 +390,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
           sensorExploreSketch,
           "sensor-auslesen.ino",
           "download-sensor",
-          codeTask.reorder.id
+          codeTask.reorder.elementId
         )
       )
     )
@@ -461,7 +473,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
           pumpTestSketch,
           "pumpe-test.ino",
           "download-pump",
-          codeTask.reorder.id
+          codeTask.reorder.elementId
         )
       )
     )
@@ -558,7 +570,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
           moistureTestSketch,
           "feuchtigkeit-messen.ino",
           "download-moisture",
-          codeTask.reorder.id
+          codeTask.reorder.elementId
         )
       )
     )
@@ -670,7 +682,7 @@ case class CreatePlantworkshopWorkbook(override val fullInfo: FullInfo) extends 
           combinedSketch,
           "plantworkshop.ino",
           "download-combined",
-          codeTask.reorder.id
+          codeTask.reorder.elementId
         )
       )
     )

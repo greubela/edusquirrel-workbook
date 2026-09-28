@@ -48,7 +48,9 @@ case class BeExpressionToPythonString
   }
 
   override protected def assignToDefinedVar(varName: String, varType: String, varValue: BeExpression): String = {
-    varName + " = " + forExpression(varValue)
+    val renderedValue = forExpression(varValue)
+    if (renderedValue.trim.startsWith("lambda ")) s"$varName = $renderedValue"
+    else s"$varName: $varType = $renderedValue"
   }
 
   override protected def defineVariableLine(nameStr: String, variableTypeString: String, initValue: Option[BeExpression]): String = {
@@ -57,11 +59,13 @@ case class BeExpressionToPythonString
   }
 
   override protected def defineFunctionLine(nameStr: String, parStr: String, outputTypeStr: String): String = {
-    s"def ${nameStr}${parStr}:"
+    s"def $nameStr$parStr -> $outputTypeStr:"
   }
 
   override protected def formatFunctionParameters(inputs: List[BeDefineVariable]): String =
-    inputs.map(_.name.getNameIn(language, NamingStyle.SnakeCase)).mkString("(", ", ", ")")
+    inputs.map(variable =>
+      s"${variable.name.getNameIn(language, NamingStyle.SnakeCase)}: ${variable.variableType.formatTypeForDisplay.getInLanguage(Python)}"
+    ).mkString("(", ", ", ")")
 
   override protected def fixedRepetitionLine(amount: Int): String = {
     s"for _ in range(${amount}):"

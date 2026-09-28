@@ -1,19 +1,45 @@
 package it.evadid.workbook.abstractions
 
 import it.evadid.core.datastructures.state.State
-import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.{AutoSerializable, Serializer}
 import it.evadid.workbook.interaction.variable.InteractionVariable
+import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
+import upickle.ReadWriter
 
-sealed trait WorkbookElement {
-  lazy val childrenOfThisElement: List[WorkbookElement]
-
-  lazy val allContainedInteractions: List[WorkbookInteractionElement[?]] =
-    childrenOfThisElement.flatMap(_.allContainedInteractions) ++ this.match {
-      case i: WorkbookInteractionElement[?] => List(i)
-      case _ => List()
+object WorkbookElement {
+  implicit val referenceWriter: ReadWriter[WorkbookElement] = new Serializer[WorkbookElement]() {
+    override def serialize(obj: WorkbookElement): String = {
+      upickle.write(obj.asRef)(using WorkbookElementReference.given_ReadWriter_WorkbookElementReference)
     }
+    override def deserialize(str: String): WorkbookElement = {
+      ???
+    }
+  }.uPickleReadWrite
+
 }
 
+sealed trait WorkbookElement extends AutoSerializable[WorkbookElement, WorkbookElementSerializable] {
+  val elementId: String
+  //  assert(elementId.matches("[a-zA-Z0-9.-]+"))
+  lazy val asRef = WorkbookElementReference(elementId, Option(this.getClass.getSimpleName))
+
+  lazy val childrenOfThisElement: List[WorkbookElement]
+  lazy val allContainedInteractions: List[WorkbookInteractionElement[?]] = allChildrenFullSubtree.flatMap {
+    case i: WorkbookInteractionElement[?] => List(i)
+    case _ => List()
+  }
+
+  lazy val allChildrenFullSubtree: List[WorkbookElement] = childrenOfThisElement ++ childrenOfThisElement.flatMap(_.allChildrenFullSubtree)
+
+  lazy val serializer: Serializer[WorkbookElementSerializable] = WorkbookElementSerializable.serializer
+
+  //def fromFactory(factoryVerifiedType: WorkbookElementFactory): WorkbookElement
+
+  val associatedFactory: WorkbookElementFactory[? <: WorkbookElement]
+
+  lazy val toSerializableType: WorkbookElementSerializable = associatedFactory.toSerializableElementUnsafe(this)
+
+}
 
 trait WorkbookDisplayElement extends WorkbookElement {
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
@@ -22,20 +48,18 @@ trait WorkbookDisplayElement extends WorkbookElement {
 trait WorkbookStructureElement[T <: WorkbookElement] extends WorkbookElement {
 
   lazy val structureType: WorkbookStructuringType
+  override lazy val childrenOfThisElement: List[WorkbookElement] = groupElements
 
   def groupElements: List[T]
-
-  override lazy val childrenOfThisElement: List[WorkbookElement] = groupElements
 
 }
 
 trait WorkbookInteractionElement[T] extends WorkbookElement {
-  val id: String
   override lazy val allContainedInteractions: List[WorkbookInteractionElement[?]] = List(this)
   lazy val isDisabledState: State[Boolean] = State(false)
-  val defaultValue: T
-  val serializer: Serializer[T]
-
   // needs to be lazy or defaultValue (from subclass) might not be inited!
   lazy val interactionVariable: InteractionVariable[T] = InteractionVariable[T](this)
+
+  val defaultValue: T
+  val serializerInteractionContent: Serializer[T]
 }

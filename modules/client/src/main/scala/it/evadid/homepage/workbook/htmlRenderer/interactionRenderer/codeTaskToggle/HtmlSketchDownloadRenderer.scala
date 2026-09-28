@@ -30,7 +30,7 @@ object HtmlSketchDownloadRenderer extends LineBasedRenderingFactory[SketchDownlo
         cls := "btn-primary",
         disabled <-- enabledSignal.map(enabled => !enabled),
         text <-- laminarHelper.plaintextStringSignal(download.buttonLabel),
-        onClick --> { _ => fullInfo.contentControl.downloadToDisc.downloadFile(download.filename, download.sketchContent) }
+        onClick --> { _ => fullInfo.contentControl.downloadToDisc.downloadFile(download.filenameRelativeToWorkbookResources, download.sketchContent) }
       )
     )
 

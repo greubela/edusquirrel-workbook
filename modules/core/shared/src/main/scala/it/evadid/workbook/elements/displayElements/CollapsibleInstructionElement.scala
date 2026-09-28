@@ -2,9 +2,30 @@ package it.evadid.workbook.elements.displayElements
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.WorkbookDisplayElement
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 
-case class CollapsibleInstructionElement(
-  titleLabel: LanguageMapContentId,
-  bodyContent: LanguageMapContentId,
-  initiallyCollapsed: Boolean = true
-) extends WorkbookDisplayElement
+case class CollapsibleInstructionElement(override val elementId: String, titleLabel: LanguageMapContentId, bodyContent: LanguageMapContentId, initiallyCollapsed: Boolean = true) extends WorkbookDisplayElement {
+  override val associatedFactory: SimpleWorkbookElementFactory[CollapsibleInstructionElement] = CollapsibleInstructionElement.factory
+
+}
+
+object CollapsibleInstructionElement {
+  val factory: SimpleWorkbookElementFactory[CollapsibleInstructionElement] = new SimpleWorkbookElementFactory[CollapsibleInstructionElement]() {
+
+    override def finishSerialization(baseElement: WorkbookElementSerializable, e: CollapsibleInstructionElement): WorkbookElementSerializable = {
+      baseElement.
+        withElementAddedAs("titleLabel", e.titleLabel)
+        .withElementAddedAs("bodyContent", e.bodyContent)
+        .withElementAdded("initiallyCollapsed", e.initiallyCollapsed.toString)
+    }
+
+    override def finishDeserialization(f: WorkbookElementSerializable): CollapsibleInstructionElement = {
+      CollapsibleInstructionElement(
+        f.elementId,
+        f.getElementAs[LanguageMapContentId]("titleLabel"),
+        f.getElementAs[LanguageMapContentId]("bodyContent"),
+        f.getElement("initiallyCollapsed").toBoolean)
+    }
+  }
+}

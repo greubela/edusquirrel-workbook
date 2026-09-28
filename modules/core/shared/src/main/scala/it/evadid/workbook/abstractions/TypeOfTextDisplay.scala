@@ -1,12 +1,18 @@
 package it.evadid.workbook.abstractions
 
-import it.evadid.core.datastructures.file.FileDescription
+import upickle.ReadWriter.*
+import upickle.default.*
 
-sealed trait TypeOfTextDisplay {
+sealed trait TypeOfTextDisplay derives ReadWriter {
 
+  def serializerName: String = this.getClass.getSimpleName
+
+  override val toString: String = serializerName
 }
 
 object TypeOfTextDisplay {
+  val allElements: List[TypeOfTextDisplay] = List(PLAINTEXT_UNDERSCORE_REPLACABLE, PLAINTEXT, HTML, MARKDOWN, URL_RELATIVE_TO_TECHNICAL_RESOURCES, URL_RELATIVE_TO_WORKBOOK_RESOURCES, URL_ABSOLUTE)
+
   case object PLAINTEXT_UNDERSCORE_REPLACABLE extends TypeOfTextDisplay
 
   case object PLAINTEXT extends TypeOfTextDisplay
@@ -15,10 +21,12 @@ object TypeOfTextDisplay {
 
   case object MARKDOWN extends TypeOfTextDisplay
 
-  sealed trait URL_TYPE extends TypeOfTextDisplay
+  sealed trait URL_TYPE extends TypeOfTextDisplay derives ReadWriter
 
-  case object URL_RELATIVE_TO_GLOBAL_RESOURCES extends URL_TYPE
+  case object URL_RELATIVE_TO_TECHNICAL_RESOURCES extends URL_TYPE
 
-  case class URL_RELATIVE_TO_WORKBOOK_RESOURCES(workbookRoot: FileDescription) extends URL_TYPE
+  case object URL_RELATIVE_TO_WORKBOOK_RESOURCES extends URL_TYPE
+
+  case object URL_ABSOLUTE extends URL_TYPE
 
 }

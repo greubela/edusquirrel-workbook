@@ -4,23 +4,34 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.vm.BeProgram
 import it.evadid.vm.test.BeTestSuite
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 
 import scala.util.Try
 
 case class ProgrammingExercise(
-    override val id: String,
-    testSuite: Option[BeTestSuite] = None,
-    editorPalette: ProgrammingEditorPalette = ProgrammingEditorPalette.Default
+                                override val elementId: String,
+                                testSuite: Option[BeTestSuite] = None,
+                                editorPalette: ProgrammingEditorPalette = ProgrammingEditorPalette.Default
 ) extends WorkbookInteractionElement[ProgrammingExerciseState] {
+  override val associatedFactory = ProgrammingExercise.factory
 
   override val defaultValue: ProgrammingExerciseState = ProgrammingExerciseState.mini
 
-  override val serializer: Serializer[ProgrammingExerciseState] = ProgrammingExercise.StateSerializer
+  override val serializerInteractionContent: Serializer[ProgrammingExerciseState] = ProgrammingExercise.StateSerializer
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+
 }
 
 object ProgrammingExercise {
+
+  // TODO: BeTestSuite is an open behavior-only trait with no serializable representation, so a
+  // ProgrammingExercise cannot be faithfully reconstructed until test suites define a data format.
+  val factory: WorkbookElementFactory[ProgrammingExercise] =
+    WorkbookElementFactory.unsupportedFactory(classOf[ProgrammingExercise].getSimpleName)
+
+  def fromFactory(factory: WorkbookElementSerializable): ProgrammingExercise = ProgrammingExercise(factory.elementId)
 
   val XmlHeader = "SNAP_XML_V1"
 

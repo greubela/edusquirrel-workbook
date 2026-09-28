@@ -2,6 +2,7 @@ package it.evadid.homepage.workbook.content
 
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.interactionElements.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
@@ -26,21 +27,23 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
         fifthSection,
         //sixthSection,
         finalSection
-      )
+      ),
+      User.AndreGreubel
     )
   }
 
   private def createExploreExerciseDownloadInteraction(filename: String): WorkbookElement = {
-    val fileDesc = fullInfo.contentControl.fileFactory.relativeToResourceFolder("workbookresources/embroidery/existingProjects/" + filename + ".xml")
+    val fileRelToResources = "workbookresources/embroidery/existingProjects/" + filename + ".xml"
     //TurtleStitchExploreProjectExercise.createElementLine(fullInfo, fileDesc)
-    TurtleStitchExploreProjectElement(fileDesc)
+    TurtleStitchExploreProjectElement(nextId("exploreProject"), fileRelToResources)
   }
 
   private def createRecreateShapeUploadInteraction(imageName: String): WorkbookElement = {
-    val fileDesc = fullInfo.contentControl.fileFactory.relativeToResourceFolder("workbookresources/embroidery/desiredShapes/" + imageName + ".png")
+    //val fileDesc = fullInfo.contentControl.fileFactory.relativeToResourceFolder("workbookresources/embroidery/desiredShapes/" + imageName + ".png")
+    val nameRelToResources = "workbookresources/embroidery/desiredShapes/" + imageName + ".png"
     //val imgElement = HtmlImageElement(fileDesc, fullInfo)
     //TurtleStitchRecreateShapeExercise.createInteractionElement(fullInfo, nextId("recreateShape"), imgElement)
-    TurtleStitchRecreateShapeInteraction(nextId("recreateShape"), fileDesc)
+    TurtleStitchRecreateShapeInteraction(nextId("recreateShape"), nameRelToResources)
   }
 
 
@@ -90,7 +93,7 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
 
   private lazy val secondSection: WorkbookSection = {
 
-    val gptText1 = createTextInput("EmbroideryWorkbook/moreCornersTextExTextInput")
+    val gptText1 = createTextInput("gpt-ex-1")
 
     section(
       "Section2",
@@ -161,11 +164,11 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
         checklist("EmbroideryWorkbook/ConfirmSteps"),
 
         instructionHtml("EmbroideryWorkbook/S3E1I2"),
-        image("block_square"),
+        imageResources(LanguageMapContentId("EmbroideryWorkbook/fileBlockSquare")),
         checklist("EmbroideryWorkbook/ConfirmSteps"),
 
         instructionHtml("EmbroideryWorkbook/S3E1I3"),
-        image("block_usesquare"),
+        imageResources(LanguageMapContentId("EmbroideryWorkbook/fileBlockUseSquare")),
         checklist("EmbroideryWorkbook/ConfirmSteps"),
 
         instructionHtml("EmbroideryWorkbook/S3E1I4"),
@@ -183,10 +186,10 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
       container("EmbroideryWorkbook/S3E3Title", List(
 
         instructionHtml("EmbroideryWorkbook/S3E3I1"),
-        image("parameter_create"),
+        imageResources(LanguageMapContentId("EmbroideryWorkbook/fileParameterCreate")),
 
         instructionHtml("EmbroideryWorkbook/S3E3I2"),
-        image("parameter_name"),
+        imageResources(LanguageMapContentId("EmbroideryWorkbook/fileParameterName")),
 
         instructionHtml("EmbroideryWorkbook/S3E3I3"),
         createTextInput(),

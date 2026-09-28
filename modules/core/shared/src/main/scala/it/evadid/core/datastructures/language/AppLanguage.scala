@@ -1,22 +1,24 @@
 package it.evadid.core.datastructures.language
 
-sealed trait AppLanguage { // todo: make a sealed trait again
+import upickle.default.*
+
+sealed trait AppLanguage derives ReadWriter {
   val name: String
 }
 
 object AppLanguage {
 
-  sealed class HumanLanguage(val name: String, val nameAbbr: String) extends AppLanguage
+  sealed trait HumanLanguage(val name: String, val nameAbbr: String) extends AppLanguage derives ReadWriter
 
-  sealed class ProgrammingLanguage(val name: String, val fileEnding: String) extends AppLanguage
+  sealed trait ProgrammingLanguage(val name: String, val fileEnding: String) extends AppLanguage derives ReadWriter
 
-  sealed class SpecialLanguage(val name: String) extends AppLanguage
+  sealed trait SpecialLanguage(val name: String) extends AppLanguage derives ReadWriter
 
-  object UniversalLanguage extends SpecialLanguage("universal")
+  case object UniversalLanguage extends SpecialLanguage("universal")
 
   def default(): HumanLanguage = English
 
-  def allLanguages: Set[AppLanguage] = humanLanguages ++ programmingLanguages
+  def allLanguages: Set[AppLanguage] = humanLanguages ++ programmingLanguages ++ List(UniversalLanguage)
 
   val humanLanguages: Set[HumanLanguage] = Set(English, German, French, Ukrainian, Russian, Turkish, Danish, Spanish)
   val programmingLanguages: Set[ProgrammingLanguage] = Set(Python, Java, JavaScript, Rust, Lisp, Cpp, C, BlockDisplay)

@@ -4,7 +4,8 @@ import it.evadid.core.util.InfoUtil
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.core.util.io.{Serializer, TypeConverter}
 
-case class InteractionVariableHistorySerialized(states: Set[InteractionVariableStateSerialized]) {
+import upickle.default.*
+case class InteractionVariableHistorySerialized(states: Set[InteractionVariableStateSerialized]) derives ReadWriter{
 
   //def lastState: InteractionVariableStateSerialized = states.maxBy(_.timestamp)
 

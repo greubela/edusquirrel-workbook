@@ -12,7 +12,7 @@ class SerializedWorkbookSpec extends FunSuite {
   private val elementType = LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.PLAINTEXT)
 
   private def textElement(id: String): WorkbookElement =
-    DisplayLangMapContent(LanguageMapContentId(id), elementType)
+    DisplayLangMapContent(s"display-$id", LanguageMapContentId(id), elementType)
 
   test("export stores section bodies once in the top-level section registry") {
     val introElement = textElement("test/intro")

@@ -1,5 +1,7 @@
 package it.evadid.workbook.abstractions
 
-case class LangMapContentIdType(contentRole: RoleInWorkbook, contentType: TypeOfTextDisplay) {
-      
+import upickle.default.*
+
+case class LangMapContentIdType(contentRole: RoleInWorkbook, contentType: TypeOfTextDisplay) derives ReadWriter {
+
 }
