@@ -1,27 +1,28 @@
 package it.evadid.workbook.elements.structureElements
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
 import it.evadid.workbook.abstractions.WorkbookStructuringType.SECTION
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookStructureElement, WorkbookStructuringType}
+import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
-import upickle.ReadWriter
+import upickle.default.*
 
-case class WorkbookSection(
-                            sectionId: String,
-                            sectionTitle: LanguageMapContentId,
-                            sectionContent: List[WorkbookElement],
-                            sectionsRequiredBefore: List[WorkbookSection] = List(),
-                            sectionsRecommendedBefore: List[WorkbookSection] = List()
-                          ) extends WorkbookStructureElement[WorkbookElement]
-                          derives ReadWriter {
+case class WorkbookSection
+(
+  elementId: String,
+  metadata: WorkbookSectionMetadata,
+  sectionContent: List[WorkbookElement],
+) extends WorkbookStructureElement[WorkbookElement] derives ReadWriter {
+
   override val associatedFactory = WorkbookSection.factory
 
   override val groupElements: List[WorkbookElement] = sectionContent
 
   override lazy val structureType: WorkbookStructuringType = SECTION
 
-  override val elementId: String = sectionId
-
+  val sectionId: String = elementId
 
 }
 
@@ -39,17 +40,39 @@ object WorkbookSection {
     override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): WorkbookSection =
       WorkbookSection(
         element.elementId,
-        element.getElementAs[LanguageMapContentId]("title"),
+        element.getElementAs[WorkbookSectionMetadata]("metadata"),
         element.getAndResolveWorkbookElements("content", parsedElements),
-        element.getAndResolveWorkbookElements("requiredBefore", parsedElements),
-        element.getAndResolveWorkbookElements("recommendedBefore", parsedElements)
       )
 
     override def toSerializableElement(element: WorkbookSection): WorkbookElementSerializable =
       toFactoryBase(element)
-        .withElementAddedAs("title", element.sectionTitle)
+        .withElementAddedAs("metadata", element.metadata)
         .withElementsAddedAs[WorkbookElementReference]("content", element.sectionContent.map(_.asRef))
-        .withElementsAddedAs[WorkbookElementReference]("requiredBefore", element.sectionsRequiredBefore.map(_.asRef))
-        .withElementsAddedAs[WorkbookElementReference]("recommendedBefore", element.sectionsRecommendedBefore.map(_.asRef))
   }
+
+  private val regularSerializer: ReadWriter[WorkbookSection] = macroRW
+
+  val constructorSerializer: Serializer[WorkbookSection] = new ConstructorLikeSerializer[WorkbookSection] {
+    override implicit val regularSerializer: Serializer[WorkbookSection] = Serializer.fromUpickleJson(WorkbookSection.regularSerializer)
+    override val constructorName: String = WorkbookSection.this.getClass.getSimpleName
+
+
+    override val elementMapAndOrder: Map[Int, List[VariableDisplayConfig]] = {
+      {
+        Map(
+          0 -> List(VariableDisplayConfig("elementId", true)),
+          1 -> List(VariableDisplayConfig("metadata", true)),
+          2 -> List(VariableDisplayConfig("sectionContent", false))
+        )
+      }
+    }
+  }
+
+  case class WorkbookSectionMetadata
+  (
+    sectionTitle: LanguageMapContentId,
+    sectionsRequiredBefore: List[WorkbookSection] = List(),
+    sectionsRecommendedBefore: List[WorkbookSection] = List()
+  ) derives ReadWriter // todo: sections as ref
+
 }

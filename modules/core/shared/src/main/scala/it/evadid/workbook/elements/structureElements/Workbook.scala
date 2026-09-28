@@ -48,13 +48,6 @@ object Workbook {
     override implicit val regularSerializer: Serializer[Workbook] = Serializer.fromUpickleJson(Workbook.regularSerializer)
     override val constructorName: String = Workbook.this.getClass.getSimpleName
 
-    private def moveKeyToConstructorNr(id: String): Option[Int] = {
-      if (id == "elementId") Some(0)
-      else if (id == "metadata") Some(1)
-      else if (id == "$type") None
-      else Some(2)
-    }
-
     override val elementMapAndOrder: Map[Int, List[VariableDisplayConfig]] = {
       {
         Map(

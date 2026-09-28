@@ -18,6 +18,7 @@ import it.evadid.workbook.elements.interactionElements.sortingExercise.{SortingI
 import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
 import it.evadid.workbook.elements.structureElements.*
 import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
+import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
 
 trait WorkbookFactory {
 
@@ -71,7 +72,7 @@ trait WorkbookFactory {
 
   protected def section(sectionId: String, langIdSectionTitle: String, sectionContent: List[WorkbookElement]): WorkbookSection = {
     //val sectionTitleElement = LangMapContentIdType(titleMapId, WorkbookIdBasedContent(TypeOfTextDisplay.PLAINTEXT, RoleInWorkbook.SECTION_TITLE))
-    WorkbookSection(sectionId, LanguageMapContentId(langIdSectionTitle), sectionContent)
+    WorkbookSection(sectionId, WorkbookSectionMetadata(LanguageMapContentId(langIdSectionTitle)), sectionContent)
   }
 
   protected def container(langIdContainerLabel: String, elements: List[WorkbookElement]): WorkbookStructureElement[WorkbookElement] = {
