@@ -42,6 +42,8 @@ object Workbook {
 
   }
 
+  private given sectionRefSerializer: ReadWriter[WorkbookSection] = WorkbookSection.referencingJsonSerializer
+
   private val regularSerializer: ReadWriter[Workbook] = macroRW
 
   val constructorSerializer: Serializer[Workbook] = new ConstructorLikeSerializer[Workbook] {

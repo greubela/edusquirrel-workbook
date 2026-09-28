@@ -14,7 +14,7 @@ case class WorkbookSection
   elementId: String,
   metadata: WorkbookSectionMetadata,
   sectionContent: List[WorkbookElement],
-) extends WorkbookStructureElement[WorkbookElement] derives ReadWriter {
+) extends WorkbookStructureElement[WorkbookElement] {
 
   override val associatedFactory = WorkbookSection.factory
 
@@ -48,24 +48,24 @@ object WorkbookSection {
       toFactoryBase(element)
         .withElementAddedAs("metadata", element.metadata)
         .withElementsAddedAs("requiredBefore", element.metadata.sectionsRequiredBefore.map(_.asRef))
-        .withElementsAddedAs("recommendedBefore", element.metadata.sectionsRecommendedBefore)
+        .withElementsAddedAs("recommendedBefore", element.metadata.sectionsRecommendedBefore.map(_.asRef))
         .withElementsAddedAs[WorkbookElementReference]("content", element.sectionContent.map(_.asRef))
   }
 
-  private val referencingJsonSerializer: ReadWriter[WorkbookSection] = new Serializer[WorkbookSection]() {
+   val referencingJsonSerializer: ReadWriter[WorkbookSection] = new Serializer[WorkbookSection]() {
     override def serialize(obj: WorkbookSection): String = {
       WorkbookElementSerializable.base(obj)
         .withElementAddedAs("metadata", obj.metadata)
         .withElementsAddedAs("content", obj.sectionContent.map(_.asRef))
         .toJson
     }
+
     override def deserialize(str: String): WorkbookSection = ???
   }.uPickleReadWrite
 
   val constructorSerializer: Serializer[WorkbookSection] = new ConstructorLikeSerializer[WorkbookSection] {
     override implicit val regularSerializer: Serializer[WorkbookSection] = Serializer.fromUpickleJson(WorkbookSection.referencingJsonSerializer)
     override val constructorName: String = WorkbookSection.this.getClass.getSimpleName
-
 
     override val elementMapAndOrder: Map[Int, List[VariableDisplayConfig]] = {
       {
@@ -78,11 +78,23 @@ object WorkbookSection {
     }
   }
 
+  given ReadWriter[WorkbookSectionMetadata] = new Serializer[WorkbookSectionMetadata]() {
+    override def serialize(obj: WorkbookSectionMetadata): String = {
+      write(ujson.Obj(
+        "sectionTitle" -> write(obj.sectionTitle),
+        "requiredBefore" -> write(obj.sectionsRequiredBefore.map(_.asRef)),
+        "recommendedBefore" -> write(obj.sectionsRecommendedBefore.map(_.asRef))
+      ))
+    }
+
+    override def deserialize(str: String): WorkbookSectionMetadata = ???
+  }.uPickleReadWrite
+
   case class WorkbookSectionMetadata
   (
     sectionTitle: LanguageMapContentId,
     sectionsRequiredBefore: List[WorkbookSection] = List(),
     sectionsRecommendedBefore: List[WorkbookSection] = List()
-  ) derives ReadWriter // todo: sections as ref
+  ) // todo: sections as ref
 
 }
