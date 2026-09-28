@@ -112,6 +112,7 @@ class IDEMorph(config: js.Object = js.native) extends Morph:
   def loadProjectXML(projectXML: String): Unit = js.native
   def rawOpenProjectString(projectXML: String): Unit = js.native
   def refreshPalette(shouldIgnorePosition: Boolean = js.native): Unit = js.native
+  def flushPaletteCache(): Unit = js.native
   def createCategories(): Unit = js.native
   def runScripts(): Unit = js.native
   def stopAllScripts(): Unit = js.native

@@ -8,7 +8,15 @@ import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
-import it.evadid.workbook.elements.interactionElements.programming.{SnapCanvasLayout, SnapCanvasScript, SnapControlFlow, SnapInputCodec, SnapTurtleCatalog, SnapTurtlePythonBridge}
+import it.evadid.workbook.elements.interactionElements.programming.{
+  SnapCanvasLayout,
+  SnapCanvasScript,
+  SnapControlFlow,
+  SnapInputCodec,
+  SnapTurtleCatalog,
+  SnapTurtlePythonBridge,
+  SnapXmlParser
+}
 
 import scala.collection.mutable.ListBuffer
 
@@ -103,7 +111,11 @@ object TurtleStitchToBeExpressionParser {
   private def parseBlockDefinitionFromXml(spec: String, body: String): BeDefineFunction = {
     val inputSection = findTagInnerAnywhere(body, "inputs").getOrElse("")
     val namesFromAttr =
-      """<input\b[^>]*\bname="([^"]+)"""".r.findAllMatchIn(inputSection).map(_.group(1).trim).filter(_.nonEmpty).toList
+      """<input\b[^>]*\bname="([^"]+)"""".r
+        .findAllMatchIn(inputSection)
+        .map(m => SnapXmlParser.unescape(m.group(1).trim))
+        .filter(_.nonEmpty)
+        .toList
     val namesFromSpec = SnapTurtleCatalog.inputNamesFromSpec(spec)
     val inputNames = if namesFromSpec.nonEmpty then namesFromSpec else namesFromAttr
     val arity = math.max(inputNames.size, SnapTurtleCatalog.arityFromSpec(spec))
@@ -417,7 +429,7 @@ object TurtleStitchToBeExpressionParser {
             if innerEnd < 0 then return out.toList
             val inner = xml.substring(innerStart, innerEnd)
             tag match
-              case "l" => out += InputLiteral(inner.trim)
+              case "l" => out += InputLiteral(SnapXmlParser.unescape(inner.trim))
               case "bool" => out += InputLiteral(if inner.trim.equalsIgnoreCase("true") then "True" else "False")
               case "color" =>
                 out += InputLiteral(
@@ -445,10 +457,10 @@ object TurtleStitchToBeExpressionParser {
   }
 
   private def blockSelector(attrs: String): Option[String] =
-    """\bs="([^"]*)"""".r.findFirstMatchIn(attrs).map(_.group(1)).filter(_.nonEmpty)
+    """\bs="([^"]*)"""".r.findFirstMatchIn(attrs).map(m => SnapXmlParser.unescape(m.group(1))).filter(_.nonEmpty)
 
   private def variableAttr(attrs: String): Option[String] =
-    """\bvar="([^"]*)"""".r.findFirstMatchIn(attrs).map(_.group(1)).filter(_.nonEmpty)
+    """\bvar="([^"]*)"""".r.findFirstMatchIn(attrs).map(m => SnapXmlParser.unescape(m.group(1))).filter(_.nonEmpty)
 
   /** Snap-native body is a direct `<script>` child; `<scripts>` holds extras / legacy bodies. */
   private def definitionBodyScript(xml: String): String = {
@@ -791,7 +803,11 @@ object TurtleStitchToBeExpressionParser {
     }.map(_.trim).filter(_.nonEmpty)
 
   private def collectVariableNamesFromXml(xml: String): List[String] =
-    """<variable\b[^>]*\bname="([^"]+)"""".r.findAllMatchIn(xml).map(_.group(1).trim).filter(_.nonEmpty).toList
+    """<variable\b[^>]*\bname="([^"]+)"""".r
+      .findAllMatchIn(xml)
+      .map(m => SnapXmlParser.unescape(m.group(1).trim))
+      .filter(_.nonEmpty)
+      .toList
 
   private def signatureOf(block: BlockLike): Signature = block match {
     case PrimitiveBlock(selector, variable, inputs, _) =>

@@ -1,6 +1,7 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch
 
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.NodeDomSupport
+import it.evadid.workbook.elements.interactionElements.programming.SnapXmlParser
 import org.scalajs.dom
 
 import scala.collection.mutable.ListBuffer
@@ -207,7 +208,7 @@ object TurtleStitchXmlParser {
       XmlElement(
         "inputs",
         children = topLevelTaggedSections(inner, "input").map { case (attrs, text) =>
-          XmlElement("input", attrsFromAttrText(attrs), text = text)
+          XmlElement("input", attrsFromAttrText(attrs), text = SnapXmlParser.unescape(text))
         }
       )
     }.toList
@@ -250,11 +251,11 @@ object TurtleStitchXmlParser {
             val inner = body.substring(innerStart, innerEnd)
             tag match
               case "l" =>
-                out += XmlElement("l", text = inner.trim)
+                out += XmlElement("l", text = SnapXmlParser.unescape(inner.trim))
               case "bool" =>
-                out += XmlElement("bool", text = inner.trim)
+                out += XmlElement("bool", text = SnapXmlParser.unescape(inner.trim))
               case "color" =>
-                out += XmlElement("color", text = inner.trim)
+                out += XmlElement("color", text = SnapXmlParser.unescape(inner.trim))
               case "script" =>
                 out += XmlElement("script", attrsFromAttrText(rawAttrs), children = parseBlocksFromString(inner))
               case "block" | "custom-block" =>
@@ -369,8 +370,17 @@ object TurtleStitchXmlParser {
   private def attrsFromString(xml: String, tag: String): Map[String, String] =
     ("""(?s)<""" + tag + """\b([^>]*)>""").r.findFirstMatchIn(xml).map(m => attrsFromAttrText(m.group(1))).getOrElse(Map.empty)
 
-  private def attrsFromAttrText(attrs: String): Map[String, String] =
-    """([:\w-]+)=\"([^\"]*)\""".r.findAllMatchIn(attrs).map(m => m.group(1) -> m.group(2)).toMap
+  private def attrsFromAttrText(attrs: String): Map[String, String] = {
+    val parsed = """([:\w-]+)=\"([^\"]*)\"""".r
+      .findAllMatchIn(attrs)
+      .map { m =>
+        val raw = m.group(2)
+        val unescaped = SnapXmlParser.unescape(raw)
+        m.group(1) -> unescaped
+      }
+      .toMap
+    parsed
+  }
 
   private def textTag(xml: String, tag: String): Option[String] =
     ("(?s)<" + tag + ">\\s*(.*?)\\s*</" + tag + ">" ).r.findFirstMatchIn(xml).map(_.group(1))

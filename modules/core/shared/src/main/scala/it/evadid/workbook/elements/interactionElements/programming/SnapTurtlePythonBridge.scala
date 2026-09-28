@@ -71,20 +71,24 @@ object SnapTurtlePythonBridge {
   /**
    * Parse Python, validate the turtle subset, and write Snap XML.
    * @param previousLayout derived script partitions from the current XML, if known
+   * @param previousXml the XML being replaced; its custom block definitions are merged
+   *                    forward so labels, slot types and categories survive
    */
   def applyPython(
       source: String,
-      previousLayout: SnapCanvasLayout = SnapCanvasLayout.empty
+      previousLayout: SnapCanvasLayout = SnapCanvasLayout.empty,
+      previousXml: String = ""
   ): Either[String, ProgrammingExerciseState] =
     try
       val program = BeProgram.fromPythonString(source)
       validateSubset(program.fullProgram) match
         case Left(message) => Left(message)
         case Right(statements) =>
-          if statements.isEmpty then Right(ProgrammingExerciseState.empty)
+          if statements.isEmpty && collectUserFunctionArities(program.fullProgram).isEmpty then
+            Right(ProgrammingExerciseState.empty)
           else
             val layout = reconcileLayout(previousLayout, scriptStatementCount(statements))
-            Right(ProgrammingExerciseState.fromProgram(program, layout))
+            Right(ProgrammingExerciseState.fromProgram(program, layout, previousXml))
     catch
       case e: Throwable =>
         val detail = Option(e.getMessage).filter(_.nonEmpty).getOrElse(e.getClass.getSimpleName)
@@ -132,15 +136,20 @@ object SnapTurtlePythonBridge {
     arities.toMap
   }
 
-  /** Snap selectors in `xml` that are outside the Python-compatible allow-list. */
+  /**
+   * Everything in `xml` that Python cannot represent, named so the message is actionable.
+   *
+   * Besides unknown primitive selectors this covers custom blocks: reporters, predicates,
+   * hats, sprite-local definitions and script/upvar/variadic slots have no Python form,
+   * and a call without a matching definition is already an `Undefined!` block in Snap.
+   */
   def unsupportedSnapSelectors(xml: String): List[String] = {
-    val fromBlocks = BlockSelectorPattern.findAllMatchIn(xml).map(_.group(1)).toList
-    val definedSpecs = BlockDefinitionPattern.findAllMatchIn(xml).map(_.group(1)).map(SnapTurtleCatalog.typeSpecFromSemantic).toSet
-    val customSpecs = CustomBlockPattern.findAllMatchIn(xml).map(_.group(1)).toList
-    val unknownCustoms = customSpecs.filterNot { spec =>
-      definedSpecs.contains(spec) || definedSpecs.contains(SnapTurtleCatalog.typeSpecFromSemantic(spec))
-    }
-    (fromBlocks.filterNot(AllowedSnapSelectors.contains) ++ unknownCustoms.map(_ => "custom-block").distinct).distinct
+    val fromBlocks =
+      BlockSelectorPattern.findAllMatchIn(xml).map(_.group(1)).toList.filterNot(AllowedSnapSelectors.contains)
+    val definitionProblems = SnapCustomBlockRules.allDefinitions(xml).flatMap(_.pythonIncompatibility)
+    val undefinedCalls =
+      SnapCustomBlockRules.obsoleteCalls(xml).map(call => s"'${call.spec}' has no matching block definition")
+    (fromBlocks ++ definitionProblems ++ undefinedCalls).distinct
   }
 
   def isPythonCompatibleXml(xml: String): Boolean =
@@ -180,9 +189,7 @@ object SnapTurtlePythonBridge {
   def snapSelectorOf(call: BeFunctionCall): String =
     snapSelectorByPythonName.getOrElse(pythonName(call), pythonName(call))
 
-  def customBlockSpecOf(call: BeFunctionCall): String =
-    SnapTurtleCatalog.customBlockTypeSpec(pythonName(call), call.funcDef.inputs.size)
-
+  /** Definition spec for a block this module creates from a Python `def`. */
   def customBlockSemanticSpecOf(defn: BeDefineFunction): String =
     SnapTurtleCatalog.customBlockSemanticSpec(
       pythonNameOf(defn),
@@ -190,11 +197,30 @@ object SnapTurtlePythonBridge {
     )
 
   /**
+   * Python names that two `def`s would share once mapped onto Snap block specs.
+   *
+   * Snap resolves calls by spec, so two definitions with the same name would collapse
+   * into one block and silently swallow the other's body.
+   */
+  def duplicateFunctionNames(expression: BeExpression): List[String] =
+    SnapProjectXml
+      .collectFunctionDefs(expression)
+      .map(pythonNameOf)
+      .groupBy(identity)
+      .collect { case (name, occurrences) if occurrences.size > 1 => name }
+      .toList
+      .sorted
+
+  /**
    * Accept only allow-listed top-level statements (comments / unsupported rejected).
    * @return Right(statements) in program order, or Left(error)
    */
   def validateSubset(expression: BeExpression): Either[String, List[BeExpression]] =
-    SnapControlFlow.validateStatements(topLevelStatements(expression), collectUserFunctionArities(expression))
+    duplicateFunctionNames(expression) match
+      case Nil =>
+        SnapControlFlow.validateStatements(topLevelStatements(expression), collectUserFunctionArities(expression))
+      case names =>
+        Left(s"Two block definitions would share the name(s): ${names.mkString(", ")}")
 
   def hasSupportedStatements(expression: BeExpression): Boolean =
     SnapControlFlow.hasSupportedStatements(expression, collectUserFunctionArities(expression))

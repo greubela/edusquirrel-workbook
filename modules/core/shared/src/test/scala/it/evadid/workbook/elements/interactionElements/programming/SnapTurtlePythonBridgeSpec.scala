@@ -235,21 +235,29 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     assert(xml.contains("""s="doUntil""""), clue = xml)
   }
 
-  test("unsupportedSnapSelectors reports wait and unknown custom blocks") {
+  test("unsupportedSnapSelectors names the wait block and the undefined custom block") {
     val xml =
       """<project><scripts><script><block s="forward"><l>10</l></block><block s="wait"><l>1</l></block><custom-block s="foo"></custom-block></script></scripts></project>"""
-    assertEquals(
-      SnapTurtlePythonBridge.unsupportedSnapSelectors(xml).toSet,
-      Set("wait", "custom-block")
-    )
+    val reported = SnapTurtlePythonBridge.unsupportedSnapSelectors(xml)
+    assert(reported.contains("wait"), clue = reported)
+    assert(reported.exists(_.contains("'foo'")), clue = reported)
     assert(!SnapTurtlePythonBridge.isPythonCompatibleXml(xml))
     assert(SnapTurtlePythonBridge.isPythonCompatibleXml("""<project><block s="forward"><l>1</l></block></project>"""))
   }
 
-  test("unsupportedSnapSelectors allows custom-block when a definition is present") {
+  test("unsupportedSnapSelectors allows a custom-block whose definition declares the same blockSpec") {
     val xml =
-      """<project><blocks><block-definition s="square %n" type="command"></block-definition></blocks><scripts><script><custom-block s="square %n"><l>50</l></custom-block></script></scripts></project>"""
+      """<project><blocks><block-definition s="square %n" type="command"><inputs><input type="%n"></input></inputs></block-definition></blocks><scripts><script><custom-block s="square %n"><l>50</l></custom-block></script></scripts></project>"""
     assertEquals(SnapTurtlePythonBridge.unsupportedSnapSelectors(xml), Nil)
+  }
+
+  test("unsupportedSnapSelectors reports reporter and script-slot custom blocks by spec") {
+    val reporter =
+      """<project><blocks><block-definition s="area %size" type="reporter"><inputs><input type="%n"></input></inputs></block-definition></blocks></project>"""
+    assert(SnapTurtlePythonBridge.unsupportedSnapSelectors(reporter).exists(_.contains("area %size")))
+    val scripted =
+      """<project><blocks><block-definition s="twice %action" type="command"><inputs><input type="%cs"></input></inputs></block-definition></blocks></project>"""
+    assert(SnapTurtlePythonBridge.unsupportedSnapSelectors(scripted).exists(_.contains("%cs")))
   }
 
   test("snapSelectorOf maps python aliases to Snap ids") {
@@ -306,7 +314,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     assert(xml.contains("""<palette><category name="Variables""""), clue = xml)
   }
 
-  test("applyPython uses semantic definition spec and type spec on calls") {
+  test("applyPython names slots in the definition and uses their types on calls") {
     val result = SnapTurtlePythonBridge.applyPython(
       """def square(size):
         |    forward(size)
@@ -317,7 +325,8 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     val xml = result.toOption.get.snapXml
     assert(xml.contains("""<block-definition s="square %size""""), clue = xml)
     assert(xml.contains("""<custom-block s="square %n">"""), clue = xml)
-    assertEquals(SnapTurtleCatalog.typeSpecFromSemantic("square %size"), "square %n")
+    assertEquals(SnapCustomBlockRules.globalDefinitions(xml).map(_.blockSpec), List("square %n"))
+    assertEquals(SnapCustomBlockRules.obsoleteCalls(xml), Nil)
     assert(SnapTurtlePythonBridge.isPythonCompatibleXml(xml), clue = xml)
   }
 
@@ -349,15 +358,35 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     assert(tooFew.swap.toOption.get.contains("goto_x_y"), clue = tooFew)
   }
 
-  test("applyPython rejects custom-call arity mismatches") {
+  test("applyPython drops extra custom-call arguments to match the def") {
     val source =
       """def square(n):
         |    forward(n)
         |square(1, 2)
         |""".stripMargin
     val result = SnapTurtlePythonBridge.applyPython(source)
-    assert(result.isLeft, clue = result)
-    assert(result.swap.toOption.get.contains("square"), clue = result)
+    assert(result.isRight, clue = result)
+    val xml = result.toOption.get.snapXml
+    assert(xml.contains("""<custom-block s="square %n"><l>1</l></custom-block>"""), clue = xml)
+    assert(!xml.contains("<l>2</l>"), clue = xml)
+  }
+
+  test("applyPython drops a custom-call argument when the def loses that parameter") {
+    val previous = snapProjectWith(
+      """<block-definition s="circ %dist" type="command" category="Variables"><inputs><input type="%n"></input></inputs><script><block s="forward"><block var="dist"/></block></script></block-definition>"""
+    )
+    val xml = applied(
+      """def circ():
+        |    forward(10)
+        |
+        |circ(50)
+        |""".stripMargin,
+      previous
+    )
+    assert(xml.contains("""s="circ" type="command""""), clue = xml)
+    assert(xml.contains("""<custom-block s="circ"></custom-block>"""), clue = xml)
+    assert(!xml.contains("""<custom-block s="circ %n">"""), clue = xml)
+    assert(!xml.contains("%dist"), clue = xml)
   }
 
   test("applyPython maps canonical pen and position names and native colors") {
@@ -389,5 +418,140 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     val xml = result.toOption.get.snapXml
     assert(xml.contains("""s="setColor""""), clue = xml)
     assert(xml.contains("<color>"), clue = xml)
+  }
+
+  /** Project XML as Snap writes it, with one global definition and no scripts. */
+  private def snapProjectWith(definitions: String): String =
+    s"""<project name="t" app="TurtleStitch 2.11, http://www.turtlestitch.org" version="2"><notes></notes><scenes select="1"><scene name="t"><notes></notes><palette><category name="Variables" color="243,118,29,1"/></palette><hidden></hidden><headers></headers><code></code><blocks>$definitions</blocks><primitives></primitives><stage name="Stage" width="480" height="360"><blocks></blocks><scripts></scripts><sprites select="1"><sprite name="Sprite" idx="1"><blocks></blocks><variables></variables><scripts></scripts></sprite></sprites></stage><variables></variables></scene></scenes></project>"""
+
+  private def applied(python: String, previousXml: String): String = {
+    val result = SnapTurtlePythonBridge.applyPython(python, SnapCanvasLayout.empty, previousXml)
+    assert(result.isRight, clue = s"$python -> $result")
+    val xml = result.toOption.get.snapXml
+    assertEquals(SnapCustomBlockRules.obsoleteCalls(xml), Nil, clue = xml)
+    xml
+  }
+
+  test("applyPython keeps a multi-word Snap label and its declared slot type") {
+    val previous = snapProjectWith(
+      """<block-definition s="draw square %size" type="command" category="Variables"><header></header><code></code><translations></translations><inputs><input type="%s"></input></inputs><script><block s="forward"><block var="size"/></block></script></block-definition>"""
+    )
+    val xml = applied("def draw_square(size):\n    forward(size)\n\ndraw_square(10)\n", previous)
+    assert(xml.contains("""<block-definition s="draw square %size""""), clue = xml)
+    assert(xml.contains("""<input type="%s">"""), clue = xml)
+    assert(xml.contains("""<custom-block s="draw square %s">"""), clue = xml)
+  }
+
+  test("applyPython keeps category, comment and loose block-editor scripts") {
+    val previous = snapProjectWith(
+      """<block-definition s="square %size" type="command" category="Pen" helper="true"><comment w="90" collapsed="false">explains the block</comment><header></header><code></code><translations></translations><inputs><input type="%n"></input></inputs><script><block s="forward"><block var="size"/></block></script><scripts><script x="10" y="20"><block s="clear"></block></script></scripts></block-definition>"""
+    )
+    val xml = applied("def square(size):\n    turn(90)\n\nsquare(10)\n", previous)
+    assert(xml.contains("""category="Pen""""), clue = xml)
+    assert(xml.contains("""helper="true""""), clue = xml)
+    assert(xml.contains("explains the block"), clue = xml)
+    assert(xml.contains("""<scripts><script x="10" y="20">"""), clue = xml)
+    assert(xml.contains("""s="turn""""), clue = xml)
+  }
+
+  test("applyPython keeps snap slot names when python uses the same names") {
+    val previous = snapProjectWith(
+      """<block-definition s="square %laenge" type="command" category="Variables"><inputs><input type="%n"></input></inputs></block-definition>"""
+    )
+    val xml = applied("def square(laenge):\n    forward(laenge)\n\nsquare(10)\n", previous)
+    assert(xml.contains("""<block-definition s="square %laenge""""), clue = xml)
+    assert(xml.contains("""<block var="laenge"/>"""), clue = xml)
+  }
+
+  test("applyPython renames snap slots when python parameters are renamed") {
+    val previous = snapProjectWith(
+      """<block-definition s="circ %&apos;dist&apos;" type="command" category="Variables"><inputs><input type="%n"></input></inputs><script><block s="forward"><block var="dist"/></block></script></block-definition>"""
+    )
+    val xml = applied("def circ(radius):\n    forward(radius)\n\ncirc(10)\n", previous)
+    assert(xml.contains("""<block-definition s="circ %radius""""), clue = xml)
+    assert(xml.contains("""<block var="radius"/>"""), clue = xml)
+    assert(!xml.contains("""<block var="dist"/>"""), clue = xml)
+    assertEquals(SnapCustomBlockRules.obsoleteCalls(xml), Nil, clue = xml)
+  }
+
+  test("applyPython rename still declares input types when previous inputs were empty") {
+    val previous = snapProjectWith(
+      """<block-definition s="circ %'varb'" type="command" category="Variables"><inputs></inputs><script><block s="forward"><block var="varb"/></block></script></block-definition>"""
+    )
+    val xml = applied("def circ(n):\n    forward(n)\n", previous)
+    val defn = SnapCustomBlockRules.globalDefinitions(xml).head
+    assertEquals(defn.spec, "circ %n")
+    assertEquals(defn.slots.map(_.slotType), List("%n"), clue = xml)
+    assertEquals(defn.blockSpec, "circ %n")
+    assert(xml.contains("""<input type="%n">"""), clue = xml)
+  }
+
+  test("applyPython keeps the label but rebuilds the spec when the parameter count changes") {
+    val previous = snapProjectWith(
+      """<block-definition s="draw square %size" type="command" category="Variables"><inputs><input type="%s"></input></inputs></block-definition>"""
+    )
+    val xml = applied("def draw_square(size, times):\n    forward(size)\n\ndraw_square(10, 2)\n", previous)
+    assert(xml.contains("""<block-definition s="draw square %size %times""""), clue = xml)
+    assert(xml.contains("""<custom-block s="draw square %s %n">"""), clue = xml)
+  }
+
+  test("applyPython adds a slot to a snap block that had none, and calls still resolve") {
+    val previous = snapProjectWith(
+      """<block-definition s="square" type="command" category="Variables" selector="evaluateCustomBlock"><header></header><code></code><translations></translations><inputs></inputs><script><block s="forward"><l>10</l></block></script><scripts><script x="10" y="20"><custom-block s="square"></custom-block></script></scripts></block-definition>"""
+    )
+    val xml = applied("def square(n):\n    forward(n)\n\nsquare(50)\n", previous)
+    val defn = SnapCustomBlockRules.globalDefinitions(xml).head
+    assertEquals(defn.spec, "square %n")
+    assertEquals(defn.slots.map(_.slotType), List("%n"))
+    assertEquals(defn.blockSpec, "square %n")
+    assert(xml.contains("""<custom-block s="square %n">"""), clue = xml)
+    assert(xml.contains("""<block var="n"/>"""), clue = xml)
+    assert(!xml.contains("""selector="""), clue = xml)
+    val definition = """(?s)<block-definition[^>]*>.*?</block-definition>""".r.findFirstIn(xml).getOrElse("")
+    assert(!definition.contains("<scripts>"), clue = definition)
+    assertEquals(SnapCustomBlockRules.obsoleteCalls(xml), Nil, clue = xml)
+  }
+
+  test("applyPython still writes a definition when the python has only a def") {
+    val previous = snapProjectWith(
+      """<block-definition s="square" type="command" category="Variables"><inputs></inputs></block-definition>"""
+    )
+    val xml = applied("def square(n):\n    forward(n)\n", previous)
+    assert(xml.contains("""<block-definition s="square %n""""), clue = xml)
+    assertEquals(SnapCustomBlockRules.obsoleteCalls(xml), Nil, clue = xml)
+  }
+
+  test("applyPython drops a definition once its def is gone from the python source") {
+    val previous = snapProjectWith(
+      """<block-definition s="square %size" type="command" category="Variables"><inputs><input type="%n"></input></inputs></block-definition>"""
+    )
+    val xml = applied("forward(10)\n", previous)
+    assert(!xml.contains("<block-definition"), clue = xml)
+  }
+
+  test("applyPython rejects two defs that would share one block") {
+    val result = SnapTurtlePythonBridge.applyPython(
+      """def square(n):
+        |    forward(n)
+        |def square(n):
+        |    turn(n)
+        |square(1)
+        |""".stripMargin
+    )
+    assert(result.isLeft, clue = result)
+    assert(result.swap.toOption.get.contains("square"), clue = result)
+  }
+
+  test("applyPython hoists a nested def so its calls still resolve") {
+    val xml = applied("for _ in range(2):\n    def square(n):\n        forward(n)\n    square(10)\n", "")
+    assert(xml.contains("""<block-definition s="square %n""""), clue = xml)
+  }
+
+  test("applyPython does not declare function parameters as scene variables") {
+    val xml = applied("def square(size):\n    forward(size)\n\nsquare(10)\n", "")
+    assert(!xml.contains("""<variable name="size">"""), clue = xml)
+    val withGlobal = applied("steps = 5\n\ndef square(size):\n    forward(size)\n\nsquare(steps)\n", "")
+    assert(withGlobal.contains("""<variable name="steps">"""), clue = withGlobal)
+    assert(!withGlobal.contains("""<variable name="size">"""), clue = withGlobal)
   }
 }

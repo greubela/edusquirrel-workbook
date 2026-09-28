@@ -18,20 +18,42 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   }
 
   def updateInfoWithContextChange(func: HomepageInfo => HomepageInfo): Future[?] = fullInfo.synchronized {
-
+    // Local preview has no DB account; fetch-from-db-request then 500s. The
+    // workbook must still be installed or the UI stays on "Kein Arbeitsheft geladen".
     fullInfo.syncControl
       .storeAndReset(interactions.map(_.interactionVariable))
+      .recover { case err =>
+        fullInfo.loggerSystemInfo.syncCacheLogger.logExceptionWarn(
+          "continuing workbook change despite storeAndReset failure",
+          err
+        )
+        ()
+      }
       .flatMap(_ => {
         fullInfo.homepageInfoState.update(func)
-        fullInfo.syncControl.ensureFetchAndLoad(interactions.map(_.interactionVariable))
+        fullInfo.syncControl
+          .ensureFetchAndLoad(interactions.map(_.interactionVariable))
+          .recover { case err =>
+            fullInfo.loggerSystemInfo.syncCacheLogger.logExceptionWarn(
+              "continuing workbook change despite fetchAndLoad failure",
+              err
+            )
+            ()
+          }
       })
-
   }
 
   private[change] def updateInfoWithoutContextChange(func: HomepageInfo => HomepageInfo): Future[?] = fullInfo.synchronized {
-    fullInfo.syncControl.ensureFetchAndLoad(interactions.map(_.interactionVariable)).map(_ => {
-      fullInfo.homepageInfoState.update(func)
-    })
+    fullInfo.syncControl
+      .ensureFetchAndLoad(interactions.map(_.interactionVariable))
+      .recover { case err =>
+        fullInfo.loggerSystemInfo.syncCacheLogger.logExceptionWarn(
+          "continuing display update despite fetchAndLoad failure",
+          err
+        )
+        ()
+      }
+      .map(_ => fullInfo.homepageInfoState.update(func))
   }
 
   def changeWorkbook(factory: WorkbookFactory): Unit = fullInfo.synchronized {

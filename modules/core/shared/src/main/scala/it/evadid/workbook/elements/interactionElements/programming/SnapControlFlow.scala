@@ -312,7 +312,7 @@ object SnapControlFlow {
         walk(forExpr.end)
         forExpr.body.body.foreach(walk)
       case defn: BeDefineFunction =>
-        defn.inputs.foreach(input => names += variableName(input))
+        // Parameters belong to the definition's own scope, not to the scene variables.
         walk(defn.body)
       case seq: BeSequence =>
         seq.body.foreach(walk)
@@ -371,12 +371,10 @@ object SnapControlFlow {
           }
         case None =>
           userFunctions.get(name) match
-            case Some(expected) if expected != args.size =>
-              Some(s"$name expects $expected argument(s), got ${args.size}")
-            case Some(_) if args.forall(isSupportedValue) =>
-              None
-            case Some(_) =>
-              Some(s"$name(...)")
+            case Some(expected) =>
+              // Extra call args are dropped on write-back; missing ones become empty slots.
+              if args.take(expected).forall(isSupportedValue) then None
+              else Some(s"$name(...)")
             case None =>
               Some(s"$name(...)")
   }

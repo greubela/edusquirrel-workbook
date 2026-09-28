@@ -127,7 +127,8 @@ object SnapPythonPopup {
       if !applyAllowed.now() then return
       val current = state.now()
       val derived = SnapProgramDerivation.fromState(current)
-      SnapTurtlePythonBridge.applyPython(textVar.now(), derived.canvasLayout) match
+      val pythonSource = textVar.now()
+      SnapTurtlePythonBridge.applyPython(pythonSource, derived.canvasLayout, current.snapXml) match
         case Left(message) =>
           warningVar.set(Some(message))
         case Right(next) =>
