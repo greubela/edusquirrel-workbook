@@ -3,6 +3,7 @@ package it.evadid.workbook.jsonFactory
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable.rw
 import upickle.ReadWriter
 import upickle.default.*
 
@@ -17,6 +18,10 @@ object WorkbookElementSerializable {
   given rw: ReadWriter[WorkbookElementSerializable] = macroRW
 
   val serializer: Serializer[WorkbookElementSerializable] = Serializer.fromUpickleJson(rw)
+
+  def base[T <: WorkbookElement](obj: T): WorkbookElementSerializable = {
+    WorkbookElementSerializable(obj.elementId, obj.getClass.getSimpleName, Map())
+  }
 }
 
 
@@ -25,6 +30,10 @@ case class WorkbookElementSerializable(
                                         elementType: String,
                                         additionalElements: Map[String, ujson.Value]
                                       ) {
+
+  lazy val toJson: String = {
+    write(this)(using rw)
+  }
 
   // Single Object
   def withElementAdded(key: String, value: String): WorkbookElementSerializable = {

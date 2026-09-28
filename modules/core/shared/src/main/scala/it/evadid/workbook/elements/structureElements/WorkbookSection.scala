@@ -47,13 +47,23 @@ object WorkbookSection {
     override def toSerializableElement(element: WorkbookSection): WorkbookElementSerializable =
       toFactoryBase(element)
         .withElementAddedAs("metadata", element.metadata)
+        .withElementsAddedAs("requiredBefore", element.metadata.sectionsRequiredBefore.map(_.asRef))
+        .withElementsAddedAs("recommendedBefore", element.metadata.sectionsRecommendedBefore)
         .withElementsAddedAs[WorkbookElementReference]("content", element.sectionContent.map(_.asRef))
   }
 
-  private val regularSerializer: ReadWriter[WorkbookSection] = macroRW
+  private val referencingJsonSerializer: ReadWriter[WorkbookSection] = new Serializer[WorkbookSection]() {
+    override def serialize(obj: WorkbookSection): String = {
+      WorkbookElementSerializable.base(obj)
+        .withElementAddedAs("metadata", obj.metadata)
+        .withElementsAddedAs("content", obj.sectionContent.map(_.asRef))
+        .toJson
+    }
+    override def deserialize(str: String): WorkbookSection = ???
+  }.uPickleReadWrite
 
   val constructorSerializer: Serializer[WorkbookSection] = new ConstructorLikeSerializer[WorkbookSection] {
-    override implicit val regularSerializer: Serializer[WorkbookSection] = Serializer.fromUpickleJson(WorkbookSection.regularSerializer)
+    override implicit val regularSerializer: Serializer[WorkbookSection] = Serializer.fromUpickleJson(WorkbookSection.referencingJsonSerializer)
     override val constructorName: String = WorkbookSection.this.getClass.getSimpleName
 
 
