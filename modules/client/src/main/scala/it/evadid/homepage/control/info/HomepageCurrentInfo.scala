@@ -39,7 +39,7 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
   }
 
   def allAvailableLanguages: List[HumanLanguage] = fullInfo.synchronized {
-    now().workbookInfo.map(_.loadedWorkbook.availableLanguages).getOrElse(List())
+    now().workbookInfo.map(_.loadedWorkbook.metadata.availableLanguages).getOrElse(List())
   }
 
 }

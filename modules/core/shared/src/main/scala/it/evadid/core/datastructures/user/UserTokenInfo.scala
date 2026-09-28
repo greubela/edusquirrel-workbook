@@ -1,14 +1,17 @@
 package it.evadid.core.datastructures.user
 
-import it.evadid.core.util.io.serializer.DefaultSerializer
 
 import java.net.InetAddress
 import java.time.LocalDateTime
 
+import upickle.default.*
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
+
+
 object UserTokenInfo {
 
-  case class SignedToken(info: UserTokenInfo, tokenStringWithSignature: String) {
-    lazy val toJson: String = DefaultSerializer.serializerSignedUserTokenInfo.serialize(this)
+  case class SignedToken(info: UserTokenInfo, tokenStringWithSignature: String) derives ReadWriter {
+    lazy val toJson: String = write(this)
   }
 
   object SignedToken {
@@ -17,6 +20,6 @@ object UserTokenInfo {
 
 }
 
-case class UserTokenInfo(user: User, createdAt: LocalDateTime, expiresAt: LocalDateTime) {
-  lazy val toJson: String = DefaultSerializer.serializerUserTokenInfo.serialize(this)
+case class UserTokenInfo(user: User, createdAt: LocalDateTime, expiresAt: LocalDateTime) derives ReadWriter {
+  lazy val toJson: String = write(this)
 }

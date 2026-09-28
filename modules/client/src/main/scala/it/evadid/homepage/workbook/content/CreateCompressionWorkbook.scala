@@ -1,6 +1,7 @@
 package it.evadid.homepage.workbook.content
 
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 
@@ -21,7 +22,8 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
       filetypesSection,
       sortingDemoSection,
       finalSection
-    )
+    ),
+    User.YanneckDimitrov
   )
 
   private lazy val introSection: WorkbookSection = section(

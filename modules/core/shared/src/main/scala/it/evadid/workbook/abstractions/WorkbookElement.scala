@@ -4,6 +4,19 @@ import it.evadid.core.datastructures.state.State
 import it.evadid.core.util.io.{AutoSerializable, Serializer}
 import it.evadid.workbook.interaction.variable.InteractionVariable
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
+import upickle.ReadWriter
+
+object WorkbookElement {
+  implicit val referenceWriter: ReadWriter[WorkbookElement] = new Serializer[WorkbookElement]() {
+    override def serialize(obj: WorkbookElement): String = {
+      upickle.write(obj.asRef)(using WorkbookElementReference.given_ReadWriter_WorkbookElementReference)
+    }
+    override def deserialize(str: String): WorkbookElement = {
+      ???
+    }
+  }.uPickleReadWrite
+
+}
 
 sealed trait WorkbookElement extends AutoSerializable[WorkbookElement, WorkbookElementSerializable] {
   val elementId: String

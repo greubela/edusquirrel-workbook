@@ -2,6 +2,7 @@ package it.evadid.homepage.workbook.content
 
 import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES
 import it.evadid.workbook.abstractions.WorkbookElement
@@ -11,6 +12,7 @@ import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalL
 import it.evadid.workbook.elements.interactionElements.basic.LabeledCheckboxInteraction
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.AdvancedCodeRequirement
 import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
+import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 
 case class CreatePlantworkshopWorkbook(
@@ -42,9 +44,13 @@ case class CreatePlantworkshopWorkbook(
 
     Workbook(
       workbookId,
-      LanguageMapContentId("PlantWorkshop/workbookTitle"),
-      sections,
-      availableLanguages
+      WorkbookMetadata(
+        User.YanneckDimitrov,
+        Set(),
+        LanguageMapContentId("PlantWorkshop/workbookTitle"),
+        availableLanguages
+      ),
+      sections
     )
   }
 
@@ -53,6 +59,7 @@ case class CreatePlantworkshopWorkbook(
   private def missingElementPlaceholder(contextKey: String): WorkbookElement = {
     instructionPlaintext(s"PlantWorkshop/$contextKey")
   }
+
   def wiringSlideImage(slideIndex: Int): ImageElement = {
     LanguageMapBasedImageElement(nextId(), LanguageMapContentId(s"PlantWorkshop/fileWiringSlide${slideIndex}"), URL_RELATIVE_TO_WORKBOOK_RESOURCES)
   }

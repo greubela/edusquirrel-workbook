@@ -3,6 +3,7 @@ package it.evadid.core.util.io
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.util.io.TypeConverter.ConverterResult
 import it.evadid.distribution.command.SerializedException
+import ujson.Value
 import upickle.*
 import upickle.default.{read, readwriter, write}
 
@@ -34,6 +35,8 @@ trait Serializer[T] extends TypeConverter[T, String] {
 
 object Serializer {
 
+
+
   def constructorLikeSerializer[T](
                                     constructorName: String,
                                     construct: Seq[ujson.Value] => T,
@@ -45,12 +48,12 @@ object Serializer {
     }
 
     override def deserialize(str: String): T = {
-      ConstructorLikeParserWithJsonElements.parseString(str).match{
-        case Success(parsedConstructor, jsons) => if(constructorName != parsedConstructor){
+      ConstructorLikeParserWithJsonElements.parseString(str).match {
+        case Success(parsedConstructor, jsons) => if (constructorName != parsedConstructor) {
           throw SerializedException(s"ConstructorLikeSerializer(${constructorName}) cannot parse objects of type ${parsedConstructor}")
-        }else try{
+        } else try {
           construct(jsons.map(ujson.read(_)))
-        }catch case (err: Throwable) => {
+        } catch case (err: Throwable) => {
           throw SerializedException(s"ConstructorLikeSerializer(${constructorName}) had error while parsing jsons", err)
         }
         case Failure(err) => throw SerializedException(s"Could not parse ${str} with ConstructorLikeSerializer(${constructorName}", err)
@@ -75,7 +78,7 @@ object Serializer {
         val withoutEnd = trimmed.substring(0, str.length - 1)
         val cleaned = withoutEnd.substring(constructorName.length + 1, withoutEnd.length)
         base.deserialize(cleaned)
-      }else {
+      } else {
         throw new IllegalArgumentException(s"ConstructorLikeSerializer for '${constructorName} cannot deserialize ${str}")
       }
     }

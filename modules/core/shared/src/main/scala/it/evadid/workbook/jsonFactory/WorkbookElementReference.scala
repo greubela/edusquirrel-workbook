@@ -7,7 +7,7 @@ import upickle.ReadWriter
 object WorkbookElementReference {
   val serializer: Serializer[WorkbookElementReference] = Serializer.constructorLikeSerializer("ElementId", new Serializer[WorkbookElementReference]() {
     override def serialize(obj: WorkbookElementReference): String = {
-      obj.referencedType.map(value => value.trim + "/").getOrElse("") +  obj.referencedId.trim
+      obj.referencedType.map(value => value.trim + "/").getOrElse("") + obj.referencedId.trim
     }
 
     override def deserialize(str: String): WorkbookElementReference = {

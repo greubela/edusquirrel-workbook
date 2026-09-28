@@ -2,6 +2,7 @@ package it.evadid.homepage.workbook.content
 
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.interactionElements.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
@@ -26,7 +27,8 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
         fifthSection,
         //sixthSection,
         finalSection
-      )
+      ),
+      User.AndreGreubel
     )
   }
 

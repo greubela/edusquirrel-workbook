@@ -3,6 +3,7 @@ package it.evadid.homepage.workbook.content
 
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.abstractions.*
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES
@@ -16,6 +17,7 @@ import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderIn
 import it.evadid.workbook.elements.interactionElements.sortingExercise.{SortingInteraction, SortingItem}
 import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
 import it.evadid.workbook.elements.structureElements.*
+import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
 
 trait WorkbookFactory {
 
@@ -56,8 +58,15 @@ trait WorkbookFactory {
   /*
   Structure
    */
-  protected def workbook(langIdWorkbookTitle: String, sections: List[WorkbookSection]): Workbook = {
-    Workbook(workbookId, LanguageMapContentId(langIdWorkbookTitle), sections, availableLanguages)
+  protected def workbook(langIdWorkbookTitle: String, sections: List[WorkbookSection], user: User): Workbook = {
+    Workbook(
+      workbookId,
+      WorkbookMetadata(
+        user,
+        Set(),
+        LanguageMapContentId(langIdWorkbookTitle),
+        availableLanguages),
+      sections)
   }
 
   protected def section(sectionId: String, langIdSectionTitle: String, sectionContent: List[WorkbookElement]): WorkbookSection = {

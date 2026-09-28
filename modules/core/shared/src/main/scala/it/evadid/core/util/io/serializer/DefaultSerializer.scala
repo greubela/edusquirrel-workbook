@@ -30,7 +30,7 @@ import scala.util.*
 object DefaultSerializer {
 
 
-  private[serializer] given ldt: ReadWriter[LocalDateTime] =
+  given ldt: ReadWriter[LocalDateTime] =
     upickle.default.readwriter[String].bimap[LocalDateTime](_.toString, LocalDateTime.parse)
 
   private[serializer] given [T: ReadWriter]: ReadWriter[Try[T]] =

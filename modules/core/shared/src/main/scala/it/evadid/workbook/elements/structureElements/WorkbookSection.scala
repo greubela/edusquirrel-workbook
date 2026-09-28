@@ -4,6 +4,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.WorkbookStructuringType.SECTION
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookStructureElement, WorkbookStructuringType}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
+import upickle.ReadWriter
 
 case class WorkbookSection(
                             sectionId: String,
@@ -11,7 +12,8 @@ case class WorkbookSection(
                             sectionContent: List[WorkbookElement],
                             sectionsRequiredBefore: List[WorkbookSection] = List(),
                             sectionsRecommendedBefore: List[WorkbookSection] = List()
-                          ) extends WorkbookStructureElement[WorkbookElement] {
+                          ) extends WorkbookStructureElement[WorkbookElement]
+                          derives ReadWriter {
   override val associatedFactory = WorkbookSection.factory
 
   override val groupElements: List[WorkbookElement] = sectionContent
