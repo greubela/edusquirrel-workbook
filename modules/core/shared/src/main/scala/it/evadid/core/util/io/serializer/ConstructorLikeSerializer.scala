@@ -1,13 +1,23 @@
 package it.evadid.core.util.io.serializer
 
+import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.{VariableDisplayConfig, VariableToSerialize}
 import it.evadid.core.util.io.{ConstructorLikeParserWithJsonElements, Serializer}
 import ujson.Value
+import upickle.core.LinkedHashMap
 import upickle.default.*
 
+object ConstructorLikeSerializer {
 
-trait ConstructorLikeSerializer[T] extends Serializer[T] {
+  case class VariableDisplayConfig(varId: String, inlinedWithoutKey: Boolean)
 
-  private case class VariableToSerialize(val key: String, jsonValueAsStr: String, constructorPosition: Int, positionInConstructor: Int, displayConf: VariableDisplayConfig) {
+
+  private case class VariableToSerialize(
+                                          val key: String,
+                                          jsonValueAsStr: String,
+                                          constructorPosition: Int,
+                                          positionInConstructor: Int,
+                                          displayConf: VariableDisplayConfig
+                                        ) {
     override val toString: String = {
       s"\"${key}: ${jsonValueAsStr}"
     }
@@ -18,16 +28,29 @@ trait ConstructorLikeSerializer[T] extends Serializer[T] {
       if (curEntry.displayConf.inlinedWithoutKey) curEntry.jsonValueAsStr
       else s"\n${curEntry.key}: ${curEntry.jsonValueAsStr}"
     }).mkString("(", ", ", ")")
+  }
 
+  private def createSerVar(elementMapAndOrder: Map[Int, List[VariableDisplayConfig]], key: String, jsonValueAsStr: String): Option[VariableToSerialize] = {
+    elementMapAndOrder
+      .zipWithIndex
+      .flatMap((tup, indexNr) => tup._2.map(cur => (tup._1, indexNr, cur)))
+      .find(_._3.varId == key)
+      .map(trip => VariableToSerialize(key, jsonValueAsStr, trip._1, trip._2, trip._3))
   }
 
 
-  override def serialize(obj: T): String = {
-    val jsonString: String = writeJs(obj)(using regularSerializer.uPickleReadWrite).str
+  def getAutoFieldsMap[T](obj: T)(implicit regularSerializer: Writer[T]): Map[String, ujson.Value] = {
+    val jsonString: String = write(obj)(using regularSerializer)
     val regularSer: ujson.Value = ujson.read(jsonString)
+    val variableSet: LinkedHashMap[String, ujson.Value] = regularSer.obj
+    variableSet.toMap
+  }
 
-    val variableSet: Set[VariableToSerialize] = regularSer.obj.keySet.toSet.flatMap(key => {
-      createSerVar(key, ujson.write(regularSer.obj(key)))
+  def serialize[T](elementMapAndOrder: Map[Int, List[VariableDisplayConfig]], obj: T, writer: Writer[T], constructorName: String): String = {
+   val fieldMap: Map[String, Value] = getAutoFieldsMap(obj)(using writer)
+
+    val variableSet: Set[VariableToSerialize] = fieldMap.keySet.flatMap(key => {
+      createSerVar(elementMapAndOrder, key, write(fieldMap(key)))
     })
     if (variableSet.nonEmpty) {
       val maxPos = variableSet.maxBy(_.constructorPosition).constructorPosition
@@ -39,30 +62,42 @@ trait ConstructorLikeSerializer[T] extends Serializer[T] {
     }
   }
 
-  override def deserialize(str: String): T = {
+  case class ConstructorLikeReadResult(elementType: String, values: Map[String, ujson.Value]) derives ReadWriter {
+    def valueAsString(key: String): Option[String] = {
+      values.get(key).map(write(_))
+    }
+  }
+
+  def deserialize(str: String): ConstructorLikeReadResult = {
     val parsed: (String, Seq[String]) = ConstructorLikeParserWithJsonElements.parseString(str).get
     val mapped: Map[String, Value] = parsed._2.flatMap { curJsonStr =>
-      ujson.read(curJsonStr).obj.map {
-        case (key, value) => key -> value
-      }
+      ujson.read(curJsonStr).obj.map((key, value) => key -> value)
     }.toMap
-    regularSerializer.deserialize(write(mapped))
+    ConstructorLikeReadResult(parsed._1, mapped)
   }
+
+  def deserialize[T](str: String, reader: Reader[T]): T = {
+    val raw = deserialize(str)
+    read(write(raw.values))(using reader)
+  }
+
+}
+
+trait ConstructorLikeSerializer[T] extends Serializer[T] {
+
+  private def formatConstructorEntry(set: Set[VariableToSerialize]): String =
+    ConstructorLikeSerializer.formatConstructorEntry(set)
+
+  override def serialize(obj: T): String =
+    ConstructorLikeSerializer.serialize(elementMapAndOrder, obj, regularSerializer.uPickleReadWrite, constructorName)
+
+  override def deserialize(str: String): T = ConstructorLikeSerializer.deserialize(str, regularSerializer.uPickleReadWrite)
 
   implicit val regularSerializer: Serializer[T]
 
   val constructorName: String
 
-  case class VariableDisplayConfig(varId: String, inlinedWithoutKey: Boolean)
-
   val elementMapAndOrder: Map[Int, List[VariableDisplayConfig]]
 
-  private def createSerVar(key: String, jsonValueAsStr: String): Option[VariableToSerialize] = {
-    elementMapAndOrder
-      .zipWithIndex
-      .flatMap((tup, indexNr) => tup._2.map(cur => (tup._1, indexNr, cur)))
-      .find(_._3.varId == key)
-      .map(trip => VariableToSerialize(key, jsonValueAsStr, trip._1, trip._2, trip._3))
-  }
 
 }

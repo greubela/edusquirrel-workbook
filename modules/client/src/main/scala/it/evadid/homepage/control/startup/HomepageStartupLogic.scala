@@ -6,8 +6,9 @@ import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.workbook.content.{CreateCompressionWorkbook, CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, CreateTestWorkbook}
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.elements.structureElements.Workbook
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import org.scalajs.dom
+import upickle.default.*
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.scalajs.js
@@ -48,11 +49,10 @@ object HomepageStartupLogic {
 
       val workbook: Option[AllWorkbookInfo] = canLoad.headOption.flatMap(loadWorkbookById)
       workbook.foreach(workbook => {
-        print("Workbook regular: \n" + workbook.loadedWorkbook.toJson + "\n\n")
-        print("Workbook constructor: \n" + Workbook.constructorSerializer.serialize(workbook.loadedWorkbook) + "\n\n")
+        print(s"Workbook regular: \n${workbook.loadedWorkbook.toStringRegularJson}\n\n")
+        print(s"Workbook constructor: \n${workbook.loadedWorkbook.toStringConstructorLike}\n\n")
       })
       fullInfo.usageControl.changeWorkbook(workbook)
-
 
       val futureTestCalc = testCalculations().recover { err =>
         logger.logExceptionWarn("testCalculations failed", err)

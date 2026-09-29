@@ -282,6 +282,8 @@ case class SlideDeckExercise(
 */
 object Slideshow {
   val factory: WorkbookElementFactory[Slideshow] = new WorkbookElementFactory[Slideshow] {
+    override lazy val elementMapAndOrderForConstructorLike = Map(0 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("elementId", true)), 1 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("panels", false)))
+
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] =
       element.getElementsAs[WorkbookElementReference]("panels").map(_.referencedId).toSet
 

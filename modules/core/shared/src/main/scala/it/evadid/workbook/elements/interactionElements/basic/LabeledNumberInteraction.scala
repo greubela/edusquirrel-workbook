@@ -25,6 +25,7 @@ object LabeledNumberInteraction {
   case class NumberInteractionConfig(numberType: NumberType)
 
   val factory: SimpleWorkbookElementFactory[LabeledNumberInteraction] = new SimpleWorkbookElementFactory[LabeledNumberInteraction]() {
+    override protected val constructorFieldOrder = List("elementId", "numberLabel", "numberType", "defaultNumber")
     override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: LabeledNumberInteraction): WorkbookElementSerializable = {
       baseElement
         .withElementAddedAs("numberLabel", infoElement.numberLabel)

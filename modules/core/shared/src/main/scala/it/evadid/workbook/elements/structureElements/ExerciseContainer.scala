@@ -7,6 +7,8 @@ import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementRe
 
 object ExerciseContainer {
   val factory: WorkbookElementFactory[ExerciseContainer] = new WorkbookElementFactory[ExerciseContainer] {
+    override lazy val elementMapAndOrderForConstructorLike = Map(0 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("elementId", true)), 1 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("title", false)), 2 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("content", false)))
+
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] =
       element.getElementsAs[WorkbookElementReference]("content").map(_.referencedId).toSet
     override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
