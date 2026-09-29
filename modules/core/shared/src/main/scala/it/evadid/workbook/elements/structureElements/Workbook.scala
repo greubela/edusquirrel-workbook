@@ -17,7 +17,7 @@ case class Workbook(
                      elementId: String,
                      metadata: WorkbookMetadata,
                      sections: List[WorkbookSection],
-                   ) extends WorkbookStructureElement[WorkbookSection] derives Writer{
+                   ) extends WorkbookStructureElement[WorkbookSection] {
 
   val workbookId: String = elementId
 
@@ -52,12 +52,10 @@ object Workbook {
 
     def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = {
       element.getElementsAs[WorkbookElementReference]("sections").map(curRef => curRef.referencedId).toSet
-
     }
 
     def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): Workbook = {
-      val sections = element.getAndResolveWorkbookElements[WorkbookSection]("sectionsRef", parsedElements)
-      // todo: check whether sections are serialized or referenced
+      val sections = element.getAndResolveWorkbookElements[WorkbookSection]("sections", parsedElements)
       Workbook(
         element.elementId,
         element.getElementAs[WorkbookMetadata]("metadata"),
@@ -69,16 +67,25 @@ object Workbook {
       Map(
         0 -> List(VariableDisplayConfig("elementId", true)),
         1 -> List(VariableDisplayConfig("metadata", true)),
-      //  2 -> List(VariableDisplayConfig("sectionsSer", false)),
         2 -> List(VariableDisplayConfig("sections", false)),
         3 -> List(VariableDisplayConfig("serializedElements", false))
       )
     }
-    override lazy val writerJsonRegularRefBased: default.Writer[Workbook] = Workbook.derived$Writer
+    override lazy val writerJsonRegularRefBased: default.Writer[Workbook] = writer[ujson.Value].comap { workbook =>
+      ujson.Obj.from(
+        Map(
+          "elementId" -> writeJs(workbook.elementId),
+          "metadata" -> writeJs(workbook.metadata),
+          "sections" -> writeJs(workbook.sections.map(_.asRef))
+        ) ++ addElementsToSerialization(workbook)
+      )
+    }
 
     override def addElementsToSerialization(element: Workbook): Map[String, Value] = {
-      val allRequiredIds = idsRequiredForDeserialization(element.toSerialized) ++element.allChildrenFullSubtree.flatMap(el => el.associatedFactory.idsRequiredForDeserialization(el.toSerialized))
-      val requiredToSerialize =  element.allChildrenFullSubtree.filter(curChild => allRequiredIds.contains(curChild.elementId))
+      val allRequiredIds = element.sections.map(_.elementId).toSet ++ element.allChildrenFullSubtree.flatMap { child =>
+        child.associatedFactory.idsRequiredForDeserialization(child.toSerialized)
+      }
+      val requiredToSerialize = element.allChildrenFullSubtree.filter(child => allRequiredIds.contains(child.elementId))
       Map(
         "serializedElements" -> writeJs(requiredToSerialize.map(el => el.toStringConstructorLike))
       )
