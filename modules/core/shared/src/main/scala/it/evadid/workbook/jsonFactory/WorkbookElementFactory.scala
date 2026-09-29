@@ -25,6 +25,45 @@ import scala.collection.mutable
 
 object WorkbookElementFactory {
 
+  /** Compatibility base for leaf elements while keeping all serialization metadata in the factory. */
+  trait SimpleWorkbookElementFactory[T <: WorkbookElement] extends NoRefsElementFactory[T] {
+    protected def constructorFieldOrder: List[String]
+
+    override lazy val elementMapAndOrderForConstructorLike: Map[Int, List[VariableDisplayConfig]] =
+      constructorFieldOrder.zipWithIndex.map { case (field, index) =>
+        index -> List(VariableDisplayConfig(field, index == 0))
+      }.toMap
+
+    override lazy val writerJsonRegularRefBased: Writer[T] =
+      writer[ujson.Value].comap { element =>
+        val base = WorkbookElementSerializable(element.elementId, element.getClass.getSimpleName, Map.empty)
+        ujson.Obj.from(Map("elementId" -> writeJs(element.elementId)) ++ finishSerialization(base, element).allConstructorFields)
+      }
+
+    override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): T =
+      finishDeserialization(element)
+
+    def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: T): WorkbookElementSerializable
+    def finishDeserialization(element: WorkbookElementSerializable): T
+  }
+
+  trait NoContentElementFactory[T <: WorkbookElement] extends SimpleWorkbookElementFactory[T] {
+    override protected val constructorFieldOrder: List[String] = List("elementId")
+    override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: T): WorkbookElementSerializable = baseElement
+    override def finishDeserialization(element: WorkbookElementSerializable): T = callConstructor(element.elementId)
+    def callConstructor(elementId: String): T
+  }
+
+  trait SingleContentElementFactory[T <: WorkbookElement] extends SimpleWorkbookElementFactory[T] {
+    override protected val constructorFieldOrder: List[String] = List("elementId", "content")
+    def readContent(infoElement: T): it.evadid.core.datastructures.language.LanguageMapContentId
+    override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: T): WorkbookElementSerializable =
+      baseElement.withElementAddedAs("content", readContent(infoElement))
+    override def finishDeserialization(element: WorkbookElementSerializable): T =
+      finishDeserialization(element.elementId, element.getElementAs("content"))
+    def finishDeserialization(elementId: String, content: it.evadid.core.datastructures.language.LanguageMapContentId): T
+  }
+
   val serializerRefBasedJson: Serializer[WorkbookElement] = new Serializer[WorkbookElement]() {
     override def serialize(obj: WorkbookElement): String = {
       val ser = obj.associatedFactory.toSerializableElementUnsafe(obj)
@@ -43,7 +82,7 @@ object WorkbookElementFactory {
       val ord = obj.associatedFactory.elementMapAndOrderForConstructorLike
       val wri = obj.associatedFactory.writerJsonRegularRefBased
       val con = obj.getClass.getSimpleName
-      val res = ConstructorLikeSerializer.serialize(ord, obj, wri, con)
+      val res = ConstructorLikeSerializer.serialize(ord, obj, wri.asInstanceOf[Writer[WorkbookElement]], con)
       res
     }
 
@@ -58,7 +97,7 @@ object WorkbookElementFactory {
 
     override def serializedElementKeysThatContainOtherSerializations(element: WorkbookElementSerializable): Set[String] = Set()
 
-    def addElementsToSerialization(element: T): Map[String, ujson.Value] = Map()
+    override def addElementsToSerialization(element: T): Map[String, ujson.Value] = Map()
   }
 
   def unsupportedFactory[T <: WorkbookElement](elementName: String): WorkbookElementFactory[T] = new WorkbookElementFactory[T] {
@@ -77,7 +116,7 @@ object WorkbookElementFactory {
     override lazy val writerJsonRegularRefBased: default.Writer[T] = ???
 
 
-    def addElementsToSerialization(element: T): Map[String, ujson.Value] = Map()
+    override def addElementsToSerialization(element: T): Map[String, ujson.Value] = Map()
   }
 
 
@@ -170,14 +209,20 @@ object WorkbookElementFactory {
 
 trait WorkbookElementFactory[T <: WorkbookElement] {
 
-  lazy val elementMapAndOrderForConstructorLike: Map[Int, List[VariableDisplayConfig]]
+  lazy val elementMapAndOrderForConstructorLike: Map[Int, List[VariableDisplayConfig]] =
+    Map(0 -> List(VariableDisplayConfig("elementId", true)))
 
-  lazy val writerJsonRegularRefBased: Writer[T]
+  lazy val writerJsonRegularRefBased: Writer[T] = writer[ujson.Value].comap { element =>
+    ujson.Obj.from(Map("elementId" -> writeJs(element.elementId)) ++ toSerializableElement(element).allConstructorFields)
+  }
   /*
   element.getElementsAs[WorkbookElementSerializable]("serializedElements")(using )
    */
 
-  def addElementsToSerialization(element: T): Map[String, ujson.Value]
+  def addElementsToSerialization(element: T): Map[String, ujson.Value] = Map.empty
+
+  protected def toFactoryBase(element: T): WorkbookElementSerializable =
+    WorkbookElementSerializable(element.elementId, element.getClass.getSimpleName, Map.empty)
 
   def toSerializableElement(element: T): WorkbookElementSerializable = {
     // val map = WorkbookElementSerializable.getAutoFieldsMap(element)(using writerJsonRegularRefBased)
@@ -196,11 +241,16 @@ trait WorkbookElementFactory[T <: WorkbookElement] {
 
   def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String]
 
-  def serializedElementKeysThatContainOtherSerializations(element: WorkbookElementSerializable): Set[String]
+  def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
+
+  def serializedElementKeysThatContainOtherSerializations(element: WorkbookElementSerializable): Set[String] = Set.empty
 
   def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): T
 
   def toSerializableElementUnsafe(element: WorkbookElement): WorkbookElementSerializable = {
     toSerializableElement(element.asInstanceOf[T])
   }
+
+  def toStringConstructorLikeUnsafe(element: WorkbookElement): String =
+    toStringConstructorLike(element.asInstanceOf[T])
 }

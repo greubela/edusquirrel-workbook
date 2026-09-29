@@ -7,6 +7,7 @@ import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 
 object TurtleStitchRecreateShapeInteraction {
   val factory = new SimpleWorkbookElementFactory[TurtleStitchRecreateShapeInteraction]() {
+    override protected val constructorFieldOrder = List("elementId", "filenameRelToResources")
 
 
     override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: TurtleStitchRecreateShapeInteraction): WorkbookElementSerializable = {

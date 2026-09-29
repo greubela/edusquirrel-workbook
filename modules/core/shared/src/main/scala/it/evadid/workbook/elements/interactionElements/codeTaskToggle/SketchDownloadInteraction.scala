@@ -25,6 +25,7 @@ case class SketchDownloadInteraction(
 
 object SketchDownloadInteraction {
   val factory = new SimpleWorkbookElementFactory[SketchDownloadInteraction]() {
+    override protected val constructorFieldOrder = List("elementId", "buttonLabel", "filenameRelativeToWorkbookResources")
 
     override def finishSerialization(baseElement: WorkbookElementSerializable, e: SketchDownloadInteraction): WorkbookElementSerializable = {
       baseElement

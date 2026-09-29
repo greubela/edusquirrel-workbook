@@ -26,6 +26,7 @@ object ReorderInteraction {
 
   object ReorderCodeInteraction {
     val factory: SimpleWorkbookElementFactory[ReorderCodeInteraction] = new SimpleWorkbookElementFactory[ReorderCodeInteraction]() {
+      override protected val constructorFieldOrder = List("elementId", "lines", "programmingLanguage", "seed", "hints", "orderConstraints")
 
       override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: ReorderCodeInteraction): WorkbookElementSerializable = {
         baseElement
@@ -58,6 +59,7 @@ object ReorderInteraction {
 
   object ReorderMapIdInteraction {
     val factory: SimpleWorkbookElementFactory[ReorderMapIdInteraction] = new SimpleWorkbookElementFactory[ReorderMapIdInteraction]() {
+      override protected val constructorFieldOrder = List("elementId", "ids", "seed")
 
       override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: ReorderMapIdInteraction): WorkbookElementSerializable = {
         baseElement

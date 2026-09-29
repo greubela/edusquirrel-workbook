@@ -19,6 +19,8 @@ import scala.util.{Failure, Success}
 object GptInteractionElement {
 
   val factory: WorkbookElementFactory[GptInteractionElement] = new WorkbookElementFactory[GptInteractionElement] {
+    override lazy val elementMapAndOrderForConstructorLike = Map(0 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("elementId", true)), 1 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("underlyingTextInteraction", false)), 2 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("exerciseText", false)), 3 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("scaffoldingHints", false)), 4 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("gradingCriteria", false)))
+
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable) = Set(element.getElementAs[WorkbookElementReference]("underlyingTextInteraction").referencedId)
 
     override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable) = Seq.empty

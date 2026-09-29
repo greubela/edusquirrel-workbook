@@ -3,6 +3,7 @@ package it.evadid.workbook.elements.structureElements
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
+import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig
 import it.evadid.workbook.abstractions.WorkbookStructuringType.SECTION
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookStructureElement, WorkbookStructuringType}
 import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
@@ -28,6 +29,8 @@ case class WorkbookSection
 
 object WorkbookSection {
   val factory: WorkbookElementFactory[WorkbookSection] = new WorkbookElementFactory[WorkbookSection] {
+    override lazy val elementMapAndOrderForConstructorLike = Map(0 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("elementId", true)), 1 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("metadata", false)), 2 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("requiredBefore", false)), 3 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("recommendedBefore", false)), 4 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("content", false)))
+
     private def references(element: WorkbookElementSerializable, key: String) =
       element.getElementsAs[WorkbookElementReference](key)
 
@@ -54,10 +57,10 @@ object WorkbookSection {
 
    val referencingJsonSerializer: ReadWriter[WorkbookSection] = new Serializer[WorkbookSection]() {
     override def serialize(obj: WorkbookSection): String = {
-      WorkbookElementSerializable.base(obj)
+      val serialized = WorkbookElementSerializable(obj.elementId, obj.getClass.getSimpleName, Map.empty)
         .withElementAddedAs("metadata", obj.metadata)
         .withElementsAddedAs("content", obj.sectionContent.map(_.asRef))
-        .toJson
+      write(serialized)(using WorkbookElementSerializable.regularSerializer)
     }
 
     override def deserialize(str: String): WorkbookSection = ???

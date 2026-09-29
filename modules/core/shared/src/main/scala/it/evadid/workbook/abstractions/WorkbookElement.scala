@@ -13,7 +13,7 @@ object WorkbookElement {
 }
 
 sealed trait WorkbookElement {
-  lazy val elementId: String
+  val elementId: String
   //  assert(elementId.matches("[a-zA-Z0-9.-]+"))
   lazy val asRef = WorkbookElementReference(elementId, Option(this.getClass.getSimpleName))
 
