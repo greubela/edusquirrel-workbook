@@ -35,6 +35,7 @@ case class SortingReasonItem(
 object SortingReasonInteraction {
 
     val factory = new SimpleWorkbookElementFactory[SortingReasonInteraction]() {
+    override protected val constructorFieldOrder = List("elementId", "fields", "items", "openButtonLabel")
     override def finishSerialization(baseElement: WorkbookElementSerializable, e: SortingReasonInteraction): WorkbookElementSerializable = {
       baseElement
         .withElementsAddedAs[LanguageMapContentId]("fields", e.fields)

@@ -20,6 +20,7 @@ case class SortingItem(label: LanguageMapContentId, correctFieldIndex: Int, wron
 object SortingInteraction {
 
   val factory = new SimpleWorkbookElementFactory[SortingInteraction]() {
+    override protected val constructorFieldOrder = List("elementId", "fields", "items", "openButtonLabel")
     override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: SortingInteraction): WorkbookElementSerializable = {
       baseElement
         .withElementsAddedAs[LanguageMapContentId]("fields", infoElement.fields)

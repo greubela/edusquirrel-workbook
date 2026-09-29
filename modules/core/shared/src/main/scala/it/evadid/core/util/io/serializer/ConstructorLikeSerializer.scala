@@ -22,7 +22,7 @@ object ConstructorLikeSerializer {
     }
   }
 
-  def formatConstructorEntry(set: Set[VariableToSerialize]): String = {
+  private def formatConstructorEntry(set: Set[VariableToSerialize]): String = {
     set.toList.sortBy(_.positionInConstructor).map(curEntry => {
       if (curEntry.displayConf.inlinedWithoutKey) curEntry.jsonValueAsStr
       else s"\n${curEntry.key}: ${curEntry.jsonValueAsStr}"
@@ -62,10 +62,7 @@ object ConstructorLikeSerializer {
   def deserialize(str: String): ConstructorLikeReadResult = {
     val parsed: (String, Seq[String]) = ConstructorLikeParserWithJsonElements.parseString(str).get
     val mapped: Map[String, Value] = parsed._2.flatMap { curJsonStr =>
-      ujson.read(curJsonStr).obj.map {
-        case (key, value) => key -> value
-        case value => println(s"!!just value: ${value}")
-      }
+      ujson.read(curJsonStr).obj.map((key, value) => key -> value)
     }.toMap
     ConstructorLikeReadResult(parsed._1, mapped)
   }

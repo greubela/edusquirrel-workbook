@@ -17,7 +17,7 @@ case class Workbook(
                      elementId: String,
                      metadata: WorkbookMetadata,
                      sections: List[WorkbookSection],
-                   ) extends WorkbookStructureElement[WorkbookSection] derives ReadWriter {
+                   ) extends WorkbookStructureElement[WorkbookSection] {
 
   val workbookId: String = elementId
 
@@ -70,15 +70,20 @@ object Workbook {
         2 -> List(VariableDisplayConfig("sections", false))
       )
     }
-    override lazy val writerJsonRegularRefBased: default.Writer[Workbook] = Workbook.derived$ReadWriter
+    override lazy val writerJsonRegularRefBased: default.Writer[Workbook] = writer[ujson.Value].comap { workbook =>
+      ujson.Obj(
+        "elementId" -> workbook.elementId,
+        "metadata" -> writeJs(workbook.metadata),
+        "sections" -> writeJs(workbook.sections.map(_.asRef))
+      )
+    }
 
     override def addElementsToSerialization(element: Workbook): Map[String, Value] = {
-      val allRequiredIds = element.allChildrenFullSubtree.flatMap(el => el.associatedFactory.idsRequiredForDeserialization(el.toSerializableType))
+      val allRequiredIds = element.allChildrenFullSubtree.flatMap(el => el.associatedFactory.idsRequiredForDeserialization(el.associatedFactory.toSerializableElementUnsafe(el)))
       val requiredToSerialize = element.allChildrenFullSubtree.filter(curChild => allRequiredIds.contains(curChild.elementId))
-      Map.newBuilder(
-        "test" -> element.sections.map(_.sectionId),
-        "serializedElements", requiredToSerialize.map(_.toSerialized)
-      ).result()
+      Map(
+        "serializedElements" -> writeJs(requiredToSerialize.map(el => el.associatedFactory.toStringConstructorLikeUnsafe(el)))
+      )
     }
   }
 }

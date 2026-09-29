@@ -17,6 +17,8 @@ case class LabeledWorkbookElement[T <: WorkbookElement](override val elementId: 
 object LabeledWorkbookElement {
 
   lazy val factory: WorkbookElementFactory[LabeledWorkbookElement[WorkbookElement]] = new WorkbookElementFactory[LabeledWorkbookElement[WorkbookElement]](){
+    override lazy val elementMapAndOrderForConstructorLike = Map(0 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("elementId", true)), 1 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("baseElement", false)), 2 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("label", false)))
+
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] =
       Set(element.getElementAs[WorkbookElementReference]("baseElement").referencedId)
 

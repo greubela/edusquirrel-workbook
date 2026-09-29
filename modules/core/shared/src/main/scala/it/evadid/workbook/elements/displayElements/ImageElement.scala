@@ -26,6 +26,7 @@ object ImageElement {
 
   object LanguageMapBasedImageElement {
     val factory: WorkbookElementFactory[LanguageMapBasedImageElement] = new SimpleWorkbookElementFactory[LanguageMapBasedImageElement]() {
+      override protected val constructorFieldOrder = List("elementId", "content", "howToResolveUrl")
       override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: LanguageMapBasedImageElement): WorkbookElementSerializable = {
         baseElement
           .withElementAddedAs("content", infoElement.languageMapContentId)

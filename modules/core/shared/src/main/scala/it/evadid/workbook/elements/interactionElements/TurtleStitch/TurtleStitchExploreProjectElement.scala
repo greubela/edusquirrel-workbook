@@ -16,6 +16,7 @@ case class TurtleStitchExploreProjectElement(
 object TurtleStitchExploreProjectElement {
 
   val factory: SimpleWorkbookElementFactory[TurtleStitchExploreProjectElement] = new SimpleWorkbookElementFactory[TurtleStitchExploreProjectElement]() {
+    override protected val constructorFieldOrder = List("elementId", "projectPathRelToResources")
 
     override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: TurtleStitchExploreProjectElement): WorkbookElementSerializable = {
       baseElement.withElementAdded("projectPathRelToResources", infoElement.projectPathRelToResources)
