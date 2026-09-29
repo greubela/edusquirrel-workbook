@@ -9,11 +9,9 @@ import upickle.default.*
 
 case class DisplayLangMapContent(override val elementId: String, content: LanguageMapContentId, contentType: LangMapContentIdType) extends WorkbookDisplayElement derives ReadWriter {
   override val associatedFactory: WorkbookElementFactory[DisplayLangMapContent] = DisplayLangMapContent.factory
-
 }
 
 object DisplayLangMapContent {
-
 
   val factory: NoRefsElementFactory[DisplayLangMapContent] = new NoRefsElementFactory[DisplayLangMapContent]() {
 
