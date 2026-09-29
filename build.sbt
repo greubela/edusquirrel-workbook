@@ -49,10 +49,11 @@ lazy val server = (project in file("./modules/server"))
       case x => (assembly / assemblyMergeStrategy).value(x)
 
     },
-    libraryDependencies ++= (coreDependencies.value ++ jvmDependencies.value ++ Seq(
+    // Dependencies exported by core.jvm are already on this project's classpath.
+    libraryDependencies ++= Seq(
       "com.mysql" % "mysql-connector-j" % "9.7.0",
       "org.eclipse.angus" % "jakarta.mail" % "2.0.3"
-    ))
+    )
   )
 
 lazy val client = (project in file("./modules/client"))
@@ -63,8 +64,7 @@ lazy val client = (project in file("./modules/client"))
     name := "client",
     scalaJSUseMainModuleInitializer := true,
     Compile / mainClass := Some("mainApp"),
-    Test / jsEnv := new NodeJSEnv(),
-    libraryDependencies ++= (coreDependencies.value ++ jsDependencies.value)
+    Test / jsEnv := new NodeJSEnv()
   )
 
 lazy val worker = (project in file("./modules/worker"))
@@ -75,7 +75,5 @@ lazy val worker = (project in file("./modules/worker"))
     name := "worker",
     scalaJSUseMainModuleInitializer := true,
     Compile / mainClass := Some("it.evadid.worker.WebWorkerBackendServer"),
-    Test / jsEnv := new NodeJSEnv(),
-    libraryDependencies ++= (coreDependencies.value ++ jsDependencies.value)
+    Test / jsEnv := new NodeJSEnv()
   )
-
