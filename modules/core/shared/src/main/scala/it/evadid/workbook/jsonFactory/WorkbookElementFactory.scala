@@ -44,23 +44,31 @@ object WorkbookElementFactory {
       finishDeserialization(element)
 
     def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: T): WorkbookElementSerializable
+
     def finishDeserialization(element: WorkbookElementSerializable): T
   }
 
   trait NoContentElementFactory[T <: WorkbookElement] extends SimpleWorkbookElementFactory[T] {
     override protected val constructorFieldOrder: List[String] = List("elementId")
+
     override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: T): WorkbookElementSerializable = baseElement
+
     override def finishDeserialization(element: WorkbookElementSerializable): T = callConstructor(element.elementId)
+
     def callConstructor(elementId: String): T
   }
 
   trait SingleContentElementFactory[T <: WorkbookElement] extends SimpleWorkbookElementFactory[T] {
     override protected val constructorFieldOrder: List[String] = List("elementId", "content")
+
     def readContent(infoElement: T): it.evadid.core.datastructures.language.LanguageMapContentId
+
     override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: T): WorkbookElementSerializable =
       baseElement.withElementAddedAs("content", readContent(infoElement))
+
     override def finishDeserialization(element: WorkbookElementSerializable): T =
       finishDeserialization(element.elementId, element.getElementAs("content"))
+
     def finishDeserialization(elementId: String, content: it.evadid.core.datastructures.language.LanguageMapContentId): T
   }
 
@@ -75,6 +83,8 @@ object WorkbookElementFactory {
       parse(ser, Map())
     }
   }
+
+  val serializerRegularJsonWorkbook: Serializer[Workbook] = serializerRefBasedJson.map(_.asInstanceOf[Workbook], _.asInstanceOf[WorkbookElement])
 
   val serializerConstructorLike: Serializer[WorkbookElement] = new Serializer[WorkbookElement]() {
     override def serialize(obj: WorkbookElement): String = {

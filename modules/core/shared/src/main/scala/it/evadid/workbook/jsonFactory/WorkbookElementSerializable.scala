@@ -10,15 +10,8 @@ import upickle.default.*
 
 object WorkbookElementSerializable {
 
-  def getAutoFieldsMap[T](obj: T)(implicit regularSerializer: Writer[T]): Map[String, ujson.Value] = {
-    val jsonString: String = writeJs(obj)(using regularSerializer).str
-    val regularSer: ujson.Value = ujson.read(jsonString)
-    val variableSet: LinkedHashMap[String, ujson.Value] = regularSer.obj
-    variableSet.toMap
-  }
-
   def getSerializedVersion[T <: WorkbookElement](obj: T)(implicit rw: Writer[T]): WorkbookElementSerializable = {
-    val map = getAutoFieldsMap(obj)(using rw)
+    val map = ConstructorLikeSerializer.getAutoFieldsMap(obj)(using rw)
     WorkbookElementSerializable(obj.elementId, obj.getClass.getSimpleName, map)
   }
 

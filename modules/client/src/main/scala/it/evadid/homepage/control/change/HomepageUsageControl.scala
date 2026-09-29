@@ -12,7 +12,6 @@ import it.evadid.distribution.command.SerializedException
 import it.evadid.distribution.commandTypes.UserCommands
 import it.evadid.distribution.commandTypes.UserCommands.{AuthMailRequest, CreateAccountRequest, LoginRequest, LoginResponse}
 import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer
-import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer.SessionData
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.homepage.workbook.content.WorkbookFactory

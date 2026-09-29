@@ -3,6 +3,7 @@ package it.evadid.core.util.io.serializer
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.{VariableDisplayConfig, VariableToSerialize}
 import it.evadid.core.util.io.{ConstructorLikeParserWithJsonElements, Serializer}
 import ujson.Value
+import upickle.core.LinkedHashMap
 import upickle.default.*
 
 object ConstructorLikeSerializer {
@@ -37,11 +38,19 @@ object ConstructorLikeSerializer {
       .map(trip => VariableToSerialize(key, jsonValueAsStr, trip._1, trip._2, trip._3))
   }
 
-  def serialize[T](elementMapAndOrder: Map[Int, List[VariableDisplayConfig]], obj: T, writer: Writer[T], constructorName: String): String = {
-    val jsonString: String = writeJs(obj)(using writer).str
+
+  def getAutoFieldsMap[T](obj: T)(implicit regularSerializer: Writer[T]): Map[String, ujson.Value] = {
+    val jsonString: String = write(obj)(using regularSerializer)
     val regularSer: ujson.Value = ujson.read(jsonString)
-    val variableSet: Set[VariableToSerialize] = regularSer.obj.keySet.toSet.flatMap(key => {
-      createSerVar(elementMapAndOrder, key, ujson.write(regularSer.obj(key)))
+    val variableSet: LinkedHashMap[String, ujson.Value] = regularSer.obj
+    variableSet.toMap
+  }
+
+  def serialize[T](elementMapAndOrder: Map[Int, List[VariableDisplayConfig]], obj: T, writer: Writer[T], constructorName: String): String = {
+   val fieldMap: Map[String, Value] = getAutoFieldsMap(obj)(using writer)
+
+    val variableSet: Set[VariableToSerialize] = fieldMap.keySet.flatMap(key => {
+      createSerVar(elementMapAndOrder, key, write(fieldMap(key)))
     })
     if (variableSet.nonEmpty) {
       val maxPos = variableSet.maxBy(_.constructorPosition).constructorPosition

@@ -29,6 +29,9 @@ sealed trait WorkbookElement {
 
   lazy val toSerialized: WorkbookElementSerializable = associatedFactory.toSerializableElementUnsafe(this)
 
+  lazy val toStringRegularJson: String = WorkbookElementFactory.serializerRefBasedJson.serialize(this)
+  lazy val toStringConstructorLike: String = WorkbookElementFactory.serializerConstructorLike.serialize(this)
+
 }
 
 trait WorkbookDisplayElement extends WorkbookElement {

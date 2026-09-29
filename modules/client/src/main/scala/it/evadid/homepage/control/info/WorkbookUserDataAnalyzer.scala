@@ -7,10 +7,11 @@ import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.util.DownloadToDisc
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.abstractions.WorkbookInteractionElement
+import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.structureElements.Workbook
 import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
 import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import upickle.default.ReadWriter.join
 
 object WorkbookUserDataAnalyzer {
@@ -19,7 +20,8 @@ object WorkbookUserDataAnalyzer {
 
   private given usiRW: upickle.ReadWriter[AllUserInfo] = upickle.macroRW
 
-  private given wbRW: upickle.ReadWriter[Workbook] = Workbook.constructorSerializer.uPickleReadWrite
+  private given woRW: upickle.ReadWriter[Workbook] = WorkbookElementFactory.serializerRegularJsonWorkbook.uPickleReadWrite
+
   private given seRW: upickle.ReadWriter[SessionData] = upickle.macroRW
 
   val serializerSessionData: Serializer[SessionData] = Serializer.fromUpickleJson(seRW)
