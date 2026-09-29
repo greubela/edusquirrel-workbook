@@ -3,19 +3,21 @@ package it.evadid.workbook.elements.structureElements
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User
-import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
+import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig
 import it.evadid.workbook.abstractions.WorkbookStructuringType.WORKBOOK
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement, WorkbookStructureElement, WorkbookStructuringType}
 import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
+import ujson.Value
+import upickle.default
 import upickle.default.*
 
 case class Workbook(
                      elementId: String,
                      metadata: WorkbookMetadata,
                      sections: List[WorkbookSection],
-                   ) extends WorkbookStructureElement[WorkbookSection] {
+                   ) extends WorkbookStructureElement[WorkbookSection] derives ReadWriter {
 
   val workbookId: String = elementId
 
@@ -42,28 +44,10 @@ object Workbook {
 
   }
 
-  private given sectionRefSerializer: ReadWriter[WorkbookSection] = WorkbookSection.referencingJsonSerializer
-
-  private val regularSerializer: ReadWriter[Workbook] = macroRW
-
-  val constructorSerializer: Serializer[Workbook] = new ConstructorLikeSerializer[Workbook] {
-    override implicit val regularSerializer: Serializer[Workbook] = Serializer.fromUpickleJson(Workbook.regularSerializer)
-    override val constructorName: String = Workbook.this.getClass.getSimpleName
-
-    override val elementMapAndOrder: Map[Int, List[VariableDisplayConfig]] = {
-      {
-        Map(
-          0 -> List(VariableDisplayConfig("elementId", true)),
-          1 -> List(VariableDisplayConfig("metadata", true)),
-          2 -> List(VariableDisplayConfig("sections", false))
-        )
-      }
-    }
-  }
 
   lazy val factory: WorkbookElementFactory[Workbook] = new WorkbookElementFactory[Workbook]() {
-    override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = {
-      element.getElementsAs[WorkbookElementSerializable]("serializedElements")
+    override def serializedElementKeysThatContainOtherSerializations(element: WorkbookElementSerializable): Set[String] = {
+      Set("serializedElements")
     }
 
     def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = {
@@ -79,17 +63,22 @@ object Workbook {
       )
     }
 
-    override def toSerializableElement(element: Workbook): WorkbookElementSerializable = {
+    override lazy val elementMapAndOrderForConstructorLike: Map[Int, List[ConstructorLikeSerializer.VariableDisplayConfig]] = {
+      Map(
+        0 -> List(VariableDisplayConfig("elementId", true)),
+        1 -> List(VariableDisplayConfig("metadata", true)),
+        2 -> List(VariableDisplayConfig("sections", false))
+      )
+    }
+    override lazy val writerJsonRegularRefBased: default.Writer[Workbook] = Workbook.derived$ReadWriter
+
+    override def addElementsToSerialization(element: Workbook): Map[String, Value] = {
       val allRequiredIds = element.allChildrenFullSubtree.flatMap(el => el.associatedFactory.idsRequiredForDeserialization(el.toSerializableType))
       val requiredToSerialize = element.allChildrenFullSubtree.filter(curChild => allRequiredIds.contains(curChild.elementId))
-
-      toFactoryBase(element)
-        .withElementAddedAs("metadata", element.metadata)
-        .withElementsAdded("test", element.sections.map(_.sectionId))
-        .withElementsAddedAs[WorkbookElementSerializable]("serializedElements", requiredToSerialize.map(_.toSerializableType))
-        .withElementsAddedAs[WorkbookElementReference]("sections", element.sections.map(_.asRef))
+      Map.newBuilder(
+        "test" -> element.sections.map(_.sectionId),
+        "serializedElements", requiredToSerialize.map(_.toSerialized)
+      ).result()
     }
   }
-
-
 }

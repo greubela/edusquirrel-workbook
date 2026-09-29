@@ -4,22 +4,16 @@ import it.evadid.core.datastructures.state.State
 import it.evadid.core.util.io.{AutoSerializable, Serializer}
 import it.evadid.workbook.interaction.variable.InteractionVariable
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
-import upickle.ReadWriter
+import upickle.default.*
 
 object WorkbookElement {
-  implicit val referenceWriter: ReadWriter[WorkbookElement] = new Serializer[WorkbookElement]() {
-    override def serialize(obj: WorkbookElement): String = {
-      upickle.write(obj.asRef)(using WorkbookElementReference.given_ReadWriter_WorkbookElementReference)
-    }
-    override def deserialize(str: String): WorkbookElement = {
-      ???
-    }
-  }.uPickleReadWrite
+
+
 
 }
 
-sealed trait WorkbookElement extends AutoSerializable[WorkbookElement, WorkbookElementSerializable] {
-  val elementId: String
+sealed trait WorkbookElement {
+  lazy val elementId: String
   //  assert(elementId.matches("[a-zA-Z0-9.-]+"))
   lazy val asRef = WorkbookElementReference(elementId, Option(this.getClass.getSimpleName))
 
@@ -31,13 +25,9 @@ sealed trait WorkbookElement extends AutoSerializable[WorkbookElement, WorkbookE
 
   lazy val allChildrenFullSubtree: List[WorkbookElement] = childrenOfThisElement ++ childrenOfThisElement.flatMap(_.allChildrenFullSubtree)
 
-  lazy val serializer: Serializer[WorkbookElementSerializable] = WorkbookElementSerializable.serializer
-
-  //def fromFactory(factoryVerifiedType: WorkbookElementFactory): WorkbookElement
-
   val associatedFactory: WorkbookElementFactory[? <: WorkbookElement]
 
-  lazy val toSerializableType: WorkbookElementSerializable = associatedFactory.toSerializableElementUnsafe(this)
+  lazy val toSerialized: WorkbookElementSerializable = associatedFactory.toSerializableElementUnsafe(this)
 
 }
 

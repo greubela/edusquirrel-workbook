@@ -1,26 +1,35 @@
 package it.evadid.workbook.elements.displayElements
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.workbook.abstractions.WorkbookDisplayElement
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
-import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
+import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
+import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig
+import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement}
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory.NoRefsElementFactory
+import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import upickle.default.*
 
-case class CollapsibleInstructionElement(override val elementId: String, titleLabel: LanguageMapContentId, bodyContent: LanguageMapContentId, initiallyCollapsed: Boolean = true) extends WorkbookDisplayElement {
-  override val associatedFactory: SimpleWorkbookElementFactory[CollapsibleInstructionElement] = CollapsibleInstructionElement.factory
+case class CollapsibleInstructionElement(override val elementId: String, titleLabel: LanguageMapContentId, bodyContent: LanguageMapContentId, initiallyCollapsed: Boolean = true) extends WorkbookDisplayElement derives ReadWriter{
+  override val associatedFactory: WorkbookElementFactory[CollapsibleInstructionElement] = CollapsibleInstructionElement.factory
 
 }
 
 object CollapsibleInstructionElement {
-  val factory: SimpleWorkbookElementFactory[CollapsibleInstructionElement] = new SimpleWorkbookElementFactory[CollapsibleInstructionElement]() {
+  val factory: NoRefsElementFactory[CollapsibleInstructionElement] = new NoRefsElementFactory[CollapsibleInstructionElement]() {
 
-    override def finishSerialization(baseElement: WorkbookElementSerializable, e: CollapsibleInstructionElement): WorkbookElementSerializable = {
-      baseElement.
-        withElementAddedAs("titleLabel", e.titleLabel)
-        .withElementAddedAs("bodyContent", e.bodyContent)
-        .withElementAdded("initiallyCollapsed", e.initiallyCollapsed.toString)
+    override lazy val elementMapAndOrderForConstructorLike: Map[Int, List[ConstructorLikeSerializer.VariableDisplayConfig]] =
+      Map(
+        0 -> List(
+          VariableDisplayConfig("elementId", true)),
+        1 -> List(
+          VariableDisplayConfig("initiallyCollapsed", false),
+          VariableDisplayConfig("bodyContent", false)
+        )
+      )
+    override lazy val writerJsonRegularRefBased: Writer[CollapsibleInstructionElement] = {
+      CollapsibleInstructionElement.derived$ReadWriter
     }
 
-    override def finishDeserialization(f: WorkbookElementSerializable): CollapsibleInstructionElement = {
+    override def fromSerializedElement(f: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): CollapsibleInstructionElement = {
       CollapsibleInstructionElement(
         f.elementId,
         f.getElementAs[LanguageMapContentId]("titleLabel"),
@@ -28,4 +37,5 @@ object CollapsibleInstructionElement {
         f.getElement("initiallyCollapsed").toBoolean)
     }
   }
+
 }

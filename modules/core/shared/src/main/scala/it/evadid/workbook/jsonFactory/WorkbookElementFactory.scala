@@ -1,7 +1,8 @@
 package it.evadid.workbook.jsonFactory
 
-import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
+import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.ImageElement.LanguageMapBasedImageElement
@@ -16,74 +17,69 @@ import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, Sli
 import it.evadid.workbook.elements.interactionElements.sortingExercise.SortingInteraction
 import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.SortingReasonInteraction
 import it.evadid.workbook.elements.structureElements.{ExerciseContainer, Workbook, WorkbookSection}
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
+import upickle.default
+import upickle.default.*
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 
 object WorkbookElementFactory {
 
+  val serializerRefBasedJson: Serializer[WorkbookElement] = new Serializer[WorkbookElement]() {
+    override def serialize(obj: WorkbookElement): String = {
+      val ser = obj.associatedFactory.toSerializableElementUnsafe(obj)
+      write(ser)(using WorkbookElementSerializable.regularSerializer)
+    }
 
-  trait NoContentElementFactory[T <: WorkbookElement] extends SimpleWorkbookElementFactory[T] {
-    override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: T): WorkbookElementSerializable = baseElement
-
-    override def finishDeserialization(element: WorkbookElementSerializable): T = callConstructor(element.elementId)
-
-    def callConstructor(elementId: String): T
+    override def deserialize(str: String): WorkbookElement = {
+      val ser = read(str)(using WorkbookElementSerializable.regularSerializer)
+      parse(ser, Map())
+    }
   }
 
+  val serializerConstructorLike: Serializer[WorkbookElement] = new Serializer[WorkbookElement]() {
+    override def serialize(obj: WorkbookElement): String = {
+      val ser = obj.associatedFactory.toSerializableElementUnsafe(obj)
+      val ord = obj.associatedFactory.elementMapAndOrderForConstructorLike
+      val wri = obj.associatedFactory.writerJsonRegularRefBased
+      val con = obj.getClass.getSimpleName
+      val res = ConstructorLikeSerializer.serialize(ord, obj, wri, con)
+      res
+    }
+
+    override def deserialize(str: String): WorkbookElement = {
+      val ser = WorkbookElementSerializable.fromStringConstructorLike(str)
+      parse(ser, Map())
+    }
+  }
+
+  trait NoRefsElementFactory[T <: WorkbookElement] extends WorkbookElementFactory[T] {
+    override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set()
+
+    override def serializedElementKeysThatContainOtherSerializations(element: WorkbookElementSerializable): Set[String] = Set()
+
+    def addElementsToSerialization(element: T): Map[String, ujson.Value] = Map()
+  }
 
   def unsupportedFactory[T <: WorkbookElement](elementName: String): WorkbookElementFactory[T] = new WorkbookElementFactory[T] {
     private def unsupported(operation: String): Nothing =
       throw new UnsupportedOperationException(s"$elementName does not support workbook $operation")
 
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set.empty
-    override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
+
+    override def serializedElementKeysThatContainOtherSerializations(element: WorkbookElementSerializable): Set[String] = Set()
+
     override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): T = unsupported("deserialization")
+
     override def toSerializableElement(element: T): WorkbookElementSerializable = unsupported("serialization")
+
+    override lazy val elementMapAndOrderForConstructorLike: Map[Int, List[VariableDisplayConfig]] = ???
+    override lazy val writerJsonRegularRefBased: default.Writer[T] = ???
+
+
+    def addElementsToSerialization(element: T): Map[String, ujson.Value] = Map()
   }
 
-  trait SingleContentElementFactory[T <: WorkbookElement] extends SimpleWorkbookElementFactory[T] {
-
-    def readContent(infoElement: T): LanguageMapContentId
-
-    override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: T): WorkbookElementSerializable = {
-      baseElement.withElementAddedAs("content", readContent(infoElement))
-    }
-
-    override def finishDeserialization(element: WorkbookElementSerializable): T = {
-      finishDeserialization(element.elementId, element.getElementAs[LanguageMapContentId]("content"))
-    }
-
-    def finishDeserialization(elementId: String, content: LanguageMapContentId): T
-
-
-  }
-
-  trait SimpleWorkbookElementFactory[T <: WorkbookElement] extends WorkbookElementFactory[T] {
-
-    override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set()
-
-    override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = List()
-
-    override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): T = finishDeserialization(element)
-
-    override def toSerializableElement(element: T): WorkbookElementSerializable = finishSerialization(toFactoryBase(element), element)
-
-    def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: T): WorkbookElementSerializable
-
-    def finishDeserialization(element: WorkbookElementSerializable): T
-  }
-
-  val workbookElementSerializer: Serializer[WorkbookElement] = new Serializer[WorkbookElement]() {
-    override def serialize(obj: WorkbookElement): String = {
-      WorkbookElementSerializable.serializer.serialize(obj.toSerializableType)
-    }
-
-    override def deserialize(str: String): WorkbookElement = {
-      parse(WorkbookElementSerializable.serializer.deserialize(str))
-    }
-  }
 
   private lazy val knownFactoriesMap: Map[String, WorkbookElementFactory[? <: WorkbookElement]] = Map(
     classOf[Workbook].getSimpleName -> Workbook.factory,
@@ -109,10 +105,9 @@ object WorkbookElementFactory {
     classOf[TurtleStitchExploreProjectElement].getSimpleName -> TurtleStitchExploreProjectElement.factory,
     classOf[TurtleStitchRecreateShapeInteraction].getSimpleName -> TurtleStitchRecreateShapeInteraction.factory,
     classOf[ProgrammingExercise].getSimpleName -> ProgrammingExercise.factory,
-  //  classOf[ImageElement.FileBasedImageElement].getSimpleName -> ImageElement.FileBasedImageElement.factory,
+    //  classOf[ImageElement.FileBasedImageElement].getSimpleName -> ImageElement.FileBasedImageElement.factory,
     classOf[ImageElement.LanguageMapBasedImageElement].getSimpleName -> LanguageMapBasedImageElement.factory
   )
-
 
   def parse(element: WorkbookElementSerializable, knownElements: Map[String, WorkbookElement] = Map()): WorkbookElement = {
     parseAll(List(element), knownElements).head
@@ -151,13 +146,15 @@ object WorkbookElementFactory {
         if (factory.isEmpty) {
           throw SerializedException(s"No factory known for WorkbookElement with type ${curOpenElement.elementType}")
         } else {
-          newlyProvided ++= factory.get.serializedElementContainsOtherSerializations(curOpenElement)
-          if (factory.get.idsRequiredForDeserialization(curOpenElement).forall(alreadyParsed.keySet.contains(_))) {
-            val parsed: WorkbookElement = factory.get.fromSerializedElement(curOpenElement, alreadyParsed)
-            newlyFinished += parsed.elementId -> parsed
-          } else {
-            stillOpen += curOpenElement
-          }
+          newlyProvided ++= factory.get.serializedElementKeysThatContainOtherSerializations(curOpenElement).flatMap(curOtherKey => {
+            curOpenElement.getElementsAsSerializableElement(curOtherKey)
+          })
+        }
+        if (factory.get.idsRequiredForDeserialization(curOpenElement).forall(alreadyParsed.keySet.contains(_))) {
+          val parsed: WorkbookElement = factory.get.fromSerializedElement(curOpenElement, alreadyParsed)
+          newlyFinished += parsed.elementId -> parsed
+        } else {
+          stillOpen += curOpenElement
         }
       })
 
@@ -169,35 +166,39 @@ object WorkbookElementFactory {
 
     }
   }
-
 }
-
 
 trait WorkbookElementFactory[T <: WorkbookElement] {
 
-  protected def toFactoryBase(element: T): WorkbookElementSerializable = WorkbookElementSerializable(
-    element.elementId, element.getClass.getSimpleName, Map()
-  )
+  lazy val elementMapAndOrderForConstructorLike: Map[Int, List[VariableDisplayConfig]]
 
-  private def associatedSerializer(parsedElements: Map[String, WorkbookElement]): Serializer[T] = new Serializer[T]() {
-    override def serialize(obj: T): String = {
-      WorkbookElementSerializable.serializer.serialize((toSerializableElement(obj)))
-    }
+  lazy val writerJsonRegularRefBased: Writer[T]
+  /*
+  element.getElementsAs[WorkbookElementSerializable]("serializedElements")(using )
+   */
 
-    override def deserialize(str: String): T = {
-      fromSerializedElement(WorkbookElementSerializable.serializer.deserialize(str), parsedElements)
-    }
+  def addElementsToSerialization(element: T): Map[String, ujson.Value]
+
+  def toSerializableElement(element: T): WorkbookElementSerializable = {
+    // val map = WorkbookElementSerializable.getAutoFieldsMap(element)(using writerJsonRegularRefBased)
+    // WorkbookElementSerializable(element.elementId, element.getClass.getSimpleName, map)
+    val res = WorkbookElementSerializable.getSerializedVersion(element)(using writerJsonRegularRefBased)
+    res.copy(allConstructorFields = res.allConstructorFields ++ addElementsToSerialization(element))
+  }
+
+  def toStringRefBasedJson(element: T): String = {
+    write(toSerializableElement(element))(using WorkbookElementSerializable.regularSerializer)
+  }
+
+  def toStringConstructorLike(element: T): String = {
+    ConstructorLikeSerializer.serialize(elementMapAndOrderForConstructorLike, element, writerJsonRegularRefBased, element.getClass.getSimpleName)
   }
 
   def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String]
 
-  def idsRequiredForDeserialization(element: T): Set[String] = idsRequiredForDeserialization(element.toSerializableType)
-
-  def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable]
+  def serializedElementKeysThatContainOtherSerializations(element: WorkbookElementSerializable): Set[String]
 
   def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): T
-
-  def toSerializableElement(element: T): WorkbookElementSerializable
 
   def toSerializableElementUnsafe(element: WorkbookElement): WorkbookElementSerializable = {
     toSerializableElement(element.asInstanceOf[T])
