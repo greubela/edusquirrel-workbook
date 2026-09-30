@@ -37,7 +37,7 @@ object FullImage {
           svg.y := builder.bounds.startPoint.y.toString,
           svg.width := width,
           svg.height := height,
-          svg.stroke := "#ffff00",
+          svg.fill := "#ffff00",
         ),
         svg.circle(
           svg.x := "-1",
