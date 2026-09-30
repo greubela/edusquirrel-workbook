@@ -182,6 +182,9 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     // Force: flush on close / popup must capture in-progress slot text.
     editor.foreach(checkWhetherProgramXmlChanged(_, allowDuringEdit = true))
 
+  override def currentProjectXml(): Option[String] =
+    editor.map(_.getProjectXML())
+
   private def canonicalXml(state: ProgrammingExerciseState): String =
     state.snapXml
 
