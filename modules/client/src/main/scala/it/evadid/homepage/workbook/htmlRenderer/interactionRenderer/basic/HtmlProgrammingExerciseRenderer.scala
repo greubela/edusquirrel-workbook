@@ -15,6 +15,8 @@ import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingE
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import todomove.datastructures.web.file.FullImage
 
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+
 case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[ProgrammingExercise] {
 
   override protected def createRendering(workbookElement: ProgrammingExercise): AtomarLineRendering = {
@@ -77,6 +79,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
 
     def runProgram(): Unit =
       stageImageVar.set(Some(SnapTurtleStage.run(boundVar.now())))
+      editor.getCurrentTurtleCommands().foreach(commands => println(commands))
 
     val runButton: HtmlButtonElement =
       HtmlButtonElement.withTextLabel("basic/runProgram", _ => runProgram())

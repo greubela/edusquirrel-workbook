@@ -16,7 +16,7 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
 
-final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.js") {
+final class PyodideWorkerClient(workerUrl: String = PyodideWorkerClient.configuredWorkerUrl()) {
 
   private val worker =
     new dom.Worker(
@@ -179,6 +179,23 @@ final class PyodideWorkerClient(workerUrl: String = "./js/pyodide-worker.js") {
 }
 
 object PyodideWorkerClient {
+
+  /**
+   * Resolve the shared worker URL for every Pyodide client.
+   *
+   * Workbook entry pages live one directory below `homepage`, so their local
+   * worker is `../js/pyodide-worker.js`. Deployments may override that default
+   * through `window.PYODIDE_WORKER_URL`. Reading the value as a property of
+   * `globalThis` is important: selecting it directly from `js.Dynamic.global`
+   * compiles to a free identifier and throws when the optional config is absent.
+   */
+  def configuredWorkerUrl(
+      globalObject: js.Dynamic = js.Dynamic.global.globalThis.asInstanceOf[js.Dynamic]
+  ): String = {
+    val configured = globalObject.selectDynamic("PYODIDE_WORKER_URL")
+    if !js.isUndefined(configured) && configured != null then configured.asInstanceOf[String]
+    else "../js/pyodide-worker.js"
+  }
 
   private object TurtleFieldKeys {
     val StartPoint = "startPoint"
