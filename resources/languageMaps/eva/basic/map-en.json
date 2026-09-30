@@ -40,7 +40,7 @@
   "hideHeader": "Hide Navigation",
   "openEditor": "Open Editor",
   "canvas": "Your program",
-  "runProgram": "Run",
+  "runProgram": "Run (Pyodide)",
   "turtleOutput": "Turtle output",
   "staticPreviewProgram": "Static preview",
   "syncInfoTooltipPartial": "Synced to  _ / _ Sources",

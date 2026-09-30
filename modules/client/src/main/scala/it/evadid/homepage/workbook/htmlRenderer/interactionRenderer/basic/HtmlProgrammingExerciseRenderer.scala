@@ -85,7 +85,6 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       editor.getCurrentTurtleCommands().onComplete{
         case Success(res) => {
           println("Turtle Commands: " + res)
-          println("Result SVG:")
           val path = TurtlePathBuilder[Double](Point(0,0), res, 90)
           val img = FullImage(path.svgPathBuilder)
           stageImageVar.set(Some(img))

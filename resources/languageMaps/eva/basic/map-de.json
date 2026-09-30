@@ -39,7 +39,7 @@
   "showHeader": "Navigation einblenden",
   "hideHeader": "Navigation ausblenden",
   "canvas": "Dein Programm",
-  "runProgram": "Ausführen",
+  "runProgram": "Ausführen (pyodide)",
   "turtleOutput": "Turtle-Ausgabe",
   "staticPreviewProgram": "Statische Vorschau",
   "openEditor": "Snap Editor öffnen :)",
