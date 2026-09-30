@@ -16,6 +16,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 import todomove.datastructures.web.file.FullImage
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.util.{Failure, Success}
 
 case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[ProgrammingExercise] {
 
@@ -77,9 +78,14 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     // Run → TurtleStitchWorker.simulateGreenFlag → stage PNG
     val stageImageVar: Var[Option[AsyncData[Nothing, FullImage]]] = Var(None)
 
-    def runProgram(): Unit =
+    def runProgram(): Unit = {
       stageImageVar.set(Some(SnapTurtleStage.run(boundVar.now())))
-      editor.getCurrentTurtleCommands().foreach(commands => println(commands))
+      editor.getCurrentTurtleCommands().onComplete{
+        case Success(res) => println("Turtle Commands: " + res)
+        case Failure(exception) => throw exception
+
+      }
+    }
 
     val runButton: HtmlButtonElement =
       HtmlButtonElement.withTextLabel("basic/runProgram", _ => runProgram())
