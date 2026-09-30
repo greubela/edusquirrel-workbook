@@ -4,8 +4,9 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.vm.BeProgram
 import it.evadid.vm.test.BeTestSuite
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
-import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
+import it.evadid.workbook.elements.interactionElements.programming.ProgrammingEditorPalette.Default
+import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import upickle.default.*
 
 import scala.util.Try
 
@@ -13,7 +14,7 @@ case class ProgrammingExercise(
                                 override val elementId: String,
                                 testSuite: Option[BeTestSuite] = None,
                                 editorPalette: ProgrammingEditorPalette = ProgrammingEditorPalette.Default
-) extends WorkbookInteractionElement[ProgrammingExerciseState] {
+                              ) extends WorkbookInteractionElement[ProgrammingExerciseState] derives Writer {
   override val associatedFactory = ProgrammingExercise.factory
 
   override val defaultValue: ProgrammingExerciseState = ProgrammingExerciseState.mini
@@ -21,17 +22,22 @@ case class ProgrammingExercise(
   override val serializerInteractionContent: Serializer[ProgrammingExerciseState] = ProgrammingExercise.StateSerializer
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
-
 }
 
 object ProgrammingExercise {
 
   // TODO: BeTestSuite is an open behavior-only trait with no serializable representation, so a
   // ProgrammingExercise cannot be faithfully reconstructed until test suites define a data format.
-  val factory: WorkbookElementFactory[ProgrammingExercise] =
-    WorkbookElementFactory.unsupportedFactory(classOf[ProgrammingExercise].getSimpleName)
+  val factory: WorkbookElementFactory[ProgrammingExercise] = new WorkbookElementFactory[ProgrammingExercise]() {
+    override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set()
 
-  def fromFactory(factory: WorkbookElementSerializable): ProgrammingExercise = ProgrammingExercise(factory.elementId)
+    override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): ProgrammingExercise = {
+      ProgrammingExercise(element.elementId, None, Default)
+    }
+
+    lazy override val writerJsonRegularRefBased: Writer[ProgrammingExercise] = macroRW
+
+  }
 
   val XmlHeader = "SNAP_XML_V1"
 

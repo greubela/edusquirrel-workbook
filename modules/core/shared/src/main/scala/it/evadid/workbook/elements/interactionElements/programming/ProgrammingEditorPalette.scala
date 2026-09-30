@@ -1,7 +1,9 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import upickle.default.*
+
 /** Which Snap block palette to show in the programming exercise editor. */
-enum ProgrammingEditorPalette:
+enum ProgrammingEditorPalette derives ReadWriter:
   /** Snap's native categories (all blocks per category). */
   case Default
   /** Explicit allow-list aligned with Snap ↔ Python roundtrip support. */
