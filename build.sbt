@@ -64,6 +64,7 @@ lazy val client = (project in file("./modules/client"))
     name := "client",
     scalaJSUseMainModuleInitializer := true,
     Compile / mainClass := Some("mainApp"),
+    libraryDependencies += "org.scalameta" %%% "munit" % "1.3.3" % Test,
     Test / jsEnv := new NodeJSEnv()
   )
 

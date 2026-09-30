@@ -15,7 +15,6 @@ import scala.scalajs.js.JSON
 
 object PythonRuntimeService {
 
-  private val DefaultWorkerUrl = "./js/pyodide-worker.js"
   private val ResultBegin = "__EDUSQ_RESULT_BEGIN__"
   private val ResultEnd = "__EDUSQ_RESULT_END__"
 
@@ -70,19 +69,12 @@ object PythonRuntimeService {
   private def getOrCreateWorker(): PyodideWorkerClient = workerOpt match {
     case Some(w) => w
     case None =>
-      val client = new PyodideWorkerClient(workerUrl)
+      val client = new PyodideWorkerClient()
       workerOpt = Some(client)
       val readiness = readyPromise
       client.run("pass").foreach(_ => readiness.trySuccess(()))
       client
   }
-
-  private def workerUrl: String =
-    try {
-      val v = js.Dynamic.global.selectDynamic("PYODIDE_WORKER_URL")
-      if (!js.isUndefined(v) && v != null) v.asInstanceOf[String]
-      else DefaultWorkerUrl
-    } catch case _: Throwable => DefaultWorkerUrl
 
   private def buildExecutionScript(request: PythonRunRequest): String = {
     val testsJsArray = new js.Array[js.Any]
