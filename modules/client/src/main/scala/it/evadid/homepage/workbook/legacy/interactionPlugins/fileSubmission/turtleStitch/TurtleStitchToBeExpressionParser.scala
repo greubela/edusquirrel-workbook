@@ -809,14 +809,24 @@ object TurtleStitchToBeExpressionParser {
   }
 
   private def collectSignatures(project: Project): List[Signature] = {
-    val allBlocks = project.scenes.toList.flatMap { scene =>
+    val scriptBlocks = project.scenes.toList.flatMap { scene =>
       val stageBlocks = scene.stage.scripts.toList.flatMap(_.blocks)
       val spriteBlocks = scene.stage.sprites.toList.flatMap(_.scripts.toList.flatMap(_.blocks))
       stageBlocks ++ spriteBlocks
     }
-
-    allBlocks.map(signatureOf).distinct
+    val definitionBlocks = collectCustomDefinitions(project).flatMap(_.body).flatMap(_.blocks)
+    (scriptBlocks ++ definitionBlocks).flatMap(blocksDeep).map(signatureOf).distinct
   }
+
+  /** A block plus every block nested in its slots, scripts and lists. */
+  private def blocksDeep(block: BlockLike): List[BlockLike] =
+    block :: inputValuesOf(block).flatMap(inputBlocksDeep)
+
+  private def inputBlocksDeep(input: InputValue): List[BlockLike] = input match
+    case NestedBlock(nested) => blocksDeep(nested)
+    case NestedScript(script) => script.blocks.toList.flatMap(blocksDeep)
+    case ListLiteral(items) => items.toList.flatMap(inputBlocksDeep)
+    case _ => Nil
 
   private def collectVariableNamesFromProject(project: Project): List[String] =
     project.scenes.toList.flatMap { scene =>
