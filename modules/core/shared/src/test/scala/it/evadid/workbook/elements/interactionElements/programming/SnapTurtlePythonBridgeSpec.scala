@@ -547,6 +547,16 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     assert(xml.contains("""<block-definition s="square %n""""), clue = xml)
   }
 
+  test("applyPython declares a new assignment as a scene global") {
+    val xml = applied("test = 0\n", "")
+    assert(xml.contains("""s="doSetVar""""), clue = xml)
+    assert(xml.contains("""<l>test</l>"""), clue = xml)
+    val sceneGlobals = """</stage><variables>(.*?)</variables>""".r.findFirstMatchIn(xml).map(_.group(1)).getOrElse("")
+    assert(sceneGlobals.contains("""<variable name="test"><l>0</l></variable>"""), clue = xml)
+    val withParameter = applied("def square(size):\n    forward(size)\n\nsquare(10)\n", "")
+    assert(!withParameter.contains("""<variable name="size">"""), clue = withParameter)
+  }
+
   test("applyPython does not declare function parameters as scene variables") {
     val xml = applied("def square(size):\n    forward(size)\n\nsquare(10)\n", "")
     assert(!xml.contains("""<variable name="size">"""), clue = xml)

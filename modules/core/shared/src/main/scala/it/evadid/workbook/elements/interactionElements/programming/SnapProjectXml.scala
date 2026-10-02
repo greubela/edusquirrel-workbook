@@ -205,9 +205,14 @@ object SnapProjectXml {
   private def renderGlobalVariables(expression: BeExpression, functionDefs: List[BeDefineFunction]): String = {
     val parameterNames = functionDefs.flatMap(_.inputs.map(SnapControlFlow.variableName)).toSet
     SnapControlFlow
-      .collectVariableNames(expression)
-      .filterNot(parameterNames.contains)
-      .map(name => s"""<variable name="${SnapInputCodec.escapeXml(name)}"></variable>""")
+      .declaredVariables(expression)
+      .filterNot((name, _) => parameterNames.contains(name))
+      .map { (name, literal) =>
+        val valueXml = literal match
+          case Some(value) => SnapInputCodec.renderLiteral(SnapInputKind.String, value)
+          case None => "<l>0</l>"
+        s"""<variable name="${SnapInputCodec.escapeXml(name)}">$valueXml</variable>"""
+      }
       .mkString
   }
 

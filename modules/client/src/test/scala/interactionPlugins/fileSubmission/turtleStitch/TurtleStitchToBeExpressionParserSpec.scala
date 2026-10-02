@@ -140,7 +140,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(python.contains("if test == 1:"), clue = python)
     assert(python.contains("for _ in range(10):"), clue = python)
     assert(python.contains("forward(10)"), clue = python)
-    assert(python.contains("turn(18)"), clue = python)
+    assert(python.contains("turn_right(18)"), clue = python)
     assert(!python.contains("do_if"), clue = python)
     assert(!python.contains("report_variadic_equals"), clue = python)
     val xmlOut = TurtleStitchFromBeExpressionSerializer.toXml(parsed.expression, "equals-var", parsed.canvasLayout)
@@ -168,6 +168,32 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(python.contains("for _ in range(10):"), clue = python)
     val applied = SnapTurtlePythonBridge.applyPython(python)
     assert(applied.isRight, clue = applied)
+  }
+
+  test("valued test = 0 roundtrip does not append a bare test line") {
+    val program = BeProgram.fromPythonString("test = 0\n")
+    val xml = TurtleStitchFromBeExpressionSerializer.toXml(program.fullProgram)
+    val derived = it.evadid.homepage.webElements.editor.code.SnapEditor.SnapProgramDerivation.fromXml(xml)
+    val lines = derived.python.linesIterator.map(_.trim).filter(_.nonEmpty).toList
+    assert(!lines.contains("test"), clue = derived.python + "\n" + xml)
+    assert(derived.pythonCompatible, clue = (derived.unsupportedSelectors, derived.python))
+
+    val nested =
+      """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doSetVar"><block var="test"/><l>0</l></block></script></scripts></sprite></sprites></stage><variables><variable name="test"><l>0</l></variable></variables></scene></scenes></project>"""
+    val nestedDerived = it.evadid.homepage.webElements.editor.code.SnapEditor.SnapProgramDerivation.fromXml(nested)
+    val nestedLines = nestedDerived.python.linesIterator.map(_.trim).filter(_.nonEmpty).toList
+    assert(nestedLines.contains("test = 0"), clue = nestedDerived.python)
+    assert(!nestedLines.contains("test"), clue = nestedDerived.python)
+    assert(!nestedLines.exists(_.contains("0 = test")), clue = nestedDerived.python)
+    assert(nestedDerived.pythonCompatible, clue = (nestedDerived.unsupportedSelectors, nestedDerived.python))
+
+    val sibling =
+      """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doSetVar"><l>test</l><l>0</l></block><block var="test"/></script></scripts></sprite></sprites></stage><variables><variable name="test"><l>0</l></variable></variables></scene></scenes></project>"""
+    val siblingDerived = it.evadid.homepage.webElements.editor.code.SnapEditor.SnapProgramDerivation.fromXml(sibling)
+    val siblingLines = siblingDerived.python.linesIterator.map(_.trim).filter(_.nonEmpty).toList
+    assert(siblingLines.contains("test = 0"), clue = siblingDerived.python)
+    assert(!siblingLines.contains("test"), clue = siblingDerived.python)
+    assert(siblingDerived.pythonCompatible, clue = (siblingDerived.unsupportedSelectors, siblingDerived.python))
   }
 
   test("doSetVar XML roundtrips to python assignment and back to Snap") {
@@ -216,7 +242,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(python.contains("steps = 10"), clue = python)
     assert(python.contains("for _ in range(4):"), clue = python)
     assert(python.contains("forward(50)"), clue = python)
-    assert(python.contains("turn(90)"), clue = python)
+    assert(python.contains("turn_right(90)"), clue = python)
     assert(python.contains("if steps < 20:"), clue = python)
     assert(python.contains("goto_x_y(10, 20)"), clue = python)
     assert(python.contains("set_heading(90)"), clue = python)
@@ -306,7 +332,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     val python = SnapTurtlePythonBridge.printedPython(parsed.expression)
     assert(python.contains("def square(n):"), clue = python)
     assert(python.contains("forward(n)"), clue = python)
-    assert(python.contains("turn(90)"), clue = python)
+    assert(python.contains("turn_right(90)"), clue = python)
     assert(python.contains("square(50)"), clue = python)
   }
 
@@ -355,7 +381,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="turn"><l>90</l></block><block s="turnLeft"><l>15</l></block><block s="gotoXY"><l>1</l><l>2</l></block><block s="up"></block><block s="down"></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
     val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
     val python = SnapTurtlePythonBridge.printedPython(parsed.expression)
-    assert(python.contains("turn(90)"), clue = python)
+    assert(python.contains("turn_right(90)"), clue = python)
     assert(python.contains("turn_left(15)"), clue = python)
     assert(python.contains("goto_x_y(1, 2)"), clue = python)
     val applied = SnapTurtlePythonBridge.applyPython(

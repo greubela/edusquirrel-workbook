@@ -156,13 +156,15 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
         // Skip only non-forced sync echoes of the same stored XML.
         // Force on fullscreen open: acknowledge does not rawOpen, so a skip
         // would leave Snap on the previous rawOpen'd project.
-        if !force && lastLoadedXml.contains(xml) then return
+        if !force && lastLoadedXml.contains(xml) then
+          return
         if !force && isTextEditing then return
         restorePrimitiveBlockDictionary()
         ensureExerciseCategoriesBeforeLoad()
         ide.rawOpenProjectString(xml)
         lastLoadedXml = Some(xml)
         repairCustomBlockParameterBindings(ide)
+        ensureMissingGlobalVariables(ide, xml, refreshPalette = true)
         lastProjectXml = Some(snapshotProjectXml(ide))
         lastProjectXmlCheckAt = dom.window.performance.now()
         reinstallConfiguredLibraries(ide)
@@ -304,6 +306,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     restorePrimitiveBlockDictionary()
     ide.rawOpenProjectString(canonicalXml(state))
     repairCustomBlockParameterBindings(ide)
+    ensureMissingGlobalVariables(ide, canonicalXml(state), refreshPalette = false)
     retagCustomBlockCategories(ide)
     ide
 
@@ -317,6 +320,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     ide.openIn(world)
     restorePrimitiveBlockDictionary()
     ide.rawOpenProjectString(canonicalXml(state))
+    ensureMissingGlobalVariables(ide, canonicalXml(state), refreshPalette = false)
     ide
 
   /** Replace this editor instance's primitive provider, rather than mutating
@@ -666,6 +670,54 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       spriteMorphPrototype.applyDynamic("initBlocks")()
       injectExtraPrimitives()
     catch case _: Throwable => ()
+
+  private val SceneGlobalVariables = """(?s)</stage><variables>(.*?)</variables>""".r
+  private val VariableNameAttribute = """<variable\b[^>]*\bname="([^"]*)"""".r
+
+  /** Scene `<variables>` after `</stage>` are Snap globals. Empty sprite `<variables>` are ignored. */
+  private def sceneGlobalVariableNames(xml: String): List[String] =
+    SceneGlobalVariables.findFirstMatchIn(xml).toList.flatMap { matched =>
+      VariableNameAttribute
+        .findAllMatchIn(matched.group(1))
+        .map(found => unescapeXmlAttribute(found.group(1)))
+        .filter(_.nonEmpty)
+        .toList
+    }
+
+  private def unescapeXmlAttribute(value: String): String =
+    value
+      .replace("&amp;", "&")
+      .replace("&apos;", "'")
+      .replace("&quot;", "\"")
+      .replace("&gt;", ">")
+      .replace("&lt;", "<")
+
+  /**
+   * Snap shows a set-block name even when the global frame has no such variable.
+   * Register any scene variable the loader skipped, without resetting one that already exists.
+   */
+  private def ensureMissingGlobalVariables(ide: IDEMorph, xml: String, refreshPalette: Boolean): Unit =
+    val names = sceneGlobalVariableNames(xml)
+    if names.isEmpty then return
+    val sprite = ide.currentSprite
+    if sprite == null then return
+    val spriteDyn = sprite.asInstanceOf[js.Dynamic]
+    val globals = spriteDyn.applyDynamic("globalVariables")()
+    if js.isUndefined(globals) || globals == null then return
+    val vars = globals.asInstanceOf[js.Dynamic].selectDynamic("vars")
+    var added = false
+    names.foreach { name =>
+      val existing =
+        if js.isUndefined(vars) || vars == null then js.undefined
+        else vars.asInstanceOf[js.Dynamic].selectDynamic(name)
+      val missing = js.isUndefined(existing) || existing == null
+      if missing then
+        spriteDyn.applyDynamic("addVariable")(name, true)
+        added = true
+    }
+    if added && refreshPalette then
+      ide.asInstanceOf[js.Dynamic].applyDynamic("flushBlocksCache")("variables")
+      ide.refreshPalette(true)
 
   private def snapshotProjectXml(ide: IDEMorph): String =
     val xml = ide.getProjectXML()

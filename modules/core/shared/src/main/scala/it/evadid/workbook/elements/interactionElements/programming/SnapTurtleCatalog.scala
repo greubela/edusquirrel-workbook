@@ -56,7 +56,7 @@ object SnapTurtleCatalog {
     Primitive("receiveGo", "receive_go", Nil, "receive_go", "receive_go()", PaletteTab.Control, inputKinds = none),
     Primitive("doWait", "do_wait", Nil, "do_wait", "do_wait(seconds)", PaletteTab.Control, inputKinds = n),
     Primitive("forward", "forward", List("fd"), "forward", "forward(steps)", PaletteTab.Motion, inputKinds = n),
-    Primitive("turn", "turn", List("right", "rt"), "right", "turn(degrees)", PaletteTab.Motion, inputKinds = n),
+    Primitive("turn", "turn_right", List("turn", "right", "rt"), "right", "turn_right(degrees)", PaletteTab.Motion, inputKinds = n),
     Primitive("turnLeft", "turn_left", List("left", "lt"), "left", "turn_left(degrees)", PaletteTab.Motion, inputKinds = n),
     Primitive("gotoXY", "goto_x_y", List("goto", "setpos", "setposition"), "goto", "goto_x_y(x, y)", PaletteTab.Motion, inputKinds = nn),
     Primitive("setHeading", "set_heading", List("setheading", "seth"), "setheading", "set_heading(degrees)", PaletteTab.Motion, inputKinds = n),

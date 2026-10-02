@@ -99,6 +99,7 @@ object KnownBeEntityNames {
     "bk" -> "backward",
     "rt" -> "right",
     "turn" -> "right",
+    "turn_right" -> "right",
     "lt" -> "left",
     "turn_left" -> "left",
     "goto_x_y" -> "goto",

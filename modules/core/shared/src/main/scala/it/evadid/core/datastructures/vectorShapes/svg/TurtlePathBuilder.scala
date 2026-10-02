@@ -186,7 +186,7 @@ case class TurtlePathBuilder[T: Fractional](
         turtleCommand.args.headOption.map(backward).getOrElse(this)
       case "left" | "lt" | "turn_left" | "turnleft" =>
         turtleCommand.args.headOption.map(left).getOrElse(this)
-      case "right" | "rt" | "turn" =>
+      case "right" | "rt" | "turn" | "turn_right" =>
         turtleCommand.args.headOption.map(right).getOrElse(this)
       case "goto" | "setpos" | "setposition" | "goto_x_y" | "gotoxy" =>
         if (turtleCommand.args.size >= 2) goto(turtleCommand.args(0), turtleCommand.args(1)) else this
