@@ -19,7 +19,7 @@ object SendMailCommand {
                                              )
 
   private def requiredEnv(name: String, envProvider: String => Option[String]): String =
-    envProvider(name).map(_.trim).filter(_.nonEmpty).getOrElse(throw new IllegalStateException(s"$name is not configured"))
+    envProvider(name).map(_.trim).filter(_.nonEmpty).getOrElse(throw new IllegalStateException(s"required env property $name is not configured"))
 
   private[server] def readMailConfig(envProvider: String => Option[String]): MailConfig =
     MailConfig(
@@ -31,11 +31,12 @@ object SendMailCommand {
 
   private[server] def sendMail(request: SendMailRequest, logger: Logger, envProvider: String => Option[String]): SendMailResponse = {
     val config = readMailConfig(envProvider)
-    logger.logInfo(s"sending mail to '${request.recipientMail}' with subject '${request.subject}' via ${config.host}:${config.port}")
+    logger.logInfo(s"sending mail to '${request.recipientMail}'")// with subject '${request.subject}' via ${config.host}:${config.port}")
 
     val props = new Properties()
     props.put("mail.smtp.auth", "true")
     props.put("mail.smtp.starttls.enable", "true")
+    props.put("mail.smtp.starttls.required", "true")
     props.put("mail.smtp.host", config.host)
     props.put("mail.smtp.port", config.port)
 
@@ -55,7 +56,7 @@ object SendMailCommand {
 
     Transport.send(msg)
     logger.logInfo(s"mail sent to '${request.recipientMail}'")
-    SendMailResponse(sent = true)
+    SendMailResponse(None, sent = true)
   }
 
   def handleSendMailRequest(request: SendMailRequest, logger: Logger): Future[SendMailResponse] = Future {

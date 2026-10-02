@@ -3,6 +3,7 @@ package it.evadid.homepage.workbook.syncDestination
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.FetchResponse
 import it.evadid.core.util.io.Serializer
+import it.evadid.util.logging.Logger
 import it.evadid.util.logging.LoggingLevel.WARN
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.*
@@ -15,7 +16,28 @@ import java.time
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
-object LocalStorageSync extends SyncDestination {
+object LocalStorageSync {
+
+  val instance: LocalStorageSync = LocalStorageSync()
+
+  def storeRaw(logger: Logger, key: String, value: String): Unit = {
+    instance.storage.setItem(key.toString, value.toString)
+  }
+
+  def fetchAllRaw(logger: Logger): Map[String, String] = {
+    val storage: Storage = dom.window.localStorage
+    (0 until storage.length).map(i =>
+      val browserKey = storage.key(i)
+      val browserValue = storage.getItem(browserKey)
+      browserKey -> browserValue
+    ).toMap
+  }
+
+}
+
+case class LocalStorageSync(maxValueCharakterSize: Long = 100000) extends SyncDestination {
+
+  private val historyKeyPrefix = "synced-variable"
 
   private val ec: ExecutionContext = ExecutionContext.global
 
@@ -26,7 +48,10 @@ object LocalStorageSync extends SyncDestination {
   override def storeTo(logger: SyncLogger, context: SyncContext, history: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncInformation.SyncSuccess] = Future {
     try {
       val value: String = formatter.serialize(context, history)
-      val serializedKey: String = contextToBrowserKeySerializer.serialize(context)
+      if (value.length > maxValueCharakterSize) {
+        throw new IllegalArgumentException(s"Value exceeds ${maxValueCharakterSize} characters (has ${value.length}). Will not save to LocalStorage!")
+      }
+      val serializedKey: String = historyKeyPrefix + contextToBrowserKeySerializer.serialize(context)
       //println(s"###################### [DEBUG] storing to local storage: $serializedKey -> $value")
       storage.setItem(serializedKey.toString, value.toString)
       SyncSuccess(1, 0, 0, LocalDateTime.now())
@@ -36,11 +61,6 @@ object LocalStorageSync extends SyncDestination {
       throw e
     }
   }(using ec)
-
-
-  /*override def fetchAll(context: UsageContext): Future[Map[SyncContext, InteractionVariableHistorySerialized]] = Future {
-
-  }(using ec)*/
 
   override def shouldBePersistant(): Boolean = false
 
@@ -53,6 +73,10 @@ object LocalStorageSync extends SyncDestination {
     resetCompleteStorage()
   }(using ec)
 
+  def removeKey(key: String): Unit = {
+    dom.window.localStorage.removeItem(key)
+  }
+
   def resetCompleteStorage(): SyncSuccess = {
     println("[UGLY WARN IN LOCALSTORAGESYNC] clearing all local storage!")
     dom.window.localStorage.clear()
@@ -60,12 +84,15 @@ object LocalStorageSync extends SyncDestination {
   }
 
   private def transformBack(logger: SyncLogger, formatter: SyncFormatter, browserKey: String, browserValue: String): Option[(SyncContext, InteractionVariableHistorySerialized)] = try {
-    if (!browserKey.startsWith("{")) None else
-      Some(contextToBrowserKeySerializer.deserialize(browserKey) -> formatter.deserialize(browserValue))
+    if (!browserKey.startsWith(historyKeyPrefix)) None else {
+      val browserKeyWithoutPrefix = browserKey.substring(historyKeyPrefix.length, browserKey.length)
+      Some(contextToBrowserKeySerializer.deserialize(browserKeyWithoutPrefix) -> formatter.deserialize(browserValue))
+    }
   } catch case (e: Exception) => {
     logger.log(s"LocalStorageSync: Ignore tuple (${browserKey}, ${browserValue}) because it was unparsable: ${e.getMessage}", WARN, Option(false))
     None
   }
+
 
   override def fetchAll(logger: SyncLogger, context: UsageContext, formatter: SyncFormatter): Future[RemoteSyncDataCache.FetchResponse[SyncContext, InteractionVariableHistorySerialized]] = {
     val resMap: Map[SyncContext, InteractionVariableHistorySerialized] = (0 until storage.length).flatMap(i =>
@@ -79,4 +106,7 @@ object LocalStorageSync extends SyncDestination {
   }
 
   override def isLocal: Boolean = true
+
+
+  override def toString: String = s"LocalStorageSync(${maxValueCharakterSize})"
 }

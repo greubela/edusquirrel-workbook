@@ -6,6 +6,21 @@ import it.evadid.workbook.interaction.variable.{InteractionVariableHistorySerial
 
 import java.time.LocalDateTime
 
+sealed trait SyncFormatter2 {
+  // todo
+
+  private val keyFormatter: Serializer[String] = ???
+  private val valueFormatter: Serializer[InteractionVariableHistorySerialized] = ???
+
+
+}
+object SyncFormatter2 {
+
+
+
+}
+
+
 sealed trait SyncFormatter {
   def serialize(syncContext: SyncContext, interactionVariableHistorySerialized: InteractionVariableHistorySerialized): String
 

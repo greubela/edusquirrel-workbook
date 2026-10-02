@@ -4,24 +4,38 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.vm.BeProgram
 import it.evadid.vm.test.BeTestSuite
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory
+import upickle.default.*
 
 import scala.util.Try
 
 case class ProgrammingExercise(
-    override val id: String,
-    testSuite: Option[BeTestSuite] = None,
-    editorPalette: ProgrammingEditorPalette = ProgrammingEditorPalette.Default
+                                override val elementId: String,
+                                testSuite: Option[BeTestSuite] = None,
+                                editorPalette: ProgrammingEditorPalette = ProgrammingEditorPalette.Default
 ) extends WorkbookInteractionElement[ProgrammingExerciseState] {
+  override val associatedFactory = ProgrammingExercise.factory
 
   override val defaultValue: ProgrammingExerciseState = ProgrammingExerciseState.mini
 
-  override val serializer: Serializer[ProgrammingExerciseState] = ProgrammingExercise.StateSerializer
+  override val serializerInteractionContent: Serializer[ProgrammingExerciseState] = ProgrammingExercise.StateSerializer
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+
 }
 
 object ProgrammingExercise {
 
+  val factory: WorkbookElementFactory[ProgrammingExercise] = new WorkbookElementFactory[ProgrammingExercise]() {
+    override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set()
+
+    override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): ProgrammingExercise = {
+      ProgrammingExercise(element.elementId, None, ProgrammingEditorPalette.Default)
+    }
+
+    lazy override val writerJsonRegularRefBased: Writer[ProgrammingExercise] = macroRW
+  }
   val XmlHeader = "SNAP_XML_V1"
 
   /** Canonical persist format: versioned Snap project XML. Legacy Python migrates on read. */

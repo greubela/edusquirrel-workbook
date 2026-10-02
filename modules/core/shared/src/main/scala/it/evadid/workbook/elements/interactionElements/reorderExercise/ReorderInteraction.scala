@@ -1,9 +1,13 @@
 package it.evadid.workbook.elements.interactionElements.reorderExercise
 
 import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
-import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
+import upickle.default.ReadWriter
 
 sealed trait ReorderInteraction[T] extends WorkbookInteractionElement[ReorderInteractionState[T]] {
   val elements: List[T]
@@ -11,163 +15,64 @@ sealed trait ReorderInteraction[T] extends WorkbookInteractionElement[ReorderInt
 
 object ReorderInteraction {
 
-  
-  case class ReorderCodeInteraction(
-                                     override val id: String,
-                                     lines: List[String],
-                                     programmingLanguage: ProgrammingLanguage,
-                                     seed: Long = 0,
-                                     hints: List[LanguageMapContentId] = List.empty,
-                                     orderConstraints: List[(Int, Int)] = Nil
-                                   ) extends ReorderInteraction[String] {
 
-    override val elements: List[String] = lines
-
-    override val defaultValue: ReorderInteractionState[String] = {
-      ReorderInteractionState.initStateFromElementsAndSeed(lines, seed, Serializer.stringIO, ReorderType.CODELINES(programmingLanguage))
-    }
-    override val serializer: Serializer[ReorderInteractionState[String]] = defaultValue.serializer
+  case class ReorderCodeInteraction(override val elementId: String, lines: List[String], programmingLanguage: ProgrammingLanguage, seed: Long = 0, hints: List[LanguageMapContentId] = List.empty, orderConstraints: List[(Int, Int)] = Nil) extends ReorderInteraction[String] {
+    override val associatedFactory = ReorderCodeInteraction.factory
+    override val elements = lines
+    override val defaultValue = ReorderInteractionState.initStateFromElementsAndSeed(lines, seed, Serializer.stringIO, ReorderType.CODELINES(programmingLanguage))
+    override val serializerInteractionContent = defaultValue.serializer
     override lazy val childrenOfThisElement: List[WorkbookElement] = List()
   }
 
-  case class ReorderMapIdInteraction(override val id: String, ids: List[LanguageMapContentId], seed: Long = 0) extends ReorderInteraction[LanguageMapContentId] {
+  object ReorderCodeInteraction {
+    val factory: SimpleWorkbookElementFactory[ReorderCodeInteraction] = new SimpleWorkbookElementFactory[ReorderCodeInteraction]() {
+      override protected val constructorFieldOrder = List("elementId", "lines", "programmingLanguage", "seed", "hints", "orderConstraints")
 
-    val elements: List[LanguageMapContentId] = ids
+      override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: ReorderCodeInteraction): WorkbookElementSerializable = {
+        baseElement
+          .withElementAddedAs("hints", infoElement.hints)
+          .withElementAddedAs[AppLanguage]("programmingLanguage", infoElement.programmingLanguage.asInstanceOf[AppLanguage])
+          .withElementAdded("seed", infoElement.seed.toString)
+          .withElementsAdded("stringLines", infoElement.lines.toSeq)
 
-    override val defaultValue: ReorderInteractionState[LanguageMapContentId] = {
-      ReorderInteractionState.initStateFromElementsAndSeed(ids, seed, LanguageMapContentId.serializer, ReorderType.LANGUAGE_MAP_IDS)
+      }
+
+      override def finishDeserialization(element: WorkbookElementSerializable): ReorderCodeInteraction = {
+        ReorderCodeInteraction(
+          element.elementId,
+          element.getElementsAs("stringLines"),
+          element.getElementAs[AppLanguage]("programmingLanguage").asInstanceOf[ProgrammingLanguage],
+          element.getOptionalElementAs("seed", "0").toLongOption.getOrElse(0),
+          element.getElementsAs[LanguageMapContentId]("hints")
+        )
+      }
     }
-    override val serializer: Serializer[ReorderInteractionState[LanguageMapContentId]] = defaultValue.serializer
+  }
 
+  case class ReorderMapIdInteraction(override val elementId: String, ids: List[LanguageMapContentId], seed: Long = 0) extends ReorderInteraction[LanguageMapContentId] {
+    override val associatedFactory = ReorderMapIdInteraction.factory
+    override val elements = ids
+    override val defaultValue = ReorderInteractionState.initStateFromElementsAndSeed(ids, seed, LanguageMapContentId.serializerLangMapId, ReorderType.LANGUAGE_MAP_IDS)
+    override val serializerInteractionContent = defaultValue.serializer
     override lazy val childrenOfThisElement: List[WorkbookElement] = List()
   }
 
+  object ReorderMapIdInteraction {
+    val factory: SimpleWorkbookElementFactory[ReorderMapIdInteraction] = new SimpleWorkbookElementFactory[ReorderMapIdInteraction]() {
+      override protected val constructorFieldOrder = List("elementId", "ids", "seed")
 
-}
+      override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: ReorderMapIdInteraction): WorkbookElementSerializable = {
+        baseElement
+          .withElementsAddedAs("contentToReorder", infoElement.ids)
+          .withElementAdded("seed", infoElement.seed.toString)
+      }
 
-
-/*
-case class HtmlReorderInteraction[T](
-                                      fullInfo: FullInfo,
-                                      id: String,
-                                      elements: List[T],
-                                      elementRenderer: T => Element,
-                                      itemCssClass: String = ""
-                                    ) extends WorkbookInteraction[List[Int]] {
-
-  override val serializer: Serializer[List[Int]] = orderSerializer
-
-  override val defaultValue: List[Int] = elements.indices.toList // todo: shuffled?
-
-  private val orderSerializer = new Serializer[List[Int]] {
-    override def serialize(obj: List[Int]): String = obj.mkString(",")
-
-    override def deserialize(serialized: String): List[Int] = {
-      val parsed = serialized
-        .split(",")
-        .toList
-        .map(_.trim)
-        .filter(_.nonEmpty)
-        .flatMap(token => Try(token.toInt).toOption)
-
-      if (parsed.length == elements.length && parsed.toSet == defaultValue.toSet) parsed
-      else defaultValue
+      override def finishDeserialization(element: WorkbookElementSerializable): ReorderMapIdInteraction = {
+        ReorderMapIdInteraction(
+          element.elementId,
+          element.getElementsAs[LanguageMapContentId]("contentToReorder"),
+          element.getOptionalElementAs("seed", "0").toLongOption.getOrElse(0))
+      }
     }
   }
-
-  private val orderVar = interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MINOR)
-
-  private val draggingId: Var[Option[Int]] = Var(None)
-  private val hoverIndex: Var[Option[Int]] = Var(None)
-
-  private def sanitizeOrder(order: List[Int]): List[Int] =
-    if (order.length == elements.length && order.toSet == defaultValue.toSet) order else defaultValue
-
-  private def moveItem(current: List[Int], draggedId: Int, insertIndex: Int): List[Int] = {
-    val fromIndex = current.indexOf(draggedId)
-    if (fromIndex < 0) return current
-    val clean = current.filterNot(_ == draggedId)
-    val adjustedInsertIndex = if (insertIndex > fromIndex) insertIndex - 1 else insertIndex
-    val safeIndex = adjustedInsertIndex.max(0).min(clean.length)
-    val (front, back) = clean.splitAt(safeIndex)
-    front ++ List(draggedId) ++ back
-  }
-
-  private def dropIndex(container: org.scalajs.dom.html.Div, mouseY: Double): Int = {
-    val items = container.querySelectorAll(".reorder-item")
-    var newIndex = items.length
-    var found = false
-    var i = 0
-    while (i < items.length && !found) {
-      val rect = items.item(i).asInstanceOf[org.scalajs.dom.html.Div].getBoundingClientRect()
-      val middleY = rect.top + (rect.height / 2)
-      if (mouseY < middleY) {
-        newIndex = i
-        found = true
-      }
-      i += 1
-    }
-    newIndex
-  }
-
-  private def renderItem(itemId: Int): Element = {
-    val content: Element = elementRenderer(elements(itemId))
-
-    val baseCls = if (itemCssClass.nonEmpty) s"reorder-item $itemCssClass" else "reorder-item"
-
-    div(
-      cls := baseCls,
-      cls.toggle("reorder-item--dragging") <-- draggingId.signal.map(_.contains(itemId)),
-      draggable := true,
-      onDragStart --> (_ => draggingId.set(Some(itemId))),
-      onDragEnd --> (_ => {
-        draggingId.set(None)
-        hoverIndex.set(None)
-      }),
-      content
-    )
-  }
-
-  private val listElement: Element =
-    div(
-      cls := "reorder-list",
-      onDragOver.preventDefault --> { e =>
-        val container = e.currentTarget.asInstanceOf[org.scalajs.dom.html.Div]
-        hoverIndex.set(Some(dropIndex(container, e.clientY)))
-      },
-      onDrop.preventDefault --> { e =>
-        val container = e.currentTarget.asInstanceOf[org.scalajs.dom.html.Div]
-        val targetIdx = dropIndex(container, e.clientY)
-        draggingId.now() match {
-          case Some(idToMove) =>
-            val updated = moveItem(sanitizeOrder(orderVar.now()), idToMove, targetIdx)
-            orderVar.set(updated)
-          case _ =>
-        }
-        draggingId.set(None)
-        hoverIndex.set(None)
-      },
-      children <-- orderVar.signal.combineWith(hoverIndex.signal).map {
-        case (rawOrder, hover) =>
-          val ordered = sanitizeOrder(rawOrder)
-          val visible = ordered.map(renderItem)
-
-          hover match {
-            case Some(index) =>
-              val safe = index.max(0).min(visible.length)
-              val (front, back) = visible.splitAt(safe)
-              front ++ List(div(cls := "drop-placeholder")) ++ back
-            case None =>
-              visible
-          }
-      }
-    )
-
-  def getDomElement(): Element =
-    div(
-      cls := "workbook-interaction reorder-interaction",
-      listElement
-    )
 }
-
-*/

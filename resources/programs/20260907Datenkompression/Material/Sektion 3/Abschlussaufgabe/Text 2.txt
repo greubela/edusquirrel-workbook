@@ -1,0 +1,326 @@
+Edward Joseph „Ed“ Snowden (* 21. Juni 1983 in Elizabeth City, North Carolina)[1] ist ein US-amerikanisch-russischer Whistleblower. Seine Enthüllungen im Sommer 2013 gaben Einblicke in das Ausmaß der weltweiten Überwachungs- und Spionagepraktiken von Geheimdiensten – überwiegend jenen der Vereinigten Staaten und des Vereinigten Königreichs, aber auch derer vieler weiterer Staaten, darunter Deutschland. Die Enthüllungen lösten die Globale Überwachungs- und Spionageaffäre (auch „NSA-Affäre“) aus.
+
+Für seine Enthüllungen wurde er mehrfach von nichtstaatlichen Organisationen ausgezeichnet. Im Jahr 2014 erhielt er den Ehrenpreis des Right Livelihood Award. Um sich der strafrechtlichen Verfolgung in den USA zu entziehen, lebt Snowden seit 2013 im Exil in Moskau, weil er kein Asyl in westlichen Staaten bekam. Im September 2022 erhielt er die russische Staatsbürgerschaft.
+Überblick
+Edward Snowden spricht im Juni 2013 in Hongkong über die NSA-Enthüllungen (12:34 min, englisch).
+
+Edward Snowden ist ein ehemaliger Agent, der als technische Fachkraft für die US-amerikanischen Geheimdienste CIA, NSA und DIA gearbeitet hat.[2] Bis Mai 2013 arbeitete er im Auftrag der NSA als Systemadministrator für das Beratungsunternehmen Booz Allen Hamilton im Kunia Regional SIGINT Operations Center. Im Rahmen seiner Tätigkeit hatte er Zugang zu Informationen, die als streng geheim eingestuft waren, u. a. über US-amerikanische Programme zur Überwachung der weltweiten Internetkommunikation (XKeyscore, PRISM, Stellarwind (als Teil des PSP und Boundless Informant)) sowie das noch umfassendere britische Überwachungsprogramm Tempora. Snowden übermittelte diese Informationen an die Filmemacherin Laura Poitras und an den Guardian-Journalisten Glenn Greenwald, der sie im Juni 2013 ohne Angabe einer Quelle in Teilen veröffentlichte.[3][4]
+
+Im Juni 2013 gab Snowden in Hongkong seine Identität gegenüber der Öffentlichkeit preis;[5] das FBI erwirkte mit einer Strafanzeige u. a. wegen Spionage einen Haftbefehl gegen ihn.[6][7] Snowden konnte Hongkong verlassen, saß dann aber für längere Zeit im Transitbereich eines internationalen Flughafens in Moskau fest. Während seines dortigen Aufenthalts wurde auf diplomatischer Ebene über den Umgang mit ihm gestritten. Anfang August 2013 erhielt Snowden von Russland Asyl.[8] In Deutschland wird Snowden von dem Menschenrechtsanwalt Wolfgang Kaleck vertreten.[9] Im Oktober 2015 empfahl das Europäische Parlament den Mitgliedstaaten, alle Vorwürfe gegen Snowden fallen zu lassen und ihm als Menschenrechtler Schutz zu gewähren.[10]
+Leben
+Edward Snowden bei einem Interview mit dem Guardian (Screenshot Juni 2013)
+Familiärer Hintergrund
+
+Edward Snowden wuchs zunächst in Wilmington, North Carolina, auf.[11] 1992 zog er mit seiner Familie nach Ellicott City, Maryland.[12] Snowden, der noch eine ältere Schwester hat, ist der Sohn eines ehemaligen Beamten der US-Küstenwache und einer leitenden Angestellten des United States District Court des Bundesstaates Maryland.[1]
+Ausbildung
+
+Snowden besuchte die Arundel High School, erkrankte an Pfeiffer-Drüsenfieber und verpasste fast neun Monate Unterricht.[13] Statt das 10. Schuljahr zu wiederholen und so einen Schulabschluss zu erlangen, belegte er von 1999 bis 2001 und von 2004 bis 2005 Informatik-Kurse am Anne Arundel Community College in Maryland. Zwischen den beiden Kursen meldete er sich 2003 zur U.S. Army, um im Irak-Krieg zu dienen.[14] Snowden verbrachte vier Monate in der United States Army Reserve, wo er als Rekrut der US-amerikanischen Special Forces einen 14-wöchigen Trainingskurs absolvierte. Diesen konnte er nicht beenden, da er ausgemustert wurde, nachdem er sich bei einem Trainingsunfall beide Beine gebrochen hatte. Während der zweiten Phase seines Studiums arbeitete er ab 2004 als Wachmann für eine NSA-Einrichtung an der University of Maryland. 2005 brach er sein Informatikstudium ab.[1]
+Karriere
+
+Noch im Jahr 2005 wechselte Snowden zum Geheimdienst CIA, bei dem er als Techniker im Bereich der IT-Sicherheit aufgrund seines Talents relativ schnell aufsteigen konnte.[14] 2007 entsandte ihn die CIA im Rahmen dieser Tätigkeit an die diplomatische Vertretung der USA in Genf.[15] Wegen seiner Sicherheitseinstufung habe er, so Snowden, bereits zu dieser Zeit in großem Umfang Zugriff auf geheime Dokumente und Informationen gehabt. Da diese aber vor allem Menschen und nicht Systeme betrafen und er keine Menschenleben habe gefährden wollen, habe er von einer Veröffentlichung abgesehen.[11][5] Nach Angaben von US-Regierungsvertretern vom Oktober 2013 fiel Snowdens Verhalten seinem Vorgesetzten bereits 2009 auf, als er im Rahmen seiner Arbeit für die CIA in Genf versuchte, Zugriff auf geheime Dateien zu erlangen. Demnach entschloss sich die CIA daraufhin, Snowden in die USA zurückzuschicken, was jedoch ansonsten keine weiteren Konsequenzen hatte.[16][17] Anschließend arbeitete er zunächst als freier technischer Mitarbeiter bei Dell[18] in einer NSA-Einrichtung auf einer Basis der U.S. Army in Japan.[3]
+
+Noch im Jahr 2009 wechselte Snowden zu der Beratungsfirma Booz Allen Hamilton, über die er als externer Mitarbeiter in einem NSA-Büro auf Hawaii als Systemadministrator tätig war.[19][20] Sein dortiges Leben vor der Veröffentlichung der PRISM-Dokumente bezeichnet Snowden als „sehr komfortabel“. Er habe einen sicheren Job und ein Haus auf Hawaii gehabt sowie ein Jahresgehalt von etwa 122.000 US-Dollar (ca. 108.000 Euro) erhalten. Sein Spitzenverdienst in der Zeit davor habe bei 200.000 US-Dollar (ca. 177.000 Euro) pro Jahr gelegen.[21]
+
+Die Absicht, die Überwachungsmaßnahmen aufzudecken, sei ausschlaggebend gewesen, als er den Job als IT-Techniker bei der Beratungsfirma Booz Allen Hamilton angenommen habe, die im Auftrag des US-Geheimdienstes NSA an der Internet-Überwachung beteiligt war, zitierte ihn die Hongkonger Zeitung South China Morning Post.[22] Zweifel an der Rechtmäßigkeit seiner Arbeit sind Snowden nach eigenen Angaben bereits im Jahr 2007 gekommen.[14] Im Rahmen dieser Tätigkeit bei Booz Allen Hamilton habe er als Techniker auch Zugriff auf jene geheimen Unterlagen gehabt, die er später kopiert und an die Presse weitergegeben habe.[20] Mit der Begründung „Verstöße gegen die Firmenrichtlinien und ethische Firmenpolitik“ beendete Booz Allen Hamilton nach deren Veröffentlichung das Arbeitsverhältnis mit Snowden und versprach den ermittelnden Behörden, bei der Aufklärung mitzuwirken.[23]
+Exil
+
+Am 1. August 2013 erhielt Snowden von Russland Asyl.[8] Im August 2014 gab Snowdens Anwalt Anatoli Grigorjewitsch Kutscherena bekannt, dass Snowden eine Aufenthaltserlaubnis für drei Jahre in Russland bekommen werde.[24] Seither lebt er in einer Wohnung in Moskau. 2017 heiratete er seine langjährige Freundin Lindsay Mills, die ein Jahr zuvor ebenfalls nach Moskau gezogen war.[12] Im Oktober 2020 erhielt er eine unbefristete Aufenthaltserlaubnis.[25] Ende Dezember 2020 wurden Snowden und Mills Eltern eines Sohnes.[26]
+
+Edward Snowden ist seit Januar 2014 Mitglied des Board of Directors der Freedom of the Press Foundation.[27] Snowden absolviert zahlreiche Auftritte per Liveübertragung. Am 29. September 2015 ging zudem ein Twitter-Account in seinem Namen öffentlich in Benutzung.[28][29]
+Enthüllung geheimdienstlicher Überwachungsprojekte
+→ Hauptartikel: Globale Überwachungs- und Spionageaffäre und PRISM
+→ Hauptartikel: Tempora und XKeyscore
+Zugriff auf Geheimdokumente und deren Veröffentlichung
+Deckblatt der Top-Secret-Präsentation zu PRISM
+XKeyscore-Präsentation als PDF; 27 MB
+
+Ab 2009 war Snowden bei der dem Geheimdienst NSA nahestehenden Beratungsfirma Booz Allen Hamilton als externer IT-Mitarbeiter in einem NSA-Büro auf Hawaii tätig. Im Rahmen dieser Tätigkeit hatte er Zugang zu umfangreichen, unter top secret eingestuften Daten und Geheimdokumenten der NSA, so auch zu Dokumenten, die sich auf die bis dahin der Öffentlichkeit noch nicht bekannten Programme zur Überwachung der weltweiten Internetkommunikation bezogen. Nachdem Snowden anonym bereits im Januar 2013 die Dokumentarfilmerin Laura Poitras und im Februar 2013 den Journalisten Glenn Greenwald kontaktiert hatte,[30] soll er angeblich 1,7 Mio. Dateien[31] auf SD-Karten kopiert und die Kopien mit zu sich nach Hause genommen haben.[32] Mitte Mai meldete er sich dann unter dem Vorwand, eine Art Epilepsie, von der er kurz zuvor erfahren habe, behandeln zu lassen, „für ein paar Wochen“ bei seinem NSA-Vorgesetzten ab. Am 20. Mai 2013 flog Snowden schließlich nach Hongkong.[3] Von dort aus habe er die geheimen Dokumente zunächst an die Washington Post und an den Guardian verschickt, die die Geschichte am 6. Juni 2013 schließlich öffentlich gemacht und Teile der geheimen Dokumente veröffentlicht haben, zunächst ohne Snowdens Identität preiszugeben.[4] Für seine E-Mails verwendete Snowden den Absender citizenfour – eine Bezeichnung, die der 2014 veröffentlichte Dokumentarfilm von Laura Poitras als Titel übernahm. Da Snowden ahnte, dass die US-amerikanischen Geheimdienste ihn rasch als Quelle identifizieren würden, entschloss er sich, an die Öffentlichkeit zu gehen. Am 9. Juni gab er dem Guardian ein Video-Interview, in dem er sich als Informant zu erkennen gab.[5]
+
+Nach den Dokumenten, die von Snowden an den Guardian weitergegeben wurden, hat das britische Government Communications Headquarters (GCHQ) beim G20-Treffen 2009 in London systematisch Politiker anderer Nationen überwacht. So wurden beispielsweise E-Mails und Computer ausspioniert und mittels Keyloggern weitere Daten gewonnen – auch noch über den G20-Gipfel hinaus. Auch waren britische Politiker annähernd in Echtzeit über sämtliche Mobilfunkverbindungen während des Meetings informiert.[33]
+
+Am 29. August veröffentlichte die Washington Post einen umfangreichen Bericht über das „Black Budget“ der US-Geheimdienste,[34] basierend auf Dokumenten aus dem Fundus von Snowden.[35]
+
+Am 16. Mai 2016 veröffentlichte The Intercept unter der Bezeichnung „SIDtoday Files“ die ersten aus 2003 von Edward Snowden gesammelten internen Newsletter des Signals Intelligence Directorate (SID) (Spionageabteilung) der National Security Agency (NSA), in denen US-Agenten detailliert ihre Arbeit dokumentiert haben.[36][37]
+Motivation
+
+Bereits als er im Jahr 2007 von der CIA nach Genf geschickt worden war und ungehinderten Zugang zu geheimen Informationen und Überwachungsdaten gehabt habe, seien ihm erstmals Zweifel an der Rechtmäßigkeit seiner Arbeit gekommen:
+
+    „Ich erkannte, dass ich Teil von etwas geworden war, das viel mehr Schaden anrichtete als Nutzen brachte.“[14]
+
+Schon damals habe er darüber nachgedacht, die geheimen Überwachungspraktiken der US-Geheimdienste zu enthüllen, doch habe die Wahl von Barack Obama zum Präsidenten der Vereinigten Staaten in ihm die Hoffnung geweckt, die fragwürdigen Praktiken der Geheimdienste würden durch Reformen abgeschafft. Da Snowden jedoch den Eindruck gewann, dass Obama in Bezug auf die Geheimdienstpolitik genau so weitermachte wie sein Vorgänger George W. Bush, kam er im Laufe der Zeit zu der Überzeugung, dass er nicht länger warten könne und die Existenz der Überwachungsprogramme öffentlich machen müsse.[14][38]
+
+In einem Interview mit dem Guardian-Journalisten Glenn Greenwald sagte Snowden:
+
+    „Ich möchte nicht in einer Welt leben, in der alles, was ich tue und sage, aufgezeichnet wird. Solche Bedingungen bin ich weder bereit zu unterstützen, noch will ich unter solchen leben.“[5][39][40]
+
+Obwohl ihm bewusst gewesen sei, welche Konsequenzen er persönlich mit der Veröffentlichung der Dokumente und den daraus resultierenden Folgen zu befürchten habe, sei er bereit gewesen, das Opfer zu bringen, „weil er es nicht mit seinem Gewissen vereinbaren könne, dass die US-Regierung die Privatsphäre, die Freiheit des Internets und grundlegende Freiheiten weltweit mit ihrem Überwachungsapparat zerstöre“.[41][40] Er habe im Laufe seiner Arbeit erkannt, dass man daran mitwirke, die Architektur der Unterdrückung auszubauen, wenn man für die Geheimdienste an der Überwachung der eigenen Bürger beteiligt sei. „Dann merkt man, dass man bereit ist, jedes Risiko zu tragen, ganz egal, was dabei herauskommt, solange die Öffentlichkeit selbst entscheiden darf.“[14] Daher betrachte er die Weitergabe der Unterlagen auch nicht als Straftat.[42]
+
+Eigenen Angaben zufolge habe Snowden zuvor mehrfach vergeblich versucht, sich mit seinen Bedenken bei offiziellen Amtsträgern Gehör zu verschaffen. Als Mitarbeiter eines externen Dienstleisters sei er nicht durch die Whistleblower-Gesetze geschützt gewesen, die für Mitarbeiter der US-Regierung gelten.[43]
+
+Snowden stützt sein Handeln auch auf die Prinzipien, die aus der Rechtsprechung der Nürnberger Prozesse formuliert wurden, und sagt:
+
+    „Individuen haben internationale Verpflichtungen, die die nationalen Verpflichtungen des Gehorsams übersteigen.“
+
+Daher habe jeder einzelne Bürger die Pflicht, inländische Gesetze zu verletzen, um Verbrechen gegen den Frieden und die Menschlichkeit zu verhindern.[44][45]
+Strafanzeige und Haftbefehl
+
+Am 20. Juni 2013 wurde bekannt, dass das FBI bereits am 14. Juni 2013 Strafanzeige gegen Snowden erstattet hatte.[46] Der Washington Post liegt eine Anzeige des FBI vor,[47] in der ihm Diebstahl von Regierungseigentum, widerrechtliche Weitergabe von Verschlusssachen sowie Spionage vorgeworfen wird (jede der drei Straftaten ist mit einer Freiheitsstrafe von bis zu zehn Jahren belegt).[46] Klage wurde beim Bundesbezirksgericht (United States District Court for the Eastern District of Virginia) in Alexandria (Virginia), dem für den Firmensitz seines letzten Arbeitgebers zuständigen Gericht, eingereicht.[7] Dem Haftbefehl gegen Snowden folgte die Aufforderung an die Behörden in Hongkong, ihn so lange in Gewahrsam zu nehmen, bis ein Auslieferungsantrag gestellt werde.[48]
+Flucht
+Das Mira Hotel in Hongkong, wo sich Edward Snowden mit Laura Poitras, Glenn Greenwald und Ewen MacAskill traf, um eine Woche später die ersten Dokumente zu veröffentlichen[49]
+
+Snowden war sich des Risikos von Anfang an bewusst, von den US-Geheimdiensten als Quelle der Veröffentlichung identifiziert und mit Gefängnis bestraft zu werden. Er habe sich als Ziel Hongkong ausgesucht, weil sich die Sonderverwaltungszone dem Recht auf freie Rede und auf politische Abweichung verpflichtet habe. So gebe es ein Recht auf politischen Widerstand, Demonstrationen auf der Straße seien erlaubt und das Internet werde nicht gefiltert. Darüber hinaus glaube er, dass Hongkong als einer von wenigen Orten auf der Welt im Gegensatz zu vielen westlichen Regierungen unabhängig und in der Lage sei, Forderungen der US-Regierung zu widerstehen.[5] Er erhoffe sich, dass Hongkong ihn deshalb weder an die Vereinigten Staaten noch an China ausliefern werde. Snowden sagte, er sei sich bewusst, dass er seine Freundin, seine Familie und sein Zuhause in den Vereinigten Staaten sehr lange nicht, vielleicht auch nie mehr wiedersehen werde, und bat um politisches Asyl.[20][5] Trotzdem befürchtet er, in eines der beiden Länder ausgeliefert oder von Mitarbeitern US-amerikanischer Geheimdienste oder deren Partnern entführt und gewaltsam in die USA verbracht oder „ausgeschaltet“ zu werden.[11][41]
+
+Zwar gibt es seit 1997 für Fälle krimineller Vergehen ein Auslieferungsabkommen zwischen Hongkong und den Vereinigten Staaten, eine Auslieferung kann bei politischen Delikten jedoch verweigert werden. Zusätzlich könnte China, zu dem die halbautonome Sonderverwaltungszone Hongkong gehört, bei begründetem öffentlichen Interesse ein Veto gegen eine Auslieferung einlegen. Nicholas Beleguin von der Menschenrechtsorganisation Human Rights Watch und James Fallows von der Zeitschrift The Atlantic hielten letzteres jedoch für unwahrscheinlich, da der Überwachungsstaat in China noch wesentlich exzessiver praktiziert werde als in den USA. Zudem könne die chinesische Regierung keinerlei Interesse daran haben, mit der Unterstützung Snowdens einen Präzedenzfall und ein Vorbild für Whistleblower im eigenen Land zu schaffen.[14]
+
+Dennoch erlaubte die Regierung von Hongkong Snowden zu fliehen, obwohl die USA unter Berufung auf das gemeinsame Auslieferungsabkommen um seine Verhaftung ersucht hatten. Der Leiter des Presseamtes des US-Außenministeriums, Patrick Ventrell, sagte zu Journalisten: „We are deeply disappointed by the decision of the authorities in Hong Kong to permit Mr. Snowden to flee despite a legally valid U.S. request to arrest him for purposes of his extradition under the U.S.-Hong Kong Surrender Agreement … We were very clear about our interest in this individual, and …we’re just not buying that this was a technical decision by a Hong Kong immigration official. This was a deliberate choice by the government to release a fugitive despite a valid arrest warrant.“ ([50]) Es ist unklar, wie Snowden ausreisen durfte, obwohl die USA seinen Reisepass bereits annulliert hatten.[51]
+
+Laut Guardian-Interview habe Snowden auch in Betracht gezogen, politisches Asyl in Island zu beantragen, da es die Freiheit im Internet achte und die gleichen Werte vertrete wie er selbst. Ein Asylantrag für Island kann nach Angabe der isländischen Botschafterin in Peking, Kristín Árnadóttir, nur in Island selbst gestellt werden, nicht aber von Hongkong aus, wo Snowden sich bis zum 23. Juni 2013 noch aufhielt.[14] Das Internationale Moderne Medieninstitut in Reykjavík, das unter Mitarbeit der isländischen Politikerin Birgitta Jónsdóttir die Veröffentlichung der Collateral-Murder-Videos durch WikiLeaks unterstützt hatte, gab bekannt, es wolle Snowden dabei helfen, die Chancen auf Asyl in Island auszuloten, und werde ihm zur Seite stehen, falls er ernsthaft in Island um Asyl ersuchen will.[52] Am 21. Juni 2013 gab der isländische Geschäftsmann und Unterstützer von Wikileaks, Olafur Vignir Sigurvinsson, bekannt, dass er in China einen Privatjet gechartert habe, um Snowden einen sicheren Transport nach Island zu ermöglichen.[53] Snowden könne – laut Sigurvinsson – zwar jederzeit mit dem Privatjet nach Island ausreisen, wolle dies jedoch erst tun, wenn er von der isländischen Regierung signalisiert bekäme, dass seinem in Island von ihm selbst zu stellenden Asylantrag dann auch tatsächlich stattgegeben und er nicht in die USA ausgeliefert würde. Die isländische Regierung sagte, sie stehe in informellem Kontakt zu Snowden, hätte aber noch nicht entschieden, ob sie ihm Zuflucht gewähren wolle oder nicht.[53]
+Terminal F mit dem Transitbereich des Flughafens Moskau-Scheremetjewo[54]
+
+Die Moskauer Zeitung Kommersant berichtete, dass Snowden am 21. Juni ein Aeroflot-Ticket gekauft habe mit Ziel Havanna, über Moskau. Am selben Tag habe Snowden im russischen Konsulat seinen 30. Geburtstag gefeiert. Gleichwohl gaben sich der russische Präsident Wladimir Putin und sein Pressesprecher überrascht von Snowdens Ankunft in Moskau.[55]
+
+Die South China Morning Post meldete am 23. Juni 2013, dass Snowden um 10:55 Uhr Ortszeit in Hongkong eine Maschine der russischen Aeroflot nach Moskau bestiegen habe, die russische Hauptstadt aber nicht die letzte Station seiner Reise sei.[56][57] Wenig später bestätigte auch die Hongkonger Regierung, dass Snowden Hongkong legal und auf regulärem Wege in Richtung eines „Drittlandes“ verlassen habe.[56][58] Begleitet wurde er dabei von Sarah Harrison, einer Mitarbeiterin von Wikileaks.[59]
+
+Am 23. Juni 2013 wurde bekannt, dass Snowden vom Flughafen Moskau-Scheremetjewo aus Asyl in Ecuador beantragt hat.[60][61] Der ecuadorianische Präsident Rafael Correa ließ die vom Londoner Konsulat ausgestellten Reisedokumente umgehend einziehen und kündigte eine Bestrafung des Verantwortlichen an (Gerüchte kursierten, Julian Assange habe sich eingemischt). Ein Asylantrag könne erst endgültig geprüft werden, wenn Snowden sich auf ecuadorianischem Boden bzw. in einer Botschaft befinde. Dies liege nun „nicht in den Händen Ecuadors“, sondern der russischen Behörden.[62]
+Ecuadorianisches Botschaftsfahrzeug vor dem Flughafen Scheremetjewo am 23. Juni 2013 ungefähr zum Zeitpunkt von Snowdens Landung
+
+Die Regierung Ecuadors forderte die USA auf, schriftlich darzulegen, warum sie Snowden nicht Asyl gewähren soll.[63] Am 27. Juni 2013 drohte daraufhin der Vorsitzende des Senatsausschusses für auswärtige Angelegenheiten, Robert Menendez, Ecuador mit der Streichung von Handelserleichterungen: „Unsere Regierung wird Länder nicht für Fehlverhalten belohnen.“[64] Noch am selben Tag kündigte Ecuador das Zollabkommen mit den USA auf; das Land verzichte „unilateral und unwiderruflich auf Zollvergünstigungen“.[65] Zudem bot der ecuadorianische Kommunikationsminister den USA Entwicklungshilfen in Höhe der Handelsvergünstigungen (ca. 23 Millionen US-Dollar) an, mit der Auflage, sie für „Bildungsmaßnahmen zum Thema Menschenrechte einzusetzen“.[66]
+
+US-Präsident Obama sagte, er werde „keine Jets schicken, um einen 29 Jahre alten Hacker zu fassen“. Auch der venezolanische Präsident Nicolás Maduro positionierte sich gegen die US-amerikanischen Interessen und ließ verlauten, dass Snowden bei einer entsprechenden Anfrage „fast sicher“ Asyl in seinem Land erhielte.[67]
+
+Am 1. Juli 2013 zitierte die Los Angeles Times einen nicht genannten russischen Diplomaten, dem zufolge Snowden in 15 Ländern Asyl begehrt haben soll – offenbar als Reaktion auf die ablehnende Stellungnahme Ecuadors mit der Begründung, „man könne keine politische Verfolgung erkennen“.[68]
+
+Währenddessen veröffentlichten mehrere Medien eine Meldung, nach der Putin Snowden Asyl in Russland angeboten haben soll unter der Bedingung:
+
+    „Wenn er hier bleiben möchte, gibt es eine Bedingung: Er muss mit seiner Arbeit aufhören, die darauf gerichtet ist, unseren amerikanischen Partnern Schaden zuzufügen – so merkwürdig sich das aus meinem Mund auch anhören mag.“
+
+– Wladimir Putin: kremlin.ru[69]
+
+Ebenfalls am 1. Juli veröffentlichte die Whistleblower-Plattform Wikileaks eine (am 7. Juli von Glenn Greenwald verifizierte)[70] Stellungnahme Snowdens, in welcher er den Vereinigten Staaten vorwirft, „Staatsbürgerschaft als Waffe zu benutzen, indem man ohne rechtliches Verfahren seinen Reisepass für ungültig erklärt habe“. Des Weiteren hieß es in Snowdens Stellungnahme, nehmen ihm die USA das Menschenrecht, Asyl zu suchen (Artikel 14 der Allgemeinen Erklärung der Menschenrechte), indem sie auf diplomatischer Ebene Druck auf andere Staaten ausüben.[71][72] In einem undatierten Brief an den ecuadorianischen Präsidenten Correa bedankte sich Snowden für Ecuadors Unterstützung bei seiner Flucht von Hongkong nach Russland; außerdem kündigte er weitere Veröffentlichungen an, „die dem öffentlichen Interesse dienen“.[73][74]
+Erzwungene Landung des bolivianischen Präsidenten
+Boliviens Präsident Evo Morales während der COP15 in Kopenhagen
+
+Für internationale Irritationen sorgte ein außerplanmäßiger Zwischenstopp des bolivianischen Präsidenten Evo Morales am 2. Juli 2013 in Wien und eine Kontrolle des Luftfahrzeuges durch österreichische Behörden.[75] Von einer Konferenz in Moskau kommend befand er sich auf dem Rückflug nach La Paz, als ihm die Überfluggenehmigungen für Frankreich, Spanien, Portugal und Italien entzogen wurden – offenbar, weil das Gerücht aufgekommen war, an Bord der Präsidentenmaschine befände sich Edward Snowden.[76] Spanien und Frankreich dementierten dies zunächst. Das französische Außenministerium gestand später ein, dass es sich beim Entzug der Überfluggenehmigung um ein „administratives Missgeschick“ gehandelt habe.[77] Morales konnte seinen Flug erst nach zwölf Stunden fortsetzen. Lateinamerikanische Regierungen quittierten das Verhalten der involvierten europäischen Regierungen mit heftigen Protesten.[78][79] Nach Agenturmeldungen soll die US-Regierung Ländern, die ein Flugzeug mit Snowden an Bord auf ihrem Gebiet landen lassen, mit einer ernsthaften Verschlechterung der Beziehungen gedroht haben.[79] Bolivien zog die Schließung der US-Botschaft in La Paz in Betracht.[80] Le Monde diplomatique veröffentlichte einen Brief von Morales, in dem er den Flugverlauf schilderte.[81][82]
+
+In einer Resolution verurteilte die Organisation Amerikanischer Staaten (OAS) den Vorfall. Frankreich, Spanien, Italien und Portugal hätten „klar gegen die Grundlagen internationalen Rechts verstoßen“ und müssten sich dazu erklären.[83] Tatsächlich soll Morales von diesen vier Ländern Entschuldigungen erhalten haben, die er akzeptierte.[84] UN-Generalsekretär Ban Ki-moon kritisierte den Zwischenfall ebenfalls und betonte dabei die Unverletzlichkeit von Staatsoberhäuptern – diese hätten Immunität.[83]
+Asylanträge
+Nicht akzeptierte Asylanträge
+
+Von Wikileaks wurde am 2. Juli 2013 eine Liste mit insgesamt 21 Ländern veröffentlicht, bei denen Snowden bereits am 30. Juni 2013 ein Asylgesuch gestellt haben soll, darunter auch Island[85] und Ecuador,[86] die beide abgelehnt hätten, bei denen er sein Gesuch offenbar erneuerte:[86][87][88]
+Flagge	Staat	Status	Bekannt-
+werden	Begründung (lang)	Begründung
+(kurz)
+	Bolivien 	Angebot[89] 	6. Juli 2013 	Boliviens Präsident Morales erklärte am 6. Juli: „Wenn dieser Amerikaner uns um Asyl bittet, werden wir es ihm zugestehen“.[90] 	Angebot
+	Brasilien 	abgelehnt[86] 	2. Juli 2013 	Ein Sprecher des Außenministeriums sagte, man wolle die Anfrage unbeantwortet lassen und Snowden kein Asyl gewähren.[86] 	unbeantworteter Antrag
+	China 	– 	– 	– 	–
+Deutschland	Deutschland 	abgelehnt[86][91] 	3. Juli 2013 	„Auswärtiges Amt und Innenministerium sehen die Voraussetzungen für Snowdens Aufnahme nicht erfüllt.“[86] 	mehrdeutige Begründung
+	Ecuador 	abgelehnt[86] 	2. Juli 2013 	Präsident Rafael Correa erklärte, dass ein Asylantrag nur von ecuadorianischem Staatsgebiet aus gestellt werden könne.[86] In einer Pressemitteilung vom 12. Juni 2013 dankte Snowden dem Land für das Engagement gegen die Menschenrechtsverletzungen in dieser Angelegenheit.[92] 	Hoheitsgebiet
+	Finnland 	abgelehnt[86] 	2. Juli 2013 	Das finnische Außenministerium stellte klar, dass nur Personen, die sich in Finnland aufhalten, einen Asylantrag stellen können. 	Hoheitsgebiet
+Frankreich	Frankreich 	abgelehnt[93] 	4. Juli 2013 	„Die USA sind ein befreundetes Land“, hieß es laut der Pariser Tageszeitung Le Monde in einer Erklärung des französischen Innenministeriums: „Sollte Snowden französisches Territorium betreten, wäre es die Pflicht der Polizei, ihn aufzuhalten – schließlich gibt es ein Auslieferungsabkommen mit den Vereinigten Staaten.“[94] 	Auslieferungs­abkommen
+	Indien 	abgelehnt[86] 	2. Juli 2013 	„Nach gründlicher Untersuchung sehen wir keinen Grund, Snowdens Antrag nachzukommen“, sagte ein Sprecher des Außenministeriums auf Twitter.[86] 	inhaltliche Ablehnung
+	Irland 	abgelehnt[86] 	2. Juli 2013 	Laut Justizministerium kann ein Asylantrag nur gestellt werden, wenn sich die Person in Irland aufhält.[86] 	Hoheitsgebiet
+	Island 	abgelehnt[85] 	6. Juli 2013 	Laut der isländischen Oppositionsabgeordneten Birgitta Jónsdóttir hat der Antrag, Snowden die isländische Staatsbürgerschaft zu verleihen, im Parlament keine Mehrheit gefunden. Für einen Asylantrag müsse er sich auf isländischem Boden aufhalten.[85] 	Hoheitsgebiet, auch keine Staats­bürgerschaft
+Italien	Italien 	abgelehnt[93] 	4. Juli 2013 	Italiens Außenministerin Emma Bonino sagte am 3. Juli 2013 vor dem Parlament in Rom, der 30-Jährige habe nicht persönlich an den Außengrenzen Italiens um Asyl gebeten. Aus diesem Grund müsse sein Wunsch abgelehnt werden. Auch sei es „von einem politischen Standpunkt“ her nicht möglich, Snowden Asyl zu gewähren.[93] 	Hoheitsgebiet und „politischer Standpunkt“
+	Kuba 	– 	– 	– 	–
+Niederlande	Niederlande 	abgelehnt[95][96] 	2. Juli 2013 	Ein Sprecher des Justizministeriums teilte Journalisten mit, dass es seit 2003 nicht mehr möglich sei, in den Niederlanden Asyl zu beantragen, ohne sich im Land aufzuhalten: „Wir fassen dies nicht als Asylantrag auf.“ Weiterhin erklärte Vize-Justizminister Fred Teeven, dass ein korrekt verfasster Asylantrag ohnehin „keine Chance“ auf Erfolg gehabt hätte, da Snowden sich nicht in einer „akuten Notlage“ befinde.[95][96] 	Hoheitsgebiet und „keine akute Notlage“
+	Nicaragua 	Angebots­prüfung[89][97] 	6. Juli 2013 	Nicaragua prüfe den Antrag auf „humanitäres Asyl“.[89] Präsident Daniel Ortega sagte vor Anhängern in der Hauptstadt Managua, Nicaragua sei ein offenes Land und respektiere das Recht auf Asyl. „Wenn es die Umstände zulassen, nehmen wir Snowden gerne auf und gewähren ihm Asyl hier in Nicaragua.“[97]
+
+Nicaraguas Botschaft in Moskau bestätigte am 8. Juli 2013, einen Antrag von Snowden erhalten zu haben.[98]
+	Antragsprüfung
+	Norwegen 	abgelehnt[86] 	2. Juli 2013 	Pål Lønseth vom norwegischen Justizministerium sagte gegenüber dem staatlichen Sender NRK: „Man muss vom norwegischen Staatsgebiet aus Asyl beantragen“, und fügte hinzu: „Wenn es nach dem normalen Verfahren geht, wird sein Antrag abgelehnt“.[86] 	Hoheitsgebiet und Ablehnung
+Österreich	Österreich 	abgelehnt[86][91] 	2. Juli 2013 	Die damalige Innenministerin Johanna Mikl-Leitner erklärte: „Ein Asylantrag kann nur von österreichischem Staatsgebiet aus gestellt werden“. Sollte es Snowden jedoch gelingen, nach Österreich zu reisen, würde er nicht abgeschoben, weil kein internationaler Haftbefehl gegen ihn vorliege.[86] 	Hoheitsgebiet, aber „keine Abschiebung“
+	Polen 	abgelehnt[86][91] 	2. Juli 2013 	Der damalige Außenminister Radosław Sikorski twitterte: „Ich werde keine positive Empfehlung aussprechen.“[86] 	inhaltliche Ablehnung
+Russland	Russland 	Angebot 	2. Juli 2013 	Präsident Wladimir Putin bot Snowden Asyl an unter der Bedingung, dass er seine „antiamerikanischen Betätigungen“ beende. Am 2. Juli 2013 wurde bekannt, dass Snowden diesen Vorbehalt nicht akzeptiere.[91] Am 12. Juli gab Snowden jedoch eine Pressemitteilung heraus, in der er die Hoffnung äußerte, dass das Angebot noch stehe, da er es eventuell doch noch annehmen wolle.[92] 	Angebot
+	Schweiz 	– 	2. Juli 2013 	Die Sprecherin des schweizerischen Bundesamtes für Migration teilte am 2. Juli 2013 auf Anfrage mit, dass man keine Kenntnis von einem von Snowden gestellten Asylantrag habe.[99] Bereits am 12. Juni 2013 war bekannt geworden, dass Nationalrat Balthasar Glättli die Frage, ob die Schweiz bereit wäre, „ein Asylgesuch von Snowden positiv zu beantworten“, in die Fragestunde des Nationalrats eingebracht hatte.[100] Der Bundesrat wollte jedoch nicht zu einem hypothetischen Asylgesuch Stellung nehmen; ein Gesuch Snowdens würde gemäß den geltenden Bestimmungen von den zuständigen Stellen geprüft.[101] 	–
+Spanien	Spanien 	abgelehnt[86] 	2. Juli 2013 	– 	Hoheitsgebiet
+	Venezuela 	Angebot[89][97] 	6. Juli 2013 	Der venezolanische Präsident Nicolás Maduro sagte im Rahmen einer Militärparade: „Als Staats- und Regierungschef der Bolivarianischen Republik von Venezuela habe ich mich entschieden, dem jungen Amerikaner Edward Snowden humanitäres Asyl anzubieten. Er soll in das Vaterland von Bolívar und Chávez kommen und frei von der imperialistischen Verfolgung Nordamerikas leben können.“ (Nicolas Maduro: Reuters / dpa).[89][97]
+
+Am 9. Juli 2013 bestätigte Maduro, einen Antrag von Edward Snowden erhalten zu haben. Dieser müsse dann „entscheiden, wenn er ein Flugzeug nimmt, ob er tatsächlich herkommen will“.[102]
+	Angebot, aber Hoheitsgebiet; Antrag[102]
+Erläuterung: „Hoheitsgebiet“, wenn ein Antrag nur auf dem Staatsgebiet bzw. in einer Botschaft oder Konsulat gestellt werden kann.
+Reaktionen der einzelnen Länder
+﻿Angebot
+﻿Angebot unter Bedingung
+﻿Angebotsprüfung
+﻿Entscheidung unbekannt
+﻿Ablehnung
+
+Die ablehnenden Länder verhielten sich sehr unterschiedlich. Während Frankreich dem Antrag mit dem Hinweis auf ein mit den USA bestehendes Auslieferungsabkommen begegnete[93][94] und Brasilien den Antrag unbeantwortet lassen wollte,[86] sprachen Länder wie Indien und Polen eine inhaltliche Ablehnung aus; man sehe keine Gründe für die Gewährung von Asyl.[86]
+
+Länder wie Ecuador, Finnland, Irland und Spanien begründeten ihre Ablehnung formal mit dem Hinweis, dass ein Antragsteller sich auf dem Hoheitsgebiet des Landes aufhalten müsse.[86] Dies war auch die österreichische und isländische Begründung. In Island allerdings versuchten sechs Oppositionsabgeordnete, Snowden über einen Parlamentsantrag die isländische Staatsbürgerschaft zu gewähren,[85] und Österreich wies darauf hin, dass man Snowden nicht aus Österreich ausweisen würde, da kein internationaler Haftbefehl vorliege.[86]
+
+Länder wie Norwegen,[86] die Niederlande[95][96] und Italien[93][89] nannten neben einem formalen auch einen inhaltlichen Grund für ihren abschlägigen Bescheid. Deutschland hingegen ließ mit der gewählten Formulierung offen, ob es wegen formaler oder inhaltlicher Gründe ablehnte.
+
+Das Angebot Russlands lehnte Snowden zunächst aufgrund der daran geknüpften Bedingung Putins ab. Laut Spiegel haben nur die Volksrepublik China, Island, Kuba, Nicaragua und Venezuela in den zurückliegenden 60 Jahren kein Auslieferungsabkommen mit den USA unterzeichnet.[86]
+
+Über Twitter berichtete Wikileaks am 5. Juli 2013, dass Snowden in sechs weiteren Ländern Asyl beantragt habe. Um eine mögliche Einflussnahme der USA zu verhindern, wolle man die einzelnen Länder nicht nennen.[103]
+
+Vier Tage später, am 9. Juli 2013, bestätigte Venezuelas Präsident Nicolás Maduro, einen Antrag von Edward Snowden erhalten zu haben. Bereits am Vortag bestätigte die nicaraguanische Botschaft in Moskau ebenfalls, dass ihr ein Asylantrag von Snowden vorliege.[104] Ergänzend meldete der Spiegel, dass die Wirtschaft Nicaraguas dem Asylantrag ablehnend gegenüberstehe, da man – in weit größerem Ausmaß als Venezuela – auf die Zusammenarbeit mit den und die Unterstützung durch die Vereinigten Staaten angewiesen sei.[98]
+Gewährtes Asyl in Russland
+
+Am 12. Juli 2013 gab Edward Snowden in einer auf WikiLeaks veröffentlichten Pressemitteilung bekannt, dass er ein Angebot Russlands annehmen würde, bis er sicher in eines der südamerikanischen Länder reisen könne, die ihm Asyl angeboten hatten. Ferner erklärte er, alle Asyl- und Hilfsangebote angenommen zu haben. Er betonte, dank des venezolanischen Angebots nun offiziell Asylstatus zu haben, und bezog sich dabei auf die Genfer Flüchtlingskonvention. In der Pressemitteilung fasste er die Situation aus seiner Sicht zusammen und klagte dabei die seiner Meinung nach ungesetzlichen Handlungen verschiedener Staaten Nordamerikas und Westeuropas in dieser Angelegenheit an.[92][105] Der russische Parlamentschef Sergei Naryschkin sprach sich dann dafür aus, Snowden zumindest vorübergehend politisches Asyl zu gewähren, da sich dieser um die Menschenrechte verdient gemacht habe.[106] Der russische Präsident Wladimir Putin erklärte jedoch, Snowden würde Russland bald verlassen.[107] Am 1. August 2013 wurde bekannt, dass Snowden von Russland vorläufig für ein Jahr Asyl erhalten habe[8] mit der Option, jeweils um ein weiteres Jahr zu verlängern. Nach fünf Jahren sei ein Antrag auf die russische Staatsangehörigkeit möglich, so Pressestimmen.[108]
+
+Im April 2014 wurde Snowden in eine TV-Sendung des russischen Staatsfernsehens mit Präsident Putin zugeschaltet, wo Snowden diesem eine Frage zur Überwachungspolitik Russlands stellte. Kritiker warfen Snowden daraufhin vor, er habe sich von Putin für propagandistische Zwecke instrumentalisieren lassen.[109][110][111] Im britischen Guardian verteidigte Snowden seine Teilnahme an der Sendung.[112]
+
+Am 31. Juli 2014 um Mitternacht lief Snowdens befristetes Asyl aus, über den Antrag auf Verlängerung hatten die russischen Behörden noch nicht entschieden. Sein Anwalt Anatoli Kutscherena erwartete aber, dass Snowden so lange in Russland bleiben könne, bis über seinen Fall entschieden sei.[113] Am 7. August wurde bekannt, dass Russland Snowden eine weitere Aufenthaltserlaubnis für drei Jahre erteilt hat. Die Aufenthaltsgenehmigung gelte seit dem 1. August. Snowden könne sich in Russland frei bewegen. Zudem dürfe der 31-Jährige ins Ausland reisen – aber nicht länger als drei Monate.[114] Im Januar 2017 wurde bekannt, dass Snowdens Aufenthaltsgenehmigung vom russischen Außenministerium um weitere drei Jahre verlängert wurde.[115]
+
+Am 26. September 2022 verlieh ihm der russische Präsident Wladimir Putin per Unterzeichnung eines Dekrets die russische Staatsbürgerschaft.[116]
+Reaktionen
+USA
+
+US-Präsident Obama und sein Kabinett äußerten sich zunächst nicht direkt. Einen Tag nach Bekanntwerden von Snowdens Identität forderten die republikanischen Kongressmitglieder Mike J. Rogers, Vorsitzender des ständigen Geheimdienstausschusses im US-Repräsentantenhaus, und Peter T. King, ehemaliges Mitglied im Geheimdienstausschuss, erste Schritte für eine Überstellung Snowdens in die USA, die Aufnahme strafrechtlicher Ermittlungen und seine Verfolgung mit der vollen Härte des Gesetzes.[14] Die demokratische Senatorin von Kalifornien und Vorsitzende des Ausschusses für Nachrichtendienste im US-Senat, Dianne Feinstein, schloss sich der Forderung an und regte darüber hinaus Anhörungen im US-Kongress an.[20] Zahlreiche Bürgerrechts- und Menschenrechtsgruppen weltweit bekundeten Snowden ihre Unterstützung, beispielsweise Jesselyn Radack, eine ehemalige hochrangige Mitarbeiterin des US-Justizministeriums, die sich für Whistleblower einsetzt.[14] Thomas Drake, ein ehemaliger Angestellter der NSA und Whistleblower, bezeichnete Snowdens Aufdeckungen als Akt zivilen Ungehorsams.[117] Daniel Ellsberg, der 1971 die geheimen Pentagon-Papiere an die Presse gab und über das Fehlverhalten mehrerer US-Regierungen während des Vietnamkriegs aufklärte, schrieb im Guardian, dass es seiner Meinung nach in der US-amerikanischen Geschichte kein wichtigeres Leak gegeben habe als die Veröffentlichung des NSA-Materials durch Snowden:
+
+    “Snowden’s whistleblowing gives us a chance to roll back what is tantamount to an ‚executive coup‘ against the US constitution.”
+
+    „Snowdens Whistleblowing gibt uns die Chance, etwas zurückzudrängen, das gleichbedeutend mit einem ‚Putsch der Regierung‘ gegen die US-Verfassung ist.“
+
+– Daniel Ellsberg: The Guardian[118]
+
+Der frühere Vizepräsident Al Gore sagte, seiner Meinung nach sei das flächendeckende Sammeln von US-Telefondaten nicht wirklich der „American way“, vielmehr illegal. Er drängte US-Präsident Obama und den US-Kongress, die Gesetze, auf deren Basis die NSA arbeite, zu überprüfen und zu ändern.[119] Die Süddeutsche Zeitung zitierte im Juni 2013 die Firma Booz Allen Hamilton, für die Snowden zuletzt tätig war, mit den Worten: „Sollten sich die Zeitungsberichte als wahr herausstellen, ist seine Handlung eine schwere Verletzung des Verhaltenskodexes der Firma und greift die Kernwerte unseres Unternehmens an“.[120] Bereits am folgenden Tag gab das Unternehmen die fristlose Kündigung von Edward Snowden bekannt.[23]
+
+Bei einer Umfrage der Quinnipiac University im Jahr 2013 bezeichneten 55 Prozent der befragten US-Bürger Snowden als einen Whistleblower mit einem legitimen Anliegen und 34 Prozent als einen Verräter.[121] Von Linksliberalen und Anhängern der Tea-Party-Bewegung wurde er positiver gesehen.[122] Laut einer anderen Meinungsumfrage im Jahr 2013 äußerte eine Mehrheit der Tea-Party-Anhänger, Snowden habe öffentlichen Interessen geschadet.[123]
+
+Der frühere Direktor der CIA, James Woolsey, forderte bei Fox News eine Anklage Snowdens wegen Hochverrats sowie seine Hinrichtung, sollte er verurteilt werden.[124][125] Die Website BuzzFeed zitierte am 16. Januar 2014 einen zu Snowden befragten Mitarbeiter des US-Verteidigungsministeriums mit der Aussage „I would love to put a bullet in his head“ (Ich würd’ ihm gern eine Kugel in den Kopf jagen).[126] Darauf bezogen sagte Snowden in einem Interview wenige Tage später, dass es deutliche Bedrohungen gegen ihn gebe, er jedoch trotzdem gut schlafe.[127][128]
+
+In einem Interview im September 2015 sagte Noam Chomsky über Snowden: „Sein Handeln war couragiert und äußerst wichtig. Man darf ihn nicht verdammen, er sollte stattdessen gelobt werden, und natürlich muss man ihn verteidigen.“[129] Im November 2016 schickten 15 ehemalige Mitglieder des Church Committee, das in den Jahren 1975–1976 die illegalen Aktivitäten der US-Geheimdienste aufgearbeitet hatte, ein achtseitiges Plädoyer für Snowdens Begnadigung an Obama und die US-Generalstaatsanwältin Loretta Lynch.[130]
+
+Die US-amerikanische Initiative Pardon Snowden, die sich für eine Begnadigung Snowdens durch US-Präsident Obama einsetzte, erhielt im Herbst 2016 Unterstützung von zahlreichen Persönlichkeiten aus dem In- und Ausland, darunter Apple-Mitgründer Steve Wozniak, dem Investor und Philanthrop George Soros, dem Internet-Pionier Tim Berners-Lee[130], dem Whistleblower Daniel Ellsberg, der US-Schauspielerin Susan Sarandon, dem US-stämmigen Monty-Python-Mitbegründer Terry Gilliam, dem US-amerikanischen Bürgerrechtsaktivisten Cornel West sowie dem damaligen Amnesty-Generalsekretär Salil Shetty. Unterstützung fand die Petition auch beim britischen Unterhausabgeordneten David Winnick und dem deutschen Bundestagsabgeordneten Hans-Christian Ströbele.[131] Im Januar 2017 überreichte die Initiative über eine Million Unterschriften für ihr Anliegen an den aus dem Amt scheidenden Präsidenten, der Snowden jedoch bis zum Ende seiner Amtszeit nicht begnadigte.[132]
+
+Barack Obama sagte nach der Präsidentschaftswahl 2016 auf die Frage, ob er Snowden noch vor Ende seiner Amtszeit begnadigen werde: „Ich kann niemanden begnadigen, der nicht von einem Gericht verurteilt wurde. Ich glaube, Herr Snowden hat einige berechtigte Sorgen angesprochen. Wenn Herr Snowden beschließen sollte, sich den Gerichten zu stellen und seine Anwälte ihre Argumente vorbringen, dann werden diese Fragen eine Rolle spielen.“[133] Im September 2020 urteilte ein US-Gericht (United States Court of Appeals for the Ninth Circuit[134]), das Telefon-Überwachungsprogramm des US-Geheimdienstes NSA sei illegal. Das heimliche Sammeln der Telefondaten von Millionen US-Amerikanern ohne Befugnis sei ein Verstoß gegen das Gesetz zur Überwachung der Auslandsaufklärung und Spionageabwehr und möglicherweise verfassungswidrig gewesen. Die Spitzen der Geheimdienste, die das Programm öffentlich gegen Kritik verteidigten, hätten gelogen.[135][136]
+Deutschland
+Demo der Piratenpartei gegen PRISM während des Berlin-Besuchs von US-Präsident Barack Obama im Juni 2013
+
+Bundespräsident Joachim Gauck äußerte sich in einem von Bettina Schausten geführten ZDF-Sommerinterview Ende Juni 2013 zunächst differenzierend,[137][138] wurde dabei jedoch in den Medien missverstanden.[139] Vier Wochen später äußerte er sich ausführlich zur Überwachungs- und Spionageaffäre 2013 und Snowden: „Wer sie an die Öffentlichkeit bringt und dabei aus Gewissensgründen handelt, der verdient Respekt“ (Joachim Gauck: Passauer Neue Presse).[140] In dem zweiten Interview sah die Presse dann überwiegend „klare“ Worte von Gauck.[141][142]
+
+Im Juli 2013 plädierte Jürgen Trittin (damals Fraktionschef von Bündnis 90/Die Grünen im Bundestag) dafür, Snowden in Deutschland oder einem anderen europäischen Land Zuflucht zu gewähren; denn „er hat Europa einen Dienst erwiesen, indem er einen massiven Angriff auf den europäischen Bürger und Unternehmen offenbart hat“.[143][144] CDU und SPD lehnten es ab, Snowden Asyl in Deutschland zu gewähren;[145] GRÜNE,[145][143] Piratenpartei[146] und Die Linke[147] sprachen sich dafür aus. Am 8. Juli 2013 wurde gemeldet, dass drei Mitglieder des Bundesvorstands der FDP (trotz/wegen verlautbarter Ablehnung von Snowdens Asylantrag in Deutschland) die Diskussion aufrollen woll(t)en.[148] Die Fraktion der Piratenpartei NRW schlug Snowden für den Bundesverdienstorden vor: „Snowden hat sich dazu entschieden, sein persönliches Wohlergehen für die weltweite Aufklärung aufzugeben. Er hat seine Familie und seine Freunde zurückgelassen, seinen Beruf aufgegeben. Er wird seine Heimat vermutlich nie mehr wiedersehen“, lautete die Begründung des Fraktionsvorsitzenden Joachim Paul.[149]
+
+Die Bundesregierung hat aus Anlass der Veröffentlichungen Snowdens am 2. August 2013 eine Verwaltungsvereinbarung von 1968/69 zum Artikel 10-Gesetz mit den USA und Großbritannien aufgehoben bzw. aufheben lassen. Diese Verwaltungsvereinbarung legalisierte die Verletzung des Brief- und Telefongeheimnisses. Eine Verbalnote sicherte den USA zudem weitere Rechte zu.[150] Im Rahmen des Wahlkampfes vor der Bundestagswahl am 22. September 2013 äußerten ranghohe Politiker der CDU (beispielsweise Kanzleramtsminister Ronald Pofalla), die NSA-Affäre sei beendet.[151][152]
+
+Heribert Prantl schrieb im November 2013, man solle und müsse „ihm einen stabilen Aufenthaltstitel für Deutschland geben, auch wenn man dabei einen Konflikt mit den Amerikanern riskiert“.[153] Mehrere deutsche Politiker teilen diese Forderung.[154] Am gleichen Tag veröffentlichte die SZ ein Interview mit Snowden.[155] Laut einem Bericht der „Bild am Sonntag“ hörte die NSA ab 2002 auch Merkels Vorgänger Gerhard Schröder ab. Anlass sei das Nein der Bundesregierung zu einer Beteiligung am Irak-Krieg 2002 gewesen (siehe auch Irakkrise 2003). Dies habe die Frage aufgeworfen, ob Schröder noch vertrauenswürdig sei. Auch Schröders Nähe zum damaligen russischen Präsidenten Wladimir Putin habe beunruhigt.[156] Bild verwendete den Begriff „Handygate“ (in Anspielung an die Watergate-Affäre).[156] Als Reaktion auf die ablehnende Haltung der Bundesregierung gegenüber einer Befragung Snowdens vor dem Untersuchungsausschuss erstattete der Chaos Computer Club im Februar 2014 zusammen mit der Internationalen Liga für Menschenrechte Strafanzeige gegen die Bundesregierung, darunter auch gegen den Innenminister und Kanzlerin Merkel.[157][158][159]
+
+Der Ansicht der Bundesregierung, Snowden müsse in die Vereinigten Staaten ausgeliefert werden, wenn er nach Deutschland für seine Aussage vor dem Untersuchungsausschuss in Berlin einreise, widersprachen Rechtsexperten und erinnerten, dass das Auslieferungsabkommen zwischen Deutschland und den Vereinigten Staaten die Auslieferung im Falle politischer Straftaten untersage. Nach Auffassung des Straf- und Völkerrechtlers Nikolaos Gazeas bestehe unter Umständen sogar die Verpflichtung, Snowden in Berlin anzuhören, da das Aufklärungsinteresse des Untersuchungsausschusses ein hohes Rechtsgut sei.[160][161] Am 8. Mai 2014 beschloss der NSA-Untersuchungsausschuss des Deutschen Bundestags im Auftrag aller Fraktionen, ihn als Zeugen zu laden. Offen blieb, wo er aussagen würde.[162] Am 8. September 2014 veranstaltete das internationale literaturfestival berlin eine weltweite Lesung für Edward Snowden.[163]
+Südamerika
+
+Die NSA zeichnete auch die elektronische Kommunikation der Staatschefs Felipe Calderón (Mexiko) und Dilma Rousseff (Brasilien) mit ihren engsten Beratern auf. FAZ-Korrespondent Matthias Rüb schrieb in einem Kommentar: „Dass ausgerechnet die politischen Führer der engsten Verbündeten und wichtigsten Partner Washingtons von der NSA ausspioniert wurden, hat das in ganz Lateinamerika ohnedies verbreitete Misstrauen gegen die Vereinigten Staaten zementiert. In Europa ist das mutmaßliche Abhören des Handys von Kanzlerin Angela Merkel zum Fanal für eine Bewegung in der gesamten EU zum besseren Schutz von Bürgerrechten und Privatsphäre im Cyberspace geworden.“ (Matthias Rüb: FAZ)[164]
+
+Rousseff sagte wegen der NSA-Bespitzelung ihren seit langem geplanten Staatsbesuch in Washington ab;[165] stattdessen hielt sie Ende September vor der UN-Vollversammlung in New York eine Brandrede.[166]
+
+Brasilien treibe jetzt Pläne voran, Glasfaserkabel nach Europa und zu allen lateinamerikanischen Staaten zu legen. Dies solle, so Rüb, die Hegemonie der Vereinigten Staaten bei der Datenübertragung reduzieren.[164]
+Weitere Reaktionen
+
+Julian Assange, der seit 2007 auf der von ihm mitgegründeten Internetplattform Wikileaks zahlreiche geheime Daten verschiedener Whistleblower veröffentlicht, nannte Snowden einen Helden, dem die größte und von der Dimension her erschreckendste Aufdeckung geheimer Überwachungsprogramme der letzten Jahrzehnte zu verdanken sei. Die USA nannte er aufgrund der allumfassenden Dimension der aufgedeckten Überwachungs- und Spionageprogramme einen Massenüberwachungsstaat.[167]
+
+Der schwedische Soziologe Stefan Svallfors schlug Snowden für den Friedensnobelpreis vor, weil dieser in heldenmütigem Einsatz zu einem hohen persönlichen Preis die Existenz und die Dimension der Überwachung der weltweiten elektronischen Kommunikation durch die US-Regierung enthüllt habe.[168]
+Petitionen
+
+    Avaaz – „Stand with Edward Snowden“
+
+    Am 12. Juni 2013 wurde auf der Online-Petitionsseite Avaaz der Aufruf „Stand with Edward Snowden“ an US-Präsident Barack Obama gerichtet, mit dem die sofortige Beendigung des PRISM-Überwachungsprogramms gefordert und dafür plädiert wird, Snowden nicht als Straftäter, sondern als Whistleblower, der im Interesse des Volkes handelt, anzusehen und zu behandeln. Schon innerhalb der ersten 24 Stunden unterzeichneten fast 500.000 Menschen.[169] Bis zum 8. Juli 2013 kamen rund 1,35 Millionen Unterschriften zusammen.
+
+    openPetition – „Deutsche Staatsbürgerschaft ehrenhalber für Edward Snowden“
+
+    Auf der Online-Plattform „openPetition“ wurde am 24. Juni 2013 eine Petition mit dem Titel „Deutsche Staatsbürgerschaft ehrenhalber für Edward Snowden“ eingestellt, die bis zum 8. Juli 2013 rd. 1.700 Unterstützer fand.[170]
+
+    Deutsche Wissenschaftler – offener Brief an Bundesjustizministerin
+
+    Anfang Juli 2013 wandten sich deutsche Wissenschaftler in einem offenen Brief an Bundesjustizministerin Sabine Leutheusser-Schnarrenberger. Sie forderten die Ministerin darin auf, sich dafür einzusetzen, dass Deutschland Edward Snowden Asyl gewährt, und bezeichneten diesen als „Kronzeugen für die Aufklärung dieser staatlichen Überwachungsaktivitäten“. Bis zum 8. Juli schlossen sich 275 Menschen der Forderung an.[171]
+
+    Campact – „Schutz für Edward Snowden in Deutschland!“
+
+    Am 3. Juli 2013 startete Whistleblower Netzwerk e. V. auf der Online-Petitionsseite Campact eine Petition an den Deutschen Bundestag mit dem Aufruf „Schutz für Edward Snowden in Deutschland!“ und dem Ziel einer Gesetzesinitiative „zum Schutz öffentlicher Interessen durch Förderung und Schutz von Hinweisgebern“, die am 8. Juli 2013 bereits rd. 145.000 Personen unterzeichnet hatten.[172]
+
+    Online-Petition beim Deutschen Bundestag „43198 – Politisches Asyl für den US-Bürger Edward Snowden“
+
+    Ebenfalls am 3. Juli 2013 startete die Online-Petition beim Deutschen Bundestag „43198 – Politisches Asyl für den US-Bürger Edward Snowden“. In ihr wird u. a. gefordert, dass der Bundestag die Aufnahme des US-Amerikaners beschließen soll; bis zum 14. Juli wurden 10.147 Unterstützer gezählt.[173]
+
+    Die Grünen (Österreich) – „Asyl für Edward Snowden“
+
+    Anfang Juli 2013 wurde von der österreichischen Partei Die Grünen die Online-Petition „Asyl für Edward Snowden“ gestartet.[174] Diese wurde bisher von etwas mehr als 14.800 Personen unterzeichnet (Stand: 13. April 2014).
+
+    Der Schweizer Pfarrer Lutz Fischer-Lamprecht lancierte im Oktober 2015 eine Bürger-Petition über Avaaz,[175] die den Bundesrat aufforderte, Edward Snowden schon vor einer allfälligen Einreise in die Schweiz Asyl zuzusichern.[176][177][178]
+
+Autobiografie
+
+Am 1. August 2019 gab Edward Snowden bekannt, dass er eine Autobiografie verfasst habe.
+
+„Permanent Record“ erschien am 17. September 2019. In Deutschland erschien das Buch im S. Fischer Verlag in einer Übersetzung von Kay Greiners.[179] Im September 2019 gab er zur Vorstellung des Buches dem Spiegel und Die Welt Interviews, in denen er weiterhin den Wunsch äußerte, politisches Asyl in Deutschland zu bekommen. „Wenn Deutschland mich aufnehmen würde“, so Snowden gegenüber der Welt, würde dies inzwischen „nicht mehr als ein feindlicher Akt gegen die USA aufgefasst“.[180][181][182][183][184]
+
+    Edward Snowden: Permanent Record. Pan Books, 2019, ISBN 978-1-5290-3566-7 (englisch).
+        deutsche Ausgabe: Permanent Record: Meine Geschichte, S. Fischer Verlag, Frankfurt am Main 2019, ISBN 978-3-10-397482-9 und ISBN 978-3-10-397482-9
+
+Zivilrechtlich klagte das US-Justizministerium erfolgreich gegen Snowden und seine Verlage vor dem US District Court for the Eastern District of Virginia. Das Gericht entschied, dass Snowden alle seine mit der Veröffentlichung in Zusammenhang stehenden Einnahmen von über 5 Millionen Dollar an die US-Regierung zahlen müsse, da er seine Non-Disclosure Agreements verletzt habe.[185][186]
+Sonstige Tätigkeiten
+
+Edward Snowden beteiligte sich an einem Werk des Elektronikmusikers Jean-Michel Jarre, das im Mai 2016 auf dessen Album Electronica 2: The Heart of Noise erschien.[187] Bereits am 15. April 2016 veröffentlichte Jarre den Techno-Track Exit, für den Snowden einen Monolog in Form eines Manifests eingesprochen hat. Frühere Anfragen anderer Künstler bezüglich einer Zusammenarbeit hatte Snowden stets abgelehnt.[188]
+Veranstaltungen
+
+Am 18. Oktober 2018 waren vom Management Center Innsbruck (MCI) 1.500 Gäste zu einer Veranstaltung im dortigen Kongresshaus eingeladen, in der Edward Snowden live zugeschaltet wurde. Zuvor konnten Fragen an das MCI gemailt werden, einige wurden dann Snowden gestellt. Tausende verfolgten die Veranstaltung live im Internet. Die Vorbereitungen hatten mehrere Jahre gedauert, das MCI stand dabei in Kontakt mit Snowdens Anwalt. Am Ende wurde noch für eine Spendenaktion zugunsten der Flüchtlingsfamilien in Hongkong, die Snowden bei sich versteckt hatten, geworben.[189][190][191][192][193]
+
+Am 23. Oktober 2019 erschien Snowden digital beim Podcast The Joe Rogan Experience des US-amerikanischen Stand-up-Comedian Joe Rogan.[194] 2020 hatte er dort einen weiteren Auftritt.[195]
+
+Am 26. Oktober 2021 diskutierte Snowden online mit dem Datenschützer Max Schrems. Die Frankfurter Allgemeine Zeitung sprach vom „Gipfel der Datenschützer“.[196] Schrems hat sich beim SCHREMS-II-Prozess vor dem Europäischen Gerichtshof auf die Enthüllungen von Snowden bezogen und in der Folge wurde das Privacy Shield für ungültig erklärt, das die Verarbeitung personenbezogener Daten durch US-Anbieter regelte. In der Diskussion zwischen Snowden und Schrems ging es um die grundsätzliche Inkompatibilität der EU-Datenschutzanforderungen mit den durch Snowden aufgedeckten US-Überwachungen. Über 3000 Interessierte haben teilgenommen.[197]
+Auszeichnungen
+Preise
+Ausschnitt aus Edward Snowdens Rede zur Verleihung des Sam Adams Award am 11. Oktober 2013 (0:53 min; englisch)
+
+    Internationaler Whistleblower-Preis 2013; vergeben von Transparency International, der International Association of Lawyers against Nuclear Arms und der Vereinigung Deutscher Wissenschaftler.[198]
+    Sam Adams Award, verliehen im Juli und überreicht im Oktober 2013.[199][200]
+    The Ridenhour Truth-Telling Prize 2014, gemeinsam mit Laura Poitras.[201]
+    Julia-und-Winston-Award 2014; vergeben von digitalcourage. Hierbei handelt es sich um einen positiven Big Brother Award, während die Big Brother Awards normalerweise Negativpreise sind. Der positive Big Brother Award wurde eigens für Edward Snowden eingeführt.
+    Berliner Preis für Zivilcourage 2014; vergeben von Edward-Snowden-Unterstützer „Clärchens Ballhaus“. Hierbei handelt es sich unter anderem um Berliner Künstler und Bürger Berlins, den Netzaktivisten Jacob Appelbaum, den Politik-Professor Elmar Altvater von der Freien Universität Berlin, den früheren Spiegel-Chefredakteur Stefan Aust sowie die Musikerin Inga Humpe.[202]
+    Fritz-Bauer-Preis 2014; vergeben von der Humanistischen Union. Verliehen im Juli 2013, überreicht im Juni 2014.[203]
+    Stuttgarter Friedenspreis 2014; vergeben von Die AnStifter e. V. Verliehen im Juni 2014, überreicht am 23. November 2014[204][205]
+    Ehrenpreis des Right Livelihood Award 2014 (auch Alternativer Nobelpreis genannt); „weil er mit Mut und Kompetenz das beispiellose Ausmaß staatlicher Überwachung enthüllt hat, die grundlegende demokratische Prozesse und verfassungsmäßige Rechte verletzt“.[206][207][208]
+    Carl-von-Ossietzky-Medaille 2014; „Edward Snowden hat mit seinen historisch einmaligen Enthüllungen die umfangreichste verdachtsunabhängige Überwachung aller Zeiten aufgedeckt“, hieß es zur Begründung.[209] In der Laudatio sagte der ehemalige deutsche Innenminister Gerhart Baum: „Snowden hat die Werte unserer freiheitlichen Gesellschaft verteidigt – nun müssen wir ihn verteidigen“.[210] Snowden wurde gemeinsam mit Glenn Greenwald und Laura Poitras ausgezeichnet.[211]
+    Die Bjørnstjerne-Bjørnson-Akademie, die norwegische Akademie für Literatur und Meinungsfreiheit, gab im Juni 2015 bekannt, dass der Bjørnson-Preis für 2015 Edward Snowden zuerkannt wird.[212]
+    SUMA Award 2015[213]
+    Am 7. März 2016 wurde Edward Snowden durch den norwegischen P.E.N.-Club mit dem Ossietzky-Preis ausgezeichnet. Die nach Carl von Ossietzky benannte Auszeichnung wird für herausragende Leistungen für die Meinungsfreiheit verliehen. Zur Begründung hieß es u. a. „eine Anerkennung seines persönlichen Mutes bei der Enthüllung der staatlichen, geheimen Eingriffe in die persönliche Integrität des Einzelnen“.[214]
+    Der Kasseler Bürgerpreis Das Glas der Vernunft 2016 „für seine Gewissensentscheidung, die er mit Mut, Kompetenz und Vernunft getroffen habe“[215]
+
+Nominierungen
+
+    Nominierung für den Friedensnobelpreis am 29. Januar 2014 durch die norwegischen Politiker Bård Vegar Solhjell (ehemaliger norwegischer Umweltminister) und Snorre Valen.[216][217]
+    2014 war Snowden für den deutschen IQ-Preis nominiert. Kurz vor Beginn der Wahl wurde allerdings Snowdens Ausschluss durch den Vorstand des Vereins Mensa veranlasst, was unter den Mitgliedern zu einer heftigen Kontroverse führte.[218]
+
+Ehrendoktor
+
+Am 14. November 2013 gab die Philosophische Fakultät der Universität Rostock bekannt, ein Prüfverfahren zur möglichen Verleihung der Ehrendoktorwürde an Snowden einzuleiten. In der Begründung zur Entscheidung für das Prüfverfahren sprach der Fakultätsausschuss davon, „Snowdens Entscheidung, seine persönliche Freiheit zum höheren Zweck der Aufklärung über soziale Missstände zur Disposition zu stellen, lasse einen hohen Grad an philosophisch-praktischer Reflexion erkennen“. Neben der moralisch-philosophischen Komponente in Snowdens Handeln wird in dem Verfahren besonders der Frage nachgegangen, inwieweit Snowdens Handeln wissenschaftlich relevant sei.[219]
+
+Am 14. Mai 2014 beschloss die Philosophische Fakultät in der Fakultätsratssitzung mit 20 Ja-Stimmen, einer Nein-Stimme und einer Enthaltung, Snowden den Ehrendoktortitel zu verleihen.[220] Der Beschluss ist jedoch angefochten worden und wurde daher nicht vollzogen.[221] Mecklenburg-Vorpommerns Innenminister Lorenz Caffier erklärte dazu, Snowden dürfe auf keinen Fall Ehrendoktor der Universität Rostock werden.[222] Nach einem entsprechenden Gutachten des ehemaligen Bundesverfassungsrichters Brun-Otto Bryde[223] wurde die Beanstandung des Rektors zum Beschluss über die Verleihung der Ehrendoktorwürde vom Fakultätsrat jedoch mit 19 Ja-Stimmen und zwei Enthaltungen zurückgewiesen.[224][225]
+
+Anschließend billigte Mecklenburg-Vorpommerns Bildungsminister Mathias Brodkorb die Beanstandungen des Rektors der Universität Rostock, Wolfgang Schareck, als rechtmäßig und lehnte die Verleihung des Ehrendoktortitels endgültig ab. Eine intensive Rechtsprüfung habe ergeben, dass die Fakultät bei Snowden besondere wissenschaftliche Leistungen, wie sie das Landeshochschulgesetz fordere, nicht nachgewiesen habe. Damit seien die Anforderungen höher als in anderen Bundesländern.[226][227][228] Der Dekan der Philosophischen Fakultät, Hans-Jürgen von Wensierski, bestätigte am 2. März 2015, dass die Fakultät dagegen Feststellungsklage beim Verwaltungsgericht Schwerin erheben werde. Ziel der Klage sei es, feststellen zu lassen, dass die Bewertung der wissenschaftlichen Leistung ausschließlich dem Fakultätsrat zustehe und nicht dem Rektor der Universität bzw. dem Bildungsminister des Landes und dass die Beanstandungen an dem Verfahren insofern nicht zulässig gewesen seien.[229][230] Die Verhandlung der Klage (Az. 1 A 2088/15 SN) fand am 15. Juni 2016 vor dem Verwaltungsgericht Schwerin statt.[231] Die Klage hat das Verwaltungsgericht Schwerin am 15. Juni 2016 abgewiesen.[232] Die Klägerin hat noch die Möglichkeit, in Berufung zu gehen.
+Ehrenmitgliedschaft
+
+    Ehrenmitglied der Freien Universität Berlin[233]
+    Ehrenmitglied des Chaos Computer Club[234]
+
+Ehrung in Artname
+Cherax snowden
+
+Die Krebsart Cherax snowden wurde im Epitheton nach Edward Snowden benannt, um ihn zu ehren.[235][236][237] Chris Lukhaup erklärte hierzu der Washington Post: “After describing a couple new species, I thought about naming one after Edward Snowden because he really impressed me … We have so many species named after other famous people who probably don’t do so much for humanity. I wanted to show support for Edward Snowden. I think what he did is something very special.”[237] Die erstbeschreibenden Wissenschaftler schrieben in ihrer Veröffentlichung dazu: “The new species is named after the American freedom fighter Edward Joseph Snowden. He is honored due to of his extraordinary achievements in defense of justice, and freedom.”[238] Diese Krebsart lebt in sauberen Flüssen auf der Vogelkop-Halbinsel in West-Neuguinea, Indonesien. Cherax snowden hat auch eine Bedeutung in der Aquaristik. Bevor es als neue Art beschrieben wurde, galt das Taxon als eine Farbvariante von Cherax holthuisi.[239]
+Rektor
+
+Snowden wurde von den Studenten zum Rektor der University of Glasgow gewählt. Das Amt ist eher symbolischer Natur und auch andere Whistleblower wurden schon in das Amt gewählt.[240]
+Rezeption
+Filme
+
+    Verax (Juni 2013): Kurzfilm, benannt nach dem von Snowden selbstgewählten Pseudonym (wie das Adjektiv verus ist verax lateinisch und bedeutet wahr oder wahrhaftig)
+    Snowden (September 2016), Spielfilm von Oliver Stone mit Joseph Gordon-Levitt in der Rolle des Edward Snowden
+
+Musik
+
+    The Veil (September 2016), Lied von Peter Gabriel aus dem Film von Oliver Stone[241] und Musikvideo von Kurt Mattila[242]
+
+Dokumentationen
+
+    Laura Poitras: Citizenfour (Oktober 2014): Dokumentarfilm über die Aufdeckung des NSA-Skandals (mehrfach ausgezeichnet, u. a. mit einem Oscar in der Kategorie Beste Dokumentation)
+    John Goetz, Poul Heilbuth: Die Story im Ersten: Jagd auf Snowden (12. Januar 2015): ARD-Dokumentation
+    Flore Vasseur: Meeting Snowden. Dokumentarfilm, 2016.
+
+Theater
+
+    Ich bereue nichts. Theaterinszenierung von Jan-Christoph Gockel; Uraufführung: Oktober 2014 im Staatstheater Karlsruhe.[243]
+
+Aktionskunst
+
+Im Rahmen einer öffentlichkeitswirksamen Kunstaktion enthüllten vier Künstler 2015 eine Snowden-Büste auf einer New Yorker Gedenkstätte. Die Büste wurde nach wenigen Stunden entdeckt, verhüllt und entfernt

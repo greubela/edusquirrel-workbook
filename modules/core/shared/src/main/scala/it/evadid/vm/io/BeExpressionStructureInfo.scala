@@ -23,6 +23,8 @@ trait BeExpressionStructureInfo[T <: BeExpression](expression: T) {
     programmingLanguage.match {
       case Python => BeExpressionToPythonString(humanLanguage, skipUnparsable).forExpression(expression)
       case Java => BeExpressionToJavaStr(humanLanguage, skipUnparsable).forExpression(expression)
+      case Cpp | JavaScript => BeExpressionToJavaStr(humanLanguage, skipUnparsable, programmingLanguage).forExpression(expression)
+      case Lisp => it.evadid.vm.io.stringPrinter.lisp.BeExpressionToLispString(humanLanguage, skipUnparsable).forExpression(expression)
       case _ => throw new IllegalArgumentException(s"Language ${programmingLanguage} not implemented yet for toStringInLanguage!")
     }
   }

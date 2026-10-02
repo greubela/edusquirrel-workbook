@@ -212,11 +212,12 @@ body {
 
 @media (max-width: 980px) {
   .fd-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 .fd-col {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -227,6 +228,7 @@ body {
 }
 
 .fd-col--right .fd-card {
+  box-sizing: border-box;
   width: 100%;
   max-width: 880px;
 }
@@ -485,6 +487,7 @@ body {
 
 .fd-page .code-mirror-editor .cm-scroller {
   border-radius: 16px;
+  overflow-x: auto;
 }
 
 
@@ -1005,6 +1008,11 @@ body {
 }
 
 [data-theme="light"] .fd-page .code-mirror-editor .cm-editor {
+  --color-text-inverse: var(--fd-text);
+  --color-blue-1: #0055aa;
+  --color-gray-7: #556070;
+  --color-accent-error: #cc0000;
+  --color-green-2: #267a00;
   --edusquirrel-diag-warning: 180, 115, 0;
   --edusquirrel-diag-error: 196, 22, 48;
   --edusquirrel-diag-soft: 0, 110, 180;
@@ -1013,8 +1021,21 @@ body {
   --edusquirrel-diag-rail-alpha: 0.82;
   --edusquirrel-diag-mark-alpha: 0.095;
   background: #f6f9ff;
+  color: var(--fd-text);
   border-color: rgba(80, 110, 175, 0.28);
   box-shadow: inset 0 0 0 1px rgba(80, 110, 175, 0.10);
+}
+[data-theme="light"] .fd-page .code-mirror-editor .cm-gutters {
+  background: #edf2ff;
+  color: #556070;
+  border-right: 1px solid rgba(80, 110, 175, 0.18);
+}
+[data-theme="light"] .fd-page .code-mirror-editor .cm-activeLine,
+[data-theme="light"] .fd-page .code-mirror-editor .cm-activeLineGutter {
+  background-color: rgba(8, 120, 194, 0.08);
+}
+[data-theme="light"] .fd-page .code-mirror-editor .cm-selectionBackground {
+  background: rgba(8, 120, 194, 0.22);
 }
 [data-theme="light"] .fd-page .code-mirror-editor .CodeMirror {
   background: #f6f9ff !important;

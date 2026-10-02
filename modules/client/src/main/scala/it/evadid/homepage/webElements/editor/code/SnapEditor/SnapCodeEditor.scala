@@ -6,9 +6,13 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.SnapCodeEditorImpl
+import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.{PyodideTurtleCommandRunner, SnapTurtleCommandExecution}
+import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExerciseState
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
+
+import scala.concurrent.Future
 
 case class SnapCodeEditor(
     state: Var[ProgrammingExerciseState],
@@ -152,6 +156,17 @@ case class SnapCodeEditor(
   def removeAllLibraries(includeDefaultLibraries: Boolean = false): Unit =
     impl.removeAllLibraries(includeDefaultLibraries)
 
+  /**
+   * Execute the Python derived from the live Snap project and return every
+   * turtle call in execution order. Pyodide is asynchronous, hence the Future.
+   */
+  def getCurrentTurtleCommands(): Future[List[TurtleCommand[Double]]] =
+    impl.flushPendingProjectChanges()
+    val current = impl.currentProjectXml()
+      .map(ProgrammingExerciseState(_))
+      .getOrElse(state.now())
+    SnapCodeEditor.turtleCommandExecution.commandsFor(current)
+
   override def onFullscreenOpen(): Unit =
     impl.forceLoadProgram(state.now())
     impl.fitEditorToContainer()
@@ -168,6 +183,9 @@ case class SnapCodeEditor(
 }
 
 object SnapCodeEditor {
+
+  private lazy val turtleCommandExecution =
+    new SnapTurtleCommandExecution(new PyodideTurtleCommandRunner())
 
   def apply(
       state: Var[ProgrammingExerciseState],
@@ -201,6 +219,9 @@ object SnapCodeEditor {
 
     /** Push any pending Snap XML edits into the change listener immediately. */
     def flushPendingProjectChanges(): Unit
+
+    /** The retained IDE's exact live XML, when it has been mounted. */
+    def currentProjectXml(): Option[String]
 
     def mount(ctx: Owner): Unit
 

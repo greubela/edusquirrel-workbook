@@ -22,6 +22,7 @@ case class CodeMirrorEditor(
   import CodeMirrorEditor.*
 
   private var handle: Option[CodeMirrorHandle] = None
+  private var pendingDiagnostics = Option.empty[(String, Seq[Diagnostic])]
   private var updatingFromEditor: Boolean = false
   private val useTextareaFallback: Var[Boolean] = Var(false)
 
@@ -30,6 +31,7 @@ case class CodeMirrorEditor(
   def currentDoc: Option[String] = handle.map(_.getDoc())
 
   def setDiagnostics(diagnostics: Seq[CodeMirrorEditor.Diagnostic]): Unit =
+    pendingDiagnostics = Some(content.now() -> diagnostics)
     handle.foreach(_.setDiagnostics(js.Array(diagnostics.map(_.toJs) *)))
 
   def clearDiagnostics(): Unit = setDiagnostics(Nil)
@@ -68,6 +70,7 @@ case class CodeMirrorEditor(
                 language = languageToJs(language),
                 onDocChange = value =>
                   if (!updatingFromVar) {
+                    pendingDiagnostics = None
                     updatingFromEditor = true
                     content.writer.onNext(value)
                     onUserInput(value)
@@ -77,10 +80,14 @@ case class CodeMirrorEditor(
             )
 
             handle = Some(createdHandle)
+            pendingDiagnostics.filter(_._1 == initialValue).foreach { case (_, diagnostics) =>
+              createdHandle.setDiagnostics(js.Array(diagnostics.map(_.toJs) *))
+            }
 
             content.signal.foreach { value =>
               handle.foreach { editorHandle =>
                 if (!updatingFromEditor && editorHandle.getDoc() != value) {
+                  pendingDiagnostics = None
                   updatingFromVar = true
                   editorHandle.setDoc(value)
                   updatingFromVar = false
@@ -101,6 +108,7 @@ case class CodeMirrorEditor(
       onUnmountCallback { _ =>
         handle.foreach(_.destroy())
         handle = None
+        pendingDiagnostics = None
       }
     )
   }

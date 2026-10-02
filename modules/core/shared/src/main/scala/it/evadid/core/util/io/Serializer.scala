@@ -2,8 +2,12 @@ package it.evadid.core.util.io
 
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.util.io.TypeConverter.ConverterResult
+import it.evadid.distribution.command.SerializedException
+import ujson.Value
 import upickle.*
 import upickle.default.{read, readwriter, write}
+
+import scala.util.{Failure, Success}
 
 trait Serializer[T] extends TypeConverter[T, String] {
   override def convertToO(in: T): String = serialize(in)
@@ -32,6 +36,53 @@ trait Serializer[T] extends TypeConverter[T, String] {
 object Serializer {
 
 
+
+  def constructorLikeSerializer[T](
+                                    constructorName: String,
+                                    construct: Seq[ujson.Value] => T,
+                                    deconstruct: T => List[ujson.Value]
+                                  ): Serializer[T] = new Serializer[T] {
+
+    override def serialize(obj: T): String = {
+      constructorName + deconstruct(obj).mkString("(", ")(", ")")
+    }
+
+    override def deserialize(str: String): T = {
+      ConstructorLikeParserWithJsonElements.parseString(str).match {
+        case Success(parsedConstructor, jsons) => if (constructorName != parsedConstructor) {
+          throw SerializedException(s"ConstructorLikeSerializer(${constructorName}) cannot parse objects of type ${parsedConstructor}")
+        } else try {
+          construct(jsons.map(ujson.read(_)))
+        } catch case (err: Throwable) => {
+          throw SerializedException(s"ConstructorLikeSerializer(${constructorName}) had error while parsing jsons", err)
+        }
+        case Failure(err) => throw SerializedException(s"Could not parse ${str} with ConstructorLikeSerializer(${constructorName}", err)
+      }
+    }
+  }
+
+
+  /*def combineSerializerUseFirst[T](serializer: Seq[Serializer[T]]): Serializer[T] = new Serializer[T]{
+
+    override def serialize(obj: T): String = ???
+
+    override def deserialize(str: String): T = ???
+  }*/
+
+  def constructorLikeSerializer[T](constructorName: String, base: Serializer[T]): Serializer[T] = new Serializer[T] {
+    override def serialize(obj: T): String = constructorName + "(" + base.serialize(obj) + ")"
+
+    override def deserialize(str: String): T = {
+      val trimmed = str.trim
+      if (trimmed.startsWith(constructorName + "(") && trimmed.endsWith(")")) {
+        val withoutEnd = trimmed.substring(0, str.length - 1)
+        val cleaned = withoutEnd.substring(constructorName.length + 1, withoutEnd.length)
+        base.deserialize(cleaned)
+      } else {
+        throw new IllegalArgumentException(s"ConstructorLikeSerializer for '${constructorName} cannot deserialize ${str}")
+      }
+    }
+  }
 
   def noneParser(noneLiteral: Option[String] = Some("None")): Serializer[Option[Unit]] = Serializer.singletonSerializer[Option[Unit]](None, noneLiteral)
 

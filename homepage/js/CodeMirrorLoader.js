@@ -1,4 +1,4 @@
-import {EditorState, StateEffect, StateField} from "https://esm.sh/@codemirror/state@6.5.2";
+import {Compartment, EditorState, StateEffect, StateField} from "https://esm.sh/@codemirror/state@6.5.2";
 import {
   EditorView,
   Decoration,
@@ -129,10 +129,10 @@ const normalizeDiagnostics = (diagnostics, doc) => {
   return diagnostics
     .map((item) => {
       const line = Number(item?.line);
-      if (!Number.isFinite(line)) {
+      if (!Number.isInteger(line) || line < 1 || line > doc.lines) {
         return null;
       }
-      const startLine = clamp(Math.floor(line), 1, doc.lines);
+      const startLine = line;
       const rawEndLine = Number(item?.endLine);
       const endLine = Number.isFinite(rawEndLine)
         ? clamp(Math.floor(rawEndLine), startLine, doc.lines)
@@ -157,40 +157,50 @@ const normalizeDiagnostics = (diagnostics, doc) => {
 
 const buildDiagnosticDecorations = (state, diagnostics) => {
   const ranges = [];
+  const byLine = new Map();
+  const priority = {error: 2, warning: 1, soft: 0};
+  const attributes = (items) => {
+    const message = [...new Set(items.map(item => item.message).filter(Boolean))].join("\n");
+    return {
+      ...(message ? {title: message} : {}),
+      "data-diagnostic-severity": items[0].severity
+    };
+  };
+  const severityClass = (base, severity) => severity === "warning" ? base : `${base} ${base}-${severity}`;
 
   for (const diagnostic of normalizeDiagnostics(diagnostics, state.doc)) {
     for (let lineNr = diagnostic.line; lineNr <= diagnostic.endLine; lineNr += 1) {
-      const line = state.doc.line(lineNr);
-      const severityClass =
-        diagnostic.severity === "error" ? " cm-edusquirrel-diagnostic-error" :
-        diagnostic.severity === "soft" ? " cm-edusquirrel-diagnostic-soft" :
-        "";
-      ranges.push(Decoration.line({
-        class: `cm-edusquirrel-diagnostic${severityClass}`,
-        attributes: {
-          ...(diagnostic.message ? {title: diagnostic.message} : {}),
-          "data-diagnostic-severity": diagnostic.severity
-        }
-      }).range(line.from));
+      if (!byLine.has(lineNr)) byLine.set(lineNr, []);
+      byLine.get(lineNr).push(diagnostic);
     }
+  }
 
-    if (diagnostic.fromCh !== null && diagnostic.toCh !== null && diagnostic.endLine === diagnostic.line) {
-      const line = state.doc.line(diagnostic.line);
-      const from = clamp(line.from + diagnostic.fromCh, line.from, line.to);
-      const to = clamp(line.from + diagnostic.toCh, from, line.to);
-      if (to > from) {
-        const severityClass =
-          diagnostic.severity === "error" ? " cm-edusquirrel-diagnostic-mark-error" :
-          diagnostic.severity === "soft" ? " cm-edusquirrel-diagnostic-mark-soft" :
-          "";
-        ranges.push(Decoration.mark({
-          class: `cm-edusquirrel-diagnostic-mark${severityClass}`,
-          attributes: {
-            ...(diagnostic.message ? {title: diagnostic.message} : {}),
-            "data-diagnostic-severity": diagnostic.severity
-          }
-        }).range(from, to));
-      }
+  for (const [lineNr, items] of byLine) {
+    const line = state.doc.line(lineNr);
+    items.sort((a, b) => priority[b.severity] - priority[a.severity]);
+    ranges.push(Decoration.line({
+      class: severityClass("cm-edusquirrel-diagnostic", items[0].severity),
+      attributes: attributes(items)
+    }).range(line.from));
+
+    const spans = items
+      .filter(item => item.fromCh !== null && item.toCh !== null && item.line === item.endLine)
+      .map(item => ({
+        item,
+        from: clamp(line.from + item.fromCh, line.from, line.to),
+        to: clamp(line.from + item.toCh, line.from, line.to)
+      }))
+      .filter(span => span.to > span.from);
+    const boundaries = [...new Set(spans.flatMap(span => [span.from, span.to]))].sort((a, b) => a - b);
+    for (let index = 1; index < boundaries.length; index += 1) {
+      const from = boundaries[index - 1];
+      const to = boundaries[index];
+      const active = spans.filter(span => span.from <= from && span.to >= to).map(span => span.item);
+      if (!active.length) continue;
+      ranges.push(Decoration.mark({
+        class: severityClass("cm-edusquirrel-diagnostic-mark", active[0].severity),
+        attributes: attributes(active)
+      }).range(from, to));
     }
   }
 
@@ -415,7 +425,6 @@ const sharedExtensions = [
     hideFirstIndent: false
   }),
   syntaxHighlighting(defaultHighlightStyle, {fallback: true}),
-  oneDark,
   keymap.of([
     {key: "Tab", run: indentWithSpaces, shift: indentLess},
     ...defaultKeymap,
@@ -432,11 +441,15 @@ const sharedExtensions = [
 const codeMirrorFacade = {
   createEditor: ({parent, doc = "", onDocChange, language = "python"}) => {
     let isProgrammaticUpdate = false;
+    const theme = new Compartment();
+    const followsPageTheme = Boolean(parent.closest(".fd-page"));
+    const currentTheme = () => followsPageTheme && document.documentElement.dataset.theme === "light" ? [] : oneDark;
 
     const state = EditorState.create({
       doc: replaceTabsWithSpaces(doc),
       extensions: [
         ...sharedExtensions,
+        theme.of(currentTheme()),
         languageExtension(language),
         EditorView.updateListener.of((update) => {
           if (update.docChanged && !isProgrammaticUpdate && typeof onDocChange === "function") {
@@ -447,6 +460,10 @@ const codeMirrorFacade = {
     });
 
     const view = new EditorView({state, parent});
+    const themeObserver = followsPageTheme ? new MutationObserver(() => {
+      view.dispatch({effects: theme.reconfigure(currentTheme())});
+    }) : null;
+    themeObserver?.observe(document.documentElement, {attributes: true, attributeFilter: ["data-theme"]});
 
     return {
       setDoc(newDoc) {
@@ -477,6 +494,7 @@ const codeMirrorFacade = {
         view.focus();
       },
       destroy() {
+        themeObserver?.disconnect();
         view.destroy();
       }
     };

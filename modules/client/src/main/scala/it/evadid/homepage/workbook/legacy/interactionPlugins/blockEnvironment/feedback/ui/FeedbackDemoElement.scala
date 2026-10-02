@@ -15,7 +15,6 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.fe
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.service.BlockFeedbackService
 import it.evadid.homepage.workbook.legacy.model.feedback.FeedbackStatus
 import it.evadid.vm.code.others.BeStartProgram
-import it.evadid.vm.parsing.python.PythonParser
 import org.scalajs.dom
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -26,9 +25,50 @@ import scala.util.{Failure, Success}
 
 object FeedbackDemoElement:
 
-  private lazy val demoLlmClient = CommandLlmClient(HtmlFullWorkbookApp.fullInfo.defaults.defaultBackend.executor)
+  private def demoLlmClient = CommandLlmClient(HtmlFullWorkbookApp.fullInfo.defaults.backendExecutor)
 
   private val defaultLanguage: HumanLanguage = AppLanguage.English
+
+  private[feedback] def diagnosticsFor(feedback: UltrichsNewCoolFeedback): Seq[CodeMirrorEditor.Diagnostic] =
+    if feedback.allTestsPassed then Nil
+    else
+      val messages = feedback.debug.flatMap(_.rawRuntimeError).iterator ++
+        feedback.tests.iterator.filterNot(_.passed).map(_.actual)
+      val lineCount = feedback.rawPython.count(_ == '\n') + 1
+      messages.flatMap(PythonCodeMirrorDiagnostics.forRuntimeMessage)
+        .filter(diagnostic => diagnostic.line <= lineCount)
+        .take(1).toSeq
+
+  private[feedback] def restoredDiagnostics(feedback: js.Dynamic): Seq[CodeMirrorEditor.Diagnostic] =
+    if feedback == null || js.typeOf(feedback) != "object" ||
+        js.typeOf(feedback.rawPython) != "string" || js.typeOf(feedback.allTestsPassed) != "boolean" ||
+        feedback.allTestsPassed.asInstanceOf[Boolean] || !js.Array.isArray(feedback.editorDiagnostics) then Nil
+    else
+      val lineCount = feedback.rawPython.asInstanceOf[String].count(_ == '\n') + 1
+      feedback.editorDiagnostics.asInstanceOf[js.Array[js.Dynamic]].iterator.flatMap { value =>
+        if value == null || js.typeOf(value) != "object" ||
+            js.typeOf(value.line) != "number" || js.typeOf(value.message) != "string" then None
+        else
+          val line = value.line.asInstanceOf[Double]
+          val message = value.message.asInstanceOf[String]
+          if line >= 1 && line <= lineCount && line == math.floor(line) && message.trim.nonEmpty then
+            Some(CodeMirrorEditor.Diagnostic(line = line.toInt, message = message, severity = "error"))
+          else None
+      }.take(1).toSeq
+
+  private[feedback] def canRestoreFeedback(state: js.Dynamic): Boolean =
+    if js.isUndefined(state) || state == null then return false
+    val feedback = state.feedback
+    if js.typeOf(state.feedbackVersion) != "number" || state.feedbackVersion.asInstanceOf[Int] != 2 ||
+        js.isUndefined(feedback) || feedback == null then false
+    else
+      val fields = Seq(state.exerciseId, state.language, state.code,
+        feedback.exerciseId, feedback.language, feedback.rawPython)
+      fields.forall(value => js.typeOf(value) == "string") &&
+        state.exerciseId.asInstanceOf[String] == feedback.exerciseId.asInstanceOf[String] &&
+        state.language.asInstanceOf[String] == feedback.language.asInstanceOf[String] &&
+        state.code.asInstanceOf[String].replace("\r\n", "\n") ==
+          feedback.rawPython.asInstanceOf[String].replace("\r\n", "\n")
 
   private def genericSampleFromStatement(exerciseId: String): String =
     val statement =
@@ -304,15 +344,40 @@ object FeedbackDemoElement:
     val errorVar = Var(Option.empty[String])
     val feedbackVar = Var(Option.empty[UltrichsNewCoolFeedback])
     val eventLogVar = Var(Vector.empty[String])
+    val submissions = new FeedbackSubmissionTracker
+    var feedbackContext = Option.empty[(String, String)]
+    var editorDiagnostics = Seq.empty[CodeMirrorEditor.Diagnostic]
+
+    def setEditorDiagnostics(diagnostics: Seq[CodeMirrorEditor.Diagnostic]): Unit =
+      editorDiagnostics = diagnostics
+      pythonEditor.setDiagnostics(diagnostics)
+
+    def currentContext: (String, String) =
+      selectedExerciseIdVar.now() -> selectedLanguageVar.now().toString
 
     val typedTextVar = Var("")
     val typingDoneVar = Var(true)
     var typingHandle: Option[SetIntervalHandle] = None
 
-    def startTyping(fullText: String): Unit =
+    def stopTyping(): Unit =
       typingHandle.foreach(clearInterval)
       typingHandle = None
       typedTextVar.set("")
+      typingDoneVar.set(true)
+
+    def clearFeedback(): Unit =
+      feedbackContext = None
+      setEditorDiagnostics(Nil)
+      feedbackVar.set(None)
+      errorVar.set(None)
+      stopTyping()
+
+    def invalidateFeedback(): Unit =
+      submissions.invalidate()
+      clearFeedback()
+
+    def startTyping(fullText: String): Unit =
+      stopTyping()
       typingDoneVar.set(false)
       var idx = 0
       typingHandle = Some(setInterval(32.0) {
@@ -337,10 +402,16 @@ object FeedbackDemoElement:
     val SS_KEY = "fdSession"
 
     def saveSession(): Unit =
-      val fbJson: js.Any = feedbackVar.now() match
+      val currentFeedback = feedbackVar.now().filter { fb =>
+        feedbackContext.contains(currentContext) &&
+          fb.rawPython.replace("\r\n", "\n") == pythonCodeVar.now().replace("\r\n", "\n")
+      }
+      val fbJson: js.Any = currentFeedback match
         case None => null.asInstanceOf[js.Any]
         case Some(fb) =>
           js.Dynamic.literal(
+            exerciseId = currentContext._1,
+            language = currentContext._2,
             summary = fb.summary,
             displayHints = js.Array(fb.displayHints *),
             displayTests = js.Array(fb.displayTests.map { t =>
@@ -357,9 +428,13 @@ object FeedbackDemoElement:
             allTestsPassed = fb.allTestsPassed,
             rawPython = fb.rawPython,
             status = fb.status.toString,
-            normalizedScore = fb.normalizedScore
+            normalizedScore = fb.normalizedScore,
+            editorDiagnostics = js.Array(editorDiagnostics.map { diagnostic =>
+              js.Dynamic.literal(line = diagnostic.line, message = diagnostic.message)
+            } *)
           )
       val state = JSON.stringify(js.Dynamic.literal(
+        feedbackVersion = 2,
         exerciseId = selectedExerciseIdVar.now(),
         language = selectedLanguageVar.now().toString,
         code = pythonCodeVar.now(),
@@ -372,6 +447,10 @@ object FeedbackDemoElement:
         feedback = fbJson
       ))
       dom.window.sessionStorage.setItem(SS_KEY, state)
+
+    val onPageHide: js.Function1[dom.Event, Unit] = _ =>
+      stopTyping()
+      saveSession()
 
     def loadSession(): Unit =
       val raw = dom.window.sessionStorage.getItem(SS_KEY)
@@ -393,11 +472,8 @@ object FeedbackDemoElement:
           val logArr = s.eventLog.asInstanceOf[js.Array[String]]
           if !js.isUndefined(logArr.asInstanceOf[js.Any]) && logArr != null then
             eventLogVar.set(logArr.toSeq.toVector)
-          val err = s.error
-          if !js.isUndefined(err) && err != null then
-            errorVar.set(Some(err.asInstanceOf[String]))
           val fbRaw = s.feedback
-          if !js.isUndefined(fbRaw) && fbRaw != null then
+          if canRestoreFeedback(s) then
             val fbD = fbRaw.asInstanceOf[js.Dynamic]
             val displayHints = fbD.displayHints.asInstanceOf[js.Array[String]].toSeq
             val displayTests = fbD.displayTests.asInstanceOf[js.Array[js.Dynamic]].toSeq.map { td =>
@@ -421,6 +497,8 @@ object FeedbackDemoElement:
             }
             val statusStr = fbD.status.asInstanceOf[String]
             val status = FeedbackStatus.values.find(_.toString == statusStr).getOrElse(FeedbackStatus.FINISHED)
+            feedbackContext = Some(currentContext)
+            setEditorDiagnostics(restoredDiagnostics(fbD))
             feedbackVar.set(Some(UltrichsNewCoolFeedback(
               summary = fbD.summary.asInstanceOf[String],
               tests = Seq.empty,
@@ -476,35 +554,19 @@ object FeedbackDemoElement:
           case None => base
 
     def runFeedback(): Unit =
-      errorVar.set(None)
-      feedbackVar.set(None)
+      val submission = submissions.begin() match
+        case Some(value) => value
+        case None => return
+      val context = currentContext
+      clearFeedback()
       isRunningVar.set(true)
-      pythonEditor.clearDiagnostics()
       logEvent("Run feedback started")
-
-      val (programExpr, parserDiagnostics) =
-        try
-          val parsed = PythonParser.parsePython(pythonCodeVar.now())
-          val program = BeStartProgram(parsed)
-          val diagnostics = PythonCodeMirrorDiagnostics.forProgram(program, pythonCodeVar.now())
-          if diagnostics.nonEmpty then
-            pythonEditor.setDiagnostics(diagnostics)
-          program -> diagnostics
-        catch
-          case t: Throwable =>
-            isRunningVar.set(false)
-            errorVar.set(Option(t.getMessage).filter(_.nonEmpty).orElse(Some(t.toString)))
-            PythonCodeMirrorDiagnostics
-              .forRuntimeMessage(Option(t.getMessage).getOrElse(t.toString))
-              .foreach(d => pythonEditor.setDiagnostics(Seq(d)))
-            logEvent("Parse failed: " + Option(t.getMessage).getOrElse(t.toString))
-            return
 
       val req =
         BlockFeedbackService
           .requestForExerciseId(
             exerciseId = selectedExerciseIdVar.now(),
-            studentProgram = programExpr,
+            studentProgram = BeStartProgram(),
             submissionNr = 1,
             humanLanguage = selectedLanguageVar.now()
           )
@@ -512,35 +574,32 @@ object FeedbackDemoElement:
 
       BlockFeedbackService
         .generateFeedback(req, demoLlmClient)
-        .onComplete {
-          case Success(feedback) =>
+        .onComplete { result =>
+          submissions.finish(submission).foreach { isCurrent =>
             isRunningVar.set(false)
-            feedbackVar.set(Some(feedback))
-            val runtimeDiagnostics =
-              feedback.debug
-                .flatMap(_.rawRuntimeError)
-                .flatMap(PythonCodeMirrorDiagnostics.forRuntimeMessage)
-                .toSeq
-            val allDiagnostics =
-              PythonCodeMirrorDiagnostics.deduplicate(parserDiagnostics ++ runtimeDiagnostics)
-            pythonEditor.setDiagnostics(allDiagnostics)
-            logEvent("Feedback generated")
-            saveSession()
-            val primary = feedbackMessage(feedback).trim
-            val hints = feedbackHints(feedback).map(_.trim).filter(_.nonEmpty).distinct
-            val items =
-              if hints.isEmpty then Seq(primary)
-              else if hints.contains(primary) then hints
-              else primary +: hints
-            startTyping(items.mkString("\n\n"))
-          case Failure(ex) =>
-            isRunningVar.set(false)
-            errorVar.set(Option(ex.getMessage).filter(_.nonEmpty).orElse(Some(ex.toString)))
-            val runtimeDiagnostics =
-              PythonCodeMirrorDiagnostics.forRuntimeMessage(Option(ex.getMessage).getOrElse(ex.toString)).toSeq
-            pythonEditor.setDiagnostics(PythonCodeMirrorDiagnostics.deduplicate(parserDiagnostics ++ runtimeDiagnostics))
-            logEvent("Feedback failed: " + Option(ex.getMessage).getOrElse(ex.toString))
-            saveSession()
+            if isCurrent then result match
+              case Success(feedback) =>
+                feedbackContext = Some(context)
+                setEditorDiagnostics(diagnosticsFor(feedback))
+                feedbackVar.set(Some(feedback))
+                logEvent("Feedback generated")
+                saveSession()
+                val primary = feedbackMessage(feedback).trim
+                val hints = feedbackHints(feedback).map(_.trim).filter(_.nonEmpty).distinct
+                val items =
+                  if hints.isEmpty then Seq(primary)
+                  else if hints.contains(primary) then hints
+                  else primary +: hints
+                startTyping(items.mkString("\n\n"))
+              case Failure(ex) =>
+                errorVar.set(Option(ex.getMessage).filter(_.nonEmpty).orElse(Some(ex.toString)))
+                val runtimeDiagnostics =
+                  PythonCodeMirrorDiagnostics.forRuntimeMessage(Option(ex.getMessage).getOrElse(ex.toString))
+                    .filter(_.line <= pythonCodeVar.now().count(_ == '\n') + 1).toSeq
+                setEditorDiagnostics(PythonCodeMirrorDiagnostics.deduplicate(runtimeDiagnostics))
+                logEvent("Feedback failed: " + Option(ex.getMessage).getOrElse(ex.toString))
+                saveSession()
+          }
         }
 
     def feedbackMessage(feedback: UltrichsNewCoolFeedback): String =
@@ -912,9 +971,14 @@ object FeedbackDemoElement:
         }
       },
       // Persist session on every state change
-      selectedExerciseIdVar.signal --> { _ => saveSession() },
-      selectedLanguageVar.signal --> { _ => saveSession() },
-      pythonCodeVar.signal --> { _ => saveSession() },
+      selectedLanguageVar.signal.distinct.changes --> { _ =>
+        invalidateFeedback()
+        saveSession()
+      },
+      pythonCodeVar.signal.distinct.changes --> { _ =>
+        invalidateFeedback()
+        saveSession()
+      },
       eventLogVar.signal --> { _ => saveSession() },
       feedbackVar.signal --> { _ => saveSession() },
       errorVar.signal --> { _ => saveSession() },
@@ -922,14 +986,20 @@ object FeedbackDemoElement:
       showTestsVar.signal --> { _ => saveSession() },
       showEventLogVar.signal --> { _ => saveSession() },
       showDebugVar.signal --> { _ => saveSession() },
-      selectedExerciseIdVar.signal.changes --> { id =>
+      selectedExerciseIdVar.signal.distinct.changes --> { id =>
+        invalidateFeedback()
         pythonCodeVar.set(sampleCodeFor(id))
-        errorVar.set(None)
-        feedbackVar.set(None)
         logEvent("Exercise changed")
         saveSession()
       },
       onMountCallback { _ =>
         // Force-save on every navigation away from this page
-        dom.window.addEventListener("pagehide", (_: dom.Event) => saveSession())
+        dom.window.addEventListener("pagehide", onPageHide)
+      },
+      onUnmountCallback { _ =>
+        submissions.dispose()
+        isRunningVar.set(false)
+        stopTyping()
+        dom.window.removeEventListener("pagehide", onPageHide)
+        saveSession()
       })

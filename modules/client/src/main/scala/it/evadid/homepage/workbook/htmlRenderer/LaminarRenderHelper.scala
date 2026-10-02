@@ -2,6 +2,7 @@ package it.evadid.homepage.workbook.htmlRenderer
 
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
+import it.evadid.core.datastructures.file.{CopyrightInfo, LoadedFile}
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
@@ -9,7 +10,9 @@ import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.TypeOfTextDisplay
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.{PLAINTEXT, PLAINTEXT_UNDERSCORE_REPLACABLE}
 import org.scalajs.dom
-import org.scalajs.dom.{MouseEvent, html}
+import org.scalajs.dom.{File, HTMLInputElement, MouseEvent, html}
+
+import scala.concurrent.ExecutionContext
 
 case class LaminarRenderHelper() {
 
@@ -88,6 +91,25 @@ case class LaminarRenderHelper() {
     }
   }
 
+  /* Create Fileupload Helper */
+
+  def sessionFileUploadInput(logger: Logger, onNewUploadFileSelected: LoadedFile => Any): ReactiveHtmlElement[HTMLInputElement] = {
+    input(
+      styleAttr := "display:none;",
+      typ := "file",
+      accept := "json",
+      onChange --> { event =>
+        val inputElement = event.target.asInstanceOf[org.scalajs.dom.html.Input]
+        if (inputElement.files.length > 0) {
+          val file: File = inputElement.files.item(0)
+          val fd = fullInfo.contentControl.fileFactory.fromFile(file, CopyrightInfo.unknownCopyrightInfo)
+          fd.loadData().foreach(onNewUploadFileSelected)(using ExecutionContext.global)
+        } else {
+          logger.logInfo("Closed File Upload Button without selecting a file!")
+        }
+      }
+    )
+  }
 
 }
 

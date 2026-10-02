@@ -10,7 +10,6 @@
   "settings": "Einstellungen",
   "logout": "Abmelden",
   "switchUser": "Benutzer wechseln",
-  "workbookfooterprivacyinfo": "Datenschutzhinweis (Testbetrieb): Sämtliche Interaktionen werden lokal im Browser sowie in zwei Datenbanken der HU Berlin gespeichert! Nutze diese Arbeitshefte noch nicht mit Minderjährigen! Kontakt: LS Informatik und Gesellschaft, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin)",
   "previousSection": "← Vorheriger Abschnitt",
   "nextSection": "Nächster Abschnitt →",
   "checkSolution": "Lösung prüfen",
@@ -40,12 +39,15 @@
   "showHeader": "Navigation einblenden",
   "hideHeader": "Navigation ausblenden",
   "canvas": "Dein Programm",
-  "runProgram": "Ausführen",
+  "runProgram": "Ausführen (pyodide)",
   "turtleOutput": "Turtle-Ausgabe",
   "staticPreviewProgram": "Statische Vorschau",
   "openEditor": "Snap Editor öffnen :)",
   "syncInfoTooltipPartial": "Synchronisiert zu _ / _ Quellen",
   "syncInfoTooltipFull": "Synchronisiert zu allen _ Quellen",
   "syncInfoTooltipDisabled": "Synchronisation deaktiviert",
-  "syncInfoTooltipWarning": "Synchronisiert zu keiner der_ Quellen"
+  "syncInfoTooltipWarning": "Synchronisiert zu keiner der_ Quellen",
+  "TextEditorPlaceholder": "Text hier eingeben",
+  "MessengerEditorSendMessageButton": "Absenden",
+  "MessengerEditorInputPlaceholder": "Frage hier eingeben"
 }

@@ -4,6 +4,7 @@ import sbt.Keys.*
 import sbtassembly.AssemblyPlugin.autoImport.*
 
 import java.security.MessageDigest
+import java.io.BufferedInputStream
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -71,6 +72,8 @@ object BuildCommands {
     buildWorkerDeploy := buildJsModuleDeploy(architecture.worker).value,
     buildServerDev := buildJvmModule(architecture.server, BuildMode.Dev).value,
     buildServerDeploy := buildJvmModule(architecture.server, BuildMode.Deploy).value,
+    // Keep the large Scala.js and JVM builds sequential so they do not compete
+    // for heap; each individual build already uses sbt's incremental compiler.
     buildAllDev := Def.sequential(buildClientDev, buildWorkerDev, buildServerDev).value,
     buildAllDeploy := Def.sequential(buildClientDeploy, buildWorkerDeploy, buildServerDeploy).value,
     buildClientFast := buildClientDev.value,
@@ -79,21 +82,22 @@ object BuildCommands {
     deployAll := buildAllDeploy.value
   )
 
-  private def buildJsModuleDev(module: JsArtifactModule): Def.Initialize[Task[Unit]] = Def.sequential(
-    module.projectRef / Compile / fastLinkJS,
-    Def.taskDyn {
-      val output = (module.projectRef / Compile / fastLinkJS / scalaJSLinkedFile).value.data
-      publishArtifact(output, module, BuildMode.Dev)
-    }
-  )
+  private def buildJsModuleDev(module: JsArtifactModule): Def.Initialize[Task[Unit]] = Def.taskDyn {
+    val report = (module.projectRef / Compile / fastLinkJS).value.data
+    val outputDir = (module.projectRef / Compile / fastLinkJS / scalaJSLinkerOutputDirectory).value
+    val output = outputDir / report.publicModules.head.jsFileName
+    publishArtifact(output, module, BuildMode.Dev)
+  }
 
-  private def buildJsModuleDeploy(module: JsArtifactModule): Def.Initialize[Task[Unit]] = Def.sequential(
-    module.projectRef / Compile / fullLinkJS,
-    Def.taskDyn {
-      val output = (module.projectRef / Compile / fullLinkJS / scalaJSLinkedFile).value.data
-      publishArtifact(output, module, BuildMode.Deploy)
-    }
-  )
+  private def buildJsModuleDeploy(module: JsArtifactModule): Def.Initialize[Task[Unit]] = Def.taskDyn {
+    // Use the fullLinkJS result itself. scalaJSLinkedFile delegates to the
+    // configured scalaJSStage (FastOpt by default), even when it is written as
+    // `fullLinkJS / scalaJSLinkedFile`; reading it here would run both linkers.
+    val report = (module.projectRef / Compile / fullLinkJS).value.data
+    val outputDir = (module.projectRef / Compile / fullLinkJS / scalaJSLinkerOutputDirectory).value
+    val output = outputDir / report.publicModules.head.jsFileName
+    publishArtifact(output, module, BuildMode.Deploy)
+  }
 
   private def buildJvmModule(module: JvmArtifactModule, mode: BuildMode): Def.Initialize[Task[Unit]] = Def.taskDyn {
     val assemblyJar = (module.projectRef / assembly).value
@@ -109,8 +113,16 @@ object BuildCommands {
 
   private def sha256(file: File): String = {
     val digest = MessageDigest.getInstance("SHA-256")
-    val bytes = IO.readBytes(file)
-    digest.digest(bytes).map("%02x".format(_)).mkString
+    val input = new BufferedInputStream(new java.io.FileInputStream(file))
+    val buffer = new Array[Byte](64 * 1024)
+    try {
+      var read = input.read(buffer)
+      while (read >= 0) {
+        if (read > 0) digest.update(buffer, 0, read)
+        read = input.read(buffer)
+      }
+    } finally input.close()
+    digest.digest().map("%02x".format(_)).mkString
   }
 
   private def historyFileName(moduleName: String, distFileName: String, hash: String): String = {

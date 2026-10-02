@@ -19,6 +19,8 @@ case class HomepageLoggerInfo() {
 
   lazy val fileDataStorageLogger: Logger = Logger.withNameAndPrefixes(Some("FileDataStorage"), PrintToStdLogger.printError)
 
+  lazy val debugFuncLogger: Logger = Logger.withNameAndPrefixes(Some("DEBUG_FUNC_LOGGER"), PrintToStdLogger.printEverything)
+
 }
 
 object HomepageLoggerInfo {

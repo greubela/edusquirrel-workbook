@@ -1,12 +1,16 @@
 package it.evadid.workbook.interaction.sync
 
-import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
-import SyncFormatter.InteractionSyncRequest
-import SyncInformation.SyncSuccess
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.FetchResponse
+import it.evadid.core.util.io.SerializableWithCompanion.SerializableWithGenericFactory
 import it.evadid.util.logging.derived.SyncLogger
+import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
 
 import scala.concurrent.{ExecutionContext, Future}
+
+object SyncDestination {
+
+}
 
 trait SyncDestination {
 

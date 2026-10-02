@@ -11,14 +11,11 @@ case class AllWorkbookInfo(
                             config: WorkbookConfig,
                             estimatedDurations: Map[WorkbookInteractionElement[?], Double]) {
 
-  def getMetadata(): WorkbookMetadata = WorkbookMetadata(loadedWorkbook.workbookTitle, loadedWorkbook.availableLanguages)
-
-  private val toString: String = s"AllWorkbookInfo(loadedWorkbook: ${loadedWorkbook.workbookTitle}, config: $config, estimatedDurations: $estimatedDurations)"
+  private val toString: String = s"AllWorkbookInfo(loadedWorkbook: ${loadedWorkbook.metadata.workbookTitle}, config: $config, estimatedDurations: $estimatedDurations)"
 
 }
 
 object AllWorkbookInfo {
 
-  case class WorkbookMetadata(workbookId: LanguageMapContentId, availableLanguages: List[HumanLanguage])
 
 }

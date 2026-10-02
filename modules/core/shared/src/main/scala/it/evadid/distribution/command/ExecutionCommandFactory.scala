@@ -17,13 +17,14 @@ case class ExecutionCommandFactory[I, O](
                                           serializerForLoggingOut: O => String = (output: O) => output.toString
                                         ) {
 
-
   private def toCommand(data: I): ExecutionCommand = ExecutionCommand(name, TypeConverter.singleValueMap.convertToI(serializerIn.serialize(data)))
 
-  def toLocalExecutionClient(handler: (I, Logger) => Future[O]): ExecutionClient = new LocalExecutionClient {
+  def toLocalExecutionClient(handler: (I, Logger) => Future[O], mayExecuteCommand: (I, Logger) => Boolean = (i, l) => true): ExecutionClient = new LocalExecutionClient {
     def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]] = {
       val parsedInput: I = serializerIn.deserialize(TypeConverter.singleValueMap.convertToO(executionCommand.params))
-      handler.apply(parsedInput, logger).map(output => TypeConverter.singleValueMap.convertToI(serializerOut.serialize(output)))(using ExecutionContext.global)
+      val mayExecute = mayExecuteCommand(parsedInput, logger)
+      if (mayExecute) handler.apply(parsedInput, logger).map(output => TypeConverter.singleValueMap.convertToI(serializerOut.serialize(output)))(using ExecutionContext.global)
+      else throw new IllegalAccessException(s"Insufficient rights to execute command ${name} for given input!")
     }
 
     override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = executionCommand.name == name
@@ -59,7 +60,7 @@ case class ExecutionCommandFactory[I, O](
       val res: O = serializerOut.deserialize(TypeConverter.singleValueMap.convertToO(rawMap))
       val outDisplay: String = {
         val serialized: String = serializerForLoggingOut(res)
-        if(serialized.length > 30) serialized.take(30) + "..." else serialized
+        if (serialized.length > 30) serialized.take(30) + "..." else serialized
       }
       logger.logInfo(s"    Successfully deserialized data received from ${client.toString}: $outDisplay")
       res

@@ -1,10 +1,5 @@
 import sbt._
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
-import org.scalajs.jsenv.nodejs.NodeJSEnv
-import org.scalajs.linker.interface.ModuleKind
-import org.scalajs.linker.interface.OutputPatterns
-import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
-import Dependencies._
 
 object Dependencies {
 
@@ -17,8 +12,9 @@ object Dependencies {
   ))
 
   val jvmDependencies = Def.setting(Seq(
-    "org.playframework" %% "play-netty-server" % "3.0.10",
-    "org.playframework" %% "play-json" % "3.0.4",
+    "org.playframework" %% "play-netty-server" % "3.0.11",
+    "org.playframework" %% "play-json" % "3.0.6",
+    "com.github.jwt-scala" %% "jwt-play-json" % "11.0.4",
     "org.scalafx" %% "scalafx" % "24.0.0-R35",
   ))
 

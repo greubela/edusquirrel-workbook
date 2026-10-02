@@ -10,8 +10,8 @@ object HtmlTurtleStitchExploreProjectRenderer extends LineBasedRenderingFactory[
 
   override protected def createRendering(workbookElement: TurtleStitchExploreProjectElement): AtomarLineRendering = {
     val contentCard1: List[Element] = List(
-      HtmlTurtleStitchRendererHelper.renderProjectPreviewImage(workbookElement.projectToDownload),
-      HtmlTurtleStitchRendererHelper.renderDownloadButton(LanguageMapContentId("TurtleStitch/downloadButton"), workbookElement.projectToDownload)
+      HtmlTurtleStitchRendererHelper.renderProjectPreviewImage(workbookElement.projectPathRelToResources),
+      HtmlTurtleStitchRendererHelper.renderDownloadButton(LanguageMapContentId("TurtleStitch/downloadButton"), workbookElement.projectPathRelToResources)
     )
     AtomarLineRendering.cardLine(workbookElement, List(ElementCard(LanguageMapContentId("TurtleStitch/providedProjectLabel"), contentCard1)))
   }

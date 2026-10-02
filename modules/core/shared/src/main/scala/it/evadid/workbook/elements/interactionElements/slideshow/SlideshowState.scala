@@ -63,8 +63,6 @@ object SlideshowState {
       SlideshowProceededEvent(panels(oldPanelIndex), panels(newPanelIndex), LocalDateTime.parse(proceededAt))
   }
 
-  private[slideshow] given lmci: ReadWriter[LanguageMapContentId] = LanguageMapContentId.serializer.uPickleReadWrite
-
   private[slideshow] given ldt: ReadWriter[LocalDateTime] = DefaultSerializer.serializerLocalDateTimeString.uPickleReadWrite
 
   private[slideshow] given ev: ReadWriter[SlideshowProceededEventSerialized] = macroRW

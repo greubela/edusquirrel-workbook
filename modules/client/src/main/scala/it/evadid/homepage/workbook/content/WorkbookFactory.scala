@@ -1,24 +1,24 @@
 package it.evadid.homepage.workbook.content
 
 
-import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.*
-import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay, WorkbookElement, WorkbookInteractionElement, WorkbookStructureElement}
-import it.evadid.workbook.elements.displayElements.ImageElement.FileBasedImageElement
-import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{LabelType, WorkbookLabel}
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES
 import it.evadid.workbook.elements.displayElements.*
+import it.evadid.workbook.elements.displayElements.ImageElement.LanguageMapBasedImageElement
+import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{LabelType, WorkbookLabel}
 import it.evadid.workbook.elements.interactionElements.basic.*
-import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{
-  AdvancedCodeRequirement,
-  CodeTaskToggleInteraction,
-  SketchDownloadInteraction
-}
+import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
+import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{AdvancedCodeRequirement, CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.sortingExercise.{SortingInteraction, SortingItem}
 import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
 import it.evadid.workbook.elements.structureElements.*
+import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
+import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
 
 trait WorkbookFactory {
 
@@ -59,19 +59,26 @@ trait WorkbookFactory {
   /*
   Structure
    */
-  protected def workbook(langIdWorkbookTitle: String, sections: List[WorkbookSection]): Workbook = {
-    Workbook(workbookId, LanguageMapContentId(langIdWorkbookTitle), sections, availableLanguages)
+  protected def workbook(langIdWorkbookTitle: String, sections: List[WorkbookSection], user: User): Workbook = {
+    Workbook(
+      workbookId,
+      WorkbookMetadata(
+        user,
+        Set(),
+        LanguageMapContentId(langIdWorkbookTitle),
+        availableLanguages),
+      sections)
   }
 
   protected def section(sectionId: String, langIdSectionTitle: String, sectionContent: List[WorkbookElement]): WorkbookSection = {
     //val sectionTitleElement = LangMapContentIdType(titleMapId, WorkbookIdBasedContent(TypeOfTextDisplay.PLAINTEXT, RoleInWorkbook.SECTION_TITLE))
-    WorkbookSection(sectionId, LanguageMapContentId(langIdSectionTitle), sectionContent)
+    WorkbookSection(sectionId, WorkbookSectionMetadata(LanguageMapContentId(langIdSectionTitle)), sectionContent)
   }
 
   protected def container(langIdContainerLabel: String, elements: List[WorkbookElement]): WorkbookStructureElement[WorkbookElement] = {
     //val containerTitle = LangMapContentBasedElement(LanguageMapContentId(langIdContainerLabel), LangMapContentIdType(TypeOfTextDisplay.PLAINTEXT, RoleInWorkbook.CONTAINER_TITLE))
     //WorkbookElementGroup(List(containerTitle) ++ elements, Some(WorkbookGroupType.EXERCISE_CONTAINER))
-    ExerciseContainer(LanguageMapContentId(langIdContainerLabel), elements)
+    ExerciseContainer(nextId("container"), LanguageMapContentId(langIdContainerLabel), elements)
   }
 
   /*
@@ -79,37 +86,31 @@ trait WorkbookFactory {
    */
 
   protected def instructionPlaintext(langIdContent: String): WorkbookElement =
-    DisplayLangMapContent(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.PLAINTEXT))
+    DisplayLangMapContent(nextId(), LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.PLAINTEXT))
 
   protected def instructionHtml(langIdContent: String): WorkbookElement =
-    DisplayLangMapContent(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.HTML))
+    DisplayLangMapContent(nextId(), LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.HTML))
   //HtmlInstructionElement.fromUnsafeHtmlLanguageMapId(fullInfo, textMapId)
 
   protected def instructionMarkdown(langIdContent: String): WorkbookElement =
-    DisplayLangMapContent(LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN))
+    DisplayLangMapContent(nextId(), LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN))
   //HtmlInstructionElement.fromMarkdownLanguageMapId(fullInfo, textMapId)
 
-  def image(imageLocation: FileDescription): ImageElement = {
-    FileBasedImageElement(imageLocation)
-    //LangIdBasedContent(imageLocation.fullPath, LangIdBasedContent(TypeOfTextDisplay.URL, RoleInWorkbook.IMAGE))
-    //pseudoElement(HtmlImageElement(imageLocation, fullInfo).getDomSignal)
+  def imageResources(idWithImageLocation: LanguageMapContentId): ImageElement = {
+    LanguageMapBasedImageElement(nextId("img"), idWithImageLocation, URL_RELATIVE_TO_WORKBOOK_RESOURCES)
   }
 
   protected def labeledInstruction(titleMapId: String, bodyMapId: String, labelType: LabelType): LabeledWorkbookElement[WorkbookElement] = {
     val instruction: WorkbookElement = instructionMarkdown(bodyMapId)
-    LabeledWorkbookElement[WorkbookElement](instruction, WorkbookLabel(LanguageMapContentId(titleMapId), labelType))
+    LabeledWorkbookElement(nextId(), instruction, WorkbookLabel(LanguageMapContentId(titleMapId), labelType))
   }
 
   protected def instructionLabeledPair(titleMapId: String, bodyMapId: String, labelType: LabelType): LabeledWorkbookElement[WorkbookElement] =
     labeledInstruction(titleMapId, bodyMapId, labelType)
 
   protected def instructionCollapsibleHint(titleMapId: String, bodyMapId: String, initiallyCollapsed: Boolean = true): CollapsibleInstructionElement =
-    CollapsibleInstructionElement(LanguageMapContentId(titleMapId), LanguageMapContentId(bodyMapId), initiallyCollapsed)
+    CollapsibleInstructionElement(nextId(), LanguageMapContentId(titleMapId), LanguageMapContentId(bodyMapId), initiallyCollapsed)
 
-  def image(imageName: String, imgType: String = "png"): ImageElement = {
-    val fileDesc: FileDescription = fullInfo.contentControl.fileFactory.relativeToResourceFolder("workbookresources/embroidery/images/" + imageName + "." + imgType)
-    image(fileDesc)
-  }
 
   protected def checklist(langIdCheckboxLabel: String, elementId: String = nextId()): WorkbookInteractionElement[Boolean] = {
     LabeledCheckboxInteraction(elementId, LanguageMapContentId(langIdCheckboxLabel))
@@ -176,12 +177,12 @@ trait WorkbookFactory {
   }
 
   protected def sortingExercise(
-    id: String,
-    fieldKeys: List[String],
-    items: List[(String, Int, String)]
-  ): SortingInteraction = {
+                                 id: String,
+                                 fieldKeys: List[String],
+                                 items: List[(String, Int, String)]
+                               ): SortingInteraction = {
     SortingInteraction(
-      id = id,
+      elementId = id,
       fields = fieldKeys.map(LanguageMapContentId.apply),
       items = items.map { case (labelKey, correctFieldIndex, errorKey) =>
         SortingItem(LanguageMapContentId(labelKey), correctFieldIndex, LanguageMapContentId(errorKey))
@@ -190,12 +191,12 @@ trait WorkbookFactory {
   }
 
   protected def sortingReasonExercise(
-    id: String,
-    fieldKeys: List[String],
-    items: List[(String, Int, String, String)]
-  ): SortingReasonInteraction = {
+                                       id: String,
+                                       fieldKeys: List[String],
+                                       items: List[(String, Int, String, String)]
+                                     ): SortingReasonInteraction = {
     SortingReasonInteraction(
-      id = id,
+      elementId = id,
       fields = fieldKeys.map(LanguageMapContentId.apply),
       items = items.map { case (labelKey, correctFieldIndex, errorKey, reasonPromptKey) =>
         SortingReasonItem(

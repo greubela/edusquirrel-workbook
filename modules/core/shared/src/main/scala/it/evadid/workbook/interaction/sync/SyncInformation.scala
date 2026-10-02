@@ -2,7 +2,9 @@ package it.evadid.workbook.interaction.sync
 
 import it.evadid.core.datastructures.storage.RemoteCacheCollection.CacheKey
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
-import it.evadid.core.util.io.Serializer
+import it.evadid.core.datastructures.user.AllUserInfo
+import it.evadid.core.util.io.SerializableWithCompanion.{GenericSerializableFactory, SerializableWithGenericFactory}
+import it.evadid.core.util.io.{SerializableWithCompanion, Serializer, TypeConverter}
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.SyncInformation.SyncInformationWithContext
 import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableHistorySerialized}
@@ -10,13 +12,21 @@ import it.evadid.workbook.interaction.variable.{InteractionVariable, Interaction
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
-case class SyncInformation(syncSource: SyncDestination, syncStrategy: SyncStrategy, formatter: SyncFormatter) {
 
-  def forContext(context: UsageContext): SyncInformationWithContext = SyncInformationWithContext(syncSource, syncStrategy, formatter, context)
+
+case class SyncInformation(
+                            syncSource: SyncDestination,
+                            syncStrategy: SyncStrategy,
+                            formatter: SyncFormatter
+                          )  {
+
+  def forContext(context: UsageContext, currentUser: Option[AllUserInfo]): SyncInformationWithContext = SyncInformationWithContext(syncSource, syncStrategy, formatter, context, currentUser)
 
 }
 
 object SyncInformation {
+
+  case class SyncInformationFactory(name: String, parameter: Map[String, String])
 
   case class InteractionVariableFetchResponse(timestampFetchResponse: LocalDateTime, fetchedValues: Set[DataEntryReadFromServer[SyncContext, InteractionVariableHistorySerialized]]) extends FetchResponse[SyncContext, InteractionVariableHistorySerialized] {
 
@@ -49,7 +59,7 @@ object SyncInformation {
 
   }
 
-  case class SyncInformationWithContext(syncSource: SyncDestination, syncStrategy: SyncStrategy, formatter: SyncFormatter, usageContext: UsageContext) extends CacheKey[SyncContext, InteractionVariableHistorySerialized] {
+  case class SyncInformationWithContext(syncSource: SyncDestination, syncStrategy: SyncStrategy, formatter: SyncFormatter, usageContext: UsageContext, currentUser: Option[AllUserInfo]) extends CacheKey[SyncContext, InteractionVariableHistorySerialized] {
 
     private given ec: ExecutionContext = ExecutionContext.global
 
@@ -69,7 +79,7 @@ object SyncInformation {
     }
 
     def dataToStore[T](variable: InteractionVariable[T]): List[DataEntryToWriteToServer[SyncContext, InteractionVariableHistorySerialized]] = {
-      val historySerialized = variable.history.serializedWithStrategy(syncStrategy, variable.underlyingInteraction.serializer)
+      val historySerialized = variable.history.serializedWithStrategy(syncStrategy, variable.underlyingInteraction.serializerInteractionContent)
       val syncContext = usageContext.toSyncContext(variable.keyForSerialization)
       if (historySerialized.states.isEmpty) List()
       else List(DataEntryToWriteToServer(syncContext, historySerialized, historySerialized.lastStateOption.map(_.timestamp).get))

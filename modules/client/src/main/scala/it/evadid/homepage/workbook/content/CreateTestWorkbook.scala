@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.content
 
+import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, HintLabel, TaskLabel}
@@ -9,7 +10,11 @@ import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
 
   override def createWorkbook: Workbook = {
-    workbook("TestWorkbook/WorkbookTitle", List(section1, section2))
+    workbook(
+      "TestWorkbook/WorkbookTitle",
+      List(section1, section2),
+      User.AndreGreubel
+    )
   }
 
   lazy val section1: WorkbookSection = {

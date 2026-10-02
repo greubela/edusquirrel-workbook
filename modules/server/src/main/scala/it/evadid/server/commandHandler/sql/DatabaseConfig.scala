@@ -24,15 +24,16 @@ private[server] final case class DatabaseConfig(
 
 object DatabaseConfig {
 
-  def readFromEnv(dbName: String): DatabaseConfig = {
+  def readFromEnv(dbName: Option[String] = None): DatabaseConfig = {
     DatabaseConfig(
       host = System.getenv("SQL_HOST"),
       port = System.getenv("SQL_PORT"),
-      database = dbName,
+      database = dbName.getOrElse(System.getenv("SQL_DATABASE")),
       user = System.getenv("SQL_USER"),
       password = System.getenv("SQL_PW")
     )
   }
+
 
 
 }

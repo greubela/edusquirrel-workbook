@@ -3,28 +3,57 @@ package it.evadid.workbook.elements.interactionElements.basic
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 
-/**
- * Describes the kind of numeric value a [[LabeledNumberInteraction]] edits.
- *
- * The value is stored as text so renderers can preserve exact algebraic input
- * such as "sin(3) + 4" while still offering numeric spinner controls.
- */
-enum NumberType {
-  case IntegerLike
-  case FractionLike
-  case AlgebraicLike
+
+object LabeledNumberInteraction {
+
+  /**
+   * Describes the kind of numeric value a [[LabeledNumberInteraction]] edits.
+   *
+   * The value is stored as text so renderers can preserve exact algebraic input
+   * such as "sin(3) + 4" while still offering numeric spinner controls.
+   */
+  enum NumberType {
+    case IntegerLike
+    case FractionLike
+    case AlgebraicLike
+  }
+
+  case class NumberInteractionConfig(numberType: NumberType)
+
+  val factory: SimpleWorkbookElementFactory[LabeledNumberInteraction] = new SimpleWorkbookElementFactory[LabeledNumberInteraction]() {
+    override protected val constructorFieldOrder = List("elementId", "numberLabel", "numberType", "defaultNumber")
+    override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: LabeledNumberInteraction): WorkbookElementSerializable = {
+      baseElement
+        .withElementAddedAs("numberLabel", infoElement.numberLabel)
+        .withElementAdded("numberType", infoElement.numberType.toString)
+        .withElementAdded("defaultNumber", infoElement.defaultValue)
+    }
+
+    override def finishDeserialization(element: WorkbookElementSerializable): LabeledNumberInteraction = {
+      LabeledNumberInteraction(element.elementId,
+        element.getElementAs[LanguageMapContentId]("numberLabel"),
+        NumberType.valueOf(element.getOptionalElementAs("numberType", "IntegerLike")),
+        element.getOptionalElementAs("defaultNumber", "0")
+      )
+    }
+  }
+
 }
 
 case class LabeledNumberInteraction(
-                                     override val id: String,
+                                     override val elementId: String,
                                      numberLabel: LanguageMapContentId,
                                      numberType: NumberType,
                                      override val defaultValue: String = "0",
-                                     diff: BigDecimal = BigDecimal(1)
+                                     diff: BigDecimal = BigDecimal(1),
                                    ) extends WorkbookInteractionElement[String] {
+  override val associatedFactory = LabeledNumberInteraction.factory
 
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
-  override val serializer: Serializer[String] = Serializer.stringIO
+  override val serializerInteractionContent: Serializer[String] = Serializer.stringIO
 
 }

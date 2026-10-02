@@ -2,14 +2,14 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
+import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
+import it.evadid.workbook.elements.structureElements.WorkbookSection
 
 
-private case class SectionSelectionLine(workbook: Workbook) extends HtmlAppElement {
+private case class SectionSelectionLine(workbook: AllWorkbookInfo) extends HtmlAppElement {
 
-  private def sections: List[WorkbookSection] = workbook.sections
+  private def sections: List[WorkbookSection] = workbook.loadedWorkbook.sections
 
   private def selectSection(section: WorkbookSection): Unit = {
     fullInfo.usageControl.updateWorkbookConfig(_.copy(activeSection = Some(section)))
@@ -34,14 +34,19 @@ private case class SectionSelectionLine(workbook: Workbook) extends HtmlAppEleme
       ),
       div(
         cls := "section-block-part section-block-description",
-        text <-- fullInfo.signals.stringFromLanguageMapId(section.sectionTitle)
+        text <-- fullInfo.signals.stringFromLanguageMapId(section.metadata.sectionTitle)
       ),
       onClick --> { event => selectSection(section) },
     )
   }
 
+  def sectionsToDom(sectionsWithIndex: Seq[(WorkbookSection, Int)]): Seq[Element] = {
+    if (sectionsWithIndex.length <= 1) List(div())
+    else sectionsWithIndex.map(cur => sectionToElement(cur._2, cur._1))
+  }
+
   override def getDomElement(): L.Element = div(
     cls := "section-overview",
-    children <-- Var(sections.zipWithIndex.map(tup => sectionToElement(tup._2, tup._1))).signal
+    children <-- Var(sectionsToDom(sections.zipWithIndex)).signal
   )
 }

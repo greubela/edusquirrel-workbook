@@ -19,7 +19,17 @@ services:
     image: eclipse-temurin:21-jre-alpine
     restart: unless-stopped
     working_dir: /app
-    command: ["java", "-jar", "/app/server.jar"]
+    command: [
+      "java", 
+      "-Dplay.http.forwarded.version=x-forwarded",
+      "-Dplay.http.trustedProxies.0=127.0.0.1",
+      "-Dplay.http.trustedProxies.1=::1",
+      "-Dplay.http.trustedProxies.2=172.16.0.0/12",
+      "-Dplay.http.trustedProxies.3=192.168.0.0/16",
+      "-Dplay.http.trustedProxies.4=10.0.0.0/8",
+      "-jar", 
+      "/app/server.jar"
+    ]
     env_file:
       - .env
     volumes:
@@ -44,21 +54,33 @@ configs:
   caddyfile:
     content: |
       ypcgzj23.trafficplex.cloud {
+          # 1. Handle browser preflight checks immediately
           @preflight method OPTIONS
           handle @preflight {
-              header Access-Control-Allow-Origin *
+              header Access-Control-Allow-Origin "{header.Origin}"
+              header Access-Control-Allow-Credentials "true"
               header Access-Control-Allow-Methods "GET, POST, OPTIONS"
               header Access-Control-Allow-Headers "Content-Type, Authorization"
               header Vary "Origin"
               respond "" 204
           }
-
-          header {
-              Access-Control-Allow-Origin *
-              Access-Control-Allow-Methods "GET, POST, OPTIONS"
-              Access-Control-Allow-Headers "Content-Type, Authorization"
-              Vary "Origin"
+          header Access-Control-Allow-Origin "{header.Origin}" {
+              defer
+          }
+          header Access-Control-Allow-Credentials "true" {
+              defer
+          }
+          header Access-Control-Allow-Methods "GET, POST, OPTIONS" {
+              defer
+          }
+          header Access-Control-Allow-Headers "Content-Type, Authorization" {
+              defer
+          }
+          header Vary "Origin" {
+              defer
           }
 
-          reverse_proxy edusquirrel:9000
+          reverse_proxy edusquirrel:9000 {
+              header_up X-Real-IP {remote_host}
+          }
       }

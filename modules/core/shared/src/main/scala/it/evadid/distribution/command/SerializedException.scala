@@ -1,10 +1,16 @@
 package it.evadid.distribution.command
 
+import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.SerializedException.SimpleStackTraceElement
 
 case class SerializedException(msg: String, stackTrace: Array[SimpleStackTraceElement], cause: Option[SerializedException]) extends Throwable(msg) {
 
   def asCauseOf(e: Throwable): SerializedException = SerializedException(e, this)
+
+  val serializer: Serializer[SerializedException] = DefaultSerializer.serializerExceptionS
+
+  val toJson: String = serializer.serialize(this)
 
 }
 

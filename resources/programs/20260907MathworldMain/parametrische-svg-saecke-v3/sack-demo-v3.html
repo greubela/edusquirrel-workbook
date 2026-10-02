@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parametrische SVG-Säcke – Demo</title>
+<style>
+  :root { color-scheme: light; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f6f2e9; color: #2a2118; }
+  main { width: min(1180px, calc(100% - 32px)); margin: 24px auto 48px; }
+  h1 { margin: 0 0 8px; font-size: clamp(1.55rem, 3vw, 2.4rem); }
+  .lead { max-width: 78ch; margin: 0 0 22px; color: #5f5144; line-height: 1.55; }
+  .layout { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .panel { background: #fff; border: 1px solid #ded5c7; border-radius: 18px; box-shadow: 0 8px 28px rgba(72, 50, 26, .08); }
+  .controls { padding: 20px; position: sticky; top: 16px; }
+  .controls h2, .preview-panel h2, .examples h2 { margin: 0 0 16px; font-size: 1.1rem; }
+  label { display: grid; gap: 7px; margin: 0 0 18px; font-weight: 650; }
+  label span { display: flex; justify-content: space-between; gap: 16px; }
+  output { font-variant-numeric: tabular-nums; color: #76532e; }
+  input[type="range"] { width: 100%; accent-color: #7d643f; }
+  select, button { font: inherit; }
+  select { width: 100%; padding: 10px 12px; border: 1px solid #cfc4b4; border-radius: 10px; background: white; }
+  .buttons { display: grid; gap: 10px; margin-top: 12px; }
+  button { border: 0; border-radius: 11px; padding: 11px 14px; cursor: pointer; font-weight: 700; background: #2f2419; color: white; }
+  button.secondary { background: #efe6d8; color: #392a1b; }
+  .hint { margin: 16px 0 0; font-size: .9rem; line-height: 1.45; color: #6d5f51; }
+  .preview-panel { min-height: 650px; padding: 20px; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+  .stage { min-height: 560px; border-radius: 14px; background-image: linear-gradient(45deg,#f5f5f5 25%,transparent 25%),linear-gradient(-45deg,#f5f5f5 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#f5f5f5 75%),linear-gradient(-45deg,transparent 75%,#f5f5f5 75%); background-size: 24px 24px; background-position: 0 0,0 12px,12px -12px,-12px 0; display: grid; place-items: center; overflow: hidden; padding: 24px; }
+  .stage-inner { display: grid; place-items: center; transition: width .15s ease, height .15s ease; }
+  .stage svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .examples { margin-top: 20px; padding: 20px; }
+  .example-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .example { min-height: 230px; border: 1px solid #e2d9cd; border-radius: 14px; background: #fbfaf7; padding: 14px; display: grid; grid-template-rows: 1fr auto; gap: 8px; place-items: center; }
+  .example .art { width: 100%; height: 190px; display: grid; place-items: center; }
+  .example svg { max-width: 100%; max-height: 100%; width: auto; height: auto; }
+  .example small { color: #6b5b4b; font-variant-numeric: tabular-nums; }
+  details { margin-top: 20px; }
+  summary { cursor: pointer; font-weight: 750; }
+  pre { overflow: auto; padding: 16px; border-radius: 12px; background: #201a15; color: #f7eee4; font-size: .88rem; line-height: 1.5; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    .controls { position: static; }
+    .preview-panel { min-height: 520px; }
+    .stage { min-height: 430px; }
+    .example-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Parametrische SVG-Säcke</h1>
+  <p class="lead">Breite und Höhe werden unabhängig verändert. Der Sack wird dabei geometrisch neu aufgebaut: Körperflächen dehnen sich, während Knoten, Konturen, Embleme und Granulate proportional bleiben.</p>
+
+  <div class="layout">
+    <section class="panel controls" aria-labelledby="controls-title">
+      <h2 id="controls-title">Parameter</h2>
+      <label>
+        <span>Variante</span>
+        <select id="kind">
+          <option value="seed">Saatgutsack, geschlossen</option>
+          <option value="fertilizer">Düngersack, offen</option>
+        </select>
+      </label>
+      <label>
+        <span>Breite <output id="widthValue">320</output></span>
+        <input id="width" type="range" min="180" max="600" value="320" step="10">
+      </label>
+      <label>
+        <span>Höhe <output id="heightValue">420</output></span>
+        <input id="height" type="range" min="220" max="700" value="420" step="10">
+      </label>
+      <div class="buttons">
+        <button id="save">Aktuelles SVG speichern</button>
+        <button id="copy" class="secondary">SVG-Markup kopieren</button>
+      </div>
+      <p class="hint">Empfohlener Gestaltungsbereich: Seitenverhältnis etwa 0,45 bis 1,8. Für extremere Formen sollte eine zusätzliche Silhouettenvariante verwendet werden.</p>
+    </section>
+
+    <section class="panel preview-panel" aria-labelledby="preview-title">
+      <h2 id="preview-title">Vorschau</h2>
+      <div class="stage"><div id="stageInner" class="stage-inner"><div id="preview"></div></div></div>
+    </section>
+  </div>
+
+  <section class="panel examples" aria-labelledby="examples-title">
+    <h2 id="examples-title">Dieselbe Variante in drei Formaten</h2>
+    <div class="example-grid">
+      <article class="example"><div class="art" id="exampleTall"></div><small>240 × 520</small></article>
+      <article class="example"><div class="art" id="exampleNormal"></div><small>320 × 420</small></article>
+      <article class="example"><div class="art" id="exampleWide"></div><small>460 × 300</small></article>
+    </div>
+  </section>
+
+  <details class="panel" style="padding:20px">
+    <summary>Minimaler Einbau in eine Webanwendung</summary>
+    <pre><code>&lt;script src="sack-generator-v3.js"&gt;&lt;/script&gt;
+&lt;div id="sack"&gt;&lt;/div&gt;
+&lt;script&gt;
+  SackGraphics.mount('#sack', {
+    width: 460,
+    height: 300,
+    kind: 'seed' // oder 'fertilizer'
+  });
+&lt;/script&gt;</code></pre>
+  </details>
+</main>
+
+<script>
+/*
+ * Parametrische Saatgut- und Düngersäcke als SVG.
+ * Keine nicht-uniforme Skalierung kompletter Illustrationen:
+ * Die Silhouette wird aus width/height neu berechnet, während Knoten,
+ * Embleme und Konturen ihre Proportionen behalten.
+ */
+(function (global) {
+  'use strict';
+
+  let uid = 0;
+
+  const PALETTE = Object.freeze({
+    outline: '#2A170B',
+    creamTop: '#FFF3D6',
+    creamBottom: '#EAD5A8',
+    tan: '#D9B27C',
+    tanHighlight: '#F7E7C5',
+    shadow: '#BFA77A',
+    green1: '#C9DB8E',
+    green2: '#B8D77E',
+    rope1: '#C69155',
+    rope2: '#D2A065',
+    ropeHighlight: '#F0D4A1',
+    soilTop: '#7A5B3F',
+    soilBottom: '#5A3D29',
+    soilDark: '#382418'
+  });
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function n(value) {
+    return Number(value.toFixed(2)).toString();
+  }
+
+  function escapeXml(value) {
+    return String(value)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&apos;');
+  }
+
+  function normalizedOptions(options) {
+    const width = clamp(Number(options.width ?? 320) || 320, 140, 1000);
+    const height = clamp(Number(options.height ?? 420) || 420, 180, 1200);
+    const kind = options.kind === 'fertilizer' ? 'fertilizer' : 'seed';
+    const title = options.title || (kind === 'seed' ? 'Saatgutsack' : 'Düngersack');
+    const palette = { ...PALETTE, ...(options.palette || {}) };
+    const idPrefix = (options.idPrefix || `sack-${++uid}`).replace(/[^a-zA-Z0-9_-]/g, '-');
+    return { width, height, kind, title, palette, idPrefix };
+  }
+
+  function bodyGeometry(width, height, topY, strokeWidth) {
+    const s = Math.min(width, height);
+    const side = clamp(s * 0.075, 14, 34);
+    const leftTop = clamp(width * 0.19, side + 10, width * 0.26);
+    const rightTop = width - leftTop;
+    const leftMid = clamp(width * 0.105, side, width * 0.16);
+    const rightMid = width - leftMid;
+    const bottomY = height - strokeWidth * 0.75;
+    const bottomShoulder = clamp(s * 0.14, 28, 64);
+    const leftBottom = clamp(width * 0.12, side - 2, width * 0.17);
+    const rightBottom = width - leftBottom;
+    const mid1 = topY + (bottomY - topY) * 0.42;
+    const mid2 = bottomY - bottomShoulder;
+
+    const d = [
+      `M ${n(leftTop)} ${n(topY)}`,
+      `C ${n(leftTop - width * 0.035)} ${n(topY + s * 0.12)}, ${n(leftMid)} ${n(mid1)}, ${n(leftMid)} ${n(mid2)}`,
+      `C ${n(leftMid - width * 0.02)} ${n(bottomY - s * 0.04)}, ${n(leftBottom)} ${n(bottomY - s * 0.005)}, ${n(leftBottom + width * 0.07)} ${n(bottomY)}`,
+      `Q ${n(width / 2)} ${n(height + s * 0.012)}, ${n(rightBottom - width * 0.07)} ${n(bottomY)}`,
+      `C ${n(rightBottom)} ${n(bottomY - s * 0.005)}, ${n(rightMid + width * 0.02)} ${n(bottomY - s * 0.04)}, ${n(rightMid)} ${n(mid2)}`,
+      `C ${n(rightMid)} ${n(mid1)}, ${n(rightTop + width * 0.035)} ${n(topY + s * 0.12)}, ${n(rightTop)} ${n(topY)} Z`
+    ].join(' ');
+
+    return { d, leftTop, rightTop, leftMid, rightMid, bottomY, s };
+  }
+
+  function svgStart({ width, height, title, palette }) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${n(width)}" height="${n(height)}" viewBox="0 0 ${n(width)} ${n(height)}" role="img" aria-label="${escapeXml(title)}" shape-rendering="geometricPrecision">
+  <title>${escapeXml(title)}</title>
+  <g fill="none" stroke="${palette.outline}" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke">`;
+  }
+
+  function seedMarkup(o) {
+    const { width: w, height: h, title, palette: p, idPrefix: id } = o;
+    const s = Math.min(w, h);
+    const sw = clamp(s * 0.024, 5.5, 11);
+    const capY = clamp(s * 0.04, 8, 18);
+    const capH = clamp(s * 0.24, 54, 96);
+    const bandH = clamp(s * 0.09, 20, 34);
+    const bandY = capY + capH * 0.77;
+    const bodyY = bandY + bandH * 0.86;
+    const body = bodyGeometry(w, h, bodyY, sw);
+    const seamY = bodyY + (body.bottomY - bodyY) * 0.50;
+    const capLeft = w * 0.17;
+    const capRight = w * 0.83;
+    const capD = [
+      `M ${n(capLeft)} ${n(capY + capH * 0.40)}`,
+      `C ${n(capLeft - w * 0.04)} ${n(capY + capH * 0.04)}, ${n(capLeft + w * 0.01)} ${n(capY)}, ${n(capLeft + w * 0.09)} ${n(capY + capH * 0.22)}`,
+      `C ${n(w * 0.36)} ${n(capY - capH * 0.02)}, ${n(w * 0.42)} ${n(capY + capH * 0.03)}, ${n(w * 0.50)} ${n(capY + capH * 0.17)}`,
+      `C ${n(w * 0.58)} ${n(capY + capH * 0.30)}, ${n(w * 0.61)} ${n(capY - capH * 0.03)}, ${n(w * 0.72)} ${n(capY + capH * 0.14)}`,
+      `C ${n(w * 0.80)} ${n(capY + capH * 0.28)}, ${n(capRight + w * 0.04)} ${n(capY - capH * 0.01)}, ${n(capRight)} ${n(capY + capH * 0.40)}`,
+      `C ${n(capRight - w * 0.01)} ${n(capY + capH * 0.83)}, ${n(capRight - w * 0.10)} ${n(capY + capH)}, ${n(w * 0.50)} ${n(capY + capH * 0.91)}`,
+      `C ${n(capLeft + w * 0.10)} ${n(capY + capH)}, ${n(capLeft + w * 0.01)} ${n(capY + capH * 0.83)}, ${n(capLeft)} ${n(capY + capH * 0.40)} Z`
+    ].join(' ');
+
+    const bandX = w * 0.19;
+    const bandW = w * 0.62;
+    const hiY = bodyY + (body.bottomY - bodyY) * 0.73;
+    const logoCx = w / 2;
+    const logoCy = bodyY + (seamY - bodyY) * 0.55;
+    const logoSize = clamp(s * 0.27, 56, 104);
+    const logoScale = logoSize / 100;
+    const ropeX = bandX + bandW * 0.96;
+    const ropeY = bandY + bandH * 0.35;
+    const r = clamp(s * 0.10, 22, 40);
+
+    return `${svgStart(o)}
+    <defs>
+      <clipPath id="${id}-body"><path d="${body.d}"/></clipPath>
+      <linearGradient id="${id}-cream" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="${p.creamTop}"/><stop offset="1" stop-color="${p.creamBottom}"/>
+      </linearGradient>
+    </defs>
+
+    <path d="${body.d}" fill="url(#${id}-cream)" stroke-width="${n(sw)}"/>
+    <g clip-path="url(#${id}-body)" stroke="none">
+      <rect x="0" y="${n(bodyY)}" width="${n(w)}" height="${n(seamY - bodyY)}" fill="${p.tan}"/>
+      <path d="M 0 ${n(bodyY + s * 0.06)} Q ${n(w / 2)} ${n(bodyY - s * 0.015)} ${n(w)} ${n(bodyY + s * 0.06)} L ${n(w)} ${n(bodyY + s * 0.15)} Q ${n(w / 2)} ${n(bodyY + s * 0.07)} 0 ${n(bodyY + s * 0.15)} Z" fill="${p.tanHighlight}" opacity=".68"/>
+    </g>
+    <path d="M ${n(body.leftMid + sw * 0.15)} ${n(seamY)} Q ${n(w / 2)} ${n(seamY + s * 0.035)} ${n(body.rightMid - sw * 0.15)} ${n(seamY)}" stroke-width="${n(sw * 0.92)}"/>
+    <path d="M ${n(body.leftMid + s * 0.01)} ${n(hiY)} Q ${n(body.leftMid - s * 0.02)} ${n(hiY + s * 0.08)} ${n(body.leftMid + s * 0.04)} ${n(hiY + s * 0.13)}" stroke="${p.shadow}" stroke-width="${n(sw * 0.55)}" opacity=".75"/>
+    <path d="M ${n(body.rightMid - s * 0.01)} ${n(hiY)} Q ${n(body.rightMid + s * 0.02)} ${n(hiY + s * 0.08)} ${n(body.rightMid - s * 0.04)} ${n(hiY + s * 0.13)}" stroke="${p.shadow}" stroke-width="${n(sw * 0.55)}" opacity=".75"/>
+
+    <path d="${capD}" fill="#F5E4BF" stroke-width="${n(sw)}"/>
+    <path d="M ${n(capLeft + s * 0.02)} ${n(capY + capH * 0.45)} Q ${n(capLeft + s * 0.10)} ${n(capY + capH * 0.84)} ${n(w * 0.32)} ${n(capY + capH * 0.58)} Q ${n(w * 0.42)} ${n(capY + capH * 0.92)} ${n(w * 0.54)} ${n(capY + capH * 0.57)} Q ${n(w * 0.66)} ${n(capY + capH * 0.91)} ${n(capRight - s * 0.02)} ${n(capY + capH * 0.52)}" stroke="#CEB68A" stroke-width="${n(sw * 0.6)}" opacity=".8"/>
+    <rect x="${n(bandX)}" y="${n(bandY)}" width="${n(bandW)}" height="${n(bandH)}" rx="${n(bandH / 2)}" fill="#F8E8C8" stroke-width="${n(sw)}" transform="rotate(-0.4 ${n(w / 2)} ${n(bandY + bandH / 2)})"/>
+    <path d="M ${n(bandX + bandH * 0.55)} ${n(bandY + bandH * 0.66)} Q ${n(w / 2)} ${n(bandY + bandH * 0.30)} ${n(bandX + bandW - bandH * 0.55)} ${n(bandY + bandH * 0.66)}" stroke="#D8C39C" stroke-width="${n(sw * 0.42)}" opacity=".8"/>
+
+    <g transform="translate(${n(ropeX)} ${n(ropeY)})" stroke-width="${n(sw * 0.86)}">
+      <path d="M 0 0 C ${n(r * 0.85)} ${n(r * 0.05)}, ${n(r * 1.65)} ${n(r * 0.38)}, ${n(r * 1.95)} ${n(r * 0.78)} C ${n(r * 2.20)} ${n(r * 1.12)}, ${n(r * 1.90)} ${n(r * 1.42)}, ${n(r * 1.55)} ${n(r * 1.18)} C ${n(r * 1.18)} ${n(r * 0.88)}, ${n(r * 0.88)} ${n(r * 0.42)}, 0 0 Z" fill="${p.rope1}"/>
+      <path d="M ${n(r * 0.12)} ${n(r * 0.06)} C ${n(r * 0.96)} ${n(r * 0.40)}, ${n(r * 1.55)} ${n(r * 0.98)}, ${n(r * 1.47)} ${n(r * 1.42)} C ${n(r * 1.39)} ${n(r * 1.88)}, ${n(r * 0.92)} ${n(r * 1.88)}, ${n(r * 0.63)} ${n(r * 1.50)} C ${n(r * 0.37)} ${n(r * 1.18)}, ${n(r * 0.28)} ${n(r * 0.68)}, ${n(r * 0.12)} ${n(r * 0.06)} Z" fill="${p.rope2}"/>
+      <path d="M ${n(r * 0.22)} ${n(r * 0.10)} C ${n(r * 0.70)} ${n(r * 0.50)}, ${n(r * 1.12)} ${n(r * 1.05)}, ${n(r * 1.03)} ${n(r * 1.31)}" stroke="${p.ropeHighlight}" stroke-width="${n(sw * 0.45)}"/>
+    </g>
+
+    <g transform="translate(${n(logoCx)} ${n(logoCy)}) scale(${n(logoScale)})" stroke-width="${n((sw * 0.88) / logoScale)}">
+      <path d="M 0 29 C -12 3, -42 -9, -60 -3 C -78 3, -80 30, -64 42 C -49 54, -21 48, 0 29 Z" fill="${p.green1}"/>
+      <path d="M 0 29 C 12 1, 44 -17, 64 -7 C 82 2, 80 30, 63 42 C 45 54, 18 46, 0 29 Z" fill="${p.green2}"/>
+      <path d="M 0 29 C -18 13, -31 7, -49 5 M 0 29 C 17 10, 31 1, 49 -4"/>
+      <path d="M 0 29 L 0 52"/>
+    </g>
+  </g>
+</svg>`;
+  }
+
+  function fertilizerMarkup(o) {
+    const { width: w, height: h, palette: p, idPrefix: id } = o;
+    const s = Math.min(w, h);
+    const sw = clamp(s * 0.024, 5.5, 11);
+    const moundTop = clamp(s * 0.035, 6, 15);
+    const moundH = clamp(s * 0.22, 48, 88);
+    const lipH = clamp(s * 0.115, 24, 42);
+    const lipY = moundTop + moundH * 0.76;
+    const bodyY = lipY + lipH * 0.88;
+    const body = bodyGeometry(w, h, bodyY, sw);
+    const moundD = [
+      `M ${n(w * 0.19)} ${n(lipY + lipH * 0.18)}`,
+      `C ${n(w * 0.16)} ${n(moundTop + moundH * 0.72)}, ${n(w * 0.21)} ${n(moundTop + moundH * 0.46)}, ${n(w * 0.29)} ${n(moundTop + moundH * 0.45)}`,
+      `C ${n(w * 0.30)} ${n(moundTop + moundH * 0.10)}, ${n(w * 0.42)} ${n(moundTop)}, ${n(w * 0.50)} ${n(moundTop + moundH * 0.20)}`,
+      `C ${n(w * 0.57)} ${n(moundTop - moundH * 0.02)}, ${n(w * 0.70)} ${n(moundTop + moundH * 0.06)}, ${n(w * 0.72)} ${n(moundTop + moundH * 0.40)}`,
+      `C ${n(w * 0.82)} ${n(moundTop + moundH * 0.40)}, ${n(w * 0.86)} ${n(moundTop + moundH * 0.70)}, ${n(w * 0.80)} ${n(lipY + lipH * 0.18)}`,
+      `Q ${n(w * 0.50)} ${n(lipY + lipH * 0.46)} ${n(w * 0.19)} ${n(lipY + lipH * 0.18)} Z`
+    ].join(' ');
+    const lipX = w * 0.15;
+    const lipW = w * 0.70;
+    const stitchY = bodyY + clamp(s * 0.105, 22, 42);
+    const stitchLeft = w * 0.27;
+    const stitchRight = w * 0.75;
+    const count = Math.max(3, Math.min(7, Math.floor((stitchRight - stitchLeft) / (s * 0.18))));
+    const stitchSize = clamp(s * 0.06, 12, 24);
+    const stitches = Array.from({ length: count }, (_, i) => {
+      const x = count === 1 ? w / 2 : stitchLeft + i * (stitchRight - stitchLeft) / (count - 1);
+      const y = stitchY + (i % 2) * stitchSize * 0.18;
+      return `<path d="M ${n(x - stitchSize)} ${n(y - stitchSize * 0.65)} L ${n(x + stitchSize)} ${n(y + stitchSize * 0.65)} M ${n(x + stitchSize * 0.82)} ${n(y - stitchSize * 0.78)} L ${n(x - stitchSize * 0.82)} ${n(y + stitchSize * 0.78)}"/>`;
+    }).join('\n      ');
+
+    return `${svgStart(o)}
+    <defs>
+      <clipPath id="${id}-body"><path d="${body.d}"/></clipPath>
+      <clipPath id="${id}-mound"><path d="${moundD}"/></clipPath>
+      <linearGradient id="${id}-cream" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF1D1"/><stop offset="1" stop-color="#E6CFA2"/></linearGradient>
+      <linearGradient id="${id}-soil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${p.soilTop}"/><stop offset="1" stop-color="${p.soilBottom}"/></linearGradient>
+    </defs>
+
+    <path d="${body.d}" fill="url(#${id}-cream)" stroke-width="${n(sw)}"/>
+    <g clip-path="url(#${id}-body)" stroke="none">
+      <path d="M 0 ${n(bodyY + s * 0.015)} Q ${n(w / 2)} ${n(bodyY - s * 0.035)} ${n(w)} ${n(bodyY + s * 0.015)} L ${n(w)} ${n(bodyY + s * 0.14)} Q ${n(w / 2)} ${n(bodyY + s * 0.07)} 0 ${n(bodyY + s * 0.14)} Z" fill="#F7E5BE"/>
+    </g>
+    <path d="${moundD}" fill="url(#${id}-soil)" stroke-width="${n(sw)}"/>
+
+    <g clip-path="url(#${id}-mound)" stroke-width="${n(sw * 0.58)}">
+      <ellipse cx="${n(w * 0.35)}" cy="${n(moundTop + moundH * 0.50)}" rx="${n(s * 0.034)}" ry="${n(s * 0.021)}" fill="${p.soilDark}"/>
+      <ellipse cx="${n(w * 0.59)}" cy="${n(moundTop + moundH * 0.38)}" rx="${n(s * 0.042)}" ry="${n(s * 0.026)}" fill="#B7D56F" transform="rotate(-28 ${n(w * 0.59)} ${n(moundTop + moundH * 0.38)})"/>
+      <path d="M ${n(w * 0.57)} ${n(moundTop + moundH * 0.40)} L ${n(w * 0.61)} ${n(moundTop + moundH * 0.34)}"/>
+      <ellipse cx="${n(w * 0.44)}" cy="${n(moundTop + moundH * 0.72)}" rx="${n(s * 0.045)}" ry="${n(s * 0.027)}" fill="#C7DE82" transform="rotate(20 ${n(w * 0.44)} ${n(moundTop + moundH * 0.72)})"/>
+      <path d="M ${n(w * 0.42)} ${n(moundTop + moundH * 0.69)} L ${n(w * 0.47)} ${n(moundTop + moundH * 0.75)}"/>
+      <circle cx="${n(w * 0.68)}" cy="${n(moundTop + moundH * 0.66)}" r="${n(s * 0.022)}" fill="#3E2A1C"/>
+      <circle cx="${n(w * 0.29)}" cy="${n(moundTop + moundH * 0.76)}" r="${n(s * 0.019)}" fill="#4A3020"/>
+    </g>
+
+    <rect x="${n(lipX)}" y="${n(lipY)}" width="${n(lipW)}" height="${n(lipH)}" rx="${n(lipH * 0.48)}" fill="#F8E8C8" stroke-width="${n(sw)}" transform="rotate(0.5 ${n(w / 2)} ${n(lipY + lipH / 2)})"/>
+    <path d="M ${n(lipX + lipH * 0.55)} ${n(lipY + lipH * 0.38)} Q ${n(w / 2)} ${n(lipY + lipH * 0.78)} ${n(lipX + lipW - lipH * 0.55)} ${n(lipY + lipH * 0.38)}" stroke="#D8C197" stroke-width="${n(sw * 0.46)}" opacity=".8"/>
+
+    <g stroke-width="${n(sw * 0.5)}">
+      ${stitches}
+    </g>
+    <path d="M ${n(body.leftMid + s * 0.01)} ${n(body.bottomY - s * 0.22)} Q ${n(body.leftMid - s * 0.015)} ${n(body.bottomY - s * 0.13)} ${n(body.leftMid + s * 0.035)} ${n(body.bottomY - s * 0.08)}" stroke="${p.shadow}" stroke-width="${n(sw * 0.52)}" opacity=".75"/>
+    <path d="M ${n(body.rightMid - s * 0.01)} ${n(body.bottomY - s * 0.22)} Q ${n(body.rightMid + s * 0.015)} ${n(body.bottomY - s * 0.13)} ${n(body.rightMid - s * 0.035)} ${n(body.bottomY - s * 0.08)}" stroke="${p.shadow}" stroke-width="${n(sw * 0.52)}" opacity=".75"/>
+  </g>
+</svg>`;
+  }
+
+  function markup(options = {}) {
+    const o = normalizedOptions(options);
+    return o.kind === 'fertilizer' ? fertilizerMarkup(o) : seedMarkup(o);
+  }
+
+  function mount(target, options = {}) {
+    const element = typeof target === 'string' ? document.querySelector(target) : target;
+    if (!element) throw new Error('SackGraphics.mount: Ziel-Element wurde nicht gefunden.');
+    element.innerHTML = markup(options);
+    return element.querySelector('svg');
+  }
+
+  global.SackGraphics = Object.freeze({ markup, mount, palette: PALETTE });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+  const controls = {
+    width: document.querySelector('#width'),
+    height: document.querySelector('#height'),
+    kind: document.querySelector('#kind')
+  };
+  const preview = document.querySelector('#preview');
+  const stageInner = document.querySelector('#stageInner');
+  const widthValue = document.querySelector('#widthValue');
+  const heightValue = document.querySelector('#heightValue');
+  let currentMarkup = '';
+
+  function render() {
+    const width = Number(controls.width.value);
+    const height = Number(controls.height.value);
+    const kind = controls.kind.value;
+    widthValue.value = width;
+    heightValue.value = height;
+
+    currentMarkup = SackGraphics.markup({ width, height, kind, idPrefix: 'preview-sack' });
+    preview.innerHTML = currentMarkup;
+
+    const maxW = Math.min(590, Math.max(260, window.innerWidth - 110));
+    const maxH = window.innerWidth < 820 ? 390 : 520;
+    const scale = Math.min(maxW / width, maxH / height);
+    stageInner.style.width = `${Math.round(width * scale)}px`;
+    stageInner.style.height = `${Math.round(height * scale)}px`;
+
+    document.querySelector('#exampleTall').innerHTML = SackGraphics.markup({ width: 240, height: 520, kind, idPrefix: 'ex-tall' });
+    document.querySelector('#exampleNormal').innerHTML = SackGraphics.markup({ width: 320, height: 420, kind, idPrefix: 'ex-normal' });
+    document.querySelector('#exampleWide').innerHTML = SackGraphics.markup({ width: 460, height: 300, kind, idPrefix: 'ex-wide' });
+  }
+
+  Object.values(controls).forEach(el => el.addEventListener('input', render));
+  window.addEventListener('resize', render);
+
+  document.querySelector('#save').addEventListener('click', () => {
+    const blob = new Blob([currentMarkup], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${controls.kind.value}-sack-${controls.width.value}x${controls.height.value}.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  document.querySelector('#copy').addEventListener('click', async (event) => {
+    try {
+      await navigator.clipboard.writeText(currentMarkup);
+      const old = event.currentTarget.textContent;
+      event.currentTarget.textContent = 'Kopiert';
+      setTimeout(() => event.currentTarget.textContent = old, 1200);
+    } catch {
+      alert('Das Kopieren wurde vom Browser blockiert. Das SVG kann stattdessen gespeichert werden.');
+    }
+  });
+
+  render();
+</script>
+</body>
+</html>

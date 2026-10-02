@@ -1,10 +1,13 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
 import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.ExecutionMethod
 import it.evadid.core.datastructures.state.async.AsyncData
 import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, VmToSvg}
+import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder
+import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleState
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditor, SnapCodeEditorConfig, SnapProgramDerivation, SnapTurtleStage}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
@@ -14,6 +17,9 @@ import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingExercise, ProgrammingExerciseState}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import todomove.datastructures.web.file.FullImage
+
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.util.{Failure, Success}
 
 case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[ProgrammingExercise] {
 
@@ -73,10 +79,21 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     )
 
     // Run → TurtleStitchWorker.simulateGreenFlag → stage PNG
-    val stageImageVar: Var[Option[AsyncData[Nothing, FullImage]]] = Var(None)
+    val stageImageVar: Var[Option[FullImage]] = Var(None)
 
-    def runProgram(): Unit =
-      stageImageVar.set(Some(SnapTurtleStage.run(boundVar.now())))
+    def runProgram(): Unit = {
+      editor.getCurrentTurtleCommands().onComplete{
+        case Success(res) => {
+          println("Turtle Commands: " + res)
+          val path = TurtlePathBuilder[Double](Point(0,0), res, 90)
+          val img = FullImage(path.svgPathBuilder)
+          stageImageVar.set(Some(img))
+          val pathD = path.svgPathBuilder.toSvgPathD
+          println("pathD: " + pathD)
+        }
+        case Failure(exception) => throw exception
+      }
+    }
 
     val runButton: HtmlButtonElement =
       HtmlButtonElement.withTextLabel("basic/runProgram", _ => runProgram())
@@ -102,6 +119,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       List(runButton.getDomElement(), stageOutput)
     )
 
-    AtomarLineRendering.cardLine(workbookElement, List(buttonCard, staticRendering, canvasCard, runCard))
+    AtomarLineRendering.cardLine(workbookElement,
+      List(buttonCard, canvasCard, staticRendering, runCard))
   }
 }

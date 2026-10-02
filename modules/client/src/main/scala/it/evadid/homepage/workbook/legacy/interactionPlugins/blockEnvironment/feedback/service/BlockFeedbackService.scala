@@ -24,6 +24,18 @@ import scala.scalajs.js
  */
 object BlockFeedbackService:
 
+  private[feedback] def limitFeedbackWords(text: String, maxWords: Int): String =
+    if maxWords <= 0 then ""
+    else
+      val lines = text.replace("\r\n", "\n").split("\n", -1).toIndexedSeq
+      val firstStep = lines.indexWhere(_.trim.matches("^\\d+\\.\\s+.+"))
+      val minimumLines = if firstStep >= 0 then firstStep + 1 else 1
+      val withinBudget = lines.scanLeft(0) { (count, line) =>
+        count + line.split("\\s+").count(_.nonEmpty)
+      }.drop(1).takeWhile(_ <= maxWords).size
+      // Keep the explanation and first step complete, even across the word limit.
+      lines.take(math.max(minimumLines, withinBudget)).mkString("\n").trim
+
   private def maxIndentLevelFromPythonSource(rawPython: String, spacesPerLevel: Int = 4): Int =
     if rawPython == null || rawPython.isEmpty then 0
     else
@@ -139,16 +151,11 @@ object BlockFeedbackService:
       if effectiveRequest.config.enablePythonStaticChecks then
         PythonStaticRules.runAll(rawPython, effectiveRequest.humanLanguage)
       else Nil
-    val vmRules0 =
-      if effectiveRequest.config.enableVmStaticChecks then
+    // Imported text Python is not a complete VM model.
+    val vmRules =
+      if effectiveRequest.config.enableVmStaticChecks && effectiveRequest.pythonSourceOverride.isEmpty then
         VmStaticRules.runAll(effectiveRequest.studentCodePython, effectiveRequest.humanLanguage)
       else Nil
-
-    // VM_MAX_NESTING is too noisy in pythonSourceOverride runs (Feedback Demo)
-    val vmRules =
-      if effectiveRequest.pythonSourceOverride.isDefined then
-        vmRules0.filterNot(_.id == "VM_MAX_NESTING")
-      else vmRules0
 
     val runtimeOutcomeFuture =
       if rawPython.trim.isEmpty then
@@ -281,17 +288,10 @@ object BlockFeedbackService:
           case Some(prompt) =>
             val gated = QualityGate.enforce(candidate, prompt.constraints, prompt.testNames, rawPython)
 
-            def truncateWords(text: String, maxWords: Int): String =
-              if maxWords <= 0 then ""
-              else
-                val words = text.split("\\s+").toSeq.filter(_.nonEmpty)
-                if words.size <= maxWords then text.trim
-                else words.take(maxWords).mkString(" ").trim
-
             if gated.passed then
               testPlanEffective.copy(derivedHints = testPlanEffective.derivedHints ++ Seq(normalizeStudentFacingText(gated.finalText)))
-            else if QualityGate.allowImperfectPassthrough then
-              val passthroughText = truncateWords(
+            else if QualityGate.allowImperfectPassthrough && !gated.reasons.exists(_.startsWith("too_few_steps")) then
+              val passthroughText = limitFeedbackWords(
                 normalizeStudentFacingText(gated.finalText),
                 prompt.constraints.maxWords
               )
@@ -300,7 +300,7 @@ object BlockFeedbackService:
               else testPlanEffective
             else
               val fallbackGated = QualityGate.enforce(fallbackCandidate, prompt.constraints, prompt.testNames, rawPython)
-              val fallbackText = truncateWords(
+              val fallbackText = limitFeedbackWords(
                 normalizeStudentFacingText(fallbackGated.finalText),
                 prompt.constraints.maxWords
               )
@@ -417,4 +417,3 @@ object BlockFeedbackService:
         feedback.copy(debug = Some(debug))
       }
     }
-
