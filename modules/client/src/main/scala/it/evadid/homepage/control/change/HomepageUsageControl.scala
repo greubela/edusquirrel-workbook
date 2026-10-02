@@ -40,11 +40,17 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
 
   }*/
 
-
   private[change] def updateInfoWithoutContextChange(func: HomepageInfo => HomepageInfo): Future[?] = fullInfo.synchronized {
-    fullInfo.syncControl.ensureFetchAndLoad(interactions.map(_.interactionVariable)).map(_ => {
-      fullInfo.homepageInfoState.update(func)
-    })
+    fullInfo.syncControl
+      .ensureFetchAndLoad(interactions.map(_.interactionVariable))
+      .recover { case err =>
+        fullInfo.loggerSystemInfo.syncCacheLogger.logExceptionWarn(
+          "continuing display update despite fetchAndLoad failure",
+          err
+        )
+        ()
+      }
+      .map(_ => fullInfo.homepageInfoState.update(func))
   }
 
   def changeWorkbook(factory: WorkbookFactory): Unit = fullInfo.synchronized {

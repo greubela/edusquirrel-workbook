@@ -13,7 +13,9 @@ import scala.util.Try
 case class ProgrammingExercise(
                                 override val elementId: String,
                                 testSuite: Option[BeTestSuite] = None,
-                                editorPalette: ProgrammingEditorPalette = ProgrammingEditorPalette.Default
+                                editorPalette: ProgrammingEditorPalette = ProgrammingEditorPalette.Default,
+                                /** Optional Python turtle program whose drawing is the target for geometric matching. */
+                                referencePython: Option[String] = None
 ) extends WorkbookInteractionElement[ProgrammingExerciseState] {
   override val associatedFactory = ProgrammingExercise.factory
 
@@ -31,8 +33,19 @@ object ProgrammingExercise {
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set()
 
     override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): ProgrammingExercise = {
-      ProgrammingExercise(element.elementId, None, ProgrammingEditorPalette.Default)
+      ProgrammingExercise(
+        element.elementId,
+        element.getOptionalElementAs[Option[BeTestSuite]]("testSuite", None),
+        element.getOptionalElementAs[ProgrammingEditorPalette]("editorPalette", ProgrammingEditorPalette.Default),
+        element.getOptionalElementAs[Option[String]]("referencePython", None)
+      )
     }
+
+    override def toSerializableElement(element: ProgrammingExercise): WorkbookElementSerializable =
+      toFactoryBase(element)
+        .withElementAddedAs("testSuite", element.testSuite)
+        .withElementAddedAs("editorPalette", element.editorPalette)
+        .withElementAddedAs("referencePython", element.referencePython)
 
     lazy override val writerJsonRegularRefBased: Writer[ProgrammingExercise] = macroRW
   }

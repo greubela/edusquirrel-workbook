@@ -56,7 +56,7 @@ object SnapTurtleCatalog {
     Primitive("receiveGo", "receive_go", Nil, "receive_go", "receive_go()", PaletteTab.Control, inputKinds = none),
     Primitive("doWait", "do_wait", Nil, "do_wait", "do_wait(seconds)", PaletteTab.Control, inputKinds = n),
     Primitive("forward", "forward", List("fd"), "forward", "forward(steps)", PaletteTab.Motion, inputKinds = n),
-    Primitive("turn", "turn", List("right", "rt"), "right", "turn(degrees)", PaletteTab.Motion, inputKinds = n),
+    Primitive("turn", "turn_right", List("turn", "right", "rt"), "right", "turn_right(degrees)", PaletteTab.Motion, inputKinds = n),
     Primitive("turnLeft", "turn_left", List("left", "lt"), "left", "turn_left(degrees)", PaletteTab.Motion, inputKinds = n),
     Primitive("gotoXY", "goto_x_y", List("goto", "setpos", "setposition"), "goto", "goto_x_y(x, y)", PaletteTab.Motion, inputKinds = nn),
     Primitive("setHeading", "set_heading", List("setheading", "seth"), "setheading", "set_heading(degrees)", PaletteTab.Motion, inputKinds = n),
@@ -275,34 +275,35 @@ object SnapTurtleCatalog {
       else snapSelectorOrSpec
     )
 
+  /**
+   * Python function name for a Snap block spec: every label word joined by `_`.
+   *
+   * All words are needed, not just the first: `draw square %size` and
+   * `draw circle %radius` would otherwise both become `draw` and collapse into one
+   * Python function.
+   */
   def pythonNameFromCustomSpec(spec: String): String = {
-    val name = spec.trim.takeWhile(ch => ch.isLetterOrDigit || ch == '_')
-    if name.isEmpty then "custom" else name
+    val words = SnapCustomBlockRules
+      .parseSpec(spec)
+      .filterNot(part => part.startsWith("%") && part.length > 1)
+      .map(word => word.filter(ch => ch.isLetterOrDigit || ch == '_'))
+      .filter(_.nonEmpty)
+    if words.isEmpty then "custom"
+    else
+      val joined = words.mkString("_")
+      if joined.head.isDigit then s"_$joined" else joined
   }
 
   /**
-   * Snap stores definition `s` as a semantic spec (`square %size`) and call `s`
-   * as `CustomBlockDefinition.blockSpec()` (`square %n`). Python apply must
-   * emit that pair or Snap loads the call as `Undefined!`.
+   * Definition spec for a block Python declares itself: label word plus one
+   * `%inputName` per parameter. Snap stores parameter *names* in the definition
+   * spec and their declared types only in `<inputs>`.
    */
   def customBlockSemanticSpec(pythonName: String, inputNames: List[String]): String =
     pythonName + uniqueSlotNames(inputNames).map(name => s" %$name").mkString
 
-  /** Type spec used on `<custom-block s>` and by Snap's `blockSpec()`. */
-  def customBlockTypeSpec(pythonName: String, arity: Int): String =
-    pythonName + (" %n" * arity)
-
-  def customBlockSpec(pythonName: String, arity: Int): String =
-    customBlockTypeSpec(pythonName, arity)
-
   def inputNamesFromSpec(spec: String): List[String] =
-    spec.split(' ').toList.collect {
-      case part if part.startsWith("%") && part.length > 1 => part.substring(1)
-    }
-
-  /** Snap `blockSpec()`: each `%name` slot becomes its declared type (`%n` for Python). */
-  def typeSpecFromSemantic(semanticSpec: String): String =
-    customBlockTypeSpec(pythonNameFromCustomSpec(semanticSpec), arityFromSpec(semanticSpec))
+    SnapCustomBlockRules.slotNames(spec)
 
   def slotNameFromPython(name: String): String = {
     val trimmed = name.trim
@@ -320,7 +321,7 @@ object SnapTurtleCatalog {
   }
 
   def arityFromSpec(spec: String): Int =
-    raw"%[A-Za-z]+".r.findAllIn(spec).length
+    SnapCustomBlockRules.slotNames(spec).size
 
   def validateCallArity(pythonName: String, actual: Int): Option[String] =
     primitiveByPythonName.get(pythonName).flatMap { primitive =>

@@ -11,11 +11,13 @@ import it.evadid.vm.BeProgram
 final case class ProgrammingExerciseState(snapXml: String)
 
 object ProgrammingExerciseState {
+  /** @param previousXml XML being replaced; custom block definitions are merged forward */
   def fromProgram(
       program: BeProgram,
-      canvasLayout: SnapCanvasLayout = SnapCanvasLayout.empty
+      canvasLayout: SnapCanvasLayout = SnapCanvasLayout.empty,
+      previousXml: String = ""
   ): ProgrammingExerciseState =
-    ProgrammingExerciseState(SnapProjectXml.toXml(program.fullProgram, canvasLayout = canvasLayout))
+    ProgrammingExerciseState(SnapCustomBlockMerge.applyProgram(program, canvasLayout, previousXml))
 
   def mini: ProgrammingExerciseState =
     ProgrammingExerciseState(SnapProjectXml.mini)

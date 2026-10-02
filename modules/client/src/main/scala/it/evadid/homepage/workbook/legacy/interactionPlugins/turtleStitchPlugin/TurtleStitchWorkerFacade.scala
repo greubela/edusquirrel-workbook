@@ -92,10 +92,20 @@ object TurtleStitchWorkerFacade {
   val emptyPngDataUrl: String =
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg=="
 
-  private var worker: TurtleStitchWorker = new TurtleStitchWorker()
+  private var worker: Option[TurtleStitchWorker] = None
   private val queueLock = new AnyRef
   private var queuedWork: Future[Unit] = Future.successful(())
   private var workerInit: Option[Future[Unit]] = None
+
+  /** Created on the first stage snapshot, so reading [[emptyPngDataUrl]] does not need a Worker. */
+  private def currentWorker: TurtleStitchWorker =
+    queueLock.synchronized {
+      worker.getOrElse {
+        val created = new TurtleStitchWorker()
+        worker = Some(created)
+        created
+      }
+    }
 
   private def simulateStageWithQueuedWorker(turtleStitchXml: String)(using ec: ExecutionContext): Future[String] =
     enqueueWorkerTask { w =>
@@ -109,7 +119,7 @@ object TurtleStitchWorkerFacade {
       val runTask = queuedWork
         .recover { case _ => () }
         .flatMap(_ => ensureWorkerInitialized())
-        .flatMap(_ => task(worker))
+        .flatMap(_ => task(currentWorker))
 
       runTask.onComplete {
         case Success(value) => result.success(value)
@@ -127,7 +137,7 @@ object TurtleStitchWorkerFacade {
       workerInit match {
         case Some(existingInit) => existingInit
         case None =>
-          val init = worker.init().toFuture
+          val init = currentWorker.init().toFuture
           workerInit = Some(init)
           init.andThen {
             case Failure(_) =>
@@ -142,8 +152,8 @@ object TurtleStitchWorkerFacade {
 
   def destroyWorker(): Unit =
     queueLock.synchronized {
-      worker.destroy()
-      worker = new TurtleStitchWorker()
+      worker.foreach(_.destroy())
+      worker = None
       workerInit = None
       queuedWork = Future.successful(())
     }

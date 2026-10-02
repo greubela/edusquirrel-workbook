@@ -41,7 +41,17 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
         container(
           "TestWorkbook/section2Subtitle2",
           List(
-            ProgrammingExercise("prog-circle", editorPalette = ProgrammingEditorPalette.BeginnerTurtle)
+            ProgrammingExercise(
+              "prog-circle",
+              editorPalette = ProgrammingEditorPalette.BeginnerTurtle,
+              // Beginner palette has turn (right), not turnLeft: approximate a circle clockwise.
+              referencePython = Some(
+                """for i in range(36):
+                  |    forward(10)
+                  |    turn(10)
+                  |""".stripMargin
+              )
+            )
           )
         )
       )

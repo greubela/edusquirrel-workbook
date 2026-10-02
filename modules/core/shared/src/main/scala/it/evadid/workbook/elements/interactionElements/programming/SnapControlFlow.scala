@@ -287,14 +287,30 @@ object SnapControlFlow {
           case _ => None
       case _ => None
 
-  def collectVariableNames(expression: BeExpression): List[String] = {
-    val names = scala.collection.mutable.LinkedHashSet.empty[String]
+  def collectVariableNames(expression: BeExpression): List[String] =
+    declaredVariables(expression).map(_._1)
+
+  /**
+   * Scene variables in walk order, with the first literal assignment when one exists.
+   * A later read does not replace that literal; a name that is only read has none.
+   */
+  def declaredVariables(expression: BeExpression): List[(String, Option[String])] = {
+    val order = scala.collection.mutable.LinkedHashSet.empty[String]
+    val literals = scala.collection.mutable.LinkedHashMap.empty[String, String]
+    def note(name: String): Unit =
+      if name.nonEmpty then order += name
+    def noteLiteral(name: String, literal: String): Unit =
+      note(name)
+      if name.nonEmpty && !literals.contains(name) then literals += name -> literal
     def walk(node: BeExpression): Unit = node match
       case BeAssignVariable(target, value) =>
-        names += variableName(target)
+        val name = variableName(target)
+        value match
+          case BeUseValue(BeDataValueLiteral(literal), _) => noteLiteral(name, literal)
+          case _ => note(name)
         walk(value)
       case BeUseValue(BeUseValueReference(variable), _) =>
-        names += variableName(variable)
+        note(variableName(variable))
       case call: BeFunctionCall =>
         orderedArgs(call).foreach(walk)
       case ifElse: BeIfElse =>
@@ -307,12 +323,12 @@ object SnapControlFlow {
       case repeat: BeRepeatNr =>
         repeat.body.body.foreach(walk)
       case forExpr: BeFor =>
-        names += variableName(forExpr.variable)
+        note(variableName(forExpr.variable))
         walk(forExpr.start)
         walk(forExpr.end)
         forExpr.body.body.foreach(walk)
       case defn: BeDefineFunction =>
-        defn.inputs.foreach(input => names += variableName(input))
+        // Parameters belong to the definition's own scope, not to the scene variables.
         walk(defn.body)
       case seq: BeSequence =>
         seq.body.foreach(walk)
@@ -320,7 +336,7 @@ object SnapControlFlow {
         seq.body.foreach(walk)
       case _ => ()
     walk(expression)
-    names.toList.filter(_.nonEmpty)
+    order.toList.map(name => name -> literals.get(name))
   }
 
   def functionSelector(call: BeFunctionCall): String =
@@ -371,12 +387,10 @@ object SnapControlFlow {
           }
         case None =>
           userFunctions.get(name) match
-            case Some(expected) if expected != args.size =>
-              Some(s"$name expects $expected argument(s), got ${args.size}")
-            case Some(_) if args.forall(isSupportedValue) =>
-              None
-            case Some(_) =>
-              Some(s"$name(...)")
+            case Some(expected) =>
+              // Extra call args are dropped on write-back; missing ones become empty slots.
+              if args.take(expected).forall(isSupportedValue) then None
+              else Some(s"$name(...)")
             case None =>
               Some(s"$name(...)")
   }

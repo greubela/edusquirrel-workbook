@@ -5,10 +5,12 @@ import it.evadid.workbook.elements.interactionElements.programming.{SnapCanvasLa
 
 object TurtleStitchFromBeExpressionSerializer {
 
+  /** @param previousXml XML being replaced; its custom block definitions are merged forward */
   def toXml(
       expression: BeExpression,
       projectName: String = "fromBeExpression",
-      canvasLayout: SnapCanvasLayout = SnapCanvasLayout.empty
+      canvasLayout: SnapCanvasLayout = SnapCanvasLayout.empty,
+      previousXml: String = ""
   ): String =
-    SnapProjectXml.toXml(expression, projectName, canvasLayout)
+    SnapProjectXml.toXml(expression, projectName, canvasLayout, previousXml)
 }

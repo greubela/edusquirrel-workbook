@@ -17,12 +17,39 @@ import it.evadid.workbook.elements.interactionElements.programming.SnapInputCode
 
 object VmToSvg {
 
-  def renderBeExpression(logger: Logger, expression: BeExpression): AppShapeElement[Double] = {
-    val commands = BeExpressionToTurtleCommands(expression)
-    val built = TurtlePathBuilder[Double](Point(0.0, 0.0), commands, BeExpressionToTurtleCommands.SnapHeadingDeg)
-    val segments = built.completedStyledSegments
+  def renderBeExpression(logger: Logger, expression: BeExpression): AppShapeElement[Double] =
+    renderTurtlePathBuilder(
+      TurtlePathBuilder(
+        Point(0.0, 0.0),
+        BeExpressionToTurtleCommands(expression),
+        BeExpressionToTurtleCommands.SnapHeadingDeg
+      )
+    )
+
+  /** Same visual pipeline as [[renderBeExpression]], from an already built turtle path. */
+  def renderTurtlePathBuilder(built: TurtlePathBuilder[Double]): AppShapeElement[Double] =
+    compose(List(built), colors = None)
+
+  /** Target in blue, student drawing in red. `resultInFront` chooses which one is painted last. */
+  def renderOverlay(
+      target: TurtlePathBuilder[Double],
+      actual: TurtlePathBuilder[Double],
+      resultInFront: Boolean = true
+  ): AppShapeElement[Double] = {
+    val blue = RGBColor(30, 100, 220)
+    val red = RGBColor.red
+    val (drawings, colors) =
+      if resultInFront then (List(target, actual), List(blue, red))
+      else (List(actual, target), List(red, blue))
+    compose(drawings, colors = Some(colors))
+  }
+
+  private def compose(
+      drawings: List[TurtlePathBuilder[Double]],
+      colors: Option[List[RGBColor]]
+  ): AppShapeElement[Double] = {
     val pad = 16.0
-    val points = built.svgPathBuilder.pathPoints
+    val points = drawings.flatMap(_.svgPathBuilder.pathPoints)
     val minX = points.map(_.x).minOption.getOrElse(0.0)
     val maxX = points.map(_.x).maxOption.getOrElse(0.0)
     val minY = points.map(_.y).minOption.getOrElse(0.0)
@@ -32,16 +59,19 @@ object VmToSvg {
     val minSize = Some(Dimension[Double](width, height))
     val delta = Dimension(pad - minX, pad - minY)
 
-    if segments.isEmpty then emptyPreview(minSize)
-    else
-      val children = segments.map { segment =>
+    val children = drawings.zipWithIndex.flatMap { (built, index) =>
+      val forced = colors.flatMap(_.lift(index))
+      built.completedStyledSegments.map { segment =>
         val shifted = segment.pathBuilder.moveWholePath(delta).asInstanceOf[SvgPathBuilderImmutable[Double]]
-        AppShapeDrawingRoutineElement[Double](
-          PathPreviewRoutine(shifted),
-          turtleConfig(segment.style),
-          minSize
-        )
+        val config = forced match
+          case Some(color) => AppShapeElementConfig.turtleSegment(color, 2.0)
+          case None => turtleConfig(segment.style)
+        AppShapeDrawingRoutineElement[Double](PathPreviewRoutine(shifted), config, minSize)
       }
+    }
+
+    if children.isEmpty then emptyPreview(minSize)
+    else
       AppShapeComposition(
         CompositionBlockStack(AlignmentInParent.DistortionAlignment),
         AppShapeElementConfig.turtleSegment(RGBColor.black, 1.0),

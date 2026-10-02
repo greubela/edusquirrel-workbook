@@ -8,7 +8,15 @@ import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
-import it.evadid.workbook.elements.interactionElements.programming.{SnapCanvasLayout, SnapCanvasScript, SnapControlFlow, SnapInputCodec, SnapTurtleCatalog, SnapTurtlePythonBridge}
+import it.evadid.workbook.elements.interactionElements.programming.{
+  SnapCanvasLayout,
+  SnapCanvasScript,
+  SnapControlFlow,
+  SnapInputCodec,
+  SnapTurtleCatalog,
+  SnapTurtlePythonBridge,
+  SnapXmlParser
+}
 
 import scala.collection.mutable.ListBuffer
 
@@ -103,7 +111,11 @@ object TurtleStitchToBeExpressionParser {
   private def parseBlockDefinitionFromXml(spec: String, body: String): BeDefineFunction = {
     val inputSection = findTagInnerAnywhere(body, "inputs").getOrElse("")
     val namesFromAttr =
-      """<input\b[^>]*\bname="([^"]+)"""".r.findAllMatchIn(inputSection).map(_.group(1).trim).filter(_.nonEmpty).toList
+      """<input\b[^>]*\bname="([^"]+)"""".r
+        .findAllMatchIn(inputSection)
+        .map(m => SnapXmlParser.unescape(m.group(1).trim))
+        .filter(_.nonEmpty)
+        .toList
     val namesFromSpec = SnapTurtleCatalog.inputNamesFromSpec(spec)
     val inputNames = if namesFromSpec.nonEmpty then namesFromSpec else namesFromAttr
     val arity = math.max(inputNames.size, SnapTurtleCatalog.arityFromSpec(spec))
@@ -114,7 +126,7 @@ object TurtleStitchToBeExpressionParser {
         (1 to arity).toList.map(idx => BeDefineVariable(BeEntityName.fromCodeString(s"arg$idx"), BeDataType.AnyType))
     params.foreach(param => currentVars.intern(SnapControlFlow.variableName(param)))
     val scriptBody = definitionBodyScript(body)
-    val statements = topLevelBlocks(scriptBody).flatMap(blockToStatement)
+    val statements = commandStatements(topLevelBlocks(scriptBody).flatMap(blockToStatement))
     BeDefineFunction(
       params,
       None,
@@ -128,7 +140,7 @@ object TurtleStitchToBeExpressionParser {
     withVars(interner) {
       val scripts = topLevelScriptsPreferringSprite(xml)
       if scripts.isEmpty then
-        val statements = topLevelBlocks(xml).flatMap(blockToStatement)
+        val statements = commandStatements(topLevelBlocks(xml).flatMap(blockToStatement))
         ParseWithLayout(
           BeStartProgram(BeSequence.optionalBody(statements)),
           if statements.isEmpty then SnapCanvasLayout.empty
@@ -136,7 +148,7 @@ object TurtleStitchToBeExpressionParser {
         )
       else
         val scriptParses = scripts.map { case (attrs, body) =>
-          val statements = topLevelBlocks(body).flatMap(blockToStatement)
+          val statements = commandStatements(topLevelBlocks(body).flatMap(blockToStatement))
           ScriptParse(statements, layoutFromAttrs(attrs, statements.size))
         }
         val statements = scriptParses.flatMap(_.statements)
@@ -231,7 +243,7 @@ object TurtleStitchToBeExpressionParser {
         inputs.map {
           case InputLiteral(value) => BeUseValue(BeDataValueLiteral(value), None)
           case InputScript(scriptBody) =>
-            BeSequence.optionalBody(topLevelBlocks(scriptBody).flatMap(blockToStatement))
+            BeSequence.optionalBody(commandStatements(topLevelBlocks(scriptBody).flatMap(blockToStatement)))
           case InputBlock(nestedAttrs, nestedBody) =>
             blockToStatement((nestedAttrs, nestedBody)).getOrElse(BeExpression.pass)
           case InputList(items) =>
@@ -289,18 +301,25 @@ object TurtleStitchToBeExpressionParser {
   }
 
   private def parseDoSetVarFromXml(body: String): BeExpression = {
-    val inputs = parseOrderedInputs(body)
-    val name = literalNameFromInputs(inputs).getOrElse("x")
-    val value = valueFromXmlInputs(dropNameInput(inputs)).getOrElse(BeUseValue(BeDataValueLiteral("0"), None))
+    val (name, valueInputs) = assignmentNameAndRest(parseOrderedInputs(body))
+    val value = valueFromXmlInputs(valueInputs).getOrElse(BeUseValue(BeDataValueLiteral("0"), None))
     SnapControlFlow.assignVariable(currentVars.intern(name), value)
   }
 
   private def parseDoChangeVarFromXml(body: String): BeExpression = {
-    val inputs = parseOrderedInputs(body)
-    val name = literalNameFromInputs(inputs).getOrElse("x")
-    val amount = valueFromXmlInputs(dropNameInput(inputs)).getOrElse(BeUseValue(BeDataValueLiteral("1"), None))
+    val (name, amountInputs) = assignmentNameAndRest(parseOrderedInputs(body))
+    val amount = valueFromXmlInputs(amountInputs).getOrElse(BeUseValue(BeDataValueLiteral("1"), None))
     SnapControlFlow.changeVariable(currentVars.intern(name), amount)
   }
+
+  /** The first slot of set/change is the variable, either `<l>name</l>` or `<block var="name"/>`. */
+  private def assignmentNameAndRest(inputs: List[BlockInput]): (String, List[BlockInput]) =
+    inputs match
+      case InputLiteral(value) :: rest if value.trim.nonEmpty => (value.trim, rest)
+      case InputBlock(attrs, body) :: rest
+          if variableAttr(attrs).nonEmpty || blockSelector(attrs).contains("reportGetVar") =>
+        (variableReporterName(attrs, body), rest)
+      case other => (literalNameFromInputs(other).getOrElse("x"), dropNameInput(other))
 
   private def literalNameFromInputs(inputs: List[BlockInput]): Option[String] =
     inputs.collectFirst { case InputLiteral(value) if value.trim.nonEmpty => value.trim }
@@ -319,7 +338,11 @@ object TurtleStitchToBeExpressionParser {
     }
 
   private def scriptBodyFromXml(scriptBody: String): BeSequence =
-    BeSequence.optionalBody(topLevelBlocks(scriptBody).flatMap(blockToStatement))
+    BeSequence.optionalBody(commandStatements(topLevelBlocks(scriptBody).flatMap(blockToStatement)))
+
+  /** A variable reporter is a value, not a command. Snap does not keep it in a script stack. */
+  private def commandStatements(statements: List[BeExpression]): List[BeExpression] =
+    statements.filterNot(_.isInstanceOf[BeUseValue])
 
   private def conditionFromInputs(inputs: List[BlockInput]): BeExpression =
     inputs.collectFirst { case InputBlock(attrs, nestedBody) =>
@@ -365,7 +388,7 @@ object TurtleStitchToBeExpressionParser {
         blockToStatement((attrs, nestedBody)).toList
       case InputList(items) => expandXmlInputsToExpressions(items)
       case InputScript(scriptBody) =>
-        List(BeSequence.optionalBody(topLevelBlocks(scriptBody).flatMap(blockToStatement)))
+        List(BeSequence.optionalBody(commandStatements(topLevelBlocks(scriptBody).flatMap(blockToStatement))))
     }
 
   private def expandModelInputsToExpressions(inputs: List[InputValue], phaseOne: PhaseOneResult): List[BeExpression] =
@@ -417,7 +440,7 @@ object TurtleStitchToBeExpressionParser {
             if innerEnd < 0 then return out.toList
             val inner = xml.substring(innerStart, innerEnd)
             tag match
-              case "l" => out += InputLiteral(inner.trim)
+              case "l" => out += InputLiteral(SnapXmlParser.unescape(inner.trim))
               case "bool" => out += InputLiteral(if inner.trim.equalsIgnoreCase("true") then "True" else "False")
               case "color" =>
                 out += InputLiteral(
@@ -445,10 +468,10 @@ object TurtleStitchToBeExpressionParser {
   }
 
   private def blockSelector(attrs: String): Option[String] =
-    """\bs="([^"]*)"""".r.findFirstMatchIn(attrs).map(_.group(1)).filter(_.nonEmpty)
+    """\bs="([^"]*)"""".r.findFirstMatchIn(attrs).map(m => SnapXmlParser.unescape(m.group(1))).filter(_.nonEmpty)
 
   private def variableAttr(attrs: String): Option[String] =
-    """\bvar="([^"]*)"""".r.findFirstMatchIn(attrs).map(_.group(1)).filter(_.nonEmpty)
+    """\bvar="([^"]*)"""".r.findFirstMatchIn(attrs).map(m => SnapXmlParser.unescape(m.group(1))).filter(_.nonEmpty)
 
   /** Snap-native body is a direct `<script>` child; `<scripts>` holds extras / legacy bodies. */
   private def definitionBodyScript(xml: String): String = {
@@ -631,7 +654,7 @@ object TurtleStitchToBeExpressionParser {
 
   private def parseScriptsWithLayout(scripts: Vector[Script], phaseOne: PhaseOneResult): List[ScriptParse] =
     scripts.toList.map { script =>
-      val statements = script.blocks.toList.flatMap(block => parseBlock(block, phaseOne))
+      val statements = commandStatements(script.blocks.toList.flatMap(block => parseBlock(block, phaseOne)))
       val x = script.x.map(_.round.toInt).getOrElse(156)
       val y = script.y.map(_.round.toInt).getOrElse(66)
       ScriptParse(statements, SnapCanvasScript(x, y, statements.size))
@@ -705,18 +728,30 @@ object TurtleStitchToBeExpressionParser {
   }
 
   private def parseDoSetVar(block: BlockLike, phaseOne: PhaseOneResult): BeExpression = {
-    val inputs = inputValuesOf(block)
-    val name = literalNameFromModelInputs(inputs).getOrElse("x")
-    val value = valueFromModelInputs(dropNameModelInput(inputs), phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("0"), None))
+    val (name, valueInputs) = assignmentNameAndRestModel(inputValuesOf(block))
+    val value = valueFromModelInputs(valueInputs, phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("0"), None))
     SnapControlFlow.assignVariable(currentVars.intern(name), value)
   }
 
   private def parseDoChangeVar(block: BlockLike, phaseOne: PhaseOneResult): BeExpression = {
-    val inputs = inputValuesOf(block)
-    val name = literalNameFromModelInputs(inputs).getOrElse("x")
-    val amount = valueFromModelInputs(dropNameModelInput(inputs), phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("1"), None))
+    val (name, amountInputs) = assignmentNameAndRestModel(inputValuesOf(block))
+    val amount = valueFromModelInputs(amountInputs, phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("1"), None))
     SnapControlFlow.changeVariable(currentVars.intern(name), amount)
   }
+
+  private def assignmentNameAndRestModel(inputs: List[InputValue]): (String, List[InputValue]) =
+    inputs match
+      case Literal(value) :: rest if value.trim.nonEmpty => (value.trim, rest)
+      case NestedBlock(block) :: rest =>
+        reporterVariableName(block) match
+          case Some(name) => (name, rest)
+          case None => (literalNameFromModelInputs(inputs).getOrElse("x"), dropNameModelInput(inputs))
+      case other => (literalNameFromModelInputs(other).getOrElse("x"), dropNameModelInput(other))
+
+  private def reporterVariableName(block: BlockLike): Option[String] = block match
+    case PrimitiveBlock(None, Some(name), _, _) if name.nonEmpty => Some(name)
+    case PrimitiveBlock(Some("reportGetVar"), variable, inputs, _) => Some(variableNameFromReporter(variable, inputs))
+    case _ => None
 
   private def literalNameFromModelInputs(inputs: List[InputValue]): Option[String] =
     inputs.collectFirst { case Literal(value) if value.trim.nonEmpty => value.trim }
@@ -741,7 +776,7 @@ object TurtleStitchToBeExpressionParser {
     }.getOrElse(BeUseValue(BeDataValueLiteral("True"), None))
 
   private def parseScriptBody(script: Script, phaseOne: PhaseOneResult): BeSequence =
-    BeSequence.optionalBody(script.blocks.toList.flatMap(block => parseBlock(block, phaseOne)))
+    BeSequence.optionalBody(commandStatements(script.blocks.toList.flatMap(block => parseBlock(block, phaseOne))))
 
   private def parseGenericBlock(block: BlockLike, phaseOne: PhaseOneResult): Option[BeExpression] = {
     val signature = signatureOf(block)
@@ -774,14 +809,24 @@ object TurtleStitchToBeExpressionParser {
   }
 
   private def collectSignatures(project: Project): List[Signature] = {
-    val allBlocks = project.scenes.toList.flatMap { scene =>
+    val scriptBlocks = project.scenes.toList.flatMap { scene =>
       val stageBlocks = scene.stage.scripts.toList.flatMap(_.blocks)
       val spriteBlocks = scene.stage.sprites.toList.flatMap(_.scripts.toList.flatMap(_.blocks))
       stageBlocks ++ spriteBlocks
     }
-
-    allBlocks.map(signatureOf).distinct
+    val definitionBlocks = collectCustomDefinitions(project).flatMap(_.body).flatMap(_.blocks)
+    (scriptBlocks ++ definitionBlocks).flatMap(blocksDeep).map(signatureOf).distinct
   }
+
+  /** A block plus every block nested in its slots, scripts and lists. */
+  private def blocksDeep(block: BlockLike): List[BlockLike] =
+    block :: inputValuesOf(block).flatMap(inputBlocksDeep)
+
+  private def inputBlocksDeep(input: InputValue): List[BlockLike] = input match
+    case NestedBlock(nested) => blocksDeep(nested)
+    case NestedScript(script) => script.blocks.toList.flatMap(blocksDeep)
+    case ListLiteral(items) => items.toList.flatMap(inputBlocksDeep)
+    case _ => Nil
 
   private def collectVariableNamesFromProject(project: Project): List[String] =
     project.scenes.toList.flatMap { scene =>
@@ -791,7 +836,11 @@ object TurtleStitchToBeExpressionParser {
     }.map(_.trim).filter(_.nonEmpty)
 
   private def collectVariableNamesFromXml(xml: String): List[String] =
-    """<variable\b[^>]*\bname="([^"]+)"""".r.findAllMatchIn(xml).map(_.group(1).trim).filter(_.nonEmpty).toList
+    """<variable\b[^>]*\bname="([^"]+)"""".r
+      .findAllMatchIn(xml)
+      .map(m => SnapXmlParser.unescape(m.group(1).trim))
+      .filter(_.nonEmpty)
+      .toList
 
   private def signatureOf(block: BlockLike): Signature = block match {
     case PrimitiveBlock(selector, variable, inputs, _) =>

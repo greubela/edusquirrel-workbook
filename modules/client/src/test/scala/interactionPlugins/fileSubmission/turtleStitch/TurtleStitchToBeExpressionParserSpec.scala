@@ -10,7 +10,13 @@ import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.BeFunctionCall
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExercise, ProgrammingExerciseState, SnapTurtlePythonBridge}
+import it.evadid.workbook.elements.interactionElements.programming.{
+  ProgrammingExercise,
+  ProgrammingExerciseState,
+  SnapCustomBlockRules,
+  SnapTurtlePythonBridge,
+  SnapXmlParser
+}
 import munit.FunSuite
 
 class TurtleStitchToBeExpressionParserSpec extends FunSuite {
@@ -134,7 +140,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(python.contains("if test == 1:"), clue = python)
     assert(python.contains("for _ in range(10):"), clue = python)
     assert(python.contains("forward(10)"), clue = python)
-    assert(python.contains("turn(18)"), clue = python)
+    assert(python.contains("turn_right(18)"), clue = python)
     assert(!python.contains("do_if"), clue = python)
     assert(!python.contains("report_variadic_equals"), clue = python)
     val xmlOut = TurtleStitchFromBeExpressionSerializer.toXml(parsed.expression, "equals-var", parsed.canvasLayout)
@@ -162,6 +168,32 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(python.contains("for _ in range(10):"), clue = python)
     val applied = SnapTurtlePythonBridge.applyPython(python)
     assert(applied.isRight, clue = applied)
+  }
+
+  test("valued test = 0 roundtrip does not append a bare test line") {
+    val program = BeProgram.fromPythonString("test = 0\n")
+    val xml = TurtleStitchFromBeExpressionSerializer.toXml(program.fullProgram)
+    val derived = it.evadid.homepage.webElements.editor.code.SnapEditor.SnapProgramDerivation.fromXml(xml)
+    val lines = derived.python.linesIterator.map(_.trim).filter(_.nonEmpty).toList
+    assert(!lines.contains("test"), clue = derived.python + "\n" + xml)
+    assert(derived.pythonCompatible, clue = (derived.unsupportedSelectors, derived.python))
+
+    val nested =
+      """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doSetVar"><block var="test"/><l>0</l></block></script></scripts></sprite></sprites></stage><variables><variable name="test"><l>0</l></variable></variables></scene></scenes></project>"""
+    val nestedDerived = it.evadid.homepage.webElements.editor.code.SnapEditor.SnapProgramDerivation.fromXml(nested)
+    val nestedLines = nestedDerived.python.linesIterator.map(_.trim).filter(_.nonEmpty).toList
+    assert(nestedLines.contains("test = 0"), clue = nestedDerived.python)
+    assert(!nestedLines.contains("test"), clue = nestedDerived.python)
+    assert(!nestedLines.exists(_.contains("0 = test")), clue = nestedDerived.python)
+    assert(nestedDerived.pythonCompatible, clue = (nestedDerived.unsupportedSelectors, nestedDerived.python))
+
+    val sibling =
+      """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doSetVar"><l>test</l><l>0</l></block><block var="test"/></script></scripts></sprite></sprites></stage><variables><variable name="test"><l>0</l></variable></variables></scene></scenes></project>"""
+    val siblingDerived = it.evadid.homepage.webElements.editor.code.SnapEditor.SnapProgramDerivation.fromXml(sibling)
+    val siblingLines = siblingDerived.python.linesIterator.map(_.trim).filter(_.nonEmpty).toList
+    assert(siblingLines.contains("test = 0"), clue = siblingDerived.python)
+    assert(!siblingLines.contains("test"), clue = siblingDerived.python)
+    assert(siblingDerived.pythonCompatible, clue = (siblingDerived.unsupportedSelectors, siblingDerived.python))
   }
 
   test("doSetVar XML roundtrips to python assignment and back to Snap") {
@@ -210,7 +242,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(python.contains("steps = 10"), clue = python)
     assert(python.contains("for _ in range(4):"), clue = python)
     assert(python.contains("forward(50)"), clue = python)
-    assert(python.contains("turn(90)"), clue = python)
+    assert(python.contains("turn_right(90)"), clue = python)
     assert(python.contains("if steps < 20:"), clue = python)
     assert(python.contains("goto_x_y(10, 20)"), clue = python)
     assert(python.contains("set_heading(90)"), clue = python)
@@ -300,7 +332,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     val python = SnapTurtlePythonBridge.printedPython(parsed.expression)
     assert(python.contains("def square(n):"), clue = python)
     assert(python.contains("forward(n)"), clue = python)
-    assert(python.contains("turn(90)"), clue = python)
+    assert(python.contains("turn_right(90)"), clue = python)
     assert(python.contains("square(50)"), clue = python)
   }
 
@@ -349,7 +381,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="turn"><l>90</l></block><block s="turnLeft"><l>15</l></block><block s="gotoXY"><l>1</l><l>2</l></block><block s="up"></block><block s="down"></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
     val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
     val python = SnapTurtlePythonBridge.printedPython(parsed.expression)
-    assert(python.contains("turn(90)"), clue = python)
+    assert(python.contains("turn_right(90)"), clue = python)
     assert(python.contains("turn_left(15)"), clue = python)
     assert(python.contains("goto_x_y(1, 2)"), clue = python)
     val applied = SnapTurtlePythonBridge.applyPython(
@@ -381,7 +413,88 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(applied.toOption.get.snapXml.contains("<color>0,0,255,1</color>") || applied.toOption.get.snapXml.contains("<color>"), clue = applied.toOption.get.snapXml)
   }
 
-  test("custom block arity mismatch is rejected on python apply") {
+  private def projectWith(definitions: String, scriptBlocks: String): String =
+    s"""<project name="t" app="TurtleStitch 2.11, http://www.turtlestitch.org" version="2"><notes></notes><scenes select="1"><scene name="t"><notes></notes><palette><category name="Pen" color="0,161,120,1"/></palette><hidden></hidden><headers></headers><code></code><blocks>$definitions</blocks><primitives></primitives><stage name="Stage" width="480" height="360"><blocks></blocks><scripts></scripts><sprites select="1"><sprite name="Sprite" idx="1"><blocks></blocks><variables></variables><scripts><script x="70" y="80">$scriptBlocks</script></scripts></sprite></sprites></stage><variables></variables></scene></scenes></project>"""
+
+  test("a snap-built custom block keeps its definition head through a python roundtrip") {
+    val definition =
+      """<block-definition s="draw square %size" type="command" category="Pen" helper="true"><comment w="90" collapsed="false">draws a square</comment><header></header><code></code><translations></translations><inputs><input type="%s" readonly="true">10</input></inputs><script><block s="forward"><block var="size"/></block></script></block-definition>"""
+    val xml = projectWith(
+      definition,
+      """<block s="receiveGo"></block><custom-block s="draw square %s"><l>10</l></custom-block>"""
+    )
+    assertEquals(SnapCustomBlockRules.obsoleteCalls(xml), Nil, clue = xml)
+
+    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val python = SnapTurtlePythonBridge.printedPython(parsed.expression)
+    assert(python.contains("def draw_square(size):"), clue = python)
+    assert(python.contains("forward(size)"), clue = python)
+    assert(python.contains("draw_square(10)"), clue = python)
+
+    val applied = SnapTurtlePythonBridge.applyPython(python.replace("forward(size)", "turn(size)"), parsed.canvasLayout, xml)
+    assert(applied.isRight, clue = applied)
+    val reXml = applied.toOption.get.snapXml
+    assertEquals(SnapCustomBlockRules.obsoleteCalls(reXml), Nil, clue = reXml)
+
+    val before = SnapCustomBlockRules.globalDefinitions(xml).head
+    val after = SnapCustomBlockRules.globalDefinitions(reXml).head
+    assertEquals(after.spec, before.spec)
+    assertEquals(after.blockType, before.blockType)
+    assertEquals(after.rawCategory, before.rawCategory)
+    assertEquals(
+      SnapXmlParser.child(after.element.inner, "inputs").map(_.outer),
+      SnapXmlParser.child(before.element.inner, "inputs").map(_.outer)
+    )
+    assertEquals(
+      SnapXmlParser.child(after.element.inner, "comment").map(_.outer),
+      SnapXmlParser.child(before.element.inner, "comment").map(_.outer)
+    )
+    assert(reXml.contains("""helper="true""""), clue = reXml)
+
+    val body = after.bodyScript.map(_.inner).getOrElse("")
+    assert(body.contains("""s="turn""""), clue = body)
+    assert(!body.contains("""s="forward""""), clue = body)
+    assert(body.contains("""<block var="size"/>"""), clue = body)
+  }
+
+  test("two snap blocks sharing a first label word stay two python functions") {
+    val definitions =
+      """<block-definition s="draw square %size" type="command" category="Pen"><inputs><input type="%n"></input></inputs><script><block s="forward"><block var="size"/></block></script></block-definition>""" +
+        """<block-definition s="draw circle %radius" type="command" category="Pen"><inputs><input type="%n"></input></inputs><script><block s="turn"><block var="radius"/></block></script></block-definition>"""
+    val xml = projectWith(
+      definitions,
+      """<block s="receiveGo"></block><custom-block s="draw square %n"><l>10</l></custom-block><custom-block s="draw circle %n"><l>20</l></custom-block>"""
+    )
+    assertEquals(SnapCustomBlockRules.obsoleteCalls(xml), Nil, clue = xml)
+
+    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val python = SnapTurtlePythonBridge.printedPython(parsed.expression)
+    assert(python.contains("def draw_square(size):"), clue = python)
+    assert(python.contains("def draw_circle(radius):"), clue = python)
+    assert(python.contains("draw_square(10)"), clue = python)
+    assert(python.contains("draw_circle(20)"), clue = python)
+
+    val applied = SnapTurtlePythonBridge.applyPython(python, parsed.canvasLayout, xml)
+    assert(applied.isRight, clue = applied)
+    val reXml = applied.toOption.get.snapXml
+    assertEquals(SnapCustomBlockRules.obsoleteCalls(reXml), Nil, clue = reXml)
+    assertEquals(
+      SnapCustomBlockRules.globalDefinitions(reXml).map(_.spec).sorted,
+      List("draw circle %radius", "draw square %size")
+    )
+  }
+
+  test("a reporter definition is reported by name instead of being flattened to a command") {
+    val xml = projectWith(
+      """<block-definition s="area %size" type="reporter" category="Pen"><inputs><input type="%n"></input></inputs><script><block s="doReport"><block var="size"/></block></script></block-definition>""",
+      """<block s="receiveGo"></block>"""
+    )
+    val derived = it.evadid.homepage.webElements.editor.code.SnapEditor.SnapProgramDerivation.fromXml(xml)
+    assert(!derived.pythonCompatible, clue = derived)
+    assert(derived.unsupportedSelectors.exists(_.contains("area %size")), clue = derived.unsupportedSelectors)
+  }
+
+  test("custom block extra arguments are dropped on python apply") {
     val xml =
       """<project><scenes select="1"><scene><blocks><block-definition s="square %n" type="command" category="other"><inputs><input type="%n" name="n">n</input></inputs><scripts><script><block s="forward"><block var="n"/></block></script></scripts></block-definition></blocks><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><custom-block s="square %n"><l>50</l></custom-block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
     val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
@@ -389,7 +502,10 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(python.contains("def square"), clue = python)
     val mismatched = python.stripSuffix("\n") + "\nsquare(1, 2)\n"
     val applied = SnapTurtlePythonBridge.applyPython(mismatched)
-    assert(applied.isLeft, clue = applied)
+    assert(applied.isRight, clue = applied)
+    val nextXml = applied.toOption.get.snapXml
+    assert(nextXml.contains("""<custom-block s="square %n"><l>1</l></custom-block>"""), clue = nextXml)
+    assert(!nextXml.contains("<l>2</l>"), clue = nextXml)
   }
 }
 

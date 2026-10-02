@@ -40,6 +40,12 @@ case class SnapCodeEditor(
       previewTarget.foreach(canvas => impl.renderPreviewInto(next, canvas, config))
     }(using owner)
 
+  private def persistPythonIntoEditor(next: ProgrammingExerciseState): Unit =
+    impl.loadProgramIfChanged(next)
+    lastFingerprintFromSnap = Some(stateFingerprint(next))
+    impl.acknowledgeProgramFromEditor(next)
+    onStateEdited(next)
+
   private def publishProgramFromSnapXml(xml: String): Unit =
     val next = ProgrammingExerciseState(xml)
     val nextFingerprint = stateFingerprint(next)
@@ -89,7 +95,7 @@ case class SnapCodeEditor(
       SnapPythonPopup.chrome(
         state,
         () => impl.flushPendingProjectChanges(),
-        onStateEdited,
+        persistPythonIntoEditor,
         setExecutionStepMs = ms => impl.setGreenFlagStepMs(ms)
       ),
       onUnmountCallback { _ =>

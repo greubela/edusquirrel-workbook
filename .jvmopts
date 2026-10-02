@@ -1,0 +1,4 @@
+# Heap for Scala.js linking (source maps for the ~20MB client.js are memory-heavy).
+-Xmx8G
+-Xms1G
+-XX:+UseG1GC

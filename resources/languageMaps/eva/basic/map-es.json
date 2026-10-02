@@ -12,5 +12,11 @@
   "openEditor": "Abrir editor",
   "canvas": "Tu programa",
   "runProgram": "Ejecutar",
-  "turtleOutput": "Salida de la tortuga"
+  "turtleOutput": "Salida de la tortuga",
+  "turtleResult": "Tu resultado",
+  "targetDrawing": "Dibujo objetivo",
+  "turtleBringTargetFront": "Azul delante",
+  "turtleBringResultFront": "Rojo delante",
+  "turtleTargetMark": "Azul: objetivo",
+  "turtleResultMark": "Rojo: tu resultado"
 }
