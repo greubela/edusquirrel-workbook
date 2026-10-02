@@ -12,5 +12,11 @@
   "openEditor": "Відкрити редактор",
   "canvas": "Твоя програма",
   "runProgram": "Запустити",
-  "turtleOutput": "Вихід черепахи"
+  "turtleOutput": "Вихід черепахи",
+  "turtleResult": "Твій результат",
+  "targetDrawing": "Цільовий малюнок",
+  "turtleBringTargetFront": "Синій наперед",
+  "turtleBringResultFront": "Червоний наперед",
+  "turtleTargetMark": "Синій: ціль",
+  "turtleResultMark": "Червоний: твій результат"
 }

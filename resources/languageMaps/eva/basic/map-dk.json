@@ -13,5 +13,11 @@
   "openEditor": "Åbn editor",
   "canvas": "Dit program",
   "runProgram": "Kør",
-  "turtleOutput": "Skildpadde-output"
+  "turtleOutput": "Skildpadde-output",
+  "turtleResult": "Dit resultat",
+  "targetDrawing": "Måltegning",
+  "turtleBringTargetFront": "Blå forrest",
+  "turtleBringResultFront": "Rød forrest",
+  "turtleTargetMark": "Blå: mål",
+  "turtleResultMark": "Rød: dit resultat"
 }

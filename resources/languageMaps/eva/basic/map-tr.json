@@ -12,5 +12,11 @@
   "openEditor": "Editörü aç",
   "canvas": "Programın",
   "runProgram": "Çalıştır",
-  "turtleOutput": "Kaplumbağa çıktısı"
+  "turtleOutput": "Kaplumbağa çıktısı",
+  "turtleResult": "Sonucun",
+  "targetDrawing": "Hedef çizim",
+  "turtleBringTargetFront": "Maviyi öne al",
+  "turtleBringResultFront": "Kırmızıyı öne al",
+  "turtleTargetMark": "Mavi: hedef",
+  "turtleResultMark": "Kırmızı: senin sonucun"
 }

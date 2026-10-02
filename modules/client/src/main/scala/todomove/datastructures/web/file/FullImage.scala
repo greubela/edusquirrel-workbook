@@ -25,31 +25,22 @@ object FullImage {
     }
 
     def getSvg: Element = {
-      val bounds = builder.bounds
-      val width: String = math.max(100, builder.bounds.dimension.width).toString
-      val height: String = math.max(100, builder.bounds.dimension.height).toString
+      val pad = 8.0
+      val b = builder.bounds
+      val x = b.startPoint.x.toDouble - pad
+      val y = b.startPoint.y.toDouble - pad
+      val width = math.max(50.0, b.dimension.width.toDouble + 2 * pad)
+      val height = math.max(50.0, b.dimension.height.toDouble + 2 * pad)
       svg.svg(
-        svg.width := width,
-        svg.height := height,
-        svg.viewBox := s"${builder.bounds.startPoint.x} ${builder.bounds.startPoint.y} ${width} ${height}",
-        svg.rect(
-          svg.x := builder.bounds.startPoint.x.toString,
-          svg.y := builder.bounds.startPoint.y.toString,
-          svg.width := width,
-          svg.height := height,
-          svg.fill := "#ffff00",
-        ),
-        svg.circle(
-          svg.x := "-1",
-          svg.y := "-1",
-          svg.r := "1",
-          svg.fill := "#aaaaaa"
-        ),
+        svg.width := width.toString,
+        svg.height := height.toString,
+        svg.viewBox := s"$x $y $width $height",
         svg.path(
           svg.d := builder.toSvgPathD,
+          svg.fill := "none",
           svg.stroke := "#111111",
+          svg.strokeWidth := "1"
         )
-        ,
       )
     }
 
