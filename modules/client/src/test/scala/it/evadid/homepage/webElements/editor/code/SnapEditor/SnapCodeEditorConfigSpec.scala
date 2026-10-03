@@ -1,7 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.workbook.elements.interactionElements.programming.SnapPaletteCatalog
+import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, SnapPaletteCatalog}
 import munit.FunSuite
 
 class SnapCodeEditorConfigSpec extends FunSuite {
@@ -50,16 +50,20 @@ class SnapCodeEditorConfigSpec extends FunSuite {
     assert(selectors.contains("backward"))
   }
 
-  test("PythonCompatibleTesting wires the filtered palette into the editor config") {
-    val config = SnapCodeEditorConfig.PythonCompatibleTesting
+  test("PythonCompatibleSnap wires the filtered palette into the editor config") {
+    val config = SnapCodeEditorConfig.forPalette(ProgrammingEditorPalette.PythonCompatibleSnap)
     assertEquals(config.libraryTabs, SnapCodeEditorConfig.PythonCompatibleSnapCategories)
     assertEquals(config.parts, SnapCodeEditorConfig.Testing.parts)
   }
 
-  test("EmbroideryTesting uses the python-compatible palette including stitches") {
-    val config = SnapCodeEditorConfig.EmbroideryTesting
-    assertEquals(config.libraryTabs, SnapCodeEditorConfig.PythonCompatibleSnapCategories)
-    assert(SnapCodeEditorConfig.pythonCompatibleBlockSelectors.contains("runningStitch"))
+  test("Embroidery palette is motion, pen, stitches, and control") {
+    val config = SnapCodeEditorConfig.forPalette(ProgrammingEditorPalette.Embroidery)
+    assertEquals(config.libraryTabs.map(_.name), List("Motion", "Pen", "Embroidery", "Control"))
+    val selectors = config.libraryTabs.flatMap(_.selectableElements.map(_.id)).toSet
+    assert(selectors.contains("runningStitch"))
+    assert(!selectors.contains("reportVariadicSum"))
+    assert(!selectors.contains("doSetVar"))
+    assertEquals(config.parts, SnapCodeEditorConfig.Testing.parts)
   }
 
   test("Variables tab enables Snap variable controls and make-block") {
@@ -95,8 +99,8 @@ class SnapCodeEditorConfigSpec extends FunSuite {
     assert(!flat.useNativeCategory)
   }
 
-  test("BeginnerTurtleCategories is a single mixed Blocks tab") {
-    val tabs = SnapCodeEditorConfig.BeginnerTurtleCategories
+  test("BeginnerTurtle is a single mixed Blocks tab") {
+    val tabs = SnapCodeEditorConfig.forPalette(ProgrammingEditorPalette.BeginnerTurtle).libraryTabs
     assertEquals(tabs.map(_.name), List("Blocks"))
     assertEquals(tabs.map(_.id), List("blocks"))
     assertEquals(tabs.map(_.color), List(SnapCategoryColor.Other))
@@ -118,8 +122,12 @@ class SnapCodeEditorConfigSpec extends FunSuite {
     )
   }
 
-  test("BeginnerTurtleCategories exposes exactly the nine beginner selectors") {
-    val selectors = SnapCodeEditorConfig.beginnerTurtleBlockSelectors
+  test("BeginnerTurtle exposes exactly the nine beginner selectors") {
+    val selectors = SnapCodeEditorConfig
+      .forPalette(ProgrammingEditorPalette.BeginnerTurtle)
+      .libraryTabs
+      .flatMap(_.selectableElements.map(_.id))
+      .toSet
     assertEquals(
       selectors,
       Set(
@@ -137,9 +145,8 @@ class SnapCodeEditorConfigSpec extends FunSuite {
     assert(selectors.subsetOf(SnapCodeEditorConfig.pythonCompatibleBlockSelectors))
   }
 
-  test("BeginnerTurtleTesting wires the mixed palette and hides category buttons") {
-    val config = SnapCodeEditorConfig.BeginnerTurtleTesting
-    assertEquals(config.libraryTabs, SnapCodeEditorConfig.BeginnerTurtleCategories)
+  test("BeginnerTurtle hides category buttons") {
+    val config = SnapCodeEditorConfig.forPalette(ProgrammingEditorPalette.BeginnerTurtle)
     assertEquals(config.parts, SnapCodeEditorConfig.Testing.parts.copy(libraryCategories = false))
     assert(!config.parts.libraryCategories)
   }

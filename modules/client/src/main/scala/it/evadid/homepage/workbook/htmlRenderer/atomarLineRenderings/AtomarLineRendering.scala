@@ -27,10 +27,10 @@ object AtomarLineRendering {
     RenderingAsContainerTitle(LaminarRenderHelper.singleton.plaintextStringSignal(content), 1)
   }
 
-  def cardLine(workbookElement: WorkbookElement, cards: List[ElementCard]): AtomarLineRendering = {
+  def cardLine(workbookElement: WorkbookElement, cards: List[ElementCard], cardsClass: String = ""): AtomarLineRendering = {
 
     val cardContent = div(
-      cls := "element-cards",
+      cls := (if cardsClass.isEmpty then "element-cards" else s"element-cards $cardsClass"),
       div(cls := "element-card-line label-line",
         cards.map(_.labelElement)),
       div(cls := "element-card-line content-line",

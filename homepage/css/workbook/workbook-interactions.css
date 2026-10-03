@@ -470,10 +470,88 @@
 }
 /* ========== FEATURE: SnapPythonPopup (END) ========== */
 
+/* Programming exercise card table: one grid so headers and cells share columns. */
+.prog-ex-cards {
+    display: grid;
+    grid-auto-flow: row;
+    width: 100%;
+    column-gap: var(--space-md);
+    row-gap: var(--space-sm);
+    align-items: start;
+    justify-items: stretch;
+}
+
+.prog-ex-cards > .element-card-line {
+    display: contents;
+}
+
+/* Open editor, program preview, optional target, static drawing, result. */
+.prog-ex-cards--5 {
+    grid-template-columns:
+        minmax(0, 0.7fr)
+        minmax(0, 1.1fr)
+        minmax(0, 1.55fr)
+        minmax(0, 1.55fr)
+        minmax(0, 1.15fr);
+}
+
+/* Same row without the target drawing. */
+.prog-ex-cards--4 {
+    grid-template-columns:
+        minmax(0, 0.7fr)
+        minmax(0, 1.15fr)
+        minmax(0, 1.6fr)
+        minmax(0, 1.15fr);
+}
+
+.prog-ex-cards .element-card-label,
+.prog-ex-cards .element-card-content {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.prog-ex-cards .element-card-label {
+    justify-self: center;
+    overflow-wrap: anywhere;
+}
+
+.prog-ex-cards .element-card-content {
+    width: 100%;
+}
+
+.prog-ex-cards .be-program-snap-renderer,
+.prog-ex-cards .be-program-snap-renderer__canvas {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+}
+
+.prog-ex-drawing {
+    width: 100%;
+    min-height: 12rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.prog-ex-drawing svg {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    max-height: 22rem;
+    object-fit: contain;
+}
+
 /* ProgrammingExercise stage output (Run → simulateGreenFlag PNG) */
 .prog-ex-stage-output {
     margin-top: var(--space-md);
     max-width: 100%;
+}
+
+.prog-ex-cards .prog-ex-stage-output {
+    width: 100%;
+    max-height: 16rem;
+    overflow: auto;
 }
 
 .prog-ex-stage-output__placeholder {
@@ -484,6 +562,17 @@
 .prog-ex-stage-output .preview-content img {
     max-width: 100%;
     height: auto;
+}
+
+.prog-ex-cards .prog-ex-stage-output .preview-card,
+.prog-ex-cards .prog-ex-stage-output .preview-content,
+.prog-ex-cards .prog-ex-stage-output .preview-content img,
+.prog-ex-cards .prog-ex-stage-output svg {
+    max-width: 100%;
+    max-height: 14rem;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
 }
 .be-program-snap-fullscreen__turtle {
     flex: 0 0 30%;

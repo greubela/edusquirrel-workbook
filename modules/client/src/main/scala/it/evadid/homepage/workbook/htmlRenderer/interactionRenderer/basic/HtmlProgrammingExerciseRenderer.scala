@@ -13,7 +13,7 @@ import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLine
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.vm.BeProgram
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingExercise, ProgrammingExerciseState}
+import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExercise, ProgrammingExerciseState}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -45,11 +45,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       interaction.setStateFromUserInteraction(fullInfo.syncControl, next, UpdateImportance.MAJOR)
     }
 
-    val editorConfig: SnapCodeEditorConfig = workbookElement.editorPalette match
-      case ProgrammingEditorPalette.Default => SnapCodeEditorConfig.Testing
-      case ProgrammingEditorPalette.PythonCompatibleSnap => SnapCodeEditorConfig.PythonCompatibleTesting
-      case ProgrammingEditorPalette.BeginnerTurtle => SnapCodeEditorConfig.BeginnerTurtleTesting
-      case ProgrammingEditorPalette.Embroidery => SnapCodeEditorConfig.EmbroideryTesting
+    val editorConfig: SnapCodeEditorConfig = SnapCodeEditorConfig.forPalette(workbookElement.editorPalette)
 
     val editor: SnapCodeEditor = SnapCodeEditor(boundVar, editorConfig, onStateEdited = persistFromEditor)
 
@@ -66,11 +62,14 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     )
     val staticRendering = ElementCard(
       LanguageMapContentId("basic/staticPreviewProgram"),
-      SvgLaminarRenderer.render(
-        shapeLogger,
-        VmToSvg.renderBeExpression(
+      div(
+        cls := "prog-ex-drawing",
+        SvgLaminarRenderer.render(
           shapeLogger,
-          SnapProgramDerivation.fromState(boundVar.now()).program.fullProgram
+          VmToSvg.renderBeExpression(
+            shapeLogger,
+            SnapProgramDerivation.fromState(boundVar.now()).program.fullProgram
+          )
         )
       )
     )
@@ -85,9 +84,12 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       Try {
         ElementCard(
           LanguageMapContentId("basic/targetDrawing"),
-          SvgLaminarRenderer.render(
-            shapeLogger,
-            VmToSvg.renderBeExpression(shapeLogger, BeProgram.fromPythonString(py).fullProgram)
+          div(
+            cls := "prog-ex-drawing",
+            SvgLaminarRenderer.render(
+              shapeLogger,
+              VmToSvg.renderBeExpression(shapeLogger, BeProgram.fromPythonString(py).fullProgram)
+            )
           )
         )
       }.toOption
@@ -193,9 +195,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       runCardChildren
     )
 
-    AtomarLineRendering.cardLine(
-      workbookElement,
-      List(buttonCard, canvasCard) ++ targetCards ++ List(staticRendering, runCard)
-    )
+    val cards = List(buttonCard, canvasCard) ++ targetCards ++ List(staticRendering, runCard)
+    AtomarLineRendering.cardLine(workbookElement, cards, s"prog-ex-cards prog-ex-cards--${cards.size}")
   }
 }
