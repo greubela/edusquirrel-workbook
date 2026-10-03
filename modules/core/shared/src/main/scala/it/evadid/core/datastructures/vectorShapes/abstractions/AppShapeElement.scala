@@ -4,8 +4,6 @@ import it.evadid.core.datastructures.geometry.*
 import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeElement.{AppElementMeasured, AppElementRendered}
 import it.evadid.core.datastructures.vectorShapes.config.{AppShapeElementConfig, AppShapeRenderingConfig}
 import it.evadid.core.datastructures.vectorShapes.helper.{AlignmentInParent, RenderingDimension}
-import it.evadid.core.datastructures.vectorShapes.svg.SvgPath
-import it.evadid.util.logging.Logger
 
 sealed trait AppShapeElement[T: Fractional] {
 
@@ -94,17 +92,20 @@ object AppShapeElement {
 
     def withOffset(offsetCalculatedFromParent: Point[T]): AppElementPositioned[T] = {
       val paddingToUse = compositionMeasurd.baseElement.elementConfig.useCustomPadding.getOrElse(compositionMeasurd.renderingConfig.defaultPadding)
-      lazy val myFullOffset: Point[T] = paddingToUse.asPoint + relativeBoundsRaw.offsetInParents + offsetCalculatedFromParent
+      val contentOffset = paddingToUse.asPoint + relativeBoundsRaw.offsetInParents + offsetCalculatedFromParent
       val childrenPositioned = compositionMeasurd.baseElement.compositeControl.calculateChildrenPositions(children, adjustedRenderingSize, compositionMeasurd.baseElement.elementConfig, compositionMeasurd.renderingConfig)
-      AppElementPositioned(childrenPositioned, this, adjustedRenderingSize.fullDimension.withOffset(myFullOffset))
+      AppElementPositioned(childrenPositioned, this, adjustedRenderingSize.rawDimension.withOffset(contentOffset))
     }
   }
 
   /** A dimensioned composition with bounds relative to its parent. */
   case class AppElementPositioned[T: Fractional](children: List[AppElementPositioned[T]], compositionDimensioned: AppElementDimensioned[T], relativeBounds: RelativeBounds[T]) {
     def asRendered(myAbsoluteStartingPoint: Point[T]): AppElementRendered[T] = {
-      val childrenRendered = children.map(curChild => curChild.asRendered(myAbsoluteStartingPoint + curChild.relativeBounds.offsetInParents))
-      AppElementRendered(childrenRendered, this, relativeBounds.toAbsoluteBounds(myAbsoluteStartingPoint))
+      val myBounds = relativeBounds.toAbsoluteBounds(myAbsoluteStartingPoint)
+      // Child offsets are relative to the parent's content origin. The previous
+      // implementation added each child offset here and again in asRendered.
+      val childrenRendered = children.map(_.asRendered(myBounds.startPoint))
+      AppElementRendered(childrenRendered, this, myBounds)
     }
   }
 
@@ -122,4 +123,3 @@ object AppShapeElement {
 
 
 }
-
