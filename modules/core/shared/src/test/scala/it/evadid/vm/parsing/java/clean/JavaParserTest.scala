@@ -2,6 +2,7 @@ package it.evadid.vm.parsing.java.clean
 
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaType
+import it.evadid.vm.parsing.java.turtle.JavaTurtleSource
 import munit.FunSuite
 
 class JavaParserTest extends FunSuite {
@@ -22,6 +23,18 @@ class JavaParserTest extends FunSuite {
     assertEquals(statements.size, 1, clue = source)
     statements.head.statement
   }
+
+  private def turtleSource(body: String): String =
+    s"""class SquareProgram {
+       |  static void square(int sideLength) {
+       |    $body
+       |  }
+       |  public static void main(String[] args) { square(40); }
+       |}
+       |""".stripMargin
+
+  private def sourceProblem(source: String): JavaTurtleSource.Diagnostic =
+    JavaTurtleSource.parse(source).swap.fold(_ => fail(s"Unexpectedly accepted: $source"), identity)
 
   test("Java AST nodes expose child nodes for traversal") {
     val target = JavaTarget("values", sliceExpr = Some(JavaLiteral("0", JavaType.JAVA_INTEGER())))
@@ -263,6 +276,99 @@ class JavaParserTest extends FunSuite {
           ) => ()
       case other => fail(s"Unexpected while body: $other")
     }
+  }
+
+  test("turtle source preserves the original source and complete square AST") {
+    for loop <- Seq(
+      "for (int i = 0; i < 4; i = i + 1) { Turtle.forward(sideLength); Turtle.turnRight(90); }",
+      "int i = 0; while (i < 4) { Turtle.forward(sideLength); Turtle.turnRight(90); i = i + 1; }"
+    ) do {
+      val source = "\r\n\r\n" + turtleSource(loop)
+      val parsed = JavaTurtleSource.parse(source).fold(problem => fail(problem.message), identity)
+      assertEquals(parsed.source, source)
+      assertEquals(unsupportedStatements(parsed.program), Set.empty[String])
+    }
+  }
+
+  test("turtle source skips comment contents without losing token boundaries") {
+    val body =
+      "int longueur = 40; int floatCount = 0; int intensity = 1; " +
+        "/* long double 010 'quoted' */ Turtle.forward(longueur); // byte short\r\n"
+    assert(JavaTurtleSource.parse(turtleSource(body) + "// comment at EOF").isRight)
+  }
+
+  test("turtle source rejects unterminated block comments") {
+    for source <- Seq("/*", turtleSource("Turtle.forward(40);") + "/* unfinished", turtleSource("/* unfinished")) do {
+      val problem = sourceProblem(source)
+      assertEquals(problem.problem, JavaTurtleSource.Problem.UnclosedComment)
+      assertEquals(problem.range, Some(JavaTurtleSource.SourceRange(source.indexOf("/*"), source.length)))
+    }
+  }
+
+  test("turtle source rejects numeric types before the legacy AST erases them") {
+    for
+      name <- Seq("byte", "short", "long", "float", "double")
+      prefix <- Seq("", "/* 😀 */\r\n", "/* // byte /* float */ ")
+    do {
+      val source = turtleSource(s"$prefix$name value = 1; Turtle.forward(40);")
+      assert(JavaParser.parse(source).isRight, clue = source)
+      val problem = sourceProblem(source)
+      assertEquals(problem.problem, JavaTurtleSource.Problem.UnsupportedType)
+      val start = source.indexOf(s"$name value")
+      assertEquals(problem.range, Some(JavaTurtleSource.SourceRange(start, start + name.length)))
+    }
+  }
+
+  test("turtle source accepts decimal integers and rejects other numeric forms") {
+    for number <- Seq("0", "10", "40", "100") do
+      assert(JavaTurtleSource.parse(turtleSource(s"Turtle.forward($number);")).isRight)
+    for number <- Seq("00", "010", "0x10", "0b10", "1_000", "1L", "1.0", ".5", "1e2") do {
+      val source = turtleSource(s"Turtle.forward($number);")
+      val problem = sourceProblem(source)
+      assertEquals(problem.problem, JavaTurtleSource.Problem.UnsupportedNumber, clue = number)
+      val start = source.indexOf(s"($number)") + 1
+      assertEquals(problem.range, Some(JavaTurtleSource.SourceRange(start, start + number.length)))
+    }
+  }
+
+  test("turtle source rejects quoted values without relying on permissive string parsing") {
+    val invalidEscape = "\"bad" + "\\" + "q\""
+    for value <- Seq("\"hello\"", "'x'", "'ab'", invalidEscape, "\"line\nbreak\"") do {
+      val problem = sourceProblem(turtleSource(s"String value = $value;"))
+      assertEquals(problem.problem, JavaTurtleSource.Problem.UnsupportedLiteral, clue = value)
+    }
+  }
+
+  test("turtle source rejects Unicode escapes even inside comments") {
+    val slash = "\\"
+    for body <- Seq(s"${slash}u0069nt value = 1;", s"${slash}uu0069nt value = 1;", s"// ${slash}u000a long value = 1;") do {
+      val source = turtleSource(body)
+      val problem = sourceProblem(source)
+      assertEquals(problem.problem, JavaTurtleSource.Problem.UnicodeEscape)
+      assertEquals(problem.range.map(_.start), Some(source.indexOf(slash)))
+    }
+  }
+
+  test("turtle source rejects unsupported statements nested inside methods") {
+    for body <- Seq("++sideLength;", "Turtle.forward(sideLength << 1);") do {
+      val source = turtleSource(body)
+      val problem = sourceProblem(source)
+      assertEquals(problem.problem, JavaTurtleSource.Problem.UnsupportedSyntax)
+      assertEquals(problem.range, None)
+    }
+  }
+
+  test("turtle source parse failures refer to the untrimmed source") {
+    val source = "\r\n\r\n}"
+    val problem = sourceProblem(source)
+    assertEquals(problem.problem, JavaTurtleSource.Problem.ParseFailure)
+    assertEquals(problem.range, Some(JavaTurtleSource.SourceRange(4, 5)))
+  }
+
+  test("legacy Java parsing remains independent of the turtle source restrictions") {
+    assert(JavaParser.parse("long value = 40;").isRight)
+    assert(JavaParser.parse("String value = \"hello\";").isRight)
+    assert(JavaParser.parse("/* unfinished").isRight)
   }
 
   test("parses chained Java call, attribute, and subscript trailers") {
