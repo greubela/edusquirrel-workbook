@@ -13,7 +13,7 @@ import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLine
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.vm.BeProgram
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingExercise, ProgrammingExerciseState}
+import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingExercise, ProgrammingExerciseState, ProgrammingState}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -24,7 +24,10 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
   override protected def createRendering(workbookElement: ProgrammingExercise): AtomarLineRendering = {
     val interaction = workbookElement.interactionVariable
     // Fingerprint-based binding on canonical Snap XML.
-    val boundVar: Var[ProgrammingExerciseState] = Var(interaction.currentValue)
+    def snapState(value: ProgrammingState): ProgrammingExerciseState =
+      ProgrammingState.toSnapXml(value).getOrElse(ProgrammingExerciseState.mini)
+
+    val boundVar: Var[ProgrammingExerciseState] = Var(snapState(interaction.currentValue))
     var lastFingerprint: String = ProgrammingExerciseState.fingerprint(interaction.currentValue)
 
     interaction.observableValue.addObserver(
@@ -32,7 +35,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
         val fp = ProgrammingExerciseState.fingerprint(restored)
         if fp != lastFingerprint then
           lastFingerprint = fp
-          boundVar.set(restored)
+          boundVar.set(snapState(restored))
       },
       informObserverWith = ExecutionMethod.executeSync
     )
