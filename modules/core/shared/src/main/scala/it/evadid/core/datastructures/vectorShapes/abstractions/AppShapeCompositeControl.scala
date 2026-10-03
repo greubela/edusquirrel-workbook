@@ -61,7 +61,10 @@ object AppShapeCompositeControl {
   }
 
   def calculateAdjustedDimension[T: Fractional](targetDimension: Dimension[T], desiredAspectRatioAndAlignment: Option[(AspectRatio, AlignmentInParent)]): Dimension[T] = {
-    if (desiredAspectRatioAndAlignment.isEmpty || desiredAspectRatioAndAlignment.get._2 == AlignmentInParent.DistortionAlignment) targetDimension
+    val N = summon[Fractional[T]]
+    val zero = N.fromInt(0)
+    if (N.lteq(targetDimension.width, zero) || N.lteq(targetDimension.height, zero)) zeroDimension[T]
+    else if (desiredAspectRatioAndAlignment.isEmpty || desiredAspectRatioAndAlignment.get._2 == AlignmentInParent.DistortionAlignment) targetDimension
     else Dimension.fromRatioAndMaxDimension(desiredAspectRatioAndAlignment.get._1, targetDimension)
   }
 
@@ -94,7 +97,6 @@ object AppShapeCompositeControl {
   }
 
 }
-
 
 
 
