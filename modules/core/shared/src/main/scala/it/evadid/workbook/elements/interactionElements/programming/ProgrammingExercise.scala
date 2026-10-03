@@ -16,12 +16,12 @@ case class ProgrammingExercise(
                                 editorPalette: ProgrammingEditorPalette = ProgrammingEditorPalette.Default,
                                 /** Optional Python turtle program whose drawing is the target for geometric matching. */
                                 referencePython: Option[String] = None
-) extends WorkbookInteractionElement[ProgrammingExerciseState] {
+) extends WorkbookInteractionElement[ProgrammingState] {
   override val associatedFactory = ProgrammingExercise.factory
 
-  override val defaultValue: ProgrammingExerciseState = ProgrammingExerciseState.mini
+  override val defaultValue: ProgrammingState = ProgrammingState.mini
 
-  override val serializerInteractionContent: Serializer[ProgrammingExerciseState] = ProgrammingExercise.StateSerializer
+  override val serializerInteractionContent: Serializer[ProgrammingState] = ProgrammingExercise.StateSerializer
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
@@ -50,30 +50,45 @@ object ProgrammingExercise {
     lazy override val writerJsonRegularRefBased: Writer[ProgrammingExercise] = macroRW
   }
   val XmlHeader = "SNAP_XML_V1"
+  val StateHeader = "PROGRAMMING_STATE_V1"
 
-  /** Canonical persist format: versioned Snap project XML. Legacy Python migrates on read. */
-  object StateSerializer extends Serializer[ProgrammingExerciseState] {
-    override def serialize(obj: ProgrammingExerciseState): String =
-      s"$XmlHeader\n${obj.snapXml}"
+  /** Tagged persist format retaining the active representation. Legacy Snap/Python values migrate on read. */
+  object StateSerializer extends Serializer[ProgrammingState] {
+    override def serialize(obj: ProgrammingState): String = obj match
+      case ProgrammingStateSnapXml(xml) => s"$StateHeader\nSNAP_XML\n$xml"
+      case ProgrammingStatePythonString(python) => s"$StateHeader\nPYTHON\n$python"
+      case ProgrammingStateJavaString(java) => s"$StateHeader\nJAVA\n$java"
+      case ProgrammingStateBeExpression(expression) =>
+        s"$StateHeader\nBE_EXPRESSION\n${SnapTurtlePythonBridge.printedPython(expression)}"
 
-    override def deserialize(str: String): ProgrammingExerciseState = {
-      if Option(str).forall(_.trim.isEmpty) then ProgrammingExerciseState.mini
-      else parseStored(str).getOrElse(ProgrammingExerciseState.mini)
+    override def deserialize(str: String): ProgrammingState = {
+      if Option(str).forall(_.trim.isEmpty) then ProgrammingState.mini
+      else parseStored(str).getOrElse(ProgrammingState.mini)
     }
 
-    private def parseStored(str: String): Option[ProgrammingExerciseState] = {
+    private def parseStored(str: String): Option[ProgrammingState] = {
       val trimmed = str.trim
-      if trimmed.startsWith(XmlHeader) then
+      if trimmed.startsWith(StateHeader) then
+        val payload = trimmed.drop(StateHeader.length).stripLeading
+        val newline = payload.indexOf('\n')
+        val (kind, value) = if newline < 0 then (payload, "") else (payload.take(newline), payload.drop(newline + 1))
+        kind match
+          case "SNAP_XML" => Some(ProgrammingStateSnapXml(value))
+          case "PYTHON" => Some(ProgrammingStatePythonString(value))
+          case "JAVA" => Some(ProgrammingStateJavaString(value))
+          case "BE_EXPRESSION" => Try(ProgrammingStateBeExpression(BeProgram.fromPythonString(value).fullProgram)).toOption
+          case _ => None
+      else if trimmed.startsWith(XmlHeader) then
         val xml = trimmed.drop(XmlHeader.length).stripLeading
-        if xml.isEmpty then Some(ProgrammingExerciseState.mini)
-        else Some(ProgrammingExerciseState(xml))
+        if xml.isEmpty then Some(ProgrammingState.mini)
+        else Some(ProgrammingStateSnapXml(xml))
       else if looksLikeProjectXml(trimmed) then
-        Some(ProgrammingExerciseState(trimmed))
+        Some(ProgrammingStateSnapXml(trimmed))
       else
         Some(migratePython(trimmed))
     }
 
-    private def migratePython(python: String): ProgrammingExerciseState = {
+    private def migratePython(python: String): ProgrammingState = {
       val program = Try(BeProgram.fromPythonString(python)).getOrElse(BeProgram.miniProgram())
       ProgrammingExerciseState.fromProgram(program)
     }

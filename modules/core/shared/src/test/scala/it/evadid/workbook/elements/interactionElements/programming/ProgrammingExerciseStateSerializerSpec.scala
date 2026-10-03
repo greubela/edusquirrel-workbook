@@ -12,10 +12,10 @@ import munit.FunSuite
 
 class ProgrammingExerciseStateSerializerSpec extends FunSuite {
 
-  test("serialize writes SNAP_XML_V1 and deserialize roundtrips xml") {
+  test("serialize writes a tagged programming state and deserialize roundtrips xml") {
     val xml = """<project name="stored"><scenes></scenes></project>"""
     val stored = ProgrammingExercise.StateSerializer.serialize(ProgrammingExerciseState(xml))
-    assert(stored.startsWith("SNAP_XML_V1"), clue = stored.take(80))
+    assert(stored.startsWith("PROGRAMMING_STATE_V1\nSNAP_XML"), clue = stored.take(80))
     assert(stored.contains(xml), clue = stored)
     val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
     assertEquals(restored.snapXml, xml)
@@ -34,7 +34,14 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
     assert(restored.snapXml.contains("<project"), clue = restored.snapXml.take(120))
     assert(restored.snapXml.contains("""s="forward""""), clue = restored.snapXml)
     val stored = ProgrammingExercise.StateSerializer.serialize(restored)
-    assert(stored.startsWith("SNAP_XML_V1"), clue = stored.take(80))
+    assert(stored.startsWith("PROGRAMMING_STATE_V1\nSNAP_XML"), clue = stored.take(80))
+  }
+
+  test("source states retain their representation across serialization") {
+    val python = ProgrammingStatePythonString("forward(10)")
+    val java = ProgrammingStateJavaString("forward(10);")
+    assertEquals(ProgrammingExercise.StateSerializer.deserialize(ProgrammingExercise.StateSerializer.serialize(python)), python)
+    assertEquals(ProgrammingExercise.StateSerializer.deserialize(ProgrammingExercise.StateSerializer.serialize(java)), java)
   }
 
   test("fingerprint is the stored xml so position-only xml differs") {
