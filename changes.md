@@ -17,45 +17,64 @@ Nicht vorhanden war alles darum herum:
 
 ## zentrale Designentscheidung
 
-**Snap-XML ist Source of Truth für den Editorzustand. `BeProgram` und Python sind abgeleitete
-Sichten für Tests, Feedback und das Python-Overlay.**
+**Jeder Editor speichert sein eigenes Format. Umgewandelt wird nur beim Wechsel.**
+
+`ProgrammingExerciseState` ist ein sealed trait:
+
+- `SnapXml` — Snap-Projekt-XML, wie die IDE es liefert (`SNAP_XML_V1`)
+- `PythonSource` — Python-Quelltext unverändert, plus optional das letzte Snap-XML als `snapBase` (`PYTHON_V1`, JSON)
+
+`BeProgram` bleibt eine abgeleitete Sicht für Vorschau, Tests und Feedback. Es wird nicht gespeichert.
 
 ```
-Snap-IDE
-   │  getProjectXML / rawOpenProjectString
-   ▼
-ProgrammingExerciseState(snapXml)
-   │  persist SNAP_XML_V1
-   ▼
-LocalStorage / Sync
-   │
-   ├─ TurtleStitchWorker (Ausführung direkt mit XML)
-   └─ TurtleStitchToBeExpressionParser → BeProgram → Python / Tests / Vorschau
+Snap-IDE                         Python-Editor (CodeMirror)
+   │  getProjectXML                 │  Quelltext
+   ▼                                ▼
+SnapXml                          PythonSource(source, snapBase)
+   │                                │
+   └──────── persist ───────────────┘
+                 │
+                 ▼
+          LocalStorage / Sync
+                 │
+                 ├─ SnapXml → TurtleStitch / Parser → BeProgram
+                 └─ PythonSource → Pyodide direkt, bzw. BeProgram.fromPythonString
 ```
 
-Live-Edits speichern `ide.getProjectXML()` unverändert. Damit bleiben auch Blöcke erhalten, die
-der Python-Roundtrip nicht kennt. `BeProgram` wird nur noch dort gebaut, wo das Workbook Semantik
-braucht.
+Der Wechsel Snap → Python schreibt vor jedes Skript `# @script x=… y=…` und merkt sich das XML in
+`snapBase`. Zurück ohne Änderung kommt genau dieses XML. Nach einer Änderung bleiben Positionen über
+die Markierungen erhalten; eigene Blockdefinitionen kommen aus `snapBase`. Neue Skripte ohne Position
+landen bei (156, 66) und darunter gestapelt. Ein `receive_go()` am Zeilenanfang beginnt ein neues Skript.
 
-Alte Python-Payloads werden beim Laden einmalig nach XML migriert
-(`BeProgram.fromPythonString` + `SnapProjectXml`). Canvas-Positionen leben in `<script x y>`.
+Übungen mit beiden Editoren (`allowedEditors`) zeigen keine native Snap-Palette, damit Schüler keine
+Blöcke einfügen können, die Python nicht darstellen kann.
+
+Live-Edits im Blockeditor speichern `ide.getProjectXML()` unverändert. Alte Python-Payloads ohne Header
+werden beim Laden weiterhin einmalig nach Snap-XML migriert.
 
 ---
 
-## 1. Persistenz: versioniertes Snap-XML
+## 1. Persistenz: versioniertes Snap-XML oder Python
 
-`ProgrammingExercise` ist `WorkbookInteractionElement[ProgrammingExerciseState]` mit
-`snapXml: String`.
+`ProgrammingExercise` ist `WorkbookInteractionElement[ProgrammingExerciseState]`.
 
-Serialisiert wird:
+Serialisiert wird entweder
 
 ```
 SNAP_XML_V1
 <project …>…</project>
 ```
 
-Beim Lesen werden weiterhin akzeptiert: `SNAP_XML_V1`, rohes `<project>`-XML und reines Python.
-Geschrieben wird nur noch XML.
+oder
+
+```
+PYTHON_V1
+{"source":"…","snapBase":"…"}
+```
+
+Beim Lesen werden weiterhin akzeptiert: `SNAP_XML_V1`, `PYTHON_V1`, rohes `<project>`-XML und
+reines Python ohne Header (einmalige Migration nach Snap-XML). Geschrieben wird das Format des
+Editors, in dem der Zustand liegt.
 
 ---
 
@@ -65,9 +84,10 @@ Der Editor schreibt in beide Richtungen: User ändert Blöcke → XML wird persi
 aktualisiert sich. Ohne Vergleich würde derselbe State den Editor sofort wieder neu laden
 (Edit → speichern → Reload → Edit-Event).
 
-Deshalb gelten zwei Zustände als gleich, wenn ihr XML-String gleich ist
-(`ProgrammingExerciseState.fingerprint`). Eigene Speichervorgänge werden so nicht als fremde
-Updates behandelt. Ein Restore aus Sync/LocalStorage hat einen anderen String und wird geladen.
+Deshalb gelten zwei Zustände als gleich, wenn ihr Fingerprint gleich ist
+(`ProgrammingExerciseState.fingerprint`): bei Snap der XML-String, bei Python nur der Quelltext.
+Eigene Speichervorgänge werden so nicht als fremde Updates behandelt. Ein Restore aus
+Sync/LocalStorage hat einen anderen Fingerprint und wird geladen.
 
 Das XML wird dafür nicht über den AST umgeschrieben und neu serialisiert, sonst gingen unbekannte
 Blöcke verloren (die aber eigentlich aktuell gar nicht auftreten können sollten). 

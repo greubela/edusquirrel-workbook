@@ -191,8 +191,11 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
     assert(stored.contains("12345"), clue = stored)
     assert(stored.startsWith("SNAP_XML_V1"), clue = stored.take(80))
-    assertEquals(restored.snapXml, a.snapXml)
-    assert(restored.snapXml.contains("""s="forward""""), clue = restored.snapXml)
+    val restoredXml = restored match
+      case ProgrammingExerciseState.SnapXml(xml) => xml
+      case other => fail(s"expected Snap XML, got $other")
+    assertEquals(restoredXml, a.snapXml)
+    assert(restoredXml.contains("""s="forward""""), clue = restoredXml)
   }
 
   test("applyPython accepts full python-compatible palette program") {

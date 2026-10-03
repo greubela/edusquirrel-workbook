@@ -21,6 +21,10 @@ import munit.FunSuite
 
 class TurtleStitchToBeExpressionParserSpec extends FunSuite {
 
+  private def storedXml(state: ProgrammingExerciseState): String = state match
+    case ProgrammingExerciseState.SnapXml(xml) => xml
+    case other => fail(s"expected Snap XML, got $other")
+
   private val xmlWithRepeatNoPentrails =
     """<project name="test2" app="TurtleStitch 2.11, http://www.turtlestitch.org" version="2"><notes></notes><scenes select="1"><scene name="test2"><notes></notes><hidden></hidden><headers></headers><code></code><blocks></blocks><primitives></primitives><stage name="Stage" width="480" height="360" costume="0" color="255,255,255,1" tempo="60" threadsafe="false" penlog="false" volume="100" pan="0" lines="round" ternary="false" hyperops="true" codify="false" inheritance="true" sublistIDs="false" id="6"><costumes><list struct="atomic" id="7"></list></costumes><sounds><list struct="atomic" id="8"></list></sounds><variables></variables><blocks></blocks><scripts></scripts><sprites select="1"><sprite name="Sprite" idx="1" x="0" y="0" heading="90" scale="0.1" volume="100" pan="0" rotation="1" draggable="true" hidden="true" costume="0" color="0,0,0,1" pen="tip" id="13"><costumes><list struct="atomic" id="14"></list></costumes><sounds><list struct="atomic" id="15"></list></sounds><blocks></blocks><variables></variables><scripts><script x="156" y="66"><block s="receiveGo"></block><block s="doRepeat"><l>10</l><script><block s="forward"><l>10</l></block><block s="turn"><l>15</l></block></script></block></script></scripts></sprite></sprites></stage><variables></variables></scene></scenes><creator>anonymous</creator><origCreator></origCreator><origName></origName></project>"""
 
@@ -102,9 +106,9 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     val stored = ProgrammingExercise.StateSerializer.serialize(state)
     assert(stored.startsWith("SNAP_XML_V1"), clue = stored.take(80))
     val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
-    assert(restored.snapXml.contains("""<script x="70" y="80">"""), clue = restored.snapXml)
-    assert(restored.snapXml.contains("""<script x="200" y="150">"""), clue = restored.snapXml)
-    assertEquals("""<script x="[^"]+" y="[^"]+">""".r.findAllIn(restored.snapXml).size, 2)
+    assert(storedXml(restored).contains("""<script x="70" y="80">"""), clue = storedXml(restored))
+    assert(storedXml(restored).contains("""<script x="200" y="150">"""), clue = storedXml(restored))
+    assertEquals("""<script x="[^"]+" y="[^"]+">""".r.findAllIn(storedXml(restored)).size, 2)
   }
 
   test("doRepeat XML parses to BeRepeatNr and roundtrips") {
@@ -269,7 +273,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script x="70" y="80"><block s="receiveGo"></block><block s="doWait"><l>1</l></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
     val stored = ProgrammingExercise.StateSerializer.serialize(ProgrammingExerciseState(xml))
     val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
-    assert(restored.snapXml.contains("""s="doWait""""), clue = restored.snapXml)
+    assert(storedXml(restored).contains("""s="doWait""""), clue = storedXml(restored))
 
     val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
     assert(

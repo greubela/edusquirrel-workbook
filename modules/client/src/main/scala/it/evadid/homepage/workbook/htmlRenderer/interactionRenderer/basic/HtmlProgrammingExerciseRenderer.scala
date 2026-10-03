@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.state.ExecutionMethod
 import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, VmToSvg}
 import it.evadid.core.datastructures.vectorShapes.svg.{BeExpressionToTurtleCommands, TurtlePathBuilder}
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
-import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditor, SnapCodeEditorConfig, SnapProgramDerivation}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.{ProgrammingDerivation, ProgrammingExerciseEditor, SnapCodeEditorConfig}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.util.logging.Logger
@@ -45,16 +45,20 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       interaction.setStateFromUserInteraction(fullInfo.syncControl, next, UpdateImportance.MAJOR)
     }
 
-    val editorConfig: SnapCodeEditorConfig = SnapCodeEditorConfig.forPalette(workbookElement.editorPalette)
+    val editorConfig: SnapCodeEditorConfig = SnapCodeEditorConfig.forPalette(workbookElement.effectiveEditorPalette)
 
-    val editor: SnapCodeEditor = SnapCodeEditor(boundVar, editorConfig, onStateEdited = persistFromEditor)
+    val editor: ProgrammingExerciseEditor = ProgrammingExerciseEditor(
+      boundVar,
+      editorConfig,
+      workbookElement.allowedEditors,
+      onStateEdited = persistFromEditor
+    )
 
     def buttonPressed(): Unit =
       fullInfo.displayControl.setFullscreen(editor)
 
     val button: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/OpenEditor", event => buttonPressed())
     val buttonCard = ElementCard(LanguageMapContentId("basic/openEditor"), button.getDomElement())
-    val canvasCard = ElementCard(LanguageMapContentId("basic/canvas"), editor.previewCanvas)
 
     val shapeLogger = Logger.withNameAndPrefixes(
       Some("HtmlProgrammingExerciseRenderer::ShapeRenderingLogger"),
@@ -68,7 +72,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
           shapeLogger,
           VmToSvg.renderBeExpression(
             shapeLogger,
-            SnapProgramDerivation.fromState(boundVar.now()).program.fullProgram
+            ProgrammingDerivation.program(boundVar.now()).fullProgram
           )
         )
       )
@@ -195,7 +199,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       runCardChildren
     )
 
-    val cards = List(buttonCard, canvasCard) ++ targetCards ++ List(staticRendering, runCard)
+    val cards = List(buttonCard) ++ targetCards ++ List(staticRendering, runCard)
     AtomarLineRendering.cardLine(workbookElement, cards, s"prog-ex-cards prog-ex-cards--${cards.size}")
   }
 }

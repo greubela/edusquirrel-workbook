@@ -2,6 +2,8 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchToBeExpressionParser
 import it.evadid.vm.BeProgram
+
+import scala.util.Try
 import it.evadid.workbook.elements.interactionElements.programming.{
   ProgrammingExerciseState,
   SnapCanvasLayout,
@@ -30,10 +32,27 @@ object SnapProgramDerivation {
         )
   }
 
-  def fromState(state: ProgrammingExerciseState): DerivedView =
-    fromXml(state.snapXml)
+  def fromState(state: ProgrammingExerciseState): DerivedView = state match
+    case ProgrammingExerciseState.SnapXml(xml) => fromXml(xml)
+    case ProgrammingExerciseState.PythonSource(source, _) =>
+      fromPythonSource(source)
 
-  def fromXml(xml: String): DerivedView = {
+  private var derivationCache: Option[(String, DerivedView)] = None
+
+  def fromXml(xml: String): DerivedView =
+    derivationCache match
+      case Some((cachedXml, cachedView)) if cachedXml == xml => cachedView
+      case _ =>
+        val view = deriveFromXml(xml)
+        derivationCache = Some((xml, view))
+        view
+
+  private def fromPythonSource(source: String): DerivedView = {
+    val program = Try(BeProgram.fromPythonString(source)).getOrElse(BeProgram.empty)
+    DerivedView(program, SnapCanvasLayout.empty, source, pythonCompatible = true, Nil)
+  }
+
+  private def deriveFromXml(xml: String): DerivedView = {
     val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
     val program = BeProgram(parsed.expression)
     val python = SnapTurtlePythonBridge.printedPython(parsed.expression)

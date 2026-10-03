@@ -23,6 +23,14 @@ enum ProgrammingEditorPalette derives ReadWriter:
   /** Motion, pen, embroidery stitches, and control — no operators or variables. */
   case Embroidery
 
+  /**
+   * Whether every block this palette offers survives a Snap ↔ Python switch.
+   * Native Snap categories include blocks Python cannot represent.
+   */
+  def pythonCompatible: Boolean = this match
+    case Default => false
+    case PythonCompatibleSnap | BeginnerTurtle | Embroidery => true
+
   /** Block selection for this palette. The client turns this into editor tabs. */
   def layout: PaletteLayout = this match
     case Default =>

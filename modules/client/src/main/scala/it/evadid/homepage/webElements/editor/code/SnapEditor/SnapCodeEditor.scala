@@ -9,16 +9,17 @@ import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.Snap
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.{PyodideTurtleCommandRunner, SnapTurtleCommandExecution}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExerciseState
+import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExerciseState.SnapXml
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
 
 import scala.concurrent.Future
 
 case class SnapCodeEditor(
-    state: Var[ProgrammingExerciseState],
+    state: Var[SnapXml],
     config: SnapCodeEditorConfig,
     impl: SnapCodeEditorImpl,
-    onStateEdited: ProgrammingExerciseState => Unit = _ => ()
+    onStateEdited: SnapXml => Unit = _ => ()
 ) extends HtmlAppElement with FullscreenLifecycle {
 
   private var previewTarget: Option[Canvas] = None
@@ -26,8 +27,8 @@ case class SnapCodeEditor(
   /** Fingerprint of the last state written from Snap XML (skip inbound reload). */
   private var lastFingerprintFromSnap: Option[String] = None
 
-  private def stateFingerprint(value: ProgrammingExerciseState): String =
-    ProgrammingExerciseState.fingerprint(value)
+  private def stateFingerprint(value: SnapXml): String =
+    value.fingerprint
 
   private def bindProgramObservers(owner: Owner): Unit =
     if programObserversBound then return
@@ -40,14 +41,8 @@ case class SnapCodeEditor(
       previewTarget.foreach(canvas => impl.renderPreviewInto(next, canvas, config))
     }(using owner)
 
-  private def persistPythonIntoEditor(next: ProgrammingExerciseState): Unit =
-    impl.loadProgramIfChanged(next)
-    lastFingerprintFromSnap = Some(stateFingerprint(next))
-    impl.acknowledgeProgramFromEditor(next)
-    onStateEdited(next)
-
   private def publishProgramFromSnapXml(xml: String): Unit =
-    val next = ProgrammingExerciseState(xml)
+    val next = SnapXml(xml)
     val nextFingerprint = stateFingerprint(next)
     val currentFingerprint = stateFingerprint(state.now())
     if nextFingerprint == currentFingerprint then
@@ -92,12 +87,7 @@ case class SnapCodeEditor(
         }
       ),
       // FEATURE: SnapPythonPopup — remove this child (+ SnapPythonPopup.scala + CSS) to drop the toolbar.
-      SnapPythonPopup.chrome(
-        state,
-        () => impl.flushPendingProjectChanges(),
-        persistPythonIntoEditor,
-        setExecutionStepMs = ms => impl.setGreenFlagStepMs(ms)
-      ),
+      SnapPythonPopup.speedToolbar(ms => impl.setGreenFlagStepMs(ms)),
       onUnmountCallback { _ =>
         // The dialog reuses this lazy DOM element. Keep its WorldMorph and DOM
         // event listeners intact between openings; only stop animation work
@@ -163,7 +153,7 @@ case class SnapCodeEditor(
   def getCurrentTurtleCommands(): Future[List[TurtleCommand[Double]]] =
     impl.flushPendingProjectChanges()
     val current = impl.currentProjectXml()
-      .map(ProgrammingExerciseState(_))
+      .map(SnapXml(_))
       .getOrElse(state.now())
     SnapCodeEditor.turtleCommandExecution.commandsFor(current)
 
@@ -171,6 +161,10 @@ case class SnapCodeEditor(
     impl.forceLoadProgram(state.now())
     impl.fitEditorToContainer()
     impl.startWorldCycles()
+
+  /** Refit after the editor becomes visible again and the parent has a real size. */
+  def refit(): Unit =
+    impl.fitEditorToContainer()
 
   override def onFullscreenClose(): Unit =
     // Poll is paused with the world; flush so the last edits reach the Var/sync.
@@ -188,34 +182,37 @@ object SnapCodeEditor {
     new SnapTurtleCommandExecution(new PyodideTurtleCommandRunner())
 
   def apply(
-      state: Var[ProgrammingExerciseState],
+      state: Var[SnapXml],
       config: SnapCodeEditorConfig,
-      onStateEdited: ProgrammingExerciseState => Unit
+      onStateEdited: SnapXml => Unit
   ): SnapCodeEditor =
     SnapCodeEditor(state, config, SnapCodeEditorImplDelegateToOriginal(), onStateEdited)
 
-  def apply(state: Var[ProgrammingExerciseState]): SnapCodeEditor =
+  def apply(state: Var[SnapXml]): SnapCodeEditor =
     SnapCodeEditor(state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal())
 
-  def apply(state: Var[ProgrammingExerciseState], onStateEdited: ProgrammingExerciseState => Unit): SnapCodeEditor =
+  def apply(state: Var[SnapXml], onStateEdited: SnapXml => Unit): SnapCodeEditor =
     SnapCodeEditor(state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal(), onStateEdited)
+
+  def commandsFor(state: ProgrammingExerciseState): Future[List[TurtleCommand[Double]]] =
+    turtleCommandExecution.commandsFor(state)
 
   trait SnapCodeEditorImpl {
 
     /** Mount the complete interactive Snap editor and keep its Morphic world ticking. */
-    def renderEditorInto(initState: ProgrammingExerciseState, canvas: Canvas, config: SnapCodeEditorConfig): Unit
+    def renderEditorInto(initState: SnapXml, canvas: Canvas, config: SnapCodeEditorConfig): Unit
 
     /** Render only the scripts as a static, tightly-sized preview. */
-    def renderPreviewInto(state: ProgrammingExerciseState, canvas: Canvas, config: SnapCodeEditorConfig): Unit
+    def renderPreviewInto(state: SnapXml, canvas: Canvas, config: SnapCodeEditorConfig): Unit
 
     /** Apply an externally restored state to the retained editor without recreating the world. */
-    def loadProgramIfChanged(state: ProgrammingExerciseState): Unit
+    def loadProgramIfChanged(state: SnapXml): Unit
 
     /** Like loadProgramIfChanged but always re-opens (fullscreen reopen / hard restore). */
-    def forceLoadProgram(state: ProgrammingExerciseState): Unit
+    def forceLoadProgram(state: SnapXml): Unit
 
     /** Record that the live Snap project was just written into this state (skip lossy reload). */
-    def acknowledgeProgramFromEditor(state: ProgrammingExerciseState): Unit
+    def acknowledgeProgramFromEditor(state: SnapXml): Unit
 
     /** Push any pending Snap XML edits into the change listener immediately. */
     def flushPendingProjectChanges(): Unit

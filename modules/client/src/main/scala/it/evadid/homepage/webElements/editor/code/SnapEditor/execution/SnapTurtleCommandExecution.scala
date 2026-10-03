@@ -18,12 +18,16 @@ trait TurtleCommandRunner:
 /** Derives and executes a Snap project without modifying editor state. */
 final class SnapTurtleCommandExecution(runner: TurtleCommandRunner):
   def commandsFor(state: ProgrammingExerciseState): Future[List[TurtleCommand[Double]]] =
-    val derived = SnapProgramDerivation.fromState(state)
-    if !derived.pythonCompatible then
-      Future.failed(IllegalArgumentException(
-        derived.applyBlockedMessage.getOrElse("The Snap project cannot be converted to Python")
-      ))
-    else runner.execute(derived.python)
+    state match
+      case ProgrammingExerciseState.PythonSource(source, _) =>
+        runner.execute(source)
+      case ProgrammingExerciseState.SnapXml(xml) =>
+        val derived = SnapProgramDerivation.fromXml(xml)
+        if !derived.pythonCompatible then
+          Future.failed(IllegalArgumentException(
+            derived.applyBlockedMessage.getOrElse("The Snap project cannot be converted to Python")
+          ))
+        else runner.execute(derived.python)
 
 /** Small seam around the existing Pyodide worker, allowing orchestration tests
   * to supply an already executed callback report.

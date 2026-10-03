@@ -78,7 +78,7 @@ object SnapTurtlePythonBridge {
       source: String,
       previousLayout: SnapCanvasLayout = SnapCanvasLayout.empty,
       previousXml: String = ""
-  ): Either[String, ProgrammingExerciseState] =
+  ): Either[String, ProgrammingExerciseState.SnapXml] =
     try
       val program = BeProgram.fromPythonString(source)
       validateSubset(program.fullProgram) match

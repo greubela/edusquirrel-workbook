@@ -12,29 +12,50 @@ import munit.FunSuite
 
 class ProgrammingExerciseStateSerializerSpec extends FunSuite {
 
+  private def snapXml(state: ProgrammingExerciseState): String = state match
+    case ProgrammingExerciseState.SnapXml(xml) => xml
+    case other => fail(s"expected Snap XML, got $other")
+
   test("serialize writes SNAP_XML_V1 and deserialize roundtrips xml") {
     val xml = """<project name="stored"><scenes></scenes></project>"""
     val stored = ProgrammingExercise.StateSerializer.serialize(ProgrammingExerciseState(xml))
     assert(stored.startsWith("SNAP_XML_V1"), clue = stored.take(80))
     assert(stored.contains(xml), clue = stored)
     val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
-    assertEquals(restored.snapXml, xml)
+    assertEquals(snapXml(restored), xml)
   }
 
   test("raw project xml deserializes without header") {
     val xml = """<project name="raw"><scenes></scenes></project>"""
     val restored = ProgrammingExercise.StateSerializer.deserialize(xml)
-    assertEquals(restored.snapXml, xml)
+    assertEquals(snapXml(restored), xml)
   }
 
   test("legacy pure python migrates to snap xml") {
     val program = BeProgram.miniProgram()
     val python = SnapTurtlePythonBridge.printedPython(program.fullProgram)
     val restored = ProgrammingExercise.StateSerializer.deserialize(python)
-    assert(restored.snapXml.contains("<project"), clue = restored.snapXml.take(120))
-    assert(restored.snapXml.contains("""s="forward""""), clue = restored.snapXml)
+    assert(snapXml(restored).contains("<project"), clue = snapXml(restored).take(120))
+    assert(snapXml(restored).contains("""s="forward""""), clue = snapXml(restored))
     val stored = ProgrammingExercise.StateSerializer.serialize(restored)
     assert(stored.startsWith("SNAP_XML_V1"), clue = stored.take(80))
+  }
+
+  test("PYTHON_V1 roundtrips source, comments and snapBase") {
+    val original = ProgrammingExerciseState.PythonSource(
+      "  forward(10)  # keep spacing\n",
+      Some("""<project name="base"/>""")
+    )
+    val stored = ProgrammingExercise.StateSerializer.serialize(original)
+    assert(stored.startsWith("PYTHON_V1"), clue = stored.take(80))
+    assertEquals(ProgrammingExercise.StateSerializer.deserialize(stored), original)
+  }
+
+  test("PYTHON_V1 roundtrips a source without snapBase") {
+    val original = ProgrammingExerciseState.PythonSource("forward(10)\n# comment\n")
+    assertEquals(ProgrammingExercise.StateSerializer.deserialize(
+      ProgrammingExercise.StateSerializer.serialize(original)
+    ), original)
   }
 
   test("fingerprint is the stored xml so position-only xml differs") {
@@ -74,7 +95,7 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script x="70" y="80"><block s="wait"><l>1</l></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
     val stored = ProgrammingExercise.StateSerializer.serialize(ProgrammingExerciseState(xml))
     val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
-    assert(restored.snapXml.contains("""s="wait""""), clue = restored.snapXml)
-    assertEquals(restored.snapXml, xml)
+    assert(snapXml(restored).contains("""s="wait""""), clue = snapXml(restored))
+    assertEquals(snapXml(restored), xml)
   }
 }

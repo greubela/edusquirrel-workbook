@@ -57,6 +57,65 @@ dialog {
     border: none;
 }
 
+.fullscreen-content-container > .programming-editor {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    flex: 1 1 auto;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.programming-editor__switcher {
+    display: flex;
+    flex-shrink: 0;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md) 0;
+}
+
+.programming-editor__switcher .snap-python-button.is-active {
+    background: var(--color-button-hover);
+}
+
+.programming-editor__warning {
+    flex-shrink: 0;
+    margin: var(--space-sm) var(--space-md) 0;
+}
+
+.programming-editor__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.programming-editor__pane {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.programming-editor .is-hidden,
+.programming-preview .is-hidden {
+    display: none;
+}
+
+.programming-editor__python {
+    padding: var(--space-md);
+    gap: var(--space-sm);
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.programming-editor__code {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.programming-editor__body > .programming-editor__pane > .be-program-snap-fullscreen,
 .fullscreen-content-container > .be-program-snap-fullscreen {
     width: 100%;
     height: 100%;

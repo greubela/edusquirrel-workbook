@@ -485,21 +485,19 @@
     display: contents;
 }
 
-/* Open editor, program preview, optional target, static drawing, result. */
-.prog-ex-cards--5 {
+/* Open editor, optional target, static drawing, result. */
+.prog-ex-cards--4 {
     grid-template-columns:
         minmax(0, 0.7fr)
-        minmax(0, 1.1fr)
         minmax(0, 1.55fr)
         minmax(0, 1.55fr)
         minmax(0, 1.15fr);
 }
 
 /* Same row without the target drawing. */
-.prog-ex-cards--4 {
+.prog-ex-cards--3 {
     grid-template-columns:
         minmax(0, 0.7fr)
-        minmax(0, 1.15fr)
         minmax(0, 1.6fr)
         minmax(0, 1.15fr);
 }
@@ -524,6 +522,17 @@
     width: 100%;
     max-width: 100%;
     height: auto;
+}
+
+.prog-ex-python-preview {
+    margin: 0;
+    max-width: 100%;
+    max-height: 16rem;
+    overflow: auto;
+    white-space: pre;
+    font-family: var(--color-code-font);
+    font-size: var(--color-code-size);
+    color: var(--color-text-primary);
 }
 
 .prog-ex-drawing {

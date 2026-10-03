@@ -4,7 +4,11 @@ import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, HintLabel, TaskLabel}
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingExercise}
+import it.evadid.workbook.elements.interactionElements.programming.{
+  ProgrammingEditorKind,
+  ProgrammingEditorPalette,
+  ProgrammingExercise
+}
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 
 case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
@@ -20,7 +24,11 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
   lazy val section1: WorkbookSection = {
     section("sec1Id", "TestWorkbook/Sec1", List[WorkbookElement](
       container("TestWorkbook/Sec1Cont1", List(
-        ProgrammingExercise("prog-1", editorPalette = ProgrammingEditorPalette.PythonCompatibleSnap)
+        ProgrammingExercise(
+          "prog-1",
+          editorPalette = ProgrammingEditorPalette.PythonCompatibleSnap,
+          allowedEditors = List(ProgrammingEditorKind.Snap, ProgrammingEditorKind.Python)
+        )
       )
     )))
   }
@@ -44,6 +52,7 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
             ProgrammingExercise(
               "prog-circle",
               editorPalette = ProgrammingEditorPalette.BeginnerTurtle,
+              allowedEditors = List(ProgrammingEditorKind.Snap, ProgrammingEditorKind.Python),
               // Beginner palette has turn (right), not turnLeft: approximate a circle clockwise.
               referencePython = Some(
                 """for i in range(36):
