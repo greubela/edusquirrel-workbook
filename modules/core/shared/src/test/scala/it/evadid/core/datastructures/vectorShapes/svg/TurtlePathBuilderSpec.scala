@@ -1,6 +1,7 @@
 package it.evadid.core.datastructures.vectorShapes.svg
 
 import it.evadid.core.datastructures.geometry.Point
+import it.evadid.core.datastructures.vectorShapes.renderer.VmToSvg
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import munit.FunSuite
 
@@ -86,5 +87,23 @@ class TurtlePathBuilderSpec extends FunSuite {
     val segments = builder.completedStyledSegments
     assertEquals(segments.head.style.color, "black")
     assertEquals(segments.head.style.size, 1.0)
+  }
+
+  test("forward turn forward sequences expose labelled turn arcs") {
+    val builder = TurtlePathBuilder[Double](
+      Point(0.0, 0.0),
+      List(
+        TurtleCommand("forward", List(30.0)),
+        TurtleCommand("right", List(90.0)),
+        TurtleCommand("forward", List(20.0)),
+        TurtleCommand("left", List(45.0)),
+        TurtleCommand("forward", List(10.0))
+      ),
+      90
+    )
+
+    val arcs = VmToSvg.turnArcs(builder)
+    assertEquals(arcs.map(_.degrees), List(90.0, 45.0))
+    assert(arcs.forall(_.path.furtherCommands.nonEmpty))
   }
 }

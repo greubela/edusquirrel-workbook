@@ -81,16 +81,11 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
         Try(BeExpressionToTurtleCommands.toPathBuilder(BeProgram.fromPythonString(py).fullProgram)).toOption
       }
 
-    val targetCards: List[ElementCard] = referencePython.toList.flatMap { py =>
-      Try {
+    val targetCards: List[ElementCard] = targetBuilderOpt.toList.map { target =>
         ElementCard(
           LanguageMapContentId("basic/targetDrawing"),
-          SvgLaminarRenderer.render(
-            shapeLogger,
-            VmToSvg.renderBeExpression(shapeLogger, BeProgram.fromPythonString(py).fullProgram)
-          )
+          SvgLaminarRenderer.renderExpectedTurtlePath(target)
         )
-      }.toOption
     }
 
     val stageSvgVar: Var[Option[Element]] = Var(None)
