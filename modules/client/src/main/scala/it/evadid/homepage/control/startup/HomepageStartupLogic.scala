@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.distribution.command.SerializedException
 import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
-import it.evadid.homepage.workbook.content.{CreateCompressionWorkbook, CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, CreateTestWorkbook}
+import it.evadid.homepage.workbook.content.{CreateBitcoinWorkbook, CreateCompressionWorkbook, CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, CreateTestWorkbook, CreateVisualNovelWorkbook}
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import org.scalajs.dom
@@ -20,7 +20,7 @@ object HomepageStartupLogic {
 
   private given ExecutionContextExecutor = ExecutionContext.global
 
-  private val tryToLoad: List[String] = List("landingPage", "loginPage", "plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "workbookCompression", "workbookTest")
+  private val tryToLoad: List[String] = List("landingPage", "loginPage", "plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "workbookCompression", "workbookVisualNovel", "workbookBitcoin", "workbookTest")
   private val canLoad: List[String] = tryToLoad.flatMap(id => if (dom.document.getElementById(id) != null) Some(id) else None)
 
   def renderElementIntoApp(logger: Logger, domElement: Element): Unit = {
@@ -71,6 +71,8 @@ object HomepageStartupLogic {
     case "workbookTest" => Some(CreateTestWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
     case "workbookPlantWorkshop" => Some(CreatePlantworkshopWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
     case "workbookCompression" => Some(CreateCompressionWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
+    case "workbookVisualNovel" => Some(CreateVisualNovelWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
+    case "workbookBitcoin" => Some(CreateBitcoinWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
     case _ => None
   }
 
@@ -95,5 +97,3 @@ object HomepageStartupLogic {
 
   }
 }
-
-

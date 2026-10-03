@@ -23,6 +23,18 @@ object User {
     "dimitrya@hu-berlin.de"
   )
 
+  val AlinaVerworn = User(
+    "Alina Verworn",
+    "user-alina-verworn",
+    ""
+  )
+
+  val TillFavier = User(
+    "Till Favier",
+    "user-till-favier",
+    ""
+  )
+
   case class SingleAccessToken(token: String, expires: LocalDateTime) derives ReadWriter {
   }
 
@@ -103,5 +115,3 @@ case class User(name: String, id: String, mail: String) extends Person derives R
   }
 
 }
-
-
