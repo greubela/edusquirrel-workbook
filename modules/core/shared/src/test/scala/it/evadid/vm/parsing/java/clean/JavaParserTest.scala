@@ -2,7 +2,7 @@ package it.evadid.vm.parsing.java.clean
 
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaType
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleSource, JavaTurtleStructure}
+import it.evadid.vm.parsing.java.turtle.{JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure}
 import munit.FunSuite
 
 class JavaParserTest extends FunSuite {
@@ -56,6 +56,15 @@ class JavaParserTest extends FunSuite {
     assertEquals(parsed.program.statements.size, 1, clue = source)
     parsed.program.statements.head.statement
   }
+
+  private def checkedSource(source: String): JavaTurtleSemantics.TypedSource =
+    JavaTurtleSemantics.check(structuredSource(source)).fold(problem => fail(s"${problem.message}\n$source"), identity)
+
+  private def semanticProblem(source: String): JavaTurtleSource.Diagnostic =
+    JavaTurtleSemantics.check(structuredSource(source)).swap.fold(_ => fail(s"Unexpectedly accepted semantics: $source"), identity)
+
+  private def semanticSource(body: String): String =
+    turtleClass(s"static void run(int distance, boolean flag) { $body } $mainMethod")
 
   test("Java AST nodes expose child nodes for traversal") {
     val target = JavaTarget("values", sliceExpr = Some(JavaLiteral("0", JavaType.JAVA_INTEGER())))
@@ -559,6 +568,184 @@ class JavaParserTest extends FunSuite {
     assertEquals(sourceProblem("Turtle.forward((distance << 1));").problem, JavaTurtleSource.Problem.UnsupportedSyntax)
     assertEquals(structureProblem(turtleSource("Turtle.forward((distance)); static void nested() {}")).problem,
       JavaTurtleSource.Problem.UnsupportedStructure)
+  }
+
+  test("turtle semantics accepts the full for and while square references") {
+    for body <- Seq(
+      "for (int i = 0; i < 4; i = i + 1) { Turtle.forward(sideLength); Turtle.turnRight(90); }",
+      "int i = 0; while (i < 4) { Turtle.forward(sideLength); Turtle.turnRight(90); i = i + 1; }"
+    ) do {
+      val source = "\r\n" + turtleSource(body)
+      val checked = checkedSource(source)
+      assertEquals(checked.structure.parsedSource.source, source)
+      assertEquals(checked.structure.methods.map(_.name), Seq("square", "main"))
+    }
+  }
+
+  test("turtle semantics checks numeric boolean and grouped value expressions") {
+    checkedSource(semanticSource(
+      "int value = +distance - (-2) * 3 / 2 % 5; value += 1; value -= 1; value *= 2; value /= 2; value %= 3; " +
+        "boolean draw = !(value < 0) && value <= 40 || value >= 100; " +
+        "boolean same = flag == draw; same = same != false; if (draw) { Turtle.forward(value); }"
+    ))
+  }
+
+  test("turtle semantics resolves later helpers and same-class qualified calls") {
+    checkedSource(turtleClass(
+      "static void first(int size) { Drawing.second(size, true); } " +
+        "private static void second(int size, boolean enabled) { if (enabled) { Turtle.forward(size); } } " +
+        "public static void main(String[] input) { first(40); }"
+    ))
+    checkedSource(turtleClass("static void move(int value) {} public static void main(String[] args) { int move = 1; move(move); }"))
+  }
+
+  test("turtle semantics retains branch and loop scopes without name leakage") {
+    checkedSource(semanticSource(
+      "if (flag) { int size = 10; Turtle.forward(size); } else { int size = 20; Turtle.forward(size); } " +
+        "for (int i = 0; i < 4; i = i + 1) { Turtle.forward(i); } " +
+        "for (int i = 0; i < 2; i = i + 1) { Turtle.forward(i); } int i = 40; Turtle.forward(i);"
+    ))
+    for body <- Seq("Turtle.forward(missing);", "before = 1; int before;", "if (flag) { int size = 1; } Turtle.forward(size);",
+      "for (int i = 0; i < 4; i = i + 1) {} Turtle.forward(i);", "while (flag) { int size = 1; flag = false; } Turtle.forward(size);") do
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UnknownVariable, clue = body)
+  }
+
+  test("turtle semantics rejects overlapping local and parameter declarations") {
+    for body <- Seq("int distance = 1;", "int value = 1; if (flag) { int value = 2; }", "int value; int value;",
+      "int i = 0; for (int i = 0; i < 4; i = i + 1) {}") do
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.DuplicateDeclaration, clue = body)
+    assertEquals(semanticProblem(turtleClass("public static void main(String[] args) { int args = 1; }")).problem,
+      JavaTurtleSource.Problem.DuplicateDeclaration)
+  }
+
+  test("turtle semantics requires initialization before reads and compound assignments") {
+    checkedSource(semanticSource("int value; value = distance; Turtle.forward(value);"))
+    for body <- Seq("int value; Turtle.forward(value);", "int value = value;", "int value; value += 1;",
+      "int value; boolean draw = value > 0;", "int value; if (flag) { value = 1; } Turtle.forward(value);") do
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UninitializedVariable, clue = body)
+  }
+
+  test("turtle semantics joins initialized branches and handles returning paths") {
+    for body <- Seq("int value; if (flag) { value = 10; } else { value = 20; } Turtle.forward(value);",
+      "int value; if (flag) { return; } else { value = 20; } Turtle.forward(value);",
+      "int value; if (flag) { value = 10; } else { return; } Turtle.forward(value);") do
+      checkedSource(semanticSource(body))
+    for body <- Seq("return; Turtle.forward(1);", "if (flag) { return; } else { return; } Turtle.forward(1);") do
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UnreachableStatement, clue = body)
+  }
+
+  test("turtle semantics distinguishes constant condition flow from statement reachability") {
+    for body <- Seq("int value; if (true) { value = 1; } Turtle.forward(value);",
+      "int value; if (false) { Turtle.forward(value); }", "int value; if (true) { return; } Turtle.forward(value);",
+      "if (false) { return; } Turtle.forward(1);") do checkedSource(semanticSource(body))
+    for body <- Seq("if (false) { int value; Turtle.forward(value); }", "if (true) { return; } int value; Turtle.forward(value);") do
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UninitializedVariable, clue = body)
+  }
+
+  test("turtle semantics carries short-circuit definite assignment without inventing constants") {
+    for body <- Seq("boolean value; boolean result = false && value;", "boolean value; boolean result = true || value;",
+      "int value; if (true || flag) { value = 1; } Turtle.forward(value);",
+      "while (false && flag) {} Turtle.forward(1);", "while (true || flag) {} Turtle.forward(1);",
+      "while (false && 1 / 0 > 0) {} Turtle.forward(1);", "while (true || 1 / 0 > 0) {} Turtle.forward(1);",
+      "while (1 / 0 == 0) {} Turtle.forward(1);") do checkedSource(semanticSource(body))
+    assertEquals(semanticProblem(semanticSource("boolean value; boolean result = flag && value;")).problem,
+      JavaTurtleSource.Problem.UninitializedVariable)
+  }
+
+  test("turtle semantics respects zero iterations for assignments and for initialization") {
+    for body <- Seq("int value; while (flag) { value = 1; flag = false; } Turtle.forward(value);",
+      "int value; for (int i = 0; i < 4; i = i + 1) { value = 1; } Turtle.forward(value);") do
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UninitializedVariable, clue = body)
+    checkedSource(semanticSource("int i; for (i = 0; i < 4; i = i + 1) {} Turtle.forward(i);"))
+    checkedSource(semanticSource("int value; for (int i = 0; i < 4; i = i + value) { value = 1; }"))
+    assertEquals(semanticProblem(semanticSource("for (int i = 0; i < 4; i = i + value) { int value = 1; }")).problem,
+      JavaTurtleSource.Problem.UnknownVariable)
+  }
+
+  test("turtle semantics checks non-completing loop bodies and constant loop reachability") {
+    for body <- Seq("while (true) {}", "for (;;) {}", "for (int i = 0; i < 4; i = i + 1) { return; } Turtle.forward(1);",
+      "int value; for (int i = 0; i < 4; Turtle.forward(value)) { return; }") do checkedSource(semanticSource(body))
+    for body <- Seq("while (false) {}", "for (; false; ) {}", "while (true) {} Turtle.forward(1);",
+      "for (;;) {} Turtle.forward(1);", "while (2147483647 + 1 < 0) {} Turtle.forward(1);") do
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UnreachableStatement, clue = body)
+  }
+
+  test("turtle semantics checks decimal int boundaries with preserved operand syntax") {
+    for value <- Seq("0", "2147483647", "-2147483648", "(-2147483648)", "- -2147483648", "2147483647 + 1") do
+      checkedSource(semanticSource(s"int value = $value; Turtle.forward(value);"))
+    for value <- Seq("2147483648", "+2147483648", "-(2147483648)", "-2147483649", "99999999999999999999999") do
+      assertEquals(semanticProblem(semanticSource(s"int value = $value;")).problem, JavaTurtleSource.Problem.IntegerRange, clue = value)
+  }
+
+  test("turtle semantics folds int constants with Java overflow and division rules") {
+    for condition <- Seq(
+      "2147483647 + 1 == -2147483648", "-2147483648 - 1 == 2147483647",
+      "2147483647 * 2147483647 == 1", "-2147483648 * -1 == -2147483648",
+      "-2147483648 / -1 == -2147483648", "-2147483648 % -1 == 0",
+      "-2147483648 / -2147483648 == 1", "-5 / 2 == -2", "-5 % 2 == -1", "5 % -2 == 1"
+    ) do {
+      checkedSource(semanticSource(s"while ($condition) {}"))
+      checkedSource(semanticSource(s"int value; if ($condition) { value = 1; } Turtle.forward(value);"))
+      assertEquals(semanticProblem(semanticSource(s"while (!($condition)) {}")).problem,
+        JavaTurtleSource.Problem.UnreachableStatement, clue = condition)
+    }
+  }
+
+  test("turtle semantics rejects mismatched assignments operations and conditions") {
+    for body <- Seq("int value = true;", "boolean value = 1;", "distance = false;", "flag = 1;", "flag += true;",
+      "int value = flag + 1;", "boolean value = flag < true;", "boolean value = distance == flag;",
+      "boolean value = distance && flag;", "int value = !distance;", "int value = -flag;", "if (1) {}", "while (1) {}",
+      "for (; 1; ) {}", "return distance;", "int value = run(distance, flag);") do
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.TypeMismatch, clue = body)
+  }
+
+  test("turtle semantics rejects wrong call argument counts and types") {
+    for body <- Seq("Turtle.forward();", "Turtle.forward(1, 2);", "Turtle.forward(true);", "Turtle.turnRight(false);",
+      "run(distance);", "run(flag, distance);") do
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.ArgumentMismatch, clue = body)
+    assertEquals(semanticProblem(semanticSource("missing(distance);")).problem, JavaTurtleSource.Problem.UnknownMethod)
+  }
+
+  test("turtle semantics resolves static receiver shadowing at the point of use") {
+    checkedSource(semanticSource("Turtle.forward(distance); int Turtle = 1; int Drawing = 2;"))
+    for body <- Seq("int Turtle = 1; Turtle.forward(distance);", "int Drawing = 1; Drawing.run(distance, flag);") do
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.TypeMismatch, clue = body)
+    assertEquals(semanticProblem(turtleClass(s"static void move(int Turtle) { Turtle.forward(1); } $mainMethod")).problem,
+      JavaTurtleSource.Problem.TypeMismatch)
+  }
+
+  test("turtle semantics rejects statement and callee grouping without stripping parentheses") {
+    for body <- Seq("1;", "distance + 1;", "(run(distance, flag));", "(distance = 1);", "(Turtle).forward(1);",
+      "(run)(distance, flag);", "for (int i = 0; i < 4; (i = i + 1)) {}") do
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UnsupportedSyntax, clue = body)
+  }
+
+  test("turtle semantics excludes assignments in value positions and unsupported constructs") {
+    for body <- Seq("Turtle.forward(distance = 1);", "int value = (distance = 1);", "if (flag = true) {}",
+      "if (flag && (distance = 1) > 0) {}", "while (flag) { break; }", "while (flag) { continue; }",
+      "try {} finally {}", "throw distance;", "Math.abs(distance);", "new Point();", "main();", "final int value = 1;") do
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UnsupportedSyntax, clue = body)
+    for body <- Seq("int[] values;", "String text;", "Object value;", "List<String> values;", "int value = null;") do
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UnsupportedType, clue = body)
+    assertEquals(semanticProblem(turtleClass("public static void main(String[] args) { Turtle.forward(args); }")).problem,
+      JavaTurtleSource.Problem.UnsupportedType)
+  }
+
+  test("turtle semantics detects direct mutual and unused helper recursion") {
+    for members <- Seq(s"static void move() { move(); } $mainMethod",
+      s"static void first() { second(); } static void second() { first(); } $mainMethod",
+      s"static void move() { Drawing.move(); } $mainMethod") do
+      assertEquals(semanticProblem(turtleClass(members)).problem, JavaTurtleSource.Problem.UnsupportedSyntax, clue = members)
+  }
+
+  test("turtle semantics distinguishes contextual calls and Object signature collisions") {
+    checkedSource(turtleClass(s"static void yield() {} public static void main(String[] args) { Drawing.yield(); }"))
+    assertEquals(semanticProblem(turtleClass("static void yield() {} public static void main(String[] args) { yield(); }")).problem,
+      JavaTurtleSource.Problem.UnsupportedSyntax)
+    for name <- Seq("wait", "notify", "notifyAll", "toString", "hashCode", "getClass", "clone", "finalize") do
+      assertEquals(semanticProblem(turtleClass(s"static void $name() {} $mainMethod")).problem,
+        JavaTurtleSource.Problem.UnsupportedStructure, clue = name)
+    checkedSource(turtleClass(s"static void wait(int value) {} public static void main(String[] args) { wait(1); }"))
   }
 
   test("parses chained Java call, attribute, and subscript trailers") {

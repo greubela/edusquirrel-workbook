@@ -10,6 +10,8 @@ object JavaTurtleSource {
     case UnclosedComment, UnsupportedType, UnsupportedLiteral, UnsupportedNumber
     case UnicodeEscape, UnsupportedSyntax, ParseFailure
     case UnsupportedStructure, InvalidMain, MissingMain, DuplicateDeclaration, InvalidIdentifier
+    case UnknownVariable, UninitializedVariable, UnknownMethod, ArgumentMismatch
+    case TypeMismatch, IntegerRange, UnreachableStatement
   }
 
   case class SourceRange(start: Int, end: Int)
