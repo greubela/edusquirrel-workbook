@@ -17,11 +17,13 @@ object JavaTurtleSource {
 
   final class ParsedSource private[JavaTurtleSource](val source: String, val program: JavaProgram)
 
+  private val parser = new JavaParser(retainParentheses = true)
+
   def parse(source: String): Either[Diagnostic, ParsedSource] =
     checkSource(source).flatMap(_ => parseAst(source))
 
   private def parseAst(source: String): Either[Diagnostic, ParsedSource] =
-    fastparse.parse(source, context => JavaParser.javaProgram(using context)) match {
+    fastparse.parse(source, context => parser.javaProgram(using context)) match {
       case Parsed.Success(program, _) =>
         firstUnsupported(program) match {
           case Some(_) => Left(Diagnostic(Problem.UnsupportedSyntax, "This Java construct is not supported yet.", None))

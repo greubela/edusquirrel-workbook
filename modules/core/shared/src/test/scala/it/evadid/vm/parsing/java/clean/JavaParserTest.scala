@@ -51,6 +51,12 @@ class JavaParserTest extends FunSuite {
 
   private val mainMethod = "public static void main(String[] args) {}"
 
+  private def sourceStatement(source: String): JavaStatement = {
+    val parsed = JavaTurtleSource.parse(source).fold(problem => fail(problem.message), identity)
+    assertEquals(parsed.program.statements.size, 1, clue = source)
+    parsed.program.statements.head.statement
+  }
+
   test("Java AST nodes expose child nodes for traversal") {
     val target = JavaTarget("values", sliceExpr = Some(JavaLiteral("0", JavaType.JAVA_INTEGER())))
     val assignment = JavaAssignment(
@@ -513,6 +519,46 @@ class JavaParserTest extends FunSuite {
       val source = turtleClass(s"public static void main($parameter) {}")
       assert(JavaTurtleSource.parse(source).isLeft, clue = source)
     }
+  }
+
+  test("turtle parsing retains grouping while the legacy parser keeps its AST") {
+    val plain = JavaTarget("distance")
+    assertEquals(statement("(distance);"), plain)
+    assertEquals(sourceStatement("(distance);"), JavaParenthesizedExpression(plain))
+    assertEquals(sourceStatement("((distance));"), JavaParenthesizedExpression(JavaParenthesizedExpression(plain)))
+    val grouped = sourceStatement("(distance + 1) * 2;").asInstanceOf[JavaOperationBinary]
+    assertEquals(grouped.op, "*")
+    assert(grouped.left.isInstanceOf[JavaParenthesizedExpression])
+    assertEquals(grouped.left.getChildren().size, 1)
+    assert(statement("(distance + 1) * 2;").asInstanceOf[JavaOperationBinary].left.isInstanceOf[JavaOperationBinary])
+  }
+
+  test("turtle parsing distinguishes parenthesized statement expressions and call receivers") {
+    assert(sourceStatement("move();").isInstanceOf[JavaFunctionCall])
+    assert(sourceStatement("(move());").isInstanceOf[JavaParenthesizedExpression])
+    assert(sourceStatement("(distance = 1);").isInstanceOf[JavaParenthesizedExpression])
+    val receiver = sourceStatement("(Turtle).forward(40);").asInstanceOf[JavaCallExpression]
+      .callee.asInstanceOf[JavaAttributeAccess].receiver
+    assertEquals(receiver, JavaParenthesizedExpression(JavaTarget("Turtle")))
+    val callee = sourceStatement("(move)(40);").asInstanceOf[JavaCallExpression].callee
+    assertEquals(callee, JavaParenthesizedExpression(JavaTarget("move")))
+  }
+
+  test("turtle parsing distinguishes the direct minimum integer operand") {
+    val direct = sourceStatement("-2147483648;").asInstanceOf[JavaOperationUnary]
+    val grouped = sourceStatement("-(2147483648);").asInstanceOf[JavaOperationUnary]
+    assert(direct.operand.isInstanceOf[JavaLiteral[?]])
+    assert(grouped.operand.isInstanceOf[JavaParenthesizedExpression])
+    assert(sourceStatement("(-2147483648);").isInstanceOf[JavaParenthesizedExpression])
+  }
+
+  test("turtle parsing retains for update grouping and traverses its children") {
+    val loop = sourceStatement("for (int i = 0; i < 4; (i = i + 1)) {}").asInstanceOf[JavaForStatement]
+    assert(loop.update.head.isInstanceOf[JavaParenthesizedExpression])
+    assert(loop.update.head.getChildren().head.isInstanceOf[JavaAssignmentExpression])
+    assertEquals(sourceProblem("Turtle.forward((distance << 1));").problem, JavaTurtleSource.Problem.UnsupportedSyntax)
+    assertEquals(structureProblem(turtleSource("Turtle.forward((distance)); static void nested() {}")).problem,
+      JavaTurtleSource.Problem.UnsupportedStructure)
   }
 
   test("parses chained Java call, attribute, and subscript trailers") {
