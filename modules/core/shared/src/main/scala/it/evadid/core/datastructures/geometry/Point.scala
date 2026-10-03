@@ -1,5 +1,7 @@
 package it.evadid.core.datastructures.geometry
 
+import upickle.default.*
+
 final case class Point[T: Fractional](x: T, y: T) {
   private val N = summon[Fractional[T]]
 
