@@ -6,12 +6,14 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.ExecutionMethod
 import it.evadid.core.datastructures.state.async.AsyncData
 import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, VmToSvg}
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleState
+import it.evadid.core.datastructures.vectorShapes.svg.{BeExpressionToTurtleCommands, TurtlePathBuilder}
+import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.{TurtleCommand, TurtleState}
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditor, SnapCodeEditorConfig, SnapProgramDerivation, SnapTurtleStage}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineToRender
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingExercise, ProgrammingExerciseState}
@@ -78,6 +80,19 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       )
     )
 
+    val interactivePreview = {
+      val intDom = div()
+      val cmd = BeExpressionToTurtleCommands(
+        SnapProgramDerivation.fromState(boundVar.now()).program.fullProgram
+      )
+      val exp = List(LineToRender[Double](Point(0,0), Point(100,0)), LineToRender[Double](Point(100,0), Point(100, 100)))
+      TurtleJsxGraphRenderer.render(intDom.ref, cmd, exp )
+      ElementCard(
+        LanguageMapContentId("basic/gradingPreviewProgram"),
+        intDom
+      )
+    }
+
     // Run → TurtleStitchWorker.simulateGreenFlag → stage PNG
     val stageImageVar: Var[Option[FullImage]] = Var(None)
 
@@ -120,6 +135,6 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     )
 
     AtomarLineRendering.cardLine(workbookElement,
-      List(buttonCard, canvasCard, staticRendering, runCard))
+      List(buttonCard, interactivePreview, canvasCard, staticRendering, runCard))
   }
 }
