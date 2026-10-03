@@ -17,6 +17,9 @@ import it.evadid.workbook.elements.interactionElements.programming.SnapInputCode
 
 object VmToSvg {
 
+  /** A small angle marker drawn at a `forward -> turn -> forward` corner. */
+  final case class TurnArc(path: SvgPathBuilderImmutable[Double], degrees: Double)
+
   def renderBeExpression(logger: Logger, expression: BeExpression): AppShapeElement[Double] =
     renderTurtlePathBuilder(
       TurtlePathBuilder(
@@ -29,6 +32,54 @@ object VmToSvg {
   /** Same visual pipeline as [[renderBeExpression]], from an already built turtle path. */
   def renderTurtlePathBuilder(built: TurtlePathBuilder[Double]): AppShapeElement[Double] =
     compose(List(built), colors = None)
+
+  /**
+   * Finds visible corners in a turtle program.  Keeping this geometry here (rather
+   * than in the DOM renderer) also makes expected-preview annotations deterministic.
+   */
+  def turnArcs(built: TurtlePathBuilder[Double], radius: Double = 13.0): List[TurnArc] = {
+    val commands = built.turtleCommands
+    val initial = TurtlePathBuilder[Double](built.startPoint, Nil, built.turtleState.homeHeadingDeg)
+    val statesBefore = commands.scanLeft(initial)((builder, command) => builder.handleStringCommand(command)).dropRight(1)
+
+    commands.indices.toList.flatMap { index =>
+      if index == 0 || index == commands.size - 1 then None
+      else {
+        val previous = normalized(commands(index - 1).name)
+        val turn = normalized(commands(index).name)
+        val following = normalized(commands(index + 1).name)
+        val forwardNames = Set("forward", "fd", "backward", "back", "bk")
+        val leftNames = Set("left", "lt", "turn_left", "turnleft")
+        val rightNames = Set("right", "rt", "turn", "turn_right")
+        val degrees = commands(index).args.headOption.map(_.toDouble)
+
+        if !forwardNames(previous) || !forwardNames(following) || degrees.isEmpty ||
+            (!leftNames(turn) && !rightNames(turn)) || math.abs(degrees.get) < 1e-9 then None
+        else {
+          val before = statesBefore(index)
+          val vertex = Point(before.turtleState.x.toDouble, before.turtleState.y.toDouble)
+          val signedTurn = if leftNames(turn) then degrees.get else -degrees.get
+          val startHeading = before.turtleState.headingDeg.toDouble
+          val endHeading = startHeading + signedTurn
+          def pointAt(heading: Double): Point[Double] = {
+            val radians = Math.toRadians(heading)
+            Point(vertex.x + radius * Math.cos(radians), vertex.y - radius * Math.sin(radians))
+          }
+          val start = pointAt(startHeading)
+          val end = pointAt(endHeading)
+          val largeArc = math.abs(signedTurn) % 360 > 180
+          // Positive mathematical turns run counter-clockwise, which is SVG's
+          // negative sweep because the SVG y axis points downwards.
+          val sweep = signedTurn < 0
+          val path = SvgPathBuilderImmutable[Double](start).arcToAbs(radius, radius, 0.0, largeArc, sweep, end)
+            .asInstanceOf[SvgPathBuilderImmutable[Double]]
+          Some(TurnArc(path, degrees.get))
+        }
+      }
+    }
+  }
+
+  private def normalized(name: String): String = name.trim.toLowerCase.replace("-", "_")
 
   /** Target in blue, student drawing in red. `resultInFront` chooses which one is painted last. */
   def renderOverlay(
