@@ -2,7 +2,7 @@ package it.evadid.vm.parsing.java.clean
 
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaType
-import it.evadid.vm.parsing.java.turtle.JavaTurtleSource
+import it.evadid.vm.parsing.java.turtle.{JavaTurtleSource, JavaTurtleStructure}
 import munit.FunSuite
 
 class JavaParserTest extends FunSuite {
@@ -35,6 +35,21 @@ class JavaParserTest extends FunSuite {
 
   private def sourceProblem(source: String): JavaTurtleSource.Diagnostic =
     JavaTurtleSource.parse(source).swap.fold(_ => fail(s"Unexpectedly accepted: $source"), identity)
+
+  private def structuredSource(source: String): JavaTurtleStructure.StructuredSource = {
+    val parsed = JavaTurtleSource.parse(source).fold(problem => fail(problem.message), identity)
+    JavaTurtleStructure.check(parsed).fold(problem => fail(problem.message), identity)
+  }
+
+  private def structureProblem(source: String): JavaTurtleSource.Diagnostic = {
+    val parsed = JavaTurtleSource.parse(source).fold(problem => fail(problem.message), identity)
+    JavaTurtleStructure.check(parsed).swap.fold(_ => fail(s"Unexpectedly accepted structure: $source"), identity)
+  }
+
+  private def turtleClass(members: String, header: String = "class Drawing"): String =
+    s"$header { $members }"
+
+  private val mainMethod = "public static void main(String[] args) {}"
 
   test("Java AST nodes expose child nodes for traversal") {
     val target = JavaTarget("values", sliceExpr = Some(JavaLiteral("0", JavaType.JAVA_INTEGER())))
@@ -369,6 +384,135 @@ class JavaParserTest extends FunSuite {
     assert(JavaParser.parse("long value = 40;").isRight)
     assert(JavaParser.parse("String value = \"hello\";").isRight)
     assert(JavaParser.parse("/* unfinished").isRight)
+  }
+
+  test("turtle structure retains the complete class and ordered method definitions") {
+    val source = "\r\n/* source */" + turtleSource(
+      "for (int i = 0; i < 4; i = i + 1) { Turtle.forward(sideLength); Turtle.turnRight(90); }"
+    )
+    val checked = structuredSource(source)
+    assertEquals(checked.parsedSource.source, source)
+    assertEquals(checked.classDef.name, "SquareProgram")
+    assertEquals(checked.methods.map(_.name), Seq("square", "main"))
+    assertEquals(checked.main, checked.methods.last)
+    assertEquals(checked.classDef.body.statements, checked.methods)
+  }
+
+  test("turtle structure is independent of the pilot class and method names") {
+    for header <- Seq("class Drawing", "public class Pattern") do {
+      val source = turtleClass(
+        "static public void main(String /* type */ [ /* rank */ ] input) {} " +
+          "private static void move(int distance, boolean drawing) {} " +
+          "static void record(int var) {} public static void reset() {}",
+        header
+      )
+      val checked = structuredSource(source)
+      assertEquals(checked.methods.map(_.name), Seq("main", "move", "record", "reset"))
+      assertEquals(checked.main.parameters.map(_.name), Seq("input"))
+    }
+  }
+
+  test("turtle structure requires one complete compilation unit class") {
+    val valid = turtleClass(mainMethod)
+    for source <- Seq("", ";", "Turtle.forward(40);", "static void run() {}", valid + "class Other {}",
+      "package demo; " + valid, "import java.util.List; " + valid, valid + ";") do {
+      val problem = structureProblem(source)
+      assertEquals(problem.problem, JavaTurtleSource.Problem.UnsupportedStructure, clue = source)
+      assertEquals(problem.range, None)
+    }
+  }
+
+  test("turtle structure rejects unsupported class modifiers and inheritance") {
+    for header <- Seq("private class Drawing", "protected class Drawing", "static class Drawing", "final class Drawing",
+      "abstract class Drawing", "public public class Drawing", "class Drawing extends Base", "class Drawing implements Runnable") do
+      assertEquals(structureProblem(turtleClass(mainMethod, header)).problem, JavaTurtleSource.Problem.UnsupportedStructure, clue = header)
+  }
+
+  test("turtle structure excludes fields and nested classes") {
+    for member <- Seq("int width = 40;", "static int width;", "class Nested {}", ";") do
+      assertEquals(structureProblem(turtleClass(member + mainMethod)).problem, JavaTurtleSource.Problem.UnsupportedStructure, clue = member)
+  }
+
+  test("turtle structure requires explicit static void helper methods") {
+    for header <- Seq("void move", "public void move", "static int move", "static boolean move",
+      "static String move", "static static void move", "public private static void move", "protected static void move",
+      "final static void move", "abstract static void move") do {
+      val source = turtleClass(s"$header() {} $mainMethod")
+      assertEquals(structureProblem(source).problem, JavaTurtleSource.Problem.UnsupportedStructure, clue = header)
+    }
+  }
+
+  test("turtle structure requires the supported main signature") {
+    assertEquals(structureProblem(turtleClass("static void move() {}")).problem, JavaTurtleSource.Problem.MissingMain)
+    for header <- Seq("static void main(String[] args)", "public void main(String[] args)", "private static void main(String[] args)",
+      "public static static void main(String[] args)", "public static int main(String[] args)",
+      "public static void main()", "public static void main(int[] args)", "public static void main(String args)",
+      "public static void main(String[][] args)", "public static void main(java.lang.String[] args)",
+      "public static void main(String[] args, int extra)") do {
+      val problem = structureProblem(turtleClass(s"$header {}"))
+      assertEquals(problem.problem, JavaTurtleSource.Problem.InvalidMain, clue = header)
+    }
+  }
+
+  test("turtle structure does not allow duplicate or overloaded method names") {
+    for methods <- Seq("static void move() {} static void move() {}", "static void move(int x) {} static void move(boolean x) {}",
+      s"$mainMethod public static void main(int value) {}") do {
+      val source = turtleClass(methods + (if methods.contains("main") then "" else mainMethod))
+      assertEquals(structureProblem(source).problem, JavaTurtleSource.Problem.DuplicateDeclaration, clue = source)
+    }
+  }
+
+  test("turtle structure requires distinct parameters of supported types") {
+    assertEquals(structureProblem(turtleClass(s"static void move(int x, int x) {} $mainMethod")).problem,
+      JavaTurtleSource.Problem.DuplicateDeclaration)
+    for parameter <- Seq("String value", "Object value", "Point value", "int[] values", "boolean[] values", "int[][] values", "List<String> values") do
+      assertEquals(structureProblem(turtleClass(s"static void move($parameter) {} $mainMethod")).problem,
+        JavaTurtleSource.Problem.UnsupportedType, clue = parameter)
+    for method <- Seq(s"static void move(final int x) {} $mainMethod", "public static void main(final String[] args) {}") do
+      assertEquals(structureProblem(turtleClass(method)).problem, JavaTurtleSource.Problem.UnsupportedStructure, clue = method)
+  }
+
+  test("turtle structure rejects unavailable class names without restricting contextual parameter names") {
+    for name <- Seq("String", "Turtle", "var", "yield", "record", "sealed", "permits", "_", "const", "goto") do
+      assertEquals(structureProblem(turtleClass(mainMethod, s"class $name")).problem,
+        JavaTurtleSource.Problem.InvalidIdentifier, clue = name)
+    assertEquals(structuredSource(turtleClass("public static void main(String[] record) {} static void var(int record) {}"))
+      .main.parameters.head.name, "record")
+  }
+
+  test("turtle structure rejects reserved identifiers in method parameter and local declarations") {
+    for name <- Seq("_", "const", "goto") do
+      for members <- Seq(s"static void $name() {} $mainMethod", s"static void move(int $name) {} $mainMethod",
+        s"public static void main(String[] $name) {}", s"static void move() { int $name = 0; } $mainMethod",
+        s"static void move() { for (int $name = 0; true; ) {} } $mainMethod") do
+        assertEquals(structureProblem(turtleClass(members)).problem, JavaTurtleSource.Problem.InvalidIdentifier, clue = members)
+  }
+
+  test("turtle structure finds forbidden nested declarations in every supported block") {
+    for declaration <- Seq("class Nested {}", "static void nested() {}", "package demo;", "import java.util.List;") do
+      for body <- Seq(declaration, s"if (true) { $declaration }", s"if (true) {} else { $declaration }",
+        s"while (true) { $declaration }", s"for (; true; ) { $declaration }", s"try { $declaration } catch (Exception ex) {}",
+        s"try {} catch (Exception ex) { $declaration }", s"try {} finally { $declaration }") do {
+        val source = turtleClass(s"static void move() { $body } $mainMethod")
+        assertEquals(structureProblem(source).problem, JavaTurtleSource.Problem.UnsupportedStructure, clue = body)
+      }
+  }
+
+  test("turtle structure leaves expression types for the separate semantic phase") {
+    val checked = structuredSource(turtleSource("int distance = true; unknown(distance); return false;"))
+    assertEquals(checked.methods.head.body.statements.size, 3)
+  }
+
+  test("turtle source rejects constructors and omitted method return types before structure checking") {
+    for members <- Seq(s"Drawing() {} $mainMethod", s"static move() {} $mainMethod", "public static main(String[] args) {}") do
+      assertEquals(sourceProblem(turtleClass(members)).problem, JavaTurtleSource.Problem.ParseFailure, clue = members)
+  }
+
+  test("turtle source excludes alternative Java array parameter spellings") {
+    for parameter <- Seq("String args[]", "String... args") do {
+      val source = turtleClass(s"public static void main($parameter) {}")
+      assert(JavaTurtleSource.parse(source).isLeft, clue = source)
+    }
   }
 
   test("parses chained Java call, attribute, and subscript trailers") {

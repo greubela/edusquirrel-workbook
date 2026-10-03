@@ -9,6 +9,7 @@ object JavaTurtleSource {
   enum Problem {
     case UnclosedComment, UnsupportedType, UnsupportedLiteral, UnsupportedNumber
     case UnicodeEscape, UnsupportedSyntax, ParseFailure
+    case UnsupportedStructure, InvalidMain, MissingMain, DuplicateDeclaration, InvalidIdentifier
   }
 
   case class SourceRange(start: Int, end: Int)
