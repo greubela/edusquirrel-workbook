@@ -71,8 +71,17 @@ case class BeExpressionToPythonString
     s"for _ in range(${amount}):"
   }
 
-  override protected def namedRangeLine(varName: String, start: String, end: String): String =
-    s"for $varName in range($start, $end + 1):"
+  override protected def namedRangeLine(varName: String, start: String, end: String): String = {
+    val minusOne = """^(.+)\s-\s1$""".r
+    (start, end) match {
+      case ("0", minusOne(stop)) =>
+        s"for $varName in range(${stop.trim}):"
+      case ("0", digits) if digits.nonEmpty && digits.forall(_.isDigit) =>
+        s"for $varName in range(${digits.toInt + 1}):"
+      case _ =>
+        s"for $varName in range($start, $end + 1):"
+    }
+  }
 
   override protected def repetitionParsingHint(amount: Int): String = ""
 

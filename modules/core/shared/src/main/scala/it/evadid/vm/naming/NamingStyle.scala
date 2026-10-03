@@ -31,7 +31,11 @@ object NamingStyle {
   }
 
   def fromAnyNotationToParts(stringWithUnknownStyle: String): List[String] = {
-    splitOnSpaces(stringWithUnknownStyle).flatMap(splitOnUnderscore).flatMap(splitOnUppercase)
+    val parts = splitOnSpaces(stringWithUnknownStyle).flatMap(splitOnUnderscore).flatMap(splitOnUppercase).filter(_.nonEmpty)
+    // "_" is a real Python name. Splitting on underscores would drop it entirely.
+    if parts.nonEmpty then parts
+    else if stringWithUnknownStyle.nonEmpty && stringWithUnknownStyle.forall(_ == '_') then List(stringWithUnknownStyle)
+    else Nil
   }
 
   case object CamelCase extends NamingStyle {

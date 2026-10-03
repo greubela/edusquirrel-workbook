@@ -40,7 +40,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   /** Mirror at most this often; fullImage() is too expensive for every rAF. */
   private val StageMirrorMinIntervalMs = 33.0
   /** Default visible-step delay between blocks (ms). */
-  private val DefaultGreenFlagStepMs = 20.0
+  private val DefaultGreenFlagStepMs = 0.0
   /** Current pause between blocks during Execute (ms, >= 0). */
   private var greenFlagStepMs: Double = DefaultGreenFlagStepMs
   private var lastStageMirrorAt = 0.0

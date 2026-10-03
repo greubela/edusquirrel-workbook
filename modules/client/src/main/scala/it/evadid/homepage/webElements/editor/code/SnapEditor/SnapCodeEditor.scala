@@ -19,7 +19,8 @@ case class SnapCodeEditor(
     state: Var[SnapXml],
     config: SnapCodeEditorConfig,
     impl: SnapCodeEditorImpl,
-    onStateEdited: SnapXml => Unit = _ => ()
+    onStateEdited: SnapXml => Unit,
+    belowStage: L.Node
 ) extends HtmlAppElement with FullscreenLifecycle {
 
   private var previewTarget: Option[Canvas] = None
@@ -86,8 +87,6 @@ case class SnapCodeEditor(
           bindProgramObservers(ctx.owner)
         }
       ),
-      // FEATURE: SnapPythonPopup — remove this child (+ SnapPythonPopup.scala + CSS) to drop the toolbar.
-      SnapPythonPopup.speedToolbar(ms => impl.setGreenFlagStepMs(ms)),
       onUnmountCallback { _ =>
         // The dialog reuses this lazy DOM element. Keep its WorldMorph and DOM
         // event listeners intact between openings; only stop animation work
@@ -138,7 +137,8 @@ case class SnapCodeEditor(
       SnapTurtleStagePanel.chrome(
         flushPending = () => impl.flushPendingProjectChanges(),
         runOnStage = canvas => impl.runGreenFlagOnStage(canvas),
-        stopRun = () => impl.stopGreenFlagOnStage()
+        stopRun = () => impl.stopGreenFlagOnStage(),
+        belowStage = belowStage
       )
     )
 
@@ -184,15 +184,16 @@ object SnapCodeEditor {
   def apply(
       state: Var[SnapXml],
       config: SnapCodeEditorConfig,
-      onStateEdited: SnapXml => Unit
+      onStateEdited: SnapXml => Unit,
+      belowStage: L.Node
   ): SnapCodeEditor =
-    SnapCodeEditor(state, config, SnapCodeEditorImplDelegateToOriginal(), onStateEdited)
+    SnapCodeEditor(state, config, SnapCodeEditorImplDelegateToOriginal(), onStateEdited, belowStage)
 
   def apply(state: Var[SnapXml]): SnapCodeEditor =
-    SnapCodeEditor(state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal())
+    SnapCodeEditor(state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal(), _ => (), L.emptyNode)
 
   def apply(state: Var[SnapXml], onStateEdited: SnapXml => Unit): SnapCodeEditor =
-    SnapCodeEditor(state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal(), onStateEdited)
+    SnapCodeEditor(state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal(), onStateEdited, L.emptyNode)
 
   def commandsFor(state: ProgrammingExerciseState): Future[List[TurtleCommand[Double]]] =
     turtleCommandExecution.commandsFor(state)

@@ -25,40 +25,6 @@ object SnapPythonPopup {
     "True", "False", "None", "pass", "def", "return"
   )
 
-  /** Pause between blocks during Snap Execute, in milliseconds (>= 0). */
-  def speedToolbar(setExecutionStepMs: Double => Unit): L.Element = {
-    val stepMsVar: Var[String] = Var("20")
-
-    def applyStepMsFromInput(raw: String): Unit =
-      raw.trim.toDoubleOption match
-        case Some(ms) if ms >= 0 && !ms.isNaN && !ms.isInfinity =>
-          stepMsVar.set(raw.trim)
-          setExecutionStepMs(ms)
-        case _ =>
-          ()
-
-    div(
-      cls := "snap-editor-toolbar",
-      label(
-        cls := "snap-editor-toolbar__speed",
-        span(cls := "snap-editor-toolbar__speed-label", "Speed (ms)"),
-        input(
-          typ := "number",
-          cls := "snap-editor-toolbar__speed-input",
-          minAttr := "0",
-          stepAttr := "1",
-          controlled(
-            value <-- stepMsVar.signal,
-            onInput.mapToValue --> { raw =>
-              stepMsVar.set(raw)
-              applyStepMsFromInput(raw)
-            }
-          )
-        )
-      )
-    )
-  }
-
   /** Collapsed list of Python the block editor can represent. */
   def supportedFunctions: L.Element =
     detailsTag(

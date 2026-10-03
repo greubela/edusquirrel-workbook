@@ -273,6 +273,23 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     assertEquals(selectors, List("turn", "turnLeft", "gotoXY", "up", "down", "setColor"))
   }
 
+  test("a counted loop with an unused variable survives blocks and back") {
+    val source =
+      """def circ(n):
+        |    edges = 4
+        |    for _ in range(edges):
+        |        forward(n / edges)
+        |        turn_right(360 / edges)
+        |""".stripMargin
+    val result = SnapTurtlePythonBridge.applyPython(source)
+    assert(result.isRight, clue = result)
+    val xml = result.toOption.get.snapXml
+    assert(xml.contains("""<block s="doFor"><l>_</l>"""), clue = xml)
+    val python = SnapTurtlePythonBridge.printedPython(BeProgram.fromPythonString(source).fullProgram)
+    assert(python.contains("for _ in range(edges):"), clue = python)
+    assert(!python.contains("for 0 in range"), clue = python)
+  }
+
   test("applyPython accepts named for-range, arithmetic args, and stitches") {
     val source =
       """receive_go()

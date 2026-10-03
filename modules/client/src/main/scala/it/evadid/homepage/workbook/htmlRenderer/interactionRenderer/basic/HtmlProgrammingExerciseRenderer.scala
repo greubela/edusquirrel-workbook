@@ -51,6 +51,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       boundVar,
       editorConfig,
       workbookElement.allowedEditors,
+      workbookElement.referencePython,
       onStateEdited = persistFromEditor
     )
 

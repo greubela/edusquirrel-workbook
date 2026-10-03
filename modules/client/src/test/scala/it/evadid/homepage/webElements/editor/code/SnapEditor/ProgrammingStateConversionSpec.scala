@@ -101,6 +101,29 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assert(xml.contains(s"""<script x="70" y="$stackedY">"""), clue = xml)
   }
 
+  test("for _ in range(edges) is unchanged after blocks and back") {
+    val source =
+      """def circ(n):
+        |    edges = 4
+        |    for _ in range(edges):
+        |        forward(n / edges)
+        |        turn_right(360 / edges)
+        |
+        |# @script x=156 y=66
+        |receive_go()
+        |goto_x_y(0, 0)
+        |clear()
+        |down()
+        |x = 360
+        |circ(x)
+        |""".stripMargin
+    val snap = requireSnap(ProgrammingStateConversion.pythonToSnap(PythonSource(source)))
+    val python = requirePython(ProgrammingStateConversion.snapToPython(snap))
+    assert(python.source.contains("for _ in range(edges):"), clue = python.source)
+    assert(!python.source.contains("for 0 in range"), clue = python.source)
+    assert(!python.source.contains("edges - 1 + 1"), clue = python.source)
+  }
+
   private def snapProjectWith(definitions: String): String =
     s"""<project name="t" app="TurtleStitch 2.11, http://www.turtlestitch.org" version="2"><notes></notes><scenes select="1"><scene name="t"><notes></notes><palette><category name="Variables" color="243,118,29,1"/></palette><hidden></hidden><headers></headers><code></code><blocks>$definitions</blocks><primitives></primitives><stage name="Stage" width="480" height="360"><blocks></blocks><scripts></scripts><sprites select="1"><sprite name="Sprite" idx="1"><blocks></blocks><variables></variables><scripts></scripts></sprite></sprites></stage><variables></variables></scene></scenes></project>"""
 }

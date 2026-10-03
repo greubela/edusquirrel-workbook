@@ -34,7 +34,8 @@ object SnapTurtleStagePanel {
   def chrome(
       flushPending: () => Unit,
       runOnStage: Canvas => Unit,
-      stopRun: () => Unit
+      stopRun: () => Unit,
+      belowStage: L.Node = emptyNode
   ): L.Element = {
     val laminarHelper = LaminarRenderHelper.singleton
     var stageCanvas: Option[Canvas] = None
@@ -70,7 +71,8 @@ object SnapTurtleStagePanel {
             stageCanvas = None
           }
         )
-      )
+      ),
+      belowStage
     )
   }
 }
