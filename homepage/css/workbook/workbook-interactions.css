@@ -485,6 +485,47 @@
     max-width: 100%;
     height: auto;
 }
+
+.turtle-expected-preview,
+.prog-ex-stage-output .preview-content svg {
+    display: block;
+    width: 100%;
+    max-width: 32rem;
+    height: auto;
+    margin-inline: auto;
+    padding: var(--space-sm);
+    box-sizing: border-box;
+    overflow: visible;
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-base);
+    box-shadow: 0 0.25rem 0.9rem rgb(24 39 75 / 10%);
+}
+
+.turtle-expected-line {
+    stroke: #76a9ea;
+    cursor: pointer;
+    transition: stroke 160ms ease, stroke-width 160ms ease, filter 160ms ease;
+}
+
+.turtle-expected-line:hover {
+    stroke: #174f91;
+    stroke-width: 3;
+    filter: drop-shadow(0 1px 1px rgb(23 79 145 / 24%));
+}
+
+.turtle-expected-turn-arc {
+    stroke: #e08b28;
+    stroke-width: 3;
+    stroke-linecap: round;
+    cursor: help;
+    transition: stroke 160ms ease, stroke-width 160ms ease;
+}
+
+.turtle-expected-turn-arc:hover {
+    stroke: #8b4700;
+    stroke-width: 4;
+}
 .be-program-snap-fullscreen__turtle {
     flex: 0 0 30%;
     min-width: 16rem;
