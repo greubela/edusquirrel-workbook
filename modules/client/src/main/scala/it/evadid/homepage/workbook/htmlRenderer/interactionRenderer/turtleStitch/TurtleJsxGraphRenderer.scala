@@ -9,15 +9,22 @@ import upickle.default.*
 import scala.collection.mutable.ListBuffer
 import scala.scalajs.js
 
-/** A line segment used as the expected result of a turtle exercise. */
-final case class Line[T: Fractional](start: Point[T], end: Point[T])
-
 /** Renders and compares a turtle trace on a JSXGraph board.
  *
  * JSXGraph must be loaded by the host page (`JXG` must be available globally).
  * Coordinates use turtle/JSXGraph coordinates (positive y points upwards).
  */
 object TurtleJsxGraphRenderer:
+
+
+  private sealed trait ObjectsToRender {
+
+  }
+
+  /** A line segment used as the expected result of a turtle exercise. */
+  final case class LineToRender[T: Fractional](start: Point[T], end: Point[T])
+
+
   enum LineResult derives ReadWriter:
     case Correct, Unexpected, Missing
 
@@ -45,7 +52,7 @@ object TurtleJsxGraphRenderer:
   /** Builds a testable rendering model and performs a one-to-one, direction-independent
    * comparison of actual and expected segments.
    */
-  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: List[Line[T]], tolerance: Double = 1e-7): Scene =
+  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]], tolerance: Double = 1e-7): Scene =
     val numeric = summon[Fractional[T]]
     var position = Point(0.0, 0.0)
     var heading = 0.0
@@ -102,7 +109,7 @@ object TurtleJsxGraphRenderer:
         case _ => ()
     }
 
-    val unmatchedExpected = ListBuffer.from(expected.map(line => Line(line.start.toDouble, line.end.toDouble)))
+    val unmatchedExpected = ListBuffer.from(expected.map(line => LineToRender(line.start.toDouble, line.end.toDouble)))
     val rendered = movements.map { movement =>
       val matchIndex = unmatchedExpected.indexWhere(line => sameLine(movement.start, movement.end, line.start, line.end, tolerance))
       val result = if matchIndex >= 0 then {
@@ -114,7 +121,7 @@ object TurtleJsxGraphRenderer:
     Scene((rendered ++ missing).toList, angles.toList)
 
   /** Creates the JSXGraph board inside `container` and returns the board object. */
-  def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: List[Line[T]]): js.Dynamic =
+  def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): js.Dynamic =
     val scene = buildScene(program, expected)
     val points = scene.lines.flatMap(line => List(line.start, line.end))
     val bounds = boundingBox(points)
