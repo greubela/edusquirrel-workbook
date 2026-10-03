@@ -20,7 +20,7 @@ object SvgLaminarRenderer extends SvgRenderer[Double, ReactiveSvgElement[SVGSVGE
       svg.fill := (if shape.elementConfig.fillEnabled then shape.elementConfig.colorFill.toWebColor.webStyleHexString else "none"),
       svg.stroke := shape.elementConfig.colorStroke.toWebColor.webStyleHexString,
       svg.strokeWidth := shape.elementConfig.strokeWidth.toString,
-      onClick --> { event => shape.elementConfig.onMouseClicked(event.button == 1) },
+      onClick --> { event => shape.elementConfig.onMouseClicked(event.button == 0) },
       renderElementAsSvg(logger, shape)
     )
   }
@@ -44,10 +44,11 @@ object SvgLaminarRenderer extends SvgRenderer[Double, ReactiveSvgElement[SVGSVGE
             svg.text(
               svg.x := "" + shape.myBounds.startPoint.x,
               svg.y := "" + shape.myBounds.startPoint.y,
-              svg.fill := elementConfig.colorFill.toWebColor.webStyleHexString,
+              svg.fill := elementConfig.colorFont.toWebColor.webStyleHexString,
               svg.stroke := elementConfig.colorStroke.toWebColor.webStyleHexString,
               svg.fontSize := elementConfig.font.sizeInPx + "px",
               svg.fontFamily := elementConfig.font.name,
+              svg.dominantBaseline := "hanging",
               text
             )
           }
@@ -62,10 +63,7 @@ object SvgLaminarRenderer extends SvgRenderer[Double, ReactiveSvgElement[SVGSVGE
   }
 
   override def render(logger: Logger, input: AppShapeElement[Double]): ReactiveSvgElement[SVGSVGElement] = {
-    logger.logWarn("SvgLaminarRenderer::not correctly implemented yet!")
     val rendered: AppShapeElement.AppElementRendered[Double] = input.renderWithMinimumDimension(AppShapeRenderingConfig.defaultDouble)
-    val res = renderSvgImage(logger, rendered)
-    println("res: " + res.ref)
-    res
+    renderSvgImage(logger, rendered)
   }
 }
