@@ -1,59 +1,61 @@
 package it.evadid.vm.controlflow
 
-sealed trait ControlFlowType() {
+import upickle.default.*
 
- // def calculateChildrenControlFlowStack(myStack: ControlFlowInfo): List[ControlFlowType]
+sealed trait ControlFlowType() derives ReadWriter {
+
+  // def calculateChildrenControlFlowStack(myStack: ControlFlowInfo): List[ControlFlowType]
 
 }
 
 object ControlFlowType {
 
-  object ControlFlowStart extends ControlFlowType {
-   // override def calculateChildrenControlFlowStack(myStack: ControlFlowInfo): List[ControlFlowType] = List()
+  case class ControlFlowStart() extends ControlFlowType {
+    // override def calculateChildrenControlFlowStack(myStack: ControlFlowInfo): List[ControlFlowType] = List()
   }
 
-  trait ControlFlowContinuation extends ControlFlowType {
+  sealed trait ControlFlowContinuation extends ControlFlowType derives ReadWriter {
     //override def calculateChildrenControlFlowStack(myStack: ControlFlowInfo): List[ControlFlowType] = myStack.controlFlowParentElements
   }
 
-  object ControlFlowJump extends ControlFlowType
+  case class ControlFlowJump() extends ControlFlowType derives ReadWriter
 
-  object ControlFlowDown extends ControlFlowContinuation
+  case class ControlFlowDown() extends ControlFlowContinuation derives ReadWriter
 
-  object ControlFlowUp extends ControlFlowContinuation
+  case class ControlFlowUp() extends ControlFlowContinuation derives ReadWriter
 
   // changing templates
-  trait ControlFlowChangingType extends ControlFlowType
+  sealed trait ControlFlowChangingType extends ControlFlowType derives ReadWriter
 
-  sealed trait ControlFlowBranchingType(additionalPaths: List[ControlFlowType]) extends ControlFlowChangingType {
-  //  override def calculateChildrenControlFlowStack(myStack: ControlFlowInfo): List[ControlFlowType] = myStack.controlFlowParentElements ++ additionalPaths
+  sealed trait ControlFlowBranchingType(additionalPaths: List[ControlFlowType]) extends ControlFlowChangingType derives ReadWriter {
+    //  override def calculateChildrenControlFlowStack(myStack: ControlFlowInfo): List[ControlFlowType] = myStack.controlFlowParentElements ++ additionalPaths
   }
 
-  sealed trait ControlFlowUnionType() extends ControlFlowChangingType {
-   // override def calculateChildrenControlFlowStack(myStack: ControlFlowInfo): List[ControlFlowType] = myStack.controlFlowParentElements.reverse.tail.reverse
+  sealed trait ControlFlowUnionType() extends ControlFlowChangingType derives ReadWriter {
+    // override def calculateChildrenControlFlowStack(myStack: ControlFlowInfo): List[ControlFlowType] = myStack.controlFlowParentElements.reverse.tail.reverse
   }
 
-  sealed trait ControlFlowCrossType(replaceLastWith: ControlFlowType) extends ControlFlowChangingType {
+  sealed trait ControlFlowCrossType(replaceLastWith: ControlFlowType) extends ControlFlowChangingType derives ReadWriter {
     /*override def calculateChildrenControlFlowStack(myStack: ControlFlowInfo): List[ControlFlowType] = {
       myStack.controlFlowParentElements.reverse.tail.reverse ++ List(replaceLastWith)
     }*/
   }
 
   /* If/Else */
-  sealed trait IfElseType extends ControlFlowType
+  sealed trait IfElseType extends ControlFlowType derives ReadWriter
 
-  object IfElseBranch extends IfElseType, ControlFlowBranchingType(List(ControlFlowDown))
+  case class IfElseBranch() extends IfElseType, ControlFlowBranchingType(List(ControlFlowDown()))
 
-  case object IfElseCross extends IfElseType, ControlFlowCrossType(ControlFlowDown)
+  case class IfElseCross() extends IfElseType, ControlFlowCrossType(ControlFlowDown())
 
-  case object IfElseUnion extends IfElseType, ControlFlowUnionType
+  case class IfElseUnion() extends IfElseType, ControlFlowUnionType
 
   /* Repeat/Nr */
 
-  sealed trait RepeatType extends ControlFlowType, ControlFlowChangingType
+  sealed trait RepeatType extends ControlFlowType, ControlFlowChangingType derives ReadWriter
 
-  case object RepeatBranch extends RepeatType, ControlFlowBranchingType(List(ControlFlowUp))
+  case class RepeatBranch() extends RepeatType, ControlFlowBranchingType(List(ControlFlowUp()))
 
-  case object RepeatUnion extends RepeatType, ControlFlowUnionType
+  case class RepeatUnion() extends RepeatType, ControlFlowUnionType
 
 }

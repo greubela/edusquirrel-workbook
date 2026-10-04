@@ -1,13 +1,54 @@
 package it.evadid.vm.code.abstractions
 
 import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreeImpl
-import it.evadid.vm.code.controlStructures.BeSequence
+import it.evadid.vm.code.controlStructures.*
+import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
+import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
+import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.tree.*
+import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.io.BeExpressionStructureInfo
 import it.evadid.vm.simulation.*
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
 import it.evadid.vm.types.BeScope.GlobalScope
+import upickle.default.*
+
+object BeExpression {
+
+  val pass: BeSequence = BeSequence.optionalBody(List())
+
+  private[vm] given ReadWriter[BeDefineFunction] = macroRW
+
+  private[vm] given ReadWriter[BeDefineClass] = macroRW
+
+  private[vm] given ReadWriter[BeDefineVariable] = macroRW
+
+
+  given rw: ReadWriter[BeExpression] = ReadWriter.merge(
+    summon[ReadWriter[BeFor]],
+    summon[ReadWriter[BeIfElse]],
+    summon[ReadWriter[BeRepeatNr]],
+
+    summon[ReadWriter[BeSequence]],
+    summon[ReadWriter[BeWhile]],
+
+    summon[ReadWriter[BeExpressionUnparsable]],
+    summon[ReadWriter[BeExpressionUnsupported]],
+    summon[ReadWriter[BeSingleLineComment]],
+
+
+    summon[ReadWriter[BeReturn]],
+    summon[ReadWriter[BeStartProgram]],
+
+    summon[ReadWriter[BeAssignVariable]],
+    summon[ReadWriter[BeFunctionCall]],
+    summon[ReadWriter[BeUseValue]],
+  )
+
+
+}
+
 
 trait BeExpression {
 
@@ -85,10 +126,3 @@ trait BeExpression {
 
 }
 
-object BeExpression {
-
-  val pass: BeSequence = BeSequence.optionalBody(List())
-
-  //val noOp: BeSequence = BeSequence.optionalBody(List())
-
-}

@@ -1,16 +1,47 @@
 package it.evadid.workbook.interaction.sync.destination
 
+import it.evadid.core.util.io.Serializer
+import it.evadid.distribution.command.SerializedException
+import it.evadid.util.logging.Logger
 import it.evadid.util.logging.LoggingLevel.{INFO, WARN}
 import it.evadid.util.logging.derived.SyncLogger
+import it.evadid.workbook.interaction.sync.destination.SyncDestination.SyncDestinationForType
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.*
 
+
 trait SyncDestinationRaw extends SyncDestination {
+
+
+  def getSyncDestinationForType[T](logger: SyncLogger, usingKey: String, serializer: Serializer[T]) = new SyncDestinationForType[T] {
+
+    override def storeElement(obj: T): Future[Boolean] = {
+      storeToRaw(logger, usingKey, serializer.serialize(obj))
+    }
+
+    override def readElement: Future[T] = {
+      readRaw(logger, usingKey).map(strRes => {
+        val res = serializer.tryDeserializeAll(List(strRes))
+        if (res.inputAfterOperation.nonEmpty) res.inputAfterOperation.head
+        else {
+          throw SerializedException(s"${SyncDestinationRaw.this.syncPrefix} read key '${res}' but could not parse:\n${strRes}'")
+        }
+      })
+    }
+
+  }
+
 
   protected given ExecutionContext = ExecutionContext.global
 
-  protected def readRaw(key: String): Future[String] = readAllRaw().map(resMap => resMap.toList.filter(_._1 == key).head._2)
+  protected def readRaw(key: String): Future[String] = {
+    readAllRaw().map(resMap => {
+      val matching = resMap.toList.filter(_._1 == key)
+      if (matching.isEmpty) throw SerializedException(s"${syncPrefix} Read was successfull, but element '${key}' not found!")
+      else matching.head._2
+    })
+  }
 
   protected def readAllRaw(): Future[Map[String, String]]
 

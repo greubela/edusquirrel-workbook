@@ -16,7 +16,7 @@ import scala.util.Random
 
 object HomepageDefaults {
 
-  private val localIndexStorage: SyncInformation = SyncInformation(LocalIndexedDbStorageSync.instanceForVariables, SYNC_LAST_AND_MAJOR, SyncFormatter.RichInteractionVariableFormatter())
+  private val localIndexStorage: SyncInformation = SyncInformation(LocalIndexedDbStorageSync.instanceForHistory, SYNC_LAST_AND_MAJOR, SyncFormatter.RichInteractionVariableFormatter())
 
   val useDefaultLocalSyncLocations: List[SyncInformation] = List(localIndexStorage)
 

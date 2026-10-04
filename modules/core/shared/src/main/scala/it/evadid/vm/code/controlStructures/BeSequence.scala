@@ -8,10 +8,10 @@ import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
 import it.evadid.vm.types.BeChildRole.ExpressionInSequence
 import it.evadid.vm.types.BeScope.InSequenceScope
+import upickle.default.*
+case class BeSequenceInfo(mustEvaluateTo: Option[BeDataType], maxBodyElements: Option[Int] = None)derives ReadWriter
 
-case class BeSequenceInfo(mustEvaluateTo: Option[BeDataType], maxBodyElements: Option[Int] = None)
-
-case class BeSequence(body: Seq[BeExpression], sequenceInfo: BeSequenceInfo) extends BeControlStructure {
+case class BeSequence(body: Seq[BeExpression], sequenceInfo: BeSequenceInfo) extends BeControlStructure derives ReadWriter{
 
   def allPossibleBodies: Seq[BeExpression] = body
 

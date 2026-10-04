@@ -4,8 +4,8 @@ import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.controlflow.ControlFlowType
 import it.evadid.vm.io.BeSegmentedCodeElement.BeSegment
 import it.evadid.vm.types.{BeChildInfo, BeDataType}
-
-sealed trait BeExpressionNode {
+import upickle.default.*
+sealed trait BeExpressionNode derives ReadWriter{
 
   def childInfo: BeChildInfo
 

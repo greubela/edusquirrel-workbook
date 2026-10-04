@@ -1,13 +1,14 @@
 package it.evadid.vm.types
 
 import it.evadid.core.datastructures.language.AppLanguage
-import scala.util.Try
 
+import scala.util.Try
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.code.defining.BeDefineVariable
+import upickle.ReadWriter
 
-sealed trait BeDataValue {
+sealed trait BeDataValue derives ReadWriter{
 
   def currentType: BeDataType
   

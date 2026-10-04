@@ -10,7 +10,7 @@ import it.evadid.distribution.commandTypes.SQLCommands
 import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.util.logging.derived.SyncLogger
-import it.evadid.workbook.interaction.sync.destination.{SyncDestination, SyncDestinationHistory, SyncDestinationRaw}
+import it.evadid.workbook.interaction.sync.destination.*
 import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
 

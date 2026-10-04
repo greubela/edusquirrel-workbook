@@ -18,7 +18,7 @@ sealed trait LanguageMap[T <: AppLanguage]() derives ReadWriter {
   }
 
   def withFallback(other: LanguageMap[T]): LanguageMap[T] = LanguageMap.baseMapWithFallback(this, other)
-
+  
 }
 
 object LanguageMap {

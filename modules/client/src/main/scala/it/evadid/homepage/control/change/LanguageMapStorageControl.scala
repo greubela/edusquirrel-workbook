@@ -1,42 +1,91 @@
 package it.evadid.homepage.control.change
 
 import it.evadid.core.datastructures.language.AppLanguage.{Danish, German, HumanLanguage}
-import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
+import it.evadid.core.datastructures.language.control.LanguageMapStorage
 import it.evadid.core.datastructures.language.serialization.LanguageMapInputSource.{EvaDirectorySource, LanguageMapFileBasedSourceInfo}
 import it.evadid.core.datastructures.language.serialization.abstractions.ParsedTriples
 import it.evadid.core.datastructures.language.serialization.{LanguageMapCollectionSource, LanguageMapInputSource, LanguageMapSourceFileBased}
-import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap, LanguageMapContentId}
-import it.evadid.core.datastructures.state.observable.ObservableValue
+import it.evadid.homepage.control.change.LanguageMapStorageControl.STARTUP_STRATEGY
+import it.evadid.homepage.control.change.LanguageMapStorageControl.STARTUP_STRATEGY.CONTINUE_AFTER_LOCAL_CACHE_SUCCESS
 import it.evadid.homepage.control.model.FullInfo
+import it.evadid.homepage.workbook.syncDestination.LocalIndexedDbStorageSync
 import it.evadid.util.logging.Logger
+import it.evadid.util.logging.LoggingLevel.WARN
+import it.evadid.util.logging.derived.SyncLogger
+import it.evadid.workbook.interaction.sync.destination.SyncDestination.SyncDestinationForType
+import upickle.default.*
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
+
+object LanguageMapStorageControl {
+
+  enum STARTUP_STRATEGY derives ReadWriter {
+    case CONTINUE_IMMEDIATELY
+    case CONTINUE_AFTER_LOCAL_CACHE_SUCCESS
+    case CONTINUE_AFTER_FULL_LOAD
+  }
+
+
+}
 
 case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: Logger, ec: ExecutionContext) {
 
   given ExecutionContext = ec
 
+  val syncLogger: SyncLogger = fullInfo.loggerSystemInfo.syncControlLogger
 
-  /*
-  loadedTriples
+  private lazy val localCache: SyncDestinationForType[LanguageMapStorage] = {
+    LocalIndexedDbStorageSync.instanceForCaching.getSyncDestinationForType(syncLogger, "languageMapStore", LanguageMapStorage.serializerMain)
+  }
 
 
-  def langMapIdResolver(forLanguageObservable: ObservableValue[HumanLanguage]): LanguageMapIdResolver = new LanguageMapIdResolver(forLanguageObservable) {
-    override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[AppLanguage.HumanLanguage]] = {
-      val res: Promise[LanguageMap[AppLanguage.HumanLanguage]] = Promise()
-      languageMapObservable(id).addObserver((onNextValue: Option[LanguageMap[HumanLanguage]]) => if (onNextValue.isDefined) res.success(onNextValue.get))
-      res.future
+  def ensureStartup(startupStrategy: STARTUP_STRATEGY): Future[?] = {
+
+    val promise = Promise[Unit]()
+
+    def readLocal: Future[LanguageMapStorage] = localCache.readElement
+
+    def readRemote: Future[?] = ensureDefaultLanguageSourcesLoaded()
+
+    readLocal.transformWith {
+      case Success(store) => {
+        if (store.parsedTriples.size > 0) {
+          addTriplesAndStoreToCache(Set(), store.parsedTriples)
+          if (startupStrategy == CONTINUE_AFTER_LOCAL_CACHE_SUCCESS) promise.success(())
+        }
+        readRemote
+      }
+      case Failure(err) => {
+        syncLogger.logException("Ignored cached version of LanguageMapStorage!", err, Some(false), WARN)
+        readRemote
+      }
+    }.onComplete {
+      case Success(_) => {
+        if(!promise.isCompleted) promise.success( () )
+      }
+      case Failure(err) => {
+        syncLogger.logException("Could not read remote version of LanguageMapStorage!", err, Some(false), WARN)
+        promise.failure(err)
+      }
     }
-  }*/
+
+    promise.future
+  }
+
+  private def addTriplesAndStoreToCache(loadedSources: Set[LanguageMapInputSource], loadedTriples: ParsedTriples): Unit = fullInfo.synchronized {
+    fullInfo.homepageInfoState.update(curInfo => curInfo.copy(
+      languageMapStore = curInfo.languageMapStore.withLoadedTriples(contentControlLogger, loadedSources, loadedTriples)
+    ))
+  }
 
   def ensureCachedLanguageSourcesLoaded(): Future[?] = {
-    
-    // todo 
-Future.successful( () )
+
+    // todo
+    Future.successful(())
   }
-  
-  def ensureDefaultLanguageSourcesLoaded(): Future[?] = {
+
+  private def ensureDefaultLanguageSourcesLoaded(): Future[?] = {
     val loadLanguageMapDirs: Set[String] = Set(
       "basic", "login", "entitynames", "turtlestitch", "blockeditor", "embroideryworkbook", "testworkbook", "plantworkshop", "prompts", "compressionworkbook"
     )
@@ -59,11 +108,6 @@ Future.successful( () )
     ensureLanguageSourcesLoaded(List(source))
   }
 
-  def addTriples(loadedSources: Set[LanguageMapInputSource], loadedTriples: ParsedTriples): Unit = fullInfo.synchronized {
-    fullInfo.homepageInfoState.update(curInfo => curInfo.copy(
-      languageMapStore = curInfo.languageMapStore.withLoadedTriples(contentControlLogger, loadedSources, loadedTriples)
-    ))
-  }
 
   def ensureLanguageSourcesLoaded(newSources: IterableOnce[LanguageMapInputSource]): Future[?] = {
     val loadSources = newSources.iterator.toSet.diff(fullInfo.homepageInfoNow().languageMapStore.loadedSources)
@@ -71,7 +115,7 @@ Future.successful( () )
     contentControlLogger.logInfo(s"Fetching ${loadSources} / ${newSources} (other did already exist)")
     LanguageMapCollectionSource(loadSources, ec).loadAllTriples(contentControlLogger).onComplete {
       case Success(triples) => {
-        addTriples(loadSources, triples)
+        addTriplesAndStoreToCache(loadSources, triples)
         resPromise.success(())
       }
       case Failure(err) => {
@@ -81,8 +125,6 @@ Future.successful( () )
     }
     resPromise.future
   }
-
-
 
 
 }
