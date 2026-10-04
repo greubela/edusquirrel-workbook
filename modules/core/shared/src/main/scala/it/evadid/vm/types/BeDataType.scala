@@ -29,7 +29,7 @@ object BeDataType {
   given rw: ReadWriter[BeDataType] = macroRW
 
   given rwUnion: ReadWriter[BeUnionType] = macroRW
-  
+
   sealed trait BeUnionType extends BeDataType {
 
   }
