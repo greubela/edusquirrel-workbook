@@ -26,6 +26,7 @@ object LanguageMapStorageControl {
     case CONTINUE_AFTER_FULL_LOAD
   }
 
+
 }
 
 case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: Logger, ec: ExecutionContext) {
@@ -37,6 +38,7 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
   private lazy val localCache: SyncDestinationForType[LanguageMapStorage] = {
     LocalIndexedDbStorageSync.instanceForCaching.getSyncDestinationForType(syncLogger, "languageMapStore", LanguageMapStorage.serializerMain)
   }
+
 
   def ensureStartup(startupStrategy: STARTUP_STRATEGY): Future[?] = {
 
@@ -51,8 +53,6 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
         if (store.parsedTriples.size > 0) {
           addTriplesAndStoreToCache(Set(), store.parsedTriples)
           if (startupStrategy == CONTINUE_AFTER_LOCAL_CACHE_SUCCESS) promise.success(())
-        } else {
-          syncLogger.logWarn("Read Store but was empty (0 triples)!")
         }
         readRemote
       }
@@ -62,7 +62,7 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
       }
     }.onComplete {
       case Success(_) => {
-        if (!promise.isCompleted) promise.success(())
+        if(!promise.isCompleted) promise.success( () )
       }
       case Failure(err) => {
         syncLogger.logException("Could not read remote version of LanguageMapStorage!", err, Some(false), WARN)
@@ -75,12 +75,14 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
 
   private def addTriplesAndStoreToCache(loadedSources: Set[LanguageMapInputSource], loadedTriples: ParsedTriples): Unit = fullInfo.synchronized {
     fullInfo.homepageInfoState.update(curInfo => curInfo.copy(
-      languageMapStore = {
-        val newStorage = curInfo.languageMapStore.withLoadedTriples(contentControlLogger, loadedSources, loadedTriples)
-        localCache.storeElement(newStorage)
-        newStorage
-      }
+      languageMapStore = curInfo.languageMapStore.withLoadedTriples(contentControlLogger, loadedSources, loadedTriples)
     ))
+  }
+
+  def ensureCachedLanguageSourcesLoaded(): Future[?] = {
+
+    // todo
+    Future.successful(())
   }
 
   private def ensureDefaultLanguageSourcesLoaded(): Future[?] = {
