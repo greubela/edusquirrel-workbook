@@ -10,9 +10,10 @@ import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported
 import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleVmBindings as V}
+import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleVmBindings as V, JavaTurtleVmExpressions as X}
+import it.evadid.vm.simulation.{BeSimulatorConfig, BeSimulatorState, BeVirtualMachineState}
 import it.evadid.vm.simulation.java.{JavaInt32, JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
-import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
+import it.evadid.vm.types.{BeChildRole, BeDataType, BeDataValueLiteral, BeScope, BeUseValueReference}
 import munit.FunSuite
 
 class BeExpressionLanguageSupportTest extends FunSuite {
@@ -782,5 +783,222 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     val methods = V.bind(javaProgram("", (0 until 127).map(index => s"static void m$index() {}").mkString))
     assertEquals(methods.methods.size, 128)
     assertEquals(methods.methods.map(_.name.universalInterpretation()).distinct.size, 128)
+  }
+
+  test("Java VM expressions retain typed literals grouping and bound read children") {
+    val source = javaProgram("int size = (1 + 2) * 3;")
+    val bindings = V.bind(source)
+    val R.Declare(size, Some(initializer)) = source.methods.head.body.statements.head: @unchecked
+    val compiled = X.adapt(bindings, initializer).toOption.get
+    assert(compiled.bindings eq bindings)
+    assertEquals(compiled.expression.staticInformationExpression.staticType, BeDataType.Int)
+    assertEquals(compiled.expression.staticInformationExpression.staticValue, None)
+    compiled.expression.node match {
+      case X.Node.Binary(R.BinaryOperator.Multiply, group, three) =>
+        assertEquals(three.node, X.Node.IntLiteral(3))
+        group.node match {
+          case X.Node.Group(sum) => sum.node match {
+            case X.Node.Binary(R.BinaryOperator.Add, one, two) =>
+              assertEquals(one.node, X.Node.IntLiteral(1))
+              assertEquals(two.node, X.Node.IntLiteral(2))
+            case _ => fail("Missing grouped addition")
+          }
+          case _ => fail("Missing parentheses")
+        }
+        val children = compiled.expression.structureInfo.getChildrenAsReference(BeScope.GlobalScope())
+        assertEquals(children.map(_.childInfo.myRoleInParent), Seq(BeChildRole.FunctionParameter(0), BeChildRole.FunctionParameter(1)))
+        assert(children.head.expr eq group)
+        assert(children(1).expr eq three)
+      case _ => fail("Missing multiplication")
+    }
+    assertEquals(X.evaluate(compiled, _ => fail("Unexpected variable read")), Right(E.Value.IntValue(9)))
+    val read = X.adapt(bindings, R.Read(size)).toOption.get
+    read.expression.node match {
+      case X.Node.Read(variable, reference) =>
+        assertEquals(variable, size)
+        val children = read.expression.structureInfo.getChildrenAsReference(BeScope.GlobalScope())
+        assert(children.head.expr eq reference)
+        reference.value match {
+          case BeUseValueReference(definition) =>
+            assert(definition eq bindings.definition(size).toOption.get)
+            assertEquals(X.evaluate(read, received => {
+              assert(received eq definition)
+              Right(E.Value.IntValue(40))
+            }), Right(E.Value.IntValue(40)))
+          case _ => fail("Missing bound reference")
+        }
+      case _ => fail("Missing variable read")
+    }
+    val flag = X.adapt(bindings, R.BooleanLiteral(true)).toOption.get
+    assertEquals(flag.expression.staticInformationExpression.staticType, BeDataType.Boolean)
+    assertEquals(X.evaluate(flag, _ => fail("Unexpected variable read")), Right(E.Value.BooleanValue(true)))
+    assertEquals(BeDataValueLiteral("1").currentType, BeDataType.Numeric)
+  }
+
+  test("Java VM arithmetic matches an independent integer model") {
+    val bindings = V.bind(javaProgram(""))
+    val modulus = BigInt(1) << 32
+    def wrapped(value: BigInt): Int = {
+      val unsigned = ((value % modulus) + modulus) % modulus
+      (if unsigned > Int.MaxValue then unsigned - modulus else unsigned).toInt
+    }
+    var state = BigInt("13579bdf", 16)
+    def sample(): Int = {
+      state = (state * 1664525 + 1013904223) % modulus
+      wrapped(state)
+    }
+    val edges = Vector(Int.MinValue, Int.MinValue + 1, -1000000000, -65536, -9, -2, -1,
+      0, 1, 2, 9, 65536, 1000000000, Int.MaxValue)
+    val pairs = (for left <- edges; right <- edges yield left -> right) ++ Vector.fill(512)(sample() -> sample())
+    for (left, right) <- pairs; operator <- Seq(R.BinaryOperator.Add, R.BinaryOperator.Subtract,
+      R.BinaryOperator.Multiply, R.BinaryOperator.Divide, R.BinaryOperator.Remainder) do {
+      val compiled = X.adapt(bindings, R.Binary(operator, R.IntLiteral(left), R.IntLiteral(right))).toOption.get
+      val expected = operator match {
+        case R.BinaryOperator.Add => Right(E.Value.IntValue(wrapped(BigInt(left) + BigInt(right))))
+        case R.BinaryOperator.Subtract => Right(E.Value.IntValue(wrapped(BigInt(left) - BigInt(right))))
+        case R.BinaryOperator.Multiply => Right(E.Value.IntValue(wrapped(BigInt(left) * BigInt(right))))
+        case R.BinaryOperator.Divide | R.BinaryOperator.Remainder if right == 0 => Left(E.Failure.DivisionByZero)
+        case R.BinaryOperator.Divide => Right(E.Value.IntValue(wrapped(BigInt(left) / BigInt(right))))
+        case R.BinaryOperator.Remainder => Right(E.Value.IntValue(wrapped(BigInt(left) % BigInt(right))))
+        case _ => fail("Unexpected arithmetic operator")
+      }
+      assertEquals(X.evaluate(compiled, _ => fail("Unexpected variable read")), expected, clue = (operator, left, right))
+    }
+    assertEquals(pairs.size, 708)
+    for (operator, input, expected) <- Seq((R.UnaryOperator.Plus, 9, 9),
+      (R.UnaryOperator.Negate, Int.MinValue, Int.MinValue), (R.UnaryOperator.Negate, 9, -9)) do {
+      val compiled = X.adapt(bindings, R.Unary(operator, R.IntLiteral(input))).toOption.get
+      assertEquals(X.evaluate(compiled, _ => fail("Unexpected variable read")), Right(E.Value.IntValue(expected)))
+    }
+  }
+
+  test("Java VM comparisons preserve strict int and boolean semantics") {
+    val bindings = V.bind(javaProgram(""))
+    for (operator, expected) <- Seq(R.BinaryOperator.Less -> true, R.BinaryOperator.LessEqual -> true,
+      R.BinaryOperator.Greater -> false, R.BinaryOperator.GreaterEqual -> false,
+      R.BinaryOperator.Equal -> false, R.BinaryOperator.NotEqual -> true) do {
+      val compiled = X.adapt(bindings, R.Binary(operator, R.IntLiteral(Int.MinValue), R.IntLiteral(Int.MaxValue))).toOption.get
+      assertEquals(compiled.expression.staticInformationExpression.staticType, BeDataType.Boolean)
+      assertEquals(X.evaluate(compiled, _ => fail("Unexpected variable read")), Right(E.Value.BooleanValue(expected)))
+    }
+    for a <- Seq(false, true); b <- Seq(false, true); operator <- Seq(R.BinaryOperator.Equal, R.BinaryOperator.NotEqual) do {
+      val compiled = X.adapt(bindings, R.Binary(operator, R.BooleanLiteral(a), R.BooleanLiteral(b))).toOption.get
+      val expected = if operator == R.BinaryOperator.Equal then a == b else a != b
+      assertEquals(X.evaluate(compiled, _ => fail("Unexpected variable read")), Right(E.Value.BooleanValue(expected)))
+    }
+    val not = X.adapt(bindings, R.Unary(R.UnaryOperator.Not, R.BooleanLiteral(true))).toOption.get
+    assertEquals(X.evaluate(not, _ => fail("Unexpected variable read")), Right(E.Value.BooleanValue(false)))
+  }
+
+  test("Java VM short circuit and arithmetic failures preserve variable access order") {
+    val bindings = V.bind(javaProgram("", "static void draw(boolean flag, int a, int b, int c) {}"))
+    val variables = bindings.source.methods.head.parameters
+    val byDefinition = variables.map(variable => bindings.definition(variable).toOption.get -> variable).toMap
+    val trace = scala.collection.mutable.ArrayBuffer.empty[String]
+    def read(values: Vector[E.Value]): X.Reader = definition => {
+      val variable = byDefinition(definition)
+      assert(definition eq bindings.definition(variable).toOption.get)
+      trace += variable.name
+      Right(values(variable.id.index))
+    }
+    val flag = R.Read(variables(0))
+    val division = R.Binary(R.BinaryOperator.Divide, R.Read(variables(1)), R.Read(variables(2)))
+    val positive = R.Binary(R.BinaryOperator.Greater, division, R.IntLiteral(0))
+    for operator <- Seq(R.ShortCircuitOperator.And, R.ShortCircuitOperator.Or); left <- Seq(false, true) do {
+      trace.clear()
+      val compiled = X.adapt(bindings, R.ShortCircuit(operator, flag, R.Group(positive))).toOption.get
+      val skipped = if operator == R.ShortCircuitOperator.And then !left else left
+      val expected = if skipped then Right(E.Value.BooleanValue(left)) else Left(E.Failure.DivisionByZero)
+      assertEquals(X.evaluate(compiled, read(Vector(E.Value.BooleanValue(left), E.Value.IntValue(1),
+        E.Value.IntValue(0), E.Value.IntValue(10)))), expected)
+      assertEquals(trace.toVector, if skipped then Vector("flag") else Vector("flag", "a", "b"))
+    }
+    trace.clear()
+    val addition = X.adapt(bindings, R.Binary(R.BinaryOperator.Add, division, R.Read(variables(3)))).toOption.get
+    assertEquals(X.evaluate(addition, read(Vector(E.Value.BooleanValue(true), E.Value.IntValue(1),
+      E.Value.IntValue(0), E.Value.IntValue(10)))), Left(E.Failure.DivisionByZero))
+    assertEquals(trace.toVector, Vector("a", "b"))
+    trace.clear()
+    assertEquals(X.evaluate(addition, read(Vector(E.Value.BooleanValue(true), E.Value.IntValue(9),
+      E.Value.IntValue(2), E.Value.IntValue(10)))), Right(E.Value.IntValue(14)))
+    assertEquals(trace.toVector, Vector("a", "b", "c"))
+  }
+
+  test("Java VM adaptation checks invalid operands and bindings even in skipped branches") {
+    val bindings = V.bind(javaProgram("int value = 1;"))
+    val variable = bindings.variables.find(_.variable.name == "value").get.variable
+    for bad <- Seq(R.Binary(R.BinaryOperator.Add, R.IntLiteral(1), R.BooleanLiteral(true)),
+      R.Binary(R.BinaryOperator.Equal, R.BooleanLiteral(false), R.IntLiteral(0)),
+      R.Binary(R.BinaryOperator.Less, R.BooleanLiteral(false), R.BooleanLiteral(true)),
+      R.Unary(R.UnaryOperator.Not, R.IntLiteral(1)), R.Unary(R.UnaryOperator.Plus, R.BooleanLiteral(true)),
+      R.ShortCircuit(R.ShortCircuitOperator.And, R.BooleanLiteral(false), R.IntLiteral(1))) do
+      assertEquals(X.adapt(bindings, bad).swap.toOption.get.problem, JavaTurtleSource.Problem.TypeMismatch)
+    for changed <- Seq(variable.copy(name = "other"), variable.copy(valueType = R.ValueType.BooleanValue),
+      variable.copy(id = R.VariableId(R.MethodId(999), variable.id.index))) do {
+      assertEquals(X.adapt(bindings, R.Read(changed)).swap.toOption.get.problem, JavaTurtleSource.Problem.UnknownVariable)
+      val skipped = R.ShortCircuit(R.ShortCircuitOperator.Or, R.BooleanLiteral(true), R.Read(changed))
+      assertEquals(X.adapt(bindings, skipped).swap.toOption.get.problem, JavaTurtleSource.Problem.UnknownVariable)
+    }
+    val args = bindings.entryPoint.parameters.head.variable
+    assertEquals(X.adapt(bindings, R.Read(args)).swap.toOption.get.problem, JavaTurtleSource.Problem.UnsupportedType)
+  }
+
+  test("Java VM adaptation enforces exact expression size and depth limits before recursion") {
+    val bindings = V.bind(javaProgram(""))
+    def groups(count: Int): R.Expression = (0 until count).foldLeft[R.Expression](R.IntLiteral(1))((inner, _) => R.Group(inner))
+    assert(X.adapt(bindings, groups(63)).isRight)
+    assertEquals(X.adapt(bindings, groups(64)).swap.toOption.get.problem, JavaTurtleSource.Problem.InputLimit)
+    assertEquals(X.adapt(bindings, groups(5000)).swap.toOption.get.problem, JavaTurtleSource.Problem.InputLimit)
+    def balanced(levels: Int): R.Expression =
+      if levels == 0 then R.IntLiteral(1) else {
+        val child = balanced(levels - 1)
+        R.Binary(R.BinaryOperator.Add, child, child)
+      }
+    val exact = R.Group(balanced(11))
+    val allowed = X.adapt(bindings, exact).toOption.get
+    assertEquals(X.evaluate(allowed, _ => fail("Unexpected variable read"), E.Limits(maxNodes = 4096)), Right(E.Value.IntValue(2048)))
+    assertEquals(X.adapt(bindings, R.Group(exact)).swap.toOption.get.problem, JavaTurtleSource.Problem.InputLimit)
+    val skipped = R.ShortCircuit(R.ShortCircuitOperator.Or, R.BooleanLiteral(true),
+      R.Binary(R.BinaryOperator.Greater, groups(5000), R.IntLiteral(0)))
+    assertEquals(X.adapt(bindings, skipped).swap.toOption.get.problem, JavaTurtleSource.Problem.InputLimit)
+  }
+
+  test("Java VM evaluation checks reader types budgets and fresh execution after failure") {
+    val bindings = V.bind(javaProgram("int value = 1;"))
+    val variable = bindings.variables.find(_.variable.name == "value").get.variable
+    val expression = X.adapt(bindings, R.Binary(R.BinaryOperator.Add, R.Read(variable), R.Read(variable))).toOption.get
+    var reads = 0
+    val reader: X.Reader = definition => {
+      assert(definition eq bindings.definition(variable).toOption.get)
+      reads += 1
+      Right(E.Value.IntValue(reads))
+    }
+    assertEquals(X.evaluate(expression, reader, E.Limits(maxNodes = 2)), Left(E.Failure.LimitExceeded))
+    assertEquals(reads, 1)
+    reads = 0
+    assertEquals(X.evaluate(expression, reader, E.Limits(maxNodes = 3)), Right(E.Value.IntValue(3)))
+    assertEquals(reads, 2)
+    reads = 0
+    for limits <- Seq(E.Limits(maxDepth = 1), E.Limits(maxNodes = 0), E.Limits(maxDepth = 257)) do
+      assertEquals(X.evaluate(expression, reader, limits), Left(E.Failure.LimitExceeded))
+    assertEquals(reads, 0)
+    assertEquals(X.evaluate(expression, _ => Right(E.Value.BooleanValue(true))), Left(E.Failure.TypeMismatch))
+    assertEquals(X.evaluate(expression, _ => Left(E.Failure.MissingValue(variable.id))), Left(E.Failure.MissingValue(variable.id)))
+    assertEquals(X.evaluate(expression, _ => Left(E.Failure.Cancelled)), Left(E.Failure.Cancelled))
+    assertEquals(X.evaluate(expression, _ => Right(E.Value.IntValue(40))), Right(E.Value.IntValue(80)))
+  }
+
+  test("Java VM nodes reject generic execution and edits without changing existing printers") {
+    val compiled = X.adapt(V.bind(javaProgram("")), R.IntLiteral(1)).toOption.get
+    val expression = compiled.expression
+    assert(expression.structureInfo.withReplacedChildren(Map.empty) eq expression)
+    intercept[UnsupportedOperationException] {
+      expression.structureInfo.withReplacedChildren(Map(BeChildRole.FunctionParameter(0) -> literalTwo))
+    }
+    val state = BeSimulatorState(false, expression, false, Nil, Nil, BeVirtualMachineState.emptyMachineState)
+    intercept[UnsupportedOperationException] { expression.expressionExecutor(BeSimulatorConfig(), state) }
+    for language <- List(Python, Java, Cpp, JavaScript) do
+      intercept[UnsupportedOperationException] { expression.structureInfo.toStringInLanguage(language, English) }
+    assertEquals(literalOne.structureInfo.toStringInLanguage(Python, English), "1")
   }
 }
