@@ -2,7 +2,7 @@ package it.evadid.vm.parsing.java.clean
 
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaType
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure}
+import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure}
 import munit.FunSuite
 
 class JavaParserTest extends FunSuite {
@@ -65,6 +65,12 @@ class JavaParserTest extends FunSuite {
 
   private def semanticSource(body: String): String =
     turtleClass(s"static void run(int distance, boolean flag) { $body } $mainMethod")
+
+  private def resolvedSource(source: String): JavaTurtleResolution.ResolvedSource =
+    JavaTurtleResolution.resolve(checkedSource(source)).fold(problem => fail(s"${problem.message}\n$source"), identity)
+
+  private def resolvedMethod(source: JavaTurtleResolution.ResolvedSource, name: String): JavaTurtleResolution.Method =
+    source.methods.find(_.name == name).getOrElse(fail(s"Missing resolved method: $name"))
 
   test("Java AST nodes expose child nodes for traversal") {
     val target = JavaTarget("values", sliceExpr = Some(JavaLiteral("0", JavaType.JAVA_INTEGER())))
@@ -746,6 +752,241 @@ class JavaParserTest extends FunSuite {
       assertEquals(semanticProblem(turtleClass(s"static void $name() {} $mainMethod")).problem,
         JavaTurtleSource.Problem.UnsupportedStructure, clue = name)
     checkedSource(turtleClass(s"static void wait(int value) {} public static void main(String[] args) { wait(1); }"))
+  }
+
+  test("turtle resolution preserves the full square references and main wrapper") {
+    import JavaTurtleResolution.*
+    val squareId = MethodId(0)
+    val mainId = MethodId(1)
+    val size = Variable(VariableId(squareId, 0), "sideLength", ValueType.IntValue)
+    val i = Variable(VariableId(squareId, 1), "i", ValueType.IntValue)
+    val condition = Binary(BinaryOperator.Less, Read(i), IntLiteral(4))
+    val update = Assign(i, AssignmentOperator.Set, Binary(BinaryOperator.Add, Read(i), IntLiteral(1)))
+    val draw = Block(Vector(Call(CallTarget.Turtle(TurtleCommand.Forward), Vector(Read(size))),
+      Call(CallTarget.Turtle(TurtleCommand.TurnRight), Vector(IntLiteral(90)))))
+    for (body, expected) <- Seq(
+      "for (int i = 0; i < 4; i = i + 1) { Turtle.forward(sideLength); Turtle.turnRight(90); }" ->
+        Block(Vector(For(Block(Vector(Declare(i, Some(IntLiteral(0))))), Some(condition), Block(Vector(update)), draw))),
+      "int i = 0; while (i < 4) { Turtle.forward(sideLength); Turtle.turnRight(90); i = i + 1; }" ->
+        Block(Vector(Declare(i, Some(IntLiteral(0))), While(condition, Block(draw.statements :+ update))))
+    ) do {
+      val source = turtleSource(body)
+      val resolved = resolvedSource(source)
+      assertEquals(resolved.source, source)
+      assertEquals(resolved.className, "SquareProgram")
+      assertEquals(resolved.entryPoint, mainId)
+      assertEquals(resolvedMethod(resolved, "square"), Method(squareId, "square", Vector(size), expected))
+      assertEquals(resolvedMethod(resolved, "main"), Method(mainId, "main",
+        Vector(Variable(VariableId(mainId, 0), "args", ValueType.MainArguments)),
+        Block(Vector(Call(CallTarget.Helper(squareId), Vector(IntLiteral(40)))))))
+    }
+  }
+
+  test("turtle resolution separates sibling and successive loop variable identities") {
+    import JavaTurtleResolution.*
+    val resolved = resolvedSource(semanticSource(
+      "if (flag) { int size = distance; Turtle.forward(size); } else { int size = distance; Turtle.forward(size); } " +
+        "for (int i = 0; i < 2; i = i + 1) { Turtle.turnRight(i); } " +
+        "for (int i = 0; i < 3; i += 1) { Turtle.forward(i); } int i = 40; Turtle.forward(i);"
+    ))
+    val owner = MethodId(0)
+    val distance = Variable(VariableId(owner, 0), "distance", ValueType.IntValue)
+    val flag = Variable(VariableId(owner, 1), "flag", ValueType.BooleanValue)
+    val firstSize = Variable(VariableId(owner, 2), "size", ValueType.IntValue)
+    val secondSize = Variable(VariableId(owner, 3), "size", ValueType.IntValue)
+    val firstI = Variable(VariableId(owner, 4), "i", ValueType.IntValue)
+    val secondI = Variable(VariableId(owner, 5), "i", ValueType.IntValue)
+    val finalI = Variable(VariableId(owner, 6), "i", ValueType.IntValue)
+    def turtle(command: TurtleCommand, variable: Variable): Call = Call(CallTarget.Turtle(command), Vector(Read(variable)))
+    assertEquals(resolvedMethod(resolved, "run"), Method(owner, "run", Vector(distance, flag), Block(Vector(
+      If(Read(flag), Block(Vector(Declare(firstSize, Some(Read(distance))), turtle(TurtleCommand.Forward, firstSize))),
+        Some(Block(Vector(Declare(secondSize, Some(Read(distance))),
+          turtle(TurtleCommand.Forward, secondSize))))),
+      For(Block(Vector(Declare(firstI, Some(IntLiteral(0))))), Some(Binary(BinaryOperator.Less, Read(firstI), IntLiteral(2))),
+        Block(Vector(Assign(firstI, AssignmentOperator.Set, Binary(BinaryOperator.Add, Read(firstI), IntLiteral(1))))),
+        Block(Vector(turtle(TurtleCommand.TurnRight, firstI)))),
+      For(Block(Vector(Declare(secondI, Some(IntLiteral(0))))), Some(Binary(BinaryOperator.Less, Read(secondI), IntLiteral(3))),
+        Block(Vector(Assign(secondI, AssignmentOperator.Add, IntLiteral(1)))), Block(Vector(turtle(TurtleCommand.Forward, secondI)))),
+      Declare(finalI, Some(IntLiteral(40))), turtle(TurtleCommand.Forward, finalI)
+    ))))
+  }
+
+  test("turtle resolution binds forward calls without mixing variable and method namespaces") {
+    import JavaTurtleResolution.*
+    val resolved = resolvedSource(turtleClass(
+      "static void first(int value) { Drawing.second(value); } static void second(int value) { Turtle.forward(value); } " +
+        "public static void main(String[] input) { int second = 40; first(second); Drawing.second(second); second(second); }"
+    ))
+    val first = Variable(VariableId(MethodId(0), 0), "value", ValueType.IntValue)
+    val second = Variable(VariableId(MethodId(1), 0), "value", ValueType.IntValue)
+    val local = Variable(VariableId(MethodId(2), 1), "second", ValueType.IntValue)
+    assertEquals(resolved.methods.map(_.id), Vector(MethodId(0), MethodId(1), MethodId(2)))
+    assertEquals(resolvedMethod(resolved, "first").body, Block(Vector(Call(CallTarget.Helper(MethodId(1)), Vector(Read(first))))))
+    assertEquals(resolvedMethod(resolved, "second").body,
+      Block(Vector(Call(CallTarget.Turtle(TurtleCommand.Forward), Vector(Read(second))))))
+    assertEquals(resolvedMethod(resolved, "main").parameters,
+      Vector(Variable(VariableId(MethodId(2), 0), "input", ValueType.MainArguments)))
+    assertEquals(resolvedMethod(resolved, "main").body, Block(Vector(Declare(local, Some(IntLiteral(40))),
+      Call(CallTarget.Helper(MethodId(0)), Vector(Read(local))), Call(CallTarget.Helper(MethodId(1)), Vector(Read(local))),
+      Call(CallTarget.Helper(MethodId(1)), Vector(Read(local))))))
+    val mainFirst = resolvedSource(turtleClass("public static void main(String[] args) { move(40); } static void move(int value) {}"))
+    assertEquals(mainFirst.entryPoint, MethodId(0))
+    assertEquals(resolvedMethod(mainFirst, "main").body, Block(Vector(Call(CallTarget.Helper(MethodId(1)), Vector(IntLiteral(40))))))
+  }
+
+  test("turtle resolution distinguishes helpers named like facade commands") {
+    import JavaTurtleResolution.*
+    val resolved = resolvedSource(turtleClass(
+      "static void forward(int n) { Turtle.turnRight(n); } public static void main(String[] args) { forward(1); Turtle.forward(2); }"
+    ))
+    assertEquals(resolvedMethod(resolved, "main").body, Block(Vector(
+      Call(CallTarget.Helper(MethodId(0)), Vector(IntLiteral(1))),
+      Call(CallTarget.Turtle(TurtleCommand.Forward), Vector(IntLiteral(2)))
+    )))
+  }
+
+  test("turtle resolution retains grouping control structures return and short-circuit nodes") {
+    import JavaTurtleResolution.*
+    val resolved = resolvedSource(semanticSource(
+      "int value = (distance + 1) * 2; boolean draw = flag && distance > 0 || distance < -10; " +
+        "if (draw) { value += 1; } else { value = value - 1; } while (flag) { flag = false; } " +
+        "for (int i = 0; i < 4; i += 1) { if (i == 2) { return; } Turtle.forward(i); }"
+    ))
+    val owner = MethodId(0)
+    val distance = Variable(VariableId(owner, 0), "distance", ValueType.IntValue)
+    val flag = Variable(VariableId(owner, 1), "flag", ValueType.BooleanValue)
+    val value = Variable(VariableId(owner, 2), "value", ValueType.IntValue)
+    val draw = Variable(VariableId(owner, 3), "draw", ValueType.BooleanValue)
+    val i = Variable(VariableId(owner, 4), "i", ValueType.IntValue)
+    val numeric = Binary(BinaryOperator.Multiply, Group(Binary(BinaryOperator.Add, Read(distance), IntLiteral(1))), IntLiteral(2))
+    val logical = ShortCircuit(ShortCircuitOperator.Or,
+      ShortCircuit(ShortCircuitOperator.And, Read(flag), Binary(BinaryOperator.Greater, Read(distance), IntLiteral(0))),
+      Binary(BinaryOperator.Less, Read(distance), Unary(UnaryOperator.Negate, IntLiteral(10))))
+    assertEquals(numeric.valueType, ValueType.IntValue)
+    assertEquals(logical.valueType, ValueType.BooleanValue)
+    assertEquals(resolvedMethod(resolved, "run").body, Block(Vector(
+      Declare(value, Some(numeric)), Declare(draw, Some(logical)),
+      If(Read(draw), Block(Vector(Assign(value, AssignmentOperator.Add, IntLiteral(1)))),
+        Some(Block(Vector(Assign(value, AssignmentOperator.Set, Binary(BinaryOperator.Subtract, Read(value), IntLiteral(1))))))),
+      While(Read(flag), Block(Vector(Assign(flag, AssignmentOperator.Set, BooleanLiteral(false))))),
+      For(Block(Vector(Declare(i, Some(IntLiteral(0))))), Some(Binary(BinaryOperator.Less, Read(i), IntLiteral(4))),
+        Block(Vector(Assign(i, AssignmentOperator.Add, IntLiteral(1)))), Block(Vector(
+          If(Binary(BinaryOperator.Equal, Read(i), IntLiteral(2)), Block(Vector(Return)), None),
+          Call(CallTarget.Turtle(TurtleCommand.Forward), Vector(Read(i)))
+        )))
+    )))
+  }
+
+  test("turtle resolution preserves uninitialized declarations empty statements and parameter assignments") {
+    import JavaTurtleResolution.*
+    val owner = MethodId(0)
+    val distance = Variable(VariableId(owner, 0), "distance", ValueType.IntValue)
+    val flag = Variable(VariableId(owner, 1), "flag", ValueType.BooleanValue)
+    val local = Variable(VariableId(owner, 2), "value", ValueType.IntValue)
+    val resolved = resolvedSource(semanticSource("int value; value = distance; ; return;"))
+    assertEquals(resolvedMethod(resolved, "run").body, Block(Vector(Declare(local, None),
+      Assign(local, AssignmentOperator.Set, Read(distance)), Empty, Return)))
+    val mutated = resolvedSource(semanticSource("distance = distance + 1; Turtle.forward(distance); flag = !flag;"))
+    assertEquals(resolvedMethod(mutated, "run").body, Block(Vector(
+      Assign(distance, AssignmentOperator.Set, Binary(BinaryOperator.Add, Read(distance), IntLiteral(1))),
+      Call(CallTarget.Turtle(TurtleCommand.Forward), Vector(Read(distance))),
+      Assign(flag, AssignmentOperator.Set, Unary(UnaryOperator.Not, Read(flag)))
+    )))
+    assertEquals(resolvedMethod(resolvedSource(semanticSource("for (;;) {}")), "run").body,
+      Block(Vector(For(Block(Vector.empty), None, Block(Vector.empty), Block(Vector.empty)))))
+  }
+
+  test("turtle resolution binds outer update variables without leaking body declarations") {
+    import JavaTurtleResolution.*
+    val resolved = resolvedSource(semanticSource(
+      "int step; for (int i = 0; i < 4; i = i + step) { int temporary = 1; step = temporary; } " +
+        "int temporary = 40; Turtle.forward(temporary);"
+    ))
+    val owner = MethodId(0)
+    val step = Variable(VariableId(owner, 2), "step", ValueType.IntValue)
+    val i = Variable(VariableId(owner, 3), "i", ValueType.IntValue)
+    val inner = Variable(VariableId(owner, 4), "temporary", ValueType.IntValue)
+    val outer = Variable(VariableId(owner, 5), "temporary", ValueType.IntValue)
+    assertEquals(resolvedMethod(resolved, "run").body, Block(Vector(Declare(step, None),
+      For(Block(Vector(Declare(i, Some(IntLiteral(0))))), Some(Binary(BinaryOperator.Less, Read(i), IntLiteral(4))),
+        Block(Vector(Assign(i, AssignmentOperator.Set, Binary(BinaryOperator.Add, Read(i), Read(step))))),
+        Block(Vector(Declare(inner, Some(IntLiteral(1))), Assign(step, AssignmentOperator.Set, Read(inner))))),
+      Declare(outer, Some(IntLiteral(40))), Call(CallTarget.Turtle(TurtleCommand.Forward), Vector(Read(outer)))
+    )))
+  }
+
+  test("turtle resolution maps every supported arithmetic assignment and comparison operator") {
+    import JavaTurtleResolution.*
+    val value = Variable(VariableId(MethodId(0), 2), "value", ValueType.IntValue)
+    val distance = Variable(VariableId(MethodId(0), 0), "distance", ValueType.IntValue)
+    for (symbol, binary, assignment) <- Seq(
+      ("+", BinaryOperator.Add, AssignmentOperator.Add), ("-", BinaryOperator.Subtract, AssignmentOperator.Subtract),
+      ("*", BinaryOperator.Multiply, AssignmentOperator.Multiply), ("/", BinaryOperator.Divide, AssignmentOperator.Divide),
+      ("%", BinaryOperator.Remainder, AssignmentOperator.Remainder)
+    ) do {
+      val resolved = resolvedSource(semanticSource(s"int value = distance $symbol 1; value $symbol= 2;"))
+      assertEquals(resolvedMethod(resolved, "run").body, Block(Vector(
+        Declare(value, Some(Binary(binary, Read(distance), IntLiteral(1)))), Assign(value, assignment, IntLiteral(2))
+      )))
+    }
+    for (symbol, operator) <- Seq("<" -> BinaryOperator.Less, "<=" -> BinaryOperator.LessEqual,
+      ">" -> BinaryOperator.Greater, ">=" -> BinaryOperator.GreaterEqual, "==" -> BinaryOperator.Equal, "!=" -> BinaryOperator.NotEqual) do {
+      val resolved = resolvedSource(semanticSource(s"boolean draw = distance $symbol 10;"))
+      val comparison = Binary(operator, Read(distance), IntLiteral(10))
+      assertEquals(comparison.valueType, ValueType.BooleanValue)
+      assertEquals(resolvedMethod(resolved, "run").body, Block(Vector(
+        Declare(Variable(VariableId(MethodId(0), 2), "draw", ValueType.BooleanValue), Some(comparison))
+      )))
+    }
+  }
+
+  test("turtle resolution retains int minimum syntax without prematurely folding arithmetic") {
+    import JavaTurtleResolution.*
+    val resolved = resolvedSource(semanticSource(
+      "int value = -2147483648; int other = (-2147483648); int wrapped = - -2147483648; " +
+        "int product = 2147483647 * 2147483647; Turtle.forward(value);"
+    ))
+    val initializers = resolvedMethod(resolved, "run").body.statements.collect { case Declare(_, initial) => initial }
+    assertEquals(initializers, Vector(Some(IntLiteral(Int.MinValue)), Some(Group(IntLiteral(Int.MinValue))),
+      Some(Unary(UnaryOperator.Negate, IntLiteral(Int.MinValue))),
+      Some(Binary(BinaryOperator.Multiply, IntLiteral(Int.MaxValue), IntLiteral(Int.MaxValue)))))
+  }
+
+  test("turtle resolution preserves argument and operand order without evaluating division by zero") {
+    import JavaTurtleResolution.*
+    val resolved = resolvedSource(turtleClass(
+      "static void pair(int a, int b) { Turtle.forward(a); Turtle.forward(b); } " +
+        "static void run(int n, boolean flag) { pair(n / 0, n % 0); boolean draw = flag && n / 0 > 0 || !flag && n % 0 == 0; } " +
+        mainMethod
+    ))
+    val n = Variable(VariableId(MethodId(1), 0), "n", ValueType.IntValue)
+    val flag = Variable(VariableId(MethodId(1), 1), "flag", ValueType.BooleanValue)
+    val draw = Variable(VariableId(MethodId(1), 2), "draw", ValueType.BooleanValue)
+    val division = Binary(BinaryOperator.Divide, Read(n), IntLiteral(0))
+    val remainder = Binary(BinaryOperator.Remainder, Read(n), IntLiteral(0))
+    assertEquals(resolvedMethod(resolved, "run").body, Block(Vector(
+      Call(CallTarget.Helper(MethodId(0)), Vector(division, remainder)),
+      Declare(draw, Some(ShortCircuit(ShortCircuitOperator.Or,
+        ShortCircuit(ShortCircuitOperator.And, Read(flag), Binary(BinaryOperator.Greater, division, IntLiteral(0))),
+        ShortCircuit(ShortCircuitOperator.And, Unary(UnaryOperator.Not, Read(flag)), Binary(BinaryOperator.Equal, remainder, IntLiteral(0))))))
+    )))
+  }
+
+  test("turtle resolution is deterministic and keeps the exact original source") {
+    val source = "\r\n" + turtleSource("for (int i = 0; i < 4; i += 1) { Turtle.forward(sideLength); Turtle.turnRight(90); }")
+    val typed = checkedSource(source)
+    val first = JavaTurtleResolution.resolve(typed).fold(problem => fail(problem.message), identity)
+    resolvedSource(semanticSource("int unrelated = distance;"))
+    val second = JavaTurtleResolution.resolve(typed).fold(problem => fail(problem.message), identity)
+    assertEquals(first.typedSource, typed)
+    assertEquals(first.source, source)
+    assertEquals(first.methods, second.methods)
+    assertEquals(first.entryPoint, second.entryPoint)
+    val commented = source.replace("Turtle.forward(sideLength);", "/* draw */ Turtle.forward(sideLength);")
+    val third = resolvedSource(commented)
+    assertEquals(third.source, commented)
+    assertEquals(third.methods, first.methods)
+    assertEquals(third.entryPoint, first.entryPoint)
   }
 
   test("parses chained Java call, attribute, and subscript trailers") {
