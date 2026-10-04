@@ -10,7 +10,7 @@ import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported
 import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleVmBindings as V, JavaTurtleVmExpressions as X}
+import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleVmBindings as V, JavaTurtleVmExpressions as X, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.{BeSimulatorConfig, BeSimulatorState, BeVirtualMachineState}
 import it.evadid.vm.simulation.java.{JavaInt32, JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
 import it.evadid.vm.types.{BeChildRole, BeDataType, BeDataValueLiteral, BeScope, BeUseValueReference}
@@ -36,6 +36,32 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   private def forward(value: Int): T.Command = T.Command(R.TurtleCommand.Forward, value)
   private def right(value: Int): T.Command = T.Command(R.TurtleCommand.TurnRight, value)
+
+  private def restoredJavaExpression(expression: X.Expression): R.Expression = expression.node match {
+    case X.Node.IntLiteral(value) => R.IntLiteral(value)
+    case X.Node.BooleanLiteral(value) => R.BooleanLiteral(value)
+    case X.Node.Read(variable, _) => R.Read(variable)
+    case X.Node.Group(inner) => R.Group(restoredJavaExpression(inner))
+    case X.Node.Unary(operator, operand) => R.Unary(operator, restoredJavaExpression(operand))
+    case X.Node.Binary(operator, left, right) => R.Binary(operator, restoredJavaExpression(left), restoredJavaExpression(right))
+    case X.Node.ShortCircuit(operator, left, right) => R.ShortCircuit(operator, restoredJavaExpression(left), restoredJavaExpression(right))
+  }
+
+  private def restoredJavaBlock(block: P.Block): R.Block = R.Block(block.statements.map { statement => statement.node match {
+    case P.Node.Empty => R.Empty
+    case P.Node.Return => R.Return
+    case P.Node.Declare(variable, _, initial) => R.Declare(variable, initial.map(value => restoredJavaExpression(value.expression)))
+    case P.Node.Assign(variable, _, operator, value) => R.Assign(variable, operator, restoredJavaExpression(value.expression))
+    case P.Node.Call(target, arguments) =>
+      val call = target match {
+        case P.CallTarget.Helper(method) => R.CallTarget.Helper(method.id)
+        case P.CallTarget.Turtle(command) => R.CallTarget.Turtle(command)
+      }
+      R.Call(call, arguments.map(value => restoredJavaExpression(value.expression)))
+    case P.Node.If(condition, positive, negative) => R.If(restoredJavaExpression(condition.expression), restoredJavaBlock(positive), negative.map(restoredJavaBlock))
+    case P.Node.While(condition, body) => R.While(restoredJavaExpression(condition.expression), restoredJavaBlock(body))
+    case P.Node.For(init, condition, update, body) => R.For(restoredJavaBlock(init), condition.map(value => restoredJavaExpression(value.expression)), restoredJavaBlock(update), restoredJavaBlock(body))
+  } })
 
   private val targetLanguages = List(Python, Java, Lisp, Cpp)
   private val humanLanguage = English
@@ -999,6 +1025,241 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     intercept[UnsupportedOperationException] { expression.expressionExecutor(BeSimulatorConfig(), state) }
     for language <- List(Python, Java, Cpp, JavaScript) do
       intercept[UnsupportedOperationException] { expression.structureInfo.toStringInLanguage(language, English) }
+    assertEquals(literalOne.structureInfo.toStringInLanguage(Python, English), "1")
+  }
+
+  test("Java VM programs retain complete methods entry point and main argument metadata") {
+    val text = """class Drawing {
+      static void square(int size) { for (int i = 0; i < 4; i += 1) { Turtle.forward(size); Turtle.turnRight(90); } }
+      public static void main(String[] argv) { square(10); square(40); }
+      static void unused(boolean enabled) { if (enabled) { return; } }
+    }"""
+    val source = (for {
+      parsed <- JavaTurtleSource.parse(text)
+      structure <- JavaTurtleStructure.check(parsed)
+      typed <- JavaTurtleSemantics.check(structure)
+      resolved <- R.resolve(typed)
+    } yield resolved).toOption.get
+    val compiled = P.adapt(source).toOption.get
+    assert(compiled.bindings.source eq source)
+    assert(compiled.vm.fullProgram eq compiled.root)
+    assertEquals(compiled.bindings.source.source, text)
+    assertEquals(compiled.bindings.source.className, "Drawing")
+    assertEquals(compiled.root.methods.map(_.binding.originalName), Vector("square", "main", "unused"))
+    assert(compiled.root.entryPoint eq compiled.root.methods(1))
+    assert(compiled.root.entryPoint.binding eq compiled.bindings.entryPoint)
+    assertEquals(compiled.root.entryPoint.binding.id, source.entryPoint)
+    val main = compiled.root.entryPoint
+    assertEquals(main.binding.parameters.map(_.variable.name), Vector("argv"))
+    assertEquals(main.binding.parameters.head.variable.valueType, R.ValueType.MainArguments)
+    assertEquals(main.binding.parameters.head.definition, None)
+    assertEquals(main.structureInfo.getChildrenAsReference(BeScope.GlobalScope()).map(_.childInfo.myRoleInParent), Seq(BeChildRole.BodySequence(0)))
+    val children = compiled.root.structureInfo.getChildrenAsReference(BeScope.GlobalScope())
+    assertEquals(children.map(_.childInfo.myRoleInParent), Seq(BeChildRole.MethodInClass(0), BeChildRole.MethodInClass(1), BeChildRole.MethodInClass(2)))
+    compiled.root.methods.zip(source.methods).foreach { (method, original) =>
+      assert(method.binding eq compiled.bindings.method(original.id).get)
+      assertEquals(method.binding.parameters.map(_.variable), original.parameters)
+      assertEquals(restoredJavaBlock(method.body), original.body)
+    }
+    assertEquals(compiled.root.staticInformationExpression.staticType, BeDataType.Unit)
+    assert(compiled.root.staticInformationExpression.hasSideEffects)
+  }
+
+  test("Java VM declarations and assignment operators share their interned target definition") {
+    val source = javaProgram("int value; value = 10; value += 2; value -= 1; value *= 3; value /= 2; value %= 4; Turtle.forward(value);")
+    val compiled = P.adapt(source).toOption.get
+    val statements = compiled.root.entryPoint.body.statements
+    val P.Node.Declare(variable, definition, initial) = statements.head.node: @unchecked
+    assertEquals(initial, None)
+    assert(definition eq compiled.bindings.definition(variable).toOption.get)
+    val operators = statements.slice(1, 7).map { statement => statement.node match {
+      case P.Node.Assign(target, received, operator, value) =>
+        assertEquals(target, variable)
+        assert(received eq definition)
+        assert(value.bindings eq compiled.bindings)
+        val children = statement.structureInfo.getChildrenAsReference(BeScope.GlobalScope())
+        assert(children.head.expr eq definition)
+        assert(children(1).expr eq value.expression)
+        assertEquals(children(1).childInfo.myRoleInParent, BeChildRole.ValueInAssignment)
+        operator
+      case _ => fail("Missing assignment")
+    } }
+    assertEquals(operators, Vector(R.AssignmentOperator.Set, R.AssignmentOperator.Add, R.AssignmentOperator.Subtract,
+      R.AssignmentOperator.Multiply, R.AssignmentOperator.Divide, R.AssignmentOperator.Remainder))
+    val P.Node.Call(P.CallTarget.Turtle(R.TurtleCommand.Forward), Vector(argument)) = statements.last.node: @unchecked
+    val X.Node.Read(readVariable, reference) = argument.expression.node: @unchecked
+    assertEquals(readVariable, variable)
+    val BeUseValueReference(readDefinition) = reference.value: @unchecked
+    assert(readDefinition eq definition)
+    assertEquals(restoredJavaBlock(compiled.root.entryPoint.body), source.methods.head.body)
+    val initialized = P.adapt(javaProgram("int value = 0;")).toOption.get
+    val P.Node.Declare(_, _, zero) = initialized.root.entryPoint.body.statements.head.node: @unchecked
+    assertEquals(zero.get.expression.node, X.Node.IntLiteral(0))
+  }
+
+  test("Java VM helper calls retain argument order caller reads and callee parameters") {
+    val source = javaProgram("caller(5);", """
+      static void pair(int first, int second, boolean enabled) { if (enabled) { Turtle.forward(first); Turtle.forward(second); } }
+      static void caller(int size) { pair(size, size + 1, true); pair(size, size, false); }
+    """)
+    val compiled = P.adapt(source).toOption.get
+    val callee = compiled.root.methods(0)
+    val caller = compiled.root.methods(1)
+    val callerDefinition = caller.binding.parameters.head.definition.get
+    val parameters = callee.structureInfo.getChildrenAsReference(BeScope.GlobalScope()).take(3)
+    assertEquals(parameters.map(_.childInfo.myRoleInParent), Seq(BeChildRole.FunctionParameter(0), BeChildRole.FunctionParameter(1), BeChildRole.FunctionParameter(2)))
+    parameters.zip(callee.binding.parameters).foreach { (child, parameter) => assert(child.expr eq parameter.definition.get) }
+    caller.body.statements.foreach { statement =>
+      val P.Node.Call(P.CallTarget.Helper(target), arguments) = statement.node: @unchecked
+      assert(target eq callee.binding)
+      assertEquals(arguments.size, 3)
+      assert(arguments.forall(_.bindings eq compiled.bindings))
+      val children = statement.structureInfo.getChildrenAsReference(BeScope.GlobalScope())
+      assertEquals(children.map(_.childInfo.myRoleInParent), Seq(BeChildRole.FunctionParameter(0), BeChildRole.FunctionParameter(1), BeChildRole.FunctionParameter(2)))
+      assert(children.zip(arguments).forall((child, argument) => child.expr eq argument.expression))
+      val X.Node.Read(variable, reference) = arguments.head.expression.node: @unchecked
+      assertEquals(variable.id.method, caller.binding.id)
+      val BeUseValueReference(definition) = reference.value: @unchecked
+      assert(definition eq callerDefinition)
+      assert(callee.binding.parameters.forall(parameter => !(definition eq parameter.definition.get)))
+    }
+    val P.Node.Call(_, repeated) = caller.body.statements(1).node: @unchecked
+    assertEquals(restoredJavaExpression(repeated(0).expression), restoredJavaExpression(repeated(1).expression))
+    assertEquals(restoredJavaBlock(caller.body), source.methods(1).body)
+  }
+
+  test("Java VM equal local names remain separate across methods branches loops and sources") {
+    val source = javaProgram("first(10); second(20);", """
+      static void first(int size) {
+        if (true) { int value = size; Turtle.forward(value); }
+        if (true) { int value = size + 1; Turtle.forward(value); }
+        for (int i = 0; i < 1; i += 1) { Turtle.forward(i); }
+        for (int i = 0; i < 1; i += 1) { Turtle.forward(i); }
+      }
+      static void second(int size) { Turtle.forward(size); }
+    """)
+    val compiled = P.adapt(source).toOption.get
+    for name <- Seq("size", "value", "i") do {
+      val bindings = compiled.bindings.variables.filter(_.variable.name == name)
+      assertEquals(bindings.size, 2)
+      assertEquals(bindings.map(_.variable.id).distinct.size, 2)
+      assert(!(bindings(0).definition.get eq bindings(1).definition.get))
+    }
+    compiled.root.methods.zip(source.methods).foreach { (method, original) => assertEquals(restoredJavaBlock(method.body), original.body) }
+    val another = P.adapt(source).toOption.get
+    assert(!(another.bindings eq compiled.bindings))
+    compiled.bindings.variables.zip(another.bindings.variables).foreach { (left, right) =>
+      assertEquals(left.variable, right.variable)
+      left.definition.foreach(definition => assert(!(definition eq right.definition.get)))
+    }
+  }
+
+  test("Java VM control flow retains optional branches loop parts and statement roles") {
+    val source = javaProgram("run(2, true);", """
+      static void run(int size, boolean enabled) {
+        ;
+        if (enabled) {} if (enabled) {} else {} if (enabled) {} else {;}
+        while (enabled) {
+          for (int i = 0; i < size; i += 1, Turtle.turnRight(90)) { Turtle.forward(i); }
+          enabled = false;
+        }
+        return;
+      }
+      static void unbounded() { for (;;) { return; } }
+      static void constant() { for (; true;) { return; } }
+    """)
+    val compiled = P.adapt(source).toOption.get
+    val statements = compiled.root.methods.head.body.statements
+    assertEquals(statements.head.node, P.Node.Empty)
+    assertEquals(statements.last.node, P.Node.Return)
+    val P.Node.If(_, _, absent) = statements(1).node: @unchecked
+    val P.Node.If(_, _, empty) = statements(2).node: @unchecked
+    val P.Node.If(_, _, semicolon) = statements(3).node: @unchecked
+    assertEquals(absent, None)
+    assertEquals(empty.get.statements.size, 0)
+    assertEquals(semicolon.get.statements.map(_.node), Vector(P.Node.Empty))
+    val P.Node.While(_, body) = statements(4).node: @unchecked
+    val loop = body.statements.head
+    val P.Node.For(init, condition, update, repeated) = loop.node: @unchecked
+    assertEquals(init.statements.size, 1)
+    assert(condition.isDefined)
+    assertEquals(update.statements.size, 2)
+    assertEquals(repeated.statements.size, 1)
+    val children = loop.structureInfo.getChildrenAsReference(BeScope.GlobalScope())
+    assertEquals(children.map(_.childInfo.myRoleInParent), Seq(BeChildRole.BodySequence(0), BeChildRole.ConditionInControlStructure,
+      BeChildRole.BodySequence(1), BeChildRole.BodySequence(2)))
+    assert(children.head.expr eq init)
+    assert(children(2).expr eq repeated)
+    assert(children(3).expr eq update)
+    val P.Node.For(_, omitted, _, _) = compiled.root.methods(1).body.statements.head.node: @unchecked
+    val P.Node.For(_, explicit, _, _) = compiled.root.methods(2).body.statements.head.node: @unchecked
+    assertEquals(omitted, None)
+    assertEquals(explicit.get.expression.node, X.Node.BooleanLiteral(true))
+    compiled.root.methods.zip(source.methods).foreach { (method, original) => assertEquals(restoredJavaBlock(method.body), original.body) }
+  }
+
+  test("Java VM program construction remains behind complete source validation") {
+    for (main, helpers, expected) <- Seq(
+      ("int value; Turtle.forward(value);", "", JavaTurtleSource.Problem.UninitializedVariable),
+      ("for (int i = 0; i < 1; i += 1) {} Turtle.forward(i);", "", JavaTurtleSource.Problem.UnknownVariable),
+      ("for (int i = 0; i < 1; value += 1) { int value = 0; }", "", JavaTurtleSource.Problem.UnknownVariable),
+      ("draw(true);", "static void draw(int size) {}", JavaTurtleSource.Problem.ArgumentMismatch),
+      ("missing();", "", JavaTurtleSource.Problem.UnknownMethod),
+      ("draw(1);", "static void draw(int size) { draw(size); }", JavaTurtleSource.Problem.UnsupportedSyntax)) do {
+      var adapted = false
+      val result = for {
+        parsed <- JavaTurtleSource.parse(s"class Drawing { $helpers public static void main(String[] args) { $main } }")
+        structure <- JavaTurtleStructure.check(parsed)
+        typed <- JavaTurtleSemantics.check(structure)
+        resolved <- R.resolve(typed)
+        vm <- { adapted = true; P.adapt(resolved) }
+      } yield vm
+      assertEquals(result.swap.toOption.get.problem, expected)
+      assert(!adapted)
+    }
+    val source = javaProgram("run(true);", "static void run(boolean enabled) { int value; if (enabled) { value = 10; } else { return; } Turtle.forward(value); }")
+    val compiled = P.adapt(source).toOption.get
+    assertEquals(restoredJavaBlock(compiled.root.methods.head.body), source.methods.head.body)
+  }
+
+  test("Java VM programs handle checked method parameter local and nesting limits") {
+    val helpers = (0 until 127).map(index => s"static void helper$index() {}").mkString(" ")
+    val methods = P.adapt(javaProgram("", helpers)).toOption.get
+    assertEquals(methods.root.methods.size, 128)
+    assert(methods.root.entryPoint eq methods.root.methods.last)
+    val parameters = (0 until 16).map(index => s"int p$index").mkString(", ")
+    val locals = (0 until 128).map(index => s"int v$index = $index;").mkString(" ")
+    val populatedSource = javaProgram("", s"static void populated($parameters) { $locals }")
+    val populated = P.adapt(populatedSource).toOption.get
+    assertEquals(populated.root.methods.head.binding.parameters.size, 16)
+    assertEquals(populated.root.methods.head.body.statements.size, 128)
+    assertEquals(restoredJavaBlock(populated.root.methods.head.body), populatedSource.methods.head.body)
+    val nestedSource = javaProgram("while (true) { " * 12 + "return;" + " }" * 12)
+    val nested = P.adapt(nestedSource).toOption.get
+    assertEquals(restoredJavaBlock(nested.root.entryPoint.body), nestedSource.methods.head.body)
+  }
+
+  test("Java VM program elements reject generic execution editing and unsupported printers") {
+    val compiled = P.adapt(javaProgram("draw(5);", "static void draw(int size) { int value = size; value += 1; if (value > 0) { Turtle.forward(value); } }")).toOption.get
+    var pending: List[BeExpression] = List(compiled.root)
+    var elements = 0
+    while pending.nonEmpty do {
+      val expression = pending.head
+      pending = pending.tail
+      pending = expression.structureInfo.getChildrenAsReference(BeScope.GlobalScope()).map(_.expr).toList ::: pending
+      expression match {
+        case element: P.Element =>
+          elements += 1
+          assert(element.structureInfo.withReplacedChildren(Map.empty) eq element)
+          intercept[UnsupportedOperationException] { element.structureInfo.withReplacedChildren(Map(BeChildRole.NoRole -> literalOne)) }
+          val state = BeSimulatorState(false, element, false, Nil, Nil, BeVirtualMachineState.emptyMachineState)
+          intercept[UnsupportedOperationException] { element.expressionExecutor(BeSimulatorConfig(), state) }
+          for language <- List(Python, Java, Cpp, JavaScript) do
+            intercept[UnsupportedOperationException] { element.structureInfo.toStringInLanguage(language, English) }
+        case _ => ()
+      }
+    }
+    assertEquals(elements, 11)
     assertEquals(literalOne.structureInfo.toStringInLanguage(Python, English), "1")
   }
 }
