@@ -3,7 +3,8 @@ package it.evadid.server.commandHandler.sql
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.interaction.sync.*
+import it.evadid.workbook.interaction.sync.SyncSuccess
 
 import java.net.InetAddress
 import java.sql.{Connection, Timestamp}

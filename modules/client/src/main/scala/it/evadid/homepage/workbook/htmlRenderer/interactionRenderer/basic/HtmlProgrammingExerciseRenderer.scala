@@ -4,20 +4,24 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.ExecutionMethod
+import it.evadid.core.datastructures.state.async.AsyncData
 import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, VmToSvg}
 import it.evadid.core.datastructures.vectorShapes.svg.{BeExpressionToTurtleCommands, TurtlePathBuilder}
-import it.evadid.homepage.webElements.basic.HtmlButtonElement
-import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditor, SnapCodeEditorConfig, SnapProgramDerivation}
+import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.{TurtleCommand, TurtleState}
+import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditor, SnapCodeEditorConfig, SnapProgramDerivation, SnapTurtleStage}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineToRender
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
-import it.evadid.vm.BeProgram
 import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingExercise, ProgrammingExerciseState}
 import it.evadid.workbook.interaction.sync.UpdateImportance
+import todomove.datastructures.web.file.FullImage
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[ProgrammingExercise] {
 
@@ -60,6 +64,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     val buttonCard = ElementCard(LanguageMapContentId("basic/openEditor"), button.getDomElement())
     val canvasCard = ElementCard(LanguageMapContentId("basic/canvas"), editor.previewCanvas)
 
+    // static preview based on the custom display engine (not working yet, for test purposes)
     val shapeLogger = Logger.withNameAndPrefixes(
       Some("HtmlProgrammingExerciseRenderer::ShapeRenderingLogger"),
       PrintToStdLogger.printEverything
@@ -75,57 +80,33 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       )
     )
 
-    val referencePython = workbookElement.referencePython
-    val targetBuilderOpt: Option[TurtlePathBuilder[Double]] =
-      referencePython.flatMap { py =>
-        Try(BeExpressionToTurtleCommands.toPathBuilder(BeProgram.fromPythonString(py).fullProgram)).toOption
-      }
-
-    val targetCards: List[ElementCard] = referencePython.toList.flatMap { py =>
-      Try {
-        ElementCard(
-          LanguageMapContentId("basic/targetDrawing"),
-          SvgLaminarRenderer.render(
-            shapeLogger,
-            VmToSvg.renderBeExpression(shapeLogger, BeProgram.fromPythonString(py).fullProgram)
-          )
-        )
-      }.toOption
+    val interactivePreview = {
+      val intDom = div()
+      val cmd = BeExpressionToTurtleCommands(
+        SnapProgramDerivation.fromState(boundVar.now()).program.fullProgram
+      )
+      val exp = List(LineToRender[Double](Point(0,0), Point(100,0)), LineToRender[Double](Point(100,0), Point(100, 100)))
+      TurtleJsxGraphRenderer.render(intDom.ref, cmd, exp )
+      ElementCard(
+        LanguageMapContentId("basic/gradingPreviewProgram"),
+        intDom
+      )
     }
 
-    val stageSvgVar: Var[Option[Element]] = Var(None)
-    val resultInFront: Var[Boolean] = Var(true)
-    val overlayReady: Var[Boolean] = Var(false)
-    var lastOverlay: Option[(TurtlePathBuilder[Double], TurtlePathBuilder[Double])] = None
-
-    def paint(target: TurtlePathBuilder[Double], path: TurtlePathBuilder[Double], frontIsResult: Boolean): Unit =
-      stageSvgVar.set(Some(SvgLaminarRenderer.render(
-        shapeLogger,
-        VmToSvg.renderOverlay(target, path, resultInFront = frontIsResult)
-      )))
+    // Run → TurtleStitchWorker.simulateGreenFlag → stage PNG
+    val stageImageVar: Var[Option[FullImage]] = Var(None)
 
     def runProgram(): Unit = {
-      editor.getCurrentTurtleCommands().onComplete {
-        case Success(res) =>
-          val path = TurtlePathBuilder[Double](
-            Point(0.0, 0.0),
-            res,
-            BeExpressionToTurtleCommands.SnapHeadingDeg
-          )
-          targetBuilderOpt match
-            case Some(target) =>
-              lastOverlay = Some((target, path))
-              overlayReady.set(true)
-              paint(target, path, resultInFront.now())
-            case None =>
-              lastOverlay = None
-              overlayReady.set(false)
-              stageSvgVar.set(Some(SvgLaminarRenderer.render(shapeLogger, VmToSvg.renderTurtlePathBuilder(path))))
-        case Failure(exception) =>
-          lastOverlay = None
-          overlayReady.set(false)
-          stageSvgVar.set(None)
-          println("Turtle run failed: " + exception)
+      editor.getCurrentTurtleCommands().onComplete{
+        case Success(res) => {
+          println("Turtle Commands: " + res)
+          val path = TurtlePathBuilder[Double](Point(0,0), res, 90)
+          val img = FullImage(path.svgPathBuilder)
+          stageImageVar.set(Some(img))
+          val pathD = path.svgPathBuilder.toSvgPathD
+          println("pathD: " + pathD)
+        }
+        case Failure(exception) => throw exception
       }
     }
 
@@ -134,68 +115,26 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
 
     val stageOutput: Element = div(
       cls := "prog-ex-stage-output",
-      child <-- stageSvgVar.signal.map {
+      child <-- stageImageVar.signal.map {
         case None =>
           div(cls := "prog-ex-stage-output__placeholder")
-        case Some(svgEl) =>
-          div(cls := "preview-card", div(cls := "preview-content", svgEl))
-      }
-    )
-
-    val targetMark = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/turtleTargetMark"))
-    val resultMark = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/turtleResultMark"))
-    val bringTargetFront = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/turtleBringTargetFront"))
-    val bringResultFront = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/turtleBringResultFront"))
-
-    val overlayLegend: Element = div(
-      child <-- Signal.combine(overlayReady, targetMark, resultMark).map {
-        case (false, _, _) =>
-          emptyNode
-        case (true, targetText, resultText) =>
+        case Some(asyncImg) =>
           div(
-            span(color := "#1e64dc", targetText),
-            span(" · "),
-            span(color := "#e00000", resultText)
+            cls := "preview-card",
+            div(
+              cls := "preview-content",
+              HtmlImageElement(asyncImg).getDomElement()
+            )
           )
       }
     )
 
-    val frontButtonLabel: Signal[Element] =
-      Signal.combine(resultInFront, bringTargetFront, bringResultFront).map {
-        case (true, targetText, _) => span(targetText)
-        case (false, _, resultText) => span(resultText)
-      }
-
-    val frontButton = HtmlButtonElement(
-      frontButtonLabel,
-      "button-labeled",
-      _ => {
-        val next = !resultInFront.now()
-        resultInFront.set(next)
-        lastOverlay.foreach { (target, path) => paint(target, path, next) }
-      },
-      Signal.fromValue(HtmlButtonElement.stdConfig)
-    )
-
-    val frontButtonSlot: Element = div(
-      child <-- overlayReady.signal.map {
-        case true => frontButton.getDomElement()
-        case false => emptyNode
-      }
-    )
-
-    val runCardChildren =
-      if referencePython.isDefined then List(runButton.getDomElement(), stageOutput, overlayLegend, frontButtonSlot)
-      else List(runButton.getDomElement(), stageOutput)
-
     val runCard = ElementCard(
-      LanguageMapContentId("basic/turtleResult"),
-      runCardChildren
+      LanguageMapContentId("basic/turtleOutput"),
+      List(runButton.getDomElement(), stageOutput)
     )
 
-    AtomarLineRendering.cardLine(
-      workbookElement,
-      List(buttonCard, canvasCard) ++ targetCards ++ List(staticRendering, runCard)
-    )
+    AtomarLineRendering.cardLine(workbookElement,
+      List(buttonCard, interactivePreview, canvasCard, staticRendering, runCard))
   }
 }

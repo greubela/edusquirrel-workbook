@@ -6,7 +6,8 @@ import it.evadid.core.datastructures.storage.RemoteCacheCollection.{CacheCollect
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.DataEntryToWriteToServer
 import it.evadid.util.logging.LoggingLevel.INFO
 import it.evadid.util.logging.derived.SyncLogger
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.interaction.sync.SyncInformation.*
+import it.evadid.workbook.interaction.sync.*
 import upickle.legacy.transform
 
 import java.time.LocalDateTime

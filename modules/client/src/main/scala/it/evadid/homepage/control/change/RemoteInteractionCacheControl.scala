@@ -8,7 +8,7 @@ import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.vm.code.defining.KnownBeDefineStructures.variables
 import it.evadid.workbook.interaction.sync.SyncControl.InteractionVariableSyncReport
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncInformationWithContext
+import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.{SyncContext, SyncControl, SyncInformation, UsageContext}
 import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableHistorySerialized}
 
@@ -55,7 +55,7 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
   override def ensureCachesContainLastElementsToWrite(variables: List[InteractionVariable[?]]): Future[?]  = remoteCache.syncLock.synchronized {
 
     def shouldSyncUntil(syncInfo: SyncInformationWithContext): LocalDateTime = variables.flatMap(curVar => {
-      val history = curVar.history.serializedWithStrategy(syncInfo.syncStrategy, curVar.underlyingInteraction.serializerInteractionContent)
+      val history = curVar.history.serializedWithStrategy(syncInfo.syncInformation.syncStrategy, curVar.underlyingInteraction.serializerInteractionContent)
       history.lastStateOption.map(_.timestamp)
     }).maxOption.getOrElse(LocalDateTime.now())
 

@@ -4,8 +4,8 @@ import it.evadid.distribution.commandTypes.SQLCommands.DeleteInDbRequest
 import it.evadid.server.commandHandler.sql.{DatabaseConfig, GenericSqlFunctionality}
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.interaction.sync.SyncFormatter.RichInteractionVariableFormatter
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
-import it.evadid.workbook.interaction.sync.{SyncContext, UsageContext}
+import it.evadid.workbook.interaction.sync.*
+import it.evadid.workbook.interaction.sync.{SyncContext, SyncSuccess, UsageContext}
 
 import java.sql.{Connection, PreparedStatement}
 import java.time.LocalDateTime

@@ -2,6 +2,11 @@ package it.evadid.vm.types
 
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
+import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.serializer.AutoSerializable
+import it.evadid.core.util.io.serializer.AutoSerializable.{AutoSerializableMainType, AutoSerializableSingleton, AutoSerializableSubType}
+import upickle.ReadWriter
+import upickle.default.*
 
 sealed trait BeDataType {
 
@@ -19,11 +24,18 @@ sealed trait BeDataType {
 
 object BeDataType {
 
+  private given rwAtom: ReadWriter[BeDataTypeAtomic] = AutoSerializable.getReadWriter[BeDataTypeAtomic, BeSerializableAtomicType](using macroRW)
+
+  given rw: ReadWriter[BeDataType] = macroRW
+
+  given rwUnion: ReadWriter[BeUnionType] = macroRW
+
   sealed trait BeUnionType extends BeDataType {
 
   }
 
-  object AnyType extends BeUnionType {
+
+  case object AnyType extends BeUnionType with AutoSerializableSingleton[AnyType.type] {
     private val displayMap: LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap("Any") /*LanguageMap.concatLanguageMaps[
       ProgrammingLanguage
     ](
@@ -43,9 +55,11 @@ object BeDataType {
     def canTakeValuesFrom(other: BeDataType): BeDataTypeAssigningPossible = AssigningPossibleWithSameType(this)
   }
 
-  case class BeUnionAllowedTypes(dataTypes: Set[BeDataType]) extends BeUnionType {
+  case class BeUnionAllowedTypes(dataTypes: Set[BeDataType]) extends BeUnionType derives ReadWriter {
 
-    def formatTypeForDisplay: LanguageMap[ProgrammingLanguage] = LanguageMap.mkLanguageMap("", "|", "", dataTypes.toList.map(_.formatTypeForDisplay))
+    def formatTypeForDisplay: LanguageMap[ProgrammingLanguage] = {
+      LanguageMap.mkLanguageMap("", "|", "", dataTypes.toList.map(_.formatTypeForDisplay))
+    }
 
     def formatValueForDisplay(valueStr: String): LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap(valueStr)
 
@@ -97,12 +111,23 @@ object BeDataType {
   }*/
 
 
-  case class BeDataTypeAtomic(
-                               pFormatTypeForDisplay: LanguageMap[ProgrammingLanguage],
-                               pFormatValueForDisplay: String => LanguageMap[ProgrammingLanguage],
-                               pIsValidLiteral: String => Boolean,
-                               allowImplicitCastTo: Set[BeDataType] = Set()) extends BeDataType {
+  val allAtomic = List(String, Numeric, Int, Boolean, Date, Unit, Error)
 
+
+  case class BeSerializableAtomicType(name: String) extends AutoSerializableSubType[BeDataTypeAtomic, BeSerializableAtomicType] {
+    lazy val toTypedMainType: BeDataTypeAtomic = allAtomic.find(_.getClass.getSimpleName == name).get
+  }
+
+  case class BeDataTypeAtomic(
+                               val pFormatTypeForDisplay: LanguageMap[ProgrammingLanguage],
+                               val pFormatValueForDisplay: String => LanguageMap[ProgrammingLanguage],
+                               val pIsValidLiteral: String => Boolean,
+                               val allowImplicitCastTo: Set[BeDataType] = Set()
+                             ) extends BeDataType with AutoSerializableMainType[BeDataTypeAtomic, BeSerializableAtomicType] {
+
+    lazy val rwSub: ReadWriter[BeSerializableAtomicType] = macroRW
+
+    lazy val toSerializableSubType: BeSerializableAtomicType = BeSerializableAtomicType(this.getClass.getSimpleName)
 
     def canTakeValuesFrom(other: BeDataType): BeDataTypeAssigningPossible = other match {
       case BeUnionAllowedTypes(otherTypes) => {

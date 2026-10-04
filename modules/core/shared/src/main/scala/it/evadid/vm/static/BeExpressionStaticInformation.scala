@@ -20,7 +20,7 @@ trait BeExpressionStaticInformation {
     private val definition: BeDefineStructure = this
     override lazy val structureInfo: BeExpressionStructureInfo[?] = new BeExpressionStructureInfo[BeDefineStructure](this) {
       override def withReplacedChildren(newChildren: Map[BeChildRole, BeExpression]): BeDefineStructure = definition
-      override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown, myInfo)
+      override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown(), myInfo)
       override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] = Seq.empty
     }
   }

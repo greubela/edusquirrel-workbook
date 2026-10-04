@@ -3,8 +3,9 @@ package it.evadid.vm.naming
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
+import upickle.default.*
 
-sealed trait BeEntityName {
+sealed trait BeEntityName derives ReadWriter{
 
   def getNameIn(humanLanguage: HumanLanguage, namingStyle: NamingStyle): String
 

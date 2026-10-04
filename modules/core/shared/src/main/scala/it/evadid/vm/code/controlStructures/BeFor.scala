@@ -9,6 +9,9 @@ import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
 import it.evadid.vm.types.BeScope.InSequenceScope
+import upickle.ReadWriter
+
+import upickle.default.*
 
 /**
  * Inclusive numeric for-loop (`for i = start to end` in Snap `doFor`).
@@ -19,7 +22,7 @@ case class BeFor(
     start: BeExpression,
     end: BeExpression,
     body: BeSequence
-) extends BeControlStructure {
+) extends BeControlStructure derives ReadWriter{
 
   override def allPossibleBodies: Seq[BeExpression] = List(body)
 
@@ -45,9 +48,9 @@ case class BeFor(
 
     override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] =
       List(
-        BeControlFlowLine(RepeatBranch),
-        getChildrenAsReference(myInfo.myScope).last.toSegment(Some(ControlFlowUp)),
-        BeControlFlowLine(RepeatUnion)
+        BeControlFlowLine(RepeatBranch()),
+        getChildrenAsReference(myInfo.myScope).last.toSegment(Some(ControlFlowUp())),
+        BeControlFlowLine(RepeatUnion())
       )
   }
 }

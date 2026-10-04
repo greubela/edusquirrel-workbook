@@ -2,8 +2,8 @@ package it.evadid.vm.types
 
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction}
-
-sealed trait BeScope {
+import upickle.default.*
+sealed trait BeScope derives ReadWriter{
 
   def parentScopes: List[BeScope]
 

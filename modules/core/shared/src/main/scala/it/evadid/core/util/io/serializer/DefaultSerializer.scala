@@ -2,6 +2,7 @@ package it.evadid.core.util.io.serializer
 
 import it.evadid.core.datastructures.chat.*
 import it.evadid.core.datastructures.chat.Person.SerializablePerson
+import it.evadid.core.datastructures.language.control.LanguageMapStorage
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.user.User.SingleAccessToken
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
@@ -17,7 +18,8 @@ import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.distribution.commandTypes.UserCommands.*
 import it.evadid.workbook.abstractions.TypeOfTextDisplay
 import it.evadid.workbook.interaction.sync.SyncFormatter.InteractionSyncRequest
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.interaction.sync.SyncInformation.*
+import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.{SyncContext, UpdateImportance, UsageContext}
 import it.evadid.workbook.interaction.variable.{InteractionVariableHistorySerialized, InteractionVariableStateSerialized}
 import upickle.ReadWriter
@@ -28,6 +30,7 @@ import java.time.LocalDateTime
 import scala.util.*
 
 object DefaultSerializer {
+
 
 
   given ldt: ReadWriter[LocalDateTime] =

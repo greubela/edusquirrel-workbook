@@ -2,15 +2,17 @@ package it.evadid.homepage.workbook.syncDestination
 
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.FetchResponse
+import it.evadid.core.util.io.ConstructorLikeParserWithJsonElements.ConstructorLikeReadResult
 import it.evadid.core.util.io.Serializer
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.LoggingLevel.WARN
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.*
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.interaction.sync.destination.{SyncDestination, SyncDestinationHistory, SyncDestinationRaw}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
 import org.scalajs.dom
 import org.scalajs.dom.Storage
+import org.scalajs.dom.experimental.storage
 
 import java.time
 import java.time.LocalDateTime
@@ -20,11 +22,7 @@ object LocalStorageSync {
 
   val instance: LocalStorageSync = LocalStorageSync()
 
-  def storeRaw(logger: Logger, key: String, value: String): Unit = {
-    instance.storage.setItem(key.toString, value.toString)
-  }
-
-  def fetchAllRaw(logger: Logger): Map[String, String] = {
+  def fetchAllRawSync(logger: Logger): Map[String, String] = {
     val storage: Storage = dom.window.localStorage
     (0 until storage.length).map(i =>
       val browserKey = storage.key(i)
@@ -33,9 +31,16 @@ object LocalStorageSync {
     ).toMap
   }
 
+  def storeToRawSync(logger: Logger, key: String, value: String): Boolean = try {
+    dom.window.localStorage.setItem(key.toString, value.toString)
+    true
+  } catch case (err: Throwable) => {
+    false
+  }
+
 }
 
-case class LocalStorageSync(maxValueCharakterSize: Long = 100000) extends SyncDestination {
+case class LocalStorageSync(maxValueCharakterSize: Long = 100000) extends SyncDestinationRaw with SyncDestinationHistory {
 
   private val historyKeyPrefix = "synced-variable"
 
@@ -45,7 +50,7 @@ case class LocalStorageSync(maxValueCharakterSize: Long = 100000) extends SyncDe
 
   private val contextToBrowserKeySerializer: Serializer[SyncContext] = SyncContext.serializer
 
-  override def storeTo(logger: SyncLogger, context: SyncContext, history: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncInformation.SyncSuccess] = Future {
+  override def storeTo(logger: SyncLogger, context: SyncContext, history: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncSuccess] = Future {
     try {
       val value: String = formatter.serialize(context, history)
       if (value.length > maxValueCharakterSize) {
@@ -107,6 +112,35 @@ case class LocalStorageSync(maxValueCharakterSize: Long = 100000) extends SyncDe
 
   override def isLocal: Boolean = true
 
-
   override def toString: String = s"LocalStorageSync(${maxValueCharakterSize})"
+
+
+  override protected def deserializeFromConstructorLikeString(from: ConstructorLikeReadResult): Option[SyncDestination] = {
+    if (from.elementType == this.getClass.getSimpleName) Some(LocalStorageSync(from.jsonPayloads.head.toInt))
+    else None
+  }
+
+  override protected def serializeToConstructorLikeString(): ConstructorLikeReadResult = {
+    ConstructorLikeReadResult(this.getClass.getSimpleName, List(maxValueCharakterSize.toString))
+  }
+
+  override protected def readAllRaw(): Future[Map[String, String]] = try {
+    val resMap = (0 until storage.length).map(i =>
+      val browserKey = storage.key(i)
+      val browserValue = storage.getItem(browserKey)
+      browserKey -> browserValue
+    ).toMap
+    Future.successful(resMap)
+  } catch case (err: Throwable) => {
+    Future.failed(err)
+  }
+
+  override protected def storeToRaw(key: String, value: String): Future[Boolean] = try {
+    storage.setItem(key.toString, value.toString)
+    Future.successful(true)
+  } catch case (err: Throwable) => {
+    Future.failed(err)
+  }
+
+
 }
