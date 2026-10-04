@@ -2,7 +2,7 @@ package it.evadid.vm.parsing.java.clean
 
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaType
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure}
+import it.evadid.vm.parsing.java.turtle.{JavaTurtleInputLimits, JavaTurtleResolution, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure}
 import munit.FunSuite
 
 class JavaParserTest extends FunSuite {
@@ -405,6 +405,165 @@ class JavaParserTest extends FunSuite {
     assert(JavaParser.parse("long value = 40;").isRight)
     assert(JavaParser.parse("String value = \"hello\";").isRight)
     assert(JavaParser.parse("/* unfinished").isRight)
+  }
+
+  test("turtle input bounds source length before scanning and preserves accepted text") {
+    val source = "/* 😀 */\r\n" + turtleClass(mainMethod)
+    val padded = source + " " * (JavaTurtleInputLimits.MaxSourceCharacters - source.length)
+    assertEquals(JavaTurtleSource.parse(padded).toOption.get.source, padded)
+    val problem = sourceProblem(padded + " ")
+    assertEquals(problem.problem, JavaTurtleSource.Problem.InputLimit)
+    assertEquals(problem.range, Some(JavaTurtleSource.SourceRange(padded.length, padded.length + 1)))
+    assertEquals(sourceProblem("/*" + " " * JavaTurtleInputLimits.MaxSourceCharacters).problem,
+      JavaTurtleSource.Problem.InputLimit)
+  }
+
+  test("turtle input bounds names and numbers without replacing ordinary range errors") {
+    val length = JavaTurtleInputLimits.MaxTokenCharacters
+    assert(JavaTurtleSource.parse("int " + "x" * length + ";").isRight)
+    assert(JavaTurtleSource.parse("int value = " + "9" * length + ";").isRight)
+    for token <- Seq("x" * (length + 1), "9" * (length + 1)) do {
+      val source = "/* 😀 */\r\n" + s"int value = $token;"
+      val problem = sourceProblem(source)
+      val start = source.indexOf(token)
+      assertEquals(problem.problem, JavaTurtleSource.Problem.InputLimit)
+      assertEquals(problem.range, Some(JavaTurtleSource.SourceRange(start, start + token.length)))
+    }
+    assertEquals(semanticProblem(semanticSource("int value = " + "9" * length + ";")).problem,
+      JavaTurtleSource.Problem.IntegerRange)
+  }
+
+  test("turtle input bounds delimiter depth including the class and main wrapper") {
+    val groups = JavaTurtleInputLimits.MaxNesting - 3
+    def nested(count: Int): String = turtleClass(
+      "public static void main(String[] args) { Turtle.forward(" + "(" * count + "1" + ")" * count + "); }")
+    resolvedSource(nested(groups))
+    assertEquals(sourceProblem(nested(groups + 1)).problem, JavaTurtleSource.Problem.InputLimit)
+    for body <- Seq("(" * 512 + "1" + ")" * 512 + ";", "if (true) {" * 64 + "}" * 64,
+      "Turtle.forward(" + "(" * 16 + "1" + "]" * 16 + ");") do
+      assertEquals(sourceProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.InputLimit)
+    resolvedSource(semanticSource("/* " + "({[!" * 256 + " */ Turtle.forward(1);"))
+  }
+
+  test("turtle input bounds recursive sections without resetting at comments or commas") {
+    val limit = JavaTurtleInputLimits.MaxSegmentTokens
+    val atLimit = "+ " * (limit - 2) + "1;"
+    assertEquals(sourceProblem(atLimit).problem, JavaTurtleSource.Problem.InputLimit)
+    assertEquals(sourceProblem(atLimit).range, None)
+    val assigned = "a = " * 63 + "1;"
+    assertEquals(sourceProblem(assigned).problem, JavaTurtleSource.Problem.InputLimit)
+    assertEquals(sourceProblem(assigned).range, None)
+    val list = "final " + "List<" * 53 + "int" + ">" * 53 + " value;"
+    assertEquals(sourceProblem(list).problem, JavaTurtleSource.Problem.InputLimit)
+    assertEquals(sourceProblem(list).range, None)
+    val blocks = JavaTurtleInputLimits.MaxNesting - 2
+    def inBlocks(body: String): String = turtleClass("public static void main(String[] args) {" +
+      "if (true) {" * blocks + body + "}" * blocks + "}")
+    resolvedSource(inBlocks("int value = 1;"))
+    for source <- Seq(inBlocks("int value = " + "+ " * (limit - 5) + "1;"), inBlocks(list),
+      turtleClass("public static void main(String[] args) { int value = " +
+        "+ " * 95 + "(" * 14 + "1" + ")" * 14 + "; }")) do {
+      assertEquals(sourceProblem(source).problem, JavaTurtleSource.Problem.InputLimit)
+      assertEquals(sourceProblem(source).range, None)
+    }
+    for source <- Seq(
+      "+/* separate */ " * limit + "1;", "a = " * limit + "1;",
+      "List<" * limit + "int" + ">" * limit + " value;",
+      "+ " * 60 + "f(0, " + "+ " * 70 + "1);"
+    ) do assertEquals(sourceProblem(source).problem, JavaTurtleSource.Problem.InputLimit)
+    assert(JavaTurtleSource.parse("Turtle.forward(" + "1 + " * 30 + "1);").isRight)
+    assert(JavaTurtleSource.parse("a" + ".a" * 62 + " = 1;").isRight)
+    assertEquals(sourceProblem("a" + ".a" * 63 + " = 1;").problem, JavaTurtleSource.Problem.InputLimit)
+    assertEquals(sourceProblem("++value;").problem, JavaTurtleSource.Problem.UnsupportedSyntax)
+  }
+
+  test("turtle input bounds token count independently of syntax node count") {
+    def target(parts: Int): String = Vector.fill(parts)("a").mkString(".") + " = 1;"
+    val source = turtleClass("public static void main(String[] args) {" + target(63) * 63 + target(55) + "}")
+    assert(JavaTurtleSource.parse(source).isRight)
+    assertEquals(sourceProblem(source + ";").problem, JavaTurtleSource.Problem.InputLimit)
+    assert(JavaTurtleSource.parse(source + "/* (){}[] if ++ == */\r\n// ignored").isRight)
+  }
+
+  test("turtle input bounds total if statements and deep else-if syntax separately") {
+    val body = "if (true) {} " * JavaTurtleInputLimits.MaxIfStatements
+    resolvedSource(semanticSource(body))
+    assertEquals(sourceProblem(semanticSource(body + "if (true) {} ")).problem, JavaTurtleSource.Problem.InputLimit)
+    val prefix = "if (true) {} else " * 28
+    val atDepth = turtleClass(s"public static void main(String[] args) { $prefix if (true) {} }")
+    resolvedSource(atDepth)
+    assertEquals(sourceProblem(atDepth.replace("if (true) {} }", "if (true) {;} }")).problem,
+      JavaTurtleSource.Problem.InputLimit)
+    assertEquals(sourceProblem(semanticSource("if (false) {} else " * 512 + "{}")).problem,
+      JavaTurtleSource.Problem.InputLimit)
+  }
+
+  test("turtle input bounds syntax nodes without recursive AST traversal") {
+    val source = turtleClass("public static void main(String[] args) {" +
+      ";" * (JavaTurtleInputLimits.MaxAstNodes - 7) + "}")
+    resolvedSource(source)
+    assertEquals(sourceProblem(source.replace(";}", ";;}")).problem, JavaTurtleSource.Problem.InputLimit)
+    assertEquals(sourceProblem("1" + " * 1" * 63 + ";").problem, JavaTurtleSource.Problem.InputLimit)
+  }
+
+  test("turtle input bounds methods before call graph analysis") {
+    def chain(helpers: Int, cycle: Boolean = false): String = turtleClass(
+      (0 until helpers).map { index =>
+        val call = if index + 1 < helpers then s"m${index + 1}();" else if cycle then "m0();" else ""
+        s"static void m$index() { $call }"
+      }.mkString + "public static void main(String[] args) { m0(); }")
+    val limit = JavaTurtleInputLimits.MaxMethods
+    assertEquals(resolvedSource(chain(limit - 1)).methods.size, limit)
+    assertEquals(sourceProblem(chain(limit)).problem, JavaTurtleSource.Problem.InputLimit)
+    assertEquals(semanticProblem(chain(limit - 1, cycle = true)).problem, JavaTurtleSource.Problem.UnsupportedSyntax)
+  }
+
+  test("turtle input counts parameters and local declarations rather than distinct names") {
+    def parameters(count: Int): String = (0 until count).map(index => s"int p$index").mkString(",")
+    val limit = JavaTurtleInputLimits.MaxParameters
+    resolvedSource(turtleClass(s"static void move(${parameters(limit)}) {} $mainMethod"))
+    assertEquals(sourceProblem(turtleClass(s"static void move(${parameters(limit + 1)}) {} $mainMethod")).problem,
+      JavaTurtleSource.Problem.InputLimit)
+    val locals = JavaTurtleInputLimits.MaxLocalsPerMethod
+    val body = (0 until locals).map(index => s"int x$index = 0;").mkString
+    resolvedSource(semanticSource(body))
+    assertEquals(sourceProblem(semanticSource(body + "int extra;")).problem, JavaTurtleSource.Problem.InputLimit)
+    val siblingScopes = "for (int i = 0; i < 1; i += 1) {} " * locals
+    resolvedSource(semanticSource(siblingScopes))
+    assertEquals(sourceProblem(semanticSource(siblingScopes + "int i;")).problem, JavaTurtleSource.Problem.InputLimit)
+  }
+
+  test("turtle input counts the main parameter in the program-wide variable limit") {
+    def program(lastLocals: Int): String = turtleClass((0 until 8).map { method =>
+      val count = if method == 7 then lastLocals else 128
+      s"static void m$method() {" + (0 until count).map(index => s"int x$index;").mkString + "}"
+    }.mkString + mainMethod)
+    resolvedSource(program(127))
+    assertEquals(sourceProblem(program(128)).problem, JavaTurtleSource.Problem.InputLimit)
+  }
+
+  test("turtle input checks array and list type wrappers outside the AST children") {
+    val limit = JavaTurtleInputLimits.MaxTypeNesting
+    for depth <- Seq(limit, limit + 1) do {
+      val array = "int" + "[]" * depth
+      val list = "List<" * depth + "int" + ">" * depth
+      for javaType <- Seq(array, list, "List<" + "int" + "[]" * (depth - 1) + ">") do
+        for source <- Seq(s"$javaType value;", s"$javaType move() {}", s"new $javaType();",
+          s"class Drawing extends $javaType {}", s"class Drawing implements $javaType {}") do {
+          if depth == limit then assert(JavaTurtleSource.parse(source).isRight, clue = source)
+          else assertEquals(sourceProblem(source).problem, JavaTurtleSource.Problem.InputLimit, clue = source)
+        }
+    }
+  }
+
+  test("turtle input counters do not leak between parses or affect legacy Java") {
+    val valid = turtleSource("Turtle.forward(sideLength);")
+    for invalid <- Seq("(" * 512, "+ " * 512 + "1;", ";" * 8193, "x" * 129 + ";") do {
+      assertEquals(sourceProblem(invalid).problem, JavaTurtleSource.Problem.InputLimit)
+      assertEquals(resolvedSource(valid).source, valid)
+    }
+    assert(JavaParser.parse("int " + "x" * 129 + ";").isRight)
+    completeProgram("int" + "[]" * 17 + " values;")
   }
 
   test("turtle structure retains the complete class and ordered method definitions") {

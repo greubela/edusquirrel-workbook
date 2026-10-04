@@ -1,7 +1,6 @@
 package it.evadid.vm.parsing.java.turtle
 
 import fastparse.Parsed
-import it.evadid.vm.parsing.generic.abstractions.GenericAST
 import it.evadid.vm.parsing.java.clean.JavaParser
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 
@@ -12,6 +11,7 @@ object JavaTurtleSource {
     case UnsupportedStructure, InvalidMain, MissingMain, DuplicateDeclaration, InvalidIdentifier
     case UnknownVariable, UninitializedVariable, UnknownMethod, ArgumentMismatch
     case TypeMismatch, IntegerRange, UnreachableStatement
+    case InputLimit
   }
 
   case class SourceRange(start: Int, end: Int)
@@ -22,15 +22,17 @@ object JavaTurtleSource {
   private val parser = new JavaParser(retainParentheses = true)
 
   def parse(source: String): Either[Diagnostic, ParsedSource] =
-    checkSource(source).flatMap(_ => parseAst(source))
+    for {
+      _ <- JavaTurtleInputLimits.checkLength(source)
+      _ <- checkSource(source)
+      _ <- JavaTurtleInputLimits.checkTokens(source)
+      parsed <- parseAst(source)
+    } yield parsed
 
   private def parseAst(source: String): Either[Diagnostic, ParsedSource] =
     fastparse.parse(source, context => parser.javaProgram(using context)) match {
       case Parsed.Success(program, _) =>
-        firstUnsupported(program) match {
-          case Some(_) => Left(Diagnostic(Problem.UnsupportedSyntax, "This Java construct is not supported yet.", None))
-          case None => Right(new ParsedSource(source, program))
-        }
+        JavaTurtleInputLimits.checkAst(program).map(_ => new ParsedSource(source, program))
       case failure: Parsed.Failure =>
         Left(Diagnostic(
           Problem.ParseFailure,
@@ -91,10 +93,4 @@ object JavaTurtleSource {
     }
     Right(())
   }
-
-  private def firstUnsupported(node: GenericAST): Option[JavaUnparsableStatement] =
-    node match {
-      case unsupported: JavaUnparsableStatement => Some(unsupported)
-      case _ => node.getChildren().iterator.map(firstUnsupported).collectFirst { case Some(unsupported) => unsupported }
-    }
 }
