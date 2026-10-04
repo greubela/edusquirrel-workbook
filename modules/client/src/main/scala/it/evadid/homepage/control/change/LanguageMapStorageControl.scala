@@ -74,7 +74,11 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
 
   private def addTriplesAndStoreToCache(loadedSources: Set[LanguageMapInputSource], loadedTriples: ParsedTriples): Unit = fullInfo.synchronized {
     fullInfo.homepageInfoState.update(curInfo => curInfo.copy(
-      languageMapStore = curInfo.languageMapStore.withLoadedTriples(contentControlLogger, loadedSources, loadedTriples)
+      languageMapStore = {
+        val newStorage = curInfo.languageMapStore.withLoadedTriples(contentControlLogger, loadedSources, loadedTriples)
+        localCache.storeElement(newStorage)
+        newStorage
+      }
     ))
   }
 
