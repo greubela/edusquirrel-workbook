@@ -55,7 +55,7 @@ object LanguageMapEntry {
 
 case class LanguageMapEntry[T <: AppLanguage](contentId: LanguageMapContentId, language: T, value: String) {
 
-  def serializeWith(ids: Seq[LanguageMapContentId], langs: Seq[T]): LanguageTripel = LanguageTripel(ids.indexOf(contentId), langs.indexOf(language), value)
+  def serializeWith(ids: Seq[LanguageMapContentId], langs: Seq[T]): LanguageTripel = LanguageTripel(langs.indexOf(language), ids.indexOf(contentId), value)
 
 }
 
