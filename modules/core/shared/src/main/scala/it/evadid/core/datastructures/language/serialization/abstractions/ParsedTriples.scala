@@ -20,7 +20,7 @@ object ParsedTriples {
 
   private given sub: ReadWriter[ParsedTriplesSerialized] = macroRW
 
-  private given ReadWriter[ParsedTriples] = AutoSerializable.getReadWriter(sub)
+  given ReadWriter[ParsedTriples] = AutoSerializable.getReadWriter(sub)
   
   case class ParsedTriplesSerialized(
                                       contentIds: Seq[LanguageMapContentId],

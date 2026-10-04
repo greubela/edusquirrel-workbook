@@ -9,10 +9,16 @@ import it.evadid.workbook.interaction.sync.destination.SyncDestination.SyncDesti
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.*
 
+import upickle.default.*
 
 trait SyncDestinationRaw extends SyncDestination {
 
-  def getSyncDestinationForType[T](logger: SyncLogger, usingKey: String, serializer: Serializer[T]) = new SyncDestinationForType[T] {
+
+  def getSyncDestinationForType[T](logger: SyncLogger, usingKey: String)(implicit rw: ReadWriter[T]): SyncDestinationForType[T] = {
+    getSyncDestinationForType[T](logger, usingKey, Serializer.fromUpickleJson(rw))
+  }
+
+  def getSyncDestinationForType[T](logger: SyncLogger, usingKey: String, serializer: Serializer[T]): SyncDestinationForType[T] = new SyncDestinationForType[T] {
 
     override def storeElement(obj: T): Future[Boolean] = {
       val serialized = serializer.serialize(obj)

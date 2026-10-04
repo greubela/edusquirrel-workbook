@@ -36,7 +36,7 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
   val syncLogger: SyncLogger = fullInfo.loggerSystemInfo.syncControlLogger
 
   private lazy val localCache: SyncDestinationForType[ParsedTriples] = {
-    LocalIndexedDbStorageSync.instanceForCaching.getSyncDestinationForType(syncLogger, "tripleCache", Serializer.fromUpickleJson(ParsedTriples.derived$ReadWriter))
+    LocalIndexedDbStorageSync.instanceForCaching.getSyncDestinationForType(syncLogger, "tripleCache", Serializer.fromUpickleJson(ParsedTriples.given_ReadWriter_ParsedTriples))
   }
 
 

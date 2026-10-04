@@ -49,7 +49,6 @@ case class LanguageMapStorage
     logger.logInfo(s"Increased Language Map Storage from ${parsedTriples.size} to ${newStorage.languageMaps.size} triples, (stats: ${stats})!")
     newStorage
   }
-
   override lazy val rwSub: default.ReadWriter[LanguageMapStorageSerializable] = macroRW
   override lazy val toSerializableSubType: LanguageMapStorageSerializable = LanguageMapStorageSerializable(parsedTriples)
 }
