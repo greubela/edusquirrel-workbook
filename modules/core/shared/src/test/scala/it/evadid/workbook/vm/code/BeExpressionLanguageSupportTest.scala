@@ -9,10 +9,10 @@ import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVari
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
 import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
-import it.evadid.vm.naming.BeEntityName
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure}
+import it.evadid.vm.naming.{BeEntityName, NamingStyle}
+import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleVmBindings as V}
 import it.evadid.vm.simulation.java.{JavaInt32, JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
-import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
+import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
 import munit.FunSuite
 
 class BeExpressionLanguageSupportTest extends FunSuite {
@@ -629,5 +629,158 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     val allowed = T.run(nested, T.Limits(maxBlockDepth = 9))
     assertEquals(allowed.status, T.Status.Completed)
     assertEquals(allowed.commands, Vector(forward(1)))
+  }
+
+  test("Java VM bindings retain source method parameter and declaration identities") {
+    val source = javaProgram("draw(40, true);", """
+      static void draw(int distance, boolean enabled) {
+        int size = distance;
+        if (enabled) { int sizeInBranch = size; } else { int sizeInBranch = size; }
+        while (enabled) { int repeated = size; enabled = false; }
+        for (int i = 0; i < 1; i += 1) { int value = size; }
+        for (int i = 0; i < 1; i += 1) { int value = size; }
+        int uninitialized;
+      }
+    """)
+    val bindings = V.bind(source)
+    assert(bindings.source eq source)
+    assertEquals(bindings.source.source, source.source)
+    assertEquals(bindings.methods.map(_.id), source.methods.map(_.id))
+    assertEquals(bindings.methods.map(_.originalName), source.methods.map(_.name))
+    assertEquals(bindings.entryPoint.id, source.entryPoint)
+    source.methods.zip(bindings.methods).foreach { (method, binding) =>
+      assertEquals(binding.parameters.map(_.variable), method.parameters)
+      assertEquals(bindings.method(method.id), Some(binding))
+      binding.parameters.foreach { parameter =>
+        assert(bindings.variable(parameter.variable.id).get eq parameter)
+      }
+    }
+    val locals = bindings.variables.filter(_.variable.id.method == R.MethodId(0))
+    assertEquals(locals.map(_.variable.name), Vector("distance", "enabled", "size", "sizeInBranch", "sizeInBranch",
+      "repeated", "i", "value", "i", "value", "uninitialized"))
+    assertEquals(locals.map(_.variable.id.index), (0 until locals.size).toVector)
+    assertEquals(locals.flatMap(_.definition).distinct.size, locals.size)
+    assert(locals.flatMap(_.definition).forall(_.initValue.isEmpty))
+    assertEquals(locals.head.definition.get.variableType, BeDataType.Int)
+    assertEquals(locals(1).definition.get.variableType, BeDataType.Boolean)
+    assertEquals(T.run(source).status, T.Status.Completed)
+  }
+
+  test("Java VM names do not normalize or collide with learner identifiers") {
+    val source = javaProgram("""
+      int $x = 1; int def = 2; int lambda = 3; int java_variable_0_0 = 4;
+      drawSquare($x); draw_square(def); java_method_0(lambda);
+    """, """
+      static void drawSquare(int sideLength) { Turtle.forward(sideLength); }
+      static void draw_square(int side_length) { Turtle.forward(side_length); }
+      static void java_method_0(int value) { Turtle.forward(value); }
+    """)
+    assertEquals(BeEntityName.fromCodeString("drawSquare").universalInterpretation(),
+      BeEntityName.fromCodeString("draw_square").universalInterpretation())
+    val bindings = V.bind(source)
+    val names = bindings.methods.map(_.name) ++ bindings.variables.flatMap(_.definition.map(_.name))
+    assertEquals(names.map(_.universalInterpretation()).distinct.size, names.size)
+    names.foreach { name =>
+      val expected = name.universalInterpretation()
+      assert(expected.matches("java_(method_[0-9]+|variable_[0-9]+_[0-9]+)"), clue = expected)
+      for language <- List(English, German); style <- List(NamingStyle.CamelCase, NamingStyle.SnakeCase, NamingStyle.AllcapsSchool) do
+        assertEquals(name.getNameIn(language, style), expected)
+    }
+    bindings.variables.flatMap(_.definition).foreach { variable =>
+      val read = BeUseValue(BeUseValueReference(variable), None)
+      for language <- List(Python, Java) do
+        assertEquals(read.structureInfo.toStringInLanguage(language, English), variable.name.universalInterpretation())
+    }
+    assertEquals(T.run(source).commands, Vector(forward(1), forward(2), forward(3)))
+  }
+
+  test("Java VM references use interned definitions and reject mismatched symbols") {
+    val source = javaProgram("int value = 1; boolean flag = true;", "static void draw(int value) {}")
+    val bindings = V.bind(source)
+    val values = bindings.variables.filter(_.definition.nonEmpty)
+    values.foreach { binding =>
+      val variable = binding.variable
+      val first = bindings.reference(variable).toOption.get
+      val second = bindings.reference(variable).toOption.get
+      val definition = bindings.definition(variable).toOption.get
+      assert(binding.definition.get eq definition)
+      first.value match {
+        case BeUseValueReference(value) => assert(value eq definition)
+        case _ => fail("Expected a variable reference")
+      }
+      second.value match {
+        case BeUseValueReference(value) => assert(value eq definition)
+        case _ => fail("Expected a variable reference")
+      }
+      assertEquals(first.staticInformationExpression.staticType, definition.variableType)
+      for changed <- Seq(variable.copy(name = "other"), variable.copy(id = R.VariableId(variable.id.method, 999)),
+        variable.copy(valueType = if variable.valueType == R.ValueType.IntValue then R.ValueType.BooleanValue else R.ValueType.IntValue)) do
+        assertEquals(bindings.reference(changed).swap.toOption.get.problem, JavaTurtleSource.Problem.UnknownVariable)
+    }
+    assertEquals(bindings.variable(R.VariableId(R.MethodId(999), 0)), None)
+    assertEquals(bindings.method(R.MethodId(999)), None)
+    val repeated = V.bind(source)
+    assertEquals(repeated.methods, bindings.methods)
+    assertEquals(repeated.variables, bindings.variables)
+    values.foreach { binding =>
+      assert(!(binding.definition.get eq repeated.definition(binding.variable).toOption.get))
+    }
+  }
+
+  test("Java VM main arguments remain metadata without introducing array values") {
+    val source = javaProgram("int size = 40; Turtle.forward(size);")
+    val bindings = V.bind(source)
+    val argument = bindings.entryPoint.parameters.head
+    assertEquals(argument.variable.valueType, R.ValueType.MainArguments)
+    assertEquals(argument.definition, None)
+    assertEquals(bindings.variable(argument.variable.id), Some(argument))
+    assertEquals(bindings.definition(argument.variable).swap.toOption.get.problem, JavaTurtleSource.Problem.UnsupportedType)
+    assertEquals(bindings.reference(argument.variable).swap.toOption.get.problem, JavaTurtleSource.Problem.UnsupportedType)
+    val size = bindings.variables.find(_.variable.name == "size").getOrElse(fail("Missing size"))
+    assertEquals(size.variable.id.index, 1)
+    assertEquals(size.definition.get.name.universalInterpretation(), "java_variable_0_1")
+    assertEquals(T.run(source).commands, Vector(forward(40)))
+  }
+
+  test("Java VM bindings keep a main declared before its helper as the entry point") {
+    val source = "class Drawing { public static void main(String[] args) { draw(40); } " +
+      "static void draw(int size) { Turtle.forward(size); } }"
+    val resolved = (for {
+      parsed <- JavaTurtleSource.parse(source)
+      structure <- JavaTurtleStructure.check(parsed)
+      typed <- JavaTurtleSemantics.check(structure)
+      result <- R.resolve(typed)
+    } yield result).fold(problem => fail(problem.message), identity)
+    val bindings = V.bind(resolved)
+    assertEquals(bindings.entryPoint.id, R.MethodId(0))
+    assertEquals(bindings.methods.map(_.originalName), Vector("main", "draw"))
+    assertEquals(bindings.methods(1).parameters.head.variable.id, R.VariableId(R.MethodId(1), 0))
+    assertEquals(bindings.methods(1).name.universalInterpretation(), "java_method_1")
+    assertEquals(T.run(resolved).commands, Vector(forward(40)))
+  }
+
+  test("Java VM binding collection handles the full variable budget and deep branches") {
+    val helpers = (0 until 8).map { method =>
+      val count = if method == 7 then 127 else 128
+      s"static void m$method() {" + (0 until count).map(index => s"int x$index;").mkString + "}"
+    }.mkString
+    val bindings = V.bind(javaProgram("", helpers))
+    assertEquals(bindings.variables.size, 1024)
+    assertEquals(bindings.variables.flatMap(_.definition).size, 1023)
+    assertEquals(bindings.variables.map(_.variable.id).distinct.size, 1024)
+    assertEquals(bindings.variables.flatMap(_.definition).distinct.size, 1023)
+    bindings.variables.foreach { binding =>
+      assertEquals(bindings.variable(binding.variable.id), Some(binding))
+    }
+    val deep = V.bind(javaProgram("if (true) { int size = 40; } else " * 27 + "if (true) { int size = 40; }"))
+    assertEquals(deep.variables.map(_.variable.name), Vector("args") ++ Vector.fill(28)("size"))
+    assertEquals(deep.variables.map(_.variable.id.index), (0 to 28).toVector)
+    assertEquals(deep.variables.flatMap(_.definition).distinct.size, 28)
+    assertEquals(deep.variables.last.definition.get.name.universalInterpretation(), "java_variable_0_28")
+    val wide = V.bind(javaProgram(";" * 4089))
+    assertEquals(wide.variables.size, 1)
+    val methods = V.bind(javaProgram("", (0 until 127).map(index => s"static void m$index() {}").mkString))
+    assertEquals(methods.methods.size, 128)
+    assertEquals(methods.methods.map(_.name.universalInterpretation()).distinct.size, 128)
   }
 }
