@@ -15,6 +15,8 @@ trait SyncDestinationRaw extends SyncDestination {
   def getSyncDestinationForType[T](logger: SyncLogger, usingKey: String, serializer: Serializer[T]) = new SyncDestinationForType[T] {
 
     override def storeElement(obj: T): Future[Boolean] = {
+      val serialized = serializer.serialize(obj)
+      println(s"UGLY SYNCDESTINATION RAW. serialized:\n${serialized}")
       storeToRaw(logger, usingKey, serializer.serialize(obj))
     }
 
@@ -64,7 +66,7 @@ trait SyncDestinationRaw extends SyncDestination {
   def storeToRaw(logger: SyncLogger, key: String, value: String): Future[Boolean] = {
     val resFut = storeToRaw(key, value)
     resFut.onComplete {
-      case Success(res) => logger.log(s"SyncDestination successfully stored key ${key} (value ${value.take(60)}", INFO, Some(false))
+      case Success(res) => logger.log(s"SyncDestination successfully stored key ${key} (value ${value.take(60)})", INFO, Some(false))
       case Failure(exception) => logger.logException(s"${syncPrefix} failed to write key ${key} (value ${value.take(60)}), ignoring write", exception, Some(false), WARN)
     }
     resFut
