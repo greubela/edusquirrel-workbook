@@ -2,7 +2,6 @@ package it.evadid.workbook.interaction.sync.destination
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.SerializedException
-import it.evadid.util.logging.Logger
 import it.evadid.util.logging.LoggingLevel.{INFO, WARN}
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.destination.SyncDestination.SyncDestinationForType
@@ -13,7 +12,6 @@ import scala.util.*
 
 trait SyncDestinationRaw extends SyncDestination {
 
-
   def getSyncDestinationForType[T](logger: SyncLogger, usingKey: String, serializer: Serializer[T]) = new SyncDestinationForType[T] {
 
     override def storeElement(obj: T): Future[Boolean] = {
@@ -21,17 +19,13 @@ trait SyncDestinationRaw extends SyncDestination {
     }
 
     override def readElement: Future[T] = {
-      readRaw(logger, usingKey).map(strRes => {
-        val res = serializer.tryDeserializeAll(List(strRes))
-        if (res.inputAfterOperation.nonEmpty) res.inputAfterOperation.head
-        else {
-          throw SerializedException(s"${SyncDestinationRaw.this.syncPrefix} read key '${res}' but could not parse:\n${strRes}'")
-        }
+      readRaw(logger, usingKey).map(strRes => try {
+        serializer.deserialize(strRes)
+      } catch case (err: Throwable) => {
+        throw SerializedException(s"${SyncDestinationRaw.this.syncPrefix} read key '${usingKey}' but could not parse (${strRes.take(60)}): >>${err.getMessage}<<. full object:\n ${strRes}")
       })
     }
-
   }
-
 
   protected given ExecutionContext = ExecutionContext.global
 

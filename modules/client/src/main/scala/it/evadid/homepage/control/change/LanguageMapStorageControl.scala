@@ -5,6 +5,7 @@ import it.evadid.core.datastructures.language.control.LanguageMapStorage
 import it.evadid.core.datastructures.language.serialization.LanguageMapInputSource.{EvaDirectorySource, LanguageMapFileBasedSourceInfo}
 import it.evadid.core.datastructures.language.serialization.abstractions.ParsedTriples
 import it.evadid.core.datastructures.language.serialization.{LanguageMapCollectionSource, LanguageMapInputSource, LanguageMapSourceFileBased}
+import it.evadid.core.util.io.Serializer
 import it.evadid.homepage.control.change.LanguageMapStorageControl.STARTUP_STRATEGY
 import it.evadid.homepage.control.change.LanguageMapStorageControl.STARTUP_STRATEGY.CONTINUE_AFTER_LOCAL_CACHE_SUCCESS
 import it.evadid.homepage.control.model.FullInfo
@@ -34,8 +35,8 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
 
   val syncLogger: SyncLogger = fullInfo.loggerSystemInfo.syncControlLogger
 
-  private lazy val localCache: SyncDestinationForType[LanguageMapStorage] = {
-    LocalIndexedDbStorageSync.instanceForCaching.getSyncDestinationForType(syncLogger, "languageMapStore", LanguageMapStorage.serializerMain)
+  private lazy val localCache: SyncDestinationForType[ParsedTriples] = {
+    LocalIndexedDbStorageSync.instanceForCaching.getSyncDestinationForType(syncLogger, "tripleCache", Serializer.fromUpickleJson(ParsedTriples.derived$ReadWriter))
   }
 
 
@@ -43,25 +44,25 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
 
     val promise = Promise[Unit]()
 
-    def readLocal: Future[LanguageMapStorage] = localCache.readElement
+    def readLocal: Future[ParsedTriples] = localCache.readElement
 
     def readRemote: Future[?] = ensureDefaultLanguageSourcesLoaded()
 
     readLocal.transformWith {
-      case Success(store) => {
-        if (store.parsedTriples.size > 0) {
-          addTriplesAndStoreToCache(Set(), store.parsedTriples)
+      case Success(parsedTriples) => {
+        if (parsedTriples.size > 0) {
+          addTriplesAndStoreToCache(Set(), parsedTriples)
           if (startupStrategy == CONTINUE_AFTER_LOCAL_CACHE_SUCCESS) promise.success(())
         }
         readRemote
       }
       case Failure(err) => {
-        syncLogger.logException("Ignored cached version of LanguageMapStorage!", err, Some(false), WARN)
+        syncLogger.log(s"Ignored cached version of LanguageMapStorage! (Exception: ${err.getMessage})", WARN, Some(false))
         readRemote
       }
     }.onComplete {
       case Success(_) => {
-        if(!promise.isCompleted) promise.success( () )
+        if (!promise.isCompleted) promise.success(())
       }
       case Failure(err) => {
         syncLogger.logException("Could not read remote version of LanguageMapStorage!", err, Some(false), WARN)
@@ -76,7 +77,7 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
     fullInfo.homepageInfoState.update(curInfo => curInfo.copy(
       languageMapStore = {
         val newStorage = curInfo.languageMapStore.withLoadedTriples(contentControlLogger, loadedSources, loadedTriples)
-        localCache.storeElement(newStorage)
+        localCache.storeElement(newStorage.parsedTriples)
         newStorage
       }
     ))
