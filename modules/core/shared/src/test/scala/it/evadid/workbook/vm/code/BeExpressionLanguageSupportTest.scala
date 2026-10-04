@@ -10,6 +10,7 @@ import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported
 import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
+import it.evadid.vm.simulation.java.JavaInt32
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
 import munit.FunSuite
 
@@ -180,5 +181,63 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         |""".stripMargin
 
     assertEquals(scripted.structureInfo.toStringInLanguage(Cpp, humanLanguage).trim, expected.trim)
+  }
+
+  test("Java int arithmetic wraps without changing the legacy numeric types") {
+    assertEquals(JavaInt32.add(Int.MaxValue, 1), Int.MinValue)
+    assertEquals(JavaInt32.subtract(Int.MinValue, 1), Int.MaxValue)
+    assertEquals(JavaInt32.multiply(Int.MaxValue, Int.MaxValue), 1)
+    assertEquals(JavaInt32.multiply(65536, 65536), 0)
+    assertEquals(JavaInt32.negate(Int.MinValue), Int.MinValue)
+    assert(BeDataType.Int.isValidLiteral("2147483648"))
+    assertEquals(BeDataValueLiteral("1").currentType, BeDataType.Numeric)
+  }
+
+  test("Java int division truncates toward zero and remainder retains the dividend sign") {
+    for (left, right, quotient, remainder) <- Seq(
+      (Int.MinValue, -1, Int.MinValue, 0), (-9, 2, -4, -1), (9, -2, -4, 1), (-9, -2, 4, -1)
+    ) do {
+      assertEquals(JavaInt32.divide(left, right), Right(quotient))
+      assertEquals(JavaInt32.remainder(left, right), Right(remainder))
+    }
+  }
+
+  test("Java int zero divisors return an explicit arithmetic error") {
+    for value <- Seq(Int.MinValue, -1, 0, 1, Int.MaxValue) do {
+      assertEquals(JavaInt32.divide(value, 0), Left(JavaInt32.Error.DivisionByZero))
+      assertEquals(JavaInt32.remainder(value, 0), Left(JavaInt32.Error.DivisionByZero))
+    }
+  }
+
+  test("Java int operations match an independent unbounded integer model") {
+    val modulus = BigInt(1) << 32
+    def wrapped(value: BigInt): Int = {
+      val unsigned = ((value % modulus) + modulus) % modulus
+      (if unsigned > Int.MaxValue then unsigned - modulus else unsigned).toInt
+    }
+    val edges = Vector(Int.MinValue, Int.MinValue + 1, -1000000000, -65536, -9, -2, -1,
+      0, 1, 2, 9, 65536, 1000000000, Int.MaxValue)
+    var state = BigInt("13579bdf", 16)
+    def sample(): Int = {
+      state = (state * 1664525 + 1013904223) % modulus
+      wrapped(state)
+    }
+    val pairs = (for left <- edges; right <- edges yield left -> right) ++ Vector.fill(512)(sample() -> sample())
+    for (left, right) <- pairs do {
+      val a = BigInt(left)
+      val b = BigInt(right)
+      assertEquals(JavaInt32.add(left, right), wrapped(a + b), clue = (left, right))
+      assertEquals(JavaInt32.subtract(left, right), wrapped(a - b), clue = (left, right))
+      assertEquals(JavaInt32.multiply(left, right), wrapped(a * b), clue = (left, right))
+      assertEquals(JavaInt32.negate(left), wrapped(-a), clue = left)
+      if right == 0 then {
+        assertEquals(JavaInt32.divide(left, right), Left(JavaInt32.Error.DivisionByZero))
+        assertEquals(JavaInt32.remainder(left, right), Left(JavaInt32.Error.DivisionByZero))
+      } else {
+        assertEquals(JavaInt32.divide(left, right), Right(wrapped(a / b)), clue = (left, right))
+        assertEquals(JavaInt32.remainder(left, right), Right(wrapped(a % b)), clue = (left, right))
+      }
+    }
+    assertEquals(pairs.size, 708)
   }
 }
