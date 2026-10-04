@@ -26,7 +26,6 @@ object LanguageMapStorageControl {
     case CONTINUE_AFTER_FULL_LOAD
   }
 
-
 }
 
 case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: Logger, ec: ExecutionContext) {
@@ -77,12 +76,6 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
     fullInfo.homepageInfoState.update(curInfo => curInfo.copy(
       languageMapStore = curInfo.languageMapStore.withLoadedTriples(contentControlLogger, loadedSources, loadedTriples)
     ))
-  }
-
-  def ensureCachedLanguageSourcesLoaded(): Future[?] = {
-
-    // todo
-    Future.successful(())
   }
 
   private def ensureDefaultLanguageSourcesLoaded(): Future[?] = {
