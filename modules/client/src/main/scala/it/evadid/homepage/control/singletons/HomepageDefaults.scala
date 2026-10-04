@@ -10,12 +10,13 @@ import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServer
 import it.evadid.workbook.interaction.sync.SyncStrategy.{SYNC_LAST, SYNC_LAST_AND_MAJOR, SYNC_MAJOR}
 import it.evadid.workbook.interaction.sync.{SyncFormatter, SyncInformation}
 import upickle.{ReadWriter, macroRW}
+import it.evadid.workbook.interaction.sync.*
 
 import scala.util.Random
 
 object HomepageDefaults {
 
-  private val localIndexStorage: SyncInformation = SyncInformation(LocalIndexedDbStorageSync.instance, SYNC_LAST_AND_MAJOR, SyncFormatter.RichInteractionVariableFormatter())
+  private val localIndexStorage: SyncInformation = SyncInformation(LocalIndexedDbStorageSync.instanceForHistory, SYNC_LAST_AND_MAJOR, SyncFormatter.RichInteractionVariableFormatter())
 
   val useDefaultLocalSyncLocations: List[SyncInformation] = List(localIndexStorage)
 

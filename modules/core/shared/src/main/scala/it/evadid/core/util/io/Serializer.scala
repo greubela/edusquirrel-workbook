@@ -1,6 +1,7 @@
 package it.evadid.core.util.io
 
 import it.evadid.core.datastructures.chat.MessengerModel
+import it.evadid.core.util.io.ConstructorLikeParserWithJsonElements.ConstructorLikeReadResult
 import it.evadid.core.util.io.TypeConverter.ConverterResult
 import it.evadid.distribution.command.SerializedException
 import ujson.Value
@@ -36,30 +37,32 @@ trait Serializer[T] extends TypeConverter[T, String] {
 object Serializer {
 
 
+  def fromImplicitRW[T](implicit rw: ReadWriter[T]): Serializer[T] = Serializer.fromUpickleJson(rw)
 
-  def constructorLikeSerializer[T](
-                                    constructorName: String,
-                                    construct: Seq[ujson.Value] => T,
-                                    deconstruct: T => List[ujson.Value]
-                                  ): Serializer[T] = new Serializer[T] {
+  /*
+    def constructorLikeSerializer[T](
+                                      constructorName: String,
+                                      construct: Seq[ujson.Value] => T,
+                                      deconstruct: T => List[ujson.Value]
+                                    ): Serializer[T] = new Serializer[T] {
 
-    override def serialize(obj: T): String = {
-      constructorName + deconstruct(obj).mkString("(", ")(", ")")
-    }
-
-    override def deserialize(str: String): T = {
-      ConstructorLikeParserWithJsonElements.parseString(str).match {
-        case Success(parsedConstructor, jsons) => if (constructorName != parsedConstructor) {
-          throw SerializedException(s"ConstructorLikeSerializer(${constructorName}) cannot parse objects of type ${parsedConstructor}")
-        } else try {
-          construct(jsons.map(ujson.read(_)))
-        } catch case (err: Throwable) => {
-          throw SerializedException(s"ConstructorLikeSerializer(${constructorName}) had error while parsing jsons", err)
-        }
-        case Failure(err) => throw SerializedException(s"Could not parse ${str} with ConstructorLikeSerializer(${constructorName}", err)
+      override def serialize(obj: T): String = {
+        constructorName + deconstruct(obj).mkString("(", ")(", ")")
       }
-    }
-  }
+
+      override def deserialize(str: String): T = {
+        ConstructorLikeParserWithJsonElements.parseString(str).match {
+          case Success(ConstructorLikeReadResult(parsedConstructor, jsons)) => if (constructorName != parsedConstructor) {
+            throw SerializedException(s"ConstructorLikeSerializer(${constructorName}) cannot parse objects of type ${parsedConstructor}")
+          } else try {
+            construct(jsons.map(ujson.read(_)))
+          } catch case (err: Throwable) => {
+            throw SerializedException(s"ConstructorLikeSerializer(${constructorName}) had error while parsing jsons", err)
+          }
+          case Failure(err) => throw SerializedException(s"Could not parse ${str} with ConstructorLikeSerializer(${constructorName}", err)
+        }
+      }
+    }*/
 
 
   /*def combineSerializerUseFirst[T](serializer: Seq[Serializer[T]]): Serializer[T] = new Serializer[T]{
@@ -89,9 +92,22 @@ object Serializer {
   def singletonSerializer[T](singletonObject: T, singletonString: Option[String] = None): Serializer[T] = new Serializer[T] {
     val outputString: String = singletonString.getOrElse(singletonObject.toString)
 
-    override def serialize(obj: T): String = if (obj == singletonObject) outputString else ???
+    private val validRepresentations: Set[String] = Set(
+      singletonObject.toString,
+      singletonObject.getClass.getSimpleName,
+      singletonObject.getClass.getName,
+      singletonObject.getClass.getCanonicalName,
+      s"Singleton(${singletonObject.getClass.getSimpleName})"
+    ) ++ singletonString
 
-    override def deserialize(serialized: String): T = if (serialized == outputString) singletonObject else ???
+    override def serialize(obj: T): String =
+      if (validRepresentations.contains(obj.toString)) outputString
+      else throw SerializedException(s"Cannot serialize ${obj.toString} (${obj.getClass.getSimpleName}) with SingletonSerializer(${outputString})")
+
+    override def deserialize(serialized: String): T =
+      if (validRepresentations.contains(serialized)) {
+        singletonObject
+      } else throw SerializedException(s"Cannot deserialize $serialized with SingletonSerializer(${outputString})")
   }
 
 

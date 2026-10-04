@@ -4,7 +4,7 @@ import it.evadid.distribution.commandTypes.SQLCommands.StoreToDbRequest
 import it.evadid.server.commandHandler.sql.{DatabaseConfig, GenericSqlFunctionality}
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.interaction.sync.SyncFormatter.RichInteractionVariableFormatter
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.UsageContext
 import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
 

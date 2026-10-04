@@ -9,8 +9,8 @@ import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
 import it.evadid.vm.types.BeScope.InSequenceScope
-
-case class BeRepeatNr(amount: Int, body: BeSequence) extends BeControlStructure {
+import upickle.default.*
+case class BeRepeatNr(amount: Int, body: BeSequence) extends BeControlStructure derives ReadWriter{
 
   override def allPossibleBodies: Seq[BeExpression] = List(body)
 
@@ -35,9 +35,9 @@ case class BeRepeatNr(amount: Int, body: BeSequence) extends BeControlStructure 
 
     override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = {
       List(
-        BeControlFlowLine(RepeatBranch),
-        getChildrenAsReference(myInfo.myScope).head.toSegment(Some(ControlFlowUp)),
-        BeControlFlowLine(RepeatUnion)
+        BeControlFlowLine(RepeatBranch()),
+        getChildrenAsReference(myInfo.myScope).head.toSegment(Some(ControlFlowUp())),
+        BeControlFlowLine(RepeatUnion())
       )
     }
 

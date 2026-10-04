@@ -6,6 +6,7 @@ import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.serialization.abstractions.ParsedTriples
+import it.evadid.core.datastructures.state.ExecutionMethod.ExecuteLocalSync
 import it.evadid.util.logging.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -19,6 +20,12 @@ trait LanguageMapInputSource {
 object LanguageMapInputSource {
 
 
+  case class LanguageMapLocalStorageSourceInfo[T <: AppLanguage]() extends LanguageMapInputSource {
+
+    override def loadAllTriples(logger: Logger): Future[ParsedTriples] = {
+      ???
+    }
+  } 
   
   case class LanguageMapFileBasedSourceInfo[T <: AppLanguage]
   (

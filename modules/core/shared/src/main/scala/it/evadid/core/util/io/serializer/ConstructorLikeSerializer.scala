@@ -1,5 +1,6 @@
 package it.evadid.core.util.io.serializer
 
+import it.evadid.core.util.io.ConstructorLikeParserWithJsonElements.ConstructorLikeReadResult
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.{VariableDisplayConfig, VariableToSerialize}
 import it.evadid.core.util.io.{ConstructorLikeParserWithJsonElements, Serializer}
 import ujson.Value
@@ -9,7 +10,6 @@ import upickle.default.*
 object ConstructorLikeSerializer {
 
   case class VariableDisplayConfig(varId: String, inlinedWithoutKey: Boolean)
-
 
   private case class VariableToSerialize(
                                           val key: String,
@@ -47,7 +47,7 @@ object ConstructorLikeSerializer {
   }
 
   def serialize[T](elementMapAndOrder: Map[Int, List[VariableDisplayConfig]], obj: T, writer: Writer[T], constructorName: String): String = {
-   val fieldMap: Map[String, Value] = getAutoFieldsMap(obj)(using writer)
+    val fieldMap: Map[String, Value] = getAutoFieldsMap(obj)(using writer)
 
     val variableSet: Set[VariableToSerialize] = fieldMap.keySet.flatMap(key => {
       createSerVar(elementMapAndOrder, key, write(fieldMap(key)))
@@ -62,18 +62,9 @@ object ConstructorLikeSerializer {
     }
   }
 
-  case class ConstructorLikeReadResult(elementType: String, values: Map[String, ujson.Value]) derives ReadWriter {
-    def valueAsString(key: String): Option[String] = {
-      values.get(key).map(write(_))
-    }
-  }
 
   def deserialize(str: String): ConstructorLikeReadResult = {
-    val parsed: (String, Seq[String]) = ConstructorLikeParserWithJsonElements.parseString(str).get
-    val mapped: Map[String, Value] = parsed._2.flatMap { curJsonStr =>
-      ujson.read(curJsonStr).obj.map((key, value) => key -> value)
-    }.toMap
-    ConstructorLikeReadResult(parsed._1, mapped)
+    ConstructorLikeParserWithJsonElements.parseString(str).get
   }
 
   def deserialize[T](str: String, reader: Reader[T]): T = {

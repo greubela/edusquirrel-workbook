@@ -2,10 +2,10 @@ package it.evadid.vm.code.defining
 
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.util.CodeStringBuilderMutable
+import it.evadid.vm.code.abstractions.{BeDefineStructure, BeExpression}
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.BeDefineFunction.*
 import it.evadid.vm.code.tree.{BeExpressionNode, BeExpressionReference}
-import it.evadid.vm.code.abstractions.{BeDefineStructure, BeExpression}
 import it.evadid.vm.controlflow.ControlFlowType.ControlFlowDown
 import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.naming.{BeEntityName, CodeRepresentationConfig}
@@ -13,13 +13,16 @@ import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
 import it.evadid.vm.types.BeChildRole.BodySequence
 import it.evadid.vm.types.BeScope.InSequenceScope
+import upickle.default.*
+
+
 
 case class BeDefineFunction(
                              inputs: List[BeDefineVariable],
                              outputs: Option[BeDefineVariable],
                              body: BeSequence,
                              functionTypeInfo: BeFunctionTypeInfo
-                           ) extends BeDefineStructure {
+                           ) extends BeDefineStructure{
 
   /*
   toSnapPattern
@@ -46,7 +49,7 @@ case class BeDefineFunction(
     }
 
     override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] =
-      asExpressionLine(ControlFlowDown, myInfo)
+      asExpressionLine(ControlFlowDown(), myInfo)
 
     override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] =
       List(BeExpressionReference(BeChildInfo(BeChildRole.BodySequence(0), InSequenceScope(body, myScope)), body))
@@ -81,7 +84,8 @@ case class BeDefineFunction(
 
 object BeDefineFunction {
 
-  case class BeFunctionTypeInfo(isMethodInClass: Option[BeDefineClass], isNamed: Option[BeEntityName], funcType: BeFunctionType) {
+  import BeExpression.given
+  case class BeFunctionTypeInfo(isMethodInClass: Option[BeDefineClass], isNamed: Option[BeEntityName], funcType: BeFunctionType) derives ReadWriter {
 
     def displayName: BeEntityName = isNamed.getOrElse(BeEntityName.fromUniversalNameInParts("λ"))
 
@@ -92,7 +96,7 @@ object BeDefineFunction {
 
   }
 
-  sealed trait BeFunctionType
+  sealed trait BeFunctionType derives ReadWriter
 
   case class Lambda() extends BeFunctionType
 

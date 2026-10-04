@@ -4,10 +4,25 @@ import fastparse.*
 import fastparse.MultiLineWhitespace.*
 import it.evadid.distribution.command.SerializedException
 import it.evadid.util.parsing.{Js, JsonGrammar}
+import ujson.Value
+import upickle.default.*
 
-import scala.util.{Try, Success, Failure}
+import scala.util.{Failure, Success, Try}
 
 object ConstructorLikeParserWithJsonElements {
+
+  case class ConstructorLikeReadResult(elementType: String, jsonPayloads: Seq[String]) derives ReadWriter {
+    
+    lazy val values: Map[String, ujson.Value] = {
+      jsonPayloads.flatMap { curJsonStr =>
+        ujson.read(curJsonStr).obj.map((key, value) => key -> value)
+      }.toMap
+    }
+    
+    def valueAsString(key: String): Option[String] = {
+      values.get(key).map(write(_))
+    }
+  }
 
   private def jsonPayload(using P[?]): P[Js.Val] = JsonGrammar.jsonExpr
 
@@ -18,15 +33,18 @@ object ConstructorLikeParserWithJsonElements {
     P(identifier.!) ~ (P("(") ~ jsonPayload.! ~ P(")")).rep(1)
   }
 
-  def parseString(input: String): Try[(String, Seq[String])] = {
+
+  def parseString(input: String): Try[ConstructorLikeReadResult] = {
     // FIX 1: Convert Context Function (?=>) to an explicit function parameter expected by parse
     parse(input, ctx => getParser()(using ctx)) match {
       // FIX 2: FastParse Success matches on (value, index). Unpack value explicitly to find the tuple.
-      case Parsed.Success(resultTuple, index) =>
+      case Parsed.Success(resultTuple, index) => {
         val (constructorName: String, jsonPayloads: Seq[String]) = resultTuple
-        scala.util.Success((constructorName, jsonPayloads))
-      case f: Parsed.Failure =>
+        Success(ConstructorLikeReadResult(constructorName, jsonPayloads))
+      }
+      case f: Parsed.Failure => {
         scala.util.Failure(SerializedException(f.longMsg))
+      }
     }
   }
 }

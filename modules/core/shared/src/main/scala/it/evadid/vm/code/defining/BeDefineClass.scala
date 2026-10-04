@@ -10,7 +10,7 @@ import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.naming.{BeEntityName, CodeRepresentationConfig}
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
-
+import upickle.default.*
 case class BeDefineClass(
                           name: BeEntityName,
                           attributes: List[BeDefineVariable],
@@ -46,7 +46,7 @@ case class BeDefineClass(
       )
     )
 
-    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown, myInfo)
+    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown(), myInfo)
 
     override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] =
       attributes.zipWithIndex.map((attribute, index) =>
