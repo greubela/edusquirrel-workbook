@@ -9,7 +9,7 @@ object JavaTurtleEvaluation {
   }
 
   enum Failure {
-    case TypeMismatch, DivisionByZero, LimitExceeded
+    case TypeMismatch, DivisionByZero, LimitExceeded, Cancelled
     case MissingValue(variable: R.VariableId)
   }
 
@@ -24,16 +24,20 @@ object JavaTurtleEvaluation {
   type Reader = R.Variable => Either[Failure, Value]
 
   def evaluate(expression: R.Expression, read: Reader, limits: Limits = Limits()): Either[Failure, Value] =
+    evaluateWithGate(expression, read, limits, () => Right(()))
+
+  private[java] def evaluateWithGate(expression: R.Expression, read: Reader, limits: Limits,
+      beforeNode: () => Either[Failure, Unit]): Either[Failure, Value] =
     if limits.maxDepth <= 0 || limits.maxDepth > Limits.MaxDepth ||
         limits.maxNodes <= 0 || limits.maxNodes > Limits.MaxNodes then Left(Failure.LimitExceeded)
-    else new Evaluator(read, limits).visit(expression, 1)
+    else new Evaluator(read, limits, beforeNode).visit(expression, 1)
 
-  private class Evaluator(read: Reader, limits: Limits) {
+  private class Evaluator(read: Reader, limits: Limits, beforeNode: () => Either[Failure, Unit]) {
     private var visited = 0
 
     def visit(expression: R.Expression, depth: Int): Result[Value] =
       if depth > limits.maxDepth || visited >= limits.maxNodes then Left(Failure.LimitExceeded)
-      else {
+      else beforeNode().flatMap { _ =>
         visited += 1
         expression match {
           case R.IntLiteral(value) => Right(Value.IntValue(value))
