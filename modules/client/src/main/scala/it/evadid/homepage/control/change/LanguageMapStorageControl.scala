@@ -57,7 +57,7 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
         readRemote
       }
       case Failure(err) => {
-        syncLogger.log(s"Ignored cached version of LanguageMapStorage! (Exception: ${err.getMessage})", WARN, Some(false))
+        syncLogger.log(s"Ignored cached version of LanguageMapStorage! (Exception:\n${err.getMessage}\n)", WARN, Some(false))
         readRemote
       }
     }.onComplete {

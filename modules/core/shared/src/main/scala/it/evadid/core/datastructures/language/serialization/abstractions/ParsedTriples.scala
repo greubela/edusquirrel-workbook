@@ -2,11 +2,44 @@ package it.evadid.core.datastructures.language.serialization.abstractions
 
 import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, SpecialLanguage}
 import it.evadid.core.datastructures.language.serialization.abstractions.*
+import it.evadid.core.datastructures.language.serialization.abstractions.LanguageMapEntry.LanguageTripel
+import it.evadid.core.datastructures.language.serialization.abstractions.ParsedTriples.ParsedTriplesSerialized
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
-import it.evadid.util.logging.Logger
+import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.serializer.AutoSerializable.{AutoSerializableMainType, AutoSerializableSubType}
+import it.evadid.core.util.io.serializer.{AutoSerializable, ConstructorLikeSerializer}
+import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig
+import it.evadid.distribution.command.SerializedException
+import upickle.default
 import upickle.default.*
 
-case class ParsedTriples(regularTriples: Set[LanguageMapEntry[HumanLanguage]], universalTriples: Set[LanguageMapEntry[SpecialLanguage]]) derives ReadWriter{
+
+object ParsedTriples {
+  
+  private given ReadWriter[LanguageTripel] = LanguageMapEntry.tripSerializer.uPickleReadWrite
+
+  private given sub: ReadWriter[ParsedTriplesSerialized] = macroRW
+
+  private given ReadWriter[ParsedTriples] = AutoSerializable.getReadWriter(sub)
+  
+  case class ParsedTriplesSerialized(
+                                      contentIds: Seq[LanguageMapContentId],
+                                      regularLanguages: Seq[HumanLanguage],
+                                      specialLanguages: Seq[SpecialLanguage],
+                                      regularTriples: Seq[LanguageTripel],
+                                      specialTriples: Seq[LanguageTripel]
+                                    ) extends AutoSerializableSubType[ParsedTriples, ParsedTriplesSerialized] {
+    lazy val toTypedMainType: ParsedTriples = {
+      ParsedTriples(
+        regularTriples.map(_.resolveRegular(contentIds, regularLanguages)).toSet,
+        specialTriples.map(_.resolveSpecial(contentIds, specialLanguages)).toSet
+      )
+    }
+  }
+
+}
+
+case class ParsedTriples(regularTriples: Set[LanguageMapEntry[HumanLanguage]], universalTriples: Set[LanguageMapEntry[SpecialLanguage]]) extends AutoSerializableMainType[ParsedTriples, ParsedTriplesSerialized] {
   def union(other: ParsedTriples) = ParsedTriples(regularTriples ++ other.regularTriples, universalTriples ++ other.universalTriples)
 
   lazy val size = regularTriples.size + universalTriples.size
@@ -28,19 +61,18 @@ case class ParsedTriples(regularTriples: Set[LanguageMapEntry[HumanLanguage]], u
       LanguageMapWithId(curKey, languageMap)
     })
 
-     resMaps
+    resMaps
   }
 
 
-}
-
-object ParsedTriples {
-
-
-  /*sealed trait LanguageMapFileKind
-
-  private case class RegularLanguageMapFile(language: HumanLanguage) extends LanguageMapFileKind
-
-  private case object UniversalLanguageMapFile extends LanguageMapFileKind*/
-
+  override lazy val rwSub: default.ReadWriter[ParsedTriplesSerialized] = ParsedTriples.sub
+  override lazy val toSerializableSubType: ParsedTriplesSerialized = {
+    val regLanguages = regularTriples.map(_.language).toSet.toList
+    val uniLanguages = universalTriples.map(_.language).toSet.toList
+    val ids = (regularTriples.map(_.contentId) ++ universalTriples.map(_.contentId)).toSet.toList
+    ParsedTriplesSerialized(
+      ids, regLanguages, uniLanguages, regularTriples.map(_.serializeWith(ids, regLanguages)).toList, universalTriples.map(_.serializeWith(ids, uniLanguages)).toList
+    )
+    
+  }
 }
