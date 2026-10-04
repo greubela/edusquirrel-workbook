@@ -1262,4 +1262,230 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(elements, 11)
     assertEquals(literalOne.structureInfo.toStringInLanguage(Python, English), "1")
   }
+
+  test("Java VM execution distinguishes correct and incorrect parameterized squares") {
+    val variants = Vector(
+      ("for (int i = 0; i < 4; i += 1) { Turtle.forward(size); Turtle.turnRight(90); }", 10, true),
+      ("for (int i = 0; i < 4; i += 1) { Turtle.forward(size); Turtle.turnRight(90); }", 40, true),
+      ("for (int i = 0; i < 4; i += 1) { Turtle.forward(size); Turtle.turnRight(90); }", 100, true),
+      ("int i = 0; while (i < 4) { Turtle.forward(size); Turtle.turnRight(90); i += 1; }", 10, true),
+      ("int i = 0; while (i < 4) { Turtle.forward(size); Turtle.turnRight(90); i += 1; }", 40, true),
+      ("int i = 0; while (i < 4) { Turtle.forward(size); Turtle.turnRight(90); i += 1; }", 100, true),
+      ("for (int i = 0; i < 3; i += 1) { Turtle.forward(size); Turtle.turnRight(90); }", 40, false),
+      ("for (int i = 0; i < 4; i += 1) { Turtle.forward(size); Turtle.turnRight(45); }", 40, false),
+      ("for (int i = 0; i < 4; i += 1) { Turtle.forward(40); Turtle.turnRight(90); }", 10, false))
+    for (body, size, correct) <- variants do {
+      val source = javaProgram(s"square($size);", s"static void square(int size) { $body }")
+      val program = P.adapt(source).toOption.get
+      val execution = T.runVm(program)
+      assertEquals(execution, T.run(source))
+      assertEquals(execution.status, T.Status.Completed)
+      assertEquals(execution.commands == Vector.fill(4)(Vector(forward(size), right(90))).flatten, correct)
+      val method = program.root.methods.find(_.binding.originalName == "square").get.binding.id
+      val invoked = T.invokeVm(program, method, Vector(E.Value.IntValue(size)))
+      assertEquals(invoked, T.invoke(source, method, Vector(E.Value.IntValue(size))))
+      assertEquals(invoked.commands, execution.commands)
+    }
+  }
+
+  test("Java VM execution preserves pass by value and repeated helper frame isolation") {
+    val source = javaProgram("int size = 5; outer(size); Turtle.forward(size); outer(7);", """
+      static void outer(int size) { size += 10; inner(size); Turtle.forward(size); }
+      static void inner(int size) { size *= 2; Turtle.forward(size); }
+    """)
+    val program = P.adapt(source).toOption.get
+    val execution = T.runVm(program)
+    assertEquals(execution, T.run(source))
+    assertEquals(execution.status, T.Status.Completed)
+    assertEquals(execution.commands, Vector(30, 15, 5, 34, 17).map(forward))
+    assertEquals(T.runVm(program), execution)
+    val flags = javaProgram("boolean enabled = true; flip(enabled); if (enabled) { Turtle.forward(3); } flip(false);", """
+      static void flip(boolean enabled) {
+        enabled = !enabled; if (enabled) { Turtle.forward(1); } else { Turtle.forward(2); }
+      }
+    """)
+    val booleanExecution = T.runVm(P.adapt(flags).toOption.get)
+    assertEquals(booleanExecution, T.run(flags))
+    assertEquals(booleanExecution.commands, Vector(2, 3, 1).map(forward))
+  }
+
+  test("Java VM execution keeps scopes loop updates and return control flow intact") {
+    val source = javaProgram("draw(2); draw(1);", """
+      static void draw(int count) {
+        if (true) { int value = 10; Turtle.forward(value); }
+        if (true) { int value = 20; Turtle.forward(value); }
+        for (int i = 0; i < count; i += 1, Turtle.turnRight(i)) { Turtle.forward(i); }
+        for (int i = 0; i < 0; i += 1) { Turtle.forward(999); }
+        while (count < 0) { Turtle.forward(999); }
+        for (;;) { Turtle.forward(30); return; }
+      }
+    """)
+    val program = P.adapt(source).toOption.get
+    val execution = T.runVm(program)
+    assertEquals(execution, T.run(source))
+    assertEquals(execution.status, T.Status.Completed)
+    assertEquals(execution.commands, Vector(forward(10), forward(20), forward(0), right(1), forward(1), right(2), forward(30),
+      forward(10), forward(20), forward(0), right(1), forward(30)))
+    val early = javaProgram("early(); Turtle.forward(2);", """
+      static void early() {
+        for (int i = 0; i < 4; Turtle.forward(999)) { Turtle.forward(1); return; }
+        Turtle.forward(999);
+      }
+    """)
+    val earlyExecution = T.runVm(P.adapt(early).toOption.get)
+    assertEquals(earlyExecution, T.run(early))
+    assertEquals(earlyExecution.commands, Vector(forward(1), forward(2)))
+  }
+
+  test("Java VM execution retains int32 arithmetic short circuit and failure prefixes") {
+    val source = javaProgram("""
+      int value = 2147483647; value += 1; Turtle.forward(value);
+      value -= 1; Turtle.forward(value); value *= 2147483647; Turtle.forward(value);
+      value = -2147483648; value /= -1; Turtle.forward(value); value %= -1; Turtle.forward(value);
+      value = -9; value /= 2; Turtle.forward(value); value = -9; value %= 2; Turtle.forward(value);
+      boolean enabled = false && 1 / 0 > 0;
+      if (!enabled || 1 / 0 > 0) { Turtle.forward(2); }
+    """)
+    val execution = T.runVm(P.adapt(source).toOption.get)
+    assertEquals(execution, T.run(source))
+    assertEquals(execution.status, T.Status.Completed)
+    assertEquals(execution.commands, Vector(Int.MinValue, Int.MaxValue, 1, Int.MinValue, 0, -4, -1, 2).map(forward))
+    for body <- Seq("int value = 5; value /= 0;", "int value = 5; value %= 0;", "pair(1, 5 / 0);") do {
+      val failing = javaProgram(s"Turtle.forward(1); $body Turtle.forward(999);", "static void pair(int a, int b) { Turtle.forward(999); }")
+      val program = P.adapt(failing).toOption.get
+      val result = T.runVm(program)
+      assertEquals(result, T.run(failing))
+      assertEquals(result.status, T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero)))
+      assertEquals(result.commands, Vector(forward(1)))
+      assertEquals(T.runVm(program), result)
+    }
+  }
+
+  test("Java VM execution uses the actual entry point and distinct Java method ids") {
+    val text = """class Drawing {
+      static void drawSquare(int size) { Turtle.forward(size); }
+      public static void main(String[] argv) { drawSquare(10); draw_square(20); }
+      static void draw_square(int size) { Turtle.turnRight(size); }
+    }"""
+    val source = (for {
+      parsed <- JavaTurtleSource.parse(text)
+      structure <- JavaTurtleStructure.check(parsed)
+      typed <- JavaTurtleSemantics.check(structure)
+      resolved <- R.resolve(typed)
+    } yield resolved).toOption.get
+    val program = P.adapt(source).toOption.get
+    assertEquals(program.root.entryPoint.binding.id, R.MethodId(1))
+    val execution = T.runVm(program)
+    assertEquals(execution, T.run(source))
+    assertEquals(execution.status, T.Status.Completed)
+    assertEquals(execution.commands, Vector(forward(10), right(20)))
+    assertEquals(T.invokeVm(program, R.MethodId(2), Vector(E.Value.IntValue(30))).commands, Vector(right(30)))
+    val another = P.adapt(javaProgram("int size = 7; Turtle.forward(size);")).toOption.get
+    assertEquals(T.runVm(another).commands, Vector(forward(7)))
+    assertEquals(T.runVm(program), execution)
+  }
+
+  test("Java VM execution rejects invalid limits and helper invocations before polling") {
+    val source = javaProgram("draw(1);", "static void draw(int size) { Turtle.forward(size); }")
+    val program = P.adapt(source).toOption.get
+    val method = program.root.methods.head.binding.id
+    val neverPoll = () => fail("Invalid input must not poll cancellation")
+    for (id, arguments) <- Seq(method -> Vector.empty[E.Value], method -> Vector(E.Value.BooleanValue(true)),
+      method -> Vector(E.Value.IntValue(1), E.Value.IntValue(2)), R.MethodId(999) -> Vector.empty[E.Value],
+      program.root.entryPoint.binding.id -> Vector.empty[E.Value]) do {
+      val result = T.invokeVm(program, id, arguments, isCancelled = neverPoll)
+      assertEquals(result, T.Execution(T.Status.Failed(T.Failure.InvalidInvocation), Vector.empty, 0))
+      assertEquals(result, T.invoke(source, id, arguments, isCancelled = neverPoll))
+    }
+    for limits <- Seq(T.Limits(maxSteps = 0), T.Limits(maxSteps = -1), T.Limits(maxSteps = T.Limits.MaxSteps + 1),
+      T.Limits(maxCommands = -1), T.Limits(maxCommands = T.Limits.MaxCommands + 1),
+      T.Limits(maxCallDepth = 0), T.Limits(maxCallDepth = T.Limits.MaxCallDepth + 1),
+      T.Limits(maxBlockDepth = 0), T.Limits(maxBlockDepth = T.Limits.MaxBlockDepth + 1)) do {
+      val expected = T.Execution(T.Status.Failed(T.Failure.InvalidLimits), Vector.empty, 0)
+      assertEquals(T.runVm(program, limits, neverPoll), expected)
+      assertEquals(T.invokeVm(program, method, Vector(E.Value.IntValue(1)), limits, neverPoll), expected)
+    }
+    assertEquals(T.runVm(P.adapt(javaProgram("")).toOption.get, T.Limits(maxCommands = 0)).status, T.Status.Completed)
+    assertEquals(T.runVm(program, T.Limits(maxCommands = 0)).commands, Vector.empty)
+    assertEquals(T.runVm(program, T.Limits(maxCommands = 0)).status, T.Status.LimitExceeded)
+  }
+
+  test("Java VM execution retains exact statement expression and command budgets") {
+    val empty = P.adapt(javaProgram("")).toOption.get
+    assertEquals(T.runVm(empty, T.Limits(maxSteps = 2)), T.Execution(T.Status.Completed, Vector.empty, 2))
+    val one = P.adapt(javaProgram("Turtle.forward(1);")).toOption.get
+    assertEquals(T.runVm(one, T.Limits(maxSteps = 5)), T.Execution(T.Status.Completed, Vector(forward(1)), 5))
+    assertEquals(T.runVm(one, T.Limits(maxSteps = 4)), T.Execution(T.Status.LimitExceeded, Vector.empty, 4))
+    val expressions = P.adapt(javaProgram("int a = 1 + 2; int b = 3 + 4; Turtle.forward(a + b);")).toOption.get
+    assertEquals(T.runVm(expressions, T.Limits(maxSteps = 15)), T.Execution(T.Status.Completed, Vector(forward(10)), 15))
+    assertEquals(T.runVm(expressions, T.Limits(maxSteps = 14)), T.Execution(T.Status.LimitExceeded, Vector.empty, 14))
+    val square = P.adapt(javaProgram("for (int i = 0; i < 4; i += 1) { Turtle.forward(10); Turtle.turnRight(90); }")).toOption.get
+    val complete = T.runVm(square, T.Limits(maxCommands = 8))
+    assertEquals(complete.status, T.Status.Completed)
+    assertEquals(complete.commands.size, 8)
+    val limited = T.runVm(square, T.Limits(maxCommands = 7))
+    assertEquals(limited.status, T.Status.LimitExceeded)
+    assertEquals(limited.commands, complete.commands.take(7))
+  }
+
+  test("Java VM endless loops cancellation and repeated execution use fresh state") {
+    for body <- Seq("while (true) {}", "for (;;) {}", "for (;;) { ; }") do {
+      val source = javaProgram(body)
+      val program = P.adapt(source).toOption.get
+      assertEquals(T.runVm(program, T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20))
+      var polls = 0
+      assertEquals(T.runVm(program, T.Limits(maxSteps = 30), () => { polls += 1; polls >= 10 }),
+        T.Execution(T.Status.Cancelled, Vector.empty, 9))
+      assertEquals(polls, 10)
+      assertEquals(T.runVm(program, T.Limits(maxSteps = 20)), T.run(source, T.Limits(maxSteps = 20)))
+    }
+    val program = P.adapt(javaProgram("Turtle.forward(1); Turtle.forward(2);")).toOption.get
+    assertEquals(T.runVm(program, isCancelled = () => true), T.Execution(T.Status.Cancelled, Vector.empty, 0))
+    var polls = 0
+    assertEquals(T.runVm(program, isCancelled = () => { polls += 1; polls >= 8 }),
+      T.Execution(T.Status.Cancelled, Vector(forward(1)), 7))
+    assertEquals(polls, 8)
+    assertEquals(T.runVm(program), T.Execution(T.Status.Completed, Vector(forward(1), forward(2)), 8))
+    val emptyLoop = P.adapt(javaProgram("while (true) {}")).toOption.get
+    assertEquals(T.runVm(emptyLoop), T.Execution(T.Status.LimitExceeded, Vector.empty, T.Limits.MaxSteps))
+    val emitting = P.adapt(javaProgram("while (true) { Turtle.forward(1); }")).toOption.get
+    val limited = T.runVm(emitting)
+    assertEquals(limited.status, T.Status.LimitExceeded)
+    assertEquals(limited.commands.size, T.Limits.MaxCommands)
+    assert(limited.commands.forall(_ == forward(1)))
+  }
+
+  test("Java VM execution enforces exact call and block depths without recursive host stacks") {
+    def chain(count: Int): R.ResolvedSource = javaProgram("m0();", (0 until count).map { index =>
+      val body = if index == count - 1 then "Turtle.forward(1);" else s"m${index + 1}();"
+      s"static void m$index() { $body }"
+    }.mkString(" "))
+    val allowedSource = chain(63)
+    val allowed = P.adapt(allowedSource).toOption.get
+    val full = T.runVm(allowed)
+    assertEquals(full, T.run(allowedSource))
+    assertEquals(full.status, T.Status.Completed)
+    assertEquals(full.commands, Vector(forward(1)))
+    val excessiveSource = chain(64)
+    val excessive = P.adapt(excessiveSource).toOption.get
+    val rejected = T.runVm(excessive)
+    assertEquals(rejected, T.run(excessiveSource))
+    assertEquals(rejected.status, T.Status.LimitExceeded)
+    assertEquals(rejected.commands, Vector.empty)
+    val direct = T.invokeVm(excessive, R.MethodId(0), Vector.empty)
+    assertEquals(direct, T.invoke(excessiveSource, R.MethodId(0), Vector.empty))
+    assertEquals(direct.status, T.Status.Completed)
+    assertEquals(direct.commands, Vector(forward(1)))
+    val nestedSource = javaProgram("if (true) { " * 8 + "Turtle.forward(1);" + " }" * 8)
+    val nested = P.adapt(nestedSource).toOption.get
+    val shallow = T.runVm(nested, T.Limits(maxBlockDepth = 8))
+    assertEquals(shallow, T.run(nestedSource, T.Limits(maxBlockDepth = 8)))
+    assertEquals(shallow.status, T.Status.LimitExceeded)
+    assertEquals(shallow.commands, Vector.empty)
+    val deep = T.runVm(nested, T.Limits(maxBlockDepth = 9))
+    assertEquals(deep, T.run(nestedSource, T.Limits(maxBlockDepth = 9)))
+    assertEquals(deep.status, T.Status.Completed)
+    assertEquals(deep.commands, Vector(forward(1)))
+    assertEquals(T.runVm(allowed), full)
+  }
 }

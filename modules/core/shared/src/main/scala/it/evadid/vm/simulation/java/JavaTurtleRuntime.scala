@@ -1,6 +1,6 @@
 package it.evadid.vm.simulation.java
 
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R}
+import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E}
 import scala.collection.mutable
 
@@ -35,16 +35,25 @@ object JavaTurtleRuntime {
 
   def run(source: R.ResolvedSource, limits: Limits = Limits(),
       isCancelled: () => Boolean = () => false): Execution =
-    execute(source, source.entryPoint, Vector.empty, true, limits, isCancelled)
+    execute(source.methods, source.entryPoint, source.entryPoint, Vector.empty, true, limits, isCancelled)
 
   def invoke(source: R.ResolvedSource, method: R.MethodId, arguments: Vector[E.Value],
       limits: Limits = Limits(), isCancelled: () => Boolean = () => false): Execution =
-    execute(source, method, arguments, false, limits, isCancelled)
+    execute(source.methods, source.entryPoint, method, arguments, false, limits, isCancelled)
 
-  private def execute(source: R.ResolvedSource, method: R.MethodId, arguments: Vector[E.Value],
+  def runVm(program: P.Program, limits: Limits = Limits(),
+      isCancelled: () => Boolean = () => false): Execution =
+    execute(program.resolvedMethods, program.root.entryPoint.binding.id, program.root.entryPoint.binding.id,
+      Vector.empty, true, limits, isCancelled)
+
+  def invokeVm(program: P.Program, method: R.MethodId, arguments: Vector[E.Value],
+      limits: Limits = Limits(), isCancelled: () => Boolean = () => false): Execution =
+    execute(program.resolvedMethods, program.root.entryPoint.binding.id, method, arguments, false, limits, isCancelled)
+
+  private def execute(methods: Vector[R.Method], entryPoint: R.MethodId, method: R.MethodId, arguments: Vector[E.Value],
       main: Boolean, limits: Limits, isCancelled: () => Boolean): Execution =
     if !limits.valid then Execution(Status.Failed(Failure.InvalidLimits), Vector.empty, 0)
-    else new Runner(source, limits, isCancelled).execute(method, arguments, main)
+    else new Runner(methods, entryPoint, limits, isCancelled).execute(method, arguments, main)
 
   private type Result[A] = Either[Status, A]
   private type Scope = mutable.Set[R.VariableId]
@@ -68,8 +77,8 @@ object JavaTurtleRuntime {
     def schedule(actions: Action*): Unit = pending = actions.toList ::: pending
   }
 
-  private class Runner(source: R.ResolvedSource, limits: Limits, isCancelled: () => Boolean) {
-    private val methods = source.methods.map(method => method.id -> method).toMap
+  private class Runner(definitions: Vector[R.Method], entryPoint: R.MethodId, limits: Limits, isCancelled: () => Boolean) {
+    private val methods = definitions.map(method => method.id -> method).toMap
     private val commands = mutable.ArrayBuffer.empty[Command]
     private var frames = List.empty[Frame]
     private var used = 0
@@ -112,8 +121,8 @@ object JavaTurtleRuntime {
 
     private def start(id: R.MethodId, arguments: Vector[E.Value], main: Boolean = false): Result[Unit] =
       methods.get(id).toRight(Status.Failed(Failure.InvalidInvocation)).flatMap { method =>
-        val valid = if main then id == source.entryPoint && arguments.isEmpty
-          else id != source.entryPoint && method.parameters.size == arguments.size &&
+        val valid = if main then id == entryPoint && arguments.isEmpty
+          else id != entryPoint && method.parameters.size == arguments.size &&
             method.parameters.zip(arguments).forall((parameter, value) => matches(parameter, value))
         if !valid then Left(Status.Failed(Failure.InvalidInvocation))
         else step().flatMap { _ =>
