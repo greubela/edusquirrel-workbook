@@ -3,8 +3,8 @@ package it.evadid.core.datastructures.language.control
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.serialization.LanguageMapInputSource
-import it.evadid.core.datastructures.language.serialization.abstractions.ParsedTriples
-import it.evadid.core.datastructures.language.serialization.abstractions.ParsedTriples.LanguageMapWithId
+import it.evadid.core.datastructures.language.serialization.*
+import it.evadid.core.datastructures.language.serialization.abstractions.*
 import it.evadid.util.logging.Logger
 
 case class LanguageMapStorage(parsedTriples: ParsedTriples, languageMaps: Map[LanguageMapContentId, LanguageMap[HumanLanguage]], loadedSources: Set[LanguageMapInputSource]) {

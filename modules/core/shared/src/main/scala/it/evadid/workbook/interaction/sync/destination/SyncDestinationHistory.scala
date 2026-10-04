@@ -1,18 +1,15 @@
-package it.evadid.workbook.interaction.sync
+package it.evadid.workbook.interaction.sync.destination
 
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.FetchResponse
-import it.evadid.core.util.io.SerializableWithCompanion.SerializableWithGenericFactory
+import it.evadid.core.util.io.serializer.ConstructorLikeSerializable
 import it.evadid.util.logging.derived.SyncLogger
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.interaction.sync.{SyncContext, SyncFormatter, SyncSuccess, UsageContext}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object SyncDestination {
 
-}
-
-trait SyncDestination {
+trait SyncDestinationHistory extends SyncDestination {
 
   type BackendServerResult[T] = Either[Throwable, T]
 
@@ -33,5 +30,3 @@ trait SyncDestination {
   def clearAllValues(logger: SyncLogger, context: UsageContext): Future[SyncSuccess]
 
 }
-
-

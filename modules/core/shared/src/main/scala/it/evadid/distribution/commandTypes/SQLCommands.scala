@@ -3,8 +3,9 @@ package it.evadid.distribution.commandTypes
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.ExecutionCommandFactory
 import it.evadid.workbook.interaction.sync.SyncFormatter.RichInteractionVariableFormatter
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.interaction.sync.SyncInformation.*
 import it.evadid.workbook.interaction.sync.{SyncContext, UsageContext}
+import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
 
 object SQLCommands {

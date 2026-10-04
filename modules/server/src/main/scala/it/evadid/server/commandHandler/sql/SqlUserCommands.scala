@@ -9,7 +9,8 @@ import it.evadid.server.AuthHandling
 import it.evadid.server.SendMailCommand.sendMail
 import it.evadid.util.JvmUtils
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.interaction.sync.SyncInformation.*
+import it.evadid.workbook.interaction.sync.SyncSuccess
 
 import java.sql.{Connection, Timestamp}
 import java.time.LocalDateTime

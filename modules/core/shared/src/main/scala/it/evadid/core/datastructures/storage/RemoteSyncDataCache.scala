@@ -5,7 +5,8 @@ import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.core.util.InfoUtil
 import it.evadid.util.logging.LoggingLevel.INFO
 import it.evadid.util.logging.derived.SyncLogger
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.interaction.sync.SyncInformation.*
+import it.evadid.workbook.interaction.sync.SyncSuccess
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}

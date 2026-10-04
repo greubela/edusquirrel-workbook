@@ -84,7 +84,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   private val serializer: Serializer[AllUserInfo] = DefaultSerializer.serializerAllUserInfo(HomepageDefaults.defaultSerializerUserConfig)
 
   def tryParsingExistingUser(): Option[AllUserInfo] = {
-    val value: Option[String] = LocalStorageSync.fetchAllRaw(logger).get(allUserInfoStorageKey)
+    val value: Option[String] = LocalStorageSync.fetchAllRawSync(logger).get(allUserInfoStorageKey)
     serializer.tryDeserializeAll(value).inputAfterOperation.headOption
   }
 
@@ -198,7 +198,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
         val allUserInfo = newUserInfo.get
         logger.logInfo(s"Loading user ${allUserInfo.toString}")
         val serialized = serializer.serialize(allUserInfo)
-        LocalStorageSync.storeRaw(logger, allUserInfoStorageKey, serialized)
+        LocalStorageSync.storeToRawSync(logger, allUserInfoStorageKey, serialized)
       }
       fullInfo.homepageInfoState.update(_.copy(userInfo = newUserInfo))
     } catch case (err: Throwable) => logger.logException(err)

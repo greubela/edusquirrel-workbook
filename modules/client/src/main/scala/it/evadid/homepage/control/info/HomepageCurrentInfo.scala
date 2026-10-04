@@ -5,7 +5,8 @@ import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.interaction.sync.{SyncInformation, UsageContext}
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncInformationWithContext
+import it.evadid.workbook.interaction.sync.SyncInformation.*
+import it.evadid.workbook.interaction.sync.*
 
 case class HomepageCurrentInfo(fullInfo: FullInfo) {
 
@@ -18,7 +19,7 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
   def currentSyncSources: List[SyncInformationWithContext] = fullInfo.synchronized {
     val curContext: UsageContext = fullInfo.homepageInfoState.now().toContext
     val syncInformation: List[SyncInformation] = userInfo.map(_.config.syncDestinations.toList).toList.flatten
-    val syncWithContext: List[SyncInformationWithContext] = syncInformation.map(_.forContext(fullInfo.current.currentHomepageContext, fullInfo.current.userInfo))
+    val syncWithContext: List[SyncInformationWithContext] = syncInformation.map(_.forContext(fullInfo.current.currentHomepageContext))
     syncWithContext
   }
 

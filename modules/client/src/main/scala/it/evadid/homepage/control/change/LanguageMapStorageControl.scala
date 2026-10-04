@@ -30,6 +30,12 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
     }
   }*/
 
+  def ensureCachedLanguageSourcesLoaded(): Future[?] = {
+    
+    // todo 
+Future.successful( () )
+  }
+  
   def ensureDefaultLanguageSourcesLoaded(): Future[?] = {
     val loadLanguageMapDirs: Set[String] = Set(
       "basic", "login", "entitynames", "turtlestitch", "blockeditor", "embroideryworkbook", "testworkbook", "plantworkshop", "prompts", "compressionworkbook"

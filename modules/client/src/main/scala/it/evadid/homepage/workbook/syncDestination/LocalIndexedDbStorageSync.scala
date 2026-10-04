@@ -1,27 +1,34 @@
 package it.evadid.homepage.workbook.syncDestination
 
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.FetchResponse
-import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.ConstructorLikeParserWithJsonElements.ConstructorLikeReadResult
+import it.evadid.core.util.io.{ConstructorLikeParserWithJsonElements, Serializer}
 import it.evadid.util.logging.LoggingLevel.WARN
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.*
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.interaction.sync.SyncInformation.*
+import it.evadid.workbook.interaction.sync.destination.*
+import it.evadid.workbook.interaction.variable
 import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
 import org.scalajs.dom
 import org.scalajs.dom.{IDBDatabase, IDBTransactionMode}
 
+import java.time
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js
 
 object LocalIndexedDbStorageSync {
-  val instance = LocalIndexedDbStorageSync()
+  val instanceForVariables = LocalIndexedDbStorageSync("EvaDidInteractionDB", "variableHistoryStore")
+
+  case class BasicIndexDbStorage(dbName: String, storeName: String) {
+
+  }
+
 }
 
-case class LocalIndexedDbStorageSync() extends SyncDestination {
+case class LocalIndexedDbStorageSync(dbName: String, storeName: String) extends SyncDestinationRaw with SyncDestinationHistory {
 
-  private val dbName = "EvaDidInteractionDB"
-  private val storeName = "variableHistoryStore"
   private val dbVersion = 1
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
@@ -58,6 +65,7 @@ case class LocalIndexedDbStorageSync() extends SyncDestination {
 
   // --- Core API Implementations ---
 
+
   override def storeTo(
                         logger: SyncLogger,
                         context: SyncContext,
@@ -67,28 +75,13 @@ case class LocalIndexedDbStorageSync() extends SyncDestination {
 
     val serializedKey = contextToKeySerializer.serialize(context)
     val serializedValue = formatter.serialize(context, history)
+    val boolFut = storeToRaw(serializedKey, serializedValue)
 
-    openDatabase().flatMap { db =>
-      val promise = Promise[SyncSuccess]()
-      val transaction = db.transaction(js.Array(storeName), IDBTransactionMode.readwrite)
-      val store = transaction.objectStore(storeName)
-
-      // Package data matching our store structure
-      val dataEntry = js.Dynamic.literal(id = serializedKey, value = serializedValue)
-      val request = store.put(dataEntry)
-
-      transaction.oncomplete = (_: dom.Event) => {
-        promise.success(SyncSuccess(1, 0, 0, LocalDateTime.now()))
-      }
-
-      transaction.onerror = (_: dom.Event) => {
-        logger.logExceptionWarn("LocalIndexedDbStorageSync, error inside storeTo transaction", new RuntimeException(transaction.error.name))
-        promise.failure(new RuntimeException(transaction.error.name))
-      }
-
-      promise.future
-    }
+    boolFut.map(boolRes => {
+      SyncSuccess(1, 0, 0, LocalDateTime.now())
+    })
   }
+
 
   override def fetchAll(
                          logger: SyncLogger,
@@ -96,48 +89,25 @@ case class LocalIndexedDbStorageSync() extends SyncDestination {
                          formatter: SyncFormatter
                        ): Future[FetchResponse[SyncContext, InteractionVariableHistorySerialized]] = {
 
-    openDatabase().flatMap { db =>
-      val promise = Promise[FetchResponse[SyncContext, InteractionVariableHistorySerialized]]()
-      val transaction = db.transaction(js.Array(storeName), IDBTransactionMode.readonly)
-      val store = transaction.objectStore(storeName)
-
-      // Use a cursor to step through the records asynchronously
-      val request = store.openCursor()
-      var mutableMap = Map[SyncContext, InteractionVariableHistorySerialized]()
-
-      request.onsuccess = (event: dom.Event) => {
-        val cursor = request.result.asInstanceOf[dom.IDBCursorWithValue[js.Any]]
-        if (cursor != null) {
-          val record = cursor.value.asInstanceOf[js.Dynamic]
-          val browserKey = record.id.asInstanceOf[String]
-          val browserValue = record.value.asInstanceOf[String]
-
-          try {
-            val syncCtx = contextToKeySerializer.deserialize(browserKey)
-            val history = formatter.deserialize(browserValue)
-            mutableMap += (syncCtx -> history)
-          } catch {
-            case e: Exception =>
-              logger.log(s"LocalIndexedDbStorageSync: Ignore tuple ($browserKey) because it was unparsable: ${e.getMessage}", WARN, Option(false))
-          }
-          cursor.continue()
-        } else {
-          // Cursor finished iterating
-          val fetchRes = FetchResponse.fromMap[SyncContext, InteractionVariableHistorySerialized](
-            LocalDateTime.now(),
-            mutableMap,
-            _.lastStateOption.map(_.timestamp)
-          )
-          promise.success(fetchRes)
-        }
-      }
-
-      request.onerror = (_: dom.Event) => {
-        promise.failure(new RuntimeException(s"Cursor parsing failed: ${request.error.name}"))
-      }
-
-      promise.future
+    def parseTuple(browserKey: String, browserValue: String): Option[(SyncContext, InteractionVariableHistorySerialized)] = try {
+      val syncCtx = contextToKeySerializer.deserialize(browserKey)
+      val history = formatter.deserialize(browserValue)
+      Some(syncCtx -> history)
+    } catch case e: Exception => {
+      logger.log(s"LocalIndexedDbStorageSync: Ignore tuple ($browserKey) because it was unparsable: ${e.getMessage}", WARN, Option(false))
+      None
     }
+
+    def parseResMap(res: Map[String, String]): Map[SyncContext, InteractionVariableHistorySerialized] = {
+      res.toList.flatMap(tup => parseTuple(tup._1, tup._2)).toMap
+    }
+
+    readAllRaw(logger).map(strMap => {
+      val resMap: Map[SyncContext, InteractionVariableHistorySerialized] = parseResMap(strMap)
+      val res = FetchResponse.fromMap[SyncContext, InteractionVariableHistorySerialized](LocalDateTime.now(), resMap, _.lastStateOption.map(_.timestamp))
+      logger.logInfo(s"Parsed ${strMap.knownSize} string elements and transformed them to ${resMap.knownSize} fetch response map elements!")
+      res
+    })
   }
 
   override def clearValues(logger: SyncLogger, context: SyncContext): Future[SyncSuccess] = {
@@ -170,5 +140,70 @@ case class LocalIndexedDbStorageSync() extends SyncDestination {
   }
 
   override def toString: String = "LocalIndexedDbStorageSync()"
+
+  override protected def readAllRaw(): Future[Map[String, String]] = {
+    openDatabase().flatMap { db =>
+      val promise = Promise[Map[String, String]]()
+      val transaction = db.transaction(js.Array(storeName), IDBTransactionMode.readonly)
+      val store = transaction.objectStore(storeName)
+
+      // Use a cursor to step through the records asynchronously
+      val request = store.openCursor()
+      var mutableMap = Map[String, String]()
+
+      request.onsuccess = (event: dom.Event) => {
+        val cursor = request.result.asInstanceOf[dom.IDBCursorWithValue[js.Any]]
+        if (cursor != null) {
+          val record = cursor.value.asInstanceOf[js.Dynamic]
+          val browserKey = record.id.asInstanceOf[String]
+          val browserValue = record.value.asInstanceOf[String]
+
+          mutableMap += browserKey -> browserValue
+          cursor.continue()
+        }
+        else {
+          promise.success(mutableMap)
+        }
+      }
+
+      request.onerror = (_: dom.Event) => {
+        promise.failure(new RuntimeException(s"Cursor parsing failed: ${request.error.name}"))
+      }
+
+      promise.future
+    }
+  }
+
+
+  override def storeToRaw(keyToWrite: String, valueToWrite: String): Future[Boolean] = {
+    openDatabase().flatMap { db =>
+      val promise = Promise[Boolean]()
+      val transaction = db.transaction(js.Array(storeName), IDBTransactionMode.readwrite)
+      val store = transaction.objectStore(storeName)
+
+      // Package data matching our store structure
+      val dataEntry = js.Dynamic.literal(id = keyToWrite, value = valueToWrite)
+      val request = store.put(dataEntry)
+
+      transaction.oncomplete = (_: dom.Event) => {
+        promise.success(true)
+      }
+
+      transaction.onerror = (_: dom.Event) => {
+        promise.failure(new RuntimeException(transaction.error.name))
+      }
+
+      promise.future
+    }
+  }
+
+  override protected def deserializeFromConstructorLikeString(from: ConstructorLikeParserWithJsonElements.ConstructorLikeReadResult): Option[SyncDestination] = {
+    if (from.elementType == this.getClass.getSimpleName) Some(LocalIndexedDbStorageSync(from.jsonPayloads(0), from.jsonPayloads(1)))
+    else None
+  }
+
+  override protected def serializeToConstructorLikeString(): ConstructorLikeParserWithJsonElements.ConstructorLikeReadResult = {
+    ConstructorLikeReadResult(this.getClass.getSimpleName, List(dbName, storeName))
+  }
 
 }

@@ -35,7 +35,7 @@ object TurtleJsxGraphRenderer:
     override def deserialize(str: String): Point[Double] = {
       val res = ConstructorLikeParserWithJsonElements.parseString(str)
       println("TurtleJsxRendering::deserialize not implemented correctly")
-      Point(res.get._2(1).toDouble, res.get._2(2).toDouble)
+      Point(res.get.jsonPayloads(1).toDouble, res.get.jsonPayloads(2).toDouble)
     }
   }.uPickleReadWrite
 

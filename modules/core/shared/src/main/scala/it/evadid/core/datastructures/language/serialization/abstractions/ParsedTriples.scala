@@ -1,7 +1,7 @@
 package it.evadid.core.datastructures.language.serialization.abstractions
 
 import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, SpecialLanguage}
-import it.evadid.core.datastructures.language.serialization.abstractions.ParsedTriples.LanguageMapWithId
+import it.evadid.core.datastructures.language.serialization.abstractions.*
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.util.logging.Logger
 import upickle.default.*
@@ -47,5 +47,4 @@ object ParsedTriples {
 
   private case object UniversalLanguageMapFile extends LanguageMapFileKind*/
 
-  case class LanguageMapWithId(contentId: LanguageMapContentId, languageMap: LanguageMap[HumanLanguage]) derives ReadWriter
 }
