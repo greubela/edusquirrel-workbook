@@ -1,6 +1,7 @@
 package it.evadid.core.util.io
 
 import it.evadid.core.datastructures.chat.MessengerModel
+import it.evadid.core.util.io.ConstructorLikeParserWithJsonElements.ConstructorLikeReadResult
 import it.evadid.core.util.io.TypeConverter.ConverterResult
 import it.evadid.distribution.command.SerializedException
 import ujson.Value
@@ -36,7 +37,7 @@ trait Serializer[T] extends TypeConverter[T, String] {
 object Serializer {
 
 
-
+/*
   def constructorLikeSerializer[T](
                                     constructorName: String,
                                     construct: Seq[ujson.Value] => T,
@@ -49,7 +50,7 @@ object Serializer {
 
     override def deserialize(str: String): T = {
       ConstructorLikeParserWithJsonElements.parseString(str).match {
-        case Success(parsedConstructor, jsons) => if (constructorName != parsedConstructor) {
+        case Success(ConstructorLikeReadResult(parsedConstructor, jsons)) => if (constructorName != parsedConstructor) {
           throw SerializedException(s"ConstructorLikeSerializer(${constructorName}) cannot parse objects of type ${parsedConstructor}")
         } else try {
           construct(jsons.map(ujson.read(_)))
@@ -59,7 +60,7 @@ object Serializer {
         case Failure(err) => throw SerializedException(s"Could not parse ${str} with ConstructorLikeSerializer(${constructorName}", err)
       }
     }
-  }
+  }*/
 
 
   /*def combineSerializerUseFirst[T](serializer: Seq[Serializer[T]]): Serializer[T] = new Serializer[T]{

@@ -2,19 +2,21 @@ package it.evadid.homepage.workbook.syncDestination
 
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.FetchResponse
+import it.evadid.core.util.io.ConstructorLikeParserWithJsonElements
+import it.evadid.core.util.io.ConstructorLikeParserWithJsonElements.ConstructorLikeReadResult
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoTyped
 import it.evadid.distribution.commandTypes.SQLCommands
 import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.util.logging.derived.SyncLogger
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
-import it.evadid.workbook.interaction.sync.{SyncContext, SyncDestination, SyncFormatter, UsageContext}
+import it.evadid.workbook.interaction.sync.destination.{SyncDestination, SyncDestinationHistory, SyncDestinationRaw}
+import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
 
 import scala.concurrent.*
 
-case class DatabaseSyncViaBackendServer(dbName: String, hasKeyTable: Boolean) extends SyncDestination {
+case class DatabaseSyncViaBackendServer(dbName: String, hasKeyTable: Boolean) extends SyncDestinationHistory {
 
   override val toString: String = "DatabaseSyncViaBackendServer(" + dbName + ", " + hasKeyTable + ")"
 
@@ -56,4 +58,13 @@ case class DatabaseSyncViaBackendServer(dbName: String, hasKeyTable: Boolean) ex
 
   override def isLocal: Boolean = false
 
+
+  override protected def deserializeFromConstructorLikeString(from: ConstructorLikeParserWithJsonElements.ConstructorLikeReadResult): Option[SyncDestination] = {
+    if (from.elementType == this.getClass.getSimpleName) Some(DatabaseSyncViaBackendServer(from.jsonPayloads(0), from.jsonPayloads(1).toBoolean))
+    else None
+  }
+
+  override protected def serializeToConstructorLikeString(): ConstructorLikeParserWithJsonElements.ConstructorLikeReadResult = {
+    ConstructorLikeReadResult(this.getClass.getSimpleName, List(dbName, hasKeyTable.toString))
+  }
 }

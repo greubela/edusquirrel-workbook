@@ -17,7 +17,8 @@ import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.distribution.commandTypes.UserCommands.*
 import it.evadid.workbook.abstractions.TypeOfTextDisplay
 import it.evadid.workbook.interaction.sync.SyncFormatter.InteractionSyncRequest
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.interaction.sync.SyncInformation.*
+import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.{SyncContext, UpdateImportance, UsageContext}
 import it.evadid.workbook.interaction.variable.{InteractionVariableHistorySerialized, InteractionVariableStateSerialized}
 import upickle.ReadWriter
@@ -28,7 +29,6 @@ import java.time.LocalDateTime
 import scala.util.*
 
 object DefaultSerializer {
-
 
   given ldt: ReadWriter[LocalDateTime] =
     upickle.default.readwriter[String].bimap[LocalDateTime](_.toString, LocalDateTime.parse)
