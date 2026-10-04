@@ -14,7 +14,7 @@ object AppLanguage {
 
   sealed trait SpecialLanguage(val name: String) extends AppLanguage derives ReadWriter
 
-  case object UniversalLanguage extends SpecialLanguage("universal")
+  case object UniversalLanguage extends SpecialLanguage("universal") 
 
   def default(): HumanLanguage = English
 

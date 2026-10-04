@@ -45,7 +45,9 @@ object BeDataType {
 
   case class BeUnionAllowedTypes(dataTypes: Set[BeDataType]) extends BeUnionType {
 
-    def formatTypeForDisplay: LanguageMap[ProgrammingLanguage] = LanguageMap.mkLanguageMap("", "|", "", dataTypes.toList.map(_.formatTypeForDisplay))
+    def formatTypeForDisplay: LanguageMap[ProgrammingLanguage] = {
+      LanguageMap.mkLanguageMap("", "|", "", dataTypes.toList.map(_.formatTypeForDisplay))
+    }
 
     def formatValueForDisplay(valueStr: String): LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap(valueStr)
 
