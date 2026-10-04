@@ -10,11 +10,18 @@ import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported
 import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.vm.simulation.java.JavaInt32
+import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure}
+import it.evadid.vm.simulation.java.{JavaInt32, JavaTurtleEvaluation as E}
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
 import munit.FunSuite
 
 class BeExpressionLanguageSupportTest extends FunSuite {
+
+  private def javaVariable(index: Int, valueType: R.ValueType): R.Variable =
+    R.Variable(R.VariableId(R.MethodId(0), index), s"v$index", valueType)
+
+  private def javaResult(expression: R.Expression, values: Map[R.VariableId, E.Value] = Map.empty): Either[E.Failure, E.Value] =
+    E.evaluate(expression, variable => values.get(variable.id).toRight(E.Failure.MissingValue(variable.id)))
 
   private val targetLanguages = List(Python, Java, Lisp, Cpp)
   private val humanLanguage = English
@@ -239,5 +246,180 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       }
     }
     assertEquals(pairs.size, 708)
+  }
+
+  test("Java expression arithmetic delegates to int32 rules and returns explicit failures") {
+    for (operator, left, right, result) <- Seq(
+      (R.BinaryOperator.Add, Int.MaxValue, 1, Int.MinValue),
+      (R.BinaryOperator.Subtract, Int.MinValue, 1, Int.MaxValue),
+      (R.BinaryOperator.Multiply, Int.MaxValue, Int.MaxValue, 1),
+      (R.BinaryOperator.Divide, Int.MinValue, -1, Int.MinValue),
+      (R.BinaryOperator.Divide, -9, 2, -4), (R.BinaryOperator.Remainder, -9, 2, -1)
+    ) do assertEquals(javaResult(R.Binary(operator, R.IntLiteral(left), R.IntLiteral(right))), Right(E.Value.IntValue(result)))
+    for operator <- Seq(R.BinaryOperator.Divide, R.BinaryOperator.Remainder) do
+      assertEquals(javaResult(R.Binary(operator, R.IntLiteral(1), R.IntLiteral(0))), Left(E.Failure.DivisionByZero))
+    assertEquals(javaResult(R.Unary(R.UnaryOperator.Plus, R.IntLiteral(9))), Right(E.Value.IntValue(9)))
+    assertEquals(javaResult(R.Unary(R.UnaryOperator.Negate, R.IntLiteral(Int.MinValue))), Right(E.Value.IntValue(Int.MinValue)))
+    assertEquals(javaResult(R.Unary(R.UnaryOperator.Not, R.BooleanLiteral(true))), Right(E.Value.BooleanValue(false)))
+  }
+
+  test("Java comparisons and equality use strict scalar types") {
+    for (operator, expected) <- Seq(R.BinaryOperator.Less -> true, R.BinaryOperator.LessEqual -> true,
+      R.BinaryOperator.Greater -> false, R.BinaryOperator.GreaterEqual -> false,
+      R.BinaryOperator.Equal -> false, R.BinaryOperator.NotEqual -> true) do
+      assertEquals(javaResult(R.Binary(operator, R.IntLiteral(Int.MinValue), R.IntLiteral(Int.MaxValue))),
+        Right(E.Value.BooleanValue(expected)))
+    for left <- Seq(false, true); right <- Seq(false, true) do {
+      assertEquals(javaResult(R.Binary(R.BinaryOperator.Equal, R.BooleanLiteral(left), R.BooleanLiteral(right))),
+        Right(E.Value.BooleanValue(left == right)))
+      assertEquals(javaResult(R.Binary(R.BinaryOperator.NotEqual, R.BooleanLiteral(left), R.BooleanLiteral(right))),
+        Right(E.Value.BooleanValue(left != right)))
+    }
+    for expression <- Seq(
+      R.Binary(R.BinaryOperator.Equal, R.IntLiteral(1), R.BooleanLiteral(true)),
+      R.Binary(R.BinaryOperator.Add, R.BooleanLiteral(true), R.IntLiteral(1)),
+      R.Binary(R.BinaryOperator.Less, R.BooleanLiteral(false), R.BooleanLiteral(true)),
+      R.Unary(R.UnaryOperator.Not, R.IntLiteral(1)), R.Unary(R.UnaryOperator.Negate, R.BooleanLiteral(true))
+    ) do assertEquals(javaResult(expression), Left(E.Failure.TypeMismatch))
+  }
+
+  test("Java reads reject missing or wrongly typed values and the main argument wrapper") {
+    val number = javaVariable(0, R.ValueType.IntValue)
+    val flag = javaVariable(1, R.ValueType.BooleanValue)
+    assertEquals(javaResult(R.Read(number)), Left(E.Failure.MissingValue(number.id)))
+    assertEquals(javaResult(R.Read(number), Map(number.id -> E.Value.BooleanValue(true))), Left(E.Failure.TypeMismatch))
+    assertEquals(javaResult(R.Read(flag), Map(flag.id -> E.Value.IntValue(1))), Left(E.Failure.TypeMismatch))
+    assertEquals(javaResult(R.Read(number), Map(number.id -> E.Value.IntValue(40))), Right(E.Value.IntValue(40)))
+    assertEquals(javaResult(R.Read(flag), Map(flag.id -> E.Value.BooleanValue(true))), Right(E.Value.BooleanValue(true)))
+    assertEquals(E.evaluate(R.Read(javaVariable(2, R.ValueType.MainArguments)), _ => fail("Wrapper must not be read")),
+      Left(E.Failure.TypeMismatch))
+  }
+
+  test("Java short-circuit truth tables read each required operand exactly once") {
+    val a = javaVariable(0, R.ValueType.BooleanValue)
+    val b = javaVariable(1, R.ValueType.BooleanValue)
+    for operator <- Seq(R.ShortCircuitOperator.And, R.ShortCircuitOperator.Or);
+        left <- Seq(false, true); right <- Seq(false, true) do {
+      var trace = Vector.empty[R.VariableId]
+      val result = E.evaluate(R.ShortCircuit(operator, R.Read(a), R.Read(b)), variable => {
+        trace :+= variable.id
+        Right(E.Value.BooleanValue(if variable.id == a.id then left else right))
+      })
+      val useRight = if operator == R.ShortCircuitOperator.And then left else !left
+      val expected = if operator == R.ShortCircuitOperator.And then left && right else left || right
+      assertEquals(result, Right(E.Value.BooleanValue(expected)))
+      assertEquals(trace, if useRight then Vector(a.id, b.id) else Vector(a.id))
+    }
+  }
+
+  test("Java short circuits skip throwing readers and arithmetic failures") {
+    val flag = javaVariable(0, R.ValueType.BooleanValue)
+    val division = R.Binary(R.BinaryOperator.Greater,
+      R.Binary(R.BinaryOperator.Divide, R.IntLiteral(1), R.IntLiteral(0)), R.IntLiteral(0))
+    for (operator, left) <- Seq(R.ShortCircuitOperator.And -> false, R.ShortCircuitOperator.Or -> true) do {
+      assertEquals(E.evaluate(R.ShortCircuit(operator, R.BooleanLiteral(left), R.Read(flag)), _ => fail("Skipped reader")),
+        Right(E.Value.BooleanValue(left)))
+      assertEquals(javaResult(R.ShortCircuit(operator, R.BooleanLiteral(left), division)), Right(E.Value.BooleanValue(left)))
+      assertEquals(javaResult(R.ShortCircuit(operator, R.BooleanLiteral(!left), division)), Left(E.Failure.DivisionByZero))
+      assertEquals(javaResult(R.ShortCircuit(operator, R.BooleanLiteral(!left), R.Read(flag))), Left(E.Failure.MissingValue(flag.id)))
+    }
+  }
+
+  test("Java nested short circuits and boolean equality retain their distinct reading behavior") {
+    val a = javaVariable(0, R.ValueType.BooleanValue)
+    val b = javaVariable(1, R.ValueType.BooleanValue)
+    val c = javaVariable(2, R.ValueType.BooleanValue)
+    var trace = Vector.empty[R.VariableId]
+    val nested = R.ShortCircuit(R.ShortCircuitOperator.Or,
+      R.ShortCircuit(R.ShortCircuitOperator.And, R.Read(a), R.Read(b)), R.Read(c))
+    assertEquals(E.evaluate(nested, variable => {
+      trace :+= variable.id
+      if variable.id == b.id then fail("Skipped nested read")
+      Right(E.Value.BooleanValue(variable.id == c.id))
+    }), Right(E.Value.BooleanValue(true)))
+    assertEquals(trace, Vector(a.id, c.id))
+    trace = Vector.empty
+    assertEquals(E.evaluate(R.Binary(R.BinaryOperator.Equal, R.Read(a), R.Read(b)), variable => {
+      trace :+= variable.id
+      Right(E.Value.BooleanValue(false))
+    }), Right(E.Value.BooleanValue(true)))
+    assertEquals(trace, Vector(a.id, b.id))
+  }
+
+  test("Java expression failures stop later reads without returning fallback values") {
+    val a = javaVariable(0, R.ValueType.IntValue)
+    val b = javaVariable(1, R.ValueType.IntValue)
+    val c = javaVariable(2, R.ValueType.IntValue)
+    var trace = Vector.empty[R.VariableId]
+    val read: E.Reader = variable => {
+      trace :+= variable.id
+      Right(E.Value.IntValue(if variable.id == b.id then 0 else 1))
+    }
+    assertEquals(E.evaluate(R.Binary(R.BinaryOperator.Add, R.Read(a), R.Read(c)), read), Right(E.Value.IntValue(2)))
+    assertEquals(trace, Vector(a.id, c.id))
+    trace = Vector.empty
+    val failing = R.Binary(R.BinaryOperator.Add, R.Binary(R.BinaryOperator.Divide, R.Read(a), R.Read(b)), R.Read(c))
+    assertEquals(E.evaluate(failing, read), Left(E.Failure.DivisionByZero))
+    assertEquals(trace, Vector(a.id, b.id))
+    assertEquals(E.evaluate(R.Binary(R.BinaryOperator.Add, R.BooleanLiteral(false), R.Read(c)), _ => fail("Invalid LHS stops RHS")),
+      Left(E.Failure.TypeMismatch))
+    assertEquals(E.evaluate(R.ShortCircuit(R.ShortCircuitOperator.And, R.IntLiteral(1), R.Read(c)), _ => fail("Invalid boolean LHS")),
+      Left(E.Failure.TypeMismatch))
+  }
+
+  test("Java expression budgets reject excessive work before extra reads and reset between calls") {
+    val a = javaVariable(0, R.ValueType.IntValue)
+    val b = javaVariable(1, R.ValueType.IntValue)
+    val sum = R.Binary(R.BinaryOperator.Add, R.Read(a), R.Read(b))
+    var trace = Vector.empty[R.VariableId]
+    val read: E.Reader = variable => { trace :+= variable.id; Right(E.Value.IntValue(1)) }
+    assertEquals(E.evaluate(sum, read, E.Limits(maxNodes = 2)), Left(E.Failure.LimitExceeded))
+    assertEquals(trace, Vector(a.id))
+    trace = Vector.empty
+    assertEquals(E.evaluate(sum, read, E.Limits(maxNodes = 3)), Right(E.Value.IntValue(2)))
+    assertEquals(trace, Vector(a.id, b.id))
+    assertEquals(E.evaluate(R.Group(R.Read(a)), _ => fail("Depth limit"), E.Limits(maxDepth = 1)), Left(E.Failure.LimitExceeded))
+    assertEquals(E.evaluate(R.Group(R.Read(a)), read, E.Limits(maxDepth = 2)), Right(E.Value.IntValue(1)))
+    val deep = (1 to 512).foldLeft[R.Expression](R.IntLiteral(1))((value, _) => R.Group(value))
+    assertEquals(javaResult(deep), Left(E.Failure.LimitExceeded))
+    assertEquals(E.evaluate(R.IntLiteral(40), read, E.Limits(maxNodes = 1)), Right(E.Value.IntValue(40)))
+    for limits <- Seq(E.Limits(maxDepth = 0), E.Limits(maxDepth = -1), E.Limits(maxDepth = E.Limits.MaxDepth + 1),
+      E.Limits(maxNodes = 0), E.Limits(maxNodes = -1), E.Limits(maxNodes = E.Limits.MaxNodes + 1)) do
+      assertEquals(E.evaluate(R.Read(a), _ => fail("Invalid limits"), limits), Left(E.Failure.LimitExceeded))
+    assertEquals(E.evaluate(R.ShortCircuit(R.ShortCircuitOperator.And, R.BooleanLiteral(false), R.Read(a)),
+      _ => fail("Skipped budgeted read"), E.Limits(maxNodes = 2)), Right(E.Value.BooleanValue(false)))
+    def tree(leaves: Int): R.Expression =
+      if leaves == 1 then R.Read(a)
+      else R.Binary(R.BinaryOperator.Add, tree(leaves / 2), tree(leaves - leaves / 2))
+    val atLimit = R.Group(tree(5000))
+    var reads = 0
+    val counted: E.Reader = _ => { reads += 1; Right(E.Value.IntValue(1)) }
+    assertEquals(E.evaluate(atLimit, counted), Right(E.Value.IntValue(5000)))
+    assertEquals(reads, 5000)
+    reads = 0
+    assertEquals(E.evaluate(R.Group(atLimit), counted), Left(E.Failure.LimitExceeded))
+    assertEquals(reads, 4999)
+  }
+
+  test("Java source expressions retain their meaning through parsing checking and resolution") {
+    val source = "class Drawing { static void calculate(int n, boolean flag) { " +
+      "int product = n * n; int quotient = -9 / 2; int rest = -9 % 2; " +
+      "boolean skip = flag && n / 0 > 0; boolean ready = !flag || n / 0 > 0; int wrapped = - -2147483648; " +
+      "} public static void main(String[] args) {} }"
+    val resolved = (for {
+      parsed <- JavaTurtleSource.parse(source)
+      structure <- JavaTurtleStructure.check(parsed)
+      checked <- JavaTurtleSemantics.check(structure)
+      result <- R.resolve(checked)
+    } yield result).fold(problem => fail(problem.message), identity)
+    val method = resolved.methods.find(_.name == "calculate").getOrElse(fail("Missing calculate"))
+    val values: Map[R.VariableId, E.Value] = Map(method.parameters(0).id -> E.Value.IntValue(Int.MaxValue),
+      method.parameters(1).id -> E.Value.BooleanValue(false))
+    val expressions = method.body.statements.collect { case R.Declare(_, Some(value)) => value }
+    assertEquals(expressions.map(expression => javaResult(expression, values)), Vector(
+      Right(E.Value.IntValue(1)), Right(E.Value.IntValue(-4)), Right(E.Value.IntValue(-1)),
+      Right(E.Value.BooleanValue(false)), Right(E.Value.BooleanValue(true)), Right(E.Value.IntValue(Int.MinValue))
+    ))
+    assertEquals(resolved.source, source)
   }
 }
