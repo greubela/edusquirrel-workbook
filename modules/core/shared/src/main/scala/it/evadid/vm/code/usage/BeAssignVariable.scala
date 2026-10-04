@@ -7,8 +7,8 @@ import it.evadid.vm.controlflow.ControlFlowType.ControlFlowDown
 import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
-
-case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) extends BeExpression {
+import upickle.default.*
+case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) extends BeExpression derives ReadWriter{
 
 
   override lazy val structureInfo: BeExpressionStructureInfo[?] = new BeExpressionStructureInfo[BeAssignVariable](this) {
@@ -20,7 +20,7 @@ case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) exten
       replacement.map(expr => copy(value = expr)).getOrElse(BeAssignVariable.this)
     }
 
-    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown, myInfo)
+    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown(), myInfo)
 
     override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] = List(
       BeExpressionReference(BeChildInfo(BeChildRole.ValueInAssignment, myScope), value)

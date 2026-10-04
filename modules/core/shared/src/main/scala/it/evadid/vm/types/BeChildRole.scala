@@ -2,8 +2,9 @@ package it.evadid.vm.types
 
 import it.evadid.vm.code.defining.BeDefineVariable
 
+import upickle.default.*
 
-sealed trait BeChildRole {
+sealed trait BeChildRole derives ReadWriter {
 
   def withIncrementedNrOrThis: BeChildRole = this
 
@@ -19,14 +20,14 @@ object BeChildRole {
  // case object IfElseBranch extends BeChildControlFlowRole
 
   /* SEQUENCE ROLES */
-  sealed trait BeChildSequenceRole extends BeChildRole
+  sealed trait BeChildSequenceRole extends BeChildRole derives ReadWriter
 
   case class BodySequence(nr: Int) extends BeChildSequenceRole {
     override def withIncrementedNrOrThis: BeChildRole = BodySequence(nr + 1)
   }
 
   /* EXPRESSION ROLES */
-  sealed trait BeChildExpressionRole extends BeChildRole
+  sealed trait BeChildExpressionRole extends BeChildRole derives ReadWriter
 
   case class ExpressionInSequence(nr: Int) extends BeChildExpressionRole {
     override def withIncrementedNrOrThis: BeChildRole = ExpressionInSequence(nr + 1)
@@ -45,7 +46,9 @@ object BeChildRole {
 
 
   /* DATA ROLES */
-  sealed trait BeChildDataRole extends BeChildRole
+  sealed trait BeChildDataRole extends BeChildRole derives ReadWriter {
+    
+  }
 
   case class FunctionParameter(nr: Int) extends BeChildDataRole {
     override def withIncrementedNrOrThis: BeChildRole = FunctionParameter(nr + 1)
@@ -60,7 +63,7 @@ object BeChildRole {
   case object ValueInAssignment extends BeChildDataRole
 
   /* EDITOR ROLES */
-  sealed trait BeChildEditorRole extends BeChildRole
+  sealed trait BeChildEditorRole extends BeChildRole derives ReadWriter
 
   case class RecentlyInsertedInto(intoRole: BeChildRole) extends BeChildEditorRole
 

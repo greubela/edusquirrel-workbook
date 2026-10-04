@@ -2,6 +2,7 @@ package it.evadid.homepage.control.startup
 
 import com.raquo.laminar.api.L.*
 import it.evadid.distribution.command.SerializedException
+import it.evadid.homepage.control.change.LanguageMapStorageControl.STARTUP_STRATEGY.CONTINUE_AFTER_LOCAL_CACHE_SUCCESS
 import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.workbook.content.{CreateCompressionWorkbook, CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, CreateTestWorkbook}
@@ -39,7 +40,7 @@ object HomepageStartupLogic {
     val fullInfo = HtmlFullWorkbookApp.fullInfo
     val logger = fullInfo.loggerSystemInfo.contentControlLogger
 
-    val futureLoadBasics = HtmlFullWorkbookApp.fullInfo.contentControl.languageStorage.ensureDefaultLanguageSourcesLoaded().recover { err =>
+    val futureLoadBasics = HtmlFullWorkbookApp.fullInfo.contentControl.languageStorage.ensureStartup(CONTINUE_AFTER_LOCAL_CACHE_SUCCESS).recover { err =>
       logger.logExceptionWarn("ignoring basics which should have been loaded", err)
     }
 

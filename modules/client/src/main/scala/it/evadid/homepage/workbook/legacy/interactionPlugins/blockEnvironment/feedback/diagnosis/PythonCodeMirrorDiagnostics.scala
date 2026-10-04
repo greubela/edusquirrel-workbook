@@ -5,7 +5,7 @@ import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import it.evadid.vm.code.tree.BeExpressionReference
 import it.evadid.vm.types.BeChildInfo
-import it.evadid.vm.types.BeChildRole.NoRole
+import it.evadid.vm.types.BeChildRole.*
 import it.evadid.vm.types.BeScope.GlobalScope
 
 object PythonCodeMirrorDiagnostics:
