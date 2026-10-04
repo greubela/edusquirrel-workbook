@@ -9,6 +9,7 @@ import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVari
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
 import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
+import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonExport as Y
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleVmBindings as V, JavaTurtleVmExpressions as X, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.{BeSimulatorConfig, BeSimulatorState, BeVirtualMachineState}
@@ -1487,5 +1488,127 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(deep.status, T.Status.Completed)
     assertEquals(deep.commands, Vector(forward(1)))
     assertEquals(T.runVm(allowed), full)
+  }
+
+  test("Java Python export is deterministic and keeps execution behind one entry point") {
+    val program = P.adapt(javaProgram("draw(5);", "static void draw(int size) { Turtle.forward(size); }")).toOption.get
+    val exported = Y.render(program)
+    assertEquals(Y.render(program), exported)
+    assert(exported.source.startsWith(s"def ${Y.EntryPoint}(method=None, arguments=(), *,"))
+    assert(exported.source.endsWith("        return _result(problem.status, problem.problem)\n"))
+    assert(exported.source.linesIterator.forall(line => line.isEmpty || line.startsWith("    ") || line.startsWith("def ")))
+    assertEquals(exported.methods, Map("draw" -> R.MethodId(0)))
+    assertEquals(T.runVm(program).commands, Vector(forward(5)))
+    assertEquals(Y.render(P.adapt(javaProgram("")).toOption.get).methods, Map.empty[String, R.MethodId])
+  }
+
+  test("Java Python export uses source-local ids instead of Python names") {
+    val program = P.adapt(javaProgram("drawSquare(10); draw_square(20);", """
+      static void drawSquare(int lambda) { if (true) { int match = lambda; Turtle.forward(match); } }
+      static void draw_square(int lambda) { if (true) { int match = lambda; Turtle.turnRight(match); } }
+    """)).toOption.get
+    val exported = Y.render(program)
+    assertEquals(exported.methods, Map("drawSquare" -> R.MethodId(0), "draw_square" -> R.MethodId(1)))
+    assert(exported.source.contains("def _method_0(_variable_0_0):"))
+    assert(exported.source.contains("def _method_1(_variable_1_0):"))
+    assert(exported.source.contains("_variable_0_1 = _value(lambda: _variable_0_0)"))
+    assert(exported.source.contains("_variable_1_1 = _value(lambda: _variable_1_0)"))
+    assert(!exported.source.contains("drawSquare"))
+    assert(!exported.source.contains("draw_square"))
+    assert(!exported.source.contains("match" + " ="))
+  }
+
+  test("Java Python export wraps arithmetic and uses truncating division and signed remainder") {
+    val source = Y.render(P.adapt(javaProgram("""
+      int n = 2147483647; n += 1; n -= 1; n *= 3; n /= -2; n %= 2;
+      Turtle.forward(+n + -n - n * (n / 2) % 3);
+    """)).toOption.get).source
+    for operation <- Seq("_int32(_variable_0_1 +", "_int32(_variable_0_1 -", "_int32(_variable_0_1 *",
+      "_divide(_variable_0_1,", "_remainder(_variable_0_1,", "_int32(-_value(") do assert(source.contains(operation))
+    assert(source.contains("quotient = abs(left) // abs(right)"))
+    assert(source.contains("return _int32(left - _divide(left, right) * right)"))
+    assert(!source.contains("left / right"))
+    assert(!source.contains("left % right"))
+    assert(source.contains("raise _Stop(\"Failed\", \"DivisionByZero\")"))
+  }
+
+  test("Java Python export keeps lazy boolean operands inside gated expressions") {
+    val source = Y.render(P.adapt(javaProgram("""
+      boolean b = false && 1 / 0 > 0;
+      if (!b || 1 / 0 > 0) { Turtle.forward(1); }
+      b = b == true; if (b != false && 1 < 2 && 2 <= 2 && 3 > 2 && 3 >= 3) {}
+    """)).toOption.get).source
+    assert(source.contains("_value(lambda: (_value(lambda: False) and _value(lambda:"))
+    assert(source.contains(" or _value(lambda:"))
+    assert(source.contains("_value(lambda: (not _value(lambda:"))
+    for operator <- Seq(" == ", " != ", " < ", " <= ", " > ", " >= ") do assert(source.contains(operator))
+  }
+
+  test("Java Python export lowers for loops without running updates after return") {
+    val source = Y.render(P.adapt(javaProgram("""
+      for (int i = 0; i < 4; i += 1, Turtle.turnRight(i)) { Turtle.forward(i); return; }
+    """)).toOption.get).source
+    assert(source.contains("_block(2)\n            _gate()\n            _variable_0_1 = _value(lambda: 0)"))
+    assert(source.contains("while _loop() and _value(lambda:"))
+    assert(source.contains("                _block(3)"))
+    val returned = source.indexOf("                return\n")
+    val updated = source.indexOf("                _variable_0_1 = _int32(_variable_0_1 +")
+    assert(returned >= 0 && updated > returned)
+    assertEquals(source.linesIterator.count(_.trim == "_block(2)"), 1)
+    val endless = Y.render(P.adapt(javaProgram("for (;;) { ; }")).toOption.get).source
+    assert(endless.contains("while _loop():\n                _block(3)\n                _gate()"))
+  }
+
+  test("Java Python export preserves branches empty bodies and declaration identities") {
+    val source = Y.render(P.adapt(javaProgram("""
+      int n; n = 1;
+      if (true) { int x = n; Turtle.forward(x); } else {}
+      if (true) { int x = 2; Turtle.forward(x); }
+      while (n < 0) {}
+    """)).toOption.get).source
+    assert(source.contains("_variable_0_1 = None"))
+    assert(source.contains("_variable_0_2 = _value(lambda: _variable_0_1)"))
+    assert(source.contains("_variable_0_3 = _value(lambda: 2)"))
+    assert(source.contains("            else:\n                _block(2)"))
+    assert(source.contains("while _loop() and _value(lambda: (_value(lambda: _variable_0_1) < _value(lambda: 0))):\n                _block(2)"))
+  }
+
+  test("Java Python export uses the actual main and exact helper parameter types") {
+    val text = """class Drawing {
+      static void draw(int n, boolean b) { if (b) { Turtle.forward(n); } }
+      public static void main(String[] argv) { draw(5, true); }
+      static void empty() {}
+    }"""
+    val program = (for {
+      parsed <- JavaTurtleSource.parse(text)
+      structure <- JavaTurtleStructure.check(parsed)
+      typed <- JavaTurtleSemantics.check(structure)
+      resolved <- R.resolve(typed)
+      compiled <- P.adapt(resolved)
+    } yield compiled).toOption.get
+    val exported = Y.render(program)
+    assertEquals(exported.methods, Map("draw" -> R.MethodId(0), "empty" -> R.MethodId(2)))
+    assert(exported.source.contains("_target = _method_1"))
+    assert(exported.source.contains("0: (_method_0, (\"int\", \"boolean\",)),"))
+    assert(exported.source.contains("2: (_method_2, ()),"))
+    assert(!exported.source.contains("1: (_method_1,"))
+    assert(!exported.source.contains("argv"))
+    assert(exported.source.contains("type(value) is bool"))
+    assert(exported.source.contains("type(value) is int and -2147483648 <= value <= 2147483647"))
+  }
+
+  test("Java Python export isolates run state and validates limits before invocation") {
+    val source = Y.render(P.adapt(javaProgram("Turtle.forward(1);")).toOption.get).source
+    assert(source.contains("    _commands = []\n    _steps = 0\n    _call_depth = 0\n"))
+    assert(source.contains("finally:\n            _call_depth -= 1"))
+    assert(source.contains(s"(max_steps, 1, ${T.Limits.MaxSteps})"))
+    assert(source.contains(s"(max_commands, 0, ${T.Limits.MaxCommands})"))
+    assert(source.contains(s"(max_call_depth, 1, ${T.Limits.MaxCallDepth})"))
+    assert(source.contains(s"(max_block_depth, 1, ${T.Limits.MaxBlockDepth})"))
+    assert(source.indexOf("return _result(\"Failed\", \"InvalidLimits\")") < source.indexOf("if method is None:"))
+    assert(source.indexOf("if is_cancelled():") < source.indexOf("if _steps >= max_steps:"))
+    assert(source.contains("if len(_commands) >= max_commands:"))
+    assert(source.contains("if _call_depth >= max_call_depth:"))
+    assert(source.contains("if depth > max_block_depth:"))
   }
 }
