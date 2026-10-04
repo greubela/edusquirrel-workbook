@@ -1,8 +1,10 @@
 package it.evadid.core.util.io
 
 import it.evadid.core.datastructures.chat.MessengerModel
+
 import it.evadid.core.util.io.TypeConverter.ConverterResult
 import it.evadid.distribution.command.SerializedException
+
 import upickle.*
 import upickle.default.{read, readwriter, write}
 
@@ -12,6 +14,21 @@ trait Serializer[T] extends TypeConverter[T, String] {
   override def convertToO(in: T): String = serialize(in)
 
   override def convertToI(in: String): T = deserialize(in)
+
+  lazy val safeSeqReadWriter: ReadWriter[Seq[T]] = {
+    readwriter[ujson.Value].bimap(
+      (seq: Seq[T]) => ujson.Arr(seq.map(item => writeJs(item)(using uPickleReadWrite)): _*),
+      (json: ujson.Value) => json.arr.flatMap { elementBlob =>
+        try {
+          Some(read[T](elementBlob)(using uPickleReadWrite))
+        } catch {
+          case err: Exception =>
+        //    println(s"[UGLY SERIALIZER SAFE-SEQ] cannot parse '$elementBlob': ${err.getMessage}")
+            None
+        }
+      }.toSeq
+    )
+  }
 
   def trySerializeAll(in: IterableOnce[T]): ConverterResult[T, String] = super.tryConvertAllToO(in)
 
@@ -33,10 +50,10 @@ trait Serializer[T] extends TypeConverter[T, String] {
     override def deserialize(str: String): O = {
       val tryMain = Try {
         Serializer.this.deserialize(str)
-      }.toOption
-      if (tryMain.isEmpty) throw SerializedException(s"Could not parse str ${str.take(60)} with base parser!")
+      }
+      if (tryMain.isFailure) throw SerializedException(s"Could not parse str ${str.take(60)} with base parser: >>${tryMain.failed.get.getMessage}<<")
       else try funcForward(tryMain.get)
-      catch case (err: Throwable) => throw SerializedException(s"Could not convert obj ${tryMain.getClass.getSimpleName} ('${tryMain.get.toString.take(60)}') with funcForward!")
+      catch case (err: Throwable) => throw SerializedException(s"Could not convert obj ${tryMain.getClass.getSimpleName} ('${tryMain.get.toString.take(60)}') with funcForward: ${err.getMessage}")
     }
   }
 
@@ -82,18 +99,22 @@ object Serializer {
   }*/
 
   def constructorLikeSerializer[T](constructorName: String, base: Serializer[T]): Serializer[T] = new Serializer[T] {
-    override def serialize(obj: T): String = constructorName + "(" + base.serialize(obj) + ")"
+    override def serialize(obj: T): String = constructorName + "(" + write[String](base.serialize(obj)) + ")"
 
-    override def deserialize(str: String): T = {
-      val trimmed = str.trim
-      if (trimmed.startsWith(constructorName + "(") && trimmed.endsWith(")")) {
-        val withoutEnd = trimmed.substring(0, str.length - 1)
-        val cleaned = withoutEnd.substring(constructorName.length + 1, withoutEnd.length)
-        base.deserialize(cleaned)
-      } else {
-        throw new IllegalArgumentException(s"ConstructorLikeSerializer for '${constructorName} cannot deserialize ${str}")
+    override def deserialize(str: String): T =
+      try {
+        val trimmed = str.trim
+        if (trimmed.startsWith(constructorName + "(") && trimmed.endsWith(")")) {
+          val withoutEnd = trimmed.substring(0, str.length - 1)
+          val cleaned = withoutEnd.substring(constructorName.length + 1, withoutEnd.length)
+          val jsonRemove = read[String](cleaned)
+          base.deserialize(jsonRemove)
+        } else {
+          throw new IllegalArgumentException(s"ConstructorLikeSerializer for '${constructorName} cannot deserialize ${str}")
+        }
+      } catch case (err: Throwable) => {
+        throw SerializedException(s"ConstructorLikeSerializer cannot deserialize ${str}", err)
       }
-    }
   }
 
   def noneParser(noneLiteral: Option[String] = Some("None")): Serializer[Option[Unit]] = Serializer.singletonSerializer[Option[Unit]](None, noneLiteral)

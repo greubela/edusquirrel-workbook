@@ -22,7 +22,7 @@ trait SyncDestinationRaw extends SyncDestination {
 
     override def storeElement(obj: T): Future[Boolean] = {
       val serialized = serializer.serialize(obj)
-      println(s"UGLY SYNCDESTINATION RAW. serialized:\n${serialized}")
+    //  println(s"UGLY SYNCDESTINATION RAW. serialized:\n${serialized}")
       storeToRaw(logger, usingKey, serializer.serialize(obj))
     }
 
@@ -55,7 +55,7 @@ trait SyncDestinationRaw extends SyncDestination {
     val resFut = readRaw(key)
     resFut.onComplete {
       case Success(res) => logger.log(s"${syncPrefix} successfully read key ${key}: ${res.take(60)}!", INFO, Some(false))
-      case Failure(exception) => logger.logException(s"${syncPrefix} failed to read key ${key}, returning nothing", exception, Some(false), WARN)
+      case Failure(exception) => logger.log(s"${syncPrefix} failed to read key ${key}, returning nothing", WARN, Some(false))
     }
     resFut
   }

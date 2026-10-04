@@ -11,7 +11,7 @@ import it.evadid.homepage.control.change.LanguageMapStorageControl.STARTUP_STRAT
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.syncDestination.LocalIndexedDbStorageSync
 import it.evadid.util.logging.Logger
-import it.evadid.util.logging.LoggingLevel.WARN
+import it.evadid.util.logging.LoggingLevel.{INFO, WARN}
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.destination.SyncDestination.SyncDestinationForType
 import upickle.default.*
@@ -36,7 +36,7 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
   val syncLogger: SyncLogger = fullInfo.loggerSystemInfo.syncControlLogger
 
   private lazy val localCache: SyncDestinationForType[ParsedTriples] = {
-    LocalIndexedDbStorageSync.instanceForCaching.getSyncDestinationForType(syncLogger, "tripleCache", Serializer.fromUpickleJson(ParsedTriples.given_ReadWriter_ParsedTriples))
+    LocalIndexedDbStorageSync.instanceForCaching.getSyncDestinationForType(syncLogger, "tripleCache", ParsedTriples.serializer)
   }
 
 
@@ -50,9 +50,13 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
 
     readLocal.transformWith {
       case Success(parsedTriples) => {
+        syncLogger.logInfo("finished parsing tripels from local storage!")
         if (parsedTriples.size > 0) {
+          syncLogger.log(s"read ${parsedTriples.size} triples from local cache!", INFO, Some(false))
           addTriplesAndStoreToCache(Set(), parsedTriples)
           if (startupStrategy == CONTINUE_AFTER_LOCAL_CACHE_SUCCESS) promise.success(())
+        } else {
+          syncLogger.logWarn("read not a single triple from cache!")
         }
         readRemote
       }
