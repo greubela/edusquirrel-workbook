@@ -5,7 +5,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
-import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditor, SnapCodeEditorConfig, SnapProgramDerivation}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditor, SnapCodeEditorConfig}
 import it.evadid.workbook.elements.interactionElements.programming.*
 
 import scala.concurrent.Future
@@ -39,8 +39,8 @@ final class EvaEditor(
         snapState.set(ProgrammingStateSnapXml(xml))
       case ProgrammingStatePythonString(code) => pythonState.set(code)
       case ProgrammingStateJavaString(code) => javaState.set(code)
-      case ProgrammingStateBeExpression(expression) =>
-        pythonState.set(SnapTurtlePythonBridge.printedPython(expression))
+      case expression: ProgrammingStateBeExpression =>
+        pythonState.set(expression.toPython.code)
 
   private val snapEditor = SnapCodeEditor(
     snapState,
@@ -60,6 +60,9 @@ final class EvaEditor(
 
   /** Small preview retained by the workbook card. */
   val previewCanvas: Element = snapEditor.previewCanvas
+
+  /** The representation currently owned by the editor. All derived behavior starts here. */
+  def currentState(): ProgrammingState = state.now()
 
   def getCurrentTurtleCommands(): Future[List[TurtleCommand[Double]]] =
     snapEditor.getCurrentTurtleCommands()
@@ -126,20 +129,15 @@ object EvaEditor {
 
   def asSnap(state: ProgrammingState): ProgrammingExerciseState = state match
     case snap: ProgrammingStateSnapXml => snap
-    case ProgrammingStateSnapXMLWithAdditionalFloatingObjects(xml, _) => ProgrammingStateSnapXml(xml)
-    case ProgrammingStatePythonString(code) =>
-      ProgrammingExercise.StateSerializer.deserialize(code) match
-        case snap: ProgrammingStateSnapXml => snap
-        case _ => ProgrammingExerciseState.mini
-    case ProgrammingStateBeExpression(expression) =>
-      ProgrammingExerciseState.fromProgram(it.evadid.vm.BeProgram(expression))
+    case state: ProgrammingStateSnapXMLWithAdditionalFloatingObjects => state.toSnapXml
+    case state: ProgrammingStatePythonString => state.toSnapXml
+    case state: ProgrammingStateBeExpression => state.toSnapXml
     case _: ProgrammingStateJavaString => ProgrammingExerciseState.mini
 
   private[code] def asPython(state: ProgrammingState): String = state match
-    case ProgrammingStatePythonString(code) => code
-    case ProgrammingStateBeExpression(expression) => SnapTurtlePythonBridge.printedPython(expression)
-    case snap: ProgrammingStateSnapXml => SnapProgramDerivation.fromState(snap).python
-    case ProgrammingStateSnapXMLWithAdditionalFloatingObjects(xml, _) =>
-      SnapProgramDerivation.fromState(ProgrammingStateSnapXml(xml)).python
+    case state: ProgrammingStatePythonString => state.toPython.code
+    case state: ProgrammingStateBeExpression => state.toPython.code
+    case state: ProgrammingStateSnapXml => state.toPython.code
+    case state: ProgrammingStateSnapXMLWithAdditionalFloatingObjects => state.toPython.code
     case _: ProgrammingStateJavaString => ""
 }

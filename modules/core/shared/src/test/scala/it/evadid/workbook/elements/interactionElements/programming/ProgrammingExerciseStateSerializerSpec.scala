@@ -18,21 +18,21 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
     assert(stored.startsWith("PROGRAMMING_STATE_V2\nSNAP_XML"), clue = stored.take(80))
     assert(stored.contains(xml), clue = stored)
     val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
-    assertEquals(restored.snapXml, xml)
+    assertEquals(restored.toSnapXml.snapXml, xml)
   }
 
   test("raw project xml deserializes without header") {
     val xml = """<project name="raw"><scenes></scenes></project>"""
     val restored = ProgrammingExercise.StateSerializer.deserialize(xml)
-    assertEquals(restored.snapXml, xml)
+    assertEquals(restored.toSnapXml.snapXml, xml)
   }
 
   test("legacy pure python migrates to snap xml") {
     val program = BeProgram.miniProgram()
     val python = SnapTurtlePythonBridge.printedPython(program.fullProgram)
     val restored = ProgrammingExercise.StateSerializer.deserialize(python)
-    assert(restored.snapXml.contains("<project"), clue = restored.snapXml.take(120))
-    assert(restored.snapXml.contains("""s="forward""""), clue = restored.snapXml)
+    assert(restored.toSnapXml.snapXml.contains("<project"), clue = restored.toSnapXml.snapXml.take(120))
+    assert(restored.toSnapXml.snapXml.contains("""s="forward""""), clue = restored.toSnapXml.snapXml)
     val stored = ProgrammingExercise.StateSerializer.serialize(restored)
     assert(stored.startsWith("PROGRAMMING_STATE_V2\nSNAP_XML"), clue = stored.take(80))
   }
@@ -93,7 +93,7 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script x="70" y="80"><block s="wait"><l>1</l></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
     val stored = ProgrammingExercise.StateSerializer.serialize(ProgrammingExerciseState(xml))
     val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
-    assert(restored.snapXml.contains("""s="wait""""), clue = restored.snapXml)
-    assertEquals(restored.snapXml, xml)
+    assert(restored.toSnapXml.snapXml.contains("""s="wait""""), clue = restored.toSnapXml.snapXml)
+    assertEquals(restored.toSnapXml.snapXml, xml)
   }
 }
