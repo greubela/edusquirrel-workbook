@@ -70,6 +70,54 @@ dialog {
     overflow: hidden;
 }
 
+.fullscreen-content-container > .eva-editor {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.eva-editor__tabs {
+    display: flex;
+    gap: var(--space-xs);
+    padding: var(--space-sm) var(--space-md) 0;
+    border-bottom: 1px solid var(--color-border-soft);
+}
+
+.eva-editor__tab {
+    padding: var(--space-sm) var(--space-md);
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    background: transparent;
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+.eva-editor__tab--active {
+    border-color: var(--color-border-soft);
+    border-bottom-color: var(--color-background-workarea-display);
+    background: var(--color-background-workarea-display);
+    font-weight: 700;
+}
+
+.eva-editor__content,
+.eva-editor__content > .be-program-snap-fullscreen,
+.eva-editor__content > .code-mirror-editor,
+.eva-editor__content > .code-mirror-editor > .cm-editor {
+    min-height: 0;
+    height: 100%;
+    flex: 1 1 auto;
+}
+
+.eva-editor__content > .be-program-snap-fullscreen {
+    display: flex;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    box-sizing: border-box;
+}
+
 .be-program-snap-fullscreen > .be-program-snap-renderer--editor {
     width: auto;
     height: 100%;
