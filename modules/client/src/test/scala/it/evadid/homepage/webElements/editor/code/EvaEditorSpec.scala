@@ -11,8 +11,8 @@ class EvaEditorSpec extends FunSuite {
     assertEquals(EvaEditor.tabFor(ProgrammingExerciseState.mini), EvaEditor.Tab.Snap)
   }
 
-  test("Python can be converted to the Snap editor boundary") {
-    val snap = EvaEditor.asSnap(ProgrammingStatePythonString("forward(10)"))
+  test("ProgrammingState converts itself at the Snap editor boundary") {
+    val snap = ProgrammingStatePythonString("forward(10)").toSnapXml
     assert(snap.snapXml.contains("<project"), clue = snap.snapXml.take(120))
     assert(snap.snapXml.contains("forward"), clue = snap.snapXml)
   }
