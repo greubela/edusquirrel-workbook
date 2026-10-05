@@ -8,7 +8,9 @@ import it.evadid.vm.parsing.java.clean.JavaLexer.*
 import it.evadid.vm.parsing.java.clean.model.JavaType.*
 import it.evadid.vm.parsing.java.clean.model.{JavaAST, JavaType}
 
-object JavaParser extends GenericAstScanner[JavaAST] {
+object JavaParser extends JavaParser(retainParentheses = false)
+
+class JavaParser(private val retainParentheses: Boolean) extends GenericAstScanner[JavaAST] {
 
   // ==========================================
   // 1. HELPER
@@ -177,7 +179,10 @@ object JavaParser extends GenericAstScanner[JavaAST] {
 
   def atom[$: P]: P[JavaExpression] = P(newExpression | literal | parenthesized | targetAtom)
 
-  def parenthesized[$: P]: P[JavaExpression] = P(LPAR ~ ws ~ expression ~ ws ~ RPAR)
+  def parenthesized[$: P]: P[JavaExpression] =
+    P(LPAR ~ ws ~ expression ~ ws ~ RPAR).map { expression =>
+      if retainParentheses then JavaParenthesizedExpression(expression) else expression
+    }
 
   private def trailer[$: P]: P[JavaExpression => JavaExpression] = P(attributeTrailer | callTrailer | subscriptTrailer)
 
