@@ -48,6 +48,106 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
   private def normalized(state: ProgrammingState): String = state.toPython.code.trim
 
+  /**
+   * Exercise every representation boundary rather than only checking that one
+   * generated string looks plausible.  Python is the canonical comparison
+   * format because Snap adds project metadata and Java changes surface syntax.
+   */
+  private def assertAllRoundTrips(source: String, includeJava: Boolean = true)(assertSnap: String => Unit = _ => ()): Unit = {
+    val expression = ProgrammingStatePythonString(source).toBeExpressionState
+    val expected = normalized(expression)
+    val snap = expression.toSnapXml
+
+    assertSnap(snap.snapXml)
+
+    val baseConversions = List[(String, ProgrammingState)](
+      "BeExpression -> Python -> BeExpression" -> expression.toPython.toBeExpressionState,
+      "BeExpression -> Snap -> BeExpression" -> snap.toBeExpressionState,
+      "Python -> Snap -> Python" -> ProgrammingStatePythonString(source).toSnapXml.toPython,
+      "Snap -> Python -> Snap" -> snap.toPython.toSnapXml
+    )
+    val javaConversions = if includeJava then {
+      val java = expression.toJava
+      List[(String, ProgrammingState)](
+        "BeExpression -> Java -> BeExpression" -> java.toBeExpressionState,
+        "Python -> Java -> Python" -> ProgrammingStatePythonString(source).toJava.toPython
+      )
+    } else Nil
+
+    (baseConversions ++ javaConversions).foreach { (route, result) =>
+      assertEquals(normalized(result), expected, clue = route)
+    }
+
+    val serializableStates = List[ProgrammingState](expression, expression.toPython, snap) ++
+      (if includeJava then List(expression.toJava) else Nil)
+    serializableStates.foreach { state =>
+      val restored = ProgrammingExercise.StateSerializer.deserialize(
+        ProgrammingExercise.StateSerializer.serialize(state)
+      )
+      assertEquals(normalized(restored), expected, clue = s"serialized ${state.getClass.getSimpleName}")
+    }
+  }
+
+  test("for loop survives all ProgrammingState round trips and becomes a Snap repeat block") {
+    assertAllRoundTrips(
+      """for _ in range(4):
+        |    forward(10)
+        |    turn_right(90)
+        |""".stripMargin,
+      includeJava = false // Java reserves `_`; the Java representation cannot spell this anonymous loop variable.
+    ) { xml =>
+      assert(xml.contains("""s="doRepeat"""), clue = xml)
+      assert(!xml.contains("""s="doFor"""), clue = xml)
+    }
+  }
+
+  test("variables survive all ProgrammingState round trips") {
+    assertAllRoundTrips(
+      """steps = 10
+        |forward(steps)
+        |steps = steps + 5
+        |forward(steps)
+        |""".stripMargin
+    ) { xml =>
+      assert(xml.contains("""s="doSetVar"""), clue = xml)
+      assert(xml.contains("""s="doChangeVar"""), clue = xml)
+      assert(xml.contains("""var="steps"""), clue = xml)
+    }
+  }
+
+  test("custom functions survive all ProgrammingState round trips as custom blocks") {
+    assertAllRoundTrips(
+      """def line(length):
+        |    forward(length)
+        |
+        |line(25)
+        |""".stripMargin
+    ) { xml =>
+      assert(xml.contains("""<block-definition s="line %length"""), clue = xml)
+      assert(xml.contains("""<custom-block s="line %n"""), clue = xml)
+    }
+  }
+
+  test("for loop, variables, and custom functions survive all ProgrammingState round trips together") {
+    assertAllRoundTrips(
+      """def polygon(sides, length):
+        |    angle = 360 / sides
+        |    for _ in range(4):
+        |        forward(length)
+        |        turn_right(angle)
+        |
+        |side_count = 4
+        |polygon(side_count, 30)
+        |""".stripMargin,
+      includeJava = false // Keep the anonymous range so Snap can use its simpler repeat block.
+    ) { xml =>
+      assert(xml.contains("""<block-definition s="polygon %sides %length"""), clue = xml)
+      assert(xml.contains("""s="doRepeat"""), clue = xml)
+      assert(xml.contains("""s="doSetVar"""), clue = xml)
+      assert(xml.contains("""<custom-block s="polygon %n %n"""), clue = xml)
+    }
+  }
+
   roundTripScenarios.foreach { (name, source) =>
     test(s"$name round trips through BeExpression, Python, Java, and serialized Snap") {
       val original = ProgrammingStatePythonString(source).toBeExpressionState
