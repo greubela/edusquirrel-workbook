@@ -68,18 +68,20 @@ final case class ProgrammingStateJavaString(code: String) extends ProgrammingSta
   */
 private object SnapStateConversion {
   def expressionFromXml(xml: String): BeExpression = {
+    val definitions = SnapXmlParser.elements(xml, "block-definition").map(renderDefinition)
     val scripts = SnapXmlParser.elements(xml, "scripts")
       .flatMap(container => SnapXmlParser.children(container.inner).filter(_.tag == "script"))
       .flatMap(script => statements(script.inner, 0))
-    if scripts.isEmpty && xml.contains("<block") then
+    if definitions.isEmpty && scripts.isEmpty && xml.contains("<block") then
       throw IllegalArgumentException("Snap project contains blocks outside the supported state-conversion subset")
-    BeProgram.fromPythonString(scripts.mkString("\n")).fullProgram
+    BeProgram.fromPythonString((definitions ++ scripts).mkString("\n\n")).fullProgram
   }
 
   private def statements(source: String, indentation: Int): List[String] =
     SnapXmlParser.children(source).collect {
       case block if block.tag == "block" && block.attrOrEmpty("s") != "receiveGo" =>
         renderBlock(block, indentation)
+      case block if block.tag == "custom-block" => renderCall(block, indentation)
     }
 
   private def renderBlock(block: SnapXmlParser.Element, indentation: Int): String = {
@@ -87,16 +89,76 @@ private object SnapStateConversion {
     val prefix = " " * indentation
     SnapTurtleCatalog.primitiveBySnapSelector.get(selector) match
       case Some(primitive) =>
-        val args = SnapXmlParser.children(block.inner).filter(e => e.tag == "l" || e.tag == "color")
-          .map(argument).take(primitive.arity)
+        val args = SnapXmlParser.children(block.inner).map(value).take(primitive.arity)
         prefix + primitive.pythonName + "(" + args.mkString(", ") + ")"
       case None if selector == "doRepeat" =>
         val children = SnapXmlParser.children(block.inner)
-        val count = children.find(_.tag == "l").map(argument).getOrElse("0")
+        val count = children.find(_.tag != "script").map(value).getOrElse("0")
         val body = children.find(_.tag == "script").toList.flatMap(s => statements(s.inner, indentation + 4))
-        prefix + s"for _ in range($count):\n" + body.mkString("\n")
+        prefix + s"for _ in range($count):\n" + nonEmptyBody(body, indentation + 4)
+      case None if selector == "doFor" =>
+        val children = SnapXmlParser.children(block.inner)
+        val values = children.filter(_.tag != "script")
+        val name = values.headOption.map(literalText).getOrElse("i")
+        val start = values.lift(1).map(value).getOrElse("1")
+        val end = values.lift(2).map(value).getOrElse("1")
+        val body = children.find(_.tag == "script").toList.flatMap(s => statements(s.inner, indentation + 4))
+        prefix + s"for $name in range($start, $end + 1):\n" + nonEmptyBody(body, indentation + 4)
+      case None if selector == "doSetVar" || selector == "doChangeVar" =>
+        val children = SnapXmlParser.children(block.inner)
+        val name = children.headOption.map(literalText).getOrElse("x")
+        val rhs = children.lift(1).map(value).getOrElse("0")
+        if selector == "doChangeVar" then prefix + s"$name = $name + $rhs"
+        else prefix + s"$name = $rhs"
       case None => throw IllegalArgumentException(s"Unsupported Snap selector in state conversion: $selector")
   }
+
+  private def renderDefinition(definition: SnapXmlParser.Element): String = {
+    val spec = definition.attrOrEmpty("s")
+    val name = SnapTurtleCatalog.pythonNameFromCustomSpec(spec)
+    val params = SnapTurtleCatalog.inputNamesFromSpec(spec)
+    val body = SnapXmlParser.children(definition.inner).find(_.tag == "script")
+      .toList.flatMap(script => statements(script.inner, 4))
+    s"def $name(${params.mkString(", ")}):\n${nonEmptyBody(body, 4)}"
+  }
+
+  private def renderCall(block: SnapXmlParser.Element, indentation: Int): String = {
+    val name = if block.tag == "custom-block" then
+      SnapTurtleCatalog.pythonNameFromCustomSpec(block.attrOrEmpty("s"))
+    else SnapTurtleCatalog.canonicalPythonName(block.attrOrEmpty("s"))
+    val args = SnapXmlParser.children(block.inner).map(value)
+    " " * indentation + s"$name(${args.mkString(", ")})"
+  }
+
+  private def value(element: SnapXmlParser.Element): String =
+    element.attr("var") match
+      case Some(name) => name
+      case None if element.tag == "l" || element.tag == "color" => argument(element)
+      case None if element.tag == "custom-block" => renderCall(element, 0)
+      case None if element.tag == "list" =>
+        SnapXmlParser.children(element.inner).map(value).mkString("(", ", ", ")")
+      case None if element.tag == "block" =>
+        val selector = element.attrOrEmpty("s")
+        if selector == "reportTrue" then "True"
+        else if selector == "reportFalse" then "False"
+        else {
+          val operators = SnapControlFlow.OperatorToSnapReporter.map { (op, reporter) => reporter.selector -> op }
+          operators.get(selector) match
+            case Some("not") => s"not ${SnapXmlParser.children(element.inner).headOption.map(value).getOrElse("True")}"
+            case Some(op) =>
+              val args = SnapXmlParser.children(element.inner).flatMap { child =>
+                if child.tag == "list" then SnapXmlParser.children(child.inner).map(value) else List(value(child))
+              }
+              args.mkString("(", s" $op ", ")")
+            case None => renderCall(element, 0)
+        }
+      case None => "0"
+
+  private def literalText(element: SnapXmlParser.Element): String =
+    SnapXmlParser.unescape(element.inner).trim
+
+  private def nonEmptyBody(body: List[String], indentation: Int): String =
+    if body.nonEmpty then body.mkString("\n") else " " * indentation + "pass"
 
   private def argument(element: SnapXmlParser.Element): String =
     if element.tag == "color" then SnapInputCodec.pythonQuotedColorFromRaw(element.inner).getOrElse("\"black\"")
