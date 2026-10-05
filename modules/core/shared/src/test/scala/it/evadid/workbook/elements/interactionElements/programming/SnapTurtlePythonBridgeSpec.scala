@@ -37,6 +37,30 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     assert(xml.contains("""s="setHeading""""), clue = xml)
   }
 
+  test("applyPython puts all Python statements below one green-flag hat") {
+    val result = SnapTurtlePythonBridge.applyPython("forward(10)\nturn(90)")
+    assert(result.isRight, clue = result)
+    val xml = result.toOption.get.snapXml
+    val script = """(?s)<script x="156" y="66">(.*?)</script>""".r
+      .findFirstMatchIn(xml)
+      .map(_.group(1))
+      .getOrElse(fail(s"Missing generated script in $xml"))
+
+    assert(script.startsWith("""<block s="receiveGo"></block>"""), clue = script)
+    assertEquals("""s="receiveGo""".r.findAllIn(script).size, 1)
+    assert(script.indexOf("""s="receiveGo"""") < script.indexOf("""s="forward""""), clue = script)
+    assert(script.indexOf("""s="forward"""") < script.indexOf("""s="turn""""), clue = script)
+  }
+
+  test("green-flag hat is omitted when Snap generated from Python is converted back") {
+    val snap = ProgrammingStatePythonString("forward(10)\nturn(90)").toSnapXml
+    val python = snap.toPython.code
+
+    assert(!python.contains("receive_go"), clue = python)
+    assert(python.contains("forward(10)"), clue = python)
+    assert(python.contains("turn_right(90)"), clue = python)
+  }
+
   test("applyPython rejects unknown calls") {
     val result = SnapTurtlePythonBridge.applyPython("move(10)")
     assert(result.isLeft, clue = result)
@@ -156,8 +180,9 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     )
     assert(result.isRight, clue = result)
     val xml = result.toOption.get.snapXml
-    assert(xml.contains("""<script x="70" y="80">"""), clue = xml)
-    assert(xml.contains("""<script x="200" y="150">"""), clue = xml)
+    assert(xml.contains("""<script x="70" y="80"><block s="receiveGo"></block>"""), clue = xml)
+    assert(xml.contains("""<script x="200" y="150"><block s="receiveGo"></block>"""), clue = xml)
+    assertEquals("""s="receiveGo""".r.findAllIn(xml).size, 2)
   }
 
   test("reconcileLayout resets to single script when callCount changes") {
