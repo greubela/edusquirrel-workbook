@@ -20,7 +20,6 @@ import scala.scalajs.js
  */
 object TurtleJsxGraphRenderer:
 
-
   def render[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): Element = {
     val container = div(
       cls := "turtle-gradig-panel",
@@ -30,7 +29,6 @@ object TurtleJsxGraphRenderer:
     )
     container
   }
-
 
   /* Factories */
 

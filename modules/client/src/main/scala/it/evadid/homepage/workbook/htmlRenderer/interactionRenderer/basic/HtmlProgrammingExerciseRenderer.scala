@@ -80,10 +80,9 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     )
 
     val interactivePreview = {
-    
       val cmd = editor.currentState().toBeExpressionState.deriveTurtleCommands
       val exp = List(LineToRender[Double](Point(0,0), Point(100,0)), LineToRender[Double](Point(100,0), Point(100, 100)))
-      
+
       ElementCard(
         LanguageMapContentId("basic/gradingPreviewProgram"),
         TurtleJsxGraphRenderer.render(cmd, exp )

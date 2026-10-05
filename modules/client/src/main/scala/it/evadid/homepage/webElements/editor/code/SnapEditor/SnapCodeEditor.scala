@@ -146,6 +146,7 @@ case class SnapCodeEditor(
       cls := "be-program-snap-fullscreen",
       editorCanvas,
       SnapTurtleStagePanel.chrome(
+        this,
         flushPending = () => impl.flushPendingProjectChanges(),
         runOnStage = canvas => impl.runGreenFlagOnStage(canvas),
         stopRun = () => impl.stopGreenFlagOnStage()
