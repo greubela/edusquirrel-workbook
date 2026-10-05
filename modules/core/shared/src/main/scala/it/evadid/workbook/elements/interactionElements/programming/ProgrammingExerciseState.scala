@@ -2,18 +2,22 @@ package it.evadid.workbook.elements.interactionElements.programming
 
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
+import upickle.default.*
 
 /** The source representation currently edited by a programming exercise. */
-sealed trait ProgrammingState {
-  /** Compatibility accessor for consumers that only accept Snap states. */
-  def snapXml: String =
-    throw new IllegalStateException(s"${getClass.getSimpleName} does not contain Snap XML")
+sealed trait ProgrammingState derives ReadWriter{
+ 
+  def toBeExpression: ProgrammingStateBeExpression = ???
+  def toSnapXml: ProgrammingStateSnapXml = ???
+  def toPython: ProgrammingStatePythonString = ???
+  def toJava: ProgrammingStateJavaString = ???
+  
 }
 
 final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState
-final case class ProgrammingStateSnapXml(override val snapXml: String) extends ProgrammingState
+final case class ProgrammingStateSnapXml( val snapXml: String) extends ProgrammingState
 final case class ProgrammingStateSnapXMLWithAdditionalFloatingObjects(
-    override val snapXml: String,
+     val snapXml: String,
     additionalFloatingObjects: List[String]
 ) extends ProgrammingState
 final case class ProgrammingStatePythonString(code: String) extends ProgrammingState
