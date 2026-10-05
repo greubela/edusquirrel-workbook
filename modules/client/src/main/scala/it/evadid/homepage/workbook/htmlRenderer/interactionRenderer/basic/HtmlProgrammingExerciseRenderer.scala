@@ -4,12 +4,10 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.ExecutionMethod
-import it.evadid.core.datastructures.state.async.AsyncData
 import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, VmToSvg}
-import it.evadid.core.datastructures.vectorShapes.svg.{BeExpressionToTurtleCommands, TurtlePathBuilder}
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.{TurtleCommand, TurtleState}
+import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
-import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditorConfig, SnapProgramDerivation}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
 import it.evadid.homepage.webElements.editor.code.EvaEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
@@ -76,16 +74,14 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
         shapeLogger,
         VmToSvg.renderBeExpression(
           shapeLogger,
-          SnapProgramDerivation.fromState(EvaEditor.asSnap(boundVar.now())).program.fullProgram
+          editor.currentState().toBeExpressionState.expression
         )
       )
     )
 
     val interactivePreview = {
     
-      val cmd = BeExpressionToTurtleCommands(
-        SnapProgramDerivation.fromState(EvaEditor.asSnap(boundVar.now())).program.fullProgram
-      )
+      val cmd = editor.currentState().toBeExpressionState.deriveTurtleCommands
       val exp = List(LineToRender[Double](Point(0,0), Point(100,0)), LineToRender[Double](Point(100,0), Point(100, 100)))
       
       ElementCard(
