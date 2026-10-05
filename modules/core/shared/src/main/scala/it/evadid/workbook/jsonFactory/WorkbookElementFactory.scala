@@ -92,8 +92,8 @@ object WorkbookElementFactory {
       val ord = obj.associatedFactory.elementMapAndOrderForConstructorLike
       val wri = obj.associatedFactory.writerJsonRegularRefBased
       val con = obj.getClass.getSimpleName
-      val res = ConstructorLikeSerializer.serialize(ord, obj, wri.asInstanceOf[Writer[WorkbookElement]], con)
-      res
+      val resStr = ConstructorLikeSerializer.serialize(ord, obj, wri.asInstanceOf[Writer[WorkbookElement]], con)
+      resStr
     }
 
     override def deserialize(str: String): WorkbookElement = {

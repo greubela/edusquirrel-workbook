@@ -2,9 +2,13 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
+import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.ElementCard
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineToRender
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
 
@@ -27,15 +31,17 @@ object SnapTurtleStagePanel {
 
   /**
    * Right-hand turtle panel for the fullscreen Snap shell.
+   *
    * @param flushPending call before run so Snap XML edits are published
-   * @param runOnStage green-flag the live IDE stage and mirror frames onto the canvas
-   * @param stopRun stop scripts / cancel mirroring (e.g. on unmount)
+   * @param runOnStage   green-flag the live IDE stage and mirror frames onto the canvas
+   * @param stopRun      stop scripts / cancel mirroring (e.g. on unmount)
    */
   def chrome(
-      flushPending: () => Unit,
-      runOnStage: Canvas => Unit,
-      stopRun: () => Unit
-  ): L.Element = {
+              editor: SnapCodeEditor,
+              flushPending: () => Unit,
+              runOnStage: Canvas => Unit,
+              stopRun: () => Unit
+            ): L.Element = {
     val laminarHelper = LaminarRenderHelper.singleton
     var stageCanvas: Option[Canvas] = None
 
@@ -46,6 +52,17 @@ object SnapTurtleStagePanel {
 
     val runButton: HtmlButtonElement =
       HtmlButtonElement.withTextLabel("basic/runProgram", _ => execute())
+
+    val exp = List(LineToRender[Double](Point(0, 0), Point(100, 0)), LineToRender[Double](Point(100, 0), Point(100, 100)))
+    val renderingSignal: Signal[Element] = editor.state.signal.map(curState => {
+      val curCommands = curState.toBeExpressionState.deriveTurtleCommands
+      TurtleJsxGraphRenderer.render(curCommands, exp)
+    })
+
+    val interactivePreview = ElementCard(
+      LanguageMapContentId("basic/gradingPreviewProgram"),
+      renderingSignal
+    )
 
     div(
       cls := "be-program-snap-fullscreen__turtle",
@@ -70,7 +87,8 @@ object SnapTurtleStagePanel {
             stageCanvas = None
           }
         )
-      )
+      ),
+      interactivePreview.getDomElement()
     )
   }
 }

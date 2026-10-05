@@ -9,24 +9,30 @@ import upickle.default.*
 
 object ConstructorLikeSerializer {
 
-  case class VariableDisplayConfig(varId: String, inlinedWithoutKey: Boolean)
+  case class VariableDisplayConfig(varId: String, suppressKey: Boolean)
 
   private case class VariableToSerialize(
-                                          val key: String,
+                                          key: String,
                                           jsonValueAsStr: String,
                                           constructorPosition: Int,
                                           positionInConstructor: Int,
                                           displayConf: VariableDisplayConfig
                                         ) {
-    override val toString: String = {
-      s"\"${key}: ${jsonValueAsStr}"
+    val toValueString: String = {
+      jsonValueAsStr
     }
+
+    val toMapEntryString: String = {
+      s"${ujson.write(key)}: ${ujson.write(jsonValueAsStr)}"
+    }
+
+    override val toString: String = toMapEntryString
   }
 
   private def formatConstructorEntry(set: Set[VariableToSerialize]): String = {
     set.toList.sortBy(_.positionInConstructor).map(curEntry => {
-      if (curEntry.displayConf.inlinedWithoutKey) curEntry.jsonValueAsStr
-      else s"\n${curEntry.key}: ${curEntry.jsonValueAsStr}"
+      if (curEntry.displayConf.suppressKey) curEntry.toValueString
+      else curEntry.toMapEntryString
     }).mkString("(", ", ", ")")
   }
 

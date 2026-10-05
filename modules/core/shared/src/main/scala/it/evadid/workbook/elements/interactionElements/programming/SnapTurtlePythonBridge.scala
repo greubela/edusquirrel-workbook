@@ -109,6 +109,9 @@ object SnapTurtlePythonBridge {
   def isScriptStatement(expression: BeExpression): Boolean =
     expression match
       case _: BeDefineFunction => false
+      // The green-flag hat is Snap execution metadata, not Python source. The
+      // XML writer adds it back as the first block of every generated script.
+      case call: BeFunctionCall => snapSelectorOf(call) != "receiveGo"
       case _ => true
 
   def scriptStatements(expressions: List[BeExpression]): List[BeExpression] =

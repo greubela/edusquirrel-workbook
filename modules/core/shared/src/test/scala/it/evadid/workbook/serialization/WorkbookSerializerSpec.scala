@@ -12,7 +12,7 @@ class WorkbookSerializerSpec extends FunSuite {
   private val workbook = Workbook(
     elementId = "serializer-test",
     metadata = WorkbookMetadata(
-      author = User("Test Author", "test-author", "author@example.test"),
+      author = Set(User("Test Author", "test-author", "author@example.test")),
       contributors = Set.empty,
       workbookTitle = LanguageMapContentId("serializer/title"),
       availableLanguages = List(English)
@@ -30,6 +30,6 @@ class WorkbookSerializerSpec extends FunSuite {
   test("constructor-like serializer includes the embedded element registry") {
     val serialized = workbook.toStringConstructorLike
 
-    assert(serialized.contains("serializedElements"))
+    assert(serialized.contains("serializedElements"), clue = serialized.take(200))
   }
 }

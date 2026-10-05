@@ -45,7 +45,7 @@ case class CreatePlantworkshopWorkbook(
     Workbook(
       workbookId,
       WorkbookMetadata(
-        User.YanneckDimitrov,
+        Set(User.YanneckDimitrov),
         Set(),
         LanguageMapContentId("PlantWorkshop/workbookTitle"),
         availableLanguages

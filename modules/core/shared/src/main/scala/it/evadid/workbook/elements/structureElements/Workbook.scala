@@ -36,7 +36,7 @@ case class Workbook(
 object Workbook {
 
   case class WorkbookMetadata(
-                               author: User,
+                               author: Set[User],
                                contributors: Set[User],
                                workbookTitle: LanguageMapContentId,
                                availableLanguages: List[HumanLanguage]

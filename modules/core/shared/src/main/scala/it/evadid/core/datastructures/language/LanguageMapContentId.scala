@@ -10,7 +10,7 @@ case class LanguageMapContentId(val languageMapId: String, val entryKey: String)
   assert(entryKey.trim.toLowerCase == entryKey, s"entryKey must be lowercase, but was: $entryKey!")
   val fullId: String = languageMapId.toLowerCase + "/" + entryKey.toLowerCase
 
-  override final val toString: String = s"ID(\"${fullId}\")"
+  override final val toString: String = s"ID(${fullId})"
 }
 
 object LanguageMapContentId {
