@@ -63,7 +63,7 @@ trait WorkbookFactory {
     Workbook(
       workbookId,
       WorkbookMetadata(
-        user,
+        Set(user),
         Set(),
         LanguageMapContentId(langIdWorkbookTitle),
         availableLanguages),

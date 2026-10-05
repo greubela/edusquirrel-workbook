@@ -1,10 +1,9 @@
 package it.evadid.core.util.io
 
 import it.evadid.core.datastructures.chat.MessengerModel
-
 import it.evadid.core.util.io.TypeConverter.ConverterResult
+import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
 import it.evadid.distribution.command.SerializedException
-
 import upickle.*
 import upickle.default.{read, readwriter, write}
 
@@ -99,7 +98,9 @@ object Serializer {
   }*/
 
   def constructorLikeSerializer[T](constructorName: String, base: Serializer[T]): Serializer[T] = new Serializer[T] {
-    override def serialize(obj: T): String = constructorName + "(" + write[String](base.serialize(obj)) + ")"
+    override def serialize(obj: T): String = {      
+      constructorName + "(" + base.serialize(obj) + ")"
+    }
 
     override def deserialize(str: String): T =
       try {
@@ -107,8 +108,9 @@ object Serializer {
         if (trimmed.startsWith(constructorName + "(") && trimmed.endsWith(")")) {
           val withoutEnd = trimmed.substring(0, str.length - 1)
           val cleaned = withoutEnd.substring(constructorName.length + 1, withoutEnd.length)
-          val jsonRemove = read[String](cleaned)
-          base.deserialize(jsonRemove)
+          //val jsonRemove = read[String](cleaned)
+         // base.deserialize(jsonRemove)
+          base.deserialize(cleaned)
         } else {
           throw new IllegalArgumentException(s"ConstructorLikeSerializer for '${constructorName} cannot deserialize ${str}")
         }
