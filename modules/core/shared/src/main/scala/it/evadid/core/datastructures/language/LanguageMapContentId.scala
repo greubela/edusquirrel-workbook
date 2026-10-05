@@ -1,8 +1,8 @@
 package it.evadid.core.datastructures.language
 
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.DefaultSerializer
 import upickle.ReadWriter
+
 
 case class LanguageMapContentId(val languageMapId: String, val entryKey: String) {
 
@@ -10,7 +10,7 @@ case class LanguageMapContentId(val languageMapId: String, val entryKey: String)
   assert(entryKey.trim.toLowerCase == entryKey, s"entryKey must be lowercase, but was: $entryKey!")
   val fullId: String = languageMapId.toLowerCase + "/" + entryKey.toLowerCase
 
-  override final val toString: String = s"ID(${fullId})"
+  override final val toString: String = s"ID(\"${fullId}\")"
 }
 
 object LanguageMapContentId {
@@ -29,13 +29,9 @@ object LanguageMapContentId {
 
   def apply(fullId: String): LanguageMapContentId = {
     val parts = fullId.split("/")
-    if (parts.length != 2) throw new IllegalArgumentException(s"Invalid language map identifier: $fullId")
-    apply(parts(0), parts(1))
+    if (parts.length == 2) apply(parts(0), parts(1))
+    else if (parts.length < 2) throw new IllegalArgumentException(s"Invalid language map identifier: $fullId")
+    else apply(parts(0), parts.tail.mkString("/"))
   }
-
-
-
-
-
 
 }

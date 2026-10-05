@@ -1,6 +1,7 @@
 package it.evadid.core.datastructures.color
+import upickle.default.*
 
-trait WebColor extends AppColor {
+sealed trait WebColor extends AppColor derives ReadWriter{
 
   def webStyleRgbString: String = {
     val rgb = toRGB

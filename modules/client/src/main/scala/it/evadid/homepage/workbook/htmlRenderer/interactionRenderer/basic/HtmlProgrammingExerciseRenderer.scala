@@ -81,15 +81,15 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     )
 
     val interactivePreview = {
-      val intDom = div()
+    
       val cmd = BeExpressionToTurtleCommands(
         SnapProgramDerivation.fromState(boundVar.now()).program.fullProgram
       )
       val exp = List(LineToRender[Double](Point(0,0), Point(100,0)), LineToRender[Double](Point(100,0), Point(100, 100)))
-      TurtleJsxGraphRenderer.render(intDom.ref, cmd, exp )
+      
       ElementCard(
         LanguageMapContentId("basic/gradingPreviewProgram"),
-        intDom
+        TurtleJsxGraphRenderer.render(cmd, exp )
       )
     }
 
@@ -135,6 +135,6 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     )
 
     AtomarLineRendering.cardLine(workbookElement,
-      List(buttonCard, interactivePreview, canvasCard, staticRendering, runCard))
+      List(buttonCard, canvasCard, interactivePreview, staticRendering, runCard))
   }
 }

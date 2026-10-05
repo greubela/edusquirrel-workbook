@@ -2,7 +2,6 @@ package it.evadid.workbook.interaction.sync.destination
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.SerializedException
-import it.evadid.util.logging.Logger
 import it.evadid.util.logging.LoggingLevel.{INFO, WARN}
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.destination.SyncDestination.SyncDestinationForType
@@ -10,28 +9,31 @@ import it.evadid.workbook.interaction.sync.destination.SyncDestination.SyncDesti
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.*
 
+import upickle.default.*
 
 trait SyncDestinationRaw extends SyncDestination {
 
 
-  def getSyncDestinationForType[T](logger: SyncLogger, usingKey: String, serializer: Serializer[T]) = new SyncDestinationForType[T] {
+  def getSyncDestinationForType[T](logger: SyncLogger, usingKey: String)(implicit rw: ReadWriter[T]): SyncDestinationForType[T] = {
+    getSyncDestinationForType[T](logger, usingKey, Serializer.fromUpickleJson(rw))
+  }
+
+  def getSyncDestinationForType[T](logger: SyncLogger, usingKey: String, serializer: Serializer[T]): SyncDestinationForType[T] = new SyncDestinationForType[T] {
 
     override def storeElement(obj: T): Future[Boolean] = {
+      val serialized = serializer.serialize(obj)
+    //  println(s"UGLY SYNCDESTINATION RAW. serialized:\n${serialized}")
       storeToRaw(logger, usingKey, serializer.serialize(obj))
     }
 
     override def readElement: Future[T] = {
-      readRaw(logger, usingKey).map(strRes => {
-        val res = serializer.tryDeserializeAll(List(strRes))
-        if (res.inputAfterOperation.nonEmpty) res.inputAfterOperation.head
-        else {
-          throw SerializedException(s"${SyncDestinationRaw.this.syncPrefix} read key '${res}' but could not parse:\n${strRes}'")
-        }
+      readRaw(logger, usingKey).map(strRes => try {
+        serializer.deserialize(strRes)
+      } catch case (err: Throwable) => {
+        throw SerializedException(s"${SyncDestinationRaw.this.syncPrefix} read key '${usingKey}' but could not parse (${strRes.take(60)}): >>${err.getMessage}<<. full object:\n ${strRes}")
       })
     }
-
   }
-
 
   protected given ExecutionContext = ExecutionContext.global
 
@@ -53,7 +55,7 @@ trait SyncDestinationRaw extends SyncDestination {
     val resFut = readRaw(key)
     resFut.onComplete {
       case Success(res) => logger.log(s"${syncPrefix} successfully read key ${key}: ${res.take(60)}!", INFO, Some(false))
-      case Failure(exception) => logger.logException(s"${syncPrefix} failed to read key ${key}, returning nothing", exception, Some(false), WARN)
+      case Failure(exception) => logger.log(s"${syncPrefix} failed to read key ${key}, returning nothing", WARN, Some(false))
     }
     resFut
   }
@@ -70,7 +72,7 @@ trait SyncDestinationRaw extends SyncDestination {
   def storeToRaw(logger: SyncLogger, key: String, value: String): Future[Boolean] = {
     val resFut = storeToRaw(key, value)
     resFut.onComplete {
-      case Success(res) => logger.log(s"SyncDestination successfully stored key ${key} (value ${value.take(60)}", INFO, Some(false))
+      case Success(res) => logger.log(s"SyncDestination successfully stored key ${key} (value ${value.take(60)})", INFO, Some(false))
       case Failure(exception) => logger.logException(s"${syncPrefix} failed to write key ${key} (value ${value.take(60)}), ignoring write", exception, Some(false), WARN)
     }
     resFut

@@ -20,12 +20,7 @@ import scala.scalajs.js
 
 object LocalIndexedDbStorageSync {
   val instanceForHistory = LocalIndexedDbStorageSync("EvaDidInteractionDB", "variableHistoryStore")
-  val instanceForCaching = LocalIndexedDbStorageSync("EvaDidInteractionDB", "cache")
-
-  case class BasicIndexDbStorage(dbName: String, storeName: String) {
-
-  }
-
+  val instanceForCaching = LocalIndexedDbStorageSync("EvaDidCacheDb", "cache")
 }
 
 case class LocalIndexedDbStorageSync(dbName: String, storeName: String) extends SyncDestinationRaw with SyncDestinationHistory {
@@ -44,8 +39,7 @@ case class LocalIndexedDbStorageSync(dbName: String, storeName: String) extends 
     val promise = Promise[IDBDatabase]()
     val request = dom.window.indexedDB.get.open(dbName, dbVersion)
 
-    request.onupgradeneeded = (event: dom.IDBVersionChangeEvent) => {
-      val db = request.result.asInstanceOf[IDBDatabase]
+    def ensureStore(db: IDBDatabase): Unit = {
       if (!db.objectStoreNames.contains(storeName)) {
         // We use a simple layout: 'key' (string) -> 'value' (stringified data)
         // FIX: Cast js.Dynamic.literal to structural option trait to bypass read-only fields
@@ -53,8 +47,14 @@ case class LocalIndexedDbStorageSync(dbName: String, storeName: String) extends 
       }
     }
 
+    request.onupgradeneeded = (event: dom.IDBVersionChangeEvent) => {
+      val db = request.result.asInstanceOf[IDBDatabase]
+      ensureStore(db)
+    }
+
     request.onsuccess = (_: dom.Event) => {
-      promise.success(request.result.asInstanceOf[IDBDatabase])
+      val db = request.result.asInstanceOf[IDBDatabase]
+      promise.success(db)
     }
 
     request.onerror = (_: dom.Event) => {

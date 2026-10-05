@@ -62,9 +62,10 @@ object ConstructorLikeSerializer {
     }
   }
 
-
   def deserialize(str: String): ConstructorLikeReadResult = {
-    ConstructorLikeParserWithJsonElements.parseString(str).get
+    val res = ConstructorLikeParserWithJsonElements.parseString(str)
+    if(res.isSuccess) res.get
+    else throw res.failed.get
   }
 
   def deserialize[T](str: String, reader: Reader[T]): T = {

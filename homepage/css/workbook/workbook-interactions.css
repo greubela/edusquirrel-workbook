@@ -7,6 +7,15 @@
     resize: none;
 }
 
+/* TURTLE INTERACTIONS */
+
+.turtle-gradig-panel{
+    width: 300px;
+    height: 300px;
+    max-height: 25vw;
+    max-width: 25vw;
+}
+
 /* BUTTONS */
 
 .workbook-element.button-line {

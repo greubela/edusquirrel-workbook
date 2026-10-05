@@ -1,18 +1,38 @@
 package it.evadid.core.datastructures.language
 
+import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
+import it.evadid.distribution.command.SerializedException
 import upickle.default.*
 
-sealed trait AppLanguage derives ReadWriter {
+sealed trait AppLanguage {
   val name: String
 }
 
 object AppLanguage {
 
-  sealed trait HumanLanguage(val name: String, val nameAbbr: String) extends AppLanguage derives ReadWriter
+  given ser: Serializer[AppLanguage] = new Serializer[AppLanguage]() {
 
-  sealed trait ProgrammingLanguage(val name: String, val fileEnding: String) extends AppLanguage derives ReadWriter
+    override def serialize(obj: AppLanguage): String = obj.name
 
-  sealed trait SpecialLanguage(val name: String) extends AppLanguage derives ReadWriter
+    override def deserialize(str: String): AppLanguage = {
+      val res =  allLanguages.find(_.name == str)
+      if(res.nonEmpty) res.get
+      else throw SerializedException(s"Applangauge '${str}' is unknown, cannot parse!")
+    }
+  }
+
+  given rw: ReadWriter[AppLanguage] = ser.uPickleReadWrite
+
+  given rwH: ReadWriter[HumanLanguage] = ser.map(_.asInstanceOf[HumanLanguage], _.asInstanceOf[AppLanguage]).uPickleReadWrite
+  given rwP: ReadWriter[ProgrammingLanguage] = ser.map(_.asInstanceOf[ProgrammingLanguage], _.asInstanceOf[AppLanguage]).uPickleReadWrite
+  given rwS: ReadWriter[SpecialLanguage] = ser.map(_.asInstanceOf[SpecialLanguage], _.asInstanceOf[AppLanguage]).uPickleReadWrite
+  
+  sealed trait HumanLanguage(val name: String, val nameAbbr: String) extends AppLanguage
+
+  sealed trait ProgrammingLanguage(val name: String, val fileEnding: String) extends AppLanguage
+
+  sealed trait SpecialLanguage(val name: String) extends AppLanguage
 
   case object UniversalLanguage extends SpecialLanguage("universal") 
 

@@ -26,8 +26,10 @@ object ConstructorLikeParserWithJsonElements {
 
   private def jsonPayload(using P[?]): P[Js.Val] = JsonGrammar.jsonExpr
 
+  private val allowedCharsInIdentifier: List[Char] = List('_', '$', '/', '\\', '.', '-')
+
   private def identifier(using P[?]): P[Unit] =
-    P(CharPred(c => c.isLetterOrDigit || c == '_').rep(1))
+    P(CharPred(c => c.isLetterOrDigit || allowedCharsInIdentifier.contains(c)).rep(1))
 
   private def getParser()(using P[?]): P[(String, Seq[String])] = {
     P(identifier.!) ~ (P("(") ~ jsonPayload.! ~ P(")")).rep(1)
@@ -43,7 +45,7 @@ object ConstructorLikeParserWithJsonElements {
         Success(ConstructorLikeReadResult(constructorName, jsonPayloads))
       }
       case f: Parsed.Failure => {
-        scala.util.Failure(SerializedException(f.longMsg))
+        scala.util.Failure(SerializedException(s"Error at ConstructorLikeParserWithJsonElements: ${f.msg} (${f.longMsg})"))
       }
     }
   }

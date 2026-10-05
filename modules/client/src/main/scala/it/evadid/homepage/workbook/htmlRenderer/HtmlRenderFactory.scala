@@ -14,7 +14,7 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.reorderExerc
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingExercise.HtmlSortingInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingReasonExercise.HtmlSortingReasonInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.{HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRenderer}
-import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.{HtmlExerciseContainerRenderer, *}
+import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.*
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.*
 import it.evadid.workbook.elements.interactionElements.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
@@ -61,19 +61,22 @@ object HtmlRenderFactory {
     protected def createRendering(workbookElement: T): AtomarLineRendering
   }
 
-  private def createPlaceholderElement[T <: WorkbookElement](workbookElement: T): HtmlWorkbookElement[T, AtomarLineRendering] = {
-    val dom: ReactiveHtmlElement[HTMLDivElement] = div("HtmlRenderFactory::renderWorkbookElement cannot yet render objects of type '" + workbookElement.getClass.getName + "'!")
+
+  private[workbook] def createPlaceholderElement[T <: WorkbookElement](workbookElement: T, msg: String): HtmlWorkbookElement[T, AtomarLineRendering] = {
+    val dom: ReactiveHtmlElement[HTMLDivElement] = div(msg)
     val rl: AtomarLineRendering = AtomarLineRendering.basicLine(workbookElement, dom)
     HtmlWorkbookElement[T, AtomarLineRendering](workbookElement, rl)
-
   }
 
 
   def render[T <: WorkbookElement](anyElement: T): HtmlWorkbookElement[WorkbookElement, HtmlAppElement] = {
     try {
       renderStructureElement(anyElement).asInstanceOf[HtmlWorkbookElement[WorkbookElement, HtmlAppElement]]
-    } catch case e: Throwable => {
+    } catch case e: Throwable => try {
       renderWorkbookElement(anyElement).asInstanceOf[HtmlWorkbookElement[WorkbookElement, HtmlAppElement]]
+    }
+    catch case e: Throwable => {
+      createPlaceholderElement(anyElement, s"Cannot render Element ${anyElement.getClass.getSimpleName} because of exception: ${e.getMessage}").asInstanceOf[HtmlWorkbookElement[WorkbookElement, HtmlAppElement]]
     }
   }
 
@@ -119,7 +122,7 @@ object HtmlRenderFactory {
       /*case r: HtmlReorderInteraction[?] @unchecked => fromElement(r, r.getDomElement())*/
       // case e: HtmlEmbeddedDomInteraction => fromAppElement(e, e.domElement)
       case p: ProgrammingExercise => HtmlProgrammingExerciseRenderer.renderWorkbookElement(p)
-      case a: T => createPlaceholderElement(a)
+      case a: T => createPlaceholderElement(a, "HtmlRenderFactory::renderWorkbookElement cannot yet render objects of type '" + a.getClass.getName + "'!")
       // error
     }
   }
