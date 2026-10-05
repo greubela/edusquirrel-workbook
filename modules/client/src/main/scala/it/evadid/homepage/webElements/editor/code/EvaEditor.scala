@@ -20,27 +20,23 @@ final class EvaEditor(
 ) extends HtmlAppElement with FullscreenLifecycle {
 
   private val activeTab = Var(EvaEditor.tabFor(state.now()))
-  private val snapState = Var(EvaEditor.asSnap(state.now()))
-  private val pythonState = Var(EvaEditor.asPython(state.now()))
-  private val javaState = Var(state.now() match
-    case ProgrammingStateJavaString(code) => code
-    case _ => ""
-  )
+  private val snapState = Var(state.now().toSnapXml)
+  private val pythonState = Var(state.now().toPython.code)
+  private val javaState = Var(state.now().toJava.code)
 
   private def publish(next: ProgrammingState): Unit =
     state.set(next)
     onStateEdited(next)
 
   private def receive(next: ProgrammingState): Unit =
-    activeTab.set(EvaEditor.tabFor(next))
-    next match
-      case snap: ProgrammingStateSnapXml => snapState.set(snap)
-      case ProgrammingStateSnapXMLWithAdditionalFloatingObjects(xml, _) =>
-        snapState.set(ProgrammingStateSnapXml(xml))
-      case ProgrammingStatePythonString(code) => pythonState.set(code)
-      case ProgrammingStateJavaString(code) => javaState.set(code)
-      case expression: ProgrammingStateBeExpression =>
-        pythonState.set(expression.toPython.code)
+    val nextTab = EvaEditor.tabFor(next)
+    // Re-emitting the selected tab replaces Laminar's child node. Avoid doing
+    // that for edits in the current CodeMirror instance, or it loses focus.
+    if activeTab.now() != nextTab then activeTab.set(nextTab)
+    nextTab match
+      case EvaEditor.Tab.Snap => snapState.set(next.toSnapXml)
+      case EvaEditor.Tab.Python => pythonState.set(next.toPython.code)
+      case EvaEditor.Tab.Java => javaState.set(next.toJava.code)
 
   private val snapEditor = SnapCodeEditor(
     snapState,
@@ -70,12 +66,9 @@ final class EvaEditor(
   private def select(tab: EvaEditor.Tab): Unit =
     val current = state.now()
     tab match
-      case EvaEditor.Tab.Snap => snapState.set(EvaEditor.asSnap(current))
-      case EvaEditor.Tab.Python => pythonState.set(EvaEditor.asPython(current))
-      case EvaEditor.Tab.Java =>
-        current match
-          case ProgrammingStateJavaString(code) => javaState.set(code)
-          case _ => ()
+      case EvaEditor.Tab.Snap => snapState.set(current.toSnapXml)
+      case EvaEditor.Tab.Python => pythonState.set(current.toPython.code)
+      case EvaEditor.Tab.Java => javaState.set(current.toJava.code)
     activeTab.set(tab)
 
   override def getDomElement(): Element =
@@ -127,17 +120,4 @@ object EvaEditor {
     case _: ProgrammingStateJavaString => Tab.Java
     case _ => Tab.Snap
 
-  def asSnap(state: ProgrammingState): ProgrammingExerciseState = state match
-    case snap: ProgrammingStateSnapXml => snap
-    case state: ProgrammingStateSnapXMLWithAdditionalFloatingObjects => state.toSnapXml
-    case state: ProgrammingStatePythonString => state.toSnapXml
-    case state: ProgrammingStateBeExpression => state.toSnapXml
-    case _: ProgrammingStateJavaString => ProgrammingExerciseState.mini
-
-  private[code] def asPython(state: ProgrammingState): String = state match
-    case state: ProgrammingStatePythonString => state.toPython.code
-    case state: ProgrammingStateBeExpression => state.toPython.code
-    case state: ProgrammingStateSnapXml => state.toPython.code
-    case state: ProgrammingStateSnapXMLWithAdditionalFloatingObjects => state.toPython.code
-    case _: ProgrammingStateJavaString => ""
 }

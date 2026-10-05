@@ -75,10 +75,7 @@ object SnapProjectXml {
     val statements = SnapTurtlePythonBridge.scriptStatements(body.toList)
     if statements.isEmpty then Nil
     else if layout.isEmpty || !layoutMatches(layout, statements.size) then
-      val withGreen =
-        if statements.exists(isReceiveGoStatement) then statements
-        else createReceiveGoCall() :: statements
-      List(ScriptOut(156, 66, withGreen))
+      List(ScriptOut(156, 66, createReceiveGoCall() :: statements))
     else
       splitByLayout(statements, layout.scripts)
   }
@@ -91,14 +88,9 @@ object SnapProjectXml {
     scripts.map { script =>
       val (chunk, rest) = remaining.splitAt(script.callCount)
       remaining = rest
-      ScriptOut(script.x, script.y, chunk)
+      ScriptOut(script.x, script.y, createReceiveGoCall() :: chunk)
     }
   }
-
-  private def isReceiveGoStatement(expression: BeExpression): Boolean =
-    expression match
-      case call: BeFunctionCall => SnapTurtlePythonBridge.snapSelectorOf(call) == "receiveGo"
-      case _ => false
 
   private def createReceiveGoCall(): BeFunctionCall = {
     val define = BeDefineFunction(
