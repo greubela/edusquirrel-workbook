@@ -4,6 +4,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, RenderingAsContainerTitle}
 import it.evadid.homepage.workbook.htmlRenderer.{HtmlRenderFactory, HtmlWorkbookElement}
+import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.structureElements.ExerciseContainer
 
 object HtmlExerciseContainerRenderer extends HtmlRenderFactory[ExerciseContainer] {
@@ -17,9 +18,11 @@ object HtmlExerciseContainerRenderer extends HtmlRenderFactory[ExerciseContainer
   private val clsStringContainer = if (isMainContainer) s"container-exercise style-vbox container-level-$normalizedLevel" else s"container-sub container-level-$normalizedLevel"
   private val clsStringTitle = s"workbook-element container-title-level-$normalizedLevel"
 
+  
+  
   private def renderAllChildren(container: ExerciseContainer): List[Element] = try {
     val title = AtomarLineRendering.exerciseContainerTitleLine(container.containerTitle).render
-    val rest = container.childrenOfThisElement.map(HtmlRenderFactory.renderWorkbookElement).map(_.getDomElement())
+    val rest = container.childrenOfThisElement.map(HtmlRenderFactory.render).map(_.getDomElement())
     List(title) ++ rest
   } catch case (err: Throwable) => {
     val errMsg = "Error at drawing HtmlExerciseContainer: " + err.getLocalizedMessage

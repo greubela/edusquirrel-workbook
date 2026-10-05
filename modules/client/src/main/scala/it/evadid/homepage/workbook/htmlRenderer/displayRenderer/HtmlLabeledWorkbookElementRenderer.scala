@@ -23,7 +23,6 @@ case class HtmlLabeledWorkbookElementRenderer[T <: WorkbookElement](entry: Label
   override protected def createRendering(workbookElement: LabeledWorkbookElement[T]): AtomarLineRendering = {
     val base: HtmlWorkbookElement[WorkbookElement, AtomarLineRendering] = HtmlRenderFactory.renderWorkbookElement(workbookElement.baseElement)
     RenderingWithLabel(workbookElement, base.rendering, workbookElement.label)
-
   }
 
 }

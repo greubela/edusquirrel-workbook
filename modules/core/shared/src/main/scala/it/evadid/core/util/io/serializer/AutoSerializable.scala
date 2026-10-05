@@ -15,7 +15,13 @@ object AutoSerializable {
     }
   }
 
-
+  def getSerializer[
+    MainType <: AutoSerializableMainType[MainType, SubType],
+    SubType <: AutoSerializableSubType[MainType, SubType]
+  ](implicit rw: ReadWriter[SubType]): Serializer[MainType] = {
+    Serializer.fromUpickleJson(rw).map(_.toTypedMainType, _.toSerializableSubType)
+  }
+  
   def getReadWriter[
     MainType <: AutoSerializableMainType[MainType, SubType],
     SubType <: AutoSerializableSubType[MainType, SubType]
