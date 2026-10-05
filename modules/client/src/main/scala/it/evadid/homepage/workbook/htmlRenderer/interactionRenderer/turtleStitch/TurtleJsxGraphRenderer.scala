@@ -1,13 +1,17 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.color.{AppColor, RGBColor}
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.core.util.io.{ConstructorLikeParserWithJsonElements, Serializer}
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.{LineResult, RenderedLine, format, hoverRelated}
 import org.scalajs.dom
 import upickle.default.*
 
 import scala.collection.mutable.ListBuffer
 import scala.scalajs.js
+
 
 /** Renders and compares a turtle trace on a JSXGraph board.
  *
@@ -16,6 +20,24 @@ import scala.scalajs.js
  */
 object TurtleJsxGraphRenderer:
 
+
+  def render[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): Element = {
+    val container = div(
+      cls := "turtle-gradig-panel",
+      onMountCallback(event => {
+        render(event.thisNode.ref, program, expected)
+      })
+    )
+    container
+  }
+
+
+  /* Factories */
+
+  private val pointBackgroundColor = "red"
+
+
+  /* details */
 
   private sealed trait ObjectsToRender {
 
@@ -113,12 +135,14 @@ object TurtleJsxGraphRenderer:
     val rendered = movements.map { movement =>
       val matchIndex = unmatchedExpected.indexWhere(line => sameLine(movement.start, movement.end, line.start, line.end, tolerance))
       val result = if matchIndex >= 0 then {
-        unmatchedExpected.remove(matchIndex); LineResult.Correct
+        unmatchedExpected.remove(matchIndex);
+        LineResult.Correct
       } else LineResult.Unexpected
       RenderedLine(movement.start, movement.end, result, movement.jump)
     }
     val missing = unmatchedExpected.map(line => RenderedLine(line.start, line.end, LineResult.Missing, jump = false))
     Scene((rendered ++ missing).toList, angles.toList)
+
 
   /** Creates the JSXGraph board inside `container` and returns the board object. */
   def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): js.Dynamic =
@@ -128,57 +152,66 @@ object TurtleJsxGraphRenderer:
     val jxg = js.Dynamic.global.selectDynamic("JXG")
     if js.isUndefined(jxg) then throw new IllegalStateException("JSXGraph is not loaded; expected global JXG")
     if container.id.isEmpty then container.id = s"turtle-jsxgraph-${Math.abs(js.Date.now().toLong)}"
-    val board = jxg.JSXGraph.initBoard(container.id, js.Dynamic.literal(
+    val board: js.Dynamic = jxg.JSXGraph.initBoard(container.id, js.Dynamic.literal(
       boundingbox = js.Array(bounds(0), bounds(1), bounds(2), bounds(3)), axis = true, keepaspectratio = true, showCopyright = false
     ))
 
     val pointObjects = scala.collection.mutable.Map.empty[Point[Double], js.Dynamic]
     val angleObjects = scala.collection.mutable.Map.empty[Int, js.Dynamic]
 
-    def pointObject(point: Point[Double]): js.Dynamic = pointObjects.getOrElseUpdate(point, {
+    def pointObject(point: Point[Double]): js.Dynamic = pointObjects.getOrElseUpdate(point, createPoint(point))
+
+
+    def createPoint(point: Point[Double]): js.Dynamic = {
       val label = s"(${format(point.x)}, ${format(point.y)})"
       val obj = board.create("point", js.Array(point.x, point.y), js.Dynamic.literal(
-        name = "", size = 3, fixed = true, strokeColor = "red", fillColor = "red", fillOpacity = 0.1, strokeOpacity = 0.1,
+        name = "", size = 3, fixed = true, strokeColor = pointBackgroundColor, fillColor = pointBackgroundColor, fillOpacity = 0.1, strokeOpacity = 0.1,
         highlightFillOpacity = 1.0, highlightStrokeOpacity = 1.0, showInfobox = false
       ))
-      obj.on("over", (_: js.Any) => {
-        obj.setAttribute(js.Dynamic.literal(name = label, fillOpacity = 1.0, strokeOpacity = 1.0)); board.update()
+      /*obj.on("over", (_: js.Any) => {
+        obj.setAttribute(js.Dynamic.literal(name = label, fillOpacity = 1.0, strokeOpacity = 1.0));
+        board.update()
       })
       obj.on("out", (_: js.Any) => {
-        obj.setAttribute(js.Dynamic.literal(name = "", fillOpacity = 0.1, strokeOpacity = 0.1)); board.update()
-      })
+        obj.setAttribute(js.Dynamic.literal(name = "", fillOpacity = 0.1, strokeOpacity = 0.1));
+        board.update()
+      })*/
       obj
-    })
+    }
 
-    scene.lines.zipWithIndex.foreach { case (line, index) =>
+    def createLine(line: RenderedLine, index: Int): Unit = {
       val a = pointObject(line.start);
       val b = pointObject(line.end)
       val color = line.result match
         case LineResult.Correct => "#159447"
         case LineResult.Unexpected => "#d12f2f"
         case LineResult.Missing => "#111111"
-      val segment = board.create("segment", js.Array(a, b), js.Dynamic.literal(
+      val segment: js.Dynamic = board.create("segment", js.Array(a, b), js.Dynamic.literal(
         strokeColor = color, strokeWidth = 3, dash = (if line.jump then 2 else 0), fixed = true
       ))
       segment.on("over", (_: js.Any) => hoverRelated(scene, index, pointObjects, angleObjects, board, active = true))
       segment.on("out", (_: js.Any) => hoverRelated(scene, index, pointObjects, angleObjects, board, active = false))
     }
 
-    scene.angles.zipWithIndex.foreach { case (angle, index) =>
-      val radius = math.max((bounds(2) - bounds(0)) / 18.0, 0.5)
+    def createAngle(angle: RenderedAngle, index: Int): Unit = {
+      val radius = math.max((bounds(2) - bounds(0)) / 18.0, 50)
       val start = Point(angle.vertex.x + Math.cos(Math.toRadians(angle.fromHeading)) * radius, angle.vertex.y + Math.sin(Math.toRadians(angle.fromHeading)) * radius)
       val endHeading = angle.fromHeading + angle.degrees
       val end = Point(angle.vertex.x + Math.cos(Math.toRadians(endHeading)) * radius, angle.vertex.y + Math.sin(Math.toRadians(endHeading)) * radius)
 
       def helper(point: Point[Double]): js.Dynamic = board.create("point", js.Array(point.x, point.y), js.Dynamic.literal(visible = false, fixed = true))
 
-      val arc = board.create("angle", js.Array(helper(start), pointObject(angle.vertex), helper(end)), js.Dynamic.literal(
-        name = "", radius = radius, fillColor = "#2468d8", strokeColor = "#2468d8", fillOpacity = 0.1, strokeOpacity = 0.1, fixed = true
+      val arc = board.create("angle", js.Array(helper(end), pointObject(angle.vertex), helper(start)), js.Dynamic.literal(
+        name = "", radius = radius, fillColor = "#FFA420", strokeColor = "#FFA420", fillOpacity = 0.9, strokeOpacity = 0.9, fixed = true
       ))
       arc.on("over", (_: js.Any) => setAngleHover(arc, angle, active = true, board))
       arc.on("out", (_: js.Any) => setAngleHover(arc, angle, active = false, board))
       angleObjects(index) = arc
     }
+
+    scene.lines.zipWithIndex.foreach { case (line, index) => createLine(line, index) }
+
+    scene.angles.zipWithIndex.foreach { case (angle, index) => createAngle(angle, index) }
     board.update()
     board
 
@@ -193,7 +226,7 @@ object TurtleJsxGraphRenderer:
     board.update()
 
   private def setAngleHover(obj: js.Dynamic, angle: RenderedAngle, active: Boolean, board: js.Dynamic): Unit =
-    obj.setAttribute(js.Dynamic.literal(name = (if active then s"${format(math.abs(angle.degrees))}°" else ""), fillOpacity = (if active then 1.0 else 0.1), strokeOpacity = (if active then 1.0 else 0.1)))
+    obj.setAttribute(js.Dynamic.literal(name = (if active then s"${format(math.abs(angle.degrees))}°" else ""), fillOpacity = (if active then 1.0 else 0.9), strokeOpacity = (if active then 1.0 else 0.1)))
     board.update()
 
   private def sameLine(a: Point[Double], b: Point[Double], c: Point[Double], d: Point[Double], tolerance: Double): Boolean =
