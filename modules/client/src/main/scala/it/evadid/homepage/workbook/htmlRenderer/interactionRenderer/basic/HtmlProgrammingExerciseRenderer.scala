@@ -20,7 +20,8 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 import todomove.datastructures.web.file.FullImage
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-import scala.util.{Failure, Success}
+import scala.concurrent.Future
+import scala.util.{Failure, Success, Try}
 
 case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[ProgrammingExercise] {
 
@@ -70,30 +71,40 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     )
     val staticRendering = ElementCard(
       LanguageMapContentId("basic/staticPreviewProgram"),
-      SvgLaminarRenderer.render(
+      Try(SvgLaminarRenderer.render(
         shapeLogger,
         VmToSvg.renderBeExpression(
           shapeLogger,
           editor.currentState().toBeExpressionState.expression
         )
-      )
+      )).getOrElse(div("Preview unavailable for this draft."))
     )
 
     val interactivePreview = {
-      val cmd = editor.currentState().toBeExpressionState.deriveTurtleCommands
       val exp = List(LineToRender[Double](Point(0,0), Point(100,0)), LineToRender[Double](Point(100,0), Point(100, 100)))
 
       ElementCard(
         LanguageMapContentId("basic/gradingPreviewProgram"),
-        TurtleJsxGraphRenderer.render(cmd, exp )
+        Try(TurtleJsxGraphRenderer.render(
+          editor.currentState().toBeExpressionState.deriveTurtleCommands, exp
+        )).getOrElse(div("Preview unavailable for this draft."))
       )
     }
 
     // Run → TurtleStitchWorker.simulateGreenFlag → stage PNG
     val stageImageVar: Var[Option[FullImage]] = Var(None)
+    val runError = Var(Option.empty[String])
+    var runId = 0
 
     def runProgram(): Unit = {
-      editor.getCurrentTurtleCommands().onComplete{
+      runId += 1
+      val requestedRun = runId
+      stageImageVar.set(None)
+      runError.set(None)
+      val running = Try(editor.getCurrentTurtleCommands()).fold(Future.failed, identity)
+      val source = ProgrammingState.fingerprint(editor.currentState())
+      running.onComplete{
+        case _ if requestedRun != runId || source != ProgrammingState.fingerprint(editor.currentState()) => ()
         case Success(res) => {
           println("Turtle Commands: " + res)
           val path = TurtlePathBuilder[Double](Point(0,0), res, 90)
@@ -102,7 +113,8 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
           val pathD = path.svgPathBuilder.toSvgPathD
           println("pathD: " + pathD)
         }
-        case Failure(exception) => throw exception
+        case Failure(exception) =>
+          runError.set(Some(Option(exception.getMessage).getOrElse("The program could not be run.")))
       }
     }
 
@@ -111,6 +123,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
 
     val stageOutput: Element = div(
       cls := "prog-ex-stage-output",
+      child.maybe <-- runError.signal.map(_.map(message => div(role := "alert", message))),
       child <-- stageImageVar.signal.map {
         case None =>
           div(cls := "prog-ex-stage-output__placeholder")

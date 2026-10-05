@@ -22,6 +22,7 @@ case class CodeMirrorEditor(
   import CodeMirrorEditor.*
 
   private var handle: Option[CodeMirrorHandle] = None
+  private var activeMount: Option[AnyRef] = None
   private var pendingDiagnostics = Option.empty[(String, Seq[Diagnostic])]
   private var updatingFromEditor: Boolean = false
   private val useTextareaFallback: Var[Boolean] = Var(false)
@@ -37,6 +38,8 @@ case class CodeMirrorEditor(
   def clearDiagnostics(): Unit = setDiagnostics(Nil)
 
   override def getDomElement(): L.Element = {
+    var mountedToken: Option[AnyRef] = None
+    var mountedHandle: Option[CodeMirrorHandle] = None
     div(
       cls := "code-mirror-editor",
       styleAttr <-- editorFont.map(font =>
@@ -50,13 +53,20 @@ case class CodeMirrorEditor(
         boxSizing.borderBox,
         value <-- content.signal,
         onInput.mapToValue --> { value =>
-          content.writer.onNext(value)
-          onUserInput(value)
+          if mountedToken.exists(activeMount.contains) then
+            content.writer.onNext(value)
+            onUserInput(value)
         }
       ),
       onMountCallback { ctx =>
+        val token = new Object
+        mountedToken = Some(token)
+        activeMount = Some(token)
+        handle = None
+        def isActive: Boolean =
+          mountedToken.contains(token) && activeMount.contains(token)
         waitForFacade {
-          case Some(cmFacade) =>
+          case Some(cmFacade) if isActive =>
             useTextareaFallback.set(false)
             val container = ctx.thisNode.ref
             val initialValue = content.now()
@@ -69,33 +79,36 @@ case class CodeMirrorEditor(
                 doc = initialValue,
                 language = languageToJs(language),
                 onDocChange = value =>
-                  if (!updatingFromVar) {
+                  if (isActive && !updatingFromVar) {
                     pendingDiagnostics = None
                     updatingFromEditor = true
-                    content.writer.onNext(value)
-                    onUserInput(value)
-                    updatingFromEditor = false
+                    try {
+                      content.writer.onNext(value)
+                      onUserInput(value)
+                    } finally updatingFromEditor = false
                   }
               )
             )
 
-            handle = Some(createdHandle)
-            pendingDiagnostics.filter(_._1 == initialValue).foreach { case (_, diagnostics) =>
-              createdHandle.setDiagnostics(js.Array(diagnostics.map(_.toJs) *))
-            }
+            if !isActive then createdHandle.destroy()
+            else {
+              mountedHandle = Some(createdHandle)
+              handle = Some(createdHandle)
+              pendingDiagnostics.filter(_._1 == initialValue).foreach { case (_, diagnostics) =>
+                createdHandle.setDiagnostics(js.Array(diagnostics.map(_.toJs) *))
+              }
 
-            content.signal.foreach { value =>
-              handle.foreach { editorHandle =>
-                if (!updatingFromEditor && editorHandle.getDoc() != value) {
+              content.signal.foreach { value =>
+                if (isActive && !updatingFromEditor && createdHandle.getDoc() != value) {
                   pendingDiagnostics = None
                   updatingFromVar = true
-                  editorHandle.setDoc(value)
-                  updatingFromVar = false
+                  try createdHandle.setDoc(value)
+                  finally updatingFromVar = false
                 }
-              }
-            }(using ctx.owner)
+              }(using ctx.owner)
+            }
 
-          case None =>
+          case None if isActive =>
             // Some workbook entry pages do not load CodeMirrorLoader.js. Keep
             // the editor usable and, crucially, do not fail the fullscreen
             // Laminar mount just because this optional enhancement is absent.
@@ -103,12 +116,18 @@ case class CodeMirrorEditor(
             dom.console.warn(
               "CodeMirror facade is not available; using a textarea fallback"
             )
+          case _ => ()
         }
       },
       onUnmountCallback { _ =>
-        handle.foreach(_.destroy())
-        handle = None
-        pendingDiagnostics = None
+        val wasActive = mountedToken.exists(activeMount.contains)
+        mountedToken = None
+        if wasActive then
+          activeMount = None
+          handle = None
+          pendingDiagnostics = None
+        mountedHandle.foreach(_.destroy())
+        mountedHandle = None
       }
     )
   }
