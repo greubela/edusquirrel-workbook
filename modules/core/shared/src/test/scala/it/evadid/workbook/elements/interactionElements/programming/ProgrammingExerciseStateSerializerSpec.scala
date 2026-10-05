@@ -15,7 +15,7 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
   test("serialize writes SNAP_XML_V1 and deserialize roundtrips xml") {
     val xml = """<project name="stored"><scenes></scenes></project>"""
     val stored = ProgrammingExercise.StateSerializer.serialize(ProgrammingExerciseState(xml))
-    assert(stored.startsWith("SNAP_XML_V1"), clue = stored.take(80))
+    assert(stored.startsWith("PROGRAMMING_STATE_V2\nSNAP_XML"), clue = stored.take(80))
     assert(stored.contains(xml), clue = stored)
     val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
     assertEquals(restored.snapXml, xml)
@@ -34,7 +34,26 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
     assert(restored.snapXml.contains("<project"), clue = restored.snapXml.take(120))
     assert(restored.snapXml.contains("""s="forward""""), clue = restored.snapXml)
     val stored = ProgrammingExercise.StateSerializer.serialize(restored)
-    assert(stored.startsWith("SNAP_XML_V1"), clue = stored.take(80))
+    assert(stored.startsWith("PROGRAMMING_STATE_V2\nSNAP_XML"), clue = stored.take(80))
+  }
+
+  test("all textual programming states roundtrip with their representation") {
+    val states: List[ProgrammingState] = List(
+      ProgrammingStatePythonString("print('hello')"),
+      ProgrammingStateJavaString("class Main {}"),
+      ProgrammingStateSnapXMLWithAdditionalFloatingObjects("<project/>", List("watcher", "comment"))
+    )
+
+    states.foreach { state =>
+      assertEquals(ProgrammingExercise.StateSerializer.deserialize(
+        ProgrammingExercise.StateSerializer.serialize(state)
+      ), state)
+    }
+  }
+
+  test("unknown version 2 representation falls back to the default Snap project") {
+    val restored = ProgrammingExercise.StateSerializer.deserialize("PROGRAMMING_STATE_V2\nRUBY\nputs 1")
+    assertEquals(restored, ProgrammingExerciseState.mini)
   }
 
   test("fingerprint is the stored xml so position-only xml differs") {

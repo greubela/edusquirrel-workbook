@@ -9,14 +9,15 @@ import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, 
 import it.evadid.core.datastructures.vectorShapes.svg.{BeExpressionToTurtleCommands, TurtlePathBuilder}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.{TurtleCommand, TurtleState}
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
-import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditor, SnapCodeEditorConfig, SnapProgramDerivation, SnapTurtleStage}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditorConfig, SnapProgramDerivation}
+import it.evadid.homepage.webElements.editor.code.EvaEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineToRender
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingExercise, ProgrammingExerciseState}
+import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingExercise, ProgrammingState}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import todomove.datastructures.web.file.FullImage
 
@@ -27,13 +28,13 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
 
   override protected def createRendering(workbookElement: ProgrammingExercise): AtomarLineRendering = {
     val interaction = workbookElement.interactionVariable
-    // Fingerprint-based binding on canonical Snap XML.
-    val boundVar: Var[ProgrammingExerciseState] = Var(interaction.currentValue)
-    var lastFingerprint: String = ProgrammingExerciseState.fingerprint(interaction.currentValue)
+    // Fingerprint-based binding across all supported source representations.
+    val boundVar: Var[ProgrammingState] = Var(interaction.currentValue)
+    var lastFingerprint: String = ProgrammingState.fingerprint(interaction.currentValue)
 
     interaction.observableValue.addObserver(
       handleOnUpdate = { restored =>
-        val fp = ProgrammingExerciseState.fingerprint(restored)
+        val fp = ProgrammingState.fingerprint(restored)
         if fp != lastFingerprint then
           lastFingerprint = fp
           boundVar.set(restored)
@@ -41,8 +42,8 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       informObserverWith = ExecutionMethod.executeSync
     )
 
-    def persistFromEditor(next: ProgrammingExerciseState): Unit = {
-      val fp = ProgrammingExerciseState.fingerprint(next)
+    def persistFromEditor(next: ProgrammingState): Unit = {
+      val fp = ProgrammingState.fingerprint(next)
       if fp == lastFingerprint then return
       lastFingerprint = fp
       boundVar.set(next)
@@ -55,7 +56,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       case ProgrammingEditorPalette.BeginnerTurtle => SnapCodeEditorConfig.BeginnerTurtleTesting
       case ProgrammingEditorPalette.Embroidery => SnapCodeEditorConfig.EmbroideryTesting
 
-    val editor: SnapCodeEditor = SnapCodeEditor(boundVar, editorConfig, onStateEdited = persistFromEditor)
+    val editor = EvaEditor(boundVar, editorConfig, onStateEdited = persistFromEditor)
 
     def buttonPressed(): Unit =
       fullInfo.displayControl.setFullscreen(editor)
@@ -75,7 +76,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
         shapeLogger,
         VmToSvg.renderBeExpression(
           shapeLogger,
-          SnapProgramDerivation.fromState(boundVar.now()).program.fullProgram
+          SnapProgramDerivation.fromState(EvaEditor.asSnap(boundVar.now())).program.fullProgram
         )
       )
     )
@@ -83,7 +84,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     val interactivePreview = {
     
       val cmd = BeExpressionToTurtleCommands(
-        SnapProgramDerivation.fromState(boundVar.now()).program.fullProgram
+        SnapProgramDerivation.fromState(EvaEditor.asSnap(boundVar.now())).program.fullProgram
       )
       val exp = List(LineToRender[Double](Point(0,0), Point(100,0)), LineToRender[Double](Point(100,0), Point(100, 100)))
       

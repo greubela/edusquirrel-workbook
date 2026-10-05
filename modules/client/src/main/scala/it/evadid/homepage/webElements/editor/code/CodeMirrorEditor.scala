@@ -125,6 +125,7 @@ object CodeMirrorEditor {
       case AppLanguage.Cpp => "cpp"
       case AppLanguage.C => "c"
       case AppLanguage.Python => "python"
+      case AppLanguage.Java => "java"
       case _ => "python"
     }
 
