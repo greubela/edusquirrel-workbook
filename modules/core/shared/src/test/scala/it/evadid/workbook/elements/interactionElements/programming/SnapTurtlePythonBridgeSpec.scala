@@ -1,6 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
 import it.evadid.vm.BeProgram
+import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleVmPrograms}
 import munit.FunSuite
 
 class SnapTurtlePythonBridgeSpec extends FunSuite {
@@ -603,5 +604,221 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     val withGlobal = applied("steps = 5\n\ndef square(size):\n    forward(size)\n\nsquare(steps)\n", "")
     assert(withGlobal.contains("""<variable name="steps">"""), clue = withGlobal)
     assert(!withGlobal.contains("""<variable name="size">"""), clue = withGlobal)
+  }
+
+  private val javaStartupSelectors = List("receiveGo", "clear", "up", "gotoXY", "setHeading", "down")
+
+  private def javaProgram(source: String): JavaTurtleVmPrograms.Program = {
+    val result = for {
+      parsed <- JavaTurtleSource.parse(source)
+      structured <- JavaTurtleStructure.check(parsed)
+      typed <- JavaTurtleSemantics.check(structured)
+      resolved <- JavaTurtleResolution.resolve(typed)
+      program <- JavaTurtleVmPrograms.adapt(resolved)
+    } yield program
+    result.fold(problem => fail(s"${problem.message}\n$source"), identity)
+  }
+
+  private def javaXml(source: String): String = {
+    val result = JavaTurtleSnapXml.render(javaProgram(source))
+    val xml = result.fold(problem => fail(s"${problem.message}\n$source"), _.snapXml)
+    assertEquals(SnapCustomBlockRules.obsoleteCalls(xml), Nil, clue = xml)
+    xml
+  }
+
+  private def javaMainBlocks(xml: String): List[SnapXmlParser.Element] = {
+    val sprite = SnapXmlParser.elements(xml, "sprite").head
+    val scripts = SnapXmlParser.child(sprite.inner, "scripts").get
+    val children = SnapXmlParser.children(scripts.inner)
+    assertEquals(children.map(_.tag), List("script"), clue = xml)
+    SnapXmlParser.children(children.head.inner)
+  }
+
+  private def javaRejected(source: String, expected: JavaTurtleSnapXml.Problem): Unit = {
+    val result = JavaTurtleSnapXml.render(javaProgram(source))
+    val diagnostic = result.swap.fold(_ => fail(s"Unexpectedly accepted: $source"), identity)
+    assertEquals(diagnostic.problem, expected, clue = source)
+    assert(diagnostic.message.nonEmpty, clue = source)
+  }
+
+  test("Java XML initializes the turtle before an empty main") {
+    val xml = javaXml("class Drawing { public static void main(String[] args) { ; } }")
+    val main = javaMainBlocks(xml)
+    assertEquals(main.map(_.attrOrEmpty("s")), javaStartupSelectors)
+    assertEquals(SnapXmlParser.children(main(3).inner).map(_.inner), List("0", "0"))
+    assertEquals(SnapXmlParser.child(main(4).inner, "l").map(_.inner), Some("90"))
+    assertEquals(SnapCustomBlockRules.globalDefinitions(xml), Nil)
+    assert(!xml.contains("%args"), clue = xml)
+  }
+
+  test("Java XML keeps a parametrised square as a custom block") {
+    val xml = javaXml(
+      """class Drawing {
+        |  static void square(int sideLength) {
+        |    Turtle.forward(sideLength); Turtle.turnRight(90);
+        |    Turtle.forward(sideLength); Turtle.turnRight(90);
+        |    Turtle.forward(sideLength); Turtle.turnRight(90);
+        |    Turtle.forward(sideLength); Turtle.turnRight(90);
+        |  }
+        |  public static void main(String[] args) { square(40); square(70); }
+        |}""".stripMargin
+    )
+    val definition = SnapCustomBlockRules.globalDefinitions(xml).head
+    assertEquals(definition.spec, "square %sideLength")
+    assertEquals(definition.slotNames, List("sideLength"))
+    assertEquals(definition.slots.map(_.slotType), List("%n"))
+    assertEquals(definition.blockSpec, "square %n")
+    val body = SnapXmlParser.children(definition.bodyScript.get.inner)
+    assertEquals(body.map(_.attrOrEmpty("s")), List.fill(4)(List("forward", "turn")).flatten)
+    assertEquals(SnapXmlParser.elements(definition.element.outer, "block").flatMap(_.attr("var")), List.fill(4)("sideLength"))
+    val main = javaMainBlocks(xml)
+    assertEquals(main.map(_.attrOrEmpty("s")), javaStartupSelectors ++ List("square %n", "square %n"))
+    assertEquals(main.drop(javaStartupSelectors.size).map(block => SnapXmlParser.child(block.inner, "l").get.inner), List("40", "70"))
+    assert(!xml.contains("java_variable_"), clue = xml)
+    assert(!xml.contains("<variable name=\"sideLength\""), clue = xml)
+  }
+
+  test("Java XML finds main between helpers and keeps empty helper bodies") {
+    val xml = javaXml(
+      """class Drawing {
+        |  static void before(int n) { ; }
+        |  public static void main(String[] ignored) { before(1); after(); }
+        |  static void after() { Turtle.forward(2); }
+        |}""".stripMargin
+    )
+    val definitions = SnapCustomBlockRules.globalDefinitions(xml)
+    assertEquals(definitions.map(_.spec), List("before %n", "after"))
+    assertEquals(definitions.head.bodyScript, None)
+    assertEquals(definitions.last.slots, Nil)
+    assertEquals(javaMainBlocks(xml).map(_.attrOrEmpty("s")), javaStartupSelectors ++ List("before %n", "after"))
+    assert(!xml.contains("%ignored"), clue = xml)
+  }
+
+  test("Java XML preserves grouped literals and both int32 bounds") {
+    val xml = javaXml(
+      "class Drawing { public static void main(String[] args) { " +
+        "Turtle.forward(-2147483648); Turtle.turnRight(2147483647); Turtle.forward(((0))); } }"
+    )
+    val commands = javaMainBlocks(xml).drop(javaStartupSelectors.size)
+    assertEquals(commands.map(_.attrOrEmpty("s")), List("forward", "turn", "forward"))
+    assertEquals(commands.map(command => SnapXmlParser.child(command.inner, "l").get.inner),
+      List("-2147483648", "2147483647", "0"))
+  }
+
+  test("Java XML keeps nested and repeated helper calls with local parameter names") {
+    val xml = javaXml(
+      """class Drawing {
+        |  static void pair(int first, int second) { leaf((second), ((first))); leaf(first, second); }
+        |  static void leaf(int size, int angle) { Turtle.forward((size)); Turtle.turnRight(angle); }
+        |  public static void main(String[] args) { pair(10, 20); pair(30, 40); }
+        |}""".stripMargin
+    )
+    val definitions = SnapCustomBlockRules.globalDefinitions(xml)
+    assertEquals(definitions.map(_.spec), List("pair %first %second", "leaf %size %angle"))
+    assertEquals(definitions.map(_.blockSpec), List("pair %n %n", "leaf %n %n"))
+    val calls = SnapXmlParser.children(definitions.head.bodyScript.get.inner)
+    assertEquals(calls.map(_.attrOrEmpty("s")), List("leaf %n %n", "leaf %n %n"))
+    assertEquals(calls.map(call => SnapXmlParser.children(call.inner).map(_.attrOrEmpty("var"))),
+      List(List("second", "first"), List("first", "second")))
+    assertEquals(SnapXmlParser.elements(definitions.last.element.outer, "block").flatMap(_.attr("var")), List("size", "angle"))
+    assertEquals(javaMainBlocks(xml).map(_.attrOrEmpty("s")), javaStartupSelectors ++ List("pair %n %n", "pair %n %n"))
+    assert(SnapXmlParser.elements(xml, "variable").isEmpty, clue = xml)
+  }
+
+  test("Java XML keeps dollar identifiers and distinguishes helpers from Turtle primitives") {
+    val xml = javaXml(
+      """class Drawing {
+        |  static void draw$(int $distance) { Turtle.forward($distance); }
+        |  static void draw_(int distance) { draw$(distance); }
+        |  static void forward(int n) { Turtle.turnRight(n); }
+        |  public static void main(String[] $args) { draw_(10); forward(90); Turtle.forward(20); }
+        |}""".stripMargin
+    )
+    val definitions = SnapCustomBlockRules.globalDefinitions(xml)
+    assertEquals(definitions.map(_.spec), List("draw$ %$distance", "draw_ %distance", "forward %n"))
+    assertEquals(definitions.map(_.blockSpec).distinct.size, 3)
+    assertEquals(SnapXmlParser.elements(definitions.head.element.outer, "block").flatMap(_.attr("var")), List("$distance"))
+    val main = javaMainBlocks(xml)
+    assertEquals(main.map(_.attrOrEmpty("s")), javaStartupSelectors ++ List("draw_ %n", "forward %n", "forward"))
+    assertEquals(main.map(_.tag), List.fill(javaStartupSelectors.size)("block") ++ List("custom-block", "custom-block", "block"))
+  }
+
+  test("Java XML rejects unsupported statements even in unused methods") {
+    val bodies = List(
+      "return;", "int local = 1;", "int local;", "n = 1;", "n += 1;",
+      "if (true) { Turtle.forward(n); }", "if (false) {} else { Turtle.forward(n); }",
+      "while (n > 0) { Turtle.forward(n); }", "for (int i = 0; i < 2; i = i + 1) { Turtle.forward(n); }",
+      "boolean flag = true && false;"
+    )
+    bodies.foreach { body =>
+      javaRejected(s"class Drawing { static void unused(int n) { Turtle.forward(1); $body } " +
+        "public static void main(String[] args) { Turtle.forward(99); } }", JavaTurtleSnapXml.Problem.UnsupportedStatement)
+    }
+    javaRejected("class Drawing { public static void main(String[] args) { return; } }",
+      JavaTurtleSnapXml.Problem.UnsupportedStatement)
+  }
+
+  test("Java XML rejects arithmetic instead of changing Java integer semantics") {
+    List("+n", "-n", "n + 1", "n - 1", "n * 2", "n / 2", "n % 2", "(n + 1)").foreach { expression =>
+      javaRejected(s"class Drawing { static void unused(int n) { Turtle.forward($expression); } " +
+        "public static void main(String[] args) {} }", JavaTurtleSnapXml.Problem.UnsupportedExpression)
+    }
+  }
+
+  test("Java XML rejects boolean helper parameters including unused helpers") {
+    for
+      parameters <- List("boolean flag", "int n, boolean flag")
+      main <- List("", if parameters.startsWith("int") then "choose(1, true || false);" else "choose(true);")
+    do javaRejected(s"class Drawing { static void choose($parameters) {} " +
+      s"public static void main(String[] args) { $main } }", JavaTurtleSnapXml.Problem.UnsupportedParameter)
+  }
+
+  test("Java XML input validation rejects recursion before VM construction") {
+    val methods = List(
+      "static void again(int n) { again(n); }",
+      "static void first(int n) { second(n); } static void second(int n) { first(n); }"
+    )
+    methods.foreach { helpers =>
+      val source = s"class Drawing { $helpers public static void main(String[] args) {} }"
+      val parsed = JavaTurtleSource.parse(source).fold(problem => fail(problem.message), identity)
+      val structured = JavaTurtleStructure.check(parsed).fold(problem => fail(problem.message), identity)
+      val result = JavaTurtleSemantics.check(structured)
+      val diagnostic = result.swap.fold(_ => fail(s"Unexpectedly accepted recursion: $source"), identity)
+      assertEquals(diagnostic.problem, JavaTurtleSource.Problem.UnsupportedSyntax)
+      assert(diagnostic.message.contains("Recursive calls"), clue = diagnostic.message)
+    }
+  }
+
+  test("Java XML enforces Java execution limits for acyclic helpers") {
+    def chain(frames: Int): String = {
+      val methods = (0 until frames - 1).map { index =>
+        val body = if index == frames - 2 then "Turtle.forward(1);" else s"step${index + 1}();"
+        s"static void step$index() { $body }"
+      }.mkString(" ")
+      s"class Drawing { $methods public static void main(String[] args) { step0(); } }"
+    }
+    assertEquals(SnapCustomBlockRules.globalDefinitions(javaXml(chain(64))).size, 63)
+    javaRejected(chain(65), JavaTurtleSnapXml.Problem.ExecutionLimit)
+    val methods = (0 until 16).map { index =>
+      val body = if index == 15 then "Turtle.forward(1);" else s"step${index + 1}(); step${index + 1}();"
+      s"static void step$index() { $body }"
+    }.mkString(" ")
+    javaRejected(s"class Drawing { $methods public static void main(String[] args) { step0(); } }",
+      JavaTurtleSnapXml.Problem.ExecutionLimit)
+  }
+
+  test("Java XML is deterministic, survives state storage and leaves Python conversion unchanged") {
+    val source = "class Drawing { static void step(int n) { Turtle.forward(n); } " +
+      "public static void main(String[] args) { step(40); } }"
+    val python = "def square(size):\n    forward(size)\n    turn(90)\n\nsquare(50)\n"
+    val before = SnapTurtlePythonBridge.applyPython(python).toOption.get
+    val program = javaProgram(source)
+    val state = JavaTurtleSnapXml.render(program).toOption.get
+    assertEquals(JavaTurtleSnapXml.render(program), Right(state))
+    assertEquals(javaXml("/* unchanged source */\n" + source), state.snapXml)
+    val stored = ProgrammingExercise.StateSerializer.serialize(state)
+    assert(stored.startsWith("SNAP_XML_V1"), clue = stored.take(80))
+    assertEquals(ProgrammingExercise.StateSerializer.deserialize(stored), state)
+    assertEquals(SnapTurtlePythonBridge.applyPython(python), Right(before))
   }
 }
