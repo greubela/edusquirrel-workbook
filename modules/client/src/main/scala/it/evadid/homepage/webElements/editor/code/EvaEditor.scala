@@ -6,9 +6,11 @@ import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditor, SnapCodeEditorConfig}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.PyodideTurtleCommandRunner
 import it.evadid.workbook.elements.interactionElements.programming.*
 
 import scala.concurrent.Future
+import scala.util.{Failure, Success, Try}
 
 /** Full-screen programming editor that owns one polymorphic state and presents
   * a suitable editor for every supported representation.
@@ -19,68 +21,141 @@ final class EvaEditor(
     onStateEdited: ProgrammingState => Unit = _ => ()
 ) extends HtmlAppElement with FullscreenLifecycle {
 
-  private val activeTab = Var(EvaEditor.tabFor(state.now()))
-  private val snapState = Var(state.now().toSnapXml)
-  private val pythonState = Var(state.now().toPython.code)
-  private val javaState = Var(state.now().toJava.code)
+  private[code] val activeTab = Var(EvaEditor.tabFor(state.now()))
+  private[code] val conversionError = Var(Option.empty[String])
+  private val viewAvailable = Var(!state.now().isInstanceOf[ProgrammingStateBeExpression])
+  private val snapState = Var(state.now() match
+    case snap: ProgrammingStateSnapXml => snap
+    case floating: ProgrammingStateSnapXMLWithAdditionalFloatingObjects => floating.toSnapXml
+    case _ => ProgrammingExerciseState.empty
+  )
+  private val pythonState = Var(state.now() match
+    case ProgrammingStatePythonString(code) => code
+    case _ => ""
+  )
+  private val javaState = Var(state.now() match
+    case ProgrammingStateJavaString(code) => code
+    case _ => ""
+  )
+  private lazy val pythonRunner = new PyodideTurtleCommandRunner()
+  private var mounted = false
 
-  private def publish(next: ProgrammingState): Unit =
-    state.set(next)
-    onStateEdited(next)
+  private def setViewAvailable(available: Boolean): Unit =
+    if viewAvailable.now() != available then viewAvailable.set(available)
+
+  private[code] def publish(tab: EvaEditor.Tab, next: ProgrammingState): Unit =
+    if activeTab.now() != tab || !viewAvailable.now() then return
+    val retained = (state.now(), next) match
+      case (floating: ProgrammingStateSnapXMLWithAdditionalFloatingObjects, snap: ProgrammingStateSnapXml) =>
+        floating.copy(snapXml = snap.snapXml)
+      case _ => next
+    conversionError.set(None)
+    state.set(retained)
+    onStateEdited(retained)
+
+  private def show(next: ProgrammingState): Unit = next match
+    case snap: ProgrammingStateSnapXml => snapState.set(snap)
+    case floating: ProgrammingStateSnapXMLWithAdditionalFloatingObjects => snapState.set(floating.toSnapXml)
+    case ProgrammingStatePythonString(code) => pythonState.set(code)
+    case ProgrammingStateJavaString(code) => javaState.set(code)
+    case expression: ProgrammingStateBeExpression => snapState.set(expression.toSnapXml)
 
   private def receive(next: ProgrammingState): Unit =
     val nextTab = EvaEditor.tabFor(next)
     // Re-emitting the selected tab replaces Laminar's child node. Avoid doing
     // that for edits in the current CodeMirror instance, or it loses focus.
-    if activeTab.now() != nextTab then activeTab.set(nextTab)
-    nextTab match
-      case EvaEditor.Tab.Snap => snapState.set(next.toSnapXml)
-      case EvaEditor.Tab.Python => pythonState.set(next.toPython.code)
-      case EvaEditor.Tab.Java => javaState.set(next.toJava.code)
+    Try(show(next)) match
+      case Success(_) =>
+        if activeTab.now() != nextTab then activeTab.set(nextTab)
+        setViewAvailable(true)
+        conversionError.set(None)
+      case Failure(_) =>
+        setViewAvailable(false)
+        if activeTab.now() != nextTab then activeTab.set(nextTab)
+        conversionError.set(Some("This program cannot be displayed in Snap yet. Your source is unchanged."))
 
   private val snapEditor = SnapCodeEditor(
     snapState,
     snapConfig,
-    onStateEdited = next => publish(next)
+    onStateEdited = next => publish(EvaEditor.Tab.Snap, next)
   )
   private val pythonEditor = CodeMirrorEditor(
     pythonState,
-    code => publish(ProgrammingStatePythonString(code)),
+    code => publish(EvaEditor.Tab.Python, ProgrammingStatePythonString(code)),
     language = AppLanguage.Python
   )
   private val javaEditor = CodeMirrorEditor(
     javaState,
-    code => publish(ProgrammingStateJavaString(code)),
+    code => publish(EvaEditor.Tab.Java, ProgrammingStateJavaString(code)),
     language = AppLanguage.Java
   )
+  private lazy val snapElement = snapEditor.getDomElement()
+  private lazy val pythonElement = pythonEditor.getDomElement()
+  private lazy val javaElement = javaEditor.getDomElement()
 
   /** Small preview retained by the workbook card. */
-  val previewCanvas: Element = snapEditor.previewCanvas
+  lazy val previewCanvas: Element =
+    val available = Var(false)
+    div(
+      onMountCallback { ctx =>
+        state.signal.foreach { next =>
+          Try(next.toSnapXml) match
+            case Success(snap) =>
+              snapState.set(snap)
+              if !available.now() then available.set(true)
+            case Failure(_) =>
+              if available.now() then available.set(false)
+        }(using ctx.owner)
+      },
+      child <-- available.signal.map { ready =>
+        if ready then snapEditor.previewCanvas
+        else div("Preview unavailable for this draft.")
+      }
+    )
 
   /** The representation currently owned by the editor. All derived behavior starts here. */
   def currentState(): ProgrammingState = state.now()
 
   def getCurrentTurtleCommands(): Future[List[TurtleCommand[Double]]] =
-    snapEditor.getCurrentTurtleCommands()
+    if !mounted then state.now() match
+      case snap: ProgrammingStateSnapXml => SnapCodeEditor.commandsFor(snap)
+      case floating: ProgrammingStateSnapXMLWithAdditionalFloatingObjects => SnapCodeEditor.commandsFor(floating.toSnapXml)
+      case ProgrammingStatePythonString(code) => pythonRunner.execute(code)
+      case _: ProgrammingStateJavaString => Future.failed(IllegalStateException("Java execution is not available in this editor yet."))
+      case expression: ProgrammingStateBeExpression =>
+        Try(expression.toSnapXml).fold(Future.failed, SnapCodeEditor.commandsFor)
+    else if !viewAvailable.now() then Future.failed(IllegalStateException("This draft cannot be run in the selected editor."))
+    else activeTab.now() match
+      case EvaEditor.Tab.Snap => snapEditor.getCurrentTurtleCommands()
+      case EvaEditor.Tab.Python => pythonRunner.execute(pythonState.now())
+      case EvaEditor.Tab.Java => Future.failed(IllegalStateException("Java execution is not available in this editor yet."))
 
-  private def select(tab: EvaEditor.Tab): Unit =
+  private[code] def select(tab: EvaEditor.Tab): Unit =
     if activeTab.now() == tab then return
-    val current = state.now()
-    tab match
-      case EvaEditor.Tab.Snap =>
-        snapState.set(current.toSnapXml)
-      case EvaEditor.Tab.Python =>
-        pythonState.set(current.toPython.code)
-      case EvaEditor.Tab.Java =>
-        javaState.set(current.toJava.code)
-    activeTab.set(tab)
+    if activeTab.now() == EvaEditor.Tab.Snap then snapEditor.onFullscreenClose()
+    val converted = Try {
+      val current = state.now()
+      tab match
+        case EvaEditor.Tab.Snap => current.toSnapXml
+        case EvaEditor.Tab.Python => current.toPython
+        case EvaEditor.Tab.Java => current.toJava
+    }
+    converted match
+      case Success(next) =>
+        show(next)
+        conversionError.set(None)
+        activeTab.set(tab)
+        setViewAvailable(true)
+      case Failure(_) =>
+        conversionError.set(Some(s"This draft cannot be converted to ${tab.label} yet. Your source is unchanged."))
+        if activeTab.now() == EvaEditor.Tab.Snap && viewAvailable.now() then snapEditor.onFullscreenOpen()
 
   override def getDomElement(): Element =
     div(
       cls := "eva-editor",
-      onMountCallback { ctx =>
-        state.signal.changes.foreach(receive)(using ctx.owner)
-      },
+      state.signal --> receive,
+      onMountCallback { _ => mounted = true },
+      onUnmountCallback { _ => mounted = false },
       div(
         cls := "eva-editor__tabs",
         EvaEditor.Tab.values.map { tab =>
@@ -95,18 +170,23 @@ final class EvaEditor(
           )
         }
       ),
+      child.maybe <-- conversionError.signal.map(_.map(message =>
+        div(cls := "eva-editor__error", role := "alert", message)
+      )),
       div(
         cls := "eva-editor__content",
-        child <-- activeTab.signal.map {
-          case EvaEditor.Tab.Snap => snapEditor.getDomElement()
-          case EvaEditor.Tab.Python => pythonEditor.getDomElement()
-          case EvaEditor.Tab.Java => javaEditor.getDomElement()
+        child <-- activeTab.signal.combineWith(viewAvailable.signal).map { (tab, available) =>
+          if !available then div("This draft is not available in the selected editor.")
+          else tab match
+            case EvaEditor.Tab.Snap => snapElement
+            case EvaEditor.Tab.Python => pythonElement
+            case EvaEditor.Tab.Java => javaElement
         }
       )
     )
 
   override def onFullscreenOpen(): Unit =
-    if activeTab.now() == EvaEditor.Tab.Snap then snapEditor.onFullscreenOpen()
+    if activeTab.now() == EvaEditor.Tab.Snap && viewAvailable.now() then snapEditor.onFullscreenOpen()
 
   override def onFullscreenClose(): Unit = snapEditor.onFullscreenClose()
   override def dismissOnOutsideClick: Boolean = false
