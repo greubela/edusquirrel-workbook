@@ -7,17 +7,26 @@ import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
 import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingState, ProgrammingStateJavaString}
 import it.evadid.vm.parsing.java.clean.JavaParser
 
+import scala.util.Try
+
 final class JavaFunctionBasedEditor(
     val state: Var[ProgrammingState],
     onStateEdited: ProgrammingState => Unit = _ => ()
 ) extends HtmlAppElement {
   import JavaFunctionBasedEditor.*
 
-  private var lastCommittedCode = state.now().toJava.code
-  private val classes = Var(discover(lastCommittedCode))
+  private var displayedState = state.now()
+  private val initialSource = Try(displayedState.toJava.code).toOption
+  private var sourceCode = initialSource.getOrElse("")
+  private val sourceAvailable = Var(initialSource.isDefined)
+  private val classes = Var(discover(sourceCode))
   private val selectedFunction = Var(Option.empty[JavaFunction])
+  private var editingRange = Option.empty[FunctionRange]
   private val functionDraft = Var("")
-  private val synced = Var(true)
+  private val sourceDraft = Var(sourceCode)
+  private val structureReady = Var(structurallyBalanced(sourceCode))
+  private val sourceView = Var(!structureReady.now() || classes.now().flatMap(_.functions).isEmpty)
+  private val editorRevision = Var(0)
   private val dialogMode = Var(Option.empty[DialogMode])
   private val dialogClassName = Var(Option.empty[String])
   private val classNameDraft = Var("")
@@ -32,54 +41,106 @@ final class JavaFunctionBasedEditor(
     language = it.evadid.core.datastructures.language.AppLanguage.Java
   )
 
+  private val sourceEditor = CodeMirrorEditor(
+    sourceDraft,
+    handleSourceInput,
+    language = it.evadid.core.datastructures.language.AppLanguage.Java
+  )
+
+  private def currentSourceAvailable(): Boolean =
+    if state.now() != displayedState then
+      commitExternalState(state.now())
+      false
+    else sourceAvailable.now()
+
+  private def refreshSource(code: String): List[JavaClass] = {
+    sourceCode = code
+    sourceDraft.set(code)
+    val refreshedClasses = discover(code)
+    classes.set(refreshedClasses)
+    structureReady.set(structurallyBalanced(code))
+    refreshedClasses
+  }
+
+  private def showSource(): Unit = {
+    editingRange = None
+    sourceDraft.set(sourceCode)
+    sourceView.set(true)
+  }
+
   private def handleFunctionInput(draft: String): Unit =
-    selectedFunction.now().foreach { selected =>
-      val merged = replaceFunction(lastCommittedCode, selected, draft)
-      if parses(merged) then
-        val refreshedClasses = discover(merged)
-        findEditedFunction(refreshedClasses, selected, draft.length) match
-          case Some(refreshedSelection) =>
-            lastCommittedCode = merged
-            classes.set(refreshedClasses)
-            selectedFunction.set(Some(refreshedSelection))
-            synced.set(true)
-            publish(ProgrammingStateJavaString(merged))
-          case None => synced.set(false)
-      else synced.set(false)
-    }
+    if currentSourceAvailable() && !sourceView.now() then
+      (selectedFunction.now(), editingRange) match
+        case (Some(selected), Some(range)) =>
+          range.replace(sourceCode, draft) match
+            case Some((merged, nextRange)) if merged != sourceCode =>
+              editingRange = Some(nextRange)
+              val refreshedClasses = refreshSource(merged)
+              if structurallyBalanced(merged) then
+                findEditedFunction(merged, refreshedClasses, selected, nextRange) match
+                  case Some(refreshedSelection) => selectedFunction.set(Some(refreshedSelection))
+                  case None =>
+                    selectedFunction.set(None)
+                    showSource()
+              publish(ProgrammingStateJavaString(merged))
+            case None => showSource()
+            case _ => ()
+        case _ => showSource()
+
+  private def handleSourceInput(code: String): Unit =
+    if currentSourceAvailable() && sourceView.now() && code != sourceCode then
+      editingRange = None
+      val previous = selectedFunction.now()
+      val refreshedClasses = refreshSource(code)
+      selectedFunction.set(previous.flatMap(findSelection(refreshedClasses, _)))
+      publish(ProgrammingStateJavaString(code))
 
   private def selectFunction(function: JavaFunction): Unit =
-    if synced.now() then
+    if currentSourceAvailable() && structurallyBalanced(sourceCode) && discover(sourceCode).exists(_.functions.contains(function)) then
+      showFunction(function)
+
+  private def showFunction(function: JavaFunction): Unit =
+    if FunctionRange(function.start, function.end).isWithin(sourceCode) then
       selectedFunction.set(Some(function))
-      functionDraft.set(lastCommittedCode.substring(function.start, function.end))
+      editingRange = Some(FunctionRange(function.start, function.end))
+      functionDraft.set(sourceCode.substring(function.start, function.end))
+      sourceView.set(false)
+
+  private def showMethod(): Unit =
+    if currentSourceAvailable() && structurallyBalanced(sourceCode) then
+      selectedFunction.now().flatMap(findSelection(discover(sourceCode), _)) match
+        case Some(function) => showFunction(function)
+        case None =>
+          selectedFunction.set(None)
+          editingRange = None
+          sourceView.set(false)
 
   private def commitExternalState(next: ProgrammingState): Unit = {
-    val code = next.toJava.code
-    if code != lastCommittedCode then
+    if next != displayedState then
       val previousSelection = selectedFunction.now()
-      lastCommittedCode = code
-      val refreshedClasses = discover(code)
-      classes.set(refreshedClasses)
-      val replacementSelection = previousSelection
-        .flatMap(previous =>
-          refreshedClasses
-            .find(_.name == previous.className)
-            .flatMap(_.functions.find(_.name == previous.name))
-        )
-        .orElse(refreshedClasses.flatMap(_.functions).headOption)
+      val wasSourceView = sourceView.now()
+      displayedState = next
+      editingRange = None
+      dialogMode.set(None)
+      val converted = Try(next.toJava.code).toOption
+      sourceAvailable.set(converted.isDefined)
+      val code = converted.getOrElse("")
+      val refreshedClasses = refreshSource(code)
+      val replacementSelection = previousSelection.flatMap(findSelection(refreshedClasses, _))
       selectedFunction.set(replacementSelection)
-      functionDraft.set(replacementSelection.fold("")(fn => code.substring(fn.start, fn.end)))
-      synced.set(true)
+      if converted.isEmpty || !structurallyBalanced(code) || wasSourceView || replacementSelection.isEmpty then showSource()
+      else replacementSelection.foreach(showFunction)
+      editorRevision.update(_ + 1)
   }
 
   private def openClassDialog(): Unit =
-    if synced.now() then
+    if currentSourceAvailable() && structureReady.now() then
       classNameDraft.set("")
       dialogError.set("")
       dialogMode.set(Some(DialogMode.AddClass))
 
   private def openFunctionDialog(className: String): Unit =
-    if synced.now() then
+    if currentSourceAvailable() && structureReady.now() then
       dialogClassName.set(Some(className))
       functionNameDraft.set("newFunction")
       returnTypeDraft.set("void")
@@ -88,12 +149,14 @@ final class JavaFunctionBasedEditor(
       dialogMode.set(Some(DialogMode.AddFunction))
 
   private def addClass(): Unit = {
+    if !currentSourceAvailable() then return
     val name = classNameDraft.now().trim
     if !name.matches("[A-Za-z_$][A-Za-z0-9_$]*") then
       dialogError.set("Enter a valid Java class name.")
     else {
-      val separator = if lastCommittedCode.trim.isEmpty then "" else "\n\n"
-      val candidate = lastCommittedCode.stripTrailing + separator + s"class $name {\n}\n"
+      val newline = lineSeparator(sourceCode)
+      val separator = if sourceCode.isEmpty then "" else newline + newline
+      val candidate = sourceCode + separator + s"class $name {$newline}$newline"
       if parses(candidate) then {
         commit(candidate, None)
         dialogMode.set(None)
@@ -102,6 +165,7 @@ final class JavaFunctionBasedEditor(
   }
 
   private def addFunction(): Unit = {
+    if !currentSourceAvailable() then return
     val name = functionNameDraft.now().trim
     val returnType = returnTypeDraft.now().trim
     val parameters = parametersDraft.now().trim
@@ -114,12 +178,12 @@ final class JavaFunctionBasedEditor(
         .flatMap(className => classes.now().find(_.name == className))
         .foreach { targetClass =>
           val declaration = s"public $returnType $name($parameters) {\n    \n  }"
-          val candidate = insertFunction(lastCommittedCode, targetClass, declaration)
+          val candidate = insertFunction(sourceCode, targetClass, declaration)
           if parses(candidate) then {
             val refreshedClasses = discover(candidate)
             val addedFunction = refreshedClasses
               .find(_.name == targetClass.name)
-              .flatMap(_.functions.find(_.name == name))
+              .flatMap(clazz => clazz.functions.find(fn => fn.start >= targetClass.bodyEnd && fn.name == name))
             commit(candidate, addedFunction)
             dialogMode.set(None)
           } else dialogError.set("The function signature or current Java source is invalid.")
@@ -127,21 +191,17 @@ final class JavaFunctionBasedEditor(
   }
 
   private def commit(code: String, selection: Option[JavaFunction]): Unit = {
-    lastCommittedCode = code
-    val refreshedClasses = discover(code)
-    classes.set(refreshedClasses)
-    val refreshedSelection = selection.flatMap { wanted =>
-      refreshedClasses
-        .find(_.name == wanted.className)
-        .flatMap(_.functions.find(_.name == wanted.name))
-    }
+    val refreshedClasses = refreshSource(code)
+    val refreshedSelection = selection.flatMap(findSelection(refreshedClasses, _))
     selectedFunction.set(refreshedSelection)
-    functionDraft.set(refreshedSelection.fold("")(fn => code.substring(fn.start, fn.end)))
-    synced.set(true)
+    refreshedSelection match
+      case Some(function) => showFunction(function)
+      case None => showSource()
     publish(ProgrammingStateJavaString(code))
   }
 
   private def publish(next: ProgrammingState): Unit = {
+    displayedState = next
     state.set(next)
     onStateEdited(next)
   }
@@ -200,7 +260,7 @@ final class JavaFunctionBasedEditor(
     div(
       cls := "java-function-based-editor",
       onMountCallback { ctx =>
-        state.signal.changes.foreach(commitExternalState)(using ctx.owner)
+        state.signal.foreach(commitExternalState)(using ctx.owner)
       },
       div(
         cls := "java-function-editor__topbar",
@@ -209,14 +269,10 @@ final class JavaFunctionBasedEditor(
           p(cls := "java-function-editor__subtitle", "Explore classes and edit one method at a time.")
         ),
         span(
-          cls <-- synced.signal.map(isSynced =>
-            if isSynced then "java-function-editor__sync java-function-editor__sync--synced"
-            else "java-function-editor__sync java-function-editor__sync--unsynced"
-          ),
+          cls := "java-function-editor__sync",
           role := "status",
           aria.live := "polite",
-          span(cls := "java-function-editor__sync-dot"),
-          span(child.text <-- synced.signal.map(if _ then "Synced" else "Not synced"))
+          span(child.text <-- sourceView.signal.map(if _ then "Full source" else "Method view"))
         )
       ),
       div(
@@ -231,13 +287,13 @@ final class JavaFunctionBasedEditor(
             typ := "button",
             cls := "java-function-editor__button java-function-editor__button--primary",
             "Add class",
-            disabled <-- synced.signal.map(!_),
+            disabled <-- structureReady.signal.combineWith(sourceAvailable.signal).map { (ready, available) => !ready || !available },
             onClick --> (_ => openClassDialog())
           )
         ),
         div(
           cls := "java-function-editor__class-row",
-          children <-- Signal.combine(classes.signal, selectedFunction.signal, synced.signal).map {
+          children <-- Signal.combine(classes.signal, selectedFunction.signal, structureReady.signal).map {
             case (currentClasses, selected, isSynced) =>
               if currentClasses.isEmpty then List(
                 div(
@@ -267,12 +323,12 @@ final class JavaFunctionBasedEditor(
                       button(
                         typ := "button",
                         cls <-- selectedFunction.signal.map { current =>
-                          if current.exists(_.start == function.start) then
+                          if current.exists(current => sameFunction(current, function) && current.start == function.start) then
                             "java-function-editor__function java-function-editor__function--selected"
                           else "java-function-editor__function"
                         },
                         disabled := !isSynced,
-                        aria.pressed := selected.exists(_.start == function.start).toString,
+                        aria.pressed := selected.exists(current => sameFunction(current, function) && current.start == function.start).toString,
                         s"${function.returnType} ${function.name}(${function.parameters})",
                         onClick --> (_ => selectFunction(function))
                       )
@@ -288,26 +344,55 @@ final class JavaFunctionBasedEditor(
         div(
           cls := "java-function-editor__workspace-heading",
           div(
-            h3(cls := "java-function-editor__section-title", child.text <-- selectedFunction.signal.map(_.fold("Function editor")(fn => s"${fn.className}.${fn.name}"))),
-            p(cls := "java-function-editor__section-hint", "Edits are saved as soon as the complete Java source parses.")
+            h3(cls := "java-function-editor__section-title", child.text <-- sourceView.signal.combineWith(selectedFunction.signal).map { (fullSource, selection) =>
+              if fullSource then "Java source" else selection.fold("Function editor")(fn => s"${fn.className}.${fn.name}")
+            }),
+            p(cls := "java-function-editor__section-hint", "Your edits are kept, including unfinished code.")
+          ),
+          div(
+            cls := "java-function-editor__view-toggle",
+            button(
+              typ := "button",
+              cls <-- sourceView.signal.map(fullSource =>
+                "java-function-editor__button " + (if fullSource then "java-function-editor__button--secondary" else "java-function-editor__button--primary")
+              ),
+              aria.pressed <-- sourceView.signal.map(!_).map(_.toString),
+              disabled <-- structureReady.signal.combineWith(sourceAvailable.signal).map { (ready, available) => !ready || !available },
+              "Method",
+              onClick --> (_ => showMethod())
+            ),
+            button(
+              typ := "button",
+              cls <-- sourceView.signal.map(fullSource =>
+                "java-function-editor__button " + (if fullSource then "java-function-editor__button--primary" else "java-function-editor__button--secondary")
+              ),
+              aria.pressed <-- sourceView.signal.map(_.toString),
+              disabled <-- sourceAvailable.signal.map(!_),
+              "Full source",
+              onClick --> (_ => if currentSourceAvailable() then showSource())
+            )
           )
         ),
         div(
-          cls <-- selectedFunction.signal.map(selection =>
-            if selection.isDefined then "java-function-editor__editor-panel"
+          cls <-- sourceView.signal.combineWith(selectedFunction.signal).map { (fullSource, selection) =>
+            if fullSource || selection.isDefined then "java-function-editor__editor-panel"
             else "java-function-editor__editor-panel java-function-editor__editor-panel--hidden"
-          ),
-          functionEditor.getDomElement(),
+          },
+          child <-- Signal.combine(sourceView.signal, sourceAvailable.signal, editorRevision.signal).map { (fullSource, available, _) =>
+            if !available then div(role := "alert", "This state cannot be shown as Java. Your source is unchanged.")
+            else if fullSource then div(cls := "java-function-editor__source", sourceEditor.getDomElement())
+            else div(cls := "java-function-editor__method", functionEditor.getDomElement())
+          },
           span(
-            cls <-- synced.signal.map(if _ then "java-function-editor__draft-warning java-function-editor__draft-warning--hidden" else "java-function-editor__draft-warning"),
-            "The draft has syntax errors and has not been committed. Fix it before selecting another function."
+            cls <-- structureReady.signal.map(if _ then "java-function-editor__draft-warning java-function-editor__draft-warning--hidden" else "java-function-editor__draft-warning"),
+            "Your draft is kept. Finish the brackets or comments here, or open the full source to continue."
           )
         ),
         div(
-          cls <-- selectedFunction.signal.map(selection =>
-            if selection.isDefined then "java-function-editor__editor-placeholder java-function-editor__editor-placeholder--hidden"
+          cls <-- sourceView.signal.combineWith(selectedFunction.signal).map { (fullSource, selection) =>
+            if fullSource || selection.isDefined then "java-function-editor__editor-placeholder java-function-editor__editor-placeholder--hidden"
             else "java-function-editor__editor-placeholder"
-          ),
+          },
           strong("Choose a function to get started"),
           span("Select a method from any class above. Its complete signature and body will appear here.")
         )
@@ -331,6 +416,15 @@ object JavaFunctionBasedEditor {
   )
 
   private[code] final case class JavaClass(name: String, bodyStart: Int, bodyEnd: Int, functions: List[JavaFunction])
+
+  private[code] final case class FunctionRange(start: Int, end: Int) {
+    def isWithin(source: String): Boolean = start >= 0 && end >= start && end <= source.length
+
+    def replace(source: String, draft: String): Option[(String, FunctionRange)] =
+      Option.when(isWithin(source))(
+        (source.substring(0, start) + draft + source.substring(end), FunctionRange(start, start + draft.length))
+      )
+  }
 
   private val classDeclaration = """\bclass\s+([A-Za-z_$][A-Za-z0-9_$]*)""".r
   private val functionHeader =
@@ -418,22 +512,56 @@ object JavaFunctionBasedEditor {
     source.substring(0, function.start) + draft + source.substring(function.end)
 
   private[code] def findEditedFunction(
+      source: String,
       currentClasses: List[JavaClass],
       previous: JavaFunction,
-      draftLength: Int
+      range: FunctionRange
   ): Option[JavaFunction] = {
-    val candidates = currentClasses
-      .find(_.name == previous.className)
-      .toList
-      .flatMap(_.functions)
-      .filter(function => function.start >= previous.start && function.start <= previous.start + draftLength)
-    candidates.minByOption(_.start)
+    if !range.isWithin(source) then None
+    else currentClasses.filter(_.name == previous.className) match
+      case List(clazz) if range.start > clazz.bodyStart && range.end <= clazz.bodyEnd =>
+        clazz.functions.filter(function => function.start >= range.start && function.end <= range.end) match
+          case List(function) if onlyTrivia(source.substring(range.start, function.start)) &&
+              onlyTrivia(source.substring(function.end, range.end)) => Some(function)
+          case _ => None
+      case _ => None
   }
 
+  private[code] def sameFunction(first: JavaFunction, second: JavaFunction): Boolean =
+    first.className == second.className && first.name == second.name &&
+      first.returnType == second.returnType && first.parameters == second.parameters
+
+  private[code] def findSelection(classes: List[JavaClass], previous: JavaFunction): Option[JavaFunction] =
+    classes.filter(_.name == previous.className) match
+      case List(clazz) => clazz.functions.filter(sameFunction(_, previous)) match
+        case List(function) => Some(function)
+        case _ => None
+      case _ => None
+
+  private def onlyTrivia(source: String): Boolean = {
+    var index = 0
+    while index < source.length do
+      if source.charAt(index).isWhitespace then index += 1
+      else if source.startsWith("//", index) then
+        index += 2
+        while index < source.length && source.charAt(index) != '\r' && source.charAt(index) != '\n' do index += 1
+      else if source.startsWith("/*", index) then
+        val end = source.indexOf("*/", index + 2)
+        if end < 0 then return false
+        index = end + 2
+      else return false
+    true
+  }
+
+  private def lineSeparator(source: String): String =
+    "\r\n|\r|\n".r.findFirstIn(source).getOrElse("\n")
+
   private[code] def insertFunction(source: String, clazz: JavaClass, declaration: String): String = {
-    val beforeClosingBrace = source.substring(0, clazz.bodyEnd).stripTrailing
+    val beforeClosingBrace = source.substring(0, clazz.bodyEnd)
     val afterClosingBrace = source.substring(clazz.bodyEnd)
-    beforeClosingBrace + s"\n  $declaration\n" + afterClosingBrace
+    val newline = lineSeparator(source)
+    val inserted = declaration.replaceAll("\r\n|\r|\n", newline)
+    beforeClosingBrace + s"$newline  $inserted$newline" + afterClosingBrace
   }
 
   private def maskCommentsAndStrings(source: String): String = {
@@ -463,9 +591,9 @@ object JavaFunctionBasedEditor {
           masked(index) = ' '
           state = if current == '"' then 3 else 4
           escaped = false
-        case 1 if current == '\n' => state = 0
+        case 1 if current == '\n' || current == '\r' => state = 0
         case 1 | 2 | 3 | 4 =>
-          if current != '\n' then masked(index) = ' '
+          if current != '\n' && current != '\r' then masked(index) = ' '
           if state == 2 && current == '*' && next == '/' then
             masked(index + 1) = ' '
             index += 1
