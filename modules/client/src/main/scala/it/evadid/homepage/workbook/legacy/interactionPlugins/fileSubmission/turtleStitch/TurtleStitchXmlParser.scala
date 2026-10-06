@@ -123,10 +123,12 @@ object TurtleStitchXmlParser {
    */
   private def preferredScriptsXml(xml: String): String =
     findFirstTagInnerAnywhere(xml, "sprites")
-      .flatMap { sprites =>
-        findFirstTagInnerAnywhere(sprites, "sprite")
-          .flatMap(sprite => findFirstTagInnerAnywhere(sprite, "scripts").filter(_.contains("<block")))
-          .orElse(findFirstTagInnerAnywhere(sprites, "scripts").filter(_.contains("<block")))
+      .flatMap { spritesXml =>
+        findAllTagInnersAnywhere(spritesXml, "sprite")
+          .iterator
+          .flatMap(sprite => findAllTagInnersAnywhere(sprite, "scripts"))
+          .find(_.contains("<block"))
+          .orElse(findAllTagInnersAnywhere(spritesXml, "scripts").find(_.contains("<block")))
       }
       // Never fall back to the first (often empty) stage <scripts></scripts>.
       .orElse(findAllTagInnersAnywhere(xml, "scripts").find(_.contains("<block")))

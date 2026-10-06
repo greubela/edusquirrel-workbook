@@ -64,11 +64,15 @@ final class EvaEditor(
     snapEditor.getCurrentTurtleCommands()
 
   private def select(tab: EvaEditor.Tab): Unit =
+    if activeTab.now() == tab then return
     val current = state.now()
     tab match
-      case EvaEditor.Tab.Snap => snapState.set(current.toSnapXml)
-      case EvaEditor.Tab.Python => pythonState.set(current.toPython.code)
-      case EvaEditor.Tab.Java => javaState.set(current.toJava.code)
+      case EvaEditor.Tab.Snap =>
+        snapState.set(current.toSnapXml)
+      case EvaEditor.Tab.Python =>
+        pythonState.set(current.toPython.code)
+      case EvaEditor.Tab.Java =>
+        javaState.set(current.toJava.code)
     activeTab.set(tab)
 
   override def getDomElement(): Element =
@@ -119,5 +123,4 @@ object EvaEditor {
     case _: ProgrammingStatePythonString => Tab.Python
     case _: ProgrammingStateJavaString => Tab.Java
     case _ => Tab.Snap
-
 }

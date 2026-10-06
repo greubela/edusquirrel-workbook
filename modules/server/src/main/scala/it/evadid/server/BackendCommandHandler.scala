@@ -88,14 +88,14 @@ object BackendCommandHandler {
 
 
   def handleExecution(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken], remoteAddress: InetAddress, logger: Logger): Future[ExecutionClientResponse] = {
-    logger.logInfo(s"[server] Received command: ${executionCommand.name} with params keys: ${executionCommand.params.keys}")
-
-    SqlLogCommands.handleLog(commandReceived, executionCommand, verifiedToken, remoteAddress, logger)
-
     if (executionCommand.name.trim.isEmpty) {
-      logger.logError("ExecutionCommand.name must not be empty")
-      throw new IllegalArgumentException("ExecutionCommand.name must not be empty")
+      val message = "ExecutionCommand.name must not be empty"
+      logger.logError(message)
+      throw new IllegalArgumentException(message)
     }
+
+    logger.logInfo(s"[server] Received command: ${executionCommand.name} with params keys: ${executionCommand.params.keys}")
+    SqlLogCommands.handleLog(commandReceived, executionCommand, verifiedToken, remoteAddress, logger)
 
     if (verifiedToken.nonEmpty) {
       val user = verifiedToken.head.info.user
