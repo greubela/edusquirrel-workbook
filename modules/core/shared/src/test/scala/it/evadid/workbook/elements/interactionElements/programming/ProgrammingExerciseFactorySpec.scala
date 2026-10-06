@@ -44,4 +44,22 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     assertEquals(restored.referencePython, None)
     assertEquals(restored.testSuite, None)
   }
+
+  test("full Java exercise is registered and preserves its type and test suite") {
+    val original = ProgrammingExerciseFullJava("full-java")
+    val serialized = it.evadid.workbook.jsonFactory.WorkbookElementFactory.serializerRefBasedJson.serialize(original)
+    val restored =
+      it.evadid.workbook.jsonFactory.WorkbookElementFactory.serializerRefBasedJson.deserialize(serialized)
+
+    assertEquals(restored.getClass.getSimpleName, "ProgrammingExerciseFullJava")
+    val fullJava = restored.asInstanceOf[ProgrammingExerciseFullJava]
+    assertEquals(fullJava.elementId, original.elementId)
+    assertEquals(fullJava.testSuite, None)
+    assertEquals(fullJava.defaultValue, original.defaultValue)
+    assert(fullJava.defaultValue.toJava.code.contains("class Main"))
+    assertEquals(
+      fullJava.serializerInteractionContent.deserialize(fullJava.serializerInteractionContent.serialize(fullJava.defaultValue)),
+      fullJava.defaultValue
+    )
+  }
 }

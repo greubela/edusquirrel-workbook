@@ -1,7 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
-/** One top-level Snap `<script x y>` stack (hat script or loose orphan). */
-final case class SnapCanvasScript(x: Int, y: Int, callCount: Int)
+/** One top-level Snap `<script x y>` stack, including whether it starts with a green-flag hat. */
+final case class SnapCanvasScript(x: Int, y: Int, callCount: Int, hasReceiveGo: Boolean = true)
 
 /**
  * Derived Snap canvas layout (script positions / statement counts).
