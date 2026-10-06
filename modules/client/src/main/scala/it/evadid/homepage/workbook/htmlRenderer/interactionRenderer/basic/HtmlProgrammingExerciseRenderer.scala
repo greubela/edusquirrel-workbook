@@ -15,7 +15,7 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineToRender
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingExercise, ProgrammingState}
+import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingExercise, ProgrammingState, ProgrammingStateJavaString}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import todomove.datastructures.web.file.FullImage
 
@@ -103,11 +103,14 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       runError.set(None)
       val running = Try(editor.getCurrentTurtleCommands()).fold(Future.failed, identity)
       val source = ProgrammingState.fingerprint(editor.currentState())
+      val initialHeading = editor.currentState() match
+        case _: ProgrammingStateJavaString => 0.0
+        case _ => 90.0
       running.onComplete{
         case _ if requestedRun != runId || source != ProgrammingState.fingerprint(editor.currentState()) => ()
         case Success(res) => {
           println("Turtle Commands: " + res)
-          val path = TurtlePathBuilder[Double](Point(0,0), res, 90)
+          val path = TurtlePathBuilder[Double](Point(0,0), res, initialHeading)
           val img = FullImage(path.svgPathBuilder)
           stageImageVar.set(Some(img))
           val pathD = path.svgPathBuilder.toSvgPathD

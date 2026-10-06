@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.code
 
 import com.raquo.airstream.state.Var
+import com.raquo.airstream.ownership.ManualOwner
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
@@ -10,6 +11,8 @@ import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.PyodideTu
 import it.evadid.workbook.elements.interactionElements.programming.*
 
 import scala.concurrent.Future
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import java.util.concurrent.CancellationException
 import scala.util.{Failure, Success, Try}
 
 /** Full-screen programming editor that owns one polymorphic state and presents
@@ -18,7 +21,8 @@ import scala.util.{Failure, Success, Try}
 final class EvaEditor(
     val state: Var[ProgrammingState],
     snapConfig: SnapCodeEditorConfig,
-    onStateEdited: ProgrammingState => Unit = _ => ()
+    onStateEdited: ProgrammingState => Unit = _ => (),
+    javaRunnerFactory: () => JavaEditorSession.Runner = () => JavaEditorSession.defaultRunner()
 ) extends HtmlAppElement with FullscreenLifecycle {
 
   private[code] val activeTab = Var(EvaEditor.tabFor(state.now()))
@@ -34,8 +38,8 @@ final class EvaEditor(
     case _ => ""
   )
   private val javaState = Var(state.now() match
-    case ProgrammingStateJavaString(code) => code
-    case _ => ""
+    case java: ProgrammingStateJavaString => java
+    case _ => ProgrammingStateJavaString("")
   )
   private lazy val pythonRunner = new PyodideTurtleCommandRunner()
   private var mounted = false
@@ -57,7 +61,7 @@ final class EvaEditor(
     case snap: ProgrammingStateSnapXml => snapState.set(snap)
     case floating: ProgrammingStateSnapXMLWithAdditionalFloatingObjects => snapState.set(floating.toSnapXml)
     case ProgrammingStatePythonString(code) => pythonState.set(code)
-    case ProgrammingStateJavaString(code) => javaState.set(code)
+    case java: ProgrammingStateJavaString => javaState.set(java)
     case expression: ProgrammingStateBeExpression => snapState.set(expression.toSnapXml)
 
   private def receive(next: ProgrammingState): Unit =
@@ -84,10 +88,10 @@ final class EvaEditor(
     code => publish(EvaEditor.Tab.Python, ProgrammingStatePythonString(code)),
     language = AppLanguage.Python
   )
-  private val javaEditor = CodeMirrorEditor(
+  private val javaEditor = new JavaEditor(
     javaState,
-    code => publish(EvaEditor.Tab.Java, ProgrammingStateJavaString(code)),
-    language = AppLanguage.Java
+    next => publish(EvaEditor.Tab.Java, next),
+    javaRunnerFactory
   )
   private lazy val snapElement = snapEditor.getDomElement()
   private lazy val pythonElement = pythonEditor.getDomElement()
@@ -121,14 +125,34 @@ final class EvaEditor(
       case snap: ProgrammingStateSnapXml => SnapCodeEditor.commandsFor(snap)
       case floating: ProgrammingStateSnapXMLWithAdditionalFloatingObjects => SnapCodeEditor.commandsFor(floating.toSnapXml)
       case ProgrammingStatePythonString(code) => pythonRunner.execute(code)
-      case _: ProgrammingStateJavaString => Future.failed(IllegalStateException("Java execution is not available in this editor yet."))
+      case java: ProgrammingStateJavaString => javaCommands(java)
       case expression: ProgrammingStateBeExpression =>
         Try(expression.toSnapXml).fold(Future.failed, SnapCodeEditor.commandsFor)
     else if !viewAvailable.now() then Future.failed(IllegalStateException("This draft cannot be run in the selected editor."))
     else activeTab.now() match
       case EvaEditor.Tab.Snap => snapEditor.getCurrentTurtleCommands()
       case EvaEditor.Tab.Python => pythonRunner.execute(pythonState.now())
-      case EvaEditor.Tab.Java => Future.failed(IllegalStateException("Java execution is not available in this editor yet."))
+      case EvaEditor.Tab.Java => javaCommands(javaState.now())
+
+  private def javaCommands(source: ProgrammingStateJavaString): Future[List[TurtleCommand[Double]]] = {
+    javaState.set(source)
+    val original = ProgrammingState.fingerprint(state.now())
+    val owner = new ManualOwner
+    var changed = false
+    state.signal.changes.foreach { next =>
+      if ProgrammingState.fingerprint(next) != original then {
+        changed = true
+        next match
+          case java: ProgrammingStateJavaString => javaState.set(java)
+          case _ => javaEditor.stop()
+      }
+    }(using owner)
+    javaEditor.getCurrentTurtleCommands().transform { result =>
+      if changed || original != ProgrammingState.fingerprint(state.now()) then
+        Failure(new CancellationException("Java source changed."))
+      else result
+    }.andThen { case _ => owner.killSubscriptions() }
+  }
 
   private[code] def select(tab: EvaEditor.Tab): Unit =
     if activeTab.now() == tab then return
@@ -142,6 +166,7 @@ final class EvaEditor(
     }
     converted match
       case Success(next) =>
+        if activeTab.now() == EvaEditor.Tab.Java then javaEditor.onFullscreenClose()
         show(next)
         conversionError.set(None)
         activeTab.set(tab)
@@ -188,7 +213,10 @@ final class EvaEditor(
   override def onFullscreenOpen(): Unit =
     if activeTab.now() == EvaEditor.Tab.Snap && viewAvailable.now() then snapEditor.onFullscreenOpen()
 
-  override def onFullscreenClose(): Unit = snapEditor.onFullscreenClose()
+  override def onFullscreenClose(): Unit = {
+    snapEditor.onFullscreenClose()
+    javaEditor.onFullscreenClose()
+  }
   override def dismissOnOutsideClick: Boolean = false
 }
 
