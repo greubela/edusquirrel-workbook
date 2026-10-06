@@ -58,7 +58,7 @@ final class EvaEditor(
     code => publish(ProgrammingStateJavaString(code)),
     language = AppLanguage.Java
   )
-  private var javaFunctionEditor = new JavaFunctionBasedEditor(state)
+  private var javaFunctionEditor = new JavaFunctionBasedEditor(state, onStateEdited = publish)
 
   /** Small preview retained by the workbook card. */
   val previewCanvas: Element = snapEditor.previewCanvas
@@ -100,7 +100,7 @@ final class EvaEditor(
         val source = EvaEditor.functionEditorSource(current.toJava.code)
         val next = ProgrammingStateJavaString(source)
         publish(next)
-        javaFunctionEditor = new JavaFunctionBasedEditor(state)
+        javaFunctionEditor = new JavaFunctionBasedEditor(state, onStateEdited = publish)
     activeTab.set(tab)
 
   override def getDomElement(): Element =
