@@ -1,6 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
-import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
+import it.evadid.core.datastructures.language.AppLanguage.{English, Python, Java, ProgrammingLanguage}
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.naming.CodeRepresentationConfig
 import it.evadid.workbook.elements.interactionElements.programming.{SnapPaletteCatalog, SnapTurtleCatalog}
@@ -75,7 +75,8 @@ case class SnapCodeEditorConfig(
                                  parts: SnapEditorParts = SnapEditorParts(),
                                  libraryTabs: List[LibraryTab] = Nil,
                                  codeRepresentation: CodeRepresentationConfig = CodeRepresentationConfig(Python, English, skipUnparsable = false),
-                                 visuals: SnapEditorVisuals = SnapEditorVisuals()
+                                 visuals: SnapEditorVisuals = SnapEditorVisuals(),
+                                 enabledLanguages: List[ProgrammingLanguage] = List(Python, Java)
                                )
 
 object SnapCodeEditorConfig:

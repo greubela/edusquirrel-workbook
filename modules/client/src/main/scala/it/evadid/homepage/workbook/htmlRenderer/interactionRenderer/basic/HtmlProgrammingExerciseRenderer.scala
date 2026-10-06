@@ -9,6 +9,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
 import it.evadid.homepage.webElements.editor.code.EvaEditor
+import it.evadid.homepage.webElements.editor.code.EvaEditorConfig
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
@@ -54,7 +55,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       case ProgrammingEditorPalette.BeginnerTurtle => SnapCodeEditorConfig.BeginnerTurtleTesting
       case ProgrammingEditorPalette.Embroidery => SnapCodeEditorConfig.EmbroideryTesting
 
-    val editor = EvaEditor(boundVar, editorConfig, onStateEdited = persistFromEditor)
+    val editor = EvaEditor(boundVar, EvaEditorConfig(snapConfig = editorConfig), onStateEdited = persistFromEditor)
 
     def buttonPressed(): Unit =
       fullInfo.displayControl.setFullscreen(editor)

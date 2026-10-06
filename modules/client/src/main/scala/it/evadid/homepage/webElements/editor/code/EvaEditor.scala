@@ -6,6 +6,7 @@ import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditor, SnapCodeEditorConfig}
+import it.evadid.homepage.webElements.editor.code.EvaEditorConfig
 import it.evadid.workbook.elements.interactionElements.programming.*
 
 import scala.concurrent.Future
@@ -15,7 +16,7 @@ import scala.concurrent.Future
   */
 final class EvaEditor(
     val state: Var[ProgrammingState],
-    snapConfig: SnapCodeEditorConfig,
+    evaConfig: EvaEditorConfig,
     onStateEdited: ProgrammingState => Unit = _ => ()
 ) extends HtmlAppElement with FullscreenLifecycle {
 
@@ -40,7 +41,7 @@ final class EvaEditor(
 
   private val snapEditor = SnapCodeEditor(
     snapState,
-    snapConfig,
+    evaConfig.snapConfig,
     onStateEdited = next => publish(next)
   )
   private val pythonEditor = CodeMirrorEditor(
