@@ -273,7 +273,10 @@ object SnapPythonPopup {
   /** Partition top-level BeProgram statements by derived canvas layout. */
   def scriptsOf(state: ProgrammingExerciseState): List[ScriptView] = {
     val derived = SnapProgramDerivation.fromState(state)
-    val statements = SnapTurtlePythonBridge.topLevelStatements(derived.program.fullProgram)
+    val statements =
+      SnapTurtlePythonBridge.scriptStatements(
+        SnapTurtlePythonBridge.topLevelStatements(derived.program.fullProgram)
+      )
     if statements.isEmpty then Nil
     else
       val chunks =

@@ -82,7 +82,8 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   test("two top-level scripts produce layout sidecar and stay separate on XML roundtrip") {
     val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(twoScriptsXml)
     assertEquals(parsed.canvasLayout.scripts.size, 2)
-    assertEquals(parsed.canvasLayout.scripts.map(_.callCount), List(2, 1))
+    assertEquals(parsed.canvasLayout.scripts.map(_.callCount), List(1, 1))
+    assertEquals(parsed.canvasLayout.scripts.map(_.hasReceiveGo), List(true, false))
     assertEquals(parsed.canvasLayout.scripts(1).x, 200)
     assertEquals(parsed.canvasLayout.scripts(1).y, 150)
 
@@ -508,4 +509,3 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(!nextXml.contains("<l>2</l>"), clue = nextXml)
   }
 }
-
