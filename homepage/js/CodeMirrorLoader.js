@@ -462,9 +462,9 @@ const codeMirrorFacade = {
     const separatorFor = value => value.match(/\r\n|\r|\n/)?.[0] ?? "\n";
     const javaText = value => Text.of(value.split(/\r\n|\r|\n/));
     let javaSource = doc;
+    let javaSeparator = separatorFor(doc);
     const theme = new Compartment();
     const editorLanguage = new Compartment();
-    const lineSeparator = new Compartment();
     const followsPageTheme = Boolean(parent.closest(".fd-page"));
     const currentTheme = () => followsPageTheme && document.documentElement.dataset.theme === "light" ? [] : oneDark;
 
@@ -474,10 +474,10 @@ const codeMirrorFacade = {
         ...sharedExtensions,
         theme.of(currentTheme()),
         editorLanguage.of(languageExtension(language)),
-        ...(isJava ? [lineSeparator.of(EditorState.lineSeparator.of(separatorFor(doc)))] : []),
         EditorView.updateListener.of((update) => {
           if (update.docChanged && !isProgrammaticUpdate) {
-            const value = isJava ? update.state.sliceDoc() : update.state.doc.toString();
+            const text = update.state.doc.toString();
+            const value = isJava ? text.replace(/\n/g, javaSeparator) : text;
             if (isJava) javaSource = value;
             if (typeof onDocChange === "function") onDocChange(value);
           }
@@ -512,12 +512,12 @@ const codeMirrorFacade = {
               to: view.state.doc.length,
               insert: isJava ? javaText(nextDoc) : nextDoc
             },
-            effects: [
-              setDiagnosticsEffect.of([]),
-              ...(isJava ? [lineSeparator.reconfigure(EditorState.lineSeparator.of(separatorFor(nextDoc)))] : [])
-            ]
+            effects: setDiagnosticsEffect.of([])
           });
-          if (isJava) javaSource = nextDoc;
+          if (isJava) {
+            javaSource = nextDoc;
+            javaSeparator = separatorFor(nextDoc);
+          }
         } finally {
           isProgrammaticUpdate = false;
         }
