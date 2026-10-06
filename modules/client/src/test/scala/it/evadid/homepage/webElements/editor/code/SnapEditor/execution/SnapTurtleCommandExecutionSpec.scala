@@ -1,11 +1,12 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.homepage.webElements.editor.code.JavaEditorSession
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.{CallbackOp, PythonRunConfig, PythonRunReport}
 import it.evadid.vm.BeProgram
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExerciseState
+import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExerciseState, ProgrammingStateJavaString}
 import munit.FunSuite
 import todomove.`export`.workers.PyodideWorkerClient
 
@@ -760,4 +761,247 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
     yield
       assert(!runner.cancel())
       assertEquals(allocations, 0)
+  }
+
+  private class ControlledJavaSessionRunner extends JavaEditorSession.Runner:
+    var requests = Vector.empty[(P.Program, T.Limits, Promise[T.Execution])]
+    var cancellations = 0
+    var closures = 0
+    var runFailure = Option.empty[Throwable]
+    var cancelFailure = Option.empty[Throwable]
+    var closeFailure = Option.empty[Throwable]
+
+    def run(program: P.Program, limits: T.Limits): Future[T.Execution] =
+      runFailure.foreach(error => throw error)
+      val result = Promise[T.Execution]()
+      requests :+= ((program, limits, result))
+      result.future
+
+    def cancel(): Boolean =
+      cancellations += 1
+      cancelFailure.foreach(error => throw error)
+      true
+
+    def close(): Unit =
+      closures += 1
+      closeFailure.foreach(error => throw error)
+
+  private def javaSessionSource: ProgrammingStateJavaString =
+    ProgrammingStateJavaString(javaFixture.bindings.source.source + "\n\n  ")
+
+  test("Java sessions retain full source and allocate no runner for invalid drafts") {
+    var allocations = 0
+    val session = new JavaEditorSession(javaSessionSource, () => {
+      allocations += 1
+      new ControlledJavaSessionRunner
+    })
+    assertEquals(session.source, javaSessionSource)
+    assertEquals(allocations, 0)
+    val drafts = Vector("", "public class Drawing {\n", "forward(12);",
+      "class Drawing { public static void main(String[] args) { Turtle.forward(true); } }")
+    drafts.foldLeft(Future.successful(())) { (previous, draft) =>
+      previous.flatMap { _ =>
+        val source = ProgrammingStateJavaString(draft)
+        session.updateSource(source)
+        failedWith(session.run()) { error =>
+          assert(error.isInstanceOf[JavaEditorSession.ValidationFailure])
+          assertEquals(session.source, source)
+          assert(session.status.now().isInstanceOf[JavaEditorSession.State.Invalid])
+          assertEquals(allocations, 0)
+        }
+      }
+    }
+  }
+
+  test("Java sessions compile an immutable source snapshot and preserve execution outcomes") {
+    val runner = new ControlledJavaSessionRunner
+    val session = new JavaEditorSession(javaSessionSource, () => runner)
+    val limits = T.Limits(maxSteps = 200, maxCommands = 10, maxCallDepth = 5, maxBlockDepth = 6)
+    val prefix = Vector(T.Command(R.TurtleCommand.Forward, -5), T.Command(R.TurtleCommand.TurnRight, 90))
+    val outcomes = Vector(T.Status.Completed, T.Status.LimitExceeded, T.Status.Cancelled,
+      T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero)),
+      T.Status.Failed(T.Failure.InvalidInvocation), T.Status.Failed(T.Failure.InvalidLimits))
+    outcomes.zipWithIndex.foldLeft(Future.successful(())) { case (previous, (outcome, index)) =>
+      previous.flatMap { _ =>
+        val execution = outcome match
+          case T.Status.Failed(T.Failure.InvalidInvocation | T.Failure.InvalidLimits) => T.Execution(outcome, Vector.empty, 0)
+          case _ => T.Execution(outcome, prefix, 12)
+        val result = session.run(limits)
+        assertEquals(session.status.now(), JavaEditorSession.State.Running)
+        val (program, actualLimits, response) = runner.requests(index)
+        assertEquals(program.bindings.source.source, javaSessionSource.code)
+        assertEquals(actualLimits, limits)
+        response.success(execution)
+        result.map { actual =>
+          assertEquals(actual, execution)
+          assertEquals(session.status.now(), JavaEditorSession.State.Finished(execution))
+          assertEquals(session.source, javaSessionSource)
+        }
+      }
+    }
+  }
+
+  test("a busy Java session leaves its active attempt unchanged") {
+    val runner = new ControlledJavaSessionRunner
+    val session = new JavaEditorSession(javaSessionSource, () => runner)
+    val first = session.run()
+    for
+      _ <- failedWith(session.run())(error => assert(error.isInstanceOf[IllegalStateException]))
+      _ = assertEquals(session.status.now(), JavaEditorSession.State.Running)
+      _ = assertEquals(runner.requests.size, 1)
+      _ = assertEquals(runner.cancellations, 0)
+      _ = assert(!first.isCompleted)
+      _ = runner.requests.head._3.success(completedJava)
+      actual <- first
+    yield assertEquals(actual, completedJava)
+  }
+
+  test("Java sessions cancel source changes immediately and ignore old results after A to B to A") {
+    Vector(true, false).foldLeft(Future.successful(())) { (previous, oldSuccess) =>
+      previous.flatMap { _ =>
+        val runner = new ControlledJavaSessionRunner
+        val session = new JavaEditorSession(javaSessionSource, () => runner)
+        val first = session.run()
+        session.updateSource(ProgrammingStateJavaString("class Incomplete {"))
+        assert(first.isCompleted)
+        assertEquals(session.status.now(), JavaEditorSession.State.Idle)
+        session.updateSource(javaSessionSource)
+        val second = session.run()
+        val old = runner.requests.head._3
+        if oldSuccess then old.success(T.Execution(T.Status.Completed,
+          Vector(T.Command(R.TurtleCommand.Forward, 99)), 5))
+        else old.failure(IllegalStateException("old execution failed"))
+        for
+          _ <- failedWith(first)(error => assert(error.isInstanceOf[CancellationException]))
+          _ <- delayed(0)
+          _ = assertEquals(session.status.now(), JavaEditorSession.State.Running)
+          _ = assert(!second.isCompleted)
+          _ = assertEquals(runner.cancellations, 1)
+          _ = runner.requests(1)._3.success(completedJava)
+          actual <- second
+        yield
+          assertEquals(actual, completedJava)
+          assertEquals(session.status.now(), JavaEditorSession.State.Finished(completedJava))
+      }
+    }
+  }
+
+  test("restoring identical Java source does not interrupt an active attempt") {
+    val runner = new ControlledJavaSessionRunner
+    val session = new JavaEditorSession(javaSessionSource, () => runner)
+    val result = session.run()
+    session.updateSource(javaSessionSource.copy())
+    assert(!result.isCompleted)
+    assertEquals(runner.cancellations, 0)
+    runner.requests.head._3.success(completedJava)
+    result.map(actual => assertEquals(actual, completedJava))
+  }
+
+  test("stopping Java settles the caller even when backend cancellation is broken") {
+    val runner = new ControlledJavaSessionRunner
+    runner.cancelFailure = Some(IllegalStateException("cancel failed"))
+    runner.closeFailure = Some(IllegalStateException("close failed"))
+    val replacement = new ControlledJavaSessionRunner
+    var allocations = 0
+    val session = new JavaEditorSession(javaSessionSource, () => {
+      allocations += 1
+      if allocations == 1 then runner else replacement
+    })
+    val first = session.run()
+    session.stop()
+    assert(first.isCompleted)
+    assertEquals(session.status.now(), JavaEditorSession.State.Stopped)
+    assertEquals(session.source, javaSessionSource)
+    assertEquals(runner.cancellations, 1)
+    assertEquals(runner.closures, 1)
+    val second = session.run()
+    replacement.requests.head._3.success(completedJava)
+    for
+      _ <- failedWith(first)(error => assert(error.isInstanceOf[CancellationException]))
+      actual <- second
+    yield
+      assertEquals(actual, completedJava)
+      assertEquals(allocations, 2)
+  }
+
+  test("releasing Java cancels a pending attempt and permits a fresh runner after reopen") {
+    val firstRunner = new ControlledJavaSessionRunner
+    firstRunner.closeFailure = Some(IllegalStateException("close failed"))
+    val nextRunner = new ControlledJavaSessionRunner
+    var allocations = 0
+    val session = new JavaEditorSession(javaSessionSource, () => {
+      allocations += 1
+      if allocations == 1 then firstRunner else nextRunner
+    })
+    val first = session.run()
+    session.release()
+    session.release()
+    assert(first.isCompleted)
+    assertEquals(firstRunner.cancellations, 1)
+    assertEquals(firstRunner.closures, 1)
+    val second = session.run()
+    firstRunner.requests.head._3.success(completedJava)
+    for
+      _ <- failedWith(first)(error => assert(error.isInstanceOf[CancellationException]))
+      _ <- delayed(0)
+      _ = assert(!second.isCompleted)
+      _ = assertEquals(session.status.now(), JavaEditorSession.State.Running)
+      _ = nextRunner.requests.head._3.success(completedJava)
+      actual <- second
+    yield
+      assertEquals(actual, completedJava)
+      assertEquals(allocations, 2)
+      session.release()
+      assertEquals(nextRunner.closures, 1)
+  }
+
+  test("Java session factory and synchronous execution failures settle and allow retry") {
+    Vector(true, false).foldLeft(Future.successful(())) { (previous, factoryFailure) =>
+      previous.flatMap { _ =>
+        val runner = new ControlledJavaSessionRunner
+        val failure = IllegalStateException("runner failed")
+        if !factoryFailure then runner.runFailure = Some(failure)
+        var allocations = 0
+        val session = new JavaEditorSession(javaSessionSource, () => {
+          allocations += 1
+          if factoryFailure && allocations == 1 then throw failure
+          runner
+        })
+        val first = session.run()
+        failedWith(first)(error => assert(error eq failure)).flatMap { _ =>
+          assertEquals(session.status.now(), JavaEditorSession.State.Failed(failure))
+          assertEquals(session.source, javaSessionSource)
+          runner.runFailure = None
+          val second = session.run()
+          runner.requests.head._3.success(completedJava)
+          second.map(actual => assertEquals(actual, completedJava))
+        }
+      }
+    }
+  }
+
+  test("Java sessions expose asynchronous execution failures without changing source") {
+    val runner = new ControlledJavaSessionRunner
+    val session = new JavaEditorSession(javaSessionSource, () => runner)
+    val failure = IllegalArgumentException("invalid execution result")
+    val result = session.run()
+    runner.requests.head._3.failure(failure)
+    failedWith(result) { error =>
+      assert(error eq failure)
+      assertEquals(session.status.now(), JavaEditorSession.State.Failed(failure))
+      assertEquals(session.source, javaSessionSource)
+    }
+  }
+
+  test("releasing an unused Java session allocates no runner") {
+    var allocations = 0
+    val session = new JavaEditorSession(javaSessionSource, () => {
+      allocations += 1
+      new ControlledJavaSessionRunner
+    })
+    session.release()
+    session.stop()
+    session.release()
+    assertEquals(allocations, 0)
+    assertEquals(session.source, javaSessionSource)
   }
