@@ -7,7 +7,10 @@ import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
 import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingState, ProgrammingStateJavaString}
 import it.evadid.vm.parsing.java.clean.JavaParser
 
-final class JavaFunctionBasedEditor(val state: Var[ProgrammingState]) extends HtmlAppElement {
+final class JavaFunctionBasedEditor(
+    val state: Var[ProgrammingState],
+    onStateEdited: ProgrammingState => Unit = _ => ()
+) extends HtmlAppElement {
   import JavaFunctionBasedEditor.*
 
   private var lastCommittedCode = state.now().toJava.code
@@ -40,7 +43,7 @@ final class JavaFunctionBasedEditor(val state: Var[ProgrammingState]) extends Ht
             classes.set(refreshedClasses)
             selectedFunction.set(Some(refreshedSelection))
             synced.set(true)
-            state.set(ProgrammingStateJavaString(merged))
+            publish(ProgrammingStateJavaString(merged))
           case None => synced.set(false)
       else synced.set(false)
     }
@@ -135,7 +138,12 @@ final class JavaFunctionBasedEditor(val state: Var[ProgrammingState]) extends Ht
     selectedFunction.set(refreshedSelection)
     functionDraft.set(refreshedSelection.fold("")(fn => code.substring(fn.start, fn.end)))
     synced.set(true)
-    state.set(ProgrammingStateJavaString(code))
+    publish(ProgrammingStateJavaString(code))
+  }
+
+  private def publish(next: ProgrammingState): Unit = {
+    state.set(next)
+    onStateEdited(next)
   }
 
   private def modalField(fieldLabel: String, fieldValue: Var[String]): Element =
