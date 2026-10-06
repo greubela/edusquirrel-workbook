@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, HintLabel, TaskLabel}
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingExercise}
+import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingExercise, ProgrammingExerciseFullJava}
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 
 case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
@@ -20,7 +20,8 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
   lazy val section1: WorkbookSection = {
     section("sec1Id", "TestWorkbook/Sec1", List[WorkbookElement](
       container("TestWorkbook/Sec1Cont1", List(
-        ProgrammingExercise("prog-1", editorPalette = ProgrammingEditorPalette.PythonCompatibleSnap)
+        ProgrammingExercise("prog-1", editorPalette = ProgrammingEditorPalette.PythonCompatibleSnap),
+        ProgrammingExerciseFullJava("prog-full-java")
       )
     )))
   }

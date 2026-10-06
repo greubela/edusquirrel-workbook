@@ -88,7 +88,10 @@ object SnapProjectXml {
     scripts.map { script =>
       val (chunk, rest) = remaining.splitAt(script.callCount)
       remaining = rest
-      ScriptOut(script.x, script.y, createReceiveGoCall() :: chunk)
+      val scriptStatements =
+        if script.hasReceiveGo then createReceiveGoCall() :: chunk
+        else chunk
+      ScriptOut(script.x, script.y, scriptStatements)
     }
   }
 

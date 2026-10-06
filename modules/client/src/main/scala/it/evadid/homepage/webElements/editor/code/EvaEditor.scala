@@ -231,5 +231,4 @@ object EvaEditor {
     case _: ProgrammingStatePythonString => Tab.Python
     case _: ProgrammingStateJavaString => Tab.Java
     case _ => Tab.Snap
-
 }

@@ -144,12 +144,17 @@ object TurtleStitchToBeExpressionParser {
         ParseWithLayout(
           BeStartProgram(BeSequence.optionalBody(statements)),
           if statements.isEmpty then SnapCanvasLayout.empty
-          else SnapCanvasLayout.single(callCount = statements.size)
+          else SnapCanvasLayout.single(callCount = SnapTurtlePythonBridge.scriptStatementCount(statements))
         )
       else
         val scriptParses = scripts.map { case (attrs, body) =>
-          val statements = commandStatements(topLevelBlocks(body).flatMap(blockToStatement))
-          ScriptParse(statements, layoutFromAttrs(attrs, statements.size))
+          val blocks = topLevelBlocks(body)
+          val statements = commandStatements(blocks.flatMap(blockToStatement))
+          val hasReceiveGo = blocks.headOption.exists(block => blockSelector(block._1).contains("receiveGo"))
+          ScriptParse(
+            statements,
+            layoutFromAttrs(attrs, SnapTurtlePythonBridge.scriptStatementCount(statements), hasReceiveGo)
+          )
         }
         val statements = scriptParses.flatMap(_.statements)
         ParseWithLayout(
@@ -172,10 +177,10 @@ object TurtleStitchToBeExpressionParser {
     sections.flatMap(section => topLevelTaggedSections(section, "script"))
   }
 
-  private def layoutFromAttrs(attrs: String, statementCount: Int): SnapCanvasScript = {
+  private def layoutFromAttrs(attrs: String, statementCount: Int, hasReceiveGo: Boolean): SnapCanvasScript = {
     val x = attrDouble(attrs, "x").map(_.round.toInt).getOrElse(156)
     val y = attrDouble(attrs, "y").map(_.round.toInt).getOrElse(66)
-    SnapCanvasScript(x, y, statementCount)
+    SnapCanvasScript(x, y, statementCount, hasReceiveGo)
   }
 
   private def attrDouble(attrs: String, name: String): Option[Double] =
@@ -657,7 +662,11 @@ object TurtleStitchToBeExpressionParser {
       val statements = commandStatements(script.blocks.toList.flatMap(block => parseBlock(block, phaseOne)))
       val x = script.x.map(_.round.toInt).getOrElse(156)
       val y = script.y.map(_.round.toInt).getOrElse(66)
-      ScriptParse(statements, SnapCanvasScript(x, y, statements.size))
+      val hasReceiveGo = script.blocks.headOption.exists(block => blockSelector(block).contains("receiveGo"))
+      ScriptParse(
+        statements,
+        SnapCanvasScript(x, y, SnapTurtlePythonBridge.scriptStatementCount(statements), hasReceiveGo)
+      )
     }
 
   private def parseBlock(block: BlockLike, phaseOne: PhaseOneResult): Option[BeExpression] =

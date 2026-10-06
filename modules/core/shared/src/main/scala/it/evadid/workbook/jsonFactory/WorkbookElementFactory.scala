@@ -11,7 +11,7 @@ import it.evadid.workbook.elements.interactionElements.TurtleStitch.{TurtleStitc
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExercise
+import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExercise, ProgrammingExerciseFullJava}
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
 import it.evadid.workbook.elements.interactionElements.sortingExercise.SortingInteraction
@@ -154,6 +154,7 @@ object WorkbookElementFactory {
     classOf[TurtleStitchExploreProjectElement].getSimpleName -> TurtleStitchExploreProjectElement.factory,
     classOf[TurtleStitchRecreateShapeInteraction].getSimpleName -> TurtleStitchRecreateShapeInteraction.factory,
     classOf[ProgrammingExercise].getSimpleName -> ProgrammingExercise.factory,
+    classOf[ProgrammingExerciseFullJava].getSimpleName -> ProgrammingExerciseFullJava.factory,
     //  classOf[ImageElement.FileBasedImageElement].getSimpleName -> ImageElement.FileBasedImageElement.factory,
     classOf[ImageElement.LanguageMapBasedImageElement].getSimpleName -> LanguageMapBasedImageElement.factory
   )

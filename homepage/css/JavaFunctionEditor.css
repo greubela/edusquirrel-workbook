@@ -1,0 +1,439 @@
+.java-function-based-editor {
+    --jfe-ink: #172438;
+    --jfe-muted: #68778d;
+    --jfe-border: #dce4ee;
+    --jfe-surface: #ffffff;
+    --jfe-subtle: #f5f8fc;
+    --jfe-accent: #2864c5;
+    --jfe-accent-strong: #194e9d;
+    --jfe-shadow: 0 14px 36px rgba(30, 55, 90, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    min-height: 0;
+    color: var(--jfe-ink);
+    font-family: Inter, "Segoe UI", system-ui, sans-serif;
+}
+
+.java-function-based-editor *,
+.java-function-editor__dialog-backdrop * {
+    box-sizing: border-box;
+}
+
+.java-function-editor__topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    border: 1px solid var(--jfe-border);
+    border-radius: 1rem;
+    background: linear-gradient(120deg, #fff 0%, #f3f7ff 100%);
+    box-shadow: var(--jfe-shadow);
+}
+
+.java-function-editor__topbar h2,
+.java-function-editor__topbar p,
+.java-function-editor__section-heading h3,
+.java-function-editor__section-heading p,
+.java-function-editor__workspace-heading h3,
+.java-function-editor__workspace-heading p {
+    margin: 0;
+}
+
+.java-function-editor__title {
+    font-size: clamp(1.25rem, 2.5vw, 1.65rem);
+    font-weight: 750;
+    letter-spacing: -0.035em;
+}
+
+.java-function-editor__subtitle,
+.java-function-editor__section-hint {
+    margin-top: 0.25rem !important;
+    color: var(--jfe-muted);
+    font-size: 0.9rem;
+}
+
+.java-function-editor__sync {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    gap: 0.5rem;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid transparent;
+    border-radius: 99px;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.java-function-editor__sync--synced {
+    color: #14734b;
+    border-color: #bce7d2;
+    background: #eaf8f1;
+}
+
+.java-function-editor__sync--unsynced {
+    color: #9a5700;
+    border-color: #f1d3a1;
+    background: #fff7e8;
+}
+
+.java-function-editor__sync-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.java-function-editor__diagram-section,
+.java-function-editor__workspace {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    min-width: 0;
+}
+
+.java-function-editor__section-heading,
+.java-function-editor__workspace-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.java-function-editor__section-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+}
+
+.java-function-editor__class-row {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0.9rem;
+    overflow-x: auto;
+    padding: 0.15rem 0.15rem 0.75rem;
+    scrollbar-color: #bdc9da transparent;
+    scrollbar-width: thin;
+}
+
+.java-function-editor__class-card {
+    display: flex;
+    flex: 0 0 18rem;
+    flex-direction: column;
+    min-height: 9rem;
+    padding: 1rem;
+    border: 1px solid var(--jfe-border);
+    border-radius: 0.9rem;
+    background: var(--jfe-surface);
+    box-shadow: 0 5px 16px rgba(30, 55, 90, 0.06);
+    transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.java-function-editor__class-card:hover {
+    transform: translateY(-2px);
+    border-color: #b9cbe4;
+    box-shadow: 0 10px 24px rgba(30, 55, 90, 0.1);
+}
+
+.java-function-editor__class-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--jfe-border);
+}
+
+.java-function-editor__class-name {
+    overflow: hidden;
+    color: #243b5a;
+    font-size: 1rem;
+    text-overflow: ellipsis;
+}
+
+.java-function-editor__function-list {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+    padding-top: 0.65rem;
+}
+
+.java-function-editor__empty-class {
+    padding: 0.35rem 0.1rem;
+    color: var(--jfe-muted);
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+.java-function-editor__function {
+    width: 100%;
+    padding: 0.55rem 0.65rem;
+    overflow-wrap: anywhere;
+    border: 1px solid transparent;
+    border-radius: 0.55rem;
+    background: transparent;
+    color: #394b63;
+    cursor: pointer;
+    font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+    font-size: 0.78rem;
+    text-align: left;
+    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.java-function-editor__function:hover:not(:disabled) {
+    border-color: #d6e4f7;
+    background: #f1f6ff;
+    color: var(--jfe-accent-strong);
+}
+
+.java-function-editor__function--selected {
+    border-color: #c7daf7;
+    background: #eaf2ff;
+    color: var(--jfe-accent-strong);
+    font-weight: 650;
+}
+
+.java-function-editor__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-height: 2.4rem;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid transparent;
+    border-radius: 0.6rem;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 650;
+    transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.java-function-editor__button:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.java-function-editor__button:focus-visible,
+.java-function-editor__function:focus-visible,
+.java-function-editor__field input:focus-visible {
+    outline: 3px solid rgba(40, 100, 197, 0.3);
+    outline-offset: 2px;
+}
+
+.java-function-editor__button:disabled,
+.java-function-editor__function:disabled {
+    cursor: not-allowed;
+    opacity: 0.52;
+}
+
+.java-function-editor__button--primary {
+    border-color: var(--jfe-accent);
+    background: var(--jfe-accent);
+    color: #fff;
+    box-shadow: 0 3px 8px rgba(40, 100, 197, 0.18);
+}
+
+.java-function-editor__button--primary:hover:not(:disabled) {
+    background: var(--jfe-accent-strong);
+}
+
+.java-function-editor__button--secondary,
+.java-function-editor__button--small {
+    border-color: var(--jfe-border);
+    background: #fff;
+    color: #3d506a;
+}
+
+.java-function-editor__button--secondary:hover:not(:disabled),
+.java-function-editor__button--small:hover:not(:disabled) {
+    border-color: #b9cbe4;
+    background: #f5f8fc;
+}
+
+.java-function-editor__button--small {
+    min-height: 2rem;
+    padding: 0.35rem 0.55rem;
+    white-space: nowrap;
+    font-size: 0.75rem;
+}
+
+.java-function-editor__empty-diagram,
+.java-function-editor__editor-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0.4rem;
+    min-height: 8rem;
+    padding: 1.25rem;
+    border: 1px dashed #c8d4e3;
+    border-radius: 0.85rem;
+    background: var(--jfe-subtle);
+    color: #43546a;
+}
+
+.java-function-editor__empty-diagram span,
+.java-function-editor__editor-placeholder span {
+    color: var(--jfe-muted);
+    font-size: 0.9rem;
+}
+
+.java-function-editor__editor-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    min-height: 15rem;
+    padding: 0.85rem;
+    border: 1px solid var(--jfe-border);
+    border-radius: 0.85rem;
+    background: #fff;
+    box-shadow: var(--jfe-shadow);
+}
+
+.java-function-editor__editor-panel--hidden,
+.java-function-editor__editor-placeholder--hidden,
+.java-function-editor__draft-warning--hidden {
+    display: none !important;
+}
+
+.java-function-based-editor .code-mirror-editor {
+    min-height: 14rem;
+    overflow: hidden;
+    border: 1px solid #d7e0ec;
+    border-radius: 0.65rem;
+    background: #fbfcfe;
+}
+
+.java-function-based-editor .code-mirror-editor__fallback {
+    display: block;
+    width: 100%;
+    min-height: 14rem;
+    padding: 1rem;
+    border: 0;
+    background: #fbfcfe;
+    color: var(--jfe-ink);
+    font: 0.9rem/1.55 "JetBrains Mono", "Fira Code", Consolas, monospace;
+    resize: vertical;
+}
+
+.java-function-editor__draft-warning {
+    padding: 0.65rem 0.8rem;
+    border: 1px solid #f1d3a1;
+    border-radius: 0.55rem;
+    background: #fff7e8;
+    color: #895000;
+    font-size: 0.85rem;
+}
+
+.java-function-editor__dialog-backdrop {
+    position: fixed;
+    z-index: 10000;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(19, 31, 49, 0.48);
+    backdrop-filter: blur(3px);
+}
+
+.java-function-editor__dialog {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: min(30rem, 100%);
+    max-height: min(90vh, 44rem);
+    overflow-y: auto;
+    padding: clamp(1.25rem, 4vw, 1.75rem);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 1rem;
+    background: #fff;
+    box-shadow: 0 24px 70px rgba(17, 31, 52, 0.24);
+}
+
+.java-function-editor__dialog-title {
+    margin: 0;
+    color: var(--jfe-ink);
+    font-size: 1.3rem;
+    letter-spacing: -0.025em;
+}
+
+.java-function-editor__dialog-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.java-function-editor__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    color: #3d506a;
+    font-size: 0.86rem;
+    font-weight: 600;
+}
+
+.java-function-editor__field input {
+    width: 100%;
+    min-height: 2.65rem;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid #cbd6e4;
+    border-radius: 0.55rem;
+    background: #fff;
+    color: var(--jfe-ink);
+    font: inherit;
+    font-weight: 400;
+}
+
+.java-function-editor__field input:focus {
+    border-color: var(--jfe-accent);
+}
+
+.java-function-editor__dialog-error {
+    min-height: 1.2rem;
+    margin: 0;
+    color: #a12622;
+    font-size: 0.86rem;
+}
+
+.java-function-editor__dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.55rem;
+    padding-top: 0.35rem;
+}
+
+@media (max-width: 600px) {
+    .java-function-editor__topbar {
+        align-items: flex-start;
+        padding: 1rem;
+    }
+
+    .java-function-editor__sync {
+        padding: 0.4rem 0.55rem;
+        font-size: 0.75rem;
+    }
+
+    .java-function-editor__section-heading {
+        align-items: flex-start;
+    }
+
+    .java-function-editor__class-card {
+        flex-basis: min(18rem, 82vw);
+    }
+
+    .java-function-editor__workspace-heading {
+        align-items: flex-start;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .java-function-editor__class-card,
+    .java-function-editor__button,
+    .java-function-editor__function {
+        transition: none;
+    }
+}
