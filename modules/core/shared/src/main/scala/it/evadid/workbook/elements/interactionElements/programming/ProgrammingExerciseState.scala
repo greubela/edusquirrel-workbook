@@ -28,6 +28,8 @@ final case class ProgrammingStateBeExpression(expression: BeExpression) extends 
 
   def deriveTurtleCommands: List[TurtleCommand[Double]] = BeExpressionToTurtleCommands(expression)
   def executedTurtleCommands(): List[TurtleCommand[Double]] = deriveTurtleCommands
+
+  override val toString: String = s"ProgrammingStateBeExpression(${expression.toString.take(300)})"
 }
 
 final case class ProgrammingStateSnapXml(val snapXml: String) extends ProgrammingState {
@@ -36,6 +38,7 @@ final case class ProgrammingStateSnapXml(val snapXml: String) extends Programmin
   override def toSnapXml: ProgrammingStateSnapXml = this
   override def toPython: ProgrammingStatePythonString = toBeExpressionState.toPython
   override def toJava: ProgrammingStateJavaString = toBeExpressionState.toJava
+  override val toString: String = s"ProgrammingStateSnapXml(${snapXml.toString.take(300)})"
 }
 final case class ProgrammingStateSnapXMLWithAdditionalFloatingObjects(
      val snapXml: String,
@@ -45,6 +48,7 @@ final case class ProgrammingStateSnapXMLWithAdditionalFloatingObjects(
   override def toSnapXml: ProgrammingStateSnapXml = ProgrammingStateSnapXml(snapXml)
   override def toPython: ProgrammingStatePythonString = toBeExpressionState.toPython
   override def toJava: ProgrammingStateJavaString = toBeExpressionState.toJava
+
 }
 final case class ProgrammingStatePythonString(code: String) extends ProgrammingState {
   override def toBeExpressionState: ProgrammingStateBeExpression =
@@ -53,6 +57,7 @@ final case class ProgrammingStatePythonString(code: String) extends ProgrammingS
     SnapTurtlePythonBridge.applyPython(code).fold(message => throw IllegalArgumentException(message), identity)
   override def toPython: ProgrammingStatePythonString = this
   override def toJava: ProgrammingStateJavaString = toBeExpressionState.toJava
+  override val toString: String = s"ProgrammingStatePythonString(${code.toString.take(300)})"
 }
 final case class ProgrammingStateJavaString(code: String) extends ProgrammingState {
   override def toBeExpressionState: ProgrammingStateBeExpression =
@@ -60,6 +65,7 @@ final case class ProgrammingStateJavaString(code: String) extends ProgrammingSta
   override def toSnapXml: ProgrammingStateSnapXml = toBeExpressionState.toSnapXml
   override def toPython: ProgrammingStatePythonString = toBeExpressionState.toPython
   override def toJava: ProgrammingStateJavaString = this
+  override val toString: String = s"ProgrammingStateJavaString(${code.toString.take(300)})"
 }
 
 /** Small, shared Snap reader used by the state conversion boundary. It deliberately accepts the

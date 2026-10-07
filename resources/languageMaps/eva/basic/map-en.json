@@ -40,7 +40,7 @@
   "hideHeader": "Hide Navigation",
   "openEditor": "Open Editor",
   "canvas": "Your program",
-  "runProgram": "Run (Pyodide)",
+  "runProgram": "Run (Snap Animation)",
   "turtleOutput": "Turtle output",
   "turtleResult": "Your result",
   "staticPreviewProgram": "Static preview",
