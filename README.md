@@ -181,6 +181,15 @@ npm run dev         # build + assemble _site/ + serve on http://localhost:4173
 npm run preview     # serve an already assembled _site/ on http://localhost:4173
 ```
 
+Run the core tests on both JVM and JavaScript after installing the locked Node dependencies:
+
+```bash
+npm ci
+sbt 'coreJVM/test' 'coreJS/test'
+```
+
+The SVG rendering tests use jsdom with deterministic canvas measurements to check layout, text styling, and click handling.
+
 Useful sbt tasks from `build.sbt` include:
 
 ```bash
