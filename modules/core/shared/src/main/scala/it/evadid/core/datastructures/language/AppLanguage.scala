@@ -34,7 +34,8 @@ object AppLanguage {
 
   sealed trait SpecialLanguage(val name: String) extends AppLanguage
 
-  case object UniversalLanguage extends SpecialLanguage("universal") 
+  case object UniversalLanguage extends SpecialLanguage("universal")
+  case object SnapLanguage extends ProgrammingLanguage("snap", ".xml")
 
   def default(): HumanLanguage = English
 

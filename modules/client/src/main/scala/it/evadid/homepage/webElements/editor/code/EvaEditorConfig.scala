@@ -1,6 +1,6 @@
 package it.evadid.homepage.webElements.editor.code
 
-import it.evadid.core.datastructures.language.AppLanguage.{English, Python, Java, ProgrammingLanguage}
+import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditorConfig, LibraryTab}
 
 /** Configuration for the EvaEditor, which combines multiple language editors.
@@ -11,7 +11,7 @@ import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditorConf
   */
 case class EvaEditorConfig(
     snapConfig: SnapCodeEditorConfig = SnapCodeEditorConfig(),
-    enabledLanguages: List[ProgrammingLanguage] = List(Python, Java),
+    enabledLanguages: List[ProgrammingLanguage] = List(SnapLanguage, Python, Java),
     additionalLibraryTabs: List[LibraryTab] = Nil
 )
 
