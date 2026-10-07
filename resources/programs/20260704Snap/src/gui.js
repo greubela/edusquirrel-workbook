@@ -1697,6 +1697,11 @@ IDE_Morph.prototype.createControlBar = function () {
 IDE_Morph.prototype.createCategories = function () {
     var myself = this,
         primCats = this.primitiveCategories(),
+        customCats = this.config.eduEmptyLibrary ? []
+            : (this.config.eduLibraryTabs && this.config.eduLibraryTabs.length
+                ? this.config.eduLibraryTabs.filter(name =>
+                    SpriteMorph.prototype.customCategories.has(name))
+                : Array.from(SpriteMorph.prototype.customCategories.keys()).sort()),
         categorySelectionAction = this.scene.unifiedPalette ? scrollToCategory
             : changePalette,
         categoryQueryAction = this.scene.unifiedPalette ? queryTopCategory
@@ -1840,7 +1845,7 @@ IDE_Morph.prototype.createCategories = function () {
         var button = categoryButton('motion'),
             buttonWidth = button.width(),
             buttonHeight = button.height(),
-            more = SpriteMorph.prototype.customCategories.size,
+            more = customCats.length,
             len = primCats.length,
             halve = Math.ceil(len / 2),
             border = 3,
@@ -1908,10 +1913,7 @@ IDE_Morph.prototype.createCategories = function () {
 
     primCats.forEach(cat => addCategoryButton(cat));
 
-    // sort alphabetically
-    Array.from(
-        SpriteMorph.prototype.customCategories.keys()
-    ).sort().forEach(name =>
+    customCats.forEach(name =>
         addCustomCategoryButton(
             name,
             SpriteMorph.prototype.customCategories.get(name)
