@@ -12,6 +12,7 @@ sealed trait AppShapeElement[T: Fractional] {
   def childrenInRenderingOrder: List[AppShapeElement[T]]
 
   private def withMinimumDimension(renderingConfig: AppShapeRenderingConfig[T]): AppElementMeasured[T] = {
+    RenderingDimension.validateDimension(renderingConfig.gapBetweenConsecutiveShapes, "shape gaps")
     val childrenMeasured = childrenInRenderingOrder.map(_.withMinimumDimension(renderingConfig))
     val minimumDimension: RenderingDimension[T] = compositeControl.calculateMyMinimumDimension(childrenMeasured, elementConfig, renderingConfig)
     AppElementMeasured(childrenMeasured, this, minimumDimension, renderingConfig)
@@ -23,6 +24,9 @@ sealed trait AppShapeElement[T: Fractional] {
   }
 
   def renderComposition(renderingConfig: AppShapeRenderingConfig[T], targetBounds: Bounds[T]): AppElementRendered[T] = {
+    val N = summon[Fractional[T]]
+    require(N.toDouble(targetBounds.startX).isFinite && N.toDouble(targetBounds.startY).isFinite,
+      "target origin must be finite")
     val myDimension = RenderingDimension.fromFullDimensionAndConfig(targetBounds.dimension, elementConfig, renderingConfig)
     this.
       withMinimumDimension(renderingConfig)
@@ -78,15 +82,22 @@ object AppShapeElement {
   /** A composition tree whose minimum dimensions have been calculated bottom-up. */
   case class AppElementMeasured[T: Fractional](children: List[AppElementMeasured[T]], baseElement: AppShapeElement[T], minimumDimension: RenderingDimension[T], renderingConfig: AppShapeRenderingConfig[T]) {
     def withTargetDimension(renderingSize: RenderingDimension[T]): AppElementDimensioned[T] = {
+      val N = summon[Fractional[T]]
+      // Compositions reserve their children's minimum sizes. Reject a smaller
+      // allocation instead of rendering children outside the parent's viewport.
+      require(children.isEmpty ||
+        (N.gteq(renderingSize.rawDimension.width, minimumDimension.rawDimension.width) &&
+          N.gteq(renderingSize.rawDimension.height, minimumDimension.rawDimension.height)),
+        s"composition target is smaller than its minimum: target=$renderingSize, minimum=$minimumDimension")
       val relativeBoundsRaw = AppShapeCompositeControl.calculateRelativeBounds(renderingSize.rawDimension, baseElement.compositeControl.desiredAspectRatioAndAlignment)
       val adjustedRenderingSize = RenderingDimension.fromRawDimensionAndConfig(relativeBoundsRaw.dimension, baseElement.elementConfig, renderingConfig)
       val childrenDimensioned = baseElement.compositeControl.calculateChildrenDimensions(children, adjustedRenderingSize, baseElement.elementConfig, renderingConfig)
-      AppElementDimensioned(childrenDimensioned, this, relativeBoundsRaw)
+      AppElementDimensioned(childrenDimensioned, this, relativeBoundsRaw, renderingSize)
     }
   }
 
   /** A measured composition whose node and descendants have concrete dimensions. */
-  case class AppElementDimensioned[T: Fractional](children: List[AppElementDimensioned[T]], compositionMeasurd: AppElementMeasured[T], relativeBoundsRaw: RelativeBounds[T]) {
+  case class AppElementDimensioned[T: Fractional](children: List[AppElementDimensioned[T]], compositionMeasurd: AppElementMeasured[T], relativeBoundsRaw: RelativeBounds[T], allocatedSize: RenderingDimension[T]) {
 
     lazy val adjustedRenderingSize: RenderingDimension[T] = RenderingDimension.fromRawDimensionAndConfig(relativeBoundsRaw.dimension, compositionMeasurd.baseElement.elementConfig, compositionMeasurd.renderingConfig)
 
@@ -94,18 +105,19 @@ object AppShapeElement {
       val paddingToUse = compositionMeasurd.baseElement.elementConfig.useCustomPadding.getOrElse(compositionMeasurd.renderingConfig.defaultPadding)
       val contentOffset = paddingToUse.asPoint + relativeBoundsRaw.offsetInParents + offsetCalculatedFromParent
       val childrenPositioned = compositionMeasurd.baseElement.compositeControl.calculateChildrenPositions(children, adjustedRenderingSize, compositionMeasurd.baseElement.elementConfig, compositionMeasurd.renderingConfig)
-      AppElementPositioned(childrenPositioned, this, adjustedRenderingSize.rawDimension.withOffset(contentOffset))
+      AppElementPositioned(childrenPositioned, this, adjustedRenderingSize.rawDimension.withOffset(contentOffset),
+        allocatedSize.fullDimension.withOffset(offsetCalculatedFromParent))
     }
   }
 
   /** A dimensioned composition with bounds relative to its parent. */
-  case class AppElementPositioned[T: Fractional](children: List[AppElementPositioned[T]], compositionDimensioned: AppElementDimensioned[T], relativeBounds: RelativeBounds[T]) {
+  case class AppElementPositioned[T: Fractional](children: List[AppElementPositioned[T]], compositionDimensioned: AppElementDimensioned[T], relativeBounds: RelativeBounds[T], relativeOuterBounds: RelativeBounds[T]) {
     def asRendered(myAbsoluteStartingPoint: Point[T]): AppElementRendered[T] = {
       val myBounds = relativeBounds.toAbsoluteBounds(myAbsoluteStartingPoint)
       // Child offsets are relative to the parent's content origin. The previous
       // implementation added each child offset here and again in asRendered.
       val childrenRendered = children.map(_.asRendered(myBounds.startPoint))
-      AppElementRendered(childrenRendered, this, myBounds)
+      AppElementRendered(childrenRendered, this, myBounds, relativeOuterBounds.toAbsoluteBounds(myAbsoluteStartingPoint))
     }
   }
 
@@ -115,6 +127,7 @@ object AppShapeElement {
                                                 children: List[AppElementRendered[T]],
                                                 compositionPositioned: AppElementPositioned[T],
                                                 myBounds: Bounds[T],
+                                                outerBounds: Bounds[T],
                                               ) {
     def elementConfig: AppShapeElementConfig[T] = compositionPositioned.compositionDimensioned.compositionMeasurd.baseElement.elementConfig
 
