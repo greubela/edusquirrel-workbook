@@ -8,10 +8,12 @@ import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingS
 import it.evadid.vm.parsing.java.clean.JavaParser
 
 import scala.util.Try
+import java.util.UUID
 
 final class JavaFunctionBasedEditor(
     val state: Var[ProgrammingState],
-    onStateEdited: ProgrammingState => Unit = _ => ()
+    onStateEdited: ProgrammingState => Unit = _ => (),
+    reference: Option[() => Element] = None
 ) extends HtmlAppElement {
   import JavaFunctionBasedEditor.*
 
@@ -27,6 +29,7 @@ final class JavaFunctionBasedEditor(
   private val sourceDraft = Var(sourceCode)
   private val structureReady = Var(structurallyBalanced(sourceCode))
   private val sourceView = Var(initialSelection.isEmpty)
+  private val structureOpen = Var(true)
   private val editorRevision = Var(0)
   private val dialogMode = Var(Option.empty[DialogMode])
   private val dialogClassName = Var(Option.empty[String])
@@ -257,31 +260,49 @@ final class JavaFunctionBasedEditor(
     )
   }
 
-  override def getDomElement(): Element =
+  override def getDomElement(): Element = {
+    val navigationId = s"java-navigation-${UUID.randomUUID()}"
     div(
-      cls := "java-function-based-editor",
+      cls <-- structureOpen.signal.map { open =>
+        "java-function-based-editor" +
+          (if reference.isDefined then " java-function-based-editor--with-reference" else "") +
+          (if open then "" else " java-function-based-editor--structure-collapsed")
+      },
       onMountCallback { ctx =>
         state.signal.foreach(commitExternalState)(using ctx.owner)
       },
       div(
         cls := "java-function-editor__topbar",
         div(
-          h2(cls := "java-function-editor__title", "Java function editor"),
+          h2(cls := "java-function-editor__title", "Java editor"),
           p(cls := "java-function-editor__subtitle", "Explore classes and edit one method at a time.")
         ),
-        span(
-          cls := "java-function-editor__sync",
-          role := "status",
-          aria.live := "polite",
-          span(child.text <-- sourceView.signal.map(if _ then "Full source" else "Method view"))
+        div(
+          cls := "java-function-editor__topbar-actions",
+          button(
+            typ := "button",
+            cls := "java-function-editor__button java-function-editor__button--secondary",
+            aria.controls := navigationId,
+            aria.expanded <-- structureOpen.signal,
+            child.text <-- structureOpen.signal.map(if _ then "Hide classes" else "Show classes"),
+            onClick --> (_ => structureOpen.update(!_))
+          ),
+          span(
+            cls := "java-function-editor__sync",
+            role := "status",
+            aria.live := "polite",
+            child.text <-- sourceView.signal.map(if _ then "Full source" else "Method view")
+          )
         )
       ),
-      div(
+      navTag(
+        idAttr := navigationId,
+        aria.label := "Java classes and methods",
         cls := "java-function-editor__diagram-section",
         div(
           cls := "java-function-editor__section-heading",
           div(
-            h3(cls := "java-function-editor__section-title", "Class diagram"),
+            h3(cls := "java-function-editor__section-title", "Classes"),
             p(cls := "java-function-editor__section-hint", "Select a method to open it in the editor.")
           ),
           button(
@@ -395,11 +416,15 @@ final class JavaFunctionBasedEditor(
             else "java-function-editor__editor-placeholder"
           },
           strong("Choose a function to get started"),
-          span("Select a method from any class above. Its complete signature and body will appear here.")
+          span("Select a method in the class list. Its complete signature and body will appear here.")
         )
       ),
+      reference.fold[Modifier[HtmlElement]](emptyMod) { renderReference =>
+        asideTag(cls := "java-function-editor__reference", aria.label := "Task reference", renderReference())
+      },
       child <-- dialogMode.signal.map(_.fold(emptyNode)(renderDialog))
     )
+  }
 }
 
 object JavaFunctionBasedEditor {
