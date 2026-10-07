@@ -2,6 +2,7 @@ package it.evadid.workbook.elements.interactionElements.programming
 
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
+import it.evadid.vm.parsing.java.turtle.{JavaTurtleSource, JavaTurtleVmPrograms}
 import it.evadid.core.datastructures.language.AppLanguage.{English, Java}
 import it.evadid.core.datastructures.vectorShapes.svg.BeExpressionToTurtleCommands
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
@@ -60,6 +61,9 @@ final case class ProgrammingStatePythonString(code: String) extends ProgrammingS
   override val toString: String = s"ProgrammingStatePythonString(${code.toString.take(300)})"
 }
 final case class ProgrammingStateJavaString(code: String) extends ProgrammingState {
+  def toJavaVmProgram: Either[JavaTurtleSource.Diagnostic, JavaTurtleVmPrograms.Program] =
+    JavaTurtleVmPrograms.compile(code)
+
   override def toBeExpressionState: ProgrammingStateBeExpression =
     ProgrammingStateBeExpression(JavaToBeExpressionParser.parse(code))
   override def toSnapXml: ProgrammingStateSnapXml = toBeExpressionState.toSnapXml

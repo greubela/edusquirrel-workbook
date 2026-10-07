@@ -102,6 +102,15 @@ object JavaTurtleVmPrograms {
     }
   }
 
+  def compile(source: String): Either[Diagnostic, Program] =
+    for {
+      parsed <- JavaTurtleSource.parse(source)
+      structure <- JavaTurtleStructure.check(parsed)
+      checked <- JavaTurtleSemantics.check(structure)
+      resolved <- R.resolve(checked)
+      program <- adapt(resolved)
+    } yield program
+
   // Only a checked source can supply statements; arbitrary blocks would bypass Java scope checks.
   def adapt(source: R.ResolvedSource): Either[Diagnostic, Program] = {
     val bindings = V.bind(source)
