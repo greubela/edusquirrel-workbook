@@ -28,9 +28,16 @@
     box-sizing: border-box;
 }
 .java-function-based-editor :is(h2, h3, p, figure) { margin: 0; }
-.fullscreen-content-container:has(> .java-function-based-editor) {
+.fullscreen-content-container:has(> .java-function-based-editor),
+.fullscreen-content-container:has(.eva-editor .java-function-based-editor) {
     min-height: 0;
     overflow: auto;
+}
+.eva-editor__content:has(> .java-function-based-editor) {
+    overflow: auto;
+}
+.eva-editor__content > .java-function-based-editor {
+    min-height: 100%;
 }
 .java-function-editor__topbar {
     grid-area: header;
@@ -299,6 +306,7 @@
         grid-template-areas: "header" "navigation" "workspace" "reference";
     }
     .java-function-editor__diagram-section {
+        min-height: 180px;
         max-height: 280px;
         border-right: 0;
         border-bottom: 1px solid var(--jfe-border);
