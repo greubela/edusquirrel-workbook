@@ -2,10 +2,11 @@ package it.evadid.homepage.webElements.code
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.{label as labelTag, *}
-import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
 import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingState, ProgrammingStateJavaString}
 import it.evadid.vm.parsing.java.clean.JavaParser
+import org.scalajs.dom
 
 import scala.util.Try
 import java.util.UUID
@@ -14,7 +15,7 @@ final class JavaFunctionBasedEditor(
     val state: Var[ProgrammingState],
     onStateEdited: ProgrammingState => Unit = _ => (),
     reference: Option[() => Element] = None
-) extends HtmlAppElement {
+) extends HtmlAppElement with FullscreenLifecycle {
   import JavaFunctionBasedEditor.*
 
   private var displayedState = state.now()
@@ -38,6 +39,9 @@ final class JavaFunctionBasedEditor(
   private val returnTypeDraft = Var("void")
   private val parametersDraft = Var("")
   private val dialogError = Var("")
+
+  override def dismissOnOutsideClick: Boolean = false
+  override def onFullscreenClose(): Unit = dialogMode.set(None)
 
   private val functionEditor = CodeMirrorEditor(
     functionDraft,
@@ -223,38 +227,42 @@ final class JavaFunctionBasedEditor(
 
   private def renderDialog(mode: DialogMode): Element = {
     val isClassDialog = mode == DialogMode.AddClass
-    div(
+    dialogTag(
       role := "dialog",
       aria.label := (if isClassDialog then "Add class" else "Add function"),
-      cls := "java-function-editor__dialog-backdrop",
+      cls := "java-function-editor__dialog",
+      new EventProp[dom.Event]("cancel") --> { event =>
+        event.preventDefault()
+        event.stopPropagation()
+        dialogMode.set(None)
+      },
+      onMountCallback(ctx => ctx.thisNode.ref.asInstanceOf[dom.html.Dialog].showModal()),
+      onUnmountCallback(node => node.ref.asInstanceOf[dom.html.Dialog].close()),
+      h2(cls := "java-function-editor__dialog-title", if isClassDialog then "Add class" else "Add function"),
+      if isClassDialog then modalField("Class name", classNameDraft)
+      else div(cls := "java-function-editor__dialog-fields",
+        modalField("Function name", functionNameDraft),
+        modalField("Return type", returnTypeDraft),
+        modalField("Parameters (for example: int count, String label)", parametersDraft)
+      ),
+      p(
+        cls := "java-function-editor__dialog-error",
+        role := "alert",
+        child.text <-- dialogError.signal
+      ),
       div(
-        cls := "java-function-editor__dialog",
-        h2(cls := "java-function-editor__dialog-title", if isClassDialog then "Add class" else "Add function"),
-        if isClassDialog then modalField("Class name", classNameDraft)
-        else div(cls := "java-function-editor__dialog-fields",
-          modalField("Function name", functionNameDraft),
-          modalField("Return type", returnTypeDraft),
-          modalField("Parameters (for example: int count, String label)", parametersDraft)
+        cls := "java-function-editor__dialog-actions",
+        button(
+          typ := "button",
+          cls := "java-function-editor__button java-function-editor__button--secondary",
+          "Cancel",
+          onClick --> (_ => dialogMode.set(None))
         ),
-        p(
-          cls := "java-function-editor__dialog-error",
-          role := "alert",
-          child.text <-- dialogError.signal
-        ),
-        div(
-          cls := "java-function-editor__dialog-actions",
-          button(
-            typ := "button",
-            cls := "java-function-editor__button java-function-editor__button--secondary",
-            "Cancel",
-            onClick --> (_ => dialogMode.set(None))
-          ),
-          button(
-            typ := "button",
-            cls := "java-function-editor__button java-function-editor__button--primary",
-            if isClassDialog then "Add class" else "Add function",
-            onClick --> (_ => if isClassDialog then addClass() else addFunction())
-          )
+        button(
+          typ := "button",
+          cls := "java-function-editor__button java-function-editor__button--primary",
+          if isClassDialog then "Add class" else "Add function",
+          onClick --> (_ => if isClassDialog then addClass() else addFunction())
         )
       )
     )

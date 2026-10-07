@@ -232,17 +232,8 @@
 .java-function-editor__reference :is(h2, h3) { font-size: 16px; }
 .java-function-editor__reference p { color: var(--jfe-muted); }
 .java-function-editor__reference :is(img, svg, canvas) { display: block; max-width: 100%; height: auto; }
-.java-function-editor__dialog-backdrop {
-    position: fixed;
-    z-index: 10000;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    padding: 16px;
-    background: #161b24d9;
-}
+.java-function-editor__dialog::backdrop { background: #161b24d9; }
 .java-function-editor__dialog {
-    display: flex;
     flex-direction: column;
     gap: 16px;
     width: min(480px, 100%);
@@ -254,6 +245,7 @@
     background: var(--jfe-surface);
     color: var(--jfe-ink);
 }
+.java-function-editor__dialog[open] { display: flex; }
 .java-function-editor__dialog-title { font-size: 20px; font-weight: 600; }
 .java-function-editor__dialog-fields,
 .java-function-editor__field { display: flex; flex-direction: column; gap: 8px; }
