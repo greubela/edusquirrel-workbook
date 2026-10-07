@@ -12,9 +12,18 @@ import munit.FunSuite
 
 class ProgrammingExerciseStateSerializerSpec extends FunSuite {
 
+  test("Snap state companion constructs and extracts XML without recursion") {
+    val xml = "<project><scripts/></project>"
+    val state = ProgrammingStateSnapXml(xml)
+    assertEquals(state.snapXml, xml)
+    val ProgrammingStateSnapXml(extracted) = state
+    assertEquals(extracted, xml)
+    assertEquals(state.copy().snapXml, xml)
+  }
+
   test("serialize writes SNAP_XML_V1 and deserialize roundtrips xml") {
     val xml = """<project name="stored"><scenes></scenes></project>"""
-    val stored = ProgrammingExercise.StateSerializer.serialize(ProgrammingExerciseState(xml))
+    val stored = ProgrammingExercise.StateSerializer.serialize(ProgrammingStateSnapXml(xml))
     assert(stored.startsWith("PROGRAMMING_STATE_V2\nSNAP_XML"), clue = stored.take(80))
     assert(stored.contains(xml), clue = stored)
     val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
@@ -65,13 +74,13 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
 
   test("unknown version 2 representation falls back to the default Snap project") {
     val restored = ProgrammingExercise.StateSerializer.deserialize("PROGRAMMING_STATE_V2\nRUBY\nputs 1")
-    assertEquals(restored, ProgrammingExerciseState.mini)
+    assertEquals(restored, ProgrammingStateSnapXml.mini)
   }
 
   test("fingerprint is the stored xml so position-only xml differs") {
-    val a = ProgrammingExerciseState("""<project><scripts><script x="70" y="80"></script></scripts></project>""")
-    val b = ProgrammingExerciseState("""<project><scripts><script x="200" y="150"></script></scripts></project>""")
-    assert(ProgrammingExerciseState.fingerprint(a) != ProgrammingExerciseState.fingerprint(b))
+    val a = ProgrammingStateSnapXml("""<project><scripts><script x="70" y="80"></script></scripts></project>""")
+    val b = ProgrammingStateSnapXml("""<project><scripts><script x="200" y="150"></script></scripts></project>""")
+    assert(ProgrammingStateSnapXml.fingerprint(a) != ProgrammingStateSnapXml.fingerprint(b))
   }
 
   test("numeric call literal survives python migrate then xml roundtrip") {
@@ -83,7 +92,7 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
       BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts("forward"))
     )
     val call = BeFunctionCall(defn, Map(param -> BeUseValue(BeDataValueLiteral("12345"), Some(param))))
-    val state = ProgrammingExerciseState.fromProgram(BeProgram(BeStartProgram(BeSequence.optionalBody(List(call)))))
+    val state = ProgrammingStateSnapXml.fromProgram(BeProgram(BeStartProgram(BeSequence.optionalBody(List(call)))))
     val stored = ProgrammingExercise.StateSerializer.serialize(state)
     assert(stored.contains("12345"), clue = stored)
     assert(!stored.contains("arg1 ="), clue = stored)
@@ -103,7 +112,7 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
   test("unsupported snap blocks survive serialize/deserialize") {
     val xml =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script x="70" y="80"><block s="wait"><l>1</l></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
-    val stored = ProgrammingExercise.StateSerializer.serialize(ProgrammingExerciseState(xml))
+    val stored = ProgrammingExercise.StateSerializer.serialize(ProgrammingStateSnapXml(xml))
     val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
     assert(restored.toSnapXml.snapXml.contains("""s="wait""""), clue = restored.toSnapXml.snapXml)
     assertEquals(restored.toSnapXml.snapXml, xml)

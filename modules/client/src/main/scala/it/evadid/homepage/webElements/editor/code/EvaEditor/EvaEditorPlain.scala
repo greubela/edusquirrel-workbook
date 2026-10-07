@@ -11,4 +11,3 @@ case class EvaEditorPlain(override val state: Var[ProgrammingState], override va
 
 
 }
-

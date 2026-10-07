@@ -176,9 +176,6 @@ private object SnapStateConversion {
 
 
 object ProgrammingStateSnapXml {
-  def apply(snapXml: String): ProgrammingStateSnapXml = ProgrammingStateSnapXml(snapXml)
-  def unapply(state: ProgrammingStateSnapXml): Some[String] = Some(state.snapXml)
-
   /** @param previousXml XML being replaced; custom block definitions are merged forward */
   def fromProgram(
       program: BeProgram,

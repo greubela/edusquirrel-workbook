@@ -5,29 +5,38 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
-import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.*
-import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.{PyodideTurtleCommandRunner, SnapTurtleCommandExecution}
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{SnapCodeEditorConfig, SnapCodeEditorImplDelegateToOriginal, SnapPythonPopup, SnapTurtleStagePanel}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{SnapCodeEditorConfig, SnapCodeEditorImplDelegateToOriginal, SnapTurtleStagePanel}
 import it.evadid.workbook.elements.interactionElements.programming.*
 import org.scalajs.dom
-import org.scalajs.dom.IDBCursorDirection.next
 import org.scalajs.dom.html.Canvas
-
-import scala.concurrent.Future
 
 case class SnapCodeEditor(
                            state: Var[ProgrammingState],
                            config: SnapCodeEditorConfig,
-                           impl: SnapCodeEditorImpl
+                           impl: SnapCodeEditorImpl,
+                           onStateEdited: ProgrammingState => Unit = _ => ()
                          ) extends HtmlAppElement with FullscreenLifecycle {
 
   def removeAllLibraries(includeDefaultLibraries: Boolean = false): Unit =
     impl.removeAllLibraries(includeDefaultLibraries)
 
-  private def reRenderCanvas(currentState: ProgrammingStateSnapXml, canvas: Canvas): Unit = {
-    impl.loadProgramIfChanged(currentState)
-    impl.renderEditorInto(currentState, canvas, config)
+  private def publishProgramFromSnapXml(xml: String): Unit = {
+    val next = ProgrammingStateSnapXml(xml)
+    // Mark the retained project before publishing: the Var observers run as
+    // part of this update and must not reload Snap's own serialized project.
+    impl.acknowledgeProgramFromEditor(next)
+    if state.now() != next then
+      state.set(next)
+      onStateEdited(next)
+  }
+
+  private[SnapEditor] def mountEditorInto(canvas: Canvas, owner: Owner): Unit = {
+    impl.mount(owner)
+    impl.setOnProjectXmlChangedListener(publishProgramFromSnapXml)
+    impl.renderEditorInto(state.now().toSnapXml, canvas, config)
+    // Mount once. Later updates only synchronize the retained project;
+    // acknowledgeProgramFromEditor makes Snap-originated echoes no-ops.
+    state.signal.changes.map(_.toSnapXml).distinct.foreach(impl.loadProgramIfChanged)(using owner)
   }
 
   lazy val editorCanvas: Element = {
@@ -44,10 +53,7 @@ case class SnapCodeEditor(
       // installs its listeners only after this exact canvas is connected.
       onMountCallback { ctx =>
         val canvas = ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]
-        impl.mount(ctx.owner)
-        impl.setOnProjectXmlChangedListener(newCode => state.set(ProgrammingStateSnapXml(newCode)))
-        reRenderCanvas(state.now().toSnapXml, canvas)
-        state.signal.foreach(newState => reRenderCanvas(newState.toSnapXml, canvas))(using ctx.owner)
+        mountEditorInto(canvas, ctx.owner)
       }
     )
   }
@@ -78,7 +84,7 @@ case class SnapCodeEditor(
   lazy val domElement: L.Element =
     div(
       cls := "be-program-snap-fullscreen",
-      editorCanvas,
+      editorDom,
       SnapTurtleStagePanel.chrome(
         this,
         flushPending = () => impl.flushPendingProjectChanges(),
@@ -90,7 +96,7 @@ case class SnapCodeEditor(
   override def getDomElement(): L.Element = domElement
 
   override def onFullscreenOpen(): Unit =
-    impl.forceLoadProgram(state.now().toSnapXml)
+    impl.loadProgramIfChanged(state.now().toSnapXml)
     impl.fitEditorToContainer()
     impl.startWorldCycles()
 
@@ -106,6 +112,9 @@ case class SnapCodeEditor(
 
 object SnapCodeEditor {
 
+  def apply(state: Var[ProgrammingState], config: SnapCodeEditorConfig, onStateEdited: ProgrammingState => Unit): SnapCodeEditor =
+    SnapCodeEditor(state, config, SnapCodeEditorImplDelegateToOriginal(), onStateEdited)
+
   def apply(state: Var[ProgrammingState], config: SnapCodeEditorConfig): SnapCodeEditor =
     SnapCodeEditor(state, config, SnapCodeEditorImplDelegateToOriginal())
 
@@ -114,4 +123,3 @@ object SnapCodeEditor {
 
 
 }
-

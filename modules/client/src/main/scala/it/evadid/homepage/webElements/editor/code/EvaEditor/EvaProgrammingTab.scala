@@ -34,10 +34,10 @@ object EvaProgrammingTab {
         )
       }
       case SnapLanguage => {
-        EvaEditorProgrammingTab[ProgrammingStateSnapXml](
+        EvaEditorProgrammingTab[ProgrammingState](
           centralState.now(),
           programmingLanguage,
-          curVar => SnapCodeEditor(curVar.asInstanceOf[Var[ProgrammingState]], evaConfig.snapConfig),
+          curVar => SnapCodeEditor(curVar, evaConfig.snapConfig, handleOnStateChanged),
           _.toSnapXml
         )
       }
@@ -65,6 +65,8 @@ case class EvaEditorProgrammingTab[T <: ProgrammingState](
     None
   }
 
-  def setStateTo(state: ProgrammingState): Unit = canSetStateTo(state).foreach(associatedVar.set)
+  def setStateTo(state: ProgrammingState): Unit = canSetStateTo(state).foreach { next =>
+    if associatedVar.now() != next then associatedVar.set(next)
+  }
 
 }

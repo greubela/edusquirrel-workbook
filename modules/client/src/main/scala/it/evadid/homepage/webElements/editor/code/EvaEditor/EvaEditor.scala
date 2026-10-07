@@ -19,13 +19,13 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
 
   private given ExecutionContext = ExecutionContext.global
 
-  private val (snapEditor, availableTabs): (SnapCodeEditor, Map[ProgrammingLanguage, EvaEditorProgrammingTab[? <: ProgrammingState]]) = {
+  private lazy val (snapEditor, availableTabs): (SnapCodeEditor, Map[ProgrammingLanguage, EvaEditorProgrammingTab[? <: ProgrammingState]]) = {
     val res2: Map[ProgrammingLanguage, EvaEditorProgrammingTab[? <: ProgrammingState]] =
       config.enabledLanguages.map(curLang => curLang -> EvaProgrammingTab.tabFor(config, curLang, state, handleOnStateUpdate)).toMap
     val res1: HtmlAppElement = res2(SnapLanguage).editorElement
     (res1.asInstanceOf[SnapCodeEditor], res2)
   }
-  private val activeTab: Var[EvaEditorProgrammingTab[? <: ProgrammingState]] = Var(availableTabs(SnapLanguage))
+  private lazy val activeTab: Var[EvaEditorProgrammingTab[? <: ProgrammingState]] = Var(availableTabs(SnapLanguage))
 
   private def handleOnStateUpdate(next: ProgrammingState): Unit = {
     if (state.now() != next) state.set(next)
@@ -85,4 +85,3 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
 
   override def dismissOnOutsideClick: Boolean = false
 }
-

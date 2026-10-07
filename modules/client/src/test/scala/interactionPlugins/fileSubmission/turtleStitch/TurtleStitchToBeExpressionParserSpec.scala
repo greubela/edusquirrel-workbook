@@ -9,7 +9,7 @@ import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.BeFunctionCall
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExercise, ProgrammingExerciseState, ProgrammingStateSnapXml, SnapCustomBlockRules, SnapTurtlePythonBridge, SnapXmlParser}
+import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExercise, ProgrammingStateSnapXml, SnapCustomBlockRules, SnapTurtlePythonBridge, SnapXmlParser}
 import munit.FunSuite
 
 class TurtleStitchToBeExpressionParserSpec extends FunSuite {
@@ -261,7 +261,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   test("doWait block roundtrips Snap XML to python and back to Snap") {
     val xml =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script x="70" y="80"><block s="receiveGo"></block><block s="doWait"><l>1</l></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
-    val stored = ProgrammingExercise.StateSerializer.serialize(ProgrammingExerciseState(xml))
+    val stored = ProgrammingExercise.StateSerializer.serialize(ProgrammingStateSnapXml(xml))
     val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
     assert(restored.toSnapXml.snapXml.contains("""s="doWait""""), clue = restored.toSnapXml.snapXml)
 
