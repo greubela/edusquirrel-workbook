@@ -1,12 +1,8 @@
-package it.evadid.homepage.webElements.editor.code.SnapEditor
+package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchToBeExpressionParser
 import it.evadid.vm.BeProgram
-import it.evadid.workbook.elements.interactionElements.programming.{
-  ProgrammingExerciseState,
-  SnapCanvasLayout,
-  SnapTurtlePythonBridge
-}
+import it.evadid.workbook.elements.interactionElements.programming.*
 
 /**
  * XML → BeProgram / Python derivation for ProgrammingExercise consumers.
@@ -30,7 +26,7 @@ object SnapProgramDerivation {
         )
   }
 
-  def fromState(state: ProgrammingExerciseState): DerivedView =
+  def fromState(state: ProgrammingStateSnapXml): DerivedView =
     fromXml(state.snapXml)
 
   def fromXml(xml: String): DerivedView = {

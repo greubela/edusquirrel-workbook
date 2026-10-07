@@ -1,7 +1,7 @@
 package it.evadid.homepage.webElements.editor.code
 
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditorConfig, LibraryTab}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{LibraryTab, SnapCodeEditorConfig}
 
 /** Configuration for the EvaEditor, which combines multiple language editors.
   *

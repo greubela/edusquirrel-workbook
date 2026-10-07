@@ -1,6 +1,6 @@
-package it.evadid.homepage.webElements.editor.code.SnapEditor
+package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 
-import it.evadid.core.datastructures.language.AppLanguage.{English, Python, Java, ProgrammingLanguage}
+import it.evadid.core.datastructures.language.AppLanguage.{English, Java, ProgrammingLanguage, Python}
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.naming.CodeRepresentationConfig
 import it.evadid.workbook.elements.interactionElements.programming.{SnapPaletteCatalog, SnapTurtleCatalog}

@@ -17,10 +17,9 @@ sealed trait ProgrammingState derives ReadWriter {
   /** Compatibility spelling; new code should make the target representation explicit. */
   final def toBeExpression: ProgrammingStateBeExpression = toBeExpressionState
 }
-
 final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState {
   override def toBeExpressionState: ProgrammingStateBeExpression = this
-  override def toSnapXml: ProgrammingStateSnapXml = ProgrammingExerciseState.fromProgram(BeProgram(expression))
+  override def toSnapXml: ProgrammingStateSnapXml = ProgrammingStateSnapXml.fromProgram(BeProgram(expression))
   override def toPython: ProgrammingStatePythonString =
     ProgrammingStatePythonString(SnapTurtlePythonBridge.printedPython(expression))
   override def toJava: ProgrammingStateJavaString =
@@ -175,13 +174,8 @@ private object SnapStateConversion {
     }
 }
 
-/**
- * Source-compatible name for the former, Snap-only exercise state. New code
- * should accept [[ProgrammingState]] and narrow only at an editor boundary.
- */
-type ProgrammingExerciseState = ProgrammingStateSnapXml
 
-object ProgrammingExerciseState {
+object ProgrammingStateSnapXml {
   def apply(snapXml: String): ProgrammingStateSnapXml = ProgrammingStateSnapXml(snapXml)
   def unapply(state: ProgrammingStateSnapXml): Some[String] = Some(state.snapXml)
 

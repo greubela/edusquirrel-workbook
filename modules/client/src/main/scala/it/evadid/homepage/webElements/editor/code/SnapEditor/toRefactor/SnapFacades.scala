@@ -1,4 +1,4 @@
-package it.evadid.homepage.webElements.editor.code.SnapEditor
+package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 
 import org.scalajs.dom
 

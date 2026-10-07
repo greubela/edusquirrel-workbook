@@ -1,9 +1,9 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
-import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapProgramDerivation
+import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapProgramDerivation
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.{CallbackOp, PythonRunConfig, PythonRunReport}
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExerciseState
+import it.evadid.workbook.elements.interactionElements.programming.ProgrammingStateSnapXml
 import it.evadid.workbook.elements.interactionElements.programming.SnapTurtleCatalog
 import todomove.`export`.workers.PyodideWorkerClient
 
@@ -17,7 +17,7 @@ trait TurtleCommandRunner:
 
 /** Derives and executes a Snap project without modifying editor state. */
 final class SnapTurtleCommandExecution(runner: TurtleCommandRunner):
-  def commandsFor(state: ProgrammingExerciseState): Future[List[TurtleCommand[Double]]] =
+  def commandsFor(state: ProgrammingStateSnapXml): Future[List[TurtleCommand[Double]]] =
     val derived = SnapProgramDerivation.fromState(state)
     if !derived.pythonCompatible then
       Future.failed(IllegalArgumentException(

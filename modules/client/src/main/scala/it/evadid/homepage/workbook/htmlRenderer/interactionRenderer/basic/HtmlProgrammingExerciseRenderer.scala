@@ -4,12 +4,14 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.ExecutionMethod
+import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, VmToSvg}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
-import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
-import it.evadid.homepage.webElements.editor.code.EvaEditor
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorPlain}
 import it.evadid.homepage.webElements.editor.code.EvaEditorConfig
+import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapPreviewEditor
+import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
@@ -26,28 +28,8 @@ import scala.util.{Failure, Success}
 case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[ProgrammingExercise] {
 
   override protected def createRendering(workbookElement: ProgrammingExercise): AtomarLineRendering = {
-    val interaction = workbookElement.interactionVariable
-    // Fingerprint-based binding across all supported source representations.
-    val boundVar: Var[ProgrammingState] = Var(interaction.currentValue)
-    var lastFingerprint: String = ProgrammingState.fingerprint(interaction.currentValue)
 
-    interaction.observableValue.addObserver(
-      handleOnUpdate = { restored =>
-        val fp = ProgrammingState.fingerprint(restored)
-        if fp != lastFingerprint then
-          lastFingerprint = fp
-          boundVar.set(restored)
-      },
-      informObserverWith = ExecutionMethod.executeSync
-    )
-
-    def persistFromEditor(next: ProgrammingState): Unit = {
-      val fp = ProgrammingState.fingerprint(next)
-      if fp == lastFingerprint then return
-      lastFingerprint = fp
-      boundVar.set(next)
-      interaction.setStateFromUserInteraction(fullInfo.syncControl, next, UpdateImportance.MAJOR)
-    }
+    val boundVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl, UpdateImportance.MAJOR).toAirstreamVar
 
     val editorConfig: SnapCodeEditorConfig = workbookElement.editorPalette match
       case ProgrammingEditorPalette.Default => SnapCodeEditorConfig.Testing
@@ -55,15 +37,15 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       case ProgrammingEditorPalette.BeginnerTurtle => SnapCodeEditorConfig.BeginnerTurtleTesting
       case ProgrammingEditorPalette.Embroidery => SnapCodeEditorConfig.EmbroideryTesting
 
-    val editor = EvaEditor(boundVar, EvaEditorConfig(snapConfig = editorConfig), onStateEdited = persistFromEditor)
+    val editor = EvaEditorPlain(boundVar, EvaEditorConfig(snapConfig = editorConfig))
 
-    def buttonPressed(): Unit =
-      fullInfo.displayControl.setFullscreen(editor)
+    def buttonPressed(): Unit = fullInfo.displayControl.setFullscreen(editor)
 
     val button: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/OpenEditor", event => buttonPressed())
     val buttonCard = ElementCard(LanguageMapContentId("basic/openEditor"), button.getDomElement())
 
-    val canvasCard = ElementCard(LanguageMapContentId("basic/canvas"), editor.previewCanvas)
+    val previewEditor = SnapPreviewEditor(boundVar, editorConfig)
+    val canvasCard = ElementCard(LanguageMapContentId("basic/canvas"), previewEditor.getDomElement())
 
     // static preview based on the custom display engine (not working yet, for test purposes)
     val shapeLogger = Logger.withNameAndPrefixes(
@@ -76,39 +58,21 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
         shapeLogger,
         VmToSvg.renderBeExpression(
           shapeLogger,
-          editor.currentState().toBeExpressionState.expression
+          editor.state.now().toBeExpressionState.expression
         )
       )
     )
 
-    val interactivePreview = {
-      val cmd = editor.currentState().toBeExpressionState.deriveTurtleCommands
-      val exp = TurtleGraphic.TurtleLineBasedProgram(List(
-        TurtleGraphic.Line[Double](Point[Double](0, 0), Point[Double](100, 0)),
-        TurtleGraphic.Line[Double](Point[Double](100, 0), Point[Double](100, 100))
-      ))
-
-      ElementCard(
-        LanguageMapContentId("basic/gradingPreviewProgram"),
-        TurtleJsxGraphRenderer.render(cmd, exp)
-      )
-    }
 
     // Run → TurtleStitchWorker.simulateGreenFlag → stage PNG
     val stageImageVar: Var[Option[FullImage]] = Var(None)
 
     def runProgram(): Unit = {
-      editor.getCurrentTurtleCommands().onComplete{
-        case Success(res) => {
-          println("Turtle Commands: " + res)
-          val path = TurtlePathBuilder[Double](Point(0,0), res, 90)
-          val img = FullImage(path.svgPathBuilder)
-          stageImageVar.set(Some(img))
-          val pathD = path.svgPathBuilder.toSvgPathD
-          println("pathD: " + pathD)
-        }
-        case Failure(exception) => throw exception
-      }
+      val res = editor.state.now().toBeExpressionState.deriveTurtleCommands
+      val path = TurtlePathBuilder[Double](Point(0, 0), res, 90)
+      val img = FullImage(path.svgPathBuilder)
+      stageImageVar.set(Some(img))
+      val pathD = path.svgPathBuilder.toSvgPathD
     }
 
     val runButton: HtmlButtonElement =
@@ -136,6 +100,6 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     )
 
     AtomarLineRendering.cardLine(workbookElement,
-      List(buttonCard, canvasCard, interactivePreview, staticRendering, runCard))
+      List(buttonCard, canvasCard, staticRendering, runCard))
   }
 }

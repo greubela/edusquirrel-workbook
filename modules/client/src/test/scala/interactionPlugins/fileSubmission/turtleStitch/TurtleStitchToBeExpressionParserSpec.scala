@@ -1,22 +1,15 @@
 package interactionPlugins.fileSubmission.turtleStitch
 
+import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
+import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapProgramDerivation
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.TurtleFileSubmission
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.{
-  TurtleStitchFromBeExpressionSerializer,
-  TurtleStitchToBeExpressionParser
-}
+import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.{TurtleStitchFromBeExpressionSerializer, TurtleStitchToBeExpressionParser}
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.BeFunctionCall
-import it.evadid.workbook.elements.interactionElements.programming.{
-  ProgrammingExercise,
-  ProgrammingExerciseState,
-  SnapCustomBlockRules,
-  SnapTurtlePythonBridge,
-  SnapXmlParser
-}
+import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExercise, ProgrammingExerciseState, ProgrammingStateSnapXml, SnapCustomBlockRules, SnapTurtlePythonBridge, SnapXmlParser}
 import munit.FunSuite
 
 class TurtleStitchToBeExpressionParserSpec extends FunSuite {
@@ -99,7 +92,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   }
 
   test("ProgrammingExercise xml persist roundtrips scripts across reload") {
-    val state = ProgrammingExerciseState(twoScriptsXml)
+    val state = ProgrammingStateSnapXml(twoScriptsXml)
     val stored = ProgrammingExercise.StateSerializer.serialize(state)
     assert(stored.startsWith("PROGRAMMING_STATE_V2\nSNAP_XML"), clue = stored.take(80))
     val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
@@ -174,14 +167,14 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   test("valued test = 0 roundtrip does not append a bare test line") {
     val program = BeProgram.fromPythonString("test = 0\n")
     val xml = TurtleStitchFromBeExpressionSerializer.toXml(program.fullProgram)
-    val derived = it.evadid.homepage.webElements.editor.code.SnapEditor.SnapProgramDerivation.fromXml(xml)
+    val derived = SnapProgramDerivation.fromXml(xml)
     val lines = derived.python.linesIterator.map(_.trim).filter(_.nonEmpty).toList
     assert(!lines.contains("test"), clue = derived.python + "\n" + xml)
     assert(derived.pythonCompatible, clue = (derived.unsupportedSelectors, derived.python))
 
     val nested =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doSetVar"><block var="test"/><l>0</l></block></script></scripts></sprite></sprites></stage><variables><variable name="test"><l>0</l></variable></variables></scene></scenes></project>"""
-    val nestedDerived = it.evadid.homepage.webElements.editor.code.SnapEditor.SnapProgramDerivation.fromXml(nested)
+    val nestedDerived = toRefactor.SnapProgramDerivation.fromXml(nested)
     val nestedLines = nestedDerived.python.linesIterator.map(_.trim).filter(_.nonEmpty).toList
     assert(nestedLines.contains("test = 0"), clue = nestedDerived.python)
     assert(!nestedLines.contains("test"), clue = nestedDerived.python)
@@ -190,7 +183,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
 
     val sibling =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doSetVar"><l>test</l><l>0</l></block><block var="test"/></script></scripts></sprite></sprites></stage><variables><variable name="test"><l>0</l></variable></variables></scene></scenes></project>"""
-    val siblingDerived = it.evadid.homepage.webElements.editor.code.SnapEditor.SnapProgramDerivation.fromXml(sibling)
+    val siblingDerived = toRefactor.SnapProgramDerivation.fromXml(sibling)
     val siblingLines = siblingDerived.python.linesIterator.map(_.trim).filter(_.nonEmpty).toList
     assert(siblingLines.contains("test = 0"), clue = siblingDerived.python)
     assert(!siblingLines.contains("test"), clue = siblingDerived.python)
@@ -280,7 +273,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     val python = SnapTurtlePythonBridge.printedPython(parsed.expression)
     assert(python.contains("do_wait(1)"), clue = python)
 
-    val derived = it.evadid.homepage.webElements.editor.code.SnapEditor.SnapProgramDerivation.fromXml(xml)
+    val derived = toRefactor.SnapProgramDerivation.fromXml(xml)
     assert(derived.pythonCompatible, clue = derived)
     assert(!derived.unsupportedSelectors.contains("doWait"), clue = derived.unsupportedSelectors)
 
@@ -490,7 +483,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
       """<block-definition s="area %size" type="reporter" category="Pen"><inputs><input type="%n"></input></inputs><script><block s="doReport"><block var="size"/></block></script></block-definition>""",
       """<block s="receiveGo"></block>"""
     )
-    val derived = it.evadid.homepage.webElements.editor.code.SnapEditor.SnapProgramDerivation.fromXml(xml)
+    val derived = toRefactor.SnapProgramDerivation.fromXml(xml)
     assert(!derived.pythonCompatible, clue = derived)
     assert(derived.unsupportedSelectors.exists(_.contains("area %size")), clue = derived.unsupportedSelectors)
   }
