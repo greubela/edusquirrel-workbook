@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.interactionElements.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
+import it.evadid.workbook.elements.interactionElements.Turtle.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 
@@ -43,7 +43,7 @@ case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends Wor
     val nameRelToResources = "workbookresources/embroidery/desiredShapes/" + imageName + ".png"
     //val imgElement = HtmlImageElement(fileDesc, fullInfo)
     //TurtleStitchRecreateShapeExercise.createInteractionElement(fullInfo, nextId("recreateShape"), imgElement)
-    TurtleStitchRecreateShapeInteraction(nextId("recreateShape"), nameRelToResources)
+    TurtleStitchRecreateShapeInteractionLegacy(nextId("recreateShape"), nameRelToResources)
   }
 
 

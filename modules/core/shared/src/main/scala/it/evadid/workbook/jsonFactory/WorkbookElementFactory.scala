@@ -7,7 +7,7 @@ import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.ImageElement.LanguageMapBasedImageElement
 import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, ImageElement, LabeledWorkbookElement}
-import it.evadid.workbook.elements.interactionElements.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
+import it.evadid.workbook.elements.interactionElements.Turtle.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
@@ -152,7 +152,7 @@ object WorkbookElementFactory {
     classOf[SlideshowPanel.TwoColumnImagePanel].getSimpleName -> SlideshowPanel.TwoColumnImagePanel.factory,
     classOf[SlideshowPanel.ImageSlide].getSimpleName -> SlideshowPanel.ImageSlide.factory,
     classOf[TurtleStitchExploreProjectElement].getSimpleName -> TurtleStitchExploreProjectElement.factory,
-    classOf[TurtleStitchRecreateShapeInteraction].getSimpleName -> TurtleStitchRecreateShapeInteraction.factory,
+    classOf[TurtleStitchRecreateShapeInteractionLegacy].getSimpleName -> TurtleStitchRecreateShapeInteractionLegacy.factory,
     classOf[ProgrammingExercise].getSimpleName -> ProgrammingExercise.factory,
     //  classOf[ImageElement.FileBasedImageElement].getSimpleName -> ImageElement.FileBasedImageElement.factory,
     classOf[ImageElement.LanguageMapBasedImageElement].getSimpleName -> LanguageMapBasedImageElement.factory

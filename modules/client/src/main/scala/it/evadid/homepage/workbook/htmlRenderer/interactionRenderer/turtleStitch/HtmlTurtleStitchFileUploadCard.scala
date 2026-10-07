@@ -8,7 +8,7 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle.HtmlSketchDownloadRenderer.fullInfo
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
-import it.evadid.workbook.elements.interactionElements.TurtleStitch.TurtleStitchProjectState
+import it.evadid.workbook.elements.interactionElements.Turtle.TurtleStitchProjectState
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLInputElement}

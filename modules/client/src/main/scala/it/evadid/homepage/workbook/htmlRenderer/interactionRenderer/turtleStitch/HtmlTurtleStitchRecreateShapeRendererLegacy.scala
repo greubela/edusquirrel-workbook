@@ -4,11 +4,11 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.basic.HtmlImageElement
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
-import it.evadid.workbook.elements.interactionElements.TurtleStitch.TurtleStitchRecreateShapeInteraction
+import it.evadid.workbook.elements.interactionElements.Turtle.TurtleStitchRecreateShapeInteractionLegacy
 
-object HtmlTurtleStitchRecreateShapeRenderer extends LineBasedRenderingFactory[TurtleStitchRecreateShapeInteraction] {
+object HtmlTurtleStitchRecreateShapeRendererLegacy extends LineBasedRenderingFactory[TurtleStitchRecreateShapeInteractionLegacy] {
 
-  override protected def createRendering(workbookElement: TurtleStitchRecreateShapeInteraction): AtomarLineRendering = {
+  override protected def createRendering(workbookElement: TurtleStitchRecreateShapeInteractionLegacy): AtomarLineRendering = {
 
     val imageToRecreate = fullInfo.contentControl.fileFactory.relativeToTechnicalResources(workbookElement.filenameRelToResources)
 
