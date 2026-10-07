@@ -102,6 +102,12 @@ dialog {
     font-weight: 700;
 }
 
+.eva-editor__error {
+    padding: var(--space-sm) var(--space-md);
+    color: var(--color-text-primary);
+    overflow-wrap: anywhere;
+}
+
 .eva-editor__content,
 .eva-editor__content > .be-program-snap-fullscreen,
 .eva-editor__content > .code-mirror-editor,

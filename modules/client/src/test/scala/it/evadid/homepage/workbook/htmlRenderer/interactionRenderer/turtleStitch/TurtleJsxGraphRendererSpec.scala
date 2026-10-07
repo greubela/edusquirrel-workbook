@@ -3,10 +3,27 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitc
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineResult
-import it.evadid.workbook.elements.interactionElements.programming.TurtleGraphic
+import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString, TurtleGraphic}
 import munit.FunSuite
 
 class TurtleJsxGraphRendererSpec extends FunSuite {
+  test("preview conversion retains Java drafts it cannot display") {
+    List("class Drawing {", "class Drawing { static void main(String[] args) {} }").foreach { code =>
+      val state = ProgrammingStateJavaString(code)
+      val fingerprint = ProgrammingState.fingerprint(state)
+      assert(HtmlTurtleRecreateShapeRenderer.commandsForPreview(state).isFailure)
+      assertEquals(ProgrammingState.fingerprint(state), fingerprint)
+      assertEquals(state.code, code)
+    }
+  }
+
+  test("preview conversion still derives supported turtle commands") {
+    assertEquals(
+      HtmlTurtleRecreateShapeRenderer.commandsForPreview(ProgrammingStatePythonString("forward(12)")).get,
+      List(TurtleCommand[Double]("forward", List(12.0)))
+    )
+  }
+
   private def assertPoint(actual: Point[Double], expected: Point[Double]): Unit = {
     assertEqualsDouble(actual.x, expected.x, 1e-7)
     assertEqualsDouble(actual.y, expected.y, 1e-7)

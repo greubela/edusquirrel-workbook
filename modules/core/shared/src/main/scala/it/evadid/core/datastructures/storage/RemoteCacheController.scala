@@ -13,11 +13,9 @@ import upickle.legacy.transform
 import java.time.LocalDateTime
 import scala.Console.err
 import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 abstract class RemoteCacheController[K, D, CK <: CacheKey[K, D]](logger: SyncLogger, cacheKeys: ObservableValue[List[CK]]) {
-
-  cacheKeys.addObserver(onNewKeys => onCacheKeysChanged(onNewKeys))
 
   private given ExecutionContext = ExecutionContext.global
 
@@ -25,7 +23,20 @@ abstract class RemoteCacheController[K, D, CK <: CacheKey[K, D]](logger: SyncLog
 
   def syncLock: Object = syncLockObj
 
-  private lazy val cacheState: State[RemoteCacheCollection[K, D, CK]] = State(RemoteCacheCollection.fromCacheKeys(logger, cacheKeys.now().getOrElse(List())))
+  private val cacheState: State[RemoteCacheCollection[K, D, CK]] = State(RemoteCacheCollection.fromCacheKeys(logger, cacheKeys.now().getOrElse(List())))
+
+  private var pendingMutation: Future[Unit] = Future.successful(())
+
+  cacheKeys.addObserver(onNewKeys => onCacheKeysChanged(onNewKeys))
+
+  private def enqueue[A](operation: => Future[A]): Future[A] = syncLock.synchronized {
+    val previous = pendingMutation
+    val finished = Promise[Unit]()
+    pendingMutation = finished.future
+    val result = previous.transformWith(_ => Try(operation).fold(Future.failed, identity))
+    result.onComplete(_ => finished.trySuccess(()))
+    result
+  }
 
 
   lazy val observableCache: ObservableValue[RemoteCacheCollection[K, D, CK]] = cacheState.observable
@@ -42,16 +53,20 @@ abstract class RemoteCacheController[K, D, CK <: CacheKey[K, D]](logger: SyncLog
     cacheState.set(RemoteCacheCollection.fromCacheKeys(logger, newKeys))
   }
 
-  private def onCacheKeysChanged(newKeys: List[CK]): Future[?] = syncLock.synchronized {
+  private def onCacheKeysChanged(newKeys: List[CK]): Future[?] = enqueue {
     logger.log(s"Cache keys changed to: ${newKeys}", INFO, None)
-    ensureMaxAgeSafe(LocalDateTime.now()).flatMap(_ => onCacheKeyChange(newKeys, cacheState.now().allKnownKeys())).recover {
+    refreshCaches(LocalDateTime.now()).flatMap(_ => onCacheKeyChange(newKeys, cacheState.now().allKnownKeys())).recover {
       case err: Throwable => logger.logExceptionWarn("ignored store before keys are changing -> data loss?", err)
-    }.map(_ => recreateCaches(newKeys)).flatMap(_ => ensureMaxAgeSafe(LocalDateTime.now()))
+    }.map(_ => recreateCaches(newKeys)).flatMap(_ => refreshCaches(LocalDateTime.now()))
   }
 
   protected def onCacheKeyChange(newKeys: List[CK], knownKeys: Set[K]): Future[?]
 
-  def ensureMaxAgeSafe(maxAge: LocalDateTime): Future[?] = syncLock.synchronized {
+  def ensureMaxAgeSafe(maxAge: LocalDateTime): Future[?] = enqueue {
+    refreshCaches(maxAge)
+  }
+
+  private def refreshCaches(maxAge: LocalDateTime): Future[Unit] = {
     val promise: Promise[Unit] = Promise[Unit]()
     val stateNow = cacheState.now()
     val stateAfter = stateNow.ensureCachesAreAtLeastThisRecent(maxAge)
@@ -73,7 +88,7 @@ abstract class RemoteCacheController[K, D, CK <: CacheKey[K, D]](logger: SyncLog
   res
 }*/
 
-  def requestCacheDependentUpdate(func: CK => LocalDateTime): Future[?] = syncLockObj.synchronized {
+  def requestCacheDependentUpdate(func: CK => LocalDateTime): Future[?] = enqueue {
     cacheState.now().requestCacheDependentUpdate(func).transform {
       case Success(newCache) =>
         cacheState.set(newCache)
@@ -85,7 +100,7 @@ abstract class RemoteCacheController[K, D, CK <: CacheKey[K, D]](logger: SyncLog
 
   }
 
-  def requestCacheDependentStore(func: CK => List[DataEntryToWriteToServer[K, D]]): Future[?] = syncLock.synchronized {
+  def requestCacheDependentStore(func: CK => List[DataEntryToWriteToServer[K, D]]): Future[?] = enqueue {
     cacheState.now().requestCacheDependentStore(func).transform {
       case Success(newCache) =>
         cacheState.set(newCache)

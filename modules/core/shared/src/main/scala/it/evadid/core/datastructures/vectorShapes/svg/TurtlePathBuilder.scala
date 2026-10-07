@@ -214,8 +214,8 @@ case class TurtlePathBuilder[T : Fractional](
       case "dot" => turtleCommand.args.headOption.map(dot).getOrElse(this)
       case "circle" =>
         turtleCommand.args match
-          case radius :: extent :: _ => circle(radius, extent)
-          case radius :: Nil => circle(radius)
+          case Seq(radius, extent, _*) => circle(radius, extent)
+          case Seq(radius) => circle(radius)
           case _ => this
       case "arc" | "arcleft" | "arc_left" =>
         if turtleCommand.args.size >= 2 then arcLeft(turtleCommand.args(0), turtleCommand.args(1)) else this
@@ -261,11 +261,15 @@ object TurtlePathBuilder {
         if cmd.stringArgs.nonEmpty then value.arr += writeJs(cmd.stringArgs)
         value
       },
-      value => TurtleCommand(
-        value.arr(0).str,
-        read[Seq[T]](value.arr(1)),
-        if value.arr.size > 2 then read[Seq[String]](value.arr(2)) else Nil
-      )
+      value => {
+        val fields = value.arr
+        require(fields.size == 2 || fields.size == 3, "Expected a turtle command with two or three fields")
+        TurtleCommand(
+          fields(0).str,
+          read[Seq[T]](fields(1)),
+          if fields.size == 3 then read[Seq[String]](fields(2)) else Nil
+        )
+      }
     )
 
 

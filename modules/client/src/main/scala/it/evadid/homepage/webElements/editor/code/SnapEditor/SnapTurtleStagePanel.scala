@@ -11,6 +11,7 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 import it.evadid.workbook.elements.interactionElements.programming.TurtleGraphic
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
+import scala.util.Try
 
 /**
  * FEATURE: Snap fullscreen turtle stage panel (Execute → live Scratch-paced green-flag).
@@ -58,8 +59,8 @@ object SnapTurtleStagePanel {
       TurtleGraphic.Line[Double](Point[Double](100, 0), Point[Double](100, 100))
     ))
     val renderingSignal: Signal[Element] = editor.state.signal.map(curState => {
-      val curCommands = curState.toBeExpressionState.deriveTurtleCommands
-      TurtleJsxGraphRenderer.render(curCommands, exp)
+      Try(TurtleJsxGraphRenderer.render(curState.toBeExpressionState.deriveTurtleCommands, exp))
+        .getOrElse(div("Preview unavailable for this program."))
     })
 
     val interactivePreview = ElementCard(

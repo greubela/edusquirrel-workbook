@@ -1,4 +1,4 @@
-import {Compartment, EditorState, StateEffect, StateField} from "https://esm.sh/@codemirror/state@6.5.2";
+import {Compartment, EditorState, MapMode, StateEffect, StateField, Text, Transaction} from "https://esm.sh/@codemirror/state@6.5.2";
 import {
   EditorView,
   Decoration,
@@ -9,7 +9,7 @@ import {
   highlightActiveLineGutter,
   ViewPlugin
 } from "https://esm.sh/@codemirror/view@6.38.6?deps=@codemirror/state@6.5.2";
-import {defaultKeymap, history, historyKeymap, indentLess, indentMore} from "https://esm.sh/@codemirror/commands@6.8.1?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3";
+import {defaultKeymap, history, historyKeymap, indentLess, indentMore, invertedEffects} from "https://esm.sh/@codemirror/commands@6.8.1?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3";
 import {
   bracketMatching,
   foldGutter,
@@ -391,7 +391,7 @@ const identifierHighlightPlugin = ViewPlugin.fromClass(class {
   }
 
   update(update) {
-    if (update.docChanged || update.viewportChanged) {
+    if (update.docChanged || update.viewportChanged || update.transactions.some(transaction => transaction.reconfigured)) {
       this.decorations = buildIdentifierDecorations(update.view);
     }
   }
@@ -401,10 +401,25 @@ const identifierHighlightPlugin = ViewPlugin.fromClass(class {
 
 const languageExtension = (language) => {
   const normalized = String(language ?? "python").toLowerCase();
+  if (normalized === "java") {
+    return [];
+  }
   if (normalized === "cpp" || normalized === "c" || normalized === "c++") {
     return cpp();
   }
   return python();
+};
+
+let javaModulePromise;
+const loadJavaModule = () => {
+  if (!javaModulePromise) {
+    javaModulePromise = import("https://esm.sh/@codemirror/lang-java@6.0.2?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3")
+      .catch(error => {
+        javaModulePromise = undefined;
+        throw error;
+      });
+  }
+  return javaModulePromise;
 };
 
 const sharedExtensions = [
@@ -412,7 +427,6 @@ const sharedExtensions = [
   indentUnit.of(INDENT_SPACES),
   lineNumbers(),
   highlightActiveLineGutter(),
-  history(),
   drawSelection(),
   foldGutter(),
   indentOnInput(),
@@ -438,28 +452,125 @@ const sharedExtensions = [
   identifierHighlightPlugin
 ];
 
+const parseJavaLineEndings = source => {
+  const separator = source.match(/\r\n|\r|\n/)?.[0] ?? "\n";
+  const exceptions = [];
+  let removed = 0;
+  for (const match of source.matchAll(/\r\n|\r|\n/g)) {
+    if (match[0] !== separator) exceptions.push({pos: match.index - removed, separator: match[0]});
+    removed += match[0].length - 1;
+  }
+  return {separator, exceptions};
+};
+
+const mapJavaLineEndings = (exceptions, changes) => exceptions.flatMap(entry => {
+  const pos = changes.mapPos(entry.pos, 1, MapMode.TrackAfter);
+  return pos === null ? [] : [{...entry, pos}];
+});
+const restoreJavaLineEndings = StateEffect.define({
+  map: (value, changes) => {
+    const mapped = mapJavaLineEndings(value, changes);
+    return mapped.length ? mapped : undefined;
+  }
+});
+const resetJavaLineEndings = StateEffect.define();
+const javaLineEndings = StateField.define({
+  create: () => ({separator: "\n", exceptions: []}),
+  update(value, transaction) {
+    let next = transaction.docChanged
+      ? {...value, exceptions: mapJavaLineEndings(value.exceptions, transaction.changes)} : value;
+    let patches = null;
+    for (const effect of transaction.effects) {
+      if (effect.is(resetJavaLineEndings)) {
+        next = effect.value;
+        patches = null;
+      } else if (effect.is(restoreJavaLineEndings)) {
+        patches ??= new Map(next.exceptions.map(entry => [entry.pos, entry.separator]));
+        for (const entry of effect.value) {
+          if (transaction.newDoc.sliceString(entry.pos, entry.pos + 1) !== "\n") continue;
+          if (entry.separator === next.separator) patches.delete(entry.pos);
+          else patches.set(entry.pos, entry.separator);
+        }
+      }
+    }
+    return patches ? {...next, exceptions: [...patches].sort(([left], [right]) => left - right)
+      .map(([pos, separator]) => ({pos, separator}))} : next;
+  }
+});
+const javaHistoryEffects = invertedEffects.of(transaction => {
+  const before = transaction.startState.field(javaLineEndings);
+  const restored = new Map();
+  let index = 0;
+  transaction.changes.iterChangedRanges((from, to) => {
+    while (index < before.exceptions.length && before.exceptions[index].pos < from) index++;
+    while (index < before.exceptions.length && before.exceptions[index].pos < to) {
+      const entry = before.exceptions[index++];
+      restored.set(entry.pos, entry.separator);
+    }
+  });
+  const effects = transaction.effects.filter(effect => effect.is(restoreJavaLineEndings));
+  if (effects.length) {
+    const inverse = transaction.changes.invertedDesc;
+    const exceptions = new Map(before.exceptions.map(entry => [entry.pos, entry.separator]));
+    for (const effect of effects) {
+      for (const entry of effect.value) {
+        const pos = inverse.mapPos(entry.pos, 1, MapMode.TrackAfter);
+        if (pos !== null && transaction.startState.doc.sliceString(pos, pos + 1) === "\n")
+          restored.set(pos, exceptions.get(pos) ?? before.separator);
+      }
+    }
+  }
+  return restored.size ? [restoreJavaLineEndings.of([...restored].map(([pos, separator]) => ({pos, separator})))] : [];
+});
+const javaSourceFromState = state => {
+  const source = state.doc.toString();
+  const endings = state.field(javaLineEndings);
+  let index = 0;
+  return source.replace(/\n/g, (_, pos) => endings.exceptions[index]?.pos === pos
+    ? endings.exceptions[index++].separator : endings.separator);
+};
+
 const codeMirrorFacade = {
   createEditor: ({parent, doc = "", onDocChange, language = "python"}) => {
     let isProgrammaticUpdate = false;
+    let destroyed = false;
+    const isJava = String(language).toLowerCase() === "java";
+    const prepareDoc = value => isJava ? value : replaceTabsWithSpaces(value);
+    const javaText = value => Text.of(value.split(/\r\n|\r|\n/));
+    let javaSource = doc;
+    const javaHistory = new Compartment();
     const theme = new Compartment();
+    const editorLanguage = new Compartment();
     const followsPageTheme = Boolean(parent.closest(".fd-page"));
     const currentTheme = () => followsPageTheme && document.documentElement.dataset.theme === "light" ? [] : oneDark;
 
     const state = EditorState.create({
-      doc: replaceTabsWithSpaces(doc),
+      doc: isJava ? javaText(doc) : prepareDoc(doc),
       extensions: [
         ...sharedExtensions,
+        isJava ? [javaLineEndings.init(() => parseJavaLineEndings(doc)), javaHistoryEffects, javaHistory.of(history())] : history(),
         theme.of(currentTheme()),
-        languageExtension(language),
+        editorLanguage.of(languageExtension(language)),
         EditorView.updateListener.of((update) => {
-          if (update.docChanged && !isProgrammaticUpdate && typeof onDocChange === "function") {
-            onDocChange(update.state.doc.toString());
+          const metadataChanged = isJava && update.startState.field(javaLineEndings) !== update.state.field(javaLineEndings);
+          if ((update.docChanged || metadataChanged) && !isProgrammaticUpdate) {
+            const value = isJava ? javaSourceFromState(update.state) : update.state.doc.toString();
+            const changed = !isJava || value !== javaSource;
+            if (isJava) javaSource = value;
+            if (changed && typeof onDocChange === "function") onDocChange(value);
           }
         })
       ]
     });
 
     const view = new EditorView({state, parent});
+    if (isJava) {
+      loadJavaModule().then(module => {
+        if (!destroyed) view.dispatch({effects: editorLanguage.reconfigure(module.java())});
+      }).catch(error => {
+        if (!destroyed) console.warn("Java syntax support is unavailable; text editing remains available.", error);
+      });
+    }
     const themeObserver = followsPageTheme ? new MutationObserver(() => {
       view.dispatch({effects: theme.reconfigure(currentTheme())});
     }) : null;
@@ -467,23 +578,35 @@ const codeMirrorFacade = {
 
     return {
       setDoc(newDoc) {
-        const nextDoc = replaceTabsWithSpaces(newDoc ?? "");
-        if (view.state.doc.toString() === nextDoc) {
+        const nextDoc = prepareDoc(newDoc ?? "");
+        if ((isJava ? javaSource : view.state.doc.toString()) === nextDoc) {
           return;
         }
         isProgrammaticUpdate = true;
-        view.dispatch({
-          changes: {
-            from: 0,
-            to: view.state.doc.length,
-            insert: nextDoc
-          },
-          effects: setDiagnosticsEffect.of([])
-        });
-        isProgrammaticUpdate = false;
+        try {
+          if (isJava) {
+            const withoutHistory = view.state.update({effects: javaHistory.reconfigure([])});
+            const restored = withoutHistory.state.update({
+              changes: {from: 0, to: withoutHistory.state.doc.length, insert: javaText(nextDoc)},
+              effects: [resetJavaLineEndings.of(parseJavaLineEndings(nextDoc)), setDiagnosticsEffect.of([]), javaHistory.reconfigure(history())],
+              annotations: Transaction.addToHistory.of(false)
+            });
+            view.dispatch([withoutHistory, restored]);
+            javaSource = nextDoc;
+          } else view.dispatch({
+            changes: {
+              from: 0,
+              to: view.state.doc.length,
+              insert: nextDoc
+            },
+            effects: setDiagnosticsEffect.of([])
+          });
+        } finally {
+          isProgrammaticUpdate = false;
+        }
       },
       getDoc() {
-        return view.state.doc.toString();
+        return isJava ? javaSource : view.state.doc.toString();
       },
       setDiagnostics(diagnostics) {
         view.dispatch({
@@ -494,6 +617,7 @@ const codeMirrorFacade = {
         view.focus();
       },
       destroy() {
+        destroyed = true;
         themeObserver?.disconnect();
         view.destroy();
       }

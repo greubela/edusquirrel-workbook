@@ -229,4 +229,40 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assert(python.contains("println(\"!;{}\")"), clue = python)
     assert(ProgrammingStateJavaString(java).toBeExpressionState.expression != null)
   }
+
+  test("empty Snap projects convert without treating block containers as commands") {
+    val states = List(
+      ProgrammingExerciseState.empty,
+      ProgrammingStateSnapXml("<project><blocks/><scripts/></project>"),
+      ProgrammingStateSnapXml("<project><blocks></blocks><scripts><script/></scripts></project>")
+    )
+
+    states.foreach { state =>
+      assertEquals(state.toBeExpressionState.deriveTurtleCommands, Nil)
+      assertEquals(state.toPython.toBeExpressionState.deriveTurtleCommands, Nil)
+      assertEquals(state.toJava.toBeExpressionState.deriveTurtleCommands, Nil)
+      assertEquals(state.toSnapXml, state)
+    }
+  }
+
+  test("unsupported Snap commands still fail conversion without changing their source") {
+    val sources = List(
+      """<project><scripts><script><block s="wait"><l>1</l></block></script></scripts></project>""",
+      """<project><blocks><block s="wait"><l>1</l></block></blocks></project>""",
+      """<project><blocks><custom-block s="unknown %n"><l>1</l></custom-block></blocks></project>""",
+      "<project><scripts><script><block s=\"wait\""
+    )
+
+    sources.foreach { xml =>
+      val state = ProgrammingStateSnapXml(xml)
+      val fingerprint = ProgrammingState.fingerprint(state)
+      intercept[IllegalArgumentException](state.toPython)
+      intercept[IllegalArgumentException](state.toJava)
+      assertEquals(state.toSnapXml.snapXml, xml)
+      assertEquals(ProgrammingState.fingerprint(state), fingerprint)
+      assertEquals(ProgrammingExercise.StateSerializer.deserialize(
+        ProgrammingExercise.StateSerializer.serialize(state)
+      ), state)
+    }
+  }
 }

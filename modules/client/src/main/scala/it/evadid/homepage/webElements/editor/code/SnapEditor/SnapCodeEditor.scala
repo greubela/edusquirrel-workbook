@@ -22,7 +22,6 @@ case class SnapCodeEditor(
 ) extends HtmlAppElement with FullscreenLifecycle {
 
   private var previewTarget: Option[Canvas] = None
-  private var programObserversBound = false
   /** Fingerprint of the last state written from Snap XML (skip inbound reload). */
   private var lastFingerprintFromSnap: Option[String] = None
 
@@ -30,12 +29,11 @@ case class SnapCodeEditor(
     ProgrammingExerciseState.fingerprint(value)
 
   private def bindProgramObservers(owner: Owner): Unit =
-    if programObserversBound then return
-    programObserversBound = true
     // Skip the current value: renderEditorInto already loaded it. Only react to
     // later sync restores / external Var updates — not Snap→state echoes.
     state.signal.changes.foreach { next =>
       if !lastFingerprintFromSnap.contains(stateFingerprint(next)) then
+        lastFingerprintFromSnap = None
         impl.loadProgramIfChanged(next)
       previewTarget.foreach(canvas => impl.renderPreviewInto(next, canvas, config))
     }(using owner)
@@ -167,7 +165,7 @@ case class SnapCodeEditor(
     val current = impl.currentProjectXml()
       .map(ProgrammingExerciseState(_))
       .getOrElse(state.now())
-    SnapCodeEditor.turtleCommandExecution.commandsFor(current)
+    SnapCodeEditor.commandsFor(current)
 
   override def onFullscreenOpen(): Unit =
     impl.forceLoadProgram(state.now())
@@ -188,6 +186,9 @@ object SnapCodeEditor {
 
   private lazy val turtleCommandExecution =
     new SnapTurtleCommandExecution(new PyodideTurtleCommandRunner())
+
+  private[code] def commandsFor(state: ProgrammingExerciseState): Future[List[TurtleCommand[Double]]] =
+    turtleCommandExecution.commandsFor(state)
 
   def apply(
       state: Var[ProgrammingExerciseState],

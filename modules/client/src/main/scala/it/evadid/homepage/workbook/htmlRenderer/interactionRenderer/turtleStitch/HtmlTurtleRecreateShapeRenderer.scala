@@ -7,6 +7,7 @@ import it.evadid.core.datastructures.state.ExecutionMethod
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, VmToSvg}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder
+import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
 import it.evadid.homepage.webElements.editor.code.{EvaEditor, EvaEditorConfig}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
@@ -22,16 +23,20 @@ import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingE
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import todomove.datastructures.web.file.FullImage
 
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[TurtleRecreateShapeInteraction] {
 
-  private def createInteractivePreview(boundVar: Var[ProgrammingState], workbookElement: TurtleRecreateShapeInteraction): ElementCard = {
-    val cmd = boundVar.signal.map(_.toBeExpressionState.deriveTurtleCommands)
+  private[turtleStitch] def commandsForPreview(state: ProgrammingState): Try[List[TurtleCommand[Double]]] =
+    Try(state.toBeExpressionState.deriveTurtleCommands)
 
+  private def createInteractivePreview(boundVar: Var[ProgrammingState], workbookElement: TurtleRecreateShapeInteraction): ElementCard = {
     ElementCard(
       LanguageMapContentId("basic/gradingPreviewProgram"),
-      TurtleJsxGraphRenderer.render(cmd, workbookElement.desiredResult)
+      div(child <-- boundVar.signal.map { state =>
+        commandsForPreview(state).map(TurtleJsxGraphRenderer.render(_, workbookElement.desiredResult))
+          .getOrElse(div("Preview unavailable for this draft."))
+      })
     )
   }
 
