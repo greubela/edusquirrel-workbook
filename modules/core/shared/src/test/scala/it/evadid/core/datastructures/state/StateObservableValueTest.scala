@@ -4,8 +4,8 @@ import it.evadid.core.datastructures.state.observable.{ObservableValueImpl, Obse
 import munit.FunSuite
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.duration.*
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
 
 class StateObservableValueTest extends FunSuite {
@@ -32,11 +32,10 @@ class StateObservableValueTest extends FunSuite {
     assert(!future.isCompleted)
 
     obs.onNewValueArrived(Try(5))
-    assertEquals(Await.result(future, 1.second), 5)
+    future.map(value => assertEquals(value, 5))
   }
 
   test("DerivedObservableValue derives all values") {
-    // TODO: Derivation does not currently emit values in this setup; re-enable once the derived pipeline is fixed.
     val base = State(1)
     val derived = base.observable.deriveValue(_ * 2, deriveLogic = ObserverDerivationLogic.DeriveAllValues)
     val seen = ListBuffer.empty[Int]
@@ -46,20 +45,20 @@ class StateObservableValueTest extends FunSuite {
     base.set(3)
 
     assertEquals(seen.toList, List(2, 4, 6))
-    assertEquals(Await.result(derived.currentValueOrWaitForUpdate, 1.second), 6)
+    derived.currentValueOrWaitForUpdate.map(value => assertEquals(value, 6))
   }
 
   test("DerivedObservableValue with DeriveOnlyLastValues drops intermediate queued values") {
-    // TODO: Derivation with async execution is currently not emitting updates; re-enable when fixed.
-    val gate = Promise[Unit]()
+    val pending = scala.collection.mutable.Queue.empty[Runnable]
+    val executionContext = new ExecutionContext {
+      override def execute(runnable: Runnable): Unit = pending.enqueue(runnable)
+      override def reportFailure(error: Throwable): Unit = throw error
+    }
     val base = State(1)
 
     val derived = base.observable.deriveValue(
-      withFunc = value => {
-        Await.result(gate.future, 1.second)
-        value * 10
-      },
-      executeFunctionWith = ExecutionMethod.executeAsync,
+      withFunc = _ * 10,
+      executeFunctionWith = ExecutionMethod.ExecuteLocalAsync(executionContext),
       deriveLogic = ObserverDerivationLogic.DeriveOnlyLastValues
     )
 
@@ -69,9 +68,8 @@ class StateObservableValueTest extends FunSuite {
     base.set(2)
     base.set(3)
     base.set(4)
-    gate.success(())
-
-    Thread.sleep(200)
+    assertEquals(seen.toList, Nil)
+    while pending.nonEmpty do pending.dequeue().run()
     assertEquals(seen.toList, List(10, 40))
   }
 
@@ -87,7 +85,7 @@ class StateObservableValueTest extends FunSuite {
     right.set(2)
 
     assertEquals(seen.toList, List(("a", 1), ("b", 1), ("b", 2)))
-    assertEquals(Await.result(combined.currentValueOrWaitForUpdate, 1.second), ("b", 2))
+    combined.currentValueOrWaitForUpdate.map(value => assertEquals(value, ("b", 2)))
   }
 
   test("Subscription unsubscribe stops further updates") {

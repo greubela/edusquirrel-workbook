@@ -70,7 +70,7 @@ object ProgrammingExercise {
 
     private def parseStored(str: String): Option[ProgrammingState] = {
       val trimmed = str.trim
-      if trimmed.startsWith(StateHeader) then parseVersion2(trimmed)
+      if trimmed.startsWith(StateHeader) then parseVersion2(str.stripLeading)
       else if trimmed.startsWith(XmlHeader) then
         val xml = trimmed.drop(XmlHeader.length).stripLeading
         if xml.isEmpty then Some(ProgrammingExerciseState.mini)

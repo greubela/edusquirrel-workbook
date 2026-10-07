@@ -4,8 +4,8 @@ import it.evadid.distribution.command.{ExecutionCommand, SerializedException}
 import it.evadid.util.logging.{BasicLogger, Logger}
 import munit.FunSuite
 
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class ExecutionClientPoolTest extends FunSuite {
 
@@ -27,20 +27,18 @@ class ExecutionClientPoolTest extends FunSuite {
     val pool = ExecutionClientPool(List(failingClient("sync-to-db-request")))
 
     val error = intercept[SerializedException] {
-      Await.result(pool.handleExecution(ExecutionCommand("missing-command", Map.empty), BasicLogger()), 5.seconds)
+      pool.handleExecution(ExecutionCommand("missing-command", Map.empty), BasicLogger())
     }
-
     assertEquals(error.getMessage, "ExecutionClientPool: no handler for command missing-command registered!")
   }
 
   test("reports matching handler failures without claiming the handler is missing") {
     val pool = ExecutionClientPool(List(failingClient("sync-to-db-request")))
 
-    val error = intercept[SerializedException] {
-      Await.result(pool.handleExecution(ExecutionCommand("sync-to-db-request", Map.empty), BasicLogger()), 5.seconds)
+    pool.handleExecution(ExecutionCommand("sync-to-db-request", Map.empty), BasicLogger()).failed.map { error =>
+      assert(error.isInstanceOf[SerializedException])
+      assert(error.getMessage.contains("ExecutionClientPool: all handlers for command sync-to-db-request failed"))
     }
-
-    assert(error.getMessage.contains("ExecutionClientPool: all handlers for command sync-to-db-request failed"))
   }
 
   test("preserves the original handler failure cause chain") {
@@ -48,10 +46,9 @@ class ExecutionClientPoolTest extends FunSuite {
     val handlerFailure = new Exception("Could not connect to database", rootCause)
     val pool = ExecutionClientPool(List(failingClient("sync-to-db-request", handlerFailure)))
 
-    val error = intercept[SerializedException] {
-      Await.result(pool.handleExecution(ExecutionCommand("sync-to-db-request", Map.empty), BasicLogger()), 5.seconds)
+    pool.handleExecution(ExecutionCommand("sync-to-db-request", Map.empty), BasicLogger()).failed.map { error =>
+      assert(error.isInstanceOf[SerializedException])
+      assert(error.getMessage.contains("ExecutionClientPool: all handlers for command sync-to-db-request failed"))
     }
-
-    assert(error.getMessage.contains("ExecutionClientPool: all handlers for command sync-to-db-request failed"))
   }
 }

@@ -90,4 +90,4 @@ object PyodideTurtleCommandRunner:
           s"Unsupported argument for ${callback.method}: ${js.typeOf(value)}"
         )
     }
-    TurtleCommand(canonicalName, numeric)
+    TurtleCommand(canonicalName, numeric, textual)

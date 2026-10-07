@@ -51,6 +51,18 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
     }
   }
 
+  test("versioned source code preserves leading and trailing whitespace") {
+    val states: List[ProgrammingState] = List(
+      ProgrammingStatePythonString("  print('hello') \n\n"),
+      ProgrammingStateJavaString("\nclass Main {}\n")
+    )
+    states.foreach { state =>
+      assertEquals(ProgrammingExercise.StateSerializer.deserialize(
+        ProgrammingExercise.StateSerializer.serialize(state)
+      ), state)
+    }
+  }
+
   test("unknown version 2 representation falls back to the default Snap project") {
     val restored = ProgrammingExercise.StateSerializer.deserialize("PROGRAMMING_STATE_V2\nRUBY\nputs 1")
     assertEquals(restored, ProgrammingExerciseState.mini)
