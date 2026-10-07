@@ -28,6 +28,10 @@
     box-sizing: border-box;
 }
 .java-function-based-editor :is(h2, h3, p, figure) { margin: 0; }
+.fullscreen-content-container:has(> .java-function-based-editor) {
+    min-height: 0;
+    overflow: auto;
+}
 .java-function-editor__topbar {
     grid-area: header;
     display: flex;
