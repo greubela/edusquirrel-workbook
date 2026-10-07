@@ -17,15 +17,17 @@ import scala.util.{Failure, Success}
 
 abstract class RemoteCacheController[K, D, CK <: CacheKey[K, D]](logger: SyncLogger, cacheKeys: ObservableValue[List[CK]]) {
 
-  cacheKeys.addObserver(onNewKeys => onCacheKeysChanged(onNewKeys))
-
   private given ExecutionContext = ExecutionContext.global
+
+  private var cacheGeneration = 0L
 
   private lazy val syncLockObj: RemoteCacheController[K, D, CK] = this
 
   def syncLock: Object = syncLockObj
 
   private lazy val cacheState: State[RemoteCacheCollection[K, D, CK]] = State(RemoteCacheCollection.fromCacheKeys(logger, cacheKeys.now().getOrElse(List())))
+
+  cacheKeys.addObserver(onNewKeys => onCacheKeysChanged(onNewKeys))
 
 
   lazy val observableCache: ObservableValue[RemoteCacheCollection[K, D, CK]] = cacheState.observable
@@ -39,25 +41,38 @@ abstract class RemoteCacheController[K, D, CK <: CacheKey[K, D]](logger: SyncLog
   }
 
   private def recreateCaches(newKeys: List[CK]): Unit = syncLock.synchronized {
+    cacheGeneration += 1
     cacheState.set(RemoteCacheCollection.fromCacheKeys(logger, newKeys))
   }
 
+  private def updateCacheIfCurrent(generation: Long, updated: RemoteCacheCollection[K, D, CK]): Unit = syncLock.synchronized {
+    // A read/write started for a previous user or workbook must not restore
+    // that context's caches after the destinations have changed.
+    if generation == cacheGeneration then cacheState.set(updated)
+  }
+
   private def onCacheKeysChanged(newKeys: List[CK]): Future[?] = syncLock.synchronized {
+    if cacheState.now().remoteCaches.keySet == newKeys.toSet then return Future.successful(())
     logger.log(s"Cache keys changed to: ${newKeys}", INFO, None)
-    ensureMaxAgeSafe(LocalDateTime.now()).flatMap(_ => onCacheKeyChange(newKeys, cacheState.now().allKnownKeys())).recover {
-      case err: Throwable => logger.logExceptionWarn("ignored store before keys are changing -> data loss?", err)
-    }.map(_ => recreateCaches(newKeys)).flatMap(_ => ensureMaxAgeSafe(LocalDateTime.now()))
+    val knownKeys = cacheState.now().allKnownKeys()
+    // Publish the destinations synchronously. Startup calls fetch-and-load
+    // immediately after changing the user and needs to read the new context.
+    recreateCaches(newKeys)
+    onCacheKeyChange(newKeys, knownKeys).recover {
+      case err: Throwable => logger.logExceptionWarn("error handling cache key change", err)
+    }.flatMap(_ => ensureMaxAgeSafe(LocalDateTime.now()))
   }
 
   protected def onCacheKeyChange(newKeys: List[CK], knownKeys: Set[K]): Future[?]
 
   def ensureMaxAgeSafe(maxAge: LocalDateTime): Future[?] = syncLock.synchronized {
     val promise: Promise[Unit] = Promise[Unit]()
+    val generation = cacheGeneration
     val stateNow = cacheState.now()
     val stateAfter = stateNow.ensureCachesAreAtLeastThisRecent(maxAge)
     stateAfter.onComplete {
       case Success(newState) =>
-        cacheState.set(newState)
+        updateCacheIfCurrent(generation, newState)
         promise.success(())
       case Failure(err) =>
         logger.logExceptionWarn("RemoteCacheController: Error during ensureCachesAreAtLeastThisRecent, ignoring update", err)
@@ -74,9 +89,10 @@ abstract class RemoteCacheController[K, D, CK <: CacheKey[K, D]](logger: SyncLog
 }*/
 
   def requestCacheDependentUpdate(func: CK => LocalDateTime): Future[?] = syncLockObj.synchronized {
+    val generation = cacheGeneration
     cacheState.now().requestCacheDependentUpdate(func).transform {
       case Success(newCache) =>
-        cacheState.set(newCache)
+        updateCacheIfCurrent(generation, newCache)
         Success( () )
       case Failure(err) =>
         logger.logExceptionWarn("error during cache dependent update", err)
@@ -86,9 +102,10 @@ abstract class RemoteCacheController[K, D, CK <: CacheKey[K, D]](logger: SyncLog
   }
 
   def requestCacheDependentStore(func: CK => List[DataEntryToWriteToServer[K, D]]): Future[?] = syncLock.synchronized {
+    val generation = cacheGeneration
     cacheState.now().requestCacheDependentStore(func).transform {
       case Success(newCache) =>
-        cacheState.set(newCache)
+        updateCacheIfCurrent(generation, newCache)
         Success( () )
       case Failure(err) =>
         logger.logExceptionWarn("error during store", err)
