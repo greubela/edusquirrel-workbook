@@ -20,10 +20,16 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
     )
   }
 
-  val exp = TurtleLineBasedProgram(List(
+  val exp1 = TurtleLineBasedProgram(List(
     Line[Double](Point(0, 0), Point(100, 0)),
     Line[Double](Point(100, 0), Point(100, 100)),
     Line[Double](Point(100, 100), Point(200, 100))
+  ))
+  val exp2 = TurtleLineBasedProgram(List(
+    Line[Double](Point(0, 0), Point(100, 0)),
+    Line[Double](Point(100, 0), Point(100, 100)),
+    Line[Double](Point(100, 100), Point(200, 100)),
+    Line[Double](Point(100, 100), Point(100, 200)),
   ))
 
   lazy val section1: WorkbookSection = {
@@ -32,11 +38,18 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
         TurtleRecreateShapeInteraction(
           "Turtle-Recreate-1",
           ProgrammingStateSnapXml(SnapProjectXml.mini).toBeExpressionState,
-          exp,
-          ProgrammingEditorPalette.Default,
+          exp1,
+          ProgrammingEditorPalette.BeginnerTurtle,
           Map("forward" -> 5)
         ),
-        ProgrammingExercise("prog-1", editorPalette = ProgrammingEditorPalette.PythonCompatibleSnap),
+        TurtleRecreateShapeInteraction(
+          "Turtle-Recreate-2",
+          ProgrammingStateSnapXml(SnapProjectXml.mini).toBeExpressionState,
+          exp2,
+          ProgrammingEditorPalette.BeginnerTurtle,
+          Map("forward" -> 2)
+        ),
+        ProgrammingExercise("prog-1", editorPalette = ProgrammingEditorPalette.BeginnerTurtle),
         ProgrammingExerciseFullJava("prog-full-java")
       )
       )))

@@ -12,7 +12,7 @@ case class TurtleRecreateShapeInteraction
   override val elementId: String,
   initProgram: ProgrammingState,
   desiredResult: TurtleGraphic,
-  availablePalette: ProgrammingEditorPalette = ProgrammingEditorPalette.Default,
+  availablePalette: ProgrammingEditorPalette = ProgrammingEditorPalette.BeginnerTurtle,
   limitTurtleCommandUsage: Map[String, Integer]
 ) extends WorkbookInteractionElement[ProgrammingState] derives ReadWriter {
 
