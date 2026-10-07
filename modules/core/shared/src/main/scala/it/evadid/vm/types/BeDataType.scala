@@ -58,7 +58,12 @@ object BeDataType {
   case class BeUnionAllowedTypes(dataTypes: Set[BeDataType]) extends BeUnionType derives ReadWriter {
 
     def formatTypeForDisplay: LanguageMap[ProgrammingLanguage] = {
-      LanguageMap.mkLanguageMap("", "|", "", dataTypes.toList.map(_.formatTypeForDisplay))
+      val members = dataTypes.toList.sortBy(_.formatTypeForDisplay.getInLanguage(Python))
+      members.map(_.formatTypeForDisplay).reduceOption { (left, right) =>
+        LanguageMap.concatLanguageMaps(
+          LanguageMap.concatLanguageMaps(left, LanguageMap.universalMap[ProgrammingLanguage]("|")), right
+        )
+      }.getOrElse(LanguageMap.universalMap[ProgrammingLanguage](""))
     }
 
     def formatValueForDisplay(valueStr: String): LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap(valueStr)

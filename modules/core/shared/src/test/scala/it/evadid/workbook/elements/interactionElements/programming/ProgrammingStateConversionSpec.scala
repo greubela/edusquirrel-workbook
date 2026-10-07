@@ -224,9 +224,56 @@ class ProgrammingStateConversionSpec extends FunSuite {
         |draw(2);
         |""".stripMargin
     val python = new JavaToBeExpressionParser().toPython(java)
-    assert(python.contains("def draw(count):"), clue = python)
+    assert(python.contains("def draw(count: float) -> None:"), clue = python)
     assert(python.contains("while i < count  and  True:"), clue = python)
     assert(python.contains("println(\"!;{}\")"), clue = python)
     assert(ProgrammingStateJavaString(java).toBeExpressionState.expression != null)
   }
+
+  test("Java double declarations keep float hints even with integer initializers") {
+    val java = ProgrammingStateJavaString("double steps = 12; forward(steps);")
+    val converted = java.toPython
+    assert(converted.code.contains("steps: float = 12"), clue = converted.code)
+    assertEquals(normalized(converted.toBeExpressionState), converted.code.trim)
+  }
+
+  test("Java parameter, return and local types survive conversion to Python") {
+    val java = ProgrammingStateJavaString(
+      """double distance(double length, boolean enabled, String label) {
+        |  double result = length;
+        |  return result;
+        |}
+        |boolean active = true;
+        |String title = "path";
+        |""".stripMargin
+    )
+    val converted = java.toPython
+    assert(converted.code.contains("def distance(length: float, enabled: bool, label: str) -> float:"), clue = converted.code)
+    assert(converted.code.contains("result: float = length"), clue = converted.code)
+    assert(converted.code.contains("active: bool = True"), clue = converted.code)
+    assert(converted.code.contains("title: str = \"path\""), clue = converted.code)
+    assertEquals(normalized(converted.toBeExpressionState), converted.code.trim)
+  }
+
+  test("uninitialized Java variables retain their annotations") {
+    val converted = ProgrammingStateJavaString("double distance;").toPython
+    assert(converted.code.contains("distance : float"), clue = converted.code)
+    assertEquals(normalized(converted.toBeExpressionState), converted.code.trim)
+  }
+
+  test("unknown parameter types have usable Any hints and round trip to Snap") {
+    val converted = ProgrammingStatePythonString("def line(length):\n    forward(length)\nline(10)").toBeExpressionState.toPython
+    assert(converted.code.startsWith("from typing import Any\n"), clue = converted.code)
+    assert(converted.code.contains("def line(length: Any) -> None:"), clue = converted.code)
+    assert(SnapTurtlePythonBridge.applyPython(converted.code).isRight, clue = converted.code)
+    assertEquals(normalized(converted.toBeExpressionState), converted.code.trim)
+  }
+
+  test("date annotations include their import and survive Python reparsing") {
+    val converted = ProgrammingStateJavaString("Date day;").toPython
+    assert(converted.code.startsWith("from datetime import date\n"), clue = converted.code)
+    assert(converted.code.contains("day : date"), clue = converted.code)
+    assertEquals(normalized(converted.toBeExpressionState), converted.code.trim)
+  }
+
 }

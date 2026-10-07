@@ -26,6 +26,7 @@ object PythonStatementParser {
 
   private final case class DispatchOutcome(expressions: List[BeExpression], nextIndex: Int)
 
+  private val AnnotationDeclarationPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([^=:]+)$""".r
   private val AnnotationAssignmentPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([^=]+?)\s*=\s*(.+)$""".r
   private val ClassPattern = """^class\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s*\(([^)]*)\))?:$""".r
   private val FunctionPattern = """^def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*)\)\s*(?:->\s*([^:]+))?:$""".r
@@ -92,6 +93,9 @@ object PythonStatementParser {
   }
 
   private def buildDispatchRules(api: StatementApi): List[DispatchRule] = List(
+    // These imports only resolve annotations emitted by the Python conversion bridge.
+    DispatchRule(text => Set("from typing import Any", "from datetime import date").contains(text),
+      ctx => DispatchOutcome(Nil, ctx.index + 1)),
     DispatchRule(_.matches(AnnotationAssignmentPattern.regex), ctx => {
       val (name, typeHint, valueStr) = ctx.trimmed match
         case AnnotationAssignmentPattern(parsedName, parsedTypeHint, parsedValueStr) => (parsedName, parsedTypeHint, parsedValueStr)
@@ -99,6 +103,11 @@ object PythonStatementParser {
       val variable = ctx.context.defineVariable(name, api.mapType(Some(typeHint.trim)))
       val valueExpr = api.parseExpression(valueStr, ctx.context)
       DispatchOutcome(List(BeAssignVariable(variable, valueExpr)), ctx.index + 1)
+    }),
+    DispatchRule(_.matches(AnnotationDeclarationPattern.regex), ctx => {
+      val AnnotationDeclarationPattern(name, typeHint) = ctx.trimmed: @unchecked
+      val variable = ctx.context.defineVariable(name, api.mapType(Some(typeHint.trim)))
+      DispatchOutcome(List(variable), ctx.index + 1)
     }),
     DispatchRule(_.matches(ClassPattern.regex), ctx => {
       val (name, bases) = ctx.trimmed match

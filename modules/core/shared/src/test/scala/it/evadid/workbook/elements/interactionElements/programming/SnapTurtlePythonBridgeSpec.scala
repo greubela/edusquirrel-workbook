@@ -101,9 +101,9 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     val result = SnapTurtlePythonBridge.applyPython(source)
     assert(result.isRight, clue = result)
     val python = SnapTurtlePythonBridge.printedPython(BeProgram.fromPythonString(source).fullProgram)
-    assert(python.contains("i = 1"), clue = python)
+    assert(python.contains("i: float = 1"), clue = python)
     assert(python.contains("while i < 3:"), clue = python)
-    assert(python.contains("i = i + 1"), clue = python)
+    assert(python.contains("i: float = i + 1"), clue = python)
     assert(python.contains("forward(i)"), clue = python)
     val xml = result.toOption.get.snapXml
     assert(xml.contains("""s="doSetVar""""), clue = xml)
@@ -124,8 +124,8 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     val result = SnapTurtlePythonBridge.applyPython(source)
     assert(result.isRight, clue = result)
     val python = SnapTurtlePythonBridge.printedPython(BeProgram.fromPythonString(source).fullProgram)
-    assert(python.contains("steps = 1"), clue = python)
-    assert(python.contains("steps = steps + 2"), clue = python)
+    assert(python.contains("steps: float = 1"), clue = python)
+    assert(python.contains("steps: float = steps + 2"), clue = python)
     assert(result.toOption.get.snapXml.contains("""s="doChangeVar""""), clue = result.toOption.get.snapXml)
   }
 
@@ -243,7 +243,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     assert(python.contains("receive_go()"), clue = python)
     assert(python.contains("do_wait(1)"), clue = python)
     assert(python.contains("down()"), clue = python)
-    assert(python.contains("steps = 10"), clue = python)
+    assert(python.contains("steps: float = 10"), clue = python)
     assert(python.contains("for _ in range(4):"), clue = python)
     assert(python.contains("forward(50)"), clue = python)
     assert(python.contains("turn(90)"), clue = python)
@@ -370,7 +370,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     val python = SnapTurtlePythonBridge.printedPython(
       it.evadid.vm.BeProgram.fromPythonString("def square(n):\n    pass\n").fullProgram
     )
-    assert(python.contains("def square(n):"), clue = python)
+    assert(python.contains("def square(n: Any) -> None:"), clue = python)
     assert(python.contains("pass"), clue = python)
   }
 

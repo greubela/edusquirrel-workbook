@@ -94,16 +94,22 @@ object SnapTurtlePythonBridge {
         val detail = Option(e.getMessage).filter(_.nonEmpty).getOrElse(e.getClass.getSimpleName)
         Left(s"Parse error; keeping existing blocks. ($detail)")
 
+  /** Preserve the VM's variable, parameter and return types when switching to Python. */
   def printedPython(expression: BeExpression): String = {
     val rendered = expression.structureInfo.toStringInLanguage(Python, English, false)
-    rendered.linesIterator.map { line =>
-      if (line.trim.startsWith("def "))
-        line
-          .replaceAll("([A-Za-z_][A-Za-z0-9_]*)\\s*:\\s*[^,\\)]+", "$1")
-          .replaceAll("\\)\\s*->\\s*[^:]+:", "):")
-      else
-        line.replaceFirst("^(\\s*[A-Za-z_][A-Za-z0-9_]*)\\s*:\\s*[^=\\n]+\\s*=\\s*", "$1 = ")
-    }.mkString("\n") + (if (rendered.endsWith("\n")) "\n" else "")
+    val variableAnnotation = """^\s*[A-Za-z_][A-Za-z0-9_]*\s*:\s*.*$""".r
+    val annotationSource = rendered.linesIterator
+      .filter(line => line.trim.startsWith("def ") || variableAnnotation.matches(line))
+      .map(_.takeWhile(_ != '='))
+      .mkString("\n")
+    val imports = List(
+      "Any" -> "from typing import Any",
+      "date" -> "from datetime import date"
+    ).collect {
+      case (typeName, importLine) if
+          s"(?:[:|]|->)\\s*$typeName\\b".r.findFirstIn(annotationSource).nonEmpty => importLine
+    }
+    if imports.isEmpty then rendered else imports.mkString("", "\n", "\n\n") + rendered
   }
 
   def isScriptStatement(expression: BeExpression): Boolean =
