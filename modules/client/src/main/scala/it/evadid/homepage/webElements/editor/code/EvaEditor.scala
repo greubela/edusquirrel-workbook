@@ -82,7 +82,7 @@ object EvaEditor {
 final class EvaEditor(
                        val state: Var[ProgrammingState],
                        evaConfig: EvaEditorConfig,
-                       onStateEdited: ProgrammingState => Unit
+                       onStateEdited: ProgrammingState => Unit = _ => ()
                      ) extends HtmlAppElement with FullscreenLifecycle {
 
   private given ExecutionContext = ExecutionContext.global

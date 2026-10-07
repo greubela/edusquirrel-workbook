@@ -1,10 +1,13 @@
 package it.evadid.homepage.workbook.content
 
+import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, HintLabel, TaskLabel}
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingExercise, ProgrammingExerciseFullJava}
+import it.evadid.workbook.elements.interactionElements.Turtle.TurtleRecreateShapeInteraction
+import it.evadid.workbook.elements.interactionElements.programming.TurtleGraphic.{Line, TurtleLineBasedProgram}
+import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 
 case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
@@ -17,13 +20,26 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
     )
   }
 
+  val exp = TurtleLineBasedProgram(List(
+    Line[Double](Point(0, 0), Point(100, 0)),
+    Line[Double](Point(100, 0), Point(100, 100)),
+    Line[Double](Point(100, 100), Point(200, 100))
+  ))
+
   lazy val section1: WorkbookSection = {
     section("sec1Id", "TestWorkbook/Sec1", List[WorkbookElement](
       container("TestWorkbook/Sec1Cont1", List(
+        TurtleRecreateShapeInteraction(
+          "Turtle-Recreate-1",
+          ProgrammingStateSnapXml(SnapProjectXml.mini).toBeExpressionState,
+          exp,
+          ProgrammingEditorPalette.Default,
+          Map("forward" -> 5)
+        ),
         ProgrammingExercise("prog-1", editorPalette = ProgrammingEditorPalette.PythonCompatibleSnap),
         ProgrammingExerciseFullJava("prog-full-java")
       )
-    )))
+      )))
   }
 
   lazy val section2: WorkbookSection = {

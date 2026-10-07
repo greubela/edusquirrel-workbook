@@ -16,7 +16,7 @@ import scala.scalajs.js
 /** Renders and compares a turtle trace on a JSXGraph board.
  *
  * JSXGraph must be loaded by the host page (`JXG` must be available globally).
- * Coordinates use turtle/JSXGraph coordinates (positive y points upwards).
+ * Coordinates follow TurtlePathBuilder's SVG convention (positive y points downwards).
  */
 object TurtleJsxGraphRenderer:
 
@@ -29,7 +29,9 @@ object TurtleJsxGraphRenderer:
   def render[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic): Element = {
     val container = div(
       cls := "turtle-gradig-panel",
-      "TurtleJsxGraphRenderer: Not supporting TurtleGraphic yet!"
+      onMountCallback(event => {
+        render(event.thisNode.ref, program, expected)
+      })
     )
     container
   }
@@ -56,7 +58,7 @@ object TurtleJsxGraphRenderer:
   }
 
   /** A line segment used as the expected result of a turtle exercise. */
-  final case class LineToRender[T: Fractional](start: Point[T], end: Point[T])
+  final case class LineToRender[T: Fractional](start: Point[T], end: Point[T], jump: Boolean = false)
 
 
   enum LineResult derives ReadWriter:
@@ -114,7 +116,7 @@ object TurtleJsxGraphRenderer:
 
     def forward(distance: Double): Unit =
       val radians = Math.toRadians(heading)
-      move(Point(position.x + Math.cos(radians) * distance, position.y + Math.sin(radians) * distance), !penDown, true)
+      move(Point(position.x + Math.cos(radians) * distance, position.y - Math.sin(radians) * distance), !penDown, true)
 
     program.foreach { command =>
       val name = command.name.trim.toLowerCase.replace('-', '_')
@@ -126,24 +128,24 @@ object TurtleJsxGraphRenderer:
           lastForwardLine.foreach(i => pendingAngle = Some(PendingAngle(position, heading, degrees, i)))
           heading = normal(heading + degrees)
         }
-        case "right" | "rt" | "turn" => args.headOption.foreach { degrees =>
+        case "right" | "rt" | "turn" | "turn_right" | "turnright" => args.headOption.foreach { degrees =>
           lastForwardLine.foreach(i => pendingAngle = Some(PendingAngle(position, heading, -degrees, i)))
           heading = normal(heading - degrees)
         }
         case "goto" | "setpos" | "setposition" | "goto_x_y" | "gotoxy" if args.size >= 2 =>
-          move(Point(args(0), args(1)), jump = true, isForward = false)
-        case "setx" | "set_x" | "setxposition" => args.headOption.foreach(x => move(Point(x, position.y), jump = true, isForward = false))
-        case "sety" | "set_y" | "setyposition" => args.headOption.foreach(y => move(Point(position.x, y), jump = true, isForward = false))
+          move(Point(args(0), args(1)), jump = !penDown, isForward = false)
+        case "setx" | "set_x" | "setxposition" => args.headOption.foreach(x => move(Point(x, position.y), jump = !penDown, isForward = false))
+        case "sety" | "set_y" | "setyposition" => args.headOption.foreach(y => move(Point(position.x, y), jump = !penDown, isForward = false))
         case "setheading" | "seth" | "set_heading" => args.headOption.foreach(h => heading = normal(h))
         case "penup" | "pu" | "up" | "pen_up" => penDown = false
         case "pendown" | "pd" | "down" | "pen_down" => penDown = true
-        case "home" => move(Point(0.0, 0.0), jump = true, isForward = false); heading = 0.0
+        case "home" => move(Point(0.0, 0.0), jump = !penDown, isForward = false); heading = 0.0
         case "clear" | "clearscreen" => movements.clear(); angles.clear(); lastForwardLine = None; pendingAngle = None
         case "reset" => movements.clear(); angles.clear(); position = Point(0.0, 0.0); heading = 0.0; penDown = true; lastForwardLine = None; pendingAngle = None
         case _ => ()
     }
 
-    val unmatchedExpected = ListBuffer.from(expected.map(line => LineToRender(line.start.toDouble, line.end.toDouble)))
+    val unmatchedExpected = ListBuffer.from(expected.map(line => LineToRender(line.start.toDouble, line.end.toDouble, line.jump)))
     val rendered = movements.map { movement =>
       val matchIndex = unmatchedExpected.indexWhere(line => sameLine(movement.start, movement.end, line.start, line.end, tolerance))
       val result = if matchIndex >= 0 then {
@@ -152,13 +154,46 @@ object TurtleJsxGraphRenderer:
       } else LineResult.Unexpected
       RenderedLine(movement.start, movement.end, result, movement.jump)
     }
-    val missing = unmatchedExpected.map(line => RenderedLine(line.start, line.end, LineResult.Missing, jump = false))
+    val missing = unmatchedExpected.map(line => RenderedLine(line.start, line.end, LineResult.Missing, line.jump))
     Scene((rendered ++ missing).toList, angles.toList)
+
+  /** Compares a program with the expected graphic and displays the expected graphic's turns. */
+  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic): Scene =
+    buildScene(program, expected, 1e-7)
+
+  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double): Scene =
+    val expectedScene = buildScene(expected.toTurtleProgram.toList, List.empty[LineToRender[Double]], tolerance)
+    val expectedLines = expectedScene.lines.map(line => LineToRender(line.start, line.end, line.jump))
+    val numeric = summon[Fractional[T]]
+    val doubleProgram = program.map(command =>
+      TurtleCommand(command.name, command.args.map(numeric.toDouble))
+    )
+    val actualScene = buildScene(doubleProgram, expectedLines, tolerance)
+
+    val expectedAngles = expectedScene.angles.map { angle =>
+      def correspondingLine(index: Int): Int =
+        val expectedLine = expectedScene.lines(index)
+        actualScene.lines.indexWhere(line =>
+          sameLine(line.start, line.end, expectedLine.start, expectedLine.end, tolerance)
+        )
+
+      angle.copy(
+        lineBefore = correspondingLine(angle.lineBefore),
+        lineAfter = correspondingLine(angle.lineAfter)
+      )
+    }
+    actualScene.copy(angles = expectedAngles)
 
 
   /** Creates the JSXGraph board inside `container` and returns the board object. */
   def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): js.Dynamic =
-    val scene = buildScene(program, expected)
+    renderScene(container, buildScene(program, expected))
+
+  /** Creates the JSXGraph board using the expected graphic for both comparison and angle overlays. */
+  def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: TurtleGraphic): js.Dynamic =
+    renderScene(container, buildScene(program, expected))
+
+  private def renderScene(container: dom.html.Div, scene: Scene): js.Dynamic =
     val points = scene.lines.flatMap(line => List(line.start, line.end))
     val bounds = boundingBox(points)
     val jxg = js.Dynamic.global.selectDynamic("JXG")
@@ -197,7 +232,7 @@ object TurtleJsxGraphRenderer:
       val color = line.result match
         case LineResult.Correct => "#159447"
         case LineResult.Unexpected => "#d12f2f"
-        case LineResult.Missing => "#111111"
+        case LineResult.Missing => "#000000"
       val segment: js.Dynamic = board.create("segment", js.Array(a, b), js.Dynamic.literal(
         strokeColor = color, strokeWidth = 3, dash = (if line.jump then 2 else 0), fixed = true
       ))
@@ -207,14 +242,14 @@ object TurtleJsxGraphRenderer:
 
     def createAngle(angle: RenderedAngle, index: Int): Unit = {
       val radius = math.max((bounds(2) - bounds(0)) / 18.0, 50)
-      val start = Point(angle.vertex.x + Math.cos(Math.toRadians(angle.fromHeading)) * radius, angle.vertex.y + Math.sin(Math.toRadians(angle.fromHeading)) * radius)
+      val start = Point(angle.vertex.x + Math.cos(Math.toRadians(angle.fromHeading)) * radius, angle.vertex.y - Math.sin(Math.toRadians(angle.fromHeading)) * radius)
       val endHeading = angle.fromHeading + angle.degrees
-      val end = Point(angle.vertex.x + Math.cos(Math.toRadians(endHeading)) * radius, angle.vertex.y + Math.sin(Math.toRadians(endHeading)) * radius)
+      val end = Point(angle.vertex.x + Math.cos(Math.toRadians(endHeading)) * radius, angle.vertex.y - Math.sin(Math.toRadians(endHeading)) * radius)
 
       def helper(point: Point[Double]): js.Dynamic = board.create("point", js.Array(point.x, point.y), js.Dynamic.literal(visible = false, fixed = true))
 
       val arc = board.create("angle", js.Array(helper(end), pointObject(angle.vertex), helper(start)), js.Dynamic.literal(
-        name = "", radius = radius, fillColor = "#FFA420", strokeColor = "#FFA420", fillOpacity = 0.9, strokeOpacity = 0.9, fixed = true
+        name = "", radius = radius, fillColor = "#808080", strokeColor = "#808080", fillOpacity = 0.9, strokeOpacity = 0.9, fixed = true
       ))
       arc.on("over", (_: js.Any) => setAngleHover(arc, angle, active = true, board))
       arc.on("out", (_: js.Any) => setAngleHover(arc, angle, active = false, board))

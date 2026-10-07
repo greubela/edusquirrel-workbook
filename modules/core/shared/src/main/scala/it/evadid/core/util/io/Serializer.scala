@@ -136,7 +136,6 @@ object Serializer {
       singletonObject.toString,
       singletonObject.getClass.getSimpleName,
       singletonObject.getClass.getName,
-      singletonObject.getClass.getCanonicalName,
       s"Singleton(${singletonObject.getClass.getSimpleName})"
     ) ++ singletonString
 
