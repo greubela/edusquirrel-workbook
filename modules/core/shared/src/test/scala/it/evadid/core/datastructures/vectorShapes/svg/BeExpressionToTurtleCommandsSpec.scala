@@ -7,6 +7,9 @@ import it.evadid.core.datastructures.vectorShapes.renderer.VmToSvg
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.util.logging.Logger
 import it.evadid.vm.BeProgram
+import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
+import it.evadid.vm.types.BeDataValueLiteral
+import it.evadid.workbook.elements.interactionElements.programming.SnapControlFlow
 import munit.FunSuite
 
 class BeExpressionToTurtleCommandsSpec extends FunSuite {
@@ -28,6 +31,52 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
     val commands = BeExpressionToTurtleCommands(program.fullProgram)
     assertEquals(commands.map(_.name), List("forward", "forward"))
     assertEquals(commands.map(_.args), List(List(10.0), List(10.0)))
+  }
+
+  test("quoted text preserves digits and inner quotes") {
+    val program = BeProgram.fromPythonString(
+      """color("#112233")
+        |color("bird's blue")
+        |color('say "blue"')
+        |color('123')
+        |""".stripMargin
+    )
+    assertEquals(
+      BeExpressionToTurtleCommands(program.fullProgram),
+      List("#112233", "bird's blue", "say \"blue\"", "123")
+        .map(value => TurtleCommand[Double]("color", stringArgs = List(value)))
+    )
+  }
+
+  test("scientific numeric literals produce only numeric arguments") {
+    val program = BeProgram.fromPythonString("forward(1e3)\nforward(2.5e2)")
+    assertEquals(
+      BeExpressionToTurtleCommands(program.fullProgram),
+      List(TurtleCommand[Double]("forward", List(1000.0)), TurtleCommand[Double]("forward", List(250.0)))
+    )
+  }
+
+  test("raw non-numeric literals retain their textual payload") {
+    val call = SnapControlFlow.topLevelStatements(BeProgram.fromPythonString("color('red')").fullProgram)
+      .collectFirst { case call: BeFunctionCall => call }.get
+    List("NaN", "Infinity").foreach { text =>
+      val literalCall = call.copy(parameterValueMap = call.parameterValueMap.map { (parameter, _) =>
+        parameter -> BeUseValue(BeDataValueLiteral(text), None)
+      })
+      assertEquals(BeExpressionToTurtleCommands(literalCall), List(TurtleCommand[Double]("color", stringArgs = List(text))))
+    }
+  }
+
+  test("boolean stitch arguments stay separate from numeric arguments") {
+    val program = BeProgram.fromPythonString("jump_stitch(True)\njump_stitch(False)\ncross_stitch(8, 13, False)")
+    assertEquals(
+      BeExpressionToTurtleCommands(program.fullProgram),
+      List(
+        TurtleCommand[Double]("jump_stitch", stringArgs = List("True")),
+        TurtleCommand[Double]("jump_stitch", stringArgs = List("False")),
+        TurtleCommand[Double]("cross_stitch", List(8.0, 13.0), List("False"))
+      )
+    )
   }
 
   test("color, running stitch, and arithmetic for-loop produce a path") {
