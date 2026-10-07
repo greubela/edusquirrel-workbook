@@ -9,7 +9,7 @@ import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, VmToSvg}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
-import it.evadid.homepage.webElements.editor.code.EvaEditor
+import it.evadid.homepage.webElements.editor.code.{EvaEditor, EvaEditorConfig}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
 import it.evadid.homepage.webElements.editor.code.TurtleEditor.EvaTurtleEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
@@ -29,32 +29,32 @@ import scala.util.{Failure, Success}
 
 case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[TurtleRecreateShapeInteraction] {
 
-  private def createInteractivePreview(boundVar: Var[ProgrammingState]): ElementCard = {
+  private def createInteractivePreview(boundVar: Var[ProgrammingState], workbookElement: TurtleRecreateShapeInteraction): ElementCard = {
     val cmd = boundVar.signal.map(_.toBeExpressionState.deriveTurtleCommands)
-    val exp = TurtleLineBasedProgram(List(Line[Double](Point(0, 0), Point(100, 0)), Line[Double](Point(100, 0), Point(100, 100))))
 
     ElementCard(
       LanguageMapContentId("basic/gradingPreviewProgram"),
-      TurtleJsxGraphRenderer.render(cmd, exp)
+      TurtleJsxGraphRenderer.render(cmd, workbookElement.desiredResult)
     )
   }
 
   override protected def createRendering(workbookElement: TurtleRecreateShapeInteraction): AtomarLineRendering = {
     val boundVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl, UpdateImportance.MAJOR).toAirstreamVar
 
-    val editorConfig: SnapCodeEditorConfig = workbookElement.availablePalette match
+    val snapEditorConfig: SnapCodeEditorConfig = workbookElement.availablePalette match
       case ProgrammingEditorPalette.Default => SnapCodeEditorConfig.Testing
       case ProgrammingEditorPalette.PythonCompatibleSnap => SnapCodeEditorConfig.PythonCompatibleTesting
       case ProgrammingEditorPalette.BeginnerTurtle => SnapCodeEditorConfig.BeginnerTurtleTesting
       case ProgrammingEditorPalette.Embroidery => SnapCodeEditorConfig.EmbroideryTesting
 
-    val editor = EvaTurtleEditor(boundVar, editorConfig)
+    val editorConfig = EvaEditorConfig(snapConfig = snapEditorConfig)
+    val editor = EvaTurtleEditor(boundVar, editorConfig, createInteractivePreview(boundVar, workbookElement))
 
     def buttonPressed(): Unit = fullInfo.displayControl.setFullscreen(editor)
 
     val button: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/OpenEditor", event => buttonPressed())
     val buttonCard = ElementCard(LanguageMapContentId("basic/openEditor"), button.getDomElement())
 
-    AtomarLineRendering.cardLine(workbookElement, List(buttonCard, createInteractivePreview(boundVar)))
+    AtomarLineRendering.cardLine(workbookElement, List(buttonCard, createInteractivePreview(boundVar, workbookElement)))
   }
 }
