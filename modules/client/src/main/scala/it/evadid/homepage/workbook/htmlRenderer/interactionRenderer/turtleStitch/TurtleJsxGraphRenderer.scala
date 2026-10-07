@@ -82,6 +82,34 @@ object TurtleJsxGraphRenderer:
 
   final case class Scene(lines: List[RenderedLine], angles: List[RenderedAngle]) derives ReadWriter
 
+  private[turtleStitch] final case class AngleSector(first: Point[Double], last: Point[Double], degrees: Double)
+
+  /** Rays point away from the vertex along both adjacent segments. Coordinates
+    * are converted to JSXGraph here, and ordered to select the smaller sector.
+    */
+  private[turtleStitch] def angleSector(scene: Scene, angle: RenderedAngle, radius: Double): AngleSector =
+    val vertex = Point(angle.vertex.x, -angle.vertex.y)
+    def ray(endpoint: Point[Double]): Point[Double] =
+      val dx = endpoint.x - angle.vertex.x
+      val dy = angle.vertex.y - endpoint.y
+      val length = math.hypot(dx, dy)
+      Point(vertex.x + dx / length * radius, vertex.y + dy / length * radius)
+
+    // Matching accepts reversed segments, so select the endpoint away from the
+    // vertex rather than assuming the matched line's traversal direction.
+    def otherEndpoint(line: RenderedLine): Point[Double] =
+      def distance(point: Point[Double]): Double = math.hypot(point.x - angle.vertex.x, point.y - angle.vertex.y)
+      if distance(line.start) >= distance(line.end) then line.start else line.end
+
+    val incoming = ray(otherEndpoint(scene.lines(angle.lineBefore)))
+    val outgoing = ray(otherEndpoint(scene.lines(angle.lineAfter)))
+    val from = math.atan2(incoming.y - vertex.y, incoming.x - vertex.x)
+    val to = math.atan2(outgoing.y - vertex.y, outgoing.x - vertex.x)
+    val fullTurn = 2.0 * math.Pi
+    val sweep = ((to - from) % fullTurn + fullTurn) % fullTurn
+    if sweep <= math.Pi then AngleSector(incoming, outgoing, math.toDegrees(sweep))
+    else AngleSector(outgoing, incoming, math.toDegrees(fullTurn - sweep))
+
   private final case class Movement(start: Point[Double], end: Point[Double], jump: Boolean) derives ReadWriter
 
   private final case class PendingAngle(vertex: Point[Double], fromHeading: Double, degrees: Double, lineBefore: Int) derives ReadWriter
@@ -170,7 +198,7 @@ object TurtleJsxGraphRenderer:
     val missing = unmatchedExpected.map(line => RenderedLine(line.start, line.end, LineResult.Missing, line.jump))
     Scene((rendered ++ missing).toList, angles.toList)
 
-  /** Compares a program with the expected graphic and displays the expected graphic's turns. */
+  /** Compares a program with the expected graphic and marks angles between its segments. */
   def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic): Scene =
     buildScene(program, expected, 1e-7)
 
@@ -257,19 +285,15 @@ object TurtleJsxGraphRenderer:
       def length(line: RenderedLine): Double = math.hypot(line.end.x - line.start.x, line.end.y - line.start.y)
       val radius = math.min((bounds(2) - bounds(0)) / 18.0,
         math.min(length(scene.lines(angle.lineBefore)), length(scene.lines(angle.lineAfter))) / 4.0)
-      // JSXGraph constructs angles counterclockwise; order the rays by turn direction.
-      val start = Point(angle.vertex.x + Math.cos(Math.toRadians(angle.fromHeading)) * radius, -angle.vertex.y + Math.sin(Math.toRadians(angle.fromHeading)) * radius)
-      val endHeading = angle.fromHeading + angle.degrees
-      val end = Point(angle.vertex.x + Math.cos(Math.toRadians(endHeading)) * radius, -angle.vertex.y + Math.sin(Math.toRadians(endHeading)) * radius)
+      val sector = angleSector(scene, angle, radius)
 
       def helper(point: Point[Double]): js.Dynamic = board.create("point", js.Array(point.x, point.y), js.Dynamic.literal(visible = false, fixed = true))
 
-      val (first, last) = if angle.degrees >= 0.0 then (start, end) else (end, start)
-      val arc = board.create("angle", js.Array(helper(first), pointObject(angle.vertex), helper(last)), js.Dynamic.literal(
+      val arc = board.create("angle", js.Array(helper(sector.first), pointObject(angle.vertex), helper(sector.last)), js.Dynamic.literal(
         name = "", radius = radius, `type` = "sector", orthoType = "sector", selection = "auto", fillColor = "#808080", strokeColor = "#808080", fillOpacity = 0.9, strokeOpacity = 0.9, fixed = true
       ))
-      arc.on("over", (_: js.Any) => setAngleHover(arc, angle, active = true, board))
-      arc.on("out", (_: js.Any) => setAngleHover(arc, angle, active = false, board))
+      arc.on("over", (_: js.Any) => setAngleHover(arc, sector.degrees, active = true, board))
+      arc.on("out", (_: js.Any) => setAngleHover(arc, sector.degrees, active = false, board))
       angleObjects(index) = arc
     }
 
@@ -286,11 +310,11 @@ object TurtleJsxGraphRenderer:
         name = (if active then s"(${format(p.x)}, ${format(p.y)})" else ""), fillOpacity = (if active then 1.0 else 0.1), strokeOpacity = (if active then 1.0 else 0.1)
       )))
     }
-    scene.angles.zipWithIndex.filter { case (a, _) => a.lineBefore == lineIndex || a.lineAfter == lineIndex }.foreach { case (a, i) => angles.get(i).foreach(setAngleHover(_, a, active, board)) }
+    scene.angles.zipWithIndex.filter { case (a, _) => a.lineBefore == lineIndex || a.lineAfter == lineIndex }.foreach { case (a, i) => angles.get(i).foreach(setAngleHover(_, angleSector(scene, a, 1.0).degrees, active, board)) }
     board.update()
 
-  private def setAngleHover(obj: js.Dynamic, angle: RenderedAngle, active: Boolean, board: js.Dynamic): Unit =
-    obj.setAttribute(js.Dynamic.literal(name = (if active then s"${format(math.abs(angle.degrees))}°" else ""), fillOpacity = (if active then 1.0 else 0.9), strokeOpacity = (if active then 1.0 else 0.1)))
+  private def setAngleHover(obj: js.Dynamic, degrees: Double, active: Boolean, board: js.Dynamic): Unit =
+    obj.setAttribute(js.Dynamic.literal(name = (if active then s"${format(degrees)}°" else ""), fillOpacity = (if active then 1.0 else 0.9), strokeOpacity = (if active then 1.0 else 0.1)))
     board.update()
 
   private def sameLine(a: Point[Double], b: Point[Double], c: Point[Double], d: Point[Double], tolerance: Double): Boolean =
