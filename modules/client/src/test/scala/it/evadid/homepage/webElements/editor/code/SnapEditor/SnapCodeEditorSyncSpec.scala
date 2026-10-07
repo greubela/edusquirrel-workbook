@@ -2,12 +2,39 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import com.raquo.airstream.ownership.{ManualOwner, Owner}
 import com.raquo.airstream.state.Var
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
+import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{SnapCodeEditorConfig, SnapCodeEditorImplDelegateToOriginal}
 import it.evadid.workbook.elements.interactionElements.programming.*
 import munit.FunSuite
+import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
+import scala.scalajs.js
 
 class SnapCodeEditorSyncSpec extends FunSuite {
+  private val globals = js.Dynamic.global.globalThis
+  private val requireFn = js.Dynamic.global.selectDynamic("require")
+  private val root = js.Dynamic.global.process.cwd().asInstanceOf[String]
+  private val jsdom = requireFn(root + "/node_modules/jsdom")
+  private val window = js.Dynamic.newInstance(jsdom.JSDOM)("<html><body></body></html>").window
+  private val names = List("window", "document", "Element", "Node")
+  private val previous = names.map(name => name -> globals.selectDynamic(name))
+
+  override def beforeAll(): Unit = {
+    names.foreach(name => globals.updateDynamic(name)(window.selectDynamic(name)))
+  }
+
+  override def afterAll(): Unit = {
+    previous.foreach { (name, value) => globals.updateDynamic(name)(value) }
+    window.close()
+  }
+
+  private def withKeyboard(test: SnapCodeEditorImplDelegateToOriginal.KeyboardInput => Unit): Unit = {
+    val keyboard = dom.document.createElement("textarea").asInstanceOf[SnapCodeEditorImplDelegateToOriginal.KeyboardInput]
+    keyboard.id = "morphic_keyboard"
+    dom.document.body.appendChild(keyboard)
+    try test(keyboard)
+    finally keyboard.remove()
+  }
+
   private class RecordingImpl extends SnapCodeEditorImpl {
     var listener: String => Unit = _ => ()
     var current: Option[ProgrammingStateSnapXml] = None
@@ -16,6 +43,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     var reloads = 0
     var forcedLoads = 0
     var loadRequests = 0
+    var librariesCleared = 0
     override def mount(owner: Owner): Unit = { mounts += 1 }
     override def renderEditorInto(state: ProgrammingStateSnapXml, canvas: Canvas, config: SnapCodeEditorConfig): Unit = {
       renders += 1
@@ -40,7 +68,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     override def stopGreenFlagOnStage(): Unit = ()
     override def setGreenFlagStepMs(ms: Double): Unit = ()
     override def fitEditorToContainer(): Unit = ()
-    override def removeAllLibraries(includeDefaultLibraries: Boolean): Unit = ()
+    override def removeAllLibraries(includeDefaultLibraries: Boolean): Unit = { librariesCleared += 1 }
     override def destroy(): Unit = ()
   }
 
@@ -70,6 +98,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       editor.onFullscreenOpen()
       assertEquals(impl.forcedLoads, 0)
       assertEquals(impl.reloads, 1)
+      assertEquals(impl.librariesCleared, 0)
     } finally owner.killSubscriptions()
   }
 
@@ -89,6 +118,72 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       assertEquals(impl.mounts, 2)
       assertEquals(impl.loadRequests, 1)
       assertEquals(impl.reloads, 1)
+      assertEquals(impl.librariesCleared, 0)
     } finally second.killSubscriptions()
+  }
+
+  test("preview rendering preserves the shared keyboard draft, selection and style") {
+    withKeyboard { keyboard =>
+      keyboard.value = "12345"
+      keyboard.setSelectionRange(1, 4, "backward")
+      keyboard.style.cssText = "position: absolute; top: 23px; left: 41px; font-size: 18px; opacity: 0;"
+      val style = keyboard.style.cssText
+      val world = js.Dynamic.literal()
+      keyboard.asInstanceOf[js.Dynamic].updateDynamic("world")(world)
+      keyboard.focus()
+      val result = SnapCodeEditorImplDelegateToOriginal.preserveKeyboardState {
+        keyboard.value = ""
+        keyboard.style.top = "0px"
+        keyboard.style.left = "0px"
+        "rendered"
+      }
+      assertEquals(result, "rendered")
+      assertEquals(keyboard.value, "12345")
+      assertEquals(keyboard.selectionStart, 1)
+      assertEquals(keyboard.selectionEnd, 4)
+      assertEquals(keyboard.selectionDirection, "backward")
+      assertEquals(keyboard.style.cssText, style)
+      assert(keyboard.asInstanceOf[js.Dynamic].selectDynamic("world") eq world)
+      assert(dom.document.activeElement eq keyboard)
+    }
+  }
+
+  test("preview rendering restores keyboard state when rendering fails") {
+    withKeyboard { keyboard =>
+      keyboard.value = "9876"
+      keyboard.setSelectionRange(2, 3, "forward")
+      keyboard.style.cssText = "position: absolute; top: 19px; left: 53px;"
+      val style = keyboard.style.cssText
+      val error = new IllegalStateException("preview failed")
+      val thrown = intercept[IllegalStateException] {
+        SnapCodeEditorImplDelegateToOriginal.preserveKeyboardState {
+          keyboard.value = ""
+          keyboard.style.cssText = ""
+          throw error
+        }
+      }
+      assert(thrown eq error)
+      assertEquals(keyboard.value, "9876")
+      assertEquals(keyboard.selectionStart, 2)
+      assertEquals(keyboard.selectionEnd, 3)
+      assertEquals(keyboard.selectionDirection, "forward")
+      assertEquals(keyboard.style.cssText, style)
+    }
+  }
+
+  test("preview rendering also works without an existing keyboard") {
+    assertEquals(dom.document.getElementById("morphic_keyboard"), null)
+    val keyboard = dom.document.createElement("textarea").asInstanceOf[dom.HTMLTextAreaElement]
+    keyboard.id = "morphic_keyboard"
+    try {
+      val result = SnapCodeEditorImplDelegateToOriginal.preserveKeyboardState {
+        dom.document.body.appendChild(keyboard)
+        keyboard.value = "preview keyboard"
+        "rendered"
+      }
+      assertEquals(result, "rendered")
+      assertEquals(dom.document.getElementById("morphic_keyboard"), keyboard)
+      assertEquals(keyboard.value, "preview keyboard")
+    } finally keyboard.remove()
   }
 }
