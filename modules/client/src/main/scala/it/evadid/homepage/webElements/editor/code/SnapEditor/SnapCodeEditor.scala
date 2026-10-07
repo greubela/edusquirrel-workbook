@@ -17,8 +17,7 @@ case class SnapCodeEditor(
                            onStateEdited: ProgrammingState => Unit = _ => ()
                          ) extends HtmlAppElement with FullscreenLifecycle {
 
-  def removeAllLibraries(includeDefaultLibraries: Boolean = false): Unit =
-    impl.removeAllLibraries(includeDefaultLibraries)
+
 
   private def publishProgramFromSnapXml(xml: String): Unit = {
     val next = ProgrammingStateSnapXml(xml)
@@ -32,6 +31,7 @@ case class SnapCodeEditor(
 
   private[SnapEditor] def mountEditorInto(canvas: Canvas, owner: Owner): Unit = {
     impl.mount(owner)
+    impl.removeAllLibraries(true)
     impl.setOnProjectXmlChangedListener(publishProgramFromSnapXml)
     impl.renderEditorInto(state.now().toSnapXml, canvas, config)
     // Mount once. Later updates only synchronize the retained project;
@@ -60,7 +60,7 @@ case class SnapCodeEditor(
 
   lazy val editorDom: L.Element = {
     div(
-      cls := "be-program-snap-renderer be-program-snap-renderer--editor",
+      cls := "code-editor be-program-snap-renderer be-program-snap-renderer--editor",
       position.relative,
       overflow.hidden,
       border := "1px solid #d0d7de",
@@ -83,14 +83,9 @@ case class SnapCodeEditor(
 
   lazy val domElement: L.Element =
     div(
-      cls := "be-program-snap-fullscreen",
-      editorDom,
-      SnapTurtleStagePanel.chrome(
-        this,
-        flushPending = () => impl.flushPendingProjectChanges(),
-        runOnStage = canvas => impl.runGreenFlagOnStage(canvas),
-        stopRun = () => impl.stopGreenFlagOnStage()
-      )
+      cls := "code-editor-container be-program-snap-fullscreen",
+      editorDom
+      //SnapTurtleStagePanel.chrome(this, flushPending = () => impl.flushPendingProjectChanges(), runOnStage = canvas => impl.runGreenFlagOnStage(canvas), stopRun = () => impl.stopGreenFlagOnStage()      )
     )
 
   override def getDomElement(): L.Element = domElement

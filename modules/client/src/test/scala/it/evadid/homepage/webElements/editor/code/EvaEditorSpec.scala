@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.AppLanguage
 import com.raquo.airstream.state.Var
 import com.raquo.airstream.ownership.ManualOwner
 import it.evadid.workbook.elements.interactionElements.programming.*
-import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaProgrammingTab
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorConfig, EvaProgrammingTab}
 import munit.FunSuite
 
 class EvaEditorSpec extends FunSuite {

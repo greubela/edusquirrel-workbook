@@ -3,7 +3,6 @@ package it.evadid.homepage.webElements.editor.code.EvaEditor
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.webElements.editor.code.EvaEditorConfig
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.workbook.elements.interactionElements.programming.*

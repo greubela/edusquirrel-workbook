@@ -4,7 +4,7 @@ import com.raquo.airstream.state.Var
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python, SnapLanguage}
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.editor.code.{CodeMirrorEditor, EvaEditorConfig}
+import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
 import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 
