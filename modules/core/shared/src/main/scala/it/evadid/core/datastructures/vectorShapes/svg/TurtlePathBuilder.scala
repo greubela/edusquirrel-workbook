@@ -3,6 +3,7 @@ package it.evadid.core.datastructures.vectorShapes.svg
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.{TurtleCommand, TurtlePenStyle, TurtleState, TurtleStyledSegment}
+import upickle.default.{ReadWriter, macroRW}
 
 case class TurtlePathBuilder[T: Fractional](
                                              startPoint: Point[T],
@@ -265,6 +266,18 @@ object TurtlePathBuilder {
       stitchMode: String,
       homeHeadingDeg: T
   )
+
+  given [T](using rwColor: ReadWriter[String], rwSize: ReadWriter[T]): ReadWriter[TurtlePenStyle[T]] =
+    macroRW
+
+  given [T: Fractional](using rwName: ReadWriter[String], rwArgs: ReadWriter[List[T]], rwStringArgs: ReadWriter[List[String]]): ReadWriter[TurtleCommand[T]] =
+    macroRW
+
+  given [T: Fractional](using rwX: ReadWriter[T], rwY: ReadWriter[T], rwHeading: ReadWriter[T], rwColor: ReadWriter[String], rwSize: ReadWriter[T], rwStitch: ReadWriter[String]): ReadWriter[TurtleState[T]] =
+    macroRW
+
+  given [T: Fractional](using rwPath: ReadWriter[SvgPathBuilderImmutable[T]], rwStyle: ReadWriter[TurtlePenStyle[T]]): ReadWriter[TurtleStyledSegment[T]] =
+    macroRW
 
   object TurtleState {
     def initial[T: Fractional](
