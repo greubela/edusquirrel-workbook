@@ -16,6 +16,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     var reloads = 0
     var forcedLoads = 0
     var loadRequests = 0
+    var librariesCleared = 0
     override def mount(owner: Owner): Unit = { mounts += 1 }
     override def renderEditorInto(state: ProgrammingStateSnapXml, canvas: Canvas, config: SnapCodeEditorConfig): Unit = {
       renders += 1
@@ -40,7 +41,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     override def stopGreenFlagOnStage(): Unit = ()
     override def setGreenFlagStepMs(ms: Double): Unit = ()
     override def fitEditorToContainer(): Unit = ()
-    override def removeAllLibraries(includeDefaultLibraries: Boolean): Unit = ()
+    override def removeAllLibraries(includeDefaultLibraries: Boolean): Unit = { librariesCleared += 1 }
     override def destroy(): Unit = ()
   }
 
@@ -70,6 +71,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       editor.onFullscreenOpen()
       assertEquals(impl.forcedLoads, 0)
       assertEquals(impl.reloads, 1)
+      assertEquals(impl.librariesCleared, 0)
     } finally owner.killSubscriptions()
   }
 
@@ -89,6 +91,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       assertEquals(impl.mounts, 2)
       assertEquals(impl.loadRequests, 1)
       assertEquals(impl.reloads, 1)
+      assertEquals(impl.librariesCleared, 0)
     } finally second.killSubscriptions()
   }
 }

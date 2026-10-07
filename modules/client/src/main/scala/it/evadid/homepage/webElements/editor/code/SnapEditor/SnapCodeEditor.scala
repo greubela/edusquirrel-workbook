@@ -31,7 +31,6 @@ case class SnapCodeEditor(
 
   private[SnapEditor] def mountEditorInto(canvas: Canvas, owner: Owner): Unit = {
     impl.mount(owner)
-    impl.removeAllLibraries(true)
     impl.setOnProjectXmlChangedListener(publishProgramFromSnapXml)
     impl.renderEditorInto(state.now().toSnapXml, canvas, config)
     // Mount once. Later updates only synchronize the retained project;
