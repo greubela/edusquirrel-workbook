@@ -1,4 +1,4 @@
-package it.evadid.homepage.webElements.editor.code
+package it.evadid.homepage.webElements.editor.code.EvaEditor
 
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{LibraryTab, SnapCodeEditorConfig}
