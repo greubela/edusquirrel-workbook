@@ -463,6 +463,27 @@ const codeMirrorFacade = {
     const javaText = value => Text.of(value.split(/\r\n|\r|\n/));
     let javaSource = doc;
     let javaSeparator = separatorFor(doc);
+    const applyJavaChanges = changes => {
+      let rawPosition = 0;
+      let normalizedPosition = 0;
+      let copiedUntil = 0;
+      const parts = [];
+      const rawOffset = position => {
+        while (normalizedPosition < position) {
+          if (javaSource[rawPosition++] === "\r" && javaSource[rawPosition] === "\n") rawPosition++;
+          normalizedPosition++;
+        }
+        return rawPosition;
+      };
+      changes.iterChanges((from, to, _fromB, _toB, inserted) => {
+        const rawFrom = rawOffset(from);
+        const rawTo = rawOffset(to);
+        parts.push(javaSource.slice(copiedUntil, rawFrom), inserted.toString().replace(/\n/g, javaSeparator));
+        copiedUntil = rawTo;
+      });
+      parts.push(javaSource.slice(copiedUntil));
+      return parts.join("");
+    };
     const theme = new Compartment();
     const editorLanguage = new Compartment();
     const followsPageTheme = Boolean(parent.closest(".fd-page"));
@@ -476,8 +497,7 @@ const codeMirrorFacade = {
         editorLanguage.of(languageExtension(language)),
         EditorView.updateListener.of((update) => {
           if (update.docChanged && !isProgrammaticUpdate) {
-            const text = update.state.doc.toString();
-            const value = isJava ? text.replace(/\n/g, javaSeparator) : text;
+            const value = isJava ? applyJavaChanges(update.changes) : update.state.doc.toString();
             if (isJava) javaSource = value;
             if (typeof onDocChange === "function") onDocChange(value);
           }
