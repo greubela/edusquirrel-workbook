@@ -25,9 +25,6 @@ case class TurtleStitchEditor(projektXml: Var[String]) extends HtmlAppElement {
   private val domElement: L.Element =
     div(
       cls := "turtle-stitch-editor",
-      width := "100%",
-      minHeight := "620px",
-      height := "75vh",
       onMountCallback { ctx =>
         mount(ctx.thisNode.ref)
           .`then`[Unit]({ jsHandle =>

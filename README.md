@@ -194,7 +194,10 @@ To check editor layout at desktop, mobile, and landscape sizes:
 
 ```bash
 node --test tools/dev/editor-layout.test.mjs
+node --test tools/dev/turtle-css.test.mjs
 ```
+
+The turtle CSS checks use the bundled JSXGraph SVG renderer in jsdom and verify that CSS overrides survive redraws and highlights. In restricted environments, `node --test --test-isolation=none tools/dev/turtle-css.test.mjs` runs them without spawning a test worker.
 
 The layout checks use the production CSS with editor DOM fixtures. They use system Chromium when available; otherwise install Playwright's browser with `npx playwright install chromium`, or set `CHROMIUM_PATH`.
 
@@ -246,3 +249,6 @@ LLM calls go through a Cloudflare Worker so the OpenAI key never reaches the bro
 By default the deployed site reuses the existing **`pytutorai-proxy`** worker (same code, same `/api/llm/complete` contract). If you want a dedicated worker, deploy [`tools/cloudflare-proxy/`](tools/cloudflare-proxy/README.md) and update the URL in `config.js`.
 
 Local FastAPI proxy still works for offline development — see [`tools/openai-proxy/README.md`](tools/openai-proxy/README.md).
+
+
+Client presentation uses `homepage/css/client-components.css`, `editors.css`, and the shared color/dimension tokens. Laminar supplies semantic state and classes; static colors, borders, spacing, hover emphasis, and icon styling belong in CSS. Canvas category styling reads CSS dimensions at the DOM boundary because Morphic paints those controls itself. Runtime geometry, configured drawing palettes and fonts, and self-contained SVG/image export data remain explicit in the rendering code.

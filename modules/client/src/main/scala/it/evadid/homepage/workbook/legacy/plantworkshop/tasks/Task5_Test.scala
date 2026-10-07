@@ -95,10 +95,6 @@ object Task5_Test {
         h3("Schritt-für-Schritt: .ino auf den Arduino Nano laden"),
         div(
           className := "safety-warning",
-          backgroundColor := "#ffe5e5",
-          border := "3px solid #c62828",
-          padding := "14px",
-          marginBottom := "14px",
           h3("⚠️ STOPP VOR DEM HOCHLADEN"),
           p(
             strong("Niemals Strom ohne Aufseher einschalten! "),

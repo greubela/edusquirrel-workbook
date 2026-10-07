@@ -95,7 +95,7 @@ case class LaminarRenderHelper() {
 
   def sessionFileUploadInput(logger: Logger, onNewUploadFileSelected: LoadedFile => Any): ReactiveHtmlElement[HTMLInputElement] = {
     input(
-      styleAttr := "display:none;",
+      hidden := true,
       typ := "file",
       accept := "json",
       onChange --> { event =>

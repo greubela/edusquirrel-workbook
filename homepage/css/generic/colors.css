@@ -1,6 +1,21 @@
 /* Shared design tokens for the workbook experience.
    Color policy: define colors only in this file and consume them via CSS variables in other stylesheets. */
 :root {
+    /* Intrinsic flag artwork colors are independent of the UI theme. */
+    --color-flag-british-red: #c8102e;
+    --color-flag-white: #fff;
+    --color-flag-ukrainian-blue: #0057b7;
+    --color-flag-ukrainian-yellow: #ffd700;
+    --color-flag-turkish-red: #e30a17;
+    --color-flag-russian-red: #d52b1e;
+    --color-flag-russian-blue: #0039a6;
+    --color-flag-french-red: #ce1126;
+    --color-flag-french-blue: #002654;
+    --color-flag-british-blue: #012169;
+    --color-flag-black: #000;
+    --color-flag-german-red: #d00;
+    --color-flag-german-yellow: #ffce00;
+
 
 
     --color-red-0: #fdcfcf;

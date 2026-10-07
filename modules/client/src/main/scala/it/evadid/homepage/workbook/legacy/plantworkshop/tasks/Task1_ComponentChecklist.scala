@@ -34,10 +34,6 @@ object Task1_ComponentChecklist {
         className := "task-box",
         div(
           className := "safety-warning",
-          backgroundColor := "#ffe5e5",
-          border := "3px solid #c62828",
-          padding := "14px",
-          marginBottom := "14px",
           h3("⚠️ WICHTIGE SICHERHEITSREGEL"),
           p(
             strong("Niemals Strom ohne Aufseher einschalten! "),
@@ -98,13 +94,7 @@ object Task1_ComponentChecklist {
           div(
             className := "wiring-diagram",
             div(
-              display := "flex",
-              flexDirection := "column",
-              gap := "10px",
-              alignItems := "center",
               div(
-                display := "flex",
-                gap := "10px",
                 button(
                   "← Zurück",
                   className := "btn-nav",
@@ -113,7 +103,6 @@ object Task1_ComponentChecklist {
                   }
                 ),
                 span(
-                  fontWeight := "600",
                   child.text <-- currentBuildStep.signal.map(i => s"Schritt ${i + 1} / ${buildSteps.length}")
                 ),
                 button(
@@ -127,15 +116,10 @@ object Task1_ComponentChecklist {
               img(
                 src <-- currentBuildStep.signal.map(i => buildSteps(i)),
                 alt <-- currentBuildStep.signal.map(i => s"Aufbau Schritt ${i + 1}"),
-                maxWidth := "100%",
-                width := "820px",
-                border := "2px solid #d5dbe3",
-                borderRadius := "8px"
               ),
               child <-- currentBuildStep.signal.map {
                 case 0 =>
                   div(
-                    width := "820px",
                     div(
                       className := "info-box",
                       strong("Hinweis:"),
@@ -147,7 +131,6 @@ object Task1_ComponentChecklist {
                   )
                 case 1 =>
                   div(
-                    width := "820px",
                     div(
                       className := "info-box",
                       strong("Hinweis:"),
@@ -159,12 +142,9 @@ object Task1_ComponentChecklist {
                   )
                 case 2 =>
                   div(
-                    display := "flex",
-                    gap := "12px",
-                    width := "820px",
+                    cls := "wiring-step",
                     div(
                       className := "info-box",
-                      flex := "1",
                       strong("Verkabelung:"),
                       ul(
                         li(" Sensor + __ Arduino D2"),
@@ -174,7 +154,6 @@ object Task1_ComponentChecklist {
                     ),
                     div(
                       className := "info-box",
-                      flex := "2",
                       strong("Was macht diese Verkabelung?"),
                       p(
                         "Der Pin D2 versorgt den Sensor mit Strom, wenn wir Werte messen wollen. ",
@@ -192,12 +171,9 @@ object Task1_ComponentChecklist {
                   )
                 case 3 =>
                   div(
-                    display := "flex",
-                    gap := "12px",
-                    width := "820px",
+                    cls := "wiring-step",
                     div(
                       className := "info-box",
-                      flex := "1",
                       strong("Verkabelung:"),
                       ul(
                         li(" Relais DC+ __ Arduino 5V"),
@@ -207,7 +183,6 @@ object Task1_ComponentChecklist {
                     ),
                     div(
                       className := "info-box",
-                      flex := "2",
                       strong("Was macht diese Verkabelung?"),
                       p(
                         "Das Relais wird mit 5V und GND vom Arduino versorgt. ",
@@ -225,7 +200,6 @@ object Task1_ComponentChecklist {
                   )
                 case 4 =>
                   div(
-                    width := "820px",
                     div(
                       className := "info-box",
                       strong("Zwischenstand:"),
@@ -237,7 +211,6 @@ object Task1_ComponentChecklist {
                   )
                 case 5 =>
                   div(
-                    width := "820px",
                     div(
                       className := "info-box",
                       strong("Hinweis:"),
@@ -249,7 +222,6 @@ object Task1_ComponentChecklist {
                   )
                 case 6 =>
                   div(
-                    width := "820px",
                     div(
                       className := "info-box",
                       strong("Hinweis:"),
@@ -265,12 +237,9 @@ object Task1_ComponentChecklist {
                   )
                 case 7 =>
                   div(
-                    display := "flex",
-                    gap := "12px",
-                    width := "820px",
+                    cls := "wiring-step",
                     div(
                       className := "info-box",
-                      flex := "1",
                       strong("Verkabelung:"),
                       ul(
                         li(" Pumpe + __ Relais NO (Normally Open)"),
@@ -280,7 +249,6 @@ object Task1_ComponentChecklist {
                     ),
                     div(
                       className := "info-box",
-                      flex := "2",
                       strong("Was macht diese Verkabelung?"),
                       p(
                         "Hier verbindet ihr Relais, Pumpe und Adapter mit den vorbereiteten Drähten. ",
@@ -298,7 +266,6 @@ object Task1_ComponentChecklist {
                   )
                 case 8 =>
                   div(
-                    width := "820px",
                     div(
                       className := "info-box",
                       strong("Hinweis:"),
@@ -310,7 +277,6 @@ object Task1_ComponentChecklist {
                   )
                 case 9 =>
                   div(
-                    width := "820px",
                     div(
                       className := "info-box",
                       strong("Hinweis:"),
@@ -322,7 +288,6 @@ object Task1_ComponentChecklist {
                   )
                 case 10 =>
                   div(
-                    width := "820px",
                     div(
                       className := "info-box",
                       strong("Hinweis:"),

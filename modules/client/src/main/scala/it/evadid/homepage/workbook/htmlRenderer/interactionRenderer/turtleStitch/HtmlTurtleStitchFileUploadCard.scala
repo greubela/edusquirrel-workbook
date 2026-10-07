@@ -22,7 +22,7 @@ private[turtleStitch] case class HtmlTurtleStitchFileUploadCard(workbookInteract
   private val acceptedTypes: List[String] = List("text/turtle", "text/xml")
 
   private lazy val uploadInput: ReactiveHtmlElement[HTMLInputElement] = input(
-    styleAttr := "display:none;",
+    hidden := true,
     typ := "file",
     accept := acceptedTypes.mkString(","),
     onChange --> { event =>
