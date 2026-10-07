@@ -13,11 +13,11 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskTogg
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.reorderExercise.HtmlReorderInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingExercise.HtmlSortingInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingReasonExercise.HtmlSortingReasonInteractionRenderer
-import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.{HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRendererLegacy}
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.{HtmlTurtleRecreateShapeRenderer, HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRendererLegacy}
 import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.*
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.*
-import it.evadid.workbook.elements.interactionElements.Turtle.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
+import it.evadid.workbook.elements.interactionElements.Turtle.{TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
@@ -114,6 +114,7 @@ object HtmlRenderFactory {
       case r: ReorderInteraction[?] => HtmlReorderInteractionRenderer.renderWorkbookElement(r)*/
       // plugins -- turtle
       case t: TurtleStitchExploreProjectElement => HtmlTurtleStitchExploreProjectRenderer.renderWorkbookElement(t)
+      case t: TurtleRecreateShapeInteraction => HtmlTurtleRecreateShapeRenderer.renderWorkbookElement(t)
       case t: TurtleStitchRecreateShapeInteractionLegacy => HtmlTurtleStitchRecreateShapeRendererLegacy.renderWorkbookElement(t)
       // plugins -- gpt
       case g: GptInteractionElement => HtmlGptTextfieldInteractionRenderer.renderWorkbookElement(g)

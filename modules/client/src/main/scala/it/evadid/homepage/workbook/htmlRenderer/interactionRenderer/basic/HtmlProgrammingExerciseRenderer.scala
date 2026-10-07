@@ -62,6 +62,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
 
     val button: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/OpenEditor", event => buttonPressed())
     val buttonCard = ElementCard(LanguageMapContentId("basic/openEditor"), button.getDomElement())
+
     val canvasCard = ElementCard(LanguageMapContentId("basic/canvas"), editor.previewCanvas)
 
     // static preview based on the custom display engine (not working yet, for test purposes)

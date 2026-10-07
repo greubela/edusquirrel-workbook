@@ -9,7 +9,7 @@ import it.evadid.workbook.elements.interactionElements.programming.ProgrammingSt
 
 case class EvaTurtleEditor(boundVar: Var[ProgrammingState], evaConfig: EvaEditorConfig, card: ElementCard) extends HtmlAppElement with FullscreenLifecycle {
 
-  private val evaEditor = EvaEditor(boundVar, evaConfig)
+  val evaEditor = EvaEditor(boundVar, evaConfig)
 
   val domElement: Element = div(
     evaEditor.getDomElement(),

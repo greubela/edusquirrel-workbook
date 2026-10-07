@@ -20,8 +20,11 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
     )
   }
 
-
-  val exp = TurtleLineBasedProgram(List(Line[Double](Point(0, 0), Point(100, 0)), Line[Double](Point(100, 0), Point(100, 100))))
+  val exp = TurtleLineBasedProgram(List(
+    Line[Double](Point(0, 0), Point(100, 0)),
+    Line[Double](Point(100, 0), Point(100, 100)),
+    Line[Double](Point(100, 100), Point(200, 100))
+  ))
 
   lazy val section1: WorkbookSection = {
     section("sec1Id", "TestWorkbook/Sec1", List[WorkbookElement](

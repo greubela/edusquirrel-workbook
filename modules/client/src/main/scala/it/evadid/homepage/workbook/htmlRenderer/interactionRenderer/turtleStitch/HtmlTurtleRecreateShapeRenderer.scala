@@ -47,11 +47,14 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
     val editorConfig = EvaEditorConfig(snapConfig = snapEditorConfig)
     val editor = EvaTurtleEditor(boundVar, editorConfig, createInteractivePreview(boundVar, workbookElement))
 
+
+    val canvasCard = ElementCard(LanguageMapContentId("basic/canvas"), editor.evaEditor.previewCanvas)
+
     def buttonPressed(): Unit = fullInfo.displayControl.setFullscreen(editor)
 
     val button: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/OpenEditor", event => buttonPressed())
     val buttonCard = ElementCard(LanguageMapContentId("basic/openEditor"), button.getDomElement())
 
-    AtomarLineRendering.cardLine(workbookElement, List(buttonCard, createInteractivePreview(boundVar, workbookElement)))
+    AtomarLineRendering.cardLine(workbookElement, List(buttonCard, canvasCard, createInteractivePreview(boundVar, workbookElement)))
   }
 }
