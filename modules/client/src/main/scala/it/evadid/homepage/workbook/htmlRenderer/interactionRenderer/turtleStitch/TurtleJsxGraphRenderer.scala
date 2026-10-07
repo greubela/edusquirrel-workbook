@@ -6,7 +6,6 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCo
 import it.evadid.core.util.io.{ConstructorLikeParserWithJsonElements, Serializer}
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
 import it.evadid.workbook.elements.interactionElements.programming.TurtleGraphic
-import it.evadid.workbook.elements.interactionElements.programming.TurtleGraphic.{Line, TurtleLineBasedProgram}
 import org.scalajs.dom
 import upickle.default.*
 
@@ -38,7 +37,13 @@ object TurtleJsxGraphRenderer:
   }
 
   def render[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): Element = {
-    render(program, TurtleLineBasedProgram(expected.map(curLine => Line[Double](curLine.start.toDouble, curLine.end.toDouble))))
+    val container = div(
+      cls := "turtle-gradig-panel",
+      onMountCallback(event => {
+        render(event.thisNode.ref, program, expected)
+      })
+    )
+    container
   }
 
   /* Factories */
@@ -48,6 +53,9 @@ object TurtleJsxGraphRenderer:
 
   /* details */
 
+  private sealed trait ObjectsToRender {
+
+  }
 
   /** A line segment used as the expected result of a turtle exercise. */
   final case class LineToRender[T: Fractional](start: Point[T], end: Point[T])
@@ -71,32 +79,16 @@ object TurtleJsxGraphRenderer:
 
   final case class RenderedAngle(vertex: Point[Double], fromHeading: Double, degrees: Double, lineBefore: Int, lineAfter: Int) derives ReadWriter
 
-  final case class Scene(linesExpectedAndExisting: List[Movement], linesExpectedButMissing: List[Movement], lineExistingButUnexpected: List[Movement], existingJumps: List[Movement]) derives ReadWriter
+  final case class Scene(lines: List[RenderedLine], angles: List[RenderedAngle]) derives ReadWriter
 
-  final case class ObjectsToRender(lines: List[Movement], angles: List[RenderedAngle]) derives ReadWriter
+  private final case class Movement(start: Point[Double], end: Point[Double], jump: Boolean) derives ReadWriter
 
-   final case class Movement(start: Point[Double], end: Point[Double], jump: Boolean) derives ReadWriter
+  private final case class PendingAngle(vertex: Point[Double], fromHeading: Double, degrees: Double, lineBefore: Int) derives ReadWriter
 
-   final case class PendingAngle(vertex: Point[Double], fromHeading: Double, degrees: Double, lineBefore: Int) derives ReadWriter
-
-  def buildScene(objectsProduced: List[Movement], linesRequired: List[Movement], anglesToDisplay: List[RenderedAngle]): Scene = {
-    /*
-        val unmatchedExpected = ListBuffer.from(expected.map(line => LineToRender(line.start.toDouble, line.end.toDouble)))
-        val rendered: mutable.Seq[RenderedLine] = movements.map { movement =>
-          val matchIndex = unmatchedExpected.indexWhere(line => sameLine(movement.start, movement.end, line.start, line.end, tolerance))
-          val result = if matchIndex >= 0 then {
-            unmatchedExpected.remove(matchIndex);
-            LineResult.Correct
-          } else LineResult.Unexpected
-          RenderedLine(movement.start, movement.end, result, movement.jump)
-        }
-        val missing = unmatchedExpected.map(line => RenderedLine(line.start, line.end, LineResult.Missing, jump = false))
-        Scene((rendered ++ missing).toList, angles.toList)
-    */
-    ???
-  }
-
-  def buildObjectsToRender[T: Fractional](program: Seq[TurtleCommand[T]], tolerance: Double = 1e-7): ObjectsToRender = {
+  /** Builds a testable rendering model and performs a one-to-one, direction-independent
+   * comparison of actual and expected segments.
+   */
+  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]], tolerance: Double = 1e-7): Scene =
     val numeric = summon[Fractional[T]]
     var position = Point(0.0, 0.0)
     var heading = 0.0
@@ -153,19 +145,56 @@ object TurtleJsxGraphRenderer:
         case _ => ()
     }
 
-    ObjectsToRender(movements.toList, angles.toList)
-  }
+    val unmatchedExpected = ListBuffer.from(expected.map(line => LineToRender(line.start.toDouble, line.end.toDouble)))
+    val rendered = movements.map { movement =>
+      val matchIndex = unmatchedExpected.indexWhere(line => sameLine(movement.start, movement.end, line.start, line.end, tolerance))
+      val result = if matchIndex >= 0 then {
+        unmatchedExpected.remove(matchIndex);
+        LineResult.Correct
+      } else LineResult.Unexpected
+      RenderedLine(movement.start, movement.end, result, movement.jump)
+    }
+    val missing = unmatchedExpected.map(line => RenderedLine(line.start, line.end, LineResult.Missing, jump = false))
+    Scene((rendered ++ missing).toList, angles.toList)
+
+  /** Compares a program with the expected graphic and displays the expected graphic's turns. */
+  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic): Scene =
+    buildScene(program, expected, 1e-7)
+
+  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double): Scene =
+    val expectedScene = buildScene(expected.toTurtleProgram.toList, List.empty[LineToRender[Double]], tolerance)
+    val expectedLines = expectedScene.lines.map(line => LineToRender(line.start, line.end))
+    val numeric = summon[Fractional[T]]
+    val doubleProgram = program.map(command =>
+      TurtleCommand(command.name, command.args.map(numeric.toDouble))
+    )
+    val actualScene = buildScene(doubleProgram, expectedLines, tolerance)
+
+    val expectedAngles = expectedScene.angles.map { angle =>
+      def correspondingLine(index: Int): Int =
+        val expectedLine = expectedScene.lines(index)
+        actualScene.lines.indexWhere(line =>
+          sameLine(line.start, line.end, expectedLine.start, expectedLine.end, tolerance)
+        )
+
+      angle.copy(
+        lineBefore = correspondingLine(angle.lineBefore),
+        lineAfter = correspondingLine(angle.lineAfter)
+      )
+    }
+    actualScene.copy(angles = expectedAngles)
 
 
   /** Creates the JSXGraph board inside `container` and returns the board object. */
-  def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: TurtleGraphic): js.Dynamic = {
-    val existingObjs = buildObjectsToRender(program)
-    val expectedObjs = buildObjectsToRender(expected.toTurtleProgram)
+  def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): js.Dynamic =
+    renderScene(container, buildScene(program, expected))
 
+  /** Creates the JSXGraph board using the expected graphic for both comparison and angle overlays. */
+  def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: TurtleGraphic): js.Dynamic =
+    renderScene(container, buildScene(program, expected))
 
-    val scene = buildScene(existingObjs.lines, expectedObjs.lines.filter(cur => !cur.jump), expectedObjs.angles)
-    ???
-    /*val points = scene.lines.flatMap(line => List(line.start, line.end))
+  private def renderScene(container: dom.html.Div, scene: Scene): js.Dynamic =
+    val points = scene.lines.flatMap(line => List(line.start, line.end))
     val bounds = boundingBox(points)
     val jxg = js.Dynamic.global.selectDynamic("JXG")
     if js.isUndefined(jxg) then throw new IllegalStateException("JSXGraph is not loaded; expected global JXG")
@@ -231,9 +260,8 @@ object TurtleJsxGraphRenderer:
 
     scene.angles.zipWithIndex.foreach { case (angle, index) => createAngle(angle, index) }
     board.update()
-    board*/
-  }
-/*
+    board
+
   private def hoverRelated(scene: Scene, lineIndex: Int, points: collection.mutable.Map[Point[Double], js.Dynamic], angles: collection.mutable.Map[Int, js.Dynamic], board: js.Dynamic, active: Boolean): Unit =
     val line = scene.lines(lineIndex)
     List(line.start, line.end).foreach { p =>
@@ -251,6 +279,8 @@ object TurtleJsxGraphRenderer:
   private def sameLine(a: Point[Double], b: Point[Double], c: Point[Double], d: Point[Double], tolerance: Double): Boolean =
     (close(a, c, tolerance) && close(b, d, tolerance)) || (close(a, d, tolerance) && close(b, c, tolerance))
 
+  private def close(a: Point[Double], b: Point[Double], tolerance: Double): Boolean =
+    math.abs(a.x - b.x) <= tolerance && math.abs(a.y - b.y) <= tolerance
 
   private def format(value: Double): String =
     val rounded = math.rint(value * 1000.0) / 1000.0
@@ -264,6 +294,3 @@ object TurtleJsxGraphRenderer:
       val span = math.max(math.max(xs.max - xs.min, ys.max - ys.min), 1.0)
       val padding = span * 0.12
       Array(xs.min - padding, ys.max + padding, xs.max + padding, ys.min - padding)
-*/
-private def close(a: Point[Double], b: Point[Double], tolerance: Double): Boolean =
-  math.abs(a.x - b.x) <= tolerance && math.abs(a.y - b.y) <= tolerance

@@ -13,10 +13,10 @@ import it.evadid.homepage.webElements.editor.code.EvaEditorConfig
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
-import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineToRender
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingExercise, ProgrammingState}
+import it.evadid.workbook.elements.interactionElements.programming.TurtleGraphic
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import todomove.datastructures.web.file.FullImage
 
@@ -82,11 +82,14 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
 
     val interactivePreview = {
       val cmd = editor.currentState().toBeExpressionState.deriveTurtleCommands
-      val exp = List(LineToRender[Double](Point(0,0), Point(100,0)), LineToRender[Double](Point(100,0), Point(100, 100)))
+      val exp = TurtleGraphic.TurtleLineBasedProgram(List(
+        TurtleGraphic.Line[Double](Point[Double](0, 0), Point[Double](100, 0)),
+        TurtleGraphic.Line[Double](Point[Double](100, 0), Point[Double](100, 100))
+      ))
 
       ElementCard(
         LanguageMapContentId("basic/gradingPreviewProgram"),
-        TurtleJsxGraphRenderer.render(cmd, exp )
+        TurtleJsxGraphRenderer.render(cmd, exp)
       )
     }
 
