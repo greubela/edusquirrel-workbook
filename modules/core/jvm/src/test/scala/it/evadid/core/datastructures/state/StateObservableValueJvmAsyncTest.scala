@@ -114,11 +114,14 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
     private var automatic = initiallyAutomatic
     val reads = new Calls[Promise[FetchResponse[String, String]]]
     val writes = new Calls[(Map[String, String], Promise[SyncSuccess])]
+    val committedWrites = new Calls[Map[String, String]]
     def stopAutomaticReads(): Unit = synchronized { automatic = false }
-    def response(at: LocalDateTime = fetchedAt): FetchResponse[String, String] = new FetchResponse[String, String] {
+    def startAutomaticReads(): Unit = synchronized { automatic = true }
+    def storedValues: Map[String, String] = committedWrites.snapshot.foldLeft(Map.empty[String, String])(_ ++ _)
+    def response(at: LocalDateTime = fetchedAt, value: String = invalidJava): FetchResponse[String, String] = new FetchResponse[String, String] {
       override def timestampFetchResponse: LocalDateTime = at
       override def fetchedValues: Set[DataEntryReadFromServer[String, String]] = Set(
-        DataEntryReadFromServer("exercise", invalidJava, dataAt),
+        DataEntryReadFromServer("exercise", value, dataAt),
         DataEntryReadFromServer(s"$name-only", name, dataAt)
       )
     }
@@ -127,7 +130,7 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
       override def fetchAll(logger: SyncLogger): Future[FetchResponse[String, String]] = Source.this.synchronized {
         val result = Promise[FetchResponse[String, String]]()
         reads.add(result)
-        if (automatic) result.success(response())
+        if (automatic) result.success(response(value = storedValues.getOrElse("exercise", invalidJava)))
         result.future
       }
     }
@@ -136,7 +139,10 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
       override def writeAll(logger: SyncLogger, values: Map[String, String]): Future[SyncSuccess] = {
         val result = Promise[SyncSuccess]()
         writes.add(values -> result)
-        result.future
+        result.future.map { success =>
+          committedWrites.add(values)
+          success
+        }
       }
     }
     override def toString: String = name
@@ -175,10 +181,10 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
       }
       result.future
     }
-    def assertCurrent(source: Source): Unit = {
+    def assertCurrent(source: Source, value: String = invalidJava): Unit = {
       val report = controller.currentReport("exercise")
       assertEquals(report.allAvailableCacheKeys, List(source))
-      assertEquals(report.cacheStatus(source).lastKnownRemoteValue.map(_.dataValue), Some(invalidJava))
+      assertEquals(report.cacheStatus(source).lastKnownRemoteValue.map(_.dataValue), Some(value))
     }
   }
 
@@ -194,16 +200,17 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
 
   private def entry = List(DataEntryToWriteToServer("exercise", editedJava, dataAt.plusSeconds(1)))
 
-  test("RemoteCacheController loads nonempty initial keys before a queued update completes") {
+  test("RemoteCacheController loads nonempty initial keys for an immediate update") {
     val source = new Source("initial", initiallyAutomatic = true)
     val fixture = new CacheFixture(Some(List(source)))
-    fixture.ready(source).flatMap(_ => fixture.controller.requestCacheDependentUpdate(_ => fetchedAt)).map { _ =>
+    assertEquals(fixture.controller.currentReport("exercise").allAvailableCacheKeys, List(source))
+    fixture.controller.requestCacheDependentUpdate(_ => fetchedAt).map { _ =>
       fixture.assertCurrent(source)
       assert(source.reads.size > 0)
     }
   }
 
-  test("RemoteCacheController ensure, update and store wait for empty-to-user rebind") {
+  test("RemoteCacheController new requests progress while the key-change hook is pending") {
     val fixture = new CacheFixture
     val source = new Source("user")
     val evaluated = new Calls[Source]
@@ -211,11 +218,14 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
     fixture.rebind(source)
     for {
       hook <- fixture.hooks.calls.at(0)
+      _ = assertEquals(fixture.controller.currentReport("exercise").allAvailableCacheKeys, List(source))
       ensure = fixture.controller.ensureMaxAgeSafe(fetchedAt)
       update = fixture.controller.requestCacheDependentUpdate { key => evaluated.add(key); fetchedAt }
       store = fixture.controller.requestCacheDependentStore { key => evaluated.add(key); entry }
-      _ = hook.done.success(())
       read <- source.reads.at(0)
+      _ = assert(!hook.done.isCompleted)
+      _ = assertEquals(evaluated.snapshot, Nil)
+      _ = assertEquals(source.writes.size, 0)
       _ = read.success(source.response())
       _ <- ensure
       _ <- update
@@ -224,13 +234,15 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
       _ = assertEquals(write._1, Map("exercise" -> editedJava))
       _ = write._2.success(SyncSuccess.emptyNow())
       _ <- store
+      _ = assert(!hook.done.isCompleted)
+      _ = hook.done.success(())
     } yield {
       assertEquals(evaluated.snapshot, List(source, source))
       fixture.assertCurrent(source)
     }
   }
 
-  test("RemoteCacheController delayed old fetch cannot overwrite a rebind or redirect a queued store") {
+  test("RemoteCacheController a new context can store before the old fetch completes") {
     withLoadedSource().flatMap { (fixture, oldSource) =>
       val source = new Source("B")
       val evaluated = new Calls[Source]
@@ -239,14 +251,20 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
       for {
         oldRead <- oldSource.reads.at(firstRead)
         _ = fixture.rebind(source)
+        _ = assertEquals(fixture.controller.currentReport("exercise").allAvailableCacheKeys, List(source))
+        ensure = fixture.controller.ensureMaxAgeSafe(fetchedAt)
         store = fixture.controller.requestCacheDependentStore { key => evaluated.add(key); entry }
-        _ = oldRead.success(oldSource.response(fetchedAt.plusSeconds(1)))
-        _ <- update
         newRead <- source.reads.at(0)
         _ = newRead.success(source.response())
+        _ <- ensure
         write <- source.writes.at(0)
+        _ = assertEquals(write._1, Map("exercise" -> editedJava))
         _ = write._2.success(SyncSuccess.emptyNow())
         _ <- store
+        _ = assert(!update.isCompleted)
+        _ = fixture.assertCurrent(source)
+        _ = oldRead.success(oldSource.response(fetchedAt.plusSeconds(1)))
+        _ <- update
       } yield {
         assertEquals(evaluated.snapshot, List(source))
         assertEquals(oldSource.writes.size, 0)
@@ -255,26 +273,38 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
     }
   }
 
-  test("RemoteCacheController A-to-B-to-A hooks receive the preceding cache keys in order") {
+  test("RemoteCacheController A-to-B-to-A keeps the new context despite old hook and fetch completions") {
     withLoadedSource().flatMap { (fixture, sourceA) =>
       val sourceB = new Source("B")
       val firstHook = fixture.hooks.calls.size
       val firstReadA = sourceA.reads.size
-      fixture.hooks.next(_ => ())
-      fixture.rebind(sourceB)
+      val oldUpdateA = fixture.controller.requestCacheDependentUpdate(_ => fetchedAt.plusSeconds(1))
       for {
+        oldReadA <- sourceA.reads.at(firstReadA)
+        _ = fixture.hooks.next(_ => ())
+        _ = fixture.rebind(sourceB)
         hookB <- fixture.hooks.calls.at(firstHook)
+        _ = assertEquals(hookB.known, Set("exercise", "A-only"))
+        updateB = fixture.controller.requestCacheDependentUpdate(_ => fetchedAt)
         _ = fixture.rebind(sourceA)
-        update = fixture.controller.requestCacheDependentUpdate(_ => fetchedAt)
-        _ = hookB.done.success(())
+        hookA <- fixture.hooks.calls.at(firstHook + 1)
+        _ = assertEquals(hookA.known, Set.empty[String])
+        _ = assertEquals(fixture.controller.currentReport("exercise").allAvailableCacheKeys, List(sourceA))
+        updateA = fixture.controller.requestCacheDependentUpdate(_ => fetchedAt.plusSeconds(2))
         readB <- sourceB.reads.at(0)
         _ = readB.success(sourceB.response())
-        hookA <- fixture.hooks.calls.at(firstHook + 1)
-        _ = assertEquals(hookA.known, Set("exercise", "B-only"))
-        readA <- sourceA.reads.at(firstReadA)
-        _ = readA.success(sourceA.response())
-        _ <- update
-      } yield fixture.assertCurrent(sourceA)
+        _ <- updateB
+        _ = assert(!oldUpdateA.isCompleted)
+        _ = assert(!updateA.isCompleted)
+        _ = assert(!hookB.done.isCompleted)
+        _ = hookB.done.success(())
+        _ = oldReadA.success(sourceA.response(fetchedAt.plusSeconds(1)))
+        _ <- oldUpdateA
+        readA <- sourceA.reads.at(firstReadA + 1)
+        _ = assertEquals(fixture.controller.currentReport("exercise").cacheStatus(sourceA).lastKnownRemoteValue, None)
+        _ = readA.success(sourceA.response(fetchedAt.plusSeconds(2), editedJava))
+        _ <- updateA
+      } yield fixture.assertCurrent(sourceA, editedJava)
     }
   }
 
@@ -293,6 +323,25 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
         _ = nextRead.success(source.response(fetchedAt.plusSeconds(1)))
         _ <- retry
       } yield fixture.assertCurrent(source)
+    }
+  }
+
+  test("RemoteCacheController queued updates use the latest cache in their context") {
+    withLoadedSource().flatMap { (fixture, source) =>
+      val firstRead = source.reads.size
+      val freshUntil = fetchedAt.plusSeconds(1)
+      val update = fixture.controller.requestCacheDependentUpdate(_ => freshUntil)
+      for {
+        read <- source.reads.at(firstRead)
+        nextUpdate = fixture.controller.requestCacheDependentUpdate(_ => freshUntil)
+        _ = read.success(source.response(freshUntil))
+        _ <- update
+        _ <- nextUpdate
+      } yield {
+        assertEquals(source.reads.size, firstRead + 1)
+        assertEquals(fixture.controller.currentReport("exercise").cacheStatus(source).lastCacheRequest, Some(freshUntil))
+        fixture.assertCurrent(source)
+      }
     }
   }
 
@@ -322,21 +371,32 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
     val fixture = new CacheFixture
     val sourceA = new Source("A")
     val sourceB = new Source("B")
-    fixture.hooks.next { hook => fixture.rebind(sourceB); hook.done.success(()); () }
+    val oldUpdate = Promise[Future[Unit]]()
+    fixture.hooks.next { hook =>
+      oldUpdate.success(fixture.controller.requestCacheDependentUpdate(_ => fetchedAt).map(_ => ()))
+      hook.done.completeWith(sourceA.reads.at(0).map(_ => fixture.rebind(sourceB)))
+      ()
+    }
     fixture.rebind(sourceA)
+    val updateA = oldUpdate.future.flatten
     for {
-      readA <- sourceA.reads.at(0)
-      _ = readA.success(sourceA.response())
       hookB <- fixture.hooks.calls.at(1)
-      _ = assertEquals(hookB.known, Set("exercise", "A-only"))
+      _ = assertEquals(hookB.known, Set.empty[String])
+      readA <- sourceA.reads.at(0)
+      _ = assert(!readA.isCompleted)
+      _ = assertEquals(fixture.controller.currentReport("exercise").allAvailableCacheKeys, List(sourceB))
       readB <- sourceB.reads.at(0)
       update = fixture.controller.requestCacheDependentUpdate(_ => fetchedAt)
       _ = readB.success(sourceB.response())
       _ <- update
+      _ = fixture.assertCurrent(sourceB)
+      _ = assert(!updateA.isCompleted)
+      _ = readA.success(sourceA.response())
+      _ <- updateA
     } yield fixture.assertCurrent(sourceB)
   }
 
-  test("RemoteCacheController delayed old write completes before a rebind and cannot restore old cache keys") {
+  test("RemoteCacheController a new context loads before the old write completes") {
     withLoadedSource().flatMap { (fixture, oldSource) =>
       val source = new Source("B")
       val evaluated = new Calls[Source]
@@ -345,16 +405,104 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
         write <- oldSource.writes.at(0)
         _ = fixture.rebind(source)
         update = fixture.controller.requestCacheDependentUpdate { key => evaluated.add(key); fetchedAt }
-        _ = write._2.success(SyncSuccess.emptyNow())
-        _ <- store
         read <- source.reads.at(0)
         _ = read.success(source.response())
         _ <- update
+        _ = assert(!store.isCompleted)
+        _ = fixture.assertCurrent(source)
+        _ = write._2.success(SyncSuccess.emptyNow())
+        _ <- store
       } yield {
         assertEquals(write._1, Map("exercise" -> editedJava))
         assertEquals(evaluated.snapshot, List(source))
         assertEquals(source.writes.size, 0)
         fixture.assertCurrent(source)
+      }
+    }
+  }
+
+  test("RemoteCacheController a store queued before a rebind keeps its original destination") {
+    withLoadedSource().flatMap { (fixture, sourceA) =>
+      val sourceB = new Source("B")
+      val evaluatedA = new Calls[Source]
+      val privateDraft = "int userA = 13;"
+      val firstReadA = sourceA.reads.size
+      val updateA = fixture.controller.requestCacheDependentUpdate(_ => fetchedAt.plusSeconds(1))
+      for {
+        readA <- sourceA.reads.at(firstReadA)
+        storeA = fixture.controller.requestCacheDependentStore { key =>
+          evaluatedA.add(key)
+          List(DataEntryToWriteToServer("exercise", privateDraft, dataAt.plusSeconds(1)))
+        }
+        _ = fixture.rebind(sourceB)
+        ensureB = fixture.controller.ensureMaxAgeSafe(fetchedAt)
+        storeB = fixture.controller.requestCacheDependentStore(_ => entry)
+        readB <- sourceB.reads.at(0)
+        _ = readB.success(sourceB.response())
+        _ <- ensureB
+        writeB <- sourceB.writes.at(0)
+        _ = assertEquals(writeB._1, Map("exercise" -> editedJava))
+        _ = writeB._2.success(SyncSuccess.emptyNow())
+        _ <- storeB
+        _ = assertEquals(evaluatedA.snapshot, Nil)
+        _ = assertEquals(sourceA.writes.size, 0)
+        _ = assert(!storeA.isCompleted)
+        _ = fixture.assertCurrent(sourceB)
+        _ = readA.success(sourceA.response(fetchedAt.plusSeconds(1)))
+        _ <- updateA
+        writeA <- sourceA.writes.at(0)
+        _ = assertEquals(writeA._1, Map("exercise" -> privateDraft))
+        _ = writeA._2.success(SyncSuccess.emptyNow())
+        _ <- storeA
+      } yield {
+        assertEquals(evaluatedA.snapshot, List(sourceA))
+        assertEquals(sourceB.writes.snapshot.map(_._1), List(Map("exercise" -> editedJava)))
+        fixture.assertCurrent(sourceB)
+      }
+    }
+  }
+
+  test("RemoteCacheController A-to-B-to-A serializes writes to the reused destination") {
+    withLoadedSource().flatMap { (fixture, sourceA) =>
+      val sourceB = new Source("B")
+      val olderDraft = "int version = 1;"
+      val newerDraft = "int version = 2;"
+      val firstReadA = sourceA.reads.size
+      val updateA = fixture.controller.requestCacheDependentUpdate(_ => fetchedAt.plusSeconds(1))
+      for {
+        readA <- sourceA.reads.at(firstReadA)
+        oldStoreA = fixture.controller.requestStore(List(DataEntryToWriteToServer("exercise", olderDraft, dataAt.plusSeconds(1))))
+        _ = fixture.rebind(sourceB)
+        ensureB = fixture.controller.ensureMaxAgeSafe(fetchedAt)
+        storeB = fixture.controller.requestStore(entry)
+        readB <- sourceB.reads.at(0)
+        _ = readB.success(sourceB.response())
+        _ <- ensureB
+        writeB <- sourceB.writes.at(0)
+        _ = writeB._2.success(SyncSuccess.emptyNow())
+        _ <- storeB
+        _ = assert(!updateA.isCompleted)
+        _ = assertEquals(sourceB.storedValues, Map("exercise" -> editedJava))
+        _ = sourceA.startAutomaticReads()
+        _ = fixture.rebind(sourceA)
+        newStoreA = fixture.controller.requestStore(List(DataEntryToWriteToServer("exercise", newerDraft, dataAt.plusSeconds(2))))
+        _ = assertEquals(fixture.controller.currentReport("exercise").allAvailableCacheKeys, List(sourceA))
+        _ = intercept[java.util.concurrent.TimeoutException](Await.result(sourceA.writes.at(0), 1.second))
+        _ = assert(!newStoreA.isCompleted)
+        _ = readA.success(sourceA.response(fetchedAt.plusSeconds(1)))
+        _ <- updateA
+        oldWriteA <- sourceA.writes.at(0)
+        _ = assertEquals(oldWriteA._1, Map("exercise" -> olderDraft))
+        _ = oldWriteA._2.success(SyncSuccess.emptyNow())
+        _ <- oldStoreA
+        newWriteA <- sourceA.writes.at(1)
+        _ = assertEquals(newWriteA._1, Map("exercise" -> newerDraft))
+        _ = newWriteA._2.success(SyncSuccess.emptyNow())
+        _ <- newStoreA
+      } yield {
+        assertEquals(sourceA.committedWrites.snapshot, List(Map("exercise" -> olderDraft), Map("exercise" -> newerDraft)))
+        assertEquals(sourceA.storedValues, Map("exercise" -> newerDraft))
+        assertEquals(sourceB.storedValues, Map("exercise" -> editedJava))
       }
     }
   }

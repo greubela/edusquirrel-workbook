@@ -393,6 +393,7 @@ class PythonParser(
   }
 
   private def mapAtomicType(typeHint: String): Option[BeDataType] = typeHint.toLowerCase match {
+    case "any" => Some(AnyType)
     case "int" | "float" | "number" | "double" => Some(BeDataType.Numeric)
     case "bool" | "boolean" => Some(BeDataType.Boolean)
     case "str" | "string" => Some(BeDataType.String)

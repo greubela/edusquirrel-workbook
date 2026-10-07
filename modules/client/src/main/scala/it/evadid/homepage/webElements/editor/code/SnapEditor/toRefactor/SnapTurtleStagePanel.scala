@@ -1,10 +1,11 @@
-package it.evadid.homepage.webElements.editor.code.SnapEditor
+package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
+import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.ElementCard
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer

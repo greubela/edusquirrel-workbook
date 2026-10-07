@@ -19,7 +19,7 @@ case class ProgrammingExercise(
 ) extends WorkbookInteractionElement[ProgrammingState] {
   override val associatedFactory = ProgrammingExercise.factory
 
-  override val defaultValue: ProgrammingState = ProgrammingExerciseState.mini
+  override val defaultValue: ProgrammingState = ProgrammingStateSnapXml.mini
 
   override val serializerInteractionContent: Serializer[ProgrammingState] = ProgrammingExercise.StateSerializer
 
@@ -64,8 +64,8 @@ object ProgrammingExercise {
         s"$StateHeader\nBE_EXPRESSION\n${SnapTurtlePythonBridge.printedPython(expression)}"
 
     override def deserialize(str: String): ProgrammingState = {
-      if Option(str).forall(_.trim.isEmpty) then ProgrammingExerciseState.mini
-      else parseStored(str).getOrElse(ProgrammingExerciseState.mini)
+      if Option(str).forall(_.trim.isEmpty) then ProgrammingStateSnapXml.mini
+      else parseStored(str).getOrElse(ProgrammingStateSnapXml.mini)
     }
 
     private def parseStored(str: String): Option[ProgrammingState] = {
@@ -73,10 +73,10 @@ object ProgrammingExercise {
       if trimmed.startsWith(StateHeader) then parseVersion2(str.stripLeading)
       else if trimmed.startsWith(XmlHeader) then
         val xml = trimmed.drop(XmlHeader.length).stripLeading
-        if xml.isEmpty then Some(ProgrammingExerciseState.mini)
-        else Some(ProgrammingExerciseState(xml))
+        if xml.isEmpty then Some(ProgrammingStateSnapXml.mini)
+        else Some(ProgrammingStateSnapXml(xml))
       else if looksLikeProjectXml(trimmed) then
-        Some(ProgrammingExerciseState(trimmed))
+        Some(ProgrammingStateSnapXml(trimmed))
       else
         Some(migratePython(trimmed))
     }
@@ -102,7 +102,7 @@ object ProgrammingExercise {
 
     private def migratePython(python: String): ProgrammingState = {
       val program = Try(BeProgram.fromPythonString(python)).getOrElse(BeProgram.miniProgram())
-      ProgrammingExerciseState.fromProgram(program)
+      ProgrammingStateSnapXml.fromProgram(program)
     }
 
     private def looksLikeProjectXml(trimmed: String): Boolean =

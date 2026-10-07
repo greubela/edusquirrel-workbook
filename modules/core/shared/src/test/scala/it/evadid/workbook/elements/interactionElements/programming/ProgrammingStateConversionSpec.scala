@@ -244,7 +244,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
         |draw(2);
         |""".stripMargin
     val python = new JavaToBeExpressionParser().toPython(java)
-    assert(python.contains("def draw(count):"), clue = python)
+    assert(python.contains("def draw(count: float) -> None:"), clue = python)
     assert(python.contains("while i < count  and  True:"), clue = python)
     assert(python.contains("println(\"!;{}\")"), clue = python)
     assert(ProgrammingStateJavaString(java).toBeExpressionState.expression != null)
@@ -323,19 +323,117 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assertEquals(original.code, source)
   }
 
-  test("typed full Java programs stay outside legacy conversion and generic simulation") {
+  test("typed full Java programs reject generic simulation without changing their source") {
     val state = ProgrammingStateJavaString(squareJava())
     val fingerprint = ProgrammingState.fingerprint(state)
     val program = state.toJavaVmProgram.fold(diagnostic => fail(diagnostic.toString), identity)
     val simulator = BeSimulatorState(false, program.root, false, Nil, Nil, BeVirtualMachineState.emptyMachineState)
 
     intercept[UnsupportedOperationException](program.root.expressionExecutor(BeSimulatorConfig(), simulator))
-    intercept[IllegalArgumentException](state.toBeExpressionState)
-    intercept[IllegalArgumentException](state.toPython)
-    intercept[IllegalArgumentException](state.toSnapXml)
     assertEquals(T.runVm(program).status, T.Status.Completed)
     assertEquals(state.code, squareJava())
     assertEquals(ProgrammingState.fingerprint(state), fingerprint)
+  }
+
+  test("full Java classes remain readable but reject legacy turtle execution and Snap conversion") {
+    val state = ProgrammingStateJavaString(squareJava())
+    val stored = ProgrammingExercise.StateSerializer.serialize(state)
+    val fingerprint = ProgrammingState.fingerprint(state)
+
+    assert(state.isClassProgram)
+    val readable = ProgrammingStateJavaString("class Main { public static void main(String[] args) { Turtle.forward(12); } }")
+    assert(readable.toBeExpressionState.expression != null)
+    assert(readable.toPython.code.contains("class "), clue = readable.toPython.code)
+    assert(readable.toPython.code.contains("def main("), clue = readable.toPython.code)
+    intercept[IllegalArgumentException](state.toLegacyTurtleCommands)
+    intercept[IllegalArgumentException](state.toSnapXml)
+    assertEquals(state.toJava, state)
+    assertEquals(state.code, squareJava())
+    assertEquals(ProgrammingExercise.StateSerializer.serialize(state), stored)
+    assertEquals(ProgrammingState.fingerprint(state), fingerprint)
+    assertEquals(T.runVm(state.toJavaVmProgram.toOption.get).commands, squareCommands(25))
+  }
+
+  test("unfinished and unsupported Java cannot become an empty legacy turtle program") {
+    List(
+      "public class Main {",
+      "class Main { public static void main(String[] args) { forward(10);",
+      "this is unsupported Java"
+    ).foreach { source =>
+      val state = ProgrammingStateJavaString(source)
+      val stored = ProgrammingExercise.StateSerializer.serialize(state)
+      intercept[IllegalArgumentException](state.isClassProgram)
+      intercept[IllegalArgumentException](state.toLegacyTurtleCommands)
+      intercept[IllegalArgumentException](state.toSnapXml)
+      assertEquals(state.code, source)
+      assertEquals(ProgrammingExercise.StateSerializer.serialize(state), stored)
+    }
+  }
+
+  test("class words inside Java comments and strings do not classify fragments as classes") {
+    val sources = List(
+      "// class Fake {}\nforward(12);",
+      "String note = \"class Fake { }\"; forward(12);"
+    )
+    sources.foreach { source =>
+      val state = ProgrammingStateJavaString(source)
+      assert(!state.isClassProgram, clue = source)
+      assertEquals(state.toLegacyTurtleCommands.map(_.name), List("forward"))
+      assertEquals(state.toLegacyTurtleCommands.flatMap(_.args), List(12.0))
+      assert(state.toSnapXml.snapXml.contains("forward"), clue = source)
+      assertEquals(state.code, source)
+    }
+    val blockComment = ProgrammingStateJavaString("/* class Fake {} */ forward(12);")
+    assert(!blockComment.isClassProgram)
+    assertEquals(blockComment.code, "/* class Fake {} */ forward(12);")
+  }
+
+  test("Java printer entity hints remain compatible with fragment classification") {
+    val state = ProgrammingStatePythonString(
+      "def draw(distance):\n    forward(distance)\ndraw(12)\n"
+    ).toJava
+    val source = state.code
+
+    assert(source.contains("//EvaEntityName("), clue = source)
+    assert(!state.isClassProgram, clue = source)
+    assertEquals(state.toLegacyTurtleCommands.map(_.name), List("forward"))
+    assertEquals(state.toLegacyTurtleCommands.flatMap(_.args), List(12.0))
+    assert(state.toSnapXml.snapXml.contains("custom-block"), clue = source)
+    assertEquals(state.code, source)
+  }
+
+  test("entity hints inside literals cannot hide a Java class") {
+    val source = "String a = \"//EvaEntityName(\"; class Hidden {} String b = \")\"; forward(12);"
+    val state = ProgrammingStateJavaString(source)
+    assert(state.isClassProgram)
+    intercept[IllegalArgumentException](state.toLegacyTurtleCommands)
+    intercept[IllegalArgumentException](state.toSnapXml)
+    assertEquals(state.code, source)
+    assertEquals(JavaToBeExpressionParser.withoutEntityHints(source), source)
+  }
+
+  test("Java turtle classification bounds parser input and rejects unclosed lexemes") {
+    val sources = List(
+      "forward(" + "(" * 2000 + "1" + ")" * 2000 + ");",
+      "boolean flag = " + "!" * 2000 + "true;",
+      "forward(1);" * 4000,
+      "/* unfinished",
+      "String note = \"unfinished",
+      "String note = \"line\nnext\";",
+      "String note = \"line\\\nnext\";",
+      "String note = \"line\\\rnext\";"
+    )
+    sources.foreach { code =>
+      val state = ProgrammingStateJavaString(code)
+      val stored = ProgrammingExercise.StateSerializer.serialize(state)
+      intercept[IllegalArgumentException](state.isClassProgram)
+      intercept[IllegalArgumentException](state.toSnapXml)
+      assertEquals(state.code, code)
+      assertEquals(ProgrammingExercise.StateSerializer.serialize(state), stored)
+    }
+    val literal = ProgrammingStateJavaString("String note = \"" + "(" * 2000 + "\"; forward(12);")
+    assert(!literal.isClassProgram)
+    assertEquals(literal.toLegacyTurtleCommands.flatMap(_.args), List(12.0))
   }
 
   test("full Java state programs enforce execution limits on endless loops") {
@@ -366,7 +464,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assertEquals(exercise.serializerInteractionContent.serialize(source), stored)
   }
 
-  test("compiling Java leaves existing Snap ids and read-only conversion routes intact") {
+  test("compiling Java preserves a separate Snap state's ids during read-only conversions") {
     val xml = """<project><scripts><script x="70" y="80"><block id="kept-forward" s="forward"><l>12</l></block></script></scripts></project>"""
     val snap = ProgrammingStateSnapXml(xml)
     val fingerprint = ProgrammingState.fingerprint(snap)
@@ -385,7 +483,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
   test("empty Snap projects convert without treating block containers as commands") {
     val states = List(
-      ProgrammingExerciseState.empty,
+      ProgrammingStateSnapXml.empty,
       ProgrammingStateSnapXml("<project><blocks/><scripts/></project>"),
       ProgrammingStateSnapXml("<project><blocks></blocks><scripts><script/></scripts></project>")
     )
@@ -418,4 +516,51 @@ class ProgrammingStateConversionSpec extends FunSuite {
       ), state)
     }
   }
+
+  test("Java double declarations keep float hints even with integer initializers") {
+    val java = ProgrammingStateJavaString("double steps = 12; forward(steps);")
+    val converted = java.toPython
+    assert(converted.code.contains("steps: float = 12"), clue = converted.code)
+    assertEquals(normalized(converted.toBeExpressionState), converted.code.trim)
+  }
+
+  test("Java parameter, return and local types survive conversion to Python") {
+    val java = ProgrammingStateJavaString(
+      """double distance(double length, boolean enabled, String label) {
+        |  double result = length;
+        |  return result;
+        |}
+        |boolean active = true;
+        |String title = "path";
+        |""".stripMargin
+    )
+    val converted = java.toPython
+    assert(converted.code.contains("def distance(length: float, enabled: bool, label: str) -> float:"), clue = converted.code)
+    assert(converted.code.contains("result: float = length"), clue = converted.code)
+    assert(converted.code.contains("active: bool = True"), clue = converted.code)
+    assert(converted.code.contains("title: str = \"path\""), clue = converted.code)
+    assertEquals(normalized(converted.toBeExpressionState), converted.code.trim)
+  }
+
+  test("uninitialized Java variables retain their annotations") {
+    val converted = ProgrammingStateJavaString("double distance;").toPython
+    assert(converted.code.contains("distance : float"), clue = converted.code)
+    assertEquals(normalized(converted.toBeExpressionState), converted.code.trim)
+  }
+
+  test("unknown parameter types have usable Any hints and round trip to Snap") {
+    val converted = ProgrammingStatePythonString("def line(length):\n    forward(length)\nline(10)").toBeExpressionState.toPython
+    assert(converted.code.startsWith("from typing import Any\n"), clue = converted.code)
+    assert(converted.code.contains("def line(length: Any) -> None:"), clue = converted.code)
+    assert(SnapTurtlePythonBridge.applyPython(converted.code).isRight, clue = converted.code)
+    assertEquals(normalized(converted.toBeExpressionState), converted.code.trim)
+  }
+
+  test("date annotations include their import and survive Python reparsing") {
+    val converted = ProgrammingStateJavaString("Date day;").toPython
+    assert(converted.code.startsWith("from datetime import date\n"), clue = converted.code)
+    assert(converted.code.contains("day : date"), clue = converted.code)
+    assertEquals(normalized(converted.toBeExpressionState), converted.code.trim)
+  }
+
 }

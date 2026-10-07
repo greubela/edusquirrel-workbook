@@ -89,8 +89,12 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
       assert(radius > 0 && radius <= 20)
       assertEquals(arc.attrs.selectDynamic("type").asInstanceOf[String], "sector")
       assertEquals(arc.attrs.orthoType.asInstanceOf[String], "sector")
-      val firstHeading = if signed >= 0 then radians else after
-      val lastHeading = if signed >= 0 then after else radians
+      // The incoming ray points back toward the previous endpoint. Use the
+      // effective signed turn to choose the smaller angle between the lines.
+      val effectiveTurn = ((signed + 180.0) % 360.0 + 360.0) % 360.0 - 180.0
+      val firstHeading = if effectiveTurn > 0 then after else radians + math.Pi
+      val lastHeading = if effectiveTurn > 0 then radians + math.Pi else after
+      val cornerDegrees = math.abs(180.0 - math.abs(signed) % 360.0)
       def verifyCoordinates(): Unit =
         segments.zip(expected).foreach { (segment, line) =>
           point(graph.coords(graph.parent(segment, 0)), line.start.x, -line.start.y)
@@ -108,7 +112,7 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
       verifyCoordinates()
       (segments :+ arc).foreach { obj =>
         obj.fire("over")
-        assertEquals(arc.attrs.name.asInstanceOf[String], s"${math.abs(degrees).toString.stripSuffix(".0")}°")
+        assertEquals(arc.attrs.name.asInstanceOf[String], s"${cornerDegrees.toString.stripSuffix(".0")}°")
         verifyCoordinates()
         obj.fire("out")
         assertEquals(arc.attrs.name.asInstanceOf[String], "")
@@ -206,10 +210,11 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
       val arc = graph.ofKind("angle").head
       val radius = arc.attrs.radius.asInstanceOf[Double]
       val radians = math.toRadians(signed)
-      val start = Point(50 + radius, 0.0)
+      val start = Point(50 - radius, 0.0)
       val end = Point(50 + radius * math.cos(radians), radius * math.sin(radians))
       def verifyCoordinates(): Unit =
-        val (first, last) = if signed > 0 then (start, end) else (end, start)
+        val effectiveTurn = ((signed + 180.0) % 360.0 + 360.0) % 360.0 - 180.0
+        val (first, last) = if effectiveTurn > 0 then (end, start) else (start, end)
         point(graph.coords(graph.parent(arc, 0)), first.x, first.y)
         point(graph.coords(graph.parent(arc, 1)), 50, 0)
         point(graph.coords(graph.parent(arc, 2)), last.x, last.y)
@@ -223,7 +228,7 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
       verifyCoordinates()
       (graph.ofKind("segment") :+ arc).foreach { obj =>
         obj.fire("over")
-        assertEquals(arc.attrs.name.asInstanceOf[String], s"${degrees.toInt}°")
+        assertEquals(arc.attrs.name.asInstanceOf[String], s"${math.abs(180.0 - degrees % 360.0).toInt}°")
         verifyCoordinates()
         obj.fire("out")
         assertEquals(arc.attrs.name.asInstanceOf[String], "")

@@ -24,6 +24,9 @@ object JavaTurtleInputLimits {
   private def exceeded(message: String, range: Option[SourceRange] = None): Left[Diagnostic, Nothing] =
     Left(Diagnostic(Problem.InputLimit, message, range))
 
+  def checkParserInput(source: String): Either[Diagnostic, Unit] =
+    checkLength(source).flatMap(_ => checkTokens(source))
+
   private[turtle] def checkLength(source: String): Either[Diagnostic, Unit] =
     if source.length > MaxSourceCharacters then
       exceeded(s"Keep the turtle program within $MaxSourceCharacters characters.",
@@ -61,12 +64,29 @@ object JavaTurtleInputLimits {
         offset = end + 2
       }
       else {
-        if isNamePart(char) then {
+        val literal = char == '"' || char == '\''
+        if literal then {
+          offset += 1
+          var closed = false
+          while offset < source.length && !closed do {
+            if source.charAt(offset) == '\\' then {
+              if offset + 1 < source.length && "\r\n".contains(source.charAt(offset + 1)) then
+                return Left(Diagnostic(Problem.UnsupportedLiteral, "Close this Java literal on the same line.", Some(SourceRange(start, offset + 2))))
+              offset = (offset + 2).min(source.length)
+            }
+            else if source.charAt(offset) == char then { offset += 1; closed = true }
+            else if source.charAt(offset) == '\n' || source.charAt(offset) == '\r' then
+              return Left(Diagnostic(Problem.UnsupportedLiteral, "Close this Java literal on the same line.", Some(SourceRange(start, offset))))
+            else offset += 1
+          }
+          if !closed then return Left(Diagnostic(Problem.UnsupportedLiteral,
+            "Close this Java literal.", Some(SourceRange(start, source.length))))
+        } else if isNamePart(char) then {
           offset += 1
           while offset < source.length && isNamePart(source.charAt(offset)) do offset += 1
         } else offset += operators.find(operator => source.startsWith(operator, offset)).fold(1)(_.length)
         val range = Some(SourceRange(start, offset))
-        if offset - start > MaxTokenCharacters then
+        if !literal && offset - start > MaxTokenCharacters then
           return exceeded(s"Keep each name or number within $MaxTokenCharacters characters.", range)
         tokens += 1
         segmentTokens += 1

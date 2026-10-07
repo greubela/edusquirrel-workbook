@@ -1,4 +1,4 @@
-package it.evadid.homepage.webElements.editor.code
+package it.evadid.homepage.webElements.editor.code.EvaEditor
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
@@ -6,6 +6,7 @@ import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.webElements.code.JavaFunctionBasedEditor
+import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.PyodideTurtleCommandRunner
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
@@ -14,12 +15,7 @@ import it.evadid.workbook.elements.interactionElements.programming.*
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
-/** Full-screen programming editor that owns one polymorphic state and presents
- * a suitable editor for every supported representation.
- */
-
 object EvaEditor {
-
   enum Tab(val label: String, val programmingLanguage: ProgrammingLanguage) {
     case Snap extends Tab("Snap!", SnapLanguage)
     case Python extends Tab("Python", AppLanguage.Python)
@@ -30,100 +26,42 @@ object EvaEditor {
     case _: ProgrammingStatePythonString => Tab.Python
     case _: ProgrammingStateJavaString => Tab.Java
     case _ => Tab.Snap
-
-  def tabFor(evaConfig: EvaEditorConfig, programmingLanguage: ProgrammingLanguage, centralState: Var[ProgrammingState], handleOnStateChanged: ProgrammingState => Unit): EvaEditorProgrammingTab[? <: ProgrammingState] =
-    programmingLanguage.match {
-      case Java => {
-        EvaEditorProgrammingTab[ProgrammingStateJavaString](
-          centralState.now(),
-          programmingLanguage,
-          curVar => {
-            val bound: Var[ProgrammingState] = curVar.bimap[ProgrammingState](identity)(_.toJava)
-            new JavaFunctionBasedEditor(bound, onStateEdited = handleOnStateChanged)
-          },
-          _.toJava
-        )
-      }
-      case Python => {        
-        EvaEditorProgrammingTab[ProgrammingStatePythonString](
-          centralState.now(),
-          programmingLanguage,
-          curVar => {
-            val bound: Var[String] = curVar.bimap[String](_.code)(ProgrammingStatePythonString(_))
-            CodeMirrorEditor(bound, code => handleOnStateChanged(ProgrammingStatePythonString(code)), language = AppLanguage.Python)
-          },
-          _.toPython
-        )
-      }
-      case SnapLanguage => {
-        EvaEditorProgrammingTab[ProgrammingStateSnapXml](
-          centralState.now(),
-          programmingLanguage,
-          curVar => SnapCodeEditor(curVar, evaConfig.snapConfig, handleOnStateChanged),
-          _.toSnapXml
-        )
-      }
-
-      case _ => throw UnsupportedOperationException(s"ProgrammingLanguage '${programmingLanguage}' not supported yet in EvaEditor!'")
-
-    }
-
-  case class EvaEditorProgrammingTab[T <: ProgrammingState](
-                                                             private val initState: ProgrammingState,
-                                                             associatedLanguage: ProgrammingLanguage,
-                                                             createEditor: Var[T] => HtmlAppElement,
-                                                             convertFrom: ProgrammingState => T
-                                                           ) {
-
-    val associatedVar: Var[T] = Var(convertFrom(initState))
-
-    val editorElement: HtmlAppElement = createEditor(associatedVar)
-
-    lazy val domElement: Element = editorElement.getDomElement()
-    
-    def canSetStateTo(state: ProgrammingState): Option[T] = try {
-      Some(convertFrom(state))
-    } catch case (err: Throwable) => {
-      None
-    }
-
-    def setStateTo(state: ProgrammingState): Unit = canSetStateTo(state).foreach(associatedVar.set)
-
-  }
-
 }
 
-final class EvaEditor(
-                       val state: Var[ProgrammingState],
-                       evaConfig: EvaEditorConfig,
-                       onStateEdited: ProgrammingState => Unit = _ => ()
-) extends HtmlAppElement with FullscreenLifecycle {
+abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
+
+  def furtherDomElements(): List[Element]
+
+  val state: Var[ProgrammingState]
+  val config: EvaEditorConfig
+
+  def onStateEdited: ProgrammingState => Unit = _ => ()
 
   import EvaEditor.Tab
 
-  private val enabledTabs = evaConfig.enabledLanguages.distinct.map { language =>
+  private lazy val enabledTabs = config.enabledLanguages.distinct.map { language =>
     Tab.values.find(_.programmingLanguage == language).getOrElse(
       throw UnsupportedOperationException(s"ProgrammingLanguage '$language' not supported yet in EvaEditor!")
     )
   }
-  private val initialTab = EvaEditor.tabFor(state.now())
-  private[code] val activeTab = Var(
+  private lazy val initialTab = EvaEditor.tabFor(state.now())
+  private[code] lazy val activeTab = Var(
     if enabledTabs.contains(initialTab) then initialTab else enabledTabs.headOption.getOrElse(initialTab)
   )
-  private[code] val conversionError = Var(Option.empty[String])
-  private val viewAvailable = Var(
+  private[code] lazy val conversionError = Var(Option.empty[String])
+  private lazy val viewAvailable = Var(
     enabledTabs.contains(initialTab) && !state.now().isInstanceOf[ProgrammingStateBeExpression]
   )
-  private val snapState = Var(state.now() match
+  private lazy val snapState = Var[ProgrammingState](state.now() match
     case snap: ProgrammingStateSnapXml => snap
     case floating: ProgrammingStateSnapXMLWithAdditionalFloatingObjects => floating.toSnapXml
-    case _ => ProgrammingExerciseState.empty
+    case _ => ProgrammingStateSnapXml.empty
   )
-  private val pythonState = Var(state.now() match
+  private lazy val pythonState = Var(state.now() match
     case ProgrammingStatePythonString(code) => code
     case _ => ""
   )
-  private val javaState = Var[ProgrammingState](state.now() match
+  private lazy val javaState = Var[ProgrammingState](state.now() match
     case java: ProgrammingStateJavaString => java
     case _ => ProgrammingStateJavaString("")
   )
@@ -148,7 +86,10 @@ final class EvaEditor(
 
   private def convert(state: ProgrammingState, tab: Tab): ProgrammingState = tab match
     case Tab.Snap => state.toSnapXml
-    case Tab.Python => state.toPython
+    case Tab.Python => state match
+      case java: ProgrammingStateJavaString if java.isClassProgram =>
+        throw IllegalArgumentException("Full Java classes require the checked Java runner instead of the Python view.")
+      case _ => state.toPython
     case Tab.Java => state.toJava
 
   private def show(next: ProgrammingState): Unit = next match
@@ -177,45 +118,26 @@ final class EvaEditor(
         conversionError.set(Some(s"This program cannot be displayed as ${nextTab.label} yet. Your source is unchanged."))
   }
 
-  private val snapEditor = Option.when(enabledTabs.contains(Tab.Snap))(
-    SnapCodeEditor(snapState, evaConfig.snapConfig, next => publish(Tab.Snap, next))
+  private lazy val snapEditor = Option.when(enabledTabs.contains(Tab.Snap))(
+    SnapCodeEditor(snapState, config.snapConfig, next => publish(Tab.Snap, next))
   )
-  private val pythonEditor = Option.when(enabledTabs.contains(Tab.Python))(
+  private lazy val pythonEditor = Option.when(enabledTabs.contains(Tab.Python))(
     CodeMirrorEditor(pythonState, code => publish(Tab.Python, ProgrammingStatePythonString(code)), language = AppLanguage.Python)
   )
-  private val javaEditor = Option.when(enabledTabs.contains(Tab.Java))(
+  private lazy val javaEditor = Option.when(enabledTabs.contains(Tab.Java))(
     new JavaFunctionBasedEditor(javaState, onStateEdited = next => publish(Tab.Java, next))
   )
   private lazy val snapElement = snapEditor.map(_.getDomElement())
   private lazy val pythonElement = pythonEditor.map(_.getDomElement())
   private lazy val javaElement = javaEditor.map(_.getDomElement())
 
-  /** Small preview retained by the workbook card. */
-  lazy val previewCanvas: Element = snapEditor.fold[Element](div("Preview unavailable for this draft.")) { editor =>
-    val available = Var(false)
-    div(
-      onMountCallback { ctx =>
-        state.signal.foreach { next =>
-          Try(next.toSnapXml) match
-            case Success(snap) =>
-              snapState.set(snap)
-              if !available.now() then available.set(true)
-            case Failure(_) =>
-              if available.now() then available.set(false)
-        }(using ctx.owner)
-      },
-      child <-- available.signal.map { ready =>
-        if ready then editor.previewCanvas
-        else div("Preview unavailable for this draft.")
-      }
-    )
-  }
-
-  /** The representation currently owned by the editor. All derived behavior starts here. */
   def currentState(): ProgrammingState = state.now()
 
   private def deriveCommands(source: ProgrammingState): Future[List[TurtleCommand[Double]]] =
-    Try(source.toBeExpressionState.deriveTurtleCommands).fold(Future.failed, Future.successful)
+    Try(source match
+      case java: ProgrammingStateJavaString => java.toLegacyTurtleCommands
+      case _ => source.toBeExpressionState.deriveTurtleCommands
+    ).fold(Future.failed, Future.successful)
 
   def getCurrentTurtleCommands(): Future[List[TurtleCommand[Double]]] =
     if !mounted then state.now() match
@@ -285,7 +207,8 @@ final class EvaEditor(
             case Tab.Python => pythonElement.getOrElse(div("Python is not enabled."))
             case Tab.Java => javaElement.getOrElse(div("Java is not enabled."))
         }
-      )
+      ),
+      furtherDomElements()
     )
 
   override def getDomElement(): Element = domElement

@@ -2,7 +2,10 @@ package it.evadid.workbook.elements.interactionElements.programming
 
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleSource, JavaTurtleVmPrograms}
+import it.evadid.vm.parsing.generic.abstractions.GenericAST
+import it.evadid.vm.parsing.java.clean.JavaParser
+import it.evadid.vm.parsing.java.clean.model.JavaAST.{JavaClassDef, JavaUnparsableStatement}
+import it.evadid.vm.parsing.java.turtle.{JavaTurtleInputLimits, JavaTurtleSource, JavaTurtleVmPrograms}
 import it.evadid.core.datastructures.language.AppLanguage.{English, Java}
 import it.evadid.core.datastructures.vectorShapes.svg.BeExpressionToTurtleCommands
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
@@ -18,10 +21,9 @@ sealed trait ProgrammingState derives ReadWriter {
   /** Compatibility spelling; new code should make the target representation explicit. */
   final def toBeExpression: ProgrammingStateBeExpression = toBeExpressionState
 }
-
 final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState {
   override def toBeExpressionState: ProgrammingStateBeExpression = this
-  override def toSnapXml: ProgrammingStateSnapXml = ProgrammingExerciseState.fromProgram(BeProgram(expression))
+  override def toSnapXml: ProgrammingStateSnapXml = ProgrammingStateSnapXml.fromProgram(BeProgram(expression))
   override def toPython: ProgrammingStatePythonString =
     ProgrammingStatePythonString(SnapTurtlePythonBridge.printedPython(expression))
   override def toJava: ProgrammingStateJavaString =
@@ -61,12 +63,48 @@ final case class ProgrammingStatePythonString(code: String) extends ProgrammingS
   override val toString: String = s"ProgrammingStatePythonString(${code.toString.take(300)})"
 }
 final case class ProgrammingStateJavaString(code: String) extends ProgrammingState {
+  def isClassProgram: Boolean = {
+    JavaTurtleInputLimits.checkParserInput(code).fold(
+      diagnostic => throw IllegalArgumentException(diagnostic.message), identity)
+    val sourceForAst = JavaToBeExpressionParser.withoutEntityHints(code)
+    JavaTurtleInputLimits.checkParserInput(sourceForAst).fold(
+      diagnostic => throw IllegalArgumentException(diagnostic.message), identity)
+    val parsed = JavaParser.parse(sourceForAst).fold(
+      error => throw IllegalArgumentException("This Java source cannot be read as a complete program or fragment.", error),
+      identity
+    )
+    var pending: List[GenericAST] = List(parsed)
+    var hasClass = false
+    while pending.nonEmpty do {
+      val node = pending.head
+      pending = pending.tail
+      node match {
+        case _: JavaUnparsableStatement =>
+          throw IllegalArgumentException("This Java source contains unsupported or unfinished syntax.")
+        case _: JavaClassDef => hasClass = true
+        case _ => ()
+      }
+      pending = node.getChildren().toList ::: pending
+    }
+    hasClass
+  }
+
+  def toLegacyTurtleCommands: List[TurtleCommand[Double]] = {
+    if isClassProgram then
+      throw IllegalArgumentException("Full Java classes require the checked Java runner.")
+    toBeExpressionState.deriveTurtleCommands
+  }
+
   def toJavaVmProgram: Either[JavaTurtleSource.Diagnostic, JavaTurtleVmPrograms.Program] =
     JavaTurtleVmPrograms.compile(code)
 
   override def toBeExpressionState: ProgrammingStateBeExpression =
     ProgrammingStateBeExpression(JavaToBeExpressionParser.parse(code))
-  override def toSnapXml: ProgrammingStateSnapXml = toBeExpressionState.toSnapXml
+  override def toSnapXml: ProgrammingStateSnapXml = {
+    if isClassProgram then
+      throw IllegalArgumentException("Full Java classes cannot be converted to Snap yet.")
+    toBeExpressionState.toSnapXml
+  }
   override def toPython: ProgrammingStatePythonString = toBeExpressionState.toPython
   override def toJava: ProgrammingStateJavaString = this
   override val toString: String = s"ProgrammingStateJavaString(${code.toString.take(300)})"
@@ -181,16 +219,8 @@ private object SnapStateConversion {
     }
 }
 
-/**
- * Source-compatible name for the former, Snap-only exercise state. New code
- * should accept [[ProgrammingState]] and narrow only at an editor boundary.
- */
-type ProgrammingExerciseState = ProgrammingStateSnapXml
 
-object ProgrammingExerciseState {
-  def apply(snapXml: String): ProgrammingStateSnapXml = ProgrammingStateSnapXml(snapXml)
-  def unapply(state: ProgrammingStateSnapXml): Some[String] = Some(state.snapXml)
-
+object ProgrammingStateSnapXml {
   /** @param previousXml XML being replaced; custom block definitions are merged forward */
   def fromProgram(
       program: BeProgram,

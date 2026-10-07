@@ -16,7 +16,7 @@ object AppLanguage {
     override def serialize(obj: AppLanguage): String = obj.name
 
     override def deserialize(str: String): AppLanguage = {
-      val res =  allLanguages.find(_.name == str)
+      val res =  allLanguages.find(_.name.toLowerCase == str.toLowerCase)
       if(res.nonEmpty) res.get
       else throw SerializedException(s"Applangauge '${str}' is unknown, cannot parse!")
     }
@@ -34,8 +34,8 @@ object AppLanguage {
 
   sealed trait SpecialLanguage(val name: String) extends AppLanguage
 
-  case object UniversalLanguage extends SpecialLanguage("universal")
-  case object SnapLanguage extends ProgrammingLanguage("snap", ".xml")
+  case object UniversalLanguage extends SpecialLanguage("Universal")
+  case object SnapLanguage extends ProgrammingLanguage("Snap", ".xml")
 
   def default(): HumanLanguage = English
 

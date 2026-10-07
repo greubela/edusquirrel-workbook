@@ -87,6 +87,54 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     assertEquals(scene.lines.map(_.jump), List(true, false))
   }
 
+  test("angle sectors lie between adjacent segments at both corners of a stepped path") {
+    val expected = TurtleGraphic.TurtleLineBasedProgram(List(
+      TurtleGraphic.Line(Point(0.0, 0.0), Point(100.0, 0.0)),
+      TurtleGraphic.Line(Point(100.0, 0.0), Point(100.0, 100.0)),
+      TurtleGraphic.Line(Point(100.0, 100.0), Point(200.0, 100.0))
+    ))
+    // The actual program misses both turns. Markers must still
+    // follow the expected segments, including the two missing ones.
+    val actual = List(TurtleCommand("forward", List(100.0)), TurtleCommand("forward", List(100.0)))
+    val scene = TurtleJsxGraphRenderer.buildScene(actual, expected)
+    val sectors = scene.angles.map(TurtleJsxGraphRenderer.angleSector(scene, _, 10.0))
+
+    assertPoint(sectors(0).first, Point(90.0, 0.0))
+    assertPoint(sectors(0).last, Point(100.0, -10.0))
+    assertPoint(sectors(1).first, Point(110.0, -100.0))
+    assertPoint(sectors(1).last, Point(100.0, -90.0))
+    sectors.foreach(sector => assertEqualsDouble(sector.degrees, 90.0, 1e-7))
+  }
+
+  test("non-right-angle sectors use the angle between the lines and retain SVG y conversion") {
+    val program = List(
+      TurtleCommand("forward", List(10.0)),
+      TurtleCommand("turnLeft", List(60.0)),
+      TurtleCommand("forward", List(10.0))
+    )
+    val scene = TurtleJsxGraphRenderer.buildScene(program, List.empty[TurtleJsxGraphRenderer.LineToRender[Double]])
+    val sector = TurtleJsxGraphRenderer.angleSector(scene, scene.angles.head, 2.0)
+
+    assertPoint(sector.first, Point(11.0, math.sqrt(3.0)))
+    assertPoint(sector.last, Point(8.0, 0.0))
+    assertEqualsDouble(sector.degrees, 120.0, 1e-7)
+  }
+
+  test("angle rays also follow direction-independent matched segments") {
+    import TurtleJsxGraphRenderer.{RenderedAngle, RenderedLine, Scene}
+    val vertex = Point(100.0, 100.0)
+    val angle = RenderedAngle(vertex, -90.0, 90.0, 0, 1)
+    val scene = Scene(List(
+      RenderedLine(vertex, Point(100.0, 0.0), LineResult.Correct, false),
+      RenderedLine(Point(200.0, 100.0), vertex, LineResult.Correct, false)
+    ), List(angle))
+    val sector = TurtleJsxGraphRenderer.angleSector(scene, angle, 10.0)
+
+    assertPoint(sector.first, Point(110.0, -100.0))
+    assertPoint(sector.last, Point(100.0, -90.0))
+    assertEqualsDouble(sector.degrees, 90.0, 1e-7)
+  }
+
   test("missing expected moves retain their dashed style") {
     val expected = List(
       TurtleJsxGraphRenderer.LineToRender(Point(0.0, 0.0), Point(10.0, 0.0), jump = true)

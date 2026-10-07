@@ -25,16 +25,28 @@ abstract class RemoteCacheController[K, D, CK <: CacheKey[K, D]](logger: SyncLog
 
   private val cacheState: State[RemoteCacheCollection[K, D, CK]] = State(RemoteCacheCollection.fromCacheKeys(logger, cacheKeys.now().getOrElse(List())))
 
-  private var pendingMutation: Future[Unit] = Future.successful(())
+  private class CacheContext(var collection: RemoteCacheCollection[K, D, CK]) {
+    var pendingMutation: Future[Unit] = Future.successful(())
+  }
+
+  private var currentContext = new CacheContext(cacheState.now())
+  private var pendingDestinations = Map.empty[CK, Future[Unit]]
 
   cacheKeys.addObserver(onNewKeys => onCacheKeysChanged(onNewKeys))
 
-  private def enqueue[A](operation: => Future[A]): Future[A] = syncLock.synchronized {
-    val previous = pendingMutation
+  private def enqueue[A](context: CacheContext)(operation: => Future[A]): Future[A] = syncLock.synchronized {
+    val keys = context.collection.remoteCaches.keySet
+    val previous = context.pendingMutation +: keys.toSeq.flatMap(pendingDestinations.get)
     val finished = Promise[Unit]()
-    pendingMutation = finished.future
-    val result = previous.transformWith(_ => Try(operation).fold(Future.failed, identity))
-    result.onComplete(_ => finished.trySuccess(()))
+    context.pendingMutation = finished.future
+    keys.foreach(key => pendingDestinations += key -> finished.future)
+    val result = Future.sequence(previous).transformWith(_ => Try(operation).fold(Future.failed, identity))
+    result.onComplete { _ => syncLock.synchronized {
+      finished.trySuccess(())
+      keys.foreach { key =>
+        if pendingDestinations.get(key).contains(finished.future) then pendingDestinations -= key
+      }
+    }}
     result
   }
 
@@ -49,30 +61,37 @@ abstract class RemoteCacheController[K, D, CK <: CacheKey[K, D]](logger: SyncLog
     cacheState.now().createReportFor(key)
   }
 
-  private def recreateCaches(newKeys: List[CK]): Unit = syncLock.synchronized {
-    cacheState.set(RemoteCacheCollection.fromCacheKeys(logger, newKeys))
+  private def publish(context: CacheContext, collection: RemoteCacheCollection[K, D, CK]): Unit = syncLock.synchronized {
+    context.collection = collection
+    if context eq currentContext then cacheState.set(collection)
   }
 
-  private def onCacheKeysChanged(newKeys: List[CK]): Future[?] = enqueue {
+  private def onCacheKeysChanged(newKeys: List[CK]): Future[?] = syncLock.synchronized {
+    if currentContext.collection.remoteCaches.keySet == newKeys.toSet then return Future.successful(())
     logger.log(s"Cache keys changed to: ${newKeys}", INFO, None)
-    refreshCaches(LocalDateTime.now()).flatMap(_ => onCacheKeyChange(newKeys, cacheState.now().allKnownKeys())).recover {
-      case err: Throwable => logger.logExceptionWarn("ignored store before keys are changing -> data loss?", err)
-    }.map(_ => recreateCaches(newKeys)).flatMap(_ => refreshCaches(LocalDateTime.now()))
+    val knownKeys = currentContext.collection.allKnownKeys()
+    val context = new CacheContext(RemoteCacheCollection.fromCacheKeys(logger, newKeys))
+    currentContext = context
+    cacheState.set(context.collection)
+    Try(onCacheKeyChange(newKeys, knownKeys)).fold(Future.failed, identity).recover {
+      case err: Throwable => logger.logExceptionWarn("error handling cache key change", err)
+    }.flatMap(_ => enqueue(context)(refreshCaches(context, LocalDateTime.now())))
   }
 
   protected def onCacheKeyChange(newKeys: List[CK], knownKeys: Set[K]): Future[?]
 
-  def ensureMaxAgeSafe(maxAge: LocalDateTime): Future[?] = enqueue {
-    refreshCaches(maxAge)
+  def ensureMaxAgeSafe(maxAge: LocalDateTime): Future[?] = syncLock.synchronized {
+    val context = currentContext
+    enqueue(context)(refreshCaches(context, maxAge))
   }
 
-  private def refreshCaches(maxAge: LocalDateTime): Future[Unit] = {
+  private def refreshCaches(context: CacheContext, maxAge: LocalDateTime): Future[Unit] = {
     val promise: Promise[Unit] = Promise[Unit]()
-    val stateNow = cacheState.now()
+    val stateNow = context.collection
     val stateAfter = stateNow.ensureCachesAreAtLeastThisRecent(maxAge)
     stateAfter.onComplete {
       case Success(newState) =>
-        cacheState.set(newState)
+        publish(context, newState)
         promise.success(())
       case Failure(err) =>
         logger.logExceptionWarn("RemoteCacheController: Error during ensureCachesAreAtLeastThisRecent, ignoring update", err)
@@ -88,26 +107,32 @@ abstract class RemoteCacheController[K, D, CK <: CacheKey[K, D]](logger: SyncLog
   res
 }*/
 
-  def requestCacheDependentUpdate(func: CK => LocalDateTime): Future[?] = enqueue {
-    cacheState.now().requestCacheDependentUpdate(func).transform {
+  def requestCacheDependentUpdate(func: CK => LocalDateTime): Future[?] = syncLock.synchronized {
+    val context = currentContext
+    enqueue(context) {
+      context.collection.requestCacheDependentUpdate(func).transform {
       case Success(newCache) =>
-        cacheState.set(newCache)
+        publish(context, newCache)
         Success( () )
       case Failure(err) =>
         logger.logExceptionWarn("error during cache dependent update", err)
         Failure(err)
+      }
     }
 
   }
 
-  def requestCacheDependentStore(func: CK => List[DataEntryToWriteToServer[K, D]]): Future[?] = enqueue {
-    cacheState.now().requestCacheDependentStore(func).transform {
+  def requestCacheDependentStore(func: CK => List[DataEntryToWriteToServer[K, D]]): Future[?] = syncLock.synchronized {
+    val context = currentContext
+    enqueue(context) {
+      context.collection.requestCacheDependentStore(func).transform {
       case Success(newCache) =>
-        cacheState.set(newCache)
+        publish(context, newCache)
         Success( () )
       case Failure(err) =>
         logger.logExceptionWarn("error during store", err)
         Failure(err)
+      }
     }
   }
 

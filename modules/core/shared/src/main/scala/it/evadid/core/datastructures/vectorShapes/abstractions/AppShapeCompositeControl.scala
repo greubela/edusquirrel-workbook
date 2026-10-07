@@ -61,14 +61,37 @@ object AppShapeCompositeControl {
   }
 
   def calculateAdjustedDimension[T: Fractional](targetDimension: Dimension[T], desiredAspectRatioAndAlignment: Option[(AspectRatio, AlignmentInParent)]): Dimension[T] = {
-    if (desiredAspectRatioAndAlignment.isEmpty || desiredAspectRatioAndAlignment.get._2 == AlignmentInParent.DistortionAlignment) targetDimension
-    else Dimension.fromRatioAndMaxDimension(desiredAspectRatioAndAlignment.get._1, targetDimension)
+    RenderingDimension.validateDimension(targetDimension, "target dimensions")
+    desiredAspectRatioAndAlignment.foreach { (ratio, _) =>
+      require(ratio.widthToHeight.isFinite && ratio.widthToHeight > 0, "aspect ratio must be finite and positive")
+    }
+    val N = summon[Fractional[T]]
+    val zero = N.fromInt(0)
+    val adjusted =
+      if (desiredAspectRatioAndAlignment.isEmpty || desiredAspectRatioAndAlignment.get._2 == AlignmentInParent.DistortionAlignment) targetDimension
+      else if (N.equiv(targetDimension.width, zero) || N.equiv(targetDimension.height, zero)) zeroDimension[T]
+      else Dimension.fromRatioAndMaxDimension(desiredAspectRatioAndAlignment.get._1, targetDimension)
+    RenderingDimension.validateDimension(adjusted, "adjusted dimensions")
+    adjusted
   }
 
   def calculateAdjustedDimension[T: Fractional](targetDimension: Dimension[T], desiredDimension: Option[Dimension[T]], alignIfMisfit: AlignmentInParent, scaleDesiredToFit: Boolean = false): Dimension[T] = {
-    if (desiredDimension.isEmpty || alignIfMisfit == AlignmentInParent.DistortionAlignment) targetDimension
-    else if (scaleDesiredToFit) desiredDimension.get.scaledToFitInto(targetDimension)
-    else desiredDimension.get
+    RenderingDimension.validateDimension(targetDimension, "target dimensions")
+    desiredDimension.foreach(RenderingDimension.validateDimension(_, "desired dimensions"))
+    val N = summon[Fractional[T]]
+    val zero = N.fromInt(0)
+    val adjusted =
+      if (desiredDimension.isEmpty || alignIfMisfit == AlignmentInParent.DistortionAlignment) targetDimension
+      else if (!scaleDesiredToFit) desiredDimension.get
+      else {
+        val desired = desiredDimension.get
+        if (N.equiv(desired.width, zero) && N.equiv(desired.height, zero)) zeroDimension[T]
+        else if (N.equiv(desired.width, zero)) desired.scaled(N.div(targetDimension.height, desired.height))
+        else if (N.equiv(desired.height, zero)) desired.scaled(N.div(targetDimension.width, desired.width))
+        else desired.scaledToFitInto(targetDimension)
+      }
+    RenderingDimension.validateDimension(adjusted, "adjusted dimensions")
+    adjusted
   }
 
   def calculateOffset[T: Fractional](container: Dimension[T], child: Dimension[T], alignment: AlignmentInParent): Point[T] = {
@@ -94,7 +117,6 @@ object AppShapeCompositeControl {
   }
 
 }
-
 
 
 
