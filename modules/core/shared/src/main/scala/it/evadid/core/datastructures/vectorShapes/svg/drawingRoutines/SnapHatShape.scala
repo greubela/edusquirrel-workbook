@@ -19,8 +19,8 @@ case class SnapHatShape[T: Fractional]() extends DrawingRoutineRelativeToMaxDim[
 
   override def draw(logger: Logger, builder: SvgPathBuilderRelativeCoords[T]): SvgPathBuilderRelativeCoords[T] =
     builder.moveToRel(0, 20).cubicBezierToRel(12, -20, 28, -20, 40, 0).lineToRel(57, 0)
-      .lineToRel(3, 8).lineToRel(0, 72).lineToRel(-3, 8).lineToRel(-71, 0)
-      .lineToRel(-3, -8).lineToRel(-8, 0).lineToRel(-3, 8).lineToRel(-9, 0).lineToRel(-3, -8).lineToRel(0, -72)
+      .lineToRel(3, 8).lineToRel(0, 64).lineToRel(-3, 8).lineToRel(-71, 0)
+      .lineToRel(-3, -8).lineToRel(-8, 0).lineToRel(-3, 8).lineToRel(-9, 0).lineToRel(-3, -8).lineToRel(0, -64)
 
   override def hasDesiredAspectRatio: Option[AspectRatio] = None
 }

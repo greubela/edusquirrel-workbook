@@ -181,10 +181,18 @@ npm run dev         # build + assemble _site/ + serve on http://localhost:4173
 npm run preview     # serve an already assembled _site/ on http://localhost:4173
 ```
 
-To check editor layout at desktop, mobile, and landscape sizes:
+Run the core tests on both JVM and JavaScript after installing the locked Node dependencies:
 
 ```bash
 npm ci
+sbt 'coreJVM/test' 'coreJS/test'
+```
+
+The SVG rendering tests use jsdom with deterministic canvas measurements to check layout, text styling, and click handling.
+
+To check editor layout at desktop, mobile, and landscape sizes:
+
+```bash
 node --test tools/dev/editor-layout.test.mjs
 ```
 

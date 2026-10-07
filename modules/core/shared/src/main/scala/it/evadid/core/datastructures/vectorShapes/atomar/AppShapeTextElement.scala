@@ -8,8 +8,10 @@ import it.evadid.core.datastructures.vectorShapes.helper.AlignmentInParent.Middl
 
 case class AppShapeTextElement[T: Fractional](text: String, elementConfig: AppShapeElementConfig[T]) extends AppShapeAtomar[T] {
 
-  override def desiredAspectRatioAndAlignment: Option[(AspectRatio, AlignmentInParent)] =
-    Some(calculateMyRawDimension().aspectRatio(), MiddleCenter)
+  override def desiredAspectRatioAndAlignment: Option[(AspectRatio, AlignmentInParent)] = {
+    val size = calculateMyRawDimension().toDouble
+    Option.when(size.width > 0 && size.height > 0)(size.aspectRatio() -> MiddleCenter)
+  }
 
   override def calculateMyRawDimension(): Dimension[T] = {
     Dimension.fromDouble(elementConfig.font.measureText(text))

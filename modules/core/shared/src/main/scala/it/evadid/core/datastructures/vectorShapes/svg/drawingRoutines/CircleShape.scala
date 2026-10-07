@@ -9,8 +9,8 @@ case class CircleShape[T: Fractional]() extends DrawingRoutineRelativeToMaxDim[T
 
   override def draw(logger: Logger, builder: SvgPathBuilderRelativeCoords[T]): SvgPathBuilderRelativeCoords[T] =     builder.
     moveToRel(0, 50)
-    .arcToRel(50, 50, 100, 50, 180, true, false)
-    .arcToRel(50, 50, 100, 50, 180, false, false)
+    .arcToRel(50, 50, 100, 0, 180, true, false)
+    .arcToRel(50, 50, -100, 0, 180, true, false)
 
   override def hasDesiredAspectRatio: Option[AspectRatio] = Some(AspectRatio(1,1))
 }
