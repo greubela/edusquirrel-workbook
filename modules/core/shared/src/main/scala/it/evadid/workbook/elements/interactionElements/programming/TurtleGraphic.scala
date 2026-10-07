@@ -43,7 +43,7 @@ object TurtleGraphic {
    * Lines are drawn with the pen down; jumps between lines (pen up/down) are automatically calculated
    * following the same rules as SVG to turtle conversion (no rotation > 180°).
    */
-  case class TurtleLineBasedProgram(lines: List[Line]) extends TurtleGraphic {
+  case class TurtleLineBasedProgram(lines: List[Line[Double]]) extends TurtleGraphic {
     lazy val toTurtleProgram: Seq[TurtleCommand[Double]] =
       TurtleLineBasedProgram.toTurtleProgram(lines)
 
@@ -70,7 +70,7 @@ object TurtleGraphic {
   }
 
   object TurtleLineBasedProgram {
-    private def toTurtleProgram(lines: List[Line]): Seq[TurtleCommand[Double]] = {
+    private def toTurtleProgram(lines: List[Line[Double]]): Seq[TurtleCommand[Double]] = {
       val result = ListBuffer.empty[TurtleCommand[Double]]
       var current = Point(0.0, 0.0)
       var heading = 0.0
@@ -127,6 +127,15 @@ object TurtleGraphic {
 
   /** Represents a line segment from a start point to an end point.
    */
-  case class Line(start: Point[Double], end: Point[Double])  derives ReadWriter
+  case class Line[T:Fractional](start: Point[T], end: Point[T])
+
+
+  object Line {
+    given [T: Fractional](using rw: ReadWriter[T]): ReadWriter[Line[T]] = summon[ReadWriter[(Point[T], Point[T])]].bimap[Line[T]](
+      line => (line.start, line.end),
+      (p1, p2) => Line[T](p1, p2)
+    )
+  }
+
 
 }

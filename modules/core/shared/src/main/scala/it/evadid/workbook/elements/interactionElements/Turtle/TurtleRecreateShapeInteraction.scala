@@ -2,7 +2,7 @@ package it.evadid.workbook.elements.interactionElements.Turtle
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingState, TurtleGraphic}
+import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingState, TurtleGraphic}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import upickle.default.*
 
@@ -10,7 +10,9 @@ case class TurtleRecreateShapeInteraction
 (
   override val elementId: String,
   initProgram: ProgrammingState,
-  desiredResult: TurtleGraphic
+  desiredResult: TurtleGraphic,
+  availablePalette: ProgrammingEditorPalette = ProgrammingEditorPalette.Default,
+  limitTurtleCommandUsage: Map[String, Integer]
 ) extends WorkbookInteractionElement[ProgrammingState] derives ReadWriter {
 
   override val defaultValue: ProgrammingState = initProgram
@@ -25,7 +27,10 @@ case class TurtleRecreateShapeInteraction
       TurtleRecreateShapeInteraction(
         element.elementId,
         initProgram = parsedElements(element.getElement("initProgram")).asInstanceOf[ProgrammingState],
-        desiredResult = parsedElements(element.getElement("desiredResult")).asInstanceOf[TurtleGraphic])
+        desiredResult = parsedElements(element.getElement("desiredResult")).asInstanceOf[TurtleGraphic],
+        availablePalette =  parsedElements(element.getElement("availablePalette")).asInstanceOf[ProgrammingEditorPalette],
+        limitTurtleCommandUsage =parsedElements(element.getElement("limitTurtleCommandUsage")).asInstanceOf[Map[String, Integer]],
+      )
     }
   }
 }
