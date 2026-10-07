@@ -3,6 +3,7 @@ package it.evadid.homepage.util.numbers
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSGlobal
 import scala.util.control.NonFatal
+import upickle.default.{ReadWriter, macroRW}
 
 final class AlgebriteNumber private(private val expr: String, private val canonical: String):
 
@@ -107,6 +108,13 @@ object AlgebriteNumber:
       else if diff < 0 then -1
       else if diff > 0 then 1
       else 0
+
+  given ReadWriter[AlgebriteNumber] with
+    def read(js: upickle.default.UJsv.Value): upickle.default.Result[AlgebriteNumber] =
+      upickle.default.readStr(js) match
+        case str => AlgebriteNumber(str).success
+    def write(num: AlgebriteNumber): upickle.default.UJsv.Value =
+      num.canonical.writable
 
   private def simplifyExpression(input: String): String =
     val trimmed = input.trim

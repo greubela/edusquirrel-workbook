@@ -1,6 +1,6 @@
 package it.evadid.core.datastructures.geometry
 
-import upickle.default.*
+import upickle.default.{ReadWriter, macroRW}
 
 final case class Point[T: Fractional](x: T, y: T) {
   private val N = summon[Fractional[T]]
@@ -32,6 +32,8 @@ final case class Point[T: Fractional](x: T, y: T) {
 
 object Point {
 
+  given [T](using rw: ReadWriter[T]): ReadWriter[Point[T]] =
+    macroRW[Point[T]]
 
   def fromIntPoint[T: Fractional](x: Int, y: Int): Point[T] = {
     Point[T](intToT(x), intToT(y))
