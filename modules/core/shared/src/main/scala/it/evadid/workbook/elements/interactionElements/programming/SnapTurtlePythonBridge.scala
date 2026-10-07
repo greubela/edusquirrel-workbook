@@ -78,17 +78,17 @@ object SnapTurtlePythonBridge {
       source: String,
       previousLayout: SnapCanvasLayout = SnapCanvasLayout.empty,
       previousXml: String = ""
-  ): Either[String, ProgrammingExerciseState] =
+  ): Either[String, ProgrammingStateSnapXml] =
     try
       val program = BeProgram.fromPythonString(source)
       validateSubset(program.fullProgram) match
         case Left(message) => Left(message)
         case Right(statements) =>
           if statements.isEmpty && collectUserFunctionArities(program.fullProgram).isEmpty then
-            Right(ProgrammingExerciseState.empty)
+            Right(ProgrammingStateSnapXml.empty)
           else
             val layout = reconcileLayout(previousLayout, scriptStatementCount(statements))
-            Right(ProgrammingExerciseState.fromProgram(program, layout, previousXml))
+            Right(ProgrammingStateSnapXml.fromProgram(program, layout, previousXml))
     catch
       case e: Throwable =>
         val detail = Option(e.getMessage).filter(_.nonEmpty).getOrElse(e.getClass.getSimpleName)

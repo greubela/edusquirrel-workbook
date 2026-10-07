@@ -1,4 +1,4 @@
-package it.evadid.homepage.webElements.editor.code.SnapEditor
+package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
@@ -8,11 +8,7 @@ import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.others.BeStartProgram
-import it.evadid.workbook.elements.interactionElements.programming.{
-  ProgrammingExerciseState,
-  SnapCanvasScript,
-  SnapTurtlePythonBridge
-}
+import it.evadid.workbook.elements.interactionElements.programming.*
 
 /**
  * FEATURE: Snap editable Python overlay (dual-mode with blocks).
@@ -93,9 +89,9 @@ object SnapPythonPopup {
    * @param setExecutionStepMs apply Execute pause between blocks (ms, >= 0)
    */
   def chrome(
-      state: Var[ProgrammingExerciseState],
+      state: Var[ProgrammingStateSnapXml],
       flushPending: () => Unit,
-      onStateEdited: ProgrammingExerciseState => Unit,
+      onStateEdited: ProgrammingStateSnapXml => Unit,
       setExecutionStepMs: Double => Unit = _ => ()
   ): L.Element = {
     val showPopup: Var[Boolean] = Var(false)
@@ -271,7 +267,7 @@ object SnapPythonPopup {
   }
 
   /** Partition top-level BeProgram statements by derived canvas layout. */
-  def scriptsOf(state: ProgrammingExerciseState): List[ScriptView] = {
+  def scriptsOf(state: ProgrammingStateSnapXml): List[ScriptView] = {
     val derived = SnapProgramDerivation.fromState(state)
     val statements =
       SnapTurtlePythonBridge.scriptStatements(
