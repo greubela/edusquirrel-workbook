@@ -504,12 +504,52 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     val previous = snapProjectWith(
       """<block-definition s="circ %'varb'" type="command" category="Variables"><inputs></inputs><script><block s="forward"><block var="varb"/></block></script></block-definition>"""
     )
-    val xml = applied("def circ(n):\n    forward(n)\n", previous)
+    val xml = applied("def circ(n):\n    forward(n)\n\ncirc(10)\n", previous)
     val defn = SnapCustomBlockRules.globalDefinitions(xml).head
     assertEquals(defn.spec, "circ %n")
     assertEquals(defn.slots.map(_.slotType), List("%n"), clue = xml)
     assertEquals(defn.blockSpec, "circ %n")
     assert(xml.contains("""<input type="%n">"""), clue = xml)
+  }
+
+  test("applyPython declares missing slots for unchanged and renamed parameters") {
+    val containers = List("", "<inputs/>", "<inputs></inputs>", "<inputs>\n  </inputs>")
+    for
+      inputs <- containers
+      (parameter, expectedType) <- List("size" -> "%s", "distance" -> "%n")
+    do
+      val previous = snapProjectWith(
+        s"""<block-definition s="draw %size" type="command" category="Variables">$inputs</block-definition>"""
+      )
+      val xml = applied(s"def draw($parameter):\n    forward($parameter)\n\ndraw(10)\n", previous)
+      val definition = SnapCustomBlockRules.globalDefinitions(xml).head
+      assertEquals(definition.slots.map(_.slotType), List(expectedType), clue = xml)
+      assertEquals(definition.blockSpec, s"draw $expectedType", clue = xml)
+      val reapplied = applied(s"def draw($parameter):\n    forward($parameter)\n\ndraw(10)\n", xml)
+      assertEquals(SnapCustomBlockRules.globalDefinitions(reapplied).head.slots.map(_.slotType), List(expectedType))
+  }
+
+  test("applyPython preserves declared slot metadata when parameters are renamed") {
+    val inputs = """<inputs><input type="%s" readonly="true" irreplaceable="true">10<options>10&#10;20</options></input></inputs>"""
+    val previous = snapProjectWith(
+      s"""<block-definition s="draw %size" type="command" category="Variables">$inputs</block-definition>"""
+    )
+    val xml = applied("def draw(distance):\n    forward(distance)\n\ndraw(10)\n", previous)
+    val definition = SnapCustomBlockRules.globalDefinitions(xml).head
+    assertEquals(definition.spec, "draw %distance")
+    assertEquals(definition.slots.map(_.slotType), List("%s"))
+    assertEquals(SnapXmlParser.child(definition.element.inner, "inputs").map(_.outer), Some(inputs))
+  }
+
+  test("applyPython keeps parameterless definitions without input slots") {
+    for inputs <- List("", "<inputs/>", "<inputs></inputs>", "<inputs>\n  </inputs>") do
+      val previous = snapProjectWith(
+        s"""<block-definition s="draw" type="command" category="Variables">$inputs</block-definition>"""
+      )
+      val xml = applied("def draw():\n    forward(10)\n\ndraw()\n", previous)
+      val definition = SnapCustomBlockRules.globalDefinitions(xml).head
+      assertEquals(definition.slots, Nil, clue = xml)
+      assertEquals(definition.blockSpec, "draw")
   }
 
   test("applyPython keeps the label but rebuilds the spec when the parameter count changes") {
