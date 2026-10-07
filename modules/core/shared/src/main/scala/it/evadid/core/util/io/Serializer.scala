@@ -97,7 +97,15 @@ object Serializer {
     override def deserialize(str: String): T = ???
   }*/
 
-  def constructorLikeSerializer[T](constructorName: String, base: Serializer[T]): Serializer[T] = new Serializer[T] {
+  def constructorLikeSerializer[T](constructorName: String)(forward: T => String)(backward: String => T): Serializer[T] = {
+    constructorLikeSerializer(constructorName, new Serializer[T]() {
+      override def serialize(obj: T) = forward(obj)
+      override def deserialize(str: String): T = backward(str)
+    })    
+  }
+
+
+    def constructorLikeSerializer[T](constructorName: String, base: Serializer[T]): Serializer[T] = new Serializer[T] {
     override def serialize(obj: T): String = {      
       constructorName + "(" + base.serialize(obj) + ")"
     }

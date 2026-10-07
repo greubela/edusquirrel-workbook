@@ -103,8 +103,7 @@ object BeExpressionToTurtleCommands {
         case None =>
           val turtleName = SnapTurtleCatalog.turtleCommandByPythonName.getOrElse(python, python)
           val numeric = args.flatMap(arg => numericArg(arg, state))
-          val strings = args.flatMap(stringArg)
-          state.copy(commands = state.commands :+ TurtleCommand(turtleName, numeric, strings))
+          state.copy(commands = state.commands :+ TurtleCommand(turtleName, numeric))
   }
 
   private def numericArg(expression: BeExpression, state: InterpState): Option[Double] =

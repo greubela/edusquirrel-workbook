@@ -16,7 +16,7 @@ case class TurtleRecreateShapeInteraction
   override val defaultValue: ProgrammingState = initProgram
   override val serializerInteractionContent: Serializer[ProgrammingState] = Serializer.fromUpickleJson(ProgrammingState.derived$ReadWriter)
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
-  override val associatedFactory: WorkbookElementFactory[_ <: WorkbookElement] = new WorkbookElementFactory[TurtleRecreateShapeInteraction] {
+  override val associatedFactory: WorkbookElementFactory[? <: WorkbookElement] = new WorkbookElementFactory[TurtleRecreateShapeInteraction] {
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = {
       Set()
     }

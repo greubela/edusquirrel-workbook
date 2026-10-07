@@ -3,9 +3,12 @@ package it.evadid.core.datastructures.vectorShapes.svg
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.{TurtleCommand, TurtlePenStyle, TurtleState, TurtleStyledSegment}
-import upickle.default.{ReadWriter, macroRW}
+import it.evadid.core.util.io.serializer.AutoSerializable.*
 
-case class TurtlePathBuilder[T: Fractional](
+import upickle.ReadWriter
+import upickle.default.*
+
+case class TurtlePathBuilder[T : Fractional](
                                              startPoint: Point[T],
                                              turtleState: TurtleState[T],
                                              turtleCommands: List[TurtleCommand[T]],
@@ -249,44 +252,43 @@ case class TurtlePathBuilder[T: Fractional](
 
 object TurtlePathBuilder {
 
-  case class TurtleCommand[T: Fractional](name: String, args: List[T] = Nil, stringArgs: List[String] = Nil)
+  case class TurtleCommand[T : Fractional](name: String, args: Seq[T] = Nil) {
+    val stringArgs: Seq[String] = args.map(_.toString)
+  }
+
+  given [T: Fractional](using rw: ReadWriter[T]): ReadWriter[TurtleCommand[T]] =
+    summon[ReadWriter[(String, Seq[T])]].bimap[TurtleCommand[T]](
+      cmd => (cmd.name, cmd.args),
+      (name, args) => TurtleCommand(name, args)
+    )
+
+
 
   case class TurtlePenStyle[T](color: String, size: T)
 
   case class TurtleStyledSegment[T: Fractional](pathBuilder: SvgPathBuilderImmutable[T], style: TurtlePenStyle[T])
 
   case class TurtleState[T: Fractional](
-      x: T,
-      y: T,
-      headingDeg: T,
-      penDown: Boolean,
-      visible: Boolean,
-      penColor: String,
-      penSize: T,
-      stitchMode: String,
-      homeHeadingDeg: T
-  )
+                                         x: T,
+                                         y: T,
+                                         headingDeg: T,
+                                         penDown: Boolean,
+                                         visible: Boolean,
+                                         penColor: String,
+                                         penSize: T,
+                                         stitchMode: String,
+                                         homeHeadingDeg: T
+                                       )
 
-  given [T](using rwColor: ReadWriter[String], rwSize: ReadWriter[T]): ReadWriter[TurtlePenStyle[T]] =
-    macroRW
-
-  given [T: Fractional](using rwName: ReadWriter[String], rwArgs: ReadWriter[List[T]], rwStringArgs: ReadWriter[List[String]]): ReadWriter[TurtleCommand[T]] =
-    macroRW
-
-  given [T: Fractional](using rwX: ReadWriter[T], rwY: ReadWriter[T], rwHeading: ReadWriter[T], rwColor: ReadWriter[String], rwSize: ReadWriter[T], rwStitch: ReadWriter[String]): ReadWriter[TurtleState[T]] =
-    macroRW
-
-  given [T: Fractional](using rwPath: ReadWriter[SvgPathBuilderImmutable[T]], rwStyle: ReadWriter[TurtlePenStyle[T]]): ReadWriter[TurtleStyledSegment[T]] =
-    macroRW
 
   object TurtleState {
     def initial[T: Fractional](
-        x: T,
-        y: T,
-        headingDeg: T,
-        penDown: Boolean = true,
-        visible: Boolean = true
-    ): TurtleState[T] = {
+                                x: T,
+                                y: T,
+                                headingDeg: T,
+                                penDown: Boolean = true,
+                                visible: Boolean = true
+                              ): TurtleState[T] = {
       val N = summon[Fractional[T]]
       TurtleState(
         x,
@@ -306,10 +308,10 @@ object TurtlePathBuilder {
     apply(startPoint, turtleCommands, summon[Fractional[T]].fromInt(0))
 
   def apply[T: Fractional](
-      startPoint: Point[T],
-      turtleCommands: List[TurtleCommand[T]],
-      initialHeadingDeg: T
-  ): TurtlePathBuilder[T] = {
+                            startPoint: Point[T],
+                            turtleCommands: List[TurtleCommand[T]],
+                            initialHeadingDeg: T
+                          ): TurtlePathBuilder[T] = {
     val initialPath = SvgPathBuilderImmutable[T](startPoint)
     val initial = TurtlePathBuilder[T](
       startPoint,

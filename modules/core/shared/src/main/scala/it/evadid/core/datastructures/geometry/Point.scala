@@ -1,6 +1,9 @@
 package it.evadid.core.datastructures.geometry
 
-import upickle.default.{ReadWriter, macroRW}
+import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
+import upickle.default.*
 
 final case class Point[T: Fractional](x: T, y: T) {
   private val N = summon[Fractional[T]]
@@ -32,8 +35,11 @@ final case class Point[T: Fractional](x: T, y: T) {
 
 object Point {
 
-  given [T](using rw: ReadWriter[T]): ReadWriter[Point[T]] =
-    macroRW[Point[T]]
+  given [T: Fractional](using rw: ReadWriter[T]): ReadWriter[Point[T]] = summon[ReadWriter[(String, String)]].bimap[Point[T]](
+    p =>  (write(p.x)(using rw), write(p.y)(using rw)),
+    (x, y) => Point[T](read(x)(using rw), read(y)(using rw))
+  )
+
 
   def fromIntPoint[T: Fractional](x: Int, y: Int): Point[T] = {
     Point[T](intToT(x), intToT(y))

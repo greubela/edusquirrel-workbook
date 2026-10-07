@@ -7,13 +7,16 @@ import it.evadid.workbook.elements.interactionElements.programming.SvgToTurtlePr
 import scala.collection.mutable.ListBuffer
 import upickle.default.*
 /** A sealed trait representing turtle graphics that can be converted to turtle commands or SVG path data. */
-sealed trait TurtleGraphic derives ReadWriter {
+sealed trait TurtleGraphic derives ReadWriter{
   def toTurtleProgram: Seq[TurtleCommand[Double]]
 
   def toSvgPathDString: String
 }
 
 object TurtleGraphic {
+
+
+//  private given ReadWriter[TurtleCommand[Double]] = macroRW
 
   /** A turtle graphic represented directly by an SVG path D string.
    * The SVG path is converted to turtle commands when needed.
@@ -124,6 +127,6 @@ object TurtleGraphic {
 
   /** Represents a line segment from a start point to an end point.
    */
-  case class Line(start: Point[Double], end: Point[Double]) derives ReadWriter
+  case class Line(start: Point[Double], end: Point[Double])  derives ReadWriter
 
 }
