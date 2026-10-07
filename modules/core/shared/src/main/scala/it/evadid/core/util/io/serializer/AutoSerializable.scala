@@ -6,8 +6,7 @@ import upickle.default.*
 
 
 object AutoSerializable {
-
-
+  
   trait AutoSerializableSingleton[T <: AutoSerializableSingleton[T]] {
     given ReadWriter[T] = {
       val ser: Serializer[T] = Serializer.singletonSerializer(this.asInstanceOf[T], Some(s"Singleton(${this.getClass.getSimpleName})"))

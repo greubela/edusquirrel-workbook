@@ -1,4 +1,4 @@
-package it.evadid.workbook.elements.interactionElements.TurtleStitch
+package it.evadid.workbook.elements.interactionElements.Turtle
 
 import TurtleStitchProjectState.StorageFormat.BYTES_AS_RAW_STRING
 

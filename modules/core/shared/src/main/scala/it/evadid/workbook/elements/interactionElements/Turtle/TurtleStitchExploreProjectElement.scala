@@ -1,4 +1,4 @@
-package it.evadid.workbook.elements.interactionElements.TurtleStitch
+package it.evadid.workbook.elements.interactionElements.Turtle
 
 import it.evadid.workbook.abstractions.WorkbookDisplayElement
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory

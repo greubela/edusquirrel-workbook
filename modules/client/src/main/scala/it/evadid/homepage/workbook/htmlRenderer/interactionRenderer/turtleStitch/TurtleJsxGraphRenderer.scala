@@ -1,11 +1,11 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.color.{AppColor, RGBColor}
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.core.util.io.{ConstructorLikeParserWithJsonElements, Serializer}
-import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.{LineResult, RenderedLine, format, hoverRelated}
+import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
+import it.evadid.workbook.elements.interactionElements.programming.TurtleGraphic
 import org.scalajs.dom
 import upickle.default.*
 
@@ -19,6 +19,20 @@ import scala.scalajs.js
  * Coordinates use turtle/JSXGraph coordinates (positive y points upwards).
  */
 object TurtleJsxGraphRenderer:
+
+  def render[T: Fractional](program: Signal[List[TurtleCommand[T]]], graphic: TurtleGraphic): DomElementCollection = {
+    program.signal.map(curList => {
+      render(curList, graphic)
+    })
+  }
+
+  def render[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic): Element = {
+    val container = div(
+      cls := "turtle-gradig-panel",
+      "TurtleJsxGraphRenderer: Not supporting TurtleGraphic yet!"
+    )
+    container
+  }
 
   def render[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): Element = {
     val container = div(

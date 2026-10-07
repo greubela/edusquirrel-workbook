@@ -3,8 +3,12 @@ package it.evadid.core.datastructures.vectorShapes.svg
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.{TurtleCommand, TurtlePenStyle, TurtleState, TurtleStyledSegment}
+import it.evadid.core.util.io.serializer.AutoSerializable.*
 
-case class TurtlePathBuilder[T: Fractional](
+import upickle.ReadWriter
+import upickle.default.*
+
+case class TurtlePathBuilder[T : Fractional](
                                              startPoint: Point[T],
                                              turtleState: TurtleState[T],
                                              turtleCommands: List[TurtleCommand[T]],
@@ -186,7 +190,7 @@ case class TurtlePathBuilder[T: Fractional](
         turtleCommand.args.headOption.map(backward).getOrElse(this)
       case "left" | "lt" | "turn_left" | "turnleft" =>
         turtleCommand.args.headOption.map(left).getOrElse(this)
-      case "right" | "rt" | "turn" | "turn_right" =>
+      case "right" | "rt" | "turn" | "turn_right" | "turnright" =>
         turtleCommand.args.headOption.map(right).getOrElse(this)
       case "goto" | "setpos" | "setposition" | "goto_x_y" | "gotoxy" =>
         if (turtleCommand.args.size >= 2) goto(turtleCommand.args(0), turtleCommand.args(1)) else this
@@ -248,32 +252,43 @@ case class TurtlePathBuilder[T: Fractional](
 
 object TurtlePathBuilder {
 
-  case class TurtleCommand[T: Fractional](name: String, args: List[T] = Nil, stringArgs: List[String] = Nil)
+  case class TurtleCommand[T : Fractional](name: String, args: Seq[T] = Nil) {
+    val stringArgs: Seq[String] = args.map(_.toString)
+  }
+
+  given [T: Fractional](using rw: ReadWriter[T]): ReadWriter[TurtleCommand[T]] =
+    summon[ReadWriter[(String, Seq[T])]].bimap[TurtleCommand[T]](
+      cmd => (cmd.name, cmd.args),
+      (name, args) => TurtleCommand(name, args)
+    )
+
+
 
   case class TurtlePenStyle[T](color: String, size: T)
 
   case class TurtleStyledSegment[T: Fractional](pathBuilder: SvgPathBuilderImmutable[T], style: TurtlePenStyle[T])
 
   case class TurtleState[T: Fractional](
-      x: T,
-      y: T,
-      headingDeg: T,
-      penDown: Boolean,
-      visible: Boolean,
-      penColor: String,
-      penSize: T,
-      stitchMode: String,
-      homeHeadingDeg: T
-  )
+                                         x: T,
+                                         y: T,
+                                         headingDeg: T,
+                                         penDown: Boolean,
+                                         visible: Boolean,
+                                         penColor: String,
+                                         penSize: T,
+                                         stitchMode: String,
+                                         homeHeadingDeg: T
+                                       )
+
 
   object TurtleState {
     def initial[T: Fractional](
-        x: T,
-        y: T,
-        headingDeg: T,
-        penDown: Boolean = true,
-        visible: Boolean = true
-    ): TurtleState[T] = {
+                                x: T,
+                                y: T,
+                                headingDeg: T,
+                                penDown: Boolean = true,
+                                visible: Boolean = true
+                              ): TurtleState[T] = {
       val N = summon[Fractional[T]]
       TurtleState(
         x,
@@ -293,10 +308,10 @@ object TurtlePathBuilder {
     apply(startPoint, turtleCommands, summon[Fractional[T]].fromInt(0))
 
   def apply[T: Fractional](
-      startPoint: Point[T],
-      turtleCommands: List[TurtleCommand[T]],
-      initialHeadingDeg: T
-  ): TurtlePathBuilder[T] = {
+                            startPoint: Point[T],
+                            turtleCommands: List[TurtleCommand[T]],
+                            initialHeadingDeg: T
+                          ): TurtlePathBuilder[T] = {
     val initialPath = SvgPathBuilderImmutable[T](startPoint)
     val initial = TurtlePathBuilder[T](
       startPoint,

@@ -1,8 +1,11 @@
 package it.evadid.homepage.util.numbers
 
+import it.evadid.core.util.io.Serializer
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSGlobal
 import scala.util.control.NonFatal
+import upickle.default.{ReadWriter, macroRW}
 
 final class AlgebriteNumber private(private val expr: String, private val canonical: String):
 
@@ -107,6 +110,9 @@ object AlgebriteNumber:
       else if diff < 0 then -1
       else if diff > 0 then 1
       else 0
+
+  Serializer
+  given ReadWriter[AlgebriteNumber] = Serializer.constructorLikeSerializer[AlgebriteNumber]("AlgebriteNumber")(_.canonical)(str => AlgebriteNumber(str)).uPickleReadWrite
 
   private def simplifyExpression(input: String): String =
     val trimmed = input.trim

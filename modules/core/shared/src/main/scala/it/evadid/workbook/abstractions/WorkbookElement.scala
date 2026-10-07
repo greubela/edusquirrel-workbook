@@ -1,7 +1,7 @@
 package it.evadid.workbook.abstractions
 
 import it.evadid.core.datastructures.state.State
-import it.evadid.core.util.io.{AutoSerializable, Serializer}
+import it.evadid.core.util.io.*
 import it.evadid.workbook.interaction.variable.InteractionVariable
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 import upickle.default.*
