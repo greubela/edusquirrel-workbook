@@ -1,7 +1,7 @@
 package it.evadid.vm.io.stringPrinter.python
 
 import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, Python}
-import it.evadid.vm.code.abstractions.BeExpression
+import it.evadid.vm.code.abstractions.{BeDefineStructure, BeExpression}
 import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.usage.BeFunctionCall
 import it.evadid.vm.io.stringPrinter.GenericJavaLikeStringPrinter
@@ -13,6 +13,17 @@ case class BeExpressionToPythonString
   extends GenericJavaLikeStringPrinter(
     Python, language, PythonSeparation(), skipUnparsable
   ) {
+
+  override def forDefinition(definition: BeDefineStructure): String = definition match {
+    // Avoid Java's metadata comments on Python declarations so reparsing stays stable.
+    case BeDefineVariable(name, variableType, initValue) =>
+      defineVariableLine(
+        name.getNameIn(language, NamingStyle.SnakeCase),
+        variableType.formatTypeForDisplay.getInLanguage(Python),
+        initValue
+      )
+    case _ => super.forDefinition(definition)
+  }
 
   override def forOther(other: BeExpression): String = other match {
     case call: BeFunctionCall if isOperatorCall(call) =>
@@ -57,6 +68,9 @@ case class BeExpressionToPythonString
     if (initValue.isEmpty) s"${nameStr} : ${variableTypeString}"
     else s"${nameStr} : ${variableTypeString} = ${forExpression(initValue.get)}"
   }
+
+  override protected def defineClassLine(nameStr: String, nameComment: String): String =
+    s"class $nameStr:"
 
   override protected def defineFunctionLine(nameStr: String, parStr: String, outputTypeStr: String): String = {
     s"def $nameStr$parStr -> $outputTypeStr:"

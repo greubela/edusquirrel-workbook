@@ -7,7 +7,7 @@ import it.evadid.vm.code.abstractions.BeExpression
   *
   * The VM already has a mature Python parser. This parser supplies the Java lexical and structural
   * front end, lowers Java statements to equivalent Python, and delegates AST construction to that
-  * parser. It handles variables, assignment, calls, returns, functions, if/else, while, and the
+  * parser. It handles classes, variables, assignment, calls, returns, functions, if/else, while, and the
   * canonical Java `for` loops emitted for [[it.evadid.vm.code.controlStructures.BeFor]].
   */
 final class JavaToBeExpressionParser {
@@ -88,7 +88,9 @@ final class JavaToBeExpressionParser {
     else if header.matches("else\\s+if\\s*\\(.*\\)") then s"elif ${conditionBetweenParens(header)}:"
     else if header == "else" then "else:"
     else if header.matches("while\\s*\\(.*\\)") then s"while ${conditionBetweenParens(header)}:"
-    else parseFor(header).getOrElse(parseFunction(header))
+    else header match
+      case ClassHeader(name) => s"class $name:"
+      case _ => parseFor(header).getOrElse(parseFunction(header))
   }
 
   private def conditionBetweenParens(header: String): String =
@@ -103,27 +105,41 @@ final class JavaToBeExpressionParser {
       Some(s"for $name in range(${translateExpression(start)}, $stop):")
     case _ => None
 
+  private val ClassHeader =
+    """(?:public\s+|private\s+|protected\s+|static\s+|final\s+)*class\s+([A-Za-z_$][\w$]*)""".r
+
   private val Function =
-    """(?:public\s+|private\s+|protected\s+|static\s+)*(?:void|boolean|byte|short|int|long|float|double|char|String|Object|[A-Za-z_$][\w$<>\[\]]*)\s+([A-Za-z_$][\w$]*)\s*\((.*)\)""".r
+    """(?:public\s+|private\s+|protected\s+|static\s+)*([A-Za-z_$][\w$<>\[\]]*)\s+([A-Za-z_$][\w$]*)\s*\((.*)\)""".r
+
+  private def pythonType(javaType: String): String = javaType match
+    case "byte" | "short" | "int" | "long" => "float" // The VM currently models these as Numeric.
+    case "float" | "double" => "float"
+    case "boolean" => "bool"
+    case "char" | "String" => "str"
+    case "void" => "None"
+    case "Date" => "date"
+    case _ => "Any"
 
   private def parseFunction(header: String): String = header match
-    case Function(name, parameters) =>
-      val names = splitArguments(parameters).filter(_.nonEmpty).map { parameter =>
-        parameter.trim.split("\\s+").last.replace("...", "")
+    case Function(returnType, name, parameters) =>
+      val typedParameters = splitArguments(parameters).filter(_.nonEmpty).map { parameter =>
+        val parts = parameter.trim.stripPrefix("final ").split("\\s+")
+        val parameterName = parts.last.replace("...", "")
+        s"$parameterName: ${pythonType(parts.head)}"
       }
-      s"def $name(${names.mkString(", ")}):"
+      s"def $name(${typedParameters.mkString(", ")}) -> ${pythonType(returnType)}:"
     case _ => throw IllegalArgumentException(s"Unsupported Java block header: $header")
 
-  private def translateStatement(raw: String): String = {
-    val statement = raw.trim
-    val withoutDeclaration = statement.replaceFirst(
-      "^(?:final\\s+)?(?:boolean|byte|short|int|long|float|double|char|String|Object|[A-Z][A-Za-z0-9_$<>\\[\\]]*)\\s+",
-      ""
-    )
-    if withoutDeclaration.matches("[A-Za-z_$][\\w$]*") && withoutDeclaration == statement then
+  private val Declaration =
+    """^(?:final\s+)?(boolean|byte|short|int|long|float|double|char|String|Object|[A-Z][A-Za-z0-9_$<>\[\]]*)\s+([A-Za-z_$][\w$]*)(\s*=\s*.+)?$""".r
+
+  private def translateStatement(raw: String): String = raw.trim match
+    case Declaration(javaType, name, initializer) =>
+      val assignment = Option(initializer).map(translateExpression).getOrElse("")
+      s"$name: ${pythonType(javaType)}$assignment"
+    case statement if statement.matches("[A-Za-z_$][\\w$]*") =>
       throw IllegalArgumentException(s"Unsupported Java statement: $statement")
-    translateExpression(withoutDeclaration)
-  }
+    case statement => translateExpression(statement)
 
   private def translateExpression(expression: String): String = {
     val result = new StringBuilder
