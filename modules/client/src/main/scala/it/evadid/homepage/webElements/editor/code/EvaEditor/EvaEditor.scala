@@ -1,18 +1,23 @@
 package it.evadid.homepage.webElements.editor.code.EvaEditor
 
 import com.raquo.airstream.state.Var
+import com.raquo.airstream.ownership.ManualOwner
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.webElements.code.JavaFunctionBasedEditor
-import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
+import it.evadid.homepage.webElements.editor.code.{CodeMirrorEditor, JavaEditorSession}
+import it.evadid.vm.parsing.java.turtle.JavaTurtleResolution
+import it.evadid.vm.simulation.java.{JavaTurtleEvaluation, JavaTurtleRuntime}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.PyodideTurtleCommandRunner
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.workbook.elements.interactionElements.programming.*
 
 import scala.concurrent.Future
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import java.util.concurrent.CancellationException
 import scala.util.{Failure, Success, Try}
 
 object EvaEditor {
@@ -36,6 +41,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
   val config: EvaEditorConfig
 
   def onStateEdited: ProgrammingState => Unit = _ => ()
+  def javaRunnerFactory: () => JavaEditorSession.Runner = JavaEditorSession.defaultRunner
 
   import EvaEditor.Tab
 
@@ -67,6 +73,68 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
   )
   private lazy val pythonRunner = new PyodideTurtleCommandRunner()
   private var mounted = false
+  private var javaSession = Option.empty[JavaEditorSession]
+  private class JavaRun {
+    val owner = new ManualOwner
+    var invalidated = false
+    def invalidate(): Unit = { invalidated = true; owner.killSubscriptions() }
+  }
+  private var runningJava = Option.empty[JavaRun]
+
+  private def releaseJavaSession(): Unit = {
+    val pending = runningJava
+    val discarded = javaSession
+    runningJava = None
+    javaSession = None
+    pending.foreach(_.invalidate())
+    discarded.foreach(_.release())
+  }
+
+  def stopJavaExecution(): Unit = {
+    val pending = runningJava
+    runningJava = None
+    pending.foreach(_.invalidate())
+    javaSession.foreach(_.stop())
+  }
+
+  private def runJava(source: ProgrammingStateJavaString): Future[List[TurtleCommand[Double]]] = {
+    if runningJava.nonEmpty then return Future.failed(IllegalStateException("Java execution is already running."))
+    Try(source.isClassProgram) match
+      case Success(false) => return deriveCommands(source)
+      case _ => ()
+    val session = javaSession.getOrElse {
+      val created = new JavaEditorSession(source, javaRunnerFactory)
+      javaSession = Some(created)
+      created
+    }
+    session.updateSource(source)
+    val pending = new JavaRun
+    runningJava = Some(pending)
+    val original = state.now()
+    state.signal.changes.foreach { next =>
+      if next != original then releaseJavaSession()
+    }(using pending.owner)
+    Try(session.run()).fold(Future.failed, identity).map { execution =>
+      if pending.invalidated then throw CancellationException("Java execution cancelled.")
+      execution.status match {
+        case JavaTurtleRuntime.Status.Completed => execution.commands.toList.map { command =>
+          val name = command.command match
+            case JavaTurtleResolution.TurtleCommand.Forward => "forward"
+            case JavaTurtleResolution.TurtleCommand.TurnRight => "right"
+          TurtleCommand[Double](name, List(command.value.toDouble))
+        }
+        case JavaTurtleRuntime.Status.Cancelled => throw CancellationException("Java execution cancelled.")
+        case JavaTurtleRuntime.Status.LimitExceeded =>
+          throw IllegalStateException("Your program reached its execution limit. Check its loops or recursion.")
+        case JavaTurtleRuntime.Status.Failed(JavaTurtleRuntime.Failure.Evaluation(JavaTurtleEvaluation.Failure.DivisionByZero)) =>
+          throw IllegalStateException("Your program tried to divide by zero.")
+        case JavaTurtleRuntime.Status.Failed(_) => throw IllegalStateException("Your Java program could not finish.")
+      }
+    }.andThen { case _ =>
+      pending.owner.killSubscriptions()
+      if runningJava.exists(_ eq pending) then runningJava = None
+    }
+  }
 
   private def setViewAvailable(available: Boolean): Unit =
     if viewAvailable.now() != available then viewAvailable.set(available)
@@ -144,13 +212,15 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
       case snap: ProgrammingStateSnapXml => SnapCodeEditor.commandsFor(snap)
       case floating: ProgrammingStateSnapXMLWithAdditionalFloatingObjects => SnapCodeEditor.commandsFor(floating.toSnapXml)
       case ProgrammingStatePythonString(code) => pythonRunner.execute(code)
-      case java: ProgrammingStateJavaString => deriveCommands(java)
+      case java: ProgrammingStateJavaString => runJava(java)
       case expression: ProgrammingStateBeExpression => deriveCommands(expression)
     else if !viewAvailable.now() then Future.failed(IllegalStateException("This draft cannot be run in the selected editor."))
     else activeTab.now() match
       case Tab.Snap => snapEditor.fold(Future.failed[List[TurtleCommand[Double]]](IllegalStateException("Snap is not enabled.")))(_.getCurrentTurtleCommands())
       case Tab.Python => pythonRunner.execute(pythonState.now())
-      case Tab.Java => deriveCommands(javaState.now())
+      case Tab.Java => javaState.now() match
+        case java: ProgrammingStateJavaString => runJava(java)
+        case _ => Future.failed(IllegalStateException("No Java source is available."))
 
   private def closeActiveView(): Unit = activeTab.now() match
     case Tab.Snap => snapEditor.foreach(_.onFullscreenClose())
@@ -163,6 +233,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
     if closedSnap then closeActiveView()
     Try(convert(state.now(), tab)) match
       case Success(next) =>
+        releaseJavaSession()
         if mounted && !closedSnap then closeActiveView()
         show(next)
         conversionError.set(None)
@@ -190,7 +261,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
       cls := "eva-editor",
       state.signal --> receive,
       onMountCallback { _ => mounted = true },
-      onUnmountCallback { _ => mounted = false },
+      onUnmountCallback { _ => mounted = false; releaseJavaSession() },
       div(
         cls := "eva-editor__tabs",
         enabledTabs.map(createTabButton)
@@ -219,7 +290,10 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
       case Tab.Java => javaEditor.foreach(_.onFullscreenOpen())
       case Tab.Python => ()
 
-  override def onFullscreenClose(): Unit = closeActiveView()
+  override def onFullscreenClose(): Unit = {
+    releaseJavaSession()
+    closeActiveView()
+  }
 
   override def dismissOnOutsideClick: Boolean = false
 }
