@@ -1,14 +1,20 @@
 package it.evadid.homepage.webElements.editor.code
 
 import it.evadid.core.datastructures.language.AppLanguage
+import com.raquo.airstream.state.Var
 import it.evadid.workbook.elements.interactionElements.programming.*
 import munit.FunSuite
 
 class EvaEditorSpec extends FunSuite {
-  test("state representation chooses its matching initial tab") {
-    assertEquals(EvaEditor.tabFor(ProgrammingStatePythonString("pass")), EvaEditor.Tab.Python)
-    assertEquals(EvaEditor.tabFor(ProgrammingStateJavaString("class A {}")), EvaEditor.Tab.Java)
-    assertEquals(EvaEditor.tabFor(ProgrammingExerciseState.mini), EvaEditor.Tab.Snap)
+  test("language tabs retain their matching source representation") {
+    val pythonState = ProgrammingStatePythonString("pass")
+    val javaState = ProgrammingStateJavaString("class A {}")
+    val python = EvaEditor.tabFor(EvaEditorConfig.Default, AppLanguage.Python, Var[ProgrammingState](pythonState), _ => ())
+    val java = EvaEditor.tabFor(EvaEditorConfig.Default, AppLanguage.Java, Var[ProgrammingState](javaState), _ => ())
+    assertEquals(python.associatedLanguage, AppLanguage.Python)
+    assertEquals(java.associatedLanguage, AppLanguage.Java)
+    assertEquals(python.associatedVar.now(): ProgrammingState, pythonState: ProgrammingState)
+    assertEquals(java.associatedVar.now(): ProgrammingState, javaState: ProgrammingState)
   }
 
   test("ProgrammingState converts itself at the Snap editor boundary") {
