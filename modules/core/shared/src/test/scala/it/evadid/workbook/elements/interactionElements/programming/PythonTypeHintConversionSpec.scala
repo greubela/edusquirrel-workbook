@@ -1,5 +1,9 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.core.datastructures.language.AppLanguage.English
+import it.evadid.vm.naming.NamingStyle
+import it.evadid.vm.parsing.python.PythonParser
+import it.evadid.vm.types.BeDataType
 import munit.FunSuite
 
 class PythonTypeHintConversionSpec extends FunSuite {
@@ -104,4 +108,46 @@ class PythonTypeHintConversionSpec extends FunSuite {
     assert(SnapTurtlePythonBridge.applyPython("from typing import cast\nforward(10)").isLeft)
     assert(SnapTurtlePythonBridge.applyPython("import os\nforward(10)").isLeft)
   }
+
+  test("Python class with two typed methods round trips through Java") {
+    val source =
+      """class Calculator:
+        |    scale: float = 2
+        |
+        |    def twice(self, value: float) -> float:
+        |        result: float = value * 2
+        |        return result
+        |
+        |    def label(self, text: str) -> str:
+        |        return text
+        |""".stripMargin
+    val original = ProgrammingStatePythonString(source).toBeExpressionState
+    val java = original.toJava
+    val roundTripped = java.toPython
+
+    assert(java.code.contains("class calculator"), clue = java.code)
+    assert(java.code.contains("double twice("), clue = java.code)
+    assert(java.code.contains("String label("), clue = java.code)
+    assertEquals(roundTripped.code.trim, original.toPython.code.trim, clue = java.code)
+
+    val parsed = PythonParser.parsePythonWithDetails(roundTripped.code)
+    assertEquals(parsed.definedClasses.size, 1, clue = roundTripped.code)
+    val standaloneNames = parsed.definedFunctions
+      .map(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase)).toSet
+    assert(!standaloneNames.contains("twice") && !standaloneNames.contains("label"))
+    val clazz = parsed.definedClasses.head
+    assertEquals(clazz.name.getNameIn(English, NamingStyle.SnakeCase), "calculator")
+    assertEquals(clazz.attributes.map(_.variableType), List(BeDataType.Numeric))
+    assertEquals(clazz.methods.map(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase)),
+      List("twice", "label"))
+    assertEquals(clazz.methods.map(_.outputs.get.variableType), List(BeDataType.Numeric, BeDataType.String))
+    assertEquals(clazz.methods.map(_.inputs.map(_.variableType)),
+      List(List(BeDataType.AnyType, BeDataType.Numeric), List(BeDataType.AnyType, BeDataType.String)))
+    assert(clazz.methods.forall(_.functionTypeInfo.isMethodInClass.nonEmpty))
+    assert(roundTripped.code.contains("result: float = value * 2"), clue = roundTripped.code)
+    assert(roundTripped.code.contains("return result"), clue = roundTripped.code)
+    assert(roundTripped.code.contains("return text"), clue = roundTripped.code)
+    assertStablePython(roundTripped)
+  }
+
 }

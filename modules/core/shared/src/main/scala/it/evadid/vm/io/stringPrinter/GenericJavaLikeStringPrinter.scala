@@ -50,6 +50,9 @@ abstract class GenericJavaLikeStringPrinter(
 
   protected def defineVariableLine(nameStr: String, variableTypeString: String, initValue: Option[BeExpression]): String
 
+  protected def defineClassLine(nameStr: String, nameComment: String): String =
+    s"class $nameStr${sepLogic.startBlockWith} $nameComment"
+
   protected def defineFunctionLine(nameStr: String, parStr: String, outputTypeStr: String): String
 
   protected def formatFunctionParameters(inputs: List[BeDefineVariable]): String =
@@ -116,9 +119,9 @@ abstract class GenericJavaLikeStringPrinter(
   def forDefinition(ds: BeDefineStructure): String = ds.match {
     case BeDefineClass(name, attributes, methods) => {
       CodeStringBuilderMutable()
-        .appendNextLine(s"class ${NameInfo(name).inCurLanguage}${sepLogic.startBlockWith} ${NameInfo(name).associatedComment}")
+        .appendNextLine(defineClassLine(NameInfo(name).inCurLanguage, NameInfo(name).associatedComment))
         .changeIntLevel(1)
-        .appendAllAsLines(attributes.map(forExpression))
+        .appendAllAsLines(attributes.map(forStatement))
         .appendNextLine("")
         .appendAllAsLines(methods.map(forExpression))
         .appendNextLine(sepLogic.endBlockWith)

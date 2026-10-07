@@ -7,7 +7,7 @@ import it.evadid.vm.code.abstractions.BeExpression
   *
   * The VM already has a mature Python parser. This parser supplies the Java lexical and structural
   * front end, lowers Java statements to equivalent Python, and delegates AST construction to that
-  * parser. It handles variables, assignment, calls, returns, functions, if/else, while, and the
+  * parser. It handles classes, variables, assignment, calls, returns, functions, if/else, while, and the
   * canonical Java `for` loops emitted for [[it.evadid.vm.code.controlStructures.BeFor]].
   */
 final class JavaToBeExpressionParser {
@@ -88,7 +88,9 @@ final class JavaToBeExpressionParser {
     else if header.matches("else\\s+if\\s*\\(.*\\)") then s"elif ${conditionBetweenParens(header)}:"
     else if header == "else" then "else:"
     else if header.matches("while\\s*\\(.*\\)") then s"while ${conditionBetweenParens(header)}:"
-    else parseFor(header).getOrElse(parseFunction(header))
+    else header match
+      case ClassHeader(name) => s"class $name:"
+      case _ => parseFor(header).getOrElse(parseFunction(header))
   }
 
   private def conditionBetweenParens(header: String): String =
@@ -102,6 +104,9 @@ final class JavaToBeExpressionParser {
       val stop = if operator == "<=" then s"${translateExpression(limit)} + 1" else translateExpression(limit)
       Some(s"for $name in range(${translateExpression(start)}, $stop):")
     case _ => None
+
+  private val ClassHeader =
+    """(?:public\s+|private\s+|protected\s+|static\s+|final\s+)*class\s+([A-Za-z_$][\w$]*)""".r
 
   private val Function =
     """(?:public\s+|private\s+|protected\s+|static\s+)*([A-Za-z_$][\w$<>\[\]]*)\s+([A-Za-z_$][\w$]*)\s*\((.*)\)""".r

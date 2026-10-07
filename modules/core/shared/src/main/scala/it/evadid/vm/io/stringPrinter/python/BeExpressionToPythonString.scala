@@ -69,6 +69,9 @@ case class BeExpressionToPythonString
     else s"${nameStr} : ${variableTypeString} = ${forExpression(initValue.get)}"
   }
 
+  override protected def defineClassLine(nameStr: String, nameComment: String): String =
+    s"class $nameStr:"
+
   override protected def defineFunctionLine(nameStr: String, parStr: String, outputTypeStr: String): String = {
     s"def $nameStr$parStr -> $outputTypeStr:"
   }
