@@ -70,7 +70,7 @@ object ProgrammingExercise {
 
     private def parseStored(str: String): Option[ProgrammingState] = {
       val trimmed = str.trim
-      if trimmed.startsWith(StateHeader) then parseVersion2(trimmed)
+      if trimmed.startsWith(StateHeader) then parseVersion2(str.stripLeading)
       else if trimmed.startsWith(XmlHeader) then
         val xml = trimmed.drop(XmlHeader.length).stripLeading
         if xml.isEmpty then Some(ProgrammingExerciseState.mini)
@@ -85,7 +85,7 @@ object ProgrammingExercise {
       val body = stored.drop(StateHeader.length).stripLeading
       val newline = body.indexOf('\n')
       val (kind, payload) = if newline < 0 then (body, "") else (body.take(newline), body.drop(newline + 1))
-      kind match
+      kind.stripSuffix("\r") match
         case "SNAP_XML" => Some(ProgrammingStateSnapXml(payload))
         case "PYTHON" => Some(ProgrammingStatePythonString(payload))
         case "JAVA" => Some(ProgrammingStateJavaString(payload))
