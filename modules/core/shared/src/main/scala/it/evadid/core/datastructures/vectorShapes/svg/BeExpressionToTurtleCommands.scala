@@ -1,6 +1,7 @@
 package it.evadid.core.datastructures.vectorShapes.svg
 
 import it.evadid.core.datastructures.geometry.Point
+import it.evadid.core.util.io.Serializer
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.{BeFor, BeIfElse, BeRepeatNr, BeSequence, BeWhile}
@@ -108,8 +109,7 @@ object BeExpressionToTurtleCommands {
 
   private def numericArg(expression: BeExpression, state: InterpState): Option[Double] =
     expression match
-      case BeUseValue(BeDataValueLiteral(value), _) if value.exists(ch => ch.isDigit || ch == '.' || ch == '-') =>
-        scala.util.Try(value.trim.toDouble).toOption
+      case BeUseValue(BeDataValueLiteral(value), _) => numericLiteral(value)
       case BeUseValue(BeUseValueReference(_), _) =>
         Some(evalNumber(expression, state))
       case call: BeFunctionCall if SnapControlFlow.isOperatorCall(call) =>
@@ -119,9 +119,13 @@ object BeExpressionToTurtleCommands {
 
   private def stringArg(expression: BeExpression): Option[String] =
     expression match
-      case BeUseValue(BeDataValueLiteral(value), _) if !value.exists(ch => ch.isDigit) || value.exists(ch => ch.isLetter || ch == ',') =>
-        Some(value.replace("\"", "").replace("'", ""))
+      case BeUseValue(BeDataValueLiteral(value), _) if numericLiteral(value).isEmpty =>
+        Some(Serializer.stringLiteralIO(parseEverything = true).deserialize(value))
       case _ => None
+
+  private def numericLiteral(value: String): Option[Double] =
+    if value.exists(ch => ch.isDigit || ch == '.' || ch == '-') then value.trim.toDoubleOption
+    else None
 
   private def evalNumber(expression: BeExpression, state: InterpState): Double =
     expression match
