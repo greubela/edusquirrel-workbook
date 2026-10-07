@@ -4,8 +4,7 @@ import it.evadid.core.datastructures.state.observable.ObservableValueImpl
 import munit.FunSuite
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.Await
-import scala.concurrent.duration.*
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success, Try}
 
 class StateBranchCoverageTest extends FunSuite {
@@ -58,7 +57,7 @@ class StateBranchCoverageTest extends FunSuite {
       case Success(v) => p.success(v)
       case Failure(e) => p.failure(e)
     })
-    assertEquals(Await.result(p.future, 2.seconds), 7)
+    p.future.map(value => assertEquals(value, 7))
   }
 
   test("derived observable propagates base failures") {

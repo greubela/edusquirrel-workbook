@@ -55,6 +55,7 @@ case class SnapCodeEditor(
       return
     lastFingerprintFromSnap = Some(nextFingerprint)
     impl.acknowledgeProgramFromEditor(next)
+    if(state.now() != next) state.set(next)
     onStateEdited(next)
 
   lazy val editorCanvas: L.Element = {

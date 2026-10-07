@@ -1,6 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
 import it.evadid.core.datastructures.geometry.Point
+import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import munit.FunSuite
 
 class TurtleGraphicSpec extends FunSuite {
@@ -19,11 +20,11 @@ class TurtleGraphicSpec extends FunSuite {
   test("TurtleGraphicSvgString returns original SVG string") {
     val svgString = "M0 0 L10 0 L10 10 Z"
     val graphic = TurtleGraphic.TurtleGraphicSvgString(svgString)
-    assertEquals(graphic.toSvgPathDString(), svgString)
+    assertEquals(graphic.toSvgPathDString, svgString)
   }
 
   test("TurtleGraphicProgram converts to turtle program") {
-    val program = List(TurtleCommand("penUp"), TurtleCommand("forward", List(10.0)))
+    val program: List[TurtleCommand[Double]] = List(TurtleCommand("penUp"), TurtleCommand("forward", List(10.0)))
     val graphic = TurtleGraphic.TurtleGraphicProgram(program)
     val commands = graphic.toTurtleProgram
     assertEquals(commands.size, 2)
@@ -32,14 +33,14 @@ class TurtleGraphicSpec extends FunSuite {
   }
 
   test("TurtleGraphicProgram converts to SVG path") {
-    val program = List(
+    val program: List[TurtleCommand[Double]] = List(
       TurtleCommand("penUp"),
       TurtleCommand("forward", List(10.0)),
       TurtleCommand("penDown"),
       TurtleCommand("forward", List(10.0))
     )
     val graphic = TurtleGraphic.TurtleGraphicProgram(program)
-    val svg = graphic.toSvgPathDString()
+    val svg = graphic.toSvgPathDString
     assert(svg.contains("M") || svg.contains("L"))
   }
 
@@ -69,14 +70,14 @@ class TurtleGraphicSpec extends FunSuite {
   test("TurtleLineBasedProgram converts to SVG path") {
     val line = TurtleGraphic.Line(Point(0.0, 0.0), Point(10.0, 10.0))
     val graphic = TurtleGraphic.TurtleLineBasedProgram(List(line))
-    val svg = graphic.toSvgPathDString()
+    val svg = graphic.toSvgPathDString
     assert(svg.contains("M"))
     assert(svg.contains("L"))
   }
 
   test("TurtleLineBasedProgram handles empty list") {
     val graphic = TurtleGraphic.TurtleLineBasedProgram(List())
-    val svg = graphic.toSvgPathDString()
+    val svg = graphic.toSvgPathDString
     assertEquals(svg, "")
   }
 

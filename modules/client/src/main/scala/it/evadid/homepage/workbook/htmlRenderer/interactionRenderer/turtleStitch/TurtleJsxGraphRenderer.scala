@@ -16,7 +16,8 @@ import scala.scalajs.js
 /** Renders and compares a turtle trace on a JSXGraph board.
  *
  * JSXGraph must be loaded by the host page (`JXG` must be available globally).
- * Coordinates follow TurtlePathBuilder's SVG convention (positive y points downwards).
+ * Scene coordinates follow TurtlePathBuilder's SVG convention (positive y points downwards).
+ * They are converted to JSXGraph's upward-positive coordinates when displayed.
  */
 object TurtleJsxGraphRenderer:
 
@@ -104,7 +105,7 @@ object TurtleJsxGraphRenderer:
       val index = movements.size
       movements += Movement(position, end, jump)
       if isForward then
-        pendingAngle.filter(p => close(p.vertex, position, tolerance)).foreach { p =>
+        pendingAngle.filter(p => close(p.vertex, position, tolerance) && math.abs(p.degrees % 360.0) > tolerance).foreach { p =>
           angles += RenderedAngle(position, p.fromHeading, p.degrees, p.lineBefore, index)
         }
         pendingAngle = None
@@ -116,7 +117,17 @@ object TurtleJsxGraphRenderer:
 
     def forward(distance: Double): Unit =
       val radians = Math.toRadians(heading)
-      move(Point(position.x + Math.cos(radians) * distance, position.y - Math.sin(radians) * distance), !penDown, true)
+      if distance != 0.0 then
+        move(Point(position.x + Math.cos(radians) * distance, position.y - Math.sin(radians) * distance), !penDown, true)
+
+    // Preserve the signed rotation across consecutive turns at the same vertex.
+    def turn(degrees: Double): Unit =
+      lastForwardLine.foreach { i =>
+        pendingAngle = pendingAngle match
+          case Some(p) => Some(p.copy(degrees = p.degrees + degrees))
+          case None => Some(PendingAngle(position, heading, degrees, i))
+      }
+      heading = normal(heading + degrees)
 
     program.foreach { command =>
       val name = command.name.trim.toLowerCase.replace('-', '_')
@@ -125,18 +136,20 @@ object TurtleJsxGraphRenderer:
         case "forward" | "fd" => args.headOption.foreach(forward)
         case "backward" | "back" | "bk" => args.headOption.foreach(d => forward(-d))
         case "left" | "lt" | "turn_left" | "turnleft" => args.headOption.foreach { degrees =>
-          lastForwardLine.foreach(i => pendingAngle = Some(PendingAngle(position, heading, degrees, i)))
-          heading = normal(heading + degrees)
+          turn(degrees)
         }
         case "right" | "rt" | "turn" | "turn_right" | "turnright" => args.headOption.foreach { degrees =>
-          lastForwardLine.foreach(i => pendingAngle = Some(PendingAngle(position, heading, -degrees, i)))
-          heading = normal(heading - degrees)
+          turn(-degrees)
         }
         case "goto" | "setpos" | "setposition" | "goto_x_y" | "gotoxy" if args.size >= 2 =>
           move(Point(args(0), args(1)), jump = !penDown, isForward = false)
         case "setx" | "set_x" | "setxposition" => args.headOption.foreach(x => move(Point(x, position.y), jump = !penDown, isForward = false))
         case "sety" | "set_y" | "setyposition" => args.headOption.foreach(y => move(Point(position.x, y), jump = !penDown, isForward = false))
-        case "setheading" | "seth" | "set_heading" => args.headOption.foreach(h => heading = normal(h))
+        case "setheading" | "seth" | "set_heading" => args.headOption.foreach { h =>
+          heading = normal(h)
+          pendingAngle = None
+          lastForwardLine = None
+        }
         case "penup" | "pu" | "up" | "pen_up" => penDown = false
         case "pendown" | "pd" | "down" | "pen_down" => penDown = true
         case "home" => move(Point(0.0, 0.0), jump = !penDown, isForward = false); heading = 0.0
@@ -195,7 +208,7 @@ object TurtleJsxGraphRenderer:
 
   private def renderScene(container: dom.html.Div, scene: Scene): js.Dynamic =
     val points = scene.lines.flatMap(line => List(line.start, line.end))
-    val bounds = boundingBox(points)
+    val bounds = boundingBox(points.map(p => Point(p.x, -p.y)))
     val jxg = js.Dynamic.global.selectDynamic("JXG")
     if js.isUndefined(jxg) then throw new IllegalStateException("JSXGraph is not loaded; expected global JXG")
     if container.id.isEmpty then container.id = s"turtle-jsxgraph-${Math.abs(js.Date.now().toLong)}"
@@ -211,7 +224,7 @@ object TurtleJsxGraphRenderer:
 
     def createPoint(point: Point[Double]): js.Dynamic = {
       val label = s"(${format(point.x)}, ${format(point.y)})"
-      val obj = board.create("point", js.Array(point.x, point.y), js.Dynamic.literal(
+      val obj = board.create("point", js.Array(point.x, -point.y), js.Dynamic.literal(
         name = "", size = 3, fixed = true, strokeColor = pointBackgroundColor, fillColor = pointBackgroundColor, fillOpacity = 0.1, strokeOpacity = 0.1,
         highlightFillOpacity = 1.0, highlightStrokeOpacity = 1.0, showInfobox = false
       ))
@@ -241,15 +254,19 @@ object TurtleJsxGraphRenderer:
     }
 
     def createAngle(angle: RenderedAngle, index: Int): Unit = {
-      val radius = math.max((bounds(2) - bounds(0)) / 18.0, 50)
-      val start = Point(angle.vertex.x + Math.cos(Math.toRadians(angle.fromHeading)) * radius, angle.vertex.y - Math.sin(Math.toRadians(angle.fromHeading)) * radius)
+      def length(line: RenderedLine): Double = math.hypot(line.end.x - line.start.x, line.end.y - line.start.y)
+      val radius = math.min((bounds(2) - bounds(0)) / 18.0,
+        math.min(length(scene.lines(angle.lineBefore)), length(scene.lines(angle.lineAfter))) / 4.0)
+      // JSXGraph constructs angles counterclockwise; order the rays by turn direction.
+      val start = Point(angle.vertex.x + Math.cos(Math.toRadians(angle.fromHeading)) * radius, -angle.vertex.y + Math.sin(Math.toRadians(angle.fromHeading)) * radius)
       val endHeading = angle.fromHeading + angle.degrees
-      val end = Point(angle.vertex.x + Math.cos(Math.toRadians(endHeading)) * radius, angle.vertex.y - Math.sin(Math.toRadians(endHeading)) * radius)
+      val end = Point(angle.vertex.x + Math.cos(Math.toRadians(endHeading)) * radius, -angle.vertex.y + Math.sin(Math.toRadians(endHeading)) * radius)
 
       def helper(point: Point[Double]): js.Dynamic = board.create("point", js.Array(point.x, point.y), js.Dynamic.literal(visible = false, fixed = true))
 
-      val arc = board.create("angle", js.Array(helper(end), pointObject(angle.vertex), helper(start)), js.Dynamic.literal(
-        name = "", radius = radius, fillColor = "#808080", strokeColor = "#808080", fillOpacity = 0.9, strokeOpacity = 0.9, fixed = true
+      val (first, last) = if angle.degrees >= 0.0 then (start, end) else (end, start)
+      val arc = board.create("angle", js.Array(helper(first), pointObject(angle.vertex), helper(last)), js.Dynamic.literal(
+        name = "", radius = radius, `type` = "sector", orthoType = "sector", selection = "auto", fillColor = "#808080", strokeColor = "#808080", fillOpacity = 0.9, strokeOpacity = 0.9, fixed = true
       ))
       arc.on("over", (_: js.Any) => setAngleHover(arc, angle, active = true, board))
       arc.on("out", (_: js.Any) => setAngleHover(arc, angle, active = false, board))
