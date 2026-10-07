@@ -124,6 +124,6 @@ object TurtleGraphic {
 
   /** Represents a line segment from a start point to an end point.
    */
-  case class Line(start: Point[Double], end: Point[Double])
+  case class Line(start: Point[Double], end: Point[Double]) derives ReadWriter
 
 }
