@@ -1,439 +1,342 @@
 .java-function-based-editor {
-    --jfe-ink: #172438;
-    --jfe-muted: #68778d;
-    --jfe-border: #dce4ee;
-    --jfe-surface: #ffffff;
-    --jfe-subtle: #f5f8fc;
-    --jfe-accent: #2864c5;
-    --jfe-accent-strong: #194e9d;
-    --jfe-shadow: 0 14px 36px rgba(30, 55, 90, 0.08);
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
+    --jfe-ink: #e5e9f0;
+    --jfe-muted: #b2bdcd;
+    --jfe-border: #3b4351;
+    --jfe-surface: #252a34;
+    --jfe-subtle: #282c34;
+    --jfe-accent: #88c5e8;
+    --jfe-selected: #354d65;
+    display: grid;
+    flex: 1 1 auto;
+    grid-template-columns: 218px minmax(0, 1fr);
+    grid-template-rows: auto minmax(min-content, 1fr);
+    grid-template-areas: "header header" "navigation workspace";
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
     min-height: 0;
+    border: 1px solid var(--jfe-border);
+    border-radius: 10px;
+    background: #20242c;
     color: var(--jfe-ink);
-    font-family: Inter, "Segoe UI", system-ui, sans-serif;
+    font: 14px/1.55 Inter, "Segoe UI", system-ui, sans-serif;
+    color-scheme: dark;
 }
-
 .java-function-based-editor *,
-.java-function-editor__dialog-backdrop * {
+.java-function-based-editor *::before,
+.java-function-based-editor *::after {
     box-sizing: border-box;
 }
-
+.java-function-based-editor :is(h2, h3, p, figure) { margin: 0; }
+.fullscreen-content-container:has(> .java-function-based-editor) {
+    min-height: 0;
+    overflow: auto;
+}
 .java-function-editor__topbar {
+    grid-area: header;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-    padding: 1.25rem 1.5rem;
-    border: 1px solid var(--jfe-border);
-    border-radius: 1rem;
-    background: linear-gradient(120deg, #fff 0%, #f3f7ff 100%);
-    box-shadow: var(--jfe-shadow);
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--jfe-border);
 }
-
-.java-function-editor__topbar h2,
-.java-function-editor__topbar p,
-.java-function-editor__section-heading h3,
-.java-function-editor__section-heading p,
-.java-function-editor__workspace-heading h3,
-.java-function-editor__workspace-heading p {
-    margin: 0;
-}
-
 .java-function-editor__title {
-    font-size: clamp(1.25rem, 2.5vw, 1.65rem);
-    font-weight: 750;
-    letter-spacing: -0.035em;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.3;
 }
-
+.fullscreen-content-container > .java-function-based-editor > .java-function-editor__topbar {
+    padding-inline-end: 5rem;
+}
 .java-function-editor__subtitle,
 .java-function-editor__section-hint {
-    margin-top: 0.25rem !important;
+    margin-top: 4px !important;
     color: var(--jfe-muted);
-    font-size: 0.9rem;
+    font-size: 14px;
 }
-
-.java-function-editor__sync {
-    display: inline-flex;
+.java-function-editor__topbar-actions,
+.java-function-editor__view-toggle {
+    display: flex;
     align-items: center;
-    flex: 0 0 auto;
-    gap: 0.5rem;
-    padding: 0.45rem 0.75rem;
-    border: 1px solid transparent;
-    border-radius: 99px;
-    font-size: 0.82rem;
-    font-weight: 700;
+    flex-wrap: wrap;
+    gap: 6px;
 }
-
-.java-function-editor__sync--synced {
-    color: #14734b;
-    border-color: #bce7d2;
-    background: #eaf8f1;
-}
-
-.java-function-editor__sync--unsynced {
-    color: #9a5700;
-    border-color: #f1d3a1;
-    background: #fff7e8;
-}
-
-.java-function-editor__sync-dot {
-    width: 0.5rem;
-    height: 0.5rem;
-    border-radius: 50%;
-    background: currentColor;
-}
-
+.java-function-editor__sync { color: var(--jfe-muted); font-size: 14px; }
 .java-function-editor__diagram-section,
 .java-function-editor__workspace {
     display: flex;
     flex-direction: column;
-    gap: 0.8rem;
     min-width: 0;
+    min-height: 0;
 }
-
+.java-function-editor__diagram-section {
+    grid-area: navigation;
+    gap: 12px;
+    padding: 14px 10px;
+    border-right: 1px solid var(--jfe-border);
+}
+.java-function-editor__workspace { grid-area: workspace; background: var(--jfe-subtle); }
 .java-function-editor__section-heading,
 .java-function-editor__workspace-heading {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: 1rem;
+    flex-wrap: wrap;
+    gap: 10px;
 }
-
-.java-function-editor__section-title {
-    font-size: 1.05rem;
-    font-weight: 700;
-    letter-spacing: -0.015em;
+.java-function-editor__workspace-heading {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--jfe-border);
+    background: #20242c;
 }
-
+.java-function-editor__section-title { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.java-function-editor__section-heading > div,
+.java-function-editor__workspace-heading > div { min-width: 0; }
 .java-function-editor__class-row {
     display: flex;
-    flex-direction: row;
-    align-items: stretch;
-    gap: 0.9rem;
-    overflow-x: auto;
-    padding: 0.15rem 0.15rem 0.75rem;
-    scrollbar-color: #bdc9da transparent;
+    flex: 1;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+    overflow: auto;
+    scrollbar-color: #647184 transparent;
     scrollbar-width: thin;
 }
-
 .java-function-editor__class-card {
-    display: flex;
-    flex: 0 0 18rem;
-    flex-direction: column;
-    min-height: 9rem;
-    padding: 1rem;
+    flex: 0 0 auto;
+    min-width: 0;
+    padding: 10px;
     border: 1px solid var(--jfe-border);
-    border-radius: 0.9rem;
+    border-radius: 7px;
     background: var(--jfe-surface);
-    box-shadow: 0 5px 16px rgba(30, 55, 90, 0.06);
-    transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
 }
-
-.java-function-editor__class-card:hover {
-    transform: translateY(-2px);
-    border-color: #b9cbe4;
-    box-shadow: 0 10px 24px rgba(30, 55, 90, 0.1);
-}
-
 .java-function-editor__class-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.6rem;
-    padding-bottom: 0.75rem;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-bottom: 8px;
     border-bottom: 1px solid var(--jfe-border);
 }
-
-.java-function-editor__class-name {
-    overflow: hidden;
-    color: #243b5a;
-    font-size: 1rem;
-    text-overflow: ellipsis;
-}
-
+.java-function-editor__class-name { font-size: 15px; overflow-wrap: anywhere; }
 .java-function-editor__function-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 6px;
+}
+.java-function-editor__empty-class { color: var(--jfe-muted); }
+.java-function-based-editor :is(.java-function-editor__button, .java-function-editor__function) {
+    min-height: 38px;
+    padding: 8px 10px;
+    border: 1px solid var(--jfe-border);
+    border-radius: 6px;
+    background: var(--jfe-surface);
+    color: var(--jfe-ink);
+    cursor: pointer;
+    font: inherit;
+    line-height: 1.4;
+    transition: background 120ms ease, border-color 120ms ease;
+}
+.java-function-editor__button { display: inline-flex; align-items: center; justify-content: center; }
+.java-function-based-editor .java-function-editor__function {
+    width: 100%;
+    border-color: transparent;
+    background: transparent;
+    font-family: Consolas, "JetBrains Mono", monospace;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+.java-function-based-editor :is(.java-function-editor__button--primary, .java-function-editor__function--selected) {
+    border-color: #698eaf;
+    background: var(--jfe-selected);
+    color: #f3f8ff;
+}
+.java-function-based-editor :is(.java-function-editor__button, .java-function-editor__function):hover:not(:disabled) {
+    border-color: var(--jfe-accent);
+    background: #303b49;
+}
+.java-function-based-editor :is(button, input, textarea):focus-visible {
+    outline: 2px solid var(--jfe-accent);
+    outline-offset: 2px;
+}
+.java-function-editor__button:disabled,
+.java-function-editor__function:disabled { opacity: 0.55; cursor: not-allowed; }
+.java-function-editor__editor-panel,
+.java-function-editor__method,
+.java-function-editor__source,
+.java-function-based-editor .code-mirror-editor {
     display: flex;
     flex: 1;
     flex-direction: column;
-    align-items: stretch;
-    gap: 0.35rem;
-    padding-top: 0.65rem;
-}
-
-.java-function-editor__empty-class {
-    padding: 0.35rem 0.1rem;
-    color: var(--jfe-muted);
-    font-size: 0.85rem;
-    font-style: italic;
-}
-
-.java-function-editor__function {
-    width: 100%;
-    padding: 0.55rem 0.65rem;
-    overflow-wrap: anywhere;
-    border: 1px solid transparent;
-    border-radius: 0.55rem;
-    background: transparent;
-    color: #394b63;
-    cursor: pointer;
-    font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
-    font-size: 0.78rem;
-    text-align: left;
-    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
-}
-
-.java-function-editor__function:hover:not(:disabled) {
-    border-color: #d6e4f7;
-    background: #f1f6ff;
-    color: var(--jfe-accent-strong);
-}
-
-.java-function-editor__function--selected {
-    border-color: #c7daf7;
-    background: #eaf2ff;
-    color: var(--jfe-accent-strong);
-    font-weight: 650;
-}
-
-.java-function-editor__button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.35rem;
-    min-height: 2.4rem;
-    padding: 0.55rem 0.85rem;
-    border: 1px solid transparent;
-    border-radius: 0.6rem;
-    cursor: pointer;
-    font: inherit;
-    font-size: 0.85rem;
-    font-weight: 650;
-    transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
-}
-
-.java-function-editor__button:hover:not(:disabled) {
-    transform: translateY(-1px);
-}
-
-.java-function-editor__button:focus-visible,
-.java-function-editor__function:focus-visible,
-.java-function-editor__field input:focus-visible {
-    outline: 3px solid rgba(40, 100, 197, 0.3);
-    outline-offset: 2px;
-}
-
-.java-function-editor__button:disabled,
-.java-function-editor__function:disabled {
-    cursor: not-allowed;
-    opacity: 0.52;
-}
-
-.java-function-editor__button--primary {
-    border-color: var(--jfe-accent);
-    background: var(--jfe-accent);
-    color: #fff;
-    box-shadow: 0 3px 8px rgba(40, 100, 197, 0.18);
-}
-
-.java-function-editor__button--primary:hover:not(:disabled) {
-    background: var(--jfe-accent-strong);
-}
-
-.java-function-editor__button--secondary,
-.java-function-editor__button--small {
-    border-color: var(--jfe-border);
-    background: #fff;
-    color: #3d506a;
-}
-
-.java-function-editor__button--secondary:hover:not(:disabled),
-.java-function-editor__button--small:hover:not(:disabled) {
-    border-color: #b9cbe4;
-    background: #f5f8fc;
-}
-
-.java-function-editor__button--small {
-    min-height: 2rem;
-    padding: 0.35rem 0.55rem;
-    white-space: nowrap;
-    font-size: 0.75rem;
-}
-
-.java-function-editor__empty-diagram,
-.java-function-editor__editor-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 0.4rem;
-    min-height: 8rem;
-    padding: 1.25rem;
-    border: 1px dashed #c8d4e3;
-    border-radius: 0.85rem;
+    min-width: 0;
+    min-height: 300px;
     background: var(--jfe-subtle);
-    color: #43546a;
 }
-
-.java-function-editor__empty-diagram span,
-.java-function-editor__editor-placeholder span {
-    color: var(--jfe-muted);
-    font-size: 0.9rem;
+.java-function-based-editor .code-mirror-editor { overflow: hidden; }
+.java-function-editor__editor-panel > [role="alert"] { padding: 16px; }
+.java-function-based-editor .code-mirror-editor > .cm-editor {
+    flex: 1;
+    min-width: 0;
+    min-height: 300px;
+    background: var(--jfe-subtle);
 }
-
-.java-function-editor__editor-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 0.65rem;
-    min-height: 15rem;
-    padding: 0.85rem;
-    border: 1px solid var(--jfe-border);
-    border-radius: 0.85rem;
-    background: #fff;
-    box-shadow: var(--jfe-shadow);
+.java-function-based-editor .code-mirror-editor:focus-within {
+    outline: 2px solid var(--jfe-accent);
+    outline-offset: -2px;
 }
-
-.java-function-editor__editor-panel--hidden,
-.java-function-editor__editor-placeholder--hidden,
-.java-function-editor__draft-warning--hidden {
-    display: none !important;
+.java-function-based-editor .cm-scroller {
+    overflow: auto;
+    font: 14px/1.65 Consolas, "JetBrains Mono", monospace;
 }
-
-.java-function-based-editor .code-mirror-editor {
-    min-height: 14rem;
-    overflow: hidden;
-    border: 1px solid #d7e0ec;
-    border-radius: 0.65rem;
-    background: #fbfcfe;
-}
-
+.java-function-based-editor .cm-content { padding-block: 12px; }
 .java-function-based-editor .code-mirror-editor__fallback {
-    display: block;
+    flex: 1;
     width: 100%;
-    min-height: 14rem;
-    padding: 1rem;
+    min-height: 300px;
+    padding: 16px;
     border: 0;
-    background: #fbfcfe;
+    background: var(--jfe-subtle);
     color: var(--jfe-ink);
-    font: 0.9rem/1.55 "JetBrains Mono", "Fira Code", Consolas, monospace;
+    font: 14px/1.65 Consolas, "JetBrains Mono", monospace;
     resize: vertical;
 }
-
+.java-function-editor__editor-panel--hidden,
+.java-function-editor__editor-placeholder--hidden,
+.java-function-editor__draft-warning--hidden { display: none !important; }
 .java-function-editor__draft-warning {
-    padding: 0.65rem 0.8rem;
-    border: 1px solid #f1d3a1;
-    border-radius: 0.55rem;
-    background: #fff7e8;
-    color: #895000;
-    font-size: 0.85rem;
+    padding: 12px 16px;
+    border-top: 1px solid #79613e;
+    background: #403629;
+    color: #f0d5a7;
 }
-
-.java-function-editor__dialog-backdrop {
-    position: fixed;
-    z-index: 10000;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    padding: 1rem;
-    background: rgba(19, 31, 49, 0.48);
-    backdrop-filter: blur(3px);
+.java-function-editor__empty-diagram,
+.java-function-editor__editor-placeholder {
+    padding: 16px;
+    border: 1px dashed var(--jfe-border);
+    border-radius: 7px;
+    background: var(--jfe-subtle);
 }
-
+.java-function-editor__editor-placeholder { flex: 1; margin: 16px; }
+.java-function-editor__empty-diagram span,
+.java-function-editor__editor-placeholder span { display: block; margin-top: 6px; color: var(--jfe-muted); }
+.java-function-editor__reference {
+    grid-area: reference;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    padding: 16px;
+    border-left: 1px solid var(--jfe-border);
+    overflow-wrap: anywhere;
+}
+.java-function-editor__reference :is(h2, h3) { font-size: 16px; }
+.java-function-editor__reference p { color: var(--jfe-muted); }
+.java-function-editor__reference :is(img, svg, canvas) { display: block; max-width: 100%; height: auto; }
+.java-function-editor__dialog::backdrop { background: #161b24d9; }
 .java-function-editor__dialog {
-    display: flex;
     flex-direction: column;
-    gap: 1rem;
-    width: min(30rem, 100%);
-    max-height: min(90vh, 44rem);
+    gap: 16px;
+    width: min(480px, 100%);
+    max-height: min(90dvh, 700px);
     overflow-y: auto;
-    padding: clamp(1.25rem, 4vw, 1.75rem);
-    border: 1px solid rgba(255, 255, 255, 0.7);
-    border-radius: 1rem;
-    background: #fff;
-    box-shadow: 0 24px 70px rgba(17, 31, 52, 0.24);
-}
-
-.java-function-editor__dialog-title {
-    margin: 0;
+    padding: 20px;
+    border: 1px solid var(--jfe-border);
+    border-radius: 10px;
+    background: var(--jfe-surface);
     color: var(--jfe-ink);
-    font-size: 1.3rem;
-    letter-spacing: -0.025em;
 }
-
-.java-function-editor__dialog-fields {
-    display: flex;
-    flex-direction: column;
-    gap: 0.85rem;
-}
-
-.java-function-editor__field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    color: #3d506a;
-    font-size: 0.86rem;
-    font-weight: 600;
-}
-
+.java-function-editor__dialog[open] { display: flex; }
+.java-function-editor__dialog-title { font-size: 20px; font-weight: 600; }
+.java-function-editor__dialog-fields,
+.java-function-editor__field { display: flex; flex-direction: column; gap: 8px; }
+.java-function-editor__dialog-fields { gap: 14px; }
 .java-function-editor__field input {
     width: 100%;
-    min-height: 2.65rem;
-    padding: 0.55rem 0.7rem;
-    border: 1px solid #cbd6e4;
-    border-radius: 0.55rem;
-    background: #fff;
+    min-height: 38px;
+    padding: 8px 10px;
+    border: 1px solid var(--jfe-border);
+    border-radius: 6px;
+    background: var(--jfe-subtle);
     color: var(--jfe-ink);
     font: inherit;
-    font-weight: 400;
 }
-
-.java-function-editor__field input:focus {
-    border-color: var(--jfe-accent);
+.java-function-editor__dialog-error { min-height: 20px; color: #ffb8b2; }
+.java-function-editor__dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.java-function-based-editor--with-reference {
+    grid-template-columns: 218px minmax(0, 1fr) minmax(280px, 320px);
+    grid-template-areas: "header header header" "navigation workspace reference";
 }
-
-.java-function-editor__dialog-error {
-    min-height: 1.2rem;
-    margin: 0;
-    color: #a12622;
-    font-size: 0.86rem;
+.java-function-based-editor--structure-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "header" "workspace";
 }
-
-.java-function-editor__dialog-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.55rem;
-    padding-top: 0.35rem;
+.java-function-based-editor--structure-collapsed .java-function-editor__diagram-section { display: none; }
+.java-function-based-editor--with-reference.java-function-based-editor--structure-collapsed {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+    grid-template-areas: "header header" "workspace reference";
 }
-
-@media (max-width: 600px) {
-    .java-function-editor__topbar {
-        align-items: flex-start;
-        padding: 1rem;
-    }
-
-    .java-function-editor__sync {
-        padding: 0.4rem 0.55rem;
-        font-size: 0.75rem;
-    }
-
-    .java-function-editor__section-heading {
-        align-items: flex-start;
-    }
-
-    .java-function-editor__class-card {
-        flex-basis: min(18rem, 82vw);
-    }
-
-    .java-function-editor__workspace-heading {
-        align-items: flex-start;
+@media (max-width: 1024px) {
+    .java-function-based-editor--with-reference {
+        grid-template-columns: 202px minmax(0, 1fr) 280px;
     }
 }
-
-@media (prefers-reduced-motion: reduce) {
-    .java-function-editor__class-card,
+@media (max-width: 760px) {
+    .java-function-based-editor,
+    .java-function-based-editor--with-reference,
+    .java-function-based-editor--with-reference.java-function-based-editor--structure-collapsed {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .java-function-based-editor {
+        grid-template-rows: auto auto minmax(min-content, 1fr);
+        grid-template-areas: "header" "navigation" "workspace";
+    }
+    .java-function-based-editor--with-reference {
+        grid-template-rows: auto auto minmax(min-content, 1fr) auto;
+        grid-template-areas: "header" "navigation" "workspace" "reference";
+    }
+    .java-function-editor__diagram-section {
+        max-height: 280px;
+        border-right: 0;
+        border-bottom: 1px solid var(--jfe-border);
+    }
+    .java-function-based-editor--structure-collapsed {
+        grid-template-rows: auto minmax(min-content, 1fr);
+        grid-template-areas: "header" "workspace";
+    }
+    .java-function-based-editor--with-reference.java-function-based-editor--structure-collapsed {
+        grid-template-rows: auto minmax(min-content, 1fr) auto;
+        grid-template-areas: "header" "workspace" "reference";
+    }
+    .java-function-editor__reference { border-left: 0; border-top: 1px solid var(--jfe-border); }
+}
+@media (max-width: 390px) {
+    .java-function-editor__topbar,
+    .java-function-editor__workspace-heading { padding: 12px; }
+    .java-function-editor__topbar > div { min-width: 0; }
+    .java-function-editor__title,
+    .java-function-editor__section-hint { overflow-wrap: anywhere; }
+    .java-function-editor__view-toggle { width: 100%; }
+}
+@media (max-width: 320px) {
+    .java-function-editor__dialog { padding: 14px; }
+    .java-function-editor__topbar-actions { align-items: stretch; }
+    .java-function-editor__topbar-actions > button { flex: 1; }
+}
+@media (pointer: coarse) {
     .java-function-editor__button,
-    .java-function-editor__function {
-        transition: none;
+    .java-function-editor__function,
+    .java-function-editor__field input { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .java-function-based-editor *,
+    .java-function-based-editor *::before,
+    .java-function-based-editor *::after {
+        transition: none !important;
+        animation: none !important;
+        scroll-behavior: auto !important;
     }
 }

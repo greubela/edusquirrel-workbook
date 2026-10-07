@@ -166,4 +166,3 @@ final class EvaEditor(
 
   override def dismissOnOutsideClick: Boolean = false
 }
-

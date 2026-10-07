@@ -68,6 +68,70 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
     assertEquals(restored, ProgrammingExerciseState.mini)
   }
 
+  test("unfinished Java and Python sources roundtrip without parsing or trimming") {
+    val states: List[ProgrammingState] = List(
+      ProgrammingStateJavaString("  public class Drawing {\r\n    public static void main(\n\n  "),
+      ProgrammingStatePythonString("\tdef draw(\r\n    # unfinished\n\n\t "),
+      ProgrammingStateJavaString("\nint steps = 12;\nforward(steps);\n\n"),
+      ProgrammingStatePythonString("\nforward(12)\r\n\r\n")
+    )
+
+    states.foreach { state =>
+      val restored = ProgrammingExercise.StateSerializer.deserialize(
+        ProgrammingExercise.StateSerializer.serialize(state)
+      )
+      assertEquals(restored, state)
+      assertEquals(ProgrammingState.fingerprint(restored), ProgrammingState.fingerprint(state))
+    }
+  }
+
+  test("empty and whitespace-only source states retain their representation and content") {
+    List("", " ", "\t\r\n\n  ").foreach { code =>
+      List[ProgrammingState](ProgrammingStateJavaString(code), ProgrammingStatePythonString(code)).foreach { state =>
+        assertEquals(ProgrammingExercise.StateSerializer.deserialize(
+          ProgrammingExercise.StateSerializer.serialize(state)
+        ), state)
+      }
+    }
+  }
+
+  test("version 2 XML and floating objects retain their exact content") {
+    val xml = "\n  " +
+      """<project name="stored"><notes>draft &amp; notes</notes><costumes><list><costume id="42"/></list></costumes><scripts><script x="120" y="80"><block s="wait"><l>1</l></block></script></scripts></project>""" +
+      "\r\n\n\t "
+    val states: List[ProgrammingState] = List(
+      ProgrammingStateSnapXml(xml),
+      ProgrammingStateSnapXMLWithAdditionalFloatingObjects(xml, List(" watcher ", "comment\nline two\r\n", ""))
+    )
+
+    states.foreach { state =>
+      assertEquals(ProgrammingExercise.StateSerializer.deserialize(
+        ProgrammingExercise.StateSerializer.serialize(state)
+      ), state)
+    }
+  }
+
+  test("CRLF state headers leave the source payload unchanged") {
+    val code = " \r\nforward(12);\n\t \r\n"
+    val states = List[(String, ProgrammingState)](
+      "JAVA" -> ProgrammingStateJavaString(code),
+      "PYTHON" -> ProgrammingStatePythonString(code),
+      "SNAP_XML" -> ProgrammingStateSnapXml(" \n<project/>\r\n\n")
+    )
+
+    states.foreach { (kind, state) =>
+      val serialized = ProgrammingExercise.StateSerializer.serialize(state)
+      val payload = serialized.stripPrefix(s"${ProgrammingExercise.StateHeader}\n$kind\n")
+      val stored = s"${ProgrammingExercise.StateHeader}\r\n$kind\r\n$payload"
+      assertEquals(ProgrammingExercise.StateSerializer.deserialize(stored), state)
+    }
+
+    val floating = ProgrammingStateSnapXMLWithAdditionalFloatingObjects("\n<project/>\r\n ", List(" watcher\n"))
+    val stored = s"${ProgrammingExercise.StateHeader}\r\nSNAP_XML_WITH_FLOATING\r\n" +
+      upickle.default.write(floating.additionalFloatingObjects) + "\r\n" + floating.snapXml
+    assertEquals(ProgrammingExercise.StateSerializer.deserialize(stored), floating)
+  }
+
   test("fingerprint is the stored xml so position-only xml differs") {
     val a = ProgrammingExerciseState("""<project><scripts><script x="70" y="80"></script></scripts></project>""")
     val b = ProgrammingExerciseState("""<project><scripts><script x="200" y="150"></script></scripts></project>""")

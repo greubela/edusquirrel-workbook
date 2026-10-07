@@ -73,12 +73,14 @@ final case class ProgrammingStateJavaString(code: String) extends ProgrammingSta
   * responsibility of the legacy importer until that importer is moved into core.
   */
 private object SnapStateConversion {
+  private val BlockTag = """<(?:block|custom-block)(?=[\s/>])""".r
+
   def expressionFromXml(xml: String): BeExpression = {
     val definitions = SnapXmlParser.elements(xml, "block-definition").map(renderDefinition)
     val scripts = SnapXmlParser.elements(xml, "scripts")
       .flatMap(container => SnapXmlParser.children(container.inner).filter(_.tag == "script"))
       .flatMap(script => statements(script.inner, 0))
-    if definitions.isEmpty && scripts.isEmpty && xml.contains("<block") then
+    if definitions.isEmpty && scripts.isEmpty && BlockTag.findFirstIn(xml).nonEmpty then
       throw IllegalArgumentException("Snap project contains blocks outside the supported state-conversion subset")
     BeProgram.fromPythonString((definitions ++ scripts).mkString("\n\n")).fullProgram
   }

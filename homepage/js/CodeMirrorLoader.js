@@ -1,4 +1,4 @@
-import {Compartment, EditorState, StateEffect, StateField} from "https://esm.sh/@codemirror/state@6.5.2";
+import {Compartment, EditorState, StateEffect, StateField, Text} from "https://esm.sh/@codemirror/state@6.5.2";
 import {
   EditorView,
   Decoration,
@@ -391,7 +391,7 @@ const identifierHighlightPlugin = ViewPlugin.fromClass(class {
   }
 
   update(update) {
-    if (update.docChanged || update.viewportChanged) {
+    if (update.docChanged || update.viewportChanged || update.transactions.some(transaction => transaction.reconfigured)) {
       this.decorations = buildIdentifierDecorations(update.view);
     }
   }
@@ -401,10 +401,25 @@ const identifierHighlightPlugin = ViewPlugin.fromClass(class {
 
 const languageExtension = (language) => {
   const normalized = String(language ?? "python").toLowerCase();
+  if (normalized === "java") {
+    return [];
+  }
   if (normalized === "cpp" || normalized === "c" || normalized === "c++") {
     return cpp();
   }
   return python();
+};
+
+let javaModulePromise;
+const loadJavaModule = () => {
+  if (!javaModulePromise) {
+    javaModulePromise = import("https://esm.sh/@codemirror/lang-java@6.0.2?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3")
+      .catch(error => {
+        javaModulePromise = undefined;
+        throw error;
+      });
+  }
+  return javaModulePromise;
 };
 
 const sharedExtensions = [
@@ -441,25 +456,43 @@ const sharedExtensions = [
 const codeMirrorFacade = {
   createEditor: ({parent, doc = "", onDocChange, language = "python"}) => {
     let isProgrammaticUpdate = false;
+    let destroyed = false;
+    const isJava = String(language).toLowerCase() === "java";
+    const prepareDoc = value => isJava ? value : replaceTabsWithSpaces(value);
+    const separatorFor = value => value.match(/\r\n|\r|\n/)?.[0] ?? "\n";
+    const javaText = value => Text.of(value.split(/\r\n|\r|\n/));
+    let javaSource = doc;
+    let javaSeparator = separatorFor(doc);
     const theme = new Compartment();
+    const editorLanguage = new Compartment();
     const followsPageTheme = Boolean(parent.closest(".fd-page"));
     const currentTheme = () => followsPageTheme && document.documentElement.dataset.theme === "light" ? [] : oneDark;
 
     const state = EditorState.create({
-      doc: replaceTabsWithSpaces(doc),
+      doc: isJava ? javaText(doc) : prepareDoc(doc),
       extensions: [
         ...sharedExtensions,
         theme.of(currentTheme()),
-        languageExtension(language),
+        editorLanguage.of(languageExtension(language)),
         EditorView.updateListener.of((update) => {
-          if (update.docChanged && !isProgrammaticUpdate && typeof onDocChange === "function") {
-            onDocChange(update.state.doc.toString());
+          if (update.docChanged && !isProgrammaticUpdate) {
+            const text = update.state.doc.toString();
+            const value = isJava ? text.replace(/\n/g, javaSeparator) : text;
+            if (isJava) javaSource = value;
+            if (typeof onDocChange === "function") onDocChange(value);
           }
         })
       ]
     });
 
     const view = new EditorView({state, parent});
+    if (isJava) {
+      loadJavaModule().then(module => {
+        if (!destroyed) view.dispatch({effects: editorLanguage.reconfigure(module.java())});
+      }).catch(error => {
+        if (!destroyed) console.warn("Java syntax support is unavailable; text editing remains available.", error);
+      });
+    }
     const themeObserver = followsPageTheme ? new MutationObserver(() => {
       view.dispatch({effects: theme.reconfigure(currentTheme())});
     }) : null;
@@ -467,23 +500,30 @@ const codeMirrorFacade = {
 
     return {
       setDoc(newDoc) {
-        const nextDoc = replaceTabsWithSpaces(newDoc ?? "");
-        if (view.state.doc.toString() === nextDoc) {
+        const nextDoc = prepareDoc(newDoc ?? "");
+        if ((isJava ? javaSource : view.state.doc.toString()) === nextDoc) {
           return;
         }
         isProgrammaticUpdate = true;
-        view.dispatch({
-          changes: {
-            from: 0,
-            to: view.state.doc.length,
-            insert: nextDoc
-          },
-          effects: setDiagnosticsEffect.of([])
-        });
-        isProgrammaticUpdate = false;
+        try {
+          view.dispatch({
+            changes: {
+              from: 0,
+              to: view.state.doc.length,
+              insert: isJava ? javaText(nextDoc) : nextDoc
+            },
+            effects: setDiagnosticsEffect.of([])
+          });
+          if (isJava) {
+            javaSource = nextDoc;
+            javaSeparator = separatorFor(nextDoc);
+          }
+        } finally {
+          isProgrammaticUpdate = false;
+        }
       },
       getDoc() {
-        return view.state.doc.toString();
+        return isJava ? javaSource : view.state.doc.toString();
       },
       setDiagnostics(diagnostics) {
         view.dispatch({
@@ -494,6 +534,7 @@ const codeMirrorFacade = {
         view.focus();
       },
       destroy() {
+        destroyed = true;
         themeObserver?.disconnect();
         view.destroy();
       }
