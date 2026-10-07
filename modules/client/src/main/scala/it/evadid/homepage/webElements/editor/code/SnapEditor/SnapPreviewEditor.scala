@@ -30,7 +30,6 @@ case class SnapPreviewEditor(
       aria.label := "Block program preview",
       widthAttr := config.visuals.CanvasWidth,
       heightAttr := config.visuals.CanvasHeight,
-      display.block,
       onMountCallback { ctx =>
         val canvas: Canvas = ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]
         impl.loadProgramIfChanged(currentState)
@@ -42,13 +41,6 @@ case class SnapPreviewEditor(
   private lazy val previewCanvas: Element = {
     div(
       cls := "be-program-snap-renderer",
-      position.relative,
-      overflow.hidden,
-      border := "1px solid #d0d7de",
-      borderRadius := "10px",
-      backgroundColor := config.visuals.ColorWorkspace,
-      width := "fit-content",
-      maxWidth := "100%",
       child <-- stateSignal.map(_.toSnapXml).map(createCanvas),
     )
   }

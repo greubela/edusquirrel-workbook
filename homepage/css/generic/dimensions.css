@@ -1,4 +1,6 @@
 :root{
+    --turtle-preview-size: 300px;
+
     --workarea-width: min(100%, 980px);
 
     --space-xs: 3px;

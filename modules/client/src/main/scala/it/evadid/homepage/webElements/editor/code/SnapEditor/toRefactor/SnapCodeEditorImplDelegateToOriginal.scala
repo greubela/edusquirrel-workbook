@@ -932,17 +932,11 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     if bitmapChanged then
       canvas.width = width
       canvas.height = height
-    canvas.style.width = s"${width}px"
-    canvas.style.height = s"${height}px"
-    canvas.style.position = "relative"
-    canvas.style.display = "block"
     // WorldMorph registers mouse/touch listeners synchronously in its
     // constructor. Make this exact mounted canvas an explicit input target;
     // creating or copying a second canvas would only copy pixels, not those
     // listeners or the Morphic world behind them.
     canvas.tabIndex = 0
-    canvas.style.pointerEvents = "auto"
-    canvas.style.setProperty("touch-action", "none")
     bitmapChanged
 
   override def fitEditorToContainer(): Unit =

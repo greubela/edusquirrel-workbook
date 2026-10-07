@@ -181,6 +181,15 @@ npm run dev         # build + assemble _site/ + serve on http://localhost:4173
 npm run preview     # serve an already assembled _site/ on http://localhost:4173
 ```
 
+To check editor layout at desktop, mobile, and landscape sizes:
+
+```bash
+npm ci
+node --test tools/dev/editor-layout.test.mjs
+```
+
+The layout checks use the production CSS with editor DOM fixtures. They use system Chromium when available; otherwise install Playwright's browser with `npx playwright install chromium`, or set `CHROMIUM_PATH`.
+
 Useful sbt tasks from `build.sbt` include:
 
 ```bash
