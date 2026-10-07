@@ -20,12 +20,13 @@ final class JavaFunctionBasedEditor(
   private var sourceCode = initialSource.getOrElse("")
   private val sourceAvailable = Var(initialSource.isDefined)
   private val classes = Var(discover(sourceCode))
-  private val selectedFunction = Var(Option.empty[JavaFunction])
-  private var editingRange = Option.empty[FunctionRange]
-  private val functionDraft = Var("")
+  private val initialSelection = initialFunction(sourceCode)
+  private val selectedFunction = Var(initialSelection)
+  private var editingRange = initialSelection.map(fn => FunctionRange(fn.start, fn.end))
+  private val functionDraft = Var(initialSelection.fold("")(fn => sourceCode.substring(fn.start, fn.end)))
   private val sourceDraft = Var(sourceCode)
   private val structureReady = Var(structurallyBalanced(sourceCode))
-  private val sourceView = Var(!structureReady.now() || classes.now().flatMap(_.functions).isEmpty)
+  private val sourceView = Var(initialSelection.isEmpty)
   private val editorRevision = Var(0)
   private val dialogMode = Var(Option.empty[DialogMode])
   private val dialogClassName = Var(Option.empty[String])
@@ -432,6 +433,21 @@ object JavaFunctionBasedEditor {
 
   private[code] def parses(code: String): Boolean =
     JavaParser.parse(code).isRight && structurallyBalanced(code)
+
+  private[code] def initialFunction(source: String): Option[JavaFunction] = {
+    if !structurallyBalanced(source) then None
+    else {
+      val currentClasses = discover(source)
+      currentClasses.flatMap(_.functions).filter(_.name == "main") match
+        case List(function) if function.returnType == "void" &&
+            function.parameters.matches("(?:java\\.lang\\.)?String\\s*\\[\\s*\\]\\s+[A-Za-z_$][\\w$]*") &&
+            findSelection(currentClasses, function).isDefined =>
+          val modifiers = maskCommentsAndStrings(source.substring(function.start, function.end))
+            .takeWhile(_ != '(').split("\\s+").toSet
+          Option.when(modifiers.contains("public") && modifiers.contains("static"))(function)
+        case _ => None
+    }
+  }
 
   private def structurallyBalanced(source: String): Boolean = {
     val (masked, closedLexemes) = maskAndCheckLexemes(source)

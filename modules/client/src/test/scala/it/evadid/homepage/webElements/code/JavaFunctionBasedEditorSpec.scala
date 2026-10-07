@@ -207,4 +207,113 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
     assert(inserted.endsWith(source.substring(clazz.bodyEnd)))
     assertEquals(discover(inserted).head.functions.map(_.name), List("keep", "reset"))
   }
+
+  test("initial function selects the unique main and preserves its exact source range") {
+    val expectedMain = "public static void main(String[] args) {\n    helper();\n  }"
+    val source =
+      "class Program {\n" +
+        "  public static void helper() { int value = 1; }\n" +
+        s"  $expectedMain\n" +
+        "  private int untouched() { return 7; }\n" +
+        "}\n"
+
+    val selected = initialFunction(source)
+
+    assertEquals(
+      selected.map(function => (function.className, function.name, function.returnType, function.parameters)),
+      Some(("Program", "main", "void", "String[] args"))
+    )
+    assert(selected.exists(function => FunctionRange(function.start, function.end).isWithin(source)))
+    assertEquals(selected.map(function => source.substring(function.start, function.end)), Some(expectedMain))
+    assertEquals(selected.map(function => replaceFunction(source, function, expectedMain)), Some(source))
+  }
+
+  test("initial function rejects main methods across multiple classes") {
+    val source =
+      "class First { public static void main(String[] args) {} }\n" +
+        "class Second { public static void main(String[] args) {} }\n"
+
+    assertEquals(initialFunction(source), None)
+  }
+
+  test("initial function rejects ambiguous class names and duplicate main signatures") {
+    val duplicateClassName =
+      "class Program { public static void main(String[] args) {} }\n" +
+        "class Program { public void helper() {} }\n"
+    val duplicateMainSignature =
+      "class Program {\n" +
+        "  public static void main(String[] args) {}\n" +
+        "  public static void main(String[] args) {}\n" +
+        "}\n"
+
+    assertEquals(initialFunction(duplicateClassName), None)
+    assertEquals(initialFunction(duplicateMainSignature), None)
+  }
+
+  test("initial function rejects missing main and structurally incomplete source") {
+    List(
+      "class Program { public void helper() {} }",
+      "class Program { public static void main(String[] args) {}",
+      "class Program { public static void main(String[] args) {} /* unclosed"
+    ).foreach(source => assertEquals(initialFunction(source), None, clue = source))
+  }
+
+  test("initial function after a helper matches discovery from the complete fresh source") {
+    val source =
+      "class Program {\r\n" +
+        "  public String helper() { return \"class Fake { void main() {} }\"; }\r\n" +
+        "  public static void main(String[] args) {\r\n" +
+        "    helper();\r\n" +
+        "  }\r\n" +
+        "}\r\n"
+    val discoveredMain = discover(source).flatMap(_.functions).filter(_.name == "main")
+
+    assertEquals(discoveredMain.length, 1)
+    assertEquals(initialFunction(source), discoveredMain.headOption)
+    assertEquals(
+      initialFunction(source).map(function => source.substring(function.start, function.end)),
+      Some("public static void main(String[] args) {\r\n    helper();\r\n  }")
+    )
+  }
+
+  test("initial function rejects invalid entry point signatures and named main overloads") {
+    List(
+      "non-public" -> "class Program { static void main(String[] args) {} }",
+      "non-static" -> "class Program { public void main(String[] args) {} }",
+      "wrong return type" -> "class Program { public static int main(String[] args) { return 0; } }",
+      "wrong parameters" -> "class Program { public static void main(int[] args) {} }",
+      "named overload" ->
+        "class Program { public static void main(String[] args) {} public void main(int value) {} }"
+    ).foreach { case (label, source) =>
+      assertEquals(initialFunction(source), None, clue = label)
+    }
+  }
+
+  test("initial function accepts qualified String arrays, modifier order and parameter names") {
+    List(
+      (
+        "class Program { public static void main(java.lang.String[] arguments) {} }",
+        "public static void main(java.lang.String[] arguments) {}",
+        "java.lang.String[] arguments"
+      ),
+      (
+        "class Program { static final public void main(String [ ] $arguments) {} }",
+        "static final public void main(String [ ] $arguments) {}",
+        "String [ ] $arguments"
+      ),
+      (
+        "class Program { static public void main(java.lang.String [ ] _args) {} }",
+        "static public void main(java.lang.String [ ] _args) {}",
+        "java.lang.String [ ] _args"
+      )
+    ).foreach { case (source, expectedMain, expectedParameters) =>
+      val selected = initialFunction(source)
+      assertEquals(
+        selected.map(function => (function.className, function.name, function.returnType, function.parameters)),
+        Some(("Program", "main", "void", expectedParameters))
+      )
+      assert(selected.exists(function => FunctionRange(function.start, function.end).isWithin(source)))
+      assertEquals(selected.map(function => source.substring(function.start, function.end)), Some(expectedMain))
+    }
+  }
 }
