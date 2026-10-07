@@ -29,7 +29,9 @@ object TurtleJsxGraphRenderer:
   def render[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic): Element = {
     val container = div(
       cls := "turtle-gradig-panel",
-      "TurtleJsxGraphRenderer: Not supporting TurtleGraphic yet!"
+      onMountCallback(event => {
+        render(event.thisNode.ref, program, expected)
+      })
     )
     container
   }
@@ -155,10 +157,43 @@ object TurtleJsxGraphRenderer:
     val missing = unmatchedExpected.map(line => RenderedLine(line.start, line.end, LineResult.Missing, jump = false))
     Scene((rendered ++ missing).toList, angles.toList)
 
+  /** Compares a program with the expected graphic and displays the expected graphic's turns. */
+  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic): Scene =
+    buildScene(program, expected, 1e-7)
+
+  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double): Scene =
+    val expectedScene = buildScene(expected.toTurtleProgram.toList, List.empty[LineToRender[Double]], tolerance)
+    val expectedLines = expectedScene.lines.map(line => LineToRender(line.start, line.end))
+    val numeric = summon[Fractional[T]]
+    val doubleProgram = program.map(command =>
+      TurtleCommand(command.name, command.args.map(numeric.toDouble))
+    )
+    val actualScene = buildScene(doubleProgram, expectedLines, tolerance)
+
+    val expectedAngles = expectedScene.angles.map { angle =>
+      def correspondingLine(index: Int): Int =
+        val expectedLine = expectedScene.lines(index)
+        actualScene.lines.indexWhere(line =>
+          sameLine(line.start, line.end, expectedLine.start, expectedLine.end, tolerance)
+        )
+
+      angle.copy(
+        lineBefore = correspondingLine(angle.lineBefore),
+        lineAfter = correspondingLine(angle.lineAfter)
+      )
+    }
+    actualScene.copy(angles = expectedAngles)
+
 
   /** Creates the JSXGraph board inside `container` and returns the board object. */
   def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): js.Dynamic =
-    val scene = buildScene(program, expected)
+    renderScene(container, buildScene(program, expected))
+
+  /** Creates the JSXGraph board using the expected graphic for both comparison and angle overlays. */
+  def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: TurtleGraphic): js.Dynamic =
+    renderScene(container, buildScene(program, expected))
+
+  private def renderScene(container: dom.html.Div, scene: Scene): js.Dynamic =
     val points = scene.lines.flatMap(line => List(line.start, line.end))
     val bounds = boundingBox(points)
     val jxg = js.Dynamic.global.selectDynamic("JXG")

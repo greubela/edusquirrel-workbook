@@ -8,7 +8,7 @@ import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.ElementCard
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
-import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineToRender
+import it.evadid.workbook.elements.interactionElements.programming.TurtleGraphic
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
 
@@ -53,7 +53,10 @@ object SnapTurtleStagePanel {
     val runButton: HtmlButtonElement =
       HtmlButtonElement.withTextLabel("basic/runProgram", _ => execute())
 
-    val exp = List(LineToRender[Double](Point(0, 0), Point(100, 0)), LineToRender[Double](Point(100, 0), Point(100, 100)))
+    val exp = TurtleGraphic.TurtleLineBasedProgram(List(
+      TurtleGraphic.Line[Double](Point[Double](0, 0), Point[Double](100, 0)),
+      TurtleGraphic.Line[Double](Point[Double](100, 0), Point[Double](100, 100))
+    ))
     val renderingSignal: Signal[Element] = editor.state.signal.map(curState => {
       val curCommands = curState.toBeExpressionState.deriveTurtleCommands
       TurtleJsxGraphRenderer.render(curCommands, exp)
