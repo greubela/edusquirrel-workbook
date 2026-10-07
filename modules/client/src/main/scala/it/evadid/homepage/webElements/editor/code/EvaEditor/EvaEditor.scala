@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.webElements.code.JavaFunctionBasedEditor
-import it.evadid.homepage.webElements.editor.code.{CodeMirrorEditor, JavaEditorSession}
+import it.evadid.homepage.webElements.editor.code.{CodeMirrorEditor, JavaEditorSession, JavaTurtleExecutionPanel}
 import it.evadid.vm.parsing.java.turtle.JavaTurtleResolution
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation, JavaTurtleRuntime}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
@@ -42,6 +42,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
 
   def onStateEdited: ProgrammingState => Unit = _ => ()
   def javaRunnerFactory: () => JavaEditorSession.Runner = JavaEditorSession.defaultRunner
+  protected def javaTarget: Option[TurtleGraphic] = None
 
   import EvaEditor.Tab
 
@@ -74,6 +75,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
   private lazy val pythonRunner = new PyodideTurtleCommandRunner()
   private var mounted = false
   private var javaSession = Option.empty[JavaEditorSession]
+  private var javaExecutionPanel = Option.empty[JavaTurtleExecutionPanel]
   private class JavaRun {
     val owner = new ManualOwner
     var invalidated = false
@@ -88,6 +90,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
     javaSession = None
     pending.foreach(_.invalidate())
     discarded.foreach(_.release())
+    javaExecutionPanel.foreach(_.reset())
   }
 
   def stopJavaExecution(): Unit = {
@@ -193,7 +196,14 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
     CodeMirrorEditor(pythonState, code => publish(Tab.Python, ProgrammingStatePythonString(code)), language = AppLanguage.Python)
   )
   private lazy val javaEditor = Option.when(enabledTabs.contains(Tab.Java))(
-    new JavaFunctionBasedEditor(javaState, onStateEdited = next => publish(Tab.Java, next))
+    new JavaFunctionBasedEditor(javaState, onStateEdited = next => publish(Tab.Java, next), reference = Some(() => {
+      val panel = javaExecutionPanel.getOrElse {
+        val created = new JavaTurtleExecutionPanel(state, () => getCurrentTurtleCommands(), () => stopJavaExecution(), javaTarget)
+        javaExecutionPanel = Some(created)
+        created
+      }
+      panel.getDomElement()
+    }))
   )
   private lazy val snapElement = snapEditor.map(_.getDomElement())
   private lazy val pythonElement = pythonEditor.map(_.getDomElement())

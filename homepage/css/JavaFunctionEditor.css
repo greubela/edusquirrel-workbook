@@ -242,6 +242,13 @@
 }
 .java-function-editor__reference :is(h2, h3) { font-size: 16px; }
 .java-function-editor__reference p { color: var(--jfe-muted); }
+.java-turtle-execution { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.java-turtle-execution__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.java-turtle-execution__status { min-height: 44px; }
+.java-function-editor__reference .java-turtle-execution__error { color: #ffb8b2; }
+.java-turtle-execution__figure { min-width: 0; padding: 12px; border: 1px solid var(--jfe-border); border-radius: 7px; background: #f8fafc; }
+.java-turtle-execution__figure figcaption { color: #26364b; margin-bottom: 8px; font-size: 13px; }
+.java-function-editor__reference .java-turtle-execution__figure svg { width: 100%; height: 180px; }
 .java-function-editor__reference :is(img, svg, canvas) { display: block; max-width: 100%; height: auto; }
 .java-function-editor__dialog::backdrop { background: #161b24d9; }
 .java-function-editor__dialog {

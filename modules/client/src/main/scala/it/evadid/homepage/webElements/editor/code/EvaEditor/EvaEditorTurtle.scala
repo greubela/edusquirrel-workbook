@@ -14,9 +14,12 @@ case class EvaEditorTurtle(
     override val javaRunnerFactory: () => JavaEditorSession.Runner = JavaEditorSession.defaultRunner
 ) extends EvaEditor {
 
+  override protected def javaTarget: Option[TurtleGraphic] = Some(target)
+
   override def furtherDomElements(): List[Element] = List(
     div(
       cls := "turtle-sidebar",
+      display <-- activeTab.signal.map(tab => if tab == EvaEditor.Tab.Java then "none" else "block"),
       HtmlTurtleRecreateShapeRenderer.createInteractivePreview(state, target).getDomElement()
     )
   )

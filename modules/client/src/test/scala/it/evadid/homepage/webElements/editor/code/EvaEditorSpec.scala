@@ -19,6 +19,154 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 class EvaEditorSpec extends FunSuite {
   private val testingConfig = EvaEditorConfig(snapConfig = SnapCodeEditorConfig.Testing)
 
+  private def squareDrawing(side: Double = 25, turn: Double = 90): List[TurtleCommand[Double]] =
+    List.fill(4)(List(TurtleCommand[Double]("forward", List(side)), TurtleCommand[Double]("right", List(turn)))).flatten
+
+  private class PanelFixture {
+    val source = Var[ProgrammingState](ProgrammingStateJavaString("class Drawing {}"))
+    var requests = Vector.empty[Promise[List[TurtleCommand[Double]]]]
+    var stops = 0
+    val panel = new JavaTurtleExecutionPanel(source,
+      () => { val result = Promise[List[TurtleCommand[Double]]](); requests :+= result; result.future },
+      () => stops += 1, Some(TurtleGraphic.TurtleGraphicProgram(squareDrawing())))
+    panel.activate()
+  }
+
+  test("Java drawing comparison rejects wrong lengths, turns, empty drawings and extra strokes") {
+    val target = TurtleGraphic.TurtleGraphicProgram(squareDrawing())
+    assert(JavaTurtleExecutionPanel.compare(squareDrawing(), target))
+    for commands <- List(squareDrawing(24), squareDrawing(26), squareDrawing(25, 89), squareDrawing(25, 45),
+      Nil, squareDrawing() :+ TurtleCommand[Double]("backward", List(10.0))) do
+      assert(!JavaTurtleExecutionPanel.compare(commands, target), clue = commands)
+  }
+
+  test("Java drawing comparison accepts split strokes and ignores duplicate tracing") {
+    val split = List.fill(4)(List(TurtleCommand[Double]("forward", List(12.0)),
+      TurtleCommand[Double]("forward", List(13.0)), TurtleCommand[Double]("right", List(90.0)))).flatten
+    val target = TurtleGraphic.TurtleGraphicProgram(squareDrawing())
+    assert(JavaTurtleExecutionPanel.compare(split, target))
+    assert(JavaTurtleExecutionPanel.compare(squareDrawing() ++ squareDrawing(), target))
+  }
+
+  test("Java drawing comparison uses pen-up moves for disconnected targets without drawing their gaps") {
+    import it.evadid.core.datastructures.geometry.Point
+    val target = TurtleGraphic.TurtleLineBasedProgram(List(
+      TurtleGraphic.Line(Point(0.0, 0.0), Point(10.0, 0.0)),
+      TurtleGraphic.Line(Point(20.0, 0.0), Point(30.0, 0.0))))
+    assert(JavaTurtleExecutionPanel.compare(target.toTurtleProgram.toList, target))
+    assert(!JavaTurtleExecutionPanel.compare(List(TurtleCommand[Double]("forward", List(30.0))), target))
+  }
+
+  test("Java drawing comparison bounds huge traces and rejects unsupported or non-finite commands") {
+    val target = TurtleGraphic.TurtleGraphicProgram(squareDrawing())
+    for commands <- List(List(TurtleCommand[Double]("forward", List(Int.MaxValue.toDouble))),
+      List(TurtleCommand[Double]("forward", List(Double.PositiveInfinity))),
+      List(TurtleCommand[Double]("forward", List(Double.NaN))),
+      List(TurtleCommand[Double]("circle", List(25.0))), List.fill(100)(squareDrawing()).flatten) do
+      intercept[IllegalArgumentException](JavaTurtleExecutionPanel.compare(commands, target))
+    val empty = TurtleGraphic.TurtleGraphicProgram(Nil)
+    assert(JavaTurtleExecutionPanel.compare(Nil, empty))
+    assert(!JavaTurtleExecutionPanel.compare(squareDrawing(), empty))
+  }
+
+  test("Java execution panel publishes assessed drawing only after successful completion") {
+    import JavaTurtleExecutionPanel.Status
+    val fixture = new PanelFixture
+    fixture.panel.run()
+    fixture.panel.run()
+    assertEquals(fixture.requests.size, 1)
+    assertEquals(fixture.panel.status.now(), Status.Running)
+    fixture.requests.head.success(squareDrawing())
+    fixture.requests.head.future.map { _ => () }.flatMap { _ =>
+      Future.unit.map { _ =>
+        assertEquals(fixture.panel.status.now(), Status.Ready(squareDrawing(), Some(true)))
+        fixture.panel.deactivate()
+        assertEquals(fixture.panel.status.now(), Status.Idle)
+      }
+    }
+  }
+
+  test("Java execution panel stop ignores old results and permits a new run") {
+    import JavaTurtleExecutionPanel.Status
+    val fixture = new PanelFixture
+    fixture.panel.run()
+    fixture.panel.stop()
+    fixture.panel.stop()
+    assertEquals(fixture.stops, 1)
+    assertEquals(fixture.panel.status.now(), Status.Stopped)
+    fixture.panel.run()
+    val newest = fixture.requests.last
+    fixture.requests.head.success(squareDrawing())
+    fixture.requests.head.future.flatMap { _ => Future.unit.map { _ =>
+      assertEquals(fixture.panel.status.now(), Status.Running)
+      newest.success(squareDrawing(24))
+    }}.flatMap(_ => newest.future).flatMap(_ => Future.unit.map { _ =>
+      assertEquals(fixture.panel.status.now(), Status.Ready(squareDrawing(24), Some(false)))
+      fixture.panel.deactivate()
+    })
+  }
+
+  test("Java execution panel invalidates A-to-B-to-A restores but ignores identical echoes") {
+    import JavaTurtleExecutionPanel.Status
+    val fixture = new PanelFixture
+    val original = fixture.source.now()
+    fixture.panel.run()
+    fixture.source.set(original)
+    assertEquals(fixture.panel.status.now(), Status.Running)
+    assertEquals(fixture.stops, 0)
+    fixture.source.set(ProgrammingStateJavaString("class Changed {}"))
+    fixture.source.set(original)
+    assertEquals(fixture.panel.status.now(), Status.Idle)
+    assertEquals(fixture.stops, 1)
+    fixture.requests.head.success(squareDrawing())
+    fixture.requests.head.future.flatMap(_ => Future.unit.map { _ =>
+      assertEquals(fixture.panel.status.now(), Status.Idle)
+      fixture.panel.deactivate()
+    })
+  }
+
+  test("Java execution panel unmount clears results and rejects late completion") {
+    import JavaTurtleExecutionPanel.Status
+    val fixture = new PanelFixture
+    fixture.panel.run()
+    fixture.panel.deactivate()
+    assertEquals(fixture.stops, 1)
+    fixture.requests.head.success(squareDrawing())
+    fixture.requests.head.future.flatMap(_ => Future.unit.map { _ =>
+      assertEquals(fixture.panel.status.now(), Status.Idle)
+      fixture.panel.activate()
+      fixture.panel.run()
+      assertEquals(fixture.requests.size, 2)
+      fixture.panel.deactivate()
+    })
+  }
+
+  test("Java execution panel catches synchronous failure without fabricating a drawing") {
+    import JavaTurtleExecutionPanel.Status
+    val source = Var[ProgrammingState](ProgrammingStateJavaString("class Drawing {}"))
+    val panel = new JavaTurtleExecutionPanel(source, () => throw IllegalStateException("unavailable"), () => ())
+    panel.run()
+    Future.unit.map { _ =>
+      assertEquals(panel.status.now(), Status.Failed("unavailable"))
+      panel.deactivate()
+    }
+  }
+
+  test("Java execution panel does not launch a run stopped by a status observer") {
+    import JavaTurtleExecutionPanel.Status
+    val fixture = new PanelFixture
+    val owner = new ManualOwner
+    fixture.panel.status.signal.changes.foreach {
+      case Status.Running => fixture.panel.stop()
+      case _ => ()
+    }(using owner)
+    fixture.panel.run()
+    assertEquals(fixture.requests.size, 0)
+    assertEquals(fixture.panel.status.now(), Status.Stopped)
+    owner.killSubscriptions()
+    fixture.panel.deactivate()
+  }
+
   private def editorFor(source: ProgrammingState, config: EvaEditorConfig = testingConfig): EvaEditor =
     new EvaEditorPlain(Var[ProgrammingState](source), config)
 
