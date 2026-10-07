@@ -107,6 +107,12 @@
     letter-spacing: -0.015em;
 }
 
+.java-function-editor__view-toggle {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
 .java-function-editor__class-row {
     display: flex;
     flex-direction: row;
@@ -427,6 +433,7 @@
 
     .java-function-editor__workspace-heading {
         align-items: flex-start;
+        flex-wrap: wrap;
     }
 }
 
