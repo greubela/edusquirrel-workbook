@@ -261,11 +261,15 @@ object TurtlePathBuilder {
         if cmd.stringArgs.nonEmpty then value.arr += writeJs(cmd.stringArgs)
         value
       },
-      value => TurtleCommand(
-        value.arr(0).str,
-        read[Seq[T]](value.arr(1)),
-        if value.arr.size > 2 then read[Seq[String]](value.arr(2)) else Nil
-      )
+      value => {
+        val fields = value.arr
+        require(fields.size == 2 || fields.size == 3, "Expected a turtle command with two or three fields")
+        TurtleCommand(
+          fields(0).str,
+          read[Seq[T]](fields(1)),
+          if fields.size == 3 then read[Seq[String]](fields(2)) else Nil
+        )
+      }
     )
 
 
