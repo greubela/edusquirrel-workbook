@@ -95,8 +95,9 @@ object JavaTurtlePythonExport {
     }
 
     def runtime(): Unit = {
-      output.append(s"""def $EntryPoint(method=None, arguments=(), *, max_steps=${Limits.MaxSteps}, max_commands=${Limits.MaxCommands}, max_call_depth=${Limits.MaxCallDepth}, max_block_depth=${Limits.MaxBlockDepth}, is_cancelled=lambda: False):
+      output.append(s"""def $EntryPoint(method=None, arguments=(), *, max_steps=${Limits.MaxSteps}, max_commands=${Limits.MaxCommands}, max_call_depth=${Limits.MaxCallDepth}, max_block_depth=${Limits.MaxBlockDepth}, is_cancelled=lambda: False, trace_invocations=False):
     import math as _math
+    import struct as _struct
     _commands = []
     _steps = 0
     _call_depth = 0
@@ -104,6 +105,10 @@ object JavaTurtlePythonExport {
     _calls = {}
     _drawing = {}
     _max_depth = 0
+    _observed_method = None
+    _observed_active = []
+    _invocations = []
+    _truncated = False
 
     class _Stop(Exception):
         def __init__(self, status, problem=None):
@@ -113,7 +118,10 @@ object JavaTurtlePythonExport {
     def _result(status, problem=None):
         calls = {"methods": [[method, *_calls[method]] for method in sorted(_calls)], "maxDepth": _max_depth}
         drawing = {"methods": [[method, *_drawing[method]] for method in sorted(_drawing)]}
-        return {"status": status, "problem": problem, "commands": _commands, "steps": _steps, "calls": calls, "drawing": drawing}
+        result = {"status": status, "problem": problem, "commands": _commands, "steps": _steps, "calls": calls, "drawing": drawing}
+        if _observed_method is not None:
+            result["invocations"] = {"method": _observed_method, "truncated": _truncated, "activations": _invocations}
+        return result
 
     def _gate():
         nonlocal _steps
@@ -153,8 +161,15 @@ object JavaTurtlePythonExport {
             return float("nan")
         return _math.fmod(left, right)
 
-    def _enter(method):
-        nonlocal _call_depth, _max_depth
+    def _typed(value):
+        if type(value) is bool:
+            return ["b", value]
+        if type(value) is int:
+            return ["i", value]
+        return ["d", _struct.pack(">d", value).hex()]
+
+    def _enter(method, arguments):
+        nonlocal _call_depth, _max_depth, _truncated
         _gate()
         if _call_depth >= max_call_depth:
             raise _Stop("LimitExceeded")
@@ -164,6 +179,25 @@ object JavaTurtlePythonExport {
         counts[1] += int(method in _active)
         _active.append(method)
         _max_depth = max(_max_depth, _call_depth)
+        invocation = None
+        if method == _observed_method:
+            if len(_invocations) >= ${Limits.MaxInvocations}:
+                _truncated = True
+            else:
+                invocation = len(_invocations)
+                parent = _observed_active[-1] if _observed_active else -1
+                _invocations.append([parent, [_typed(value) for value in arguments], len(_commands), -1])
+            _observed_active.append(invocation)
+        return invocation
+
+    def _leave(method, invocation, completed):
+        nonlocal _call_depth
+        if invocation is not None and completed:
+            _invocations[invocation][3] = len(_commands)
+        if method == _observed_method:
+            _observed_active.pop()
+        _active.pop()
+        _call_depth -= 1
 
     def _block(depth):
         _gate()
@@ -200,25 +234,34 @@ object JavaTurtlePythonExport {
     _limits = ((max_steps, 1, ${Limits.MaxSteps}), (max_commands, 0, ${Limits.MaxCommands}), (max_call_depth, 1, ${Limits.MaxCallDepth}), (max_block_depth, 1, ${Limits.MaxBlockDepth}))
     if any(type(value) is not int or not lower <= value <= upper for value, lower, upper in _limits):
         return _result("Failed", "InvalidLimits")
+    if type(trace_invocations) is not bool:
+        return _result("Failed", "InvalidInvocation")
 """)
       indent = 1
     }
 
     def method(value: P.Method): Unit = {
       line("")
-      val parameters = value.binding.parameters.filterNot(_.variable.valueType == R.ValueType.MainArguments)
-        .map(parameter => variable(parameter.variable)).mkString(", ")
+      val bindings = value.binding.parameters.filterNot(_.variable.valueType == R.ValueType.MainArguments)
+      val parameters = bindings.map(parameter => variable(parameter.variable)).mkString(", ")
+      val initial = bindings.map { parameter =>
+        val name = variable(parameter.variable)
+        if parameter.variable.valueType == R.ValueType.DoubleValue then s"float($name)" else name
+      }
+      val arguments = if initial.isEmpty then "()" else initial.mkString("(", ", ", ",)")
       line(s"def ${methodName(value.binding.id)}($parameters):")
       nested {
-        line("nonlocal _call_depth")
-        line(s"_enter(${value.binding.id.index})")
+        line(s"_invocation = _enter(${value.binding.id.index}, $arguments if trace_invocations else ())")
+        line("_completed = True")
         line("try:")
         nested { block(value.body, 1) }
-        line("finally:")
+        line("except BaseException:")
         nested {
-          line("_active.pop()")
-          line("_call_depth -= 1")
+          line("_completed = False")
+          line("raise")
         }
+        line("finally:")
+        nested { line(s"_leave(${value.binding.id.index}, _invocation, _completed)") }
       }
     }
 
@@ -301,6 +344,8 @@ object JavaTurtlePythonExport {
         nested { line("return _result(\"Failed\", \"InvalidInvocation\")") }
         line("arguments = tuple(float(value) if kind == \"double\" else value for value, kind in zip(arguments, _types))")
       }
+      line("if trace_invocations:")
+      nested { line(s"_observed_method = ${root.entryPoint.binding.id.index} if method is None else method") }
       line("try:")
       nested {
         line("_target(*arguments)")

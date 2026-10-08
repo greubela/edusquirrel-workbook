@@ -13,7 +13,7 @@ import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonExport as Y
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleVmBindings as V, JavaTurtleVmExpressions as X, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.{BeSimulatorConfig, BeSimulatorState, BeVirtualMachineState}
-import it.evadid.vm.simulation.java.{JavaInt32, JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
+import it.evadid.vm.simulation.java.{JavaInt32, JavaTurtleEvaluation as E, JavaTurtleInvocationTrace, JavaTurtleRuntime as T}
 import it.evadid.vm.types.{BeChildRole, BeDataType, BeDataValueLiteral, BeScope, BeUseValueReference}
 import it.evadid.workbook.elements.interactionElements.programming.JavaKochAssessment as K
 import munit.FunSuite
@@ -1883,6 +1883,66 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       T.MethodDrawing(R.MethodId(0), 1, 1), T.MethodDrawing(R.MethodId(1), 1, 0)))))
   }
 
+  test("Java invocation traces retain widened entry arguments through mutation loops and helpers") {
+    val resolved = javaProgram("draw(1, 21);", """
+      static void draw(int n, double length) {
+        if (n == 0) { stroke(length); return; }
+        n -= 1;
+        length /= 3.0;
+        for (int i = 0; i < 4; i += 1) { draw(n, length); }
+      }
+      static void stroke(double length) { Turtle.forward(length / 2); Turtle.forward(length / 2); }
+    """)
+    val program = P.adapt(resolved).toOption.get
+    val arguments = Vector(E.Value.IntValue(1), E.Value.IntValue(21))
+    val plain = T.invokeVm(program, R.MethodId(0), arguments)
+    val traced = T.invokeVm(program, R.MethodId(0), arguments, traceInvocations = true)
+    assertEquals(traced.copy(invocationEvidence = None), plain)
+    assertEquals(T.invoke(resolved, R.MethodId(0), arguments, traceInvocations = true), traced)
+    val root = T.MethodInvocation(None, Vector(E.Value.IntValue(1), E.Value.DoubleValue(21)), 0, Some(8))
+    val leaves = (0 until 4).map(index => T.MethodInvocation(Some(0),
+      Vector(E.Value.IntValue(0), E.Value.DoubleValue(7)), index * 2, Some(index * 2 + 2))).toVector
+    assertEquals(traced.invocationEvidence, Some(T.InvocationEvidence(R.MethodId(0), root +: leaves)))
+    assert(JavaTurtleInvocationTrace.valid(traced.invocationEvidence.get, traced.callEvidence.get, 8, true))
+    val main = T.runVm(program, traceInvocations = true)
+    assertEquals(main.invocationEvidence.get.activations.size, 1)
+    assertEquals(main.invocationEvidence.get.activations.head.arguments, Vector.empty)
+  }
+
+  test("Java invocation traces leave interrupted activations open and keep later attempts independent") {
+    val program = P.adapt(javaProgram("walk(2);", """
+      static void walk(int n) { Turtle.forward(n + 1); if (n > 0) { walk(n - 1); } }
+    """)).toOption.get
+    val arguments = Vector(E.Value.IntValue(2))
+    val limited = T.invokeVm(program, R.MethodId(0), arguments, T.Limits(maxCommands = 2), traceInvocations = true)
+    assertEquals(limited.status, T.Status.LimitExceeded)
+    assertEquals(limited.invocationEvidence.get.activations.map(_.lastCommand), Vector(None, None, None))
+    assert(JavaTurtleInvocationTrace.valid(limited.invocationEvidence.get, limited.callEvidence.get, 2, false))
+    val cancelled = T.invokeVm(program, R.MethodId(0), arguments, isCancelled = () => true, traceInvocations = true)
+    assertEquals(cancelled.invocationEvidence, Some(T.InvocationEvidence(R.MethodId(0), Vector.empty)))
+    assertEquals(T.invokeVm(program, R.MethodId(0), Vector.empty, traceInvocations = true).invocationEvidence, None)
+    val complete = T.invokeVm(program, R.MethodId(0), arguments, traceInvocations = true)
+    assertEquals(complete.invocationEvidence.get.activations.map(_.lastCommand), Vector.fill(3)(Some(3)))
+    assertEquals(T.invokeVm(program, R.MethodId(0), arguments, traceInvocations = true), complete)
+  }
+
+  test("Java invocation capture is bounded without changing execution budgets") {
+    val program = P.adapt(javaProgram("branch(5);", """
+      static void branch(int n) {
+        if (n > 0) { for (int i = 0; i < 4; i += 1) { branch(n - 1); } }
+      }
+    """)).toOption.get
+    val plain = T.invokeVm(program, R.MethodId(0), Vector(E.Value.IntValue(5)))
+    val traced = T.invokeVm(program, R.MethodId(0), Vector(E.Value.IntValue(5)), traceInvocations = true)
+    assertEquals(traced.copy(invocationEvidence = None), plain)
+    assertEquals(traced.status, T.Status.Completed)
+    val trace = traced.invocationEvidence.get
+    assertEquals(trace.activations.size, T.Limits.MaxInvocations)
+    assert(trace.truncated)
+    assert(trace.activations.forall(_.lastCommand.contains(0)))
+    assert(JavaTurtleInvocationTrace.valid(trace, traced.callEvidence.get, 0, true))
+  }
+
   private def kochMethod(leaf: String = "Turtle.forward(length);"): String = s"""
     static void koch(int depth, double length) {
       if (depth == 0) { $leaf return; }
@@ -2215,7 +2275,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   test("Java Python export isolates run state and validates limits before invocation") {
     val source = Y.render(P.adapt(javaProgram("Turtle.forward(1);")).toOption.get).source
     assert(source.contains("    _commands = []\n    _steps = 0\n    _call_depth = 0\n"))
-    assert(source.contains("finally:\n            _active.pop()\n            _call_depth -= 1"))
+    assert(source.contains("finally:\n            _leave("))
+    assert(source.contains("    _active.pop()\n        _call_depth -= 1"))
     assert(source.contains(s"(max_steps, 1, ${T.Limits.MaxSteps})"))
     assert(source.contains(s"(max_commands, 0, ${T.Limits.MaxCommands})"))
     assert(source.contains(s"(max_call_depth, 1, ${T.Limits.MaxCallDepth})"))

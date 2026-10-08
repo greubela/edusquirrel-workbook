@@ -58,10 +58,12 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       commands: String = "[]",
       steps: String = "2",
       calls: Option[String] = None,
-      drawing: Option[String] = None
+      drawing: Option[String] = None,
+      invocations: Option[String] = None
   ): PythonRunReport =
     val evidence = calls.fold("")(value => s""","calls":$value""") +
-      drawing.fold("")(value => s""","drawing":$value""")
+      drawing.fold("")(value => s""","drawing":$value""") +
+      invocations.fold("")(value => s""","invocations":$value""")
     PythonRunReport(Vector.empty,
       s"""{"status":"$status","problem":$problem,"commands":$commands,"steps":$steps$evidence}""", "")
 
@@ -551,6 +553,232 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
           steps = "10", calls = Some("""{"methods":[[0,1,0]],"maxDepth":1}"""),
           drawing = Some("""{"methods":[[0,1,0]]}""")), limits)
       }
+  }
+
+  private def invocationJson(rows: String, method: Int = 0, truncated: Boolean = false): String =
+    s"""{"method":$method,"truncated":$truncated,"activations":$rows}"""
+
+  private val splitInvocationRows = """[
+    [-1,[["i",1],["d","4022000000000000"]],0,7],
+    [0,[["i",0],["d","4008000000000000"]],0,1],
+    [0,[["i",0],["d","4008000000000000"]],2,3],
+    [0,[["i",0],["d","4008000000000000"]],4,5],
+    [0,[["i",0],["d","4008000000000000"]],6,7]
+  ]"""
+
+  private def splitInvocationReport(trace: String): PythonRunReport =
+    javaReport(commands = """[["forward",3],["right",-60],["forward",3],["right",120],
+      ["forward",3],["right",-60],["forward",3]]""", steps = "100",
+      calls = Some("""{"methods":[[0,5,4]],"maxDepth":2}"""),
+      drawing = Some("""{"methods":[[0,4,4]]}"""), invocations = Some(trace))
+
+  private def changedSplitRows(change: ujson.Arr => Unit): String =
+    val rows = ujson.read(splitInvocationRows).asInstanceOf[ujson.Arr]
+    change(rows)
+    rows.render()
+
+  test("Java worker decodes optional invocation spans without changing legacy reports") {
+    assertEquals(JavaTurtleCommandRunner.decode(javaReport(), T.Limits()).invocationEvidence, None)
+    val report = splitInvocationReport(invocationJson(splitInvocationRows))
+    val decoded = JavaTurtleCommandRunner.decode(report, T.Limits(), Some(Set(R.MethodId(0))),
+      Some(R.MethodId(0) -> Vector(E.Value.IntValue(1), E.Value.DoubleValue(9.0))))
+    val rows = Vector(T.MethodInvocation(None, Vector(E.Value.IntValue(1), E.Value.DoubleValue(9.0)), 0, Some(7))) ++
+      Vector(0, 2, 4, 6).map(start => T.MethodInvocation(Some(0),
+        Vector(E.Value.IntValue(0), E.Value.DoubleValue(3.0)), start, Some(start + 1)))
+    assertEquals(decoded.invocationEvidence, Some(T.InvocationEvidence(R.MethodId(0), rows)))
+    val helperRows = changedSplitRows { values =>
+      values(0)(3) = ujson.Num(11)
+      for index <- 1 to 4 do {
+        values(index)(2) = ujson.Num((index - 1) * 3)
+        values(index)(3) = ujson.Num((index - 1) * 3 + 2)
+      }
+    }
+    val helperReport = javaReport(commands = """[["forward",1.5],["forward",1.5],["right",-60],
+      ["forward",1.5],["forward",1.5],["right",120],["forward",1.5],["forward",1.5],
+      ["right",-60],["forward",1.5],["forward",1.5]]""", steps = "130",
+      calls = Some("""{"methods":[[0,5,4],[1,4,0]],"maxDepth":3}"""),
+      drawing = Some("""{"methods":[[0,8,8],[1,8,0]]}"""), invocations = Some(invocationJson(helperRows)))
+    val helper = JavaTurtleCommandRunner.decode(helperReport, T.Limits(), Some(Set(R.MethodId(0), R.MethodId(1))))
+    assertEquals(helper.invocationEvidence.get.activations.map(row => (row.firstCommand, row.lastCommand)),
+      Vector((0, Some(11)), (0, Some(2)), (3, Some(5)), (6, Some(8)), (9, Some(11))))
+  }
+
+  test("Java invocation arguments preserve numeric tags and double bit patterns") {
+    val arguments = """[["i",-2147483648],["b",true],["d","8000000000000000"],
+      ["d","0000000000000001"],["d","7ff0000000000000"],["d","fff0000000000000"],
+      ["d","7ff8000000000001"]]"""
+    val report = javaReport(steps = "10", calls = Some("""{"methods":[[0,1,0]],"maxDepth":1}"""),
+      drawing = Some("""{"methods":[]}"""), invocations = Some(invocationJson(s"[[-1,$arguments,0,0]]")))
+    val decoded = JavaTurtleCommandRunner.decode(report, T.Limits()).invocationEvidence.get.activations.head.arguments
+    assertEquals(decoded.take(2), Vector(E.Value.IntValue(Int.MinValue), E.Value.BooleanValue(true)))
+    val numbers = decoded.drop(2).map { case E.Value.DoubleValue(value) => value; case _ => fail("Expected double tag") }
+    assertEquals(java.lang.Double.doubleToRawLongBits(numbers(0)), Long.MinValue)
+    assertEquals(java.lang.Double.doubleToRawLongBits(numbers(1)), 1L)
+    assertEquals(numbers(2), Double.PositiveInfinity)
+    assertEquals(numbers(3), Double.NegativeInfinity)
+    assert(numbers(4).isNaN)
+  }
+
+  test("Java invocation decoding rejects malformed shapes tags and hexadecimal values") {
+    val envelopes = Vector("null", "[]", "true", "{}",
+      s"""{"method":0,"activations":$splitInvocationRows}""",
+      s"""{"method":0,"truncated":false,"activations":$splitInvocationRows,"extra":0}""",
+      """{"method":0,"truncated":false,"activations":null}""",
+      """{"method":0,"truncated":0,"activations":[]}""",
+      """{"method":-1,"truncated":false,"activations":[]}""",
+      """{"method":128,"truncated":false,"activations":[]}""",
+      invocationJson("[null]"), invocationJson("[[]]"), invocationJson("[[-1,[],0]]"),
+      invocationJson("[[-1,[],0,0,0]]"))
+    val arguments = Vector("null", "{}", "[1]", "[[\"i\"]]", "[[\"i\",1,0]]",
+      "[[\"i\",0.5]]", "[[\"i\",2147483648]]", "[[\"i\",true]]", "[[\"i\",\"1\"]]",
+      "[[\"b\",1]]", "[[\"b\",null]]", "[[\"f\",1]]", "[[\"d\",0]]",
+      "[[\"d\",\"000000000000000\"]]", "[[\"d\",\"00000000000000000\"]]",
+      "[[\"d\",\"7FF0000000000000\"]]", "[[\"d\",\"000000000000000g\"]]",
+      Vector.fill(17)("[\"i\",0]").mkString("[", ",", "]"))
+    val badArguments = arguments.map { value =>
+      invocationJson(changedSplitRows(rows => rows(0)(1) = ujson.read(value)))
+    }
+    (envelopes ++ badArguments).foreach { trace =>
+      intercept[IllegalArgumentException](JavaTurtleCommandRunner.decode(splitInvocationReport(trace), T.Limits()))
+    }
+    val validTrace = Some(invocationJson(splitInvocationRows))
+    intercept[IllegalArgumentException](JavaTurtleCommandRunner.decode(javaReport(invocations = validTrace), T.Limits()))
+    intercept[IllegalArgumentException](JavaTurtleCommandRunner.decode(javaReport(steps = "100",
+      calls = Some("""{"methods":[[0,5,4]],"maxDepth":2}"""), invocations = validTrace), T.Limits()))
+    intercept[IllegalArgumentException](JavaTurtleCommandRunner.decode(splitInvocationReport(validTrace.get),
+      T.Limits(), Some(Set(R.MethodId(1)))))
+  }
+
+  test("Java invocation decoding rejects impossible parents ranges and activation counts") {
+    val changes: Vector[ujson.Arr => Unit] = Vector(
+      rows => rows(0)(0) = ujson.Num(0),
+      rows => rows(0)(2) = ujson.Num(1),
+      rows => rows(0)(3) = ujson.Num(6),
+      rows => rows(0)(3) = ujson.Num(-1),
+      rows => rows(1)(0) = ujson.Num(-1),
+      rows => rows(1)(0) = ujson.Num(-2),
+      rows => rows(1)(0) = ujson.Num(1),
+      rows => rows(1)(0) = ujson.Num(4),
+      rows => rows(1)(2) = ujson.Num(-1),
+      rows => rows(1)(2) = ujson.Num(8),
+      rows => rows(1)(3) = ujson.Num(-1),
+      rows => rows(1)(3) = ujson.Num(3),
+      rows => rows(2)(3) = ujson.Num(1),
+      rows => rows(3)(0) = ujson.Num(1),
+      rows => rows(2)(0) = ujson.Num(1),
+      rows => rows(1)(1)(0) = ujson.Arr("b", false),
+      rows => rows.value.remove(4),
+      rows => rows.value += ujson.Arr(0, ujson.Arr(ujson.Arr("i", 0), ujson.Arr("d", "4008000000000000")), 7, 7)
+    )
+    changes.foreach { change =>
+      intercept[IllegalArgumentException](JavaTurtleCommandRunner.decode(
+        splitInvocationReport(invocationJson(changedSplitRows(change))), T.Limits()))
+    }
+    val report = splitInvocationReport(invocationJson(splitInvocationRows))
+    intercept[IllegalArgumentException](JavaTurtleCommandRunner.decode(report.copy(
+      stdout = report.stdout.replace("[0,5,4]", "[0,5,3]")), T.Limits()))
+  }
+
+  test("Java invocation decoding retains empty and open interrupted prefixes") {
+    val empty = javaReport("Cancelled", steps = "0", calls = Some("""{"methods":[],"maxDepth":0}"""),
+      drawing = Some("""{"methods":[]}"""), invocations = Some(invocationJson("[]")))
+    assertEquals(JavaTurtleCommandRunner.decode(empty, T.Limits()).invocationEvidence,
+      Some(T.InvocationEvidence(R.MethodId(0), Vector.empty)))
+    val outcomes = Vector("LimitExceeded" -> "null", "Cancelled" -> "null",
+      "Failed" -> "\"DivisionByZero\"", "Failed" -> "\"NonFiniteCommand\"")
+    for {
+      (status, problem) <- outcomes
+      end <- Vector(-1, 1)
+    } {
+      val rows = s"""[[-1,[["i",1],["d","4022000000000000"]],0,-1],
+        [0,[["i",0],["d","4008000000000000"]],0,$end]]"""
+      val report = javaReport(status, problem, """[["forward",3]]""", "20",
+        Some("""{"methods":[[0,2,1]],"maxDepth":2}"""), Some("""{"methods":[[0,1,1]]}"""),
+        Some(invocationJson(rows)))
+      val decoded = JavaTurtleCommandRunner.decode(report, T.Limits())
+      assertEquals(decoded.invocationEvidence.get.activations.map(_.lastCommand),
+        Vector(None, Option.when(end >= 0)(end)))
+      assertEquals(decoded.commands, Vector(T.Command(R.TurtleCommand.Forward, 3.0)))
+    }
+  }
+
+  test("Java invocation decoding accepts bounded truncated traces and exact argument limits") {
+    val rows = (Vector("[-1,[[\"i\",1]],0,0]") ++
+      Vector.fill(T.Limits.MaxInvocations - 1)("[0,[[\"i\",0]],0,0]")).mkString("[", ",", "]")
+    for truncated <- Vector(false, true) do {
+      val calls = T.Limits.MaxInvocations + (if truncated then 1 else 0)
+      val report = javaReport(steps = "1000", calls = Some(s"""{"methods":[[0,$calls,${calls - 1}]],"maxDepth":2}"""),
+        drawing = Some("""{"methods":[]}"""), invocations = Some(invocationJson(rows, truncated = truncated)))
+      val decoded = JavaTurtleCommandRunner.decode(report, T.Limits()).invocationEvidence.get
+      assertEquals(decoded.activations.size, T.Limits.MaxInvocations)
+      assertEquals(decoded.truncated, truncated)
+      intercept[IllegalArgumentException](JavaTurtleCommandRunner.decode(report.copy(stdout =
+        report.stdout.replace(s"\"truncated\":$truncated", s"\"truncated\":${!truncated}")), T.Limits()))
+    }
+    val tooMany = rows.dropRight(1) + ",[0,[[\"i\",0]],0,0]]"
+    intercept[IllegalArgumentException](JavaTurtleCommandRunner.decode(javaReport(steps = "1000",
+      calls = Some("""{"methods":[[0,513,512]],"maxDepth":2}"""), drawing = Some("""{"methods":[]}"""),
+      invocations = Some(invocationJson(tooMany, truncated = true))), T.Limits()))
+    val arguments = Vector.fill(16)("[\"i\",0]").mkString("[", ",", "]")
+    val report = javaReport(steps = "20", calls = Some("""{"methods":[[0,1,0]],"maxDepth":1}"""),
+      drawing = Some("""{"methods":[]}"""), invocations = Some(invocationJson(s"[[-1,$arguments,0,0]]")))
+    assertEquals(JavaTurtleCommandRunner.decode(report, T.Limits()).invocationEvidence.get.activations.head.arguments.size, 16)
+  }
+
+  test("Java invocation decoding binds the traced root to its requested method arguments and bits") {
+    val report = splitInvocationReport(invocationJson(splitInvocationRows))
+    val wrongRoots: Vector[(R.MethodId, Vector[E.Value])] = Vector(
+      R.MethodId(1) -> Vector(E.Value.IntValue(1), E.Value.DoubleValue(9.0)),
+      R.MethodId(0) -> Vector(E.Value.IntValue(2), E.Value.DoubleValue(9.0)),
+      R.MethodId(0) -> Vector(E.Value.IntValue(1), E.Value.IntValue(9)),
+      R.MethodId(0) -> Vector(E.Value.IntValue(1), E.Value.DoubleValue(9.5)),
+      R.MethodId(0) -> Vector(E.Value.IntValue(1)))
+    wrongRoots.foreach { expected =>
+      intercept[IllegalArgumentException](JavaTurtleCommandRunner.decode(report, T.Limits(), expectedInvocation = Some(expected)))
+    }
+    val negativeZero = javaReport(steps = "5", calls = Some("""{"methods":[[0,1,0]],"maxDepth":1}"""),
+      drawing = Some("""{"methods":[]}"""), invocations = Some(invocationJson("[[-1,[[\"d\",\"8000000000000000\"]],0,0]]")))
+    val expected = Some(R.MethodId(0) -> Vector(E.Value.DoubleValue(-0.0)))
+    assert(JavaTurtleCommandRunner.decode(negativeZero, T.Limits(), expectedInvocation = expected).invocationEvidence.nonEmpty)
+    intercept[IllegalArgumentException](JavaTurtleCommandRunner.decode(negativeZero, T.Limits(),
+      expectedInvocation = Some(R.MethodId(0) -> Vector(E.Value.DoubleValue(0.0)))))
+  }
+
+  test("Java worker tracing is opt in and malformed requested roots replace the worker") {
+    val workers = Vector.fill(2)(new ControlledJavaWorker(initiallyReady = true))
+    var allocated = 0
+    val runner = new JavaTurtleCommandRunner(() => {
+      val worker = workers(allocated)
+      allocated += 1
+      worker
+    })
+    val method = javaDoubleFixture.root.methods.find(_.binding.originalName == "draw").get.binding.id
+    val report = javaReport(commands = """[["forward",5]]""", steps = "7",
+      calls = Some(s"""{"methods":[[${method.index},1,0]],"maxDepth":1}"""),
+      drawing = Some(s"""{"methods":[[${method.index},1,0]]}"""),
+      invocations = Some(invocationJson("[[-1,[[\"d\",\"4014000000000000\"],[\"i\",2]],0,1]]", method.index)))
+    val first = runner.invoke(javaDoubleFixture, method, Vector(E.Value.IntValue(5), E.Value.IntValue(2)), traceInvocations = true)
+    for {
+      _ <- workers.head.started()
+      _ = workers.head.complete(report = report)
+      actual <- first
+      _ = assert(actual.invocationEvidence.nonEmpty)
+      _ = assert(workers.head.requests.head._1.contains("trace_invocations=True"))
+      second = runner.invoke(javaDoubleFixture, method, Vector(E.Value.IntValue(6), E.Value.IntValue(2)), traceInvocations = true)
+      _ <- workers.head.started(1)
+      _ = workers.head.complete(1, report)
+      _ <- failedWith(second)(error => assert(error.isInstanceOf[IllegalArgumentException]))
+      _ = assertEquals(workers.head.terminations, 1)
+      third = runner.run(javaDoubleFixture)
+      _ <- workers(1).started()
+      _ = workers(1).complete()
+      legacy <- third
+    } yield {
+      assertEquals(legacy.invocationEvidence, None)
+      assert(workers(1).requests.head._1.contains("trace_invocations=False"))
+      assertEquals(allocated, 2)
+      runner.close()
+    }
   }
 
   test("Java worker replaces malformed drawing evidence before another run") {
