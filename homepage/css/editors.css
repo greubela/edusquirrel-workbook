@@ -1,3 +1,4 @@
+@import url("qr-editor.css");
 /* Editor layout and chrome share the workbook's color and dimension tokens. */
 .eva-editor,
 .be-program-snap-fullscreen {

@@ -1,6 +1,19 @@
 /* Shared design tokens for the workbook experience.
    Color policy: define colors only in this file and consume them via CSS variables in other stylesheets. */
 :root {
+    --color-qr-dark: #000;
+    --color-qr-light: #fff;
+    /* Dark region colors retain contrast with the QR light modules and quiet zone. */
+    --color-qr-finder: var(--color-qr-dark);
+    --color-qr-timing: var(--color-gray-12);
+    --color-qr-alignment: var(--color-blue-10);
+    --color-qr-format: var(--color-red-9);
+    --color-qr-version: var(--color-blue-8);
+    --color-qr-fixed-dark: var(--color-qr-dark);
+    --color-qr-encoding: var(--color-green-9);
+    --color-qr-data: var(--color-qr-dark);
+    --color-qr-error-correction: var(--color-blue-11);
+    --color-qr-remainder: var(--color-gray-11);
     /* Intrinsic flag artwork colors are independent of the UI theme. */
     --color-flag-british-red: #c8102e;
     --color-flag-white: #fff;

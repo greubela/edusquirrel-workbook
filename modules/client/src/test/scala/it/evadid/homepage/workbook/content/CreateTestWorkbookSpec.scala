@@ -4,6 +4,15 @@ import it.evadid.workbook.elements.interactionElements.programming.ProgrammingEx
 import munit.FunSuite
 
 class CreateTestWorkbookSpec extends FunSuite {
+  test("test workbook includes a QR exercise with a meaningful byte requirement") {
+    val exercises = CreateTestWorkbook(null).createWorkbook.allChildrenFullSubtree.collect {
+      case q: it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction => q
+    }
+    assertEquals(exercises.size, 1)
+    assertEquals(exercises.head.requirements.minBytes, 32)
+    assert(!exercises.head.isPassed)
+  }
+
   test("test workbook includes the full Java exercise") {
     val workbook = CreateTestWorkbook(null).createWorkbook
 

@@ -3,6 +3,7 @@ package it.evadid.homepage.workbook.content
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.FullInfo
+import it.evadid.workbook.elements.interactionElements.qr.{CreateQrCodeInteraction, QrCodeRequirements}
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, HintLabel, TaskLabel}
 import it.evadid.workbook.elements.interactionElements.Turtle.TurtleRecreateShapeInteraction
@@ -15,7 +16,7 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
   override def createWorkbook: Workbook = {
     workbook(
       "TestWorkbook/WorkbookTitle",
-      List(section1, section2),
+      List(section1, section2, section3),
       User.AndreGreubel
     )
   }
@@ -87,6 +88,13 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
       )
     )
   }
+
+  lazy val section3: WorkbookSection = section("qr-summary", "basic/qrTitle", List(
+    container("basic/qrTitle", List(
+      instructionLabeledPair("basic/qrTitle", "basic/qrTask", TaskLabel),
+      CreateQrCodeInteraction("qr-summary-create", QrCodeRequirements(minBytes = 32))
+    ))
+  ))
 
   override def workbookId: String = "workbookTest"
 }
