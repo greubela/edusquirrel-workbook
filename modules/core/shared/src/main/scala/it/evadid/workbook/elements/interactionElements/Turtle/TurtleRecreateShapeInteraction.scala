@@ -19,14 +19,21 @@ case class TurtleRecreateShapeInteraction
   override val defaultValue: ProgrammingState = initProgram
   override val serializerInteractionContent: Serializer[ProgrammingState] = Serializer.fromUpickleJson(ProgrammingState.derived$ReadWriter)
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
-  override val associatedFactory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = new SimpleWorkbookElementFactory[TurtleRecreateShapeInteraction]() {
+  override val associatedFactory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = TurtleRecreateShapeInteraction.factory
+}
+
+object TurtleRecreateShapeInteraction {
+  val factory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = new SimpleWorkbookElementFactory[TurtleRecreateShapeInteraction]() {
     override protected val constructorFieldOrder = List("elementId", "initProgram", "desiredResult", "availablePalette", "limitTurtleCommandUsage")
 
-    override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: TurtleRecreateShapeInteraction): WorkbookElementSerializable = {
+    override def finishSerialization(baseElement: WorkbookElementSerializable, element: TurtleRecreateShapeInteraction): WorkbookElementSerializable =
       baseElement
-    }
+        .withElementAddedAs("initProgram", element.initProgram)
+        .withElementAddedAs("desiredResult", element.desiredResult)
+        .withElementAddedAs("availablePalette", element.availablePalette)
+        .withElementAddedAs("limitTurtleCommandUsage", element.limitTurtleCommandUsage)
 
-    override def finishDeserialization(serialized: WorkbookElementSerializable): TurtleRecreateShapeInteraction = {
+    override def finishDeserialization(serialized: WorkbookElementSerializable): TurtleRecreateShapeInteraction =
       TurtleRecreateShapeInteraction(
         serialized.elementId,
         serialized.getElementAs[ProgrammingState]("initProgram"),
@@ -34,24 +41,5 @@ case class TurtleRecreateShapeInteraction
         serialized.getElementAs[ProgrammingEditorPalette]("availablePalette"),
         serialized.getElementAs[Map[String, Integer]]("limitTurtleCommandUsage")
       )
-    }
-  }
-
-
-  new WorkbookElementFactory[TurtleRecreateShapeInteraction] {
-    override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = {
-      Set()
-    }
-
-    override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): TurtleRecreateShapeInteraction = {
-      TurtleRecreateShapeInteraction(
-        element.elementId,
-        initProgram = parsedElements(element.getElement("initProgram")).asInstanceOf[ProgrammingState],
-        desiredResult = parsedElements(element.getElement("desiredResult")).asInstanceOf[TurtleGraphic],
-        availablePalette = parsedElements(element.getElement("availablePalette")).asInstanceOf[ProgrammingEditorPalette],
-        limitTurtleCommandUsage = parsedElements(element.getElement("limitTurtleCommandUsage")).asInstanceOf[Map[String, Integer]],
-      )
-    }
   }
 }
-

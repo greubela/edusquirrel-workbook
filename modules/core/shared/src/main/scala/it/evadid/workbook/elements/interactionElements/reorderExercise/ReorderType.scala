@@ -18,7 +18,7 @@ object ReorderType {
   case object LANGUAGE_MAP_IDS extends ReorderType
 
   private val allKnownTypes: List[ReorderType] =
-    List(BASIC_STRINGS) ++ AppLanguage.programmingLanguages.map(CODELINES(_))
+    List(BASIC_STRINGS, LANGUAGE_MAP_IDS) ++ AppLanguage.programmingLanguages.map(CODELINES(_))
 
   private[reorderExercise] val serializer: Serializer[ReorderType] = new Serializer[ReorderType] {
 

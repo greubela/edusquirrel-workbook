@@ -4,6 +4,7 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
+import upickle.default.*
 
 object TurtleStitchRecreateShapeInteractionLegacy {
   val factory = new SimpleWorkbookElementFactory[TurtleStitchRecreateShapeInteractionLegacy]() {
@@ -29,9 +30,14 @@ case class TurtleStitchRecreateShapeInteractionLegacy(
   override val defaultValue: TurtleStitchProjectState = TurtleStitchProjectState.empty()
 
   override val serializerInteractionContent: Serializer[TurtleStitchProjectState] = new Serializer[TurtleStitchProjectState] {
-    override def serialize(t: TurtleStitchProjectState): String = t.asString
+    private val header = "TURTLE_STITCH_STATE_V1\n"
 
-    override def deserialize(s: String): TurtleStitchProjectState = TurtleStitchProjectState.parseFromStringOrEmpty(s)
+    override def serialize(t: TurtleStitchProjectState): String = header + write(t)
+
+    override def deserialize(s: String): TurtleStitchProjectState =
+      if (s.startsWith(header)) read[TurtleStitchProjectState](s.drop(header.length))
+      else if (s.isEmpty) TurtleStitchProjectState.empty()
+      else TurtleStitchProjectState.parseFromStringOrEmpty(s)
   }
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()

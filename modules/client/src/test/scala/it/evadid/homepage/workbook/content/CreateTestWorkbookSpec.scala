@@ -6,6 +6,13 @@ import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import munit.FunSuite
 
 class CreateTestWorkbookSpec extends FunSuite {
+  test("complete test workbook round-trips in JSON and constructor format") {
+    val workbook = CreateTestWorkbook(null).createWorkbook
+    for (serializer <- List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike)) {
+      assertEquals(serializer.deserialize(serializer.serialize(workbook)), workbook)
+    }
+  }
+
   test("test workbook showcases a populated, editable mail simulator that survives serialization") {
     val mailboxes = CreateTestWorkbook(null).createWorkbook.allChildrenFullSubtree.collect {
       case mail: MailInteraction => mail
