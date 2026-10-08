@@ -73,6 +73,18 @@ Read the [QR renderer](../modules/client/src/main/scala/it/evadid/homepage/workb
 
 **Mail naming:** there is also a shared interaction model called `MailEditor` for writing practice, distinct from the client UI editor with the same name. `HtmlMailEditorRenderer` renders that model and reuses the same client editor. The mail sorting renderer aliases the client class as `Editor` to avoid ambiguity. The name “Editor” alone does not determine which layer a class belongs to; its package and base type do.
 
+## Turtle shape recreation
+
+[TurtleRecreateShapeInteraction](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/Turtle/TurtleRecreateShapeInteraction.scala) is a `WorkbookInteractionElement[ProgrammingState]`. The learner's saved value is the program, rather than the resulting drawing. The exercise definition supplies `initProgram`, a target `TurtleGraphic` in `desiredResult`, `availablePalette` and `limitTurtleCommandUsage`. The interaction uses the shared `ProgrammingState` uPickle codec for learner values; its definition factory handles the exercise configuration separately.
+
+[HtmlTurtleRecreateShapeRenderer](../modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/turtleStitch/HtmlTurtleRecreateShapeRenderer.scala) creates one bound `Var[ProgrammingState]` and uses it for three workbook cards: the open-editor button, a `SnapPreviewEditor` program preview, and the interactive turtle drawing comparison. It maps `availablePalette` to `SnapCodeEditorConfig`, then creates `EvaEditorConfig` and `EvaEditorTurtle` with that same state and target. Unlike the QR/mail renderers, it constructs and retains the editor when rendering the interaction, rather than constructing a fresh editor on each open.
+
+[EvaEditorTurtle](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/EvaEditorTurtle.scala) extends `EvaEditor`, which manages the configured language tabs and editor lifecycle. Its sidebar displays the same target comparison as the workbook preview. Both derive commands through `state.signal.map(_.toBeExpressionState.deriveTurtleCommands)` and pass them with the target to `TurtleJsxGraphRenderer`. Editing the program therefore updates both views through the shared binding; this preview uses synchronous shared-model derivation, not the separate Pyodide execution service.
+
+There is an existing client-level coupling here: `EvaEditorTurtle` calls `HtmlTurtleRecreateShapeRenderer.createInteractivePreview` to reuse the comparison UI. Thus this particular editor depends on its renderer as well as the renderer depending on the editor. Shared core remains independent of both. A future extraction could place the comparison component in a separate client view helper, as QR does with `QrCodeView`.
+
+The interaction stores command-usage limits, but this renderer does not pass them into the editor or enforce them. It also does not expose a model-level `isPassed` method. The visual comparison should not be described as a complete requirements/grading implementation merely because its label contains “grading”.
+
 ## Adding an interaction
 
 Define the domain value and requirements in shared core, then add the interaction model and its definition factory/content serializer. Register the factory in the shared factory registry and the renderer in `HtmlRenderFactory`. Build an editor only when the controls warrant a separate component. Keep CSS in dedicated files, reuse shared color/dimension tokens, and ensure workbook entry pages load the required styles.
