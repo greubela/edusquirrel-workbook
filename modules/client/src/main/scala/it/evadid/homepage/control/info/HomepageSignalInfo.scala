@@ -71,8 +71,11 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
 
 
   def ensuredLanguageMapSignal(languageMapId: LanguageMapContentId): StrictSignal[LanguageMap[HumanLanguage]] = {
-    val res: Var[LanguageMap[HumanLanguage]] = Var(LanguageMapStorage.languageMapLoading(languageMapId))
-    ensuredLanguageMap(languageMapId).addObserver(newValue => res.set(newValue))
+    val source = ensuredLanguageMap(languageMapId)
+    // A fullscreen editor may create a label after the language map has loaded.
+    // Observers receive future changes, so also seed the signal from the current value.
+    val res: Var[LanguageMap[HumanLanguage]] = Var(source.now().getOrElse(LanguageMapStorage.languageMapLoading(languageMapId)))
+    source.addObserver(newValue => res.set(newValue))
     res.signal
   }
 

@@ -2,28 +2,29 @@ package it.evadid.workbook.elements.interactionElements.emailSimulator
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
-import it.evadid.workbook.elements.interactionElements.emailSimulator.MailInteraction.mailInteractionSer
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory.NoContentElementFactory
-import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
-import upickle.ReadWriter
-import upickle.default.macroRW
+import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import upickle.default.*
 
-case class MailInteraction(override val elementId: String) extends WorkbookInteractionElement[InboxStateScaffolding] {
-  override val associatedFactory: NoContentElementFactory[MailInteraction] = MailInteraction.factory
-
-  lazy val childrenOfThisElement: List[WorkbookElement] = List()
-
-  override val defaultValue: InboxStateScaffolding = InboxStateScaffolding(InboxState.empty)
-
-  override val serializerInteractionContent: Serializer[InboxStateScaffolding] = mailInteractionSer
+case class MailInteraction(elementId: String, initialInbox: InboxState = InboxState.empty,
+                        account: String = "opa.jürgen@gmail.com", allowCompose: Boolean = false)
+    extends WorkbookInteractionElement[InboxStateScaffolding] {
+  override val associatedFactory = MailInteraction.factory
+  override lazy val childrenOfThisElement: List[WorkbookElement] = Nil
+  override val defaultValue = InboxStateScaffolding(initialInbox.normalized)
+  override val serializerInteractionContent = MailInteraction.mailInteractionSer
+  def isPassed: Boolean = interactionVariable.currentValue.inboxState.sortingResult.passed
 }
-
 object MailInteraction {
-
-  val factory: NoContentElementFactory[MailInteraction] = new NoContentElementFactory[MailInteraction]() {
-    override def callConstructor(elementId: String): MailInteraction = MailInteraction(elementId)
-  }
-
-  private val mailInteractionRw: ReadWriter[InboxStateScaffolding] = macroRW
-  val mailInteractionSer: Serializer[InboxStateScaffolding] = Serializer.fromUpickleJson(mailInteractionRw)
+  val mailInteractionSer: Serializer[InboxStateScaffolding] = Serializer.fromUpickleJson(summon[ReadWriter[InboxStateScaffolding]])
+  val factory: WorkbookElementFactory.SimpleWorkbookElementFactory[MailInteraction] =
+    new WorkbookElementFactory.SimpleWorkbookElementFactory[MailInteraction] {
+      override protected val constructorFieldOrder = List("elementId", "initialInbox", "account", "allowCompose")
+      override def finishSerialization(base: WorkbookElementSerializable, element: MailInteraction): WorkbookElementSerializable =
+        base.withElementAddedAs("initialInbox", element.initialInbox).withElementAddedAs("account", element.account)
+          .withElementAddedAs("allowCompose", element.allowCompose)
+      override def finishDeserialization(element: WorkbookElementSerializable): MailInteraction =
+        MailInteraction(element.elementId, element.getOptionalElementAs[InboxState]("initialInbox", InboxState.empty),
+          element.getOptionalElementAs[String]("account", "opa.jürgen@gmail.com"),
+          element.getOptionalElementAs[Boolean]("allowCompose", false))
+    }
 }

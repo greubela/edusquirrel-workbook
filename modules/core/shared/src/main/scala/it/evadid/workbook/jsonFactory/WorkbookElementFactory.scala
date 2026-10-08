@@ -18,6 +18,7 @@ import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, Sli
 import it.evadid.workbook.elements.interactionElements.sortingExercise.SortingInteraction
 import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.SortingReasonInteraction
 import it.evadid.workbook.elements.structureElements.{ExerciseContainer, Workbook, WorkbookSection}
+import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailInteraction, MailEditor}
 import upickle.default
 import upickle.default.*
 
@@ -133,6 +134,8 @@ object WorkbookElementFactory {
 
   private lazy val knownFactoriesMap: Map[String, WorkbookElementFactory[? <: WorkbookElement]] = Map(
     classOf[CreateQrCodeInteraction].getSimpleName -> CreateQrCodeInteraction.factory,
+    classOf[MailInteraction].getSimpleName -> MailInteraction.factory,
+    classOf[MailEditor].getSimpleName -> MailEditor.factory,
     classOf[Workbook].getSimpleName -> Workbook.factory,
     classOf[LabeledWorkbookElement[?]].getSimpleName -> LabeledWorkbookElement.factory,
     classOf[CollapsibleInstructionElement].getSimpleName -> CollapsibleInstructionElement.factory,
