@@ -7,7 +7,7 @@ import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.ImageElement.LanguageMapBasedImageElement
 import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, ImageElement, LabeledWorkbookElement}
-import it.evadid.workbook.elements.interactionElements.Turtle.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
+import it.evadid.workbook.elements.interactionElements.Turtle.{TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
 import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
@@ -90,12 +90,7 @@ object WorkbookElementFactory {
 
   val serializerConstructorLike: Serializer[WorkbookElement] = new Serializer[WorkbookElement]() {
     override def serialize(obj: WorkbookElement): String = {
-      val ser = obj.associatedFactory.toSerializableElementUnsafe(obj)
-      val ord = obj.associatedFactory.elementMapAndOrderForConstructorLike
-      val wri = obj.associatedFactory.writerJsonRegularRefBased
-      val con = obj.getClass.getSimpleName
-      val resStr = ConstructorLikeSerializer.serialize(ord, obj, wri.asInstanceOf[Writer[WorkbookElement]], con)
-      resStr
+      obj.associatedFactory.toStringConstructorLikeUnsafe(obj)
     }
 
     override def deserialize(str: String): WorkbookElement = {
@@ -156,6 +151,7 @@ object WorkbookElementFactory {
     classOf[Slideshow].getSimpleName -> Slideshow.factory,
     classOf[SlideshowPanel.TwoColumnImagePanel].getSimpleName -> SlideshowPanel.TwoColumnImagePanel.factory,
     classOf[SlideshowPanel.ImageSlide].getSimpleName -> SlideshowPanel.ImageSlide.factory,
+    classOf[TurtleRecreateShapeInteraction].getSimpleName -> TurtleRecreateShapeInteraction.factory,
     classOf[TurtleStitchExploreProjectElement].getSimpleName -> TurtleStitchExploreProjectElement.factory,
     classOf[TurtleStitchRecreateShapeInteractionLegacy].getSimpleName -> TurtleStitchRecreateShapeInteractionLegacy.factory,
     classOf[ProgrammingExercise].getSimpleName -> ProgrammingExercise.factory,
@@ -163,6 +159,11 @@ object WorkbookElementFactory {
     //  classOf[ImageElement.FileBasedImageElement].getSimpleName -> ImageElement.FileBasedImageElement.factory,
     classOf[ImageElement.LanguageMapBasedImageElement].getSimpleName -> LanguageMapBasedImageElement.factory
   )
+
+  private[workbook] def registeredElementTypes: Set[String] = knownFactoriesMap.keySet
+
+  private[workbook] def factoryFor(elementType: String): WorkbookElementFactory[? <: WorkbookElement] =
+    knownFactoriesMap.getOrElse(elementType, throw SerializedException(s"No factory known for WorkbookElement with type $elementType"))
 
   def parse(element: WorkbookElementSerializable, knownElements: Map[String, WorkbookElement] = Map()): WorkbookElement = {
     parseAll(List(element), knownElements).head
@@ -255,7 +256,12 @@ trait WorkbookElementFactory[T <: WorkbookElement] {
   }
 
   def toStringConstructorLike(element: T): String = {
-    ConstructorLikeSerializer.serialize(elementMapAndOrderForConstructorLike, element, writerJsonRegularRefBased, element.getClass.getSimpleName)
+    val serialized = toSerializableElement(element)
+    ConstructorLikeSerializer.serializeFields(
+      elementMapAndOrderForConstructorLike,
+      serialized.allConstructorFields + ("elementId" -> writeJs(serialized.elementId)),
+      serialized.elementType
+    )
   }
 
   def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String]

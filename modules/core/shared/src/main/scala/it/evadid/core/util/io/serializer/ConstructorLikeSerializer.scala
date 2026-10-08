@@ -1,101 +1,61 @@
 package it.evadid.core.util.io.serializer
 
 import it.evadid.core.util.io.ConstructorLikeParserWithJsonElements.ConstructorLikeReadResult
-import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.{VariableDisplayConfig, VariableToSerialize}
 import it.evadid.core.util.io.{ConstructorLikeParserWithJsonElements, Serializer}
 import ujson.Value
-import upickle.core.LinkedHashMap
 import upickle.default.*
 
 object ConstructorLikeSerializer {
-
   case class VariableDisplayConfig(varId: String, suppressKey: Boolean)
 
-  private case class VariableToSerialize(
-                                          key: String,
-                                          jsonValueAsStr: String,
-                                          constructorPosition: Int,
-                                          positionInConstructor: Int,
-                                          displayConf: VariableDisplayConfig
-                                        ) {
-    val toValueString: String = {
-      jsonValueAsStr
+  def getAutoFieldsMap[T](obj: T)(implicit regularSerializer: Writer[T]): Map[String, Value] =
+    writeJs(obj)(using regularSerializer).obj.toMap
+
+  def serialize[T](elementMapAndOrder: Map[Int, List[VariableDisplayConfig]], obj: T, writer: Writer[T], constructorName: String): String =
+    serializeFields(elementMapAndOrder, getAutoFieldsMap(obj)(using writer), constructorName)
+
+  /** Keep JSON values intact; fields without a display configuration remain named fields. */
+  def serializeFields(order: Map[Int, List[VariableDisplayConfig]], fields: Map[String, Value], constructorName: String): String = {
+    require(order.keys.forall(_ >= 0), "Constructor positions must be non-negative")
+    val configured = order.values.flatten.map(_.varId).toList
+    require(configured.distinct.size == configured.size, "Constructor fields must be configured only once")
+    val extra = fields.keySet.diff(configured.toSet).toList.sorted
+    val last = order.keys.maxOption.getOrElse(-1)
+    val groups = if (extra.isEmpty) order else order + ((last + 1) -> extra.map(VariableDisplayConfig(_, false)))
+    val payloads = (0 to groups.keys.maxOption.getOrElse(0)).map { position =>
+      val entries = groups.getOrElse(position, Nil).filter(config => fields.contains(config.varId))
+      val positional = entries.filter(_.suppressKey).map(config => ujson.write(fields(config.varId)))
+      val named = entries.filterNot(_.suppressKey).map(config => config.varId -> fields(config.varId))
+      val arguments = positional ++ (if (named.isEmpty) Nil else List(ujson.write(ujson.Obj.from(named))))
+      arguments.mkString("(", ", ", ")")
     }
-
-    val toMapEntryString: String = {
-      s"${ujson.write(key)}: ${ujson.write(jsonValueAsStr)}"
-    }
-
-    override val toString: String = toMapEntryString
+    constructorName + payloads.mkString
   }
 
-  private def formatConstructorEntry(set: Set[VariableToSerialize]): String = {
-    set.toList.sortBy(_.positionInConstructor).map(curEntry => {
-      if (curEntry.displayConf.suppressKey) curEntry.toValueString
-      else curEntry.toMapEntryString
-    }).mkString("(", ", ", ")")
-  }
+  def deserialize(str: String): ConstructorLikeReadResult =
+    ConstructorLikeParserWithJsonElements.parseString(str).get
 
-  private def createSerVar(elementMapAndOrder: Map[Int, List[VariableDisplayConfig]], key: String, jsonValueAsStr: String): Option[VariableToSerialize] = {
-    elementMapAndOrder
-      .zipWithIndex
-      .flatMap((tup, indexNr) => tup._2.map(cur => (tup._1, indexNr, cur)))
-      .find(_._3.varId == key)
-      .map(trip => VariableToSerialize(key, jsonValueAsStr, trip._1, trip._2, trip._3))
-  }
+  def deserialize[T](str: String, reader: Reader[T]): T =
+    read[T](ujson.Obj.from(deserialize(str).values))(using reader)
 
-
-  def getAutoFieldsMap[T](obj: T)(implicit regularSerializer: Writer[T]): Map[String, ujson.Value] = {
-    val jsonString: String = write(obj)(using regularSerializer)
-    val regularSer: ujson.Value = ujson.read(jsonString)
-    val variableSet: LinkedHashMap[String, ujson.Value] = regularSer.obj
-    variableSet.toMap
-  }
-
-  def serialize[T](elementMapAndOrder: Map[Int, List[VariableDisplayConfig]], obj: T, writer: Writer[T], constructorName: String): String = {
-    val fieldMap: Map[String, Value] = getAutoFieldsMap(obj)(using writer)
-
-    val variableSet: Set[VariableToSerialize] = fieldMap.keySet.flatMap(key => {
-      createSerVar(elementMapAndOrder, key, write(fieldMap(key)))
-    })
-    if (variableSet.nonEmpty) {
-      val maxPos = variableSet.maxBy(_.constructorPosition).constructorPosition
-      val grouped = variableSet.groupBy(_.constructorPosition)
-      val res: List[Set[VariableToSerialize]] = 0.to(maxPos).toList.map(curNr => grouped.getOrElse(curNr, Set()))
-      res.map(formatConstructorEntry).mkString(constructorName, "", "")
-    } else {
-      constructorName + "()"
-    }
-  }
-
-  def deserialize(str: String): ConstructorLikeReadResult = {
-    val res = ConstructorLikeParserWithJsonElements.parseString(str)
-    if(res.isSuccess) res.get
-    else throw res.failed.get
-  }
-
-  def deserialize[T](str: String, reader: Reader[T]): T = {
+  def deserialize[T](str: String, reader: Reader[T], order: Map[Int, List[VariableDisplayConfig]], constructorName: String): T = {
     val raw = deserialize(str)
-    read(write(raw.values))(using reader)
+    require(raw.elementType == constructorName, s"Expected $constructorName, found ${raw.elementType}")
+    read[T](ujson.Obj.from(raw.valuesWithOrder(order)))(using reader)
   }
-
 }
 
 trait ConstructorLikeSerializer[T] extends Serializer[T] {
-
-  private def formatConstructorEntry(set: Set[VariableToSerialize]): String =
-    ConstructorLikeSerializer.formatConstructorEntry(set)
-
   override def serialize(obj: T): String =
-    ConstructorLikeSerializer.serialize(elementMapAndOrder, obj, regularSerializer.uPickleReadWrite, constructorName)
+    ConstructorLikeSerializer.serializeFields(elementMapAndOrder, ujson.read(regularSerializer.serialize(obj)).obj.toMap, constructorName)
 
-  override def deserialize(str: String): T = ConstructorLikeSerializer.deserialize(str, regularSerializer.uPickleReadWrite)
+  override def deserialize(str: String): T = {
+    val raw = ConstructorLikeSerializer.deserialize(str)
+    require(raw.elementType == constructorName, s"Expected $constructorName, found ${raw.elementType}")
+    regularSerializer.deserialize(ujson.write(ujson.Obj.from(raw.valuesWithOrder(elementMapAndOrder))))
+  }
 
   implicit val regularSerializer: Serializer[T]
-
   val constructorName: String
-
-  val elementMapAndOrder: Map[Int, List[VariableDisplayConfig]]
-
-
+  val elementMapAndOrder: Map[Int, List[ConstructorLikeSerializer.VariableDisplayConfig]]
 }

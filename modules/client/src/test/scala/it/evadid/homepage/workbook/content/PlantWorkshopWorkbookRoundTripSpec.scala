@@ -22,4 +22,14 @@ class PlantWorkshopWorkbookRoundTripSpec extends FunSuite {
       serialized
     )
   }
+  test("plant workshop workbook survives constructor-format round trip") {
+    val original = CreatePlantworkshopWorkbook(null.asInstanceOf[FullInfo]).createWorkbook
+    val serializer = WorkbookElementFactory.serializerConstructorLike
+    val serialized = serializer.serialize(original)
+    val restored = serializer.deserialize(serialized)
+
+    assertEquals(restored, original)
+    assertEquals(serializer.serialize(restored), serialized)
+  }
+
 }

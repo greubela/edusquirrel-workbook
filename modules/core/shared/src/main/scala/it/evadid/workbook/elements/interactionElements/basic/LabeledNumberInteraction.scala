@@ -25,19 +25,21 @@ object LabeledNumberInteraction {
   case class NumberInteractionConfig(numberType: NumberType)
 
   val factory: SimpleWorkbookElementFactory[LabeledNumberInteraction] = new SimpleWorkbookElementFactory[LabeledNumberInteraction]() {
-    override protected val constructorFieldOrder = List("elementId", "numberLabel", "numberType", "defaultNumber")
+    override protected val constructorFieldOrder = List("elementId", "numberLabel", "numberType", "defaultNumber", "diff")
     override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: LabeledNumberInteraction): WorkbookElementSerializable = {
       baseElement
         .withElementAddedAs("numberLabel", infoElement.numberLabel)
         .withElementAdded("numberType", infoElement.numberType.toString)
         .withElementAdded("defaultNumber", infoElement.defaultValue)
+        .withElementAddedAs("diff", infoElement.diff)
     }
 
     override def finishDeserialization(element: WorkbookElementSerializable): LabeledNumberInteraction = {
       LabeledNumberInteraction(element.elementId,
         element.getElementAs[LanguageMapContentId]("numberLabel"),
         NumberType.valueOf(element.getOptionalElementAs("numberType", "IntegerLike")),
-        element.getOptionalElementAs("defaultNumber", "0")
+        element.getOptionalElementAs("defaultNumber", "0"),
+        element.getOptionalElementAs[BigDecimal]("diff", BigDecimal(1))
       )
     }
   }
