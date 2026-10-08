@@ -13,6 +13,7 @@ import it.evadid.util.logging.Logger
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.*
+import scala.util.control.NonFatal
 
 trait LanguageMapSourceFileBased[T <: AppLanguage](
                                                     fileDescription: FileDescription,
@@ -36,15 +37,16 @@ trait LanguageMapSourceFileBased[T <: AppLanguage](
   def loadAllTriples(logger: Logger): Future[ParsedTriples] = {
     logger.logInfo(s"Started loading all triples for ${logName}")
 
-    fileDescription.loadData().transform {
+    Try(fileDescription.loadData()).fold(Future.failed, identity).transform {
       case Success(loadedFile) =>
         logger.logInfo(s"Successfully loaded file for ${logName} ")
         if (loadedFile.fileDataAsUtf8String.trim.isEmpty) Success(Map[String, String]()) else Try {
           parseKeyValuePairs(logger, loadedFile)
         }
-      case Failure(e: Exception) =>
+      case Failure(NonFatal(e)) =>
         logger.logExceptionInfo(s"Could not fetch ${logName} because of IO Error: ${e.getMessage}", "A LanguageMapFileBasedSource does not need to exist ", e)
         Success(Map[String, String]())
+      case Failure(e) => Failure(e)
     }.transform {
       case Success(contentAsMap) =>
         logger.logInfo(s"Arriving at Parsing Key Value Paris for ${logName}: ${contentAsMap}")
@@ -55,18 +57,20 @@ trait LanguageMapSourceFileBased[T <: AppLanguage](
           case o: SpecialLanguage => Success(ParsedTriples(Set(), entries.map(_.asInstanceOf[LanguageMapEntry[SpecialLanguage]])))
           case _ => Failure(IllegalStateException(s"LanguageMapSourceFileBased:: associated language is neither Human or Special: ${associatedLanguage}"))
         }
-      case Failure(err) =>
+      case Failure(NonFatal(err)) =>
         logger.logExceptionWarn(s"[this should not happen #1 at ${logName}]: ${err.getMessage}", err)
         Success(ParsedTriples(Set(), Set()))
+      case Failure(err) => Failure(err)
     }.transform {
       case Success(triples) => {
         logger.logInfo(s"Successfully read ${triples.regularTriples.size} regular and ${triples.universalTriples.size} universal triples!")
         Success(triples)
       }
-      case Failure(err) => {
+      case Failure(NonFatal(err)) => {
         logger.logExceptionWarn(s"[this should not happen #2 at ${logName}]: ${err.getMessage}", err)
         Success(ParsedTriples(Set(), Set()))
       }
+      case Failure(err) => Failure(err)
     }
   }
 

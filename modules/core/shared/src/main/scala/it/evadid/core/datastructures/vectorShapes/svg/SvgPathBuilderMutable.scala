@@ -22,6 +22,7 @@ case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Poin
   def pathPoints: List[Point[T]] = cornerPoints.toList
 
   private val cornerPoints = mutable.ListBuffer[Point[T]](absStartPoint)
+  private var subpathStart = absStartPoint
   private val controlLines = mutable.ListBuffer[ControlLine[T]]()
 
   // --- Helpers ---------------------------------------------------------------
@@ -43,6 +44,7 @@ case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Poin
   }
 
   def moveToAbs(endPoint: Point[T]): this.type = {
+    subpathStart = endPoint
     cornerPoints += endPoint
     append(s" M ${pointStr(endPoint)}")
   }
@@ -55,7 +57,10 @@ case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Poin
   // --- Z / z (closepath) -----------------------------------------------------
 
   /** Z: close path */
-  def closePath(): this.type = append(" Z")
+  def closePath(): this.type = {
+    cornerPoints += subpathStart
+    append(" Z")
+  }
 
   // --- L / l (lineto) --------------------------------------------------------
 

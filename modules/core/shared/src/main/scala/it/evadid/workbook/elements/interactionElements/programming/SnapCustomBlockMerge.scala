@@ -234,7 +234,9 @@ object SnapCustomBlockMerge {
   /** Keep Snap's declared types when they exist; never persist an empty `<inputs>` list. */
   private def inputsXmlOf(existing: SnapCustomBlockRules.SnapCustomBlock, slotTypes: List[String]): String =
     val xml = childOuter(existing, "inputs", "")
-    if existing.slots.nonEmpty then xml else inputsXmlFor(slotTypes)
+    val declaredInputs = SnapXmlParser.child(existing.element.inner, "inputs")
+      .toList.flatMap(inputs => SnapXmlParser.children(inputs.inner).filter(_.tag == "input"))
+    if declaredInputs.size == slotTypes.size then xml else inputsXmlFor(slotTypes)
 
   private def childOuter(
       existing: SnapCustomBlockRules.SnapCustomBlock,

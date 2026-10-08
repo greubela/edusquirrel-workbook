@@ -18,12 +18,12 @@ abstract class ImmutableGraphListImpl[N, A, E <: Edge[N, A]](nodeList: List[N], 
 
     val addNodes = mutable.ListBuffer[N]()
     if (!nodeList.contains(start)) addNodes += start
-    if (!nodeList.contains(dest)) addNodes += dest
+    if (!nodeList.contains(dest) && dest != start) addNodes += dest
 
     val addEdges = mutable.ListBuffer[E]()
     addEdges += createEdge(start, dest, info)
 
-    if (!directed) addEdges += createEdge(dest, start, info)
+    if (!directed && start != dest) addEdges += createEdge(dest, start, info)
 
     createInstance(nodeList ++ addNodes, edgeList ++ addEdges)
 
@@ -38,13 +38,13 @@ abstract class ImmutableGraphListImpl[N, A, E <: Edge[N, A]](nodeList: List[N], 
     if (!nodeList.contains(oldNode)) {
       this
     } else {
-      val newNodes = nodeList.updated(nodeList.indexOf(oldNode), newNode)
-
-      val edgesWithStart = edgeList.filter(_.start == oldNode).map(e => createEdge(newNode, e.dest, e.content))
-      val edgesWithDest = edgeList.filter(_.dest == oldNode).map(e => createEdge(e.start, newNode, e.content))
-      val edgesRem = edgeList.filter(e => e.start != oldNode && e.dest != oldNode)
-
-      val newEdges = edgesWithStart ++ edgesWithDest ++ edgesRem
+      val newNodes = nodeList.updated(nodeList.indexOf(oldNode), newNode).distinct
+      val newEdges = edgeList.map { edge =>
+        if (edge.start == oldNode || edge.dest == oldNode)
+          createEdge(if (edge.start == oldNode) newNode else edge.start,
+            if (edge.dest == oldNode) newNode else edge.dest, edge.content)
+        else edge
+      }
 
       createInstance(newNodes, newEdges)
     }
@@ -62,7 +62,7 @@ abstract class ImmutableGraphListImpl[N, A, E <: Edge[N, A]](nodeList: List[N], 
   }
 
   def deleteEdgesBetween(n1: N, n2: N, directed: Boolean = false): this.type = {
-    val toRemove = allEdgesBetween(n1, n2)
+    val toRemove = if (directed) dirEdgesBetween(n1, n2) else allEdgesBetween(n1, n2)
     val edgesNew = edges.filter(!toRemove.contains(_))
     createInstance(nodes, edgesNew)
   }

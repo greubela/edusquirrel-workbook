@@ -1,6 +1,8 @@
 package it.evadid.core.datastructures.color
 
-case class HSBColor(hue: Double, saturation: Double, brightness: Double) extends AppColor {
+import upickle.default.*
+
+case class HSBColor(hue: Double, saturation: Double, brightness: Double) extends AppColor derives ReadWriter {
 
 
   override def toWebColor: WebColor = toRGB.toWebColor
@@ -9,7 +11,7 @@ case class HSBColor(hue: Double, saturation: Double, brightness: Double) extends
 
     assert(saturation >= 0 && saturation <= 1 && brightness >= 0 && brightness <= 1, "checking bounding condition of HSB")
 
-    if (saturation == 0) convert(brightness, brightness, brightness, 0)
+    if (saturation == 0) convert(brightness, brightness, brightness)
     else {
       val newHue = hue - Math.floor(hue);
 

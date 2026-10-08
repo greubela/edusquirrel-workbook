@@ -51,7 +51,7 @@ object WorkbookElementSerializable {
 
   */
 
-  val regularSerializer: ReadWriter[WorkbookElementSerializable] = macroRW
+  given regularSerializer: ReadWriter[WorkbookElementSerializable] = macroRW
 
   //val knownSubtypeSerializer: Map[String, Serializer[WorkbookElement]] = Map()
 }

@@ -1,6 +1,8 @@
 package it.evadid.core.datastructures.color
 
-case class RGBColor(red: Int, green: Int, blue: Int, alpha: Int = 255) extends AppColor {
+import upickle.default.*
+
+case class RGBColor(red: Int, green: Int, blue: Int, alpha: Int = 255) extends AppColor derives ReadWriter {
 
   def toRGB: RGBColor = this
 
@@ -36,7 +38,7 @@ case class RGBColor(red: Int, green: Int, blue: Int, alpha: Int = 255) extends A
     // HUE
     var h: Double = if (s == 0.0) 0.0;
     else {
-      val delta = (max - min) * 6;
+      val delta = (max - min) * 6.0;
       if (red == max) (green - blue) / delta;
       else if (green == max) 1.0 / 3 + (blue - red) / delta;
       else 2.0 / 3 + (red - green) / delta;
@@ -81,9 +83,9 @@ object RGBColor {
     val brightDiff = destColor.brightness - startColor.brightness
     val satDiff = destColor.saturation - startColor.saturation
 
-    val curHue: Float = (((startColor.hue + savePercent * hueDiff) + 5) % 1).asInstanceOf[Float]
-    val curSat: Float = (startColor.saturation + savePercent * satDiff).asInstanceOf[Float]
-    val curBri: Float = (startColor.brightness + savePercent * brightDiff).asInstanceOf[Float]
+    val curHue: Double = ((startColor.hue + savePercent * hueDiff) % 1 + 1) % 1
+    val curSat: Double = startColor.saturation + savePercent * satDiff
+    val curBri: Double = startColor.brightness + savePercent * brightDiff
 
     HSBColor(curHue, curSat, curBri)
     //val converted = java.awt.Color.getHSBColor(curHue, curSat, curBri)

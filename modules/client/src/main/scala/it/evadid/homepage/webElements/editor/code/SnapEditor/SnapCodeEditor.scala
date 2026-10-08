@@ -20,7 +20,7 @@ case class SnapCodeEditor(
 
 
   private def publishProgramFromSnapXml(xml: String): Unit = {
-    val next = ProgrammingStateSnapXml(xml)
+    val next = ProgrammingStateSnapXml(xml).removeBloatFromXml
     // Mark the retained project before publishing: the Var observers run as
     // part of this update and must not reload Snap's own serialized project.
     impl.acknowledgeProgramFromEditor(next)

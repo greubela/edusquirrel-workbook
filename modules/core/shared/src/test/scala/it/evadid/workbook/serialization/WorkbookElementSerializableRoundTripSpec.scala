@@ -11,10 +11,10 @@ import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.sortingExercise.{SortingInteraction, SortingItem}
 import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
-import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
+import it.evadid.workbook.jsonFactory.{WorkbookElementSerializable, WorkbookElementFactory}
+import upickle.default.*
 import munit.FunSuite
 
-/* Disabled while this suite is migrated from the previous WorkbookElementSerializable API.
 class WorkbookElementSerializableRoundTripSpec extends FunSuite {
   private def content(id: String) = LanguageMapContentId(id)
 
@@ -41,9 +41,9 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
 
   elements.foreach { element =>
     test(s"${element.elementId} round-trips through WorkbookElementFactory") {
-      val serialized = element.toSerializableType
-      val deserialized = WorkbookElementSerializable.serializer.deserialize(WorkbookElementSerializable.serializer.serialize(serialized))
-      val roundTripped = WorkbookElementSerializable.parseAll(deserialized :: element.childrenOfThisElement.map(_.toSerializableType)).head
+      val serialized = element.toSerialized
+      val deserialized = read(write(serialized)(using WorkbookElementSerializable.regularSerializer))(using WorkbookElementSerializable.regularSerializer)
+      val roundTripped = WorkbookElementFactory.parseAll(deserialized :: element.childrenOfThisElement.map(_.toSerialized)).head
       assertEquals(roundTripped, element)
     }
   }
@@ -52,17 +52,16 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     val input = TextInteraction("gpt-input")
     val gpt = GptInteractionElement("gpt", input, content("exercise/text"), List(content("hint/text")), List(content("criterion/text")))
 
-    assertEquals(WorkbookElementSerializable.parseAll(List(gpt.toSerializableType, input.toSerializableType)), List(gpt, input))
+    assertEquals(WorkbookElementFactory.parseAll(List(gpt.toSerialized, input.toSerialized)), List(gpt, input))
   }
 
   test("parsing fails when references form a cycle") {
     val cyclicElements = List("first", "second").map { id =>
       WorkbookElementSerializable(id, classOf[CodeTaskToggleInteraction].getSimpleName, Map())
-        .withReferenceAdded("reorder", it.evadid.workbook.jsonFactory.WorkbookElementReference(if (id == "first") "second" else "first", classOf[ReorderInteraction.ReorderCodeInteraction].getSimpleName))
+        .withElementAddedAs("reorder", it.evadid.workbook.jsonFactory.WorkbookElementReference(if (id == "first") "second" else "first", Some(classOf[ReorderInteraction.ReorderCodeInteraction].getSimpleName)))
     }
 
-    val error = intercept[it.evadid.distribution.command.SerializedException](WorkbookElementSerializable.parseAll(cyclicElements))
+    val error = intercept[it.evadid.distribution.command.SerializedException](WorkbookElementFactory.parseAll(cyclicElements))
     assert(error.getMessage.contains("cyclic dependency"))
   }
 }
-*/

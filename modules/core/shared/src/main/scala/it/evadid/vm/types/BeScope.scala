@@ -7,8 +7,7 @@ sealed trait BeScope derives ReadWriter{
 
   def parentScopes: List[BeScope]
 
-  // todo: implemented wrong. think about direction...
-  def isSubScope(other: BeScope): Boolean = other.parentScopes.contains(other) 
+  def isSubScope(other: BeScope): Boolean = parentScopes.contains(other)
 }
 
 object BeScope {
@@ -31,5 +30,3 @@ object BeScope {
 
 
 }
-
-

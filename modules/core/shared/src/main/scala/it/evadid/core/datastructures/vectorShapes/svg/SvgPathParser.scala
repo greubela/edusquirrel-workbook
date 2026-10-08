@@ -16,21 +16,27 @@ object SvgPathParser {
     val s0 = pathDString.trim
 
     def tokenize(): Option[List[Tok]] = {
-      // Normalize: separate command letters, replace commas with spaces
-      val normalized = {
-        val b = new StringBuilder(s0.length * 2)
-        var i = 0
-        while (i < s0.length) {
-          val ch = s0.charAt(i)
-          if (cmdLetters.indexOf(ch) >= 0) { b.append(' ').append(ch).append(' ') }
-          else if (ch == ',' || ch.isWhitespace) b.append(' ')
-          else b.append(ch)
-          i += 1
+      // SVG numbers may be adjacent when a sign or decimal point separates them.
+      // Splitting on whitespace alone loses valid inputs such as "M.5-.25".
+      val numberPattern = "[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?".r
+      val partsBuffer = mutable.ListBuffer.empty[String]
+      var offset = 0
+      while (offset < s0.length) {
+        val ch = s0.charAt(offset)
+        if (ch == ',' || ch.isWhitespace) offset += 1
+        else if (cmdLetters.indexOf(ch) >= 0) {
+          partsBuffer += ch.toString
+          offset += 1
+        } else {
+          numberPattern.findPrefixOf(s0.substring(offset)) match {
+            case Some(number) =>
+              partsBuffer += number
+              offset += number.length
+            case None => return None
+          }
         }
-        b.toString.trim
       }
-
-      val parts = if (normalized.isEmpty) Nil else normalized.split("\\s+").toList
+      val parts = partsBuffer.toList
 
       def arity(c: Char): Int = c.toLower match {
         case 'm' => 2
@@ -56,13 +62,14 @@ object SvgPathParser {
         if (idx + n > parts.length) None
         else {
           val slice = parts.slice(idx, idx + n).map(_.toDoubleOption)
-          if (slice.forall(_.isDefined)) Some(slice.flatten) else None
+          if (slice.forall(_.exists(_.isFinite))) Some(slice.flatten) else None
         }
       }
 
       while (valid && idx < parts.length) {
         val part = parts(idx)
         if (isCommandToken(part)) {
+          if (pendingArgs) valid = false
           currentCmd = part.head
           idx += 1
           val n = arity(currentCmd)
@@ -77,6 +84,9 @@ object SvgPathParser {
           val n = arity(currentCmd)
           readArgs(n) match {
             case Some(nums) =>
+              if (currentCmd.toLower == 'a' &&
+                (nums(0) < 0 || nums(1) < 0 ||
+                  !Set(0.0, 1.0).contains(nums(3)) || !Set(0.0, 1.0).contains(nums(4)))) valid = false
               buf += Tok(currentCmd, nums)
               idx += n
               pendingArgs = false

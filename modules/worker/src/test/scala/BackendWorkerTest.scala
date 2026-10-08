@@ -1,19 +1,16 @@
-import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.worker.WebWorkerBackendServer
 import munit.FunSuite
-/*
+import upickle.default.*
+
 class BackendWorkerTest extends FunSuite {
-
-  test("worker backend echoes params and succeeds") {
-    val command = ExecutionCommand("build", Map("target" -> "test"))
-
-    val result = WebWorkerBackendServer.onExecuteCommandReceived(command.toJson)
-
-    assertEquals(result.command.name, "build")
-    assertEquals(result.resultTry.get.data.get("target"), Some("test"))
-    assert(result.resultTry.isSuccess)
+  test("worker message codec preserves escaped and Unicode strings") {
+    val payload = Map("requestId" -> "id", "command" -> "line1\n\"Grüße\"")
+    assertEquals(read[Map[String, String]](write(payload)(using WebWorkerBackendServer.mapRW))(using WebWorkerBackendServer.mapRW), payload)
+  }
+  test("worker message codec handles empty payloads") {
+    assertEquals(read[Map[String, String]]("{}")(using WebWorkerBackendServer.mapRW), Map.empty[String, String])
+  }
+  test("worker message codec rejects non-string fields") {
+    intercept[Exception](read[Map[String, String]]("{\"requestId\":12}")(using WebWorkerBackendServer.mapRW))
   }
 }
-
-
- */

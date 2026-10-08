@@ -12,7 +12,7 @@ case class MessengerModel(messages: List[Message]) {
     messages.sortBy(_.timestamp)
 
   def addMessage(message: Message): MessengerModel = {
-    val newMessages: List[Message] = orderedMessages :+ message
+    val newMessages: List[Message] = (messages :+ message).sortBy(_.timestamp)
     MessengerModel(newMessages)
   }
 
@@ -23,6 +23,8 @@ case class MessengerModel(messages: List[Message]) {
 }
 
 object MessengerModel {
+
+  given upickle.default.ReadWriter[MessengerModel] = DefaultSerializer.rwMessageModel
 
   def fromJson(json: String): MessengerModel = DefaultSerializer.serializerMessageModelJson.deserialize(json)
 
@@ -48,7 +50,7 @@ object MessengerModel {
   def getScaffoldingInitMessage(pStudent: Person, exerciseText: String, studentAnswer: String, scaffoldingHints: List[String], curLanguage: HumanLanguage): MessengerModel = {
     val exerciseMsgs = List(prefaceExercise, Message(exerciseText, pTeacher))
     val answerMsgs =
-      if (studentAnswer.replace("\\s", "").trim.isEmpty) List()
+      if (studentAnswer.trim.isEmpty) List()
       else List(prefaceStudentAnswer, Message(studentAnswer, pStudent))
     val guidelines = List(prefaceGuidelines) ++ scaffoldingHints.map(str => Message("@assistant: " + str, pTeacher))
     val langHints = List(langHint(curLanguage))

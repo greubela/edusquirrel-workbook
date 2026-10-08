@@ -146,53 +146,59 @@ final class MarkdownToHtml {
   }
 
   private def parseInline(text: String): String = {
-    val protectedCodes = mutable.ArrayBuffer.empty[String]
-    val escapedSource = escapeHtml(applyBackslashEscapes(text))
-
-    val withProtectedCode = codeSpanRegex.replaceAllIn(escapedSource, m => {
-      val token = s"@@CODE${protectedCodes.length}@@"
-      protectedCodes += s"<code>${m.group(1)}</code>"
+    // Protect literal punctuation, code and generated tags from subsequent markup passes.
+    // Choose a prefix absent from the input so user text can never become a placeholder.
+    var prefix = "@@MDTOKEN"
+    while (text.contains(prefix)) prefix += "X"
+    val protectedHtml = mutable.ArrayBuffer.empty[String]
+    def protect(html: String): String = {
+      val token = s"$prefix${protectedHtml.length}@@"
+      protectedHtml += html
       token
-    })
+    }
 
-    val withImages = imageRegex.replaceAllIn(withProtectedCode, m => {
-      val alt = parseInline(m.group(1))
+    val source = new StringBuilder
+    var index = 0
+    while (index < text.length) {
+      val ch = text.charAt(index)
+      if (ch == '\\' && index + 1 < text.length && specialChars.contains(text.charAt(index + 1))) {
+        source.append(protect(escapeHtml(text.charAt(index + 1).toString)))
+        index += 2
+      } else if (ch == '`' && text.indexOf('`', index + 1) >= 0) {
+        val end = text.indexOf('`', index + 1)
+        source.append(protect(s"<code>${escapeHtml(text.substring(index + 1, end))}</code>"))
+        index = end + 1
+      } else {
+        source.append(ch)
+        index += 1
+      }
+    }
+
+    val withImages = imageRegex.replaceAllIn(source.toString(), m => {
+      val alt = escapeHtml(m.group(1))
       val src = escapeHtml(m.group(2))
       val titleAttr = Option(m.group(4)).map(v => s" title=\"${escapeHtml(v)}\"").getOrElse("")
-      s"<img src=\"$src\" alt=\"$alt\"$titleAttr />"
+      protect(s"<img src=\"$src\" alt=\"$alt\"$titleAttr />")
     })
 
     val withLinks = linkRegex.replaceAllIn(withImages, m => {
       val label = parseInline(m.group(1))
       val href = escapeHtml(m.group(2))
       val titleAttr = Option(m.group(4)).map(v => s" title=\"${escapeHtml(v)}\"").getOrElse("")
-      s"<a href=\"$href\"$titleAttr>$label</a>"
+      protect(s"<a href=\"$href\"$titleAttr>$label</a>")
     })
 
-    val withStrongEmphasis = strongEmRegex.replaceAllIn(withLinks, m => s"<strong><em>${m.group(2)}</em></strong>")
-    val withStrong = strongRegex.replaceAllIn(withStrongEmphasis, m => s"<strong>${m.group(2)}</strong>")
-    val withStarEm = emAsteriskRegex.replaceAllIn(withStrong, m => s"<em>${m.group(1)}</em>")
-    val withEm = emUnderscoreRegex.replaceAllIn(withStarEm, m => s"<em>${m.group(1)}</em>")
+    def literalReplacement(value: String): String = java.util.regex.Matcher.quoteReplacement(value)
+    val escapedSource = escapeHtml(withLinks)
+    val withStrongEmphasis = strongEmRegex.replaceAllIn(escapedSource, m => literalReplacement(s"<strong><em>${m.group(2)}</em></strong>"))
+    val withStrong = strongRegex.replaceAllIn(withStrongEmphasis, m => literalReplacement(s"<strong>${m.group(2)}</strong>"))
+    val withStarEm = emAsteriskRegex.replaceAllIn(withStrong, m => literalReplacement(s"<em>${m.group(1)}</em>"))
+    val withEm = emUnderscoreRegex.replaceAllIn(withStarEm, m => literalReplacement(s"<em>${m.group(1)}</em>"))
 
-    protectedCodes.indices.foldLeft(withEm) { (acc, i) =>
-      acc.replace(s"@@CODE$i@@", protectedCodes(i))
+    // Tags may contain earlier placeholders, for example escaped punctuation in link labels.
+    protectedHtml.indices.reverse.foldLeft(withEm) { (acc, i) =>
+      acc.replace(s"$prefix$i@@", protectedHtml(i))
     }
-  }
-
-  private def applyBackslashEscapes(text: String): String = {
-    val out = new StringBuilder
-    var i = 0
-    while (i < text.length) {
-      val ch = text.charAt(i)
-      if (ch == '\\' && i + 1 < text.length && specialChars.contains(text.charAt(i + 1))) {
-        out.append(text.charAt(i + 1))
-        i += 2
-      } else {
-        out.append(ch)
-        i += 1
-      }
-    }
-    out.toString()
   }
 
   private def escapeHtml(raw: String): String =
@@ -215,7 +221,6 @@ final class MarkdownToHtml {
   private val unorderedListRegex: Regex = "^[-*+]\\s+(.+)$".r
   private val orderedListRegex: Regex = "^\\d+\\.\\s+(.+)$".r
 
-  private val codeSpanRegex: Regex = "`([^`]+)`".r
   private val imageRegex: Regex = "!\\[([^\\]]*)\\]\\(([^\\s\\)]+)(\\s+\"([^\"]+)\")?\\)".r
   private val linkRegex: Regex = "\\[([^\\]]+)\\]\\(([^\\s\\)]+)(\\s+\"([^\"]+)\")?\\)".r
   private val strongEmRegex: Regex = "(\\*\\*\\*|___)(.+?)\\1".r

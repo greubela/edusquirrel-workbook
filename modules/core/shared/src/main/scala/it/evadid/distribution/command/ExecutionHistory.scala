@@ -1,5 +1,8 @@
 package it.evadid.distribution.command
 
+import upickle.default.*
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
+
 import java.time.LocalDateTime
 
 case class ExecutionHistory(
@@ -7,7 +10,7 @@ case class ExecutionHistory(
                              timestampCommandReceived: LocalDateTime,
                              timestampExecutionStarted: LocalDateTime,
                              timestampExecutionFinished: LocalDateTime,
-                           ) {
+                           ) derives ReadWriter {
 
   def withFixedTime(timeRequested: LocalDateTime, timeReceived: LocalDateTime): ExecutionHistory = this.copy(
     timestampCommandRequested = timeRequested,

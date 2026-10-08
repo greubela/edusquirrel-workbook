@@ -1,4 +1,3 @@
-/* Disabled: this legacy test targets APIs that no longer exist.
 package it.evadid.core.datastructures.language
 
 import it.evadid.core.datastructures.language.AppLanguage.*
@@ -6,12 +5,11 @@ import munit.FunSuite
 
 class LanguageMapIntegrationTest extends FunSuite {
   test("combined and translation maps integrate") {
-    val first = LanguageMap.mapBasedLanguageMap(Map(English -> "A", German -> "B"))
-    val second = LanguageMap.mapBasedLanguageMap(Map(English -> "1", German -> "2"))
+    val first = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(English -> "A", German -> "B"))
+    val second = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(English -> "1", German -> "2"))
     val combined = LanguageMap.concatLanguageMaps(first, second)
     assertEquals(combined.getInLanguage(English), "A1")
-    assertEquals(TranslationMaps.languageMapImageLoading.getInLanguage(English), "[image loading]")
+    assertEquals(combined.getInLanguage(German), "B2")
+    assertEquals(upickle.default.read[LanguageMap[HumanLanguage]](upickle.default.write(combined)), combined)
   }
 }
-
-*/

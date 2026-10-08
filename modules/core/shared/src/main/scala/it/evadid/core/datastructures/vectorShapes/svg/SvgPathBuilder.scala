@@ -15,9 +15,9 @@ trait SvgPathBuilder[T: Fractional] {
 
   def pathPoints: List[Point[T]]
 
-  lazy val bounds: Bounds[T] = Bounds.thatContainsAll(pathPoints)
+  def bounds: Bounds[T] = Bounds.thatContainsAll(pathPoints)
 
-  lazy val requiresDimension: Dimension[T] = bounds.dimension
+  def requiresDimension: Dimension[T] = bounds.dimension
 
   // M / m
   def moveToAbs(endPoint: Point[T]): SvgPathBuilder[T]

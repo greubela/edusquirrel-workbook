@@ -17,11 +17,14 @@ object FunctionalUtility {
         throw new IllegalStateException("Cyclic dependency in tree calculation!\n    " + startedCalc.mkString("    ", "    \n", "\n") + "but now calling: \n    " + input)
       } else {
         startedCalc.push(input)
-        val result = functionWithDependencies(input, element => getCachedOrCalculate(element))
-        cachedResults.put(input, result)
-        val popped = startedCalc.pop()
-        assert(popped == input, "wierd behavior: popped a different element than the calculation pushed?")
-        result
+        try {
+          val result = functionWithDependencies(input, element => getCachedOrCalculate(element))
+          cachedResults.put(input, result)
+          result
+        } finally {
+          val popped = startedCalc.pop()
+          assert(popped == input, "popped a different element than the calculation pushed")
+        }
       }
     }
 

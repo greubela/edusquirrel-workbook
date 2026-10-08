@@ -31,6 +31,7 @@ object ReorderInteraction {
       override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: ReorderCodeInteraction): WorkbookElementSerializable = {
         baseElement
           .withElementAddedAs("hints", infoElement.hints)
+          .withElementAddedAs("orderConstraints", infoElement.orderConstraints)
           .withElementAddedAs[AppLanguage]("programmingLanguage", infoElement.programmingLanguage.asInstanceOf[AppLanguage])
           .withElementAdded("seed", infoElement.seed.toString)
           .withElementsAdded("stringLines", infoElement.lines.toSeq)
@@ -43,7 +44,8 @@ object ReorderInteraction {
           element.getElementsAs("stringLines"),
           element.getElementAs[AppLanguage]("programmingLanguage").asInstanceOf[ProgrammingLanguage],
           element.getOptionalElementAs("seed", "0").toLongOption.getOrElse(0),
-          element.getElementsAs[LanguageMapContentId]("hints")
+          element.getElementsAs[LanguageMapContentId]("hints"),
+          element.getOptionalElementAs[List[(Int, Int)]]("orderConstraints", Nil)
         )
       }
     }

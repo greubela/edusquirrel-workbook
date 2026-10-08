@@ -67,7 +67,7 @@ object SnapXmlParser {
       .replace("&amp;", "&")
 
   /** Parse the element opening at `pos`; `None` for comments, declarations and malformed input. */
-  private def parseElementAt(xml: String, pos: Int): Option[Element] = {
+  private[programming] def parseElementAt(xml: String, pos: Int): Option[Element] = {
     if pos < 0 || pos >= xml.length || xml.charAt(pos) != '<' then return None
     val nameStart = pos + 1
     if nameStart >= xml.length then return None
