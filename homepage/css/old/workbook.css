@@ -1,4 +1,5 @@
-@import url("./colors.css");
+@import url("../generic/colors.css");
+@import url("../generic/dimensions.css");
 
 /* Color policy: do not use hardcoded color literals in this file.
    Add new semantic tokens in colors.css and reference them via var(--...). */
