@@ -1,13 +1,15 @@
-# Email Simulator
+# Email simulator
 
-The compilation checkpoint is commit `c9336b32`, based on main `5c77c7c3`. It repairs shared/browser imports, persisted-state serializers, Laminar bindings and invalid tests without adding dependencies.
+For the shared model/renderer/editor responsibilities and dependency direction, see [Interaction architecture](workbook-interaction-architecture.md).
 
-## Completed implementation
+The digital mailbox is available at `homepage/phishingWorkbook/index.html`. The Mail Simulator section of `homepage/workbookDesign/index.html` showcases the same messages with composing enabled.
 
-- `MailInteraction` provides the original phishing sorting exercise. Compose, reply and forward are disabled, matching the Python original.
+## Interactions
+
+- `MailInteraction` provides the original phishing sorting exercise. Its default configuration disables compose, reply and forward, matching the Python original; `allowCompose = true` enables local writing in the test showcase.
 - `MailEditor` uses the same fullscreen mailbox and enables local compose, reply and forward practice. Sending only appends a plain-text message to the local Sent folder; there is no mail transport.
 - Both interactions have workbook factories and HTML renderer registrations, a preview line, an Open Editor button and bound persistent state.
-- The fullscreen editor contains the toolbar, five folders, independently scrolling message list and message pane, and a link/status footer. Styles live in `homepage/css/workbook/email-simulator.css`, using shared color and dimension tokens. Duplicate Scala CSS definitions and the unused generic editor config were removed.
+- The fullscreen editor contains the toolbar, five folders, independently scrolling message list and message pane, and a link/status footer. Styles live in `homepage/css/workbook/email-simulator.css`, linked explicitly by every workbook entry page and using shared color and dimension tokens. Duplicate Scala CSS definitions and the unused generic editor config were removed.
 - `homepage/phishingWorkbook/index.html` and the landing page link expose the digital mailbox exercise and separate local writing practice. English/German labels and instructions are registered through the existing language-map loader. The original messages remain German teaching examples.
 - The test workbook also has a Mail Simulator section with the original 15 messages and composing enabled, showcasing sorting, reading, simulated links/attachments and local writing in one interaction.
 
@@ -35,10 +37,10 @@ Late-created fullscreen labels now initialize from the already loaded language m
 
 No dependencies were added. The simulator page loads only the app bundle and shared workbook CSS, without CodeMirror, TurtleStitch, JSXGraph, CDN scripts or the missing legacy dropdown stylesheet. Unit tests use existing munit/upickle/Airstream infrastructure; browser verification uses the already installed Playwright development dependency and Chromium.
 
-- Compilation checkpoint: compile main/test sources for core JVM, core JS, client, server and worker; four repaired serialization tests.
 - `InboxStateSpec` and `MailSimulatorSpec`: transitions between every pair of folders, membership/index consistency, idempotence, stable ordering, read state, invalid inputs, final-placement grading, composing, reply/forward, serialization and legacy defaults.
 - `MailEditorStateSpec` and renderer serialization suites: selected message/navigation, stale selection after synchronization, persistent state, compose gating, validation/cancellation/sending, original data, image paths and workbook serialization.
 - `tools/dev/mail-simulator.test.mjs`: actual fullscreen interaction, disabled original compose controls, all original message bodies, simulated link/attachment clicks, local compose/reply/forward, browser reload persistence, grading, desktop/mobile layout and hostile restored HTML. Run after `sbt buildJS` with `node --test tools/dev/mail-simulator.test.mjs`; requests are served locally or aborted, so no backend/account is required.
+- `tools/dev/workbook-stylesheets.test.mjs`: every workbook entry page links the dedicated simulator CSS exactly once, all local stylesheet links/imports resolve, authored CSS is reachable from a homepage entry page, and mail components contain no inline Laminar styling.
 - Full regression suites: `coreJVM/test`, `coreJS/test`, `client/test`, `server/test`, `worker/test`.
 
 The digital page implements the mailbox exercise and local writing practice. It does not yet migrate all explanatory chapters of the original PDF workbook.

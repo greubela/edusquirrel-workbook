@@ -1,5 +1,7 @@
 # Digitales Arbeitsblatt PRIMM
 
+This is the bundled teaching project used by EduSquirrel. The cloning and submodule commands below apply to its upstream repository; this directory is already included in the EduSquirrel checkout.
+
 This repository contains the project "Digitales Arbeitsblatt PRIMM", which combines modern web technologies such as CSS, JavaScript, and HTML for creating digital worksheets. The project is designed to facilitate interactive and engaging learning experiences as part of my masters thesis.
 
 ## Cloning the Repository

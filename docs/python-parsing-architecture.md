@@ -10,14 +10,16 @@ Both are configured through `PythonFrontendConfig`, which centralizes defaults s
 
 ## Main Data Flow
 
-1. `PythonNormalizer.runPipeline(source)`
-2. `PythonNormalizationPipelineRunner.run(source)`
+1. `PythonParser.parsePythonWithDetails(source)` accepts raw source and invokes its injected normalizer.
+2. `PythonNormalizer.normalizePython(source)` uses `runPipeline(source)` and `PythonNormalizationPipelineRunner.run(source)`.
 3. Normalization stages:
    - normalize line endings / detab
    - extract raw lines
    - build statement tree
    - render normalized output
-4. `PythonParser.parsePythonWithDetails(normalized)` converts normalized lines to VM code structures.
+4. The parser converts the normalized output into VM expressions and returns definitions/symbol information in `CodeParsingResult`. Callers do not need to normalize the source a second time.
+
+Source is under [it/evadid/vm/parsing/python](../modules/core/shared/src/main/scala/it/evadid/vm/parsing/python/); typed normalization stages live in its `normalization/` subdirectory. Tests run on both core JVM and Scala.js, including `PythonNormalizationStagesSpec` and `PythonParserSpec`.
 
 ## Key Modules
 

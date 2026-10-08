@@ -1,5 +1,7 @@
 # Implementierungsstand
 
+Historischer Implementierungsstand vom 2026-06-13, keine Beschreibung der aktuellen Kampagne. Fortschrittsspeicherung und weitere Missionsbereiche sind inzwischen vorhanden; siehe [aktuelles README](../README.md).
+
 Stand: 2026-06-13
 
 Dieses Dokument beschreibt den aktuellen App-Stand nach dem spielbaren Prototypen, den UI-Verbesserungen und der Aufteilung des App-Codes in Daten, Komponenten und Logik. Es ist als Einstiegspunkt fuer Teammitglieder gedacht, die nach `git pull` direkt weiterarbeiten moechten.
