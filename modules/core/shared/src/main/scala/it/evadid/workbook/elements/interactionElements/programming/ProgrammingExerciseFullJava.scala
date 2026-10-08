@@ -8,17 +8,18 @@ import upickle.default.*
 
 case class ProgrammingExerciseFullJava(
     override val elementId: String,
-    testSuite: Option[BeTestSuite] = None
+    testSuite: Option[BeTestSuite] = None,
+    turtleTask: Option[JavaTurtleTask] = None
 ) extends WorkbookInteractionElement[ProgrammingState] {
   override val associatedFactory = ProgrammingExerciseFullJava.factory
 
   override val defaultValue: ProgrammingState =
     ProgrammingStateJavaString(
-      """public class Main {
+      turtleTask.map(_.startingProgram).getOrElse("""public class Main {
         |  public static void main(String[] args) {
         |  }
         |}
-        |""".stripMargin
+        |""".stripMargin)
     )
 
   override val serializerInteractionContent: Serializer[ProgrammingState] = ProgrammingExercise.StateSerializer
@@ -37,11 +38,13 @@ object ProgrammingExerciseFullJava {
       ): ProgrammingExerciseFullJava =
         ProgrammingExerciseFullJava(
           element.elementId,
-          element.getOptionalElementAs[Option[BeTestSuite]]("testSuite", None)
+          element.getOptionalElementAs[Option[BeTestSuite]]("testSuite", None),
+          element.getOptionalElementAs[Option[JavaTurtleTask]]("turtleTask", None)
         )
 
       override def toSerializableElement(element: ProgrammingExerciseFullJava): WorkbookElementSerializable =
-        toFactoryBase(element).withElementAddedAs("testSuite", element.testSuite)
+        val base = toFactoryBase(element).withElementAddedAs("testSuite", element.testSuite)
+        element.turtleTask.fold(base)(task => base.withElementAddedAs("turtleTask", Some(task)))
 
       lazy override val writerJsonRegularRefBased: Writer[ProgrammingExerciseFullJava] = macroRW
     }
