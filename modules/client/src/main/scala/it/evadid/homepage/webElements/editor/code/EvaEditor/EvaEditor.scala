@@ -9,7 +9,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCo
 import it.evadid.homepage.webElements.code.JavaFunctionBasedEditor
 import it.evadid.homepage.webElements.editor.code.{CodeMirrorEditor, JavaEditorSession, JavaTurtleExecutionPanel}
 import it.evadid.vm.parsing.java.turtle.JavaTurtleResolution
-import it.evadid.vm.simulation.java.{JavaTurtleEvaluation, JavaTurtleRuntime}
+import it.evadid.vm.simulation.java.JavaTurtleRuntime
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.PyodideTurtleCommandRunner
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
@@ -43,6 +43,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
   def onStateEdited: ProgrammingState => Unit = _ => ()
   def javaRunnerFactory: () => JavaEditorSession.Runner = JavaEditorSession.defaultRunner
   protected def javaTarget: Option[TurtleGraphic] = None
+  protected def javaTask: Option[JavaTurtleTask] = None
 
   import EvaEditor.Tab
 
@@ -105,6 +106,31 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
     Try(source.isClassProgram) match
       case Success(false) => return deriveCommands(source)
       case _ => ()
+    withJavaRun(source)(_.run().map(commandsFrom))
+  }
+
+  def checkJavaTask(task: JavaTurtleTask): Future[Vector[List[TurtleCommand[Double]]]] = {
+    if mounted && (activeTab.now() != Tab.Java || !viewAvailable.now()) then
+      return Future.failed(IllegalStateException("Open the Java editor to check this task."))
+    val current = if mounted then javaState.now() else state.now()
+    current match {
+      case source: ProgrammingStateJavaString => withJavaRun(source)(_.checkTask(task).map(_.map(commandsFrom)))
+      case _ => Future.failed(IllegalStateException("Open the Java editor to check this task."))
+    }
+  }
+
+  private def commandsFrom(execution: JavaTurtleRuntime.Execution): List[TurtleCommand[Double]] = {
+    JavaEditorSession.requireCompleted(execution)
+    execution.commands.toList.map { command =>
+      val name = command.command match
+        case JavaTurtleResolution.TurtleCommand.Forward => "forward"
+        case JavaTurtleResolution.TurtleCommand.TurnRight => "right"
+      TurtleCommand[Double](name, List(command.value.toDouble))
+    }
+  }
+
+  private def withJavaRun[A](source: ProgrammingStateJavaString)(execute: JavaEditorSession => Future[A]): Future[A] = {
+    if runningJava.nonEmpty then return Future.failed(IllegalStateException("Java execution is already running."))
     val session = javaSession.getOrElse {
       val created = new JavaEditorSession(source, javaRunnerFactory)
       javaSession = Some(created)
@@ -117,22 +143,9 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
     state.signal.changes.foreach { next =>
       if next != original then releaseJavaSession()
     }(using pending.owner)
-    Try(session.run()).fold(Future.failed, identity).map { execution =>
+    Try(execute(session)).fold(Future.failed, identity).map { result =>
       if pending.invalidated then throw CancellationException("Java execution cancelled.")
-      execution.status match {
-        case JavaTurtleRuntime.Status.Completed => execution.commands.toList.map { command =>
-          val name = command.command match
-            case JavaTurtleResolution.TurtleCommand.Forward => "forward"
-            case JavaTurtleResolution.TurtleCommand.TurnRight => "right"
-          TurtleCommand[Double](name, List(command.value.toDouble))
-        }
-        case JavaTurtleRuntime.Status.Cancelled => throw CancellationException("Java execution cancelled.")
-        case JavaTurtleRuntime.Status.LimitExceeded =>
-          throw IllegalStateException("Your program reached its execution limit. Check its loops or recursion.")
-        case JavaTurtleRuntime.Status.Failed(JavaTurtleRuntime.Failure.Evaluation(JavaTurtleEvaluation.Failure.DivisionByZero)) =>
-          throw IllegalStateException("Your program tried to divide by zero.")
-        case JavaTurtleRuntime.Status.Failed(_) => throw IllegalStateException("Your Java program could not finish.")
-      }
+      result
     }.andThen { case _ =>
       pending.owner.killSubscriptions()
       if runningJava.exists(_ eq pending) then runningJava = None
@@ -198,7 +211,8 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
   private lazy val javaEditor = Option.when(enabledTabs.contains(Tab.Java))(
     new JavaFunctionBasedEditor(javaState, onStateEdited = next => publish(Tab.Java, next), reference = Some(() => {
       val panel = javaExecutionPanel.getOrElse {
-        val created = new JavaTurtleExecutionPanel(state, () => getCurrentTurtleCommands(), () => stopJavaExecution(), javaTarget)
+        val created = new JavaTurtleExecutionPanel(state, () => getCurrentTurtleCommands(), () => stopJavaExecution(), javaTarget,
+          javaTask.map(task => task -> (() => checkJavaTask(task))))
         javaExecutionPanel = Some(created)
         created
       }

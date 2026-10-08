@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.{TurtleDrawingComparison, TurtlePathBuilder}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingState, TurtleGraphic}
+import it.evadid.workbook.elements.interactionElements.programming.{JavaTurtleCase, JavaTurtleTask, ProgrammingState, TurtleGraphic}
 
 import java.util.concurrent.CancellationException
 import scala.concurrent.Future
@@ -18,6 +18,7 @@ object JavaTurtleExecutionPanel {
   enum Status {
     case Idle, Running, Stopped
     case Ready(commands: List[TurtleCommand[Double]], matches: Option[Boolean])
+    case Assessed(drawings: Vector[List[TurtleCommand[Double]]], matches: Vector[Boolean])
     case Failed(message: String)
   }
 
@@ -60,7 +61,8 @@ final class JavaTurtleExecutionPanel(
     source: Var[ProgrammingState],
     execute: () => Future[List[TurtleCommand[Double]]],
     cancel: () => Unit,
-    target: Option[TurtleGraphic] = None
+    target: Option[TurtleGraphic] = None,
+    assessment: Option[(JavaTurtleTask, () => Future[Vector[List[TurtleCommand[Double]]]])] = None
 ) extends HtmlAppElement {
   import JavaTurtleExecutionPanel.*
 
@@ -91,7 +93,17 @@ final class JavaTurtleExecutionPanel(
     if running then cancel()
   }
 
-  private[code] def run(): Unit = {
+  private[code] def run(): Unit = start(execute)(commands => Status.Ready(commands, target.map(compare(commands, _))))
+
+  private[code] def checkTask(): Unit = assessment.foreach { (task, executeCases) =>
+    start(executeCases) { drawings =>
+      if drawings.size != task.cases.size || drawings.isEmpty then
+        throw IllegalStateException("The task could not be checked completely.")
+      Status.Assessed(drawings, drawings.zip(task.cases).map { (commands, example) => compare(commands, example.expectedShape) })
+    }
+  }
+
+  private def start[A](execute: () => Future[A])(completed: A => Status): Unit = {
     if status.now() == Status.Running then return
     revision += 1
     val requested = revision
@@ -100,9 +112,9 @@ final class JavaTurtleExecutionPanel(
     if requested != revision || status.now() != Status.Running then return
     Try(execute()).fold(Future.failed, identity).onComplete {
       case _ if requested != revision || original != source.now() => ()
-      case Success(commands) =>
-        Try(target.map(compare(commands, _))) match {
-          case Success(matches) => status.set(Status.Ready(commands, matches))
+      case Success(result) =>
+        Try(completed(result)) match {
+          case Success(next) => status.set(next)
           case Failure(error) => status.set(Status.Failed(Option(error.getMessage).getOrElse("The drawing could not be compared.")))
         }
       case Failure(_: CancellationException) => status.set(Status.Stopped)
@@ -137,11 +149,22 @@ final class JavaTurtleExecutionPanel(
     onMountCallback(_ => activate()),
     onUnmountCallback(_ => deactivate()),
     h3("Drawing"),
+    assessment.fold[Modifier[HtmlElement]](emptyMod) { (task, _) =>
+      def call(example: JavaTurtleCase): String =
+        s"${task.methodName}(${example.arguments.mkString(", ")})"
+      val emptyTargets = task.cases.filter(_.expectedShape.toTurtleProgram.isEmpty).map(call)
+      p(s"Use the parameters of ${task.methodName} to draw the requested shape. " +
+        s"Check task calls ${task.cases.map(call).mkString(", ")}. " +
+        (if emptyTargets.nonEmpty then s"${emptyTargets.mkString(", ")} should draw no lines." else ""))
+    },
     div(cls := "java-turtle-execution__actions",
       button(typ := "button", cls := "java-function-editor__button java-function-editor__button--primary",
         disabled <-- status.signal.map(_ == Status.Running), "Run", onClick --> (_ => run())),
       button(typ := "button", cls := "java-function-editor__button java-function-editor__button--secondary",
-        disabled <-- status.signal.map(_ != Status.Running), "Stop", onClick --> (_ => stop()))
+        disabled <-- status.signal.map(_ != Status.Running), "Stop", onClick --> (_ => stop())),
+      assessment.fold[Modifier[HtmlElement]](emptyMod)(_ => button(typ := "button",
+        cls := "java-function-editor__button java-function-editor__button--primary",
+        disabled <-- status.signal.map(_ == Status.Running), "Check task", onClick --> (_ => checkTask())))
     ),
     p(cls := "java-turtle-execution__status", role := "status", aria.live := "polite",
       child.text <-- status.signal.map {
@@ -151,10 +174,20 @@ final class JavaTurtleExecutionPanel(
         case Status.Ready(_, Some(true)) => "Your drawing matches the target. Nicely done!"
         case Status.Ready(_, Some(false)) => "Your drawing doesn't match the target yet. Check the distances and turns."
         case Status.Ready(_, None) => "Here's your drawing."
+        case Status.Assessed(_, matches) if matches.forall(identity) => "Your function draws the requested shapes. Nicely done!"
+        case Status.Assessed(_, _) => "Your function doesn't draw every requested shape yet. Check how you use its parameters."
         case Status.Failed(_) => ""
       }),
     child.maybe <-- status.signal.map {
       case Status.Failed(message) => Some(p(cls := "java-turtle-execution__error", role := "alert", message))
+      case _ => None
+    },
+    child.maybe <-- status.signal.map {
+      case Status.Assessed(_, matches) => assessment.map { (task, _) =>
+        ul(cls := "java-turtle-execution__cases", task.cases.zip(matches).map { (example, matched) =>
+          li(s"${task.methodName}(${example.arguments.mkString(", ")}): ${if matched then "Matches" else "Not yet"}")
+        })
+      }
       case _ => None
     },
     target.fold[Modifier[HtmlElement]](emptyMod)(graphic => figure(
@@ -162,11 +195,13 @@ final class JavaTurtleExecutionPanel(
       child <-- status.signal.map { state =>
         val actual = state match
           case Status.Ready(commands, _) => commands
+          case Status.Assessed(drawings, _) => drawings.head
           case _ => Nil
         picture(graphic.toTurtleProgram.toList, actual)
       })),
     child.maybe <-- status.signal.map {
       case Status.Ready(commands, _) => Some(figure(cls := "java-turtle-execution__figure", figCaption("Your drawing"), picture(commands, commands)))
+      case Status.Assessed(drawings, _) => Some(figure(cls := "java-turtle-execution__figure", figCaption("Your first drawing"), picture(drawings.head, drawings.head)))
       case _ => None
     }
   )

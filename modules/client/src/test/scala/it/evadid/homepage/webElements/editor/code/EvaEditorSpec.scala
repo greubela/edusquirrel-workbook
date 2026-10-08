@@ -216,6 +216,149 @@ class EvaEditorSpec extends FunSuite {
     }
   }
 
+  private class MethodRunner extends JavaEditorSession.Runner {
+    case class Call(program: P.Program, method: R.MethodId, arguments: Vector[E.Value], limits: T.Limits)
+    var calls = Vector.empty[Call]
+    var mainCalls = 0
+    var cancels = 0
+    var closes = 0
+    var onInvoke: () => Unit = () => ()
+    var pending = Option.empty[Promise[T.Execution]]
+    override def run(program: P.Program, limits: T.Limits): Future[T.Execution] = {
+      mainCalls += 1
+      Future.successful(T.runVm(program, limits))
+    }
+    override def invoke(program: P.Program, method: R.MethodId, arguments: Vector[E.Value], limits: T.Limits): Future[T.Execution] = {
+      calls :+= Call(program, method, arguments, limits)
+      onInvoke()
+      pending.fold(Future.successful(T.invokeVm(program, method, arguments, limits)))(_.future)
+    }
+    override def cancel(): Boolean = { cancels += 1; true }
+    override def close(): Unit = { closes += 1 }
+  }
+
+  private def squareSource(body: String, main: String = "square(25);"): ProgrammingStateJavaString =
+    ProgrammingStateJavaString(s"\r\npublic class Drawing {\n  static void square(int side) { $body }\n  public static void main(String[] args) { $main }\n}\t ")
+
+  private val squareBody = "for (int i = 0; i < 4; i += 1) { Turtle.forward(side); Turtle.turnRight(90); }"
+
+  test("Java task invokes parameter values independently of main and compiles one shared program") {
+    val source = squareSource(squareBody, "while (true) {}")
+    val saved = ProgrammingExercise.StateSerializer.serialize(source)
+    val runner = new MethodRunner
+    val editor = EvaEditorPlain(Var[ProgrammingState](source), testingConfig, javaRunnerFactory = () => runner)
+    editor.checkJavaTask(JavaTurtleTask.squarePilot).map { drawings =>
+      assertEquals(runner.mainCalls, 0)
+      assertEquals(runner.calls.map(_.arguments), Vector(Vector(E.Value.IntValue(25)), Vector(E.Value.IntValue(40)), Vector(E.Value.IntValue(0))))
+      assert(runner.calls.forall(_.program eq runner.calls.head.program))
+      assert(runner.calls.forall(_.program.root.methods.find(_.binding.id == runner.calls.head.method).exists(_.binding.originalName == "square")))
+      assertEquals(drawings.size, 3)
+      assert(drawings.zip(JavaTurtleTask.squarePilot.cases).forall { (drawing, example) => JavaTurtleExecutionPanel.compare(drawing, example.expectedShape) })
+      assertEquals(ProgrammingExercise.StateSerializer.serialize(editor.currentState()), saved)
+      editor.onFullscreenClose()
+    }
+  }
+
+  test("Java task rejects hardcoded side lengths and wrong zero behavior geometrically") {
+    val bodies = List(squareBody.replace("forward(side)", "forward(25)"),
+      "if (side == 0) { Turtle.forward(1); } else { " + squareBody + " }")
+    Future.sequence(bodies.map { body =>
+      val runner = new MethodRunner
+      val editor = EvaEditorPlain(Var[ProgrammingState](squareSource(body)), testingConfig, javaRunnerFactory = () => runner)
+      editor.checkJavaTask(JavaTurtleTask.squarePilot).map { drawings =>
+        val matches = drawings.zip(JavaTurtleTask.squarePilot.cases).map { (drawing, example) => JavaTurtleExecutionPanel.compare(drawing, example.expectedShape) }
+        assert(matches.head)
+        assert(!matches.forall(identity))
+        assert(!matches.last)
+        editor.onFullscreenClose()
+      }
+    }).map(_ => ())
+  }
+
+  test("Java task detects missing methods, signature mismatches and incomplete definitions before invocation") {
+    val sources = List(squareSource(squareBody).copy(code = squareSource(squareBody).code.replace("square", "other")),
+      squareSource(squareBody).copy(code = squareSource(squareBody).code.replace("int side", "boolean side").replace("forward(side)", "forward(25)").replace("square(25)", "square(true)")))
+    Future.sequence(sources.map { source =>
+      val runner = new MethodRunner
+      val editor = EvaEditorPlain(Var[ProgrammingState](source), testingConfig, javaRunnerFactory = () => runner)
+      editor.checkJavaTask(JavaTurtleTask.squarePilot).failed.map { _ =>
+        assertEquals(runner.calls.size, 0)
+        assertEquals(runner.mainCalls, 0)
+        editor.onFullscreenClose()
+      }
+    }).flatMap { _ =>
+      val runner = new MethodRunner
+      val session = new JavaEditorSession(squareSource(squareBody), () => runner)
+      session.checkTask(JavaTurtleTask.squarePilot.copy(cases = Nil)).failed.map { _ =>
+        assertEquals(runner.calls.size, 0)
+        session.release()
+      }
+    }
+  }
+
+  test("Java task stops after runtime failure without returning a partial successful assessment") {
+    val runner = new MethodRunner
+    val source = squareSource("Turtle.forward(side); int zero = 0; int value = 1 / zero;")
+    val editor = EvaEditorPlain(Var[ProgrammingState](source), testingConfig, javaRunnerFactory = () => runner)
+    editor.checkJavaTask(JavaTurtleTask.squarePilot).failed.map { error =>
+      assert(error.getMessage.contains("divide by zero"))
+      assertEquals(runner.calls.size, 1)
+      editor.onFullscreenClose()
+    }
+  }
+
+  test("Java task cancellation prevents later cases and preserves the source") {
+    val runner = new MethodRunner
+    val gate = Promise[T.Execution]()
+    runner.pending = Some(gate)
+    val source = squareSource(squareBody)
+    val session = new JavaEditorSession(source, () => runner)
+    val pending = session.checkTask(JavaTurtleTask.squarePilot)
+    Future.unit.flatMap { _ =>
+      assertEquals(runner.calls.size, 1)
+      session.stop()
+      gate.success(T.invokeVm(runner.calls.head.program, runner.calls.head.method, runner.calls.head.arguments))
+      pending.failed.flatMap { error =>
+        assert(error.isInstanceOf[CancellationException])
+        gate.future.flatMap(_ => Future.unit.map { _ =>
+          assertEquals(runner.calls.size, 1)
+          assertEquals(session.source, source)
+          session.release()
+        })
+      }
+    }
+  }
+
+  test("Java task source replacement cancels the whole assessment without starting later values") {
+    val runner = new MethodRunner
+    val source = squareSource(squareBody)
+    val editor = EvaEditorPlain(Var[ProgrammingState](source), testingConfig, javaRunnerFactory = () => runner)
+    runner.onInvoke = () => { editor.state.set(squareSource("")); editor.state.set(source) }
+    editor.checkJavaTask(JavaTurtleTask.squarePilot).failed.flatMap { error =>
+      assert(error.isInstanceOf[CancellationException])
+      Future.unit.map { _ =>
+        assertEquals(runner.calls.size, 1)
+        assertEquals(runner.closes, 1)
+        assertEquals(editor.currentState(), source)
+      }
+    }
+  }
+
+  test("Java task panel rejects an incomplete case result and never shows overall success") {
+    import JavaTurtleExecutionPanel.Status
+    val source = Var[ProgrammingState](squareSource(squareBody))
+    val result = Promise[Vector[List[TurtleCommand[Double]]]]()
+    val panel = new JavaTurtleExecutionPanel(source, () => Future.successful(Nil), () => (),
+      Some(JavaTurtleTask.squarePilot.cases.head.expectedShape), Some(JavaTurtleTask.squarePilot -> (() => result.future)))
+    panel.activate()
+    panel.checkTask()
+    result.success(Vector(squareDrawing()))
+    result.future.flatMap(_ => Future.unit.map { _ =>
+      assert(panel.status.now().isInstanceOf[Status.Failed])
+      panel.deactivate()
+    })
+  }
+
   private def rejectsPartialJavaExecution(status: T.Status): Future[Unit] = {
     val source = javaSource()
     val stored = ProgrammingExercise.StateSerializer.serialize(source)
