@@ -109,12 +109,19 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
     withJavaRun(source)(_.run().map(commandsFrom))
   }
 
-  def checkJavaTask(task: JavaTurtleTask): Future[Vector[List[TurtleCommand[Double]]]] = {
+  def checkJavaTask(task: JavaTurtleTask): Future[Vector[List[TurtleCommand[Double]]]] =
+    withJavaTask(_.checkTask(task).map(_.map(commandsFrom)))
+
+  def checkJavaTaskDetailed(task: JavaTurtleTask,
+      limits: JavaTurtleRuntime.Limits = JavaTurtleRuntime.Limits()): Future[JavaEditorSession.TaskResult] =
+    withJavaTask(_.checkTaskDetailed(task, limits))
+
+  private def withJavaTask[A](execute: JavaEditorSession => Future[A]): Future[A] = {
     if mounted && (activeTab.now() != Tab.Java || !viewAvailable.now()) then
       return Future.failed(IllegalStateException("Open the Java editor to check this task."))
     val current = if mounted then javaState.now() else state.now()
     current match {
-      case source: ProgrammingStateJavaString => withJavaRun(source)(_.checkTask(task).map(_.map(commandsFrom)))
+      case source: ProgrammingStateJavaString => withJavaRun(source)(execute)
       case _ => Future.failed(IllegalStateException("Open the Java editor to check this task."))
     }
   }
