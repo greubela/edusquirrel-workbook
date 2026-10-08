@@ -5,6 +5,35 @@ import test from 'node:test';
 import {chromium} from 'playwright';
 import jsQR from 'jsqr';
 
+// Rasterize the actual SVG with its computed region colors, then scan it independently.
+async function decodeSymbol(code) {
+  const raster = await code.evaluate(async svg => {
+    const copy = svg.cloneNode(true);
+    copy.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    copy.setAttribute('fill', getComputedStyle(svg).fill);
+    copy.querySelectorAll('path').forEach((p, i) => p.setAttribute('fill', getComputedStyle(svg.querySelectorAll('path')[i]).fill));
+    const size = svg.viewBox.baseVal.width * 4;
+    copy.setAttribute('width', size);
+    copy.setAttribute('height', size);
+    const image = new Image();
+    image.src = 'data:image/svg+xml,' + encodeURIComponent(copy.outerHTML);
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = getComputedStyle(svg).backgroundColor;
+    ctx.fillRect(0, 0, size, size);
+    ctx.drawImage(image, 0, 0, size, size);
+    // Base64 avoids millions of JSON numeric array entries for the largest versions.
+    const pixels = ctx.getImageData(0, 0, size, size).data;
+    const chunks = [];
+    for (let i = 0; i < pixels.length; i += 8192) chunks.push(String.fromCharCode(...pixels.subarray(i, i + 8192)));
+    return {size, pixels: btoa(chunks.join(''))};
+  });
+  const decoded = jsQR(Uint8ClampedArray.from(Buffer.from(raster.pixels, 'base64')), raster.size, raster.size);
+  return decoded?.data;
+}
+
 const root = path.resolve(import.meta.dirname, '../..');
 const mime = {'.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png'};
 
@@ -51,27 +80,7 @@ test('QR interaction edits, grades, rejects oversized drafts and restores the sa
     assert.equal(await formatPath.evaluate(el => getComputedStyle(el).fill), 'rgb(12, 34, 56)', 'CSS token customizes format modules');
     assert.equal(await encodingPath.evaluate(el => getComputedStyle(el).fill), encodingFill, 'other regions retain their colors');
     await code.evaluate(el => el.style.removeProperty('--color-qr-format'));
-    const raster = await code.evaluate(async svg => {
-      const copy = svg.cloneNode(true);
-      copy.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-      copy.setAttribute('fill', getComputedStyle(svg).fill);
-      copy.querySelectorAll('path').forEach((p, i) => p.setAttribute('fill', getComputedStyle(svg.querySelectorAll('path')[i]).fill));
-      const size = svg.viewBox.baseVal.width * 8;
-      copy.setAttribute('width', size);
-      copy.setAttribute('height', size);
-      const image = new Image();
-      image.src = 'data:image/svg+xml,' + encodeURIComponent(copy.outerHTML);
-      await image.decode();
-      const canvas = document.createElement('canvas');
-      canvas.width = canvas.height = size;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = getComputedStyle(svg).backgroundColor;
-      ctx.fillRect(0, 0, size, size);
-      ctx.drawImage(image, 0, 0, size, size);
-      return {size, data: Array.from(ctx.getImageData(0, 0, size, size).data)};
-    });
-    const decoded = jsQR(Uint8ClampedArray.from(raster.data), raster.size, raster.size);
-    assert.equal(decoded?.data, text, 'independent scanner decodes the rendered QR to its UTF-8 text');
+    assert.equal(await decodeSymbol(code), text, 'independent scanner decodes the rendered QR to its UTF-8 text');
     await editor.locator('select').nth(1).selectOption('1');
     assert.equal(await editor.locator('.qr-symbol').count(), 0, 'invalid draft cannot show a stale QR symbol');
     assert(await editor.getByRole('alert').innerText());
@@ -90,6 +99,40 @@ test('QR interaction edits, grades, rejects oversized drafts and restores the sa
       });
       assert(bounds.scroll <= bounds.width + 1, 'editor must not overflow horizontally');
       assert(bounds.symbolLeft >= bounds.left && bounds.symbolRight <= bounds.right, 'QR preview fits the editor');
+    }
+
+    // All implemented versions: actual editor rendering, default-color scanning and
+    // independent customization of every dark region (including version/alignment bits).
+    await editor.locator('select').nth(1).selectOption('');
+    await editor.locator('select').nth(2).selectOption('0');
+    await editor.locator('textarea').fill('ä');
+    const regions = ['finder', 'timing', 'alignment', 'format', 'version', 'fixed-dark', 'encoding', 'data', 'error-correction', 'remainder'];
+    const overrides = Object.fromEntries(regions.map((region, i) => [region, `rgb(${20 + i * 3}, ${30 + i * 2}, ${40 + i})`]));
+    for (let version = 1; version <= 40; version++) {
+      const ecc = ['L', 'M', 'Q', 'H'][(version - 1) % 4];
+      await editor.locator('select').nth(0).selectOption(ecc);
+      await editor.locator('select').nth(2).selectOption(String((version - 1) % 8));
+      await editor.locator('select').nth(1).selectOption(String(version));
+      assert.equal(await code.getAttribute('viewBox'), `0 0 ${25 + 4 * version} ${25 + 4 * version}`);
+      assert.equal(await decodeSymbol(code), 'ä', `default colored symbol must scan: v${version} ${ecc}`);
+      const regionData = await code.evaluate(svg => Object.fromEntries([...svg.querySelectorAll('path')].map(p =>
+        [p.getAttribute('class').replace('qr-region--', ''), p.getAttribute('d')])));
+      assert.equal(Boolean(regionData.alignment), version >= 2, `alignment regions v${version}`);
+      assert.equal(Boolean(regionData.version), version >= 7, `version regions v${version}`);
+      await editor.evaluate((el, colors) => {
+        for (const [region, color] of Object.entries(colors)) el.style.setProperty(`--color-qr-${region}`, color);
+      }, overrides);
+      const colored = await editor.evaluate(el => ({
+        paths: [...el.querySelectorAll('.qr-symbol path')].filter(p => p.getAttribute('d')).map(p =>
+          ({region: p.getAttribute('class').replace('qr-region--', ''), color: getComputedStyle(p).fill})),
+        legend: [...el.querySelectorAll('.qr-legend li')].map(li =>
+          ({region: li.className.replace('qr-region--', ''), color: getComputedStyle(li, '::before').backgroundColor}))
+      }));
+      for (const item of [...colored.paths, ...colored.legend])
+        assert.equal(item.color, overrides[item.region], `CSS variable and legend mapping: v${version} ${item.region}`);
+      await editor.evaluate((el, names) => {
+        for (const region of names) el.style.removeProperty(`--color-qr-${region}`);
+      }, regions);
     }
   } finally { await browser.close(); }
 });

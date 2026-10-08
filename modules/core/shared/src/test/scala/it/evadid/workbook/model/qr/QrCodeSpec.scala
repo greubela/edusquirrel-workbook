@@ -33,10 +33,16 @@ class QrCodeSpec extends FunSuite {
       assertEquals(code.text, text)
     }
   }
-  test("semantic regions match QR structure, interleaved headers and parity lengths") {
-    for version <- List(1, 2, 7, 10, 32, 40); ecc <- QrErrorCorrection.values; utf8 <- List(false, true) do {
+  test("semantic regions match QR structure for every version, correction level and header mode") {
+    for version <- 1 to 40; ecc <- QrErrorCorrection.values; utf8 <- List(false, true) do {
       val code = QrCode(Array[Byte](65), QrCodeConfig(version, ecc, 0, utf8))
-      def count(region: QrCodeRegion): Int = code.regions.flatten.count(_ == region)
+      val counts = code.regions.flatten.groupMapReduce(identity)(_ => 1)(_ + _)
+      def count(region: QrCodeRegion): Int = counts.getOrElse(region, 0)
+      assertEquals(code.regions.size, code.size)
+      assert(code.regions.forall(_.size == code.size))
+      val alignmentCount = if version == 1 then 0 else version / 7 + 2
+      assertEquals(count(QrCodeRegion.Alignment), if version == 1 then 0 else (alignmentCount * alignmentCount - 3) * 25)
+      assertEquals(count(QrCodeRegion.Timing), 2 * (code.size - 16) - math.max(0, alignmentCount - 2) * 10)
       assertEquals(count(QrCodeRegion.Finder), 147)
       assertEquals(count(QrCodeRegion.Separator), 45)
       assertEquals(count(QrCodeRegion.Format), 30)
@@ -54,7 +60,12 @@ class QrCodeSpec extends FunSuite {
       assertEquals(code.regionAt(8, code.size - 8), QrCodeRegion.FixedDark)
       if version > 1 then assertEquals(code.regionAt(code.size - 7, code.size - 7), QrCodeRegion.Alignment)
       if version >= 7 then assertEquals(code.regionAt(code.size - 11, 0), QrCodeRegion.Version)
-      assertEquals(code.withMask(7).regions, code.regions)
+      val mask = (version + ecc.ordinal + (if utf8 then 1 else 0)) % 8
+      assertEquals(code.withMask(mask).regions, code.regions)
+      val functionRegions = Set(QrCodeRegion.Finder, QrCodeRegion.Separator, QrCodeRegion.Timing,
+        QrCodeRegion.Alignment, QrCodeRegion.Format, QrCodeRegion.Version, QrCodeRegion.FixedDark)
+      val functionCount = functionRegions.toList.map(count).sum
+      assertEquals(count(QrCodeRegion.Remainder), code.size * code.size - functionCount - (dataBytes + parityBytes) * 8)
     }
   }
   test("byte-mode headers, alternating padding and Reed–Solomon parity match a known codeword vector") {

@@ -90,3 +90,10 @@ palette and style both SVG paths and legend swatches. Light modules, separators
 and the four-module quiet zone retain `--color-qr-light`. Set all region colors
 to `var(--color-qr-dark)` for a monochrome display. Custom colors should retain
 high contrast with the light modules to preserve scanning.
+
+Color coverage is checked for every version 1–40: shared tests cover all correction
+levels and both header modes, and renderer tests ensure colored paths partition
+the dark modules exactly. The browser test decodes every version with the default
+palette (cycling all correction levels and masks), then verifies every region's
+CSS override and matching legend swatch, including alignment/version information
+when those regions exist.
