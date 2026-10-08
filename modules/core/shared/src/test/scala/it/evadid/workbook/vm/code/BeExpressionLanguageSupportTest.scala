@@ -1968,7 +1968,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   private def invokeKoch(program: P.Program, method: R.MethodId, example: K.KochCase): T.Execution =
-    T.invokeVm(program, method, Vector(E.Value.IntValue(example.depth), E.Value.DoubleValue(example.length)))
+    T.invokeVm(program, method, Vector(E.Value.IntValue(example.depth), E.Value.DoubleValue(example.length)), traceInvocations = true)
 
   test("Koch assessment accepts the recursive curve and subdivided leaf helpers across scales") {
     val variants = Vector(kochMethod(), kochMethod("stroke(length);") + """
@@ -2081,6 +2081,167 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(K.assess(program, R.MethodId(127), valid, execution).verdict, K.Verdict.InvalidMethod)
   }
 
+  test("Koch assessment uses initial parameters across mutations loops and delegation") {
+    val (program, method) = kochProgram("""
+      static void koch(int depth, double length) {
+        if (depth == 0) { stroke(length); return; }
+        depth -= 1;
+        length /= 3.0;
+        for (int i = 0; i < 4; i += 1) {
+          hop(depth, length);
+          if (i == 0 || i == 2) { Turtle.turnRight(-60); }
+          else if (i == 1) { Turtle.turnRight(120); }
+        }
+      }
+      static void hop(int depth, double length) { koch(depth, length); }
+      static void stroke(double length) {
+        Turtle.turnRight(360);
+        Turtle.forward(length / 3.0);
+        Turtle.forward(length * 2.0 / 3.0);
+      }
+    """)
+    for depth <- 0 to 4 do {
+      val example = K.KochCase(depth, 10.5)
+      val execution = invokeKoch(program, method, example)
+      assertEquals(execution.invocationEvidence.get.activations.head.arguments,
+        Vector(E.Value.IntValue(depth), E.Value.DoubleValue(10.5)))
+      assertEquals(K.assess(program, method, example, execution).verdict, K.Verdict.Passed, clue = depth)
+    }
+  }
+
+  test("Koch assessment rejects a matching iterative curve under canonical dummy calls") {
+    val (program, method) = kochProgram("""
+      static void koch(int depth, double length) {
+        if (depth > 0) {
+          koch(-1, length);
+          for (int i = 0; i < 3; i += 1) { koch(0, 0.0); }
+        } else if (depth < 0) {
+          Turtle.forward(length / 3.0); Turtle.turnRight(-60);
+          Turtle.forward(length / 3.0); Turtle.turnRight(120);
+          Turtle.forward(length / 3.0); Turtle.turnRight(-60);
+          Turtle.forward(length / 3.0);
+        }
+      }
+    """)
+    val example = K.KochCase(1, 10.5)
+    val execution = invokeKoch(program, method, example)
+    assertEquals(execution.callEvidence.get.methods.find(_.method == method), Some(T.MethodCalls(method, 5, 4)))
+    assertEquals(execution.drawingEvidence.get.methods.find(_.method == method), Some(T.MethodDrawing(method, 4, 4)))
+    assert(JavaTurtleInvocationTrace.valid(execution.invocationEvidence.get, execution.callEvidence.get,
+      execution.commands.size, true))
+    val result = K.assess(program, method, example, execution)
+    assert(result.comparison.exists(_.matches))
+    assertEquals(result.verdict, K.Verdict.RecursionMismatch)
+  }
+
+  test("Koch assessment rejects compensated child argument errors") {
+    val variants = Vector(
+      kochMethod("Turtle.forward(length * 2.0 / 3.0);").replace("length / 3.0", "length / 2.0"),
+      kochMethod().replace("depth == 0", "depth <= 0").replace("depth - 1", "depth - 2")
+    )
+    for helper <- variants do {
+      val (program, method) = kochProgram(helper)
+      val example = K.KochCase(1, 10.5)
+      val result = K.assess(program, method, example, invokeKoch(program, method, example))
+      assert(result.comparison.exists(_.matches), clue = helper)
+      assertEquals(result.verdict, K.Verdict.RecursionMismatch, clue = helper)
+    }
+  }
+
+  test("Koch assessment rejects compensated leaf turns and strokes outside child calls") {
+    val turned = """
+      static void koch(int depth, double length) {
+        if (depth == 0) { Turtle.forward(length); Turtle.turnRight(30); return; }
+        koch(depth - 1, length / 3.0); Turtle.turnRight(-90);
+        koch(depth - 1, length / 3.0); Turtle.turnRight(90);
+        koch(depth - 1, length / 3.0); Turtle.turnRight(-90);
+        koch(depth - 1, length / 3.0); Turtle.turnRight(-30);
+      }
+    """
+    val filled = """
+      static void koch(int depth, double length) {
+        if (depth == 0) { Turtle.forward(length - 0.00001); return; }
+        for (int i = 0; i < 4; i += 1) {
+          koch(depth - 1, length / 3.0);
+          if (depth == 1) { Turtle.forward(0.00001); }
+          if (i == 0 || i == 2) { Turtle.turnRight(-60); }
+          else if (i == 1) { Turtle.turnRight(120); }
+        }
+      }
+    """
+    for (helper, depth) <- Vector((turned, 0), (turned, 1), (filled, 2)) do {
+      val (program, method) = kochProgram(helper)
+      val example = K.KochCase(depth, 10.5)
+      val execution = invokeKoch(program, method, example)
+      val result = K.assess(program, method, example, execution)
+      assert(result.comparison.exists(_.matches), clue = (helper, depth))
+      assertEquals(result.verdict, K.Verdict.RecursionMismatch, clue = (helper, depth))
+      if depth == 2 then {
+        val drawing = execution.drawingEvidence.get.methods.find(_.method == method).get
+        assertEquals(drawing.recursiveForwardCommands, drawing.forwardCommands)
+      }
+    }
+  }
+
+  test("Koch assessment checks child cardinality after structural trace validation") {
+    val (program, method) = kochProgram()
+    val example = K.KochCase(2, 10.5)
+    val execution = invokeKoch(program, method, example)
+    val trace = execution.invocationEvidence.get
+    val moved = trace.activations(5)
+    val rows = trace.activations.updated(1, trace.activations(1).copy(lastCommand = Some(moved.firstCommand)))
+      .updated(5, moved.copy(parent = Some(0)))
+    val changed = trace.copy(activations = rows)
+    assert(JavaTurtleInvocationTrace.valid(changed, execution.callEvidence.get, execution.commands.size, true))
+    val result = K.assess(program, method, example, execution.copy(invocationEvidence = Some(changed)))
+    assert(result.comparison.exists(_.matches))
+    assertEquals(result.verdict, K.Verdict.RecursionMismatch)
+  }
+
+  test("Koch assessment rejects malformed traces and stale root arguments before geometry") {
+    val (program, method) = kochProgram()
+    val example = K.KochCase(1, 10.5)
+    val execution = invokeKoch(program, method, example)
+    val trace = execution.invocationEvidence.get
+    val root = trace.activations.head
+    val child = trace.activations(1)
+    val wrongRoots = Vector(root.copy(parent = Some(0)), root.copy(firstCommand = 1),
+      root.copy(lastCommand = None), root.copy(lastCommand = Some(execution.commands.size - 1)),
+      root.copy(arguments = Vector(E.Value.IntValue(0), E.Value.DoubleValue(10.5))),
+      root.copy(arguments = Vector(E.Value.IntValue(1), E.Value.DoubleValue(21.0))))
+    val wrongChildren = Vector(child.copy(parent = None), child.copy(parent = Some(4)),
+      child.copy(firstCommand = -1), child.copy(lastCommand = Some(child.firstCommand - 1)),
+      child.copy(arguments = Vector(E.Value.BooleanValue(false), E.Value.DoubleValue(3.5))))
+    val malformed = wrongRoots.map(row => trace.copy(activations = trace.activations.updated(0, row))) ++
+      wrongChildren.map(row => trace.copy(activations = trace.activations.updated(1, row))) ++
+      Vector(trace.copy(method = R.MethodId(127)), trace.copy(activations = Vector.empty), trace.copy(truncated = true))
+    malformed.foreach { value =>
+      val result = K.assess(program, method, example, execution.copy(invocationEvidence = Some(value)))
+      assertEquals(result.verdict, K.Verdict.InvalidEvidence, clue = value)
+      assertEquals(result.comparison, None)
+    }
+  }
+
+  test("Koch assessment rejects consistent truncated capture without treating it as malformed") {
+    val (program, method) = kochProgram("""
+      static void koch(int depth, double length) {
+        if (length > 0.0) {
+          for (int i = 0; i < 600; i += 1) { koch(0, 0.0); }
+        }
+        Turtle.forward(length);
+      }
+    """)
+    val example = K.KochCase(0, 10.5)
+    val execution = invokeKoch(program, method, example)
+    val trace = execution.invocationEvidence.get
+    assert(trace.truncated)
+    assertEquals(trace.activations.size, T.Limits.MaxInvocations)
+    assert(JavaTurtleInvocationTrace.valid(trace, execution.callEvidence.get, execution.commands.size, true))
+    val result = K.assess(program, method, example, execution)
+    assert(result.comparison.exists(_.matches))
+    assertEquals(result.verdict, K.Verdict.RecursionMismatch)
+  }
+
   test("Koch assessment never accepts an unfinished execution with a matching picture") {
     val (program, method) = kochProgram()
     val example = K.KochCase(0, 10.5)
@@ -2100,7 +2261,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       val example = K.KochCase(depth, 10.5)
       val execution = invokeKoch(program, method, example)
       val legacy = Vector(execution.copy(callEvidence = None, drawingEvidence = None),
-        execution.copy(callEvidence = None), execution.copy(drawingEvidence = None))
+        execution.copy(callEvidence = None), execution.copy(drawingEvidence = None), execution.copy(invocationEvidence = None))
       legacy.foreach { result =>
         val assessment = K.assess(program, method, example, result)
         assertEquals(assessment.verdict, K.Verdict.MissingEvidence)
