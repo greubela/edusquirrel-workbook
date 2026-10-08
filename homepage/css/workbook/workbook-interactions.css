@@ -10,10 +10,9 @@
 /* TURTLE INTERACTIONS */
 
 .turtle-gradig-panel{
-    width: 300px;
-    height: 300px;
-    max-height: 25vw;
-    max-width: 25vw;
+    width: var(--turtle-preview-size);
+    max-width: 100%;
+    aspect-ratio: 1;
 }
 
 /* BUTTONS */

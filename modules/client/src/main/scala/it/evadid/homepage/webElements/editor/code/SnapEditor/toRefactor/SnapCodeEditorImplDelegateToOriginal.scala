@@ -853,6 +853,14 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     }
     installedCustomCategoryNames = Nil
 
+  // Morphic paints category tabs on a canvas, so it cannot consume CSS directly.
+  // Read the shared dimensions at the DOM boundary instead of duplicating them.
+  private def cssPixels(property: String): Option[Double] =
+    mountedCanvas.flatMap { canvas =>
+      dom.window.getComputedStyle(canvas).getPropertyValue(property).trim.stripSuffix("px")
+        .toDoubleOption.filter(value => value.isFinite && value >= 0)
+    }
+
   /** Make visible category tabs taller and restack them after Snap's default layout. */
   private def enlargeCategoryTabButtons(ide: IDEMorph): Unit =
     val categories = ide.asInstanceOf[js.Dynamic].selectDynamic("categories")
@@ -865,14 +873,17 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     }
     if visible.isEmpty then return
 
-    val yPadding = 4.0
-    val border = 3.0
+    val dimensions = List("--snap-category-row-gap", "--snap-category-border", "--snap-category-padding", "--snap-category-label-growth").map(cssPixels)
+    // Without a stylesheet, retain Snap's own default category layout.
+    if dimensions.exists(_.isEmpty) then return
+    val yPadding = dimensions(0).get
+    val border = dimensions(1).get
     val first = visible(0)
     val left = first.applyDynamic("left")().asInstanceOf[Double]
     var top = first.applyDynamic("top")().asInstanceOf[Double]
 
     visible.foreach { button =>
-      button.updateDynamic("padding")(8)
+      button.updateDynamic("padding")(dimensions(2).get)
       // Drop Snap's default label shadow — it fights colored category tabs.
       button.updateDynamic("labelShadowOffset")(new SnapPoint(0, 0))
       button.updateDynamic("labelShadowColor")(new SnapColor(0, 0, 0, 0))
@@ -880,7 +891,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       if !js.isUndefined(label) && label != null then
         val fontSize = label.selectDynamic("fontSize")
         if !js.isUndefined(fontSize) && fontSize != null then
-          label.updateDynamic("fontSize")(fontSize.asInstanceOf[Double] + 2.0)
+          label.updateDynamic("fontSize")(fontSize.asInstanceOf[Double] + dimensions(3).get)
         if label.selectDynamic("fixLayout").asInstanceOf[js.UndefOr[js.Function0[Unit]]].isDefined then
           label.applyDynamic("fixLayout")()
       button.applyDynamic("fixLayout")()
@@ -932,17 +943,11 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     if bitmapChanged then
       canvas.width = width
       canvas.height = height
-    canvas.style.width = s"${width}px"
-    canvas.style.height = s"${height}px"
-    canvas.style.position = "relative"
-    canvas.style.display = "block"
     // WorldMorph registers mouse/touch listeners synchronously in its
     // constructor. Make this exact mounted canvas an explicit input target;
     // creating or copying a second canvas would only copy pixels, not those
     // listeners or the Morphic world behind them.
     canvas.tabIndex = 0
-    canvas.style.pointerEvents = "auto"
-    canvas.style.setProperty("touch-action", "none")
     bitmapChanged
 
   override def fitEditorToContainer(): Unit =
@@ -1005,8 +1010,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     Option(canvas.parentElement).foreach(_.appendChild(world.keyboardHandler))
     world.keyboardHandler.setAttribute("aria-hidden", "true")
     world.keyboardHandler.tabIndex = -1
-    world.keyboardHandler.style.pointerEvents = "none"
-    world.keyboardHandler.style.opacity = "0"
+    world.keyboardHandler.classList.add("snap-keyboard-handler")
 
   override def startWorldCycles(): Unit =
     if !cyclesRunning && editorWorld.nonEmpty then

@@ -44,10 +44,7 @@ case class CodeMirrorEditor(
       ),
       textArea(
         cls := "code-mirror-editor__fallback",
-        display <-- useTextareaFallback.signal.map(if _ then "block" else "none"),
-        width := "100%",
-        minHeight := "12rem",
-        boxSizing.borderBox,
+        hidden <-- useTextareaFallback.signal.map(show => !show),
         value <-- content.signal,
         onInput.mapToValue --> { value =>
           content.writer.onNext(value)

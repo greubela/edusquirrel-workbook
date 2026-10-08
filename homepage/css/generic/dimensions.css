@@ -1,4 +1,10 @@
 :root{
+    --turtle-preview-size: 300px;
+    --snap-category-row-gap: 4px;
+    --snap-category-border: var(--space-borders);
+    --snap-category-padding: var(--radius-sm);
+    --snap-category-label-growth: 2px;
+
     --workarea-width: min(100%, 980px);
 
     --space-xs: 3px;

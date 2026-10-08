@@ -32,6 +32,7 @@ object HtmlGptGrader {
   private def createGradingGradient(id: String): ReactiveSvgElement[SVGLinearGradientElement] =
     svg.linearGradient(
       svg.idAttr := id,
+      svg.cls := "grading-gradient",
       svg.x1 := "4",
       svg.x2 := "20",
       svg.y1 := "0",
@@ -39,15 +40,12 @@ object HtmlGptGrader {
       svg.gradientUnits := "userSpaceOnUse",
       svg.stop(
         svg.offsetAttr := "0",
-        svg.stopColor := "#00ff00",
       ),
       svg.stop(
         svg.offsetAttr := "0.5",
-        svg.stopColor := "#ffff00",
       ),
       svg.stop(
         svg.offsetAttr := "1",
-        svg.stopColor := "#ff0000",
       )
     )
 

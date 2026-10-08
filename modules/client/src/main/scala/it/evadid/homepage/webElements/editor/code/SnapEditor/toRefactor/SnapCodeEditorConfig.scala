@@ -61,14 +61,10 @@ case class SnapEditorParts(
                             spriteControls: Boolean = true // scripts / costumes / sound headline
                           )
 
+/** Canvas bitmap dimensions are runtime geometry; presentation lives in CSS. */
 case class SnapEditorVisuals(
-                              ColorWorkspace: String = "#f6f8fa",
-                              ColorEmpty: String = "#8c959f",
                               CanvasWidth: Int = 900,
-                              CanvasHeight: Int = 520,
-                              Padding: Double = 24.0,
-                              BlockGap: Double = 8.0,
-                              Indent: Double = 28.0
+                              CanvasHeight: Int = 520
                             )
 
 case class SnapCodeEditorConfig(

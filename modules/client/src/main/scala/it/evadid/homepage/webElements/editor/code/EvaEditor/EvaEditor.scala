@@ -44,10 +44,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
   private def createTabButton(programmingLanguage: ProgrammingLanguage, tab: EvaEditorProgrammingTab[? <: ProgrammingState]): Element = {
     button(
       typ := "button",
-      cls <-- activeTab.signal.map(active =>
-        if active == tab then "eva-editor__tab eva-editor__tab--active" else "eva-editor__tab"
-      ),
-      aria.selected <-- activeTab.signal.map(_ == tab),
+      aria.pressed <-- activeTab.signal.map(active => (active == tab).toString),
       tab.associatedLanguage.name,
       onClick --> (_ => select(programmingLanguage)),
       disabled <-- state.signal.map(curState => tab.canSetStateTo(curState).isEmpty)
