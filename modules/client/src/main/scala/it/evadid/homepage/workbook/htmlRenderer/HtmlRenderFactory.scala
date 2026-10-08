@@ -15,6 +15,10 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingExerc
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingReasonExercise.HtmlSortingReasonInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.{HtmlTurtleRecreateShapeRenderer, HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRendererLegacy}
 import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.*
+import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailInteraction, MailEditor}
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.emailSimulator.{HtmlMailInteractionRenderer, HtmlMailEditorRenderer}
+import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.qr.CreateQrCodeInteractionRenderer
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.*
 import it.evadid.workbook.elements.interactionElements.Turtle.{TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
@@ -97,6 +101,9 @@ object HtmlRenderFactory {
       case i: ImageElement => HtmlProxyAppElementRenderer.renderWorkbookElement(i, HtmlImageElement(i))
 
       // interactions
+      case m: MailInteraction => HtmlMailInteractionRenderer.renderWorkbookElement(m)
+      case m: MailEditor => HtmlMailEditorRenderer.renderWorkbookElement(m)
+      case q: CreateQrCodeInteraction => CreateQrCodeInteractionRenderer.renderWorkbookElement(q)
       case i: TextInteraction => HtmlSimpleTextInteractionRenderer.renderWorkbookElement(i)
       case i: LabeledCheckboxInteraction => HtmlBasicCheckboxRenderer.renderWorkbookElement(i)
       case i: LabeledNumberInteraction => HtmlBasicNumberRenderer.renderWorkbookElement(i)

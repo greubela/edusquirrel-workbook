@@ -279,17 +279,19 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
   private def createTabButton(tab: Tab): Element =
     button(
       typ := "button",
-      cls <-- activeTab.signal.map(active =>
-        if active == tab then "eva-editor__tab eva-editor__tab--active" else "eva-editor__tab"
-      ),
+      aria.pressed <-- activeTab.signal.map(active => (active == tab).toString),
       aria.selected <-- activeTab.signal.map(_ == tab),
       tab.label,
-      onClick --> (_ => select(tab))
+      onClick --> (_ => select(tab)),
+      disabled <-- state.signal.map(source => EvaEditor.tabFor(source) != tab && Try(convert(source, tab)).isFailure)
     )
 
   private lazy val domElement: Element =
     div(
-      cls := "eva-editor",
+      cls <-- activeTab.signal.combineWith(conversionError.signal).map { (tab, error) =>
+        "eva-editor" + (if tab == Tab.Java then " eva-editor--java" else "") +
+          (if error.nonEmpty then " eva-editor--error" else "")
+      },
       state.signal --> receive,
       onMountCallback { _ => mounted = true },
       onUnmountCallback { _ => mounted = false; releaseJavaSession() },

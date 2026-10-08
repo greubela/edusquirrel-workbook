@@ -87,7 +87,7 @@ object Workbook {
       }
       val requiredToSerialize = element.allChildrenFullSubtree.filter(child => allRequiredIds.contains(child.elementId))
       Map(
-        "serializedElements" -> writeJs(requiredToSerialize.map(el => el.toStringConstructorLike))
+        "serializedElements" -> writeJs(requiredToSerialize.map(_.toSerialized))
       )
     }
   }

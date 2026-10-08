@@ -37,7 +37,7 @@ case class BeSequence(body: Seq[BeExpression], sequenceInfo: BeSequenceInfo) ext
       def lookupChild(pos: Int): Option[BeExpression] = {
         val role = ExpressionInSequence(pos)
         if (newChildren.contains(role)) newChildren.get(role)
-        else if (body.size < pos) Some(body(pos))
+        else if (pos >= 0 && pos < body.size) Some(body(pos))
         else None
       }
 
@@ -70,13 +70,13 @@ case class BeSequence(body: Seq[BeExpression], sequenceInfo: BeSequenceInfo) ext
 
         def lastExtendAnyOption: Option[BeExtensionPoint] = {
           if (sequenceInfo.maxBodyElements.isEmpty || sequenceInfo.maxBodyElements.get > body.size)
-            Some(BeExtensionPoint(false, getChildPosFor(bodyWithExtensions.size), BeDataType.Unit))
+            Some(BeExtensionPoint(false, getChildPosFor(body.size), BeDataType.Unit))
           else None
         }
 
         def lastExtendCorrectOption: Option[BeExtensionPoint] = {
-          if (sequenceInfo.mustEvaluateTo.nonEmpty && !sequenceInfo.mustEvaluateTo.get.canTakeValuesFrom(body.last.staticInformationExpression.staticType).possibleWithoutSyntaxErrors)
-            Some(BeExtensionPoint(false, getChildPosFor(bodyWithExtensions.size), BeDataType.Unit))
+          if (sequenceInfo.mustEvaluateTo.nonEmpty && body.lastOption.forall(last => !sequenceInfo.mustEvaluateTo.get.canTakeValuesFrom(last.staticInformationExpression.staticType).possibleWithoutSyntaxErrors))
+            Some(BeExtensionPoint(false, getChildPosFor(body.size), BeDataType.Unit))
           else None
         }
 

@@ -7,11 +7,11 @@ import upickle.ReadWriter
 object WorkbookElementReference {
   val serializer: Serializer[WorkbookElementReference] = Serializer.constructorLikeSerializer("ElementRef", new Serializer[WorkbookElementReference]() {
     override def serialize(obj: WorkbookElementReference): String = {
-      obj.referencedType.map(value => value.trim + "/").getOrElse("") + obj.referencedId.trim
+      obj.referencedType.map(value => value + "/").getOrElse("") + obj.referencedId
     }
 
     override def deserialize(str: String): WorkbookElementReference = {
-      val parts = str.split("/").map(_.trim)
+      val parts = str.split("/", 2)
       if (parts.length == 1) WorkbookElementReference(parts(0), None)
       else if (parts.length == 2) WorkbookElementReference(parts(1), Option(parts(0)))
       else throw new IllegalArgumentException(s"wrong format for WorkbookReference (parsing: ${str})!")

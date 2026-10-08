@@ -1,6 +1,8 @@
 package it.evadid.core.datastructures.matrix
 
-case class Neighbourhood(name: String, function: Seq[MatrixPosition])
+import upickle.default.*
+
+case class Neighbourhood(name: String, function: Seq[MatrixPosition]) derives ReadWriter
 
 object Neighbourhood {
 

@@ -1,6 +1,8 @@
 package it.evadid.vm.naming
 
-sealed trait NamingStyle {
+import upickle.default.*
+
+sealed trait NamingStyle derives ReadWriter {
   def applyStyle(parts: List[String]): String
 
   def stringToParts(string: String): List[String]
@@ -9,7 +11,7 @@ sealed trait NamingStyle {
 
 object NamingStyle {
 
-  private def splitOnUnderscore(str: String): List[String] = str.split("[_]+").toList
+  private def splitOnUnderscore(str: String): List[String] = str.split("[_]+").filter(_.nonEmpty).toList
 
   private def splitOnSpaces(str: String): List[String] = str.split("[\\s]+").toList
 
@@ -36,7 +38,7 @@ object NamingStyle {
 
   case object CamelCase extends NamingStyle {
     def applyStyle(parts: List[String]): String = {
-      parts.head.toLowerCase + parts.tail.map(_.toLowerCase.capitalize).mkString("", "", "")
+      parts.headOption.map(_.toLowerCase).getOrElse("") + parts.drop(1).map(_.toLowerCase.capitalize).mkString
     }
 
     def stringToParts(string: String): List[String] = {

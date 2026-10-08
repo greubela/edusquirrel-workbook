@@ -1290,4 +1290,25 @@ class JavaParserTest extends FunSuite {
     assertEquals(arrayType.serializerJavaValue.deserialize("{1, 2}"), List(BigInt(1), BigInt(2)))
   }
 
+  for ((name, code) <- Seq(
+    "for" -> "for (int i = 0; i < 3; i = i + 1) { total += i; }",
+    "while" -> "while (total < 10) { total = total + 1; }",
+    "try" -> "try { risky(); } catch (Exception ex) { throw ex; } finally { cleanup(); }"
+  )) test(s"parses $name as a structured statement inside a method") {
+    val parsed = JavaParser.parse(s"class Example { void run() { $code } }")
+    assert(parsed.isRight, parsed.left.toOption.toString)
+    val clazz = parsed.toOption.get.statements.head.statement.asInstanceOf[JavaClassDef]
+    assert(clazz.body.statements.head.isInstanceOf[JavaMethodDef])
+    assert(!clazz.body.statements.head.asInstanceOf[JavaMethodDef].body.statements.head.isInstanceOf[JavaUnparsableStatement])
+  }
+
+  test("operator matching preserves comparison, equality and compact unary arithmetic") {
+    val parsed = JavaParser.parse("boolean enabled = a<=b && a!=b; int value = 1+-2*3;")
+    assert(parsed.isRight, parsed.left.toOption.toString)
+    val declarations = parsed.toOption.get.statements.map(_.statement).collect { case d: JavaVariableDeclaration => d }
+    assertEquals(declarations.size, 2)
+    assertEquals(declarations.head.value.get.asInstanceOf[JavaOperationBinary].op, "&&")
+    assertEquals(declarations(1).value.get.asInstanceOf[JavaOperationBinary].op, "+")
+  }
+
 }

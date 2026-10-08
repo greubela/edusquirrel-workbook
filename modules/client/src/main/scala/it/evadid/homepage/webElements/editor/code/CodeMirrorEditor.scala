@@ -41,16 +41,13 @@ case class CodeMirrorEditor(
     var mountedToken: Option[AnyRef] = None
     var mountedHandle: Option[CodeMirrorHandle] = None
     div(
-      cls := "code-mirror-editor",
+      cls := "code-editor code-mirror-editor",
       styleAttr <-- editorFont.map(font =>
         s"--code-font-family: '${font.name}', 'Fira Code', 'JetBrains Mono', monospace; --code-font-size: ${font.sizeInPx}px;"
       ),
       textArea(
         cls := "code-mirror-editor__fallback",
-        display <-- useTextareaFallback.signal.map(if _ then "block" else "none"),
-        width := "100%",
-        minHeight := "12rem",
-        boxSizing.borderBox,
+        hidden <-- useTextareaFallback.signal.map(show => !show),
         value <-- content.signal,
         onInput.mapToValue --> { value =>
           if mountedToken.exists(activeMount.contains) then

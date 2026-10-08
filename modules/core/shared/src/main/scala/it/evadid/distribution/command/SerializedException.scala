@@ -1,10 +1,12 @@
 package it.evadid.distribution.command
 
+import upickle.default.*
+
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.SerializedException.SimpleStackTraceElement
 
-case class SerializedException(msg: String, stackTrace: Array[SimpleStackTraceElement], cause: Option[SerializedException]) extends Throwable(msg) {
+case class SerializedException(msg: String, stackTrace: Array[SimpleStackTraceElement], cause: Option[SerializedException]) extends Throwable(msg) derives ReadWriter {
 
   def asCauseOf(e: Throwable): SerializedException = SerializedException(e, this)
 
@@ -20,7 +22,7 @@ object SerializedException {
   case class SimpleStackTraceElement(val declaringClass: String,
                                      val MethodName: String,
                                      val fileName: String,
-                                     val lineNumber: Int)
+                                     val lineNumber: Int) derives ReadWriter
 
   private def toSimple(el: StackTraceElement): SimpleStackTraceElement = SimpleStackTraceElement(el.getClassName, el.getMethodName, el.getFileName, el.getLineNumber)
 

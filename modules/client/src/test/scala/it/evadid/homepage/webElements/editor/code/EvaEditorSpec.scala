@@ -2,23 +2,48 @@ package it.evadid.homepage.webElements.editor.code
 
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.state.observable.ObservableValue
 import com.raquo.airstream.state.Var
 import it.evadid.homepage.webElements.code.JavaFunctionBasedEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import com.raquo.airstream.ownership.ManualOwner
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorPlain, EvaEditorTurtle, EvaProgrammingTab}
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.HtmlProgrammingExerciseFullJavaRenderer
+import it.evadid.util.logging.Logger
+import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
+import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
+import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableState}
 import it.evadid.workbook.elements.interactionElements.programming.{JavaKochAssessment as K}
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
 import munit.FunSuite
 
 import java.util.concurrent.CancellationException
+import java.time.LocalDateTime
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 class EvaEditorSpec extends FunSuite {
   private val testingConfig = EvaEditorConfig(snapConfig = SnapCodeEditorConfig.Testing)
+
+  private class RecordingSyncControl extends SyncControl {
+    var stores = Vector.empty[List[InteractionVariable[?]]]
+    override val syncLogger: SyncLogger = SyncLogger(
+      Logger.withNameAndPrefixes(Some("EvaEditorSpec"), PrintToStdLogger.printNothing))
+    override def requestStore(from: List[InteractionVariable[?]]): Future[?] = {
+      stores :+= from
+      Future.unit
+    }
+    override def ensureCachesAreAtLeastThisRecent(maxAge: LocalDateTime): Future[?] =
+      throw IllegalStateException("Unexpected cache refresh.")
+    override def ensureCachesContainLastElementsToWrite(variables: List[InteractionVariable[?]]): Future[?] =
+      throw IllegalStateException("Unexpected cache store check.")
+    override def createObservableReport[T](forVariable: InteractionVariable[T]): ObservableValue[SyncControl.InteractionVariableSyncReport[T]] =
+      throw IllegalStateException("Unexpected observable sync report.")
+    override def createCurrentReport[T](forVariable: InteractionVariable[T]): SyncControl.InteractionVariableSyncReport[T] =
+      throw IllegalStateException("Unexpected current sync report.")
+  }
 
   private def squareDrawing(side: Double = 25, turn: Double = 90): List[TurtleCommand[Double]] =
     List.fill(4)(List(TurtleCommand[Double]("forward", List(side)), TurtleCommand[Double]("right", List(turn)))).flatten
@@ -225,6 +250,94 @@ class EvaEditorSpec extends FunSuite {
       val runner = new ControlledRunner
       runners :+= runner
       runner
+    }
+  }
+
+  test("the full Java renderer binding restores raw drafts and stores an editor change once") {
+    val element = ProgrammingExerciseFullJava("full-java-bound-draft")
+    val variable = element.interactionVariable
+    val restored = ProgrammingStateJavaString("\n\tpublic class Restored {\r\n  public static void main(\r\n\t ")
+    val remoteState = InteractionVariableState[ProgrammingState](restored, UpdateImportance.MAJOR,
+      LocalDateTime.now().minusSeconds(10))
+    variable.updateHistory(_ => InteractionVariableHistory(Set(remoteState)))
+    val sync = new RecordingSyncControl
+    val bound = HtmlProgrammingExerciseFullJavaRenderer.editorState(element, sync)
+    val javaEditor = new JavaFunctionBasedEditor(bound)
+    val editor = EvaEditorPlain(bound, testingConfig.copy(enabledLanguages = List(AppLanguage.Java)))
+    assertEquals(bound.now(), restored)
+    assertEquals(editor.currentState(), restored)
+    assertEquals(javaEditor.state.now(), restored)
+    assertEquals(sync.stores.size, 0)
+
+    val edited = ProgrammingStateJavaString("\n\tpublic class Restored {\r\n  public static void main(String[] args) {\r\n\t ")
+    editor.publish(EvaEditor.Tab.Java, edited)
+    assertEquals(variable.currentValue, edited)
+    assertEquals(javaEditor.state.now(), edited)
+    assert(variable.history.events.contains(remoteState))
+    assertEquals(variable.history.lastStateOption.map(_.value), Some(edited))
+    assertEquals(variable.history.lastStateOption.map(_.updateImportance), Some(UpdateImportance.MAJOR))
+    assertEquals(sync.stores.size, 1)
+    assertEquals(sync.stores.head.size, 1)
+    assert(sync.stores.head.head eq variable)
+
+    val history = variable.history
+    editor.publish(EvaEditor.Tab.Java, edited)
+    bound.set(edited.copy())
+    variable.updateHistory(_.withAddedEvents(history))
+    assertEquals(variable.history, history)
+    assertEquals(sync.stores.size, 1)
+    assertEquals(element.elementId, "full-java-bound-draft")
+    assert(variable.underlyingInteraction eq element)
+    assertEquals(variable.keyForSerialization, "full-java-bound-draft_history")
+    assertEquals(variable.serializedHistory.lastStateOption.map(_.serializedValue),
+      Some(ProgrammingExercise.StateSerializer.serialize(edited)))
+    editor.onFullscreenClose()
+  }
+
+  test("the full Java renderer binding restores an invalid remote draft without storing or delivering an old run") {
+    val element = ProgrammingExerciseFullJava("full-java-bound-restore", turtleTask = Some(JavaTurtleTask.squarePilot))
+    val variable = element.interactionVariable
+    val initial = javaSource()
+    val initialState = InteractionVariableState[ProgrammingState](initial, UpdateImportance.MAJOR,
+      LocalDateTime.now().minusSeconds(10))
+    variable.updateHistory(_ => InteractionVariableHistory(Set(initialState)))
+    val sync = new RecordingSyncControl
+    val bound = HtmlProgrammingExerciseFullJavaRenderer.editorState(element, sync)
+    val factory = new ControlledRunnerFactory
+    val editor = EvaEditorPlain(bound, testingConfig.copy(enabledLanguages = List(AppLanguage.Java)),
+      javaRunnerFactory = factory.create)
+    val pending = editor.getCurrentTurtleCommands()
+    val previous = factory.runners.head
+    assertEquals(previous.requests.size, 1)
+
+    val restored = ProgrammingStateJavaString("\r\n\tpublic class Restored {\r\n  static void draw(int distance) {\n\n\t ")
+    val restoredState = InteractionVariableState[ProgrammingState](restored, UpdateImportance.MAJOR,
+      LocalDateTime.now().plusSeconds(1))
+    variable.updateHistory(_.withAddedEvent(restoredState))
+    assertEquals(bound.now(), restored)
+    assertEquals(editor.currentState(), restored)
+    assertEquals(variable.currentValue, restored)
+    assertEquals(variable.history.events, Set(initialState, restoredState))
+    assertEquals(variable.history.lastStateOption, Some(restoredState))
+    assertEquals(sync.stores.size, 0)
+    assertEquals(previous.cancelCalls, 1)
+    assertEquals(previous.closeCalls, 1)
+    pending.failed.flatMap { error =>
+      assert(error.isInstanceOf[CancellationException])
+      previous.complete(execution = completedJava(999))
+      previous.requests.head.result.future.flatMap(_ => Future.unit).flatMap { _ =>
+        editor.getCurrentTurtleCommands().failed.map { _ =>
+          assertEquals(factory.runners.size, 1)
+          assertEquals(bound.now(), restored)
+          assertEquals(editor.currentState(), restored)
+          assertEquals(variable.currentValue, restored)
+          assertEquals(variable.keyForSerialization, "full-java-bound-restore_history")
+          assertEquals(variable.serializedHistory.lastStateOption.map(_.serializedValue),
+            Some(ProgrammingExercise.StateSerializer.serialize(restored)))
+          assertEquals(sync.stores.size, 0)
+          editor.onFullscreenClose()
+        }
+      }
     }
   }
 

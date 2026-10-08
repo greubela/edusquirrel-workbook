@@ -53,6 +53,10 @@ object ParsedTriples {
     }
   }
 
+  object ParsedTriplesSerialized {
+    given ReadWriter[ParsedTriplesSerialized] = sub
+  }
+
 }
 
 case class ParsedTriples(regularTriples: Set[LanguageMapEntry[HumanLanguage]], universalTriples: Set[LanguageMapEntry[SpecialLanguage]]) extends AutoSerializableMainType[ParsedTriples, ParsedTriplesSerialized] {

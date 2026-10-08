@@ -82,9 +82,6 @@ object SnapTurtleStagePanel {
         canvasTag(
           cls := "be-program-snap-fullscreen__turtle-stage",
           aria.label := "Turtle stage",
-          display.block,
-          maxWidth := "100%",
-          height.auto,
           onMountCallback { ctx =>
             stageCanvas = Some(ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement])
           },

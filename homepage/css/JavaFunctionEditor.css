@@ -1,3 +1,6 @@
+@import url("client-components.css");
+@import url("editors.css");
+
 .java-function-based-editor {
     --jfe-ink: #e5e9f0;
     --jfe-muted: #b2bdcd;

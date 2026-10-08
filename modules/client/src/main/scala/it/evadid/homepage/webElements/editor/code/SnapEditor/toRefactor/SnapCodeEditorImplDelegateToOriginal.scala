@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 
 import com.raquo.airstream.ownership.Owner
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.*
-import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorImpl
+import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditorImpl, SnapProjectXmlSync}
 import it.evadid.workbook.elements.interactionElements.programming.*
 import org.scalajs.dom
 import org.scalajs.dom.CanvasRenderingContext2D
@@ -26,9 +26,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   private var stageMirrorIdleFrames = 0
   private var cyclesRunning = false
   private var projectXmlChangedCallback: String => Unit = _ => ()
-  private var lastProjectXml: Option[String] = None
-  /** Last canonical XML loaded into the IDE (for no-op detection). */
-  private var lastLoadedXml: Option[String] = None
+  private val projectXmlSync = new SnapProjectXmlSync
   private var lastProjectXmlCheckAt = 0.0
   private var originalBlockTemplates: Option[js.Any] = None
   private var installedCustomCategoryNames: List[String] = Nil
@@ -97,8 +95,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     // Align with Snap's normalized XML so external program restores do not
     // immediately rawOpenProjectString again and wipe exercise libraries.
     val seededXml = canonicalXml(initState)
-    lastLoadedXml = Some(seededXml)
-    lastProjectXml = Some(snapshotProjectXml(ide))
+    projectXmlSync.markLoaded(seededXml)
+    projectXmlSync.resetSnapshot(snapshotProjectXml(ide))
 
     editorWorld = Some(world)
     editor = Some(ide)
@@ -160,16 +158,16 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
         // Skip only non-forced sync echoes of the same stored XML.
         // Force on fullscreen open: acknowledge does not rawOpen, so a skip
         // would leave Snap on the previous rawOpen'd project.
-        if !force && lastLoadedXml.contains(xml) then
+        if !force && projectXmlSync.isLoaded(xml) then
           return
         if !force && isTextEditing then return
         restorePrimitiveBlockDictionary()
         ensureExerciseCategoriesBeforeLoad()
         ide.rawOpenProjectString(xml)
-        lastLoadedXml = Some(xml)
+        projectXmlSync.markLoaded(xml)
         repairCustomBlockParameterBindings(ide)
         ensureMissingGlobalVariables(ide, xml, refreshPalette = true)
-        lastProjectXml = Some(snapshotProjectXml(ide))
+        projectXmlSync.resetSnapshot(snapshotProjectXml(ide))
         lastProjectXmlCheckAt = dom.window.performance.now()
         reinstallConfiguredLibraries(ide)
         retagCustomBlockCategories(ide)
@@ -183,7 +181,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       case None => ()
 
   override def acknowledgeProgramFromEditor(state: ProgrammingStateSnapXml): Unit =
-    lastLoadedXml = Some(canonicalXml(state))
+    projectXmlSync.markLoaded(canonicalXml(state))
 
   override def flushPendingProjectChanges(): Unit =
     // Force: flush on close / popup must capture in-progress slot text.
@@ -193,7 +191,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     editor.map(_.getProjectXML())
 
   private def canonicalXml(state: ProgrammingStateSnapXml): String =
-    state.snapXml
+    state.removeBloatFromXml.snapXml
 
   private def processesStillRunning(stage: StageMorph): Boolean =
     try
@@ -856,6 +854,14 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     }
     installedCustomCategoryNames = Nil
 
+  // Morphic paints category tabs on a canvas, so it cannot consume CSS directly.
+  // Read the shared dimensions at the DOM boundary instead of duplicating them.
+  private def cssPixels(property: String): Option[Double] =
+    mountedCanvas.flatMap { canvas =>
+      dom.window.getComputedStyle(canvas).getPropertyValue(property).trim.stripSuffix("px")
+        .toDoubleOption.filter(value => value.isFinite && value >= 0)
+    }
+
   /** Make visible category tabs taller and restack them after Snap's default layout. */
   private def enlargeCategoryTabButtons(ide: IDEMorph): Unit =
     val categories = ide.asInstanceOf[js.Dynamic].selectDynamic("categories")
@@ -868,14 +874,17 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     }
     if visible.isEmpty then return
 
-    val yPadding = 4.0
-    val border = 3.0
+    val dimensions = List("--snap-category-row-gap", "--snap-category-border", "--snap-category-padding", "--snap-category-label-growth").map(cssPixels)
+    // Without a stylesheet, retain Snap's own default category layout.
+    if dimensions.exists(_.isEmpty) then return
+    val yPadding = dimensions(0).get
+    val border = dimensions(1).get
     val first = visible(0)
     val left = first.applyDynamic("left")().asInstanceOf[Double]
     var top = first.applyDynamic("top")().asInstanceOf[Double]
 
     visible.foreach { button =>
-      button.updateDynamic("padding")(8)
+      button.updateDynamic("padding")(dimensions(2).get)
       // Drop Snap's default label shadow — it fights colored category tabs.
       button.updateDynamic("labelShadowOffset")(new SnapPoint(0, 0))
       button.updateDynamic("labelShadowColor")(new SnapColor(0, 0, 0, 0))
@@ -883,7 +892,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       if !js.isUndefined(label) && label != null then
         val fontSize = label.selectDynamic("fontSize")
         if !js.isUndefined(fontSize) && fontSize != null then
-          label.updateDynamic("fontSize")(fontSize.asInstanceOf[Double] + 2.0)
+          label.updateDynamic("fontSize")(fontSize.asInstanceOf[Double] + dimensions(3).get)
         if label.selectDynamic("fixLayout").asInstanceOf[js.UndefOr[js.Function0[Unit]]].isDefined then
           label.applyDynamic("fixLayout")()
       button.applyDynamic("fixLayout")()
@@ -935,17 +944,11 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     if bitmapChanged then
       canvas.width = width
       canvas.height = height
-    canvas.style.width = s"${width}px"
-    canvas.style.height = s"${height}px"
-    canvas.style.position = "relative"
-    canvas.style.display = "block"
     // WorldMorph registers mouse/touch listeners synchronously in its
     // constructor. Make this exact mounted canvas an explicit input target;
     // creating or copying a second canvas would only copy pixels, not those
     // listeners or the Morphic world behind them.
     canvas.tabIndex = 0
-    canvas.style.pointerEvents = "auto"
-    canvas.style.setProperty("touch-action", "none")
     bitmapChanged
 
   override def fitEditorToContainer(): Unit =
@@ -1008,8 +1011,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     Option(canvas.parentElement).foreach(_.appendChild(world.keyboardHandler))
     world.keyboardHandler.setAttribute("aria-hidden", "true")
     world.keyboardHandler.tabIndex = -1
-    world.keyboardHandler.style.pointerEvents = "none"
-    world.keyboardHandler.style.opacity = "0"
+    world.keyboardHandler.classList.add("snap-keyboard-handler")
 
   override def startWorldCycles(): Unit =
     if !cyclesRunning && editorWorld.nonEmpty then
@@ -1160,7 +1162,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
         editor.foreach(checkWhetherProgramXmlChanged(_))
 
   private def initializeProjectChangeTracking(ide: IDEMorph): Unit =
-    lastProjectXml = Some(snapshotProjectXml(ide))
+    projectXmlSync.resetSnapshot(snapshotProjectXml(ide))
     lastProjectXmlCheckAt = dom.window.performance.now()
 
   /**
@@ -1179,10 +1181,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     if allowDuringEdit && isTextEditing then
       editorWorld.foreach(_.stopEditing())
     val xml = snapshotProjectXml(ide)
-    if !lastProjectXml.contains(xml) then
-      lastProjectXml = Some(xml)
-      println("Snap! code changed!")
-      projectXmlChangedCallback(xml)
+    projectXmlSync.changedSnapshot(xml).foreach(projectXmlChangedCallback)
 
   /** True while Morphic has an active CursorMorph for an input slot. */
   private def isTextEditing: Boolean =
@@ -1200,8 +1199,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     editorWorld = None
     mountedCanvas = None
     mountedConfig = None
-    lastProjectXml = None
-    lastLoadedXml = None
+    projectXmlSync.clear()
     lastProjectXmlCheckAt = 0.0
     originalBlockTemplates = None
 

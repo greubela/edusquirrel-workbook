@@ -5,7 +5,7 @@ response back as plain text. The API key stays on the worker, not in the
 browser.
 
 > The EduSquirrel frontend currently points `LLM_PROXY_URL` at the existing
-> **`pytutorai-proxy`** deployment from **`ultrich-ea2`** on GitHub.
+> **`pytutorai-proxy`** deployment at `pytutorai-proxy.ultrichedima.workers.dev`.
 > A separate deployment is only needed for a different quota, another model,
 > or a custom domain.
 
@@ -165,5 +165,4 @@ CORS preflight (`Access-Control-Allow-Origin: *`).
 
 ## Cost
 
-- Cloudflare Workers free tier: 100 000 requests/day
-- OpenAI: pay-as-you-go (`gpt-4o-mini` is ~$0.15 / 1M input tokens)
+- Cloudflare and OpenAI quotas/pricing depend on the selected account and model. Check the providers’ current pricing before choosing a deployment budget.

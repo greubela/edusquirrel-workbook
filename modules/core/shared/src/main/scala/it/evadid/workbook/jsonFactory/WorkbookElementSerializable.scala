@@ -17,7 +17,10 @@ object WorkbookElementSerializable {
 
   def fromStringConstructorLike(str: String): WorkbookElementSerializable = {
     val read = ConstructorLikeSerializer.deserialize(str)
-    WorkbookElementSerializable(read.valueAsString("elementId").getOrElse("???"), read.elementType, read.values)
+    val factory = WorkbookElementFactory.factoryFor(read.elementType)
+    val fields = read.valuesWithOrder(factory.elementMapAndOrderForConstructorLike)
+    val elementId = fields.getOrElse("elementId", throw new IllegalArgumentException("Missing elementId")).str
+    WorkbookElementSerializable(elementId, read.elementType, fields)
   }
 
   def tryFromString(str: String): Option[WorkbookElementSerializable] = try {
@@ -28,8 +31,11 @@ object WorkbookElementSerializable {
     None
   }
 
-  val universalReader: Reader[WorkbookElementSerializable] = reader[String].map { str =>
-    tryFromString(str).getOrElse(throw Exception(s"Cannot parse wit WorkbookElementSerializable::tryFromString '${str}"))
+  // Older workbooks stored registry entries as JSON strings; new ones store objects.
+  val universalReader: Reader[WorkbookElementSerializable] = reader[ujson.Value].map {
+    case ujson.Str(str) =>
+      tryFromString(str).getOrElse(throw new IllegalArgumentException(s"Cannot parse workbook element: $str"))
+    case json => read(json)(using regularSerializer)
   }
 
   /*
@@ -51,7 +57,7 @@ object WorkbookElementSerializable {
 
   */
 
-  val regularSerializer: ReadWriter[WorkbookElementSerializable] = macroRW
+  given regularSerializer: ReadWriter[WorkbookElementSerializable] = macroRW
 
   //val knownSubtypeSerializer: Map[String, Serializer[WorkbookElement]] = Map()
 }

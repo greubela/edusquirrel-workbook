@@ -26,7 +26,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
 
   def createInteractivePreview(boundVar: Var[ProgrammingState], expected: TurtleGraphic): ElementCard = {
     ElementCard(
-      LanguageMapContentId("basic/gradingPreviewProgram"),
+      LanguageMapContentId("basic/turtleGradingPanel"),
       div(child <-- boundVar.signal.map { state =>
         commandsForPreview(state).map(TurtleJsxGraphRenderer.render(_, expected))
           .getOrElse(div("Preview unavailable for this draft."))

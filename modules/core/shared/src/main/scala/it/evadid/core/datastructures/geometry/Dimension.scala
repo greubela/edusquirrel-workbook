@@ -1,5 +1,7 @@
 package it.evadid.core.datastructures.geometry
 
+import upickle.default.*
+
 
 final case class Dimension[T: Fractional](width: T, height: T) {
   private val N = summon[Fractional[T]]
@@ -45,6 +47,10 @@ final case class Dimension[T: Fractional](width: T, height: T) {
 }
 
 object Dimension {
+  given [T: Fractional: ReadWriter]: ReadWriter[Dimension[T]] = readwriter[(T, T)].bimap(
+    d => (d.width, d.height), pair => Dimension(pair._1, pair._2)
+  )
+
 
   def fromInt[T: Fractional](intDim: Dimension[Int]): Dimension[T] = {
     Dimension[T](Point.doubleToT(intDim.width), Point.doubleToT(intDim.height))

@@ -5,8 +5,7 @@ import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import munit.FunSuite
 
 class PlantWorkshopWorkbookRoundTripSpec extends FunSuite {
-  // Requires migration of the legacy PlantWorkshop element graph to the current registry serializer.
-  test("plant workshop workbook survives serialization round trip".ignore) {
+  test("plant workshop workbook survives serialization round trip") {
     val original = CreatePlantworkshopWorkbook(
       null.asInstanceOf[FullInfo]
     ).createWorkbook
@@ -23,4 +22,14 @@ class PlantWorkshopWorkbookRoundTripSpec extends FunSuite {
       serialized
     )
   }
+  test("plant workshop workbook survives constructor-format round trip") {
+    val original = CreatePlantworkshopWorkbook(null.asInstanceOf[FullInfo]).createWorkbook
+    val serializer = WorkbookElementFactory.serializerConstructorLike
+    val serialized = serializer.serialize(original)
+    val restored = serializer.deserialize(serialized)
+
+    assertEquals(restored, original)
+    assertEquals(serializer.serialize(restored), serialized)
+  }
+
 }

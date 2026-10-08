@@ -1,5 +1,7 @@
 # KI-Basisprompt und Projektfahrplan fuer MathWorld
 
+Übernommene Arbeitsvorlage des ursprünglichen MathWorld-Projekts. Repository-, Team- und Statusangaben sind historischer Kontext; diese Kopie wird im EduSquirrel-Repository gepflegt. Den implementierten Stand beschreibt README.md.
+
 > Ziel dieses Dokuments:  
 > Diese Datei ist die gemeinsame "Gedaechtnis- und Arbeitsanweisung" fuer KI-Unterstuetzung im Projekt **MathWorld**. Sie soll im Git-Repository liegen und bei neuen ChatGPT-/Codex-/KI-Sessions immer mitgegeben oder zuerst gelesen werden.
 >

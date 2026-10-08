@@ -26,11 +26,12 @@ object ReorderInteraction {
 
   object ReorderCodeInteraction {
     val factory: SimpleWorkbookElementFactory[ReorderCodeInteraction] = new SimpleWorkbookElementFactory[ReorderCodeInteraction]() {
-      override protected val constructorFieldOrder = List("elementId", "lines", "programmingLanguage", "seed", "hints", "orderConstraints")
+      override protected val constructorFieldOrder = List("elementId", "stringLines", "programmingLanguage", "seed", "hints", "orderConstraints")
 
       override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: ReorderCodeInteraction): WorkbookElementSerializable = {
         baseElement
           .withElementAddedAs("hints", infoElement.hints)
+          .withElementAddedAs("orderConstraints", infoElement.orderConstraints)
           .withElementAddedAs[AppLanguage]("programmingLanguage", infoElement.programmingLanguage.asInstanceOf[AppLanguage])
           .withElementAdded("seed", infoElement.seed.toString)
           .withElementsAdded("stringLines", infoElement.lines.toSeq)
@@ -43,7 +44,8 @@ object ReorderInteraction {
           element.getElementsAs("stringLines"),
           element.getElementAs[AppLanguage]("programmingLanguage").asInstanceOf[ProgrammingLanguage],
           element.getOptionalElementAs("seed", "0").toLongOption.getOrElse(0),
-          element.getElementsAs[LanguageMapContentId]("hints")
+          element.getElementsAs[LanguageMapContentId]("hints"),
+          element.getOptionalElementAs[List[(Int, Int)]]("orderConstraints", Nil)
         )
       }
     }
@@ -59,7 +61,7 @@ object ReorderInteraction {
 
   object ReorderMapIdInteraction {
     val factory: SimpleWorkbookElementFactory[ReorderMapIdInteraction] = new SimpleWorkbookElementFactory[ReorderMapIdInteraction]() {
-      override protected val constructorFieldOrder = List("elementId", "ids", "seed")
+      override protected val constructorFieldOrder = List("elementId", "contentToReorder", "seed")
 
       override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: ReorderMapIdInteraction): WorkbookElementSerializable = {
         baseElement

@@ -23,9 +23,9 @@ case class SnapCodeEditor(
 
 
   private def publishProgramFromSnapXml(xml: String): Unit = {
-    val snap = ProgrammingStateSnapXml(xml)
+    val snap = ProgrammingStateSnapXml(xml).removeBloatFromXml
     val next = state.now() match {
-      case floating: ProgrammingStateSnapXMLWithAdditionalFloatingObjects => floating.copy(snapXml = xml)
+      case floating: ProgrammingStateSnapXMLWithAdditionalFloatingObjects => floating.copy(snapXml = snap.snapXml)
       case _ => snap
     }
     // Mark the retained project before publishing: the Var observers run as
@@ -51,9 +51,6 @@ case class SnapCodeEditor(
       aria.label := "Block program editor",
       widthAttr := config.visuals.CanvasWidth,
       heightAttr := config.visuals.CanvasHeight,
-      display.block,
-      width := "100%",
-      height := "100%",
       // Construct WorldMorph from the canvas' own mount callback. Besides
       // avoiding an ambiguous descendant query, this guarantees that Snap
       // installs its listeners only after this exact canvas is connected.
@@ -67,18 +64,6 @@ case class SnapCodeEditor(
   lazy val editorDom: L.Element = {
     div(
       cls := "code-editor be-program-snap-renderer be-program-snap-renderer--editor",
-      position.relative,
-      overflow.hidden,
-      border := "1px solid #d0d7de",
-      borderRadius := "10px",
-      backgroundColor := config.visuals.ColorWorkspace,
-      width := "100%",
-      height := "100%",
-      minHeight := "0",
-      flexGrow := "1",
-      flexShrink := "1",
-      flexBasis := "auto",
-      boxSizing.borderBox,
       editorCanvas,
       onUnmountCallback { _ =>
         impl.flushPendingProjectChanges()

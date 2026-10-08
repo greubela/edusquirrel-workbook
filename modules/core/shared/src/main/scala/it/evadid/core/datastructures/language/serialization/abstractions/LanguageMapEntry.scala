@@ -6,6 +6,8 @@ import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
 import it.evadid.distribution.command.SerializedException
+import upickle.default.*
+import scala.util.control.NonFatal
 
 
 object LanguageMapEntry {
@@ -30,18 +32,22 @@ object LanguageMapEntry {
     }
   }
 
+  object LanguageTripel {
+    given ReadWriter[LanguageTripel] = tripSerializer.uPickleReadWrite
+  }
+
   val tripSerializer: Serializer[LanguageTripel] = new Serializer[LanguageTripel] {
     val constructorName: String = "Trip"
 
-    def serialize(obj: LanguageTripel): String = s"${constructorName}(${obj.langNr})(${obj.idNr})(\"${obj.value}\")"
+    def serialize(obj: LanguageTripel): String = s"${constructorName}(${obj.langNr})(${obj.idNr})(${ujson.write(obj.value)})"
 
     def deserialize(str: String): LanguageTripel = {
       val res = ConstructorLikeSerializer.deserialize(str)
       if (res.elementType == constructorName) try {
-        LanguageTripel(res.jsonPayloads(0).toInt, res.jsonPayloads(1).toInt, res.jsonPayloads(2))
-      } catch case (err: Throwable) => {
+        require(res.jsonPayloads.size == 3, "Trip requires exactly three payloads")
+        LanguageTripel(res.jsonPayloads(0).toInt, res.jsonPayloads(1).toInt, ujson.read(res.jsonPayloads(2)).str)
+      } catch case NonFatal(err) => {
         val f = SerializedException(s"Cannot parse LanguageTripel '${str}': ${err.getMessage}'", err)
-        f.printStackTrace
         throw f
       } else {
         throw SerializedException(s"Cannot parse element of type ${res.elementType} with serialized of type ${constructorName}!")
@@ -53,7 +59,7 @@ object LanguageMapEntry {
 }
 
 
-case class LanguageMapEntry[T <: AppLanguage](contentId: LanguageMapContentId, language: T, value: String) {
+case class LanguageMapEntry[T <: AppLanguage](contentId: LanguageMapContentId, language: T, value: String) derives ReadWriter {
 
   def serializeWith(ids: Seq[LanguageMapContentId], langs: Seq[T]): LanguageTripel = LanguageTripel(langs.indexOf(language), ids.indexOf(contentId), value)
 

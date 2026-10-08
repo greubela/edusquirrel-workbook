@@ -1,0 +1,195 @@
+@import url("qr-editor.css");
+/* Editor layout and chrome share the workbook's color and dimension tokens. */
+.eva-editor,
+.be-program-snap-fullscreen {
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--color-surface-muted);
+}
+
+.eva-editor {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: var(--space-md);
+    padding: var(--space-md);
+}
+
+.eva-editor:has(> .turtle-sidebar):not(.eva-editor--java) {
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 24%);
+}
+
+.eva-editor--error {
+    grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.eva-editor__error {
+    grid-column: 1 / -1;
+    padding: var(--space-sm) var(--space-md);
+    color: var(--color-text-primary);
+    overflow-wrap: anywhere;
+}
+
+.eva-editor__tabs {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm);
+    /* Leave room for the dialog's close button. */
+    padding-right: calc(var(--space-2xl) + var(--space-lg));
+}
+
+.eva-editor .eva-editor__tabs > button {
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border-soft);
+    background: var(--color-surface-base);
+    color: var(--color-text-secondary);
+    line-height: 1.4;
+}
+
+.eva-editor .eva-editor__tabs > button:hover:not(:disabled) {
+    background: var(--color-background-colored);
+    border-color: var(--color-accent-active);
+}
+
+.eva-editor .eva-editor__tabs > button[aria-pressed="true"] {
+    background: var(--color-background-colored);
+    border-color: var(--color-accent-strong);
+    color: var(--color-accent-strong);
+    font-weight: 700;
+}
+
+.eva-editor .eva-editor__tabs > button:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: var(--space-xs);
+}
+
+.eva-editor .eva-editor__tabs > button:disabled {
+    color: var(--color-text-muted-light);
+    cursor: not-allowed;
+}
+
+.eva-editor__content,
+.be-program-snap-renderer {
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-base);
+}
+
+.eva-editor__content > .be-program-snap-fullscreen,
+.eva-editor__content > .code-mirror-editor,
+.eva-editor__content .cm-editor {
+    height: 100%;
+    min-height: 0;
+}
+
+.be-program-snap-fullscreen {
+    display: flex;
+}
+
+.fullscreen-content-container > .be-program-snap-fullscreen {
+    padding: var(--space-md);
+    padding-top: calc(var(--space-2xl) + var(--space-md));
+}
+
+.be-program-snap-renderer {
+    position: relative;
+}
+
+.be-program-snap-renderer:not(.be-program-snap-renderer--editor) {
+    width: fit-content;
+    max-width: 100%;
+}
+
+.be-program-snap-renderer > canvas {
+    display: block;
+    max-width: 100%;
+}
+
+.be-program-snap-renderer--editor {
+    flex: 1;
+}
+
+/* Eva already supplies the frame around each language's editor. */
+.eva-editor__content .be-program-snap-renderer--editor {
+    border: none;
+    border-radius: 0;
+}
+
+.be-program-snap-renderer--editor > canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+}
+
+.eva-editor__content .cm-scroller {
+    overflow: auto;
+}
+
+.eva-editor__content .cm-editor,
+.eva-editor__content .cm-gutters {
+    background: var(--color-code-background);
+    color: var(--color-text-inverse);
+}
+
+.eva-editor__content .cm-gutters {
+    border-right: 1px solid var(--color-gray-12);
+    color: var(--color-text-muted-light);
+}
+
+.code-mirror-editor > .code-mirror-editor__fallback {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 12rem;
+    font-family: var(--code-font-family, var(--color-code-font));
+    font-size: var(--code-font-size, var(--color-code-size));
+    line-height: 1.5;
+}
+
+.eva-editor__content .code-mirror-editor > .code-mirror-editor__fallback {
+    height: 100%;
+    min-height: 0;
+    resize: none;
+    border: none;
+    background: var(--color-code-background);
+    color: var(--color-text-inverse);
+}
+
+.turtle-sidebar {
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    padding: var(--space-lg);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-base);
+}
+
+.turtle-sidebar .element-card-label {
+    margin: 0 0 var(--space-lg);
+    font-size: 1rem;
+    color: var(--color-text-primary);
+}
+
+@media (max-width: 860px) {
+    .eva-editor:has(> .turtle-sidebar):not(.eva-editor--java) {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
+    }
+    .eva-editor--error:has(> .turtle-sidebar):not(.eva-editor--java) {
+        grid-template-rows: auto auto minmax(0, 1fr) minmax(0, 1fr);
+    }
+}
+
+.turtle-sidebar .turtle-gradig-panel {
+    width: 100%;
+    max-width: none;
+}

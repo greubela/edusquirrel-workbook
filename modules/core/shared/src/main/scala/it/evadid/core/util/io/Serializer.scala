@@ -8,6 +8,7 @@ import upickle.*
 import upickle.default.{read, readwriter, write}
 
 import scala.util.Try
+import scala.util.control.NonFatal
 
 trait Serializer[T] extends TypeConverter[T, String] {
   override def convertToO(in: T): String = serialize(in)
@@ -21,7 +22,7 @@ trait Serializer[T] extends TypeConverter[T, String] {
         try {
           Some(read[T](elementBlob)(using uPickleReadWrite))
         } catch {
-          case err: Exception =>
+          case NonFatal(err) =>
         //    println(s"[UGLY SERIALIZER SAFE-SEQ] cannot parse '$elementBlob': ${err.getMessage}")
             None
         }
@@ -42,17 +43,17 @@ trait Serializer[T] extends TypeConverter[T, String] {
   def map[O](funcForward: T => O, funcBackward: O => T): Serializer[O] = new Serializer[O] {
     override def serialize(obj: O): String = try {
       Serializer.this.serialize(funcBackward(obj))
-    } catch case (err: Throwable) => {
-      throw SerializedException(s"Cannot serialize obj of type ${obj.getClass.getSimpleName} (${obj.toString.take(60)}): ${err.getMessage} ")
+    } catch case NonFatal(err) => {
+      throw SerializedException(s"Cannot serialize obj of type ${obj.getClass.getSimpleName} (${obj.toString.take(60)}): ${err.getMessage} ", err)
     }
 
     override def deserialize(str: String): O = {
       val tryMain = Try {
         Serializer.this.deserialize(str)
       }
-      if (tryMain.isFailure) throw SerializedException(s"Could not parse str ${str.take(60)} with base parser: >>${tryMain.failed.get.getMessage}<<")
+      if (tryMain.isFailure) throw SerializedException(s"Could not parse str ${str.take(60)} with base parser: >>${tryMain.failed.get.getMessage}<<", tryMain.failed.get)
       else try funcForward(tryMain.get)
-      catch case (err: Throwable) => throw SerializedException(s"Could not convert obj ${tryMain.getClass.getSimpleName} ('${tryMain.get.toString.take(60)}') with funcForward: ${err.getMessage}")
+      catch case NonFatal(err) => throw SerializedException(s"Could not convert obj ${tryMain.getClass.getSimpleName} ('${tryMain.get.toString.take(60)}') with funcForward: ${err.getMessage}", err)
     }
   }
 
@@ -81,7 +82,7 @@ object Serializer {
             throw SerializedException(s"ConstructorLikeSerializer(${constructorName}) cannot parse objects of type ${parsedConstructor}")
           } else try {
             construct(jsons.map(ujson.read(_)))
-          } catch case (err: Throwable) => {
+          } catch case NonFatal(err) => {
             throw SerializedException(s"ConstructorLikeSerializer(${constructorName}) had error while parsing jsons", err)
           }
           case Failure(err) => throw SerializedException(s"Could not parse ${str} with ConstructorLikeSerializer(${constructorName}", err)
@@ -114,7 +115,7 @@ object Serializer {
       try {
         val trimmed = str.trim
         if (trimmed.startsWith(constructorName + "(") && trimmed.endsWith(")")) {
-          val withoutEnd = trimmed.substring(0, str.length - 1)
+          val withoutEnd = trimmed.substring(0, trimmed.length - 1)
           val cleaned = withoutEnd.substring(constructorName.length + 1, withoutEnd.length)
           //val jsonRemove = read[String](cleaned)
          // base.deserialize(jsonRemove)
@@ -122,7 +123,7 @@ object Serializer {
         } else {
           throw new IllegalArgumentException(s"ConstructorLikeSerializer for '${constructorName} cannot deserialize ${str}")
         }
-      } catch case (err: Throwable) => {
+      } catch case NonFatal(err) => {
         throw SerializedException(s"ConstructorLikeSerializer cannot deserialize ${str}", err)
       }
   }
@@ -167,7 +168,7 @@ object Serializer {
     override def serialize(obj: Option[String]): String = obj.map(str => "Some(" + str + ")").getOrElse("None")
 
     override def deserialize(serialized: String): Option[String] =
-      if (serialized.startsWith("Some(") && serialized.endsWith(")")) Some(serialized.drop(5).dropRight(1).trim)
+      if (serialized.startsWith("Some(") && serialized.endsWith(")")) Some(serialized.drop(5).dropRight(1))
       else None
   }
 
@@ -209,19 +210,27 @@ object Serializer {
   }
 
   val intDecimalIO: Serializer[BigInt] = integerBaseIO(10, "")
-  val intBinaryIO: Serializer[BigInt] = integerBaseIO(2, "Ob")
-  val intHexIO: Serializer[BigInt] = integerBaseIO(8, "Ox")
-  val intOctalIO: Serializer[BigInt] = integerBaseIO(8, "O")
+  val intBinaryIO: Serializer[BigInt] = integerBaseIO(2, "0b", Map("Ob" -> 2))
+  val intHexIO: Serializer[BigInt] = integerBaseIO(16, "0x", Map("Ox" -> 8))
+  val intOctalIO: Serializer[BigInt] = integerBaseIO(8, "0o", Map("O" -> 8))
 
-  def integerBaseIO(base: Int, prefix: String = ""): Serializer[BigInt] = new Serializer[BigInt] {
-    override def serialize(obj: BigInt): String = {
-      val res = if (obj >= 0) obj.toString(base) else "-" + (-obj).toString(base)
-      (prefix + res).trim
-    }
+  def integerBaseIO(base: Int, prefix: String = "", legacyPrefixes: Map[String, Int] = Map.empty): Serializer[BigInt] = new Serializer[BigInt] {
+    override def serialize(obj: BigInt): String =
+      (if (obj < 0) "-" else "") + prefix + obj.abs.toString(base)
 
     override def deserialize(str: String): BigInt = {
-      val removed = if (prefix.nonEmpty && str.toLowerCase.startsWith(prefix.toLowerCase)) str.substring(prefix.length, str.length).trim else str.trim
-      BigInt(removed, base)
+      val trimmed = str.trim
+      val negative = trimmed.startsWith("-")
+      val magnitude = if (negative || trimmed.startsWith("+")) trimmed.drop(1) else trimmed
+      val prefixes = ((if (prefix.nonEmpty) List(prefix -> base) else Nil) ++ legacyPrefixes.toList).sortBy(-_._1.length)
+      val matched = prefixes.find((p, _) => magnitude.toLowerCase.startsWith(p.toLowerCase))
+      val number = matched match {
+        case Some((p, radix)) =>
+          val digits = magnitude.drop(p.length)
+          BigInt(if (digits.isEmpty && p == "0") "0" else digits, radix)
+        case None => BigInt(magnitude, base)
+      }
+      if (negative) -number else number
     }
   }
 
@@ -242,7 +251,7 @@ object Serializer {
 
     override def deserialize(str: String): Either[A, B] = try {
       Left[A, B](serializerA.deserialize(str))
-    } catch case (e: Throwable) => {
+    } catch case NonFatal(e) => {
       Right[A, B](serializerB.deserialize(str))
     }
   }
@@ -266,22 +275,22 @@ object Serializer {
     }
 
     override def deserialize(str: String): Option[T] =
-      if (str.startsWith("Some(") && str.endsWith(")")) Some[T](serializer.deserialize(str.substring(5, str.length - 6)))
+      if (str.startsWith("Some(") && str.endsWith(")")) Some[T](serializer.deserialize(str.drop(5).dropRight(1)))
       else if (str.trim == noneLiteralStr) None
-      else ???
+      else throw new IllegalArgumentException(s"Invalid optional projection: $str")
   }
 
   def eitherProjectionIO[A, B](serializerA: Serializer[A], serializerB: Serializer[B]): Serializer[Either[A, B]] = new Serializer[Either[A, B]] {
 
     override def serialize(obj: Either[A, B]): String = obj.match {
-      case Left(sa: A) => serializerA.serialize(sa)
-      case Right(sb: B) => serializerB.serialize(sb)
+      case Left(sa: A) => s"Left(${serializerA.serialize(sa)})"
+      case Right(sb: B) => s"Right(${serializerB.serialize(sb)})"
     }
 
     override def deserialize(str: String): Either[A, B] =
-      if (str.startsWith("Left(") && str.endsWith(")")) Left[A, B](serializerA.deserialize(str.substring(5, str.length - 6)))
-      else if (str.startsWith("Right(") && str.endsWith(")")) Right[A, B](serializerB.deserialize(str.substring(6, str.length - 7)))
-      else ???
+      if (str.startsWith("Left(") && str.endsWith(")")) Left[A, B](serializerA.deserialize(str.drop(5).dropRight(1)))
+      else if (str.startsWith("Right(") && str.endsWith(")")) Right[A, B](serializerB.deserialize(str.drop(6).dropRight(1)))
+      else throw new IllegalArgumentException(s"Invalid either projection: $str")
   }
 
 

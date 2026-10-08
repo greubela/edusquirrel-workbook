@@ -1,5 +1,7 @@
 package it.evadid.core.datastructures.chat
 
+import upickle.default.*
+
 import it.evadid.core.datastructures.chat.Person.{BasicPerson, SerializablePerson}
 
 trait Person {
@@ -17,11 +19,11 @@ trait Person {
 
 object Person {
 
-  case class SerializablePerson(name: String, personId: String, role: SenderRole, avatarSvg: String) extends Person {
+  case class SerializablePerson(name: String, personId: String, role: SenderRole, avatarSvg: String) extends Person derives ReadWriter {
     override def abbreviation: Option[String] = if(avatarSvg == null || avatarSvg.strip().isEmpty) None else Some(avatarSvg.strip())
   }
 
-  case class BasicPerson(name: String, personId: String, role: SenderRole, abbreviation: Option[String]) extends Person {
+  case class BasicPerson(name: String, personId: String, role: SenderRole, abbreviation: Option[String]) extends Person derives ReadWriter {
   }
 
   def apply(name: String, personId: String, role: SenderRole, abbreviation: Option[String] = None): Person = BasicPerson(name, personId, role, abbreviation.map(_.strip()))

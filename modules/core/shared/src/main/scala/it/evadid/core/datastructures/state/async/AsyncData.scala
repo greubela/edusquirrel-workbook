@@ -55,7 +55,7 @@ trait AsyncData[F, S] {
     val res: ObservableValueImpl[AsyncDataState[F2, S2]] = ObservableValueImpl(Some(AsyncDataLoading[F2, S2]()))
 
     observeAllStates.addObserver(curState => {
-      val fut: Future[AsyncDataState[F2, S2]] = func(curState)
+      val fut: Future[AsyncDataState[F2, S2]] = Try(func(curState)).fold(Future.failed, identity)
       fut.onComplete {
         case Success(value) => res.onNewValueArrived(Success(value))
         case Failure(error) => {
@@ -81,7 +81,7 @@ trait AsyncData[F, S] {
     val res: ObservableValueImpl[AsyncDataState[F, S]] = ObservableValueImpl(Some(AsyncDataLoading[F, S]()))
 
     observeAllStates.addObserver {
-      case f: AsyncDataFailed[F, S] => func(f).onComplete {
+      case f: AsyncDataFailed[F, S] => Try(func(f)).fold(Future.failed, identity).onComplete {
         case Failure(err) => {
           val newErr = Exception("Error during recovery of AsyncDataFailed: " + err.getMessage, err)
           res.onNewValueArrived(Success(AsyncDataFailed(newErr, None)))

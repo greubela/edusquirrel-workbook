@@ -7,7 +7,8 @@ import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.ImageElement.LanguageMapBasedImageElement
 import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, ImageElement, LabeledWorkbookElement}
-import it.evadid.workbook.elements.interactionElements.Turtle.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
+import it.evadid.workbook.elements.interactionElements.Turtle.{TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
+import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
@@ -17,6 +18,7 @@ import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, Sli
 import it.evadid.workbook.elements.interactionElements.sortingExercise.SortingInteraction
 import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.SortingReasonInteraction
 import it.evadid.workbook.elements.structureElements.{ExerciseContainer, Workbook, WorkbookSection}
+import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailInteraction, MailEditor}
 import upickle.default
 import upickle.default.*
 
@@ -88,12 +90,7 @@ object WorkbookElementFactory {
 
   val serializerConstructorLike: Serializer[WorkbookElement] = new Serializer[WorkbookElement]() {
     override def serialize(obj: WorkbookElement): String = {
-      val ser = obj.associatedFactory.toSerializableElementUnsafe(obj)
-      val ord = obj.associatedFactory.elementMapAndOrderForConstructorLike
-      val wri = obj.associatedFactory.writerJsonRegularRefBased
-      val con = obj.getClass.getSimpleName
-      val resStr = ConstructorLikeSerializer.serialize(ord, obj, wri.asInstanceOf[Writer[WorkbookElement]], con)
-      resStr
+      obj.associatedFactory.toStringConstructorLikeUnsafe(obj)
     }
 
     override def deserialize(str: String): WorkbookElement = {
@@ -131,6 +128,9 @@ object WorkbookElementFactory {
 
 
   private lazy val knownFactoriesMap: Map[String, WorkbookElementFactory[? <: WorkbookElement]] = Map(
+    classOf[CreateQrCodeInteraction].getSimpleName -> CreateQrCodeInteraction.factory,
+    classOf[MailInteraction].getSimpleName -> MailInteraction.factory,
+    classOf[MailEditor].getSimpleName -> MailEditor.factory,
     classOf[Workbook].getSimpleName -> Workbook.factory,
     classOf[LabeledWorkbookElement[?]].getSimpleName -> LabeledWorkbookElement.factory,
     classOf[CollapsibleInstructionElement].getSimpleName -> CollapsibleInstructionElement.factory,
@@ -151,6 +151,7 @@ object WorkbookElementFactory {
     classOf[Slideshow].getSimpleName -> Slideshow.factory,
     classOf[SlideshowPanel.TwoColumnImagePanel].getSimpleName -> SlideshowPanel.TwoColumnImagePanel.factory,
     classOf[SlideshowPanel.ImageSlide].getSimpleName -> SlideshowPanel.ImageSlide.factory,
+    classOf[TurtleRecreateShapeInteraction].getSimpleName -> TurtleRecreateShapeInteraction.factory,
     classOf[TurtleStitchExploreProjectElement].getSimpleName -> TurtleStitchExploreProjectElement.factory,
     classOf[TurtleStitchRecreateShapeInteractionLegacy].getSimpleName -> TurtleStitchRecreateShapeInteractionLegacy.factory,
     classOf[ProgrammingExercise].getSimpleName -> ProgrammingExercise.factory,
@@ -159,16 +160,21 @@ object WorkbookElementFactory {
     classOf[ImageElement.LanguageMapBasedImageElement].getSimpleName -> LanguageMapBasedImageElement.factory
   )
 
+  private[workbook] def registeredElementTypes: Set[String] = knownFactoriesMap.keySet
+
+  private[workbook] def factoryFor(elementType: String): WorkbookElementFactory[? <: WorkbookElement] =
+    knownFactoriesMap.getOrElse(elementType, throw SerializedException(s"No factory known for WorkbookElement with type $elementType"))
+
   def parse(element: WorkbookElementSerializable, knownElements: Map[String, WorkbookElement] = Map()): WorkbookElement = {
     parseAll(List(element), knownElements).head
   }
 
   def parseAll(elementsInOrder: List[WorkbookElementSerializable], knownElements: Map[String, WorkbookElement] = Map()): List[WorkbookElement] = {
-    parseAll(elementsInOrder, elementsInOrder, knownElements, knownFactoriesMap)._1
+    parseAll(elementsInOrder, elementsInOrder, knownElements, knownFactoriesMap, Set.empty[String])._1
   }
 
   def parseAllAsMap(elementsInOrder: List[WorkbookElementSerializable], knownElements: Map[String, WorkbookElement] = Map()): Map[String, WorkbookElement] = {
-    parseAll(elementsInOrder, elementsInOrder, knownElements, knownFactoriesMap)._2
+    parseAll(elementsInOrder, elementsInOrder, knownElements, knownFactoriesMap, Set.empty[String])._2
   }
 
   @tailrec
@@ -176,7 +182,8 @@ object WorkbookElementFactory {
                         elementsInOrder: List[WorkbookElementSerializable],
                         open: List[WorkbookElementSerializable],
                         alreadyParsed: Map[String, WorkbookElement],
-                        knownFactories: Map[String, WorkbookElementFactory[? <: WorkbookElement]]
+                        knownFactories: Map[String, WorkbookElementFactory[? <: WorkbookElement]],
+                        expandedRegistryIds: Set[String]
                       ): (List[WorkbookElement], Map[String, WorkbookElement]) = {
     if (open.isEmpty) {
       val notYetParsed = elementsInOrder.filter(el => !alreadyParsed.contains(el.elementId))
@@ -191,11 +198,13 @@ object WorkbookElementFactory {
       val stillOpen: mutable.ListBuffer[WorkbookElementSerializable] = mutable.ListBuffer()
       val newlyProvided: mutable.ListBuffer[WorkbookElementSerializable] = mutable.ListBuffer()
 
+      val expanded = mutable.HashSet.from(expandedRegistryIds)
+
       open.foreach(curOpenElement => {
         val factory = knownFactories.get(curOpenElement.elementType)
         if (factory.isEmpty) {
           throw SerializedException(s"No factory known for WorkbookElement with type ${curOpenElement.elementType}")
-        } else {
+        } else if (expanded.add(curOpenElement.elementId)) {
           newlyProvided ++= factory.get.serializedElementKeysThatContainOtherSerializations(curOpenElement).flatMap(curOtherKey => {
             curOpenElement.getElementsAsSerializableElement(curOtherKey)
           })
@@ -211,7 +220,7 @@ object WorkbookElementFactory {
       if (stillOpen.nonEmpty && newlyFinished.isEmpty && newlyProvided.isEmpty) {
         throw SerializedException(s"Iteration with no progress, likely because of a cyclic dependency, stop parsing! (still open: ${open.map(_.elementId)})")
       } else {
-        parseAll(elementsInOrder, stillOpen.toList ++ newlyProvided, alreadyParsed ++ newlyFinished, knownFactories)
+        parseAll(elementsInOrder, stillOpen.toList ++ newlyProvided, alreadyParsed ++ newlyFinished, knownFactories, expanded.toSet)
       }
 
     }
@@ -247,7 +256,12 @@ trait WorkbookElementFactory[T <: WorkbookElement] {
   }
 
   def toStringConstructorLike(element: T): String = {
-    ConstructorLikeSerializer.serialize(elementMapAndOrderForConstructorLike, element, writerJsonRegularRefBased, element.getClass.getSimpleName)
+    val serialized = toSerializableElement(element)
+    ConstructorLikeSerializer.serializeFields(
+      elementMapAndOrderForConstructorLike,
+      serialized.allConstructorFields + ("elementId" -> writeJs(serialized.elementId)),
+      serialized.elementType
+    )
   }
 
   def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String]

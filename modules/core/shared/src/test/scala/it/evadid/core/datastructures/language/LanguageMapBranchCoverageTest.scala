@@ -8,8 +8,6 @@ class LanguageMapBranchCoverageTest extends FunSuite {
     val empty = LanguageMap.empty[HumanLanguage]
     assertEquals(empty.getInLanguage(English), "[no English]")
 
-    // unionLanguageMap is intentionally disabled pending a serializable implementation.
-
     val mk = LanguageMap.mkLanguageMap[HumanLanguage]("(", ",", ")", List(LanguageMap.universalMap("x")))
     assertEquals(mk.getInLanguage(English), "(x,)")
   }

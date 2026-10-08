@@ -18,7 +18,7 @@ case class EvaEditorTurtle(
 
   override def furtherDomElements(): List[Element] = List(
     div(
-      cls := "turtle-sidebar",
+      cls := "eva-editor__sidebar turtle-sidebar",
       display <-- activeTab.signal.map(tab => if tab == EvaEditor.Tab.Java then "none" else "block"),
       HtmlTurtleRecreateShapeRenderer.createInteractivePreview(state, target).getDomElement()
     )

@@ -46,7 +46,11 @@ object WorkbookSection {
     override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): WorkbookSection =
       WorkbookSection(
         element.elementId,
-        element.getElementAs[WorkbookSectionMetadata]("metadata"),
+        WorkbookSectionMetadata(
+          read[LanguageMapContentId](metadataJson(element.allConstructorFields("metadata"))("sectionTitle")),
+          element.getAndResolveWorkbookElements[WorkbookSection]("requiredBefore", parsedElements),
+          element.getAndResolveWorkbookElements[WorkbookSection]("recommendedBefore", parsedElements)
+        ),
         element.getAndResolveWorkbookElements("content", parsedElements),
       )
 
@@ -58,17 +62,28 @@ object WorkbookSection {
         .withElementsAddedAs[WorkbookElementReference]("content", element.sectionContent.map(_.asRef))
   }
 
-  given ReadWriter[WorkbookSectionMetadata] = new Serializer[WorkbookSectionMetadata]() {
-    override def serialize(obj: WorkbookSectionMetadata): String = {
-      write(ujson.Obj(
-        "sectionTitle" -> write(obj.sectionTitle),
-        "requiredBefore" -> write(obj.sectionsRequiredBefore.map(_.asRef)),
-        "recommendedBefore" -> write(obj.sectionsRecommendedBefore.map(_.asRef))
-      ))
-    }
+  /** Decode the previous string-wrapped metadata only at its legacy format boundary. */
+  private def metadataJson(value: ujson.Value): ujson.Value = value match {
+    case ujson.Str(legacy) =>
+      ujson.Obj.from(ujson.read(legacy).obj.toSeq.map { (key, encoded) => key -> ujson.read(encoded.str) })
+    case json => json
+  }
 
-    override def deserialize(str: String): WorkbookSectionMetadata = ???
-  }.uPickleReadWrite
+  given ReadWriter[WorkbookSectionMetadata] = readwriter[ujson.Value].bimap[WorkbookSectionMetadata](
+    obj => ujson.Obj(
+      "sectionTitle" -> writeJs(obj.sectionTitle),
+      "requiredBefore" -> writeJs(obj.sectionsRequiredBefore.map(_.asRef)),
+      "recommendedBefore" -> writeJs(obj.sectionsRecommendedBefore.map(_.asRef))
+    ),
+    value => {
+      val json = metadataJson(value)
+      val required = read[List[WorkbookElementReference]](json("requiredBefore"))
+      val recommended = read[List[WorkbookElementReference]](json("recommendedBefore"))
+      require(required.isEmpty && recommended.isEmpty,
+        "Section dependencies require WorkbookElementFactory's element registry")
+      WorkbookSectionMetadata(read[LanguageMapContentId](json("sectionTitle")))
+    }
+  )
 
   case class WorkbookSectionMetadata
   (
