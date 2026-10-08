@@ -1,6 +1,8 @@
 /* Shared design tokens for the workbook experience.
    Color policy: define colors only in this file and consume them via CSS variables in other stylesheets. */
 :root {
+    --color-qr-dark: #000;
+    --color-qr-light: #fff;
     /* Intrinsic flag artwork colors are independent of the UI theme. */
     --color-flag-british-red: #c8102e;
     --color-flag-white: #fff;

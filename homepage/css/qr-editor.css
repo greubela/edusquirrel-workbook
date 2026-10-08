@@ -1,0 +1,36 @@
+/* A QR symbol needs a fixed high-contrast palette, regardless of workbook theme. */
+.qr-symbol {
+    display: block;
+    width: 100%;
+    max-width: var(--qr-symbol-size);
+    height: auto;
+    aspect-ratio: 1;
+    margin-inline: auto;
+    background: var(--color-qr-light);
+    fill: var(--color-qr-dark);
+    shape-rendering: crispEdges;
+}
+.qr-preview { text-align: center; }
+.qr-preview p { margin-block: var(--space-sm); }
+.qr-editor {
+    box-sizing: border-box;
+    height: 100%;
+    overflow: auto;
+    padding: var(--space-xl);
+    background: var(--color-surface-muted);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-xl);
+    align-content: start;
+}
+.qr-editor > h2 { grid-column: 1 / -1; margin: 0; padding-right: var(--space-2xl); }
+.qr-editor label { display: grid; gap: var(--space-sm); }
+.qr-editor textarea { box-sizing: border-box; width: 100%; resize: vertical; border-radius: var(--radius-sm); }
+.qr-editor__options { display: flex; flex-wrap: wrap; gap: var(--space-lg); margin-top: var(--space-lg); }
+.qr-editor select { padding: var(--space-sm); border-radius: var(--radius-sm); }
+.qr-editor__error { color: var(--color-red-7); }
+.qr-requirement { color: var(--color-text-secondary); }
+.qr-requirement.is-passed { color: var(--color-green-7); }
+@media (max-width: 700px) {
+    .qr-editor { grid-template-columns: minmax(0, 1fr); padding: var(--space-lg); }
+}

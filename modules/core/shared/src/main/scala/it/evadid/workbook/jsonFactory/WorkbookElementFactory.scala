@@ -8,6 +8,7 @@ import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.ImageElement.LanguageMapBasedImageElement
 import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, ImageElement, LabeledWorkbookElement}
 import it.evadid.workbook.elements.interactionElements.Turtle.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
+import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
@@ -131,6 +132,7 @@ object WorkbookElementFactory {
 
 
   private lazy val knownFactoriesMap: Map[String, WorkbookElementFactory[? <: WorkbookElement]] = Map(
+    classOf[CreateQrCodeInteraction].getSimpleName -> CreateQrCodeInteraction.factory,
     classOf[Workbook].getSimpleName -> Workbook.factory,
     classOf[LabeledWorkbookElement[?]].getSimpleName -> LabeledWorkbookElement.factory,
     classOf[CollapsibleInstructionElement].getSimpleName -> CollapsibleInstructionElement.factory,

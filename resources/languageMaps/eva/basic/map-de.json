@@ -56,5 +56,19 @@
   "TextEditorPlaceholder": "Text hier eingeben",
   "MessengerEditorSendMessageButton": "Absenden",
   "MessengerEditorInputPlaceholder": "Frage hier eingeben",
-  "turtleGradingPanel": "Vorschau (Turtle)"
+  "turtleGradingPanel": "Vorschau (Turtle)",
+  "qrTitle": "QR-Code erstellen",
+  "qrText": "Zu speichernder Text (UTF-8)",
+  "qrErrorCorrection": "Fehlerkorrektur",
+  "qrVersion": "Version",
+  "qrMask": "Maske",
+  "qrAutomatic": "Automatisch",
+  "qrTooLarge": "Der Text passt nicht zur gewählten Version und Fehlerkorrektur. Wähle Automatisch, eine größere Version oder kürze den Text.",
+  "qrInvalidPreview": "Für diesen Entwurf gibt es keinen QR-Code. Der letzte gültige Code bleibt gespeichert.",
+  "qrMinBytes": "Mindestanzahl gespeicherter Bytes",
+  "qrMaxBytes": "Höchstanzahl gespeicherter Bytes",
+  "qrMinimumErrorCorrection": "Mindestens benötigte Fehlerkorrektur",
+  "qrRequiredVersion": "Benötigte Version",
+  "qrRequiredMask": "Benötigte Maske",
+  "qrTask": "Erstelle einen QR-Code, der mindestens 32 Bytes speichert. Probiere verschiedene Masken und Fehlerkorrekturstufen aus. Scanne den fertigen Code mit deinem Handy."
 }
