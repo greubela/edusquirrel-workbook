@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phishing · Mail Simulator</title>
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        img-src 'self' data: blob:;
+        connect-src 'self' https://api.mismatcheta.org https://ypcgzj23.trafficplex.cloud;
+        script-src 'self';
+        worker-src 'self' blob:;
+        style-src 'self' 'unsafe-inline';">
+    <link rel="stylesheet" href="../css/custom-elements.css">
+    <link rel="stylesheet" href="../css/workbook/workbook-structure.css">
+    <link rel="stylesheet" href="../css/workbook/workbook-header.css">
+    <link rel="stylesheet" href="../css/workbook/workbook-interactions.css">
+    <!-- The simulator needs no CodeMirror, TurtleStitch, JSXGraph or CDN scripts. -->
+    <script src="../js/app-loader.js"></script>
+</head>
+<body>
+<div id="app">
+    <div class="container">
+        <div id="workbookPhishing"></div>
+    </div>
+</div>
+</body>
+</html>

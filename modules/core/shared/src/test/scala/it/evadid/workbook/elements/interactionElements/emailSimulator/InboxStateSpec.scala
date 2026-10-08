@@ -143,7 +143,7 @@ class InboxStateSpec extends FunSuite {
     val markedState = state.markMail("1")
 
     assertEquals(markedState.getMailsInFolder("Markiert").size, 1)
-    assertEquals(markedState.getMailById("1"), Some(mail))
+    assertEquals(markedState.getMailById("1"), Some(mail.copy(realFolder = "Markiert")))
   }
 
   test("unmarkMail removes mail from starred folder") {

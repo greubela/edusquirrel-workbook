@@ -1,4 +1,6 @@
 :root{
+    --mail-folder-width: 12rem;
+    --mail-list-width: 20rem;
     --qr-symbol-size: 24rem;
     --turtle-preview-size: 300px;
     --snap-category-row-gap: 4px;
