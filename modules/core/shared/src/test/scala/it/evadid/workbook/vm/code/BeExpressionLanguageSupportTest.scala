@@ -38,6 +38,11 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   private def forward(value: Int): T.Command = T.Command(R.TurtleCommand.Forward, value)
   private def right(value: Int): T.Command = T.Command(R.TurtleCommand.TurnRight, value)
 
+  private def singleMethodExecution(status: T.Status, commands: Vector[T.Command], steps: Int): T.Execution = {
+    val methods = if steps == 0 then Vector.empty else Vector(T.MethodCalls(R.MethodId(0), 1, 0))
+    T.Execution(status, commands, steps, Some(T.CallEvidence(methods, if steps == 0 then 0 else 1)))
+  }
+
   private def restoredJavaExpression(expression: X.Expression): R.Expression = expression.node match {
     case X.Node.IntLiteral(value) => R.IntLiteral(value)
     case X.Node.DoubleLiteral(value) => R.DoubleLiteral(value)
@@ -634,14 +639,14 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       method.id -> Vector(E.Value.BooleanValue(true)), method.id -> Vector(E.Value.IntValue(1), E.Value.IntValue(2)),
       R.MethodId(999) -> Vector.empty[E.Value], source.entryPoint -> Vector.empty[E.Value]) do {
       val execution = T.invoke(source, id, arguments)
-      assertEquals(execution, T.Execution(T.Status.Failed(T.Failure.InvalidInvocation), Vector.empty, 0))
+      assertEquals(execution, singleMethodExecution(T.Status.Failed(T.Failure.InvalidInvocation), Vector.empty, 0))
     }
     for limits <- Seq(T.Limits(maxSteps = 0), T.Limits(maxSteps = -1), T.Limits(maxSteps = T.Limits.MaxSteps + 1),
       T.Limits(maxCommands = -1), T.Limits(maxCommands = T.Limits.MaxCommands + 1),
       T.Limits(maxCallDepth = 0), T.Limits(maxCallDepth = T.Limits.MaxCallDepth + 1),
       T.Limits(maxBlockDepth = 0), T.Limits(maxBlockDepth = T.Limits.MaxBlockDepth + 1)) do
       assertEquals(T.run(source, limits, () => fail("Invalid limits must not poll")),
-        T.Execution(T.Status.Failed(T.Failure.InvalidLimits), Vector.empty, 0))
+        singleMethodExecution(T.Status.Failed(T.Failure.InvalidLimits), Vector.empty, 0))
     assertEquals(T.run(javaProgram(""), T.Limits(maxCommands = 0)).status, T.Status.Completed)
     val noCommands = T.run(source, T.Limits(maxCommands = 0))
     assertEquals(noCommands.status, T.Status.LimitExceeded)
@@ -650,13 +655,13 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java runtime shares exact work limits across statements and expressions") {
     val empty = T.run(javaProgram(""), T.Limits(maxSteps = 2))
-    assertEquals(empty, T.Execution(T.Status.Completed, Vector.empty, 2))
+    assertEquals(empty, singleMethodExecution(T.Status.Completed, Vector.empty, 2))
     val one = javaProgram("Turtle.forward(1);")
-    assertEquals(T.run(one, T.Limits(maxSteps = 5)), T.Execution(T.Status.Completed, Vector(forward(1)), 5))
-    assertEquals(T.run(one, T.Limits(maxSteps = 4)), T.Execution(T.Status.LimitExceeded, Vector.empty, 4))
+    assertEquals(T.run(one, T.Limits(maxSteps = 5)), singleMethodExecution(T.Status.Completed, Vector(forward(1)), 5))
+    assertEquals(T.run(one, T.Limits(maxSteps = 4)), singleMethodExecution(T.Status.LimitExceeded, Vector.empty, 4))
     val expressions = javaProgram("int a = 1 + 2; int b = 3 + 4; Turtle.forward(a + b);")
-    assertEquals(T.run(expressions, T.Limits(maxSteps = 15)), T.Execution(T.Status.Completed, Vector(forward(10)), 15))
-    assertEquals(T.run(expressions, T.Limits(maxSteps = 14)), T.Execution(T.Status.LimitExceeded, Vector.empty, 14))
+    assertEquals(T.run(expressions, T.Limits(maxSteps = 15)), singleMethodExecution(T.Status.Completed, Vector(forward(10)), 15))
+    assertEquals(T.run(expressions, T.Limits(maxSteps = 14)), singleMethodExecution(T.Status.LimitExceeded, Vector.empty, 14))
     val square = javaProgram("for (int i = 0; i < 4; i += 1) { Turtle.forward(10); Turtle.turnRight(90); }")
     val full = T.run(square, T.Limits(maxCommands = 8))
     val limited = T.run(square, T.Limits(maxCommands = 7))
@@ -669,23 +674,23 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   test("Java empty endless loops stop on limits or cancellation and new runs are fresh") {
     for body <- Seq("for (;;) {}", "while (true) {}", "for (;;) { ; }") do {
       val source = javaProgram(body)
-      assertEquals(T.run(source, T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20))
+      assertEquals(T.run(source, T.Limits(maxSteps = 20)), singleMethodExecution(T.Status.LimitExceeded, Vector.empty, 20))
       var polls = 0
       val cancelled = T.run(source, T.Limits(maxSteps = 30), () => { polls += 1; polls >= 10 })
-      assertEquals(cancelled, T.Execution(T.Status.Cancelled, Vector.empty, 9))
+      assertEquals(cancelled, singleMethodExecution(T.Status.Cancelled, Vector.empty, 9))
       assertEquals(polls, 10)
-      assertEquals(T.run(source, T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20))
+      assertEquals(T.run(source, T.Limits(maxSteps = 20)), singleMethodExecution(T.Status.LimitExceeded, Vector.empty, 20))
     }
     val one = javaProgram("Turtle.forward(1);")
-    assertEquals(T.run(one, isCancelled = () => true), T.Execution(T.Status.Cancelled, Vector.empty, 0))
+    assertEquals(T.run(one, isCancelled = () => true), singleMethodExecution(T.Status.Cancelled, Vector.empty, 0))
     var polls = 0
-    assertEquals(T.run(one, isCancelled = () => { polls += 1; polls >= 5 }), T.Execution(T.Status.Cancelled, Vector.empty, 4))
-    assertEquals(T.run(one), T.Execution(T.Status.Completed, Vector(forward(1)), 5))
+    assertEquals(T.run(one, isCancelled = () => { polls += 1; polls >= 5 }), singleMethodExecution(T.Status.Cancelled, Vector.empty, 4))
+    assertEquals(T.run(one), singleMethodExecution(T.Status.Completed, Vector(forward(1)), 5))
     val two = javaProgram("Turtle.forward(1); Turtle.forward(2);")
     polls = 0
     assertEquals(T.run(two, isCancelled = () => { polls += 1; polls >= 8 }),
-      T.Execution(T.Status.Cancelled, Vector(forward(1)), 7))
-    assertEquals(T.run(two), T.Execution(T.Status.Completed, Vector(forward(1), forward(2)), 8))
+      singleMethodExecution(T.Status.Cancelled, Vector(forward(1)), 7))
+    assertEquals(T.run(two), singleMethodExecution(T.Status.Completed, Vector(forward(1), forward(2)), 8))
     val emitting = T.run(javaProgram("while (true) { Turtle.forward(1); }"), T.Limits(maxCommands = 3))
     assertEquals(emitting.status, T.Status.LimitExceeded)
     assertEquals(emitting.commands, Vector.fill(3)(forward(1)))
@@ -1454,14 +1459,14 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       method -> Vector(E.Value.IntValue(1), E.Value.IntValue(2)), R.MethodId(999) -> Vector.empty[E.Value],
       program.root.entryPoint.binding.id -> Vector.empty[E.Value]) do {
       val result = T.invokeVm(program, id, arguments, isCancelled = neverPoll)
-      assertEquals(result, T.Execution(T.Status.Failed(T.Failure.InvalidInvocation), Vector.empty, 0))
+      assertEquals(result, singleMethodExecution(T.Status.Failed(T.Failure.InvalidInvocation), Vector.empty, 0))
       assertEquals(result, T.invoke(source, id, arguments, isCancelled = neverPoll))
     }
     for limits <- Seq(T.Limits(maxSteps = 0), T.Limits(maxSteps = -1), T.Limits(maxSteps = T.Limits.MaxSteps + 1),
       T.Limits(maxCommands = -1), T.Limits(maxCommands = T.Limits.MaxCommands + 1),
       T.Limits(maxCallDepth = 0), T.Limits(maxCallDepth = T.Limits.MaxCallDepth + 1),
       T.Limits(maxBlockDepth = 0), T.Limits(maxBlockDepth = T.Limits.MaxBlockDepth + 1)) do {
-      val expected = T.Execution(T.Status.Failed(T.Failure.InvalidLimits), Vector.empty, 0)
+      val expected = singleMethodExecution(T.Status.Failed(T.Failure.InvalidLimits), Vector.empty, 0)
       assertEquals(T.runVm(program, limits, neverPoll), expected)
       assertEquals(T.invokeVm(program, method, Vector(E.Value.IntValue(1)), limits, neverPoll), expected)
     }
@@ -1472,13 +1477,13 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java VM execution retains exact statement expression and command budgets") {
     val empty = P.adapt(javaProgram("")).toOption.get
-    assertEquals(T.runVm(empty, T.Limits(maxSteps = 2)), T.Execution(T.Status.Completed, Vector.empty, 2))
+    assertEquals(T.runVm(empty, T.Limits(maxSteps = 2)), singleMethodExecution(T.Status.Completed, Vector.empty, 2))
     val one = P.adapt(javaProgram("Turtle.forward(1);")).toOption.get
-    assertEquals(T.runVm(one, T.Limits(maxSteps = 5)), T.Execution(T.Status.Completed, Vector(forward(1)), 5))
-    assertEquals(T.runVm(one, T.Limits(maxSteps = 4)), T.Execution(T.Status.LimitExceeded, Vector.empty, 4))
+    assertEquals(T.runVm(one, T.Limits(maxSteps = 5)), singleMethodExecution(T.Status.Completed, Vector(forward(1)), 5))
+    assertEquals(T.runVm(one, T.Limits(maxSteps = 4)), singleMethodExecution(T.Status.LimitExceeded, Vector.empty, 4))
     val expressions = P.adapt(javaProgram("int a = 1 + 2; int b = 3 + 4; Turtle.forward(a + b);")).toOption.get
-    assertEquals(T.runVm(expressions, T.Limits(maxSteps = 15)), T.Execution(T.Status.Completed, Vector(forward(10)), 15))
-    assertEquals(T.runVm(expressions, T.Limits(maxSteps = 14)), T.Execution(T.Status.LimitExceeded, Vector.empty, 14))
+    assertEquals(T.runVm(expressions, T.Limits(maxSteps = 15)), singleMethodExecution(T.Status.Completed, Vector(forward(10)), 15))
+    assertEquals(T.runVm(expressions, T.Limits(maxSteps = 14)), singleMethodExecution(T.Status.LimitExceeded, Vector.empty, 14))
     val square = P.adapt(javaProgram("for (int i = 0; i < 4; i += 1) { Turtle.forward(10); Turtle.turnRight(90); }")).toOption.get
     val complete = T.runVm(square, T.Limits(maxCommands = 8))
     assertEquals(complete.status, T.Status.Completed)
@@ -1492,22 +1497,22 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     for body <- Seq("while (true) {}", "for (;;) {}", "for (;;) { ; }") do {
       val source = javaProgram(body)
       val program = P.adapt(source).toOption.get
-      assertEquals(T.runVm(program, T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20))
+      assertEquals(T.runVm(program, T.Limits(maxSteps = 20)), singleMethodExecution(T.Status.LimitExceeded, Vector.empty, 20))
       var polls = 0
       assertEquals(T.runVm(program, T.Limits(maxSteps = 30), () => { polls += 1; polls >= 10 }),
-        T.Execution(T.Status.Cancelled, Vector.empty, 9))
+        singleMethodExecution(T.Status.Cancelled, Vector.empty, 9))
       assertEquals(polls, 10)
       assertEquals(T.runVm(program, T.Limits(maxSteps = 20)), T.run(source, T.Limits(maxSteps = 20)))
     }
     val program = P.adapt(javaProgram("Turtle.forward(1); Turtle.forward(2);")).toOption.get
-    assertEquals(T.runVm(program, isCancelled = () => true), T.Execution(T.Status.Cancelled, Vector.empty, 0))
+    assertEquals(T.runVm(program, isCancelled = () => true), singleMethodExecution(T.Status.Cancelled, Vector.empty, 0))
     var polls = 0
     assertEquals(T.runVm(program, isCancelled = () => { polls += 1; polls >= 8 }),
-      T.Execution(T.Status.Cancelled, Vector(forward(1)), 7))
+      singleMethodExecution(T.Status.Cancelled, Vector(forward(1)), 7))
     assertEquals(polls, 8)
-    assertEquals(T.runVm(program), T.Execution(T.Status.Completed, Vector(forward(1), forward(2)), 8))
+    assertEquals(T.runVm(program), singleMethodExecution(T.Status.Completed, Vector(forward(1), forward(2)), 8))
     val emptyLoop = P.adapt(javaProgram("while (true) {}")).toOption.get
-    assertEquals(T.runVm(emptyLoop), T.Execution(T.Status.LimitExceeded, Vector.empty, T.Limits.MaxSteps))
+    assertEquals(T.runVm(emptyLoop), singleMethodExecution(T.Status.LimitExceeded, Vector.empty, T.Limits.MaxSteps))
     val emitting = P.adapt(javaProgram("while (true) { Turtle.forward(1); }")).toOption.get
     val limited = T.runVm(emitting)
     assertEquals(limited.status, T.Status.LimitExceeded)
@@ -1660,7 +1665,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   test("Java Python export isolates run state and validates limits before invocation") {
     val source = Y.render(P.adapt(javaProgram("Turtle.forward(1);")).toOption.get).source
     assert(source.contains("    _commands = []\n    _steps = 0\n    _call_depth = 0\n"))
-    assert(source.contains("finally:\n            _call_depth -= 1"))
+    assert(source.contains("finally:\n            _active.pop()\n            _call_depth -= 1"))
     assert(source.contains(s"(max_steps, 1, ${T.Limits.MaxSteps})"))
     assert(source.contains(s"(max_commands, 0, ${T.Limits.MaxCommands})"))
     assert(source.contains(s"(max_call_depth, 1, ${T.Limits.MaxCallDepth})"))

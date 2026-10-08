@@ -16,7 +16,9 @@ object JavaTurtleRuntime {
   }
 
   case class Command(command: R.TurtleCommand, value: Double)
-  case class Execution(status: Status, commands: Vector[Command], steps: Int)
+  case class MethodCalls(method: R.MethodId, calls: Int, recursiveCalls: Int)
+  case class CallEvidence(methods: Vector[MethodCalls] = Vector.empty, maxDepth: Int = 0)
+  case class Execution(status: Status, commands: Vector[Command], steps: Int, callEvidence: Option[CallEvidence] = None)
 
   object Limits {
     val MaxSteps = 100000
@@ -52,7 +54,7 @@ object JavaTurtleRuntime {
 
   private def execute(methods: Vector[R.Method], entryPoint: R.MethodId, method: R.MethodId, arguments: Vector[E.Value],
       main: Boolean, limits: Limits, isCancelled: () => Boolean): Execution =
-    if !limits.valid then Execution(Status.Failed(Failure.InvalidLimits), Vector.empty, 0)
+    if !limits.valid then Execution(Status.Failed(Failure.InvalidLimits), Vector.empty, 0, Some(CallEvidence()))
     else new Runner(methods, entryPoint, limits, isCancelled).execute(method, arguments, main)
 
   private type Result[A] = Either[Status, A]
@@ -67,7 +69,7 @@ object JavaTurtleRuntime {
     case ForTest(loop: R.For, depth: Int)
   }
 
-  private class Frame(arguments: Map[R.VariableId, E.Value], body: R.Block) {
+  private class Frame(val method: R.MethodId, arguments: Map[R.VariableId, E.Value], body: R.Block) {
     val values: mutable.Map[R.VariableId, E.Value] = mutable.Map.from(arguments)
     var scopes: List[Scope] = Nil
     var pending: List[Action] = List(Action.EnterBlock(body, 1))
@@ -82,6 +84,8 @@ object JavaTurtleRuntime {
     private val commands = mutable.ArrayBuffer.empty[Command]
     private var frames = List.empty[Frame]
     private var used = 0
+    private val calls = mutable.Map.empty[R.MethodId, MethodCalls]
+    private var maxDepth = 0
 
     def execute(method: R.MethodId, arguments: Vector[E.Value], main: Boolean): Execution = {
       var result = start(method, arguments, main)
@@ -94,7 +98,8 @@ object JavaTurtleRuntime {
             result = dispatch(frame, action)
         }
       }
-      Execution(result.fold(identity, _ => Status.Completed), commands.toVector, used)
+      val evidence = CallEvidence(calls.values.toVector.sortBy(_.method.index), maxDepth)
+      Execution(result.fold(identity, _ => Status.Completed), commands.toVector, used, Some(evidence))
     }
 
     private def gate(): Either[E.Failure, Unit] =
@@ -131,7 +136,11 @@ object JavaTurtleRuntime {
             val bindings = if main then Map.empty[R.VariableId, E.Value]
               else method.parameters.zip(arguments).map((parameter, value) =>
                 parameter.id -> E.widen(value, parameter.valueType).toOption.get).toMap
-            frames = new Frame(bindings, method.body) :: frames
+            val previous = calls.getOrElse(id, MethodCalls(id, 0, 0))
+            val recursive = if frames.exists(_.method == id) then 1 else 0
+            calls.update(id, previous.copy(calls = previous.calls + 1, recursiveCalls = previous.recursiveCalls + recursive))
+            frames = new Frame(id, bindings, method.body) :: frames
+            maxDepth = maxDepth.max(frames.size)
             Right(())
           }
         }

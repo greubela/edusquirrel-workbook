@@ -100,6 +100,9 @@ object JavaTurtlePythonExport {
     _commands = []
     _steps = 0
     _call_depth = 0
+    _active = []
+    _calls = {}
+    _max_depth = 0
 
     class _Stop(Exception):
         def __init__(self, status, problem=None):
@@ -107,7 +110,8 @@ object JavaTurtlePythonExport {
             self.problem = problem
 
     def _result(status, problem=None):
-        return {"status": status, "problem": problem, "commands": _commands, "steps": _steps}
+        calls = {"methods": [[method, *_calls[method]] for method in sorted(_calls)], "maxDepth": _max_depth}
+        return {"status": status, "problem": problem, "commands": _commands, "steps": _steps, "calls": calls}
 
     def _gate():
         nonlocal _steps
@@ -147,12 +151,17 @@ object JavaTurtlePythonExport {
             return float("nan")
         return _math.fmod(left, right)
 
-    def _enter():
-        nonlocal _call_depth
+    def _enter(method):
+        nonlocal _call_depth, _max_depth
         _gate()
         if _call_depth >= max_call_depth:
             raise _Stop("LimitExceeded")
         _call_depth += 1
+        counts = _calls.setdefault(method, [0, 0])
+        counts[0] += 1
+        counts[1] += int(method in _active)
+        _active.append(method)
+        _max_depth = max(_max_depth, _call_depth)
 
     def _block(depth):
         _gate()
@@ -192,11 +201,14 @@ object JavaTurtlePythonExport {
       line(s"def ${methodName(value.binding.id)}($parameters):")
       nested {
         line("nonlocal _call_depth")
-        line("_enter()")
+        line(s"_enter(${value.binding.id.index})")
         line("try:")
         nested { block(value.body, 1) }
         line("finally:")
-        nested { line("_call_depth -= 1") }
+        nested {
+          line("_active.pop()")
+          line("_call_depth -= 1")
+        }
       }
     }
 

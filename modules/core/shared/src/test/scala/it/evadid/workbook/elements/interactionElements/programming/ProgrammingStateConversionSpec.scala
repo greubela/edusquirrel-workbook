@@ -439,7 +439,8 @@ class ProgrammingStateConversionSpec extends FunSuite {
   test("full Java state programs enforce execution limits on endless loops") {
     val source = "class Main { public static void main(String[] args) { while (true) {} } }"
     val program = ProgrammingStateJavaString(source).toJavaVmProgram.fold(diagnostic => fail(diagnostic.toString), identity)
-    assertEquals(T.runVm(program, T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20))
+    assertEquals(T.runVm(program, T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20,
+      Some(T.CallEvidence(Vector(T.MethodCalls(R.MethodId(0), 1, 0)), 1))))
   }
 
   test("full Java state execution retains int32 overflow and negative integer division") {

@@ -56,10 +56,12 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       status: String = "Completed",
       problem: String = "null",
       commands: String = "[]",
-      steps: String = "2"
+      steps: String = "2",
+      calls: Option[String] = None
   ): PythonRunReport =
+    val evidence = calls.fold("")(value => s""","calls":$value""")
     PythonRunReport(Vector.empty,
-      s"""{"status":"$status","problem":$problem,"commands":$commands,"steps":$steps}""", "")
+      s"""{"status":"$status","problem":$problem,"commands":$commands,"steps":$steps$evidence}""", "")
 
   private val completedJava = T.Execution(T.Status.Completed, Vector.empty, 2)
 
@@ -313,6 +315,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       val decoded = JavaTurtleCommandRunner.decode(javaReport(status, commands = commands, steps = "10"), T.Limits())
       assertEquals(decoded.commands, expected)
       assertEquals(decoded.steps, 10)
+      assertEquals(decoded.callEvidence, None)
       assertEquals(decoded.status, status match
         case "Completed" => T.Status.Completed
         case "LimitExceeded" => T.Status.LimitExceeded
@@ -384,6 +387,103 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       javaReport(commands = boundaryCommands, steps = T.Limits.MaxSteps.toString), T.Limits())
     assertEquals(boundary.commands.size, T.Limits.MaxCommands)
     assertEquals(boundary.steps, T.Limits.MaxSteps)
+  }
+
+  test("Java worker decoding retains bounded calls without changing legacy reports") {
+    val calls = """{"methods":[[0,5,4],[1,1,0]],"maxDepth":3}"""
+    val expected = T.CallEvidence(Vector(
+      T.MethodCalls(R.MethodId(0), 5, 4), T.MethodCalls(R.MethodId(1), 1, 0)), 3)
+    val known = Some(Set(R.MethodId(0), R.MethodId(1)))
+    val outcomes = Vector("Completed" -> "null", "LimitExceeded" -> "null", "Cancelled" -> "null",
+      "Failed" -> "\"DivisionByZero\"", "Failed" -> "\"NonFiniteCommand\"")
+    outcomes.foreach { (status, problem) =>
+      val report = javaReport(status, problem, """[["forward",0.25]]""", "30", Some(calls))
+      val decoded = JavaTurtleCommandRunner.decode(report, T.Limits(maxCallDepth = 3), known)
+      assertEquals(decoded.callEvidence, Some(expected))
+      assertEquals(decoded.commands, Vector(T.Command(R.TurtleCommand.Forward, 0.25)))
+      assertEquals(decoded.steps, 30)
+    }
+    assertEquals(JavaTurtleCommandRunner.decode(javaReport(), T.Limits(), known).callEvidence, None)
+    val cancelled = javaReport("Cancelled", steps = "0", calls = Some("""{"methods":[],"maxDepth":0}"""))
+    assertEquals(JavaTurtleCommandRunner.decode(cancelled, T.Limits()).callEvidence, Some(T.CallEvidence()))
+  }
+
+  test("Java worker decoding rejects malformed and inconsistent method calls") {
+    val rows = Vector(
+      "null", "{}", "[null]", "[[]]", "[[0,1]]", "[[0,1,0,0]]",
+      "[[0,1,0],[0,1,0]]", "[[1,1,0],[0,1,0]]", "[[-1,1,0]]", "[[128,1,0]]",
+      "[[0.5,1,0]]", "[[\"0\",1,0]]", "[[true,1,0]]", "[[null,1,0]]",
+      "[[0,0,0]]", "[[0,-1,0]]", "[[0,1.5,0]]", "[[0,100001,0]]", "[[0,true,0]]",
+      "[[0,1,-1]]", "[[0,1,1]]", "[[0,2,0.5]]", "[[0,1,false]]", "[[0,1,null]]")
+    val evidence = Vector("null", "[]", "true", "{}",
+      """{"methods":[],"maxDepth":0,"extra":0}""",
+      """{"methods":[]} """, """{"maxDepth":0}""") ++
+      rows.map(value => s"""{"methods":$value,"maxDepth":1}""") ++
+      Vector("-1", "0", "0.5", "65", "\"1\"", "true", "null", "Infinity")
+        .map(value => s"""{"methods":[[0,1,0]],"maxDepth":$value}""") ++ Vector(
+      """{"methods":[],"maxDepth":1}""",
+      """{"methods":[[0,1,0]],"maxDepth":2}""",
+      """{"methods":[[0,3,0]],"maxDepth":1}""",
+      """{"methods":[[0,2,1]],"maxDepth":1}""",
+      """{"methods":[],"maxDepth":0}""")
+    evidence.foreach { calls =>
+      intercept[IllegalArgumentException] {
+        JavaTurtleCommandRunner.decode(javaReport(calls = Some(calls)), T.Limits())
+      }
+    }
+    val tooMany = Vector.fill(129)("[0,1,0]").mkString("[", ",", "]")
+    intercept[IllegalArgumentException] {
+      JavaTurtleCommandRunner.decode(javaReport(steps = "100000",
+        calls = Some(s"""{"methods":$tooMany,"maxDepth":1}""")), T.Limits())
+    }
+    val calls = Some("""{"methods":[[0,1,0],[1,2,1]],"maxDepth":3}""")
+    intercept[IllegalArgumentException] {
+      JavaTurtleCommandRunner.decode(javaReport(steps = "10", calls = calls), T.Limits(maxCallDepth = 2))
+    }
+    intercept[IllegalArgumentException] {
+      JavaTurtleCommandRunner.decode(javaReport(steps = "10", calls = calls), T.Limits(), Some(Set(R.MethodId(0))))
+    }
+  }
+
+  test("Java worker invalid input cannot include entered methods") {
+    val empty = Some("""{"methods":[],"maxDepth":0}""")
+    for problem <- Vector("InvalidInvocation", "InvalidLimits") do
+      val limits = if problem == "InvalidLimits" then T.Limits(maxCallDepth = 0) else T.Limits()
+      val report = javaReport("Failed", s"\"$problem\"", steps = "0", calls = empty)
+      assertEquals(JavaTurtleCommandRunner.decode(report, limits).callEvidence, Some(T.CallEvidence()))
+      intercept[IllegalArgumentException] {
+        JavaTurtleCommandRunner.decode(report.copy(stdout = report.stdout.replace("\"maxDepth\":0", "\"maxDepth\":1")), limits)
+      }
+      intercept[IllegalArgumentException] {
+        JavaTurtleCommandRunner.decode(javaReport("Failed", s"\"$problem\"", steps = "1",
+          calls = Some("""{"methods":[[0,1,0]],"maxDepth":1}""")), limits)
+      }
+  }
+
+  test("Java worker binds call evidence to the current program and replaces a malformed worker") {
+    val workers = Vector.fill(2)(new ControlledJavaWorker(initiallyReady = true))
+    var allocated = 0
+    val runner = new JavaTurtleCommandRunner(() => {
+      val worker = workers(allocated)
+      allocated += 1
+      worker
+    })
+    val first = runner.run(javaFixture)
+    for
+      _ <- workers.head.started()
+      _ = workers.head.complete(report = javaReport(calls = Some("""{"methods":[[2,1,0]],"maxDepth":1}""")))
+      _ <- failedWith(first)(error => assert(error.isInstanceOf[IllegalArgumentException]))
+      _ = assertEquals(workers.head.terminations, 1)
+      second = runner.run(javaFixture)
+      _ <- workers(1).started()
+      _ = workers(1).complete(report = javaReport(calls = Some("""{"methods":[[0,1,0],[1,1,0]],"maxDepth":2}""")))
+      actual <- second
+    yield
+      assertEquals(actual.callEvidence, Some(T.CallEvidence(Vector(
+        T.MethodCalls(R.MethodId(0), 1, 0), T.MethodCalls(R.MethodId(1), 1, 0)), 2)))
+      assertEquals(allocated, 2)
+      runner.close()
+      assertEquals(workers(1).terminations, 1)
   }
 
   test("Java worker decoding retains finite doubles, signed zero and values beyond int32") {

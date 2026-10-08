@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.{PythonRunConfig, PythonRunReport}
 import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonExport
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
+import it.evadid.vm.parsing.java.turtle.{JavaTurtleInputLimits, JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
 import todomove.`export`.workers.PyodideWorkerClient
 
@@ -115,7 +115,8 @@ final class JavaTurtleCommandRunner(
               response.onComplete {
                 case Success(report) =>
                   if current(run) then {
-                    val decoded = Try(JavaTurtleCommandRunner.decode(report, limits))
+                    val decoded = Try(JavaTurtleCommandRunner.decode(report, limits,
+                      Some(program.root.methods.map(_.binding.id).toSet)))
                     finish(run, decoded, discard = decoded.isFailure)
                   }
                 case Failure(error) => finish(run, Failure(error), discard = true)
@@ -188,14 +189,41 @@ print(_java_json.dumps(_java_result, separators=(",", ":")))
     case _ => invalid("expected a finite number")
   }
 
-  private[execution] def decode(report: PythonRunReport, limits: T.Limits): T.Execution = {
+  private def callEvidence(value: ujson.Value, steps: Int, knownMethods: Option[Set[R.MethodId]]): T.CallEvidence = {
+    val fields = value match {
+      case value: ujson.Obj if value.obj.keySet.toSet == Set("methods", "maxDepth") => value.obj
+      case _ => invalid("expected methods and maximum call depth")
+    }
+    val methods = fields("methods") match {
+      case values: ujson.Arr if values.value.size <= JavaTurtleInputLimits.MaxMethods => values.value.toVector.map {
+        case row: ujson.Arr if row.value.size == 3 =>
+          val method = R.MethodId(integer(row.value(0), 0, JavaTurtleInputLimits.MaxMethods - 1))
+          if knownMethods.exists(!_.contains(method)) then invalid("unknown Java method")
+          val calls = integer(row.value(1), 1, T.Limits.MaxSteps)
+          T.MethodCalls(method, calls, integer(row.value(2), 0, calls - 1))
+        case _ => invalid("expected method, call count and recursive call count")
+      }
+      case _ => invalid("expected bounded method calls")
+    }
+    val ids = methods.map(_.method.index)
+    val total = methods.map(_.calls).sum
+    val maxDepth = integer(fields("maxDepth"), 0, T.Limits.MaxCallDepth)
+    if ids != ids.distinct.sorted || total > steps || maxDepth > total ||
+      methods.isEmpty != (maxDepth == 0) || methods.exists(_.recursiveCalls > 0) && maxDepth < 2 then
+      invalid("inconsistent method calls")
+    T.CallEvidence(methods, maxDepth)
+  }
+
+  private[execution] def decode(report: PythonRunReport, limits: T.Limits,
+      knownMethods: Option[Set[R.MethodId]] = None): T.Execution = {
     if report.callbackOps.nonEmpty || report.stderr.nonEmpty then invalid("unexpected Python output")
     if report.stdout.length > 1048576 then invalid("response is too large")
     val parsed = try ujson.read(report.stdout) catch { case NonFatal(error) =>
       throw new IllegalArgumentException("Invalid Java execution result: expected JSON", error)
     }
+    val required = Set("status", "problem", "commands", "steps")
     val fields = parsed match {
-      case value: ujson.Obj if value.obj.keySet.toSet == Set("status", "problem", "commands", "steps") => value.obj
+      case value: ujson.Obj if value.obj.keySet.toSet == required || value.obj.keySet.toSet == required + "calls" => value.obj
       case _ => invalid("expected status, problem, commands and steps")
     }
     val status = (fields("status"), fields("problem")) match {
@@ -222,16 +250,20 @@ print(_java_json.dumps(_java_result, separators=(",", ":")))
       }
       case _ => invalid("expected bounded turtle commands")
     }
+    val calls = fields.get("calls").map(callEvidence(_, steps, knownMethods))
     status match {
       case T.Status.Failed(T.Failure.InvalidLimits | T.Failure.InvalidInvocation) =>
-        if steps != 0 || commands.nonEmpty then invalid("invalid input must not execute")
+        if steps != 0 || commands.nonEmpty || calls.exists(_ != T.CallEvidence()) then
+          invalid("invalid input must not execute")
       case _ =>
         if !valid(limits) || steps > limits.maxSteps || commands.size > limits.maxCommands || commands.size > steps then
           invalid("execution exceeds its limits")
         if steps == 0 && (status == T.Status.Completed || status == T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero)) ||
           status == T.Status.Failed(T.Failure.NonFiniteCommand)) then
           invalid("execution did not start")
+        if calls.exists(evidence => evidence.maxDepth > limits.maxCallDepth || steps > 0 && evidence.methods.isEmpty) then
+          invalid("execution exceeds its call limits")
     }
-    T.Execution(status, commands, steps)
+    T.Execution(status, commands, steps, calls)
   }
 }
