@@ -116,6 +116,7 @@ final class JavaTurtleExecutionPanel(
     start(executeCases) { drawings =>
       if drawings.size != task.cases.size || drawings.isEmpty then
         throw IllegalStateException("The task could not be checked completely.")
+      drawings.foreach(validateDrawing)
       Status.Assessed(drawings, drawings.zip(task.cases).map { (commands, example) => compare(commands, example.expectedShape) })
     }
   }

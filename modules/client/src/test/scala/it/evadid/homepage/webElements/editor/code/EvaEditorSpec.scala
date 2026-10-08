@@ -504,6 +504,26 @@ class EvaEditorSpec extends FunSuite {
     }
   }
 
+  test("Java task panel rejects overflowing coordinates before publishing an assessment") {
+    import JavaTurtleExecutionPanel.Status
+    val source = Var[ProgrammingState](mixedSource())
+    val empty = TurtleGraphic.TurtleGraphicProgram(Nil)
+    val task = JavaTurtleTask(source.now().toJava.code, "draw", List(JavaTurtleCase(Nil, empty)))
+    val result = Promise[Vector[List[TurtleCommand[Double]]]]()
+    val panel = new JavaTurtleExecutionPanel(source, () => Future.successful(Nil), () => (),
+      Some(empty), Some(task -> (() => result.future)))
+    panel.activate()
+    panel.checkTask()
+    result.success(Vector(List.fill(2)(TurtleCommand[Double]("forward", List(1e308)))))
+    result.future.flatMap(_ => Future.unit.map { _ =>
+      panel.status.now() match {
+        case Status.Failed(message) => assert(message.contains("display range"))
+        case other => fail(s"Unexpected assessment status: $other")
+      }
+      panel.deactivate()
+    })
+  }
+
   private def rejectsPartialJavaExecution(status: T.Status): Future[Unit] = {
     val source = javaSource()
     val stored = ProgrammingExercise.StateSerializer.serialize(source)
