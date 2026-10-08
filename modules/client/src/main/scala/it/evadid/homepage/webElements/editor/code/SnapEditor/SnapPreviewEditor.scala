@@ -8,14 +8,11 @@ import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
 
 object SnapPreviewEditor {
-
   def apply(state: Var[ProgrammingState], config: SnapCodeEditorConfig): SnapPreviewEditor =
     SnapPreviewEditor(state.signal, config, SnapCodeEditorImplDelegateToOriginal())
 
   def apply(state: Var[ProgrammingState]): SnapPreviewEditor =
     SnapPreviewEditor(state.signal, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal())
-
-
 }
 
 case class SnapPreviewEditor(
@@ -23,7 +20,6 @@ case class SnapPreviewEditor(
                               config: SnapCodeEditorConfig,
                               impl: SnapCodeEditorImpl
                             ) extends HtmlAppElement {
-
   private def createCanvas(currentState: ProgrammingStateSnapXml): Element = {
     canvasTag(
       cls := "be-program-snap-renderer__canvas",
@@ -37,15 +33,11 @@ case class SnapPreviewEditor(
       }
     )
   }
-
   private lazy val previewCanvas: Element = {
     div(
       cls := "be-program-snap-renderer",
       child <-- stateSignal.map(_.toSnapXml).map(createCanvas),
     )
   }
-
   override def getDomElement(): Element = previewCanvas
-
-
 }
