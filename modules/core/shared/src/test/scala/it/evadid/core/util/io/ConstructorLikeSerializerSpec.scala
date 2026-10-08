@@ -57,4 +57,50 @@ class ConstructorLikeSerializerSpec extends FunSuite {
     intercept[IllegalArgumentException](constructor.deserialize(constructor.serialize(value).replace("Example(", "Wrong(")))
     intercept[IllegalArgumentException](constructor.deserialize("Example()"))
   }
+
+  test("positional and named fields share one group without changing JSON types") {
+    val layout = Map(0 -> List(VariableDisplayConfig("id", true), VariableDisplayConfig("content", false),
+      VariableDisplayConfig("count", true), VariableDisplayConfig("enabled", false), VariableDisplayConfig("data", false)))
+    val tricky = value.copy(id = "{\"number\":42}", content = "null", data = Map("true" -> List("false", "123", "[1,2]")))
+    val serialized = ConstructorLikeSerializer.serialize(layout, tricky, summon[Writer[Example]], "Example")
+    assertEquals(ConstructorLikeSerializer.deserialize(serialized, summon[Reader[Example]], layout, "Example"), tricky)
+    val fields = ConstructorLikeSerializer.deserialize(serialized).valuesWithOrder(layout)
+    assertEquals(fields("id"), ujson.Str(tricky.id))
+    assertEquals(fields("content"), ujson.Str("null"))
+    assertEquals(fields("data"), writeJs(tricky.data))
+  }
+
+  test("constructor fields preserve null, nested arrays and objects and numeric values") {
+    val fields = Map[String, ujson.Value](
+      "nothing" -> ujson.Null, "number" -> ujson.Num(-1.25e12), "flag" -> ujson.Bool(true),
+      "nested" -> ujson.Arr(ujson.Obj("text" -> ")(\"\\\\\\n"), ujson.Null, ujson.Arr(1, false)))
+    val layout = Map(0 -> List(VariableDisplayConfig("nothing", true), VariableDisplayConfig("number", true),
+      VariableDisplayConfig("flag", false), VariableDisplayConfig("nested", false)))
+    val serialized = ConstructorLikeSerializer.serializeFields(layout, fields, "Values")
+    assertEquals(ConstructorLikeSerializer.deserialize(serialized).valuesWithOrder(layout), fields)
+  }
+
+  test("duplicate named fields cannot overwrite positional fields or other named fields") {
+    val layout = Map(0 -> List(VariableDisplayConfig("id", true)))
+    intercept[IllegalArgumentException] {
+      ConstructorLikeSerializer.deserialize("Example(1, {\"id\":2})").valuesWithOrder(layout)
+    }
+    intercept[IllegalArgumentException] {
+      ConstructorLikeSerializer.deserialize("Example({\"id\":1}, {\"id\":2})").values
+    }
+    intercept[IllegalArgumentException] {
+      ConstructorLikeSerializer.deserialize("Example(1, 2)").valuesWithOrder(layout)
+    }
+  }
+
+  test("invalid display layouts fail instead of silently dropping fields") {
+    for (layout <- List(
+      Map(-1 -> List(VariableDisplayConfig("id", true))),
+      Map(0 -> List(VariableDisplayConfig("id", true)), 1 -> List(VariableDisplayConfig("id", false))))) {
+      intercept[IllegalArgumentException] {
+        ConstructorLikeSerializer.serialize(layout, value, summon[Writer[Example]], "Example")
+      }
+    }
+  }
+
 }

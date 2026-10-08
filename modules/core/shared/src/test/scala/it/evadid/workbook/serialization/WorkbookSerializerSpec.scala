@@ -111,4 +111,29 @@ class WorkbookSerializerSpec extends FunSuite {
     assert(error.getMessage.contains("no progress"))
   }
 
+
+  test("one registry accepts native JSON, legacy JSON strings and constructor strings in reverse dependency order") {
+    import it.evadid.workbook.elements.structureElements.WorkbookSection
+    import WorkbookSection.WorkbookSectionMetadata
+    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+    import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
+    import upickle.default.*
+    val text = TextInteraction("shared/\"text\"")
+    val first = WorkbookSection("first", WorkbookSectionMetadata(LanguageMapContentId("section/first")), List(text))
+    val second = WorkbookSection("second", WorkbookSectionMetadata(LanguageMapContentId("section/second"), List(first), List(first)), List(text))
+    val populated = workbook.copy(sections = List(second, first))
+    val entries = populated.toSerialized.allConstructorFields("serializedElements").arr.toList
+      .map(json => read[WorkbookElementSerializable](json)).map(entry => entry.elementId -> entry).toMap
+    val mixed = ujson.Arr(
+      writeJs(entries("second")),
+      ujson.Str(write(entries("first"))),
+      ujson.Str(WorkbookElementFactory.serializerConstructorLike.serialize(text)))
+    val root = populated.toSerialized.withMapAdded(Map("serializedElements" -> mixed))
+    val restored = WorkbookElementFactory.parse(root)
+    assertEquals(restored, populated)
+    for (serializer <- List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike)) {
+      assertEquals(serializer.deserialize(serializer.serialize(restored)), populated)
+    }
+  }
+
 }
