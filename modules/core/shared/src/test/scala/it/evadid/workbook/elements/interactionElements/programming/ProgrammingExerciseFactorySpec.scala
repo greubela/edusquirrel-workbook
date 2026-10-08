@@ -3,6 +3,7 @@ package it.evadid.workbook.elements.interactionElements.programming
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.vm.test.{BeTestSuite, SampleBeTest}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import JavaTurtleArgument.{IntValue, DoubleValue}
 import munit.FunSuite
 
 class ProgrammingExerciseFactorySpec extends FunSuite {
@@ -110,14 +111,14 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       methodName = "square",
       cases = List(
         JavaTurtleCase(
-          List(25, -3),
+          List(IntValue(25), IntValue(-3)),
           TurtleGraphic.TurtleGraphicProgram(List(
             TurtleCommand("forward", List(25.0)),
             TurtleCommand("turnRight", List(90.0))
           ))
         ),
-        JavaTurtleCase(List(40), TurtleGraphic.TurtleGraphicSvgString("M0 0 L40 0 L40 40 Z")),
-        JavaTurtleCase(List(0), TurtleGraphic.TurtleGraphicProgram(Nil))
+        JavaTurtleCase(List(IntValue(40)), TurtleGraphic.TurtleGraphicSvgString("M0 0 L40 0 L40 40 Z")),
+        JavaTurtleCase(List(IntValue(0)), TurtleGraphic.TurtleGraphicProgram(Nil))
       )
     )
     val testSuite: Option[BeTestSuite] = Some(SampleBeTest("  assert True\r\n"))
@@ -134,7 +135,8 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     assertEquals(restored.testSuite, testSuite)
     assertEquals(restored.turtleTask, Some(task))
     assertEquals(restored.defaultValue, ProgrammingStateJavaString(source))
-    assertEquals(restored.turtleTask.get.cases.map(_.arguments), List(List(25, -3), List(40), List(0)))
+    assertEquals(restored.turtleTask.get.cases.map(_.arguments),
+      List(List(IntValue(25), IntValue(-3)), List(IntValue(40)), List(IntValue(0))))
     assertEquals(restored.turtleTask.get.cases.map(_.expectedShape), task.cases.map(_.expectedShape))
   }
 
@@ -146,7 +148,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     assert(task.startingProgram.contains("public static void main(String[] args)"))
     assert(task.startingProgram.contains("square(25);"))
     assert(!task.startingProgram.contains("forward("))
-    assertEquals(task.cases.map(_.arguments), List(List(25), List(40), List(0)))
+    assertEquals(task.cases.map(_.arguments), List(List(IntValue(25)), List(IntValue(40)), List(IntValue(0))))
 
     task.cases.take(2).zip(List(25.0, 40.0)).foreach { (testCase, side) =>
       val expected = List.fill(4)(List(
@@ -167,5 +169,106 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     assertEquals(restored, invalidDraft)
     assertEquals(ProgrammingState.fingerprint(restored), ProgrammingState.fingerprint(invalidDraft))
     assertEquals(exercise.defaultValue, ProgrammingStateJavaString(JavaTurtleTask.squarePilot.startingProgram))
+  }
+
+  test("legacy turtle case arguments retain their numeric JSON representation") {
+    val target: TurtleGraphic = TurtleGraphic.TurtleGraphicProgram(List(TurtleCommand("forward", List(25.0))))
+    val numbers = ujson.Arr(Int.MinValue, -3, 0, 25, Int.MaxValue)
+    val payload = ujson.Obj("arguments" -> numbers, "expectedShape" -> upickle.default.writeJs(target))
+    val restored = upickle.default.read[JavaTurtleCase](payload)
+
+    assertEquals(restored.arguments, List(Int.MinValue, -3, 0, 25, Int.MaxValue).map(IntValue.apply))
+    assertEquals(restored.expectedShape, target)
+    val rewritten = upickle.default.writeJs(restored)
+    assertEquals(rewritten("arguments"), numbers)
+    assertEquals(rewritten.obj.keySet.toSet, Set("arguments", "expectedShape"))
+    assert(restored.arguments.forall(_.isValid))
+    assertEquals(upickle.default.read[JavaTurtleArgument]("2.0"), IntValue(2))
+  }
+
+  test("mixed turtle task arguments roundtrip without narrowing or changing student source") {
+    val source = " \r\npublic class Drawing {\n  static void draw(int depth, double length) {}\r\n  public static void main(String[] args) {}\n}\t "
+    val target: TurtleGraphic = TurtleGraphic.TurtleGraphicProgram(Nil)
+    val task = JavaTurtleTask(source, "draw", List(
+      JavaTurtleCase(List(IntValue(2), DoubleValue(10.5)), target),
+      JavaTurtleCase(List(IntValue(0), DoubleValue(2.0)), target),
+      JavaTurtleCase(List(IntValue(1), DoubleValue(-0.0)), target)
+    ))
+    val exercise = ProgrammingExerciseFullJava("java-mixed-arguments", turtleTask = Some(task))
+    val restored = WorkbookElementFactory.serializerRefBasedJson.deserialize(
+      WorkbookElementFactory.serializerRefBasedJson.serialize(exercise)
+    ).asInstanceOf[ProgrammingExerciseFullJava]
+
+    assertEquals(restored.elementId, exercise.elementId)
+    assertEquals(restored.defaultValue, ProgrammingStateJavaString(source))
+    assertEquals(restored.turtleTask, Some(task))
+    val arguments = restored.turtleTask.get.cases.map(_.arguments)
+    assertEquals(arguments(1), List(IntValue(0), DoubleValue(2.0)))
+    arguments.last.last match {
+      case DoubleValue(value) => assertEquals(java.lang.Double.doubleToRawLongBits(value), Long.MinValue)
+      case other => fail(s"Expected a double argument, got $other")
+    }
+    val serialized = upickle.default.writeJs(task)
+    assertEquals(serialized("cases")(0)("arguments")(0), ujson.Num(2))
+    assertEquals(serialized("cases")(0)("arguments")(1), ujson.Obj("type" -> "double", "value" -> 10.5))
+    assertEquals(serialized("cases")(2)("arguments")(1), ujson.Obj("type" -> "double", "value" -> "-0.0"))
+    assertEquals(arguments(1)(1).literal, "2.0")
+    assertEquals(arguments.last.last.literal, "-0.0")
+  }
+
+  test("turtle numeric arguments preserve their type and floating-point bits") {
+    val random = new scala.util.Random(20261008L)
+    val samples = List.fill(256)(java.lang.Double.longBitsToDouble(random.nextLong())).filter(_.isFinite)
+    val arguments: List[JavaTurtleArgument] = List(
+      IntValue(Int.MinValue), IntValue(Int.MaxValue), IntValue(0),
+      DoubleValue(0.0), DoubleValue(-0.0), DoubleValue(2.0), DoubleValue(10.0 / 3.0),
+      DoubleValue(java.lang.Double.MIN_VALUE), DoubleValue(-java.lang.Double.MIN_VALUE),
+      DoubleValue(java.lang.Double.longBitsToDouble(0x0010000000000000L)),
+      DoubleValue(java.lang.Double.longBitsToDouble(0x3fefffffffffffffL)),
+      DoubleValue(java.lang.Double.longBitsToDouble(0x3ff0000000000001L)), DoubleValue(java.lang.Double.MAX_VALUE),
+      DoubleValue(-java.lang.Double.MAX_VALUE)
+    ) ++ samples.map(DoubleValue.apply)
+    arguments.foreach { argument =>
+      assert(argument.isValid)
+      val restored = upickle.default.read[JavaTurtleArgument](upickle.default.write(argument))
+      (argument, restored) match {
+        case (DoubleValue(expected), DoubleValue(actual)) =>
+          assertEquals(java.lang.Double.doubleToRawLongBits(actual), java.lang.Double.doubleToRawLongBits(expected))
+        case _ => assertEquals(restored, argument)
+      }
+    }
+  }
+
+  test("turtle argument readers reject invalid integers and malformed double values") {
+    val invalid = List[ujson.Value](
+      ujson.Num(2.5), ujson.Num(Int.MaxValue.toDouble + 1), ujson.Num(Int.MinValue.toDouble - 1),
+      ujson.Num(1e100), ujson.Num(Double.NaN), ujson.Num(Double.PositiveInfinity),
+      ujson.Num(Double.NegativeInfinity), ujson.Str("2"), ujson.Bool(true), ujson.Null, ujson.Arr(2),
+      ujson.Obj(), ujson.Obj("type" -> "double"), ujson.Obj("value" -> 2),
+      ujson.Obj("type" -> "int", "value" -> 2), ujson.Obj("type" -> 2, "value" -> 2),
+      ujson.Obj("type" -> "double", "value" -> "2.5"),
+      ujson.Obj("type" -> "double", "value" -> "0.0"),
+      ujson.Obj("type" -> "double", "value" -> "-0"),
+      ujson.Obj("type" -> "double", "value" -> "-0.00"),
+      ujson.Obj("type" -> "double", "value" -> ujson.Null),
+      ujson.Obj("type" -> "double", "value" -> true),
+      ujson.Obj("type" -> "double", "value" -> 2.5, "unit" -> "pixels"),
+      ujson.Obj("type" -> "double", "value" -> ujson.Num(Double.NaN)),
+      ujson.Obj("type" -> "double", "value" -> ujson.Num(Double.PositiveInfinity)),
+      ujson.Obj("type" -> "double", "value" -> ujson.Num(Double.NegativeInfinity))
+    )
+    invalid.foreach { value =>
+      intercept[Exception] { upickle.default.read[JavaTurtleArgument](value) }
+    }
+    intercept[Exception] { upickle.default.read[JavaTurtleArgument]("1e309") }
+    intercept[Exception] { upickle.default.read[JavaTurtleArgument]("""{"type":"double","value":1e309}""") }
+  }
+
+  test("turtle argument writers reject nonfinite doubles") {
+    List(Double.NaN, Double.PositiveInfinity, Double.NegativeInfinity).foreach { number =>
+      val argument: JavaTurtleArgument = DoubleValue(number)
+      assert(!argument.isValid)
+      intercept[Exception] { upickle.default.write(argument) }
+    }
   }
 }

@@ -167,8 +167,7 @@ final class JavaTurtleExecutionPanel(
     onUnmountCallback(_ => deactivate()),
     h3("Drawing"),
     assessment.fold[Modifier[HtmlElement]](emptyMod) { (task, _) =>
-      def call(example: JavaTurtleCase): String =
-        s"${task.methodName}(${example.arguments.mkString(", ")})"
+      def call(example: JavaTurtleCase): String = example.call(task.methodName)
       val emptyTargets = task.cases.filter(_.expectedShape.toTurtleProgram.isEmpty).map(call)
       p(s"Use the parameters of ${task.methodName} to draw the requested shape. " +
         s"Check task calls ${task.cases.map(call).mkString(", ")}. " +
@@ -202,7 +201,7 @@ final class JavaTurtleExecutionPanel(
     child.maybe <-- status.signal.map {
       case Status.Assessed(_, matches) => assessment.map { (task, _) =>
         ul(cls := "java-turtle-execution__cases", task.cases.zip(matches).map { (example, matched) =>
-          li(s"${task.methodName}(${example.arguments.mkString(", ")}): ${if matched then "Matches" else "Not yet"}")
+          li(s"${example.call(task.methodName)}: ${if matched then "Matches" else "Not yet"}")
         })
       }
       case _ => None

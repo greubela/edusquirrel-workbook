@@ -4,7 +4,7 @@ import com.raquo.airstream.state.Var
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtleCommandRunner
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleSource, JavaTurtleVmPrograms, JavaTurtleResolution}
 import it.evadid.vm.simulation.java.{JavaTurtleRuntime, JavaTurtleEvaluation}
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingStateJavaString, JavaTurtleTask}
+import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingStateJavaString, JavaTurtleArgument, JavaTurtleTask}
 
 import java.util.concurrent.CancellationException
 import scala.concurrent.{Future, Promise}
@@ -43,14 +43,20 @@ final class JavaEditorSession(
       val method = program.root.methods.find(_.binding.originalName == task.methodName)
         .filter(_ ne program.root.entryPoint).getOrElse(
           throw IllegalArgumentException(s"Define a static method named ${task.methodName} for this task."))
-      if task.cases.isEmpty || task.cases.size > 16 || method.binding.parameters.size > 16 ||
-        method.binding.parameters.exists(_.variable.valueType != JavaTurtleResolution.ValueType.IntValue) ||
-        task.cases.exists(_.arguments.size != method.binding.parameters.size) then
-        throw IllegalArgumentException(s"Check the integer parameters of ${task.methodName}.")
-      task.cases.foldLeft(Future.successful(Vector.empty[JavaTurtleRuntime.Execution])) { (previous, example) =>
+      val parameters = method.binding.parameters.map(_.variable.valueType)
+      def invalid(): Nothing = throw IllegalArgumentException(s"Check the int and double parameters of ${task.methodName}.")
+      if task.cases.isEmpty || task.cases.size > 16 || parameters.size > 16 ||
+        parameters.exists(!JavaTurtleResolution.isNumeric(_)) ||
+        task.cases.exists(example => example.arguments.size != parameters.size || example.arguments.exists(!_.isValid)) then invalid()
+      val arguments = task.cases.map(_.arguments.map {
+        case JavaTurtleArgument.IntValue(value) => JavaTurtleEvaluation.Value.IntValue(value)
+        case JavaTurtleArgument.DoubleValue(value) => JavaTurtleEvaluation.Value.DoubleValue(value)
+      }.toVector)
+      if arguments.exists(_.zip(parameters).exists((value, expected) => JavaTurtleEvaluation.widen(value, expected).isLeft)) then invalid()
+      arguments.foldLeft(Future.successful(Vector.empty[JavaTurtleRuntime.Execution])) { (previous, values) =>
         previous.flatMap { executions =>
           if !current() then Future.failed(CancellationException("Java execution cancelled."))
-          else owned.invoke(program, method.binding.id, example.arguments.map(JavaTurtleEvaluation.Value.IntValue.apply).toVector, limits)
+          else owned.invoke(program, method.binding.id, values, limits)
             .map { execution => requireCompleted(execution); executions :+ execution }
         }
       }

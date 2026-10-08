@@ -370,6 +370,140 @@ class EvaEditorSpec extends FunSuite {
     })
   }
 
+  private def mixedSource(body: String = "for (int i = 0; i < depth; i += 1) { Turtle.forward(length); }"): ProgrammingStateJavaString =
+    ProgrammingStateJavaString(s" \r\npublic class Drawing {\r\n\tstatic void draw(int depth, double length) { $body }\n\tpublic static void main(String[] args) { while (true) {} }\r\n}\n\t ")
+
+  private def mixedTask(source: ProgrammingStateJavaString): JavaTurtleTask = {
+    import JavaTurtleArgument.{IntValue, DoubleValue}
+    def example(depth: Int, length: JavaTurtleArgument, distance: Double): JavaTurtleCase =
+      JavaTurtleCase(List(IntValue(depth), length), TurtleGraphic.TurtleGraphicProgram(
+        List.fill(depth)(TurtleCommand[Double]("forward", List(distance)))))
+    JavaTurtleTask(source.code, "draw", List(
+      example(1, DoubleValue(10.0 / 3.0), 10.0 / 3.0),
+      example(2, DoubleValue(2.0), 2.0),
+      example(3, IntValue(4), 4.0),
+      example(0, DoubleValue(-0.0), -0.0)))
+  }
+
+  test("Java task keeps mixed argument types and source while sharing one compiled program") {
+    val source = mixedSource()
+    val stored = ProgrammingExercise.StateSerializer.serialize(source)
+    val task = mixedTask(source)
+    val runner = new MethodRunner
+    val editor = EvaEditorPlain(Var[ProgrammingState](source), testingConfig, javaRunnerFactory = () => runner)
+    editor.checkJavaTask(task).map { drawings =>
+      assertEquals(runner.mainCalls, 0)
+      assertEquals(runner.calls.map(_.arguments), Vector(
+        Vector(E.Value.IntValue(1), E.Value.DoubleValue(10.0 / 3.0)),
+        Vector(E.Value.IntValue(2), E.Value.DoubleValue(2.0)),
+        Vector(E.Value.IntValue(3), E.Value.IntValue(4)),
+        Vector(E.Value.IntValue(0), E.Value.DoubleValue(-0.0))))
+      val E.Value.DoubleValue(zero) = runner.calls.last.arguments.last: @unchecked
+      assertEquals(java.lang.Double.doubleToRawLongBits(zero), java.lang.Double.doubleToRawLongBits(-0.0))
+      assert(runner.calls.forall(_.program eq runner.calls.head.program))
+      assertEquals(drawings.size, task.cases.size)
+      assert(drawings.zip(task.cases).forall { (drawing, example) => JavaTurtleExecutionPanel.compare(drawing, example.expectedShape) })
+      assertEquals(task.cases(1).call(task.methodName), "draw(2, 2.0)")
+      assertEquals(task.cases(2).call(task.methodName), "draw(3, 4)")
+      assertEquals(task.cases.last.call(task.methodName), "draw(0, -0.0)")
+      assertEquals(editor.currentState(), source)
+      assertEquals(ProgrammingExercise.StateSerializer.serialize(editor.currentState()), stored)
+      editor.onFullscreenClose()
+    }
+  }
+
+  test("Java task validates every mixed case before invoking any method") {
+    import JavaTurtleArgument.{IntValue, DoubleValue}
+    val source = mixedSource()
+    val valid = mixedTask(source)
+    val invalidArguments = List(
+      List(IntValue(2)),
+      List(DoubleValue(2.0), DoubleValue(3.0)),
+      List(IntValue(2), DoubleValue(Double.NaN)),
+      List(IntValue(2), DoubleValue(Double.PositiveInfinity)),
+      List(IntValue(2), DoubleValue(Double.NegativeInfinity)))
+    val invalidTasks = invalidArguments.map { arguments =>
+      valid.copy(cases = List(valid.cases.head, valid.cases(1).copy(arguments = arguments)))
+    } ++ List(valid.copy(cases = Nil), valid.copy(cases = List.fill(17)(valid.cases.head)))
+    Future.sequence(invalidTasks.map { task =>
+      val runner = new MethodRunner
+      val session = new JavaEditorSession(source, () => runner)
+      session.checkTask(task).failed.map { _ =>
+        assertEquals(runner.calls.size, 0)
+        assertEquals(runner.mainCalls, 0)
+        assertEquals(session.source, source)
+        session.release()
+      }
+    }).map(_ => ())
+  }
+
+  test("Java task does not run later mixed cases after failure in the second case") {
+    val source = mixedSource("Turtle.forward(length); if (depth == 2) { int zero = 0; int value = 1 / zero; }")
+    val task = mixedTask(source)
+    val runner = new MethodRunner
+    val session = new JavaEditorSession(source, () => runner)
+    session.checkTask(task).failed.map { error =>
+      assert(error.getMessage.contains("divide by zero"))
+      assertEquals(runner.calls.size, 2)
+      assertEquals(runner.calls.map(_.arguments.head), Vector(E.Value.IntValue(1), E.Value.IntValue(2)))
+      assertEquals(session.source, source)
+      session.release()
+    }
+  }
+
+  test("Java task cancellation stops mixed cases and permits a fresh complete assessment") {
+    val source = mixedSource()
+    val task = mixedTask(source)
+    val runner = new MethodRunner
+    val gate = Promise[T.Execution]()
+    runner.pending = Some(gate)
+    val session = new JavaEditorSession(source, () => runner)
+    val pending = session.checkTask(task)
+    Future.unit.flatMap { _ =>
+      assertEquals(runner.calls.size, 1)
+      session.stop()
+      val first = runner.calls.head
+      gate.success(T.invokeVm(first.program, first.method, first.arguments))
+      pending.failed.flatMap { error =>
+        assert(error.isInstanceOf[CancellationException])
+        gate.future.flatMap(_ => Future.unit).flatMap { _ =>
+          assertEquals(runner.calls.size, 1)
+          assertEquals(runner.cancels, 1)
+          runner.pending = None
+          session.checkTask(task).map { executions =>
+            assertEquals(executions.size, task.cases.size)
+            assertEquals(runner.calls.size, task.cases.size + 1)
+            assertEquals(session.source, source)
+            session.release()
+          }
+        }
+      }
+    }
+  }
+
+  test("Java task source replacement invalidates mixed results even when the original source returns") {
+    val source = mixedSource()
+    val task = mixedTask(source)
+    val runner = new MethodRunner
+    val editor = EvaEditorPlain(Var[ProgrammingState](source), testingConfig, javaRunnerFactory = () => runner)
+    runner.onInvoke = () => { editor.state.set(mixedSource("")); editor.state.set(source) }
+    editor.checkJavaTask(task).failed.flatMap { error =>
+      assert(error.isInstanceOf[CancellationException])
+      Future.unit.flatMap { _ =>
+        assertEquals(runner.calls.size, 1)
+        assertEquals(runner.closes, 1)
+        assertEquals(editor.currentState(), source)
+        runner.onInvoke = () => ()
+        editor.checkJavaTask(task).map { drawings =>
+          assertEquals(drawings.size, task.cases.size)
+          assertEquals(runner.calls.size, task.cases.size + 1)
+          assertEquals(editor.currentState(), source)
+          editor.onFullscreenClose()
+        }
+      }
+    }
+  }
+
   private def rejectsPartialJavaExecution(status: T.Status): Future[Unit] = {
     val source = javaSource()
     val stored = ProgrammingExercise.StateSerializer.serialize(source)
