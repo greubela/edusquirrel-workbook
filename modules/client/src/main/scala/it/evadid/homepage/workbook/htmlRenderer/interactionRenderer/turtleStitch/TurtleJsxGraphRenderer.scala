@@ -234,6 +234,7 @@ object TurtleJsxGraphRenderer:
     renderScene(container, buildScene(program, expected))
 
   private def renderScene(container: dom.html.Div, scene: Scene): js.Dynamic =
+    container.classList.add("turtle-gradig-panel")
     val points = scene.lines.flatMap(line => List(line.start, line.end))
     val bounds = boundingBox(points.map(p => Point(p.x, -p.y)))
     val jxg = js.Dynamic.global.selectDynamic("JXG")

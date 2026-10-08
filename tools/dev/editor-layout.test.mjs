@@ -60,6 +60,14 @@ test('editor tabs stay compact and panels fit on desktop, mobile and short scree
           if (preview && viewport.width > 860) assert(geometry.sidebar.left >= geometry.content.right, 'desktop preview sits beside editor');
           if (preview && viewport.width <= 860) assert(geometry.sidebar.top >= geometry.content.bottom, 'mobile preview sits below editor');
           if (language === 'Python') assert.equal(await page.locator('textarea[hidden]').isVisible(), false, 'CodeMirror hides its fallback');
+          if (language === 'Snap') {
+            const dimensions = await page.locator('canvas').evaluate(canvas => {
+              const style = getComputedStyle(canvas);
+              return ['--snap-category-row-gap', '--snap-category-border', '--snap-category-padding', '--snap-category-label-growth']
+                .map(name => style.getPropertyValue(name).trim());
+            });
+            assert(dimensions.every(value => /^\d+(\.\d+)?px$/.test(value)), 'canvas category dimensions resolve to CSS pixels');
+          }
           if (process.env.EDITOR_SCREENSHOT && viewport.width === 1440 && language === 'Python' && preview) await page.screenshot({path: process.env.EDITOR_SCREENSHOT});
           await page.locator('.eva-editor__tabs > button').first().focus();
           assert.equal(await page.locator('.eva-editor__tabs > button').first().evaluate(el => getComputedStyle(el).outlineStyle), 'solid');
