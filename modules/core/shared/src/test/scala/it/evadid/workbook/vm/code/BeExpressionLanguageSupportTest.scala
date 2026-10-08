@@ -15,6 +15,7 @@ import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSe
 import it.evadid.vm.simulation.{BeSimulatorConfig, BeSimulatorState, BeVirtualMachineState}
 import it.evadid.vm.simulation.java.{JavaInt32, JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
 import it.evadid.vm.types.{BeChildRole, BeDataType, BeDataValueLiteral, BeScope, BeUseValueReference}
+import it.evadid.workbook.elements.interactionElements.programming.JavaKochAssessment as K
 import munit.FunSuite
 
 class BeExpressionLanguageSupportTest extends FunSuite {
@@ -1880,6 +1881,227 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(failed.commands, Vector(forward(2)))
     assertEquals(failed.drawingEvidence, Some(T.DrawingEvidence(Vector(
       T.MethodDrawing(R.MethodId(0), 1, 1), T.MethodDrawing(R.MethodId(1), 1, 0)))))
+  }
+
+  private def kochMethod(leaf: String = "Turtle.forward(length);"): String = s"""
+    static void koch(int depth, double length) {
+      if (depth == 0) { $leaf return; }
+      koch(depth - 1, length / 3.0);
+      Turtle.turnRight(-60);
+      koch(depth - 1, length / 3.0);
+      Turtle.turnRight(120);
+      koch(depth - 1, length / 3.0);
+      Turtle.turnRight(-60);
+      koch(depth - 1, length / 3.0);
+    }
+  """
+
+  private def kochProgram(helpers: String = kochMethod()): (P.Program, R.MethodId) = {
+    val source = s"""class Drawing {
+      static void marker() { Turtle.forward(99); }
+      $helpers
+      public static void main(String[] args) { marker(); }
+    }"""
+    val program = P.compile(source).fold(problem => fail(problem.message), identity)
+    val method = program.root.methods.find(_.binding.originalName == "koch").get.binding.id
+    (program, method)
+  }
+
+  private def invokeKoch(program: P.Program, method: R.MethodId, example: K.KochCase): T.Execution =
+    T.invokeVm(program, method, Vector(E.Value.IntValue(example.depth), E.Value.DoubleValue(example.length)))
+
+  test("Koch assessment accepts the recursive curve and subdivided leaf helpers across scales") {
+    val variants = Vector(kochMethod(), kochMethod("stroke(length);") + """
+      static void stroke(double length) {
+        Turtle.forward(-0.0);
+        Turtle.forward(length / 2.0);
+        Turtle.forward(length / 2.0);
+      }
+    """)
+    for {
+      helper <- variants
+      depth <- 0 to 4
+      length <- Vector(1e-12, 1.0, 10.5, 81.0, 1e300)
+    } {
+      val (program, method) = kochProgram(helper)
+      val example = K.KochCase(depth, length)
+      val execution = invokeKoch(program, method, example)
+      assertEquals(execution.status, T.Status.Completed)
+      val result = K.assess(program, method, example, execution)
+      assertEquals(result.verdict, K.Verdict.Passed, clue = (depth, length, helper))
+      assert(result.comparison.exists(_.matches), clue = result)
+    }
+  }
+
+  test("Koch assessment rejects wrong scaling turns base cases and hardcoded lengths") {
+    val variants = Vector(
+      kochMethod().replace("length / 3.0", "length / 2.0"),
+      kochMethod().replace("turnRight(120)", "turnRight(60)"),
+      kochMethod().replace("turnRight(-60)", "turnRight(60)"),
+      kochMethod("Turtle.forward(length * 0.8);"),
+      kochMethod("Turtle.forward(1.0);"),
+      kochMethod().replace("Turtle.turnRight(-60);", ""),
+      kochMethod().replace("depth == 0", "depth <= 1")
+    )
+    val example = K.KochCase(2, 10.5)
+    for helper <- variants do {
+      val (program, method) = kochProgram(helper)
+      val execution = invokeKoch(program, method, example)
+      assertEquals(execution.status, T.Status.Completed)
+      val result = K.assess(program, method, example, execution)
+      assertEquals(result.verdict, K.Verdict.WrongDrawing, clue = helper)
+      assert(result.comparison.exists(!_.matches), clue = result)
+    }
+  }
+
+  test("Koch assessment rejects an iterative curve with unused empty or tiny recursion") {
+    val drawing = """
+      Turtle.forward(length / 3.0);
+      Turtle.turnRight(-60);
+      Turtle.forward(length / 3.0);
+      Turtle.turnRight(120);
+      Turtle.forward(length / 3.0);
+      Turtle.turnRight(-60);
+      Turtle.forward(length / 3.0);
+    """
+    val quiet = "static void quiet(int depth) { if (depth > 0) { quiet(depth - 1); } }"
+    val preparations = Vector("", "quiet(2);", "for (int i = 0; i < 4; i += 1) { koch(0, 0.0); }",
+      "for (int i = 0; i < 4; i += 1) { koch(0, length * 0.0000000001); }")
+    for preparation <- preparations do {
+      val (program, method) = kochProgram(s"""
+        $quiet
+        static void koch(int depth, double length) {
+          if (depth == 0) { Turtle.forward(length); return; }
+          $preparation
+          $drawing
+        }
+      """)
+      val example = K.KochCase(1, 10.5)
+      val execution = invokeKoch(program, method, example)
+      val result = K.assess(program, method, example, execution)
+      assertEquals(execution.status, T.Status.Completed)
+      assert(result.comparison.exists(_.matches), clue = preparation)
+      assertEquals(result.verdict, K.Verdict.RecursionMismatch, clue = preparation)
+    }
+    val (baseProgram, baseMethod) = kochProgram("""
+      static void koch(int depth, double length) {
+        if (length > 0.0) { koch(0, 0.0); }
+        Turtle.forward(length);
+      }
+    """)
+    val base = K.KochCase(0, 10.5)
+    assertEquals(K.assess(baseProgram, baseMethod, base, invokeKoch(baseProgram, baseMethod, base)).verdict,
+      K.Verdict.RecursionMismatch)
+  }
+
+  test("Koch assessment validates cases and the exact assessed method signature") {
+    val (program, method) = kochProgram()
+    val valid = K.KochCase(0, 10.5)
+    val execution = invokeKoch(program, method, valid)
+    val invalidCases = Vector(K.KochCase(-1, 1.0), K.KochCase(5, 1.0), K.KochCase(Int.MaxValue, 1.0)) ++
+      Vector(0.0, -0.0, -1.0, Double.NaN, Double.PositiveInfinity, Double.NegativeInfinity)
+        .map(K.KochCase(0, _)) ++ Vector(K.KochCase(1, java.lang.Double.MIN_VALUE),
+          K.KochCase(1, java.lang.Double.MIN_VALUE * 2.0))
+    invalidCases.foreach { example =>
+      assertEquals(K.assess(program, method, example, execution).verdict, K.Verdict.InvalidCase)
+    }
+    val signatures: Vector[(String, Vector[E.Value])] = Vector(
+      ("boolean depth, double length", Vector(E.Value.BooleanValue(false), E.Value.DoubleValue(10.5))),
+      ("int depth, int length", Vector(E.Value.IntValue(0), E.Value.IntValue(10))),
+      ("double depth, double length", Vector(E.Value.DoubleValue(0.0), E.Value.DoubleValue(10.5))),
+      ("int depth, double length, int extra", Vector(E.Value.IntValue(0), E.Value.DoubleValue(10.5), E.Value.IntValue(0)))
+    )
+    signatures.foreach { (parameters, arguments) =>
+      val (wrongProgram, wrongMethod) = kochProgram(s"static void koch($parameters) { Turtle.forward(length); }")
+      val wrongExecution = T.invokeVm(wrongProgram, wrongMethod, arguments)
+      assertEquals(wrongExecution.status, T.Status.Completed)
+      assertEquals(K.assess(wrongProgram, wrongMethod, valid, wrongExecution).verdict, K.Verdict.InvalidMethod)
+    }
+    assertEquals(K.assess(program, program.root.entryPoint.binding.id, valid, T.runVm(program)).verdict, K.Verdict.InvalidMethod)
+    assertEquals(K.assess(program, R.MethodId(127), valid, execution).verdict, K.Verdict.InvalidMethod)
+  }
+
+  test("Koch assessment never accepts an unfinished execution with a matching picture") {
+    val (program, method) = kochProgram()
+    val example = K.KochCase(0, 10.5)
+    val execution = invokeKoch(program, method, example)
+    val statuses = Vector(T.Status.Cancelled, T.Status.LimitExceeded,
+      T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero)), T.Status.Failed(T.Failure.NonFiniteCommand))
+    for status <- statuses do {
+      val result = K.assess(program, method, example, execution.copy(status = status))
+      assertEquals(result.verdict, K.Verdict.Incomplete(status))
+      assertEquals(result.comparison, None)
+    }
+  }
+
+  test("Koch assessment distinguishes unavailable worker evidence from incorrect recursion") {
+    val (program, method) = kochProgram()
+    for depth <- Vector(0, 1) do {
+      val example = K.KochCase(depth, 10.5)
+      val execution = invokeKoch(program, method, example)
+      val legacy = Vector(execution.copy(callEvidence = None, drawingEvidence = None),
+        execution.copy(callEvidence = None), execution.copy(drawingEvidence = None))
+      legacy.foreach { result =>
+        val assessment = K.assess(program, method, example, result)
+        assertEquals(assessment.verdict, K.Verdict.MissingEvidence)
+        assertEquals(assessment.comparison, None)
+      }
+    }
+  }
+
+  test("Koch assessment rejects inconsistent call and drawing evidence") {
+    val (program, method) = kochProgram()
+    val example = K.KochCase(1, 10.5)
+    val execution = invokeKoch(program, method, example)
+    val calls = execution.callEvidence.get
+    val drawing = execution.drawingEvidence.get
+    val called = calls.methods.head
+    val drawn = drawing.methods.head
+    val unknown = R.MethodId(127)
+    val badCalls = Vector(
+      calls.copy(methods = Vector.empty, maxDepth = 0),
+      calls.copy(methods = calls.methods ++ calls.methods),
+      calls.copy(methods = Vector(called.copy(method = unknown))),
+      calls.copy(methods = Vector(called.copy(calls = -1))),
+      calls.copy(methods = Vector(called.copy(calls = 0))),
+      calls.copy(methods = Vector(called.copy(calls = T.Limits.MaxSteps + 1))),
+      calls.copy(methods = Vector(called.copy(recursiveCalls = called.calls))),
+      calls.copy(methods = Vector(called.copy(recursiveCalls = -1))),
+      calls.copy(maxDepth = 0), calls.copy(maxDepth = T.Limits.MaxCallDepth + 1)
+    )
+    val badDrawing = Vector(
+      drawing.copy(methods = Vector.empty),
+      drawing.copy(methods = drawing.methods ++ drawing.methods),
+      drawing.copy(methods = Vector(drawn.copy(method = unknown))),
+      drawing.copy(methods = Vector(drawn.copy(forwardCommands = -1))),
+      drawing.copy(methods = Vector(drawn.copy(forwardCommands = drawn.forwardCommands + 1))),
+      drawing.copy(methods = Vector(drawn.copy(recursiveForwardCommands = -1))),
+      drawing.copy(methods = Vector(drawn.copy(recursiveForwardCommands = drawn.forwardCommands + 1)))
+    )
+    val invalid = badCalls.map(value => execution.copy(callEvidence = Some(value))) ++
+      badDrawing.map(value => execution.copy(drawingEvidence = Some(value))) ++
+      Vector(execution.copy(steps = -1), execution.copy(steps = 0), execution.copy(steps = T.Limits.MaxSteps + 1))
+    invalid.foreach { result =>
+      val assessment = K.assess(program, method, example, result)
+      assertEquals(assessment.verdict, K.Verdict.InvalidEvidence, clue = result)
+      assertEquals(assessment.comparison, None)
+    }
+  }
+
+  test("Koch assessment keeps executions independent and rejects stale method evidence") {
+    val (program, method) = kochProgram()
+    val example = K.KochCase(2, 10.5)
+    val execution = invokeKoch(program, method, example)
+    val beforeMethods = program.root.methods.map(_.binding)
+    val first = K.assess(program, method, example, execution)
+    assertEquals(first.verdict, K.Verdict.Passed)
+    assert(K.assess(program, method, example.copy(depth = 1), execution).verdict != K.Verdict.Passed)
+    val (changed, changedMethod) = kochProgram("static void another() {}" + kochMethod())
+    assertEquals(K.assess(changed, changedMethod, example, execution).verdict, K.Verdict.InvalidEvidence)
+    assertEquals(K.assess(changed, changedMethod, example, invokeKoch(changed, changedMethod, example)).verdict, K.Verdict.Passed)
+    assertEquals(K.assess(program, method, example, execution), first)
+    assertEquals(invokeKoch(program, method, example), execution)
+    assertEquals(program.root.methods.map(_.binding), beforeMethods)
   }
 
   test("Java Python export is deterministic and keeps execution behind one entry point") {
