@@ -13,6 +13,7 @@ import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
 import it.evadid.vm.types.BeScope.GlobalScope
 import upickle.default.*
+import scala.reflect.ClassTag
 
 object BeExpression {
 
@@ -25,25 +26,38 @@ object BeExpression {
   private[vm] given ReadWriter[BeDefineVariable] = macroRW
 
 
+  // BeExpression is open, so its case-class codecs have no automatic sealed
+  // parent tag. Explicitly tag them before merging the recursive expression codec.
+  private inline def taggedExpressionRW[T <: BeExpression](using tag: ClassTag[T], mirror: scala.deriving.Mirror.Of[T]): ReadWriter[T] = {
+    val name = tag.runtimeClass.getName
+    val shortName = tag.runtimeClass.getSimpleName
+    val reader = annotate(macroR[T], "$type", name, shortName)
+    val writer = annotate(macroW[T].asInstanceOf[ObjectWriter[T]], "$type", name, shortName)
+    ReadWriter.join(using reader, writer)
+  }
+
   given rw: ReadWriter[BeExpression] = ReadWriter.merge(
-    summon[ReadWriter[BeFor]],
-    summon[ReadWriter[BeIfElse]],
-    summon[ReadWriter[BeRepeatNr]],
+    taggedExpressionRW[BeFor],
+    taggedExpressionRW[BeIfElse],
+    taggedExpressionRW[BeRepeatNr],
 
-    summon[ReadWriter[BeSequence]],
-    summon[ReadWriter[BeWhile]],
+    taggedExpressionRW[BeSequence],
+    taggedExpressionRW[BeWhile],
 
-    summon[ReadWriter[BeExpressionUnparsable]],
-    summon[ReadWriter[BeExpressionUnsupported]],
-    summon[ReadWriter[BeSingleLineComment]],
+    taggedExpressionRW[BeExpressionUnparsable],
+    taggedExpressionRW[BeExpressionUnsupported],
+    taggedExpressionRW[BeSingleLineComment],
 
 
-    summon[ReadWriter[BeReturn]],
-    summon[ReadWriter[BeStartProgram]],
+    taggedExpressionRW[BeReturn],
+    taggedExpressionRW[BeStartProgram],
 
-    summon[ReadWriter[BeAssignVariable]],
-    summon[ReadWriter[BeFunctionCall]],
-    summon[ReadWriter[BeUseValue]],
+    taggedExpressionRW[BeAssignVariable],
+    taggedExpressionRW[BeFunctionCall],
+    taggedExpressionRW[BeUseValue],
+    taggedExpressionRW[BeDefineVariable],
+    taggedExpressionRW[BeDefineFunction],
+    taggedExpressionRW[BeDefineClass],
   )
 
 

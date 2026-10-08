@@ -32,4 +32,28 @@ class WorkbookSerializerSpec extends FunSuite {
 
     assert(serialized.contains("serializedElements"), clue = serialized.take(200))
   }
+  test("registry round trip resolves nonempty sections and prerequisites regardless of input order") {
+    import it.evadid.workbook.elements.structureElements.WorkbookSection
+    import WorkbookSection.WorkbookSectionMetadata
+    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+    val first = WorkbookSection("first", WorkbookSectionMetadata(LanguageMapContentId("section/first")), List(TextInteraction("text")))
+    val second = WorkbookSection("second", WorkbookSectionMetadata(LanguageMapContentId("section/second"), List(first), List(first)), Nil)
+    val populated = workbook.copy(sections = List(second, first))
+    val serialized = WorkbookElementFactory.serializerRegularJsonWorkbook.serialize(populated)
+    val restored = WorkbookElementFactory.serializerRegularJsonWorkbook.deserialize(serialized)
+    assertEquals(restored, populated)
+    assertEquals(restored.sections.head.metadata.sectionsRequiredBefore, List(restored.sections(1)))
+    assertEquals(restored.sections.head.metadata.sectionsRecommendedBefore, List(restored.sections(1)))
+  }
+
+  test("embedded registries reject unresolved references instead of re-expanding forever") {
+    import it.evadid.workbook.jsonFactory.{WorkbookElementSerializable, WorkbookElementReference}
+    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+    val root = workbook.toSerialized
+      .withElementsAddedAs("sections", List(WorkbookElementReference("missing", Some("WorkbookSection"))))
+      .withElementsAdded("serializedElements", List(upickle.default.write(TextInteraction("unrelated").toSerialized)))
+    val error = intercept[it.evadid.distribution.command.SerializedException](WorkbookElementFactory.parse(root))
+    assert(error.getMessage.contains("no progress"))
+  }
+
 }

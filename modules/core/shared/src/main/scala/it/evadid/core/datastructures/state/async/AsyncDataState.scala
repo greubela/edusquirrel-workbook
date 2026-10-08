@@ -1,5 +1,8 @@
 package it.evadid.core.datastructures.state.async
 
+import upickle.default.*
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
+
 import it.evadid.distribution.command.SerializedException
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 
@@ -7,7 +10,7 @@ import java.time.LocalDateTime
 import scala.util.Try
 
 
-sealed trait AsyncDataState[F, S] {
+sealed trait AsyncDataState[F, S] derives ReadWriter {
 
 
   val loadingSince: Option[LocalDateTime] = None
@@ -26,12 +29,12 @@ sealed trait AsyncDataState[F, S] {
 
 object AsyncDataState {
 
-  case class AsyncDataLoading[F, S]() extends AsyncDataState[F, S] {
+  case class AsyncDataLoading[F, S]() extends AsyncDataState[F, S] derives ReadWriter {
     override val loadingSince: Option[LocalDateTime] = Some(LocalDateTime.now())
     val isLoading: Boolean = true
   }
 
-  sealed trait AsyncDataStateFinished[F, S] extends AsyncDataState[F, S] {
+  sealed trait AsyncDataStateFinished[F, S] extends AsyncDataState[F, S] derives ReadWriter {
     val asEither: Either[FailureInfo[F], S]
     val isLoading: Boolean = false
 
@@ -39,7 +42,7 @@ object AsyncDataState {
 
   }
 
-  case class AsyncDataSuccess[F, S](dataValue: S) extends AsyncDataStateFinished[F, S] {
+  case class AsyncDataSuccess[F, S](dataValue: S) extends AsyncDataStateFinished[F, S] derives ReadWriter {
     override val asEither: Either[FailureInfo[F], S] = Right(dataValue)
     override val value: Option[S] = Some(dataValue)
 
@@ -56,7 +59,7 @@ object AsyncDataState {
 
   }
 
-  case class AsyncDataFailed[F, S](cause: SerializedException, additionalData: Option[F]) extends AsyncDataStateFinished[F, S] {
+  case class AsyncDataFailed[F, S](cause: SerializedException, additionalData: Option[F]) extends AsyncDataStateFinished[F, S] derives ReadWriter {
     private val failureInfo = FailureInfo(cause, additionalData)
     override val asEither: Either[FailureInfo[F], S] = Left(failureInfo)
     override val failure: Option[FailureInfo[F]] = Some(failureInfo)

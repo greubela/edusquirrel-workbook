@@ -32,7 +32,7 @@ implicit class AsyncState[F, S](underlying: ObservableValue[AsyncDataState[F, S]
     observeAllStates.addObserver(onNext => if (!res.isCompleted && !onNext.isLoading) {
       onNext.match {
         case a@AsyncDataSuccess(value) => res.complete(Try(a))
-        case AsyncDataFailed(error, additionalData) => res.failure(error)
+        case failed: AsyncDataFailed[F, S] => res.trySuccess(failed)
         case AsyncDataLoading() =>
       }
     })

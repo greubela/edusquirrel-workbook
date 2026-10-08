@@ -7,7 +7,6 @@ import it.evadid.core.util.io.serializer.DefaultSerializer.given
 
 import java.security.SecureRandom
 import java.time.LocalDateTime
-import java.util.HexFormat
 
 object User {
 
@@ -31,7 +30,10 @@ object User {
       val secureRandom = SecureRandom()
       val bytes = new Array[Byte](20)
       secureRandom.nextBytes(bytes)
-      val tokenStr = HexFormat.of.formatHex(bytes)
+      val hexDigits = "0123456789abcdef"
+      val tokenStr = bytes.iterator.flatMap { byte =>
+        Iterator(hexDigits.charAt((byte & 0xff) >>> 4), hexDigits.charAt(byte & 0x0f))
+      }.mkString
       val expiresAt = LocalDateTime.now().plusMinutes(30)
       SingleAccessToken(tokenStr, expiresAt)
     }
@@ -46,7 +48,7 @@ object User {
   def deriveNameFromMail(mail: String): Option[String] = {
     val parts = mail.split("@")
     if (parts.size < 2) None else {
-      val subSplitted = parts.head.split("[.-_]")
+      val subSplitted = parts.head.split("[._-]").filter(_.nonEmpty)
       if (subSplitted.size < 2) None
       else Some(subSplitted.map(_.toLowerCase.capitalize).mkString(" "))
     }
@@ -60,7 +62,7 @@ object User {
   }
 
   def cleanUserName(name: String): String = {
-    name.trim.replaceAll("\\s", " ").split(" ").map(_.trim.toLowerCase.capitalize).mkString(" ")
+    name.trim.replaceAll("\\s+", " ").split(" ").map(_.trim.toLowerCase.capitalize).mkString(" ")
   }
 
   def createNewUser(firstName: String, lastName: String, mail: String): User = {

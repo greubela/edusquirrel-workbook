@@ -4,14 +4,16 @@ import it.evadid.core.datastructures.language.serialization.abstractions.ParsedT
 import it.evadid.util.logging.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
+import scala.util.control.NonFatal
 
 case class LanguageMapCollectionSource(inputSources: Set[LanguageMapInputSource], ec: ExecutionContext) extends LanguageMapInputSource {
 
   given ExecutionContext = ec
 
   def loadTriples(logger: Logger, source: LanguageMapInputSource): Future[ParsedTriples] = if(inputSources.nonEmpty){
-    source.loadAllTriples(logger).recover {
-      case (e: Exception) => {
+    Try(source.loadAllTriples(logger)).fold(Future.failed, identity).recover {
+      case NonFatal(e) => {
         logger.logExceptionWarn(s"ignoring triples of source ${source} because of error", e)
         ParsedTriples(Set(), Set())
       }

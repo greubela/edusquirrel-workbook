@@ -1,10 +1,12 @@
 package it.evadid.workbook.elements.interactionElements.Turtle
 
+import upickle.default.*
+
 import TurtleStitchProjectState.StorageFormat.BYTES_AS_RAW_STRING
 
 import scala.util.*
 
-case class TurtleStitchProjectState private(programXml: Option[String] = None) {
+case class TurtleStitchProjectState private(programXml: Option[String] = None) derives ReadWriter {
 
   def asString: String = programXml.getOrElse("")
 

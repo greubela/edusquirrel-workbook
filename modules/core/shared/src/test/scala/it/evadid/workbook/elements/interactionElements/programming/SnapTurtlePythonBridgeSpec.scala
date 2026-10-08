@@ -499,8 +499,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     assertEquals(SnapCustomBlockRules.obsoleteCalls(xml), Nil, clue = xml)
   }
 
-  // Re-enable after the custom-block schema migration can infer missing legacy input metadata.
-  test("applyPython rename still declares input types when previous inputs were empty".ignore) {
+  test("applyPython rename still declares input types when previous inputs were empty") {
     val previous = snapProjectWith(
       """<block-definition s="circ %'varb'" type="command" category="Variables"><inputs></inputs><script><block s="forward"><block var="varb"/></block></script></block-definition>"""
     )

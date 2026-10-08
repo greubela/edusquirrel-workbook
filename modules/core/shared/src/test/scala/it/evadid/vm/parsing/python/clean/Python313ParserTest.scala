@@ -1,4 +1,3 @@
-/* Disabled: this legacy test targets APIs that no longer exist.
 package it.evadid.vm.parsing.python.clean
 
 import it.evadid.vm.parsing.python.clean.model.PyAST.*
@@ -129,12 +128,14 @@ class Python313ParserTest extends FunSuite {
         |    break
         |""".stripMargin
     val loop = parseOne(code)
-    assert(loop.isInstanceOf[PyWhileStatement] || loop.isInstanceOf[PyUnparsableStatement], "expected while parser coverage")
+    assert(loop.isInstanceOf[PyWhileStatement], "expected a structured while loop")
+    assertEquals(loop.asInstanceOf[PyWhileStatement].bodyBlock.statements, Seq(PyContinueStatement, PyBreakStatement))
+    val followed = PythonAstParserSimple.parse(code + "after = 1\n").toOption.get
+    assertEquals(followed.statements.map(_.statement).filterNot(_ == PyEmptyStatement).size, 2)
+    assert(followed.statements.last.statement.isInstanceOf[PySimpleAssignment])
   }
 
   test("parses simple import statements") {
-    assert(parseOne("import turtle").isInstanceOf[PyImportStatement])
+    assert(parseOne("import turtle").isInstanceOf[PyPlainImportStatement])
   }
 }
-
-*/

@@ -22,7 +22,7 @@ object JavaType {
 
   sealed class JAVA_INTEGER_HEX extends JavaType[BigInt]("int", Serializer.intHexIO, Serializer.intHexIO) with GenericNumericalInteger
 
-  sealed class JAVA_INTEGER_OCT extends JavaType[BigInt]("int", Serializer.intOctalIO, Serializer.intOctalIO) with GenericNumericalInteger
+  sealed class JAVA_INTEGER_OCT extends JavaType[BigInt]("int", Serializer.integerBaseIO(8, "0", Map("0o" -> 8, "O" -> 8)), Serializer.intOctalIO) with GenericNumericalInteger
 
   sealed class JAVA_INTEGER_BIN extends JavaType[BigInt]("int", Serializer.intBinaryIO, Serializer.intBinaryIO) with GenericNumericalInteger
 

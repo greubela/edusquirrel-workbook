@@ -34,7 +34,7 @@ object CollapsibleInstructionElement {
         f.elementId,
         f.getElementAs[LanguageMapContentId]("titleLabel"),
         f.getElementAs[LanguageMapContentId]("bodyContent"),
-        f.getElement("initiallyCollapsed").toBoolean)
+        f.getOptionalElementAs[Boolean]("initiallyCollapsed", true))
     }
   }
 

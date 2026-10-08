@@ -1,12 +1,14 @@
 package it.evadid.workbook.interaction.variable
 
+import upickle.default.*
+
 import it.evadid.core.util.InfoUtil
 import it.evadid.core.util.io.Serializer
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.interaction.sync.SyncStrategy
 import it.evadid.workbook.interaction.sync.UpdateImportance.DEFAULT
 
-case class InteractionVariableHistory[T](events: Set[InteractionVariableState[T]]) {
+case class InteractionVariableHistory[T](events: Set[InteractionVariableState[T]]) derives ReadWriter {
 
   def lastStateOption: Option[InteractionVariableState[T]] = events.maxByOption(_.timestamp)
 

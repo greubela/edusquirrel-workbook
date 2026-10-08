@@ -131,9 +131,9 @@ object DefaultSerializer {
   }.uPickleReadWrite
 
 
-  private[serializer] given rwMessage: ReadWriter[Message] = macroRW
+  given rwMessage: ReadWriter[Message] = macroRW
 
-  private[serializer] given rwMessageModel: ReadWriter[MessengerModel] = macroRW
+  given rwMessageModel: ReadWriter[MessengerModel] = macroRW
 
   private[serializer] given mccres: ReadWriter[MessengerChatCompletionResponse] = macroRW
 

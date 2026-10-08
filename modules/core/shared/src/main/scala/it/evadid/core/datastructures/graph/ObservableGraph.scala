@@ -72,18 +72,15 @@ class ObservableGraph[N, A] extends Graph[N, A, Edge[N, A]] {
   override def toString: String = "ObservableGraph with " + nodes.size + " nodes and " + edgesInternal.size + " edges (location: " + super.toString + ")"
 
   def replaceNode(oldNode: N, newNode: N): Unit = {
-    val edgesWithStart = edgesInternal.filter(_.start == oldNode)
-    val edgesWithDest = edgesInternal.filter(_.dest == oldNode)
-
-    edgesWithStart.foreach(edgesInternal -= _)
-    edgesWithDest.foreach(edgesInternal -= _)
-
-    nodes -= oldNode // Edges will be removed automatically! (???)
-
-    nodes += newNode
-
-    edgesWithStart.foreach(edge => this += (newNode, edge.dest, edge.content))
-    edgesWithDest.foreach(edge => this += (edge.start, newNode, edge.content))
+    if (nodes.contains(oldNode) && oldNode != newNode) {
+      val affected = edgesInternal.toList.filter(e => e.start == oldNode || e.dest == oldNode)
+      nodes -= oldNode
+      if (!nodes.contains(newNode)) nodes += newNode
+      affected.foreach { edge =>
+        this +=> (if (edge.start == oldNode) newNode else edge.start,
+          if (edge.dest == oldNode) newNode else edge.dest, edge.content)
+      }
+    }
   }
 
   override def getEdgesTo(n: N): scala.Seq[Edge[N, A]] = edges.filter(_.dest == n).toList

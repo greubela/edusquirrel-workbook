@@ -1,5 +1,7 @@
 package it.evadid.core.datastructures.file
 
+import upickle.default.*
+
 import it.evadid.core.datastructures.file.FileDescription.PathStructure
 
 import scala.concurrent.Future
@@ -23,17 +25,17 @@ trait FileDescription {
 
 object FileDescription {
 
-  case class FilenameStructure(filenameWithoutExtension: String, extension: Option[String]) {
+  case class FilenameStructure(filenameWithoutExtension: String, extension: Option[String]) derives ReadWriter {
     lazy val extensionOrEmpty: String = extension.getOrElse("")
     lazy val extensionWithPointOrEmpty: String = extension.map("." + _).getOrElse("")
     lazy val filenameWithExtension: String = filenameWithoutExtension + extensionWithPointOrEmpty
   }
 
-  case class LocationStructure(protocol: Option[String], domainElements: List[String], port: Option[Int], dirElements: List[String]) {
+  case class LocationStructure(protocol: Option[String], domainElements: List[String], port: Option[Int], dirElements: List[String]) derives ReadWriter {
 
   }
 
-  case class PathStructure(locationStructure: LocationStructure, nameStructure: FilenameStructure) {
+  case class PathStructure(locationStructure: LocationStructure, nameStructure: FilenameStructure) derives ReadWriter {
     def filenameWithoutExtension: String = nameStructure.filenameWithoutExtension
 
     def extension: Option[String] = nameStructure.extension
@@ -53,54 +55,29 @@ object FileDescription {
     def dirElements: List[String] = locationStructure.dirElements
   }
 
-  private def parseNameStructure(asUrl: String): FilenameStructure = {
-    val filenameWithExtension: String = asUrl.split("\\\\").last.split("/").last.trim
-    if (filenameWithExtension.isEmpty) FilenameStructure("", None)
-    else if (!filenameWithExtension.contains(".")) FilenameStructure(filenameWithExtension, None)
-    else {
-      val filenameParts = filenameWithExtension.split("\\.")
-      val extensionRaw: String = filenameParts.last.trim
-      val nameWithoutExtension = filenameWithExtension.substring(0, filenameWithExtension.length - extensionRaw.length - 1)
-      val extension = if (extensionRaw.isEmpty) None else Some(extensionRaw)
-      FilenameStructure(nameWithoutExtension, extension)
-    }
-  }
-
   def parsePathStructure(asUrl: String): PathStructure = {
-    val nameStructure = parseNameStructure(asUrl)
-    val locationStructure = parseLocationStructure(asUrl, nameStructure)
-    PathStructure(locationStructure, nameStructure)
+    val normalized = asUrl.trim.replace('\\', '/')
+    val separator = normalized.indexOf("://")
+    val protocol = if (separator >= 0) Some(normalized.take(separator)) else None
+    val remainder = if (separator >= 0) normalized.drop(separator + 3) else normalized
+    val cleanPath = if (protocol.nonEmpty) remainder.takeWhile(c => c != '?' && c != '#') else remainder
+    val (authority, path) = if (protocol.nonEmpty) {
+      val slash = cleanPath.indexOf('/')
+      if (slash < 0) (cleanPath, "") else (cleanPath.take(slash), cleanPath.drop(slash + 1))
+    } else ("", cleanPath)
+    val components = path.split("/", -1).toList
+    val filename = components.lastOption.getOrElse("")
+    val dot = filename.lastIndexOf('.')
+    val name = if (dot > 0 && dot < filename.length - 1)
+      FilenameStructure(filename.take(dot), Some(filename.drop(dot + 1)))
+    else FilenameStructure(filename, None)
+    val colon = authority.lastIndexOf(':')
+    val port = if (colon >= 0) authority.drop(colon + 1).toIntOption else None
+    val host = if (port.nonEmpty) authority.take(colon) else authority
+    val location = LocationStructure(protocol, host.split("\\.").filter(_.nonEmpty).toList,
+      port, components.dropRight(1).filter(_.nonEmpty))
+    PathStructure(location, name)
   }
-
-  private def parseLocationStructure(asUrl: String, filenameStructure: FilenameStructure): LocationStructure = {
-    if (asUrl.trim.isEmpty || asUrl.trim.size <= filenameStructure.filenameWithExtension.size) {
-      LocationStructure(None, List(), None, List())
-    } else {
-      val withoutFileName = asUrl.trim.substring(0, asUrl.length - filenameStructure.filenameWithExtension.length)
-      val (protocol: Option[String], remainder: String) = if (!withoutFileName.contains("://")) (None, withoutFileName) else {
-        val parts = withoutFileName.split("://")
-        if (parts.length != 2) throw new IllegalArgumentException("more than one protocol part??")
-        else Some(parts(0)) -> parts(1)
-      }
-
-      val (beforeDirs, dirNameList) = {
-        val parts = remainder.split("\\\\").flatMap(_.split("/"))
-        parts.head -> parts.tail.filter(_.nonEmpty)
-      }
-
-      val domainList = beforeDirs.split("\\.").filter(_.nonEmpty).toList
-      val (cleanedDomainList: List[String], port: Option[Int]) = if (domainList.nonEmpty && domainList.last.contains(":")) {
-        val port = domainList.last.split(":").last
-        val lastDomain = domainList.last.split(":").reverse.tail.reverse.mkString("", ":", "")
-        val cleaned = domainList.reverse.tail.reverse ++ List(lastDomain)
-        cleaned -> port.toIntOption
-      } else domainList -> None
-
-      val onlyDirs = if (dirNameList.nonEmpty) dirNameList.reverse.tail.reverse.toList else List()
-      LocationStructure(protocol, cleanedDomainList, port, onlyDirs)
-    }
-  }
-
 
 }
 

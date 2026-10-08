@@ -1,10 +1,12 @@
 package it.evadid.workbook.interaction.sync
 
+import upickle.default.*
+
 import it.evadid.workbook.interaction.sync.UpdateImportance.{DEFAULT, MAJOR, MINOR}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 
 
-sealed trait SyncStrategy {
+sealed trait SyncStrategy derives ReadWriter {
 
   def selectEventsToSync[T](history: InteractionVariableHistory[T]): InteractionVariableHistory[T]
 
@@ -12,7 +14,7 @@ sealed trait SyncStrategy {
 
 object SyncStrategy {
 
-  object SYNC_EVERYTHING extends SyncStrategy {
+  case object SYNC_EVERYTHING extends SyncStrategy {
     override def selectEventsToSync[T](history: InteractionVariableHistory[T]): InteractionVariableHistory[T] = history
 
     override val toString: String = "SYNC_EVERYTHING"
@@ -24,7 +26,7 @@ object SyncStrategy {
     override val toString: String = "SYNC_ONLY(" + desired.mkString(", ") + ")"
   }
 
-  object SYNC_LAST_AND_MAJOR extends SyncStrategy {
+  case object SYNC_LAST_AND_MAJOR extends SyncStrategy {
     override def selectEventsToSync[T](history: InteractionVariableHistory[T]): InteractionVariableHistory[T] = {
       val lastEvent = history.events.filter(_.updateImportance != DEFAULT).maxByOption(_.timestamp)
       val majorEvents = history.events.filter(_.updateImportance == MAJOR)
@@ -34,7 +36,7 @@ object SyncStrategy {
     override val toString: String = "SYNC_LAST_AND_MAJOR"
   }
 
-  object SYNC_LAST extends SyncStrategy {
+  case object SYNC_LAST extends SyncStrategy {
     override def selectEventsToSync[T](history: InteractionVariableHistory[T]): InteractionVariableHistory[T] = {
       history.map(_.filter(_.updateImportance != UpdateImportance.DEFAULT).maxByOption(_.timestamp).toSet)
     }

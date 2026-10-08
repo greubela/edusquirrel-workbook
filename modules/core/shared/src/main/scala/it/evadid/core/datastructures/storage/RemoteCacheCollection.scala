@@ -54,8 +54,9 @@ case class RemoteCacheCollection[K, D, CK <: CacheKey[K, D]](baseLogger: SyncLog
     val it: Iterator[(CK, RemoteSyncDataCache[K, D])] = remoteCaches.iterator
     val singleFut: Future[Iterator[(CK, RemoteSyncDataCache[K, D], O)]] = Future.traverse(it)(tup => func.apply(tup._1, tup._2).map(res => (tup._1, res._1, res._2)))
     singleFut.map(res => {
-      val updated = RemoteCacheCollection[K, D, CK](baseLogger, res.map(trip => trip._1 -> trip._2).toMap)
-      val output = res.map(trip => trip._1 -> trip._3).toMap
+      val results = res.toList
+      val updated = RemoteCacheCollection[K, D, CK](baseLogger, results.map(trip => trip._1 -> trip._2).toMap)
+      val output = results.map(trip => trip._1 -> trip._3).toMap
       (updated, output)
     })
   }

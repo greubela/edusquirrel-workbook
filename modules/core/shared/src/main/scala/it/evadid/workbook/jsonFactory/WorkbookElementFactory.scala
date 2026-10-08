@@ -164,11 +164,11 @@ object WorkbookElementFactory {
   }
 
   def parseAll(elementsInOrder: List[WorkbookElementSerializable], knownElements: Map[String, WorkbookElement] = Map()): List[WorkbookElement] = {
-    parseAll(elementsInOrder, elementsInOrder, knownElements, knownFactoriesMap)._1
+    parseAll(elementsInOrder, elementsInOrder, knownElements, knownFactoriesMap, Set.empty[String])._1
   }
 
   def parseAllAsMap(elementsInOrder: List[WorkbookElementSerializable], knownElements: Map[String, WorkbookElement] = Map()): Map[String, WorkbookElement] = {
-    parseAll(elementsInOrder, elementsInOrder, knownElements, knownFactoriesMap)._2
+    parseAll(elementsInOrder, elementsInOrder, knownElements, knownFactoriesMap, Set.empty[String])._2
   }
 
   @tailrec
@@ -176,7 +176,8 @@ object WorkbookElementFactory {
                         elementsInOrder: List[WorkbookElementSerializable],
                         open: List[WorkbookElementSerializable],
                         alreadyParsed: Map[String, WorkbookElement],
-                        knownFactories: Map[String, WorkbookElementFactory[? <: WorkbookElement]]
+                        knownFactories: Map[String, WorkbookElementFactory[? <: WorkbookElement]],
+                        expandedRegistryIds: Set[String]
                       ): (List[WorkbookElement], Map[String, WorkbookElement]) = {
     if (open.isEmpty) {
       val notYetParsed = elementsInOrder.filter(el => !alreadyParsed.contains(el.elementId))
@@ -191,11 +192,13 @@ object WorkbookElementFactory {
       val stillOpen: mutable.ListBuffer[WorkbookElementSerializable] = mutable.ListBuffer()
       val newlyProvided: mutable.ListBuffer[WorkbookElementSerializable] = mutable.ListBuffer()
 
+      val expanded = mutable.HashSet.from(expandedRegistryIds)
+
       open.foreach(curOpenElement => {
         val factory = knownFactories.get(curOpenElement.elementType)
         if (factory.isEmpty) {
           throw SerializedException(s"No factory known for WorkbookElement with type ${curOpenElement.elementType}")
-        } else {
+        } else if (expanded.add(curOpenElement.elementId)) {
           newlyProvided ++= factory.get.serializedElementKeysThatContainOtherSerializations(curOpenElement).flatMap(curOtherKey => {
             curOpenElement.getElementsAsSerializableElement(curOtherKey)
           })
@@ -211,7 +214,7 @@ object WorkbookElementFactory {
       if (stillOpen.nonEmpty && newlyFinished.isEmpty && newlyProvided.isEmpty) {
         throw SerializedException(s"Iteration with no progress, likely because of a cyclic dependency, stop parsing! (still open: ${open.map(_.elementId)})")
       } else {
-        parseAll(elementsInOrder, stillOpen.toList ++ newlyProvided, alreadyParsed ++ newlyFinished, knownFactories)
+        parseAll(elementsInOrder, stillOpen.toList ++ newlyProvided, alreadyParsed ++ newlyFinished, knownFactories, expanded.toSet)
       }
 
     }

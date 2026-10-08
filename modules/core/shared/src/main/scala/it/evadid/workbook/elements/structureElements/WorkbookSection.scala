@@ -46,7 +46,11 @@ object WorkbookSection {
     override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): WorkbookSection =
       WorkbookSection(
         element.elementId,
-        element.getElementAs[WorkbookSectionMetadata]("metadata"),
+        WorkbookSectionMetadata(
+          read[LanguageMapContentId](ujson.read(element.getElement("metadata"))("sectionTitle").str),
+          element.getAndResolveWorkbookElements[WorkbookSection]("requiredBefore", parsedElements),
+          element.getAndResolveWorkbookElements[WorkbookSection]("recommendedBefore", parsedElements)
+        ),
         element.getAndResolveWorkbookElements("content", parsedElements),
       )
 
@@ -67,7 +71,14 @@ object WorkbookSection {
       ))
     }
 
-    override def deserialize(str: String): WorkbookSectionMetadata = ???
+    override def deserialize(str: String): WorkbookSectionMetadata = {
+      val json = ujson.read(str)
+      val required = read[List[WorkbookElementReference]](json("requiredBefore").str)
+      val recommended = read[List[WorkbookElementReference]](json("recommendedBefore").str)
+      require(required.isEmpty && recommended.isEmpty,
+        "Section dependencies require WorkbookElementFactory's element registry")
+      WorkbookSectionMetadata(read[LanguageMapContentId](json("sectionTitle").str))
+    }
   }.uPickleReadWrite
 
   case class WorkbookSectionMetadata

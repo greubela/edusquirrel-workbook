@@ -79,4 +79,42 @@ class RemoteCacheControllerSpec extends FunSuite {
       assertEquals(local.written, Map("program" -> "edited Snap XML"))
     }
   }
+
+  test("an empty store request leaves the cache untouched and does not fetch or write") {
+    var fetches = 0
+    val local = new Destination(() => { fetches += 1; Future.successful(response("saved")) })
+    val cache = controller(State(List(local)))
+    cache.requestStore(Nil).map { _ =>
+      assertEquals(fetches, 0)
+      assertEquals(local.written, Map.empty[String, String])
+      assertEquals(cache.currentReport("program").cacheStatus(local).lastKnownRemoteValue, None)
+    }
+  }
+
+  test("observable reports publish a successful fetch and fresh caches are reused") {
+    var fetches = 0
+    val local = new Destination(() => { fetches += 1; Future.successful(response("saved")) })
+    val cache = controller(State(List(local)))
+    val report = cache.observableReport("program")
+    cache.ensureMaxAgeSafe(timestamp).flatMap { _ =>
+      assertEquals(report.now().get.cacheStatus(local).lastKnownRemoteValue.map(_.dataValue), Some("saved"))
+      cache.ensureMaxAgeSafe(timestamp).map { _ =>
+        assertEquals(fetches, 1)
+        assertEquals(report.now().get, cache.currentReport("program"))
+      }
+    }
+  }
+
+  test("cache-dependent update propagates a fetch failure while safe refresh retains the cache") {
+    val error = new IllegalStateException("offline")
+    val local = new Destination(() => Future.failed(error))
+    val cache = controller(State(List(local)))
+    cache.requestCacheDependentUpdate(_ => timestamp).failed.flatMap { failed =>
+      assert(failed eq error)
+      cache.ensureMaxAgeSafe(timestamp).map { _ =>
+        assertEquals(cache.currentReport("program").allAvailableCacheKeys, List(local))
+        assertEquals(cache.currentReport("program").cacheStatus(local).lastKnownRemoteValue, None)
+      }
+    }
+  }
 }

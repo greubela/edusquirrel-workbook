@@ -1,11 +1,13 @@
 package it.evadid.core.datastructures.matrix
 
+import upickle.default.*
+
 import scala.language.implicitConversions
 
 
 import scala.collection.mutable
 
-case class MatrixPosition(x: Int, y: Int) {
+case class MatrixPosition(x: Int, y: Int) derives ReadWriter {
 
   /*
   def left: MatrixPosition = MatrixPosition(x - 1, y)
