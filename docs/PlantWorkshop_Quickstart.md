@@ -1,102 +1,42 @@
-# Quick Start Guide - Girls Day Pflanzen-Workshop
-
-## Zielbild (neue technische Basis)
-Der Plant-Workshop wird schrittweise von der monolithischen `PlantWorkshopApp` auf die Workbook-Architektur migriert:
-- `Workbook` / `WorkbookSection` / `HtmlExerciseContainer`
-- InteractionVariable-basierte Interaktionen (persistierbar/synchronisierbar)
-- sprachdateibasierte Inhalte (`PlantWorkshop-en.json`, `PlantWorkshop-de.json`)
-- möglichst viele wiederverwendbare HtmlWorkbookElemente, möglichst wenig Speziallogik
+# Girls Day Pflanzen-Workshop
 
 ## Aktueller Stand
 
-### Legacy (weiterhin aktiv)
-1. **`src/main/scala/content/plantworkshop/PlantWorkshopApp.scala`**
-   - vollständige, produktive Alt-Implementierung
-   - alle 6 Module inkl. bestehender Drag&Drop-/CodeEditor-Logik
+Die Workbook-Version ist unter [plantWorkshopWorkbook](../homepage/plantWorkshopWorkbook/index.html) erreichbar. [CreatePlantworkshopWorkbook.scala](../modules/client/src/main/scala/it/evadid/homepage/workbook/content/CreatePlantworkshopWorkbook.scala) erzeugt sieben Sektionen mit persistierbaren Interaktionen. Die separate Alt-Anwendung bleibt unter [plantWorkshop](../homepage/plantWorkshop/index.html) aktiv; ihr Einstieg ist [PlantWorkshopApp.scala](../modules/client/src/main/scala/it/evadid/homepage/workbook/legacy/plantworkshop/PlantWorkshopApp.scala).
 
-2. **`homepage/css/plantWorkshop.css`**
+| Sektion | Inhalte der Workbook-Version |
+| --- | --- |
+| 0: Motivation | Einführung, Lernziele und Sicherheit |
+| 1: Bauteile und Aufbau | Bauteil-Checkliste und erste Verkabelungs-Slideshow |
+| 2: Sensor erkunden | Sensor auslesen, Code-Aufgabe, Arduino-Sketch-Download und Mess-Checkliste |
+| 3: Feuchtigkeit | Grenzwert/Fallunterscheidung, Code-Aufgabe und Sketch-Download |
+| 4: Pumpe | Zweite Verkabelungs-Slideshow, Code-Aufgabe, Sketch-Download und Checkliste |
+| 5: Gesamtsystem | Kombinierte Code-Aufgabe, Sketch-Download und Checkliste |
+| 6: Test und Bonus | Test-Checkliste, Fehlersuche, Bonus und Abschluss |
 
-3. **`docs/arduino_reference_code.ino`**
+Die Code-Aufgaben verwenden `CodeTaskToggle`: Reihenfolge-Aufgaben im Anfänger-Modus und Code-Vorlagen mit Anforderungen im Fortgeschrittenen-Modus. Downloads verwenden die vorhandenen Sketch-Download-Elemente. `TODO_*` in den Code-Vorlagen sind absichtliche Lücken für Lernende, keine fehlenden Implementierungen.
 
-### Neue Workbook-Basis (im Aufbau)
-1. **`src/main/scala/content/CreatePlantworkshopWorkbook.scala`**
-   - neue Workbook-Fabrik mit 6 Sektionen
-   - Checklisten als InteractionVariable-basierte Checkboxen
-   - Wiring-Slideshow über den neuen Slideshow-Plugin-Pfad
+## Modelle, Texte und CSS
 
-2. **`src/main/scala/interactionPlugins/slideshow/`**
-   - `SlideDeckExercise.scala`
-   - `SlidePanel.scala`
+Wiederverwendbare Modelle liegen unter `modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/`: `basic/LabeledCheckboxInteraction.scala`, `slideshow/`, `codeTaskToggle/` und `reorderExercise/`. Die Browser-Renderer liegen unter `modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/`.
 
-3. **`src/main/scala/workbook/htmlElements/interactions/`**
-   - `HtmlBasicCheckboxInteraction.scala`
-   - `HtmlReorderInteraction.scala`
+Sprachdateien:
 
-4. **`resources/languageMaps/PlantWorkshop-en.json` / `PlantWorkshop-de.json`**
-   - zentrale Texte für die neue Basis
+- [map-de.json](../resources/languageMaps/eva/plantworkshop/map-de.json)
+- [map-en.json](../resources/languageMaps/eva/plantworkshop/map-en.json)
+- [map-universal.json](../resources/languageMaps/eva/plantworkshop/map-universal.json)
 
-## Modulüberblick (fachlich)
+Die Workbook-Version nutzt die gemeinsamen Workbook-Styles. [plantWorkshop.css](../homepage/css/plantWorkshop.css) gehört zur separaten Alt-Anwendung. Der [Arduino-Referenzcode](arduino_reference_code.ino) bleibt als fachliche Referenz erhalten.
 
-0. Motivation
-- Einführung & Überblick
-- Lernziele
-- Sicherheitshinweise (Wasser & Strom)
+## Verbleibende Migration
 
-1. Bauteile & Aufbau
-- Interaktive Checkliste
-- Verkabelungsplan / Slideshow
-- Erklärung: Warum Relais?
+Die frühere Liste fehlender Sensor-, Pumpen-, Gesamtsystem- und Download-Interaktionen ist überholt: diese Elemente sind eingebaut. Vor einer Entfernung der Alt-Anwendung bleiben ein fachlicher und visueller Paritätsvergleich, die Prüfung der realen Hardware-Anleitungen und die Umstellung bzw. Weiterleitung des alten Einstiegspunkts notwendig. Die beiden Seiten werden derzeit separat durch `MainApp`/`HomepageStartupLogic` gestartet.
 
-2. Feuchtigkeit messen
-- **Anfänger**: Drag&Drop Bausteine
-- **Fortgeschritten**: Code-Lückentext
+## Prüfung
 
-3. Pumpe steuern
-- **Anfänger**: Drag&Drop Bausteine
-- **Fortgeschritten**: Code-Editor
+```sh
+sbt 'client/testOnly *PlantWorkshopWorkbookRoundTripSpec'
+sbt buildJS
+```
 
-4. Gesamtsystem
-- **Anfänger**: Drag&Drop (inkl. if-Statement)
-- **Fortgeschritten**: vollständiges Programm mit Lücken
-
-5. Test & Bonus
-- Test-Checkliste
-- Fehlersuche-Guide
-- Bonus-Aufgaben
-
-## Nächste Schritte zur vollständigen Migration
-
-> **Hinweis zu TODOs:** Ein Teil der offenen TODO-Texte liegt bewusst in den Sprachdateien
-> `resources/languageMaps/PlantWorkshop-en.json` und `resources/languageMaps/PlantWorkshop-de.json`
-> (z. B. `missingPumpInteraction`, `missingMoistureInteraction`, `missingCombinedInteraction`, `missingArduinoExport`).
-> Bitte diese Dateien bei der Migration immer mit prüfen, damit keine offenen Punkte übersehen werden.
-
-
-### Phase 1 – Strukturelle Parität
-- [x] Workbook-Fabrik für PlantWorkshop angelegt
-- [x] Sprachdateien für PlantWorkshop eingebunden
-- [x] Wiring-Inhalt als Slideshow-Interaktion eingebaut
-- [ ] Fehlende Platzhalter-Inhalte gezielt pro Sektion durch echte Elemente ersetzen
-
-### Phase 2 – Interaktions-Parität
-- [ ] Task 2 (Feuchtigkeit) vollständig migrieren:
-  - `HtmlReorderInteraction` für Anfänger-Modus nutzen
-  - InteractionVariable-basierten Code-Editor für Fortgeschrittenen-Modus einführen
-- [ ] Task 3 (Pumpe) analog migrieren
-- [ ] Task 4 (Gesamtsystem) analog migrieren
-- [ ] Validierungs-Feedback aus Legacy-Logik in wiederverwendbare Komponenten überführen
-
-### Phase 3 – Abschluss & Umschaltung
-- [ ] Arduino-Export in Workbook-Version integrieren
-- [ ] Test-/Troubleshooting-Teil ohne Platzhalter vollständig übernehmen
-- [ ] Sicht- und Funktionsabgleich Legacy vs. Workbook durchführen
-- [ ] `MainApp` standardmäßig auf `CreatePlantworkshopWorkbook` schalten
-- [ ] Legacy `PlantWorkshopApp` nach erfolgreicher Parität entfernen
-
-## Migration checklist (6)
-- [ ] Section structure mapped to workbook architecture
-- [ ] Wiring slideshow migrated to slideshow interaction
-- [ ] All checklist boxes backed by InteractionVariable
-- [ ] Beginner/advanced mode components migrated
-- [ ] Arduino export flow migrated
-- [ ] Legacy PlantWorkshopApp can be removed
+Die Roundtrip-Suite prüft die Serialisierung des Workbook-Inhalts. Hardware-Verhalten und didaktische Parität erfordern zusätzlich einen manuellen Durchlauf.

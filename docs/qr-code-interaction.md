@@ -54,11 +54,7 @@ and dimension rules are CSS-based and use the shared tokens.
 
 ## Verification and reference interaction
 
-The provided live legacy URL (`https://evadid.it/LucasQR/#zusammenfassung`)
-was inaccessible through the web tool, and `evadid.it` is outside the execution
-environment's network allowlist. The implementation follows the requested
-text-to-finished-code interaction and current turtle architecture; its exact
-visual/behavioral parity with the legacy exercise has not been verified.
+The reference interaction is exercise 1 at [LucasQR, Zusammenfassung](https://evadid.it/LucasQR/#zusammenfassung). The implementation provides the requested text-to-finished-code interaction on the current turtle/editor architecture. Exact visual and behavioral parity with the legacy page has not been verified.
 
 The fixture generator `tools/dev/generate-qr-fixtures.py` uses test-only
 python-qrcode 8.2 and qrcodegen 1.8.0. Committed fixtures compare complete matrix

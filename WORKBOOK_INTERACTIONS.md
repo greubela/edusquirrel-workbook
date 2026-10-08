@@ -1,6 +1,8 @@
-# Workbook Interactions Analysis
+# Workbook interaction roadmap
 
-This document outlines the required interactions for the phishing, bitcoin, and evacuation workbooks to be implemented as interactive web-based workbooks.
+This document inventories teaching materials for the phishing, bitcoin and evacuation workbooks and proposes future digital exercises. It is a content roadmap, not a list of implemented APIs or committed requirements.
+
+The digital phishing mailbox and local writing practice are implemented; see [Email simulator](docs/email-simulator.md) and `homepage/phishingWorkbook/index.html`. Bitcoin/evacuation suggestions and the explanatory phishing chapters below still need authoring and integration. Existing general-purpose interactions should be reused before adding new types.
 
 ## Overview
 
@@ -28,10 +30,11 @@ The workbooks are designed for late secondary school students (grades 9-10) with
 #### B. E-Mail Simulator
 **Location**: `E-Mail-Simulation/`
 
-- **Technology**: Python with PySide6
-- **Interaction Type**: Interactive GUI simulation
+- **Original resource**: Python with PySide6
+- **Current web implementation**: `MailInteraction` for sorting and `MailEditor` for local composing, reply and forwarding. Five exclusive folders, actual sender addresses, simulated link destinations/attachments and final-placement grading are implemented. The original 15 teaching messages are imported without executing Python.
+- **Digital entry page**: `homepage/phishingWorkbook/index.html`
 
-**Required Web Implementation**:
+**Possible extensions beyond the current mailbox**:
 1. **Email Client Simulator**
    - Visual email inbox interface
    - Ability to view email headers (show/hide)
@@ -287,17 +290,18 @@ The workbooks are designed for late secondary school students (grades 9-10) with
 
 - **Frontend**: Scala.js with Laminar
 - **Backend**: JVM for server-side processing
-- **Storage**: Database for user progress
+- **Storage**: InteractionVariable-backed progress with browser persistence and existing synchronization infrastructure; standalone simulator use does not require a database
 - **AI Integration**: OpenAI API for intelligent feedback
 
 ---
 
 ## File References
 
-- Phishing Simulator: `modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/HtmlGptTextfieldInteractionRenderer.scala`
-- Programming Exercise: `modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/HtmlProgrammingExerciseRenderer.scala`
-- Reorder Interaction: `modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/HtmlReorderInteractionRenderer.scala`
-- Sorting Interaction: `modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/HtmlSortingInteractionRenderer.scala`
+- Phishing simulator: `modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/emailSimulator/`
+- Digital phishing content: `modules/client/src/main/scala/it/evadid/homepage/workbook/content/CreatePhishingWorkbook.scala`
+- Programming Exercise: `modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/basic/HtmlProgrammingExerciseRenderer.scala`
+- Reorder Interaction: `modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/reorderExercise/HtmlReorderInteractionRenderer.scala`
+- Sorting Interaction: `modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/sortingExercise/HtmlSortingInteractionRenderer.scala`
 
 ---
 

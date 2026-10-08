@@ -1,5 +1,7 @@
 # MathWorld
 
+Diese Kopie ist in EduSquirrel eingebunden. Der Workflow [scala.yml](../../../.github/workflows/scala.yml) baut sie mit `npm ci` und `npm run build -- --base=./` und veröffentlicht den Build gemeinsam mit den Workbooks. Die folgenden GitLab-Angaben beschreiben das ursprüngliche Projekt; Änderungen an dieser Kopie verwenden den EduSquirrel-Git-Workflow.
+
 MathWorld ist eine webbasierte Lernanwendung fuer den Mathematikunterricht in
 der 5. bis 6. Klasse. In einer wachsenden Schulgarten-Kampagne bearbeiten
 Lernende Flaechen, Umfaenge, Brueche und erste Optimierungsaufgaben handelnd
@@ -146,7 +148,7 @@ verwendet werden.
 - einzelne Bonus- und Erweiterungslevel sind noch Platzhalter
 - kein Lehrkraefte-Dashboard und keine Lernstandsstatistik
 - noch keine automatisierte Testsuite im aktuellen Branch
-- noch keine fest eingerichtete Online-Bereitstellung
+- Bereitstellung über den EduSquirrel-GitHub-Pages-Workflow; ein eigener GitLab-Pages-Workflow ist in dieser Kopie nicht eingerichtet
 
 ## Weiterfuehrende Dokumentation
 
@@ -167,7 +169,7 @@ verwendet werden.
 https://scm.cms.hu-berlin.de/schrecks/mathworld.git
 ```
 
-Vor einer neuen Arbeitssession:
+Im ursprünglichen GitLab-Projekt vor einer neuen Arbeitssession:
 
 ```powershell
 git status

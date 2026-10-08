@@ -1,5 +1,7 @@
 # Shared core package unit tests
 
+This is a historical record of the test and serialization work on 2026-10-08. Test totals, source sizes and coverage percentages describe the named runs, not the current repository. The suite inventory and reproduction commands remain useful; rerun measurements before citing current coverage.
+
 Five substantial packages were selected by source size and gaps in direct unit
 tests. These are first-party packages in `modules/core/shared/src/main/scala`,
 so the same MUnit suites can run on JVM and Scala.js. Package membership here
@@ -205,13 +207,6 @@ tests. The original five-package inventory covers all 60 named classes; the
 follow-up adds dedicated suites in eight further source packages plus cross-package
 codec regressions. No percentage of project line or branch coverage is asserted.
 
-The container lacked an installed sbt executable. Validation used a downloaded
-sbt launcher with a local Maven Central cache. Its temporary launcher and logs are
-kept outside the repository in `/workspace/work/edusquirrel-unit-test-support`.
-Compiler deprecation/unchecked warnings and font-cache warnings occurred; none
-caused a failing test.
-
-
 ## Follow-up coverage
 
 The next pass adds 24 core tests: 13 serializer-helper tests, four numeric-constraint
@@ -415,19 +410,3 @@ Final normal validation, after disabling instrumentation, passed all **1,446 Sca
 tests**: core JVM 531, core Scala.js 527, client 384, server 1 and worker 3. There
 were no failures or ignored tests. The instrumented JVM run also passed all 531
 tests; the Node assembly test and `git diff --check` passed.
-
-
-### Merge preparation
-
-Merged main at `19b0b3b7` into the work branch. The new active
-`VectorShapesTest` from main is retained; the earlier removal applied only to its
-obsolete commented predecessor. Snap custom-block merging continues to validate
-the actual number of declared inputs against the updated signature, rebuilding
-missing or mismatched metadata. Snap image cleanup and update-loop protection
-remain intact alongside main's editor styling changes.
-
-Validation after integration passed **1,510 Scala tests**: core JVM 564, core
-Scala.js 552, client 390, server 1 and worker 3, with no failures or ignored tests.
-The Node assembly, turtle CSS and Chromium editor-layout checks also passed,
-as did `git diff --check`. The coverage figures above describe the earlier
-instrumented measurement; coverage was not remeasured during merge preparation.
