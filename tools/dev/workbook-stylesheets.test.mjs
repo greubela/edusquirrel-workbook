@@ -77,3 +77,26 @@ test('mail editor and renderers bind classes rather than inline Laminar styles',
       assert(!inlineStyle.test(await readFile(file,'utf8')),path.relative(root,file));
   }
 });
+
+test('every authored stylesheet is reachable from a homepage entry page', async () => {
+  // Include the landing page and feedback studio: their styles are used outside workbooks.
+  const visited = new Set();
+  async function visit(file) {
+    if (visited.has(file)) return;
+    visited.add(file);
+    const css = await readFile(file, 'utf8');
+    for (const match of css.matchAll(/@import\s+(?:url\(\s*['"]?([^'"\)]+)['"]?\s*\)|['"]([^'"]+)['"])\s*;/g)) {
+      const imported = localPath(match[1] || match[2], file);
+      if (imported) await visit(imported);
+    }
+  }
+  for (const file of await filesBelow(path.join(root, 'homepage'), path.sep + 'index.html')) {
+    for (const href of stylesheetHrefs(await readFile(file, 'utf8'))) {
+      const css = localPath(href, file);
+      if (css) await visit(css);
+    }
+  }
+  const unused = (await filesBelow(path.join(root, 'homepage/css'), '.css'))
+    .filter(file => !visited.has(file)).map(file => path.relative(root, file));
+  assert.deepEqual(unused, [], 'remove orphan stylesheets or link them from their entry page');
+});

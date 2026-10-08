@@ -18,7 +18,7 @@ const fixture = (language, preview = true, standalone = false) => {
     : `<div class="code-mirror-editor">${language === 'Fallback'
       ? '<textarea class="code-mirror-editor__fallback">forward(100)</textarea>'
       : '<textarea class="code-mirror-editor__fallback" hidden></textarea><div class="cm-editor"><div class="cm-scroller"><pre>forward(100)\nturn_right(15)</pre></div></div>'}</div>`;
-  return `<!doctype html><html><head><link rel="stylesheet" href="/css/custom-elements.css"><link rel="stylesheet" href="/css/workbook/workbook-structure.css"><link rel="stylesheet" href="/css/workbook/workbook-header.css"><link rel="stylesheet" href="/css/workbook/workbook-interactions.css"><link rel="stylesheet" href="/css/JavaFunctionEditor.css"><link rel="stylesheet" href="/css/old/blockEditor.css"></head><body>
+  return `<!doctype html><html><head><link rel="stylesheet" href="/css/custom-elements.css"><link rel="stylesheet" href="/css/workbook/workbook-structure.css"><link rel="stylesheet" href="/css/workbook/workbook-header.css"><link rel="stylesheet" href="/css/workbook/workbook-interactions.css"><link rel="stylesheet" href="/css/JavaFunctionEditor.css"></head><body>
     <dialog class="fullscreen-overlay-dialog"><div class="fullscreen-content-container">${standalone ? editor : `
       <div class="eva-editor"><div class="eva-editor__tabs">
         <button type="button" aria-pressed="false">Snap</button><button type="button" aria-pressed="true">Python</button><button type="button" disabled>Java</button>
