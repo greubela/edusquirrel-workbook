@@ -19,7 +19,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
     val cmd = boundVar.signal.map(_.toBeExpressionState.deriveTurtleCommands)
 
     ElementCard(
-      LanguageMapContentId("basic/gradingPreviewProgram"),
+      LanguageMapContentId("basic/turtleGradingPanel"),
       TurtleJsxGraphRenderer.render(cmd, expected)
     )
   }

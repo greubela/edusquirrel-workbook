@@ -38,7 +38,7 @@ case class CodeMirrorEditor(
 
   override def getDomElement(): L.Element = {
     div(
-      cls := "code-mirror-editor",
+      cls := "code-editor code-mirror-editor",
       styleAttr <-- editorFont.map(font =>
         s"--code-font-family: '${font.name}', 'Fira Code', 'JetBrains Mono', monospace; --code-font-size: ${font.sizeInPx}px;"
       ),
