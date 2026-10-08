@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 
 import com.raquo.airstream.ownership.Owner
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.*
-import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorImpl
+import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditorImpl, SnapProjectXmlSync}
 import it.evadid.workbook.elements.interactionElements.programming.*
 import org.scalajs.dom
 import org.scalajs.dom.CanvasRenderingContext2D
@@ -26,9 +26,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   private var stageMirrorIdleFrames = 0
   private var cyclesRunning = false
   private var projectXmlChangedCallback: String => Unit = _ => ()
-  private var lastProjectXml: Option[String] = None
-  /** Last canonical XML loaded into the IDE (for no-op detection). */
-  private var lastLoadedXml: Option[String] = None
+  private val projectXmlSync = new SnapProjectXmlSync
   private var lastProjectXmlCheckAt = 0.0
   private var originalBlockTemplates: Option[js.Any] = None
   private var installedCustomCategoryNames: List[String] = Nil
@@ -97,8 +95,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     // Align with Snap's normalized XML so external program restores do not
     // immediately rawOpenProjectString again and wipe exercise libraries.
     val seededXml = canonicalXml(initState)
-    lastLoadedXml = Some(seededXml)
-    lastProjectXml = Some(snapshotProjectXml(ide))
+    projectXmlSync.markLoaded(seededXml)
+    projectXmlSync.resetSnapshot(snapshotProjectXml(ide))
 
     editorWorld = Some(world)
     editor = Some(ide)
@@ -157,16 +155,16 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
         // Skip only non-forced sync echoes of the same stored XML.
         // Force on fullscreen open: acknowledge does not rawOpen, so a skip
         // would leave Snap on the previous rawOpen'd project.
-        if !force && lastLoadedXml.contains(xml) then
+        if !force && projectXmlSync.isLoaded(xml) then
           return
         if !force && isTextEditing then return
         restorePrimitiveBlockDictionary()
         ensureExerciseCategoriesBeforeLoad()
         ide.rawOpenProjectString(xml)
-        lastLoadedXml = Some(xml)
+        projectXmlSync.markLoaded(xml)
         repairCustomBlockParameterBindings(ide)
         ensureMissingGlobalVariables(ide, xml, refreshPalette = true)
-        lastProjectXml = Some(snapshotProjectXml(ide))
+        projectXmlSync.resetSnapshot(snapshotProjectXml(ide))
         lastProjectXmlCheckAt = dom.window.performance.now()
         reinstallConfiguredLibraries(ide)
         retagCustomBlockCategories(ide)
@@ -180,7 +178,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       case None => ()
 
   override def acknowledgeProgramFromEditor(state: ProgrammingStateSnapXml): Unit =
-    lastLoadedXml = Some(canonicalXml(state))
+    projectXmlSync.markLoaded(canonicalXml(state))
 
   override def flushPendingProjectChanges(): Unit =
     // Force: flush on close / popup must capture in-progress slot text.
@@ -190,7 +188,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     editor.map(_.getProjectXML())
 
   private def canonicalXml(state: ProgrammingStateSnapXml): String =
-    state.snapXml
+    state.removeBloatFromXml.snapXml
 
   private def processesStillRunning(stage: StageMorph): Boolean =
     try
@@ -1157,7 +1155,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
         editor.foreach(checkWhetherProgramXmlChanged(_))
 
   private def initializeProjectChangeTracking(ide: IDEMorph): Unit =
-    lastProjectXml = Some(snapshotProjectXml(ide))
+    projectXmlSync.resetSnapshot(snapshotProjectXml(ide))
     lastProjectXmlCheckAt = dom.window.performance.now()
 
   /**
@@ -1176,10 +1174,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     if allowDuringEdit && isTextEditing then
       editorWorld.foreach(_.stopEditing())
     val xml = snapshotProjectXml(ide)
-    if !lastProjectXml.contains(xml) then
-      lastProjectXml = Some(xml)
-      println("Snap! code changed!")
-      projectXmlChangedCallback(xml)
+    projectXmlSync.changedSnapshot(xml).foreach(projectXmlChangedCallback)
 
   /** True while Morphic has an active CursorMorph for an input slot. */
   private def isTextEditing: Boolean =
@@ -1197,8 +1192,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     editorWorld = None
     mountedCanvas = None
     mountedConfig = None
-    lastProjectXml = None
-    lastLoadedXml = None
+    projectXmlSync.clear()
     lastProjectXmlCheckAt = 0.0
     originalBlockTemplates = None
 

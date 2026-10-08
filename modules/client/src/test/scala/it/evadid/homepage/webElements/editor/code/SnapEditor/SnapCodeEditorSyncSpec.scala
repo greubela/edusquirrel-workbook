@@ -91,4 +91,29 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       assertEquals(impl.reloads, 1)
     } finally second.killSubscriptions()
   }
+
+  test("Snap image regeneration commits only cleaned code and never reloads its own edit") {
+    val state = Var[ProgrammingState](ProgrammingStateSnapXml.mini)
+    val impl = new RecordingImpl
+    var edits = List.empty[ProgrammingState]
+    val editor = SnapCodeEditor(state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)
+    val owner = new ManualOwner
+    try {
+      editor.mountEditorInto(null, owner)
+      def liveXml(code: String, image: Int) = s"<project><thumbnail>image-$image</thumbnail><stage><pentrails>trails-$image</pentrails><scripts>$code</scripts></stage></project>"
+      val cleaned = ProgrammingStateSnapXml("<project><stage><scripts>edited</scripts></stage></project>")
+      impl.listener(liveXml("edited", 0))
+      assertEquals(state.now(), cleaned)
+      assertEquals(edits, List(cleaned))
+      assertEquals(impl.reloads, 0)
+      for (image <- 1 to 20) impl.listener(liveXml("edited", image))
+      editor.onFullscreenOpen()
+      assertEquals(edits, List(cleaned))
+      assertEquals(impl.reloads, 0)
+      impl.listener(liveXml("changed again", 21))
+      assertEquals(edits.size, 2)
+      assertEquals(state.now(), ProgrammingStateSnapXml("<project><stage><scripts>changed again</scripts></stage></project>"))
+      assertEquals(impl.reloads, 0)
+    } finally owner.killSubscriptions()
+  }
 }
