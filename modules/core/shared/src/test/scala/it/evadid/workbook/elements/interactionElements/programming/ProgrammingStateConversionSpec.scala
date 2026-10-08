@@ -285,7 +285,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val cases = List(
       "\tpublic class Main {\r\n\tpublic static void main(String[] args) {\r\n\t\tTurtle.forward(10);\r\n" -> JavaTurtleSource.Problem.UnsupportedSyntax,
       "public class Main {\r\n\tint side = 25;\r\n\tpublic static void main(String[] args) { Turtle.forward(side); }\r\n}\r\n" -> JavaTurtleSource.Problem.UnsupportedStructure,
-      "public class Main {\r\n\tpublic static void main(String[] args) { double side = 25; }\r\n}\r\n" -> JavaTurtleSource.Problem.UnsupportedType,
+      "public class Main {\r\n\tpublic static void main(String[] args) { float side = 25; }\r\n}\r\n" -> JavaTurtleSource.Problem.UnsupportedType,
       "public class Main {\r\n\tpublic static void main(String[] args) { missing(); }\r\n}\r\n" -> JavaTurtleSource.Problem.UnknownMethod
     )
     cases.foreach { (source, expectedProblem) =>

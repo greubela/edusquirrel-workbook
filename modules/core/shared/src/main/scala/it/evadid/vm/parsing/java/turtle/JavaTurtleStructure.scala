@@ -100,8 +100,9 @@ object JavaTurtleStructure {
           if parameter.modifiers.nonEmpty || parameter.value.nonEmpty then
             Some(problem(Problem.UnsupportedStructure, "Parameter modifiers and initial values are not supported yet."))
           else if method.name != "main" && !parameter.javaType.isInstanceOf[JAVA_INTEGER] &&
+              !parameter.javaType.isInstanceOf[JAVA_FLOAT] &&
               !parameter.javaType.isInstanceOf[JAVA_BOOL] then
-            Some(problem(Problem.UnsupportedType, s"Use int or boolean for the parameters of ${method.name}."))
+            Some(problem(Problem.UnsupportedType, s"Use int, double or boolean for the parameters of ${method.name}."))
           else None
         }
       }.collectFirst { case Some(error) => error }

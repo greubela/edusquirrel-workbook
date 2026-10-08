@@ -40,6 +40,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   private def restoredJavaExpression(expression: X.Expression): R.Expression = expression.node match {
     case X.Node.IntLiteral(value) => R.IntLiteral(value)
+    case X.Node.DoubleLiteral(value) => R.DoubleLiteral(value)
+    case X.Node.Widen(inner) => R.Widen(restoredJavaExpression(inner))
     case X.Node.BooleanLiteral(value) => R.BooleanLiteral(value)
     case X.Node.Read(variable, _) => R.Read(variable)
     case X.Node.Group(inner) => R.Group(restoredJavaExpression(inner))
@@ -440,6 +442,63 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     reads = 0
     assertEquals(E.evaluate(R.Group(atLimit), counted), Left(E.Failure.LimitExceeded))
     assertEquals(reads, 4999)
+  }
+
+  test("Java double expressions promote operands but preserve integer division before widening") {
+    assertEquals(javaResult(R.Binary(R.BinaryOperator.Divide, R.DoubleLiteral(10.0), R.IntLiteral(3))), Right(E.Value.DoubleValue(10.0 / 3.0)))
+    assertEquals(javaResult(R.Widen(R.Binary(R.BinaryOperator.Divide, R.IntLiteral(10), R.IntLiteral(3)))), Right(E.Value.DoubleValue(3.0)))
+    assertEquals(javaResult(R.Binary(R.BinaryOperator.Add, R.DoubleLiteral(0.5), R.IntLiteral(3))), Right(E.Value.DoubleValue(3.5)))
+    assertEquals(javaResult(R.Unary(R.UnaryOperator.Negate, R.DoubleLiteral(0.0))), Right(E.Value.DoubleValue(-0.0)))
+    assertEquals(javaResult(R.Widen(R.BooleanLiteral(true))), Left(E.Failure.TypeMismatch))
+    assertEquals(E.widen(E.Value.DoubleValue(3.0), R.ValueType.IntValue), Left(E.Failure.TypeMismatch))
+  }
+
+  test("Java floating comparisons use primitive IEEE equality and preserve remainder sign") {
+    def result(operator: R.BinaryOperator, a: Double, b: Double) = javaResult(R.Binary(operator, R.DoubleLiteral(a), R.DoubleLiteral(b)))
+    assertEquals(result(R.BinaryOperator.Equal, 0.0, -0.0), Right(E.Value.BooleanValue(true)))
+    assertEquals(result(R.BinaryOperator.Equal, Double.NaN, Double.NaN), Right(E.Value.BooleanValue(false)))
+    assertEquals(result(R.BinaryOperator.NotEqual, Double.NaN, Double.NaN), Right(E.Value.BooleanValue(true)))
+    assertEquals(result(R.BinaryOperator.LessEqual, Double.NaN, 0.0), Right(E.Value.BooleanValue(false)))
+    assertEquals(result(R.BinaryOperator.Divide, 1.0, -0.0), Right(E.Value.DoubleValue(Double.NegativeInfinity)))
+    assertEquals(result(R.BinaryOperator.Remainder, -9.0, 2.0), Right(E.Value.DoubleValue(-1.0)))
+    val zero = result(R.BinaryOperator.Remainder, -4.0, 2.0).toOption.get.asInstanceOf[E.Value.DoubleValue].value
+    assertEquals(java.lang.Double.doubleToRawLongBits(zero), java.lang.Double.doubleToRawLongBits(-0.0))
+    assert(result(R.BinaryOperator.Divide, 0.0, 0.0).toOption.get.asInstanceOf[E.Value.DoubleValue].value.isNaN)
+    assert(result(R.BinaryOperator.Remainder, Double.PositiveInfinity, 2.0).toOption.get.asInstanceOf[E.Value.DoubleValue].value.isNaN)
+  }
+
+  test("manual Java VM expression binding rejects nonfinite literals but keeps numeric binding types") {
+    val bindings = V.bind(javaProgram("double length = 10.5;"))
+    for value <- List(Double.NaN, Double.PositiveInfinity, Double.NegativeInfinity) do
+      assertEquals(X.adapt(bindings, R.DoubleLiteral(value)).left.toOption.get.problem, JavaTurtleSource.Problem.UnsupportedNumber)
+    val expression = X.adapt(bindings, R.Widen(R.IntLiteral(10))).toOption.get
+    assertEquals(expression.expression.staticInformationExpression.staticType, BeDataType.Numeric)
+    assertEquals(X.evaluate(expression, _ => fail("Literal does not read")), Right(E.Value.DoubleValue(10.0)))
+  }
+
+  test("typed Java double bindings and VM statements retain promotions and local parameters") {
+    val raw = "\r\nclass Drawing { static void draw(double length, int parts) { length /= parts; Turtle.forward(length); } " +
+      "public static void main(String[] args) { double length = 10; double truncated = 10 / 3; " +
+      "draw(length, 3); Turtle.forward(truncated); Turtle.forward(length); } }\t "
+    val program = P.compile(raw).fold(error => fail(error.message), identity)
+    val execution = T.runVm(program)
+    assertEquals(execution.status, T.Status.Completed)
+    assertEquals(execution.commands.map(_.value), Vector(10.0 / 3.0, 3.0, 10.0))
+    assertEquals(T.run(program.bindings.source), execution)
+    val helper = program.root.methods.find(_.binding.originalName == "draw").get
+    assertEquals(helper.binding.parameters.head.definition.get.variableType, BeDataType.Numeric)
+    assertEquals(helper.binding.parameters(1).definition.get.variableType, BeDataType.Int)
+    assertEquals(T.invokeVm(program, helper.binding.id, Vector(E.Value.IntValue(10), E.Value.IntValue(3))).commands.map(_.value), Vector(10.0 / 3.0))
+    assertEquals(program.bindings.source.source, raw)
+  }
+
+  test("nonfinite double calculations remain usable until they reach a drawing command") {
+    val usable = T.run(javaProgram("double infinity = 1.0 / 0.0; if (infinity > 0) { Turtle.forward(2); } double nan = 0.0 / 0.0; if (nan != nan) { Turtle.forward(3); }"))
+    assertEquals(usable.status, T.Status.Completed)
+    assertEquals(usable.commands, Vector(forward(2), forward(3)))
+    val stopped = T.run(javaProgram("Turtle.forward(1); Turtle.forward(1.0 / 0.0); Turtle.forward(99);"))
+    assertEquals(stopped.status, T.Status.Failed(T.Failure.NonFiniteCommand))
+    assertEquals(stopped.commands, Vector(forward(1)))
   }
 
   test("Java source expressions retain their meaning through parsing checking and resolution") {
@@ -1527,8 +1586,9 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       "_divide(_variable_0_1,", "_remainder(_variable_0_1,", "_int32(-_value(") do assert(source.contains(operation))
     assert(source.contains("quotient = abs(left) // abs(right)"))
     assert(source.contains("return _int32(left - _divide(left, right) * right)"))
-    assert(!source.contains("left / right"))
-    assert(!source.contains("left % right"))
+    val integerRuntime = source.substring(source.indexOf("def _divide("), source.indexOf("def _double_divide("))
+    assert(!integerRuntime.contains("left / right"))
+    assert(!integerRuntime.contains("left % right"))
     assert(source.contains("raise _Stop(\"Failed\", \"DivisionByZero\")"))
   }
 

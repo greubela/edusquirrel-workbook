@@ -150,6 +150,7 @@ object JavaTurtleCommandRunner {
           method.binding.parameters.zip(arguments).forall { (parameter, value) =>
             (parameter.variable.valueType, value) match {
               case (R.ValueType.IntValue, _: E.Value.IntValue) => true
+              case (R.ValueType.DoubleValue, _: E.Value.IntValue | _: E.Value.DoubleValue) => true
               case (R.ValueType.BooleanValue, _: E.Value.BooleanValue) => true
               case _ => false
             }
@@ -162,6 +163,7 @@ object JavaTurtleCommandRunner {
     val target = method.fold("None")(_.index.toString)
     val values = arguments.map {
       case E.Value.IntValue(value) => value.toString
+      case E.Value.DoubleValue(value) => JavaTurtlePythonExport.doubleLiteral(value)
       case E.Value.BooleanValue(value) => if value then "True" else "False"
     }.mkString("[", ", ", "]")
     s"""import json as _java_json
@@ -181,6 +183,11 @@ print(_java_json.dumps(_java_result, separators=(",", ":")))
     case _ => invalid("expected a bounded integer")
   }
 
+  private def finiteDouble(value: ujson.Value): Double = value match {
+    case ujson.Num(number) if number.isFinite => number
+    case _ => invalid("expected a finite number")
+  }
+
   private[execution] def decode(report: PythonRunReport, limits: T.Limits): T.Execution = {
     if report.callbackOps.nonEmpty || report.stderr.nonEmpty then invalid("unexpected Python output")
     if report.stdout.length > 1048576 then invalid("response is too large")
@@ -198,6 +205,7 @@ print(_java_json.dumps(_java_result, separators=(",", ":")))
       case (ujson.Str("Failed"), ujson.Str("InvalidLimits")) => T.Status.Failed(T.Failure.InvalidLimits)
       case (ujson.Str("Failed"), ujson.Str("InvalidInvocation")) => T.Status.Failed(T.Failure.InvalidInvocation)
       case (ujson.Str("Failed"), ujson.Str("DivisionByZero")) => T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero))
+      case (ujson.Str("Failed"), ujson.Str("NonFiniteCommand")) => T.Status.Failed(T.Failure.NonFiniteCommand)
       case _ => invalid("unknown status or problem")
     }
     val steps = integer(fields("steps"), 0, T.Limits.MaxSteps)
@@ -209,8 +217,8 @@ print(_java_json.dumps(_java_result, separators=(",", ":")))
             case ujson.Str("right") => R.TurtleCommand.TurnRight
             case _ => invalid("unknown turtle command")
           }
-          T.Command(command, integer(pair.value(1), Int.MinValue, Int.MaxValue))
-        case _ => invalid("expected a command and its integer argument")
+          T.Command(command, finiteDouble(pair.value(1)))
+        case _ => invalid("expected a command and its numeric argument")
       }
       case _ => invalid("expected bounded turtle commands")
     }
@@ -220,7 +228,8 @@ print(_java_json.dumps(_java_result, separators=(",", ":")))
       case _ =>
         if !valid(limits) || steps > limits.maxSteps || commands.size > limits.maxCommands || commands.size > steps then
           invalid("execution exceeds its limits")
-        if steps == 0 && (status == T.Status.Completed || status == T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero))) then
+        if steps == 0 && (status == T.Status.Completed || status == T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero)) ||
+          status == T.Status.Failed(T.Failure.NonFiniteCommand)) then
           invalid("execution did not start")
     }
     T.Execution(status, commands, steps)

@@ -40,6 +40,7 @@ object JavaTurtleVmBindings {
       (method.parameters ++ declarations(method.body)).sortBy(_.id.index).map { variable =>
         val dataType = variable.valueType match {
           case R.ValueType.IntValue => Some(BeDataType.Int)
+          case R.ValueType.DoubleValue => Some(BeDataType.Numeric)
           case R.ValueType.BooleanValue => Some(BeDataType.Boolean)
           case R.ValueType.MainArguments => None
         }

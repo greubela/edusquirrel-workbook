@@ -3,6 +3,7 @@ package it.evadid.vm.parsing.java.clean
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaType
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleInputLimits, JavaTurtleResolution, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure}
+import it.evadid.vm.simulation.java.JavaTurtleEvaluation as E
 import munit.FunSuite
 
 class JavaParserTest extends FunSuite {
@@ -341,9 +342,9 @@ class JavaParserTest extends FunSuite {
     }
   }
 
-  test("turtle source rejects numeric types before the legacy AST erases them") {
+  test("turtle source rejects unsupported numeric types before the legacy AST erases them") {
     for
-      name <- Seq("byte", "short", "long", "float", "double")
+      name <- Seq("byte", "short", "long", "float")
       prefix <- Seq("", "/* 😀 */\r\n", "/* // byte /* float */ ")
     do {
       val source = turtleSource(s"$prefix$name value = 1; Turtle.forward(40);")
@@ -355,16 +356,34 @@ class JavaParserTest extends FunSuite {
     }
   }
 
-  test("turtle source accepts decimal integers and rejects other numeric forms") {
-    for number <- Seq("0", "10", "40", "100") do
+  test("turtle source accepts integers and plain finite decimals and rejects other numeric forms") {
+    for number <- Seq("0", "10", "40", "100", "0.0", "10.0", "10.5", "0.25") do
       assert(JavaTurtleSource.parse(turtleSource(s"Turtle.forward($number);")).isRight)
-    for number <- Seq("00", "010", "0x10", "0b10", "1_000", "1L", "1.0", ".5", "1e2") do {
+    for number <- Seq("00", "010", "0x10", "0b10", "1_000", "1L", ".5", "1.", "1e2", "1.0e2", "1.0D", "1.0f", "1.2.3") do {
       val source = turtleSource(s"Turtle.forward($number);")
       val problem = sourceProblem(source)
       assertEquals(problem.problem, JavaTurtleSource.Problem.UnsupportedNumber, clue = number)
       val start = source.indexOf(s"($number)") + 1
       assertEquals(problem.range, Some(JavaTurtleSource.SourceRange(start, start + number.length)))
     }
+  }
+
+  test("turtle double literals preserve raw source and reject literal overflow or underflow") {
+    val source = "\r\n\t" + turtleClass(
+      "static void draw(double length, int depth) { Turtle.forward(length / 3); } " +
+        "public static void main(String[] args) { draw(10.5, 1); }"
+    ) + "\r\n\t "
+    val checked = checkedSource(source)
+    assertEquals(checked.structure.parsedSource.source, source)
+    assert(checked.structure.methods.head.parameters.head.javaType.isInstanceOf[JavaType.JAVA_FLOAT])
+    for number <- Seq("9" * 309 + ".0", "0." + "0" * 325 + "1") do {
+      val invalid = turtleSource(s"Turtle.forward($number);")
+      val problem = sourceProblem(invalid)
+      assertEquals(problem.problem, JavaTurtleSource.Problem.UnsupportedNumber)
+      val start = invalid.indexOf(number)
+      assertEquals(problem.range, Some(JavaTurtleSource.SourceRange(start, start + number.length)))
+    }
+    assert(JavaTurtleSource.parse(turtleSource("Turtle.forward(0." + "0" * 32 + ");")).isRight)
   }
 
   test("turtle source rejects quoted values without relying on permissive string parsing") {
@@ -753,6 +772,82 @@ class JavaParserTest extends FunSuite {
         "boolean draw = !(value < 0) && value <= 40 || value >= 100; " +
         "boolean same = flag == draw; same = same != false; if (draw) { Turtle.forward(value); }"
     ))
+  }
+
+  test("turtle semantics accepts double locals numeric widening and mixed arithmetic") {
+    checkedSource(turtleClass(
+      "static void draw(double length, int depth) { " +
+        "double value = depth; value = length; value += depth; value -= 1; value *= 2.0; value /= 3; value %= 2.0; " +
+        "boolean positive = value > 0 && value != depth; if (positive) { Turtle.forward(value); } Turtle.turnRight(60.5); } " +
+        "public static void main(String[] args) { draw(10, 1); draw(10.5, 2); }"
+    ))
+    checkedSource(semanticSource("double value; if (flag) { value = distance; } else { value = 10.5; } Turtle.forward(value);"))
+    assertEquals(semanticProblem(semanticSource("double value = 2147483648;")).problem, JavaTurtleSource.Problem.IntegerRange)
+    checkedSource(semanticSource("double value = 2147483648.0;"))
+  }
+
+  test("turtle resolution widens after integer division and preserves numeric Turtle arguments") {
+    import JavaTurtleResolution.*
+    val resolved = resolvedSource(turtleClass(
+      "static void draw(double length) { Turtle.forward(length / 3); } " +
+        "public static void main(String[] args) { double whole = 10 / 3; double thirds = 10.0 / 3; " +
+        "double decimal = 10.5; double widened = 10; draw(10); Turtle.forward(10); }"
+    ))
+    val statements = resolvedMethod(resolved, "main").body.statements
+    val initial = statements.collect { case Declare(variable, Some(value)) =>
+      assertEquals(variable.valueType, ValueType.DoubleValue)
+      value
+    }
+    assertEquals(initial.head, Widen(Binary(BinaryOperator.Divide, IntLiteral(10), IntLiteral(3))))
+    val expected = Vector(3.0, 10.0 / 3.0, 10.5, 10.0).map(value => Right(E.Value.DoubleValue(value)))
+    val actual = initial.map(expression => E.evaluate(expression, _ => fail("Unexpected variable read")))
+    assertEquals(actual, expected)
+    assertEquals(statements(4).asInstanceOf[Call].arguments, Vector(Widen(IntLiteral(10))))
+    assertEquals(statements(5).asInstanceOf[Call].arguments, Vector(IntLiteral(10)))
+    val thirds = resolvedMethod(resolved, "draw").body.statements.head.asInstanceOf[Call].arguments.head
+    assertEquals(E.evaluate(thirds, _ => Right(E.Value.DoubleValue(10.0))), Right(E.Value.DoubleValue(10.0 / 3.0)))
+  }
+
+  test("turtle double constant folding uses promoted IEEE comparisons") {
+    for condition <- Seq(
+      "10.5 / 3 == 3.5", "10.0 / 3 > 3.0", "10 / 3 == 3.0", "0.0 == -0.0",
+      "0.0 / 0.0 != 0.0 / 0.0", "1.0 / 0.0 > 2147483647", "-9.0 % 2.0 == -1.0",
+      "2147483647 + 1 < 0.0", "2147483647 + 1.0 > 0.0"
+    ) do {
+      checkedSource(semanticSource(s"while ($condition) {}"))
+      checkedSource(semanticSource(s"double value; if ($condition) { value = 10.5; } Turtle.forward(value);"))
+      assertEquals(semanticProblem(semanticSource(s"while (!($condition)) {}")).problem,
+        JavaTurtleSource.Problem.UnreachableStatement, clue = condition)
+    }
+    for condition <- Seq("0.0 != -0.0", "0.0 / 0.0 == 0.0 / 0.0", "0.0 / 0.0 < 1.0") do
+      assertEquals(semanticProblem(semanticSource(s"while ($condition) {}")).problem,
+        JavaTurtleSource.Problem.UnreachableStatement, clue = condition)
+    checkedSource(semanticSource("double infinity = 1.0 / 0.0; double nan = 0.0 / 0.0;"))
+  }
+
+  test("turtle semantics rejects double narrowing and boolean numeric conversions") {
+    for body <- Seq("int value = 1.0;", "distance = 1.0;", "double value = true;", "boolean value = 1.0;",
+      "flag = 1.0;", "double value = flag + 1.0;", "double value = !1.0;", "boolean value = 1.0 == flag;",
+      "if (1.0) {}", "double value = 1.0; value += flag;") do
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.TypeMismatch, clue = body)
+    for body <- Seq("run(1.0, flag);", "Turtle.forward(true);", "Turtle.turnRight(false);") do
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.ArgumentMismatch, clue = body)
+    assertEquals(semanticProblem(turtleClass("static void draw(double value) {} public static void main(String[] args) { draw(true); }")).problem,
+      JavaTurtleSource.Problem.ArgumentMismatch)
+    for operator <- Seq("+=", "-=", "*=", "/=", "%=") do {
+      val problem = semanticProblem(semanticSource(s"distance $operator 1.0;"))
+      assertEquals(problem.problem, JavaTurtleSource.Problem.UnsupportedSyntax)
+      assert(problem.message.contains("double-to-int"), clue = problem.message)
+    }
+  }
+
+  test("turtle double support keeps casts value-returning methods and recursion outside the pilot") {
+    for body <- Seq("double value = (double)distance;", "int value = (int)1.5;") do
+      assertEquals(sourceProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UnsupportedSyntax, clue = body)
+    assertEquals(structureProblem(turtleClass(s"static double value() { return 1.5; } $mainMethod")).problem,
+      JavaTurtleSource.Problem.UnsupportedStructure)
+    val recursive = turtleClass(s"static void draw(double length, int depth) { draw(length / 3, depth - 1); } $mainMethod")
+    assertEquals(semanticProblem(recursive).problem, JavaTurtleSource.Problem.UnsupportedSyntax)
   }
 
   test("turtle semantics resolves later helpers and same-class qualified calls") {

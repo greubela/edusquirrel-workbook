@@ -6,7 +6,7 @@ import scala.collection.mutable
 
 object JavaTurtleRuntime {
   enum Failure {
-    case InvalidInvocation, InvalidLimits
+    case InvalidInvocation, InvalidLimits, NonFiniteCommand
     case Evaluation(problem: E.Failure)
   }
 
@@ -15,7 +15,7 @@ object JavaTurtleRuntime {
     case Failed(problem: Failure)
   }
 
-  case class Command(command: R.TurtleCommand, value: Int)
+  case class Command(command: R.TurtleCommand, value: Double)
   case class Execution(status: Status, commands: Vector[Command], steps: Int)
 
   object Limits {
@@ -129,7 +129,8 @@ object JavaTurtleRuntime {
           if frames.size >= limits.maxCallDepth then Left(Status.LimitExceeded)
           else {
             val bindings = if main then Map.empty[R.VariableId, E.Value]
-              else method.parameters.zip(arguments).map((parameter, value) => parameter.id -> value).toMap
+              else method.parameters.zip(arguments).map((parameter, value) =>
+                parameter.id -> E.widen(value, parameter.valueType).toOption.get).toMap
             frames = new Frame(bindings, method.body) :: frames
             Right(())
           }
@@ -138,13 +139,15 @@ object JavaTurtleRuntime {
 
     private def matches(variable: R.Variable, value: E.Value): Boolean = (variable.valueType, value) match {
       case (R.ValueType.IntValue, _: E.Value.IntValue) => true
+      case (R.ValueType.DoubleValue, _: E.Value.IntValue | _: E.Value.DoubleValue) => true
       case (R.ValueType.BooleanValue, _: E.Value.BooleanValue) => true
       case _ => false
     }
 
     private def write(frame: Frame, variable: R.Variable, value: E.Value): Result[Unit] =
-      if !matches(variable, value) then Left(status(E.Failure.TypeMismatch))
-      else { frame.values.update(variable.id, value); Right(()) }
+      E.widen(value, variable.valueType).left.map(status).map { widened =>
+        frame.values.update(variable.id, widened)
+      }
 
     private def scope(frame: Frame, depth: Int): Result[Scope] = step().flatMap { _ =>
       if depth > limits.maxBlockDepth then Left(Status.LimitExceeded)
@@ -198,10 +201,8 @@ object JavaTurtleRuntime {
         target match {
           case R.CallTarget.Helper(id) => start(id, values)
           case R.CallTarget.Turtle(command) => values match {
-            case Vector(E.Value.IntValue(value)) => step().flatMap { _ =>
-              if commands.size >= limits.maxCommands then Left(Status.LimitExceeded)
-              else { commands += Command(command, value); Right(()) }
-            }
+            case Vector(E.Value.IntValue(value)) => emit(command, value.toDouble)
+            case Vector(E.Value.DoubleValue(value)) => emit(command, value)
             case _ => Left(status(E.Failure.TypeMismatch))
           }
         }
@@ -227,20 +228,23 @@ object JavaTurtleRuntime {
     }
 
     private def assigned(operator: R.AssignmentOperator, left: E.Value, right: E.Value): Result[E.Value] =
-      (left, right) match {
-        case (E.Value.IntValue(a), E.Value.IntValue(b)) =>
-          val result = operator match {
-            case R.AssignmentOperator.Add => Right(JavaInt32.add(a, b))
-            case R.AssignmentOperator.Subtract => Right(JavaInt32.subtract(a, b))
-            case R.AssignmentOperator.Multiply => Right(JavaInt32.multiply(a, b))
-            case R.AssignmentOperator.Divide => JavaInt32.divide(a, b)
-            case R.AssignmentOperator.Remainder => JavaInt32.remainder(a, b)
-            case R.AssignmentOperator.Set => Right(b)
-          }
-          result.left.map {
-            case JavaInt32.Error.DivisionByZero => status(E.Failure.DivisionByZero)
-          }.map(E.Value.IntValue(_))
-        case _ => Left(status(E.Failure.TypeMismatch))
+      if operator == R.AssignmentOperator.Set then Right(right)
+      else {
+        val arithmetic = operator match {
+          case R.AssignmentOperator.Add => R.BinaryOperator.Add
+          case R.AssignmentOperator.Subtract => R.BinaryOperator.Subtract
+          case R.AssignmentOperator.Multiply => R.BinaryOperator.Multiply
+          case R.AssignmentOperator.Divide => R.BinaryOperator.Divide
+          case R.AssignmentOperator.Remainder => R.BinaryOperator.Remainder
+          case R.AssignmentOperator.Set => throw IllegalStateException("Not an arithmetic assignment.")
+        }
+        E.arithmetic(arithmetic, left, right).left.map(status)
       }
+
+    private def emit(command: R.TurtleCommand, value: Double): Result[Unit] = step().flatMap { _ =>
+      if commands.size >= limits.maxCommands then Left(Status.LimitExceeded)
+      else if !value.isFinite then Left(Status.Failed(Failure.NonFiniteCommand))
+      else { commands += Command(command, value); Right(()) }
+    }
   }
 }

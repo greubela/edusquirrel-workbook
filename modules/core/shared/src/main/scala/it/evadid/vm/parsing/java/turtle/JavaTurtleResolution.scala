@@ -1,14 +1,17 @@
 package it.evadid.vm.parsing.java.turtle
 
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
+import it.evadid.vm.parsing.java.clean.model.JavaType
 import it.evadid.vm.parsing.java.clean.model.JavaType.*
 import it.evadid.vm.parsing.java.turtle.JavaTurtleSemantics.TypedSource
 import it.evadid.vm.parsing.java.turtle.JavaTurtleSource.{Diagnostic, Problem}
 
 object JavaTurtleResolution {
   enum ValueType {
-    case IntValue, BooleanValue, MainArguments
+    case IntValue, DoubleValue, BooleanValue, MainArguments
   }
+
+  def isNumeric(valueType: ValueType): Boolean = valueType == ValueType.IntValue || valueType == ValueType.DoubleValue
 
   case class MethodId(index: Int)
   case class VariableId(method: MethodId, index: Int)
@@ -46,6 +49,12 @@ object JavaTurtleResolution {
   case class IntLiteral(value: Int) extends Expression {
     val valueType: ValueType = ValueType.IntValue
   }
+  case class DoubleLiteral(value: Double) extends Expression {
+    val valueType: ValueType = ValueType.DoubleValue
+  }
+  case class Widen(expression: Expression) extends Expression {
+    val valueType: ValueType = ValueType.DoubleValue
+  }
   case class BooleanLiteral(value: Boolean) extends Expression {
     val valueType: ValueType = ValueType.BooleanValue
   }
@@ -57,12 +66,13 @@ object JavaTurtleResolution {
   }
   case class Unary(operator: UnaryOperator, operand: Expression) extends Expression {
     def valueType: ValueType =
-      if operator == UnaryOperator.Not then ValueType.BooleanValue else ValueType.IntValue
+      if operator == UnaryOperator.Not then ValueType.BooleanValue else operand.valueType
   }
   case class Binary(operator: BinaryOperator, left: Expression, right: Expression) extends Expression {
     def valueType: ValueType = operator match {
       case BinaryOperator.Add | BinaryOperator.Subtract | BinaryOperator.Multiply |
-          BinaryOperator.Divide | BinaryOperator.Remainder => ValueType.IntValue
+          BinaryOperator.Divide | BinaryOperator.Remainder =>
+        if left.valueType == ValueType.DoubleValue || right.valueType == ValueType.DoubleValue then ValueType.DoubleValue else ValueType.IntValue
       case _ => ValueType.BooleanValue
     }
   }
@@ -99,8 +109,11 @@ object JavaTurtleResolution {
       method -> MethodId(index)
     }
     val methodIds = definitions.map { (method, id) => method.name -> id }.toMap
+    val parameterTypes = definitions.map { (method, id) =>
+      id -> method.parameters.map(parameter => kind(parameter.javaType).getOrElse(ValueType.MainArguments)).toVector
+    }.toMap
     traverse(definitions) { (method, id) =>
-      new MethodResolver(source.structure.classDef.name, id, methodIds).resolve(method)
+      new MethodResolver(source.structure.classDef.name, id, methodIds, parameterTypes).resolve(method)
     }.map(methods => new ResolvedSource(source, methods, methodIds(source.structure.main.name)))
   }
 
@@ -124,7 +137,20 @@ object JavaTurtleResolution {
     "*=" -> AssignmentOperator.Multiply, "/=" -> AssignmentOperator.Divide, "%=" -> AssignmentOperator.Remainder
   )
 
-  private class MethodResolver(className: String, methodId: MethodId, methodIds: Map[String, MethodId]) {
+  private def kind(javaType: JavaType[?]): Option[ValueType] = javaType match {
+    case _: JAVA_INTEGER => Some(ValueType.IntValue)
+    case _: JAVA_FLOAT => Some(ValueType.DoubleValue)
+    case _: JAVA_BOOL => Some(ValueType.BooleanValue)
+    case _ => None
+  }
+
+  private def widen(value: Expression, expected: ValueType): Result[Expression] =
+    if value.valueType == expected then Right(value)
+    else if value.valueType == ValueType.IntValue && expected == ValueType.DoubleValue then Right(Widen(value))
+    else Left(unsupported)
+
+  private class MethodResolver(className: String, methodId: MethodId, methodIds: Map[String, MethodId],
+      parameterTypes: Map[MethodId, Vector[ValueType]]) {
     private var nextVariable = 0
 
     def resolve(method: JavaMethodDef): Result[Method] =
@@ -134,11 +160,7 @@ object JavaTurtleResolution {
       } yield Method(methodId, method.name, parameters, body)
 
     private def variable(declaration: JavaVariableDeclaration, mainArgument: Boolean = false): Result[Variable] = {
-      val valueType = if mainArgument then Some(ValueType.MainArguments) else declaration.javaType match {
-        case _: JAVA_INTEGER => Some(ValueType.IntValue)
-        case _: JAVA_BOOL => Some(ValueType.BooleanValue)
-        case _ => None
-      }
+      val valueType = if mainArgument then Some(ValueType.MainArguments) else kind(declaration.javaType)
       valueType.toRight(unsupported).map { kind =>
         val result = Variable(VariableId(methodId, nextVariable), declaration.name, kind)
         nextVariable += 1
@@ -165,7 +187,7 @@ object JavaTurtleResolution {
           declared <- variable(declaration)
           active = env.updated(declared.name, declared)
           initial <- declaration.value.fold[Result[Option[Expression]]](Right(None))(
-            value => expression(value, active).map(Some(_))
+            value => expression(value, active).flatMap(widen(_, declared.valueType)).map(Some(_))
           )
         } yield Declare(declared, initial) -> active
       case JavaAssignment(target, value) => assignment(target, "=", value, env).map(_ -> env)
@@ -203,12 +225,14 @@ object JavaTurtleResolution {
         variable <- local(target, env)
         operation <- assignmentOperators.get(operator).toRight(unsupported)
         resolved <- expression(value, env)
-      } yield Assign(variable, operation, resolved)
+        converted <- widen(resolved, variable.valueType)
+      } yield Assign(variable, operation, converted)
 
     private def expression(value: JavaExpression, env: Env): Result[Expression] = value match {
       case JavaParenthesizedExpression(inner) => expression(inner, env).map(Group(_))
       case target: JavaTarget => local(target, env).map(Read(_))
       case JavaLiteral(raw, _: JAVA_INTEGER) => raw.toIntOption.toRight(unsupported).map(IntLiteral(_))
+      case JavaLiteral(raw, _: JAVA_FLOAT) => raw.toDoubleOption.filter(_.isFinite).toRight(unsupported).map(DoubleLiteral(_))
       case JavaLiteral(raw, _: JAVA_BOOL) => Right(BooleanLiteral(raw == "true"))
       case JavaOperationUnary("-", JavaLiteral("2147483648", _: JAVA_INTEGER)) => Right(IntLiteral(Int.MinValue))
       case JavaOperationUnary(operator, operand) =>
@@ -224,7 +248,11 @@ object JavaTurtleResolution {
           operation <- binaryOperators.get(operator).toRight(unsupported)
           a <- expression(left, env)
           b <- expression(right, env)
-        } yield Binary(operation, a, b)
+          common = if isNumeric(a.valueType) && isNumeric(b.valueType) &&
+            (a.valueType == ValueType.DoubleValue || b.valueType == ValueType.DoubleValue) then Some(ValueType.DoubleValue) else None
+          promotedA <- common.fold[Result[Expression]](Right(a))(widen(a, _))
+          promotedB <- common.fold[Result[Expression]](Right(b))(widen(b, _))
+        } yield Binary(operation, promotedA, promotedB)
       case _ => Left(unsupported)
     }
 
@@ -246,7 +274,14 @@ object JavaTurtleResolution {
       for {
         call <- target.toRight(unsupported)
         arguments <- traverse(call._2)(expression(_, env))
-      } yield Call(call._1, arguments)
+        converted <- call._1 match {
+          case CallTarget.Helper(id) =>
+            val expected = parameterTypes(id)
+            if expected.size != arguments.size then Left(unsupported)
+            else traverse(arguments.zip(expected)) { (value, kind) => widen(value, kind) }
+          case CallTarget.Turtle(_) => Right(arguments)
+        }
+      } yield Call(call._1, converted)
     }
   }
 }

@@ -12,11 +12,12 @@ object JavaTurtleSemantics {
     new Checker(structure).check().map(_ => new TypedSource(structure))
 
   private enum Kind {
-    case IntValue, BooleanValue, MainArguments
+    case IntValue, DoubleValue, BooleanValue, MainArguments
   }
 
   private enum Constant {
     case Number(value: Int)
+    case Decimal(value: Double)
     case Flag(value: Boolean)
   }
 
@@ -61,6 +62,7 @@ object JavaTurtleSemantics {
 
     private def kind(javaType: it.evadid.vm.parsing.java.clean.model.JavaType[?]): Option[Kind] = javaType match {
       case _: JAVA_INTEGER => Some(Kind.IntValue)
+      case _: JAVA_FLOAT => Some(Kind.DoubleValue)
       case _: JAVA_BOOL => Some(Kind.BooleanValue)
       case _ => None
     }
@@ -135,11 +137,11 @@ object JavaTurtleSemantics {
       else if env.bindings.contains(declaration.name) then
         Left(problem(Problem.DuplicateDeclaration, s"The name ${declaration.name} is already declared in this scope."))
       else for {
-        declaredKind <- kind(declaration.javaType).toRight(problem(Problem.UnsupportedType, "Use int or boolean for local variables."))
+        declaredKind <- kind(declaration.javaType).toRight(problem(Problem.UnsupportedType, "Use int, double or boolean for local variables."))
         declared = Env(env.bindings.updated(declaration.name, declaredKind), env.initialized - declaration.name)
         result <- declaration.value.fold[Result[Env]](Right(declared)) { expression =>
           value(expression, declared).flatMap { initial =>
-            requireKind(initial.kind, declaredKind, s"The initial value of ${declaration.name} has the wrong type.")
+            requireAssignable(initial.kind, declaredKind, s"The initial value of ${declaration.name} has the wrong type.")
               .map(_ => declared.under(declared.initialized + declaration.name))
           }
         }
@@ -163,17 +165,30 @@ object JavaTurtleSemantics {
         targetKind <- local(target, env)
         _ <- if operator == "=" then Right(()) else initialized(target.name, env)
         assigned <- value(expression, env)
-        _ <- if operator == "=" then requireKind(assigned.kind, targetKind, s"The value assigned to ${target.name} has the wrong type.")
+        _ <- if operator == "=" then requireAssignable(assigned.kind, targetKind, s"The value assigned to ${target.name} has the wrong type.")
           else if Set("+=", "-=", "*=", "/=", "%=").contains(operator) then
             for {
-              _ <- requireKind(targetKind, Kind.IntValue, "Arithmetic assignments need an int variable.")
-              _ <- requireKind(assigned.kind, Kind.IntValue, "Arithmetic assignments need an int value.")
+              _ <- requireNumeric(targetKind, "Arithmetic assignments need an int or double variable.")
+              _ <- requireNumeric(assigned.kind, "Arithmetic assignments need an int or double value.")
+              _ <- Either.cond(!(targetKind == Kind.IntValue && assigned.kind == Kind.DoubleValue), (),
+                unsupported("Mixed double-to-int compound assignments are not supported yet."))
             } yield ()
           else Left(unsupported("This assignment operator is not supported yet."))
       } yield env.under(env.initialized + target.name)
 
     private def requireKind(actual: Kind, expected: Kind, message: String): Result[Unit] =
       if actual == expected then Right(()) else Left(problem(Problem.TypeMismatch, message))
+
+    private def numeric(kind: Kind): Boolean = kind == Kind.IntValue || kind == Kind.DoubleValue
+
+    private def assignable(actual: Kind, expected: Kind): Boolean =
+      actual == expected || actual == Kind.IntValue && expected == Kind.DoubleValue
+
+    private def requireAssignable(actual: Kind, expected: Kind, message: String): Result[Unit] =
+      if assignable(actual, expected) then Right(()) else Left(problem(Problem.TypeMismatch, message))
+
+    private def requireNumeric(actual: Kind, message: String): Result[Unit] =
+      if numeric(actual) then Right(()) else Left(problem(Problem.TypeMismatch, message))
 
     private def plain(kind: Kind, constant: Option[Constant], env: Env): Value =
       constant match {
@@ -201,8 +216,12 @@ object JavaTurtleSemantics {
       case JavaLiteral(raw, _: JAVA_INTEGER) =>
         raw.toIntOption.toRight(problem(Problem.IntegerRange, "This integer literal is outside the int range."))
           .map(number => plain(Kind.IntValue, Some(Constant.Number(number)), env))
+      case JavaLiteral(raw, _: JAVA_FLOAT) =>
+        raw.toDoubleOption.filter(_.isFinite)
+          .toRight(problem(Problem.UnsupportedNumber, "Use a finite double literal."))
+          .map(number => plain(Kind.DoubleValue, Some(Constant.Decimal(number)), env))
       case JavaLiteral(raw, _: JAVA_BOOL) => Right(flag(raw == "true", env))
-      case _: JavaLiteral[?] => Left(problem(Problem.UnsupportedType, "Use int or boolean values."))
+      case _: JavaLiteral[?] => Left(problem(Problem.UnsupportedType, "Use int, double or boolean values."))
       case _: JavaFunctionCall | _: JavaCallExpression =>
         Left(problem(Problem.TypeMismatch, "A void method call does not produce a value."))
       case JavaOperationUnary("-", JavaLiteral("2147483648", _: JAVA_INTEGER)) =>
@@ -214,10 +233,12 @@ object JavaTurtleSemantics {
               Value(Kind.BooleanValue, result.constant.collect { case Constant.Flag(flagValue) => Constant.Flag(!flagValue) },
                 result.whenFalse, result.whenTrue)
             }
-            case "+" | "-" => requireKind(result.kind, Kind.IntValue, "Unary + and - need an int value.").map { _ =>
-              plain(Kind.IntValue, result.constant.collect { case Constant.Number(number) =>
-                Constant.Number(if operator == "-" then -number else number)
-              }, env)
+            case "+" | "-" => requireNumeric(result.kind, "Unary + and - need an int or double value.").map { _ =>
+              val constant = result.constant.collect {
+                case Constant.Number(number) => Constant.Number(if operator == "-" then -number else number)
+                case Constant.Decimal(number) => Constant.Decimal(if operator == "-" then -number else number)
+              }
+              plain(result.kind, constant, env)
             }
             case _ => Left(unsupported("This unary operator is not supported yet."))
           }
@@ -240,25 +261,31 @@ object JavaTurtleSemantics {
           b <- value(right, env)
           result <- binary(a, operator, b, env)
         } yield result
-      case _ => Left(unsupported("Use int or boolean expressions without assignments, calls, fields or array access."))
+      case _ => Left(unsupported("Use int, double or boolean expressions without assignments, calls, fields or array access."))
     }
 
     private def binary(a: Value, operator: String, b: Value, env: Env): Result[Value] = {
       val arithmetic = Set("+", "-", "*", "/", "%")
       val comparison = Set("<", "<=", ">", ">=")
-      if operator == "==" || operator == "!=" then
-        requireKind(a.kind, b.kind, "Compare values of the same type.").map { _ =>
-          val constant = for { left <- a.constant; right <- b.constant }
-            yield Constant.Flag(if operator == "==" then left == right else left != right)
+      if operator == "==" || operator == "!=" then {
+        val compatible = a.kind == Kind.BooleanValue && b.kind == Kind.BooleanValue || numeric(a.kind) && numeric(b.kind)
+        Either.cond(compatible, (), problem(Problem.TypeMismatch, "Compare two numeric values or two boolean values.")).map { _ =>
+          val equal = (a.constant, b.constant) match {
+            case (Some(Constant.Flag(left)), Some(Constant.Flag(right))) => Some(left == right)
+            case (Some(left), Some(right)) => for { x <- decimalConstant(left); y <- decimalConstant(right) } yield x == y
+            case _ => None
+          }
+          val constant = equal.map(value => Constant.Flag(if operator == "==" then value else !value))
           plain(Kind.BooleanValue, constant, env)
         }
-      else if arithmetic.contains(operator) || comparison.contains(operator) then
+      } else if arithmetic.contains(operator) || comparison.contains(operator) then
         for {
-          _ <- requireKind(a.kind, Kind.IntValue, "This operator needs int operands.")
-          _ <- requireKind(b.kind, Kind.IntValue, "This operator needs int operands.")
+          _ <- requireNumeric(a.kind, "This operator needs int or double operands.")
+          _ <- requireNumeric(b.kind, "This operator needs int or double operands.")
         } yield {
+          val resultKind = if a.kind == Kind.DoubleValue || b.kind == Kind.DoubleValue then Kind.DoubleValue else Kind.IntValue
           val constant = (a.constant, b.constant) match {
-            case (Some(Constant.Number(left)), Some(Constant.Number(right))) => operator match {
+            case (Some(Constant.Number(left)), Some(Constant.Number(right))) if resultKind == Kind.IntValue => operator match {
               case "+" => Some(Constant.Number(left + right))
               case "-" => Some(Constant.Number(left - right))
               case "*" => Some(Constant.Number(left * right))
@@ -270,11 +297,33 @@ object JavaTurtleSemantics {
               case ">=" => Some(Constant.Flag(left >= right))
               case _ => None
             }
+            case (Some(left), Some(right)) => for {
+              x <- decimalConstant(left)
+              y <- decimalConstant(right)
+              result <- operator match {
+                case "+" => Some(Constant.Decimal(x + y))
+                case "-" => Some(Constant.Decimal(x - y))
+                case "*" => Some(Constant.Decimal(x * y))
+                case "/" => Some(Constant.Decimal(x / y))
+                case "%" => Some(Constant.Decimal(x % y))
+                case "<" => Some(Constant.Flag(x < y))
+                case "<=" => Some(Constant.Flag(x <= y))
+                case ">" => Some(Constant.Flag(x > y))
+                case ">=" => Some(Constant.Flag(x >= y))
+                case _ => None
+              }
+            } yield result
             case _ => None
           }
-          plain(if comparison.contains(operator) then Kind.BooleanValue else Kind.IntValue, constant, env)
+          plain(if comparison.contains(operator) then Kind.BooleanValue else resultKind, constant, env)
         }
       else Left(unsupported("This binary operator is not supported yet."))
+    }
+
+    private def decimalConstant(value: Constant): Option[Double] = value match {
+      case Constant.Number(number) => Some(number.toDouble)
+      case Constant.Decimal(number) => Some(number)
+      case _ => None
     }
 
     private def checkCall(expression: JavaExpression, env: Env): Result[Unit] = expression match {
@@ -285,7 +334,11 @@ object JavaTurtleSemantics {
         if env.bindings.contains(receiver) then Left(problem(Problem.TypeMismatch, s"The variable $receiver is not a class receiver."))
         else if receiver == structure.classDef.name then helperCall(name, arguments, env)
         else if receiver == "Turtle" && Set("forward", "turnRight").contains(name) then
-          checkArguments(arguments, Seq(Kind.IntValue), env)
+          if arguments.size != 1 then Left(problem(Problem.ArgumentMismatch, "The number of arguments does not match this method."))
+          else value(arguments.head, env).flatMap { actual =>
+            if numeric(actual.kind) then Right(())
+            else Left(problem(Problem.ArgumentMismatch, "A Turtle argument must be an int or double value."))
+          }
         else Left(unsupported("Use an own static method, Turtle.forward or Turtle.turnRight."))
       case _ => Left(unsupported("Call an own static method or a supported Turtle method directly."))
     }
@@ -303,7 +356,7 @@ object JavaTurtleSemantics {
       if arguments.size != expected.size then Left(problem(Problem.ArgumentMismatch, "The number of arguments does not match this method."))
       else arguments.zip(expected).foldLeft[Result[Unit]](Right(())) { case (result, (argument, expectedKind)) =>
         result.flatMap(_ => value(argument, env)).flatMap { actual =>
-          if actual.kind == expectedKind then Right(())
+          if assignable(actual.kind, expectedKind) then Right(())
           else Left(problem(Problem.ArgumentMismatch, "An argument has the wrong type for this method."))
         }
       }

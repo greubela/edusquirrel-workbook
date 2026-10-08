@@ -660,7 +660,7 @@ class EvaEditorSpec extends FunSuite {
     val sources = List(
       ProgrammingStateJavaString("\npublic class Drawing {\r\n\t"),
       ProgrammingStateJavaString("class Drawing {}"),
-      ProgrammingStateJavaString("class Drawing { public static void main(String[] args) { double side = 25; } }"),
+      ProgrammingStateJavaString("class Drawing { public static void main(String[] args) { float side = 25; } }"),
       ProgrammingStateJavaString("class Drawing { public static void main(String[] args) { Turtle.forward(missing); } }")
     )
     Future.sequence(sources.map { source =>

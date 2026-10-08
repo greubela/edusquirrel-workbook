@@ -41,7 +41,7 @@ object JavaTurtleSource {
         ))
     }
 
-  private val unsupportedTypes = Set("byte", "short", "long", "float", "double")
+  private val unsupportedTypes = Set("byte", "short", "long", "float")
 
   private def isDigit(char: Char): Boolean = char >= '0' && char <= '9'
   private def isNameStart(char: Char): Boolean =
@@ -78,16 +78,22 @@ object JavaTurtleSource {
         offset += 1
         while offset < source.length && (isNamePart(source.charAt(offset)) || source.charAt(offset) == '.') do offset += 1
         val number = source.substring(start, offset)
-        if !number.forall(isDigit) || (number.length > 1 && number.head == '0') then
+        val integer = number.forall(isDigit) && (number.length == 1 || number.head != '0')
+        val decimal = number.matches("[0-9]+\\.[0-9]+") && number.toDoubleOption.exists { value =>
+          value.isFinite && (value != 0.0 || !number.exists(char => char >= '1' && char <= '9'))
+        }
+        if !integer && !decimal then
           return Left(Diagnostic(
-            Problem.UnsupportedNumber, "Use decimal integers without leading zeros.", Some(SourceRange(start, offset))
+            Problem.UnsupportedNumber,
+            "Use decimal integers without leading zeros, or finite decimals with digits on both sides of the point.",
+            Some(SourceRange(start, offset))
           ))
       } else if isNameStart(char) then {
         offset += 1
         while offset < source.length && isNamePart(source.charAt(offset)) do offset += 1
         if unsupportedTypes.contains(source.substring(start, offset)) then
           return Left(Diagnostic(
-            Problem.UnsupportedType, "Use int or boolean for turtle programs.", Some(SourceRange(start, offset))
+            Problem.UnsupportedType, "Use int, double or boolean for turtle programs.", Some(SourceRange(start, offset))
           ))
       } else offset += 1
     }

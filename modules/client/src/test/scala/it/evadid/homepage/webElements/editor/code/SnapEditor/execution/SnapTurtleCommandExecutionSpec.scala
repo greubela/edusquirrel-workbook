@@ -3,6 +3,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.{CallbackOp, PythonRunConfig, PythonRunReport}
 import it.evadid.vm.BeProgram
+import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonExport
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingStateSnapXml
@@ -33,6 +34,15 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       resolved <- R.resolve(checked)
       program <- P.adapt(resolved)
     yield program).fold(problem => fail(problem.message), identity)
+
+  private lazy val javaDoubleFixture: P.Program = P.compile(
+    """class Drawing {
+      |  static void draw(double size, int depth) {
+      |    Turtle.forward(size);
+      |    Turtle.turnRight(22.5);
+      |  }
+      |  public static void main(String[] args) { draw(0.25, 1); }
+      |}""".stripMargin).fold(problem => fail(problem.message), identity)
 
   private def delayed(milliseconds: Int): Future[Unit] =
     val result = Promise[Unit]()
@@ -340,6 +350,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       javaReport(steps = "\"2\""), javaReport(steps = "true"), javaReport(steps = "null"),
       javaReport(steps = "2147483648"), javaReport(steps = "100001"),
       javaReport("Failed", "\"DivisionByZero\"", steps = "0"),
+      javaReport("Failed", "\"NonFiniteCommand\"", steps = "0"),
       javaReport("Failed", "\"InvalidInvocation\"", steps = "1"),
       javaReport("Failed", "\"InvalidLimits\"", """[["forward",1]]""", "1")
     )
@@ -348,8 +359,8 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       "[[\"forward\",1,2]]", "[[null,1]]", "[[1,1]]", "[[true,1]]",
       "[[\"unknown\",1]]", "[[\"turnRight\",1]]", "[[\"Forward\",1]]",
       "[[\"forward\",\"1\"]]", "[[\"forward\",true]]", "[[\"forward\",null]]",
-      "[[\"forward\",[]]]", "[[\"forward\",0.5]]", "[[\"forward\",2147483648]]",
-      "[[\"right\",-2147483649]]"
+      "[[\"forward\",[]]]", "[[\"forward\",NaN]]", "[[\"forward\",Infinity]]",
+      "[[\"right\",-Infinity]]", "[[\"forward\",1e309]]"
     )
     val reports = invalidEnvelopes.map(stdout => valid.copy(stdout = stdout)) ++ invalidResults ++
       invalidCommands.map(commands => javaReport(commands = commands)) ++ Vector(
@@ -373,6 +384,63 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       javaReport(commands = boundaryCommands, steps = T.Limits.MaxSteps.toString), T.Limits())
     assertEquals(boundary.commands.size, T.Limits.MaxCommands)
     assertEquals(boundary.steps, T.Limits.MaxSteps)
+  }
+
+  test("Java worker decoding retains finite doubles, signed zero and values beyond int32") {
+    val commands = """[["forward",0.125],["right",-22.5],["forward",-0.0],["forward",2147483648],["forward",1.7976931348623157e308],["forward",5e-324]]"""
+    val decoded = JavaTurtleCommandRunner.decode(javaReport(commands = commands, steps = "20"), T.Limits())
+    assertEquals(decoded.commands.map(_.value).take(2), Vector(0.125, -22.5))
+    assertEquals(1.0 / decoded.commands(2).value, Double.NegativeInfinity)
+    assertEquals(decoded.commands(3).value, 2147483648.0)
+    assertEquals(decoded.commands(4).value, Double.MaxValue)
+    assertEquals(decoded.commands(5).value, java.lang.Double.MIN_VALUE)
+  }
+
+  test("Java worker nonfinite outcomes keep only their finite executed prefix") {
+    val decoded = JavaTurtleCommandRunner.decode(
+      javaReport("Failed", "\"NonFiniteCommand\"", """[["forward",0.25]]""", "7"), T.Limits())
+    assertEquals(decoded.status, T.Status.Failed(T.Failure.NonFiniteCommand))
+    assertEquals(decoded.commands, Vector(T.Command(R.TurtleCommand.Forward, 0.25)))
+  }
+
+  test("Java double Python literals preserve special values and signed zero") {
+    assertEquals(JavaTurtlePythonExport.doubleLiteral(Double.NaN), "float(\"nan\")")
+    assertEquals(JavaTurtlePythonExport.doubleLiteral(Double.PositiveInfinity), "float(\"inf\")")
+    assertEquals(JavaTurtlePythonExport.doubleLiteral(Double.NegativeInfinity), "float(\"-inf\")")
+    assertEquals(JavaTurtlePythonExport.doubleLiteral(-0.0), "-0.0")
+    List(0.0, 1.0, 0.125, java.lang.Double.MIN_VALUE, Double.MaxValue).foreach { value =>
+      assertEquals(JavaTurtlePythonExport.doubleLiteral(value).toDouble, value)
+    }
+  }
+
+  test("Java worker invocation preserves fractional arguments and separate integer tags") {
+    val worker = new ControlledJavaWorker(initiallyReady = true)
+    val runner = new JavaTurtleCommandRunner(() => worker)
+    val method = javaDoubleFixture.root.methods.find(_.binding.originalName == "draw").get.binding.id
+    val result = runner.invoke(javaDoubleFixture, method, Vector(E.Value.DoubleValue(0.125), E.Value.IntValue(2)))
+    for
+      _ <- worker.started()
+      _ = worker.complete(report = javaReport(commands = """[["forward",0.125],["right",22.5]]""", steps = "10"))
+      actual <- result
+    yield
+      assert(worker.requests.head._1.contains(s"method=${method.index}, arguments=[0.125, 2]"))
+      assertEquals(actual.commands.map(_.value), Vector(0.125, 22.5))
+      runner.close()
+  }
+
+  test("Java worker widens integer arguments only for double parameters") {
+    val worker = new ControlledJavaWorker(initiallyReady = true)
+    val runner = new JavaTurtleCommandRunner(() => worker)
+    val method = javaDoubleFixture.root.methods.find(_.binding.originalName == "draw").get.binding.id
+    val result = runner.invoke(javaDoubleFixture, method, Vector(E.Value.IntValue(5), E.Value.IntValue(2)))
+    for
+      _ <- worker.started()
+      _ = worker.complete(report = javaReport(commands = """[["forward",5]]""", steps = "7"))
+      actual <- result
+    yield
+      assert(worker.requests.head._1.contains(s"method=${method.index}, arguments=[5, 2]"))
+      assertEquals(actual.commands, Vector(T.Command(R.TurtleCommand.Forward, 5.0)))
+      runner.close()
   }
 
   test("Java worker startup does not consume the execution deadline") {
@@ -462,6 +530,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       runner.invoke(javaFixture, R.MethodId(-1), Vector.empty, T.Limits()),
       runner.invoke(javaFixture, javaFixture.root.entryPoint.binding.id, Vector.empty, T.Limits()),
       runner.invoke(javaFixture, draw, Vector.empty, T.Limits()),
+      runner.invoke(javaFixture, draw, Vector(E.Value.DoubleValue(1.0), E.Value.BooleanValue(true)), T.Limits()),
       runner.invoke(javaFixture, draw, Vector(E.Value.BooleanValue(true), E.Value.IntValue(1)), T.Limits())
     )
     Future.sequence(requests).map { results =>
@@ -712,6 +781,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       javaReport("LimitExceeded", commands = """[["forward",10]]""", steps = "5"),
       javaReport("Cancelled", commands = """[["forward",10]]""", steps = "5"),
       javaReport("Failed", "\"DivisionByZero\"", """[["forward",10]]""", "5"),
+      javaReport("Failed", "\"NonFiniteCommand\"", """[["forward",0.25]]""", "5"),
       javaReport()
     )
     outcomes.zipWithIndex.foldLeft(Future.successful(())) { case (previous, (report, index)) =>
