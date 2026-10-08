@@ -33,6 +33,30 @@ class QrCodeSpec extends FunSuite {
       assertEquals(code.text, text)
     }
   }
+  test("semantic regions match QR structure, interleaved headers and parity lengths") {
+    for version <- List(1, 2, 7, 10, 32, 40); ecc <- QrErrorCorrection.values; utf8 <- List(false, true) do {
+      val code = QrCode(Array[Byte](65), QrCodeConfig(version, ecc, 0, utf8))
+      def count(region: QrCodeRegion): Int = code.regions.flatten.count(_ == region)
+      assertEquals(count(QrCodeRegion.Finder), 147)
+      assertEquals(count(QrCodeRegion.Separator), 45)
+      assertEquals(count(QrCodeRegion.Format), 30)
+      assertEquals(count(QrCodeRegion.Version), if version >= 7 then 36 else 0)
+      assertEquals(count(QrCodeRegion.FixedDark), 1)
+      assertEquals(count(QrCodeRegion.Encoding), (if utf8 then 12 else 0) + 4 + (if version < 10 then 8 else 16))
+      val dataBytes = QrCodeEncoder.dataCapacity(version, ecc)
+      val parityBytes = QrCodeEncoder.codewords(code.content, code.config).size - dataBytes
+      assertEquals(count(QrCodeRegion.ErrorCorrection), parityBytes * 8)
+      assertEquals(count(QrCodeRegion.Data) + count(QrCodeRegion.Encoding), dataBytes * 8)
+      assertEquals(code.regionAt(0, 0), QrCodeRegion.Finder)
+      assertEquals(code.regionAt(7, 0), QrCodeRegion.Separator)
+      assertEquals(code.regionAt(8, 0), QrCodeRegion.Format)
+      assertEquals(code.regionAt(6, 10), QrCodeRegion.Timing)
+      assertEquals(code.regionAt(8, code.size - 8), QrCodeRegion.FixedDark)
+      if version > 1 then assertEquals(code.regionAt(code.size - 7, code.size - 7), QrCodeRegion.Alignment)
+      if version >= 7 then assertEquals(code.regionAt(code.size - 11, 0), QrCodeRegion.Version)
+      assertEquals(code.withMask(7).regions, code.regions)
+    }
+  }
   test("byte-mode headers, alternating padding and Reed–Solomon parity match a known codeword vector") {
     val expected = Vector(64, 148, 134, 86, 198, 198, 242, 5, 21, 34, 16, 236, 17, 236, 17, 236,
       160, 109, 40, 152, 42, 195, 21, 17, 212, 124)

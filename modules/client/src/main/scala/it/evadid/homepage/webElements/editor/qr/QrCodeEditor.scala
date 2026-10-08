@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.editor.qr
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.workbook.elements.interactionElements.qr.QrCodeRequirements
-import it.evadid.workbook.model.qr.{QrCode, QrErrorCorrection}
+import it.evadid.workbook.model.qr.{QrCode, QrCodeRegion, QrErrorCorrection}
 
 /** Text edits are live. Invalid drafts stay visible but never replace the last valid saved symbol. */
 case class QrCodeEditor(state: Var[QrCode], requirements: QrCodeRequirements) extends HtmlAppElement with FullscreenLifecycle {
@@ -62,9 +62,12 @@ case class QrCodeEditor(state: Var[QrCode], requirements: QrCodeRequirements) ex
 
 /** SVG geometry stays in code; colors, size and crisp rendering live in CSS. */
 object QrCodeView {
-  def pathData(code: QrCode): String = (for {
+  def regionClass(region: QrCodeRegion): String =
+    "qr-region--" + region.toString.replaceAll("([a-z])([A-Z])", "$1-$2").toLowerCase
+
+  def pathData(code: QrCode, region: Option[QrCodeRegion] = None): String = (for {
     y <- 0 until code.size
-    x <- 0 until code.size if code.isDark(x, y)
+    x <- 0 until code.size if code.isDark(x, y) && region.forall(_ == code.regionAt(x, y))
   } yield s"M${x + 4},${y + 4}h1v1h-1z").mkString
 
   def symbol(code: QrCode): Element = svg.svg(
@@ -72,12 +75,18 @@ object QrCodeView {
     svg.viewBox := s"0 0 ${code.size + 8} ${code.size + 8}",
     svg.svgAttr("role", com.raquo.laminar.codecs.StringAsIsCodec, None) := "img",
     svg.titleTag(s"QR · ${code.byteCount} bytes · v${code.config.version} · ${code.config.errorCorrection} · mask ${code.config.mask}"),
-    svg.path(svg.d := pathData(code))
+    QrCodeRegion.values.toList.map(region =>
+      svg.path(svg.cls := regionClass(region), svg.d := pathData(code, Some(region))))
   )
   def preview(code: Signal[QrCode], requirements: QrCodeRequirements): Element = {
     val helper = it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper.singleton
     div(cls := "qr-preview",
       child <-- code.map(symbol),
+      ul(cls := "qr-legend",
+        children <-- code.map(q => QrCodeRegion.values.toList.filter(region => region != QrCodeRegion.Separator && q.regions.flatten.contains(region)).map(region =>
+          li(cls := regionClass(region), text <-- helper.plaintextStringSignal(s"basic/qrRegion${region.toString}"))
+        ))
+      ),
       p(text <-- code.map(q => s"${q.byteCount} bytes · v${q.config.version} · ${q.config.errorCorrection} · mask ${q.config.mask}")),
       div(role := "status", aria.live := "polite",
         children <-- code.map(q => requirements.evaluate(q).map(result =>

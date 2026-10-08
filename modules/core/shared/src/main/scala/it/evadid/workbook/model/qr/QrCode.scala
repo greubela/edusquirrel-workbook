@@ -28,7 +28,10 @@ final class QrCode private (private val bytes: Vector[Byte], val config: QrCodeC
   def byteCount: Int = bytes.size
   def text: String = new String(content, StandardCharsets.UTF_8)
   val size: Int = 17 + 4 * config.version
-  lazy val modules: Vector[Vector[Boolean]] = QrCodeEncoder.matrix(content, config)
+  private lazy val symbol = QrCodeEncoder.symbol(content, config)
+  lazy val modules: Vector[Vector[Boolean]] = symbol.modules
+  lazy val regions: Vector[Vector[QrCodeRegion]] = symbol.regions
+  def regionAt(x: Int, y: Int): QrCodeRegion = regions(y)(x)
   def isDark(x: Int, y: Int): Boolean = modules(y)(x)
   def withMask(mask: Int): QrCode = QrCode(content, config.copy(mask = mask))
   def maskPenalties: Vector[Int] = (0 to 7).map(m => QrCodeEncoder.penalty(withMask(m).modules)).toVector

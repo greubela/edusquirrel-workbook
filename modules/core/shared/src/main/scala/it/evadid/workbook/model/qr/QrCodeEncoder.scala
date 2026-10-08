@@ -77,17 +77,22 @@ private[qr] object QrCodeEncoder {
     case 7 => ((x + y) % 2 + (x * y) % 3) % 2
   }) == 0
 
-  def matrix(content: Array[Byte], config: QrCodeConfig): Vector[Vector[Boolean]] = {
+  def matrix(content: Array[Byte], config: QrCodeConfig): Vector[Vector[Boolean]] = symbol(content, config).modules
+
+  def symbol(content: Array[Byte], config: QrCodeConfig): QrCodeSymbol = {
     val size = config.version * 4 + 17
     val modules = Array.fill(size, size)(false)
     val function = Array.fill(size, size)(false)
+    val regions = Array.fill(size, size)(QrCodeRegion.Remainder)
+    var activeRegion = QrCodeRegion.Timing
     def set(x: Int, y: Int, value: Boolean): Unit = {
-      if x >= 0 && y >= 0 && x < size && y < size then { modules(y)(x) = value; function(y)(x) = true }
+      if x >= 0 && y >= 0 && x < size && y < size then { modules(y)(x) = value; function(y)(x) = true; regions(y)(x) = activeRegion }
     }
     // Timing first; finder and alignment patterns override their intersections.
     for i <- 0 until size do { set(6, i, i % 2 == 0); set(i, 6, i % 2 == 0) }
     for (cx, cy) <- Vector((3, 3), (size - 4, 3), (3, size - 4)); dy <- -4 to 4; dx <- -4 to 4 do {
       val distance = math.max(math.abs(dx), math.abs(dy))
+      activeRegion = if distance == 4 then QrCodeRegion.Separator else QrCodeRegion.Finder
       set(cx + dx, cy + dy, distance != 2 && distance != 4)
     }
     val centers = if config.version == 1 then Vector.empty else {
@@ -95,11 +100,13 @@ private[qr] object QrCodeEncoder {
       val step = if config.version == 32 then 26 else ((config.version * 4 + count * 2 + 1) / (count * 2 - 2)) * 2
       Vector(6) ++ (0 until count - 1).reverse.map(i => size - 7 - i * step)
     }
+    activeRegion = QrCodeRegion.Alignment
     for i <- centers.indices; j <- centers.indices
       if !((i == 0 && j == 0) || (i == 0 && j == centers.size - 1) || (i == centers.size - 1 && j == 0))
       dy <- -2 to 2; dx <- -2 to 2 do
       set(centers(i) + dx, centers(j) + dy, math.max(math.abs(dx), math.abs(dy)) != 1)
 
+    activeRegion = QrCodeRegion.Format
     val formatData = config.errorCorrection.formatBits * 8 + config.mask
     var formatRemainder = formatData
     for _ <- 0 until 10 do formatRemainder = (formatRemainder << 1) ^ (if (formatRemainder >>> 9) != 0 then 0x537 else 0)
@@ -110,8 +117,10 @@ private[qr] object QrCodeEncoder {
     for i <- 9 until 15 do set(14 - i, 8, formatBit(i))
     for i <- 0 until 8 do set(size - 1 - i, 8, formatBit(i))
     for i <- 8 until 15 do set(8, size - 15 + i, formatBit(i))
+    activeRegion = QrCodeRegion.FixedDark
     set(8, size - 8, true)
     if config.version >= 7 then {
+      activeRegion = QrCodeRegion.Version
       var remainder = config.version
       for _ <- 0 until 12 do remainder = (remainder << 1) ^ (if (remainder >>> 11) != 0 then 0x1f25 else 0)
       val bits = (config.version << 12) | remainder
@@ -122,6 +131,18 @@ private[qr] object QrCodeEncoder {
       }
     }
     val data = codewords(content, config)
+    // Recover original data-byte offsets after interleaving to identify header bits.
+    // A byte can straddle the header/payload boundary, so classification is per bit.
+    var dataOffset = 0
+    val dataBlocks = blockGroups(config.version, config.errorCorrection).flatMap { (count, _, length) =>
+      (0 until count).map { _ =>
+        val offsets = (dataOffset until dataOffset + length).toVector
+        dataOffset += length
+        offsets
+      }
+    }
+    val dataOffsets = (0 until dataBlocks.map(_.size).max).flatMap(i => dataBlocks.flatMap(_.lift(i))).toVector
+    val headerBits = (if config.utf8 then 12 else 0) + 4 + (if config.version < 10 then 8 else 16)
     var bitIndex = 0
     var right = size - 1
     while right >= 1 do {
@@ -132,12 +153,16 @@ private[qr] object QrCodeEncoder {
         if !function(y)(x) then {
           val bit = bitIndex < data.size * 8 && ((data(bitIndex / 8) >>> (7 - bitIndex % 8)) & 1) != 0
           modules(y)(x) = bit ^ maskBit(config.mask, x, y)
+          regions(y)(x) = if bitIndex >= data.size * 8 then QrCodeRegion.Remainder
+            else if bitIndex / 8 >= dataOffsets.size then QrCodeRegion.ErrorCorrection
+            else if dataOffsets(bitIndex / 8) * 8 + bitIndex % 8 < headerBits then QrCodeRegion.Encoding
+            else QrCodeRegion.Data
           bitIndex += 1
         }
       }
       right -= 2
     }
-    modules.map(_.toVector).toVector
+    QrCodeSymbol(modules.map(_.toVector).toVector, regions.map(_.toVector).toVector)
   }
 
   /** Four mask penalties: runs, 2x2 blocks, finder-like patterns and dark/light balance.

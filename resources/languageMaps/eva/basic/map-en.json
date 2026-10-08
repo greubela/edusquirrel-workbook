@@ -70,5 +70,16 @@
   "qrMinimumErrorCorrection": "Minimum error correction",
   "qrRequiredVersion": "Required version",
   "qrRequiredMask": "Required mask",
-  "qrTask": "Create a QR code storing at least 32 bytes. Try different masks and error-correction levels. Scan the finished code with your phone."
+  "qrTask": "Create a QR code storing at least 32 bytes. Try different masks and error-correction levels. Scan the finished code with your phone.",
+  "qrRegionFinder": "Position markers",
+  "qrRegionSeparator": "Light separators",
+  "qrRegionTiming": "Timing pattern",
+  "qrRegionAlignment": "Alignment patterns",
+  "qrRegionFormat": "Mask and correction information",
+  "qrRegionVersion": "Version information",
+  "qrRegionFixedDark": "Fixed dark module",
+  "qrRegionEncoding": "Encoding and byte count",
+  "qrRegionData": "Data and padding",
+  "qrRegionErrorCorrection": "Error correction",
+  "qrRegionRemainder": "Remainder bits"
 }

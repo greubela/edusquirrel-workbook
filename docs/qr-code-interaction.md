@@ -48,7 +48,7 @@ The editor's version/mask selectors default to automatic selection. Feedback
 always shows the resolved version and mask. Oversized drafts show an error and
 hide the stale preview; they never replace the last valid saved interaction value.
 Closing and reopening restores that saved value. SVG includes the required
-four-module quiet zone and CSS preserves black-on-white contrast across themes.
+four-module quiet zone and CSS uses dark region colors on a light background. The legend distinguishes structure, mask/correction metadata, encoding headers, payload/padding and parity.
 UI labels are in the existing English/German basic language maps; layout, color
 and dimension rules are CSS-based and use the shared tokens.
 
@@ -73,3 +73,20 @@ responsive layout. Run `sbt buildJS`, `npm ci --ignore-scripts`, then
 `node --test tools/dev/qr-interaction.test.mjs` (requires Chromium; override
 `CHROMIUM_PATH` when necessary). It serves all assets locally and aborts external
 requests; it does not use the backend or an online account.
+
+## Region colors
+
+`QrCode.regions` and `regionAt(x, y)` identify each module's semantic purpose,
+independent of mask choice and styling. Header bits are tracked through block
+interleaving, including bytes shared by header and payload. Format information
+stores the selected mask and error-correction level; the mask is applied to all
+non-function modules rather than occupying a separate rectangular area.
+
+`colors.css` defines `--color-qr-finder`, `--color-qr-timing`,
+`--color-qr-alignment`, `--color-qr-format`, `--color-qr-version`,
+`--color-qr-fixed-dark`, `--color-qr-encoding`, `--color-qr-data`,
+`--color-qr-error-correction` and `--color-qr-remainder`. These reuse the existing
+palette and style both SVG paths and legend swatches. Light modules, separators
+and the four-module quiet zone retain `--color-qr-light`. Set all region colors
+to `var(--color-qr-dark)` for a monochrome display. Custom colors should retain
+high contrast with the light modules to preserve scanning.
