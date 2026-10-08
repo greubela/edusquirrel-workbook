@@ -1,9 +1,24 @@
 package it.evadid.homepage.workbook.content
 
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExerciseFullJava
+import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailFolder, MailInteraction}
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import munit.FunSuite
 
 class CreateTestWorkbookSpec extends FunSuite {
+  test("test workbook showcases a populated, editable mail simulator that survives serialization") {
+    val mailboxes = CreateTestWorkbook(null).createWorkbook.allChildrenFullSubtree.collect {
+      case mail: MailInteraction => mail
+    }
+    assertEquals(mailboxes.size, 1)
+    val mailbox = mailboxes.head
+    assertEquals(mailbox.defaultValue.inboxState.getMailsInFolder(MailFolder.Inbox).size, 15)
+    assert(mailbox.allowCompose)
+    assert(!mailbox.isPassed)
+    val serializer = WorkbookElementFactory.serializerRefBasedJson
+    assertEquals(serializer.deserialize(serializer.serialize(mailbox)), mailbox)
+  }
+
   test("test workbook includes a QR exercise with a meaningful byte requirement") {
     val exercises = CreateTestWorkbook(null).createWorkbook.allChildrenFullSubtree.collect {
       case q: it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction => q

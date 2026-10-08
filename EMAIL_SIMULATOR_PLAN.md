@@ -9,6 +9,7 @@ The compilation checkpoint is commit `c9336b32`, based on main `5c77c7c3`. It re
 - Both interactions have workbook factories and HTML renderer registrations, a preview line, an Open Editor button and bound persistent state.
 - The fullscreen editor contains the toolbar, five folders, independently scrolling message list and message pane, and a link/status footer. Styles live in `homepage/css/workbook/email-simulator.css`, using shared color and dimension tokens. Duplicate Scala CSS definitions and the unused generic editor config were removed.
 - `homepage/phishingWorkbook/index.html` and the landing page link expose the digital mailbox exercise and separate local writing practice. English/German labels and instructions are registered through the existing language-map loader. The original messages remain German teaching examples.
+- The test workbook also has a Mail Simulator section with the original 15 messages and composing enabled, showcasing sorting, reading, simulated links/attachments and local writing in one interaction.
 
 ## State and grading
 
