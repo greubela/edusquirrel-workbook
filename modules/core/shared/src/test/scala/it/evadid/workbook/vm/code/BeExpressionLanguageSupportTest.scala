@@ -40,7 +40,10 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   private def singleMethodExecution(status: T.Status, commands: Vector[T.Command], steps: Int): T.Execution = {
     val methods = if steps == 0 then Vector.empty else Vector(T.MethodCalls(R.MethodId(0), 1, 0))
-    T.Execution(status, commands, steps, Some(T.CallEvidence(methods, if steps == 0 then 0 else 1)))
+    val forwards = commands.count(command => command.command == R.TurtleCommand.Forward && command.value != 0.0)
+    val drawings = if forwards == 0 then Vector.empty else Vector(T.MethodDrawing(R.MethodId(0), forwards, 0))
+    T.Execution(status, commands, steps, Some(T.CallEvidence(methods, if steps == 0 then 0 else 1)),
+      Some(T.DrawingEvidence(drawings)))
   }
 
   private def restoredJavaExpression(expression: X.Expression): R.Expression = expression.node match {
@@ -1573,11 +1576,16 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       assertEquals(execution.commands, commands)
       assertEquals(execution.callEvidence, Some(T.CallEvidence(Vector(
         T.MethodCalls(R.MethodId(0), count, count - 1), T.MethodCalls(R.MethodId(1), 1, 0)), depth + 2)))
+      val drawn = 1 << depth
+      val recursive = if depth == 0 then 0 else drawn
+      assertEquals(execution.drawingEvidence, Some(T.DrawingEvidence(Vector(
+        T.MethodDrawing(R.MethodId(0), drawn, recursive), T.MethodDrawing(R.MethodId(1), drawn, 0)))))
       val arguments = Vector(E.Value.IntValue(depth), E.Value.DoubleValue(10.5))
       val invoked = T.invokeVm(program, R.MethodId(0), arguments)
       assertEquals(invoked, T.invoke(source, R.MethodId(0), arguments))
       assertEquals(invoked.commands, commands)
       assertEquals(invoked.callEvidence, Some(T.CallEvidence(Vector(T.MethodCalls(R.MethodId(0), count, count - 1)), depth + 1)))
+      assertEquals(invoked.drawingEvidence, Some(T.DrawingEvidence(Vector(T.MethodDrawing(R.MethodId(0), drawn, recursive)))))
       assertEquals(T.runVm(program), execution)
     }
   }
@@ -1699,16 +1707,18 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     val commandLimit = T.invokeVm(program, R.MethodId(0), arguments, T.Limits(maxCommands = 2))
     assertEquals(commandLimit, T.invoke(source, R.MethodId(0), arguments, T.Limits(maxCommands = 2)))
     assertEquals(commandLimit, T.Execution(T.Status.LimitExceeded, Vector(forward(0), forward(1)), 23,
-      Some(T.CallEvidence(Vector(T.MethodCalls(R.MethodId(0), 3, 2)), 3))))
+      Some(T.CallEvidence(Vector(T.MethodCalls(R.MethodId(0), 3, 2)), 3)),
+      Some(T.DrawingEvidence(Vector(T.MethodDrawing(R.MethodId(0), 1, 1))))))
     val stepLimit = T.invokeVm(program, R.MethodId(0), arguments, T.Limits(maxSteps = 18))
     assertEquals(stepLimit, T.Execution(T.Status.LimitExceeded, Vector(forward(0), forward(1)), 18,
-      Some(T.CallEvidence(Vector(T.MethodCalls(R.MethodId(0), 2, 1)), 2))))
+      Some(T.CallEvidence(Vector(T.MethodCalls(R.MethodId(0), 2, 1)), 2)),
+      Some(T.DrawingEvidence(Vector(T.MethodDrawing(R.MethodId(0), 1, 1))))))
     var polls = 0
     val cancelled = T.invokeVm(program, R.MethodId(0), arguments, isCancelled = () => { polls += 1; polls >= 19 })
     assertEquals(cancelled, stepLimit.copy(status = T.Status.Cancelled))
     assertEquals(polls, 19)
     assertEquals(T.invokeVm(program, R.MethodId(0), arguments, isCancelled = () => true),
-      T.Execution(T.Status.Cancelled, Vector.empty, 0, Some(T.CallEvidence(Vector.empty, 0))))
+      T.Execution(T.Status.Cancelled, Vector.empty, 0, Some(T.CallEvidence(Vector.empty, 0)), Some(T.DrawingEvidence())))
     assertEquals(T.invokeVm(program, R.MethodId(0), arguments, T.Limits(maxCommands = 2)), commandLimit)
     val failedSource = javaProgram("fall(1);", """
       static void fall(int depth) {
@@ -1723,6 +1733,153 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(failed.commands, Vector(forward(1), forward(0)))
     assertEquals(failed.callEvidence, Some(T.CallEvidence(Vector(
       T.MethodCalls(R.MethodId(0), 2, 1), T.MethodCalls(R.MethodId(1), 1, 0)), 3)))
+    assertEquals(failed.drawingEvidence, Some(T.DrawingEvidence(Vector(
+      T.MethodDrawing(R.MethodId(0), 1, 0), T.MethodDrawing(R.MethodId(1), 1, 0)))))
+  }
+
+  test("Java drawing evidence attributes leaf helpers to their active recursive ancestors") {
+    val source = javaProgram("split(2, 10.5);", """
+      static void split(int depth, double length) {
+        if (depth == 0) { stroke(length); return; }
+        split(depth - 1, length / 3);
+        split(depth - 1, length / 3);
+      }
+      static void stroke(double length) { Turtle.forward(length); }
+    """)
+    val program = P.adapt(source).toOption.get
+    val execution = T.runVm(program)
+    assertEquals(execution, T.run(source))
+    assertEquals(execution.status, T.Status.Completed)
+    assertEquals(execution.commands.size, 4)
+    assertEquals(execution.drawingEvidence, Some(T.DrawingEvidence(Vector(
+      T.MethodDrawing(R.MethodId(0), 4, 4), T.MethodDrawing(R.MethodId(1), 4, 0),
+      T.MethodDrawing(R.MethodId(2), 4, 0)))))
+    val invoked = T.invokeVm(program, R.MethodId(0), Vector(E.Value.IntValue(2), E.Value.DoubleValue(10.5)))
+    assertEquals(invoked.drawingEvidence, Some(T.DrawingEvidence(Vector(
+      T.MethodDrawing(R.MethodId(0), 4, 4), T.MethodDrawing(R.MethodId(1), 4, 0)))))
+  }
+
+  test("Java dummy recursion does not receive credit for a later iterative drawing") {
+    val source = javaProgram("draw();", """
+      static void unused(int depth) {
+        if (depth > 0) { unused(depth - 1); }
+      }
+      static void draw() {
+        unused(3);
+        for (int i = 0; i < 4; i += 1) { Turtle.forward(10); Turtle.turnRight(90); }
+      }
+    """)
+    val execution = T.runVm(P.adapt(source).toOption.get)
+    assertEquals(execution, T.run(source))
+    assertEquals(execution.status, T.Status.Completed)
+    assert(execution.callEvidence.get.methods.exists(method => method.method == R.MethodId(0) && method.recursiveCalls == 3))
+    assertEquals(execution.drawingEvidence, Some(T.DrawingEvidence(Vector(
+      T.MethodDrawing(R.MethodId(1), 4, 0), T.MethodDrawing(R.MethodId(2), 4, 0)))))
+  }
+
+  test("Java drawing evidence separates a recursive tick from iterative shape commands") {
+    val source = javaProgram("draw(1);", """
+      static void draw(int depth) {
+        if (depth > 0) { draw(depth - 1); }
+        else { Turtle.forward(0.0001); }
+        if (depth == 1) {
+          for (int i = 0; i < 4; i += 1) { Turtle.forward(10); Turtle.turnRight(90); }
+        }
+      }
+    """)
+    val execution = T.runVm(P.adapt(source).toOption.get)
+    assertEquals(execution, T.run(source))
+    assertEquals(execution.status, T.Status.Completed)
+    assertEquals(execution.drawingEvidence, Some(T.DrawingEvidence(Vector(
+      T.MethodDrawing(R.MethodId(0), 5, 1), T.MethodDrawing(R.MethodId(1), 5, 0)))))
+  }
+
+  test("Java drawing evidence excludes turns and signed zero but retains backward strokes") {
+    val source = javaProgram("draw(2);", """
+      static void draw(int depth) {
+        Turtle.forward(0.0);
+        Turtle.forward(-0.0);
+        Turtle.turnRight(60);
+        if (depth > 0) { draw(depth - 1); }
+        else { Turtle.forward(-2.5); }
+      }
+    """)
+    val program = P.adapt(source).toOption.get
+    val execution = T.runVm(program)
+    assertEquals(execution, T.run(source))
+    assertEquals(execution.status, T.Status.Completed)
+    assertEquals(execution.commands.size, 10)
+    assertEquals(execution.drawingEvidence, Some(T.DrawingEvidence(Vector(
+      T.MethodDrawing(R.MethodId(0), 1, 1), T.MethodDrawing(R.MethodId(1), 1, 0)))))
+    val zeroSource = javaProgram("draw(2);", """
+      static void draw(int depth) {
+        Turtle.forward(0);
+        Turtle.turnRight(60);
+        if (depth > 0) { draw(depth - 1); }
+      }
+    """)
+    assertEquals(T.runVm(P.adapt(zeroSource).toOption.get).drawingEvidence, Some(T.DrawingEvidence()))
+  }
+
+  test("Java mutual recursion credits only methods repeated at the emitted stroke") {
+    val helpers = """
+      static void first(int depth) {
+        if (depth > 0) { second(depth - 1); } else { Turtle.forward(1); }
+      }
+      static void second(int depth) {
+        if (depth > 0) { first(depth - 1); } else { Turtle.forward(1); }
+      }
+    """
+    for depth <- Vector(1, 2, 3) do {
+      val source = javaProgram(s"first($depth);", helpers)
+      val execution = T.runVm(P.adapt(source).toOption.get)
+      assertEquals(execution, T.run(source))
+      assertEquals(execution.status, T.Status.Completed)
+      assertEquals(execution.commands, Vector(forward(1)))
+      assertEquals(execution.drawingEvidence, Some(T.DrawingEvidence(Vector(
+        T.MethodDrawing(R.MethodId(0), 1, if depth >= 2 then 1 else 0),
+        T.MethodDrawing(R.MethodId(1), 1, if depth >= 3 then 1 else 0),
+        T.MethodDrawing(R.MethodId(2), 1, 0)))))
+    }
+  }
+
+  test("Java drawing evidence retains accepted prefixes without accumulating across attempts") {
+    val source = javaProgram("draw(2);", """
+      static void draw(int depth) {
+        Turtle.forward(depth + 1);
+        if (depth > 0) { draw(depth - 1); }
+      }
+    """)
+    val program = P.adapt(source).toOption.get
+    val arguments = Vector(E.Value.IntValue(2))
+    val limited = T.invokeVm(program, R.MethodId(0), arguments, T.Limits(maxCommands = 2))
+    assertEquals(limited.status, T.Status.LimitExceeded)
+    assertEquals(limited.commands, Vector(forward(3), forward(2)))
+    assertEquals(limited.drawingEvidence, Some(T.DrawingEvidence(Vector(T.MethodDrawing(R.MethodId(0), 2, 1)))))
+    var polls = 0
+    val cancelled = T.invokeVm(program, R.MethodId(0), arguments,
+      isCancelled = () => { polls += 1; polls >= limited.steps })
+    assertEquals(cancelled, limited.copy(status = T.Status.Cancelled, steps = limited.steps - 1))
+    assertEquals(T.invokeVm(program, R.MethodId(0), arguments, T.Limits(maxCommands = 0)).drawingEvidence,
+      Some(T.DrawingEvidence()))
+    val complete = T.invokeVm(program, R.MethodId(0), arguments)
+    assertEquals(complete.status, T.Status.Completed)
+    assertEquals(complete.drawingEvidence, Some(T.DrawingEvidence(Vector(T.MethodDrawing(R.MethodId(0), 3, 2)))))
+    assertEquals(T.invokeVm(program, R.MethodId(0), arguments), complete)
+    assertEquals(T.invokeVm(program, R.MethodId(0), arguments, T.Limits(maxCommands = 2)), limited)
+    val failedSource = javaProgram("draw(1);", """
+      static void draw(int depth) {
+        if (depth > 0) { draw(depth - 1); }
+        Turtle.forward(2);
+        Turtle.forward(1.0 / 0.0);
+      }
+    """)
+    val failed = T.runVm(P.adapt(failedSource).toOption.get)
+    assertEquals(failed, T.run(failedSource))
+    assertEquals(failed.status, T.Status.Failed(T.Failure.NonFiniteCommand))
+    assertEquals(failed.commands, Vector(forward(2)))
+    assertEquals(failed.drawingEvidence, Some(T.DrawingEvidence(Vector(
+      T.MethodDrawing(R.MethodId(0), 1, 1), T.MethodDrawing(R.MethodId(1), 1, 0)))))
   }
 
   test("Java Python export is deterministic and keeps execution behind one entry point") {

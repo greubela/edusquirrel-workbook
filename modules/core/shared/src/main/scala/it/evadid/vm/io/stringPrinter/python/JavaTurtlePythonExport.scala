@@ -102,6 +102,7 @@ object JavaTurtlePythonExport {
     _call_depth = 0
     _active = []
     _calls = {}
+    _drawing = {}
     _max_depth = 0
 
     class _Stop(Exception):
@@ -111,7 +112,8 @@ object JavaTurtlePythonExport {
 
     def _result(status, problem=None):
         calls = {"methods": [[method, *_calls[method]] for method in sorted(_calls)], "maxDepth": _max_depth}
-        return {"status": status, "problem": problem, "commands": _commands, "steps": _steps, "calls": calls}
+        drawing = {"methods": [[method, *_drawing[method]] for method in sorted(_drawing)]}
+        return {"status": status, "problem": problem, "commands": _commands, "steps": _steps, "calls": calls, "drawing": drawing}
 
     def _gate():
         nonlocal _steps
@@ -179,6 +181,14 @@ object JavaTurtlePythonExport {
         if not _math.isfinite(value):
             raise _Stop("Failed", "NonFiniteCommand")
         _commands.append([name, value])
+        if name == "forward" and value != 0.0:
+            active = {}
+            for method in _active:
+                active[method] = active.get(method, 0) + 1
+            for method, count in active.items():
+                drawing = _drawing.setdefault(method, [0, 0])
+                drawing[0] += 1
+                drawing[1] += int(count > 1)
 
     def _matches(value, kind):
         if kind == "boolean":

@@ -57,7 +57,7 @@ object JavaTurtleRuntime {
 
   private def execute(methods: Vector[R.Method], entryPoint: R.MethodId, method: R.MethodId, arguments: Vector[E.Value],
       main: Boolean, limits: Limits, isCancelled: () => Boolean): Execution =
-    if !limits.valid then Execution(Status.Failed(Failure.InvalidLimits), Vector.empty, 0, Some(CallEvidence()))
+    if !limits.valid then Execution(Status.Failed(Failure.InvalidLimits), Vector.empty, 0, Some(CallEvidence()), Some(DrawingEvidence()))
     else new Runner(methods, entryPoint, limits, isCancelled).execute(method, arguments, main)
 
   private type Result[A] = Either[Status, A]
@@ -88,6 +88,7 @@ object JavaTurtleRuntime {
     private var frames = List.empty[Frame]
     private var used = 0
     private val calls = mutable.Map.empty[R.MethodId, MethodCalls]
+    private val drawings = mutable.Map.empty[R.MethodId, MethodDrawing]
     private var maxDepth = 0
 
     def execute(method: R.MethodId, arguments: Vector[E.Value], main: Boolean): Execution = {
@@ -102,7 +103,8 @@ object JavaTurtleRuntime {
         }
       }
       val evidence = CallEvidence(calls.values.toVector.sortBy(_.method.index), maxDepth)
-      Execution(result.fold(identity, _ => Status.Completed), commands.toVector, used, Some(evidence))
+      val drawing = DrawingEvidence(drawings.values.toVector.sortBy(_.method.index))
+      Execution(result.fold(identity, _ => Status.Completed), commands.toVector, used, Some(evidence), Some(drawing))
     }
 
     private def gate(): Either[E.Failure, Unit] =
@@ -256,7 +258,16 @@ object JavaTurtleRuntime {
     private def emit(command: R.TurtleCommand, value: Double): Result[Unit] = step().flatMap { _ =>
       if commands.size >= limits.maxCommands then Left(Status.LimitExceeded)
       else if !value.isFinite then Left(Status.Failed(Failure.NonFiniteCommand))
-      else { commands += Command(command, value); Right(()) }
+      else {
+        commands += Command(command, value)
+        if command == R.TurtleCommand.Forward && value != 0.0 then
+          frames.groupMapReduce(_.method)(_ => 1)(_ + _).foreach { (method, active) =>
+            val previous = drawings.getOrElse(method, MethodDrawing(method, 0, 0))
+            drawings.update(method, previous.copy(forwardCommands = previous.forwardCommands + 1,
+              recursiveForwardCommands = previous.recursiveForwardCommands + (if active > 1 then 1 else 0)))
+          }
+        Right(())
+      }
     }
   }
 }
