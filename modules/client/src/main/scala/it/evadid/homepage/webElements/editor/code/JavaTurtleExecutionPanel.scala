@@ -33,6 +33,20 @@ object JavaTurtleExecutionPanel {
   private def path(commands: List[TurtleCommand[Double]]): TurtlePathBuilder[Double] =
     TurtlePathBuilder[Double](Point(0.0, 0.0), commands, 0.0)
 
+  private[code] def validateDrawing(commands: List[TurtleCommand[Double]]): Unit = {
+    val drawing = path(commands)
+    val points = TurtleDrawingComparison.extractSegments(drawing).flatMap(line => List(line.from, line.to)) ++
+      List(Point(drawing.turtleState.x, drawing.turtleState.y), Point(0.0, 0.0))
+    val minX = points.map(_.x).min
+    val minY = points.map(_.y).min
+    val width = (points.map(_.x).max - minX).max(1.0)
+    val height = (points.map(_.y).max - minY).max(1.0)
+    val padding = width.max(height) * 0.08
+    if points.exists(point => !point.x.isFinite || !point.y.isFinite) ||
+      List(minX - padding, minY - padding, width + padding * 2, height + padding * 2).exists(!_.isFinite) then
+      throw IllegalArgumentException("Your drawing exceeds the display range. Check its distances and angles.")
+  }
+
   private[code] def compare(commands: List[TurtleCommand[Double]], target: TurtleGraphic): Boolean = {
     val expected = target.toTurtleProgram.toList
     if (commands ++ expected).exists(command =>
@@ -93,7 +107,10 @@ final class JavaTurtleExecutionPanel(
     if running then cancel()
   }
 
-  private[code] def run(): Unit = start(execute)(commands => Status.Ready(commands, target.map(compare(commands, _))))
+  private[code] def run(): Unit = start(execute) { commands =>
+    validateDrawing(commands)
+    Status.Ready(commands, target.map(compare(commands, _)))
+  }
 
   private[code] def checkTask(): Unit = assessment.foreach { (task, executeCases) =>
     start(executeCases) { drawings =>

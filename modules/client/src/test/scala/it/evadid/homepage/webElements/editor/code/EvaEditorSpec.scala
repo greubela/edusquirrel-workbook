@@ -40,6 +40,17 @@ class EvaEditorSpec extends FunSuite {
       assert(!JavaTurtleExecutionPanel.compare(commands, target), clue = commands)
   }
 
+  test("Java drawing display rejects accumulated coordinate overflow without requiring a target") {
+    intercept[IllegalArgumentException](JavaTurtleExecutionPanel.validateDrawing(
+      List.fill(2)(TurtleCommand[Double]("forward", List(1e308)))))
+    intercept[IllegalArgumentException](JavaTurtleExecutionPanel.validateDrawing(
+      List(TurtleCommand[Double]("goto", List(-1e308, 0.0)), TurtleCommand[Double]("goto", List(1e308, 0.0)))))
+    intercept[IllegalArgumentException](JavaTurtleExecutionPanel.validateDrawing(
+      List(TurtleCommand[Double]("forward", List(Double.MaxValue)))))
+    JavaTurtleExecutionPanel.validateDrawing(squareDrawing(10.0 / 3.0))
+    JavaTurtleExecutionPanel.validateDrawing(Nil)
+  }
+
   test("Java drawing comparison accepts split strokes and ignores duplicate tracing") {
     val split = List.fill(4)(List(TurtleCommand[Double]("forward", List(12.0)),
       TurtleCommand[Double]("forward", List(13.0)), TurtleCommand[Double]("right", List(90.0)))).flatten

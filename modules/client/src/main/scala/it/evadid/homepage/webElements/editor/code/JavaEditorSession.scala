@@ -178,6 +178,8 @@ object JavaEditorSession {
       throw IllegalStateException("Your program reached its execution limit. Check its loops or recursion.")
     case JavaTurtleRuntime.Status.Failed(JavaTurtleRuntime.Failure.Evaluation(JavaTurtleEvaluation.Failure.DivisionByZero)) =>
       throw IllegalStateException("Your program tried to divide by zero.")
+    case JavaTurtleRuntime.Status.Failed(JavaTurtleRuntime.Failure.NonFiniteCommand) =>
+      throw IllegalStateException("Your drawing needs finite distances and angles. Check the numeric calculations.")
     case JavaTurtleRuntime.Status.Failed(_) => throw IllegalStateException("Your Java program could not finish.")
   }
 }
