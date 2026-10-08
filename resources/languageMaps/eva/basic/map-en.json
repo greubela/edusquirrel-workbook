@@ -55,5 +55,6 @@
   "syncInfoTooltipWarning": "Synced to none of the _ sources",
   "TextEditorPlaceholder": "Insert Text here",
   "MessengerEditorSendMessageButton": "Send",
-  "messengerEditorInputPlaceholder": "Type Question here"
+  "messengerEditorInputPlaceholder": "Type Question here",
+  "turtleGradingPanel": "Preview (Turtle)"
 }

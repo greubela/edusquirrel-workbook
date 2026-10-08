@@ -49,7 +49,6 @@ object TurtleJsxGraphRenderer:
 
   /* Factories */
 
-  private val pointBackgroundColor = "red"
 
 
   /* details */
@@ -235,13 +234,14 @@ object TurtleJsxGraphRenderer:
     renderScene(container, buildScene(program, expected))
 
   private def renderScene(container: dom.html.Div, scene: Scene): js.Dynamic =
+    container.classList.add("turtle-gradig-panel")
     val points = scene.lines.flatMap(line => List(line.start, line.end))
     val bounds = boundingBox(points.map(p => Point(p.x, -p.y)))
     val jxg = js.Dynamic.global.selectDynamic("JXG")
     if js.isUndefined(jxg) then throw new IllegalStateException("JSXGraph is not loaded; expected global JXG")
     if container.id.isEmpty then container.id = s"turtle-jsxgraph-${Math.abs(js.Date.now().toLong)}"
     val board: js.Dynamic = jxg.JSXGraph.initBoard(container.id, js.Dynamic.literal(
-      boundingbox = js.Array(bounds(0), bounds(1), bounds(2), bounds(3)), axis = true, keepaspectratio = true, showCopyright = false
+      renderer = "svg", boundingbox = js.Array(bounds(0), bounds(1), bounds(2), bounds(3)), axis = true, keepaspectratio = true, showCopyright = false
     ))
 
     val pointObjects = scala.collection.mutable.Map.empty[Point[Double], js.Dynamic]
@@ -251,31 +251,22 @@ object TurtleJsxGraphRenderer:
 
 
     def createPoint(point: Point[Double]): js.Dynamic = {
-      val label = s"(${format(point.x)}, ${format(point.y)})"
-      val obj = board.create("point", js.Array(point.x, -point.y), js.Dynamic.literal(
-        name = "", size = 3, fixed = true, strokeColor = pointBackgroundColor, fillColor = pointBackgroundColor, fillOpacity = 0.1, strokeOpacity = 0.1,
-        highlightFillOpacity = 1.0, highlightStrokeOpacity = 1.0, showInfobox = false
+      board.create("point", js.Array(point.x, -point.y), js.Dynamic.literal(
+        name = "", fixed = true, showInfobox = false,
+        cssClass = "turtle-point", highlightCssClass = "turtle-point is-emphasized"
       ))
-      /*obj.on("over", (_: js.Any) => {
-        obj.setAttribute(js.Dynamic.literal(name = label, fillOpacity = 1.0, strokeOpacity = 1.0));
-        board.update()
-      })
-      obj.on("out", (_: js.Any) => {
-        obj.setAttribute(js.Dynamic.literal(name = "", fillOpacity = 0.1, strokeOpacity = 0.1));
-        board.update()
-      })*/
-      obj
     }
 
     def createLine(line: RenderedLine, index: Int): Unit = {
       val a = pointObject(line.start);
       val b = pointObject(line.end)
-      val color = line.result match
-        case LineResult.Correct => "#159447"
-        case LineResult.Unexpected => "#d12f2f"
-        case LineResult.Missing => "#000000"
+      val resultClass = line.result match
+        case LineResult.Correct => "turtle-line--correct"
+        case LineResult.Unexpected => "turtle-line--unexpected"
+        case LineResult.Missing => "turtle-line--missing"
+      val classes = s"turtle-line $resultClass" + (if line.jump then " turtle-line--jump" else "")
       val segment: js.Dynamic = board.create("segment", js.Array(a, b), js.Dynamic.literal(
-        strokeColor = color, strokeWidth = 3, dash = (if line.jump then 2 else 0), fixed = true
+        cssClass = classes, highlightCssClass = classes, fixed = true
       ))
       segment.on("over", (_: js.Any) => hoverRelated(scene, index, pointObjects, angleObjects, board, active = true))
       segment.on("out", (_: js.Any) => hoverRelated(scene, index, pointObjects, angleObjects, board, active = false))
@@ -290,7 +281,7 @@ object TurtleJsxGraphRenderer:
       def helper(point: Point[Double]): js.Dynamic = board.create("point", js.Array(point.x, point.y), js.Dynamic.literal(visible = false, fixed = true))
 
       val arc = board.create("angle", js.Array(helper(sector.first), pointObject(angle.vertex), helper(sector.last)), js.Dynamic.literal(
-        name = "", radius = radius, `type` = "sector", orthoType = "sector", selection = "auto", fillColor = "#808080", strokeColor = "#808080", fillOpacity = 0.9, strokeOpacity = 0.9, fixed = true
+        name = "", radius = radius, `type` = "sector", orthoType = "sector", selection = "auto", cssClass = "turtle-angle", highlightCssClass = "turtle-angle is-emphasized", fixed = true
       ))
       arc.on("over", (_: js.Any) => setAngleHover(arc, sector.degrees, active = true, board))
       arc.on("out", (_: js.Any) => setAngleHover(arc, sector.degrees, active = false, board))
@@ -307,14 +298,16 @@ object TurtleJsxGraphRenderer:
     val line = scene.lines(lineIndex)
     List(line.start, line.end).foreach { p =>
       points.get(p).foreach(_.setAttribute(js.Dynamic.literal(
-        name = (if active then s"(${format(p.x)}, ${format(p.y)})" else ""), fillOpacity = (if active then 1.0 else 0.1), strokeOpacity = (if active then 1.0 else 0.1)
+        name = (if active then s"(${format(p.x)}, ${format(p.y)})" else ""),
+        cssClass = (if active then "turtle-point is-emphasized" else "turtle-point")
       )))
     }
     scene.angles.zipWithIndex.filter { case (a, _) => a.lineBefore == lineIndex || a.lineAfter == lineIndex }.foreach { case (a, i) => angles.get(i).foreach(setAngleHover(_, angleSector(scene, a, 1.0).degrees, active, board)) }
     board.update()
 
   private def setAngleHover(obj: js.Dynamic, degrees: Double, active: Boolean, board: js.Dynamic): Unit =
-    obj.setAttribute(js.Dynamic.literal(name = (if active then s"${format(degrees)}°" else ""), fillOpacity = (if active then 1.0 else 0.9), strokeOpacity = (if active then 1.0 else 0.1)))
+    obj.setAttribute(js.Dynamic.literal(name = (if active then s"${format(degrees)}°" else ""),
+      cssClass = (if active then "turtle-angle is-emphasized" else "turtle-angle")))
     board.update()
 
   private def sameLine(a: Point[Double], b: Point[Double], c: Point[Double], d: Point[Double], tolerance: Double): Boolean =

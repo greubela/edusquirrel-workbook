@@ -415,3 +415,19 @@ Final normal validation, after disabling instrumentation, passed all **1,446 Sca
 tests**: core JVM 531, core Scala.js 527, client 384, server 1 and worker 3. There
 were no failures or ignored tests. The instrumented JVM run also passed all 531
 tests; the Node assembly test and `git diff --check` passed.
+
+
+### Merge preparation
+
+Merged main at `19b0b3b7` into the work branch. The new active
+`VectorShapesTest` from main is retained; the earlier removal applied only to its
+obsolete commented predecessor. Snap custom-block merging continues to validate
+the actual number of declared inputs against the updated signature, rebuilding
+missing or mismatched metadata. Snap image cleanup and update-loop protection
+remain intact alongside main's editor styling changes.
+
+Validation after integration passed **1,510 Scala tests**: core JVM 564, core
+Scala.js 552, client 390, server 1 and worker 3, with no failures or ignored tests.
+The Node assembly, turtle CSS and Chromium editor-layout checks also passed,
+as did `git diff --check`. The coverage figures above describe the earlier
+instrumented measurement; coverage was not remeasured during merge preparation.

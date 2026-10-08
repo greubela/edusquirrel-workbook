@@ -39,7 +39,13 @@ case class Bounds[T: Fractional](startPoint: Point[T], dimension: Dimension[T]) 
 
   def area: T = width * height
 
-  def areaString: String = width.toString + " x " + height.toString
+  def areaString: String = {
+    def platformIndependentDoubleString(value: T): String = {
+      val rendered = N.toDouble(value).toString
+      if rendered.exists(ch => ch == '.' || ch == 'e' || ch == 'E') then rendered else rendered + ".0"
+    }
+    platformIndependentDoubleString(width) + " x " + platformIndependentDoubleString(height)
+  }
 
   def centerX = centerPoint.x
 
@@ -88,7 +94,5 @@ object Bounds {
   }
 
 }
-
-
 
 

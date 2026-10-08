@@ -117,13 +117,11 @@ onKeyDown.filter(ev => ev.key == "Enter" && !ev.shiftKey) --> { ev =>
   private val fallbackAvatar: SvgElement =
     svg.svg(
       svg.viewBox := "0 0 40 40",
-      svg.width := "40",
-      svg.height := "40",
+      svg.cls := "chat-avatar",
       svg.circle(
         svg.cx := "20",
         svg.cy := "20",
-        svg.r := "16",
-        svg.fill := "#d7dce3"
+        svg.r := "16"
       )
     )
 

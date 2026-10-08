@@ -1,3 +1,4 @@
+@import url("../client-components.css");
 /* Import colors and base styles */
 @import url('../generic/colors.css');
 /* Color policy: use only semantic color variables from colors.css (no hardcoded color values). */

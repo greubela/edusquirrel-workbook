@@ -9,7 +9,7 @@ case class EvaEditorTurtle(override val state: Var[ProgrammingState], override v
 
   override def furtherDomElements(): List[Element] = List(
     div(
-      cls := "turtle-sidebar",
+      cls := "eva-editor__sidebar turtle-sidebar",
       HtmlTurtleRecreateShapeRenderer.createInteractivePreview(state, target).getDomElement()
     )
   )

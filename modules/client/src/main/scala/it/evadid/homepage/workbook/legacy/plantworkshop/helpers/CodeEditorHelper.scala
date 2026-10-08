@@ -8,7 +8,6 @@ import scala.scalajs.js.timers.*
 
 /** Code editor with TODO highlighting. */
 object CodeEditorHelper {
-  private var todoHighlightInstalled: Boolean = false
   private val todoPattern = "([A-Za-z_]*TODO[A-Za-z0-9_]*)".r
 
   private def markTodoTextNodes(root: dom.Element): Unit = {
@@ -56,19 +55,6 @@ object CodeEditorHelper {
     }
   }
 
-  private def installTodoHighlighting(): Unit = {
-    if (todoHighlightInstalled) return
-
-    if (dom.document.getElementById("todo-token-style") == null) {
-      val styleEl = dom.document.createElement("style")
-      styleEl.id = "todo-token-style"
-      styleEl.textContent = ".editor-container .token.todo-token, .editor-container .todo-token-inline { color: #c62828 !important; font-weight: 700; }"
-      dom.document.head.appendChild(styleEl)
-    }
-
-    todoHighlightInstalled = true
-  }
-
   def createCodeEditor(
     codeState: Var[String],
     title: String,
@@ -81,7 +67,7 @@ object CodeEditorHelper {
 
       div(
         className := "info-box small-info",
-        span(color := "#c62828", fontWeight := "700", "🟥 TODO"),
+        span(cls := "client-todo", "🟥 TODO"),
         span(" = diese Stellen müsst ihr selbst ausfüllen.")
       ),
 
@@ -92,7 +78,6 @@ object CodeEditorHelper {
           mount = { nodeCtx =>
             val element = nodeCtx.thisNode.ref.asInstanceOf[dom.Element]
 
-            installTodoHighlighting()
 
             val highlightFn: js.Function1[dom.Element, Unit] = { el =>
               Prism.highlightElement(el)
