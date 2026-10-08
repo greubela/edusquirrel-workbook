@@ -50,7 +50,8 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
           Map("forward" -> 2)
         ),
         ProgrammingExercise("prog-1", editorPalette = ProgrammingEditorPalette.BeginnerTurtle),
-        ProgrammingExerciseFullJava("prog-full-java")
+        ProgrammingExerciseFullJava("prog-full-java"),
+        ProgrammingExerciseFullJava("java-square-pilot", turtleTask = Some(JavaTurtleTask.squarePilot))
       )
       )))
   }
