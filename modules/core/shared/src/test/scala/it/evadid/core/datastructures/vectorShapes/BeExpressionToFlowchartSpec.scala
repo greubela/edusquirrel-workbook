@@ -168,4 +168,57 @@ class BeExpressionToFlowchartSpec extends FunSuite {
     val chart = build(expression, _ => "Custom <label> & text")
     assertEquals(chart.nodes.find(_.kind == NodeKind.Process).get.label, "Custom <label> & text")
   }
+
+  test("a returning branch bypasses the continuation while the other branch still reaches it") {
+    val returned = BeReturn(Some(step("42")))
+    val chart = build(body(BeIfElse(condition, body(returned), body(step("continue"))), step("after")))
+    val returnNode = chart.nodes.find(_.expression.contains(returned)).get
+    assertEquals(outgoing(chart, returnNode.id), List(Edge(returnNode.id, chart.endId)))
+    assertEquals(outgoing(chart, node(chart, "continue").id), List(Edge(node(chart, "continue").id, node(chart, "after").id)))
+    assertEquals(outgoing(chart, node(chart, "after").id), List(Edge(node(chart, "after").id, chart.endId)))
+    assertConnected(chart)
+    chart.toShape().renderWithMinimumDimension(AppShapeRenderingConfig.defaultDouble)
+  }
+
+  test("nested while loops exit to the correct enclosing condition") {
+    val inner = BeWhile(condition, body(step("work")))
+    val outer = BeWhile(condition, body(inner))
+    val chart = build(body(outer, step("after")))
+    val outerNode = chart.nodes.find(_.expression.contains(outer)).get
+    val innerNode = chart.nodes.find(_.expression.contains(inner)).get
+    assertEquals(outgoing(chart, outerNode.id).find(_.label.contains("Yes")).get.to, innerNode.id)
+    assertEquals(outgoing(chart, innerNode.id).find(_.label.contains("No")).get,
+      Edge(innerNode.id, outerNode.id, Some("No"), backEdge = true))
+    assertEquals(outgoing(chart, node(chart, "work").id),
+      List(Edge(node(chart, "work").id, innerNode.id, backEdge = true)))
+    assertEquals(outgoing(chart, outerNode.id).find(_.label.contains("No")).get.to, node(chart, "after").id)
+    assertConnected(chart)
+    chart.toShape().renderWithMinimumDimension(AppShapeRenderingConfig.defaultDouble)
+  }
+
+  test("unconditional returns in counted loops remove unreachable counter updates") {
+    val returned = BeReturn(None)
+    val chart = build(body(BeRepeatNr(3, body(returned, step("unreachable"))), step("after")))
+    assert(!chart.nodes.exists(_.label == "unreachable"))
+    assert(!chart.nodes.exists(_.label.endsWith(" -= 1")))
+    assertEquals(chart.edges.count(_.backEdge), 0)
+    val decision = chart.nodes.find(_.kind == NodeKind.Decision).get
+    val returnNode = chart.nodes.find(_.expression.contains(returned)).get
+    assertEquals(outgoing(chart, decision.id).find(_.label.contains("Yes")).get.to, returnNode.id)
+    assertEquals(outgoing(chart, decision.id).find(_.label.contains("No")).get.to, node(chart, "after").id)
+    assertEquals(outgoing(chart, returnNode.id), List(Edge(returnNode.id, chart.endId)))
+    chart.toShape().renderWithMinimumDimension(AppShapeRenderingConfig.defaultDouble)
+  }
+
+  test("empty counted loop bodies still update their counters before testing again") {
+    val chart = build(BeRepeatNr(0, BeExpression.pass))
+    val decision = chart.nodes.find(_.kind == NodeKind.Decision).get
+    val update = chart.nodes.find(_.label.endsWith(" -= 1")).get
+    assertEquals(outgoing(chart, decision.id).find(_.label.contains("Yes")).get.to, update.id)
+    assertEquals(outgoing(chart, update.id), List(Edge(update.id, decision.id, backEdge = true)))
+    assertEquals(outgoing(chart, decision.id).find(_.label.contains("No")).get.to, chart.endId)
+    assertConnected(chart)
+    chart.toShape().renderWithMinimumDimension(AppShapeRenderingConfig.defaultDouble)
+  }
+
 }
