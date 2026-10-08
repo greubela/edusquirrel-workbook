@@ -18,7 +18,10 @@ object JavaTurtleRuntime {
   case class Command(command: R.TurtleCommand, value: Double)
   case class MethodCalls(method: R.MethodId, calls: Int, recursiveCalls: Int)
   case class CallEvidence(methods: Vector[MethodCalls] = Vector.empty, maxDepth: Int = 0)
-  case class Execution(status: Status, commands: Vector[Command], steps: Int, callEvidence: Option[CallEvidence] = None)
+  case class MethodDrawing(method: R.MethodId, forwardCommands: Int, recursiveForwardCommands: Int)
+  case class DrawingEvidence(methods: Vector[MethodDrawing] = Vector.empty)
+  case class Execution(status: Status, commands: Vector[Command], steps: Int, callEvidence: Option[CallEvidence] = None,
+      drawingEvidence: Option[DrawingEvidence] = None)
 
   object Limits {
     val MaxSteps = 100000

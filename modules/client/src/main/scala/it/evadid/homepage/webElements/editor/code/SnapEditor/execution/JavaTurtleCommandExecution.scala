@@ -214,6 +214,32 @@ print(_java_json.dumps(_java_result, separators=(",", ":")))
     T.CallEvidence(methods, maxDepth)
   }
 
+  private def drawingEvidence(value: ujson.Value, calls: T.CallEvidence, commands: Vector[T.Command]): T.DrawingEvidence = {
+    val forwards = commands.count(command => command.command == R.TurtleCommand.Forward && command.value != 0.0)
+    val called = calls.methods.map(method => method.method -> method).toMap
+    val methods = value match {
+      case value: ujson.Obj if value.obj.keySet.toSet == Set("methods") => value("methods") match {
+        case rows: ujson.Arr if rows.value.size <= JavaTurtleInputLimits.MaxMethods => rows.value.toVector.map {
+          case row: ujson.Arr if row.value.size == 3 =>
+            val method = R.MethodId(integer(row.value(0), 0, JavaTurtleInputLimits.MaxMethods - 1))
+            val entered = called.getOrElse(method, invalid("drawing method did not execute"))
+            val count = integer(row.value(1), 1, forwards)
+            val recursive = integer(row.value(2), 0, count)
+            if recursive > 0 && entered.recursiveCalls == 0 then invalid("drawing method did not recurse")
+            T.MethodDrawing(method, count, recursive)
+          case _ => invalid("expected method, drawing count and recursive drawing count")
+        }
+        case _ => invalid("expected bounded drawing methods")
+      }
+      case _ => invalid("expected drawing methods")
+    }
+    val ids = methods.map(_.method.index)
+    if ids != ids.distinct.sorted || forwards > 0 && !methods.exists(_.forwardCommands == forwards) ||
+      methods.map(_.forwardCommands).sum > forwards * calls.maxDepth then
+      invalid("inconsistent drawing methods")
+    T.DrawingEvidence(methods)
+  }
+
   private[execution] def decode(report: PythonRunReport, limits: T.Limits,
       knownMethods: Option[Set[R.MethodId]] = None): T.Execution = {
     if report.callbackOps.nonEmpty || report.stderr.nonEmpty then invalid("unexpected Python output")
@@ -223,7 +249,8 @@ print(_java_json.dumps(_java_result, separators=(",", ":")))
     }
     val required = Set("status", "problem", "commands", "steps")
     val fields = parsed match {
-      case value: ujson.Obj if value.obj.keySet.toSet == required || value.obj.keySet.toSet == required + "calls" => value.obj
+      case value: ujson.Obj if value.obj.keySet.toSet == required || value.obj.keySet.toSet == required + "calls" ||
+          value.obj.keySet.toSet == required + "calls" + "drawing" => value.obj
       case _ => invalid("expected status, problem, commands and steps")
     }
     val status = (fields("status"), fields("problem")) match {
@@ -251,9 +278,10 @@ print(_java_json.dumps(_java_result, separators=(",", ":")))
       case _ => invalid("expected bounded turtle commands")
     }
     val calls = fields.get("calls").map(callEvidence(_, steps, knownMethods))
+    val drawing = fields.get("drawing").map(drawingEvidence(_, calls.get, commands))
     status match {
       case T.Status.Failed(T.Failure.InvalidLimits | T.Failure.InvalidInvocation) =>
-        if steps != 0 || commands.nonEmpty || calls.exists(_ != T.CallEvidence()) then
+        if steps != 0 || commands.nonEmpty || calls.exists(_ != T.CallEvidence()) || drawing.exists(_ != T.DrawingEvidence()) then
           invalid("invalid input must not execute")
       case _ =>
         if !valid(limits) || steps > limits.maxSteps || commands.size > limits.maxCommands || commands.size > steps then
@@ -264,6 +292,6 @@ print(_java_json.dumps(_java_result, separators=(",", ":")))
         if calls.exists(evidence => evidence.maxDepth > limits.maxCallDepth || steps > 0 && evidence.methods.isEmpty) then
           invalid("execution exceeds its call limits")
     }
-    T.Execution(status, commands, steps, calls)
+    T.Execution(status, commands, steps, calls, drawing)
   }
 }

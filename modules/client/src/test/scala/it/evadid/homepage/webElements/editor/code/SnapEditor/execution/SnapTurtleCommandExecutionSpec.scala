@@ -57,9 +57,11 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       problem: String = "null",
       commands: String = "[]",
       steps: String = "2",
-      calls: Option[String] = None
+      calls: Option[String] = None,
+      drawing: Option[String] = None
   ): PythonRunReport =
-    val evidence = calls.fold("")(value => s""","calls":$value""")
+    val evidence = calls.fold("")(value => s""","calls":$value""") +
+      drawing.fold("")(value => s""","drawing":$value""")
     PythonRunReport(Vector.empty,
       s"""{"status":"$status","problem":$problem,"commands":$commands,"steps":$steps$evidence}""", "")
 
@@ -443,6 +445,141 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
     intercept[IllegalArgumentException] {
       JavaTurtleCommandRunner.decode(javaReport(steps = "10", calls = calls), T.Limits(), Some(Set(R.MethodId(0))))
     }
+  }
+
+  test("Java worker decoding retains drawing attribution for every executed outcome") {
+    val calls = Some("""{"methods":[[0,3,2],[1,1,0],[2,3,0]],"maxDepth":5}""")
+    val drawing = Some("""{"methods":[[0,3,3],[1,3,0],[2,2,0]]}""")
+    val commands = """[["forward",0],["forward",-0.0],["right",90],["forward",1],["forward",-2],["forward",5e-324]]"""
+    val known = Some(Set(R.MethodId(0), R.MethodId(1), R.MethodId(2)))
+    val expected = T.DrawingEvidence(Vector(
+      T.MethodDrawing(R.MethodId(0), 3, 3), T.MethodDrawing(R.MethodId(1), 3, 0),
+      T.MethodDrawing(R.MethodId(2), 2, 0)))
+    val outcomes = Vector("Completed" -> "null", "LimitExceeded" -> "null", "Cancelled" -> "null",
+      "Failed" -> "\"DivisionByZero\"", "Failed" -> "\"NonFiniteCommand\"")
+    outcomes.foreach { (status, problem) =>
+      val report = javaReport(status, problem, commands, "40", calls, drawing)
+      val decoded = JavaTurtleCommandRunner.decode(report, T.Limits(maxCallDepth = 5), known)
+      assertEquals(decoded.drawingEvidence, Some(expected))
+      assertEquals(decoded.steps, 40)
+      assertEquals(decoded.commands.size, 6)
+      assertEquals(decoded.commands.last.value, java.lang.Double.MIN_VALUE)
+    }
+    assertEquals(JavaTurtleCommandRunner.decode(javaReport(), T.Limits()).drawingEvidence, None)
+    assertEquals(JavaTurtleCommandRunner.decode(
+      javaReport(commands = commands, steps = "40", calls = calls), T.Limits(), known).drawingEvidence, None)
+  }
+
+  test("Java worker drawing attribution excludes rotations and signed zero") {
+    val empty = Some("""{"methods":[]}""")
+    val calls = Some("""{"methods":[[0,2,1]],"maxDepth":2}""")
+    val report = javaReport(commands = """[["forward",0],["right",90],["forward",-0.0]]""",
+      steps = "20", calls = calls, drawing = empty)
+    val decoded = JavaTurtleCommandRunner.decode(report, T.Limits())
+    assertEquals(decoded.drawingEvidence, Some(T.DrawingEvidence()))
+    val cancelled = javaReport("Cancelled", steps = "0",
+      calls = Some("""{"methods":[],"maxDepth":0}"""), drawing = empty)
+    assertEquals(JavaTurtleCommandRunner.decode(cancelled, T.Limits()).drawingEvidence, Some(T.DrawingEvidence()))
+    intercept[IllegalArgumentException] {
+      JavaTurtleCommandRunner.decode(report.copy(stdout = report.stdout.replace(
+        "\"drawing\":{\"methods\":[]}", "\"drawing\":{\"methods\":[[0,1,1]]}")), T.Limits())
+    }
+  }
+
+  test("Java worker decoding rejects malformed and inconsistent drawing attribution") {
+    val calls = Some("""{"methods":[[0,2,1],[1,1,0]],"maxDepth":3}""")
+    val commands = """[["forward",1],["right",90],["forward",2],["forward",-3]]"""
+    val rows = Vector(
+      "null", "{}", "[null]", "[[]]", "[[0,3]]", "[[0,3,1,0]]",
+      "[[0,3,1],[0,3,1]]", "[[1,3,0],[0,3,1]]", "[[-1,3,1]]", "[[128,3,1]]",
+      "[[0.5,3,1]]", "[[\"0\",3,1]]", "[[true,3,1]]", "[[null,3,1]]",
+      "[[0,0,0]]", "[[0,-1,0]]", "[[0,3.5,0]]", "[[0,4,1]]", "[[0,10001,0]]",
+      "[[0,\"3\",1]]", "[[0,true,1]]", "[[0,null,1]]", "[[0,Infinity,1]]",
+      "[[0,3,-1]]", "[[0,3,4]]", "[[0,3,0.5]]", "[[0,3,\"1\"]]", "[[0,3,false]]",
+      "[[0,3,null]]", "[[0,3,NaN]]", "[[1,3,1]]", "[[2,3,0]]", "[[0,2,1],[1,2,0]]", "[]")
+    val evidence = Vector("null", "[]", "true", "{}", """{"methods":[],"extra":0}""") ++
+      rows.map(value => s"""{"methods":$value}""")
+    evidence.foreach { drawing =>
+      intercept[IllegalArgumentException] {
+        JavaTurtleCommandRunner.decode(javaReport(commands = commands, steps = "40", calls = calls,
+          drawing = Some(drawing)), T.Limits())
+      }
+    }
+    val tooMany = Vector.fill(129)("[0,3,1]").mkString("[", ",", "]")
+    intercept[IllegalArgumentException] {
+      JavaTurtleCommandRunner.decode(javaReport(commands = commands, steps = "40", calls = calls,
+        drawing = Some(s"""{"methods":$tooMany}""")), T.Limits())
+    }
+    val validDrawing = Some("""{"methods":[[0,3,1],[1,3,0]]}""")
+    intercept[IllegalArgumentException] {
+      JavaTurtleCommandRunner.decode(javaReport(commands = commands, steps = "40", drawing = validDrawing), T.Limits())
+    }
+    intercept[IllegalArgumentException] {
+      JavaTurtleCommandRunner.decode(javaReport(commands = commands, steps = "40", calls = calls,
+        drawing = validDrawing), T.Limits(), Some(Set(R.MethodId(0))))
+    }
+    intercept[IllegalArgumentException] {
+      JavaTurtleCommandRunner.decode(javaReport(commands = commands, steps = "40",
+        calls = Some("""{"methods":[[0,1,0],[1,1,0]],"maxDepth":1}"""),
+        drawing = Some("""{"methods":[[0,3,0],[1,3,0]]}""")), T.Limits())
+    }
+  }
+
+  test("Java worker drawing attribution accepts its maximum bounded rows and commands") {
+    val count = 128
+    val calls = (0 until count).map(method => s"[$method,1,0]").mkString("[", ",", "]")
+    val drawing = (0 until count).map(method =>
+      s"[$method,${if method == 0 then T.Limits.MaxCommands else 1},0]").mkString("[", ",", "]")
+    val commands = Vector.fill(T.Limits.MaxCommands)("""["forward",1]""").mkString("[", ",", "]")
+    val report = javaReport(commands = commands, steps = T.Limits.MaxSteps.toString,
+      calls = Some(s"""{"methods":$calls,"maxDepth":2}"""), drawing = Some(s"""{"methods":$drawing}"""))
+    val decoded = JavaTurtleCommandRunner.decode(report, T.Limits(), Some((0 until count).map(R.MethodId(_)).toSet))
+    assertEquals(decoded.drawingEvidence.get.methods.size, count)
+    assertEquals(decoded.drawingEvidence.get.methods.head.forwardCommands, T.Limits.MaxCommands)
+    assertEquals(decoded.drawingEvidence.get.methods.last.forwardCommands, 1)
+  }
+
+  test("Java worker invalid input cannot include drawing attribution") {
+    val calls = Some("""{"methods":[],"maxDepth":0}""")
+    val drawing = Some("""{"methods":[]}""")
+    for problem <- Vector("InvalidInvocation", "InvalidLimits") do
+      val limits = if problem == "InvalidLimits" then T.Limits(maxCallDepth = 0) else T.Limits()
+      val report = javaReport("Failed", s"\"$problem\"", steps = "0", calls = calls, drawing = drawing)
+      assertEquals(JavaTurtleCommandRunner.decode(report, limits).drawingEvidence, Some(T.DrawingEvidence()))
+      intercept[IllegalArgumentException] {
+        JavaTurtleCommandRunner.decode(javaReport("Failed", s"\"$problem\"", commands = """[["forward",1]]""",
+          steps = "10", calls = Some("""{"methods":[[0,1,0]],"maxDepth":1}"""),
+          drawing = Some("""{"methods":[[0,1,0]]}""")), limits)
+      }
+  }
+
+  test("Java worker replaces malformed drawing evidence before another run") {
+    val workers = Vector.fill(2)(new ControlledJavaWorker(initiallyReady = true))
+    var allocated = 0
+    val runner = new JavaTurtleCommandRunner(() => {
+      val worker = workers(allocated)
+      allocated += 1
+      worker
+    })
+    val first = runner.run(javaFixture)
+    val calls = Some("""{"methods":[[0,1,0],[1,1,0]],"maxDepth":2}""")
+    for
+      _ <- workers.head.started()
+      _ = workers.head.complete(report = javaReport(commands = """[["forward",1]]""", steps = "10", calls = calls,
+        drawing = Some("""{"methods":[[0,1,1],[1,1,0]]}""")))
+      _ <- failedWith(first)(error => assert(error.isInstanceOf[IllegalArgumentException]))
+      _ = assertEquals(workers.head.terminations, 1)
+      second = runner.run(javaFixture)
+      _ <- workers(1).started()
+      _ = workers(1).complete(report = javaReport(commands = """[["forward",2]]""", steps = "10", calls = calls,
+        drawing = Some("""{"methods":[[0,1,0],[1,1,0]]}""")))
+      actual <- second
+    yield
+      assertEquals(actual.drawingEvidence, Some(T.DrawingEvidence(Vector(
+        T.MethodDrawing(R.MethodId(0), 1, 0), T.MethodDrawing(R.MethodId(1), 1, 0)))))
+      assertEquals(allocated, 2)
+      runner.close()
+      assertEquals(workers(1).terminations, 1)
   }
 
   test("Java worker invalid input cannot include entered methods") {
