@@ -534,7 +534,7 @@ class JavaParserTest extends FunSuite {
     val limit = JavaTurtleInputLimits.MaxMethods
     assertEquals(resolvedSource(chain(limit - 1)).methods.size, limit)
     assertEquals(sourceProblem(chain(limit)).problem, JavaTurtleSource.Problem.InputLimit)
-    assertEquals(semanticProblem(chain(limit - 1, cycle = true)).problem, JavaTurtleSource.Problem.UnsupportedSyntax)
+    assertEquals(resolvedSource(chain(limit - 1, cycle = true)).methods.size, limit)
   }
 
   test("turtle input counts parameters and local declarations rather than distinct names") {
@@ -841,13 +841,13 @@ class JavaParserTest extends FunSuite {
     }
   }
 
-  test("turtle double support keeps casts value-returning methods and recursion outside the pilot") {
+  test("turtle double support keeps casts and value-returning methods outside the pilot") {
     for body <- Seq("double value = (double)distance;", "int value = (int)1.5;") do
       assertEquals(sourceProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UnsupportedSyntax, clue = body)
     assertEquals(structureProblem(turtleClass(s"static double value() { return 1.5; } $mainMethod")).problem,
       JavaTurtleSource.Problem.UnsupportedStructure)
     val recursive = turtleClass(s"static void draw(double length, int depth) { draw(length / 3, depth - 1); } $mainMethod")
-    assertEquals(semanticProblem(recursive).problem, JavaTurtleSource.Problem.UnsupportedSyntax)
+    checkedSource(recursive)
   }
 
   test("turtle semantics resolves later helpers and same-class qualified calls") {
@@ -991,11 +991,29 @@ class JavaParserTest extends FunSuite {
       JavaTurtleSource.Problem.UnsupportedType)
   }
 
-  test("turtle semantics detects direct mutual and unused helper recursion") {
+  test("turtle semantics accepts direct mutual and unused helper recursion") {
     for members <- Seq(s"static void move() { move(); } $mainMethod",
       s"static void first() { second(); } static void second() { first(); } $mainMethod",
       s"static void move() { Drawing.move(); } $mainMethod") do
-      assertEquals(semanticProblem(turtleClass(members)).problem, JavaTurtleSource.Problem.UnsupportedSyntax, clue = members)
+      checkedSource(turtleClass(members))
+  }
+
+  test("turtle recursive helpers retain argument scope and initialization checks") {
+    checkedSource(turtleClass(
+      "static void draw(int depth, double length) { if (depth == 0) { Turtle.forward(length); return; } " +
+        "Drawing.draw(depth - 1, length / 3); } public static void main(String[] args) { draw(3, 10.5); }"
+    ))
+    for (body, expected) <- Seq(
+      "int pending; if (depth > 0) { draw(depth - 1, pending); }" -> JavaTurtleSource.Problem.UninitializedVariable,
+      "draw(depth - 1, missing);" -> JavaTurtleSource.Problem.UnknownVariable,
+      "draw(depth - 1);" -> JavaTurtleSource.Problem.ArgumentMismatch,
+      "draw(1.0, length);" -> JavaTurtleSource.Problem.ArgumentMismatch,
+      "if (depth > 0) { int depth = 1; draw(depth, length); }" -> JavaTurtleSource.Problem.DuplicateDeclaration,
+      "main();" -> JavaTurtleSource.Problem.UnsupportedSyntax,
+      "Drawing.main();" -> JavaTurtleSource.Problem.UnsupportedSyntax
+    ) do
+      assertEquals(semanticProblem(turtleClass(s"static void draw(int depth, double length) { $body } $mainMethod")).problem,
+        expected, clue = body)
   }
 
   test("turtle semantics distinguishes contextual calls and Object signature collisions") {

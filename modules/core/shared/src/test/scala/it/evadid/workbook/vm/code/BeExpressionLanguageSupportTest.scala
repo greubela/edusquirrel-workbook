@@ -1270,7 +1270,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       ("for (int i = 0; i < 1; value += 1) { int value = 0; }", "", JavaTurtleSource.Problem.UnknownVariable),
       ("draw(true);", "static void draw(int size) {}", JavaTurtleSource.Problem.ArgumentMismatch),
       ("missing();", "", JavaTurtleSource.Problem.UnknownMethod),
-      ("draw(1);", "static void draw(int size) { draw(size); }", JavaTurtleSource.Problem.UnsupportedSyntax)) do {
+      ("draw(1);", "static void draw(int size) { main(); }", JavaTurtleSource.Problem.UnsupportedSyntax)) do {
       var adapted = false
       val result = for {
         parsed <- JavaTurtleSource.parse(s"class Drawing { $helpers public static void main(String[] args) { $main } }")
@@ -1552,6 +1552,177 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(deep.status, T.Status.Completed)
     assertEquals(deep.commands, Vector(forward(1)))
     assertEquals(T.runVm(allowed), full)
+  }
+
+  test("Java recursive methods draw fractional lengths with bounded call evidence") {
+    val helper = """
+      static void split(int depth, double length) {
+        if (depth == 0) { Turtle.forward(length); return; }
+        split(depth - 1, length / 3);
+        split(depth - 1, length / 3);
+      }
+    """
+    for depth <- Vector(0, 1, 3) do {
+      val source = javaProgram(s"split($depth, 10.5);", helper)
+      val program = P.adapt(source).toOption.get
+      val execution = T.runVm(program)
+      val count = (1 << (depth + 1)) - 1
+      val commands = Vector.fill(1 << depth)(T.Command(R.TurtleCommand.Forward, 10.5 / math.pow(3, depth)))
+      assertEquals(execution, T.run(source))
+      assertEquals(execution.status, T.Status.Completed)
+      assertEquals(execution.commands, commands)
+      assertEquals(execution.callEvidence, Some(T.CallEvidence(Vector(
+        T.MethodCalls(R.MethodId(0), count, count - 1), T.MethodCalls(R.MethodId(1), 1, 0)), depth + 2)))
+      val arguments = Vector(E.Value.IntValue(depth), E.Value.DoubleValue(10.5))
+      val invoked = T.invokeVm(program, R.MethodId(0), arguments)
+      assertEquals(invoked, T.invoke(source, R.MethodId(0), arguments))
+      assertEquals(invoked.commands, commands)
+      assertEquals(invoked.callEvidence, Some(T.CallEvidence(Vector(T.MethodCalls(R.MethodId(0), count, count - 1)), depth + 1)))
+      assertEquals(T.runVm(program), execution)
+    }
+  }
+
+  test("Java mutual recursion counts active methods rather than static call cycles") {
+    val source = javaProgram("first(3);", """
+      static void first(int depth) {
+        Turtle.forward(depth);
+        if (depth > 0) { second(depth - 1); }
+        Turtle.turnRight(depth);
+      }
+      static void second(int depth) {
+        if (depth > 0) { first(depth - 1); } else { Turtle.forward(9); }
+      }
+    """)
+    val program = P.adapt(source).toOption.get
+    val execution = T.runVm(program)
+    assertEquals(execution, T.run(source))
+    assertEquals(execution.status, T.Status.Completed)
+    assertEquals(execution.commands, Vector(forward(3), forward(1), forward(9), right(1), right(3)))
+    assertEquals(execution.callEvidence, Some(T.CallEvidence(Vector(
+      T.MethodCalls(R.MethodId(0), 2, 1), T.MethodCalls(R.MethodId(1), 2, 1), T.MethodCalls(R.MethodId(2), 1, 0)), 5)))
+  }
+
+  test("Java recursive frames preserve caller locals and sibling block declarations") {
+    val source = javaProgram("int depth = 99; branch(1, 12.0); Turtle.forward(depth);", """
+      static void branch(int depth, double length) {
+        double local = length;
+        if (depth == 0) {
+          for (int i = 0; i < 2; i += 1) { int marker = i; Turtle.forward(local + marker); }
+          return;
+        }
+        branch(depth - 1, length / 3);
+        Turtle.forward(local);
+        if (depth > 0) { int marker = 10; Turtle.turnRight(marker); }
+        else { int marker = 20; Turtle.turnRight(marker); }
+        branch(depth - 1, length / 2);
+        Turtle.forward(local);
+        for (int marker = 0; marker < 1; marker += 1) { Turtle.turnRight(marker); }
+      }
+    """)
+    val execution = T.runVm(P.adapt(source).toOption.get)
+    assertEquals(execution, T.run(source))
+    assertEquals(execution.status, T.Status.Completed)
+    assertEquals(execution.commands, Vector(forward(4), forward(5), forward(12), right(10),
+      forward(6), forward(7), forward(12), right(0), forward(99)))
+    assertEquals(execution.callEvidence, Some(T.CallEvidence(Vector(
+      T.MethodCalls(R.MethodId(0), 3, 2), T.MethodCalls(R.MethodId(1), 1, 0)), 3)))
+  }
+
+  test("Java returns unwind only the current recursive frame and its pending loops") {
+    val source = javaProgram("draw(2); draw(0); Turtle.forward(9);", """
+      static void draw(int depth) {
+        if (depth == 0) { Turtle.forward(0); return; }
+        while (true) {
+          for (int i = 0; i < 2; i += 1) {
+            draw(depth - 1);
+            Turtle.forward(depth);
+            return;
+          }
+        }
+      }
+    """)
+    val program = P.adapt(source).toOption.get
+    val execution = T.runVm(program)
+    assertEquals(execution, T.run(source))
+    assertEquals(execution.status, T.Status.Completed)
+    assertEquals(execution.commands, Vector(0, 1, 2, 0, 9).map(forward))
+    assertEquals(execution.callEvidence, Some(T.CallEvidence(Vector(
+      T.MethodCalls(R.MethodId(0), 4, 2), T.MethodCalls(R.MethodId(1), 1, 0)), 4)))
+    assertEquals(T.runVm(program), execution)
+  }
+
+  test("Java unused cycles and repeated top-level calls do not prove executed recursion") {
+    val source = javaProgram("for (int i = 0; i < 3; i += 1) { draw(i); }", """
+      static void draw(int depth) {
+        if (depth < 0) { draw(depth - 1); }
+        Turtle.forward(depth);
+      }
+      static void unused() { unused(); }
+    """)
+    val program = P.adapt(source).toOption.get
+    val execution = T.runVm(program)
+    assertEquals(execution, T.run(source))
+    assertEquals(execution.status, T.Status.Completed)
+    assertEquals(execution.commands, Vector(0, 1, 2).map(forward))
+    assertEquals(execution.callEvidence, Some(T.CallEvidence(Vector(
+      T.MethodCalls(R.MethodId(0), 3, 0), T.MethodCalls(R.MethodId(2), 1, 0)), 2)))
+  }
+
+  test("Java recursive call evidence excludes the rejected 65th frame") {
+    val helper = "static void down(int depth) { if (depth > 0) { down(depth - 1); } else { Turtle.forward(1); } }"
+    val source = javaProgram("down(62);", helper)
+    val program = P.adapt(source).toOption.get
+    val allowed = T.runVm(program)
+    assertEquals(allowed, T.run(source))
+    assertEquals(allowed.status, T.Status.Completed)
+    assertEquals(allowed.commands, Vector(forward(1)))
+    assertEquals(allowed.callEvidence, Some(T.CallEvidence(Vector(
+      T.MethodCalls(R.MethodId(0), 63, 62), T.MethodCalls(R.MethodId(1), 1, 0)), 64)))
+    val direct = T.invokeVm(program, R.MethodId(0), Vector(E.Value.IntValue(63)))
+    assertEquals(direct.status, T.Status.Completed)
+    assertEquals(direct.commands, Vector(forward(1)))
+    assertEquals(direct.steps, 703)
+    assertEquals(direct.callEvidence, Some(T.CallEvidence(Vector(T.MethodCalls(R.MethodId(0), 64, 63)), 64)))
+    val rejected = T.invokeVm(program, R.MethodId(0), Vector(E.Value.IntValue(64)))
+    assertEquals(rejected, T.invoke(source, R.MethodId(0), Vector(E.Value.IntValue(64))))
+    assertEquals(rejected.status, T.Status.LimitExceeded)
+    assertEquals(rejected.commands, Vector.empty)
+    assertEquals(rejected.steps, 705)
+    assertEquals(rejected.callEvidence, direct.callEvidence)
+    assertEquals(T.invokeVm(program, R.MethodId(0), Vector(E.Value.IntValue(63))), direct)
+  }
+
+  test("Java recursion retains accepted evidence at budgets cancellation and errors") {
+    val source = javaProgram("repeat(0);", "static void repeat(int n) { Turtle.forward(n); repeat(n + 1); }")
+    val program = P.adapt(source).toOption.get
+    val arguments = Vector(E.Value.IntValue(0))
+    val commandLimit = T.invokeVm(program, R.MethodId(0), arguments, T.Limits(maxCommands = 2))
+    assertEquals(commandLimit, T.invoke(source, R.MethodId(0), arguments, T.Limits(maxCommands = 2)))
+    assertEquals(commandLimit, T.Execution(T.Status.LimitExceeded, Vector(forward(0), forward(1)), 23,
+      Some(T.CallEvidence(Vector(T.MethodCalls(R.MethodId(0), 3, 2)), 3))))
+    val stepLimit = T.invokeVm(program, R.MethodId(0), arguments, T.Limits(maxSteps = 18))
+    assertEquals(stepLimit, T.Execution(T.Status.LimitExceeded, Vector(forward(0), forward(1)), 18,
+      Some(T.CallEvidence(Vector(T.MethodCalls(R.MethodId(0), 2, 1)), 2))))
+    var polls = 0
+    val cancelled = T.invokeVm(program, R.MethodId(0), arguments, isCancelled = () => { polls += 1; polls >= 19 })
+    assertEquals(cancelled, stepLimit.copy(status = T.Status.Cancelled))
+    assertEquals(polls, 19)
+    assertEquals(T.invokeVm(program, R.MethodId(0), arguments, isCancelled = () => true),
+      T.Execution(T.Status.Cancelled, Vector.empty, 0, Some(T.CallEvidence(Vector.empty, 0))))
+    assertEquals(T.invokeVm(program, R.MethodId(0), arguments, T.Limits(maxCommands = 2)), commandLimit)
+    val failedSource = javaProgram("fall(1);", """
+      static void fall(int depth) {
+        Turtle.forward(depth);
+        if (depth > 0) { fall(depth - 1); }
+        int invalid = 1 / 0;
+      }
+    """)
+    val failed = T.runVm(P.adapt(failedSource).toOption.get)
+    assertEquals(failed, T.run(failedSource))
+    assertEquals(failed.status, T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero)))
+    assertEquals(failed.commands, Vector(forward(1), forward(0)))
+    assertEquals(failed.callEvidence, Some(T.CallEvidence(Vector(
+      T.MethodCalls(R.MethodId(0), 2, 1), T.MethodCalls(R.MethodId(1), 1, 0)), 3)))
   }
 
   test("Java Python export is deterministic and keeps execution behind one entry point") {

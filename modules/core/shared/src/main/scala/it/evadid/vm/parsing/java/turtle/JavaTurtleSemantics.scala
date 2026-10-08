@@ -42,13 +42,10 @@ object JavaTurtleSemantics {
   private class Checker(structure: StructuredSource) {
     private val methods = structure.methods.map(method => method.name -> method).toMap
     private val objectMethods = Set("wait", "notify", "notifyAll", "toString", "hashCode", "getClass", "clone", "finalize")
-    private var currentMethod = ""
-    private var calls = Map.empty[String, Set[String]].withDefaultValue(Set.empty)
 
     def check(): Result[Unit] =
       structure.methods.foldLeft[Result[Unit]](Right(())) { (result, method) =>
         result.flatMap { _ =>
-          currentMethod = method.name
           if method.name != "main" && method.parameters.isEmpty && objectMethods.contains(method.name) then
             Left(problem(Problem.UnsupportedStructure, s"The zero-argument method ${method.name} conflicts with a method inherited from Object."))
           else {
@@ -58,7 +55,7 @@ object JavaTurtleSemantics {
             block(method.body, Env(bindings, bindings.keySet)).map(_ => ())
           }
         }
-      }.flatMap(_ => checkRecursion())
+      }
 
     private def kind(javaType: it.evadid.vm.parsing.java.clean.model.JavaType[?]): Option[Kind] = javaType match {
       case _: JAVA_INTEGER => Some(Kind.IntValue)
@@ -347,9 +344,7 @@ object JavaTurtleSemantics {
       if name == "main" then Left(unsupported("Call a helper method instead of calling main again."))
       else methods.get(name).toRight(problem(Problem.UnknownMethod, s"There is no supported static method named $name."))
         .flatMap { method =>
-          checkArguments(arguments, method.parameters.map(parameter => kind(parameter.javaType).get), env).map { _ =>
-            calls = calls.updated(currentMethod, calls(currentMethod) + name)
-          }
+          checkArguments(arguments, method.parameters.map(parameter => kind(parameter.javaType).get), env)
         }
 
     private def checkArguments(arguments: Seq[JavaExpression], expected: Seq[Kind], env: Env): Result[Unit] =
@@ -361,23 +356,5 @@ object JavaTurtleSemantics {
         }
       }
 
-    private def checkRecursion(): Result[Unit] = {
-      var visited = Set.empty[String]
-      var active = Set.empty[String]
-      def visit(name: String): Option[String] =
-        if active.contains(name) then Some(name)
-        else if visited.contains(name) then None
-        else {
-          active += name
-          val cycle = calls(name).toSeq.sorted.iterator.map(visit).collectFirst { case Some(method) => method }
-          active -= name
-          visited += name
-          cycle
-        }
-      structure.methods.iterator.map(method => visit(method.name)).collectFirst { case Some(name) => name } match {
-        case Some(name) => Left(unsupported(s"Recursive calls involving $name are not supported yet."))
-        case None => Right(())
-      }
-    }
   }
 }
