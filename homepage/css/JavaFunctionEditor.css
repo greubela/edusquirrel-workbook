@@ -169,6 +169,14 @@
     border-color: var(--jfe-accent);
     background: #303b49;
 }
+.java-function-based-editor :is(.java-function-editor__button, .java-function-editor__function):focus {
+    background: var(--jfe-surface);
+    color: var(--jfe-ink);
+    border-color: var(--jfe-accent);
+}
+.java-function-based-editor :is(.java-function-editor__button--primary, .java-function-editor__function--selected):focus {
+    background: var(--jfe-selected);
+}
 .java-function-based-editor :is(button, input, textarea):focus-visible {
     outline: 2px solid var(--jfe-accent);
     outline-offset: 2px;
