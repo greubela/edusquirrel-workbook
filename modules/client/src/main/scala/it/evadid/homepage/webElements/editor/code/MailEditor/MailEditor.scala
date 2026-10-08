@@ -12,7 +12,7 @@ import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLine
 
 case class MailEditor(
   override val underlyingVar: Var[InboxStateScaffolding],
-  config: Val[WebEditorConfig] = Val(WebEditorConfig.defaultConfig)
+  override val config: Val[WebEditorConfig] = Val(WebEditorConfig.defaultConfig)
 ) extends SimpleWebEditor[InboxStateScaffolding, WebEditorConfig] {
 
   override def getDomElement(): Element = domElement
@@ -28,7 +28,7 @@ case class MailEditor(
       ),
       div(
         cls := "mail-editor__content",
-        stateSignal.map { state =>
+        child <-- stateSignal.map { state =>
           renderInbox(state.inboxState)
         }
       )
@@ -52,7 +52,7 @@ case class MailEditor(
       div(
         cls := "mail-editor__mail-list",
         inboxState.mailList.map { mail =>
-          createMailCard(mail)
+          createMailCard(mail).getDomElement()
         }
       )
     )

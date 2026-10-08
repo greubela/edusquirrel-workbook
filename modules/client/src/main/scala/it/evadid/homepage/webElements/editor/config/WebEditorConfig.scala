@@ -1,10 +1,7 @@
 package it.evadid.homepage.webElements.editor.config
 
-import com.raquo.laminar.api.L.*
-
-case class WebEditorConfig(
-  inputCssClassStr: List[String] => String = (classes: List[String]) => classes.mkString(" ")
-)
+case class WebEditorConfig(override protected val additionalCssClasses: List[String] = Nil)
+  extends it.evadid.homepage.webElements.editor.abstractions.WebEditorConfig
 
 object WebEditorConfig {
   val defaultConfig: WebEditorConfig = WebEditorConfig()

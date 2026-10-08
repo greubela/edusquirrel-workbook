@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.emailSimulator
 
-import com.raquo.airstream.state.Var
+import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
@@ -13,7 +13,7 @@ case object HtmlMailEditorRenderer extends LineBasedRenderingFactory[MailEditor]
   override protected def createRendering(workbookElement: MailEditor): AtomarLineRendering = {
     val boundVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl, UpdateImportance.MAJOR).toAirstreamVar
 
-    val mailListVar: Var[List[Mail]] = boundVar.signal.map(_.inboxState.mailList).toVar(List())
+    val mailListVar: Var[List[Mail]] = Var(boundVar.now().inboxState.mailList)
 
     val folderCards = List(
       createFolderCard("Posteingang", mailListVar, "inbox"), 
@@ -32,10 +32,10 @@ case object HtmlMailEditorRenderer extends LineBasedRenderingFactory[MailEditor]
         ),
         div(
           cls := "mail-editor__mail-list",
-          mailListVar.signal.map { mails =>
+          child <-- mailListVar.signal.map { mails =>
             div(
               mails.map { mail =>
-                createMailCard(mail, boundVar)
+                createMailCard(mail, boundVar).getDomElement()
               }
             )
           }
@@ -60,7 +60,7 @@ case object HtmlMailEditorRenderer extends LineBasedRenderingFactory[MailEditor]
         div(
           cls := "mail-folder-info",
           span(cls := "mail-folder-name", folderName),
-          span(cls := "mail-folder-count", folderMailCount.map(_.toString))
+          span(cls := "mail-folder-count", text <-- folderMailCount.map(_.toString))
         )
       )
     )

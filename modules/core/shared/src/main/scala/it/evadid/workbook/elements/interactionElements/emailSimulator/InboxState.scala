@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.emailSimulator
 
+import upickle.default.*
+
 case class InboxState(
   mailList: List[Mail],
   mailFolders: Map[String, List[String]] = Map(
@@ -9,7 +11,7 @@ case class InboxState(
     "Archiv" -> List(),
     "Papierkorb" -> List()
   )
-) {
+) derives ReadWriter {
   def getMailsInFolder(folder: String): List[Mail] = {
     mailFolders.getOrElse(folder, List()).flatMap(id => mailList.find(_.id == id))
   }

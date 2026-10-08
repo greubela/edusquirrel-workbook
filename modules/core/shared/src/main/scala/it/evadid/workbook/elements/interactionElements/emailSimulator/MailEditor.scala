@@ -1,9 +1,8 @@
 package it.evadid.workbook.elements.interactionElements.emailSimulator
 
-import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
-import it.evadid.workbook.elements.interactionElements.emailSimulator.MailEditor.{InboxStateScaffolding, mailEditorSer}
+import it.evadid.workbook.elements.interactionElements.emailSimulator.MailEditor.mailEditorSer
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.NoContentElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 import upickle.ReadWriter
@@ -25,9 +24,6 @@ object MailEditor {
     override def callConstructor(elementId: String): MailEditor = MailEditor(elementId)
   }
 
-  case class InboxStateScaffolding(inboxState: InboxState)
-
-  private given inboxStateRw: ReadWriter[InboxState] = Serializer.fromUpickleJson(upickle.default.macroRW[InboxState])
   private val mailEditorRw: ReadWriter[InboxStateScaffolding] = macroRW
-  private val mailEditorSer: Serializer[InboxStateScaffolding] = Serializer.fromUpickleJson(mailEditorRw)
+  val mailEditorSer: Serializer[InboxStateScaffolding] = Serializer.fromUpickleJson(mailEditorRw)
 }
