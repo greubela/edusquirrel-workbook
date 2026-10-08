@@ -1,5 +1,7 @@
 # QR creation interaction
 
+For the shared model/renderer/editor responsibilities and dependency direction, see [Interaction architecture](workbook-interaction-architecture.md).
+
 `CreateQrCodeInteraction` follows the existing turtle interaction: a card line shows
 an editor button, the saved symbol and requirement feedback. Its fullscreen
 `QrCodeEditor` takes text and regenerates a scannable SVG as the learner types.

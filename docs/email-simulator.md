@@ -1,5 +1,7 @@
 # Email simulator
 
+For the shared model/renderer/editor responsibilities and dependency direction, see [Interaction architecture](workbook-interaction-architecture.md).
+
 The digital mailbox is available at `homepage/phishingWorkbook/index.html`. The Mail Simulator section of `homepage/workbookDesign/index.html` showcases the same messages with composing enabled.
 
 ## Interactions
