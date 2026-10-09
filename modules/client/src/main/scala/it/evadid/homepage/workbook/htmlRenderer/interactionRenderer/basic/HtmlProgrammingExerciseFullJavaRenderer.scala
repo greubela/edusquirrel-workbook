@@ -5,6 +5,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.code.JavaFunctionBasedEditor
+import it.evadid.homepage.webElements.editor.code.JavaTurtleEditorExtension
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorPlain, EvaEditorConfig}
 import it.evadid.homepage.webElements.{HtmlAppElement, FullscreenLifecycle}
 import it.evadid.core.datastructures.language.AppLanguage
@@ -23,7 +24,9 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
     val editor: HtmlAppElement & FullscreenLifecycle = workbookElement.turtleTask match {
       case None => new JavaFunctionBasedEditor(boundVar)
       case Some(task) => EvaEditorPlain(boundVar,
-        EvaEditorConfig(enabledLanguages = List(AppLanguage.Java)), javaTask = Some(task))
+        EvaEditorConfig(enabledLanguages = List(AppLanguage.Java)),
+        extensions = List(new JavaTurtleEditorExtension(boundVar,
+          target = task.cases.headOption.map(_.expectedShape), task = Some(task))))
     }
     val openButton = HtmlButtonElement.withTextLabel(
       "basic/OpenEditor",

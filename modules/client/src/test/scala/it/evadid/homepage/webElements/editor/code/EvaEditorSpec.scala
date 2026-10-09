@@ -8,7 +8,7 @@ import it.evadid.homepage.webElements.code.JavaFunctionBasedEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import com.raquo.airstream.ownership.ManualOwner
 import it.evadid.workbook.elements.interactionElements.programming.*
-import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorPlain, EvaEditorTurtle, EvaProgrammingTab}
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorExtension, EvaEditorPlain, EvaEditorTurtle, EvaProgrammingTab}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.HtmlProgrammingExerciseFullJavaRenderer
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
@@ -207,6 +207,65 @@ class EvaEditorSpec extends FunSuite {
   private def editorFor(source: ProgrammingState, config: EvaEditorConfig = testingConfig): EvaEditor =
     new EvaEditorPlain(Var[ProgrammingState](source), config)
 
+  private def javaPlain(
+      state: Var[ProgrammingState],
+      config: EvaEditorConfig,
+      onStateEdited: ProgrammingState => Unit = _ => (),
+      runnerFactory: () => JavaEditorSession.Runner = JavaEditorSession.defaultRunner
+  ): EvaEditorPlain =
+    EvaEditorPlain(state, config, onStateEdited,
+      extensions = List(new JavaTurtleEditorExtension(state, runnerFactory = runnerFactory)))
+
+  private def javaExtension(editor: EvaEditor): JavaTurtleEditorExtension =
+    editor.extensions.collectFirst { case extension: JavaTurtleEditorExtension => extension }
+      .getOrElse(fail("The Java execution extension is missing."))
+
+  test("a plain Java editor cannot run a full class without an execution extension") {
+    val source = javaSource()
+    val editor = EvaEditorPlain(Var[ProgrammingState](source),
+      testingConfig.copy(enabledLanguages = List(AppLanguage.Java)))
+    assertEquals(editor.extensions, Nil)
+    editor.getCurrentTurtleCommands().failed.map { _ =>
+      assertEquals(editor.currentState(), source)
+      editor.onFullscreenClose()
+    }
+  }
+
+  test("Eva routes execution and lifecycle through its configured extensions") {
+    val source = ProgrammingStateJavaString("forward(12);")
+    val result = Promise[List[TurtleCommand[Double]]]()
+    var offered = Vector.empty[ProgrammingState]
+    var executions = 0
+    var closes = Vector.empty[String]
+    val unrelated = new EvaEditorExtension {
+      override def turtleCommands(current: ProgrammingState): Option[() => Future[List[TurtleCommand[Double]]]] = {
+        offered :+= current
+        None
+      }
+      override def close(): Unit = closes :+= "unrelated"
+    }
+    val execution = new EvaEditorExtension {
+      override def turtleCommands(current: ProgrammingState): Option[() => Future[List[TurtleCommand[Double]]]] =
+        Some(() => { executions += 1; result.future })
+      override def close(): Unit = closes :+= "execution"
+    }
+    val editor = EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
+      extensions = List(unrelated, execution))
+    val pending = editor.getCurrentTurtleCommands()
+    assertEquals(offered, Vector(source))
+    assertEquals(executions, 1)
+    result.success(mappedCommands())
+    pending.map { commands =>
+      assertEquals(commands, mappedCommands())
+      assertEquals(editor.currentState(), source)
+      editor.select(EvaEditor.Tab.Python)
+      assertEquals(editor.activeTab.now(), EvaEditor.Tab.Python)
+      assertEquals(closes, Vector("unrelated", "execution"))
+      editor.onFullscreenClose()
+      assertEquals(closes, Vector("unrelated", "execution", "unrelated", "execution"))
+    }
+  }
+
   private def javaSource(distance: Int = 12): ProgrammingStateJavaString =
     ProgrammingStateJavaString(s"\n\tpublic class Drawing {\r\n  static void draw(int distance) {\r\n    Turtle.forward(distance);\r\n    Turtle.turnRight(-90);\r\n  }\r\n  public static void main(String[] args) { draw($distance); }\r\n}\r\n\t ")
 
@@ -304,8 +363,8 @@ class EvaEditorSpec extends FunSuite {
     val sync = new RecordingSyncControl
     val bound = HtmlProgrammingExerciseFullJavaRenderer.editorState(element, sync)
     val factory = new ControlledRunnerFactory
-    val editor = EvaEditorPlain(bound, testingConfig.copy(enabledLanguages = List(AppLanguage.Java)),
-      javaRunnerFactory = factory.create)
+    val editor = javaPlain(bound, testingConfig.copy(enabledLanguages = List(AppLanguage.Java)),
+      runnerFactory = factory.create)
     val pending = editor.getCurrentTurtleCommands()
     val previous = factory.runners.head
     assertEquals(previous.requests.size, 1)
@@ -380,8 +439,8 @@ class EvaEditorSpec extends FunSuite {
     val source = squareSource(squareBody, "while (true) {}")
     val saved = ProgrammingExercise.StateSerializer.serialize(source)
     val runner = new MethodRunner
-    val editor = EvaEditorPlain(Var[ProgrammingState](source), testingConfig, javaRunnerFactory = () => runner)
-    editor.checkJavaTask(JavaTurtleTask.squarePilot).map { drawings =>
+    val editor = javaPlain(Var[ProgrammingState](source), testingConfig, runnerFactory = () => runner)
+    javaExtension(editor).checkTask(editor.currentState().toJava, JavaTurtleTask.squarePilot).map { drawings =>
       assertEquals(runner.mainCalls, 0)
       assert(runner.calls.forall(!_.traceInvocations))
       assertEquals(runner.calls.map(_.arguments), Vector(Vector(E.Value.IntValue(25)), Vector(E.Value.IntValue(40)), Vector(E.Value.IntValue(0))))
@@ -399,8 +458,8 @@ class EvaEditorSpec extends FunSuite {
       "if (side == 0) { Turtle.forward(1); } else { " + squareBody + " }")
     Future.sequence(bodies.map { body =>
       val runner = new MethodRunner
-      val editor = EvaEditorPlain(Var[ProgrammingState](squareSource(body)), testingConfig, javaRunnerFactory = () => runner)
-      editor.checkJavaTask(JavaTurtleTask.squarePilot).map { drawings =>
+      val editor = javaPlain(Var[ProgrammingState](squareSource(body)), testingConfig, runnerFactory = () => runner)
+      javaExtension(editor).checkTask(editor.currentState().toJava, JavaTurtleTask.squarePilot).map { drawings =>
         val matches = drawings.zip(JavaTurtleTask.squarePilot.cases).map { (drawing, example) => JavaTurtleExecutionPanel.compare(drawing, example.expectedShape) }
         assert(matches.head)
         assert(!matches.forall(identity))
@@ -415,8 +474,8 @@ class EvaEditorSpec extends FunSuite {
       squareSource(squareBody).copy(code = squareSource(squareBody).code.replace("int side", "boolean side").replace("forward(side)", "forward(25)").replace("square(25)", "square(true)")))
     Future.sequence(sources.map { source =>
       val runner = new MethodRunner
-      val editor = EvaEditorPlain(Var[ProgrammingState](source), testingConfig, javaRunnerFactory = () => runner)
-      editor.checkJavaTask(JavaTurtleTask.squarePilot).failed.map { _ =>
+      val editor = javaPlain(Var[ProgrammingState](source), testingConfig, runnerFactory = () => runner)
+      javaExtension(editor).checkTask(editor.currentState().toJava, JavaTurtleTask.squarePilot).failed.map { _ =>
         assertEquals(runner.calls.size, 0)
         assertEquals(runner.mainCalls, 0)
         editor.onFullscreenClose()
@@ -434,8 +493,8 @@ class EvaEditorSpec extends FunSuite {
   test("Java task stops after runtime failure without returning a partial successful assessment") {
     val runner = new MethodRunner
     val source = squareSource("Turtle.forward(side); int zero = 0; int value = 1 / zero;")
-    val editor = EvaEditorPlain(Var[ProgrammingState](source), testingConfig, javaRunnerFactory = () => runner)
-    editor.checkJavaTask(JavaTurtleTask.squarePilot).failed.map { error =>
+    val editor = javaPlain(Var[ProgrammingState](source), testingConfig, runnerFactory = () => runner)
+    javaExtension(editor).checkTask(editor.currentState().toJava, JavaTurtleTask.squarePilot).failed.map { error =>
       assert(error.getMessage.contains("divide by zero"))
       assertEquals(runner.calls.size, 1)
       editor.onFullscreenClose()
@@ -467,9 +526,9 @@ class EvaEditorSpec extends FunSuite {
   test("Java task source replacement cancels the whole assessment without starting later values") {
     val runner = new MethodRunner
     val source = squareSource(squareBody)
-    val editor = EvaEditorPlain(Var[ProgrammingState](source), testingConfig, javaRunnerFactory = () => runner)
+    val editor = javaPlain(Var[ProgrammingState](source), testingConfig, runnerFactory = () => runner)
     runner.onInvoke = () => { editor.state.set(squareSource("")); editor.state.set(source) }
-    editor.checkJavaTask(JavaTurtleTask.squarePilot).failed.flatMap { error =>
+    javaExtension(editor).checkTask(editor.currentState().toJava, JavaTurtleTask.squarePilot).failed.flatMap { error =>
       assert(error.isInstanceOf[CancellationException])
       Future.unit.map { _ =>
         assertEquals(runner.calls.size, 1)
@@ -583,9 +642,9 @@ class EvaEditorSpec extends FunSuite {
     val stored = ProgrammingExercise.StateSerializer.serialize(source)
     val runner = new MethodRunner
     var published = List.empty[ProgrammingState]
-    val editor = EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
+    val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
       next => published = published :+ next, () => runner)
-    editor.checkJavaTaskDetailed(task).map { result =>
+    javaExtension(editor).checkTaskDetailed(editor.currentState().toJava, task).map { result =>
       val expected = Vector(
         Vector(E.Value.IntValue(1), E.Value.DoubleValue(10.0 / 3.0)),
         Vector(E.Value.IntValue(2), E.Value.DoubleValue(2.0)),
@@ -732,14 +791,14 @@ class EvaEditorSpec extends FunSuite {
       val gate = Promise[T.Execution]()
       var runners = Vector.empty[MethodRunner]
       var published = List.empty[ProgrammingState]
-      val editor = EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
+      val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
         next => published = published :+ next, () => {
           val runner = new MethodRunner
           if runners.isEmpty then runner.pending = Some(gate)
           runners :+= runner
           runner
         })
-      val first = editor.checkJavaTaskDetailed(task)
+      val first = javaExtension(editor).checkTaskDetailed(editor.currentState().toJava, task)
       Future.unit.flatMap { _ =>
         val old = runners.head
         assertEquals(old.calls.size, 1)
@@ -754,7 +813,7 @@ class EvaEditorSpec extends FunSuite {
         assertEquals(old.closes, 1)
         first.failed.flatMap { error =>
           assert(error.isInstanceOf[CancellationException])
-          editor.checkJavaTaskDetailed(task).flatMap { result =>
+          javaExtension(editor).checkTaskDetailed(editor.currentState().toJava, task).flatMap { result =>
             assert(result.allExecutionsCompleted)
             assertEquals(result.source, expectedSource)
             assertEquals(result.cases(2).execution.commands.size, if change == "edit" then 1 else 3)
@@ -782,8 +841,8 @@ class EvaEditorSpec extends FunSuite {
     val runner = new MethodRunner
     val gate = Promise[T.Execution]()
     runner.pending = Some(gate)
-    val editor = EvaEditorPlain(Var[ProgrammingState](source), testingConfig, javaRunnerFactory = () => runner)
-    val pending = editor.checkJavaTaskDetailed(task)
+    val editor = javaPlain(Var[ProgrammingState](source), testingConfig, runnerFactory = () => runner)
+    val pending = javaExtension(editor).checkTaskDetailed(editor.currentState().toJava, task)
     Future.unit.flatMap { _ =>
       assertEquals(runner.calls.size, 1)
       editor.select(EvaEditor.Tab.Python)
@@ -840,9 +899,9 @@ class EvaEditorSpec extends FunSuite {
         super.invoke(program, method, arguments, limits, traceInvocations).map(_.copy(invocationEvidence = None))
     }
     var published = List.empty[ProgrammingState]
-    val editor = EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
+    val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
       next => published = published :+ next, () => runner)
-    editor.checkJavaTaskDetailed(task).map { result =>
+    javaExtension(editor).checkTaskDetailed(editor.currentState().toJava, task).map { result =>
       assert(result.allExecutionsCompleted)
       assert(runner.calls.forall(_.traceInvocations))
       result.cases.zip(examples).foreach { (row, example) =>
@@ -859,8 +918,8 @@ class EvaEditorSpec extends FunSuite {
     val stored = ProgrammingExercise.StateSerializer.serialize(source)
     val task = mixedTask(source)
     val runner = new MethodRunner
-    val editor = EvaEditorPlain(Var[ProgrammingState](source), testingConfig, javaRunnerFactory = () => runner)
-    editor.checkJavaTask(task).map { drawings =>
+    val editor = javaPlain(Var[ProgrammingState](source), testingConfig, runnerFactory = () => runner)
+    javaExtension(editor).checkTask(editor.currentState().toJava, task).map { drawings =>
       assertEquals(runner.mainCalls, 0)
       assert(runner.calls.forall(!_.traceInvocations))
       assertEquals(runner.calls.map(_.arguments), Vector(
@@ -955,16 +1014,16 @@ class EvaEditorSpec extends FunSuite {
     val source = mixedSource()
     val task = mixedTask(source)
     val runner = new MethodRunner
-    val editor = EvaEditorPlain(Var[ProgrammingState](source), testingConfig, javaRunnerFactory = () => runner)
+    val editor = javaPlain(Var[ProgrammingState](source), testingConfig, runnerFactory = () => runner)
     runner.onInvoke = () => { editor.state.set(mixedSource("")); editor.state.set(source) }
-    editor.checkJavaTask(task).failed.flatMap { error =>
+    javaExtension(editor).checkTask(editor.currentState().toJava, task).failed.flatMap { error =>
       assert(error.isInstanceOf[CancellationException])
       Future.unit.flatMap { _ =>
         assertEquals(runner.calls.size, 1)
         assertEquals(runner.closes, 1)
         assertEquals(editor.currentState(), source)
         runner.onInvoke = () => ()
-        editor.checkJavaTask(task).map { drawings =>
+        javaExtension(editor).checkTask(editor.currentState().toJava, task).map { drawings =>
           assertEquals(drawings.size, task.cases.size)
           assertEquals(runner.calls.size, task.cases.size + 1)
           assertEquals(editor.currentState(), source)
@@ -999,7 +1058,7 @@ class EvaEditorSpec extends FunSuite {
     val stored = ProgrammingExercise.StateSerializer.serialize(source)
     val factory = new ControlledRunnerFactory
     var published = List.empty[ProgrammingState]
-    val editor = new EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
+    val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
       next => published = published :+ next, factory.create)
     val result = editor.getCurrentTurtleCommands()
     assertEquals(factory.runners.size, 1)
@@ -1254,7 +1313,7 @@ class EvaEditorSpec extends FunSuite {
     val fingerprint = ProgrammingState.fingerprint(source)
     val factory = new ControlledRunnerFactory
     var published = List.empty[ProgrammingState]
-    val editor = new EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
+    val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
       next => published = published :+ next, factory.create)
     val result = editor.getCurrentTurtleCommands()
     assertEquals(factory.runners.size, 1)
@@ -1280,8 +1339,10 @@ class EvaEditorSpec extends FunSuite {
   test("the turtle editor uses its injected Java runner for checked class execution") {
     val source = javaSource()
     val factory = new ControlledRunnerFactory
-    val editor = new EvaEditorTurtle(Var[ProgrammingState](source), testingConfig,
-      TurtleGraphic.TurtleGraphicProgram(Nil), javaRunnerFactory = factory.create)
+    val state = Var[ProgrammingState](source)
+    val target = TurtleGraphic.TurtleGraphicProgram(Nil)
+    val extension = new JavaTurtleEditorExtension(state, target = Some(target), runnerFactory = factory.create)
+    val editor = EvaEditorTurtle(state, testingConfig, target, extensions = List(extension))
     val result = editor.getCurrentTurtleCommands()
     assertEquals(factory.runners.size, 1)
     factory.runners.head.complete()
@@ -1300,8 +1361,8 @@ class EvaEditorSpec extends FunSuite {
     )
     Future.sequence(sources.map { source =>
       val factory = new ControlledRunnerFactory
-      val editor = new EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
-        javaRunnerFactory = factory.create)
+      val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
+        runnerFactory = factory.create)
       val stored = ProgrammingExercise.StateSerializer.serialize(source)
       editor.getCurrentTurtleCommands().failed.map { _ =>
         assertEquals(factory.runners.size, 0)
@@ -1327,8 +1388,8 @@ class EvaEditorSpec extends FunSuite {
     val source = javaSource()
     val stored = ProgrammingExercise.StateSerializer.serialize(source)
     val factory = new ControlledRunnerFactory
-    val editor = new EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
-      javaRunnerFactory = factory.create)
+    val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
+      runnerFactory = factory.create)
     val error = new IllegalStateException("worker failed")
     val result = editor.getCurrentTurtleCommands()
     factory.runners.head.requests.head.result.failure(error)
@@ -1341,8 +1402,8 @@ class EvaEditorSpec extends FunSuite {
 
   test("a second Java run rejects while the first run remains active") {
     val factory = new ControlledRunnerFactory
-    val editor = new EvaEditorPlain(Var[ProgrammingState](javaSource()), testingConfig,
-      javaRunnerFactory = factory.create)
+    val editor = javaPlain(Var[ProgrammingState](javaSource()), testingConfig,
+      runnerFactory = factory.create)
     val first = editor.getCurrentTurtleCommands()
     val runner = factory.runners.head
     val second = editor.getCurrentTurtleCommands()
@@ -1360,8 +1421,8 @@ class EvaEditorSpec extends FunSuite {
 
   test("a reentrant Java run rejects without replacing the first execution") {
     val runner = new ControlledRunner
-    val editor = new EvaEditorPlain(Var[ProgrammingState](javaSource()), testingConfig,
-      javaRunnerFactory = () => runner)
+    val editor = javaPlain(Var[ProgrammingState](javaSource()), testingConfig,
+      runnerFactory = () => runner)
     var reentrant = Option.empty[Future[List[TurtleCommand[Double]]]]
     runner.onRun = () => reentrant = Some(editor.getCurrentTurtleCommands())
     val first = editor.getCurrentTurtleCommands()
@@ -1379,11 +1440,11 @@ class EvaEditorSpec extends FunSuite {
   test("stopping Java execution cancels immediately and allows a fresh run") {
     val source = javaSource()
     val factory = new ControlledRunnerFactory
-    val editor = new EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
-      javaRunnerFactory = factory.create)
+    val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
+      runnerFactory = factory.create)
     val first = editor.getCurrentTurtleCommands()
     val runner = factory.runners.head
-    editor.stopJavaExecution()
+    javaExtension(editor).stop()
     assertEquals(runner.cancelCalls, 1)
     assert(!runner.requests.head.result.isCompleted)
     first.failed.flatMap { error =>
@@ -1404,8 +1465,8 @@ class EvaEditorSpec extends FunSuite {
   test("closing an unmounted editor cancels Java execution and restarts with a new runner") {
     val source = javaSource()
     val factory = new ControlledRunnerFactory
-    val editor = new EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
-      javaRunnerFactory = factory.create)
+    val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
+      runnerFactory = factory.create)
     val first = editor.getCurrentTurtleCommands()
     val previous = factory.runners.head
     editor.onFullscreenClose()
@@ -1434,8 +1495,8 @@ class EvaEditorSpec extends FunSuite {
     val initial = javaSource()
     val restored = javaSource(42)
     val factory = new ControlledRunnerFactory
-    val editor = new EvaEditorPlain(Var[ProgrammingState](initial), testingConfig,
-      javaRunnerFactory = factory.create)
+    val editor = javaPlain(Var[ProgrammingState](initial), testingConfig,
+      runnerFactory = factory.create)
     val first = editor.getCurrentTurtleCommands()
     val runner = factory.runners.head
     editor.state.set(restored)
@@ -1466,8 +1527,8 @@ class EvaEditorSpec extends FunSuite {
   test("a closed editor source changing from A to B and back to A cannot revive the old Java execution") {
     val source = javaSource()
     val factory = new ControlledRunnerFactory
-    val editor = new EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
-      javaRunnerFactory = factory.create)
+    val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
+      runnerFactory = factory.create)
     val first = editor.getCurrentTurtleCommands()
     val runner = factory.runners.head
     editor.state.set(javaSource(42))
@@ -1496,8 +1557,8 @@ class EvaEditorSpec extends FunSuite {
   test("a source change after the worker response still invalidates Java commands before delivery") {
     val source = javaSource()
     val factory = new ControlledRunnerFactory
-    val editor = new EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
-      javaRunnerFactory = factory.create)
+    val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
+      runnerFactory = factory.create)
     val result = editor.getCurrentTurtleCommands()
     val runner = factory.runners.head
     val changed = runner.requests.head.result.future.map { _ =>
@@ -1523,8 +1584,8 @@ class EvaEditorSpec extends FunSuite {
   test("restoring an identical Java source keeps its pending execution active") {
     val source = javaSource()
     val factory = new ControlledRunnerFactory
-    val editor = new EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
-      javaRunnerFactory = factory.create)
+    val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
+      runnerFactory = factory.create)
     val result = editor.getCurrentTurtleCommands()
     val runner = factory.runners.head
     editor.state.set(source.copy())
@@ -1565,8 +1626,8 @@ class EvaEditorSpec extends FunSuite {
     val runner = new ControlledRunner
     var calls = 0
     val error = IllegalStateException("worker unavailable")
-    val editor = new EvaEditorPlain(Var[ProgrammingState](javaSource()), testingConfig,
-      javaRunnerFactory = () => { calls += 1; if calls == 1 then throw error else runner })
+    val editor = javaPlain(Var[ProgrammingState](javaSource()), testingConfig,
+      runnerFactory = () => { calls += 1; if calls == 1 then throw error else runner })
     editor.getCurrentTurtleCommands().failed.flatMap { failure =>
       assert(failure eq error)
       val retry = editor.getCurrentTurtleCommands()
@@ -1579,8 +1640,8 @@ class EvaEditorSpec extends FunSuite {
 
   test("a successful tab switch releases a Java runner without requiring a mounted editor") {
     val factory = new ControlledRunnerFactory
-    val editor = new EvaEditorPlain(Var[ProgrammingState](javaSource()), testingConfig,
-      javaRunnerFactory = factory.create)
+    val editor = javaPlain(Var[ProgrammingState](javaSource()), testingConfig,
+      runnerFactory = factory.create)
     val result = editor.getCurrentTurtleCommands()
     val runner = factory.runners.head
     runner.complete()
@@ -1596,8 +1657,8 @@ class EvaEditorSpec extends FunSuite {
   test("a failed tab switch leaves the pending Java run and its raw source intact") {
     val source = javaSource()
     val factory = new ControlledRunnerFactory
-    val editor = new EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
-      javaRunnerFactory = factory.create)
+    val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
+      runnerFactory = factory.create)
     val result = editor.getCurrentTurtleCommands()
     val runner = factory.runners.head
     editor.select(EvaEditor.Tab.Python)
@@ -1621,8 +1682,8 @@ class EvaEditorSpec extends FunSuite {
     Future.sequence(sources.map { code =>
       val source = ProgrammingStateJavaString(code)
       val factory = new ControlledRunnerFactory
-      val editor = new EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
-        javaRunnerFactory = factory.create)
+      val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
+        runnerFactory = factory.create)
       editor.getCurrentTurtleCommands().map { commands =>
         assertEquals(commands, List(TurtleCommand[Double]("forward", List(12.0))))
         assertEquals(factory.runners.size, 0)
