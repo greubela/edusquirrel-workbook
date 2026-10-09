@@ -89,7 +89,7 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
 
   private def ensureDefaultLanguageSourcesLoaded(): Future[?] = {
     val loadLanguageMapDirs: Set[String] = Set(
-      "basic", "login", "entitynames", "turtlestitch", "blockeditor", "embroideryworkbook", "testworkbook", "plantworkshop", "prompts", "compressionworkbook", "emailSimulator", "digitalWorkbooks"
+      "basic", "login", "entitynames", "turtlestitch", "blockeditor", "embroideryworkbook", "testworkbook", "plantworkshop", "prompts", "compressionworkbook", "monksworkbook", "emailSimulator", "digitalWorkbooks"
     )
 
     val snapFiles: Set[LanguageMapInputSource] = Set(

@@ -5,7 +5,7 @@ import it.evadid.distribution.command.SerializedException
 import it.evadid.homepage.control.change.LanguageMapStorageControl.STARTUP_STRATEGY.CONTINUE_AFTER_LOCAL_CACHE_SUCCESS
 import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
-import it.evadid.homepage.workbook.content.{CreatePhishingWorkbook, CreateCompressionWorkbook, CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, CreateTestWorkbook}
+import it.evadid.homepage.workbook.content.{CreateMonksWorkbook, CreatePhishingWorkbook, CreateCompressionWorkbook, CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, CreateTestWorkbook}
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import org.scalajs.dom
@@ -23,7 +23,7 @@ object HomepageStartupLogic {
 
   private given ExecutionContextExecutor = ExecutionContext.global
 
-  private val tryToLoad: List[String] = List("landingPage", "loginPage", "plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "workbookCompression", "workbookTest", "workbookPhishing", "workbookImageRecognition")
+  private val tryToLoad: List[String] = List("landingPage", "loginPage", "plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "workbookCompression", "workbookMonks", "workbookTest", "workbookPhishing", "workbookImageRecognition")
   private val canLoad: List[String] = tryToLoad.flatMap(id => if (dom.document.getElementById(id) != null) Some(id) else None)
 
   def renderElementIntoApp(logger: Logger, domElement: Element): Unit = {
@@ -56,6 +56,12 @@ object HomepageStartupLogic {
         print(s"Workbook constructor: \n${workbook.loadedWorkbook.toStringConstructorLike}\n\n")
       })
       fullInfo.usageControl.changeWorkbook(workbook)
+      // A workbook with only German content must not open with missing English labels.
+      workbook.foreach { info =>
+        val languages = info.loadedWorkbook.metadata.availableLanguages
+        if (!languages.contains(fullInfo.homepageInfoNow().currentLanguage))
+          languages.headOption.foreach(fullInfo.usageControl.changeLanguage)
+      }
 
       val futureTestCalc = testCalculations().recover { err =>
         logger.logExceptionWarn("testCalculations failed", err)
@@ -75,6 +81,7 @@ object HomepageStartupLogic {
     case "workbookPhishing" => Some(CreatePhishingWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
     case "workbookTest" => Some(CreateTestWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
     case "workbookPlantWorkshop" => Some(CreatePlantworkshopWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
+    case "workbookMonks" => Some(CreateMonksWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
     case "workbookCompression" => Some(CreateCompressionWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
     case _ => None
   }
