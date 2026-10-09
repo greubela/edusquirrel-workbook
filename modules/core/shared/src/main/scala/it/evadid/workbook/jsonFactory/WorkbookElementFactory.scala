@@ -33,6 +33,7 @@ import it.evadid.workbook.elements.interactionElements.pixel.BinaryPixelInteract
 import it.evadid.workbook.elements.interactionElements.blockchain.SquareMiddleHashInteraction
 import it.evadid.workbook.elements.interactionElements.blockchain.Sha256Interaction
 import it.evadid.workbook.elements.interactionElements.blockchain.BlockchainInteraction
+import it.evadid.workbook.elements.interactionElements.text.UnicodeComparisonInteraction
 
 object WorkbookElementFactory {
 
@@ -145,6 +146,7 @@ object WorkbookElementFactory {
     classOf[SquareMiddleHashInteraction].getSimpleName -> SquareMiddleHashInteraction.factory,
     classOf[Sha256Interaction].getSimpleName -> Sha256Interaction.factory,
     classOf[BlockchainInteraction].getSimpleName -> BlockchainInteraction.factory,
+    classOf[UnicodeComparisonInteraction].getSimpleName -> UnicodeComparisonInteraction.factory,
     classOf[ThresholdNeuronInteraction].getSimpleName -> ThresholdNeuronInteraction.factory,
     classOf[MailEditor].getSimpleName -> MailEditor.factory,
     classOf[Workbook].getSimpleName -> Workbook.factory,

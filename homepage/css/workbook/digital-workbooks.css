@@ -79,3 +79,16 @@ button.pixel-cell { cursor: pointer; }
 .blockchain-block code { display: block; overflow-wrap: anywhere; }
 .blockchain-preview, .blockchain-mining-status { color: var(--color-text-secondary); }
 .blockchain-error { color: var(--color-accent-strong); }
+
+/* Local text inspection: no links are rendered or followed. */
+.unicode-comparison { min-width: 0; margin-block: var(--space-md); padding: var(--space-md); border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); }
+.unicode-controls { display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: end; }
+.unicode-controls label { display: flex; flex: 1 1 var(--unicode-table-min-width); min-width: 0; flex-direction: column; gap: var(--space-sm); }
+.unicode-comparison .unicode-controls textarea { box-sizing: border-box; width: 100%; min-width: 0; padding: var(--space-sm); border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); font: inherit; background: var(--color-surface-base); color: var(--color-text-primary); }
+.unicode-comparison .unicode-controls textarea:focus-visible { outline: 2px solid var(--color-accent-active); outline-offset: 2px; }
+.unicode-tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--unicode-table-min-width)), 1fr)); gap: var(--space-md); }
+.unicode-tables table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.unicode-tables th, .unicode-tables td { padding: var(--space-sm); border: 1px solid var(--color-border-soft); text-align: start; overflow-wrap: anywhere; }
+.unicode-tables code { unicode-bidi: isolate; }
+.unicode-invalid { color: var(--color-accent-strong); }
+.unicode-status { color: var(--color-text-secondary); }

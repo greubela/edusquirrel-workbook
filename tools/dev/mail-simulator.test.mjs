@@ -133,6 +133,8 @@ test('mail simulator triages original messages, restores progress and composes o
     });
     await page.reload();
     if (await login.isVisible()) await login.click();
+    await page.locator('.section-block').first().click({timeout:60000});
+    await page.getByText('Write emails – simulation',{exact:true}).waitFor();
     await open.nth(1).click();
     await folder('Sent').click();
     assert.equal(await editor.locator('.mail-list-item').count(),1,'sent mail survives a page reload');
@@ -190,6 +192,8 @@ test('mail simulator triages original messages, restores progress and composes o
     assert(changed,'stored mailbox is available for renderer safety testing');
     await page.reload();
     if (await login.isVisible()) await login.click();
+    await page.locator('.section-block').first().click({timeout:60000});
+    await page.getByText('Write emails – simulation',{exact:true}).waitFor();
     await open.first().click();
     await editor.locator('.mail-list-item').filter({hasText:'HTML safety example'}).click();
     assert((await editor.locator('.mail-body').innerText()).includes('Safe content'));
