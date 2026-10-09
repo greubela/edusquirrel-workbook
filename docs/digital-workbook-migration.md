@@ -69,7 +69,7 @@ The binary-pixel extension passed all 1,906 Scala regression tests (core JVM 747
 
 ## Blockchain migration started
 
-`homepage/blockchainWorkbook/index.html` implements the entry video/reflection and first-pass claim/research table (source pp. 1–2), trust and payment comparisons (pp. 3–5), the cabin ledger and signature/storage research (pp. 6–9), pseudonymity and acquiring points (pp. 10–13), plus exercises 4.1–4.4 and the exact square-middle calculator (pp. 14–15). Both English and German content are registered. Intermediate decentralization and anonymity reassessments are saved as separate reflections; the final reassessment column is deferred with the remaining chapters and this omission is stated in the workbook.
+`homepage/blockchainWorkbook/index.html` implements the entry video/reflection and first-pass claim/research table (source pp. 1–2), trust and payment comparisons (pp. 3–5), the cabin ledger and signature/storage research (pp. 6–9), pseudonymity and acquiring points (pp. 10–13), plus exercises 4.1–4.6, exact square-middle hashing and SHA-256 experiments (pp. 14–17). Both English and German content are registered. Intermediate decentralization and anonymity reassessments are saved as separate reflections; the final reassessment column is deferred with the remaining chapters and this omission is stated in the workbook.
 
 The ledger chapter preserves the six original transfers and initial issuance of 10 HP per person. `TeachingLedger` derives balances using exact integer arithmetic and rejects unknown accounts, nonpositive/self transfers and chronological overspending. Expected balances are calculated from the history, not independently hard-coded into the exercise. The source’s Anna/Tom calculation is extended to all four people so learners can check conservation of 40 HP. A choice question checks Anna’s proposed 4 HP payment; free reflections cover fraud, the exercise’s unforgeable-signature assumption, centralized versus distributed copies and real Bitcoin counterparts. This is bookkeeping, not a wallet or a cryptographic-signature implementation.
 
@@ -81,14 +81,20 @@ The shared digital control CSS scopes table, neuron and hash inputs above the ge
 
 The source solution sheet's collision example is erroneous: it prints `35² = 2025` and treats 35 and 45 as a collision. In fact `35² = 1225 → 22` and `45² = 2025 → 02`. The implementation follows the worksheet's mathematical rule; 35 and 65 are a valid collision with hash 22. Original downloads remain unchanged.
 
-SHA-256, block linkage/mining, energy and the final argument remain to be migrated. No Bitcoin wallet, transaction service, cryptographic library or other new dependency was introduced.
+The SHA-256 chapter now adapts source pp. 16–17: the original capitalization experiment, UTF-8 and hexadecimal reflections, the 256-bit output space and the manual one-zero challenge. An optional two-zero challenge extends the difficulty reflection, with an initially collapsed probability hint. Empty input is valid; text is not trimmed or Unicode-normalized. Source wording about impossible inversion is replaced with computational infeasibility, and Bitcoin block hashing is distinguished from these single-hash text experiments.
+
+`Sha256` implements FIPS 180-4 in shared core using byte arrays and 32-bit arithmetic, without a crypto dependency or platform API. `Sha256Interaction` stores raw strings and defines comparison versus prefix tasks. Inputs are bounded to 4096 UTF-16 code units for interactive use; the hash model itself accepts byte arrays. Prefix grading checks leading hexadecimal zeros and accepts every matching input. The inline `Sha256Renderer` uses shared hash-control styles, wraps the full digest on narrow screens and counts differing bits; no fullscreen editor or automatic mining loop is needed here.
+
+Block linkage/mining, energy and the final argument remain to be migrated. No Bitcoin wallet, transaction service, cryptographic library or other new dependency was introduced.
 
 The Blockchain extension and merge with main passed all 1,935 Scala regression tests (core JVM 758, core JS 746, client 427, server 1, worker 3), including the Mons Komputarius workbook tests. The dedicated Blockchain browser check covers free research-table inputs, exact large-integer computation, invalid drafts, leading-zero hashes, distinct-input collisions, preimages, reset, mobile layout and reload persistence. Migration-link, stylesheet and Pages assembly checks also passed. Browser bundles were rebuilt with sbt buildJS on 2026-10-09.
 
 The subsequent trust/ledger/privacy extension passed 21 focused Scala tests (seven ledger tests on each of JVM and JavaScript, seven workbook authoring/serialization tests), both digital-workbook browser scenarios, and all 13 migration-link, stylesheet and Pages assembly checks. The Blockchain browser scenario additionally covers correct/incorrect balances, ordinary radio clicks after table edits, stable focused/hovered input geometry, mobile balance layout and persistence of trust/privacy research. Browser bundles were rebuilt with `sbt buildJS`; the branch contains main at `56488136`. This validation also ran on 2026-10-09.
 
-    sbt 'coreJVM/testOnly *SquareMiddleHashSpec *TeachingLedgerSpec *WorkbookElementSerializableRoundTripSpec'
-    sbt 'coreJS/testOnly *SquareMiddleHashSpec *TeachingLedgerSpec'
+The SHA-256 extension passed 227 focused Scala checks: nine hash/interaction tests and 100 registered-element serialization checks on each of JVM and JavaScript, plus nine workbook authoring tests. Reference vectors cover empty/short/multi-block text, byte-padding boundaries, unsigned byte values, Unicode, exact whitespace and leading-zero digests. Both digital-workbook browser scenarios and all 13 static checks passed. The Blockchain scenario additionally checks both prefix challenges, 4096-character inputs, differing-bit counts, hash-space grading, reset, mobile digest wrapping and raw-text reload persistence. `sbt buildJS` rebuilt the browser artifacts; latest fetched main remained `56488136`. Validation ran on 2026-10-09.
+
+    sbt 'coreJVM/testOnly *SquareMiddleHashSpec *TeachingLedgerSpec *Sha256Spec *WorkbookElementSerializableRoundTripSpec'
+    sbt 'coreJS/testOnly *SquareMiddleHashSpec *TeachingLedgerSpec *Sha256Spec *WorkbookElementSerializableRoundTripSpec'
     sbt 'client/testOnly *CreateBlockchainWorkbookSpec *MonksWorkbookSpec'
     sbt buildJS
     node tools/dev/workbook-migration-links.test.mjs

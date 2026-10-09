@@ -45,12 +45,16 @@ button.pixel-cell { cursor: pointer; }
 .pixel-actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-block: var(--space-md); }
 .pixel-feedback, .pixel-probe { color: var(--color-text-secondary); }
 
-.square-middle-hash { min-width: 0; border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); padding: var(--space-lg); }
-.square-middle-hash legend { font-weight: 600; padding-inline: var(--space-sm); }
+.square-middle-hash, .sha256-interaction { min-width: 0; border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); padding: var(--space-lg); }
+.square-middle-hash legend, .sha256-interaction legend { font-weight: 600; padding-inline: var(--space-sm); }
 .hash-controls { display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: end; }
 .hash-controls label { display: flex; flex-direction: column; gap: var(--space-sm); min-width: 0; flex: 1 1 var(--neuron-control-min-width); }
-.square-middle-hash .hash-controls input { box-sizing: border-box; width: 100%; min-width: 0; font: inherit; padding: var(--space-sm); border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); background: var(--color-surface-base); color: var(--color-text-primary); }
-.square-middle-hash .hash-controls input:focus-visible { outline: 2px solid var(--color-accent-active); outline-offset: 2px; }
+.square-middle-hash .hash-controls input, .sha256-interaction .hash-controls textarea { box-sizing: border-box; width: 100%; min-width: 0; font: inherit; padding: var(--space-sm); border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); background: var(--color-surface-base); color: var(--color-text-primary); }
+.square-middle-hash .hash-controls input:focus-visible, .sha256-interaction .hash-controls textarea:focus-visible { outline: 2px solid var(--color-accent-active); outline-offset: 2px; }
+.sha256-interaction .hash-controls textarea { resize: vertical; min-height: 5em; }
+.sha256-results table { table-layout: fixed; }
+.sha256-results code { display: block; overflow-wrap: anywhere; }
+.sha256-difference { color: var(--color-text-secondary); }
 .hash-results { overflow-x: auto; }
 .hash-results table { width: 100%; border-collapse: collapse; }
 .hash-results caption { text-align: start; font-weight: 600; margin-block: var(--space-sm); }

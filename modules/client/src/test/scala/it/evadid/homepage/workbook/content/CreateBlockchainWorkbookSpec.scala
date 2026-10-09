@@ -56,4 +56,21 @@ class CreateBlockchainWorkbookSpec extends FunSuite {
     assertEquals(choice.isCorrect(ChoiceAnswer(List(1))), Some(true))
     assertEquals(choice.isCorrect(ChoiceAnswer(List(0))), Some(false))
   }
+  test("SHA-256 chapter preserves the source comparison and manual prefix challenge") {
+    val interactions = CreateBlockchainWorkbook(null).createWorkbook.allChildrenFullSubtree.collect {
+      case s: Sha256Interaction => s
+    }
+    assertEquals(interactions.map(_.task), List(CompareSha256(), FindSha256Prefix(1), FindSha256Prefix(2)))
+    assertEquals(interactions.head.initial, Sha256Answer("Informatik", "informatik"))
+    assertEquals(interactions.head.isCorrect(interactions.head.initial), None)
+    assertEquals(interactions(1).isCorrect(Sha256Answer("39")), Some(true))
+    assertEquals(interactions(2).isCorrect(Sha256Answer("39")), Some(false))
+  }
+  test("256-bit hash space accepts powers and the exact decimal expansion") {
+    val table = CreateBlockchainWorkbook.hashSpaceTable
+    for (answer <- List("2^256", "2**256", "2²⁵⁶", BigInt(2).pow(256).toString))
+      assert(table.grade(TableAnswer(List(answer))).get.passed)
+    for (answer <- List("256", "512", "16^256", ""))
+      assert(!table.grade(TableAnswer(List(answer))).get.passed)
+  }
 }

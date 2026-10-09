@@ -60,6 +60,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
         List(PixelThresholdProbe(content("pixels/probe"), List(PixelPosition(0, 1)), 1)),
         List(PixelPreset(content("pixels/preset"), BinaryPixelImage.fromRows(List("10"))))),
       SquareMiddleHashInteraction("hash", content("hash/title"), FindHashPreimage("22"), SquareMiddleHashAnswer("65")),
+      Sha256Interaction("sha256", content("hash/sha256"), FindSha256Prefix(2), Sha256Answer("286")),
       workbook, section,
       ExerciseContainer("container", content("container/title"), List(input)),
       LabeledWorkbookElement("labeled", input, WorkbookLabel(content("label/hint"), HintLabel)),

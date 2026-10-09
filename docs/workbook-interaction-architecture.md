@@ -116,3 +116,9 @@ The Blockchain balance exercise also reuses this interaction and renderer. `Teac
 `SquareMiddleHash` in shared core performs the worksheet's exact decimal `BigInt` calculation. `SquareMiddleHashInteraction` defines an exploration, collision or preimage task and stores `SquareMiddleHashAnswer` input strings. Invalid numeric strings are persisted drafts, not computed domain results; the parser returns no calculation for them. Collision grading compares numeric inputs and exact two-digit hashes, so zero-prefixed spellings of the same number are not collisions.
 
 `SquareMiddleHashRenderer` binds text controls directly to that learner value, renders calculated squares with semantic `mark` elements, and displays model grading. It is inline and needs no fullscreen editor. All visual rules belong to dedicated CSS with shared tokens.
+
+## SHA-256 experiments
+
+`Sha256` is a shared-core byte-hashing model implementing FIPS 180-4. It has no DOM, workbook state, platform crypto API or external dependency. `Sha256Interaction` adds the exercise configuration (comparison or hexadecimal prefix challenge), bounded raw `Sha256Answer` strings, persistence and grading. It does not search automatically or record attempts; it evaluates the learner's current input.
+
+`Sha256Renderer` in client binds textareas to that answer, renders complete hex digests and a differing-bit count for comparisons, and displays localized feedback. The small experiment stays inline, so it needs no editor or fullscreen lifecycle. Shared hash controls and responsive digest wrapping are defined in `digital-workbooks.css`. A later block/mining simulator can reuse `Sha256` while defining its own interaction value and fullscreen editor.

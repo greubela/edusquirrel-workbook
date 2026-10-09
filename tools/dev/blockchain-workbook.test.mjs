@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
+import {createHash} from 'node:crypto';
 import {chromium} from 'playwright';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const origin = 'http://localhost:9000';
 const mime = {'.html':'text/html', '.js':'text/javascript', '.css':'text/css', '.json':'application/json', '.svg':'image/svg+xml', '.png':'image/png'};
-test('Blockchain workbook saves trust/privacy research, grades balances and computes exact Hashq on mobile', async () => {
+test('Blockchain workbook persists research, grades balances and runs Hashq/SHA-256 experiments on mobile', async () => {
   const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium', args:['--no-sandbox']});
   try {
     const page = await browser.newPage({viewport:{width:1440,height:900}});
@@ -114,11 +115,69 @@ test('Blockchain workbook saves trust/privacy research, grades balances and comp
     assert.equal(await target22.locator('.hash-feedback').innerText(), 'Correct.');
     await calculators.nth(3).locator('input').fill('76');
     assert.equal(await calculators.nth(3).locator('.hash-feedback').innerText(), 'Correct.');
+    await page.locator('.section-block').nth(5).click();
+    const sha=page.locator('.sha256-interaction');
+    await sha.first().waitFor();
+    assert.equal(await sha.count(), 3);
+    const comparisonSha=sha.first();
+    const digest=text=>createHash('sha256').update(text,'utf8').digest('hex');
+    assert.equal(await comparisonSha.locator('td code').first().innerText(), digest('Informatik'));
+    assert.equal(await comparisonSha.locator('td code').nth(1).innerText(), digest('informatik'));
+    assert.match(await comparisonSha.locator('.sha256-difference').innerText(), /134 of 256/);
+    await comparisonSha.locator('textarea').nth(1).fill('Informatik');
+    assert.match(await comparisonSha.locator('.sha256-difference').innerText(), /^0 of 256/);
+    const unicodeText='Grüße 🌍\n ';
+    await comparisonSha.locator('textarea').first().fill(unicodeText);
+    assert.equal(await comparisonSha.locator('td code').first().innerText(), digest(unicodeText));
+    await comparisonSha.locator('textarea').first().fill('');
+    assert.equal(await comparisonSha.locator('td code').first().innerText(), digest(''));
+    await comparisonSha.locator('textarea').first().fill('a'.repeat(4096));
+    assert.equal(await comparisonSha.locator('td code').first().innerText(), digest('a'.repeat(4096)));
+    assert.equal(await comparisonSha.locator('textarea').first().getAttribute('maxlength'), '4096');
+    for (const viewport of [{width:390,height:844}, {width:844,height:390}, {width:1440,height:900}]) {
+      await page.setViewportSize(viewport);
+      const geometry=await comparisonSha.evaluate(el=>{
+        const box=el.getBoundingClientRect(), output=el.querySelector('td code');
+        return {left:box.left,right:box.right,width:innerWidth,inlineStyles:el.querySelectorAll('[style], style').length,
+          overflow:getComputedStyle(output).overflowWrap,outputFits:output.scrollWidth<=output.clientWidth+1,
+          border:getComputedStyle(el.querySelector('textarea')).borderTopWidth};
+      });
+      assert(geometry.left>=0 && geometry.right<=geometry.width+1);
+      assert.equal(geometry.inlineStyles,0);
+      assert.equal(geometry.overflow,'anywhere');
+      assert(geometry.outputFits,'the complete 64-digit hash wraps on mobile');
+      assert.equal(geometry.border,'1px');
+    }
+    await comparisonSha.getByRole('button',{name:'Reset inputs'}).click();
+    assert.equal(await comparisonSha.locator('textarea').first().inputValue(),'Informatik');
+    await comparisonSha.locator('textarea').first().fill(unicodeText);
+    const prefixOne=sha.nth(1), prefixTwo=sha.nth(2);
+    await prefixOne.locator('textarea').fill('abc');
+    assert.match(await prefixOne.locator('.hash-feedback').innerText(),/does not yet/);
+    await prefixOne.locator('textarea').fill('39');
+    assert.equal(await prefixOne.locator('.hash-feedback').innerText(),'Correct.');
+    await prefixTwo.locator('textarea').fill('39');
+    assert.match(await prefixTwo.locator('.hash-feedback').innerText(),/does not yet/);
+    await prefixTwo.locator('textarea').fill('286');
+    assert.equal(await prefixTwo.locator('.hash-feedback').innerText(),'Correct.');
+    assert.match(await prefixTwo.locator('td code').innerText(),/^00/);
+    const space=page.locator('.answer-table');
+    await space.locator('input').fill('512');
+    assert.match(await space.innerText(),/0 of 1 checked cells/);
+    await space.locator('input').fill('2^256');
+    assert.match(await space.innerText(),/1 of 1 checked cells/);
     await page.reload();
     await page.locator('.section-block').nth(4).click({timeout:60000});
     assert.equal(await collision.locator('.hash-feedback').innerText(), 'Correct.');
     assert.equal(await explore.locator('input').first().inputValue(), '45');
     assert.match(await hashTable.innerText(), /6 of 6 checked cells/);
+    await page.locator('.section-block').nth(5).click();
+    await sha.first().waitFor();
+    assert.equal(await comparisonSha.locator('textarea').first().inputValue(),unicodeText);
+    assert.equal(await comparisonSha.locator('td code').first().innerText(),digest(unicodeText));
+    assert.equal(await prefixOne.locator('.hash-feedback').innerText(),'Correct.');
+    assert.equal(await prefixTwo.locator('.hash-feedback').innerText(),'Correct.');
+    assert.match(await space.innerText(),/1 of 1 checked cells/);
     await page.locator('.section-block').nth(2).click();
     await page.getByText('Balances after entry 06', {exact:true}).waitFor();
     assert.match(await balances.innerText(), /4 of 4 checked cells/);

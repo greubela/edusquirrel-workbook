@@ -9,7 +9,7 @@ import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.workbook.model.blockchain.*
 import it.evadid.workbook.elements.structureElements.Workbook
 
-/** Source activities through Hashq (pp. 1–15); later technical chapters remain in progress. */
+/** Source activities through SHA-256 (pp. 1–17); later technical chapters remain in progress. */
 case class CreateBlockchainWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
   override val workbookId = "workbookBlockchain"
   private def id(key: String) = LanguageMapContentId(s"blockchainworkbook/$key")
@@ -53,6 +53,16 @@ case class CreateBlockchainWorkbook(fullInfo: FullInfo) extends WorkbookFactory 
       SquareMiddleHashInteraction("blockchain-hash-preimage-22", LanguageMapContentId("blockchainworkbook/preimage22Title"), FindHashPreimage("22")),
       SquareMiddleHashInteraction("blockchain-hash-preimage-77", LanguageMapContentId("blockchainworkbook/preimage77Title"), FindHashPreimage("77")),
       instructionPlaintext("blockchainworkbook/hashReflection"), createTextInput("blockchain-hash-reflection")
+    )))),
+    section("blockchain-sha256", "blockchainworkbook/shaTitle", List(container("blockchainworkbook/shaTitle", List(
+      instructionPlaintext("blockchainworkbook/shaExplanation"),
+      Sha256Interaction("blockchain-sha-compare", id("shaCompareTitle"), initial = Sha256Answer("Informatik", "informatik"))
+    ) ++ reflections("shaTextEncoding", "shaHexadecimal", "shaAvalanche") ++ List(
+      instructionPlaintext("blockchainworkbook/shaSpaceTask"), CreateBlockchainWorkbook.hashSpaceTable,
+      Sha256Interaction("blockchain-sha-prefix-one", id("shaPrefixOneTitle"), FindSha256Prefix(1))
+    ) ++ reflections("shaDifficultyReflection") ++ List(
+      instructionCollapsibleHint("blockchainworkbook/shaDifficultyHintTitle", "blockchainworkbook/shaDifficultyHint"),
+      Sha256Interaction("blockchain-sha-prefix-two", id("shaPrefixTwoTitle"), FindSha256Prefix(2))
     ))))
   ), User("Till Favier", "author-blockchain-till-favier", ""))
 }
@@ -65,6 +75,9 @@ object CreateBlockchainWorkbook {
       List(FixedTableCell(id(key)), EditableTableCell(), EditableTableCell())) ++
       List.fill(2)(List.fill(3)(EditableTableCell())))
   val sourceInputs: List[Int] = List(42, 99, 13)
+  val hashSpaceTable = AnswerTableInteraction("blockchain-sha-space", id("shaSpaceTitle"),
+    List(id("sha256Bits")), List(id("shaPossibleOutputs")),
+    List(List(EditableTableCell(Some(List("2^256", "2**256", "2²⁵⁶", BigInt(2).pow(256).toString))))))
   val participants = List("Anna", "Lukas", "Sara", "Tom")
   val sourceTransfers = List(
     LedgerTransfer("Anna", "Lukas", 4), LedgerTransfer("Lukas", "Sara", 6), LedgerTransfer("Sara", "Tom", 2),

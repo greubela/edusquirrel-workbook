@@ -35,7 +35,7 @@ Shared workbook abstractions live in [WorkbookElement.scala](modules/core/shared
 | [embroideryWorkbook](homepage/embroideryWorkbook/index.html) | Embroidery workbook |
 | [compressionWorkbook](homepage/compressionWorkbook/index.html) | Data compression workbook |
 | [plantWorkshopWorkbook](homepage/plantWorkshopWorkbook/index.html) | Plant workshop on the workbook architecture |
-| [blockchainWorkbook](homepage/blockchainWorkbook/index.html) | Partial Blockchain workbook: trust, ledger balances, pseudonyms, exact Hashq, collisions and preimages |
+| [blockchainWorkbook](homepage/blockchainWorkbook/index.html) | Partial Blockchain workbook: trust, ledgers, pseudonyms, Hashq and SHA-256 experiments |
 | [imageRecognitionWorkbook](homepage/imageRecognitionWorkbook/index.html) | Partial image-recognition workbook with binary tables, threshold neuron and pixel feature experiments |
 | [phishingWorkbook](homepage/phishingWorkbook/index.html) | Email sorting simulator and local writing practice |
 | [plantWorkshop](homepage/plantWorkshop/index.html) | Separate legacy plant application |

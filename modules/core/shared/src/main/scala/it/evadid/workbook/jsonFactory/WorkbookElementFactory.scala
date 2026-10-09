@@ -31,6 +31,7 @@ import it.evadid.workbook.elements.interactionElements.neuron.ThresholdNeuronInt
 import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
 import it.evadid.workbook.elements.interactionElements.pixel.BinaryPixelInteraction
 import it.evadid.workbook.elements.interactionElements.blockchain.SquareMiddleHashInteraction
+import it.evadid.workbook.elements.interactionElements.blockchain.Sha256Interaction
 
 object WorkbookElementFactory {
 
@@ -141,6 +142,7 @@ object WorkbookElementFactory {
     classOf[AnswerTableInteraction].getSimpleName -> AnswerTableInteraction.factory,
     classOf[BinaryPixelInteraction].getSimpleName -> BinaryPixelInteraction.factory,
     classOf[SquareMiddleHashInteraction].getSimpleName -> SquareMiddleHashInteraction.factory,
+    classOf[Sha256Interaction].getSimpleName -> Sha256Interaction.factory,
     classOf[ThresholdNeuronInteraction].getSimpleName -> ThresholdNeuronInteraction.factory,
     classOf[MailEditor].getSimpleName -> MailEditor.factory,
     classOf[Workbook].getSimpleName -> Workbook.factory,
