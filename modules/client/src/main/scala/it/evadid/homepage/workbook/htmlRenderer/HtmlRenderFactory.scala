@@ -45,6 +45,8 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.choice.Choic
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.neuron.ThresholdNeuronRenderer
 
 import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
+import it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.plot.CoordinatePlotRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.table.AnswerTableRenderer
 import it.evadid.workbook.elements.interactionElements.pixel.BinaryPixelInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.pixel.BinaryPixelRenderer
@@ -133,6 +135,7 @@ object HtmlRenderFactory {
       case h: UnicodeComparisonInteraction => UnicodeComparisonRenderer.renderWorkbookElement(h)
       case p: BinaryPixelInteraction => BinaryPixelRenderer.renderWorkbookElement(p)
       case t: AnswerTableInteraction => AnswerTableRenderer.renderWorkbookElement(t)
+      case p: CoordinatePlotInteraction => CoordinatePlotRenderer.renderWorkbookElement(p)
       case c: ChoiceInteraction => ChoiceInteractionRenderer.renderWorkbookElement(c)
       case n: ThresholdNeuronInteraction => ThresholdNeuronRenderer.renderWorkbookElement(n)
       case m: MailInteraction => HtmlMailInteractionRenderer.renderWorkbookElement(m)

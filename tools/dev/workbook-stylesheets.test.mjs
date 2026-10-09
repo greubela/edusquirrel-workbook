@@ -80,6 +80,8 @@ test('mail and digital exercise components bind classes rather than inline Lamin
     'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/table',
     'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/pixel',
     'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/blockchain',
+    'modules/client/src/main/scala/it/evadid/homepage/webElements/editor/plot',
+    'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/plot',
     'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/text'
   ];
   const inlineStyle=/\b(?:styleAttr|color|backgroundColor|fontSize|fontFamily|width|height|padding|margin|border|display)\s*(?::=|<--)|\bstyleTag\s*\(|\.style\s*(?:\.|=)/;

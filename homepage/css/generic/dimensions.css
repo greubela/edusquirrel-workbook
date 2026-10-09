@@ -1,4 +1,8 @@
 :root{
+    --plot-width: 40rem;
+    --plot-stroke-width: 2px;
+    --plot-point-radius: 5px;
+    --plot-font-size: 20px;
     --evacuation-cell-size: max(2.75rem, 44px);
     --blockchain-card-min-width: 18rem;
   --unicode-table-min-width: 20rem;

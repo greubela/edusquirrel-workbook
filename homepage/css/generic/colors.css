@@ -1,6 +1,7 @@
 /* Shared design tokens for the workbook experience.
    Color policy: define colors only in this file and consume them via CSS variables in other stylesheets. */
 :root {
+    --color-plot-data: var(--color-accent-active);
     --color-evacuation-floor: var(--color-surface-base);
     --color-evacuation-wall: var(--color-gray-12);
     --color-evacuation-exit: var(--color-green-2);

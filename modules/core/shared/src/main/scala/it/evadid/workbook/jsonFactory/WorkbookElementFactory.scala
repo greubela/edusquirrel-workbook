@@ -32,6 +32,7 @@ import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.neuron.ThresholdNeuronInteraction
 
 import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
+import it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction
 import it.evadid.workbook.elements.interactionElements.pixel.BinaryPixelInteraction
 import it.evadid.workbook.elements.interactionElements.blockchain.SquareMiddleHashInteraction
 import it.evadid.workbook.elements.interactionElements.blockchain.Sha256Interaction
@@ -145,6 +146,7 @@ object WorkbookElementFactory {
     classOf[MailInteraction].getSimpleName -> MailInteraction.factory,
     classOf[ChoiceInteraction].getSimpleName -> ChoiceInteraction.factory,
     classOf[AnswerTableInteraction].getSimpleName -> AnswerTableInteraction.factory,
+    classOf[CoordinatePlotInteraction].getSimpleName -> CoordinatePlotInteraction.factory,
     classOf[BinaryPixelInteraction].getSimpleName -> BinaryPixelInteraction.factory,
     classOf[SquareMiddleHashInteraction].getSimpleName -> SquareMiddleHashInteraction.factory,
     classOf[Sha256Interaction].getSimpleName -> Sha256Interaction.factory,

@@ -49,6 +49,23 @@ class CreateEvacuationWorkbookSpec extends FunSuite {
     for (y <- List(3, 5)) assertEquals(hall.tiles(y * hall.cols + 5), EvacuationTile.Floor)
   }
 
+  test("door-width predictions and observations have independent plots with the original PDF axes") {
+    val plots = CreateEvacuationWorkbook(null).createWorkbook.allChildrenFullSubtree.collect {
+      case e: it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction => e
+    }
+    assertEquals(plots.map(_.elementId).toSet, Set("evacuation-door-prediction-plot", "evacuation-door-observation-plot"))
+    val classifications = CreateEvacuationWorkbook(null).createWorkbook.allChildrenFullSubtree.collect {
+      case c: it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction => c
+    }
+    assertEquals(classifications.size, 2)
+    assert(classifications.forall(c => c.expected.isEmpty && !c.allowMultiple && c.options.size == 6))
+    for (plot <- plots) {
+      assertEquals(plot.xAxis, it.evadid.workbook.model.plot.PlotAxis(0, 3, 0.5))
+      assertEquals(plot.yAxis, it.evadid.workbook.model.plot.PlotAxis(0, 30, 10))
+      assert(plot.defaultValue.points.isEmpty)
+    }
+  }
+
   test("entire evacuation workbook round-trips through both definition formats") {
     val workbook = CreateEvacuationWorkbook(null).createWorkbook
     for (serializer <- List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike))

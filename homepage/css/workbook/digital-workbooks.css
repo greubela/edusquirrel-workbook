@@ -92,3 +92,25 @@ button.pixel-cell { cursor: pointer; }
 .unicode-tables code { unicode-bidi: isolate; }
 .unicode-invalid { color: var(--color-accent-strong); }
 .unicode-status { color: var(--color-text-secondary); }
+
+/* Learner-authored graphs use SVG coordinates for data and CSS for presentation. */
+.coordinate-plot { min-width: 0; margin-block: var(--space-lg); padding: var(--space-md); border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); }
+.coordinate-plot legend { font-weight: 600; }
+.coordinate-plot__graph { display: block; width: 100%; max-width: var(--plot-width); height: auto; background: var(--color-surface-base); }
+.coordinate-plot__graph text { fill: var(--color-text-primary); font: inherit; font-size: var(--plot-font-size); }
+.coordinate-plot__grid { stroke: var(--color-border-soft); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.coordinate-plot__axes { fill: none; stroke: var(--color-text-primary); stroke-width: var(--plot-stroke-width); vector-effect: non-scaling-stroke; }
+.coordinate-plot__curve { fill: none; stroke: var(--color-plot-data); stroke-width: var(--plot-stroke-width); vector-effect: non-scaling-stroke; }
+.coordinate-plot__point { fill: var(--color-plot-data); r: var(--plot-point-radius); }
+.coordinate-plot__tick-x, .coordinate-plot__label-x { text-anchor: middle; }
+.coordinate-plot__tick-y { text-anchor: end; }
+.coordinate-plot__axis-label { font-weight: 600; }
+.coordinate-plot__controls { display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: end; }
+.coordinate-plot__controls label { display: flex; flex-direction: column; gap: var(--space-sm); }
+.coordinate-plot .coordinate-plot__controls input[type="text"] { width: var(--answer-table-control-min-width); max-width: 100%; box-sizing: border-box; padding: var(--space-sm); border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); font: inherit; color: var(--color-text-primary); background: var(--color-surface-base); }
+.coordinate-plot .coordinate-plot__connect { flex-direction: row; align-items: center; }
+.coordinate-plot__connect input { accent-color: var(--color-plot-data); }
+.coordinate-plot__table { overflow-x: auto; }
+.coordinate-plot table { width: 100%; border-collapse: collapse; }
+.coordinate-plot th, .coordinate-plot td { text-align: start; padding: var(--space-sm); border: 1px solid var(--color-border-soft); }
+.coordinate-plot thead { background: var(--color-surface-muted); }
