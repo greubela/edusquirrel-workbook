@@ -29,6 +29,7 @@ import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.neuron.ThresholdNeuronInteraction
 
 import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
+import it.evadid.workbook.elements.interactionElements.pixel.BinaryPixelInteraction
 
 object WorkbookElementFactory {
 
@@ -137,6 +138,7 @@ object WorkbookElementFactory {
     classOf[MailInteraction].getSimpleName -> MailInteraction.factory,
     classOf[ChoiceInteraction].getSimpleName -> ChoiceInteraction.factory,
     classOf[AnswerTableInteraction].getSimpleName -> AnswerTableInteraction.factory,
+    classOf[BinaryPixelInteraction].getSimpleName -> BinaryPixelInteraction.factory,
     classOf[ThresholdNeuronInteraction].getSimpleName -> ThresholdNeuronInteraction.factory,
     classOf[MailEditor].getSimpleName -> MailEditor.factory,
     classOf[Workbook].getSimpleName -> Workbook.factory,

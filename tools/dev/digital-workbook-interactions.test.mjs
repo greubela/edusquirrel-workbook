@@ -8,7 +8,7 @@ const root = path.resolve(import.meta.dirname, '../..');
 const origin = 'http://localhost:9000';
 const mime = {'.html':'text/html', '.js':'text/javascript', '.css':'text/css', '.json':'application/json', '.svg':'image/svg+xml', '.png':'image/png'};
 
-test('digital image chapter persists answer tables, choices and neuron edits, rejects drafts and fits mobile', async () => {
+test('digital image chapter persists pixels, answer tables, choices and neuron edits, rejects drafts and fits mobile', async () => {
   await fs.access(path.join(root, 'artifacts/newest/client.js'));
   const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium', args:['--no-sandbox']});
   try {
@@ -116,6 +116,70 @@ test('digital image chapter persists answer tables, choices and neuron edits, re
     await open();
     await editor.getByRole('button', {name:'Reset weights'}).click();
     assert.match(await editor.innerText(), /4 of 5 days match/);
+    await page.locator('.fullscreen-close-button').click();
+    await page.locator('.section-block').nth(2).click();
+    const pixels = page.locator('.pixel-interaction');
+    const recreation = pixels.nth(0);
+    const experiment = pixels.nth(1);
+    const pixelButtons = recreation.locator('.pixel-grid button');
+    await pixelButtons.first().waitFor();
+    assert.equal(await pixelButtons.count(), 15);
+    assert.equal(await recreation.locator('.pixel-grid span').count(), 15, 'target is read-only');
+    assert.match(await recreation.locator('.pixel-feedback').innerText(), /8 of 15/);
+    assert.equal(await pixelButtons.first().getAttribute('aria-label'), 'Row 1, column 1');
+    await pixelButtons.nth(0).press('Space');
+    await pixelButtons.nth(1).press('Enter');
+    for (const index of [2,5,8,11,14]) await pixelButtons.nth(index).click();
+    assert.equal(await recreation.locator('button[aria-pressed="true"]').count(), 7);
+    assert.match(await recreation.locator('.pixel-feedback').innerText(), /15 of 15/);
+    await recreation.getByRole('button', {name:'Reset pixels'}).click();
+    assert.match(await recreation.locator('.pixel-feedback').innerText(), /8 of 15/);
+    for (const index of [0,1,2,5,8,11,14]) await pixelButtons.nth(index).click();
+
+    const expectedOutputs = [[1,0],[0,0],[1,1],[1,1],[0,1],[1,1],[0,1],[1,0],[1,1],[1,1]];
+    for (const [digit, outputs] of expectedOutputs.entries()) {
+      await experiment.getByRole('button', {name:'Digit ' + digit, exact:true}).click();
+      for (const [probe, output] of outputs.entries())
+        assert.match(await experiment.locator('.pixel-probe').nth(probe).innerText(), new RegExp('output ' + output + '$'));
+    }
+    await experiment.locator('.pixel-grid button').first().click();
+    assert.match(await experiment.locator('.pixel-probe').first().innerText(), /sum 2, threshold 3 → output 0/);
+    await experiment.getByRole('button', {name:'Reset pixels'}).click();
+    assert.match(await experiment.locator('.pixel-probe').first().innerText(), /sum 3, threshold 3 → output 1/);
+    assert.match(await experiment.locator('.pixel-probe').nth(1).innerText(), /sum 1, threshold 3 → output 0/);
+    await experiment.getByRole('button', {name:'Digit 4', exact:true}).click();
+    const background = cell => cell.evaluate(el => getComputedStyle(el).backgroundColor);
+    const onColor = await background(pixelButtons.first());
+    const offColor = await background(pixelButtons.nth(3));
+    assert.notEqual(onColor, offColor);
+    await pixelButtons.first().hover();
+    await pixelButtons.first().focus();
+    assert.equal(await background(pixelButtons.first()), onColor, 'hover/focus preserve active pixels');
+    await pixelButtons.nth(3).hover();
+    await pixelButtons.nth(3).focus();
+    assert.equal(await background(pixelButtons.nth(3)), offColor, 'hover/focus preserve inactive pixels');
+    for (const viewport of [{width:390,height:844}, {width:844,height:390}, {width:1440,height:900}]) {
+      await page.setViewportSize(viewport);
+      const geometry = await recreation.evaluate(el => {
+        const box = el.getBoundingClientRect();
+        const active = el.querySelector('button.pixel-cell--on');
+        const inactive = el.querySelector('button.pixel-cell:not(.pixel-cell--on)');
+        return {left:box.left,right:box.right,width:innerWidth,
+          inlineStyles:el.querySelectorAll('[style], style').length,
+          onColor:getComputedStyle(active).backgroundColor, offColor:getComputedStyle(inactive).backgroundColor,
+          cellSize:active.getBoundingClientRect().width};
+      });
+      assert(geometry.left>=0 && geometry.right<=geometry.width+1, 'pixel interaction fits viewport');
+      assert.equal(geometry.inlineStyles, 0);
+      assert.notEqual(geometry.onColor, geometry.offColor, 'shared CSS colors distinguish pixel states');
+      assert(geometry.cellSize>=40, 'pixel controls have usable touch targets');
+    }
+    await page.reload();
+    await page.locator('.section-block').nth(2).click({timeout:60000});
+    assert.match(await recreation.locator('.pixel-feedback').innerText(), /15 of 15/);
+    assert.equal(await experiment.locator('button[aria-pressed="true"]').count(), 9);
+    assert.match(await experiment.locator('.pixel-probe').first().innerText(), /output 0$/);
+    assert.match(await experiment.locator('.pixel-probe').nth(1).innerText(), /output 1$/);
     assert.deepEqual(errors, [], 'actual renderer/editor flow has no uncaught errors');
   } finally { await browser.close(); }
 });

@@ -31,9 +31,21 @@ class CreateImageRecognitionWorkbookSpec extends FunSuite {
     assertEquals(table.grade(solution), Some(TableGrade(16, 16)))
     assertEquals(table.grade(solution.copy(values = solution.values.updated(0, "1"))), Some(TableGrade(15, 16)))
   }
+  test("all ten source digits yield the worksheet top/middle detector groups") {
+    val e = CreateImageRecognitionWorkbook.pixelExperiment
+    assertEquals(e.presets.size, 10)
+    assertEquals(e.presets.map(p => e.outputs(p.image)), List(
+      List(true, false), List(false, false), List(true, true), List(true, true), List(false, true),
+      List(true, true), List(false, true), List(true, false), List(true, true), List(true, true)))
+    assert(e.presets.forall(p => p.image.rows == 5 && p.image.columns == 3))
+    val recreation = CreateImageRecognitionWorkbook.pixelRecreation
+    assertEquals(recreation.isCorrect(e.presets(7).image), Some(true))
+    assertEquals(recreation.matchingPixels(recreation.initial), Some(8))
+    assertEquals(e.isCorrect(e.initial), None)
+  }
   test("initial opinion is ungraded; knowledge questions support single and multiple choice") {
     val choices = CreateImageRecognitionWorkbook(null).createWorkbook.allChildrenFullSubtree.collect { case c: ChoiceInteraction => c }
-    assertEquals(choices.size, 3)
+    assertEquals(choices.size, 4)
     assertEquals(choices.count(_.expected.isEmpty), 1)
     assertEquals(choices.count(_.allowMultiple), 1)
   }

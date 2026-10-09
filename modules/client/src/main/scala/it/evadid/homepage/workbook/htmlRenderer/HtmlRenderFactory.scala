@@ -40,6 +40,8 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.neuron.Thres
 
 import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.table.AnswerTableRenderer
+import it.evadid.workbook.elements.interactionElements.pixel.BinaryPixelInteraction
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.pixel.BinaryPixelRenderer
 
 trait HtmlRenderFactory[T <: WorkbookElement] {
 
@@ -109,6 +111,7 @@ object HtmlRenderFactory {
       case i: ImageElement => HtmlProxyAppElementRenderer.renderWorkbookElement(i, HtmlImageElement(i))
 
       // interactions
+      case p: BinaryPixelInteraction => BinaryPixelRenderer.renderWorkbookElement(p)
       case t: AnswerTableInteraction => AnswerTableRenderer.renderWorkbookElement(t)
       case c: ChoiceInteraction => ChoiceInteractionRenderer.renderWorkbookElement(c)
       case n: ThresholdNeuronInteraction => ThresholdNeuronRenderer.renderWorkbookElement(n)

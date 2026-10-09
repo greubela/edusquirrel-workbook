@@ -6,6 +6,9 @@
     --color-mail-selected-border: var(--color-blue-6);
     --color-mail-link: var(--textcolor-colored-strong);
     --color-mail-muted: var(--color-gray-11);
+    --color-pixel-on: var(--color-gray-12);
+    --color-pixel-off: var(--color-surface-base);
+    --color-pixel-on-text: var(--color-gray-0);
     --color-qr-dark: #000;
     --color-qr-light: #fff;
     /* Dark region colors retain contrast with the QR light modules and quiet zone. */

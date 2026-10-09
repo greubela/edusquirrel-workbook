@@ -16,6 +16,8 @@ import upickle.default.*
 import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.neuron.*
 import it.evadid.workbook.elements.interactionElements.table.*
+import it.evadid.workbook.elements.interactionElements.pixel.*
+import it.evadid.workbook.model.pixel.*
 import munit.FunSuite
 
 class WorkbookElementSerializableRoundTripSpec extends FunSuite {
@@ -52,6 +54,10 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       AnswerTableInteraction("table", content("table/title"), List(content("table/row")),
         List(content("table/a"), content("table/b")), List(List(
           FixedTableCell(content("table/given")), EditableTableCell(Some(List("0", "1")), List("0", "1"))))),
+      BinaryPixelInteraction("pixels", content("pixels/title"), BinaryPixelImage.blank(1, 2),
+        Some(BinaryPixelImage.fromRows(List("01"))),
+        List(PixelThresholdProbe(content("pixels/probe"), List(PixelPosition(0, 1)), 1)),
+        List(PixelPreset(content("pixels/preset"), BinaryPixelImage.fromRows(List("10"))))),
       workbook, section,
       ExerciseContainer("container", content("container/title"), List(input)),
       LabeledWorkbookElement("labeled", input, WorkbookLabel(content("label/hint"), HintLabel)),

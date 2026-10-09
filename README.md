@@ -35,7 +35,7 @@ Shared workbook abstractions live in [WorkbookElement.scala](modules/core/shared
 | [embroideryWorkbook](homepage/embroideryWorkbook/index.html) | Embroidery workbook |
 | [compressionWorkbook](homepage/compressionWorkbook/index.html) | Data compression workbook |
 | [plantWorkshopWorkbook](homepage/plantWorkshopWorkbook/index.html) | Plant workshop on the workbook architecture |
-| [imageRecognitionWorkbook](homepage/imageRecognitionWorkbook/index.html) | First image-recognition chapter with binary answer table and threshold-neuron experiment |
+| [imageRecognitionWorkbook](homepage/imageRecognitionWorkbook/index.html) | Partial image-recognition workbook with binary tables, threshold neuron and pixel feature experiments |
 | [phishingWorkbook](homepage/phishingWorkbook/index.html) | Email sorting simulator and local writing practice |
 | [plantWorkshop](homepage/plantWorkshop/index.html) | Separate legacy plant application |
 | [feedback-demo](homepage/feedback-demo/index.html) | Feedback demonstration |
@@ -110,7 +110,7 @@ LLM feedback uses the endpoint configured in [config.js](homepage/js/config.js).
 
 ## Documentation
 
-- [Digital workbook migration](docs/digital-workbook-migration.md): analysis of the linked PDF/ZIP exercises, missing editors and first online image-recognition chapter.
+- [Digital workbook migration](docs/digital-workbook-migration.md): analysis of the linked PDF/ZIP exercises, missing editors and the partial online image-recognition adaptation.
 - [Interaction architecture](docs/workbook-interaction-architecture.md): dependency boundaries between shared models, renderers and optional editors; state and serialization flow.
 - [Email simulator](docs/email-simulator.md): state, grading, content handling and verification.
 - [QR interaction](docs/qr-code-interaction.md): encoding model, requirements, region colors and reference tests.

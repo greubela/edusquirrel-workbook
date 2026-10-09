@@ -102,3 +102,9 @@ Test domain transitions, validation/grading and both serialization boundaries in
 `AnswerTableInteraction` belongs to shared core and describes row/column labels and fixed or editable cells. Its `TableAnswer` value contains only editable strings in row-major order; fixed cells are exercise content, not learner state. The model validates dimensions and choices, checks completion, and counts only cells with expected answers. Text alternatives compare case-sensitively after trimming; ungraded reflection cells never contribute to that count.
 
 `AnswerTableRenderer` in client binds the interaction variable to text inputs or selects. It displays localized headings and feedback, while `digital-workbooks.css` owns presentation and horizontal scrolling. It requires no editor or fullscreen lifecycle. The image-recognition chapter combines this inline interaction with the separate threshold-neuron interaction and fullscreen editor; they keep independent learner values.
+
+## Binary pixel canvases
+
+`BinaryPixelImage` in shared core owns validated dimensions, row-major bits, indexing and immutable toggles. `BinaryPixelInteraction` uses it as the learner value; targets, presets and `PixelThresholdProbe` definitions remain exercise configuration. Its bound serializer rejects saved images of the wrong shape, and grading compares all pixels when a target exists. Without a target, exploration remains ungraded.
+
+`BinaryPixelRenderer` presents a small inline canvas with accessible toggle buttons, a read-only target when configured, reset/preset controls and detector feedback. It binds the interaction variable directly and needs no separate fullscreen editor. CSS owns sizes, colors, wrapping and focus indicators. The image-recognition chapter uses this component for the source's 3×5 digit patterns and two fixed row detectors; it does not implement network training.
