@@ -18,6 +18,8 @@ object SqlBlocks {
   }
   val palette: List[(String, String)] = List(
     "SELECT" -> "SELECT *", "FROM" -> "FROM table_name", "WHERE" -> "WHERE column_name = 1",
+    "SELECT AVG" -> "SELECT AVG(column_name) AS average_value",
+    "SELECT COUNT" -> "SELECT COUNT(column_name) AS value_count",
     "JOIN" -> "JOIN other_table ON table_name.id = other_table.id",
     "GROUP BY" -> "GROUP BY column_name", "HAVING" -> "HAVING COUNT(*) > 1",
     "ORDER BY" -> "ORDER BY column_name", "LIMIT" -> "LIMIT 100",
