@@ -14,6 +14,33 @@ class EvacuationPlaybackSpec extends FunSuite {
   private def simulate(plan: EvacuationFloorPlan, limit: Int = 250) = EvacuationStep.calculateEvacuation(
     EvacuationFloorAdapter.decode(plan), Neighbourhood.neumann,
     ClosestGoalStrategy(PersonOrderSelector.getIdSelector[CGSimInfo, CGStepInfo], stableRoutes = true), limit)
+  test("workbook comparison presets are bounded, repeatable and evacuate without discarding people") {
+    import it.evadid.homepage.workbook.content.CreateEvacuationWorkbook
+    val baseline = CreateEvacuationWorkbook.lockerHall
+    val removed = baseline.copy(tiles = baseline.tiles.updated(3 * 11 + 6, EvacuationTile.Floor)
+      .updated(5 * 11 + 6, EvacuationTile.Floor))
+    val filledGaps = baseline.copy(tiles = baseline.tiles.updated(3 * 11 + 5, EvacuationTile.Wall)
+      .updated(5 * 11 + 5, EvacuationTile.Wall))
+    for (plan <- List(baseline, removed, filledGaps, CreateEvacuationWorkbook.narrowDoorHall)) {
+      val simulation = simulate(plan)
+      assertEquals(simulation, simulate(plan))
+      assert(simulation.states.last.persons.isEmpty)
+      assert(simulation.steps.distinct.count(_ > 0) < 250)
+      for (map <- simulation.states) assertEquals(map.persons.map(_.pos).size, map.persons.size)
+    }
+  }
+  test("diagonal audit preset isolates neighbourhood effects with one person") {
+    import it.evadid.homepage.workbook.content.CreateEvacuationWorkbook
+    val observed = List(EvacuationNeighbourhood.Four, EvacuationNeighbourhood.Eight).map { neighbours =>
+      val player = controller
+      player.prepare(EvacuationExperiment(CreateEvacuationWorkbook.diagonalRoom, EvacuationSettings(neighbours)))
+      while (!player.atEnd.now()) player.next()
+      val measurement = player.measurement("Audit")
+      assertEquals(measurement.outcome, EvacuationOutcome.Evacuated)
+      measurement.steps
+    }
+    assertEquals(observed, List(8, 4))
+  }
   test("EVA2 evacuates a corridor in physical movement steps without an extra exit-removal step") {
     val simulation = simulate(corridor)
     assertEquals(simulation.steps.distinct.count(_ > 0), 3)

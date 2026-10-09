@@ -30,7 +30,38 @@ case class CreateEvacuationWorkbook(fullInfo: FullInfo) extends WorkbookFactory 
     section("evacuation-limits", "digitalWorkbooks/evacuationLimitsTitle", List(
       container("digitalWorkbooks/evacuationLimitsTitle", List(
         instructionPlaintext("digitalWorkbooks/evacuationLimitsTask"), createTextInput("evacuation-model-limits"),
-        instructionPlaintext("digitalWorkbooks/evacuationTransferTask"), createTextInput("evacuation-transfer")))))
+        instructionPlaintext("digitalWorkbooks/evacuationTransferTask"), createTextInput("evacuation-transfer"))))),
+    section("evacuation-school-improvements", "digitalWorkbooks/evacuationSchoolTitle", List(
+      container("digitalWorkbooks/evacuationSchoolTitle", List(
+        instructionPlaintext("digitalWorkbooks/evacuationSchoolTask"), createTextInput("evacuation-school-proposals"))))),
+    section("evacuation-lockers", "digitalWorkbooks/evacuationLockersTitle", List(
+      container("digitalWorkbooks/evacuationLockersTitle", List(
+        instructionPlaintext("digitalWorkbooks/evacuationLayoutProvenance"),
+        instructionPlaintext("digitalWorkbooks/evacuationLockersPrediction"), createTextInput("evacuation-lockers-prediction"),
+        EvacuationSimulationInteraction("evacuation-lockers-experiment", EvacuationExperiment(CreateEvacuationWorkbook.lockerHall)),
+        instructionPlaintext("digitalWorkbooks/evacuationLockersResults"), createTextInput("evacuation-lockers-results"),
+        instructionPlaintext("digitalWorkbooks/evacuationGapsPrediction"), createTextInput("evacuation-gaps-prediction"),
+        instructionPlaintext("digitalWorkbooks/evacuationGapsResults"), createTextInput("evacuation-gaps-results"))))),
+    section("evacuation-door-width", "digitalWorkbooks/evacuationDoorTitle", List(
+      container("digitalWorkbooks/evacuationDoorTitle", List(
+        instructionPlaintext("digitalWorkbooks/evacuationLayoutProvenance"),
+        instructionPlaintext("digitalWorkbooks/evacuationDoorPrediction"), createTextInput("evacuation-door-prediction"),
+        EvacuationSimulationInteraction("evacuation-door-experiment", EvacuationExperiment(CreateEvacuationWorkbook.narrowDoorHall)),
+        instructionPlaintext("digitalWorkbooks/evacuationDoorResults"), createTextInput("evacuation-door-results"))))),
+    section("evacuation-masterplan", "digitalWorkbooks/evacuationBudgetTitle", List(
+      container("digitalWorkbooks/evacuationBudgetTitle", List(
+        instructionMarkdown("digitalWorkbooks/evacuationBudgetTask")) ++
+        CreateEvacuationWorkbook.budgetMeasures.map { id =>
+          checklist(s"digitalWorkbooks/evacuationBudget$id", s"evacuation-budget-$id")
+        } ++ List(instructionPlaintext("digitalWorkbooks/evacuationBudgetJustification"), createTextInput("evacuation-budget-plan"))))),
+    section("evacuation-model-audit", "digitalWorkbooks/evacuationAuditTitle", List(
+      container("digitalWorkbooks/evacuationAuditTitle", List(
+        instructionPlaintext("digitalWorkbooks/evacuationOrderTask"), createTextInput("evacuation-order"),
+        instructionPlaintext("digitalWorkbooks/evacuationNeighbourTask"),
+        EvacuationSimulationInteraction("evacuation-neighbours-experiment", EvacuationExperiment(CreateEvacuationWorkbook.diagonalRoom)),
+        createTextInput("evacuation-neighbours-analysis"),
+        instructionPlaintext("digitalWorkbooks/evacuationThirdFactor"), createTextInput("evacuation-third-factor"),
+        instructionPlaintext("digitalWorkbooks/evacuationStumbleTask"), createTextInput("evacuation-stumble-analysis")))))
   ), User.AndreGreubel)
 }
 object CreateEvacuationWorkbook {
@@ -39,4 +70,22 @@ object CreateEvacuationWorkbook {
     List.fill(7)(EvacuationTile.Wall) ++
       List.fill(6)(EvacuationTile.Floor) ++ List(EvacuationTile.Exit) ++ List.fill(7)(EvacuationTile.Wall),
     Set(7, 8, 9, 10))
+
+  // Authored comparison layouts: source PDF sports-hall geometry is not yet reproduced.
+  private def room(cols: Int, rows: Int, exits: Set[(Int, Int)], walls: Set[(Int, Int)], people: Set[(Int, Int)]): EvacuationFloorPlan =
+    EvacuationFloorPlan(cols, rows, (for (y <- 0 until rows; x <- 0 until cols) yield {
+      if (exits((x, y))) EvacuationTile.Exit
+      else if (x == 0 || x == cols - 1 || y == 0 || y == rows - 1 || walls((x, y))) EvacuationTile.Wall
+      else EvacuationTile.Floor
+    }).toList, people.map { case (x, y) => y * cols + x })
+
+  val lockerHall = room(11, 9, Set((10, 4), (10, 5)),
+    Set((4, 3), (6, 3), (4, 5), (6, 5)),
+    Set((1, 2), (2, 2), (1, 4), (2, 4), (1, 6), (2, 6)))
+  val narrowDoorHall = lockerHall.copy(tiles = lockerHall.tiles.updated(5 * 11 + 10, EvacuationTile.Wall))
+  val diagonalRoom = room(7, 7, Set((5, 5)), Set.empty, Set((1, 1)))
+
+  // Stable selection IDs; the translated labels contain the quotation's costs (PDF p. 16).
+  val budgetMeasures: List[String] = List("Training", "MoveAssembly", "AddAssembly", "WidenDoor",
+    "RemoveObstacles", "HalfPeople", "AddObstacles", "Custom")
 }
