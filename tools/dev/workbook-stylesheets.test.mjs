@@ -5,7 +5,8 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 import test from 'node:test';
 
 const root = path.resolve(import.meta.dirname, '../..');
-const mailCss = path.join(root, 'homepage/css/workbook/email-simulator.css');
+const dedicatedCss = ['email-simulator.css', 'digital-workbooks.css']
+  .map(file => path.join(root, 'homepage/css/workbook', file));
 async function filesBelow(directory, extension) {
   const files = [];
   for (const entry of await readdir(directory, {withFileTypes:true})) {
@@ -38,9 +39,10 @@ function stylesheetHrefs(html) {
   });
 }
 
-test('every workbook page explicitly loads the dedicated mail simulator stylesheet once', async () => {
+test('every workbook page explicitly loads the dedicated simulator and digital exercise stylesheets once', async () => {
   for (const {file,html} of await workbookPages()) {
-    assert.equal(stylesheetHrefs(html).filter(href=>localPath(href,file)===mailCss).length,1,path.relative(root,file));
+    for (const css of dedicatedCss)
+      assert.equal(stylesheetHrefs(html).filter(href=>localPath(href,file)===css).length,1,path.relative(root,file) + ': ' + path.basename(css));
     assert(!/<style(?:\s|>)/i.test(html) && !/\sstyle\s*=/.test(html),'workbook pages use external stylesheets');
   }
 });
@@ -66,10 +68,16 @@ test('workbook stylesheet links and their local imports all resolve to existing 
   }
 });
 
-test('mail editor and renderers bind classes rather than inline Laminar styles', async () => {
+test('mail and digital exercise components bind classes rather than inline Laminar styles', async () => {
   const directories=[
     'modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/MailEditor',
-    'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/emailSimulator'
+    'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/emailSimulator',
+    'modules/client/src/main/scala/it/evadid/homepage/webElements/editor/neuron',
+    'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/neuron',
+    'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/choice',
+    'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/table',
+    'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/pixel',
+    'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/blockchain'
   ];
   const inlineStyle=/\b(?:styleAttr|color|backgroundColor|fontSize|fontFamily|width|height|padding|margin|border|display)\s*(?::=|<--)|\bstyleTag\s*\(|\.style\s*(?:\.|=)/;
   for (const directory of directories) {
@@ -99,4 +107,14 @@ test('every authored stylesheet is reachable from a homepage entry page', async 
   const unused = (await filesBelow(path.join(root, 'homepage/css'), '.css'))
     .filter(file => !visited.has(file)).map(file => path.relative(root, file));
   assert.deepEqual(unused, [], 'remove orphan stylesheets or link them from their entry page');
+});
+
+test('digital exercise CSS references defined shared color and dimension tokens', async () => {
+  const css = await readFile(path.join(root, 'homepage/css/workbook/digital-workbooks.css'), 'utf8');
+  const definitions = (await Promise.all(['colors.css', 'dimensions.css'].map(file =>
+    readFile(path.join(root, 'homepage/css/generic', file), 'utf8')))).join('\n');
+  const used = new Set([...css.matchAll(/var\((--[\w-]+)/g)].map(match => match[1]));
+  const defined = new Set([...definitions.matchAll(/(--[\w-]+)\s*:/g)].map(match => match[1]));
+  assert(used.size > 0, 'exercise styles reuse shared tokens');
+  assert.deepEqual([...used].filter(token => !defined.has(token)), [], 'undefined CSS tokens invalidate declarations');
 });

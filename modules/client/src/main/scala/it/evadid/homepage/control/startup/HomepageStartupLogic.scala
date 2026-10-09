@@ -15,13 +15,15 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.scalajs.js
 import scala.util.{Failure, Success}
 
+import it.evadid.homepage.workbook.content.{CreateImageRecognitionWorkbook, CreateBlockchainWorkbook}
+
 object HomepageStartupLogic {
 
   private given ExecutionContext = ExecutionContext.global
 
   private given ExecutionContextExecutor = ExecutionContext.global
 
-  private val tryToLoad: List[String] = List("landingPage", "loginPage", "plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "workbookCompression", "workbookMonks", "workbookTest", "workbookPhishing")
+  private val tryToLoad: List[String] = List("landingPage", "loginPage", "plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "workbookCompression", "workbookMonks", "workbookTest", "workbookPhishing", "workbookImageRecognition", "workbookBlockchain")
   private val canLoad: List[String] = tryToLoad.flatMap(id => if (dom.document.getElementById(id) != null) Some(id) else None)
 
   def renderElementIntoApp(logger: Logger, domElement: Element): Unit = {
@@ -75,6 +77,8 @@ object HomepageStartupLogic {
 
   def loadWorkbookById(workbookId: String): Option[AllWorkbookInfo] = workbookId match {
     case "workbookEmbroidery" => Some(CreateEmbroideryWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
+    case "workbookBlockchain" => Some(CreateBlockchainWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
+    case "workbookImageRecognition" => Some(CreateImageRecognitionWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
     case "workbookPhishing" => Some(CreatePhishingWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
     case "workbookTest" => Some(CreateTestWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
     case "workbookPlantWorkshop" => Some(CreatePlantworkshopWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)

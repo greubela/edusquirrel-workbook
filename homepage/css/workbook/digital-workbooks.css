@@ -1,0 +1,63 @@
+/* Workbook choice controls and threshold-neuron editor share the site tokens. */
+.choice-interaction { border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); padding: var(--space-lg); }
+.choice-interaction legend { font-weight: 600; padding-inline: var(--space-sm); }
+.choice-interaction label { display: flex; align-items: start; gap: var(--space-sm); margin-block: var(--space-sm); cursor: pointer; }
+.choice-interaction input { flex: 0 0 auto; accent-color: var(--color-accent-active); }
+.choice-feedback, .neuron-preview { color: var(--color-text-secondary); }
+.neuron-editor { display: flex; flex-direction: column; gap: var(--space-md); min-width: 0; padding: var(--space-lg); overflow: auto; }
+.neuron-editor h2, .neuron-editor p { margin: 0; }
+.neuron-controls { display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: end; }
+.neuron-controls label { display: flex; flex-direction: column; gap: var(--space-sm); flex: 1 1 var(--neuron-control-min-width); }
+/* Keep control geometry above the shared :root input hover/focus defaults. */
+.neuron-editor .neuron-controls input { width: 100%; box-sizing: border-box; font: inherit; padding: var(--space-sm); border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); background: var(--color-surface-base); color: var(--color-text-primary); }
+.neuron-editor .neuron-controls input:focus-visible { outline: 2px solid var(--color-accent-active); outline-offset: 2px; }
+.neuron-results { overflow-x: auto; }
+.neuron-results table { width: 100%; border-collapse: collapse; }
+.neuron-results caption { text-align: start; font-weight: 600; margin-block: var(--space-sm); }
+.neuron-results th, .neuron-results td { padding: var(--space-sm); border: 1px solid var(--color-border-soft); text-align: start; }
+.neuron-results thead { background: var(--color-surface-muted); }
+.neuron-error { color: var(--color-accent-strong); }
+
+/* Answer tables stay inline; wide exercises scroll within the workbook line. */
+.answer-table { min-width: 0; max-width: 100%; }
+.answer-table__scroll { overflow-x: auto; }
+.answer-table table { width: 100%; border-collapse: collapse; }
+.answer-table caption { text-align: start; font-weight: 600; margin-block: var(--space-md); }
+.answer-table th, .answer-table td { padding: var(--space-sm); border: 1px solid var(--color-border-soft); text-align: start; }
+.answer-table thead, .answer-table tbody th { background: var(--color-surface-muted); }
+.answer-table .answer-table__scroll input, .answer-table .answer-table__scroll select { box-sizing: border-box; width: 100%; min-width: var(--answer-table-control-min-width); font: inherit; padding: var(--space-sm); border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); background: var(--color-surface-base); color: var(--color-text-primary); }
+.answer-table .answer-table__scroll input:focus-visible, .answer-table .answer-table__scroll select:focus-visible { outline: 2px solid var(--color-accent-active); outline-offset: 2px; }
+.answer-table__feedback { color: var(--color-text-secondary); }
+
+.pixel-interaction { min-width: 0; border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); padding: var(--space-lg); }
+.pixel-interaction legend { font-weight: 600; padding-inline: var(--space-sm); }
+.pixel-canvases { display: flex; flex-wrap: wrap; gap: var(--space-xl); }
+.pixel-grid-scroll { max-width: 100%; overflow-x: auto; }
+.pixel-grid { border-collapse: collapse; }
+.pixel-grid caption { text-align: start; font-weight: 600; padding-block: var(--space-sm); }
+.pixel-grid th { padding: var(--space-sm); }
+.pixel-grid td { padding: 0; border: 1px solid var(--color-border-soft); }
+/* Keep pixel colors and geometry above shared button hover/focus defaults. */
+.pixel-interaction .pixel-grid .pixel-cell { display: flex; align-items: center; justify-content: center; box-sizing: border-box; width: var(--pixel-cell-size); height: var(--pixel-cell-size); border: 0; border-radius: 0; margin: 0; padding: 0; background: var(--color-pixel-off); color: var(--color-text-primary); font: inherit; }
+button.pixel-cell { cursor: pointer; }
+.pixel-interaction .pixel-grid .pixel-cell--on { background: var(--color-pixel-on); color: var(--color-pixel-on-text); }
+.pixel-interaction button.pixel-cell:focus-visible { outline: 2px solid var(--color-accent-active); outline-offset: -2px; }
+.pixel-actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-block: var(--space-md); }
+.pixel-feedback, .pixel-probe { color: var(--color-text-secondary); }
+
+.square-middle-hash, .sha256-interaction { min-width: 0; border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); padding: var(--space-lg); }
+.square-middle-hash legend, .sha256-interaction legend { font-weight: 600; padding-inline: var(--space-sm); }
+.hash-controls { display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: end; }
+.hash-controls label { display: flex; flex-direction: column; gap: var(--space-sm); min-width: 0; flex: 1 1 var(--neuron-control-min-width); }
+.square-middle-hash .hash-controls input, .sha256-interaction .hash-controls textarea { box-sizing: border-box; width: 100%; min-width: 0; font: inherit; padding: var(--space-sm); border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); background: var(--color-surface-base); color: var(--color-text-primary); }
+.square-middle-hash .hash-controls input:focus-visible, .sha256-interaction .hash-controls textarea:focus-visible { outline: 2px solid var(--color-accent-active); outline-offset: 2px; }
+.sha256-interaction .hash-controls textarea { resize: vertical; min-height: 5em; }
+.sha256-results table { table-layout: fixed; }
+.sha256-results code { display: block; overflow-wrap: anywhere; }
+.sha256-difference { color: var(--color-text-secondary); }
+.hash-results { overflow-x: auto; }
+.hash-results table { width: 100%; border-collapse: collapse; }
+.hash-results caption { text-align: start; font-weight: 600; margin-block: var(--space-sm); }
+.hash-results th, .hash-results td { padding: var(--space-sm); border: 1px solid var(--color-border-soft); text-align: start; }
+.hash-results mark { background: var(--color-background-colored); color: var(--color-text-primary); font-weight: 600; }
+.hash-feedback { color: var(--color-text-secondary); }

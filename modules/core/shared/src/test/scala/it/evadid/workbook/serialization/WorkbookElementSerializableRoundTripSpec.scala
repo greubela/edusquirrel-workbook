@@ -13,6 +13,12 @@ import it.evadid.workbook.elements.interactionElements.sortingExercise.{SortingI
 import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
 import it.evadid.workbook.jsonFactory.{WorkbookElementSerializable, WorkbookElementFactory}
 import upickle.default.*
+import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
+import it.evadid.workbook.elements.interactionElements.neuron.*
+import it.evadid.workbook.elements.interactionElements.table.*
+import it.evadid.workbook.elements.interactionElements.pixel.*
+import it.evadid.workbook.model.pixel.*
+import it.evadid.workbook.elements.interactionElements.blockchain.*
 import munit.FunSuite
 
 class WorkbookElementSerializableRoundTripSpec extends FunSuite {
@@ -43,6 +49,18 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     val special = " Quotes: \"hello\"; backslash: \\; newline:\nGrüße )({} "
     val inbox = InboxState.withMails(List(Mail("mail", "sender@example.test", special, special, special, MailFolder.Inbox, Some(special), "2026-10-08", expectedFolder = Some(MailFolder.Archive))))
     List(
+      ChoiceInteraction("choice", content("choice/prompt"), List(content("choice/a"), content("choice/b")), true, Some(List(0, 1))),
+      ThresholdNeuronInteraction("neuron", List(content("neuron/input")),
+        List(NeuronExample(content("neuron/row"), List(1), true)), NeuronParameters(List(1), 1)),
+      AnswerTableInteraction("table", content("table/title"), List(content("table/row")),
+        List(content("table/a"), content("table/b")), List(List(
+          FixedTableCell(content("table/given")), EditableTableCell(Some(List("0", "1")), List("0", "1"))))),
+      BinaryPixelInteraction("pixels", content("pixels/title"), BinaryPixelImage.blank(1, 2),
+        Some(BinaryPixelImage.fromRows(List("01"))),
+        List(PixelThresholdProbe(content("pixels/probe"), List(PixelPosition(0, 1)), 1)),
+        List(PixelPreset(content("pixels/preset"), BinaryPixelImage.fromRows(List("10"))))),
+      SquareMiddleHashInteraction("hash", content("hash/title"), FindHashPreimage("22"), SquareMiddleHashAnswer("65")),
+      Sha256Interaction("sha256", content("hash/sha256"), FindSha256Prefix(2), Sha256Answer("286")),
       workbook, section,
       ExerciseContainer("container", content("container/title"), List(input)),
       LabeledWorkbookElement("labeled", input, WorkbookLabel(content("label/hint"), HintLabel)),
