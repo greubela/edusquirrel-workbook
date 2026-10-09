@@ -14,3 +14,14 @@
 .evacuation-cell--person::after { content: ""; position: absolute; inset: 25%; border-radius: 50%; background: var(--color-evacuation-person); border: 1px solid var(--color-evacuation-person-outline); }
 .evacuation-editor .evacuation-cell:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; z-index: 1; }
 .evacuation-preview span { display: block; margin-top: var(--space-sm); color: var(--color-text-secondary); }
+
+.evacuation-experiment { min-width: 0; padding: var(--space-lg); overflow: auto; max-height: 100%; }
+.evacuation-experiment > * + * { margin-top: var(--space-md); }
+.evacuation-experiment label { display: flex; flex-direction: column; gap: var(--space-sm); }
+.evacuation-error { color: var(--color-accent-error); }
+.evacuation-measurements { overflow-x: auto; }
+.evacuation-measurements table { border-collapse: collapse; width: 100%; }
+.evacuation-measurements th, .evacuation-measurements td { text-align: start; padding: var(--space-sm); border: 1px solid var(--color-border-soft); }
+
+.evacuation-experiment .evacuation-tools label { min-width: 0; max-width: 100%; }
+.evacuation-experiment .evacuation-tools input, .evacuation-experiment .evacuation-tools select { box-sizing: border-box; min-width: 0; max-width: 100%; }

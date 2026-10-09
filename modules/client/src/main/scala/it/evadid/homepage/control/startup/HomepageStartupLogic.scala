@@ -23,7 +23,7 @@ object HomepageStartupLogic {
 
   private given ExecutionContextExecutor = ExecutionContext.global
 
-  private val tryToLoad: List[String] = List("landingPage", "loginPage", "plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "workbookCompression", "workbookMonks", "workbookTest", "workbookPhishing", "workbookImageRecognition", "workbookBlockchain")
+  private val tryToLoad: List[String] = List("landingPage", "loginPage", "plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "workbookCompression", "workbookMonks", "workbookTest", "workbookPhishing", "workbookImageRecognition", "workbookBlockchain", "workbookEvacuation")
   private val canLoad: List[String] = tryToLoad.flatMap(id => if (dom.document.getElementById(id) != null) Some(id) else None)
 
   def renderElementIntoApp(logger: Logger, domElement: Element): Unit = {
@@ -77,6 +77,7 @@ object HomepageStartupLogic {
 
   def loadWorkbookById(workbookId: String): Option[AllWorkbookInfo] = workbookId match {
     case "workbookEmbroidery" => Some(CreateEmbroideryWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
+    case "workbookEvacuation" => Some(it.evadid.homepage.workbook.content.CreateEvacuationWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
     case "workbookBlockchain" => Some(CreateBlockchainWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
     case "workbookImageRecognition" => Some(CreateImageRecognitionWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
     case "workbookPhishing" => Some(CreatePhishingWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)

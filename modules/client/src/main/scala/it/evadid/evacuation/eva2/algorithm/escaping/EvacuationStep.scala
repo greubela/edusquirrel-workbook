@@ -35,15 +35,16 @@ object EvacuationStep {
     (eva, meta)
   }
 
-  def calculateEvacuation[I, J](initialState: EvaFloorMap, neighbour: Neighbourhood, evacuationStrategy: EvacuationStrategy[I, J]): Evacuation = {
+  def calculateEvacuation[I, J](initialState: EvaFloorMap, neighbour: Neighbourhood, evacuationStrategy: EvacuationStrategy[I, J], maxSteps: Int = 10000): Evacuation = {
+    require(maxSteps > 0, "Step limit must be positive")
 
     if (new FloorMatrix(initialState.floorMatrix).savePositions.isEmpty) {
       Evacuation(initialState, List(initialState), List(0))
     } else {
 
-      var stepList: ListBuffer[Int] = ListBuffer()
-      var stateList: ListBuffer[EvaFloorMap] = ListBuffer()
-      var before: EvaFloorMap = null
+      var stepList: ListBuffer[Int] = ListBuffer(0)
+      var stateList: ListBuffer[EvaFloorMap] = ListBuffer(initialState.removePersonAtSavePoints())
+      var before: EvaFloorMap = stateList.head
 
       def addToBuffer(state: EvaFloorMap): Unit = if (state != before) {
         if (before != state) {
@@ -58,7 +59,7 @@ object EvacuationStep {
       val evaSteps: Seq[EvacuationStep] = EvacuationStep.calculateEvacuationSteps(initialState,
         evacuationStrategy,
         neighbour,
-        evacuationStrategy.createInitialSimulationInformation(initialState, neighbour, routingMap))
+        evacuationStrategy.createInitialSimulationInformation(initialState, neighbour, routingMap), maxSteps)
       val time3 = System.nanoTime()
 
       val diff1 = (time2 - time1) / 1000000000.0
@@ -71,10 +72,6 @@ object EvacuationStep {
         stepList += stateList.size - 1
       })
 
-      if(stateList.nonEmpty){
-        addToBuffer(stateList.last.removePersonAtSavePoints())
-        stepList += (stateList.size - 1)
-      }
       println("steps: " + stepList + ", states: " + stateList.size)
       (stateList.toList, stepList.toList)
 
@@ -97,13 +94,13 @@ object EvacuationStep {
     resultMap
   }
 
-  private def calculateEvacuationSteps[I, J](initialState: EvaFloorMap, evacuationStrategy: EvacuationStrategy[I, J], neighbourhood: Neighbourhood, evacuationInfo: I): Seq[EvacuationStep] = {
+  private def calculateEvacuationSteps[I, J](initialState: EvaFloorMap, evacuationStrategy: EvacuationStrategy[I, J], neighbourhood: Neighbourhood, evacuationInfo: I, maxSteps: Int): Seq[EvacuationStep] = {
     val evaSteps: mutable.ListBuffer[EvacuationStep] = mutable.ListBuffer()
 
     var curStep: Option[EvacuationStep] = calcNextStep(initialState, evacuationStrategy, neighbourhood, evacuationInfo)
-    while (curStep.nonEmpty) {
+    while (curStep.nonEmpty && evaSteps.size < maxSteps) {
       evaSteps += curStep.get
-      curStep = calcNextStep(curStep.get.microSteps.last, evacuationStrategy, neighbourhood, evacuationInfo)
+      curStep = if (evaSteps.size < maxSteps) calcNextStep(curStep.get.microSteps.last, evacuationStrategy, neighbourhood, evacuationInfo) else None
     }
     evaSteps.toList
   }
@@ -139,6 +136,8 @@ object EvacuationStep {
 
     }
 
+    val cleaned = microStates.last.removePersonAtSavePoints()
+    if (cleaned != microStates.last) microStates += cleaned
     if (microStates.size > 1) {
       Some(EvacuationStep(microStates.toList))
     } else {

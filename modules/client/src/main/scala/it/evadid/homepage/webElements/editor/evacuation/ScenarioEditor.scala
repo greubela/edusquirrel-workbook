@@ -25,25 +25,6 @@ case class ScenarioEditor(answer: Var[EvacuationFloorPlan], initial: EvacuationF
     Some(EvacuationFloorPlan.maxDimension))
   mode.selectSprite(EvacuationFloorAdapter.floor)
 
-  private val planSignal = floorMap.signal.map(EvacuationFloorAdapter.encode)
-  // Rebuild only when dimensions change, so painting keeps the focused cell mounted.
-  private def grid(dim: it.evadid.core.datastructures.matrix.MatrixDimension): Element =
-    div(cls := "evacuation-grid", (0 until dim.rows).map(row => div(cls := "evacuation-row",
-      (0 until dim.cols).map(col => {
-        val index = row * dim.cols + col
-        val tile = planSignal.map(_.tiles.lift(index).getOrElse(EvacuationTile.Floor))
-        val occupied = planSignal.map(_.people.contains(index))
-        button(typ := "button", cls := "evacuation-cell",
-          cls <-- tile.map(kind => s"evacuation-cell--${kind.toString.toLowerCase}"),
-          cls.toggle("evacuation-cell--person") <-- occupied, disabled <-- locked,
-          aria.label <-- textFor("evacuationCell").combineWith(
-            tile.flatMapSwitch(kind => textFor(s"evacuation$kind")),
-            occupied.flatMapSwitch(present => if (present) textFor("evacuationPerson") else Val("")))
-            .map((template, tileName, personName) =>
-              template.replace("{row}", (row + 1).toString).replace("{col}", (col + 1).toString)
-                .replace("{tile}", tileName).replace("{person}", personName)),
-          onClick --> (_ => mode.mainAreaTileMapController.onMouseClickingOnTile(dim.positions(index))))
-      }))))
   private def resize(key: String, horizontal: Boolean, add: Boolean): Element = button(typ := "button",
     text <-- textFor(key), disabled <-- locked.combineWith(floorMap.signal).map((disabled, map) => {
       val size = if (horizontal) map.floorMatrix.dim.cols else map.floorMatrix.dim.rows
@@ -71,7 +52,7 @@ case class ScenarioEditor(answer: Var[EvacuationFloorPlan], initial: EvacuationF
       button(typ := "button", disabled <-- locked, text <-- textFor("evacuationReset"), onClick --> (_ => {
         floorMap.set(EvacuationFloorAdapter.decode(initial)); answer.set(initial)
       }))),
-    div(cls := "evacuation-viewport", child <-- floorMap.signal.map(_.floorMatrix.dim).distinct.map(grid)))
+    EvacuationFloorView(floorMap.signal, locked, pos => mode.mainAreaTileMapController.onMouseClickingOnTile(pos)).getDomElement())
   override def onFullscreenClose(): Unit = mode.onLeavingMode()
   override def dismissOnOutsideClick: Boolean = false
 }
