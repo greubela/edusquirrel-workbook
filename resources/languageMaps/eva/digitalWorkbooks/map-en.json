@@ -42,5 +42,14 @@
   "unanswered": "Choose an answer.",
   "answerSaved": "Opinion saved. There is no automatic right/wrong grade.",
   "correct": "Correct.",
-  "tryAgain": "Reconsider your selection."
+  "tryAgain": "Reconsider your selection.",
+  "binaryTableTitle": "Encode the week as binary inputs",
+  "binaryTableTask": "Use 1 when a condition is true and 0 otherwise. Monday is filled in as an example. On Tuesday, Lina is unavailable, a friend is available, homework is unfinished and the weather is not sunny/warm. On Wednesday, Lina and a friend are available, homework is unfinished and it is sunny/warm. On Thursday, Lina is unavailable, a friend is available, homework is finished and the weather is not sunny/warm. On Friday, Lina and a friend are available, homework is finished and it is sunny/warm.",
+  "zero": "0",
+  "one": "1",
+  "tableChoose": "Choose…",
+  "tableRow": "Row",
+  "tableProgress": "{count} of {total} checked cells are correct.",
+  "tableSaved": "All cells filled. Answers saved; this table has no automatic grade.",
+  "tableIncomplete": "Fill in every editable cell. Answers are saved as you work."
 }

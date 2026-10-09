@@ -96,3 +96,9 @@ The interaction stores command-usage limits, but this renderer does not pass the
 Define the domain value and requirements in shared core, then add the interaction model and its definition factory/content serializer. Register the factory in the shared factory registry and the renderer in `HtmlRenderFactory`. Build an editor only when the controls warrant a separate component. Keep CSS in dedicated files, reuse shared color/dimension tokens, and ensure workbook entry pages load the required styles.
 
 Test domain transitions, validation/grading and both serialization boundaries in core JVM/JS. Test editor-local state and bindings in client tests. Browser checks should cover the actual preview/fullscreen flow, reopening/restoration, invalid drafts and layout where relevant. See the [email simulator guide](email-simulator.md) and [QR guide](qr-code-interaction.md) for existing suites and commands.
+
+## Inline answer tables
+
+`AnswerTableInteraction` belongs to shared core and describes row/column labels and fixed or editable cells. Its `TableAnswer` value contains only editable strings in row-major order; fixed cells are exercise content, not learner state. The model validates dimensions and choices, checks completion, and counts only cells with expected answers. Text alternatives compare case-sensitively after trimming; ungraded reflection cells never contribute to that count.
+
+`AnswerTableRenderer` in client binds the interaction variable to text inputs or selects. It displays localized headings and feedback, while `digital-workbooks.css` owns presentation and horizontal scrolling. It requires no editor or fullscreen lifecycle. The image-recognition chapter combines this inline interaction with the separate threshold-neuron interaction and fullscreen editor; they keep independent learner values.

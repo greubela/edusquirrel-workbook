@@ -38,6 +38,9 @@ import it.evadid.workbook.elements.interactionElements.neuron.ThresholdNeuronInt
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.choice.ChoiceInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.neuron.ThresholdNeuronRenderer
 
+import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.table.AnswerTableRenderer
+
 trait HtmlRenderFactory[T <: WorkbookElement] {
 
   protected def fullInfo: FullInfo = HtmlFullWorkbookApp.fullInfo
@@ -106,6 +109,7 @@ object HtmlRenderFactory {
       case i: ImageElement => HtmlProxyAppElementRenderer.renderWorkbookElement(i, HtmlImageElement(i))
 
       // interactions
+      case t: AnswerTableInteraction => AnswerTableRenderer.renderWorkbookElement(t)
       case c: ChoiceInteraction => ChoiceInteractionRenderer.renderWorkbookElement(c)
       case n: ThresholdNeuronInteraction => ThresholdNeuronRenderer.renderWorkbookElement(n)
       case m: MailInteraction => HtmlMailInteractionRenderer.renderWorkbookElement(m)

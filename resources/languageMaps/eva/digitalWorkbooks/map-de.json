@@ -42,5 +42,14 @@
   "unanswered": "Wähle eine Antwort.",
   "answerSaved": "Einschätzung gespeichert. Es gibt keine automatische Richtig/Falsch-Bewertung.",
   "correct": "Richtig.",
-  "tryAgain": "Überdenke deine Auswahl."
+  "tryAgain": "Überdenke deine Auswahl.",
+  "binaryTableTitle": "Die Woche als binäre Eingaben darstellen",
+  "binaryTableTask": "Verwende 1, wenn eine Bedingung zutrifft, und sonst 0. Montag ist als Beispiel ausgefüllt. Am Dienstag hat Lina keine Zeit, ein Freund hat Zeit, die Hausaufgaben sind nicht fertig und es ist nicht sonnig/warm. Am Mittwoch haben Lina und ein Freund Zeit, die Hausaufgaben sind nicht fertig und es ist sonnig/warm. Am Donnerstag hat Lina keine Zeit, ein Freund hat Zeit, die Hausaufgaben sind fertig und es ist nicht sonnig/warm. Am Freitag haben Lina und ein Freund Zeit, die Hausaufgaben sind fertig und es ist sonnig/warm.",
+  "zero": "0",
+  "one": "1",
+  "tableChoose": "Auswählen…",
+  "tableRow": "Zeile",
+  "tableProgress": "{count} von {total} geprüften Zellen sind richtig.",
+  "tableSaved": "Alle Zellen ausgefüllt. Antworten gespeichert; diese Tabelle wird nicht automatisch bewertet.",
+  "tableIncomplete": "Fülle jede bearbeitbare Zelle aus. Deine Antworten werden während der Eingabe gespeichert."
 }

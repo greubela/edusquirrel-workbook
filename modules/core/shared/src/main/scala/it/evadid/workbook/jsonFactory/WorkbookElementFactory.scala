@@ -28,6 +28,8 @@ import scala.collection.mutable
 import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.neuron.ThresholdNeuronInteraction
 
+import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
+
 object WorkbookElementFactory {
 
   /** Compatibility base for leaf elements while keeping all serialization metadata in the factory. */
@@ -134,6 +136,7 @@ object WorkbookElementFactory {
     classOf[CreateQrCodeInteraction].getSimpleName -> CreateQrCodeInteraction.factory,
     classOf[MailInteraction].getSimpleName -> MailInteraction.factory,
     classOf[ChoiceInteraction].getSimpleName -> ChoiceInteraction.factory,
+    classOf[AnswerTableInteraction].getSimpleName -> AnswerTableInteraction.factory,
     classOf[ThresholdNeuronInteraction].getSimpleName -> ThresholdNeuronInteraction.factory,
     classOf[MailEditor].getSimpleName -> MailEditor.factory,
     classOf[Workbook].getSimpleName -> Workbook.factory,

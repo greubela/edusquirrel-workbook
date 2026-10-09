@@ -15,6 +15,7 @@ import it.evadid.workbook.jsonFactory.{WorkbookElementSerializable, WorkbookElem
 import upickle.default.*
 import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.neuron.*
+import it.evadid.workbook.elements.interactionElements.table.*
 import munit.FunSuite
 
 class WorkbookElementSerializableRoundTripSpec extends FunSuite {
@@ -48,6 +49,9 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       ChoiceInteraction("choice", content("choice/prompt"), List(content("choice/a"), content("choice/b")), true, Some(List(0, 1))),
       ThresholdNeuronInteraction("neuron", List(content("neuron/input")),
         List(NeuronExample(content("neuron/row"), List(1), true)), NeuronParameters(List(1), 1)),
+      AnswerTableInteraction("table", content("table/title"), List(content("table/row")),
+        List(content("table/a"), content("table/b")), List(List(
+          FixedTableCell(content("table/given")), EditableTableCell(Some(List("0", "1")), List("0", "1"))))),
       workbook, section,
       ExerciseContainer("container", content("container/title"), List(input)),
       LabeledWorkbookElement("labeled", input, WorkbookLabel(content("label/hint"), HintLabel)),

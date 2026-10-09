@@ -35,7 +35,7 @@ Shared workbook abstractions live in [WorkbookElement.scala](modules/core/shared
 | [embroideryWorkbook](homepage/embroideryWorkbook/index.html) | Embroidery workbook |
 | [compressionWorkbook](homepage/compressionWorkbook/index.html) | Data compression workbook |
 | [plantWorkshopWorkbook](homepage/plantWorkshopWorkbook/index.html) | Plant workshop on the workbook architecture |
-| [imageRecognitionWorkbook](homepage/imageRecognitionWorkbook/index.html) | First image-recognition chapter with threshold-neuron experiment |
+| [imageRecognitionWorkbook](homepage/imageRecognitionWorkbook/index.html) | First image-recognition chapter with binary answer table and threshold-neuron experiment |
 | [phishingWorkbook](homepage/phishingWorkbook/index.html) | Email sorting simulator and local writing practice |
 | [plantWorkshop](homepage/plantWorkshop/index.html) | Separate legacy plant application |
 | [feedback-demo](homepage/feedback-demo/index.html) | Feedback demonstration |

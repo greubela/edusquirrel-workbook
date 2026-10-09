@@ -5,6 +5,7 @@ import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.neuron.*
+import it.evadid.workbook.elements.interactionElements.table.*
 import it.evadid.workbook.elements.structureElements.Workbook
 
 /** First online chapter adapted from Workbook_Teil1.pdf, chapter 2, pages 6–8. */
@@ -19,6 +20,8 @@ case class CreateImageRecognitionWorkbook(fullInfo: FullInfo) extends WorkbookFa
       createTextInput("image-opinion-reason")
     )))),
     section("image-threshold-neuron", "digitalWorkbooks/neuronTitle", List(container("digitalWorkbooks/neuronTitle", List(
+      instructionPlaintext("digitalWorkbooks/binaryTableTask"),
+      CreateImageRecognitionWorkbook.binaryTable,
       instructionPlaintext("digitalWorkbooks/neuronTask"),
       CreateImageRecognitionWorkbook.poolExercise,
       ChoiceInteraction("image-threshold-boundary", id("boundaryPrompt"), List(id("active"), id("inactive")), expected = Some(List(0))),
@@ -32,6 +35,14 @@ object CreateImageRecognitionWorkbook {
   private def id(key: String) = LanguageMapContentId(s"digitalWorkbooks/$key")
   // Binary encoding of the source's week: Lina available, a friend available,
   // homework finished, sunny/warm. Desired visits: Wednesday and Friday.
+  lazy val binaryTable: AnswerTableInteraction = AnswerTableInteraction("image-binary-week", id("binaryTableTitle"),
+    poolExercise.inputLabels, poolExercise.examples.map(_.label),
+    poolExercise.inputLabels.indices.toList.map(input => poolExercise.examples.zipWithIndex.map { (example, day) =>
+      val bit = example.inputs(input).toInt.toString
+      // The first column is a worked example; learners complete the remaining days.
+      if day == 0 then FixedTableCell(id(if bit == "1" then "one" else "zero"))
+      else EditableTableCell(Some(List(bit)), List("0", "1"))
+    }))
   val poolExercise = ThresholdNeuronInteraction("image-pool-neuron",
     List(id("lina"), id("friends"), id("school"), id("weather")),
     List(

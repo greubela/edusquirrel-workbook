@@ -8,7 +8,7 @@ const root = path.resolve(import.meta.dirname, '../..');
 const origin = 'http://localhost:9000';
 const mime = {'.html':'text/html', '.js':'text/javascript', '.css':'text/css', '.json':'application/json', '.svg':'image/svg+xml', '.png':'image/png'};
 
-test('digital image chapter persists choices and neuron edits, rejects drafts and fits mobile', async () => {
+test('digital image chapter persists answer tables, choices and neuron edits, rejects drafts and fits mobile', async () => {
   await fs.access(path.join(root, 'artifacts/newest/client.js'));
   const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium', args:['--no-sandbox']});
   try {
@@ -31,6 +31,32 @@ test('digital image chapter persists choices and neuron edits, rejects drafts an
     await opinion.locator('input').nth(2).check();
     assert.equal(await opinion.locator('input:checked').count(), 1, 'single choices are exclusive');
     await page.locator('.section-block').nth(1).click();
+    const answerTable = page.locator('.answer-table');
+    const answers = ['0','1','0','1', '1','1','1','1', '0','0','1','1', '0','1','0','1'];
+    assert.equal(await answerTable.locator('select').count(), 16);
+    assert.equal(await answerTable.locator('tbody td:not(:has(select))').count(), 4, 'Monday is fixed');
+    assert.match(await answerTable.innerText(), /0 of 16 checked cells/);
+    for (const [i, value] of answers.entries()) await answerTable.locator('select').nth(i).selectOption(value);
+    assert.match(await answerTable.innerText(), /16 of 16 checked cells/);
+    await answerTable.locator('select').first().selectOption('1');
+    assert.match(await answerTable.innerText(), /15 of 16 checked cells/);
+    await answerTable.locator('select').first().selectOption('');
+    assert.match(await answerTable.innerText(), /15 of 16 checked cells/);
+    await answerTable.locator('select').first().selectOption('0');
+    for (const viewport of [{width:390,height:844}, {width:1440,height:900}]) {
+      await page.setViewportSize(viewport);
+      const geometry = await answerTable.evaluate(el => {
+        const box = el.getBoundingClientRect();
+        return {left:box.left,right:box.right,width:innerWidth,
+          overflow:getComputedStyle(el.querySelector('.answer-table__scroll')).overflowX,
+          border:getComputedStyle(el.querySelector('select')).borderTopWidth,
+          inlineStyles:el.querySelectorAll('[style], style').length};
+      });
+      assert(geometry.left>=0 && geometry.right<=geometry.width+1, 'answer table fits viewport');
+      assert.equal(geometry.overflow, 'auto');
+      assert.equal(geometry.border, '1px');
+      assert.equal(geometry.inlineStyles, 0);
+    }
     const choices = page.locator('.choice-interaction');
     await choices.nth(0).locator('input').nth(1).check();
     assert.match(await choices.nth(0).innerText(), /Reconsider/);
@@ -83,6 +109,9 @@ test('digital image chapter persists choices and neuron edits, rejects drafts an
     await page.reload();
     await page.locator('.section-block').nth(1).click({timeout:60000});
     assert.match(await page.locator('.neuron-preview').innerText(), /5 of 5/);
+    assert.match(await answerTable.innerText(), /16 of 16 checked cells/);
+    assert.deepEqual(await answerTable.locator('select').evaluateAll(els => els.map(el => el.value)), answers,
+      'all table answers restore after reload');
     assert.equal(await choices.nth(1).locator('input:checked').count(), 2, 'multiple choices restore after reload');
     await open();
     await editor.getByRole('button', {name:'Reset weights'}).click();
