@@ -85,8 +85,56 @@ There is an existing client-level coupling here: `EvaEditorTurtle` calls `HtmlTu
 
 The interaction stores command-usage limits, but this renderer does not pass them into the editor or enforce them. It also does not expose a model-level `isPassed` method. The visual comparison should not be described as a complete requirements/grading implementation merely because its label contains “grading”.
 
+## Choice questions and a threshold-neuron exercise
+
+`ChoiceInteraction` stores `ChoiceAnswer` in shared core and is rendered inline by `ChoiceInteractionRenderer`; it needs no fullscreen editor. Optional expected selections distinguish knowledge checks from ungraded opinions.
+
+`ThresholdNeuronInteraction` stores shared `NeuronParameters`, binary examples and input labels. `ThresholdNeuronRenderer` creates a bound state and preview card, then opens `ThresholdNeuronEditor` with that state and the exercise's examples/initial parameters. `NeuronEditorState` keeps incomplete numeric drafts local while valid edits flow to the saved value. See the [PDF/ZIP migration inventory](digital-workbook-migration.md) for the source activity and verification commands.
+
 ## Adding an interaction
 
 Define the domain value and requirements in shared core, then add the interaction model and its definition factory/content serializer. Register the factory in the shared factory registry and the renderer in `HtmlRenderFactory`. Build an editor only when the controls warrant a separate component. Keep CSS in dedicated files, reuse shared color/dimension tokens, and ensure workbook entry pages load the required styles.
 
 Test domain transitions, validation/grading and both serialization boundaries in core JVM/JS. Test editor-local state and bindings in client tests. Browser checks should cover the actual preview/fullscreen flow, reopening/restoration, invalid drafts and layout where relevant. See the [email simulator guide](email-simulator.md) and [QR guide](qr-code-interaction.md) for existing suites and commands.
+
+## Inline answer tables
+
+`AnswerTableInteraction` belongs to shared core and describes row/column labels and fixed or editable cells. Its `TableAnswer` value contains only editable strings in row-major order; fixed cells are exercise content, not learner state. The model validates dimensions and choices, checks completion, and counts only cells with expected answers. Text alternatives compare case-sensitively after trimming; ungraded reflection cells never contribute to that count.
+
+`AnswerTableRenderer` in client binds the interaction variable to text inputs or selects. It displays localized headings and feedback, while `digital-workbooks.css` owns presentation and horizontal scrolling. It requires no editor or fullscreen lifecycle. The image-recognition chapter combines this inline interaction with the separate threshold-neuron interaction and fullscreen editor; they keep independent learner values.
+
+The Blockchain balance exercise also reuses this interaction and renderer. `TeachingLedger` is a pure shared-core calculation model: it applies ordered integer-point transfers and validates available funds. The workbook factory uses its result to author expected table cells; persisted learner state is still `TableAnswer`, not the ledger. A domain calculation does not need a new interaction or editor when the existing answer table already expresses the task. Signature and privacy research use ungraded cells and separate text inputs.
+
+## Binary pixel canvases
+
+`BinaryPixelImage` in shared core owns validated dimensions, row-major bits, indexing and immutable toggles. `BinaryPixelInteraction` uses it as the learner value; targets, presets and `PixelThresholdProbe` definitions remain exercise configuration. Its bound serializer rejects saved images of the wrong shape, and grading compares all pixels when a target exists. Without a target, exploration remains ungraded.
+
+`BinaryPixelRenderer` presents a small inline canvas with accessible toggle buttons, a read-only target when configured, reset/preset controls and detector feedback. It binds the interaction variable directly and needs no separate fullscreen editor. CSS owns sizes, colors, wrapping and focus indicators. The image-recognition chapter uses this component for the source's 3×5 digit patterns and two fixed row detectors; it does not implement network training.
+
+## Square-middle hash exercises
+
+`SquareMiddleHash` in shared core performs the worksheet's exact decimal `BigInt` calculation. `SquareMiddleHashInteraction` defines an exploration, collision or preimage task and stores `SquareMiddleHashAnswer` input strings. Invalid numeric strings are persisted drafts, not computed domain results; the parser returns no calculation for them. Collision grading compares numeric inputs and exact two-digit hashes, so zero-prefixed spellings of the same number are not collisions.
+
+`SquareMiddleHashRenderer` binds text controls directly to that learner value, renders calculated squares with semantic `mark` elements, and displays model grading. It is inline and needs no fullscreen editor. All visual rules belong to dedicated CSS with shared tokens.
+
+## SHA-256 experiments
+
+`Sha256` is a shared-core byte-hashing model implementing FIPS 180-4. It has no DOM, workbook state, platform crypto API or external dependency. `Sha256Interaction` adds the exercise configuration (comparison or hexadecimal prefix challenge), bounded raw `Sha256Answer` strings, persistence and grading. It does not search automatically or record attempts; it evaluates the learner's current input.
+
+`Sha256Renderer` in client binds textareas to that answer, renders complete hex digests and a differing-bit count for comparisons, and displays localized feedback. The small experiment stays inline, so it needs no editor or fullscreen lifecycle. Shared hash controls and responsive digest wrapping are defined in `digital-workbooks.css`. The block/mining simulator below reuses `Sha256` with its own interaction value and fullscreen editor.
+
+## Linked blocks and mining
+
+`TeachingBlock` and `TeachingChain` in shared core reuse `Sha256` to derive immutable block hashes, predecessor links and contiguous proof status. The model searches a bounded nonce interval without timers, DOM or workbook state. `BlockchainInteraction` adds the exercise title, initial chain, fixed difficulty, grading and a serializer that preserves the authored block count. Only block data and nonces are learner values; hashes are derived.
+
+`BlockchainRenderer` binds this value and renders a preview plus the fullscreen opening control. `BlockchainEditor` edits the same bound state, keeping invalid nonce drafts local. `BlockchainMiningController` is client-only scheduling logic: it calls the pure model in short chunks, tracks an attempt budget, and rejects cancelled or stale work. Its scheduler is injected for deterministic unit tests. The editor’s fullscreen close/unmount hooks cancel pending callbacks; the renderer does not implement mining. Dedicated CSS supplies the responsive grid, digest wrapping, focus styles and configurable status colors, with textual statuses preserving meaning without color.
+
+Energy calculations follow the simpler reuse pattern: shared-core `MiningEnergyEstimate` calculates explicit assumptions with decimal arithmetic and unit conversions; the workbook factory authors expected `AnswerTableInteraction` cells from those results. The existing table renderer persists and grades learner strings. Live block research and final value judgments use ungraded tables/text inputs, so they need neither a specialized renderer nor an editor. The final assessment has its own interaction ID instead of changing the shape of the already-persisted introductory table.
+
+## Unicode comparison and reuse for later workbook chapters
+
+`UnicodeText` in shared core enumerates raw code points, combines valid UTF-16 surrogate pairs and explicitly flags unpaired surrogates. It preserves combining marks, controls, whitespace and spelling; it does not normalize, parse URLs, decode IDNA or determine trust. `UnicodeComparisonInteraction` owns the title, two bounded initial strings and serialization of `UnicodeComparisonAnswer`. This is an ungraded exploration rather than an automatic phishing detector.
+
+`UnicodeComparisonRenderer` binds the saved strings, renders editable inputs and semantic code-point tables, and supports reset to the authored values. The small tool stays inline and needs no editor or fullscreen lifecycle. Responsive tables, colors and input appearance belong to `digital-workbooks.css`, already linked by all workbook pages. A textual validity column accompanies the CSS indication of unpaired surrogates.
+
+The image-recognition robustness chapter reuses `BinaryPixelInteraction` with a one-pixel probe and explicit modified presets. It adds no training or multilayer-network implementation. Saved observations, transformer research and school-use arguments reuse `AnswerTableInteraction` and text inputs, as do Phishing warning-sign evidence, attachment-risk reasoning and the final checklist. Factual table cells can be checked independently; human interpretations and trust/value judgments remain ungraded. Existing interaction IDs and table dimensions are retained when chapters are appended.

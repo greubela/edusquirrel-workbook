@@ -100,7 +100,10 @@ object BeExpressionToTurtleCommands {
           val bound = defn.inputs.zip(args).map { (param, arg) =>
             SnapControlFlow.variableName(param) -> evalNumber(arg, state)
           }.toMap
-          interpret(defn.body, state.copy(env = state.env ++ bound))
+          // Each call has its own parameter/local-variable frame. A recursive
+          // child must not overwrite the parent's length/depth before the
+          // parent's remaining calls run. Drawing commands survive the return.
+          interpret(defn.body, state.copy(env = state.env ++ bound)).copy(env = state.env)
         case None =>
           val turtleName = SnapTurtleCatalog.turtleCommandByPythonName.getOrElse(python, python)
           val numeric = args.flatMap(arg => numericArg(arg, state))

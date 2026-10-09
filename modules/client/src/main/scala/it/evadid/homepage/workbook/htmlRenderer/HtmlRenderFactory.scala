@@ -33,6 +33,24 @@ import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.Sor
 import it.evadid.workbook.elements.structureElements.{ExerciseContainer, Workbook}
 import org.scalajs.dom.HTMLDivElement
 
+import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
+import it.evadid.workbook.elements.interactionElements.neuron.ThresholdNeuronInteraction
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.choice.ChoiceInteractionRenderer
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.neuron.ThresholdNeuronRenderer
+
+import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.table.AnswerTableRenderer
+import it.evadid.workbook.elements.interactionElements.pixel.BinaryPixelInteraction
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.pixel.BinaryPixelRenderer
+import it.evadid.workbook.elements.interactionElements.blockchain.SquareMiddleHashInteraction
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain.SquareMiddleHashRenderer
+import it.evadid.workbook.elements.interactionElements.blockchain.Sha256Interaction
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain.Sha256Renderer
+import it.evadid.workbook.elements.interactionElements.blockchain.BlockchainInteraction
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain.BlockchainRenderer
+import it.evadid.workbook.elements.interactionElements.text.UnicodeComparisonInteraction
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.text.UnicodeComparisonRenderer
+
 trait HtmlRenderFactory[T <: WorkbookElement] {
 
   protected def fullInfo: FullInfo = HtmlFullWorkbookApp.fullInfo
@@ -101,6 +119,14 @@ object HtmlRenderFactory {
       case i: ImageElement => HtmlProxyAppElementRenderer.renderWorkbookElement(i, HtmlImageElement(i))
 
       // interactions
+      case h: SquareMiddleHashInteraction => SquareMiddleHashRenderer.renderWorkbookElement(h)
+      case h: Sha256Interaction => Sha256Renderer.renderWorkbookElement(h)
+      case h: BlockchainInteraction => BlockchainRenderer.renderWorkbookElement(h)
+      case h: UnicodeComparisonInteraction => UnicodeComparisonRenderer.renderWorkbookElement(h)
+      case p: BinaryPixelInteraction => BinaryPixelRenderer.renderWorkbookElement(p)
+      case t: AnswerTableInteraction => AnswerTableRenderer.renderWorkbookElement(t)
+      case c: ChoiceInteraction => ChoiceInteractionRenderer.renderWorkbookElement(c)
+      case n: ThresholdNeuronInteraction => ThresholdNeuronRenderer.renderWorkbookElement(n)
       case m: MailInteraction => HtmlMailInteractionRenderer.renderWorkbookElement(m)
       case m: MailEditor => HtmlMailEditorRenderer.renderWorkbookElement(m)
       case q: CreateQrCodeInteraction => CreateQrCodeInteractionRenderer.renderWorkbookElement(q)

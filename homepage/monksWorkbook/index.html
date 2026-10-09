@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rekursion mit den Mönchen von Mons Komputarius</title>
+
+    <!-- CSP: allow local proxy calls + Pyodide/WASM + CDN scripts used by the demo. -->
+    <meta http-equiv="Content-Security-Policy"
+          content="
+          img-src 'self' data: blob:;
+            default-src 'self';
+             connect-src 'self' http://localhost:8787 http://localhost:8000 http://127.0.0.1:8000 https://cdn.jsdelivr.net https://ypcgzj23.trafficplex.cloud;
+              script-src 'self' https://esm.sh https://unpkg.com https://cdn.jsdelivr.net 'wasm-unsafe-eval';
+               style-src 'self' 'unsafe-inline' https://unpkg.com;">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="../css/custom-elements.css">
+    <link rel="stylesheet" href="../css/workbook/workbook-structure.css">
+    <link rel="stylesheet" href="../css/workbook/workbook-header.css">
+    <link rel="stylesheet" href="../css/workbook/workbook-interactions.css">
+    <link rel="stylesheet" href="../css/JavaFunctionEditor.css">
+
+    <link rel="stylesheet" href="../css/workbook/monks-workbook.css">
+
+    <!-- Styles old -->
+    <link rel="stylesheet" href="../css/old/messenger.css">
+
+    <!-- Turtle practice uses the same local editor and target preview as other workbooks. -->
+    <script src="../../resources/programs/20260212TurtleStitch/fullturtle.js"></script>
+    <link rel="stylesheet" href="../../resources/programs/20261004JSXGraph/jsxgraph.css">
+    <script src="../../resources/programs/20261004JSXGraph/jsxgraphcore.js"></script>
+    <script type="module" src="../js/CodeMirrorLoader.js"></script>
+    <script src="../js/app-loader.js"></script>
+
+    <link rel="stylesheet" href="../css/workbook/email-simulator.css">
+    <link rel="stylesheet" href="../css/workbook/digital-workbooks.css">
+</head>
+<body class="monks-workbook">
+<div id="app">
+    <div class="container">
+        <div id="workbookMonks"></div>
+    </div>
+</div>
+</body>
+</html>

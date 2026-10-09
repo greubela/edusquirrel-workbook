@@ -35,7 +35,9 @@ Shared workbook abstractions live in [WorkbookElement.scala](modules/core/shared
 | [embroideryWorkbook](homepage/embroideryWorkbook/index.html) | Embroidery workbook |
 | [compressionWorkbook](homepage/compressionWorkbook/index.html) | Data compression workbook |
 | [plantWorkshopWorkbook](homepage/plantWorkshopWorkbook/index.html) | Plant workshop on the workbook architecture |
-| [phishingWorkbook](homepage/phishingWorkbook/index.html) | Email sorting simulator and local writing practice |
+| [blockchainWorkbook](homepage/blockchainWorkbook/index.html) | Blockchain learner activities, mining simulator and energy/final assessment; equivalence review pending |
+| [imageRecognitionWorkbook](homepage/imageRecognitionWorkbook/index.html) | Partial image-recognition workbook with neuron/pixel experiments, robustness and school-chatbot assessment |
+| [phishingWorkbook](homepage/phishingWorkbook/index.html) | Mail simulator, warning/domain/Unicode analysis, attachment risks and checklist; partial adaptation |
 | [plantWorkshop](homepage/plantWorkshop/index.html) | Separate legacy plant application |
 | [feedback-demo](homepage/feedback-demo/index.html) | Feedback demonstration |
 
@@ -109,6 +111,7 @@ LLM feedback uses the endpoint configured in [config.js](homepage/js/config.js).
 
 ## Documentation
 
+- [Digital workbook migration](docs/digital-workbook-migration.md): analysis of linked PDF/ZIP exercises, missing editors and the Blockchain, image-recognition and Phishing adaptations.
 - [Interaction architecture](docs/workbook-interaction-architecture.md): dependency boundaries between shared models, renderers and optional editors; state and serialization flow.
 - [Email simulator](docs/email-simulator.md): state, grading, content handling and verification.
 - [QR interaction](docs/qr-code-interaction.md): encoding model, requirements, region colors and reference tests.
@@ -120,3 +123,5 @@ LLM feedback uses the endpoint configured in [config.js](homepage/js/config.js).
 - [Workbook interaction roadmap](WORKBOOK_INTERACTIONS.md): teaching-resource inventory and proposed future exercises.
 
 Markdown under bundled third-party libraries documents those distributions. Imported teaching projects retain their conceptual and historical documents; their upstream setup/team instructions do not describe the EduSquirrel repository workflow. MathWorld's README and deployment guide explain its integration here.
+
+Classic PDF/ZIP downloads intentionally coexist with their partial digital versions. Digital migrations are listed under “Digitale Workbooks (In Arbeit)” until full content equivalence has been reviewed; see the [migration policy](docs/digital-workbook-migration.md).

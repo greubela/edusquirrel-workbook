@@ -25,6 +25,16 @@ import upickle.default.*
 import scala.annotation.tailrec
 import scala.collection.mutable
 
+import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
+import it.evadid.workbook.elements.interactionElements.neuron.ThresholdNeuronInteraction
+
+import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
+import it.evadid.workbook.elements.interactionElements.pixel.BinaryPixelInteraction
+import it.evadid.workbook.elements.interactionElements.blockchain.SquareMiddleHashInteraction
+import it.evadid.workbook.elements.interactionElements.blockchain.Sha256Interaction
+import it.evadid.workbook.elements.interactionElements.blockchain.BlockchainInteraction
+import it.evadid.workbook.elements.interactionElements.text.UnicodeComparisonInteraction
+
 object WorkbookElementFactory {
 
   /** Compatibility base for leaf elements while keeping all serialization metadata in the factory. */
@@ -130,6 +140,14 @@ object WorkbookElementFactory {
   private lazy val knownFactoriesMap: Map[String, WorkbookElementFactory[? <: WorkbookElement]] = Map(
     classOf[CreateQrCodeInteraction].getSimpleName -> CreateQrCodeInteraction.factory,
     classOf[MailInteraction].getSimpleName -> MailInteraction.factory,
+    classOf[ChoiceInteraction].getSimpleName -> ChoiceInteraction.factory,
+    classOf[AnswerTableInteraction].getSimpleName -> AnswerTableInteraction.factory,
+    classOf[BinaryPixelInteraction].getSimpleName -> BinaryPixelInteraction.factory,
+    classOf[SquareMiddleHashInteraction].getSimpleName -> SquareMiddleHashInteraction.factory,
+    classOf[Sha256Interaction].getSimpleName -> Sha256Interaction.factory,
+    classOf[BlockchainInteraction].getSimpleName -> BlockchainInteraction.factory,
+    classOf[UnicodeComparisonInteraction].getSimpleName -> UnicodeComparisonInteraction.factory,
+    classOf[ThresholdNeuronInteraction].getSimpleName -> ThresholdNeuronInteraction.factory,
     classOf[MailEditor].getSimpleName -> MailEditor.factory,
     classOf[Workbook].getSimpleName -> Workbook.factory,
     classOf[LabeledWorkbookElement[?]].getSimpleName -> LabeledWorkbookElement.factory,

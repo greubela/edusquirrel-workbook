@@ -144,4 +144,19 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
     assertEquals(commands.map(_.name), List("forward", "right"))
     assertEquals(commands.head.args, List(20.0))
   }
+  test("recursive calls restore their caller's parameters and local variables") {
+    val program = BeProgram.fromPythonString(
+      """def branch(length, depth):
+        |    if depth == 0:
+        |        forward(length)
+        |    else:
+        |        branch(length / 2, depth - 1)
+        |        branch(length / 2, depth - 1)
+        |branch(80, 2)
+        |forward(7)
+        |""".stripMargin)
+    val commands = BeExpressionToTurtleCommands(program.fullProgram)
+    assertEquals(commands.filter(_.name == "forward").map(_.args),
+      List(List(20.0), List(20.0), List(20.0), List(20.0), List(7.0)))
+  }
 }

@@ -1,4 +1,9 @@
 :root{
+    --blockchain-card-min-width: 18rem;
+  --unicode-table-min-width: 20rem;
+    --pixel-cell-size: max(2.75rem, 44px);
+    --answer-table-control-min-width: 6rem;
+    --neuron-control-min-width: 10rem;
     --mail-folder-width: 12rem;
     --mail-list-width: 20rem;
     --qr-symbol-size: 24rem;
