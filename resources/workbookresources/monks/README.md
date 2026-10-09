@@ -50,3 +50,7 @@ sbt 'client/testOnly *MonksWorkbookSpec'
 
 After building the client bundle, use the repository's normal local site assembly
 and open /monksWorkbook/. The homepage also contains a card linking to it.
+
+The homepage card uses the separate square promotional tablet mock-up at
+resources/img/art/mockup/monks-workbook.png (1254 × 1254), generated with
+imagegen in the same illustrated style. It is not part of the scene slideshow.
