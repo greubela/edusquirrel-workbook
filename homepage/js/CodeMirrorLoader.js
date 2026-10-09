@@ -33,93 +33,6 @@ const replaceTabsWithSpaces = (text) => text.replace(/\t/g, INDENT_SPACES);
 
 const setDiagnosticsEffect = StateEffect.define();
 
-const diagnosticTheme = EditorView.theme({
-  "&": {
-    "--edusquirrel-diag-warning": "255, 190, 88",
-    "--edusquirrel-diag-error": "255, 96, 96",
-    "--edusquirrel-diag-soft": "98, 184, 255",
-    "--edusquirrel-diag-line-alpha": "0.18",
-    "--edusquirrel-diag-line-fade": "0.055",
-    "--edusquirrel-diag-rail-alpha": "0.92",
-    "--edusquirrel-diag-mark-alpha": "0.13"
-  },
-  ".cm-edusquirrel-diagnostic": {
-    position: "relative",
-    backgroundImage: [
-      "linear-gradient(90deg, rgba(var(--edusquirrel-diag-warning), var(--edusquirrel-diag-line-alpha)), rgba(var(--edusquirrel-diag-warning), var(--edusquirrel-diag-line-fade)) 42%, transparent 82%)",
-      "linear-gradient(180deg, rgba(255,255,255,0.045), transparent 58%)"
-    ].join(", "),
-    boxShadow: [
-      "inset 3px 0 0 rgba(var(--edusquirrel-diag-warning), var(--edusquirrel-diag-rail-alpha))",
-      "inset 0 1px 0 rgba(var(--edusquirrel-diag-warning), 0.10)",
-      "inset 0 -1px 0 rgba(var(--edusquirrel-diag-warning), 0.06)"
-    ].join(", "),
-    transition: "background-color 0.16s ease, box-shadow 0.16s ease"
-  },
-  ".cm-edusquirrel-diagnostic-error": {
-    backgroundImage: [
-      "linear-gradient(90deg, rgba(var(--edusquirrel-diag-error), calc(var(--edusquirrel-diag-line-alpha) + 0.06)), rgba(var(--edusquirrel-diag-error), calc(var(--edusquirrel-diag-line-fade) + 0.025)) 42%, transparent 82%)",
-      "linear-gradient(180deg, rgba(255,255,255,0.04), transparent 58%)"
-    ].join(", "),
-    boxShadow: [
-      "inset 3px 0 0 rgba(var(--edusquirrel-diag-error), var(--edusquirrel-diag-rail-alpha))",
-      "inset 0 1px 0 rgba(var(--edusquirrel-diag-error), 0.13)",
-      "inset 0 -1px 0 rgba(var(--edusquirrel-diag-error), 0.08)"
-    ].join(", ")
-  },
-  ".cm-edusquirrel-diagnostic-soft": {
-    backgroundImage: [
-      "linear-gradient(90deg, rgba(var(--edusquirrel-diag-soft), calc(var(--edusquirrel-diag-line-alpha) - 0.04)), rgba(var(--edusquirrel-diag-soft), var(--edusquirrel-diag-line-fade)) 42%, transparent 82%)",
-      "linear-gradient(180deg, rgba(255,255,255,0.035), transparent 58%)"
-    ].join(", "),
-    boxShadow: [
-      "inset 3px 0 0 rgba(var(--edusquirrel-diag-soft), 0.76)",
-      "inset 0 1px 0 rgba(var(--edusquirrel-diag-soft), 0.09)",
-      "inset 0 -1px 0 rgba(var(--edusquirrel-diag-soft), 0.05)"
-    ].join(", ")
-  },
-  ".cm-edusquirrel-diagnostic::before": {
-    content: "\"\"",
-    position: "absolute",
-    left: "0",
-    top: "4px",
-    bottom: "4px",
-    width: "3px",
-    borderRadius: "0 3px 3px 0",
-    backgroundColor: "rgba(var(--edusquirrel-diag-warning), 0.95)",
-    filter: "drop-shadow(0 0 5px rgba(var(--edusquirrel-diag-warning), 0.34))",
-    pointerEvents: "none"
-  },
-  ".cm-edusquirrel-diagnostic-error::before": {
-    backgroundColor: "rgba(var(--edusquirrel-diag-error), 0.98)",
-    filter: "drop-shadow(0 0 6px rgba(var(--edusquirrel-diag-error), 0.38))"
-  },
-  ".cm-edusquirrel-diagnostic-soft::before": {
-    backgroundColor: "rgba(var(--edusquirrel-diag-soft), 0.86)",
-    filter: "drop-shadow(0 0 5px rgba(var(--edusquirrel-diag-soft), 0.26))"
-  },
-  ".cm-edusquirrel-diagnostic-mark": {
-    borderRadius: "3px",
-    backgroundColor: "rgba(var(--edusquirrel-diag-warning), var(--edusquirrel-diag-mark-alpha))",
-    boxShadow: "0 0 0 1px rgba(var(--edusquirrel-diag-warning), 0.10)",
-    textDecorationLine: "underline",
-    textDecorationStyle: "wavy",
-    textDecorationThickness: "1px",
-    textUnderlineOffset: "3px",
-    textDecorationColor: "rgba(var(--edusquirrel-diag-warning), 0.96)"
-  },
-  ".cm-edusquirrel-diagnostic-mark-error": {
-    backgroundColor: "rgba(var(--edusquirrel-diag-error), calc(var(--edusquirrel-diag-mark-alpha) + 0.03))",
-    boxShadow: "0 0 0 1px rgba(var(--edusquirrel-diag-error), 0.12)",
-    textDecorationColor: "rgba(var(--edusquirrel-diag-error), 0.96)"
-  },
-  ".cm-edusquirrel-diagnostic-mark-soft": {
-    backgroundColor: "rgba(var(--edusquirrel-diag-soft), calc(var(--edusquirrel-diag-mark-alpha) - 0.02))",
-    boxShadow: "0 0 0 1px rgba(var(--edusquirrel-diag-soft), 0.10)",
-    textDecorationColor: "rgba(var(--edusquirrel-diag-soft), 0.86)"
-  }
-});
-
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 const normalizeDiagnostics = (diagnostics, doc) => {
@@ -235,57 +148,6 @@ const indentWithSpaces = ({state, dispatch}) => {
   }));
   return true;
 };
-
-const editorTheme = EditorView.theme({
-  ".cm-scroller": {
-    fontFamily: "var(--code-font-family, var(--font-mono, 'Fira Code', 'JetBrains Mono', monospace))",
-    fontSize: "var(--code-font-size, 14px)",
-    lineHeight: "1.5"
-  },
-  ".cm-indent-markers": {
-    "--indent-marker-bg-color":     "var(--cm-indent-color,        rgba(255,255,255,0.10))",
-    "--indent-marker-active-bg-color": "var(--cm-indent-active-color, rgba(255,255,255,0.28))"
-  },
-  ".cm-todo-token": {
-    color: "var(--color-accent-error) !important",
-    fontWeight: "700"
-  },
-  ".cm-todo-token *": {
-    color: "var(--color-accent-error) !important",
-    fontWeight: "700"
-  },
-  /* Identifier/variable names and brackets without TODO */
-  ".cm-plain-name": {
-    color: "var(--color-text-inverse) !important"
-  },
-  ".cm-plain-name *": {
-    color: "var(--color-text-inverse) !important"
-  },
-  /* Keep comments grey (oneDark stone) even if other overrides compete */
-  ".cm-comment": {
-    color: "var(--color-gray-7) !important",
-    fontStyle: "italic"
-  },
-  ".cm-comment *": {
-    color: "var(--color-gray-7) !important"
-  },
-  /* Calls / member access / Arduino constants — light blue instead of oneDark coral red */
-  ".cm-accent-name": {
-    color: "var(--color-blue-1) !important"
-  },
-  ".cm-accent-name *": {
-    color: "var(--color-blue-1) !important"
-  },
-  /* Hat / green-flag call: start of a new Snap script. */
-  ".cm-receive-go": {
-    color: "var(--color-green-2) !important",
-    fontWeight: "700"
-  },
-  ".cm-receive-go *": {
-    color: "var(--color-green-2) !important",
-    fontWeight: "700"
-  }
-});
 
 /** Keywords that must keep their oneDark keyword colors. */
 const RESERVED_IDENTIFIERS = new Set([
@@ -449,8 +311,6 @@ const sharedExtensions = [
     ...searchKeymap
   ]),
   diagnosticField,
-  diagnosticTheme,
-  editorTheme,
   identifierHighlightPlugin
 ];
 
@@ -566,6 +426,7 @@ const codeMirrorFacade = {
     });
 
     const view = new EditorView({state, parent});
+    view.dom.classList.add('edusquirrel-code-mirror');
     if (isJava) {
       loadJavaModule().then(module => {
         if (!destroyed) view.dispatch({effects: editorLanguage.reconfigure(module.java())});
