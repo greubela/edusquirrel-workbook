@@ -1,56 +1,61 @@
 # Mons Komputarius scene artwork
 
-The digital workbook is built by CreateMonksWorkbook, launched at
-homepage/monksWorkbook/index.html, and localized through
-resources/languageMaps/eva/monksworkbook/.
+The workbook is built by `CreateMonksWorkbook`, launched at
+`homepage/monksWorkbook/index.html`, and localized through
+`resources/languageMaps/eva/monksworkbook/`.
 
 Source: Andre Greubel, **Rekursion mit den Mönchen von Mons Komputarius**,
 version dated 29.04.2025, supplied as “2025 04 29 Rekursion Mönche angefangen.pdf”.
 The theater script is on pages 5–6; the counting continuation is on page 3.
 
-Images 01–05 already existed. Images 06–18 were generated with imagegen using
-the existing sepia panels as visual references, then reviewed for scene content.
-The separate artwork under resources/img/art/marie/monkworkbook/ is preserved;
-it uses a different style and is not mixed into this slideshow.
+The original Image01–Image18 artwork remains available. The `beats/` JPEGs were
+created with imagegen from those sepia references. Related frames were generated
+in four-frame sheets, mechanically separated and exported as individual images.
+The separate artwork under `resources/img/art/marie/monkworkbook/` uses a
+different style and is not mixed into the slideshow.
 
-| Image | Scene | Used by panels |
-| --- | --- | --- |
-| Image01.jpg | Journey to Mons Komputarius | arrival |
-| Image02.jpg | Hasty entrance into the temple | entrance |
-| Image03.jpg | Impatient request to sort the cards | impatience |
-| Image04.jpg | Conversation about the journey | journey |
-| Image05.jpg | Asking the master for help | help |
-| Image06.png | Putting unsorted cards on the novice's tray | tray |
-| Image07.png | Master retains the largest card, passes the smaller problem | largest |
-| Image08.png | Each waiting monk retains one card | smaller |
-| Image09.png | Empty tray reaches the traveler | empty |
-| Image10.png | Last monk puts the first card on the empty tray | firstreturn |
-| Image11.png | Preceding monk puts his card left of the returned cards | combine |
-| Image12.png | Master completes the sorted result | sorted |
-| Image13.png | Traveler leaves calmly and notices his surroundings | farewell |
-| Image14.png | Child shows the returned traveler a tower | family |
-| Image15.png | One brick removed, one tally mark, smaller tower remains | count |
-| Image16.png | Master teaches patience while the traveler listens | patience |
-| Image17.png | Traveler gives the empty tray back; novice returns to the last monk | giveback |
-| Image18.png | Traveler gratefully realizes he can apply the method alone | understood |
+The theater now has 69 frames and the tower continuation has 17. Each frame has
+one dialogue pane: one speaking turn with that speaker's mouth open, or `...`
+with everyone silent. Speech and actions are separate frames. Shared artwork
+is used only with the same caption (for example, the master's “In der Tat!”).
+There is no stage-direction pane.
 
-The numerical example ends **9, 7, 4, 2** from left to right: descending order,
-because the script puts each retained maximum on the left during the return.
-Numerals are illustrative additions; the PDF does not prescribe exact card values.
-Every one of the 18 panels uses a distinct image resource. The model test checks this to prevent accidental reuse.
+Each card selection shows the tray before lifting, the lift, and the retained
+card. Each return shows the retained card at the right, moving left, and resting
+at the left. Shifting the smaller cards right is a separate action. The result
+is **9, 7, 4, 2** from left to right, matching the script's insertion of each
+retained maximum at the left. These illustrative values are not prescribed by
+the source PDF.
 
-This first digital edition includes all tasks 1a–1g and 2a–2j, the two original
-explanations, two navigable slideshows (16 theater panels, 2 continuation panels),
-and fifteen independent text responses with stable task IDs. Tasks 2c–2d keep
-the paper-sketch option and add a textual record of each state. Drawing directly
-inside the workbook and automatic assessment are future work.
+The counting story uses three bricks: red above yellow above blue. Removing a
+brick, placing it aside, and drawing its tally each have a separate image. The
+last frame shows the empty tower position and three tally marks.
 
-Run the model and serialization checks with:
-sbt 'client/testOnly *MonksWorkbookSpec'
+The fifteen text responses keep their original task IDs (1b–1g and 2b–2j).
+A fourth section adds three independent `TurtleRecreateShapeInteraction`
+exercises, `monks-koch-0` through `monks-koch-2`: a straight line, one triangular
+bump, and the next Koch iteration. Each starts unsolved and supports the Python
+and block editors, including user-defined recursive functions. Targets contain
+1, 4 and 16 connected segments, with total horizontal extent 270.
 
-After building the client bundle, use the repository's normal local site assembly
-and open /monksWorkbook/. The homepage also contains a card linking to it.
+Model, recursion and serialization checks:
+
+```
+sbt 'client/testOnly *MonksWorkbookSpec' 'coreJVM/testOnly *BeExpressionToTurtleCommandsSpec'
+node tools/dev/monks-workbook.test.mjs
+```
+
+After `buildClientDev`, the optional browser check navigates every story frame
+and solves all three Koch targets, checking that code survives reopening:
+
+```
+MONKS_BROWSER_TEST=1 node tools/dev/monks-workbook.test.mjs
+```
+
+It requires Chromium (`CHROMIUM_PATH`, default `/usr/bin/chromium`). The local
+routing fixture blocks external requests; `CODEMIRROR_TEST_BUNDLE` can point to
+a bundle of `homepage/js/CodeMirrorLoader.js` using its pinned CDN packages for
+an offline editor check.
 
 The homepage card uses the separate square promotional tablet mock-up at
-resources/img/art/mockup/monks-workbook.png (1254 × 1254), generated with
-imagegen in the same illustrated style. It is not part of the scene slideshow.
+`resources/img/art/mockup/monks-workbook.png`; it is not part of the slideshow.
