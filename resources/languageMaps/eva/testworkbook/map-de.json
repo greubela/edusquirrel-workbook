@@ -15,5 +15,8 @@
   "section2Subtitle2": "Editor",
   "section2GoalText": "Ihr zeichnet mit der Turtle einen Kreis.",
   "section2InstructionText": "Schreibt ein Programm, das einen Kreis zeichnet. Nutzt dazu eine Wiederholung: die Turtle geht jeweils ein kleines Stück vorwärts und dreht sich ein wenig. Der Kreis soll einen Umfang von 360 Schritten haben.",
-  "section2HintText": "Ein Kreis entsteht aus vielen kleinen Kanten. Setzt den Stift mit **down** auf, startet mit **Start**, und wiederholt z. B. 36-mal: **forward** und **turn**. Je kleiner der Drehwinkel, desto runder der Kreis."
+  "section2HintText": "Ein Kreis entsteht aus vielen kleinen Kanten. Setzt den Stift mit **down** auf, startet mit **Start**, und wiederholt z. B. 36-mal: **forward** und **turn**. Je kleiner der Drehwinkel, desto runder der Kreis.",
+  "sqlTitle": "SQL-Editor",
+  "sqlExerciseTitle": "Eine Schuldatenbank abfragen",
+  "sqlInstructions": "Öffnet den SQL-Editor und führt die Beispielabfrage aus, um Schülerinnen und Schüler ab Klasse 10 mit ihren Lehrkräften anzuzeigen. Wechselt zwischen SQL-Text und Bausteinen, ändert den Klassenfilter und führt die Abfrage erneut aus. Untersucht die Ergebnisse und das Datenbankdiagramm unter dem Editor. Das Beispiel verwendet die Übungsdatenbank school_exercises. Die Serveradministration muss diese Übungsdatenbank konfigurieren. Meldet euch an, um SQL auszuführen. Die Verbindungsanzeigen zeigen, wenn die Datenbank oder der SQL-Dienst nicht erreichbar ist."
 }

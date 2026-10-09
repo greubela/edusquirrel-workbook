@@ -13,5 +13,8 @@
   "section2Subtitle2": "Editor",
   "section2GoalText": "You draw a circle with the turtle.",
   "section2InstructionText": "Write a program that draws a circle. Use a loop: the turtle repeatedly moves a short distance forward and turns a little. The circle should have a circumference of 360 steps.",
-  "section2HintText": "A circle is made of many small edges. Put the pen **down**, start with **Start**, and repeat e.g. 36 times: **forward** and **turn**. The smaller the turn angle, the rounder the circle."
+  "section2HintText": "A circle is made of many small edges. Put the pen **down**, start with **Start**, and repeat e.g. 36 times: **forward** and **turn**. The smaller the turn angle, the rounder the circle.",
+  "sqlTitle": "SQL editor",
+  "sqlExerciseTitle": "Query a school database",
+  "sqlInstructions": "Open the SQL editor and run the sample query to list students in grade 10 or above with their teachers. Switch between SQL text and clause blocks, change the grade filter, and run the query again. Inspect the results and the database diagram below the editor. This example uses the school_exercises teaching database, which must be configured by your server administrator. Sign in to run SQL. Connection indicators show when the database or SQL service is unavailable."
 }

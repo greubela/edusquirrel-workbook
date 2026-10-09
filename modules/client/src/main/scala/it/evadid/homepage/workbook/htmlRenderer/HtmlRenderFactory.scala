@@ -8,6 +8,8 @@ import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
+import it.evadid.homepage.webElements.sqlEditor.HtmlSqlCommandExerciseRenderer
+import it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlImageElement
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
@@ -161,6 +163,7 @@ object HtmlRenderFactory {
       case s: Slideshow => HtmlSlideshowEditor.renderWorkbookElement(s) // editor instead of renderer
       /*case r: HtmlReorderInteraction[?] @unchecked => fromElement(r, r.getDomElement())*/
       // case e: HtmlEmbeddedDomInteraction => fromAppElement(e, e.domElement)
+      case s: SqlCommandExercise => HtmlSqlCommandExerciseRenderer.renderWorkbookElement(s)
       case p: ProgrammingExercise => HtmlProgrammingExerciseRenderer.renderWorkbookElement(p)
       case p: ProgrammingExerciseFullJava => HtmlProgrammingExerciseFullJavaRenderer.renderWorkbookElement(p)
       case a: T => createPlaceholderElement(a, "HtmlRenderFactory::renderWorkbookElement cannot yet render objects of type '" + a.getClass.getName + "'!")

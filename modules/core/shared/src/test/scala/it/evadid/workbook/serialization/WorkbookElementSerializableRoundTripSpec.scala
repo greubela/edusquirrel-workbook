@@ -20,6 +20,7 @@ import it.evadid.workbook.elements.interactionElements.pixel.*
 import it.evadid.workbook.model.pixel.*
 import it.evadid.workbook.elements.interactionElements.blockchain.*
 import it.evadid.workbook.elements.interactionElements.text.*
+import it.evadid.workbook.elements.interactionElements.sql.{SqlCommandExercise, SqlDatabaseConfig}
 import munit.FunSuite
 
 class WorkbookElementSerializableRoundTripSpec extends FunSuite {
@@ -50,6 +51,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     val special = " Quotes: \"hello\"; backslash: \\; newline:\nGrüße )({} "
     val inbox = InboxState.withMails(List(Mail("mail", "sender@example.test", special, special, special, MailFolder.Inbox, Some(special), "2026-10-08", expectedFolder = Some(MailFolder.Archive))))
     List(
+      SqlCommandExercise("sql", SqlDatabaseConfig("school_exercises"), s"SELECT '$special';"),
       ChoiceInteraction("choice", content("choice/prompt"), List(content("choice/a"), content("choice/b")), true, Some(List(0, 1))),
       ThresholdNeuronInteraction("neuron", List(content("neuron/input")),
         List(NeuronExample(content("neuron/row"), List(1), true)), NeuronParameters(List(1), 1)),
