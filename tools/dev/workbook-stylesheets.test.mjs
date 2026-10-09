@@ -5,7 +5,7 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 import test from 'node:test';
 
 const root = path.resolve(import.meta.dirname, '../..');
-const dedicatedCss = ['email-simulator.css', 'digital-workbooks.css', 'evacuation-editor.css']
+const dedicatedCss = ['email-simulator.css', 'digital-workbooks.css', 'evacuation-editor.css', 'compression-editor.css']
   .map(file => path.join(root, 'homepage/css/workbook', file));
 async function filesBelow(directory, extension) {
   const files = [];
