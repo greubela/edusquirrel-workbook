@@ -26,6 +26,8 @@ import {cpp} from "https://esm.sh/@codemirror/lang-cpp@6.0.2?deps=@codemirror/st
 import {oneDark} from "https://esm.sh/@codemirror/theme-one-dark@6.1.3?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3";
 import {indentationMarkers} from "https://esm.sh/@replit/codemirror-indentation-markers@6.5.3?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3";
 
+import {flowchartExtension} from "./CodeMirrorFlowchartGutter.js";
+
 const INDENT_SPACES = "    ";
 
 const replaceTabsWithSpaces = (text) => text.replace(/\t/g, INDENT_SPACES);
@@ -439,7 +441,7 @@ const sharedExtensions = [
 ];
 
 const codeMirrorFacade = {
-  createEditor: ({parent, doc = "", onDocChange, language = "python"}) => {
+  createEditor: ({parent, doc = "", onDocChange, language = "python", flowchart}) => {
     let isProgrammaticUpdate = false;
     const theme = new Compartment();
     const followsPageTheme = Boolean(parent.closest(".fd-page"));
@@ -448,6 +450,7 @@ const codeMirrorFacade = {
     const state = EditorState.create({
       doc: replaceTabsWithSpaces(doc),
       extensions: [
+        ...(typeof flowchart === "function" ? flowchartExtension(flowchart) : []),
         ...sharedExtensions,
         theme.of(currentTheme()),
         languageExtension(language),
@@ -460,6 +463,11 @@ const codeMirrorFacade = {
     });
 
     const view = new EditorView({state, parent});
+    // Font variables live on the Laminar wrapper, outside CodeMirror's DOM
+    // observer. Explicitly remeasure inherited style changes so gutters keep
+    // matching the code rows even when the editor's outer size is fixed.
+    const fontObserver = new MutationObserver(() => view.requestMeasure());
+    fontObserver.observe(parent, {attributes: true, attributeFilter: ["style", "class"]});
     const themeObserver = followsPageTheme ? new MutationObserver(() => {
       view.dispatch({effects: theme.reconfigure(currentTheme())});
     }) : null;
@@ -495,6 +503,7 @@ const codeMirrorFacade = {
       },
       destroy() {
         themeObserver?.disconnect();
+        fontObserver.disconnect();
         view.destroy();
       }
     };

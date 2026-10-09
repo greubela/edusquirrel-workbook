@@ -16,7 +16,8 @@ case class CodeMirrorEditor(
                              content: Var[String],
                              onUserInput: String => Unit = _ => (),
                              editorFont: Signal[AppFont] = Val(AppFont("JetBrains Mono", 14)),
-                             language: ProgrammingLanguage = Python
+                             language: ProgrammingLanguage = Python,
+                             flowchart: Option[String => js.Object] = None
                            ) extends SimpleWebEditor[String, CodeEditorConfig] {
 
   import CodeMirrorEditor.*
@@ -38,7 +39,7 @@ case class CodeMirrorEditor(
 
   override def getDomElement(): L.Element = {
     div(
-      cls := "code-editor code-mirror-editor",
+      cls := ("code-editor code-mirror-editor" + (if (flowchart.nonEmpty) " code-mirror-editor-flowchart" else "")),
       styleAttr <-- editorFont.map(font =>
         s"--code-font-family: '${font.name}', 'Fira Code', 'JetBrains Mono', monospace; --code-font-size: ${font.sizeInPx}px;"
       ),
@@ -65,6 +66,7 @@ case class CodeMirrorEditor(
                 parent = container,
                 doc = initialValue,
                 language = languageToJs(language),
+                flowchart = flowchart,
                 onDocChange = value =>
                   if (!updatingFromVar) {
                     pendingDiagnostics = None
@@ -168,6 +170,7 @@ object CodeMirrorEditor {
     var doc: String
     var language: String
     var onDocChange: js.Function1[String, Unit]
+    var flowchart: js.UndefOr[js.Function1[String, js.Object]]
   }
 
   object EditorConfig {
@@ -175,13 +178,17 @@ object CodeMirrorEditor {
                parent: dom.Element,
                doc: String,
                onDocChange: String => Unit,
-               language: String = "python"
+               language: String = "python",
+               flowchart: Option[String => js.Object] = None
              ): EditorConfig = {
       js.Dynamic.literal(
         parent = parent,
         doc = doc,
         language = language,
-        onDocChange = (value: String) => onDocChange(value)
+        onDocChange = (value: String) => onDocChange(value),
+        flowchart = flowchart.fold[js.UndefOr[js.Function1[String, js.Object]]](js.undefined)(
+          callback => ((value: String) => callback(value)): js.Function1[String, js.Object]
+        )
       ).asInstanceOf[EditorConfig]
     }
   }
