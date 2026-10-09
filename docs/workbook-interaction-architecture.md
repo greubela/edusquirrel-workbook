@@ -103,6 +103,8 @@ Test domain transitions, validation/grading and both serialization boundaries in
 
 `AnswerTableRenderer` in client binds the interaction variable to text inputs or selects. It displays localized headings and feedback, while `digital-workbooks.css` owns presentation and horizontal scrolling. It requires no editor or fullscreen lifecycle. The image-recognition chapter combines this inline interaction with the separate threshold-neuron interaction and fullscreen editor; they keep independent learner values.
 
+The Blockchain balance exercise also reuses this interaction and renderer. `TeachingLedger` is a pure shared-core calculation model: it applies ordered integer-point transfers and validates available funds. The workbook factory uses its result to author expected table cells; persisted learner state is still `TableAnswer`, not the ledger. A domain calculation does not need a new interaction or editor when the existing answer table already expresses the task. Signature and privacy research use ungraded cells and separate text inputs.
+
 ## Binary pixel canvases
 
 `BinaryPixelImage` in shared core owns validated dimensions, row-major bits, indexing and immutable toggles. `BinaryPixelInteraction` uses it as the learner value; targets, presets and `PixelThresholdProbe` definitions remain exercise configuration. Its bound serializer rejects saved images of the wrong shape, and grading compares all pixels when a target exists. Without a target, exploration remains ungraded.

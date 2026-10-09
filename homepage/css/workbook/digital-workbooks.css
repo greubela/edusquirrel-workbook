@@ -8,8 +8,9 @@
 .neuron-editor h2, .neuron-editor p { margin: 0; }
 .neuron-controls { display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: end; }
 .neuron-controls label { display: flex; flex-direction: column; gap: var(--space-sm); flex: 1 1 var(--neuron-control-min-width); }
-.neuron-controls input { width: 100%; box-sizing: border-box; font: inherit; padding: var(--space-sm); border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); background: var(--color-surface-base); color: var(--color-text-primary); }
-.neuron-controls input:focus-visible { outline: 2px solid var(--color-accent-active); outline-offset: 2px; }
+/* Keep control geometry above the shared :root input hover/focus defaults. */
+.neuron-editor .neuron-controls input { width: 100%; box-sizing: border-box; font: inherit; padding: var(--space-sm); border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); background: var(--color-surface-base); color: var(--color-text-primary); }
+.neuron-editor .neuron-controls input:focus-visible { outline: 2px solid var(--color-accent-active); outline-offset: 2px; }
 .neuron-results { overflow-x: auto; }
 .neuron-results table { width: 100%; border-collapse: collapse; }
 .neuron-results caption { text-align: start; font-weight: 600; margin-block: var(--space-sm); }
@@ -24,8 +25,8 @@
 .answer-table caption { text-align: start; font-weight: 600; margin-block: var(--space-md); }
 .answer-table th, .answer-table td { padding: var(--space-sm); border: 1px solid var(--color-border-soft); text-align: start; }
 .answer-table thead, .answer-table tbody th { background: var(--color-surface-muted); }
-.answer-table input, .answer-table select { box-sizing: border-box; width: 100%; min-width: var(--answer-table-control-min-width); font: inherit; padding: var(--space-sm); border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); background: var(--color-surface-base); color: var(--color-text-primary); }
-.answer-table input:focus-visible, .answer-table select:focus-visible { outline: 2px solid var(--color-accent-active); outline-offset: 2px; }
+.answer-table .answer-table__scroll input, .answer-table .answer-table__scroll select { box-sizing: border-box; width: 100%; min-width: var(--answer-table-control-min-width); font: inherit; padding: var(--space-sm); border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); background: var(--color-surface-base); color: var(--color-text-primary); }
+.answer-table .answer-table__scroll input:focus-visible, .answer-table .answer-table__scroll select:focus-visible { outline: 2px solid var(--color-accent-active); outline-offset: 2px; }
 .answer-table__feedback { color: var(--color-text-secondary); }
 
 .pixel-interaction { min-width: 0; border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); padding: var(--space-lg); }
@@ -48,8 +49,8 @@ button.pixel-cell { cursor: pointer; }
 .square-middle-hash legend { font-weight: 600; padding-inline: var(--space-sm); }
 .hash-controls { display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: end; }
 .hash-controls label { display: flex; flex-direction: column; gap: var(--space-sm); min-width: 0; flex: 1 1 var(--neuron-control-min-width); }
-.hash-controls input { box-sizing: border-box; width: 100%; min-width: 0; font: inherit; padding: var(--space-sm); border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); background: var(--color-surface-base); color: var(--color-text-primary); }
-.hash-controls input:focus-visible { outline: 2px solid var(--color-accent-active); outline-offset: 2px; }
+.square-middle-hash .hash-controls input { box-sizing: border-box; width: 100%; min-width: 0; font: inherit; padding: var(--space-sm); border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); background: var(--color-surface-base); color: var(--color-text-primary); }
+.square-middle-hash .hash-controls input:focus-visible { outline: 2px solid var(--color-accent-active); outline-offset: 2px; }
 .hash-results { overflow-x: auto; }
 .hash-results table { width: 100%; border-collapse: collapse; }
 .hash-results caption { text-align: start; font-weight: 600; margin-block: var(--space-sm); }

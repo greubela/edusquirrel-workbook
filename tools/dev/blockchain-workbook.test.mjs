@@ -7,7 +7,7 @@ import {chromium} from 'playwright';
 const root = path.resolve(import.meta.dirname, '../..');
 const origin = 'http://localhost:9000';
 const mime = {'.html':'text/html', '.js':'text/javascript', '.css':'text/css', '.json':'application/json', '.svg':'image/svg+xml', '.png':'image/png'};
-test('Blockchain workbook saves research, computes exact Hashq and grades collisions/preimages on mobile', async () => {
+test('Blockchain workbook saves trust/privacy research, grades balances and computes exact Hashq on mobile', async () => {
   const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium', args:['--no-sandbox']});
   try {
     const page = await browser.newPage({viewport:{width:1440,height:900}});
@@ -29,6 +29,47 @@ test('Blockchain workbook saves research, computes exact Hashq and grades collis
     for (let i=0; i<12; i++) await research.locator('input').nth(i).fill('Research ' + i);
     assert.match(await research.innerText(), /no automatic grade/);
     await page.locator('.section-block').nth(1).click();
+    await page.getByText('Cash and online payments', {exact:true}).waitFor();
+    const comparison=page.locator('.answer-table').first();
+    assert.equal(await comparison.locator('input').count(), 4);
+    await comparison.locator('input').first().fill('No intermediary for the cash handover');
+    for (let i=1; i<4; i++) await comparison.locator('input').nth(i).fill('Payment comparison ' + i);
+    assert.match(await comparison.innerText(), /no automatic grade/);
+    await page.locator('.section-block').nth(2).click();
+    await page.getByText('Balances after entry 06', {exact:true}).waitFor();
+    const balances=page.locator('.answer-table').first();
+    const controlMetrics=el=>({height:el.getBoundingClientRect().height,padding:getComputedStyle(el).padding});
+    const idleBalanceMetrics=await balances.locator('input').first().evaluate(controlMetrics);
+    for (const [i,value] of ['0','20','15','5'].entries()) await balances.locator('input').nth(i).fill(value);
+    assert.match(await balances.innerText(), /4 of 4 checked cells/);
+    await balances.locator('input').first().fill('4');
+    assert.match(await balances.innerText(), /3 of 4 checked cells/);
+    await balances.locator('input').first().fill('0');
+    assert.match(await balances.innerText(), /4 of 4 checked cells/);
+    await balances.locator('input').first().hover();
+    assert.deepEqual(await balances.locator('input').first().evaluate(controlMetrics), idleBalanceMetrics,
+      'focus and hover must not resize table inputs or move the following radio controls');
+    const decision=page.locator('.choice-interaction');
+    await decision.getByLabel('Yes', {exact:true}).check();
+    assert.match(await decision.locator('.choice-feedback').innerText(), /Reconsider/i);
+    await decision.getByLabel('No', {exact:true}).check();
+    assert.equal(await decision.locator('.choice-feedback').innerText(), 'Correct.');
+    assert.deepEqual(await balances.locator('input').first().evaluate(controlMetrics), idleBalanceMetrics);
+    await page.setViewportSize({width:390,height:844});
+    const ledgerGeometry=await balances.evaluate(el => {
+      const box=el.getBoundingClientRect();
+      return {left:box.left,right:box.right,width:innerWidth,inlineStyles:el.querySelectorAll('[style], style').length};
+    });
+    assert(ledgerGeometry.left>=0 && ledgerGeometry.right<=ledgerGeometry.width+1);
+    assert.equal(ledgerGeometry.inlineStyles, 0);
+    await page.setViewportSize({width:1440,height:900});
+    await page.locator('.section-block').nth(3).click();
+    await page.getByText('Pseudonymity in Bitcoin', {exact:true}).waitFor();
+    const privacy=page.locator('.answer-table');
+    await privacy.locator('input').first().fill('Addresses are pseudonyms, not signatures');
+    await privacy.locator('input').nth(1).fill('Exchange registration and payment records');
+    assert.match(await privacy.innerText(), /no automatic grade/);
+    await page.locator('.section-block').nth(4).click();
     const calculators = page.locator('.square-middle-hash');
     await calculators.first().waitFor();
     assert.equal(await calculators.count(), 4);
@@ -74,11 +115,22 @@ test('Blockchain workbook saves research, computes exact Hashq and grades collis
     await calculators.nth(3).locator('input').fill('76');
     assert.equal(await calculators.nth(3).locator('.hash-feedback').innerText(), 'Correct.');
     await page.reload();
-    await page.locator('.section-block').nth(1).click({timeout:60000});
+    await page.locator('.section-block').nth(4).click({timeout:60000});
     assert.equal(await collision.locator('.hash-feedback').innerText(), 'Correct.');
     assert.equal(await explore.locator('input').first().inputValue(), '45');
     assert.match(await hashTable.innerText(), /6 of 6 checked cells/);
+    await page.locator('.section-block').nth(2).click();
+    await page.getByText('Balances after entry 06', {exact:true}).waitFor();
+    assert.match(await balances.innerText(), /4 of 4 checked cells/);
+    assert.equal(await decision.getByLabel('No', {exact:true}).isChecked(), true);
+    await page.locator('.section-block').nth(3).click();
+    await page.getByText('Pseudonymity in Bitcoin', {exact:true}).waitFor();
+    assert.equal(await privacy.locator('input').first().inputValue(), 'Addresses are pseudonyms, not signatures');
+    await page.locator('.section-block').nth(1).click();
+    await page.getByText('Cash and online payments', {exact:true}).waitFor();
+    assert.equal(await comparison.locator('input').first().inputValue(), 'No intermediary for the cash handover');
     await page.locator('.section-block').nth(0).click();
+    await page.getByText('Claims about Bitcoin', {exact:true}).waitFor();
     assert.equal(await research.locator('input').nth(6).inputValue(), 'Research 6');
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }

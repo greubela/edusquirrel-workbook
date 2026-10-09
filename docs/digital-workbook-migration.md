@@ -69,19 +69,29 @@ The binary-pixel extension passed all 1,906 Scala regression tests (core JVM 747
 
 ## Blockchain migration started
 
-`homepage/blockchainWorkbook/index.html` implements the entry video/reflection and first-pass claim/research table (source pp. 1–2), plus exercises 4.1–4.4 and the exact square-middle calculator (pp. 14–15). Both English and German content are registered. The later reassessment column is deferred with the remaining chapters and this omission is stated in the workbook.
+`homepage/blockchainWorkbook/index.html` implements the entry video/reflection and first-pass claim/research table (source pp. 1–2), trust and payment comparisons (pp. 3–5), the cabin ledger and signature/storage research (pp. 6–9), pseudonymity and acquiring points (pp. 10–13), plus exercises 4.1–4.4 and the exact square-middle calculator (pp. 14–15). Both English and German content are registered. Intermediate decentralization and anonymity reassessments are saved as separate reflections; the final reassessment column is deferred with the remaining chapters and this omission is stated in the workbook.
+
+The ledger chapter preserves the six original transfers and initial issuance of 10 HP per person. `TeachingLedger` derives balances using exact integer arithmetic and rejects unknown accounts, nonpositive/self transfers and chronological overspending. Expected balances are calculated from the history, not independently hard-coded into the exercise. The source’s Anna/Tom calculation is extended to all four people so learners can check conservation of 40 HP. A choice question checks Anna’s proposed 4 HP payment; free reflections cover fraud, the exercise’s unforgeable-signature assumption, centralized versus distributed copies and real Bitcoin counterparts. This is bookkeeping, not a wallet or a cryptographic-signature implementation.
+
+Trust and privacy chapters reuse `AnswerTableInteraction` and text inputs. Ambiguous advantages/disadvantages, proposed exchanges and research answers are ungraded. The source payment flowchart becomes a saved sender → intermediaries → recipient sequence. The pseudonym table preserves the transaction amounts and order. The digital text explicitly distinguishes addresses from signatures, correcting the source’s conflation. No extra fullscreen editor is needed for these activities; styles remain in the shared dedicated CSS.
+
+The shared digital control CSS scopes table, neuron and hash inputs above the generic `:root input:hover/:focus` rules. This prevents padding changes during focus/blur: previously a table input could shrink on blur and move the following radio button between mouse-down and mouse-up. Browser coverage checks stable input dimensions and normal mouse selection, without forced clicks.
 
 `SquareMiddleHash` uses `BigInt` arithmetic and extracts exactly two decimal digits, biased left for odd square lengths. Leading-zero hashes are preserved. The interactive inputs are limited to 100 decimal digits; incomplete/invalid text is saved as a draft and gives no valid calculation. `SquareMiddleHashInteraction` separates exploration, collision and target-preimage tasks; grading accepts every valid solution and requires numerically different collision inputs. Its inline renderer needs no fullscreen editor. Presentation is in the already linked digital workbook CSS.
 
 The source solution sheet's collision example is erroneous: it prints `35² = 2025` and treats 35 and 45 as a collision. In fact `35² = 1225 → 22` and `45² = 2025 → 02`. The implementation follows the worksheet's mathematical rule; 35 and 65 are a valid collision with hash 22. Original downloads remain unchanged.
 
-Ledger/signatures, pseudonyms, SHA-256, block linkage/mining, energy and the final argument remain to be migrated. No Bitcoin wallet, transaction service, cryptographic library or other new dependency was introduced.
+SHA-256, block linkage/mining, energy and the final argument remain to be migrated. No Bitcoin wallet, transaction service, cryptographic library or other new dependency was introduced.
 
 The Blockchain extension and merge with main passed all 1,935 Scala regression tests (core JVM 758, core JS 746, client 427, server 1, worker 3), including the Mons Komputarius workbook tests. The dedicated Blockchain browser check covers free research-table inputs, exact large-integer computation, invalid drafts, leading-zero hashes, distinct-input collisions, preimages, reset, mobile layout and reload persistence. Migration-link, stylesheet and Pages assembly checks also passed. Browser bundles were rebuilt with sbt buildJS on 2026-10-09.
 
-    sbt 'coreJVM/testOnly *SquareMiddleHashSpec *WorkbookElementSerializableRoundTripSpec'
-    sbt 'coreJS/testOnly *SquareMiddleHashSpec'
+The subsequent trust/ledger/privacy extension passed 21 focused Scala tests (seven ledger tests on each of JVM and JavaScript, seven workbook authoring/serialization tests), both digital-workbook browser scenarios, and all 13 migration-link, stylesheet and Pages assembly checks. The Blockchain browser scenario additionally covers correct/incorrect balances, ordinary radio clicks after table edits, stable focused/hovered input geometry, mobile balance layout and persistence of trust/privacy research. Browser bundles were rebuilt with `sbt buildJS`; the branch contains main at `56488136`. This validation also ran on 2026-10-09.
+
+    sbt 'coreJVM/testOnly *SquareMiddleHashSpec *TeachingLedgerSpec *WorkbookElementSerializableRoundTripSpec'
+    sbt 'coreJS/testOnly *SquareMiddleHashSpec *TeachingLedgerSpec'
     sbt 'client/testOnly *CreateBlockchainWorkbookSpec *MonksWorkbookSpec'
     sbt buildJS
-    node --test tools/dev/workbook-migration-links.test.mjs tools/dev/workbook-stylesheets.test.mjs
+    node tools/dev/workbook-migration-links.test.mjs
+    node tools/dev/workbook-stylesheets.test.mjs
+    node tools/dev/assemble-pages.test.mjs
     node --test --test-concurrency=1 tools/dev/blockchain-workbook.test.mjs tools/dev/digital-workbook-interactions.test.mjs

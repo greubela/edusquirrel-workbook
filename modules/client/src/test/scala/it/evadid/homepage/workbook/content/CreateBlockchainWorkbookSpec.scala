@@ -2,6 +2,8 @@ package it.evadid.homepage.workbook.content
 
 import it.evadid.workbook.elements.interactionElements.blockchain.*
 import it.evadid.workbook.elements.interactionElements.table.TableAnswer
+import it.evadid.workbook.elements.interactionElements.choice.ChoiceAnswer
+import it.evadid.workbook.model.blockchain.*
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import munit.FunSuite
 
@@ -30,5 +32,28 @@ class CreateBlockchainWorkbookSpec extends FunSuite {
       case e: SquareMiddleHashInteraction => e.task
     }
     assertEquals(tasks, List(ExploreSquareMiddleHash(), FindHashCollision(), FindHashPreimage("22"), FindHashPreimage("77")))
+  }
+  test("original cabin history conserves 40 points and derives all four balances") {
+    assertEquals(CreateBlockchainWorkbook.sourceBalances, Map("Anna" -> BigInt(0), "Lukas" -> BigInt(20), "Sara" -> BigInt(15), "Tom" -> BigInt(5)))
+    assertEquals(CreateBlockchainWorkbook.sourceBalances.values.sum, BigInt(40))
+    val table = CreateBlockchainWorkbook.balanceTable
+    assert(table.grade(TableAnswer(List("0", "20", "15", "5"))).get.passed)
+    assertEquals(table.grade(TableAnswer(List("4", "20", "15", "5"))).get.correct, 3)
+    assertEquals(TeachingLedger.calculate(CreateBlockchainWorkbook.participants.map(_ -> BigInt(10)).toMap,
+      CreateBlockchainWorkbook.sourceTransfers :+ LedgerTransfer("Anna", "Tom", 4)), Left(LedgerError.InsufficientFunds))
+  }
+  test("trust and privacy research tables have no invented automatic grades") {
+    for (table <- List(CreateBlockchainWorkbook.paymentComparison, CreateBlockchainWorkbook.paymentArguments,
+      CreateBlockchainWorkbook.storageComparison, CreateBlockchainWorkbook.bitcoinLedger, CreateBlockchainWorkbook.bitcoinPrivacy)) {
+      assertEquals(table.grade(table.defaultValue), None)
+      assert(table.editableCells.nonEmpty)
+    }
+  }
+  test("Anna's overspend question has an objective answer") {
+    val choice = CreateBlockchainWorkbook(null).createWorkbook.allChildrenFullSubtree.collectFirst {
+      case c: it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction if c.elementId == "blockchain-ledger-overspend" => c
+    }.get
+    assertEquals(choice.isCorrect(ChoiceAnswer(List(1))), Some(true))
+    assertEquals(choice.isCorrect(ChoiceAnswer(List(0))), Some(false))
   }
 }
