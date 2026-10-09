@@ -43,3 +43,16 @@ button.pixel-cell { cursor: pointer; }
 .pixel-interaction button.pixel-cell:focus-visible { outline: 2px solid var(--color-accent-active); outline-offset: -2px; }
 .pixel-actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-block: var(--space-md); }
 .pixel-feedback, .pixel-probe { color: var(--color-text-secondary); }
+
+.square-middle-hash { min-width: 0; border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); padding: var(--space-lg); }
+.square-middle-hash legend { font-weight: 600; padding-inline: var(--space-sm); }
+.hash-controls { display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: end; }
+.hash-controls label { display: flex; flex-direction: column; gap: var(--space-sm); min-width: 0; flex: 1 1 var(--neuron-control-min-width); }
+.hash-controls input { box-sizing: border-box; width: 100%; min-width: 0; font: inherit; padding: var(--space-sm); border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); background: var(--color-surface-base); color: var(--color-text-primary); }
+.hash-controls input:focus-visible { outline: 2px solid var(--color-accent-active); outline-offset: 2px; }
+.hash-results { overflow-x: auto; }
+.hash-results table { width: 100%; border-collapse: collapse; }
+.hash-results caption { text-align: start; font-weight: 600; margin-block: var(--space-sm); }
+.hash-results th, .hash-results td { padding: var(--space-sm); border: 1px solid var(--color-border-soft); text-align: start; }
+.hash-results mark { background: var(--color-background-colored); color: var(--color-text-primary); font-weight: 600; }
+.hash-feedback { color: var(--color-text-secondary); }

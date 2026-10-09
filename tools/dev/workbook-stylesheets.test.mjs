@@ -76,7 +76,8 @@ test('mail and digital exercise components bind classes rather than inline Lamin
     'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/neuron',
     'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/choice',
     'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/table',
-    'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/pixel'
+    'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/pixel',
+    'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/blockchain'
   ];
   const inlineStyle=/\b(?:styleAttr|color|backgroundColor|fontSize|fontFamily|width|height|padding|margin|border|display)\s*(?::=|<--)|\bstyleTag\s*\(|\.style\s*(?:\.|=)/;
   for (const directory of directories) {

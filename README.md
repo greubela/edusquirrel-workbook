@@ -35,6 +35,7 @@ Shared workbook abstractions live in [WorkbookElement.scala](modules/core/shared
 | [embroideryWorkbook](homepage/embroideryWorkbook/index.html) | Embroidery workbook |
 | [compressionWorkbook](homepage/compressionWorkbook/index.html) | Data compression workbook |
 | [plantWorkshopWorkbook](homepage/plantWorkshopWorkbook/index.html) | Plant workshop on the workbook architecture |
+| [blockchainWorkbook](homepage/blockchainWorkbook/index.html) | Partial Blockchain workbook: claims, exact Hashq, collisions and preimages |
 | [imageRecognitionWorkbook](homepage/imageRecognitionWorkbook/index.html) | Partial image-recognition workbook with binary tables, threshold neuron and pixel feature experiments |
 | [phishingWorkbook](homepage/phishingWorkbook/index.html) | Email sorting simulator and local writing practice |
 | [plantWorkshop](homepage/plantWorkshop/index.html) | Separate legacy plant application |
@@ -122,3 +123,5 @@ LLM feedback uses the endpoint configured in [config.js](homepage/js/config.js).
 - [Workbook interaction roadmap](WORKBOOK_INTERACTIONS.md): teaching-resource inventory and proposed future exercises.
 
 Markdown under bundled third-party libraries documents those distributions. Imported teaching projects retain their conceptual and historical documents; their upstream setup/team instructions do not describe the EduSquirrel repository workflow. MathWorld's README and deployment guide explain its integration here.
+
+Classic PDF/ZIP downloads intentionally coexist with their partial digital versions. Digital migrations are listed under “Digitale Workbooks (In Arbeit)” until full content equivalence has been reviewed; see the [migration policy](docs/digital-workbook-migration.md).

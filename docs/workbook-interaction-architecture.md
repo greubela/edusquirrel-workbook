@@ -108,3 +108,9 @@ Test domain transitions, validation/grading and both serialization boundaries in
 `BinaryPixelImage` in shared core owns validated dimensions, row-major bits, indexing and immutable toggles. `BinaryPixelInteraction` uses it as the learner value; targets, presets and `PixelThresholdProbe` definitions remain exercise configuration. Its bound serializer rejects saved images of the wrong shape, and grading compares all pixels when a target exists. Without a target, exploration remains ungraded.
 
 `BinaryPixelRenderer` presents a small inline canvas with accessible toggle buttons, a read-only target when configured, reset/preset controls and detector feedback. It binds the interaction variable directly and needs no separate fullscreen editor. CSS owns sizes, colors, wrapping and focus indicators. The image-recognition chapter uses this component for the source's 3×5 digit patterns and two fixed row detectors; it does not implement network training.
+
+## Square-middle hash exercises
+
+`SquareMiddleHash` in shared core performs the worksheet's exact decimal `BigInt` calculation. `SquareMiddleHashInteraction` defines an exploration, collision or preimage task and stores `SquareMiddleHashAnswer` input strings. Invalid numeric strings are persisted drafts, not computed domain results; the parser returns no calculation for them. Collision grading compares numeric inputs and exact two-digit hashes, so zero-prefixed spellings of the same number are not collisions.
+
+`SquareMiddleHashRenderer` binds text controls directly to that learner value, renders calculated squares with semantic `mark` elements, and displays model grading. It is inline and needs no fullscreen editor. All visual rules belong to dedicated CSS with shared tokens.
