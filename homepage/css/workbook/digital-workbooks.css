@@ -61,3 +61,21 @@ button.pixel-cell { cursor: pointer; }
 .hash-results th, .hash-results td { padding: var(--space-sm); border: 1px solid var(--color-border-soft); text-align: start; }
 .hash-results mark { background: var(--color-background-colored); color: var(--color-text-primary); font-weight: 600; }
 .hash-feedback { color: var(--color-text-secondary); }
+
+/* Linked-block editor: statuses have text as well as configurable color accents. */
+.blockchain-editor { display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-lg); min-width: 0; overflow: auto; }
+.blockchain-editor h2, .blockchain-editor p { margin: 0; }
+.blockchain-actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+.blockchain-blocks { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--blockchain-card-min-width)), 1fr)); gap: var(--space-lg); }
+.blockchain-block { min-width: 0; padding: var(--space-md); border: 2px solid var(--color-blockchain-invalid); border-radius: var(--radius-sm); }
+.blockchain-block--valid { border-color: var(--color-blockchain-valid); }
+.blockchain-block label { display: flex; flex-direction: column; gap: var(--space-sm); margin-block: var(--space-md); }
+.blockchain-editor .blockchain-block input, .blockchain-editor .blockchain-block textarea { box-sizing: border-box; width: 100%; min-width: 0; padding: var(--space-sm); border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); font: inherit; background: var(--color-surface-base); color: var(--color-text-primary); }
+.blockchain-editor .blockchain-block textarea { min-height: 7em; resize: vertical; }
+.blockchain-editor .blockchain-block :is(input, textarea):focus-visible { outline: 2px solid var(--color-accent-active); outline-offset: 2px; }
+.blockchain-block dl { margin-block: var(--space-md); }
+.blockchain-block dt { font-weight: 600; }
+.blockchain-block dd { margin: 0 0 var(--space-md); }
+.blockchain-block code { display: block; overflow-wrap: anywhere; }
+.blockchain-preview, .blockchain-mining-status { color: var(--color-text-secondary); }
+.blockchain-error { color: var(--color-accent-strong); }

@@ -46,6 +46,8 @@ import it.evadid.workbook.elements.interactionElements.blockchain.SquareMiddleHa
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain.SquareMiddleHashRenderer
 import it.evadid.workbook.elements.interactionElements.blockchain.Sha256Interaction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain.Sha256Renderer
+import it.evadid.workbook.elements.interactionElements.blockchain.BlockchainInteraction
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain.BlockchainRenderer
 
 trait HtmlRenderFactory[T <: WorkbookElement] {
 
@@ -117,6 +119,7 @@ object HtmlRenderFactory {
       // interactions
       case h: SquareMiddleHashInteraction => SquareMiddleHashRenderer.renderWorkbookElement(h)
       case h: Sha256Interaction => Sha256Renderer.renderWorkbookElement(h)
+      case h: BlockchainInteraction => BlockchainRenderer.renderWorkbookElement(h)
       case p: BinaryPixelInteraction => BinaryPixelRenderer.renderWorkbookElement(p)
       case t: AnswerTableInteraction => AnswerTableRenderer.renderWorkbookElement(t)
       case c: ChoiceInteraction => ChoiceInteractionRenderer.renderWorkbookElement(c)
