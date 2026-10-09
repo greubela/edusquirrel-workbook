@@ -38,8 +38,8 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
     val watchSignal = workbookSignal.combineWith(userSignal)
 
     watchSignal.map {
-      case (_, None) => HtmlLoginElement().getDomElement()
       case (None, _) => HtmlSelectWorkbookElement().getDomElement()
+      case (_, None) => HtmlLoginElement().getDomElement()
       case (Some(workbookInfo), Some(userInfo)) => HtmlWorkbookBodyElement(workbookInfo, userInfo).getDomElement()
     }
   }
@@ -105,16 +105,16 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   )
 
   private def createTitleLine(workbook: Option[AllWorkbookInfo], user: Option[AllUserInfo]): Element = {
-    if (user.isEmpty) {
+    if (workbook.isEmpty) {
+      div(
+        cls := "workbook-title-line",
+        h1(text <-- laminarHelper.plaintextStringSignal("workbookSelection/title")),
+      )
+    }
+    else if (user.isEmpty)
       div(
         cls := "workbook-title-line",
         h1(text <-- laminarHelper.plaintextStringSignal("login/titleLoginPage")),
-      )
-    }
-    else if (workbook.isEmpty)
-      div(
-        cls := "workbook-title-line",
-        h1(text <-- laminarHelper.plaintextStringSignal("basic/titleWorkbookSelectionPage")),
       )
     else {
       div(

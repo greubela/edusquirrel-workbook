@@ -11,6 +11,7 @@ import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.sortingExercise.{SortingInteraction, SortingItem}
 import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
+import it.evadid.workbook.elements.interactionElements.sql.{SqlCommandExercise, SqlDatabaseConfig}
 import it.evadid.workbook.jsonFactory.{WorkbookElementSerializable, WorkbookElementFactory}
 import upickle.default.*
 import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
@@ -75,6 +76,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       TurtleRecreateShapeInteraction("turtle-shape", ProgrammingStatePythonString("forward(10)"), TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), ProgrammingEditorPalette.Embroidery, Map("forward" -> Integer.valueOf(2))),
       ProgrammingExercise("programming", Some(SampleBeTest("assert True")), ProgrammingEditorPalette.Embroidery, Some(special)),
       ProgrammingExerciseFullJava("java", Some(SampleBeTest("assert False"))),
+      SqlCommandExercise("sql", SqlDatabaseConfig("exercise-db"), special),
       MailEditor("mail-editor", inbox, special, allowCompose = false),
       MailInteraction("mail-interaction", inbox, special, allowCompose = false),
       CreateQrCodeInteraction("qr", QrCodeRequirements(minBytes = 2, maxBytes = Some(200), requiredMask = Some(3)), QrCode.fromText(special)),

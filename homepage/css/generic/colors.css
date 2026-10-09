@@ -1,6 +1,8 @@
 /* Shared design tokens for the workbook experience.
    Color policy: define colors only in this file and consume them via CSS variables in other stylesheets. */
 :root {
+    --color-catalog-background-start: #fdf0d5;
+    --color-catalog-background-end: #f9f5ff;
     --color-blockchain-valid: var(--color-accent-active);
     --color-blockchain-invalid: var(--color-text-secondary);
     --color-mail-border: var(--color-gray-3);

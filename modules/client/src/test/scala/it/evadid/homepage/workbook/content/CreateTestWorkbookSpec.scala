@@ -3,6 +3,7 @@ package it.evadid.homepage.workbook.content
 import it.evadid.workbook.elements.interactionElements.programming.{JavaTurtleTask, ProgrammingExerciseFullJava}
 import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailFolder, MailInteraction}
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
+import it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise
 import munit.FunSuite
 
 class CreateTestWorkbookSpec extends FunSuite {
@@ -33,6 +34,19 @@ class CreateTestWorkbookSpec extends FunSuite {
     assertEquals(exercises.size, 1)
     assertEquals(exercises.head.requirements.minBytes, 32)
     assert(!exercises.head.isPassed)
+  }
+
+  test("test/design workbook includes the configured school SQL sample") {
+    val workbook = CreateTestWorkbook(null).createWorkbook
+    val exercises = workbook.allChildrenFullSubtree.collect { case sql: SqlCommandExercise => sql }
+    assertEquals(exercises.size, 1)
+    val exercise = exercises.head
+    assertEquals(exercise.elementId, "sql-students-demo")
+    assertEquals(exercise.databaseConfig.databaseName, "school_exercises")
+    assert(exercise.initialSql.contains("JOIN teachers ON students.teacher_id = teachers.id"))
+    assert(exercise.initialSql.contains("WHERE students.grade >= 10"))
+    assertEquals(exercise.defaultValue, exercise.initialSql)
+    assert(workbook.sections.exists(_.elementId == "sql-editor-demo"))
   }
 
   test("test workbook includes the full Java exercise") {

@@ -10,6 +10,7 @@ import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalL
 import it.evadid.workbook.elements.interactionElements.Turtle.TurtleRecreateShapeInteraction
 import it.evadid.workbook.elements.interactionElements.programming.TurtleGraphic.{Line, TurtleLineBasedProgram}
 import it.evadid.workbook.elements.interactionElements.programming.*
+import it.evadid.workbook.elements.interactionElements.sql.{SqlCommandExercise, SqlDatabaseConfig}
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 
 case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
@@ -17,7 +18,7 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
   override def createWorkbook: Workbook = {
     workbook(
       "TestWorkbook/WorkbookTitle",
-      List(section1, section2, section3, section4),
+      List(section1, section2, section3, section4, section5),
       User.AndreGreubel
     )
   }
@@ -103,6 +104,21 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
       instructionHtml("emailSimulator/instructions"),
       instructionPlaintext("emailSimulator/practiceInstructions"),
       MailInteraction("mail-simulator-demo", PhishingMailboxData.initialInbox, allowCompose = true)
+    ))
+  ))
+
+  lazy val section5: WorkbookSection = section("sql-editor-demo", "TestWorkbook/sqlTitle", List(
+    container("TestWorkbook/sqlExerciseTitle", List(
+      instructionPlaintext("TestWorkbook/sqlInstructions"),
+      SqlCommandExercise(
+        elementId = "sql-students-demo",
+        databaseConfig = SqlDatabaseConfig("school_exercises"),
+        initialSql = """SELECT students.name, students.grade, teachers.name AS teacher
+          |FROM students
+          |JOIN teachers ON students.teacher_id = teachers.id
+          |WHERE students.grade >= 10
+          |ORDER BY students.name;""".stripMargin
+      )
     ))
   ))
 

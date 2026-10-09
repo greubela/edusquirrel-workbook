@@ -10,7 +10,7 @@ import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.distribution.commandTypes.UserCommands.{AuthMailRequest, LoginRequest, *}
 import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.server.commandHandler.sql.sync.{DeleteInDatabase, FetchFromDatabase, UpsertToDatabase}
-import it.evadid.server.commandHandler.sql.{SqlLogCommands, SqlUserCommands}
+import it.evadid.server.commandHandler.sql.{SqlEditorExecution, SqlLogCommands, SqlUserCommands}
 import it.evadid.util.logging.Logger
 
 import java.net.InetAddress
@@ -49,6 +49,9 @@ object BackendCommandHandler {
     localHandlerNoLoginRequired,
 
     // SQL
+    SqlEditorCommands.execute.toLocalExecutionClient(
+      (request, logger) => Future { SqlEditorExecution.handle(request) }
+    ),
     SQLCommands.StoreToDbCommand.toLocalExecutionClient(
       (request: StoreToDbRequest, logger: Logger) => Future {
         UpsertToDatabase.handleRequest(request, logger)
