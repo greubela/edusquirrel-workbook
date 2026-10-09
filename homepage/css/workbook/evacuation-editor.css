@@ -1,0 +1,16 @@
+/* Workbook construction view of EVA2. Geometry and colors belong here, not in Laminar. */
+.evacuation-editor { display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-lg); min-width: 0; max-height: 100%; }
+.evacuation-editor h2, .evacuation-editor p { margin: 0; }
+.evacuation-tools { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+.evacuation-tools button[aria-pressed="true"] { background: var(--color-background-colored); border-color: var(--color-focus); }
+.evacuation-viewport { overflow: auto; min-width: 0; min-height: 0; }
+.evacuation-grid { width: max-content; border: 1px solid var(--color-border-soft); }
+.evacuation-row { display: flex; }
+.evacuation-editor .evacuation-grid .evacuation-cell { position: relative; flex: none; box-sizing: border-box; width: var(--evacuation-cell-size); height: var(--evacuation-cell-size); min-width: 0; margin: 0; padding: 0; border-radius: 0; border: 1px solid var(--color-border-soft); }
+.evacuation-editor .evacuation-cell.evacuation-cell--floor { background: var(--color-evacuation-floor); }
+.evacuation-editor .evacuation-cell.evacuation-cell--wall { background: var(--color-evacuation-wall); }
+.evacuation-editor .evacuation-cell.evacuation-cell--exit { background: var(--color-evacuation-exit); }
+.evacuation-cell--exit::before { content: "↗"; color: var(--color-evacuation-exit-text); }
+.evacuation-cell--person::after { content: ""; position: absolute; inset: 25%; border-radius: 50%; background: var(--color-evacuation-person); border: 1px solid var(--color-evacuation-person-outline); }
+.evacuation-editor .evacuation-cell:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; z-index: 1; }
+.evacuation-preview span { display: block; margin-top: var(--space-sm); color: var(--color-text-secondary); }

@@ -55,12 +55,12 @@ case class EvaFloorMap(floorMatrix: Matrix[FloorSprite], persons: Set[Person]) {
     unblockedReachable
   }
 
-  def extendMatrix(top: Boolean, left: Boolean, bottom: Boolean, right: Boolean): EvaFloorMap = {
+  def extendMatrix(top: Boolean, left: Boolean, bottom: Boolean, right: Boolean, empty: FloorSprite = spriteMap.defaultEmpty): EvaFloorMap = {
     var updated = floorMatrix
-    if (top) updated = updated.addRow(_ => spriteMap.defaultEmpty, 0)
-    if (left) updated = updated.addColumn(_ => spriteMap.defaultEmpty, 0)
-    if (bottom) updated = updated.addRow(_ => spriteMap.defaultEmpty)
-    if (right) updated = updated.addColumn(_ => spriteMap.defaultEmpty)
+    if (top) updated = updated.addRow(_ => empty, 0)
+    if (left) updated = updated.addColumn(_ => empty, 0)
+    if (bottom) updated = updated.addRow(_ => empty)
+    if (right) updated = updated.addColumn(_ => empty)
 
     var updatedPersons = persons
     if (top) updatedPersons = updatedPersons.map(person => Person(person.id, person.pos.cPos.inDirection(Direction.BOTTOM).in(updated.dim), person.sprite))
@@ -76,14 +76,16 @@ case class EvaFloorMap(floorMatrix: Matrix[FloorSprite], persons: Set[Person]) {
   def shrinkMatrix(top: Boolean, left: Boolean, bottom: Boolean, right: Boolean): EvaFloorMap = {
 
     var updated = floorMatrix
-    if (top && updated.dim.rows > 1) updated = updated.removeRow(0)
-    if (left && updated.dim.cols > 1) updated = updated.removeColumn(0)
+    val removedTop = top && updated.dim.rows > 1
+    val removedLeft = left && updated.dim.cols > 1
+    if (removedTop) updated = updated.removeRow(0)
+    if (removedLeft) updated = updated.removeColumn(0)
     if (bottom && updated.dim.rows > 1) updated = updated.removeRow()
     if (right && updated.dim.cols > 1) updated = updated.removeColumn()
 
     var updatedPersons = persons
-    if (top && updated.dim.rows > 1) updatedPersons = updatedPersons.map(person => Person(person.id, person.pos.cPos.inDirection(Direction.TOP).in(updated.dim), person.sprite))
-    if (left && updated.dim.cols > 1) updatedPersons = updatedPersons.map(person => Person(person.id, person.pos.cPos.inDirection(Direction.LEFT).in(updated.dim), person.sprite))
+    if (removedTop) updatedPersons = updatedPersons.map(person => Person(person.id, person.pos.cPos.inDirection(Direction.TOP).in(updated.dim), person.sprite))
+    if (removedLeft) updatedPersons = updatedPersons.map(person => Person(person.id, person.pos.cPos.inDirection(Direction.LEFT).in(updated.dim), person.sprite))
 
     updatedPersons = updatedPersons.map(person => Person(person.id, person.pos.cPos.in(updated.dim), person.sprite))
 

@@ -204,5 +204,21 @@
   "phishingMeasure4": "Maßnahme 4",
   "phishingMeasure5": "Maßnahme 5",
   "unicodeReset": "Eingaben zurücksetzen",
-  "phishingAdaptationScope": "Teilweise digitale Adaption: Postfach, Warnzeichenanalyse, Domain-/Unicode-Übungen, Schadsoftwarebeispiele und abschließende Checkliste sind verfügbar. Das klassische ZIP bleibt mit dem vollständigen Hauptheft, Screenshots und Zusatzmodulen verfügbar. Dieser Entwurf hat die Prüfung auf Inhaltsgleichheit noch nicht bestanden."
+  "phishingAdaptationScope": "Teilweise digitale Adaption: Postfach, Warnzeichenanalyse, Domain-/Unicode-Übungen, Schadsoftwarebeispiele und abschließende Checkliste sind verfügbar. Das klassische ZIP bleibt mit dem vollständigen Hauptheft, Screenshots und Zusatzmodulen verfügbar. Dieser Entwurf hat die Prüfung auf Inhaltsgleichheit noch nicht bestanden.",
+  "evacuationTitle": "Evakuierung – Grundriss konstruieren",
+  "evacuationTask": "Konstruiere einen Grundriss mit Wänden, mindestens {minExits} Ausgängen und {minPeople} Personen. Wähle ein Werkzeug und klicke eine Zelle. Ein erneuter Klick entfernt eine Person. Eine Wand entfernt die Person auf ihrer Zelle. Diese Kriterien prüfen nur die Konstruktion, nicht die Sicherheit der Evakuierung.",
+  "evacuationFloor": "Boden",
+  "evacuationWall": "Wand",
+  "evacuationExit": "Ausgang",
+  "evacuationPerson": "Person",
+  "evacuationAddRow": "Zeile unten hinzufügen",
+  "evacuationRemoveRow": "Zeile unten entfernen",
+  "evacuationAddColumn": "Spalte rechts hinzufügen",
+  "evacuationRemoveColumn": "Spalte rechts entfernen",
+  "evacuationReset": "Grundriss zurücksetzen",
+  "evacuationPreview": "{cols} × {rows} Zellen · {people} Personen · {exits} Ausgänge",
+  "evacuationComplete": "Konstruktionskriterien erfüllt.",
+  "evacuationIncomplete": "Konstruktionskriterien noch nicht erfüllt.",
+  "evacuationCell": "Zeile {row}, Spalte {col}: {tile} {person}",
+  "evacuationExampleTask": "Konstruiere einen Grundriss mit Wänden, mindestens einem Ausgang und einer Person. Wähle ein Werkzeug und klicke eine Zelle. Ein erneuter Klick entfernt eine Person. Eine Wand entfernt die Person auf ihrer Zelle. Diese Kriterien prüfen nur die Konstruktion, nicht die Sicherheit der Evakuierung."
 }

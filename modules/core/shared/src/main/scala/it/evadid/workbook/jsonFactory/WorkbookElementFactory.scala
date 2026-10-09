@@ -1,5 +1,6 @@
 package it.evadid.workbook.jsonFactory
 
+import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationConstructFloorInteraction
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig
@@ -146,6 +147,7 @@ object WorkbookElementFactory {
     classOf[SquareMiddleHashInteraction].getSimpleName -> SquareMiddleHashInteraction.factory,
     classOf[Sha256Interaction].getSimpleName -> Sha256Interaction.factory,
     classOf[BlockchainInteraction].getSimpleName -> BlockchainInteraction.factory,
+    classOf[EvacuationConstructFloorInteraction].getSimpleName -> EvacuationConstructFloorInteraction.factory,
     classOf[UnicodeComparisonInteraction].getSimpleName -> UnicodeComparisonInteraction.factory,
     classOf[ThresholdNeuronInteraction].getSimpleName -> ThresholdNeuronInteraction.factory,
     classOf[MailEditor].getSimpleName -> MailEditor.factory,

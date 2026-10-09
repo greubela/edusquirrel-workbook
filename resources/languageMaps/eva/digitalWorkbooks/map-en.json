@@ -204,5 +204,21 @@
   "phishingMeasure4": "Measure 4",
   "phishingMeasure5": "Measure 5",
   "unicodeReset": "Reset inputs",
-  "phishingAdaptationScope": "Partial digital adaptation: the mailbox, warning-sign analysis, domain/Unicode exercises, malware examples and final checklist are available. The classic ZIP remains available with the complete main workbook, screenshots and supplementary modules. This draft has not passed content-equivalence review."
+  "phishingAdaptationScope": "Partial digital adaptation: the mailbox, warning-sign analysis, domain/Unicode exercises, malware examples and final checklist are available. The classic ZIP remains available with the complete main workbook, screenshots and supplementary modules. This draft has not passed content-equivalence review.",
+  "evacuationTitle": "Evacuation – construct a floor",
+  "evacuationTask": "Construct a floor with walls, at least {minExits} exits and {minPeople} people. Select a tool, then click a cell; click an existing person again to remove them. Painting a wall removes its occupant. These criteria check construction only, not evacuation safety.",
+  "evacuationFloor": "Floor",
+  "evacuationWall": "Wall",
+  "evacuationExit": "Exit",
+  "evacuationPerson": "Person",
+  "evacuationAddRow": "Add bottom row",
+  "evacuationRemoveRow": "Remove bottom row",
+  "evacuationAddColumn": "Add right column",
+  "evacuationRemoveColumn": "Remove right column",
+  "evacuationReset": "Reset floor",
+  "evacuationPreview": "{cols} × {rows} cells · {people} people · {exits} exits",
+  "evacuationComplete": "Construction criteria met.",
+  "evacuationIncomplete": "Construction criteria not yet met.",
+  "evacuationCell": "Row {row}, column {col}: {tile} {person}",
+  "evacuationExampleTask": "Construct a floor with walls, at least one exit and one person. Select a tool, then click a cell; click an existing person again to remove them. Painting a wall removes its occupant. These criteria check construction only, not evacuation safety."
 }

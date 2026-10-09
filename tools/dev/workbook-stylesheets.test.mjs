@@ -5,7 +5,7 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 import test from 'node:test';
 
 const root = path.resolve(import.meta.dirname, '../..');
-const dedicatedCss = ['email-simulator.css', 'digital-workbooks.css']
+const dedicatedCss = ['email-simulator.css', 'digital-workbooks.css', 'evacuation-editor.css']
   .map(file => path.join(root, 'homepage/css/workbook', file));
 async function filesBelow(directory, extension) {
   const files = [];
@@ -72,6 +72,8 @@ test('mail and digital exercise components bind classes rather than inline Lamin
   const directories=[
     'modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/MailEditor',
     'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/emailSimulator',
+    'modules/client/src/main/scala/it/evadid/homepage/webElements/editor/evacuation',
+    'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/evacuation',
     'modules/client/src/main/scala/it/evadid/homepage/webElements/editor/neuron',
     'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/neuron',
     'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/choice',
@@ -111,7 +113,8 @@ test('every authored stylesheet is reachable from a homepage entry page', async 
 });
 
 test('digital exercise CSS references defined shared color and dimension tokens', async () => {
-  const css = await readFile(path.join(root, 'homepage/css/workbook/digital-workbooks.css'), 'utf8');
+  const css = (await Promise.all(['digital-workbooks.css', 'evacuation-editor.css'].map(file =>
+    readFile(path.join(root, 'homepage/css/workbook', file), 'utf8')))).join('\n');
   const definitions = (await Promise.all(['colors.css', 'dimensions.css'].map(file =>
     readFile(path.join(root, 'homepage/css/generic', file), 'utf8')))).join('\n');
   const used = new Set([...css.matchAll(/var\((--[\w-]+)/g)].map(match => match[1]));

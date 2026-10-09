@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer
 
+import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationConstructFloorInteraction
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.evacuation.EvacuationConstructFloorRenderer
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.homepage.control.model.*
@@ -122,6 +124,7 @@ object HtmlRenderFactory {
       case h: SquareMiddleHashInteraction => SquareMiddleHashRenderer.renderWorkbookElement(h)
       case h: Sha256Interaction => Sha256Renderer.renderWorkbookElement(h)
       case h: BlockchainInteraction => BlockchainRenderer.renderWorkbookElement(h)
+      case e: EvacuationConstructFloorInteraction => EvacuationConstructFloorRenderer.renderWorkbookElement(e)
       case h: UnicodeComparisonInteraction => UnicodeComparisonRenderer.renderWorkbookElement(h)
       case p: BinaryPixelInteraction => BinaryPixelRenderer.renderWorkbookElement(p)
       case t: AnswerTableInteraction => AnswerTableRenderer.renderWorkbookElement(t)

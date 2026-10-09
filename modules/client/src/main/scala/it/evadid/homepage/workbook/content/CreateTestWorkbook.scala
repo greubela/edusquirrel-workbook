@@ -17,7 +17,7 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
   override def createWorkbook: Workbook = {
     workbook(
       "TestWorkbook/WorkbookTitle",
-      List(section1, section2, section3, section4),
+      List(section1, section2, section3, section4, section5),
       User.AndreGreubel
     )
   }
@@ -106,4 +106,11 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
   ))
 
   override def workbookId: String = "workbookTest"
+  lazy val section5: WorkbookSection = section("evacuation-construction", "digitalWorkbooks/evacuationTitle", List(
+    container("digitalWorkbooks/evacuationTitle", List(
+      instructionPlaintext("digitalWorkbooks/evacuationExampleTask"),
+      it.evadid.workbook.elements.interactionElements.evacuation.EvacuationConstructFloorInteraction("evacuation-construct-floor")
+    ))
+  ))
+
 }
