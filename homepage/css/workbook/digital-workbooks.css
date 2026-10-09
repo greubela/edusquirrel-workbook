@@ -1,0 +1,18 @@
+/* Workbook choice controls and threshold-neuron editor share the site tokens. */
+.choice-interaction { border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); padding: var(--space-lg); }
+.choice-interaction legend { font-weight: 600; padding-inline: var(--space-sm); }
+.choice-interaction label { display: flex; align-items: start; gap: var(--space-sm); margin-block: var(--space-sm); cursor: pointer; }
+.choice-interaction input { flex: 0 0 auto; accent-color: var(--color-accent-active); }
+.choice-feedback, .neuron-preview { color: var(--color-text-secondary); }
+.neuron-editor { display: flex; flex-direction: column; gap: var(--space-md); min-width: 0; padding: var(--space-lg); overflow: auto; }
+.neuron-editor h2, .neuron-editor p { margin: 0; }
+.neuron-controls { display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: end; }
+.neuron-controls label { display: flex; flex-direction: column; gap: var(--space-sm); flex: 1 1 var(--neuron-control-min-width); }
+.neuron-controls input { width: 100%; box-sizing: border-box; font: inherit; padding: var(--space-sm); border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); background: var(--color-surface-base); color: var(--color-text-primary); }
+.neuron-controls input:focus-visible { outline: 2px solid var(--color-accent-active); outline-offset: 2px; }
+.neuron-results { overflow-x: auto; }
+.neuron-results table { width: 100%; border-collapse: collapse; }
+.neuron-results caption { text-align: start; font-weight: 600; margin-block: var(--space-sm); }
+.neuron-results th, .neuron-results td { padding: var(--space-sm); border: 1px solid var(--color-border-soft); text-align: start; }
+.neuron-results thead { background: var(--color-surface-muted); }
+.neuron-error { color: var(--color-accent-strong); }

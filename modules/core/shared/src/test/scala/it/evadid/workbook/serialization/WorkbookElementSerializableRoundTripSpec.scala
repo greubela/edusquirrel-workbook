@@ -13,6 +13,8 @@ import it.evadid.workbook.elements.interactionElements.sortingExercise.{SortingI
 import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
 import it.evadid.workbook.jsonFactory.{WorkbookElementSerializable, WorkbookElementFactory}
 import upickle.default.*
+import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
+import it.evadid.workbook.elements.interactionElements.neuron.*
 import munit.FunSuite
 
 class WorkbookElementSerializableRoundTripSpec extends FunSuite {
@@ -43,6 +45,9 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     val special = " Quotes: \"hello\"; backslash: \\; newline:\nGrüße )({} "
     val inbox = InboxState.withMails(List(Mail("mail", "sender@example.test", special, special, special, MailFolder.Inbox, Some(special), "2026-10-08", expectedFolder = Some(MailFolder.Archive))))
     List(
+      ChoiceInteraction("choice", content("choice/prompt"), List(content("choice/a"), content("choice/b")), true, Some(List(0, 1))),
+      ThresholdNeuronInteraction("neuron", List(content("neuron/input")),
+        List(NeuronExample(content("neuron/row"), List(1), true)), NeuronParameters(List(1), 1)),
       workbook, section,
       ExerciseContainer("container", content("container/title"), List(input)),
       LabeledWorkbookElement("labeled", input, WorkbookLabel(content("label/hint"), HintLabel)),

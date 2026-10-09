@@ -85,6 +85,12 @@ There is an existing client-level coupling here: `EvaEditorTurtle` calls `HtmlTu
 
 The interaction stores command-usage limits, but this renderer does not pass them into the editor or enforce them. It also does not expose a model-level `isPassed` method. The visual comparison should not be described as a complete requirements/grading implementation merely because its label contains “grading”.
 
+## Choice questions and a threshold-neuron exercise
+
+`ChoiceInteraction` stores `ChoiceAnswer` in shared core and is rendered inline by `ChoiceInteractionRenderer`; it needs no fullscreen editor. Optional expected selections distinguish knowledge checks from ungraded opinions.
+
+`ThresholdNeuronInteraction` stores shared `NeuronParameters`, binary examples and input labels. `ThresholdNeuronRenderer` creates a bound state and preview card, then opens `ThresholdNeuronEditor` with that state and the exercise's examples/initial parameters. `NeuronEditorState` keeps incomplete numeric drafts local while valid edits flow to the saved value. See the [PDF/ZIP migration inventory](digital-workbook-migration.md) for the source activity and verification commands.
+
 ## Adding an interaction
 
 Define the domain value and requirements in shared core, then add the interaction model and its definition factory/content serializer. Register the factory in the shared factory registry and the renderer in `HtmlRenderFactory`. Build an editor only when the controls warrant a separate component. Keep CSS in dedicated files, reuse shared color/dimension tokens, and ensure workbook entry pages load the required styles.
