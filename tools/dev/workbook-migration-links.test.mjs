@@ -22,6 +22,7 @@ test('classic PDF/ZIP downloads remain separate from partial digital adaptations
     await access(path.join(root, 'resources/workbookpdfs', file));
   }
   for (const [page, download] of [
+    ['evacuationWorkbook', '20211110EvakuierungGitterautomat.pdf'],
     ['blockchainWorkbook', '20260908WorkbookBitcoin.zip'],
     ['imageRecognitionWorkbook', '20260925Bilderkennung.zip'],
     ['phishingWorkbook', '20260907WorkbookPhishing.zip'],

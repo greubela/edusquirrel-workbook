@@ -8,11 +8,24 @@ import it.evadid.evacuation.eva2.control.floorMaps.{ControllableHtmlFloorMap, Fl
 import it.evadid.evacuation.eva2.control.traits.{SimpleTileMapController, TileMapController}
 import it.evadid.evacuation.eva2.graphic.ImageConfigFactory
 import it.evadid.evacuation.eva2.model
-import it.evadid.evacuation.eva2.model.ProgramState._
+import it.evadid.evacuation.core.graphic.spritemap.EvaSpriteMap
 import it.evadid.evacuation.eva2.model.{EvaFloorMap, ProgramState}
 import org.scalajs.dom.{Element, document}
 
-case class ScenarioEditorMode() extends Eva2ControlMode {
+/** State injection lets workbook editors reuse the EVA2 controls without changing the live simulator. */
+case class ScenarioEditorMode(
+    readFloor: () => EvaFloorMap = () => ProgramState.instance.floorMap.currentValue,
+    writeFloor: EvaFloorMap => Unit = floor => ProgramState.instance.floorMap.setValue(floor),
+    readSprites: () => EvaSpriteMap = () => ProgramState.spriteMap,
+    redraw: () => Unit = () => Eva2Control.requestRedrawTiles(),
+    canEdit: () => Boolean = () => true,
+    maxDimension: Option[Int] = None) extends Eva2ControlMode {
+
+  private def spriteMap = readSprites()
+  private def floorMatrix = readFloor().floorMatrix
+  private def persons = readFloor().persons
+  def selectSprite(sprite: Sprite): Unit = selectedTile = Some(sprite)
+
 
   private case class SelectionSpriteArea(selectionSprites: Seq[Sprite]) {
     val selectionMatrix: Matrix[Sprite] = Matrix(spriteMap.selectionDim, selectionSprites)
@@ -39,7 +52,7 @@ case class ScenarioEditorMode() extends Eva2ControlMode {
   }
 
   def getControlElement: Element = {
-    val tileSize = ProgramState.spriteMap.spriteSize
+    val tileSize = spriteMap.spriteSize
 
     val tile = document.createElement("div")
     tile.setAttribute("id", "map-editor-control")
@@ -63,14 +76,14 @@ case class ScenarioEditorMode() extends Eva2ControlMode {
     override def onOver(pos: PositionInMatrix): Unit = {
       overlays = if (selectedTile.isEmpty) List((pos, BasicOverlaySprite.whiteOverlay))
       else List((pos, BasicOverlaySprite.whiteOverlay), (pos, OverlaySprite.fromSprite(selectedTile.get)))
-      Eva2Control.requestRedrawTiles()
+      redraw()
     }
 
-    override def onClick(pos: PositionInMatrix): Unit = selectedTile match {
+    override def onClick(pos: PositionInMatrix): Unit = if (canEdit() && pos.isInRange && pos.dim == floorMatrix.dim) selectedTile match {
       case None => println("Clicked without selection!")
       case Some(sprite: FloorSprite) =>
         val newState = EvaFloorMap(floorMatrix.replace(pos, sprite), persons)
-        ProgramState.instance.floorMap.setValue(newState)
+        writeFloor(newState)
       case Some(sprite: PersonSprite) => {
         personAddedRequest(pos, sprite)
       }
@@ -80,7 +93,7 @@ case class ScenarioEditorMode() extends Eva2ControlMode {
 
     override def onLeaving(): Unit = {
       overlays = List()
-      Eva2Control.requestRedrawTiles()
+      redraw()
     }
 
     override def onDragAndDrop(startTile: PositionInMatrix, endTile: PositionInMatrix, draggedOver: Set[PositionInMatrix]): Unit = {
@@ -89,18 +102,18 @@ case class ScenarioEditorMode() extends Eva2ControlMode {
   })
 
   private def personAddedRequest(pos: PositionInMatrix, sprite: PersonSprite): Unit = {
-    val existingAtPos = ProgramState.persons.find(_.pos == pos)
+    val existingAtPos = persons.find(_.pos == pos)
     // Same sprite to existing location: Remove
     val newState =
       if (existingAtPos.nonEmpty && existingAtPos.get.sprite == sprite) {
-        model.EvaFloorMap(ProgramState.floorMatrix, persons.filter(_.pos != pos))
+        model.EvaFloorMap(floorMatrix, persons.filter(_.pos != pos))
       }
       // Different sprite or existing location: Replace // Add new
       else {
-        ProgramState.instance.floorMap.currentValue.insertOrSetPersonAtPosition(pos, sprite)
+        readFloor().insertOrSetPersonAtPosition(pos, sprite)
       }
 
-    ProgramState.instance.floorMap.setValue(newState)
+    writeFloor(newState)
   }
 
   private def selectionTileMapController: TileMapController = TileMapController.from(new SimpleTileMapController {
@@ -123,14 +136,15 @@ case class ScenarioEditorMode() extends Eva2ControlMode {
   })
 
 
-  private def handleExtend(top: Boolean, left: Boolean, bottom: Boolean, right: Boolean): Unit = {
-    val updated = ProgramState.instance.floorMap.currentValue.extendMatrix(top, left, bottom, right)
-    ProgramState.instance.floorMap.setValue(updated)
+  def handleExtend(top: Boolean, left: Boolean, bottom: Boolean, right: Boolean): Unit = {
+    val dim = floorMatrix.dim
+    val fits = maxDimension.forall(limit => dim.cols + (if (left) 1 else 0) + (if (right) 1 else 0) <= limit &&
+      dim.rows + (if (top) 1 else 0) + (if (bottom) 1 else 0) <= limit)
+    if (canEdit() && fits) writeFloor(readFloor().extendMatrix(top, left, bottom, right, spriteMap.defaultEmpty))
   }
 
-  private def handleShrink(top: Boolean, left: Boolean, bottom: Boolean, right: Boolean): Unit = {
-    val updated = ProgramState.instance.floorMap.currentValue.shrinkMatrix(top, left, bottom, right)
-    ProgramState.instance.floorMap.setValue(updated)
+  def handleShrink(top: Boolean, left: Boolean, bottom: Boolean, right: Boolean): Unit = {
+    if (canEdit()) writeFloor(readFloor().shrinkMatrix(top, left, bottom, right))
   }
 
 

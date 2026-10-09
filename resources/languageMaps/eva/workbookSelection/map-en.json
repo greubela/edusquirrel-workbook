@@ -33,5 +33,7 @@
   "python-title": "Introduction to programming with Python",
   "python-description": "Learn Python with turtle examples and PRIMM activities.",
   "compression-lab-title": "Data compression: interactive learning lab",
-  "compression-lab-description": "Try compression techniques in the standalone learning activity."
+  "compression-lab-description": "Try compression techniques in the standalone learning activity.",
+  "evacuation-title": "Evacuation with grid automata",
+  "evacuation-description": "Construct floors, compare locker and door layouts, and question evacuation models."
 }

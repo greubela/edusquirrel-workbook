@@ -36,6 +36,15 @@ class CreateTestWorkbookSpec extends FunSuite {
     assert(!exercises.head.isPassed)
   }
 
+  test("test workbook showcases a saved EVA2 floor construction exercise") {
+    val exercises = CreateTestWorkbook(null).createWorkbook.allChildrenFullSubtree.collect {
+      case e: it.evadid.workbook.elements.interactionElements.evacuation.EvacuationConstructFloorInteraction => e
+    }
+    assertEquals(exercises.size, 1)
+    assertEquals(exercises.head.defaultValue.cols, 8)
+    assert(!exercises.head.isPassed)
+  }
+
   test("test/design workbook includes the configured school SQL sample") {
     val workbook = CreateTestWorkbook(null).createWorkbook
     val exercises = workbook.allChildrenFullSubtree.collect { case sql: SqlCommandExercise => sql }

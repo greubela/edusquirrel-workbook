@@ -1,6 +1,12 @@
 /* Shared design tokens for the workbook experience.
    Color policy: define colors only in this file and consume them via CSS variables in other stylesheets. */
 :root {
+    --color-evacuation-floor: var(--color-surface-base);
+    --color-evacuation-wall: var(--color-gray-12);
+    --color-evacuation-exit: var(--color-green-2);
+    --color-evacuation-exit-text: var(--color-green-9);
+    --color-evacuation-person: var(--color-blue-8);
+    --color-evacuation-person-outline: var(--color-gray-0);
     --color-catalog-background-start: #fdf0d5;
     --color-catalog-background-end: #f9f5ff;
     --color-blockchain-valid: var(--color-accent-active);

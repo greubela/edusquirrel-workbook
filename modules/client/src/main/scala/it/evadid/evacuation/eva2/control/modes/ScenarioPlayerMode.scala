@@ -16,9 +16,16 @@ import org.scalajs.dom.Element
 import scala.collection.mutable
 import scala.concurrent.ExecutionContextExecutor
 
-case class ScenarioPlayerMode(enteringState: EvaFloorMap, evacuationSimulation: Evacuation, evacuationMetaData: EvacuationMetaData) extends Eva2ControlMode {
+case class ScenarioPlayerMode(enteringState: EvaFloorMap, evacuationSimulation: Evacuation, evacuationMetaData: EvacuationMetaData,
+    writeFloor: EvaFloorMap => Unit = floor => ProgramState.instance.floorMap.setValue(floor),
+    showAnimations: () => Boolean = () => ProgramState.config.showAnimations.getValue.value,
+    movementOption: () => Int = () => ProgramState.config.showMovementOption.getValue.value,
+    redraw: () => Unit = () => Eva2Control.requestRedrawTiles(),
+    onFailure: () => Unit = () => Eva2Control.setNewControlMode(ScenarioEditorMode())) extends Eva2ControlMode {
 
-  private var currentStateInfo: Element = EvaHtmlFactory.createLabel("Empty")
+  private var currentStateInfo: Option[Element] = None
+
+  def currentStateIndex: Int = currentState
 
   private var currentState: Int = 0
   private var drawingInformation = calcDrawingInformation()
@@ -33,7 +40,7 @@ case class ScenarioPlayerMode(enteringState: EvaFloorMap, evacuationSimulation: 
     times += System.currentTimeMillis()
     val nextState = evacuationSimulation.states(currentState)
     times += System.currentTimeMillis()
-    ProgramState.instance.floorMap.setValue(nextState)
+    writeFloor(nextState)
     times += System.currentTimeMillis()
     drawingInformation = calcDrawingInformation()
     times += System.currentTimeMillis()
@@ -62,19 +69,16 @@ case class ScenarioPlayerMode(enteringState: EvaFloorMap, evacuationSimulation: 
   def updateCurrentStateInfo(): Unit = {
     val stateAtStepBegin = evacuationSimulation.stepBeginOfState(currentState) //evacuationSimulation.get.steps(evacuationSimulation.get.stepNr(currentState.get))
     val microStepInStep = (currentState - stateAtStepBegin)
-    currentStateInfo.textContent = "Step " + (evacuationSimulation.stepNr(currentState) + 1) + ":" + (microStepInStep + 1) + " (Global MicroStep " + (currentState + 1) + ")"
+    currentStateInfo.foreach(_.textContent = "Step " + evacuationSimulation.steps.distinct.count(i => i > 0 && i <= currentState) + ":" + (microStepInStep + 1) + " (Global MicroStep " + (currentState + 1) + ")")
   }
 
   override def onEnteringMode(): Unit = {
 
-    if (evacuationMetaData == null || !evacuationMetaData.success) {
-      println("Error: Evacuation did not finish successfully (time executed: " + evacuationMetaData.executionTimeInMs + "ms)")
-      Eva2Control.setNewControlMode(ScenarioEditorMode())
-    }
+    if (evacuationMetaData == null || !evacuationMetaData.success) onFailure()
 
   }
 
-  override def onLeavingMode(): Unit = ProgramState.instance.floorMap.setValue(enteringState)
+  override def onLeavingMode(): Unit = writeFloor(enteringState)
 
 
   def getOverlays(): List[(PositionInMatrix, OverlaySprite)] = {
@@ -82,11 +86,11 @@ case class ScenarioPlayerMode(enteringState: EvaFloorMap, evacuationSimulation: 
   }
 
   def getOverlaysForMovement(): List[(PositionInMatrix, OverlaySprite)] = {
-    if (ProgramState.instance.config.showMovementOption.getValue.value == ShowMovementOption.SHOW_MICRO_MOVEMENT && currentState < evacuationSimulation.nextStep(currentState)) {
+    if (movementOption() == ShowMovementOption.SHOW_MICRO_MOVEMENT && currentState < evacuationSimulation.nextStep(currentState)) {
       val curState = evacuationSimulation.states(currentState)
       val next = evacuationSimulation.states(evacuationSimulation.nextMicroStep(currentState))
       calcOverlay(curState, next)
-    } else if (ProgramState.instance.config.showMovementOption.getValue.value == ShowMovementOption.SHOW_ALL_MOVEMENTS) {
+    } else if (movementOption() == ShowMovementOption.SHOW_ALL_MOVEMENTS) {
       val curState = evacuationSimulation.states(currentState)
       val next = evacuationSimulation.states(evacuationSimulation.nextStep(currentState))
       calcOverlay(curState, next)
@@ -97,7 +101,7 @@ case class ScenarioPlayerMode(enteringState: EvaFloorMap, evacuationSimulation: 
 
   override def getDrawingInformation(): Map[Int, PersonDrawingInformation] = drawingInformation
 
-  private def calcDrawingInformation(): Map[Int, PersonDrawingInformation] = if (ProgramState.config.showAnimations.getValue.value) {
+  private def calcDrawingInformation(): Map[Int, PersonDrawingInformation] = if (showAnimations()) {
 
     val startOfStep = evacuationSimulation.stepBeginOfState(currentState)
     val nextStep = evacuationSimulation.nextStep(currentState)
@@ -142,13 +146,15 @@ case class ScenarioPlayerMode(enteringState: EvaFloorMap, evacuationSimulation: 
   }
 
   def changeStatus(func: Int => Int): Unit = {
-    currentState = func(currentState)
+    currentState = math.max(0, math.min(evacuationSimulation.states.size - 1, func(currentState)))
     updateCurrentSimulationState()
   }
 
 
   override def getControlElement: Element = {
-    val element = SimulationPlayerHtmlFactory.createControlElement(this, currentStateInfo) //RadioButtonHandler.getRadioButtonElement)
+    val label = EvaHtmlFactory.createLabel("Empty")
+    currentStateInfo = Some(label)
+    val element = SimulationPlayerHtmlFactory.createControlElement(this, label) //RadioButtonHandler.getRadioButtonElement)
     updateCurrentStateInfo()
     element
   }
@@ -171,10 +177,10 @@ case class ScenarioPlayerMode(enteringState: EvaFloorMap, evacuationSimulation: 
           val res = (tup._1, sprite)
           res
         })
-        Eva2Control.requestRedrawTiles()
+        redraw()
       } else if (highlightWayOverlays.nonEmpty) {
         highlightWayOverlays = List()
-        Eva2Control.requestRedrawTiles()
+        redraw()
       }
 
 
@@ -182,7 +188,7 @@ case class ScenarioPlayerMode(enteringState: EvaFloorMap, evacuationSimulation: 
 
     override def onMouseLeavingTileMap(lastTile: PositionInMatrix): Unit = {
       highlightWayOverlays = List()
-      Eva2Control.requestRedrawTiles()
+      redraw()
     }
 
     override def onMouseClickingOnTile(onTile: PositionInMatrix): Unit = {
