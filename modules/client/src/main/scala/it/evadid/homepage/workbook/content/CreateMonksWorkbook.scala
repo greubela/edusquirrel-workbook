@@ -68,16 +68,16 @@ object CreateMonksWorkbook {
     Scene("impatience", 3),
     Scene("help", 5),
     Scene("journey", 4),
-    Scene("patience", 4),
+    Scene("patience", 16),
     Scene("tray", 6),
     Scene("largest", 7, false),
     Scene("smaller", 8, false),
     Scene("empty", 9),
-    Scene("giveback", 9),
+    Scene("giveback", 17),
     Scene("firstreturn", 10, false),
     Scene("combine", 11, false),
     Scene("sorted", 12),
-    Scene("understood", 12),
+    Scene("understood", 18),
     Scene("farewell", 13))
 
   val countingScenes: List[Scene] = List(Scene("family", 14), Scene("count", 15, false))

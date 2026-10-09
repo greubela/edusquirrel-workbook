@@ -36,7 +36,14 @@ class MonksWorkbookSpec extends FunSuite {
     assert(sceneIds.indexOf("empty") < sceneIds.indexOf("firstreturn"))
     assert(sceneIds.indexOf("combine") < sceneIds.indexOf("sorted"))
     val images = (CreateMonksWorkbook.theaterScenes ++ CreateMonksWorkbook.countingScenes).map(_.imageNumber).toSet
-    assertEquals(images, (1 to 15).toSet)
+    assertEquals(images, (1 to 18).toSet)
+    val scenes = CreateMonksWorkbook.theaterScenes ++ CreateMonksWorkbook.countingScenes
+    assertEquals(scenes.map(_.imageNumber).distinct.size, scenes.size)
+    val imageKeys = slideshows.flatMap(_.panels).map {
+      case panel: SlideshowPanel.ImageSlide => panel.image
+      case panel: SlideshowPanel.TwoColumnImagePanel => panel.image
+    }.map(_.asInstanceOf[it.evadid.workbook.elements.displayElements.ImageElement.LanguageMapBasedImageElement].languageMapContentId)
+    assertEquals(imageKeys.distinct.size, 18)
   }
 
   test("the full digital workbook preserves panels and responses through JSON serialization") {
