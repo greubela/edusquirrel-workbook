@@ -1,0 +1,72 @@
+@import url("../generic/colors.css");
+@import url("../generic/dimensions.css");
+
+/* Scoped to the Laminar catalogue; the classic landing page keeps its styles. */
+.workbook-catalog {
+    box-sizing: border-box;
+    width: min(var(--workarea-width), calc(100% - 2 * var(--space-lg)));
+    margin: var(--space-xl) auto;
+    padding: clamp(1rem, 3vw, 2.5rem);
+    display: grid;
+    gap: var(--space-xl);
+    border-radius: 18px;
+    background: var(--color-background-workarea-display);
+    box-shadow: 0 20px 45px var(--color-tooltip-shadow);
+}
+.workbook-catalog-intro {
+    padding: var(--space-lg);
+    border-radius: 12px;
+    background: var(--color-red-9);
+    color: var(--color-text-inverse);
+    font-weight: 600;
+}
+.workbook-catalog p { margin: 0; line-height: 1.5; }
+.workbook-catalog-heading { text-align: center; }
+.workbook-catalog-heading h2 { margin: 0 0 var(--space-md); }
+.workbook-catalog-heading p { color: var(--color-text-secondary); }
+.workbook-catalog-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: var(--space-xl);
+}
+.workbook-catalog-card { margin: 0; min-width: 0; }
+.workbook-catalog-link {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    gap: var(--space-lg);
+    padding: var(--space-lg);
+    border-radius: 16px;
+    background: var(--color-surface-base);
+    color: var(--color-text-primary);
+    text-decoration: none;
+    box-shadow: 0 8px 20px var(--color-tooltip-shadow);
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+.workbook-catalog-link:hover, .workbook-catalog-link:focus-visible {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px var(--color-tooltip-shadow);
+}
+.workbook-catalog-link:focus-visible { outline: 3px solid var(--color-blue-6); outline-offset: 3px; }
+.workbook-catalog-link img { width: 100%; max-width: 230px; aspect-ratio: 1; object-fit: cover; border-radius: 10px; }
+.workbook-catalog-caption { text-align: center; }
+.workbook-catalog-caption h3 { margin: 0 0 var(--space-sm); font-size: 1.1rem; }
+.workbook-catalog-author, .workbook-catalog-description { color: var(--color-text-secondary); font-size: .95rem; }
+.workbook-catalog-description { padding: var(--space-md) 0; }
+.workbook-catalog-status { display: inline-block; font-size: .8rem; padding: var(--space-sm); border-radius: 8px; background: var(--color-surface-muted); }
+.workbook-catalog-owner { padding: var(--space-lg); border-radius: 12px; background: var(--color-surface-muted); color: var(--color-text-secondary); font-size: .85rem; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+    .workbook-catalog { width: calc(100% - 2 * var(--space-md)); }
+    .workbook-title-line { max-width: calc(100% - 100px); overflow-wrap: anywhere; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .workbook-catalog-link { transition: none; }
+    .workbook-catalog-link:hover, .workbook-catalog-link:focus-visible { transform: none; }
+}
+body:has(.workbook-catalog) {
+    background: linear-gradient(135deg, var(--color-catalog-background-start), var(--color-catalog-background-end));
+}
+body:has(.workbook-catalog) .workbook-footer { position: static; }
+body:has(.workbook-catalog) .workbook-footer-content { max-height: none; padding: var(--space-md); box-sizing: border-box; }

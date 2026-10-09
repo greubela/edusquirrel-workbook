@@ -50,7 +50,12 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
     createDefaultMenu() ++ createSessionMenu() //++ createDemoMenu()
   )
 
-  private def createDefaultMenu(): List[HtmlAppElement] = List()
+  private def createDefaultMenu(): List[HtmlAppElement] = List(
+    HtmlDropdownMenu.menuItem("workbookSelection/backToCatalogue", _ => {
+      fullInfo.usageControl.changeWorkbook(None)
+      closeMenu()
+    })
+  )
 
 
   private val uploadInput: ReactiveHtmlElement[HTMLInputElement] = laminarHelper.sessionFileUploadInput(logger, loadedFile => fullInfo.usageControl.tryContinueWithSessionFile(loadedFile))
