@@ -10,7 +10,7 @@ import it.evadid.evacuation.eva2.model.{EvaFloorMap, Person}
  * Closest Goal Strategy. Always take the tile that minimizes the distance to the closest goal.
  * @param personOrdering
  */
-case class ClosestGoalStrategy(personOrdering: PersonOrderSelector[CGSimInfo, CGStepInfo]) extends EvacuationStrategy[CGSimInfo, CGStepInfo] {
+case class ClosestGoalStrategy(personOrdering: PersonOrderSelector[CGSimInfo, CGStepInfo], stableRoutes: Boolean = false) extends EvacuationStrategy[CGSimInfo, CGStepInfo] {
 
   override def createInitialSimulationInformation(initialState: EvaFloorMap, neighbourhood: Neighbourhood, routingMap: RoutingMap): CGSimInfo = {
     CGSimInfo(routingMap.onlyShortestPaths())
@@ -22,7 +22,9 @@ case class ClosestGoalStrategy(personOrdering: PersonOrderSelector[CGSimInfo, CG
 
     val routingOptions = simInfo.routingMap.getRawMap(person.pos)
     val freeRoutingOptions = routingOptions.filter(op => op.nextStep.isDefined && !blockedPositions.contains(op.nextStep.get))
-    val chosenOption = freeRoutingOptions.headOption.map(op => PersonRoutingOption(person, op.nextStep.get, op.destination, op.remainingDistance))
+    val ordered = if (stableRoutes) freeRoutingOptions.sortBy(op =>
+      (op.remainingDistance, op.destination.cPos.y, op.destination.cPos.x, op.nextStep.get.cPos.y, op.nextStep.get.cPos.x)) else freeRoutingOptions
+    val chosenOption = ordered.headOption.map(op => PersonRoutingOption(person, op.nextStep.get, op.destination, op.remainingDistance))
     chosenOption
 
   }

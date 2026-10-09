@@ -33,5 +33,7 @@
   "python-title": "Programmiereinstieg mit Python",
   "python-description": "Lerne Python mit Turtle-Beispielen und PRIMM-Aufgaben.",
   "compression-lab-title": "Datenkompression: interaktives Lernlabor",
-  "compression-lab-description": "Probiere Kompressionsverfahren im eigenständigen Lernangebot aus."
+  "compression-lab-description": "Probiere Kompressionsverfahren im eigenständigen Lernangebot aus.",
+  "evacuation-title": "Evakuierung mit Gitterautomaten",
+  "evacuation-description": "Erstelle Grundrisse, vergleiche Spinde und Türen und hinterfrage Evakuierungsmodelle."
 }

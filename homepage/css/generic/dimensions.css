@@ -1,4 +1,5 @@
 :root{
+    --evacuation-cell-size: max(2.75rem, 44px);
     --blockchain-card-min-width: 18rem;
   --unicode-table-min-width: 20rem;
     --pixel-cell-size: max(2.75rem, 44px);

@@ -82,9 +82,12 @@ test('catalogue renders before login, reuses IndexedDB immediately and refreshes
     const entry=origin+'/homepage/workbooks/index.html';
     const coldStart=Date.now();await page.goto(entry);
     await page.getByRole('heading',{name:'Digital workbooks',exact:true}).waitFor({timeout:60000});
-    assert.equal(await page.locator('.workbook-catalog-card').count(),12);
+    assert.equal(await page.locator('.workbook-catalog-card').count(),13);
     assert.equal(await page.locator('.container-login').count(),0, 'catalogue is public');
-    assert.equal(await page.locator('.workbook-catalog-grid').first().locator('a').count(),7);
+    const evacuation = page.getByRole('link',{name:/Evacuation with grid automata/});
+    assert.equal(await evacuation.getAttribute('href'),'../evacuationWorkbook/');
+    assert.match(await evacuation.innerText(),/in development/);
+    assert.equal(await page.locator('.workbook-catalog-grid').first().locator('a').count(),8);
     assert.equal(await page.locator('a[href$=".pdf"], a[href$=".zip"]').count(),0);
     const coldMs=Date.now()-coldStart;
     await page.waitForFunction(()=>window.cacheOps.some(e=>e.op==='put' && e.key==='tripleCache'));

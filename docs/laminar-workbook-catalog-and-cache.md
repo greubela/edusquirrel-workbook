@@ -8,7 +8,7 @@ user session. The user menu offers “All digital workbooks” to return to sele
 A selected workbook still requires the existing login or local-session flow.
 The classic catalogue is retained and links to the digital catalogue.
 
-`DigitalWorkbookCatalog` lists seven native workbooks and five standalone digital
+`DigitalWorkbookCatalog` lists eight native workbooks and five standalone digital
 offerings from the old landing page. It excludes PDF/ZIP-only materials, developer
 demos, editor previews and proposed workbooks. Native entries provide both the
 public entry-page link and the factory used by `HomepageStartupLogic`, avoiding
