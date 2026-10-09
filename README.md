@@ -30,7 +30,8 @@ Shared workbook abstractions live in [WorkbookElement.scala](modules/core/shared
 
 | Page | Content |
 | --- | --- |
-| [homepage/index.html](homepage/index.html) | Landing page |
+| [homepage/index.html](homepage/index.html) | Classic catalogue, including PDF/ZIP editions |
+| [workbooks](homepage/workbooks/index.html) | Laminar catalogue of available digital workbooks; browsing is public |
 | [workbookDesign](homepage/workbookDesign/index.html) | Test workbook and interaction examples |
 | [embroideryWorkbook](homepage/embroideryWorkbook/index.html) | Embroidery workbook |
 | [compressionWorkbook](homepage/compressionWorkbook/index.html) | Data compression workbook |
@@ -40,6 +41,8 @@ Shared workbook abstractions live in [WorkbookElement.scala](modules/core/shared
 | [phishingWorkbook](homepage/phishingWorkbook/index.html) | Mail simulator, warning/domain/Unicode analysis, attachment risks and checklist; partial adaptation |
 | [plantWorkshop](homepage/plantWorkshop/index.html) | Separate legacy plant application |
 | [feedback-demo](homepage/feedback-demo/index.html) | Feedback demonstration |
+
+See [catalogue and cache startup](docs/laminar-workbook-catalog-and-cache.md) for the public registry, IndexedDB lifecycle and startup checks.
 
 ## Language maps and styles
 
