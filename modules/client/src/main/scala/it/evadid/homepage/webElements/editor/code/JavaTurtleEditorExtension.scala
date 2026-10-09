@@ -23,7 +23,7 @@ final class JavaTurtleEditorExtension(
     runnerFactory: () => JavaEditorSession.Runner = JavaEditorSession.defaultRunner
 ) extends EvaEditorExtension {
   private var session = Option.empty[JavaEditorSession]
-  private var panel = Option.empty[JavaTurtleExecutionPanel]
+  private var panel = Option.empty[TurtleExecutionPanel]
   private class Attempt {
     val owner = new ManualOwner
     var invalidated = false
@@ -110,8 +110,16 @@ final class JavaTurtleEditorExtension(
         case _ => throw IllegalStateException("Open the Java editor to check this task.")
       }
       val current = panel.getOrElse {
-        val created = new JavaTurtleExecutionPanel(state, () => run(source()), () => stop(), target,
-          task.map(example => example -> (() => checkTask(source(), example))))
+        val created = new TurtleExecutionPanel(state, () => run(source()), () => stop(), target,
+          task.map { example =>
+            val emptyTargets = example.cases.filter(_.expectedShape.toTurtleProgram.isEmpty).map(_.call(example.methodName))
+            val prompt = s"Use the parameters of ${example.methodName} to draw the requested shape. " +
+              s"Check task calls ${example.cases.map(_.call(example.methodName)).mkString(", ")}. " +
+              (if emptyTargets.nonEmpty then s"${emptyTargets.mkString(", ")} should draw no lines." else "")
+            TurtleExecutionPanel.Assessment(
+              example.cases.map(entry => TurtleExecutionPanel.Case(entry.call(example.methodName), entry.expectedShape)).toVector,
+              () => checkTask(source(), example), prompt)
+          })
         panel = Some(created)
         created
       }
