@@ -1,6 +1,12 @@
 package it.evadid.homepage.webElements.sqlEditor
 
 class SqlBlocksSpec extends munit.FunSuite {
+  test("aggregates and date expressions remain lossless in the block editor") {
+    val sql = "SELECT AVG(value), COUNT(value) FROM measurements WHERE recorded_on >= CURDATE() - INTERVAL 7 DAY AND recorded_on < CURDATE() GROUP BY category HAVING COUNT(value) = 7;"
+    val blocks = SqlBlocks.split(sql)
+    assertEquals(blocks.map(SqlBlocks.label), List("SELECT", "FROM", "WHERE", "GROUP BY", "HAVING"))
+    assertEquals(SqlBlocks.join(blocks), sql)
+  }
   test("top-level clauses form blocks and keep every byte") {
     val sql = "SELECT name, count(*) FROM people WHERE active = 1 GROUP BY name HAVING count(*) > 2 ORDER BY name LIMIT 10;"
     val blocks = SqlBlocks.split(sql)

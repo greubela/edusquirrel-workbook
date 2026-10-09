@@ -7,6 +7,8 @@
     --color-evacuation-exit-text: var(--color-green-9);
     --color-evacuation-person: var(--color-blue-8);
     --color-evacuation-person-outline: var(--color-gray-0);
+    --color-catalog-background-start: #fdf0d5;
+    --color-catalog-background-end: #f9f5ff;
     --color-blockchain-valid: var(--color-accent-active);
     --color-blockchain-invalid: var(--color-text-secondary);
     --color-mail-border: var(--color-gray-3);

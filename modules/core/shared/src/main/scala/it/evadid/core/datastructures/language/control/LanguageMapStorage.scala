@@ -43,7 +43,7 @@ case class LanguageMapStorage
   }
 
   def withLoadedTriples(logger: Logger, additionalSources: IterableOnce[LanguageMapInputSource], additionalTriples: ParsedTriples): LanguageMapStorage = {
-    val unionTriples: ParsedTriples = parsedTriples.union(additionalTriples)
+    val unionTriples: ParsedTriples = parsedTriples.withOverrides(additionalTriples)
     val newStorage = LanguageMapStorage(unionTriples, loadedSources ++ additionalSources)
     val stats = langMapStats(newStorage.languageMaps)
     logger.logInfo(s"Increased Language Map Storage from ${parsedTriples.size} to ${newStorage.languageMaps.size} triples, (stats: ${stats})!")

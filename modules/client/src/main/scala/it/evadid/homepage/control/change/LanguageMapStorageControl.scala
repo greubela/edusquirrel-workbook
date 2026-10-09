@@ -1,17 +1,13 @@
 package it.evadid.homepage.control.change
 
 import it.evadid.core.datastructures.language.AppLanguage.{Danish, German, HumanLanguage}
-import it.evadid.core.datastructures.language.control.LanguageMapStorage
 import it.evadid.core.datastructures.language.serialization.LanguageMapInputSource.{EvaDirectorySource, LanguageMapFileBasedSourceInfo}
 import it.evadid.core.datastructures.language.serialization.abstractions.ParsedTriples
 import it.evadid.core.datastructures.language.serialization.{LanguageMapCollectionSource, LanguageMapInputSource, LanguageMapSourceFileBased}
-import it.evadid.core.util.io.Serializer
 import it.evadid.homepage.control.change.LanguageMapStorageControl.STARTUP_STRATEGY
-import it.evadid.homepage.control.change.LanguageMapStorageControl.STARTUP_STRATEGY.CONTINUE_AFTER_LOCAL_CACHE_SUCCESS
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.syncDestination.LocalIndexedDbStorageSync
 import it.evadid.util.logging.Logger
-import it.evadid.util.logging.LoggingLevel.{INFO, WARN}
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.destination.SyncDestination.SyncDestinationForType
 import upickle.default.*
@@ -40,56 +36,37 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
   }
 
 
-  def ensureStartup(startupStrategy: STARTUP_STRATEGY): Future[?] = {
+  def ensureStartup(startupStrategy: STARTUP_STRATEGY): Future[Unit] =
+    LanguageCacheStartup.run(
+      startupStrategy,
+      () => localCache.readElement,
+      triples => {
+        syncLogger.logInfo(s"Restoring ${triples.size} language triples from IndexedDB")
+        // Installing an existing cache must not serialize and write it again.
+        addTriples(Set.empty, triples)
+      },
+      () => ensureDefaultLanguageSourcesLoaded(),
+      work => { org.scalajs.dom.window.setTimeout(() => work(), 0); () },
+      error => syncLogger.logExceptionWarn("Language cache/startup refresh unavailable", error))
 
-    val promise = Promise[Unit]()
-
-    def readLocal: Future[ParsedTriples] = localCache.readElement
-
-    def readRemote: Future[?] = ensureDefaultLanguageSourcesLoaded()
-
-    readLocal.transformWith {
-      case Success(parsedTriples) => {
-        syncLogger.logInfo("finished parsing tripels from local storage!")
-        if (parsedTriples.size > 0) {
-          syncLogger.log(s"read ${parsedTriples.size} triples from local cache!", INFO, Some(false))
-          addTriplesAndStoreToCache(Set(), parsedTriples)
-          if (startupStrategy == CONTINUE_AFTER_LOCAL_CACHE_SUCCESS) promise.success(())
-        } else {
-          syncLogger.logWarn("read not a single triple from cache!")
-        }
-        readRemote
-      }
-      case Failure(err) => {
-        syncLogger.log(s"Ignored cached version of LanguageMapStorage! (Exception:\n${err.getMessage}\n)", WARN, Some(false))
-        readRemote
-      }
-    }.onComplete {
-      case Success(_) => {
-        if (!promise.isCompleted) promise.success(())
-      }
-      case Failure(err) => {
-        syncLogger.logException("Could not read remote version of LanguageMapStorage!", err, Some(false), WARN)
-        promise.failure(err)
-      }
-    }
-
-    promise.future
-  }
-
-  private def addTriplesAndStoreToCache(loadedSources: Set[LanguageMapInputSource], loadedTriples: ParsedTriples): Unit = fullInfo.synchronized {
+  private def addTriples(loadedSources: Set[LanguageMapInputSource], loadedTriples: ParsedTriples): Unit =
     fullInfo.homepageInfoState.update(curInfo => curInfo.copy(
-      languageMapStore = {
-        val newStorage = curInfo.languageMapStore.withLoadedTriples(contentControlLogger, loadedSources, loadedTriples)
-        localCache.storeElement(newStorage.parsedTriples)
-        newStorage
-      }
-    ))
+      languageMapStore = curInfo.languageMapStore.withLoadedTriples(contentControlLogger, loadedSources, loadedTriples)))
+
+  private def addTriplesAndStoreToCache(loadedSources: Set[LanguageMapInputSource], loadedTriples: ParsedTriples): Unit = {
+    addTriples(loadedSources, loadedTriples)
+    if (loadedTriples.size > 0) {
+      scala.util.Try(localCache.storeElement(fullInfo.homepageInfoNow().languageMapStore.parsedTriples))
+        .fold(Future.failed, identity).recover { case scala.util.control.NonFatal(error) =>
+          syncLogger.logExceptionWarn("Could not persist language cache", error)
+          false
+        }
+    }
   }
 
   private def ensureDefaultLanguageSourcesLoaded(): Future[?] = {
     val loadLanguageMapDirs: Set[String] = Set(
-      "basic", "login", "entitynames", "turtlestitch", "blockeditor", "embroideryworkbook", "testworkbook", "plantworkshop", "prompts", "compressionworkbook", "monksworkbook", "emailSimulator", "digitalWorkbooks", "blockchainworkbook"
+      "basic", "login", "workbookSelection", "entitynames", "turtlestitch", "blockeditor", "embroideryworkbook", "testworkbook", "plantworkshop", "prompts", "compressionworkbook", "monksworkbook", "emailSimulator", "digitalWorkbooks", "blockchainworkbook"
     )
 
     val snapFiles: Set[LanguageMapInputSource] = Set(

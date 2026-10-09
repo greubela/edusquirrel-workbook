@@ -36,12 +36,19 @@ and sign in. The initial query returns Lina and Sam with their respective teache
 Without a configured database, the sample still opens for text/block editing and
 shows the connection/configuration indicator.
 
+The sample uses a small, reproducible teaching dataset. Each exercise selects its
+database and starter SQL; the block templates use generic table and column names.
+To use another dataset, provision it on your backend, allow-list its database name, and
+set the exercise's `SqlDatabaseConfig` and `initialSql`. Table names, columns, and
+relationships in the diagram come from that database's JDBC metadata.
+
 ## Editing and execution
 
 The text tab reuses `CodeMirrorEditor`, with MySQL syntax support and its existing
 textarea fallback. The block tab is a SQL-specific, Snap-like palette and clause
 workspace: add, edit, drag, remove, and reorder clauses. Its blocks contain SQL,
-not Snap VM instructions. `SnapPaletteCatalog` supplies the existing comparison selector ordering; the SQL
+including generic `AVG(column_name)` and `COUNT(column_name)` templates.
+`SnapPaletteCatalog` supplies the existing comparison selector ordering; the SQL
 palette maps those selectors to SQL operators, including `<>` for inequality.
 SQL clauses have their own palette because turtle and VM control blocks do not
 represent SQL statements. Arbitrary SQL is retained
