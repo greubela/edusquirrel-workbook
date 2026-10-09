@@ -10,6 +10,8 @@
 
 .turtle-gradig-panel .turtle-line--correct { stroke: var(--color-green-6); }
 .turtle-gradig-panel .turtle-line--unexpected { stroke: var(--color-accent-error); }
+.turtle-gradig-panel .turtle-line--neutral { stroke: var(--color-gray-12); }
+.turtle-gradig-panel--unavailable { padding: var(--space-lg); color: var(--color-accent-error); }
 .turtle-gradig-panel .turtle-line--jump { stroke-dasharray: var(--space-sm) var(--space-sm); }
 
 .turtle-gradig-panel .turtle-point {

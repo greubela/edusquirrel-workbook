@@ -11,6 +11,7 @@ import upickle.default.*
 
 import scala.collection.mutable.ListBuffer
 import scala.scalajs.js
+import scala.util.control.NonFatal
 
 
 /** Renders and compares a turtle trace on a JSXGraph board.
@@ -27,24 +28,38 @@ object TurtleJsxGraphRenderer:
     })
   }
 
-  def render[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic): Element = {
-    val container = div(
-      cls := "turtle-gradig-panel",
-      onMountCallback(event => {
-        render(event.thisNode.ref, program, expected)
-      })
-    )
-    container
-  }
+  def render[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic): Element =
+    render(buildScene(program, expected), "Turtle drawing")
 
-  def render[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): Element = {
-    val container = div(
+  def render[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): Element =
+    render(buildScene(program, expected), "Turtle drawing")
+
+  def render(scene: Scene, title: String): Element = {
+    var dispose: () => Unit = () => ()
+    div(
       cls := "turtle-gradig-panel",
       onMountCallback(event => {
-        render(event.thisNode.ref, program, expected)
+        val container = event.thisNode.ref
+        container.classList.remove("turtle-gradig-panel--unavailable")
+        try {
+          val library = jsxGraph()
+          val board = render(container, scene, title)
+          dispose = () => library.JSXGraph.freeBoard(board)
+        } catch {
+          case NonFatal(error) =>
+            container.classList.add("turtle-gradig-panel--unavailable")
+            container.textContent = error match {
+              case _: IllegalArgumentException => "This drawing is outside the supported display range."
+              case _ => "The drawing preview is unavailable. Try reloading the page."
+            }
+        }
+      }),
+      onUnmountCallback(_ => {
+        val release = dispose
+        dispose = () => ()
+        release()
       })
     )
-    container
   }
 
   /* Factories */
@@ -62,7 +77,7 @@ object TurtleJsxGraphRenderer:
 
 
   enum LineResult derives ReadWriter:
-    case Correct, Unexpected, Missing
+    case Correct, Unexpected, Missing, Neutral
 
   private given prw: ReadWriter[Point[Double]] = new Serializer[Point[Double]]() {
 
@@ -227,20 +242,30 @@ object TurtleJsxGraphRenderer:
 
   /** Creates the JSXGraph board inside `container` and returns the board object. */
   def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): js.Dynamic =
-    renderScene(container, buildScene(program, expected))
+    render(container, buildScene(program, expected), "Turtle drawing")
 
   /** Creates the JSXGraph board using the expected graphic for both comparison and angle overlays. */
   def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: TurtleGraphic): js.Dynamic =
-    renderScene(container, buildScene(program, expected))
+    render(container, buildScene(program, expected), "Turtle drawing")
 
-  private def renderScene(container: dom.html.Div, scene: Scene): js.Dynamic =
+  private def jsxGraph(): js.Dynamic =
+    val library = js.Dynamic.global.globalThis.selectDynamic("JXG")
+    if js.isUndefined(library) || library == null then
+      throw new IllegalStateException("JSXGraph is not loaded; expected global JXG")
+    library
+
+  def render(container: dom.html.Div, scene: Scene, title: String): js.Dynamic =
     container.classList.add("turtle-gradig-panel")
     val points = scene.lines.flatMap(line => List(line.start, line.end))
+    if points.exists(point => !point.x.isFinite || !point.y.isFinite) then
+      throw IllegalArgumentException("The drawing contains non-finite coordinates.")
     val bounds = boundingBox(points.map(p => Point(p.x, -p.y)))
-    val jxg = js.Dynamic.global.selectDynamic("JXG")
-    if js.isUndefined(jxg) then throw new IllegalStateException("JSXGraph is not loaded; expected global JXG")
-    if container.id.isEmpty then container.id = s"turtle-jsxgraph-${Math.abs(js.Date.now().toLong)}"
-    val board: js.Dynamic = jxg.JSXGraph.initBoard(container.id, js.Dynamic.literal(
+    if bounds.exists(!_.isFinite) || !((bounds(2) - bounds(0)).isFinite && (bounds(1) - bounds(3)).isFinite) ||
+      bounds(2) <= bounds(0) || bounds(1) <= bounds(3) then
+      throw IllegalArgumentException("The drawing exceeds the supported display range.")
+    val jxg = jsxGraph()
+    val board: js.Dynamic = jxg.JSXGraph.initBoard(container, js.Dynamic.literal(
+      title = Option(title).map(_.trim).filter(_.nonEmpty).getOrElse("Turtle drawing"),
       renderer = "svg", boundingbox = js.Array(bounds(0), bounds(1), bounds(2), bounds(3)), axis = true, keepaspectratio = true, showCopyright = false
     ))
 
@@ -264,6 +289,7 @@ object TurtleJsxGraphRenderer:
         case LineResult.Correct => "turtle-line--correct"
         case LineResult.Unexpected => "turtle-line--unexpected"
         case LineResult.Missing => "turtle-line--missing"
+        case LineResult.Neutral => "turtle-line--neutral"
       val classes = s"turtle-line $resultClass" + (if line.jump then " turtle-line--jump" else "")
       val segment: js.Dynamic = board.create("segment", js.Array(a, b), js.Dynamic.literal(
         cssClass = classes, highlightCssClass = classes, fixed = true
@@ -288,11 +314,15 @@ object TurtleJsxGraphRenderer:
       angleObjects(index) = arc
     }
 
-    scene.lines.zipWithIndex.foreach { case (line, index) => createLine(line, index) }
-
-    scene.angles.zipWithIndex.foreach { case (angle, index) => createAngle(angle, index) }
-    board.update()
-    board
+    try
+      scene.lines.zipWithIndex.foreach { case (line, index) => createLine(line, index) }
+      scene.angles.zipWithIndex.foreach { case (angle, index) => createAngle(angle, index) }
+      board.update()
+      board
+    catch
+      case NonFatal(error) =>
+        jxg.JSXGraph.freeBoard(board)
+        throw error
 
   private def hoverRelated(scene: Scene, lineIndex: Int, points: collection.mutable.Map[Point[Double], js.Dynamic], angles: collection.mutable.Map[Int, js.Dynamic], board: js.Dynamic, active: Boolean): Unit =
     val line = scene.lines(lineIndex)
