@@ -73,4 +73,36 @@ class CreateBlockchainWorkbookSpec extends FunSuite {
     for (answer <- List("256", "512", "16^256", ""))
       assert(!table.grade(TableAnswer(List(answer))).get.passed)
   }
+  test("source ledger records are grouped into four blocks without losing issuance or transfers") {
+    val source = CreateBlockchainWorkbook.sourceChain
+    assertEquals(source.blocks.map(_.data.linesIterator.size), List(2, 2, 2, 1))
+    assertEquals(source.blocks.flatMap(_.data.linesIterator), CreateBlockchainWorkbook.sourceRecords)
+    assert(source.blocks.head.data.contains("je 10 HP"))
+    assert(source.blocks.last.data.contains("Bert → Elmo: 12 HP"))
+    val interactions = CreateBlockchainWorkbook(null).createWorkbook.allChildrenFullSubtree.collect {
+      case b: BlockchainInteraction => b
+    }
+    assertEquals(interactions.map(_.difficultyZeros), List(1, 4))
+    assert(interactions.forall(_.initial == source))
+  }
+  test("proof-of-work arithmetic uses four hexadecimal digits and all four participants") {
+    val table = CreateBlockchainWorkbook.miningArithmetic
+    assert(table.grade(TableAnswer(List("65536", "160000/65536"))).get.passed)
+    assert(table.grade(TableAnswer(List("16^4", "2.44140625"))).get.passed)
+    assertEquals(table.grade(TableAnswer(List("65000", "1"))).get.correct, 0)
+  }
+  test("historical conversions and the explicit annual scenario grade exact and rounded answers") {
+    assert(CreateBlockchainWorkbook.resourceConversions.grade(TableAnswer(List("173000000000", "86000000000", "1650000000000"))).get.passed)
+    val table = CreateBlockchainWorkbook.energyArithmetic
+    assert(table.grade(TableAnswer(List("52560", "210240000", "6.67", "822.87"))).get.passed)
+    assert(table.grade(TableAnswer(List("52560", "210240000", "6,67", "822,87"))).get.passed)
+    assertEquals(table.grade(TableAnswer(List("52560", "210240000", "4000", "173"))).get.correct, 2)
+  }
+  test("live research and final claim assessments stay ungraded and preserve the original research table") {
+    assertEquals(CreateBlockchainWorkbook.blockResearch.grade(CreateBlockchainWorkbook.blockResearch.defaultValue), None)
+    assertEquals(CreateBlockchainWorkbook.finalClaims.grade(CreateBlockchainWorkbook.finalClaims.defaultValue), None)
+    assertEquals(CreateBlockchainWorkbook.finalClaims.editableCells.size, 10)
+    assertEquals(CreateBlockchainWorkbook.claimsTable.editableCells.size, 12)
+    assertEquals(CreateBlockchainWorkbook(null).createWorkbook.sections.size, 9)
+  }
 }

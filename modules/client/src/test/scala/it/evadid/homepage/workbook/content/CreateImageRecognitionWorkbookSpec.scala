@@ -49,4 +49,32 @@ class CreateImageRecognitionWorkbookSpec extends FunSuite {
     assertEquals(choices.count(_.expected.isEmpty), 1)
     assertEquals(choices.count(_.allowMultiple), 1)
   }
+  test("one-pixel detector separates the source 1 but fails on the disclosed variants") {
+    val factory = CreateImageRecognitionWorkbook
+    val e = factory.pixelRobustness
+    assertEquals(e.outputs(factory.digitImages(1)), List(true))
+    assertEquals(factory.digitImages.map(image => e.outputs(image).head), (0 until 10).map(_ == 1).toList)
+    assertEquals(e.outputs(factory.oneWithoutFeature), List(false))
+    assertEquals(e.outputs(factory.invertedOne), List(false))
+    assertEquals(e.outputs(factory.digitImages(1).toggle(it.evadid.workbook.model.pixel.PixelPosition(0, 0))), List(true))
+    val nonDigit = it.evadid.workbook.model.pixel.BinaryPixelImage.blank(5, 3)
+      .toggle(it.evadid.workbook.model.pixel.PixelPosition(1, 1))
+    assertEquals(e.outputs(nonDigit), List(true))
+    assertEquals(e.isCorrect(e.initial), None)
+    assertEquals(e.presets.size, 13)
+  }
+  test("research and school recommendations remain ungraded and preserve earlier chapters") {
+    val factory = CreateImageRecognitionWorkbook
+    val tables = List(factory.robustnessObservations, factory.chatbotResearch, factory.chatbotAssessment)
+    assertEquals(tables.map(_.editableCells.size), List(9, 10, 12))
+    tables.foreach { table =>
+      val answer = TableAnswer(List.fill(table.editableCells.size)("Evidence, source and reason"))
+      assert(table.isAnswered(answer))
+      assertEquals(table.grade(answer), None)
+      assertEquals(table.serializerInteractionContent.deserialize(table.serializerInteractionContent.serialize(answer)), answer)
+    }
+    assertEquals(factory(null).createWorkbook.sections.map(_.elementId), List(
+      "image-introduction", "image-threshold-neuron", "image-binary-pixels", "image-generalization", "image-school-chatbots"))
+    assertEquals(factory.binaryTable.editableCells.size, 16)
+  }
 }

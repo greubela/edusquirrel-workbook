@@ -9,7 +9,7 @@ import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.workbook.model.blockchain.*
 import it.evadid.workbook.elements.structureElements.Workbook
 
-/** Source activities through SHA-256 (pp. 1–17); later technical chapters remain in progress. */
+/** Adaptation of learner activities through p. 29; content-equivalence review remains outstanding. */
 case class CreateBlockchainWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
   override val workbookId = "workbookBlockchain"
   private def id(key: String) = LanguageMapContentId(s"blockchainworkbook/$key")
@@ -63,7 +63,29 @@ case class CreateBlockchainWorkbook(fullInfo: FullInfo) extends WorkbookFactory 
     ) ++ reflections("shaDifficultyReflection") ++ List(
       instructionCollapsibleHint("blockchainworkbook/shaDifficultyHintTitle", "blockchainworkbook/shaDifficultyHint"),
       Sha256Interaction("blockchain-sha-prefix-two", id("shaPrefixTwoTitle"), FindSha256Prefix(2))
-    ))))
+    )))),
+    section("blockchain-proof-of-work", "blockchainworkbook/powTitle", List(container("blockchainworkbook/powTitle",
+      reflections("powConflictingCopies", "powOtherConflict", "powProposals") ++ List(
+        instructionPlaintext("blockchainworkbook/powExplanation"), CreateBlockchainWorkbook.sourceChainInteraction
+      ) ++ reflections("powBlockCapacity", "powGenesis", "powReadOnlyFields", "powPropagation", "powColors", "powMining", "powPrefixConnection",
+        "powTamper", "powRepair") ++ List(
+        instructionPlaintext("blockchainworkbook/powExpectedTask"), CreateBlockchainWorkbook.miningArithmetic,
+        instructionCollapsibleHint("blockchainworkbook/powExpectedHintTitle", "blockchainworkbook/powExpectedHint"),
+        instructionPlaintext("blockchainworkbook/powFourZerosTask"),
+        BlockchainInteraction("blockchain-four-zero-lab", id("powFourZerosTitle"), CreateBlockchainWorkbook.sourceChain, 4)
+      ) ++ reflections("powAverage", "powLongest", "powRewrite", "powAttackGuess", "powAttackResearch")
+    ))),
+    section("blockchain-energy", "blockchainworkbook/energyTitle", List(container("blockchainworkbook/energyTitle", List(
+      instructionMarkdown("blockchainworkbook/energyExplorerTask"), CreateBlockchainWorkbook.blockResearch
+    ) ++ reflections("energyRewardChange", "energyFees", "energyIncentive") ++ List(
+      instructionPlaintext("blockchainworkbook/energyHistoricalTask"), CreateBlockchainWorkbook.resourceConversions
+    ) ++ reflections("energyElectricityComparison", "energyCarbonComparison", "energyWaterComparison", "energyDifficultyOld",
+      "energyPopularity", "energyCostEffect") ++ List(
+      instructionPlaintext("blockchainworkbook/energyArithmeticTask"), CreateBlockchainWorkbook.energyArithmetic
+    ) ++ reflections("energyThroughputProblem", "energySpeedReassessment", "energyEverydayComparison", "energyPaymentResearch")))),
+    section("blockchain-conclusion", "blockchainworkbook/conclusionTitle", List(container("blockchainworkbook/conclusionTitle", List(
+      instructionPlaintext("blockchainworkbook/finalClaimsTask"), CreateBlockchainWorkbook.finalClaims
+    ) ++ reflections("energyFinalJudgment") ++ List(instructionPlaintext("blockchainworkbook/outlook")))))
   ), User("Till Favier", "author-blockchain-till-favier", ""))
 }
 object CreateBlockchainWorkbook {
@@ -82,6 +104,36 @@ object CreateBlockchainWorkbook {
   val sourceTransfers = List(
     LedgerTransfer("Anna", "Lukas", 4), LedgerTransfer("Lukas", "Sara", 6), LedgerTransfer("Sara", "Tom", 2),
     LedgerTransfer("Anna", "Tom", 5), LedgerTransfer("Anna", "Sara", 1), LedgerTransfer("Tom", "Lukas", 12))
+  private val pseudonyms = Map("Anna" -> "Krümelmonster", "Lukas" -> "Elmo", "Sara" -> "Oskar", "Tom" -> "Bert")
+  val sourceRecords: List[String] = "00: Krümelmonster, Elmo, Oskar und Bert erhalten je 10 HP." ::
+    sourceTransfers.zipWithIndex.map((transfer, index) =>
+      s"0${index + 1}: ${pseudonyms(transfer.sender)} → ${pseudonyms(transfer.recipient)}: ${transfer.amount} HP")
+  val sourceChain = TeachingChain(sourceRecords.grouped(2).map(records => TeachingBlock(records.mkString("\n"))).toList)
+  val sourceChainInteraction = BlockchainInteraction("blockchain-source-chain", id("powSimulatorTitle"), sourceChain)
+  val miningArithmetic = AnswerTableInteraction("blockchain-mining-arithmetic", id("powExpectedTitle"),
+    List(id("powFourZeroAttempts"), id("powGroupPages")), List(id("powExpectedValue")), List(
+      List(EditableTableCell(Some(List("65536", "65,536", "65 536", "16^4", "2^16")))),
+      List(EditableTableCell(Some(List("2.44140625", "2,44140625", "160000/65536", "625/256"))))))
+  val energyScenario = MiningEnergyEstimate(MiningEnergyEstimate.terawattHoursToKilowattHours(BigDecimal(173)), 4000, 600)
+  private def decimalAnswer(value: BigDecimal): EditableTableCell = {
+    val rounded = MiningEnergyEstimate.rounded(value)
+    EditableTableCell(Some(List(rounded, rounded.replace('.', ','))))
+  }
+  val resourceConversions = AnswerTableInteraction("blockchain-resource-conversions", id("energyConversionTitle"),
+    List(id("energyTwh"), id("energyMegatonnes"), id("energyWaterVolume")), List(id("energyConverted")), List(
+      List(EditableTableCell(Some(List(MiningEnergyEstimate.terawattHoursToKilowattHours(BigDecimal(173)).toBigInt.toString)))),
+      List(EditableTableCell(Some(List(MiningEnergyEstimate.megatonnesToKilograms(BigDecimal(86)).toBigInt.toString)))),
+      List(EditableTableCell(Some(List(MiningEnergyEstimate.cubicKilometresToLitres(BigDecimal("1.65")).toBigInt.toString))))))
+  val energyArithmetic = AnswerTableInteraction("blockchain-energy-arithmetic", id("energyArithmeticTitle"),
+    List(id("energyBlocksYear"), id("energyTransactionsYear"), id("energyTransactionsSecond"), id("energyAllocation")),
+    List(id("energyValue")), List(
+      List(EditableTableCell(Some(List(energyScenario.blocksPerYear.toBigInt.toString)))),
+      List(EditableTableCell(Some(List(energyScenario.transactionsPerYear.toBigInt.toString)))),
+      List(decimalAnswer(energyScenario.transactionsPerSecond)), List(decimalAnswer(energyScenario.allocatedKilowattHoursPerTransaction))))
+  val blockResearch = reflectionTable("blockchain-block-research", "energyResearchTitle", List("energyLatest", "energyGenesis"),
+    List("energyHeight", "energyHashZeros", "energyReward", "energyTransactions", "energySourceDate"))
+  val finalClaims = reflectionTable("blockchain-final-claims", "finalClaimsTitle",
+    List("anonymous", "fast", "decentralized", "own1", "own2"), List("finalAssessment", "finalEvidence"))
   val sourceBalances: Map[String, BigInt] = TeachingLedger.calculate(participants.map(_ -> BigInt(10)).toMap, sourceTransfers)
     .fold(error => throw new IllegalArgumentException(s"Invalid source ledger: $error"), identity)
   val balanceTable = AnswerTableInteraction("blockchain-ledger-balances", id("balanceTitle"),

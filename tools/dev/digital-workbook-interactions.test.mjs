@@ -8,7 +8,7 @@ const root = path.resolve(import.meta.dirname, '../..');
 const origin = 'http://localhost:9000';
 const mime = {'.html':'text/html', '.js':'text/javascript', '.css':'text/css', '.json':'application/json', '.svg':'image/svg+xml', '.png':'image/png'};
 
-test('digital image chapter persists pixels, answer tables, choices and neuron edits, rejects drafts and fits mobile', async () => {
+test('digital image workbook persists neuron/pixel experiments, robustness and advisory research on mobile', async () => {
   await fs.access(path.join(root, 'artifacts/newest/client.js'));
   const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium', args:['--no-sandbox']});
   try {
@@ -180,6 +180,49 @@ test('digital image chapter persists pixels, answer tables, choices and neuron e
     assert.equal(await experiment.locator('button[aria-pressed="true"]').count(), 9);
     assert.match(await experiment.locator('.pixel-probe').first().innerText(), /output 0$/);
     assert.match(await experiment.locator('.pixel-probe').nth(1).innerText(), /output 1$/);
+    await page.locator('.section-block').nth(3).click();
+    await page.getByText('Observed robustness',{exact:true}).waitFor();
+    const fragile=page.locator('.pixel-interaction');
+    await fragile.locator('.pixel-grid button').first().waitFor();
+    assert.match(await fragile.locator('.pixel-probe').innerText(), /output 1$/);
+    await fragile.getByRole('button', {name:'1 with its feature pixel removed',exact:true}).click();
+    assert.match(await fragile.locator('.pixel-probe').innerText(), /output 0$/);
+    await fragile.getByRole('button', {name:'1 with inverted colors',exact:true}).click();
+    assert.match(await fragile.locator('.pixel-probe').innerText(), /output 0$/);
+    await fragile.getByRole('button', {name:'Original digit 1',exact:true}).click();
+    await fragile.locator('.pixel-grid button').nth(0).click();
+    assert.match(await fragile.locator('.pixel-probe').innerText(), /output 1$/);
+    const observations=page.locator('.answer-table');
+    for(let i=0;i<9;i++) await observations.locator('input').nth(i).fill('Observation '+i);
+    assert.match(await observations.innerText(), /no automatic grade/);
+    await page.locator('.section-block').nth(4).click();
+    await page.getByText('Transformer research',{exact:true}).waitFor();
+    const advisoryTables=page.locator('.answer-table');
+    const sources=advisoryTables.nth(0), assessment=advisoryTables.nth(1);
+    assert.equal(await sources.locator('input').count(),10);
+    assert.equal(await assessment.locator('input').count(),12);
+    for(let i=0;i<10;i++) await sources.locator('input').nth(i).fill('Research and source '+i);
+    for(let i=0;i<12;i++) await assessment.locator('input').nth(i).fill('School assessment '+i);
+    assert.match(await assessment.innerText(), /no automatic grade/);
+    await page.waitForFunction(()=>new Promise(resolve=>{
+      const request=indexedDB.open('EvaDidInteractionDB');
+      request.onsuccess=()=>{
+        const db=request.result, transaction=db.transaction('variableHistoryStore','readonly');
+        const records=transaction.objectStore('variableHistoryStore').getAll();
+        records.onsuccess=()=>resolve(records.result.some(r=>r.id.includes('image-chatbot-assessment') && r.value.includes('School assessment 11')));
+        transaction.oncomplete=()=>db.close();
+      };
+    }));
+    await page.reload();
+    await page.locator('.section-block').nth(4).click({timeout:60000});
+    await page.getByText('Transformer research',{exact:true}).waitFor();
+    await sources.locator('input').first().waitFor();
+    assert.equal(await sources.locator('input').nth(9).inputValue(),'Research and source 9');
+    assert.equal(await assessment.locator('input').nth(11).inputValue(),'School assessment 11');
+    await page.locator('.section-block').nth(3).click();
+    await page.getByText('Observed robustness',{exact:true}).waitFor();
+    assert.equal(await observations.locator('input').nth(8).inputValue(),'Observation 8');
+    assert.match(await fragile.locator('.pixel-probe').innerText(), /output 1$/);
     assert.deepEqual(errors, [], 'actual renderer/editor flow has no uncaught errors');
   } finally { await browser.close(); }
 });

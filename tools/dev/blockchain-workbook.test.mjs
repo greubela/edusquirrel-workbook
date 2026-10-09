@@ -8,6 +8,28 @@ import {chromium} from 'playwright';
 const root = path.resolve(import.meta.dirname, '../..');
 const origin = 'http://localhost:9000';
 const mime = {'.html':'text/html', '.js':'text/javascript', '.css':'text/css', '.json':'application/json', '.svg':'image/svg+xml', '.png':'image/png'};
+// Reload only after the asynchronous IndexedDB transaction has committed the
+// latest answer; a rendered grade alone does not imply durable storage.
+async function waitForSavedAnswer(page, elementId, answer) {
+  await page.waitForFunction(async ({elementId, answer}) => {
+    return new Promise(resolve => {
+      const request = indexedDB.open('EvaDidInteractionDB');
+      request.onerror = () => resolve(false);
+      request.onsuccess = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains('variableHistoryStore')) {
+          db.close(); resolve(false); return;
+        }
+        const transaction = db.transaction('variableHistoryStore', 'readonly');
+        const records = transaction.objectStore('variableHistoryStore').getAll();
+        records.onsuccess = () => resolve(records.result.some(record =>
+          record.id.includes(elementId) && record.value.includes(answer)));
+        records.onerror = () => resolve(false);
+        transaction.oncomplete = () => db.close();
+      };
+    });
+  }, {elementId, answer});
+}
 test('Blockchain workbook persists research, grades balances and runs Hashq/SHA-256 experiments on mobile', async () => {
   const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium', args:['--no-sandbox']});
   try {
@@ -166,6 +188,7 @@ test('Blockchain workbook persists research, grades balances and runs Hashq/SHA-
     assert.match(await space.innerText(),/0 of 1 checked cells/);
     await space.locator('input').fill('2^256');
     assert.match(await space.innerText(),/1 of 1 checked cells/);
+    await waitForSavedAnswer(page, 'blockchain-sha-space', '2^256');
     await page.reload();
     await page.locator('.section-block').nth(4).click({timeout:60000});
     assert.equal(await collision.locator('.hash-feedback').innerText(), 'Correct.');
@@ -191,6 +214,35 @@ test('Blockchain workbook persists research, grades balances and runs Hashq/SHA-
     await page.locator('.section-block').nth(0).click();
     await page.getByText('Claims about Bitcoin', {exact:true}).waitFor();
     assert.equal(await research.locator('input').nth(6).inputValue(), 'Research 6');
+    await page.locator('.section-block').nth(7).click();
+    await page.getByText('Research actual Bitcoin blocks', {exact:true}).waitFor();
+    const energyTables=page.locator('.answer-table');
+    const blockResearch=energyTables.nth(0), conversions=energyTables.nth(1), energyMath=energyTables.nth(2);
+    assert.equal(await blockResearch.locator('input').count(),10);
+    for(let i=0;i<10;i++) await blockResearch.locator('input').nth(i).fill('Block research '+i);
+    assert.match(await blockResearch.innerText(),/no automatic grade/);
+    for(const [i,value] of ['173000000000','86000000000','1650000000000'].entries()) await conversions.locator('input').nth(i).fill(value);
+    assert.match(await conversions.innerText(),/3 of 3 checked cells/);
+    for(const [i,value] of ['52560','210240000','6,67','822.87'].entries()) await energyMath.locator('input').nth(i).fill(value);
+    assert.match(await energyMath.innerText(),/4 of 4 checked cells/);
+    await page.locator('.section-block').nth(8).click();
+    await page.getByText('Final assessment of the initial claims',{exact:true}).waitFor();
+    const finalClaims=page.locator('.answer-table');
+    assert.equal(await finalClaims.locator('input').count(),10);
+    for(let i=0;i<10;i++) await finalClaims.locator('input').nth(i).fill('Final judgment '+i);
+    assert.match(await finalClaims.innerText(),/no automatic grade/);
+    await waitForSavedAnswer(page, 'blockchain-final-claims', 'Final judgment 9');
+    await page.reload();
+    await page.locator('.section-block').nth(8).click({timeout:60000});
+    await page.getByText('Final assessment of the initial claims',{exact:true}).waitFor();
+    assert.equal(await finalClaims.locator('input').first().inputValue(),'Final judgment 0');
+    await page.locator('.section-block').nth(7).click();
+    await page.getByText('Research actual Bitcoin blocks',{exact:true}).waitFor();
+    assert.equal(await blockResearch.locator('input').first().inputValue(),'Block research 0');
+    assert.match(await energyMath.innerText(),/4 of 4 checked cells/);
+    await page.locator('.section-block').nth(0).click();
+    await page.getByText('Claims about Bitcoin',{exact:true}).waitFor();
+    assert.equal(await research.locator('input').nth(6).inputValue(),'Research 6','final reassessment preserves the initial research');
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });

@@ -19,6 +19,7 @@ import it.evadid.workbook.elements.interactionElements.table.*
 import it.evadid.workbook.elements.interactionElements.pixel.*
 import it.evadid.workbook.model.pixel.*
 import it.evadid.workbook.elements.interactionElements.blockchain.*
+import it.evadid.workbook.elements.interactionElements.text.*
 import munit.FunSuite
 
 class WorkbookElementSerializableRoundTripSpec extends FunSuite {
@@ -61,6 +62,9 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
         List(PixelPreset(content("pixels/preset"), BinaryPixelImage.fromRows(List("10"))))),
       SquareMiddleHashInteraction("hash", content("hash/title"), FindHashPreimage("22"), SquareMiddleHashAnswer("65")),
       Sha256Interaction("sha256", content("hash/sha256"), FindSha256Prefix(2), Sha256Answer("286")),
+      UnicodeComparisonInteraction("unicode", content("text/unicode"), UnicodeComparisonAnswer("paypal.com", "payраl.com")),
+      BlockchainInteraction("chain", content("hash/chain"), it.evadid.workbook.model.blockchain.TeachingChain(
+        List(it.evadid.workbook.model.blockchain.TeachingBlock("Anna → Lukas: 4 HP")))),
       workbook, section,
       ExerciseContainer("container", content("container/title"), List(input)),
       LabeledWorkbookElement("labeled", input, WorkbookLabel(content("label/hint"), HintLabel)),
