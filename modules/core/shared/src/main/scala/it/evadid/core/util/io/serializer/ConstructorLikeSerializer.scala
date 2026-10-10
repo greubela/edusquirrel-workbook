@@ -6,7 +6,7 @@ import ujson.Value
 import upickle.default.*
 
 object ConstructorLikeSerializer {
-  case class VariableDisplayConfig(varId: String, suppressKey: Boolean)
+  case class VariableDisplayConfig(varId: String, suppressKey: Boolean) derives ReadWriter
 
   def getAutoFieldsMap[T](obj: T)(implicit regularSerializer: Writer[T]): Map[String, Value] =
     writeJs(obj)(using regularSerializer).obj.toMap

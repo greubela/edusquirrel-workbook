@@ -6,6 +6,7 @@ import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElem
 import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
+import upickle.default.ReadWriter
 
 
 object LabeledNumberInteraction {
@@ -16,13 +17,13 @@ object LabeledNumberInteraction {
    * The value is stored as text so renderers can preserve exact algebraic input
    * such as "sin(3) + 4" while still offering numeric spinner controls.
    */
-  enum NumberType {
+  enum NumberType derives ReadWriter {
     case IntegerLike
     case FractionLike
     case AlgebraicLike
   }
 
-  case class NumberInteractionConfig(numberType: NumberType)
+  case class NumberInteractionConfig(numberType: NumberType) derives ReadWriter
 
   val factory: SimpleWorkbookElementFactory[LabeledNumberInteraction] = new SimpleWorkbookElementFactory[LabeledNumberInteraction]() {
     override protected val constructorFieldOrder = List("elementId", "numberLabel", "numberType", "defaultNumber", "diff")

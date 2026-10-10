@@ -5,6 +5,45 @@ import it.evadid.evacuation.core.algorithm.routing.model.SearchNode
 import munit.FunSuite
 
 class PathfindingSpec extends FunSuite {
+  test("algorithm codecs preserve runnable BFS, Dijkstra and A-star policies") {
+    import upickle.default.*
+    val bfs = read[BFS[Int]](write(BFS[Int]()))
+    assertEquals(bfs.initStartNode(4), SearchNode(4, None, BFS.BFSInformation(0)))
+    val dijkstra = readBinary[Dijkstra[Int]](writeBinary(Dijkstra[Int]()))
+    assertEquals(dijkstra.shortestPath(access(wiki), 1, 5), List(1, 3, 6, 5))
+    val astar = read[AStar[Int]](write(AStar[Int](12.5)))
+    assertEquals(astar.initStartNode(4).info, AStar.AStarInformation(0, 12.5))
+  }
+  test("cached long paths populate suffixes without stack overflow") {
+    var queries = 0
+    val graph = GraphAccess.fromFunction[Int, DijkstraInformation] { n =>
+      queries += 1
+      if (n.node == 10000) Nil
+      else List(SearchNode(n.node + 1, Some(n.node), DijkstraInformation(n.info.distFromStart + 1)))
+    }
+    val cached = CachedPathfinding(graph, Dijkstra[Int]())
+    assertEquals(cached.shortestPath(0, 10000), (0 to 10000).toList)
+    val before = queries
+    assertEquals(cached.shortestPath(9998, 10000), List(9998, 9999, 10000))
+    assertEquals(queries, before)
+  }
+  test("unreachable cached queries reuse the already searched component") {
+    var queries = 0
+    val graph = GraphAccess.fromFunction[Int, DijkstraInformation] { n =>
+      queries += 1
+      access(Map(1 -> List(2 -> 1.0), 2 -> List(1 -> 1.0))).getNeighbours(n)
+    }
+    val cached = CachedPathfinding(graph, Dijkstra[Int]())
+    assertEquals(cached.shortestPath(1, 99), Nil)
+    val before = queries
+    assertEquals(cached.shortestPath(1, 99), Nil)
+    assertEquals(queries, before)
+    val reversed = ReveresedCachedPathfinding(graph, Dijkstra[Int](), true)
+    assertEquals(reversed.shortestPath(99, 1), Nil)
+    val searched = queries
+    assertEquals(reversed.shortestPath(100, 1), Nil)
+    assertEquals(queries, searched)
+  }
   private def access(edges: Map[Int, List[(Int, Double)]]) = GraphAccess.fromFunction[Int, DijkstraInformation] { node =>
     edges.getOrElse(node.node, Nil).map { (dest, weight) =>
       SearchNode(dest, Some(node.node), DijkstraInformation(node.info.distFromStart + weight))

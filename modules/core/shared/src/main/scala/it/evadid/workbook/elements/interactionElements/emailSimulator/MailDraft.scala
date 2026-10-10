@@ -1,6 +1,8 @@
 package it.evadid.workbook.elements.interactionElements.emailSimulator
 
-case class MailDraft(to: String = "", subject: String = "", body: String = "", attachment: Option[String] = None) {
+import upickle.default.ReadWriter
+
+case class MailDraft(to: String = "", subject: String = "", body: String = "", attachment: Option[String] = None) derives ReadWriter {
   def recipientList: List[String] = to.split("[,;]", -1).toList.map(_.trim)
   def validationError: Option[String] = {
     val valid = recipientList.forall(r => r.matches("[^\\s@,;<>]+@[^\\s@,;<>]+\\.[^\\s@,;<>]+"))

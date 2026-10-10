@@ -248,3 +248,47 @@ simulation state/event snapshots still need a deliberate format.
 Verification against main `2fdd2f47`: shared JVM 1,055, shared Scala.js 1,043,
 client 512, server 5 and worker 3 tests passed, with no failures or ignored tests.
 Both development browser artifacts build successfully.
+
+## Value-codec follow-up and remaining scope
+
+Default uPickle serialization is not universal. A source search for `ReadWriter`
+alone cannot establish coverage: workbook elements use registered factories,
+distribution messages have custom serializer contracts, and some declarations in
+source files are comments or internal implementation details. Compile-time writer
+resolution and JSON/MessagePack round-trip tests establish the new APIs below.
+
+This pass adds 15 default codecs: `MailDraft`, `RecreateShapeGradingResult`,
+`BeProgram`, `WorkbookStructuringType`, `NumberType`, `NumberInteractionConfig`,
+`VariableDisplayConfig`, `LoggingLevel`, `RenderingDimension[T]`,
+`AlignmentInParent`, its horizontal and vertical enums, and the runnable
+`BFS[N]`, `Dijkstra[N]` and `AStar[N]` policy values. Existing workbook factory
+formats remain unchanged. Rendering dimensions use the two constructor dimensions
+as their tuple payload, supplying the numeric instance at decode time and running
+constructor validation. Alignment decoding restores the canonical singletons,
+including the nine grid positions, and rejects unknown names.
+
+Two new suites and three routing regressions add 19 tests. They cover JSON and
+MessagePack, Unicode/multiline drafts, omitted constructor defaults, all grading
+statuses and preserved feedback, canonical alignments (including directly
+constructed positions), malformed dimensions, non-Double numeric types, runnable
+algorithm policies, a 10,001-node cached route and repeated unreachable queries.
+The routing regressions pass without changing the implementation.
+
+Remaining concrete candidates include SVG path command records/builders,
+node-based immutable tree positions, and Python/Java parser ASTs. The parser
+families are left untouched in this batch because their refactor is being worked
+on separately. These are candidates for further work, not claims that every public
+value type has been exhaustively inventoried.
+
+Runtime-only objects are a separate scope: observable subscriptions carry callbacks;
+rendering configurations carry loggers and click handlers; user sync configurations
+carry destination/formatter implementations; pathfinding caches carry graph access
+functions and mutable cached results. EVA1 states/events need a graph snapshot
+contract. Serializing constructor fields of those objects without preserving their
+runtime dependencies would be misleading. Existing registered workbook serializers
+remain the supported route for workbook definitions.
+
+All five suites pass: shared JVM 1,074, shared Scala.js 1,062, client 512,
+server 5 and worker 3, with no failures or ignored tests. Both development browser
+artifacts build successfully. The final alignment encoder also passes the affected
+shared suite on JVM and JavaScript, followed by rebuilt browser artifacts.
