@@ -5,7 +5,8 @@ import it.evadid.core.datastructures.vectorShapes.svg.{TurtleDrawingComparison, 
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleDrawingComparison.{Segment, TurtleComparisonResult}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.{LineResult, RenderedLine, Scene}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 
 object TurtleDrawingGrading {
   private val tolerance = 0.25
@@ -26,6 +27,22 @@ object TurtleDrawingGrading {
   )
 
   private final case class Drawing(path: TurtlePathBuilder[Double], lines: List[Segment])
+  final case class Assessment(matches: Boolean, scene: Scene)
+
+  def assess(commands: List[TurtleCommand[Double]], target: TurtleGraphic, policy: TurtleDrawingPolicy): Assessment = policy match {
+    case TurtleDrawingPolicy.Coverage =>
+      val result = compare(commands, target)
+      Assessment(result.matches, assessedScene(commands, target, result))
+    case _ =>
+      validateDrawing(commands)
+      val expected = target.toTurtleProgram.toList
+      validateDrawing(expected)
+      if commands.size.toLong * expected.size > maxComparisons then
+        throw IllegalArgumentException("Your drawing is too large to compare. Check the distances in your program.")
+      val scene = TurtleJsxGraphRenderer.buildScene(commands, target, 1e-7,
+        gradeJumps = policy == TurtleDrawingPolicy.Segments, matchPenState = true)
+      Assessment(scene.lines.forall(_.result == LineResult.Correct), scene)
+  }
 
   def validateDrawing(commands: List[TurtleCommand[Double]]): Unit = {
     checkedDrawing(commands)
@@ -66,6 +83,15 @@ object TurtleDrawingGrading {
 
   def targetScene(target: TurtleGraphic): Scene = drawingScene(target.toTurtleProgram.toList)
 
+  def targetScene(target: TurtleGraphic, policy: TurtleDrawingPolicy): Scene =
+    if policy == TurtleDrawingPolicy.Coverage then targetScene(target)
+    else {
+      val commands = target.toTurtleProgram.toList
+      validateDrawing(commands)
+      val trace = TurtleJsxGraphRenderer.buildScene(commands, List.empty[TurtleJsxGraphRenderer.LineToRender[Double]])
+      trace.copy(lines = trace.lines.map(_.copy(result = LineResult.Neutral)))
+    }
+
   def drawingScene(commands: List[TurtleCommand[Double]]): Scene =
     drawingScene(commands, checkedDrawing(commands))
 
@@ -99,7 +125,13 @@ object TurtleDrawingGrading {
     var path = TurtlePathBuilder[Double]()
     commands.foreach { command =>
       val name = command.name.trim.toLowerCase.replace('-', '_')
-      if !commandArity.get(name).contains(command.args.size) || command.stringArgs.nonEmpty || command.args.exists(!_.isFinite) then
+      val geometry = commandArity.get(name).contains(command.args.size) && command.stringArgs.isEmpty
+      val decoration = SnapTurtleCatalog.primitiveByPythonName.get(name).exists { primitive =>
+        Set(SnapTurtleCatalog.PaletteTab.Pen, SnapTurtleCatalog.PaletteTab.Control).contains(primitive.tab) &&
+          command.args.size + command.stringArgs.size == primitive.arity
+      } || Set("color", "pencolor", "setcolor").contains(name) && command.args.size == 3 && command.stringArgs.isEmpty ||
+        Set("showturtle", "st", "hideturtle", "ht").contains(name) && command.args.isEmpty && command.stringArgs.isEmpty
+      if (!geometry && !decoration) || command.args.exists(!_.isFinite) then
         throw IllegalArgumentException("This drawing uses commands that cannot be compared yet.")
       path = path.handleStringCommand(command)
       if !path.turtleState.x.isFinite || !path.turtleState.y.isFinite || !path.turtleState.headingDeg.isFinite then

@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCo
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineResult
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
 import munit.FunSuite
 
 class TurtleJsxGraphRendererSpec extends FunSuite {
@@ -151,6 +151,51 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
 
   private def graphic(commands: List[TurtleCommand[Double]]): TurtleGraphic =
     TurtleGraphic.TurtleGraphicProgram(commands)
+
+  test("task policies distinguish segmentation, pen-up routes and geometric coverage") {
+    import TurtleDrawingPolicy.*
+    val target = graphic(List(command("forward", 10)))
+    val cases = List(
+      (List(command("forward", 10)), List(true, true, true)),
+      (List(command("forward", 5), command("forward", 5)), List(false, false, true)),
+      (List(command("forward", 10), command("backward", 10)), List(false, false, true)),
+      (List(command("penup"), command("forward", 10)), List(false, false, false)),
+      (List(command("penup"), command("goto", 0, 0.1), command("pendown"), command("forward", 10)), List(false, false, true)),
+      (List.empty[TurtleCommand[Double]], List(false, false, false)),
+      (List(command("forward", 11)), List(false, false, false))
+    )
+    cases.foreach { (commands, expected) =>
+      List(Segments, Strokes, Coverage).zip(expected).foreach { (policy, matches) =>
+        val result = TurtleDrawingGrading.assess(commands, target, policy)
+        assertEquals(result.matches, matches, clue = (commands, policy))
+        assertEquals(result.scene.lines.forall(_.result == LineResult.Correct), matches)
+      }
+    }
+    val disconnected = graphic(List(command("forward", 10), command("penup"), command("forward", 10),
+      command("pendown"), command("forward", 10)))
+    val detour = List(command("forward", 10), command("penup"), command("goto", 10, 5), command("goto", 20, 0),
+      command("pendown"), command("forward", 10))
+    assertEquals(TurtleDrawingPolicy.values.toList.map(policy => TurtleDrawingGrading.assess(detour, disconnected, policy).matches),
+      List(false, true, true))
+  }
+
+  test("task policies allow decoration but reject unsupported geometry and bounded-work overflow") {
+    val commands = List(command("receive_go"), command("pensize", 2),
+      TurtleCommand[Double]("color", Nil, List("blue")), command("do_wait", 0), command("forward", 10))
+    val target = graphic(List(command("forward", 10)))
+    TurtleDrawingPolicy.values.foreach { policy =>
+      assert(TurtleDrawingGrading.assess(commands, target, policy).matches)
+      List(command("circle", 10), command("unknown"), command("forward", Double.NaN)).foreach { invalid =>
+        intercept[IllegalArgumentException](TurtleDrawingGrading.assess(List(invalid), target, policy))
+      }
+      intercept[IllegalArgumentException](TurtleDrawingGrading.assess(
+        List(command("forward", 10), command("running_stitch", 10)), target, policy))
+    }
+    val dense = List.fill(2001)(command("forward", 1))
+    List(TurtleDrawingPolicy.Segments, TurtleDrawingPolicy.Strokes).foreach { policy =>
+      intercept[IllegalArgumentException](TurtleDrawingGrading.assess(dense, graphic(dense), policy))
+    }
+  }
 
   test("coverage grading accepts subdivision and repeated drawing without changing legacy matching") {
     val expected = graphic(List(command("forward", 10)))

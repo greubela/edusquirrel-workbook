@@ -1,7 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
 import upickle.default.*
 
 enum JavaTurtleArgument {
@@ -54,7 +54,8 @@ final case class JavaTurtleCase(arguments: List[JavaTurtleArgument], expectedSha
 final case class JavaTurtleTask(
     startingProgram: String,
     methodName: String,
-    cases: List[JavaTurtleCase]
+    cases: List[JavaTurtleCase],
+    comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Coverage
 ) derives ReadWriter
 
 object JavaTurtleTask {

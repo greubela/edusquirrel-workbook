@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingStateJavaString
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
@@ -164,6 +165,63 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       assertEquals(testCase.expectedShape.toTurtleProgram.toList, expected)
     }
     assertEquals(task.cases.last.expectedShape.toTurtleProgram.toList, List.empty[TurtleCommand[Double]])
+  }
+
+  test("legacy turtle tasks retain coverage grading and their exact definition") {
+    val source = " \r\npublic class Drawing {\n  static void draw(int depth, double length) {}\r\n}\t "
+    val task = JavaTurtleTask(source, "draw", List(JavaTurtleCase(
+      List(IntValue(2), DoubleValue(10.5)), TurtleGraphic.TurtleGraphicSvgString("M0 0 L10.5 0"))))
+    val legacy = upickle.default.writeJs(task)
+    legacy.obj.remove("comparisonPolicy")
+    assert(!legacy.obj.contains("comparisonPolicy"))
+    assertEquals(upickle.default.read[JavaTurtleTask](legacy), task)
+
+    val original = ProgrammingExerciseFullJava(" java-legacy-policy ", turtleTask = Some(task))
+    val serialized = original.toSerialized.withMapAdded(Map(
+      "turtleTask" -> upickle.default.writeJs[Option[ujson.Value]](Some(legacy))))
+    val restored = WorkbookElementFactory.parse(serialized).asInstanceOf[ProgrammingExerciseFullJava]
+    assertEquals(restored.elementId, original.elementId)
+    assertEquals(restored.turtleTask, Some(task))
+    assertEquals(restored.turtleTask.get.comparisonPolicy, TurtleDrawingPolicy.Coverage)
+    assertEquals(restored.defaultValue, ProgrammingStateJavaString(source))
+  }
+
+  test("explicit turtle task policies roundtrip without changing the definition or learner draft") {
+    val source = " \r\npublic class Drawing {\n  static void draw(int depth, double length) {}\r\n}\t "
+    val draft = ProgrammingStateJavaString(" \r\npublic class Drawing {\n  static void draw(\r\n\t ")
+    val cases = List(JavaTurtleCase(List(IntValue(-2), DoubleValue(10.5)),
+      TurtleGraphic.TurtleGraphicSvgString("M0 0 L10.5 0")))
+    TurtleDrawingPolicy.values.foreach { policy =>
+      val task = JavaTurtleTask(source, "draw", cases, policy)
+      val payload = upickle.default.writeJs(task)
+      payload.obj("comparisonPolicy") = upickle.default.writeJs(policy)
+      assertEquals(upickle.default.read[JavaTurtleTask](payload), task)
+      val original = ProgrammingExerciseFullJava(s" java-policy-$policy \n", turtleTask = Some(task))
+      val serialized = original.toSerialized.withMapAdded(Map(
+        "turtleTask" -> upickle.default.writeJs[Option[ujson.Value]](Some(payload))))
+      val restored = WorkbookElementFactory.parse(serialized).asInstanceOf[ProgrammingExerciseFullJava]
+      assertEquals(restored.elementId, original.elementId)
+      assertEquals(restored.turtleTask, Some(task))
+      assertEquals(restored.defaultValue, ProgrammingStateJavaString(source))
+      val saved = original.serializerInteractionContent.serialize(draft)
+      assertEquals(restored.serializerInteractionContent.serialize(draft), saved)
+      assertEquals(restored.serializerInteractionContent.deserialize(saved), draft)
+      assertEquals(ProgrammingState.fingerprint(restored.serializerInteractionContent.deserialize(saved)),
+        ProgrammingState.fingerprint(draft))
+    }
+  }
+
+  test("invalid turtle task comparison policies do not fall back to coverage") {
+    val task = JavaTurtleTask.squarePilot
+    val original = ProgrammingExerciseFullJava("java-invalid-policy", turtleTask = Some(task))
+    List[ujson.Value](ujson.Str("Other"), ujson.Null, ujson.Num(1), ujson.Bool(true), ujson.Obj()).foreach { policy =>
+      val payload = upickle.default.writeJs(task)
+      payload.obj("comparisonPolicy") = policy
+      intercept[Exception](upickle.default.read[JavaTurtleTask](payload))
+      val serialized = original.toSerialized.withMapAdded(Map(
+        "turtleTask" -> upickle.default.writeJs[Option[ujson.Value]](Some(payload))))
+      intercept[it.evadid.distribution.command.SerializedException](WorkbookElementFactory.parse(serialized))
+    }
   }
 
   test("a task-backed full Java exercise preserves unfinished student source independently of the starter") {

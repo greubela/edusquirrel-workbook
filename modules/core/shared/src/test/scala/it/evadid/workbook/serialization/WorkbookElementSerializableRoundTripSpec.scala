@@ -21,8 +21,9 @@ import it.evadid.workbook.elements.interactionElements.pixel.*
 import it.evadid.workbook.model.pixel.*
 import it.evadid.workbook.elements.interactionElements.blockchain.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.elements.interactionElements.text.*
 import it.evadid.workbook.elements.interactionElements.sql.{SqlCommandExercise, SqlDatabaseConfig}
@@ -154,6 +155,63 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     val element = LabeledNumberInteraction("number", content("number/label"), NumberType.IntegerLike)
     val serialized = element.toSerialized
     assertEquals(WorkbookElementFactory.parse(serialized.copy(allConstructorFields = serialized.allConstructorFields - "diff")), element)
+  }
+
+  test("legacy turtle definitions default to stroke grading without changing their saved source") {
+    val source = ProgrammingStatePythonString(" \r\nforward(10)\n\t ")
+    val original = TurtleRecreateShapeInteraction(" turtle-legacy-policy \n", source,
+      TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), limitTurtleCommandUsage = Map("forward" -> Integer.valueOf(2)))
+    val serialized = original.toSerialized
+    val legacy = serialized.copy(allConstructorFields = serialized.allConstructorFields - "comparisonPolicy")
+    assert(!legacy.allConstructorFields.contains("comparisonPolicy"))
+    val restored = WorkbookElementFactory.parse(legacy).asInstanceOf[TurtleRecreateShapeInteraction]
+    assertEquals(restored.comparisonPolicy, TurtleDrawingPolicy.Strokes)
+    assertEquals(restored.elementId, original.elementId)
+    assertEquals(restored.initProgram, source)
+    assertEquals(restored.desiredResult, original.desiredResult)
+    assertEquals(restored.limitTurtleCommandUsage, original.limitTurtleCommandUsage)
+    assertEquals(restored.serializerInteractionContent.serialize(source), original.serializerInteractionContent.serialize(source))
+  }
+
+  test("turtle comparison policies roundtrip through both definition formats without rewriting drafts") {
+    val sources: List[ProgrammingState] = List(
+      ProgrammingStatePythonString(" \r\ndef draw(\n\t "),
+      ProgrammingStateJavaString(" \r\npublic class Drawing {\n  static void draw(\t "),
+      ProgrammingStateSnapXml("<project name=\"Grüße\">\r\n  <notes> \\ </notes>\n</project>\t "))
+    for {
+      policy <- TurtleDrawingPolicy.values
+      source <- sources
+    } do {
+      val original = TurtleRecreateShapeInteraction(s" turtle-policy-$policy \n", source,
+        TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), limitTurtleCommandUsage = Map("forward" -> Integer.valueOf(2)),
+        comparisonPolicy = policy)
+      val explicit = original.toSerialized.withElementAddedAs("comparisonPolicy", policy)
+      val restoredDefinitions = List(
+        WorkbookElementFactory.parse(explicit),
+        WorkbookElementFactory.serializerRefBasedJson.deserialize(WorkbookElementFactory.serializerRefBasedJson.serialize(original)),
+        WorkbookElementFactory.serializerConstructorLike.deserialize(original.toStringConstructorLike))
+      restoredDefinitions.foreach { element =>
+        val restored = element.asInstanceOf[TurtleRecreateShapeInteraction]
+        assertEquals(restored, original)
+        assertEquals(restored.elementId, original.elementId)
+        assertEquals(restored.comparisonPolicy, policy)
+        assertEquals(restored.defaultValue, source)
+        val saved = original.serializerInteractionContent.serialize(source)
+        assertEquals(restored.serializerInteractionContent.serialize(source), saved)
+        assertEquals(restored.serializerInteractionContent.deserialize(saved), source)
+        assertEquals(ProgrammingState.fingerprint(restored.serializerInteractionContent.deserialize(saved)),
+          ProgrammingState.fingerprint(source))
+      }
+    }
+  }
+
+  test("invalid turtle definition comparison policies do not fall back to stroke grading") {
+    val original = TurtleRecreateShapeInteraction("turtle-invalid-policy", ProgrammingStatePythonString("forward(10)"),
+      TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), limitTurtleCommandUsage = Map.empty)
+    List[ujson.Value](ujson.Str("Other"), ujson.Null, ujson.Num(1), ujson.Bool(true), ujson.Obj()).foreach { policy =>
+      val invalid = original.toSerialized.withMapAdded(Map("comparisonPolicy" -> policy))
+      intercept[it.evadid.distribution.command.SerializedException](WorkbookElementFactory.parse(invalid))
+    }
   }
 
   test("constructor format preserves element ids without unquoting or trimming") {

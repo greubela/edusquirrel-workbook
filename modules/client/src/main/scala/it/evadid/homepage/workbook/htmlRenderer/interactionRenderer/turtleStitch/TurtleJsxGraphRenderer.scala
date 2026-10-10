@@ -135,7 +135,8 @@ object TurtleJsxGraphRenderer:
   /** Builds a testable rendering model and performs a one-to-one, direction-independent
    * comparison of actual and expected segments.
    */
-  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]], tolerance: Double = 1e-7, gradeJumps: Boolean = true): Scene =
+  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]], tolerance: Double = 1e-7,
+      gradeJumps: Boolean = true, matchPenState: Boolean = false): Scene =
     val numeric = summon[Fractional[T]]
     var position = Point(0.0, 0.0)
     var heading = 0.0
@@ -206,7 +207,9 @@ object TurtleJsxGraphRenderer:
 
     val unmatchedExpected = ListBuffer.from(expected.filter(line => gradeJumps || !line.jump).map(line => LineToRender(line.start.toDouble, line.end.toDouble, line.jump)))
     val rendered = movements.map { movement =>
-      val matchIndex = unmatchedExpected.indexWhere(line => (gradeJumps || !movement.jump) && sameLine(movement.start, movement.end, line.start, line.end, tolerance))
+      val matchIndex = unmatchedExpected.indexWhere(line =>
+        (gradeJumps || !movement.jump) && (!matchPenState || movement.jump == line.jump) &&
+          sameLine(movement.start, movement.end, line.start, line.end, tolerance))
       val result = if movement.jump && !gradeJumps then LineResult.Correct
       else if matchIndex >= 0 then {
         unmatchedExpected.remove(matchIndex);
@@ -225,6 +228,10 @@ object TurtleJsxGraphRenderer:
     buildScene(program, expected, tolerance, gradeJumps = true)
 
   def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double, gradeJumps: Boolean): Scene =
+    buildScene(program, expected, tolerance, gradeJumps, matchPenState = false)
+
+  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double,
+      gradeJumps: Boolean, matchPenState: Boolean): Scene =
     val expectedScene = buildScene(expected.toTurtleProgram.toList, List.empty[LineToRender[Double]], tolerance)
     val expectedLines = expectedScene.lines.map(line => LineToRender(line.start, line.end, line.jump))
     val numeric = summon[Fractional[T]]
@@ -232,7 +239,7 @@ object TurtleJsxGraphRenderer:
       TurtleCommand(command.name, command.args.map(numeric.toDouble))
     )
     // Recreate tasks assess stitched geometry; pen-up routes may differ.
-    val actualScene = buildScene(doubleProgram, expectedLines, tolerance, gradeJumps = gradeJumps)
+    val actualScene = buildScene(doubleProgram, expectedLines, tolerance, gradeJumps = gradeJumps, matchPenState = matchPenState)
 
     val expectedAngles = expectedScene.angles.filter { angle =>
       gradeJumps || (!expectedScene.lines(angle.lineBefore).jump && !expectedScene.lines(angle.lineAfter).jump)
@@ -240,7 +247,8 @@ object TurtleJsxGraphRenderer:
       def correspondingLine(index: Int): Int =
         val expectedLine = expectedScene.lines(index)
         actualScene.lines.indexWhere(line =>
-          (gradeJumps || !line.jump) && sameLine(line.start, line.end, expectedLine.start, expectedLine.end, tolerance)
+          (gradeJumps || !line.jump) && (!matchPenState || line.jump == expectedLine.jump) &&
+            sameLine(line.start, line.end, expectedLine.start, expectedLine.end, tolerance)
         )
 
       angle.copy(

@@ -3,7 +3,7 @@ package it.evadid.workbook.elements.interactionElements.Turtle
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
@@ -15,7 +15,8 @@ case class TurtleRecreateShapeInteraction
   initProgram: ProgrammingState,
   desiredResult: TurtleGraphic,
   availablePalette: ProgrammingEditorPalette = ProgrammingEditorPalette.BeginnerTurtle,
-  limitTurtleCommandUsage: Map[String, Integer]
+  limitTurtleCommandUsage: Map[String, Integer],
+  comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes
 ) extends WorkbookInteractionElement[ProgrammingState] derives ReadWriter {
 
   override val defaultValue: ProgrammingState = initProgram
@@ -26,14 +27,17 @@ case class TurtleRecreateShapeInteraction
 
 object TurtleRecreateShapeInteraction {
   val factory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = new SimpleWorkbookElementFactory[TurtleRecreateShapeInteraction]() {
-    override protected val constructorFieldOrder = List("elementId", "initProgram", "desiredResult", "availablePalette", "limitTurtleCommandUsage")
+    override protected val constructorFieldOrder = List("elementId", "initProgram", "desiredResult", "availablePalette", "limitTurtleCommandUsage", "comparisonPolicy")
 
-    override def finishSerialization(baseElement: WorkbookElementSerializable, element: TurtleRecreateShapeInteraction): WorkbookElementSerializable =
-      baseElement
+    override def finishSerialization(baseElement: WorkbookElementSerializable, element: TurtleRecreateShapeInteraction): WorkbookElementSerializable = {
+      val serialized = baseElement
         .withElementAddedAs("initProgram", element.initProgram)
         .withElementAddedAs("desiredResult", element.desiredResult)
         .withElementAddedAs("availablePalette", element.availablePalette)
         .withElementAddedAs("limitTurtleCommandUsage", element.limitTurtleCommandUsage)
+      if element.comparisonPolicy == TurtleDrawingPolicy.Strokes then serialized
+      else serialized.withElementAddedAs("comparisonPolicy", element.comparisonPolicy)
+    }
 
     override def finishDeserialization(serialized: WorkbookElementSerializable): TurtleRecreateShapeInteraction =
       TurtleRecreateShapeInteraction(
@@ -41,7 +45,8 @@ object TurtleRecreateShapeInteraction {
         serialized.getElementAs[ProgrammingState]("initProgram"),
         serialized.getElementAs[TurtleGraphic]("desiredResult"),
         serialized.getElementAs[ProgrammingEditorPalette]("availablePalette"),
-        serialized.getElementAs[Map[String, Integer]]("limitTurtleCommandUsage")
+        serialized.getElementAs[Map[String, Integer]]("limitTurtleCommandUsage"),
+        serialized.getOptionalElementAs[TurtleDrawingPolicy]("comparisonPolicy", TurtleDrawingPolicy.Strokes)
       )
   }
 }
