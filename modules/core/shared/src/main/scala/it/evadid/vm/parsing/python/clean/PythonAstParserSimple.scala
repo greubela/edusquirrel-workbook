@@ -54,8 +54,13 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   }
 
   def parameters[ctx: P]: P[Seq[PyAssignment]] = {
-    assignment.rep(sep = P(SPACES.? ~~ COMMA ~~ SPACES.?))
+    P(parameter.rep(sep = P(SPACES.? ~~ COMMA ~~ SPACES.?)))
   }
+
+  private def parameter[ctx: P]: P[PyAssignment] =
+    P(target() ~~ (SPACES.? ~~ ASSIGN ~~ SPACES.? ~~ expression).?).map { (target, value) =>
+      PySimpleAssignment(target, value)
+    }
 
   def targetList[ctx: P]: P[Seq[PyTarget]] = P((target(List()).rep(sep = P(SPACES.? ~ COMMA ~ SPACES.?))) | LPAR ~ targetList ~ RPAR)
 
@@ -230,6 +235,15 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   def parenthesizedExpression[ctx: P]: P[PyExpression] =
     P(LPAR ~~ SPACES.? ~~ expression ~~ SPACES.? ~~ RPAR)
 
+  private def parenthesizedOrTuple[ctx: P]: P[PyExpression] =
+    P(LPAR ~~ SPACES.? ~~ expression ~~ SPACES.? ~~ (COMMA ~~ SPACES.? ~~ expressionList).? ~~ SPACES.? ~~ RPAR)
+      .map { (head, tail) => tail match {
+        case None => head
+        case Some(rest) =>
+          val values = (head +: rest).toList
+          PythonLiteral(collectionLiteralValue("(", values, ")"), PYTHON_LIST(commonExpressionType(values)))
+      } }
+
   // ==========================================
   // 8. ATOMAR SEQUENCES
   // ==========================================
@@ -238,7 +252,7 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
     trailers.foldLeft(base) { case (receiver, applyTrailer) => applyTrailer(receiver) }
   }
 
-  def atom[ctx: P]: P[PyExpression] = P(listLiteral | tupleLiteral | dictLiteral | setLiteral | parenthesizedExpression | targetAtom | literal)
+  def atom[ctx: P]: P[PyExpression] = P(listLiteral | dictLiteral | setLiteral | parenthesizedOrTuple | literal | targetAtom)
 
   private def trailer[ctx: P]: P[PyExpression => PyExpression] = P(attributeTrailer | callTrailer | subscriptTrailer)
 
@@ -388,6 +402,7 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
 
   def atomic_type[ctx: P]: P[PythonType[?]] = {
     P(collection_type
+      | P(NONE).map(_ => PYTHON_NONE())
       | P("bool").!.map(_ => PYTHON_BOOL())
       | P("Any").!.map(_ => PYTHON_ANY())
       // | P("function").!.map(_ => PYTHON_FUNCTION)
