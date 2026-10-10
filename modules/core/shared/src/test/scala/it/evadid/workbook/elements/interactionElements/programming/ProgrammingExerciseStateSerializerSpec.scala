@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingStateSnapXmlHelper
+
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
@@ -10,7 +12,8 @@ import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtlePythonBridge
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXMLWithAdditionalFloatingObjects, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXMLWithAdditionalFloatingObjects, ProgrammingStateSnapXml}
 import munit.FunSuite
 
 class ProgrammingExerciseStateSerializerSpec extends FunSuite {
@@ -77,13 +80,32 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
 
   test("unknown version 2 representation falls back to the default Snap project") {
     val restored = ProgrammingExercise.StateSerializer.deserialize("PROGRAMMING_STATE_V2\nRUBY\nputs 1")
-    assertEquals(restored, ProgrammingStateSnapXml.mini)
+    assertEquals(restored, ProgrammingStateSnapXmlHelper.mini)
   }
 
-  test("fingerprint is the stored xml so position-only xml differs") {
+  test("instance fingerprint retains stored xml so position-only xml differs") {
     val a = ProgrammingStateSnapXml("""<project><scripts><script x="70" y="80"></script></scripts></project>""")
     val b = ProgrammingStateSnapXml("""<project><scripts><script x="200" y="150"></script></scripts></project>""")
-    assert(ProgrammingStateSnapXml.fingerprint(a) != ProgrammingStateSnapXml.fingerprint(b))
+    assert(a.fingerprint() != b.fingerprint())
+    assertEquals(a.fingerprint(), "snap:" + a.snapXml)
+    assertEquals(a.copy().fingerprint(), a.fingerprint())
+  }
+
+  test("instance fingerprints distinguish representations and survive default serialization") {
+    import upickle.default.*
+    val states: List[ProgrammingState] = List(
+      ProgrammingStatePythonString("same source\n"),
+      ProgrammingStateJavaString("same source\n"),
+      ProgrammingStateSnapXml("same source\n"),
+      ProgrammingStateSnapXMLWithAdditionalFloatingObjects("same source\n", List("watcher", "comment"))
+    )
+    assertEquals(states.map(_.fingerprint()).distinct.size, states.size)
+    states.foreach { state =>
+      assertEquals(read[ProgrammingState](write(state)).fingerprint(), state.fingerprint())
+      assertEquals(readBinary[ProgrammingState](writeBinary(state)).fingerprint(), state.fingerprint())
+    }
+    val floating = ProgrammingStateSnapXMLWithAdditionalFloatingObjects("same source\n", List("watcher", "comment"))
+    assert(floating.copy(additionalFloatingObjects = List("watcher")).fingerprint() != floating.fingerprint())
   }
 
   test("numeric call literal survives python migrate then xml roundtrip") {
@@ -95,7 +117,7 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
       BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts("forward"))
     )
     val call = BeFunctionCall(defn, Map(param -> BeUseValue(BeDataValueLiteral("12345"), Some(param))))
-    val state = ProgrammingStateSnapXml.fromProgram(BeProgram(BeStartProgram(BeSequence.optionalBody(List(call)))))
+    val state = ProgrammingStateSnapXmlHelper.fromProgram(BeProgram(BeStartProgram(BeSequence.optionalBody(List(call)))))
     val stored = ProgrammingExercise.StateSerializer.serialize(state)
     assert(stored.contains("12345"), clue = stored)
     assert(!stored.contains("arg1 ="), clue = stored)

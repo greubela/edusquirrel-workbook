@@ -31,7 +31,7 @@ object GeneralUtility {
       suffix = "h"
     }
 
-    if (toMinutesPart > 0 && suffix.nonEmpty) {
+    if (suffix.nonEmpty) {
       res += (f"$toMinutesPart%02d" + ":")
     } else if (toMinutesPart > 0) {
       res += s"$toMinutesPart:"
@@ -46,7 +46,7 @@ object GeneralUtility {
     }
 
     if (toMillisPart > 0) {
-      res += "." + toMillisPart
+      res += "." + (if (oneMilliPosition) toMillisPart.toString else f"$toMillisPart%03d")
     }
 
     res + " " + suffix

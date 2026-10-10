@@ -1,5 +1,8 @@
 package it.evadid.core.datastructures.storage
 
+import upickle.default.ReadWriter
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
+
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
 import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.core.util.InfoUtil
@@ -149,17 +152,17 @@ object RemoteSyncDataCache {
   }
 
 
-  sealed trait DataEntryToSync[K, D] {
+  sealed trait DataEntryToSync[K, D] derives ReadWriter {
     val dataKey: K
     val dataValue: D
     val timestamp: LocalDateTime
   }
 
-  case class DataEntryReadFromServer[K, D](dataKey: K, dataValue: D, timestampDataLastChanged: LocalDateTime) {
+  case class DataEntryReadFromServer[K, D](dataKey: K, dataValue: D, timestampDataLastChanged: LocalDateTime) extends DataEntryToSync[K, D] derives ReadWriter {
     val timestamp: LocalDateTime = timestampDataLastChanged
   }
 
-  case class DataEntryToWriteToServer[K, D](dataKey: K, dataValue: D, timestampDataCreated: LocalDateTime) {
+  case class DataEntryToWriteToServer[K, D](dataKey: K, dataValue: D, timestampDataCreated: LocalDateTime) extends DataEntryToSync[K, D] derives ReadWriter {
     val timestamp: LocalDateTime = timestampDataCreated
   }
 
@@ -194,7 +197,7 @@ object RemoteSyncDataCache {
   }
 
 
-  case class SyncStatus[K, V](lastCacheRequest: Option[LocalDateTime], associatedKey: K, lastKnownRemoteValue: Option[DataEntryReadFromServer[K, V]]) {
+  case class SyncStatus[K, V](lastCacheRequest: Option[LocalDateTime], associatedKey: K, lastKnownRemoteValue: Option[DataEntryReadFromServer[K, V]]) derives ReadWriter {
     def isSubmittedTimeNewerThanLastRequest(timestamp: LocalDateTime): Boolean = if (lastCacheRequest.isEmpty) true else timestamp.isAfter(lastCacheRequest.get)
 
     def isSubmittedTimeNewerThanLastChangedTimestamp(timestamp: LocalDateTime): Boolean = if (lastKnownRemoteValue.isEmpty) true else timestamp.isAfter(lastKnownRemoteValue.get.timestampDataLastChanged)

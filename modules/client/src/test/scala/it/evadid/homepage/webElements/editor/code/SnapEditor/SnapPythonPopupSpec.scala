@@ -1,8 +1,10 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingStateSnapXmlHelper
+
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapPythonPopup
 import it.evadid.vm.BeProgram
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout, SnapCanvasScript}
 import munit.FunSuite
 
@@ -19,7 +21,7 @@ class SnapPythonPopupSpec extends FunSuite {
         SnapCanvasScript(200, 150, 1)
       )
     )
-    val scripts = SnapPythonPopup.scriptsOf(ProgrammingStateSnapXml.fromProgram(program, layout))
+    val scripts = SnapPythonPopup.scriptsOf(ProgrammingStateSnapXmlHelper.fromProgram(program, layout))
     assertEquals(scripts.size, 2)
     assertEquals(scripts(0).x, 70)
     assertEquals(scripts(1).x, 200)

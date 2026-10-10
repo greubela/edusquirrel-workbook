@@ -134,9 +134,7 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   // on every open. Retain the last child while the dialog itself is closed;
   // selecting a different fullscreen element still replaces and unmounts it.
   private lazy val retainedFullscreenElementSignal: Signal[Option[HtmlAppElement]] =
-    fullscreenActiveElementSignal
-      .scanLeft(identity[Option[HtmlAppElement]])((retained, active) => active.orElse(retained))
-      .distinct
+    HtmlWorkbookDomElement.retainFullscreenElements(fullscreenActiveElementSignal)
 
   private val onCloseDialog = new EventProp[dom.Event]("close")
   private val onCancelDialog = new EventProp[dom.Event]("cancel")
@@ -183,6 +181,16 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
     )
   }
 
+}
+
+object HtmlWorkbookDomElement {
+  private[controlElements] def retainFullscreenElements(active: Signal[Option[HtmlAppElement]]): Signal[Option[HtmlAppElement]] =
+    active.scanLeft(identity[Option[HtmlAppElement]])((retained, current) => current.orElse(retained))
+      .distinctByFn {
+        case (Some(previous), Some(current)) => previous eq current
+        case (None, None) => true
+        case _ => false
+      }
 }
 
 

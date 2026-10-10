@@ -1,7 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
-import it.evadid.core.datastructures.geometry.Point
+import it.evadid.core.datastructures.geometry.{Line, Point}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineResult
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
 import munit.FunSuite
@@ -37,9 +37,9 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
 
   test("turns preserve the expected positions of consecutive lines") {
     val expected = TurtleGraphic.TurtleLineBasedProgram(List(
-      TurtleGraphic.Line(Point(0.0, 0.0), Point(100.0, 0.0)),
-      TurtleGraphic.Line(Point(100.0, 0.0), Point(100.0, 100.0)),
-      TurtleGraphic.Line(Point(100.0, 100.0), Point(200.0, 100.0))
+      Line(Point(0.0, 0.0), Point(100.0, 0.0)),
+      Line(Point(100.0, 0.0), Point(100.0, 100.0)),
+      Line(Point(100.0, 100.0), Point(200.0, 100.0))
     ))
 
     val scene = TurtleJsxGraphRenderer.buildScene(expected.toTurtleProgram.toList, expected)
@@ -72,9 +72,9 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
 
   test("angle sectors lie between adjacent segments at both corners of a stepped path") {
     val expected = TurtleGraphic.TurtleLineBasedProgram(List(
-      TurtleGraphic.Line(Point(0.0, 0.0), Point(100.0, 0.0)),
-      TurtleGraphic.Line(Point(100.0, 0.0), Point(100.0, 100.0)),
-      TurtleGraphic.Line(Point(100.0, 100.0), Point(200.0, 100.0))
+      Line(Point(0.0, 0.0), Point(100.0, 0.0)),
+      Line(Point(100.0, 0.0), Point(100.0, 100.0)),
+      Line(Point(100.0, 100.0), Point(200.0, 100.0))
     ))
     // The actual program misses both turns. Markers must still
     // follow the expected segments, including the two missing ones.

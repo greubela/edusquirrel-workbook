@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
+import upickle.default.ReadWriter
+
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.workbook.elements.interactionElements.programming.*
@@ -35,7 +37,7 @@ object SnapCustomBlockMerge {
       scriptsXml: String,
       /** Python parameter name → slot name of this definition. */
       parameterSlots: Map[String, String]
-  ) {
+  ) derives ReadWriter {
 
     /** The `s` every `<custom-block>` calling this definition must carry. */
     def callSpec: String = SnapCustomBlockRules.blockSpec(spec, slotTypeOf)

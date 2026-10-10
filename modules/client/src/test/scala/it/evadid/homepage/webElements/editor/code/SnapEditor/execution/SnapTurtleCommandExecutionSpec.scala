@@ -1,9 +1,11 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingStateSnapXmlHelper
+
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.{CallbackOp, PythonRunConfig, PythonRunReport}
 import it.evadid.vm.BeProgram
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import munit.FunSuite
 import todomove.`export`.workers.PyodideWorkerClient
 
@@ -56,7 +58,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
         executed = python
         Future.successful(expected)
 
-    val state = ProgrammingStateSnapXml.fromProgram(
+    val state = ProgrammingStateSnapXmlHelper.fromProgram(
       BeProgram.fromPythonString("for i in range(1, 4):\n    forward(i * 10)")
     )
     new SnapTurtleCommandExecution(runner).commandsFor(state).map { actual =>

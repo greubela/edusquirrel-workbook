@@ -20,4 +20,4 @@ Validation: 184 client tests, 75 core tests on each of Scala.js and JVM, eight s
 - `tools/dev/embroidery-preview-workbook.test.mjs`: bilingual content/resources; optional Chromium validation of all target sections, square/conditional/Koch/snowflake/star matches, independent open-ended design and saved restore after reopening/reloading.
 - Existing catalogue and workbook stylesheet checks cover the new entry page.
 
-Run the browser test after `buildClientDev` with `EMBROIDERY_BROWSER_TEST=1`. For an offline browser run, `CODEMIRROR_TEST_BUNDLE` can supply the existing CodeMirror loader bundled with local npm equivalents of its CDN packages.
+Run `npm ci`, `npx playwright install chromium`, and `npm run test:workbooks` after `buildClientDev`. The runner bundles the production CodeMirror loader with pinned local packages and runs the browser tests without skip flags.

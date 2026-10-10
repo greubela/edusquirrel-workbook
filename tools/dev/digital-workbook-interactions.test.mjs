@@ -32,6 +32,7 @@ test('digital image workbook persists neuron/pixel experiments, robustness and a
     assert.equal(await opinion.locator('input:checked').count(), 1, 'single choices are exclusive');
     await page.locator('.section-block').nth(1).click();
     const answerTable = page.locator('.answer-table');
+    await answerTable.waitFor();
     const answers = ['0','1','0','1', '1','1','1','1', '0','0','1','1', '0','1','0','1'];
     assert.equal(await answerTable.locator('select').count(), 16);
     assert.equal(await answerTable.locator('tbody td:not(:has(select))').count(), 4, 'Monday is fixed');
@@ -84,6 +85,7 @@ test('digital image workbook persists neuron/pixel experiments, robustness and a
     await page.locator('.fullscreen-close-button').click();
     assert.match(await page.locator('.neuron-preview').innerText(), /5 of 5/);
     await open();
+    await page.waitForFunction(() => document.querySelector('dialog[open] .neuron-editor input')?.value === '1');
     assert.equal(await editor.locator('input').nth(0).inputValue(), '1', 'reopening discards invalid local draft');
     for (const viewport of [{width:1440,height:900}, {width:390,height:844}, {width:844,height:390}]) {
       await page.setViewportSize(viewport);

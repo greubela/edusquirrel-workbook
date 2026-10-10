@@ -6,7 +6,7 @@ import {chromium} from 'playwright';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const origin = 'http://localhost:9000';
-const bundle = path.resolve(root, process.env.COMPRESSION_CLIENT_BUNDLE || 'target/client/scala-3.8.4/client-fastopt/main.js');
+const bundle = path.resolve(root, process.env.COMPRESSION_CLIENT_BUNDLE || 'artifacts/newest/client.js');
 const mime = {'.html':'text/html', '.js':'text/javascript', '.mjs':'text/javascript', '.css':'text/css', '.json':'application/json',
   '.svg':'image/svg+xml', '.png':'image/png', '.jpg':'image/jpeg', '.txt':'text/plain'};
 

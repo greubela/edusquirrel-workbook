@@ -1,5 +1,7 @@
 package it.evadid.evacuation.core.algorithm.routing
 
+import upickle.default.ReadWriter
+
 import it.evadid.evacuation.core.algorithm.routing.BFS.BFSInformation
 import it.evadid.evacuation.core.algorithm.routing.model.SearchNode
 
@@ -14,6 +16,6 @@ case class BFS[N]() extends Pathfinding[N, BFSInformation] {
 
 object BFS {
 
-  case class BFSInformation(depth: Int)
+  case class BFSInformation(depth: Int) derives ReadWriter
 
 }

@@ -1,5 +1,8 @@
 package it.evadid.workbook.interaction.sync
 
+import upickle.default.ReadWriter
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
+
 import it.evadid.core.datastructures.storage.RemoteCacheCollection.CacheKey
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
 import it.evadid.core.datastructures.user.AllUserInfo
@@ -26,11 +29,11 @@ case class SyncInformation(
 
 object SyncInformation {
 
-  case class InteractionVariableFetchResponse(timestampFetchResponse: LocalDateTime, fetchedValues: Set[DataEntryReadFromServer[SyncContext, InteractionVariableHistorySerialized]]) extends FetchResponse[SyncContext, InteractionVariableHistorySerialized] {
+  case class InteractionVariableFetchResponse(timestampFetchResponse: LocalDateTime, fetchedValues: Set[DataEntryReadFromServer[SyncContext, InteractionVariableHistorySerialized]]) extends FetchResponse[SyncContext, InteractionVariableHistorySerialized] derives ReadWriter {
 
   }
   
-  case class SyncFetchedHistory[T](typedElements: InteractionVariableHistory[T], fetchedAt: LocalDateTime, unparsableElements: InteractionVariableHistorySerialized)
+  case class SyncFetchedHistory[T](typedElements: InteractionVariableHistory[T], fetchedAt: LocalDateTime, unparsableElements: InteractionVariableHistorySerialized) derives ReadWriter
 
 
 

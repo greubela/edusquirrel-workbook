@@ -1,6 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
-import it.evadid.core.datastructures.geometry.Point
+import it.evadid.core.datastructures.geometry.{Line, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{SvgToTurtleProgram, TurtleGraphic}
 import munit.FunSuite
@@ -46,7 +46,7 @@ class TurtleGraphicSpec extends FunSuite {
   }
 
   test("TurtleLineBasedProgram converts to turtle program") {
-    val line = TurtleGraphic.Line(Point(0.0, 0.0), Point(10.0, 0.0))
+    val line = Line(Point(0.0, 0.0), Point(10.0, 0.0))
     val graphic = TurtleGraphic.TurtleLineBasedProgram(List(line))
     val commands = graphic.toTurtleProgram
     
@@ -58,8 +58,8 @@ class TurtleGraphicSpec extends FunSuite {
 
   test("TurtleLineBasedProgram draws multiple lines") {
     val lines = List(
-      TurtleGraphic.Line(Point(0.0, 0.0), Point(10.0, 0.0)),
-      TurtleGraphic.Line(Point(10.0, 0.0), Point(10.0, 10.0))
+      Line(Point(0.0, 0.0), Point(10.0, 0.0)),
+      Line(Point(10.0, 0.0), Point(10.0, 10.0))
     )
     val graphic = TurtleGraphic.TurtleLineBasedProgram(lines)
     val commands = graphic.toTurtleProgram
@@ -69,7 +69,7 @@ class TurtleGraphicSpec extends FunSuite {
   }
 
   test("TurtleLineBasedProgram converts to SVG path") {
-    val line = TurtleGraphic.Line(Point(0.0, 0.0), Point(10.0, 10.0))
+    val line = Line(Point(0.0, 0.0), Point(10.0, 10.0))
     val graphic = TurtleGraphic.TurtleLineBasedProgram(List(line))
     val svg = graphic.toSvgPathDString
     assert(svg.contains("M"))
@@ -101,8 +101,8 @@ class TurtleGraphicSpec extends FunSuite {
 
   test("TurtleLineBasedProgram handles pen state correctly") {
     val lines = List(
-      TurtleGraphic.Line(Point(0.0, 0.0), Point(10.0, 0.0)),
-      TurtleGraphic.Line(Point(20.0, 0.0), Point(30.0, 0.0)) // Gap, needs jump
+      Line(Point(0.0, 0.0), Point(10.0, 0.0)),
+      Line(Point(20.0, 0.0), Point(30.0, 0.0)) // Gap, needs jump
     )
     val graphic = TurtleGraphic.TurtleLineBasedProgram(lines)
     val commands = graphic.toTurtleProgram
@@ -117,8 +117,8 @@ class TurtleGraphicSpec extends FunSuite {
 
   test("TurtleLineBasedProgram uses shortest turns (no rotation > 180°)") {
     val lines = List(
-      TurtleGraphic.Line(Point(0.0, 0.0), Point(10.0, 0.0)),
-      TurtleGraphic.Line(Point(10.0, 0.0), Point(0.0, 1.0)) // Sharp turn back
+      Line(Point(0.0, 0.0), Point(10.0, 0.0)),
+      Line(Point(10.0, 0.0), Point(0.0, 1.0)) // Sharp turn back
     )
     val graphic = TurtleGraphic.TurtleLineBasedProgram(lines)
     val commands = graphic.toTurtleProgram
@@ -131,9 +131,9 @@ class TurtleGraphicSpec extends FunSuite {
 
   test("TurtleLineBasedProgram draws closed triangle") {
     val lines = List(
-      TurtleGraphic.Line(Point(0.0, 0.0), Point(10.0, 0.0)),
-      TurtleGraphic.Line(Point(10.0, 0.0), Point(5.0, 8.66)),
-      TurtleGraphic.Line(Point(5.0, 8.66), Point(0.0, 0.0))
+      Line(Point(0.0, 0.0), Point(10.0, 0.0)),
+      Line(Point(10.0, 0.0), Point(5.0, 8.66)),
+      Line(Point(5.0, 8.66), Point(0.0, 0.0))
     )
     val graphic = TurtleGraphic.TurtleLineBasedProgram(lines)
     val commands = graphic.toTurtleProgram
