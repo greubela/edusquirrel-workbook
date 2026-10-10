@@ -1,16 +1,19 @@
 package it.evadid.homepage.webElements.editor.code
 
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingStateSnapXmlHelper
+
 import it.evadid.core.datastructures.language.AppLanguage
 import com.raquo.airstream.state.Var
 import com.raquo.airstream.ownership.ManualOwner
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorConfig, EvaProgrammingTab}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import munit.FunSuite
 
 class EvaEditorSpec extends FunSuite {
   test("tab synchronization compares the converted state and ignores identical restores") {
-    val snap = ProgrammingStateSnapXml.mini
+    val snap = ProgrammingStateSnapXmlHelper.mini
     val tab = EvaProgrammingTab.tabFor(EvaEditorConfig.Default, AppLanguage.Python, Var[ProgrammingState](snap), _ => ())
     val owner = new ManualOwner
     var changes = 0
@@ -27,10 +30,10 @@ class EvaEditorSpec extends FunSuite {
   }
 
   test("Snap tab forwards edits to the parent editor") {
-    val initial = ProgrammingStateSnapXml.mini
+    val initial = ProgrammingStateSnapXmlHelper.mini
     var published: Option[ProgrammingState] = None
     val tab = EvaProgrammingTab.tabFor(EvaEditorConfig.Default, AppLanguage.SnapLanguage, Var[ProgrammingState](initial), next => published = Some(next))
-    val next = ProgrammingStateSnapXml.empty
+    val next = ProgrammingStateSnapXmlHelper.empty
     tab.editorElement.asInstanceOf[SnapEditor.SnapCodeEditor].onStateEdited(next)
     assertEquals(published, Some(next))
   }
@@ -47,7 +50,7 @@ class EvaEditorSpec extends FunSuite {
     assertEquals[ProgrammingState, ProgrammingState](javaTab.associatedVar.now(), java)
     assert(javaTab.editorElement.isInstanceOf[CodeMirrorEditor])
 
-    val snap = ProgrammingStateSnapXml.mini
+    val snap = ProgrammingStateSnapXmlHelper.mini
     val snapTab = EvaProgrammingTab.tabFor(EvaEditorConfig.Default, AppLanguage.SnapLanguage, Var[ProgrammingState](snap), _ => ())
     assertEquals(snapTab.associatedLanguage, AppLanguage.SnapLanguage)
     assertEquals[ProgrammingState, ProgrammingState](snapTab.associatedVar.now(), snap)

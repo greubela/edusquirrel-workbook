@@ -1,5 +1,8 @@
 package it.evadid.core.datastructures.storage
 
+import upickle.default.ReadWriter
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
+
 import it.evadid.core.datastructures.storage.RemoteCacheCollection.{CacheCollectionReport, CacheKey}
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
 import it.evadid.util.logging.Logger
@@ -121,7 +124,7 @@ object RemoteCacheCollection {
     def writer: RemoteDataWriter[K, D]
   }
 
-  case class CacheCollectionReport[K, D, CK <: CacheKey[K, D]](key: K, cacheStatus: Map[CK, SyncStatus[K, D]], allAvailableCacheKeys: List[CK])
+  case class CacheCollectionReport[K, D, CK <: CacheKey[K, D]](key: K, cacheStatus: Map[CK, SyncStatus[K, D]], allAvailableCacheKeys: List[CK]) derives ReadWriter
 
 }
 

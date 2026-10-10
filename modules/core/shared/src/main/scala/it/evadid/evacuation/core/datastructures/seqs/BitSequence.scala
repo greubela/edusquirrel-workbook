@@ -2,16 +2,20 @@ package it.evadid.evacuation.core.datastructures.seqs
 
 
 import it.evadid.evacuation.core.utility.BinaryUtility
+import upickle.default.ReadWriter
 
 import scala.collection.mutable.ListBuffer
 
-case class BitSequence(seq: List[Boolean]) {
+case class BitSequence(seq: List[Boolean]) derives ReadWriter {
 
 
-  def head(headSize: Int): BitSequence = if (headSize < size) this else BitSequence(seq.slice(0, headSize))
+  def head(headSize: Int): BitSequence = {
+    require(headSize >= 0, "Head size must be nonnegative")
+    BitSequence(seq.take(headSize))
+  }
 
   def tail(from: Int): BitSequence = {
-    assert(from < size, "BitSeq to short (" + size + ") for tail from " + from + "!")
+    require(from >= 0 && from <= size, "Tail start must be within the sequence")
     BitSequence(seq.slice(from, seq.size))
   }
 
@@ -36,6 +40,7 @@ case class BitSequence(seq: List[Boolean]) {
   def isBitSet(pos: Int, outOfRangeDefault: Boolean = false): Boolean = if (pos >= size || pos < 0) outOfRangeDefault else seq(size - pos - 1)
 
   def removeLeadingZeros(minRemainingSize: Int = 1): BitSequence = {
+    require(minRemainingSize >= 0, "Minimum size must be nonnegative")
     val res: ListBuffer[Boolean] = ListBuffer()
     res.addAll(seq)
 
@@ -46,8 +51,9 @@ case class BitSequence(seq: List[Boolean]) {
   }
 
   def ensureSize(toSize: Int, fillWith: Boolean = false): BitSequence = {
+    require(toSize >= 0, "Size must be nonnegative")
     if (size < toSize) padLeftTo(toSize, fillWith)
-    if (size == toSize) this
+    else if (size == toSize) this
     else BitSequence(seq.takeRight(toSize))
   }
 
@@ -123,7 +129,7 @@ object BitSequence {
   def getBitplane(arr: Seq[BitSequence], bitNr: Int): BitSequence =
     new BitSequence(arr.map(_.isBitSet(bitNr)).toList)
 
-  def paddedNumber(nr: Long, length: Int): BitSequence = BitSequence(nr).ensureSize(length).padLeftTo(8, false)
+  def paddedNumber(nr: Long, length: Int): BitSequence = BitSequence(nr).ensureSize(length)
 
   def apply(int: Int): BitSequence = apply(int.asInstanceOf[Long], 32)
 
@@ -134,6 +140,7 @@ object BitSequence {
   def apply(long: Long): BitSequence = apply(long, 64)
 
   def apply(long: Long, startFromBit: Int): BitSequence = {
+    require(startFromBit >= 1 && startFromBit <= 64, "Bit width must be between 1 and 64")
 
     var seq: ListBuffer[Boolean] = ListBuffer()
 

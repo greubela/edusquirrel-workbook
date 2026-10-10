@@ -1,5 +1,7 @@
 package it.evadid.evacuation.core.algorithm.routing
 
+import upickle.default.ReadWriter
+
 import it.evadid.evacuation.core.algorithm.routing.AStar.AStarInformation
 import it.evadid.evacuation.core.algorithm.routing.model.SearchNode
 
@@ -12,5 +14,5 @@ case class AStar[N](estDistStartDest: Double) extends Pathfinding[N, AStarInform
 
 object AStar{
 
-  case class AStarInformation(distFromStart: Double, estDistToDest: Double)
+  case class AStarInformation(distFromStart: Double, estDistToDest: Double) derives ReadWriter
 }

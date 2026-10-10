@@ -116,19 +116,24 @@ Run all Scala suites, including both shared platforms:
 sbt 'coreJVM/test' 'coreJS/test' 'client/test' 'server/test' 'worker/test'
 ```
 
-Useful asset and browser checks:
+Run all asset/DOM checks and all browser checks (including catalogue cache recovery,
+monk stories and embroidery preview exercises):
 
 ```sh
-node --test tools/dev/assemble-pages.test.mjs
-node --test tools/dev/workbook-stylesheets.test.mjs
-node --test tools/dev/editor-layout.test.mjs
-node --test tools/dev/turtle-css.test.mjs
-# These interaction checks need the current sbt buildJS artifacts:
-node --test tools/dev/mail-simulator.test.mjs
-node --test tools/dev/qr-interaction.test.mjs
+npm ci
+npm run test:static
+sbt -batch buildClientDev buildWorkerDev
+npx playwright install chromium
+npm run test:workbooks
 ```
 
-Browser tests use system Chromium when available. Otherwise install it with `npx playwright install chromium`, or set `CHROMIUM_PATH`. Restricted environments can run Node tests without test-worker isolation, for example `node --test --test-isolation=none tools/dev/workbook-stylesheets.test.mjs`.
+The browser runner uses Playwright's installed Chromium, or `CHROMIUM_PATH` when set
+(for example `/usr/bin/chromium`). It bundles the production CodeMirror loader using
+the pinned local packages, so editor tests do not depend on a live CDN. Both runners
+disable Node test-worker isolation for compatibility with restricted environments.
+The [test workflow](.github/workflows/tests.yml) runs these checks and every Scala
+module on pull requests and pushes to main. Individual test files can still be run
+with `node --test`.
 
 ## Deployment
 
@@ -156,6 +161,7 @@ LLM feedback uses the endpoint configured in [config.js](homepage/js/config.js).
 - [Snap command execution service](docs/snap-turtle-command-execution-overview.md): Pyodide boundary and current integration status.
 - [Python parsing](docs/python-parsing-architecture.md): normalization and parser responsibilities.
 - [Core test audit](docs/core-package-unit-tests.md): historical coverage measurements and test commands.
+- [Testing and serialization audit](docs/testing-and-serialization-audit.md): regression coverage, default codecs and decisions about previously skipped/manual tests.
 - [Workbook interaction roadmap](WORKBOOK_INTERACTIONS.md): teaching-resource inventory and proposed future exercises.
 
 Markdown under bundled third-party libraries documents those distributions. Imported teaching projects retain their conceptual and historical documents; their upstream setup/team instructions do not describe the EduSquirrel repository workflow. MathWorld's README and deployment guide explain its integration here.

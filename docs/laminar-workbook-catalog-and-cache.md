@@ -88,7 +88,7 @@ sbt 'coreJVM/testOnly *LanguageSerializationSpec *SyncDestinationRawSpec'
 sbt 'coreJS/testOnly *LanguageSerializationSpec *SyncDestinationRawSpec'
 sbt buildClientDev
 node tools/dev/app-loader.test.mjs
-CATALOG_BROWSER_TEST=1 node tools/dev/workbook-catalog.test.mjs
+npm run test:workbooks
 node tools/dev/workbook-stylesheets.test.mjs
 node tools/dev/assemble-pages.test.mjs
 ```

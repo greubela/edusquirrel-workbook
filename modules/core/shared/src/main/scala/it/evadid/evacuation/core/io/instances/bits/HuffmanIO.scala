@@ -6,11 +6,13 @@ import it.evadid.evacuation.core.utility.DataStructureHelper
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+import upickle.default.ReadWriter
 
-case class HuffmanIO[T](prefixMap: Map[T, BitSequence]) extends IO[Seq[T], BitSequence] {
+case class HuffmanIO[T](prefixMap: Map[T, BitSequence]) extends IO[Seq[T], BitSequence] derives ReadWriter {
 
   prefixMap.values.foreach(sequence =>
-    assert(prefixMap.values.count(_.hasPrefix(sequence)) == 1, "Invalid Prefix Map: " + sequence + " is Prefix of another entry in: " + prefixMap + "!")
+    require(sequence.size > 0 && prefixMap.values.count(_.hasPrefix(sequence)) == 1,
+      "Codes must be nonempty and prefix-free")
   )
   private val decodingMap = DataStructureHelper.reverseMap(prefixMap)
 
@@ -31,7 +33,7 @@ case class HuffmanIO[T](prefixMap: Map[T, BitSequence]) extends IO[Seq[T], BitSe
       }
       rem = rem.tail
     }
-
+    require(cur.size == 0, "Encoded data ends with an incomplete or unknown Huffman code")
     res.toList
   }
 }
@@ -41,16 +43,16 @@ object HuffmanIO {
   private trait HuffmanNode[T] {
     def handleEncodeRequest(mySequence: BitSequence, intoMap: mutable.Map[T, BitSequence]): Unit
 
-    def weight: Int
+    def weight: Long
   }
 
-  private case class HuffmanNodeOuter[T](element: T, weight: Int) extends HuffmanNode[T] {
+  private case class HuffmanNodeOuter[T](element: T, weight: Long) extends HuffmanNode[T] {
     override def handleEncodeRequest(mySequence: BitSequence, intoMap: mutable.Map[T, BitSequence]): Unit = {
       intoMap.put(element, mySequence)
     }
   }
 
-  private case class HuffmanNodeInner[T](children: Seq[HuffmanNode[T]], weight: Int) extends HuffmanNode[T] {
+  private case class HuffmanNodeInner[T](children: Seq[HuffmanNode[T]], weight: Long) extends HuffmanNode[T] {
     assert(children.length == 2, "Huffman inner node must have 2 children!")
 
     override def handleEncodeRequest(mySequence: BitSequence, intoMap: mutable.Map[T, BitSequence]): Unit = {
@@ -61,6 +63,9 @@ object HuffmanIO {
   }
 
   def createEncodingMap[T](frequencyMap: Map[T, Int]): Map[T, BitSequence] = {
+    require(frequencyMap.values.forall(_ > 0), "Symbol frequencies must be positive")
+    if frequencyMap.isEmpty then return Map.empty
+    if frequencyMap.size == 1 then return Map(frequencyMap.head._1 -> BitSequence(List(false)))
 
     val ordering: Ordering[HuffmanNode[T]] = Ordering.by(_.weight)
     val nodes = new mutable.PriorityQueue[HuffmanNode[T]]()(using ordering.reverse)
