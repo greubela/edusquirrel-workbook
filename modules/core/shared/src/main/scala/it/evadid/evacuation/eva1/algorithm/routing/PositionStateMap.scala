@@ -77,7 +77,7 @@ case class PositionStateMap(graph: EvaGraph, positionStateMap: MultiHashMapList[
 
   private def tryToRoute(person: EvaPerson, currentPositionOfPerson: Router, routingMap: FlowRoutingMap, evacuationStrategy: FlowStrategy): Option[(EvaPerson, RoutingOption[Router])] = {
 
-    val allRoutingOptions: mutable.Seq[RoutingOption[Router]] = routingMap.getMap(currentPositionOfPerson).filter(_.nextStep.isDefined)
+    val allRoutingOptions: Seq[RoutingOption[Router]] = routingMap.getMap.get(currentPositionOfPerson).map(_.toList).getOrElse(Nil).filter(_.nextStep.isDefined)
 
     val freeRoutingOptions = allRoutingOptions.filter(option => {
       val capacityInformation = capacityInformationForEdge(currentPositionOfPerson, option.nextStep.get)

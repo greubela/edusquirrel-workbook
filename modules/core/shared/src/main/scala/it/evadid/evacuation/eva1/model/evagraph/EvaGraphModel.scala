@@ -1,8 +1,10 @@
 package it.evadid.evacuation.eva1.model.evagraph
 
+import upickle.default.ReadWriter
+
 import it.evadid.core.datastructures.graph.{ImmutableGraphListImpl, PositionableEdge, WeightedNeighbourStructure}
 
-case class EvaGraphModel(nodesList: List[Router], edgesList: List[PositionableEdge[Router, ConnectionInfo]]) extends ImmutableGraphListImpl[Router, ConnectionInfo, PositionableEdge[Router, ConnectionInfo]](nodesList, edgesList) with WeightedNeighbourStructure[Router, ConnectionInfo, PositionableEdge[Router, ConnectionInfo]] {
+case class EvaGraphModel(nodesList: List[Router], edgesList: List[PositionableEdge[Router, ConnectionInfo]]) extends ImmutableGraphListImpl[Router, ConnectionInfo, PositionableEdge[Router, ConnectionInfo]](nodesList, edgesList) with WeightedNeighbourStructure[Router, ConnectionInfo, PositionableEdge[Router, ConnectionInfo]] derives ReadWriter {
 
   def +=(start: Router, dest: Router, parallelism: Integer): EvaGraphModel = {
     val graph = this.addEdge(start, dest, ConnectionInfo(parallelism, ConnectionInfo.getConnectionDelayFromRouterDist(start.distTo(dest))))
