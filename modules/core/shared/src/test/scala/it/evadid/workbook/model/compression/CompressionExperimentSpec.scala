@@ -24,14 +24,15 @@ class CompressionExperimentSpec extends munit.FunSuite {
   }
   test("dictionary steps preserve spacing and punctuation and include the dictionary cost") {
     val text = "Ein Wort,\nEin Wort,  [1]"
-    val tokens = CompressionAlgorithms.tokens(text)
-    for (step <- 0 to tokens.size)
-      assertEquals(CompressionAlgorithms.dictionary(text, step).decoded, tokens.take(step).mkString)
-    val full = CompressionAlgorithms.dictionary(text, tokens.size)
+    val total = CompressionAlgorithms.wordCount(text)
+    val full = CompressionAlgorithms.dictionary(text, total)
+    assertEquals(full.decoded, text)
+    assertEquals(CompressionAlgorithms.dictionary(text, 1).display, "Ein ")
+    assertEquals(CompressionAlgorithms.dictionary(text, 3).display, "Ein Wort,\nW1 ")
     assertEquals(full.dictionary, List("Ein", "Wort,", "[1]"))
     assert(full.modelBytes > 0)
     assertEquals(CompressionAlgorithms.dictionary("", 0).modelBytes, 0)
-    intercept[IllegalArgumentException](DictionaryText(text, tokens.size + 1))
+    intercept[IllegalArgumentException](DictionaryText(text, total + 1))
   }
   test("one password bit changes exactly one byte and can be restored") {
     val original = TextBits("ABC")
@@ -50,8 +51,8 @@ class CompressionExperimentSpec extends munit.FunSuite {
     assertEquals(CompressionAlgorithms.imageBlocks(rgb, 2, 2, 1, 1), rgb)
     assertEquals(CompressionAlgorithms.imageBlocks(rgb, 2, 2, 2, 2).distinct.size, 1)
     assert(CompressionAlgorithms.imageBlocks(rgb, 2, 2, 1, 2).distinct.size > 1)
-    assertEquals(ImageBlocks("image.jpg").sampleBytes, 12288)
-    assertEquals(ImageBlocks("image.jpg", 64, 64).sampleBytes, 3)
+    assertEquals(ImageBlocks("image.jpg").sampleBytes, 1843200)
+    assertEquals(ImageBlocks("image.jpg", 64, 64).sampleBytes, 450)
     intercept[IllegalArgumentException](ImageBlocks("image.jpg", 3))
   }
   test("an uncompressed archive adds bytes but may save or cost time depending on overhead") {
@@ -62,9 +63,59 @@ class CompressionExperimentSpec extends munit.FunSuite {
     assert(freeOpening.archiveSeconds > freeOpening.individualSeconds)
     assertEquals(archive.copy(fileCount = 10000, bytesPerFile = 10000000).payloadBytes, 100000000000L)
   }
+  test("RLE challenges are sticky and photo capacity is decimal") {
+    val first = RunLengthText().edit("A" * 12)
+    assertEquals(first.achieved,List(0,2))
+    assertEquals(first.edit("ABCDE").achieved,List(0,1,2))
+    assertEquals(PhotoBudget(4).count,500L)
+    assertEquals(PhotoBudget(2001).count,0L)
+  }
+  test("simulator applies original factors once and preserves metadata until explicitly removed") {
+    val file = SimulationFile("note.docx",10000,"text",List("Autor: Redaktion","Auflösung: 1×1"))
+    val lossless=CompressionSimulation.applyTool(file,"lossless")
+    assertEquals(lossless.bytes,8600L)
+    assertEquals(CompressionSimulation.applyTool(lossless,"lossless"),lossless)
+    assert(lossless.problematic)
+    val converted=CompressionSimulation.applyTool(file,"convert")
+    assertEquals(converted.name,"note.txt")
+    assertEquals(converted.bytes,2200L)
+    assertEquals(converted.metadata,Nil)
+    val raw=CompressionSimulation.applyTool(SimulationFile("a.raw",10000,"image"),"lossless")
+    assertEquals(raw.bytes,4200L)
+    assertEquals(raw.metadata,List("Auflösung: 4032×3024"))
+    val encrypted=SimulationFile("a.enc.zip",10000,"encrypted")
+    for tool <- List("convert","lossy","lossless") do assertEquals(CompressionSimulation.applyTool(encrypted,tool),encrypted)
+  }
+  test("every source file and sequential operation agrees with the retained original") {
+    val fixtures = read[List[(SimulationFile,List[(String,SimulationFile)])]](OriginalCompressionFixtures.json)
+    assertEquals(fixtures.size,420)
+    for (initial,results) <- fixtures; (tool,expected) <- results do
+      assertEquals(CompressionSimulation.applyTool(initial,tool),expected,s"${initial.name}, ${initial.applied}, $tool")
+  }
+  test("archives block concealed metadata, charge overhead, retain counts and count ineffective clicks") {
+    val a=SimulationFile("a.txt",100000000,"text",count=100)
+    val b=SimulationFile("b.mp4",200000000,"video",List("GPS: Park"))
+    val initial=FileSimulation("test",List(a,b))
+    val blocked=initial.choose("archive").click(0).click(1).archive
+    assert(blocked.error)
+    assertEquals(blocked.steps,0)
+    assertEquals(blocked.files,initial.files)
+    val cleaned=initial.choose("convert").click(1)
+    val archived=cleaned.choose("archive").click(0).click(1).archive
+    assertEquals(archived.files.size,1)
+    assertEquals(archived.files.head.bytes,22000000L+194000000L+CompressionSimulation.archiveOverhead)
+    assertEquals(archived.fileCount,101)
+    assertEquals(archived.files.head.name,"logs_101_dateien.rar")
+    assertEquals(archived.steps,2)
+    assert(archived.complete)
+    assertEquals(archived.choose("lossy").click(0).steps,3)
+    assertEquals(archived.choose("lossy").click(0).files,archived.files)
+  }
   test("every experiment round-trips definitions and saved values on the shared registry") {
-    val examples: List[CompressionExperiment] = List(VideoBudget(), RunLengthText("ää😀"), DictionaryText("Wort Wort", 3),
+    val examples: List[CompressionExperiment] = List(VideoBudget(), RunLengthText("ää😀"), DictionaryText("Wort Wort", 2),
       TextBits(flippedBit = Some(2)), ImageBlocks("programs/photo.jpg", 2, 4), ArchiveBudget(),
+      WrittenAnswer("def encode(text):",true), EthicalReflection(Some(2),"Unsicher"),PhotoBudget(),BitComparison(),FileInspection("Sample text",expanded = List("docProps/core.xml")),TransferSimulation(List("a.txt" -> "ä"),2),
+      FileSimulation("test",List(SimulationFile("a.txt",1000,"text"))), PreviousAnswer("answer-intro"),
       StorageStudy(List(StoragePackage(LanguageMapContentId("CompressionWorkbook/label"),
         List(StorageFile("name", 40000, LanguageMapContentId("CompressionWorkbook/info")))))))
     for (value <- examples) {

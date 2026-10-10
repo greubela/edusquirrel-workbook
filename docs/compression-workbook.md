@@ -1,73 +1,101 @@
-# Native compression workbook
+# Compression workbook: two implementations
 
-Open `homepage/compressionWorkbook/` or choose the compression workbook in the
-shared digital workbook catalogue. This page uses the same Scala.js/Laminar
-startup, `WorkbookFactory`, section navigation, language maps and answer history
-as the embroidery workbook. The standalone lab in
-`resources/programs/20260907Datenkompression/` remains available separately.
+The catalogue offers the native workbook at `homepage/compressionWorkbook/` and
+retains the standalone workbook at `resources/programs/20260907Datenkompression/`.
+The standalone files, scripts and materials are unchanged.
 
-The existing German chapters, written questions and sorting demonstrations are
-retained. The former widget placeholders now use native activities:
+The native version uses the same Scala.js/Laminar application, `WorkbookFactory`,
+section navigation, language maps, interaction synchronization and answer history
+as the embroidery workbooks. It reconstructs all seven original chapters in order,
+including the optional encryption chapter. It contains all 41 written questions,
+two pseudocode skeletons, the conditional introductory opinion and justification,
+seven final agree/disagree questions, nine hints, all 17 original widgets and both
+capacity calculators. The final comparison displays the saved introductory
+technical recommendation. Materials remain downloadable from the original paths.
 
-| Activity | Shared model / existing interaction | Client UI |
-| --- | --- | --- |
-| Video size and card capacity | `VideoBudget` | Numeric experiment controls |
-| One changed password bit | `TextBits` | Byte/bit buttons |
-| Changed monochrome image | Existing `BinaryPixelInteraction` | Existing pixel renderer |
-| RLE of repeated symbols and prose | `RunLengthText`, shared Unicode handling | Text, runs and restored text |
-| Step-by-step word dictionary | `DictionaryText` | Steps, dictionary, references and restored text |
-| Match files to lossless methods | Existing `SortingReasonInteraction` | Existing sorting and justification UI |
-| Separate brightness/color blocks; joint block size | `ImageBlocks` | Same-origin photo, block selectors and canvas |
-| Text versus Word structure | Existing HTML instruction renderer | Actual supplied DOCX entries, metadata and matching TXT download |
-| Individual files versus archive | `ArchiveBudget` | Editable size, transfer-rate and per-file overhead assumptions |
-| Three storage packages | `StorageStudy` | Proportional area chart, file table and card-space calculation |
+| Original activity | Native implementation |
+| --- | --- |
+| Video and photo capacity | `VideoBudget`, `PhotoBudget`; decimal MB calculator controls |
+| RLE examples, prose and three sticky challenges | `RunLengthText`; Unicode runs, restored text and explicit cost model |
+| Dictionary animation | `DictionaryText`; first occurrences literal, repeated words `Wn`, word steps, playback, speed and expandable dictionary |
+| Compression classifications and reasons | Existing `SortingReasonInteraction`, original four files/options in each activity |
+| Password and monochrome bit changes | `BitComparison`; original password, bit sequence and 128×128 ring image |
+| Six JPEG explanation slides | Existing `Slideshow` and `ImageSlide`; illustrations generated from original canvases |
+| Brightness/color and joint blocks | `ImageBlocks`; exact embedded 960×640 source image, independent Y/Cb/Cr means or RGB means |
+| Text versus screenshot | Original full-resolution screenshot, actual source file sizes, independent blocks and zoom |
+| Text versus DOCX inspector | Original letter, formatted version, expandable internal package descriptions |
+| Ten documents versus one archive | `TransferSimulation`; exact original texts, visible process steps, playback and explanatory FAQ |
+| Storage overview | `FileOverview`; exact original scenarios, metadata, logical grouped-file counts and area display |
+| Tutorial plus three independent simulators | `FileSimulation`; conversion, lossless/lossy operations, archive selection, metadata blocking, step counts, tutorial checklist and completion |
 
-New experiment definitions use `CompressionExperimentInteraction` in shared core.
-`CompressionExperimentRenderer` creates one bound state through the existing
-`InteractionVariable` and synchronization control. It shows a live preview and
-opens `CompressionEditor` with that same state. Closing, reopening, navigating
-between chapters and reloading retain accepted settings; invalid numeric drafts
-are local to the editor and do not overwrite a valid saved answer. Controls obey
-the workbook's disabled state. Algorithms and definition/value codecs are shared
-between JVM and JavaScript; browser APIs are confined to the client.
+`CompressionExperimentInteraction` defines shared persisted values and their
+codecs. `CompressionExperimentRenderer` creates bound state through the existing
+synchronization control. `CompressionEditor` and `CompressionActivitiesEditor`
+provide native controls. Written answers and opinions render inline; experiments
+open in the regular fullscreen dialog. Settings, answers, challenges and simulator
+results survive reopening, chapter navigation and reload. Playback stops when the
+dialog closes. Invalid numeric drafts do not overwrite accepted values. Shared
+models and algorithms run on both JVM and JavaScript; browser image APIs remain in
+the client. Authored inspector text, formatted content, comparison sizes and archive
+files are passed through shared exercise configuration, rather than read from
+workbook content inside the editor. Existing slideshow navigation now derives its position from saved
+transition history, also restoring it across chapter changes and reload.
 
-Experiments have explicit IDs. The replaced display elements' automatic ID slots
-are retained so existing written-answer IDs do not shift. The workbook ID and
-chapter IDs remain unchanged. Existing factory and renderer registries gain only
-an additional interaction registration. Experiment definitions can use different
-initial texts, image resources and storage packages.
+Source element IDs identify questions and widgets; the workbook ID remains
+`CompressionWorkbook`. The new chapter IDs match the source chapter inventory.
+The prior incomplete native draft's auto-generated answer IDs are not a migration
+format for this complete reconstruction.
 
-Sizes are explained in the learner UI. Video/storage quantities use decimal MB.
-RLE counts UTF-8 symbol bytes and decimal count digits, excluding display
-punctuation; this illustrates costs without claiming a complete byte format.
-Dictionary references preserve whitespace and include the dictionary in their
-stated teaching cost. Image experiments sample the supplied photo at 64 × 64,
-average Y/Cb/Cr channels, and count one byte per retained channel sample. These
-are teaching models, not JPEG/ZIP implementations or measured compression rates.
-The archive exercise includes unchanged payload plus configurable overhead and
-can demonstrate either faster or slower transfer. Storage packages are authored
-examples with stated sizes, independent of the standalone lab's scenarios.
+## Accuracy notes
 
-The material links use the existing source files. The TXT comparison file contains
-exactly the visible text extracted from the supplied Word document; the comparison
-lists that document's actual package entries and example metadata. The former
-Base64-as-encryption illustration is replaced by an explicitly symbolic example.
+The original lesson text is retained. Explicit notes correct these source issues:
 
-Dedicated `compression-editor.css` uses shared design tokens and is loaded by
-the workbook entry pages. No standalone widget scripts, iframe, direct local
-storage store or new runtime dependency is needed.
+- Base64 is encoding, not encryption. The original strings remain visible with
+  that correction, including in the optional encryption chapter.
+- Variable blocks and averaging illustrate information loss. Actual JPEG uses
+  fixed 8×8 transforms and quantization. Block and file-size estimates are teaching
+  models, not JPEG encoding or measured file sizes. Face/eye challenges use the
+  original parameter thresholds; learners must assess actual visibility.
+- ZIP usually compresses entries independently. Shared dictionaries across files
+  are available in solid 7z/RAR modes.
+- The storage scenarios use 16×1024³ bytes, correctly labeled **16 GiB**, and the
+  exact source compression factors with 48 MiB archive overhead. These are authored
+  assumptions, not measured compression rates. Format conversion can discard
+  formatting, image layers or working information.
+- Video/photo calculators consistently use decimal MB. The standalone calculators
+  mix binary and decimal assumptions for a “2 GB” card.
+- The supplied `Screenshot.jpg` actually contains PNG data, also in the original
+  embedded widget data. This is stated in the native screenshot experiment; its
+  projected size is a teaching estimate, not a generated JPEG.
+- The inspector's 13,460-byte DOCX is the original illustrative assumption, not the
+  measured size of the supplied material DOCX. The TXT size is measured as UTF-8.
+- RLE includes multi-digit counts and Unicode byte costs. The prose source's
+  simplified “two characters per tuple” is not used as a general byte calculation.
 
-Validation:
+## Maintenance and validation
+
+`tools/dev/sync-compression-source.mjs` inventories the retained HTML and language
+files and generates native declarative content, scenario constants, language
+entries and the exact embedded photo. Reviewed technical annotations live in
+`resources/workbookresources/compression/source-corrections.json`.
+`generate-compression-slides.mjs` produces the six static illustrations using the
+original canvas functions offline. Neither original widget scripts nor an iframe
+are loaded by the native client.
+
+`generate-compression-parity.mjs` executes the original storage operations offline
+and generates 420 input states with three expected operation results each. Shared
+JVM/JS tests compare all 1,260 outcomes, including sequential changes and repeated
+operations. Inventory tests compare chapters, answers, choices, hints, materials
+and lesson text with the retained original. Browser validation covers every chapter,
+all activity types, full-resolution canvases, tutorial completion, independent
+simulators, errors, persistence, slideshow navigation and mobile layout.
 
 ```sh
+node tools/dev/sync-compression-source.mjs
+node tools/dev/generate-compression-parity.mjs
+node tools/dev/generate-compression-slides.mjs
 sbt 'coreJVM/testOnly *CompressionExperimentSpec' 'coreJS/testOnly *CompressionExperimentSpec'
 sbt 'client/testOnly *CreateCompressionWorkbookSpec' 'client/fastLinkJS'
-node --test tools/dev/compression-workbook-content.test.mjs
-node --test tools/dev/workbook-stylesheets.test.mjs
+node --test tools/dev/compression-workbook-content.test.mjs tools/dev/workbook-stylesheets.test.mjs
 node --test tools/dev/compression-workbook.test.mjs
 ```
-
-The browser test serves the freshly linked client bundle, selects guest mode and
-checks edits, fullscreen reopening, independent RLE exercises, dictionary steps,
-image controls, material links, storage selection, reload persistence and mobile
-layout without a backend connection.

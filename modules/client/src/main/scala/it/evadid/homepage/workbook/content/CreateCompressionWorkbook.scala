@@ -4,331 +4,78 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.*
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
-import it.evadid.workbook.abstractions.WorkbookElement
+import it.evadid.workbook.abstractions.{WorkbookElement, TypeOfTextDisplay}
+import it.evadid.workbook.elements.structureElements.Workbook
+import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, ImageElement}
 import it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction
-import it.evadid.workbook.elements.interactionElements.pixel.BinaryPixelInteraction
-import it.evadid.workbook.model.pixel.BinaryPixelImage
+import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
+import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
 import it.evadid.workbook.model.compression.*
 
+/** Native reconstruction of every chapter and activity in the retained standalone workbook. */
 case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
-
   override val availableLanguages: List[HumanLanguage] = List(German)
-
-  override val workbookId: String = "CompressionWorkbook"
-
+  override val workbookId = "CompressionWorkbook"
   private def t(key: String): String = s"CompressionWorkbook/$key"
+  private def source(key: String): String = t("src_" + key.replace('.', '_'))
+  private def id(key: String): LanguageMapContentId = LanguageMapContentId(source(key))
+  private def experiment(elementId: String, title: String, initial: CompressionExperiment): WorkbookElement =
+    CompressionExperimentInteraction(elementId, id(title), initial)
 
-  /** Consume the replaced display's auto ID so existing written answers retain their IDs. */
-  private def experiment(key: String, initial: CompressionExperiment): WorkbookElement = {
-    nextId()
-    CompressionExperimentInteraction(s"compression-$key", LanguageMapContentId(t(key)), initial)
+  private def activity(widget: String): WorkbookElement = widget match {
+    case "calculator-video" => experiment(widget, "section0.task1.title", VideoBudget())
+    case "calculator-photo" => experiment(widget, "section0.task2.title", PhotoBudget())
+    case "widget-s1-rle" => experiment(widget, "lossless.task2.title", RunLengthText())
+    case "widget-s1-rle-text" => experiment(widget, "lossless.task3.title", RunLengthText(CreateCompressionWorkbook.sampleText))
+    case "widget-s1-dict" => experiment(widget, "widget.dict.dictTableLabel", DictionaryText(CreateCompressionWorkbook.sampleText))
+    case "widget-s1-efficiency" => sortingReasonExercise(widget,
+      List("optionRle", "optionDict", "optionNone").map(k => source(s"widget.efficiency.$k")),
+      List(1,2,1,0).zipWithIndex.map((correct,i) => (source(s"widget.efficiency.files.${i}.nativeLabel"), correct,
+        source(s"widget.efficiency.files.${i}.feedbackWrong"), source("widget.efficiency.reasonPrompt"))))
+    case "widget-s2-bitflip" => experiment(widget, "lossy.task1.title", BitComparison())
+    case "widget-s2-jpeg-slideshow" => Slideshow(widget, (0 until 6).map { i =>
+      SlideshowPanel.ImageSlide(s"jpeg-slide-$i", ImageElement.LanguageMapBasedImageElement(s"jpeg-image-$i",
+        LanguageMapContentId(t(s"jpegImage$i")), TypeOfTextDisplay.URL_RELATIVE_TO_TECHNICAL_RESOURCES),
+        id("lossy.task2.title"), id(s"lossy.task2.slides.$i.caption"))
+    }.toList)
+    case "widget-s2-blockavg" => experiment(widget, "lossy.task3.title", ImageBlocks(CreateCompressionWorkbook.imageResource))
+    case "widget-s2-blocksize" => experiment(widget, "lossy.task4.title", ImageBlocks(CreateCompressionWorkbook.imageResource, separateChannels = false))
+    case "widget-s2-text-vs-jpeg" => experiment(widget, "lossy.task5.title", ImageBlocks(CreateCompressionWorkbook.screenshotResource,
+      imageWidth = CompressionSourceData.screenshotWidth, imageHeight = CompressionSourceData.screenshotHeight, comparison = Some(ImageFileComparison(
+        CompressionSourceData.screenshotTextBytes, CompressionSourceData.screenshotBytes, Some(LanguageMapContentId(t("screenshotFormatNote")))))))
+    case "widget-s2-lossy-closing" => sortingReasonExercise(widget,
+      List("optionLossy", "optionLossless", "optionNone").map(k => source(s"widget.lossyClosing.$k")),
+      List(0,0,1,2).zipWithIndex.map((correct,i) => (source(s"widget.lossyClosing.files.${i}.nativeLabel"), correct,
+        source(s"widget.lossyClosing.files.${i}.feedbackWrong"), source("widget.lossyClosing.reasonPrompt"))))
+    case "widget-s3-fileinspector" => experiment(widget, "filetypes.task1.title", FileInspection(CompressionSourceData.inspectorText, formattedContent = Some(LanguageMapContentId(t("inspectorFormattedLetter")))))
+    case "widget-s3-zip" => experiment(widget, "filetypes.task4.title", TransferSimulation(CompressionSourceData.archiveFiles))
+    case "widget-s4-filesystem" => experiment(widget, "final.task1.title", FileOverview(CompressionSourceData.scenarios.filterNot(_.tutorial)))
+    case key if key.startsWith("widget-s4-sim-") =>
+      val scenario = key.stripPrefix("widget-s4-sim-")
+      experiment(widget, s"widget.filesystemSimulator.scenarios.$scenario", CompressionSourceData.scenarios.find(_.scenario == scenario).get)
+    case key => throw IllegalArgumentException(s"Unmapped compression activity: $key")
   }
-
-  private def efficiencyExercise: WorkbookElement = {
-    nextId()
-    sortingReasonExercise("compression-efficiency", List(t("efficiencyRle"), t("efficiencyDictionary"), t("efficiencyNone")), List(
-      (t("efficiencyScan"), 0, t("efficiencyScanFeedback"), t("efficiencyReason")),
-      (t("efficiencyReport"), 1, t("efficiencyReportFeedback"), t("efficiencyReason")),
-      (t("efficiencyEncrypted"), 2, t("efficiencyEncryptedFeedback"), t("efficiencyReason")),
-      (t("efficiencyAddresses"), 1, t("efficiencyAddressesFeedback"), t("efficiencyReason"))))
+  private def element(n: CompressionSourceContent.Node): WorkbookElement = n.kind match {
+    case "text" => instructionHtml(source(n.value))
+    case "answer" => experiment(n.id, "common.answerPlaceholder", WrittenAnswer(
+      if n.value.isEmpty then "" else CompressionSourceData.skeletons(n.value), n.value.nonEmpty))
+    case "widget" => activity(n.id)
+    case "hint" => CollapsibleInstructionElement(n.id, id("common.showHint"), id(n.value))
+    case "ethics" => experiment(n.id, "intro.ethicsQuestion", EthicalReflection())
+    case "choice" => ChoiceInteraction(n.id, id(n.value), n.extra.split('|').toList.map(id))
+    case "compare" => experiment(n.id, "final.task1.b.thenLabel", PreviousAnswer("answer-intro"))
+    case key => throw IllegalArgumentException(s"Unmapped source node: $key")
   }
-
-  override lazy val createWorkbook: Workbook = workbook(
-    t("workbookTitle"),
-    List(
-      introSection,
-      losslessSection,
-      lossySection,
-      filetypesSection,
-      sortingDemoSection,
-      finalSection
-    ),
-    User.YanneckDimitrov
-  )
-
-  private lazy val introSection: WorkbookSection = section(
-    "section0",
-    t("section0Title"),
-    List(
-      container(t("introScenarioTitle"), List(
-        instructionHtml(t("introScenario")),
-      )),
-      container(t("introAnswerTitle"), List(
-        instructionHtml(t("introAnswerTask")),
-        createTextInput(),
-      )),
-      container(t("introSourceTitle"), List(
-        instructionHtml(t("introSnowdenIntro")),
-        instructionHtml(t("introArticle")),
-        instructionHtml(t("introQuote")),
-      )),
-      container(t("introVideoTitle"), List(
-        instructionHtml(t("introTaskText")),
-        instructionHtml(t("introRatesInfo")),
-        experiment("introWidgetPlaceholder", VideoBudget()),
-        instructionHtml(t("introReflectionTask")),
-        instructionHtml(t("introReflectionHint")),
-        createTextInput(),
-      )),
-    )
-  )
-
-  private lazy val losslessSection: WorkbookSection = section(
-    "section1",
-    t("section1Title"),
-    List(
-      container(t("s1Task1Title"), List(
-        instructionHtml(t("s1Task1Title")),
-        instructionHtml(t("s1Task1Intro")),
-        experiment("s1Task1Widget", TextBits()),
-        BinaryPixelInteraction("compression-bit-image", LanguageMapContentId(t("bitImageTitle")),
-          BinaryPixelImage(8, 8, List.tabulate(64)(i => { val x = i % 8; val y = i / 8;
-            (x == 1 || x == 6) && y >= 2 && y <= 5 || (y == 1 || y == 6) && x >= 2 && x <= 5 }))),
-        instructionHtml(t("s1Task1A")),
-        createTextInput(),
-        instructionHtml(t("s1Task1B")),
-        createTextInput(),
-      )),
-      container(t("s1Task2Title"), List(
-        instructionHtml(t("s1IntroP1")),
-        instructionHtml(t("s1Transition")),
-        instructionHtml(t("s1Task2Title")),
-        instructionHtml(t("s1Task2Intro")),
-        experiment("s1Task2Widget", RunLengthText()),
-        instructionHtml(t("s1Task2A")),
-        createTextInput(),
-        instructionHtml(t("s1Task2B")),
-        createTextInput(),
-        instructionHtml(t("s1Task2C")),
-        createTextInput(),
-      )),
-      container(t("s1Task3Title"), List(
-        instructionHtml(t("s1Task3Title")),
-        experiment("s1Task3RleWidget", RunLengthText(CreateCompressionWorkbook.sampleText)),
-        instructionHtml(t("s1Task3A")),
-        createTextInput(),
-        instructionHtml(t("s1Task3B")),
-        createTextInput(),
-        instructionHtml(t("s1Task3C")),
-        createTextInput(),
-        experiment("s1Task3CWidget", DictionaryText(CreateCompressionWorkbook.sampleText)),
-        instructionHtml(t("s1Task3CHint")),
-        instructionHtml(t("s1Task3D")),
-        createTextInput(),
-      )),
-      container(t("s1Task4Title"), List(
-        instructionHtml(t("s1Task4Title")),
-        instructionHtml(t("s1Task4QuotePlain")),
-        instructionHtml(t("s1Task4A")),
-        instructionHtml(t("s1Task4QuoteEncrypted")),
-        createTextInput(),
-        instructionHtml(t("s1Task4B")),
-        createTextInput(),
-      )),
-      container(t("s1ClosingTitle"), List(
-        instructionHtml(t("s1ClosingTitle")),
-        instructionHtml(t("s1ClosingIntro")),
-        instructionHtml(t("s1ClosingA")),
-        createTextInput(),
-        instructionHtml(t("s1ClosingB")),
-        efficiencyExercise,
-      )),
-    )
-  )
-
-  private lazy val lossySection: WorkbookSection = section(
-    "section2",
-    t("section2Title"),
-    List(
-      container(t("s2Task1Title"), List(
-        instructionHtml(t("s2IntroP1")),
-        instructionHtml(t("s2IntroP2")),
-        instructionHtml(t("s2Task1Title")),
-        instructionHtml(t("s2Task1Intro")),
-        experiment("s2Task1Widget", ImageBlocks(CreateCompressionWorkbook.imageResource)),
-        instructionHtml(t("s2Task1A")),
-        createTextInput(),
-        instructionHtml(t("s2Task1B")),
-        createTextInput(),
-        instructionHtml(t("s2Task1C")),
-        createTextInput(),
-      )),
-      container(t("s2ExplanationTitle"), List(
-        instructionHtml(t("s2ExplanationP1")),
-        instructionHtml(t("s2ExplanationP2")),
-      )),
-      container(t("s2Task2Title"), List(
-        instructionHtml(t("s2Task2Title")),
-        experiment("s2Task2Widget", ImageBlocks(CreateCompressionWorkbook.imageResource, separateChannels = false)),
-        instructionHtml(t("s2Task2A")),
-        createTextInput(),
-        instructionHtml(t("s2Task2B")),
-        createTextInput(),
-      )),
-      container(t("s2Task3Title"), List(
-        instructionHtml(t("s2Task3Title")),
-        instructionHtml(t("s2Task3A")),
-        createTextInput(),
-        instructionHtml(t("s2Task3B")),
-        createTextInput(),
-        instructionHtml(t("s2Task3C")),
-        createTextInput(),
-      )),
-      container(t("s2ClosingTitle"), List(
-        instructionHtml(t("s2ClosingTitle")),
-        instructionHtml(t("s2ClosingIntro")),
-        instructionHtml(t("s2ClosingA")),
-        createTextInput(),
-        instructionHtml(t("s2ClosingB")),
-        createTextInput(),
-      )),
-    )
-  )
-
-  private lazy val filetypesSection: WorkbookSection = section(
-    "section3",
-    t("section3Title"),
-    List(
-      container(t("s3Task1Title"), List(
-        instructionHtml(t("s3IntroP1")),
-        instructionHtml(t("s3IntroP2")),
-        instructionHtml(t("s3Task1Title")),
-        instructionHtml(t("s3Task1Intro")),
-        instructionHtml(t("s3Task1Widget")),
-        instructionHtml(t("s3Task1A")),
-        createTextInput(),
-        instructionHtml(t("s3Task1B")),
-        createTextInput(),
-      )),
-      container(t("s3Task2Title"), List(
-        instructionHtml(t("s3Task2Title")),
-        instructionHtml(t("s3Task2Intro")),
-        instructionHtml(t("s3Task2A")),
-        createTextInput(),
-        instructionHtml(t("s3Task2B")),
-        createTextInput(),
-      )),
-      container(t("s3Task3Title"), List(
-        instructionHtml(t("s3Task3Title")),
-        instructionHtml(t("s3Task3Intro")),
-        instructionHtml(t("s3Task3A")),
-        createTextInput(),
-        instructionHtml(t("s3Task3B")),
-        createTextInput(),
-      )),
-      container(t("s3Task4Title"), List(
-        instructionHtml(t("s3Task4Title")),
-        instructionHtml(t("s3Task4Intro")),
-        experiment("s3Task4Widget", ArchiveBudget()),
-        instructionHtml(t("s3Task4A")),
-        createTextInput(),
-        instructionHtml(t("s3Task4B")),
-        createTextInput(),
-        instructionHtml(t("s3Task4C")),
-        createTextInput(),
-      )),
-      container(t("s3ClosingTitle"), List(
-        instructionHtml(t("s3ClosingTitle")),
-        instructionHtml(t("s3ClosingA")),
-        createTextInput(),
-        instructionHtml(t("s3ClosingB")),
-        createTextInput(),
-      )),
-    )
-  )
-
-  private lazy val sortingDemoSection: WorkbookSection = section(
-    "sectionSortingDemo",
-    t("sortingDemoSectionTitle"),
-    List(
-      container(t("sortingDemoContainerTitle"), List(
-        instructionHtml(t("sortingDemoIntro")),
-        sortingExercise(
-          "compression-sorting-demo",
-          List(
-            t("sortingDemoFieldLossless"),
-            t("sortingDemoFieldLossy")
-          ),
-          List(
-            (t("sortingDemoItemRle"), 0, t("sortingDemoErrorRle")),
-            (t("sortingDemoItemJpeg"), 1, t("sortingDemoErrorJpeg")),
-            (t("sortingDemoItemPng"), 0, t("sortingDemoErrorPng")),
-            (t("sortingDemoItemMp3"), 1, t("sortingDemoErrorMp3"))
-          )
-        )
-      )),
-      container(t("sortingReasonDemoContainerTitle"), List(
-        instructionHtml(t("sortingReasonDemoIntro")),
-        sortingReasonExercise(
-          "compression-sorting-reason-demo",
-          List(
-            t("sortingDemoFieldLossless"),
-            t("sortingDemoFieldLossy")
-          ),
-          List(
-            (t("sortingDemoItemRle"), 0, t("sortingDemoErrorRle"), t("sortingReasonDemoItemRlePrompt")),
-            (t("sortingDemoItemJpeg"), 1, t("sortingDemoErrorJpeg"), t("sortingReasonDemoItemJpegPrompt")),
-            (t("sortingDemoItemPng"), 0, t("sortingDemoErrorPng"), t("sortingReasonDemoItemPngPrompt")),
-            (t("sortingDemoItemMp3"), 1, t("sortingDemoErrorMp3"), t("sortingReasonDemoItemMp3Prompt"))
-          )
-        )
-      ))
-    )
-  )
-
-  private lazy val finalSection: WorkbookSection = section(
-    "section4",
-    t("section4Title"),
-    List(
-      container(t("s4Task1Title"), List(
-        instructionHtml(t("s4IntroP1")),
-        instructionHtml(t("s4IntroP2")),
-        instructionHtml(t("s4IntroP3")),
-        instructionHtml(t("s4Task1Title")),
-        instructionHtml(t("s4Task1Note")),
-        experiment("s4Task1Widget", CreateCompressionWorkbook.storageStudy),
-        instructionHtml(t("s4Task1A")),
-        createTextInput(),
-        instructionHtml(t("s4Task1B")),
-        createTextInput(),
-      )),
-      container(t("s4ClosingTitle"), List(
-        instructionHtml(t("s4ClosingTitle")),
-        instructionHtml(t("s4ClosingA")),
-        createTextInput(),
-        instructionHtml(t("s4ClosingB")),
-        instructionHtml(t("s4ClosingBHint")),
-        createTextInput(),
-        instructionHtml(t("s4ClosingC")),
-        createTextInput(),
-      )),
-      container(t("s4PlenumTitle"), List(
-        instructionHtml(t("s4PlenumTitle")),
-        instructionHtml(t("s4PlenumNote")),
-        instructionHtml(t("s4PlenumQuestions")),
-      )),
-    )
-  )
-
+  override lazy val createWorkbook: Workbook = workbook(t("workbookTitle"), CompressionSourceContent.sections.map { s =>
+    section(s.id, source(s.title), s.blocks.flatMap { b =>
+      val downloads = if s.id == "filetypes" && b == s.blocks.head then List(instructionHtml(t("materialsDownloads"))) else Nil
+      val content = downloads ++ b.nodes.filterNot(n => n.kind == "text" && n.value == b.title).map(element)
+      if b.title == s.title then content else List(container(source(b.title), content))
+    })
+  }, User.YanneckDimitrov)
 }
-
 object CreateCompressionWorkbook {
-  val sampleText = "Die Daten bleiben geheim. Die Daten bleiben wichtig. Die Daten bleiben erhalten."
-  val imageResource = "programs/20260907Datenkompression/img/katze.jpg"
-  private def file(name: String, size: Int, information: String): StorageFile =
-    StorageFile(name, size, LanguageMapContentId(s"CompressionWorkbook/$information"))
-  private def pack(label: String, files: List[StorageFile]): StoragePackage =
-    StoragePackage(LanguageMapContentId(s"CompressionWorkbook/$label"), files)
-  // Authored decimal-MB teaching packages. Sizes/rates are assumptions, not measured compression results.
-  val storageStudy = StorageStudy(List(
-    pack("packageVideos", List(
-      file("Aufnahmen.mp4", 30000, "fileVideoInfo"), file("Berichte.txt", 8000, "fileTextInfo"))),
-    pack("packageLogs", List(
-      file("Protokolle.txt", 33600, "fileTextInfo"), file("Fotos.raw", 8000, "fileRawInfo"),
-      file("Berichte.docx", 1200, "fileDocumentInfo"))),
-    pack("packageMixed", List(
-      file("Aufnahmen.mp4", 18000, "fileVideoInfo"), file("Scans.tiff", 6000, "fileScanInfo"),
-      file("Berichte.docx", 5000, "fileDocumentInfo"), file("Archiv.zip", 9000, "fileArchiveInfo"),
-      file("Verschluesselt.bin", 4000, "fileEncryptedInfo")))))
+  val sampleText = CompressionSourceData.sampleText
+  val imageResource = "workbookresources/compression/source-cat.jpg"
+  val screenshotResource = "programs/20260907Datenkompression/Material/Sektion 2/Screenshot.jpg"
 }
