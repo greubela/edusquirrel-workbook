@@ -17,6 +17,10 @@ test('evacuation tasks are translated in both languages and preserve source quot
       assert(label, `${language}: missing measure ${measure}`);
       assert.equal(Number(label.replace(/[^0-9]/g, '')), cost, `${language}: quotation cost for ${measure}`);
     }
+    for (const key of ['plotInstructions','plotAdd','plotConnect','plotRange','plotPoints','plotAction','plotRemove',
+      'evacuationDoorPredictionPlot','evacuationDoorObservationPlot','plotPredictedRelationship','plotObservedRelationship',
+      ...['Linear','Quadratic','Exponential','Inverse','Direct','Other'].map(kind=>'plotRelationship'+kind)])
+      assert(map[key]?.trim(), `${language}: missing graph label ${key}`);
     assert(map.evacuationLayoutProvenance.includes('PDF'));
     assert(map.evacuationDoorResults.includes(language === 'en' ? '1.2 m' : '1,2 m'));
   }

@@ -1,6 +1,10 @@
 package it.evadid.homepage.workbook.content
 
 import it.evadid.core.datastructures.user.User
+import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction
+import it.evadid.workbook.model.plot.PlotAxis
+import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.workbook.elements.interactionElements.evacuation.*
 import it.evadid.workbook.model.evacuation.*
@@ -9,6 +13,13 @@ import it.evadid.workbook.elements.structureElements.Workbook
 /** Partial adaptation of the original grid-automaton PDF. The classic PDF remains available. */
 case class CreateEvacuationWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
   override val workbookId = "workbookEvacuation"
+  private def doorPlot(id: String, title: String): CoordinatePlotInteraction = CoordinatePlotInteraction(id,
+    LanguageMapContentId(s"digitalWorkbooks/$title"), LanguageMapContentId("digitalWorkbooks/evacuationDoorWidth"),
+    LanguageMapContentId("digitalWorkbooks/evacuationDoorTime"), PlotAxis(0, 3, 0.5), PlotAxis(0, 30, 10))
+  private def relationship(id: String, prompt: String): ChoiceInteraction = ChoiceInteraction(id,
+    LanguageMapContentId(s"digitalWorkbooks/$prompt"),
+    List("Linear", "Quadratic", "Exponential", "Inverse", "Direct", "Other")
+      .map(kind => LanguageMapContentId(s"digitalWorkbooks/plotRelationship$kind")))
   override def createWorkbook: Workbook = workbook("digitalWorkbooks/evacuationWorkbookTitle", List(
     section("evacuation-introduction", "digitalWorkbooks/evacuationIntroduction", List(
       container("digitalWorkbooks/evacuationIntroduction", List(
@@ -46,8 +57,12 @@ case class CreateEvacuationWorkbook(fullInfo: FullInfo) extends WorkbookFactory 
       container("digitalWorkbooks/evacuationDoorTitle", List(
         instructionPlaintext("digitalWorkbooks/evacuationLayoutProvenance"),
         instructionPlaintext("digitalWorkbooks/evacuationDoorPrediction"), createTextInput("evacuation-door-prediction"),
+        doorPlot("evacuation-door-prediction-plot", "evacuationDoorPredictionPlot"),
+        relationship("evacuation-door-prediction-relationship", "plotPredictedRelationship"),
         EvacuationSimulationInteraction("evacuation-door-experiment", EvacuationExperiment(CreateEvacuationWorkbook.narrowDoorHall)),
-        instructionPlaintext("digitalWorkbooks/evacuationDoorResults"), createTextInput("evacuation-door-results"))))),
+        instructionPlaintext("digitalWorkbooks/evacuationDoorResults"), createTextInput("evacuation-door-results"),
+        doorPlot("evacuation-door-observation-plot", "evacuationDoorObservationPlot"),
+        relationship("evacuation-door-observation-relationship", "plotObservedRelationship"))))),
     section("evacuation-masterplan", "digitalWorkbooks/evacuationBudgetTitle", List(
       container("digitalWorkbooks/evacuationBudgetTitle", List(
         instructionMarkdown("digitalWorkbooks/evacuationBudgetTask")) ++

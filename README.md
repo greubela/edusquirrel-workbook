@@ -32,7 +32,7 @@ Shared workbook abstractions live in [WorkbookElement.scala](modules/core/shared
 | --- | --- |
 | [homepage/index.html](homepage/index.html) | Classic catalogue, including PDF/ZIP editions |
 | [workbooks](homepage/workbooks/index.html) | Laminar catalogue of available digital workbooks; browsing is public |
-| [evacuationWorkbook](homepage/evacuationWorkbook/index.html) | Partial evacuation adaptation with local EVA2 playback, locker/door comparisons, a budget plan and model critique |
+| [evacuationWorkbook](homepage/evacuationWorkbook/index.html) | Partial evacuation adaptation with local EVA2 playback, locker/door comparisons with saved graphs, a budget plan and model critique |
 | [workbookDesign](homepage/workbookDesign/index.html) | Test workbook and interaction examples, including local EVA2 floor construction |
 | [embroideryWorkbook](homepage/embroideryWorkbook/index.html) | Embroidery workbook |
 | [embroideryPreviewWorkbook](homepage/embroideryPreviewWorkbook/index.html) | Separate embroidery edition with geometric turtle previews, conditionals and recursion (DE/EN) |
