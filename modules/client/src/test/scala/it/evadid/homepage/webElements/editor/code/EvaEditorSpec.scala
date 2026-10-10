@@ -1257,6 +1257,102 @@ class EvaEditorSpec extends FunSuite {
     assert(snapTab.editorElement.isInstanceOf[SnapEditor.SnapCodeEditor])
   }
 
+  test("prepared text tabs retain their supplied binding and unfinished source exactly") {
+    val sources: List[(AppLanguage.ProgrammingLanguage, ProgrammingState)] = List(
+      AppLanguage.Java -> ProgrammingStateJavaString("\npublic class Drawing {\r\n\tpublic void draw(\r\n  "),
+      AppLanguage.Python -> ProgrammingStatePythonString("\tdef draw(\r\n\n  ")
+    )
+    sources.foreach { (language, source) =>
+      val local = Var[ProgrammingState](source)
+      val stored = ProgrammingExercise.StateSerializer.serialize(source)
+      var published = List.empty[ProgrammingState]
+      val tab = EvaProgrammingTab.prepared(testingConfig, language, local,
+        next => published = published :+ next)
+      assert(tab.associatedVar eq local)
+      assertEquals(tab.captureSource(), source)
+      assertEquals(ProgrammingExercise.StateSerializer.serialize(local.now()), stored)
+      assertEquals(published, Nil)
+    }
+  }
+
+  test("a prepared Java tab opens a full class without deriving another representation") {
+    val source = ProgrammingStateJavaString(
+      "\npublic class Drawing {\r\n\tpublic static void main(String[] args) {}\r\n}\r\n\t ")
+    intercept[IllegalArgumentException](source.toSnapXml)
+    val local = Var[ProgrammingState](source)
+    var published = List.empty[ProgrammingState]
+    val tab = EvaProgrammingTab.prepared(testingConfig, AppLanguage.Java, local,
+      next => published = published :+ next)
+    val editor = tab.editorElement.asInstanceOf[JavaFunctionBasedEditor]
+    assert(editor.state eq local)
+    assertEquals(tab.captureSource(), source)
+    assertEquals(local.now(), source)
+    assertEquals(published, Nil)
+  }
+
+  test("prepared Python content keeps edits and restored drafts on the supplied binding") {
+    val local = Var[ProgrammingState](ProgrammingStatePythonString("forward(10)"))
+    var published = List.empty[ProgrammingState]
+    val tab = EvaProgrammingTab.prepared(testingConfig, AppLanguage.Python, local,
+      next => published = published :+ next)
+    val editor = tab.editorElement.asInstanceOf[CodeMirrorEditor]
+    val edited = ProgrammingStatePythonString("\n\tdef draw(\r\n  ")
+    editor.content.set(edited.code)
+    editor.onUserInput(edited.code)
+    assertEquals(local.now(), edited)
+    assertEquals(tab.captureSource(), edited)
+    assertEquals(published, List(edited))
+
+    val restored = ProgrammingStatePythonString("\r\nforward(42)\r\n\t ")
+    local.set(restored)
+    assertEquals(editor.content.now(), restored.code)
+    assertEquals(tab.captureSource(), restored)
+    assertEquals(published, List(edited))
+  }
+
+  test("a prepared Snap tab captures restored source and legacy metadata from its supplied binding") {
+    val initial = ProgrammingStateSnapXml("<project/>", List(" watcher ", "comment\r\n\t "))
+    val local = Var[ProgrammingState](initial)
+    var published = List.empty[ProgrammingState]
+    val tab = EvaProgrammingTab.prepared(testingConfig, AppLanguage.SnapLanguage, local,
+      next => published = published :+ next)
+    val editor = tab.editorElement.asInstanceOf[SnapEditor.SnapCodeEditor]
+    assert(editor.state eq local)
+    assertEquals(tab.captureSource(), initial)
+
+    val restored = ProgrammingStateSnapXml("<project name=\"restored\"/>",
+      List(" restored watcher\n", " restored comment\r\n"))
+    local.set(restored)
+    assertEquals(tab.captureSource(), restored)
+    assertEquals(ProgrammingExercise.StateSerializer.serialize(local.now()),
+      ProgrammingExercise.StateSerializer.serialize(restored))
+    assertEquals(published, Nil)
+  }
+
+  test("a programming tab forwards fullscreen lifecycle once without changing its supplied state") {
+    import com.raquo.laminar.api.L.Element
+    import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
+    import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorProgrammingTab
+
+    val source = ProgrammingStatePythonString("\tdef draw(\r\n  ")
+    val local = Var[ProgrammingState](source)
+    var openCalls = 0
+    var closeCalls = 0
+    val editor = new HtmlAppElement with FullscreenLifecycle {
+      override def getDomElement(): Element =
+        throw IllegalStateException("Lifecycle forwarding must not request the DOM.")
+      override def onFullscreenOpen(): Unit = openCalls += 1
+      override def onFullscreenClose(): Unit = closeCalls += 1
+    }
+    val tab = EvaEditorProgrammingTab[ProgrammingState](local, AppLanguage.Python, _ => editor, _.toPython)
+    tab.onFullscreenOpen()
+    assertEquals((openCalls, closeCalls), (1, 0))
+    assertEquals(local.now(), source)
+    tab.onFullscreenClose()
+    assertEquals((openCalls, closeCalls), (1, 1))
+    assertEquals(local.now(), source)
+  }
+
   test("ProgrammingState converts itself at the Snap editor boundary") {
     val snap = ProgrammingStatePythonString("forward(10)").toSnapXml
     assert(snap.snapXml.contains("<project"), clue = snap.snapXml.take(120))

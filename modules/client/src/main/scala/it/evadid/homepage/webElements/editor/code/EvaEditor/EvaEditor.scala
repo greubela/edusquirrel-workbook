@@ -5,9 +5,6 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
-import it.evadid.homepage.webElements.code.JavaFunctionBasedEditor
-import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
-import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.{PyodideTurtleCommandRunner, SnapTurtleCommandExecution}
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.workbook.elements.interactionElements.programming.*
@@ -62,9 +59,9 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
     case snap: ProgrammingStateSnapXml => snap
     case _ => ProgrammingStateSnapXml.empty
   )
-  private lazy val pythonState = Var(state.now() match
-    case ProgrammingStatePythonString(code) => code
-    case _ => ""
+  private lazy val pythonState = Var[ProgrammingState](state.now() match
+    case python: ProgrammingStatePythonString => python
+    case _ => ProgrammingStatePythonString("")
   )
   private lazy val javaState = Var[ProgrammingState](state.now() match
     case java: ProgrammingStateJavaString => java
@@ -100,7 +97,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
 
   private def show(next: ProgrammingState): Unit = next match
     case snap: ProgrammingStateSnapXml => snapState.set(snap)
-    case ProgrammingStatePythonString(code) => pythonState.set(code)
+    case python: ProgrammingStatePythonString => pythonState.set(python)
     case java: ProgrammingStateJavaString => javaState.set(java)
     case expression: ProgrammingStateBeExpression => snapState.set(expression.toSnapXml)
 
@@ -124,17 +121,17 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
   }
 
   private lazy val snapEditor = Option.when(enabledTabs.contains(Tab.Snap))(
-    SnapCodeEditor(snapState, config.snapConfig, next => publish(Tab.Snap, next))
+    EvaProgrammingTab.prepared(config, SnapLanguage, snapState, next => publish(Tab.Snap, next))
   )
   private lazy val pythonEditor = Option.when(enabledTabs.contains(Tab.Python))(
-    CodeMirrorEditor(pythonState, code => publish(Tab.Python, ProgrammingStatePythonString(code)), language = AppLanguage.Python)
+    EvaProgrammingTab.prepared(config, AppLanguage.Python, pythonState, next => publish(Tab.Python, next))
   )
   private lazy val javaEditor = Option.when(enabledTabs.contains(Tab.Java))(
-    new JavaFunctionBasedEditor(javaState, onStateEdited = next => publish(Tab.Java, next))
+    EvaProgrammingTab.prepared(config, AppLanguage.Java, javaState, next => publish(Tab.Java, next))
   )
-  private lazy val snapElement = snapEditor.map(_.getDomElement())
-  private lazy val pythonElement = pythonEditor.map(_.getDomElement())
-  private lazy val javaElement = javaEditor.map(_.getDomElement())
+  private lazy val snapElement = snapEditor.map(_.domElement)
+  private lazy val pythonElement = pythonEditor.map(_.domElement)
+  private lazy val javaElement = javaEditor.map(_.domElement)
 
   def currentState(): ProgrammingState = state.now()
 
@@ -143,7 +140,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
     else if !viewAvailable.now() then throw IllegalStateException("This draft cannot be run in the selected editor.")
     else activeTab.now() match
       case Tab.Snap => snapState.now()
-      case Tab.Python => ProgrammingStatePythonString(pythonState.now())
+      case Tab.Python => pythonState.now()
       case Tab.Java => javaState.now()
 
   private def deriveCommands(source: ProgrammingState): Future[List[TurtleCommand[Double]]] =
@@ -163,7 +160,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
   private def captureSource(): ProgrammingState =
     if mounted && !viewAvailable.now() then throw IllegalStateException("This draft cannot be run in the selected editor.")
     else if mounted && activeTab.now() == Tab.Snap then
-      snapEditor.getOrElse(throw IllegalStateException("Snap is not enabled.")).captureCurrentProject()
+      snapEditor.getOrElse(throw IllegalStateException("Snap is not enabled.")).captureSource()
     else currentViewState()
 
   private def cancelExecution(): Unit = {
