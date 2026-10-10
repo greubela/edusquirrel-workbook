@@ -22,9 +22,9 @@ EduSquirrel builds interactive, multilingual student workbooks with Scala.js and
 | `target/` | Generated Scala build output and reports; ignored by Git |
 | `node_modules/` | Installed Node development dependencies; generated and ignored by Git |
 | `_site/`, `dist/` | Generated site/export output; ignored by Git |
-| `tmp/` | Extracted workbook reference copies (`bitcoin/`, `evacuation/`, `phishing/`) and ignored local scratch files (`work/`) |
+| `tmp/` | Workbook migration references (`bitcoin/`, `evacuation/`, `image-recognition/`, `phishing/`) and ignored local scratch files (`work/`) |
 
-Keep temporary workbook extracts and development captures under `tmp/`. The reference copies are retained for migration work; duplicate extracts have been consolidated here. `tmp/work/` is ignored by Git. Published teaching materials and classic PDF/ZIP downloads remain under `resources/` and are independent of these reference copies. Neither site assembly includes `tmp/`.
+Keep temporary workbook extracts and development captures under `tmp/`, grouped by their actual subject. The reference copies are retained for migration work; duplicate extracts have been consolidated here. Image-recognition PDFs belong in `tmp/image-recognition/`; the evacuation handoff plan belongs in `tmp/evacuation/`. `tmp/work/` is ignored by Git: use subject subdirectories such as `tmp/work/evacuation/`, `tmp/work/image-recognition/` and `tmp/work/compression/` for scratch files, with `analysis/` for extracted research material. Cross-workbook checks belong in `tmp/work/integration/`, reusable interaction experiments in `tmp/work/shared-interactions/`, and temporary tool dependencies in `tmp/work/tooling/`. Published teaching materials and classic PDF/ZIP downloads remain under `resources/` and are independent of these reference copies. Neither site assembly includes `tmp/`.
 
 ### Choosing a location for new content
 
@@ -42,7 +42,7 @@ Keep temporary workbook extracts and development captures under `tmp/`. The refe
 | Browser/asset checks, importers and repeatable development utilities | `tools/dev/` |
 | Architecture, migration decisions and maintained task inventories | `docs/`; link relevant guides from this README |
 | Deliberately retained extracts used as migration references | An appropriate subject directory inside `tmp/` |
-| Ad hoc ZIP extracts, logs, screenshots, analysis, drafts and disposable scripts | `tmp/work/`; do not commit these files |
+| Ad hoc ZIP extracts, logs, screenshots, analysis, drafts and disposable scripts | `tmp/work/<subject>/`; use `integration/` for cross-workbook checks; do not commit these files |
 
 Reuse these locations and existing subject/package directories. Do not create a new directory at the repository root unless no existing directory can serve the purpose and there is a strong architectural or tooling necessity. Explain that necessity and update this directory guide when such an exception is required. Agent instructions are in [AGENTS.md](AGENTS.md).
 
