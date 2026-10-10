@@ -19,7 +19,7 @@ class CreateCompressionWorkbookSpec extends munit.FunSuite {
     assertEquals(experiments.count(_.initial.isInstanceOf[FileSimulation]), 4)
     assertEquals(experiments.count(_.initial.isInstanceOf[ImageBlocks]), 3)
     assertEquals(elements.count(_.isInstanceOf[ChoiceInteraction]), 7)
-    assertEquals(elements.collect { case e: Slideshow => e }.head.panels.size, 6)
+    assertEquals(elements.collect { case e: Slideshow => e }.head.panelSize, 6)
     assertEquals(elements.count(_.isInstanceOf[SortingReasonInteraction]), 2)
     val inventory = CompressionSourceContent.sections.flatMap(_.blocks).flatMap(_.nodes)
     assert(inventory.filter(n => Set("widget","answer","ethics","choice","hint","compare")(n.kind)).forall(n => elements.exists(_.elementId == n.id)))

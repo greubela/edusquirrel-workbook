@@ -30,8 +30,8 @@ object WorkbookImageElement {
         LanguageMapBasedWorkbookImageElement(element.elementId,
           element.getElementAs[LanguageMapContentId]("content"),
           element.getElementAs[TypeOfTextDisplay]("howToResolveUrl").asInstanceOf[URL_TYPE],
-          element.getOptionalElementAs("description", None),
-          element.getOptionalElementAs("copyright", None)
+          element.getOptionalElementAs[Option[LanguageMapContentId]]("description", None),
+          element.getOptionalElementAs[Option[CopyrightInfo]]("copyright", None)
         )
       }
     }
