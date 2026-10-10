@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import {JSDOM} from 'jsdom';
-fs.mkdirSync(new URL('../../tmp/work/', import.meta.url), {recursive:true});
+fs.mkdirSync(new URL('../../tmp/work/compression/', import.meta.url), {recursive:true});
 const root=path.resolve(import.meta.dirname,'../..');
 const source=path.join(root,'resources/programs/20260907Datenkompression');
 const context={window:{}}; vm.createContext(context);
@@ -106,5 +106,5 @@ const screenshotTextBytes=fs.statSync(path.join(source,'Material/Sektion 2/test.
 const constants=`package it.evadid.homepage.workbook.content\n\nimport it.evadid.workbook.model.compression.*\n/** Exact authored datasets, generated offline from the retained original. */\nobject CompressionSourceData {\n  val screenshotWidth = ${screenshotDimensions.width}\n  val screenshotHeight = ${screenshotDimensions.height}\n  val screenshotBytes = ${screenshotBytes}\n  val screenshotTextBytes = ${screenshotTextBytes}\n  val skeletons: Map[String,String] = Map(${skeletons.sort().map(k=>`${q(k)} -> ${q(getLang(k))}`).join(',')})\n  val sampleText = ${q(widgets.dict.sampleText)}\n  val inspectorText = ${q(widgets.fileInspector.txtContent)}\n  val archiveFiles: List[(String,String)] = List(${widgets.zipArchive.files.map(f=>`(${q(f.name)},${q(f.text)})`).join(',')})\n  val scenarios: List[FileSimulation] = List(\n${scenarios.map(s=>`    FileSimulation(${q(s.id)}, List(\n${s.files.map(f=>`      SimulationFile(${q(f.name)}, ${f.bytes}L, ${q(f.type)}, List(${f.metadata.map(q).join(',')}), ${f.count||1})`).join(',\n')}), tutorial = ${!!s.tutorial})`).join(',\n')}\n  )\n}\n`;
 fs.writeFileSync(path.join(root,'modules/client/src/main/scala/it/evadid/homepage/workbook/content/CompressionSourceData.scala'),constants);
 fs.writeFileSync(path.join(root,'resources/workbookresources/compression/source-inventory.json'),JSON.stringify(inventory,null,2)+'\n');
-fs.writeFileSync(path.join(root,'tmp/work/compression-source-data.json'),JSON.stringify({language,widgets,scenarios:context.window.buildS4Scenarios(widgets.s4Scenarios),sections},null,2));
+fs.writeFileSync(path.join(root,'tmp/work/compression/compression-source-data.json'),JSON.stringify({language,widgets,scenarios:context.window.buildS4Scenarios(widgets.s4Scenarios),sections},null,2));
 console.log(`${sections.length} chapters, ${inventory.answers.length} text answers, ${inventory.forms.length} choices, ${inventory.widgets.length} widgets, ${inventory.hints.length} hints`);
