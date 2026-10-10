@@ -5,10 +5,8 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.vm.test.{BeTestSuite, SampleBeTest}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
-import JavaTurtleArgument.{IntValue, DoubleValue}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import munit.FunSuite
@@ -106,233 +104,81 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
         .asInstanceOf[ProgrammingExerciseFullJava]
       assertEquals(restored.elementId, expectedId)
       assertEquals(restored.testSuite, expectedSuite)
-      assertEquals(restored.turtleTask, None)
+      assertEquals(restored.startingProgram, defaultSource)
       assertEquals(restored.defaultValue, ProgrammingStateJavaString(defaultSource))
     }
   }
 
-  test("full Java turtle tasks roundtrip their starter whitespace, method, arguments and target shapes") {
+  test("full Java exercises roundtrip their exact starting source without task grading") {
     val source = " \r\npublic class Drawing {\r\n  public static void main(String[] args) {\n    square(25);\n  }\r\n}\n\n\t "
-    val task = JavaTurtleTask(
-      startingProgram = source,
-      methodName = "square",
-      cases = List(
-        JavaTurtleCase(
-          List(IntValue(25), IntValue(-3)),
-          TurtleGraphic.TurtleGraphicProgram(List(
-            TurtleCommand("forward", List(25.0)),
-            TurtleCommand("turnRight", List(90.0))
-          ))
-        ),
-        JavaTurtleCase(List(IntValue(40)), TurtleGraphic.TurtleGraphicSvgString("M0 0 L40 0 L40 40 Z")),
-        JavaTurtleCase(List(IntValue(0)), TurtleGraphic.TurtleGraphicProgram(Nil))
-      )
-    )
     val testSuite: Option[BeTestSuite] = Some(SampleBeTest("  assert True\r\n"))
-    val original = ProgrammingExerciseFullJava("prog-full-java-task", testSuite, Some(task))
+    val original = ProgrammingExerciseFullJava("prog-full-java-source", testSuite, source)
     val serialized = ProgrammingExerciseFullJava.factory.toSerializableElement(original)
-
-    assertEquals(serialized.getElementAs[Option[JavaTurtleTask]]("turtleTask"), Some(task))
-    assertEquals(original.defaultValue, ProgrammingStateJavaString(source))
+    assertEquals(serialized.getElement("startingProgram"), source)
+    assert(!serialized.allConstructorFields.contains("turtleTask"))
 
     val restored = WorkbookElementFactory.serializerRefBasedJson.deserialize(
       WorkbookElementFactory.serializerRefBasedJson.serialize(original)
     ).asInstanceOf[ProgrammingExerciseFullJava]
     assertEquals(restored.elementId, original.elementId)
     assertEquals(restored.testSuite, testSuite)
-    assertEquals(restored.turtleTask, Some(task))
-    assertEquals(restored.defaultValue, ProgrammingStateJavaString(source))
-    assertEquals(restored.turtleTask.get.cases.map(_.arguments),
-      List(List(IntValue(25), IntValue(-3)), List(IntValue(40)), List(IntValue(0))))
-    assertEquals(restored.turtleTask.get.cases.map(_.expectedShape), task.cases.map(_.expectedShape))
-  }
-
-  test("the square pilot has an unfinished parameter method and separate positive and zero targets") {
-    val task = JavaTurtleTask.squarePilot
-    assertEquals(task.methodName, "square")
-    assert(task.startingProgram.contains("public class Drawing"))
-    assert(task.startingProgram.contains("static void square(int side)"))
-    assert(task.startingProgram.contains("public static void main(String[] args)"))
-    assert(task.startingProgram.contains("square(25);"))
-    assert(!task.startingProgram.contains("forward("))
-    assertEquals(task.cases.map(_.arguments), List(List(IntValue(25)), List(IntValue(40)), List(IntValue(0))))
-
-    task.cases.take(2).zip(List(25.0, 40.0)).foreach { (testCase, side) =>
-      val expected = List.fill(4)(List(
-        TurtleCommand("forward", List(side)),
-        TurtleCommand("turnRight", List(90.0))
-      )).flatten
-      assertEquals(testCase.expectedShape.toTurtleProgram.toList, expected)
-    }
-    assertEquals(task.cases.last.expectedShape.toTurtleProgram.toList, List.empty[TurtleCommand[Double]])
-  }
-
-  test("legacy turtle tasks retain coverage grading and their exact definition") {
-    val source = " \r\npublic class Drawing {\n  static void draw(int depth, double length) {}\r\n}\t "
-    val task = JavaTurtleTask(source, "draw", List(JavaTurtleCase(
-      List(IntValue(2), DoubleValue(10.5)), TurtleGraphic.TurtleGraphicSvgString("M0 0 L10.5 0"))))
-    val legacy = upickle.default.writeJs(task)
-    legacy.obj.remove("comparisonPolicy")
-    assert(!legacy.obj.contains("comparisonPolicy"))
-    assertEquals(upickle.default.read[JavaTurtleTask](legacy), task)
-
-    val original = ProgrammingExerciseFullJava(" java-legacy-policy ", turtleTask = Some(task))
-    val serialized = original.toSerialized.withMapAdded(Map(
-      "turtleTask" -> upickle.default.writeJs[Option[ujson.Value]](Some(legacy))))
-    val restored = WorkbookElementFactory.parse(serialized).asInstanceOf[ProgrammingExerciseFullJava]
-    assertEquals(restored.elementId, original.elementId)
-    assertEquals(restored.turtleTask, Some(task))
-    assertEquals(restored.turtleTask.get.comparisonPolicy, TurtleDrawingPolicy.Coverage)
+    assertEquals(restored.startingProgram, source)
     assertEquals(restored.defaultValue, ProgrammingStateJavaString(source))
   }
 
-  test("explicit turtle task policies roundtrip without changing the definition or learner draft") {
-    val source = " \r\npublic class Drawing {\n  static void draw(int depth, double length) {}\r\n}\t "
-    val draft = ProgrammingStateJavaString(" \r\npublic class Drawing {\n  static void draw(\r\n\t ")
-    val cases = List(JavaTurtleCase(List(IntValue(-2), DoubleValue(10.5)),
-      TurtleGraphic.TurtleGraphicSvgString("M0 0 L10.5 0")))
-    TurtleDrawingPolicy.values.foreach { policy =>
-      val task = JavaTurtleTask(source, "draw", cases, policy)
-      val payload = upickle.default.writeJs(task)
-      payload.obj("comparisonPolicy") = upickle.default.writeJs(policy)
-      assertEquals(upickle.default.read[JavaTurtleTask](payload), task)
-      val original = ProgrammingExerciseFullJava(s" java-policy-$policy \n", turtleTask = Some(task))
-      val serialized = original.toSerialized.withMapAdded(Map(
-        "turtleTask" -> upickle.default.writeJs[Option[ujson.Value]](Some(payload))))
-      val restored = WorkbookElementFactory.parse(serialized).asInstanceOf[ProgrammingExerciseFullJava]
-      assertEquals(restored.elementId, original.elementId)
-      assertEquals(restored.turtleTask, Some(task))
-      assertEquals(restored.defaultValue, ProgrammingStateJavaString(source))
-      val saved = original.serializerInteractionContent.serialize(draft)
-      assertEquals(restored.serializerInteractionContent.serialize(draft), saved)
-      assertEquals(restored.serializerInteractionContent.deserialize(saved), draft)
-      assertEquals(ProgrammingState.fingerprint(restored.serializerInteractionContent.deserialize(saved)),
-        ProgrammingState.fingerprint(draft))
+  test("legacy full Java task definitions migrate only their exact starting source") {
+    val source = " \r\npublic class Drawing {\n  static void square(int side) {}\r\n}\t "
+    val suite: Option[BeTestSuite] = Some(SampleBeTest("assert True\n"))
+    val legacyTask = ujson.Obj(
+      "startingProgram" -> source,
+      "methodName" -> "square",
+      "cases" -> ujson.Arr(),
+      "comparisonPolicy" -> "removed-policy"
+    )
+    val legacy = WorkbookElementSerializable(" java-square-pilot ", "ProgrammingExerciseFullJava",
+      Map("testSuite" -> upickle.default.writeJs(suite),
+        "turtleTask" -> upickle.default.writeJs[Option[ujson.Value]](Some(legacyTask))))
+    val restored = WorkbookElementFactory.parse(legacy).asInstanceOf[ProgrammingExerciseFullJava]
+    assertEquals(restored.elementId, legacy.elementId)
+    assertEquals(restored.testSuite, suite)
+    assertEquals(restored.startingProgram, source)
+    assertEquals(restored.defaultValue, ProgrammingStateJavaString(source))
+
+    val rewritten = restored.toSerialized
+    assert(!rewritten.allConstructorFields.contains("turtleTask"))
+    assertEquals(rewritten.getElement("startingProgram"), source)
+    val savedDraft = ProgrammingStateJavaString(" \r\npublic class Drawing {\n  static void square(\r\n\t ")
+    val saved = restored.serializerInteractionContent.serialize(savedDraft)
+    assertEquals(restored.serializerInteractionContent.deserialize(saved), savedDraft)
+    assertEquals(ProgrammingState.fingerprint(restored.serializerInteractionContent.deserialize(saved)),
+      ProgrammingState.fingerprint(savedDraft))
+  }
+
+  test("explicit full Java starting source takes precedence over a legacy task definition") {
+    val source = " \r\npublic class Restored {\n\t "
+    val legacy = WorkbookElementSerializable("java-source-priority", "ProgrammingExerciseFullJava",
+      Map("startingProgram" -> ujson.Str(source), "turtleTask" -> ujson.Bool(false)))
+    val restored = WorkbookElementFactory.parse(legacy).asInstanceOf[ProgrammingExerciseFullJava]
+    assertEquals(restored.startingProgram, source)
+    assertEquals(restored.defaultValue, ProgrammingStateJavaString(source))
+  }
+
+  test("malformed legacy full Java starter source cannot silently become a different program") {
+    List(ujson.Obj(), ujson.Obj("startingProgram" -> 25)).foreach { task =>
+      val legacy = WorkbookElementSerializable("java-invalid-starter", "ProgrammingExerciseFullJava",
+        Map("turtleTask" -> upickle.default.writeJs[Option[ujson.Value]](Some(task))))
+      intercept[Exception](WorkbookElementFactory.parse(legacy))
     }
   }
 
-  test("invalid turtle task comparison policies do not fall back to coverage") {
-    val task = JavaTurtleTask.squarePilot
-    val original = ProgrammingExerciseFullJava("java-invalid-policy", turtleTask = Some(task))
-    List[ujson.Value](ujson.Str("Other"), ujson.Null, ujson.Num(1), ujson.Bool(true), ujson.Obj()).foreach { policy =>
-      val payload = upickle.default.writeJs(task)
-      payload.obj("comparisonPolicy") = policy
-      intercept[Exception](upickle.default.read[JavaTurtleTask](payload))
-      val serialized = original.toSerialized.withMapAdded(Map(
-        "turtleTask" -> upickle.default.writeJs[Option[ujson.Value]](Some(payload))))
-      intercept[it.evadid.distribution.command.SerializedException](WorkbookElementFactory.parse(serialized))
-    }
-  }
-
-  test("a task-backed full Java exercise preserves unfinished student source independently of the starter") {
-    val exercise = ProgrammingExerciseFullJava("prog-full-java-draft", turtleTask = Some(JavaTurtleTask.squarePilot))
+  test("a full Java exercise preserves unfinished student source independently of its starter") {
+    val source = "public class Drawing {\n  static void square(int side) {}\n}\n"
+    val exercise = ProgrammingExerciseFullJava("prog-full-java-draft", startingProgram = source)
     val invalidDraft = ProgrammingStateJavaString(" \r\npublic class Drawing {\n  public static void square(int side) {\r\n    forward(\n\n\t ")
     val serialized = exercise.serializerInteractionContent.serialize(invalidDraft)
     val restored = exercise.serializerInteractionContent.deserialize(serialized)
-
     assertEquals(restored, invalidDraft)
     assertEquals(ProgrammingState.fingerprint(restored), ProgrammingState.fingerprint(invalidDraft))
-    assertEquals(exercise.defaultValue, ProgrammingStateJavaString(JavaTurtleTask.squarePilot.startingProgram))
-  }
-
-  test("legacy turtle case arguments retain their numeric JSON representation") {
-    val target: TurtleGraphic = TurtleGraphic.TurtleGraphicProgram(List(TurtleCommand("forward", List(25.0))))
-    val numbers = ujson.Arr(Int.MinValue, -3, 0, 25, Int.MaxValue)
-    val payload = ujson.Obj("arguments" -> numbers, "expectedShape" -> upickle.default.writeJs(target))
-    val restored = upickle.default.read[JavaTurtleCase](payload)
-
-    assertEquals(restored.arguments, List(Int.MinValue, -3, 0, 25, Int.MaxValue).map(IntValue.apply))
-    assertEquals(restored.expectedShape, target)
-    val rewritten = upickle.default.writeJs(restored)
-    assertEquals(rewritten("arguments"), numbers)
-    assertEquals(rewritten.obj.keySet.toSet, Set("arguments", "expectedShape"))
-    assert(restored.arguments.forall(_.isValid))
-    assertEquals(upickle.default.read[JavaTurtleArgument]("2.0"), IntValue(2))
-  }
-
-  test("mixed turtle task arguments roundtrip without narrowing or changing student source") {
-    val source = " \r\npublic class Drawing {\n  static void draw(int depth, double length) {}\r\n  public static void main(String[] args) {}\n}\t "
-    val target: TurtleGraphic = TurtleGraphic.TurtleGraphicProgram(Nil)
-    val task = JavaTurtleTask(source, "draw", List(
-      JavaTurtleCase(List(IntValue(2), DoubleValue(10.5)), target),
-      JavaTurtleCase(List(IntValue(0), DoubleValue(2.0)), target),
-      JavaTurtleCase(List(IntValue(1), DoubleValue(-0.0)), target)
-    ))
-    val exercise = ProgrammingExerciseFullJava("java-mixed-arguments", turtleTask = Some(task))
-    val restored = WorkbookElementFactory.serializerRefBasedJson.deserialize(
-      WorkbookElementFactory.serializerRefBasedJson.serialize(exercise)
-    ).asInstanceOf[ProgrammingExerciseFullJava]
-
-    assertEquals(restored.elementId, exercise.elementId)
-    assertEquals(restored.defaultValue, ProgrammingStateJavaString(source))
-    assertEquals(restored.turtleTask, Some(task))
-    val arguments = restored.turtleTask.get.cases.map(_.arguments)
-    assertEquals(arguments(1), List(IntValue(0), DoubleValue(2.0)))
-    arguments.last.last match {
-      case DoubleValue(value) => assertEquals(java.lang.Double.doubleToRawLongBits(value), Long.MinValue)
-      case other => fail(s"Expected a double argument, got $other")
-    }
-    val serialized = upickle.default.writeJs(task)
-    assertEquals(serialized("cases")(0)("arguments")(0), ujson.Num(2))
-    assertEquals(serialized("cases")(0)("arguments")(1), ujson.Obj("type" -> "double", "value" -> 10.5))
-    assertEquals(serialized("cases")(2)("arguments")(1), ujson.Obj("type" -> "double", "value" -> "-0.0"))
-    assertEquals(arguments(1)(1).literal, "2.0")
-    assertEquals(arguments.last.last.literal, "-0.0")
-  }
-
-  test("turtle numeric arguments preserve their type and floating-point bits") {
-    val random = new scala.util.Random(20261008L)
-    val samples = List.fill(256)(java.lang.Double.longBitsToDouble(random.nextLong())).filter(_.isFinite)
-    val arguments: List[JavaTurtleArgument] = List(
-      IntValue(Int.MinValue), IntValue(Int.MaxValue), IntValue(0),
-      DoubleValue(0.0), DoubleValue(-0.0), DoubleValue(2.0), DoubleValue(10.0 / 3.0),
-      DoubleValue(java.lang.Double.MIN_VALUE), DoubleValue(-java.lang.Double.MIN_VALUE),
-      DoubleValue(java.lang.Double.longBitsToDouble(0x0010000000000000L)),
-      DoubleValue(java.lang.Double.longBitsToDouble(0x3fefffffffffffffL)),
-      DoubleValue(java.lang.Double.longBitsToDouble(0x3ff0000000000001L)), DoubleValue(java.lang.Double.MAX_VALUE),
-      DoubleValue(-java.lang.Double.MAX_VALUE)
-    ) ++ samples.map(DoubleValue.apply)
-    arguments.foreach { argument =>
-      assert(argument.isValid)
-      val restored = upickle.default.read[JavaTurtleArgument](upickle.default.write(argument))
-      (argument, restored) match {
-        case (DoubleValue(expected), DoubleValue(actual)) =>
-          assertEquals(java.lang.Double.doubleToRawLongBits(actual), java.lang.Double.doubleToRawLongBits(expected))
-        case _ => assertEquals(restored, argument)
-      }
-    }
-  }
-
-  test("turtle argument readers reject invalid integers and malformed double values") {
-    val invalid = List[ujson.Value](
-      ujson.Num(2.5), ujson.Num(Int.MaxValue.toDouble + 1), ujson.Num(Int.MinValue.toDouble - 1),
-      ujson.Num(1e100), ujson.Num(Double.NaN), ujson.Num(Double.PositiveInfinity),
-      ujson.Num(Double.NegativeInfinity), ujson.Str("2"), ujson.Bool(true), ujson.Null, ujson.Arr(2),
-      ujson.Obj(), ujson.Obj("type" -> "double"), ujson.Obj("value" -> 2),
-      ujson.Obj("type" -> "int", "value" -> 2), ujson.Obj("type" -> 2, "value" -> 2),
-      ujson.Obj("type" -> "double", "value" -> "2.5"),
-      ujson.Obj("type" -> "double", "value" -> "0.0"),
-      ujson.Obj("type" -> "double", "value" -> "-0"),
-      ujson.Obj("type" -> "double", "value" -> "-0.00"),
-      ujson.Obj("type" -> "double", "value" -> ujson.Null),
-      ujson.Obj("type" -> "double", "value" -> true),
-      ujson.Obj("type" -> "double", "value" -> 2.5, "unit" -> "pixels"),
-      ujson.Obj("type" -> "double", "value" -> ujson.Num(Double.NaN)),
-      ujson.Obj("type" -> "double", "value" -> ujson.Num(Double.PositiveInfinity)),
-      ujson.Obj("type" -> "double", "value" -> ujson.Num(Double.NegativeInfinity))
-    )
-    invalid.foreach { value =>
-      intercept[Exception] { upickle.default.read[JavaTurtleArgument](value) }
-    }
-    intercept[Exception] { upickle.default.read[JavaTurtleArgument]("1e309") }
-    intercept[Exception] { upickle.default.read[JavaTurtleArgument]("""{"type":"double","value":1e309}""") }
-  }
-
-  test("turtle argument writers reject nonfinite doubles") {
-    List(Double.NaN, Double.PositiveInfinity, Double.NegativeInfinity).foreach { number =>
-      val argument: JavaTurtleArgument = DoubleValue(number)
-      assert(!argument.isValid)
-      intercept[Exception] { upickle.default.write(argument) }
-    }
+    assertEquals(exercise.defaultValue, ProgrammingStateJavaString(source))
   }
 }

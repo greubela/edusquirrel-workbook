@@ -2,10 +2,9 @@ package it.evadid.homepage.webElements.editor.code
 
 import com.raquo.airstream.state.Var
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtleCommandRunner
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleSource, JavaTurtleVmPrograms, JavaTurtleResolution}
+import it.evadid.vm.parsing.java.turtle.{JavaTurtleSource, JavaTurtleVmPrograms}
 import it.evadid.vm.simulation.java.{JavaTurtleRuntime, JavaTurtleEvaluation}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaString
-import it.evadid.workbook.elements.interactionElements.programming.{JavaTurtleArgument, JavaTurtleTask}
 
 import java.util.concurrent.CancellationException
 import scala.concurrent.{Future, Promise}
@@ -37,54 +36,9 @@ final class JavaEditorSession(
     }
 
   def run(limits: JavaTurtleRuntime.Limits = JavaTurtleRuntime.Limits()): Future[JavaTurtleRuntime.Execution] =
-    execute((program, owned, _) => owned.run(program, limits), State.Finished.apply)
+    execute((program, owned) => owned.run(program, limits), State.Finished.apply)
 
-  def checkTask(task: JavaTurtleTask, limits: JavaTurtleRuntime.Limits = JavaTurtleRuntime.Limits()): Future[Vector[JavaTurtleRuntime.Execution]] = {
-    val requestedSource = currentSource
-    execute((program, owned, current) => taskResult(requestedSource, program, owned, current, task, limits, detailed = false)
-      .map(_.cases.map(_.execution)), State.Checked.apply)
-  }
-
-  def checkTaskDetailed(task: JavaTurtleTask, limits: JavaTurtleRuntime.Limits = JavaTurtleRuntime.Limits()): Future[TaskResult] = {
-    val requestedSource = currentSource
-    execute((program, owned, current) => taskResult(requestedSource, program, owned, current, task, limits, detailed = true),
-      State.TaskFinished.apply)
-  }
-
-  private def taskResult(source: ProgrammingStateJavaString, program: JavaTurtleVmPrograms.Program, owned: Runner,
-      current: () => Boolean, task: JavaTurtleTask, limits: JavaTurtleRuntime.Limits, detailed: Boolean): Future[TaskResult] = {
-    val method = program.root.methods.find(_.binding.originalName == task.methodName)
-      .filter(_ ne program.root.entryPoint).getOrElse(
-        throw IllegalArgumentException(s"Define a static method named ${task.methodName} for this task."))
-    val parameters = method.binding.parameters.map(_.variable.valueType)
-    def invalid(): Nothing = throw IllegalArgumentException(s"Check the int and double parameters of ${task.methodName}.")
-    if task.cases.isEmpty || task.cases.size > 16 || parameters.size > 16 ||
-      parameters.exists(!JavaTurtleResolution.isNumeric(_)) ||
-      task.cases.exists(example => example.arguments.size != parameters.size || example.arguments.exists(!_.isValid)) then invalid()
-    val arguments = task.cases.map(_.arguments.map {
-      case JavaTurtleArgument.IntValue(value) => JavaTurtleEvaluation.Value.IntValue(value)
-      case JavaTurtleArgument.DoubleValue(value) => JavaTurtleEvaluation.Value.DoubleValue(value)
-    }.toVector)
-    val widened = arguments.map(_.zip(parameters).map((value, expected) =>
-      JavaTurtleEvaluation.widen(value, expected).fold(_ => invalid(), identity)))
-    arguments.zipWithIndex.foldLeft(Future.successful(Vector.empty[CaseResult])) { (previous, next) =>
-      previous.flatMap { cases =>
-        if !current() then Future.failed(CancellationException("Java execution cancelled."))
-        else if detailed && cases.lastOption.exists(_.execution.status != JavaTurtleRuntime.Status.Completed) then
-          Future.successful(cases)
-        else {
-          val (original, index) = next
-          val values = if detailed then widened(index) else original
-          owned.invoke(program, method.binding.id, values, limits, traceInvocations = detailed).map { execution =>
-            if !detailed then requireCompleted(execution)
-            cases :+ CaseResult(index, widened(index), execution)
-          }
-        }
-      }
-    }.map(cases => TaskResult(source, program, method.binding.id, task, cases))
-  }
-
-  private def execute[A](operation: (JavaTurtleVmPrograms.Program, Runner, () => Boolean) => Future[A], finished: A => State): Future[A] =
+  private def execute[A](operation: (JavaTurtleVmPrograms.Program, Runner) => Future[A], finished: A => State): Future[A] =
     if changingState then Future.failed(IllegalStateException("Java execution is changing state."))
     else if active.nonEmpty then Future.failed(IllegalStateException("Java execution is already running."))
     else Try(compile(currentSource.code)) match {
@@ -108,7 +62,7 @@ final class JavaEditorSession(
           acquired match {
             case Failure(error) => finish(attempt, Failure(error), finished)
             case Success(owned) if isCurrent(attempt) =>
-              try operation(program, owned, () => isCurrent(attempt)).onComplete(result => finish(attempt, result, finished))
+              try operation(program, owned).onComplete(result => finish(attempt, result, finished))
               catch { case NonFatal(error) => finish(attempt, Failure(error), finished) }
             case _ => ()
           }
@@ -169,32 +123,14 @@ object JavaEditorSession {
     case Idle, Running, Stopped
     case Invalid(diagnostic: JavaTurtleSource.Diagnostic)
     case Finished(execution: JavaTurtleRuntime.Execution)
-    case Checked(executions: Vector[JavaTurtleRuntime.Execution])
-    case TaskFinished(result: TaskResult)
     case Failed(error: Throwable)
   }
 
   final case class ValidationFailure(diagnostic: JavaTurtleSource.Diagnostic)
       extends IllegalArgumentException(diagnostic.message)
 
-  final case class CaseResult(index: Int, arguments: Vector[JavaTurtleEvaluation.Value], execution: JavaTurtleRuntime.Execution)
-
-  final case class TaskResult(source: ProgrammingStateJavaString, program: JavaTurtleVmPrograms.Program,
-      method: JavaTurtleResolution.MethodId, task: JavaTurtleTask, cases: Vector[CaseResult]) {
-    def allCasesExecuted: Boolean = cases.size == task.cases.size
-    def allExecutionsCompleted: Boolean = allCasesExecuted && cases.forall(_.execution.status == JavaTurtleRuntime.Status.Completed)
-  }
-
   trait Runner {
     def run(program: JavaTurtleVmPrograms.Program, limits: JavaTurtleRuntime.Limits): Future[JavaTurtleRuntime.Execution]
-    def invoke(program: JavaTurtleVmPrograms.Program, method: JavaTurtleResolution.MethodId,
-        arguments: Vector[JavaTurtleEvaluation.Value], limits: JavaTurtleRuntime.Limits): Future[JavaTurtleRuntime.Execution] =
-      Future.failed(UnsupportedOperationException("Java method execution is unavailable."))
-    def invoke(program: JavaTurtleVmPrograms.Program, method: JavaTurtleResolution.MethodId,
-        arguments: Vector[JavaTurtleEvaluation.Value], limits: JavaTurtleRuntime.Limits,
-        traceInvocations: Boolean): Future[JavaTurtleRuntime.Execution] =
-      if traceInvocations then Future.failed(UnsupportedOperationException("Java invocation evidence is unavailable."))
-      else invoke(program, method, arguments, limits)
     def cancel(): Boolean
     def close(): Unit
   }
@@ -203,13 +139,6 @@ object JavaEditorSession {
     private val underlying = new JavaTurtleCommandRunner()
     override def run(program: JavaTurtleVmPrograms.Program, limits: JavaTurtleRuntime.Limits): Future[JavaTurtleRuntime.Execution] =
       underlying.run(program, limits)
-    override def invoke(program: JavaTurtleVmPrograms.Program, method: JavaTurtleResolution.MethodId,
-        arguments: Vector[JavaTurtleEvaluation.Value], limits: JavaTurtleRuntime.Limits): Future[JavaTurtleRuntime.Execution] =
-      underlying.invoke(program, method, arguments, limits)
-    override def invoke(program: JavaTurtleVmPrograms.Program, method: JavaTurtleResolution.MethodId,
-        arguments: Vector[JavaTurtleEvaluation.Value], limits: JavaTurtleRuntime.Limits,
-        traceInvocations: Boolean): Future[JavaTurtleRuntime.Execution] =
-      underlying.invoke(program, method, arguments, limits, traceInvocations)
     override def cancel(): Boolean = underlying.cancel()
     override def close(): Unit = underlying.close()
   }

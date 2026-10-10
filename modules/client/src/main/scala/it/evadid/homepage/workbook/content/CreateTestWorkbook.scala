@@ -61,7 +61,16 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
         ),
         ProgrammingExercise("prog-1", editorPalette = ProgrammingEditorPalette.BeginnerTurtle),
         ProgrammingExerciseFullJava("prog-full-java"),
-        ProgrammingExerciseFullJava("java-square-pilot", turtleTask = Some(JavaTurtleTask.squarePilot))
+        ProgrammingExerciseFullJava("java-square-pilot", startingProgram = """public class Drawing {
+          |  static void square(int side) {
+          |
+          |  }
+          |
+          |  public static void main(String[] args) {
+          |    square(25);
+          |  }
+          |}
+          |""".stripMargin)
       )
       )))
   }

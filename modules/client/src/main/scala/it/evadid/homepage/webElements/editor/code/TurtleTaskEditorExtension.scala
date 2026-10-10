@@ -9,8 +9,7 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 final class TurtleTaskEditorExtension(
     state: Var[ProgrammingState],
     target: Option[TurtleGraphic],
-    policy: TurtleDrawingPolicy,
-    assessment: Option[TurtleExecutionPanel.Assessment] = None
+    policy: TurtleDrawingPolicy
 ) extends EvaEditorExtension {
   private var view = Option.empty[TurtleExecutionPanel]
 
@@ -18,7 +17,7 @@ final class TurtleTaskEditorExtension(
     val current = view.getOrElse {
       var captured = state.now()
       val created = new TurtleExecutionPanel(state, () => context.execute(captured), context.cancel,
-        target, assessment, policy, () => { captured = context.captureSource() })
+        target, policy, () => { captured = context.captureSource() })
       view = Some(created)
       created
     }

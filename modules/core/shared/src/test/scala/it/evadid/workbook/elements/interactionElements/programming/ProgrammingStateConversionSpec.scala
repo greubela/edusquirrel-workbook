@@ -33,25 +33,16 @@ class ProgrammingStateConversionSpec extends FunSuite {
     Vector.fill(4)(Vector(T.Command(R.TurtleCommand.Forward, side), T.Command(R.TurtleCommand.TurnRight, 90))).flatten
 
   private val roundTripScenarios = List(
-    "Koch snowflake" ->
-      """def koch(length, depth):
+    "recursive branching" ->
+      """def branch(length, depth):
         |    if depth == 0:
         |        forward(length)
         |    else:
-        |        koch(length / 3, depth - 1)
-        |        turn_left(60)
-        |        koch(length / 3, depth - 1)
-        |        turn_right(120)
-        |        koch(length / 3, depth - 1)
-        |        turn_left(60)
-        |        koch(length / 3, depth - 1)
+        |        branch(length / 2, depth - 1)
+        |        turn_left(45)
+        |        branch(length / 2, depth - 1)
         |
-        |def koch_snowflake(length, depth):
-        |    for side in range(3):
-        |        koch(length, depth)
-        |        turn_right(120)
-        |
-        |koch_snowflake(81, 3)
+        |branch(64, 3)
         |""".stripMargin,
     "sum of primes" ->
       """def sum_primes_below(limit):
@@ -469,8 +460,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
   test("full Java state programs enforce execution limits on endless loops") {
     val source = "class Main { public static void main(String[] args) { while (true) {} } }"
     val program = ProgrammingStateJavaString(source).toJavaVmProgram.fold(diagnostic => fail(diagnostic.toString), identity)
-    assertEquals(T.runVm(program, T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20,
-      Some(T.CallEvidence(Vector(T.MethodCalls(R.MethodId(0), 1, 0)), 1)), Some(T.DrawingEvidence())))
+    assertEquals(T.runVm(program, T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20))
   }
 
   test("full Java state execution retains int32 overflow and negative integer division") {

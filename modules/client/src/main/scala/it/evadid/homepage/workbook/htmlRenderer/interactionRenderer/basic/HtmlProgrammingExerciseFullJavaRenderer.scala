@@ -4,8 +4,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
-import it.evadid.homepage.webElements.code.JavaFunctionBasedEditor
-import it.evadid.homepage.webElements.editor.code.{JavaTurtleEditorExtension, TurtleTaskEditorExtension, TurtleExecutionPanel}
+import it.evadid.homepage.webElements.editor.code.{JavaTurtleEditorExtension, TurtleTaskEditorExtension}
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorPlain, EvaEditorConfig}
 import it.evadid.homepage.webElements.{HtmlAppElement, FullscreenLifecycle}
 import it.evadid.core.datastructures.language.AppLanguage
@@ -14,32 +13,17 @@ import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLine
 import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExerciseFullJava
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaString
-import scala.concurrent.Future
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleDrawingPolicy
 
 case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFactory[ProgrammingExerciseFullJava] {
   private[homepage] def editorState(element: ProgrammingExerciseFullJava, syncControl: SyncControl): Var[ProgrammingState] =
     element.interactionVariable.createBoundStateWithUpdateImportance(syncControl, UpdateImportance.MAJOR).toAirstreamVar
 
   private[homepage] def editorFor(workbookElement: ProgrammingExerciseFullJava,
-      boundVar: Var[ProgrammingState]): HtmlAppElement & FullscreenLifecycle = workbookElement.turtleTask match {
-      case None => new JavaFunctionBasedEditor(boundVar)
-      case Some(task) =>
-        val execution = new JavaTurtleEditorExtension(boundVar)
-        val emptyTargets = task.cases.filter(_.expectedShape.toTurtleProgram.isEmpty).map(_.call(task.methodName))
-        val prompt = s"Use the parameters of ${task.methodName} to draw the requested shape. " +
-          s"Check task calls ${task.cases.map(_.call(task.methodName)).mkString(", ")}. " +
-          (if emptyTargets.nonEmpty then s"${emptyTargets.mkString(", ")} should draw no lines." else "")
-        val assessment = TurtleExecutionPanel.Assessment(
-          task.cases.map(entry => TurtleExecutionPanel.Case(entry.call(task.methodName), entry.expectedShape)).toVector,
-          () => boundVar.now() match {
-            case java: ProgrammingStateJavaString => execution.checkTask(java, task)
-            case _ => Future.failed(IllegalStateException("This task requires a Java program."))
-          }, prompt)
-        EvaEditorPlain(boundVar, EvaEditorConfig(enabledLanguages = List(AppLanguage.Java)),
-          extensions = List(execution, new TurtleTaskEditorExtension(boundVar,
-            task.cases.headOption.map(_.expectedShape), task.comparisonPolicy, Some(assessment))))
+      boundVar: Var[ProgrammingState]): HtmlAppElement & FullscreenLifecycle = {
+    val execution = new JavaTurtleEditorExtension(boundVar)
+    EvaEditorPlain(boundVar, EvaEditorConfig(enabledLanguages = List(AppLanguage.Java)),
+      extensions = List(execution, new TurtleTaskEditorExtension(boundVar, None, TurtleDrawingPolicy.Coverage)))
   }
 
   override protected def createRendering(workbookElement: ProgrammingExerciseFullJava): AtomarLineRendering = {

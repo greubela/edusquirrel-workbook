@@ -6,7 +6,6 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCo
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorExtension
 import it.evadid.vm.parsing.java.turtle.JavaTurtleResolution
 import it.evadid.vm.simulation.java.JavaTurtleRuntime
-import it.evadid.workbook.elements.interactionElements.programming.JavaTurtleTask
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString}
 
 import java.util.concurrent.CancellationException
@@ -39,13 +38,6 @@ final class JavaTurtleEditorExtension(
     }
     execute(source)(_.run().map(commandsFrom))
   }
-
-  def checkTask(source: ProgrammingStateJavaString, task: JavaTurtleTask): Future[Vector[List[TurtleCommand[Double]]]] =
-    execute(source)(_.checkTask(task).map(_.map(commandsFrom)))
-
-  def checkTaskDetailed(source: ProgrammingStateJavaString, task: JavaTurtleTask,
-      limits: JavaTurtleRuntime.Limits = JavaTurtleRuntime.Limits()): Future[JavaEditorSession.TaskResult] =
-    execute(source)(_.checkTaskDetailed(task, limits))
 
   private def execute[A](source: ProgrammingStateJavaString)(operation: JavaEditorSession => Future[A]): Future[A] = {
     if running.nonEmpty then return Future.failed(IllegalStateException("Java execution is already running."))

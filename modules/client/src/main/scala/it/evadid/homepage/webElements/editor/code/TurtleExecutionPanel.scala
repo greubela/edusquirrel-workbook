@@ -18,12 +18,8 @@ object TurtleExecutionPanel {
   enum Status {
     case Idle, Running, Stopped
     case Ready(commands: List[TurtleCommand[Double]], matches: Option[Boolean])
-    case Assessed(drawings: Vector[List[TurtleCommand[Double]]], matches: Vector[Boolean])
     case Failed(message: String)
   }
-
-  final case class Case(label: String, expected: TurtleGraphic)
-  final case class Assessment(cases: Vector[Case], execute: () => Future[Vector[List[TurtleCommand[Double]]]], prompt: String)
 
   private[code] def validateDrawing(commands: List[TurtleCommand[Double]]): Unit = TurtleDrawingGrading.validateDrawing(commands)
   private[code] def compare(commands: List[TurtleCommand[Double]], target: TurtleGraphic): Boolean =
@@ -35,7 +31,6 @@ final class TurtleExecutionPanel(
     execute: () => Future[List[TurtleCommand[Double]]],
     cancel: () => Unit,
     target: Option[TurtleGraphic] = None,
-    assessment: Option[TurtleExecutionPanel.Assessment] = None,
     comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Coverage,
     prepare: () => Unit = () => ()
 ) extends HtmlAppElement {
@@ -77,18 +72,6 @@ final class TurtleExecutionPanel(
       case _ => TurtleDrawingGrading.drawingScene(commands)
     })
     Status.Ready(commands, comparison.map(_.matches))
-  }
-
-  private[code] def checkTask(): Unit = assessment.foreach { task =>
-    start(task.execute) { drawings =>
-      if drawings.size != task.cases.size || drawings.isEmpty then
-        throw IllegalStateException("The task could not be checked completely.")
-      val results = drawings.zip(task.cases).map { (commands, example) =>
-        TurtleDrawingGrading.assess(commands, example.expected, comparisonPolicy)
-      }
-      scenes = results.map(_.scene)
-      Status.Assessed(drawings, results.map(_.matches))
-    }
   }
 
   private def start[A](execute: () => Future[A])(completed: A => Status): Unit = {
@@ -135,12 +118,9 @@ final class TurtleExecutionPanel(
     onMountCallback(_ => activate()),
     onUnmountCallback(_ => deactivate()),
     h3("Drawing"),
-    assessment.fold[Modifier[HtmlElement]](emptyMod)(task => p(task.prompt)),
     div(cls := "turtle-execution__actions",
       button(typ := "button", disabled <-- status.signal.map(_ == Status.Running), "Run", onClick --> (_ => run())),
-      button(typ := "button", disabled <-- status.signal.map(_ != Status.Running), "Stop", onClick --> (_ => stop())),
-      assessment.fold[Modifier[HtmlElement]](emptyMod)(_ => button(typ := "button",
-        disabled <-- status.signal.map(_ == Status.Running), "Check task", onClick --> (_ => checkTask())))
+      button(typ := "button", disabled <-- status.signal.map(_ != Status.Running), "Stop", onClick --> (_ => stop()))
     ),
     p(cls := "turtle-execution__status", role := "status", aria.live := "polite",
       child.text <-- status.signal.map {
@@ -150,8 +130,6 @@ final class TurtleExecutionPanel(
         case Status.Ready(_, Some(true)) => "Your drawing matches the target. Nicely done!"
         case Status.Ready(_, Some(false)) => "Your drawing doesn't match the target yet. Check the distances and turns."
         case Status.Ready(_, None) => "Here's your drawing."
-        case Status.Assessed(_, matches) if matches.forall(identity) => "Your function draws the requested shapes. Nicely done!"
-        case Status.Assessed(_, _) => "Your function doesn't draw every requested shape yet. Check how you use its parameters."
         case Status.Failed(_) => ""
       }),
     child.maybe <-- status.signal.map {
@@ -161,18 +139,6 @@ final class TurtleExecutionPanel(
     child.maybe <-- status.signal.map {
       case Status.Ready(_, _) =>
         Some(picture(scenes.head, if target.isDefined then "Target comparison" else "Your drawing"))
-      case Status.Assessed(_, matches) => assessment.map { task =>
-        val selected = Var(0)
-        div(
-          label("Drawing for ", select(aria.label := "Drawing case",
-            task.cases.zipWithIndex.map { (example, index) =>
-              option(value := index.toString, s"${example.label}: ${if matches(index) then "Matches" else "Not yet"}")
-            },
-            onChange.mapToValue --> (value => Try(value.toInt).toOption.filter(task.cases.indices.contains).foreach(selected.set))
-          )),
-          child <-- selected.signal.map(index => picture(scenes(index), s"Target comparison: ${task.cases(index).label}"))
-        )
-      }
       case _ => target.map { graphic =>
         Try(TurtleDrawingGrading.targetScene(graphic, comparisonPolicy)).fold(
           error => p(cls := "turtle-execution__error", role := "alert", error.getMessage),

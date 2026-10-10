@@ -16,21 +16,13 @@ object JavaTurtleRuntime {
   }
 
   case class Command(command: R.TurtleCommand, value: Double)
-  case class MethodCalls(method: R.MethodId, calls: Int, recursiveCalls: Int)
-  case class CallEvidence(methods: Vector[MethodCalls] = Vector.empty, maxDepth: Int = 0)
-  case class MethodDrawing(method: R.MethodId, forwardCommands: Int, recursiveForwardCommands: Int)
-  case class DrawingEvidence(methods: Vector[MethodDrawing] = Vector.empty)
-  case class MethodInvocation(parent: Option[Int], arguments: Vector[E.Value], firstCommand: Int, lastCommand: Option[Int])
-  case class InvocationEvidence(method: R.MethodId, activations: Vector[MethodInvocation], truncated: Boolean = false)
-  case class Execution(status: Status, commands: Vector[Command], steps: Int, callEvidence: Option[CallEvidence] = None,
-      drawingEvidence: Option[DrawingEvidence] = None, invocationEvidence: Option[InvocationEvidence] = None)
+  case class Execution(status: Status, commands: Vector[Command], steps: Int)
 
   object Limits {
     val MaxSteps = 100000
     val MaxCommands = 10000
     val MaxCallDepth = 64
     val MaxBlockDepth = 64
-    val MaxInvocations = 512
   }
 
   case class Limits(maxSteps: Int = Limits.MaxSteps, maxCommands: Int = Limits.MaxCommands,
@@ -42,26 +34,26 @@ object JavaTurtleRuntime {
   }
 
   def run(source: R.ResolvedSource, limits: Limits = Limits(),
-      isCancelled: () => Boolean = () => false, traceInvocations: Boolean = false): Execution =
-    execute(source.methods, source.entryPoint, source.entryPoint, Vector.empty, true, limits, isCancelled, traceInvocations)
+      isCancelled: () => Boolean = () => false): Execution =
+    execute(source.methods, source.entryPoint, source.entryPoint, Vector.empty, true, limits, isCancelled)
 
   def invoke(source: R.ResolvedSource, method: R.MethodId, arguments: Vector[E.Value],
-      limits: Limits = Limits(), isCancelled: () => Boolean = () => false, traceInvocations: Boolean = false): Execution =
-    execute(source.methods, source.entryPoint, method, arguments, false, limits, isCancelled, traceInvocations)
+      limits: Limits = Limits(), isCancelled: () => Boolean = () => false): Execution =
+    execute(source.methods, source.entryPoint, method, arguments, false, limits, isCancelled)
 
   def runVm(program: P.Program, limits: Limits = Limits(),
-      isCancelled: () => Boolean = () => false, traceInvocations: Boolean = false): Execution =
+      isCancelled: () => Boolean = () => false): Execution =
     execute(program.resolvedMethods, program.root.entryPoint.binding.id, program.root.entryPoint.binding.id,
-      Vector.empty, true, limits, isCancelled, traceInvocations)
+      Vector.empty, true, limits, isCancelled)
 
   def invokeVm(program: P.Program, method: R.MethodId, arguments: Vector[E.Value],
-      limits: Limits = Limits(), isCancelled: () => Boolean = () => false, traceInvocations: Boolean = false): Execution =
-    execute(program.resolvedMethods, program.root.entryPoint.binding.id, method, arguments, false, limits, isCancelled, traceInvocations)
+      limits: Limits = Limits(), isCancelled: () => Boolean = () => false): Execution =
+    execute(program.resolvedMethods, program.root.entryPoint.binding.id, method, arguments, false, limits, isCancelled)
 
   private def execute(methods: Vector[R.Method], entryPoint: R.MethodId, method: R.MethodId, arguments: Vector[E.Value],
-      main: Boolean, limits: Limits, isCancelled: () => Boolean, traceInvocations: Boolean): Execution =
-    if !limits.valid then Execution(Status.Failed(Failure.InvalidLimits), Vector.empty, 0, Some(CallEvidence()), Some(DrawingEvidence()))
-    else new Runner(methods, entryPoint, limits, isCancelled, traceInvocations).execute(method, arguments, main)
+      main: Boolean, limits: Limits, isCancelled: () => Boolean): Execution =
+    if !limits.valid then Execution(Status.Failed(Failure.InvalidLimits), Vector.empty, 0)
+    else new Runner(methods, entryPoint, limits, isCancelled).execute(method, arguments, main)
 
   private type Result[A] = Either[Status, A]
   private type Scope = mutable.Set[R.VariableId]
@@ -75,7 +67,7 @@ object JavaTurtleRuntime {
     case ForTest(loop: R.For, depth: Int)
   }
 
-  private class Frame(val method: R.MethodId, arguments: Map[R.VariableId, E.Value], body: R.Block, val invocation: Option[Int]) {
+  private class Frame(arguments: Map[R.VariableId, E.Value], body: R.Block) {
     val values: mutable.Map[R.VariableId, E.Value] = mutable.Map.from(arguments)
     var scopes: List[Scope] = Nil
     var pending: List[Action] = List(Action.EnterBlock(body, 1))
@@ -85,18 +77,11 @@ object JavaTurtleRuntime {
     def schedule(actions: Action*): Unit = pending = actions.toList ::: pending
   }
 
-  private class Runner(definitions: Vector[R.Method], entryPoint: R.MethodId, limits: Limits, isCancelled: () => Boolean,
-      traceInvocations: Boolean) {
+  private class Runner(definitions: Vector[R.Method], entryPoint: R.MethodId, limits: Limits, isCancelled: () => Boolean) {
     private val methods = definitions.map(method => method.id -> method).toMap
     private val commands = mutable.ArrayBuffer.empty[Command]
     private var frames = List.empty[Frame]
     private var used = 0
-    private val calls = mutable.Map.empty[R.MethodId, MethodCalls]
-    private val drawings = mutable.Map.empty[R.MethodId, MethodDrawing]
-    private var maxDepth = 0
-    private var observed: Option[R.MethodId] = None
-    private val invocations = mutable.ArrayBuffer.empty[MethodInvocation]
-    private var truncated = false
 
     def execute(method: R.MethodId, arguments: Vector[E.Value], main: Boolean): Execution = {
       var result = start(method, arguments, main)
@@ -109,10 +94,7 @@ object JavaTurtleRuntime {
             result = dispatch(frame, action)
         }
       }
-      val evidence = CallEvidence(calls.values.toVector.sortBy(_.method.index), maxDepth)
-      val drawing = DrawingEvidence(drawings.values.toVector.sortBy(_.method.index))
-      val trace = observed.map(method => InvocationEvidence(method, invocations.toVector, truncated))
-      Execution(result.fold(identity, _ => Status.Completed), commands.toVector, used, Some(evidence), Some(drawing), trace)
+      Execution(result.fold(identity, _ => Status.Completed), commands.toVector, used)
     }
 
     private def gate(): Either[E.Failure, Unit] =
@@ -144,39 +126,20 @@ object JavaTurtleRuntime {
             method.parameters.zip(arguments).forall((parameter, value) => matches(parameter, value))
         if !valid then Left(Status.Failed(Failure.InvalidInvocation))
         else {
-          if traceInvocations && observed.isEmpty then observed = Some(id)
           step().flatMap { _ =>
             if frames.size >= limits.maxCallDepth then Left(Status.LimitExceeded)
             else {
               val bindings = if main then Map.empty[R.VariableId, E.Value]
                 else method.parameters.zip(arguments).map((parameter, value) =>
                   parameter.id -> E.widen(value, parameter.valueType).toOption.get).toMap
-              val previous = calls.getOrElse(id, MethodCalls(id, 0, 0))
-              val recursive = if frames.exists(_.method == id) then 1 else 0
-              calls.update(id, previous.copy(calls = previous.calls + 1, recursiveCalls = previous.recursiveCalls + recursive))
-              val invocation = if !observed.contains(id) then None
-                else if invocations.size >= Limits.MaxInvocations then { truncated = true; None }
-                else {
-                  val index = invocations.size
-                  val parent = frames.find(_.method == id).flatMap(_.invocation)
-                  val initial = if main then Vector.empty else method.parameters.map(parameter => bindings(parameter.id))
-                  invocations += MethodInvocation(parent, initial, commands.size, None)
-                  Some(index)
-                }
-              frames = new Frame(id, bindings, method.body, invocation) :: frames
-              maxDepth = maxDepth.max(frames.size)
+              frames = new Frame(bindings, method.body) :: frames
               Right(())
             }
           }
         }
       }
 
-    private def finishFrame(): Unit = {
-      frames.head.invocation.foreach { index =>
-        invocations(index) = invocations(index).copy(lastCommand = Some(commands.size))
-      }
-      frames = frames.tail
-    }
+    private def finishFrame(): Unit = frames = frames.tail
 
     private def matches(variable: R.Variable, value: E.Value): Boolean = (variable.valueType, value) match {
       case (R.ValueType.IntValue, _: E.Value.IntValue) => true
@@ -287,12 +250,6 @@ object JavaTurtleRuntime {
       else if !value.isFinite then Left(Status.Failed(Failure.NonFiniteCommand))
       else {
         commands += Command(command, value)
-        if command == R.TurtleCommand.Forward && value != 0.0 then
-          frames.groupMapReduce(_.method)(_ => 1)(_ + _).foreach { (method, active) =>
-            val previous = drawings.getOrElse(method, MethodDrawing(method, 0, 0))
-            drawings.update(method, previous.copy(forwardCommands = previous.forwardCommands + 1,
-              recursiveForwardCommands = previous.recursiveForwardCommands + (if active > 1 then 1 else 0)))
-          }
         Right(())
       }
     }

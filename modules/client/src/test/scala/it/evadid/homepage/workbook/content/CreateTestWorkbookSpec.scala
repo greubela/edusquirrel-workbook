@@ -1,6 +1,5 @@
 package it.evadid.homepage.workbook.content
 
-import it.evadid.workbook.elements.interactionElements.programming.JavaTurtleTask
 import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailFolder, MailInteraction}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExerciseFullJava
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
@@ -70,13 +69,26 @@ class CreateTestWorkbookSpec extends FunSuite {
     )
   }
 
-  test("square pilot has a separate ID and parameter targets") {
+  test("square example retains its separate ID and exact unfinished starting source") {
     val workbook = CreateTestWorkbook(null).createWorkbook
     val exercises = workbook.allChildrenFullSubtree.collect { case exercise: ProgrammingExerciseFullJava => exercise }
     val pilot = exercises.filter(_.elementId == "java-square-pilot")
 
     assertEquals(pilot.size, 1)
-    assertEquals(pilot.head.turtleTask, Some(JavaTurtleTask.squarePilot))
-    assertEquals(exercises.find(_.elementId == "prog-full-java").get.turtleTask, None)
+    val source = """public class Drawing {
+      |  static void square(int side) {
+      |
+      |  }
+      |
+      |  public static void main(String[] args) {
+      |    square(25);
+      |  }
+      |}
+      |""".stripMargin
+    assertEquals(pilot.head.startingProgram, source)
+    assertEquals(pilot.head.defaultValue.toJava.code, source)
+    assertEquals(pilot.head.testSuite, None)
+    assertEquals(exercises.find(_.elementId == "prog-full-java").get.startingProgram,
+      ProgrammingExerciseFullJava.defaultStartingProgram)
   }
 }

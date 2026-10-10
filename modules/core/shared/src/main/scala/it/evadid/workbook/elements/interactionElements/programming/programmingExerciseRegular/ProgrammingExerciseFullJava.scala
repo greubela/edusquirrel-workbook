@@ -1,5 +1,4 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
-import it.evadid.workbook.elements.interactionElements.programming.JavaTurtleTask
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.vm.test.BeTestSuite
@@ -12,18 +11,11 @@ import upickle.default.*
 case class ProgrammingExerciseFullJava(
     override val elementId: String,
     testSuite: Option[BeTestSuite] = None,
-    turtleTask: Option[JavaTurtleTask] = None
+    startingProgram: String = ProgrammingExerciseFullJava.defaultStartingProgram
 ) extends WorkbookInteractionElement[ProgrammingState] {
   override val associatedFactory = ProgrammingExerciseFullJava.factory
 
-  override val defaultValue: ProgrammingState =
-    ProgrammingStateJavaString(
-      turtleTask.map(_.startingProgram).getOrElse("""public class Main {
-        |  public static void main(String[] args) {
-        |  }
-        |}
-        |""".stripMargin)
-    )
+  override val defaultValue: ProgrammingState = ProgrammingStateJavaString(startingProgram)
 
   override val serializerInteractionContent: Serializer[ProgrammingState] = ProgrammingExercise.StateSerializer
 
@@ -31,6 +23,18 @@ case class ProgrammingExerciseFullJava(
 }
 
 object ProgrammingExerciseFullJava {
+  val defaultStartingProgram: String = """public class Main {
+    |  public static void main(String[] args) {
+    |  }
+    |}
+    |""".stripMargin
+
+  private def startingProgramFromSerialized(element: WorkbookElementSerializable): String =
+    element.allConstructorFields.get("startingProgram").map(_.str).getOrElse {
+      element.getOptionalElementAs[Option[ujson.Value]]("turtleTask", None)
+        .map(_("startingProgram").str).getOrElse(defaultStartingProgram)
+    }
+
   val factory: WorkbookElementFactory[ProgrammingExerciseFullJava] =
     new WorkbookElementFactory[ProgrammingExerciseFullJava]() {
       override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set()
@@ -42,12 +46,13 @@ object ProgrammingExerciseFullJava {
         ProgrammingExerciseFullJava(
           element.elementId,
           element.getOptionalElementAs[Option[BeTestSuite]]("testSuite", None),
-          element.getOptionalElementAs[Option[JavaTurtleTask]]("turtleTask", None)
+          startingProgramFromSerialized(element)
         )
 
       override def toSerializableElement(element: ProgrammingExerciseFullJava): WorkbookElementSerializable =
         val base = toFactoryBase(element).withElementAddedAs("testSuite", element.testSuite)
-        element.turtleTask.fold(base)(task => base.withElementAddedAs("turtleTask", Some(task)))
+        if element.startingProgram == defaultStartingProgram then base
+        else base.withElementAdded("startingProgram", element.startingProgram)
 
       lazy override val writerJsonRegularRefBased: Writer[ProgrammingExerciseFullJava] = macroRW
     }
