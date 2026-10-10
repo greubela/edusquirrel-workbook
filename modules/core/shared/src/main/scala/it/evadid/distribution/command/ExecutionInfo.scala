@@ -26,17 +26,19 @@ sealed trait ExecutionInfo {
 }
 
 object ExecutionInfo {
+  given upickle.default.ReadWriter[ExecutionInfo] =
+    upickle.default.readwriter[ExecutionInfoUntyped].bimap(_.toUntyped, value => value)
 
   def fromJson(json: String): ExecutionInfo = DefaultSerializer.serializerExecutionInfoJson.deserialize(json)
 
-  case class ExecutionInfoUntyped(command: ExecutionCommand, result: ExecutionResult, history: ExecutionHistory) extends ExecutionInfo{
+  case class ExecutionInfoUntyped(command: ExecutionCommand, result: ExecutionResult, history: ExecutionHistory) extends ExecutionInfo derives upickle.default.ReadWriter{
     override val toUntyped: ExecutionInfoUntyped = this
   }
 
-  case class ExecutionInfoTyped[T](command: ExecutionCommand, result: ExecutionResult, history: ExecutionHistory, resultTyped: ExecutionResultTyped[T]) extends ExecutionInfo {
+  case class ExecutionInfoTyped[T](command: ExecutionCommand, result: ExecutionResult, history: ExecutionHistory, resultTyped: ExecutionResultTyped[T]) extends ExecutionInfo derives upickle.default.ReadWriter {
   }
 
-  case class ExecutionFailure(command: ExecutionCommand, historyOp: Option[ExecutionHistory], error: SerializedException) extends Throwable(s"Command ${command.name} failed with error: ${error.msg}") {
+  case class ExecutionFailure(command: ExecutionCommand, historyOp: Option[ExecutionHistory], error: SerializedException) extends Throwable(s"Command ${command.name} failed with error: ${error.msg}") derives upickle.default.ReadWriter {
     override val toString: String = s"ExecutionFailure(command=${command.name}, error=${error.msg}, history=${historyOp.map(_.toString).getOrElse("None")}"
   }
 

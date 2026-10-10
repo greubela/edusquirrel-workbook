@@ -11,7 +11,7 @@ sealed trait BeExpressionNode derives ReadWriter{
 
 }
 
-case class BeExpressionReference(override val childInfo: BeChildInfo, expr: BeExpression) extends BeExpressionNode {
+case class BeExpressionReference(override val childInfo: BeChildInfo, expr: BeExpression) extends BeExpressionNode derives upickle.default.ReadWriter {
   def toSegment(addToCfStack: Option[ControlFlowType]): BeSegment = {
     BeSegment(
       addToCfStack,
@@ -21,6 +21,6 @@ case class BeExpressionReference(override val childInfo: BeChildInfo, expr: BeEx
   }
 }
 
-case class BeExtensionPoint(isRequired: Boolean, override val childInfo: BeChildInfo, extensionWillBeUsedAsType: BeDataType) extends BeExpressionNode {
+case class BeExtensionPoint(isRequired: Boolean, override val childInfo: BeChildInfo, extensionWillBeUsedAsType: BeDataType) extends BeExpressionNode derives upickle.default.ReadWriter {
 
 }

@@ -6,7 +6,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.pr
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 
-case class ControlFlowFunctionCall() extends ControlFlowShapeSingleWidth {
+case class ControlFlowFunctionCall() extends ControlFlowShapeSingleWidth derives upickle.default.ReadWriter {
 
   val ref = ControlFlowDirected(true, true)
 

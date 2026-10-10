@@ -10,7 +10,7 @@ import upickle.default.read
 import scala.concurrent.Future
 import scala.scalajs.js
 
-private case class JsRemoteExecutionClient(hostname: String, port: Int, token: Option[SignedToken]) extends RemoteExecutionClient {
+private case class JsRemoteExecutionClient(hostname: String, port: Int, token: Option[SignedToken]) extends RemoteExecutionClient derives upickle.default.ReadWriter {
 
   override protected def sendTo(logger: Logger, ip: String, port: Int, executionCommand: ExecutionCommand): Future[Map[String, String]] = {
     val commandJson = executionCommand.toJson

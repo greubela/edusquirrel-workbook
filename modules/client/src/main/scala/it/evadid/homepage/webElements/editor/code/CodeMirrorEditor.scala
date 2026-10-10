@@ -152,7 +152,7 @@ object CodeMirrorEditor {
                                toCh: Option[Int] = None,
                                message: String = "",
                                severity: String = "warning"
-                             ) {
+                             ) derives upickle.default.ReadWriter {
     def toJs: js.Object =
       js.Dynamic.literal(
         line = line,

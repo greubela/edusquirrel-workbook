@@ -95,7 +95,7 @@ object ReorderInteractionState {
                                        elementType: ReorderType,
                                        elementSerializer: Serializer[T]
    */
-  case class ReorderInteractionStateSerialized(elements: List[String], currentOrder: List[Int], correctOrder: List[Int], elementType: ReorderType) {
+  case class ReorderInteractionStateSerialized(elements: List[String], currentOrder: List[Int], correctOrder: List[Int], elementType: ReorderType) derives upickle.default.ReadWriter {
     def toTyped[T](serializer: Serializer[T]): ReorderInteractionState[T] = ReorderInteractionState(serializer, this)
   }
 

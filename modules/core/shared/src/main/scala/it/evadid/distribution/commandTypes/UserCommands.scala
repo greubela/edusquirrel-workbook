@@ -12,9 +12,9 @@ import scala.util.Try
 
 object UserCommands {
 
-  case class LoginRequest(userMail: String, accessToken: Either[SingleAccessToken, SignedToken])
+  case class LoginRequest(userMail: String, accessToken: Either[SingleAccessToken, SignedToken]) derives upickle.default.ReadWriter
 
-  case class LoginResponse(userKnown: Boolean, tokenValid: Boolean, user: Option[User], signedToken: Option[SignedToken], userConfigJson: Option[String]) {
+  case class LoginResponse(userKnown: Boolean, tokenValid: Boolean, user: Option[User], signedToken: Option[SignedToken], userConfigJson: Option[String]) derives upickle.default.ReadWriter {
     def loginSucceeded: Boolean = userKnown && tokenValid && user.nonEmpty && signedToken.nonEmpty && userConfigJson.nonEmpty
 
     def toInfo(userConfigSerializer: Serializer[UserConfig]): Option[AllUserInfo] = if (!loginSucceeded) None else Try {
@@ -26,17 +26,17 @@ object UserCommands {
     "login-command", DefaultSerializer.serializerVerifyAuthenticationRequest, DefaultSerializer.serializerVerifyAuthenticationResponse
   )
 
-  case class UpdateAccountRequest(user: User, userConfigJson: String, token: SignedToken)
+  case class UpdateAccountRequest(user: User, userConfigJson: String, token: SignedToken) derives upickle.default.ReadWriter
 
-  case class UpdateAccountResponse(accountChanged: Boolean, token: SignedToken)
+  case class UpdateAccountResponse(accountChanged: Boolean, token: SignedToken) derives upickle.default.ReadWriter
 
   val updateAccountCommand: ExecutionCommandFactory[UpdateAccountRequest, UpdateAccountResponse] = ExecutionCommandFactory(
     "create-account", DefaultSerializer.serializerUpdateAccountRequest, DefaultSerializer.serializerUpdateAccountResponse
   )
 
-  case class CreateAccountRequest(user: User, userConfigJson: String)
+  case class CreateAccountRequest(user: User, userConfigJson: String) derives upickle.default.ReadWriter
 
-  case class CreateAccountResponse(accountCreated: Boolean, token: Option[SignedToken])
+  case class CreateAccountResponse(accountCreated: Boolean, token: Option[SignedToken]) derives upickle.default.ReadWriter
 
   val createAccountCommand: ExecutionCommandFactory[CreateAccountRequest, CreateAccountResponse] = ExecutionCommandFactory(
     "create-account", DefaultSerializer.serializerCreateAccountRequest, DefaultSerializer.serializerCreateAccountResponse
@@ -44,7 +44,7 @@ object UserCommands {
 
   case class AuthMailRequest(
                               userMail: String
-                            )
+                            ) derives upickle.default.ReadWriter
 
   val authMailCommand: ExecutionCommandFactory[AuthMailRequest, SendMailResponse] = ExecutionCommandFactory(
     "auth-mail-request",

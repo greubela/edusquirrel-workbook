@@ -53,7 +53,7 @@ case class LabeledNumberInteraction(
                                      numberType: NumberType,
                                      override val defaultValue: String = "0",
                                      diff: BigDecimal = BigDecimal(1),
-                                   ) extends WorkbookInteractionElement[String] {
+                                   ) extends WorkbookInteractionElement[String] derives upickle.default.ReadWriter {
   override val associatedFactory = LabeledNumberInteraction.factory
 
   lazy val childrenOfThisElement: List[WorkbookElement] = List()

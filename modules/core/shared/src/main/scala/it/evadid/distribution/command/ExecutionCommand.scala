@@ -4,7 +4,7 @@ import it.evadid.core.util.io.serializer.DefaultSerializer
 
 import scala.util.Try
 
-case class ExecutionCommand(name: String, params: Map[String, String]) {
+case class ExecutionCommand(name: String, params: Map[String, String]) derives upickle.default.ReadWriter {
   lazy val toJson: String = DefaultSerializer.serializeExecutionCommandJson.serialize(this)
 }
 

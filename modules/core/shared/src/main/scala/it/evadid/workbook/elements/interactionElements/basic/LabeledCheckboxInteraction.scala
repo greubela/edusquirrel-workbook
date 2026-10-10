@@ -9,7 +9,7 @@ import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SingleContentElemen
 case class LabeledCheckboxInteraction(
                                        override val elementId: String,
                                        checkboxLabel: LanguageMapContentId
-                                     ) extends WorkbookInteractionElement[Boolean] {
+                                     ) extends WorkbookInteractionElement[Boolean] derives upickle.default.ReadWriter {
 
   override val associatedFactory: WorkbookElementFactory[LabeledCheckboxInteraction] = LabeledCheckboxInteraction.factory
 

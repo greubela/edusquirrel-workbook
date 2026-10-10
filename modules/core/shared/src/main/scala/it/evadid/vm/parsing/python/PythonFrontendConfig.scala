@@ -5,7 +5,7 @@ import PythonSymbolTable.KnownStructure
 final case class PythonFrontendConfig(
                                        defaultIndent: Int,
                                        defaultKnownStructures: Seq[KnownStructure]
-                                     )
+                                     ) derives upickle.default.ReadWriter
 
 object PythonFrontendConfig {
   val default: PythonFrontendConfig =

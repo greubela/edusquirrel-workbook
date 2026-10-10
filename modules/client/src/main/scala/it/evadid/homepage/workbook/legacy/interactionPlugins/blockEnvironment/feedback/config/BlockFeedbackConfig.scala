@@ -40,7 +40,7 @@ final case class BlockFeedbackConfig(
   mlLogUrl: Option[String] = None,
 
   isScriptExercise: Boolean = false
-)
+) derives upickle.default.ReadWriter
 
 object BlockFeedbackConfig {
   // Per-exercise configs can still override/disable by setting explicit values.

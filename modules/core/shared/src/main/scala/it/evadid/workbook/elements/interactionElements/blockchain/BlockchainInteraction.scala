@@ -8,7 +8,7 @@ import it.evadid.workbook.model.blockchain.TeachingChain
 import upickle.default.*
 
 case class BlockchainInteraction(elementId: String, title: LanguageMapContentId, initial: TeachingChain, difficultyZeros: Int = 1)
-  extends WorkbookInteractionElement[TeachingChain] {
+  extends WorkbookInteractionElement[TeachingChain] derives upickle.default.ReadWriter {
   TeachingChain.validateDifficulty(difficultyZeros)
   override lazy val childrenOfThisElement = Nil
   override val defaultValue = initial

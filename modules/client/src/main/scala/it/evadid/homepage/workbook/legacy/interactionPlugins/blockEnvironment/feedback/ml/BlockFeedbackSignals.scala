@@ -27,7 +27,7 @@ final case class BlockFeedbackSignals(
   stderrLineCount: Int,
   decision: Option[DecisionLayer.Decision] = None,
   templateId: Option[String] = None
-) {
+) derives upickle.default.ReadWriter {
 
   def debugString: String =
     val testsTotal = runtimeOutcome.tests.size

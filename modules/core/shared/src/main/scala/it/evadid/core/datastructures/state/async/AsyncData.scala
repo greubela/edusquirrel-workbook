@@ -118,8 +118,8 @@ trait AsyncData[F, S] {
 
       case (AsyncDataFailed(cause, data), _) => failWithInfo("Left Element of Combined has an Error", cause)
       case (_, AsyncDataFailed(cause, data)) => failWithInfo("Right Element of Combined has an Error", cause)
-      case (AsyncDataLoading(), _) => res.set(AsyncDataLoading[Nothing, (S, S2)]())
-      case (_, AsyncDataLoading()) => res.set(AsyncDataLoading[Nothing, (S, S2)]())
+      case (AsyncDataLoading(_), _) => res.set(AsyncDataLoading[Nothing, (S, S2)]())
+      case (_, AsyncDataLoading(_)) => res.set(AsyncDataLoading[Nothing, (S, S2)]())
     })
 
     AsyncState(res.observable)

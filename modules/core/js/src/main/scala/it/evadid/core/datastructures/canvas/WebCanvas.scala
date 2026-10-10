@@ -226,7 +226,7 @@ class WebCanvas(canvas: ReactiveHtmlElement[Canvas], width: Int, height: Int) ex
 
 object WebCanvas {
 
-  private case class DrawingInformation(x: Double, y: Double)
+  private case class DrawingInformation(x: Double, y: Double) derives upickle.default.ReadWriter
 
   def apply(width: Int, height: Int): WebCanvas = {
     val myCanvas: ReactiveHtmlElement[Canvas] = canvasTag(

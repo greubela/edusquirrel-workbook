@@ -16,7 +16,7 @@ import todomove.webElementsOld.webElements.svg.shapes.composite.{HorizontalAlign
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
 import todomove.webElementsOld.webElements.svg.shapes.decorations.{ControlArrowCross, PathCrossOverlay}
 
-case class ControlFlowCross() extends ControlFlowShapeDoubleWidth {
+case class ControlFlowCross() extends ControlFlowShapeDoubleWidth derives upickle.default.ReadWriter {
 
   override def background: BeShape.BeShapeContainerable = ControlFlowConnectorBackground(List((true, true), (true, true)))
 

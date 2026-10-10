@@ -11,7 +11,7 @@ import it.evadid.evacuation.eva2.control.Eva2Control
 
 import scala.concurrent.ExecutionContextExecutor
 
-case class Eva2Config() {
+case class Eva2Config() derives upickle.default.ReadWriter {
 
   private implicit val context: ExecutionContextExecutor = scala.concurrent.ExecutionContext.global
 

@@ -9,14 +9,14 @@ import scala.scalajs.js
 
 object TurtleStitchXmlParser {
 
-  final case class XmlDocument(root: XmlElement)
+  final case class XmlDocument(root: XmlElement) derives upickle.default.ReadWriter
   final case class XmlElement(
       name: String,
       attrs: Map[String, String] = Map.empty,
       text: String = "",
       children: List[XmlElement] = Nil
-  )
-  final case class ParseResult(document: Option[XmlDocument], fallbackReason: Option[String] = None)
+  ) derives upickle.default.ReadWriter
+  final case class ParseResult(document: Option[XmlDocument], fallbackReason: Option[String] = None) derives upickle.default.ReadWriter
 
   def parse(xml: String): ParseResult = {
     // Prefer string parse for Snap block projects — DOM walking crashes on live getProjectXML.

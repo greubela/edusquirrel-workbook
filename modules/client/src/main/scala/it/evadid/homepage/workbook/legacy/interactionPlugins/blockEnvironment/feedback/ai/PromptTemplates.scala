@@ -140,13 +140,13 @@ object PromptTemplates {
     maxSteps: Int,
     issueTypeHint: Option[DecisionLayer.IssueType] = None,
     isGerman: Boolean = false
-  )
+  ) derives upickle.default.ReadWriter
 
   final case class Prompt(
     prompt: String,
     constraints: OutputConstraints,
     testNames: Seq[String]
-  )
+  ) derives upickle.default.ReadWriter
 
   private def isGerman(lang: HumanLanguage): Boolean = lang == AppLanguage.German
 

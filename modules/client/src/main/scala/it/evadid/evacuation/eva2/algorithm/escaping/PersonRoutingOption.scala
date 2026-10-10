@@ -2,6 +2,6 @@ package it.evadid.evacuation.eva2.algorithm.escaping
 
 import it.evadid.evacuation.eva2.model.Person
 
- case class PersonRoutingOption[N](person: Person, nextStep: N, destination: N, remainingDistance: Double) {
+ case class PersonRoutingOption[N](person: Person, nextStep: N, destination: N, remainingDistance: Double) derives upickle.default.ReadWriter {
   override def toString: String = s"${person.id}: $nextStep->$destination in $remainingDistance"
 }

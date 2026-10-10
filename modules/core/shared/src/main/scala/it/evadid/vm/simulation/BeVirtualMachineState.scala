@@ -10,7 +10,7 @@ case class BeVirtualMachineState(
                                   knownFunctions: Map[BeDefineFunction, List[BeScope]],
                                   knownVariables: Map[BeDefineVariable, List[BeScope]],
                                   variableValues: Map[BeDefineVariable, BeDataValue]
-                                ) {
+                                ) derives upickle.default.ReadWriter {
 
 
   def isDefined(objects: BeDefineStructure): Boolean = {

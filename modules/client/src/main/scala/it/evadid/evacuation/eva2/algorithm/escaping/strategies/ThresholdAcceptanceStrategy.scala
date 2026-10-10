@@ -36,6 +36,6 @@ object ThresholdAcceptanceStrategy {
 
   case class TaSimInfo(routingMap: RoutingMap)
 
-  case class TaStepInfo()
+  case class TaStepInfo() derives upickle.default.ReadWriter
 
 }

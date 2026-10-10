@@ -27,16 +27,19 @@ trait ExecutionResult {
 }
 
 object ExecutionResult {
+  // The existing wire contract persists data/stdout/stderr, rebuilding typed results
+  // through toTyped and an explicit converter rather than guessing an Any codec.
+  given ReadWriter[ExecutionResult] = readwriter[ExecutionResultUntyped].bimap(_.untyped, value => value)
 
   def fromJson(string: String): ExecutionResult = DefaultSerializer.serializerExecutionResultJson.deserialize(string)
 
   def apply(data: Map[String, String], stdOut: String, stdErr: String): ExecutionResult = ExecutionResultUntyped(data, stdOut, stdErr)
 
-  case class ExecutionResultUntyped(data: Map[String, String], stdOut: String, stdErr: String) extends ExecutionResult {
+  case class ExecutionResultUntyped(data: Map[String, String], stdOut: String, stdErr: String) extends ExecutionResult derives upickle.default.ReadWriter {
     lazy val toJson: String = DefaultSerializer.serializerExecutionResultJson.serialize(this)
   }
 
-  case class ExecutionResultTyped[T](result: T, stdOut: String, stdErr: String, data: Map[String, String]) extends ExecutionResult {
+  case class ExecutionResultTyped[T](result: T, stdOut: String, stdErr: String, data: Map[String, String]) extends ExecutionResult derives upickle.default.ReadWriter {
     lazy val toJson: String = untyped.toJson
     
     def map[O](mapValue: T => O, valueToMap: O => Map[String, String]): ExecutionResultTyped[O] = {

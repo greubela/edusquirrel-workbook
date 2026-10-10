@@ -13,10 +13,10 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.{S
  * to the corresponding native input type, so `go to x: _ y: _` keeps the two
  * numeric input morphs belonging to `gotoXY`.
  */
-case class LibraryBlock(id: String, snap_description_line: String, associatedExpression: BeExpression)
+case class LibraryBlock(id: String, snap_description_line: String, associatedExpression: BeExpression) derives upickle.default.ReadWriter
 
 /** Named Snap palette color role; resolves via `SpriteMorph.prototype.blockColor`. */
-enum SnapCategoryColor(val snapKey: String):
+enum SnapCategoryColor(val snapKey: String) derives upickle.default.ReadWriter:
   case Motion    extends SnapCategoryColor("motion")
   case Looks     extends SnapCategoryColor("looks")
   case Sound     extends SnapCategoryColor("sound")
@@ -42,7 +42,7 @@ case class LibraryTab(
     includeVariableControls: Boolean = false,
     includeMakeBlockButton: Boolean = false,
     useNativeCategory: Boolean = false
-)
+) derives upickle.default.ReadWriter
 
 /** Visibility of the independently configurable parts of the embedded IDE.
  *
@@ -59,13 +59,13 @@ case class SnapEditorParts(
                             libraryCategories: Boolean = true, //
                             stage: Boolean = true, // executable area right
                             spriteControls: Boolean = true // scripts / costumes / sound headline
-                          )
+                          ) derives upickle.default.ReadWriter
 
 /** Canvas bitmap dimensions are runtime geometry; presentation lives in CSS. */
 case class SnapEditorVisuals(
                               CanvasWidth: Int = 900,
                               CanvasHeight: Int = 520
-                            )
+                            ) derives upickle.default.ReadWriter
 
 case class SnapCodeEditorConfig(
                                  parts: SnapEditorParts = SnapEditorParts(),
@@ -73,7 +73,7 @@ case class SnapCodeEditorConfig(
                                  codeRepresentation: CodeRepresentationConfig = CodeRepresentationConfig(Python, English, skipUnparsable = false),
                                  visuals: SnapEditorVisuals = SnapEditorVisuals(),
                                  enabledLanguages: List[ProgrammingLanguage] = List(Python, Java)
-                               )
+                               ) derives upickle.default.ReadWriter
 
 object SnapCodeEditorConfig:
   /** Snap's default palette buttons (lists/other live inside Variables). */

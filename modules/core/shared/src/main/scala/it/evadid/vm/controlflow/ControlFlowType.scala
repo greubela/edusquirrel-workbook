@@ -10,7 +10,7 @@ sealed trait ControlFlowType() derives ReadWriter {
 
 object ControlFlowType {
 
-  case class ControlFlowStart() extends ControlFlowType {
+  case class ControlFlowStart() extends ControlFlowType derives upickle.default.ReadWriter {
     // override def calculateChildrenControlFlowStack(myStack: ControlFlowInfo): List[ControlFlowType] = List()
   }
 
@@ -44,18 +44,18 @@ object ControlFlowType {
   /* If/Else */
   sealed trait IfElseType extends ControlFlowType derives ReadWriter
 
-  case class IfElseBranch() extends IfElseType, ControlFlowBranchingType(List(ControlFlowDown()))
+  case class IfElseBranch() extends IfElseType, ControlFlowBranchingType(List(ControlFlowDown())) derives upickle.default.ReadWriter
 
-  case class IfElseCross() extends IfElseType, ControlFlowCrossType(ControlFlowDown())
+  case class IfElseCross() extends IfElseType, ControlFlowCrossType(ControlFlowDown()) derives upickle.default.ReadWriter
 
-  case class IfElseUnion() extends IfElseType, ControlFlowUnionType
+  case class IfElseUnion() extends IfElseType, ControlFlowUnionType derives upickle.default.ReadWriter
 
   /* Repeat/Nr */
 
   sealed trait RepeatType extends ControlFlowType, ControlFlowChangingType derives ReadWriter
 
-  case class RepeatBranch() extends RepeatType, ControlFlowBranchingType(List(ControlFlowUp()))
+  case class RepeatBranch() extends RepeatType, ControlFlowBranchingType(List(ControlFlowUp())) derives upickle.default.ReadWriter
 
-  case class RepeatUnion() extends RepeatType, ControlFlowUnionType
+  case class RepeatUnion() extends RepeatType, ControlFlowUnionType derives upickle.default.ReadWriter
 
 }

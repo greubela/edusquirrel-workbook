@@ -3,7 +3,7 @@ package todomove.webElementsOld.webElements.svg.builder.controlFlow.types.single
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import todomove.webElementsOld.webElements.svg.builder.controlFlow.path.{ControlFlowPathOverlay, PathStatus, PathType}
 
-case class ControlFlowDownUpType(isActive: Boolean = false) extends ControlFlowTypeSingleWidth {
+case class ControlFlowDownUpType(isActive: Boolean = false) extends ControlFlowTypeSingleWidth derives upickle.default.ReadWriter {
 
   override def minHeightInSegments: Int = 2
 

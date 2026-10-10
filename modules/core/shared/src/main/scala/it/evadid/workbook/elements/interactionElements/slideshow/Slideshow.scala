@@ -7,7 +7,7 @@ import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementRe
 case class Slideshow(
                       override val elementId: String,
                       private val panels: List[WorkbookDisplayElement]
-                    ) extends WorkbookInteractionElementWithGrader[SlideshowState, SlideshowGradingResult] {
+                    ) extends WorkbookInteractionElementWithGrader[SlideshowState, SlideshowGradingResult] derives upickle.default.ReadWriter {
 
 
   val panelSize: Int = panels.length

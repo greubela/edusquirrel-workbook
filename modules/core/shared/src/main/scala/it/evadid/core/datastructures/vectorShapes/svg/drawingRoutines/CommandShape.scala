@@ -14,3 +14,8 @@ case class CommandShape[T: Fractional]() extends DrawingRoutineRelativeToMaxDim[
 
   override def hasDesiredAspectRatio: Option[AspectRatio] = None
 }
+
+object CommandShape {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[CommandShape[T]] =
+    upickle.default.readwriter[Unit].bimap(value => (), _ => CommandShape[T]())
+}

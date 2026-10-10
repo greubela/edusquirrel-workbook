@@ -22,11 +22,10 @@ object WorkbookUserDataAnalyzer {
 
   private given woRW: upickle.ReadWriter[Workbook] = WorkbookElementFactory.serializerRegularJsonWorkbook.uPickleReadWrite
 
-  private given seRW: upickle.ReadWriter[SessionData] = upickle.macroRW
+  def serializerSessionData: Serializer[SessionData] =
+    Serializer.fromUpickleJson(summon[upickle.ReadWriter[SessionData]])
 
-  val serializerSessionData: Serializer[SessionData] = Serializer.fromUpickleJson(seRW)
-
-  case class SessionData(currentUserInfo: AllUserInfo, interactionHistory: Map[String, InteractionVariableHistorySerialized], workbook: Workbook, epochTimestampMillis: Long)
+  case class SessionData(currentUserInfo: AllUserInfo, interactionHistory: Map[String, InteractionVariableHistorySerialized], workbook: Workbook, epochTimestampMillis: Long) derives upickle.default.ReadWriter
 
 
 }

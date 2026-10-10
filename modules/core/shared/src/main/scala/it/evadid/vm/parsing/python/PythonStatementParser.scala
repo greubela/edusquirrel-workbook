@@ -16,15 +16,15 @@ import it.evadid.vm.types.BeDataType
 
 object PythonStatementParser {
 
-  final case class BlockParseResult(expressions: List[BeExpression], nextIndex: Int)
+  final case class BlockParseResult(expressions: List[BeExpression], nextIndex: Int) derives upickle.default.ReadWriter
 
-  final case class NodeWithNext(expression: BeExpression, nextIndex: Int)
+  final case class NodeWithNext(expression: BeExpression, nextIndex: Int) derives upickle.default.ReadWriter
 
   private final case class DispatchRule(matches: String => Boolean, handle: DispatchContext => DispatchOutcome)
 
   private final case class DispatchContext(lines: Vector[ParsedLine], index: Int, indent: Int, trimmed: String, context: ParseContext)
 
-  private final case class DispatchOutcome(expressions: List[BeExpression], nextIndex: Int)
+  private final case class DispatchOutcome(expressions: List[BeExpression], nextIndex: Int) derives upickle.default.ReadWriter
 
   private val AnnotationDeclarationPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([^=:]+)$""".r
   private val AnnotationAssignmentPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([^=]+?)\s*=\s*(.+)$""".r

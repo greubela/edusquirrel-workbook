@@ -14,7 +14,7 @@ import todomove.webElementsOld.webElements.svg.shapes.composite.ShapeAroundShape
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.singleWidth.ControlFlowEmpty
 import todomove.webElementsOld.webElements.svg.shapes.datatypes.LiteralShape
 
-case class BeBlockUseValue(valueUsage: BeUseValue) extends BeBlockSingleShape {
+case class BeBlockUseValue(valueUsage: BeUseValue) extends BeBlockSingleShape derives upickle.default.ReadWriter {
   
   override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
     val textShape = TextShape(LanguageMap.universalMap(valueUsage.structureInfo.toStringInLanguage(BlockDisplay, English)))

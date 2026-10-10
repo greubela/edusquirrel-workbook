@@ -36,7 +36,7 @@ case class HtmlImageElement(imageSignal: AsyncData[Nothing, FullImage], underlyi
 
   def render(img: AsyncDataState[?, FullImage]): Element = img.match {
     case AsyncDataSuccess(img) => img.newDomImage
-    case AsyncDataLoading() => renderImageLoading()
+    case AsyncDataLoading(_) => renderImageLoading()
     case AsyncDataFailed(cause, data) => renderImageFailed(cause)
   }
 

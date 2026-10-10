@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.state.{ExecutionMethod, Subscription}
 import scala.concurrent.Future
 import scala.util.Success
 
-case class ConstantValueObservable[T](underlying: T) extends ObservableValue[T] {
+case class ConstantValueObservable[T](underlying: T) extends ObservableValue[T] derives upickle.default.ReadWriter {
 
   override def currentValueOrWaitForUpdate: Future[T] = Future.successful(underlying)
 

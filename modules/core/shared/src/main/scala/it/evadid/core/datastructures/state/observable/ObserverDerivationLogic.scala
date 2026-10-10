@@ -1,6 +1,6 @@
 package it.evadid.core.datastructures.state.observable
 
-sealed trait ObserverDerivationLogic {
+sealed trait ObserverDerivationLogic derives upickle.default.ReadWriter {
 
 }
 

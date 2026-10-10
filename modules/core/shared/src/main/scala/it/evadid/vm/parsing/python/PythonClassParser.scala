@@ -26,11 +26,11 @@ object PythonClassParser {
   private val WhilePattern = """^while\s+(.+):$""".r
   private val IfPattern = """^if\s+(.+):$""".r
 
-  final case class AttributeRecord(name: String, variable: BeDefineVariable)
+  final case class AttributeRecord(name: String, variable: BeDefineVariable) derives upickle.default.ReadWriter
 
-  final case class ParsedMethod(name: String, template: BeDefineFunction, attributes: List[AttributeRecord], nextIndex: Int)
+  final case class ParsedMethod(name: String, template: BeDefineFunction, attributes: List[AttributeRecord], nextIndex: Int) derives upickle.default.ReadWriter
 
-  final case class ClassParseResult(expression: BeExpression, nextIndex: Int)
+  final case class ClassParseResult(expression: BeExpression, nextIndex: Int) derives upickle.default.ReadWriter
 
   final case class ClassParserApi(
                                    parseBlock: (Vector[ParsedLine], Int, Int, ParseContext) => PythonStatementParser.BlockParseResult,

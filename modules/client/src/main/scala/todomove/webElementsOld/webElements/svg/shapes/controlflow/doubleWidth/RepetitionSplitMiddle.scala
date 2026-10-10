@@ -11,7 +11,7 @@ import todomove.webElementsOld.webElements.svg.shapes.BeShape
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
 import todomove.webElementsOld.webElements.svg.shapes.decorations.{BeDataArrow, ControlArrowLeftRight, PathSplitOverlay, PathUnionOverlay}
 
-case class RepetitionSplitMiddle() extends ControlFlowShapeDoubleWidth {
+case class RepetitionSplitMiddle() extends ControlFlowShapeDoubleWidth derives upickle.default.ReadWriter {
 
   override def minHeightInSegments: Int = 9
 

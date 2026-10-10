@@ -13,7 +13,7 @@ case class SortingReasonInteraction(
                                      fields: List[LanguageMapContentId],
                                      items: List[SortingReasonItem],
                                      openButtonLabel: LanguageMapContentId = LanguageMapContentId("basic/startSortingReasonActivity")
-                                   ) extends WorkbookInteractionElement[SortingReasonInteractionState] {
+                                   ) extends WorkbookInteractionElement[SortingReasonInteractionState] derives upickle.default.ReadWriter {
   override val associatedFactory = SortingReasonInteraction.factory
 
   override val defaultValue: SortingReasonInteractionState =

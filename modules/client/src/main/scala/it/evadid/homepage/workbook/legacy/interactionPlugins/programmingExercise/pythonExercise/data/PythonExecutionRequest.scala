@@ -3,7 +3,7 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercis
 case class PythonExecutionRequest(
                                    pythonCode: String,
                                    maxLinesToExecute: Option[Int]
-                                 ) {
+                                 ) derives upickle.default.ReadWriter {
 
 }
 

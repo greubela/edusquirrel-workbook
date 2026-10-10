@@ -12,7 +12,7 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.util.{Failure, Success}
 
 final case class SqlEditor(state: Var[String], databaseConfig: SqlDatabaseConfig, backend: ExecutionClient) extends HtmlAppElement with FullscreenLifecycle {
-  private case class Block(id: Int, text: String)
+  private case class Block(id: Int, text: String) derives upickle.default.ReadWriter
   private val blockMode = Var(false)
   private var nextId = 0
   private def block(text: String): Block = { nextId += 1; Block(nextId, text) }

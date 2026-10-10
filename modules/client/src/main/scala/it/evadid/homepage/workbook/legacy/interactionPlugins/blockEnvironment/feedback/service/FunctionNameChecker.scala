@@ -67,7 +67,7 @@ object FunctionNameChecker:
     missingFunctions: Set[String],
     definedFunctions: Set[String],
     suggestions: Map[String, String]
-  ):
+  ) derives upickle.default.ReadWriter:
     /** True when we have at least one clear rename candidate to tell the student about. */
     def hasMismatch: Boolean = suggestions.nonEmpty
 

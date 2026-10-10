@@ -21,6 +21,12 @@ case class Router(pos: Position, initCapacity: Int, maxCapacity: Int, isExit: Bo
 }
 
 object Router {
+  given ReadWriter[EvaGraphTypes.EvaGraph] = upickle.default.readwriter[EvaGraphModel].bimap(
+    graph => {
+      require(graph.edges.forall(edge => graph.getDistFromEdge(edge) == edge.content.delayInMs.toDouble),
+        "An evacuation graph snapshot requires connection-delay weights")
+      EvaGraphModel(graph.nodes.toList, graph.edges.toList)
+    }, graph => graph)
   def apply(pos: Position, initCapacity: Int = 0, maxCapacity: Int = 10000, isExit: Boolean = false): Router = new Router(pos, initCapacity, maxCapacity, isExit)
 
   def apply(x: Double, y: Double): Router = apply(Position(x, y))

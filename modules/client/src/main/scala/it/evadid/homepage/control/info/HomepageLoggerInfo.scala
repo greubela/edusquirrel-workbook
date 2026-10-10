@@ -3,7 +3,7 @@ package it.evadid.homepage.control.info
 import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
 import it.evadid.util.logging.{BasicLogger, Logger}
 
-case class HomepageLoggerInfo() {
+case class HomepageLoggerInfo() derives upickle.default.ReadWriter {
 
   lazy val uiAndDomLogger: Logger = Logger.withNameAndPrefixes(Some("UserInterface"), PrintToStdLogger.printWarnAndError)
 

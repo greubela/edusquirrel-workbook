@@ -8,7 +8,7 @@ case class TurtleStitchExploreProjectElement(
                                               override val elementId: String,
                                               projectPathRelToResources: String,
                                               //    projectToDownload: FileDescription
-                                            ) extends WorkbookDisplayElement {
+                                            ) extends WorkbookDisplayElement derives upickle.default.ReadWriter {
   override val associatedFactory: WorkbookElementFactory[TurtleStitchExploreProjectElement] = TurtleStitchExploreProjectElement.factory
 
 }

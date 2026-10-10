@@ -15,4 +15,4 @@ final case class FeedbackExerciseDefinition(
                                              titleTranslations: Map[AppLanguage, String] = Map.empty,
                                              statementTranslations: Map[AppLanguage, String] = Map.empty,
                                              config: BlockFeedbackConfig
-                                           )
+                                           ) derives upickle.default.ReadWriter

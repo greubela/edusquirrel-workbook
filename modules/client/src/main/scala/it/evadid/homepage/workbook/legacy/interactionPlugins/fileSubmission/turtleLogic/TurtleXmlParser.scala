@@ -5,22 +5,22 @@ import org.scalajs.dom
 
 object TurtleXmlParser {
 
-  sealed trait Command
-  case class Forward(distance: Double) extends Command
-  case class TurnLeft(degrees: Double) extends Command
-  case class TurnRight(degrees: Double) extends Command
-  case class ArcRight(radius: Double, degrees: Double) extends Command
-  case class ArcLeft(radius: Double, degrees: Double) extends Command
-  case class GotoXY(x: Double, y: Double) extends Command
-  case class SetHeading(degrees: Double) extends Command
-  case class ChangeYPosition(delta: Double) extends Command
+  sealed trait Command derives upickle.default.ReadWriter
+  case class Forward(distance: Double) extends Command derives upickle.default.ReadWriter
+  case class TurnLeft(degrees: Double) extends Command derives upickle.default.ReadWriter
+  case class TurnRight(degrees: Double) extends Command derives upickle.default.ReadWriter
+  case class ArcRight(radius: Double, degrees: Double) extends Command derives upickle.default.ReadWriter
+  case class ArcLeft(radius: Double, degrees: Double) extends Command derives upickle.default.ReadWriter
+  case class GotoXY(x: Double, y: Double) extends Command derives upickle.default.ReadWriter
+  case class SetHeading(degrees: Double) extends Command derives upickle.default.ReadWriter
+  case class ChangeYPosition(delta: Double) extends Command derives upickle.default.ReadWriter
   case object Clear extends Command
   case object ReceiveGo extends Command
   case object PenUp extends Command
   case object PenDown extends Command
-  case class Repeat(times: Int, body: List[Command]) extends Command
-  case class IfThen(body: List[Command]) extends Command
-  case class WhileLoop(body: List[Command]) extends Command
+  case class Repeat(times: Int, body: List[Command]) extends Command derives upickle.default.ReadWriter
+  case class IfThen(body: List[Command]) extends Command derives upickle.default.ReadWriter
+  case class WhileLoop(body: List[Command]) extends Command derives upickle.default.ReadWriter
 
   def simplify(xml: String): String =
     NodeDomSupport.parseXml(xml)

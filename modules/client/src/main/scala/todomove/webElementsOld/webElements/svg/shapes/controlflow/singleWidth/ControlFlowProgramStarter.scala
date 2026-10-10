@@ -20,7 +20,7 @@ import todomove.webElementsOld.webElements.svg.shapes.controlflow.{ControlFlowCo
 import todomove.webElementsOld.webElements.svg.shapes.decorations.{PathSplitOverlay, TriangleOverlay}
 
 // todo add control flow shape elements as specific elements. distinguish between unit element and control flow (control-flow = connectors, unit = ..?)
-case class ControlFlowProgramStarter() extends ControlFlowShapeSingleWidth {
+case class ControlFlowProgramStarter() extends ControlFlowShapeSingleWidth derives upickle.default.ReadWriter {
 
   override def background: BeShape.BeShapeContainerable = ControlFlowStarterBackground()
 

@@ -30,10 +30,10 @@ final class JavaToBeExpressionParser {
     output.result().mkString("\n")
   }
 
-  private sealed trait Token
-  private final case class OpenBlock(header: String) extends Token
+  private sealed trait Token derives upickle.default.ReadWriter
+  private final case class OpenBlock(header: String) extends Token derives upickle.default.ReadWriter
   private case object CloseBlock extends Token
-  private final case class Statement(code: String) extends Token
+  private final case class Statement(code: String) extends Token derives upickle.default.ReadWriter
 
   /** Split only on structural punctuation outside strings and parentheses. */
   private def tokenize(source: String): List[Token] = {

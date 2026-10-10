@@ -12,7 +12,7 @@ case class SortingReasonInteractionState(
   lastSessionErrorCount: Int = 0,
   /** Temporary wrong drop shown in a field before the item returns to the source list. */
   wrongPlacementPreview: Option[(Int, Int)] = None
-) {
+) derives upickle.default.ReadWriter {
 
   def sanitized(itemCount: Int, fieldCount: Int): SortingReasonInteractionState = {
     val paddedPlacements = placedFieldIndexByItem.take(itemCount).padTo(itemCount, None)
@@ -112,7 +112,6 @@ object SortingReasonInteractionState {
       List.fill(itemCount)(false)
     )
 
-  private given ReadWriter[SortingReasonInteractionState] = macroRW
   val serializer: Serializer[SortingReasonInteractionState] =
     Serializer.fromUpickleJson(summon[ReadWriter[SortingReasonInteractionState]])
 }

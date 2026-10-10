@@ -28,7 +28,7 @@ case class WorkbookSection
 
 object WorkbookSection {
 
-  given regularWriter: Writer[WorkbookElement] = WorkbookElementFactory.serializerRefBasedJson.uPickleReadWrite
+  given ReadWriter[WorkbookSection] = WorkbookElement.subtypeCodec
 
   val factory: WorkbookElementFactory[WorkbookSection] = new WorkbookElementFactory[WorkbookSection] {
     override lazy val elementMapAndOrderForConstructorLike =

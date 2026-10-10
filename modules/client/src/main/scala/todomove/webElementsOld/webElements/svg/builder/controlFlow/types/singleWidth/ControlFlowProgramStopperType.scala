@@ -6,7 +6,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.co
 import todomove.webElementsOld.webElements.svg.builder.controlFlow.path.{ControlFlowPathOverlay, PathStatus, PathType}
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.ControlFlowStopperBackground
 
-case class ControlFlowProgramStopperType() extends ControlFlowTypeSingleWidth {
+case class ControlFlowProgramStopperType() extends ControlFlowTypeSingleWidth derives upickle.default.ReadWriter {
 
   override def backgroundShape: BeShapeContainerable = ControlFlowStopperBackground()
 

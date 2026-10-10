@@ -10,7 +10,7 @@ import it.evadid.evacuation.eva2.model.{EvaFloorMap, Person}
 import scala.collection.immutable.HashSet
 import scala.concurrent.ExecutionContextExecutor
 
-case class FloorMapIO(spriteMap: EvaSpriteMap) extends IO[EvaFloorMap, String] {
+case class FloorMapIO(spriteMap: EvaSpriteMap) extends IO[EvaFloorMap, String] derives upickle.default.ReadWriter {
 
   override def encode(floorMap: EvaFloorMap): String = {
 

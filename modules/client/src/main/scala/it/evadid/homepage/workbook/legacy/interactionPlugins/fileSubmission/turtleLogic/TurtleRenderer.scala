@@ -12,7 +12,7 @@ object TurtleRenderer {
   val transparentPngDataUrl =
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg=="
 
-  case class Segment(x1: Double, y1: Double, x2: Double, y2: Double)
+  case class Segment(x1: Double, y1: Double, x2: Double, y2: Double) derives upickle.default.ReadWriter
 
   private case class TurtleState(
       x: Double,
@@ -21,7 +21,7 @@ object TurtleRenderer {
       penDown: Boolean,
       segments: List[Segment],
       clearFrom: Int
-  )
+  ) derives upickle.default.ReadWriter
 
   def renderToPngDataUrl(commands: List[TurtleXmlParser.Command]): String = {
     val segments = simulateSegments(commands)

@@ -3,7 +3,7 @@ package it.evadid.server.commandHandler.sql.sync
 import it.evadid.workbook.interaction.sync.SyncFormatter.{RichInteractionVariableFormatter, RichInteractionVariableHistorySerialized}
 import it.evadid.workbook.interaction.sync.{SyncContext, UsageContext}
 
-sealed trait RichDatabaseEntry {
+sealed trait RichDatabaseEntry derives upickle.default.ReadWriter {
   def keyForSerialisation: String
 
   def eventId: String
@@ -34,12 +34,12 @@ object RichDatabaseEntry {
     else throw new IllegalArgumentException("list must have 2 or 3 elements")
   }
 
-  private[sql] case class DatabaseEntryWithoutKey(usageContext: UsageContext, eventId: String, richHistory: RichInteractionVariableHistorySerialized) extends RichDatabaseEntry {
+  private[sql] case class DatabaseEntryWithoutKey(usageContext: UsageContext, eventId: String, richHistory: RichInteractionVariableHistorySerialized) extends RichDatabaseEntry derives upickle.default.ReadWriter {
     lazy val keyForSerialisation: String = richHistory.keyForSerialisation
 
   }
 
-  private[sql] case class DatabaseEntryWithKey(usageContext: UsageContext, eventId: String, keyForSerialisation: String, richHistory: RichInteractionVariableHistorySerialized) extends RichDatabaseEntry {
+  private[sql] case class DatabaseEntryWithKey(usageContext: UsageContext, eventId: String, keyForSerialisation: String, richHistory: RichInteractionVariableHistorySerialized) extends RichDatabaseEntry derives upickle.default.ReadWriter {
   }
 
 

@@ -10,7 +10,7 @@ import upickle.default.*
 /** A learner-authored graph. Bounds validate the answer; they do not grade a hypothesis. */
 case class CoordinatePlotInteraction(elementId: String, title: LanguageMapContentId,
     xLabel: LanguageMapContentId, yLabel: LanguageMapContentId, xAxis: PlotAxis, yAxis: PlotAxis)
-    extends WorkbookInteractionElement[PlotAnswer] {
+    extends WorkbookInteractionElement[PlotAnswer] derives upickle.default.ReadWriter {
   override val defaultValue = PlotAnswer()
   override lazy val childrenOfThisElement = Nil
   override val associatedFactory = CoordinatePlotInteraction.factory

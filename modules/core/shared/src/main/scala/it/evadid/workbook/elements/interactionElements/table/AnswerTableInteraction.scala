@@ -23,14 +23,14 @@ case class EditableTableCell(expected: Option[List[String]] = None, choices: Lis
 
 case class TableAnswer(values: List[String]) derives ReadWriter
 
-case class TableGrade(correct: Int, total: Int) {
+case class TableGrade(correct: Int, total: Int) derives upickle.default.ReadWriter {
   def passed: Boolean = total > 0 && correct == total
 }
 
 /** Learner values contain only editable cells, in row-major order. Fixed cells cannot be overwritten. */
 case class AnswerTableInteraction(elementId: String, caption: LanguageMapContentId,
                                   rowLabels: List[LanguageMapContentId], columnLabels: List[LanguageMapContentId], rows: List[List[AnswerTableCell]])
-  extends WorkbookInteractionElement[TableAnswer] {
+  extends WorkbookInteractionElement[TableAnswer] derives upickle.default.ReadWriter {
   require(rowLabels.nonEmpty && columnLabels.nonEmpty && rows.size == rowLabels.size && rows.forall(_.size == columnLabels.size),
     "Table labels and rectangular cells must have matching dimensions")
   val editableCells: List[EditableTableCell] = rows.flatten.collect { case c: EditableTableCell => c }

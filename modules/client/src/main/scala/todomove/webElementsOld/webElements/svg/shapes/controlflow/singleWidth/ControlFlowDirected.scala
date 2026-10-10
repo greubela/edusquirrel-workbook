@@ -18,7 +18,7 @@ import todomove.webElementsOld.webElements.svg.shapes.decorations.ControlArrowUp
 
 import scala.collection.mutable
 
-case class ControlFlowDirected(goesDown: Boolean, isActive: Boolean = false) extends ControlFlowShapeSingleWidth {
+case class ControlFlowDirected(goesDown: Boolean, isActive: Boolean = false) extends ControlFlowShapeSingleWidth derives upickle.default.ReadWriter {
 
   override def minHeightInSegments: Int = 2
 

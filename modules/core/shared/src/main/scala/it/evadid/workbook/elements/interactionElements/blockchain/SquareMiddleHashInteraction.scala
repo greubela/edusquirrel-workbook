@@ -24,7 +24,7 @@ case class SquareMiddleHashAnswer(first: String = "", second: String = "") deriv
 
 case class SquareMiddleHashInteraction(elementId: String, title: LanguageMapContentId,
                                        task: SquareMiddleHashTask = ExploreSquareMiddleHash(), initial: SquareMiddleHashAnswer = SquareMiddleHashAnswer())
-  extends WorkbookInteractionElement[SquareMiddleHashAnswer] {
+  extends WorkbookInteractionElement[SquareMiddleHashAnswer] derives upickle.default.ReadWriter {
   override lazy val childrenOfThisElement = Nil
   override val defaultValue = initial
   override val serializerInteractionContent = Serializer.fromUpickleJson(summon[ReadWriter[SquareMiddleHashAnswer]])

@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.define
 
-case class BeBlockDefineClass() {
+case class BeBlockDefineClass() derives upickle.default.ReadWriter {
 
 }
 

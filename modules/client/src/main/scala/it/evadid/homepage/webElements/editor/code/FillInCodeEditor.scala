@@ -12,12 +12,12 @@ import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{
 /** Fill-in-the-blank style code editor with TODO legend and requirement checking. */
 object FillInCodeEditor {
 
-  private sealed trait FeedbackState
+  private sealed trait FeedbackState derives upickle.default.ReadWriter
 
   private object FeedbackState {
     case object Hidden extends FeedbackState
-    case class Success(messageId: LanguageMapContentId) extends FeedbackState
-    case class Incomplete(introId: LanguageMapContentId, hintIds: List[LanguageMapContentId]) extends FeedbackState
+    case class Success(messageId: LanguageMapContentId) extends FeedbackState derives upickle.default.ReadWriter
+    case class Incomplete(introId: LanguageMapContentId, hintIds: List[LanguageMapContentId]) extends FeedbackState derives upickle.default.ReadWriter
   }
 
   def apply(

@@ -6,20 +6,20 @@ import it.evadid.vm.BeProgram
 import it.evadid.vm.code.tree.BeExpressionNode
 
 
-case class BeDraggingEvent(draggedProgram: BeProgram) {
+case class BeDraggingEvent(draggedProgram: BeProgram) derives upickle.default.ReadWriter {
 
   override val toString: String = "BeDraggingEvent(" + draggedProgram.toString + ")"
 }
 
-case class MouseOverProgram(program: BeProgram, position: Point[Double]) {
+case class MouseOverProgram(program: BeProgram, position: Point[Double]) derives upickle.default.ReadWriter {
 
   override val toString: String = "MouseOverProgram(" + position.toString +  "/" + program.toString + ")"
 
 }
 
-case class MouseOverExpression(program: BeProgram, expr: BeExpressionNode)
+case class MouseOverExpression(program: BeProgram, expr: BeExpressionNode) derives upickle.default.ReadWriter
 
-case class TreeDroppedEvent(droppedProgram: BeProgram, position: Point[Double])
+case class TreeDroppedEvent(droppedProgram: BeProgram, position: Point[Double]) derives upickle.default.ReadWriter
 
 case class BeEditorControllerState(
                                     draggingEvent: Option[BeDraggingEvent],

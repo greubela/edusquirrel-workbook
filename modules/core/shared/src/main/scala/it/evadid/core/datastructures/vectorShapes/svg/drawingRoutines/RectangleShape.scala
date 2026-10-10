@@ -13,3 +13,8 @@ case class RectangleShape[T: Fractional]() extends DrawingRoutineRelativeToMaxDi
 
   override def hasDesiredAspectRatio: Option[AspectRatio] = None
 }
+
+object RectangleShape {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[RectangleShape[T]] =
+    upickle.default.readwriter[Unit].bimap(value => (), _ => RectangleShape[T]())
+}

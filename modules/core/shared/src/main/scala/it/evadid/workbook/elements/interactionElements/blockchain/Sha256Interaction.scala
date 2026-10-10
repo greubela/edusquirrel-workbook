@@ -22,7 +22,7 @@ case class Sha256Answer(first: String = "", second: String = "") derives ReadWri
 
 case class Sha256Interaction(elementId: String, title: LanguageMapContentId,
                              task: Sha256Task = CompareSha256(), initial: Sha256Answer = Sha256Answer())
-  extends WorkbookInteractionElement[Sha256Answer] {
+  extends WorkbookInteractionElement[Sha256Answer] derives upickle.default.ReadWriter {
   override lazy val childrenOfThisElement = Nil
   override val defaultValue = initial
   override val serializerInteractionContent = Serializer.fromUpickleJson(summon[ReadWriter[Sha256Answer]])

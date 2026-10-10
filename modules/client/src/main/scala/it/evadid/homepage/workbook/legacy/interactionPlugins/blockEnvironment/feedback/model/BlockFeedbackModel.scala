@@ -13,7 +13,7 @@ import it.evadid.vm.code.abstractions.BeExpression
 final case class BlockFeedbackMeta(
     exerciseId: Option[String] = None,
     userId: Option[String] = None
-)
+) derives upickle.default.ReadWriter
 
 /**
  * Neutral request type for the feedback pipeline.
@@ -27,7 +27,7 @@ final case class BlockFeedbackRequest(
     config: BlockFeedbackConfig,
     meta: BlockFeedbackMeta = BlockFeedbackMeta(),
     humanLanguage: HumanLanguage = AppLanguage.default()
-) {
+) derives upickle.default.ReadWriter {
 
     /** Preferred output language for human-readable texts. */
     def preferredHumanLanguage: HumanLanguage =

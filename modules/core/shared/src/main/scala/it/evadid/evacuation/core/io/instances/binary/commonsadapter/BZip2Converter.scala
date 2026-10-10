@@ -4,7 +4,7 @@ import it.evadid.evacuation.core.io.traits.converter.Converter
 //import org.apache.commons.compress.compressors.xz.XZCompressorOutputStream
 //import org.apache.commons.compress.compressors.bzip2.{BZip2CompressorInputStream, BZCOS}
 
-case class BZip2Converter() extends Converter[Array[Byte]] {
+case class BZip2Converter() extends Converter[Array[Byte]] derives upickle.default.ReadWriter {
 
 
   override def convert(data: Array[Byte]): Array[Byte] = ???/*{

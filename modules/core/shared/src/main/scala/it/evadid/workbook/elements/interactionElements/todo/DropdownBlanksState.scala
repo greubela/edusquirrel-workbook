@@ -3,7 +3,7 @@ package it.evadid.workbook.elements.interactionElements.todo
 import it.evadid.core.util.io.Serializer
 import upickle.default.{ReadWriter, macroRW}
 
-case class DropdownBlanksState(selectedOptionIndicesByBlankIndex: List[Option[Int]]) {
+case class DropdownBlanksState(selectedOptionIndicesByBlankIndex: List[Option[Int]]) derives upickle.default.ReadWriter {
   def sanitized(optionCountsByBlank: List[Int]): DropdownBlanksState = {
     val blankCount = optionCountsByBlank.size
     val padded = selectedOptionIndicesByBlankIndex.take(blankCount).padTo(blankCount, None)
@@ -21,6 +21,5 @@ case class DropdownBlanksState(selectedOptionIndicesByBlankIndex: List[Option[In
 }
 
 object DropdownBlanksState {
-  private given ReadWriter[DropdownBlanksState] = macroRW
   val serializer: Serializer[DropdownBlanksState] = Serializer.fromUpickleJson(summon[ReadWriter[DropdownBlanksState]])
 }

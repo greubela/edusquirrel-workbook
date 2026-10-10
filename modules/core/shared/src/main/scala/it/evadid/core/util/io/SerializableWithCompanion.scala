@@ -7,7 +7,7 @@ import upickle.{ReadWriter, macroRW}
 
 object SerializableWithCompanion {
 
-  case class GenericSerializableFactory(factoryName: String, factoryParameter: Map[String, String])
+  case class GenericSerializableFactory(factoryName: String, factoryParameter: Map[String, String]) derives upickle.default.ReadWriter
 
   private val serializerGenericFactory: ReadWriter[GenericSerializableFactory] = macroRW
 

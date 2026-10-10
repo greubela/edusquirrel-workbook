@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import todomove.webElementsOld.webElements.svg.shapes.ShapeFactory
 
-case class CommentShape() extends BeShapePathBased {
+case class CommentShape() extends BeShapePathBased derives upickle.default.ReadWriter {
 
   override protected def getPathBuilder(config: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] = ShapeFactory.buildSpeechBubbleShape(bounds, config.controlSegmentSize)
 

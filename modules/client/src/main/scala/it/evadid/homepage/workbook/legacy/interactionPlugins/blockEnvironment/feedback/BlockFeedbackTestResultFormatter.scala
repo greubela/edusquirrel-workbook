@@ -13,7 +13,7 @@ object BlockFeedbackTestResultFormatter {
     expected: String,
     actualLabel: String,
     actual: String
-  )
+  ) derives upickle.default.ReadWriter
 
   def expectedActual(
     test: PythonTestResult,

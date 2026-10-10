@@ -33,7 +33,7 @@ private[shapes] object SnapShapeFactory {
     dent: Double,
     hatHeight: Double,
     hatWidth: Double
-  )
+  ) derives upickle.default.ReadWriter
 
   private[shapes] object SnapBlockGeometry {
     def atScale(scale: Double = 1.0): SnapBlockGeometry = SnapBlockGeometry(
@@ -48,7 +48,7 @@ private[shapes] object SnapShapeFactory {
   }
 
   /** Bounds of a CSlotMorph relative to its enclosing block. */
-  private[shapes] final case class SnapCSlot(bounds: Bounds[Double])
+  private[shapes] final case class SnapCSlot(bounds: Bounds[Double]) derives upickle.default.ReadWriter
 
   /** Small CanvasRenderingContext2D-compatible path adapter. Snap describes
     * circular arcs by center and angles, whereas SVG describes them by their
@@ -57,7 +57,7 @@ private[shapes] object SnapShapeFactory {
   private final case class SnapPath(
     builder: SvgPathBuilder[Double],
     current: Point[Double]
-  ) {
+  ) derives upickle.default.ReadWriter {
     private val Epsilon = 1e-9
 
     def moveTo(x: Double, y: Double): SnapPath = {

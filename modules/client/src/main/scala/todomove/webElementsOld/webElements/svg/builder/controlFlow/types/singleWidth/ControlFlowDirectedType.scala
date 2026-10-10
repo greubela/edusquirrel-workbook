@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.geometry.Dimension
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import todomove.webElementsOld.webElements.svg.builder.controlFlow.path.{ControlFlowPathOverlay, PathStatus, PathType}
 
-case class ControlFlowDirectedType(goesDown: Boolean, isActive: Boolean = false) extends ControlFlowTypeSingleWidth {
+case class ControlFlowDirectedType(goesDown: Boolean, isActive: Boolean = false) extends ControlFlowTypeSingleWidth derives upickle.default.ReadWriter {
 
   override def minHeightInSegments: Int = 2
 

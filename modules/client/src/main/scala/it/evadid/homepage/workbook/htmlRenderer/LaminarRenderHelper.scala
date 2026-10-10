@@ -14,7 +14,7 @@ import org.scalajs.dom.{File, HTMLInputElement, MouseEvent, html}
 
 import scala.concurrent.ExecutionContext
 
-case class LaminarRenderHelper() {
+case class LaminarRenderHelper() derives upickle.default.ReadWriter {
 
   /* Logging */
   val uiAndDomLogger: Logger = fullInfo.loggerSystemInfo.uiAndDomLogger

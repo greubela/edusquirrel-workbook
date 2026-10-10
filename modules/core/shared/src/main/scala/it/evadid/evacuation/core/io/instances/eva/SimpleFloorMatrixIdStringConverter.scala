@@ -6,7 +6,7 @@ import it.evadid.evacuation.core.graphic.sprites.traits.FloorSprite
 import it.evadid.evacuation.core.io.instances.basic.ByteFixedLengthIntIO
 import it.evadid.evacuation.core.io.traits.encoder.IO
 
-case class SimpleFloorMatrixIdStringConverter(spriteMap: SpriteMap) extends IO[Matrix[FloorSprite], Array[Byte]] {
+case class SimpleFloorMatrixIdStringConverter(spriteMap: SpriteMap) extends IO[Matrix[FloorSprite], Array[Byte]] derives upickle.default.ReadWriter {
 
   override def encode(in: Matrix[FloorSprite]): Array[Byte] =  {
     val colBytes: Array[Byte] = ByteFixedLengthIntIO.encode(in.dim.cols)

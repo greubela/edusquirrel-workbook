@@ -20,7 +20,7 @@ case class NeuronExample(label: LanguageMapContentId, inputs: List[Double], expe
   require(inputs.nonEmpty && inputs.forall(x => x == 0 || x == 1), "Worksheet inputs must be binary")
 }
 case class ThresholdNeuronInteraction(elementId: String, inputLabels: List[LanguageMapContentId], examples: List[NeuronExample],
-    initial: NeuronParameters) extends WorkbookInteractionElement[NeuronParameters] {
+    initial: NeuronParameters) extends WorkbookInteractionElement[NeuronParameters] derives upickle.default.ReadWriter {
   require(inputLabels.nonEmpty && inputLabels.size == initial.weights.size, "Labels must match weights")
   require(examples.nonEmpty && examples.forall(_.inputs.size == inputLabels.size), "Examples must match inputs")
   override lazy val childrenOfThisElement = Nil

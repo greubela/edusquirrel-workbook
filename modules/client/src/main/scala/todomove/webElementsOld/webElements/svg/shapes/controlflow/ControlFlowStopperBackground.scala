@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import todomove.webElementsOld.webElements.svg.shapes.DecorationFactory
 
-case class ControlFlowStopperBackground() extends BeShapePathBased {
+case class ControlFlowStopperBackground() extends BeShapePathBased derives upickle.default.ReadWriter {
 
   override protected def getPathBuilder(config: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] =
     DecorationFactory[Double](config).buildControlFlowStop(bounds)

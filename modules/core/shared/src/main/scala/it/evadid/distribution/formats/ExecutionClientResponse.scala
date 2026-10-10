@@ -1,5 +1,7 @@
 package it.evadid.distribution.formats
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.ldt
+
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.*
@@ -15,7 +17,7 @@ case class ExecutionClientResponse(
                                     parsedExecutionCommand: Option[ExecutionCommand],
                                     loggerOut: String,
                                     loggerError: String
-                                  ) {
+                                  ) derives upickle.default.ReadWriter {
 
   def serializedToMap(): Map[String, String] = {
     val baseMap = Map(

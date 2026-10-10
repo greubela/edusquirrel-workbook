@@ -10,7 +10,7 @@ import todomove.webElementsOld.webElements.svg.shapes.BeShape
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
 import todomove.webElementsOld.webElements.svg.shapes.decorations.PathUnionOverlay
 
-case class RepetitionUnion() extends ControlFlowShapeDoubleWidth {
+case class RepetitionUnion() extends ControlFlowShapeDoubleWidth derives upickle.default.ReadWriter {
 
   override def minHeightInSegments: Int = 5
 

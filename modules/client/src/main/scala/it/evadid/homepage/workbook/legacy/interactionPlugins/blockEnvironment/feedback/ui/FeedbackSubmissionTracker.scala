@@ -26,4 +26,4 @@ private[feedback] final class FeedbackSubmissionTracker:
     active = None
 
 private[feedback] object FeedbackSubmissionTracker:
-  final case class Submission private[ui] (id: Long, revision: Long)
+  final case class Submission private[ui] (id: Long, revision: Long) derives upickle.default.ReadWriter

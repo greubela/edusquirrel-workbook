@@ -14,7 +14,7 @@ import todomove.webElementsOld.webElements.svg.shapes.controlflow.doubleWidth.{C
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.singleWidth.ControlFlowDirected
 import todomove.webElementsOld.webElements.svg.shapes.special.nested.NestedControlStructureShape
 
-case class BeBlockIfElse(expr: BeIfElse) extends BeBlock {
+case class BeBlockIfElse(expr: BeIfElse) extends BeBlock derives upickle.default.ReadWriter {
 
 
   override def renderNested(

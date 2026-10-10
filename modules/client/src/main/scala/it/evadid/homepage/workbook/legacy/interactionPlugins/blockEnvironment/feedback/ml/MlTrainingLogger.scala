@@ -19,7 +19,7 @@ object MlTrainingLogger:
     weakConfidence: Double,
     features: Map[String, Double],
     meta: Map[String, String] = Map.empty
-  )
+  ) derives upickle.default.ReadWriter
 
   private def nowMillis(): Long =
     try js.Date.now().toLong

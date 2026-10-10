@@ -118,4 +118,61 @@ class EvaRoutingSpec extends FunSuite {
     assertEquals(state.lastEventMap()(person), finished)
   }
 
+  test("person event codecs preserve every built-in event and its graph snapshot") {
+    import it.evadid.evacuation.eva1.algorithm.events.traits.PersonEvent
+    val events: List[PersonEvent] = List(
+      PersonInsertedEvent(person, start, graph, 0, 0), PersonSentEvent(person, edge, graph, 10, 0),
+      PersonReceivedEvent(person, edge, graph, 110, 0), PersonFinishedEvent(person, exit, graph, 110, 0))
+    events.foreach { event =>
+      for (decoded <- List(read[PersonEvent](write(event)), readBinary[PersonEvent](writeBinary(event)))) {
+        assertEquals(decoded.getClass, event.getClass)
+        assertEquals(decoded.person, event.person)
+        assertEquals(decoded.eventStartTimestamp, event.eventStartTimestamp)
+        assertEquals(decoded.graph.nodes.toSet, graph.nodes.toSet)
+        assertEquals(decoded.graph.edges.toSet, graph.edges.toSet)
+        assertEquals(decoded.graph.getDistFromEdge(edge), 100.0)
+      }
+    }
+    intercept[Exception](read[PersonEvent]("""{"kind":"unknown","payload":null}"""))
+  }
+
+  test("mutable multi-map codecs preserve empty buckets, duplicates and independent state") {
+    import it.evadid.evacuation.core.datastructures.maps.MultiHashMapList
+    val original = new MultiHashMapList[String, Int]
+    original("empty")
+    original("items") ++= List(3, 1, 3)
+    for (decoded <- List(read[MultiHashMapList[String, Int]](write(original)),
+      readBinary[MultiHashMapList[String, Int]](writeBinary(original)))) {
+      assertEquals(decoded, original)
+      assert(decoded.contains("empty"))
+      assertEquals(decoded("items").toList, List(3, 1, 3))
+      decoded("items") += 99
+      assertEquals(original("items").toList, List(3, 1, 3))
+    }
+  }
+
+  test("a decoded evacuation snapshot resumes with identical routing and safe persons") {
+    val routes = new it.evadid.evacuation.core.datastructures.maps.MultiHashMapList[Router, RoutingOption[Router]]()
+    routes.addElement(start, RoutingOption(start, Some(exit), exit, 100))
+    val initial = EvacuationState(PositionStateMap.getEmpty(graph), Set(person),
+      new FlowRoutingMap.FlowRoutingMap(routes), 0, Nil, Set(PersonInsertedEvent(person, start, graph, 0, 0)))
+    val sent = initial.calculateNextState(ClosestGoalStrategy).get.calculateNextState(ClosestGoalStrategy).get
+    val expected = sent.calculateNextState(ClosestGoalStrategy).get.calculateNextState(ClosestGoalStrategy).get
+    for (decoded <- List(read[EvacuationState](write(sent)), readBinary[EvacuationState](writeBinary(sent)))) {
+      assertEquals(decoded.curPositionsInState.positionStateMap, sent.curPositionsInState.positionStateMap)
+      val finished = decoded.calculateNextState(ClosestGoalStrategy).get.calculateNextState(ClosestGoalStrategy).get
+      assertEquals(finished.currenTimestamp, expected.currenTimestamp)
+      assertEquals(finished.getSafePersons, expected.getSafePersons)
+      assertEquals(finished.curPositionsInState.positionStateMap.getAllEntries.size, 0)
+      assertEquals(finished.calculateNextState(ClosestGoalStrategy), None)
+    }
+  }
+
+  test("graph snapshots reject edge weights that differ from connection delays") {
+    val custom: EvaGraphTypes.EvaGraph = new EvaGraphModel(List(start, exit), List(edge)) {
+      override def getDistFromEdge(edge: PositionableEdge[Router, ConnectionInfo]): Double = 1.0
+    }
+    intercept[IllegalArgumentException](write[EvaGraphTypes.EvaGraph](custom))
+  }
+
 }

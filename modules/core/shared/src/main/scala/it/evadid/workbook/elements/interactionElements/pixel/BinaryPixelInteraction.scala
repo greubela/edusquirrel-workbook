@@ -18,7 +18,7 @@ case class PixelPreset(label: LanguageMapContentId, image: BinaryPixelImage) der
 
 case class BinaryPixelInteraction(elementId: String, title: LanguageMapContentId, initial: BinaryPixelImage,
     expected: Option[BinaryPixelImage] = None, probes: List[PixelThresholdProbe] = Nil, presets: List[PixelPreset] = Nil)
-    extends WorkbookInteractionElement[BinaryPixelImage] {
+    extends WorkbookInteractionElement[BinaryPixelImage] derives upickle.default.ReadWriter {
   require(expected.forall(initial.sameDimensions) && presets.forall(p => initial.sameDimensions(p.image)),
     "Targets and presets must match the canvas dimensions")
   probes.foreach(_.cells.foreach(initial.index))

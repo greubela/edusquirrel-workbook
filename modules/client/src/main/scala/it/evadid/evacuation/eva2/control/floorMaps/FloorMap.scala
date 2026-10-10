@@ -21,6 +21,6 @@ trait FloorMap {
 
 object FloorMap {
 
-  private case class TileDrawingInfo(sprite: Sprite, pim: PositionInMatrix, overlays: List[Sprite])
+  private case class TileDrawingInfo(sprite: Sprite, pim: PositionInMatrix, overlays: List[Sprite]) derives upickle.default.ReadWriter
 
 }

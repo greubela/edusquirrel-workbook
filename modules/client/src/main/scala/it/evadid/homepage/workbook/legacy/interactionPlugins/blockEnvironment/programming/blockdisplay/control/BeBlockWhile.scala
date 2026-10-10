@@ -14,7 +14,7 @@ import todomove.webElementsOld.webElements.svg.shapes.{BeShape, ControlFlowAndEx
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.singleWidth.ControlFlowDownUp
 import todomove.webElementsOld.webElements.svg.shapes.special.nested.NestedControlStructureShape
 
-case class BeBlockWhile(whileExpr: BeWhile) extends BeBlock {
+case class BeBlockWhile(whileExpr: BeWhile) extends BeBlock derives upickle.default.ReadWriter {
 
 
   override def renderNested(

@@ -8,7 +8,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.pr
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 
-case class ControlFlowEmpty() extends ControlFlowShapeSingleWidth {
+case class ControlFlowEmpty() extends ControlFlowShapeSingleWidth derives upickle.default.ReadWriter {
 
   override def minHeightInSegments: Int = 1
 

@@ -12,7 +12,7 @@ case class SketchDownloadInteraction(
                                       filenameRelativeToWorkbookResources: String,
                                       sketchContent: String,
                                       unlockWhenReorderCorrect: String
-                                    ) extends WorkbookInteractionElement[String] {
+                                    ) extends WorkbookInteractionElement[String] derives upickle.default.ReadWriter {
   override val associatedFactory = SketchDownloadInteraction.factory
 
   override val defaultValue: String = ""

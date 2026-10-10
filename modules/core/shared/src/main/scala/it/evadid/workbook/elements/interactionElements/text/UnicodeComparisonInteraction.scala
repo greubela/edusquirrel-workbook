@@ -11,7 +11,7 @@ case class UnicodeComparisonAnswer(first: String = "", second: String = "") deri
 }
 /** Exploration, not a domain-trust verdict or an IDNA/URL parser. */
 case class UnicodeComparisonInteraction(elementId: String, title: LanguageMapContentId,
-    initial: UnicodeComparisonAnswer = UnicodeComparisonAnswer()) extends WorkbookInteractionElement[UnicodeComparisonAnswer] {
+    initial: UnicodeComparisonAnswer = UnicodeComparisonAnswer()) extends WorkbookInteractionElement[UnicodeComparisonAnswer] derives upickle.default.ReadWriter {
   override lazy val childrenOfThisElement = Nil
   override val defaultValue = initial
   override val serializerInteractionContent = Serializer.fromUpickleJson(summon[ReadWriter[UnicodeComparisonAnswer]])

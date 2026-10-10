@@ -15,7 +15,7 @@ case class EvacuationFloorRequirements(minPeople: Int = 1, minExits: Int = 1) de
 case class EvacuationConstructFloorInteraction(elementId: String,
     initial: EvacuationFloorPlan = EvacuationFloorPlan.empty(),
     requirements: EvacuationFloorRequirements = EvacuationFloorRequirements())
-    extends WorkbookInteractionElement[EvacuationFloorPlan] {
+    extends WorkbookInteractionElement[EvacuationFloorPlan] derives upickle.default.ReadWriter {
   override val defaultValue = initial
   override lazy val childrenOfThisElement = Nil
   override val serializerInteractionContent: Serializer[EvacuationFloorPlan] =

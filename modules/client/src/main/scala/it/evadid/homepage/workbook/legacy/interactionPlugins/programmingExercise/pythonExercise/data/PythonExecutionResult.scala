@@ -7,13 +7,13 @@ import PythonExecutionResult.*
 case class PythonExecutionResult(
                                   request: PythonExecutionRequest,
                                   state: PythonExecutionState
-                                ) {
+                                ) derives upickle.default.ReadWriter {
 
 }
 
 object PythonExecutionResult {
 
-  enum PythonExecutionRunningState {
+  enum PythonExecutionRunningState derives upickle.default.ReadWriter {
     case RUNNING, FINISHED_ERROR, FINISHED_LINE_LIMIT, FINISHED_SUCCESS
   }
 
@@ -24,7 +24,7 @@ object PythonExecutionResult {
                                    locals: Map[String, String],
                                    linesExecuted: Int,
                                    runningState: PythonExecutionRunningState
-                                 )
+                                 ) derives upickle.default.ReadWriter
 
 }
 

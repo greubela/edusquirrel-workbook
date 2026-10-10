@@ -18,7 +18,7 @@ case class TeachingBlock(data: String, nonce: Int = 0) derives ReadWriter {
   }
 }
 
-case class MiningResult(nonce: Int, attempts: Int, found: Boolean) {
+case class MiningResult(nonce: Int, attempts: Int, found: Boolean) derives upickle.default.ReadWriter {
   def nextNonce: Option[Int] = Option.when(nonce < Int.MaxValue)(nonce + 1)
 }
 

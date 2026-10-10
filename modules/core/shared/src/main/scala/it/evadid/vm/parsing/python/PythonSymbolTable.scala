@@ -14,18 +14,18 @@ import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{AssigningNotPossible, AssigningPossibleWithImplicitCast, AssigningPossibleWithSameType, BeDataType}
 
 object PythonSymbolTable {
-  sealed trait KnownStructure {
+  sealed trait KnownStructure derives upickle.default.ReadWriter {
     def name: String
   }
 
   object KnownStructure {
-    final case class Variable(name: String, variable: BeDefineVariable) extends KnownStructure
+    final case class Variable(name: String, variable: BeDefineVariable) extends KnownStructure derives upickle.default.ReadWriter
 
-    final case class Function(name: String, function: BeDefineFunction) extends KnownStructure
+    final case class Function(name: String, function: BeDefineFunction) extends KnownStructure derives upickle.default.ReadWriter
 
-    final case class Operator(name: String, function: BeDefineFunction) extends KnownStructure
+    final case class Operator(name: String, function: BeDefineFunction) extends KnownStructure derives upickle.default.ReadWriter
 
-    final case class Class(name: String, clazz: BeDefineClass) extends KnownStructure
+    final case class Class(name: String, clazz: BeDefineClass) extends KnownStructure derives upickle.default.ReadWriter
   }
 
   val defaultKnownStructures: Seq[KnownStructure] =
@@ -40,7 +40,7 @@ object PythonSymbolTable {
                                              functions: Map[String, BeDefineFunction],
                                              operators: Map[(String, Int), List[BeDefineFunction]],
                                              classes: Map[String, BeDefineClass]
-                                           ) {
+                                           ) derives upickle.default.ReadWriter {
     def addVariable(name: String, variable: BeDefineVariable): CurrentlyKnownStructures =
       copy(variables = variables.updated(name, variable))
 

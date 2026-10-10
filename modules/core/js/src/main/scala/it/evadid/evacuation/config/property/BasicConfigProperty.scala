@@ -2,7 +2,7 @@ package it.evadid.evacuation.config.property
 
 import it.evadid.evacuation.config.value.{ConfigValue, SimpleConfigValue}
 
-case class BasicConfigProperty[T](name: String, defaultValue: ConfigValue[T], description: Option[String]) extends ConfigProperty[T] {
+case class BasicConfigProperty[T](name: String, defaultValue: ConfigValue[T], description: Option[String]) extends ConfigProperty[T] derives upickle.default.ReadWriter {
 
 
 }

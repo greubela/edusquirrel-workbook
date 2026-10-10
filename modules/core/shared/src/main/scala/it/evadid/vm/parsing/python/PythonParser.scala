@@ -411,7 +411,7 @@ object PythonParser {
                                       definedVariables: List[BeDefineVariable],
                                       currentlyKnownStructures: CurrentlyKnownStructures,
                                       codeExpression: BeSequence
-                                    )
+                                    ) derives upickle.default.ReadWriter
 
   type KnownStructure = PythonSymbolTable.KnownStructure
   val KnownStructure: PythonSymbolTable.KnownStructure.type = PythonSymbolTable.KnownStructure

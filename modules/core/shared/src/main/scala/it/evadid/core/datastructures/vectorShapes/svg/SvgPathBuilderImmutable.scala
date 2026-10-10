@@ -6,6 +6,9 @@ import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
 import scala.collection.mutable
 
 object SvgPathBuilderImmutable {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[SvgPathBuilderImmutable[T]] =
+    upickle.default.readwriter[(StartPathCommand[T], List[SvgPathBuilderCommand[T]])].bimap(value => (value.startCommand, value.furtherCommands), value => SvgPathBuilderImmutable[T](value._1, value._2))
+
   
   def apply[T: Fractional](start: Point[T]): SvgPathBuilderImmutable[T] = SvgPathBuilderImmutable[T](StartPathCommand(start), List())
   

@@ -13,7 +13,7 @@ import java.nio.file.Path
 import java.util.Date
 import scala.concurrent.ExecutionContextExecutor
 
-case class Evacuation(initialState: EvaFloorMap, states: List[EvaFloorMap], steps: List[Int]) {
+case class Evacuation(initialState: EvaFloorMap, states: List[EvaFloorMap], steps: List[Int]) derives upickle.default.ReadWriter {
 
   def stepNr(stateNr: Int): Int =
     steps.count(_ <= stateNr)

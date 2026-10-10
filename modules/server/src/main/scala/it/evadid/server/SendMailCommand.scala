@@ -16,7 +16,7 @@ object SendMailCommand {
                                                password: String,
                                                host: String,
                                                port: String
-                                             )
+                                             ) derives upickle.default.ReadWriter
 
   private def requiredEnv(name: String, envProvider: String => Option[String]): String =
     envProvider(name).map(_.trim).filter(_.nonEmpty).getOrElse(throw new IllegalStateException(s"required env property $name is not configured"))

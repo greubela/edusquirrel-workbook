@@ -25,7 +25,7 @@ object SQLCommands {
                                historySerialized: InteractionVariableHistorySerialized,
                                databaseName: String,
                                hasDatabaseKeyColumn: Boolean
-                             ) extends DbRequest {
+                             ) extends DbRequest derives upickle.default.ReadWriter {
 
     lazy val usageContext: UsageContext = syncContext.toUsageContext
     lazy val serializedValueString: String = formatter.serialize(syncContext, historySerialized)
@@ -37,7 +37,7 @@ object SQLCommands {
                                     databaseName: String,
                                     mayLimitToKey: Option[String],
                                     hasDatabaseKeyColumn: Boolean
-                                  ) extends DbRequest
+                                  ) extends DbRequest derives upickle.default.ReadWriter
 
 
   case class DeleteInDbRequest(
@@ -45,11 +45,11 @@ object SQLCommands {
                                 limitToKey: Option[String],
                                 databaseName: String,
                                 hasDatabaseKeyColumn: Boolean
-                              ) extends DbRequest {
+                              ) extends DbRequest derives upickle.default.ReadWriter {
   }
 
 
-  case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionVariableHistorySerialized]) {
+  case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionVariableHistorySerialized]) derives upickle.default.ReadWriter {
 
 
   }

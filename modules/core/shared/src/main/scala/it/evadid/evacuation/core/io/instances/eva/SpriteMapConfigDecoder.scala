@@ -5,7 +5,7 @@ import it.evadid.evacuation.core.graphic.spritemap.{EvaSpriteMap, SpriteMapConfi
 import it.evadid.evacuation.core.io.instances.eva.config.SpriteMapMetaConfig
 import it.evadid.evacuation.core.io.traits.encoder.Decoder
 
-case class SpriteMapConfigDecoder(id: SpriteMapResourceIdentifier, config: SpriteMapMetaConfig) extends Decoder[EvaSpriteMap, List[String]] {
+case class SpriteMapConfigDecoder(id: SpriteMapResourceIdentifier, config: SpriteMapMetaConfig) extends Decoder[EvaSpriteMap, List[String]] derives upickle.default.ReadWriter {
 
   override def decode(in: List[String]): EvaSpriteMap = {
     val spriteMapConfig: SpriteMapConfig = SpriteMapConfig(in, config)

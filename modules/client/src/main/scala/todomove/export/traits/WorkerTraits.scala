@@ -1,5 +1,7 @@
 package todomove.`export`.traits
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.ldt
+
 import com.raquo.airstream.state.Var
 import org.scalajs.dom.OffscreenCanvas
 
@@ -10,7 +12,7 @@ import scala.scalajs.js.timers.SetTimeoutHandle
 
 object WorkerTraits {
 
-  enum WorkerState {
+  enum WorkerState derives upickle.default.ReadWriter {
     case WORKER_STARTING
     case WORKER_READY(initRequested: Boolean, initSuccess: Boolean)
     case WORKER_TERMINATED

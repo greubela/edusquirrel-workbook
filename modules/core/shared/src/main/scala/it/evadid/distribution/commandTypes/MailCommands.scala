@@ -10,9 +10,9 @@ object MailCommands {
                               recipientMail: String,
                               subject: String,
                               content: String
-                            )
+                            ) derives upickle.default.ReadWriter
 
-  case class SendMailResponse(associatedUser: Option[User], sent: Boolean)
+  case class SendMailResponse(associatedUser: Option[User], sent: Boolean) derives upickle.default.ReadWriter
 
   val sendMailCommand: ExecutionCommandFactory[SendMailRequest, SendMailResponse] = ExecutionCommandFactory(
     "send-mail-request",

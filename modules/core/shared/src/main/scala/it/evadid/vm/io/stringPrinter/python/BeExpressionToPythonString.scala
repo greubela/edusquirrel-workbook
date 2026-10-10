@@ -12,7 +12,7 @@ case class BeExpressionToPythonString
 (language: HumanLanguage, skipUnparsable: Boolean)
   extends GenericJavaLikeStringPrinter(
     Python, language, PythonSeparation(), skipUnparsable
-  ) {
+  ) derives upickle.default.ReadWriter {
 
   override def forDefinition(definition: BeDefineStructure): String = definition match {
     // Avoid Java's metadata comments on Python declarations so reparsing stays stable.

@@ -13,7 +13,7 @@ import todomove.webElementsOld.webElements.svg.shapes.datatypes.RectangleShape
 
 case class BeBlockDefineSingleReturnFunction(
                                               beDefineFunction: BeDefineFunction
-                                            ) extends BeBlockSingleShape {
+                                            ) extends BeBlockSingleShape derives upickle.default.ReadWriter {
 
 
   override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {

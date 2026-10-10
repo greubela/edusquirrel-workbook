@@ -9,7 +9,7 @@ import java.net.http.*
 import scala.concurrent.Future
 import scala.util.Try
 
-case class JvmRemoteExecutionClient(hostname: String, port: Int) extends RemoteExecutionClient {
+case class JvmRemoteExecutionClient(hostname: String, port: Int) extends RemoteExecutionClient derives upickle.default.ReadWriter {
 
   private val httpClient = HttpClient.newHttpClient()
 

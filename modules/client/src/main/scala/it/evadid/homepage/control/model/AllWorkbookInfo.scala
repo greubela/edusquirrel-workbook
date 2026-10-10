@@ -9,7 +9,7 @@ import it.evadid.workbook.elements.structureElements.Workbook
 case class AllWorkbookInfo(
                             loadedWorkbook: Workbook,
                             config: WorkbookConfig,
-                            estimatedDurations: Map[WorkbookInteractionElement[?], Double]) {
+                            estimatedDurations: Map[WorkbookInteractionElement[?], Double]) derives upickle.default.ReadWriter {
 
   private val toString: String = s"AllWorkbookInfo(loadedWorkbook: ${loadedWorkbook.metadata.workbookTitle}, config: $config, estimatedDurations: $estimatedDurations)"
 

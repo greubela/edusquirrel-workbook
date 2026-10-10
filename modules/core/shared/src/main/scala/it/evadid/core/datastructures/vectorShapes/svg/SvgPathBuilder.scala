@@ -134,6 +134,20 @@ trait SvgPathBuilder[T: Fractional] {
 }
 
 object SvgPathBuilder {
+  private case class StoredBuilder(kind: String, payload: ujson.Value) derives upickle.default.ReadWriter
+
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[SvgPathBuilder[T]] =
+    upickle.default.readwriter[StoredBuilder].bimap(
+      builder => builder match {
+        case value: SvgPathBuilderImmutable[T] => StoredBuilder("immutable", upickle.default.writeJs(value))
+        case value: SvgPathBuilderMutable[T] => StoredBuilder("mutable", upickle.default.writeJs(value))
+        case other => throw new IllegalArgumentException(s"Unsupported SVG builder: ${other.getClass.getName}")
+      },
+      stored => stored.kind match {
+        case "immutable" => upickle.default.read[SvgPathBuilderImmutable[T]](stored.payload)
+        case "mutable" => upickle.default.read[SvgPathBuilderMutable[T]](stored.payload)
+        case other => throw new IllegalArgumentException(s"Unknown SVG builder: $other")
+      })
 
   def apply[T: Fractional](startPoint: Point[T]): SvgPathBuilder[T] = immutableBuilder(startPoint)
 

@@ -14,7 +14,7 @@ case class CodeTaskToggleInteraction(
                                       advancedCodeTemplate: String,
                                       advancedRequirements: List[AdvancedCodeRequirement] = Nil,
                                       advancedSuccessMessage: LanguageMapContentId = LanguageMapContentId("basic/advancedCodeFeedbackSuccess")
-                                    ) extends WorkbookInteractionElement[CodeTaskToggleState] {
+                                    ) extends WorkbookInteractionElement[CodeTaskToggleState] derives upickle.default.ReadWriter {
   override val associatedFactory = CodeTaskToggleInteraction.factory
 
   override val defaultValue: CodeTaskToggleState = CodeTaskToggleState(

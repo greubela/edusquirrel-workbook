@@ -8,7 +8,7 @@ import upickle.default.*
 
 /** Saves the editable scenario/settings and explicitly recorded runs, not transient playback. */
 case class EvacuationSimulationInteraction(elementId: String, initial: EvacuationExperiment = EvacuationExperiment.initial)
-    extends WorkbookInteractionElement[EvacuationExperiment] {
+    extends WorkbookInteractionElement[EvacuationExperiment] derives upickle.default.ReadWriter {
   override val defaultValue = initial
   override lazy val childrenOfThisElement = Nil
   override val serializerInteractionContent: Serializer[EvacuationExperiment] = Serializer.fromUpickleJson(summon[ReadWriter[EvacuationExperiment]])

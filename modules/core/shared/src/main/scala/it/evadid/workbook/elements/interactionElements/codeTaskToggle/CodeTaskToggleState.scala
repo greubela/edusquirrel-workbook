@@ -6,12 +6,11 @@ import upickle.default.{ReadWriter, macroRW}
 case class CodeTaskToggleState(
   isBeginnerMode: Boolean,
   advancedCode: String
-)
+) derives upickle.default.ReadWriter
 
 object CodeTaskToggleState {
 
-  private given rw: ReadWriter[CodeTaskToggleState] = macroRW
 
-  val serializer: Serializer[CodeTaskToggleState] = Serializer.fromUpickleJson(rw)
+  val serializer: Serializer[CodeTaskToggleState] = Serializer.fromUpickleJson(summon[ReadWriter[CodeTaskToggleState]])
 
 }

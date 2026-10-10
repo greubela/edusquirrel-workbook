@@ -35,7 +35,7 @@ sealed trait SyncFormatter {
 
 object SyncFormatter {
 
-  case class RichInteractionVariableFormatter() extends SyncFormatter {
+  case class RichInteractionVariableFormatter() extends SyncFormatter derives upickle.default.ReadWriter {
 
     override def serialize(syncContext: SyncContext, interactionVariableHistorySerialized: InteractionVariableHistorySerialized): String = {
       val lastStateSer: InteractionVariableStateSerialized = interactionVariableHistorySerialized.lastStateOption.get
@@ -56,10 +56,10 @@ object SyncFormatter {
   case class InteractionSyncRequest(
                                      syncContext: SyncContext,
                                      history: InteractionVariableHistorySerialized
-                                   )
+                                   ) derives upickle.default.ReadWriter
 
   // RICH
-  case class RichInteractionVariableHistorySerialized(keyForSerialisation: String, lastUpdate: LocalDateTime, lastValue: String, fullHistory: InteractionVariableHistorySerialized) {
+  case class RichInteractionVariableHistorySerialized(keyForSerialisation: String, lastUpdate: LocalDateTime, lastValue: String, fullHistory: InteractionVariableHistorySerialized) derives upickle.default.ReadWriter {
     //lazy val fullHistorySerialized: String = DefaultSerializer.serializerInteractionVariableHistoryIgnoreErrors.serialize(fullHistory)
   }
 

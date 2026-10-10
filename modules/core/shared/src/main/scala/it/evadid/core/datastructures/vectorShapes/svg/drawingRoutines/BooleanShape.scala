@@ -12,3 +12,8 @@ case class BooleanShape[T: Fractional]() extends DrawingRoutineRelativeToMaxDim[
 
   override def hasDesiredAspectRatio: Option[AspectRatio] = None
 }
+
+object BooleanShape {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[BooleanShape[T]] =
+    upickle.default.readwriter[Unit].bimap(value => (), _ => BooleanShape[T]())
+}

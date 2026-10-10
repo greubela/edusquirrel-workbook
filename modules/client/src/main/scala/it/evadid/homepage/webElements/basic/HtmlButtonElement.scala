@@ -27,7 +27,7 @@ case class HtmlButtonElement(childElem: Signal[Element], buttonStyle: String, ha
 
 object HtmlButtonElement {
 
-  case class ButtonConfig(isVisible: Boolean, customStyles: List[String])
+  case class ButtonConfig(isVisible: Boolean, customStyles: List[String]) derives upickle.default.ReadWriter
 
   val stdConfig: ButtonConfig = ButtonConfig(isVisible = true, customStyles = List.empty)
 

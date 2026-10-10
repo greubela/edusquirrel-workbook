@@ -19,7 +19,7 @@ import todomove.webElementsOld.webElements.svg.shapes.composite.{HorizontalAlign
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.ControlFlowStopperBackground
 import todomove.webElementsOld.webElements.svg.shapes.decorations.TriangleOverlay
 
-case class ControlFlowProgramStopper() extends ControlFlowShapeSingleWidth {
+case class ControlFlowProgramStopper() extends ControlFlowShapeSingleWidth derives upickle.default.ReadWriter {
 
   override def background: BeShape.BeShapeContainerable = ControlFlowStopperBackground()
 

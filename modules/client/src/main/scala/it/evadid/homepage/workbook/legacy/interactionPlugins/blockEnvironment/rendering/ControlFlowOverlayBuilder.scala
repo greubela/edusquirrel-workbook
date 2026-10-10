@@ -103,7 +103,7 @@ case class ControlFlowOverlayBuilder(paths: List[ControlFlowPath], overlaysWithC
 
 object ControlFlowOverlayBuilder {
 
-  enum PathStatus {
+  enum PathStatus derives upickle.default.ReadWriter {
     case PAUSED, FINISHED, OPEN, HANDLED
   }
 

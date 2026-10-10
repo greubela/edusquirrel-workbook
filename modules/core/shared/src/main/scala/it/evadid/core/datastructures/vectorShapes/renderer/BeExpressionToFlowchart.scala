@@ -27,12 +27,12 @@ import scala.util.control.NonFatal
   * Pass a function body itself to build a separate function flowchart.
   */
 object BeExpressionToFlowchart {
-  enum NodeKind {
+  enum NodeKind derives upickle.default.ReadWriter {
     case Terminal, Process, Decision
   }
-  case class Node(id: Int, label: String, kind: NodeKind, expression: Option[BeExpression] = None)
-  case class Edge(from: Int, to: Int, label: Option[String] = None, backEdge: Boolean = false)
-  case class Flowchart(nodes: List[Node], edges: List[Edge], startId: Int, endId: Int) {
+  case class Node(id: Int, label: String, kind: NodeKind, expression: Option[BeExpression] = None) derives upickle.default.ReadWriter
+  case class Edge(from: Int, to: Int, label: Option[String] = None, backEdge: Boolean = false) derives upickle.default.ReadWriter
+  case class Flowchart(nodes: List[Node], edges: List[Edge], startId: Int, endId: Int) derives upickle.default.ReadWriter {
     def toShape(config: Config = Config()): AppShapeElement[Double] = render(this, config)
   }
 
@@ -40,7 +40,7 @@ object BeExpressionToFlowchart {
       font: AppFont = AppFont.defaultFont,
       minimumNodeSize: Dimension[Double] = Dimension(160.0, 64.0),
       gap: Dimension[Double] = Dimension(80.0, 80.0)
-  ) {
+  ) derives upickle.default.ReadWriter {
     require(minimumNodeSize.width.isFinite && minimumNodeSize.height.isFinite &&
       minimumNodeSize.width > 0 && minimumNodeSize.height > 0, "Node dimensions must be finite and positive")
     require(gap.width.isFinite && gap.height.isFinite && gap.width >= 40 && gap.height >= 40,
@@ -243,7 +243,7 @@ object BeExpressionToFlowchart {
   }
 
   /** Absolute child slots keep connectors and text aligned through the normal layout pipeline. */
-  private case class FixedLayout(size: Dimension[Double], slots: List[Bounds[Double]]) extends AppShapeCompositeControl[Double] {
+  private case class FixedLayout(size: Dimension[Double], slots: List[Bounds[Double]]) extends AppShapeCompositeControl[Double] derives upickle.default.ReadWriter {
     def desiredAspectRatioAndAlignment: Option[(AspectRatio, AlignmentInParent)] = None
     def calculateMyMinimumDimension(children: List[AppElementMeasured[Double]], element: AppShapeElementConfig[Double], config: AppShapeRenderingConfig[Double]): RenderingDimension[Double] =
       RenderingDimension.fromRawDimensionAndConfig(size, element, config)
@@ -253,7 +253,7 @@ object BeExpressionToFlowchart {
       children.zip(slots).map { (child, slot) => child.withOffset(slot.startPoint) }
   }
 
-  private case class NodeOutline(kind: NodeKind) extends DrawingRoutine[Double] {
+  private case class NodeOutline(kind: NodeKind) extends DrawingRoutine[Double] derives upickle.default.ReadWriter {
     def hasDesiredAspectRatio: Option[AspectRatio] = None
     def appendPathToBuilder(logger: Logger, builder: SvgPathBuilder[Double], size: Dimension[Double]): SvgPathBuilder[Double] = {
       val origin = builder.current
@@ -274,7 +274,7 @@ object BeExpressionToFlowchart {
     }
   }
 
-  private case class Connections(routes: List[List[Point[Double]]]) extends DrawingRoutine[Double] {
+  private case class Connections(routes: List[List[Point[Double]]]) extends DrawingRoutine[Double] derives upickle.default.ReadWriter {
     def hasDesiredAspectRatio: Option[AspectRatio] = None
     def appendPathToBuilder(logger: Logger, builder: SvgPathBuilder[Double], size: Dimension[Double]): SvgPathBuilder[Double] = {
       val origin = builder.current

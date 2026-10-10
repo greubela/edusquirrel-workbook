@@ -9,7 +9,7 @@ final case class FeedbackTestDisplay(
   passed: Boolean,
   message: String,
   expectedActual: Option[BlockFeedbackTestResultFormatter.ExpectedActual]
-)
+) derives upickle.default.ReadWriter
 
 /** Result of a single check/test. */
 final case class PythonTestResult(
@@ -18,7 +18,7 @@ final case class PythonTestResult(
   expected: String,
   actual: String,
   message: Option[String]
-)
+) derives upickle.default.ReadWriter
 
 /**
  * Aggregated feedback object for block-Python programs.
@@ -39,8 +39,9 @@ final case class UltrichsNewCoolFeedback(
   rawPython: String,
   status: FeedbackStatus,
   normalizedScore: Double,
-  debug: Option[FeedbackDebug] = None
-) extends FeedbackResult
+  debug: Option[FeedbackDebug] = None,
+  override val timestampEpochMillis: Long = System.currentTimeMillis()
+) extends FeedbackResult derives upickle.default.ReadWriter
 
 final case class FeedbackDebug(
   llmEligible: Boolean,
@@ -63,7 +64,7 @@ final case class FeedbackDebug(
   functionNameMismatch: Seq[String] = Seq.empty,
   /** Raw runtime error text before LLM rephrasing (empty when no runtime error). */
   rawRuntimeError: Option[String] = None
-)
+) derives upickle.default.ReadWriter
 
 object UltrichsNewCoolFeedback {
 

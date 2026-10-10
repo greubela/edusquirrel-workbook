@@ -18,10 +18,10 @@ object PythonNormalizationPipeline {
                                   rawLines: List[RawLine],
                                   statementTree: ParsedStatementTree,
                                   renderedSource: String
-                                )
+                                ) derives upickle.default.ReadWriter
 
-  private final case class PipelineSeed(normalizedSource: String, rawLines: List[RawLine])
-  private final case class PipelineMid(normalizedSource: String, rawLines: List[RawLine], statementTree: ParsedStatementTree)
+  private final case class PipelineSeed(normalizedSource: String, rawLines: List[RawLine]) derives upickle.default.ReadWriter
+  private final case class PipelineMid(normalizedSource: String, rawLines: List[RawLine], statementTree: ParsedStatementTree) derives upickle.default.ReadWriter
 
   private final class NormalizeSourceStage extends NormalizationStage[String, String] {
     override def run(input: String): String = PythonLineNormalizationStage.normalizeLineEndingsAndDetab(input)

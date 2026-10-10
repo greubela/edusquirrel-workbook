@@ -13,7 +13,7 @@ case class EvaEditorConfig(
     snapConfig: SnapCodeEditorConfig = SnapCodeEditorConfig(),
     enabledLanguages: List[ProgrammingLanguage] = List(SnapLanguage, Python, Java),
     additionalLibraryTabs: List[LibraryTab] = Nil
-)
+) derives upickle.default.ReadWriter
 
 object EvaEditorConfig {
   val Default: EvaEditorConfig = EvaEditorConfig()

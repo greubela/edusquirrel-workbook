@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import todomove.webElementsOld.webElements.svg.shapes.BeShapeDecoration
 
-case class PathSplitOverlay() extends BeShapeDecoration {
+case class PathSplitOverlay() extends BeShapeDecoration derives upickle.default.ReadWriter {
 
   override def displaySize(rendererConfig: BeRenderingConfig): Dimension[Double] = Dimension(rendererConfig.controlSegmentSize * 2, rendererConfig.controlSegmentSize * 2)
 

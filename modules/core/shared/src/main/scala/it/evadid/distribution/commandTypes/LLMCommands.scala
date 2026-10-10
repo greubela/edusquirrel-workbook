@@ -7,9 +7,9 @@ import it.evadid.distribution.command.ExecutionCommandFactory
 object LLMCommands {
 
 
-  case class MessengerChatCompletionResponse(newTextGenerated: String)
+  case class MessengerChatCompletionResponse(newTextGenerated: String) derives upickle.default.ReadWriter
 
-  case class MessengerChatCompletionRequest(systemPrompt: String, messengerModel: MessengerModel) {
+  case class MessengerChatCompletionRequest(systemPrompt: String, messengerModel: MessengerModel) derives upickle.default.ReadWriter {
 
   }
 
@@ -19,7 +19,7 @@ object LLMCommands {
     DefaultSerializer.serializerMessageJson
   )
 
-  case class FeedbackLlmRequest(prompt: String, systemPrompt: String)
+  case class FeedbackLlmRequest(prompt: String, systemPrompt: String) derives upickle.default.ReadWriter
 
   val feedbackLlmCommandFactory: ExecutionCommandFactory[FeedbackLlmRequest, String] =
     ExecutionCommandFactory(

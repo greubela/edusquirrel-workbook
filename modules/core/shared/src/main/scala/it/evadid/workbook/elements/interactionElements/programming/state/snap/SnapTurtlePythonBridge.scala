@@ -23,7 +23,7 @@ object SnapTurtlePythonBridge {
       pythonName: String,
       snapSelector: String,
       example: String
-  )
+  ) derives upickle.default.ReadWriter
 
   /**
    * Canonical turtle subset. `pythonName` matches BeProgram→Python (SnakeCase);

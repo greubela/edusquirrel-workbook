@@ -8,17 +8,14 @@ import upickle.default.*
 /** A database name resolved against the backend's exercise database configuration.
  * Connection credentials deliberately never travel in workbook JSON.
  */
-final case class SqlDatabaseConfig(databaseName: String)
+final case class SqlDatabaseConfig(databaseName: String) derives upickle.default.ReadWriter
 
-object SqlDatabaseConfig {
-  given ReadWriter[SqlDatabaseConfig] = macroRW
-}
 
 final case class SqlCommandExercise(
                                      override val elementId: String,
                                      databaseConfig: SqlDatabaseConfig,
                                      initialSql: String = "SELECT * FROM table_name;"
-                                   ) extends WorkbookInteractionElement[String] {
+                                   ) extends WorkbookInteractionElement[String] derives upickle.default.ReadWriter {
   override val associatedFactory = SqlCommandExercise.factory
   override val defaultValue: String = initialSql
   override val serializerInteractionContent: Serializer[String] = Serializer.stringIO

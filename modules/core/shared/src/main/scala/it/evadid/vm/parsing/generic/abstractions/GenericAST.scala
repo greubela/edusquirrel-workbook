@@ -8,6 +8,7 @@ trait GenericAST {
   def allNamedElements(): Map[String, NamedElement] =
     traversePreOrderWithListener {
       case (ne: NamedElement) => Some(ne.name, ne.asInstanceOf[NamedElement])
+      case _ => None
     }.flatten.toMap
 
   def traversePreOrderWithListener[T](onNodeVisited: GenericAST => T): Set[T] = {

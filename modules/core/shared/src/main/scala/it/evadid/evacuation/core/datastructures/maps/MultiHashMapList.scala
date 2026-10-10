@@ -3,6 +3,17 @@ package it.evadid.evacuation.core.datastructures.maps
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
+object MultiHashMapList {
+  given [K: upickle.default.ReadWriter, V: upickle.default.ReadWriter]: upickle.default.ReadWriter[MultiHashMapList[K, V]] =
+    upickle.default.readwriter[Map[K, List[V]]].bimap(
+      value => value.iterator.map((key, entries) => key -> entries.toList).toMap,
+      entries => {
+        val result = new MultiHashMapList[K, V]
+        entries.foreach { (key, values) => result(key) ++= values }
+        result
+      })
+}
+
 class MultiHashMapList[K, V] {
 
   private var map: mutable.Map[K, mutable.ListBuffer[V]] = mutable.HashMap[K, mutable.ListBuffer[V]]()

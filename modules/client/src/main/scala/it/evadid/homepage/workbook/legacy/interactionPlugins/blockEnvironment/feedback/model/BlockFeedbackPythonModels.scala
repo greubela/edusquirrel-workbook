@@ -13,11 +13,11 @@ final case class BlockFeedbackPythonTest(
     weight: Double = 1.0,
     hint: Option[String] = None,
     hintDE: Option[String] = None
-)
+) derives upickle.default.ReadWriter
 
 /** Feedback-owned representation of a Python fixture file. */
 final case class BlockFeedbackPythonFixture(
     path: String,
     content: String,
     isBinary: Boolean = false
-)
+) derives upickle.default.ReadWriter

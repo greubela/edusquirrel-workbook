@@ -17,6 +17,60 @@ sealed trait PythonType[ScalaType] extends GenericAstType[ScalaType, PythonType[
 }
 
 object PythonType {
+  import it.evadid.vm.parsing.generic.abstractions.AstTypeDescriptor
+
+  given [T]: upickle.default.ReadWriter[PythonType[T]] =
+    upickle.default.readwriter[AstTypeDescriptor].bimap(
+      value => describe(value), descriptor => restore(descriptor).asInstanceOf[PythonType[T]])
+
+  private def describe(value: PythonType[?]): AstTypeDescriptor = value match {
+    case _: PYTHON_INTEGER => AstTypeDescriptor("integer")
+    case _: PYTHON_INTEGER_HEX => AstTypeDescriptor("integer_hex")
+    case _: PYTHON_INTEGER_OCT => AstTypeDescriptor("integer_oct")
+    case _: PYTHON_INTEGER_BIN => AstTypeDescriptor("integer_bin")
+    case _: PYTHON_FLOAT => AstTypeDescriptor("float")
+    case _: PYTHON_STRING => AstTypeDescriptor("string")
+    case _: PYTHON_BOOL => AstTypeDescriptor("bool")
+    case _: PYTHON_NONE => AstTypeDescriptor("none")
+    case _: PYTHON_ANY => AstTypeDescriptor("any")
+    case value: PYTHON_LIST[?] => AstTypeDescriptor("list", List(describe(value.elementType)))
+    case value: PYTHON_ARRAY[?] => AstTypeDescriptor("array", List(describe(value.elementType)))
+    case value: PYTHON_SET[?] => AstTypeDescriptor("set", List(describe(value.elementType)))
+    case value: PYTHON_OPTIONAL[?] => AstTypeDescriptor("optional", List(describe(value.child)))
+    case value: PYTHON_DICT[?, ?] => AstTypeDescriptor("dict", List(describe(value.keyType), describe(value.valueType)))
+    case value: PYTHON_UNION_TYPE[?, ?] => AstTypeDescriptor("union_type", List(describe(value.a), describe(value.b)))
+    case value: PYTHON_UNPARSABLE_TYPE => AstTypeDescriptor("unparsable", label = value.str)
+    case other => throw new IllegalArgumentException(s"Unsupported AST type: ${other.getClass.getName}")
+  }
+
+  private def restore(value: AstTypeDescriptor): PythonType[?] = {
+    val arity = value.kind match {
+      case "dict" | "union_type" => 2
+      case "list" | "array" | "set" | "optional" => 1
+      case _ => 0
+    }
+    require(value.arguments.size == arity, s"Invalid AST type arguments for ${value.kind}")
+    value.kind match {
+      case "integer" => new PYTHON_INTEGER
+      case "integer_hex" => new PYTHON_INTEGER_HEX
+      case "integer_oct" => new PYTHON_INTEGER_OCT
+      case "integer_bin" => new PYTHON_INTEGER_BIN
+      case "float" => new PYTHON_FLOAT
+      case "string" => new PYTHON_STRING
+      case "bool" => new PYTHON_BOOL
+      case "none" => new PYTHON_NONE
+      case "any" => new PYTHON_ANY
+      case "list" => new PYTHON_LIST(restore(value.arguments.head))
+      case "array" => new PYTHON_ARRAY(restore(value.arguments.head))
+      case "set" => new PYTHON_SET(restore(value.arguments.head))
+      case "optional" => new PYTHON_OPTIONAL(restore(value.arguments.head))
+      case "dict" => new PYTHON_DICT(restore(value.arguments.head), restore(value.arguments(1)))
+      case "union_type" => PYTHON_UNION_TYPE(restore(value.arguments.head), restore(value.arguments(1)))
+      case "unparsable" => new PYTHON_UNPARSABLE_TYPE(value.label)
+      case other => throw new IllegalArgumentException(s"Unknown AST type: $other")
+    }
+  }
+
   abstract class PythonTypeImpl[ScalaType](
                                             val typeStringInPython: String,
                                             val serializerPythonValue: Serializer[ScalaType],
@@ -70,7 +124,7 @@ object PythonType {
     PythonCollectionSerializers.dictSerializer(keyType.serializerScalaValue, valueType.serializerScalaValue)
   )
 
-  case class PYTHON_UNION_TYPE[ScalaTypeA, ScalaTypeB](a: PythonType[ScalaTypeA], b: PythonType[ScalaTypeB]) extends PythonType[Either[ScalaTypeA, ScalaTypeB]] {
+  case class PYTHON_UNION_TYPE[ScalaTypeA, ScalaTypeB](a: PythonType[ScalaTypeA], b: PythonType[ScalaTypeB]) extends PythonType[Either[ScalaTypeA, ScalaTypeB]] derives upickle.default.ReadWriter {
 
     override def typeStringInPython: String = a.typeStringInPython + "|" + b.typeStringInPython
 
@@ -83,7 +137,7 @@ object PythonType {
   }
 
 
-  sealed class PYTHON_OPTIONAL[ScalaType](child: PythonType[ScalaType]) extends PythonType[Option[ScalaType]] {
+  sealed class PYTHON_OPTIONAL[ScalaType](val child: PythonType[ScalaType]) extends PythonType[Option[ScalaType]] {
 
     override def typeStringInPython: String = child.typeStringInPython + "|None"
 
@@ -94,7 +148,7 @@ object PythonType {
 
   sealed class PYTHON_ANY extends PythonTypeImpl[Any]("Any", Serializer.parseAnyAsUnderlyingString, Serializer.parseAnyAsUnderlyingString)
 
-  sealed class PYTHON_UNPARSABLE_TYPE(str: String) extends PythonTypeImpl[Any](str, Serializer.parseAnyAsUnderlyingString, Serializer.parseAnyAsUnderlyingString) {
+  sealed class PYTHON_UNPARSABLE_TYPE(val str: String) extends PythonTypeImpl[Any](str, Serializer.parseAnyAsUnderlyingString, Serializer.parseAnyAsUnderlyingString) {
 
   }
 

@@ -13,3 +13,8 @@ case class LiteralShape[T: Fractional]() extends DrawingRoutineRelativeToMaxDim[
 
   override def hasDesiredAspectRatio: Option[AspectRatio] = None
 }
+
+object LiteralShape {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[LiteralShape[T]] =
+    upickle.default.readwriter[Unit].bimap(value => (), _ => LiteralShape[T]())
+}

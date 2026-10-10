@@ -20,7 +20,31 @@ object SnapTurtleCatalog {
       spec: String,
       category: String,
       defaults: List[Any] = Nil
-  )
+  ) derives upickle.default.ReadWriter
+
+  object ExtraBlockSpec {
+    // Snap defaults are primitive values. Keep their Scala types without a global Any codec.
+    private case class StoredDefault(kind: String, value: ujson.Value) derives ReadWriter
+    private given ReadWriter[Any] = upickle.default.readwriter[StoredDefault].bimap(
+      {
+        case value: String => StoredDefault("string", ujson.Str(value))
+        case value: Boolean => StoredDefault("boolean", ujson.Bool(value))
+        case value: Int => StoredDefault("int", ujson.Num(value))
+        case value: Double => StoredDefault("double", upickle.default.writeJs(value))
+        case value => throw new IllegalArgumentException(s"Unsupported Snap default: $value")
+      },
+      stored => stored.kind match {
+        case "string" => stored.value.str
+        case "boolean" => stored.value.bool
+        case "int" =>
+          val number = stored.value.num
+          require(number.isValidInt, "Snap integer default is out of range or fractional")
+          number.toInt
+        case "double" => upickle.default.read[Double](stored.value)
+        case kind => throw new IllegalArgumentException(s"Unknown Snap default kind: $kind")
+      }
+    )
+  }
 
   /**
    * @param extraPrimitive true when vanilla Snap has no `SpriteMorph.blocks` entry
@@ -36,7 +60,7 @@ object SnapTurtleCatalog {
       extraPrimitive: Boolean = false,
       extraSpec: Option[ExtraBlockSpec] = None,
       inputKinds: List[SnapInputKind] = Nil
-  ) {
+  ) derives upickle.default.ReadWriter {
     def allPythonNames: List[String] = pythonName :: aliases
     def arity: Int = inputKinds.size
   }

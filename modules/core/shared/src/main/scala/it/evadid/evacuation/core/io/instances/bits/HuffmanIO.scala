@@ -40,19 +40,19 @@ case class HuffmanIO[T](prefixMap: Map[T, BitSequence]) extends IO[Seq[T], BitSe
 
 object HuffmanIO {
 
-  private trait HuffmanNode[T] {
+  private sealed trait HuffmanNode[T] derives upickle.default.ReadWriter {
     def handleEncodeRequest(mySequence: BitSequence, intoMap: mutable.Map[T, BitSequence]): Unit
 
     def weight: Long
   }
 
-  private case class HuffmanNodeOuter[T](element: T, weight: Long) extends HuffmanNode[T] {
+  private case class HuffmanNodeOuter[T](element: T, weight: Long) extends HuffmanNode[T] derives upickle.default.ReadWriter {
     override def handleEncodeRequest(mySequence: BitSequence, intoMap: mutable.Map[T, BitSequence]): Unit = {
       intoMap.put(element, mySequence)
     }
   }
 
-  private case class HuffmanNodeInner[T](children: Seq[HuffmanNode[T]], weight: Long) extends HuffmanNode[T] {
+  private case class HuffmanNodeInner[T](children: Seq[HuffmanNode[T]], weight: Long) extends HuffmanNode[T] derives upickle.default.ReadWriter {
     assert(children.length == 2, "Huffman inner node must have 2 children!")
 
     override def handleEncodeRequest(mySequence: BitSequence, intoMap: mutable.Map[T, BitSequence]): Unit = {

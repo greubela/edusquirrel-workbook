@@ -33,7 +33,7 @@ implicit class AsyncState[F, S](underlying: ObservableValue[AsyncDataState[F, S]
       onNext.match {
         case a@AsyncDataSuccess(value) => res.complete(Try(a))
         case failed: AsyncDataFailed[F, S] => res.trySuccess(failed)
-        case AsyncDataLoading() =>
+        case AsyncDataLoading(_) =>
       }
     })
     res.future

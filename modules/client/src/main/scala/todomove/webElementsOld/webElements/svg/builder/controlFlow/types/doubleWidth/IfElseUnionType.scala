@@ -6,7 +6,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.co
 import todomove.webElementsOld.webElements.svg.builder.controlFlow.path.{ControlFlowPathOverlay, PathStatus, PathType}
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
 
-case class IfElseUnionType() extends ControlFlowTypeDoubleWidth {
+case class IfElseUnionType() extends ControlFlowTypeDoubleWidth derives upickle.default.ReadWriter {
 
   override def minHeightInSegments: Int = 7
 

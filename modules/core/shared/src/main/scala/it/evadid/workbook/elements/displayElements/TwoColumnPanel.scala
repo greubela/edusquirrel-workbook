@@ -5,7 +5,7 @@ import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDispl
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 
 /** Two independently renderable workbook elements displayed side by side. */
-case class TwoColumnPanel(override val elementId: String, left: WorkbookElement, right: WorkbookElement) extends WorkbookDisplayElement {
+case class TwoColumnPanel(override val elementId: String, left: WorkbookElement, right: WorkbookElement) extends WorkbookDisplayElement derives upickle.default.ReadWriter {
   override lazy val childrenOfThisElement: List[WorkbookElement] = List(left, right)
   override val associatedFactory = TwoColumnPanel.factory
 }
