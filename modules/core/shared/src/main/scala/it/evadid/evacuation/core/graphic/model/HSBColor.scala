@@ -1,16 +1,18 @@
 package it.evadid.evacuation.core.graphic.model
 
-case class HSBColor(hue: Double, saturation: Double, brightness: Double) {
+import upickle.default.ReadWriter
+
+case class HSBColor(hue: Double, saturation: Double, brightness: Double) derives ReadWriter {
 
   def toRGB: EvaColor = {
 
-    assert(saturation >= 0 || saturation <= 1 || brightness >= 0 || brightness <= 1, "checking bounding condition of HSB")
+    require(hue.isFinite && saturation >= 0 && saturation <= 1 && brightness >= 0 && brightness <= 1, "HSB components must be finite; saturation and brightness must be between 0 and 1")
 
-    if (saturation == 0) convert(brightness, brightness, brightness, 0)
+    if (saturation == 0) convert(brightness, brightness, brightness)
     else {
       val newHue = hue - Math.floor(hue);
 
-      val i = Math.floor(6 * newHue).asInstanceOf[Integer]
+      val i = Math.floor(6 * newHue).toInt
       val f = 6 * newHue - i;
 
       val p = brightness * (1 - saturation);
@@ -30,7 +32,7 @@ case class HSBColor(hue: Double, saturation: Double, brightness: Double) {
   }
 
   private def convert(red: Double, green: Double, blue: Double, alpha: Double = 1.0): EvaColor = {
-    assert(red >= 0 || red <= 1 || green >= 0 || green <= 1 || blue >= 0 || blue <= 1 || alpha >= 0 || alpha <= 1, "Bad RGB values");
+    require(red >= 0 && red <= 1 && green >= 0 && green <= 1 && blue >= 0 && blue <= 1 && alpha >= 0 && alpha <= 1, "Bad RGB values")
     val redval = Math.round(255 * red).asInstanceOf[Int]
     val greenval = Math.round(255 * green).asInstanceOf[Int]
     val blueval = Math.round(255 * blue).asInstanceOf[Int]

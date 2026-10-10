@@ -14,8 +14,8 @@ case class EvacuationState(curPositionsInState: PositionStateMap, persons: Set[E
   def lastEventMap(): Map[EvaPerson, PersonEvent] = {
     val lastActivityMap = mutable.HashMap[EvaPerson, PersonEvent]()
     persons.foreach(
-      curPerson => handledEvents.filter(_.person == curPerson)
-        .maxByOption(_.timestampInMs)
+      curPerson => handledEvents.filter(_.person == curPerson).reverse
+        .maxByOption(_.eventStartTimestamp)
         .foreach(lastActivityMap.put(curPerson, _)
         ))
 

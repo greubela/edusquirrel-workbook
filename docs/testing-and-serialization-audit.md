@@ -179,3 +179,36 @@ shared Scala.js 975, client 511, server 5 and worker 3 tests passed, with no fai
 or ignored tests. Both development browser artifacts build successfully.
 The rebuilt catalogue browser check also passes, including public startup,
 IndexedDB reuse and translation refresh.
+
+## Evacuation follow-up: graphics and EVA1 routing
+
+Added default uPickle codecs for 18 immutable value models: `Router`,
+`ConnectionInfo`, `EvaPerson`, `CapacityInformation`, `EvaColor`, `HSBColor`,
+`EvaFont`, `EvaFileInformation`, `FrameData`, `FloorSpriteProperties`,
+`SpriteMapResourceIdentifier`, and the seven concrete basic/animated sprite types.
+JSON and MessagePack tests cover nested people/destinations, directional frame maps,
+file bytes, Unicode metadata and optional constructor defaults. Derived codecs are
+additional APIs; the existing graph binary/Base64 formats are unchanged.
+
+`EvacuationGraphicSpec` and `EvaRoutingSpec` add 27 tests for colors, sprite flags
+and frame wrapping, font styles, resource identifiers, router edits, connection
+metrics and delays, capacity occupancy, movement snapshots, route selection,
+event-driven evacuation and activity history. The initial 24-test run exposed nine
+failures. Color fixes remove the JVM Double-to-Integer cast, preserve fractional
+hues, keep grayscale opaque and validate conversion bounds. Routing fixes retain
+fractional distances, avoid intermediate integer overflow, reject invalid delay
+inputs, handle empty choices and return empty occupancy without creating buckets. A later
+history test exposed selection by wall-clock event creation time; last activities
+now follow simulation time, with the latest history entry breaking equal-time ties.
+
+Remaining worthwhile targets include sprite-map configuration parsing, observable
+legacy collections and broader EVA1 multi-person/capacity scenarios. Graph-backed
+simulation states/events require an explicit snapshot format that preserves graph
+relationships; automatic derivation of mutable controllers, canvas/image handles
+and callback-bearing objects is not appropriate. The open `Sprite` hierarchy has
+codecs for its concrete built-in values, rather than a closed-world root codec that
+would exclude external implementations.
+
+Verification against main `6b20b488`: shared JVM 1,014, shared Scala.js 1,002,
+client 511, server 5 and worker 3 tests passed, with no failures or ignored tests.
+Both development browser artifacts build successfully.

@@ -1,9 +1,11 @@
 package it.evadid.evacuation.core.graphic.sprites
 
+import upickle.default.ReadWriter
+
 import it.evadid.evacuation.core.graphic.spritemap.FrameData
 import it.evadid.evacuation.core.graphic.sprites.traits.OverlaySprite
 
-case class BasicOverlaySprite(id: Int, name: String, frameData: FrameData, opacityUpTo255: Int) extends OverlaySprite {
+case class BasicOverlaySprite(id: Int, name: String, frameData: FrameData, opacityUpTo255: Int) extends OverlaySprite derives ReadWriter {
 
 }
 
