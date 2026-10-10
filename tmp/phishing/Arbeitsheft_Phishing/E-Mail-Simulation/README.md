@@ -1,6 +1,6 @@
 # E-Mail Simulator (Python-Original)
 
-Diese Anleitung gehört zur mitgelieferten Python-Version. Der neue digitale Simulator läuft im Browser ohne Python oder Mailversand; siehe [Email-Simulator-Dokumentation](../../../../../docs/email-simulator.md). Die Originaldateien bleiben als Unterrichtsmaterial und Datenquelle erhalten.
+Diese Anleitung gehört zur mitgelieferten Python-Version. Der neue digitale Simulator läuft im Browser ohne Python oder Mailversand; siehe [Email-Simulator-Dokumentation](../../../../docs/email-simulator.md). Die Originaldateien bleiben als Unterrichtsmaterial und Datenquelle erhalten.
 
 Simulation eines E-Mail-Postfach, in dem die Erkennung von Phishing-Nachrichten geübt werden kann. Bestandteil des Arbeitsheftes "Phishing entlarven!"
 
