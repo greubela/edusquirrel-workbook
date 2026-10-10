@@ -212,3 +212,39 @@ would exclude external implementations.
 Verification against main `6b20b488`: shared JVM 1,014, shared Scala.js 1,002,
 client 511, server 5 and worker 3 tests passed, with no failures or ignored tests.
 Both development browser artifacts build successfully.
+
+## Evacuation follow-up: parsing, listener mutation and capacity
+
+This pass starts from main `2fdd2f47`, which includes the earlier audits. Four shared
+suites add 35 tests: `SpriteMapConfigSpec` (12), `LegacyObservablesSpec` (10),
+`EvaCapacitySpec` (6), and `EvaGraphJsonSpec` (7). They cover sprite variables and
+malformed rows, whitespace and comments, atlas coordinate zero, animation ordering
+and diagonal fallback; collection/listener snapshots and mutation during callbacks;
+shared versus directed corridor occupancy, capacity release and conservation of
+three queuing people; and graph/image JSON and MessagePack round trips.
+
+The initial parser/observable run exposed 11 failures. Sprite parsing now accepts
+repeated whitespace, trims assignment names/values while retaining embedded equals
+signs, uses strict optional integer parsing, validates positive dimensions, includes
+atlas ID zero, and skips malformed rows without abandoning valid sprites. Legacy
+observable dispatch snapshots its listeners, sequence iterators snapshot their
+contents, and absent removals produce no notification. Looking up an unavailable
+route no longer inserts a bucket into the supplied routing map.
+
+Default codecs now cover the sealed `EvaImage` description hierarchy and both
+concrete variants, generic `PositionableEdge`, and `EvaGraphModel`. The graph JSON
+transfer records `SimpleEdge` and `GraphData` have companion-derived writers; their
+existing converter aliases remain available as methods. Eager aliases caused an
+initialization deadlock when a derived record writer initialized its enclosing
+converter. Method aliases remove that cycle, and the default-codec tests initialize
+and use the writers without importing the converter's givens.
+
+The legacy graph converter keeps its `nodes`/`edges` wire format. The new default
+model codec stores `nodesList`/`edgesList` and restores graph behavior and positioned
+edges. `EvaImage` serializes file/path descriptions, including byte contents; it
+contains no live canvas or image handle. Mutable graph controllers and complete
+simulation state/event snapshots still need a deliberate format.
+
+Verification against main `2fdd2f47`: shared JVM 1,055, shared Scala.js 1,043,
+client 512, server 5 and worker 3 tests passed, with no failures or ignored tests.
+Both development browser artifacts build successfully.
