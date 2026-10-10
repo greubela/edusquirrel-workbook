@@ -4,6 +4,9 @@ import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.vm.naming.NamingStyle
 import it.evadid.vm.parsing.python.PythonParser
 import it.evadid.vm.types.BeDataType
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtlePythonBridge
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaString, ProgrammingStatePythonString}
 import munit.FunSuite
 
 class PythonTypeHintConversionSpec extends FunSuite {

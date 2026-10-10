@@ -1,11 +1,11 @@
-package it.evadid.workbook.elements.interactionElements.programming
+package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle
 
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
-import it.evadid.workbook.elements.interactionElements.programming.SvgToTurtleProgram.convert
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.SvgToTurtleProgram.convert
+import upickle.default.*
 
 import scala.collection.mutable.ListBuffer
-import upickle.default.*
 /** A sealed trait representing turtle graphics that can be converted to turtle commands or SVG path data. */
 sealed trait TurtleGraphic derives ReadWriter{
   def toTurtleProgram: Seq[TurtleCommand[Double]]

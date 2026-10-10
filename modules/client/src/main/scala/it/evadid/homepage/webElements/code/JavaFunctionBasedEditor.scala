@@ -4,8 +4,9 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.{label as labelTag, *}
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingState, ProgrammingStateJavaString}
 import it.evadid.vm.parsing.java.clean.JavaParser
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateJavaString
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState}
 
 final class JavaFunctionBasedEditor(
     val state: Var[ProgrammingState],

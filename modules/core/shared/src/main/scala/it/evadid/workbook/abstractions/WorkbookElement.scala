@@ -2,12 +2,12 @@ package it.evadid.workbook.abstractions
 
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.util.io.*
+import it.evadid.workbook.abstractions.grading.WorkbookInteractionGrader
+import it.evadid.workbook.abstractions.scaffolding.WorkbookInteractionScaffolder
 import it.evadid.workbook.interaction.variable.InteractionVariable
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
-import upickle.default.*
 
 object WorkbookElement {
-
 
 
 }
@@ -55,4 +55,9 @@ trait WorkbookInteractionElement[T] extends WorkbookElement {
 
   val defaultValue: T
   val serializerInteractionContent: Serializer[T]
+
+  val gradingElements: List[WorkbookInteractionGrader[T]] = List()
+
+  val scaffoldingElement: Option[WorkbookInteractionScaffolder[T]] = None
+
 }

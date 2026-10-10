@@ -8,15 +8,7 @@ import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
-import it.evadid.workbook.elements.interactionElements.programming.{
-  SnapCanvasLayout,
-  SnapCanvasScript,
-  SnapControlFlow,
-  SnapInputCodec,
-  SnapTurtleCatalog,
-  SnapTurtlePythonBridge,
-  SnapXmlParser
-}
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout, SnapCanvasScript, SnapControlFlow, SnapInputCodec, SnapTurtleCatalog, SnapTurtlePythonBridge, SnapXmlParser}
 
 import scala.collection.mutable.ListBuffer
 

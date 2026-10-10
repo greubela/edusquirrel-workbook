@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.*
 
 /** Compare persisted XML, so Snap's regenerated images cannot trigger save/reload echoes. */
 private[SnapEditor] final class SnapProjectXmlSync {

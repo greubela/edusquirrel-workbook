@@ -2,7 +2,8 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapPythonPopup
 import it.evadid.vm.BeProgram
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingStateSnapXml, SnapCanvasLayout, SnapCanvasScript}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout, SnapCanvasScript}
 import munit.FunSuite
 
 /**

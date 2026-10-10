@@ -1,11 +1,14 @@
-package it.evadid.workbook.elements.interactionElements.programming
+package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.vm.BeProgram
 import it.evadid.vm.test.BeTestSuite
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
-import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXMLWithAdditionalFloatingObjects, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingStateBeExpression
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{ProgrammingEditorPalette, ProgrammingStateSnapXmlHelper, SnapTurtlePythonBridge}
+import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import upickle.default.*
 
 import scala.util.Try
@@ -14,12 +17,13 @@ case class ProgrammingExercise(
                                 override val elementId: String,
                                 testSuite: Option[BeTestSuite] = None,
                                 editorPalette: ProgrammingEditorPalette = ProgrammingEditorPalette.Default,
+
                                 /** Optional Python turtle program whose drawing is the target for geometric matching. */
                                 referencePython: Option[String] = None
-) extends WorkbookInteractionElement[ProgrammingState] {
+                              ) extends WorkbookInteractionElement[ProgrammingState] {
   override val associatedFactory = ProgrammingExercise.factory
 
-  override val defaultValue: ProgrammingState = ProgrammingStateSnapXml.mini
+  override val defaultValue: ProgrammingState = ProgrammingStateSnapXmlHelper.mini
 
   override val serializerInteractionContent: Serializer[ProgrammingState] = ProgrammingExercise.StateSerializer
 
@@ -64,8 +68,8 @@ object ProgrammingExercise {
         s"$StateHeader\nBE_EXPRESSION\n${SnapTurtlePythonBridge.printedPython(expression)}"
 
     override def deserialize(str: String): ProgrammingState = {
-      if Option(str).forall(_.trim.isEmpty) then ProgrammingStateSnapXml.mini
-      else parseStored(str).getOrElse(ProgrammingStateSnapXml.mini)
+      if Option(str).forall(_.trim.isEmpty) then ProgrammingStateSnapXmlHelper.mini
+      else parseStored(str).getOrElse(ProgrammingStateSnapXmlHelper.mini)
     }
 
     private def parseStored(str: String): Option[ProgrammingState] = {
@@ -73,7 +77,7 @@ object ProgrammingExercise {
       if trimmed.startsWith(StateHeader) then parseVersion2(str.stripLeading)
       else if trimmed.startsWith(XmlHeader) then
         val xml = trimmed.drop(XmlHeader.length).stripLeading
-        if xml.isEmpty then Some(ProgrammingStateSnapXml.mini)
+        if xml.isEmpty then Some(ProgrammingStateSnapXmlHelper.mini)
         else Some(ProgrammingStateSnapXml(xml))
       else if looksLikeProjectXml(trimmed) then
         Some(ProgrammingStateSnapXml(trimmed))
@@ -102,7 +106,7 @@ object ProgrammingExercise {
 
     private def migratePython(python: String): ProgrammingState = {
       val program = Try(BeProgram.fromPythonString(python)).getOrElse(BeProgram.miniProgram())
-      ProgrammingStateSnapXml.fromProgram(program)
+      ProgrammingStateSnapXmlHelper.fromProgram(program)
     }
 
     private def looksLikeProjectXml(trimmed: String): Boolean =

@@ -1,4 +1,4 @@
-package it.evadid.workbook.elements.interactionElements.programming
+package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
 import upickle.default.*
 

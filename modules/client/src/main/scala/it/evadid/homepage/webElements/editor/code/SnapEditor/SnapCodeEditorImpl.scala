@@ -3,6 +3,8 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 import com.raquo.airstream.ownership.Owner
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import it.evadid.workbook.elements.interactionElements.programming.*
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.*
 import org.scalajs.dom.html.Canvas
 
 trait SnapCodeEditorImpl {

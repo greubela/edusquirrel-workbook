@@ -1,7 +1,7 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch
 
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.NodeDomSupport
-import it.evadid.workbook.elements.interactionElements.programming.SnapXmlParser
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapXmlParser
 import org.scalajs.dom
 
 import scala.collection.mutable.ListBuffer

@@ -1,6 +1,6 @@
-package it.evadid.workbook.elements.interactionElements.programming
+package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
-import it.evadid.workbook.elements.interactionElements.programming.SnapTurtleCatalog.PaletteTab
+import SnapTurtleCatalog.PaletteTab
 
 /**
  * Composes turtle primitives with Snap control/operator/variable language blocks

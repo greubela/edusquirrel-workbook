@@ -17,7 +17,6 @@ import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInt
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExercise, ProgrammingExerciseFullJava}
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
 import it.evadid.workbook.elements.interactionElements.sortingExercise.SortingInteraction
@@ -39,6 +38,7 @@ import it.evadid.workbook.elements.interactionElements.pixel.BinaryPixelInteract
 import it.evadid.workbook.elements.interactionElements.blockchain.SquareMiddleHashInteraction
 import it.evadid.workbook.elements.interactionElements.blockchain.Sha256Interaction
 import it.evadid.workbook.elements.interactionElements.blockchain.BlockchainInteraction
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
 import it.evadid.workbook.elements.interactionElements.text.UnicodeComparisonInteraction
 
 object WorkbookElementFactory {

@@ -1,4 +1,4 @@
-package it.evadid.workbook.elements.interactionElements.programming
+package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
@@ -7,6 +7,7 @@ import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.vm.code.usage.BeFunctionCall
 import it.evadid.vm.naming.NamingStyle
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 
 /**
  * Turtle-subset Python ↔ Snap XML bridge for dual-mode editing.
@@ -85,10 +86,10 @@ object SnapTurtlePythonBridge {
         case Left(message) => Left(message)
         case Right(statements) =>
           if statements.isEmpty && collectUserFunctionArities(program.fullProgram).isEmpty then
-            Right(ProgrammingStateSnapXml.empty)
+            Right(ProgrammingStateSnapXmlHelper.empty)
           else
             val layout = reconcileLayout(previousLayout, scriptStatementCount(statements))
-            Right(ProgrammingStateSnapXml.fromProgram(program, layout, previousXml))
+            Right(ProgrammingStateSnapXmlHelper.fromProgram(program, layout, previousXml))
     catch
       case e: Throwable =>
         val detail = Option(e.getMessage).filter(_.nonEmpty).getOrElse(e.getClass.getSimpleName)

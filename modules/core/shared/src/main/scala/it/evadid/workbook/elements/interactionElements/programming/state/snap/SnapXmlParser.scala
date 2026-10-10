@@ -1,9 +1,9 @@
-package it.evadid.workbook.elements.interactionElements.programming
+package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
 /**
  * Parser for Snap project XML: find tags, attributes and children.
  *
- * Snap XML is produced by Snap's own serializer and by [[SnapProjectXml]], so it
+ * Snap XML is produced by Snap's own serializer and by [[it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapProjectXml]], so it
  * always uses double-quoted attributes, no CDATA and no namespaces. That is narrow
  * enough for a string scanner and keeps shared code free of an XML dependency.
  */

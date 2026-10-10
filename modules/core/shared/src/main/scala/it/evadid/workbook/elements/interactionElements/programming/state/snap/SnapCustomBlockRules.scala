@@ -1,4 +1,4 @@
-package it.evadid.workbook.elements.interactionElements.programming
+package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
 /**
  * Port of the rules Snap applies when it loads a custom block, so generated XML

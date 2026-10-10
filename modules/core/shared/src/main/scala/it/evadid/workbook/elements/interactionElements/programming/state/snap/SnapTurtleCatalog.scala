@@ -1,4 +1,4 @@
-package it.evadid.workbook.elements.interactionElements.programming
+package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
 /**
  * Canonical Snap selector ↔ Python name ↔ TurtleCommand mapping.

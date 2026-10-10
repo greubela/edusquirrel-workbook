@@ -1,6 +1,9 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
 import it.evadid.vm.BeProgram
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout, SnapCanvasScript, SnapControlFlow, SnapCustomBlockRules, SnapProjectXml, SnapTurtlePythonBridge}
 import munit.FunSuite
 
 class SnapTurtlePythonBridgeSpec extends FunSuite {

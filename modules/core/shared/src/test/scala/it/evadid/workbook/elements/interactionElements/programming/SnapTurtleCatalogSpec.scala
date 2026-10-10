@@ -3,7 +3,8 @@ package it.evadid.workbook.elements.interactionElements.programming
 import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, KnownBeDefineStructures}
 import it.evadid.vm.naming.NamingStyle
-import it.evadid.workbook.elements.interactionElements.programming.SnapTurtleCatalog.SnapInputKind
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog.SnapInputKind
 import munit.FunSuite
 
 class SnapTurtleCatalogSpec extends FunSuite {

@@ -7,6 +7,8 @@ import it.evadid.core.datastructures.vectorShapes.renderer.VmToSvg
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.util.logging.Logger
 import it.evadid.vm.BeProgram
+import it.evadid.workbook.elements.interactionElements.programming.state.snap
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 import munit.FunSuite
 
 class BeExpressionToTurtleCommandsSpec extends FunSuite {
@@ -14,9 +16,9 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
   private val logger = Logger.withNameAndPrefixes(Some("BeExpressionToTurtleCommandsSpec"))
 
   test("catalog aliases map to turtle commands") {
-    assertEquals(it.evadid.workbook.elements.interactionElements.programming.SnapTurtleCatalog.snapSelectorByPythonName("right"), "turn")
-    assertEquals(it.evadid.workbook.elements.interactionElements.programming.SnapTurtleCatalog.snapSelectorByPythonName("penup"), "up")
-    assertEquals(it.evadid.workbook.elements.interactionElements.programming.SnapTurtleCatalog.turtleCommandByPythonName("turn_left"), "left")
+    assertEquals(SnapTurtleCatalog.snapSelectorByPythonName("right"), "turn")
+    assertEquals(snap.SnapTurtleCatalog.snapSelectorByPythonName("penup"), "up")
+    assertEquals(snap.SnapTurtleCatalog.turtleCommandByPythonName("turn_left"), "left")
   }
 
   test("forward and repeat unroll into turtle commands") {

@@ -7,18 +7,19 @@ import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.code.JavaFunctionBasedEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExerciseFullJava, ProgrammingState}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExerciseFullJava
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFactory[ProgrammingExerciseFullJava] {
   override protected def createRendering(workbookElement: ProgrammingExerciseFullJava): AtomarLineRendering = {
     val interaction = workbookElement.interactionVariable
     val boundVar = Var[ProgrammingState](interaction.currentValue)
-    var lastFingerprint = ProgrammingState.fingerprint(interaction.currentValue)
+    var lastFingerprint = interaction.currentValue.fingerprint()
 
     interaction.observableValue.addObserver(
       handleOnUpdate = { restored =>
-        val fingerprint = ProgrammingState.fingerprint(restored)
+        val fingerprint = restored.fingerprint()
         if fingerprint != lastFingerprint then {
           lastFingerprint = fingerprint
           boundVar.set(restored)
@@ -28,7 +29,7 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
     )
 
     def persistFromEditor(next: ProgrammingState): Unit = {
-      val fingerprint = ProgrammingState.fingerprint(next)
+      val fingerprint = next.fingerprint()
       if fingerprint != lastFingerprint then {
         lastFingerprint = fingerprint
         boundVar.set(next)

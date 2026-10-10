@@ -3,6 +3,9 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchToBeExpressionParser
 import it.evadid.vm.BeProgram
 import it.evadid.workbook.elements.interactionElements.programming.*
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout, SnapTurtlePythonBridge}
 
 /**
  * XML → BeProgram / Python derivation for ProgrammingExercise consumers.

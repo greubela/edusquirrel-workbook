@@ -36,7 +36,8 @@ class WorkbookSerializerSpec extends FunSuite {
     import it.evadid.workbook.elements.structureElements.WorkbookSection
     import WorkbookSection.WorkbookSectionMetadata
     import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-    import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExercise, ProgrammingEditorPalette}
+    import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
+    import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
     val first = WorkbookSection("first", WorkbookSectionMetadata(LanguageMapContentId("section/first")), List(TextInteraction("text")))
     val second = WorkbookSection("second", WorkbookSectionMetadata(LanguageMapContentId("section/second"), List(first), List(first)),
       List(ProgrammingExercise("programming", editorPalette = ProgrammingEditorPalette.Embroidery, referencePython = Some("print(\"hello\")\n"))))

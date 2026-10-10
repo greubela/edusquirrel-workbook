@@ -1,7 +1,7 @@
 package it.evadid.homepage.workbook.content
 
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExerciseFullJava
 import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailFolder, MailInteraction}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExerciseFullJava
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise
 import munit.FunSuite

@@ -1,8 +1,8 @@
 package it.evadid.homepage.workbook.content
 
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
-import it.evadid.workbook.elements.interactionElements.programming.TurtleGraphic
-import it.evadid.workbook.elements.interactionElements.programming.TurtleGraphic.TurtleGraphicProgram
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.TurtleGraphicProgram
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
 import scala.collection.mutable.ListBuffer
 
 /** Geometric equivalents of the original raster targets. Units are turtle steps;

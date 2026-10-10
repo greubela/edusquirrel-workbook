@@ -2,6 +2,7 @@ package it.evadid.workbook.elements.interactionElements.programming
 
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{SvgToTurtleProgram, TurtleGraphic}
 import munit.FunSuite
 
 class TurtleGraphicSpec extends FunSuite {

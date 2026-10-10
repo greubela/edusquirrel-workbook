@@ -1,4 +1,4 @@
-package it.evadid.workbook.elements.interactionElements.programming
+package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
 /** One top-level Snap `<script x y>` stack, including whether it starts with a green-flag hat. */
 final case class SnapCanvasScript(x: Int, y: Int, callCount: Int, hasReceiveGo: Boolean = true)

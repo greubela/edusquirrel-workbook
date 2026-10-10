@@ -8,7 +8,7 @@ import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.types.{BeDataValueLiteral, BeUseValueReference}
-import it.evadid.workbook.elements.interactionElements.programming.{SnapControlFlow, SnapTurtleCatalog, SnapTurtlePythonBridge}
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapControlFlow, SnapTurtleCatalog, SnapTurtlePythonBridge}
 
 /**
  * Interprets a turtle-subset BeExpression into TurtleCommands for SVG preview.

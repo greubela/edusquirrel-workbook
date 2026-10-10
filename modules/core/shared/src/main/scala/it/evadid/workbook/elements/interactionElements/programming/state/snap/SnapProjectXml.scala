@@ -1,16 +1,16 @@
-package it.evadid.workbook.elements.interactionElements.programming
+package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.code.controlStructures.{BeFor, BeIfElse, BeRepeatNr, BeSequence, BeWhile}
+import it.evadid.vm.code.controlStructures.*
+import it.evadid.vm.code.defining
 import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
-import it.evadid.vm.code.defining
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataValueLiteral, BeUseValueReference}
-import it.evadid.workbook.elements.interactionElements.programming.SnapCustomBlockMerge.{CustomBlockPlan, CustomBlockPlans}
-import it.evadid.workbook.elements.interactionElements.programming.SnapTurtleCatalog.SnapInputKind
+import SnapTurtleCatalog.SnapInputKind
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCustomBlockMerge.{CustomBlockPlan, CustomBlockPlans}
 
 /**
  * BeExpression → Snap/TurtleStitch project XML.

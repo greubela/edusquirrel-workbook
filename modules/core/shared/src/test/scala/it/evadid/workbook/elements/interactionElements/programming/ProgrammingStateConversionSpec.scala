@@ -1,5 +1,8 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtlePythonBridge
+import it.evadid.workbook.elements.interactionElements.programming.state.{JavaToBeExpressionParser, ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString}
 import munit.FunSuite
 
 class ProgrammingStateConversionSpec extends FunSuite {
