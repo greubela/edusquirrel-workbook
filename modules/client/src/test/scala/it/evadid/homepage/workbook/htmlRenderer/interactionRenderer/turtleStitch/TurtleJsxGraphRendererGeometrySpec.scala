@@ -75,7 +75,7 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
       val end = Point(vertex.x + 80 * math.cos(after), vertex.y - 80 * math.sin(after))
       val program = List(cmd("setheading", heading)) ++ (if penUp then List(cmd("penup")) else Nil) ++
         List(cmd("forward", 100), cmd(turn, degrees), cmd("forward", 80))
-      val expected = List(LineToRender(Point(0.0, 0.0), vertex), LineToRender(vertex, end))
+      val expected = List(LineToRender(Point(0.0, 0.0), vertex, jump = penUp), LineToRender(vertex, end, jump = penUp))
       val scene = buildScene(program, expected)
       assertEquals(scene.lines.size, 2)
       scene.lines.zip(expected).foreach { (line, target) =>

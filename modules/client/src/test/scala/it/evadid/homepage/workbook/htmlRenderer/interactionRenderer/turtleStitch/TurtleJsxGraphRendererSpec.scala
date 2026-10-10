@@ -144,4 +144,45 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     assertEquals(noStitch.lines.count(_.result == LineResult.Missing), 1)
   }
 
+
+  test("renderer scene is a projection of shared core grading and geometry") {
+    import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGradingLogic
+    import TurtleGradingLogic.{TurtleGraphicComparison, TurtleLineStatus}
+    val commands: List[TurtleCommand[Double]] = List(TurtleCommand("penup"), TurtleCommand("goto", List(5.0, 0.0)),
+      TurtleCommand("pendown"), TurtleCommand("forward", List(10.0)))
+    val actual = TurtleGraphic.TurtleGraphicProgram(commands)
+    val expected = TurtleGraphic.TurtleGraphicProgram(List(TurtleCommand("forward", List(10.0)),
+      TurtleCommand("left", List(90.0)), TurtleCommand("forward", List(5.0))))
+    for gradeJumps <- List(true, false) do {
+      val comparison = TurtleGraphicComparison(actual, expected, gradeJumps = gradeJumps)
+      val scene = TurtleJsxGraphRenderer.buildScene(commands, expected, 1e-7, gradeJumps)
+      assertEquals(scene.lines.size, comparison.difference.size)
+      scene.lines.zip(comparison.difference).foreach { (rendered, graded) =>
+        assertPoint(rendered.start, graded.line.start)
+        assertPoint(rendered.end, graded.line.end)
+        assertEquals(rendered.jump, graded.jump)
+        val result = graded.status match {
+          case TurtleLineStatus.CORRECT => LineResult.Correct
+          case TurtleLineStatus.EXPECTED_BUT_MISSING => LineResult.Missing
+          case TurtleLineStatus.EXISTING_BUT_UNEXPECTED => LineResult.Unexpected
+        }
+        assertEquals(rendered.result, result)
+      }
+      assertEquals(scene.angles.map(a => (a.lineBefore, a.lineAfter)), comparison.angles.map(a => (a.lineBefore, a.lineAfter)))
+    }
+  }
+
+  test("strict pen-up travel cannot render as a correct target stroke") {
+    val scene = TurtleJsxGraphRenderer.buildScene(List(TurtleCommand[Double]("penup"), TurtleCommand("forward", List(10.0))),
+      TurtleGraphic.TurtleGraphicProgram(List(TurtleCommand("forward", List(10.0)))))
+    assertEquals(scene.lines.map(_.result), List(LineResult.Unexpected, LineResult.Missing))
+    assertEquals(scene.lines.map(_.jump), List(true, false))
+  }
+
+  test("scene JSON round-trip preserves coordinates, results and angle references") {
+    import upickle.default.*
+    val commands = List(TurtleCommand("forward", List(10.0)), TurtleCommand("left", List(90.0)), TurtleCommand("forward", List(5.0)))
+    val scene = TurtleJsxGraphRenderer.buildScene(commands, TurtleGraphic.TurtleGraphicProgram(commands))
+    assertEquals(read[TurtleJsxGraphRenderer.Scene](write(scene)), scene)
+  }
 }
