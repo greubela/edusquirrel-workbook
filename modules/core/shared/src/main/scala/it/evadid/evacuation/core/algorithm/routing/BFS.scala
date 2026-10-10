@@ -6,7 +6,7 @@ import it.evadid.evacuation.core.algorithm.routing.BFS.BFSInformation
 import it.evadid.evacuation.core.algorithm.routing.model.SearchNode
 
 
-case class BFS[N]() extends Pathfinding[N, BFSInformation] {
+case class BFS[N]() extends Pathfinding[N, BFSInformation] derives ReadWriter {
   override def initStartNode(start: N): SearchNode[N, BFSInformation] = {
     SearchNode(start, None, BFSInformation(0))
   }
