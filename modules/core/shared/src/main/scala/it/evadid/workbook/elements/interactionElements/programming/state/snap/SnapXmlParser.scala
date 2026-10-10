@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
+import upickle.default.ReadWriter
+
 /**
  * Parser for Snap project XML: find tags, attributes and children.
  *
@@ -17,7 +19,7 @@ object SnapXmlParser {
       outer: String,
       start: Int,
       end: Int
-  ) {
+  ) derives ReadWriter {
     def attr(name: String): Option[String] = attributes.get(name)
 
     def attrOrEmpty(name: String): String = attributes.getOrElse(name, "")

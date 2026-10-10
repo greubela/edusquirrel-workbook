@@ -2,9 +2,10 @@ package it.evadid.homepage.workbook.content
 
 import it.evadid.core.datastructures.language.AppLanguage.German
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStatePythonString
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
-import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
+import it.evadid.workbook.elements.interactionElements.slideshow.Slideshow
+import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import munit.FunSuite
 
@@ -20,7 +21,7 @@ class MonksWorkbookSpec extends FunSuite {
     assertEquals(responses.map(_.elementId), expected)
     assert(responses.forall(_.defaultValue.isEmpty))
     assertEquals(workbook.metadata.availableLanguages, List(German))
-    assertEquals(workbook.sections.map(_.elementId), List("monks-story", "monks-recursion", "monks-counting", "monks-koch"))
+    assertEquals(workbook.sections.map(_.elementId), List("monks-story", "monks-recursion", "monks-koch"))
     assert(creator.createEverything.loadedWorkbook eq workbook)
     assertEquals(factory.createWorkbook, workbook)
     val ids = (workbook :: workbook.allChildrenFullSubtree).map(_.elementId)
@@ -32,14 +33,14 @@ class MonksWorkbookSpec extends FunSuite {
     val stories = List(CreateMonksWorkbook.theaterScenes, CreateMonksWorkbook.countingScenes)
     assertEquals(slideshows.map(_.elementId), List("monks-theater", "monks-counting-story"))
     slideshows.zip(stories).foreach { (show, scenes) =>
-      assertEquals(show.panels.map(_.elementId), scenes.map(s => "monks-panel-" + s.id))
-      assert(show.panels.forall(_.isInstanceOf[SlideshowPanel.ImageSlide]))
+      assertEquals(show.childrenOfThisElement.map(_.elementId), scenes.map(s => "monks-panel-" + s.id))
+      assert(show.childrenOfThisElement.forall(_.isInstanceOf[LanguageMapBasedWorkbookImageElement]))
       scenes.foreach { scene =>
         assert(scene.speaker.isEmpty || scene.action.isEmpty)
         assert(scene.speaker.nonEmpty || scene.dialogueKey == "silence")
       }
-      show.panels.collect { case p: SlideshowPanel.ImageSlide => p }.foreach { panel =>
-        assertEquals(panel.titleLabel, it.evadid.core.datastructures.language.LanguageMapContentId("monksworkbook/dialoguelabel"))
+      show.childrenOfThisElement.collect { case p: LanguageMapBasedWorkbookImageElement => p }.zip(scenes).foreach { (panel, scene) =>
+        assertEquals(panel.description, Some(it.evadid.core.datastructures.language.LanguageMapContentId("monksworkbook/" + scene.dialogueKey)))
       }
     }
     // The only reused artwork is a repeated identical line or a silent pause.
@@ -74,7 +75,7 @@ class MonksWorkbookSpec extends FunSuite {
 
   test("Koch practice offers separate editable targets with 1, 4 and 16 connected segments") {
     val exercises = factory.createWorkbook.allChildrenFullSubtree.collect {
-      case e: it.evadid.workbook.elements.interactionElements.Turtle.TurtleRecreateShapeInteraction => e
+      case e: it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction => e
     }
     assertEquals(exercises.map(_.elementId), List("monks-koch-0", "monks-koch-1", "monks-koch-2"))
     exercises.zipWithIndex.foreach { (exercise, depth) =>

@@ -80,6 +80,7 @@ test('mail simulator triages original messages, restores progress and composes o
     assert.equal(await editor.locator('.mail-list-item').count(), 1);
     await page.locator('.fullscreen-close-button').click();
     await open.first().click();
+    await page.waitForFunction(() => document.querySelectorAll('dialog[open] .mail-list-item').length === 14);
     assert.equal(await editor.locator('.mail-list-item').count(), 14, 'reopening keeps inbox placement');
     await folder('Trash').click();
     assert.equal(await editor.locator('.mail-list-item').count(), 1);

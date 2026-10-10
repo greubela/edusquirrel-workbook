@@ -6,7 +6,7 @@ import {chromium} from 'playwright';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const origin = 'http://localhost:9000';
-const bundle = path.resolve(root, process.env.COMPRESSION_CLIENT_BUNDLE || 'target/client/scala-3.8.4/client-fastopt/main.js');
+const bundle = path.resolve(root, process.env.COMPRESSION_CLIENT_BUNDLE || 'artifacts/newest/client.js');
 const mime = {'.html':'text/html', '.js':'text/javascript', '.mjs':'text/javascript', '.css':'text/css', '.json':'application/json',
   '.svg':'image/svg+xml', '.png':'image/png', '.jpg':'image/jpeg', '.txt':'text/plain'};
 
@@ -175,12 +175,12 @@ test('native compression experiments use bound answers and survive fullscreen, c
     assert.equal(await page.locator('iframe').count(),0);
     assert(!/Kommt bald|\[ Widget:/.test(await page.locator('body').innerText()));
     assert.deepEqual(errors,[]);
-    await page.screenshot({path:path.join(root,'tmp/work/compression-native-mobile.png')});
+    await page.screenshot({path:path.join(root,'tmp/work/compression/compression-native-mobile.png')});
   } catch (error) {
     if (page) {
-      await fs.mkdir(path.join(root,'tmp/work'),{recursive:true});
-      await page.screenshot({path:path.join(root,'tmp/work/compression-browser-failure.png'),fullPage:true});
-      await fs.writeFile(path.join(root,'tmp/work/compression-browser-failure.txt'),await page.locator('body').innerText());
+      await fs.mkdir(path.join(root,'tmp/work/compression'),{recursive:true});
+      await page.screenshot({path:path.join(root,'tmp/work/compression/compression-browser-failure.png'),fullPage:true});
+      await fs.writeFile(path.join(root,'tmp/work/compression/compression-browser-failure.txt'),await page.locator('body').innerText());
     }
     throw error;
   } finally { await browser.close(); }

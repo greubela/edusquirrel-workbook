@@ -4,8 +4,10 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingStateSnapXmlHelper
+
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import munit.FunSuite
 
 class ProgrammingStateSnapXmlCleanupSpec extends FunSuite {
@@ -56,7 +58,7 @@ class ProgrammingStateSnapXmlCleanupSpec extends FunSuite {
   }
 
   test("canonical Snap projects retain custom definitions and canvas layout byte for byte") {
-    val original = ProgrammingStateSnapXml.mini
+    val original = ProgrammingStateSnapXmlHelper.mini
     val bloated = original.copy(snapXml = original.snapXml.replace("</project>", "<thumbnail>preview</thumbnail></project>"))
     assertEquals(bloated.removeBloatFromXml, original)
     assertEquals(bloated.removeBloatFromXml.toPython, original.toPython)

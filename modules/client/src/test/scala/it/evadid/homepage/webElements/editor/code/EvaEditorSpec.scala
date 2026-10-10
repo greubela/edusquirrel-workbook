@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.editor.code
 
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingStateSnapXmlHelper
+
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.core.datastructures.state.observable.ObservableValue
@@ -21,7 +23,8 @@ import it.evadid.workbook.interaction.variable.{InteractionVariable, Interaction
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorConfig, EvaProgrammingTab}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import munit.FunSuite
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorDiagnostics
 
@@ -162,7 +165,7 @@ class EvaEditorSpec extends FunSuite {
     for commands <- List(List(TurtleCommand[Double]("forward", List(Int.MaxValue.toDouble))),
       List(TurtleCommand[Double]("forward", List(Double.PositiveInfinity))),
       List(TurtleCommand[Double]("forward", List(Double.NaN))),
-      List(TurtleCommand[Double]("circle", List(25.0))), List.fill(100)(squareDrawing()).flatten) do
+      List(TurtleCommand[Double]("circle", Nil)), List.fill(100)(squareDrawing()).flatten) do
       intercept[IllegalArgumentException](TurtleExecutionPanel.compare(commands, target))
     val empty = TurtleGraphic.TurtleGraphicProgram(Nil)
     assert(TurtleExecutionPanel.compare(Nil, empty))
@@ -529,7 +532,7 @@ class EvaEditorSpec extends FunSuite {
   }
 
   test("tab synchronization compares the converted state and ignores identical restores") {
-    val snap = ProgrammingStateSnapXml.mini
+    val snap = ProgrammingStateSnapXmlHelper.mini
     val tab = EvaProgrammingTab.tabFor(EvaEditorConfig.Default, AppLanguage.Python, Var[ProgrammingState](snap), _ => ())
     val owner = new ManualOwner
     var changes = 0
@@ -546,10 +549,10 @@ class EvaEditorSpec extends FunSuite {
   }
 
   test("Snap tab forwards edits to the parent editor") {
-    val initial = ProgrammingStateSnapXml.mini
+    val initial = ProgrammingStateSnapXmlHelper.mini
     var published: Option[ProgrammingState] = None
     val tab = EvaProgrammingTab.tabFor(EvaEditorConfig.Default, AppLanguage.SnapLanguage, Var[ProgrammingState](initial), next => published = Some(next))
-    val next = ProgrammingStateSnapXml.empty
+    val next = ProgrammingStateSnapXmlHelper.empty
     tab.editorElement.asInstanceOf[SnapEditor.SnapCodeEditor].onStateEdited(next)
     assertEquals(published, Some(next))
   }
@@ -567,7 +570,7 @@ class EvaEditorSpec extends FunSuite {
     assertEquals[ProgrammingState, ProgrammingState](javaTab.associatedVar.now(), java)
     assert(javaTab.editorElement.isInstanceOf[JavaFunctionBasedEditor])
 
-    val snap = ProgrammingStateSnapXml.mini
+    val snap = ProgrammingStateSnapXmlHelper.mini
     val snapTab = EvaProgrammingTab.tabFor(EvaEditorConfig.Default, AppLanguage.SnapLanguage, Var[ProgrammingState](snap), _ => ())
     assertEquals(snapTab.associatedLanguage, AppLanguage.SnapLanguage)
     assertEquals[ProgrammingState, ProgrammingState](snapTab.associatedVar.now(), snap)

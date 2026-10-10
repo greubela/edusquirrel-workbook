@@ -2,15 +2,16 @@ package it.evadid.evacuation.core.datastructures.graphs
 
 import it.evadid.core.datastructures.graph.Positionable
 
+import upickle.default.ReadWriter
 import scala.language.implicitConversions
 
 
-case class Position(x: Int, y: Int) extends Positionable {
+case class Position(x: Int, y: Int) extends Positionable derives ReadWriter {
   def distTo(pos2: Position): Double = Position.euclidianDistanceBetween(this, pos2)
 
   def addVector(p2: Position, scale: Double = 1): Position = Position(x + p2.x * scale, y + p2.y * scale)
 
-  def pointBetween(p2: Position, t: Double = 1): Position = Position(x + (p2.x - x) * t, y + (p2.y - y) * t)
+  def pointBetween(p2: Position, t: Double = 1): Position = Position(x + (p2.x.toDouble - x) * t, y + (p2.y.toDouble - y) * t)
 
   override def pos: Position = this
 }
@@ -22,15 +23,15 @@ object Position {
   implicit def dubTupToPos(pos: (Double, Double)): Position = Position(pos._1, pos._2)
 
   def between(start: Position, dest: Position, percent: Double = 0.5): Position = {
-    val xDist = dest.x - start.x
-    val yDist = dest.y - start.y
+    val xDist = dest.x.toDouble - start.x
+    val yDist = dest.y.toDouble - start.y
     Position(start.x + percent * xDist, start.y + percent * yDist)
   }
 
   def euclidianDistanceBetween(pos1: Position, pos2: Position): Double = {
-    val dx = pos1.x - pos2.x
-    val dy = pos1.y - pos2.y
-    Math.sqrt(dx * dx + dy * dy)
+    val dx = pos1.x.toDouble - pos2.x
+    val dy = pos1.y.toDouble - pos2.y
+    Math.hypot(dx, dy)
   }
 
   def apply(x: Double, y: Double) = new Position(Math.round(x).asInstanceOf[Int], Math.round(y).asInstanceOf[Int])
@@ -53,14 +54,8 @@ object Position {
   }
 
   def getNearestElements[T <: Positionable](list: Seq[T], pos: Position, n: Int): Seq[(T, Double)] = {
-    if (n == 0) Seq()
-    else {
-      val (nearest, dist) = getNearestElement(list, pos)
-      if (n <= 1) Seq((nearest, dist))
-      else {
-        Seq((nearest, dist)) ++ getNearestElements(list.toList.filterNot(_ == nearest), pos.x, pos.y, n - 1)
-      }
-    }
+    require(n >= 0, "Nearest element count must be nonnegative")
+    list.map(obj => obj -> obj.pos.distTo(pos)).sortBy(_._2).take(n)
   }
 
   def getNearestElement[T <: Positionable](list: Seq[T], pos: Position): (T, Double) = list.map(obj => (obj, obj.pos.distTo(pos))).minBy(_._1.pos.distTo(pos))

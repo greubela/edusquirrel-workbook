@@ -9,9 +9,8 @@ import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberIntera
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{AdvancedCodeRequirement, CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
-import it.evadid.workbook.elements.interactionElements.sortingExercise.{SortingInteraction, SortingItem}
-import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
-import it.evadid.workbook.jsonFactory.{WorkbookElementSerializable, WorkbookElementFactory}
+import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.{SortingInteraction, SortingItem}
+import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import upickle.default.*
 import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
@@ -30,12 +29,15 @@ import it.evadid.workbook.elements.interactionElements.sql.{SqlCommandExercise, 
 import munit.FunSuite
 
 class WorkbookElementSerializableRoundTripSpec extends FunSuite {
-  import it.evadid.workbook.elements.displayElements.{ImageElement, LabeledWorkbookElement}
+  import it.evadid.workbook.elements.displayElements.{WorkbookImageElement, LabeledWorkbookElement}
   import LabeledWorkbookElement.{WorkbookLabel, HintLabel}
   import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection, ExerciseContainer}
-  import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
-  import it.evadid.workbook.elements.interactionElements.Turtle.*
-  import it.evadid.workbook.elements.interactionElements.programming.*
+  import it.evadid.workbook.elements.interactionElements.slideshow.Slideshow
+  import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
+  import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
+  import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExerciseFullJava
+  import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.*
+  import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
   import it.evadid.workbook.elements.interactionElements.emailSimulator.*
   import it.evadid.workbook.elements.interactionElements.qr.*
   import it.evadid.workbook.model.qr.QrCode
@@ -48,9 +50,9 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       "reorder-1", List("move(10)", "turn(90)"), Python, seed = 7,
       hints = List(content("hint/one")), orderConstraints = List(0 -> 1)
     )
-    val image = ImageElement("image", content("image/source"), TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES)
-    val slide = SlideshowPanel.ImageSlide("slide", image, content("slide/title"), content("slide/body"))
-    val twoColumn = SlideshowPanel.TwoColumnImagePanel("two-column", image, content("left/title"), content("right/title"), content("left/body"), content("right/body"))
+    val image = WorkbookImageElement.LanguageMapBasedWorkbookImageElement("image", content("image/source"),
+      TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES, Some(content("image/description")),
+      Some(it.evadid.core.datastructures.file.CopyrightInfo.fromAi))
     val input = TextInteraction("gpt-input")
     val section = WorkbookSection("section", WorkbookSection.WorkbookSectionMetadata(content("section/title")), List(input))
     val workbook = Workbook("workbook", Workbook.WorkbookMetadata(Set.empty, Set.empty, content("workbook/title"), List(it.evadid.core.datastructures.language.AppLanguage.English)), List(section))
@@ -82,14 +84,15 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       workbook, section,
       ExerciseContainer("container", content("container/title"), List(input)),
       LabeledWorkbookElement("labeled", input, WorkbookLabel(content("label/hint"), HintLabel)),
-      image, slide, twoColumn, Slideshow("slideshow", List(slide, twoColumn)),
+      it.evadid.workbook.elements.displayElements.TwoColumnPanel("columns", image, input),
+      it.evadid.workbook.elements.structureElements.ExerciseGroup("group", List(image, input)),
+      image, Slideshow("slideshow", List(image)),
       GptInteractionElement("gpt", input, content("exercise/text"), List(content("hint/text")), List(content("criterion/text"))),
       TurtleStitchExploreProjectElement("turtle-explore", special),
       TurtleStitchRecreateShapeInteractionLegacy("turtle-legacy", special),
       TurtleRecreateShapeInteraction("turtle-shape", ProgrammingStatePythonString("forward(10)"), TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), ProgrammingEditorPalette.Embroidery, Map("forward" -> Integer.valueOf(2))),
       ProgrammingExercise("programming", Some(SampleBeTest("assert True")), ProgrammingEditorPalette.Embroidery, Some(special)),
       ProgrammingExerciseFullJava("java", Some(SampleBeTest("assert False"))),
-      SqlCommandExercise("sql", SqlDatabaseConfig("exercise-db"), special),
       MailEditor("mail-editor", inbox, special, allowCompose = false),
       MailInteraction("mail-interaction", inbox, special, allowCompose = false),
       CreateQrCodeInteraction("qr", QrCodeRequirements(minBytes = 2, maxBytes = Some(200), requiredMask = Some(3)), QrCode.fromText(special)),
@@ -212,6 +215,12 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       val invalid = original.toSerialized.withMapAdded(Map("comparisonPolicy" -> policy))
       intercept[it.evadid.distribution.command.SerializedException](WorkbookElementFactory.parse(invalid))
     }
+  }
+
+  test("old image elements without description or copyright retain absent metadata") {
+    val image = WorkbookImageElement("old-image", content("image/source"), TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES)
+    val serialized = image.toSerialized
+    assertEquals(WorkbookElementFactory.parse(serialized.copy(allConstructorFields = serialized.allConstructorFields -- List("description", "copyright"))), image)
   }
 
   test("constructor format preserves element ids without unquoting or trimming") {

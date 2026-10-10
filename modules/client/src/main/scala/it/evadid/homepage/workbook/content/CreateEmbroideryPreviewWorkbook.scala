@@ -5,10 +5,9 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.interactionElements.Turtle.{TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGraphic, TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStatePythonString
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette

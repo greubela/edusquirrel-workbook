@@ -10,5 +10,8 @@ sealed trait FeedbackEntity derives ReadWriter {
 object FeedbackEntity {
   case class HumanEntity(user: User) extends FeedbackEntity
 
-  case class AiEntity(fullChat: MessengerModel) extends FeedbackEntity
+  case class LlmEntity(fullChat: MessengerModel) extends FeedbackEntity
+
+  case class TestEntity() extends FeedbackEntity
+
 }

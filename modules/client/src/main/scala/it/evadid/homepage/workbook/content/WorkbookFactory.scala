@@ -8,14 +8,14 @@ import it.evadid.homepage.control.model.*
 import it.evadid.workbook.abstractions.*
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES
 import it.evadid.workbook.elements.displayElements.*
-import it.evadid.workbook.elements.displayElements.ImageElement.LanguageMapBasedImageElement
+import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{LabelType, WorkbookLabel}
 import it.evadid.workbook.elements.interactionElements.basic.*
 import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{AdvancedCodeRequirement, CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
-import it.evadid.workbook.elements.interactionElements.sortingExercise.{SortingInteraction, SortingItem}
-import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
+import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.{SortingInteraction, SortingItem}
+import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
 import it.evadid.workbook.elements.structureElements.*
 import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
 import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
@@ -96,8 +96,8 @@ trait WorkbookFactory {
     DisplayLangMapContent(nextId(), LanguageMapContentId(langIdContent), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN))
   //HtmlInstructionElement.fromMarkdownLanguageMapId(fullInfo, textMapId)
 
-  def imageResources(idWithImageLocation: LanguageMapContentId): ImageElement = {
-    LanguageMapBasedImageElement(nextId("img"), idWithImageLocation, URL_RELATIVE_TO_WORKBOOK_RESOURCES)
+  def imageResources(idWithImageLocation: LanguageMapContentId): WorkbookImageElement = {
+    LanguageMapBasedWorkbookImageElement(nextId("img"), idWithImageLocation, URL_RELATIVE_TO_WORKBOOK_RESOURCES)
   }
 
   protected def labeledInstruction(titleMapId: String, bodyMapId: String, labelType: LabelType): LabeledWorkbookElement[WorkbookElement] = {

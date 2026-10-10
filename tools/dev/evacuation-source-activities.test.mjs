@@ -43,9 +43,11 @@ test('source activities keep simulations independent and persist locker edits, b
     await page.locator('.fullscreen-close-button').click();
     await chapter('How does door width affect evacuation time?').click();
     await preview.waitFor();
+    await page.waitForFunction(() => document.querySelector('.evacuation-simulation-preview')?.textContent.includes('6 people · 1 exits · 0 recorded runs'));
     assert.match(await preview.innerText(), /6 people · 1 exits · 0 recorded runs/,'door experiment has independent state');
     await page.getByRole('button', {name:/Open editor/i}).click();
     await editor.waitFor();
+    await page.waitForFunction(() => document.querySelectorAll('dialog[open] .evacuation-cell--wall').length === 39);
     assert.equal(await editor.locator('.evacuation-cell--wall').count(),39,'door example retains all four lockers');
     await editor.getByRole('button',{name:'Exit',exact:true}).click();
     await editor.locator('.evacuation-cell').nth(5 * 11 + 10).click();

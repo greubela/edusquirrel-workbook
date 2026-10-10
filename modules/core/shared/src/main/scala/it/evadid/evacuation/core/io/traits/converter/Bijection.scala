@@ -17,15 +17,18 @@ trait Bijection[T] extends Converter[List[T]] { self =>
 
   def combineWith[T](bij: Bijection[T]): Bijection[T] = new Bijection[T] {
 
-    override def encodeIndex(indexIn: Int): Int = bij.encodeIndex(self.encodeIndex(indexIn))
+    override def encodeIndex(indexIn: Int): Int = self.encodeIndex(bij.encodeIndex(indexIn))
 
-    override def reconstructIndex(indexOut: Int): Int = self.reconstructIndex(bij.reconstructIndex(indexOut))
+    override def reconstructIndex(indexOut: Int): Int = bij.reconstructIndex(self.reconstructIndex(indexOut))
   }
 }
 
 object Bijection {
 
-  private def identityList(size: Int): List[Int] = 1.to(size).toList
+  private def identityList(size: Int): List[Int] = {
+    require(size >= 0, "Permutation size must be nonnegative")
+    (0 until size).toList
+  }
 
   def identity[T](): Bijection[T] = new Bijection[T] {
     override def encodeIndex(indexIn: Int): Int = indexIn
@@ -34,6 +37,7 @@ object Bijection {
   }
 
   def planeList(stepSize: Int, maxSize: Int): List[Int] = {
+    require(stepSize > 0 && maxSize >= 0, "Plane step must be positive and size nonnegative")
     val buf: ListBuffer[Int] = ListBuffer()
     0.until(stepSize).foreach(curModStep => {
       0.until(maxSize / stepSize).foreach(curPosition => {
@@ -46,15 +50,18 @@ object Bijection {
     buf.toList
   }
 
-  def fromShuffledIndexList[T](shuffled: List[Int]): Bijection[T] = new Bijection[T] {
-    override def encodeIndex(indexIn: Int): Int = {
-      assert(indexIn < shuffled.size, "Cannot convert index: shuffled out of range!")
-      shuffled(indexIn)
-    }
+  def fromShuffledIndexList[T](shuffled: List[Int]): Bijection[T] = {
+    require(shuffled.sorted == shuffled.indices.toList, "Indices must be a permutation of 0 until size")
+    new Bijection[T] {
+      override def encodeIndex(indexIn: Int): Int = {
+        assert(indexIn >= 0 && indexIn < shuffled.size, "Cannot convert index: shuffled out of range!")
+        shuffled(indexIn)
+      }
 
-    override def reconstructIndex(indexOut: Int): Int = {
-      assert(shuffled.contains(indexOut), "Cannot reconstruct index: not in shuffled!")
-      shuffled.indexOf(indexOut)
+      override def reconstructIndex(indexOut: Int): Int = {
+        assert(shuffled.contains(indexOut), "Cannot reconstruct index: not in shuffled!")
+        shuffled.indexOf(indexOut)
+      }
     }
   }
 

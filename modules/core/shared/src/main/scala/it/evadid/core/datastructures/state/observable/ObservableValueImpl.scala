@@ -21,8 +21,10 @@ private[core] case class ObservableValueImpl[T](initValue: Option[T]) extends Ob
     if (lastValuePropagated.isEmpty || lastValuePropagated.get != newValueTry) {
       //  println("ObservableValueImpl::onNewValueArrived: " + newValueTry + " (last: " + lastValuePropagated + ", observers: " + allObserversSorted().size + " = " + observers.size + " + " + oneTimeObservers.size + ")")
       lastValuePropagated = Some(newValueTry)
-      allObserversSorted().foreach(curObserver => fireObserver(newValueTry, curObserver))
+      // Detach one-time listeners before callbacks can reenter or register new ones.
+      val pendingObservers = allObserversSorted()
       oneTimeObservers.clear()
+      pendingObservers.foreach(curObserver => fireObserver(newValueTry, curObserver))
     } else {
       //  println("ObserableValueImpl::onNewValueArrived: suppressed update '" + newValueTry + "'!")
     }

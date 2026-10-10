@@ -1,9 +1,11 @@
 package it.evadid.evacuation.eva1.model.evagraph
 
+import upickle.default.ReadWriter
+
 import it.evadid.evacuation.eva1.model.evagraph.ConnectionInfo.getConnectionDelayFromSpeed
 
 
-case class ConnectionInfo(maxParallelism: Int, delayInMs: Int) {
+case class ConnectionInfo(maxParallelism: Int, delayInMs: Int) derives ReadWriter {
 
   assert(maxParallelism > 0 && delayInMs >= 0, "connection info out of bounds!")
 
@@ -25,10 +27,16 @@ object ConnectionInfo {
 
   def apply(maxCapacity: Int, delayInMs: Double): ConnectionInfo = new ConnectionInfo(maxCapacity, Math.round(delayInMs).asInstanceOf[Int])
 
-  def getConnectionDelayFromSpeed(routerDist: Double, speed: Integer = 50): Int = Math.round(routerDist).asInstanceOf[Int] * 1000 / speed
+  def getConnectionDelayFromSpeed(routerDist: Double, speed: Integer = 50): Int = {
+    require(routerDist.isFinite && routerDist >= 0, "Distance must be finite and non-negative")
+    require(speed != null && speed > 0, "Speed must be positive")
+    val delay = routerDist * 1000.0 / speed
+    require(delay.isFinite && delay <= Int.MaxValue, "Connection delay exceeds the supported range")
+    Math.round(delay).toInt
+  }
 
   def getConnectionDelayFromRouterDist(routerDist: Double): Int =
-    Math.round(routerDist).asInstanceOf[Int] * 1000 / 50 //GraphicConfigs.pxPerS
+    getConnectionDelayFromSpeed(routerDist, 50)
 
   def getSpeedInPxPerSecond(routerDist: Double, delayInMs: Int): Double = routerDist * 1000.0 / delayInMs
 

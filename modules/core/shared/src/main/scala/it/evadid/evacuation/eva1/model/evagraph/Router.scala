@@ -1,9 +1,11 @@
 package it.evadid.evacuation.eva1.model.evagraph
 
+import upickle.default.ReadWriter
+
 import it.evadid.core.datastructures.graph.{Positionable}
 import it.evadid.evacuation.core.datastructures.graphs.{Position}
 
-case class Router(pos: Position, initCapacity: Int, maxCapacity: Int, isExit: Boolean) extends Positionable {
+case class Router(pos: Position, initCapacity: Int, maxCapacity: Int, isExit: Boolean) extends Positionable derives ReadWriter {
   override def toString: String = "R[" + pos.x + "|" + pos.y + "]"
 
   def changeX(newVal: Int): Router = new Router(Position(newVal, pos.y), initCapacity, maxCapacity, isExit)

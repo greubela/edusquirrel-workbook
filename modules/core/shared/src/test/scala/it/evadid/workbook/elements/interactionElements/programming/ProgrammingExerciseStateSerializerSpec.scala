@@ -345,6 +345,31 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
     assertEquals(restored.toSnapXml.snapXml, xml)
   }
 
+  test("instance fingerprint retains stored xml so position-only xml differs") {
+    val a = ProgrammingStateSnapXml("""<project><scripts><script x="70" y="80"></script></scripts></project>""")
+    val b = ProgrammingStateSnapXml("""<project><scripts><script x="200" y="150"></script></scripts></project>""")
+    assert(a.fingerprint() != b.fingerprint())
+    assertEquals(a.fingerprint(), "snap:" + a.snapXml)
+    assertEquals(a.copy().fingerprint(), a.fingerprint())
+  }
+
+  test("instance fingerprints distinguish representations and survive default serialization") {
+    import upickle.default.*
+    val states: List[ProgrammingState] = List(
+      ProgrammingStatePythonString("same source\n"),
+      ProgrammingStateJavaString("same source\n"),
+      ProgrammingStateSnapXml("same source\n"),
+      ProgrammingStateSnapXml("same source\n", List("watcher", "comment"))
+    )
+    assertEquals(states.map(_.fingerprint()).distinct.size, states.size)
+    states.foreach { state =>
+      assertEquals(read[ProgrammingState](write(state)).fingerprint(), state.fingerprint())
+      assertEquals(readBinary[ProgrammingState](writeBinary(state)).fingerprint(), state.fingerprint())
+    }
+    val floating = ProgrammingStateSnapXml("same source\n", List("watcher", "comment"))
+    assert(floating.copy(legacyFloatingObjects = List("watcher")).fingerprint() != floating.fingerprint())
+  }
+
   test("checked Java VM states keep their original source in the existing Java wire format") {
     val source = ProgrammingStateJavaString("\r\npublic class Drawing { public static void main(String[] args) { " +
       "int n = 2147483647; Turtle.forward(n++); Turtle.forward(n); } }\r\n\t ")

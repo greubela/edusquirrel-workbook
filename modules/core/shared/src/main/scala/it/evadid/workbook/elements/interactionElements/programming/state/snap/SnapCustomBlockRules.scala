@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
+import upickle.default.ReadWriter
+
 /**
  * Port of the rules Snap applies when it loads a custom block, so generated XML
  * can be checked against them before it ever reaches the IDE.
@@ -27,7 +29,7 @@ object SnapCustomBlockRules {
   val NonScalarSlotTypePrefixes: List[String] = List("%mult", "%group")
 
   /** One declared input of a custom block definition. */
-  final case class SnapSlot(name: String, slotType: String, element: SnapXmlParser.Element)
+  final case class SnapSlot(name: String, slotType: String, element: SnapXmlParser.Element) derives ReadWriter
 
   /** One `<block-definition>` as Snap would load it. */
   final case class SnapCustomBlock(
@@ -37,7 +39,7 @@ object SnapCustomBlockRules {
       scope: Option[String],
       slots: List[SnapSlot],
       element: SnapXmlParser.Element
-  ) {
+  ) derives ReadWriter {
     def isGlobal: Boolean = scope.isEmpty
 
     def slotNames: List[String] = SnapCustomBlockRules.slotNames(spec)
@@ -72,7 +74,7 @@ object SnapCustomBlockRules {
   }
 
   /** A call Snap would replace with `Undefined!`. */
-  final case class ObsoleteCall(spec: String, reason: String)
+  final case class ObsoleteCall(spec: String, reason: String) derives ReadWriter
 
   def isNonScalarSlotType(slotType: String): Boolean =
     NonScalarSlotTypes.contains(slotType) || NonScalarSlotTypePrefixes.exists(slotType.startsWith)

@@ -1,7 +1,9 @@
 package it.evadid.workbook.model.blockchain
 
+import upickle.default.ReadWriter
+
 /** Worksheet Hashq, not a cryptographic hash: retain two middle decimal digits, biased left for odd lengths. */
-case class SquareMiddleHashResult(input: BigInt, square: BigInt, start: Int, hash: String) {
+case class SquareMiddleHashResult(input: BigInt, square: BigInt, start: Int, hash: String) derives ReadWriter {
   def highlightedSquare: String = {
     val digits = square.toString
     digits.take(start) + "[" + hash + "]" + digits.drop(start + 2)

@@ -3,13 +3,12 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitc
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
-import it.evadid.core.util.io.{ConstructorLikeParserWithJsonElements, Serializer}
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGraphic, TurtleGradingLogic}
+import TurtleGradingLogic.{GradingLine, TurtleGraphicComparison, TurtleLineStatus}
 import org.scalajs.dom
 import upickle.default.*
 
-import scala.collection.mutable.ListBuffer
 import scala.scalajs.js
 import scala.util.control.NonFatal
 
@@ -72,27 +71,12 @@ object TurtleJsxGraphRenderer:
 
   /* details */
 
-  private sealed trait ObjectsToRender {
-
-  }
-
   /** A line segment used as the expected result of a turtle exercise. */
   final case class LineToRender[T: Fractional](start: Point[T], end: Point[T], jump: Boolean = false)
 
 
   enum LineResult derives ReadWriter:
     case Correct, Unexpected, Missing, Neutral
-
-  private given prw: ReadWriter[Point[Double]] = new Serializer[Point[Double]]() {
-
-    override def serialize(obj: Point[Double]): String = s"Point(Double)(${obj.x.toString})(${obj.y.toString})"
-
-    override def deserialize(str: String): Point[Double] = {
-      val res = ConstructorLikeParserWithJsonElements.parseString(str)
-      println("TurtleJsxRendering::deserialize not implemented correctly")
-      Point(res.get.jsonPayloads(1).toDouble, res.get.jsonPayloads(2).toDouble)
-    }
-  }.uPickleReadWrite
 
   final case class RenderedLine(start: Point[Double], end: Point[Double], result: LineResult, jump: Boolean) derives ReadWriter
 
@@ -128,99 +112,32 @@ object TurtleJsxGraphRenderer:
     if sweep <= math.Pi then AngleSector(incoming, outgoing, math.toDegrees(sweep))
     else AngleSector(outgoing, incoming, math.toDegrees(fullTurn - sweep))
 
-  private final case class Movement(start: Point[Double], end: Point[Double], jump: Boolean) derives ReadWriter
-
-  private final case class PendingAngle(vertex: Point[Double], fromHeading: Double, degrees: Double, lineBefore: Int) derives ReadWriter
-
-  /** Builds a testable rendering model and performs a one-to-one, direction-independent
-   * comparison of actual and expected segments.
-   */
-  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]], tolerance: Double = 1e-7,
-      gradeJumps: Boolean = true, matchPenState: Boolean = false): Scene =
+  private def graphic[T: Fractional](program: List[TurtleCommand[T]]): TurtleGraphic = {
     val numeric = summon[Fractional[T]]
-    var position = Point(0.0, 0.0)
-    var heading = 0.0
-    var penDown = true
-    val movements = ListBuffer.empty[Movement]
-    val angles = ListBuffer.empty[RenderedAngle]
-    var lastForwardLine: Option[Int] = None
-    var pendingAngle: Option[PendingAngle] = None
+    TurtleGraphic.TurtleGraphicProgram(program.map(command =>
+      TurtleCommand(command.name, command.args.map(numeric.toDouble), command.stringArgs)))
+  }
 
-    def normal(degrees: Double): Double = ((degrees % 360.0) + 360.0) % 360.0
+  private def renderedLines(lines: List[GradingLine]): List[RenderedLine] = lines.map { graded =>
+    val result = graded.status match
+      case TurtleLineStatus.CORRECT => LineResult.Correct
+      case TurtleLineStatus.EXPECTED_BUT_MISSING => LineResult.Missing
+      case TurtleLineStatus.EXISTING_BUT_UNEXPECTED => LineResult.Unexpected
+    RenderedLine(graded.line.start, graded.line.end, result, graded.jump)
+  }
 
-    def move(end: Point[Double], jump: Boolean, isForward: Boolean): Unit =
-      val index = movements.size
-      movements += Movement(position, end, jump)
-      if isForward then
-        pendingAngle.filter(p => close(p.vertex, position, tolerance) && math.abs(p.degrees % 360.0) > tolerance).foreach { p =>
-          angles += RenderedAngle(position, p.fromHeading, p.degrees, p.lineBefore, index)
-        }
-        pendingAngle = None
-        lastForwardLine = Some(index)
-      else
-        pendingAngle = None
-        lastForwardLine = None
-      position = end
+  private def renderedAngles(angles: Seq[TurtleGraphic.Angle]): List[RenderedAngle] = angles.map { angle =>
+    RenderedAngle(angle.vertex, angle.fromHeading, angle.degrees, angle.lineBefore, angle.lineAfter)
+  }.toList
 
-    def forward(distance: Double): Unit =
-      val radians = Math.toRadians(heading)
-      if distance != 0.0 then
-        move(Point(position.x + Math.cos(radians) * distance, position.y - Math.sin(radians) * distance), !penDown, true)
+  /** JSXGraph projects the shared-core geometry and grading result into display objects. */
+  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]], tolerance: Double = 1e-7, gradeJumps: Boolean = true): Scene = {
+    val actual = graphic(program)
+    val targets = expected.map(line => TurtleGraphic.Movement(line.start.toDouble, line.end.toDouble, line.jump))
+    Scene(renderedLines(TurtleGradingLogic.compareLines(actual.renderMovements, targets, tolerance, gradeJumps)),
+      renderedAngles(actual.renderAngles))
+  }
 
-    // Preserve the signed rotation across consecutive turns at the same vertex.
-    def turn(degrees: Double): Unit =
-      lastForwardLine.foreach { i =>
-        pendingAngle = pendingAngle match
-          case Some(p) => Some(p.copy(degrees = p.degrees + degrees))
-          case None => Some(PendingAngle(position, heading, degrees, i))
-      }
-      heading = normal(heading + degrees)
-
-    program.foreach { command =>
-      val name = command.name.trim.toLowerCase.replace('-', '_')
-      val args = command.args.map(numeric.toDouble)
-      name match
-        case "forward" | "fd" => args.headOption.foreach(forward)
-        case "backward" | "back" | "bk" => args.headOption.foreach(d => forward(-d))
-        case "left" | "lt" | "turn_left" | "turnleft" => args.headOption.foreach { degrees =>
-          turn(degrees)
-        }
-        case "right" | "rt" | "turn" | "turn_right" | "turnright" => args.headOption.foreach { degrees =>
-          turn(-degrees)
-        }
-        case "goto" | "setpos" | "setposition" | "goto_x_y" | "gotoxy" if args.size >= 2 =>
-          move(Point(args(0), args(1)), jump = !penDown, isForward = false)
-        case "setx" | "set_x" | "setxposition" => args.headOption.foreach(x => move(Point(x, position.y), jump = !penDown, isForward = false))
-        case "sety" | "set_y" | "setyposition" => args.headOption.foreach(y => move(Point(position.x, y), jump = !penDown, isForward = false))
-        case "setheading" | "seth" | "set_heading" => args.headOption.foreach { h =>
-          heading = normal(h)
-          pendingAngle = None
-          lastForwardLine = None
-        }
-        case "penup" | "pu" | "up" | "pen_up" => penDown = false
-        case "pendown" | "pd" | "down" | "pen_down" => penDown = true
-        case "home" => move(Point(0.0, 0.0), jump = !penDown, isForward = false); heading = 0.0
-        case "clear" | "clearscreen" => movements.clear(); angles.clear(); lastForwardLine = None; pendingAngle = None
-        case "reset" => movements.clear(); angles.clear(); position = Point(0.0, 0.0); heading = 0.0; penDown = true; lastForwardLine = None; pendingAngle = None
-        case _ => ()
-    }
-
-    val unmatchedExpected = ListBuffer.from(expected.filter(line => gradeJumps || !line.jump).map(line => LineToRender(line.start.toDouble, line.end.toDouble, line.jump)))
-    val rendered = movements.map { movement =>
-      val matchIndex = unmatchedExpected.indexWhere(line =>
-        (gradeJumps || !movement.jump) && (!matchPenState || movement.jump == line.jump) &&
-          sameLine(movement.start, movement.end, line.start, line.end, tolerance))
-      val result = if movement.jump && !gradeJumps then LineResult.Correct
-      else if matchIndex >= 0 then {
-        unmatchedExpected.remove(matchIndex);
-        LineResult.Correct
-      } else LineResult.Unexpected
-      RenderedLine(movement.start, movement.end, result, movement.jump)
-    }
-    val missing = unmatchedExpected.map(line => RenderedLine(line.start, line.end, LineResult.Missing, line.jump))
-    Scene((rendered ++ missing).toList, angles.toList)
-
-  /** Compares a program with the expected graphic and marks angles between its segments. */
   def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic): Scene =
     buildScene(program, expected, 1e-7)
 
@@ -228,36 +145,12 @@ object TurtleJsxGraphRenderer:
     buildScene(program, expected, tolerance, gradeJumps = true)
 
   def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double, gradeJumps: Boolean): Scene =
-    buildScene(program, expected, tolerance, gradeJumps, matchPenState = false)
+    buildScene(graphic(program), expected, tolerance, gradeJumps)
 
-  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double,
-      gradeJumps: Boolean, matchPenState: Boolean): Scene =
-    val expectedScene = buildScene(expected.toTurtleProgram.toList, List.empty[LineToRender[Double]], tolerance)
-    val expectedLines = expectedScene.lines.map(line => LineToRender(line.start, line.end, line.jump))
-    val numeric = summon[Fractional[T]]
-    val doubleProgram = program.map(command =>
-      TurtleCommand(command.name, command.args.map(numeric.toDouble))
-    )
-    // Recreate tasks assess stitched geometry; pen-up routes may differ.
-    val actualScene = buildScene(doubleProgram, expectedLines, tolerance, gradeJumps = gradeJumps, matchPenState = matchPenState)
-
-    val expectedAngles = expectedScene.angles.filter { angle =>
-      gradeJumps || (!expectedScene.lines(angle.lineBefore).jump && !expectedScene.lines(angle.lineAfter).jump)
-    }.map { angle =>
-      def correspondingLine(index: Int): Int =
-        val expectedLine = expectedScene.lines(index)
-        actualScene.lines.indexWhere(line =>
-          (gradeJumps || !line.jump) && (!matchPenState || line.jump == expectedLine.jump) &&
-            sameLine(line.start, line.end, expectedLine.start, expectedLine.end, tolerance)
-        )
-
-      angle.copy(
-        lineBefore = correspondingLine(angle.lineBefore),
-        lineAfter = correspondingLine(angle.lineAfter)
-      )
-    }
-    actualScene.copy(angles = expectedAngles)
-
+  private[turtleStitch] def buildScene(actual: TurtleGraphic, expected: TurtleGraphic, tolerance: Double, gradeJumps: Boolean): Scene = {
+    val comparison = TurtleGraphicComparison(actual, expected, tolerance, gradeJumps)
+    Scene(renderedLines(comparison.difference), renderedAngles(comparison.angles))
+  }
 
   /** Creates the JSXGraph board inside `container` and returns the board object. */
   def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): js.Dynamic =
@@ -373,12 +266,6 @@ object TurtleJsxGraphRenderer:
     obj.setAttribute(js.Dynamic.literal(name = (if active then s"${format(degrees)}°" else ""),
       cssClass = (if active then "turtle-angle is-emphasized" else "turtle-angle")))
     board.update()
-
-  private def sameLine(a: Point[Double], b: Point[Double], c: Point[Double], d: Point[Double], tolerance: Double): Boolean =
-    (close(a, c, tolerance) && close(b, d, tolerance)) || (close(a, d, tolerance) && close(b, c, tolerance))
-
-  private def close(a: Point[Double], b: Point[Double], tolerance: Double): Boolean =
-    math.abs(a.x - b.x) <= tolerance && math.abs(a.y - b.y) <= tolerance
 
   private def format(value: Double): String =
     val rounded = math.rint(value * 1000.0) / 1000.0

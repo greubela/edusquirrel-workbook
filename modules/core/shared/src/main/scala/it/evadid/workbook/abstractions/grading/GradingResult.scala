@@ -11,9 +11,9 @@ object GradingResult {
 
 trait GradingResult[T] {
 
-  val stateToGrade: T
+  val gradedState: T
   val gradingEntity: FeedbackEntity
-  val gradingGrade: GradingGrade
-  val additionalInformation: LanguageMap[HumanLanguage]
+  val gradingStatus: GradingStatus
+  val feedbackInformation: Option[LanguageMap[HumanLanguage]]
 
 }

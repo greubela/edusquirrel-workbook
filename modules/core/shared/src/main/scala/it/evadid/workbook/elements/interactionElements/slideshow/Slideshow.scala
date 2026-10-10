@@ -1,15 +1,33 @@
 package it.evadid.workbook.elements.interactionElements.slideshow
 
 import it.evadid.core.util.io.Serializer
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement, WorkbookInteractionElementWithGrader}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 
-case class Slideshow(override val elementId: String, panels: List[SlideshowPanel]) extends WorkbookInteractionElement[SlideshowState] {
+case class Slideshow(
+                      override val elementId: String,
+                      private val panels: List[WorkbookDisplayElement]
+                    ) extends WorkbookInteractionElementWithGrader[SlideshowState, SlideshowGradingResult] {
+
+
+  val panelSize: Int = panels.length
+
+  def indexOf(element: WorkbookElement): Option[Int] = {
+    indexOf(element.asRef)
+  }
+
+  def getPanel(index: Int): Option[WorkbookElement] = if(index < panels.length && index >= 0) Some(panels(index)) else None
+
+  def indexOf(element: WorkbookElementReference): Option[Int] = {
+    panels.zipWithIndex.filter(_._1.asRef.referencedId == element.referencedId).map(_._2).headOption
+
+  }
+
   override val associatedFactory = Slideshow.factory
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = panels
 
-  override val defaultValue = SlideshowState(panels, Set.empty)
+  override val defaultValue = SlideshowState(panels.map(_.asRef), Set.empty)
 
   override val serializerInteractionContent: Serializer[SlideshowState] = defaultValue.serializer()
 

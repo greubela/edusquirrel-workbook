@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
-import com.raquo.laminar.api.L.{svg as svgtag, *}
+import com.raquo.laminar.api.L.{child, svg as svgtag, *}
 import com.raquo.laminar.nodes.{ReactiveHtmlElement, ReactiveSvgElement}
 import it.evadid.core.datastructures.state.StateHelper.RichObservableValue
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
@@ -14,17 +14,30 @@ import org.scalajs.dom.{HTMLDivElement, SVGPathElement, SVGSVGElement}
 
 case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionElement[Any]) extends HtmlAppElement {
 
-  lazy val report: EventStream[InteractionVariableSyncReport[Any]] = fullInfo.syncControl.createObservableReport[Any](workbookInteractionElement.interactionVariable).toEventStream()
+  lazy val syncReport: EventStream[InteractionVariableSyncReport[Any]] = fullInfo.syncControl.createObservableReport[Any](workbookInteractionElement.interactionVariable).toEventStream()
 
-  lazy val domElement: Element = div(
-    cls := interactionInfoCssString,
-    children <-- report.map(deriveChildren)
-  )
+  lazy val domElement: Element = {
+
+
+    div(
+      cls := interactionInfoCssString,
+      div(
+        cls := "current-value-icon",
+
+      ),
+      div(
+        cls := "sync-report-icon",
+        child  <-- syncReport.map(deriveSyncSymbol)
+      ),
+
+    )
+  }
 
   override def getDomElement(): Element = domElement
 
 
-  def deriveChildren(report: InteractionVariableSyncReport[?]): List[Element] = {
+
+  def deriveSyncSymbol(report: InteractionVariableSyncReport[?]): Element = {
 
     val svgSyncIcon: ReactiveSvgElement[org.scalajs.dom.SVGSVGElement] =
       if (report.allSyncLocations.isEmpty) createCloudDisabledSvg()
@@ -38,10 +51,8 @@ case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionE
       else if (report.latestStateIsSyncedTo.size == report.allSyncLocations.size) laminarHelper.contentIdStringSignal("basic/syncInfoTooltipFull", PLAINTEXT_UNDERSCORE_REPLACABLE, List[String](report.allSyncLocations.size.toString))
       else laminarHelper.contentIdStringSignal("basic/syncInfoTooltipPartial", PLAINTEXT_UNDERSCORE_REPLACABLE, List[String](report.latestStateIsSyncedTo.size.toString, report.allSyncLocations.size.toString))
 
+    InteractionInfoPanel.infoPanelIcon("sync-info", svgSyncIcon, svgSyncTooltip)
 
-    val syncInfo = InteractionInfoPanel.infoPanelIcon("sync-info", svgSyncIcon, svgSyncTooltip)
-
-    List(syncInfo)
 
   }
 }

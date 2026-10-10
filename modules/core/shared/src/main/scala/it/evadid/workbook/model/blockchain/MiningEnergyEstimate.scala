@@ -1,7 +1,9 @@
 package it.evadid.workbook.model.blockchain
 
+import upickle.default.ReadWriter
+
 /** Arithmetic under explicit classroom assumptions, not a measurement of a payment's marginal energy. */
-case class MiningEnergyEstimate(annualKilowattHours: BigDecimal, transactionsPerBlock: Int, blockSeconds: Int, daysPerYear: Int = 365) {
+case class MiningEnergyEstimate(annualKilowattHours: BigDecimal, transactionsPerBlock: Int, blockSeconds: Int, daysPerYear: Int = 365) derives ReadWriter {
   require(annualKilowattHours >= 0 && transactionsPerBlock > 0 && blockSeconds > 0 && daysPerYear > 0)
   val blocksPerYear: BigDecimal = BigDecimal(daysPerYear) * 86400 / blockSeconds
   val transactionsPerYear: BigDecimal = blocksPerYear * transactionsPerBlock

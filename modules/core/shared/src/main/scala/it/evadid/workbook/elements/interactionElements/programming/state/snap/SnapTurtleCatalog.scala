@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
+import upickle.default.ReadWriter
+
 /**
  * Canonical Snap selector ↔ Python name ↔ TurtleCommand mapping.
  *
@@ -8,10 +10,10 @@ package it.evadid.workbook.elements.interactionElements.programming.state.snap
  */
 object SnapTurtleCatalog {
 
-  enum PaletteTab:
+  enum PaletteTab derives ReadWriter:
     case Motion, Pen, Embroidery, Control, Operators, Variables, Other
 
-  enum SnapInputKind:
+  enum SnapInputKind derives ReadWriter:
     case Numeric, String, Bool, Color
 
   final case class ExtraBlockSpec(

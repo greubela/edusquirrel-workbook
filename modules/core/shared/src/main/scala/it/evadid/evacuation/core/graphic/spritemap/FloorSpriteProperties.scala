@@ -1,12 +1,14 @@
 package it.evadid.evacuation.core.graphic.spritemap
 
+import upickle.default.ReadWriter
+
 import it.evadid.core.datastructures.matrix.MatrixPosition
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 
-case class FloorSpriteProperties(isFreeTop: Boolean, isFreeTopLeft: Boolean, isFreeLeft: Boolean, isFreeBottomLeft: Boolean, isFreeBottom: Boolean, isFreeBottomRight: Boolean, isFreeRight: Boolean, isFreeTopRight: Boolean) {
+case class FloorSpriteProperties(isFreeTop: Boolean, isFreeTopLeft: Boolean, isFreeLeft: Boolean, isFreeBottomLeft: Boolean, isFreeBottom: Boolean, isFreeBottomRight: Boolean, isFreeRight: Boolean, isFreeTopRight: Boolean) derives ReadWriter {
 
   private val reachableFromCenter: Set[MatrixPosition] = {
     val buf = ListBuffer.empty[MatrixPosition]

@@ -1,5 +1,6 @@
 package it.evadid.evacuation.core.graphic.spritemap
 
+import scala.util.control.NonFatal
 import it.evadid.core.datastructures.matrix.Direction
 import it.evadid.core.datastructures.matrix.{MatrixDimension, MatrixPosition}
 import it.evadid.evacuation.core.graphic.spritemap.SpriteMapConfig.parseSpriteMapAnimLine
@@ -23,9 +24,9 @@ case class SpriteMapConfig(formatLines: Seq[String], config: SpriteMapMetaConfig
 
   val varLines: Seq[String] = linesCleaned.filter(_.contains("="))
 
-  def getVariable(name: String): Option[String] = varLines.find(_.startsWith(name + "=")).map(_.split("=")(1))
+  def getVariable(name: String): Option[String] = varLines.iterator.map(_.split("=", 2)).find(_(0).trim == name).map(_(1).trim)
 
-  def getIntVariable(name: String): Option[Int] = getVariable(name).map(_.replaceAll("\\D+", "")).map(Integer.parseInt)
+  def getIntVariable(name: String): Option[Int] = getVariable(name).flatMap(_.toIntOption)
 
   private val columns: Option[Int] = getIntVariable("cols")
   private val rows: Option[Int] = getIntVariable("rows")
@@ -33,7 +34,7 @@ case class SpriteMapConfig(formatLines: Seq[String], config: SpriteMapMetaConfig
   def getShowDimension(): Option[MatrixDimension] =
     if (columns.isDefined && rows.isDefined) Some(new MatrixDimension(columns.get, rows.get, false)) else None
 
-  assert(columns.isDefined && rows.isDefined, "Variables cols and rows must be defined in SpriteMapConfig!")
+  require(columns.exists(_ > 0) && rows.exists(_ > 0), "Variables cols and rows must be positive integers in SpriteMapConfig")
 
 }
 
@@ -60,7 +61,7 @@ object SpriteMapConfig {
     val spriteNames = list.map(_.name).distinct
     val spriteList = spriteNames.map(spriteName => {
 
-      val idVal = list.filter(_.name == spriteName).filter(_.id > 0).minBy(_.id).id
+      val idVal = list.filter(_.name == spriteName).minBy(_.id).id
 
       val upSprites: List[FrameData] = getDirSprites(spriteName, Direction.TOP)
       val leftSprites: List[FrameData] = getDirSprites(spriteName, Direction.LEFT)
@@ -95,7 +96,7 @@ object SpriteMapConfig {
 
   private def parseSpriteMapAnimLine(lineString: String, config: SpriteMapMetaConfig): Option[PersonSpriteInfo] = {
 
-    val parts: Array[String] = lineString.split("\\s")
+    val parts: Array[String] = lineString.trim.split("\\s+")
 
     if (lineString.charAt(0) != 'p' && lineString.charAt(0) != 'a' || parts.length < 6) None else try {
 
@@ -112,20 +113,17 @@ object SpriteMapConfig {
       Some(PersonSpriteInfo(spriteName, id, FrameData.fromTilemapString(fileName), frameNr, dir))
 
     } catch {
-      case e: Exception =>
-        e.printStackTrace()
-        None
+      case NonFatal(_) => None
     }
 
   }
 
   private def parseSpriteMapLine(lineString: String, config: SpriteMapMetaConfig): Option[Sprite] = {
 
-    val parts: Array[String] = lineString.split("\\s")
+    val parts: Array[String] = lineString.trim.split("\\s+")
 
     try {
-      println("parse String: " + lineString)
-      assert(parts.length > 3, "Too few cols (" + parts.length + ") in spriteMapLine: '" + lineString + "'")
+      require(parts.length > 3, "Too few cols (" + parts.length + ") in spriteMapLine: '" + lineString + "'")
 
       val col = Integer.parseInt(parts(1))
       val row = Integer.parseInt(parts(2))
@@ -148,16 +146,13 @@ object SpriteMapConfig {
         case 'a' =>
           None
         case _ =>
-          ???
+          None
 
       }
 
 
     } catch {
-      case e: Exception =>
-        println("error at line: " + lineString)
-        e.printStackTrace()
-        None
+      case NonFatal(_) => None
     }
   }
 

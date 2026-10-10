@@ -2,14 +2,14 @@ package it.evadid.homepage.workbook.content
 
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineResult
-import it.evadid.workbook.elements.interactionElements.Turtle.{TurtleRecreateShapeInteraction, TurtleStitchRecreateShapeInteractionLegacy}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleRecreateShapeInteraction, TurtleStitchRecreateShapeInteractionLegacy}
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStatePythonString
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory

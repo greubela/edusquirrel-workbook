@@ -1,19 +1,19 @@
 package it.evadid.homepage.workbook.content
 
-import it.evadid.core.datastructures.geometry.Point
+import it.evadid.core.datastructures.geometry.{Line, Point}
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.workbook.elements.interactionElements.emailSimulator.MailInteraction
 import it.evadid.workbook.elements.interactionElements.qr.{CreateQrCodeInteraction, QrCodeRequirements}
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, HintLabel, TaskLabel}
-import it.evadid.workbook.elements.interactionElements.Turtle.TurtleRecreateShapeInteraction
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.{Line, TurtleLineBasedProgram}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.*
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{ProgrammingEditorPalette, SnapProjectXml}
