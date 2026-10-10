@@ -1,7 +1,9 @@
 # Testing and default serialization audit
 
-This audit started from main `87a2c402` and was integrated with `a3af616a`, including
-the programming package refactor and instance-based state fingerprints. Snap codec
+This audit started from main `87a2c402` and was integrated with `6b468333`, including
+the programming package refactor, instance-based state fingerprints, and the
+turtle geometry/grading changes. Existing turtle tests use the relocated geometry
+`Line` type. Snap codec
 models now live under `programming.state.snap`. It extends the earlier
 [core package audit](core-package-unit-tests.md), concentrating on legacy packages
 whose examples were manual programs rather than discoverable test suites. Package
@@ -121,7 +123,8 @@ static checks and browser checks on pull requests, main pushes and manual dispat
 The separate Pages deployment workflow is unchanged. Passing suites establish the
 behaviors listed here; this is not a claim of complete line/branch coverage.
 
-Verified against the integrated refactor on 2026-10-10:
+Verified on 2026-10-10; all five Scala suites, both browser builds and static
+checks were rerun after integrating main `6b468333`:
 
 | Target | Passed | Failed / ignored |
 | --- | ---: | --- |
@@ -133,6 +136,6 @@ Verified against the integrated refactor on 2026-10-10:
 | Static asset/DOM checks | 23 | 0 / 0 |
 | Browser workbook/editor/cache checks | 15 | 0 / 0 |
 
-The full Scala run was followed by both-platform bit-sequence checks after the final
-explicit-width correction, and the complete client suite after the fullscreen fix.
-Both current browser artifacts were built successfully.
+The complete browser suite passed after the fullscreen fix. After integrating
+main `6b468333`, the monk and embroidery browser checks were rerun against freshly
+built artifacts to verify the affected turtle interactions.
