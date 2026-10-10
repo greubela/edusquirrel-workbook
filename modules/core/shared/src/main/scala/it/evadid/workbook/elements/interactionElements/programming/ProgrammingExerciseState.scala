@@ -114,6 +114,20 @@ private object SnapStateConversion {
         val end = values.lift(2).map(value).getOrElse("1")
         val body = children.find(_.tag == "script").toList.flatMap(s => statements(s.inner, indentation + 4))
         prefix + s"for $name in range($start, $end + 1):\n" + nonEmptyBody(body, indentation + 4)
+      case None if selector == "doIf" || selector == "doIfElse" =>
+        val children = SnapXmlParser.children(block.inner)
+        val condition = children.find(_.tag != "script").map(value).getOrElse("False")
+        val bodies = children.filter(_.tag == "script")
+        def body(index: Int): String = nonEmptyBody(
+          bodies.lift(index).toList.flatMap(s => statements(s.inner, indentation + 4)), indentation + 4)
+        val thenPart = prefix + s"if $condition:\n" + body(0)
+        if selector == "doIfElse" then thenPart + "\n" + prefix + "else:\n" + body(1)
+        else thenPart
+      case None if selector == "doUntil" =>
+        val children = SnapXmlParser.children(block.inner)
+        val condition = children.find(_.tag != "script").map(value).getOrElse("True")
+        val body = children.find(_.tag == "script").toList.flatMap(s => statements(s.inner, indentation + 4))
+        prefix + s"while not ($condition):\n" + nonEmptyBody(body, indentation + 4)
       case None if selector == "doSetVar" || selector == "doChangeVar" =>
         val children = SnapXmlParser.children(block.inner)
         val name = children.headOption.map(literalText).getOrElse("x")

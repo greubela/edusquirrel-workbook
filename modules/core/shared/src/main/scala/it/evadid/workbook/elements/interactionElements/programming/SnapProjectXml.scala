@@ -297,6 +297,9 @@ object SnapProjectXml {
     val op = SnapControlFlow.operatorSymbol(call)
     val args = SnapControlFlow.orderedArgs(call)
     op match {
+      case "-" if args.size == 1 =>
+        // Snap's difference reporter is binary; unary minus needs an explicit zero.
+        s"""<block s="reportDifference"><l>0</l>${renderConditionValue(args.head)}</block>"""
       case "not" =>
         val inner = args.headOption.map(renderCondition).getOrElse("""<block s="reportTrue"></block>""")
         s"""<block s="reportNot">$inner</block>"""

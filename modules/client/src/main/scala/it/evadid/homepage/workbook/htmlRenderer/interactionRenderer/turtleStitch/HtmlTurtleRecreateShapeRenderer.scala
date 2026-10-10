@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
-import com.raquo.airstream.state.Var
+import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
@@ -16,11 +16,11 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[TurtleRecreateShapeInteraction] {
 
   def createInteractivePreview(boundVar: Var[ProgrammingState], expected: TurtleGraphic): ElementCard = {
-    val cmd = boundVar.signal.map(_.toBeExpressionState.deriveTurtleCommands)
+    val cmd = boundVar.signal.map(_.toBeExpressionState.deriveTurtleCommands).distinct
 
     ElementCard(
       LanguageMapContentId("basic/turtleGradingPanel"),
-      TurtleJsxGraphRenderer.render(cmd, expected)
+      TurtleJsxGraphRenderer.renderStrokes(cmd, expected)
     )
   }
 
@@ -36,7 +36,12 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
     val editorConfig = EvaEditorConfig(snapConfig = snapEditorConfig)
     val editor = EvaEditorTurtle(boundVar, editorConfig, workbookElement.desiredResult)
 
-    val canvasCard = ElementCard(LanguageMapContentId("basic/canvas"), SnapPreviewEditor(boundVar, snapEditorConfig).getDomElement())
+    lazy val codePreview = SnapPreviewEditor(boundVar, snapEditorConfig).getDomElement()
+    val programPreview = boundVar.signal.map(_.toPython.code.trim.nonEmpty).distinct.map { hasProgram =>
+      if hasProgram then codePreview
+      else p(text <-- laminarHelper.plaintextStringSignal("basic/turtleNoProgramYet"))
+    }
+    val canvasCard = ElementCard(LanguageMapContentId("basic/canvas"), programPreview)
 
     def buttonPressed(): Unit = fullInfo.displayControl.setFullscreen(editor)
 

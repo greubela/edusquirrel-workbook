@@ -35,5 +35,7 @@
   "compression-lab-title": "Datenkompression: interaktives Lernlabor",
   "compression-lab-description": "Probiere Kompressionsverfahren im eigenständigen Lernangebot aus.",
   "evacuation-title": "Evakuierung mit Gitterautomaten",
-  "evacuation-description": "Erstelle Grundrisse, vergleiche Spinde und Türen und hinterfrage Evakuierungsmodelle."
+  "evacuation-description": "Erstelle Grundrisse, vergleiche Spinde und Türen und hinterfrage Evakuierungsmodelle.",
+  "embroidery-preview-title": "Stickmaschine – interaktive Turtle-Vorschau",
+  "embroidery-preview-description": "Programmiere Muster direkt im Editor, mit Fallunterscheidungen und Rekursion. Neue Fassung auf Deutsch und Englisch."
 }

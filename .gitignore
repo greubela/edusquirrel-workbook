@@ -78,3 +78,6 @@ src/*
 .cursor/
 node_modules/
 src/main/main/
+
+# Local development scratch files and browser-test captures
+/work/

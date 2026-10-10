@@ -1,5 +1,7 @@
 package it.evadid.workbook.jsonFactory
 
+import it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction
+
 import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationSimulationInteraction
 import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationConstructFloorInteraction
 import it.evadid.core.util.io.Serializer
@@ -142,6 +144,7 @@ object WorkbookElementFactory {
 
 
   private lazy val knownFactoriesMap: Map[String, WorkbookElementFactory[? <: WorkbookElement]] = Map(
+    classOf[CompressionExperimentInteraction].getSimpleName -> CompressionExperimentInteraction.factory,
     classOf[CreateQrCodeInteraction].getSimpleName -> CreateQrCodeInteraction.factory,
     classOf[MailInteraction].getSimpleName -> MailInteraction.factory,
     classOf[ChoiceInteraction].getSimpleName -> ChoiceInteraction.factory,

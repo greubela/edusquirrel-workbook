@@ -150,6 +150,10 @@ object BeExpressionToTurtleCommands {
       case "/" =>
         val denom = args.drop(1).headOption.getOrElse(1.0)
         if denom == 0 then 0.0 else args.headOption.getOrElse(0.0) / denom
+      case "%" =>
+        val dividend = args.headOption.getOrElse(0.0)
+        val divisor = args.drop(1).headOption.getOrElse(1.0)
+        if divisor == 0 then 0.0 else dividend - divisor * math.floor(dividend / divisor)
       case "<" => if compare(args, _ < _) then 1.0 else 0.0
       case ">" => if compare(args, _ > _) then 1.0 else 0.0
       case "==" => if args.sliding(2).forall(pair => pair.size < 2 || pair.head == pair(1)) then 1.0 else 0.0

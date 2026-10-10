@@ -16,7 +16,7 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     assertEqualsDouble(actual.y, y, 1e-7)
 
   // Record every JSXGraph object and execute the actual renderer's hover callbacks.
-  private class Graph:
+  private class Graph(batchUpdates: Boolean = false):
     class Obj(val kind: String, val parents: js.Array[js.Dynamic], val attrs: js.Dynamic):
       val events = scala.collection.mutable.Map.empty[String, js.Function1[js.Any, Unit]]
       val value: js.Dynamic = js.Dynamic.literal(
@@ -28,14 +28,18 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     var bounds = js.Array[Double]()
     var renderer = ""
     var containerClass = ""
+    val updateCalls = ListBuffer.empty[(String, Int)]
     val board: js.Dynamic = js.Dynamic.literal(
       create = ((kind: String, parents: js.Array[js.Dynamic], attrs: js.Dynamic) => {
         val obj = new Obj(kind, parents, attrs)
         objects += obj
         obj.value
       }): js.Function3[String, js.Array[js.Dynamic], js.Dynamic, js.Dynamic],
-      update = (() => ()): js.Function0[Unit]
+      update = (() => { updateCalls += (("update", objects.size)); () }): js.Function0[Unit]
     )
+    if batchUpdates then
+      board.updateDynamic("suspendUpdate")((() => { updateCalls += (("suspend", objects.size)); () }): js.Function0[Unit])
+      board.updateDynamic("unsuspendUpdate")((() => { updateCalls += (("resume", objects.size)); () }): js.Function0[Unit])
     def render(program: List[TurtleCommand[Double]], expected: List[LineToRender[Double]] = Nil, graphic: Option[TurtleGraphic] = None): Unit =
       val previous = js.Dynamic.global.globalThis.selectDynamic("JXG")
       js.Dynamic.global.globalThis.updateDynamic("JXG")(js.Dynamic.literal(JSXGraph = js.Dynamic.literal(
@@ -269,3 +273,20 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
         verifyCoordinates()
       }
     }
+
+  test("dense scenes batch object creation into one final JSXGraph update") {
+    val graph = new Graph(batchUpdates = true)
+    graph.render(List(cmd("forward", 10), cmd("right", 90), cmd("forward", 10)))
+    assertEquals(graph.updateCalls.toList, List(("suspend", 0), ("resume", graph.objects.size)))
+    val fallback = new Graph
+    fallback.render(List(cmd("forward", 10)))
+    assertEquals(fallback.updateCalls.toList, List(("update", fallback.objects.size)))
+  }
+
+  test("dense repeating patterns retain all lines with representative angle overlays") {
+    val graph = new Graph(batchUpdates = true)
+    val polygon = List.fill(180)(List(cmd("forward", 3), cmd("right", 2))).flatten
+    graph.render(polygon)
+    assertEquals(graph.ofKind("segment").size, 180)
+    assertEquals(graph.ofKind("angle").size, 1)
+  }

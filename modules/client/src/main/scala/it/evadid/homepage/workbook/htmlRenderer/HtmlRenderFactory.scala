@@ -1,5 +1,8 @@
 package it.evadid.homepage.workbook.htmlRenderer
 
+import it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.compression.CompressionExperimentRenderer
+
 import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationSimulationInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.evacuation.EvacuationSimulationRenderer
 import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationConstructFloorInteraction
@@ -127,6 +130,7 @@ object HtmlRenderFactory {
       case i: ImageElement => HtmlProxyAppElementRenderer.renderWorkbookElement(i, HtmlImageElement(i))
 
       // interactions
+      case e: CompressionExperimentInteraction => CompressionExperimentRenderer.renderWorkbookElement(e)
       case h: SquareMiddleHashInteraction => SquareMiddleHashRenderer.renderWorkbookElement(h)
       case h: Sha256Interaction => Sha256Renderer.renderWorkbookElement(h)
       case h: BlockchainInteraction => BlockchainRenderer.renderWorkbookElement(h)

@@ -32,6 +32,7 @@ object SnapPaletteCatalog {
     "reportDifference",
     "reportVariadicProduct",
     "reportQuotient",
+    "reportModulus",
     "reportVariadicLessThan",
     "reportVariadicGreaterThan",
     "reportVariadicEquals",
