@@ -1,6 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle
 
-import it.evadid.core.datastructures.geometry.Point
+import it.evadid.core.datastructures.geometry.{Line, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.SvgToTurtleProgram.convert
 import upickle.default.*
@@ -11,6 +11,16 @@ sealed trait TurtleGraphic derives ReadWriter{
   def toTurtleProgram: Seq[TurtleCommand[Double]]
 
   def toSvgPathDString: String
+
+  lazy val renderLines: Seq[Line[Double]] = {
+    ???
+  }
+
+  lazy val renderAngles: Seq[Line[Double]] = {
+    ???
+  }
+
+
 }
 
 object TurtleGraphic {
@@ -125,17 +135,7 @@ object TurtleGraphic {
     }
   }
 
-  /** Represents a line segment from a start point to an end point.
-   */
-  case class Line[T:Fractional](start: Point[T], end: Point[T])
 
-
-  object Line {
-    given [T: Fractional](using rw: ReadWriter[T]): ReadWriter[Line[T]] = summon[ReadWriter[(Point[T], Point[T])]].bimap[Line[T]](
-      line => (line.start, line.end),
-      (p1, p2) => Line[T](p1, p2)
-    )
-  }
 
 
 }

@@ -1,9 +1,9 @@
 package it.evadid.workbook.elements.interactionElements.Turtle
 
 import it.evadid.core.util.io.Serializer
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElementWithGrader}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGradingResult, TurtleGraphic}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
@@ -16,12 +16,13 @@ case class TurtleRecreateShapeInteraction
   desiredResult: TurtleGraphic,
   availablePalette: ProgrammingEditorPalette = ProgrammingEditorPalette.BeginnerTurtle,
   limitTurtleCommandUsage: Map[String, Integer]
-) extends WorkbookInteractionElement[ProgrammingState] derives ReadWriter {
+) extends WorkbookInteractionElementWithGrader[ProgrammingState, RecreateShapeGradingResult] derives ReadWriter {
 
   override val defaultValue: ProgrammingState = initProgram
   override val serializerInteractionContent: Serializer[ProgrammingState] = Serializer.fromUpickleJson(ProgrammingState.derived$ReadWriter)
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
   override val associatedFactory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = TurtleRecreateShapeInteraction.factory
+
 }
 
 object TurtleRecreateShapeInteraction {
