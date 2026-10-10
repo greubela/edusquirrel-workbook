@@ -10,7 +10,7 @@ case class RecreateShapeGradingResult
 (
   override val gradedState: ProgrammingState,
   override val gradingGrade: GradingGrade,
-  override val feedbackInformation: LanguageMap[AppLanguage.HumanLanguage]
+  override val feedbackInformation: Option[LanguageMap[AppLanguage.HumanLanguage]]
 
 
 ) extends GradingResult[ProgrammingState] {

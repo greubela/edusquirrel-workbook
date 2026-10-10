@@ -26,6 +26,11 @@ sealed trait TurtleGraphic derives ReadWriter{
 
 object TurtleGraphic {
 
+  def apply[T: Fractional](lines: Seq[TurtleCommand[T]]): TurtleGraphic = {
+    val res : Seq[TurtleCommand[Double]] = lines.map(_.asDouble)
+    TurtleGraphicProgram(res)
+  }
+
   case class Movement(start: Point[Double], end: Point[Double], jump: Boolean = false) derives ReadWriter {
     def line: Line[Double] = Line(start, end)
   }
@@ -150,7 +155,7 @@ object TurtleGraphic {
 
   /** A turtle graphic represented directly as a list of turtle commands.
    */
-  case class TurtleGraphicProgram(program: List[TurtleCommand[Double]]) extends TurtleGraphic {
+  case class TurtleGraphicProgram(program: Seq[TurtleCommand[Double]]) extends TurtleGraphic {
     lazy val toTurtleProgram: Seq[TurtleCommand[Double]] = program
 
     lazy val toSvgPathDString: String = {

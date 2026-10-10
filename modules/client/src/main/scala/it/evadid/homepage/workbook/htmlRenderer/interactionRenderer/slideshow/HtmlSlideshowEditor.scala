@@ -61,7 +61,6 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
         )
       )
 
-
     val dom = div(
       cls := "slide-deck-container",
       navigation(),

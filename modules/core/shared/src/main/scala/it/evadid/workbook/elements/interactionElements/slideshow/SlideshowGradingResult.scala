@@ -14,9 +14,9 @@ case class SlideshowGradingResult(
   override val gradingEntity: FeedbackEntity = TestEntity()
   override val gradingGrade: GradingGrade = if (gradedState.unseenPanels.isEmpty) GradingGrade.CORRECT else GradingGrade.PARTIALLY_CORRECT
 
-  override val feedbackInformation: LanguageMap[AppLanguage.HumanLanguage] = gradingGrade.match {
+  override val feedbackInformation: Option[LanguageMap[AppLanguage.HumanLanguage]] = Some(gradingGrade.match {
     case CORRECT => LanguageMap.universalMap("All done!")
     case _ => LanguageMap.universalMap(s"Missing ${gradedState.unseenPanels} Panels!")
-  }
+  })
 
 }

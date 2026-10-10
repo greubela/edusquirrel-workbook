@@ -5,8 +5,8 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 import upickle.default.*
 
 /** One-to-one, direction-independent segment grading; traversal order is irrelevant.
-  * Stroke subdivision is deliberately significant (two halves are not one segment).
-  */
+ * Stroke subdivision is deliberately significant (two halves are not one segment).
+ */
 object TurtleGradingLogic {
   enum TurtleLineStatus derives ReadWriter {
     case CORRECT, EXPECTED_BUT_MISSING, EXISTING_BUT_UNEXPECTED

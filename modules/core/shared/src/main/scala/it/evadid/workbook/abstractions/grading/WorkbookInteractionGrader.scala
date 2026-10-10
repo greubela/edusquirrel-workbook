@@ -6,4 +6,6 @@ trait WorkbookInteractionGrader[T, G <: GradingResult[T]] {
 
   def gradeState(state: T): Future[G]
 
+  def importance: GradingImportance
+
 }

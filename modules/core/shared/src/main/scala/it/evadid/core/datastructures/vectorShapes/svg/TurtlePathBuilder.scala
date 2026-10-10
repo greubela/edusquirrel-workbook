@@ -252,7 +252,12 @@ case class TurtlePathBuilder[T : Fractional](
 
 object TurtlePathBuilder {
 
-  case class TurtleCommand[T : Fractional](name: String, args: Seq[T] = Nil, stringArgs: Seq[String] = Nil)
+  case class TurtleCommand[T : Fractional](name: String, args: Seq[T] = Nil, stringArgs: Seq[String] = Nil) {
+
+    val N = summon[Fractional[T]];
+    lazy val asDouble: TurtleCommand[Double] = TurtleCommand[Double](name, args.map(N.toDouble))
+
+  }
 
   given [T: Fractional](using rw: ReadWriter[T]): ReadWriter[TurtleCommand[T]] =
     readwriter[ujson.Value].bimap[TurtleCommand[T]](
