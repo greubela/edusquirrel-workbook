@@ -5,14 +5,13 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
-import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingExercise.{
-  SortingExerciseDragDropHelper,
-  SortingFieldLayoutHelper
-}
-import it.evadid.workbook.elements.interactionElements.sortingExercise.AssignmentResult
-import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.*
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingExercise.{SortingExerciseDragDropHelper, SortingFieldLayoutHelper}
+import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.AssignmentResult
+import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.{SortingReasonInteraction, SortingReasonInteractionState}
+
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import org.scalajs.dom.DragEvent
+
 import scala.scalajs.js.timers.{SetTimeoutHandle, clearTimeout, setTimeout}
 
 case class HtmlSortingReasonExerciseFullscreenElement(

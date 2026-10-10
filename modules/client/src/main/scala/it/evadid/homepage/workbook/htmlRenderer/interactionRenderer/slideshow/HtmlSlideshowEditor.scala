@@ -1,15 +1,14 @@
-package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
+package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.slideshow
 
 import com.raquo.laminar.DomApi
-import com.raquo.laminar.api.L.*
+import com.raquo.laminar.api.L.{child, *}
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.core.util.MarkdownToHtml
-import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
+import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
-import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.HtmlBasicCheckboxRenderer.fullInfo
-import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel, SlideshowState}
+import it.evadid.workbook.elements.interactionElements.slideshow.*
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 /**
@@ -23,15 +22,19 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
    * When navigation succeeds, the method updates the bound interaction state through the model-level transition recorder instead of constructing event data directly.
    */
   override protected def createRendering(workbookElement: Slideshow): AtomarLineRendering = {
-    val stateVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl,UpdateImportance.MAJOR).toAirstreamVar
-    val totalSlides = workbookElement.panels.length
-    def savedIndex(state: SlideshowState): Int = state.events.toList.sortBy(_.proceededAt).lastOption
-      .map(event => workbookElement.panels.indexOf(event.newPanel)).filter(_ >= 0).getOrElse(0)
-    val currentIndex = stateVar.signal.map(savedIndex).distinct
+    val stateVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl, UpdateImportance.MAJOR).toAirstreamVar
+    val totalSlides = workbookElement.panelSize
+
+    def safeIndex(state: SlideshowState): Int = {
+      state.events.toList.sortBy(_.proceededAt).lastOption
+        .flatMap(event => workbookElement.indexOf(event.newPanel)).filter(_ >= 0).getOrElse(0)
+    }
+
+    val currentIndex: Signal[Int] = stateVar.signal.map(safeIndex).distinct
 
     def navigateBy(offset: Int): Unit = {
       if (totalSlides > 0) {
-        val oldIndex = savedIndex(stateVar.now())
+        val oldIndex = safeIndex(stateVar.now())
         val newIndex = (oldIndex + offset).max(0).min(totalSlides - 1)
         if (newIndex != oldIndex) {
           stateVar.update(_.recordTransitionByIndex(oldIndex, newIndex))
@@ -58,17 +61,18 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
         )
       )
 
-    if (workbookElement.panels.isEmpty) {
-      placeholder(workbookElement, "Slideshow with no panels!")
-    } else {
-      val dom = div(
-        cls := "workbook-interaction",
-        child <-- currentIndex.map(index =>
-          createSlideshowPanelDom(workbookElement.panels(index), navigation())
-        )
+
+    val dom = div(
+      cls := "slide-deck-container",
+      navigation(),
+      div(
+        cls := "slide-deck-content slide-deck-image" ,
+        child <-- currentIndex.map(curIndex => createSlideshowPanelDom(workbookElement, curIndex))
       )
-      AtomarLineRendering.basicLine(workbookElement, dom, "slide-deck")
-    }
+    )
+
+    AtomarLineRendering.basicLine(workbookElement, dom, "slide-deck")
+
   }
 
 
@@ -77,12 +81,16 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
    * Navigation is placed directly under the slide image. Unsupported panel implementations
    * receive an explicit fallback element so newly added panel types fail visibly instead of silently disappearing.
    */
-  def createSlideshowPanelDom(panel: SlideshowPanel, navigation: Element): Element = {
-    panel match {
-      case s: SlideshowPanel.ImageSlide => createSlideshowPanel(s, navigation)
-      case s: SlideshowPanel.TwoColumnImagePanel => createSlideshowPanel(s, navigation)
-      case _ => div("not supported panel type: " + panel.getClass.getSimpleName)
-    }
+  def createSlideshowPanelDom(workbookElement: Slideshow, index: Int): Element = {
+
+    val panelOp: Option[AtomarLineRendering] = workbookElement.getPanel(index).map(HtmlRenderFactory.renderWorkbookElement).map(_.rendering)
+    val place = placeholder(workbookElement, "no content for slideshow available!")
+
+    div(
+      cls := "slide-deck-container",
+      children <-- panelOp.getOrElse(place).elementsWithoutContainer.allElementsSignal
+    )
+
   }
 
   /**
@@ -97,77 +105,76 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
       }
     )
   }
-
-  /**
-   * Renders a single-image slide with a title and body text using the legacy slide-deck class names.
-   * Image loading is delegated to `HtmlImageElement` so file-backed and language-map-backed image sources share the existing image pipeline.
-   */
-  private def createSlideshowPanel(panel: SlideshowPanel.ImageSlide, navigation: Element): Element = {
-    div(
-      cls := "slide-deck-container",
-      div(
-        cls := "slide-deck-image",
-        child <-- HtmlImageElement(panel.image).getDomSignal
-      ),
-      navigation,
-      div(
-        cls := "slide-deck-text one-column",
+  /*
+    /**
+     * Renders a single-image slide with a title and body text using the legacy slide-deck class names.
+     * Image loading is delegated to `HtmlImageElement` so file-backed and language-map-backed image sources share the existing image pipeline.
+     */
+    def createSlideshowPanel(panel: PanelImage): Element = {
+      val dom = div(
         div(
-          cls := "slide-deck-column",
-          div(
-            cls := "slide-deck-column-title",
-            markdownContent(panel.titleLabel)
-          ),
-          div(
-            cls := "slide-deck-column-body",
-            markdownContent(panel.description)
-          )
-        )
-      )
-    )
-  }
-
-  /**
-   * Renders a two-column image slide using the same structure as the old HTML slideshow implementation.
-   * Each column receives localized markdown title and body content while preserving the `slide-deck-text two-columns` styling hook.
-   */
-  private def createSlideshowPanel(panel: SlideshowPanel.TwoColumnImagePanel, navigation: Element): Element = {
-     div(
-      cls := "slide-deck-container",
-      div(
-        cls := "slide-deck-image",
-        child <-- HtmlImageElement(panel.image).getDomSignal
-      ),
-      navigation,
-      div(
-        cls := "slide-deck-text two-columns",
-        div(
-          cls := "slide-deck-column",
-          div(
-            cls := "slide-deck-column-title",
-            markdownContent(panel.leftLabel)
-          ),
-          div(
-            cls := "slide-deck-column-body",
-            markdownContent(panel.leftBody)
-          )
+          cls := "slide-deck-image",
+          child <-- HtmlImageElement(panel.image).getDomSignal
         ),
         div(
-          cls := "slide-deck-column",
+          cls := "slide-deck-text one-column",
           div(
-            cls := "slide-deck-column-title",
-            markdownContent(panel.rightLabel)
-          ),
-          div(
-            cls := "slide-deck-column-body",
-            markdownContent(panel.rightBody)
+            cls := "slide-deck-column",
+            div(
+              cls := "slide-deck-column-title",
+              markdownContent(panel.titleLabel)
+            ),
+            div(
+              cls := "slide-deck-column-body",
+              markdownContent(panel.description)
+            )
           )
         )
       )
-    )
-  }
+      AtomarLineRendering.basicLine(panel, dom, "slide-deck-panel")
 
+    }
+  /
+    /**
+     * Renders a two-column image slide using the same structure as the old HTML slideshow implementation.
+     * Each column receives localized markdown title and body content while preserving the `slide-deck-text two-columns` styling hook.
+     */
+    def createSlideshowPanel(panel: PanelTwoColumnImage): AtomarLineRendering = {
+      val res = div(
+        div(
+          cls := "slide-deck-image",
+          child <-- HtmlImageElement(panel.image).getDomSignal
+        ),
+        div(
+          cls := "slide-deck-text two-columns",
+          div(
+            cls := "slide-deck-column",
+            div(
+              cls := "slide-deck-column-title",
+              markdownContent(panel.leftLabel)
+            ),
+            div(
+              cls := "slide-deck-column-body",
+              markdownContent(panel.leftBody)
+            )
+          ),
+          div(
+            cls := "slide-deck-column",
+            div(
+              cls := "slide-deck-column-title",
+              markdownContent(panel.rightLabel)
+            ),
+            div(
+              cls := "slide-deck-column-body",
+              markdownContent(panel.rightBody)
+            )
+          )
+        )
+      )
+      AtomarLineRendering.basicLine(panel, res, "slide-deck-panel")
+    }
 
+  */
 }
 
 /*

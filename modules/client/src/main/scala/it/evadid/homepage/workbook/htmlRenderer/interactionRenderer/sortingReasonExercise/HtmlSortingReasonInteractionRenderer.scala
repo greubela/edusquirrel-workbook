@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.SortingReasonInteraction
+import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteraction
 
 object HtmlSortingReasonInteractionRenderer extends LineBasedRenderingFactory[SortingReasonInteraction] {
 

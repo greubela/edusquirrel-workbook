@@ -1,4 +1,4 @@
-package it.evadid.workbook.elements.interactionElements.Turtle
+package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}

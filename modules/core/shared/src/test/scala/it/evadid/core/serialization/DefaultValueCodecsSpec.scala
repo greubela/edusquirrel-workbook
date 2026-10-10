@@ -79,7 +79,7 @@ class DefaultValueCodecsSpec extends FunSuite {
     import it.evadid.core.datastructures.numbers.NumberConstraintImpl
     roundTrip(NumberConstraintImpl(Some(BigDecimal("1.5")), Some(BigDecimal("9.25"))))
     roundTrip(NumberConstraintImpl[Double](None, None))
-    import it.evadid.workbook.elements.interactionElements.Turtle.TurtleStitchProjectState
+    import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleStitchProjectState
     roundTrip(TurtleStitchProjectState.empty())
     roundTrip(TurtleStitchProjectState.parseFromStringOrEmpty("<project>Grüße</project>"))
   }

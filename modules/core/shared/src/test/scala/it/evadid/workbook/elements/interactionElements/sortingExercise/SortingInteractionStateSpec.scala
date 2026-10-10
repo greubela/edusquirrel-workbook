@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.sortingExercise
 
+import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.{AssignmentResult, SortingInteractionState}
 import munit.FunSuite
 
 class SortingInteractionStateSpec extends FunSuite {

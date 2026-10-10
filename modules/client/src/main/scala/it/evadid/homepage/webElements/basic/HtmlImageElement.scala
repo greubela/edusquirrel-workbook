@@ -11,13 +11,13 @@ import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.webElements.*
-import it.evadid.workbook.elements.displayElements.ImageElement
+import it.evadid.workbook.elements.displayElements.WorkbookImageElement
 import todomove.datastructures.web.file.FullImage.*
 import todomove.datastructures.web.file.FullImage
 
 import scala.concurrent.ExecutionContext
 
-case class HtmlImageElement(imageSignal: AsyncData[Nothing, FullImage], underlyingImage: Option[ImageElement] = None) extends HtmlAppElement {
+case class HtmlImageElement(imageSignal: AsyncData[Nothing, FullImage], underlyingImage: Option[WorkbookImageElement] = None) extends HtmlAppElement {
 
   private def stringSignal(id: LanguageMapContentId): Signal[String] =
     HtmlFullWorkbookApp.fullInfo.signals.stringFromLanguageMapId(id)
@@ -50,11 +50,11 @@ object HtmlImageElement {
 
   private val signals = HtmlFullWorkbookApp.fullInfo.signals
 
-  private def getImageSignal(fullInfo: FullInfo, image: ImageElement): AsyncData[Nothing, FullImage] = {
+  private def getImageSignal(fullInfo: FullInfo, image: WorkbookImageElement): AsyncData[Nothing, FullImage] = {
     val fileSignal: AsyncData[Nothing, LoadedFile] = image.match {
       /*case ImageElement.FileBasedImageElement(_, fileDescription) =>
         AsyncData.forFuture(fileDescription.loadData()).observeAllStates*/
-      case i@ImageElement.LanguageMapBasedImageElement(elId, languageMapContentId, howToResolveUrl) =>
+      case i@WorkbookImageElement.LanguageMapBasedWorkbookImageElement(elId, languageMapContentId, howToResolveUrl, descOp, copyOp) =>
         val srcSignal: Signal[String] = signals.stringFromLanguageMapId(languageMapContentId)
         val srcFile: Signal[FileDescription] = srcSignal.map(fullInfo.contentControl.fileFactory.resolveFromTypeAndLanguageMapContent(howToResolveUrl, _))
         val res = srcFile.mapAsync(_.loadData())(using ExecutionContext.global)
@@ -74,8 +74,8 @@ object HtmlImageElement {
     )
   }
 
-  def apply(imageElement: ImageElement): HtmlImageElement = {
-    HtmlImageElement(getImageSignal(HtmlFullWorkbookApp.fullInfo, imageElement), Some(imageElement))
+  def apply(workbookImageElement: WorkbookImageElement): HtmlImageElement = {
+    HtmlImageElement(getImageSignal(HtmlFullWorkbookApp.fullInfo, workbookImageElement), Some(workbookImageElement))
   }
 
 }

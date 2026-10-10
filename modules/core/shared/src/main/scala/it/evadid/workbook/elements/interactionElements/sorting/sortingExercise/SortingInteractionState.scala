@@ -1,4 +1,4 @@
-package it.evadid.workbook.elements.interactionElements.sortingExercise
+package it.evadid.workbook.elements.interactionElements.sorting.sortingExercise
 
 import it.evadid.core.util.io.Serializer
 import upickle.default.*

@@ -13,6 +13,7 @@ object Sha256 {
     0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
     0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
     0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2)
+
   private def rotate(x: Int, n: Int): Int = (x >>> n) | (x << (32 - n))
 
   def digest(bytes: Array[Byte]): Array[Byte] = {
@@ -38,8 +39,14 @@ object Sha256 {
         val s1 = rotate(y, 17) ^ rotate(y, 19) ^ (y >>> 10)
         words(i) = words(i - 16) + s0 + words(i - 7) + s1
       }
-      var a = hash(0); var b = hash(1); var c = hash(2); var d = hash(3)
-      var e = hash(4); var f = hash(5); var g = hash(6); var h = hash(7)
+      var a = hash(0);
+      var b = hash(1);
+      var c = hash(2);
+      var d = hash(3)
+      var e = hash(4);
+      var f = hash(5);
+      var g = hash(6);
+      var h = hash(7)
       for (i <- 0 until 64) {
         val s1 = rotate(e, 6) ^ rotate(e, 11) ^ rotate(e, 25)
         val choose = (e & f) ^ (~e & g)
@@ -60,8 +67,10 @@ object Sha256 {
     val digits = "0123456789abcdef"
     digest(bytes).iterator.map(b => s"${digits((b & 255) >>> 4)}${digits(b & 15)}").mkString
   }
+
   /** Text is hashed as UTF-8 without trimming or Unicode normalization. */
   def text(value: String): String = hex(value.getBytes(StandardCharsets.UTF_8))
+
   def differingBits(first: String, second: String): Int = {
     val a = digest(first.getBytes(StandardCharsets.UTF_8))
     val b = digest(second.getBytes(StandardCharsets.UTF_8))

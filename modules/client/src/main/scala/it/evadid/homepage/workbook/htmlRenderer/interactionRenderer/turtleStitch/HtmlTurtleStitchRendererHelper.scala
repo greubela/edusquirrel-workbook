@@ -15,7 +15,7 @@ import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle.HtmlSketchDownloadRenderer.fullInfo
 import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchWorkerFacade
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
-import it.evadid.workbook.elements.interactionElements.Turtle.TurtleStitchProjectState
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleStitchProjectState
 import todomove.datastructures.web.file.FullImage
 
 import scala.concurrent.ExecutionContext

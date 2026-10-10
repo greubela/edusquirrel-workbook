@@ -2,7 +2,6 @@ package it.evadid.homepage.workbook.htmlRenderer
 
 import it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.compression.CompressionExperimentRenderer
-
 import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationSimulationInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.evacuation.EvacuationSimulationRenderer
 import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationConstructFloorInteraction
@@ -24,28 +23,23 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingExerc
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingReasonExercise.HtmlSortingReasonInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.{HtmlTurtleRecreateShapeRenderer, HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRendererLegacy}
 import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.*
-import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailInteraction, MailEditor}
-import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.emailSimulator.{HtmlMailInteractionRenderer, HtmlMailEditorRenderer}
+import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailEditor, MailInteraction}
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.emailSimulator.{HtmlMailEditorRenderer, HtmlMailInteractionRenderer}
 import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.qr.CreateQrCodeInteractionRenderer
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.*
-import it.evadid.workbook.elements.interactionElements.Turtle.{TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
-import it.evadid.workbook.elements.interactionElements.slideshow.Slideshow
-import it.evadid.workbook.elements.interactionElements.sortingExercise.SortingInteraction
-import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.SortingReasonInteraction
+import it.evadid.workbook.elements.interactionElements.slideshow.{PanelTwoColumnImage, Slideshow}
 import it.evadid.workbook.elements.structureElements.{ExerciseContainer, Workbook}
 import org.scalajs.dom.HTMLDivElement
-
 import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.neuron.ThresholdNeuronInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.choice.ChoiceInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.neuron.ThresholdNeuronRenderer
-
 import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
 import it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.plot.CoordinatePlotRenderer
@@ -58,9 +52,13 @@ import it.evadid.workbook.elements.interactionElements.blockchain.Sha256Interact
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain.Sha256Renderer
 import it.evadid.workbook.elements.interactionElements.blockchain.BlockchainInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain.BlockchainRenderer
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.slideshow.HtmlSlideshowEditor
 import it.evadid.workbook.elements.interactionElements.text.UnicodeComparisonInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.text.UnicodeComparisonRenderer
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
+import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.SortingInteraction
+import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteraction
 
 trait HtmlRenderFactory[T <: WorkbookElement] {
 
@@ -127,7 +125,7 @@ object HtmlRenderFactory {
       case c: DisplayLangMapContent => HtmlDisplayLangMapContentRenderer.renderWorkbookElement(c)
       case b: LabeledWorkbookElement[?] => HtmlLabeledWorkbookElementRenderer(b).renderWorkbookElement(b)
       case c: CollapsibleInstructionElement => HtmlCollapsibleInstructionRenderer.renderWorkbookElement(c)
-      case i: ImageElement => HtmlProxyAppElementRenderer.renderWorkbookElement(i, HtmlImageElement(i))
+      case i: WorkbookImageElement => HtmlProxyAppElementRenderer.renderWorkbookElement(i, HtmlImageElement(i))
 
       // interactions
       case e: CompressionExperimentInteraction => CompressionExperimentRenderer.renderWorkbookElement(e)
@@ -167,7 +165,7 @@ object HtmlRenderFactory {
       // plugins -- gpt
       case g: GptInteractionElement => HtmlGptTextfieldInteractionRenderer.renderWorkbookElement(g)
       // plugins -- slideshow & reorder
-      case s: Slideshow => HtmlSlideshowEditor.renderWorkbookElement(s) // editor instead of renderer
+      case s: Slideshow => HtmlSlideshowEditor.renderWorkbookElement(s)
       /*case r: HtmlReorderInteraction[?] @unchecked => fromElement(r, r.getDomElement())*/
       // case e: HtmlEmbeddedDomInteraction => fromAppElement(e, e.domElement)
       case s: SqlCommandExercise => HtmlSqlCommandExerciseRenderer.renderWorkbookElement(s)

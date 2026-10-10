@@ -1,8 +1,7 @@
-package it.evadid.workbook.elements.interactionElements.Turtle
+package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle
 
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleStitchProjectState.StorageFormat.BYTES_AS_RAW_STRING
 import upickle.default.*
-
-import TurtleStitchProjectState.StorageFormat.BYTES_AS_RAW_STRING
 
 import scala.util.*
 

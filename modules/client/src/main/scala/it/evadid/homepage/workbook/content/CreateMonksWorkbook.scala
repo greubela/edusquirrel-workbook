@@ -1,36 +1,43 @@
 package it.evadid.homepage.workbook.content
 
+import it.evadid.core.datastructures.file.CopyrightInfo
+import it.evadid.core.datastructures.file.CopyrightInfo.AiGenerated
+import it.evadid.core.datastructures.geometry.{Line, Point}
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.user.User
-import it.evadid.core.datastructures.geometry.{Line, Point}
-import it.evadid.workbook.elements.interactionElements.Turtle.TurtleRecreateShapeInteraction
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.*
 import it.evadid.homepage.control.model.FullInfo
-import it.evadid.workbook.abstractions.WorkbookElement
+import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_TYPE
+import it.evadid.workbook.abstractions.{TypeOfTextDisplay, WorkbookDisplayElement, WorkbookElement}
+import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.*
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStatePythonString
-import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
-import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
+import it.evadid.workbook.elements.interactionElements.slideshow.*
 import it.evadid.workbook.elements.structureElements.Workbook
 
 /** First digital edition of "Rekursion mit den Mönchen von Mons Komputarius" (29.04.2025).
-  * Stable exercise IDs keep responses attached to their original PDF task numbers.
-  */
+ * Stable exercise IDs keep responses attached to their original PDF task numbers.
+ */
 case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
+
   import CreateMonksWorkbook.*
 
   override val workbookId: String = "MonksWorkbook"
+
   override def availableLanguages: List[AppLanguage.HumanLanguage] = List(AppLanguage.German)
 
   private def key(name: String): String = "monksworkbook/" + name
 
-  private def panel(scene: Scene): SlideshowPanel =
-    SlideshowPanel.ImageSlide(
+  private def panel(scene: Scene): WorkbookDisplayElement =
+    LanguageMapBasedWorkbookImageElement(
       "monks-panel-" + scene.id,
-      imageResources(LanguageMapContentId(key(scene.imageKey))),
-      LanguageMapContentId(key("dialoguelabel")),
-      LanguageMapContentId(key(scene.dialogueKey)))
+      LanguageMapContentId(key(scene.imageKey)),
+      TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES,
+      Some(LanguageMapContentId(key(scene.dialogueKey))),
+      Some(CopyrightInfo.fromAi)
+    )
 
   private def task(number: String): WorkbookElement =
     container(key("task" + number + "title"), List(
@@ -41,22 +48,37 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
   override lazy val createWorkbook: Workbook = workbook(
     key("workbooktitle"),
     List(
-      section("monks-story", key("storytitle"), List(
-        instructionMarkdown(key("introduction")),
-        container(key("task1atitle"), List(
-          instructionMarkdown(key("task1a")),
-          Slideshow("monks-theater", theaterScenes.map(panel)))))),
-      section("monks-recursion", key("sortingtitle"),
-        List(task("1b"), instructionMarkdown(key("recursionexplanation"))) ++
-          List("1c", "1d", "1e", "1f", "1g").map(task)),
-      section("monks-counting", key("countingtitle"),
-        List(container(key("task2atitle"), List(
-          instructionMarkdown(key("task2a")),
-          Slideshow("monks-counting-story", countingScenes.map(panel))))) ++
-          List("2b", "2c", "2d", "2e", "2f", "2g", "2h").map(task) ++
-          List(instructionMarkdown(key("functionalexplanation"))) ++ List("2i", "2j").map(task)),
+      // story
+      section("monks-story", key("storytitle"),
+        List(
+          container(key("task1atitle"), List(
+            instructionMarkdown(key("introduction")),
+            instructionMarkdown(key("task1a")),
+            Slideshow("monks-theater", theaterScenes.map(panel)))
+          ),
+          container(key("task1btitle"),
+            List(
+              instructionMarkdown(key("task1b")),
+              TextInteraction("monks-answer-1b"),
+              instructionMarkdown(key("recursionexplanation"))
+            ) ++ List(
+              "1c", "1d", "1e", "1f", "1g"
+            ).map(task),
+          ),
+        )),
+      section("monks-recursion", key("sortingtitle"), List(
+        container(key("task2atitle"),
+          List(
+            instructionMarkdown(key("task2a")),
+            Slideshow("monks-counting-story", countingScenes.map(panel))
+          ) ++
+            List("2b", "2c", "2d", "2e", "2f", "2g", "2h").map(task) ++
+            List(instructionMarkdown(key("functionalexplanation"))) ++ List("2i", "2j").map(task)
+        ))),
       section("monks-koch", key("kochtitle"),
-        List(instructionMarkdown(key("kochintroduction"))) ++ (0 to 2).toList.map { depth =>
+        List(container(key("kochintroductioncont"), List(
+          instructionMarkdown(key("kochintroduction"))
+        ))) ++ (0 to 2).toList.map { depth =>
           container(key("koch" + depth + "title"), List(
             instructionMarkdown(key("koch" + depth)),
             TurtleRecreateShapeInteraction(
@@ -67,14 +89,15 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
               Map.empty[String, Integer])))
         })
     ),
-    User.AndreGreubel)
+    User.AndreGreubel
+  )
 }
 
 object CreateMonksWorkbook {
   /** One speaking turn or one visual action/state per frame. Empty speaker
-    * means silence (the dialogue is exactly "..."). Action labels document
-    * the sequence; they are never displayed as stage directions.
-    */
+   * means silence (the dialogue is exactly "..."). Action labels document
+   * the sequence; they are never displayed as stage directions.
+   */
   case class Scene(id: String, imageKey: String, dialogueKey: String = "silence",
                    speaker: Option[String] = None, action: Option[String] = None) {
     require(speaker.isEmpty || action.isEmpty, "A speaking frame cannot also perform an action")
@@ -172,11 +195,12 @@ object CreateMonksWorkbook {
     Scene("count-empty", "filebeatcountempty"))
 
   /** Exact vector targets for the line and the first two Koch refinements.
-    * Screen coordinates have y pointing down, so the triangular peak is above
-    * the original horizontal line. Each subdivision preserves its endpoints.
-    */
+   * Screen coordinates have y pointing down, so the triangular peak is above
+   * the original horizontal line. Each subdivision preserves its endpoints.
+   */
   def kochTarget(depth: Int): TurtleLineBasedProgram = {
     require(depth >= 0 && depth <= 2, "This practice uses Koch depths 0, 1 and 2")
+
     def segments(start: Point[Double], end: Point[Double], remaining: Int): List[Line[Double]] = {
       if (remaining == 0) List(Line(start, end))
       else {
@@ -185,11 +209,12 @@ object CreateMonksWorkbook {
         val first = Point(start.x + dx, start.y + dy)
         val last = Point(start.x + 2 * dx, start.y + 2 * dy)
         val peak = Point(first.x + dx / 2 + dy * math.sqrt(3) / 2,
-                         first.y + dy / 2 - dx * math.sqrt(3) / 2)
+          first.y + dy / 2 - dx * math.sqrt(3) / 2)
         List(start -> first, first -> peak, peak -> last, last -> end)
           .flatMap { case (from, to) => segments(from, to, remaining - 1) }
       }
     }
+
     TurtleLineBasedProgram(segments(Point(0.0, 0.0), Point(270.0, 0.0), depth))
   }
 }

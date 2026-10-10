@@ -1,4 +1,4 @@
-package it.evadid.workbook.elements.interactionElements.sortingReasonExercise
+package it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer

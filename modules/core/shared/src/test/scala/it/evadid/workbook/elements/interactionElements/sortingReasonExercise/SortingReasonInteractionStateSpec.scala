@@ -1,6 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.sortingReasonExercise
 
-import it.evadid.workbook.elements.interactionElements.sortingExercise.AssignmentResult
+import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.AssignmentResult
+import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteractionState
 import munit.FunSuite
 
 class SortingReasonInteractionStateSpec extends FunSuite {

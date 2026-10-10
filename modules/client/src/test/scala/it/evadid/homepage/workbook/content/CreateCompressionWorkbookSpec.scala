@@ -3,7 +3,7 @@ package it.evadid.homepage.workbook.content
 import it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction
 import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.slideshow.Slideshow
-import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.SortingReasonInteraction
+import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteraction
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import it.evadid.workbook.model.compression.*
 

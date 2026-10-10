@@ -1,7 +1,7 @@
-package it.evadid.workbook.elements.interactionElements.sortingReasonExercise
+package it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise
 
 import it.evadid.core.util.io.Serializer
-import it.evadid.workbook.elements.interactionElements.sortingExercise.AssignmentResult
+import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.AssignmentResult
 import upickle.default.{ReadWriter, macroRW}
 
 case class SortingReasonInteractionState(
