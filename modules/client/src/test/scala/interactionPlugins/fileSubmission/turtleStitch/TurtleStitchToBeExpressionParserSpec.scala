@@ -9,7 +9,9 @@ import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.BeFunctionCall
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExercise, ProgrammingStateSnapXml, SnapCustomBlockRules, SnapTurtlePythonBridge, SnapXmlParser}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCustomBlockRules, SnapTurtlePythonBridge, SnapXmlParser}
 import munit.FunSuite
 
 class TurtleStitchToBeExpressionParserSpec extends FunSuite {

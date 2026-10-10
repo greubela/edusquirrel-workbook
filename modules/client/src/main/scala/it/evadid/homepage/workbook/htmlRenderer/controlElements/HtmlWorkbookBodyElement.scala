@@ -18,7 +18,7 @@ case class HtmlWorkbookBodyElement(workbook: AllWorkbookInfo, user: AllUserInfo)
 
   val domElement: ReactiveHtmlElement[HTMLDivElement] = div(
     cls := "workbook-body",
-    children <-- fullInfo.signals.activeSection.map(sectionContainer(workbook.loadedWorkbook, _))
+    children <-- fullInfo.signals.activeSection.distinct.map(sectionContainer(workbook.loadedWorkbook, _))
   )
 
   override def getDomElement(): L.Element = domElement

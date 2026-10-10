@@ -11,8 +11,10 @@ import it.evadid.homepage.webElements.{HtmlAppElement, FullscreenLifecycle}
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExerciseFullJava, ProgrammingState}
 import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExerciseFullJava
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFactory[ProgrammingExerciseFullJava] {
   private[homepage] def editorState(element: ProgrammingExerciseFullJava, syncControl: SyncControl): Var[ProgrammingState] =

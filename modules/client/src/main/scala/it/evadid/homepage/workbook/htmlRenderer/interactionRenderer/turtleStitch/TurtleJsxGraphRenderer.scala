@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.core.util.io.{ConstructorLikeParserWithJsonElements, Serializer}
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
-import it.evadid.workbook.elements.interactionElements.programming.TurtleGraphic
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
 import org.scalajs.dom
 import upickle.default.*
 
@@ -27,6 +27,10 @@ object TurtleJsxGraphRenderer:
       render(curList, graphic)
     })
   }
+
+  /** Stitch reproduction accepts any pen-up route between the drawn segments. */
+  def renderStrokes[T: Fractional](program: Signal[List[TurtleCommand[T]]], expected: TurtleGraphic): DomElementCollection =
+    program.map(commands => render(buildScene(commands, expected, 1e-7, gradeJumps = false), "Turtle drawing"))
 
   def render[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic): Element =
     render(buildScene(program, expected), "Turtle drawing")
@@ -131,7 +135,7 @@ object TurtleJsxGraphRenderer:
   /** Builds a testable rendering model and performs a one-to-one, direction-independent
    * comparison of actual and expected segments.
    */
-  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]], tolerance: Double = 1e-7): Scene =
+  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]], tolerance: Double = 1e-7, gradeJumps: Boolean = true): Scene =
     val numeric = summon[Fractional[T]]
     var position = Point(0.0, 0.0)
     var heading = 0.0
@@ -200,10 +204,11 @@ object TurtleJsxGraphRenderer:
         case _ => ()
     }
 
-    val unmatchedExpected = ListBuffer.from(expected.map(line => LineToRender(line.start.toDouble, line.end.toDouble, line.jump)))
+    val unmatchedExpected = ListBuffer.from(expected.filter(line => gradeJumps || !line.jump).map(line => LineToRender(line.start.toDouble, line.end.toDouble, line.jump)))
     val rendered = movements.map { movement =>
-      val matchIndex = unmatchedExpected.indexWhere(line => sameLine(movement.start, movement.end, line.start, line.end, tolerance))
-      val result = if matchIndex >= 0 then {
+      val matchIndex = unmatchedExpected.indexWhere(line => (gradeJumps || !movement.jump) && sameLine(movement.start, movement.end, line.start, line.end, tolerance))
+      val result = if movement.jump && !gradeJumps then LineResult.Correct
+      else if matchIndex >= 0 then {
         unmatchedExpected.remove(matchIndex);
         LineResult.Correct
       } else LineResult.Unexpected
@@ -217,19 +222,25 @@ object TurtleJsxGraphRenderer:
     buildScene(program, expected, 1e-7)
 
   def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double): Scene =
+    buildScene(program, expected, tolerance, gradeJumps = true)
+
+  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double, gradeJumps: Boolean): Scene =
     val expectedScene = buildScene(expected.toTurtleProgram.toList, List.empty[LineToRender[Double]], tolerance)
     val expectedLines = expectedScene.lines.map(line => LineToRender(line.start, line.end, line.jump))
     val numeric = summon[Fractional[T]]
     val doubleProgram = program.map(command =>
       TurtleCommand(command.name, command.args.map(numeric.toDouble))
     )
-    val actualScene = buildScene(doubleProgram, expectedLines, tolerance)
+    // Recreate tasks assess stitched geometry; pen-up routes may differ.
+    val actualScene = buildScene(doubleProgram, expectedLines, tolerance, gradeJumps = gradeJumps)
 
-    val expectedAngles = expectedScene.angles.map { angle =>
+    val expectedAngles = expectedScene.angles.filter { angle =>
+      gradeJumps || (!expectedScene.lines(angle.lineBefore).jump && !expectedScene.lines(angle.lineAfter).jump)
+    }.map { angle =>
       def correspondingLine(index: Int): Int =
         val expectedLine = expectedScene.lines(index)
         actualScene.lines.indexWhere(line =>
-          sameLine(line.start, line.end, expectedLine.start, expectedLine.end, tolerance)
+          (gradeJumps || !line.jump) && sameLine(line.start, line.end, expectedLine.start, expectedLine.end, tolerance)
         )
 
       angle.copy(
@@ -264,10 +275,18 @@ object TurtleJsxGraphRenderer:
       bounds(2) <= bounds(0) || bounds(1) <= bounds(3) then
       throw IllegalArgumentException("The drawing exceeds the supported display range.")
     val jxg = jsxGraph()
+    // SVG tick labels avoid a forced HTML layout for each label on every board update.
+    val axisOptions = js.Dynamic.literal(ticks = js.Dynamic.literal(label = js.Dynamic.literal(display = "internal")))
     val board: js.Dynamic = jxg.JSXGraph.initBoard(container, js.Dynamic.literal(
       title = Option(title).map(_.trim).filter(_.nonEmpty).getOrElse("Turtle drawing"),
-      renderer = "svg", boundingbox = js.Array(bounds(0), bounds(1), bounds(2), bounds(3)), axis = true, keepaspectratio = true, showCopyright = false
+      renderer = "svg", boundingbox = js.Array(bounds(0), bounds(1), bounds(2), bounds(3)), axis = true,
+      defaultAxes = js.Dynamic.literal(x = axisOptions, y = axisOptions),
+      keepaspectratio = true, showCopyright = false
     ))
+
+    // Dense embroidery targets otherwise redraw the entire board after each object.
+    val canBatch = js.typeOf(board.selectDynamic("suspendUpdate")) == "function" &&
+      js.typeOf(board.selectDynamic("unsuspendUpdate")) == "function"
 
     val pointObjects = scala.collection.mutable.Map.empty[Point[Double], js.Dynamic]
     val angleObjects = scala.collection.mutable.Map.empty[Int, js.Dynamic]
@@ -277,7 +296,7 @@ object TurtleJsxGraphRenderer:
 
     def createPoint(point: Point[Double]): js.Dynamic = {
       board.create("point", js.Array(point.x, -point.y), js.Dynamic.literal(
-        name = "", fixed = true, showInfobox = false,
+        name = "", fixed = true, showInfobox = false, label = js.Dynamic.literal(display = "internal"),
         cssClass = "turtle-point", highlightCssClass = "turtle-point is-emphasized"
       ))
     }
@@ -315,9 +334,16 @@ object TurtleJsxGraphRenderer:
     }
 
     try
+      if canBatch then board.suspendUpdate()
       scene.lines.zipWithIndex.foreach { case (line, index) => createLine(line, index) }
-      scene.angles.zipWithIndex.foreach { case (angle, index) => createAngle(angle, index) }
-      board.update()
+      // Hundreds of repeated angle sectors obscure dense stitch patterns and are
+      // expensive JSXGraph objects. Keep one representative of each turn there.
+      val angleEntries = scene.angles.zipWithIndex
+      val visibleAngles = if angleEntries.size <= 128 then angleEntries
+        else angleEntries.groupBy { case (angle, _) => math.round(angle.degrees * 1e6) }
+          .values.map(_.head).toList.sortBy(_._2)
+      visibleAngles.foreach { case (angle, index) => createAngle(angle, index) }
+      if canBatch then board.unsuspendUpdate() else board.update()
       board
     catch
       case NonFatal(error) =>

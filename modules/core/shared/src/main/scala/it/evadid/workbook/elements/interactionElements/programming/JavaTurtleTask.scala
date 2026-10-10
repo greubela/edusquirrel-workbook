@@ -1,6 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
 import upickle.default.*
 
 enum JavaTurtleArgument {

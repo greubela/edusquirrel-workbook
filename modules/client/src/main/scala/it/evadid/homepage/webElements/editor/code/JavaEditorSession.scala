@@ -4,7 +4,8 @@ import com.raquo.airstream.state.Var
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtleCommandRunner
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleSource, JavaTurtleVmPrograms, JavaTurtleResolution}
 import it.evadid.vm.simulation.java.{JavaTurtleRuntime, JavaTurtleEvaluation}
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingStateJavaString, JavaTurtleArgument, JavaTurtleTask}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaString
+import it.evadid.workbook.elements.interactionElements.programming.{JavaTurtleArgument, JavaTurtleTask}
 
 import java.util.concurrent.CancellationException
 import scala.concurrent.{Future, Promise}

@@ -26,6 +26,7 @@ object DigitalWorkbookCatalog {
     workbook("images", "Dominic Schattka", "Bilderkennung.png", "workbookImageRecognition", "imageRecognitionWorkbook", CreateImageRecognitionWorkbook.apply),
     workbook("monks", "André Greubel", "monks-workbook.png", "workbookMonks", "monksWorkbook", CreateMonksWorkbook.apply),
     workbook("embroidery", "André Greubel", "Stickmaschine.png", "workbookEmbroidery", "embroideryWorkbook", CreateEmbroideryWorkbook.apply),
+    workbook("embroidery-preview", "André Greubel", "Stickmaschine.png", "workbookEmbroideryPreview", "embroideryPreviewWorkbook", CreateEmbroideryPreviewWorkbook.apply),
     workbook("compression", "Yanneck Dimitrov", "compression-chatgpt.png", "workbookCompression", "compressionWorkbook", CreateCompressionWorkbook.apply),
     workbook("phishing", "Marvin Kretschmer", "Phishing.png", "workbookPhishing", "phishingWorkbook", CreatePhishingWorkbook.apply),
     Entry("scratch", "Hoang Tang Griep", "https://tanghoang.github.io/arbeitsheft-digital-scratch/assets/moving_rohr-B41RzHuV.gif", "https://tanghoang.github.io/arbeitsheft-digital-scratch/chapter/einleitung"),

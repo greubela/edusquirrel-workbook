@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.editor.code.EvaEditor
 import com.raquo.laminar.api.L.Element
 import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingState
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 
 import scala.concurrent.Future
 

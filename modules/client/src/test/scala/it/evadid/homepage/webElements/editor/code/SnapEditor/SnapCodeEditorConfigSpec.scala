@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{LibraryBlock, SnapCategoryColor, SnapCodeEditorConfig}
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.workbook.elements.interactionElements.programming.SnapPaletteCatalog
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapPaletteCatalog
 import munit.FunSuite
 
 class SnapCodeEditorConfigSpec extends FunSuite {

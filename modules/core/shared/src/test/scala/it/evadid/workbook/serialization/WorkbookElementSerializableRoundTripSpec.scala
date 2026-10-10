@@ -11,8 +11,8 @@ import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.sortingExercise.{SortingInteraction, SortingItem}
 import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
-import it.evadid.workbook.elements.interactionElements.sql.{SqlCommandExercise, SqlDatabaseConfig}
 import it.evadid.workbook.jsonFactory.{WorkbookElementSerializable, WorkbookElementFactory}
+import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import upickle.default.*
 import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.neuron.*
@@ -20,6 +20,10 @@ import it.evadid.workbook.elements.interactionElements.table.*
 import it.evadid.workbook.elements.interactionElements.pixel.*
 import it.evadid.workbook.model.pixel.*
 import it.evadid.workbook.elements.interactionElements.blockchain.*
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.elements.interactionElements.text.*
 import it.evadid.workbook.elements.interactionElements.sql.{SqlCommandExercise, SqlDatabaseConfig}
 import munit.FunSuite
@@ -52,7 +56,11 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     val special = " Quotes: \"hello\"; backslash: \\; newline:\nGrüße )({} "
     val inbox = InboxState.withMails(List(Mail("mail", "sender@example.test", special, special, special, MailFolder.Inbox, Some(special), "2026-10-08", expectedFolder = Some(MailFolder.Archive))))
     List(
+      it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction("compression", content("compression/title"),
+        it.evadid.workbook.model.compression.RunLengthText(special)),
       SqlCommandExercise("sql", SqlDatabaseConfig("school_exercises"), s"SELECT '$special';"),
+      it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction("plot", content("plot/title"),
+        content("plot/x"), content("plot/y"), it.evadid.workbook.model.plot.PlotAxis(0, 3, 0.5), it.evadid.workbook.model.plot.PlotAxis(0, 30, 10)),
       ChoiceInteraction("choice", content("choice/prompt"), List(content("choice/a"), content("choice/b")), true, Some(List(0, 1))),
       ThresholdNeuronInteraction("neuron", List(content("neuron/input")),
         List(NeuronExample(content("neuron/row"), List(1), true)), NeuronParameters(List(1), 1)),

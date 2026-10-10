@@ -9,7 +9,9 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCo
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorExtension
 import it.evadid.vm.parsing.java.turtle.JavaTurtleResolution
 import it.evadid.vm.simulation.java.JavaTurtleRuntime
-import it.evadid.workbook.elements.interactionElements.programming.{JavaTurtleTask, ProgrammingState, ProgrammingStateJavaString, TurtleGraphic}
+import it.evadid.workbook.elements.interactionElements.programming.JavaTurtleTask
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
 
 import java.util.concurrent.CancellationException
 import scala.concurrent.Future

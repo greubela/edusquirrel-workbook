@@ -15,6 +15,36 @@ EduSquirrel builds interactive, multilingual student workbooks with Scala.js and
 | `resources/` | Language maps, teaching materials and bundled programs/libraries |
 | `tools/` | Site assembly, browser checks, fixture generators and optional LLM proxies |
 | `artifacts/` | Generated bundles and server assemblies |
+| `project/` | sbt build definitions, plugins and artifact tasks |
+| `deployment/` | Deployment configuration and operational assets |
+| `docs/` | Maintained architecture, migration status, authoring and development guides |
+| `.github/` | CI workflows and repository tooling instructions |
+| `target/` | Generated Scala build output and reports; ignored by Git |
+| `node_modules/` | Installed Node development dependencies; generated and ignored by Git |
+| `_site/`, `dist/` | Generated site/export output; ignored by Git |
+| `tmp/` | Extracted workbook reference copies (`bitcoin/`, `evacuation/`, `phishing/`) and ignored local scratch files (`work/`) |
+
+Keep temporary workbook extracts and development captures under `tmp/`. The reference copies are retained for migration work; duplicate extracts have been consolidated here. `tmp/work/` is ignored by Git. Published teaching materials and classic PDF/ZIP downloads remain under `resources/` and are independent of these reference copies. Neither site assembly includes `tmp/`.
+
+### Choosing a location for new content
+
+| Content | Location |
+| --- | --- |
+| Domain models, workbook elements/interactions, validation and serializers shared by JVM and JS | `modules/core/shared/src/main/scala/`; tests in its matching `src/test/scala/` package |
+| Browser interaction renderers, editors and workbook factories | `modules/client/src/main/scala/`; tests in its matching `src/test/scala/` package |
+| Platform-specific code, worker execution or backend behavior | The corresponding core JS/JVM, worker or server module |
+| Workbook entry pages and browser bootstrap scripts | `homepage/<workbook>/index.html` and `homepage/js/` |
+| Presentation styles and shared color/dimension tokens | Dedicated files in `homepage/css/`; static styles belong here rather than in Laminar |
+| Translated workbook text | `resources/languageMaps/eva/<workbook-group>/` |
+| Published classic PDF/ZIP editions | `resources/workbookpdfs/`; keep public catalogue links available during migration |
+| Images, datasets and other published workbook assets | `resources/workbookresources/<workbook>/` |
+| Bundled standalone teaching programs and libraries | `resources/programs/` |
+| Browser/asset checks, importers and repeatable development utilities | `tools/dev/` |
+| Architecture, migration decisions and maintained task inventories | `docs/`; link relevant guides from this README |
+| Deliberately retained extracts used as migration references | An appropriate subject directory inside `tmp/` |
+| Ad hoc ZIP extracts, logs, screenshots, analysis, drafts and disposable scripts | `tmp/work/`; do not commit these files |
+
+Reuse these locations and existing subject/package directories. Do not create a new directory at the repository root unless no existing directory can serve the purpose and there is a strong architectural or tooling necessity. Explain that necessity and update this directory guide when such an exception is required. Agent instructions are in [AGENTS.md](AGENTS.md).
 
 The root sbt project aggregates client, server and worker. Client and worker depend on core JS; server depends on core JVM. Run the core test projects explicitly to verify both platforms.
 
@@ -32,9 +62,10 @@ Shared workbook abstractions live in [WorkbookElement.scala](modules/core/shared
 | --- | --- |
 | [homepage/index.html](homepage/index.html) | Classic catalogue, including PDF/ZIP editions |
 | [workbooks](homepage/workbooks/index.html) | Laminar catalogue of available digital workbooks; browsing is public |
-| [evacuationWorkbook](homepage/evacuationWorkbook/index.html) | Partial evacuation adaptation with local EVA2 playback, locker/door comparisons, a budget plan and model critique |
+| [evacuationWorkbook](homepage/evacuationWorkbook/index.html) | Partial evacuation adaptation with local EVA2 playback, locker/door comparisons with saved graphs, a budget plan and model critique |
 | [workbookDesign](homepage/workbookDesign/index.html) | Test workbook and interaction examples, including local EVA2 floor construction |
 | [embroideryWorkbook](homepage/embroideryWorkbook/index.html) | Embroidery workbook |
+| [embroideryPreviewWorkbook](homepage/embroideryPreviewWorkbook/index.html) | Separate embroidery edition with geometric turtle previews, conditionals and recursion (DE/EN) |
 | [compressionWorkbook](homepage/compressionWorkbook/index.html) | Data compression workbook |
 | [plantWorkshopWorkbook](homepage/plantWorkshopWorkbook/index.html) | Plant workshop on the workbook architecture |
 | [blockchainWorkbook](homepage/blockchainWorkbook/index.html) | Blockchain learner activities, mining simulator and energy/final assessment; equivalence review pending |
@@ -117,6 +148,7 @@ LLM feedback uses the endpoint configured in [config.js](homepage/js/config.js).
 
 - [Digital workbook migration](docs/digital-workbook-migration.md): analysis of linked PDF/ZIP exercises, missing editors and the Blockchain, image-recognition and Phishing adaptations.
 - [Interaction architecture](docs/workbook-interaction-architecture.md): dependency boundaries between shared models, renderers and optional editors; state and serialization flow.
+- [Native compression workbook](docs/compression-workbook.md): complete seven-chapter native copy, saved interactions and the retained standalone version.
 - [Email simulator](docs/email-simulator.md): state, grading, content handling and verification.
 - [QR interaction](docs/qr-code-interaction.md): encoding model, requirements, region colors and reference tests.
 - [Plant workshop](docs/PlantWorkshop_Quickstart.md): implemented sections and remaining migration work.

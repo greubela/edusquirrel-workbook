@@ -9,7 +9,7 @@ import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.types.{BeDataValueLiteral, BeUseValueReference}
-import it.evadid.workbook.elements.interactionElements.programming.{SnapControlFlow, SnapTurtleCatalog, SnapTurtlePythonBridge}
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapControlFlow, SnapTurtleCatalog, SnapTurtlePythonBridge}
 
 /**
  * Interprets a turtle-subset BeExpression into TurtleCommands for SVG preview.
@@ -154,6 +154,10 @@ object BeExpressionToTurtleCommands {
       case "/" =>
         val denom = args.drop(1).headOption.getOrElse(1.0)
         if denom == 0 then 0.0 else args.headOption.getOrElse(0.0) / denom
+      case "%" =>
+        val dividend = args.headOption.getOrElse(0.0)
+        val divisor = args.drop(1).headOption.getOrElse(1.0)
+        if divisor == 0 then 0.0 else dividend - divisor * math.floor(dividend / divisor)
       case "<" => if compare(args, _ < _) then 1.0 else 0.0
       case ">" => if compare(args, _ > _) then 1.0 else 0.0
       case "==" => if args.sliding(2).forall(pair => pair.size < 2 || pair.head == pair(1)) then 1.0 else 0.0

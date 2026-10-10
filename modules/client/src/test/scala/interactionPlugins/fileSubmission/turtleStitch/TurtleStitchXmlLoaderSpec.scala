@@ -4,9 +4,9 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turt
   TurtleStitchToBeExpressionParser,
   TurtleStitchXmlLoader
 }
-import it.evadid.workbook.elements.interactionElements.programming.SnapTurtlePythonBridge
 import munit.FunSuite
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchProgramModel.*
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtlePythonBridge
 
 class TurtleStitchXmlLoaderSpec extends FunSuite {
 

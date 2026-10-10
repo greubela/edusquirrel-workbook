@@ -4,11 +4,13 @@ import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId
 import it.evadid.core.datastructures.user.User
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.workbook.elements.interactionElements.Turtle.TurtleRecreateShapeInteraction
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingStatePythonString}
-import it.evadid.workbook.elements.interactionElements.programming.TurtleGraphic.{Line, TurtleLineBasedProgram}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.{Line, TurtleLineBasedProgram}
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
 import it.evadid.workbook.elements.structureElements.Workbook
 

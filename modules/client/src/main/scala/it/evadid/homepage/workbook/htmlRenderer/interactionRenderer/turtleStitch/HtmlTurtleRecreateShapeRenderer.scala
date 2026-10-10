@@ -13,7 +13,10 @@ import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCode
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.workbook.elements.interactionElements.Turtle.TurtleRecreateShapeInteraction
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingState, ProgrammingStateJavaString, TurtleGraphic}
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import scala.util.Try
 
@@ -29,7 +32,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
     ElementCard(
       LanguageMapContentId("basic/turtleGradingPanel"),
       div(child <-- boundVar.signal.map { state =>
-        commandsForPreview(state).map(TurtleJsxGraphRenderer.render(_, expected))
+        commandsForPreview(state).map(commands => TurtleJsxGraphRenderer.render(TurtleJsxGraphRenderer.buildScene(commands, expected, 1e-7, gradeJumps = false), "Turtle drawing"))
           .getOrElse(div("Preview unavailable for this draft."))
       })
     )
@@ -48,7 +51,12 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
     val editor = EvaEditorTurtle(boundVar, editorConfig, workbookElement.desiredResult,
       extensions = List(new JavaTurtleEditorExtension(boundVar, target = Some(workbookElement.desiredResult))))
 
-    val canvasCard = ElementCard(LanguageMapContentId("basic/canvas"), SnapPreviewEditor(boundVar, snapEditorConfig).getDomElement())
+    lazy val codePreview = SnapPreviewEditor(boundVar, snapEditorConfig).getDomElement()
+    val programPreview = boundVar.signal.map(_.toPython.code.trim.nonEmpty).distinct.map { hasProgram =>
+      if hasProgram then codePreview
+      else p(text <-- laminarHelper.plaintextStringSignal("basic/turtleNoProgramYet"))
+    }
+    val canvasCard = ElementCard(LanguageMapContentId("basic/canvas"), programPreview)
 
     def buttonPressed(): Unit = fullInfo.displayControl.setFullscreen(editor)
 

@@ -1,5 +1,8 @@
 package it.evadid.homepage.workbook.htmlRenderer
 
+import it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.compression.CompressionExperimentRenderer
+
 import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationSimulationInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.evacuation.EvacuationSimulationRenderer
 import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationConstructFloorInteraction
@@ -31,7 +34,6 @@ import it.evadid.workbook.elements.interactionElements.Turtle.{TurtleRecreateSha
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExercise, ProgrammingExerciseFullJava}
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.slideshow.Slideshow
 import it.evadid.workbook.elements.interactionElements.sortingExercise.SortingInteraction
@@ -45,6 +47,8 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.choice.Choic
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.neuron.ThresholdNeuronRenderer
 
 import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
+import it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.plot.CoordinatePlotRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.table.AnswerTableRenderer
 import it.evadid.workbook.elements.interactionElements.pixel.BinaryPixelInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.pixel.BinaryPixelRenderer
@@ -56,6 +60,7 @@ import it.evadid.workbook.elements.interactionElements.blockchain.BlockchainInte
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain.BlockchainRenderer
 import it.evadid.workbook.elements.interactionElements.text.UnicodeComparisonInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.text.UnicodeComparisonRenderer
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
 
 trait HtmlRenderFactory[T <: WorkbookElement] {
 
@@ -125,6 +130,7 @@ object HtmlRenderFactory {
       case i: ImageElement => HtmlProxyAppElementRenderer.renderWorkbookElement(i, HtmlImageElement(i))
 
       // interactions
+      case e: CompressionExperimentInteraction => CompressionExperimentRenderer.renderWorkbookElement(e)
       case h: SquareMiddleHashInteraction => SquareMiddleHashRenderer.renderWorkbookElement(h)
       case h: Sha256Interaction => Sha256Renderer.renderWorkbookElement(h)
       case h: BlockchainInteraction => BlockchainRenderer.renderWorkbookElement(h)
@@ -133,6 +139,7 @@ object HtmlRenderFactory {
       case h: UnicodeComparisonInteraction => UnicodeComparisonRenderer.renderWorkbookElement(h)
       case p: BinaryPixelInteraction => BinaryPixelRenderer.renderWorkbookElement(p)
       case t: AnswerTableInteraction => AnswerTableRenderer.renderWorkbookElement(t)
+      case p: CoordinatePlotInteraction => CoordinatePlotRenderer.renderWorkbookElement(p)
       case c: ChoiceInteraction => ChoiceInteractionRenderer.renderWorkbookElement(c)
       case n: ThresholdNeuronInteraction => ThresholdNeuronRenderer.renderWorkbookElement(n)
       case m: MailInteraction => HtmlMailInteractionRenderer.renderWorkbookElement(m)

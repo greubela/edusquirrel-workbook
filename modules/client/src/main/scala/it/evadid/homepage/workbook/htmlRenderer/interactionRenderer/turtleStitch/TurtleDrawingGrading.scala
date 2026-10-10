@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.{TurtleDrawingComparison, 
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleDrawingComparison.{Segment, TurtleComparisonResult}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.{LineResult, RenderedLine, Scene}
-import it.evadid.workbook.elements.interactionElements.programming.TurtleGraphic
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
 
 object TurtleDrawingGrading {
   private val tolerance = 0.25

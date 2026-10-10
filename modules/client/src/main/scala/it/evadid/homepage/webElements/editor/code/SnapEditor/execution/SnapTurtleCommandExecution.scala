@@ -3,8 +3,9 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapProgramDerivation
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.{CallbackOp, PythonRunConfig, PythonRunReport}
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingStateSnapXml
-import it.evadid.workbook.elements.interactionElements.programming.SnapTurtleCatalog
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 import todomove.`export`.workers.PyodideWorkerClient
 
 import scala.concurrent.Future

@@ -1,8 +1,15 @@
 package it.evadid.workbook.elements.interactionElements.programming
+import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSource, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.{BeSimulatorConfig, BeSimulatorState, BeVirtualMachineState}
 import it.evadid.vm.simulation.java.JavaTurtleRuntime as T
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtlePythonBridge
+import it.evadid.workbook.elements.interactionElements.programming.state.{JavaToBeExpressionParser, ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString}
 import munit.FunSuite
 
 class ProgrammingStateConversionSpec extends FunSuite {
@@ -206,6 +213,29 @@ class ProgrammingStateConversionSpec extends FunSuite {
       .toBeExpressionState.deriveTurtleCommands
     assertEquals(commands.map(_.name), List("forward"))
     assertEquals(commands.flatMap(_.args), List(12.0))
+  }
+
+  test("modulo conditionals and loops remain executable after switching to Snap") {
+    val source = """i = 0
+      |while i < 4:
+      |    if i % 2 == 0:
+      |        forward(10)
+      |    else:
+      |        forward(20)
+      |    i = i + 1
+      |""".stripMargin
+    val original = ProgrammingStatePythonString(source)
+    val snap = original.toSnapXml
+    assert(snap.snapXml.contains("reportModulus"))
+    val expected = original.toBeExpressionState.deriveTurtleCommands
+    assertEquals(expected.flatMap(_.args), List(10.0, 20.0, 10.0, 20.0))
+    assertEquals(snap.toBeExpressionState.deriveTurtleCommands, expected)
+  }
+
+  test("negative turns and pen-up return distances retain their signs in Snap") {
+    val original = ProgrammingStatePythonString("turn(-60)\npenup()\nlength = 30\nforward(-length)\npendown()\n")
+    assertEquals(original.toSnapXml.toBeExpressionState.deriveTurtleCommands,
+      original.toBeExpressionState.deriveTurtleCommands)
   }
 
   test("BeExpression and Java round trip") {

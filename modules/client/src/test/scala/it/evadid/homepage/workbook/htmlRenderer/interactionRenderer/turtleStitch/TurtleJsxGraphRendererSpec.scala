@@ -3,7 +3,8 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitc
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineResult
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString, TurtleGraphic}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
 import munit.FunSuite
 
 class TurtleJsxGraphRendererSpec extends FunSuite {
@@ -283,4 +284,20 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     assertEquals(TurtleDrawingGrading.assessedScene(List(command("forward", 1)), empty).lines.map(_.result),
       List(LineResult.Unexpected))
   }
+  test("recreate graphics allow different pen-up routes but require real strokes") {
+    val expected = TurtleGraphic.TurtleGraphicProgram(List(
+      TurtleCommand("penUp"), TurtleCommand("goto", List(10.0, 0.0)),
+      TurtleCommand("penDown"), TurtleCommand("forward", List(10.0))))
+    val alternative: List[TurtleCommand[Double]] = List(
+      TurtleCommand("penUp"), TurtleCommand("goto", List(0.0, 10.0)),
+      TurtleCommand("goto", List(10.0, 0.0)), TurtleCommand("penDown"),
+      TurtleCommand("forward", List(10.0)))
+    val scene = TurtleJsxGraphRenderer.buildScene(alternative, expected, 1e-7, gradeJumps = false)
+    assert(scene.lines.forall(_.result == LineResult.Correct))
+    assertEquals(scene.lines.count(!_.jump), 1)
+    val noStitch = TurtleJsxGraphRenderer.buildScene(
+      alternative.filterNot(_.name == "penDown"), expected, 1e-7, gradeJumps = false)
+    assertEquals(noStitch.lines.count(_.result == LineResult.Missing), 1)
+  }
+
 }

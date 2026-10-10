@@ -9,7 +9,7 @@ import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.ElementCard
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
-import it.evadid.workbook.elements.interactionElements.programming.TurtleGraphic
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
 import scala.util.Try

@@ -9,7 +9,7 @@ import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.HtmlBasicCheckboxRenderer.fullInfo
-import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
+import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel, SlideshowState}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 /**
@@ -23,16 +23,17 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
    * When navigation succeeds, the method updates the bound interaction state through the model-level transition recorder instead of constructing event data directly.
    */
   override protected def createRendering(workbookElement: Slideshow): AtomarLineRendering = {
-    val currentIndex = Var(0)
     val stateVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl,UpdateImportance.MAJOR).toAirstreamVar
     val totalSlides = workbookElement.panels.length
+    def savedIndex(state: SlideshowState): Int = state.events.toList.sortBy(_.proceededAt).lastOption
+      .map(event => workbookElement.panels.indexOf(event.newPanel)).filter(_ >= 0).getOrElse(0)
+    val currentIndex = stateVar.signal.map(savedIndex).distinct
 
     def navigateBy(offset: Int): Unit = {
       if (totalSlides > 0) {
-        val oldIndex = currentIndex.now()
+        val oldIndex = savedIndex(stateVar.now())
         val newIndex = (oldIndex + offset).max(0).min(totalSlides - 1)
         if (newIndex != oldIndex) {
-          currentIndex.set(newIndex)
           stateVar.update(_.recordTransitionByIndex(oldIndex, newIndex))
         }
       }
@@ -43,16 +44,16 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
         cls := "slide-deck-navigation",
         button(
           child.text <-- laminarHelper.plaintextStringSignal("PlantWorkshop/slideshowBack"),
-          disabled <-- currentIndex.signal.map(_ == 0),
+          disabled <-- currentIndex.map(_ == 0),
           onClick.mapTo(-1) --> navigateBy
         ),
         span(
           cls := "slide-deck-counter",
-          child.text <-- currentIndex.signal.map(i => s"${i + 1}/$totalSlides")
+          child.text <-- currentIndex.map(i => s"${i + 1}/$totalSlides")
         ),
         button(
           child.text <-- laminarHelper.plaintextStringSignal("PlantWorkshop/slideshowNext"),
-          disabled <-- currentIndex.signal.map(_ >= totalSlides - 1),
+          disabled <-- currentIndex.map(_ >= totalSlides - 1),
           onClick.mapTo(1) --> navigateBy
         )
       )
@@ -62,7 +63,7 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
     } else {
       val dom = div(
         cls := "workbook-interaction",
-        child <-- currentIndex.signal.map(index =>
+        child <-- currentIndex.map(index =>
           createSlideshowPanelDom(workbookElement.panels(index), navigation())
         )
       )

@@ -5,7 +5,7 @@ import com.raquo.laminar.api.L
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.*
-import it.evadid.workbook.elements.interactionElements.programming.TurtleGraphic
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
 import munit.FunSuite
 import org.scalajs.dom
 import scala.collection.mutable.ListBuffer
@@ -18,7 +18,7 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     assertEqualsDouble(actual.y, y, 1e-7)
 
   // Record every JSXGraph object and execute the actual renderer's hover callbacks.
-  private class Graph:
+  private class Graph(batchUpdates: Boolean = false):
     class Obj(val kind: String, val parents: js.Array[js.Dynamic], val attrs: js.Dynamic):
       val events = scala.collection.mutable.Map.empty[String, js.Function1[js.Any, Unit]]
       val value: js.Dynamic = js.Dynamic.literal(
@@ -31,18 +31,25 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     var renderer = ""
     var containerClass = ""
     var title = ""
+    var axisLabelDisplay = ""
     var rejectCreation = false
     val initialized = ListBuffer.empty[(dom.html.Div, js.Dynamic)]
     val freed = ListBuffer.empty[js.Dynamic]
-    private def board(): js.Dynamic = js.Dynamic.literal(
-      create = ((kind: String, parents: js.Array[js.Dynamic], attrs: js.Dynamic) => {
-        if rejectCreation then throw IllegalStateException("renderer unavailable")
-        val obj = new Obj(kind, parents, attrs)
-        objects += obj
-        obj.value
-      }): js.Function3[String, js.Array[js.Dynamic], js.Dynamic, js.Dynamic],
-      update = (() => ()): js.Function0[Unit]
-    )
+    val updateCalls = ListBuffer.empty[(String, Int)]
+    private def board(): js.Dynamic =
+      val created = js.Dynamic.literal(
+        create = ((kind: String, parents: js.Array[js.Dynamic], attrs: js.Dynamic) => {
+          if rejectCreation then throw IllegalStateException("renderer unavailable")
+          val obj = new Obj(kind, parents, attrs)
+          objects += obj
+          obj.value
+        }): js.Function3[String, js.Array[js.Dynamic], js.Dynamic, js.Dynamic],
+        update = (() => { updateCalls += (("update", objects.size)); () }): js.Function0[Unit]
+      )
+      if batchUpdates then
+        created.updateDynamic("suspendUpdate")((() => { updateCalls += (("suspend", objects.size)); () }): js.Function0[Unit])
+        created.updateDynamic("unsuspendUpdate")((() => { updateCalls += (("resume", objects.size)); () }): js.Function0[Unit])
+      created
     def withLibrary[A](test: => A): A =
       val previous = js.Dynamic.global.globalThis.selectDynamic("JXG")
       js.Dynamic.global.globalThis.updateDynamic("JXG")(js.Dynamic.literal(JSXGraph = js.Dynamic.literal(
@@ -50,6 +57,7 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
           bounds = attrs.boundingbox.asInstanceOf[js.Array[Double]]
           renderer = attrs.renderer.asInstanceOf[String]
           title = attrs.title.asInstanceOf[String]
+          axisLabelDisplay = attrs.defaultAxes.x.ticks.label.display.asInstanceOf[String]
           val created = board()
           initialized += ((container, created))
           created
@@ -137,6 +145,28 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
           assertEquals(graph.freed.size, 1)
           shown.set(true)
           assertEquals(graph.initialized.size, 2)
+        finally mounted.unmount()
+        assertEquals(graph.freed.toList, graph.initialized.map(_._2).toList)
+      }
+    }
+  }
+
+  test("reactive stroke rendering releases each replaced board through the shared scene lifecycle") {
+    withDom {
+      import L.*
+      val graph = new Graph
+      graph.withLibrary {
+        val host = dom.document.createElement("div")
+        dom.document.body.appendChild(host)
+        val commands = Var(List(cmd("forward", 10)))
+        val expected = TurtleGraphic.TurtleGraphicProgram(commands.now())
+        val preview = TurtleJsxGraphRenderer.renderStrokes(commands.signal, expected)
+        val mounted = L.render(host, div(children <-- preview.allElementsSignal))
+        try
+          assertEquals(graph.initialized.size, 1)
+          commands.set(List(cmd("forward", 5)))
+          assertEquals(graph.initialized.size, 2)
+          assertEquals(graph.freed.toList, List(graph.initialized.head._2))
         finally mounted.unmount()
         assertEquals(graph.freed.toList, graph.initialized.map(_._2).toList)
       }
@@ -420,3 +450,29 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
         verifyCoordinates()
       }
     }
+
+  test("dense scenes batch object creation into one final JSXGraph update") {
+    val graph = new Graph(batchUpdates = true)
+    graph.render(List(cmd("forward", 10), cmd("right", 90), cmd("forward", 10)))
+    assertEquals(graph.updateCalls.toList, List(("suspend", 0), ("resume", graph.objects.size)))
+    val fallback = new Graph
+    fallback.render(List(cmd("forward", 10)))
+    assertEquals(fallback.updateCalls.toList, List(("update", fallback.objects.size)))
+  }
+
+  test("axis and endpoint labels use internal SVG rendering") {
+    val graph = new Graph
+    graph.render(List(cmd("forward", 10)))
+    assertEquals(graph.axisLabelDisplay, "internal")
+    graph.ofKind("point").foreach { point =>
+      assertEquals(point.attrs.label.display.asInstanceOf[String], "internal")
+    }
+  }
+
+  test("dense repeating patterns retain all lines with representative angle overlays") {
+    val graph = new Graph(batchUpdates = true)
+    val polygon = List.fill(180)(List(cmd("forward", 3), cmd("right", 2))).flatten
+    graph.render(polygon)
+    assertEquals(graph.ofKind("segment").size, 180)
+    assertEquals(graph.ofKind("angle").size, 1)
+  }

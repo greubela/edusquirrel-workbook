@@ -1,0 +1,187 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import test from 'node:test';
+import {chromium} from 'playwright';
+
+const root = path.resolve(import.meta.dirname, '../..');
+const origin = 'http://localhost:9000';
+const bundle = path.resolve(root, process.env.COMPRESSION_CLIENT_BUNDLE || 'target/client/scala-3.8.4/client-fastopt/main.js');
+const mime = {'.html':'text/html', '.js':'text/javascript', '.mjs':'text/javascript', '.css':'text/css', '.json':'application/json',
+  '.svg':'image/svg+xml', '.png':'image/png', '.jpg':'image/jpeg', '.txt':'text/plain'};
+
+test('native compression experiments use bound answers and survive fullscreen, chapters and reload', async () => {
+  await fs.access(bundle);
+  const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium', args:['--no-sandbox']});
+  let page;
+  try {
+    page = await browser.newPage({viewport:{width:1440,height:900}});
+    page.setDefaultTimeout(45000);
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.route('**/*', async route => {
+      const url = new URL(route.request().url());
+      if (url.origin !== origin) return route.abort();
+      if (url.pathname.endsWith('/.env')) return route.fulfill({body:'EDUSQUIRREL_BACKEND_MODULE_WORKERS=0',contentType:'text/plain'});
+      const file = url.pathname === '/artifacts/newest/client.js' ? bundle : path.resolve(root, '.' + decodeURIComponent(url.pathname));
+      if (!file.startsWith(root + path.sep)) return route.abort();
+      try { await route.fulfill({body:await fs.readFile(file),contentType:mime[path.extname(file)] || 'application/octet-stream'}); }
+      catch { await route.fulfill({status:404,body:'Not found'}); }
+    });
+    await page.goto(origin + '/homepage/compressionWorkbook/index.html');
+    const login = page.locator('.section-register .login-area').nth(1).locator('button');
+    await login.click();
+    const chapter = text => page.locator('.section-block').filter({hasText:text});
+    const editor = page.locator('dialog[open] .compression-editor');
+    const close = async () => page.locator('.fullscreen-close-button').click();
+    const open = async index => {
+      await page.locator('.compression-preview').nth(index).locator('button').click();
+      await editor.waitFor();
+    };
+    const jump = async (label, count) => {
+      await chapter(label).click();
+      await page.waitForFunction(n => [...document.querySelectorAll('.compression-written-answer')].filter(e => e.offsetParent !== null).length === n, count);
+    };
+    await page.locator('.compression-written-answer').waitFor();
+    await page.locator('.compression-written-answer').fill('Zuerst die Daten prüfen und sensible Metadaten entfernen.');
+    await page.getByRole('radio').nth(2).check();
+    await page.locator('.compression-inline textarea:visible:not(.compression-written-answer)').fill('Die Folgen der Veröffentlichung müssen abgewogen werden.');
+    await jump('Sektion 0',1);
+    await open(0);
+    await editor.getByLabel('Anzahl der Videos').fill('10');
+    assert.match(await editor.locator('.compression-summary').innerText(), /1875\.00 MB/);
+    await editor.getByLabel('Anzahl der Videos').fill('0');
+    assert.equal(await editor.locator('[aria-invalid="true"]').count(),1);
+    assert.match(await editor.locator('.compression-summary').innerText(), /1875\.00 MB/);
+    await close();await open(0);
+    assert.equal(await editor.getByLabel('Anzahl der Videos').inputValue(),'10');
+    await close();await open(1);
+    await editor.getByLabel('Größe eines Fotos').fill('4');
+    assert.match(await editor.locator('.compression-summary').innerText(), /500 Fotos/);
+    await close();
+    await jump('Sektion 1',7);
+    await open(0);
+    await editor.locator('textarea').fill('AAAAAAAAAAAA');
+    assert.match(await editor.locator('.compression-output').first().innerText(), /\(A,12\)/);
+    assert.equal((await editor.locator('li').allTextContents()).filter(x=>x.startsWith('✓')).length,2);
+    await editor.locator('textarea').fill('ABCDE');
+    assert.equal((await editor.locator('li').allTextContents()).filter(x=>x.startsWith('✓')).length,3);
+    await editor.locator('textarea').fill('AAAAAAAAAAAA');
+    await close();await open(1);
+    assert.match(await editor.locator('textarea').inputValue(), /Die Überwachung der Zielperson/);
+    await close();await open(2);
+    await editor.getByRole('button',{name:'Nächster Schritt',exact:true}).click();
+    assert.equal(await editor.locator('.compression-output').first().innerText(),'Die ');
+    assert.equal(await editor.locator('.compression-active-word').innerText(),'Die');
+    await editor.getByRole('button',{name:'Alle Schritte',exact:true}).click();
+    assert.match(await editor.locator('.compression-output').first().innerText(), /W1/);
+    assert.match(await editor.locator('.compression-output').last().innerText(), /Die Überwachung der Zielperson/);
+    assert.equal(await editor.getByRole('button',{name:'Nächster Schritt',exact:true}).isDisabled(),true);
+    await close();
+    assert.equal(await page.locator('.compression-code').count(),2);
+    assert.match(await page.locator('.compression-code').first().inputValue(), /def encode/);
+    await page.locator('.compression-code').first().fill('def encode(text):\n    return text');
+    assert.equal(await page.locator('.sorting-reason-interaction.sorting-interaction--inline').count(),1);
+    await page.locator('.sorting-reason-interaction.sorting-interaction--inline button').click();
+    assert.match(await page.locator('dialog[open]').innerText(), /Langer unverschlüsselter Bericht/);
+    await close();
+    await jump('Zusatz:',6);
+    assert.match(await page.locator('body').innerText(), /Base64.*keine Verschlüsselung/);
+    await page.locator('.compression-written-answer').first().fill('Vor dem Verschlüsseln komprimieren.');
+    await jump('Sektion 2',10);
+    assert.equal(await page.locator('.slide-deck-counter').innerText(),'1/6');
+    for(let i=0;i<5;i++)await page.locator('.slide-deck-navigation button').last().click();
+    assert.equal(await page.locator('.slide-deck-counter').innerText(),'6/6');
+    await open(0);
+    assert.equal(await editor.locator('canvas').evaluate(c=>c.width),128);
+    await editor.getByRole('button',{name:'Ein Bit flippen',exact:true}).first().click();
+    await editor.getByRole('button',{name:'Ein Bit flippen',exact:true}).last().click();
+    assert.match(await editor.innerText(), /1 Bit geändert: 8192/);
+    await close();await open(1);
+    await page.waitForFunction(()=>{const c=document.querySelector('dialog[open] canvas');return c&&c.width===960&&c.getContext('2d').getImageData(0,0,1,1).data[3]===255});
+    const original=await editor.locator('canvas').evaluate(c=>c.toDataURL());
+    await editor.getByLabel('Farbe: Blockgröße').selectOption('128');
+    await editor.getByLabel('Helligkeit: Blockgröße').selectOption('4');
+    assert.notEqual(await editor.locator('canvas').evaluate(c=>c.toDataURL()),original);
+    await close();await open(2);
+    await editor.locator('select').selectOption('64');
+    assert.match(await editor.innerText(), /Blockmodell: 3600 Bit/);
+    await close();await open(3);
+    await page.waitForFunction(()=>{const c=document.querySelector('dialog[open] canvas');return c&&c.width===2548&&c.getContext('2d').getImageData(0,0,1,1).data[3]===255});
+    await editor.getByLabel('Zoom',{exact:true}).fill('200');
+    await editor.getByLabel('Farbe: Blockgröße').selectOption('8');
+    assert.equal(await editor.locator('canvas').evaluate(c=>c.style.width),'200%');
+    await close();
+    await page.locator('.sorting-reason-interaction.sorting-interaction--inline button').click();
+    assert.match(await page.locator('dialog[open]').innerText(), /Beweisfotos/);await close();
+    await jump('Sektion 3',15);
+    assert.equal(await page.getByRole('link',{name:/Alle Originalmaterialien/}).count(),1);
+    await open(0);
+    await editor.getByText('docProps/core.xml',{exact:true}).click();
+    assert.match(await editor.innerText(), /Autor, Erstelldatum, Änderungsdatum/);
+    await close();await open(0);
+    assert.equal(await editor.locator('details').filter({hasText:'docProps/core.xml'}).evaluate(e=>e.open),true);
+    await close();await open(1);
+    await editor.getByRole('button',{name:'Nächster Schritt',exact:true}).click();
+    assert.match(await editor.innerText(), /Datei öffnen/);
+    await close();
+    await jump('Sektion 4',1);
+    assert.equal(await page.getByRole('radio').count(),14);
+    await page.getByRole('radio').first().check();
+    assert.match(await page.locator('.compression-inline blockquote').innerText(), /Zuerst die Daten prüfen/);
+    await page.locator('.compression-written-answer').fill('Verlustfrei prüfen, Video gezielt reduzieren, Metadaten bereinigen.');
+    await open(0);
+    await editor.getByLabel('Datenpaket').selectOption('1');
+    assert.match(await editor.innerText(), /4200/);
+    assert.equal(await editor.locator('tbody tr').count(),55);
+    await close();await open(1);
+    const tool=label=>editor.getByRole('button',{name:label,exact:true});
+    const file=name=>editor.getByRole('button',{name,exact:true});
+    await tool('Archivieren').click();await file('demo_gps.mp4').click();await file('kamera_probe.mp4').click();
+    await tool('RAR-Archiv erstellen').click();
+    assert.match(await editor.getByRole('alert').innerText(), /Entferne problematische Metadaten zuerst/);
+    await tool('In metadatenfreies Format umwandeln / Metadaten entfernen').click();
+    await file('demo_gps.mp4').click();await file('uebung_notiz.docx').click();
+    await tool('Verlustbehaftet komprimieren').click();await file('demo_gps.mp4').click();
+    assert.match(await editor.innerText(), /Geschafft!/);
+    assert.match(await editor.innerText(), /Schritte: 3/);
+    await close();
+    for(let i=2;i<=4;i++){
+      await open(i);
+      assert((await editor.locator('tbody tr').count())>=19);
+      await tool('Verlustfrei komprimieren').click();await editor.locator('tbody button').first().click();
+      assert.match(await editor.innerText(), /Schritte: 1/);await close();
+    }
+    await page.waitForFunction(async()=>{
+      const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('EvaDidInteractionDB');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});
+      const rows=await new Promise((resolve,reject)=>{const r=db.transaction('variableHistoryStore').objectStore('variableHistoryStore').getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});
+      db.close();return rows.some(row=>JSON.stringify(row).includes('Video gezielt reduzieren'));
+    });
+    await page.reload();if(await login.isVisible())await login.click();
+    await jump('Sektion 1',7);await open(0);
+    assert.equal(await editor.locator('textarea').inputValue(),'AAAAAAAAAAAA');await close();
+    assert.equal(await page.locator('.compression-code').first().inputValue(),'def encode(text):\n    return text');
+    await jump('Zusatz:',6);
+    assert.equal(await page.locator('.compression-written-answer').first().inputValue(),'Vor dem Verschlüsseln komprimieren.');
+    await jump('Sektion 2',10);
+    assert.equal(await page.locator('.slide-deck-counter').innerText(),'6/6','slideshow position is restored');
+    await jump('Sektion 4',1);
+    assert.equal(await page.getByRole('radio').first().isChecked(),true);
+    assert.match(await page.locator('.compression-written-answer').inputValue(),/Video gezielt reduzieren/);
+    await open(1);assert.match(await editor.innerText(), /Geschafft!/);
+    await page.setViewportSize({width:390,height:844});
+    assert(await editor.evaluate(e=>e.scrollWidth<=e.clientWidth+1),'mobile editor fits its viewport');
+    await close();await open(0);assert.equal(await editor.getByLabel('Datenpaket').inputValue(),'1');
+    assert.equal(await page.locator('iframe').count(),0);
+    assert(!/Kommt bald|\[ Widget:/.test(await page.locator('body').innerText()));
+    assert.deepEqual(errors,[]);
+    await page.screenshot({path:path.join(root,'tmp/work/compression-native-mobile.png')});
+  } catch (error) {
+    if (page) {
+      await fs.mkdir(path.join(root,'tmp/work'),{recursive:true});
+      await page.screenshot({path:path.join(root,'tmp/work/compression-browser-failure.png'),fullPage:true});
+      await fs.writeFile(path.join(root,'tmp/work/compression-browser-failure.txt'),await page.locator('body').innerText());
+    }
+    throw error;
+  } finally { await browser.close(); }
+});

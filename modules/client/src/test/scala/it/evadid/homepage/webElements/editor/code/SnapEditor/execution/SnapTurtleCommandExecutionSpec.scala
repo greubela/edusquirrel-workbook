@@ -6,7 +6,7 @@ import it.evadid.vm.BeProgram
 import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonExport
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
 import munit.FunSuite
 import todomove.`export`.workers.PyodideWorkerClient
 

@@ -5,7 +5,7 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 import test from 'node:test';
 
 const root = path.resolve(import.meta.dirname, '../..');
-const dedicatedCss = ['email-simulator.css', 'digital-workbooks.css', 'evacuation-editor.css']
+const dedicatedCss = ['email-simulator.css', 'digital-workbooks.css', 'evacuation-editor.css', 'compression-editor.css']
   .map(file => path.join(root, 'homepage/css/workbook', file));
 async function filesBelow(directory, extension) {
   const files = [];
@@ -80,6 +80,8 @@ test('mail and digital exercise components bind classes rather than inline Lamin
     'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/table',
     'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/pixel',
     'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/blockchain',
+    'modules/client/src/main/scala/it/evadid/homepage/webElements/editor/plot',
+    'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/plot',
     'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/text'
   ];
   const inlineStyle=/\b(?:styleAttr|color|backgroundColor|fontSize|fontFamily|width|height|padding|margin|border|display)\s*(?::=|<--)|\bstyleTag\s*\(|\.style\s*(?:\.|=)/;

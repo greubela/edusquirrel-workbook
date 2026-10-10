@@ -1,6 +1,6 @@
 package it.evadid.homepage.webElements.sqlEditor
 
-import it.evadid.workbook.elements.interactionElements.programming.SnapPaletteCatalog
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapPaletteCatalog
 
 /** Lossless clause blocks: strings, comments and nested queries stay inside their clause.
   * Unsupported syntax remains editable as a raw SQL block; switching tabs never rewrites SQL.
