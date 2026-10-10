@@ -35,7 +35,7 @@ case class PositionStateMap(graph: EvaGraph, positionStateMap: MultiHashMapList[
   def routerMap(): MultiHashMapList[Router, EvaPerson] = positionStateMap.getCopyWithFilteredKeys(_.getEither().isLeft).getCopyWithMappedKeys(_.getEither().swap.getOrElse(throw new NoSuchElementException("Expected router position")))
 
   def getPersonAtPositions(pos: RouterOrEdge): Seq[EvaPerson] = {
-    positionStateMap.get(pos).get.toSeq
+    positionStateMap.get(pos).map(_.toSeq).getOrElse(Seq.empty)
   }
 
   private def capacityInformationForEdge(router1: Router, router2: Router): CapacityInformation = {

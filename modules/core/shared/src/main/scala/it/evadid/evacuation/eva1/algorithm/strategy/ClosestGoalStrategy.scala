@@ -15,6 +15,8 @@ object ClosestGoalStrategy extends FlowStrategy {
     println()
 */
 
+    if (allRoutingOptions.isEmpty || freeRoutingOptions.isEmpty) return None
+
     val minFree = freeRoutingOptions.minBy(_.remainingDistance)
     val minTotal = allRoutingOptions.minBy(_.remainingDistance)
 

@@ -139,3 +139,76 @@ checks were rerun after integrating main `6b468333`:
 The complete browser suite passed after the fullscreen fix. After integrating
 main `6b468333`, the monk and embroidery browser checks were rerun against freshly
 built artifacts to verify the affected turtle interactions.
+
+## Shared-core follow-up: observable state and language resolution
+
+The next pass starts from main `6b20b488`. A search for classes without direct test
+references identified the observable implementations and `LanguageMapIdResolver`.
+The SVG mutable builder also lacked references to its concrete class name, but
+already has behavioral tests through its factory; empty marker traits and unfinished
+prototypes were not counted as useful test targets.
+
+Four shared suites add 46 tests, executed on JVM and Scala.js:
+
+- `ObservableValueSpec` (30): initial replay, duplicate suppression, priority and
+  listener isolation, subscription cancellation, pending futures, failures and
+  recovery, reentrant one-time listeners, constants, tuples and ordered lists,
+  synchronous/optional/Future derivations, execution contexts and both queue policies.
+- `ExecutionMethodSpec` (5): synchronous/asynchronous results and failures, including
+  a callback that throws without being called a second time.
+- `StateSpec` (5): distinct updates, bidirectional mappings and their composition,
+  failed reverse mappings, and asynchronous update success/failure.
+- `LanguageMapIdResolverSpec` (6): language changes, English fallback, failed single
+  lookups, partially successful and empty batches, and a delayed map response.
+
+The first observable run exposed 14 failures. Fixes publish combined-list updates
+(and an immediately available empty list), validate indices, return a failed Future
+from empty observables, detach one-time listeners before callbacks, and evaluate
+optional/Future initial inputs once. Derivations now preserve failures, honor the
+execution context, and process queued inputs according to the chosen policy. Future
+derivations wait for the current Future before starting queued work, preventing an
+older completion from overwriting a newer result. Synchronous execution catches
+function failures while leaving callback failures outside that catch.
+
+The queue-policy tests use an explicitly drained execution context and promises;
+they require no sleeps or timing assumptions. JVM and Scala.js run the same shared
+regression tests.
+
+Verification of the follow-up against fetched main `6b20b488`: shared JVM 987,
+shared Scala.js 975, client 511, server 5 and worker 3 tests passed, with no failures
+or ignored tests. Both development browser artifacts build successfully.
+The rebuilt catalogue browser check also passes, including public startup,
+IndexedDB reuse and translation refresh.
+
+## Evacuation follow-up: graphics and EVA1 routing
+
+Added default uPickle codecs for 18 immutable value models: `Router`,
+`ConnectionInfo`, `EvaPerson`, `CapacityInformation`, `EvaColor`, `HSBColor`,
+`EvaFont`, `EvaFileInformation`, `FrameData`, `FloorSpriteProperties`,
+`SpriteMapResourceIdentifier`, and the seven concrete basic/animated sprite types.
+JSON and MessagePack tests cover nested people/destinations, directional frame maps,
+file bytes, Unicode metadata and optional constructor defaults. Derived codecs are
+additional APIs; the existing graph binary/Base64 formats are unchanged.
+
+`EvacuationGraphicSpec` and `EvaRoutingSpec` add 27 tests for colors, sprite flags
+and frame wrapping, font styles, resource identifiers, router edits, connection
+metrics and delays, capacity occupancy, movement snapshots, route selection,
+event-driven evacuation and activity history. The initial 24-test run exposed nine
+failures. Color fixes remove the JVM Double-to-Integer cast, preserve fractional
+hues, keep grayscale opaque and validate conversion bounds. Routing fixes retain
+fractional distances, avoid intermediate integer overflow, reject invalid delay
+inputs, handle empty choices and return empty occupancy without creating buckets. A later
+history test exposed selection by wall-clock event creation time; last activities
+now follow simulation time, with the latest history entry breaking equal-time ties.
+
+Remaining worthwhile targets include sprite-map configuration parsing, observable
+legacy collections and broader EVA1 multi-person/capacity scenarios. Graph-backed
+simulation states/events require an explicit snapshot format that preserves graph
+relationships; automatic derivation of mutable controllers, canvas/image handles
+and callback-bearing objects is not appropriate. The open `Sprite` hierarchy has
+codecs for its concrete built-in values, rather than a closed-world root codec that
+would exclude external implementations.
+
+Verification against main `6b20b488`: shared JVM 1,014, shared Scala.js 1,002,
+client 511, server 5 and worker 3 tests passed, with no failures or ignored tests.
+Both development browser artifacts build successfully.
