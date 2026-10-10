@@ -30,7 +30,8 @@ for (const name of (await readdir(path.join(root, 'tools/dev'))).filter(name => 
 if (files.length === 0) throw new Error('No browser tests matched the selection');
 for (const file of files) {
   // Separate processes keep fixtures isolated and report failures immediately; run every selected file.
-  const result = spawnSync(process.execPath, ['--test', '--test-isolation=none', file], {
+  // The experimental spelling works on both CI's Node 22 and local Node 24.
+  const result = spawnSync(process.execPath, ['--test', '--experimental-test-isolation=none', file], {
     cwd: root, stdio: 'inherit', timeout: 300_000,
     env: {...process.env, CODEMIRROR_TEST_BUNDLE: bundle,
       CHROMIUM_PATH: process.env.CHROMIUM_PATH || chromium.executablePath()}
