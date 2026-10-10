@@ -188,6 +188,29 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assertEquals(commands.flatMap(_.args), List(12.0))
   }
 
+  test("modulo conditionals and loops remain executable after switching to Snap") {
+    val source = """i = 0
+      |while i < 4:
+      |    if i % 2 == 0:
+      |        forward(10)
+      |    else:
+      |        forward(20)
+      |    i = i + 1
+      |""".stripMargin
+    val original = ProgrammingStatePythonString(source)
+    val snap = original.toSnapXml
+    assert(snap.snapXml.contains("reportModulus"))
+    val expected = original.toBeExpressionState.deriveTurtleCommands
+    assertEquals(expected.flatMap(_.args), List(10.0, 20.0, 10.0, 20.0))
+    assertEquals(snap.toBeExpressionState.deriveTurtleCommands, expected)
+  }
+
+  test("negative turns and pen-up return distances retain their signs in Snap") {
+    val original = ProgrammingStatePythonString("turn(-60)\npenup()\nlength = 30\nforward(-length)\npendown()\n")
+    assertEquals(original.toSnapXml.toBeExpressionState.deriveTurtleCommands,
+      original.toBeExpressionState.deriveTurtleCommands)
+  }
+
   test("BeExpression and Java round trip") {
     val expression = ProgrammingStatePythonString(
       "steps = 10\nif steps > 5:\n    forward(steps)\nelse:\n    backward(2)\n"

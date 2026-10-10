@@ -81,5 +81,6 @@
   "qrRegionEncoding": "Kodierung und Byteanzahl",
   "qrRegionData": "Daten und Füllbytes",
   "qrRegionErrorCorrection": "Fehlerkorrektur",
-  "qrRegionRemainder": "Restbits"
+  "qrRegionRemainder": "Restbits",
+  "turtleNoProgramYet": "Öffne den Editor, um dein Programm zu erstellen. Dein Blockprogramm erscheint dann hier."
 }

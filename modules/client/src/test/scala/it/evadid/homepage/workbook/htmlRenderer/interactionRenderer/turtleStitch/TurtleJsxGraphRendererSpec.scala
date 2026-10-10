@@ -128,4 +128,20 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     assertEquals(scene.lines.map(_.result), List(LineResult.Missing))
     assertEquals(scene.lines.map(_.jump), List(true))
   }
+  test("recreate graphics allow different pen-up routes but require real strokes") {
+    val expected = TurtleGraphic.TurtleGraphicProgram(List(
+      TurtleCommand("penUp"), TurtleCommand("goto", List(10.0, 0.0)),
+      TurtleCommand("penDown"), TurtleCommand("forward", List(10.0))))
+    val alternative: List[TurtleCommand[Double]] = List(
+      TurtleCommand("penUp"), TurtleCommand("goto", List(0.0, 10.0)),
+      TurtleCommand("goto", List(10.0, 0.0)), TurtleCommand("penDown"),
+      TurtleCommand("forward", List(10.0)))
+    val scene = TurtleJsxGraphRenderer.buildScene(alternative, expected, 1e-7, gradeJumps = false)
+    assert(scene.lines.forall(_.result == LineResult.Correct))
+    assertEquals(scene.lines.count(!_.jump), 1)
+    val noStitch = TurtleJsxGraphRenderer.buildScene(
+      alternative.filterNot(_.name == "penDown"), expected, 1e-7, gradeJumps = false)
+    assertEquals(noStitch.lines.count(_.result == LineResult.Missing), 1)
+  }
+
 }

@@ -35,5 +35,7 @@
   "compression-lab-title": "Data compression: interactive learning lab",
   "compression-lab-description": "Try compression techniques in the standalone learning activity.",
   "evacuation-title": "Evacuation with grid automata",
-  "evacuation-description": "Construct floors, compare locker and door layouts, and question evacuation models."
+  "evacuation-description": "Construct floors, compare locker and door layouts, and question evacuation models.",
+  "embroidery-preview-title": "Embroidery machine – interactive turtle previews",
+  "embroidery-preview-description": "Program patterns directly in the editor, including conditionals and recursion. New edition in German and English."
 }

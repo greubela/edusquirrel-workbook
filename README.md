@@ -35,6 +35,7 @@ Shared workbook abstractions live in [WorkbookElement.scala](modules/core/shared
 | [evacuationWorkbook](homepage/evacuationWorkbook/index.html) | Partial evacuation adaptation with local EVA2 playback, locker/door comparisons, a budget plan and model critique |
 | [workbookDesign](homepage/workbookDesign/index.html) | Test workbook and interaction examples, including local EVA2 floor construction |
 | [embroideryWorkbook](homepage/embroideryWorkbook/index.html) | Embroidery workbook |
+| [embroideryPreviewWorkbook](homepage/embroideryPreviewWorkbook/index.html) | Separate embroidery edition with geometric turtle previews, conditionals and recursion (DE/EN) |
 | [compressionWorkbook](homepage/compressionWorkbook/index.html) | Data compression workbook |
 | [plantWorkshopWorkbook](homepage/plantWorkshopWorkbook/index.html) | Plant workshop on the workbook architecture |
 | [blockchainWorkbook](homepage/blockchainWorkbook/index.html) | Blockchain learner activities, mining simulator and energy/final assessment; equivalence review pending |

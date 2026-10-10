@@ -81,5 +81,6 @@
   "qrRegionEncoding": "Encoding and byte count",
   "qrRegionData": "Data and padding",
   "qrRegionErrorCorrection": "Error correction",
-  "qrRegionRemainder": "Remainder bits"
+  "qrRegionRemainder": "Remainder bits",
+  "turtleNoProgramYet": "Open the editor to create your program. Your block program will appear here."
 }
